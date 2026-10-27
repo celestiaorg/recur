@@ -241,6 +241,61 @@ async fn the_wheel_scrolls_the_live_chat_over_a_parked_one(cx: &mut TestAppConte
     );
 }
 
+/// The transcript is an isolated view: a wheel step, and the pin or stub window it moves,
+/// redraw it (and what it hosts) without Shell, the route, the workspace, the Observatory or
+/// the chat.
+#[gpui::test]
+async fn a_wheel_step_renders_only_the_transcript(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    s.open(ACTIVE);
+    let view = bound(&mut s);
+    s.cx.update(|_, cx| {
+        view.update(cx, |v, cx| {
+            let key = v.active_key();
+            v.chat_by_key.insert(key, long_chat(200));
+            v.touch(cx);
+        })
+    });
+    s.settle();
+    let chat = view.read_with(s.cx, |v, _| v.chat().clone());
+    let handle = chat.read_with(s.cx, |c, _| c.test_scroll().clone());
+    let at = handle.bounds().center();
+    s.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
+    s.settle();
+    recur_ui::guard::count_renders(true);
+    for _ in 0..3 {
+        s.cx.simulate_event(gpui::ScrollWheelEvent {
+            position: at,
+            delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(120.))),
+            modifiers: gpui::Modifiers::none(),
+            touch_phase: gpui::TouchPhase::Moved,
+        });
+        s.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    assert!(renders("::TranscriptPane", &counts) >= 3, "{counts:?}");
+    for path in [
+        "::Shell",
+        "::WorkspaceDetail",
+        "::WorkspaceView",
+        "::Observatory",
+        "::DockPane",
+    ] {
+        assert_eq!(
+            renders(path, &counts),
+            0,
+            "{path} rendered on a wheel step: {counts:?}"
+        );
+    }
+    // Session cards in the transcript host their own (session-body) chats; the workspace's
+    // chat itself does not render.
+    assert!(
+        renders("::AgentChat", &counts) <= renders("::SessionCard", &counts),
+        "{counts:?}"
+    );
+}
+
 #[gpui::test]
 async fn a_parked_chat_comes_back_where_it_was_scrolled(cx: &mut TestAppContext) {
     let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});

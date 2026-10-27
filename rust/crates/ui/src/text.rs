@@ -11,13 +11,12 @@
 
 use crate::fonts::{Family, tabular_nums};
 use gpui_kit::{
-    AlignItems, App, AvailableSpace, BorderStyle, Bounds, DefiniteLength, Display, Element,
-    ElementId, FlexDirection, FontFeatures, FontId, GlobalElementId, Hsla, InspectorElementId,
-    IntoElement, LayoutId, Pixels, Position, SharedString, StrikethroughStyle, Style, TextRun,
-    UnderlineStyle, Window, point, px, quad, size,
+    App, AvailableSpace, BorderStyle, Bounds, DefiniteLength, Element, ElementId, FontFeatures,
+    FontId, GlobalElementId, Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString,
+    StrikethroughStyle, Style, TextRun, UnderlineStyle, Window, point, px, quad, size,
 };
 use smallvec::SmallVec;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use std::rc::Rc;
@@ -1672,18 +1671,23 @@ impl Laid {
     /// Width of the widest line and the total height, unrounded, after a layout at `width`.
     fn measured(&self) -> (f32, f32) {
         // WebKit stores an inline text width as `LayoutUnit::fromFloatCeil`.
-        let w = (self.lines.iter().map(|l| l.width).fold(0., f32::max) * 64.).ceil() / 64.;
+        let w = crate::exact::lu_ceil(self.lines.iter().map(|l| l.width).fold(0., f32::max));
         (w, self.height())
     }
 }
 
 pub struct TextState {
     layout: Rc<RefCell<Option<Laid>>>,
-    exact: Option<crate::exact::ExactCell>,
     /// A single unwrapped line's exact width, which sized the box.
     natural: Option<f32>,
-    probes: Vec<(Probe, LayoutId)>,
+    /// The max-content width layout measured, when it asked (a shrink-to-fit box).
+    max_content: Rc<Cell<Option<f32>>>,
+    probes: Vec<Probe>,
+    /// The box's own layout node, whose unrounded origin the probes are resolved from.
+    node: Option<LayoutId>,
     snapped: Snapped,
+    /// The box's unrounded left edge.
+    left: Option<Pixels>,
 }
 
 /// An offset from the text box's top (`Y`) or left (`X`) edge to probe.
@@ -1715,57 +1719,30 @@ fn snapped(at: &[(Probe, f32)], probe: Probe) -> Option<f32> {
         .map(|(_, v)| *v)
 }
 
-/// Invisible absolutely positioned leaves, each exactly as long as a probed offset (through
-/// `aspect_ratio`, one device pixel thin across). GPUI snaps a box's far edge from its unrounded
-/// position, so a probe's far edge is where WebKit snaps a baseline or an inline box edge, even
-/// though the text box's own origin was rounded to the device grid first.
-fn request_probes(
-    probes: impl Iterator<Item = Probe>,
-    window: &mut Window,
-    cx: &mut App,
-) -> Vec<(Probe, LayoutId)> {
-    let dp = 1. / window.scale_factor();
-    // A hair longer, so an offset on a half pixel rounds down and right as WebKit's does
-    // (GPUI rounds halves toward zero).
+/// Where GPUI would snap each probed offset from the text box's unrounded origin (`node`'s,
+/// read from layout): a baseline or an inline box edge lands where WebKit snaps it, though the
+/// box's own origin was rounded to the device grid first.
+fn resolve_probes(probes: &[Probe], node: Option<LayoutId>, window: &mut Window) -> Snapped {
+    let Some(node) = node else {
+        return Vec::new();
+    };
+    let origin = window.layout_bounds_unsnapped(node).origin;
+    let scale = window.scale_factor();
+    // A hair past, so an offset on a half pixel rounds down and right as WebKit's does (GPUI
+    // rounds halves toward zero).
     let nudge = 1. / 1024.;
-    probes
-        .map(|p| {
-            let mut s = Style {
-                position: Position::Absolute,
-                ..Default::default()
-            };
-            s.inset.top = px(0.).into();
-            s.inset.left = px(0.).into();
-            // Offsets at or above the box start from a whole CSS pixel before it, which rounds
-            // exactly.
-            let from = |o: f32| if o > 0. { 0. } else { o.floor() - 1. };
-            match p {
-                Probe::Y(o) => {
-                    s.inset.top = px(from(o)).into();
-                    s.size.width = px(dp).into();
-                    s.aspect_ratio = Some(dp / (o - from(o) + nudge));
-                }
-                Probe::X(o) => {
-                    s.inset.left = px(from(o)).into();
-                    s.size.height = px(dp).into();
-                    s.aspect_ratio = Some((o - from(o) + nudge) / dp);
-                }
-            }
-            (p, window.request_layout(s, [], cx))
-        })
-        .collect()
-}
-
-fn resolve_probes(probes: &[(Probe, LayoutId)], window: &mut Window) -> Snapped {
+    let snap = |v: f32| {
+        let d = (v + nudge) * scale;
+        (d.abs() - 0.5).ceil().copysign(d) / scale
+    };
     probes
         .iter()
-        .map(|(p, id)| {
-            let b = window.layout_bounds(*id);
+        .map(|p| {
             let v = match p {
-                Probe::X(_) => b.right(),
-                Probe::Y(_) => b.bottom(),
+                Probe::X(o) => snap(f32::from(origin.x) + o),
+                Probe::Y(o) => snap(f32::from(origin.y) + o),
             };
-            (*p, f32::from(v))
+            (*p, v)
         })
         .collect()
 }
@@ -1809,7 +1786,7 @@ impl Element for Text {
 
     fn request_layout(
         &mut self,
-        id: Option<&GlobalElementId>,
+        _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
         cx: &mut App,
@@ -1828,6 +1805,8 @@ impl Element for Text {
         let (ws, anywhere, clamp, truncate) =
             (self.white_space, self.anywhere, self.clamp, self.ellipsis);
         let measure_slot = layout.clone();
+        let max_content: Rc<Cell<Option<f32>>> = Rc::default();
+        let measured_w = max_content.clone();
         let counted = self.owner.is_some();
         // Taffy keeps one measure result per constraint kind, so nested flex passes that probe
         // several widths would re-break the same text many times in a frame.
@@ -1852,47 +1831,32 @@ impl Element for Text {
                 && w > 0.
                 && h > 2. * dp
             {
-                let mut wide = Style::default();
-                wide.size.height = px(dp).into();
-                wide.aspect_ratio = Some(w / dp);
-                let mut tall = Style::default();
-                tall.size.width = px(dp).into();
-                tall.aspect_ratio = Some(dp / (h - dp));
-                let mut leaves: SmallVec<[LayoutId; 6]> = SmallVec::new();
-                leaves.push(window.request_layout(wide, [], cx));
-                leaves.push(window.request_layout(tall, [], cx));
-                let offsets = layout
+                let leaf =
+                    crate::exact::measured(gpui_kit::Length::Auto, window, move |_, _, _| (w, h));
+                let probes = layout
                     .borrow()
                     .as_ref()
-                    .map(|l| l.probe_offsets(clamp, self.align, window));
-                let probes = request_probes(offsets.into_iter().flatten(), window, cx);
-                leaves.extend(probes.iter().map(|p| p.1));
-                style.display = Display::Flex;
-                style.flex_direction = FlexDirection::Column;
-                style.align_items = Some(AlignItems::FlexStart);
+                    .map(|l| l.probe_offsets(clamp, self.align, window))
+                    .unwrap_or_default();
+                let node = window.request_layout(style, [leaf], cx);
                 return (
-                    window.request_layout(style, leaves, cx),
+                    node,
                     TextState {
                         layout,
-                        exact: None,
                         natural: Some(w),
+                        max_content,
                         probes,
+                        node: Some(node),
                         snapped: Vec::new(),
+                        left: None,
                     },
                 );
             }
         }
-        let exact = crate::exact::exact_cell(id, window);
-        let guess = layout
-            .borrow()
-            .as_ref()
-            .map_or(0., |l| l.unwrapped_height(clamp));
-        let mut leaves = crate::exact::measured(
+        let mut leaves: SmallVec<[LayoutId; 6]> = SmallVec::new();
+        leaves.push(crate::exact::measured(
             style.min_size.width,
-            exact.as_ref(),
-            guess,
             window,
-            cx,
             move |known, available, window| {
                 if counted {
                     crate::guard::count_measure();
@@ -1909,28 +1873,32 @@ impl Element for Text {
                 // Truncated text measures at its full width; the box decides where it cuts.
                 let width = if truncate { None } else { width };
                 if let Some(&(_, size)) = memo.borrow().iter().find(|(w, _)| *w == width) {
+                    measured_w.set(Some(size.0));
                     return size;
                 }
                 laid.relayout(width, ws, anywhere, clamp, false, window);
                 let size = laid.size();
                 memo.borrow_mut().push((width, size));
+                measured_w.set(Some(size.0));
                 size
             },
-        );
-        let offsets = layout
+        ));
+        let probes = layout
             .borrow()
             .as_ref()
-            .map(|l| l.probe_offsets(clamp, self.align, window));
-        let probes = request_probes(offsets.into_iter().flatten(), window, cx);
-        leaves.extend(probes.iter().map(|p| p.1));
+            .map(|l| l.probe_offsets(clamp, self.align, window))
+            .unwrap_or_default();
+        let node = window.request_layout(style, leaves, cx);
         (
-            window.request_layout(style, leaves, cx),
+            node,
             TextState {
                 layout,
-                exact,
                 natural: None,
+                max_content,
                 probes,
+                node: Some(node),
                 snapped: Vec::new(),
+                left: None,
             },
         )
     }
@@ -1949,9 +1917,11 @@ impl Element for Text {
             // A box as wide as its line can lose up to a device pixel when GPUI snaps its two
             // edges; the line still fits it, as it does in WebKit's unrounded layout.
             let mut width = f32::from(bounds.size.width);
-            if let Some(n) = state.natural
+            let dp = 1. / window.scale_factor();
+            let natural = state.natural.or(state.max_content.get());
+            if let Some(n) = natural
                 && n > width
-                && n <= width + 1. / window.scale_factor()
+                && n <= width + dp
             {
                 width = n;
             }
@@ -1963,7 +1933,6 @@ impl Element for Text {
                 self.ellipsis,
                 window,
             );
-            crate::exact::settle(state.exact.as_ref(), laid.measured().1, window, cx);
             if !self.links.is_empty() {
                 hits = link_hitboxes(laid, bounds, self.align, &self.links, window);
             }
@@ -1982,7 +1951,10 @@ impl Element for Text {
                 cx,
             );
         }
-        state.snapped = resolve_probes(&state.probes, window);
+        state.snapped = resolve_probes(&state.probes, state.node, window);
+        state.left = state
+            .node
+            .map(|n| window.layout_bounds_unsnapped(n).origin.x);
         hits
     }
 
@@ -2015,11 +1987,16 @@ impl Element for Text {
         let align = self.align;
         let at = (0., state.snapped.as_slice());
         let hovered = paint_links(&self.links, hits, window);
+        // Glyphs are placed from the box's unrounded left edge, as WebKit positions them.
+        let glyph_bounds = Bounds {
+            origin: point(state.left.unwrap_or(bounds.origin.x), bounds.origin.y),
+            size: bounds.size,
+        };
         if clip {
             window.with_content_mask(Some(gpui_kit::ContentMask { bounds }), |window| {
                 paint_lines(
                     laid,
-                    bounds,
+                    glyph_bounds,
                     at,
                     align,
                     self.mask.as_ref(),
@@ -2030,7 +2007,7 @@ impl Element for Text {
         } else {
             paint_lines(
                 laid,
-                bounds,
+                glyph_bounds,
                 at,
                 align,
                 self.mask.as_ref(),
@@ -2099,8 +2076,9 @@ impl TextStack {
 }
 
 pub struct StackState {
-    exact: Option<crate::exact::ExactCell>,
-    probes: Vec<(Probe, LayoutId)>,
+    probes: Vec<Probe>,
+    /// The box's own layout node, whose unrounded origin the probes are resolved from.
+    node: Option<LayoutId>,
     snapped: Snapped,
 }
 
@@ -2118,7 +2096,7 @@ impl Element for TextStack {
 
     fn request_layout(
         &mut self,
-        id: Option<&GlobalElementId>,
+        _: Option<&GlobalElementId>,
         _: Option<&InspectorElementId>,
         window: &mut Window,
         cx: &mut App,
@@ -2135,19 +2113,10 @@ impl Element for TextStack {
             .iter()
             .map(|(g, t)| (*g, t.white_space, t.anywhere, t.clamp, t.ellipsis))
             .collect();
-        let exact = crate::exact::exact_cell(id, window);
-        let guess = self
-            .blocks
-            .iter()
-            .zip(self.layouts.borrow().iter())
-            .map(|((gap, t), l)| gap + l.unwrapped_height(t.clamp))
-            .sum();
-        let mut leaves = crate::exact::measured(
+        let mut leaves: SmallVec<[LayoutId; 6]> = SmallVec::new();
+        leaves.push(crate::exact::measured(
             px(0.).into(),
-            exact.as_ref(),
-            guess,
             window,
-            cx,
             move |known, available, window| {
                 let mut layouts = layouts.borrow_mut();
                 let width = known.width.map(f32::from).or(match available.width {
@@ -2173,7 +2142,7 @@ impl Element for TextStack {
                 }
                 (w, h)
             },
-        );
+        ));
         let mut offsets = Vec::new();
         let mut top = 0.;
         for ((gap, t), l) in self.blocks.iter().zip(self.layouts.borrow().iter()) {
@@ -2185,13 +2154,12 @@ impl Element for TextStack {
             );
             top += l.unwrapped_height(t.clamp);
         }
-        let probes = request_probes(offsets.into_iter(), window, cx);
-        leaves.extend(probes.iter().map(|p| p.1));
+        let node = window.request_layout(Style::default(), leaves, cx);
         (
-            window.request_layout(Style::default(), leaves, cx),
+            node,
             StackState {
-                exact,
-                probes,
+                probes: offsets,
+                node: Some(node),
                 snapped: Vec::new(),
             },
         )
@@ -2204,18 +2172,11 @@ impl Element for TextStack {
         bounds: Bounds<Pixels>,
         state: &mut StackState,
         window: &mut Window,
-        cx: &mut App,
+        _: &mut App,
     ) -> Vec<Vec<(usize, gpui_kit::Hitbox)>> {
         let mut layouts = self.layouts.borrow_mut();
         self.relayout(&mut layouts, Some(bounds.size.width.into()), true, window);
-        let h = self
-            .blocks
-            .iter()
-            .zip(layouts.iter())
-            .map(|((gap, _), laid)| gap + laid.measured().1)
-            .sum();
-        crate::exact::settle(state.exact.as_ref(), h, window, cx);
-        state.snapped = resolve_probes(&state.probes, window);
+        state.snapped = resolve_probes(&state.probes, state.node, window);
         let mut y = f32::from(bounds.origin.y);
         let mut hits = Vec::new();
         for ((gap, t), laid) in self.blocks.iter().zip(layouts.iter()) {

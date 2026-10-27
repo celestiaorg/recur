@@ -10,16 +10,12 @@
 //!
 //! - [`vgap`] / [`hgap`]: a fixed gap of an exact length, in place of a fractional margin,
 //!   padding or `gap`.
-//! - [`measured`]: a custom measured element whose height reaches layout unrounded.
+//! - [`measured`]: a custom measured element whose size reaches layout unrounded.
 //! - [`lu`]: a length as WebKit stores it.
 
 use gpui_kit::{
-    App, AvailableSpace, Div, GlobalElementId, LayoutId, Length, Pixels, Size, Style, Styled,
-    Window, div, px, size,
+    AvailableSpace, Div, LayoutId, Length, Pixels, Size, Style, Styled, Window, div, px, size,
 };
-use smallvec::SmallVec;
-use std::cell::Cell;
-use std::rc::Rc;
 
 /// A length as WebKit stores it: floored to a LayoutUnit (1/64 px).
 pub fn lu(v: f32) -> f32 {
@@ -51,21 +47,12 @@ pub fn hgap(len: f32, window: &Window) -> Div {
     d.h(px(dp)).aspect_ratio(len / dp)
 }
 
-/// The exact height a measured box took in the last frame (see [`measured`]).
-pub type ExactCell = Rc<Cell<Option<f32>>>;
-
-/// The element's [`ExactCell`], kept in its element state. `None` without an id.
-pub fn exact_cell(id: Option<&GlobalElementId>, window: &mut Window) -> Option<ExactCell> {
-    Some(
-        window.with_element_state(id?, |cell: Option<ExactCell>, _| {
-            let cell = cell.unwrap_or_default();
-            (cell.clone(), cell)
-        }),
-    )
-}
-
-fn snap(v: f32, scale: f32) -> f32 {
-    (v * scale).round() / scale
+/// `v` ceiled to a LayoutUnit (1/64 px), as WebKit stores an inline width
+/// (`LayoutUnit::fromFloatCeil`). A value on that grid stays, within the f32 noise of summed
+/// advances (WebKit's own sums land exactly on it: a 6px advance is 6, not 6.000002).
+pub(crate) fn lu_ceil(v: f32) -> f32 {
+    let lu = ((v * 64.) - 0.01).ceil() / 64.;
+    if lu.is_finite() { lu } else { v }
 }
 
 /// `v` floored to the device grid.
@@ -73,50 +60,20 @@ pub fn floor_dp(v: f32, scale: f32) -> f32 {
     ((v * scale) + 1e-3).floor() / scale
 }
 
-/// The leaves of a custom measured box whose exact height reaches layout. GPUI ceils measured
-/// sizes to device pixels, so the measured leaf reports its height floored to the device grid
-/// and a spacer (a 1dp-wide `aspect_ratio` leaf) adds the remainder. The remainder is known
-/// only before layout: it is the height from `exact` (the last frame, see [`settle`]) or
-/// `guess` until then. Put the leaves in a block (`Style::default()`) container.
+/// A custom measured leaf whose exact size reaches layout: its width ceiled to a LayoutUnit,
+/// its height as measured (the vendored GPUI's `request_measured_layout_exact`; upstream ceils
+/// both to device pixels). Box edges still snap after layout.
 ///
 /// `measure` returns the unrounded `(width, height)` for the known size and available space.
 pub fn measured(
     min_width: Length,
-    exact: Option<&ExactCell>,
-    guess: f32,
     window: &mut Window,
-    cx: &mut App,
     measure: impl Fn(Size<Option<Pixels>>, Size<AvailableSpace>, &mut Window) -> (f32, f32) + 'static,
-) -> SmallVec<[LayoutId; 6]> {
+) -> LayoutId {
     let mut leaf_style = Style::default();
     leaf_style.min_size.width = min_width;
-    let leaf = window.request_measured_layout(leaf_style, move |known, available, window, _| {
+    window.request_measured_layout_exact(leaf_style, move |known, available, window, _| {
         let (w, h) = measure(known, available, window);
-        let scale = window.scale_factor();
-        size(px(snap(w, scale)), px(floor_dp(h, scale)))
-    });
-    let mut leaves = SmallVec::new();
-    leaves.push(leaf);
-    let scale = window.scale_factor();
-    let h = exact.and_then(|c| c.get()).unwrap_or(guess);
-    let rest = h - floor_dp(h, scale);
-    if rest > 1e-4 {
-        let mut spacer = Style::default();
-        spacer.size.width = px(1. / scale).into();
-        spacer.aspect_ratio = Some(1. / scale / rest);
-        leaves.push(window.request_layout(spacer, [], cx));
-    }
-    leaves
-}
-
-/// After the final layout of a [`measured`] box: remember its exact height, and lay the box's
-/// view out again when it changed. Notifying the view, not refreshing the window, keeps
-/// other cached views (`AnyView::cached`) from re-rendering every time any box settles.
-pub fn settle(exact: Option<&ExactCell>, height: f32, window: &mut Window, cx: &mut App) {
-    if let Some(c) = exact
-        && c.get().is_none_or(|h| (h - height).abs() > 1e-3)
-    {
-        c.set(Some(height));
-        cx.notify(window.current_view());
-    }
+        size(px(lu_ceil(w)), px(h))
+    })
 }

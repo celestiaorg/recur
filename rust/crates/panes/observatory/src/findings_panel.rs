@@ -1018,8 +1018,8 @@ impl FindingsPanel {
             .id("finding-inspector-scroll")
             .flex_1()
             .min_h_0()
-            .child(
-                scroll_area("finding-inspector-scroll")
+            .child({
+                let area = scroll_area("finding-inspector-scroll")
                     .track(&self.inspector_scroll)
                     .child(
                         div()
@@ -1027,8 +1027,10 @@ impl FindingsPanel {
                             .px(px(14.))
                             .pb(px(if noting { 8. } else { 14. }))
                             .child(body),
-                    ),
-            );
+                    );
+                let sel = recur_ui::selection::state("finding-inspector-selection", window, cx);
+                recur_ui::selection::scope(&sel, false, area, cx)
+            });
         let scroll = if noting && self.fade_bottom() {
             div()
                 .relative()

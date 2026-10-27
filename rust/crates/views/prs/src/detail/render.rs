@@ -778,7 +778,13 @@ impl PrDetail {
         let tabs = self.tabs(pr.as_deref(), window, cx);
         let tab = self.tab(cx);
         let body = match tab {
-            PrTab::Conv => self.conversation(pr.as_deref(), window, cx),
+            // One selection across the description and every timeline item, as the page
+            // selects; the items are cached views the scope keeps while they replay.
+            PrTab::Conv => {
+                let conv = self.conversation(pr.as_deref(), window, cx);
+                let sel = recur_ui::selection::state("prd-conv-selection", window, cx);
+                recur_ui::selection::scope(&sel, false, conv, cx)
+            }
             PrTab::Commits => self.commits_pane(pr.as_deref(), window, cx),
             PrTab::Files => self.files_pane(pr.as_deref(), window, cx),
             PrTab::Checks => self.checks_pane(pr.as_deref(), window, cx),

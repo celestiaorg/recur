@@ -25,6 +25,7 @@ pub mod gallery;
 pub mod land;
 pub mod local_storage;
 pub mod menu;
+pub mod mini;
 pub mod models;
 pub mod modes;
 pub mod nav;

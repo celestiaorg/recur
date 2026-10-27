@@ -221,6 +221,17 @@ impl AgentChat {
         self.panes.clone().expect("panes")
     }
 
+    /// Redraws the transcript without its ancestors (the pane is isolated): a scroll step's
+    /// pin, restore or new stub window changes only what the transcript shows.
+    pub(crate) fn notify_transcript(&mut self, cx: &mut Context<Self>) {
+        match &self.panes {
+            Some((transcript, _)) if !self.props.session_body && !self.props.composer_only => {
+                transcript.update(cx, |_, cx| cx.notify())
+            }
+            _ => cx.notify(),
+        }
+    }
+
     /// Redraws the composer dock without invalidating the transcript (see `panes`).
     pub(crate) fn notify_dock(&mut self, cx: &mut Context<Self>) {
         match &self.panes {
@@ -395,7 +406,7 @@ impl AgentChat {
             let (transcript, dock) = self.panes(cx);
             let fit = dock.read(cx).fit.clone();
             root = root
-                .child(recur_ui::style::cached_view(
+                .child(recur_ui::style::isolated_view(
                     &transcript,
                     gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
                     cx,

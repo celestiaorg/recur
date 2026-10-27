@@ -1,8 +1,8 @@
 //! Blurred CSS `box-shadow`s drawn as WebKit draws them. GPUI's shadow shader approximates the
 //! Gaussian with four samples; WebKit's `ShadowBlur` runs three box blurs per axis over a layer
-//! in CSS pixels, scales it up, and never paints an outer shadow under the box itself. A lone
-//! zero-blur shadow (a focus ring) is exact on GPUI's `.shadow()`; list one here when it stacks
-//! with blurred layers, so the CSS order holds.
+//! in CSS pixels, scales it up as a CoreGraphics clip mask, and never paints an outer shadow
+//! under the box itself. A lone zero-blur shadow (a focus ring) is exact on GPUI's `.shadow()`;
+//! list one here when it stacks with blurred layers, so the CSS order holds.
 
 use crate::color::Color;
 use gpui_kit::{
@@ -187,7 +187,8 @@ fn render(
             true,
         )?
     };
-    // Scaled to device pixels with bilinear filtering.
+    // Off macOS, scaled to device pixels with bilinear filtering.
+    #[cfg(not(target_os = "macos"))]
     let sample = |x: f32, y: f32| {
         let (x, y) = (x.clamp(0., lw as f32 - 1.), y.clamp(0., lh as f32 - 1.));
         let (x0, y0) = (x.floor() as u32, y.floor() as u32);
@@ -208,9 +209,19 @@ fn render(
         false,
     )?;
     let [r, g, b, a] = s.color.to_rgba8();
+    // WebKit draws the layer as a clip mask at device scale, so CoreGraphics scales it up.
+    #[cfg(target_os = "macos")]
+    let upscaled =
+        (s.blur > 0.).then(|| crate::cg_raster::shadow_mask(&layer, lw, lh, dw, dh, scale));
     let mut bgra = Vec::with_capacity((dw * dh * 4) as usize);
     for y in 0..dh {
         for x in 0..dw {
+            #[cfg(target_os = "macos")]
+            let v = match &upscaled {
+                Some(m) => m[(y * dw + x) as usize] as f32,
+                None => layer[(y * dw + x) as usize] as f32,
+            };
+            #[cfg(not(target_os = "macos"))]
             let v = if s.blur > 0. {
                 sample(
                     (x as f32 + 0.5) / scale - 0.5,

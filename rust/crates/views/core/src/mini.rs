@@ -8,6 +8,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::AppState;
 use futures::FutureExt as _;
 use futures::future::Shared;
 use gpui_kit::prelude::FluentBuilder;
@@ -23,7 +24,6 @@ use recur_editor::view::{EditorEvent, EditorOptions, EditorView};
 use recur_services::Services;
 use recur_textmate::{GrammarInfo, ParsedTmTheme, parse_theme_json};
 use recur_ui::{Theme, rgba};
-use recur_view_core::AppState;
 
 /// `lang`: which grammar and font.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -11,9 +11,21 @@
 - **The dirty walk stops at an isolated view** (`Window::mark_view_dirty`). A notify of the view, or of a view inside it, leaves its ancestors clean.
 - **A frame whose only dirty views are isolated replays the root** (`draw_roots`): the previous frame's root prepaint and paint are copied as a cached view's are, and each dirty isolated view renders again at its recorded bounds, element id path, text style, content mask, rem size and opacity, between the runs copied before and after it. Hitboxes, key dispatch nodes, deferred draws, tab stops, input handlers and the scene keep their order, so hit-testing, focus and paint order are those of a full frame.
 - **The same split applies inside any replayed cached view or deferred draw** (`reuse_prepaint` / `reuse_paint`), so a dirty isolated view under a clean cached ancestor redraws without it on a full frame too.
-- **Every cached view's place is tracked per frame** (`Frame::cached_views`), shifted through each replay and written back to its state after the frame, so a later frame that renders an ancestor again replays the right ranges.
+- **Every cached view's place is tracked per frame** (`Frame::cached_views`), shifted through each replay and written back to its state after the frame, so a later frame that renders an ancestor again replays the right ranges. A record carried through a replay is shifted by the copied run it lies in, chosen by tree order (its start and end each): an isolated view that recorded nothing leaves the runs around it touching, where a value alone would put the record on the wrong side (`map_in_run`; `an_isolated_view_that_paints_nothing_keeps_the_replay_in_order`). A replay is checked before it runs (`Window::replayable`): a cached view's recorded ranges must fit the frame they copy and the dirty isolated views inside must sit in order in every counter, or the view (or the root) renders instead; written-back records that do not fit mark their view stale. The real-data smoke hit two such cases on a chat with session cards (`roasted-shortcake`), a range past the previous frame and islands out of order in a paint counter.
 
 Anything else (a notify reaching a non-isolated view, a notify of a non-view entity, `Window::refresh`, a resize, the inspector picking, accessibility on) draws exactly as upstream.
+
+### Exact measured sizes
+
+`Window::request_measured_layout_exact` is `request_measured_layout` without ceiling the measured size to device pixels. Box edges are still snapped after layout, so a box placed after a fractional size keeps the offset WebKit gives it, in the same pass. `recur_ui::exact::measured` uses it for text and the chat's flows (`taffy.rs` `NodeContext::exact`).
+
+### Replayed views
+
+`Window::replayed_view(id)` says whether the frame being drawn replayed a cached view instead of rendering it, and `Window::view_stack` lists the views being drawn. `recur_ui::selection` keeps the items of a replayed view in a scope that spans cached views (a PR conversation's items, a transcript's session cards), whose texts do not register again while they replay.
+
+### Unsnapped bounds
+
+`Window::layout_bounds_unsnapped` is `layout_bounds` before the edges snap to device pixels (`taffy.rs` keeps the unrounded origins it snaps from). `recur_ui::layout_root` reads a layout root's or block's fractional edges from it, so content laid out as its own root lands where in-place layout puts it, in one frame.
 
 ### Contained panics
 
@@ -32,7 +44,7 @@ An isolated view's size comes from its `style`, never from its content, and anyt
 
 ### Upgrading
 
-gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way rust/vendor/gpui-pre.patch` and fix what moved. The patch touches `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
+gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way rust/vendor/gpui-pre.patch` and fix what moved. The patch touches `taffy.rs` (exact measured sizes, unsnapped bounds), `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
 
 Regenerate the patch after editing the vendored source:
 
@@ -46,4 +58,12 @@ git diff dddd0fe0 -- rust/vendor/gpui-pre > rust/vendor/gpui-pre.patch
 
 ```sh
 git diff 9386fc71 -- rust/vendor/gpui-pre-scheduler > rust/vendor/gpui-pre-scheduler.patch
+```
+
+## gpui-pre-apple 0.3.9 (border coverage)
+
+`gpui-pre-apple/` is the crates.io source of GPUI's macOS renderer and text system (same snapshot), wired in by `[patch.crates-io]`. Commit `cb8279c1` ("rust: vendor gpui-pre-apple 0.3.9 unchanged") is the pristine import (`src/`, `build.rs`, `vendor/`, `Cargo.toml`, the license), and `gpui-pre-apple.patch` is the change: the quad shader (`src/shaders.metal`, `quad_fragment`) interpolates between a quad's background and its border in premultiplied space. Upstream mixes straight colors, so toward a transparent background (a card frame, an outline) the border's inner anti-aliased edge carried its coverage twice once blended and came out darker than CoreGraphics paints it: every rounded header inside a bordered card showed the card's background through that edge. Upgrade it with gpui-pre: replace the source, commit it alone, `git apply --3way rust/vendor/gpui-pre-apple.patch`, and regenerate:
+
+```sh
+git diff cb8279c1 -- rust/vendor/gpui-pre-apple > rust/vendor/gpui-pre-apple.patch
 ```

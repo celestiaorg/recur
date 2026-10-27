@@ -40,9 +40,25 @@ pub enum PageEvent {
 }
 
 /// Input as DOM events: `move` / `down` / `up` (`x`, `y` in CSS pixels, `button`, `detail`),
-/// `wheel` (`dx`, `dy`), `key` (`key`, modifiers, `copy` / `selectAll` / `paste`).
+/// `leave`, `wheel` (`dx`, `dy`), `key` (`key`, modifiers, `copy` / `selectAll` / `paste`),
+/// `pick` (`index`, the option chosen in a `<select>`'s menu).
+///
+/// Events a script dispatches are untrusted, so WebKit neither applies `:hover` / `:active` nor
+/// opens a `<select>` from them, and GTK 4 cannot synthesize trusted ones (WebKit's automation
+/// session is reachable only over the remote inspector's private protocol). The shim stands
+/// in: every `:hover` / `:active` rule is mirrored onto an attribute it sets on the pointer's
+/// chain (as WebKit's inspector forces a state), and a press, Space or Enter on a `<select>`
+/// answers `{select: {x, y, w, h, index, options}}` for the host's native menu.
 pub const INPUT_JS: &str = r#"(function(){
-let hover=null,down=null,anchor=null;
+let hover=null,down=null,anchor=null,picking=null;
+const HOVER='data-recur-hover',ACTIVE='data-recur-active',seen=new WeakSet();
+function mirror(list,owner){for(let i=0;i<list.length;i++){const r=list[i];if(r.selectorText&&/:(hover|active)\b/.test(r.selectorText)&&!r.selectorText.includes('[data-recur-')){try{owner.insertRule(r.selectorText.replace(/:hover\b/g,'['+HOVER+']').replace(/:active\b/g,'['+ACTIVE+']')+'{'+r.style.cssText+'}',i+1);i++}catch(x){}}if(r.cssRules&&r.cssRules.length)mirror(r.cssRules,r)}}
+function mirrorAll(){for(const s of document.styleSheets){if(seen.has(s))continue;seen.add(s);try{mirror(s.cssRules,s)}catch(x){}}}
+document.addEventListener('DOMContentLoaded',mirrorAll);new MutationObserver(mirrorAll).observe(document,{childList:true,subtree:true});
+function mark(attr,t){document.querySelectorAll('['+attr+']').forEach(n=>{if(!t||!n.contains(t))n.removeAttribute(attr)});for(let n=t;n&&n.nodeType===1;n=n.parentElement)n.setAttribute(attr,'')}
+function menu(s){picking=s;const r=s.getBoundingClientRect();return{select:{x:r.left,y:r.top,w:r.width,h:r.height,index:s.selectedIndex,options:[...s.options].map(o=>({label:o.label||o.text,disabled:o.disabled||!!(o.parentElement&&o.parentElement.disabled)}))}}}
+function choose(s,i){if(i>=0&&i<s.options.length&&s.selectedIndex!==i){s.selectedIndex=i;s.dispatchEvent(new Event('input',{bubbles:true}));s.dispatchEvent(new Event('change',{bubbles:true}))}}
+const popup=t=>{const s=t&&t.closest?t.closest('select'):null;return s&&!s.multiple&&!s.disabled&&s.size<=1?s:null};
 const mods=e=>({ctrlKey:!!e.ctrl,shiftKey:!!e.shift,altKey:!!e.alt,metaKey:!!e.meta});
 const opts=e=>Object.assign({bubbles:true,cancelable:true,composed:true,view:window,clientX:e.x,clientY:e.y,screenX:e.x,screenY:e.y,button:e.button||0,buttons:e.buttons||0,detail:e.detail||0},mods(e));
 const at=e=>document.elementFromPoint(e.x,e.y)||document.documentElement;
@@ -52,19 +68,21 @@ const field=el=>!!el&&el.value!==undefined&&typeof el.setRangeText==='function';
 function edit(t,text,dir){if(field(t)){let a=t.selectionStart,b=t.selectionEnd;if(a===b&&dir<0)a=Math.max(0,a-1);if(a===b&&dir>0)b=Math.min(t.value.length,b+1);t.setRangeText(text,a,b,'end');t.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:text?'insertText':'deleteContent',data:text||null}))}else document.execCommand(text?'insertText':(dir<0?'delete':'forwardDelete'),false,text)}
 function scroller(el,dx,dy){for(let n=el;n&&n!==document.documentElement&&n!==document.body;n=n.parentElement){const s=getComputedStyle(n);if((dy&&/(auto|scroll)/.test(s.overflowY)&&n.scrollHeight>n.clientHeight)||(dx&&/(auto|scroll)/.test(s.overflowX)&&n.scrollWidth>n.clientWidth))return n}return document.scrollingElement||document.documentElement}
 window.__recurInput=function(e){
- if(e.type==='move'){const t=at(e);if(t!==hover){if(hover)hover.dispatchEvent(new MouseEvent('mouseout',Object.assign(opts(e),{relatedTarget:t})));t.dispatchEvent(new MouseEvent('mouseover',Object.assign(opts(e),{relatedTarget:hover})));hover=t}
+ if(e.type==='move'){const t=at(e);if(t!==hover){if(hover)hover.dispatchEvent(new MouseEvent('mouseout',Object.assign(opts(e),{relatedTarget:t})));t.dispatchEvent(new MouseEvent('mouseover',Object.assign(opts(e),{relatedTarget:hover})));hover=t;mark(HOVER,t)}
   t.dispatchEvent(new MouseEvent('mousemove',opts(e)));
   if(down&&anchor){const r=caret(e);if(r)getSelection().setBaseAndExtent(anchor.startContainer,anchor.startOffset,r.startContainer,r.startOffset)}
   return getComputedStyle(t).cursor}
- if(e.type==='down'){const t=at(e);down=t;t.dispatchEvent(new MouseEvent('mousedown',opts(e)));
+ if(e.type==='leave'){if(hover)hover.dispatchEvent(new MouseEvent('mouseout',opts(e)));hover=null;mark(HOVER,null);return null}
+ if(e.type==='pick'){const s=picking;picking=null;if(s){choose(s,e.index);s.focus()}return null}
+ if(e.type==='down'){const t=at(e);down=t;t.dispatchEvent(new MouseEvent('mousedown',opts(e)));if(e.button===0)mark(ACTIVE,t);
   let f=t;while(f&&!(f.tabIndex>=0||editable(f)))f=f.parentElement;
   if(f)f.focus();else if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   anchor=(e.detail||1)===1?caret(e):null;if(anchor&&!e.shift)getSelection().removeAllRanges();
   if(e.detail===2){const s=getSelection(),r=caret(e);if(r&&s.modify){s.removeAllRanges();s.addRange(r);s.modify('move','backward','word');s.modify('extend','forward','word')}}
-  return null}
+  const s=e.button===0?popup(t):null;return s?menu(s):null}
  if(e.type==='up'){const t=at(e);t.dispatchEvent(new MouseEvent('mouseup',opts(e)));
   if(down&&e.button===0&&(t===down||down.contains(t)||t.contains(down)))down.dispatchEvent(new MouseEvent('click',opts(e)));
-  down=null;anchor=null;return null}
+  down=null;anchor=null;mark(ACTIVE,null);return null}
  if(e.type==='wheel'){const t=at(e);if(t.dispatchEvent(new WheelEvent('wheel',Object.assign(opts(e),{deltaX:e.dx,deltaY:e.dy,deltaMode:0}))))scroller(t,e.dx,e.dy).scrollBy(e.dx,e.dy);return null}
  if(e.type==='key'){const t=document.activeElement||document.body;const init=Object.assign({key:e.key,code:e.code||'',bubbles:true,cancelable:true},mods(e));let out=null;
   if(t.dispatchEvent(new KeyboardEvent('keydown',init))){
@@ -72,6 +90,8 @@ window.__recurInput=function(e){
    else if(e.selectAll){if(editable(t)&&t.select)t.select();else document.execCommand('selectAll')}
    else if(e.paste!=null){if(editable(t))edit(t,e.paste,0)}
    else if(editable(t)){if(e.key.length===1&&!e.ctrl&&!e.meta)edit(t,e.key,0);else if(e.key==='Backspace')edit(t,'',-1);else if(e.key==='Delete')edit(t,'',1);else if(e.key==='Enter'){if(t.tagName==='INPUT'){if(t.form&&t.form.requestSubmit)t.form.requestSubmit()}else edit(t,'\n',0)}}
+   else if(popup(t)&&(e.key===' '||e.key==='Enter'))out=menu(t);
+   else if(popup(t)&&(e.key==='ArrowDown'||e.key==='ArrowUp')){const d=e.key==='ArrowDown'?1:-1;let i=t.selectedIndex+d;while(i>=0&&i<t.options.length&&t.options[i].disabled)i+=d;choose(t,i)}
    else if(e.key==='Enter'||(e.key===' '&&t.tagName==='BUTTON')){if(t!==document.body&&t.click)t.click()}
    else{const h=innerHeight,sh=(document.scrollingElement||document.documentElement).scrollHeight;const d={ArrowDown:[0,40],ArrowUp:[0,-40],ArrowLeft:[-40,0],ArrowRight:[40,0],PageDown:[0,h*.875],PageUp:[0,-h*.875],' ':[0,(e.shift?-1:1)*h*.875],Home:[0,-sh],End:[0,sh]}[e.key];if(d)scroller(t,d[0],d[1]).scrollBy(d[0],d[1])}
    if(e.key==='Tab'){const f=[...document.querySelectorAll('a[href],button,input,select,textarea,[tabindex],[contenteditable]')].filter(x=>x.tabIndex>=0&&!x.disabled);const i=f.indexOf(t);const n=f[(i+(e.shift?-1:1)+f.length)%Math.max(f.length,1)];if(n)n.focus()}}

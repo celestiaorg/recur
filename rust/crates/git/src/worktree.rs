@@ -1013,11 +1013,19 @@ impl Manager {
 
     /// Every worktree registered for the repository (the main checkout first).
     pub async fn list(&self) -> Result<Vec<Worktree>> {
-        let out = self
-            .run(["worktree", "list", "--porcelain"])
-            .await
-            .map_err(|e| e.wrap("git worktree list"))?;
-        Ok(parse_porcelain(&out))
+        let mut attempt = 0;
+        loop {
+            match self.run(["worktree", "list", "--porcelain"]).await {
+                Ok(out) => return Ok(parse_porcelain(&out)),
+                // A concurrent `git worktree add` creates `.git/worktrees/<name>/` before it
+                // writes the files `list` reads there; that window lasts milliseconds.
+                Err(e) if attempt < 5 && half_added_worktree(e.message()) => {
+                    attempt += 1;
+                    tokio::time::sleep(std::time::Duration::from_millis(20 * attempt)).await;
+                }
+                Err(e) => return Err(e.wrap("git worktree list")),
+            }
+        }
     }
 
     /// The registered worktree at `path` (after symlink/abs cleanup), if any.
@@ -1865,6 +1873,11 @@ fn resolve_path_prefix(path: &str) -> std::io::Result<String> {
     }
 }
 
+/// `git worktree list` failing on a sibling another `git worktree add` is still writing.
+fn half_added_worktree(message: &str) -> bool {
+    message.contains("failed to read") && message.contains("worktrees/")
+}
+
 /// Parses `git worktree list --porcelain`.
 pub(crate) fn parse_porcelain(out: &str) -> Vec<Worktree> {
     let mut list = Vec::new();
@@ -1915,6 +1928,14 @@ pub(crate) fn remove_all(path: &str) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_sibling_still_being_added_is_retried_and_other_failures_are_not() {
+        assert!(half_added_worktree(
+            "fatal: failed to read .git/worktrees/bubbly-churro/commondir: Undefined error: 0: exit status 128"
+        ));
+        assert!(!half_added_worktree("fatal: not a git repository"));
+    }
     use crate::testutil::{clean, exists, git, rev_parse, temp_dir, write};
 
     fn mgr(repo: &str, root: &str) -> Manager {

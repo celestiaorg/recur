@@ -300,7 +300,7 @@ impl TerminalFindBar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
-        style::style_text_input(&self.input, cx);
+        style::style_text_input_unsmoothed(&self.input, cx);
         let theme = Theme::of(cx).clone();
         let t = theme.tokens;
         let focused = self.input.read(cx).focus_handle(cx).is_focused(window);

@@ -1,6 +1,6 @@
 # UI parity
 
-The Rust UI must look and behave like the Svelte UI: same layout metrics, colors, fonts, icons, spacing, radii, borders, hover/active/focus states, animations, scroll behavior and keyboard paths. "Close enough" is not the bar. Differences are bugs unless listed below as intentional.
+The Rust UI must look and feel like the Svelte UI: same layout, colors, fonts, icons, spacing, radii, borders, hover/active/focus states, animations, scroll behavior and keyboard paths. Minor native rendering differences (a glyph's subpixel phase, an anti-aliased edge a few levels off, a box a device pixel away) are acceptable, and parity is never bought with frame time, extra frames or extra layout passes: when matching WebKit costs speed, the faster rendering wins and the scene records the difference as an allowance. A difference a user would notice (a wrong color, size, font, spacing or behavior) is a bug. The scenes guard against regressions: each scene's tolerances sit just above its last measurement, so a real change still fails.
 
 ## Sources of truth
 
@@ -17,6 +17,8 @@ A scene is a named, deterministic state at a fixed window size and theme. `rust/
 - **Candidate.** `cargo run -p recur-ui-parity -- render` builds each scene with `recur_ui::gallery::build` in a headless GPUI window (Metal renderer, scale 2) under a gpui-base `Root`, with document focus and the window active as in the page, motion frozen at the same time, and the same steps replayed. Scenes share one app, so each starts with the toast store cleared.
 - **Diff.** `cargo run -p recur-ui-parity -- diff` writes heatmaps to `out/diff/` (gray equal, blue text, yellow anti-aliasing, red hard) and `out/report.json`. Channel deltas of one level are equal (8-bit compositing quantization). Other differing pixels are *text* (inside a reference text box or a file-icon glyph, which is font text), *anti-aliasing* (pixelmatch's detection, a soft edge whose value moved by at most a quarter of the local contrast, or up to three levels in a smooth region where WebKit dithers gradients), or *hard*. A scene passes when hard pixels are within its `hardTolerance` (0 unless explained below) and text plus anti-aliasing within its `tolerance`.
 
+`cargo run --release -p recur-ui-parity -- bench [scene…]` builds the same scenes and times full frames (`UI_PARITY_BENCH_FRAMES`, 20 by default), so a rendering change can be weighed against its cost.
+
 Run everything with `wails3 task test:rust:ui-parity` (macOS: the reference is WebKit's macOS rendering). Pieces: in `rust/tools/ui-parity`, `pnpm exec playwright test` captures (`UI_PARITY_SCENES=a,b` to filter), then `cargo run -p recur-ui-parity -- check [scene…]` renders and diffs. `cargo run -p recur-ui --example gallery` shows every scene live and interactive in any theme. Every view port adds its scenes. A crate with its own gallery registers its scene prefix in `recur_ui::gallery::EXTERNAL` and is asked first by the parity tool (`recur_editor::gallery` builds `editor/*`).
 
 ### Why WebKit
@@ -28,19 +30,19 @@ Recur ships in WKWebView, so the reference is Playwright's WebKit. It also matte
 Taffy lays out in unrounded floats and GPUI snaps each box's absolute edges after layout, which is how WebKit snaps its 1/64 px LayoutUnits at paint. What diverges is everything GPUI rounds *before* layout: every authored length (sizes, margins, paddings, gaps, insets, max sizes) rounds to device pixels, every measured size ceils to them, and every element laid out as its own root (`prepaint_as_root`, `anchored`) starts from a snapped origin. One such rounding (a 17.4px line, an 18.75px measured bubble, a 46.2px `11vh`) moves every box after it, and the error adds up down a column. recur-ui keeps each of these exact:
 
 - **Exact lengths (`recur_ui::exact`).** `aspect_ratio` is the one input that reaches Taffy unrounded, so a leaf one device pixel thin on one axis is exactly as long as asked on the other. `exact::vgap` / `hgap` (`vgap_at` without a window) stand in for any fractional margin, padding or gap; `exact::lu` floors a computed length to a LayoutUnit as WebKit stores it. Percentages also reach Taffy as is: a `vh` cap is a fraction of a viewport-sized box (`style::palette_scrim`).
-- **Exact measured sizes.** `exact::measured` gives a custom measured element its exact height: the measured leaf reports its height floored to the device grid and an `aspect_ratio` spacer adds the rest, from the last frame (`exact::exact_cell` / `settle`, which lays the window out again when it changes). A shrink-to-fit element reports its width floored too and adds the rest as an exact `hgap` beside the leaves (chat's `Flow`, the user bubble). A nowrap text is a column of two invisible leaves sized the same way; `TextStack` lays several blocks out at exact offsets.
+- **Exact measured sizes.** `exact::measured` gives a custom measured element its exact size in the same layout pass: the vendored gpui-pre's `request_measured_layout_exact` passes the measured width (ceiled to a LayoutUnit) and height to Taffy unrounded, where upstream ceils both to device pixels. Box edges still snap after layout. (This replaced spacers sized from the last frame, which cost every wrapping text and chat flow an extra frame when it appeared or changed height.) A nowrap text is a column of two invisible leaves sized the same way; `TextStack` lays several blocks out at exact offsets.
 - **In-tree children.** An element that places parts of itself (runs and chips of an inline flow) puts them in the layout tree as absolutely positioned children at exact offsets, not as roots at its snapped origin. Overlays attached to a trigger hang off it in the tree (`style::attached`: `top`/`bottom: 100%` plus the gap) instead of being anchored from its snapped bounds.
-- **Probed baselines.** GPUI snaps a box's far edge from its unrounded position. Every expected baseline and inline-box edge gets an absolutely positioned probe leaf exactly that long; its snapped far edge is where WebKit paints. Glyphs and inline boxes paint at those positions.
+- **Snapped baselines.** GPUI snaps a box's far edge from its unrounded position. A text computes where each expected baseline and inline-box edge snaps from its own unrounded origin (`Window::layout_bounds_unsnapped`, vendored gpui-pre), no extra layout nodes; glyphs and inline boxes paint at those positions.
 - **Text metrics.** `text::line_metrics` is WebKit's line box: ascent rounded and descent ceiled to 1/64, `normal` as rounded ascent + descent + gap, numeric line heights floored to 1/64, half-leading floored, widths ceiled to 1/64. Each line's box is the union of the strut and every inline run on it, each with its own font, size and half-leading. An inline box that starts a line brings its left margin, border and padding onto that line. A truncation drops the spaces before its ellipsis. A text field's text (`Text::field`, placeholders) counts a negative half-leading twice, as WebKit's inner editor does (measured across Inter sizes, within 1/64 px).
 - **Ties.** WebKit rounds half pixels down and right, GPUI toward zero. `style::window_root` shifts the tree by 1/4096 px through `aspect_ratio` spacers; `style::anchored_at` places free-standing overlays at their exact fractional position.
 - **Flex.** CSS takes `flex: 1`'s zero basis as the item's border box without flooring it at padding and border; Taffy floors it, so padded items share space unequally. `style::flex_share` puts the share on an unpadded wrapper. GPUI does not collapse margins: ports collapse them by hand (a child's top margin into its parent's).
 - **Paint order.** GPUI paints a box's border after its children, CSS before them, so anything that must paint over a parent's border (a `z-index` overlay, its shadow) paints `deferred`; one that must stay clipped by its scroll container (a `z-index` popover inside `overflow: auto`) paints through `style::deferred_clipped`. GPUI clips rectangles: a child in a rounded `overflow: hidden` box rounds its own corners (a menu's search header, a palette's footer).
-- **Glyphs.** Bundled faces are rasterized through CoreGraphics with WebKit's settings (subpixel positioning and quantization, smoothing as `-webkit-font-smoothing` asks), keyed by the run's own face, which is verified against the face's cmap because GPUI's id-to-font lookup is ambiguous. `system-ui` is shaped and drawn through CoreText with the CSS weight on SF's `wght` axis and as the CoreText weight trait (fallback glyphs such as `↵` then come from the same font WebKit picks).
+- **Glyphs.** `ui-monospace` in a mono stack is SF Mono, as in WebKit (`fonts::UI_MONOSPACE`), so a glyph the bundled subset lacks (`✓`) falls back to the same face. Bundled faces are rasterized through CoreGraphics with WebKit's settings (subpixel positioning and quantization, smoothing as `-webkit-font-smoothing` asks), keyed by the run's own face, which is verified against the face's cmap because GPUI's id-to-font lookup is ambiguous. `system-ui` is shaped and drawn through CoreText with the CSS weight on SF's `wght` axis and as the CoreText weight trait (fallback glyphs such as `↵` then come from the same font WebKit picks).
 - **Icons.** SVGs rasterize through CoreGraphics at the exact CSS size from a snapped origin, as WebKit paints an SVG root. Monochrome icons carry coverage as alpha with the exact color. CSS masks apply per pixel column.
-- **Shadows.** `shadow::with_shadow` and `shadow::box_shadow` draw blurred `box-shadow`s as WebKit's ShadowBlur: three box blurs per axis over a CSS-pixel layer, scaled up bilinearly, clipped out of the box without anti-aliasing. GPUI's own shader samples the Gaussian four times. `with_shadow` is a shrinkable column, so a max height around it reaches the content.
-- **Backgrounds, borders and gradients.** GPUI paints a background and its border as two anti-aliased quads, so the background bleeds into the border's outer edge; `style::card` / `style::inset_background` shrink the background a device pixel under an opaque border, as WebKit does. GPUI's gradient shader dithers by ±2 levels where WebKit paints smooth, so every CSS `linear-gradient` goes through `style::css_gradient` / `gradient_fill` / `paint_css_gradient`, which rasterize its device pixels (premultiplied sRGB interpolation, exact angle and gradient line) into a cached image.
+- **Shadows.** `shadow::with_shadow` and `shadow::box_shadow` draw blurred `box-shadow`s as WebKit's ShadowBlur: three box blurs per axis over a CSS-pixel layer, scaled up to device pixels by CoreGraphics as the clip mask WebKit draws it through (`clipToImageBuffer`; its resampling is sharper than bilinear, which left the far tails of 5px glows a few levels off), clipped out of the box without anti-aliasing. GPUI's own shader samples the Gaussian four times. `with_shadow` is a shrinkable column, so a max height around it reaches the content.
+- **Backgrounds, borders and gradients.** The vendored renderer blends a quad's border into its background premultiplied (`vendor/README.md`), so a border over a transparent background anti-aliases as CoreGraphics paints it. List markers (`disc`, `circle`) are CoreGraphics ellipses at their fractional position (`icon::paint_svg_at`), as WebKit fills and strokes them. GPUI paints a background and its border as two anti-aliased quads, so the background bleeds into the border's outer edge; `style::card` / `style::inset_background` shrink the background a device pixel under an opaque border, as WebKit does. GPUI's gradient shader dithers by ±2 levels where WebKit paints smooth, so every CSS `linear-gradient` goes through `style::css_gradient` / `gradient_fill` / `paint_css_gradient`, which rasterize its device pixels (premultiplied sRGB interpolation, exact angle and gradient line) into a cached image.
 - **Hover transitions.** `.hover(..)` styles snap. A CSS `transition` on a hover color goes through `motion::hover`, which eases a 0 to 1 mix over the transition's duration and reverses from where it is; it settles for parity captures.
-- **Inputs.** gpui-base's editor draws typed text and the caret; recur-ui draws placeholders with its own text at `line-height: normal` (`Text::field`), in WebKit's default `darkGray` unless the class styles `::placeholder`.
+- **Inputs.** gpui-base's editor keeps the caret and selection; recur-ui draws placeholders and the typed value with its own text at `line-height: normal` (`Text::field`), placeholders in WebKit's default `darkGray` unless the class styles `::placeholder`. Masked values and the terminal find bar's query (unsmoothed on the dock's translucent layer) stay gpui-base's glyphs.
 
 Diagnose a layout difference by comparing positions, not heatmaps: `UI_PARITY_BOXES=1 UI_PARITY_SCENES=<scene> pnpm exec playwright test` writes every element's fractional border box and every text node's rect to `out/reference/<scene>.boxes.txt`.
 
@@ -153,7 +155,7 @@ The `palettes` list in `scenes.json` holds full-window scenes (`palettes/…`) o
 To stay pixel-exact, crates built on recur-ui must:
 
 - Call `recur_ui::init` after `gpui_kit::init`, register `recur_ui::Assets` with the application, and render each window's content inside `style::window_root`, under `style::body`. Render `TitleTooltip` (and `Toasts` where toasts show) as the last children of the window root so they inherit the body styles.
-- Draw text only through `recur_ui::text` / `span` / `Text::from_spans` / `text_stack` (never GPUI's text elements), give wrapping text that can change line count an id, and set a text's line height where CSS does (`normal` is not inherited 1.45).
+- Draw text only through `recur_ui::text` / `span` / `Text::from_spans` / `text_stack` (never GPUI's text elements), and set a text's line height where CSS does (`normal` is not inherited 1.45).
 - Never author a length GPUI would round. Any margin, padding, gap or size that is not a multiple of the device pixel (a line height, a centering offset, `11vh`, a measured width) is an `exact::vgap` / `hgap` (or a percentage of a definite box), never `.mt(px(0.95))` or `.h(px(17.4))`; a box whose parts add up to its size gets no authored size. Lay custom measured elements out through `exact::measured` and give them an id; place their parts in the layout tree, not with `prepaint_as_root`.
 - Attach menus and popovers to their trigger with `style::attached` (inside `deferred`); keep `style::anchored_at` for overlays at a free window position (a pointer, a caret).
 - Wrap padded `flex: 1` items in `style::flex_share`, collapse adjoining vertical margins by hand, and paint anything with a `z-index` over its parent's border `deferred`.
@@ -170,11 +172,11 @@ To stay pixel-exact, crates built on recur-ui must:
 Each is a limit of GPUI or of matching a browser's private rendering, not a choice of look:
 
 - **Gradient dither.** recur-ui paints gradients smooth. WebKit paints opaque gradients smooth too, but dithers some that fade to transparent (the sidebar's under-fades) by a level or two; counted as anti-aliasing, except where the noise lands on a faint edge.
-- **Glyph subpixel phase.** WebKit positions glyphs from the box's fractional left edge; recur-ui knows only the device-pixel left edge (recovering the fraction would need about 31 probes per text), so a glyph can land in a neighboring subpixel bin. Counted as text in the diff.
+- **Glyph subpixel phase.** recur-ui places glyphs from the box's unrounded left edge, as WebKit does; CoreGraphics' subpixel quantization still lands a few glyphs in a neighboring bin. Counted as text in the diff.
 - **Curved-edge coverage.** GPUI's SDF shader and CoreGraphics disagree by a few levels on some pixels of rounded borders and rings; a handful of such pixels can exceed the soft-edge rule and count as hard (see the allowances below).
 - **Backdrop blur.** The `.palette-bg` / `.nt-bg` scrims' `backdrop-filter: blur(2px)` is not drawn: GPUI has no backdrop filters. The scrim color matches.
 - **Element transforms.** GPUI cannot scale or translate an element tree, so the toast entrance's `scale(.98)` is dropped (the fade and 8px rise remain) and `translateY(-.5px)` on the ask toast's chevron becomes a device-pixel offset (exact at scale 2).
-- **Typed input text and caret.** Drawn by gpui-base's editor, not recur-ui text. Captures hide carets on both sides.
+- **Caret.** Drawn by gpui-base's editor. Captures hide carets on both sides.
 - **Synthetic oblique.** The bundled code fonts have no italic faces, so WebKit slants the regular face for `font-style: italic` (TextMate comments, parameters). GPUI cannot transform glyphs, so the editor draws them upright. Counted as text in the diff.
 - **Editor code text.** The editor's content is a custom element that shapes and paints lines through GPUI's text system (as CodeMirror owns its DOM); its chrome (panels, tooltips, the vim panel) goes through recur-ui text. Glyph rasterization differences in code count as text.
 - **Synthetic italics.** WebKit's synthetic-oblique glyphs and CoreGraphics' differ on a couple of edge pixels per italic glyph run (the slanted top of an `i` dot, a `t` bar); every skew construction, angle and snapping variant tried leaves those pixels as they are or moves more of them. Counted as anti-aliasing (max 18 levels).
@@ -189,49 +191,40 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 
 ## Hard-pixel allowances
 
-Every other scene allows no hard pixels.
+Every other scene allows no hard pixels. These are the known minor differences; each scene's tolerance sits just above its measurement so a regression still fails.
 
 | Scene | Hard | Cause |
 |---|---|---|
 | `toasts/paper` | 4 | Curved-edge coverage at plain toast corners over the shadow |
-| `select/open`, `select/multiple`, `select/searchable`, `select/focus` | 2 to 7 | Curved-edge coverage of the 3px focus ring and the 2px outline at the trigger's corners |
-| `icon-picker/open` | 1 | Curved-edge coverage at the selected cell's corner |
-| `tab-strip/overflow` | 4 | Curved-edge coverage at the scrolled chip's close button |
+| `select/open`, `select/multiple`, `select/searchable`, `select/focus` | 2, 2, 2, 7 | Curved-edge coverage of the 3px focus ring and the 2px outline at the trigger's corners |
+| `icon-picker/open` | 3 | The trigger's bottom corners where its 3px amber spread ring meets the box: WebKit leaves the corner pixel inside the box's aliased clip-out at 55 where recur-ui paints 94. The pixels differed by the same amount before the shadow upscale fix, classified as anti-aliasing until their neighbors matched |
 | `overlays/misc-paper` | 15 | Curved-edge coverage of the popover and field corners over the light shadow |
-| `editor/find` | 59 | Curved-edge coverage of the focused find field's corners and ring, and the typed query, which gpui-base's editor draws |
+| `editor/find` | 41 | Curved-edge coverage of the focused find field's corners and ring, and the typed query, which the editor's panel field draws |
 | `editor/vim` | 132 | The vim panel's generic `monospace` resolves to Courier in both engines, but GPUI picks a heavier Courier face than WebKit, so the `:` prefix and the typed command differ |
-| `shell/paper` | 6 | The far tail of the running dot's 5px amber glow over the light rail: two levels per channel past the soft-edge rule |
 | `shell/tree`, `shell/hover` | 1 | Curved-edge coverage at the working copy branch chip's rounded left border |
-| `workspace/loop`, `workspace/loop-paper` | 1, 5 | The far tail of the running dot's amber glow (as `shell/paper`) |
 | `shell/scrolled` | 2 | WebKit dithers a stuck header's under-fade by a level; where the noise lands on a child row's faint connector edge it exceeds the soft-edge rule (recur-ui paints the fade smooth) |
-| `markdown/chat`, `markdown/paper` | 95, 132 | The native task checkbox's shading and edges (above) and the edge pixels of WebKit's synthesized list bullets |
-| `review/unified`, `review/split`, `review/hunk`, `review/collapsed`, `review/filelist`, `review/large` | 54, 54, 54, 84, 34, 18 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc: GPUI antialiases both edges, WebKit clips the header once (8 to 13 pixels per corner; `PARITY.md` follow-up) |
-| `review/thread`, `review/thread-paper` | 95, 69 | The `.react` pill after `✓` ends one device pixel early: the fallback glyph's advance is 6.33px in recur-ui and 6.49px in WebKit (`PARITY.md` follow-up); `review/thread` adds the card's top corners (above) |
-| `pdf/page` | 15 | The page field's number, which gpui-base's editor draws (typed input text, above) |
-| `observatory/review` | 18 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc (as `review/*`) |
+| `markdown/chat`, `markdown/paper` | 82, 116 | The native task checkbox's shading and edges (above), and a pixel per list marker |
+| `review/collapsed` | 8 | The collapsed `.df-head`'s bottom corners: a bottom-only 1px border around a radius-8 corner tapers to nothing, and its elliptical inner edge (radii 8 and 7) is approximated in GPUI's quad shader where CoreGraphics fills the exact area between the curves (2 to 3 levels past the soft-edge rule on 4 pixels per corner) |
+| `pdf/page` | 10 | The page field's number |
 | `observatory/terminal-max` | 2 | Frosted terminal cells (above): glyph edges over the maximized dock's frost |
-| `observatory/pdf` | 262 | The page field's number (typed input text, above) and glyph edges inside the page raster, which GPUI's bilinear filter resamples (image resampling, above) past the soft-edge rule |
-| `prs/list`, `prs/list-paper`, `prs/list-wide`, `prs/filters`, `prs/people` | 39, 36, 45, 27, 35 | The far tails of the rows' 5px status-dot glows, which WebKit paints at their fractional x (806.6) and GPUI at the snapped one (2 to 8 pixels per row), and an avatar's edge at a fractional offset (1); `prs/list-paper` adds the running dot's glow over the light rail (as `shell/paper`) (`PARITY.md` follow-up) |
-| `prs/detail-*`, `prs/actions-*`, `prs/review-modal`, `prs/people-detail` | 0 to 7 | An avatar's edge at a fractional offset in the header's people stack (1); `prs/actions-checks` adds the Fix checks button's corners at a fractional x (4), `prs/actions-review-menu` the avatar ring under the menu's shadow (7), and the `paper` scenes the running dot's glow (as `shell/paper`) |
-| `prs/detail-files` | 37 | Curved-edge coverage where a `.df-head` corner meets the `.cfile` border arc (as `review/*`) and the avatar edge (above) |
-| `prs/actions-merged` | 14 | The classic thumb is a pixel shorter: GPUI lays the merged conversation out 989.5px tall where WebKit has 989.28, and `scrollHeight` rounds across the boundary (`PARITY.md` follow-up); the avatar edge (above) |
-| `settings/*-paper` (panes) | 6 | The running dot's glow over the light rail (as `shell/paper`) |
-| `settings/general`, `settings/general-paper`, `settings/usage`, `settings/keybinding-menu` | 8, 21, 8, 16 | The concurrency field's `8`, which gpui-base's editor draws (typed input text, above); the paper scene adds the rail glow, `settings/keybinding-menu` the nav search box's corners at a fractional height |
-| `settings/appearance`, `settings/appearance-paper`, `settings/cursor-install`, `settings/cursor-install-paper` | 22, 21, 13, 21 | The page's classic thumb across a rounding boundary (as `prs/actions-merged`), the Nord card's top corners (curved-edge coverage) and the rail glow on paper |
-| `settings/mcp-paper`, `settings/policy-menu-paper`, `settings/policy-tip-paper`, `settings/usage-paper`, `settings/keybinding-menu-paper` | 16, 15, 20, 51, 21 | Curved-edge coverage at popover and card corners over the light page, and the rail glow |
-| `settings/compat-modal`, `settings/compat-modal-paper` | 114, 206 | The modal's prefilled slug, name, base URL and model fields (typed input text, above) and, on paper, the panel's corners |
+| `observatory/pdf` | 257 | Glyph edges inside the page raster, which GPUI's bilinear filter resamples (image resampling, above) past the soft-edge rule, and the page field's number |
+| `workspace/narrow` | 22 | The Files status bar icons at a sub-pixel offset |
+| `prs/*` (most), `prs/people-detail` | 1 | An avatar's edge at a fractional offset in the header's people stack: WebKit clips the avatar at its unsnapped position |
+| `prs/actions-checks` | 5 | The avatar edge, and the Fix checks button's corners at a fractional x |
+| `prs/actions-review-menu` | 5 | The avatar edge, and the avatar ring under the menu's shadow |
+| `prs/actions-merged` | 14 | The classic thumb is a pixel shorter: GPUI lays the merged conversation out 989.5px tall where WebKit has 989.28, and `scrollHeight` rounds across the boundary; the avatar edge |
+| `settings/general`, `settings/usage`, `settings/keybinding-menu` | 0, 0, 8 | Field corners at a fractional height (the nav search box), and a pixel of the concurrency field's value |
+| `settings/*-paper` (general, appearance, mcp, cursor-install, policy-menu, policy-tip, usage, keybinding-menu) | 9 to 36 | Curved-edge coverage at popover, card and field corners over the light page; `appearance` and `cursor-install` add the page's classic thumb across a rounding boundary (as `prs/actions-merged`) |
+| `settings/appearance`, `settings/cursor-install` | 22, 13 | The page's classic thumb across a rounding boundary (as `prs/actions-merged`) and the Nord card's top corners |
+| `settings/compat-modal`, `settings/compat-modal-paper` | 55, 102 | Glyph-top pixels of the modal's prefilled field values and, on paper, the panel's corners |
 | `home/welcome`, `home/welcome-modes` | 11 | Curved-edge coverage where the rows' rounded ends meet the list's border arc |
-| `home/new-project-path` | 189 | The typed path, which gpui-base's editor draws (typed input text, above), and the focused field's corners |
+| `home/new-project-path` | 102 | The focused field's corners and the typed path |
 | `home/new-task-slash` | 3 | Curved-edge coverage at the slash menu's corner |
-| `briefing/inbox`, `briefing/inbox-paper`, `briefing/inbox-closed` | 163, 157, 163 | The bucket segment group sits within 0.1px of WebKit's 999.78 but across the device-pixel rounding boundary, so its first button's fill starts a device pixel early; `paper` adds the rail glow (as `shell/paper`) |
-| `briefing/schedules`, `briefing/schedules-paper` | 20, 28 | The state segment's first button (as `briefing/inbox`); `paper` adds the rail glow |
-| `briefing/issues`, `briefing/issues-paper` | 24, 14 | The far tails of the status dots' 5px glows at fractional x (as `prs/list`) |
-| `briefing/schedule-editor`, `briefing/schedule-editor-paper` | 126, 119 | The cron expression, which gpui-base's editor draws (typed input text, above), and the state segment behind the scrim (as `briefing/schedules`) |
-| `projects/general`, `projects/general-tall`, `projects/general-paper` | 58, 58, 117 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) and the rail glow |
-| `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/run-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 19, 56, 1, 1, 2, 35 | The typed query, which gpui-base's editor draws (typed input text, above) |
-| `palettes/stop` | 42 | The footer's `↵` keycap ends a device pixel late: `↵` comes from a fallback face whose advance differs from WebKit's, as the `✓` follow-up in `PARITY.md` |
-| `projects/run`, `projects/run-tall` | 185, 253 | The Files to copy placeholder, which gpui-base's textarea draws (typed input text, above) |
-| `projects/run-resized` | 251 | `projects/run`'s, plus the focused box's amber border at its rounded corners (GPUI anti-aliases the border arc where WebKit clips once) and the page's classic thumb on the taller page (scroll height across a rounding boundary) |
+| `briefing/schedule-editor`, `briefing/schedule-editor-once`, `briefing/schedule-editor-paper` | 38, 0, 50 | The cron expression and date fields |
+| `projects/general`, `projects/general-tall`, `projects/general-paper` | 57, 57, 85 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) |
+| `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 13, 48, 1, 2, 26 | The typed query and, in `goto-empty`, a 1px row under the input a device pixel off |
+| `projects/run`, `projects/run-tall` | 18, 86 | Curved-edge coverage at the run cards' corners |
+| `projects/run-resized` | 84 | `projects/run`'s, plus the focused box's amber border at its rounded corners and the page's classic thumb on the taller page (scroll height across a rounding boundary) |
 
 ## Results
 
@@ -239,42 +232,42 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 
 | Scene | Hard | Text | AA | Tolerance | Hard ok |
 |---|---|---|---|---|---|
-| `armed-button/default` | 0 | 1486 | 436 | 2120 | 0 |
-| `buttons/default` | 0 | 4822 | 1624 | 7100 | 0 |
-| `buttons/paper` | 0 | 4849 | 1584 | 7080 | 0 |
+| `armed-button/default` | 0 | 0 | 436 | 480 | 0 |
+| `buttons/default` | 0 | 602 | 1624 | 2450 | 0 |
+| `buttons/paper` | 0 | 604 | 1584 | 2410 | 0 |
 | `icon-picker/closed` | 0 | 0 | 60 | 70 | 0 |
-| `icon-picker/open` | 1 | 0 | 376 | 420 | 1 |
+| `icon-picker/open` | 3 | 0 | 371 | 410 | 3 |
 | `icons/app` | 0 | 0 | 86 | 100 | 0 |
 | `icons/file` | 0 | 0 | 0 | 0 | 0 |
 | `icons/file-light` | 0 | 0 | 0 | 0 | 0 |
 | `icons/lucide` | 0 | 0 | 55 | 70 | 0 |
 | `icons/provider` | 0 | 0 | 0 | 0 | 0 |
-| `kbd/default` | 0 | 1288 | 208 | 1650 | 0 |
-| `overlays/misc` | 0 | 2865 | 126 | 3300 | 0 |
-| `overlays/misc-paper` | 15 | 2945 | 222 | 3490 | 15 |
+| `kbd/default` | 0 | 0 | 208 | 230 | 0 |
+| `overlays/misc` | 0 | 46 | 126 | 190 | 0 |
+| `overlays/misc-paper` | 15 | 47 | 215 | 290 | 15 |
 | `overlays/modal` | 0 | 0 | 201 | 230 | 0 |
-| `overlays/palette` | 0 | 1259 | 506 | 1950 | 0 |
-| `project-pic/default` | 0 | 165 | 351 | 570 | 0 |
+| `overlays/palette` | 0 | 124 | 506 | 700 | 0 |
+| `project-pic/default` | 0 | 0 | 351 | 390 | 0 |
 | `resize-handle/focus` | 0 | 0 | 0 | 0 | 0 |
 | `resize-handle/hover` | 0 | 0 | 0 | 0 | 0 |
-| `ring/default` | 0 | 362 | 10 | 410 | 0 |
+| `ring/default` | 0 | 0 | 10 | 20 | 0 |
 | `scrollbar/default` | 0 | 0 | 32 | 40 | 0 |
 | `scrollbar/paper` | 0 | 0 | 40 | 50 | 0 |
-| `select/closed` | 0 | 1455 | 148 | 1770 | 0 |
-| `select/closed-paper` | 0 | 1508 | 250 | 1940 | 0 |
+| `select/closed` | 0 | 869 | 148 | 1120 | 0 |
+| `select/closed-paper` | 0 | 866 | 250 | 1230 | 0 |
 | `select/focus` | 7 | 0 | 210 | 240 | 7 |
-| `select/multiple` | 2 | 1 | 212 | 240 | 2 |
-| `select/open` | 2 | 1167 | 254 | 1570 | 2 |
-| `select/searchable` | 2 | 1144 | 290 | 1580 | 2 |
+| `select/multiple` | 2 | 1 | 192 | 220 | 2 |
+| `select/open` | 2 | 198 | 244 | 490 | 2 |
+| `select/searchable` | 2 | 176 | 280 | 510 | 2 |
 | `settings-group/default` | 0 | 103 | 801 | 1000 | 0 |
 | `settings-group/paper` | 0 | 103 | 958 | 1170 | 0 |
-| `tab-strip/default` | 0 | 2309 | 145 | 2700 | 0 |
-| `tab-strip/hover` | 0 | 2918 | 145 | 3370 | 0 |
-| `tab-strip/overflow` | 0 | 1131 | 0 | 2520 | 4 |
-| `tab-strip/paper` | 0 | 2390 | 228 | 2880 | 0 |
-| `text/calibration` | 0 | 289 | 0 | 320 | 0 |
-| `toasts/default` | 0 | 1674 | 672 | 2590 | 0 |
-| `toasts/paper` | 4 | 1669 | 1619 | 3620 | 4 |
+| `tab-strip/default` | 0 | 68 | 145 | 240 | 0 |
+| `tab-strip/hover` | 0 | 1199 | 145 | 1480 | 0 |
+| `tab-strip/overflow` | 0 | 383 | 0 | 430 | 0 |
+| `tab-strip/paper` | 0 | 95 | 228 | 360 | 0 |
+| `text/calibration` | 0 | 395 | 0 | 440 | 0 |
+| `toasts/default` | 0 | 703 | 669 | 1510 | 0 |
+| `toasts/paper` | 4 | 682 | 840 | 1680 | 4 |
 | `toggles/catppuccin-latte` | 0 | 0 | 430 | 480 | 0 |
 | `toggles/default` | 0 | 0 | 482 | 540 | 0 |
 | `tokens/catppuccin-latte` | 0 | 0 | 0 | 0 | 0 |
@@ -284,12 +277,12 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `tokens/nord` | 0 | 0 | 0 | 0 | 0 |
 | `tokens/paper` | 0 | 0 | 0 | 0 | 0 |
 | `tokens/slate` | 0 | 0 | 0 | 0 | 0 |
-| `tooltip/above` | 0 | 2456 | 201 | 2930 | 0 |
-| `tooltip/below` | 0 | 3 | 215 | 240 | 0 |
-| `tooltip/paper` | 0 | 0 | 430 | 480 | 0 |
+| `tooltip/above` | 0 | 1318 | 191 | 1660 | 0 |
+| `tooltip/below` | 0 | 59 | 206 | 300 | 0 |
+| `tooltip/paper` | 0 | 56 | 280 | 370 | 0 |
 | `editor/code` | 0 | 13445 | 0 | 14790 | 0 |
 | `editor/paper` | 0 | 13033 | 0 | 14340 | 0 |
-| `editor/find` | 59 | 11525 | 440 | 13170 | 59 |
+| `editor/find` | 41 | 10803 | 521 | 12460 | 41 |
 | `editor/vim` | 132 | 13510 | 224 | 15110 | 132 |
 | `terminal/prompt` | 0 | 0 | 6 | 10 | 0 |
 | `terminal/paper` | 0 | 0 | 4 | 10 | 0 |
@@ -297,214 +290,219 @@ Last full run (`hard`/`text`/`aa` are differing pixels at device scale 2; `toler
 | `terminal/search` | 0 | 0 | 312 | 350 | 0 |
 | `terminal/scrollbar` | 0 | 0 | 0 | 0 | 0 |
 | `terminal/decorations` | 0 | 0 | 6 | 10 | 0 |
+| `terminal/sgr` | 0 | 0 | 0 | 0 | 0 |
+| `terminal/glyphs` | 0 | 0 | 0 | 0 | 0 |
 | `terminal/solarized-light` | 0 | 0 | 7 | 10 | 0 |
 | `terminal/solarized-dark` | 0 | 0 | 8 | 10 | 0 |
-| `shell/default` | 0 | 1942 | 797 | 3020 | 0 |
-| `shell/paper` | 6 | 1990 | 755 | 3020 | 6 |
-| `shell/nord` | 0 | 1930 | 782 | 2990 | 0 |
-| `shell/collapsed` | 0 | 598 | 52 | 720 | 0 |
-| `shell/peek` | 0 | 1942 | 797 | 3020 | 0 |
-| `shell/groups` | 0 | 1842 | 902 | 3020 | 0 |
-| `shell/tree` | 1 | 2842 | 978 | 4210 | 1 |
-| `shell/hover` | 1 | 2667 | 860 | 3880 | 1 |
-| `shell/scrolled` | 2 | 2004 | 681 | 2960 | 2 |
-| `shell/base-select` | 0 | 10294 | 1143 | 12590 | 0 |
-| `shell/issue` | 0 | 4897 | 932 | 6420 | 0 |
-| `markdown/chat` | 95 | 5933 | 5505 | 12590 | 95 |
-| `markdown/paper` | 132 | 5995 | 5632 | 12790 | 132 |
-| `markdown/streaming` | 0 | 1875 | 77 | 2150 | 0 |
-| `mermaid/flowchart` | 0 | 9173 | 1922 | 12210 | 0 |
-| `mermaid/sequence` | 0 | 8076 | 16 | 8910 | 0 |
-| `pdf/page` | 15 | 175 | 18357 | 20390 | 15 |
-| `file-preview/markdown` | 0 | 4877 | 94 | 5470 | 0 |
+| `shell/default` | 0 | 268 | 560 | 920 | 0 |
+| `shell/paper` | 0 | 261 | 572 | 920 | 0 |
+| `shell/nord` | 0 | 268 | 557 | 910 | 0 |
+| `shell/collapsed` | 0 | 1 | 52 | 60 | 0 |
+| `shell/peek` | 0 | 268 | 560 | 920 | 0 |
+| `shell/groups` | 0 | 235 | 665 | 1000 | 0 |
+| `shell/tree` | 1 | 407 | 662 | 1180 | 1 |
+| `shell/hover` | 1 | 425 | 623 | 1160 | 1 |
+| `shell/scrolled` | 2 | 376 | 444 | 910 | 2 |
+| `shell/base-select` | 0 | 959 | 797 | 1940 | 0 |
+| `shell/issue` | 0 | 703 | 676 | 1520 | 0 |
+| `markdown/chat` | 82 | 2084 | 5532 | 8380 | 82 |
+| `markdown/paper` | 116 | 2088 | 5661 | 8530 | 116 |
+| `markdown/streaming` | 0 | 0 | 74 | 90 | 0 |
+| `mermaid/flowchart` | 0 | 8716 | 1922 | 11710 | 0 |
+| `mermaid/sequence` | 0 | 8466 | 16 | 9340 | 0 |
+| `pdf/page` | 10 | 0 | 18317 | 20150 | 10 |
+| `file-preview/markdown` | 0 | 947 | 99 | 1160 | 0 |
 | `file-preview/svg` | 0 | 0 | 0 | 0 | 0 |
-| `lightbox/image` | 0 | 22 | 14684 | 16180 | 0 |
-| `chat/empty` | 0 | 133 | 132 | 290 | 0 |
-| `chat/transcript` | 0 | 13388 | 529 | 15310 | 0 |
-| `chat/transcript-paper` | 0 | 13612 | 1247 | 16350 | 0 |
-| `chat/brief-card` | 0 | 4139 | 477 | 5080 | 0 |
-| `chat/brief-card-paper` | 0 | 4034 | 647 | 5150 | 0 |
-| `chat/streaming` | 0 | 1270 | 456 | 1900 | 0 |
-| `chat/permission` | 0 | 2689 | 752 | 4900 | 0 |
-| `chat/question` | 0 | 1092 | 691 | 1970 | 0 |
-| `chat/plan` | 0 | 1299 | 307 | 1770 | 0 |
-| `chat/fanout` | 0 | 4415 | 336 | 5230 | 0 |
-| `chat/composer` | 0 | 2345 | 329 | 2950 | 0 |
-| `chat/mode-ask` | 0 | 1048 | 132 | 1300 | 0 |
-| `chat/mode-plan` | 0 | 340 | 132 | 520 | 0 |
-| `chat/mode-agent` | 0 | 775 | 132 | 1000 | 0 |
-| `chat/mode-review` | 0 | 437 | 132 | 630 | 0 |
-| `chat/mode-loop` | 0 | 486 | 132 | 680 | 0 |
-| `chat/mode-agent-paper` | 0 | 787 | 200 | 1090 | 0 |
-| `chat/pickers` | 0 | 3906 | 249 | 4580 | 0 |
-| `chat/app` | 0 | 1866 | 660 | 2780 | 0 |
-| `chat/app-paper` | 0 | 1884 | 532 | 2660 | 0 |
-| `review/unified` | 54 | 7372 | 308 | 8450 | 54 |
-| `review/unified-paper` | 0 | 4140 | 514 | 5120 | 0 |
-| `review/split` | 54 | 8690 | 383 | 9990 | 54 |
-| `review/hunk` | 54 | 8420 | 369 | 9670 | 54 |
-| `review/collapsed` | 84 | 8192 | 257 | 9300 | 84 |
-| `review/filelist` | 34 | 9491 | 304 | 10780 | 34 |
-| `review/thread` | 95 | 5375 | 1432 | 7490 | 95 |
-| `review/thread-paper` | 69 | 4778 | 1868 | 7320 | 69 |
-| `review/commits` | 0 | 3014 | 594 | 3970 | 0 |
-| `review/commits-paper` | 0 | 3023 | 689 | 4090 | 0 |
-| `review/large` | 18 | 22530 | 66 | 24860 | 18 |
-| `observatory/explorer` | 0 | 11098 | 113 | 12210 | 0 |
-| `observatory/explorer-paper` | 0 | 11119 | 207 | 12360 | 0 |
-| `observatory/code` | 0 | 34505 | 113 | 36790 | 0 |
-| `observatory/code-paper` | 0 | 34608 | 207 | 37020 | 0 |
-| `observatory/tabs` | 0 | 8116 | 50 | 9020 | 0 |
-| `observatory/merge` | 0 | 41467 | 113 | 44100 | 0 |
-| `observatory/review` | 18 | 3711 | 221 | 4160 | 18 |
-| `observatory/terminal` | 0 | 34497 | 137 | 36810 | 0 |
-| `observatory/terminal-beside` | 0 | 34380 | 113 | 36660 | 0 |
-| `observatory/terminal-max` | 2 | 33721 | 2783 | 38720 | 2 |
-| `observatory/quick-open` | 0 | 35981 | 114 | 38320 | 0 |
-| `observatory/artifacts` | 0 | 33062 | 82 | 35220 | 0 |
-| `observatory/pdf` | 262 | 4976 | 57336 | 65870 | 262 |
-| `observatory/image` | 0 | 4701 | 3871 | 9440 | 0 |
-| `observatory/commit` | 0 | 37390 | 160 | 39850 | 0 |
-| `workspace/chat` | 0 | 43265 | 707 | 48370 | 0 |
-| `workspace/chat-paper` | 0 | 43536 | 1515 | 49560 | 0 |
-| `workspace/tabs` | 0 | 21796 | 714 | 24770 | 0 |
-| `workspace/plan` | 0 | 41394 | 309 | 45880 | 0 |
-| `workspace/findings` | 0 | 44051 | 355 | 48850 | 0 |
-| `workspace/loop` | 1 | 45803 | 964 | 51450 | 1 |
-| `workspace/loop-paper` | 5 | 46057 | 1008 | 51780 | 5 |
-| `prs/list` | 39 | 20193 | 4766 | 27460 | 39 |
-| `prs/list-paper` | 36 | 20429 | 4733 | 27680 | 36 |
-| `prs/list-wide` | 45 | 25861 | 5067 | 34030 | 45 |
-| `prs/filters` | 27 | 25922 | 3708 | 32600 | 27 |
-| `prs/people` | 35 | 19283 | 4485 | 26150 | 35 |
-| `prs/detail-conv` | 1 | 9756 | 3440 | 14520 | 1 |
-| `prs/detail-conv-paper` | 6 | 9864 | 3597 | 14810 | 6 |
-| `prs/detail-files` | 37 | 16718 | 2524 | 21170 | 37 |
-| `prs/detail-commits` | 1 | 10492 | 2257 | 14030 | 1 |
-| `prs/detail-checks` | 1 | 7383 | 1815 | 10120 | 1 |
-| `prs/actions-update` | 1 | 12329 | 3526 | 17450 | 1 |
-| `prs/actions-ready` | 1 | 8630 | 3347 | 13180 | 1 |
-| `prs/actions-checks` | 5 | 10125 | 3422 | 14910 | 5 |
-| `prs/actions-blocked` | 1 | 11856 | 3333 | 16710 | 1 |
-| `prs/actions-conflicts` | 1 | 11967 | 3343 | 16850 | 1 |
-| `prs/actions-queued` | 1 | 10191 | 3364 | 14920 | 1 |
-| `prs/actions-queue` | 1 | 11267 | 3452 | 16200 | 1 |
-| `prs/actions-merged` | 14 | 8083 | 3225 | 12440 | 14 |
-| `prs/actions-pending` | 1 | 11387 | 3612 | 16500 | 1 |
-| `prs/actions-pending-paper` | 6 | 11420 | 3793 | 16740 | 6 |
-| `prs/review-modal` | 1 | 12490 | 1784 | 15710 | 1 |
-| `prs/review-modal-paper` | 0 | 12939 | 4272 | 18940 | 0 |
-| `prs/actions-merge-menu` | 1 | 8883 | 3416 | 13530 | 1 |
-| `prs/actions-confirm` | 1 | 10861 | 3436 | 15730 | 1 |
-| `prs/actions-review-menu` | 7 | 9462 | 3017 | 13730 | 7 |
-| `prs/actions-update-menu` | 0 | 12537 | 3108 | 17210 | 0 |
-| `prs/people-detail` | 1 | 16148 | 3715 | 21850 | 1 |
-| `settings/general` | 8 | 5857 | 1986 | 7850 | 8 |
-| `settings/general-paper` | 21 | 5846 | 2222 | 8070 | 21 |
-| `settings/appearance` | 22 | 9831 | 3552 | 13390 | 22 |
-| `settings/appearance-paper` | 21 | 9713 | 4075 | 13790 | 21 |
-| `settings/editor` | 0 | 7729 | 1076 | 8810 | 0 |
-| `settings/editor-paper` | 6 | 7524 | 1408 | 8940 | 6 |
-| `settings/skills` | 0 | 3821 | 1520 | 5350 | 0 |
-| `settings/skills-paper` | 6 | 3769 | 1631 | 5400 | 6 |
-| `settings/data` | 0 | 5210 | 989 | 6200 | 0 |
-| `settings/data-paper` | 6 | 5181 | 1066 | 6250 | 6 |
-| `settings/providers` | 0 | 6542 | 1944 | 8490 | 0 |
-| `settings/providers-paper` | 6 | 6043 | 2187 | 8230 | 6 |
-| `settings/models` | 0 | 8842 | 1138 | 9980 | 0 |
-| `settings/models-paper` | 6 | 8774 | 1374 | 10150 | 6 |
-| `settings/loops` | 0 | 4499 | 804 | 5310 | 0 |
-| `settings/loops-paper` | 6 | 4437 | 879 | 5320 | 6 |
-| `settings/prs` | 0 | 19043 | 1817 | 20860 | 0 |
-| `settings/prs-paper` | 6 | 18419 | 2139 | 20560 | 6 |
-| `settings/integrations` | 0 | 5051 | 933 | 5990 | 0 |
-| `settings/integrations-paper` | 6 | 4855 | 1151 | 6010 | 6 |
-| `settings/mcp` | 0 | 5669 | 1606 | 7280 | 0 |
-| `settings/mcp-paper` | 16 | 5619 | 1975 | 7600 | 16 |
-| `settings/commands` | 0 | 4192 | 1618 | 5810 | 0 |
-| `settings/commands-paper` | 6 | 4022 | 1646 | 5670 | 6 |
-| `settings/prompts` | 0 | 4675 | 2733 | 7410 | 0 |
-| `settings/prompts-paper` | 6 | 4457 | 2829 | 7290 | 6 |
-| `settings/grammars` | 0 | 6073 | 1088 | 7170 | 0 |
-| `settings/grammars-paper` | 6 | 5968 | 1206 | 7180 | 6 |
-| `settings/lsp` | 0 | 5256 | 1676 | 6940 | 0 |
-| `settings/lsp-paper` | 6 | 4950 | 1762 | 6720 | 6 |
-| `settings/themes` | 0 | 5551 | 1592 | 7150 | 0 |
-| `settings/themes-paper` | 6 | 5505 | 1682 | 7190 | 6 |
-| `settings/snippets` | 0 | 6545 | 1390 | 7940 | 0 |
-| `settings/snippets-paper` | 6 | 6431 | 1481 | 7920 | 6 |
-| `settings/compat-modal` | 114 | 7835 | 4258 | 12100 | 114 |
-| `settings/compat-modal-paper` | 206 | 11317 | 47000 | 58320 | 206 |
-| `settings/cursor-install` | 13 | 7203 | 2045 | 9250 | 13 |
-| `settings/cursor-install-paper` | 21 | 6945 | 8025 | 14970 | 21 |
-| `settings/policy-menu` | 0 | 9038 | 847 | 9890 | 0 |
-| `settings/policy-menu-paper` | 15 | 9038 | 996 | 10040 | 15 |
-| `settings/policy-tip` | 0 | 7231 | 950 | 8190 | 0 |
-| `settings/policy-tip-paper` | 20 | 7261 | 1460 | 8730 | 20 |
-| `settings/usage` | 8 | 5897 | 2364 | 8270 | 8 |
-| `settings/usage-paper` | 51 | 7110 | 15890 | 23000 | 51 |
-| `settings/keybinding-menu` | 16 | 12117 | 22066 | 34190 | 16 |
-| `settings/keybinding-menu-paper` | 21 | 7414 | 6383 | 13800 | 21 |
-| `home/welcome` | 11 | 2344 | 803 | 3470 | 11 |
-| `home/welcome-paper` | 0 | 2357 | 847 | 3530 | 0 |
-| `home/welcome-modes` | 11 | 5679 | 1579 | 7990 | 11 |
-| `home/welcome-done` | 0 | 4702 | 2156 | 7550 | 0 |
-| `home/new-project` | 0 | 3038 | 631 | 4040 | 0 |
-| `home/new-project-paper` | 0 | 3176 | 774 | 4350 | 0 |
-| `home/new-project-path` | 189 | 3100 | 3594 | 7370 | 189 |
-| `home/new-task` | 0 | 4052 | 635 | 5160 | 0 |
-| `home/new-task-paper` | 0 | 4121 | 769 | 5380 | 0 |
-| `home/new-task-loop` | 0 | 3109 | 613 | 4100 | 0 |
-| `home/new-task-repo` | 0 | 4154 | 683 | 5330 | 0 |
-| `home/new-task-branch` | 0 | 10007 | 802 | 11890 | 0 |
-| `home/new-task-mode` | 0 | 9743 | 739 | 11540 | 0 |
-| `home/new-task-model` | 0 | 6665 | 780 | 8190 | 0 |
-| `home/new-task-flags` | 0 | 6840 | 715 | 8320 | 0 |
-| `home/new-task-loop-picker` | 0 | 3279 | 673 | 4350 | 0 |
-| `home/new-task-policy` | 0 | 6323 | 686 | 7710 | 0 |
-| `home/new-task-tip` | 0 | 8119 | 928 | 9960 | 0 |
-| `home/new-task-slash` | 3 | 9581 | 714 | 11330 | 3 |
-| `briefing/inbox` | 163 | 18260 | 2171 | 22480 | 163 |
-| `briefing/inbox-paper` | 157 | 18240 | 2445 | 22760 | 157 |
-| `briefing/inbox-closed` | 163 | 6389 | 1676 | 8880 | 163 |
-| `briefing/issues` | 24 | 18605 | 2859 | 23620 | 24 |
-| `briefing/issues-paper` | 14 | 18862 | 2366 | 23360 | 14 |
-| `briefing/issues-board` | 0 | 9986 | 1112 | 12210 | 0 |
-| `briefing/schedules` | 20 | 5603 | 1663 | 8000 | 20 |
-| `briefing/schedules-paper` | 28 | 5791 | 1509 | 8040 | 28 |
-| `briefing/inbox-narrow` | 0 | 3969 | 1296 | 5800 | 0 |
-| `briefing/schedule-editor` | 126 | 11256 | 2030 | 14620 | 126 |
-| `briefing/schedule-editor-paper` | 119 | 11708 | 2981 | 16160 | 119 |
-| `projects/general` | 58 | 4796 | 3327 | 8940 | 58 |
-| `projects/general-tall` | 58 | 5023 | 3591 | 9480 | 58 |
-| `projects/general-paper` | 117 | 4744 | 3586 | 9170 | 117 |
-| `projects/run` | 185 | 22799 | 2168 | 27550 | 185 |
-| `projects/run-resized` | 251 | 11992 | 2306 | 27550 | 251 |
-| `projects/run-tall` | 253 | 53587 | 2972 | 62300 | 253 |
-| `projects/schedules` | 0 | 4790 | 1426 | 6840 | 0 |
-| `projects/prs` | 0 | 29441 | 2317 | 34940 | 0 |
-| `projects/skills` | 0 | 3551 | 1262 | 5300 | 0 |
-| `projects/mcp` | 0 | 3452 | 1047 | 4950 | 0 |
-| `projects/danger` | 0 | 4948 | 939 | 6480 | 0 |
-| `palettes/goto` | 0 | 3964 | 774 | 5220 | 0 |
-| `palettes/goto-paper` | 0 | 4100 | 1048 | 5670 | 0 |
-| `palettes/goto-filter` | 19 | 2825 | 1325 | 4570 | 19 |
-| `palettes/goto-empty` | 56 | 2654 | 1054 | 4080 | 56 |
-| `palettes/commands` | 0 | 2506 | 580 | 3400 | 0 |
-| `palettes/commands-paper` | 0 | 2625 | 718 | 3680 | 0 |
-| `palettes/commands-filter` | 1 | 2342 | 669 | 3320 | 1 |
-| `palettes/open-in` | 0 | 6506 | 813 | 8060 | 0 |
-| `palettes/open-in-paper` | 0 | 6611 | 1144 | 8540 | 0 |
-| `palettes/open-in-filter` | 0 | 6380 | 848 | 7960 | 0 |
-| `palettes/run` | 0 | 11669 | 857 | 13780 | 0 |
-| `palettes/run-paper` | 0 | 11899 | 1217 | 14430 | 0 |
-| `palettes/run-filter` | 1 | 8509 | 988 | 10450 | 1 |
-| `palettes/syntax` | 0 | 3429 | 595 | 4430 | 0 |
-| `palettes/syntax-paper` | 0 | 3511 | 724 | 4660 | 0 |
-| `palettes/syntax-filter` | 2 | 2790 | 813 | 3970 | 2 |
-| `palettes/shortcuts` | 0 | 4392 | 951 | 5880 | 0 |
-| `palettes/shortcuts-paper` | 0 | 4557 | 1192 | 6330 | 0 |
-| `palettes/shortcuts-filter` | 35 | 3090 | 1764 | 5340 | 35 |
+| `lightbox/image` | 0 | 10 | 14684 | 16170 | 0 |
+| `chat/empty` | 0 | 133 | 132 | 300 | 0 |
+| `chat/transcript` | 0 | 8390 | 524 | 9810 | 0 |
+| `chat/transcript-paper` | 0 | 8479 | 1225 | 10680 | 0 |
+| `chat/brief-card` | 0 | 2249 | 477 | 3000 | 0 |
+| `chat/brief-card-paper` | 0 | 2150 | 633 | 3070 | 0 |
+| `chat/streaming` | 0 | 845 | 475 | 1460 | 0 |
+| `chat/permission` | 0 | 728 | 752 | 1630 | 0 |
+| `chat/question` | 0 | 359 | 691 | 1160 | 0 |
+| `chat/plan` | 0 | 641 | 307 | 1050 | 0 |
+| `chat/fanout` | 0 | 667 | 336 | 1110 | 0 |
+| `chat/composer` | 0 | 218 | 331 | 610 | 0 |
+| `chat/mode-ask` | 0 | 0 | 132 | 150 | 0 |
+| `chat/mode-plan` | 0 | 0 | 132 | 150 | 0 |
+| `chat/mode-agent` | 0 | 0 | 132 | 150 | 0 |
+| `chat/mode-review` | 0 | 0 | 132 | 150 | 0 |
+| `chat/mode-loop` | 0 | 133 | 132 | 300 | 0 |
+| `chat/mode-agent-paper` | 0 | 0 | 186 | 210 | 0 |
+| `chat/pickers` | 0 | 310 | 247 | 620 | 0 |
+| `chat/app` | 0 | 229 | 660 | 980 | 0 |
+| `chat/app-paper` | 0 | 231 | 518 | 830 | 0 |
+| `review/unified` | 0 | 4544 | 204 | 5230 | 0 |
+| `review/unified-paper` | 0 | 1320 | 378 | 1870 | 0 |
+| `review/split` | 0 | 5744 | 273 | 6620 | 0 |
+| `review/hunk` | 0 | 5474 | 273 | 6330 | 0 |
+| `review/collapsed` | 8 | 5365 | 195 | 6120 | 8 |
+| `review/filelist` | 0 | 7243 | 252 | 8250 | 0 |
+| `review/thread` | 0 | 3887 | 1345 | 5760 | 0 |
+| `review/thread-paper` | 0 | 3289 | 1785 | 5590 | 0 |
+| `review/commits` | 0 | 195 | 594 | 870 | 0 |
+| `review/commits-paper` | 0 | 196 | 689 | 980 | 0 |
+| `review/large` | 0 | 13823 | 58 | 15270 | 0 |
+| `observatory/explorer` | 0 | 8630 | 113 | 9620 | 0 |
+| `observatory/explorer-paper` | 0 | 8629 | 207 | 9720 | 0 |
+| `observatory/code` | 0 | 31885 | 113 | 35200 | 0 |
+| `observatory/code-paper` | 0 | 31888 | 207 | 35310 | 0 |
+| `observatory/tabs` | 0 | 5279 | 50 | 5870 | 0 |
+| `observatory/merge` | 0 | 39767 | 113 | 43870 | 0 |
+| `observatory/review` | 0 | 2012 | 167 | 2400 | 0 |
+| `observatory/terminal` | 0 | 31877 | 137 | 35220 | 0 |
+| `observatory/terminal-beside` | 0 | 31760 | 113 | 35070 | 0 |
+| `observatory/terminal-max` | 2 | 32285 | 2783 | 38580 | 2 |
+| `observatory/quick-open` | 0 | 33333 | 114 | 36800 | 0 |
+| `observatory/artifacts` | 0 | 31604 | 82 | 34860 | 0 |
+| `observatory/pdf` | 257 | 2013 | 57296 | 65240 | 257 |
+| `observatory/image` | 0 | 1775 | 3871 | 6220 | 0 |
+| `observatory/commit` | 0 | 35778 | 166 | 39540 | 0 |
+| `workspace/chat` | 0 | 35349 | 711 | 39670 | 0 |
+| `workspace/chat-paper` | 0 | 35395 | 1503 | 40590 | 0 |
+| `workspace/tabs` | 0 | 12563 | 718 | 14610 | 0 |
+| `workspace/plan` | 0 | 32960 | 326 | 36620 | 0 |
+| `workspace/findings` | 0 | 35352 | 355 | 39280 | 0 |
+| `workspace/loop` | 0 | 35111 | 718 | 39420 | 0 |
+| `workspace/loop-paper` | 0 | 34810 | 869 | 39250 | 0 |
+| `workspace/narrow` | 22 | 20407 | 548 | 23060 | 22 |
+| `prs/list` | 1 | 3349 | 2289 | 6210 | 1 |
+| `prs/list-paper` | 0 | 3458 | 3349 | 7490 | 0 |
+| `prs/list-wide` | 1 | 4112 | 2356 | 7120 | 1 |
+| `prs/filters` | 1 | 3382 | 2126 | 6060 | 1 |
+| `prs/people` | 1 | 3686 | 1990 | 6250 | 1 |
+| `prs/detail-conv` | 1 | 1701 | 3203 | 5400 | 1 |
+| `prs/detail-conv-paper` | 0 | 1820 | 3414 | 5760 | 0 |
+| `prs/detail-files` | 1 | 6724 | 2225 | 9850 | 1 |
+| `prs/detail-commits` | 1 | 1392 | 2020 | 3760 | 1 |
+| `prs/detail-checks` | 1 | 1053 | 1578 | 2900 | 1 |
+| `prs/actions-update` | 1 | 1620 | 3289 | 5400 | 1 |
+| `prs/actions-ready` | 1 | 2048 | 3110 | 5680 | 1 |
+| `prs/actions-checks` | 5 | 1711 | 3185 | 5390 | 5 |
+| `prs/actions-blocked` | 1 | 2528 | 3096 | 6190 | 1 |
+| `prs/actions-conflicts` | 1 | 2168 | 3106 | 5810 | 1 |
+| `prs/actions-queued` | 1 | 2106 | 3127 | 5760 | 1 |
+| `prs/actions-queue` | 1 | 1619 | 3215 | 5320 | 1 |
+| `prs/actions-merged` | 14 | 2102 | 2988 | 5600 | 14 |
+| `prs/actions-pending` | 1 | 1620 | 3375 | 5500 | 1 |
+| `prs/actions-pending-paper` | 0 | 1813 | 3610 | 5970 | 0 |
+| `prs/review-modal` | 1 | 2683 | 1621 | 4740 | 1 |
+| `prs/review-modal-paper` | 0 | 3001 | 1604 | 5070 | 0 |
+| `prs/actions-merge-menu` | 1 | 1828 | 3179 | 5510 | 1 |
+| `prs/actions-confirm` | 1 | 1739 | 3199 | 5440 | 1 |
+| `prs/actions-review-menu` | 5 | 1492 | 2779 | 4700 | 5 |
+| `prs/actions-update-menu` | 0 | 1392 | 2836 | 4660 | 0 |
+| `prs/people-detail` | 1 | 8377 | 3479 | 13050 | 1 |
+| `settings/general` | 0 | 4779 | 1887 | 7340 | 0 |
+| `settings/general-paper` | 2 | 4759 | 2169 | 7630 | 2 |
+| `settings/appearance` | 22 | 4315 | 3315 | 8400 | 22 |
+| `settings/appearance-paper` | 15 | 4168 | 3892 | 8870 | 15 |
+| `settings/editor` | 0 | 3339 | 839 | 4600 | 0 |
+| `settings/editor-paper` | 0 | 3141 | 1225 | 4810 | 0 |
+| `settings/skills` | 0 | 2744 | 1283 | 4430 | 0 |
+| `settings/skills-paper` | 0 | 2682 | 1448 | 4550 | 0 |
+| `settings/data` | 0 | 2908 | 752 | 4030 | 0 |
+| `settings/data-paper` | 0 | 2843 | 883 | 4100 | 0 |
+| `settings/providers` | 0 | 3839 | 1707 | 6110 | 0 |
+| `settings/providers-paper` | 0 | 3305 | 2004 | 5840 | 0 |
+| `settings/models` | 0 | 4373 | 901 | 5810 | 0 |
+| `settings/models-paper` | 0 | 4273 | 1191 | 6020 | 0 |
+| `settings/loops` | 0 | 3074 | 567 | 4010 | 0 |
+| `settings/loops-paper` | 0 | 2995 | 696 | 4070 | 0 |
+| `settings/prs` | 0 | 17966 | 1580 | 21510 | 0 |
+| `settings/prs-paper` | 0 | 17332 | 1956 | 21220 | 0 |
+| `settings/integrations` | 0 | 3139 | 696 | 4220 | 0 |
+| `settings/integrations-paper` | 0 | 2917 | 968 | 4280 | 0 |
+| `settings/mcp` | 0 | 3089 | 1369 | 4910 | 0 |
+| `settings/mcp-paper` | 10 | 3060 | 1792 | 5340 | 10 |
+| `settings/commands` | 0 | 2907 | 1381 | 4720 | 0 |
+| `settings/commands-paper` | 0 | 2727 | 1463 | 4610 | 0 |
+| `settings/prompts` | 0 | 3598 | 2496 | 6710 | 0 |
+| `settings/prompts-paper` | 0 | 3371 | 2646 | 6620 | 0 |
+| `settings/grammars` | 0 | 4996 | 851 | 6440 | 0 |
+| `settings/grammars-paper` | 0 | 4881 | 1023 | 6500 | 0 |
+| `settings/lsp` | 0 | 3302 | 1439 | 5220 | 0 |
+| `settings/lsp-paper` | 0 | 2990 | 1579 | 5030 | 0 |
+| `settings/themes` | 0 | 4474 | 1355 | 6420 | 0 |
+| `settings/themes-paper` | 0 | 4418 | 1499 | 6510 | 0 |
+| `settings/snippets` | 0 | 5265 | 1153 | 7060 | 0 |
+| `settings/snippets-paper` | 0 | 5142 | 1298 | 7090 | 0 |
+| `settings/compat-modal` | 55 | 4432 | 4288 | 9600 | 55 |
+| `settings/compat-modal-paper` | 102 | 7288 | 39615 | 51600 | 102 |
+| `settings/cursor-install` | 13 | 3652 | 1808 | 6010 | 13 |
+| `settings/cursor-install-paper` | 15 | 3381 | 7842 | 12350 | 15 |
+| `settings/policy-menu` | 0 | 3074 | 609 | 4060 | 0 |
+| `settings/policy-menu-paper` | 9 | 2995 | 787 | 4170 | 9 |
+| `settings/policy-tip` | 0 | 5584 | 709 | 6930 | 0 |
+| `settings/policy-tip-paper` | 14 | 5583 | 1388 | 7670 | 14 |
+| `settings/usage` | 0 | 4767 | 2231 | 7700 | 0 |
+| `settings/usage-paper` | 25 | 6195 | 16158 | 24590 | 25 |
+| `settings/keybinding-menu` | 8 | 10801 | 21629 | 35680 | 8 |
+| `settings/keybinding-menu-paper` | 2 | 5356 | 1868 | 7950 | 2 |
+| `home/welcome` | 11 | 972 | 803 | 1960 | 11 |
+| `home/welcome-paper` | 0 | 973 | 847 | 2010 | 0 |
+| `home/welcome-modes` | 11 | 3325 | 1579 | 5400 | 11 |
+| `home/welcome-done` | 0 | 1021 | 1919 | 3240 | 0 |
+| `home/new-project` | 0 | 333 | 580 | 1010 | 0 |
+| `home/new-project-paper` | 0 | 420 | 693 | 1230 | 0 |
+| `home/new-project-path` | 102 | 342 | 2926 | 3600 | 102 |
+| `home/new-task` | 0 | 532 | 584 | 1230 | 0 |
+| `home/new-task-paper` | 0 | 564 | 686 | 1380 | 0 |
+| `home/new-task-loop` | 0 | 303 | 562 | 960 | 0 |
+| `home/new-task-repo` | 0 | 621 | 630 | 1380 | 0 |
+| `home/new-task-branch` | 0 | 489 | 693 | 1310 | 0 |
+| `home/new-task-mode` | 0 | 3665 | 679 | 4780 | 0 |
+| `home/new-task-model` | 0 | 764 | 713 | 1630 | 0 |
+| `home/new-task-flags` | 0 | 582 | 653 | 1360 | 0 |
+| `home/new-task-loop-picker` | 0 | 399 | 619 | 1120 | 0 |
+| `home/new-task-policy` | 0 | 312 | 598 | 1010 | 0 |
+| `home/new-task-tip` | 0 | 1335 | 864 | 2420 | 0 |
+| `home/new-task-slash` | 3 | 598 | 589 | 1310 | 3 |
+| `briefing/inbox` | 0 | 12381 | 1765 | 15570 | 0 |
+| `briefing/inbox-paper` | 0 | 12238 | 2107 | 15780 | 0 |
+| `briefing/inbox-closed` | 0 | 2416 | 1270 | 4060 | 0 |
+| `briefing/issues` | 0 | 476 | 1400 | 2070 | 0 |
+| `briefing/issues-paper` | 0 | 454 | 1805 | 2490 | 0 |
+| `briefing/issues-board` | 0 | 572 | 875 | 1600 | 0 |
+| `briefing/schedules` | 0 | 382 | 1298 | 1850 | 0 |
+| `briefing/schedules-paper` | 0 | 484 | 1176 | 1830 | 0 |
+| `briefing/inbox-narrow` | 0 | 658 | 1059 | 1890 | 0 |
+| `briefing/schedule-editor` | 38 | 4642 | 1795 | 7090 | 38 |
+| `briefing/schedule-editor-once` | 0 | 5340 | 1240 | 7240 | 0 |
+| `briefing/schedule-editor-paper` | 50 | 4842 | 1961 | 7490 | 50 |
+| `projects/general` | 57 | 2804 | 3695 | 7150 | 57 |
+| `projects/general-tall` | 57 | 3031 | 3959 | 7690 | 57 |
+| `projects/general-paper` | 85 | 2728 | 3991 | 7400 | 85 |
+| `projects/run` | 18 | 21548 | 866 | 24660 | 18 |
+| `projects/run-resized` | 84 | 10741 | 1004 | 12920 | 84 |
+| `projects/run-tall` | 86 | 52336 | 1729 | 59480 | 86 |
+| `projects/schedules` | 0 | 2590 | 1189 | 4160 | 0 |
+| `projects/prs` | 0 | 28364 | 2080 | 33490 | 0 |
+| `projects/skills` | 0 | 2474 | 1025 | 3850 | 0 |
+| `projects/mcp` | 0 | 2375 | 810 | 3510 | 0 |
+| `projects/danger` | 0 | 2831 | 702 | 3890 | 0 |
+| `palettes/goto` | 0 | 458 | 723 | 1300 | 0 |
+| `palettes/goto-paper` | 0 | 491 | 965 | 1610 | 0 |
+| `palettes/goto-filter` | 13 | 453 | 1048 | 1660 | 13 |
+| `palettes/goto-empty` | 48 | 283 | 795 | 1190 | 48 |
+| `palettes/commands` | 0 | 437 | 529 | 1070 | 0 |
+| `palettes/commands-paper` | 0 | 493 | 633 | 1240 | 0 |
+| `palettes/commands-filter` | 1 | 380 | 744 | 1240 | 1 |
+| `palettes/open-in` | 0 | 843 | 727 | 1730 | 0 |
+| `palettes/open-in-paper` | 0 | 852 | 1033 | 2080 | 0 |
+| `palettes/open-in-filter` | 0 | 730 | 823 | 1710 | 0 |
+| `palettes/run` | 0 | 767 | 771 | 1700 | 0 |
+| `palettes/run-paper` | 0 | 781 | 1107 | 2080 | 0 |
+| `palettes/run-filter` | 0 | 734 | 923 | 1830 | 0 |
+| `palettes/stop` | 0 | 733 | 862 | 1760 | 0 |
+| `palettes/syntax` | 0 | 282 | 544 | 910 | 0 |
+| `palettes/syntax-paper` | 0 | 312 | 639 | 1050 | 0 |
+| `palettes/syntax-filter` | 2 | 285 | 833 | 1230 | 2 |
+| `palettes/shortcuts` | 0 | 715 | 900 | 1780 | 0 |
+| `palettes/shortcuts-paper` | 0 | 778 | 1109 | 2080 | 0 |
+| `palettes/shortcuts-filter` | 26 | 338 | 1428 | 1950 | 26 |
 
 Shell tolerances: text is the titlebar and sidebar labels (glyph subpixel phase); anti-aliasing is icon, chip and ring edges and the glow, shadow and fade gradients.
 

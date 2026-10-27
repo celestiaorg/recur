@@ -60,7 +60,12 @@ pub struct PdfPreview {
 impl PdfPreview {
     /// `src`: the document's bytes (`None` shows nothing).
     pub fn new(data: Option<Arc<[u8]>>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let input = cx.new(|cx| InputState::new(window, cx));
+        let input = cx.new(|cx| {
+            let mut s = InputState::new(window, cx);
+            s.set_text_align(gpui_kit::TextAlign::Center, cx);
+            s
+        });
+        recur_ui::style::set_field_shape(&input, false, gpui_kit::TextAlign::Center, cx);
         let subs =
             vec![
                 cx.guarded_subscribe_in(
@@ -419,9 +424,7 @@ impl PdfPreview {
                 .nowrap()
         };
         let focused = self.input.read(cx).focus_handle(cx).is_focused(window);
-        let draft = self.input.read(cx).value().to_string();
         // `.obs-pdf-page`: a 3.2em field, value centered; `--pane-2` while focused.
-        let (draft_w, _, _) = label(draft.clone(), t.text).measure(None, window);
         let field_text = recur_ui::style::text_field(
             &self.input,
             &SharedString::default(),
@@ -443,7 +446,7 @@ impl PdfPreview {
             .items_center()
             .justify_center()
             .overflow_hidden()
-            .child(div().flex_none().w(px(draft_w)).flex().child(field_text));
+            .child(field_text);
         let of = div()
             .flex_none()
             .h(px(26.))

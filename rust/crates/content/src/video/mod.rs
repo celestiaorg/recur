@@ -7,6 +7,8 @@
 //! Left / Right seek five seconds, Escape leaves full screen.
 
 pub mod decoder;
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+mod webm;
 
 use std::path::PathBuf;
 use std::rc::Rc;

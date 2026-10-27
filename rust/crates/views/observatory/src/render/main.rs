@@ -28,7 +28,7 @@ use crate::style::{
 impl Observatory {
     /// The status bar's language for the focused pane's file.
     pub(crate) fn status_language(&self, cx: &App) -> String {
-        let label = crate::textmate::editor_env_peek(cx)
+        let label = recur_view_core::editor_env::editor_env_peek(cx)
             .map(|e| e.read(cx).language_label(self.active_path()))
             .unwrap_or_default();
         if label.is_empty() {

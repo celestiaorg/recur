@@ -44,7 +44,6 @@
 //! [`lsp::problems::LspProblems`].
 
 pub mod artifacts_panel;
-pub mod command_usage;
 pub mod dock;
 mod editor_host;
 mod explorer;
@@ -62,7 +61,6 @@ pub mod model;
 mod obs;
 pub mod obs_cache;
 pub mod open_external;
-pub mod open_in_pref;
 mod panels;
 pub mod quick_open;
 mod render;
@@ -70,12 +68,10 @@ mod root;
 mod scm;
 pub mod session_host;
 pub mod session_tabs;
-pub mod snippets;
 #[cfg(test)]
 mod spec;
 pub mod style;
 mod tabs;
-pub mod textmate;
 pub mod workspace_file;
 
 use std::collections::BTreeMap;
@@ -121,7 +117,7 @@ pub(crate) fn reset_globals(cx: &mut App) {
             cx.remove_global::<G>();
         }
     }
-    clear::<textmate::EnvHandle>(cx);
+    recur_view_core::editor_env::reset(cx);
     clear::<dock::TermEvents>(cx);
     clear::<lsp::client::LspHub>(cx);
     clear::<lsp::problems::LspProblems>(cx);

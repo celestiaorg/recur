@@ -43,7 +43,7 @@ fn domain_symbols(v: Vec<recur_textmate::OutlineSymbol>) -> Vec<OutlineSymbol> {
 /// The TextMate outline of an open document: `None` without a grammar, engine document or
 /// rules; `Some((symbols, complete))` otherwise.
 pub(crate) fn tm_outline(pane: Pane, path: &str, cx: &App) -> Option<(Vec<OutlineSymbol>, bool)> {
-    let env = crate::textmate::editor_env_peek(cx)?;
+    let env = recur_view_core::editor_env::editor_env_peek(cx)?;
     let env = env.read(cx);
     if env.symbol_rules.is_empty() {
         return None;

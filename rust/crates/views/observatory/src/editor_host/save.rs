@@ -19,7 +19,7 @@ const WILL_SAVE_DEADLINE: Duration = Duration::from_millis(15_000);
 impl Observatory {
     /// The grammar scope the bundle commands match (`scopeForPath`).
     pub(crate) fn scope_for(&self, path: &str, cx: &gpui_kit::App) -> String {
-        let grammar = crate::textmate::editor_env_peek(cx).and_then(|env| {
+        let grammar = recur_view_core::editor_env::editor_env_peek(cx).and_then(|env| {
             env.read(cx)
                 .tm
                 .borrow()
@@ -45,7 +45,7 @@ impl Observatory {
         let cmds = self.state.update(cx, |s, cx| {
             s.commands_for_trigger("willSave", &scope, &path, cx)
         });
-        let prefs = crate::textmate::editor_prefs(cx);
+        let prefs = recur_view_core::editor_env::editor_prefs(cx);
         let indent = prefs.resolve_indent(language_id_for_path(&path));
         let soft_tabs = indent != EditorIndent::Tabs;
         let tab_size = match indent {

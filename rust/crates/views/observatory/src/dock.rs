@@ -195,7 +195,7 @@ fn theme_context(state: &AppState) -> ThemeContext {
 }
 
 fn font_for(state: &AppState, cx: &App) -> recur_terminal_view::TerminalFont {
-    let editor = crate::textmate::editor_prefs(cx);
+    let editor = recur_view_core::editor_env::editor_prefs(cx);
     let p = &state.terminal_prefs;
     let prefs = FontPrefs {
         font_face: p.font_face.clone(),

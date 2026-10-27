@@ -8110,6 +8110,7 @@ dependencies = [
  "recur-forge",
  "recur-services",
  "recur-term",
+ "recur-textmate",
  "recur-ui",
  "regex",
  "serde",

@@ -5,7 +5,7 @@
 //! and menu items open them.
 //!
 //! The Run Command palette orders recently run commands by
-//! `recur_view_observatory::command_usage`, and the language picker applies picks through the
+//! `recur_view_core::command_usage`, and the language picker applies picks through the
 //! Observatory's `EditorEnv`, whose status bar opens it.
 
 mod chrome;

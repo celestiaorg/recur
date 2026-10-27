@@ -4,8 +4,8 @@
 
 use std::collections::BTreeMap;
 
+use crate::{AppState, LocalStorage};
 use gpui_kit::{App, Entity};
-use recur_view_core::{AppState, LocalStorage};
 use serde::{Deserialize, Serialize};
 
 const STORAGE_KEY: &str = "recur.commandUsage";

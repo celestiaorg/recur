@@ -1,6 +1,6 @@
 //! `RunCommandPalette.svelte`: bundle commands and snippets for the focused file (⌘⇧P,
 //! Navigate → Run Command…, the status bar's Bundles). Recently run ones lead, in frecency
-//! order (`recur_view_observatory::command_usage`); snippets show their tab trigger (`ife⇥`).
+//! order (`recur_view_core::command_usage`); snippets show their tab trigger (`ife⇥`).
 
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::{
@@ -17,11 +17,11 @@ use recur_ui::style::{
 use recur_ui::widgets::ToastKind;
 use recur_ui::{IconName, TextStyled, Theme};
 use recur_view_core::AppState;
-use recur_view_core::commands::{RegisteredCommand, categories};
-use recur_view_core::{ObserveState as _, Topics};
-use recur_view_observatory::command_usage::{
+use recur_view_core::command_usage::{
     RECENT_SECTION_SIZE, ranked_command_ids, record_command_usage,
 };
+use recur_view_core::commands::{RegisteredCommand, categories};
+use recur_view_core::{ObserveState as _, Topics};
 
 use crate::chrome::{self, Kind, plain, step};
 
@@ -263,7 +263,7 @@ impl RunCommandPalette {
             let cmds = self
                 .state
                 .update(cx, |s, cx| s.list_commands(&scope, &path, cx));
-            let env = recur_view_observatory::textmate::editor_env(&self.state, cx);
+            let env = recur_view_core::editor_env::editor_env(&self.state, cx);
             let snips = env.read(cx).snippets.list(&scope, &path);
             cx.spawn(async move |this, cx| {
                 let (cmds, snips) = futures::join!(cmds, snips);
@@ -311,9 +311,7 @@ impl RunCommandPalette {
                 });
             }
             Target::Snippet(sn) => {
-                if let Err(e) =
-                    recur_view_observatory::snippets::run_editor_snippet(*sn, window, cx)
-                {
+                if let Err(e) = recur_view_core::snippets::run_editor_snippet(*sn, window, cx) {
                     recur_view_core::toast(ToastKind::Error, e, cx);
                 }
             }

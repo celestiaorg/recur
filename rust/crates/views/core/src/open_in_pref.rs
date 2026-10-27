@@ -1,6 +1,6 @@
 //! The preferred Open In target (`lib/open-in-pref.ts`), kept in the app's local storage.
 
-use recur_view_core::LocalStorage;
+use crate::LocalStorage;
 
 const KEY: &str = "recur.openInDefault";
 

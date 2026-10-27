@@ -1,7 +1,7 @@
 //! `editor-syntax.spec.ts`: the status bar's language button opens the language picker, and
 //! the per-file pick it applies relabels the file and survives a restart through the editor
 //! session. The picker's own list is `SyntaxPalette` (the palettes' port); its pick goes
-//! through [`crate::textmate::EditorEnv::apply_language_mode`] as here.
+//! through [`recur_view_core::editor_env::EditorEnv::apply_language_mode`] as here.
 
 use gpui::TestAppContext;
 use recur_services::mock::MockOptions;
@@ -14,7 +14,7 @@ fn label(h: &mut H) -> String {
 
 fn pick(h: &mut H, scope: Option<&'static str>) {
     h.update(move |_, _, cx| {
-        if let Some(env) = crate::textmate::editor_env_peek(cx) {
+        if let Some(env) = recur_view_core::editor_env::editor_env_peek(cx) {
             env.update(cx, |e, cx| e.apply_language_mode("src/main.go", scope, cx));
         }
     });

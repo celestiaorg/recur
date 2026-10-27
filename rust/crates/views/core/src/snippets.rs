@@ -7,11 +7,11 @@ use std::collections::{BTreeSet, VecDeque};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+use crate::commands::command_matches;
 use futures::future::LocalBoxFuture;
 use gpui_kit::{App, Global, Window};
 use recur_editor::snippet::{RegisteredSnippet, SnippetInfo, SnippetProvider, sort_snippets};
 use recur_services::Services;
-use recur_view_core::commands::command_matches;
 
 const CACHE_MS: u64 = 2000;
 const CACHE_MAX: usize = 16;

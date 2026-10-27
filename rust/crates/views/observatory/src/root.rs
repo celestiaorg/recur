@@ -126,12 +126,12 @@ impl Observatory {
                 _ => {}
             },
         ));
-        let env = crate::textmate::editor_env(&state, cx);
+        let env = recur_view_core::editor_env::editor_env(&state, cx);
         self._subscriptions
             .push(cx.guarded_observe_in(&env, window, |o, env, window, cx| {
                 o.sync_editors(window, cx);
                 // The session remembers language picks (`syntaxByPath` / `syntaxByFileType`).
-                let syntax = env.read(cx).seen_syntax_epoch;
+                let syntax = env.read(cx).syntax_epoch();
                 if o.seen_syntax_epoch != Some(syntax) {
                     let first = o.seen_syntax_epoch.is_none();
                     o.seen_syntax_epoch = Some(syntax);
@@ -518,7 +518,7 @@ impl Observatory {
         merge_live: bool,
         cx: &mut Context<Self>,
     ) {
-        let Some(env) = crate::textmate::editor_env_peek(cx) else {
+        let Some(env) = recur_view_core::editor_env::editor_env_peek(cx) else {
             return;
         };
         let changed = {
@@ -539,7 +539,7 @@ impl Observatory {
         &self,
         cx: &gpui_kit::App,
     ) -> (BTreeMap<String, String>, BTreeMap<String, String>, bool) {
-        match crate::textmate::editor_env_peek(cx) {
+        match recur_view_core::editor_env::editor_env_peek(cx) {
             Some(env) => {
                 let env = env.read(cx);
                 let tm = env.tm.borrow();
@@ -1600,7 +1600,7 @@ impl Observatory {
             )));
         });
         let weak = self.weak.clone();
-        crate::snippets::set_editor_snippet_handler(
+        recur_view_core::snippets::set_editor_snippet_handler(
             Some(std::rc::Rc::new(move |sn, window, cx| {
                 if let Some(o) = weak.upgrade() {
                     o.update(cx, |o, cx| o.insert_bundle_snippet(&sn, window, cx));
@@ -1619,7 +1619,7 @@ impl Observatory {
             s.set_editor_command_handler(None);
             s.set_editor_focus_provider(None);
         });
-        crate::snippets::set_editor_snippet_handler(None, cx);
+        recur_view_core::snippets::set_editor_snippet_handler(None, cx);
     }
 
     // ---- activation (hot shells) ----
@@ -1713,7 +1713,7 @@ impl Observatory {
                 s.set_editor_command_handler(None);
                 s.set_editor_focus_provider(None);
             });
-            crate::snippets::set_editor_snippet_handler(None, cx);
+            recur_view_core::snippets::set_editor_snippet_handler(None, cx);
         }
         if cx.default_global::<crate::Owners>().occluder == id {
             cx.default_global::<crate::Owners>().occluder.clear();

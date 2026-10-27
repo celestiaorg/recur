@@ -15,6 +15,7 @@ gallery = ["recur-services/mock", "recur-ui/gallery"]
 gpui-kit.workspace = true
 recur-ui.workspace = true
 recur-editor.workspace = true
+recur-textmate.workspace = true
 recur-services.workspace = true
 recur-domain.workspace = true
 recur-engine.workspace = true

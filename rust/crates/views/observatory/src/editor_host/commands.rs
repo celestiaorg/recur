@@ -276,7 +276,7 @@ impl Observatory {
                     clipboard,
                     timeout_ms: 0,
                 };
-                let tab = crate::textmate::editor_prefs(cx).tab_size as i64;
+                let tab = recur_view_core::editor_env::editor_prefs(cx).tab_size as i64;
                 let run = o
                     .state
                     .update(cx, |s, cx| s.run_command(&id, ctx.clone(), inputs, tab, cx));
@@ -434,7 +434,7 @@ impl Observatory {
     ) {
         match hit {
             ChordHit::Command(c) => {
-                crate::command_usage::record_command_usage(&self.state, &c.id, cx);
+                recur_view_core::command_usage::record_command_usage(&self.state, &c.id, cx);
                 self.run_editor_command(&c.id, window, cx).detach();
             }
             ChordHit::Snippet(s) => self.insert_bundle_snippet(&s, window, cx),
@@ -465,8 +465,8 @@ impl Observatory {
         let cmds = self
             .state
             .update(cx, |s, cx| s.list_commands(&scope, &path, cx));
-        let snips =
-            crate::textmate::editor_env_peek(cx).map(|e| e.read(cx).snippets.list(&scope, &path));
+        let snips = recur_view_core::editor_env::editor_env_peek(cx)
+            .map(|e| e.read(cx).snippets.list(&scope, &path));
         self.chord_task = Some(cx.spawn(async move |this, cx| {
             let cmds = cmds.await;
             let snips = match snips {
@@ -536,7 +536,7 @@ impl Observatory {
         let hub = LspHub::global(cx);
         hub.wire(&self.services, cx);
         let language = {
-            let env = crate::textmate::editor_env_peek(cx);
+            let env = recur_view_core::editor_env::editor_env_peek(cx);
             match env {
                 Some(env) => {
                     let env = env.read(cx);

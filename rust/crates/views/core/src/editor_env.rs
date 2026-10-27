@@ -5,21 +5,21 @@
 //! prefs (`recur.editorPrefs`), and the bundle snippet catalog. Editors observe the entity and
 //! re-apply on [`EditorEnv::epoch`] changes.
 
-use recur_view_core::{ObserveState as _, Topics};
+use crate::{ObserveState as _, Topics};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::AppState;
 use gpui_kit::{App, AppContext as _, Context, Entity, Global, Subscription, Task};
 use recur_editor::highlight::{SharedTextMate, TextMate};
 use recur_editor::prefs::EditorPrefs;
 use recur_services::Services;
 use recur_textmate::{GrammarInfo, ParsedTmTheme, parse_theme_json};
-use recur_view_core::AppState;
 
 use crate::snippets::BundleSnippets;
 
-pub use recur_view_core::prefs::EDITOR_PREFS_KEY;
+pub use crate::prefs::EDITOR_PREFS_KEY;
 
 pub struct EditorEnv {
     services: Services,
@@ -38,16 +38,23 @@ pub struct EditorEnv {
     /// Bundle `[[symbol]]` rules for the TextMate outline (`loadRules`).
     pub symbol_rules: Rc<Vec<recur_textmate::SymbolRule>>,
     seen_bundles_epoch: u64,
-    pub(crate) seen_syntax_epoch: u64,
+    seen_syntax_epoch: u64,
     disabled_snippets: Vec<String>,
     boot: Option<Task<()>>,
     theme_task: Option<Task<()>>,
     _subs: Vec<Subscription>,
 }
 
-pub(crate) struct EnvHandle(Entity<EditorEnv>);
+struct EnvHandle(Entity<EditorEnv>);
 
 impl Global for EnvHandle {}
+
+/// Drops the app's editor environment (parity scenes and spec remounts share one app).
+pub fn reset(cx: &mut App) {
+    if cx.has_global::<EnvHandle>() {
+        cx.remove_global::<EnvHandle>();
+    }
+}
 
 /// The app's editor environment, created (and bootstrapped) on first use.
 pub fn editor_env(state: &Entity<AppState>, cx: &mut App) -> Entity<EditorEnv> {
@@ -79,6 +86,11 @@ fn grammar_info(g: &recur_services::api::GrammarInfo) -> Option<GrammarInfo> {
 }
 
 impl EditorEnv {
+    /// The syntax-mode overrides' epoch the environment last applied.
+    pub fn syntax_epoch(&self) -> u64 {
+        self.seen_syntax_epoch
+    }
+
     fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
         let s = state.read(cx);
         let services = s.services().clone();

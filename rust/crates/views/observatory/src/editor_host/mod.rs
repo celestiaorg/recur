@@ -29,7 +29,7 @@ use crate::model::{MAX_EDIT_BYTES, Pane, is_scratch_path};
 use crate::obs::Observatory;
 use crate::workspace_file::is_binary_preview_mime;
 
-pub(crate) use crate::textmate::editor_prefs;
+pub(crate) use recur_view_core::editor_env::editor_prefs;
 
 /// What a code pane last applied (`CodeEditor`'s `mounted*` state and parked session).
 #[derive(Clone, Debug, Default)]
@@ -451,7 +451,7 @@ impl Observatory {
     }
 
     fn build_editor_options(&self, pane: &str, path: &str, doc: &str, cx: &App) -> EditorOptions {
-        let env = crate::textmate::editor_env_peek(cx);
+        let env = recur_view_core::editor_env::editor_env_peek(cx);
         let mut o = EditorOptions::new(path, doc);
         o.pane = pane.to_string();
         o.history_scope = self.editor_session_key.clone();
@@ -493,7 +493,8 @@ impl Observatory {
     /// Mirror the editor props onto every editor and preview (`CodeEditor` / `MergeEditor` /
     /// `FilePreview` `$effect`s). Runs before each paint and after state changes.
     pub(crate) fn sync_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let epoch = crate::textmate::editor_env_peek(cx).map_or(0, |e| e.read(cx).epoch);
+        let epoch =
+            recur_view_core::editor_env::editor_env_peek(cx).map_or(0, |e| e.read(cx).epoch);
         for pane in [Pane::Main, Pane::Split] {
             self.sync_code_pane(pane, epoch, window, cx);
         }
@@ -709,7 +710,7 @@ impl Observatory {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(env) = crate::textmate::editor_env_peek(cx) else {
+        let Some(env) = recur_view_core::editor_env::editor_env_peek(cx) else {
             return;
         };
         let (theme, dark, prefs) = {
@@ -821,7 +822,7 @@ impl Observatory {
         self.merge_sync.doc = doc;
         if self.merge_sync.env_epoch != epoch {
             self.merge_sync.env_epoch = epoch;
-            if let Some(env) = crate::textmate::editor_env_peek(cx) {
+            if let Some(env) = recur_view_core::editor_env::editor_env_peek(cx) {
                 let (theme, dark, prefs) = {
                     let env = env.read(cx);
                     (env.theme.clone(), env.dark_fallback, env.prefs.clone())

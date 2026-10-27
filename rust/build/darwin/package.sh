@@ -15,6 +15,8 @@ RUST="$ROOT/rust"
 OUT="$RUST/target/package"
 NAME="Recur Next"
 APP="$OUT/$NAME.app"
+# rustup reads rust/rust-toolchain.toml (the pinned toolchain with llvm-tools) from the cwd.
+cd "$RUST"
 
 export MACOSX_DEPLOYMENT_TARGET=12.0
 export CARGO_PROFILE_RELEASE_STRIP=symbols
@@ -22,7 +24,7 @@ export RECUR_VERSION="${VERSION:?VERSION is required}"
 export RECUR_UPDATE_MANIFEST_URL="${RECUR_NEXT_UPDATE_URL:-}"
 
 build() {
-  cargo build --manifest-path "$RUST/Cargo.toml" --release --locked -p recur-desktop -p recur-cli "$@"
+  cargo build --release --locked -p recur-desktop -p recur-cli "$@"
 }
 
 rm -rf "$APP"

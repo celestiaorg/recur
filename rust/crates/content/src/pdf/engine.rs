@@ -1,6 +1,6 @@
 //! The pdf.js host: pdf.js 6.3.289 (the build the web UI ships, vendored under
 //! `assets/pdfjs` with the `cmaps`, `standard_fonts` and `wasm` dirs `pdfjsAssetDirs` points
-//! it at) in a hidden WKWebView. Pages render to a canvas exactly as `PdfPreview.svelte`
+//! it at) in a hidden WKWebView (WebKitGTK on Linux). Pages render to a canvas exactly as `PdfPreview.svelte`
 //! renders them; their pixels are drawn natively.
 //!
 //! The page is served from the `recur-pdf:` scheme: the library, its assets and the open
@@ -8,7 +8,9 @@
 //! (pdf.js runs with eval off and no scripting), the store is non-persistent and the view is
 //! never on screen.
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use base64::Engine as _;
 use gpui_kit::RenderImage;
@@ -22,6 +24,8 @@ pub static HOST: Host = Host {
     name: "PDF",
     #[cfg(target_os = "macos")]
     make: mac::make,
+    #[cfg(target_os = "linux")]
+    make: gtk::make,
 };
 
 const SCHEME: &str = "recur-pdf";
@@ -135,17 +139,22 @@ window.recur = async function (op) {
 }
 "#;
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 static ASSETS: include_dir::Dir<'static> =
     include_dir::include_dir!("$CARGO_MANIFEST_DIR/assets/pdfjs");
 
-thread_local! {
-    static DOCS: std::cell::RefCell<std::collections::HashMap<u64, Arc<[u8]>>> = Default::default();
-    static NEXT: std::cell::Cell<u64> = const { std::cell::Cell::new(1) };
+/// Open documents' bytes by id. The scheme reads them on the webview's thread (the main thread
+/// on macOS, the WebKitGTK thread on Linux).
+static DOCS: LazyLock<Mutex<HashMap<u64, Arc<[u8]>>>> = LazyLock::new(Default::default);
+static NEXT: AtomicU64 = AtomicU64::new(1);
+
+fn docs() -> std::sync::MutexGuard<'static, HashMap<u64, Arc<[u8]>>> {
+    DOCS.lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// What the scheme serves at `path`: bytes and content type.
-#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[cfg_attr(not(any(target_os = "macos", target_os = "linux")), allow(dead_code))]
 fn resource(path: &str) -> Option<(Arc<[u8]>, &'static str)> {
     let mime = |p: &str| match p.rsplit('.').next() {
         Some("mjs" | "js") => "text/javascript",
@@ -158,11 +167,9 @@ fn resource(path: &str) -> Option<(Arc<[u8]>, &'static str)> {
         _ => {
             if let Some(id) = path.strip_prefix("/doc/") {
                 let id = id.parse::<u64>().ok()?;
-                return DOCS
-                    .with(|d| d.borrow().get(&id).cloned())
-                    .map(|b| (b, "application/pdf"));
+                return docs().get(&id).cloned().map(|b| (b, "application/pdf"));
             }
-            #[cfg(target_os = "macos")]
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
             if let Some(rest) = path.strip_prefix("/pdfjs/") {
                 return ASSETS
                     .get_file(rest)
@@ -181,7 +188,7 @@ pub struct Document {
 
 impl Drop for Document {
     fn drop(&mut self) {
-        DOCS.with(|d| d.borrow_mut().remove(&self.id));
+        docs().remove(&self.id);
         drop(webhost::call(
             &HOST,
             json!({ "op": "close", "doc": self.id }),
@@ -211,12 +218,8 @@ fn error(v: &Value) -> Option<String> {
 }
 
 fn open_op(bytes: Arc<[u8]>) -> (Document, Value) {
-    let id = NEXT.with(|n| {
-        let id = n.get();
-        n.set(id + 1);
-        id
-    });
-    DOCS.with(|d| d.borrow_mut().insert(id, bytes));
+    let id = NEXT.fetch_add(1, Ordering::Relaxed);
+    docs().insert(id, bytes);
     (Document { id }, json!({ "op": "open", "doc": id }))
 }
 
@@ -418,6 +421,46 @@ mod mac {
     }
 }
 
+#[cfg(target_os = "linux")]
+mod gtk {
+    use webkit6::prelude::*;
+    use webkit6::{
+        NetworkSession, URISchemeRequest, URISchemeResponse, WebContext, WebView, gio, glib, soup,
+    };
+
+    fn serve(request: &URISchemeRequest) {
+        let path = request.path().unwrap_or_default();
+        let Some((bytes, mime)) = super::resource(&path) else {
+            request.finish_error(&mut glib::Error::new(gio::IOErrorEnum::NotFound, &path));
+            return;
+        };
+        let len = bytes.len() as i64;
+        let stream = gio::MemoryInputStream::from_bytes(&glib::Bytes::from_owned(bytes));
+        let response = URISchemeResponse::new(&stream, len);
+        response.set_status(200, None);
+        response.set_content_type(mime);
+        let headers = soup::MessageHeaders::new(soup::MessageHeadersType::Response);
+        headers.append("Content-Security-Policy", super::CSP);
+        response.set_http_headers(headers);
+        request.finish_with_response(&response);
+    }
+
+    pub fn make() -> WebView {
+        let context = WebContext::new();
+        context.register_uri_scheme(super::SCHEME, serve);
+        if let Some(security) = context.security_manager() {
+            security.register_uri_scheme_as_secure(super::SCHEME);
+            security.register_uri_scheme_as_cors_enabled(super::SCHEME);
+        }
+        let web = WebView::builder()
+            .web_context(&context)
+            .network_session(&NetworkSession::new_ephemeral())
+            .build();
+        web.load_uri(&format!("{}://app/index.html", super::SCHEME));
+        web
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -428,7 +471,7 @@ mod tests {
         assert!(std::str::from_utf8(&bytes).unwrap().contains("/host.mjs"));
         assert_eq!(mime, "text/html");
         assert_eq!(resource("/host.mjs").unwrap().1, "text/javascript");
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
         {
             assert_eq!(
                 resource("/pdfjs/pdf.worker.min.mjs").unwrap().1,
@@ -448,7 +491,7 @@ mod tests {
             b"%PDF-1.7"
         );
         let id = doc.id;
-        DOCS.with(|d| d.borrow_mut().remove(&id));
+        docs().remove(&id);
         std::mem::forget(doc);
         assert!(resource(&format!("/doc/{id}")).is_none());
     }

@@ -1,9 +1,10 @@
-//! Hidden WKWebViews that run the web UI's own libraries (mermaid.js, pdf.js), so their
-//! output is WebKit's. Each [`Host`] is one never-shown page per main thread; `call` runs
-//! `window.recur(op)` in it and returns the JSON it resolves to. An op's `deviceScale` makes
-//! the page render at that device scale.
+//! Hidden WebKit pages that run the web UI's own libraries (mermaid.js, pdf.js), so their
+//! output is WebKit's: WKWebView on macOS, WebKitGTK 6.0 on Linux. Each [`Host`] is one
+//! never-shown page; `call` runs `window.recur(op)` in it and returns the JSON it resolves to.
+//! An op's `deviceScale` makes the page render at that device scale (macOS; WebKitGTK uses the
+//! first monitor's integer scale).
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 use serde_json::Value;
 
 /// Whether webview calls should run synchronously (no application run loop to answer the
@@ -32,12 +33,22 @@ pub struct Host {
     pub name: &'static str,
     #[cfg(target_os = "macos")]
     pub make: fn(objc2::MainThreadMarker) -> objc2::rc::Retained<objc2_web_kit::WKWebView>,
+    /// Runs on the WebKitGTK thread.
+    #[cfg(target_os = "linux")]
+    pub make: fn() -> webkit6::WebView,
 }
+
+/// The body `call` runs: waits for the page's `recur`, then returns its answer as JSON.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+const CALL_JS: &str = "for (let i = 0; i < 400 && typeof window.recur !== 'function'; i++) await new Promise(r => setTimeout(r, 5));\nreturn JSON.stringify(await window.recur(JSON.parse(payload)));";
 
 #[cfg(target_os = "macos")]
 pub use mac::{call, call_blocking};
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
+pub use gtk::{call, call_blocking};
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 fn unsupported(host: &Host) -> EngineError {
     EngineError(format!(
         "{} needs the system WebKit, which this platform build does not link",
@@ -45,7 +56,7 @@ fn unsupported(host: &Host) -> EngineError {
     ))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 pub fn call(
     host: &'static Host,
     op: Value,
@@ -56,7 +67,7 @@ pub fn call(
     rx
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 pub fn call_blocking(host: &'static Host, op: Value) -> Result<Value, EngineError> {
     let _ = op;
     Err(unsupported(host))
@@ -133,9 +144,7 @@ mod mac {
             &[&*key],
             &[Retained::into_super(Retained::into_super(payload))],
         );
-        let body = NSString::from_str(
-            "for (let i = 0; i < 400 && typeof window.recur !== 'function'; i++) await new Promise(r => setTimeout(r, 5));\nreturn JSON.stringify(await window.recur(JSON.parse(payload)));",
-        );
+        let body = NSString::from_str(super::CALL_JS);
         let block = RcBlock::new(move |result: *mut AnyObject, error: *mut NSError| {
             if !error.is_null() {
                 // SAFETY: WebKit passes a valid NSError when it reports one.
@@ -201,5 +210,141 @@ mod mac {
         out.borrow_mut()
             .take()
             .unwrap_or_else(|| Err(EngineError(format!("{} returned nothing", host.name))))
+    }
+}
+
+/// GPUI's Linux event loop is not GLib's, so WebKitGTK runs on a thread of its own that
+/// initializes GTK and owns the default main context. Calls are queued to it; a page takes
+/// calls once its document has loaded.
+#[cfg(target_os = "linux")]
+mod gtk {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::rc::Rc;
+    use std::sync::OnceLock;
+    use std::time::Duration;
+
+    use futures::channel::oneshot;
+    use serde_json::Value;
+    use webkit6::prelude::*;
+    use webkit6::{LoadEvent, WebView, gio, glib};
+
+    use super::{EngineError, Host};
+
+    type Done = Box<dyn FnOnce(Result<Value, EngineError>) + Send>;
+
+    struct Page {
+        web: WebView,
+        /// Calls made before the first load finished; `None` once it has.
+        waiting: RefCell<Option<Vec<(Value, Done)>>>,
+    }
+
+    thread_local! {
+        static PAGES: RefCell<HashMap<&'static str, Rc<Page>>> = RefCell::default();
+    }
+
+    /// The WebKitGTK thread's main context, started on first use. GTK needs a display
+    /// (`DISPLAY` or `WAYLAND_DISPLAY`); without one every call fails with GTK's reason.
+    fn context() -> Result<&'static glib::MainContext, &'static str> {
+        static CONTEXT: OnceLock<Result<glib::MainContext, String>> = OnceLock::new();
+        CONTEXT
+            .get_or_init(|| {
+                let (tx, rx) = std::sync::mpsc::channel();
+                std::thread::Builder::new()
+                    .name("recur-webkit".into())
+                    .spawn(move || match webkit6::gtk::init() {
+                        Ok(()) => {
+                            let _ = tx.send(Ok(glib::MainContext::default()));
+                            glib::MainLoop::new(None, false).run();
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Err(e.to_string()));
+                        }
+                    })
+                    .map_err(|e| e.to_string())?;
+                rx.recv().map_err(|e| e.to_string())?
+            })
+            .as_ref()
+            .map_err(String::as_str)
+    }
+
+    fn page(host: &'static Host) -> Rc<Page> {
+        PAGES.with(|pages| {
+            pages
+                .borrow_mut()
+                .entry(host.name)
+                .or_insert_with(|| {
+                    let page = Rc::new(Page {
+                        web: (host.make)(),
+                        waiting: RefCell::new(Some(Vec::new())),
+                    });
+                    let weak = Rc::downgrade(&page);
+                    page.web.connect_load_changed(move |_, event| {
+                        if event != LoadEvent::Finished {
+                            return;
+                        }
+                        let Some(page) = weak.upgrade() else { return };
+                        let queued = page.waiting.borrow_mut().take().unwrap_or_default();
+                        for (op, done) in queued {
+                            invoke(host, &page.web, &op, done);
+                        }
+                    });
+                    page
+                })
+                .clone()
+        })
+    }
+
+    fn run(host: &'static Host, op: Value, done: Done) {
+        let page = page(host);
+        if let Some(queue) = page.waiting.borrow_mut().as_mut() {
+            queue.push((op, done));
+            return;
+        }
+        invoke(host, &page.web, &op, done);
+    }
+
+    fn invoke(host: &'static Host, web: &WebView, op: &Value, done: Done) {
+        let args = glib::VariantDict::new(None);
+        args.insert("payload", op.to_string());
+        web.call_async_javascript_function(
+            super::CALL_JS,
+            Some(&args.end()),
+            None,
+            None,
+            None::<&gio::Cancellable>,
+            move |result| {
+                done(match result {
+                    Err(e) => Err(EngineError(e.message().to_string())),
+                    Ok(v) => serde_json::from_str::<Value>(&v.to_str())
+                        .map_err(|_| EngineError(format!("{} returned nothing", host.name))),
+                })
+            },
+        );
+    }
+
+    fn dispatch(host: &'static Host, op: Value, done: Done) {
+        match context() {
+            Ok(ctx) => ctx.invoke(move || run(host, op, done)),
+            Err(e) => done(Err(EngineError(format!(
+                "{} needs WebKitGTK: {e}",
+                host.name
+            )))),
+        }
+    }
+
+    /// Run `op` in the page; resolves from the WebKitGTK thread.
+    pub fn call(host: &'static Host, op: Value) -> oneshot::Receiver<Result<Value, EngineError>> {
+        let (tx, rx) = oneshot::channel();
+        dispatch(host, op, Box::new(move |r| drop(tx.send(r))));
+        rx
+    }
+
+    /// Run `op` and wait for its answer (headless renders and tests).
+    pub fn call_blocking(host: &'static Host, op: Value) -> Result<Value, EngineError> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        dispatch(host, op, Box::new(move |r| drop(tx.send(r))));
+        rx.recv_timeout(Duration::from_secs(30))
+            .unwrap_or_else(|_| Err(EngineError(format!("{} timed out", host.name))))
     }
 }

@@ -272,12 +272,7 @@ mod tests {
 
     fn write_gh(dir: &Path, body: &str) -> Gh {
         let path = dir.join("gh");
-        std::fs::write(&path, body).unwrap();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
-        }
+        recur_exec::write_executable(&path, body, 0o755).unwrap();
         Gh::new(path)
     }
 

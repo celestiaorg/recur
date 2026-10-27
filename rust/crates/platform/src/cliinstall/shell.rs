@@ -175,7 +175,6 @@ fn parse_path_marks(out: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::unix::fs::PermissionsExt;
 
     #[test]
     fn parses_marks() {
@@ -237,8 +236,7 @@ mod tests {
 
     fn fake_shell(dir: &Path, body: &str) -> String {
         let p = dir.join("shell");
-        std::fs::write(&p, body).expect("write");
-        std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+        recur_exec::write_executable(&p, body, 0o755).expect("write");
         p.to_string_lossy().into_owned()
     }
 

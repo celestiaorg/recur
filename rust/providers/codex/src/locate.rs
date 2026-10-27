@@ -140,13 +140,11 @@ fn common_bin_candidates() -> Vec<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use std::os::unix::fs::PermissionsExt;
 
     use super::*;
 
     fn write_exec(path: &Path, body: &[u8]) {
-        std::fs::write(path, body).unwrap();
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        recur_exec::write_executable(path, body, 0o755).unwrap();
     }
 
     #[test]

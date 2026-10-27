@@ -25,6 +25,7 @@ url.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+recur-exec.workspace = true
 pretty_assertions.workspace = true
 
 [lints]

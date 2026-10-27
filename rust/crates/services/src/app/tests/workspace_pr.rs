@@ -1085,9 +1085,7 @@ async fn workspace_push_cross_repo_pr_pushes_to_fork() {
     let gh_dir = tempfile::tempdir().unwrap();
     let gh = gh_dir.path().join("gh");
     let set_gh = |body: &str| {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::write(&gh, body).unwrap();
-        std::fs::set_permissions(&gh, std::fs::Permissions::from_mode(0o755)).unwrap();
+        recur_exec::write_executable(&gh, body, 0o755).unwrap();
     };
     set_gh("#!/bin/sh\nexit 1\n");
     let forge = recur_forge::github::GitHub::with_gh(recur_forge::Gh::new(&gh));

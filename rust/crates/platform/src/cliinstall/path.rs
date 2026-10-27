@@ -149,7 +149,6 @@ fn merge_path(path: &str, extra: &[PathBuf]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::unix::fs::PermissionsExt;
 
     fn s(p: &Path) -> String {
         p.to_string_lossy().into_owned()
@@ -269,8 +268,7 @@ mod tests {
         let (home, local) = fake_home();
         std::fs::create_dir_all(&local).expect("mkdir");
         let bin = local.join("claude");
-        std::fs::write(&bin, "#!/bin/sh\nexit 0\n").expect("write");
-        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+        recur_exec::write_executable(&bin, "#!/bin/sh\nexit 0\n", 0o755).expect("write");
         let before = std::process::Command::new("claude")
             .env("PATH", "/usr/bin:/bin")
             .env("HOME", home.path())

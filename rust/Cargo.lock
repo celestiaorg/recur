@@ -7028,6 +7028,7 @@ dependencies = [
  "nix 0.31.3",
  "pretty_assertions",
  "recur-domain",
+ "recur-exec",
  "regex",
  "serde",
  "serde_json",
@@ -7055,6 +7056,7 @@ version = "0.0.0"
 dependencies = [
  "include_dir",
  "recur-bundles",
+ "recur-exec",
  "recur-platform",
  "regex",
  "tempfile",
@@ -7078,6 +7080,7 @@ dependencies = [
  "pretty_assertions",
  "recur-chroma",
  "recur-domain",
+ "recur-exec",
  "recur-git",
  "regex",
  "regress",
@@ -7222,6 +7225,7 @@ dependencies = [
  "recur-bundles",
  "recur-code",
  "recur-domain",
+ "recur-exec",
  "recur-forge",
  "recur-git",
  "recur-issues",
@@ -7248,6 +7252,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-exec"
+version = "0.0.0"
+dependencies = [
+ "tempfile",
+]
+
+[[package]]
 name = "recur-forge"
 version = "0.0.0"
 dependencies = [
@@ -7258,6 +7269,7 @@ dependencies = [
  "parking_lot",
  "pretty_assertions",
  "recur-domain",
+ "recur-exec",
  "regex",
  "reqwest",
  "serde",
@@ -7293,6 +7305,7 @@ dependencies = [
  "parking_lot",
  "pretty_assertions",
  "recur-domain",
+ "recur-exec",
  "recur-forge",
  "regex",
  "reqwest",
@@ -7313,6 +7326,7 @@ dependencies = [
  "parking_lot",
  "pretty_assertions",
  "recur-bundles",
+ "recur-exec",
  "reqwest",
  "serde",
  "serde_json",
@@ -7363,6 +7377,7 @@ dependencies = [
  "objc2-user-notifications",
  "p256",
  "parking_lot",
+ "recur-exec",
  "regex",
  "reqwest",
  "rustix",
@@ -7409,6 +7424,7 @@ dependencies = [
  "pretty_assertions",
  "recur-agent",
  "recur-domain",
+ "recur-exec",
  "rustix",
  "serde",
  "serde_json",
@@ -7427,6 +7443,7 @@ dependencies = [
  "pretty_assertions",
  "recur-agent",
  "recur-domain",
+ "recur-exec",
  "rustix",
  "serde",
  "serde_json",
@@ -7470,6 +7487,7 @@ dependencies = [
  "pretty_assertions",
  "recur-agent",
  "recur-domain",
+ "recur-exec",
  "reqwest",
  "rustix",
  "serde",
@@ -7501,6 +7519,7 @@ dependencies = [
  "recur-code",
  "recur-domain",
  "recur-engine",
+ "recur-exec",
  "recur-forge",
  "recur-git",
  "recur-issues",

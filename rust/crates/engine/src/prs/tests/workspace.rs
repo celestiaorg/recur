@@ -317,12 +317,7 @@ fn push_from_other(
 fn real_pushes(px: &Px, script: &str) -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     let gh_path = dir.path().join("gh");
-    std::fs::write(&gh_path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&gh_path, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    recur_exec::write_executable(&gh_path, script, 0o755).unwrap();
     let gh = std::sync::Arc::new(recur_forge::github::GitHub::with_gh(recur_forge::Gh::new(
         gh_path,
     )));

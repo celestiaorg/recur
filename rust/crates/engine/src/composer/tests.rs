@@ -83,16 +83,8 @@ fn unclosed_raw_makes_the_rest_raw() {
 /// A shebang `[[prompt]]` pack under the engine's default bundles root.
 fn write_prompt_bundle(te: &TestEngine, slash: &str, body: &str, id: &str) {
     let dir = Path::new(&te.engine.bundle_roots().default_dir).join("ChatTest");
-    write(&dir.join("src").join("act.sh"), body);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(
-            dir.join("src").join("act.sh"),
-            std::fs::Permissions::from_mode(0o755),
-        )
-        .unwrap();
-    }
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    recur_exec::write_executable(dir.join("src").join("act.sh"), body, 0o755).unwrap();
     write(
         &dir.join("bundle.toml"),
         &format!(

@@ -2,7 +2,6 @@
 //! palette search and New Task expanders.
 
 use std::io;
-use std::os::unix::fs::PermissionsExt;
 use std::process::{ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -227,24 +226,21 @@ struct TempScript {
 }
 
 impl TempScript {
+    /// The script is executed right after, so it is written by `recur_exec` (never open for
+    /// writing in this process, where a concurrent spawn would inherit the descriptor and make
+    /// the exec fail with "text file busy").
     fn write(prefix: &str, body: &str) -> Result<Self, Error> {
         let file = tempfile::Builder::new()
             .prefix(prefix)
-            .tempfile()
+            .make(|p| recur_exec::create_executable(p, body, 0o700))
             .map_err(|e| err!("temp script: {}", go::errno_text(&e)))?;
-        let (mut f, path) = file
+        let path = file
+            .into_temp_path()
             .keep()
             .map_err(|e| err!("temp script: {}", go::errno_text(&e.error)))?;
-        let path = go::path_str(&path);
-        let written = io::Write::write_all(&mut f, body.as_bytes())
-            .and_then(|_| f.sync_all())
-            .and_then(|_| std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)));
-        drop(f);
-        if let Err(e) = written {
-            let _ = std::fs::remove_file(&path);
-            return Err(err!("{}", go::path_err("write", &path, &e)));
-        }
-        Ok(TempScript { path })
+        Ok(TempScript {
+            path: go::path_str(&path),
+        })
     }
 }
 

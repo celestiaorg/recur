@@ -27,6 +27,7 @@ tracing.workspace = true
 url.workspace = true
 
 [dev-dependencies]
+recur-exec.workspace = true
 pretty_assertions.workspace = true
 tempfile.workspace = true
 

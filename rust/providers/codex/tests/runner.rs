@@ -30,14 +30,12 @@ next
 "#;
 
 fn fake(dir: &Path, body: &str) -> PathBuf {
-    use std::os::unix::fs::PermissionsExt;
     let bin = dir.join("codex");
     let script = format!(
         "#!/bin/sh\nLOG='{}'\n{PRELUDE}{body}",
         dir.join("log").display()
     );
-    std::fs::write(&bin, script).unwrap();
-    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+    recur_exec::write_executable(&bin, script, 0o755).unwrap();
     bin
 }
 

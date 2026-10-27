@@ -20,10 +20,8 @@ use tokio_util::sync::CancellationToken;
 const RESULT_DONE: &str = r#"echo '{"type":"result","subtype":"success","session_id":"s1","is_error":false,"num_turns":1,"duration_ms":1,"result":"done","total_cost_usd":0.01}'"#;
 
 fn fake(dir: &Path, body: &str) -> PathBuf {
-    use std::os::unix::fs::PermissionsExt;
     let bin = dir.join("fake-claude");
-    std::fs::write(&bin, format!("#!/bin/sh\n{body}")).unwrap();
-    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+    recur_exec::write_executable(&bin, format!("#!/bin/sh\n{body}"), 0o755).unwrap();
     bin
 }
 

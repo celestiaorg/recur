@@ -8,7 +8,7 @@ use recur_domain::{
     Settings, compatible_flag_preset,
 };
 
-use super::{Fx, write};
+use super::Fx;
 use crate::app::model_catalog::{
     apply_catalog_fallbacks, build_model_catalog, first_catalog_choice, provider_enablement_changed,
 };
@@ -204,9 +204,9 @@ async fn set_settings_uses_cached_catalog() {
         .cursor
         .remember_models(cursor_models(&[("composer-2.5", "Composer 2.5")]));
     let bridge = fx.root.join("cursor-bridge/bin/cursor-sdk-bridge");
-    write(&bridge, "#!/bin/sh\n");
+    std::fs::create_dir_all(bridge.parent().unwrap()).unwrap();
     // Executable, so Cursor is runnable here without a host Codex.
-    std::fs::set_permissions(&bridge, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    recur_exec::write_executable(&bridge, "#!/bin/sh\n", 0o755).unwrap();
     let mut set = fx.s.settings.get_settings().await.unwrap();
     set.cursor_api_key = "sk-x".into();
     set.disabled_providers = vec![PROVIDER_CLAUDE_CODE.into()];

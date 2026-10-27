@@ -85,11 +85,9 @@ async fn start_rejects_bad_inputs() {
 
 #[tokio::test]
 async fn exits_before_ready() {
-    use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
     let bin = dir.path().join("cursor-sdk-bridge");
-    std::fs::write(&bin, "#!/bin/sh\necho nope >&2\n").unwrap();
-    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+    recur_exec::write_executable(&bin, "#!/bin/sh\necho nope >&2\n", 0o755).unwrap();
     let err = Bridge::start(cfg(&bin, Path::new("")), &CancellationToken::new())
         .await
         .err()
@@ -102,15 +100,14 @@ async fn exits_before_ready() {
 
 #[tokio::test]
 async fn bad_discovery_fails_closed() {
-    use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
     let bin = dir.path().join("cursor-sdk-bridge");
-    std::fs::write(
+    recur_exec::write_executable(
         &bin,
         "#!/bin/sh\necho 'cursor-sdk-bridge ready {\"schemaVersion\":2,\"transport\":\"tcp\",\"protocol\":\"connect\",\"url\":\"x\"}' >&2\nsleep 5\n",
+        0o755,
     )
     .unwrap();
-    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
     let err = Bridge::start(cfg(&bin, Path::new("")), &CancellationToken::new())
         .await
         .err()

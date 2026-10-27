@@ -204,11 +204,7 @@ fn look_desktop_binary_rejects_bundled_cli() {
     let dir = tempfile::tempdir().unwrap();
     let bundled = dir.path().join("Recur.app/Contents/MacOS/recur-cli");
     std::fs::create_dir_all(bundled.parent().unwrap()).unwrap();
-    std::fs::write(&bundled, "cli").unwrap();
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&bundled, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    recur_exec::write_executable(&bundled, "cli", 0o755).unwrap();
     let bin = dir.path().join("bin");
     std::fs::create_dir_all(&bin).unwrap();
     std::os::unix::fs::symlink(&bundled, bin.join("recur")).unwrap();

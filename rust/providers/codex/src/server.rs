@@ -475,7 +475,6 @@ mod tests {
     /// handshake, auto-approved server requests, stderr tail, group kill.
     #[tokio::test]
     async fn start_handshake_and_close() {
-        use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
         let log = dir.path().join("log");
         let bin = dir.path().join("codex");
@@ -495,8 +494,7 @@ sleep 30
 "#,
             log = log.display()
         );
-        std::fs::write(&bin, script).unwrap();
-        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        recur_exec::write_executable(&bin, script, 0o755).unwrap();
         let cfg = ServerConfig {
             bin: bin.to_string_lossy().into_owned(),
             home: dir.path().join("home"),
@@ -546,11 +544,9 @@ sleep 30
 
     #[tokio::test]
     async fn handshake_failure_reports_and_kills() {
-        use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
         let bin = dir.path().join("codex");
-        std::fs::write(&bin, "#!/bin/sh\nexit 1\n").unwrap();
-        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        recur_exec::write_executable(&bin, "#!/bin/sh\nexit 1\n", 0o755).unwrap();
         let cfg = ServerConfig {
             bin: bin.to_string_lossy().into_owned(),
             home: dir.path().join("home"),

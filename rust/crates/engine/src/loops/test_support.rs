@@ -718,11 +718,7 @@ pub fn write_prompt_bundle(t: &crate::testing::TestEngine, slash: &str, body: &s
     let dir = Path::new(&t.engine.bundle_roots().default_dir).join("ChatTest");
     std::fs::create_dir_all(dir.join("src")).unwrap();
     let script = dir.join("src").join("act.sh");
-    std::fs::write(&script, body).unwrap();
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    recur_exec::write_executable(&script, body, 0o755).unwrap();
     std::fs::write(
         dir.join("bundle.toml"),
         format!(

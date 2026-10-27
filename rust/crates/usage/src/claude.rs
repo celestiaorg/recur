@@ -520,22 +520,28 @@ async fn default_claude_creds(ctx: &Ctx) -> ClaudeOAuth {
 /// searched first so a leftover `$HOME/.claude` blob cannot shadow the live
 /// login.
 pub(crate) fn claude_credential_paths() -> Vec<String> {
+    claude_credential_paths_in(
+        &std::env::var("CLAUDE_CONFIG_DIR").unwrap_or_default(),
+        recur_project::home::user_home_dir().ok().as_deref(),
+    )
+}
+
+pub(crate) fn claude_credential_paths_in(config_dir: &str, home: Option<&str>) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let mut add = |p: String| {
         if !p.is_empty() && !out.contains(&p) {
             out.push(p);
         }
     };
-    let dir = std::env::var("CLAUDE_CONFIG_DIR").unwrap_or_default();
-    let dir = dir.trim();
+    let dir = config_dir.trim();
     if !dir.is_empty() {
         add(join(dir, ".credentials.json"));
         add(join(dir, "credentials.json"));
     }
-    if let Ok(home) = recur_project::home::user_home_dir() {
-        add(join(&home, ".claude/.credentials.json"));
-        add(join(&home, ".claude/credentials.json"));
-        add(join(&home, ".claude.json"));
+    if let Some(home) = home {
+        add(join(home, ".claude/.credentials.json"));
+        add(join(home, ".claude/credentials.json"));
+        add(join(home, ".claude.json"));
     }
     out
 }

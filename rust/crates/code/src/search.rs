@@ -69,7 +69,7 @@ pub fn search_opts(
             return Err(Error::Canceled);
         }
         if d.is_dir() {
-            return Ok(if skip_dir(&d.name) {
+            return Ok(if full != root && skip_dir(&d.name) {
                 Flow::SkipDir
             } else {
                 Flow::Continue
@@ -213,7 +213,7 @@ pub fn replace_in_files(
             return Err(Error::Canceled);
         }
         if d.is_dir() {
-            return Ok(if skip_dir(&d.name) {
+            return Ok(if full != root && skip_dir(&d.name) {
                 Flow::SkipDir
             } else {
                 Flow::Continue

@@ -733,6 +733,28 @@ fn write_file_is_atomic_and_preserves_mode() {
     }
 }
 
+/// The walk root is never skipped, even when its name starts with a dot (a temp dir such as
+/// `/tmp/.tmpXXXX`), as `files.rs` already did. Go's `search.go` and `symbols.go` skip it.
+#[test]
+fn search_replace_and_symbols_walk_a_dot_named_root() {
+    let tmp = tmp();
+    let root = tmp.path().join(".dotroot");
+    write(&root, "a.go", "package a\n\nfunc Hello() {}\n");
+    write(&root, ".hidden/b.go", "func Hello() {}\n");
+    let hits = search(&never(), &root, "hello")
+        .unwrap()
+        .unwrap_or_default();
+    assert_eq!(hits.len(), 1, "{hits:?}");
+    assert_eq!(find_defs(&never(), &root, "Hello").unwrap().len(), 1);
+    let replaced = replace_in_files(&never(), &root, "Hello", "Bye", &SearchOpts::default());
+    assert_eq!(replaced.unwrap().files_changed, 1);
+    assert!(
+        fs::read_to_string(root.join(".hidden/b.go"))
+            .unwrap()
+            .contains("Hello")
+    );
+}
+
 #[test]
 fn search_opts_pages_and_matches_case() {
     let root = tmp();

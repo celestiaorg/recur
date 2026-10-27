@@ -201,7 +201,7 @@ fn walk_source(
             return Err(Error::Canceled);
         }
         if d.is_dir() {
-            return Ok(if skip_dir(&d.name) {
+            return Ok(if path != root && skip_dir(&d.name) {
                 Flow::SkipDir
             } else {
                 Flow::Continue

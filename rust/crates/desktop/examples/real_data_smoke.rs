@@ -998,7 +998,25 @@ fn registry() -> ViewRegistry {
     r
 }
 
+/// The smoke stands in for a user typing into the app, but its window is never the active
+/// app: about 30s in, App Nap moves the process to the background band (priority 4), where any
+/// normal-priority process (rust-analyzer's `cargo check` of a sandbox's cold target) takes the
+/// cores from its frames for seconds. A user-initiated, latency-critical activity keeps it at
+/// the priority a frontmost app has.
+#[cfg(target_os = "macos")]
+fn hold_foreground_priority() -> impl Sized {
+    use objc2_foundation::{NSActivityOptions, NSProcessInfo, ns_string};
+    NSProcessInfo::processInfo().beginActivityWithOptions_reason(
+        NSActivityOptions::UserInitiated | NSActivityOptions::LatencyCritical,
+        ns_string!("real-data smoke drives the app as a user"),
+    )
+}
+
+#[cfg(not(target_os = "macos"))]
+fn hold_foreground_priority() -> impl Sized {}
+
 fn drive(root: PathBuf) -> i32 {
+    let _foreground = hold_foreground_priority();
     let start = Instant::now();
     let data = root.join("data");
     let (writer, _log) = recur_store::applog::tee_app_log(&data);

@@ -68,10 +68,7 @@ export function overlayScrollbar() {
       if (grabbing || hover) return
       hideTimer = window.setTimeout(() => paint(false), HIDE_MS)
     }
-    const onScroll = () => {
-      paint(true)
-      hideSoon()
-    }
+    const onScroll = () => paint()
     const yOnTrack = (clientY: number) => clientY - sb.getBoundingClientRect().top
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0) return

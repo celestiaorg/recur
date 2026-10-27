@@ -854,6 +854,7 @@ impl ScheduleEditor {
         ]
         .iter()
         .any(|s| s.read(cx).is_open())
+            || self.date.read(cx).picker_open()
             || self.loop_pickers.read(cx).is_open(cx)
             || self.model_pickers.read(cx).is_open(cx)
     }

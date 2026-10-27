@@ -7,7 +7,7 @@
 //! inputs have no picker.
 
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
@@ -273,7 +273,8 @@ impl DateTimeField {
         }
     }
 
-    fn picker_open(&self) -> bool {
+    /// The calendar picker is open (it takes Escape before the page does).
+    pub fn picker_open(&self) -> bool {
         #[cfg(target_os = "macos")]
         if self.picker.is_some() {
             return true;
@@ -337,7 +338,7 @@ impl DateTimeField {
         self._poll = Some(cx.spawn(async move |this, cx| {
             loop {
                 cx.background_executor()
-                    .timer(Duration::from_millis(60))
+                    .timer(std::time::Duration::from_millis(60))
                     .await;
                 let live = this.update(cx, |this, cx| {
                     let Some(p) = &this.picker else {

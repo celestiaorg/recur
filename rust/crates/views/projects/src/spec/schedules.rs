@@ -579,6 +579,12 @@ fn once_takes_its_date_and_time_from_segmented_fields(cx: &mut TestAppContext) {
     assert_eq!(draft(&mut s), (String::new(), "09:00".into()));
 
     s.click("sc-date:field0");
+    if cfg!(not(target_os = "macos")) {
+        // The click opened WebKitGTK's calendar popover, which takes the keys until Escape.
+        assert!(s.has("sc-date-calendar"));
+        s.keys("escape");
+        assert!(s.has("sc-modal:New schedule"));
+    }
     s.type_text("12");
     s.keys("right");
     s.type_text("31");

@@ -1129,7 +1129,7 @@ impl Observatory {
         let root = self.root_token;
         self.focus_terminal_panel(root, window, cx);
         let to = self.full_rect();
-        self.term_max_anim = Some((from, to, std::time::Instant::now()));
+        self.term_max_anim = Some((from, to, recur_ui::motion::now(cx)));
         self.run_term_anim(token, TermMaxPhase::Max, window, cx);
     }
 
@@ -1146,7 +1146,7 @@ impl Observatory {
         let from = self.overlay_rect;
         self.term_max_phase = TermMaxPhase::Exit;
         let to = self.restore_target_rect();
-        self.term_max_anim = Some((from, to, std::time::Instant::now()));
+        self.term_max_anim = Some((from, to, recur_ui::motion::now(cx)));
         self.run_term_anim(token, TermMaxPhase::Idle, window, cx);
     }
 

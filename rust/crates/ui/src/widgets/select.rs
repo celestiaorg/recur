@@ -535,7 +535,7 @@ impl Select {
 
     fn open_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.open = true;
-        self.opened_at = Some(Instant::now());
+        self.opened_at = Some(crate::motion::now(cx));
         self.query = SharedString::default();
         self.search.update(cx, |s, cx| s.set_value("", window, cx));
         let first = self.options.iter().position(|o| self.selected(&o.value));
@@ -555,7 +555,7 @@ impl Select {
             return;
         }
         self.open = false;
-        self.closed_at = Some(Instant::now());
+        self.closed_at = Some(crate::motion::now(cx));
         self.active = None;
         self.query = SharedString::default();
         if restore_focus {

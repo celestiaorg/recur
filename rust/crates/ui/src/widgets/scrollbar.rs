@@ -122,8 +122,8 @@ impl State {
     }
 
     /// `hideSoon`: no timer while the pointer holds or hovers the bar.
-    fn hide_soon(&mut self) {
-        self.hide_at = (self.grab.is_none() && !self.hover_track).then(|| Instant::now() + HIDE);
+    fn hide_soon(&mut self, now: Instant) {
+        self.hide_at = (self.grab.is_none() && !self.hover_track).then(|| now + HIDE);
     }
 }
 
@@ -247,10 +247,10 @@ impl ScrollArea {
             (len, at + edge.round() - edge)
         };
 
-        let now = Instant::now();
+        let now = crate::motion::now(cx);
         let opacity = state.update(cx, |s, cx| {
             if s.last_pos.is_some_and(|l| (l - pos).abs() > 0.01) {
-                s.hide_soon();
+                s.hide_soon(now);
             }
             s.last_pos = Some(pos);
             if let Some((at, next)) = s.paging
@@ -346,10 +346,11 @@ impl ScrollArea {
             let h = handle.clone();
             track
                 .on_hover(move |on, window, cx| {
+                    let now = crate::motion::now(cx);
                     enter.update(cx, |s, _| {
                         s.hover_track = *on;
                         if !*on {
-                            s.hide_soon();
+                            s.hide_soon(now);
                         }
                     });
                     window.refresh();
@@ -366,6 +367,7 @@ impl ScrollArea {
                         classic_thumb(pos, total, client, client)
                     };
                     let on_thumb = at >= thumb_at && at <= thumb_at + len;
+                    let now = crate::motion::now(cx);
                     press.update(cx, |s, _| {
                         if overlay {
                             // The overlay jumps so the pointer holds the thumb where it grabbed.
@@ -376,7 +378,7 @@ impl ScrollArea {
                             s.grab = Some(at - thumb_at);
                         } else {
                             page(&h, axis, at);
-                            s.paging = Some((at, Instant::now() + PAGE_FIRST));
+                            s.paging = Some((at, now + PAGE_FIRST));
                         }
                     });
                     window.refresh();
@@ -421,10 +423,11 @@ impl ScrollArea {
                         if phase != DispatchPhase::Capture {
                             return;
                         }
+                        let now = crate::motion::now(cx);
                         up.update(cx, |s, _| {
                             s.grab = None;
                             s.paging = None;
-                            s.hide_soon();
+                            s.hide_soon(now);
                         });
                         window.refresh();
                     });

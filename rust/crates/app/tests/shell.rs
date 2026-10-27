@@ -431,6 +431,8 @@ fn collapsed_sidebar_flies_out_from_the_left_edge(cx: &mut TestAppContext) {
     h.wait(120);
     assert!(h.read(|s| s.rail_peek));
     assert!(h.has("nav-inbox"));
+    // The flyout slides in over 160ms; Playwright clicks a row once it has stopped moving.
+    h.wait(160);
 
     h.click(&format!("hit:{ACTIVE}"));
     assert_eq!(h.view(), ViewName::Detail);

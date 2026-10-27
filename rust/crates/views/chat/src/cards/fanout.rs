@@ -267,7 +267,7 @@ impl FanOutCard {
         self.vcx
             .state
             .update(cx, |s, _| s.clear_child_transcript_request());
-        self.flash = Some((id.clone(), Instant::now()));
+        self.flash = Some((id.clone(), recur_ui::motion::now(cx)));
         self.open_ids.insert(id, true);
         self.load_transcript(&child, cx);
         cx.notify();

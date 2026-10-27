@@ -71,7 +71,12 @@ pub fn args_json(input: &str) -> String {
 }
 
 impl PermissionCard {
-    pub fn new(request: PermissionRequest, compact: bool, state: Entity<AppState>) -> Self {
+    pub fn new(
+        request: PermissionRequest,
+        compact: bool,
+        state: Entity<AppState>,
+        cx: &gpui_kit::App,
+    ) -> Self {
         PermissionCard {
             request,
             compact,
@@ -79,14 +84,14 @@ impl PermissionCard {
             queued: 0,
             show_detail: false,
             state,
-            mounted: Instant::now(),
+            mounted: recur_ui::motion::now(cx),
         }
     }
 
     pub fn set_request(&mut self, request: PermissionRequest, cx: &mut Context<Self>) {
         if request.id != self.request.id {
             self.show_detail = false;
-            self.mounted = Instant::now();
+            self.mounted = recur_ui::motion::now(cx);
         }
         self.request = request;
         cx.notify();

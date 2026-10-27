@@ -192,7 +192,7 @@ impl QuestionCard {
             question_md,
             context_md,
             option_md,
-            mounted: Instant::now(),
+            mounted: recur_ui::motion::now(cx),
             _subs: subs,
         }
     }

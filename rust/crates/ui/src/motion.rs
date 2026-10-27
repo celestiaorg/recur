@@ -2,7 +2,9 @@
 //!
 //! Widgets read elapsed time through [`elapsed`] instead of `Instant::now()` directly, so the
 //! parity renderer can freeze every animation at a chosen time, the way the reference capture
-//! pauses `document.getAnimations()`.
+//! pauses `document.getAnimations()`. Starts and elapsed time come from the executor's clock
+//! ([`now`]): `Instant::now()` in the app, and in tests the clock specs advance with their
+//! timers, so an animation is where the spec's time says it is however loaded the machine.
 
 use gpui_kit::{App, ElementId, Entity, Global, Window};
 use std::time::{Duration, Instant};
@@ -30,11 +32,20 @@ pub fn is_frozen(cx: &App) -> bool {
         .is_some_and(|m| m.frozen.is_some())
 }
 
+/// The animation clock: start animations at this instant.
+pub fn now(cx: &App) -> Instant {
+    cx.background_executor().now()
+}
+
+fn since(start: Instant, cx: &App) -> Duration {
+    now(cx).saturating_duration_since(start)
+}
+
 /// Time since `start` for an infinite animation, or the frozen time.
 pub fn elapsed(start: Instant, cx: &App) -> Duration {
     match cx.try_global::<Motion>().and_then(|m| m.frozen) {
         Some(at) => at.unwrap_or_default(),
-        None => start.elapsed(),
+        None => since(start, cx),
     }
 }
 
@@ -48,7 +59,7 @@ pub fn progress(start: Instant, duration: Duration, cx: &App) -> f32 {
     let elapsed = match cx.try_global::<Motion>().and_then(|m| m.frozen) {
         Some(Some(at)) => at,
         Some(None) => return 1.,
-        None => start.elapsed(),
+        None => since(start, cx),
     };
     (elapsed.as_secs_f32() / duration.as_secs_f32()).min(1.)
 }
@@ -182,7 +193,7 @@ impl Hover {
                     *s = HoverState {
                         on: *on,
                         from: k,
-                        at: Some(Instant::now()),
+                        at: Some(now(cx)),
                     };
                     cx.notify();
                 }
@@ -218,20 +229,20 @@ mod tests {
             let entering = HoverState {
                 on: true,
                 from: 0.,
-                at: Some(Instant::now() - ms(60)),
+                at: Some(now(cx) - ms(60)),
             };
             assert!((k(&entering) - 0.5).abs() < 0.2);
             // Leaving halfway in: back down from 0.5, done in 120ms.
             let leaving = HoverState {
                 on: false,
                 from: 0.5,
-                at: Some(Instant::now() - ms(60)),
+                at: Some(now(cx) - ms(60)),
             };
             assert!((k(&leaving) - 0.25).abs() < 0.2);
             let settled = HoverState {
                 on: true,
                 from: 0.,
-                at: Some(Instant::now() - ms(500)),
+                at: Some(now(cx) - ms(500)),
             };
             assert_eq!(k(&settled), 1.);
         });

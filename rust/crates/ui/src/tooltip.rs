@@ -417,11 +417,11 @@ impl TitleTooltip {
         self.shown_at = None;
     }
 
-    fn reveal(&mut self, c: Candidate) {
+    fn reveal(&mut self, c: Candidate, now: Instant) {
         self.core.target = Some(c.key);
         self.core.visible = true;
         self.shown = Some(c);
-        self.shown_at = Some(Instant::now());
+        self.shown_at = Some(now);
     }
 
     /// Feed this frame's candidates into the machine.
@@ -445,7 +445,7 @@ impl TitleTooltip {
             && frame.hovered.last().is_some_and(|h| h.key == key)
         {
             self.core.dismissed = None;
-            self.reveal(c.clone());
+            self.reveal(c.clone(), crate::motion::now(cx));
             return;
         }
         let candidate = frame.hovered.last().cloned().or(frame.focused);
@@ -457,7 +457,7 @@ impl TitleTooltip {
             TipAction::Hide(reason) => self.hide(reason),
             TipAction::Reveal(_) => {
                 if let Some(c) = candidate {
-                    self.reveal(c);
+                    self.reveal(c, crate::motion::now(cx));
                 }
             }
             TipAction::Schedule(_, delay) => {
@@ -472,7 +472,7 @@ impl TitleTooltip {
                         if let TipAction::Reveal(key) = action
                             && key == c.key
                         {
-                            this.reveal(c.clone());
+                            this.reveal(c.clone(), crate::motion::now(cx));
                         }
                         cx.notify();
                         window.refresh();

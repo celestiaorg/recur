@@ -495,7 +495,8 @@ impl TabStrip {
         {
             let state = state.clone();
             strip = strip.on_scroll_wheel(move |_, window, cx| {
-                state.update(cx, |s, _| s.wheeled = Some(Instant::now()));
+                let now = crate::motion::now(cx);
+                state.update(cx, |s, _| s.wheeled = Some(now));
                 window.refresh();
             });
         }
@@ -622,6 +623,7 @@ fn scrollbar(scroll: &ScrollHandle, color: crate::color::Color) -> AnyElement {
 fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window, cx: &mut App) {
     let reduced = motion::reduced(cx);
     let order: Vec<SharedString> = state.read(cx).drag.order.clone();
+    let now = crate::motion::now(cx);
     state.update(cx, |s, _| {
         let scroll_left = -f32::from(s.scroll.offset().x);
         let max = f32::from(s.scroll.max_offset().x);
@@ -705,7 +707,7 @@ fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window
             s.scroll.set_offset(point(px(-next), px(0.)));
             s.last_write = Some(next);
         } else if s.anim.is_none_or(|(_, to, _)| (to - next).abs() >= 1.) {
-            s.anim = Some((scroll_left, next, Instant::now()));
+            s.anim = Some((scroll_left, next, now));
         }
     });
     let anim = state.read(cx).anim;
@@ -781,7 +783,7 @@ fn chip_lefts(s: &State) -> HashMap<SharedString, f32> {
     out
 }
 
-fn reorder_by_pointer_x(s: &mut State, x: f32) {
+fn reorder_by_pointer_x(s: &mut State, x: f32, now: Instant) {
     let Some(from) = s.drag.from.clone() else {
         return;
     };
@@ -807,7 +809,6 @@ fn reorder_by_pointer_x(s: &mut State, x: f32) {
     // FLIP: slide every moved chip from where it was.
     let before = chip_lefts(s);
     let start_x = item_bounds(s, 0).map_or(0., |b| f32::from(b.left()));
-    let now = Instant::now();
     let mut x0 = start_x;
     for key in &next {
         let k = if *key == from {
@@ -918,19 +919,21 @@ fn track(
             0.
         };
         if step != 0. {
+            let now = crate::motion::now(cx);
             state.update(cx, |s, _| {
                 let cur = -f32::from(s.scroll.offset().x);
                 let max = f32::from(s.scroll.max_offset().x);
                 let next = (cur + step).clamp(0., max);
                 s.scroll.set_offset(point(px(-next), px(0.)));
                 s.last_write = Some(next);
-                reorder_by_pointer_x(s, pointer_x);
+                reorder_by_pointer_x(s, pointer_x, now);
             });
             window.request_animation_frame();
         }
     }
     let st = state.clone();
     window.on_mouse_event(move |e: &MouseMoveEvent, _, window, cx| {
+        let now = crate::motion::now(cx);
         let changed = st.update(cx, |s, _| {
             let Some(p) = &s.drag.press else { return false };
             if !s.drag.active {
@@ -945,7 +948,7 @@ fn track(
             }
             s.drag.pos = e.position - p.offset;
             s.drag.pointer_x = e.position.x.into();
-            reorder_by_pointer_x(s, e.position.x.into());
+            reorder_by_pointer_x(s, e.position.x.into(), now);
             true
         });
         if changed {
@@ -957,6 +960,7 @@ fn track(
         if e.button != MouseButton::Left {
             return;
         }
+        let now = crate::motion::now(cx);
         st.update(cx, |s, _| {
             if !s.drag.active {
                 s.drag.press = None;
@@ -971,7 +975,7 @@ fn track(
                 .and_then(|k| chip_index(&s.drag.order, k))
                 .and_then(|i| item_bounds(s, i))
                 .map_or(s.drag.pos, |b| b.origin);
-            s.drag.settle = Some((s.drag.pos, target, Instant::now()));
+            s.drag.settle = Some((s.drag.pos, target, now));
         });
         window.refresh();
     });

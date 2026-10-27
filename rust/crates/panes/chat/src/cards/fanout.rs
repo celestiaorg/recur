@@ -553,7 +553,11 @@ impl FanOutCard {
                 text(c.title.clone())
                     .color(t.text)
                     .line_height(LineHeight::Normal)
-                    .truncate(),
+                    .truncate()
+                    .selectable(
+                        crate::transcript::select_key(&format!("fanout:{}:title", c.id)),
+                        "\n",
+                    ),
             );
             if c.steps.is_empty() && !c.note.is_empty() {
                 name = name.child(

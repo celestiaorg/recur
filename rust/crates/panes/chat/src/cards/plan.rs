@@ -215,7 +215,11 @@ impl AgentChat {
             let title_text = {
                 let mut tx = text(s.title.clone())
                     .id(SharedString::from(format!("{id}-st-{}", s.id)))
-                    .break_anywhere();
+                    .break_anywhere()
+                    .selectable(
+                        crate::transcript::select_key(&format!("{id}-st-{}", s.id)),
+                        "\n",
+                    );
                 tx = if done_like {
                     tx.color(t.muted).line_through(true)
                 } else {

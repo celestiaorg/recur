@@ -44,6 +44,25 @@ pub const BRIDGE_JS: &str = r#"(function(){var post=function(d){try{window.webki
 #[cfg(target_os = "linux")]
 type Laid = Option<(Bounds<Pixels>, f32)>;
 
+/// A `<select>` the page asked to pop up: its box (CSS px in the page), options and choice.
+#[cfg(target_os = "linux")]
+#[derive(serde::Deserialize)]
+struct SelectMenu {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    index: i64,
+    options: Vec<SelectOption>,
+}
+
+#[cfg(target_os = "linux")]
+#[derive(serde::Deserialize)]
+struct SelectOption {
+    label: String,
+    disabled: bool,
+}
+
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub struct HtmlPreview {
     path: String,
@@ -66,6 +85,9 @@ pub struct HtmlPreview {
     cursor: gpui_kit::CursorStyle,
     #[cfg(target_os = "linux")]
     focus: gpui_kit::FocusHandle,
+    /// A `<select>`'s open menu: the page answered a press on it (`html_gtk::INPUT_JS`).
+    #[cfg(target_os = "linux")]
+    select: Option<SelectMenu>,
     srcdoc: String,
     _messages: Option<Task<()>>,
 }
@@ -100,6 +122,8 @@ impl HtmlPreview {
             cursor: gpui_kit::CursorStyle::Arrow,
             #[cfg(target_os = "linux")]
             focus: cx.focus_handle(),
+            #[cfg(target_os = "linux")]
+            select: None,
             srcdoc: String::new(),
             _messages: None,
         };
@@ -198,8 +222,92 @@ impl HtmlPreview {
                     cx.notify();
                 }
             }
-            PageEvent::Reply(_) => {}
+            PageEvent::Reply(v) => {
+                if let Some(menu) = v
+                    .get("select")
+                    .and_then(|m| serde_json::from_value::<SelectMenu>(m.clone()).ok())
+                {
+                    self.select = Some(menu);
+                    cx.notify();
+                }
+            }
         }
+    }
+
+    /// Closes the `<select>` menu, choosing `index` (`None` keeps the value).
+    #[cfg(target_os = "linux")]
+    fn pick(&mut self, index: Option<usize>, cx: &mut Context<Self>) {
+        if self.select.take().is_some() {
+            let index = index.map_or(-1, |i| i as i64);
+            self.send(
+                json!({"type": "pick", "index": index}),
+                None,
+                &Default::default(),
+            );
+            cx.notify();
+        }
+    }
+
+    /// The `<select>`'s options in a native menu under it, as WebKit pops one up.
+    #[cfg(target_os = "linux")]
+    fn select_menu(&self, cx: &mut Context<Self>) -> Option<gpui_kit::AnyElement> {
+        use gpui_kit::prelude::FluentBuilder as _;
+        use gpui_kit::{InteractiveElement as _, StatefulInteractiveElement as _, px};
+        use recur_ui::guard::Guarded as _;
+        use recur_ui::{TextStyled as _, Theme};
+        let (menu, (b, _)) = (self.select.as_ref()?, self.laid.get()?);
+        let t = Theme::of(cx).tokens;
+        let rows = menu.options.iter().enumerate().map(|(i, o)| {
+            let on = i as i64 == menu.index;
+            let row = div()
+                .id(("html-select-option", i))
+                .debug_selector(move || format!("html-select-option:{i}"))
+                .px(px(10.))
+                .py(px(5.))
+                .rounded(px(5.))
+                .when(on, |d| d.bg(t.pane))
+                .child(
+                    recur_ui::text(o.label.clone())
+                        .size(12.)
+                        .color(if o.disabled { t.faint } else { t.text })
+                        .nowrap(),
+                );
+            if o.disabled {
+                row
+            } else {
+                row.cursor_pointer()
+                    .hover(move |s| s.bg(t.pane))
+                    .on_click(cx.guarded_listener(move |p, _, _, cx| p.pick(Some(i), cx)))
+            }
+        });
+        let panel = recur_ui::style::menu_panel(cx)
+            .id("html-select-menu")
+            .debug_selector(|| "html-select-menu".into())
+            .min_w(px(menu.w.max(80.)))
+            .max_h(px(320.))
+            .overflow_y_scroll()
+            .occlude()
+            .children(rows);
+        let at = recur_ui::style::anchored_at(
+            f32::from(b.left()) + menu.x,
+            f32::from(b.top()) + menu.y + menu.h + 2.,
+            panel,
+        );
+        Some(
+            gpui_kit::deferred(
+                div()
+                    .id("html-select-scrim")
+                    .absolute()
+                    .inset_0()
+                    .on_mouse_down(
+                        gpui_kit::MouseButton::Left,
+                        cx.guarded_listener(|p, _, _, cx| p.pick(None, cx)),
+                    )
+                    .child(at),
+            )
+            .with_priority(1)
+            .into_any_element(),
+        )
     }
 
     fn post(&self, data: Value) {
@@ -294,7 +402,7 @@ impl HtmlPreview {
     fn render_page(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         use gpui_kit::{
             InteractiveElement as _, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent,
-            MouseUpEvent, ScrollWheelEvent,
+            MouseUpEvent, ScrollWheelEvent, StatefulInteractiveElement as _,
         };
         use recur_ui::guard::Guarded as _;
         for img in self.stale.drain(..) {
@@ -336,8 +444,10 @@ impl HtmlPreview {
             MouseButton::Middle => 1,
             _ => 0,
         };
+        let select = self.select_menu(cx);
         div()
             .id("html-preview")
+            .relative()
             .debug_selector(|| "html-preview".into())
             .track_focus(&self.focus)
             .key_context("TextEntry")
@@ -347,6 +457,12 @@ impl HtmlPreview {
             .bg(gpui_kit::white())
             .cursor(self.cursor)
             .child(place)
+            .children(select)
+            .on_hover(cx.guarded_listener(|p, hovered: &bool, _, _| {
+                if !*hovered {
+                    p.send(json!({"type": "leave"}), None, &Default::default());
+                }
+            }))
             .on_mouse_down(
                 MouseButton::Left,
                 cx.guarded_listener(move |p, e: &MouseDownEvent, window, cx| {
@@ -386,6 +502,13 @@ impl HtmlPreview {
             }))
             .on_key_down(cx.guarded_listener(|p, e: &KeyDownEvent, _, cx| {
                 let k = &e.keystroke;
+                if p.select.is_some() {
+                    if k.key == "escape" {
+                        p.pick(None, cx);
+                    }
+                    cx.stop_propagation();
+                    return;
+                }
                 let cmd = k.modifiers.secondary();
                 let key = match k.key.as_str() {
                     "space" => " ".to_string(),

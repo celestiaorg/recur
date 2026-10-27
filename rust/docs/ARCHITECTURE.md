@@ -291,7 +291,7 @@ Packaging files live in `rust/build/` (not `build/`), so they move with the port
 
 ### Linux differences
 
-- **HTML preview.** A WKWebView is laid over the macOS window; GTK 4 cannot embed a widget in a foreign (GPUI) window, so Linux runs an offscreen WebKitGTK page (`html_gtk.rs`), draws its snapshots and forwards input as DOM events. Those events are untrusted (no `:hover`, no native control popups), and subframes are refused because WebKitGTK does not say which frame a navigation targets.
+- **HTML preview.** A WKWebView is laid over the macOS window; GTK 4 cannot embed a widget in a foreign (GPUI) window, so Linux runs an offscreen WebKitGTK page (`html_gtk.rs`), draws its snapshots and forwards input as DOM events. Those events are untrusted, so the shim mirrors `:hover` / `:active` rules onto attributes it sets on the pointer's chain and answers a `<select>` press with its options for a native menu; subframes are refused because WebKitGTK does not say which frame a navigation targets.
 - **System UI font.** GPUI's Linux backend maps `.SystemUIFont` to IBM Plex Sans, so `recur_ui::fonts::system_family` asks fontconfig for `system-ui` instead, as WebKitGTK and the Go app do; `Family::System` text and Mermaid labels (measured by WebKitGTK, drawn by GPUI) use that face.
 - **Mermaid device scale** is WebKitGTK's (the first monitor's integer scale), not the window's, so measurements can differ on fractional or mixed-scale setups.
 - **Color panel** (project icon color): GTK's color chooser dialog, ported as `recur_ui::widgets::color_chooser` in its own window, where macOS opens `NSColorPanel` (`color_panel.rs`).

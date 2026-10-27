@@ -32,6 +32,7 @@ mod navigate;
 pub mod open_in_pref;
 pub mod pr;
 pub mod pr_commits;
+pub mod pr_dock;
 pub mod pr_list_filter;
 pub mod prefs;
 pub mod provider_usage;

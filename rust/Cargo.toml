@@ -1,7 +1,15 @@
 [workspace]
 resolver = "3"
-# `crates/views` holds view crates, not a manifest, so `crates/*` skips it.
-members = ["crates/[!v]*", "crates/views/*", "providers/*", "tools/*"]
+# `crates/views` and `crates/panes` hold crates, not a manifest, so `crates/*` skips them
+# (`p[!a]*` is `platform` and `project`).
+members = [
+    "crates/[!pv]*",
+    "crates/p[!a]*",
+    "crates/views/*",
+    "crates/panes/*",
+    "providers/*",
+    "tools/*",
+]
 default-members = ["crates/desktop", "crates/cli"]
 
 [workspace.package]
@@ -43,9 +51,9 @@ recur-app = { path = "crates/app" }
 recur-view-core = { path = "crates/views/core" }
 recur-view-widgets = { path = "crates/views/widgets" }
 recur-view-sidebar = { path = "crates/views/sidebar" }
-recur-view-chat = { path = "crates/views/chat" }
-recur-view-review = { path = "crates/views/review" }
-recur-view-observatory = { path = "crates/views/observatory" }
+recur-view-chat = { path = "crates/panes/chat" }
+recur-view-review = { path = "crates/panes/review" }
+recur-view-observatory = { path = "crates/panes/observatory" }
 recur-view-workspace = { path = "crates/views/workspace" }
 recur-view-prs = { path = "crates/views/prs" }
 recur-view-settings = { path = "crates/views/settings" }

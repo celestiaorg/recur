@@ -1151,6 +1151,12 @@ impl FrameIndex for PaintIndex {
     }
 }
 
+/// Whether every counter of `range` runs forward and ends by `end` (the frame's length).
+fn within_frame<I: FrameIndex>(range: &Range<I>, end: &I) -> bool {
+    let (a, b, e) = (range.start.parts(), range.end.parts(), end.parts());
+    (0..a.len()).all(|i| a[i] <= b[i] && b[i] <= e[i])
+}
+
 fn index_within<I: FrameIndex>(range: &Range<I>, inner: &Range<I>) -> bool {
     let (a, b, c, d) = (range.start.parts(), range.end.parts(), inner.start.parts(), inner.end.parts());
     (0..a.len()).all(|i| a[i] <= c[i] && d[i] <= b[i])
@@ -3702,10 +3708,12 @@ impl Window {
                 });
         }
 
+        // The frame's lengths, before finishing it resets the text system's layout index.
+        let ends = (self.prepaint_index(), self.paint_index());
         self.layout_engine.as_mut().unwrap().clear();
         self.text_system().finish_frame();
         self.next_frame.finish(&mut self.rendered_frame);
-        self.rebase_cached_view_states();
+        self.rebase_cached_view_states(ends);
 
         self.invalidator.set_phase(DrawPhase::Focus);
         let previous_focus_path = self.rendered_frame.focus_path();
@@ -3793,7 +3801,9 @@ impl Window {
 
     /// Points every cached view's state at where this frame put it, so a later frame that
     /// renders an ancestor again finds what it replays (a replayed root moves them all).
-    fn rebase_cached_view_states(&mut self) {
+    fn rebase_cached_view_states(&mut self, (prepaint_end, paint_end): (PrepaintStateIndex, PaintIndex)) {
+        // A record carried through replays is trusted only when every counter of its ranges
+        // is in order and inside the frame; otherwise its view renders again next frame.
         let frame = &mut self.next_frame;
         frame
             .cached_views
@@ -3802,12 +3812,15 @@ impl Window {
             if record.paint_pending {
                 continue;
             }
+            let valid = within_frame(&record.prepaint, &prepaint_end)
+                && within_frame(&record.paint, &paint_end);
             let key = (record.global_id.clone(), TypeId::of::<crate::view::ViewElementState>());
             if let Some(state) = frame.element_states.get_mut(&key) {
                 crate::view::rebase_view_state(
                     &mut *state.inner,
                     record.prepaint.clone(),
                     record.paint.clone(),
+                    valid,
                 );
             }
         }
@@ -3939,13 +3952,14 @@ impl Window {
             .rendered_frame
             .root
             .clone()
-            .filter(|(.., size)| {
+            .filter(|(prepaint, paint, size)| {
                 *size == root_size
                     && !self.refreshing
                     && !self.dirty_outside_islands
                     && !self.dirty_views.is_empty()
                     && !self.a11y.is_active()
                     && !self.is_inspector_picking(cx)
+                    && self.replayable(prepaint, paint)
             });
         let mut root_element = None;
         let root_prepaint_start = self.prepaint_index();
@@ -4255,6 +4269,99 @@ impl Window {
         let mut sorted_indices = (0..deferred_count).collect::<SmallVec<[_; 8]>>();
         sorted_indices.sort_by_key(|ix| self.next_frame.deferred_draws[*ix].priority);
         sorted_indices
+    }
+
+    /// Whether a cached view's recorded ranges fit the previous frame, so replaying them reads
+    /// what they recorded (each counter in order and within that frame's length). A range that
+    /// does not fit renders the view instead: a replay never reads past the frame it copies.
+    pub(crate) fn replayable(
+        &self,
+        prepaint: &Range<PrepaintStateIndex>,
+        paint: &Range<PaintIndex>,
+    ) -> bool {
+        let f = &self.rendered_frame;
+        let prepaint_end = PrepaintStateIndex {
+            hitboxes_index: f.hitboxes.len(),
+            tooltips_index: f.tooltip_requests.len(),
+            deferred_draws_index: f.deferred_draws.len(),
+            dispatch_tree_index: f.dispatch_tree.len(),
+            accessed_element_states_index: f.accessed_element_states.len(),
+            line_layout_index: prepaint.end.line_layout_index.clone(),
+        };
+        let paint_end = PaintIndex {
+            scene_index: f.scene.len(),
+            #[cfg(any(test, feature = "test-support"))]
+            debug_bounds_index: f.debug_bounds_records.len(),
+            mouse_listeners_index: f.mouse_listeners.len(),
+            input_handlers_index: f.input_handlers.len(),
+            cursor_styles_index: f.cursor_styles.len(),
+            accessed_element_states_index: f.accessed_element_states.len(),
+            tab_handle_index: f.tab_stops.paint_index(),
+            line_layout_index: paint.end.line_layout_index.clone(),
+        };
+        within_frame(prepaint, &prepaint_end)
+            && within_frame(paint, &paint_end)
+            && self.islands_in_order(prepaint, paint)
+    }
+
+    /// Whether the dirty isolated views a replay of these ranges draws again (those
+    /// [`Self::reuse_prepaint`] picks) sit in order inside them, in every counter of both
+    /// passes, so the runs copied between them never invert.
+    fn islands_in_order(
+        &self,
+        prepaint: &Range<PrepaintStateIndex>,
+        paint: &Range<PaintIndex>,
+    ) -> bool {
+        if self.dirty_views.is_empty() {
+            return true;
+        }
+        let records = &self.rendered_frame.cached_views;
+        let (a, b) = (prepaint.start.dispatch_tree_index, prepaint.end.dispatch_tree_index);
+        let mut holes: Vec<&CachedViewRecord> = records
+            .iter()
+            .filter(|r| {
+                r.island
+                    .as_ref()
+                    .is_some_and(|i| self.dirty_views.contains(&i.entity_id()))
+                    && a < r.prepaint.start.dispatch_tree_index
+                    && r.prepaint.end.dispatch_tree_index <= b
+            })
+            .collect();
+        if holes.is_empty() {
+            return true;
+        }
+        holes.sort_by_key(|r| r.prepaint.start.dispatch_tree_index);
+        let mut outer = 0;
+        holes.retain(|r| {
+            let keep = r.prepaint.start.dispatch_tree_index >= outer;
+            if keep {
+                outer = r.prepaint.end.dispatch_tree_index;
+            }
+            keep
+        });
+        let le = |x: &[usize], y: &[usize]| x.iter().zip(y).all(|(p, q)| p <= q);
+        let chain = |range: (&[usize], &[usize]), inner: Vec<(SmallVec<[usize; 12]>, SmallVec<[usize; 12]>)>| {
+            let mut at: SmallVec<[usize; 12]> = SmallVec::from_slice(range.0);
+            for (s, e) in &inner {
+                if !le(&at, s) || !le(s, e) {
+                    return false;
+                }
+                at = e.clone();
+            }
+            le(&at, range.1)
+        };
+        let pre = holes
+            .iter()
+            .map(|r| (r.prepaint.start.parts(), r.prepaint.end.parts()))
+            .collect();
+        let mut by_paint: Vec<&&CachedViewRecord> = holes.iter().collect();
+        by_paint.sort_by_key(|r| r.paint.start.scene_index);
+        let pnt = by_paint
+            .iter()
+            .map(|r| (r.paint.start.parts(), r.paint.end.parts()))
+            .collect();
+        chain((&prepaint.start.parts(), &prepaint.end.parts()), pre)
+            && chain((&paint.start.parts(), &paint.end.parts()), pnt)
     }
 
     pub(crate) fn prepaint_index(&self) -> PrepaintStateIndex {

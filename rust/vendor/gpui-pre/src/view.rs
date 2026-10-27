@@ -339,6 +339,9 @@ pub(crate) struct ViewElementState {
     accessed_entities: FxHashSet<EntityId>,
     /// This frame's record of the view in `Frame::cached_views`, when it rendered.
     record: Option<usize>,
+    /// The ranges a replay carried did not check out (`Window::rebase_cached_view_states`):
+    /// render the view again rather than replay them.
+    stale: bool,
 }
 
 struct ViewElementCacheKey {
@@ -558,6 +561,8 @@ fn prepaint_view(
                     && element_state.cache_key.text_style == text_style
                     && !window.dirty_views.contains(&entity_id)
                     && !window.refreshing
+                    && !element_state.stale
+                    && window.replayable(&element_state.prepaint_range, &element_state.paint_range)
                 {
                     let prepaint_start = window.prepaint_index();
                     window.next_frame.replayed_views.insert(entity_id);
@@ -610,6 +615,7 @@ fn prepaint_view(
                             text_style,
                         },
                         record,
+                        stale: false,
                     },
                 )
             },
@@ -841,10 +847,12 @@ pub(crate) fn rebase_view_state(
     state: &mut dyn std::any::Any,
     prepaint_range: Range<PrepaintStateIndex>,
     paint_range: Range<PaintIndex>,
+    valid: bool,
 ) {
     if let Some(Some(state)) = state.downcast_mut::<Option<ViewElementState>>() {
         state.prepaint_range = prepaint_range;
         state.paint_range = paint_range;
         state.record = None;
+        state.stale = !valid;
     }
 }

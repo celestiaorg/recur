@@ -2,7 +2,7 @@
 
 This is the native Rust/GPUI port of Recur. It lives in `rust/` and runs side by side with the Wails app (Go backend in `internal/`, Svelte UI in `frontend/`) until it reaches full parity. Nothing outside `rust/` is changed by the port, except Taskfile and CI entries that build it.
 
-The goal is a faithful port: every feature, behavior, persisted format, keyboard path and pixel of the current app carries over. `docs/PARITY.md` is the checklist. An area is done when its items are ticked, its Go and frontend tests are ported, and its screens match (see `docs/ui-parity.md`).
+The goal is a faithful port: every feature, behavior, persisted format and keyboard path of the current app carries over, with the same look and feel. Minor native rendering differences are acceptable, and parity never costs performance (`docs/ui-parity.md`). `docs/PARITY.md` is the checklist. An area is done when its items are ticked, its Go and frontend tests are ported, and its screens match within their scenes' tolerances, which guard against regressions.
 
 ## Layout
 

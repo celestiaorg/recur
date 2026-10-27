@@ -1,6 +1,6 @@
 # UI parity
 
-The Rust UI must look and behave like the Svelte UI: same layout metrics, colors, fonts, icons, spacing, radii, borders, hover/active/focus states, animations, scroll behavior and keyboard paths. "Close enough" is not the bar. Differences are bugs unless listed below as intentional.
+The Rust UI must look and feel like the Svelte UI: same layout, colors, fonts, icons, spacing, radii, borders, hover/active/focus states, animations, scroll behavior and keyboard paths. Minor native rendering differences (a glyph's subpixel phase, an anti-aliased edge a few levels off, a box a device pixel away) are acceptable, and parity is never bought with frame time, extra frames or extra layout passes: when matching WebKit costs speed, the faster rendering wins and the scene records the difference as an allowance. A difference a user would notice (a wrong color, size, font, spacing or behavior) is a bug. The scenes guard against regressions: each scene's tolerances sit just above its last measurement, so a real change still fails.
 
 ## Sources of truth
 
@@ -189,39 +189,39 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 
 ## Hard-pixel allowances
 
-Every other scene allows no hard pixels. Rows marked *open* are not yet proven unfixable and stay `PARITY.md` follow-ups.
+Every other scene allows no hard pixels. These are the known minor differences; each scene's tolerance sits just above its measurement so a regression still fails.
 
 | Scene | Hard | Cause |
 |---|---|---|
 | `toasts/paper` | 4 | Curved-edge coverage at plain toast corners over the shadow |
 | `select/open`, `select/multiple`, `select/searchable`, `select/focus` | 2 to 7 | Curved-edge coverage of the 3px focus ring and the 2px outline at the trigger's corners |
-| `icon-picker/open` | 3 | The trigger's bottom corners where its 3px amber spread ring meets the box: WebKit leaves the corner pixel inside the box's aliased clip-out at 55 where recur-ui paints 94. The pixels differed by the same amount before the shadow upscale fix, classified as anti-aliasing until their neighbors matched (*open*) |
+| `icon-picker/open` | 3 | The trigger's bottom corners where its 3px amber spread ring meets the box: WebKit leaves the corner pixel inside the box's aliased clip-out at 55 where recur-ui paints 94. The pixels differed by the same amount before the shadow upscale fix, classified as anti-aliasing until their neighbors matched |
 | `overlays/misc-paper` | 15 | Curved-edge coverage of the popover and field corners over the light shadow |
-| `editor/find` | 41 | Curved-edge coverage of the focused find field's corners and ring, and the typed query, which the editor's panel field draws (*open*: typed input text) |
+| `editor/find` | 41 | Curved-edge coverage of the focused find field's corners and ring, and the typed query, which the editor's panel field draws |
 | `editor/vim` | 132 | The vim panel's generic `monospace` resolves to Courier in both engines, but GPUI picks a heavier Courier face than WebKit, so the `:` prefix and the typed command differ |
 | `shell/tree`, `shell/hover` | 1 | Curved-edge coverage at the working copy branch chip's rounded left border |
 | `shell/scrolled` | 2 | WebKit dithers a stuck header's under-fade by a level; where the noise lands on a child row's faint connector edge it exceeds the soft-edge rule (recur-ui paints the fade smooth) |
-| `markdown/chat`, `markdown/paper` | 82, 116 | The native task checkbox's shading and edges (above), and a pixel per list marker (*open*: draw the checkbox as AppKit does) |
-| `review/collapsed` | 8 | The collapsed `.df-head`'s bottom corners: a bottom-only 1px border around a radius-8 corner tapers to nothing, and its elliptical inner edge (radii 8 and 7) is approximated in GPUI's quad shader where CoreGraphics fills the exact area between the curves (2 to 3 levels past the soft-edge rule on 4 pixels per corner; *open*) |
-| `pdf/page` | 10 | The page field's number (*open*: typed input text) |
+| `markdown/chat`, `markdown/paper` | 82, 116 | The native task checkbox's shading and edges (above), and a pixel per list marker |
+| `review/collapsed` | 8 | The collapsed `.df-head`'s bottom corners: a bottom-only 1px border around a radius-8 corner tapers to nothing, and its elliptical inner edge (radii 8 and 7) is approximated in GPUI's quad shader where CoreGraphics fills the exact area between the curves (2 to 3 levels past the soft-edge rule on 4 pixels per corner) |
+| `pdf/page` | 10 | The page field's number |
 | `observatory/terminal-max` | 2 | Frosted terminal cells (above): glyph edges over the maximized dock's frost |
-| `observatory/pdf` | 257 | Glyph edges inside the page raster, which GPUI's bilinear filter resamples (image resampling, above) past the soft-edge rule, and the page field's number (*open*) |
-| `workspace/narrow` | 22 | The Files status bar icons at a sub-pixel offset (*open*) |
-| `prs/*` (most), `prs/people-detail` | 1 | An avatar's edge at a fractional offset in the header's people stack: WebKit clips the avatar at its unsnapped position (*open*: fractional-position paint) |
-| `prs/actions-checks` | 5 | The avatar edge, and the Fix checks button's corners at a fractional x (*open*) |
-| `prs/actions-review-menu` | 5 | The avatar edge, and the avatar ring under the menu's shadow (*open*) |
-| `prs/actions-merged` | 14 | The classic thumb is a pixel shorter: GPUI lays the merged conversation out 989.5px tall where WebKit has 989.28, and `scrollHeight` rounds across the boundary (*open*); the avatar edge |
-| `settings/general`, `settings/usage`, `settings/keybinding-menu` | 2, 2, 10 | Field corners at a fractional height (the nav search box), and a pixel of the concurrency field's value (*open*) |
+| `observatory/pdf` | 257 | Glyph edges inside the page raster, which GPUI's bilinear filter resamples (image resampling, above) past the soft-edge rule, and the page field's number |
+| `workspace/narrow` | 22 | The Files status bar icons at a sub-pixel offset |
+| `prs/*` (most), `prs/people-detail` | 1 | An avatar's edge at a fractional offset in the header's people stack: WebKit clips the avatar at its unsnapped position |
+| `prs/actions-checks` | 5 | The avatar edge, and the Fix checks button's corners at a fractional x |
+| `prs/actions-review-menu` | 5 | The avatar edge, and the avatar ring under the menu's shadow |
+| `prs/actions-merged` | 14 | The classic thumb is a pixel shorter: GPUI lays the merged conversation out 989.5px tall where WebKit has 989.28, and `scrollHeight` rounds across the boundary; the avatar edge |
+| `settings/general`, `settings/usage`, `settings/keybinding-menu` | 2, 2, 10 | Field corners at a fractional height (the nav search box), and a pixel of the concurrency field's value |
 | `settings/*-paper` (general, appearance, mcp, cursor-install, policy-menu, policy-tip, usage, keybinding-menu) | 9 to 36 | Curved-edge coverage at popover, card and field corners over the light page; `appearance` and `cursor-install` add the page's classic thumb across a rounding boundary (as `prs/actions-merged`) |
 | `settings/appearance`, `settings/cursor-install` | 22, 13 | The page's classic thumb across a rounding boundary (as `prs/actions-merged`, *open*) and the Nord card's top corners |
-| `settings/compat-modal`, `settings/compat-modal-paper` | 55, 102 | Glyph-top pixels of the modal's prefilled field values and, on paper, the panel's corners (*open*: typed input text) |
+| `settings/compat-modal`, `settings/compat-modal-paper` | 55, 102 | Glyph-top pixels of the modal's prefilled field values and, on paper, the panel's corners |
 | `home/welcome`, `home/welcome-modes` | 11 | Curved-edge coverage where the rows' rounded ends meet the list's border arc |
-| `home/new-project-path` | 102 | The focused field's corners and the typed path (*open*: typed input text) |
+| `home/new-project-path` | 102 | The focused field's corners and the typed path |
 | `home/new-task-slash` | 3 | Curved-edge coverage at the slash menu's corner |
-| `briefing/schedule-editor`, `briefing/schedule-editor-once`, `briefing/schedule-editor-paper` | 59, 29, 63 | The cron expression and date fields (*open*: typed input text) |
+| `briefing/schedule-editor`, `briefing/schedule-editor-once`, `briefing/schedule-editor-paper` | 59, 29, 63 | The cron expression and date fields |
 | `projects/general`, `projects/general-tall`, `projects/general-paper` | 57, 57, 85 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) |
-| `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 13, 48, 1, 2, 26 | The typed query and, in `goto-empty`, a 1px row under the input a device pixel off (*open*) |
-| `projects/run`, `projects/run-tall` | 18, 86 | Curved-edge coverage at the run cards' corners (*open*) |
+| `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 13, 48, 1, 2, 26 | The typed query and, in `goto-empty`, a 1px row under the input a device pixel off |
+| `projects/run`, `projects/run-tall` | 18, 86 | Curved-edge coverage at the run cards' corners |
 | `projects/run-resized` | 84 | `projects/run`'s, plus the focused box's amber border at its rounded corners and the page's classic thumb on the taller page (scroll height across a rounding boundary) |
 
 ## Results

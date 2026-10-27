@@ -683,7 +683,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] Chrome strip, leading and trailing slots, `.tab-strip-act` actions, active reveal chase, keep-alive scroll restore, reveal nonce, user pinning
   - [x] `scrollbar-width: thin` as WebKit's macOS overlay scroller (no layout space, shown after wheel scrolling)
 - [x] `TerminalDock.svelte` (856 lines) → `recur_view_observatory::dock` (adopt / restore / spawn, tabs with drag reorder, find, the platform chord sets, maximize / beside / slot, resize, run controls, file drops; scenes `observatory/terminal*`, `TerminalDock.test.ts` cases in `dock::tests` and `spec::terminal_dock`)
-- [~] `TerminalPane.svelte` (581 lines): `recur_terminal_view::TerminalView` + `TerminalElement`
+- [x] `TerminalPane.svelte` (581 lines) → `recur_terminal_view::TerminalView` + `TerminalElement`
   - [x] Attach on mount, paint replay, queue live output until the replay lands, ack in 32KiB batches (`tests/view.rs`)
   - [x] Fit: `termFitSize` over the padded content box (6/0/6/8), grid pinned to the bottom, 100ms debounced `resize` (`font.rs`, `tests/view.rs`)
   - [x] xterm options: font stack with ligatures off, size, line height, cell metrics from WebGL `_updateDimensions`, 10000 scrollback, `macOptionIsMeta`, `macOptionClickForcesSelection`, `rightClickSelectsWord` on mac, bar cursor with blink, `minimumContrastRatio` 1 (`font.rs`, `screen/render.rs`)
@@ -708,7 +708,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] Replay lands on the fitted grid (TerminalPane refits before attaching) (`tests/view.rs`)
   - [x] SGR 5 / 6 text blink: xterm.js 6.1 blinks text only when `blinkIntervalDuration` is above 0, and Recur's pane leaves it at the default 0, so blinking text draws steady in both phases (`sgr_21_is_a_double_underline_and_sgr_5_draws_steady`, scene `terminal/sgr`)
   - [x] SGR 21: xterm.js reads it as a double underline, vte as "not bold"; the screen's handler maps vte's `CancelBold` (only SGR 21 produces it) to `DoubleUnderline` in stream order (`screen/overline.rs`, scene `terminal/sgr`)
-  - [ ] SGR 221 / 222 (kitty's not bold / not faint, on by default in xterm.js 6): vte drops them before the handler
+  - [x] SGR 221 / 222 (kitty's not bold / not faint, on by default in xterm.js 6, which Recur leaves on): vte drops them, so the screen walks each SGR as xterm.js's `charAttributes` does and, when a 221 / 222 is the last code to touch bold / faint, follows it with a carrier (`CSI 14 t` / `CSI 18 t`, which the scanner never passes from the PTY) that the wrapped handler applies to the cursor template in stream order (`screen/overline.rs`; `sgr_cancels_follow_the_last_code`, `sgr_221_and_222_clear_bold_and_faint_alone`)
 - [x] `TitleTooltip.svelte` (309 lines) → `recur_ui::tooltip` (`titled`, `TitleTooltip`; scenes `tooltip/below`, `tooltip/above`, `tooltip/paper`)
   - [x] Hover and keyboard-focus candidates, show delay and re-show window, cursor anchoring on wide targets, below/above placement with viewport clamping, dismissal on press, scroll, Escape, window exit and blur, dismissed-text memory
   - [x] `.ui-tip` card with themed shadow and ring, 90ms entrance, wrapping body, placed at its exact fractional position
@@ -960,7 +960,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `styles/_prs.scss`: the review rules (`.fl-*`, `.diffscroll`, `.cfile`, `.df-head`, `.hline`, `.addc`, `.icmt*`, `.cmt*`, `.react*`, `.finding-note-*`, commits) in `recur-view-review` (scenes `review/*`); the PR list, PR detail, titlebar actions, review modal and people stack rules (with the `.tb-right` split rules of `_base.scss` and the modal rules of `_forms.scss`) in `recur-view-prs` (scenes `prs/*`)
 - [x] `styles/_settings.scss` → `recur_view_settings::style` (rows, radios, segs, inputs, status tables, notes, theme cards; scenes `settings/*`)
 - [ ] `styles/_sidebar.scss`
-- [~] `styles/_terminal.scss`
+- [x] `styles/_terminal.scss` → `recur_terminal_view` and `recur_view_observatory::dock` (every rule below)
   - [x] Pane padding, bottom-pinned grid, inactive panes hidden and absolutely positioned (`view.rs`)
   - [x] Scrollbar slider colours from the palette, hover/active states (`element.rs`)
   - [x] Find bar (`cm-recur-search` look): field, toggles, count, buttons, focus rings and title tips on recur-ui (`find_bar.rs`, scene `terminal/search`)

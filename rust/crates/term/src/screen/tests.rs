@@ -905,3 +905,19 @@ fn sgr_21_is_a_double_underline_and_sgr_5_draws_steady() {
         }
     }
 }
+
+#[test]
+fn sgr_221_and_222_clear_bold_and_faint_alone() {
+    use alacritty_terminal::index::{Column, Line};
+    use alacritty_terminal::term::cell::Flags;
+    let mut s = screen(8, 1);
+    s.feed(b"\x1b[1;2ma\x1b[221mb\x1b[1;222mc\x1b[221;1md\x1b[0m");
+    let flags = |x: usize| {
+        let f = s.term.grid()[Line(0)][Column(x)].flags;
+        (f.contains(Flags::BOLD), f.contains(Flags::DIM))
+    };
+    assert_eq!(flags(0), (true, true));
+    assert_eq!(flags(1), (false, true), "221 clears bold only");
+    assert_eq!(flags(2), (true, false), "222 clears faint only");
+    assert_eq!(flags(3), (true, false), "a later 1 wins over 221");
+}

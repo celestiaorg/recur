@@ -993,7 +993,12 @@ impl Select {
             .relative()
             .when(sm && !self.ghost, |d| d.min_w(px(132.)))
             .when_some(tr.max_width, |d, w| d.flex_none().min_w_0().max_w(px(w)))
-            .child(button);
+            // `title={shown}`.
+            .child(crate::tooltip::titled(
+                ("sel-title", cx.entity_id().as_u64() as usize),
+                self.display(),
+                button,
+            ));
         if self.open
             && let Some(menu) = self.menu(window, cx)
         {

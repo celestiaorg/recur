@@ -372,6 +372,8 @@ pub struct TitleTooltip {
     /// The shown (or dismissed) control's last painted state.
     shown: Option<Candidate>,
     dismissed_text: SharedString,
+    /// Last frame's titled controls, for a press that lands before a hover was seen.
+    present: Vec<Candidate>,
     shown_at: Option<Instant>,
     cursor: Option<Pixels>,
     timer: Option<Task<()>>,
@@ -384,6 +386,7 @@ impl TitleTooltip {
             core: TipCore::default(),
             shown: None,
             dismissed_text: SharedString::default(),
+            present: Vec::new(),
             shown_at: None,
             cursor: None,
             timer: None,
@@ -393,10 +396,19 @@ impl TitleTooltip {
 
     fn hide(&mut self, reason: HideReason) {
         if reason == HideReason::Dismiss {
+            // The shown copy, or the pending control's title (a press before the delay ends).
+            let pending = self.core.target.or(self.core.pending);
             self.dismissed_text = self
                 .shown
                 .as_ref()
                 .map(|c| c.text.clone())
+                .or_else(|| {
+                    let key = pending?;
+                    self.present
+                        .iter()
+                        .find(|c| c.key == key)
+                        .map(|c| c.text.clone())
+                })
                 .unwrap_or_default();
         }
         self.core = apply_hide(self.core, reason, epoch_ms());
@@ -414,6 +426,7 @@ impl TitleTooltip {
 
     /// Feed this frame's candidates into the machine.
     fn update(&mut self, frame: Frame, window: &mut Window, cx: &mut Context<Self>) {
+        self.present = frame.present.values().cloned().collect();
         // Retitle, removal and dismissed-retitle checks (`watch` / `watchDismissed`).
         if let Some(key) = self.core.target {
             match frame.present.get(&key) {
@@ -639,6 +652,35 @@ impl TitleTooltip {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A press while the tip is still pending (the trigger of a `Select` the pointer just
+    /// reached) dismisses that title, so the same copy does not come back under the pointer.
+    #[test]
+    fn a_press_before_the_delay_dismisses_the_pending_title() {
+        let mut t = TitleTooltip {
+            core: TipCore {
+                pending: Some(1),
+                ..TipCore::default()
+            },
+            shown: None,
+            dismissed_text: SharedString::default(),
+            present: vec![Candidate {
+                key: 1,
+                text: "Sonnet 5.5".into(),
+                bounds: Bounds::default(),
+            }],
+            shown_at: None,
+            cursor: None,
+            timer: None,
+            viewport: None,
+        };
+        t.hide(HideReason::Dismiss);
+        assert_eq!(t.core.dismissed, Some(1));
+        assert!(!should_reshow_after_dismiss(
+            &t.dismissed_text,
+            Some("Sonnet 5.5")
+        ));
+    }
 
     const A: u8 = 1;
     const B: u8 = 2;

@@ -17,7 +17,7 @@ use gpui_kit::{
     UnderlineStyle, Window, point, px, quad, size,
 };
 use smallvec::SmallVec;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use std::rc::Rc;
@@ -1682,6 +1682,8 @@ pub struct TextState {
     exact: Option<crate::exact::ExactCell>,
     /// A single unwrapped line's exact width, which sized the box.
     natural: Option<f32>,
+    /// The max-content width layout measured, when it asked (a shrink-to-fit box).
+    max_content: Rc<Cell<Option<f32>>>,
     probes: Vec<(Probe, LayoutId)>,
     snapped: Snapped,
 }
@@ -1828,6 +1830,8 @@ impl Element for Text {
         let (ws, anywhere, clamp, truncate) =
             (self.white_space, self.anywhere, self.clamp, self.ellipsis);
         let measure_slot = layout.clone();
+        let max_content: Rc<Cell<Option<f32>>> = Rc::default();
+        let measured_w = max_content.clone();
         let counted = self.owner.is_some();
         // Taffy keeps one measure result per constraint kind, so nested flex passes that probe
         // several widths would re-break the same text many times in a frame.
@@ -1876,6 +1880,7 @@ impl Element for Text {
                         layout,
                         exact: None,
                         natural: Some(w),
+                        max_content,
                         probes,
                         snapped: Vec::new(),
                     },
@@ -1909,11 +1914,13 @@ impl Element for Text {
                 // Truncated text measures at its full width; the box decides where it cuts.
                 let width = if truncate { None } else { width };
                 if let Some(&(_, size)) = memo.borrow().iter().find(|(w, _)| *w == width) {
+                    measured_w.set(Some(size.0));
                     return size;
                 }
                 laid.relayout(width, ws, anywhere, clamp, false, window);
                 let size = laid.size();
                 memo.borrow_mut().push((width, size));
+                measured_w.set(Some(size.0));
                 size
             },
         );
@@ -1929,6 +1936,7 @@ impl Element for Text {
                 layout,
                 exact,
                 natural: None,
+                max_content,
                 probes,
                 snapped: Vec::new(),
             },
@@ -1950,17 +1958,7 @@ impl Element for Text {
             // edges; the line still fits it, as it does in WebKit's unrounded layout.
             let mut width = f32::from(bounds.size.width);
             let dp = 1. / window.scale_factor();
-            let natural = state.natural.or_else(|| {
-                laid.relayout(
-                    None,
-                    self.white_space,
-                    self.anywhere,
-                    self.clamp,
-                    false,
-                    window,
-                );
-                Some(laid.measured().0)
-            });
+            let natural = state.natural.or(state.max_content.get());
             if let Some(n) = natural
                 && n > width
                 && n <= width + dp

@@ -67,7 +67,8 @@ pub fn exact_cell(id: Option<&GlobalElementId>, window: &mut Window) -> Option<E
 /// `v` ceiled to a LayoutUnit (1/64 px), as WebKit stores an inline width
 /// (`LayoutUnit::fromFloatCeil`); a value already on that grid stays.
 fn lu_ceil(v: f32) -> f32 {
-    ((v * 64.) - 1e-3).ceil() / 64.
+    let lu = ((v * 64.) - 1e-3).ceil() / 64.;
+    if lu.is_finite() { lu } else { v }
 }
 
 /// `v` floored to the device grid.

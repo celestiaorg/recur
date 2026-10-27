@@ -9559,8 +9559,6 @@ dependencies = [
 [[package]]
 name = "shiguredo_aom"
 version = "2026.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5af49c6f3d13251d6b4a0924b2cad4b56a0ae0da107c0d36da0a5381df3b406e"
 dependencies = [
  "bindgen 0.72.1",
  "cc",
@@ -9581,8 +9579,6 @@ dependencies = [
 [[package]]
 name = "shiguredo_libvpx"
 version = "2026.2.0-canary.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a7d1b627925b5e40ec559343d72b6b65198c287a124b22fe9e8a00c101fb19f"
 dependencies = [
  "bindgen 0.72.1",
  "cc",
@@ -9592,8 +9588,6 @@ dependencies = [
 [[package]]
 name = "shiguredo_opus"
 version = "2026.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fab10639b6e60946abde58729affb06e67c9e802cd98b86b8c36bd4a87993cdb"
 dependencies = [
  "bindgen 0.73.2",
  "cc",

@@ -1493,7 +1493,14 @@ async fn run(
                 .collect::<Vec<_>>(),
             s.workspaces
                 .iter()
-                .map(|w| (w.id.clone(), w.archived, w.worktree_path.clone()))
+                .map(|w| {
+                    (
+                        w.id.clone(),
+                        w.archived,
+                        w.worktree_path.clone(),
+                        w.is_pr_chat_host(),
+                    )
+                })
                 .collect::<Vec<_>>(),
             s.prs.iter().map(|p| p.id.clone()).collect::<Vec<_>>(),
         )
@@ -1525,12 +1532,12 @@ async fn run(
         .and_then(|v| v.parse::<usize>().ok())
         .unwrap_or(usize::MAX);
     let only = std::env::var("RECUR_SMOKE_WORKSPACE").ok();
-    for (i, (id, archived, wt)) in workspaces
+    for (i, (id, archived, wt, pr_host)) in workspaces
         .iter()
         .enumerate()
         .skip(from)
         .take_while(|(i, _)| *i < to)
-        .filter(|(_, (id, _, _))| only.as_ref().is_none_or(|o| o == id))
+        .filter(|(_, (id, _, _, _))| only.as_ref().is_none_or(|o| o == id))
         .take(limit())
     {
         let live = !archived && !wt.is_empty() && Path::new(wt).is_dir();
@@ -1546,7 +1553,9 @@ async fn run(
             continue;
         }
         visit_workspace(start, cx, window, &state, id, live).await;
-        if live && !streamed {
+        // A PR chat host of a settled PR is archived in place once its turn goes idle (Go's
+        // `maybeArchiveLinkedPRChatHost`), so the streamed turn would vanish with it.
+        if live && !*pr_host && !streamed {
             streamed = stream_turn(start, cx, window, &state, id).await;
         }
     }
@@ -1642,7 +1651,9 @@ async fn run(
     at(start, "palettes");
     let live = workspaces
         .iter()
-        .find(|(_, archived, wt)| !archived && !wt.is_empty() && Path::new(wt).is_dir())
+        .find(|(_, archived, wt, host)| {
+            !archived && !host && !wt.is_empty() && Path::new(wt).is_dir()
+        })
         .map(|w| w.0.clone());
     state.update(cx, |s, cx| s.go(ViewName::Briefing, None, cx));
     frames(cx, window, 6).await;

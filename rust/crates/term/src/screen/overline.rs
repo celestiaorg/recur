@@ -1,4 +1,5 @@
-//! SGR 53 / 55 (overline on / off), which xterm.js renders and alacritty_terminal does not model.
+//! SGR 53 / 55 (overline on / off), which xterm.js renders and alacritty_terminal does not model,
+//! and SGR 221 / 222 (kitty's not bold / not faint, which xterm.js 6 applies), which vte drops.
 //!
 //! The attribute lives in the cell, as a spare bit of alacritty's `Flags` set on the cursor
 //! template. Printing copies the template's flags, so scrollback, reflow, the alternate screen
@@ -32,10 +33,13 @@ pub(crate) const OVERLINE: Flags = Flags::from_bits_retain(1 << 15);
 /// The default foreground of an overlined cell (see the module docs).
 pub(crate) const MARKED_FG: Color = Color::Named(NamedColor::DimForeground);
 
-/// Carriers: the title stack push / pop (`CSI 22 t` / `CSI 23 t`). xterm.js disables window
-/// operations and the scanner drops every `CSI t` from the PTY, so only the screen sends these.
+/// Carriers: the title stack push / pop (`CSI 22 t` / `CSI 23 t`) for overline, the size reports
+/// (`CSI 14 t` / `CSI 18 t`) for not bold / not faint. xterm.js disables window operations and
+/// the scanner drops every `CSI t` from the PTY, so only the screen sends these.
 pub(crate) const ON: &[u8] = b"\x1b[22t";
 pub(crate) const OFF: &[u8] = b"\x1b[23t";
+pub(crate) const NOT_BOLD: &[u8] = b"\x1b[14t";
+pub(crate) const NOT_FAINT: &[u8] = b"\x1b[18t";
 
 /// xterm.js's `Params` limits: parameters, and sub-parameters across the whole sequence.
 const MAX_PARAMS: usize = 32;
@@ -50,12 +54,38 @@ pub(crate) fn is_overlined(cell: &Cell) -> bool {
 /// a reset), `None` leaves it. Colour arguments of 38 / 48 / 58 are skipped as `_extractColor`
 /// consumes them, so `38;5;53` is a colour, not an overline.
 pub(crate) fn sgr_effect(body: &[u8]) -> Option<bool> {
+    let mut effect = None;
+    walk_sgr(body, |code| match code {
+        0 | 55 => effect = Some(false),
+        53 => effect = Some(true),
+        _ => {}
+    });
+    effect
+}
+
+/// Whether an SGR sequence ends with bold cleared by 221, and faint by 222: vte applies the rest
+/// of the sequence, so only a 221 / 222 that no later 0, 1, 2 or 22 overrides needs a carrier.
+pub(crate) fn sgr_cancels(body: &[u8]) -> (bool, bool) {
+    let (mut not_bold, mut not_faint) = (false, false);
+    walk_sgr(body, |code| match code {
+        221 => not_bold = true,
+        222 => not_faint = true,
+        0 | 22 => (not_bold, not_faint) = (false, false),
+        1 => not_bold = false,
+        2 => not_faint = false,
+        _ => {}
+    });
+    (not_bold, not_faint)
+}
+
+/// Calls `f` with each attribute code of an SGR sequence, in order, skipping colour arguments.
+fn walk_sgr(body: &[u8], mut f: impl FnMut(i64)) {
     // A private marker after the first byte makes the parser ignore the sequence.
     if !body
         .iter()
         .all(|b| b.is_ascii_digit() || *b == b';' || *b == b':')
     {
-        return None;
+        return;
     }
     // (value, has stored sub-parameters), with empty parameters as 0.
     let mut subs = 0;
@@ -72,18 +102,14 @@ pub(crate) fn sgr_effect(body: &[u8]) -> Option<bool> {
             (value, stored > 0)
         })
         .collect();
-    let mut effect = None;
     let mut i = 0;
     while i < params.len() {
         match params[i].0 {
-            0 | 55 => effect = Some(false),
-            53 => effect = Some(true),
             38 | 48 | 58 => i += color_advance(&params, i),
-            _ => {}
+            code => f(code),
         }
         i += 1;
     }
-    effect
 }
 
 /// How many parameters after `pos` `InputHandler._extractColor` consumes.
@@ -158,6 +184,14 @@ impl<L: EventListener> Handler for Overlined<'_, L> {
         self.set(false);
     }
 
+    fn text_area_size_pixels(&mut self) {
+        self.0.grid_mut().cursor.template.flags.remove(Flags::BOLD);
+    }
+
+    fn text_area_size_chars(&mut self) {
+        self.0.grid_mut().cursor.template.flags.remove(Flags::DIM);
+    }
+
     delegate! {
         set_title(t: Option<String>);
         set_cursor_style(s: Option<CursorStyle>);
@@ -216,8 +250,6 @@ impl<L: EventListener> Handler for Overlined<'_, L> {
         clipboard_store(c: u8, d: &[u8]);
         clipboard_load(c: u8, t: &str);
         decaln();
-        text_area_size_pixels();
-        text_area_size_chars();
         set_hyperlink(h: Option<Hyperlink>);
         set_mouse_cursor_icon(i: CursorIcon);
         report_keyboard_mode();
@@ -232,7 +264,22 @@ impl<L: EventListener> Handler for Overlined<'_, L> {
 
 #[cfg(test)]
 mod tests {
-    use super::sgr_effect;
+    use super::{sgr_cancels, sgr_effect};
+
+    #[test]
+    fn sgr_cancels_follow_the_last_code() {
+        assert_eq!(sgr_cancels(b"221"), (true, false));
+        assert_eq!(sgr_cancels(b"222"), (false, true));
+        assert_eq!(sgr_cancels(b"1;2;221;222"), (true, true));
+        assert_eq!(sgr_cancels(b"221;1"), (false, false), "a later 1 wins");
+        assert_eq!(sgr_cancels(b"222;0"), (false, false));
+        assert_eq!(
+            sgr_cancels(b"38;5;221"),
+            (false, false),
+            "a colour argument"
+        );
+        assert_eq!(sgr_cancels(b"221:3"), (true, false));
+    }
 
     #[test]
     fn sgr_effect_follows_xterm_parameter_order() {

@@ -371,3 +371,43 @@ async fn begin_start_workspace_without_slot_waits() {
     release_slots(&t, slots);
     t.close().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn begin_start_workspace_persists_goal_images() {
+    let t = TestEngine::new(None);
+    let repo = init_repo();
+    let proj = add_project(&t.store, &repo.path);
+    let slots = take_slots(&t);
+    let png = ChatAttachment {
+        id: "img1".into(),
+        name: "shot.png".into(),
+        mime: "image/png".into(),
+        data: base64::engine::general_purpose::STANDARD.encode([
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x00,
+        ]),
+    };
+    let ws = t
+        .engine
+        .begin_start_workspace_with(
+            &proj,
+            "look at this",
+            "",
+            "",
+            AutonomyLevel::default(),
+            "",
+            "",
+            None,
+            &[png],
+        )
+        .await
+        .unwrap();
+    let imgs = t.engine.loop_goal_images(&ws.id, MAESTRO_AGENT_CODE);
+    assert_eq!(imgs.len(), 1, "{imgs:?}");
+    assert_eq!(imgs[0].id, "img1");
+    assert_eq!(
+        t.store.agent(&ws.id, MAESTRO_AGENT_CODE).map(|a| a.status),
+        Some("idle".into())
+    );
+    release_slots(&t, slots);
+    t.close().await;
+}

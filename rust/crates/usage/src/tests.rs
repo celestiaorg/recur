@@ -521,6 +521,77 @@ fn parse_claude_usage_cases() {
     );
 }
 
+#[test]
+fn claude_credential_paths_honors_config_dir() {
+    let paths = claude_credential_paths_in("/cfg", Some("/home/u"));
+    assert_eq!(paths[0], "/cfg/.credentials.json");
+    assert_eq!(
+        paths.last().map(String::as_str),
+        Some("/home/u/.claude.json")
+    );
+    assert_eq!(
+        claude_credential_paths_in("", Some("/home/u"))[0],
+        "/home/u/.claude/.credentials.json"
+    );
+}
+
+fn claude_window<'a>(q: &'a ProviderQuota, id: &str) -> &'a Window {
+    q.windows
+        .iter()
+        .find(|w| w.id == id)
+        .unwrap_or_else(|| panic!("no window {id} in {:?}", q.windows))
+}
+
+#[test]
+fn parse_claude_usage_keeps_dotless_versioned_scoped_windows() {
+    let q = parse_claude_usage(
+        br#"{"five_hour":{"utilization":1},"seven_day":{"utilization":2},"limits":[
+            {"kind":"weekly_scoped","percent":80,"is_active":false,"scope":{"model":{"display_name":"Opus 4"}}},
+            {"kind":"weekly_scoped","percent":10,"is_active":true,"scope":{"model":{"display_name":"Opus 5"}}}]}"#,
+    )
+    .unwrap();
+    let older = claude_window(&q, "seven_day_opus_4");
+    assert_eq!(
+        (older.used_pct, older.label.as_str()),
+        (80.0, "Opus 4 (7-day)")
+    );
+    let newer = claude_window(&q, "seven_day_opus_5");
+    assert_eq!(
+        (newer.used_pct, newer.label.as_str()),
+        (10.0, "Opus 5 (7-day)")
+    );
+}
+
+#[test]
+fn parse_claude_usage_prefers_active_scoped_limit() {
+    let q = parse_claude_usage(
+        br#"{"five_hour":{"utilization":1},"seven_day":{"utilization":2},"limits":[
+            {"kind":"weekly_scoped","percent":9,"is_active":false,"scope":{"model":{"display_name":"Fable"}}},
+            {"kind":"weekly_scoped","percent":44,"is_active":true,"scope":{"model":{"display_name":"Fable"}}}]}"#,
+    )
+    .unwrap();
+    assert_eq!(claude_window(&q, WINDOW_FABLE).used_pct, 44.0);
+}
+
+#[test]
+fn parse_claude_usage_labels_fable_slug() {
+    for (slug, id, label) in [
+        ("claude-fable-5", "seven_day_fable_5", "Fable 5 (7-day)"),
+        (
+            "claude-fable-5-1",
+            "seven_day_fable_5_1",
+            "Fable 5.1 (7-day)",
+        ),
+    ] {
+        let raw = format!(
+            r#"{{"five_hour":{{"utilization":8}},"seven_day":{{"utilization":2}},"model_scoped":[{{"name":"{slug}","utilization":40}}]}}"#
+        );
+        let q = parse_claude_usage(raw.as_bytes()).unwrap();
+        let w = claude_window(&q, id);
+        assert_eq!((w.used_pct, w.label.as_str()), (40.0, label), "{slug}");
+    }
+}
+
 // ---- Codex
 
 #[tokio::test]

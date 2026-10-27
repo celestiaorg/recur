@@ -229,8 +229,8 @@ fn main() {
             dock_live.clone(),
             updater.clone(),
         );
+        let mut rx = services.subscribe();
         async move {
-            let mut rx = services.subscribe();
             while let Some(ev) = rx.recv().await {
                 match ev {
                     AppEvent::AppReady => hub.ui_ready_now(),

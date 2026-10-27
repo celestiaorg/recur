@@ -456,4 +456,14 @@ mod tests {
         assert_eq!(menu_action_name(&ToggleSidebar), Some("toggle-sidebar"));
         assert_eq!(menu_action_name(&About), None);
     }
+
+    #[gpui::test]
+    fn accel_follows_native_menu_accelerators(cx: &mut gpui::TestAppContext) {
+        cx.update(|cx| {
+            bind_menu_keys(cx);
+            let keymap = cx.key_bindings();
+            let saves = keymap.borrow().bindings_for_action(&Save).count();
+            assert_eq!(saves > 0, NATIVE_MENU_ACCELERATORS);
+        });
+    }
 }

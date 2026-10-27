@@ -8,18 +8,13 @@ use std::time::{Duration, Instant};
 
 use recur_content::video::decoder::{Decoder, Frame, Status};
 
-/// WebM and Ogg play on Linux and on Apple silicon (`video::webm`), not on Intel Macs.
-const CLIPS: &[&str] = if cfg!(all(target_os = "macos", target_arch = "x86_64")) {
-    &["red-blue.mp4"]
-} else {
-    &[
-        "red-blue.mp4",
-        "red-blue-vp8.webm",
-        "red-blue-vp9.webm",
-        "red-blue-av1.webm",
-        "red-blue.ogv",
-    ]
-};
+const CLIPS: &[&str] = &[
+    "red-blue.mp4",
+    "red-blue-vp8.webm",
+    "red-blue-vp9.webm",
+    "red-blue-av1.webm",
+    "red-blue.ogv",
+];
 
 fn pump(ms: u64) {
     #[cfg(target_os = "macos")]

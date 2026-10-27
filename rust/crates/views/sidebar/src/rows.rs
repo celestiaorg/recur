@@ -1405,6 +1405,7 @@ impl Sidebar {
             .pb(px(crate::tree::TREE_PB));
         let placeholder = |radius: f32, off: f32| {
             div()
+                .debug_selector(|| "drag-ph".into())
                 .relative()
                 .top(px(off))
                 .mx(px(9.))
@@ -1428,8 +1429,10 @@ impl Sidebar {
                 .px(px(9.))
                 .pb(px(GROUP_PB))
                 .when(drop, |d| {
+                    let gid = g.group.id.clone();
                     d.child(
                         div()
+                            .debug_selector(move || format!("drop-target:{gid}"))
                             .absolute()
                             .left(px(9.))
                             .right(px(9.))
@@ -1579,6 +1582,7 @@ impl Sidebar {
 
         let scroller = div()
             .id("tree")
+            .debug_selector(|| "rail-tree".into())
             .role(gpui_kit::Role::List)
             .size_full()
             .overflow_y_scroll()

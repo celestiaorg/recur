@@ -294,3 +294,19 @@ async fn drop_orphan_cursor_key() {
     );
     fx.close().await;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn resolve_runner_compatible() {
+    let fx = Fx::new().await;
+    let reg = fx.svc.engine().providers();
+    assert!(reg.get("openai").is_none());
+    let mut set = fx.settings().await;
+    set.compatible_providers = vec![openai(
+        "https://api.openai.com",
+        vec![model("gpt-5", "GPT-5", vec![])],
+    )];
+    fx.save(&set).await;
+    let p = reg.get("openai").expect("a saved endpoint is routable");
+    assert_eq!((p.id(), p.label()), ("openai", "OpenAI"));
+    fx.close().await;
+}

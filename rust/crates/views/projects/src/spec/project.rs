@@ -86,3 +86,14 @@ fn project_settings_highlights_the_project_row(cx: &mut TestAppContext) {
         assert!(!s.has(&format!("on:{id}")), "{id} highlighted");
     }
 }
+
+#[gpui::test]
+fn project_settings_toggle_hides_the_project_from_the_sidebar(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    open_project(&mut s, "storefront");
+    s.click("tog:toggle hide from sidebar:false");
+    assert!(s.has("tog:toggle hide from sidebar:true"));
+    assert!(!s.has("ph:storefront"), "hidden from the sidebar");
+    s.click("tog:toggle hide from sidebar:true");
+    assert!(s.has("ph:storefront"));
+}

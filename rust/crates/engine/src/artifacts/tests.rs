@@ -333,3 +333,71 @@ fn rfc3339_nano_trims_zeros() {
     let t = t + chrono::Duration::nanoseconds(120_000_000);
     assert_eq!(rfc3339_nano_utc(t), "2026-01-02T03:04:05.12Z");
 }
+
+#[tokio::test]
+async fn hoist_pr_chat_host_moves_artifacts_and_plan_paths() {
+    let te = TestEngine::new(None);
+    crate::turn::test_support::add_solo_workspace(&te.engine, "W-live");
+    crate::turn::test_support::add_solo_workspace(&te.engine, "W-host");
+    let a = te
+        .engine
+        .create_artifact("W-host", "PA", req("Notes", "md", "# host\n"))
+        .unwrap();
+    te.store.update_workspace("W-host", |w| {
+        w.plan = Some(recur_domain::Plan {
+            summary: "Plan".into(),
+            attachments: vec![recur_domain::PlanAttachment {
+                id: a.id.clone(),
+                kind: "md".into(),
+                title: "Notes".into(),
+                path: a.path.clone(),
+            }],
+            ..Default::default()
+        });
+    });
+    te.engine
+        .hoist_pr_chat_host("W-host", "W-live")
+        .await
+        .unwrap();
+    let want = format!("workspaces/W-live/artifacts/{}.md", a.id);
+    let got = te.engine.list_artifacts("W-live").unwrap();
+    assert_eq!((got.len(), got[0].path.as_str()), (1, want.as_str()));
+    assert_eq!(got[0].created_by, "PA");
+    assert!(te.engine.list_artifacts("W-host").unwrap().is_empty());
+    let plan = te.store.workspace("W-live").unwrap().plan.expect("plan");
+    assert_eq!(plan.attachments[0].path, want);
+    te.close().await;
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn hoist_pr_chat_host_failure_does_not_alias_routing() {
+    use std::os::unix::fs::PermissionsExt;
+    let te = TestEngine::new(None);
+    crate::turn::test_support::add_solo_workspace(&te.engine, "W-live");
+    crate::turn::test_support::add_solo_workspace(&te.engine, "W-host");
+    te.engine
+        .create_artifact("W-host", "PA", req("Notes", "md", "# host\n"))
+        .unwrap();
+    te.engine.upsert_agent(
+        "W-host",
+        recur_domain::Agent {
+            id: "W-host-PA".into(),
+            code: "PA".into(),
+            name: "Agent".into(),
+            session_id: "prov-host".into(),
+            ..Default::default()
+        },
+    );
+    let dest = recur_store::paths::artifacts_dir(&te.data_dir, "W-live").unwrap();
+    std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o555)).unwrap();
+    let res = te.engine.hoist_pr_chat_host("W-host", "W-live").await;
+    std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(res.is_err(), "the artifact move fails");
+    assert_eq!(
+        te.engine.resolve_hoisted_chat("W-host", "PA"),
+        ("W-host".to_owned(), "PA".to_owned())
+    );
+    assert!(te.store.agent("W-host", "PA").is_some());
+    te.close().await;
+}

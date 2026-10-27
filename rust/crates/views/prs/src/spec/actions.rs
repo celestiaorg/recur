@@ -303,3 +303,54 @@ fn a_failed_merge_restores_the_button_and_keeps_updates_from_the_round_trip(
     assert!(s.has("cmt:during-merge:sam landed while merging"));
     assert_eq!(s.view(), ViewName::PrDetail);
 }
+
+// ---- toasts.spec.ts ----
+
+#[gpui::test]
+fn approving_a_pr_shows_a_success_toast_that_auto_dismisses(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_pr("482");
+    s.click("pr-act:pr-review=Approve");
+    s.click("pr-rev-go=Approve");
+    assert!(s.until(|s| s.toasted(ToastKind::Success, "Review approved")));
+    s.wait(5_000);
+    assert!(!s.toasted(ToastKind::Success, "Review approved"));
+}
+
+fn failing_merge<'a>(cx: &'a mut TestAppContext, msg: &'static str) -> S<'a> {
+    let mut s = boot(
+        cx,
+        |_| {},
+        MockOptions::default().resolver("MergePR", move |_, _, _| Reply::error(msg)),
+    );
+    s.open_pr("482");
+    s.click("pr-act:pr-merge=Merge");
+    s.click("pr-act:pr-merge=Confirm merge");
+    s
+}
+
+#[gpui::test]
+fn a_failed_merge_shows_an_error_toast_that_auto_dismisses(cx: &mut TestAppContext) {
+    let msg = "merge did not complete — see the loop activity feed for the reason";
+    let mut s = failing_merge(cx, msg);
+    assert!(s.until(|s| s.toasted(ToastKind::Error, msg)));
+    s.wait(4_500);
+    assert!(s.toasted(ToastKind::Error, msg), "errors linger past 3.5s");
+    s.wait(4_000);
+    assert!(!s.toasted(ToastKind::Error, msg), "and go after 8s");
+}
+
+#[gpui::test]
+fn a_long_error_toast_keeps_the_dismiss_control_reachable(cx: &mut TestAppContext) {
+    let msg = r#"{"message":"read /Users/josh/.recur/worktrees/caramel-cannoli/packages/contracts/lib/openzeppelin-contracts-upgradeable: is a directory","cause":{"Op":"read","Path":"/Users/josh/.recur/worktrees/caramel-cannoli/packages/contracts/lib/openzeppelin-contracts-upgradeable","Err":21},"kind":"RuntimeError"}"#;
+    let mut s = failing_merge(cx, msg);
+    assert!(s.until(|s| s.toasted(ToastKind::Error, "openzeppelin-contracts-upgradeable")));
+    let close = s.bounds("tclose").expect("a close control");
+    let vp = s.cx.update(|w, _| w.viewport_size());
+    assert!(
+        close.right() <= vp.width && close.bottom() <= vp.height && close.left() >= gpui::px(0.),
+        "{close:?} outside {vp:?}"
+    );
+    s.click("tclose");
+    assert!(!s.toasted(ToastKind::Error, "openzeppelin-contracts-upgradeable"));
+}

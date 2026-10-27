@@ -401,10 +401,18 @@ impl Screen {
             }
             (None, [], b'm') => {
                 self.advance(&csi.raw);
-                match overline::sgr_effect(&csi.raw[2..csi.raw.len() - 1]) {
+                let body = &csi.raw[2..csi.raw.len() - 1];
+                match overline::sgr_effect(body) {
                     Some(true) => self.advance(overline::ON),
                     Some(false) => self.advance(overline::OFF),
                     None => {}
+                }
+                let (not_bold, not_faint) = overline::sgr_cancels(body);
+                if not_bold {
+                    self.advance(overline::NOT_BOLD);
+                }
+                if not_faint {
+                    self.advance(overline::NOT_FAINT);
                 }
             }
             (None, [], b'r') => {

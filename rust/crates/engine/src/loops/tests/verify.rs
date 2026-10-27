@@ -197,3 +197,52 @@ async fn verify_absent_run_config_blocks_pr() {
     assert_eq!(runner.state.lock().qa_runs, 0, "no dev server to drive");
     t.close().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn verify_on_reject_reenters_converge() {
+    let repo = init_repo();
+    let runner = Arc::new(ConvergeRunner {
+        findings_per_iter: vec![0, 0],
+        evidence_per_run: vec![
+            vec![ev("sign-in 500", "/shots/a.png", false)],
+            vec![ev("sign-in ok", "/shots/b.png", true)],
+        ],
+        ..ConvergeRunner::default()
+    });
+    let t = TestEngine::with(TestOptions {
+        provider: Some(runner.provider()),
+        ..TestOptions::default()
+    });
+    t.install_fixture_pack();
+    let Some(proj) = verify_dev_project(&t.store, &repo.path) else {
+        eprintln!("python3 not available; verify needs a bootable dev server");
+        return;
+    };
+    let id = t
+        .engine
+        .start_workspace_with(
+            &proj,
+            "verify then fix",
+            "",
+            AutonomyLevel::default(),
+            "test.loops.verify-reject",
+            "",
+        )
+        .await
+        .unwrap();
+    wait_for(
+        Duration::from_secs(40),
+        "on_reject loop to open a PR",
+        || {
+            t.store
+                .workspace(&id)
+                .is_some_and(|l| l.state == WorkspaceState::PrOpen)
+        },
+    )
+    .await;
+    assert!(
+        runner.state.lock().qa_runs >= 2,
+        "on_reject = converge re-verifies"
+    );
+    t.close().await;
+}

@@ -1524,9 +1524,10 @@ impl Sidebar {
             .child(pr_icon)
             .child(style::button_label("Pull requests", 12.5, weight::REGULAR))
             .child(
-                div()
-                    .ml_auto()
-                    .child(Self::chip(pr_count.to_string(), false, cx)),
+                div().ml_auto().child(
+                    Self::chip(pr_count.to_string(), false, cx)
+                        .debug_selector(move || format!("ct:nav-pr:{pr_count}")),
+                ),
             )
             .when(pr_unseen > 0, |d| {
                 d.child(titled(

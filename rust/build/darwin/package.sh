@@ -15,6 +15,8 @@ RUST="$ROOT/rust"
 OUT="$RUST/target/package"
 NAME="Recur Next"
 APP="$OUT/$NAME.app"
+# rustup reads rust/rust-toolchain.toml (the pinned toolchain with llvm-tools) from the cwd.
+cd "$RUST"
 
 export MACOSX_DEPLOYMENT_TARGET=12.0
 export CARGO_PROFILE_RELEASE_STRIP=symbols
@@ -22,13 +24,15 @@ export RECUR_VERSION="${VERSION:?VERSION is required}"
 export RECUR_UPDATE_MANIFEST_URL="${RECUR_NEXT_UPDATE_URL:-}"
 
 build() {
-  cargo build --manifest-path "$RUST/Cargo.toml" --release --locked -p recur-desktop -p recur-cli "$@"
+  cargo build --release --locked -p recur-desktop -p recur-cli "$@"
 }
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 if [ "${UNIVERSAL:-}" = true ]; then
   rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
+  # The Intel slice builds libvpx and libaom from source with their x86 assembly.
+  command -v nasm >/dev/null || brew install nasm
   for t in aarch64-apple-darwin x86_64-apple-darwin; do build --target "$t"; done
   for bin in recur recur-cli; do
     lipo -create -output "$APP/Contents/MacOS/$bin" \

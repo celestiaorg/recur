@@ -761,3 +761,172 @@ fn reload_bundles_rereads_the_catalog_and_reports_skipped_bundles(cx: &mut TestA
         "Bundles reloaded, 2 skipped (see Settings → Bundles)"
     ));
 }
+
+#[gpui_kit::test]
+fn sidebar_usage_meter_opens_a_popover_with_quota_bars(cx: &mut TestAppContext) {
+    let usage = json!({
+        "fetchedAt": 1767225600000_i64, "stale": false,
+        "providers": [
+            {"id": "claude-code", "name": "Claude", "email": "dev@example.com",
+             "source": "Claude Code login", "sourceId": "claude_login",
+             "windows": [
+                {"id": "five_hour", "label": "5-hour", "usedPct": 12},
+                {"id": "seven_day", "label": "7-day", "usedPct": 34},
+                {"id": "seven_day_fable", "label": "Fable (7-day)", "usedPct": 41}]},
+            {"id": "codex", "name": "Codex", "email": "codex@example.com",
+             "source": "ChatGPT login", "sourceId": "chatgpt",
+             "windows": [
+                {"id": "five_hour", "label": "5-hour", "usedPct": 100},
+                {"id": "seven_day", "label": "7-day", "usedPct": 16},
+                {"id": "billing", "label": "Monthly", "usedPct": 100, "detail": "500 of 500 credits"}]},
+            {"id": "cursor", "name": "Cursor", "error": "No Cursor usage session", "hint": "Connect in Settings."}
+        ]
+    });
+    let (u1, u2) = (usage.clone(), usage);
+    let opts = MockOptions::default()
+        .resolver("GetProviderUsage", move |_, _, _| Reply::value(u1.clone()))
+        .resolver("RefreshProviderUsage", move |_, _, _| {
+            Reply::value(u2.clone())
+        });
+    let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
+    assert!(h.has("use-chip:claude-code") && h.has("use-chip:codex"));
+    assert!(!h.has("use-chip:cursor"), "two chips");
+    h.click("use-btn");
+    assert!(h.has("use-pop"));
+    for sel in [
+        "use-prov:claude-code",
+        "use-win:claude-code:7-day:34.0%",
+        "use-win:claude-code:Fable (7-day):41.0%",
+        "use-prov:codex",
+        "use-win:codex:Monthly:100.0%",
+        "use-detail:codex:500 of 500 credits",
+        "use-cursor-link",
+    ] {
+        assert!(h.has(sel), "missing {sel}");
+    }
+}
+
+#[gpui_kit::test]
+fn working_copy_row_has_no_hover_actions(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), MockOptions::default()),
+        LocalStorage::in_memory(),
+    );
+    h.hover("main:storefront");
+    assert!(h.has("main:storefront"));
+    for id in SEED_LOOPS {
+        assert!(!h.has(&format!("rm:{id}")) && !h.has(&format!("pr:{id}")));
+    }
+}
+
+#[gpui_kit::test]
+fn sidebar_shows_live_pr_count(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), MockOptions::default()),
+        LocalStorage::in_memory(),
+    );
+    let n = h.bridge.with_seed(|s| s.prs().count());
+    assert!(n > 0);
+    assert!(
+        h.has(&format!("ct:nav-pr:{n}")),
+        "the count follows the store"
+    );
+}
+
+#[gpui_kit::test]
+fn dragging_a_project_onto_a_group_highlights_the_whole_group(cx: &mut TestAppContext) {
+    let patch = json!({
+        "projectGroups": [
+            {"id": "g-apps", "name": "Apps", "open": true},
+            {"id": "g-sites", "name": "Sites", "open": true}
+        ],
+        "projects": [{"id": "payments", "groupId": "g-apps"}, {"id": "marketing", "groupId": "g-sites"}],
+    });
+    let mut h = boot(
+        cx,
+        bridge(patch, MockOptions::default()),
+        LocalStorage::in_memory(),
+    );
+    let from = h.at("ph:storefront");
+    let to = h.at("gh:g-apps");
+    h.cx.simulate_mouse_down(from, MouseButton::Left, Modifiers::none());
+    for i in 1..=12 {
+        let t = i as f32 / 12.;
+        let p = point(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+        h.cx.simulate_mouse_move(p, MouseButton::Left, Modifiers::none());
+        h.settle();
+    }
+    assert!(h.has("drop-target:g-apps"));
+    assert!(!h.has("drop-target:g-sites"));
+    assert!(h.has("drag-ph"), "the lifted project leaves a dashed slot");
+    h.cx.simulate_mouse_up(to, MouseButton::Left, Modifiers::none());
+    h.wait(300);
+}
+
+/// Whether `id` is selected and its row shows at least 80% inside the tree's scrollport.
+fn shown_in_tree(h: &mut H, id: &str) -> bool {
+    if !h.has(&format!("on:{id}")) {
+        return false;
+    }
+    let (Some(port), Some(row)) = (h.bounds("rail-tree"), h.bounds(&format!("row:{id}"))) else {
+        return false;
+    };
+    let overlap = f32::from(row.bottom().min(port.bottom()) - row.top().max(port.top()));
+    overlap >= 0.8 * f32::from(row.size.height)
+}
+
+fn storefront_rows(h: &mut H) -> Vec<String> {
+    let mut rows: Vec<(String, f32)> = ["LOOP-2231", "LOOP-2229", "LOOP-2235", "LOOP-2224"]
+        .iter()
+        .filter_map(|id| {
+            h.bounds(&format!("row:{id}"))
+                .map(|b| (id.to_string(), f32::from(b.top())))
+        })
+        .collect();
+    rows.sort_by(|a, b| a.1.total_cmp(&b.1));
+    rows.into_iter().map(|r| r.0).collect()
+}
+
+#[gpui_kit::test]
+fn alt_cmd_arrows_scroll_the_selected_workspace_into_the_sidebar_tree(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), MockOptions::default()),
+        LocalStorage::in_memory(),
+    );
+    let rows = storefront_rows(&mut h);
+    assert!(rows.len() > 2);
+    h.cx.simulate_resize(gpui::size(px(1280.), px(400.)));
+    h.settle();
+    h.click(&format!("hit:{}", rows[0]));
+    for _ in 1..rows.len() {
+        h.keys("alt-secondary-down");
+    }
+    let last = rows.last().unwrap();
+    assert!(h.has(&format!("on:{last}")));
+    assert!(
+        shown_in_tree(&mut h, last),
+        "the selected row is scrolled into view"
+    );
+}
+
+#[gpui_kit::test]
+fn opening_a_workspace_elsewhere_scrolls_it_into_the_sidebar_tree(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), MockOptions::default()),
+        LocalStorage::in_memory(),
+    );
+    let last = storefront_rows(&mut h).pop().unwrap();
+    h.cx.simulate_resize(gpui::size(px(1280.), px(400.)));
+    h.settle();
+    h.state
+        .update(h.cx, |s, cx| s.open_workspace(&last, false, cx));
+    h.settle();
+    assert!(
+        shown_in_tree(&mut h, &last),
+        "the opened row is scrolled into view"
+    );
+}

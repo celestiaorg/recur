@@ -789,6 +789,13 @@ async fn empty_provider_is_claude_code() {
             .id(),
         PROVIDER_CLAUDE_CODE
     );
+    assert_eq!(
+        te.engine
+            .resolve_provider(PROVIDER_CLAUDE_CODE)
+            .unwrap()
+            .id(),
+        PROVIDER_CLAUDE_CODE
+    );
     te.close().await;
 }
 
@@ -1341,5 +1348,102 @@ async fn store_history_serves_transcript_and_fresh_session_cutoff() {
     assert_eq!(msgs[0].id, first.id);
     assert!(h.transcript("missing").await.is_empty());
     assert_eq!(h.history_after("missing").await, "");
+    te.close().await;
+}
+
+#[tokio::test]
+async fn session_broadcast_compacts_list_findings_when_result_has_no_tool_name() {
+    let te = TestEngine::new(None);
+    let mut b = bc(&te);
+    let findings: Vec<serde_json::Value> = (0..15)
+        .map(|i| {
+            serde_json::json!({
+                "id": format!("f{i}"), "file": format!("src/file_{i}.rs"), "line": i,
+                "severity": "medium", "status": "open", "message": "x".repeat(1500),
+            })
+        })
+        .collect();
+    let raw = serde_json::json!({"status": "all", "count": 15, "findings": findings}).to_string();
+    assert!(raw.len() > recur_agent::display::CHAT_DETAIL_LIMIT);
+    b.emit(&AgentEvent::Step(recur_agent::ToolStep {
+        id: "t1".into(),
+        name: "mcp__recur__list_findings".into(),
+        input: r#"{"status":"all"}"#.into(),
+        ..Default::default()
+    }));
+    // Claude-style result: no tool name, the findings JSON as text.
+    b.emit(&AgentEvent::ToolResult(recur_agent::ToolResultEvent {
+        id: "t1".into(),
+        text: raw,
+        ..Default::default()
+    }));
+    let results = te.events.by_name("session.tool_result");
+    let payload: serde_json::Value = serde_json::from_str(&results[0].payload_json()).unwrap();
+    let result = payload["result"].as_str().unwrap();
+    assert!(result.len() <= recur_agent::display::CHAT_DETAIL_LIMIT);
+    let v: serde_json::Value = serde_json::from_str(result).expect("still valid JSON");
+    assert_eq!(v["count"], 15);
+    te.close().await;
+}
+
+fn recording() -> (
+    Arc<dyn recur_agent::Provider>,
+    Arc<parking_lot::Mutex<Vec<TurnRequest>>>,
+) {
+    let seen: Arc<parking_lot::Mutex<Vec<TurnRequest>>> = Arc::default();
+    let s2 = Arc::clone(&seen);
+    let p = ScriptedProvider::new(Vec::new())
+        .imitating(claude())
+        .on_run(move |r| s2.lock().push(r.clone()));
+    (Arc::new(p), seen)
+}
+
+#[tokio::test]
+async fn mirroring_runner_assigns_user_message_id_for_history() {
+    let (p, seen) = recording();
+    let (te, ws, _repo) = engine_with(p).await;
+    let prompt = "a long briefing that must not duplicate";
+    te.engine
+        .run_agent(
+            &CancellationToken::new(),
+            coder_spec(&ws, "claude-sonnet-5", prompt),
+        )
+        .await
+        .unwrap();
+    let got = seen.lock()[0].clone();
+    assert!(!got.user_message_id.is_empty());
+    let msgs = te
+        .store
+        .session_transcript(&got.recur_session_id)
+        .unwrap()
+        .unwrap_or_default();
+    let users: Vec<&Message> = msgs.iter().filter(|m| m.role == "user").collect();
+    assert_eq!(users.len(), 1, "the prompt is recorded once");
+    assert_eq!(users[0].id, got.user_message_id);
+    te.close().await;
+}
+
+#[tokio::test]
+async fn mirroring_runner_retry_resolves_user_message_id() {
+    let (p, seen) = recording();
+    let (te, ws, _repo) = engine_with(p).await;
+    let base = || coder_spec(&ws, "claude-sonnet-5", "retry this briefing");
+    te.engine
+        .run_agent(&CancellationToken::new(), base())
+        .await
+        .unwrap();
+    let mut retry = base();
+    retry.req.skip_record_user = true;
+    retry.req.user_message_id = "a-fresh-retry-id".into();
+    te.engine
+        .run_agent(&CancellationToken::new(), retry)
+        .await
+        .unwrap();
+    let seen = seen.lock().clone();
+    assert!(!seen[0].user_message_id.is_empty());
+    assert_eq!(
+        seen[1].user_message_id, seen[0].user_message_id,
+        "a retry reuses the recorded row"
+    );
     te.close().await;
 }

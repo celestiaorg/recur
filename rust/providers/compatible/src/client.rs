@@ -310,3 +310,18 @@ pub(crate) fn err_chain(e: &(dyn std::error::Error + 'static)) -> String {
     }
     parts.join(": ")
 }
+
+#[cfg(test)]
+mod client_config_tests {
+    use super::*;
+
+    #[test]
+    fn stream_http_has_no_hard_timeout() {
+        let c = Client::new(&CompatibleProvider {
+            base_url: "http://127.0.0.1:1".into(),
+            ..Default::default()
+        });
+        let config = format!("{:?}", c.http).to_lowercase();
+        assert!(!config.contains("timeout"), "{config}");
+    }
+}

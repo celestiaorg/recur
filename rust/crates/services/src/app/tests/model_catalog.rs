@@ -47,6 +47,18 @@ fn off(ps: &[&str]) -> Settings {
 }
 
 #[test]
+fn model_catalog_always_has_claude_code() {
+    let groups = build_model_catalog(&Settings::default(), vec![], vec![]);
+    assert!(!groups.is_empty(), "catalogue is empty");
+    assert_eq!(groups[0].provider, PROVIDER_CLAUDE_CODE);
+    assert_eq!(groups[0].label, "Claude Code");
+    assert!(
+        !groups[0].models.is_empty(),
+        "Claude Code group has no models"
+    );
+}
+
+#[test]
 fn model_catalog_omits_disabled_providers() {
     assert!(build_model_catalog(&off(&[PROVIDER_CLAUDE_CODE]), vec![], vec![]).is_empty());
     let groups = build_model_catalog(

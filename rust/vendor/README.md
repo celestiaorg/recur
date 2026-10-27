@@ -51,3 +51,11 @@ git diff dddd0fe0 -- rust/vendor/gpui-pre > rust/vendor/gpui-pre.patch
 ```sh
 git diff 9386fc71 -- rust/vendor/gpui-pre-scheduler > rust/vendor/gpui-pre-scheduler.patch
 ```
+
+## gpui-pre-apple 0.3.9 (border coverage)
+
+`gpui-pre-apple/` is the crates.io source of GPUI's macOS renderer and text system (same snapshot), wired in by `[patch.crates-io]`. Commit `cb8279c1` ("rust: vendor gpui-pre-apple 0.3.9 unchanged") is the pristine import (`src/`, `build.rs`, `vendor/`, `Cargo.toml`, the license), and `gpui-pre-apple.patch` is the change: the quad shader (`src/shaders.metal`, `quad_fragment`) interpolates between a quad's background and its border in premultiplied space. Upstream mixes straight colors, so toward a transparent background (a card frame, an outline) the border's inner anti-aliased edge carried its coverage twice once blended and came out darker than CoreGraphics paints it: every rounded header inside a bordered card showed the card's background through that edge. Upgrade it with gpui-pre: replace the source, commit it alone, `git apply --3way rust/vendor/gpui-pre-apple.patch`, and regenerate:
+
+```sh
+git diff cb8279c1 -- rust/vendor/gpui-pre-apple > rust/vendor/gpui-pre-apple.patch
+```

@@ -1803,8 +1803,7 @@
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 8450,
-      "hardTolerance": 54
+      "tolerance": 8450
     },
     {
       "name": "review/unified-paper",
@@ -1818,8 +1817,7 @@
       "width": 1400,
       "height": 720,
       "theme": "default",
-      "tolerance": 9990,
-      "hardTolerance": 54
+      "tolerance": 9990
     },
     {
       "name": "review/hunk",
@@ -1827,7 +1825,6 @@
       "height": 720,
       "theme": "default",
       "tolerance": 9670,
-      "hardTolerance": 54,
       "steps": [
         { "click": [600, 106] }
       ]
@@ -1838,7 +1835,7 @@
       "height": 720,
       "theme": "default",
       "tolerance": 9300,
-      "hardTolerance": 84,
+      "hardTolerance": 8,
       "steps": [
         { "click": [284, 228] }
       ]
@@ -1849,7 +1846,6 @@
       "height": 720,
       "theme": "default",
       "tolerance": 10780,
-      "hardTolerance": 34,
       "steps": [
         { "click": [100, 113] }
       ]
@@ -1859,8 +1855,7 @@
       "width": 900,
       "height": 760,
       "theme": "default",
-      "tolerance": 7490,
-      "hardTolerance": 18
+      "tolerance": 7490
     },
     {
       "name": "review/thread-paper",
@@ -1888,8 +1883,7 @@
       "width": 1100,
       "height": 720,
       "theme": "default",
-      "tolerance": 24860,
-      "hardTolerance": 18
+      "tolerance": 24860
     }
   ],
   "observatory": [
@@ -1899,7 +1893,7 @@
     {"name": "observatory/code-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 37020},
     {"name": "observatory/tabs", "width": 1100, "height": 800, "theme": "default", "tolerance": 9020},
     {"name": "observatory/merge", "width": 1280, "height": 800, "theme": "default", "tolerance": 44100},
-    {"name": "observatory/review", "width": 1280, "height": 800, "theme": "default", "tolerance": 4160, "hardTolerance": 18},
+    {"name": "observatory/review", "width": 1280, "height": 800, "theme": "default", "tolerance": 4160},
     {"name": "observatory/terminal", "width": 1280, "height": 800, "theme": "default", "tolerance": 36810},
     {"name": "observatory/terminal-beside", "width": 1280, "height": 800, "theme": "default", "tolerance": 36660},
     {"name": "observatory/terminal-max", "width": 1280, "height": 800, "theme": "default", "tolerance": 38720, "steps": [{"click": [975, 560]}, {"wait": 300}], "hardTolerance": 2},
@@ -1927,7 +1921,7 @@
     {"name": "prs/people", "width": 1280, "height": 800, "theme": "default", "tolerance": 26150, "hardTolerance": 35, "fixture": "list", "route": "pr", "seg": "all", "steps": [{"move": [360, 181]}, {"move": [365, 181]}, {"wait": 200}]},
     {"name": "prs/detail-conv", "width": 1280, "height": 800, "theme": "default", "tolerance": 14520, "hardTolerance": 1, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed"},
     {"name": "prs/detail-conv-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 14810, "hardTolerance": 6, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed"},
-    {"name": "prs/detail-files", "width": 1280, "height": 800, "theme": "default", "tolerance": 21170, "hardTolerance": 37, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed", "tab": "files"},
+    {"name": "prs/detail-files", "width": 1280, "height": 800, "theme": "default", "tolerance": 21170, "hardTolerance": 1, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed", "tab": "files"},
     {"name": "prs/detail-commits", "width": 1280, "height": 800, "theme": "default", "tolerance": 14030, "hardTolerance": 1, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed", "tab": "commits"},
     {"name": "prs/detail-checks", "width": 1280, "height": 800, "theme": "default", "tolerance": 10120, "hardTolerance": 1, "fixture": "detail", "route": "prdetail", "pr": "482", "dock": "closed", "tab": "checks"},
     {"name": "prs/actions-update", "theme": "default", "width": 1280, "height": 800, "tolerance": 17450, "hardTolerance": 1, "route": "prdetail", "pr": "482", "dock": "closed", "fixture": "update"},

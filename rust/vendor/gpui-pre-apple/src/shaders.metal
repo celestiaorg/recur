@@ -387,10 +387,14 @@ fragment float4 quad_fragment(QuadFragmentInput input [[stage_in]],
     }
 
     // Blend the border on top of the background and then linearly interpolate
-    // between the two as we slide inside the background.
+    // between the two as we slide inside the background. The interpolation is
+    // premultiplied: a straight-alpha mix toward a transparent background
+    // darkens the border's inner edge (its coverage counts twice once blended).
     float4 blended_border = over(background_color, border_color);
-    color = mix(background_color, blended_border,
-                saturate(antialias_threshold - inner_sdf));
+    float4 mixed = mix(float4(background_color.rgb * background_color.a, background_color.a),
+                       float4(blended_border.rgb * blended_border.a, blended_border.a),
+                       saturate(antialias_threshold - inner_sdf));
+    color = mixed.a > 0.0 ? float4(mixed.rgb / mixed.a, mixed.a) : float4(0.0);
   }
 
   return color * float4(1.0, 1.0, 1.0, saturate(antialias_threshold - outer_sdf));

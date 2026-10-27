@@ -975,14 +975,21 @@ pub struct Session {
 
 type Creating = Shared<LocalBoxFuture<'static, Option<Rc<Client>>>>;
 
+/// The pending-Ensure key of a language whose servers are not known yet.
+const ANY_SERVER: &str = "";
+
 #[derive(Default)]
 pub struct HubState {
     sessions: HashMap<String, Rc<Session>>,
     ensure_in_flight: HashMap<String, usize>,
-    /// simplify: workspace-scoped because the server is unknown until Ensure returns; a
-    /// same-workspace Ensure for a different server delays CloseLSP until it resolves.
-    /// Upgrade: language→serverKey map, then key pending by workspace+server.
-    pending_ensure: HashMap<String, usize>,
+    /// In-flight Ensures by workspace and server key: a session is not closed while an Ensure
+    /// that may return it is pending. A language whose servers are not known yet holds
+    /// [`ANY_SERVER`] (the whole workspace).
+    pending_ensure: HashMap<(String, String), usize>,
+    /// The servers each language's last Ensure returned (primary and extras).
+    servers_by_language: HashMap<String, Vec<String>>,
+    /// The server of each session id an Ensure returned, before any session exists for it.
+    server_by_session: HashMap<String, String>,
     /// Abandoned session id → workspace, held until in-flight Ensures there resolve.
     deferred_close: Vec<(String, String)>,
     creating: HashMap<String, Creating>,
@@ -1129,6 +1136,7 @@ impl LspHub {
     }
 
     fn close_lsp(&self, id: &str, cx: &mut App) {
+        self.0.borrow_mut().server_by_session.remove(id);
         self.drop_session(id, cx);
         if let Some(services) = self.services() {
             let id = id.to_string();
@@ -1288,16 +1296,31 @@ impl LspHub {
         }
     }
 
-    fn pending_unknown(&self, workspace_id: &str) -> bool {
+    /// Whether an in-flight Ensure in `workspace_id` may return a session of `server` (`None`:
+    /// any server).
+    fn ensure_pending(&self, workspace_id: &str, server: Option<&str>) -> bool {
         !workspace_id.is_empty()
-            && self
-                .0
-                .borrow()
-                .pending_ensure
-                .get(workspace_id)
-                .copied()
-                .unwrap_or(0)
-                > 0
+            && self.0.borrow().pending_ensure.iter().any(|((w, k), n)| {
+                *n > 0 && w == workspace_id && (k == ANY_SERVER || server.is_none_or(|s| s == k))
+            })
+    }
+
+    /// The server of session `id`: its slot's, or the one its Ensure named.
+    fn server_of(&self, id: &str, slot: Option<&Session>) -> Option<String> {
+        slot.map(|s| s.server_key.clone())
+            .filter(|k| !k.is_empty())
+            .or_else(|| self.0.borrow().server_by_session.get(id).cloned())
+    }
+
+    /// The pending-Ensure keys an Ensure for `language_id` holds.
+    fn ensure_keys(&self, language_id: &str) -> Vec<String> {
+        self.0
+            .borrow()
+            .servers_by_language
+            .get(language_id)
+            .filter(|s| !s.is_empty())
+            .cloned()
+            .unwrap_or_else(|| vec![ANY_SERVER.to_string()])
     }
 
     fn flush_deferred_close(&self, cx: &mut App) {
@@ -1326,7 +1349,7 @@ impl LspHub {
                 .map(|s| s.workspace_id.clone())
                 .filter(|w| !w.is_empty())
                 .unwrap_or(workspace_id);
-            if self.pending_unknown(&ws) {
+            if self.ensure_pending(&ws, self.server_of(&id, slot.as_deref()).as_deref()) {
                 continue;
             }
             self.close_lsp(&id, cx);
@@ -1368,7 +1391,7 @@ impl LspHub {
                 .map(|s| s.workspace_id.clone())
                 .filter(|w| !w.is_empty())
                 .unwrap_or_else(|| workspace_id.to_string());
-            if self.pending_unknown(&ws) {
+            if self.ensure_pending(&ws, self.server_of(id, slot.as_deref()).as_deref()) {
                 let mut st = self.0.borrow_mut();
                 st.deferred_close.retain(|(d, _)| d != id);
                 st.deferred_close.push((id.clone(), ws));
@@ -1408,6 +1431,8 @@ impl LspHub {
         st.file_io.clear();
         st.display.clear();
         st.pending_ensure.clear();
+        st.servers_by_language.clear();
+        st.server_by_session.clear();
         st.ensure_in_flight.clear();
         st.deferred_close.clear();
         drop(st);
@@ -1497,11 +1522,18 @@ pub async fn attach_lsp(
     cx: AsyncApp,
 ) -> Option<LspAttach> {
     let services = hub.services()?;
-    *hub.0
-        .borrow_mut()
-        .pending_ensure
-        .entry(workspace_id.clone())
-        .or_default() += 1;
+    let keys: Vec<(String, String)> = hub
+        .ensure_keys(&language_id)
+        .into_iter()
+        .map(|k| (workspace_id.clone(), k))
+        .collect();
+    for k in &keys {
+        *hub.0
+            .borrow_mut()
+            .pending_ensure
+            .entry(k.clone())
+            .or_default() += 1;
+    }
     let res = services
         .lsp
         .ensure_lsp(&project_id, &workspace_id, &language_id, &rel_path)
@@ -1511,16 +1543,34 @@ pub async fn attach_lsp(
     hub.claim_ensure_ids(&ids);
     {
         let mut st = hub.0.borrow_mut();
-        let n = st
-            .pending_ensure
-            .get(&workspace_id)
-            .copied()
-            .unwrap_or(1)
-            .saturating_sub(1);
-        if n > 0 {
-            st.pending_ensure.insert(workspace_id.clone(), n);
-        } else {
-            st.pending_ensure.remove(&workspace_id);
+        if let Some(r) = &res {
+            for s in std::iter::once(&r.session).chain(&r.extra) {
+                if !s.id.is_empty() && !s.server_key.is_empty() {
+                    st.server_by_session
+                        .insert(s.id.clone(), s.server_key.clone());
+                }
+            }
+            let servers: Vec<String> = std::iter::once(&r.session)
+                .chain(&r.extra)
+                .map(|s| s.server_key.clone())
+                .filter(|k| !k.is_empty())
+                .collect();
+            if !servers.is_empty() {
+                st.servers_by_language.insert(language_id.clone(), servers);
+            }
+        }
+        for k in &keys {
+            let n = st
+                .pending_ensure
+                .get(k)
+                .copied()
+                .unwrap_or(1)
+                .saturating_sub(1);
+            if n > 0 {
+                st.pending_ensure.insert(k.clone(), n);
+            } else {
+                st.pending_ensure.remove(k);
+            }
         }
     }
     cx.update(|cx| hub.flush_deferred_close(cx));
@@ -2632,6 +2682,46 @@ mod tests {
             &["gopls-1", "pyright-1"],
         )
         .await;
+    }
+
+    /// Once an Ensure has shown which server a language uses, a pending Ensure for it holds
+    /// only that server: an abandoned session of another server in the workspace closes at
+    /// once.
+    #[gpui::test]
+    async fn a_pending_ensure_for_a_known_other_server_does_not_delay_a_close(
+        cx: &mut TestAppContext,
+    ) {
+        let (hub, held, closed) = ensure_hub(cx);
+        let py = ensure_res("pyright-1", "basedpyright", "file:///tmp/ws/a.py", "python");
+        let learn = attach(cx, &hub, "a.py", "python", Rc::new(Cell::new(false)));
+        cx.run_until_parked();
+        held.lock().remove(0).send(Reply::value(py.clone()));
+        assert!(learn.await.is_none());
+        cx.run_until_parked();
+        closed.lock().clear();
+        let want_go = Rc::new(Cell::new(true));
+        let go = attach(cx, &hub, "a.go", "go", want_go.clone());
+        cx.run_until_parked();
+        let python = attach(cx, &hub, "b.py", "python", Rc::new(Cell::new(false)));
+        cx.run_until_parked();
+        want_go.set(false);
+        held.lock().remove(0).send(Reply::value(ensure_res(
+            "gopls-1",
+            "gopls",
+            "file:///tmp/ws/a.go",
+            "go",
+        )));
+        assert!(go.await.is_none());
+        cx.run_until_parked();
+        assert_eq!(
+            *closed.lock(),
+            ["gopls-1"],
+            "basedpyright's Ensure does not hold gopls"
+        );
+        held.lock().remove(0).send(Reply::value(py));
+        assert!(python.await.is_none());
+        cx.run_until_parked();
+        assert_eq!(*closed.lock(), ["gopls-1", "pyright-1"]);
     }
 
     #[gpui::test]

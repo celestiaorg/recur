@@ -2059,6 +2059,7 @@
     {"name": "palettes/run", "width": 1280, "height": 800, "theme": "default", "tolerance": 13780, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}]},
     {"name": "palettes/run-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 14430, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}]},
     {"name": "palettes/run-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 10450, "hardTolerance": 1, "fixture": "palette-runs", "route": "run:LOOP-2231", "steps": [{"wait": 400}, {"type": "test"}]},
+    {"name": "palettes/stop", "width": 1280, "height": 800, "theme": "default", "tolerance": 9600, "hardTolerance": 42, "fixture": "palette-runs", "route": "stop:LOOP-2231", "steps": [{"wait": 400}]},
     {"name": "palettes/syntax", "width": 1280, "height": 800, "theme": "default", "tolerance": 4430, "fixture": "base", "route": "syntax:src/main.go"},
     {"name": "palettes/syntax-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 4660, "fixture": "base", "route": "syntax:src/main.go"},
     {"name": "palettes/syntax-filter", "width": 1280, "height": 800, "theme": "default", "tolerance": 3970, "hardTolerance": 2, "fixture": "base", "route": "syntax:src/main.go", "steps": [{"type": "pyth"}]},

@@ -229,6 +229,7 @@ Every other scene allows no hard pixels.
 | `briefing/schedule-editor`, `briefing/schedule-editor-paper` | 126, 119 | The cron expression, which gpui-base's editor draws (typed input text, above), and the state segment behind the scrim (as `briefing/schedules`) |
 | `projects/general`, `projects/general-tall`, `projects/general-paper` | 58, 58, 117 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) and the rail glow |
 | `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/run-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 19, 56, 1, 1, 2, 35 | The typed query, which gpui-base's editor draws (typed input text, above) |
+| `palettes/stop` | 42 | The footer's `↵` keycap ends a device pixel late: `↵` comes from a fallback face whose advance differs from WebKit's, as the `✓` follow-up in `PARITY.md` |
 | `projects/run`, `projects/run-tall` | 185, 253 | The Files to copy placeholder, which gpui-base's textarea draws (typed input text, above) |
 | `projects/run-resized` | 251 | `projects/run`'s, plus the focused box's amber border at its rounded corners (GPUI anti-aliases the border arc where WebKit clips once) and the page's classic thumb on the taller page (scroll height across a rounding boundary) |
 

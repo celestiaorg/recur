@@ -12,7 +12,7 @@
     paletteOpen, commandsOpen, shortcutsOpen, openInOpen, openWorkspace, openSyntaxModePicker,
   } from '../../../../../frontend/src/lib/stores'
   import { setEditorFocusProvider } from '../../../../../frontend/src/lib/commands'
-  import { openRunMenu } from '../../../../../frontend/src/lib/run-dev'
+  import { openRunMenu, openStopMenu, runSessionBy } from '../../../../../frontend/src/lib/run-dev'
 
   let { onready }: { onready: () => void } = $props()
 
@@ -52,6 +52,13 @@
       // Landing on the workspace closes palettes: open them once it has.
       case 'openin': openWorkspace(id ?? ''); setTimeout(() => openInOpen.set(true), 300); break
       case 'run': openWorkspace(id ?? ''); setTimeout(() => openRunMenu(id ?? ''), 300); break
+      case 'stop':
+        openWorkspace(id ?? '')
+        setTimeout(() => {
+          runSessionBy.set({ [id ?? '']: { test: 'run-test', dev: 'run-dev', check: 'run-check' } })
+          openStopMenu(id ?? '')
+        }, 300)
+        break
       case 'syntax':
         setEditorFocusProvider(() => ({ scope: '', path: id ?? '' }))
         openSyntaxModePicker()

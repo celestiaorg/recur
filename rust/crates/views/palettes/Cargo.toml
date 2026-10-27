@@ -14,6 +14,7 @@ gallery = [
     "recur-ui/gallery",
     "recur-view-observatory/gallery",
     "dep:recur-app",
+    "dep:recur-view-chat",
     "dep:serde",
 ]
 
@@ -31,6 +32,8 @@ base64.workspace = true
 futures.workspace = true
 serde_json.workspace = true
 recur-app = { workspace = true, features = ["gallery"], optional = true }
+# The Stop palette (`palettes/stop`) is the chat crate's overlay.
+recur-view-chat = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 
 [dev-dependencies]

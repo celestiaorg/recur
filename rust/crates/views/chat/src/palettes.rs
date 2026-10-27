@@ -333,9 +333,12 @@ impl StopPalette {
                                     .py(px(1.))
                                     .px(px(5.))
                                     .child(
+                                        // `.pk`: weight 500, `.02em`.
                                         text(format!("{}", i + 1))
                                             .mono()
                                             .size(11.)
+                                            .weight(recur_ui::fonts::weight::MEDIUM)
+                                            .tracking(0.02)
                                             .color(fg)
                                             .nowrap(),
                                     ),

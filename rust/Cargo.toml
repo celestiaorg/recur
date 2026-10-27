@@ -204,3 +204,7 @@ codegen-units = 1
 gpui-pre = { path = "vendor/gpui-pre" }
 gpui-pre-scheduler = { path = "vendor/gpui-pre-scheduler" }
 gpui-pre-apple = { path = "vendor/gpui-pre-apple" }
+# The WebM / Ogg codecs with an Intel Mac source build (`vendor/README.md`).
+shiguredo_libvpx = { path = "vendor/shiguredo_libvpx" }
+shiguredo_aom = { path = "vendor/shiguredo_aom" }
+shiguredo_opus = { path = "vendor/shiguredo_opus" }

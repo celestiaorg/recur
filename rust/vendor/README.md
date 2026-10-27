@@ -67,3 +67,9 @@ git diff 9386fc71 -- rust/vendor/gpui-pre-scheduler > rust/vendor/gpui-pre-sched
 ```sh
 git diff cb8279c1 -- rust/vendor/gpui-pre-apple > rust/vendor/gpui-pre-apple.patch
 ```
+
+## shiguredo_libvpx, shiguredo_aom, shiguredo_opus (Intel Mac source build)
+
+`shiguredo_libvpx/` (2026.2.0-canary.3), `shiguredo_aom/` (2026.3.0) and `shiguredo_opus/` (2026.4.0) are the crates.io releases, wired in by `[patch.crates-io]`. Commit `f1e0965c` is the pristine import, so `git diff f1e0965c -- rust/vendor/shiguredo_*` is the patch.
+
+The crates download prebuilt static libraries for Apple silicon (and Linux, Windows, iOS, Android), and their `source-build` feature configures for the host. The patch adds one case to each `build.rs`: target `x86_64-apple-darwin` (an Intel Mac, built natively or from an Apple silicon host) configures for x86_64 (libvpx `--target=x86_64-darwin20-gcc`; libaom and libopus `CMAKE_OSX_ARCHITECTURES` / `CMAKE_SYSTEM_PROCESSOR` x86_64, libaom `AOM_TARGET_CPU` x86_64) and generates bindings with `--target=x86_64-apple-macosx11.0`. `recur-content` turns `source-build` on for that target only, so the Intel slice of a universal app decodes VP8, VP9, AV1 and Opus as Apple silicon does. The build needs `nasm` (libvpx's and libaom's x86 SIMD) and `llvm-tools` (the crates rename the libraries' symbols; `rust-toolchain.toml`). Drop the patch when the crates publish macOS x86_64 libraries or cross-configure themselves.

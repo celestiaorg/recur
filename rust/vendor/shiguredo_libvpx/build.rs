@@ -350,6 +350,15 @@ fn get_mobile_source_build_config(target_os: &str) -> MobileSourceBuildConfig {
     match target_os {
         "ios" => get_ios_source_build_config(),
         "android" => get_android_source_build_config(),
+        // Recur: an Intel Mac build, natively or from an Apple silicon host.
+        "macos" if env::var("TARGET").as_deref() == Ok("x86_64-apple-darwin") => {
+            let mut configure_args = vec!["--target=x86_64-darwin20-gcc".to_string()];
+            configure_args.extend(disable_extra_build_targets());
+            MobileSourceBuildConfig {
+                configure_args,
+                envs: Vec::new(),
+            }
+        }
         _ => MobileSourceBuildConfig {
             configure_args: Vec::new(),
             envs: Vec::new(),
@@ -661,6 +670,10 @@ fn get_bindgen_clang_args() -> Vec<String> {
                 format!("--target={clang_target}{api_level}"),
                 format!("--sysroot={}", sysroot.display()),
             ]
+        }
+        // Recur: bindings for an Intel Mac build, whatever the host.
+        "macos" if rust_target == "x86_64-apple-darwin" => {
+            vec!["--target=x86_64-apple-macosx11.0".to_string()]
         }
         _ => Vec::new(),
     }

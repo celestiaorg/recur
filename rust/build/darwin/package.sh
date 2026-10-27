@@ -29,6 +29,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 if [ "${UNIVERSAL:-}" = true ]; then
   rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
+  # The Intel slice builds libvpx and libaom from source with their x86 assembly.
+  command -v nasm >/dev/null || brew install nasm
   for t in aarch64-apple-darwin x86_64-apple-darwin; do build --target "$t"; done
   for bin in recur recur-cli; do
     lipo -create -output "$APP/Contents/MacOS/$bin" \

@@ -167,6 +167,7 @@ jobs:
         with:
           workspaces: rust
       - run: wails3 task lint:rust
+      - run: wails3 task check:rust:parity
       - run: wails3 task test:rust
 
   # The Rust port on Linux: GPUI's X11/Wayland backend and WebKitGTK 6.0 for

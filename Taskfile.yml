@@ -154,6 +154,11 @@ tasks:
     cmds:
       - cargo test --workspace
 
+  check:rust:parity:
+    summary: Cross-checks rust/docs/PARITY.md against the Go and Svelte sources (bindings, events, agent tools, CLI, components, every Go test; needs python3 and go; see rust/tools/parity-sweep/sweep.py)
+    cmds:
+      - python3 rust/tools/parity-sweep/sweep.py
+
   package:rust:
     summary: Packages the Rust port as rust/target/package/Recur Next.app, .dmg and updater .zip (macOS; UNIVERSAL=true, SIGN_IDENTITY / KEYCHAIN_PROFILE / RECUR_SIGN_IDENTITY as darwin:sign, RECUR_NEXT_UPDATE_URL turns on the updater; see rust/build/darwin/package.sh)
     platforms: [darwin]

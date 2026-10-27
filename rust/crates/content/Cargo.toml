@@ -29,6 +29,11 @@ resvg = { workspace = true, features = ["text", "system-fonts", "memmap-fonts"] 
 recur-editor.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
+matroska-demuxer.workspace = true
+ogg.workspace = true
+lewton.workspace = true
+theora-rs.workspace = true
+cpal.workspace = true
 core-graphics.workspace = true
 core-foundation.workspace = true
 objc2.workspace = true
@@ -42,16 +47,17 @@ block2.workspace = true
 raw-window-handle.workspace = true
 include_dir.workspace = true
 
-# WebM and Ogg (`video::webm`). The codec crates ship static libraries for Apple silicon only.
+# WebM and Ogg (`video::webm`): the codec crates ship static libraries for Apple silicon; an
+# Intel Mac builds them from source (the vendored crates' x86_64 path; needs nasm).
 [target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
-matroska-demuxer.workspace = true
-ogg.workspace = true
-lewton.workspace = true
-theora-rs.workspace = true
 shiguredo_libvpx.workspace = true
 shiguredo_aom.workspace = true
 shiguredo_opus.workspace = true
-cpal.workspace = true
+
+[target.'cfg(all(target_os = "macos", target_arch = "x86_64"))'.dependencies]
+shiguredo_libvpx = { workspace = true, features = ["source-build"] }
+shiguredo_aom = { workspace = true, features = ["source-build"] }
+shiguredo_opus = { workspace = true, features = ["source-build"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gstreamer.workspace = true

@@ -396,6 +396,14 @@ fn configure_mobile_build(config: &mut shiguredo_cmake::Config) -> Vec<String> {
                 format!("--sysroot={}", sysroot.display()),
             ]
         }
+        // Recur: an Intel Mac build, natively or from an Apple silicon host.
+        "macos" if env::var("TARGET").as_deref() == Ok("x86_64-apple-darwin") => {
+            config
+                .define("CMAKE_OSX_ARCHITECTURES", "x86_64")
+                .define("CMAKE_SYSTEM_PROCESSOR", "x86_64")
+                .define("CMAKE_OSX_DEPLOYMENT_TARGET", "11.0");
+            vec!["--target=x86_64-apple-macosx11.0".to_string()]
+        }
         _ => Vec::new(),
     }
 }

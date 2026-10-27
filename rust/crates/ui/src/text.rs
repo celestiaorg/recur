@@ -1951,7 +1951,14 @@ impl Element for Text {
             let mut width = f32::from(bounds.size.width);
             let dp = 1. / window.scale_factor();
             let natural = state.natural.or_else(|| {
-                laid.relayout(None, self.white_space, self.anywhere, self.clamp, false, window);
+                laid.relayout(
+                    None,
+                    self.white_space,
+                    self.anywhere,
+                    self.clamp,
+                    false,
+                    window,
+                );
                 Some(laid.measured().0)
             });
             if let Some(n) = natural

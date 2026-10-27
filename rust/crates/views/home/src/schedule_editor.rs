@@ -20,10 +20,14 @@ use recur_engine::view::loops::{
     fallback_loops, fallback_policies,
 };
 use recur_ui::fonts::weight;
+use recur_ui::logic::date_time::Kind as DateTimeKind;
 use recur_ui::shadow::with_shadow;
 use recur_ui::style::{MODAL_SHADOW, button_label, modal_panel, modal_scrim, nt_esc_hint, outline};
 use recur_ui::text::{LineHeight, Span, Text, TextStyled, span, text};
-use recur_ui::widgets::{PicBox, Select, SelectEvent, SelectOption, TriggerStyle, project_pic};
+use recur_ui::widgets::{
+    DateTimeEvent, DateTimeField, DateTimeStyle, PicBox, Select, SelectEvent, SelectOption,
+    TriggerStyle, project_pic,
+};
 use recur_ui::{IconName, Theme, icon};
 use recur_view_chat::pickers::{LoopPolicyEvent, LoopPolicyPickers, ModelPickers, PickerEvent};
 use recur_view_core::format::format_medium_short_in;
@@ -210,8 +214,8 @@ pub struct ScheduleEditor {
     return_focus: Option<FocusHandle>,
     prompt: Entity<TextareaState>,
     cron: Entity<InputState>,
-    date: Entity<InputState>,
-    time: Entity<InputState>,
+    date: Entity<DateTimeField>,
+    time: Entity<DateTimeField>,
     repo_sel: Entity<Select>,
     branch_sel: Entity<Select>,
     repeat_sel: Entity<Select>,
@@ -231,6 +235,20 @@ pub struct ScheduleEditor {
 impl Focusable for ScheduleEditor {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus.clone()
+    }
+}
+
+/// `.sc-in[type=date|time]`: 12px, 6px padding in a 24px box, `--muted` until hovered or
+/// focused, with a dark picker (`color-scheme: dark`).
+fn sc_dt_style(lit: bool, cx: &App) -> DateTimeStyle {
+    let t = Theme::of(cx).tokens;
+    DateTimeStyle {
+        color: if lit { t.text } else { t.muted },
+        size: 12.,
+        tabular: false,
+        pad_x: 6.,
+        height: 24.,
+        dark: true,
     }
 }
 
@@ -287,8 +305,12 @@ impl ScheduleEditor {
         let field =
             |window: &mut Window, cx: &mut Context<Self>| cx.new(|cx| InputState::new(window, cx));
         let cron = field(window, cx);
-        let date = field(window, cx);
-        let time = field(window, cx);
+        let date = cx.new(|cx| {
+            DateTimeField::new("sc-date", DateTimeKind::Date, sc_dt_style(false, cx), cx)
+        });
+        let time = cx.new(|cx| {
+            DateTimeField::new("sc-time", DateTimeKind::Time, sc_dt_style(false, cx), cx)
+        });
         let mk =
             |label: &'static str, searchable: bool, window: &mut Window, cx: &mut Context<Self>| {
                 cx.new(|cx| {
@@ -362,20 +384,20 @@ impl ScheduleEditor {
                     this.preview_effect(cx);
                 }
             }),
-            cx.guarded_subscribe(&date, |this, f, ev: &InputEvent, cx| {
-                if matches!(ev, InputEvent::Change)
-                    && let Some(d) = this.draft.as_mut()
-                {
-                    d.date = f.read(cx).value().to_string();
+            cx.guarded_subscribe(&date, |this, _, ev: &DateTimeEvent, cx| {
+                let DateTimeEvent::Change(v) = ev;
+                if let Some(d) = this.draft.as_mut() {
+                    d.date = v.clone();
                     this.preview_effect(cx);
+                    cx.notify();
                 }
             }),
-            cx.guarded_subscribe(&time, |this, f, ev: &InputEvent, cx| {
-                if matches!(ev, InputEvent::Change)
-                    && let Some(d) = this.draft.as_mut()
-                {
-                    d.time = f.read(cx).value().to_string();
+            cx.guarded_subscribe(&time, |this, _, ev: &DateTimeEvent, cx| {
+                let DateTimeEvent::Change(v) = ev;
+                if let Some(d) = this.draft.as_mut() {
+                    d.time = v.clone();
                     this.preview_effect(cx);
+                    cx.notify();
                 }
             }),
             cx.guarded_subscribe(&repo_sel, |this, _, ev: &SelectEvent, cx| {
@@ -661,8 +683,8 @@ impl ScheduleEditor {
         self.prompt
             .update(cx, |s, cx| s.set_value(prompt, window, cx));
         self.cron.update(cx, |s, cx| s.set_value(cron, window, cx));
-        self.date.update(cx, |s, cx| s.set_value(date, window, cx));
-        self.time.update(cx, |s, cx| s.set_value(time, window, cx));
+        self.date.update(cx, |s, cx| s.set_value(&date, cx));
+        self.time.update(cx, |s, cx| s.set_value(&time, cx));
         self.branch_key = None;
         self.preview_key = None;
         self.seen_settings = Some(settings);
@@ -802,8 +824,8 @@ impl ScheduleEditor {
         v.push(self.prompt.read(cx).focus_handle(cx));
         v.push(self.repeat_sel.focus_handle(cx));
         if d.cadence == "once" {
-            v.push(self.date.read(cx).focus_handle(cx));
-            v.push(self.time.read(cx).focus_handle(cx));
+            v.extend(self.date.read(cx).focus_handles());
+            v.extend(self.time.read(cx).focus_handles());
         } else {
             v.push(self.cron.read(cx).focus_handle(cx));
             v.push(self.help_focus.clone());
@@ -998,15 +1020,13 @@ impl ScheduleEditor {
         });
         recur_ui::style::style_textarea(&self.prompt, t.faint, cx);
         // `.sc-in` is `--muted` until hovered or focused.
-        for (name, f) in [
-            ("cron", &self.cron),
-            ("date", &self.date),
-            ("time", &self.time),
-        ] {
-            let lit =
-                self.hover_field == Some(name) || f.read(cx).focus_handle(cx).is_focused(window);
-            let fg = if lit { t.text } else { t.muted };
-            recur_ui::style::style_text_input_fg(f, fg, cx);
+        let lit = self.hover_field == Some("cron")
+            || self.cron.read(cx).focus_handle(cx).is_focused(window);
+        recur_ui::style::style_text_input_fg(&self.cron, if lit { t.text } else { t.muted }, cx);
+        for (name, f) in [("date", &self.date), ("time", &self.time)] {
+            let lit = self.hover_field == Some(name) || f.read(cx).is_focused(window);
+            let style = sc_dt_style(lit, cx);
+            f.update(cx, |f, cx| f.set_style(style, cx));
         }
     }
 
@@ -1162,35 +1182,24 @@ impl ScheduleEditor {
             .min_w_0()
             .child(div().flex_none().child(self.repeat_sel.clone()));
         if d.cadence == "once" {
-            // simplify: WebKit's `type=date` / `type=time` segmented pickers are plain
-            // `YYYY-MM-DD` / `HH:MM` fields. Upgrade: a date / time field in recur_ui.
-            when = when
-                .child(
-                    sc_in(
-                        &self.date,
-                        "YYYY-MM-DD",
-                        false,
-                        None,
-                        self.hover_field == Some("date"),
-                        window,
-                        cx,
-                    )
-                    .debug_selector(|| "inp:Date".into())
-                    .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| m.hover(*h, "date", cx))),
-                )
-                .child(
-                    sc_in(
-                        &self.time,
-                        "HH:MM",
-                        false,
-                        None,
-                        self.hover_field == Some("time"),
-                        window,
-                        cx,
-                    )
-                    .debug_selector(|| "inp:Time".into())
-                    .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| m.hover(*h, "time", cx))),
+            for (name, f, label) in [
+                ("date", &self.date, "inp:Date"),
+                ("time", &self.time, "inp:Time"),
+            ] {
+                let lit = self.hover_field == Some(name) || f.read(cx).is_focused(window);
+                when = when.child(
+                    div()
+                        .id(name)
+                        .debug_selector(move || label.into())
+                        .flex_none()
+                        .rounded(px(6.))
+                        .when(lit, |d| d.bg(Hsla::from(t.pane_2)))
+                        .child(f.clone())
+                        .on_hover(
+                            cx.guarded_listener(move |m, h: &bool, _, cx| m.hover(*h, name, cx)),
+                        ),
                 );
+            }
         } else {
             // `.sc-cron { width: 24ch }` in the mono face, padding included (`border-box`).
             let ch = recur_ui::font_metrics::zero_advance(&recur_ui::fonts::Family::Mono, 12.);

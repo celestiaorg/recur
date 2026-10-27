@@ -1,6 +1,10 @@
 //! Shared widgets ported from `frontend/src/components`.
 
 pub mod armed_button;
+#[cfg(target_os = "macos")]
+#[allow(unsafe_code)]
+mod date_picker_mac;
+pub mod date_time;
 pub mod decode_text;
 pub mod icon_picker;
 pub mod project_pic;
@@ -14,6 +18,7 @@ pub mod tab_strip;
 pub mod toasts;
 
 pub use armed_button::{ArmedButton, armed_button};
+pub use date_time::{DateTimeEvent, DateTimeField, DateTimeStyle};
 pub use decode_text::{DecodeText, decode_text};
 pub use icon_picker::{IconPicked, IconPicker};
 pub use project_pic::{PicBox, ProjectPic, project_pic};

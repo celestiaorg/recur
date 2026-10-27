@@ -345,6 +345,7 @@ internal/engine.TestBuildWorkspaceBriefLoopStatusOpensChat	crates/engine/src/bri
 internal/engine.TestBuildWorkspaceBriefPRHost	crates/engine/src/briefing/tests.rs::a_pr_host_brief
 internal/engine.TestBuildWorkspaceBriefPlanRoutesToPlanPanel	crates/engine/src/briefing/tests.rs::plan_findings_and_dirty_route_to_their_panels
 internal/engine.TestBuildWorkspaceBriefReasonPrecedence	crates/engine/src/briefing/tests.rs::reason_precedence
+internal/engine.TestBuildWorkspaceBriefSkipsArchivedAndSettled	crates/engine/src/briefing/tests.rs::archived_and_settled_workspaces_are_skipped
 internal/engine.TestCancelAppMessageInterruptsLiveTurn	crates/engine/src/app_chat/tests.rs::cancel_app_message_interrupts_a_live_turn
 internal/engine.TestCancelChatHealsZombieWorkingAgent	crates/engine/src/chat/tests/recover.rs::stop_heals_a_zombie_working_agent
 internal/engine.TestCancelChatIdlesLoopWalk	crates/engine/src/chat/tests/cancel.rs::stop_idles_a_loop_mode_tabs_walk
@@ -374,6 +375,8 @@ internal/engine.TestChatToolResultKeepsListArtifactsParseable	providers/cursor/s
 internal/engine.TestChatToolResultKeepsListFindingsParseable	providers/cursor/src/tools/tests.rs::chat_result_keeps_list_findings_parseable
 internal/engine.TestChatToolResultKeepsListWorkspaceBriefsParseable	providers/cursor/src/tools/tests.rs::chat_result_keeps_briefs_and_context_parseable
 internal/engine.TestChatToolResultKeepsWorkspaceContextParseable	providers/cursor/src/tools/tests.rs::chat_result_keeps_briefs_and_context_parseable
+internal/engine.TestChatTurnEndedWaitsWhenHealthy	crates/engine/src/chatlife/tests.rs::ended_exposed_when_stopped_and_when_healthy
+internal/engine.TestChatTurnEndedWaitsWhenStopped	crates/engine/src/chatlife/tests.rs::ended_exposed_when_stopped_and_when_healthy
 internal/engine.TestChatTurnTryInjectBlocksUntilStop	crates/engine/src/chatlife/tests.rs::try_inject_blocks_until_stop
 internal/engine.TestChatTurnTryInjectRefusesAfterPark	crates/engine/src/chatlife/tests.rs::try_inject_refuses_after_park
 internal/engine.TestChatTurnTryInjectRefusesAfterStop	crates/engine/src/chatlife/tests.rs::try_inject_refuses_after_stop
@@ -407,6 +410,7 @@ internal/engine.TestClaudeRunnerIgnoresAmbientBackgroundTasks	providers/claude/t
 internal/engine.TestClaudeRunnerIgnoresResumeTaskReplay	providers/claude/tests/runner.rs::ignores_resume_task_replay
 internal/engine.TestClaudeRunnerKeepsStdinOpenForBackgroundTasks	providers/claude/tests/runner.rs::keeps_stdin_open_for_background_tasks
 internal/engine.TestClearAskUsersForWorkspace	crates/engine/src/ask_user/tests.rs::clear_for_workspace
+internal/engine.TestClearModeContinuesForWorkspace	crates/engine/src/chat/tests/switch_mode.rs::clearing_a_workspace_drops_pending_remounts
 internal/engine.TestCloseCursorBridgesDefersWhenAgentsRunning	providers/cursor/src/pool/tests.rs::close_bridges_defers_while_busy
 internal/engine.TestCloseCursorBridgesImmediateWhenIdle	providers/cursor/src/pool/tests.rs::close_bridges_immediate_when_idle
 internal/engine.TestCloseLastMaestroChatTab	crates/engine/src/chat/tests/tabs.rs::closing_the_maestro_tab_clears_the_loop_chat
@@ -650,6 +654,7 @@ internal/engine.TestFeedProjectionParity	crates/engine/src/feed/tests.rs::the_fe
 internal/engine.TestFenceTerminalSnapshotEscapesCloserAndBackticks	crates/engine/src/composer/terminals_tests.rs::fence_escapes_closer_and_backticks
 internal/engine.TestFetchGitHubBranchRequiresPRClassicProtection	crates/forge/src/github/tests.rs::branch_rules_classic_protection
 internal/engine.TestFetchGitHubBranchRequiresPRUsesRemoteRepo	crates/forge/src/github/tests.rs::branch_rules_use_the_remote_repo
+internal/engine.TestFinalizeChatReplyCanceled	crates/engine/src/turn/finalize_tests.rs::stop_note_gets_its_own_footer, crates/engine/src/turn/finalize_tests.rs::failure_duration_rules
 internal/engine.TestFinalizeChatReplyPersistsErrorAfterPartialStream	crates/engine/src/turn/finalize_tests.rs::finalize_persists_error_after_partial_stream
 internal/engine.TestFinalizeChatReplyPersistsPreMirrorFailure	crates/engine/src/turn/finalize_tests.rs::finalize_persists_pre_mirror_failure
 internal/engine.TestFinalizeChatReplyPersistsSynthesizedError	crates/engine/src/turn/finalize_tests.rs::finalize_persists_synthesized_error
@@ -904,6 +909,7 @@ internal/engine.TestPermissionBrokerTimesOutAsDenial	crates/engine/src/permissio
 internal/engine.TestPermissionSummaryShowsTheDecidingDetail	crates/agent/src/permission.rs::summary_shows_the_deciding_detail
 internal/engine.TestPermissionSurfaceFor	crates/engine/src/permissions/tests.rs::surface_for
 internal/engine.TestPermissionToolLabel	crates/agent/src/permission.rs::labels
+internal/engine.TestPersistChatFailureRecordsModeSwitchDeadEnd	crates/engine/src/chat/tests/switch_mode.rs::a_remount_dead_end_records_its_note_without_a_bubble
 internal/engine.TestPersistChatFailureResumeRecordsNewTurn	crates/engine/src/turn/finalize_tests.rs::resume_failure_records_new_turn
 internal/engine.TestPersistChatFailureRetryDoesNotDuplicateUser	crates/engine/src/turn/finalize_tests.rs::retry_failure_does_not_duplicate_user
 internal/engine.TestPersistChatFailureSkipsCommittedTeardown	crates/engine/src/chat/tests/tabs.rs::persist_chat_failure_skips_a_committed_teardown
@@ -991,6 +997,7 @@ internal/engine.TestResolveTerminalMentionsByTitleAndPrefix	crates/engine/src/co
 internal/engine.TestResponsesFreshInputSubtractsCache	providers/compatible/src/tests.rs::fresh_input_subtracts_cache
 internal/engine.TestResumeAfterAskUserClearsReservation	crates/engine/src/ask_user/tests.rs::resume_clears_reservation
 internal/engine.TestResumeAfterAskUserKeepsDockProvider	crates/engine/src/chat/tests/recover.rs::an_ask_user_resume_keeps_the_dock_provider
+internal/engine.TestResumeAfterModeSwitchBailsWhenTurnLive	crates/engine/src/chat/tests/switch_mode.rs::a_remount_never_displaces_a_live_turn
 internal/engine.TestResumeAfterModeSwitchUsesDockModeForPrompt	crates/engine/src/chat/tests/switch_mode.rs::the_remount_follows_the_dock_mode
 internal/engine.TestResumeFitsProviderAllowlist	crates/engine/src/chat/tests/fork.rs::resume_handles_fit_only_their_provider
 internal/engine.TestResumeInterruptedChatSkipsClosedTab	crates/engine/src/chat/tests/recover.rs::a_resume_skips_a_closed_tab
@@ -1129,10 +1136,13 @@ internal/engine.TestSummarizeToolInputWebSearchUsesQuery	providers/cursor/src/to
 internal/engine.TestSweepGitHubPRsLinksUpstreamSetLater	crates/engine/src/prs/tests/linking.rs::sweep_links_upstream_set_later
 internal/engine.TestSwitchChatModeDroppedRemountDoesNotBurnBudget	crates/engine/src/chat/tests/switch_mode.rs::dropped_remounts_do_not_burn_the_budget
 internal/engine.TestSwitchChatModeNoLiveTurnPersistsOnly	crates/engine/src/chat/tests/switch_mode.rs::an_idle_switch_only_persists
+internal/engine.TestSwitchChatModeRemountCap	crates/engine/src/chat/tests/switch_mode.rs::the_remount_cap_resets_on_a_user_send
 internal/engine.TestSwitchChatModeRemountsWithNewTools	crates/engine/src/chat/tests/switch_mode.rs::a_live_switch_remounts_with_the_new_tools
 internal/engine.TestSwitchChatModeSameModeNoRemount	crates/engine/src/chat/tests/switch_mode.rs::the_same_mode_does_not_remount
 internal/engine.TestSwitchChatModeSkipsRemountWhenAskUserPending	crates/engine/src/chat/tests/switch_mode.rs::a_pending_ask_user_owns_the_tab
 internal/engine.TestSwitchChatModeUpgradeRefused	crates/engine/src/chat/tests/switch_mode.rs::an_upgrade_to_agent_is_refused
+internal/engine.TestSwitchChatModeUserStopDoesNotRemount	crates/engine/src/chat/tests/switch_mode.rs::stop_drops_the_remount
+internal/engine.TestSwitchChatModeUserStopDuringTeardownDoesNotRemount	crates/engine/src/chat/tests/switch_mode.rs::stop_during_a_slow_teardown_drops_the_remount
 internal/engine.TestSwitchModeAllowed	crates/engine/src/golden_e4_tests.rs::switch_mode_matches_go
 internal/engine.TestSyncGitHubPRsImportsAndDedupes	crates/engine/src/prs/tests/sync.rs::sync_imports_and_dedupes
 internal/engine.TestSyncGitHubPRsLinksExistingWorkspace	crates/engine/src/prs/tests/linking.rs::sync_links_existing_workspace_without_a_repo
@@ -1164,6 +1174,7 @@ internal/engine.TestUpdatePRCommentGitHub	crates/engine/src/prs/tests/thread.rs:
 internal/engine.TestUpdatePRCommentLocal	crates/engine/src/prs/tests/thread.rs::update_comment_local
 internal/engine.TestUpdatePRDetailsGitHub	crates/engine/src/prs/tests/thread.rs::update_details_forge
 internal/engine.TestUpdatePRDetailsLocal	crates/engine/src/prs/tests/thread.rs::update_details_local
+internal/engine.TestUpsertDoesNotResurrectMAWhenPAOwns	crates/engine/src/attention/tests.rs::upsert_does_not_resurrect_closed_ma
 internal/engine.TestUserBubbleTextPrefersDisplay	crates/engine/src/turn/tests.rs::bubble_text_prefers_display
 internal/engine.TestUserContentBlocksDisplayTextWithImages	crates/agent/src/attach.rs::content_blocks_display_with_images
 internal/engine.TestUserContentBlocksIgnoresForeignAttachmentMarkers	crates/agent/src/attach.rs::content_blocks_ignore_foreign_markers

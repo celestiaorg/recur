@@ -842,3 +842,46 @@ async fn mark_all_chats_seen_last_event_matches_store() {
         );
     }
 }
+
+fn park_ask(t: &TestEngine, ws: &str) -> recur_domain::UserQuestion {
+    t.engine.ask_user_broker().park(
+        recur_domain::UserQuestion {
+            workspace_id: ws.into(),
+            agent_code: PAIR_AGENT_CODE.into(),
+            question: "which one?".into(),
+            ..Default::default()
+        },
+        None,
+    )
+}
+
+#[tokio::test]
+async fn emit_chat_inbox_skips_pending_ask_user() {
+    let t = TestEngine::new(None);
+    let ws = "proj.ask-skip";
+    workspace(&t, ws);
+    pair(&t, ws, PAIR_AGENT_CODE);
+    let q = park_ask(&t, ws);
+    t.engine.update_agent_status(ws, PAIR_AGENT_CODE, "working");
+    t.engine.update_agent_status(ws, PAIR_AGENT_CODE, "idle");
+    assert!(
+        inbox(&t, &chat_inbox_id(ws, PAIR_AGENT_CODE)).is_none(),
+        "the ask row already covers the tab"
+    );
+    assert!(inbox(&t, &format!("ib-ask-{}", q.id)).is_some());
+}
+
+#[tokio::test]
+async fn sync_chat_inbox_skips_pending_ask_without_spurious_publish() {
+    let t = TestEngine::new(None);
+    let ws = "proj.sync-ask";
+    workspace(&t, ws);
+    pair(&t, ws, PAIR_AGENT_CODE);
+    park_ask(&t, ws);
+    t.store
+        .update_agent(ws, PAIR_AGENT_CODE, |a| a.unseen = true);
+    let before = t.events.count("inbox.updated");
+    t.engine.sync_chat_inbox();
+    assert_eq!(t.events.count("inbox.updated"), before, "nothing changed");
+    assert!(inbox(&t, &chat_inbox_id(ws, PAIR_AGENT_CODE)).is_none());
+}

@@ -107,7 +107,7 @@ fn main() {
                 println!("picker windows after Escape: {closed:?}");
                 let ok = open.len() == 1 && closed.is_empty();
                 println!("{}", if ok { "PASS" } else { "FAIL" });
-                let _ = cx.update(|cx| cx.quit());
+                cx.update(|cx| cx.quit());
                 if !ok {
                     std::process::exit(1);
                 }

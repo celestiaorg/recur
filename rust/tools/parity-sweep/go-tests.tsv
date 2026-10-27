@@ -298,6 +298,7 @@ internal/engine.TestAddPRCommentMultilinePending	crates/engine/src/prs/tests/thr
 internal/engine.TestAddPRCommentPendingOnlyEvent	crates/engine/src/prs/tests/thread.rs::add_comment_pending_only_event
 internal/engine.TestAddPRCommentPersistsFindingID	crates/engine/src/prs/tests/thread.rs::add_comment_persists_finding_id
 internal/engine.TestAdoptProsePlanFromCreatePlan	crates/engine/src/plan/tests.rs::adopts_prose_plan_from_create_plan
+internal/engine.TestAgentModeChatAttachesLinearWrite	crates/engine/src/chat/tests/moved.rs::plan_and_agent_chats_attach_linear
 internal/engine.TestAllowedMergeMethodsFromRepo	crates/forge/src/github/mutations.rs::allowed_merge_methods
 internal/engine.TestAnswerAskUserRemovesPending	crates/engine/src/ask_user/tests.rs::answer_removes_pending
 internal/engine.TestAnswerChatOwnedEscalationNoLiveLoop	crates/engine/src/loops/tests/escalation.rs::answer_chat_owned_escalation_skips_terminal
@@ -327,6 +328,7 @@ internal/engine.TestAttachUserMCPCopiesSharedAllowlist	crates/engine/src/mcp_att
 internal/engine.TestAttachUserMCPCustomHTTP	crates/engine/src/mcp_attach/tests.rs::custom_http_and_stdio
 internal/engine.TestAttachUserMCPCustomStdio	crates/engine/src/mcp_attach/tests.rs::custom_http_and_stdio
 internal/engine.TestAttachUserMCPLinearKeyFromEnv	crates/engine/src/mcp_attach/tests.rs::linear_key_sources
+internal/engine.TestAttachUserMCPLinearNoKeySkips	crates/engine/src/mcp_attach/tests.rs::linear_key_sources
 internal/engine.TestAttachUserMCPLinearOffByDefault	crates/engine/src/mcp_attach/tests.rs::linear_off_by_default
 internal/engine.TestAttachUserMCPLinearReadonlyVsWrite	crates/engine/src/mcp_attach/tests.rs::linear_readonly_vs_write
 internal/engine.TestAttachUserMCPProjectForceOff	crates/engine/src/mcp_attach/tests.rs::project_force_off_and_on
@@ -416,6 +418,7 @@ internal/engine.TestCloseCursorBridgesImmediateWhenIdle	providers/cursor/src/poo
 internal/engine.TestCloseLastMaestroChatTab	crates/engine/src/chat/tests/tabs.rs::closing_the_maestro_tab_clears_the_loop_chat
 internal/engine.TestCloseLoopThenNewReviewFixIsFresh	crates/engine/src/chat/tests/moved.rs::closing_a_loop_then_a_new_review_fix_is_fresh
 internal/engine.TestCloseMaestroChatTab	crates/engine/src/chat/tests/tabs.rs::closing_the_maestro_tab_clears_the_loop_chat
+internal/engine.TestClosePairTabWhenLoopExists	crates/engine/src/chat/tests/tabs.rs::closing_the_last_pair_tab_on_a_run_seeds_a_fresh_chat
 internal/engine.TestCloseWorkspaceChatClearsInboxRow	crates/engine/src/chat/tests/moved.rs::close_clears_the_inbox_row
 internal/engine.TestCloseWorkspaceChatDuringHoistDoesNotReseedSource	crates/engine/src/prs/tests/hoist.rs::close_chat_during_hoist_does_not_reseed_source
 internal/engine.TestCloseWorkspaceChatPublishesAttentionWithoutInboxRow	crates/engine/src/chat/tests/moved.rs::close_publishes_attention_without_an_inbox_row
@@ -800,12 +803,14 @@ internal/engine.TestKindUserResetsToolIDDedupe	crates/engine/src/turn/tests.rs::
 internal/engine.TestLastChatUserPromptDoesNotFallThrough	crates/engine/src/turn/transcript/tests.rs::last_chat_prompt_does_not_fall_through
 internal/engine.TestLeadingPromptSlash	crates/engine/src/composer/tests.rs::leading_slash
 internal/engine.TestLegacyStandingModeRefreshesAskToAgent	crates/engine/src/chat/tests/modes_send.rs::a_legacy_ask_session_refreshes_when_it_becomes_agent
+internal/engine.TestLinearModeFor	crates/engine/src/mcp_attach/tests.rs::tracker_modes
 internal/engine.TestLinkUnlinkedGitHubPRsAttachesExistingWorkspace	crates/engine/src/prs/tests/linking.rs::link_unlinked_attaches_existing_workspace
 internal/engine.TestLinkUnlinkedGitHubPRsSkipsMerged	crates/engine/src/prs/tests/linking.rs::link_unlinked_skips_merged
 internal/engine.TestLinkUnlinkedGitHubPRsViaUpstream	crates/engine/src/prs/tests/linking.rs::link_unlinked_via_upstream
 internal/engine.TestListAndActivateSkillRespectDisabledSettings	crates/store/src/tests/store_tests.rs::skill_and_mcp_overrides_persist
 internal/engine.TestListSkillsProjectEnableOverridesGlobalDisable	crates/engine/src/host/chat_tests.rs::project_disable_and_enable_overrides
 internal/engine.TestListSkillsRespectsProjectDisabledSkills	crates/engine/src/host/chat_tests.rs::project_disable_and_enable_overrides
+internal/engine.TestListWorkspaceChatsLoopOnly	crates/engine/src/chat/tests/tabs.rs::a_new_tab_keeps_the_maestro_tab
 internal/engine.TestListedAttentionReasonsAssigned	crates/forge/src/model/state.rs::listed_state_and_attention
 internal/engine.TestListedNeedsAttentionAuthorChanges	crates/forge/src/model/state.rs::listed_state_and_attention
 internal/engine.TestListedNeedsAttentionDraft	crates/forge/src/model/state.rs::listed_state_and_attention
@@ -818,6 +823,9 @@ internal/engine.TestLocalBaseFromGitHubKeepsProjectRemoteWhenUnfetched	crates/en
 internal/engine.TestLocalBaseFromGitHubPrefersProjectRemote	crates/engine/src/prs/tests/linking.rs::local_base_prefers_project_remote
 internal/engine.TestLocalBaseFromGitHubSlashyGitHubBranch	crates/engine/src/prs/tests/linking.rs::local_base_slashy_forge_branch
 internal/engine.TestLocalMergeCommitMessage	crates/engine/src/prs/tests/merge.rs::local_merge_commit_messages
+internal/engine.TestLockChatLifeRefusesDeletingWorkspace	crates/engine/src/chatlife/tests.rs::life_lock_serializes_and_refuses_reserved
+internal/engine.TestLockChatLifeRefusesHoistingWorkspace	crates/engine/src/chatlife/tests.rs::life_lock_serializes_and_refuses_reserved
+internal/engine.TestLockChatLifeRetiresIdleSlots	crates/engine/src/chatlife/tests.rs::life_lock_serializes_and_refuses_reserved
 internal/engine.TestLoopCommitMessage	crates/engine/src/turn/oneshot_tests.rs::loop_commit_message_cases
 internal/engine.TestLoopFinishedLegacyEmptyChatCode	crates/engine/src/attention/tests.rs::loop_finished_legacy_empty_chat_code_badges_ma
 internal/engine.TestLoopFinishedLegacyEmptyClosedMA	crates/engine/src/attention/tests.rs::loop_finished_legacy_empty_does_not_follow_pa_owner
@@ -825,6 +833,7 @@ internal/engine.TestLoopFinishedVersusCloseLeavesNoOrphanInbox	crates/engine/src
 internal/engine.TestLoopGoalImagesUsesEngageTurnNotFirstChat	crates/engine/src/loops/tests/engage.rs::loop_goal_images_use_engage_turn_not_first_chat
 internal/engine.TestLoopWrapUpHTML	crates/engine/src/loops/tests/wrap_up.rs::loop_wrap_up_html_cases
 internal/engine.TestMCPConfigJSONUserMCP	providers/claude/src/args.rs::mcp_config
+internal/engine.TestMaestroChatAttachesLinearWrite	crates/engine/src/mcp_attach/tests.rs::tracker_modes, crates/engine/src/mcp_attach/tests.rs::linear_readonly_vs_write, crates/engine/src/loops/tests/specialists.rs::loop_specialists_attach_linear
 internal/engine.TestMaestroResumeNeedsLoop	crates/engine/src/chat/tests/recover.rs::the_maestro_resume_needs_a_loop_rule
 internal/engine.TestMaestroTurnMirrorsToSession	crates/engine/src/turn/tests.rs::maestro_tool_turn_mirrors_losslessly
 internal/engine.TestMarkCheckpoints	crates/engine/src/turn/checkpoint_tests.rs::mark_checkpoints_flags_changed_turns
@@ -855,6 +864,7 @@ internal/engine.TestModeSwitchContinueDoesNotDisplaceLiveTurn	crates/engine/src/
 internal/engine.TestModeSwitchContinueRegistersAfterFIFOClaim	crates/engine/src/chat/tests/steer.rs::a_remount_registers_only_after_its_fifo_claim
 internal/engine.TestModeSwitchContinueSetupFailureRetriesPendingHoist	crates/engine/src/prs/tests/hoist.rs::mode_switch_setup_failure_retries_pending_hoist
 internal/engine.TestModelRefRoundTrip	crates/domain/src/model.rs::parse_model_ref_cases
+internal/engine.TestMultiWorkspaceChats	crates/engine/src/chat/tests/tabs.rs::pair_tabs_keep_separate_transcripts_and_sessions
 internal/engine.TestNewWorkspaceIDAvoidsExisting	crates/engine/src/workspace/tests.rs::new_workspace_id_avoids_existing_and_deleting
 internal/engine.TestNilInjectedRunnerFailsClosed	crates/engine/src/turn/tests.rs::nil_pin_fails_closed
 internal/engine.TestNonClaudeProviderTurnIsMirrored	crates/engine/src/turn/tests.rs::non_claude_turn_is_mirrored_under_its_provider
@@ -917,6 +927,7 @@ internal/engine.TestPersistChatFailureWrappedDisplayDoesNotDuplicate	crates/engi
 internal/engine.TestPlanGitHubMergeFallsBackToCLI	crates/forge/src/github/merge.rs::plan_prefers_rest_then_graphql_then_cli
 internal/engine.TestPlanGitHubMergeGraphQLWhenNoURL	crates/forge/src/github/merge.rs::plan_prefers_rest_then_graphql_then_cli
 internal/engine.TestPlanGitHubMergePrefersRESTFromURL	crates/forge/src/github/merge.rs::plan_prefers_rest_then_graphql_then_cli
+internal/engine.TestPlanModeChatAttachesLinearReadonly	crates/engine/src/chat/tests/moved.rs::plan_and_agent_chats_attach_linear
 internal/engine.TestProviderNeedsPermissionPromptTool	providers/claude/src/lib.rs::availability_and_identity, providers/cursor/src/provider/tests.rs::identity_and_caps, providers/codex/src/lib.rs::availability_wording
 internal/engine.TestProvisionalTitleStripsLeadingAttachment	crates/engine/src/chat/tests/send.rs::provisional_title_strips_a_leading_attachment
 internal/engine.TestProvisionalWorkspaceTitle	crates/engine/src/chat/tests/send.rs::provisional_title_from_first_message_until_rename
@@ -954,6 +965,8 @@ internal/engine.TestRefreshPRConversationStoresAllowedMergeMethods	crates/engine
 internal/engine.TestRefreshPRConversationStoresMergeStatus	crates/engine/src/prs/tests/thread.rs::refresh_stores_merge_status
 internal/engine.TestRefreshPRConversationStoresReviewRequest	crates/engine/src/prs/tests/thread.rs::refresh_stores_review_request
 internal/engine.TestRegisterChatTurnRefusesAfterRemoveWorkspace	crates/engine/src/workspace/tests.rs::remove_workspace_refuses_in_flight_chat
+internal/engine.TestRegisterChatTurnRefusesArchivedWorkspace	crates/engine/src/chatlife/tests.rs::register_refuses_deleting_archived_and_removed
+internal/engine.TestRegisterChatTurnRefusesDeletingWorkspace	crates/engine/src/chatlife/tests.rs::register_refuses_deleting_archived_and_removed
 internal/engine.TestReleaseRunnerTrimsOverflowWhenIdle	providers/cursor/src/pool/tests.rs::release_trims_overflow_when_idle
 internal/engine.TestRemapChatsOffDisabledProviders	crates/engine/src/chat/tests/modes_send.rs::remap_moves_picks_off_a_disabled_provider
 internal/engine.TestRemapChatsOffDisabledProvidersKeepsSimplify	crates/engine/src/chat/tests/modes_send.rs::remap_keeps_the_simplify_chip
@@ -1189,6 +1202,7 @@ internal/engine.TestWithGitHubMergeFieldsFetchErrorOmitsFlags	crates/forge/src/g
 internal/engine.TestWithGitHubMergeFieldsUsesLiveTitle	crates/forge/src/github/merge.rs::live_title_drives_subject
 internal/engine.TestWorkspaceChatItems	crates/engine/src/turn/transcript/tests.rs::workspace_chat_items_reconstruct_the_turn
 internal/engine.TestWorkspaceChatItemsNestsSubagentOutput	crates/engine/src/turn/transcript/tests.rs::workspace_chat_items_nest_subagent_output
+internal/engine.TestWorkspaceChatModes	crates/engine/src/chat/tests/modes_send.rs::the_dock_mode_shapes_the_turn
 internal/engine.TestWorkspaceDiscardRiskIncludesChildren	crates/engine/src/chat/tests/children.rs::the_discard_risk_includes_children
 internal/engine.TestWorkspaceMatchingPRBranchPrefersLocalName	crates/engine/src/prs/tests/linking.rs::matching_branch_prefers_local_name
 internal/engine.TestWorkspaceMatchingPRBranchSkipsProjectBase	crates/engine/src/prs/tests/linking.rs::matching_branch_skips_project_base

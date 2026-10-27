@@ -207,3 +207,27 @@ async fn app_chat_selection_persists() {
     assert_eq!(flags.get("effort").map(String::as_str), Some("low"));
     te.close().await;
 }
+
+#[tokio::test]
+async fn send_app_message_omits_user_mcp() {
+    let c = scripted("app-mcp", "ok");
+    let te = TestEngine::new(Some(c.provider()));
+    let mut set = te.store.settings();
+    set.mcp_servers = vec![recur_domain::McpServer {
+        id: "acme".into(),
+        enabled: true,
+        transport: "http".into(),
+        url: "https://example.com/mcp".into(),
+        ..Default::default()
+    }];
+    te.store.set_settings(set);
+    te.engine
+        .send_app_message("", "What needs me?", "sonnet", None)
+        .await;
+    let spec = c.with_role(AgentRole::Maestro).remove(0);
+    assert!(spec.user_mcp.is_empty(), "{:?}", spec.user_mcp);
+    let tools = spec.allowed_tools.clone().unwrap_or_default();
+    assert!(!tools.iter().any(|t| t == "mcp__acme__*"));
+    assert_eq!(tools.len(), 3);
+    te.close().await;
+}

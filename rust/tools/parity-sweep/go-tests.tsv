@@ -629,7 +629,11 @@ internal/engine.TestEffectiveWorkspaceActivityLegacyFallback	crates/engine/src/b
 internal/engine.TestElapsedDurationMS	providers/codex/src/runner.rs::elapsed
 internal/engine.TestEmitChatInboxSkipsPendingModeContinue	crates/engine/src/chat/tests/switch_mode.rs::a_pending_remount_skips_the_finished_reply_inbox_row
 internal/engine.TestEngineNewTreatsZeroCapsAsUnlimited	crates/engine/src/lifecycle/tests.rs::new_treats_zero_caps_as_unlimited
+internal/engine.TestEnginePauseNotRunningNoop	crates/engine/src/lifecycle/tests.rs::stop_without_a_walk_persists_unless_terminal
 internal/engine.TestEnginePauseResumeStop	crates/engine/src/loops/tests/engine.rs::engine_pause_then_resume_completes
+internal/engine.TestEngineRecoverHealsAnsweredStuckEscalation	crates/engine/src/lifecycle/tests.rs::recover_reconciles_persisted_live_states
+internal/engine.TestEngineRecoverInterruptedLoops	crates/engine/src/lifecycle/tests.rs::recover_reconciles_persisted_live_states
+internal/engine.TestEngineStopDoesNotDowngradeTerminal	crates/engine/src/lifecycle/tests.rs::stop_without_a_walk_persists_unless_terminal
 internal/engine.TestEnrichGitHubCommits	crates/forge/src/model/state.rs::enrich_commits_by_prefix
 internal/engine.TestEnsureAttachmentMarkersAndWorkspaceImages	crates/engine/src/attachments/tests.rs::ensure_markers_and_workspace_images
 internal/engine.TestEnsurePRChatHostCreatesHiddenWorkspace	crates/engine/src/prs/tests/hoist.rs::ensure_host_creates_hidden_workspace
@@ -982,6 +986,7 @@ internal/engine.TestRefreshPRConversationStoresReviewRequest	crates/engine/src/p
 internal/engine.TestRegisterChatTurnRefusesAfterRemoveWorkspace	crates/engine/src/workspace/tests.rs::remove_workspace_refuses_in_flight_chat
 internal/engine.TestRegisterChatTurnRefusesArchivedWorkspace	crates/engine/src/chatlife/tests.rs::register_refuses_deleting_archived_and_removed
 internal/engine.TestRegisterChatTurnRefusesDeletingWorkspace	crates/engine/src/chatlife/tests.rs::register_refuses_deleting_archived_and_removed
+internal/engine.TestRegisterMCPSkipsCompatible	crates/engine/src/turn/tests.rs::in_process_providers_get_a_turn_token
 internal/engine.TestReleaseRunnerTrimsOverflowWhenIdle	providers/cursor/src/pool/tests.rs::release_trims_overflow_when_idle
 internal/engine.TestRemapChatsOffDisabledProviders	crates/engine/src/chat/tests/modes_send.rs::remap_moves_picks_off_a_disabled_provider
 internal/engine.TestRemapChatsOffDisabledProvidersKeepsSimplify	crates/engine/src/chat/tests/modes_send.rs::remap_keeps_the_simplify_chip

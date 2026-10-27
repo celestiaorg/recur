@@ -1385,3 +1385,65 @@ async fn session_broadcast_compacts_list_findings_when_result_has_no_tool_name()
     assert_eq!(v["count"], 15);
     te.close().await;
 }
+
+fn recording() -> (
+    Arc<dyn recur_agent::Provider>,
+    Arc<parking_lot::Mutex<Vec<TurnRequest>>>,
+) {
+    let seen: Arc<parking_lot::Mutex<Vec<TurnRequest>>> = Arc::default();
+    let s2 = Arc::clone(&seen);
+    let p = ScriptedProvider::new(Vec::new())
+        .imitating(claude())
+        .on_run(move |r| s2.lock().push(r.clone()));
+    (Arc::new(p), seen)
+}
+
+#[tokio::test]
+async fn mirroring_runner_assigns_user_message_id_for_history() {
+    let (p, seen) = recording();
+    let (te, ws, _repo) = engine_with(p).await;
+    let prompt = "a long briefing that must not duplicate";
+    te.engine
+        .run_agent(
+            &CancellationToken::new(),
+            coder_spec(&ws, "claude-sonnet-5", prompt),
+        )
+        .await
+        .unwrap();
+    let got = seen.lock()[0].clone();
+    assert!(!got.user_message_id.is_empty());
+    let msgs = te
+        .store
+        .session_transcript(&got.recur_session_id)
+        .unwrap()
+        .unwrap_or_default();
+    let users: Vec<&Message> = msgs.iter().filter(|m| m.role == "user").collect();
+    assert_eq!(users.len(), 1, "the prompt is recorded once");
+    assert_eq!(users[0].id, got.user_message_id);
+    te.close().await;
+}
+
+#[tokio::test]
+async fn mirroring_runner_retry_resolves_user_message_id() {
+    let (p, seen) = recording();
+    let (te, ws, _repo) = engine_with(p).await;
+    let base = || coder_spec(&ws, "claude-sonnet-5", "retry this briefing");
+    te.engine
+        .run_agent(&CancellationToken::new(), base())
+        .await
+        .unwrap();
+    let mut retry = base();
+    retry.req.skip_record_user = true;
+    retry.req.user_message_id = "a-fresh-retry-id".into();
+    te.engine
+        .run_agent(&CancellationToken::new(), retry)
+        .await
+        .unwrap();
+    let seen = seen.lock().clone();
+    assert!(!seen[0].user_message_id.is_empty());
+    assert_eq!(
+        seen[1].user_message_id, seen[0].user_message_id,
+        "a retry reuses the recorded row"
+    );
+    te.close().await;
+}

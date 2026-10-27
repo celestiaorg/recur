@@ -71,12 +71,27 @@ async fn stop_without_a_walk_persists_unless_terminal() {
     assert_eq!(q.state, WorkspaceState::Stopped);
     assert_eq!(q.phase, "stopped");
     assert!(q.checkpoint.is_none(), "a stop drops the resume position");
-    row(&t, "done", WorkspaceState::PrOpen, |_| {});
-    t.engine.stop("done").await;
-    assert_eq!(
-        t.store.workspace("done").unwrap().state,
+    for term in [
         WorkspaceState::PrOpen,
-        "late stop never downgrades"
+        WorkspaceState::Merged,
+        WorkspaceState::Failed,
+        WorkspaceState::Stopped,
+    ] {
+        let id = format!("done-{term:?}");
+        row(&t, &id, term.clone(), |_| {});
+        t.engine.stop(&id).await;
+        assert_eq!(
+            t.store.workspace(&id).unwrap().state,
+            term,
+            "late stop never downgrades"
+        );
+    }
+    row(&t, "pq", WorkspaceState::Queued, |_| {});
+    t.engine.pause("pq");
+    assert_eq!(
+        t.store.workspace("pq").unwrap().state,
+        WorkspaceState::Queued,
+        "pausing a queued loop is a no-op"
     );
     row(&t, "pz", WorkspaceState::Coding, |_| {});
     t.engine.pause("pz");

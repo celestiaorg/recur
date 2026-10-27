@@ -1197,7 +1197,9 @@ internal/lsp/managed.TestRuffAssetForHost	crates/lsp/src/managed/tests.rs::host_
 internal/lsp/managed.TestRustAnalyzerAssetForHost	crates/lsp/src/managed/tests.rs::host_assets_have_digests
 internal/lsp/managed.TestTaploAssetForHost	crates/lsp/src/managed/tests.rs::host_assets_have_digests
 internal/lsp/managed.TestVuePluginPath	crates/lsp/src/managed/tests.rs::vue_plugin_path_cases
+internal/mcp.TestConcurrentToolCallsRaceClean	crates/mcp/src/server_tests.rs::concurrent_tool_calls_keep_attribution
 internal/mcp.TestNamesFromAllowedTools	crates/mcp/src/server_tests.rs::names_from_allowed_tools_scopes
+internal/mcp.TestRegisterScopesToolsListAndCall	crates/mcp/src/server_tests.rs::claude_binding_advertises_and_allows_permission_request
 internal/observe.TestProjectFindingsOntoDiff	crates/code/src/observe/tests.rs::project_findings_onto_diff_range
 internal/openipc.TestCallDialError	crates/platform/src/openipc.rs::dial_error_classification
 internal/openipc.TestClaimSecondGetsErrHeld	crates/platform/src/openipc.rs::second_claim_is_held

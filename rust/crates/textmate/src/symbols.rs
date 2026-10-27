@@ -351,10 +351,14 @@ pub fn collect_from_engine(
     )
 }
 
+/// How long one outline call tokenizes (the web's 80ms is four frames of typing).
+pub const OUTLINE_FILL_SLICE: Duration = Duration::from_millis(6);
+
 /// Outline an open document (`outlineOpenFile` without the async plumbing):
 /// `None` when the file has no grammar / engine document / rules, so the
-/// caller falls back to the language-agnostic outline. Fills up to 80ms
-/// first; `complete` is false when the rest still needs the idle sweep.
+/// caller falls back to the language-agnostic outline. Fills for up to
+/// `OUTLINE_FILL_SLICE` first (it runs on the UI thread, so a key waits that
+/// long at most); `complete` is false when the rest still needs the idle sweep.
 pub fn outline_open_file(
     engine: &mut TmEngine,
     doc_id: &str,
@@ -365,7 +369,7 @@ pub fn outline_open_file(
     }
     let scope = engine.doc_scope(doc_id)?.to_string();
     engine.ensure_grammar(&scope).ok()?;
-    engine.fill_sync(doc_id, Duration::from_millis(80));
+    engine.fill_sync(doc_id, OUTLINE_FILL_SLICE);
     let syms = collect_from_engine(engine, doc_id, rules);
     let complete = engine.filled_through(doc_id) >= engine.line_count(doc_id);
     Some((syms, complete))

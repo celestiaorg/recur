@@ -91,7 +91,7 @@ pub struct Handlers {
 }
 
 /// Running counters while building one document.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Counters {
     pub text: usize,
     pub fence: usize,
@@ -107,6 +107,9 @@ pub struct Build<'a, 'w> {
     pub n: Counters,
     /// Every inline text block, in order.
     pub texts: Vec<TextBlock>,
+    /// Builds elements that are never laid out (a windowed document's index): skips the
+    /// measuring only layout needs.
+    pub dry: bool,
 }
 
 /// A rendered text block: its inputs (for the mirror), its links and where it painted.
@@ -418,9 +421,9 @@ impl Build<'_, '_> {
             links: inl.links.clone(),
         };
         let text = self.text(&text_only, flow, block);
-        let (_, _, m) = text.measure(None, self.window);
+        let m = checkbox.map(|_| text.measure(None, self.window).2);
         let mut el = div().relative().flex().flex_col().child(self.tracked(text));
-        if let Some(checked) = checkbox {
+        if let (Some(checked), Some(m)) = (checkbox, m) {
             // The control's margin box sits 12px above to 6px below the baseline
             // (`vertical-align: -1px`), so it can deepen the line.
             let below = m.height - m.baseline;
@@ -539,47 +542,22 @@ impl Build<'_, '_> {
 
     /// Block children of a container, with inline runs wrapped in anonymous blocks.
     pub fn blocks(&mut self, nodes: &[Node], flow: Flow, parent: &str) -> Vec<Laid> {
-        let mut out = Vec::new();
-        let elements: Vec<usize> = nodes
+        items(nodes, parent)
             .iter()
-            .enumerate()
-            .filter(|(_, n)| matches!(n, Node::El(_)))
-            .map(|(i, _)| i)
-            .collect();
-        let first_el = elements.first().copied();
-        let last_el = elements.last().copied();
-        let mut run: Vec<Node> = Vec::new();
-        let flush = |b: &mut Build, run: &mut Vec<Node>, out: &mut Vec<Laid>| {
-            let meaningful = run.iter().any(|n| match n {
-                Node::Text(t) => !t
-                    .chars()
-                    .all(|c| matches!(c, ' ' | '\t' | '\n' | '\r' | '\u{c}')),
-                Node::El(_) => true,
-            });
-            if meaningful {
-                let el = b.inline_block(run, flow);
-                out.push(Laid { el, mt: 0., mb: 0. });
-            }
-            run.clear();
-        };
-        for (i, n) in nodes.iter().enumerate() {
-            match n {
-                Node::El(e) if is_block(e) => {
-                    flush(self, &mut run, &mut out);
-                    let pos = Pos {
-                        first: Some(i) == first_el,
-                        last: Some(i) == last_el,
-                        parent,
-                    };
-                    if let Some(l) = self.block(e, flow, pos) {
-                        out.push(l);
-                    }
-                }
-                other => run.push(other.clone()),
-            }
+            .filter_map(|it| self.item(it, flow))
+            .collect()
+    }
+
+    /// One child of a block container.
+    pub fn item(&mut self, it: &Item, flow: Flow) -> Option<Laid> {
+        match it {
+            Item::Block(e, pos) => self.block(e, flow, *pos),
+            Item::Inline(run) => Some(Laid {
+                el: self.inline_block(run, flow),
+                mt: 0.,
+                mb: 0.,
+            }),
         }
-        flush(self, &mut run, &mut out);
-        out
     }
 
     fn block(&mut self, e: &El, flow: Flow, pos: Pos) -> Option<Laid> {
@@ -841,7 +819,11 @@ impl Build<'_, '_> {
             .size(flow.size)
             .leading(flow.leading)
             .pre_wrap();
-        let (w, _, _) = text.measure(None, self.window);
+        let w = if self.dry {
+            0.
+        } else {
+            text.measure(None, self.window).0
+        };
         let dp = 1. / self.window.scale_factor();
         let content = div()
             .flex_none()
@@ -1124,8 +1106,14 @@ impl Build<'_, '_> {
                 self.n.block += 1;
                 let text = self.text(&inl, cf, self.n.block);
                 let tid = self.n.text;
-                let (maxc, _, _) = text.measure(None, self.window);
-                let (minc, _, _) = text.measure(Some(0.), self.window);
+                let (maxc, minc) = if self.dry {
+                    (0., 0.)
+                } else {
+                    (
+                        text.measure(None, self.window).0,
+                        text.measure(Some(0.), self.window).0,
+                    )
+                };
                 let extra = 2. * ph + 1.;
                 max_w[ci] = max_w[ci].max(maxc + extra);
                 min_w[ci] = min_w[ci].max(minc + extra);
@@ -1193,6 +1181,7 @@ impl Build<'_, '_> {
                 let inner_w = (w - 2. * ph - 1.).max(0.);
                 let text_h = text
                     .as_ref()
+                    .filter(|_| !self.dry)
                     .map_or(0., |(_, t)| t.measure(Some(inner_w), self.window).1);
                 let text = text.map(|(id, t)| self.tracked_id(id, t));
                 row_h[ri] = row_h[ri].max(text_h);
@@ -1255,8 +1244,57 @@ impl Build<'_, '_> {
     }
 }
 
+/// A child of a block container: a block element, or a run of inline nodes that lays out
+/// as an anonymous block.
+pub enum Item<'n> {
+    Block(&'n El, Pos<'n>),
+    Inline(Vec<Node>),
+}
+
+/// The children of a block container, in order.
+pub fn items<'n>(nodes: &'n [Node], parent: &'n str) -> Vec<Item<'n>> {
+    let mut out = Vec::new();
+    let elements: Vec<usize> = nodes
+        .iter()
+        .enumerate()
+        .filter(|(_, n)| matches!(n, Node::El(_)))
+        .map(|(i, _)| i)
+        .collect();
+    let first_el = elements.first().copied();
+    let last_el = elements.last().copied();
+    let mut run: Vec<Node> = Vec::new();
+    let flush = |run: &mut Vec<Node>, out: &mut Vec<Item<'n>>| {
+        let meaningful = run.iter().any(|n| match n {
+            Node::Text(t) => !t
+                .chars()
+                .all(|c| matches!(c, ' ' | '\t' | '\n' | '\r' | '\u{c}')),
+            Node::El(_) => true,
+        });
+        if meaningful {
+            out.push(Item::Inline(std::mem::take(run)));
+        }
+        run.clear();
+    };
+    for (i, n) in nodes.iter().enumerate() {
+        match n {
+            Node::El(e) if is_block(e) => {
+                flush(&mut run, &mut out);
+                let pos = Pos {
+                    first: Some(i) == first_el,
+                    last: Some(i) == last_el,
+                    parent,
+                };
+                out.push(Item::Block(e, pos));
+            }
+            other => run.push(other.clone()),
+        }
+    }
+    flush(&mut run, &mut out);
+    out
+}
+
 #[derive(Clone, Copy)]
-struct Pos<'p> {
+pub struct Pos<'p> {
     first: bool,
     last: bool,
     parent: &'p str,

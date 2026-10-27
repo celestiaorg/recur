@@ -4,7 +4,7 @@
 //! the lightbox.
 
 use recur_ui::guard::Guarded;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -13,8 +13,8 @@ use std::time::Duration;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     App, AppContext, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, Task, WeakEntity, Window, canvas, div,
+    InteractiveElement, IntoElement, ParentElement, Render, ScrollHandle, SharedString,
+    StatefulInteractiveElement, Styled, Task, WeakEntity, Window, canvas, div, px,
 };
 use recur_ui::Theme;
 
@@ -22,7 +22,7 @@ use crate::images::{self, Decoded, ImageCache};
 use crate::lightbox::AttachmentLightbox;
 use crate::markdown::{ParseOptions, markdown_doc_cached, markdown_doc_is_cached};
 use crate::render::block::{
-    Build, Counters, Env, Handlers, ImageSlot, MermaidSlot, TextBlock, stack,
+    Build, Counters, Env, Handlers, ImageSlot, Item, Laid, MermaidSlot, TextBlock, items, stack,
 };
 use crate::render::doc::{Doc, El, Node};
 use crate::render::mirror::Mirror;
@@ -65,6 +65,78 @@ pub struct MarkdownView {
     pub(crate) texts: Rc<RefCell<Vec<TextBlock>>>,
     lightbox: Option<Entity<AttachmentLightbox>>,
     focus: FocusHandle,
+    /// The scroller a long document windows itself to (a file preview's).
+    scroller: Option<ScrollHandle>,
+    windowed: Option<Windowed>,
+    /// The document's top in its scroller's content, from the last frame.
+    content_y: Rc<Cell<Option<f32>>>,
+    /// The span of the document the last render laid out, in body coordinates.
+    built: Rc<Cell<(f32, f32)>>,
+}
+
+/// Top-level blocks before a document windows itself to its scroller.
+const WINDOW_MIN_BLOCKS: usize = 48;
+
+/// A long document's index: what laying out a top-level block needs without building the
+/// ones before it, and their heights.
+struct Windowed {
+    segs: Vec<Seg>,
+    /// Every text block of the document (find reads them all).
+    texts: Vec<TextBlock>,
+    /// Laid-out heights by segment, at `width`.
+    heights: Rc<RefCell<Vec<Option<f32>>>>,
+    width: f32,
+}
+
+/// A top-level block that lays out.
+struct Seg {
+    item: usize,
+    n: Counters,
+    mt: f32,
+    mb: f32,
+    chars: usize,
+    lines: usize,
+}
+
+impl Seg {
+    /// A height for a block not laid out yet; measured once it is.
+    fn estimate(&self, size: f32, leading: f32, width: f32) -> f32 {
+        let per_line = (width / (size * 0.5)).max(1.);
+        let lines = self
+            .lines
+            .max((self.chars as f32 / per_line).ceil() as usize);
+        lines.max(1) as f32 * size * leading
+    }
+}
+
+/// Text length and hard line count of a block (for its estimate).
+fn extent(it: &Item) -> (usize, usize) {
+    fn el(e: &El, pre: bool, out: &mut (usize, usize)) {
+        let pre = pre || e.is("pre");
+        if e.is("li") || e.is("tr") || e.is("p") || e.is("br") {
+            out.1 += 1;
+        }
+        walk(&e.children, pre, out);
+    }
+    fn walk(nodes: &[Node], pre: bool, out: &mut (usize, usize)) {
+        for n in nodes {
+            match n {
+                Node::Text(t) => {
+                    out.0 += t.len();
+                    if pre {
+                        out.1 += t.matches('\n').count();
+                    }
+                }
+                Node::El(e) => el(e, pre, out),
+            }
+        }
+    }
+    let mut out = (0, 0);
+    match it {
+        Item::Block(e, _) => el(e, false, &mut out),
+        Item::Inline(run) => walk(run, false, &mut out),
+    }
+    out
 }
 
 impl EventEmitter<MarkdownEvent> for MarkdownView {}
@@ -157,6 +229,10 @@ impl MarkdownView {
             texts: Rc::default(),
             lightbox: None,
             focus: cx.focus_handle(),
+            scroller: None,
+            windowed: None,
+            content_y: Rc::default(),
+            built: Rc::default(),
         };
         v.set_text(text, cx);
         cx.observe_global::<Theme>(|v, cx| {
@@ -181,7 +257,59 @@ impl MarkdownView {
     /// Replaces the class's sheet (a host's cascade on top of `.chat-canvas`).
     pub fn set_sheet(&mut self, sheet: Sheet, cx: &mut Context<Self>) {
         self.sheet = Some(sheet);
+        self.windowed = None;
         cx.notify();
+    }
+
+    /// Lays a long document out only near `scroller`'s viewport, which scrolls this view.
+    pub fn set_scroller(&mut self, scroller: ScrollHandle) {
+        self.scroller = Some(scroller);
+    }
+
+    /// Where text block `id` sits in the scroller's content, laid out or not.
+    pub fn text_top(&self, id: usize) -> Option<f32> {
+        let w = self.windowed.as_ref()?;
+        let seg = w.segs.iter().rposition(|s| s.n.text < id)?;
+        let tops = self.tops(
+            w,
+            self.sheet_or_default().size,
+            self.sheet_or_default().leading,
+        );
+        Some(tops[seg] + self.content_y.get().unwrap_or(0.))
+    }
+
+    fn sheet_or_default(&self) -> Sheet {
+        self.sheet
+            .clone()
+            .unwrap_or_else(|| Sheet::for_class(self.class))
+    }
+
+    /// Each segment's top in body coordinates, and the end of the last.
+    fn tops(&self, w: &Windowed, size: f32, leading: f32) -> Vec<f32> {
+        let heights = w.heights.borrow();
+        let mut tops = Vec::with_capacity(w.segs.len() + 1);
+        let mut y = 0.;
+        for (i, s) in w.segs.iter().enumerate() {
+            tops.push(y);
+            y += heights[i].unwrap_or_else(|| s.estimate(size, leading, w.width));
+            if let Some(next) = w.segs.get(i + 1) {
+                y += s.mb.max(next.mt);
+            }
+        }
+        tops.push(y);
+        tops
+    }
+
+    /// The scroller's viewport in body coordinates.
+    fn visible(scroller: &ScrollHandle, content_y: f32, window: &Window) -> (f32, f32) {
+        let vp = scroller.bounds();
+        let h = if vp.size.height > px(0.) {
+            vp.size.height
+        } else {
+            window.viewport_size().height
+        };
+        let top = -f32::from(scroller.offset().y) - content_y;
+        (top, top + f32::from(h))
     }
 
     pub fn text(&self) -> &SharedString {
@@ -225,6 +353,7 @@ impl MarkdownView {
 
     fn set_doc(&mut self, doc: Arc<Doc>, cx: &mut Context<Self>) {
         self.doc = doc;
+        self.windowed = None;
         self.fences = fence_texts(&self.doc);
         self.hover_fence = None;
         self.copied.clear();
@@ -285,6 +414,7 @@ impl MarkdownView {
 
     /// `hydrateMermaid`: render every placeholder; the previous pass is cancelled.
     fn hydrate_mermaid(&mut self, cx: &mut Context<Self>) {
+        self.windowed = None;
         let sources = mermaid_sources(&self.doc);
         self.mermaid = vec![MermaidSlot::Pending; sources.len()];
         self.mermaid_task = None;
@@ -301,6 +431,7 @@ impl MarkdownView {
     pub(crate) fn set_mermaid(&mut self, i: usize, slot: MermaidSlot, cx: &mut Context<Self>) {
         if let Some(s) = self.mermaid.get_mut(i) {
             *s = slot;
+            self.windowed = None;
             cx.notify();
         }
     }
@@ -533,23 +664,60 @@ impl MarkdownView {
             window,
             n: Counters::default(),
             texts: Vec::new(),
+            dry: false,
         };
-        let blocks = b.blocks(&doc.nodes, flow, "root");
+        let items = items(&doc.nodes, "root");
+        let scroller = self
+            .scroller
+            .clone()
+            .filter(|_| items.len() >= WINDOW_MIN_BLOCKS);
+        let (blocks, texts) = match scroller {
+            None => {
+                self.windowed = None;
+                let blocks = items.iter().filter_map(|it| b.item(it, flow)).collect();
+                (blocks, std::mem::take(&mut b.texts))
+            }
+            Some(scroller) => {
+                if self.windowed.is_none() {
+                    self.windowed = Some(index(&mut b, &items, flow, width));
+                }
+                let content_y = self.content_y.get().unwrap_or(0.);
+                let visible = Self::visible(&scroller, content_y, b.window);
+                let w = self.windowed.as_mut().expect("indexed");
+                if (w.width - width).abs() > 0.01 {
+                    w.width = width;
+                    w.heights.borrow_mut().iter_mut().for_each(|h| *h = None);
+                }
+                let w = self.windowed.as_ref().expect("indexed");
+                let tops = self.tops(w, flow.size, flow.leading);
+                let (blocks, built) = windowed_blocks(&mut b, w, &items, &tops, visible, flow);
+                self.built.set(built);
+                let mut texts = w.texts.clone();
+                for t in std::mem::take(&mut b.texts) {
+                    if let Ok(i) = texts.binary_search_by_key(&t.id, |x| x.id) {
+                        texts[i] = t;
+                    }
+                }
+                (blocks, texts)
+            }
+        };
         let (body, first, last) = stack(blocks, b.window);
         let changed = {
             let old = self.texts.borrow();
-            old.len() != b.texts.len()
-                || old.iter().zip(&b.texts).any(|(a, b)| {
-                    a.id != b.id
-                        || a.spec.runs.len() != b.spec.runs.len()
-                        || a.spec
-                            .runs
-                            .iter()
-                            .zip(&b.spec.runs)
-                            .any(|(x, y)| x.text != y.text)
-                })
+            let content = |t: &TextBlock| {
+                t.spec
+                    .runs
+                    .iter()
+                    .map(|r| r.text.as_str())
+                    .collect::<String>()
+            };
+            old.len() != texts.len()
+                || old
+                    .iter()
+                    .zip(&texts)
+                    .any(|(a, b)| a.id != b.id || content(a) != content(b))
         };
-        *self.texts.borrow_mut() = std::mem::take(&mut b.texts);
+        *self.texts.borrow_mut() = texts;
         if changed {
             cx.emit(MarkdownEvent::TextChanged);
         }
@@ -562,12 +730,26 @@ impl MarkdownView {
         let gap_bottom = crate::render::exact::vgap(last, b.window);
         let this = cx.entity().downgrade();
         let measure = canvas(
-            move |bounds, _, cx| {
+            move |bounds, window, cx| {
                 let w = f32::from(bounds.size.width);
                 let _ = this.update(cx, |v, cx| {
                     if (v.width - w).abs() > 0.01 {
                         v.width = w;
                         cx.notify();
+                    }
+                    if v.windowed.is_some()
+                        && let Some(s) = v.scroller.as_ref()
+                    {
+                        // Lay out again when the viewport left what this frame built (a
+                        // restored or revealed offset, a jump).
+                        let y = f32::from(bounds.origin.y - s.bounds().origin.y - s.offset().y);
+                        let moved = v.content_y.get().is_none_or(|old| (old - y).abs() > 1.);
+                        v.content_y.set(Some(y));
+                        let (top, bottom) = Self::visible(s, y, window);
+                        let (a, z) = v.built.get();
+                        if moved || top < a || bottom > z {
+                            cx.notify();
+                        }
                     }
                 });
             },
@@ -641,6 +823,115 @@ impl Render for MarkdownView {
     }
 }
 
+/// The document's index: every top-level block built once, without layout, for its counters,
+/// margins and text blocks.
+fn index(b: &mut Build, items: &[Item], flow: crate::render::block::Flow, width: f32) -> Windowed {
+    b.dry = true;
+    let mut segs = Vec::new();
+    for (i, it) in items.iter().enumerate() {
+        let n = b.n.clone();
+        if let Some(l) = b.item(it, flow) {
+            let (chars, lines) = extent(it);
+            segs.push(Seg {
+                item: i,
+                n,
+                mt: l.mt,
+                mb: l.mb,
+                chars,
+                lines,
+            });
+        }
+    }
+    b.dry = false;
+    b.n = Counters::default();
+    let heights = Rc::new(RefCell::new(vec![None; segs.len()]));
+    Windowed {
+        segs,
+        texts: std::mem::take(&mut b.texts),
+        heights,
+        width,
+    }
+}
+
+/// The blocks near `visible` (a viewport of overscan either side), the rest as spacers at
+/// their measured or estimated heights. Returns them and the span they cover.
+fn windowed_blocks(
+    b: &mut Build,
+    w: &Windowed,
+    items: &[Item],
+    tops: &[f32],
+    visible: (f32, f32),
+    flow: crate::render::block::Flow,
+) -> (Vec<Laid>, (f32, f32)) {
+    let n = w.segs.len();
+    if n == 0 {
+        return (Vec::new(), (f32::NEG_INFINITY, f32::INFINITY));
+    }
+    let pad = visible.1 - visible.0;
+    let (lo, hi) = (visible.0 - pad, visible.1 + pad);
+    let a = (0..n)
+        .find(|&i| tops[i + 1] >= lo)
+        .unwrap_or(n.saturating_sub(1));
+    let z = (a..n).take_while(|&i| tops[i] <= hi).last().unwrap_or(a);
+    let gap = |i: usize| {
+        w.segs
+            .get(i + 1)
+            .map_or(0., |next| w.segs[i].mb.max(next.mt))
+    };
+    let spacer = |from: usize, to: usize| Laid {
+        el: div()
+            .flex_none()
+            .h(px(tops[to + 1] - tops[from] - gap(to)))
+            .into_any_element(),
+        mt: w.segs[from].mt,
+        mb: w.segs[to].mb,
+    };
+    let mut out = Vec::new();
+    if a > 0 {
+        out.push(spacer(0, a - 1));
+    }
+    for i in a..=z {
+        let seg = &w.segs[i];
+        b.n = seg.n.clone();
+        let Some(l) = b.item(&items[seg.item], flow) else {
+            continue;
+        };
+        let heights = w.heights.clone();
+        let probe = canvas(
+            move |bounds, _, _| {
+                if let Some(h) = heights.borrow_mut().get_mut(i) {
+                    *h = Some(f32::from(bounds.size.height));
+                }
+            },
+            |_, _, _, _| {},
+        )
+        .absolute()
+        .inset_0();
+        out.push(Laid {
+            el: div()
+                .relative()
+                .flex()
+                .flex_col()
+                .w_full()
+                .child(l.el)
+                .child(probe)
+                .into_any_element(),
+            mt: l.mt,
+            mb: l.mb,
+        });
+    }
+    if z + 1 < n {
+        out.push(spacer(z + 1, n - 1));
+    }
+    let top = if a == 0 { f32::NEG_INFINITY } else { tops[a] };
+    let bottom = if z + 1 >= n {
+        f32::INFINITY
+    } else {
+        tops[z + 1]
+    };
+    (out, (top, bottom))
+}
+
 #[cfg(test)]
 mod tests {
     use gpui_kit::{AppContext, Entity, IntoElement, ParentElement, Render, Styled, div, px};
@@ -702,5 +993,79 @@ mod tests {
             }
             assert!(wrapped > 0, "the column is narrow enough to wrap");
         });
+    }
+
+    struct Scrolled(Entity<MarkdownView>, gpui_kit::ScrollHandle);
+
+    impl Scrolled {
+        fn render_view(
+            &mut self,
+            _: &mut Window,
+            _: &mut Context<Self>,
+        ) -> impl IntoElement + use<> {
+            div()
+                .id("scroller")
+                .track_scroll(&self.1)
+                .overflow_scroll()
+                .w(px(320.))
+                .h(px(400.))
+                .flex()
+                .flex_col()
+                .child(self.0.clone())
+        }
+    }
+
+    impl Render for Scrolled {
+        fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            recur_ui::guard::view(self, window, cx, Self::render_view)
+        }
+    }
+
+    /// A long document in a scroller lays out the blocks near the viewport, keeps every text
+    /// block for find, and lays out the end once scrolled there.
+    #[gpui::test]
+    fn a_long_document_lays_out_only_near_its_viewport(cx: &mut gpui::TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            recur_ui::init(cx);
+        });
+        let md: String = (0..300)
+            .map(|i| format!("Paragraph {i} has a few words in it.\n\n"))
+            .collect();
+        let handle = gpui_kit::ScrollHandle::new();
+        let h = handle.clone();
+        let (root, cx) = cx.add_window_view(|_, cx| {
+            let v = cx.new(|cx| {
+                let mut v = MarkdownView::new(md, MarkdownClass::MdDoc, false, cx);
+                v.set_scroller(h);
+                v
+            });
+            Scrolled(v, handle.clone())
+        });
+        cx.run_until_parked();
+        let painted = |cx: &mut gpui::VisualTestContext| {
+            cx.update(|_, cx| {
+                let v = root.read(cx).0.read(cx);
+                let texts = v.texts.borrow();
+                assert_eq!(texts.len(), 300, "find sees every block");
+                texts
+                    .iter()
+                    .filter(|t| t.bounds.get().is_some())
+                    .map(|t| t.id)
+                    .collect::<Vec<_>>()
+            })
+        };
+        let first = painted(cx);
+        assert!(first.contains(&1), "{first:?}");
+        assert!(first.len() < 100, "{} blocks laid out", first.len());
+        let max = handle.max_offset().y;
+        assert!(max > px(4000.), "spacers keep the full height: {max:?}");
+        handle.set_offset(gpui_kit::point(px(0.), -max));
+        let md = cx.update(|_, cx| root.read(cx).0.clone());
+        cx.update(|_, cx| md.update(cx, |_, cx| cx.notify()));
+        cx.run_until_parked();
+        let last = painted(cx);
+        assert!(last.contains(&300), "{last:?}");
+        assert!(!last.contains(&1));
     }
 }

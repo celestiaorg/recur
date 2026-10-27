@@ -345,8 +345,10 @@ impl Shell {
         if self.menu_built.as_ref() == Some(&key) {
             return;
         }
+        let t = std::time::Instant::now();
         let menus = crate::menu::app_menus(&key.0, Some(&key.1), self.opts.updates, cx);
         cx.set_menus(menus);
+        crate::menu::count_rebuild(t.elapsed());
         self.menu_built = Some(key);
     }
 

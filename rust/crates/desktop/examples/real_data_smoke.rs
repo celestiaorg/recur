@@ -998,7 +998,25 @@ fn registry() -> ViewRegistry {
     r
 }
 
+/// The smoke stands in for a user typing into the app, but its window is never the active
+/// app: about 30s in, App Nap moves the process to the background band (priority 4), where any
+/// normal-priority process (rust-analyzer's `cargo check` of a sandbox's cold target) takes the
+/// cores from its frames for seconds. A user-initiated, latency-critical activity keeps it at
+/// the priority a frontmost app has.
+#[cfg(target_os = "macos")]
+fn hold_foreground_priority() -> impl Sized {
+    use objc2_foundation::{NSActivityOptions, NSProcessInfo, ns_string};
+    NSProcessInfo::processInfo().beginActivityWithOptions_reason(
+        NSActivityOptions::UserInitiated | NSActivityOptions::LatencyCritical,
+        ns_string!("real-data smoke drives the app as a user"),
+    )
+}
+
+#[cfg(not(target_os = "macos"))]
+fn hold_foreground_priority() -> impl Sized {}
+
 fn drive(root: PathBuf) -> i32 {
+    let _foreground = hold_foreground_priority();
     let start = Instant::now();
     let data = root.join("data");
     let (writer, _log) = recur_store::applog::tee_app_log(&data);
@@ -1160,6 +1178,8 @@ fn drive(root: PathBuf) -> i32 {
             }
             let mut slow = r.slow.clone();
             slow.sort_by_key(|s| std::cmp::Reverse(s.0));
+            let (n, took) = recur_app::menu::rebuilds();
+            say(start, format!("{n} menubar rebuilds in {took:.0?}"));
             say(
                 start,
                 format!("{} frames over 500ms; the slowest:", slow.len()),
@@ -1266,7 +1286,19 @@ fn view_list(views: &BTreeMap<&'static str, u32>) -> String {
 }
 
 /// Draws one frame and returns how long it took.
+/// This process's page faults, page reclaims and involuntary context switches so far: a slow
+/// frame with many is the machine (memory pressure, CPU contention), not the frame's work.
+#[allow(unsafe_code)]
+fn rusage() -> (i64, i64, i64) {
+    // SAFETY: `getrusage` fills the zeroed struct it is given.
+    let mut r: libc::rusage = unsafe { std::mem::zeroed() };
+    unsafe { libc::getrusage(libc::RUSAGE_SELF, &mut r) };
+    (r.ru_majflt, r.ru_minflt, r.ru_nivcsw)
+}
+
 fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
+    let usage = rusage();
+    let menus = recur_app::menu::rebuilds();
     let t = Instant::now();
     FRAME_START.store(now_ms(), Ordering::SeqCst);
     let _ = cx.update_window(window, |_, window, cx| {
@@ -1289,7 +1321,17 @@ fn draw(cx: &mut AsyncApp, window: AnyWindowHandle) -> Duration {
     if took > Duration::from_millis(500) {
         let s = step().lock().map(|s| s.clone()).unwrap_or_default();
         if took > Duration::from_secs(2) || std::env::var_os("RECUR_SMOKE_RENDERS").is_some() {
-            println!("slow frame {took:.0?} at {s}: {}", view_list(&renders));
+            let now = rusage();
+            let rebuilt = recur_app::menu::rebuilds();
+            println!(
+                "slow frame {took:.0?} at {s} ({} faults, {} reclaims, {} preemptions, {} menubar rebuilds in {:.0?}): {}",
+                now.0 - usage.0,
+                now.1 - usage.1,
+                now.2 - usage.2,
+                rebuilt.0 - menus.0,
+                rebuilt.1.saturating_sub(menus.1),
+                view_list(&renders)
+            );
         }
         if let Ok(mut r) = report().lock() {
             r.slow.push((took, s));

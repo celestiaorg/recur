@@ -47,11 +47,15 @@ tracing-subscriber.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 flate2.workspace = true
+libc = "0.2"
 recur-agent.workspace = true
 recur-forge.workspace = true
 recur-provider-claude.workspace = true
 recur-view-chat = { workspace = true, features = ["test-support"] }
 rusqlite.workspace = true
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+objc2-foundation.workspace = true
 
 [lints]
 workspace = true

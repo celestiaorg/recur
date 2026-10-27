@@ -478,6 +478,8 @@ pub struct Observatory {
     pub(crate) preview_scroll: recur_content::SharedScroll,
     pub(crate) image: crate::media::MediaPane,
     pub(crate) media_zoom: Option<Entity<recur_content::AttachmentLightbox>>,
+    /// The video pane's player (`paneVideo`), for the selected video file.
+    pub(crate) video: Option<Entity<recur_content::video::VideoPlayer>>,
     pub(crate) editor_subs: Vec<Subscription>,
     pub(crate) editor_fullscreen: bool,
     pub(crate) window_was_fullscreen: bool,
@@ -758,6 +760,7 @@ impl Observatory {
             )),
             image: Default::default(),
             media_zoom: None,
+            video: None,
             editor_subs: Vec::new(),
             editor_fullscreen: false,
             window_was_fullscreen: false,

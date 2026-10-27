@@ -112,7 +112,8 @@ The engine port is planned slice by slice in `docs/engine-port-plan.md`.
 
 - `MarkdownView::new(text, MarkdownClass, demote_images, cx)` (`MarkdownHtml`), `set_text`; events `MarkdownEvent::{LightboxOpen, Toast, TextChanged}`. `StreamingMarkdown::new(cx)`, `set(text, active, complete, cx)`, `set_document_visible`.
 - `FilePreview::new(kind, content, path, SharedScroll, window, cx)`: `set_content`, `set_path`, `set_active`, `set_parked`, `toggle_search` / `open_search` / `close_search`; `FilePreviewEvent::SearchOpenChanged`. The view keeps one `SharedScroll` (`PreviewScrollStore`) per workspace, as `createPreviewScrollStore` was.
-- `MermaidPreview`, `PdfPreview::new(Option<Arc<[u8]>>, window, cx)` / `set_data`, `HtmlPreview`, `AttachmentLightbox::new(src, name, image, on_close, window, cx)`.
+- `MermaidPreview`, `PdfPreview::new(Option<Arc<[u8]>>, window, cx)` / `set_data`, `HtmlPreview`, `AttachmentLightbox::new(src, name, image, on_close, window, cx)` and `AttachmentLightbox::video(path, name, start, on_close, window, cx)`.
+- `video::VideoPlayer::new(path, VideoOptions, cx)`: `play`, `pause`, `seek`, `position`. It decodes through the platform's media framework (AVFoundation on macOS, GStreamer elsewhere) and paints frames as an image, so it stays in GPUI's paint order; the Linux packages depend on GStreamer's base, good and libav plugins.
 - Hosts call `set_image_loader` once (GitHub images through the forge), turn `Toast`s into toasts and `LightboxOpen` into `AppState::set_chat_occluder`.
 - `sanitize_lsp` is `lib/sanitize-lsp.ts` for HTML-string consumers. recur-editor does not need it: it lays LSP documentation out from pulldown-cmark events and drops raw HTML other than `<br>`.
 

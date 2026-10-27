@@ -14,7 +14,7 @@ use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::style::cached_view;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
-use recur_ui::{IconName, Theme, icon};
+use recur_ui::{IconName, Theme};
 use recur_view_core::prefs::{CodePanelKey, PanelKey};
 use recur_view_review::style::hsla;
 
@@ -683,15 +683,20 @@ impl Observatory {
             );
             return pane.child(pdf).into_any_element();
         }
+        if !self.show_video_pane() {
+            // Leaving the video stops it, as the unmounted `<video>` does.
+            self.video = None;
+        }
         if self.show_video_pane() && self.file.is_some() {
             let zoom = titled(
                 "video-zoom-t",
                 "Zoom",
                 icon_btn("video-zoom", IconName::ZoomIn, false, None, cx)
                     .debug_selector(|| "video-zoom".into())
-                    .on_click(cx.guarded_listener(|o, _, _, cx| o.zoom_video(cx))),
+                    .on_click(cx.guarded_listener(|o, _, window, cx| o.zoom_video(window, cx))),
             )
             .into_any_element();
+            let player = self.video_player(cx);
             let video = crate::render::checkerboard(cx)
                 .debug_selector(|| "obs-video".into())
                 .flex_1()
@@ -702,18 +707,7 @@ impl Observatory {
                 .justify_center()
                 .gap(px(12.))
                 .p(px(24.))
-                .child(
-                    div()
-                        .border_1()
-                        .border_color(hsla(t.line))
-                        .bg(hsla(recur_ui::hex(0x000000)))
-                        .w(px(320.))
-                        .h(px(180.))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(icon(IconName::Play).size(px(28.)).color(hsla(t.muted))),
-                )
+                .child(div().flex_1().min_h_0().w_full().children(player))
                 .child(self.image_meta(Some(zoom), cx));
             return pane.child(video).into_any_element();
         }

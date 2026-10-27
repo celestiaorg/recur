@@ -35,12 +35,18 @@ core-foundation.workspace = true
 objc2.workspace = true
 objc2-foundation.workspace = true
 objc2-app-kit.workspace = true
+objc2-av-foundation = { workspace = true, features = ["objc2-core-media", "objc2-core-video"] }
+objc2-core-media.workspace = true
+objc2-core-video.workspace = true
 objc2-web-kit.workspace = true
 block2.workspace = true
 raw-window-handle.workspace = true
 include_dir.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
+gstreamer.workspace = true
+gstreamer-app.workspace = true
+gstreamer-video.workspace = true
 webkit6.workspace = true
 gtk4.workspace = true
 include_dir.workspace = true
@@ -53,6 +59,11 @@ recur-content = { path = ".", features = ["gallery"] }
 # Mermaid and pdf.js in the platform WebKit; on its own main thread for WKWebView.
 [[test]]
 name = "webkit"
+harness = false
+
+# AVFoundation needs the main thread and its run loop.
+[[test]]
+name = "video"
 harness = false
 
 [lints]

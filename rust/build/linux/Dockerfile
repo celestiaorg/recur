@@ -1,6 +1,6 @@
 # Linux build/test image for the Rust port on non-Linux hosts
 # (wails3 task linux:build:rust on a Mac). Debian 13 like build/linux/Dockerfile:
-# GPUI's X11/Wayland backend plus GTK 4 and WebKitGTK 6.0 for recur-content, and the
+# GPUI's X11/Wayland backend plus GTK 4, WebKitGTK 6.0 and GStreamer for recur-content, and the
 # tools tests shell out to that CI runners have (node, rg, ps, gofmt, python3, xmllint).
 FROM debian:trixie
 
@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev \
     libfontconfig-dev libfreetype-dev libvulkan-dev libzstd-dev libssl-dev \
     libgtk-4-dev libwebkitgtk-6.0-dev \
+    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good gstreamer1.0-libav \
     xvfb xauth fonts-dejavu-core ripgrep git nodejs procps golang-go python3 libxml2-utils \
     && rm -rf /var/lib/apt/lists/*
 

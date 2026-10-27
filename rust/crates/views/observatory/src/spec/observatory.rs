@@ -394,7 +394,7 @@ async fn binary_images_skip_code_and_modified_ones_offer_preview_and_diff(cx: &m
 }
 
 #[gpui::test]
-async fn videos_show_in_preview_and_zoom_opens_externally(cx: &mut TestAppContext) {
+async fn videos_play_in_the_pane_and_zoom_into_the_lightbox(cx: &mut TestAppContext) {
     let opened = Calls::default();
     let opts = MockOptions::default()
         .resolver("ListTree", |a, _, _| {
@@ -423,10 +423,16 @@ async fn videos_show_in_preview_and_zoom_opens_externally(cx: &mut TestAppContex
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("obs-node:file:clip.mp4");
     assert!(h.has("obs-video"));
+    assert!(h.has("video"), "the pane mounts a player");
     assert!(!h.has("view-mode:Code"));
-    // GPUI has no media element: the zoom opens the clip in the system player.
+    // `zoomVideo`: the lightbox plays the clip; nothing opens outside the app.
     h.click("video-zoom");
-    assert_eq!(opened.lock().len(), 1);
+    assert!(h.has("chat-att-lb"));
+    assert!(!h.has("lb-copy"), "a video has no Copy image");
+    assert!(opened.lock().is_empty());
+    h.keys("escape");
+    assert!(!h.has("chat-att-lb"));
+    assert!(h.has("obs-video"));
 }
 
 #[gpui::test]

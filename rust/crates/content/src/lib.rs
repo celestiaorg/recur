@@ -21,6 +21,7 @@ pub mod render;
 pub mod sanitize_lsp;
 pub mod streaming;
 pub mod svg;
+pub mod video;
 pub mod view;
 pub mod webhost;
 

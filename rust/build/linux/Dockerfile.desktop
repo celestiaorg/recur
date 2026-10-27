@@ -6,7 +6,7 @@
 FROM debian:trixie
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgtk-4-1 libwebkitgtk-6.0-4 \
+    libgtk-4-1 libwebkitgtk-6.0-4 gstreamer1.0-plugins-good gstreamer1.0-libav \
     libxkbcommon0 libxkbcommon-x11-0 libxcb1 libwayland-client0 libvulkan1 mesa-vulkan-drivers \
     xvfb openbox x11vnc novnc websockify dbus-x11 dunst libnotify-bin \
     fonts-dejavu-core ca-certificates curl git bash procps xdg-utils nodejs ripgrep \

@@ -193,3 +193,4 @@ codegen-units = 1
 [patch.crates-io]
 gpui-pre = { path = "vendor/gpui-pre" }
 gpui-pre-scheduler = { path = "vendor/gpui-pre-scheduler" }
+gpui-pre-apple = { path = "vendor/gpui-pre-apple" }

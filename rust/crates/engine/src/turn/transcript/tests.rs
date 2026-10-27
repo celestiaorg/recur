@@ -672,3 +672,69 @@ fn context_window_rules() {
         77
     );
 }
+
+// ---- the provider-neutral flatten cases of Go `cursortools_test.go`.
+
+#[test]
+fn truncation_survives_the_transcript() {
+    let msgs = [
+        assistant(vec![ContentBlock::tool_use(
+            "t1",
+            "call-1",
+            "Read",
+            r#"{"file_path":"/wt/hello.txt"}"#,
+        )]),
+        user(vec![ContentBlock::truncated_tool_result(
+            "t1", "alpha\n", false, true,
+        )]),
+    ];
+    let items = flat(&msgs, "");
+    let tool = items.iter().find(|i| i.kind == "tool").expect("tool item");
+    assert!(tool.result_truncated, "truncation lost on reload");
+}
+
+#[test]
+fn transcript_clears_pending_on_empty_result() {
+    for result in ["", "{}", r#"{"status":"success","value":{}}"#, "alpha"] {
+        let msgs = [
+            assistant(vec![ContentBlock::tool_use("t1", "c", "Bash", "{}")]),
+            user(vec![ContentBlock::tool_result("t1", result, false)]),
+        ];
+        let items = flat(&msgs, "");
+        let tool = items.iter().find(|i| i.kind == "tool").expect("tool item");
+        assert!(!tool.result_pending, "result {result:?} left the call pending");
+    }
+}
+
+#[test]
+fn transcript_emits_turn_footer_with_duration() {
+    let mut m = assistant(vec![ContentBlock::text("done")]);
+    m.duration_ms = 8460;
+    let items = flat(&[m], "");
+    let last = items.last().expect("items");
+    assert_eq!((last.kind.as_str(), last.duration_ms), ("turn", 8460));
+}
+
+#[test]
+fn transcript_footer_only_at_turn_end() {
+    let mut done = assistant(vec![ContentBlock::text("done")]);
+    done.duration_ms = 1200;
+    let msgs = [
+        assistant(vec![ContentBlock::tool_use(
+            "t1",
+            "c1",
+            "Bash",
+            r#"{"command":"ls"}"#,
+        )]),
+        user(vec![ContentBlock::tool_result("t1", "ok", false)]),
+        done,
+    ];
+    let footers = flat(&msgs, "").iter().filter(|i| i.kind == "turn").count();
+    assert_eq!(footers, 1);
+}
+
+#[test]
+fn transcript_no_footer_without_duration() {
+    let items = flat(&[assistant(vec![ContentBlock::text("done")])], "");
+    assert!(items.iter().all(|i| i.kind != "turn"));
+}

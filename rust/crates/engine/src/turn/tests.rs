@@ -1343,3 +1343,38 @@ async fn store_history_serves_transcript_and_fresh_session_cutoff() {
     assert_eq!(h.history_after("missing").await, "");
     te.close().await;
 }
+
+#[tokio::test]
+async fn session_broadcast_compacts_list_findings_when_result_has_no_tool_name() {
+    let te = TestEngine::new(None);
+    let mut b = bc(&te);
+    let findings: Vec<serde_json::Value> = (0..15)
+        .map(|i| {
+            serde_json::json!({
+                "id": format!("f{i}"), "file": format!("src/file_{i}.rs"), "line": i,
+                "severity": "medium", "status": "open", "message": "x".repeat(1500),
+            })
+        })
+        .collect();
+    let raw = serde_json::json!({"status": "all", "count": 15, "findings": findings}).to_string();
+    assert!(raw.len() > recur_agent::display::CHAT_DETAIL_LIMIT);
+    b.emit(&AgentEvent::Step(recur_agent::ToolStep {
+        id: "t1".into(),
+        name: "mcp__recur__list_findings".into(),
+        input: r#"{"status":"all"}"#.into(),
+        ..Default::default()
+    }));
+    // Claude-style result: no tool name, the findings JSON as text.
+    b.emit(&AgentEvent::ToolResult(recur_agent::ToolResultEvent {
+        id: "t1".into(),
+        text: raw,
+        ..Default::default()
+    }));
+    let results = te.events.by_name("session.tool_result");
+    let payload: serde_json::Value = serde_json::from_str(&results[0].payload_json()).unwrap();
+    let result = payload["result"].as_str().unwrap();
+    assert!(result.len() <= recur_agent::display::CHAT_DETAIL_LIMIT);
+    let v: serde_json::Value = serde_json::from_str(result).expect("still valid JSON");
+    assert_eq!(v["count"], 15);
+    te.close().await;
+}

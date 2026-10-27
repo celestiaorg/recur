@@ -1478,3 +1478,9 @@ fn cursor_compact_flushes_text_first() {
         .collect();
     assert_eq!(&k[..2], ["text", "compact"]);
 }
+
+#[test]
+fn cursor_result_carries_duration() {
+    let (t, _) = feed(spec("", false), &[F_RESULT_OK]);
+    assert_eq!(t.result().duration_ms, 1500);
+}

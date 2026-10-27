@@ -484,6 +484,13 @@ fn chat_result_compaction_rejects_non_envelopes() {
         )
         .contains(r#""artifacts""#)
     );
+    assert!(
+        chat_tool_result(
+            "mcp__recur__list_workspace_briefs",
+            r#"{"counts":{"needs":0,"working":0,"pickup":0},"workspaces":[]}"#
+        )
+        .contains(r#""workspaces""#)
+    );
 }
 
 #[test]

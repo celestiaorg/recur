@@ -1553,6 +1553,8 @@ impl Laid {
 pub struct TextState {
     layout: Rc<RefCell<Option<Laid>>>,
     exact: Option<crate::exact::ExactCell>,
+    /// A single unwrapped line's exact width, which sized the box.
+    natural: Option<f32>,
     probes: Vec<(Probe, LayoutId)>,
     snapped: Snapped,
 }
@@ -1746,6 +1748,7 @@ impl Element for Text {
                     TextState {
                         layout,
                         exact: None,
+                        natural: Some(w),
                         probes,
                         snapped: Vec::new(),
                     },
@@ -1798,6 +1801,7 @@ impl Element for Text {
             TextState {
                 layout,
                 exact,
+                natural: None,
                 probes,
                 snapped: Vec::new(),
             },
@@ -1815,8 +1819,17 @@ impl Element for Text {
     ) -> Vec<(usize, gpui_kit::Hitbox)> {
         let mut hits = Vec::new();
         if let Some(laid) = state.layout.borrow_mut().as_mut() {
+            // A box as wide as its line can lose up to a device pixel when GPUI snaps its two
+            // edges; the line still fits it, as it does in WebKit's unrounded layout.
+            let mut width = f32::from(bounds.size.width);
+            if let Some(n) = state.natural
+                && n > width
+                && n <= width + 1. / window.scale_factor()
+            {
+                width = n;
+            }
             laid.relayout(
-                Some(bounds.size.width.into()),
+                Some(width),
                 self.white_space,
                 self.anywhere,
                 self.clamp,

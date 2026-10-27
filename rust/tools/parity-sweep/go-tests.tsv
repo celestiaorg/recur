@@ -2,13 +2,18 @@
 # Tests whose snake_case name matches a Rust test, or that a Rust source names as TestX, need no row.
 # Checked by sweep.py (wails3 task check:rust:parity).
 ..TestAttachOpenIPCEmptyPathAfterDropUI	crates/platform/src/open_boot.rs::attach_empty_path_after_drop_ui
+..TestClampWindowState	crates/platform/src/window_state.rs::clamp
+..TestDockBadgeCount	crates/platform/src/dock.rs::badge_arithmetic
 ..TestHandoffPartialShutdownIsNotHandoff	crates/platform/src/open_boot.rs::partial_shutdown_is_not_handoff
 ..TestHandoffShutdownResponseIsNotHandoff	crates/platform/src/open_boot.rs::shutdown_response_is_not_handoff
+..TestHandoffToRunningInstanceConnectedError	crates/platform/src/open_boot.rs::handoff_connected_drop_is_not_handoff
 ..TestHandoffToRunningInstanceFocusesLiveApp	crates/platform/src/open_boot.rs::handoff_focuses_live_app
 ..TestHandoffToRunningInstanceForwardsOpenPaths	crates/platform/src/open_boot.rs::handoff_forwards_open_paths
+..TestHandoffToRunningInstanceNoListener	crates/platform/src/open_boot.rs::handoff_without_listener_fails
 ..TestIPCGateStopAuthoritative	crates/platform/src/open_boot.rs::gate_stop_is_authoritative
 ..TestIPCGateStopPreventsAdmission	crates/platform/src/open_boot.rs::gate_stop_prevents_admission
 ..TestIPCGateStopUnblocksWaiter	crates/platform/src/open_boot.rs::gate_stop_unblocks_waiter
+..TestLoadSaveWindowState	crates/platform/src/window_state.rs::load_save_round_trip
 ..TestOpenHubBringForwardFalseIfRevokedBeforeApplied	crates/platform/src/open_boot.rs::bring_forward_false_if_revoked_before_applied
 ..TestOpenHubBringForwardWaitsForApplied	crates/platform/src/open_boot.rs::bring_forward_waits_for_applied
 ..TestOpenHubDropUISkipsFocus	crates/platform/src/open_boot.rs::drop_ui_skips_focus
@@ -17,6 +22,7 @@
 ..TestParseTitlebarDoubleClickAction	crates/app/src/chrome.rs::parse_double_click_action
 ..TestPeelOpenArgs	crates/platform/src/open_boot.rs::peels_open_args
 ..TestRevokeOpenUIRejectsHandoffDuringWaitFocus	crates/platform/src/open_boot.rs::revoke_rejects_handoff_during_wait_focus
+..TestRunningInAppBundle	crates/platform/src/lib.rs::app_bundle_detection
 ..TestWindowOptionsFromState	crates/platform/src/window_state.rs::options_from_state
 ..TestWindowOptionsTitleFromInstanceLabel	crates/platform/src/identity.rs::window_title_uses_label_or_app_name
 internal/app.TestAllowedGitHubImageURL	crates/forge/src/github/images.rs::allowed_urls

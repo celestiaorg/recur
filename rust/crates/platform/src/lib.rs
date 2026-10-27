@@ -135,6 +135,7 @@ mod tests {
         )));
         assert!(!in_app_bundle(Path::new("/usr/local/bin/recur")));
         assert!(!in_app_bundle(Path::new("/tmp/Recur.app/recur")));
+        assert!(!running_in_app_bundle(), "the test binary is not in a .app bundle");
     }
 
     #[test]

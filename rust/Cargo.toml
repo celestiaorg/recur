@@ -10,6 +10,7 @@ members = [
     "providers/*",
     "tools/*",
 ]
+exclude = ["tools/parity-sweep"]
 default-members = ["crates/desktop", "crates/cli"]
 
 [workspace.package]

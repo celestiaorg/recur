@@ -701,3 +701,42 @@ async fn settings_logs_path() {
     );
     fx.close().await;
 }
+
+fn fake_cursor_bridge(fx: &Fx, sdk_version: &str) {
+    use std::os::unix::fs::PermissionsExt;
+    let root = fx.svc.data_dir().join("cursor-bridge");
+    std::fs::create_dir_all(root.join("bin")).unwrap();
+    let bin = root.join("bin/cursor-sdk-bridge");
+    std::fs::write(&bin, "#!/bin/sh\n").unwrap();
+    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::write(
+        root.join("manifest.json"),
+        format!(r#"{{"sdkVersion":"{sdk_version}"}}"#),
+    )
+    .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn check_cursor_bridge_notifies_when_behind_pin() {
+    let fx = Fx::new().await;
+    fake_cursor_bridge(&fx, "0.0.1");
+    fx.svc.check_cursor_bridge();
+    let n = fx.events.by_name("notify");
+    let last = n.last().expect("a notify");
+    assert!(
+        last.payload_json().contains("Cursor bridge update available"),
+        "{}",
+        last.payload_json()
+    );
+    fx.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn check_cursor_bridge_silent_when_pinned_or_missing() {
+    let fx = Fx::new().await;
+    fx.svc.check_cursor_bridge();
+    fake_cursor_bridge(&fx, recur_provider_cursor::PINNED_SDK_VERSION);
+    fx.svc.check_cursor_bridge();
+    assert!(fx.events.by_name("notify").is_empty());
+    fx.close().await;
+}

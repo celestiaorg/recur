@@ -369,6 +369,7 @@ internal/engine.TestChatChildAutoResumesInterruptedFirstTurn	crates/engine/src/c
 internal/engine.TestChatChildReportsCreateFailureWithoutWorktree	crates/engine/src/chat/tests/children.rs::a_failed_create_without_a_worktree_still_reports
 internal/engine.TestChatModeShapeAgentPrefersChildWorkspaces	crates/engine/src/chat/tests/switch_mode.rs::the_agent_shape_prefers_child_workspaces_and_children_execute_locally
 internal/engine.TestChatModeShapeAllowsArtifacts	crates/engine/src/chat/tests/switch_mode.rs::every_shape_allows_artifacts_and_read_only_modes_say_so
+internal/engine.TestChatResetWithoutEditsKeepsWorktree	crates/engine/src/turn/checkpoint_tests.rs::unedited_turn_hides_checkpoint_and_reset_keeps_manual_edits
 internal/engine.TestChatResumeDoesNotCancelLiveTurn	crates/engine/src/chat/tests/recover.rs::a_restart_resume_never_displaces_a_live_turn
 internal/engine.TestChatTabTitleCapsStoredAndDerivedAlike	crates/engine/src/chat/tests/modes_send.rs::stored_and_derived_titles_cap_alike
 internal/engine.TestChatTabTitleFromFirstPromptWithoutStoredTitle	crates/engine/src/chat/tests/modes_send.rs::untitled_legacy_tabs_read_the_first_prompt_and_keep_it
@@ -540,6 +541,7 @@ internal/engine.TestCursorRunnerDeliveredSteerDuringStreamComplete	providers/cur
 internal/engine.TestCursorRunnerEndToEndSmoke	providers/cursor/src/smoke_tests.rs::runner_end_to_end_smoke
 internal/engine.TestCursorRunnerFinishedTurnDoesNotWaitOnStuckSteerRun	providers/cursor/src/runner/tests.rs::finished_turn_does_not_wait_on_stuck_steer_run
 internal/engine.TestCursorRunnerHandoffSteerDoesNotCancelFollowUp	providers/cursor/src/runner/tests.rs::handoff_steer_does_not_cancel_follow_up
+internal/engine.TestCursorRunnerImplementsAgentRunner	n/a: a Go compile-time interface assertion (var _ AgentRunner = (*CursorRunner)(nil)); rustc enforces `impl Provider for CursorProvider` on every build
 internal/engine.TestCursorRunnerLateSteerAfterFinishedDoesNotFail	providers/cursor/src/runner/tests.rs::late_steer_after_finished_does_not_fail
 internal/engine.TestCursorRunnerLiveSteerFlushesStreamedText	providers/cursor/src/runner/tests.rs::live_steer_flushes_streamed_text
 internal/engine.TestCursorRunnerObserveIdleResetsOnOffset	providers/cursor/src/runner/tests.rs::observe_idle_resets_on_offset
@@ -893,6 +895,7 @@ internal/engine.TestPRReviewCapabilities	crates/domain/src/pr.rs::conversation_l
 internal/engine.TestPRTitle	crates/engine/src/golden_e3_tests.rs::pr_text_matches_go
 internal/engine.TestParkChatTurnIfSkipsNewerTurn	crates/engine/src/ask_user/tests.rs::park_if_skips_newer_turn
 internal/engine.TestParkChatTurnIfSkipsStoppedTurn	crates/engine/src/chat/tests/switch_mode.rs::a_park_skips_a_stopped_turn
+internal/engine.TestParkChatTurnQuietFinalize	crates/engine/src/turn/finalize_tests.rs::parked_turn_finalizes_quietly
 internal/engine.TestParkedChatHasNoTurnFooter	crates/engine/src/chat/tests/cancel.rs::a_parked_chat_has_no_turn_footer
 internal/engine.TestParseAndApplyReviewThreads	crates/forge/src/github/tests.rs::review_threads
 internal/engine.TestParseBenchPR	crates/forge/src/github/live.rs::bench_pr_spec
@@ -1248,6 +1251,7 @@ internal/engine.TestWrapAttachedArtifactMentionsByPanelTitle	crates/engine/src/c
 internal/engine.TestWrapAttachedArtifactMentionsDedupesIdAndTitle	crates/engine/src/composer/artifacts_tests.rs::dedupes_id_and_title
 internal/engine.TestWrapAttachedArtifactMentionsDuplicateTitleIsProse	crates/engine/src/composer/artifacts_tests.rs::unknown_and_duplicate_titles_are_prose
 internal/engine.TestWrapAttachedArtifactMentionsInlinesBody	crates/engine/src/composer/artifacts_tests.rs::inlines_body_exactly
+internal/engine.TestWrapAttachedArtifactMentionsNoList	crates/engine/src/composer/artifacts_tests.rs::empty_workspace_is_a_no_op
 internal/engine.TestWrapAttachedArtifactMentionsScrubsInstructionClose	crates/engine/src/composer/artifacts_tests.rs::scrubs_instruction_close
 internal/engine.TestWrapAttachedArtifactMentionsUnknownTitleIsProse	crates/engine/src/composer/artifacts_tests.rs::unknown_and_duplicate_titles_are_prose
 internal/engine.TestWrapAttachedFileMentions	crates/engine/src/composer/files_tests.rs::wraps_with_sizes

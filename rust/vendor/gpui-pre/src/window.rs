@@ -1154,35 +1154,23 @@ fn index_within<I: FrameIndex>(range: &Range<I>, inner: &Range<I>) -> bool {
     (0..a.len()).all(|i| a[i] <= c[i] && d[i] <= b[i])
 }
 
-/// Maps an index of the previous frame through a replay: `segments` are its runs, each the
-/// old range and where it landed, in order. A run copied unchanged shifts the counters inside
-/// it; a view drawn again in its place maps only its own edges.
-fn map_index<I: FrameIndex>(segments: &[(Range<I>, Range<I>, bool)], index: &I) -> I {
-    let parts = index.parts();
-    let mut mapped = parts.clone();
-    for (i, x) in parts.iter().enumerate() {
-        for (old, new, copied) in segments {
-            let (a, b) = (old.start.parts()[i], old.end.parts()[i]);
-            if a <= *x && *x <= b {
-                let (na, nb) = (new.start.parts()[i], new.end.parts()[i]);
-                // A copy is the same length, except line layouts after a font change, which it
-                // skips: keep the index inside what the copy produced.
-                mapped[i] = if *copied {
-                    (na + (x - a)).min(nb)
-                } else if *x == a {
-                    na
-                } else {
-                    debug_assert_eq!(*x, b, "an index inside a view drawn again");
-                    nb
-                };
-                break;
-            }
-        }
-    }
-    match segments.first() {
-        Some((_, new, _)) => new.start.with_parts(&mapped),
-        None => index.clone(),
-    }
+/// Maps an index a replay carried through: `segments` are the replay's runs in order, each the
+/// old range and where it landed, copied or drawn again (an isolated view). A carried index
+/// lies in a copied run, the `run`th, and every counter shifts with it. Callers choose the run
+/// by tree order, not by value: a view drawn again that recorded nothing in some counter leaves
+/// the runs around it touching there, and a value alone cannot say which side an index is on.
+/// A range's start and end can lie in different runs (a cached view around a view drawn again).
+fn map_in_run<I: FrameIndex>(segments: &[(Range<I>, Range<I>, bool)], run: usize, index: &I) -> I {
+    let Some((old, new, _)) = segments.iter().filter(|s| s.2).nth(run) else {
+        return index.clone();
+    };
+    let (a, na, nb, x) = (old.start.parts(), new.start.parts(), new.end.parts(), index.parts());
+    let mapped: SmallVec<[usize; 12]> = (0..x.len())
+        // A copy is the same length, except line layouts after a font change, which it skips:
+        // keep the index inside what the copy produced.
+        .map(|i| (na[i] + x[i].saturating_sub(a[i])).min(nb[i]))
+        .collect();
+    new.start.with_parts(&mapped)
 }
 
 #[derive(Clone, Default)]
@@ -4344,7 +4332,15 @@ impl Window {
             if !inside(&range) || drawn.iter().any(inside) {
                 continue;
             }
-            let prepaint = map_index(&segments, &p.start)..map_index(&segments, &p.end);
+            // The copied run after every view drawn again that ends before the index.
+            let run = |x: usize| {
+                segments
+                    .iter()
+                    .filter(|(old, _, copied)| !copied && old.end.dispatch_tree_index <= x)
+                    .count()
+            };
+            let prepaint = map_in_run(&segments, run(p.start.dispatch_tree_index), &p.start)
+                ..map_in_run(&segments, run(p.end.dispatch_tree_index), &p.end);
             let (global_id, paint, opacity, island, accessed) = (
                 record.global_id.clone(),
                 record.paint.clone(),
@@ -4436,10 +4432,20 @@ impl Window {
         let mut segments = Vec::new();
         let mut at = range.start.clone();
         let islands = mem::take(&mut self.island_elements);
-        let (inside, rest): (Vec<_>, Vec<_>) = islands.into_iter().partition(|(ix, ..)| {
+        let (mut inside, rest): (Vec<_>, Vec<_>) = islands.into_iter().partition(|(ix, ..)| {
             index_within(&range, &self.rendered_frame.cached_views[*ix].paint)
         });
+        // Islands were collected in prepaint order; their paint can come in another (a later
+        // sibling painted first, a deferred draw), and the runs between them must not invert.
+        inside.sort_by_key(|(ix, _, record)| {
+            (
+                self.rendered_frame.cached_views[*ix].paint.start.scene_index,
+                self.next_frame.cached_views[*record].prepaint.start.dispatch_tree_index,
+            )
+        });
         self.island_elements = rest;
+        // Each island drawn again: its old paint range and its new place in the tree.
+        let mut drawn = Vec::new();
         for (ix, mut element, record) in inside {
             let old = &self.rendered_frame.cached_views[ix];
             let (hole, opacity, island) = (old.paint.clone(), old.opacity, old.island.clone().unwrap());
@@ -4447,14 +4453,38 @@ impl Window {
             let start = self.paint_index();
             island.paint(&mut element, record, opacity, self, cx);
             segments.push((hole.clone(), start..self.paint_index(), false));
+            let tree = &self.next_frame.cached_views[record].prepaint;
+            drawn.push((hole.clone(), tree.end.dispatch_tree_index));
             at = hole.end;
         }
         self.reuse_paint_run(at..range.end.clone(), &mut segments);
         for ix in 0..self.next_frame.cached_views.len() {
             let record = &self.next_frame.cached_views[ix];
             if record.paint_pending && index_within(&range, &record.paint) {
-                let paint = map_index(&segments, &record.paint.start)
-                    ..map_index(&segments, &record.paint.end);
+                // The copied run after every island painted before the index: by paint position,
+                // and by tree order where an island that painted nothing touches it.
+                let (start, end) = (&record.paint.start, &record.paint.end);
+                let (tree_start, tree_end) = (
+                    record.prepaint.start.dispatch_tree_index,
+                    record.prepaint.end.dispatch_tree_index,
+                );
+                let after = |at: usize, hole_at: usize, tree: usize, hole_tree: usize| {
+                    if at != hole_at { at > hole_at } else { tree >= hole_tree }
+                };
+                let start_run = drawn
+                    .iter()
+                    .filter(|(hole, hole_tree)| {
+                        after(start.scene_index, hole.start.scene_index, tree_start, *hole_tree)
+                    })
+                    .count();
+                let end_run = drawn
+                    .iter()
+                    .filter(|(hole, hole_tree)| {
+                        after(end.scene_index, hole.end.scene_index, tree_end, *hole_tree)
+                    })
+                    .count();
+                let paint = map_in_run(&segments, start_run, start)
+                    ..map_in_run(&segments, end_run, end);
                 let record = &mut self.next_frame.cached_views[ix];
                 record.paint = paint;
                 record.paint_pending = false;

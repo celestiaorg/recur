@@ -331,3 +331,97 @@ fn typing_does_not_grow_the_frame(cx: &mut TestAppContext) {
     }
     assert_eq!(count(&mut f), before);
 }
+
+/// An isolated view that paints nothing (an emptied transcript) beside another.
+struct Blank {
+    filled: bool,
+}
+
+impl Render for Blank {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        let d = div().size_full();
+        if self.filled {
+            d.bg(gpui_kit::red())
+                .debug_selector(|| "blank:filled".into())
+        } else {
+            d
+        }
+    }
+}
+
+struct Painted {
+    n: u32,
+}
+
+impl Render for Painted {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        let n = self.n;
+        div()
+            .size_full()
+            .bg(gpui_kit::blue())
+            .debug_selector(move || format!("painted:{n}"))
+    }
+}
+
+struct Pair {
+    blank: Entity<Blank>,
+    painted: Entity<Painted>,
+}
+
+impl Render for Pair {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(isolated_view(&self.blank, sized(40.), cx))
+            .child(isolated_view(&self.painted, sized(40.), cx))
+    }
+}
+
+/// Replays keep their books when an isolated view drew nothing: the runs around it touch, and
+/// the view beside it was mapped to the wrong side of the empty one, so a later replay of both
+/// read an inverted range and panicked.
+#[gpui_kit::test]
+fn an_isolated_view_that_paints_nothing_keeps_the_replay_in_order(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        crate::init(cx);
+    });
+    let mut parts = None;
+    let (_, cx) = cx.add_window_view(|_, cx| {
+        let blank = cx.new(|_| Blank { filled: false });
+        let painted = cx.new(|_| Painted { n: 0 });
+        parts = Some((blank.clone(), painted.clone()));
+        Pair { blank, painted }
+    });
+    cx.run_until_parked();
+    let (blank, painted) = parts.unwrap();
+    for n in 1..4 {
+        // The empty view fills while the other replays beside it, then both redraw.
+        cx.update(|_, cx| {
+            blank.update(cx, |b, cx| {
+                b.filled = true;
+                cx.notify()
+            })
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            blank.update(cx, |_, cx| cx.notify());
+            painted.update(cx, |p, cx| {
+                p.n = n;
+                cx.notify()
+            });
+        });
+        cx.run_until_parked();
+        let at: &'static str = Box::leak(format!("painted:{n}").into_boxed_str());
+        assert!(cx.debug_bounds(at).is_some(), "{at} is not drawn");
+        cx.update(|_, cx| {
+            blank.update(cx, |b, cx| {
+                b.filled = false;
+                cx.notify()
+            })
+        });
+        cx.run_until_parked();
+    }
+}

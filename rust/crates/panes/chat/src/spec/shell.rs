@@ -64,13 +64,6 @@ impl S<'_> {
         self.cx.debug_bounds(leak(sel)).is_some()
     }
 
-    fn open(&mut self, id: &str) {
-        let id = id.to_string();
-        self.state
-            .update(self.cx, |s, cx| s.open_workspace(&id, false, cx));
-        self.settle();
-    }
-
     fn toasts(&mut self) -> Vec<String> {
         self.cx.update(|_, cx| {
             ToastStore::global(cx)
@@ -130,31 +123,6 @@ async fn an_off_tab_question_toasts_once(cx: &mut TestAppContext) {
         .collect();
     assert_eq!(asks.len(), 1);
     assert!(asks[0].ends_with("Ship it now?"), "{}", asks[0]);
-}
-
-#[gpui::test]
-async fn the_stop_palette_lists_running_commands_and_stops_the_picked_one(cx: &mut TestAppContext) {
-    let mut s = boot(cx, MockOptions::default());
-    s.open(RUNNING);
-    s.state.update(s.cx, |st, cx| {
-        st.set_run_session(RUNNING, "dev", "sess-dev", cx);
-        st.set_run_session(RUNNING, "test", "sess-test", cx);
-    });
-    let opened = s
-        .state
-        .update(s.cx, |st, cx| st.open_stop_menu(RUNNING, cx));
-    assert!(opened);
-    assert!(s.has("stop-dev"));
-    assert!(s.has("stop-test"));
-    assert!(s.has("stop-__all__"));
-    s.cx.simulate_input("tes");
-    s.settle();
-    assert!(!s.has("stop-dev"));
-    assert!(s.has("stop-test"));
-    s.cx.simulate_keystrokes("escape");
-    s.settle();
-    assert!(!s.state.read_with(s.cx, |st, _| st.overlays.stop_menu));
-    assert!(!s.has("stop-test"));
 }
 
 /// A bare text field with the emoji and mention typeaheads, and the overlays painting them.

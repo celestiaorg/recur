@@ -144,3 +144,24 @@ fn cmd_enter_and_the_pin_make_a_run_the_project_default(cx: &mut TestAppContext)
         s.until(|s| s.rows("run-row:", &NAMES).first().map(String::as_str) == Some("tidy:sel"))
     );
 }
+
+#[gpui::test]
+fn the_stop_palette_lists_running_commands_and_filters_them(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default());
+    s.open_workspace("LOOP-2229");
+    s.state.update(s.cx, |st, cx| {
+        st.set_run_session("LOOP-2229", "dev", "sess-dev", cx);
+        st.set_run_session("LOOP-2229", "test", "sess-test", cx);
+    });
+    let opened = s
+        .state
+        .update(s.cx, |st, cx| st.open_stop_menu("LOOP-2229", cx));
+    assert!(opened);
+    assert!(s.has("stop-dev") && s.has("stop-test") && s.has("stop-__all__"));
+    s.type_text("tes");
+    assert!(!s.has("stop-dev"));
+    assert!(s.has("stop-test"));
+    s.keys("escape");
+    assert!(!s.read(|st| st.overlays.stop_menu));
+    assert!(!s.has("stop-test"));
+}

@@ -905,11 +905,7 @@ impl PrDetail {
     fn watch_dock(
         &mut self,
         dock: &gpui_kit::AnyView,
-        observe: fn(
-            &gpui_kit::AnyView,
-            Box<dyn Fn(&mut App)>,
-            &mut App,
-        ) -> Option<gpui_kit::Subscription>,
+        observe: recur_view_core::pr_dock::ObserveDock,
         cx: &mut Context<Self>,
     ) {
         let id = dock.entity_id();

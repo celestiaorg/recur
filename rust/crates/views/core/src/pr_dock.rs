@@ -4,6 +4,9 @@
 
 use gpui_kit::{AnyElement, AnyView, App, FocusHandle, Global, Subscription, Window};
 
+/// [`PrDockHost::observe`]: calls the callback whenever the dock notifies.
+pub type ObserveDock = fn(&AnyView, Box<dyn Fn(&mut App)>, &mut App) -> Option<Subscription>;
+
 /// The dock's hooks, installed by the crate that owns the bound workspace view.
 pub struct PrDockHost {
     /// The Observatory of the workspace view on screen, once it has rendered.
@@ -12,8 +15,8 @@ pub struct PrDockHost {
     pub render: fn(&AnyView, &mut Window, &mut App) -> Option<AnyElement>,
     /// The dock's hide toggle.
     pub toggle_focus: fn(&AnyView, &App) -> Option<FocusHandle>,
-    /// Calls `on_notify` whenever `dock` notifies (its elements render inside PR detail).
-    pub observe: fn(&AnyView, Box<dyn Fn(&mut App)>, &mut App) -> Option<Subscription>,
+    /// Watches `dock` (its elements render inside PR detail).
+    pub observe: ObserveDock,
 }
 
 impl Global for PrDockHost {}

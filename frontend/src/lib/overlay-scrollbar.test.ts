@@ -53,6 +53,29 @@ describe('overlayScrollbar', () => {
     cleanup()
   })
 
+  test('scroll alone does not light the strip', () => {
+    const { el, sb, cleanup } = mount()
+    el.dispatchEvent(new Event('scroll'))
+    expect(sb.classList.contains('on')).toBe(false)
+    cleanup()
+  })
+
+  test('scroll keeps the strip lit while hovered', () => {
+    const { el, sb, cleanup } = mount()
+    sb.dispatchEvent(new PointerEvent('pointerenter'))
+    el.dispatchEvent(new Event('scroll'))
+    expect(sb.classList.contains('on')).toBe(true)
+    cleanup()
+  })
+
+  test('scroll keeps the strip lit while grabbed', () => {
+    const { el, sb, cleanup } = mount()
+    sb.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientY: 150 }))
+    el.dispatchEvent(new Event('scroll'))
+    expect(sb.classList.contains('on')).toBe(true)
+    cleanup()
+  })
+
   test('gains .live when content grows past the viewport', async () => {
     const { el, sb, cleanup } = mount(200, 200)
     expect(sb.classList.contains('live')).toBe(false)

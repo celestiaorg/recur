@@ -1084,7 +1084,15 @@ impl Select {
                 .text_color(t.text)
                 .text_size(px(12.5))
                 .cursor_pointer()
-                .when(active, |d| d.bg(t.pane))
+                .when(active, |d| {
+                    // `data-active` for specs.
+                    let label = o.label.clone();
+                    d.bg(t.pane).child(
+                        div()
+                            .absolute()
+                            .debug_selector(move || format!("sel-opt-active:{label}")),
+                    )
+                })
                 .child(if on {
                     icon(IconName::Check)
                         .stroke_width(2.4)

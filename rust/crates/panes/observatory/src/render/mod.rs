@@ -668,10 +668,14 @@ impl Observatory {
                     .child(body),
             );
         aside = if narrow {
-            aside
-                .max_h(px(200.))
-                .border_b_1()
-                .border_color(hsla(t.line))
+            // `max-height: 200px`. The chat's transcript is a virtualized list that adds no
+            // content height here, but in WebKit its messages always overflow the cap.
+            let aside = if kind == CodePanelKey::Maestro {
+                aside.flex_none().h(px(200.))
+            } else {
+                aside.max_h(px(200.))
+            };
+            aside.border_b_1().border_color(hsla(t.line))
         } else {
             aside
                 .flex_none()

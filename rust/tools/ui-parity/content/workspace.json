@@ -2,6 +2,7 @@
   "workspaceId": "LOOP-2231",
   "scenes": {
     "chat": { "session": "code", "items": "transcript" },
+    "narrow": { "session": "code", "items": "transcript" },
     "tabs": {
       "session": "explorer",
       "items": "transcript",

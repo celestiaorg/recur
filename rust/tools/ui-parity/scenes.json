@@ -1918,7 +1918,8 @@
     {"name": "workspace/plan", "width": 1280, "height": 800, "theme": "default", "tolerance": 45880, "steps": [{"click": [88, 19]}, {"wait": 300}], "seed": {"loops": [{"id": "LOOP-2231", "plan": {"summary": "Ship the Loop cockpit", "body": "Merge specialist cards so the cockpit is one surface.\n\n- Keep agent todos distinct from plan steps\n- Retarget the Activity e2e", "source": "human", "approved": false, "steps": [{"id": "s1", "title": "Merge specialist cards into Loop chat", "status": "done"}, {"id": "s2", "title": "Retarget Activity e2e", "status": "doing"}, {"id": "s3", "title": "Drop the old Activity view", "status": "pending"}]}}]}},
     {"name": "workspace/findings", "width": 1280, "height": 800, "theme": "default", "tolerance": 48850, "steps": [{"click": [117, 19]}, {"wait": 300}]},
     {"name": "workspace/loop", "width": 1280, "height": 800, "theme": "default", "tolerance": 51450, "hardTolerance": 1},
-    {"name": "workspace/loop-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 51780, "hardTolerance": 5}
+    {"name": "workspace/loop-paper", "width": 1280, "height": 800, "theme": "paper", "tolerance": 51780, "hardTolerance": 5},
+    {"name": "workspace/narrow", "width": 900, "height": 800, "theme": "default", "tolerance": 30000, "hardTolerance": 22}
   ],
   "prs": [
     {"name": "prs/list", "width": 1280, "height": 800, "theme": "default", "tolerance": 27460, "hardTolerance": 39, "fixture": "list", "route": "pr", "seg": "all"},

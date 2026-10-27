@@ -1272,3 +1272,209 @@ fn expand_and_subtype() {
         "success"
     );
 }
+
+// ---- Go `context_usage_test.go`: the composer meter from Cursor usage frames.
+
+fn tool_wave(id: &str, name: &str, args: &str) -> [String; 2] {
+    [
+        format!(
+            r#"{{"sdkMessage":{{"type":"tool_call","message":{{"type":"tool_call","call_id":"{id}","name":"{name}","status":"running","args":{args}}}}}}}"#
+        ),
+        format!(
+            r#"{{"sdkMessage":{{"type":"tool_call","message":{{"type":"tool_call","call_id":"{id}","name":"{name}","status":"completed","args":{args},"result":{{"status":"success","value":{{"isError":false}}}}}}}}}}"#
+        ),
+    ]
+}
+
+const M_THINK: &str =
+    r#"{"sdkMessage":{"type":"thinking","message":{"type":"thinking","text":"next"}}}"#;
+const M_THINK_END: &str =
+    r#"{"sdkMessage":{"type":"thinking","message":{"type":"thinking","text":""}}}"#;
+const M_CUMUL_300K: &str = r#"{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":150000,"outputTokens":900,"cacheReadTokens":150000,"cacheWriteTokens":0,"totalTokens":300900}}}}"#;
+const M_FIN_300K: &str = r#"{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"ok","durationMs":"900","usage":{"inputTokens":"150000","outputTokens":"900","cacheReadTokens":"150000","totalTokens":"300900"}}}}"#;
+const M_ENDED_20K: &str = r#"{"interactionUpdate":{"type":"turn-ended","usage":{"inputTokens":12000,"outputTokens":400,"cacheReadTokens":8000,"cacheWriteTokens":0}}}"#;
+const M_PRE: &str = r#"{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":150000,"outputTokens":200,"cacheReadTokens":150000,"cacheWriteTokens":0,"totalTokens":300200}}}}"#;
+const M_SUMMARY_START: &str = r#"{"interactionUpdate":{"type":"summary-started"}}"#;
+const M_SUMMARY_DONE: &str = r#"{"interactionUpdate":{"type":"summary-completed"}}"#;
+const M_POST: &str = r#"{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":165000,"outputTokens":260,"cacheReadTokens":165000,"cacheWriteTokens":0,"totalTokens":330260}}}}"#;
+const M_FIN_POST: &str = r#"{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"ok","durationMs":"900","usage":{"inputTokens":"165000","outputTokens":"260","cacheReadTokens":"165000","totalTokens":"330260"}}}}"#;
+
+fn feed_owned(frames: &[String]) -> (Turn, Rec) {
+    let refs: Vec<&str> = frames.iter().map(String::as_str).collect();
+    feed(spec("composer-2.5", false), &refs)
+}
+
+fn frames(parts: &[&[String]]) -> Vec<String> {
+    parts.iter().flat_map(|p| p.iter().cloned()).collect()
+}
+
+fn s(f: &str) -> Vec<String> {
+    vec![f.to_string()]
+}
+
+fn compact_tokens(evs: &[AgentEvent]) -> Vec<(String, i64)> {
+    evs.iter()
+        .filter_map(|e| match e {
+            AgentEvent::Compact {
+                status, pre_tokens, ..
+            } => Some((status.clone(), *pre_tokens)),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn cursor_result_prefers_mid_stream_usage_for_meter() {
+    let mid = r#"{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":3000,"outputTokens":100,"cacheReadTokens":70000,"cacheWriteTokens":0,"totalTokens":73100}}}}"#;
+    let fin = r#"{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"ok","durationMs":"900","usage":{"inputTokens":"9000","outputTokens":"400","cacheReadTokens":"200000","totalTokens":"209400"}}}}"#;
+    let (t, _) = feed(spec("composer-2.5", false), &[mid, fin]);
+    let u = t.result().usage;
+    assert_eq!((u.input_tokens, u.cache_read_tokens), (3000, 70000));
+}
+
+#[test]
+fn cursor_meter_scales_cumulative_turn_usage() {
+    let (t, _) = feed_owned(&frames(&[
+        &tool_wave("c1", "shell", r#"{"command":"ls"}"#),
+        &s(M_THINK),
+        &s(M_THINK_END),
+        &tool_wave("c2", "shell", r#"{"command":"pwd"}"#),
+        &s(M_CUMUL_300K),
+        &s(M_FIN_300K),
+    ]));
+    let u = t.result().usage;
+    assert_eq!(u.context_used(), 150_000, "300000 * 2 / 4");
+    assert_eq!((u.input_tokens, u.cache_read_tokens), (75_000, 75_000));
+}
+
+#[test]
+fn cursor_meter_serial_sibling_tools_share_one_wave() {
+    let (t, _) = feed_owned(&frames(&[
+        &tool_wave("c1", "shell", r#"{"command":"ls"}"#),
+        &tool_wave("c2", "shell", r#"{"command":"pwd"}"#),
+        &s(M_CUMUL_300K),
+        &s(M_FIN_300K),
+    ]));
+    assert_eq!(t.fold.lock().tool_waves, 1, "serial siblings share a wave");
+    assert_eq!(
+        t.result().usage.context_used(),
+        200_000,
+        "300000 * 2 / 3 clamped to the window"
+    );
+}
+
+#[test]
+fn cursor_meter_subtracts_usage_at_summary() {
+    let (t, rec) = feed(
+        spec("composer-2.5", false),
+        &[M_PRE, M_SUMMARY_START, M_SUMMARY_DONE, M_POST, M_FIN_POST],
+    );
+    let c = compact_tokens(&rec.all());
+    assert!(c.iter().any(|(s, _)| s == "started") && c.iter().any(|(s, _)| s == "done"));
+    for (_, tokens) in &c {
+        assert_eq!(*tokens, 200_000, "300k cumulative clamped to the window");
+    }
+    assert_eq!(t.result().usage.context_used(), 30_000, "post-summary delta");
+}
+
+#[test]
+fn cursor_meter_scales_cumulative_usage_under_window() {
+    let usage = r#"{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":61155,"outputTokens":763,"cacheReadTokens":53344,"cacheWriteTokens":0,"totalTokens":115262}}}}"#;
+    let fin = r#"{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"ok","durationMs":"7725","usage":{"inputTokens":"61155","outputTokens":"763","cacheReadTokens":"53344","totalTokens":"115262"}}}}"#;
+    let (t, _) = feed_owned(&frames(&[
+        &tool_wave("c1", "glob", r#"{"glob_pattern":"*"}"#),
+        &s(M_THINK),
+        &s(M_THINK_END),
+        &tool_wave("c2", "read", r#"{"path":"main.go"}"#),
+        &tool_wave("c3", "glob", r#"{"glob_pattern":"README*"}"#),
+        &s(M_THINK),
+        &s(M_THINK_END),
+        &tool_wave("c4", "mcp", r#"{"toolName":"rename_workspace"}"#),
+        &tool_wave("c5", "mcp", r#"{"toolName":"rename_branch"}"#),
+        &tool_wave("c6", "mcp", r#"{"toolName":"rename_session"}"#),
+        &s(usage),
+        &s(fin),
+    ]));
+    assert_eq!(t.fold.lock().tool_waves, 3, "glob | read+glob | three mcp");
+    let u = t.result().usage;
+    assert_eq!(u.context_used(), 45_799, "114499 * 2 / 5");
+    assert_eq!(u.input_tokens + u.cache_read_tokens, 45_799);
+}
+
+#[test]
+fn cursor_turn_ended_footprint_not_divided_by_waves() {
+    let cumul = r#"{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":61155,"outputTokens":763,"cacheReadTokens":53344,"totalTokens":115262}}}}"#;
+    let fin = r#"{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"ok","durationMs":"7725","usage":{"inputTokens":"61155","outputTokens":"763","cacheReadTokens":"53344","totalTokens":"115262"}}}}"#;
+    let (t, _) = feed_owned(&frames(&[
+        &tool_wave("c1", "glob", r#"{"glob_pattern":"*"}"#),
+        &s(M_THINK),
+        &s(M_THINK_END),
+        &tool_wave("c2", "read", r#"{"path":"main.go"}"#),
+        &s(cumul),
+        &s(M_ENDED_20K),
+        &s(fin),
+    ]));
+    assert_eq!(t.result().usage.context_used(), 20_000);
+}
+
+#[test]
+fn cursor_turn_ended_usage_is_per_call_footprint() {
+    let fin = r#"{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"ok","durationMs":"400","usage":{"inputTokens":"150000","outputTokens":"900","cacheReadTokens":"150000","totalTokens":"300900"}}}}"#;
+    let (t, _) = feed(
+        spec("composer-2.5", false),
+        &[M_CUMUL_300K, M_ENDED_20K, fin],
+    );
+    assert_eq!(t.result().usage.context_used(), 20_000);
+}
+
+#[test]
+fn cursor_compact_baseline_skips_per_call_footprint() {
+    let (t, _) = feed(
+        spec("composer-2.5", false),
+        &[
+            M_PRE,
+            M_ENDED_20K,
+            M_SUMMARY_START,
+            M_SUMMARY_DONE,
+            M_POST,
+            M_FIN_POST,
+        ],
+    );
+    assert_eq!(
+        t.result().usage.context_used(),
+        30_000,
+        "cumulative minus cumulative, not the 20k footprint"
+    );
+}
+
+#[test]
+fn cursor_compact_clears_per_call_meter() {
+    let fin = r#"{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"ok","durationMs":"900","usage":{"inputTokens":"150000","outputTokens":"200","cacheReadTokens":"150000","totalTokens":"300200"}}}}"#;
+    let (t, rec) = feed(
+        spec("composer-2.5", false),
+        &[M_PRE, M_ENDED_20K, M_SUMMARY_START, M_SUMMARY_DONE, fin],
+    );
+    assert!(!t.fold.lock().usage_per_call);
+    assert_eq!(t.result().usage.context_used(), 0);
+    let evs = rec.all();
+    let done = evs
+        .iter()
+        .position(|e| matches!(e, AgentEvent::Compact { status, .. } if status == "done"))
+        .expect("compact done");
+    assert!(
+        !evs[done + 1..]
+            .iter()
+            .any(|e| matches!(e, AgentEvent::Usage(_))),
+        "no usage after compact-done with a zero delta"
+    );
+}
+
+#[test]
+fn cursor_compact_flushes_text_first() {
+    let (_, rec) = feed(spec("composer-2.5", false), &[F_ASSISTANT, M_SUMMARY_START]);
+    let k: Vec<&str> = kinds(&rec.all())
+        .into_iter()
+        .filter(|k| matches!(*k, "text" | "compact"))
+        .collect();
+    assert_eq!(&k[..2], ["text", "compact"]);
+}

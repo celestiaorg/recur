@@ -218,9 +218,7 @@ Every other scene allows no hard pixels. Rows marked *open* are not yet proven u
 | `home/welcome`, `home/welcome-modes` | 11 | Curved-edge coverage where the rows' rounded ends meet the list's border arc |
 | `home/new-project-path` | 102 | The focused field's corners and the typed path (*open*: typed input text) |
 | `home/new-task-slash` | 3 | Curved-edge coverage at the slash menu's corner |
-| `briefing/inbox`, `briefing/inbox-paper`, `briefing/inbox-closed` | 163, 151, 163 | The bucket segment group sits within 0.1px of WebKit's 999.78 but across the device-pixel rounding boundary, so its first button's fill starts a device pixel early (*open*) |
-| `briefing/schedules`, `briefing/schedules-paper` | 20, 22 | The state segment's first button (as `briefing/inbox`) |
-| `briefing/schedule-editor`, `briefing/schedule-editor-once`, `briefing/schedule-editor-paper` | 81, 51, 85 | The cron expression and date fields (*open*: typed input text) and the state segment behind the scrim (as `briefing/schedules`) |
+| `briefing/schedule-editor`, `briefing/schedule-editor-once`, `briefing/schedule-editor-paper` | 59, 29, 63 | The cron expression and date fields (*open*: typed input text) |
 | `projects/general`, `projects/general-tall`, `projects/general-paper` | 57, 57, 85 | The custom color swatch's 1px dashed circle: WebKit dashes a curved border with its own pattern and coverage; `paper` adds typed input text (the repository path) |
 | `palettes/goto-filter`, `palettes/goto-empty`, `palettes/commands-filter`, `palettes/syntax-filter`, `palettes/shortcuts-filter` | 13, 48, 1, 2, 26 | The typed query and, in `goto-empty`, a 1px row under the input a device pixel off (*open*) |
 | `projects/run`, `projects/run-tall` | 185, 253 | The Files to copy placeholder, which gpui-base's textarea draws (*open*: typed input text) |

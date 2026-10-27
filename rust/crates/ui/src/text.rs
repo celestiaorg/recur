@@ -1672,7 +1672,7 @@ impl Laid {
     /// Width of the widest line and the total height, unrounded, after a layout at `width`.
     fn measured(&self) -> (f32, f32) {
         // WebKit stores an inline text width as `LayoutUnit::fromFloatCeil`.
-        let w = (self.lines.iter().map(|l| l.width).fold(0., f32::max) * 64.).ceil() / 64.;
+        let w = crate::exact::lu_ceil(self.lines.iter().map(|l| l.width).fold(0., f32::max));
         (w, self.height())
     }
 }

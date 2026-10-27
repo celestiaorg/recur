@@ -65,9 +65,10 @@ pub fn exact_cell(id: Option<&GlobalElementId>, window: &mut Window) -> Option<E
 }
 
 /// `v` ceiled to a LayoutUnit (1/64 px), as WebKit stores an inline width
-/// (`LayoutUnit::fromFloatCeil`); a value already on that grid stays.
-fn lu_ceil(v: f32) -> f32 {
-    let lu = ((v * 64.) - 1e-3).ceil() / 64.;
+/// (`LayoutUnit::fromFloatCeil`). A value on that grid stays, within the f32 noise of summed
+/// advances (WebKit's own sums land exactly on it: a 6px advance is 6, not 6.000002).
+pub(crate) fn lu_ceil(v: f32) -> f32 {
+    let lu = ((v * 64.) - 0.01).ceil() / 64.;
     if lu.is_finite() { lu } else { v }
 }
 

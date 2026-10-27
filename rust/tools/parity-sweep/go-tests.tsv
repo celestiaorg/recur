@@ -320,6 +320,7 @@ internal/engine.TestApplyListedGitHubPRStoresCreatedAt	crates/engine/src/prs/tes
 internal/engine.TestApplyListedGitHubPRStoresParticipants	crates/engine/src/prs/tests/sync.rs::apply_stores_participants
 internal/engine.TestApplyListedGitHubPRTracksConflicts	crates/engine/src/prs/tests/sync.rs::apply_tracks_conflicts
 internal/engine.TestApplyProvisionalTitlesBeforeSend	crates/engine/src/chat/tests/send.rs::provisional_titles_land_before_a_queued_send
+internal/engine.TestApplySkillGuidance	crates/engine/src/composer/skills_tests.rs::skill_guidance_once
 internal/engine.TestArchiveOnePRChatHostRevalidatesLink	crates/engine/src/prs/tests/hoist.rs::archive_one_revalidates_link
 internal/engine.TestAskUserParksWithoutBlocking	crates/engine/src/ask_user/tests.rs::parks_without_blocking
 internal/engine.TestAskUserResumeHoldsPRHostBusy	crates/engine/src/prs/tests/hoist.rs::ask_user_resume_holds_host_busy
@@ -687,6 +688,7 @@ internal/engine.TestFlagChatUnseenRaisesInboxWhenUnfocused	crates/engine/src/cha
 internal/engine.TestFlattenJSONArrayPages	crates/forge/src/github/tests.rs::snapshot_query_variants_and_timeline_pages
 internal/engine.TestFlattenTranscriptCompact	crates/engine/src/turn/transcript/tests.rs::compact_item
 internal/engine.TestFlattenTranscriptDropsOrphanNestedBlocks	crates/engine/src/turn/transcript/tests.rs::drops_orphan_nested_blocks
+internal/engine.TestFlattenTranscriptFallback	crates/engine/src/turn/transcript/tests.rs::fallback_item_uses_model_labels
 internal/engine.TestFlattenTranscriptNestsSubagentOutput	crates/engine/src/turn/transcript/tests.rs::nests_subagent_output_under_agent
 internal/engine.TestFlattenTranscriptNestsTaskSubagentTools	crates/engine/src/turn/transcript/tests.rs::nests_task_subagent_tools
 internal/engine.TestFlattenTranscriptSteerWithToolResultShowsDisplay	crates/engine/src/turn/transcript/tests.rs::steer_with_tool_result_shows_display
@@ -933,6 +935,7 @@ internal/engine.TestParseMentionableUsers	crates/forge/src/github/tests.rs::ment
 internal/engine.TestParseModelRef	crates/domain/src/model.rs::parse_model_ref_cases
 internal/engine.TestParsePRDescription	crates/engine/src/turn/oneshot_tests.rs::generate_pr_description
 internal/engine.TestParsePostedInlineComment	crates/forge/src/github/tests.rs::parse_posted_reply
+internal/engine.TestParseStreamLineFixtures	providers/claude/src/stream/tests.rs::system_init, providers/claude/src/stream/tests.rs::assistant_tool_use_and_text, providers/claude/src/stream/tests.rs::user_tool_result_array_content, providers/claude/src/stream/tests.rs::result_success
 internal/engine.TestPeelChatSurface	crates/engine/src/chat/tests/switch_mode.rs::peel_chat_surface_cases
 internal/engine.TestPendingLoc	crates/engine/src/prs/tests/merge.rs::pending_locations
 internal/engine.TestPermissionArgs	providers/claude/src/args.rs::permission_args_cases
@@ -1006,6 +1009,8 @@ internal/engine.TestRememberWorkspaceChatPromptGroupConcurrentWithSelection	crat
 internal/engine.TestRememberWorkspaceChatPromptGroupWithoutSelection	crates/engine/src/chat/tests/modes_send.rs::prompt_groups_persist_with_or_without_a_selection
 internal/engine.TestRememberWorkspaceChatSelectionStampsProvider	crates/engine/src/chat/tests/modes_send.rs::a_dock_pick_stamps_the_session_provider
 internal/engine.TestRememberWorkspaceChatSelectionWithoutSend	crates/engine/src/chat/tests/modes_send.rs::the_dock_selection_persists_without_a_send
+internal/engine.TestRememberWorkspaceChatSimplifyDoesNotCreateMaestroSession	crates/engine/src/simplify/tests.rs::remember_never_creates_sessions_or_tabs
+internal/engine.TestRememberWorkspaceChatSimplifyDoesNotCreatePairSession	crates/engine/src/simplify/tests.rs::remember_never_creates_sessions_or_tabs
 internal/engine.TestRememberWorkspaceChatSimplifyDoesNotResurrectClosedTab	crates/engine/src/chat/tests/moved.rs::remember_simplify_does_not_resurrect_a_closed_tab
 internal/engine.TestRemoveRunsTeardown	crates/engine/src/workspace/tests.rs::remove_runs_teardown_after_returning
 internal/engine.TestRemoveWorkspaceInvalidatesScheduledModeContinue	crates/engine/src/chat/tests/tabs.rs::remove_workspace_invalidates_a_scheduled_remount
@@ -1250,6 +1255,7 @@ internal/engine.TestWorktreeFingerprintSeesUpstreamAdvance	crates/engine/src/fsw
 internal/engine.TestWorktreeFingerprintSoftFailsOutsideGit	crates/engine/src/fswatch/tests.rs::fingerprint_ok_without_upstream_and_soft_fails_outside_git
 internal/engine.TestWrapActivatedSkills	crates/engine/src/composer/skills_tests.rs::wraps_activated_skills
 internal/engine.TestWrapActivatedSkillsAdjacentMentions	crates/engine/src/composer/skills_tests.rs::adjacent_mentions
+internal/engine.TestWrapActivatedSkillsSkipsNonInvocable	crates/engine/tests/env_serial.rs::user_scope_skills_activate_and_respect_invocability
 internal/engine.TestWrapActivatedSkillsWorkspaceWins	crates/engine/tests/env_serial.rs::workspace_skill_shadows_user_skill
 internal/engine.TestWrapAttachedArtifactMentionsBareUsesNewest	crates/engine/src/composer/artifacts_tests.rs::bare_uses_newest
 internal/engine.TestWrapAttachedArtifactMentionsBinaryIsNoted	crates/engine/src/composer/artifacts_tests.rs::binary_is_noted
@@ -1274,6 +1280,7 @@ internal/engine.TestWrapComposerDialectStripsStrayMarkers	crates/engine/src/comp
 internal/engine.TestWrapComposerDoesNotActivateSkillsFromTerminalOutput	crates/engine/src/composer/terminals_tests.rs::terminal_output_cannot_activate_a_skill
 internal/engine.TestWrapComposerDoesNotAttachArtifactFromSkillBody	crates/engine/src/composer/artifacts_tests.rs::skill_body_cannot_attach_an_artifact
 internal/engine.TestWrapComposerDoesNotAttachTerminalFromSkillBody	crates/engine/src/composer/terminals_tests.rs::skill_body_cannot_attach_a_terminal
+internal/engine.TestWrapComposerIncludesTerminalSnapshot	crates/engine/src/composer/terminals_tests.rs::real_shell_snapshot_and_exit
 internal/git.TestBaseBranchExists	crates/git/src/branches.rs::base_branch_exists_cases
 internal/git.TestClassifyCommitMessage	crates/git/src/diff.rs::classify_commit_message_cases
 internal/git.TestCmdMethodsAbsorbPipeHold	crates/git/src/command.rs::every_runner_absorbs_pipe_hold

@@ -584,3 +584,29 @@ async fn pr_open_publishes_notify() {
     assert!(notify.target.unwrap_or_default().starts_with("pr:"));
     t.close().await;
 }
+
+#[tokio::test]
+async fn base_branch_for_reads_store_after_retarget() {
+    let t = TestEngine::new(None);
+    t.store
+        .add_project(recur_domain::Project {
+            id: "p".into(),
+            name: "p".into(),
+            base_branch: "main".into(),
+            ..Default::default()
+        })
+        .unwrap();
+    let ws = recur_domain::Workspace {
+        id: "w1".into(),
+        project_id: "p".into(),
+        base_branch: "main".into(),
+        branch: "recur/w1".into(),
+        ..Default::default()
+    };
+    t.store.add_workspace(ws.clone()).unwrap();
+    let walk = crate::loops::Walk::new(&t.engine, &ws);
+    assert_eq!(walk.base_branch(), "main");
+    t.store
+        .update_workspace("w1", |w| w.base_branch = "develop".into());
+    assert_eq!(walk.base_branch(), "develop", "a mid-run retarget wins");
+}

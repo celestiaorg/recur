@@ -359,6 +359,7 @@ internal/engine.TestCancelDeferredCursorClose	providers/cursor/src/pool/tests.rs
 internal/engine.TestCancelMaestroMessage	crates/engine/src/chat/tests/cancel.rs::stop_interrupts_a_maestro_turn
 internal/engine.TestCancelWorkspaceMessage	crates/engine/src/chat/tests/cancel.rs::stop_interrupts_a_live_chat_turn
 internal/engine.TestCanonicalToolNames	providers/cursor/src/tools/tests.rs::canonical_names
+internal/engine.TestCapGitHubPRBody	crates/engine/src/golden_e2_tests.rs::oneshot_prompts_match_go
 internal/engine.TestChatCheckpointHiddenWhenTurnDidNotEdit	crates/engine/src/turn/checkpoint_tests.rs::unedited_turn_hides_checkpoint_and_reset_keeps_manual_edits
 internal/engine.TestChatCheckpointResumeDoesNotStealCompletedTurn	crates/engine/src/chat/tests/checkpoint.rs::a_resume_does_not_steal_a_completed_turns_end
 internal/engine.TestChatCheckpointResumeReusesInterimEnd	crates/engine/src/chat/tests/checkpoint.rs::a_resume_replaces_an_interim_end
@@ -722,6 +723,7 @@ internal/engine.TestFormatLoopElapsed	crates/engine/src/loops/tests/wrap_up.rs::
 internal/engine.TestFormatModeSwitchResumePrompt	crates/engine/src/chat/tests/switch_mode.rs::the_resume_prompt_and_display
 internal/engine.TestFormatOpenPRToolResultKeepsCreateErrorWhenBodyIsLong	crates/engine/src/prs/tests/rework.rs::open_pr_result_keeps_create_error_when_body_is_long
 internal/engine.TestFormatOpenPRToolResultLocalFallbackIncludesReason	crates/engine/src/prs/tests/rework.rs::open_pr_result_local_fallback_includes_reason
+internal/engine.TestFormatPRThreadIncludesLineNotes	crates/engine/src/golden_e3_tests.rs::pr_text_matches_go
 internal/engine.TestFreshSessionCTAArgSkipsResume	crates/engine/src/chat/tests/moved.rs::a_fresh_session_turn_arg_skips_resume
 internal/engine.TestFreshSessionDoesNotInjectIntoLiveTurn	crates/engine/src/chat/tests/steer.rs::a_fresh_session_never_steers_the_live_turn
 internal/engine.TestFreshSessionNativeHistoryDropsPriorTurns	crates/engine/src/chat/tests/moved.rs::a_fresh_session_cuts_native_history
@@ -744,6 +746,7 @@ internal/engine.TestGitHubCreateNumberPrefersURLThenHead	crates/forge/src/github
 internal/engine.TestGitHubMergeFailureNote	crates/forge/src/github/merge.rs::failure_notes
 internal/engine.TestGitHubMergeGated	crates/engine/src/prs/tests/glue.rs::github_merge_round_trip
 internal/engine.TestGitHubNodeDatabaseID	crates/forge/src/github/tests.rs::node_database_ids
+internal/engine.TestGitHubPRMarkdown	crates/engine/src/golden_e3_tests.rs::pr_text_matches_go
 internal/engine.TestGitHubPRSnapshotGraphQLQueryOmitsRollup	crates/forge/src/github/tests.rs::snapshot_query_variants_and_timeline_pages
 internal/engine.TestGitHubPRTimelineAPIArgsPaginates	crates/forge/src/github/tests.rs::snapshot_query_variants_and_timeline_pages
 internal/engine.TestGitHubPermissionCanWrite	crates/forge/src/github/tests.rs::snapshot_query_variants_and_timeline_pages
@@ -880,8 +883,10 @@ internal/engine.TestNilInjectedRunnerFailsClosed	crates/engine/src/turn/tests.rs
 internal/engine.TestNonClaudeProviderTurnIsMirrored	crates/engine/src/turn/tests.rs::non_claude_turn_is_mirrored_under_its_provider
 internal/engine.TestOwnerRepoFromRemoteURL	crates/forge/src/github/repo.rs::owner_repo_from_remote_urls
 internal/engine.TestPRConversationMinIntervalLetsOpenPRRefresh	crates/engine/src/prs/tests/thread.rs::conversation_min_interval_lets_open_pr_refresh
+internal/engine.TestPRFallbackIntro	crates/engine/src/golden_e3_tests.rs::pr_text_matches_go
 internal/engine.TestPRNumberFromURL	crates/forge/src/github/repo.rs::pr_urls
 internal/engine.TestPRReviewCapabilities	crates/domain/src/pr.rs::conversation_lock_and_edit_details, crates/domain/src/pr.rs::approve_review_rules, crates/domain/src/pr.rs::comment_edit_delete_resolve
+internal/engine.TestPRTitle	crates/engine/src/golden_e3_tests.rs::pr_text_matches_go
 internal/engine.TestParkChatTurnIfSkipsNewerTurn	crates/engine/src/ask_user/tests.rs::park_if_skips_newer_turn
 internal/engine.TestParkChatTurnIfSkipsStoppedTurn	crates/engine/src/chat/tests/switch_mode.rs::a_park_skips_a_stopped_turn
 internal/engine.TestParkedChatHasNoTurnFooter	crates/engine/src/chat/tests/cancel.rs::a_parked_chat_has_no_turn_footer

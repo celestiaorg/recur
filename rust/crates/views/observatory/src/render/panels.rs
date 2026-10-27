@@ -550,7 +550,7 @@ impl Observatory {
                 ProblemSeverity::Info => t.cyan,
                 ProblemSeverity::Hint => t.muted,
             };
-            let sev_icon = recur_view_chat::findings_ui::finding_sev_icon(match p.severity {
+            let sev_icon = recur_view_widgets::findings_ui::finding_sev_icon(match p.severity {
                 ProblemSeverity::Error => "high",
                 ProblemSeverity::Warning => "medium",
                 ProblemSeverity::Info => "info",

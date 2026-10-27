@@ -3,7 +3,7 @@
 
 use gpui::TestAppContext;
 use recur_services::mock::{MockOptions, Reply};
-use recur_view_chat::suggest::SuggestKind;
+use recur_view_widgets::suggest::SuggestKind;
 use serde_json::{Value, json};
 
 use super::harness::*;

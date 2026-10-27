@@ -9,8 +9,8 @@ use recur_ui::text::{TextStyled, text};
 use recur_view_core::{AppState, ViewContext};
 use recur_view_core::{ObserveState as _, Topics};
 
-use crate::list_filter::{scoped_prs, title_counts};
 use crate::ui::{PrUi, ui};
+use recur_view_core::pr_list_filter::{scoped_prs, title_counts};
 
 pub struct PrListTitlebar {
     state: Entity<AppState>,

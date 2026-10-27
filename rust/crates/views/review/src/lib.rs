@@ -3,8 +3,8 @@
 //! # Embedding
 //!
 //! Call [`register`] once (it installs the [`store::ReviewStore`] global that holds optimistic
-//! thread, reaction and draft state). The mention and emoji typeahead in the composers use the
-//! chat crate's suggest overlays, so `recur_view_chat::register` must run too.
+//! thread, reaction and draft state). The mention and emoji typeahead in the composers
+//! (`recur_view_widgets::suggest`) paint through the overlays `recur_view_chat::register` adds.
 //!
 //! **Observatory** (`ObservatoryView.svelte` → `ReviewSurface.svelte`): own a
 //! [`surface::ReviewSurface`] entity built with [`surface::SurfaceProps`] (project, workspace,
@@ -27,7 +27,6 @@
 //! and [`commits::commit_row`].
 
 pub mod autosize;
-pub mod avatar;
 pub mod comment_header;
 pub mod comment_hunk;
 pub mod commit_meta;

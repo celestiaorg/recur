@@ -43,15 +43,15 @@ pub struct ChordIndex {
 
 impl ChordHit {
     /// `chordItem`: the keybinding menu row.
-    pub fn item(&self) -> crate::keybinding_menu::KeybindingMenuItem {
+    pub fn item(&self) -> recur_view_widgets::keybinding_menu::KeybindingMenuItem {
         match self {
-            ChordHit::Command(c) => crate::keybinding_menu::KeybindingMenuItem {
+            ChordHit::Command(c) => recur_view_widgets::keybinding_menu::KeybindingMenuItem {
                 id: format!("c:{}", c.id),
                 label: c.label.clone(),
                 category: c.category.clone(),
                 order: c.order,
             },
-            ChordHit::Snippet(s) => crate::keybinding_menu::KeybindingMenuItem {
+            ChordHit::Snippet(s) => recur_view_widgets::keybinding_menu::KeybindingMenuItem {
                 id: format!("s:{}", s.id),
                 label: s.label.clone(),
                 category: s

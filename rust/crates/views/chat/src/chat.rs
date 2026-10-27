@@ -36,7 +36,6 @@ use recur_view_core::{AppState, ShellEvent, ViewContext};
 use crate::blocks::{Block, block_keys, group_blocks, last_retry_error_index};
 use crate::composer_doc::{ChipKind, ComposerDoc};
 use crate::composer_undo::{ComposerUndo, UndoSnap};
-use crate::findings_ui::digest_ref;
 use crate::flow::FlowLayout;
 use crate::glance::is_first_checkpoint;
 use crate::prompt_actions::{enabled_prompts, prompt_action};
@@ -50,6 +49,7 @@ use crate::window::{
     BlockRange, BlockShape, CHAT_HYDRATE_ALL_BELOW, CHAT_HYDRATE_MAX, CHAT_HYDRATE_OVERSCAN,
     CHAT_VIEW_PAD_PX, block_at_scroll_top, estimate_chat_block_height, in_view_keys, pick_hydrated,
 };
+use recur_view_widgets::findings_ui::digest_ref;
 
 /// Which surface the chat serves: a workspace chat, or the restricted Ask Recur panel (no
 /// mentions, attachments, forks, or workspace permission / question cards).
@@ -1960,7 +1960,7 @@ impl AgentChat {
                 self.props
                     .findings
                     .iter()
-                    .find(|x| crate::findings_ui::finding_matches_ref(x, id))
+                    .find(|x| recur_view_widgets::findings_ui::finding_matches_ref(x, id))
             })
             .flatten()
             .cloned();
@@ -2037,7 +2037,10 @@ impl AgentChat {
                     Ok(updated) => {
                         c.digest_comment_for.clear();
                         c.digest_comment_input = None;
-                        c.apply_digest_notes(&id, crate::findings_ui::finding_notes(&updated));
+                        c.apply_digest_notes(
+                            &id,
+                            recur_view_widgets::findings_ui::finding_notes(&updated),
+                        );
                     }
                     Err(err) => {
                         let msg = recur_view_core::bridge_error_message(&err);
@@ -2080,8 +2083,8 @@ impl AgentChat {
                 self.props
                     .findings
                     .iter()
-                    .find(|f| crate::findings_ui::finding_matches_ref(f, finding_id))
-                    .map(crate::findings_ui::finding_notes)
+                    .find(|f| recur_view_widgets::findings_ui::finding_matches_ref(f, finding_id))
+                    .map(recur_view_widgets::findings_ui::finding_notes)
             })
             .unwrap_or_default();
         self.digest_comment_busy = finding_id.to_string();
@@ -2107,9 +2110,10 @@ impl AgentChat {
                 .await;
             let _ = this.update(cx, |c, cx| {
                 match res {
-                    Ok(updated) => {
-                        c.apply_digest_notes(&fid, crate::findings_ui::finding_notes(&updated))
-                    }
+                    Ok(updated) => c.apply_digest_notes(
+                        &fid,
+                        recur_view_widgets::findings_ui::finding_notes(&updated),
+                    ),
                     Err(err) => {
                         c.apply_digest_notes(&fid, current);
                         let msg = recur_view_core::bridge_error_message(&err);

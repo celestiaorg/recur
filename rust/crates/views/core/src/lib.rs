@@ -18,6 +18,8 @@ pub mod commands;
 mod data;
 pub mod file_drag;
 pub mod format;
+#[cfg(feature = "gallery")]
+pub mod gallery;
 pub mod land;
 pub mod local_storage;
 pub mod menu;
@@ -27,6 +29,7 @@ pub mod nav;
 mod navigate;
 pub mod pr;
 pub mod pr_commits;
+pub mod pr_list_filter;
 pub mod prefs;
 pub mod run;
 pub mod shell_state;

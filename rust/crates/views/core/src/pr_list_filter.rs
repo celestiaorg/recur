@@ -3,11 +3,11 @@
 
 use std::cmp::Ordering;
 
+use crate::pr::{PrLifecycle, pr_lifecycle};
 use chrono::DateTime;
 use recur_domain::{ATTENTION_ASSIGNED, ATTENTION_CHANGES_REQUESTED, Pr};
 use recur_forge::view::{RollupKind, pr_checks_rollup, pr_has_review_request};
 use recur_ui::IconName;
-use recur_view_core::pr::{PrLifecycle, pr_lifecycle};
 
 /// The lifecycle segment (`PRListLife`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

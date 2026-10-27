@@ -150,7 +150,7 @@ impl Observatory {
                 },
             ));
         self._subscriptions.push(
-            cx.observe_global_in::<crate::keybinding_menu::KeybindingMenuStore>(
+            cx.observe_global_in::<recur_view_widgets::keybinding_menu::KeybindingMenuStore>(
                 window,
                 |_, _, cx| cx.notify(),
             ),
@@ -158,11 +158,11 @@ impl Observatory {
         self._subscriptions.push(cx.guarded_subscribe_in(
             &self.prompts.clone(),
             window,
-            |o, _, ev: &recur_view_chat::palettes::CommandPromptsEvent, _, cx| match ev {
-                recur_view_chat::palettes::CommandPromptsEvent::Resolve(v) => {
+            |o, _, ev: &recur_view_widgets::command_prompts::CommandPromptsEvent, _, cx| match ev {
+                recur_view_widgets::command_prompts::CommandPromptsEvent::Resolve(v) => {
                     o.resolve_prompts(Some(v.clone()), cx)
                 }
-                recur_view_chat::palettes::CommandPromptsEvent::Cancel => {
+                recur_view_widgets::command_prompts::CommandPromptsEvent::Cancel => {
                     o.resolve_prompts(None, cx)
                 }
             },
@@ -1413,7 +1413,7 @@ impl Observatory {
                         .update(cx, |p, cx| p.expand(vec![id.clone()], note, cx));
                     if let Some(f) = list
                         .iter()
-                        .find(|f| recur_view_chat::findings_ui::finding_matches_ref(f, &id))
+                        .find(|f| recur_view_widgets::findings_ui::finding_matches_ref(f, &id))
                         && !f.file.is_empty()
                     {
                         o.open_path(

@@ -15,9 +15,9 @@ use recur_ui::logic::hover_gate::HoverGate;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{Theme, rgba};
-use recur_view_chat::file_index::{FileSearchHit, map_file_search_hits};
 use recur_view_core::AppState;
 use recur_view_review::style::hsla;
+use recur_view_widgets::file_index::{FileSearchHit, map_file_search_hits};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum QuickOpenMode {

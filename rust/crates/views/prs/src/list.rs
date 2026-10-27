@@ -28,13 +28,13 @@ use recur_view_core::pr::pr_icon_name;
 use recur_view_core::{AppState, ViewContext, ViewName};
 
 use crate::chrome::{chrome_color, group_color, group_label, status_label};
-use crate::list_filter::{
+use crate::style::{dot, hsla, running_dot, seg, seg_text_btn, spin_deg};
+use crate::ui::{PrUi, ui};
+use recur_view_core::pr_list_filter::{
     GROUP_ORDER, LIST_FACETS, LIST_SEGS, LIST_SORTS, ListSort, list_group, matches_list_filter,
     scoped_prs, sort_list,
 };
-use crate::people::{people_stack, pr_people};
-use crate::style::{dot, hsla, running_dot, seg, seg_text_btn, spin_deg};
-use crate::ui::{PrUi, ui};
+use recur_view_widgets::people::{people_stack, pr_people};
 
 /// `@container prlist (min-width: 1200px)`: people and why move onto the row.
 const WIDE_LIST: f32 = 1200.;
@@ -1181,7 +1181,7 @@ impl PrList {
                             .absolute()
                             .left(px(left))
                             .top(px(top))
-                            .child(crate::people::popout_for(&key, &people, cx)),
+                            .child(recur_view_widgets::people::popout_for(&key, &people, cx)),
                     );
                 }
             }

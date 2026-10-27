@@ -11,10 +11,10 @@ publish = false
 # Parity scenes for `rust/tools/ui-parity` (`gallery::build`).
 gallery = [
     "recur-services/mock",
+    "recur-view-core/gallery",
     "recur-ui/gallery",
     "recur-view-chat/gallery",
     "recur-view-observatory/gallery",
-    "dep:recur-app",
 ]
 
 [dependencies]
@@ -31,7 +31,6 @@ recur-view-core.workspace = true
 recur-view-chat.workspace = true
 recur-view-observatory.workspace = true
 recur-bundles.workspace = true
-recur-app = { workspace = true, features = ["gallery"], optional = true }
 futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true

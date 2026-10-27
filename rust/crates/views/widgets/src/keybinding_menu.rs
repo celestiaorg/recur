@@ -20,7 +20,7 @@ actions!(keybinding_menu, [Close]);
 
 const CONTEXT: &str = "KeybindingMenu";
 
-pub(crate) fn bind(cx: &mut App) {
+pub fn bind(cx: &mut App) {
     cx.bind_keys([KeyBinding::new("escape", Close, Some(CONTEXT))]);
 }
 

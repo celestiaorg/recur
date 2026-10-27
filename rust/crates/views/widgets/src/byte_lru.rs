@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 
 /// JS strings are UTF-16; the header is a budgeting fudge, as in the TypeScript.
 const STR_HDR: usize = 24;
-pub(crate) const OBJ_HDR: usize = 32;
+pub const OBJ_HDR: usize = 32;
 
 /// Per-kind heap budget for the chat and observatory parks.
 pub const WARM_CACHE_MAX_BYTES: usize = 64 * 1024 * 1024;

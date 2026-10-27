@@ -7,7 +7,9 @@ use std::collections::BTreeMap;
 
 use gpui_kit::{App, Global};
 
-use crate::byte_lru::{ByteLru, CHROME_CACHE_MAX_BYTES, SCALAR_BYTES, object_bytes, string_bytes};
+use recur_view_widgets::byte_lru::{
+    ByteLru, CHROME_CACHE_MAX_BYTES, SCALAR_BYTES, object_bytes, string_bytes,
+};
 
 /// Distance from the tail (px) that counts as stuck to the bottom for auto-follow.
 pub const NEAR_BOTTOM_PX: f32 = 24.;
@@ -76,7 +78,7 @@ pub fn empty_transcript_ui() -> TranscriptUiState {
 
 /// A `Record<string, number | boolean>`.
 fn bool_map_bytes(keys: impl IntoIterator<Item = String>) -> usize {
-    crate::byte_lru::OBJ_HDR
+    recur_view_widgets::byte_lru::OBJ_HDR
         + keys
             .into_iter()
             .map(|k| string_bytes(&k) + SCALAR_BYTES)

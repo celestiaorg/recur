@@ -11,8 +11,19 @@ use recur_app::{Shell, ShellOptions};
 use recur_domain::Pr;
 use recur_services::mock::{MockBridge, MockOptions, Seed};
 use recur_ui::widgets::{ToastKind, ToastStore};
-use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName};
+use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
 use serde_json::{Value, json};
+
+/// The registry the desktop builds, as far as these specs need it.
+pub fn registry() -> ViewRegistry {
+    let mut r = ViewRegistry::default();
+    recur_view_chat::register(&mut r);
+    recur_view_review::register(&mut r);
+    recur_view_observatory::register(&mut r);
+    recur_view_workspace::register(&mut r);
+    crate::register(&mut r);
+    r
+}
 
 pub struct S<'a> {
     pub state: Entity<AppState>,
@@ -36,7 +47,7 @@ pub fn boot_sized<'a>(
     w: f32,
     h: f32,
 ) -> S<'a> {
-    let registry = crate::gallery::registry();
+    let registry = registry();
     cx.update(|cx| {
         recur_app::init(&registry, cx);
         recur_ui::motion::freeze(None, cx);
@@ -370,8 +381,8 @@ impl S<'_> {
     }
 
     /// The open typeahead's logins or emoji names.
-    pub fn suggestions(&mut self, kind: recur_view_chat::suggest::SuggestKind) -> Vec<String> {
-        use recur_view_chat::suggest::{SuggestItem, SuggestStore};
+    pub fn suggestions(&mut self, kind: recur_view_widgets::suggest::SuggestKind) -> Vec<String> {
+        use recur_view_widgets::suggest::{SuggestItem, SuggestStore};
         self.cx.update(|_, cx| {
             let store = SuggestStore::global(cx);
             store

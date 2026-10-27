@@ -123,7 +123,7 @@ pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     cx.set_global(recur_content::webhost::BlockingRenders);
     cx.set_global(recur_editor::history_cache::EditorHistory::default());
     let bridge = MockBridge::new(
-        recur_app::gallery::scene_seed(&spec["seed"]),
+        recur_view_core::gallery::scene_seed(&spec["seed"]),
         resolvers(variant(name)),
     );
     let services = bridge.services();

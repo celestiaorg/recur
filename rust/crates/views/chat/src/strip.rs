@@ -4,7 +4,7 @@
 use gpui_kit::{App, Global};
 use recur_domain::WorkspaceChatTab;
 
-use crate::byte_lru::{
+use recur_view_widgets::byte_lru::{
     ByteLru, CHROME_CACHE_MAX_BYTES, OBJ_HDR, SCALAR_BYTES, array_bytes, string_bytes,
 };
 

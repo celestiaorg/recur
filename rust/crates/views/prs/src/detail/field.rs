@@ -10,8 +10,8 @@ use recur_ui::guard::Guarded;
 use recur_ui::isolated::IsolatedArea;
 use std::rc::Rc;
 
-use recur_view_chat::suggest::{SetFn, SuggestAttach, attach_emoji, attach_user_mentions};
 use recur_view_core::AppState;
+use recur_view_widgets::suggest::{SetFn, SuggestAttach, attach_emoji, attach_user_mentions};
 
 pub struct Field {
     pub area: Entity<TextareaState>,

@@ -9,7 +9,7 @@ use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{Color, Theme};
 
-use crate::style::hsla;
+use recur_ui::set::hsla;
 
 /// A `linear-gradient(<angle>deg, a, b)` or a solid fill.
 #[derive(Clone, Debug, PartialEq)]

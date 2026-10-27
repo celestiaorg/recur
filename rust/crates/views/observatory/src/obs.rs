@@ -530,7 +530,7 @@ pub struct Observatory {
     pub(crate) findings_panel: Entity<crate::findings_panel::FindingsPanel>,
     pub(crate) artifacts_panel: Option<Entity<crate::artifacts_panel::ArtifactsPanel>>,
     pub(crate) quick_open: Entity<crate::quick_open::QuickOpen>,
-    pub(crate) prompts: Entity<recur_view_chat::palettes::CommandPrompts>,
+    pub(crate) prompts: Entity<recur_view_widgets::command_prompts::CommandPrompts>,
     /// Quick Open and the command prompts behind cached boundaries (see `recur_ui::pane`).
     pub(crate) layers: [Entity<recur_ui::pane::Layer>; 2],
     /// The side panel as its own cached view, when it holds no chat.
@@ -625,7 +625,7 @@ impl Observatory {
         let findings_panel =
             cx.new(|cx| crate::findings_panel::FindingsPanel::new(state.clone(), window, cx));
         let quick_open = cx.new(|cx| crate::quick_open::QuickOpen::new(state.clone(), window, cx));
-        let prompts = cx.new(recur_view_chat::palettes::CommandPrompts::new);
+        let prompts = cx.new(recur_view_widgets::command_prompts::CommandPrompts::new);
         let mut o = Observatory {
             services,
             props: ObservatoryProps::default(),

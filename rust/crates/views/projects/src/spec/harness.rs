@@ -19,7 +19,14 @@ use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistr
 use serde_json::Value;
 
 pub fn registry() -> ViewRegistry {
-    let mut r = recur_view_home::gallery::registry();
+    let mut r = ViewRegistry::default();
+    recur_view_chat::register(&mut r);
+    recur_view_review::register(&mut r);
+    recur_view_observatory::register(&mut r);
+    recur_view_workspace::register(&mut r);
+    recur_view_prs::register(&mut r);
+    recur_view_settings::register(&mut r);
+    recur_view_home::register(&mut r);
     recur_view_briefing::register(&mut r);
     crate::register(&mut r);
     recur_view_palettes::register(&mut r);

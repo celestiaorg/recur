@@ -27,6 +27,7 @@ recur-agent-tools.workspace = true
 recur-issues.workspace = true
 recur-bundles.workspace = true
 recur-view-core.workspace = true
+recur-view-widgets.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 regex.workspace = true

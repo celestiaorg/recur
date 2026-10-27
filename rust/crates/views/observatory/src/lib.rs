@@ -55,7 +55,6 @@ pub mod gallery;
 mod geometry;
 pub mod hot_shells;
 mod inputs;
-pub mod keybinding_menu;
 mod keys;
 pub mod lsp;
 mod media;
@@ -129,7 +128,7 @@ pub(crate) fn reset_globals(cx: &mut App) {
     clear::<obs_cache::ObservatoryCache>(cx);
     clear::<session_tabs::SessionTabParks>(cx);
     clear::<session_host::SessionHost>(cx);
-    clear::<keybinding_menu::KeybindingMenuStore>(cx);
+    clear::<recur_view_widgets::keybinding_menu::KeybindingMenuStore>(cx);
     clear::<UnseenArtifacts>(cx);
     clear::<Owners>(cx);
     clear::<recur_editor::history_cache::EditorHistory>(cx);
@@ -151,13 +150,13 @@ pub fn init_globals(cx: &mut App) {
 pub fn register(r: &mut ViewRegistry) {
     r.init(|cx| {
         recur_terminal_view::init(cx);
-        keybinding_menu::bind(cx);
+        recur_view_widgets::keybinding_menu::bind(cx);
     });
     r.overlay(
         OverlaySlot::KeybindingMenu,
         |vcx: &ViewContext, window, cx| {
             let state = vcx.state.clone();
-            cx.new(|cx| keybinding_menu::KeybindingMenu::new(state, window, cx))
+            cx.new(|cx| recur_view_widgets::keybinding_menu::KeybindingMenu::new(state, window, cx))
                 .into()
         },
     );

@@ -41,6 +41,7 @@ recur-terminal-view = { path = "crates/terminal-view" }
 recur-content = { path = "crates/content" }
 recur-app = { path = "crates/app" }
 recur-view-core = { path = "crates/views/core" }
+recur-view-widgets = { path = "crates/views/widgets" }
 recur-view-sidebar = { path = "crates/views/sidebar" }
 recur-view-chat = { path = "crates/views/chat" }
 recur-view-review = { path = "crates/views/review" }

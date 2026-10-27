@@ -160,8 +160,8 @@ async fn the_stop_palette_lists_running_commands_and_stops_the_picked_one(cx: &m
 /// A bare text field with the emoji and mention typeaheads, and the overlays painting them.
 struct Field {
     input: Entity<gpui_kit::base::input::InputState>,
-    emoji: Entity<crate::suggest::SuggestOverlay>,
-    _attach: Entity<crate::suggest::SuggestAttach<gpui_kit::base::input::InputMode>>,
+    emoji: Entity<recur_view_widgets::suggest::SuggestOverlay>,
+    _attach: Entity<recur_view_widgets::suggest::SuggestAttach<gpui_kit::base::input::InputMode>>,
 }
 
 impl gpui_kit::Render for Field {
@@ -184,9 +184,13 @@ async fn an_emoji_shortcode_in_an_attached_field_expands_and_suggests(cx: &mut T
     init(cx);
     let (field, cx) = cx.add_window_view(|window, cx| {
         let input = cx.new(|cx| gpui_kit::base::input::InputState::new(window, cx));
-        let attach = crate::suggest::attach_emoji(&input, None, window, cx);
-        let emoji = cx
-            .new(|cx| crate::suggest::SuggestOverlay::new(crate::suggest::SuggestKind::Emoji, cx));
+        let attach = recur_view_widgets::suggest::attach_emoji(&input, None, window, cx);
+        let emoji = cx.new(|cx| {
+            recur_view_widgets::suggest::SuggestOverlay::new(
+                recur_view_widgets::suggest::SuggestKind::Emoji,
+                cx,
+            )
+        });
         Field {
             input,
             emoji,
@@ -205,7 +209,7 @@ async fn an_emoji_shortcode_in_an_attached_field_expands_and_suggests(cx: &mut T
     cx.simulate_input(":fir");
     cx.run_until_parked();
     let open = cx.update(|_, cx| {
-        crate::suggest::SuggestStore::global(cx)
+        recur_view_widgets::suggest::SuggestStore::global(cx)
             .read(cx)
             .emoji
             .as_ref()
@@ -222,7 +226,7 @@ async fn an_emoji_shortcode_in_an_attached_field_expands_and_suggests(cx: &mut T
         "go 🚀 🔥"
     );
     let open = cx.update(|_, cx| {
-        crate::suggest::SuggestStore::global(cx)
+        recur_view_widgets::suggest::SuggestStore::global(cx)
             .read(cx)
             .emoji
             .is_some()
@@ -237,9 +241,13 @@ async fn the_caret_rect_sits_in_the_field_and_moves_right_along_a_line(cx: &mut 
     init(cx);
     let (field, cx) = cx.add_window_view(|window, cx| {
         let input = cx.new(|cx| gpui_kit::base::input::InputState::new(window, cx));
-        let attach = crate::suggest::attach_emoji(&input, None, window, cx);
-        let emoji = cx
-            .new(|cx| crate::suggest::SuggestOverlay::new(crate::suggest::SuggestKind::Emoji, cx));
+        let attach = recur_view_widgets::suggest::attach_emoji(&input, None, window, cx);
+        let emoji = cx.new(|cx| {
+            recur_view_widgets::suggest::SuggestOverlay::new(
+                recur_view_widgets::suggest::SuggestKind::Emoji,
+                cx,
+            )
+        });
         Field {
             input,
             emoji,
@@ -271,8 +279,8 @@ async fn the_caret_rect_sits_in_the_field_and_moves_right_along_a_line(cx: &mut 
 
 struct MentionField {
     input: Entity<gpui_kit::base::input::InputState>,
-    overlay: Entity<crate::suggest::SuggestOverlay>,
-    _attach: Entity<crate::suggest::SuggestAttach<gpui_kit::base::input::InputMode>>,
+    overlay: Entity<recur_view_widgets::suggest::SuggestOverlay>,
+    _attach: Entity<recur_view_widgets::suggest::SuggestAttach<gpui_kit::base::input::InputMode>>,
 }
 
 impl gpui_kit::Render for MentionField {
@@ -313,15 +321,23 @@ fn mention_field(
     let d2 = draft.clone();
     let (field, cx) = cx.add_window_view(move |window, cx| {
         let input = cx.new(|cx| gpui_kit::base::input::InputState::new(window, cx));
-        let set: crate::suggest::SetFn = std::rc::Rc::new(
+        let set: recur_view_widgets::suggest::SetFn = std::rc::Rc::new(
             move |v: &str, _: &mut gpui_kit::Window, _: &mut gpui_kit::App| {
                 *d2.lock() = v.to_string()
             },
         );
-        let attach =
-            crate::suggest::attach_user_mentions(&input, state.clone(), Some(set), window, cx);
+        let attach = recur_view_widgets::suggest::attach_user_mentions(
+            &input,
+            state.clone(),
+            Some(set),
+            window,
+            cx,
+        );
         let overlay = cx.new(|cx| {
-            crate::suggest::SuggestOverlay::new(crate::suggest::SuggestKind::Mention, cx)
+            recur_view_widgets::suggest::SuggestOverlay::new(
+                recur_view_widgets::suggest::SuggestKind::Mention,
+                cx,
+            )
         });
         MentionField {
             input,
@@ -340,7 +356,7 @@ fn mention_field(
 
 fn mention_open(cx: &mut VisualTestContext) -> Option<String> {
     cx.update(|_, cx| {
-        crate::suggest::SuggestStore::global(cx)
+        recur_view_widgets::suggest::SuggestStore::global(cx)
             .read(cx)
             .mention
             .as_ref()
@@ -393,8 +409,10 @@ async fn caret_movement_closes_the_picker_and_enter_does_not_rewrite_the_draft(
 }
 
 struct PromptsHost {
-    prompts: Entity<crate::palettes::CommandPrompts>,
-    events: std::rc::Rc<std::cell::RefCell<Vec<crate::palettes::CommandPromptsEvent>>>,
+    prompts: Entity<recur_view_widgets::command_prompts::CommandPrompts>,
+    events: std::rc::Rc<
+        std::cell::RefCell<Vec<recur_view_widgets::command_prompts::CommandPromptsEvent>>,
+    >,
     _sub: gpui_kit::Subscription,
 }
 
@@ -417,14 +435,14 @@ async fn command_prompts_resolve_with_their_values_and_escape_cancels(cx: &mut T
     use recur_view_core::commands::CommandPrompt;
     init(cx);
     let (host, cx) = cx.add_window_view(|_, cx| {
-        let prompts = cx.new(crate::palettes::CommandPrompts::new);
+        let prompts = cx.new(recur_view_widgets::command_prompts::CommandPrompts::new);
         let events: std::rc::Rc<std::cell::RefCell<Vec<_>>> = Default::default();
         let ev = events.clone();
         // Specs let a panic in the callback fail the test.
         #[allow(clippy::disallowed_methods)]
         let _sub = cx.subscribe(
             &prompts,
-            move |_, _, e: &crate::palettes::CommandPromptsEvent, _| {
+            move |_, _, e: &recur_view_widgets::command_prompts::CommandPromptsEvent, _| {
                 ev.borrow_mut().push(e.clone())
             },
         );
@@ -462,12 +480,15 @@ async fn command_prompts_resolve_with_their_values_and_escape_cancels(cx: &mut T
         ("name".to_string(), "older".to_string()),
         ("note".to_string(), String::new()),
     ]);
-    assert_eq!(got, [crate::palettes::CommandPromptsEvent::Resolve(want)]);
+    assert_eq!(
+        got,
+        [recur_view_widgets::command_prompts::CommandPromptsEvent::Resolve(want)]
+    );
     cx.simulate_keystrokes("escape");
     cx.run_until_parked();
     let got = host.read_with(cx, |h, _| h.events.borrow().clone());
     assert_eq!(
         got.last(),
-        Some(&crate::palettes::CommandPromptsEvent::Cancel)
+        Some(&recur_view_widgets::command_prompts::CommandPromptsEvent::Cancel)
     );
 }

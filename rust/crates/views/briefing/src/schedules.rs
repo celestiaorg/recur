@@ -806,7 +806,7 @@ impl ScheduledPrompts {
             titled(
                 SharedString::from(format!("sc-live-{id}")),
                 "Running",
-                recur_view_prs::style::running_dot(window, cx),
+                recur_view_widgets::chrome::running_dot(window, cx),
             )
             .into_any_element()
         } else {
@@ -1381,7 +1381,7 @@ impl ScheduledPrompts {
                     titled(
                         SharedString::from(format!("sc-run-sd-{}", w.id)),
                         "Agent running",
-                        recur_view_prs::style::running_dot(window, cx),
+                        recur_view_widgets::chrome::running_dot(window, cx),
                     )
                     .into_any_element()
                 } else if let Some(l) = life {

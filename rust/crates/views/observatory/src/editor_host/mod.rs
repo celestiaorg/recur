@@ -321,7 +321,7 @@ impl Observatory {
                 } else {
                     f.severity.to_string()
                 },
-                title: recur_view_chat::findings_ui::finding_title(&f.message),
+                title: recur_view_widgets::findings_ui::finding_title(&f.message),
             })
             .collect()
     }
@@ -992,20 +992,22 @@ impl Observatory {
         cx: &mut Context<Self>,
     ) {
         let Some(ed) = ed else { return };
-        let items: Vec<crate::keybinding_menu::KeybindingMenuItem> = snippets
+        let items: Vec<recur_view_widgets::keybinding_menu::KeybindingMenuItem> = snippets
             .iter()
-            .map(|s| crate::keybinding_menu::KeybindingMenuItem {
-                id: s.id.clone(),
-                label: s.label.clone(),
-                category: s
-                    .bundle_name
-                    .clone()
-                    .filter(|n| !n.is_empty())
-                    .unwrap_or_else(|| "Snippets".into()),
-                order: s.order,
-            })
+            .map(
+                |s| recur_view_widgets::keybinding_menu::KeybindingMenuItem {
+                    id: s.id.clone(),
+                    label: s.label.clone(),
+                    category: s
+                        .bundle_name
+                        .clone()
+                        .filter(|n| !n.is_empty())
+                        .unwrap_or_else(|| "Snippets".into()),
+                    order: s.order,
+                },
+            )
             .collect();
-        crate::keybinding_menu::open_keybinding_menu(
+        recur_view_widgets::keybinding_menu::open_keybinding_menu(
             items,
             Rc::new(move |item, window, cx| {
                 let Some(sn) = snippets.iter().find(|s| s.id == item.id) else {

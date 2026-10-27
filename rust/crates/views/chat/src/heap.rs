@@ -11,7 +11,7 @@ use recur_engine::view::chat::{AgentMsg, ChatAttachmentDraft, ChatLog};
 use recur_view_core::models::FlagMap;
 use recur_view_core::modes::ChatMode;
 
-use crate::byte_lru::{
+use recur_view_widgets::byte_lru::{
     ByteLru, OBJ_HDR, SCALAR_BYTES, WARM_CACHE_MAX_BYTES, array_bytes, string_bytes,
 };
 

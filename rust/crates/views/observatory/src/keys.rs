@@ -54,7 +54,7 @@ impl Observatory {
             || o.new_task
             || o.new_project
             || o.syntax_mode
-            || crate::keybinding_menu::keybinding_menu_open(cx)
+            || recur_view_widgets::keybinding_menu::keybinding_menu_open(cx)
     }
 
     /// The global editor chords (Quick Open, tabs, reload, symbol, split, panel focus).
@@ -311,7 +311,7 @@ impl Observatory {
         }
         let items = matches.iter().map(ChordHit::item).collect();
         let weak = self.weak.clone();
-        crate::keybinding_menu::open_keybinding_menu(
+        recur_view_widgets::keybinding_menu::open_keybinding_menu(
             items,
             std::rc::Rc::new(move |item, window, cx| {
                 let Some(o) = weak.upgrade() else { return };

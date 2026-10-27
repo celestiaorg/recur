@@ -22,9 +22,9 @@ use recur_ui::tooltip::titled;
 use recur_ui::widgets::{Select, SelectEvent, SelectOption, TriggerStyle};
 use recur_ui::{Color, IconName, Theme, Tokens, icon, rgba};
 use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr_list_filter::LIST_SORTS;
 use recur_view_core::{NewTaskDraft, ViewContext, ViewName};
 use recur_view_core::{ObserveState as _, Topics};
-use recur_view_prs::list_filter::LIST_SORTS;
 
 use crate::style::{bucket_head, empty, filter_seg, filters_bar, hsla, seg_count_btn};
 
@@ -741,7 +741,7 @@ impl Issues {
             )
             .into_any_element();
         }
-        recur_view_prs::people::people_stack(
+        recur_view_widgets::people::people_stack(
             &format!("iss-{}", i.url),
             &people,
             ring,
@@ -872,7 +872,7 @@ impl Issues {
             .gap(px(7.))
             .min_w_0()
             .child(with_shadow(
-                recur_view_prs::style::dot(7., tint),
+                recur_view_widgets::chrome::dot(7., tint),
                 &[css_box_shadow(0., 0., 5., 0., tint)],
                 3.5,
             ))
@@ -1269,7 +1269,7 @@ impl Issues {
         let t = Theme::of(cx).tokens;
         let mut bar = filters_bar(cx);
         if self.loading && !self.issues.is_empty() {
-            let deg = recur_view_prs::style::spin_deg(window, cx);
+            let deg = recur_view_widgets::chrome::spin_deg(window, cx);
             bar = bar.child(
                 div()
                     .debug_selector(|| "tb-refresh".into())
@@ -1371,7 +1371,7 @@ impl Issues {
             layout = layout.child(titled(
                 SharedString::from(format!("iss-layout-t-{id}")),
                 tip,
-                recur_view_prs::style::seg_text_btn(
+                recur_view_widgets::chrome::seg_text_btn(
                     SharedString::from(format!("iss-layout-{id}")),
                     "",
                     on,

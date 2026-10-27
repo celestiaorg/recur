@@ -43,13 +43,13 @@ use recur_ui::IconName;
 use regex::Regex;
 use serde_json::Value;
 
-use crate::findings_ui::{
-    ListedFinding, ListedFindings, finding_loc_suffix, finding_matches_ref, listed_from_store,
-    parse_listed_finding, resolve_list_findings,
-};
 use recur_engine::view::subagent::{
     SubagentArgs, is_send_message_tool, is_subagent_launch_ack, is_subagent_tool,
     parse_send_message_args, parse_subagent_args, send_message_label, send_message_meta,
+};
+use recur_view_widgets::findings_ui::{
+    ListedFinding, ListedFindings, finding_loc_suffix, finding_matches_ref, listed_from_store,
+    parse_listed_finding, resolve_list_findings,
 };
 
 /// What the per-tool presentation reads beyond the row itself.

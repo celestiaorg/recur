@@ -36,15 +36,15 @@ use recur_ui::text::{LineHeight, Span, Text, TextStyled, span, text};
 use recur_ui::{Color, IconName, Theme, Tokens, icon, motion};
 
 use crate::chat::{AgentChat, ChatAct, ChatEvent, OpenArtifact};
-use crate::findings_ui::{
-    finding_body_needed, finding_loc_label, finding_severity_tally, finding_title,
-};
 use crate::style::{
     ERR, GREEN, Pill, amber_a, coral_a, finding_sev, hsla, ico, label, sev_pill, status_pill,
 };
 use crate::tools::{
     StepIcon, ToolView, base_name, diff_counts, lint_loc_suffix, lint_sev_class, plan_step_mark,
     pretty_result, thinking_preview,
+};
+use recur_view_widgets::findings_ui::{
+    finding_body_needed, finding_loc_label, finding_severity_tally, finding_title,
 };
 
 /// `.tc-wait-dot`'s pulse.
@@ -2563,7 +2563,7 @@ impl AgentChat {
     /// The `list_findings` accordion.
     fn listed_findings(
         &mut self,
-        listed: &crate::findings_ui::ListedFindings,
+        listed: &recur_view_widgets::findings_ui::ListedFindings,
         rk: &str,
         cx: &mut Context<Self>,
     ) -> AnyElement {
@@ -2627,7 +2627,7 @@ impl AgentChat {
             .iter()
             .enumerate()
             .map(|(fi, f)| {
-                let loc = crate::findings_ui::finding_loc_suffix(f.line, f.end_line);
+                let loc = recur_view_widgets::findings_ui::finding_loc_suffix(f.line, f.end_line);
                 let loc_label = finding_loc_label(&f.file, f.line, f.end_line);
                 let title = finding_title(if f.message.is_empty() {
                     &f.summary

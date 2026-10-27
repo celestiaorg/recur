@@ -37,8 +37,8 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{Color, Theme, Tokens, hex, rgba};
 use recur_view_core::AppState;
 
-use crate::style::hsla;
 use recur_ui::logic::hover_gate::HoverGate;
+use recur_ui::set::hsla;
 
 const MENU_WIDTH: f32 = 240.;
 const MENU_GAP: f32 = 4.;

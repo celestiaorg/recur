@@ -38,16 +38,15 @@
 //! # Overlays
 //!
 //! [`register`] adds the app-wide overlays to the shell: the floating permission card and the
-//! off-tab ask toasts ([`prompts`]), the emoji and `@mention` typeaheads ([`suggest`]) and the
-//! Stop palette ([`palettes::StopPalette`]). Text fields opt into a typeahead with
-//! [`suggest::attach_emoji`] / [`suggest::attach_user_mentions`]. [`palettes::CommandPrompts`]
-//! is a component its host (the observatory's bundle commands) owns.
+//! off-tab ask toasts ([`prompts`]), and the menus of the emoji and `@mention` typeaheads
+//! (`recur_view_widgets::suggest`). Text fields opt into a typeahead with `attach_emoji` /
+//! `attach_user_mentions`.
 
 use gpui_kit::AppContext as _;
 use recur_view_core::{OverlaySlot, ViewContext, ViewRegistry};
+use recur_view_widgets::suggest;
 pub mod app_chat;
 pub mod blocks;
-pub mod byte_lru;
 pub mod cards;
 pub mod chat;
 pub mod chips;
@@ -55,8 +54,6 @@ pub mod composer;
 pub mod composer_doc;
 pub mod composer_undo;
 pub mod dock;
-pub mod file_index;
-pub mod findings_ui;
 pub mod flow;
 #[cfg(feature = "gallery")]
 pub mod gallery;
@@ -65,7 +62,6 @@ pub mod heap;
 pub mod hoist;
 pub mod html_inline;
 pub mod meter;
-pub mod palettes;
 pub mod panes;
 pub mod pickers;
 pub mod prompt_actions;
@@ -78,7 +74,6 @@ pub mod shhl;
 mod spec;
 pub mod strip;
 pub mod style;
-pub mod suggest;
 #[cfg(any(test, feature = "test-support"))]
 mod testing;
 pub mod tools;
@@ -95,11 +90,6 @@ pub fn register(r: &mut ViewRegistry) {
     });
     r.overlay(OverlaySlot::UserMentionSuggest, |_, _, cx| {
         cx.new(|cx| suggest::SuggestOverlay::new(suggest::SuggestKind::Mention, cx))
-            .into()
-    });
-    r.overlay(OverlaySlot::StopPalette, |vcx: &ViewContext, window, cx| {
-        let state = vcx.state.clone();
-        cx.new(|cx| palettes::StopPalette::new(state, window, cx))
             .into()
     });
     r.overlay(

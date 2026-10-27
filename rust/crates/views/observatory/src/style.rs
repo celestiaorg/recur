@@ -13,6 +13,8 @@ use recur_ui::text::{LineHeight, Text, TextStyled, text};
 use recur_ui::{Color, IconName, Theme, Tokens, icon};
 use recur_view_review::style::hsla;
 
+pub use recur_view_widgets::chrome::pane_toggle;
+
 /// `--obs-chrome-h`.
 pub const CHROME_H: f32 = 40.;
 /// `--chrome-foot-h`.
@@ -24,38 +26,6 @@ pub const NARROW_MAX_W: f32 = 960.;
 
 pub fn tokens(cx: &App) -> Tokens {
     Theme::of(cx).tokens
-}
-
-/// `.obs-pane-toggle`: 28×28, radius 5, faint; hover text on `--pane-2`; `.on` text;
-/// disabled at .4 over `backdrop`.
-pub fn pane_toggle(
-    id: impl Into<ElementId>,
-    name: IconName,
-    on: bool,
-    disabled: Option<Color>,
-    cx: &App,
-) -> Stateful<Div> {
-    let t = tokens(cx);
-    let fg = match disabled {
-        Some(back) => faded(t.faint, recur_ui::color::TRANSPARENT, 0.4, back),
-        None if on => t.text,
-        None => t.faint,
-    };
-    div()
-        .id(id)
-        .relative()
-        .flex()
-        .flex_none()
-        .items_center()
-        .justify_center()
-        .size(px(28.))
-        .rounded(px(5.))
-        .text_color(hsla(fg))
-        .when(disabled.is_none(), |d| {
-            d.cursor_pointer()
-                .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
-        })
-        .child(icon(name).size(px(16.)))
 }
 
 /// `.obs-pane-badge`: amber 14px pill, mono 9px bold, `9+` past nine.

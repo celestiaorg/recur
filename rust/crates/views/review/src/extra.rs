@@ -12,9 +12,9 @@ use recur_ui::fonts::Family;
 use recur_ui::text::{InlineBox, LineHeight, Span, Text, TextStyled, span};
 use recur_ui::{Color, Theme, Tokens, svg_markup};
 
-use crate::avatar::{avatar_with, parse_avatar_css};
 use crate::html::inline_style;
 use crate::style::{HUNK_BG, REACT_BG, REACT_BORDER, hsla};
+use recur_view_widgets::avatar::{avatar_with, parse_avatar_css};
 
 /// Render `extraHtml` under a row. `key` scopes element ids.
 pub fn extra_html(html: &str, key: &str, window: &mut Window, cx: &App) -> AnyElement {

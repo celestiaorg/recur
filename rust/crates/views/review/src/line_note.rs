@@ -32,15 +32,15 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::ToastKind;
 use recur_ui::{IconName, Theme, icon, rgba};
-use recur_view_chat::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 use recur_view_core::pr::{PrLifecycle, pr_lifecycle};
 use recur_view_core::{AppState, call, toast};
+use recur_view_widgets::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 
 use crate::autosize::PR_REPLY_AUTOSIZE;
-use crate::avatar::avatar;
 use crate::reactions::CommentReactions;
 use crate::store::{ReviewStore, set_pr_thread_resolved};
 use crate::style::{hsla, note_btn};
+use recur_view_widgets::avatar::avatar;
 
 /// `prConversationLocked`: merged and closed PRs take no new comments.
 pub fn pr_conversation_locked(pr: Option<&Pr>) -> bool {

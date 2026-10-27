@@ -37,7 +37,7 @@ pub fn filters_bar(cx: &App) -> Div {
 
 /// `.briefing-filters .seg`: 24px tall, its buttons stretched.
 pub fn filter_seg(cx: &App) -> Div {
-    recur_view_prs::style::seg(cx).flex_none().h(px(24.))
+    recur_view_widgets::chrome::seg(cx).flex_none().h(px(24.))
 }
 
 /// `.briefing-filters .seg button` with its optional `.cnt` (mono 10px, `--faint`; `--muted`
@@ -50,7 +50,7 @@ pub fn seg_count_btn(
     cx: &App,
 ) -> Stateful<Div> {
     let t = Theme::of(cx).tokens;
-    recur_view_prs::style::seg_text_btn(id, label, on, cx)
+    recur_view_widgets::chrome::seg_text_btn(id, label, on, cx)
         .gap(px(4.))
         .debug_selector(move || format!("seg:{label}:{on}"))
         .when_some(count, |d, n| {

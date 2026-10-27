@@ -1053,16 +1053,18 @@ impl AgentChat {
             .iter()
             .enumerate()
             .map(|(fi, f)| {
-                let loc = crate::findings_ui::finding_loc_suffix(f.line, f.end_line);
-                let loc_label = crate::findings_ui::finding_loc_label(&f.file, f.line, f.end_line);
-                let title = crate::findings_ui::finding_title(if f.message.is_empty() {
-                    &f.text
-                } else {
-                    &f.message
-                });
+                let loc = recur_view_widgets::findings_ui::finding_loc_suffix(f.line, f.end_line);
+                let loc_label =
+                    recur_view_widgets::findings_ui::finding_loc_label(&f.file, f.line, f.end_line);
+                let title =
+                    recur_view_widgets::findings_ui::finding_title(if f.message.is_empty() {
+                        &f.text
+                    } else {
+                        &f.message
+                    });
                 let show_body = !f.text.is_empty()
                     && (f.text != recur_engine::view::js::trim(&f.message)
-                        || crate::findings_ui::finding_body_needed(&f.text));
+                        || recur_view_widgets::findings_ui::finding_body_needed(&f.text));
                 let accord = if f.id.is_empty() {
                     format!("digest-{fi}")
                 } else {

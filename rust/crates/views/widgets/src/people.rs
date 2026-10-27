@@ -3,6 +3,7 @@
 
 use std::sync::LazyLock;
 
+use crate::avatar::{Fill, parse_avatar_css};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, Div, InteractiveElement, IntoElement, ObjectFit, ParentElement, SharedString,
@@ -19,9 +20,8 @@ use recur_ui::fonts::Family;
 use recur_ui::shadow::{box_shadow, css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{Color, Theme, Tokens};
-use recur_view_review::avatar::{Fill, parse_avatar_css};
 
-use crate::style::hsla;
+use recur_ui::set::hsla;
 
 static GITHUB: LazyLock<GitHub> = LazyLock::new(GitHub::default);
 

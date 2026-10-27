@@ -8,9 +8,9 @@ use gpui_kit::{App, Global};
 use recur_domain::{FileContent, OutlineSymbol, TreeEntry};
 use recur_editor::session::{ScratchDoc, StashedBuffer};
 use recur_editor::view_state::{EditorViewMode, FileViewState};
-use recur_view_chat::byte_lru::{ByteLru, WARM_CACHE_MAX_BYTES, string_bytes};
 use recur_view_core::prefs::CodePanelKey;
 use recur_view_review::review_diff::ReviewTab;
+use recur_view_widgets::byte_lru::{ByteLru, WARM_CACHE_MAX_BYTES, string_bytes};
 
 use crate::model::{FocusZone, MainSurface, Pane, TabBuffer};
 

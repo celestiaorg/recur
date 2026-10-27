@@ -20,11 +20,11 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::scroll_area;
 use recur_ui::{Color, IconName, Theme, icon};
-use recur_view_chat::findings_ui::{
-    finding_body_needed, finding_matches_ref, finding_sev_icon, finding_title,
-};
 use recur_view_core::AppState;
 use recur_view_review::style::{hsla, note_btn, style_textarea};
+use recur_view_widgets::findings_ui::{
+    finding_body_needed, finding_matches_ref, finding_sev_icon, finding_title,
+};
 
 use crate::obs::FindingsFilter;
 
@@ -809,7 +809,7 @@ impl FindingsPanel {
             .child({
                 // `.tc-sev.<severity>`.
                 let sev = f.severity.to_string();
-                recur_view_chat::style::sev_pill(&sev, &t)
+                recur_view_widgets::pill::sev_pill(&sev, &t)
                     .render(sev)
                     .flex_none()
             })

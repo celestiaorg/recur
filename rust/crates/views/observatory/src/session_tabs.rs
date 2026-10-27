@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use gpui_kit::{App, Global};
 use recur_editor::view::TabSnapshot;
-use recur_view_chat::byte_lru::{ByteLru, WARM_CACHE_MAX_BYTES, string_bytes};
+use recur_view_widgets::byte_lru::{ByteLru, WARM_CACHE_MAX_BYTES, string_bytes};
 
 pub const EDITOR_SESSION_TAB_PARK_MAX_BYTES: usize = WARM_CACHE_MAX_BYTES;
 

@@ -6,7 +6,7 @@ use gpui_kit::{App, AppContext as _, Context, Entity, Global};
 
 use recur_engine::view::pr_fix_checks::PendingFixChecks;
 
-use crate::list_filter::{ListLife, ListSort};
+use recur_view_core::pr_list_filter::{ListLife, ListSort};
 
 /// `PRDetailTab`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

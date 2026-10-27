@@ -35,9 +35,9 @@ use crate::chat::{
     args_query, js_trim, now_ms,
 };
 use crate::composer_doc::{ChipKind, ComposerDoc};
-use crate::file_index::search_files;
 use crate::flow::ATOM;
 use crate::prompt_actions::{PromptCatalog, complete_prompt_args, prompt_action};
+use recur_view_widgets::file_index::search_files;
 
 /// `setTimeout(…, 200)` before a complete script runs.
 const COMPLETE_DEBOUNCE: Duration = Duration::from_millis(200);

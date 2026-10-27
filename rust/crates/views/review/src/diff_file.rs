@@ -34,9 +34,9 @@ use recur_ui::text::{Align, LineHeight, Span, Text, TextStyled, span, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::ToastKind;
 use recur_ui::{Color, IconName, Theme, icon};
-use recur_view_chat::findings_ui::finding_sev_icon;
-use recur_view_chat::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 use recur_view_core::{AppState, call, toast};
+use recur_view_widgets::findings_ui::finding_sev_icon;
+use recur_view_widgets::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 
 use crate::diff_rows::{
     OpenLine, Selecting, api_line, compose_placeholder, composer_on, draft_covers, draft_ends,

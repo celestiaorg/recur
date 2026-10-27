@@ -15,9 +15,7 @@ pub mod findings;
 #[cfg(feature = "gallery")]
 pub mod gallery;
 pub mod list;
-pub mod list_filter;
 pub mod list_titlebar;
-pub mod people;
 pub mod review_modal;
 #[cfg(test)]
 mod spec;

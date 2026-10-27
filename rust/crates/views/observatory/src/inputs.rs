@@ -6,8 +6,8 @@ use gpui_kit::base::input::{InputEvent, InputState, TextareaState};
 use gpui_kit::{AppContext as _, Context, Entity, SharedString, Subscription, Window};
 use recur_ui::guard::Guarded;
 use recur_ui::isolated::IsolatedArea;
-use recur_view_chat::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 use recur_view_core::AppState;
+use recur_view_widgets::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 
 use crate::obs::Observatory;
 

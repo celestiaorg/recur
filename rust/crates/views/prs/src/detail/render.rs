@@ -20,9 +20,9 @@ use recur_view_review::scroll_fade::{SCROLL_FADE_SLACK, is_scrolled_from_top};
 
 use super::PrDetail;
 use crate::chrome::{chrome_color, status_label};
-use crate::people::{people_stack, popout_for, pr_people};
 use crate::style::{dot, hsla, pulse_opacity, spin_deg};
 use crate::ui::PrTab;
+use recur_view_widgets::people::{people_stack, popout_for, pr_people};
 
 /// `.prh { background: rgba(10, 12, 16, .85) }` (`rgba(247, 248, 250, .88)` on light themes)
 /// over the view's `--bg`.

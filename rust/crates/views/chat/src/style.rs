@@ -6,6 +6,7 @@ use gpui_kit::{Div, Hsla, IntoElement, ParentElement, Styled, Window, div, px};
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, Text, TextStyled, text};
 use recur_ui::{Color, IconName, Tokens, hex, icon, rgba};
+pub use recur_view_widgets::pill::{Pill, amber_a, coral_a, cyan_a, sev_pill};
 
 /// `#3fb950`: copied checks, `+` diff counts, add gutters.
 pub const GREEN: Color = hex(0x3fb950);
@@ -15,18 +16,6 @@ pub const ERR: Color = hex(0xe0655f);
 pub const INK: Color = hex(0x0a0c10);
 /// `#0b0e12`: the check on a done todo box.
 pub const INK_2: Color = hex(0x0b0e12);
-
-pub const fn amber_a(a: f32) -> Color {
-    rgba(242, 179, 61, a)
-}
-
-pub const fn cyan_a(a: f32) -> Color {
-    rgba(76, 198, 214, a)
-}
-
-pub const fn coral_a(a: f32) -> Color {
-    rgba(224, 101, 95, a)
-}
 
 pub const fn green_a(a: f32) -> Color {
     rgba(63, 185, 80, a)
@@ -86,104 +75,6 @@ pub fn label(s: impl Into<gpui_kit::SharedString>, family: Family, size: f32, we
     text(s).family(family).size(size).weight(weight).nowrap()
 }
 
-/// A bordered inline pill: `font-size`, mono or UI, `line-height` px, `padding: 0 px`,
-/// 1px border and radius.
-#[derive(Clone, Copy)]
-pub struct Pill {
-    pub family_mono: bool,
-    pub size: f32,
-    pub weight: f32,
-    pub tracking: f32,
-    pub uppercase: bool,
-    pub line: f32,
-    pub pad_x: f32,
-    pub radius: f32,
-    pub fg: Color,
-    pub bg: Color,
-    pub border: Color,
-    pub tabular: bool,
-}
-
-impl Pill {
-    /// `.tc-chip`: mono 10.5, muted on `--pane-2`, `--line` border, radius 5, 16px line.
-    pub fn chip(t: &Tokens) -> Pill {
-        Pill {
-            family_mono: true,
-            size: 10.5,
-            weight: 400.,
-            tracking: 0.,
-            uppercase: false,
-            line: 16.,
-            pad_x: 6.,
-            radius: 5.,
-            fg: t.muted,
-            bg: t.pane_2,
-            border: t.line,
-            tabular: false,
-        }
-    }
-
-    /// `.tc-file` / `.tc-task-id`: cyan on its 8% wash.
-    pub fn cyan(t: &Tokens) -> Pill {
-        Pill {
-            fg: t.cyan,
-            bg: cyan_a(0.08),
-            border: cyan_a(0.22),
-            ..Pill::chip(t)
-        }
-    }
-
-    /// `.tc-sev` / `.tc-finding-status` / `.tc-art-kind`: mono 10 semibold uppercase.
-    pub fn status(t: &Tokens, tracking: f32) -> Pill {
-        Pill {
-            size: 10.,
-            weight: 600.,
-            tracking,
-            uppercase: true,
-            ..Pill::chip(t)
-        }
-    }
-
-    pub fn render(self, s: impl Into<gpui_kit::SharedString>) -> Div {
-        let mut tx = text(s)
-            .size(self.size)
-            .weight(self.weight)
-            .color(self.fg)
-            .line_height(LineHeight::Px(self.line))
-            .nowrap();
-        tx = if self.family_mono { tx.mono() } else { tx.ui() };
-        if self.tracking != 0. {
-            tx = tx.tracking(self.tracking);
-        }
-        if self.uppercase {
-            tx = tx.uppercase();
-        }
-        if self.tabular {
-            tx = tx.tabular();
-        }
-        recur_ui::style::card(self.bg, self.border, self.radius)
-            .flex_none()
-            .px(px(self.pad_x))
-            .child(tx)
-    }
-
-    /// A pill whose text truncates inside `max_w`.
-    pub fn render_truncated(self, s: impl Into<gpui_kit::SharedString>) -> Div {
-        let mut tx = text(s)
-            .size(self.size)
-            .weight(self.weight)
-            .color(self.fg)
-            .line_height(LineHeight::Px(self.line))
-            .truncate();
-        tx = if self.family_mono { tx.mono() } else { tx.ui() };
-        recur_ui::style::card(self.bg, self.border, self.radius)
-            .min_w_0()
-            .overflow_hidden()
-            .px(px(self.pad_x))
-            .child(tx)
-    }
-}
-
 /// A 14px icon slot (`.skill-ico`, `.tc-art-ico`, …) in `color`.
 pub fn ico(name: IconName, size: f32, color: Color) -> impl IntoElement {
     div()
@@ -202,7 +93,11 @@ pub fn finding_sev(sev: &str, size: f32, t: &Tokens) -> impl IntoElement {
         "high" | "critical" => t.coral,
         _ => t.muted,
     };
-    ico(crate::findings_ui::finding_sev_icon(sev), size, color)
+    ico(
+        recur_view_widgets::findings_ui::finding_sev_icon(sev),
+        size,
+        color,
+    )
 }
 
 /// `.tc-finding-status.<status>` colors.
@@ -233,26 +128,6 @@ pub fn status_pill(status: &str, t: &Tokens) -> Pill {
         },
         "pending" => Pill {
             fg: t.muted,
-            ..base
-        },
-        _ => base,
-    }
-}
-
-/// `.tc-sev.<class>` (lint severities).
-pub fn sev_pill(class: &str, t: &Tokens) -> Pill {
-    let base = Pill::status(t, 0.03);
-    match class {
-        "critical" | "high" => Pill {
-            fg: t.coral,
-            border: coral_a(0.35),
-            bg: coral_a(0.08),
-            ..base
-        },
-        "medium" => Pill {
-            fg: t.amber,
-            border: amber_a(0.35),
-            bg: amber_a(0.08),
             ..base
         },
         _ => base,

@@ -297,8 +297,21 @@ pub fn build_in(list: &str, name: &str, window: &mut Window, cx: &mut App) -> Op
     let raw = parsed_in(list).into_iter().find(|v| v["name"] == name)?;
     let scene: ViewScene = serde_json::from_value(raw).ok()?;
     reset(cx);
-    let registry = registry(cx);
+    let mut registry = registry(cx);
     run_inits_once(&registry, cx);
+    // `Views.svelte`: only the routed view shows in `.main`; modal routes leave it empty.
+    let kind = scene.route.split(':').next().unwrap_or("");
+    let shown = match kind {
+        "welcome" => Some(ViewName::Welcome),
+        "briefing" => Some(ViewName::Briefing),
+        "issues" => Some(ViewName::Issues),
+        "schedules" => Some(ViewName::Schedules),
+        "project" => Some(ViewName::Project),
+        _ => None,
+    };
+    registry
+        .views
+        .retain(|v| shown.is_some_and(|r| v.routes.contains(&r)));
     let route = scene.route.clone();
     let navigate: SceneHook = Box::new(move |state, cx| {
         let mut parts = route.split(':');

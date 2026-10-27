@@ -272,7 +272,7 @@ Packaging files live in `rust/build/` (not `build/`), so they move with the port
 - **HTML preview** is blank. A WKWebView is laid over the macOS window, but GTK 4 cannot embed a widget in a foreign (GPUI) window, so Linux needs an offscreen WebKitGTK page drawn as an image or a separate window.
 - **System UI font.** GPUI's Linux backend maps `.SystemUIFont` to IBM Plex Sans, so `recur_ui::fonts::system_family` asks fontconfig for `system-ui` instead, as WebKitGTK and the Go app do; `Family::System` text and Mermaid labels (measured by WebKitGTK, drawn by GPUI) use that face.
 - **Mermaid device scale** is WebKitGTK's (the first monitor's integer scale), not the window's, so measurements can differ on fractional or mixed-scale setups.
-- **Color panel** (project icon color): GPUI has no color dialog off macOS (`color_panel.rs`).
+- **Color panel** (project icon color): GTK's color chooser dialog, ported as `recur_ui::widgets::color_chooser` in its own window, where macOS opens `NSColorPanel` (`color_panel.rs`).
 - **Notifications** go through `notify-send` with no click-through, and there is no dock badge. The Go app does the same.
 - **Window icon** comes from the desktop entry, matched by the app id / `WM_CLASS` `build.recur.next` (the Go app also sets it on the window).
 - **The updater** runs only in a macOS `.app`, as in the Go app.

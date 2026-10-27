@@ -2,6 +2,7 @@
 
 pub mod armed_button;
 pub mod calendar;
+pub mod color_chooser;
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
 mod date_picker_mac;

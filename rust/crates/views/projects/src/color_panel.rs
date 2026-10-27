@@ -1,5 +1,6 @@
-//! `<input type=color>`: the system color panel, opened at `hex`, reporting each pick as
-//! `#rrggbb` while it stays open (WebKit fires `input` the same way).
+//! `<input type=color>`: the system color panel on macOS (GTK's color chooser elsewhere),
+//! opened at `hex`, reporting each pick as `#rrggbb` while it stays open (WebKit fires `input`
+//! the same way).
 
 use std::rc::Rc;
 
@@ -83,10 +84,12 @@ pub fn open(hex: &str, on_pick: OnPick, window: &mut Window, cx: &mut App) {
         .detach();
 }
 
-// simplify: GPUI has no color dialog off macOS, so the custom swatch only offers the system
-// panel there. Upgrade: an in-app HSV picker in recur_ui.
+/// Elsewhere WebKitGTK shows GTK's color chooser dialog; recur-ui's port of it.
 #[cfg(not(target_os = "macos"))]
-pub fn open(_hex: &str, _on_pick: OnPick, _window: &mut Window, _cx: &mut App) {}
+pub fn open(hex: &str, on_pick: OnPick, _window: &mut Window, cx: &mut App) {
+    let dark = !recur_ui::Theme::of(cx).is_light();
+    recur_ui::widgets::color_chooser::open(hex, dark, on_pick, cx);
+}
 
 /// The open panel's session; a newer `open` retires the older poll.
 #[cfg(target_os = "macos")]

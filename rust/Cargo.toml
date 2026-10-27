@@ -191,3 +191,4 @@ codegen-units = 1
 # pinned gpui-pre carries the change, or re-apply `vendor/gpui-pre.patch` on a bump.
 [patch.crates-io]
 gpui-pre = { path = "vendor/gpui-pre" }
+gpui-pre-scheduler = { path = "vendor/gpui-pre-scheduler" }

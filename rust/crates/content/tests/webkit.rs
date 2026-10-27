@@ -23,6 +23,8 @@ fn main() {
     }
     mermaid_flowchart();
     pdf_page();
+    #[cfg(target_os = "linux")]
+    html_page();
     println!("webkit: ok");
 }
 
@@ -71,4 +73,94 @@ fn pdf_page() {
     // Glyph and curve edges anti-alias differently (CoreGraphics on macOS, Skia in WebKitGTK:
     // about 1.1% of this page); the page layout, shapes and colors must not.
     assert!(off < 840 * 600 / 50, "{off} pixels differ from macOS");
+}
+
+/// The Linux HTML preview's offscreen page: laid out at the asked size, snapshotted, driven by
+/// forwarded input, and kept on its document (no navigation, no popups).
+#[cfg(target_os = "linux")]
+fn html_page() {
+    use recur_content::html_gtk::{Page, PageEvent};
+    use serde_json::json;
+    use std::time::{Duration, Instant};
+
+    const DOC: &str = r#"<!doctype html><html><body style="margin:0;background:#f00">
+<button id=b style="position:absolute;left:10px;top:10px;width:80px;height:30px"
+  onclick="document.body.style.background='#00f';parent.postMessage({type:'clicked'})">Go</button>
+<input id=i style="position:absolute;left:10px;top:60px;width:120px">
+<script>
+  window.open('https://example.com');
+  setTimeout(() => { location.href = 'https://example.com/away'; parent.postMessage({type:'tried'}) }, 50);
+</script></body></html>"#;
+
+    let (tx, mut rx) = futures::channel::mpsc::unbounded();
+    let page = Page::new(DOC, tx).expect("page");
+    page.resize(200., 100., 1.);
+    page.set_active(true);
+    let next = |rx: &mut futures::channel::mpsc::UnboundedReceiver<PageEvent>,
+                want: &dyn Fn(&PageEvent) -> bool|
+     -> PageEvent {
+        let deadline = Instant::now() + Duration::from_secs(20);
+        loop {
+            match rx.try_recv() {
+                Ok(ev) if want(&ev) => return ev,
+                Ok(_) => {}
+                Err(_) => {
+                    assert!(Instant::now() < deadline, "timed out");
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+            }
+        }
+    };
+    let center = |ev: &PageEvent| match ev {
+        PageEvent::Frame {
+            width,
+            height,
+            bgra,
+        } if (*width, *height) == (200, 100) => {
+            let i = ((80 * width + 150) * 4) as usize;
+            Some((bgra[i + 2], bgra[i + 1], bgra[i]))
+        }
+        _ => None,
+    };
+    next(&mut rx, &|e| {
+        center(e).is_some_and(|(r, g, b)| r > 200 && g < 50 && b < 50)
+    });
+    // The page tried to navigate away and open a popup; the click below still lands in this
+    // document, so both were refused.
+    next(
+        &mut rx,
+        &|e| matches!(e, PageEvent::Message(m) if m.contains("tried")),
+    );
+
+    page.input(&json!({"type": "down", "x": 50, "y": 25, "button": 0, "detail": 1}));
+    page.input(&json!({"type": "up", "x": 50, "y": 25, "button": 0, "detail": 1}));
+    next(
+        &mut rx,
+        &|e| matches!(e, PageEvent::Message(m) if m.contains("clicked")),
+    );
+    next(&mut rx, &|e| {
+        center(e).is_some_and(|(r, _, b)| b > 200 && r < 50)
+    });
+
+    page.input(&json!({"type": "down", "x": 40, "y": 70, "button": 0, "detail": 1}));
+    page.input(&json!({"type": "up", "x": 40, "y": 70, "button": 0, "detail": 1}));
+    for k in ["h", "i", "!"] {
+        page.input(&json!({"type": "key", "key": k}));
+    }
+    page.input(&json!({"type": "key", "key": "Backspace"}));
+    page.input(&json!({"type": "key", "key": "a", "ctrl": true, "selectAll": true}));
+    page.input(&json!({"type": "key", "key": "c", "ctrl": true, "copy": true}));
+    let copied = next(
+        &mut rx,
+        &|e| matches!(e, PageEvent::Reply(serde_json::Value::String(s)) if s.starts_with('\u{1}')),
+    );
+    let PageEvent::Reply(serde_json::Value::String(text)) = copied else {
+        unreachable!()
+    };
+    assert_eq!(
+        &text[1..],
+        "hi",
+        "typed into the input, Backspace removed the !"
+    );
+    println!("html page: ok");
 }

@@ -216,6 +216,10 @@ mod mac {
 /// GPUI's Linux event loop is not GLib's, so WebKitGTK runs on a thread of its own that
 /// initializes GTK and owns the default main context. Calls are queued to it; a page takes
 /// calls once its document has loaded.
+/// The WebKitGTK thread's main context (the Linux HTML preview's pages run there too).
+#[cfg(target_os = "linux")]
+pub(crate) use gtk::context as gtk_context;
+
 #[cfg(target_os = "linux")]
 mod gtk {
     use std::cell::RefCell;
@@ -245,7 +249,7 @@ mod gtk {
 
     /// The WebKitGTK thread's main context, started on first use. GTK needs a display
     /// (`DISPLAY` or `WAYLAND_DISPLAY`); without one every call fails with GTK's reason.
-    fn context() -> Result<&'static glib::MainContext, &'static str> {
+    pub(crate) fn context() -> Result<&'static glib::MainContext, &'static str> {
         static CONTEXT: OnceLock<Result<glib::MainContext, String>> = OnceLock::new();
         CONTEXT
             .get_or_init(|| {

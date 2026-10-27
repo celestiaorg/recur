@@ -1215,8 +1215,10 @@ internal/power.TestKeeperStopWhenNeverStarted	crates/platform/src/power.rs::stop
 internal/responses.TestApplyFlagsWiresNestedPaths	providers/compatible/src/flags.rs::wires_nested_paths
 internal/responses.TestClientPingAcceptsIncomplete	providers/compatible/src/tests.rs::client_ping_cases
 internal/responses.TestClientPingError	providers/compatible/src/tests.rs::client_ping_cases
+internal/responses.TestClientPingRejectsEmptyJSON	providers/compatible/src/tests.rs::client_ping_cases
 internal/responses.TestClientPingRejectsFailedBody	providers/compatible/src/tests.rs::client_ping_cases
 internal/responses.TestClientPingRejectsHTML	providers/compatible/src/tests.rs::client_ping_cases
+internal/responses.TestClientPingRejectsQueuedStatus	providers/compatible/src/tests.rs::client_ping_cases
 internal/responses.TestDecodeResponseIgnoresUnknown	providers/compatible/src/sse.rs::decode_ignores_unknown
 internal/responses.TestDecodeResponseIncompleteIsNotCompleted	providers/compatible/src/sse.rs::decode_incomplete_is_not_completed
 internal/responses.TestDecodeResponseJSONFallback	providers/compatible/src/sse.rs::decode_json_fallback
@@ -1226,6 +1228,7 @@ internal/responses.TestEndpoint	providers/compatible/src/tests.rs::endpoint_trim
 internal/responses.TestParseSSEJSONLinesWithoutBlank	providers/compatible/src/sse.rs::json_lines_without_blank
 internal/responses.TestParseSSEObjectDelta	providers/compatible/src/sse.rs::object_delta
 internal/responses.TestParseSSETextAndFunctionCall	providers/compatible/src/sse.rs::text_and_function_call
+internal/responses.TestStreamHTTPDisablesCompression	providers/compatible/src/tests.rs::client_stream_sse
 internal/rg.TestFilesArgsIncludesUUAndGlobs	crates/code/src/rg.rs::files_args_include_uu_and_globs
 internal/runconfig.TestBootSurvivesCtxCancelUntilStop	crates/project/src/runconfig/tests.rs::boot_survives_cancel_until_stop
 internal/runconfig.TestRunCmdOutputTimeoutReturnsCtxErr	crates/project/src/runconfig/tests.rs::run_cmd_output_timeout_returns_deadline_exceeded

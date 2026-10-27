@@ -1,0 +1,14 @@
+[package]
+name = "recur-layering"
+description = "Checks the crate layering in docs/ARCHITECTURE.md against the manifests and the engine's sources."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dev-dependencies]
+toml.workspace = true
+
+[lints]
+workspace = true

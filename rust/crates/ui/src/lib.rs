@@ -16,6 +16,8 @@ mod cg_raster;
 pub mod color;
 #[cfg(target_os = "macos")]
 mod ct_text;
+#[cfg(test)]
+mod date_time_spec;
 pub mod exact;
 pub mod field;
 pub mod file_icons;

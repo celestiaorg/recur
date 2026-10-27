@@ -2,8 +2,9 @@
 //! format as focusable fields (tabular digits, 1px padding, the focused one white on the
 //! control accent), literals between them, placeholders for empty fields (today's date,
 //! `12:30 PM`) in `datePlaceholderTextColor`, and the field keys of
-//! [`crate::logic::date_time`]. A date input opens the native calendar on click or Space
-//! (macOS); time inputs have no picker.
+//! [`crate::logic::date_time`]. A date input opens its picker on click or Space: the native
+//! calendar on macOS, WebKitGTK's calendar popover elsewhere ([`super::calendar`]); time
+//! inputs have no picker.
 
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -15,6 +16,7 @@ use gpui_kit::{
     StatefulInteractiveElement, Styled, Task, Window, canvas, div, px,
 };
 
+use super::calendar::{self, Calendar, CalendarAction};
 use crate::color::{Color, hex};
 use crate::guard::Guarded as _;
 use crate::logic::date_time::{Editor, FieldKind, Kind, Part};
@@ -62,6 +64,11 @@ pub struct DateTimeField {
     #[cfg(target_os = "macos")]
     picker: Option<super::date_picker_mac::Picker>,
     _poll: Option<Task<()>>,
+    /// The calendar popover's month and selection while it is open.
+    calendar: Option<Calendar>,
+    calendar_focus: FocusHandle,
+    /// The platform's native picker (macOS) rather than the popover.
+    native: bool,
 }
 
 impl EventEmitter<DateTimeEvent> for DateTimeField {}
@@ -148,7 +155,16 @@ impl DateTimeField {
             #[cfg(target_os = "macos")]
             picker: None,
             _poll: None,
+            calendar: None,
+            calendar_focus: cx.focus_handle(),
+            native: cfg!(target_os = "macos"),
         }
+    }
+
+    /// WebKitGTK's calendar popover in place of the native picker (specs drive it on macOS).
+    pub fn with_popover(mut self) -> Self {
+        self.native = false;
+        self
     }
 
     pub fn value(&self) -> String {
@@ -257,14 +273,12 @@ impl DateTimeField {
         }
     }
 
-    #[cfg(target_os = "macos")]
     fn picker_open(&self) -> bool {
-        self.picker.is_some()
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    fn picker_open(&self) -> bool {
-        false
+        #[cfg(target_os = "macos")]
+        if self.picker.is_some() {
+            return true;
+        }
+        self.calendar.is_some()
     }
 
     fn close_picker(&mut self, cx: &mut Context<Self>) {
@@ -273,15 +287,35 @@ impl DateTimeField {
             self.picker = None;
         }
         self._poll = None;
+        self.calendar = None;
         cx.notify();
     }
 
-    /// `showPicker`: the native calendar under the input, at its value.
-    #[cfg(target_os = "macos")]
+    /// `showPicker`: the calendar under the input, at its value (today when empty).
     fn open_picker(&mut self, keyboard: bool, window: &mut Window, cx: &mut Context<Self>) {
         if self.editor.kind != Kind::Date {
             return;
         }
+        if !self.native {
+            if let Some(i) = self.handles.iter().position(|h| h.is_focused(window)) {
+                self.focused = Some(i);
+            }
+            // A GtkPopover takes the keyboard however it opened.
+            let (y, m, d) =
+                crate::logic::date_time::parse_date(&self.editor.value()).unwrap_or_else(today);
+            self.calendar.get_or_insert(Calendar::new(y, m, d));
+            window.focus(&self.calendar_focus, cx);
+            cx.notify();
+            return;
+        }
+        self.open_native(keyboard, window, cx);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn open_native(&mut self, _: bool, _: &mut Window, _: &mut Context<Self>) {}
+
+    #[cfg(target_os = "macos")]
+    fn open_native(&mut self, keyboard: bool, window: &mut Window, cx: &mut Context<Self>) {
         let Some(anchor) = self.bounds.get() else {
             return;
         };
@@ -329,14 +363,39 @@ impl DateTimeField {
         }));
     }
 
-    #[cfg(not(target_os = "macos"))]
-    fn open_picker(&mut self, _keyboard: bool, _window: &mut Window, _cx: &mut Context<Self>) {}
+    /// A day chosen in the popover sets the value (`didChooseValue`); closing it hands the
+    /// keyboard back to the field it came from.
+    fn calendar_action(
+        &mut self,
+        c: Calendar,
+        action: CalendarAction,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match action {
+            CalendarAction::Changed { select } => {
+                self.calendar = Some(c);
+                if select {
+                    self.editor.set_value(&c.value());
+                    self.changed(cx);
+                }
+                cx.notify();
+            }
+            CalendarAction::Close => {
+                self.calendar = None;
+                let back = self.focused.unwrap_or(0);
+                self.focus_field(back, window, cx);
+                cx.notify();
+            }
+        }
+    }
 
     fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         // A field that lost focus drops its type-ahead; the control losing focus ends the
         // picker (`didBlurFromControl`).
         let now = self.handles.iter().position(|h| h.is_focused(window));
-        if now != self.focused {
+        let in_popover = self.calendar_focus.is_focused(window);
+        if now != self.focused && !in_popover {
             if let Some(f) = self.focused.and_then(|i| self.editor.fields.get_mut(i)) {
                 f.blur();
             }
@@ -346,10 +405,12 @@ impl DateTimeField {
                     self.picker = None;
                 }
                 self._poll = None;
+                self.calendar = None;
             }
             self.focused = now;
             self.ring = window.last_input_was_keyboard();
         }
+        let now = if in_popover { None } else { now };
         let s = self.style;
         let placeholder = placeholder_color(s.color);
         let label = |t: String| {
@@ -442,6 +503,23 @@ impl DateTimeField {
             }
         }
         let bounds = self.bounds.clone();
+        let popover = self.calendar.map(|c| {
+            let this = cx.entity().downgrade();
+            div()
+                .absolute()
+                .top(px(s.height))
+                .left_0()
+                .child(gpui_kit::deferred(calendar::render(
+                    &format!("{}-calendar", self.id),
+                    c,
+                    today(),
+                    s.dark,
+                    &self.calendar_focus,
+                    move |c, action, window, cx| {
+                        let _ = this.update(cx, |f, cx| f.calendar_action(c, action, window, cx));
+                    },
+                )))
+        });
         div()
             .id(self.id.clone())
             .relative()
@@ -457,10 +535,11 @@ impl DateTimeField {
                     .size_full(),
             )
             .child(row)
+            .children(popover)
             .on_mouse_down(
                 MouseButton::Left,
                 cx.guarded_listener(|this, _, window, cx| {
-                    if this.focused.is_none() {
+                    if !this.is_focused(window) {
                         this.focus_field(0, window, cx);
                     }
                 }),

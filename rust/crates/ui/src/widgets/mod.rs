@@ -1,6 +1,7 @@
 //! Shared widgets ported from `frontend/src/components`.
 
 pub mod armed_button;
+pub mod calendar;
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
 mod date_picker_mac;

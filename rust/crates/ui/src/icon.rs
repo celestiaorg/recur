@@ -337,20 +337,7 @@ impl Icon {
         };
         let mut bgra = pixels;
         if self.polychrome {
-            for p in bgra.chunks_exact_mut(4) {
-                let a = p[3];
-                let un = |c: u8| {
-                    if a == 0 {
-                        0
-                    } else {
-                        ((c as f32 * 255. / a as f32).round()).min(255.) as u8
-                    }
-                };
-                let (r, g, b) = (un(p[0]), un(p[1]), un(p[2]));
-                p[0] = b;
-                p[1] = g;
-                p[2] = r;
-            }
+            unpremultiply_bgra(&mut bgra);
         } else {
             // Monochrome: coverage is the alpha, the color is exact.
             for p in bgra.chunks_exact_mut(4) {
@@ -367,6 +354,76 @@ impl Icon {
             1,
         ))))
     }
+}
+
+/// Premultiplied RGBA from a rasterizer → the straight BGRA `RenderImage` holds.
+fn unpremultiply_bgra(bgra: &mut [u8]) {
+    for p in bgra.chunks_exact_mut(4) {
+        let a = p[3];
+        let un = |c: u8| {
+            if a == 0 {
+                0
+            } else {
+                ((c as f32 * 255. / a as f32).round()).min(255.) as u8
+            }
+        };
+        let (r, g, b) = (un(p[0]), un(p[1]), un(p[2]));
+        p[0] = b;
+        p[1] = g;
+        p[2] = r;
+    }
+}
+
+/// Paint SVG `markup` whose viewBox is `size` CSS px with its top-left at the exact window
+/// position `origin`, as WebKit draws a shape at a fractional position (a list marker's
+/// ellipse): rasterized into the device pixels it touches, at its sub-pixel offset in them.
+pub fn paint_svg_at(
+    markup: &str,
+    origin: gpui_kit::Point<f32>,
+    size: (f32, f32),
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let scale = window.scale_factor();
+    let (x0, y0) = ((origin.x * scale).floor(), (origin.y * scale).floor());
+    let w = ((origin.x + size.0) * scale).ceil() - x0;
+    let h = ((origin.y + size.1) * scale).ceil() - y0;
+    if w < 1. || h < 1. {
+        return;
+    }
+    let at = (origin.x * scale - x0, origin.y * scale - y0);
+    let (w, h) = (w as u32, h as u32);
+    let key = Key {
+        source: source_hash(&Source::Markup(markup.into())),
+        stroke_width: 0,
+        w,
+        h,
+        content: (at.0.to_bits(), at.1.to_bits()),
+        color: [0; 4],
+        rotation: 0,
+        polychrome: true,
+    };
+    let content = (size.0 * scale, size.1 * scale);
+    let cache = cx.default_global::<Cache>();
+    let image = cache
+        .0
+        .entry(key)
+        .or_insert_with(|| {
+            let mut bgra = rasterize(markup, (w, h), at, content, 0.)?;
+            unpremultiply_bgra(&mut bgra);
+            let buffer = image::RgbaImage::from_raw(w, h, bgra)?;
+            Some(Arc::new(RenderImage::new(SmallVec::from_elem(
+                image::Frame::new(buffer),
+                1,
+            ))))
+        })
+        .clone();
+    let Some(image) = image else { return };
+    let bounds = Bounds::new(
+        gpui_kit::point(px(x0 / scale), px(y0 / scale)),
+        gpui_kit::size(px(w as f32 / scale), px(h as f32 / scale)),
+    );
+    let _ = window.paint_image(bounds, bounds, Corners::default(), image, 0, false);
 }
 
 /// Rasterize SVG markup into premultiplied RGBA on a `canvas` of device pixels, scaling the

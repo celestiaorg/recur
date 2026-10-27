@@ -1564,7 +1564,7 @@
       "height": 1000,
       "theme": "default",
       "tolerance": 12590,
-      "hardTolerance": 95
+      "hardTolerance": 82
     },
     {
       "name": "markdown/paper",
@@ -1572,7 +1572,7 @@
       "height": 1000,
       "theme": "paper",
       "tolerance": 12790,
-      "hardTolerance": 132
+      "hardTolerance": 116
     },
     {
       "name": "markdown/streaming",

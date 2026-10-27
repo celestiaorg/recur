@@ -1389,21 +1389,41 @@ fn symbol_marker(
     let c = hsla(color);
     canvas(
         |_, _, _| {},
-        move |b: Bounds<Pixels>, _, window, _| {
+        move |b: Bounds<Pixels>, _, window, cx| {
             let o = b.origin;
             let r = Bounds {
                 origin: point(o.x + px(left), o.y + px(top)),
                 size: gpui_kit::size(px(bullet), px(bullet)),
             };
+            // WebKit fills or strokes (1px) an ellipse through CoreGraphics at the marker's
+            // fractional position.
+            let x = f32::from(r.origin.x);
+            let y = f32::from(r.origin.y);
+            let (d, half) = (bullet, bullet / 2.);
+            let css = color.to_css();
             match shape {
-                Shape::Disc => {
-                    window.paint_quad(gpui_kit::fill(r, c).corner_radii(px(bullet / 2.)))
-                }
-                Shape::Square => window.paint_quad(gpui_kit::fill(r, c)),
-                Shape::Circle => window.paint_quad(
-                    gpui_kit::outline(r.dilate(px(0.5)), c, gpui_kit::BorderStyle::Solid)
-                        .corner_radii(px(bullet / 2. + 0.5)),
+                Shape::Disc => recur_ui::icon::paint_svg_at(
+                    &format!(
+                        r#"<svg xmlns="http://www.w3.org/2000/svg" width="{d}" height="{d}" viewBox="0 0 {d} {d}"><ellipse cx="{half}" cy="{half}" rx="{half}" ry="{half}" fill="{css}"/></svg>"#
+                    ),
+                    point(x, y),
+                    (d, d),
+                    window,
+                    cx,
                 ),
+                Shape::Square => window.paint_quad(gpui_kit::fill(r, c)),
+                Shape::Circle => {
+                    let o = d + 1.;
+                    recur_ui::icon::paint_svg_at(
+                        &format!(
+                            r#"<svg xmlns="http://www.w3.org/2000/svg" width="{o}" height="{o}" viewBox="-0.5 -0.5 {o} {o}"><ellipse cx="{half}" cy="{half}" rx="{half}" ry="{half}" fill="none" stroke="{css}" stroke-width="1"/></svg>"#
+                        ),
+                        point(x - 0.5, y - 0.5),
+                        (o, o),
+                        window,
+                        cx,
+                    )
+                }
             }
         },
     )

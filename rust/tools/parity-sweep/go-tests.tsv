@@ -411,6 +411,7 @@ internal/engine.TestClaudeRunnerClosesStdinWhenBackgroundTasksEnd	providers/clau
 internal/engine.TestClaudeRunnerIgnoresAmbientBackgroundTasks	providers/claude/tests/runner.rs::ignores_ambient_background_tasks
 internal/engine.TestClaudeRunnerIgnoresResumeTaskReplay	providers/claude/tests/runner.rs::ignores_resume_task_replay
 internal/engine.TestClaudeRunnerKeepsStdinOpenForBackgroundTasks	providers/claude/tests/runner.rs::keeps_stdin_open_for_background_tasks
+internal/engine.TestClaudeRunnerNacksUnflushedInjectPlain	providers/claude/tests/runner.rs::nacks_unflushed_plain_steer
 internal/engine.TestClearAskUsersForWorkspace	crates/engine/src/ask_user/tests.rs::clear_for_workspace
 internal/engine.TestClearModeContinuesForWorkspace	crates/engine/src/chat/tests/switch_mode.rs::clearing_a_workspace_drops_pending_remounts
 internal/engine.TestCloseCursorBridgesDefersWhenAgentsRunning	providers/cursor/src/pool/tests.rs::close_bridges_defers_while_busy
@@ -434,7 +435,9 @@ internal/engine.TestCodexProviderWithoutConfigFails	providers/codex/src/lib.rs::
 internal/engine.TestCodexReasoningSummaryText	providers/codex/src/items.rs::reasoning_summaries
 internal/engine.TestCodexSandboxBypassIsDangerFullAccess	providers/codex/src/runner.rs::bypass_is_danger_full_access
 internal/engine.TestCodexSandboxFollowsAllowedTools	providers/codex/src/runner.rs::sandbox_follows_allowlist
+internal/engine.TestCodexSandboxNetworkAccess	providers/codex/src/runner.rs::sandbox_follows_allowlist
 internal/engine.TestCodexServiceTierFromFlags	providers/codex/src/runner.rs::service_tiers
+internal/engine.TestCodexTurnFooterFromStampedDuration	crates/engine/src/turn/transcript/tests.rs::transcript_emits_turn_footer_with_duration, providers/codex/tests/runner.rs::turn_with_approval_and_steer
 internal/engine.TestCodexUserPromptOmitsPlanAndResumeStanding	providers/codex/src/runner.rs::user_text_omits_plan_and_resume_standing
 internal/engine.TestCodexUserTextOmitsRoleWrap	providers/codex/src/runner.rs::user_text_omits_role
 internal/engine.TestCollectArtifactMentions	crates/engine/src/composer/artifacts_tests.rs::collects_mentions
@@ -460,6 +463,8 @@ internal/engine.TestCompactListFindingsRejectsNonEnvelope	providers/cursor/src/t
 internal/engine.TestCompactListFindingsShrinkIsMonotonic	providers/cursor/src/tools/tests.rs::compact_list_findings_shrink_is_monotonic_and_keeps_notes
 internal/engine.TestCompactListWorkspaceBriefsRejectsNonEnvelope	providers/cursor/src/tools/tests.rs::chat_result_compaction_rejects_non_envelopes
 internal/engine.TestComposeWorkspaceID	crates/engine/src/workspace/tests.rs::compose_ids
+internal/engine.TestContextWindowForMessageClaudeDockFlag	crates/engine/src/turn/transcript/tests.rs::context_window_rules
+internal/engine.TestContextWindowForMessageCursorSessionModel	crates/engine/src/turn/transcript/tests.rs::context_window_rules, providers/cursor/src/provider/tests.rs::context_window_for_a_session_model
 internal/engine.TestConvergeRoundWindow	crates/engine/src/loops/tests/walker.rs::converge_round_window_cases
 internal/engine.TestCreateAndPresentArtifactEvents	crates/engine/src/artifacts/tests.rs::create_and_present_events
 internal/engine.TestCreateGitHubPRCapsTitleAt256Runes	crates/forge/src/github/tests.rs::create_caps_title_at_256_chars
@@ -620,6 +625,7 @@ internal/engine.TestDropContinueGenDefersHoistWhileChatLifeHeld	crates/engine/sr
 internal/engine.TestDropContinueGenRetriesPRHostHoist	crates/engine/src/prs/tests/hoist.rs::drop_continue_gen_retries_host_hoist
 internal/engine.TestEarlyTitlesFromRemovedQueuedMessageAreRederived	crates/engine/src/chat/tests/send.rs::early_titles_from_a_removed_queued_message_are_rederived
 internal/engine.TestEffectiveWorkspaceActivityLegacyFallback	crates/engine/src/briefing/tests.rs::effective_activity_legacy_fallback
+internal/engine.TestElapsedDurationMS	providers/codex/src/runner.rs::elapsed
 internal/engine.TestEmitChatInboxSkipsPendingModeContinue	crates/engine/src/chat/tests/switch_mode.rs::a_pending_remount_skips_the_finished_reply_inbox_row
 internal/engine.TestEngineNewTreatsZeroCapsAsUnlimited	crates/engine/src/lifecycle/tests.rs::new_treats_zero_caps_as_unlimited
 internal/engine.TestEnginePauseResumeStop	crates/engine/src/loops/tests/engine.rs::engine_pause_then_resume_completes
@@ -766,6 +772,7 @@ internal/engine.TestGovernorSetCapsRaisesLoopCap	crates/engine/src/governor/test
 internal/engine.TestGovernorSetCapsWakesAgent	crates/engine/src/governor/tests.rs::set_caps_wakes_agent
 internal/engine.TestHandleCodexElicitationAutoAccepts	providers/codex/src/approvals.rs::elicitation_auto_accepts_and_deny_mode_declines
 internal/engine.TestHandleCodexServerRequestAsksHuman	providers/codex/src/approvals.rs::asks_human
+internal/engine.TestHandleCodexServerRequestDenyMode	providers/codex/src/approvals.rs::elicitation_auto_accepts_and_deny_mode_declines
 internal/engine.TestHandleCodexServerRequestFileChangeIncludesPatch	providers/codex/src/approvals.rs::file_change_includes_patch
 internal/engine.TestHandoffSection	crates/engine/src/loops/tests/handoff.rs::handoff_section_rules
 internal/engine.TestHarnessAskModeOmitsEdit	providers/compatible/src/tests.rs::ask_mode_omits_edit
@@ -1117,6 +1124,7 @@ internal/engine.TestSortBriefsNeedsNewestFirst	crates/engine/src/briefing/tests.
 internal/engine.TestSortBriefsStable	crates/engine/src/briefing/tests.rs::sort_briefs_is_stable
 internal/engine.TestSpawnedChildPromptExecutesLocally	crates/engine/src/chat/tests/children.rs::a_spawned_child_executes_its_prompt_locally
 internal/engine.TestSplitFileMentionChip	crates/engine/src/composer/files_tests.rs::split_chip
+internal/engine.TestStampCodexDuration	providers/codex/tests/runner.rs::turn_with_approval_and_steer
 internal/engine.TestStampMaestroSimplifyIfUnsetDoesNotOverwrite	crates/engine/src/simplify/tests.rs::stamp_if_unset_freezes_and_never_overwrites
 internal/engine.TestStampMaestroSimplifyIfUnsetFreezesWhenUnset	crates/engine/src/simplify/tests.rs::stamp_if_unset_freezes_and_never_overwrites
 internal/engine.TestStampScheduledWorkspaceOrigins	crates/engine/src/schedules/tests.rs::scheduled_workspace_origins_are_stamped

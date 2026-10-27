@@ -671,6 +671,37 @@ fn context_window_rules() {
         context_window_for_message(None, &m("x", 5, 77), "", &none),
         77
     );
+    // The dock's context flag beats the provider ceiling stamped on the row.
+    let k200 = recur_agent::Flags::from([("context".to_owned(), "200k".to_owned())]);
+    assert_eq!(
+        context_window_for_message(
+            Some(p.as_ref()),
+            &m("claude-sonnet-4-6", 32_000, 1_000_000),
+            "",
+            &k200
+        ),
+        200_000
+    );
+    assert_eq!(
+        context_window_for_message(
+            Some(p.as_ref()),
+            &m("claude-sonnet-4-6", 32_000, 1_000_000),
+            "",
+            &ctx
+        ),
+        1_000_000
+    );
+    // Always-1M Sonnet 5 through the session model when the row has none.
+    let k300 = recur_agent::Flags::from([("context".to_owned(), "300k".to_owned())]);
+    assert_eq!(
+        context_window_for_message(
+            Some(p.as_ref()),
+            &m("", 10_000, 200_000),
+            "claude-code/sonnet",
+            &k300
+        ),
+        1_000_000
+    );
 }
 
 // ---- the provider-neutral flatten cases of Go `cursortools_test.go`.

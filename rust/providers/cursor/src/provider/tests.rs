@@ -452,3 +452,12 @@ async fn on_idle_finishes_a_deferred_close() {
     f.p.on_idle().await;
     assert!(f.p.pool.state.lock().await.entries.is_empty());
 }
+
+#[test]
+fn context_window_for_a_session_model() {
+    let f = fixture(false, Settings::default());
+    assert_eq!(
+        f.p.context_window("gemini-3.1-pro", &Default::default()),
+        1_000_000
+    );
+}

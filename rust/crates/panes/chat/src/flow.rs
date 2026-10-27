@@ -22,7 +22,6 @@ use recur_ui::exact;
 use recur_ui::font_metrics::line_gap;
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, LineMetrics, TextStyled, WhiteSpace, line_metrics, text};
-use unicode_linebreak::{BreakOpportunity, linebreaks};
 
 /// The placeholder a chip occupies in the content (U+FFFC, line-break class CB).
 pub const ATOM: char = '\u{FFFC}';
@@ -262,52 +261,9 @@ impl ParaCache {
     }
 }
 
+/// `overflow-wrap: anywhere` lines (an atom stays whole).
 fn break_lines(p: &Para, text: &str, max: f32, eps: f32) -> Vec<Range<usize>> {
-    // A box narrower than its margins lays out at zero width, where an empty line still fits.
-    let max = max.max(0.);
-    let ops: Vec<(usize, BreakOpportunity)> = linebreaks(text).collect();
-    let mut lines = Vec::new();
-    let mut start = 0;
-    let mut last_fit: Option<usize> = None;
-    let mut i = 0;
-    while i < ops.len() {
-        let (pos, _) = ops[i];
-        // An overlong split can end at or past this opportunity: nothing is left before it.
-        if pos <= start {
-            i += 1;
-            continue;
-        }
-        if p.width(text, start..pos) <= max + eps {
-            last_fit = Some(pos);
-            i += 1;
-            continue;
-        }
-        if let Some(b) = last_fit.take()
-            && b > start
-        {
-            lines.push(start..b);
-            start = b;
-            continue;
-        }
-        // `overflow-wrap: anywhere`: break inside the word (an atom stays whole).
-        let mut cut = start;
-        for (bi, ch) in text[start..pos].char_indices() {
-            let end = start + bi + ch.len_utf8();
-            if p.width(text, start..end) > max + eps {
-                break;
-            }
-            cut = end;
-        }
-        if cut == start {
-            cut = start + text[start..].chars().next().map_or(1, char::len_utf8);
-        }
-        lines.push(start..cut);
-        start = cut;
-    }
-    if start < text.len() || lines.is_empty() {
-        lines.push(start..text.len());
-    }
-    lines
+    recur_ui::text::break_lines(text, max, eps, true, |r| p.width(text, r))
 }
 
 /// What a [`FlowLayout`] depends on (the color does not move anything).
@@ -1140,5 +1096,26 @@ mod tests {
             }
             assert_eq!(at, text.len());
         }
+    }
+
+    /// The flow breaks through `recur_ui::text::break_lines`, so a mandatory break inside a
+    /// paragraph (a line separator) ends its line, as the bubble's `pre-wrap` text does in
+    /// WebKit. The flow's own loop treated every opportunity as optional.
+    #[test]
+    fn a_line_separator_ends_the_line() {
+        let text = "ab\u{2028}cd";
+        let mut edges = Vec::new();
+        let mut x = 0.;
+        for (bi, _) in text.char_indices() {
+            edges.push((bi, x));
+            x += 6.;
+        }
+        edges.push((text.len(), x));
+        let p = Para {
+            range: 0..text.len(),
+            edges: Rc::new(edges),
+        };
+        let lines = break_lines(&p, text, 400., 0.25);
+        assert_eq!(lines, [0..5, 5..text.len()]);
     }
 }

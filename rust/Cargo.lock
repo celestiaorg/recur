@@ -7455,7 +7455,6 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
- "unicode-linebreak",
  "url",
  "webkit6",
 ]
@@ -8095,7 +8094,6 @@ dependencies = [
  "serde_json",
  "smallvec",
  "tracing",
- "unicode-linebreak",
  "unicode-segmentation",
 ]
 

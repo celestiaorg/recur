@@ -206,6 +206,9 @@ pub struct Plan {
     /// The gutter's icons, prepainted.
     pub icons: Vec<gpui_kit::AnyElement>,
     pub scrollbars: Vec<Op>,
+    /// The scrollbar tracks, which take the arrow cursor.
+    pub scrollbar_tracks: Vec<Bounds<Pixels>>,
+    pub track_hitboxes: Vec<Hitbox>,
     pub content_bounds: Option<Bounds<Pixels>>,
     pub gutter_bounds: Option<Bounds<Pixels>>,
     pub hitbox: Option<Hitbox>,
@@ -429,6 +432,11 @@ impl Element for EditorElement {
                 .unwrap_or_default()
         });
         plan.hitbox = Some(window.insert_hitbox(bounds, HitboxBehavior::Normal));
+        plan.track_hitboxes = plan
+            .scrollbar_tracks
+            .iter()
+            .map(|b| window.insert_hitbox(*b, HitboxBehavior::Normal))
+            .collect();
         let mut rest = Vec::new();
         for op in std::mem::take(&mut plan.gutter) {
             match op {
@@ -476,6 +484,9 @@ impl Element for EditorElement {
                 CursorStyle::IBeam
             };
             window.set_cursor_style(style, hitbox);
+        }
+        for hitbox in &plan.track_hitboxes {
+            window.set_cursor_style(CursorStyle::Arrow, hitbox);
         }
         let paint_ops = |ops: &mut Vec<Op>, window: &mut Window, cx: &mut App| {
             for op in ops.drain(..) {
@@ -1387,6 +1398,12 @@ impl EditorView {
         // fit as CSS clamps radii.
         let thumb_radius = |len: f32| px(8.0f32.min(scrollbar_size() / 2.0).min(len / 2.0));
         if vbar || content_h > view_h {
+            plan.scrollbar_tracks.push(rect(
+                bx + bw - scrollbar_size(),
+                by,
+                scrollbar_size(),
+                view_h,
+            ));
             let (len, at) = classic_thumb(
                 self.scroll_top,
                 content_h.round(),
@@ -1404,6 +1421,12 @@ impl EditorView {
             }
         }
         if hbar {
+            plan.scrollbar_tracks.push(rect(
+                bx,
+                by + bh - scrollbar_size(),
+                scroller_width,
+                scrollbar_size(),
+            ));
             let total = (gutter_width + content_w).round();
             let (len, at) = classic_thumb(
                 self.scroll_left,

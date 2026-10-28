@@ -463,6 +463,7 @@ impl Observatory {
             .w_full()
             .pl(px(10. + row.depth as f32 * 12.))
             .pr(px(10.))
+            .cursor_pointer()
             .when(e.ignored, |d| {
                 let p = e.path.clone();
                 d.child(

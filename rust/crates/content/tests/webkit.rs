@@ -32,7 +32,7 @@ mod mac {
     use gpui_kit::{
         AnyWindowHandle, App, AppContext as _, AsyncApp, Bounds, Context, Entity,
         InteractiveElement as _, IntoElement, MouseButton, ParentElement as _, Render, Styled as _,
-        Window, WindowBounds, WindowOptions, div, point, px, size,
+        Window, WindowBounds, WindowOptions, div, point, prelude::FluentBuilder as _, px, size,
     };
     use objc2::rc::Retained;
     use objc2::runtime::{AnyObject, NSObjectProtocol as _};
@@ -60,6 +60,7 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
     struct Root {
         preview: Option<Entity<HtmlPreview>>,
         overlay_clicks: Rc<Cell<u32>>,
+        scrim: bool,
     }
 
     impl Render for Root {
@@ -89,6 +90,12 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
                     )
                     .with_priority(1),
                 )
+                .when(self.scrim, |d| {
+                    d.child(recur_ui::style::backdrop_blur(
+                        8.,
+                        recur_ui::color::rgba(0, 0, 0, 0.),
+                    ))
+                })
         }
     }
 
@@ -124,6 +131,7 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
                             let root = cx.new(|_| Root {
                                 preview: Some(preview.clone()),
                                 overlay_clicks: clicks.clone(),
+                                scrim: false,
                             });
                             parts = Some((root.clone(), preview, clicks));
                             root
@@ -376,6 +384,7 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
             println!("html preview: input skipped (set RECUR_WEBKIT_INPUT=1, takes focus)");
         } else {
             input(window, &v, &web, preview, clicks, keys, cx).await?;
+            blur(window, root, &v, &web, cx).await?;
         }
 
         cx.update(|cx| {
@@ -389,6 +398,55 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
             return Err("the page stays up after the preview leaves".into());
         }
         println!("html preview: hidden once undrawn");
+        Ok(())
+    }
+
+    fn content_filters(web: &NSView) -> usize {
+        // SAFETY: `contentFilters` is a plain property read.
+        unsafe {
+            let filters: *mut AnyObject = msg_send![web, contentFilters];
+            msg_send![filters, count]
+        }
+    }
+
+    /// A backdrop blur drawn over the page blurs the page, and goes with the scrim.
+    async fn blur(
+        window: AnyWindowHandle,
+        root: &Entity<Root>,
+        v: &Views,
+        web: &NSView,
+        cx: &mut AsyncApp,
+    ) -> Result<(), String> {
+        let set = |on: bool, cx: &mut AsyncApp| {
+            cx.update(|cx| {
+                root.update(cx, |r, cx| {
+                    r.scrim = on;
+                    cx.notify();
+                })
+            })
+        };
+        set(true, cx);
+        frames(cx, window, 300).await;
+        if content_filters(web) == 0 {
+            return Err("a scrim's blur does not blur the page".into());
+        }
+        if let Some(px) = capture(v) {
+            // Down from the input's bottom edge (y 30), into the red page.
+            let profile: Vec<_> = [26., 30., 34., 38., 46., 60.]
+                .iter()
+                .map(|y| px(70., *y))
+                .collect();
+            println!("pixels: blurred edge {profile:?}");
+            if profile[3][1] < 25 {
+                return Err(format!("the page is not blurred: {profile:?}"));
+            }
+        }
+        set(false, cx);
+        frames(cx, window, 300).await;
+        if content_filters(web) != 0 {
+            return Err("the page stays blurred after the scrim leaves".into());
+        }
+        println!("html preview: a scrim's blur blurs the page");
         Ok(())
     }
 

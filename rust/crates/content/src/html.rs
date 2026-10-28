@@ -619,10 +619,10 @@ mod mac {
     use futures::channel::mpsc::UnboundedSender;
     use gpui_kit::{Bounds, EntityId, Pixels, Window};
     use objc2::rc::Retained;
-    use objc2::runtime::{NSObject, NSObjectProtocol, ProtocolObject};
-    use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send};
+    use objc2::runtime::{AnyObject, NSObject, NSObjectProtocol, ProtocolObject};
+    use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, class, define_class, msg_send};
     use objc2_app_kit::{NSView, NSWindowOrderingMode};
-    use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
+    use objc2_foundation::{NSArray, NSNumber, NSPoint, NSRect, NSSize, NSString};
     use objc2_web_kit::{
         WKNavigation, WKNavigationAction, WKNavigationActionPolicy, WKNavigationDelegate,
         WKScriptMessage, WKScriptMessageHandler, WKUserContentController, WKUserScript,
@@ -710,6 +710,7 @@ mod mac {
         bridge: Retained<Bridge>,
         attached: Rc<Cell<bool>>,
         painted: Rc<Cell<u64>>,
+        blur: Rc<Cell<f32>>,
     }
 
     /// What the paint closure needs.
@@ -718,6 +719,7 @@ mod mac {
         web: Retained<WKWebView>,
         attached: Rc<Cell<bool>>,
         painted: Rc<Cell<u64>>,
+        blur: Rc<Cell<f32>>,
     }
 
     thread_local! {
@@ -756,6 +758,7 @@ mod mac {
                 bridge,
                 attached: Rc::new(Cell::new(false)),
                 painted: Rc::new(Cell::new(0)),
+                blur: Rc::new(Cell::new(0.)),
             };
             page.load(srcdoc, tx);
             Some(page)
@@ -786,6 +789,7 @@ mod mac {
                 web: self.web.clone(),
                 attached: self.attached.clone(),
                 painted: self.painted.clone(),
+                blur: self.blur.clone(),
             }
         }
 
@@ -852,13 +856,14 @@ mod mac {
         });
         page.painted.set(frame);
         let stack: Rc<[EntityId]> = window.view_stack().into();
-        track(page.clone(), frame, stack, true, window);
+        track(page.clone(), b, frame, stack, true, window);
     }
 
     /// At the end of each draw the page is up in, hide it if the draw neither painted it nor
-    /// replayed a view around it.
+    /// replayed a view around it, else blur it under the backdrop blurs drawn over it.
     fn track(
         page: Handle,
+        b: Bounds<Pixels>,
         frame: u64,
         stack: Rc<[EntityId]>,
         painted_now: bool,
@@ -869,10 +874,37 @@ mod mac {
                 return;
             }
             if painted_now || stack.iter().any(|v| window.replayed_view(*v)) {
-                track(page, frame, stack, false, window);
+                let radius = window.backdrop_blur_over_hole(b).map_or(0., f32::from);
+                blur(&page, radius);
+                track(page, b, frame, stack, false, window);
             } else {
                 page.web.setHidden(true);
             }
         });
+    }
+
+    /// `backdrop-filter: blur(radius)` over the whole page, which GPUI cannot sample.
+    // simplify: a blur over part of the page blurs all of it; the scrims, lightbox, maximized
+    // dock and work overlay all cover it. Mask the filter to the blur's bounds if one does not.
+    fn blur(page: &Handle, radius: f32) {
+        if page.blur.replace(radius) == radius {
+            return;
+        }
+        // SAFETY: main thread; `CIFilter` is in CoreImage, which WebKit links.
+        unsafe {
+            let filters = if radius > 0. {
+                let name = NSString::from_str("CIGaussianBlur");
+                let filter: Option<Retained<AnyObject>> =
+                    msg_send![class!(CIFilter), filterWithName: &*name];
+                let Some(filter) = filter else { return };
+                let _: () = msg_send![&*filter, setValue: &*NSNumber::new_f32(radius),
+                    forKey: &*NSString::from_str("inputRadius")];
+                NSArray::from_retained_slice(&[filter])
+            } else {
+                NSArray::new()
+            };
+            let _: () = msg_send![&*page.web, setLayerUsesCoreImageFilters: true];
+            let _: () = msg_send![&*page.web, setContentFilters: &*filters];
+        }
     }
 }

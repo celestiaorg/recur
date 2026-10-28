@@ -5292,6 +5292,29 @@ impl Window {
         });
     }
 
+    /// Recur: the largest radius of the backdrop blurs the draw in progress painted over a hole
+    /// at `bounds`. Renderers cannot sample the native view behind a hole, so it blurs itself.
+    /// Call it from [`Self::after_next_draw`].
+    pub fn backdrop_blur_over_hole(&self, bounds: Bounds<Pixels>) -> Option<Pixels> {
+        let scene = &self.next_frame.scene;
+        let bounds = self.snap_bounds(bounds);
+        let hole = scene
+            .holes
+            .iter()
+            .filter(|h| h.bounds.intersects(&bounds))
+            .map(|h| h.order)
+            .min()?;
+        scene
+            .backdrop_blurs
+            .iter()
+            .filter(|b| {
+                b.order > hole && b.bounds.intersect(&b.content_mask.bounds).intersects(&bounds)
+            })
+            .map(|b| b.blur_radius.0)
+            .reduce(f32::max)
+            .map(|r| px(r / self.scale_factor()))
+    }
+
     /// Recur: blurs what is painted under `bounds` by a Gaussian of standard deviation
     /// `blur_radius`, clipped to `corner_radii`, as CSS `backdrop-filter: blur()`. Paint it
     /// before the element's background. Renderers without backdrop blur skip it.

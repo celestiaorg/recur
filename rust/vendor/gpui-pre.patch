@@ -1316,7 +1316,7 @@ index 081edd9a..0012ba2b 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..4af69f18 100644
+index 1214b035..ba3de914 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
 @@ -6,8 +6,8 @@ use crate::Inspector;
@@ -2243,7 +2243,7 @@ index 1214b035..4af69f18 100644
      /// Creates a new painting layer for the specified bounds. A "layer" is a batch
      /// of geometry that are non-overlapping and have the same draw order. This is typically used
      /// for performance reasons.
-@@ -4633,6 +5266,55 @@ impl Window {
+@@ -4633,6 +5266,78 @@ impl Window {
          }
      }
  
@@ -2273,6 +2273,29 @@ index 1214b035..4af69f18 100644
 +        });
 +    }
 +
++    /// Recur: the largest radius of the backdrop blurs the draw in progress painted over a hole
++    /// at `bounds`. Renderers cannot sample the native view behind a hole, so it blurs itself.
++    /// Call it from [`Self::after_next_draw`].
++    pub fn backdrop_blur_over_hole(&self, bounds: Bounds<Pixels>) -> Option<Pixels> {
++        let scene = &self.next_frame.scene;
++        let bounds = self.snap_bounds(bounds);
++        let hole = scene
++            .holes
++            .iter()
++            .filter(|h| h.bounds.intersects(&bounds))
++            .map(|h| h.order)
++            .min()?;
++        scene
++            .backdrop_blurs
++            .iter()
++            .filter(|b| {
++                b.order > hole && b.bounds.intersect(&b.content_mask.bounds).intersects(&bounds)
++            })
++            .map(|b| b.blur_radius.0)
++            .reduce(f32::max)
++            .map(|r| px(r / self.scale_factor()))
++    }
++
 +    /// Recur: blurs what is painted under `bounds` by a Gaussian of standard deviation
 +    /// `blur_radius`, clipped to `corner_radii`, as CSS `backdrop-filter: blur()`. Paint it
 +    /// before the element's background. Renderers without backdrop blur skip it.
@@ -2299,7 +2322,7 @@ index 1214b035..4af69f18 100644
      fn largest_border_interior(quad: &Quad) -> Bounds<ScaledPixels> {
          let radii = &quad.corner_radii;
          let widths = &quad.border_widths;
-@@ -5247,7 +5929,25 @@ impl Window {
+@@ -5247,7 +5952,25 @@ impl Window {
          self.layout_engine
              .as_mut()
              .unwrap()
@@ -2326,7 +2349,7 @@ index 1214b035..4af69f18 100644
      }
  
      /// Compute the layout for the given id within the given available space.
-@@ -5268,6 +5968,32 @@ impl Window {
+@@ -5268,6 +5991,32 @@ impl Window {
          self.layout_engine = Some(layout_engine);
      }
  
@@ -2359,7 +2382,7 @@ index 1214b035..4af69f18 100644
      /// Obtain the bounds computed for the given LayoutId relative to the window. This method will usually be invoked by
      /// GPUI itself automatically in order to pass your element its `Bounds` automatically.
      ///
-@@ -5947,7 +6673,9 @@ impl Window {
+@@ -5947,7 +6696,9 @@ impl Window {
          // special purposes, such as detecting events outside of a given Bounds.
          for listener in &mut mouse_listeners {
              let listener = listener.as_mut().unwrap();
@@ -2370,7 +2393,7 @@ index 1214b035..4af69f18 100644
              if !cx.propagate_event {
                  break;
              }
-@@ -5957,7 +6685,9 @@ impl Window {
+@@ -5957,7 +6708,9 @@ impl Window {
          if cx.propagate_event {
              for listener in mouse_listeners.iter_mut().rev() {
                  let listener = listener.as_mut().unwrap();
@@ -2381,7 +2404,7 @@ index 1214b035..4af69f18 100644
                  if !cx.propagate_event {
                      break;
                  }
-@@ -6268,7 +6998,9 @@ impl Window {
+@@ -6268,7 +7021,9 @@ impl Window {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
  
              for key_listener in node.key_listeners.clone() {
@@ -2392,7 +2415,7 @@ index 1214b035..4af69f18 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6280,7 +7012,9 @@ impl Window {
+@@ -6280,7 +7035,9 @@ impl Window {
              // Handle low level key events
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for key_listener in node.key_listeners.clone() {
@@ -2403,7 +2426,7 @@ index 1214b035..4af69f18 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6300,7 +7034,7 @@ impl Window {
+@@ -6300,7 +7057,7 @@ impl Window {
          for node_id in dispatch_path.iter().rev() {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for listener in node.modifiers_changed_listeners.clone() {
@@ -2412,7 +2435,7 @@ index 1214b035..4af69f18 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6503,7 +7237,9 @@ impl Window {
+@@ -6503,7 +7260,9 @@ impl Window {
              for listener in &global_listeners {
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -2423,7 +2446,7 @@ index 1214b035..4af69f18 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -6537,7 +7273,9 @@ impl Window {
+@@ -6537,7 +7296,9 @@ impl Window {
                  if action_type == any_action.type_id() {
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -2434,7 +2457,7 @@ index 1214b035..4af69f18 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6561,7 +7299,9 @@ impl Window {
+@@ -6561,7 +7322,9 @@ impl Window {
                      cx.propagate_event = false; // Actions stop propagation by default during the bubble phase
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -2445,7 +2468,7 @@ index 1214b035..4af69f18 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6582,7 +7322,9 @@ impl Window {
+@@ -6582,7 +7345,9 @@ impl Window {
  
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -2456,7 +2479,7 @@ index 1214b035..4af69f18 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -7317,7 +8059,9 @@ impl Window {
+@@ -7317,7 +8082,9 @@ impl Window {
          state_type: TypeId,
      ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
          let key = (global_id.clone(), state_type);

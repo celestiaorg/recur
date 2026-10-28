@@ -660,7 +660,7 @@ async fn a_workspace_switch_back_draws_the_transcript_where_it_was(cx: &mut Test
 
 /// A key in the code editor renders the editor alone (it is isolated; `EditorView` is not a
 /// counted view) and the status bar's `Ln, Col`, not the Observatory, the workspace or the
-/// chat beside it.
+/// chat beside it. So does its debounced doc change while the dirty state stays as it was.
 #[gpui::test]
 async fn a_key_in_the_code_editor_renders_the_editor_only(cx: &mut TestAppContext) {
     let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
@@ -682,11 +682,26 @@ async fn a_key_in_the_code_editor_renders_the_editor_only(cx: &mut TestAppContex
         .expect("main editor");
     s.cx.update(|window, cx| ed.update(cx, |e, cx| e.focus(window, cx)));
     s.settle();
+    let doc_changes = std::rc::Rc::new(std::cell::Cell::new(0));
+    let n = doc_changes.clone();
+    let _sub = s.cx.update(|_, cx| {
+        cx.subscribe(&ed, move |_, ev: &recur_editor::view::EditorEvent, _| {
+            if matches!(ev, recur_editor::view::EditorEvent::DocChanged(_)) {
+                n.set(n.get() + 1);
+            }
+        })
+    });
+    let past_debounce = std::time::Duration::from_millis(recur_editor::view::EMIT_DEBOUNCE_MS + 1);
+    // The first key flips the tab dirty, which the Observatory shows.
     s.cx.simulate_input("a");
+    s.cx.executor().advance_clock(past_debounce);
     s.cx.run_until_parked();
+    doc_changes.set(0);
     recur_ui::guard::count_renders(true);
     for ch in ["b", "c", "d"] {
         s.cx.simulate_input(ch);
+        s.cx.run_until_parked();
+        s.cx.executor().advance_clock(past_debounce);
         s.cx.run_until_parked();
     }
     let counts = recur_ui::guard::take_render_counts();
@@ -695,6 +710,7 @@ async fn a_key_in_the_code_editor_renders_the_editor_only(cx: &mut TestAppContex
         ed.read_with(s.cx, |e, _| e.peek_doc().contains("abcd")),
         "the keys did not reach the editor"
     );
+    assert_eq!(doc_changes.get(), 3, "the doc changes did not fire");
     assert!(renders("::FieldView", &counts) >= 3, "{counts:?}");
     let beside: Vec<_> = counts
         .keys()

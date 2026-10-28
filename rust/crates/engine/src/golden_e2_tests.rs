@@ -1,6 +1,6 @@
 //! Go-generated golden fixtures for slice E2 (R2): chat sentinels and
 //! one-shot prompts, the composer wraps and mention collectors, formatter
-//! outputs and the plan card, compared byte for byte with the Go engine
+//! outputs and the plan card, compared with the Go engine (JSON as values)
 //! (`tests/golden/go_e2.json`, generator `tests/golden/gen_e2_golden.go.txt`).
 //! Paths under the fixture worktree are written as `$WT`.
 
@@ -492,7 +492,10 @@ async fn plan_card_matches_go() {
     assert_eq!(feed.len(), 1);
     let mut got = feed[0].clone();
     got.id.clear();
-    let want: FeedItem = serde_json::from_value(g["planCard"]["item"].clone()).unwrap();
+    let mut want: FeedItem = serde_json::from_value(g["planCard"]["item"].clone()).unwrap();
+    let data = |d: &str| serde_json::from_str::<Value>(d).unwrap();
+    assert_eq!(data(&got.data), data(&want.data));
+    want.data = got.data.clone();
     assert_eq!(got, want);
     te.close().await;
 }

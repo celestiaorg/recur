@@ -13,10 +13,7 @@ const DONE_SCHEMA: &str = r#"{
   "required": ["summary"]
 }"#;
 
-static DONE_IN: Shape = Shape::anon(&[
-    field("summary", "Summary", Ty::Str),
-    field("notes", "Notes", Ty::Str),
-]);
+static DONE_IN: Shape = Shape::anon(&[field("summary", Ty::Str), field("notes", Ty::Str)]);
 
 pub struct DoneTool;
 
@@ -65,10 +62,8 @@ const REPORT_RESULT_SCHEMA: &str = r#"{
 }"#;
 
 // passed must be distinguishable from omitted, so it is a *bool.
-static REPORT_RESULT_IN: Shape = Shape::anon(&[
-    field("passed", "Passed", Ty::OptBool),
-    field("summary", "Summary", Ty::Str),
-]);
+static REPORT_RESULT_IN: Shape =
+    Shape::anon(&[field("passed", Ty::OptBool), field("summary", Ty::Str)]);
 
 pub struct ReportResultTool;
 
@@ -100,7 +95,7 @@ impl Tool for ReportResultTool {
     }
 }
 
-static PLAN_IN: Shape = Shape::anon(&[field("summary", "Summary", Ty::Str)]);
+static PLAN_IN: Shape = Shape::anon(&[field("summary", Ty::Str)]);
 
 pub struct PlanTool;
 
@@ -152,16 +147,16 @@ const ESCALATE_SCHEMA: &str = r#"{
 }"#;
 
 static OPTION: Shape = Shape::anon(&[
-    field("text", "Text", Ty::Str),
-    field("tag", "Tag", Ty::Str),
-    field("desc", "Desc", Ty::Str),
+    field("text", Ty::Str),
+    field("tag", Ty::Str),
+    field("desc", Ty::Str),
 ]);
 
 /// The escalate and ask_user input.
 pub(super) static QUESTION_IN: Shape = Shape::anon(&[
-    field("question", "Question", Ty::Str),
-    field("context", "Context", Ty::Str),
-    field("options", "Options", Ty::List(&Ty::Struct(&OPTION))),
+    field("question", Ty::Str),
+    field("context", Ty::Str),
+    field("options", Ty::List(&Ty::Struct(&OPTION))),
 ]);
 
 /// Options in order; Err names the tool when one has blank text.
@@ -234,9 +229,9 @@ const ATTACH_EVIDENCE_SCHEMA: &str = r#"{
 }"#;
 
 static ATTACH_EVIDENCE_IN: Shape = Shape::anon(&[
-    field("step", "Step", Ty::Str),
-    field("screenshot_path", "ScreenshotPath", Ty::Str),
-    field("passed", "Passed", Ty::OptBool),
+    field("step", Ty::Str),
+    field("screenshot_path", Ty::Str),
+    field("passed", Ty::OptBool),
 ]);
 
 pub struct AttachEvidenceTool;
@@ -283,7 +278,7 @@ a failing step blocks opening a PR (rail #1)."
     }
 }
 
-static SEND_BACK_IN: Shape = Shape::anon(&[field("instruction", "Instruction", Ty::Str)]);
+static SEND_BACK_IN: Shape = Shape::anon(&[field("instruction", Ty::Str)]);
 
 pub struct SendBackTool;
 

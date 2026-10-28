@@ -140,8 +140,7 @@ pub fn chat_tool_input(tool: &str, input: &str) -> String {
         let body = truncate(&body, PLAN_MAX_PERSIST_CHARS);
         let mut m = std::collections::BTreeMap::new();
         m.insert("plan", body);
-        return recur_domain::json::to_string(&m)
-            .unwrap_or_else(|_| truncate(input, CHAT_DETAIL_LIMIT));
+        return serde_json::to_string(&m).unwrap_or_else(|_| truncate(input, CHAT_DETAIL_LIMIT));
     }
     if is_task_tool(tool) {
         return chat_task_input(input);
@@ -165,7 +164,7 @@ fn chat_task_input(input: &str) -> String {
     {
         *p = truncate(p, PLAN_MAX_PERSIST_CHARS);
     }
-    recur_domain::json::to_string(&GoAny(&v)).unwrap_or_else(|_| truncate(input, CHAT_DETAIL_LIMIT))
+    serde_json::to_string(&GoAny(&v)).unwrap_or_else(|_| truncate(input, CHAT_DETAIL_LIMIT))
 }
 
 /// A tool result for the live/history detail card. Listing tools return

@@ -149,7 +149,6 @@ pub struct Workspace {
     pub phase: String,
     pub iteration: i64,
     /// 0..1 ring fill.
-    #[serde(with = "crate::json::float")]
     pub progress: f64,
     pub autonomy: AutonomyLevel,
     /// The engaged `[[loop]]` id (empty on old records → recur.loops.pr).
@@ -466,7 +465,7 @@ mod tests {
         let want = serde_json::json!({
             "id": "", "projectId": "", "group": "", "goal": "", "short": "",
             "definitionOfDone": "", "state": "", "statusLabel": "", "phase": "",
-            "iteration": 0, "progress": 0, "autonomy": "", "branch": "",
+            "iteration": 0, "progress": 0.0, "autonomy": "", "branch": "",
             "behindBase": 0, "worktreePath": "", "diff": {"add": 0, "del": 0},
             "agentCodes": null, "last": "", "elapsedLabel": "", "convergence": null,
             "archived": false

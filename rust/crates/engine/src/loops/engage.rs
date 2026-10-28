@@ -350,7 +350,7 @@ impl Engine {
         };
         let mut cfg = AgentConfig::parse(&sess.config_json);
         cfg.goal_images = Some(ids);
-        if let Ok(raw) = recur_domain::json::to_string(&cfg) {
+        if let Ok(raw) = serde_json::to_string(&cfg) {
             let _ = self.store.update_session_config_json(&sess.id, &raw);
         }
     }

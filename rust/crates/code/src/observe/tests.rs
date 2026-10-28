@@ -115,7 +115,9 @@ async fn collect_metrics_and_impact() {
     // Recorded from Go's CollectMetrics / ComputeImpact on the same tree.
     assert_eq!(
         json(&collect_metrics(r)),
-        r#"{"files":3,"loc":12,"avgComplexity":1.0499999999999998,"maxComplexity":3,"duplication":0,"todoCount":0,"testFiles":1}"#
+        go(
+            r#"{"files":3,"loc":12,"avgComplexity":1.0499999999999998,"maxComplexity":3,"duplication":0,"todoCount":0,"testFiles":1}"#
+        )
     );
     let files = vec![FileDiff {
         path: "a.go".into(),
@@ -124,12 +126,18 @@ async fn collect_metrics_and_impact() {
     }];
     assert_eq!(
         json(&compute_impact(&CancellationToken::new(), r, &files)),
-        r#"[{"kind":"symbol","name":"UniqueWidgetName","path":"a.go","line":3,"detail":"func definition in diff","changed":true},{"kind":"api","name":"UniqueWidgetName","path":"b/use.go","line":2,"detail":"references changed func","changed":false},{"kind":"test","name":"a_test.go","path":"a_test.go","detail":"likely covers a.go","changed":false},{"kind":"test","name":"a_test.go","path":"./a_test.go","detail":"likely covers a.go","changed":false}]"#
+        go(
+            r#"[{"kind":"symbol","name":"UniqueWidgetName","path":"a.go","line":3,"detail":"func definition in diff","changed":true},{"kind":"api","name":"UniqueWidgetName","path":"b/use.go","line":2,"detail":"references changed func","changed":false},{"kind":"test","name":"a_test.go","path":"a_test.go","detail":"likely covers a.go","changed":false},{"kind":"test","name":"a_test.go","path":"./a_test.go","detail":"likely covers a.go","changed":false}]"#
+        )
     );
 }
 
-fn json<T: serde::Serialize>(v: &T) -> String {
-    recur_domain::json::to_string(v).unwrap()
+fn json<T: serde::Serialize>(v: &T) -> serde_json::Value {
+    recur_domain::json::canonical(serde_json::to_value(v).unwrap())
+}
+
+fn go(s: &str) -> serde_json::Value {
+    serde_json::from_str(s).unwrap()
 }
 
 #[test]
@@ -175,7 +183,9 @@ fn collect_metrics_finds_duplicate_blocks() {
     // Recorded from Go's CollectMetrics on the same tree.
     assert_eq!(
         json(&collect_metrics(root.path().to_str().unwrap())),
-        r#"{"files":2,"loc":23,"avgComplexity":1.0499999999999998,"maxComplexity":3,"duplication":0.5217391304347826,"duplicates":[{"lines":6,"preview":"func prepareWidgetContext(cfg Config) error {","occurrences":[{"path":"a.go","line":3,"end":9,"text":"func prepareWidgetContext(cfg Config) error {"},{"path":"b.go","line":3,"end":9,"text":"func prepareWidgetContext(cfg Config) error {"}]},{"lines":5,"preview":"if cfg.Timeout \u003c= 0 {","occurrences":[{"path":"a.go","line":4,"end":9,"text":"if cfg.Timeout \u003c= 0 {"},{"path":"b.go","line":4,"end":9,"text":"if cfg.Timeout \u003c= 0 {"}]}],"todoCount":0,"testFiles":0}"#
+        go(
+            r#"{"files":2,"loc":23,"avgComplexity":1.0499999999999998,"maxComplexity":3,"duplication":0.5217391304347826,"duplicates":[{"lines":6,"preview":"func prepareWidgetContext(cfg Config) error {","occurrences":[{"path":"a.go","line":3,"end":9,"text":"func prepareWidgetContext(cfg Config) error {"},{"path":"b.go","line":3,"end":9,"text":"func prepareWidgetContext(cfg Config) error {"}]},{"lines":5,"preview":"if cfg.Timeout \u003c= 0 {","occurrences":[{"path":"a.go","line":4,"end":9,"text":"if cfg.Timeout \u003c= 0 {"},{"path":"b.go","line":4,"end":9,"text":"if cfg.Timeout \u003c= 0 {"}]}],"todoCount":0,"testFiles":0}"#
+        )
     );
 }
 

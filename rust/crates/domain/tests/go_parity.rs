@@ -1,6 +1,6 @@
 //! Every Go domain struct, as Go's json.Marshal encodes it (zero value and a
 //! reflection-filled value), must decode into the Rust type and re-encode to
-//! the same bytes. Regenerate `fixtures/go_types.json` with
+//! an equal JSON value. Regenerate `fixtures/go_types.json` with
 //! `fixtures/gen_go_types.go.txt` when the Go structs change.
 
 use std::collections::BTreeMap;
@@ -23,8 +23,9 @@ fn check<T: DeserializeOwned + Serialize>(fx: &Fixture, go_name: &str) {
         let go = &samples[which];
         let v: T =
             serde_json::from_str(go).unwrap_or_else(|e| panic!("{go_name} {which}: {e}\n{go}"));
-        let rust = json::to_string(&v).unwrap();
-        pretty_assertions::assert_eq!(rust, *go, "{go_name} {which}");
+        let rust = json::canonical(serde_json::to_value(&v).unwrap());
+        let go = json::canonical(serde_json::from_str(go).unwrap());
+        pretty_assertions::assert_eq!(rust, go, "{go_name} {which}");
     }
 }
 
@@ -39,7 +40,7 @@ macro_rules! parity {
 }
 
 #[test]
-fn every_go_type_round_trips_byte_for_byte() {
+fn every_go_type_round_trips() {
     parity! {
         "Agent" => Agent,
         "AgentSkill" => AgentSkill,

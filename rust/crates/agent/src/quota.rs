@@ -70,7 +70,6 @@ pub struct ProviderQuota {
 pub struct Window {
     pub id: String,
     pub label: String,
-    #[serde(with = "recur_domain::json::float")]
     pub used_pct: f64,
     #[serde(skip_serializing_if = "is_zero")]
     pub resets_at: i64,
@@ -84,10 +83,7 @@ pub struct Window {
 pub struct ModelRow {
     pub name: String,
     pub tokens: i64,
-    #[serde(
-        skip_serializing_if = "is_zero_f64",
-        with = "recur_domain::json::float"
-    )]
+    #[serde(skip_serializing_if = "is_zero_f64")]
     pub used_pct: f64,
     /// `cursor` (Composer / Cursor-native) or `other` (API models).
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -157,7 +153,7 @@ mod tests {
     #[test]
     fn json_matches_go() {
         assert_eq!(
-            recur_domain::json::to_string(&empty_snapshot()).unwrap(),
+            serde_json::to_string(&empty_snapshot()).unwrap(),
             r#"{"fetchedAt":0,"stale":false,"providers":[]}"#
         );
         let mut q = ProviderQuota {
@@ -179,8 +175,8 @@ mod tests {
         };
         set_source(&mut q, SOURCE_CURSOR_CONNECT);
         assert_eq!(
-            recur_domain::json::to_string(&q).unwrap(),
-            r#"{"id":"cursor","name":"Cursor","source":"Recur Connect","sourceId":"cursor_connect","windows":[{"id":"billing","label":"Billing","usedPct":50}],"models":[{"name":"composer","tokens":10,"usedPct":2.5,"bucket":"cursor"}]}"#
+            serde_json::to_string(&q).unwrap(),
+            r#"{"id":"cursor","name":"Cursor","source":"Recur Connect","sourceId":"cursor_connect","windows":[{"id":"billing","label":"Billing","usedPct":50.0}],"models":[{"name":"composer","tokens":10,"usedPct":2.5,"bucket":"cursor"}]}"#
         );
         set_source(&mut q, "other");
         assert_eq!(q.source_id, "");

@@ -4,10 +4,7 @@ use crate::tool::{Call, Tool, ToolError};
 
 const SCHEMA: &str = r#"{"type":"object","properties":{"file_path":{"type":"string"},"content":{"type":"string"}},"required":["file_path","content"]}"#;
 
-static IN: Shape = Shape::anon(&[
-    field("file_path", "FilePath", Ty::OptStr),
-    field("content", "Content", Ty::OptStr),
-]);
+static IN: Shape = Shape::anon(&[field("file_path", Ty::OptStr), field("content", Ty::OptStr)]);
 
 pub struct WriteTool;
 

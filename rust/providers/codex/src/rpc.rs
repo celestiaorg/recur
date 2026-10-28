@@ -240,8 +240,7 @@ impl Conn {
     }
 
     async fn write<T: Serialize>(&self, msg: &T) -> Result<(), RpcError> {
-        let mut line =
-            recur_domain::json::to_string(msg).map_err(|e| RpcError::Io(e.to_string()))?;
+        let mut line = serde_json::to_string(msg).map_err(|e| RpcError::Io(e.to_string()))?;
         line.push('\n');
         let mut w = self.inner.writer.lock().await;
         let res = async {
@@ -386,7 +385,7 @@ impl Drop for Forget<'_> {
 }
 
 fn raw<P: Serialize + ?Sized>(params: &P) -> Result<Box<RawValue>, RpcError> {
-    let s = recur_domain::json::to_string(params).map_err(|e| RpcError::Io(e.to_string()))?;
+    let s = serde_json::to_string(params).map_err(|e| RpcError::Io(e.to_string()))?;
     RawValue::from_string(s).map_err(|e| RpcError::Io(e.to_string()))
 }
 

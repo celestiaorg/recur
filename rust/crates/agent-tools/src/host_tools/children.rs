@@ -23,14 +23,14 @@ const CREATE_WORKSPACE_SCHEMA: &str = r#"{
 }"#;
 
 static CREATE_WORKSPACE_IN: Shape = Shape::anon(&[
-    field("title", "Title", Ty::Str),
-    field("prompt", "Prompt", Ty::Str),
-    field("project_id", "ProjectID", Ty::Str),
-    field("base_branch", "BaseBranch", Ty::Str),
-    field("mode", "Mode", Ty::Str),
-    field("loop_id", "LoopID", Ty::Str),
-    field("policy_id", "PolicyID", Ty::Str),
-    field("standalone", "Standalone", Ty::OptBool),
+    field("title", Ty::Str),
+    field("prompt", Ty::Str),
+    field("project_id", Ty::Str),
+    field("base_branch", Ty::Str),
+    field("mode", Ty::Str),
+    field("loop_id", Ty::Str),
+    field("policy_id", Ty::Str),
+    field("standalone", Ty::OptBool),
 ]);
 
 pub struct CreateWorkspaceTool;
@@ -109,12 +109,10 @@ const MESSAGE_CHILD_SCHEMA: &str = r#"{
   "required": ["workspace_id", "message"]
 }"#;
 
-static CHILD_ID_IN: Shape = Shape::anon(&[field("workspace_id", "WorkspaceID", Ty::Str)]);
+static CHILD_ID_IN: Shape = Shape::anon(&[field("workspace_id", Ty::Str)]);
 
-static MESSAGE_CHILD_IN: Shape = Shape::anon(&[
-    field("workspace_id", "WorkspaceID", Ty::Str),
-    field("message", "Message", Ty::Str),
-]);
+static MESSAGE_CHILD_IN: Shape =
+    Shape::anon(&[field("workspace_id", Ty::Str), field("message", Ty::Str)]);
 
 fn child_id_arg(c: &Call, tool: &str) -> Result<String, ToolError> {
     let a = strict(&c.args, &CHILD_ID_IN)?;

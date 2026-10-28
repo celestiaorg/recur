@@ -77,7 +77,7 @@ pub async fn run_prompt_type_script(
         PROMPT_TIMEOUT
     };
     let ctx = ctx.or_timeout(timeout);
-    let ctx_json = recur_domain::json::to_string(&prompt_node_ctx(rc)).map_err(|e| err!("{e}"))?;
+    let ctx_json = serde_json::to_string(&prompt_node_ctx(rc)).map_err(|e| err!("{e}"))?;
     let run = run_node(
         &ctx,
         "recur-prompt-ts-",

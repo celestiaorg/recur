@@ -5,10 +5,10 @@ use crate::tool::{Call, Tool, ToolError};
 const SCHEMA: &str = r#"{"type":"object","properties":{"file_path":{"type":"string"},"old_string":{"type":"string"},"new_string":{"type":"string"},"replace_all":{"type":"boolean"}},"required":["file_path","old_string","new_string"]}"#;
 
 static IN: Shape = Shape::anon(&[
-    field("file_path", "FilePath", Ty::OptStr),
-    field("old_string", "OldString", Ty::OptStr),
-    field("new_string", "NewString", Ty::OptStr),
-    field("replace_all", "ReplaceAll", Ty::Bool),
+    field("file_path", Ty::OptStr),
+    field("old_string", Ty::OptStr),
+    field("new_string", Ty::OptStr),
+    field("replace_all", Ty::Bool),
 ]);
 
 pub struct EditTool;

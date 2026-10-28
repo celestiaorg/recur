@@ -1,6 +1,8 @@
 //! Replays the Go-recorded coding-tool cases (`golden/coding_calls.json`) in
 //! the same fixture worktree. Paths are normalized to `$WT`.
 
+mod common;
+
 use std::sync::Arc;
 
 use recur_agent_tools::{Call, HostError, PermissionVerdict, Permitter, TodoStore, Tool};
@@ -125,7 +127,7 @@ async fn coding_tools_match_go() {
         } else {
             ""
         };
-        if result != want_result || error != c.error {
+        if !common::same_result(&result, want_result) || !common::same_error(&error, &c.error) {
             failures.push(format!(
                 "{} {}\n  want result={:?} error={:?}\n  got  result={:?} error={:?}",
                 c.tool, c.args, want_result, c.error, result, error

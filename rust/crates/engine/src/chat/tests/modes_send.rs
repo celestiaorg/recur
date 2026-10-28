@@ -391,7 +391,7 @@ async fn a_legacy_ask_session_refreshes_when_it_becomes_agent() {
     cfg.standing_mode.clear();
     fx.te
         .store
-        .update_session_config_json(&sess.id, &recur_domain::json::to_string(&cfg).unwrap())
+        .update_session_config_json(&sess.id, &serde_json::to_string(&cfg).unwrap())
         .unwrap();
     fx.eng()
         .remember_workspace_chat_selection(&ws.id, "PA", "sonnet", None, CHAT_MODE_AGENT, None)

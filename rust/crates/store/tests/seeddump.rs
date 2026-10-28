@@ -1,4 +1,7 @@
-//! The seeddump binary writes exactly the committed e2e fixture.
+//! The seeddump binary writes the committed e2e fixture (as JSON values).
+
+use recur_domain::json::canonical;
+use serde_json::Value;
 
 #[test]
 fn seeddump_matches_committed_fixture() {
@@ -10,19 +13,8 @@ fn seeddump_matches_committed_fixture() {
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let got = String::from_utf8(out.stdout).unwrap();
-    let want = include_str!("../../../../frontend/e2e/fixtures/seed.json");
-    if got != want {
-        let first = got
-            .lines()
-            .zip(want.lines())
-            .position(|(a, b)| a != b)
-            .unwrap_or(0);
-        panic!(
-            "seeddump differs from seed.json at line {}:\n got: {:?}\nwant: {:?}",
-            first + 1,
-            got.lines().nth(first),
-            want.lines().nth(first)
-        );
-    }
+    let got: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let want: Value =
+        serde_json::from_str(include_str!("../../../../frontend/e2e/fixtures/seed.json")).unwrap();
+    pretty_assertions::assert_eq!(canonical(got), canonical(want));
 }

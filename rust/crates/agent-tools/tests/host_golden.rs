@@ -1,6 +1,9 @@
 //! Replays every host-tool case the Go generator recorded
 //! (`golden/host_calls.json`, generator `golden/golden_gen_test.go.txt`)
-//! against the Rust tools: result text, error text and the exact host calls.
+//! against the Rust tools: result text (JSON as values), error text (Go
+//! decode wording excepted) and the host calls.
+
+mod common;
 
 use std::sync::{Arc, Mutex};
 
@@ -491,7 +494,7 @@ impl Host for Rec {
 
     async fn present_workspace(&self, target: &str) -> String {
         self.rec(json!({"method": "PresentWorkspace", "target": target}));
-        recur_domain::json::to_string(&PresentWorkspaceResult {
+        serde_json::to_string(&PresentWorkspaceResult {
             ok: true,
             target: target.into(),
             ..Default::default()
@@ -516,12 +519,37 @@ struct Case {
     calls: Vec<Value>,
 }
 
+/// Host calls with JSON-text fields (raw tool input) decoded, so compacted
+/// and verbatim input compare equal.
+pub fn embedded_json(v: Value) -> Value {
+    match v {
+        Value::String(s) if s.starts_with(['{', '[']) => {
+            serde_json::from_str(&s).unwrap_or(Value::String(s))
+        }
+        Value::Array(a) => a.into_iter().map(embedded_json).collect(),
+        Value::Object(m) => m.into_iter().map(|(k, v)| (k, embedded_json(v))).collect(),
+        other => other,
+    }
+}
+
+/// Go `encoding/json` quirks Recur does not keep: Unicode case folding of
+/// keys, duplicate keys merging, and trailing data after the arguments.
+const GO_ONLY_ARGS: &[&str] = &[
+    r#"{"ſeverity":"low","file":"k.go","message":"x"}"#,
+    r#"{"file":"a.go","file":null,"severity":"low","message":"x"}"#,
+    r#"{"file":"a.go","severity":"low","message":"x"} trailing"#,
+    r#"{"question":"q","options":[{"text":"a","tag":"t"}],"options":[{"text":"b"}]}"#,
+];
+
 #[tokio::test]
 async fn host_tools_match_go() {
     let cases: Vec<Case> = serde_json::from_str(include_str!("golden/host_calls.json")).unwrap();
     let tools = host_tools();
     let mut failures = Vec::new();
-    for c in &cases {
+    for c in cases
+        .iter()
+        .filter(|c| !GO_ONLY_ARGS.contains(&c.args.as_str()))
+    {
         let tool = tools
             .iter()
             .find(|t| t.name() == c.tool)
@@ -543,10 +571,10 @@ async fn host_tools_match_go() {
             Err(e) => (String::new(), e.0),
         };
         let calls = rec.calls.lock().unwrap().clone();
-        if result != c.result
-            || error != c.error
+        if !common::same_result(&result, &c.result)
+            || !common::same_error(&error, &c.error)
             || error.is_empty() == c.is_error
-            || calls != c.calls
+            || embedded_json(calls.clone().into()) != embedded_json(c.calls.clone().into())
         {
             failures.push(format!(
                 "{} {}\n  want result={:?} error={:?} calls={}\n  got  result={:?} error={:?} calls={}",

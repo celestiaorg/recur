@@ -1,5 +1,5 @@
 //! Every service DTO decodes Go's `json.Marshal` output and re-encodes it
-//! byte for byte. Fixtures come from tests/fixtures/gen_fixtures.go.txt: a
+//! to an equal JSON value. Fixtures come from tests/fixtures/gen_fixtures.go.txt: a
 //! zero value, one with non-nil empty collections, and one with every field
 //! set. Types owned by lower crates (`recur-agent`, `recur-lsp`, `recur-usage`,
 //! the providers) are checked here too, as the services contract uses them.
@@ -7,6 +7,7 @@
 use std::path::Path;
 
 use pretty_assertions::assert_eq;
+use recur_domain::json::canonical;
 use recur_services::api::*;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -21,11 +22,12 @@ fn check_modes<T: DeserializeOwned + Serialize + Default>(go_name: &str, modes: 
         let path = dir.join(format!("{go_name}.{mode}.json"));
         let go = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path:?}: {e}"));
         let v: T = serde_json::from_str(&go).unwrap_or_else(|e| panic!("{go_name}.{mode}: {e}"));
-        let back = recur_domain::json::to_string(&v).unwrap();
+        let go = canonical(serde_json::from_str(&go).unwrap());
+        let back = canonical(serde_json::to_value(&v).unwrap());
         assert_eq!(back, go, "{go_name}.{mode} re-encodes differently");
         if mode == "zero" {
             assert_eq!(
-                recur_domain::json::to_string(&T::default()).unwrap(),
+                canonical(serde_json::to_value(T::default()).unwrap()),
                 go,
                 "{go_name}: Default is not Go's zero value"
             );

@@ -1,6 +1,6 @@
 //! Go-generated golden fixtures (R2, R10): every engine event payload, the
 //! role prompts and tool tables, the kitchen word lists and the synthetic
-//! guards, compared byte for byte with what the Go engine produced
+//! guards, compared with what the Go engine produced (payloads as JSON values)
 //! (`tests/golden/go_e1.json`, generator `tests/golden/gen_e1_golden.go.txt`).
 
 use std::collections::BTreeMap;
@@ -42,10 +42,14 @@ fn go_event(g: &Value, case: &str) -> (String, String) {
     )
 }
 
+fn json(s: &str) -> Value {
+    recur_domain::json::canonical(serde_json::from_str(s).unwrap())
+}
+
 fn check(g: &Value, case: &str, ev: &EngineEvent) {
     let (name, payload) = go_event(g, case);
     assert_eq!(ev.name(), name, "{case}: name");
-    assert_eq!(ev.payload_json(), payload, "{case}: payload");
+    assert_eq!(json(&ev.payload_json()), json(&payload), "{case}: payload");
 }
 
 fn route(surface: &str, ws: &str, code: &str, owner: &str) -> SessionRoute {
@@ -80,7 +84,7 @@ async fn engine_published_events_match_go() {
     assert!(
         stored
             .iter()
-            .any(|e| e.r#type == "workspace.updated" && e.payload_json == want)
+            .any(|e| e.r#type == "workspace.updated" && json(&e.payload_json) == json(&want))
     );
 
     let feed: FeedItem = input(&g, "feedItem");

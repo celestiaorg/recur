@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 
-use crate::json::{Field, Obj, Shape, Ty, field, unmarshal};
+use crate::json::{Obj, Shape, Ty, field, unmarshal};
 use crate::tool::{Call, Tool, ToolError};
 
 /// One session-scoped todo row.
@@ -75,24 +75,18 @@ fn todos_json(items: &[TodoItem]) -> String {
     if items.is_empty() {
         return "null".into();
     }
-    recur_domain::json::to_string(items).unwrap_or_else(|_| "[]".into())
+    serde_json::to_string(items).unwrap_or_else(|_| "[]".into())
 }
 
 const SCHEMA: &str = r#"{"type":"object","properties":{"todos":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"content":{"type":"string"},"status":{"type":"string"}},"required":["id","content","status"]}}},"required":["todos"]}"#;
 
-const TODO_FIELDS: &[Field] = &[
-    field("id", "ID", Ty::Str),
-    field("content", "Content", Ty::Str),
-    field("status", "Status", Ty::Str),
-];
+static TODO_ITEM: Shape = Shape::anon(&[
+    field("id", Ty::Str),
+    field("content", Ty::Str),
+    field("status", Ty::Str),
+]);
 
-static TODO_ITEM: Shape = Shape {
-    name: "TodoItem",
-    qualified: "agenttools.TodoItem",
-    fields: TODO_FIELDS,
-};
-
-static IN: Shape = Shape::anon(&[field("todos", "Todos", Ty::List(&Ty::Struct(&TODO_ITEM)))]);
+static IN: Shape = Shape::anon(&[field("todos", Ty::List(&Ty::Struct(&TODO_ITEM)))]);
 
 fn item(o: &Obj) -> TodoItem {
     TodoItem {

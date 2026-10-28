@@ -719,7 +719,7 @@ mod tests {
         };
         assert_eq!(
             marshal(&payload),
-            r#"{"commit_id":"abc","body":"Approved","event":"APPROVE","comments":[{"path":"a.go","line":9,"side":"RIGHT","body":"x\u003cy","start_line":7,"start_side":"RIGHT"}]}"#
+            r#"{"commit_id":"abc","body":"Approved","event":"APPROVE","comments":[{"path":"a.go","line":9,"side":"RIGHT","body":"x<y","start_line":7,"start_side":"RIGHT"}]}"#
         );
         let none = ReviewPayload {
             commit_id: String::new(),

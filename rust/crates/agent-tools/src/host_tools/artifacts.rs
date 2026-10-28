@@ -18,9 +18,9 @@ const CREATE_ARTIFACT_SCHEMA: &str = r#"{
 }"#;
 
 static CREATE_ARTIFACT_IN: Shape = Shape::anon(&[
-    field("title", "Title", Ty::Str),
-    field("kind", "Kind", Ty::Str),
-    field("content", "Content", Ty::Str),
+    field("title", Ty::Str),
+    field("kind", Ty::Str),
+    field("content", Ty::Str),
 ]);
 
 pub struct CreateArtifactTool;
@@ -106,10 +106,8 @@ const READ_ARTIFACT_SCHEMA: &str = r#"{
   "required": ["id"]
 }"#;
 
-static READ_ARTIFACT_IN: Shape = Shape::anon(&[
-    field("id", "ID", Ty::Str),
-    field("workspace_id", "WorkspaceID", Ty::Str),
-]);
+static READ_ARTIFACT_IN: Shape =
+    Shape::anon(&[field("id", Ty::Str), field("workspace_id", Ty::Str)]);
 
 pub struct ReadArtifactTool;
 
@@ -154,7 +152,7 @@ const PRESENT_ARTIFACT_SCHEMA: &str = r#"{
   "required": ["id"]
 }"#;
 
-static PRESENT_ARTIFACT_IN: Shape = Shape::anon(&[field("id", "ID", Ty::Str)]);
+static PRESENT_ARTIFACT_IN: Shape = Shape::anon(&[field("id", Ty::Str)]);
 
 pub struct PresentArtifactTool;
 

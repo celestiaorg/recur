@@ -326,7 +326,7 @@ impl Engine {
             return;
         }
         cfg.standing_prompt_sha = sha;
-        let Ok(raw) = recur_domain::json::to_string(&cfg) else {
+        let Ok(raw) = serde_json::to_string(&cfg) else {
             return;
         };
         let _ = self.store.update_session_config_json(&sess.id, &raw);
@@ -426,7 +426,7 @@ impl Engine {
             }
             patch.insert("model".into(), model.into());
             flags_json = match flags {
-                Some(f) => recur_domain::json::to_string(f).unwrap_or_else(|_| "{}".into()),
+                Some(f) => serde_json::to_string(f).unwrap_or_else(|_| "{}".into()),
                 None => "{}".into(),
             };
         }
@@ -472,5 +472,5 @@ impl Engine {
 /// Go `json.Marshal` of a `map[string]any`: keys sorted.
 fn sorted_json(m: serde_json::Map<String, serde_json::Value>) -> String {
     let sorted: BTreeMap<String, serde_json::Value> = m.into_iter().collect();
-    recur_domain::json::to_string(&sorted).unwrap_or_else(|_| "{}".into())
+    serde_json::to_string(&sorted).unwrap_or_else(|_| "{}".into())
 }

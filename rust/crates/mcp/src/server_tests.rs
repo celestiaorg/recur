@@ -405,7 +405,7 @@ impl Host for Capture {
     }
 
     async fn present_workspace(&self, target: &str) -> String {
-        recur_domain::json::to_string(&PresentWorkspaceResult {
+        serde_json::to_string(&PresentWorkspaceResult {
             ok: true,
             target: target.into(),
             ..Default::default()

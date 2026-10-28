@@ -17,10 +17,7 @@ use crate::tool::{Call, Tool, ToolError};
 
 const SCHEMA: &str = r#"{"type":"object","properties":{"command":{"type":"string"},"timeout":{"type":"number"}},"required":["command"]}"#;
 
-static IN: Shape = Shape::anon(&[
-    field("command", "Command", Ty::Str),
-    field("timeout", "Timeout", Ty::Float),
-]);
+static IN: Shape = Shape::anon(&[field("command", Ty::Str), field("timeout", Ty::Float)]);
 
 const MAX_CAPTURE: usize = (MAX_BASH_LINES + 2) * (MAX_LINE_CHARS + 8);
 /// Go `exec.Cmd.WaitDelay`.

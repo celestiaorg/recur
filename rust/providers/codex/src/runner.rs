@@ -837,12 +837,12 @@ mod tests {
             ("workspace-write", "workspaceWrite", false)
         );
         assert_eq!(
-            recur_domain::json::to_string(&p).unwrap(),
+            serde_json::to_string(&p).unwrap(),
             r#"{"type":"workspaceWrite"}"#
         );
         let (_, on) = sandbox_for(&coder(&["Read", "Edit", "Write", "Bash"]), true);
         assert_eq!(
-            recur_domain::json::to_string(&on).unwrap(),
+            serde_json::to_string(&on).unwrap(),
             r#"{"type":"workspaceWrite","networkAccess":true}"#
         );
         let reviewer = TurnRequest {
@@ -855,7 +855,7 @@ mod tests {
             ("read-only", "readOnly", true)
         );
         assert_eq!(
-            recur_domain::json::to_string(&p).unwrap(),
+            serde_json::to_string(&p).unwrap(),
             r#"{"type":"readOnly","networkAccess":true}"#
         );
     }

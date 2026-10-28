@@ -202,7 +202,7 @@ fn turn_shaping_matches_go() {
         let ctx = format!("{:?}", row.spec);
         assert_eq!(user_prompt(&req, false), row.prompt_fresh, "{ctx}");
         assert_eq!(user_prompt(&req, true), row.prompt_resumed, "{ctx}");
-        let enc = |p: &SandboxPolicy| recur_domain::json::to_string(p).unwrap();
+        let enc = |p: &SandboxPolicy| serde_json::to_string(p).unwrap();
         let (s, p) = sandbox_for(&req, false);
         assert_eq!(
             (s, enc(&p)),
@@ -280,6 +280,19 @@ fn normalize(ev: &AgentEvent) -> BTreeMap<String, Value> {
     m
 }
 
+/// A JSON-text field as its value, so encodings of equal input compare equal.
+fn json_text(s: &str) -> Value {
+    serde_json::from_str(s).unwrap_or_else(|_| json!(s))
+}
+
+fn decode_raw(mut m: BTreeMap<String, Value>) -> BTreeMap<String, Value> {
+    if let Some(Value::String(raw)) = m.get("toolInputRaw") {
+        let v = json_text(raw);
+        m.insert("toolInputRaw".into(), v);
+    }
+    m
+}
+
 /// Runs every notification in order through shared turn state, as the
 /// handler does, and returns the file items for the enrichment check.
 fn replay_items() -> FileItems {
@@ -291,8 +304,9 @@ fn replay_items() -> FileItems {
         } else {
             item_completed(&row.params, &mut st)
         };
-        let got: Vec<_> = ev.iter().map(normalize).collect();
-        assert_eq!(got, row.events, "{} {}", row.method, row.params);
+        let got: Vec<_> = ev.iter().map(|e| decode_raw(normalize(e))).collect();
+        let want: Vec<_> = row.events.into_iter().map(decode_raw).collect();
+        assert_eq!(got, want, "{} {}", row.method, row.params);
     }
     items
 }
@@ -315,8 +329,8 @@ fn approval_enrichment_matches_go() {
     let items = replay_items();
     for row in golden().enrich {
         assert_eq!(
-            enrich_params(&row.method, &row.params, &items),
-            row.out,
+            json_text(&enrich_params(&row.method, &row.params, &items)),
+            json_text(&row.out),
             "{}",
             row.params
         );
@@ -413,10 +427,9 @@ fn approval_answers_match_go() {
             remember: row.remember,
             ..Default::default()
         };
-        let got = recur_domain::json::to_string(&approval_response(&row.method, &d, &row.params))
-            .unwrap();
+        let got = serde_json::to_string(&approval_response(&row.method, &d, &row.params)).unwrap();
         assert_eq!(got, row.response, "{} {} {d:?}", row.method, row.params);
-        let auto = recur_domain::json::to_string(&auto_approve(&row.method, "").unwrap()).unwrap();
+        let auto = serde_json::to_string(&auto_approve(&row.method, "").unwrap()).unwrap();
         assert_eq!(auto, row.auto, "{}", row.method);
     }
 }
@@ -436,8 +449,8 @@ fn display_matches_go() {
     for row in golden().display {
         let d = p.display_tool(&row.name, &row.input);
         assert_eq!(
-            (d.name.as_str(), d.input.as_str()),
-            (row.tool.as_str(), row.out.as_str()),
+            (d.name.as_str(), json_text(&d.input)),
+            (row.tool.as_str(), json_text(&row.out)),
             "{} {}",
             row.name,
             row.input
@@ -506,7 +519,7 @@ fn request_encodings_match_go() {
             }),
             other => panic!("unknown param row {other}"),
         };
-        assert_eq!(got, row.json, "{}", row.name);
+        assert_eq!(json_text(&got), json_text(&row.json), "{}", row.name);
     }
 }
 
@@ -516,7 +529,7 @@ mod erased {
     }
     impl<T: serde::Serialize> Enc for T {
         fn enc(&self) -> String {
-            recur_domain::json::to_string(self).unwrap()
+            serde_json::to_string(self).unwrap()
         }
     }
 }

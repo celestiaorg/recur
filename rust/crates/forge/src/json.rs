@@ -50,8 +50,7 @@ fn strip_nulls(v: &mut Value) {
     }
 }
 
-/// Go `json.Marshal` (HTML-safe escaping, struct field order, sorted map
-/// keys) for `gh api --input -` payloads.
+/// JSON for `gh api --input -` payloads.
 pub fn marshal<T: serde::Serialize + ?Sized>(v: &T) -> String {
-    recur_domain::json::to_string(v).unwrap_or_default()
+    serde_json::to_string(v).unwrap_or_default()
 }

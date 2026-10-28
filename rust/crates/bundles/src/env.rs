@@ -312,7 +312,7 @@ pub fn prompt_environ(rc: &PromptRunContext) -> Vec<EnvVar> {
             obj.insert(name.as_str(), val);
             kv.push((format!("RECUR_PROMPT_ARG_{}", go::to_upper(name)), t(val)));
         }
-        if let Ok(json) = recur_domain::json::to_string(&obj) {
+        if let Ok(json) = serde_json::to_string(&obj) {
             kv.push(("RECUR_PROMPT_PARAMS".into(), t(&json)));
         }
     }
@@ -348,7 +348,7 @@ fn append_bundle_setting_env(env: &mut Vec<EnvVar>, values: &BTreeMap<String, St
     if obj.is_empty() {
         return;
     }
-    if let Ok(json) = recur_domain::json::to_string(&obj) {
+    if let Ok(json) = serde_json::to_string(&obj) {
         push(
             env,
             "RECUR_BUNDLE_SETTINGS",

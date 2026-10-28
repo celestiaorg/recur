@@ -110,7 +110,7 @@ mod tests {
             }],
         };
         assert_eq!(
-            recur_domain::json::to_string(&g).unwrap(),
+            serde_json::to_string(&g).unwrap(),
             r#"{"provider":"claude-code","label":"Claude Code","models":[{"ref":"claude-code/claude-opus-4-6","label":"Opus 4.6","flags":[{"id":"context","label":"Context","options":[{"value":"200k","label":"200K","default":true},{"value":"1m","label":"1M"}]}]}]}"#
         );
     }

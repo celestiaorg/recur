@@ -112,7 +112,7 @@ impl Linear {
         vars: Option<BTreeMap<&str, Value>>,
     ) -> Result<T, IssueError> {
         let vars = vars.map(|v| json!(v));
-        let body = recur_domain::json::to_string(&BTreeMap::from([
+        let body = serde_json::to_string(&BTreeMap::from([
             ("query", json!(query)),
             ("variables", vars.unwrap_or(Value::Null)),
         ]))

@@ -1,6 +1,6 @@
-//! Go-generated answers for byte-identical argv, stdin user messages, model
-//! flags, the background-task frame, the status card and the picker list
-//! (risk R2). Fixtures: `tests/golden/go_claude.json` and
+//! Go-generated answers for byte-identical argv, stdin user messages (as JSON
+//! values), model flags, the background-task frame, the status card and the
+//! picker list (risk R2). Fixtures: `tests/golden/go_claude.json` and
 //! `go_claude_app.json`; generators `gen_go_p1.go.txt` and
 //! `../../codex/tests/golden/gen_go_p1_app.go.txt`.
 
@@ -181,7 +181,12 @@ fn argv_matches_go() {
 fn stdin_user_messages_match_go() {
     for row in engine().user_lines {
         let imgs: Vec<UserImage> = row.images.iter().flatten().map(Image::user).collect();
-        assert_eq!(input::user_message_line(&row.text, &imgs), row.line);
+        let got = input::user_message_line(&row.text, &imgs);
+        assert_eq!(got.lines().count(), 1, "{got:?}");
+        assert!(got.ends_with('\n'));
+        let got: serde_json::Value = serde_json::from_str(&got).unwrap();
+        let want: serde_json::Value = serde_json::from_str(&row.line).unwrap();
+        assert_eq!(got, want);
     }
 }
 

@@ -17,7 +17,7 @@ fn msg(id: &str, role: &str, blocks: Vec<ContentBlock>) -> Message {
 }
 
 fn encoded(items: &[InputItem]) -> String {
-    recur_domain::json::to_string(items).unwrap()
+    serde_json::to_string(items).unwrap()
 }
 
 #[test]

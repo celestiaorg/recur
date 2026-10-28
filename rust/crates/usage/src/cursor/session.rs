@@ -78,12 +78,12 @@ pub(crate) fn parse_cursor_auth_file(raw: &[u8]) -> Result<CursorTok, String> {
     Ok(tok)
 }
 
-/// The file Go's `json.MarshalIndent(…, "", "  ")` writes, mode 0600.
+/// The file, laid out like Go's `json.MarshalIndent(…, "", "  ")`, mode 0600.
 pub(crate) fn write_cursor_auth_file(path: &Path, tok: &CursorTok) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
-    let q = |s: &str| recur_domain::json::to_string(s).unwrap_or_default();
+    let q = |s: &str| serde_json::to_string(s).unwrap_or_default();
     let mut lines = vec![
         format!("  \"accessToken\": {}", q(&tok.access)),
         format!("  \"refreshToken\": {}", q(&tok.refresh)),

@@ -272,7 +272,7 @@ impl Engine {
         if normalize_chat_mode(&cfg.mode) == CHAT_MODE_LOOP {
             cfg.mode = CHAT_MODE_AGENT.into();
         }
-        let cfg_json = recur_domain::json::to_string(&cfg).ok()?;
+        let cfg_json = serde_json::to_string(&cfg).ok()?;
         let child = if dest_workspace_id == src_workspace_id {
             self.store
                 .fork_session(&parent.id, message_id, AgentRole::Coder.as_str(), &cfg_json)

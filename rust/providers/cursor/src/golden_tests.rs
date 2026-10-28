@@ -23,6 +23,13 @@ fn engine() -> Value {
     serde_json::from_str(include_str!("../tests/golden/go_cursor_engine.json")).unwrap()
 }
 
+/// Text with an optional JSON tail (`prefix {…}`), the tail as a value.
+fn json_tail(t: &str) -> (&str, Value) {
+    let at = t.find(['{', '[']).unwrap_or(t.len());
+    let tail = serde_json::from_str(&t[at..]).unwrap_or_else(|_| json!(&t[at..]));
+    (&t[..at], tail)
+}
+
 fn s(v: &Value) -> &str {
     v.as_str().unwrap_or_else(|| panic!("not a string: {v}"))
 }
@@ -112,7 +119,10 @@ fn slugs_redaction_interactions_errors_match_go() {
         );
     }
     for row in g["redact"].as_array().unwrap() {
-        assert_eq!(crate::bridge::redact_bridge_line(s(&row[0])), s(&row[1]));
+        assert_eq!(
+            json_tail(&crate::bridge::redact_bridge_line(s(&row[0]))),
+            json_tail(s(&row[1]))
+        );
     }
     for row in g["interactions"].as_array().unwrap() {
         let (t, body) = parse_interaction_type(s(&row[0]));
@@ -201,8 +211,8 @@ fn agent_options_encode_like_go() {
         mode: "plan".into(),
     };
     assert_eq!(
-        recur_domain::json::to_string(&opts).unwrap(),
-        s(&g["agentOptionsJSON"])
+        serde_json::to_value(&opts).unwrap(),
+        json_tail(s(&g["agentOptionsJSON"])).1
     );
     let minimal = AgentOptions {
         local: Some(LocalOptions {
@@ -212,8 +222,8 @@ fn agent_options_encode_like_go() {
         ..Default::default()
     };
     assert_eq!(
-        recur_domain::json::to_string(&minimal).unwrap(),
-        s(&g["minimalOptionsJSON"])
+        serde_json::to_value(&minimal).unwrap(),
+        json_tail(s(&g["minimalOptionsJSON"])).1
     );
 }
 
@@ -225,14 +235,15 @@ fn tool_mapping_matches_go() {
         let d = crate::tools::display_tool(name, input);
         let got = json!({
             "canonical": crate::tools::canonical_tool(name),
-            "toolInput": crate::tools::cursor_tool_input(name, input),
+            "toolInput": json_tail(&crate::tools::cursor_tool_input(name, input)),
             "displayName": d.name,
-            "displayInput": d.input,
+            "displayInput": json_tail(&d.input),
             "summary": recur_agent::display::summarize_tool_input(&d.name, &d.input),
         });
         let want = json!({
-            "canonical": row["canonical"], "toolInput": row["toolInput"], "displayName": row["displayName"],
-            "displayInput": row["displayInput"], "summary": row["summary"],
+            "canonical": row["canonical"], "toolInput": json_tail(s(&row["toolInput"])),
+            "displayName": row["displayName"], "displayInput": json_tail(s(&row["displayInput"])),
+            "summary": row["summary"],
         });
         assert_eq!(got, want, "{name} {input}");
     }

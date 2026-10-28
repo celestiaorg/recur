@@ -3,14 +3,13 @@
 //!
 //! Port of Go `internal/domain` and `internal/shortid`. Every type
 //! serializes with the Go JSON tags, so `recur.db` JSON columns and
-//! view-state files round-trip unchanged:
+//! view-state files round-trip as equal JSON values:
 //!
 //! - Go string enums (`type X string`) are [`string_enum!`] types whose
 //!   `Other(String)` variant keeps unknown and empty values.
 //! - Go `omitempty` fields skip their zero value; other fields always
 //!   serialize. A non-`omitempty` Go slice or map is `Option<…>` because Go
 //!   writes a nil one as `null`.
-//! - [`json::to_string`] reproduces `json.Marshal` byte for byte.
 //! - Plain Go string consts (chat modes, block types, …) stay `&str` consts
 //!   and the matching fields stay `String`.
 

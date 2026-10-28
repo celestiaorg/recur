@@ -304,7 +304,7 @@ async fn listing_never_creates_directories_and_refuses_escapes() {
 }
 
 #[test]
-fn go_indent_matches_marshal_indent() {
+fn marshal_indent_uses_two_spaces() {
     #[derive(serde::Serialize)]
     struct S {
         a: Vec<i32>,
@@ -321,7 +321,7 @@ fn go_indent_matches_marshal_indent() {
     .unwrap();
     assert_eq!(
         got,
-        "{\n  \"a\": [],\n  \"b\": [\n    1,\n    2\n  ],\n  \"c\": {},\n  \"d\": \"x\\u003cy\\\"\"\n}"
+        "{\n  \"a\": [],\n  \"b\": [\n    1,\n    2\n  ],\n  \"c\": {},\n  \"d\": \"x<y\\\"\"\n}"
     );
 }
 

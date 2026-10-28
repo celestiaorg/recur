@@ -347,7 +347,7 @@ impl Engine {
     /// Appends an event to the durable log (D13). Feed reconstruction reads
     /// these payloads back, so they are a storage format (R10).
     pub fn persist_event(&self, workspace_id: &str, agent_id: &str, ev: &EngineEvent) {
-        let Ok(raw) = recur_domain::json::to_string(ev) else {
+        let Ok(raw) = serde_json::to_string(ev) else {
             return;
         };
         let _ = self.store.append_event(&StoredEvent {

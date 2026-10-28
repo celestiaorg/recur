@@ -103,7 +103,7 @@ impl State {
         if self.file.is_empty() {
             return;
         }
-        let Ok(data) = recur_domain::json::to_string(&self.order) else {
+        let Ok(data) = serde_json::to_string(&self.order) else {
             return;
         };
         let tmp = format!("{}.tmp", self.file);

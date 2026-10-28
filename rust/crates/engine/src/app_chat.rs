@@ -77,15 +77,15 @@ fn config_map(raw: &str) -> BTreeMap<String, Value> {
 }
 
 fn config_json(m: &BTreeMap<String, Value>) -> String {
-    recur_domain::json::to_string(m).unwrap_or_else(|_| "{}".into())
+    serde_json::to_string(m).unwrap_or_else(|_| "{}".into())
 }
 
 fn agent_config_json(cfg: &AgentConfig) -> String {
-    recur_domain::json::to_string(cfg).unwrap_or_else(|_| "{}".into())
+    serde_json::to_string(cfg).unwrap_or_else(|_| "{}".into())
 }
 
 fn present_json(out: &PresentWorkspaceResult) -> String {
-    match recur_domain::json::to_string(out) {
+    match serde_json::to_string(out) {
         Ok(s) => s,
         Err(_) if out.ok => format!("Presented {}.", out.target),
         Err(_) if !out.error.is_empty() => out.error.clone(),

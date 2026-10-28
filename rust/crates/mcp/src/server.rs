@@ -436,13 +436,10 @@ fn token_from_path(p: &str) -> Option<&str> {
     }
 }
 
-static INITIALIZE_PARAMS: Shape =
-    Shape::anon(&[field("protocolVersion", "ProtocolVersion", Ty::Str)]);
+static INITIALIZE_PARAMS: Shape = Shape::anon(&[field("protocolVersion", Ty::Str)]);
 
-static CALL_TOOL_PARAMS: Shape = Shape::anon(&[
-    field("name", "Name", Ty::Str),
-    field("arguments", "Arguments", Ty::Raw),
-]);
+static CALL_TOOL_PARAMS: Shape =
+    Shape::anon(&[field("name", Ty::Str), field("arguments", Ty::Raw)]);
 
 impl Inner {
     async fn handle(&self, req: Request<Incoming>) -> Response<Full<Bytes>> {

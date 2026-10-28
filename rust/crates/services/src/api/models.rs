@@ -40,7 +40,6 @@ pub struct AssignedIssue {
     pub state: String,
     pub state_color: String,
     /// Linear workflow order within a team
-    #[serde(with = "recur_domain::json::float")]
     pub state_position: f64,
     /// Linear: 0 none, 1 urgent … 4 low
     pub priority: i64,
@@ -204,10 +203,7 @@ pub struct EditorFileView {
     pub preview_scroll_top: i64,
     #[serde(skip_serializing_if = "is_zero")]
     pub preview_scroll_left: i64,
-    #[serde(
-        with = "recur_domain::json::float",
-        skip_serializing_if = "is_zero_f64"
-    )]
+    #[serde(skip_serializing_if = "is_zero_f64")]
     pub preview_zoom: f64,
 }
 

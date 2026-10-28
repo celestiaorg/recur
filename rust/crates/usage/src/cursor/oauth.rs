@@ -252,7 +252,7 @@ pub(crate) async fn mint_cursor_user_api_key(
     let exp = f.now_ms() + CURSOR_MINT_KEY_TTL_MS;
     let body = format!(
         "{{\"expiresAtMs\":{exp},\"name\":{}}}",
-        recur_domain::json::to_string(CURSOR_MINT_KEY_NAME).unwrap_or_default()
+        serde_json::to_string(CURSOR_MINT_KEY_NAME).unwrap_or_default()
     );
     let (status, raw) = do_json(
         ctx,

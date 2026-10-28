@@ -114,8 +114,8 @@ pub(crate) async fn fetch_cursor(ctx: &Ctx, f: &Fetcher) -> ProviderQuota {
     }
     let body = format!(
         "{{\"endDate\":{},\"startDate\":{}}}",
-        recur_domain::json::to_string(&period.end).unwrap_or_default(),
-        recur_domain::json::to_string(&period.start).unwrap_or_default()
+        serde_json::to_string(&period.end).unwrap_or_default(),
+        serde_json::to_string(&period.start).unwrap_or_default()
     );
     if let Ok((st, araw)) = do_json(
         ctx,

@@ -22,10 +22,10 @@ pub(crate) const INSTRUCTIONS: &str =
     "Use these tools to report structured signals back to the Recur orchestrator.";
 
 static RPC_REQUEST: Shape = Shape::anon(&[
-    field("jsonrpc", "JSONRPC", Ty::Str),
-    field("id", "ID", Ty::Raw),
-    field("method", "Method", Ty::Str),
-    field("params", "Params", Ty::Raw),
+    field("jsonrpc", Ty::Str),
+    field("id", Ty::Raw),
+    field("method", Ty::Str),
+    field("params", Ty::Raw),
 ]);
 
 /// One incoming request, or a notification when `id` is empty or null. `id`
@@ -94,12 +94,12 @@ pub(crate) fn new_error(id: &str, code: i64, message: impl Into<String>) -> RpcR
     }
 }
 
-fn go_marshal<T: Serialize + ?Sized>(v: &T) -> String {
-    recur_domain::json::to_string(v).unwrap_or_default()
+fn to_json<T: Serialize + ?Sized>(v: &T) -> String {
+    serde_json::to_string(v).unwrap_or_default()
 }
 
 impl RpcResponse {
-    /// Go `json.Marshal(rpcResponse)`: the id compacted, result or error.
+    /// The JSON-RPC response: the id compacted, result or error.
     pub fn encode(&self) -> String {
         let id = if self.id.is_empty() {
             "null".to_string()
@@ -108,7 +108,7 @@ impl RpcResponse {
         };
         match &self.body {
             Ok(r) => format!(r#"{{"jsonrpc":"2.0","id":{id},"result":{}}}"#, r.encode()),
-            Err(e) => format!(r#"{{"jsonrpc":"2.0","id":{id},"error":{}}}"#, go_marshal(e)),
+            Err(e) => format!(r#"{{"jsonrpc":"2.0","id":{id},"error":{}}}"#, to_json(e)),
         }
     }
 }
@@ -116,22 +116,22 @@ impl RpcResponse {
 impl RpcResult {
     fn encode(&self) -> String {
         match self {
-            RpcResult::Initialize(r) => go_marshal(r),
+            RpcResult::Initialize(r) => to_json(r),
             RpcResult::ListTools(tools) => {
                 let entries: Vec<String> = tools
                     .iter()
                     .map(|t| {
                         format!(
                             r#"{{"name":{},"description":{},"inputSchema":{}}}"#,
-                            go_marshal(&t.name),
-                            go_marshal(&t.description),
+                            to_json(&t.name),
+                            to_json(&t.description),
                             compact(&t.input_schema).unwrap_or_else(|_| "null".into())
                         )
                     })
                     .collect();
                 format!(r#"{{"tools":[{}]}}"#, entries.join(","))
             }
-            RpcResult::CallTool(r) => go_marshal(r),
+            RpcResult::CallTool(r) => to_json(r),
             RpcResult::Empty => "{}".into(),
         }
     }

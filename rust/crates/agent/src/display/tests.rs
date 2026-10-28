@@ -110,7 +110,7 @@ fn chat_input_keeps_create_plan_parseable() {
     );
     assert_eq!(
         chat_tool_input("CreatePlan", r#"{"plan":"<b>"}"#),
-        "{\"plan\":\"\\u003cb\\u003e\"}"
+        r#"{"plan":"<b>"}"#
     );
     assert_eq!(
         chat_tool_input("CreatePlan", r#"{"plan":""}"#),

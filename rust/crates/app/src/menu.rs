@@ -147,7 +147,10 @@ pub fn bind_menu_keys(cx: &mut App) {
         KeyBinding::new("cmd-alt-shift-b", ToggleRightPanel, None),
         KeyBinding::new("cmd-alt-e", ToggleEditor, None),
         KeyBinding::new("ctrl-`", ToggleTerminal, None),
+        // The menu shows the first binding (⌃⇧`). GPUI reports a shifted punctuation key as
+        // its shifted character without Shift, so the press itself arrives as ⌃~.
         KeyBinding::new("ctrl-shift-`", MaximizeTerminal, None),
+        KeyBinding::new("ctrl-~", MaximizeTerminal, None),
         KeyBinding::new("cmd-r", RunDev, None),
         KeyBinding::new("cmd-shift-r", StopRun, None),
         KeyBinding::new("cmd-alt-i", OpenDevTools, None),

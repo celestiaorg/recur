@@ -34,6 +34,11 @@ fn is_backquote(k: &Keystroke) -> bool {
     k.key == "`" || k.key == "~"
 }
 
+/// Shift on the backquote key. GPUI reports ⌃⇧` as ⌃~, with Shift folded into the key.
+fn backquote_shifted(k: &Keystroke) -> bool {
+    k.modifiers.shift || k.key == "~"
+}
+
 impl Shell {
     pub(crate) fn on_key_down(
         &mut self,
@@ -114,7 +119,7 @@ impl Shell {
                 if id.is_empty() || ws_main_blocked(s.workspace(&id)) {
                     return false;
                 }
-                if m.shift {
+                if backquote_shifted(k) {
                     s.toggle_terminal_dock_maximized(&id, cx);
                 } else {
                     s.toggle_terminal_dock(&id, cx);

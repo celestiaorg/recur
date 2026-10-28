@@ -997,3 +997,27 @@ fn resize_handles_under_a_modal_take_no_pointer(cx: &mut TestAppContext) {
     assert_eq!(h.read(|s| s.panels.size(PanelKey::Rail)), width);
     assert!(!h.read(|s| s.overlays.new_task), "the scrim took the press");
 }
+
+/// ⌃` toggles the terminal drawer and ⌃⇧` maximizes it. GPUI reports ⌃⇧` as ⌃~ (Shift
+/// folded into the key), which toggled the drawer instead.
+#[gpui_kit::test]
+fn ctrl_shift_backtick_maximizes_the_terminal(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), MockOptions::default()),
+        LocalStorage::in_memory(),
+    );
+    h.click(&format!("hit:{ACTIVE}"));
+    assert_eq!(h.view(), ViewName::Detail);
+    h.keys("ctrl-`");
+    assert!(h.read(|s| s.dock.is_open(ACTIVE)));
+    assert!(!h.read(|s| s.dock.is_maximized(ACTIVE)));
+    h.keys("ctrl-~");
+    assert!(
+        h.read(|s| s.dock.is_open(ACTIVE)),
+        "maximize keeps the drawer"
+    );
+    assert!(h.read(|s| s.dock.is_maximized(ACTIVE)));
+    h.keys("ctrl-~");
+    assert!(!h.read(|s| s.dock.is_maximized(ACTIVE)));
+}

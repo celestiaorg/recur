@@ -1,21 +1,23 @@
-//! SGR 53 / 55 (overline on / off), which xterm.js renders and alacritty_terminal does not model,
-//! and SGR 221 / 222 (kitty's not bold / not faint, which xterm.js 6 applies), which vte drops.
+//! SGR 53 / 55 (overline on / off), which alacritty_terminal does not model.
 //!
 //! The attribute lives in the cell, as a spare bit of alacritty's `Flags` set on the cursor
 //! template. Printing copies the template's flags, so scrollback, reflow, the alternate screen
 //! and DECSC / DECRC carry overline like any other attribute, and erased or inserted cells drop
-//! it (alacritty resets them to the template's background only, as xterm.js's erase attributes
-//! do). SGR 0 and RIS clear it with the rest of the template.
+//! it (alacritty resets them to the template's background only). SGR 0 and RIS clear it with
+//! the rest of the template.
 //!
-//! vte drops SGR codes it does not know before they reach the handler, so the screen follows
-//! each SGR that changes overline with a carrier sequence ([`ON`] / [`OFF`]) that [`Overlined`]
-//! turns back into the template change. Carriers travel in the byte stream, so they keep their
-//! order even inside synchronized output, which vte buffers and replays.
+//! vte drops SGR codes it does not know before they reach the handler, so the screen finds SGRs
+//! in the byte stream ([`next_sgr`]) and follows each one that changes overline with a carrier
+//! sequence ([`ON`] / [`OFF`]) that [`Overlined`] turns back into the template change. Carriers
+//! travel in the byte stream, so they keep their order even inside synchronized output, which
+//! vte buffers and replays.
 //!
 //! alacritty's reflow drops trailing cells it considers empty and its `is_empty` ignores
 //! unknown flags, so an overlined blank with the default foreground would vanish on resize.
 //! Those cells carry [`MARKED_FG`] instead of the default foreground: no SGR produces it and the
 //! renderer reads it as the default.
+
+use std::ops::Range;
 
 use alacritty_terminal::event::EventListener;
 use alacritty_terminal::term::Term;
@@ -33,15 +35,15 @@ pub(crate) const OVERLINE: Flags = Flags::from_bits_retain(1 << 15);
 /// The default foreground of an overlined cell (see the module docs).
 pub(crate) const MARKED_FG: Color = Color::Named(NamedColor::DimForeground);
 
-/// Carriers: the title stack push / pop (`CSI 22 t` / `CSI 23 t`) for overline, the size reports
-/// (`CSI 14 t` / `CSI 18 t`) for not bold / not faint. xterm.js disables window operations and
-/// the scanner drops every `CSI t` from the PTY, so only the screen sends these.
-pub(crate) const ON: &[u8] = b"\x1b[22t";
-pub(crate) const OFF: &[u8] = b"\x1b[23t";
-pub(crate) const NOT_BOLD: &[u8] = b"\x1b[14t";
-pub(crate) const NOT_FAINT: &[u8] = b"\x1b[18t";
+/// Carriers: SCP (`CSI Ps ; Ps SP k`, select character path) with the presentation-to-data
+/// update mode, which alacritty ignores and programs do not send.
+pub(crate) const ON: &[u8] = b"\x1b[2;2 k";
+pub(crate) const OFF: &[u8] = b"\x1b[1;2 k";
 
-/// xterm.js's `Params` limits: parameters, and sub-parameters across the whole sequence.
+/// Longest unfinished `CSI` parameter run held across feeds.
+const MAX_TAIL: usize = 256;
+
+/// The parser's limits: parameters, and sub-parameters across the whole sequence.
 const MAX_PARAMS: usize = 32;
 const MAX_SUB_PARAMS: usize = 32;
 
@@ -49,9 +51,35 @@ pub(crate) fn is_overlined(cell: &Cell) -> bool {
     cell.flags.contains(OVERLINE)
 }
 
+/// The parameter bytes of the next SGR (`CSI <digits ; :> m`) in `data` at or after `from`.
+/// `Err(esc)` when `data` ends inside what may still become one, starting at `esc`.
+pub(crate) fn next_sgr(data: &[u8], from: usize) -> Result<Option<Range<usize>>, usize> {
+    let mut i = from;
+    while let Some(off) = data[i..].iter().position(|&b| b == 0x1b) {
+        let esc = i + off;
+        i = esc + 1;
+        match data.get(esc + 1) {
+            None => return Err(esc),
+            Some(b'[') => {}
+            Some(_) => continue,
+        }
+        let body = esc + 2;
+        let len = data[body..]
+            .iter()
+            .take_while(|b| b.is_ascii_digit() || matches!(b, b';' | b':'))
+            .count();
+        match data.get(body + len) {
+            None if len < MAX_TAIL => return Err(esc),
+            Some(b'm') => return Ok(Some(body..body + len)),
+            _ => {}
+        }
+    }
+    Ok(None)
+}
+
 /// What an SGR sequence (its parameter bytes, between `CSI` and `m`) does to overline, read the
-/// way xterm.js's `charAttributes` walks it: `Some(true)` sets it, `Some(false)` clears it (55 or
-/// a reset), `None` leaves it. Colour arguments of 38 / 48 / 58 are skipped as `_extractColor`
+/// way the parser walks it: `Some(true)` sets it, `Some(false)` clears it (55 or
+/// a reset), `None` leaves it. Colour arguments of 38 / 48 / 58 are skipped as the parser
 /// consumes them, so `38;5;53` is a colour, not an overline.
 pub(crate) fn sgr_effect(body: &[u8]) -> Option<bool> {
     let mut effect = None;
@@ -61,21 +89,6 @@ pub(crate) fn sgr_effect(body: &[u8]) -> Option<bool> {
         _ => {}
     });
     effect
-}
-
-/// Whether an SGR sequence ends with bold cleared by 221, and faint by 222: vte applies the rest
-/// of the sequence, so only a 221 / 222 that no later 0, 1, 2 or 22 overrides needs a carrier.
-pub(crate) fn sgr_cancels(body: &[u8]) -> (bool, bool) {
-    let (mut not_bold, mut not_faint) = (false, false);
-    walk_sgr(body, |code| match code {
-        221 => not_bold = true,
-        222 => not_faint = true,
-        0 | 22 => (not_bold, not_faint) = (false, false),
-        1 => not_bold = false,
-        2 => not_faint = false,
-        _ => {}
-    });
-    (not_bold, not_faint)
 }
 
 /// Calls `f` with each attribute code of an SGR sequence, in order, skipping colour arguments.
@@ -112,7 +125,7 @@ fn walk_sgr(body: &[u8], mut f: impl FnMut(i64)) {
     }
 }
 
-/// How many parameters after `pos` `InputHandler._extractColor` consumes.
+/// How many parameters after `pos` a colour argument consumes.
 fn color_advance(params: &[(i64, bool)], pos: usize) -> usize {
     let mut accu = [0i64, 0, -1, 0, 0, 0];
     let mut cspace = 0;
@@ -167,29 +180,16 @@ macro_rules! delegate {
 
 impl<L: EventListener> Handler for Overlined<'_, L> {
     fn terminal_attribute(&mut self, attr: Attr) {
-        // vte reads SGR 21 (its only `CancelBold`) as "not bold", xterm.js as a double underline.
-        let attr = match attr {
-            Attr::CancelBold => Attr::DoubleUnderline,
-            a => a,
-        };
         self.0.terminal_attribute(attr);
         self.mark();
     }
 
-    fn push_title(&mut self) {
-        self.set(true);
-    }
-
-    fn pop_title(&mut self) {
-        self.set(false);
-    }
-
-    fn text_area_size_pixels(&mut self) {
-        self.0.grid_mut().cursor.template.flags.remove(Flags::BOLD);
-    }
-
-    fn text_area_size_chars(&mut self) {
-        self.0.grid_mut().cursor.template.flags.remove(Flags::DIM);
+    fn set_scp(&mut self, path: ScpCharPath, mode: ScpUpdateMode) {
+        match (path, mode) {
+            (ScpCharPath::RTL, ScpUpdateMode::PresentationToData) => self.set(true),
+            (ScpCharPath::LTR, ScpUpdateMode::PresentationToData) => self.set(false),
+            _ => {}
+        }
     }
 
     delegate! {
@@ -258,31 +258,27 @@ impl<L: EventListener> Handler for Overlined<'_, L> {
         set_keyboard_mode(mode: KeyboardModes, b: KeyboardModesApplyBehavior);
         set_modify_other_keys(mode: ModifyOtherKeys);
         report_modify_other_keys();
-        set_scp(p: ScpCharPath, u: ScpUpdateMode);
+        push_title();
+        pop_title();
+        text_area_size_pixels();
+        text_area_size_chars();
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{sgr_cancels, sgr_effect};
+    use super::{next_sgr, sgr_effect};
 
     #[test]
-    fn sgr_cancels_follow_the_last_code() {
-        assert_eq!(sgr_cancels(b"221"), (true, false));
-        assert_eq!(sgr_cancels(b"222"), (false, true));
-        assert_eq!(sgr_cancels(b"1;2;221;222"), (true, true));
-        assert_eq!(sgr_cancels(b"221;1"), (false, false), "a later 1 wins");
-        assert_eq!(sgr_cancels(b"222;0"), (false, false));
-        assert_eq!(
-            sgr_cancels(b"38;5;221"),
-            (false, false),
-            "a colour argument"
-        );
-        assert_eq!(sgr_cancels(b"221:3"), (true, false));
+    fn next_sgr_finds_whole_sequences_and_holds_partial_ones() {
+        assert_eq!(next_sgr(b"a\x1b[1;53mb", 0), Ok(Some(3..7)));
+        assert_eq!(next_sgr(b"\x1b[?25h\x1b]0;t\x07", 0), Ok(None));
+        assert_eq!(next_sgr(b"ab\x1b[5", 0), Err(2));
+        assert_eq!(next_sgr(b"ab\x1b", 0), Err(2));
     }
 
     #[test]
-    fn sgr_effect_follows_xterm_parameter_order() {
+    fn sgr_effect_follows_parameter_order() {
         assert_eq!(sgr_effect(b"53"), Some(true));
         assert_eq!(sgr_effect(b"55"), Some(false));
         assert_eq!(sgr_effect(b"1;31"), None);
@@ -313,7 +309,7 @@ mod tests {
     }
 
     #[test]
-    fn params_past_xterm_limit_are_dropped() {
+    fn params_past_the_limit_are_dropped() {
         let mut body = "1;".repeat(32);
         body.push_str("53");
         assert_eq!(sgr_effect(body.as_bytes()), None);

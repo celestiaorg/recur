@@ -476,7 +476,7 @@ fn device_attribute_queries_are_answered(cx: &mut TestAppContext) {
     h.settle();
     h.rec.clear();
     h.output("\x1b[c");
-    assert_eq!(h.rec.writes(), "\x1b[?1;2c");
+    assert_eq!(h.rec.writes(), "\x1b[?6c");
 }
 
 #[gpui::test]

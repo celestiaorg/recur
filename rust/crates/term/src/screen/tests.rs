@@ -17,12 +17,12 @@ fn replies(out: &[Output]) -> Vec<String> {
         .collect()
 }
 
-fn decorations() -> SearchOptions {
+fn opts() -> SearchOptions {
     SearchOptions {
-        decorations: Some(Decorations {
+        decorations: Decorations {
             match_background: Rgba::rgb(1, 2, 3),
             active_match_background: Rgba::rgb(4, 5, 6),
-        }),
+        },
         ..Default::default()
     }
 }
@@ -35,114 +35,30 @@ fn prints_text_and_wraps() {
 }
 
 #[test]
-fn answers_device_attributes_like_xterm_js() {
+fn alacritty_answers_status_queries() {
     let mut s = screen(80, 24);
-    assert_eq!(replies(&s.feed(b"\x1b[c")), vec!["\x1b[?1;2c"]);
-    assert_eq!(replies(&s.feed(b"\x1b[0c")), vec!["\x1b[?1;2c"]);
-    assert!(replies(&s.feed(b"\x1b[1c")).is_empty());
-    assert_eq!(replies(&s.feed(b"\x1b[>c")), vec!["\x1b[>0;276;0c"]);
-    assert_eq!(
-        replies(&s.feed(b"\x1b[>q")),
-        vec![format!("\x1bP>|xterm.js({XTERM_VERSION})\x1b\\")]
-    );
-    assert_eq!(replies(&s.feed(b"\x1b[5n")), vec!["\x1b[0n"]);
+    assert_eq!(replies(&s.feed(b"\x1b[c")), vec!["\x1b[?6c"]);
     s.feed(b"ab\r\ncd");
     assert_eq!(replies(&s.feed(b"\x1b[6n")), vec!["\x1b[2;3R"]);
-    assert_eq!(replies(&s.feed(b"\x1b[?6n")), vec!["\x1b[?2;3R"]);
 }
 
 #[test]
-fn window_ops_and_kitty_queries_are_ignored() {
-    let mut s = screen(80, 24);
-    assert!(replies(&s.feed(b"\x1b[18t\x1b[14t\x1b[22;0t\x1b[?u\x1b[>1u")).is_empty());
-}
-
-#[test]
-fn reports_modes_with_decrpm() {
-    let mut s = screen(80, 24);
-    assert_eq!(replies(&s.feed(b"\x1b[?2004$p")), vec!["\x1b[?2004;2$y"]);
-    s.feed(b"\x1b[?2004h\x1b[?1000h\x1b[?1006h");
-    assert_eq!(replies(&s.feed(b"\x1b[?2004$p")), vec!["\x1b[?2004;1$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[?1000$p")), vec!["\x1b[?1000;1$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[?1006$p")), vec!["\x1b[?1006;1$y"]);
-    assert_eq!(
-        replies(&s.feed(b"\x1b[?12$p")),
-        vec!["\x1b[?12;1$y"],
-        "Recur opens with cursorBlink on"
-    );
-    assert_eq!(replies(&s.feed(b"\x1b[?1005$p")), vec!["\x1b[?1005;4$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[?9999$p")), vec!["\x1b[?9999;0$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[4$p")), vec!["\x1b[4;2$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[20$p")), vec!["\x1b[20;2$y"]);
-}
-
-#[test]
-fn decrqss_reports() {
-    let mut s = screen(80, 24);
-    assert_eq!(
-        replies(&s.feed(b"\x1bP$q q\x1b\\")),
-        vec!["\x1bP1$r1 q\x1b\\"]
-    );
-    assert_eq!(
-        replies(&s.feed(b"\x1bP$qm\x1b\\")),
-        vec!["\x1bP1$r0m\x1b\\"]
-    );
-    assert_eq!(
-        replies(&s.feed(b"\x1bP$qr\x1b\\")),
-        vec!["\x1bP1$r1;24r\x1b\\"]
-    );
-    s.feed(b"\x1b[3;10r");
-    assert_eq!(
-        replies(&s.feed(b"\x1bP$qr\x1b\\")),
-        vec!["\x1bP1$r3;10r\x1b\\"]
-    );
-    assert_eq!(replies(&s.feed(b"\x1bP$qz\x1b\\")), vec!["\x1bP0$r\x1b\\"]);
-}
-
-#[test]
-fn tracks_xterm_mouse_protocols() {
+fn mouse_and_focus_modes_come_from_the_terminal() {
     let mut s = screen(80, 24);
     assert_eq!(
         (s.mouse_protocol(), s.mouse_encoding()),
         (MouseProtocol::None, MouseEncoding::Default)
     );
-    s.feed(b"\x1b[?1002h\x1b[?1006h");
+    s.feed(b"\x1b[?1002h\x1b[?1006h\x1b[?1004h");
     assert_eq!(
         (s.mouse_protocol(), s.mouse_encoding()),
         (MouseProtocol::Drag, MouseEncoding::Sgr)
     );
-    s.feed(b"\x1b[?1003;1016h");
-    assert_eq!(
-        (s.mouse_protocol(), s.mouse_encoding()),
-        (MouseProtocol::Any, MouseEncoding::SgrPixels)
-    );
-    s.feed(b"\x1b[?1003l");
-    assert_eq!(s.mouse_protocol(), MouseProtocol::None);
-    s.feed(b"\x1b[?9h\x1b[?1004h");
-    assert_eq!(s.mouse_protocol(), MouseProtocol::X10);
     assert_eq!(s.focus_report(true), Some("\x1b[I"));
     s.feed(b"\x1bc");
     assert_eq!(
-        (s.mouse_protocol(), s.mouse_encoding(), s.focus_report(true)),
-        (MouseProtocol::None, MouseEncoding::Default, None)
-    );
-}
-
-#[test]
-fn cursor_style_follows_decscusr_and_options() {
-    let mut s = screen(80, 24);
-    assert_eq!(s.cursor_style(), (CursorStyle::Block, true));
-    s.feed(b"\x1b[6 q");
-    assert_eq!(s.cursor_style(), (CursorStyle::Bar, false));
-    s.feed(b"\x1b[3 q");
-    assert_eq!(s.cursor_style(), (CursorStyle::Underline, true));
-    s.feed(b"\x1b[0 q\x1b[?12l");
-    assert_eq!(s.cursor_style(), (CursorStyle::Block, false));
-    s.feed(b"\x1b[5 q\x1b[!p");
-    assert_eq!(
-        s.cursor_style(),
-        (CursorStyle::Block, false),
-        "DECSTR drops DECSCUSR but keeps the option"
+        (s.mouse_protocol(), s.focus_report(true)),
+        (MouseProtocol::None, None)
     );
 }
 
@@ -156,75 +72,55 @@ fn emits_titles_and_bells() {
 }
 
 #[test]
-fn answers_osc4_queries_from_the_palette() {
+fn colour_queries_answer_from_the_live_palette() {
     let mut s = screen(80, 24);
     assert_eq!(
         replies(&s.feed(b"\x1b]4;1;?\x07")),
-        vec!["\x1b]4;1;rgb:cccc/0000/0000\x1b\\"]
+        vec!["\x1b]4;1;rgb:cccc/0000/0000\x07"]
     );
-    s.feed(b"\x1b]4;1;rgb:12/34/56\x07");
-    assert_eq!(
-        replies(&s.feed(b"\x1b]4;1;?\x07")),
-        vec!["\x1b]4;1;rgb:1212/3434/5656\x1b\\"]
-    );
-    assert!(
-        replies(&s.feed(b"\x1b]11;?\x07")).is_empty(),
-        "OSC 11 queries are swallowed"
-    );
-}
-
-#[test]
-fn color_scheme_query_and_updates() {
-    let mut s = screen(80, 24);
-    assert_eq!(replies(&s.feed(b"\x1b[?996n")), vec!["\x1b[?997;1n"]);
-    s.feed(b"\x1b[?2031h");
-    let light = Palette::from_theme(&Theme {
+    s.set_palette(Palette::from_theme(&Theme {
         background: Some("#ffffff".into()),
-        foreground: Some("#000000".into()),
         ..Default::default()
-    });
-    assert_eq!(replies(&s.set_palette(light)), vec!["\x1b[?997;2n"]);
-}
-
-#[test]
-fn erase_display_does_not_push_the_screen_into_scrollback() {
-    let mut s = screen(20, 3);
-    s.feed(b"one\r\ntwo\r\nthree\r\nfour");
-    assert_eq!(s.scrollback_len(), 1);
-    s.feed(b"\x1b[2J");
+    }));
     assert_eq!(
-        s.scrollback_len(),
-        1,
-        "xterm.js scrollOnEraseInDisplay is off"
+        replies(&s.feed(b"\x1b]11;?\x1b\\")),
+        vec!["\x1b]11;rgb:ffff/ffff/ffff\x1b\\"]
     );
-    assert_eq!(s.viewport_text(), vec!["", "", ""]);
-    assert_eq!(s.row_text(0, true), "one");
+    let c = s.palette().cursor;
+    assert_eq!(
+        replies(&s.feed(b"\x1b]12;?\x07")),
+        vec![format!(
+            "\x1b]12;rgb:{0:02x}{0:02x}/{1:02x}{1:02x}/{2:02x}{2:02x}\x07",
+            c.r(),
+            c.g(),
+            c.b()
+        )]
+    );
+    s.feed(b"\x1b]11;rgb:12/34/56\x07");
+    assert_eq!(
+        replies(&s.feed(b"\x1b]11;?\x07")),
+        vec!["\x1b]11;rgb:1212/3434/5656\x07"]
+    );
 }
 
 #[test]
 fn clear_keeps_only_the_prompt_row() {
     let mut s = screen(20, 3);
     s.feed(b"a\r\nb\r\nc\r\nd\r\n$ ls");
-    assert!(s.scrollback_len() > 0);
+    assert!(s.total_rows() > 3);
     s.clear();
-    assert_eq!(s.scrollback_len(), 0);
+    assert_eq!(s.total_rows(), 3);
     assert_eq!(s.viewport_text(), vec!["$ ls", "", ""]);
     assert_eq!(s.cursor_in_viewport(), Some((4, 0)));
-}
-
-fn sel(x: i64, y: i64) -> (i64, i64) {
-    (x, y)
 }
 
 #[test]
 fn drag_selects_and_copies_text() {
     let mut s = screen(20, 3);
     s.feed(b"hello world\r\nsecond line");
-    // Selection cells are 1-based with the half-cell rounding applied by the caller.
-    s.selection_mouse_down(sel(1, 1), sel(1, 1), 1, false, false);
-    s.selection_mouse_move(sel(6, 2), 20.0, 54.0);
-    s.selection_mouse_up(300, false, sel(6, 2));
-    assert!(s.has_selection());
+    s.selection_mouse_down((0, 0), Side::Left, 1, false, false);
+    s.selection_mouse_move((4, 1), Side::Right, 20.0, 54.0);
+    assert_eq!(s.selection_mouse_up(300, false, (4, 1)), None);
     assert_eq!(s.selection_text(), "hello world\nsecon");
     s.user_input();
     assert!(!s.has_selection(), "typing clears the selection");
@@ -234,256 +130,171 @@ fn drag_selects_and_copies_text() {
 fn double_click_selects_a_word_and_triple_click_a_line() {
     let mut s = screen(30, 3);
     s.feed(b"cargo test --package recur");
-    s.selection_mouse_down(sel(9, 1), sel(9, 1), 2, false, false);
+    s.selection_mouse_down((8, 0), Side::Left, 2, false, false);
     assert_eq!(s.selection_text(), "test");
-    s.selection_mouse_down(sel(15, 1), sel(15, 1), 2, false, false);
-    assert_eq!(s.selection_text(), "--package");
-    s.selection_mouse_down(sel(2, 1), sel(2, 1), 3, false, false);
-    assert_eq!(s.selection_text(), "cargo test --package recur");
-}
-
-#[test]
-fn word_selection_follows_wrapped_rows() {
-    let mut s = screen(10, 3);
-    s.feed(b"xx abcdefghijklm yy");
-    s.selection_mouse_down(sel(6, 1), sel(6, 1), 2, false, false);
-    assert_eq!(s.selection_text(), "abcdefghijklm");
-}
-
-#[test]
-fn selection_text_joins_wrapped_rows() {
-    let mut s = screen(5, 4);
-    s.feed(b"abcdefgh\r\nij");
-    s.select_all();
-    assert_eq!(s.selection_text(), "abcdefgh\nij\n");
+    s.selection_mouse_down((2, 0), Side::Left, 3, false, false);
+    assert_eq!(s.selection_text(), "cargo test --package recur\n");
 }
 
 #[test]
 fn shift_click_extends_and_alt_click_moves_the_cursor() {
     let mut s = screen(20, 3);
     s.feed(b"$ echo hi");
-    s.selection_mouse_down(sel(1, 1), sel(1, 1), 1, false, false);
-    s.selection_mouse_up(10, false, sel(1, 1));
-    s.selection_mouse_down(sel(7, 1), sel(7, 1), 1, true, false);
-    s.selection_mouse_up(10, false, sel(7, 1));
+    s.selection_mouse_down((0, 0), Side::Left, 1, false, false);
+    s.selection_mouse_up(10, false, (0, 0));
+    s.selection_mouse_down((5, 0), Side::Right, 1, true, false);
+    s.selection_mouse_up(10, false, (5, 0));
     assert_eq!(s.selection_text(), "$ echo");
     s.clear_selection();
-    s.selection_mouse_down(sel(3, 1), sel(3, 1), 1, false, false);
-    let up = s.selection_mouse_up(100, true, sel(3, 1));
-    assert_eq!(up, MouseUp::MoveCursor("\x1b[D".repeat(7)));
+    s.selection_mouse_down((2, 0), Side::Left, 1, false, false);
+    assert_eq!(
+        s.selection_mouse_up(100, true, (2, 0)),
+        Some("\x1b[D".repeat(7))
+    );
 }
 
 #[test]
 fn column_selection() {
     let mut s = screen(10, 3);
     s.feed(b"abcdef\r\nghijkl\r\nmnopqr");
-    s.selection_mouse_down(sel(2, 1), sel(2, 1), 1, false, true);
-    s.selection_mouse_move(sel(4, 3), 30.0, 54.0);
-    assert_eq!(s.selection_mode(), SelectionMode::Column);
+    s.selection_mouse_down((1, 0), Side::Left, 1, false, true);
+    s.selection_mouse_move((2, 2), Side::Right, 30.0, 54.0);
     assert_eq!(s.selection_text(), "bc\nhi\nno");
 }
 
 #[test]
-fn right_click_selects_the_word_unless_inside_the_selection() {
+fn right_click_selects_the_word_or_link_unless_inside_the_selection() {
     let mut s = screen(30, 3);
     s.feed(b"open http://localhost:3000 now");
-    s.right_click_select(sel(2, 1), sel(2, 1));
+    s.right_click_select((1, 0));
     assert_eq!(s.selection_text(), "open");
-    s.right_click_select(sel(3, 1), sel(3, 1));
-    assert_eq!(
-        s.selection_text(),
-        "open",
-        "click inside keeps the selection"
-    );
-    s.right_click_select(sel(10, 1), sel(10, 1));
-    assert_eq!(
-        s.selection_text(),
-        "http://localhost:3000",
-        "a link selects as a whole"
-    );
+    s.right_click_select((2, 0));
+    assert_eq!(s.selection_text(), "open", "click inside keeps it");
+    s.right_click_select((9, 0));
+    assert_eq!(s.selection_text(), "http://localhost:3000");
 }
 
 #[test]
-fn selection_follows_text_when_scrollback_trims() {
-    let mut s = screen(20, 3);
-    for i in 0..SCROLLBACK + 10 {
-        s.feed(format!("line {i}\r\n").as_bytes());
-    }
-    assert_eq!(s.scrollback_len(), SCROLLBACK);
-    let row = s.total_rows() - 3;
-    s.scroll_to_row(row - 2);
-    // Select a row in the viewport.
-    s.selection_mouse_down(sel(1, 1), sel(1, 1), 3, false, false);
-    let before = s.selection_text();
-    s.feed(b"more\r\nmore\r\n");
-    assert_eq!(
-        s.selection_text(),
-        before,
-        "selection stays on its text after trimming"
-    );
-}
-
-#[test]
-fn search_counts_matches_and_steps_through_them() {
+fn find_steps_through_matches_and_counts_them() {
     let mut s = screen(40, 5);
     s.feed(b"hello world hello\r\n");
-    let opts = decorations();
-    let (found, res) = s.find("hello", &opts, true).unwrap();
-    assert!(found);
-    assert_eq!(res, Some(SearchResults { index: 0, count: 2 }));
-    assert_eq!(s.selection_text(), "hello");
-    let (_, res) = s.find("hello", &opts, true).unwrap();
-    assert_eq!(res, Some(SearchResults { index: 1, count: 2 }));
-    let (_, res) = s.find("hello", &opts, true).unwrap();
+    let o = opts();
     assert_eq!(
-        res,
-        Some(SearchResults { index: 0, count: 2 }),
-        "wraps around"
+        s.find("hello", &o, true).unwrap(),
+        SearchResults { index: 1, count: 2 }
     );
-    let (_, res) = s.find("hello", &opts, false).unwrap();
+    assert_eq!(s.selection_text(), "hello");
+    assert_eq!(s.find("hello", &o, true).unwrap().index, 2);
+    assert_eq!(s.find("hello", &o, true).unwrap().index, 1, "wraps around");
     assert_eq!(
-        res,
-        Some(SearchResults { index: 1, count: 2 }),
-        "previous wraps backwards"
+        s.find("hello", &o, false).unwrap().index,
+        2,
+        "and backwards"
     );
 }
 
 #[test]
-fn search_case_regex_and_whole_word() {
+fn find_case_whole_word_and_regex() {
     let mut s = screen(40, 5);
     s.feed(b"Hello world hello helloo\r\n");
-    let cs = SearchOptions {
+    let mut count = |q: &str, o: SearchOptions| s.find(q, &o, true).unwrap().count;
+    assert_eq!(count("hello", opts()), 3);
+    let case_sensitive = SearchOptions {
         case_sensitive: true,
-        ..decorations()
+        ..opts()
     };
-    assert_eq!(
-        s.find("hello", &cs, true).unwrap().1,
-        Some(SearchResults { index: 0, count: 2 })
-    );
-    s.clear_search();
-    let ww = SearchOptions {
+    assert_eq!(count("hello", case_sensitive), 2);
+    let whole_word = SearchOptions {
         whole_word: true,
-        ..decorations()
+        ..opts()
     };
-    assert_eq!(
-        s.find("hello", &ww, true).unwrap().1.map(|r| r.count),
-        Some(2)
-    );
-    s.clear_search();
-    let re = SearchOptions {
+    assert_eq!(count("hello", whole_word), 2);
+    let regex = SearchOptions {
         regex: true,
-        ..decorations()
+        ..opts()
     };
-    assert_eq!(
-        s.find("hel+o+", &re, true).unwrap().1.map(|r| r.count),
-        Some(3)
-    );
-    s.clear_search();
-    assert_eq!(
-        s.find("(?<=world )hello", &re, true)
-            .unwrap()
-            .1
-            .map(|r| r.count),
-        Some(1),
-        "ECMAScript lookbehind"
-    );
-    assert!(s.find("(unclosed", &re, true).is_err());
+    assert_eq!(count("hel+o+", regex.clone()), 3);
+    assert_eq!(count("o.", opts()), 0, "literal unless regex");
+    assert!(s.find("(unclosed", &regex, true).is_err());
 }
 
 #[test]
-fn search_without_matches_and_empty_terms() {
+fn find_without_matches_or_query_selects_nothing() {
     let mut s = screen(40, 5);
     s.feed(b"abc\r\n");
     assert_eq!(
-        s.find("zzz", &decorations(), true).unwrap(),
-        (
-            false,
-            Some(SearchResults {
-                index: -1,
-                count: 0
-            })
-        )
+        s.find("zzz", &opts(), true).unwrap(),
+        SearchResults::default()
     );
-    assert_eq!(
-        s.find("", &decorations(), true).unwrap(),
-        (
-            false,
-            Some(SearchResults {
-                index: -1,
-                count: 0
-            })
-        )
-    );
+    assert_eq!(s.find("", &opts(), true).unwrap(), SearchResults::default());
     assert!(!s.has_selection());
 }
 
 #[test]
-fn search_highlight_limit() {
+fn find_count_stops_at_the_highlight_limit() {
     let mut s = screen(80, 24);
     for _ in 0..30 {
         s.feed("ab ".repeat(40).as_bytes());
     }
-    let (_, res) = s.find("ab", &decorations(), true).unwrap();
-    assert_eq!(res.map(|r| r.count), Some(HIGHLIGHT_LIMIT));
+    assert_eq!(s.find("ab", &opts(), true).unwrap().count, HIGHLIGHT_LIMIT);
 }
 
 #[test]
-fn search_refreshes_after_output() {
+fn find_recounts_after_output() {
     let mut s = screen(40, 5);
     s.feed(b"x hit\r\n");
-    s.find("hit", &decorations(), true).unwrap();
+    s.find("hit", &opts(), true).unwrap();
     assert!(s.search_refresh_due().is_none());
     s.feed(b"another hit\r\n");
     assert!(s.search_refresh_due().is_some());
-    let (_, res) = s.run_search_refresh().unwrap().unwrap();
     assert_eq!(
-        res,
-        Some(SearchResults { index: 0, count: 2 }),
-        "keeps the current match selected"
+        s.run_search_refresh(),
+        Some(SearchResults { index: 1, count: 2 })
     );
 }
 
 #[test]
-fn search_scrolls_matches_into_view() {
+fn find_scrolls_matches_into_view() {
     let mut s = screen(20, 3);
     s.feed(b"needle\r\n");
     for i in 0..30 {
         s.feed(format!("filler {i}\r\n").as_bytes());
     }
-    assert!(s.at_bottom());
-    s.find("needle", &decorations(), true).unwrap();
-    assert!(!s.at_bottom());
-    assert_eq!(s.viewport_top(), 0);
+    s.find("needle", &opts(), true).unwrap();
+    assert!(s.viewport_text().iter().any(|l| l == "needle"));
 }
 
 #[test]
 fn detects_web_links_and_osc8_hyperlinks() {
     let mut s = screen(60, 3);
     s.feed(b"see https://example.com/a?b=1, then \x1b]8;;https://recur.dev/x\x1b\\docs\x1b]8;;\x1b\\ end");
-    let web = s.link_at(6, 1).unwrap();
+    let web = s.link_at(s.viewport_point(5, 0)).unwrap();
     assert_eq!(
-        (web.kind, web.text.as_str(), web.start, web.end),
-        (LinkKind::Web, "https://example.com/a?b=1", (5, 1), (29, 1))
+        (web.text.as_str(), web.start.column.0, web.end.column.0),
+        ("https://example.com/a?b=1", 4, 28)
     );
-    let osc = s.link_at(38, 1).unwrap();
+    let osc = s.link_at(s.viewport_point(37, 0)).unwrap();
     assert_eq!(
-        (osc.kind, osc.text.as_str()),
-        (LinkKind::Hyperlink, "https://recur.dev/x")
+        (osc.text.as_str(), osc.start.column.0, osc.end.column.0),
+        ("https://recur.dev/x", 36, 39)
     );
-    assert!(s.link_at(2, 1).is_none());
+    assert!(s.link_at(s.viewport_point(1, 0)).is_none());
 }
 
 #[test]
 fn web_links_span_wrapped_rows() {
     let mut s = screen(12, 3);
     s.feed(b"x https://example.com/path");
-    let link = s.link_at(3, 1).unwrap();
+    let link = s.link_at(s.viewport_point(2, 0)).unwrap();
     assert_eq!(link.text, "https://example.com/path");
-    assert_eq!((link.start, link.end), ((3, 1), (2, 3)));
-    assert!(
-        s.link_at(1, 2).is_some(),
+    assert_eq!(
+        s.link_at(s.viewport_point(0, 1)),
+        Some(link),
         "the continuation row hit-tests too"
     );
+    s.feed(b"\r\n\r\n\r\n\r\n\x1b[3J");
+    let gone = Point::new(Line(-2), Column(2));
+    assert_eq!(s.link_at(gone), None, "a point that scrolled away");
 }
 
 fn find_glyph(f: &Frame, col: usize, row: usize) -> &Glyph {
@@ -494,7 +305,7 @@ fn find_glyph(f: &Frame, col: usize, row: usize) -> &Glyph {
 }
 
 #[test]
-fn frame_resolves_xterm_colours() {
+fn frame_resolves_colours() {
     let mut s = screen(20, 3);
     let theme = Theme {
         background: Some("#141414".into()),
@@ -545,7 +356,7 @@ fn frame_resolves_xterm_colours() {
 fn frame_selection_and_search_layers() {
     let mut s = screen(20, 3);
     s.feed(b"abc abc");
-    s.find("abc", &decorations(), true).unwrap();
+    s.find("abc", &opts(), true).unwrap();
     let f = s.frame(true, true);
     let rect = |col: usize| {
         f.rects
@@ -564,7 +375,7 @@ fn frame_selection_and_search_layers() {
         "other matches use the match colour"
     );
     s.clear_search();
-    s.select_all();
+    s.selection_mouse_down((0, 0), Side::Left, 3, false, false);
     let f = s.frame(false, true);
     let p = s.palette().clone();
     assert!(
@@ -609,7 +420,7 @@ fn frame_cursor_shapes() {
 }
 
 /// Viewport rows with `o` for an overlined cell and `-` otherwise.
-fn overlines(s: &Screen) -> Vec<String> {
+fn overlines(s: &mut Screen) -> Vec<String> {
     let f = s.frame(false, false);
     (0..s.rows())
         .map(|y| {
@@ -632,9 +443,9 @@ fn overlines(s: &Screen) -> Vec<String> {
 fn overline_follows_sgr_53_and_55() {
     let mut s = screen(12, 2);
     s.feed(b"a\x1b[53mbc\x1b[55md\x1b[1;53me\x1b[0mf");
-    assert_eq!(overlines(&s), vec!["-oo-o", ""]);
+    assert_eq!(overlines(&mut s), vec!["-oo-o", ""]);
     s.feed(b"\r\n\x1b[53;0mx\x1b[0;53my\x1b[38;5;53mz\x1b[m\x1b[38;5;53mw\x1b[48;2;1;53;55mv");
-    assert_eq!(overlines(&s)[1], "-oo");
+    assert_eq!(overlines(&mut s)[1], "-oo");
     assert_eq!(s.viewport_text()[1], "xyzwv");
 }
 
@@ -686,12 +497,12 @@ fn overline_survives_scrollback() {
     for i in 0..20 {
         s.feed(format!("row {i}\r\n").as_bytes());
     }
-    assert!(s.scrollback_len() > 0);
-    s.scroll_to_row(0);
+    assert!(s.scroll_position() > 0);
+    s.scroll_lines(-(SCROLLBACK as i64));
     assert_eq!(s.viewport_text()[0], "top line");
-    assert_eq!(overlines(&s)[0], "ooo");
+    assert_eq!(overlines(&mut s)[0], "ooo");
     s.scroll_to_bottom();
-    assert!(overlines(&s).iter().all(|r| r.is_empty()));
+    assert!(overlines(&mut s).iter().all(|r| r.is_empty()));
 }
 
 #[test]
@@ -699,12 +510,12 @@ fn overline_survives_reflow() {
     let mut s = screen(10, 4);
     s.feed(b"ab\x1b[53mcdef\x1b[55mgh");
     s.resize(4, 4);
-    s.scroll_to_row(0);
+    s.scroll_lines(-(SCROLLBACK as i64));
     assert_eq!(s.viewport_text()[..2], ["abcd", "efgh"]);
-    assert_eq!(overlines(&s)[..2], ["--oo", "oo"]);
+    assert_eq!(overlines(&mut s)[..2], ["--oo", "oo"]);
     s.resize(10, 4);
     assert_eq!(s.viewport_text()[0], "abcdefgh");
-    assert_eq!(overlines(&s)[0], "--oooo");
+    assert_eq!(overlines(&mut s)[0], "--oooo");
 }
 
 #[test]
@@ -712,27 +523,27 @@ fn overlined_trailing_blanks_survive_reflow() {
     let mut s = screen(10, 3);
     s.feed(b"abcdef\x1b[53m   \x1b[55m\r\n");
     s.resize(5, 3);
-    s.scroll_to_row(0);
+    s.scroll_lines(-(SCROLLBACK as i64));
     assert_eq!(s.viewport_text()[..2], ["abcde", "f"]);
-    assert_eq!(overlines(&s)[..2], ["", "-ooo"]);
+    assert_eq!(overlines(&mut s)[..2], ["", "-ooo"]);
     s.resize(10, 3);
-    assert_eq!(overlines(&s)[0], "------ooo");
+    assert_eq!(overlines(&mut s)[0], "------ooo");
 }
 
 #[test]
 fn overline_on_the_alternate_screen() {
     let mut s = screen(10, 3);
     s.feed(b"\x1b[53mmain\x1b[55m\x1b[?1049h");
-    assert!(overlines(&s).iter().all(|r| r.is_empty()));
+    assert!(overlines(&mut s).iter().all(|r| r.is_empty()));
     s.feed(b"\x1b[H\x1b[53malt");
-    assert_eq!(overlines(&s)[0], "ooo");
+    assert_eq!(overlines(&mut s)[0], "ooo");
     s.feed(b"\x1b[?1049l");
     assert_eq!(s.viewport_text()[0], "main");
-    assert_eq!(overlines(&s)[0], "oooo");
+    assert_eq!(overlines(&mut s)[0], "oooo");
     s.feed(b"\r\n\x1b[53m\x1b[?1049hx\x1b[?1049l");
     s.feed(b"\x1b[?1049h");
     assert_eq!(
-        overlines(&s)[0],
+        overlines(&mut s)[0],
         "",
         "the alternate screen starts clear each time"
     );
@@ -742,29 +553,27 @@ fn overline_on_the_alternate_screen() {
 fn erased_and_inserted_cells_drop_overline() {
     let mut s = screen(10, 3);
     s.feed(b"\x1b[53mabcdef\x1b[3D\x1b[K");
-    assert_eq!(overlines(&s)[0], "ooo", "EL with overline on");
+    assert_eq!(overlines(&mut s)[0], "ooo", "EL with overline on");
     s.feed(b"\r\x1b[2C\x1b[2X");
-    assert_eq!(overlines(&s)[0], "oo", "ECH");
+    assert_eq!(overlines(&mut s)[0], "oo", "ECH");
     s.feed(b"\r\x1b[2@");
-    assert_eq!(overlines(&s)[0], "--oo", "ICH inserts plain blanks");
+    assert_eq!(overlines(&mut s)[0], "--oo", "ICH inserts plain blanks");
     s.feed(b"\r\x1b[P");
-    assert_eq!(overlines(&s)[0], "-oo", "DCH shifts overlined cells");
+    assert_eq!(overlines(&mut s)[0], "-oo", "DCH shifts overlined cells");
     s.feed(b"\r\n\x1b[53mxyz\r\x1b[2K");
-    assert_eq!(overlines(&s)[1], "", "EL 2");
+    assert_eq!(overlines(&mut s)[1], "", "EL 2");
     s.feed(b"\x1b[53mxyz\x1b[2J");
-    assert!(overlines(&s).iter().all(|r| r.is_empty()), "ED 2");
+    assert!(overlines(&mut s).iter().all(|r| r.is_empty()), "ED 2");
 }
 
 #[test]
 fn overline_is_saved_restored_and_reset() {
     let mut s = screen(10, 3);
     s.feed(b"\x1b[53m\x1b7\x1b[55ma\x1b8b");
-    assert_eq!(overlines(&s)[0], "o");
-    s.feed(b"\x1b[53m\x1b[!p\x1b[2;1Hc");
-    assert_eq!(overlines(&s)[1], "", "DECSTR resets attributes");
+    assert_eq!(overlines(&mut s)[0], "o");
     s.feed(b"\x1b[53m\x1bcd");
     assert_eq!(s.viewport_text()[0], "d");
-    assert_eq!(overlines(&s)[0], "", "RIS");
+    assert_eq!(overlines(&mut s)[0], "", "RIS");
 }
 
 #[test]
@@ -773,23 +582,23 @@ fn overline_keeps_its_place_in_synchronized_output() {
     s.feed(b"\x1b[?2026h\x1b[53ma\x1b[55mb\x1b[53mc");
     s.feed(b"\x1b[0md\x1b[?2026l");
     assert_eq!(s.viewport_text()[0], "abcd");
-    assert_eq!(overlines(&s)[0], "o-o");
+    assert_eq!(overlines(&mut s)[0], "o-o");
 }
 
 #[test]
 fn title_stack_requests_do_not_toggle_overline() {
     let mut s = screen(10, 3);
     s.feed(b"\x1b[22t\x1b[22;0ta\x1b[53m\x1b[23tb");
-    assert_eq!(overlines(&s)[0], "-o");
+    assert_eq!(overlines(&mut s)[0], "-o");
 }
 
 #[test]
 fn overline_handler_delegates_everything_else() {
     // Each case exercises handler calls the overline wrapper forwards; the screen must end up
-    // exactly where the bare emulator does. (Calls alacritty ignores and requests the scanner
-    // answers itself have nothing to observe.)
+    // exactly where the bare emulator does. (Calls alacritty ignores have nothing to observe.)
     let cases: &[&[u8]] = &[
         b"\x1b]2;title\x07\x07",
+        b"\x1b]2;a\x07\x1b[22t\x1b]2;b\x07\x1b[23t",
         b"\x1b[2 qx",
         b"\x1b]50;CursorShape=2\x07",
         b"\x1b[3;4Ha\x1b[5db\x1b[9Gc",
@@ -884,40 +693,4 @@ fn overline_handler_delegates_everything_else() {
             .collect();
         assert_eq!(screen_out, bare_out, "{name:?}");
     }
-}
-
-#[test]
-fn sgr_21_is_a_double_underline_and_sgr_5_draws_steady() {
-    let mut s = screen(12, 1);
-    s.feed(b"\x1b[1ma\x1b[21mb\x1b[24mc\x1b[5md\x1b[25me\x1b[6mf\x1b[0m");
-    let f = s.frame(false, false);
-    let style = |x| find_glyph(&f, x, 0).underline.map(|u| u.style);
-    assert_eq!(style(1), Some(UnderlineStyle::Double), "xterm.js: SGR 21");
-    assert!(find_glyph(&f, 1, 0).bold, "SGR 21 leaves bold on");
-    assert_eq!(style(2), None);
-    // Recur leaves xterm.js's `blinkIntervalDuration` at 0, which turns text blink off: SGR 5
-    // and 6 set an attribute nothing draws, in either phase of the cursor blink.
-    let plain = find_glyph(&s.frame(false, true), 0, 0).clone();
-    for x in 3..6 {
-        for phase in [false, true] {
-            let g = find_glyph(&s.frame(true, phase), x, 0).clone();
-            assert_eq!((g.fg, g.text.len()), (plain.fg, 1));
-        }
-    }
-}
-
-#[test]
-fn sgr_221_and_222_clear_bold_and_faint_alone() {
-    use alacritty_terminal::index::{Column, Line};
-    use alacritty_terminal::term::cell::Flags;
-    let mut s = screen(8, 1);
-    s.feed(b"\x1b[1;2ma\x1b[221mb\x1b[1;222mc\x1b[221;1md\x1b[0m");
-    let flags = |x: usize| {
-        let f = s.term.grid()[Line(0)][Column(x)].flags;
-        (f.contains(Flags::BOLD), f.contains(Flags::DIM))
-    };
-    assert_eq!(flags(0), (true, true));
-    assert_eq!(flags(1), (false, true), "221 clears bold only");
-    assert_eq!(flags(2), (true, false), "222 clears faint only");
-    assert_eq!(flags(3), (true, false), "a later 1 wins over 221");
 }

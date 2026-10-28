@@ -207,7 +207,7 @@ impl Element for TerminalElement {
         let mouse_events = view.screen.mouse_events_active();
         let link = view.hovered_link.clone();
         let fg_link = view.screen.foreground();
-        let ydisp = view.screen.viewport_top() as i64;
+        let offset = view.screen.display_offset() as i64;
         let composition = view.composition.clone();
         let cursor_cell = view.screen.cursor_in_viewport();
         let now = cx.background_executor().now();
@@ -270,8 +270,14 @@ impl Element for TerminalElement {
                 }
             }
             if let Some(link) = &link {
-                let (x1, y1) = (link.start.0 - 1, link.start.1 - 1 - ydisp);
-                let (x2, y2) = (link.end.0, link.end.1 - 1 - ydisp);
+                let (x1, y1) = (
+                    link.start.column.0 as i64,
+                    link.start.line.0 as i64 + offset,
+                );
+                let (x2, y2) = (
+                    link.end.column.0 as i64 + 1,
+                    link.end.line.0 as i64 + offset,
+                );
                 let cols = l.cols as i64;
                 for y in y1..=y2 {
                     if y < 0 || y >= l.rows as i64 {

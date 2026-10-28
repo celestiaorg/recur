@@ -1,15 +1,14 @@
-//! The viewport as xterm.js's WebGL renderer resolves it: `CellColorResolver` (selection, search
-//! decorations, inverse), the cursor cell override, background rectangles
-//! (`RectangleRenderer`) and glyph colours (`TextureAtlas._getForegroundColor`).
+//! The viewport as the renderer draws it: cell colours (selection, find highlights, inverse),
+//! the cursor cell override, background rectangles and glyph colours.
 
-use alacritty_terminal::index::{Column, Line};
+use alacritty_terminal::index::{Column, Line, Point};
 use alacritty_terminal::term::cell::{Cell, Flags};
-use alacritty_terminal::vte::ansi::{Color, NamedColor};
+use alacritty_terminal::term::search::Match;
+use alacritty_terminal::vte::ansi::{Color, CursorShape as Style, NamedColor};
 
-use super::buffer::Buffer;
+use super::Screen;
 use super::overline;
 use super::theme::Rgba;
-use super::{CursorStyle, Screen};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UnderlineStyle {
@@ -101,11 +100,11 @@ struct Attrs {
     dim: bool,
     invisible: bool,
     strike: bool,
-    /// xterm's `BgFlags.OVERLINE`.
+    /// SGR 53.
     overline: bool,
     underline: Option<UnderlineStyle>,
     underline_color: Option<Mode>,
-    /// xterm's `BgFlags.HAS_EXTENDED` (underline style/colour or an OSC 8 link).
+    /// An underline style or colour, or an OSC 8 link.
     extended: bool,
 }
 
@@ -179,8 +178,8 @@ fn glyph_as_background(cp: u32) -> bool {
     (0xE0A4..=0xE0D6).contains(&cp) || (0x2500..=0x259F).contains(&cp)
 }
 
-pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
-    let buf = Buffer::new(&s.term);
+/// `matches` are the find hits on screen; a selected hit is the active one.
+pub(super) fn frame(s: &Screen, matches: &[Match], focused: bool, cursor_blink_on: bool) -> Frame {
     let p = &s.palette;
     let mut ansi = p.ansi;
     for (i, c) in ansi.iter_mut().enumerate() {
@@ -204,17 +203,18 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
         colors.sel_inactive_opaque
     };
     let (cols, rows) = (s.cols(), s.rows());
-    let ydisp = buf.ydisp();
-    let ybase = buf.ybase();
+    let offset = s.term.grid().display_offset() as i32;
+    let selection = s.term.selection.as_ref().and_then(|x| x.to_range(&s.term));
+    let decorations = s.search.as_ref().map(|x| x.opts.decorations);
 
-    let (style, blinks) = s.cursor_style();
+    let ansi_style = s.cursor_style();
+    let (style, blinks) = (ansi_style.shape, ansi_style.blinking);
     let cursor_visible =
         s.cursor_initialized && !s.cursor_hidden() && (!blinks || !focused || cursor_blink_on);
     let cursor = s.term.grid().cursor.point;
-    let cursor_row_abs = ybase as i64 + cursor.line.0 as i64;
     let cursor_x = cursor.column.0.min(cols - 1);
     let block = if focused {
-        style == CursorStyle::Block
+        style == Style::Block
     } else {
         false
     };
@@ -228,8 +228,7 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
         cursor: None,
     };
     for y in 0..rows {
-        let row = ydisp + y;
-        let line = Line(row as i32 - ybase as i32);
+        let line = Line(y as i32 - offset);
         let grid_row = &s.term.grid()[line];
         let mut last_cursor_x: Option<usize> = None;
         let mut last_bg = None;
@@ -248,11 +247,12 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
 
             // CellColorResolver.resolve
             let (mut ov_bg, mut ov_fg): (Option<Rgba>, Option<Rgba>) = (None, None);
-            let (bottom, top) = s.search.highlight_at(&buf, x as i64, row as i64);
-            if let Some(c) = bottom {
-                ov_bg = Some(c);
+            let point = Point::new(line, Column(x));
+            let selected = selection.is_some_and(|r| r.contains(point));
+            let hit = decorations.filter(|_| matches.iter().any(|m| m.contains(&point)));
+            if let Some(d) = hit {
+                ov_bg = Some(d.match_background);
             }
-            let selected = s.selection.is_cell_selected(&buf, x as i64, row as i64);
             if selected {
                 let base = if a.inverse {
                     Some(colors.of(a.fg, colors.fg))
@@ -282,8 +282,8 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
                     });
                 }
             }
-            if let Some(c) = top {
-                ov_bg = Some(c);
+            if let Some(d) = hit.filter(|_| selected) {
+                ov_bg = Some(d.active_match_background);
             }
             let orig_inverse = a.inverse;
             if let Some(c) = ov_bg {
@@ -315,15 +315,15 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
             }
 
             // Cursor cell override.
-            let on_cursor_row = cursor_visible && row as i64 == cursor_row_abs;
+            let on_cursor_row = cursor_visible && line == cursor.line;
             if on_cursor_row && x == cursor_x {
                 last_cursor_x = Some(cursor_x + width - 1);
                 if !block {
                     let shape = match (focused, style) {
                         (false, _) => CursorShape::Outline,
-                        (true, CursorStyle::Bar) => CursorShape::Bar,
-                        (true, CursorStyle::Underline) => CursorShape::Underline,
-                        (true, CursorStyle::Block) => CursorShape::Outline,
+                        (true, Style::Beam) => CursorShape::Bar,
+                        (true, Style::Underline) => CursorShape::Underline,
+                        (true, _) => CursorShape::Outline,
                     };
                     frame.cursor = Some(CursorDraw {
                         col: cursor_x,
@@ -351,12 +351,12 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
                 };
             }
 
-            // xterm's packed `result.bg`: colour mode and the background flags.
+            // The resolved background: colour mode and the background flags.
             let bg_key = (a.bg, a.italic, a.dim, a.overline, a.extended);
             let clip_left = x > 0 && last_bg != Some(bg_key);
             last_bg = Some(bg_key);
 
-            // RectangleRenderer: a rect wherever xterm's packed bg is non-zero, or inverse.
+            // A rect wherever the background is not the default, or inverse.
             let bg_nonzero = a.bg != Mode::Default || a.italic || a.dim || a.overline || a.extended;
             if bg_nonzero || a.inverse {
                 let color = if a.inverse {
@@ -379,7 +379,6 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
             if null || a.invisible || cell.flags.contains(Flags::WIDE_CHAR_SPACER) {
                 continue;
             }
-            // TextureAtlas._getForegroundColor
             let (fg_mode, inverse) = (if a.inverse { a.bg } else { a.fg }, a.inverse);
             let mut fg = match fg_mode {
                 Mode::Palette(i) => {

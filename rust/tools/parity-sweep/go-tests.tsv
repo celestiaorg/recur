@@ -1434,12 +1434,12 @@ internal/term.TestOSC7ParserIgnoresNonLocalHost	crates/term/src/osc7.rs::ignores
 internal/term.TestOSC7ParserLastCompleteWins	crates/term/src/osc7.rs::last_complete_wins
 internal/term.TestOSC7ParserSTTerminatedAndUnescapes	crates/term/src/osc7.rs::st_terminated_and_unescapes
 internal/term.TestProcessCwdReadsChildDirectory	crates/term/src/cwd.rs::reads_child_directory
-internal/term.TestQueryFilterAnswersBELTerminatedQuery	crates/term/src/queries.rs::answers_bel_terminated_query
-internal/term.TestQueryFilterAnswersOSC11AndCPR	crates/term/src/queries.rs::answers_osc11_and_cpr
-internal/term.TestQueryFilterCarriesSplitProbes	crates/term/src/queries.rs::carries_split_probes
-internal/term.TestQueryFilterCursorColour	crates/term/src/queries.rs::cursor_colour
-internal/term.TestQueryFilterPassesThroughOSCTitles	crates/term/src/queries.rs::passes_through_osc_titles
-internal/term.TestQueryFilterPreservesSurroundingOutput	crates/term/src/queries.rs::preserves_surrounding_output
+internal/term.TestQueryFilterAnswersBELTerminatedQuery	crates/term/src/screen/tests.rs::colour_queries_answer_from_the_live_palette
+internal/term.TestQueryFilterAnswersOSC11AndCPR	crates/term/src/screen/tests.rs::colour_queries_answer_from_the_live_palette, crates/term/src/screen/tests.rs::alacritty_answers_status_queries
+internal/term.TestQueryFilterCarriesSplitProbes	n/a: there is no query filter; the pane's alacritty parser answers probes and keeps its state across reads
+internal/term.TestQueryFilterCursorColour	crates/term/src/screen/tests.rs::colour_queries_answer_from_the_live_palette
+internal/term.TestQueryFilterPassesThroughOSCTitles	crates/term/src/screen/tests.rs::emits_titles_and_bells
+internal/term.TestQueryFilterPreservesSurroundingOutput	n/a: probes are no longer stripped from the PTY stream; alacritty consumes them as it parses
 internal/term.TestRingResetDropsHistory	crates/term/src/ring.rs::reset_drops_history
 internal/term.TestRingSnapshot	crates/term/src/ring.rs::snapshot
 internal/term.TestRingSnapshotIsACopy	crates/term/src/ring.rs::snapshot_is_a_copy

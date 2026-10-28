@@ -1,6 +1,6 @@
 //! Input encoding ported from xterm.js: keyboard (`Keyboard.ts` plus the keydown/keypress split
-//! in `CoreBrowserTerminal`), mouse reports (`MouseStateService`, `MouseService`), paste
-//! (`Clipboard.ts`) and pointer-to-cell rounding (`Mouse.ts`).
+//! in `CoreBrowserTerminal`), mouse reports (`MouseStateService`, `MouseService`) and paste
+//! (`Clipboard.ts`).
 
 /// A key press as the UI toolkit reports it: `key` is the unmodified key name (`"a"`, `"enter"`,
 /// `"left"`, `"f5"`, `"!"`), `key_char` the text it would type, if any.
@@ -396,25 +396,6 @@ pub fn paste_text(text: &str, bracketed: bool) -> String {
     format!("\x1b[200~{}\x1b[201~", text.replace('\x1b', "\u{241b}"))
 }
 
-/// xterm `getCoords(..., isSelection)`: 1-based cell for a pointer at `(x, y)` relative to the
-/// grid's top-left, clamped to the grid (selection gets one extra column).
-pub fn cell_coords(
-    x: f64,
-    y: f64,
-    cell_w: f64,
-    cell_h: f64,
-    cols: usize,
-    rows: usize,
-    selection: bool,
-) -> (i64, i64) {
-    let cx = ((x + if selection { cell_w / 2.0 } else { 0.0 }) / cell_w).ceil() as i64;
-    let cy = (y / cell_h).ceil() as i64;
-    (
-        cx.clamp(1, cols as i64 + i64::from(selection)),
-        cy.clamp(1, rows as i64),
-    )
-}
-
 /// Mouse buttons as xterm's `CoreMouseButton`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MouseButton {
@@ -439,7 +420,6 @@ pub enum MouseAction {
 pub enum MouseProtocol {
     #[default]
     None,
-    X10,
     Vt200,
     Drag,
     Any,
@@ -450,7 +430,6 @@ pub enum MouseEncoding {
     #[default]
     Default,
     Sgr,
-    SgrPixels,
 }
 
 impl MouseProtocol {
@@ -471,13 +450,11 @@ impl MouseProtocol {
     }
 }
 
-/// One mouse report request. `col`/`row` are 0-based cells, `x`/`y` pixels in the grid.
+/// One mouse report request. `col`/`row` are 0-based cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MouseReport {
     pub col: i64,
     pub row: i64,
-    pub x: i64,
-    pub y: i64,
     pub button: MouseButton,
     pub action: MouseAction,
     pub ctrl: bool,
@@ -542,31 +519,11 @@ impl MouseReporter {
         }
         e.col += 1;
         e.row += 1;
-        if e.action == MouseAction::Move
-            && let Some(last) = &self.last
-        {
-            let same_pos = if encoding == MouseEncoding::SgrPixels {
-                (last.x, last.y) == (e.x, e.y)
-            } else {
-                (last.col, last.row) == (e.col, e.row)
-            };
-            if same_pos
-                && (last.button, last.action, last.ctrl, last.alt, last.shift)
-                    == (e.button, e.action, e.ctrl, e.alt, e.shift)
-            {
-                return None;
-            }
+        if e.action == MouseAction::Move && self.last == Some(e) {
+            return None;
         }
         match protocol {
             MouseProtocol::None => return None,
-            MouseProtocol::X10 => {
-                if e.button == MouseButton::Wheel || e.action != MouseAction::Down {
-                    return None;
-                }
-                e.ctrl = false;
-                e.alt = false;
-                e.shift = false;
-            }
             MouseProtocol::Vt200 if e.action == MouseAction::Move => return None,
             MouseProtocol::Drag
                 if e.action == MouseAction::Move && e.button == MouseButton::None =>
@@ -599,12 +556,6 @@ impl MouseReporter {
                 event_code(&e, true),
                 e.col,
                 e.row
-            )),
-            MouseEncoding::SgrPixels => Encoded::Data(format!(
-                "\x1b[<{};{};{}{fin}",
-                event_code(&e, true),
-                e.x,
-                e.y
             )),
         })
     }
@@ -872,24 +823,10 @@ mod tests {
         assert_eq!(paste_text("x\x1by", true), "\x1b[200~x\u{241b}y\x1b[201~");
     }
 
-    #[test]
-    fn cell_coords_round_like_xterm() {
-        assert_eq!(cell_coords(0.0, 0.0, 8.0, 16.0, 80, 24, false), (1, 1));
-        assert_eq!(cell_coords(9.0, 17.0, 8.0, 16.0, 80, 24, false), (2, 2));
-        assert_eq!(cell_coords(3.0, 1.0, 8.0, 16.0, 80, 24, true), (1, 1));
-        assert_eq!(cell_coords(5.0, 1.0, 8.0, 16.0, 80, 24, true), (2, 1));
-        assert_eq!(
-            cell_coords(10_000.0, 10_000.0, 8.0, 16.0, 80, 24, true),
-            (81, 24)
-        );
-    }
-
     fn rep(button: MouseButton, action: MouseAction) -> MouseReport {
         MouseReport {
             col: 4,
             row: 2,
-            x: 37,
-            y: 40,
             button,
             action,
             ctrl: false,
@@ -929,9 +866,9 @@ mod tests {
                 80,
                 24,
                 MouseProtocol::Drag,
-                MouseEncoding::SgrPixels
+                sgr
             ),
-            Some(Encoded::Data("\x1b[<32;37;40M".into()))
+            Some(Encoded::Data("\x1b[<32;5;3M".into()))
         );
         assert_eq!(
             r.report(
@@ -939,7 +876,7 @@ mod tests {
                 80,
                 24,
                 MouseProtocol::Drag,
-                MouseEncoding::SgrPixels
+                sgr
             ),
             None,
             "debounced"
@@ -957,25 +894,15 @@ mod tests {
     }
 
     #[test]
-    fn default_encoding_is_binary_and_x10_strips_modifiers() {
+    fn default_encoding_is_binary() {
         let mut r = MouseReporter::default();
         let e = MouseReport {
             ctrl: true,
             ..rep(MouseButton::Left, MouseAction::Down)
         };
         assert_eq!(
-            r.report(e, 80, 24, MouseProtocol::X10, MouseEncoding::Default),
-            Some(Encoded::Binary("\x1b[M %#".into()))
-        );
-        assert_eq!(
-            r.report(
-                rep(MouseButton::Left, MouseAction::Up),
-                80,
-                24,
-                MouseProtocol::X10,
-                MouseEncoding::Default
-            ),
-            None
+            r.report(e, 80, 24, MouseProtocol::Vt200, MouseEncoding::Default),
+            Some(Encoded::Binary("\x1b[M0%#".into()))
         );
     }
 

@@ -1,20 +1,16 @@
-//! The terminal emulator state the UI renders: alacritty's VT engine behind xterm.js
-//! semantics.
+//! The terminal emulator state the UI renders, on alacritty's VT engine.
 //!
-//! The Svelte pane ran xterm.js 6; programs saw xterm.js's replies and the user saw xterm.js's
-//! selection, search, links and colours. [`Screen`] keeps those observable behaviours: a
-//! [`scanner`] answers and tracks the reports xterm.js owns (device attributes, mode reports,
-//! DECRQSS, mouse protocols, cursor style) before bytes reach alacritty, and the selection,
-//! search, link and colour modules are ports of the xterm.js code paths.
+//! alacritty parses output, answers terminal queries, tracks modes and the cursor style, and
+//! owns selection and regex search. [`Screen`] adds what Recur's pane needs on top: replies to
+//! colour queries from the live theme palette, overline (SGR 53, which alacritty does not
+//! model), link detection, find highlights and the renderable [`Frame`]. The look follows the
+//! Svelte pane; exact xterm.js replies and edge-case behaviour are not a goal.
 
-mod buffer;
 mod links;
 mod move_to_cell;
 mod overline;
 mod render;
-mod scanner;
 mod search;
-mod selection;
 mod theme;
 
 use std::sync::Arc;
@@ -22,28 +18,29 @@ use std::time::Instant;
 
 use alacritty_terminal::event::{Event as TermEvent, EventListener};
 use alacritty_terminal::grid::{Dimensions, Scroll};
-use alacritty_terminal::index::{Column, Line, Point, Side};
-use alacritty_terminal::selection::{Selection as Probe, SelectionType};
+use alacritty_terminal::index::{Boundary, Column, Direction, Line, Point};
+use alacritty_terminal::selection::{Selection, SelectionType};
+use alacritty_terminal::term::search::{Match, RegexIter, RegexSearch};
 use alacritty_terminal::term::{Config, Term, TermMode};
 use alacritty_terminal::vte::ansi::{self, Handler, NamedColor, Processor, StdSyncHandler};
 use parking_lot::Mutex;
 
 use crate::input::{MouseEncoding, MouseProtocol};
-use buffer::Buffer;
-pub use links::{Link, LinkKind};
+pub use alacritty_terminal::index::Side;
+pub use links::Link;
 pub use render::{BgRect, CursorDraw, CursorShape, Frame, Glyph, Underline, UnderlineStyle};
-use scanner::{Csi, Item, Scanner};
+use search::Search;
 pub use search::{Decorations, HIGHLIGHT_LIMIT, InvalidRegex, SearchOptions, SearchResults};
-pub use selection::{
-    ALT_CLICK_MOVE_CURSOR_MS, DRAG_SCROLL_INTERVAL_MS, MouseUp, SelectionMode, WORD_SEPARATOR,
-    drag_scroll_amount,
-};
 pub use theme::{Palette, Rgba, Theme, default_ansi};
 
-/// xterm.js scrollback in Recur's pane.
+/// Scrollback lines in Recur's pane.
 pub const SCROLLBACK: usize = 10_000;
-/// The xterm.js build the Svelte app shipped, reported by XTVERSION.
-pub const XTERM_VERSION: &str = "6.1.0-beta.304";
+/// Interval between drag-scroll steps while the mouse is held outside the grid.
+pub const DRAG_SCROLL_INTERVAL_MS: u64 = 50;
+/// A click shorter than this with Alt held moves the prompt cursor.
+const ALT_CLICK_MOVE_CURSOR_MS: u64 = 500;
+/// How long after output or a resize the find count is recounted.
+const SEARCH_REFRESH: std::time::Duration = std::time::Duration::from_millis(200);
 
 /// Something the screen produced while parsing output.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,14 +51,6 @@ pub enum Output {
     Reply(String),
     /// BEL (`onBell`; Recur's pane did not react to it).
     Bell,
-}
-
-/// The cursor style programs select with DECSCUSR.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CursorStyle {
-    Block,
-    Underline,
-    Bar,
 }
 
 #[derive(Clone, Default)]
@@ -93,67 +82,23 @@ impl Dimensions for Size {
     }
 }
 
-/// The xterm.js state alacritty does not model the same way.
-#[derive(Debug, Clone)]
-struct Xterm {
-    mouse_protocol: MouseProtocol,
-    mouse_encoding: MouseEncoding,
-    send_focus: bool,
-    color_scheme_updates: bool,
-    reverse_wraparound: bool,
-    synchronized_output: bool,
-    /// `options.cursorBlink`, which DECSET 12 rewrites. Recur's pane opens with it on.
-    option_cursor_blink: bool,
-    /// DECSCUSR override (`decPrivateModes.cursorStyle` / `cursorBlink`).
-    decscusr: Option<(CursorStyle, bool)>,
-    /// DECSTBM per buffer, 0-based inclusive (normal, alternate).
-    scroll_region: [Option<(usize, usize)>; 2],
-}
-
-impl Default for Xterm {
-    fn default() -> Self {
-        Self {
-            mouse_protocol: MouseProtocol::None,
-            mouse_encoding: MouseEncoding::Default,
-            send_focus: false,
-            color_scheme_updates: false,
-            reverse_wraparound: false,
-            synchronized_output: false,
-            option_cursor_blink: true,
-            decscusr: None,
-            scroll_region: [None, None],
-        }
-    }
-}
-
-impl Xterm {
-    /// `CoreService.reset()`: DEC private modes back to defaults (DECSTR and RIS).
-    fn reset_dec_modes(&mut self) {
-        self.send_focus = false;
-        self.color_scheme_updates = false;
-        self.reverse_wraparound = false;
-        self.synchronized_output = false;
-        self.decscusr = None;
-    }
-}
-
 pub struct Screen {
     term: Term<Events>,
     parser: Processor<StdSyncHandler>,
     events: Events,
-    scanner: Scanner,
+    /// An unfinished `CSI` at the end of the last feed, held until the next one so overline
+    /// SGRs are seen whole.
+    sgr_tail: Vec<u8>,
     palette: Palette,
-    xt: Xterm,
-    selection: selection::Selection,
-    search: search::Search,
-    /// Set once the cursor has been shown (first focus or keystroke), like xterm's
-    /// `isCursorInitialized`.
+    search: Option<Search>,
+    search_refresh_due: Option<Instant>,
+    urls: Option<RegexSearch>,
+    /// A mouse selection drag is in progress, scrolling this many lines per tick.
+    dragging: Option<i64>,
+    /// Set once the cursor has been shown (first focus or keystroke).
     cursor_initialized: bool,
     /// Bumped whenever content, scroll position or selection changes, for renderers.
     generation: u64,
-    /// Rows trimmed off the top of the scrollback by the last write.
-    last_trim: usize,
-    search_refresh_due: Option<Instant>,
 }
 
 impl Screen {
@@ -176,15 +121,14 @@ impl Screen {
             term,
             parser: Processor::new(),
             events,
-            scanner: Scanner::new(),
+            sgr_tail: Vec::new(),
             palette: Palette::default(),
-            xt: Xterm::default(),
-            selection: selection::Selection::default(),
-            search: search::Search::default(),
+            search: None,
+            search_refresh_due: None,
+            urls: None,
+            dragging: None,
             cursor_initialized: false,
             generation: 0,
-            last_trim: 0,
-            search_refresh_due: None,
         }
     }
 
@@ -200,90 +144,43 @@ impl Screen {
         self.generation
     }
 
-    fn buf(&self) -> Buffer<'_> {
-        Buffer::new(&self.term)
-    }
-
     fn bump(&mut self) {
         self.generation = self.generation.wrapping_add(1);
     }
 
     /// Parses PTY output. Returns titles, bells and the reports the PTY must receive.
     pub fn feed(&mut self, bytes: &[u8]) -> Vec<Output> {
-        let mut out = Vec::new();
-        for item in self.scanner.feed(bytes) {
-            match item {
-                Item::Forward(b) => self.advance(&b),
-                Item::Esc { final_byte, raw } => {
-                    if final_byte == b'c' {
-                        self.full_reset();
+        let mut data = std::mem::take(&mut self.sgr_tail);
+        data.extend_from_slice(bytes);
+        let (mut done, mut from) = (0, 0);
+        loop {
+            match overline::next_sgr(&data, from) {
+                Ok(Some(body)) => {
+                    if let Some(on) = overline::sgr_effect(&data[body.clone()]) {
+                        self.advance(&data[done..=body.end]);
+                        self.advance(if on { overline::ON } else { overline::OFF });
+                        done = body.end + 1;
                     }
-                    self.advance(&raw);
+                    from = body.end + 1;
                 }
-                Item::Csi(csi) => self.csi(csi, &mut out),
-                Item::Decrqss(payload) => out.push(Output::Reply(self.decrqss(&payload))),
+                Ok(None) => break,
+                Err(esc) => {
+                    self.sgr_tail = data.split_off(esc);
+                    break;
+                }
             }
         }
+        self.advance(&data[done..]);
+        let mut out = Vec::new();
         self.drain_events(&mut out);
         self.bump();
-        if self.search.cached_term().is_some()
-            && self
-                .search
-                .last_options()
-                .is_some_and(|o| o.decorations.is_some())
-        {
-            self.search_refresh_due = Some(Instant::now() + std::time::Duration::from_millis(200));
-        }
+        self.schedule_search_refresh();
         out
     }
 
-    /// Advances the VT parser, tracking how many scrollback rows fell off the top so selection
-    /// and search highlights stay on their text (xterm's `onTrim`).
     fn advance(&mut self, bytes: &[u8]) {
-        if bytes.is_empty() {
-            return;
-        }
-        // A two-cell probe parked on the newest scrollback row rides alacritty's selection
-        // rotation; how far it moved is how many rows scrolled into history.
-        let hist_before = self.term.history_size();
-        let probing = !self.term.mode().contains(TermMode::ALT_SCREEN) && hist_before > 0;
-        if probing {
-            let mut probe = Probe::new(
-                SelectionType::Simple,
-                Point::new(Line(-1), Column(0)),
-                Side::Left,
-            );
-            probe.update(Point::new(Line(-1), Column(1)), Side::Right);
-            self.term.selection = Some(probe);
-        }
         self.parser
             .advance(&mut overline::Overlined(&mut self.term), bytes);
-        let mut trimmed = 0usize;
-        if probing && !self.term.mode().contains(TermMode::ALT_SCREEN) {
-            let hist_after = self.term.history_size();
-            match self
-                .term
-                .selection
-                .take()
-                .and_then(|s| s.to_range(&self.term))
-            {
-                Some(range) => {
-                    let scrolled = (-1 - range.start.line.0).max(0) as usize;
-                    trimmed = scrolled.saturating_sub(hist_after.saturating_sub(hist_before));
-                }
-                // Scrollback cleared (ED 3), or the probe row itself scrolled out of history.
-                None if hist_after < hist_before => trimmed = hist_before - hist_after,
-                None => trimmed = hist_before + self.rows(),
-            }
-        }
-        self.term.selection = None;
-        if trimmed > 0 {
-            self.last_trim += trimmed;
-            if self.selection.model.handle_trim(trimmed as i64) {
-                self.bump();
-            }
-            self.search.handle_trim(trimmed as i64);
-        }
     }
 
     fn drain_events(&mut self, out: &mut Vec<Output>) {
@@ -293,311 +190,48 @@ impl Screen {
                 TermEvent::Title(t) => out.push(Output::Title(t)),
                 TermEvent::Bell => out.push(Output::Bell),
                 TermEvent::PtyWrite(s) => out.push(Output::Reply(s)),
-                // OSC 4 queries are answered from the palette; Recur's pane swallowed OSC 10/11/12
-                // queries (the PTY side answers those).
-                TermEvent::ColorRequest(index, _) if index < 256 => {
-                    let c = self.term.colors()[index]
-                        .map_or(self.palette.ansi[index], |c| Rgba::rgb(c.r, c.g, c.b));
-                    out.push(Output::Reply(format!(
-                        "\x1b]4;{index};rgb:{:02x}{0:02x}/{:02x}{1:02x}/{:02x}{2:02x}\x1b\\",
-                        c.r(),
-                        c.g(),
-                        c.b()
-                    )));
+                // OSC 4 / 10 / 11 / 12 queries, answered from the live palette.
+                TermEvent::ColorRequest(index, reply) => {
+                    let fallback = match index {
+                        0..256 => self.palette.ansi[index],
+                        256 => self.palette.foreground,
+                        257 => self.palette.background,
+                        _ => self.palette.cursor,
+                    };
+                    let c =
+                        self.term.colors()[index].map_or(fallback, |c| Rgba::rgb(c.r, c.g, c.b));
+                    out.push(Output::Reply(reply(ansi::Rgb {
+                        r: c.r(),
+                        g: c.g(),
+                        b: c.b(),
+                    })));
                 }
                 _ => {}
             }
         }
     }
 
-    fn full_reset(&mut self) {
-        let blink = self.xt.option_cursor_blink;
-        self.xt = Xterm {
-            option_cursor_blink: blink,
-            ..Xterm::default()
-        };
-        self.selection.clear();
-        self.search.clear_decorations(true);
-    }
-
-    fn reply(out: &mut Vec<Output>, s: String) {
-        out.push(Output::Reply(s));
-    }
-
-    fn csi(&mut self, csi: Csi, out: &mut Vec<Output>) {
-        let inter = csi.intermediates.as_slice();
-        match (csi.private, inter, csi.final_byte) {
-            (None, [], b'c') => {
-                if csi.param(0) == 0 {
-                    Self::reply(out, "\x1b[?1;2c".into());
-                }
-            }
-            (Some(b'>'), [], b'c') => {
-                if csi.param(0) == 0 {
-                    Self::reply(out, "\x1b[>0;276;0c".into());
-                }
-            }
-            (Some(b'>'), [], b'q') => {
-                if csi.param(0) == 0 {
-                    Self::reply(out, format!("\x1bP>|xterm.js({XTERM_VERSION})\x1b\\"));
-                }
-            }
-            (None, [], b'n') => match csi.param(0) {
-                5 => Self::reply(out, "\x1b[0n".into()),
-                6 => {
-                    let (x, y) = self.cursor_report();
-                    Self::reply(out, format!("\x1b[{y};{x}R"));
-                }
-                _ => {}
-            },
-            (Some(b'?'), [], b'n') => match csi.param(0) {
-                6 => {
-                    let (x, y) = self.cursor_report();
-                    Self::reply(out, format!("\x1b[?{y};{x}R"));
-                }
-                996 => Self::reply(out, self.color_scheme_report()),
-                _ => {}
-            },
-            (p, [b'$'], b'p') if p.is_none() || p == Some(b'?') => {
-                Self::reply(out, self.decrpm(csi.param(0), p.is_none()));
-            }
-            // windowOptions are all disabled in xterm.js by default (reports, resize, title stack).
-            (None, [], b't') => {}
-            // Kitty keyboard protocol is off in Recur's pane.
-            (Some(b'?' | b'=' | b'>' | b'<'), [], b'u') => {}
-            (Some(b'?'), [], b'h' | b'l') => {
-                let set = csi.final_byte == b'h';
-                for &p in &csi.params {
-                    self.dec_mode(p, set);
-                }
-                self.advance(&csi.raw);
-            }
-            (None, [b' '], b'q') => {
-                self.xt.decscusr = match csi.param(0) {
-                    0 => None,
-                    1 => Some((CursorStyle::Block, true)),
-                    2 => Some((CursorStyle::Block, false)),
-                    3 => Some((CursorStyle::Underline, true)),
-                    4 => Some((CursorStyle::Underline, false)),
-                    5 => Some((CursorStyle::Bar, true)),
-                    6 => Some((CursorStyle::Bar, false)),
-                    _ => self.xt.decscusr,
-                };
-                self.advance(&csi.raw);
-            }
-            (None, [b'!'], b'p') => {
-                // DECSTR: xterm.js's soft reset, expressed to alacritty as the resets it implies.
-                self.xt.reset_dec_modes();
-                self.xt.scroll_region[self.buffer_index()] = None;
-                self.advance(b"\x1b[?25h\x1b[0m\x1b[r\x1b[?6l\x1b[?1l\x1b>\x1b[4l\x1b[?7h\x1b[?2004l\x1b[?1004l\x1b(B");
-            }
-            (None, [], b'J') if csi.param(0) == 2 && !self.alt_screen() => {
-                // xterm.js erases the screen in place (scrollOnEraseInDisplay is off); alacritty
-                // would push it into the scrollback.
-                let point = self.term.grid().cursor.point;
-                self.term.grid_mut().cursor.point = Point::new(Line(0), Column(0));
-                self.term.clear_screen(ansi::ClearMode::Below);
-                self.term.grid_mut().cursor.point = point;
-            }
-            (None, [], b'm') => {
-                self.advance(&csi.raw);
-                let body = &csi.raw[2..csi.raw.len() - 1];
-                match overline::sgr_effect(body) {
-                    Some(true) => self.advance(overline::ON),
-                    Some(false) => self.advance(overline::OFF),
-                    None => {}
-                }
-                let (not_bold, not_faint) = overline::sgr_cancels(body);
-                if not_bold {
-                    self.advance(overline::NOT_BOLD);
-                }
-                if not_faint {
-                    self.advance(overline::NOT_FAINT);
-                }
-            }
-            (None, [], b'r') => {
-                let rows = self.rows() as i64;
-                let top = csi.param(0).max(1);
-                let bottom = match csi.param(1) {
-                    0 => rows,
-                    b => b.min(rows),
-                };
-                if bottom > top {
-                    self.xt.scroll_region[self.buffer_index()] =
-                        Some((top as usize - 1, bottom as usize - 1));
-                }
-                self.advance(&csi.raw);
-            }
-            _ => self.advance(&csi.raw),
-        }
-    }
-
-    fn buffer_index(&self) -> usize {
-        usize::from(self.term.mode().contains(TermMode::ALT_SCREEN))
-    }
-
-    fn dec_mode(&mut self, p: i64, set: bool) {
-        let xt = &mut self.xt;
-        match p {
-            9 => {
-                xt.mouse_protocol = if set {
-                    MouseProtocol::X10
-                } else {
-                    MouseProtocol::None
-                }
-            }
-            1000 => {
-                xt.mouse_protocol = if set {
-                    MouseProtocol::Vt200
-                } else {
-                    MouseProtocol::None
-                }
-            }
-            1002 => {
-                xt.mouse_protocol = if set {
-                    MouseProtocol::Drag
-                } else {
-                    MouseProtocol::None
-                }
-            }
-            1003 => {
-                xt.mouse_protocol = if set {
-                    MouseProtocol::Any
-                } else {
-                    MouseProtocol::None
-                }
-            }
-            1004 => xt.send_focus = set,
-            1006 => {
-                xt.mouse_encoding = if set {
-                    MouseEncoding::Sgr
-                } else {
-                    MouseEncoding::Default
-                }
-            }
-            1016 => {
-                xt.mouse_encoding = if set {
-                    MouseEncoding::SgrPixels
-                } else {
-                    MouseEncoding::Default
-                }
-            }
-            12 => xt.option_cursor_blink = set,
-            45 => xt.reverse_wraparound = set,
-            2026 => xt.synchronized_output = set,
-            2031 => xt.color_scheme_updates = set,
-            _ => {}
-        }
-        // Selection is disabled (and cleared) while mouse events are active.
-        if matches!(p, 9 | 1000 | 1002 | 1003) && self.xt.mouse_protocol != MouseProtocol::None {
-            self.selection.clear();
-        }
-    }
-
-    fn cursor_report(&self) -> (usize, usize) {
-        let p = self.term.grid().cursor.point;
-        (p.column.0 + 1, p.line.0 as usize + 1)
-    }
-
-    fn color_scheme_report(&self) -> String {
-        format!("\x1b[?997;{}n", if self.palette.is_dark() { 1 } else { 2 })
-    }
-
-    fn decrpm(&self, p: i64, ansi: bool) -> String {
-        const NOT_RECOGNIZED: u8 = 0;
-        let b2v = |v: bool| if v { 1 } else { 2 };
-        let mode = *self.term.mode();
-        let has = |m: TermMode| b2v(mode.contains(m));
-        let v = if ansi {
-            match p {
-                2 => 4,
-                4 => has(TermMode::INSERT),
-                12 => 3,
-                20 => 2,
-                _ => NOT_RECOGNIZED,
-            }
-        } else {
-            let xt = &self.xt;
-            match p {
-                1 => has(TermMode::APP_CURSOR),
-                3 => NOT_RECOGNIZED,
-                6 => has(TermMode::ORIGIN),
-                7 => has(TermMode::LINE_WRAP),
-                8 => 3,
-                9 => b2v(xt.mouse_protocol == MouseProtocol::X10),
-                12 => b2v(xt.option_cursor_blink),
-                25 => has(TermMode::SHOW_CURSOR),
-                45 => b2v(xt.reverse_wraparound),
-                66 => has(TermMode::APP_KEYPAD),
-                67 => 4,
-                1000 => b2v(xt.mouse_protocol == MouseProtocol::Vt200),
-                1002 => b2v(xt.mouse_protocol == MouseProtocol::Drag),
-                1003 => b2v(xt.mouse_protocol == MouseProtocol::Any),
-                1004 => b2v(xt.send_focus),
-                1005 | 1015 => 4,
-                1006 => b2v(xt.mouse_encoding == MouseEncoding::Sgr),
-                1016 => b2v(xt.mouse_encoding == MouseEncoding::SgrPixels),
-                1048 => 1,
-                47 | 1047 | 1049 => has(TermMode::ALT_SCREEN),
-                2004 => has(TermMode::BRACKETED_PASTE),
-                2026 => b2v(xt.synchronized_output),
-                _ => NOT_RECOGNIZED,
-            }
-        };
-        format!("\x1b[{}{p};{v}$y", if ansi { "" } else { "?" })
-    }
-
-    fn decrqss(&self, data: &[u8]) -> String {
-        let reply = |s: String| format!("\x1b{s}\x1b\\");
-        match data {
-            b"\"q" => reply("P1$r0\"q".into()),
-            b"\"p" => reply("P1$r61;1\"p".into()),
-            b"r" => {
-                let (top, bottom) =
-                    self.xt.scroll_region[self.buffer_index()].unwrap_or((0, self.rows() - 1));
-                reply(format!("P1$r{};{}r", top + 1, bottom + 1))
-            }
-            b"m" => reply("P1$r0m".into()),
-            // xterm.js reports the configured option (block, blink on), not DECSCUSR.
-            b" q" => reply(format!(
-                "P1$r{} q",
-                2 - u8::from(self.xt.option_cursor_blink)
-            )),
-            _ => reply("P0$r".into()),
-        }
-    }
-
-    /// Resizes the grid (reflowing like the emulator does) and resets scroll regions.
+    /// Resizes the grid, reflowing its text.
     pub fn resize(&mut self, cols: usize, rows: usize) {
         let (cols, rows) = (cols.max(2), rows.max(1));
         if cols == self.cols() && rows == self.rows() {
             return;
         }
-        let rows_changed = rows != self.rows();
         self.term.resize(Size { cols, rows });
-        self.xt.scroll_region = [None, None];
-        if rows_changed {
-            self.selection.clear();
-        }
+        self.schedule_search_refresh();
         self.bump();
     }
 
-    /// Replaces the colour palette (a theme switch). OSC 4/10/11/12 overrides reset with it, and
-    /// apps that asked for DECSET 2031 get a colour-scheme notification.
-    pub fn set_palette(&mut self, palette: Palette) -> Vec<Output> {
+    /// Replaces the colour palette (a theme switch). OSC 4/10/11/12 overrides reset with it.
+    pub fn set_palette(&mut self, palette: Palette) {
         if palette == self.palette {
-            return Vec::new();
+            return;
         }
         self.palette = palette;
         for i in 0..alacritty_terminal::term::color::COUNT {
             self.term.reset_color(i);
         }
         self.bump();
-        if self.xt.color_scheme_updates {
-            vec![Output::Reply(self.color_scheme_report())]
-        } else {
-            Vec::new()
-        }
     }
 
     pub fn palette(&self) -> &Palette {
@@ -614,8 +248,8 @@ impl Screen {
         self.special(NamedColor::Foreground, self.palette.foreground)
     }
 
-    /// xterm.js `term.clear()`: the prompt row becomes the first row and everything else,
-    /// scrollback included, is dropped.
+    /// Clear Terminal: the prompt row becomes the first row and everything else, scrollback
+    /// included, is dropped.
     pub fn clear(&mut self) {
         let point = self.term.grid().cursor.point;
         let history = self.term.history_size();
@@ -628,21 +262,33 @@ impl Screen {
         self.term.grid_mut()[Line(0)] = row;
         self.term.grid_mut().cursor.point.line = Line(0);
         self.term.scroll_display(Scroll::Bottom);
-        self.selection.clear();
-        self.search.clear_decorations(true);
+        self.term.selection = None;
         self.bump();
     }
 
     pub fn mouse_protocol(&self) -> MouseProtocol {
-        self.xt.mouse_protocol
+        let mode = self.term.mode();
+        if mode.contains(TermMode::MOUSE_MOTION) {
+            MouseProtocol::Any
+        } else if mode.contains(TermMode::MOUSE_DRAG) {
+            MouseProtocol::Drag
+        } else if mode.contains(TermMode::MOUSE_REPORT_CLICK) {
+            MouseProtocol::Vt200
+        } else {
+            MouseProtocol::None
+        }
     }
 
     pub fn mouse_encoding(&self) -> MouseEncoding {
-        self.xt.mouse_encoding
+        if self.term.mode().contains(TermMode::SGR_MOUSE) {
+            MouseEncoding::Sgr
+        } else {
+            MouseEncoding::Default
+        }
     }
 
     pub fn mouse_events_active(&self) -> bool {
-        self.xt.mouse_protocol != MouseProtocol::None
+        self.term.mode().intersects(TermMode::MOUSE_MODE)
     }
 
     pub fn bracketed_paste(&self) -> bool {
@@ -661,11 +307,8 @@ impl Screen {
         !self.term.mode().contains(TermMode::SHOW_CURSOR)
     }
 
-    /// Cursor style and whether it blinks (`decPrivateModes ?? options`).
-    pub fn cursor_style(&self) -> (CursorStyle, bool) {
-        self.xt
-            .decscusr
-            .unwrap_or((CursorStyle::Block, self.xt.option_cursor_blink))
+    pub fn cursor_style(&self) -> ansi::CursorStyle {
+        self.term.cursor_style()
     }
 
     /// Cursor cell, viewport-relative, if it is on screen.
@@ -676,7 +319,7 @@ impl Screen {
             .then(|| (p.column.0.min(self.cols() - 1), y as usize))
     }
 
-    /// `_showCursor`: the cursor appears after the first focus or keystroke.
+    /// The cursor appears after the first focus or keystroke.
     pub fn show_cursor(&mut self) {
         if !self.cursor_initialized {
             self.cursor_initialized = true;
@@ -690,25 +333,21 @@ impl Screen {
 
     /// The focus report to send when focus changes and the app asked for DECSET 1004.
     pub fn focus_report(&self, focused: bool) -> Option<&'static str> {
-        self.xt
-            .send_focus
+        self.term
+            .mode()
+            .contains(TermMode::FOCUS_IN_OUT)
             .then_some(if focused { "\x1b[I" } else { "\x1b[O" })
     }
 
     // ---- viewport ----
 
-    /// xterm `ydisp`: first buffer row in the viewport.
-    pub fn viewport_top(&self) -> usize {
-        self.buf().ydisp()
-    }
-
-    /// xterm `ybase`: scrollback rows above the screen.
-    pub fn scrollback_len(&self) -> usize {
-        self.term.history_size()
+    /// Scrollback lines above the viewport (the scrollbar position, in rows).
+    pub fn scroll_position(&self) -> usize {
+        self.term.history_size() - self.term.grid().display_offset()
     }
 
     pub fn total_rows(&self) -> usize {
-        self.buf().len()
+        self.term.total_lines()
     }
 
     pub fn at_bottom(&self) -> bool {
@@ -724,12 +363,6 @@ impl Screen {
         self.bump();
     }
 
-    /// Scrolls so `row` is the viewport's top row.
-    pub fn scroll_to_row(&mut self, row: usize) {
-        let ydisp = self.viewport_top() as i64;
-        self.scroll_lines(row as i64 - ydisp);
-    }
-
     pub fn scroll_to_bottom(&mut self) {
         if !self.at_bottom() {
             self.term.scroll_display(Scroll::Bottom);
@@ -737,240 +370,326 @@ impl Screen {
         }
     }
 
-    /// `triggerDataEvent(..., wasUserInput)`: user input scrolls to the prompt and clears the
-    /// selection.
+    /// User input scrolls to the prompt and clears the selection.
     pub fn user_input(&mut self) {
         self.scroll_to_bottom();
-        if self.selection.has_selection(&self.buf()) {
-            self.selection.clear();
-            self.bump();
+        if self.has_selection() {
+            self.clear_selection();
         }
         self.show_cursor();
+    }
+
+    /// The grid point of 0-based viewport cell (`col`, `row`).
+    pub fn viewport_point(&self, col: usize, row: usize) -> Point {
+        let line = row.min(self.rows() - 1) as i32 - self.term.grid().display_offset() as i32;
+        Point::new(Line(line), Column(col.min(self.cols() - 1)))
+    }
+
+    /// Viewport row text, right-trimmed.
+    pub fn viewport_text(&self) -> Vec<String> {
+        (0..self.rows())
+            .map(|y| {
+                let start = self.viewport_point(0, y);
+                let end = Point::new(start.line, self.term.last_column());
+                self.term
+                    .bounds_to_string(start, end)
+                    .trim_end()
+                    .to_string()
+            })
+            .collect()
     }
 
     // ---- selection ----
 
     pub fn has_selection(&self) -> bool {
-        self.selection.has_selection(&self.buf())
+        self.term.selection.as_ref().is_some_and(|s| !s.is_empty())
     }
 
     pub fn selection_text(&self) -> String {
-        self.selection.text(&self.buf())
-    }
-
-    pub fn selection_mode(&self) -> SelectionMode {
-        self.selection.mode()
+        self.term.selection_to_string().unwrap_or_default()
     }
 
     pub fn selection_dragging(&self) -> bool {
-        self.selection.is_dragging()
+        self.dragging.is_some()
     }
 
     pub fn clear_selection(&mut self) {
-        self.selection.clear();
+        self.term.selection = None;
         self.bump();
     }
 
-    pub fn select_all(&mut self) {
-        self.selection.select_all();
+    fn select(
+        &mut self,
+        ty: SelectionType,
+        start: Point,
+        start_side: Side,
+        end: Point,
+        end_side: Side,
+    ) {
+        let mut selection = Selection::new(ty, start, start_side);
+        selection.update(end, end_side);
+        self.term.selection = Some(selection);
         self.bump();
     }
 
-    /// `[start, end)` of the selection in absolute rows, if any.
-    pub fn selection_range(&self) -> Option<((i64, i64), (i64, i64))> {
-        let buf = self.buf();
-        self.selection
-            .range(&buf)
-            .filter(|_| self.selection.has_selection(&buf))
-            .map(|(s, e)| ((s[0], s[1]), (e[0], e[1])))
+    /// Selects the link at `point`, or the word there.
+    fn select_word(&mut self, point: Point) {
+        match self.link_at(point) {
+            Some(l) => self.select(
+                SelectionType::Simple,
+                l.start,
+                Side::Left,
+                l.end,
+                Side::Right,
+            ),
+            None => self.select(
+                SelectionType::Semantic,
+                point,
+                Side::Left,
+                point,
+                Side::Right,
+            ),
+        }
     }
 
-    fn link_selection(&self, x1: i64, y1: i64) -> Option<([i64; 2], i64)> {
-        let buf = self.buf();
-        links::link_at(&buf, x1, y1).map(|l| {
-            (
-                [l.start.0 - 1, l.start.1 - 1],
-                l.range_length(buf.cols() as i64),
-            )
-        })
-    }
-
-    /// Primary-button press on the grid. `sel` is the 1-based selection cell
-    /// ([`crate::input::cell_coords`] with `selection = true`) and `link` the 1-based hover cell.
+    /// Primary-button press on 0-based viewport `cell`, on its `side`. Double-click selects a
+    /// word (or link), triple-click a line; `column` starts a block selection.
     pub fn selection_mouse_down(
         &mut self,
-        sel: (i64, i64),
-        link: (i64, i64),
+        cell: (usize, usize),
+        side: Side,
         click_count: usize,
         shift: bool,
         column: bool,
     ) {
-        let coords = [sel.0 - 1, sel.1 - 1 + self.viewport_top() as i64];
-        let link = (click_count == 2)
-            .then(|| self.link_selection(link.0, link.1))
-            .flatten();
-        let buf = Buffer::new(&self.term);
-        self.selection
-            .mouse_down(&buf, coords, click_count, shift, column, link);
-        self.bump();
+        let point = self.viewport_point(cell.0, cell.1);
+        self.dragging = Some(0);
+        if shift && let Some(selection) = &mut self.term.selection {
+            selection.update(point, side);
+            self.bump();
+            return;
+        }
+        match click_count {
+            1 if column => self.select(SelectionType::Block, point, side, point, side),
+            1 => self.select(SelectionType::Simple, point, side, point, side),
+            2 => self.select_word(point),
+            3 => self.select(SelectionType::Lines, point, side, point, side),
+            _ => {}
+        }
     }
 
     /// Drag with the button held. `offset_y` is the pointer's y relative to the grid top,
     /// `grid_height` the grid's pixel height (for drag-scrolling).
-    pub fn selection_mouse_move(&mut self, sel: (i64, i64), offset_y: f64, grid_height: f64) {
-        let coords = [sel.0 - 1, sel.1 - 1 + self.viewport_top() as i64];
-        let amount = drag_scroll_amount(offset_y, grid_height);
-        let buf = Buffer::new(&self.term);
-        if self.selection.mouse_move(&buf, coords, amount) {
+    pub fn selection_mouse_move(
+        &mut self,
+        cell: (usize, usize),
+        side: Side,
+        offset_y: f64,
+        grid_height: f64,
+    ) {
+        self.dragging = Some(drag_scroll_amount(offset_y, grid_height));
+        let point = self.viewport_point(cell.0, cell.1);
+        if let Some(selection) = &mut self.term.selection {
+            selection.update(point, side);
             self.bump();
         }
     }
 
     /// One drag-scroll tick (every [`DRAG_SCROLL_INTERVAL_MS`] while dragging).
     pub fn selection_drag_tick(&mut self) {
-        let amount = self.selection.drag_scroll();
-        if amount == 0 {
+        let Some(amount) = self.dragging.filter(|&a| a != 0) else {
             return;
-        }
+        };
         self.scroll_lines(amount);
-        let buf = Buffer::new(&self.term);
-        self.selection.after_drag_scroll(&buf);
-        self.bump();
+        let (point, side) = if amount > 0 {
+            (self.viewport_point(self.cols(), self.rows()), Side::Right)
+        } else {
+            (self.viewport_point(0, 0), Side::Left)
+        };
+        if let Some(selection) = &mut self.term.selection {
+            selection.update(point, side);
+        }
     }
 
-    /// Button release. `cell` is the 1-based non-selection cell under the pointer.
-    pub fn selection_mouse_up(&mut self, elapsed_ms: u64, alt: bool, cell: (i64, i64)) -> MouseUp {
-        let app_cursor = self.app_cursor();
-        let buf = Buffer::new(&self.term);
-        let res = self.selection.mouse_up(
-            &buf,
-            elapsed_ms,
-            alt,
-            Some([cell.0 - 1, cell.1 - 1]),
-            app_cursor,
-        );
-        self.bump();
-        res
+    /// Button release on 0-based viewport `cell`. A quick Alt-click at the prompt returns the
+    /// arrow keys that move the cursor there.
+    pub fn selection_mouse_up(
+        &mut self,
+        elapsed_ms: u64,
+        alt: bool,
+        cell: (usize, usize),
+    ) -> Option<String> {
+        self.dragging = None;
+        (alt && elapsed_ms < ALT_CLICK_MOVE_CURSOR_MS
+            && self.at_bottom()
+            && self.selection_text().chars().count() <= 1)
+            .then(|| {
+                move_to_cell::sequence(
+                    self.term.grid().cursor.point,
+                    self.viewport_point(cell.0, cell.1),
+                    self.cols(),
+                    self.alt_screen(),
+                    self.app_cursor(),
+                )
+            })
     }
 
-    /// Right-click word selection (`rightClickSelectsWord`, on for macOS).
-    pub fn right_click_select(&mut self, sel: (i64, i64), link: (i64, i64)) {
-        let coords = [sel.0 - 1, sel.1 - 1 + self.viewport_top() as i64];
-        let link = self.link_selection(link.0, link.1);
-        let buf = Buffer::new(&self.term);
-        if self.selection.right_click_select(&buf, coords, link) {
-            self.bump();
+    /// Right-click selects the word (or link) under the pointer, unless it is already selected.
+    pub fn right_click_select(&mut self, cell: (usize, usize)) {
+        let point = self.viewport_point(cell.0, cell.1);
+        let range = self
+            .term
+            .selection
+            .as_ref()
+            .and_then(|s| s.to_range(&self.term));
+        if !range.is_some_and(|r| r.contains(point)) {
+            self.select_word(point);
         }
     }
 
     // ---- search ----
 
-    /// `findNext` / `findPrevious`. Returns whether a match was selected and, with decorations,
-    /// the results event.
+    /// Selects the next (`forward`) or previous match and scrolls it into view.
     pub fn find(
         &mut self,
-        term: &str,
+        query: &str,
         opts: &SearchOptions,
         forward: bool,
-    ) -> Result<(bool, Option<SearchResults>), InvalidRegex> {
-        self.find_inner(term, opts, forward, false)
+    ) -> Result<SearchResults, InvalidRegex> {
+        if query.is_empty() {
+            self.clear_search();
+            self.clear_selection();
+            return Ok(SearchResults::default());
+        }
+        if self
+            .search
+            .as_ref()
+            .is_none_or(|s| s.query != query || s.opts != *opts)
+        {
+            self.search = None;
+            self.search = Some(Search::new(query, opts)?);
+        }
+        let term = &self.term;
+        let range = term.selection.as_ref().and_then(|s| s.to_range(term));
+        let (origin, direction, side) = match range {
+            Some(r) if opts.incremental => (r.start, Direction::Right, Side::Left),
+            Some(r) if forward => (
+                r.start.add(term, Boundary::None, 1),
+                Direction::Right,
+                Side::Left,
+            ),
+            Some(r) => (
+                r.end.sub(term, Boundary::None, 1),
+                Direction::Left,
+                Side::Right,
+            ),
+            None if forward => (
+                Point::new(term.topmost_line(), Column(0)),
+                Direction::Right,
+                Side::Left,
+            ),
+            None => (
+                Point::new(term.bottommost_line(), term.last_column()),
+                Direction::Left,
+                Side::Right,
+            ),
+        };
+        let regex = &mut self.search.as_mut().expect("compiled above").regex;
+        match term.search_next(regex, origin, direction, side, None) {
+            Some(m) => {
+                self.select(
+                    SelectionType::Simple,
+                    *m.start(),
+                    Side::Left,
+                    *m.end(),
+                    Side::Right,
+                );
+                self.term.scroll_to_point(*m.start());
+            }
+            None => self.clear_selection(),
+        }
+        Ok(self.search_results())
     }
 
-    fn find_inner(
-        &mut self,
-        term: &str,
-        opts: &SearchOptions,
-        forward: bool,
-        no_scroll: bool,
-    ) -> Result<(bool, Option<SearchResults>), InvalidRegex> {
-        let buf = Buffer::new(&self.term);
-        let res = self
-            .search
-            .find(&buf, &mut self.selection, term, opts, forward, no_scroll);
-        self.bump();
-        match res {
-            Ok((found, scroll, results)) => {
-                if let Some(lines) = scroll {
-                    self.scroll_lines(lines);
-                }
-                Ok((found, results))
-            }
-            Err(e) => {
-                self.search.clear_decorations(false);
-                Err(e)
+    /// The match count and which one is selected.
+    fn search_results(&mut self) -> SearchResults {
+        let Some(search) = &mut self.search else {
+            return SearchResults::default();
+        };
+        let term = &self.term;
+        let selected = term.selection.as_ref().and_then(|s| s.to_range(term));
+        let start = Point::new(term.topmost_line(), Column(0));
+        let end = Point::new(term.bottommost_line(), term.last_column());
+        let mut results = SearchResults::default();
+        for m in RegexIter::new(start, end, Direction::Right, term, &mut search.regex)
+            .take(HIGHLIGHT_LIMIT)
+        {
+            results.count += 1;
+            if selected
+                .as_ref()
+                .is_some_and(|r| r.start == *m.start() && r.end == *m.end())
+            {
+                results.index = results.count;
             }
         }
+        results
+    }
+
+    /// The matches on screen, for highlighting.
+    fn visible_matches(&mut self) -> Vec<Match> {
+        let Some(search) = &mut self.search else {
+            return Vec::new();
+        };
+        let term = &self.term;
+        let top = Line(-(term.grid().display_offset() as i32));
+        let start = term.line_search_left(Point::new(top, Column(0)));
+        let bottom = Point::new(top + (term.screen_lines() - 1), term.last_column());
+        let end = term.line_search_right(bottom);
+        RegexIter::new(start, end, Direction::Right, term, &mut search.regex).collect()
     }
 
     pub fn clear_search(&mut self) {
-        self.search.clear_decorations(false);
+        self.search = None;
         self.search_refresh_due = None;
         self.bump();
     }
 
-    /// When output changed while a search was decorating, xterm re-runs it 200ms later
-    /// (`findPrevious` incremental, no scroll) so counts and highlights follow the text.
+    /// When output or a resize changes the text under an open search, the count is redone a
+    /// moment later.
     pub fn search_refresh_due(&self) -> Option<Instant> {
         self.search_refresh_due
     }
 
-    pub fn run_search_refresh(
-        &mut self,
-    ) -> Option<Result<(bool, Option<SearchResults>), InvalidRegex>> {
-        self.search_refresh_due = None;
-        let term = self.search.cached_term()?.to_string();
-        let mut opts = self.search.last_options()?.clone();
-        opts.decorations?;
-        opts.incremental = true;
-        self.search.clear_cached_term();
-        Some(self.find_inner(&term, &opts, false, true))
-    }
-
-    /// Schedules the same refresh after a resize (`onResize`).
     fn schedule_search_refresh(&mut self) {
-        if self.search.cached_term().is_some()
-            && self
-                .search
-                .last_options()
-                .is_some_and(|o| o.decorations.is_some())
-        {
-            self.search_refresh_due = Some(Instant::now() + std::time::Duration::from_millis(200));
+        if self.search.is_some() {
+            self.search_refresh_due = Some(Instant::now() + SEARCH_REFRESH);
         }
     }
 
-    /// Resizes and schedules a search refresh, as the addon's `onResize` hook does.
-    pub fn resize_and_refresh(&mut self, cols: usize, rows: usize) {
-        let before = (self.cols(), self.rows());
-        self.resize(cols, rows);
-        if before != (self.cols(), self.rows()) {
-            self.schedule_search_refresh();
-        }
+    pub fn run_search_refresh(&mut self) -> Option<SearchResults> {
+        self.search_refresh_due = None;
+        self.search.is_some().then(|| self.search_results())
     }
 
     // ---- links ----
 
-    /// The link under 1-based viewport cell (`x`, `y`).
-    pub fn link_at(&self, x: i64, y: i64) -> Option<Link> {
-        let buf = self.buf();
-        links::link_at(&buf, x, y + buf.ydisp() as i64)
+    /// The link covering grid `point` (see [`Self::viewport_point`]), if the point still exists.
+    pub fn link_at(&mut self, point: Point) -> Option<Link> {
+        let term = &self.term;
+        if point.line < term.topmost_line()
+            || point.line > term.bottommost_line()
+            || point.column > term.last_column()
+        {
+            return None;
+        }
+        let urls = self
+            .urls
+            .get_or_insert_with(|| RegexSearch::new(links::URL).expect("valid URL pattern"));
+        links::link_at(&self.term, urls, point)
     }
 
-    /// Text of absolute row `row` (for tests and accessibility).
-    pub fn row_text(&self, row: usize, trim_right: bool) -> String {
-        self.buf().translate(row, trim_right, 0, None)
-    }
-
-    /// Viewport row text.
-    pub fn viewport_text(&self) -> Vec<String> {
-        let top = self.viewport_top();
-        (0..self.rows())
-            .map(|y| self.row_text(top + y, true))
-            .collect()
-    }
-
-    /// Trimmed rows since the last call (for renderers caching per-row state).
-    pub fn take_trimmed(&mut self) -> usize {
-        std::mem::take(&mut self.last_trim)
+    pub fn display_offset(&self) -> usize {
+        self.term.grid().display_offset()
     }
 
     /// Synchronized-output (DECSET 2026) deadline, after which buffered output is flushed.
@@ -986,12 +705,29 @@ impl Screen {
         }
     }
 
-    /// The renderable frame: resolved colours, glyphs and cursor, as xterm.js's WebGL renderer
-    /// computes them. `focused` picks active/inactive selection and cursor styles;
-    /// `cursor_blink_on` is the blink phase.
-    pub fn frame(&self, focused: bool, cursor_blink_on: bool) -> Frame {
-        render::frame(self, focused, cursor_blink_on)
+    /// The renderable frame: resolved colours, glyphs and cursor. `focused` picks
+    /// active/inactive selection and cursor styles; `cursor_blink_on` is the blink phase.
+    pub fn frame(&mut self, focused: bool, cursor_blink_on: bool) -> Frame {
+        let matches = self.visible_matches();
+        render::frame(self, &matches, focused, cursor_blink_on)
     }
+}
+
+/// Lines to drag-scroll per tick: `offset` is the pointer's y relative to the grid top,
+/// `height` the grid's height.
+fn drag_scroll_amount(offset: f64, height: f64) -> i64 {
+    const MAX_THRESHOLD: f64 = 50.0;
+    const MAX_SPEED: f64 = 15.0;
+    if (0.0..=height).contains(&offset) {
+        return 0;
+    }
+    let past = if offset > height {
+        offset - height
+    } else {
+        offset
+    };
+    let t = past.clamp(-MAX_THRESHOLD, MAX_THRESHOLD) / MAX_THRESHOLD;
+    (t.signum() + (t * (MAX_SPEED - 1.0)).round()) as i64
 }
 
 #[cfg(test)]

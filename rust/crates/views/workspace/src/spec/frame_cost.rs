@@ -636,7 +636,9 @@ async fn a_workspace_switch_back_draws_the_transcript_where_it_was(cx: &mut Test
     let keys = chat.read_with(s.cx, |c, _| c.test_block_keys());
     let drawn = |s: &mut super::shell::S| -> Vec<_> {
         keys.iter()
-            .map(|k| s.cx.debug_bounds(Box::leak(format!("cblk:{k}").into_boxed_str())))
+            .map(|k| {
+                s.cx.debug_bounds(Box::leak(format!("cblk:{k}").into_boxed_str()))
+            })
             .collect()
     };
     let before = drawn(&mut s);

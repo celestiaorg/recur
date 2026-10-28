@@ -529,6 +529,12 @@ pub struct AgentChat {
     pub(crate) block_h_by_chat: HashMap<String, BTreeMap<String, f32>>,
     /// Block tops and heights in the column, from the last frame.
     pub(crate) block_ranges: Rc<std::cell::RefCell<BTreeMap<String, (f32, f32)>>>,
+    /// The window y of the scroll content's top in the last frame (`block_ranges`' origin).
+    pub(crate) column_y: f32,
+    /// `overflow-anchor`: the block at the scroller's top and its top in the scroll content,
+    /// held in place when the layout above it changes. Saved per chat key on a switch.
+    pub(crate) anchor: Option<(String, f32)>,
+    pub(crate) anchor_by_chat: HashMap<String, (String, f32)>,
     pub(crate) chat_hydrated: HashSet<String>,
     /// Blocks laid out live in the last transcript render.
     pub(crate) live_blocks: usize,
@@ -737,6 +743,9 @@ impl AgentChat {
             fade_ready: false,
             block_h_by_chat: HashMap::new(),
             block_ranges: Rc::default(),
+            column_y: 0.,
+            anchor: None,
+            anchor_by_chat: HashMap::new(),
             chat_hydrated: HashSet::new(),
             live_blocks: 0,
             chat_in_view: Vec::new(),
@@ -831,6 +840,9 @@ impl AgentChat {
             if !old.is_empty() {
                 let snap = self.capture_transcript_ui(&old, cx);
                 TranscriptUiCache::global(cx).save(&old, snap);
+                if let Some(a) = self.anchor.take() {
+                    self.anchor_by_chat.insert(old, a);
+                }
             }
         }
         self.props = props;
@@ -1387,6 +1399,7 @@ impl AgentChat {
         if m.is_empty() {
             restore_block_heights(m, &next.block_heights);
         }
+        self.anchor = self.anchor_by_chat.remove(&self.props.reset_key);
         // First visit (no cache): follow the default pin.
         self.pending_scroll = Some(PendingScroll {
             scroll_top: next.scroll_top,
@@ -1578,6 +1591,9 @@ impl AgentChat {
             self.seen_scroll_top = max;
             self.notify_transcript(cx);
         }
+        let column_y = f32::from(self.scroll.bounds().top()) - top;
+        self.hold_anchor(column_y, max, cx);
+        self.column_y = column_y;
         if self.ignore_swap_scroll > 0 && !moved {
             self.ignore_swap_scroll = self.ignore_swap_scroll.saturating_sub(1);
         }
@@ -1588,9 +1604,54 @@ impl AgentChat {
             self.fade_ready = true;
         }
         self.record_block_heights();
+        let top = -f32::from(self.scroll.offset().y);
         if self.refresh_chat_window(top, viewport_h) {
             self.notify_transcript(cx);
         }
+    }
+
+    /// `overflow-anchor` after layout: when the anchor block moved in the content (stubs above
+    /// it went live at other heights, a switch back laid out differently), scroll by as much
+    /// so the scroller shows what it did.
+    fn hold_anchor(&mut self, column_y: f32, max: f32, cx: &mut Context<Self>) {
+        if self.near_bottom {
+            self.anchor = None;
+        }
+        let Some((key, at)) = self
+            .anchor
+            .as_ref()
+            .filter(|_| self.pending_scroll.is_none())
+        else {
+            return;
+        };
+        let Some(&(y, _)) = self.block_ranges.borrow().get(key) else {
+            return;
+        };
+        let shift = y - column_y - at;
+        if shift.abs() < 0.5 {
+            return;
+        }
+        let top = (-f32::from(self.scroll.offset().y) + shift).clamp(0., max);
+        self.scroll.set_offset(point(px(0.), px(-top)));
+        self.seen_scroll_top = top;
+        self.last_scroll_top = top;
+        self.persist_scroll(cx);
+        self.notify_transcript(cx);
+    }
+
+    /// `overflow-anchor` before layout: the block the last frame laid out at `top`, this
+    /// frame's scroll top.
+    fn pick_anchor(&mut self, top: f32) {
+        let ranges = self.block_ranges.borrow();
+        if ranges.is_empty() {
+            return;
+        }
+        let model = self.transcript_model();
+        self.anchor = model.blocks.1.iter().find_map(|k| {
+            let &(y, h) = ranges.get(k)?;
+            let at = y - self.column_y;
+            (h > 0. && at <= top && top < at + h).then(|| (k.clone(), at))
+        });
     }
 
     /// Before the transcript lays out: a pending restore moves the scroller now, so a tab
@@ -1606,7 +1667,11 @@ impl AgentChat {
                 self.scroll.set_offset(point(px(0.), px(-p.scroll_top)));
                 p.scroll_top
             }
-            None => -f32::from(self.scroll.offset().y),
+            None => {
+                let top = -f32::from(self.scroll.offset().y);
+                self.pick_anchor(top);
+                top
+            }
         };
         self.refresh_chat_window(top, self.viewport_h);
     }

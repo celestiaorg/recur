@@ -3,18 +3,19 @@
 //! host (LSP hover + lint diagnostics) and LSP signature help, positioned by
 //! CodeMirror's tooltip placement (`writeMeasure`).
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, Bounds, Context, Div, Hsla, InteractiveElement, IntoElement, MouseButton,
-    ParentElement, Pixels, ScrollWheelEvent, SharedString, Size, StatefulInteractiveElement,
-    Styled, Window, deferred, div, point, px, size,
+    AnyElement, App, AvailableSpace, Bounds, Context, Div, Element, ElementId, GlobalElementId,
+    Hsla, InspectorElementId, InteractiveElement, IntoElement, LayoutId, MouseButton,
+    ParentElement, Pixels, ScrollWheelEvent, SharedString, Size, StatefulInteractiveElement, Style,
+    Styled, Window, deferred, div, point, px, relative, size,
 };
 use recur_ui::shadow::{css_box_shadow, with_shadow};
-use recur_ui::style::anchored_at;
+use recur_ui::style::TIE_NUDGE;
 use recur_ui::text::Align;
 use recur_ui::{Text, TextStyled, Theme, Tokens, rgba, span, text};
 
@@ -66,10 +67,13 @@ pub(crate) struct Tooltips {
     /// Completion list `scrollTop`.
     pub list_scroll: f32,
     list_for: Option<(usize, usize)>,
-    /// Laid-out sizes from the previous frame (`readMeasure`).
-    sizes: Rc<RefCell<HashMap<&'static str, Size<Pixels>>>>,
+    /// Where each tooltip was placed this frame, in window coordinates.
+    placed: Rc<RefCell<HashMap<&'static str, Bounds<Pixels>>>>,
     /// Sides chosen last time (`this.above`).
-    above: HashMap<&'static str, bool>,
+    above: Rc<RefCell<HashMap<&'static str, bool>>>,
+    /// Bumped when the hover's content changes, so its text selection
+    /// starts over.
+    hover_gen: u64,
 }
 
 impl Tooltips {
@@ -91,6 +95,7 @@ impl Tooltips {
         found: Option<(usize, usize, Vec<Rc<Diagnostic>>)>,
         state: &EditorState,
     ) {
+        self.hover_gen += 1;
         self.lint_hover = found.map(|(from, to, diags)| HoverSection {
             pos: from,
             end: to,
@@ -100,6 +105,7 @@ impl Tooltips {
     }
 
     pub fn set_lsp_hover(&mut self, info: HoverInfo) {
+        self.hover_gen += 1;
         self.lsp_hover = Some(HoverSection {
             pos: info.from,
             end: info.to,
@@ -133,21 +139,17 @@ impl Tooltips {
     }
 
     pub fn signature_changed(&mut self) {
-        self.above.remove("signature");
+        self.above.borrow_mut().remove("signature");
     }
 
     /// Options a page step moves (`offsetHeight / li height - 1`).
     pub fn completion_page(&self) -> usize {
         let h = self
-            .sizes
+            .placed
             .borrow()
             .get("completion")
-            .map_or(0.0, |s| f32::from(s.height));
+            .map_or(0.0, |b| f32::from(b.size.height));
         ((h / OPTION_HEIGHT).floor() as usize).saturating_sub(1)
-    }
-
-    fn measured(&self, key: &'static str) -> Option<Size<Pixels>> {
-        self.sizes.borrow().get(key).copied()
     }
 
     /// Keep the selected option in view (`scrollIntoView` on the list).
@@ -214,6 +216,124 @@ fn place(
     }
     let y = if above { top - height } else { bottom };
     Some((left, y, above, clamp))
+}
+
+/// Where a tooltip goes, and the width or height it must fit in.
+struct Placement {
+    left: f32,
+    top: f32,
+    max_w: Option<f32>,
+    max_h: Option<f32>,
+}
+
+type Place = Box<dyn FnMut(Size<Pixels>) -> Option<Placement>>;
+
+/// A tooltip laid out as its own root and placed from that size in the
+/// same frame (`readMeasure` then `writeMeasure`). When the placement caps
+/// a side that is too long, it is laid out again under the cap (its
+/// wrapper's `max-width` / `max-height: 100%` resolve against the space
+/// given) and placed from the new size.
+struct Placed {
+    child: AnyElement,
+    place: Place,
+}
+
+impl Placed {
+    fn new(
+        body: impl IntoElement,
+        place: impl FnMut(Size<Pixels>) -> Option<Placement> + 'static,
+    ) -> Self {
+        Placed {
+            child: div()
+                .flex()
+                .flex_col()
+                .max_w(relative(1.))
+                .max_h(relative(1.))
+                .child(body)
+                .into_any_element(),
+            place: Box::new(place),
+        }
+    }
+}
+
+impl IntoElement for Placed {
+    type Element = Self;
+    fn into_element(self) -> Self {
+        self
+    }
+}
+
+impl Element for Placed {
+    type RequestLayoutState = ();
+    type PrepaintState = bool;
+
+    fn id(&self) -> Option<ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static std::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (LayoutId, ()) {
+        let style = Style {
+            position: gpui_kit::Position::Absolute,
+            ..Style::default()
+        };
+        (window.request_layout(style, [], cx), ())
+    }
+
+    fn prepaint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        _: Bounds<Pixels>,
+        _: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) -> bool {
+        let free = size(AvailableSpace::MaxContent, AvailableSpace::MaxContent);
+        let sz = self.child.layout_as_root(free, window, cx);
+        let Some(mut p) = (self.place)(sz) else {
+            return false;
+        };
+        let cap = |max: Option<f32>, len: Pixels| match max {
+            Some(m) if px(m) < len => AvailableSpace::Definite(px(m)),
+            _ => AvailableSpace::MaxContent,
+        };
+        let capped = size(cap(p.max_w, sz.width), cap(p.max_h, sz.height));
+        if capped != free {
+            let sz = self.child.layout_as_root(capped, window, cx);
+            let Some(q) = (self.place)(sz) else {
+                return false;
+            };
+            p = q;
+        }
+        let origin = point(px(p.left + TIE_NUDGE), px(p.top + TIE_NUDGE));
+        self.child.prepaint_at(origin, window, cx);
+        true
+    }
+
+    fn paint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        _: Bounds<Pixels>,
+        _: &mut (),
+        shown: &mut bool,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        if *shown {
+            self.child.paint(window, cx);
+        }
+    }
 }
 
 /// `.cm-tooltip`: pane card, `--line-bright` border, radius 8, and its
@@ -308,52 +428,45 @@ impl EditorView {
         Some((left, y, y + tb.height()))
     }
 
-    /// Wrap a tooltip body: measure it for next frame and place it.
+    /// A tooltip body placed by `place` from its laid-out size.
     fn positioned(
-        &mut self,
+        &self,
         key: &'static str,
         anchor: (f32, f32, f32),
         above_pref: bool,
-        body: Div,
+        body: impl IntoElement,
         window: &Window,
-        cx: &mut Context<Self>,
-    ) -> Option<(AnyElement, Bounds<Pixels>)> {
+    ) -> AnyElement {
         let space = self.tooltip_space(window);
-        let known = self.tooltips.measured(key);
         let lh = self.metrics.line_height();
-        let sizes = self.tooltips.sizes.clone();
-        let ent = cx.entity();
-        let measure = move |bounds: Vec<Bounds<Pixels>>, _: &mut Window, cx: &mut App| {
-            let Some(b) = bounds.first() else { return };
-            let prev = sizes.borrow_mut().insert(key, b.size);
-            if prev.is_none_or(|p| {
-                (f32::from(p.width) - f32::from(b.size.width)).abs() > 0.5
-                    || (f32::from(p.height) - f32::from(b.size.height)).abs() > 0.5
-            }) {
-                ent.update(cx, |_, cx| cx.notify());
-            }
-        };
-        let Some(sz) = known else {
-            // First frame: lay out off-screen to measure, like `Outside`.
-            let el = deferred(anchored_at(
-                -10000.,
-                -10000.,
-                div().on_children_prepainted(measure).child(body),
-            ));
-            return Some((el.into_any_element(), Bounds::default()));
-        };
-        let prev_above = self.tooltips.above.get(key).copied().unwrap_or(above_pref);
-        let (left, top, above, clamp) = place(anchor, sz, space, prev_above, lh)?;
-        self.tooltips.above.insert(key, above);
-        let wrapper = div()
-            .on_children_prepainted(measure)
-            .when_some(clamp, |d, c| d.max_h(px(c)))
-            .child(body);
-        let el = deferred(anchored_at(left, top, wrapper)).with_priority(1);
-        Some((
-            el.into_any_element(),
-            Bounds::new(point(px(left), px(top)), sz),
-        ))
+        let placed = self.tooltips.placed.clone();
+        let sides = self.tooltips.above.clone();
+        deferred(Placed::new(body, move |sz| {
+            let prev = sides.borrow().get(key).copied().unwrap_or(above_pref);
+            let Some((left, top, above, clamp)) = place(anchor, sz, space, prev, lh) else {
+                placed.borrow_mut().remove(key);
+                return None;
+            };
+            sides.borrow_mut().insert(key, above);
+            let height = clamp.map_or(sz.height, px);
+            placed.borrow_mut().insert(
+                key,
+                Bounds::new(point(px(left), px(top)), size(sz.width, height)),
+            );
+            Some(Placement {
+                left,
+                top,
+                max_w: None,
+                max_h: clamp,
+            })
+        }))
+        .with_priority(1)
+        .into_any_element()
+    }
+
+    /// Where the hover tooltip was placed in the last frame.
+    pub fn hover_bounds(&self) -> Option<Bounds<Pixels>> {
+        self.tooltips.placed.borrow().get("hover").copied()
     }
 
     /// All visible tooltips, as overlay elements.
@@ -362,6 +475,7 @@ impl EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Vec<AnyElement> {
+        self.tooltips.placed.borrow_mut().clear();
         let mut out = Vec::new();
         let focused = self.focus.is_focused(window);
         if let Some(open) = self.state.completion.open.clone()
@@ -466,26 +580,12 @@ impl EditorView {
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .child(list),
         );
-        let (el, bounds) = self.positioned("completion", anchor, false, body, window, cx)?;
-        let mut els = vec![el];
+        let mut els = vec![self.positioned("completion", anchor, false, body, window)];
         if let Some(sel) = open.selected
             && let Some(info) = open.options[sel].completion.info.clone()
-            && bounds.size.width > px(0.)
         {
-            let row_top = f32::from(bounds.origin.y)
-                + 5.0
-                + top_marker
-                + (sel - range.0) as f32 * OPTION_HEIGHT
-                - scroll;
-            if let Some(info_el) = self.render_info(
-                &info,
-                bounds,
-                (row_top, row_top + OPTION_HEIGHT),
-                window,
-                cx,
-            ) {
-                els.push(info_el);
-            }
+            let row = 5.0 + top_marker + (sel - range.0) as f32 * OPTION_HEIGHT - scroll;
+            els.push(self.render_info(&info, row, window, cx));
         }
         Some(els)
     }
@@ -596,79 +696,78 @@ impl EditorView {
 
     /// The info pane beside the list (`defaultPositionInfo`): an LSP
     /// `.cm-lsp-completion-documentation` box in `.cm-completionInfo`.
+    /// `row` is the selected option's top below the list's.
     fn render_info(
-        &mut self,
+        &self,
         info: &crate::autocomplete::Doc,
-        list: Bounds<Pixels>,
-        option: (f32, f32),
+        row: f32,
         window: &Window,
         cx: &mut Context<Self>,
-    ) -> Option<AnyElement> {
+    ) -> AnyElement {
         let theme = Theme::of(cx).clone();
         let space = self.tooltip_space(window);
-        let (ll, lt) = (f32::from(list.origin.x), f32::from(list.origin.y));
-        let (lr, lb) = (
-            ll + f32::from(list.size.width),
-            lt + f32::from(list.size.height),
-        );
         let (sl, st) = (f32::from(space.origin.x), f32::from(space.origin.y));
         let (sr, sb) = (
             sl + f32::from(space.size.width),
             st + f32::from(space.size.height),
         );
-        let size = self.tooltips.measured("info").unwrap_or_default();
-        let (iw, ih) = (f32::from(size.width), f32::from(size.height));
-        let (space_left, space_right) = (ll - sl, sr - lr);
-        let mut left = false;
-        if space_right < iw.min(space_left) {
-            left = true;
-        }
-        let (x, y, max_w) = if iw <= if left { space_left } else { space_right } {
-            let off = st.max(option.0.min(sb - ih)) - lt;
-            let max_w = INFO_WIDTH.min(if left { space_left } else { space_right });
-            (if left { ll - iw } else { lr }, lt + off, max_w)
-        } else {
-            let max_w = INFO_WIDTH.min(sr - ll - INFO_MARGIN);
-            let below = sb - lb;
-            let y = if below >= ih || below > lt {
-                option.1
-            } else {
-                option.0 - ih
-            };
-            (ll + INFO_MARGIN, y, max_w)
-        };
         let mut style = DocStyle::from_theme(&theme, 12.5);
         style.pre_line = true;
         let body = shadowed(
             &theme,
-            card(&theme).max_w(px(max_w)).py(px(8.)).px(px(10.)).child(
-                div()
-                    .py(px(10.))
-                    .px(px(12.))
-                    .child(render_doc(info, &style)),
-            ),
+            card(&theme)
+                .max_w(px(INFO_WIDTH))
+                .py(px(8.))
+                .px(px(10.))
+                .child(
+                    div()
+                        .py(px(10.))
+                        .px(px(12.))
+                        .child(render_doc(info, &style)),
+                ),
         );
-        let sizes = self.tooltips.sizes.clone();
-        let ent = cx.entity();
-        let measure = move |bounds: Vec<Bounds<Pixels>>, _: &mut Window, cx: &mut App| {
-            let Some(b) = bounds.first() else { return };
-            if sizes.borrow_mut().insert("info", b.size) != Some(b.size) {
-                ent.update(cx, |_, cx| cx.notify());
-            }
-        };
-        Some(
-            deferred(anchored_at(
-                x,
-                y,
-                div().on_children_prepainted(measure).child(body),
-            ))
-            .with_priority(2)
-            .into_any_element(),
-        )
+        let placed = self.tooltips.placed.clone();
+        deferred(Placed::new(body, move |size| {
+            let list = placed.borrow().get("completion").copied()?;
+            let (ll, lt) = (f32::from(list.origin.x), f32::from(list.origin.y));
+            let (lr, lb) = (
+                ll + f32::from(list.size.width),
+                lt + f32::from(list.size.height),
+            );
+            let option = (lt + row, lt + row + OPTION_HEIGHT);
+            let (iw, ih) = (f32::from(size.width), f32::from(size.height));
+            let (space_left, space_right) = (ll - sl, sr - lr);
+            let left = space_right < iw.min(space_left);
+            let (x, y, max_w) = if iw <= if left { space_left } else { space_right } {
+                let off = st.max(option.0.min(sb - ih)) - lt;
+                let max_w = INFO_WIDTH.min(if left { space_left } else { space_right });
+                (if left { ll - iw } else { lr }, lt + off, max_w)
+            } else {
+                let max_w = INFO_WIDTH.min(sr - ll - INFO_MARGIN);
+                let below = sb - lb;
+                let y = if below >= ih || below > lt {
+                    option.1
+                } else {
+                    option.0 - ih
+                };
+                (ll + INFO_MARGIN, y, max_w)
+            };
+            Some(Placement {
+                left: x,
+                top: y,
+                max_w: Some(max_w),
+                max_h: None,
+            })
+        }))
+        .with_priority(2)
+        .into_any_element()
     }
 
     /// The hover host: LSP hover, then lint diagnostics.
-    fn render_hover(&mut self, window: &Window, cx: &mut Context<Self>) -> Option<AnyElement> {
+    /// Its text selects and copies like a page's (a `recur_ui::selection`
+    /// scope), its links open, and presses and wheel turns inside it stay
+    /// out of the editor.
+    fn render_hover(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
         let sections: Vec<HoverSection> = [
             self.tooltips.lsp_hover.clone(),
             self.tooltips.lint_hover.clone(),
@@ -688,20 +787,17 @@ impl EditorView {
         };
         let vw = f32::from(window.viewport_size().width);
         let vh = f32::from(window.viewport_size().height);
-        let mut host = card(&theme)
-            .id("cm-tooltip-hover")
-            .flex()
-            .flex_col()
-            .min_w(px(352.0f32.min(vw - 48.0)))
-            .max_w(px(640.0f32.min(vw - 48.0)))
-            .max_h(px(352.0f32.min(0.45 * vh)))
-            .overflow_y_scroll();
+        let max_h = 352.0f32.min(0.45 * vh);
+        let mut rows = Vec::new();
         let (action_bg, action_fg) = crate::theme::diagnostic_action();
+        let style = DocStyle {
+            select: Some(Rc::new(Cell::new(0))),
+            ..DocStyle::from_theme(&theme, 12.5)
+        };
         for (i, s) in sections.iter().enumerate() {
             let sep = i > 0 && !self.theme.dark;
             let body: AnyElement = match &s.body {
                 HoverBody::Lsp(parts) => {
-                    let style = DocStyle::from_theme(&theme, 12.5);
                     let mut d = div().py(px(10.)).px(px(12.)).flex().flex_col();
                     for (k, part) in parts.iter().enumerate() {
                         if k > 0 {
@@ -720,7 +816,8 @@ impl EditorView {
                     let mut ul = div().flex().flex_col();
                     for d in diags {
                         let mut line = div().flex().flex_wrap().items_baseline().child(
-                            text(d.message.clone())
+                            style
+                                .selectable(text(d.message.clone()))
                                 .ui()
                                 .size(base_size)
                                 .leading(BODY_LEADING)
@@ -756,7 +853,8 @@ impl EditorView {
                             .child(line);
                         if let Some(src) = d.source.clone() {
                             li = li.child(
-                                text(src)
+                                style
+                                    .selectable(text(src))
                                     .ui()
                                     .size(base_size * 0.7)
                                     .leading(BODY_LEADING)
@@ -769,28 +867,62 @@ impl EditorView {
                     ul.into_any_element()
                 }
             };
-            host = host.child(
+            rows.push(
                 div()
                     .when(sep, |d| {
                         d.border_t_1()
                             .border_color(h(crate::theme::tooltip_section_border()))
                     })
+                    .when(i == 0, |d| {
+                        d.debug_selector(|| "cm-tooltip-hover-body".into())
+                    })
                     .child(body),
             );
         }
-        let ent = cx.entity();
-        let host = host.on_hover(move |hovered: &bool, _, cx| {
-            let hovered = *hovered;
-            ent.update(cx, |v, cx| {
-                v.tooltips.pointer_in_hover = hovered;
-                if !hovered {
-                    v.hover_left_tooltip(cx);
-                }
+        let scroller = recur_ui::widgets::scroll_area("cm-tooltip-hover")
+            .scroller(move |d| {
+                d.flex()
+                    .flex_col()
+                    .max_h(px(max_h))
+                    .debug_selector(|| "cm-tooltip-hover".into())
             })
-        });
-        let body = shadowed(&theme, host);
-        self.positioned("hover", anchor, first.above, body, window, cx)
-            .map(|(e, _)| e)
+            .children(rows);
+        let host = card(&theme)
+            .flex()
+            .flex_col()
+            .min_h_0()
+            .min_w(px(352.0f32.min(vw - 48.0)))
+            .max_w(px(640.0f32.min(vw - 48.0)))
+            .child(scroller);
+        let sel = recur_ui::selection::state(
+            ("cm-tooltip-hover-selection", self.tooltips.hover_gen),
+            window,
+            cx,
+        );
+        let ent = cx.entity();
+        let body = div()
+            .id("cm-tooltip-hover-host")
+            .flex()
+            .flex_col()
+            .min_h_0()
+            .on_any_mouse_down(|_, _, cx| cx.stop_propagation())
+            .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
+            .on_hover(move |hovered: &bool, _, cx| {
+                let hovered = *hovered;
+                ent.update(cx, |v, cx| {
+                    v.tooltips.pointer_in_hover = hovered;
+                    if !hovered {
+                        v.hover_left_tooltip(cx);
+                    }
+                })
+            })
+            .child(recur_ui::selection::scope(
+                &sel,
+                false,
+                shadowed(&theme, host),
+                cx,
+            ));
+        Some(self.positioned("hover", anchor, first.above, body, window))
     }
 
     /// The signature help tooltip (`drawSignatureTooltip`).
@@ -848,8 +980,7 @@ impl EditorView {
             body = body.child(render_doc(doc, &style));
         }
         let body = shadowed(&theme, body);
-        self.positioned("signature", anchor, true, body, window, cx)
-            .map(|(e, _)| e)
+        Some(self.positioned("signature", anchor, true, body, window))
     }
 
     /// The pointer left the hover tooltip: hide unless it went back over
@@ -885,5 +1016,31 @@ mod tests {
         )
         .unwrap();
         assert_eq!(squeezed.3, Some(226.0));
+    }
+
+    #[gpui::test]
+    fn placed_lays_out_again_under_a_cap(cx: &mut gpui::TestAppContext) {
+        let cx = cx.add_empty_window();
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        let log = seen.clone();
+        cx.draw(
+            point(px(0.), px(0.)),
+            size(px(800.), px(600.)),
+            move |_, _| {
+                Placed::new(div().w(px(300.)).h(px(200.)), move |sz| {
+                    log.borrow_mut().push(sz);
+                    Some(Placement {
+                        left: 10.,
+                        top: 20.,
+                        max_w: Some(120.),
+                        max_h: Some(50.),
+                    })
+                })
+            },
+        );
+        assert_eq!(
+            *seen.borrow(),
+            vec![size(px(300.), px(200.)), size(px(120.), px(50.))]
+        );
     }
 }

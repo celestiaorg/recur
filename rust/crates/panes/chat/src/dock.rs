@@ -888,7 +888,7 @@ impl AgentChat {
         if self.mention_sel < rows.len() {
             self.menu_scroll.scroll_to_item(self.mention_sel);
         }
-        // `overflow: auto` with WebKit's classic scrollbar inside the border.
+        // `overflow: auto` with the default scroller inside the border.
         let panel = recur_ui::style::card(t.pane, t.line_bright, 10.)
             .id("chat-mention")
             .debug_selector(|| "chat-mention".into())

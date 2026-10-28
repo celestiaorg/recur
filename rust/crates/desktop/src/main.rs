@@ -284,6 +284,7 @@ fn main() {
         let rt = rt_handle;
         let registry = registry();
         recur_app::init(&registry, cx);
+        recur_ui::widgets::scrollbar::watch_system_style(cx);
         let storage = LocalStorage::open(data_dir.join(LOCAL_STORAGE_FILE));
         let main = recur_app::MainWindow {
             services: services.clone(),

@@ -233,6 +233,8 @@ pub(crate) struct Frame {
     pub visible_lines: (usize, usize),
     pub rendered_lines: (usize, usize),
     pub content_width: f32,
+    /// "Show scroll bars: Always": the classic bars instead of overlay scrollers.
+    pub legacy_bars: bool,
 }
 
 pub struct EditorView {
@@ -317,6 +319,10 @@ pub struct EditorView {
     pub(crate) gutter_hover: Option<(crate::element::GutterKind, usize)>,
     pub(crate) collapsed_hover: Option<usize>,
     pub(crate) chip_hover: bool,
+    /// The vertical and horizontal overlay scrollers.
+    pub(crate) bars: [recur_ui::widgets::scrollbar::Overlay; 2],
+    /// The overlay knob under the pointer: `Some(vertical)`.
+    pub(crate) knob_hover: Option<bool>,
     pub(crate) chip_bounds: Option<gpui_kit::Bounds<Pixels>>,
     pub(crate) revert_pointer_inside: bool,
     pub(crate) last_hover_point: Option<gpui_kit::Point<Pixels>>,
@@ -461,6 +467,8 @@ impl EditorView {
             gutter_hover: None,
             collapsed_hover: None,
             chip_hover: false,
+            bars: Default::default(),
+            knob_hover: None,
             chip_bounds: None,
             revert_pointer_inside: false,
             last_hover_point: None,

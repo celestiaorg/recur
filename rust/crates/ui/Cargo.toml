@@ -35,6 +35,8 @@ core-foundation.workspace = true
 objc2.workspace = true
 objc2-foundation.workspace = true
 objc2-app-kit.workspace = true
+block2.workspace = true
+futures.workspace = true
 raw-window-handle.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]

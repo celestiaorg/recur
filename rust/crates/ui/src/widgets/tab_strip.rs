@@ -165,8 +165,8 @@ struct State {
     user_pinned: bool,
     anim: Option<(f32, f32, Instant)>,
     last_write: Option<f32>,
-    /// Last wheel scroll, which shows the overlay thumb.
-    wheeled: Option<Instant>,
+    /// The overlay thumb, shown by wheel scrolls.
+    scroller: crate::widgets::scrollbar::Overlay,
     /// What the last reveal saw: the active key, its chip's width and the chip count. The web
     /// strip reveals on a key change, a chip resize or a chip list mutation, not every frame.
     revealed: Option<(SharedString, f32, usize)>,
@@ -190,7 +190,7 @@ impl Default for State {
             restore_left: 0.,
             user_pinned: false,
             anim: None,
-            wheeled: None,
+            scroller: Default::default(),
             revealed: None,
             revealed_at: (0., 0.),
             settled: false,
@@ -503,20 +503,19 @@ impl TabStrip {
             let state = state.clone();
             strip = strip.on_scroll_wheel(move |_, window, cx| {
                 let now = crate::motion::now(cx);
-                state.update(cx, |s, _| s.wheeled = Some(now));
+                state.update(cx, |s, _| s.scroller.scrolled(now));
                 window.refresh();
             });
         }
         // `scrollbar-width: thin` is a macOS overlay scroller in WebKit: no layout space, and
         // only shown while the user scrolls.
-        let shown = state
-            .read(cx)
-            .wheeled
-            .is_some_and(|at| at.elapsed() < OVERLAY_SCROLLER);
-        if shown {
+        let now = crate::motion::now(cx);
+        let scroller = state.read(cx).scroller;
+        if scroller.animating(now) {
             window.request_animation_frame();
         }
-        let thumb = (overflow && shown).then(|| scrollbar(&scroll, t.line));
+        let opacity = scroller.opacity(now);
+        let thumb = (overflow && opacity > 0.).then(|| scrollbar(&scroll, t.line.fade(opacity)));
 
         let flush = self.flush;
         let mut root = div()
@@ -595,9 +594,6 @@ impl RenderOnce for TabStrip {
         crate::guard::component(self, window, cx, Self::render_view)
     }
 }
-
-/// How long the overlay scroller stays after the last wheel scroll.
-const OVERLAY_SCROLLER: Duration = Duration::from_millis(1000);
 
 /// The thin horizontal scrollbar thumb (`scrollbar-color: var(--line)`, 4px, radius 2).
 fn scrollbar(scroll: &ScrollHandle, color: crate::color::Color) -> AnyElement {

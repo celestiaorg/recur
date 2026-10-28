@@ -8239,11 +8239,13 @@ name = "recur-ui"
 version = "0.0.0"
 dependencies = [
  "base64 0.23.1",
+ "block2 0.6.2",
  "chrono",
  "core-foundation 0.10.1",
  "core-graphics 0.24.0",
  "core-text",
  "fancy-regex",
+ "futures",
  "gpui-kit",
  "image",
  "include_dir",

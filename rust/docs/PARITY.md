@@ -681,7 +681,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
   - [x] Click, close, key, press and context-menu callbacks; click guard after drags
 - [x] `TabStrip.svelte` (290 lines) → `recur_ui::widgets::tab_strip` (scenes above and `tab-strip/overflow`)
   - [x] Chrome strip, leading and trailing slots, `.tab-strip-act` actions, active reveal chase, keep-alive scroll restore, reveal nonce, user pinning
-  - [x] `scrollbar-width: thin` as WebKit's macOS overlay scroller (no layout space, shown after wheel scrolling)
+  - [x] `scrollbar-width: thin` as WebKit's macOS overlay scroller (no layout space, shown after wheel scrolling, the shared `scrollbar::Overlay` fade)
 - [x] `TerminalDock.svelte` (856 lines) → `recur_view_observatory::dock` (adopt / restore / spawn, tabs with drag reorder, find, the platform chord sets, maximize / beside / slot, resize, run controls, file drops; scenes `observatory/terminal*`, `TerminalDock.test.ts` cases in `dock::tests` and `spec::terminal_dock`)
 - [x] `TerminalPane.svelte` (581 lines) → `recur_terminal_view::TerminalView` + `TerminalElement`
   - [x] Attach on mount, paint replay, queue live output until the replay lands, ack in 32KiB batches (`tests/view.rs`)
@@ -941,7 +941,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 
 - [x] `styles/_base.scss`: the generic parts below; the view-specific rules live with the components that use them (`App.svelte`, `PRTitlebarActions.svelte`, the palettes, `Observatory.svelte`, `WorkspaceView.svelte`, all ticked). `.sb-kbd` is used by no component
   - [x] `body` and `window_root` (fonts, colors, line height, WebKit half-pixel ties), `.tbtn` and `.tb-right` buttons, `.tb-icon-btn`, `.tb-rail` (scenes `buttons/*`)
-  - [x] `::-webkit-scrollbar` 11px themed scrollbar and `.overlay-sb` (`recur_ui::widgets::scroll_area`)
+  - [x] `scrollbar-color` over `::-webkit-scrollbar`: WKWebView honors the standard property, so scrollers are AppKit overlay scrollers in the thumb color (`scrollbar::Overlay`: hidden at rest, shown by wheel scrolls, 500ms hold and 225ms fade, 6px knob widening to 11px with a track under the pointer), shared by `recur_ui::widgets::scroll_area` and the code editor; the 11px themed `::-webkit-scrollbar` under "Show scroll bars: Always" (`scrollbar::legacy`, which the parity renderer sets because Playwright's WebKit draws it); `.overlay-sb` (`scroll_area(..).overlay()`)
   - [x] `.kbd` / `.kbd-mod` keycaps (system-ui through CoreText with the weight trait and variation)
 - [x] `styles/_briefing.scss` → `recur_view_briefing::style` and the brief row in `recur_view_chat::cards::brief` (scenes `briefing/*`)
 - [x] `styles/_chat.scss` → `recur-view-chat` (the `chat/*` scenes)

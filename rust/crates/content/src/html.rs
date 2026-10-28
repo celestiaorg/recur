@@ -605,7 +605,7 @@ mod mac {
     use std::rc::Rc;
 
     use futures::channel::mpsc::UnboundedSender;
-    use gpui_kit::{Bounds, Pixels, Window};
+    use gpui_kit::{Bounds, EntityId, Pixels, Window};
     use objc2::rc::Retained;
     use objc2::runtime::{NSObject, NSObjectProtocol, ProtocolObject};
     use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send};
@@ -792,8 +792,8 @@ mod mac {
         unsafe { Retained::retain(h.ns_view.as_ptr().cast::<NSView>()) }
     }
 
-    /// Lay the page over `b` (window coordinates) and show it; hide it again on the next frame
-    /// that does not paint it.
+    /// Lay the page over `b` (window coordinates) and show it; hide it again after the first
+    /// draw that neither paints it nor replays a view around it.
     pub fn place(page: &Handle, b: Bounds<Pixels>, window: &mut Window) {
         let Some(view) = content_view(window) else {
             return;
@@ -818,16 +818,26 @@ mod mac {
             f.get()
         });
         page.painted.set(frame);
-        let web = page.web.clone();
-        let painted = page.painted.clone();
-        window.on_next_frame(move |window, _| {
-            let check = painted.clone();
-            window.on_next_frame(move |_, _| {
-                if check.get() == frame {
-                    // Not painted since: the preview left the screen.
-                    web.setHidden(true);
-                }
-            });
+        let stack: Rc<[EntityId]> = window.view_stack().into();
+        hide_unless_drawn(page.web.clone(), page.painted.clone(), frame, stack, window);
+    }
+
+    fn hide_unless_drawn(
+        web: Retained<WKWebView>,
+        painted: Rc<Cell<u64>>,
+        frame: u64,
+        stack: Rc<[EntityId]>,
+        window: &mut Window,
+    ) {
+        window.after_next_draw(move |window, _| {
+            if painted.get() != frame {
+                return;
+            }
+            if stack.iter().any(|v| window.replayed_view(*v)) {
+                hide_unless_drawn(web, painted, frame, stack, window);
+            } else {
+                web.setHidden(true);
+            }
         });
     }
 }

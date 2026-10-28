@@ -860,4 +860,39 @@ mod block_tests {
             "a replayed block lost its content"
         );
     }
+
+    struct ArmsOnce(std::rc::Rc<std::cell::Cell<u32>>, bool);
+
+    impl Render for ArmsOnce {
+        fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            if !std::mem::replace(&mut self.1, true) {
+                let ran = self.0.clone();
+                window.after_next_draw(move |_, _| ran.set(ran.get() + 1));
+            }
+            div()
+        }
+    }
+
+    /// The macOS HTML preview hides its page from `Window::after_next_draw` (vendored
+    /// gpui-pre): a callback armed mid-draw must wait for a later draw, not an idle frame.
+    #[gpui_kit::test]
+    fn after_next_draw_waits_for_a_later_draw(cx: &mut gpui_kit::TestAppContext) {
+        let ran = std::rc::Rc::new(std::cell::Cell::new(0));
+        let (_, cx) = cx.add_window_view({
+            let ran = ran.clone();
+            |_, _| ArmsOnce(ran, false)
+        });
+        assert_eq!(ran.get(), 0, "armed in the first draw, so not run by it");
+        cx.update(|window, cx| window.simulate_next_frame(cx));
+        assert_eq!(ran.get(), 0, "an idle frame runs nothing");
+        cx.update(|window, cx| {
+            window.refresh();
+            let _ = window.draw(cx);
+        });
+        assert_eq!(
+            ran.get(),
+            1,
+            "armed in one draw, runs at the end of the next"
+        );
+    }
 }

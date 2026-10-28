@@ -1425,6 +1425,7 @@ pub struct Window {
     pub(crate) next_tooltip_id: TooltipId,
     pub(crate) tooltip_bounds: Option<TooltipBounds>,
     pub(crate) next_frame_callbacks: Rc<RefCell<Vec<FrameCallback>>>,
+    after_draw_callbacks: Vec<FrameCallback>,
     pub(crate) dirty_views: FxHashSet<EntityId>,
     /// A notify this frame reached a view outside every isolated view (or no view at all).
     dirty_outside_islands: bool,
@@ -2340,6 +2341,7 @@ impl Window {
             rendered_frame: Frame::new(DispatchTree::new(cx.keymap.clone(), cx.actions.clone())),
             next_frame: Frame::new(DispatchTree::new(cx.keymap.clone(), cx.actions.clone())),
             next_frame_callbacks,
+            after_draw_callbacks: Vec::new(),
             next_hitbox_id: HitboxId(0),
             next_tooltip_id: TooltipId::default(),
             tooltip_bounds: None,
@@ -2921,6 +2923,13 @@ impl Window {
         // Next-frame callbacks create frame demand without dirtying the
         // window, so the platform's frame source must be woken explicitly.
         self.invalidator.wake_platform();
+    }
+
+    /// Run `callback` at the end of the next draw that starts after this call, while
+    /// [`Self::replayed_view`] still answers for that frame. Unlike [`Self::on_next_frame`] it
+    /// creates no frame demand and never runs on a frame that draws nothing.
+    pub fn after_next_draw(&mut self, callback: impl FnOnce(&mut Window, &mut App) + 'static) {
+        self.after_draw_callbacks.push(Box::new(callback));
     }
 
     /// Schedule a frame to be drawn on the next animation frame.
@@ -3639,6 +3648,7 @@ impl Window {
         // Set up the per-App arena for element allocation during this draw.
         // This ensures that multiple test Apps have isolated arenas.
         let arena_scope = ElementArenaScope::enter(&cx.element_arena);
+        let after_draw = mem::take(&mut self.after_draw_callbacks);
 
         if self.platform_window.prepare_frame() {
             self.refresh();
@@ -3719,6 +3729,9 @@ impl Window {
         self.text_system().finish_frame();
         self.next_frame.finish(&mut self.rendered_frame);
         self.rebase_cached_view_states(ends);
+        for callback in after_draw {
+            callback(self, cx);
+        }
 
         self.invalidator.set_phase(DrawPhase::Focus);
         let previous_focus_path = self.rendered_frame.focus_path();

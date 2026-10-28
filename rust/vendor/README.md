@@ -23,6 +23,8 @@ Anything else (a notify reaching a non-isolated view, a notify of a non-view ent
 
 `Window::replayed_view(id)` says whether the frame being drawn replayed a cached view instead of rendering it, and `Window::view_stack` lists the views being drawn. `recur_ui::selection` keeps the items of a replayed view in a scope that spans cached views (a PR conversation's items, a transcript's session cards), whose texts do not register again while they replay.
 
+`Window::after_next_draw` runs a callback at the end of the next draw, while `replayed_view` still answers for it, and never on a frame that draws nothing (unlike `on_next_frame`). The macOS HTML preview hides its WKWebView from it once a draw neither paints the page nor replays a view around it.
+
 ### Unsnapped bounds
 
 `Window::layout_bounds_unsnapped` is `layout_bounds` before the edges snap to device pixels (`taffy.rs` keeps the unrounded origins it snaps from). `recur_ui::layout_root` reads a layout root's or block's fractional edges from it, so content laid out as its own root lands where in-place layout puts it, in one frame.

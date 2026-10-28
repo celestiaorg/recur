@@ -379,6 +379,39 @@ impl AppState {
         })
     }
 
+    /// `openMainWorkspace`: open a project's working copy, creating its main workspace on
+    /// first use (re-stamping `isGit` on the way). `unless_scan_moved` skips the navigation
+    /// once the keyboard scan has moved on.
+    pub fn open_main_workspace(
+        &mut self,
+        project_id: &str,
+        unless_scan_moved: Option<u64>,
+        cx: &mut Context<Self>,
+    ) -> Task<()> {
+        self.refresh_projects(cx).detach();
+        let services = self.services.clone();
+        let pid = project_id.to_string();
+        cx.spawn(async move |this, cx| {
+            let Some(ws) = call(
+                cx,
+                services.workspaces.open_main_workspace(&pid),
+                "Could not open the main working copy",
+            )
+            .await
+            else {
+                return;
+            };
+            let _ = this.update(cx, |s, cx| {
+                let id = ws.id.clone();
+                s.put_workspace(ws, cx);
+                if unless_scan_moved.is_some_and(|seq| s.scan_event.seq != seq) {
+                    return;
+                }
+                s.open_workspace(&id, false, cx);
+            });
+        })
+    }
+
     /// `setProjectHidden`: persist a project's sidebar hidden flag.
     pub fn set_project_hidden(
         &mut self,

@@ -8,7 +8,7 @@ use recur_services::AppEvent;
 use recur_ui::guard::Guarded;
 use recur_ui::widgets::{ToastKind, ToastOptions, push_toast, toast_action};
 use recur_view_core::ViewName;
-use recur_view_core::menu::terminal_id_from_menu;
+use recur_view_core::menu::{MENU_VIEWS, terminal_id_from_menu};
 use recur_view_core::modes::ws_main_blocked;
 
 use crate::menu::*;
@@ -56,6 +56,11 @@ impl Shell {
             ReloadBundles,
             QuickOpen,
             GoToSymbol,
+            GoInbox,
+            GoIssues,
+            GoPullRequests,
+            GoSchedules,
+            GoWelcome,
             PrevWorkspace,
             NextWorkspace
         );
@@ -92,7 +97,7 @@ impl Shell {
             PrevTab => menu.prev_tab,
             NextTab => menu.next_tab
         );
-        root.on_action(cx.guarded_listener(|this, a: &PickTheme, window, cx| {
+        root.on_action(cx.guarded_listener(|this, a: &MenuPick, window, cx| {
             if !a.action.is_empty() {
                 this.emit_menu_action(&a.action, window, cx);
             }
@@ -155,6 +160,22 @@ impl Shell {
         if let Some(key) = action.strip_prefix("terminal-theme:") {
             let id = terminal_id_from_menu(key);
             state.update(cx, |s, cx| s.set_terminal_theme(&id, cx));
+            return;
+        }
+        if let Some(id) = action.strip_prefix("open-workspace:") {
+            state.update(cx, |s, cx| s.open_workspace(id, false, cx));
+            return;
+        }
+        if let Some(pid) = action.strip_prefix("open-main:") {
+            state
+                .update(cx, |s, cx| s.open_main_workspace(pid, None, cx))
+                .detach();
+            return;
+        }
+        if let Some(view) = action.strip_prefix("view:").and_then(ViewName::parse) {
+            if MENU_VIEWS.contains(&view) {
+                state.update(cx, |s, cx| s.go(view, None, cx));
+            }
             return;
         }
         // The workspace a dock or run action targets: only while one is on screen and its

@@ -16,6 +16,7 @@ use gpui_kit::{
 };
 use recur_platform::identity::APP_NAME;
 use recur_services::events::{MenuState, MenuThemes};
+use recur_view_core::menu::{MenuGroup, MenuWorkspace};
 
 gpui_kit::actions!(
     recur,
@@ -52,6 +53,11 @@ gpui_kit::actions!(
         ReloadBundles,
         QuickOpen,
         GoToSymbol,
+        GoInbox,
+        GoIssues,
+        GoPullRequests,
+        GoSchedules,
+        GoWelcome,
         FocusAgent,
         FocusEditor,
         FocusTerminal,
@@ -65,11 +71,12 @@ gpui_kit::actions!(
     ]
 );
 
-/// A View → Appearance radio item: `app-theme:` / `editor-theme:` / `terminal-theme:` plus
-/// the key.
+/// An item that carries its `menu.action` string: the View → Appearance radios
+/// (`app-theme:` / `editor-theme:` / `terminal-theme:` plus the key) and the Workspaces menu
+/// rows (`open-workspace:` / `open-main:` plus the id).
 #[derive(Clone, Debug, PartialEq, gpui_kit::Action)]
 #[action(namespace = recur, no_json)]
-pub struct PickTheme {
+pub struct MenuPick {
     pub action: SharedString,
 }
 
@@ -113,6 +120,11 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
         ReloadBundles => "reload-bundles",
         QuickOpen => "quick-open",
         GoToSymbol => "go-symbol",
+        GoInbox => "view:briefing",
+        GoIssues => "view:issues",
+        GoPullRequests => "view:pr",
+        GoSchedules => "view:schedules",
+        GoWelcome => "view:welcome",
         FocusAgent => "focus-agent",
         FocusEditor => "focus-editor",
         FocusTerminal => "focus-terminal",
@@ -159,6 +171,10 @@ pub fn bind_menu_keys(cx: &mut App) {
         KeyBinding::new("cmd-shift-/", KeyboardShortcuts, None),
         KeyBinding::new("cmd-p", QuickOpen, None),
         KeyBinding::new("cmd-shift-o", GoToSymbol, None),
+        KeyBinding::new("cmd-alt-1", GoInbox, None),
+        KeyBinding::new("cmd-alt-2", GoIssues, None),
+        KeyBinding::new("cmd-alt-3", GoPullRequests, None),
+        KeyBinding::new("cmd-alt-4", GoSchedules, None),
         KeyBinding::new("cmd-1", FocusAgent, None),
         KeyBinding::new("cmd-2", FocusEditor, None),
         KeyBinding::new("cmd-3", FocusTerminal, None),
@@ -205,24 +221,77 @@ fn contextual(name: &str, action: impl Action, on: Option<bool>) -> MenuItem {
     item(name, action).disabled(!enabled(on))
 }
 
-fn loading() -> MenuItem {
+/// A greyed-out label row.
+fn label(name: &str) -> MenuItem {
     item(
-        "Loading…",
-        PickTheme {
+        name,
+        MenuPick {
             action: SharedString::default(),
         },
     )
     .disabled(true)
 }
 
-fn radio(name: &str, prefix: &str, key: &str, checked: bool) -> MenuItem {
+fn loading() -> MenuItem {
+    label("Loading…")
+}
+
+fn pick(name: &str, action: String) -> MenuItem {
     item(
         name,
-        PickTheme {
-            action: format!("{prefix}:{key}").into(),
+        MenuPick {
+            action: action.into(),
         },
     )
-    .checked(checked)
+}
+
+fn radio(name: &str, prefix: &str, key: &str, checked: bool) -> MenuItem {
+    pick(name, format!("{prefix}:{key}")).checked(checked)
+}
+
+/// `buildWorkspacesMenu`: the sidebar tree, so a collapsed rail on a small screen still
+/// reaches every workspace. A disabled header per named group, one submenu per project
+/// (Working Copy, workspaces, Scheduled).
+fn workspaces_menu(groups: &[MenuGroup]) -> Menu {
+    let rows = |rows: &[MenuWorkspace]| -> Vec<MenuItem> {
+        rows.iter()
+            .map(|w| {
+                let name = if w.child {
+                    format!("↳ {}", w.name)
+                } else {
+                    w.name.clone()
+                };
+                pick(&name, format!("open-workspace:{}", w.id))
+            })
+            .collect()
+    };
+    let mut items = Vec::new();
+    for g in groups.iter().filter(|g| !g.projects.is_empty()) {
+        if !items.is_empty() {
+            items.push(MenuItem::separator());
+        }
+        if !g.name.is_empty() {
+            items.push(label(&g.name));
+        }
+        for p in &g.projects {
+            let mut sub = vec![pick("Working Copy", format!("open-main:{}", p.id))];
+            if !p.workspaces.is_empty() {
+                sub.push(MenuItem::separator());
+                sub.extend(rows(&p.workspaces));
+            }
+            if !p.scheduled.is_empty() {
+                sub.push(MenuItem::separator());
+                sub.push(MenuItem::submenu(
+                    Menu::new("Scheduled").items(rows(&p.scheduled)),
+                ));
+            }
+            items.push(MenuItem::submenu(Menu::new(p.name.clone()).items(sub)));
+        }
+    }
+    if items.is_empty() {
+        items.push(label("No Projects"));
+    }
+    Menu::new("Workspaces").items(items)
 }
 
 /// `applyMenuThemes`: the Appearance submenus from the catalogs, with "Loading…" until they
@@ -296,6 +365,7 @@ fn edit_item(name: &str, action: &str, os: Option<OsAction>, cx: &App) -> Option
 pub fn app_menus(
     state: &MenuState,
     themes: Option<&MenuThemes>,
+    workspaces: &[MenuGroup],
     updates: bool,
     cx: &App,
 ) -> Vec<Menu> {
@@ -407,6 +477,13 @@ pub fn app_menus(
         item("Quick Open…", QuickOpen),
         item("Go to Symbol…", GoToSymbol),
         MenuItem::separator(),
+        // Sidebar destinations, so a collapsed rail on a small screen costs nothing.
+        item("Inbox", GoInbox),
+        item("Issues", GoIssues),
+        item("Pull Requests", GoPullRequests),
+        item("Schedules", GoSchedules),
+        item("Get Started", GoWelcome),
+        MenuItem::separator(),
         contextual("Focus Agent Panel", FocusAgent, state.focus_agent),
         contextual("Focus Editor", FocusEditor, state.focus_editor),
         contextual("Focus Terminal", FocusTerminal, state.focus_terminal),
@@ -417,6 +494,7 @@ pub fn app_menus(
         item("Previous Workspace", PrevWorkspace),
         item("Next Workspace", NextWorkspace),
     ]));
+    menus.push(workspaces_menu(workspaces));
 
     if NATIVE_MENU_ACCELERATORS {
         menus.push(Menu::new("Window").items([
@@ -457,6 +535,7 @@ mod tests {
         assert_eq!(menu_action_name(&NewWorkspace), Some("new-loop"));
         assert_eq!(menu_action_name(&GoTo), Some("palette"));
         assert_eq!(menu_action_name(&ToggleSidebar), Some("toggle-sidebar"));
+        assert_eq!(menu_action_name(&GoPullRequests), Some("view:pr"));
         assert_eq!(menu_action_name(&About), None);
     }
 

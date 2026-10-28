@@ -1332,6 +1332,11 @@ All in `recur_app::menu` (`app_menus`, `bind_menu_keys`, `menu_action_name`): ro
 - [x] Reload Bundles
 - [x] Quick Open…
 - [x] Go to Symbol…
+- [x] Inbox
+- [x] Issues
+- [x] Pull Requests
+- [x] Schedules
+- [x] Get Started
 - [x] Focus Agent Panel
 - [x] Focus Editor
 - [x] Focus Terminal
@@ -1339,6 +1344,7 @@ All in `recur_app::menu` (`app_menus`, `bind_menu_keys`, `menu_action_name`): ro
 - [x] Next Tab
 - [x] Previous Workspace
 - [x] Next Workspace
+- [x] Workspaces
 
 ## Agent host tools (MCP)
 

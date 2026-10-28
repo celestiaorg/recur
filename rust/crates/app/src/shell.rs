@@ -60,7 +60,11 @@ pub struct Shell {
     pub(crate) titlebar: TitlebarState,
     pub(crate) land: LandChrome,
     /// What the native menubar was last built from.
-    menu_built: Option<(recur_services::events::MenuState, MenuThemes)>,
+    menu_built: Option<(
+        recur_services::events::MenuState,
+        MenuThemes,
+        Vec<recur_view_core::menu::MenuGroup>,
+    )>,
     /// The theme menus and a fingerprint of the catalogs they were sorted from.
     themes_memo: Option<(u64, MenuThemes)>,
     /// The chat-occluded value last reported (`SetChatUIOccluded`).
@@ -308,7 +312,7 @@ impl Shell {
     /// Rebuild the native menubar when its enabled state or theme catalogs changed
     /// (`applyMenuState`, `applyMenuThemes`, `applyMenuThemeState`).
     pub(crate) fn sync_menus(&mut self, cx: &mut Context<Self>) {
-        let (menu_state, themes) = {
+        let (menu_state, themes, workspaces) = {
             let s = self.state.read(cx);
             let mut menu_state = s.menu_state.clone();
             let on = s.view == ViewName::Detail
@@ -343,14 +347,20 @@ impl Shell {
             themes.app_selected = sel.app_selected;
             themes.editor_selected = sel.editor_selected;
             themes.terminal_selected = sel.terminal_selected;
-            (menu_state, themes)
+            let workspaces = recur_view_core::menu::menu_workspace_tree(
+                &s.project_groups,
+                &s.projects,
+                &s.workspaces,
+                s.show_hidden_projects(),
+            );
+            (menu_state, themes, workspaces)
         };
-        let key = (menu_state, themes);
+        let key = (menu_state, themes, workspaces);
         if self.menu_built.as_ref() == Some(&key) {
             return;
         }
         let t = std::time::Instant::now();
-        let menus = crate::menu::app_menus(&key.0, Some(&key.1), self.opts.updates, cx);
+        let menus = crate::menu::app_menus(&key.0, Some(&key.1), &key.2, self.opts.updates, cx);
         cx.set_menus(menus);
         crate::menu::count_rebuild(t.elapsed());
         self.menu_built = Some(key);

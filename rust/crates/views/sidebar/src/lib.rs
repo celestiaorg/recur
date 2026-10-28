@@ -448,7 +448,9 @@ impl Sidebar {
             if let Some(main_pid) = project_id_from_main_scan(&ev.workspace_id) {
                 let seq = ev.seq;
                 if self.state.read(cx).project(main_pid).is_some() {
-                    let open = self.open_main(main_pid, Some(seq), cx);
+                    let open = self
+                        .state
+                        .update(cx, |s, cx| s.open_main_workspace(main_pid, Some(seq), cx));
                     let state = self.state.clone();
                     cx.spawn(async move |_, cx| {
                         open.await;
@@ -752,41 +754,6 @@ impl Sidebar {
             }
         })
         .detach();
-    }
-
-    /// `openMain`: open a project's working copy (re-stamping `isGit` on the way).
-    /// `unless_scan_moved` skips the navigation once the keyboard scan has moved on.
-    pub(crate) fn open_main(
-        &mut self,
-        project_id: &str,
-        unless_scan_moved: Option<u64>,
-        cx: &mut Context<Self>,
-    ) -> Task<()> {
-        self.state
-            .update(cx, |s, cx| s.refresh_projects(cx))
-            .detach();
-        let services = self.services.clone();
-        let state = self.state.clone();
-        let pid = project_id.to_string();
-        cx.spawn(async move |_, cx| {
-            let Some(ws) = call(
-                cx,
-                services.workspaces.open_main_workspace(&pid),
-                "Could not open the main working copy",
-            )
-            .await
-            else {
-                return;
-            };
-            state.update(cx, |s, cx| {
-                let id = ws.id.clone();
-                s.put_workspace(ws, cx);
-                if unless_scan_moved.is_some_and(|seq| s.scan_event.seq != seq) {
-                    return;
-                }
-                s.open_workspace(&id, false, cx);
-            });
-        })
     }
 
     // ---- groups ----

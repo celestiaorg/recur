@@ -612,7 +612,9 @@ impl Sidebar {
                     this.set_hover(&hover_key, *h, cx)
                 }))
                 .on_click(cx.guarded_listener(move |this, _, _, cx| {
-                    this.open_main(&pid, None, cx).detach();
+                    this.state
+                        .update(cx, |s, cx| s.open_main_workspace(&pid, None, cx))
+                        .detach();
                 }));
         titled(SharedString::from(format!("{key}-tip")), title, el).into_any_element()
     }

@@ -3,11 +3,14 @@
 //! menu (`recur-app`); views push enabled state and subscribe to actions here.
 
 use gpui_kit::{Context, SharedString};
+use recur_domain::{Project, ProjectGroup, Workspace};
 use recur_editor::theme::catalog::compare_for_cycle;
 use recur_services::events::{MenuState, MenuTheme, MenuThemeState, MenuThemes};
 use recur_ui::theme::ThemeId;
 
+use crate::nav::ViewName;
 use crate::state::{AppState, ShellEvent};
+use crate::workspace_nav::{is_nested_child, nest_workspaces, split_scheduled, unique_refs};
 
 /// The Terminal Theme submenu's "Match App" row (the empty terminal theme id).
 pub const MENU_TERMINAL_MATCH: &str = "match-app";
@@ -147,9 +150,177 @@ impl AppState {
     }
 }
 
+/// Navigate → sidebar destinations; the first four are also ⌥⌘1–4 in order.
+pub const MENU_VIEWS: [ViewName; 5] = [
+    ViewName::Briefing,
+    ViewName::Issues,
+    ViewName::Pr,
+    ViewName::Schedules,
+    ViewName::Welcome,
+];
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MenuWorkspace {
+    pub id: String,
+    pub name: String,
+    pub child: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MenuProject {
+    pub id: String,
+    pub name: String,
+    pub workspaces: Vec<MenuWorkspace>,
+    pub scheduled: Vec<MenuWorkspace>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MenuGroup {
+    pub name: String,
+    pub projects: Vec<MenuProject>,
+}
+
+/// `menuWorkspaceTree`: the Workspaces menu in sidebar order, groups then ungrouped projects
+/// (name `""`).
+pub fn menu_workspace_tree(
+    groups: &[ProjectGroup],
+    projects: &[Project],
+    workspaces: &[Workspace],
+    show_hidden: bool,
+) -> Vec<MenuGroup> {
+    let loops: Vec<&Workspace> = unique_refs(workspaces)
+        .into_iter()
+        .filter(|w| !w.archived && !w.is_main && w.host_pr_id.trim().is_empty())
+        .collect();
+    let rows = |list: &[&Workspace]| -> Vec<MenuWorkspace> {
+        nest_workspaces(list)
+            .into_iter()
+            .map(|w| MenuWorkspace {
+                id: w.id.clone(),
+                name: w.short.clone(),
+                child: is_nested_child(w, list),
+            })
+            .collect()
+    };
+    let to_project = |p: &Project| {
+        let mine: Vec<&Workspace> = loops
+            .iter()
+            .copied()
+            .filter(|w| w.project_id == p.id)
+            .collect();
+        let (regular, scheduled) = split_scheduled(&mine);
+        MenuProject {
+            id: p.id.clone(),
+            name: p.name.clone(),
+            workspaces: rows(&regular),
+            scheduled: rows(&scheduled),
+        }
+    };
+    let shown: Vec<&Project> = unique_refs(projects)
+        .into_iter()
+        .filter(|p| show_hidden || !p.hidden)
+        .collect();
+    let ug = unique_refs(groups);
+    let mut out: Vec<MenuGroup> = ug
+        .iter()
+        .map(|g| MenuGroup {
+            name: g.name.clone(),
+            projects: shown
+                .iter()
+                .filter(|p| p.group_id == g.id)
+                .map(|p| to_project(p))
+                .collect(),
+        })
+        .filter(|g| !g.projects.is_empty())
+        .collect();
+    let ungrouped: Vec<MenuProject> = shown
+        .iter()
+        .filter(|p| p.group_id.is_empty() || !ug.iter().any(|g| g.id == p.group_id))
+        .map(|p| to_project(p))
+        .collect();
+    if !ungrouped.is_empty() {
+        out.push(MenuGroup {
+            name: String::new(),
+            projects: ungrouped,
+        });
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn workspace_tree_mirrors_sidebar() {
+        let groups = [ProjectGroup {
+            id: "g1".into(),
+            name: "Work".into(),
+            ..Default::default()
+        }];
+        let project = |id: &str, name: &str, group: &str, hidden: bool| Project {
+            id: id.into(),
+            name: name.into(),
+            group_id: group.into(),
+            hidden,
+            ..Default::default()
+        };
+        let projects = [
+            project("p1", "Alpha", "g1", false),
+            project("p2", "Beta", "", false),
+            project("p3", "Hidden", "", true),
+        ];
+        let ws = |id: &str, pid: &str, short: &str, f: &dyn Fn(&mut Workspace)| {
+            let mut w = Workspace {
+                id: id.into(),
+                project_id: pid.into(),
+                short: short.into(),
+                ..Default::default()
+            };
+            f(&mut w);
+            w
+        };
+        let workspaces = [
+            ws("m1", "p1", "main", &|w| w.is_main = true),
+            ws("w1", "p1", "one", &|_| {}),
+            ws("w2", "p1", "two", &|w| w.parent_id = "w1".into()),
+            ws("w3", "p1", "gone", &|w| w.archived = true),
+            ws("w4", "p1", "pr chat", &|w| w.host_pr_id = "pr1".into()),
+            ws("s1", "p1", "nightly", &|w| w.schedule_id = "sch".into()),
+            ws("w5", "p2", "beta ws", &|_| {}),
+        ];
+        let row = |id: &str, name: &str, child: bool| MenuWorkspace {
+            id: id.into(),
+            name: name.into(),
+            child,
+        };
+        assert_eq!(
+            menu_workspace_tree(&groups, &projects, &workspaces, false),
+            vec![
+                MenuGroup {
+                    name: "Work".into(),
+                    projects: vec![MenuProject {
+                        id: "p1".into(),
+                        name: "Alpha".into(),
+                        workspaces: vec![row("w1", "one", false), row("w2", "two", true)],
+                        scheduled: vec![row("s1", "nightly", false)],
+                    }],
+                },
+                MenuGroup {
+                    name: String::new(),
+                    projects: vec![MenuProject {
+                        id: "p2".into(),
+                        name: "Beta".into(),
+                        workspaces: vec![row("w5", "beta ws", false)],
+                        scheduled: vec![],
+                    }],
+                },
+            ]
+        );
+        let all = menu_workspace_tree(&groups, &projects, &workspaces, true);
+        let ids: Vec<&str> = all[1].projects.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(ids, ["p2", "p3"]);
+    }
 
     #[test]
     fn partial_state_merges() {

@@ -657,3 +657,51 @@ async fn a_workspace_switch_back_draws_the_transcript_where_it_was(cx: &mut Test
     assert!(back == redrawn, "the frame after the switch back is stale");
     assert!(back == before, "the transcript moved");
 }
+
+/// A key in the code editor renders the editor alone (it is isolated; `EditorView` is not a
+/// counted view) and the status bar's `Ln, Col`, not the Observatory, the workspace or the
+/// chat beside it.
+#[gpui::test]
+async fn a_key_in_the_code_editor_renders_the_editor_only(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    s.open(ACTIVE);
+    let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
+    s.cx.update(|window, cx| {
+        obs.update(cx, |o, cx| {
+            o.open_path(
+                recur_view_observatory::OpenRequest::new("src/main.go"),
+                window,
+                cx,
+            )
+            .detach()
+        })
+    });
+    s.settle();
+    let ed = obs
+        .read_with(s.cx, |o, _| o.main_editor().cloned())
+        .expect("main editor");
+    s.cx.update(|window, cx| ed.update(cx, |e, cx| e.focus(window, cx)));
+    s.settle();
+    s.cx.simulate_input("a");
+    s.cx.run_until_parked();
+    recur_ui::guard::count_renders(true);
+    for ch in ["b", "c", "d"] {
+        s.cx.simulate_input(ch);
+        s.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    assert!(
+        ed.read_with(s.cx, |e, _| e.peek_doc().contains("abcd")),
+        "the keys did not reach the editor"
+    );
+    assert!(renders("::FieldView", &counts) >= 3, "{counts:?}");
+    let beside: Vec<_> = counts
+        .keys()
+        .filter(|k| !k.ends_with("::FieldView"))
+        .collect();
+    assert!(
+        beside.is_empty(),
+        "an editor key rendered beside the editor: {counts:?}"
+    );
+}

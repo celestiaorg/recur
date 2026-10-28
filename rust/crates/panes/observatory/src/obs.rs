@@ -438,6 +438,10 @@ pub struct Observatory {
     pub(crate) outline: Vec<OutlineSymbol>,
     pub(crate) cursor_line: usize,
     pub(crate) cursor_col: usize,
+    /// The status bar's `Ln, Col` as an isolated view over `cursor_pos`: a caret move redraws
+    /// it alone, and the Observatory only when the text's width or the symbol changes.
+    pub(crate) cursor_status: Option<Entity<recur_ui::isolated::FieldView>>,
+    pub(crate) cursor_pos: Rc<std::cell::Cell<(usize, usize, crate::style::StatusWrap)>>,
     pub(crate) find_panel_open: bool,
     pub(crate) editor_reveal_gen: u64,
 
@@ -730,6 +734,8 @@ impl Observatory {
             outline: Vec::new(),
             cursor_line: 1,
             cursor_col: 1,
+            cursor_status: None,
+            cursor_pos: Rc::new(std::cell::Cell::new((1, 1, Default::default()))),
             find_panel_open: false,
             editor_reveal_gen: 0,
             base_doc: String::new(),

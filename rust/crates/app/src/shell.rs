@@ -331,7 +331,7 @@ impl Shell {
                 }
                 h.finish()
             };
-            let themes = match &self.themes_memo {
+            let mut themes = match &self.themes_memo {
                 Some((m, t)) if *m == mark => t.clone(),
                 _ => {
                     let t = s.menu_themes();
@@ -339,6 +339,10 @@ impl Shell {
                     t
                 }
             };
+            let sel = s.menu_theme_state();
+            themes.app_selected = sel.app_selected;
+            themes.editor_selected = sel.editor_selected;
+            themes.terminal_selected = sel.terminal_selected;
             (menu_state, themes)
         };
         let key = (menu_state, themes);

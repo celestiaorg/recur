@@ -223,14 +223,15 @@ struct ClientState {
     init: Init,
     connected: bool,
     /// Messages waiting on `initializing`.
-    queued: Vec<String>,
+    queued: Vec<Value>,
     files: Vec<WsFile>,
     versions: HashMap<String, i64>,
     detached: Vec<(String, Text, ChangeSet)>,
 }
 
-/// Where the client's messages go: the session's ordered `WriteLSP` pump, or a test sink.
-pub type Sink = Rc<dyn Fn(String)>;
+/// Where the client's messages go: the session's ordered `WriteLSP` pump (which serializes them
+/// off the UI thread), or a test sink.
+pub type Sink = Rc<dyn Fn(Value)>;
 
 /// One language server session's client (`LSPClient` with `RecurWorkspace`).
 pub struct Client {
@@ -347,10 +348,7 @@ impl Client {
                         };
                         (waiters, std::mem::take(&mut st.queued))
                     };
-                    (this.sink)(
-                        json!({"jsonrpc": "2.0", "method": "initialized", "params": {}})
-                            .to_string(),
-                    );
+                    (this.sink)(json!({"jsonrpc": "2.0", "method": "initialized", "params": {}}));
                     for m in queued {
                         (this.sink)(m);
                     }
@@ -405,7 +403,7 @@ impl Client {
         st.files.clear();
     }
 
-    fn send_after_init(&self, msg: String) {
+    fn send_after_init(&self, msg: Value) {
         let ready = {
             let mut st = self.st.borrow_mut();
             if !st.connected {
@@ -427,9 +425,7 @@ impl Client {
 
     /// `notification`.
     pub fn notification(&self, method: &str, params: Value) {
-        self.send_after_init(
-            json!({"jsonrpc": "2.0", "method": method, "params": params}).to_string(),
-        );
+        self.send_after_init(json!({"jsonrpc": "2.0", "method": method, "params": params}));
     }
 
     fn request_inner(&self, method: &str, params: Value, immediate: bool) -> LspRequest {
@@ -441,8 +437,7 @@ impl Client {
             st.pending.insert(id, tx);
             id
         };
-        let msg =
-            json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}).to_string();
+        let msg = json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params});
         let init = if immediate {
             (self.sink)(msg);
             None
@@ -472,19 +467,25 @@ impl Client {
     }
 
     /// `receiveMessage`: a response, notification or server request.
-    pub fn receive_message(self: &Rc<Self>, raw: &str, cx: &mut App) {
-        let Ok(Value::Object(msg)) = serde_json::from_str::<Value>(raw) else {
+    pub fn receive_message(self: &Rc<Self>, msg: Value, cx: &mut App) {
+        let Value::Object(mut msg) = msg else {
             return;
         };
         let has_id = msg.contains_key("id");
-        let method = msg.get("method").and_then(Value::as_str);
+        let method = msg.get("method").and_then(Value::as_str).map(str::to_owned);
         match (has_id, method) {
             (true, None) => {
-                let Some(id) = msg.get("id").and_then(Value::as_u64) else {
-                    return;
-                };
-                let Some(tx) = self.st.borrow_mut().pending.remove(&id) else {
-                    tracing::warn!("[lsp] Received a response for non-existent request {id}");
+                let tx = msg.get("id").and_then(Value::as_u64).and_then(|id| {
+                    let tx = self.st.borrow_mut().pending.remove(&id);
+                    if tx.is_none() {
+                        tracing::warn!("[lsp] Received a response for non-existent request {id}");
+                    }
+                    tx
+                });
+                // A response nobody awaits any more (an outline an edit superseded) can be
+                // megabytes of JSON tree: free it off the UI thread.
+                let Some(tx) = tx.filter(|tx| !tx.is_canceled()) else {
+                    self.executor.spawn(async move { drop(msg) }).detach();
                     return;
                 };
                 let result = match msg.get("error") {
@@ -496,24 +497,21 @@ impl Client {
                             .unwrap_or("")
                             .to_string(),
                     }),
-                    _ => Ok(msg.get("result").cloned().unwrap_or(Value::Null)),
+                    _ => Ok(msg.remove("result").unwrap_or(Value::Null)),
                 };
                 let _ = tx.send(result);
             }
             (false, Some(method)) => {
-                let params = msg.get("params").cloned().unwrap_or(Value::Null);
-                self.handle_notification(method, &params, cx);
+                let params = msg.remove("params").unwrap_or(Value::Null);
+                self.handle_notification(&method, &params, cx);
             }
             (true, Some(_)) => {
                 let id = msg.get("id").cloned().unwrap_or(Value::Null);
-                (self.sink)(
-                    json!({
-                        "jsonrpc": "2.0",
-                        "id": id,
-                        "error": { "code": -32601, "message": "Method not implemented" },
-                    })
-                    .to_string(),
-                );
+                (self.sink)(json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "error": { "code": -32601, "message": "Method not implemented" },
+                }));
             }
             (false, None) => {}
         }
@@ -1038,24 +1036,40 @@ impl LspHub {
         cx.default_global::<LspHub>().clone()
     }
 
-    /// `wireLspEvents`: route `lsp.message` / `lsp.exit` once.
+    /// `wireLspEvents`: route `lsp.message` / `lsp.exit` once. Messages are parsed on the
+    /// background executor (a large response or diagnostics list is milliseconds of JSON) and
+    /// reach the UI thread in stdout order, an exit as `None` after the session's last message.
     pub fn wire(&self, services: &Services, cx: &mut App) {
         if self.0.borrow().events.is_some() {
             return;
         }
         self.0.borrow_mut().services = Some(services.clone());
         let mut rx = services.subscribe();
+        let (tx, mut parsed) = mpsc::unbounded::<(String, Option<Value>)>();
+        let parse = cx.background_executor().spawn(async move {
+            while let Some(ev) = rx.recv().await {
+                let next = match ev {
+                    AppEvent::LspMessage(m) if !m.id.is_empty() => {
+                        match serde_json::from_str::<Value>(&m.message) {
+                            Ok(msg) => (m.id, Some(msg)),
+                            Err(_) => continue,
+                        }
+                    }
+                    AppEvent::LspExit(e) if !e.id.is_empty() => (e.id, None),
+                    _ => continue,
+                };
+                if tx.unbounded_send(next).is_err() {
+                    break;
+                }
+            }
+        });
         let hub = self.clone();
         let task = cx.spawn(async move |cx: &mut AsyncApp| {
-            while let Some(ev) = rx.recv().await {
-                match ev {
-                    AppEvent::LspMessage(m) if !m.id.is_empty() => {
-                        cx.update(|cx| hub.dispatch(&m.id, &m.message, cx));
-                    }
-                    AppEvent::LspExit(e) if !e.id.is_empty() => {
-                        cx.update(|cx| hub.drop_session(&e.id, cx));
-                    }
-                    _ => {}
+            let _parse = parse;
+            while let Some((id, msg)) = parsed.next().await {
+                match msg {
+                    Some(msg) => cx.update(|cx| hub.dispatch(&id, msg, cx)),
+                    None => cx.update(|cx| hub.drop_session(&id, cx)),
                 }
             }
         });
@@ -1075,10 +1089,10 @@ impl LspHub {
     }
 
     /// One `lsp.message`: answer what the client answers itself, else deliver it.
-    pub fn dispatch(&self, id: &str, raw: &str, cx: &mut App) {
+    pub fn dispatch(&self, id: &str, msg: Value, cx: &mut App) {
         let Some(s) = self.session(id) else { return };
-        match handle_server_request(raw, &s.root_uri) {
-            ServerRequest::Pass => s.client.receive_message(raw, cx),
+        match handle_server_request(&msg, &s.root_uri) {
+            ServerRequest::Pass => s.client.receive_message(msg, cx),
             ServerRequest::Reply(r) => (s.client.sink)(r),
             ServerRequest::Tsserver { reply, call } => {
                 (s.client.sink)(reply);
@@ -1198,7 +1212,7 @@ impl LspHub {
             return Some(s.client.clone());
         }
         let services = self.services()?;
-        let (tx, mut rx) = mpsc::unbounded::<String>();
+        let (tx, mut rx) = mpsc::unbounded::<Value>();
         let pump = {
             let (id, root, key, vue) = (
                 info.id.clone(),
@@ -1206,10 +1220,12 @@ impl LspHub {
                 info.server_key.clone(),
                 info.vue_plugin_path.clone(),
             );
-            cx.spawn(async move |_| {
+            let lsp = services.lsp.clone();
+            // Serializing a `didChange` of a large file takes milliseconds: off the UI thread.
+            cx.background_executor().spawn(async move {
                 while let Some(m) = rx.next().await {
                     let m = rewrite_outgoing(&m, &root, &key, &vue);
-                    let _ = services.lsp.write_lsp(&id, &m).await;
+                    let _ = lsp.write_lsp(&id, &m).await;
                 }
             })
         };
@@ -1741,10 +1757,15 @@ pub async fn lsp_outline(
         .response
         .await
         .ok()?;
-    let nodes = result.as_array()?;
-    let mut out = Vec::new();
-    flatten_symbols(nodes, &mut out);
-    Some(out)
+    // A large file's symbol tree takes milliseconds to walk and free.
+    client
+        .executor
+        .spawn(async move {
+            let mut out = Vec::new();
+            flatten_symbols(result.as_array()?, &mut out);
+            Some(out)
+        })
+        .await
 }
 
 /// `lspReferences` at a 0-based position.
@@ -2316,7 +2337,7 @@ mod tests {
             workspace_id,
             root_uri,
             "",
-            Rc::new(move |m: String| s.borrow_mut().push(serde_json::from_str(&m).unwrap())),
+            Rc::new(move |m: Value| s.borrow_mut().push(m)),
             cx.background_executor.clone(),
             Some(cx.to_async()),
         );
@@ -2777,7 +2798,7 @@ mod tests {
             "ws-a",
             "file:///tmp/ws",
             "gopls",
-            Rc::new(move |m: String| s.borrow_mut().push(serde_json::from_str(&m).unwrap())),
+            Rc::new(move |m: Value| s.borrow_mut().push(m)),
             cx.background_executor.clone(),
             None,
         );
@@ -2804,8 +2825,7 @@ mod tests {
         let id = first["id"].as_u64().unwrap();
         cx.update(|cx| {
             c.receive_message(
-                &json!({"jsonrpc": "2.0", "id": id, "result": {"capabilities": {"textDocumentSync": 2}}})
-                    .to_string(),
+                json!({"jsonrpc": "2.0", "id": id, "result": {"capabilities": {"textDocumentSync": 2}}}),
                 cx,
             )
         });
@@ -2819,13 +2839,47 @@ mod tests {
         assert_eq!(c.has_capability("hoverProvider"), Some(false));
         cx.update(|cx| {
             c.receive_message(
-                &json!({"jsonrpc": "2.0", "id": 7, "method": "custom/thing", "params": {}})
-                    .to_string(),
+                json!({"jsonrpc": "2.0", "id": 7, "method": "custom/thing", "params": {}}),
                 cx,
             )
         });
         let last = sent.borrow().last().cloned().unwrap();
         assert_eq!(last["error"]["code"], -32601);
+    }
+
+    #[gpui::test]
+    async fn wired_messages_reach_the_client_in_order_before_the_exit(cx: &mut TestAppContext) {
+        use recur_services::events::{LspExit, LspMessage};
+        let services = MockBridge::fresh(MockOptions::default()).services();
+        let hub = LspHub::default();
+        cx.update(|cx| hub.wire(&services, cx));
+        let (c, _) = stub(cx, &hub, "ws-a", "file:///tmp/ws");
+        let info = ClientInfo {
+            id: "sess-ws-a".into(),
+            workspace_id: "ws-a".into(),
+            ..Default::default()
+        };
+        hub.install_session(&info, c.clone(), true);
+        let req = c.request("textDocument/documentSymbol", json!({}));
+        let message = json!({"jsonrpc": "2.0", "id": req.id, "result": [1]}).to_string();
+        for ev in [
+            AppEvent::LspMessage(LspMessage {
+                id: info.id.clone(),
+                message: "not json".into(),
+            }),
+            AppEvent::LspMessage(LspMessage {
+                id: info.id.clone(),
+                message,
+            }),
+            AppEvent::LspExit(LspExit {
+                id: info.id.clone(),
+            }),
+        ] {
+            services.emit(ev);
+        }
+        cx.run_until_parked();
+        assert_eq!(req.response.await.unwrap(), json!([1]));
+        assert!(hub.session(&info.id).is_none());
     }
 
     #[gpui::test]
@@ -2852,11 +2906,10 @@ mod tests {
                     "severity": 2, "message": "unused", "source": "go", "code": "U1000",
                 }],
             }})
-            .to_string()
         };
-        cx.update(|cx| c.receive_message(&msg(5), cx));
+        cx.update(|cx| c.receive_message(msg(5), cx));
         assert!(cx.update(|cx| peek_problems(cx)).is_empty());
-        cx.update(|cx| c.receive_message(&msg(0), cx));
+        cx.update(|cx| c.receive_message(msg(0), cx));
         let probs = cx.update(|cx| peek_problems(cx));
         assert_eq!(probs.len(), 1);
         assert_eq!(probs[0].path, "src/a b.go");

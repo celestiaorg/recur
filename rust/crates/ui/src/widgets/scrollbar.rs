@@ -554,12 +554,16 @@ impl ScrollArea {
                 });
         }
 
-        let mut root = div().relative().flex().size_full().min_w_0().min_h_0();
-        root = match axis {
-            Axis::X => root.flex_col(),
-            Axis::Y => root.flex_row(),
-        }
-        .child(content);
+        // A column for both axes: a row root sizes a vertical scroller's height by laying its
+        // content out once more per pass.
+        let mut root = div()
+            .relative()
+            .flex()
+            .flex_col()
+            .size_full()
+            .min_w_0()
+            .min_h_0()
+            .child(content);
         // A hidden overlay scroller takes no pointer, so the content under it stays clickable.
         if !overflow || (native && opacity <= 0.) {
             return root;

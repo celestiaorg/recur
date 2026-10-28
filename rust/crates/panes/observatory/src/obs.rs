@@ -1353,6 +1353,10 @@ impl Observatory {
         &self.selected_path
     }
 
+    pub fn main_editor(&self) -> Option<&Entity<EditorView>> {
+        self.main_editor.as_ref()
+    }
+
     /// The explorer row highlighted as current (`treePath`).
     pub fn tree_path(&self) -> &str {
         &self.tree_path

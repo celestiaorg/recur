@@ -937,6 +937,10 @@ impl Element for Flow {
         window: &mut Window,
         cx: &mut App,
     ) {
+        for c in &mut state.children {
+            c.paint(window, cx);
+        }
+        // Over the chips, whose backgrounds would hide it, as the composer's overlay paints.
         if let Some(r) = self
             .selectable
             .and_then(|key| recur_ui::selection::selected(key, cx))
@@ -950,9 +954,6 @@ impl Element for Flow {
             for b in recur_ui::selection::Geometry::rects(&g, r) {
                 window.paint_quad(gpui_kit::fill(b, color));
             }
-        }
-        for c in &mut state.children {
-            c.paint(window, cx);
         }
     }
 }

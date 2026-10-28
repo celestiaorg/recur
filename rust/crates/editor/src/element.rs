@@ -2165,12 +2165,10 @@ impl EditorView {
                         }
                     }
                     GutterKind::Diff => {
-                        let mark = self
-                            .state
-                            .gutters
-                            .diff_marks
-                            .iter()
-                            .find(|(p, _)| doc.line_at((*p).min(doc.len())).from == line.from)
+                        let marks = &self.state.gutters.diff_marks;
+                        let mark = marks
+                            .get(marks.partition_point(|(p, _)| *p < line.from))
+                            .filter(|(p, _)| (*p).min(doc.len()) <= line.to)
                             .map(|(_, k)| *k);
                         if let Some(kind) = mark {
                             let c = match kind {

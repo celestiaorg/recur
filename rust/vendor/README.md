@@ -27,6 +27,10 @@ Anything else (a notify reaching a non-isolated view, a notify of a non-view ent
 
 `Window::layout_bounds_unsnapped` is `layout_bounds` before the edges snap to device pixels (`taffy.rs` keeps the unrounded origins it snaps from). `recur_ui::layout_root` reads a layout root's or block's fractional edges from it, so content laid out as its own root lands where in-place layout puts it, in one frame.
 
+### Backdrop blur
+
+`Window::paint_backdrop_blur(bounds, corner_radii, blur_radius)` records a `BackdropBlur` primitive: a Gaussian blur, of standard deviation `blur_radius`, of what was painted under `bounds`, clipped to the rounded rect and the content mask, as CSS `backdrop-filter: blur()`. `recur_ui::style::backdrop_blur` paints one under a fill (the scrims, the lightbox). It takes its draw order from the bounds tree like any primitive, so it sits above everything it overlaps that was painted before it. `Scene::batches_with_backdrop_blurs` yields `SceneBatch::BackdropBlurs` between the primitive batches, and a blur ends the batches before it at its order, so a renderer draws exactly what lies under the blur first. `Scene::batches` is the same sequence without the blurs, so renderers that do not draw them (gpui-pre-wgpu on Linux, the test platform) skip them and only the fill shows; `PrimitiveBatch` is unchanged, which keeps gpui-pre-wgpu building unvendored. The blur is a `Primitive` like the others, so a replay (`Scene::replay`, the cached and isolated views' paint ranges) copies it in order with no extra bookkeeping. `Window::scene_batch_labels` (test support) lists the last frame's batches; `recur-ui`'s `backdrop_blur_spec` checks the split and that replayed roots and cached views keep the blur.
+
 ### Contained panics
 
 A panic must not unwind into a platform callback: AppKit, GCD and GLib frames cannot be unwound through, so the process aborts. Recur's own guards (`recur_ui::guard`) contain renders and the callbacks Recur wraps; the patch contains the rest inside GPUI (`src/unwind.rs`):
@@ -44,7 +48,7 @@ An isolated view's size comes from its `style`, never from its content, and anyt
 
 ### Upgrading
 
-gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way rust/vendor/gpui-pre.patch` and fix what moved. The patch touches `taffy.rs` (exact measured sizes, unsnapped bounds), `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
+gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way rust/vendor/gpui-pre.patch` and fix what moved. The patch touches `taffy.rs` (exact measured sizes, unsnapped bounds), `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`, `paint_backdrop_blur`), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`, `BackdropBlur`, `SceneBatch`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec`, `backdrop_blur_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
 
 Regenerate the patch after editing the vendored source:
 
@@ -60,9 +64,15 @@ git diff dddd0fe0 -- rust/vendor/gpui-pre > rust/vendor/gpui-pre.patch
 git diff 9386fc71 -- rust/vendor/gpui-pre-scheduler > rust/vendor/gpui-pre-scheduler.patch
 ```
 
-## gpui-pre-apple 0.3.9 (border coverage)
+## gpui-pre-apple 0.3.9 (border coverage, backdrop blur)
 
-`gpui-pre-apple/` is the crates.io source of GPUI's macOS renderer and text system (same snapshot), wired in by `[patch.crates-io]`. Commit `cb8279c1` ("rust: vendor gpui-pre-apple 0.3.9 unchanged") is the pristine import (`src/`, `build.rs`, `vendor/`, `Cargo.toml`, the license), and `gpui-pre-apple.patch` is the change: the quad shader (`src/shaders.metal`, `quad_fragment`) interpolates between a quad's background and its border in premultiplied space. Upstream mixes straight colors, so toward a transparent background (a card frame, an outline) the border's inner anti-aliased edge carried its coverage twice once blended and came out darker than CoreGraphics paints it: every rounded header inside a bordered card showed the card's background through that edge. Upgrade it with gpui-pre: replace the source, commit it alone, `git apply --3way rust/vendor/gpui-pre-apple.patch`, and regenerate:
+`gpui-pre-apple/` is the crates.io source of GPUI's macOS renderer and text system (same snapshot), wired in by `[patch.crates-io]`. Commit `cb8279c1` ("rust: vendor gpui-pre-apple 0.3.9 unchanged") is the pristine import (`src/`, `build.rs`, `vendor/`, `Cargo.toml`, the license), and `gpui-pre-apple.patch` is the change.
+
+**Border coverage.** The quad shader (`src/shaders.metal`, `quad_fragment`) interpolates between a quad's background and its border in premultiplied space. Upstream mixes straight colors, so toward a transparent background (a card frame, an outline) the border's inner anti-aliased edge carried its coverage twice once blended and came out darker than CoreGraphics paints it: every rounded header inside a bordered card showed the card's background through that edge.
+
+**Backdrop blur.** `MetalRenderer` draws gpui-pre's `BackdropBlur` (above). At a blur batch it ends the frame's render pass and, per blur, renders the covered region (bounds and content mask, whole device pixels) into a scratch texture, blurs it there with two separable Gaussian passes (`backdrop_blur_pass_fragment`, paired taps through one linear sample each), composites the result back through the rounded rect (`backdrop_blur_composite_fragment`), and resumes the frame with `loadAction = Load`. From a 4 device pixel sigma up (CSS `blur(2px)` at scale 2) the first pass averages each 2x2 block and the Gaussian runs at half resolution, within 1.5 levels of an exact blur. The two scratch textures grow to the largest region seen and are reused. A scene with a blur sets the layer's `framebufferOnly` to false for its drawable, which the passes read; frames without one keep it true. Measured on Apple silicon at 2880 by 1800 under load: a full-window `blur(2px)` adds about 0.55ms of GPU time, `blur(8px)` about 1ms.
+
+Upgrade it with gpui-pre: replace the source, commit it alone, `git apply --3way rust/vendor/gpui-pre-apple.patch`, and regenerate:
 
 ```sh
 git diff cb8279c1 -- rust/vendor/gpui-pre-apple > rust/vendor/gpui-pre-apple.patch

@@ -174,7 +174,7 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 - **Gradient dither.** recur-ui paints gradients smooth. WebKit paints opaque gradients smooth too, but dithers some that fade to transparent (the sidebar's under-fades) by a level or two; counted as anti-aliasing, except where the noise lands on a faint edge.
 - **Glyph subpixel phase.** recur-ui places glyphs from the box's unrounded left edge, as WebKit does; CoreGraphics' subpixel quantization still lands a few glyphs in a neighboring bin. Counted as text in the diff.
 - **Curved-edge coverage.** GPUI's SDF shader and CoreGraphics disagree by a few levels on some pixels of rounded borders and rings; a handful of such pixels can exceed the soft-edge rule and count as hard (see the allowances below).
-- **Backdrop blur.** The `.palette-bg` / `.nt-bg` scrims' `backdrop-filter: blur(2px)` is not drawn: GPUI has no backdrop filters. The scrim color matches.
+- **Backdrop blur.** `style::backdrop_blur` draws `backdrop-filter: blur()` on macOS (the `.palette-bg` / `.nt-bg` scrims' 2px, the lightbox's 8px; vendored renderer, `vendor/README.md`). Playwright's WebKit captures leave backdrop filters out, so the parity renderer turns the blur off (`style::set_backdrop_blur`) and compares the scrim color alone. Linux draws no blur; the scrim color matches.
 - **Element transforms.** GPUI cannot scale or translate an element tree, so the toast entrance's `scale(.98)` is dropped (the fade and 8px rise remain) and `translateY(-.5px)` on the ask toast's chevron becomes a device-pixel offset (exact at scale 2).
 - **Caret.** Drawn by gpui-base's editor. Captures hide carets on both sides.
 - **Synthetic oblique.** The bundled code fonts have no italic faces, so WebKit slants the regular face for `font-style: italic` (TextMate comments, parameters). GPUI cannot transform glyphs, so the editor draws them upright. Counted as text in the diff.
@@ -187,7 +187,6 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 
 - **Native checkbox.** A task list's checked, disabled `<input type=checkbox>` is WebKit's native control; recur-content draws its look (fill, border and check calibrated per theme), and the edge pixels of the rounded box and check differ.
 - **Image resampling.** Scaled images (the lightbox, PDF pages stretched to their slot, the inline chart) are sampled by GPUI's bilinear texture filter where WebKit uses CoreGraphics interpolation; internal edges differ by a few levels, counted as anti-aliasing.
-- **Lightbox backdrop blur.** `backdrop-filter: blur(8px)` is not drawn (no backdrop filters in GPUI); the scrim color matches.
 - **LSP documentation links and signature indent.** recur-ui text has no per-side inline border, inline underline color or `text-indent`: a link in hover or completion documentation draws its `border-bottom` (cyan at 45%) as a full-cyan underline, and a signature that wraps in signature help starts its continuation lines at the left edge instead of under CodeMirror's `1em hanging` indent.
 
 ## Hard-pixel allowances

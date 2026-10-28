@@ -281,10 +281,26 @@ index 2f755b1d..98f87965 100644
      }
  
 diff --git a/rust/vendor/gpui-pre/src/scene.rs b/rust/vendor/gpui-pre/src/scene.rs
-index be378132..1914983e 100644
+index be378132..4a5eba36 100644
 --- a/rust/vendor/gpui-pre/src/scene.rs
 +++ b/rust/vendor/gpui-pre/src/scene.rs
-@@ -79,6 +79,11 @@ impl Scene {
+@@ -50,6 +50,7 @@ pub struct Scene {
+     pub subpixel_sprites: Vec<SubpixelSprite>,
+     pub polychrome_sprites: Vec<PolychromeSprite>,
+     pub surfaces: Vec<PaintSurface>,
++    pub backdrop_blurs: Vec<BackdropBlur>,
+ }
+ 
+ #[expect(missing_docs)]
+@@ -66,6 +67,7 @@ impl Scene {
+         self.subpixel_sprites.clear();
+         self.polychrome_sprites.clear();
+         self.surfaces.clear();
++        self.backdrop_blurs.clear();
+     }
+ 
+     pub fn len(&self) -> usize {
+@@ -79,6 +81,11 @@ impl Scene {
              .push(PaintOperation::StartLayer(bounds));
      }
  
@@ -296,6 +312,269 @@ index be378132..1914983e 100644
      pub fn pop_layer(&mut self) {
          self.layer_stack.pop();
          self.paint_operations.push(PaintOperation::EndLayer);
+@@ -133,6 +140,10 @@ impl Scene {
+                 surface.order = order;
+                 self.surfaces.push(surface.clone());
+             }
++            Primitive::BackdropBlur(blur) => {
++                blur.order = order;
++                self.backdrop_blurs.push(*blur);
++            }
+         }
+         self.paint_operations
+             .push(PaintOperation::Primitive(primitive));
+@@ -160,6 +171,7 @@ impl Scene {
+         self.polychrome_sprites
+             .sort_by_key(|sprite| (sprite.order, sprite.tile.tile_id));
+         self.surfaces.sort_by_key(|surface| surface.order);
++        self.backdrop_blurs.sort_by_key(|blur| blur.order);
+     }
+ 
+     #[cfg_attr(
+@@ -170,6 +182,16 @@ impl Scene {
+         allow(dead_code)
+     )]
+     pub fn batches(&self) -> impl Iterator<Item = PrimitiveBatch> + '_ {
++        self.batches_with_backdrop_blurs()
++            .filter_map(|batch| match batch {
++                SceneBatch::Primitives(batch) => Some(batch),
++                SceneBatch::BackdropBlurs(_) => None,
++            })
++    }
++
++    /// Recur: [`Scene::batches`] with the backdrop blurs between them, for renderers that draw
++    /// them. A blur ends the batches before it, so it samples exactly what was painted under it.
++    pub fn batches_with_backdrop_blurs(&self) -> impl Iterator<Item = SceneBatch> + '_ {
+         BatchIterator {
+             shadows_start: 0,
+             shadows_iter: self.shadows.iter().peekable(),
+@@ -187,6 +209,8 @@ impl Scene {
+             polychrome_sprites_iter: self.polychrome_sprites.iter().peekable(),
+             surfaces_start: 0,
+             surfaces_iter: self.surfaces.iter().peekable(),
++            backdrop_blurs_start: 0,
++            backdrop_blurs_iter: self.backdrop_blurs.iter().peekable(),
+         }
+     }
+ }
+@@ -209,6 +233,7 @@ pub(crate) enum PrimitiveKind {
+     SubpixelSprite,
+     PolychromeSprite,
+     Surface,
++    BackdropBlur,
+ }
+ 
+ pub(crate) enum PaintOperation {
+@@ -228,6 +253,7 @@ pub enum Primitive {
+     SubpixelSprite(SubpixelSprite),
+     PolychromeSprite(PolychromeSprite),
+     Surface(PaintSurface),
++    BackdropBlur(BackdropBlur),
+ }
+ 
+ #[expect(missing_docs)]
+@@ -242,6 +268,7 @@ impl Primitive {
+             Primitive::SubpixelSprite(sprite) => &sprite.bounds,
+             Primitive::PolychromeSprite(sprite) => &sprite.bounds,
+             Primitive::Surface(surface) => &surface.bounds,
++            Primitive::BackdropBlur(blur) => &blur.bounds,
+         }
+     }
+ 
+@@ -255,6 +282,7 @@ impl Primitive {
+             Primitive::SubpixelSprite(sprite) => &sprite.content_mask,
+             Primitive::PolychromeSprite(sprite) => &sprite.content_mask,
+             Primitive::Surface(surface) => &surface.content_mask,
++            Primitive::BackdropBlur(blur) => &blur.content_mask,
+         }
+     }
+ }
+@@ -283,10 +311,12 @@ struct BatchIterator<'a> {
+     polychrome_sprites_iter: Peekable<slice::Iter<'a, PolychromeSprite>>,
+     surfaces_start: usize,
+     surfaces_iter: Peekable<slice::Iter<'a, PaintSurface>>,
++    backdrop_blurs_start: usize,
++    backdrop_blurs_iter: Peekable<slice::Iter<'a, BackdropBlur>>,
+ }
+ 
+ impl<'a> Iterator for BatchIterator<'a> {
+-    type Item = PrimitiveBatch;
++    type Item = SceneBatch;
+ 
+     fn next(&mut self) -> Option<Self::Item> {
+         let mut orders_and_kinds = [
+@@ -316,6 +346,10 @@ impl<'a> Iterator for BatchIterator<'a> {
+                 self.surfaces_iter.peek().map(|s| s.order),
+                 PrimitiveKind::Surface,
+             ),
++            (
++                self.backdrop_blurs_iter.peek().map(|b| b.order),
++                PrimitiveKind::BackdropBlur,
++            ),
+         ];
+         orders_and_kinds.sort_by_key(|(order, kind)| (order.unwrap_or(u32::MAX), *kind));
+ 
+@@ -340,7 +374,9 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     shadows_end += 1;
+                 }
+                 self.shadows_start = shadows_end;
+-                Some(PrimitiveBatch::Shadows(shadows_start..shadows_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Shadows(
++                    shadows_start..shadows_end,
++                )))
+             }
+             PrimitiveKind::Quad => {
+                 let quads_start = self.quads_start;
+@@ -354,7 +390,9 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     quads_end += 1;
+                 }
+                 self.quads_start = quads_end;
+-                Some(PrimitiveBatch::Quads(quads_start..quads_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Quads(
++                    quads_start..quads_end,
++                )))
+             }
+             PrimitiveKind::Path => {
+                 let paths_start = self.paths_start;
+@@ -368,7 +406,9 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     paths_end += 1;
+                 }
+                 self.paths_start = paths_end;
+-                Some(PrimitiveBatch::Paths(paths_start..paths_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Paths(
++                    paths_start..paths_end,
++                )))
+             }
+             PrimitiveKind::Underline => {
+                 let underlines_start = self.underlines_start;
+@@ -382,7 +422,9 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     underlines_end += 1;
+                 }
+                 self.underlines_start = underlines_end;
+-                Some(PrimitiveBatch::Underlines(underlines_start..underlines_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Underlines(
++                    underlines_start..underlines_end,
++                )))
+             }
+             PrimitiveKind::MonochromeSprite => {
+                 let texture_id = self.monochrome_sprites_iter.peek().unwrap().tile.texture_id;
+@@ -400,10 +442,10 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     sprites_end += 1;
+                 }
+                 self.monochrome_sprites_start = sprites_end;
+-                Some(PrimitiveBatch::MonochromeSprites {
++                Some(SceneBatch::Primitives(PrimitiveBatch::MonochromeSprites {
+                     texture_id,
+                     range: sprites_start..sprites_end,
+-                })
++                }))
+             }
+             PrimitiveKind::SubpixelSprite => {
+                 let texture_id = self.subpixel_sprites_iter.peek().unwrap().tile.texture_id;
+@@ -421,10 +463,10 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     sprites_end += 1;
+                 }
+                 self.subpixel_sprites_start = sprites_end;
+-                Some(PrimitiveBatch::SubpixelSprites {
++                Some(SceneBatch::Primitives(PrimitiveBatch::SubpixelSprites {
+                     texture_id,
+                     range: sprites_start..sprites_end,
+-                })
++                }))
+             }
+             PrimitiveKind::PolychromeSprite => {
+                 let texture_id = self.polychrome_sprites_iter.peek().unwrap().tile.texture_id;
+@@ -442,10 +484,10 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     sprites_end += 1;
+                 }
+                 self.polychrome_sprites_start = sprites_end;
+-                Some(PrimitiveBatch::PolychromeSprites {
++                Some(SceneBatch::Primitives(PrimitiveBatch::PolychromeSprites {
+                     texture_id,
+                     range: sprites_start..sprites_end,
+-                })
++                }))
+             }
+             PrimitiveKind::Surface => {
+                 let surfaces_start = self.surfaces_start;
+@@ -459,12 +501,47 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     surfaces_end += 1;
+                 }
+                 self.surfaces_start = surfaces_end;
+-                Some(PrimitiveBatch::Surfaces(surfaces_start..surfaces_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Surfaces(
++                    surfaces_start..surfaces_end,
++                )))
++            }
++            PrimitiveKind::BackdropBlur => {
++                let blurs_start = self.backdrop_blurs_start;
++                let mut blurs_end = blurs_start + 1;
++                self.backdrop_blurs_iter.next();
++                while self
++                    .backdrop_blurs_iter
++                    .next_if(|blur| (blur.order, batch_kind) < max_order_and_kind)
++                    .is_some()
++                {
++                    blurs_end += 1;
++                }
++                self.backdrop_blurs_start = blurs_end;
++                Some(SceneBatch::BackdropBlurs(blurs_start..blurs_end))
+             }
+         }
+     }
+ }
+ 
++/// Recur: a batch of primitives, or of backdrop blurs (see [`Scene::batches_with_backdrop_blurs`]).
++#[derive(Debug)]
++pub enum SceneBatch {
++    /// Primitives drawn as upstream.
++    Primitives(PrimitiveBatch),
++    /// Backdrop blurs, each over what the batches before it drew.
++    BackdropBlurs(Range<usize>),
++}
++
++impl SceneBatch {
++    /// The batch's label, as [`PrimitiveBatch::label`].
++    pub fn label(&self) -> String {
++        match self {
++            Self::Primitives(batch) => batch.label(),
++            Self::BackdropBlurs(range) => format!("backdrop blurs ({})", range.len()),
++        }
++    }
++}
++
+ #[derive(Debug)]
+ #[cfg_attr(
+     all(
+@@ -591,6 +668,28 @@ impl From<Shadow> for Primitive {
+     }
+ }
+ 
++/// Recur: a Gaussian blur of what is painted under `bounds`, as CSS `backdrop-filter: blur()`.
++/// Renderers without it skip it (`Scene::batches`).
++#[derive(Debug, Copy, Clone)]
++pub struct BackdropBlur {
++    /// The draw order.
++    pub order: DrawOrder,
++    /// The standard deviation of the Gaussian, in device pixels.
++    pub blur_radius: ScaledPixels,
++    /// The blurred area, clipped to `corner_radii` and `content_mask`.
++    pub bounds: Bounds<ScaledPixels>,
++    /// The corner radii of the blurred area.
++    pub corner_radii: Corners<ScaledPixels>,
++    /// The content mask.
++    pub content_mask: ContentMask<ScaledPixels>,
++}
++
++impl From<BackdropBlur> for Primitive {
++    fn from(blur: BackdropBlur) -> Self {
++        Primitive::BackdropBlur(blur)
++    }
++}
++
+ /// The style of a border.
+ #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+ #[repr(C)]
 diff --git a/rust/vendor/gpui-pre/src/taffy.rs b/rust/vendor/gpui-pre/src/taffy.rs
 index b9e583a8..a89e7913 100644
 --- a/rust/vendor/gpui-pre/src/taffy.rs
@@ -947,9 +1226,20 @@ index 081edd9a..843b8dda 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..e47f4cf8 100644
+index 1214b035..ad649bd5 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
+@@ -6,8 +6,8 @@ use crate::Inspector;
+ use crate::profiler;
+ use crate::{
+     Action, AnyDrag, AnyElement, AnyImageCache, AnyTooltip, AnyView, App, AppContext, Arena, Asset,
+-    AsyncWindowContext, AtlasTile, AvailableSpace, Background, BorderStyle, Bounds, BoxShadow,
+-    Capslock, Context, Corners, CursorHideMode, CursorStyle, Decorations, DevicePixels,
++    AsyncWindowContext, AtlasTile, AvailableSpace, BackdropBlur, Background, BorderStyle, Bounds,
++    BoxShadow, Capslock, Context, Corners, CursorHideMode, CursorStyle, Decorations, DevicePixels,
+     DispatchActionListener, DispatchNodeId, DispatchTree, DisplayId, Edges, Effect, Entity,
+     EntityId, EventEmitter, FileDropEvent, FontId, Global, GlobalElementId, GlyphId, GpuSpecs,
+     Hsla, InputHandler, InputPreference, IsZero, KeyBinding, KeyContext, KeyDownEvent, KeyEvent,
 @@ -999,6 +999,16 @@ impl ElementIdStack {
          self.hashes.clear();
      }
@@ -1239,7 +1529,7 @@ index 1214b035..e47f4cf8 100644
  
          self.invalidator.set_phase(DrawPhase::Focus);
          let previous_focus_path = self.rendered_frame.focus_path();
-@@ -3578,9 +3786,50 @@ impl Window {
+@@ -3578,9 +3786,60 @@ impl Window {
          arena_scope.exit(&cx.element_arena)
      }
  
@@ -1254,6 +1544,16 @@ index 1214b035..e47f4cf8 100644
 +            f.hitboxes.len(),
 +            f.scene.len(),
 +        ]
++    }
++
++    /// The last frame's scene batches as labels (test support), backdrop blurs included.
++    #[cfg(any(test, feature = "test-support"))]
++    pub fn scene_batch_labels(&self) -> Vec<String> {
++        self.rendered_frame
++            .scene
++            .batches_with_backdrop_blurs()
++            .map(|batch| batch.label())
++            .collect()
 +    }
 +
 +    /// Points every cached view's state at where this frame put it, so a later frame that
@@ -1290,7 +1590,7 @@ index 1214b035..e47f4cf8 100644
          let handle = self.handle;
          cx.record_entities_accessed(
              handle,
-@@ -3699,15 +3948,46 @@ impl Window {
+@@ -3699,15 +3958,46 @@ impl Window {
          let scale_factor = self.scale_factor();
          #[cfg(feature = "profiler")]
          let request_layout_start = Instant::now();
@@ -1345,7 +1645,7 @@ index 1214b035..e47f4cf8 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          let inspector_element = self.prepaint_inspector(_inspector_width, cx);
-@@ -3743,7 +4023,16 @@ impl Window {
+@@ -3743,7 +4033,16 @@ impl Window {
          #[cfg(feature = "profiler")]
          let paint_start = Instant::now();
          self.invalidator.set_phase(DrawPhase::Paint);
@@ -1363,7 +1663,7 @@ index 1214b035..e47f4cf8 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          self.paint_inspector(inspector_element, cx);
-@@ -3923,7 +4212,7 @@ impl Window {
+@@ -3923,7 +4222,7 @@ impl Window {
                      });
                      self.next_frame.deferred_draws[deferred_draw_ix].element = Some(element);
                  } else {
@@ -1372,7 +1672,7 @@ index 1214b035..e47f4cf8 100644
                  }
                  let prepaint_end = self.prepaint_index();
                  self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
-@@ -3966,7 +4255,7 @@ impl Window {
+@@ -3966,7 +4265,7 @@ impl Window {
                      })
                  })
              } else {
@@ -1381,7 +1681,7 @@ index 1214b035..e47f4cf8 100644
              }
              let paint_end = self.paint_index();
              deferred_draw.paint_range = paint_start..paint_end;
-@@ -3982,6 +4271,99 @@ impl Window {
+@@ -3982,6 +4281,99 @@ impl Window {
          sorted_indices
      }
  
@@ -1481,7 +1781,7 @@ index 1214b035..e47f4cf8 100644
      pub(crate) fn prepaint_index(&self) -> PrepaintStateIndex {
          PrepaintStateIndex {
              hitboxes_index: self.next_frame.hitboxes.len(),
-@@ -3993,7 +4375,105 @@ impl Window {
+@@ -3993,7 +4385,105 @@ impl Window {
          }
      }
  
@@ -1588,7 +1888,7 @@ index 1214b035..e47f4cf8 100644
          self.next_frame.hitboxes.extend(
              self.rendered_frame.hitboxes[range.start.hitboxes_index..range.end.hitboxes_index]
                  .iter()
-@@ -4011,19 +4491,17 @@ impl Window {
+@@ -4011,19 +4501,17 @@ impl Window {
                  .iter()
                  .map(|(id, type_id)| (id.clone(), *type_id)),
          );
@@ -1613,7 +1913,7 @@ index 1214b035..e47f4cf8 100644
          self.next_frame.deferred_draws.extend(
              self.rendered_frame.deferred_draws
                  [range.start.deferred_draws_index..range.end.deferred_draws_index]
-@@ -4042,6 +4520,7 @@ impl Window {
+@@ -4042,6 +4530,7 @@ impl Window {
                      paint_range: deferred_draw.paint_range.clone(),
                  }),
          );
@@ -1621,7 +1921,7 @@ index 1214b035..e47f4cf8 100644
      }
  
      pub(crate) fn paint_index(&self) -> PaintIndex {
-@@ -4058,7 +4537,78 @@ impl Window {
+@@ -4058,7 +4547,78 @@ impl Window {
          }
      }
  
@@ -1701,7 +2001,7 @@ index 1214b035..e47f4cf8 100644
          // Cached elements still exist in the frame even when their paint methods don't run.
          #[cfg(any(test, feature = "test-support"))]
          for (selector, bounds) in &self.rendered_frame.debug_bounds_records
-@@ -4096,12 +4646,14 @@ impl Window {
+@@ -4096,12 +4656,14 @@ impl Window {
                  [range.start.tab_handle_index..range.end.tab_handle_index],
          );
  
@@ -1718,7 +2018,7 @@ index 1214b035..e47f4cf8 100644
      }
  
      /// Push a text style onto the stack, and call a function with that style active.
-@@ -4525,6 +5077,41 @@ impl Window {
+@@ -4525,6 +5087,41 @@ impl Window {
          });
      }
  
@@ -1760,7 +2060,37 @@ index 1214b035..e47f4cf8 100644
      /// Creates a new painting layer for the specified bounds. A "layer" is a batch
      /// of geometry that are non-overlapping and have the same draw order. This is typically used
      /// for performance reasons.
-@@ -5247,7 +5834,25 @@ impl Window {
+@@ -4633,6 +5230,29 @@ impl Window {
+         }
+     }
+ 
++    /// Recur: blurs what is painted under `bounds` by a Gaussian of standard deviation
++    /// `blur_radius`, clipped to `corner_radii`, as CSS `backdrop-filter: blur()`. Paint it
++    /// before the element's background. Renderers without backdrop blur skip it.
++    ///
++    /// This method should only be called as part of the paint phase of element drawing.
++    pub fn paint_backdrop_blur(
++        &mut self,
++        bounds: Bounds<Pixels>,
++        corner_radii: Corners<Pixels>,
++        blur_radius: Pixels,
++    ) {
++        self.invalidator.debug_assert_paint();
++
++        let scale_factor = self.scale_factor();
++        self.next_frame.scene.insert_primitive(BackdropBlur {
++            order: 0,
++            blur_radius: blur_radius.scale(scale_factor),
++            bounds: self.snap_bounds(bounds),
++            corner_radii: corner_radii.scale(scale_factor),
++            content_mask: self.snapped_content_mask(),
++        });
++    }
++
+     fn largest_border_interior(quad: &Quad) -> Bounds<ScaledPixels> {
+         let radii = &quad.corner_radii;
+         let widths = &quad.border_widths;
+@@ -5247,7 +5867,25 @@ impl Window {
          self.layout_engine
              .as_mut()
              .unwrap()
@@ -1787,7 +2117,7 @@ index 1214b035..e47f4cf8 100644
      }
  
      /// Compute the layout for the given id within the given available space.
-@@ -5268,6 +5873,32 @@ impl Window {
+@@ -5268,6 +5906,32 @@ impl Window {
          self.layout_engine = Some(layout_engine);
      }
  
@@ -1820,7 +2150,7 @@ index 1214b035..e47f4cf8 100644
      /// Obtain the bounds computed for the given LayoutId relative to the window. This method will usually be invoked by
      /// GPUI itself automatically in order to pass your element its `Bounds` automatically.
      ///
-@@ -5947,7 +6578,9 @@ impl Window {
+@@ -5947,7 +6611,9 @@ impl Window {
          // special purposes, such as detecting events outside of a given Bounds.
          for listener in &mut mouse_listeners {
              let listener = listener.as_mut().unwrap();
@@ -1831,7 +2161,7 @@ index 1214b035..e47f4cf8 100644
              if !cx.propagate_event {
                  break;
              }
-@@ -5957,7 +6590,9 @@ impl Window {
+@@ -5957,7 +6623,9 @@ impl Window {
          if cx.propagate_event {
              for listener in mouse_listeners.iter_mut().rev() {
                  let listener = listener.as_mut().unwrap();
@@ -1842,7 +2172,7 @@ index 1214b035..e47f4cf8 100644
                  if !cx.propagate_event {
                      break;
                  }
-@@ -6268,7 +6903,9 @@ impl Window {
+@@ -6268,7 +6936,9 @@ impl Window {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
  
              for key_listener in node.key_listeners.clone() {
@@ -1853,7 +2183,7 @@ index 1214b035..e47f4cf8 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6280,7 +6917,9 @@ impl Window {
+@@ -6280,7 +6950,9 @@ impl Window {
              // Handle low level key events
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for key_listener in node.key_listeners.clone() {
@@ -1864,7 +2194,7 @@ index 1214b035..e47f4cf8 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6300,7 +6939,7 @@ impl Window {
+@@ -6300,7 +6972,7 @@ impl Window {
          for node_id in dispatch_path.iter().rev() {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for listener in node.modifiers_changed_listeners.clone() {
@@ -1873,7 +2203,7 @@ index 1214b035..e47f4cf8 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6503,7 +7142,9 @@ impl Window {
+@@ -6503,7 +7175,9 @@ impl Window {
              for listener in &global_listeners {
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -1884,7 +2214,7 @@ index 1214b035..e47f4cf8 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -6537,7 +7178,9 @@ impl Window {
+@@ -6537,7 +7211,9 @@ impl Window {
                  if action_type == any_action.type_id() {
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -1895,7 +2225,7 @@ index 1214b035..e47f4cf8 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6561,7 +7204,9 @@ impl Window {
+@@ -6561,7 +7237,9 @@ impl Window {
                      cx.propagate_event = false; // Actions stop propagation by default during the bubble phase
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -1906,7 +2236,7 @@ index 1214b035..e47f4cf8 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6582,7 +7227,9 @@ impl Window {
+@@ -6582,7 +7260,9 @@ impl Window {
  
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -1917,7 +2247,7 @@ index 1214b035..e47f4cf8 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -7317,7 +7964,9 @@ impl Window {
+@@ -7317,7 +7997,9 @@ impl Window {
          state_type: TypeId,
      ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
          let key = (global_id.clone(), state_type);

@@ -14,7 +14,7 @@ use gpui_kit::{
     Render, StatefulInteractiveElement, Styled, Task, Window, canvas, deferred, div, px,
 };
 use recur_ui::shadow::{box_shadow, css_box_shadow};
-use recur_ui::style::anchored_at;
+use recur_ui::style::{anchored_at, backdrop_blur};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, icon, rgba};
 
@@ -411,7 +411,7 @@ impl AttachmentLightbox {
             .w(px(vw))
             .h(px(vh))
             .relative()
-            .bg(rgba(5, 7, 10, 0.72))
+            .child(backdrop_blur(8., rgba(5, 7, 10, 0.72)))
             .child(scroll)
             .child(actions)
             .children(self.menu.clone());

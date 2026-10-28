@@ -11,6 +11,8 @@
 //! ```
 
 pub mod assets;
+#[cfg(test)]
+mod backdrop_blur_spec;
 #[cfg(target_os = "macos")]
 mod cg_raster;
 pub mod color;

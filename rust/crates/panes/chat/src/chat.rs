@@ -891,7 +891,17 @@ impl AgentChat {
         self.check_expansion_guard();
         self.sync_turn_clock(cx);
         self.prewarm_markdown(cx);
+        self.notify_after_draw(cx);
+    }
+
+    /// Hosts push props and drafts from their render, where a notify reaches no observer:
+    /// the isolated panes would replay their last frame until something else redrew them.
+    fn notify_after_draw(&mut self, cx: &mut Context<Self>) {
         cx.notify();
+        let me = cx.weak_entity();
+        cx.defer(move |cx| {
+            let _ = me.update(cx, |_, cx| cx.notify());
+        });
     }
 
     /// Parses the settled replies' markdown on a background thread, newest first, so blocks
@@ -982,7 +992,7 @@ impl AgentChat {
             false,
         );
         self.composer_scroll.set_offset(point(px(0.), px(0.)));
-        cx.notify();
+        self.notify_after_draw(cx);
     }
 
     pub(crate) fn app_surface(&self) -> bool {

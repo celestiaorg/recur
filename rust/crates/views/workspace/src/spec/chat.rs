@@ -369,6 +369,32 @@ async fn wheeling_up_a_long_chat_and_switching_back_keeps_what_is_on_screen(
     assert_eq!(first_shown(&mut h, &keys), before, "after a redraw");
 }
 
+/// A tab opened for the first time shows the empty text until its transcript arrives; the
+/// workspace pushes the rows mid-draw, which must still redraw the isolated transcript pane.
+#[gpui::test]
+async fn a_first_switch_draws_the_transcript_once_it_loads(cx: &mut TestAppContext) {
+    let store = Store::default();
+    let mut h = boot(cx, items_opts(store.clone()));
+    h.select_tab("PA");
+    store.lock().insert(
+        "MA".into(),
+        vec![json!({"role": "user", "kind": "text", "text": "first load"})],
+    );
+    let view = h.view();
+    h.cx.update(|_, cx| view.update(cx, |v, cx| v.select_chat_tab("MA", cx)));
+    // Not `settle`: its whole-window refresh redraws what a mouse move would.
+    h.cx.run_until_parked();
+    let keys = h.chat().read_with(h.cx, |c, _| c.test_block_keys());
+    assert!(!keys.is_empty(), "the rows reached the chat");
+    assert!(
+        keys.iter().any(|k| h
+            .cx
+            .debug_bounds(Box::leak(format!("cblk:{k}").into_boxed_str()))
+            .is_some()),
+        "the transcript drew {keys:?}"
+    );
+}
+
 // ---- Chat follow-up queue ----
 
 #[gpui::test]

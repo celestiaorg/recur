@@ -10,6 +10,7 @@ mod manager;
 mod osc7;
 mod plain;
 mod process;
+mod queries;
 mod ring;
 pub mod screen;
 

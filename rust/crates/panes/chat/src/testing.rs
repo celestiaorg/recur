@@ -94,6 +94,26 @@ impl AgentChat {
         self.window_chat()
     }
 
+    /// Blocks the last transcript render laid out as stubs that the scroller shows.
+    pub fn test_stubs_in_view(&self) -> Vec<String> {
+        let view = self.scroll.bounds();
+        let keys = self.transcript_model().blocks.1.clone();
+        let ranges = self.block_ranges.borrow();
+        keys.iter()
+            .enumerate()
+            .filter(|&(i, k)| {
+                let live = !self.window_chat()
+                    || self.chat_hydrated.contains(k)
+                    || i + crate::window::CHAT_TAIL_LIVE >= keys.len();
+                !live
+                    && ranges.get(k).is_some_and(|&(top, h)| {
+                        top + h > f32::from(view.top()) && top < f32::from(view.bottom())
+                    })
+            })
+            .map(|(_, k)| k.clone())
+            .collect()
+    }
+
     pub fn test_copied_bubble(&self) -> bool {
         self.copied_bubble.is_some()
     }

@@ -218,6 +218,48 @@ async fn scrolling_away_from_the_bottom_keeps_position_when_a_reply_streams_in(
     assert_eq!(scroll_top(&mut h), before);
 }
 
+/// A tab switch draws the incoming transcript where it was left, with the blocks there laid
+/// out, in the switch's first frame. A test update draws until the window is clean, so the
+/// switch and its first frame run inside one update.
+#[gpui::test]
+async fn a_tab_switch_draws_the_transcript_where_it_was_left_in_its_first_frame(
+    cx: &mut TestAppContext,
+) {
+    let store = Store::default();
+    let mut h = boot(cx, items_opts(store.clone()));
+    let mut saved = HashMap::new();
+    for (code, turns, at) in [("MA", 150, 0.4), ("PA", 200, 0.7)] {
+        h.select_tab(code);
+        let mut items = Vec::new();
+        for i in 0..turns {
+            items.push(
+                json!({"role": "user", "kind": "text", "text": format!("{code} question {i}")}),
+            );
+            items.push(json!({"role": "assistant", "kind": "text", "text": format!("answer {i}\n\n{}", "paragraph ".repeat(i % 40))}));
+        }
+        load(&mut h, &store, code, Value::Array(items));
+        let top = (max_scroll(&mut h) * at).round();
+        scroll_to(&mut h, top);
+        saved.insert(code, scroll_top(&mut h));
+    }
+    let (view, chat) = (h.view(), h.chat());
+    for code in ["MA", "PA", "MA"] {
+        let (top, stubs) = h.cx.update(|window, cx| {
+            view.update(cx, |v, cx| v.select_chat_tab(code, cx));
+            window.draw(cx).clear(cx);
+            let c = chat.read(cx);
+            (
+                -f32::from(c.test_scroll().offset().y),
+                c.test_stubs_in_view(),
+            )
+        });
+        assert_eq!(top, saved[code], "{code}: first frame");
+        assert!(stubs.is_empty(), "{code}: stubs in view {stubs:?}");
+        h.settle();
+        assert_eq!(scroll_top(&mut h), saved[code], "{code}: settled");
+    }
+}
+
 // ---- Chat follow-up queue ----
 
 #[gpui::test]

@@ -48,6 +48,7 @@ use crate::transcript_ui::{
 use crate::window::{
     BlockRange, BlockShape, CHAT_HYDRATE_ALL_BELOW, CHAT_HYDRATE_MAX, CHAT_HYDRATE_OVERSCAN,
     CHAT_VIEW_PAD_PX, block_at_scroll_top, estimate_chat_block_height, in_view_keys, pick_hydrated,
+    reserved_chat_height,
 };
 use recur_view_widgets::findings_ui::digest_ref;
 
@@ -1197,11 +1198,6 @@ impl AgentChat {
         self.model()
     }
 
-    /// The transcript's blocks and keys, shared.
-    pub(crate) fn model_blocks(&self) -> Rc<(Vec<Block>, Vec<String>)> {
-        self.model().blocks.clone()
-    }
-
     pub(crate) fn window_chat(&self) -> bool {
         self.model().blocks.0.len() > CHAT_HYDRATE_ALL_BELOW
     }
@@ -1392,10 +1388,10 @@ impl AgentChat {
             restore_block_heights(m, &next.block_heights);
         }
         // First visit (no cache): follow the default pin.
-        self.pending_scroll = saved.map(|s| PendingScroll {
-            scroll_top: s.scroll_top,
-            near_bottom: s.near_bottom,
-            row_count: s.row_count,
+        self.pending_scroll = Some(PendingScroll {
+            scroll_top: next.scroll_top,
+            near_bottom: next.near_bottom,
+            row_count: next.row_count,
         });
         self.restore_attempts = 0;
         // Swallow the clamp `scroll` a swap fires until the restore frames run.
@@ -1589,7 +1585,27 @@ impl AgentChat {
             self.fade_ready = true;
         }
         self.record_block_heights();
-        self.refresh_chat_window(top, viewport_h, cx);
+        if self.refresh_chat_window(top, viewport_h) {
+            self.notify_transcript(cx);
+        }
+    }
+
+    /// Before the transcript lays out: a pending restore moves the scroller now, so a tab
+    /// switch draws its first frame at the saved offset, and the stub window covers the offset
+    /// this frame draws (a wheel jump), not the last frame's.
+    pub(crate) fn scroll_for_frame(&mut self) {
+        let top = match &self.pending_scroll {
+            Some(p) if p.near_bottom => {
+                self.scroll.scroll_to_bottom();
+                f32::INFINITY
+            }
+            Some(p) => {
+                self.scroll.set_offset(point(px(0.), px(-p.scroll_top)));
+                p.scroll_top
+            }
+            None => -f32::from(self.scroll.offset().y),
+        };
+        self.refresh_chat_window(top, self.viewport_h);
     }
 
     /// `recordStubHeight`: every laid-out block's height, for its stub to reserve once it
@@ -1652,28 +1668,35 @@ impl AgentChat {
         cx.notify();
     }
 
-    /// `refreshChatWindow`: which blocks render live while the transcript is windowed.
-    fn refresh_chat_window(&mut self, top: f32, view_h: f32, cx: &mut Context<Self>) {
+    /// `refreshChatWindow`: which blocks render live while the transcript is windowed; true
+    /// when that changed. Blocks stack at the heights their stubs reserve, so the window needs
+    /// no layout of the offset it is computed for.
+    fn refresh_chat_window(&mut self, top: f32, view_h: f32) -> bool {
         if !self.window_chat() {
-            return;
+            return false;
         }
-        let shared = self.model_blocks();
-        let keys = &shared.1;
-        let ranges: Vec<BlockRange> = {
-            let r = self.block_ranges.borrow();
-            let mut v: Vec<BlockRange> = keys
-                .iter()
-                .filter_map(|k| {
-                    r.get(k).map(|&(t, h)| BlockRange {
-                        key: k.clone(),
-                        top: t,
-                        bottom: t + h,
-                    })
-                })
-                .collect();
-            v.sort_by(|a, b| a.top.total_cmp(&b.top));
-            v
-        };
+        let model = self.transcript_model();
+        let keys = &model.blocks.1;
+        let heights = self.block_h_by_chat.get(&self.props.reset_key);
+        // simplify: tops omit the scroller's top padding (at most 26px), well inside the
+        // prefetch band.
+        let mut y = 0.;
+        let ranges: Vec<BlockRange> = keys
+            .iter()
+            .zip(&model.estimates)
+            .map(|(k, &estimate)| {
+                let measured = heights.and_then(|m| m.get(k).copied());
+                let h = reserved_chat_height(false, measured, estimate).unwrap_or(estimate);
+                let r = BlockRange {
+                    key: k.clone(),
+                    top: y,
+                    bottom: y + h,
+                };
+                y += h;
+                r
+            })
+            .collect();
+        let top = top.min(y - view_h).max(0.);
         let in_view = in_view_keys(&ranges, top, view_h, CHAT_VIEW_PAD_PX);
         let selected = if self.near_bottom {
             keys.last().cloned().unwrap_or_default()
@@ -1700,10 +1723,11 @@ impl AgentChat {
         if self.chat_in_view != in_view {
             self.chat_in_view = in_view;
         }
-        if next != self.chat_hydrated {
-            self.chat_hydrated = next;
-            self.notify_transcript(cx);
+        if next == self.chat_hydrated {
+            return false;
         }
+        self.chat_hydrated = next;
+        true
     }
 
     // ---- the turn clock ----

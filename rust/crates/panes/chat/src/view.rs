@@ -256,6 +256,7 @@ impl AgentChat {
         self.transcript_store_changed(cx);
         self.markdown_seen.clear();
         self.sync_turn_clock(cx);
+        self.scroll_for_frame();
         let session = self.props.session_body;
         let compact = self.props.compact;
         let kids = self.transcript_children(window, cx);

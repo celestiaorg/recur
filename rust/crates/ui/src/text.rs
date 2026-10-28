@@ -2224,10 +2224,28 @@ impl Element for TextStack {
             let at = (y - f32::from(bounds.origin.y), state.snapped.as_slice());
             if t.ellipsis || t.clamp.is_some() {
                 window.with_content_mask(Some(gpui_kit::ContentMask { bounds: b }), |window| {
-                    paint_lines(laid, b, at, t.align, t.mask.as_ref(), &hovered, None, window)
+                    paint_lines(
+                        laid,
+                        b,
+                        at,
+                        t.align,
+                        t.mask.as_ref(),
+                        &hovered,
+                        None,
+                        window,
+                    )
                 });
             } else {
-                paint_lines(laid, b, at, t.align, t.mask.as_ref(), &hovered, None, window);
+                paint_lines(
+                    laid,
+                    b,
+                    at,
+                    t.align,
+                    t.mask.as_ref(),
+                    &hovered,
+                    None,
+                    window,
+                );
             }
             y += h;
         }

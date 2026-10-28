@@ -61,7 +61,7 @@ pub struct LandCache {
     bytes: usize,
 }
 
-pub const LAND_CACHE_MAX_BYTES: usize = 4 * 1024 * 1024;
+pub const LAND_CACHE_MAX_BYTES: usize = 8 * 1024 * 1024;
 
 impl LandCache {
     pub fn get(&mut self, id: &str) -> Option<Land> {

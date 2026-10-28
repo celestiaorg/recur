@@ -1,12 +1,13 @@
-//! The live workbench budget (`lib/hot-shells.ts`): the visible shell plus the previous one
-//! stay mounted; A→B→A is then a reuse, not a rebuild.
+//! The live workbench budget (`lib/hot-shells.ts`): the visible shell plus the most recent
+//! others stay alive; A→B→A is then a reuse, not a rebuild.
 
 use std::collections::HashSet;
 
 use recur_domain::Workspace;
 
-/// The measured cap. Raising the live cap made hot switches slower.
-pub const HOT_SHELL_MAX: usize = 2;
+/// Svelte caps at 2 because parked shells stay in the WKWebView DOM. Parked GPUI shells are not
+/// laid out (`WorkspaceDetail`), so the cap here is memory plus a cheap `sync` per store change.
+pub const HOT_SHELL_MAX: usize = 12;
 
 /// Newest-first LRU: `id` becomes the head; entries missing from `live` drop.
 pub fn touch_hot_shells(
@@ -62,17 +63,21 @@ mod tests {
     }
 
     #[test]
-    fn caps_at_two_and_keeps_the_previous_id() {
-        assert_eq!(HOT_SHELL_MAX, 2);
-        assert_eq!(touch_hot_shells(&[], "a", None, None), v(&["a"]));
+    fn caps_and_keeps_the_most_recent_ids() {
+        assert_eq!(touch_hot_shells(&[], "a", Some(2), None), v(&["a"]));
         assert_eq!(
-            touch_hot_shells(&v(&["a"]), "b", None, None),
+            touch_hot_shells(&v(&["a"]), "b", Some(2), None),
             v(&["b", "a"])
         );
         assert_eq!(
-            touch_hot_shells(&v(&["b", "a"]), "c", None, None),
+            touch_hot_shells(&v(&["b", "a"]), "c", Some(2), None),
             v(&["c", "b"])
         );
+        let full: Vec<String> = (0..HOT_SHELL_MAX).map(|i| i.to_string()).collect();
+        let next = touch_hot_shells(&full, "new", None, None);
+        assert_eq!(next.len(), HOT_SHELL_MAX);
+        assert_eq!(next[0], "new");
+        assert!(!next.contains(&full[HOT_SHELL_MAX - 1]));
     }
 
     #[test]

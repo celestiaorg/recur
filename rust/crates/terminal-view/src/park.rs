@@ -9,8 +9,8 @@ use std::collections::{HashSet, VecDeque};
 
 /// Accounting estimate per parked view: a widget budget, not measured memory.
 pub const TERM_PARK_ENTRY_BYTES: usize = 1024 * 1024;
-/// ~48 parked terminals; the least recently parked drop past this.
-pub const TERM_PARK_MAX_BYTES: usize = 48 * 1024 * 1024;
+/// ~128 parked terminals; the least recently parked drop past this.
+pub const TERM_PARK_MAX_BYTES: usize = 128 * 1024 * 1024;
 
 struct Entry<V> {
     id: String,

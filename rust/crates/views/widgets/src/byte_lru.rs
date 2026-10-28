@@ -8,9 +8,9 @@ const STR_HDR: usize = 24;
 pub const OBJ_HDR: usize = 32;
 
 /// Per-kind heap budget for the chat and observatory parks.
-pub const WARM_CACHE_MAX_BYTES: usize = 64 * 1024 * 1024;
+pub const WARM_CACHE_MAX_BYTES: usize = 128 * 1024 * 1024;
 /// Tiny chrome (tab strip, transcript UI).
-pub const CHROME_CACHE_MAX_BYTES: usize = 4 * 1024 * 1024;
+pub const CHROME_CACHE_MAX_BYTES: usize = 8 * 1024 * 1024;
 
 /// `stringBytes`: a JS string's budgeted size.
 pub fn string_bytes(s: &str) -> usize {

@@ -134,7 +134,9 @@ async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) 
     let alive = visited.iter().filter(|v| v.upgrade().is_some()).count();
     assert_eq!(
         alive,
-        recur_view_observatory::hot_shells::HOT_SHELL_MAX,
+        visited
+            .len()
+            .min(recur_view_observatory::hot_shells::HOT_SHELL_MAX),
         "workspace views alive after a browse"
     );
     let chat = bound(&mut s).read_with(s.cx, |v, _| v.chat().clone());

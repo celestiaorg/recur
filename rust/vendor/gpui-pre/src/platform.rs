@@ -1270,6 +1270,9 @@ pub trait PlatformWindow: HasWindowHandle + HasDisplayHandle {
     fn on_display_changed(&self, callback: Box<dyn FnMut()>);
     fn on_should_close(&self, callback: Box<dyn FnMut() -> bool>);
     fn on_hit_test_window_control(&self, callback: Box<dyn FnMut() -> Option<WindowControlArea>>);
+    /// Recur: whether the topmost hitbox at a window position is `HitboxBehavior::Native`, for
+    /// platforms that pass those mouse events to native views behind the window's drawing.
+    fn on_hit_test_native(&self, _callback: Box<dyn FnMut(Point<Pixels>) -> bool>) {}
     fn on_close(&self, callback: Box<dyn FnOnce()>);
     fn on_appearance_changed(&self, callback: Box<dyn FnMut()>);
     fn on_button_layout_changed(&self, _callback: Box<dyn FnMut()>) {}

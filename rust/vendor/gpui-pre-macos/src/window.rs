@@ -178,6 +178,10 @@ unsafe fn build_classes() {
                 reset_cursor_rects as extern "C" fn(&Object, Sel),
             );
             decl.add_method(
+                sel!(hitTest:),
+                hit_test as extern "C" fn(&Object, Sel, NSPoint) -> id,
+            );
+            decl.add_method(
                 sel!(pressureChangeWithEvent:),
                 handle_view_event as extern "C" fn(&Object, Sel, id),
             );
@@ -661,6 +665,10 @@ struct MacWindowState {
     background_executor: BackgroundExecutor,
     native_window: id,
     native_view: NonNull<Object>,
+    /// Recur: `PlatformWindow::on_hit_test_native`.
+    hit_test_native_callback: Option<Box<dyn FnMut(Point<Pixels>) -> bool>>,
+    /// Recur: the mouse is over a native hitbox, so the view holds no cursor rect.
+    over_native: bool,
     blurred_view: Option<id>,
     background_appearance: WindowBackgroundAppearance,
     cursor_style: CursorStyle,
@@ -1095,6 +1103,8 @@ impl MacWindow {
                 background_executor,
                 native_window,
                 native_view: NonNull::new_unchecked(native_view),
+                hit_test_native_callback: None,
+                over_native: false,
                 blurred_view: None,
                 background_appearance: WindowBackgroundAppearance::Opaque,
                 cursor_style: CursorStyle::Arrow,
@@ -2061,6 +2071,10 @@ impl PlatformWindow for MacWindow {
     fn on_hit_test_window_control(&self, _callback: Box<dyn FnMut() -> Option<WindowControlArea>>) {
     }
 
+    fn on_hit_test_native(&self, callback: Box<dyn FnMut(Point<Pixels>) -> bool>) {
+        self.0.as_ref().lock().hit_test_native_callback = Some(callback);
+    }
+
     fn on_appearance_changed(&self, callback: Box<dyn FnMut()>) {
         self.0.lock().appearance_changed_callback = Some(callback);
     }
@@ -2526,7 +2540,13 @@ extern "C" fn reset_cursor_rects(this: &Object, _: Sel) {
         let _: () = msg_send![super(this, class!(NSView)), resetCursorRects];
 
         let window_state = get_window_state(this);
-        let cursor_style = window_state.lock().cursor_style;
+        let (cursor_style, over_native) = {
+            let lock = window_state.lock();
+            (lock.cursor_style, lock.over_native)
+        };
+        if over_native {
+            return;
+        }
 
         let cursor: id = match cursor_style {
             CursorStyle::Arrow => msg_send![class!(NSCursor), arrowCursor],
@@ -2585,6 +2605,54 @@ extern "C" fn reset_cursor_rects(this: &Object, _: Sel) {
 
         let bounds = NSView::bounds(this as *const Object as id);
         let _: () = msg_send![this, addCursorRect: bounds cursor: cursor];
+    }
+}
+
+/// Recur: GPUI's topmost hitbox at `position` (window coordinates) is a native view's, so
+/// mouse events there go to the native view behind this one.
+fn native_at(window_state: &Arc<Mutex<MacWindowState>>, position: Point<Pixels>) -> bool {
+    // AppKit may hit-test while the state is locked or the callback runs; GPUI keeps the event.
+    let Some(mut callback) = window_state
+        .try_lock()
+        .and_then(|mut lock| lock.hit_test_native_callback.take())
+    else {
+        return false;
+    };
+    let native = callback(position);
+    window_state.lock().hit_test_native_callback = Some(callback);
+    native
+}
+
+extern "C" fn hit_test(this: &Object, _: Sel, point: NSPoint) -> id {
+    // SAFETY: AppKit hit-tests GPUIView instances on the main thread with a point in the
+    // superview's coordinates; the window state ivar is set when the view is created.
+    unsafe {
+        let window_state = get_window_state(this);
+        let superview: id = msg_send![this, superview];
+        let in_window: NSPoint = msg_send![superview, convertPoint: point toView: nil];
+        let height = window_state.try_lock().map(|lock| lock.content_size().height);
+        if let Some(height) = height
+            && native_at(&window_state, convert_mouse_position(in_window, height))
+        {
+            return nil;
+        }
+        msg_send![super(this, class!(NSView)), hitTest: point]
+    }
+}
+
+/// Recur: a native view sets the cursor only outside every cursor rect (WebKit checks
+/// `-[NSApplication _cursorRectCursor]`), so the view drops its own over a native hitbox.
+fn yield_cursor_over_native(this: &Object, position: Point<Pixels>) {
+    // SAFETY: called from a GPUIView's mouse handler on the main thread.
+    let window_state = unsafe { get_window_state(this) };
+    let native = native_at(&window_state, position);
+    let mut lock = window_state.lock();
+    if lock.over_native != native {
+        lock.over_native = native;
+        // SAFETY: the view belongs to this window.
+        unsafe {
+            let _: () = msg_send![lock.native_window, invalidateCursorRectsForView: this];
+        }
     }
 }
 
@@ -2955,10 +3023,17 @@ extern "C" fn handle_view_event(this: &Object, _: Sel, native_event: id) {
             _ => {}
         }
 
+        let moved_to = match &event {
+            PlatformInput::MouseMove(e) => Some(e.position),
+            _ => None,
+        };
         if let Some(mut callback) = lock.event_callback.take() {
             drop(lock);
             callback(event);
             window_state.lock().event_callback = Some(callback);
+        }
+        if let Some(position) = moved_to {
+            yield_cursor_over_native(this, position);
         }
     }
 }

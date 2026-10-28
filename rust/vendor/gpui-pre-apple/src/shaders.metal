@@ -985,8 +985,21 @@ fragment float4 backdrop_blur_composite_fragment(
   float2 inside = saturate(min(p - clip_min, clip_max - p) + 0.5);
   float coverage = saturate(0.5 - quad_sdf(p, blur->bounds, blur->corner_radii)) *
                    inside.x * inside.y;
-  return float4(blurred.sample(s, q).rgb, coverage);
+  return blurred.sample(s, q) * coverage;
 }
+
+// Recur: holes. Transparent pixels over the clipped bounds, replacing the frame's.
+
+vertex BackdropBlurVertexOutput hole_vertex(
+    uint unit_vertex_id [[vertex_id]],
+    constant float2 *unit_vertices [[buffer(0)]],
+    constant Bounds_ScaledPixels *bounds [[buffer(1)]],
+    constant Size_DevicePixels *viewport_size [[buffer(2)]]) {
+  return BackdropBlurVertexOutput{
+      to_device_position(unit_vertices[unit_vertex_id], *bounds, viewport_size)};
+}
+
+fragment float4 hole_fragment() { return float4(0.); }
 
 float4 hsla_to_rgba(Hsla hsla) {
   float h = hsla.h * 6.0; // Now, it's an angle but scaled in [0, 6) range

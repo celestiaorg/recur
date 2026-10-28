@@ -51,6 +51,7 @@ pub struct Scene {
     pub polychrome_sprites: Vec<PolychromeSprite>,
     pub surfaces: Vec<PaintSurface>,
     pub backdrop_blurs: Vec<BackdropBlur>,
+    pub holes: Vec<Hole>,
 }
 
 #[expect(missing_docs)]
@@ -68,6 +69,7 @@ impl Scene {
         self.polychrome_sprites.clear();
         self.surfaces.clear();
         self.backdrop_blurs.clear();
+        self.holes.clear();
     }
 
     pub fn len(&self) -> usize {
@@ -144,6 +146,10 @@ impl Scene {
                 blur.order = order;
                 self.backdrop_blurs.push(*blur);
             }
+            Primitive::Hole(hole) => {
+                hole.order = order;
+                self.holes.push(*hole);
+            }
         }
         self.paint_operations
             .push(PaintOperation::Primitive(primitive));
@@ -172,6 +178,7 @@ impl Scene {
             .sort_by_key(|sprite| (sprite.order, sprite.tile.tile_id));
         self.surfaces.sort_by_key(|surface| surface.order);
         self.backdrop_blurs.sort_by_key(|blur| blur.order);
+        self.holes.sort_by_key(|hole| hole.order);
     }
 
     #[cfg_attr(
@@ -185,12 +192,13 @@ impl Scene {
         self.batches_with_backdrop_blurs()
             .filter_map(|batch| match batch {
                 SceneBatch::Primitives(batch) => Some(batch),
-                SceneBatch::BackdropBlurs(_) => None,
+                SceneBatch::BackdropBlurs(_) | SceneBatch::Holes(_) => None,
             })
     }
 
-    /// Recur: [`Scene::batches`] with the backdrop blurs between them, for renderers that draw
-    /// them. A blur ends the batches before it, so it samples exactly what was painted under it.
+    /// Recur: [`Scene::batches`] with the backdrop blurs and holes between them, for renderers
+    /// that draw them. A blur ends the batches before it, so it samples exactly what was painted
+    /// under it.
     pub fn batches_with_backdrop_blurs(&self) -> impl Iterator<Item = SceneBatch> + '_ {
         BatchIterator {
             shadows_start: 0,
@@ -211,6 +219,8 @@ impl Scene {
             surfaces_iter: self.surfaces.iter().peekable(),
             backdrop_blurs_start: 0,
             backdrop_blurs_iter: self.backdrop_blurs.iter().peekable(),
+            holes_start: 0,
+            holes_iter: self.holes.iter().peekable(),
         }
     }
 }
@@ -234,6 +244,7 @@ pub(crate) enum PrimitiveKind {
     PolychromeSprite,
     Surface,
     BackdropBlur,
+    Hole,
 }
 
 pub(crate) enum PaintOperation {
@@ -254,6 +265,7 @@ pub enum Primitive {
     PolychromeSprite(PolychromeSprite),
     Surface(PaintSurface),
     BackdropBlur(BackdropBlur),
+    Hole(Hole),
 }
 
 #[expect(missing_docs)]
@@ -269,6 +281,7 @@ impl Primitive {
             Primitive::PolychromeSprite(sprite) => &sprite.bounds,
             Primitive::Surface(surface) => &surface.bounds,
             Primitive::BackdropBlur(blur) => &blur.bounds,
+            Primitive::Hole(hole) => &hole.bounds,
         }
     }
 
@@ -283,6 +296,7 @@ impl Primitive {
             Primitive::PolychromeSprite(sprite) => &sprite.content_mask,
             Primitive::Surface(surface) => &surface.content_mask,
             Primitive::BackdropBlur(blur) => &blur.content_mask,
+            Primitive::Hole(hole) => &hole.content_mask,
         }
     }
 }
@@ -313,6 +327,8 @@ struct BatchIterator<'a> {
     surfaces_iter: Peekable<slice::Iter<'a, PaintSurface>>,
     backdrop_blurs_start: usize,
     backdrop_blurs_iter: Peekable<slice::Iter<'a, BackdropBlur>>,
+    holes_start: usize,
+    holes_iter: Peekable<slice::Iter<'a, Hole>>,
 }
 
 impl<'a> Iterator for BatchIterator<'a> {
@@ -350,6 +366,7 @@ impl<'a> Iterator for BatchIterator<'a> {
                 self.backdrop_blurs_iter.peek().map(|b| b.order),
                 PrimitiveKind::BackdropBlur,
             ),
+            (self.holes_iter.peek().map(|h| h.order), PrimitiveKind::Hole),
         ];
         orders_and_kinds.sort_by_key(|(order, kind)| (order.unwrap_or(u32::MAX), *kind));
 
@@ -519,17 +536,34 @@ impl<'a> Iterator for BatchIterator<'a> {
                 self.backdrop_blurs_start = blurs_end;
                 Some(SceneBatch::BackdropBlurs(blurs_start..blurs_end))
             }
+            PrimitiveKind::Hole => {
+                let holes_start = self.holes_start;
+                let mut holes_end = holes_start + 1;
+                self.holes_iter.next();
+                while self
+                    .holes_iter
+                    .next_if(|hole| (hole.order, batch_kind) < max_order_and_kind)
+                    .is_some()
+                {
+                    holes_end += 1;
+                }
+                self.holes_start = holes_end;
+                Some(SceneBatch::Holes(holes_start..holes_end))
+            }
         }
     }
 }
 
-/// Recur: a batch of primitives, or of backdrop blurs (see [`Scene::batches_with_backdrop_blurs`]).
+/// Recur: a batch of primitives, backdrop blurs or holes (see
+/// [`Scene::batches_with_backdrop_blurs`]).
 #[derive(Debug)]
 pub enum SceneBatch {
     /// Primitives drawn as upstream.
     Primitives(PrimitiveBatch),
     /// Backdrop blurs, each over what the batches before it drew.
     BackdropBlurs(Range<usize>),
+    /// Holes, each clearing what the batches before it drew.
+    Holes(Range<usize>),
 }
 
 impl SceneBatch {
@@ -538,6 +572,7 @@ impl SceneBatch {
         match self {
             Self::Primitives(batch) => batch.label(),
             Self::BackdropBlurs(range) => format!("backdrop blurs ({})", range.len()),
+            Self::Holes(range) => format!("holes ({})", range.len()),
         }
     }
 }
@@ -687,6 +722,25 @@ pub struct BackdropBlur {
 impl From<BackdropBlur> for Primitive {
     fn from(blur: BackdropBlur) -> Self {
         Primitive::BackdropBlur(blur)
+    }
+}
+
+/// Recur: fully transparent pixels over `bounds`, replacing what is painted under it, so a
+/// native view behind the window's drawing shows through. Renderers without it skip it
+/// (`Scene::batches`).
+#[derive(Debug, Copy, Clone)]
+pub struct Hole {
+    /// The draw order.
+    pub order: DrawOrder,
+    /// The cleared area, clipped to `content_mask`.
+    pub bounds: Bounds<ScaledPixels>,
+    /// The content mask.
+    pub content_mask: ContentMask<ScaledPixels>,
+}
+
+impl From<Hole> for Primitive {
+    fn from(hole: Hole) -> Self {
+        Primitive::Hole(hole)
     }
 }
 

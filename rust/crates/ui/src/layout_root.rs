@@ -861,61 +861,115 @@ mod block_tests {
         );
     }
 
-    struct ArmsOnce(
-        std::rc::Rc<std::cell::RefCell<Vec<Vec<gpui_kit::Bounds<gpui_kit::Pixels>>>>>,
-        bool,
-    );
+    struct ArmsOnce(std::rc::Rc<std::cell::Cell<u32>>, bool);
 
     impl Render for ArmsOnce {
         fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
             if !std::mem::replace(&mut self.1, true) {
-                let seen = self.0.clone();
+                let ran = self.0.clone();
                 window.after_next_draw(move |window, _| {
-                    seen.borrow_mut().push(window.overlay_bounds());
-                    window.after_next_draw(move |window, _| {
-                        seen.borrow_mut().push(window.overlay_bounds());
-                    });
+                    ran.set(ran.get() + 1);
+                    window.after_next_draw(move |_, _| ran.set(ran.get() + 1));
                 });
             }
-            div().size_full().child(
-                gpui_kit::deferred(
-                    div()
-                        .absolute()
-                        .top(px(10.))
-                        .left(px(20.))
-                        .size(px(30.))
-                        .bg(gpui_kit::black()),
-                )
-                .with_priority(1),
-            )
+            div()
         }
     }
 
-    /// The macOS HTML preview masks and hides its page from `Window::after_next_draw` and
-    /// `Window::overlay_bounds` (vendored gpui-pre): a callback armed in a draw runs at its end,
-    /// one armed from that callback after the next draw, and neither on an idle frame.
+    /// The macOS HTML preview hides its page from `Window::after_next_draw` (vendored
+    /// gpui-pre): a callback armed in a draw runs at its end, one armed from that callback after
+    /// the next draw, and neither on an idle frame.
     #[gpui_kit::test]
-    fn after_next_draw_runs_once_per_draw_and_sees_the_overlays(cx: &mut gpui_kit::TestAppContext) {
-        let seen = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+    fn after_next_draw_runs_once_per_draw(cx: &mut gpui_kit::TestAppContext) {
+        let ran = std::rc::Rc::new(std::cell::Cell::new(0));
         let (_, cx) = cx.add_window_view({
-            let seen = seen.clone();
-            |_, _| ArmsOnce(seen, false)
+            let ran = ran.clone();
+            |_, _| ArmsOnce(ran, false)
         });
-        let overlay = gpui_kit::Bounds::new(
-            gpui_kit::point(px(20.), px(10.)),
-            gpui_kit::size(px(30.), px(30.)),
-        );
-        assert_eq!(
-            *seen.borrow(),
-            [vec![overlay]],
-            "runs at the end of the draw that armed it"
-        );
+        assert_eq!(ran.get(), 1, "runs at the end of the draw that armed it");
         cx.update(|window, cx| window.simulate_next_frame(cx));
-        assert_eq!(seen.borrow().len(), 1, "an idle frame runs nothing");
+        assert_eq!(ran.get(), 1, "an idle frame runs nothing");
         cx.update(|window, cx| {
             window.refresh();
             let _ = window.draw(cx);
         });
-        assert_eq!(*seen.borrow(), [vec![overlay], vec![overlay]]);
+        assert_eq!(ran.get(), 2);
+    }
+
+    struct Page;
+
+    impl Render for Page {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            gpui_kit::canvas(
+                |b, window, _| window.insert_hitbox(b, gpui_kit::HitboxBehavior::Native),
+                |b, _, window, _| window.paint_hole(b),
+            )
+            .size_full()
+        }
+    }
+
+    struct PageHost(gpui_kit::Entity<Page>);
+
+    impl Render for PageHost {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let mut style = div().size_full();
+            let style = style.style().clone();
+            div()
+                .size_full()
+                .bg(gpui_kit::white())
+                .child(crate::style::cached_view(&self.0, style, cx))
+                .child(
+                    gpui_kit::deferred(
+                        div()
+                            .id("menu")
+                            .absolute()
+                            .top(px(10.))
+                            .left(px(20.))
+                            .size(px(30.))
+                            .occlude()
+                            .bg(gpui_kit::black()),
+                    )
+                    .with_priority(1),
+                )
+        }
+    }
+
+    /// The macOS HTML preview's page sits behind GPUI's drawing (vendored gpui-pre): a hole
+    /// clears the background over it and a native hitbox passes mouse events to it, while a menu
+    /// painted later stays over both, also when the cached view around the page replays.
+    #[gpui_kit::test]
+    fn a_hole_and_native_hitbox_sit_under_overlays(cx: &mut gpui_kit::TestAppContext) {
+        use gpui_kit::{AppContext as _, point};
+        let (host, cx) = cx.add_window_view(|_, cx| PageHost(cx.new(|_| Page)));
+        let probe = |cx: &mut gpui_kit::VisualTestContext| {
+            cx.update(|window, _| {
+                (
+                    window.scene_batch_labels(),
+                    window.native_hit_test(point(px(5.), px(5.))),
+                    window.native_hit_test(point(px(30.), px(20.))),
+                )
+            })
+        };
+        let frame = (
+            vec![
+                "quads (1)".to_string(),
+                "holes (1)".into(),
+                "quads (1)".into(),
+            ],
+            true,
+            false,
+        );
+        assert_eq!(
+            probe(cx),
+            frame,
+            "page over the background, menu over the page"
+        );
+        cx.update(|_, cx| host.update(cx, |_, cx| cx.notify()));
+        cx.run_until_parked();
+        assert_eq!(
+            probe(cx),
+            frame,
+            "a replayed cached view keeps the hole and hitbox"
+        );
     }
 }

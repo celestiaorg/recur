@@ -942,6 +942,11 @@ pub enum HitboxBehavior {
     /// inconsistent UI where clicks and moves interact with elements that are not considered to
     /// be hovered.
     BlockMouseExceptScroll,
+
+    /// Recur: a native view behind the window's drawing (see [`Window::paint_hole`]). Behaves as
+    /// `Normal` in GPUI; where it is the topmost hitbox, the platform lets mouse events through
+    /// to the native view.
+    Native,
 }
 
 /// An identifier for a tooltip.
@@ -2254,6 +2259,14 @@ impl Window {
                     .unwrap_or(None)
             })
         });
+        platform_window.on_hit_test_native({
+            let mut cx = cx.to_async();
+            Box::new(move |position| {
+                handle
+                    .update(&mut cx, |_, window, _| window.native_hit_test(position))
+                    .unwrap_or(false)
+            })
+        });
         platform_window.on_move_tab_to_new_window({
             let mut cx = cx.to_async();
             Box::new(move || {
@@ -2926,53 +2939,11 @@ impl Window {
     }
 
     /// Run `callback` at the end of the draw in progress (or of the next one, when called between
-    /// draws or from such a callback), while [`Self::replayed_view`] and
-    /// [`Self::overlay_bounds`] still answer for that frame. Unlike [`Self::on_next_frame`] it
-    /// creates no frame demand and never runs on a frame that draws nothing.
+    /// draws or from such a callback), while [`Self::replayed_view`] still answers for that
+    /// frame. Unlike [`Self::on_next_frame`] it creates no frame demand and never runs on a frame
+    /// that draws nothing.
     pub fn after_next_draw(&mut self, callback: impl FnOnce(&mut Window, &mut App) + 'static) {
         self.after_draw_callbacks.push(Box::new(callback));
-    }
-
-    /// What the frame being drawn paints above the root's content (deferred draws, then the
-    /// prompt, drag or tooltip): the bounds of each one's visible primitives, in window pixels.
-    pub fn overlay_bounds(&self) -> Vec<Bounds<Pixels>> {
-        let frame = &self.next_frame;
-        let Some((_, root_paint, _)) = &frame.root else {
-            return Vec::new();
-        };
-        let ops = &frame.scene.paint_operations;
-        let mut ranges: Vec<Range<usize>> = frame
-            .deferred_draws
-            .iter()
-            .map(|d| d.paint_range.start.scene_index..d.paint_range.end.scene_index)
-            .collect();
-        let rest = ranges
-            .iter()
-            .map(|r| r.end)
-            .fold(root_paint.end.scene_index, usize::max);
-        ranges.push(rest..ops.len());
-        let scale = self.scale_factor();
-        ranges
-            .into_iter()
-            .filter_map(|range| {
-                ops.get(range)?
-                    .iter()
-                    .filter_map(|op| match op {
-                        crate::scene::PaintOperation::Primitive(p) => {
-                            Some(p.bounds().intersect(&p.content_mask().bounds))
-                        }
-                        _ => None,
-                    })
-                    .filter(|b| !b.is_empty())
-                    .reduce(|a, b| a.union(&b))
-            })
-            .map(|b| {
-                Bounds::new(
-                    point(px(b.origin.x.0 / scale), px(b.origin.y.0 / scale)),
-                    size(px(b.size.width.0 / scale), px(b.size.height.0 / scale)),
-                )
-            })
-            .collect()
     }
 
     /// Schedule a frame to be drawn on the next animation frame.
@@ -5293,6 +5264,32 @@ impl Window {
                 pad: 0,
             });
         }
+    }
+
+    /// Recur: whether the last frame's topmost hitbox at `position` is
+    /// [`HitboxBehavior::Native`], so the platform passes mouse events there to the native view.
+    pub fn native_hit_test(&self, position: Point<Pixels>) -> bool {
+        self.rendered_frame
+            .hitboxes
+            .iter()
+            .rev()
+            .find(|h| h.bounds.intersect(&h.content_mask.bounds).contains(&position))
+            .is_some_and(|h| h.behavior == HitboxBehavior::Native)
+    }
+
+    /// Recur: makes `bounds` (within the content mask) fully transparent, replacing what was
+    /// painted under it, so a native view behind the window's drawing shows through. What is
+    /// painted over it later composites as usual. Renderers without holes skip it.
+    ///
+    /// This method should only be called as part of the paint phase of element drawing.
+    pub fn paint_hole(&mut self, bounds: Bounds<Pixels>) {
+        self.invalidator.debug_assert_paint();
+
+        self.next_frame.scene.insert_primitive(crate::scene::Hole {
+            order: 0,
+            bounds: self.snap_bounds(bounds),
+            content_mask: self.snapped_content_mask(),
+        });
     }
 
     /// Recur: blurs what is painted under `bounds` by a Gaussian of standard deviation

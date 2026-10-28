@@ -3,7 +3,7 @@
 //! client leaves unhandled, `initialize` rewrites, and the Vue ↔ TypeScript
 //! `tsserver/request` bridge messages. Pure JSON-in, JSON-out, so the editor
 //! port's LSP client applies them around [`crate::Manager::write`] and the
-//! `lsp.message` stream.
+//! `lsp.message` stream (parsed once, off the UI thread).
 
 use serde_json::{Map, Value, json};
 
@@ -13,14 +13,14 @@ use serde_json::{Map, Value, json};
 pub enum ServerRequest {
     /// Not a request this layer answers; deliver it to the client.
     Pass,
-    /// Answer with this JSON-RPC response body and swallow the request.
-    Reply(String),
+    /// Answer with this JSON-RPC response and swallow the request.
+    Reply(Value),
     /// A Vue `tsserver/request`: reply `null` now, forward the parsed call to
     /// the workspace's TypeScript session (`workspace/executeCommand`
     /// `typescript.tsserverRequest`), then send [`vue_tsserver_response`] to
     /// the Vue session. `None` when the params do not parse (reply only).
     Tsserver {
-        reply: String,
+        reply: Value,
         call: Option<TsserverRequest>,
     },
 }
@@ -33,14 +33,14 @@ pub struct TsserverRequest {
     pub payload: Value,
 }
 
-fn reply(id: &Value, result: Value) -> String {
-    json!({"jsonrpc": "2.0", "id": id, "result": result}).to_string()
+fn reply(id: &Value, result: Value) -> Value {
+    json!({"jsonrpc": "2.0", "id": id, "result": result})
 }
 
 /// Classifies a server → client message. `root_uri` is the session root
 /// (for `workspace/workspaceFolders`).
-pub fn handle_server_request(raw: &str, root_uri: &str) -> ServerRequest {
-    let Ok(Value::Object(msg)) = serde_json::from_str::<Value>(raw) else {
+pub fn handle_server_request(msg: &Value, root_uri: &str) -> ServerRequest {
+    let Value::Object(msg) = msg else {
         return ServerRequest::Pass;
     };
     // Requests carry an id and a method; responses an id and a result or
@@ -102,9 +102,9 @@ pub fn parse_vue_tsserver_request(params: &Value) -> Option<TsserverRequest> {
 }
 
 /// The `tsserver/response` notification for the Vue session.
-pub fn vue_tsserver_response(id: &Value, body: Option<&Value>) -> String {
+pub fn vue_tsserver_response(id: &Value, body: Option<&Value>) -> Value {
     let body = body.cloned().unwrap_or(Value::Null);
-    json!({"jsonrpc": "2.0", "method": "tsserver/response", "params": [[id, body]]}).to_string()
+    json!({"jsonrpc": "2.0", "method": "tsserver/response", "params": [[id, body]]})
 }
 
 /// The `typescript.tsserverRequest` result body: `r.body` when present,
@@ -203,15 +203,20 @@ pub fn with_workspace_folders(message: &str, root_uri: &str) -> String {
     Value::Object(msg).to_string()
 }
 
-/// Every client → server rewrite, in order: workspace folders, then the Vue
-/// plugin for a TypeScript session that has one.
+/// A client → server message's body with every rewrite applied, in order:
+/// workspace folders, then the Vue plugin for a TypeScript session that has
+/// one. Only `initialize` is rewritten.
 pub fn rewrite_outgoing(
-    message: &str,
+    message: &Value,
     root_uri: &str,
     server_key: &str,
     vue_plugin_path: &str,
 ) -> String {
-    let next = with_workspace_folders(message, root_uri);
+    let body = message.to_string();
+    if message.get("method").and_then(Value::as_str) != Some("initialize") {
+        return body;
+    }
+    let next = with_workspace_folders(&body, root_uri);
     if server_key == "typescript-language-server" && !vue_plugin_path.is_empty() {
         return with_vue_ts_plugin(&next, vue_plugin_path);
     }
@@ -244,17 +249,14 @@ mod tests {
             })
         );
         assert_eq!(parse_vue_tsserver_request(&Value::Null), None);
-        let resp: Value = serde_json::from_str(&vue_tsserver_response(
-            &json!(42),
-            Some(&json!({"entries": []})),
-        ))
-        .unwrap();
         assert_eq!(
-            resp,
+            vue_tsserver_response(&json!(42), Some(&json!({"entries": []}))),
             json!({"jsonrpc": "2.0", "method": "tsserver/response", "params": [[42, {"entries": []}]]})
         );
-        let resp: Value = serde_json::from_str(&vue_tsserver_response(&json!(1), None)).unwrap();
-        assert_eq!(resp["params"], json!([[1, null]]));
+        assert_eq!(
+            vue_tsserver_response(&json!(1), None)["params"],
+            json!([[1, null]])
+        );
     }
 
     #[test]
@@ -283,18 +285,23 @@ mod tests {
 
     #[test]
     fn server_requests() {
-        let r = |raw: &str| handle_server_request(raw, "file:///root/ws");
+        let r = |raw: &str| {
+            handle_server_request(
+                &serde_json::from_str(raw).unwrap_or_default(),
+                "file:///root/ws",
+            )
+        };
         assert_eq!(
             r(
                 r#"{"jsonrpc":"2.0","id":3,"method":"workspace/configuration","params":{"items":[{},{}]}}"#
             ),
-            ServerRequest::Reply(
-                json!({"jsonrpc": "2.0", "id": 3, "result": [{}, {}]}).to_string()
-            )
+            ServerRequest::Reply(json!({"jsonrpc": "2.0", "id": 3, "result": [{}, {}]}))
         );
         assert_eq!(
             r(r#"{"id":"a","method":"workspace/workspaceFolders"}"#),
-            ServerRequest::Reply(json!({"jsonrpc": "2.0", "id": "a", "result": [{"uri": "file:///root/ws", "name": "workspace"}]}).to_string())
+            ServerRequest::Reply(
+                json!({"jsonrpc": "2.0", "id": "a", "result": [{"uri": "file:///root/ws", "name": "workspace"}]})
+            )
         );
         for m in [
             "client/registerCapability",
@@ -303,9 +310,7 @@ mod tests {
         ] {
             assert_eq!(
                 r(&json!({"id": 1, "method": m}).to_string()),
-                ServerRequest::Reply(
-                    json!({"jsonrpc": "2.0", "id": 1, "result": null}).to_string()
-                )
+                ServerRequest::Reply(json!({"jsonrpc": "2.0", "id": 1, "result": null}))
             );
         }
         assert_eq!(
@@ -344,11 +349,25 @@ mod tests {
             (json!([]), json!("file:///x"))
         );
         assert_eq!(workspace_folder("file:///")["name"], "workspace");
-        let out = rewrite_outgoing(&raw, "file:///r", "typescript-language-server", "/p");
+        let out = rewrite_outgoing(
+            &serde_json::from_str(&raw).unwrap(),
+            "file:///r",
+            "typescript-language-server",
+            "/p",
+        );
         let v: Value = serde_json::from_str(&out).unwrap();
         assert!(
             v["params"]["workspaceFolders"].is_array()
                 && v["params"]["initializationOptions"]["plugins"].is_array()
+        );
+        assert_eq!(
+            rewrite_outgoing(
+                &json!({"method": "initialized"}),
+                "file:///r",
+                "typescript-language-server",
+                "/p"
+            ),
+            r#"{"method":"initialized"}"#
         );
     }
 }

@@ -16,6 +16,7 @@ use crate::display::{BlockWidget, MeasuredLine, SegKind};
 use crate::merge::{COLLAPSE_MIN_SIZE, Chunk, chunk_decorations, deleted_chunk_lines};
 use crate::prefs::EditorWhitespace;
 use crate::view::{EditorKind, EditorView, Frame, GpuiMeasure};
+use crate::view_input::MouseDrag;
 use crate::view_queries::ViewQueries;
 use gpui_kit::Styled as _;
 use recur_ui::IconName;
@@ -206,6 +207,9 @@ pub struct Plan {
     /// The gutter's icons, prepainted.
     pub icons: Vec<gpui_kit::AnyElement>,
     pub scrollbars: Vec<Op>,
+    /// The scrollbar tracks, which take the arrow cursor.
+    pub scrollbar_tracks: Vec<Bounds<Pixels>>,
+    pub track_hitboxes: Vec<Hitbox>,
     pub content_bounds: Option<Bounds<Pixels>>,
     pub gutter_bounds: Option<Bounds<Pixels>>,
     pub hitbox: Option<Hitbox>,
@@ -429,6 +433,11 @@ impl Element for EditorElement {
                 .unwrap_or_default()
         });
         plan.hitbox = Some(window.insert_hitbox(bounds, HitboxBehavior::Normal));
+        plan.track_hitboxes = plan
+            .scrollbar_tracks
+            .iter()
+            .map(|b| window.insert_hitbox(*b, HitboxBehavior::Normal))
+            .collect();
         let mut rest = Vec::new();
         for op in std::mem::take(&mut plan.gutter) {
             match op {
@@ -476,6 +485,9 @@ impl Element for EditorElement {
                 CursorStyle::IBeam
             };
             window.set_cursor_style(style, hitbox);
+        }
+        for hitbox in &plan.track_hitboxes {
+            window.set_cursor_style(CursorStyle::Arrow, hitbox);
         }
         let paint_ops = |ops: &mut Vec<Op>, window: &mut Window, cx: &mut App| {
             for op in ops.drain(..) {
@@ -665,7 +677,9 @@ impl EditorView {
         // Layout config follows the box; wrap width changes re-estimate.
         let content_height_guess = self.layout.borrow().content_height() as f32;
         let vbar = content_height_guess > bh;
-        let scroller_width = bw - if vbar { scrollbar_size() } else { 0.0 };
+        let legacy_bars = recur_ui::widgets::scrollbar::legacy(cx);
+        let bar_size = if legacy_bars { scrollbar_size() } else { 0.0 };
+        let scroller_width = bw - if vbar { bar_size } else { 0.0 };
         let new_frame_dims = (scroller_width, bh, gutter_width);
         let old_dims = self
             .frame
@@ -698,10 +712,11 @@ impl EditorView {
                 .max(text_area_w)
         };
         let hbar = !self.prefs.line_wrapping && content_w > text_area_w;
-        let view_h = bh - if hbar { scrollbar_size() } else { 0.0 };
+        let view_h = bh - if hbar { bar_size } else { 0.0 };
         {
             let f = self.frame.get_or_insert_with(Frame::default);
             f.bounds = bounds;
+            f.legacy_bars = legacy_bars;
             f.scroller_top = by;
             f.scroller_height = view_h;
             f.max_scroll_top = (content_h - view_h).max(0.0);
@@ -1380,13 +1395,24 @@ impl EditorView {
                 window,
             );
         }
+        plan.crosshair = self.prefs.rectangular_select && window.modifiers().alt;
         // Scrollbars.
         let tokens = theme.tokens;
+        if !legacy_bars {
+            self.plan_overlay_bars(&mut plan, &tokens, window, cx);
+            return plan;
+        }
         // WebKit's custom scrollbar thumbs: whole-pixel length and offset over
         // the pixel-snapped content size, `border-radius: 8px` scaled down to
         // fit as CSS clamps radii.
         let thumb_radius = |len: f32| px(8.0f32.min(scrollbar_size() / 2.0).min(len / 2.0));
         if vbar || content_h > view_h {
+            plan.scrollbar_tracks.push(rect(
+                bx + bw - scrollbar_size(),
+                by,
+                scrollbar_size(),
+                view_h,
+            ));
             let (len, at) = classic_thumb(
                 self.scroll_top,
                 content_h.round(),
@@ -1404,6 +1430,12 @@ impl EditorView {
             }
         }
         if hbar {
+            plan.scrollbar_tracks.push(rect(
+                bx,
+                by + bh - scrollbar_size(),
+                scroller_width,
+                scrollbar_size(),
+            ));
             let total = (gutter_width + content_w).round();
             let (len, at) = classic_thumb(
                 self.scroll_left,
@@ -1421,8 +1453,54 @@ impl EditorView {
                 ));
             }
         }
-        plan.crosshair = self.prefs.rectangular_select && window.modifiers().alt;
         plan
+    }
+
+    /// AppKit's overlay scrollers over the text, from the shared [`Overlay`] timing.
+    ///
+    /// [`Overlay`]: recur_ui::widgets::scrollbar::Overlay
+    fn plan_overlay_bars(
+        &self,
+        plan: &mut Plan,
+        tokens: &recur_ui::Tokens,
+        window: &mut Window,
+        cx: &App,
+    ) {
+        let now = recur_ui::motion::now(cx);
+        let Some(f) = self.frame.as_ref() else { return };
+        let (right, bottom) = (f32::from(f.bounds.right()), f32::from(f.bounds.bottom()));
+        for (o, vertical) in self.bars.iter().zip([true, false]) {
+            if o.animating(now) {
+                window.request_animation_frame();
+            }
+            let opacity = o.opacity(now);
+            let Some(bar) = self.overlay_bar(vertical).filter(|_| opacity > 0.0) else {
+                continue;
+            };
+            plan.scrollbar_tracks.push(bar.area);
+            let hot = self.knob_hover == Some(vertical)
+                || matches!(self.drag, Some(MouseDrag::Thumb { vertical: v, .. }) if v == vertical);
+            let color = if hot {
+                tokens.scrollbar_thumb_hover
+            } else {
+                tokens.scrollbar_thumb
+            };
+            let track = o.track_alpha(now);
+            if track > 0.0 {
+                plan.scrollbars
+                    .push(Op::Quad(fill(bar.area, h(color.fade(track)))));
+            }
+            let (th, inset) = (o.thickness(now), o.edge_inset());
+            let at = bar.start + bar.knob_at;
+            let knob = if vertical {
+                rect(right - inset - th, at, th, bar.knob_len)
+            } else {
+                rect(at, bottom - inset - th, bar.knob_len, th)
+            };
+            plan.scrollbars.push(Op::Quad(
+                fill(knob, h(color.fade(opacity))).corner_radii(px(th / 2.0)),
+            ));
+        }
     }
 
     /// The modal keymap's block cursor, when it replaces the caret: `Some(true)`

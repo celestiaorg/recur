@@ -1,16 +1,20 @@
-//! Scrollbars from `_base.scss`. Every scroller gets WebKit's custom `::-webkit-scrollbar`
-//! (11px, transparent track, `--scrollbar-thumb` thumb with radius 8, `--scrollbar-thumb-hover`
-//! under the pointer) that takes layout space while the content overflows. Scrollers that keep
-//! sticky rows use the 6px overlay thumb of `lib/overlay-scrollbar.ts` (`.overlay-sb`) instead,
-//! which floats above the rows and fades in while scrolling, hovered or dragged.
+//! Scrollbars from `_base.scss`. Its `* { scrollbar-color: var(--scrollbar-thumb) transparent }`
+//! wins over the `::-webkit-scrollbar` rules in WKWebView, so every scroller gets AppKit's
+//! overlay scroller tinted with the thumb color ([`Overlay`]): no layout space, shown while the
+//! user scrolls, wider with a track under the pointer. With "Show scroll bars: Always"
+//! ([`legacy`]) WebKit draws the custom `::-webkit-scrollbar` instead (11px, transparent track,
+//! `--scrollbar-thumb` thumb with radius 8, `--scrollbar-thumb-hover` under the pointer), which
+//! takes layout space while the content overflows. Scrollers that keep sticky rows use the 6px
+//! overlay thumb of `lib/overlay-scrollbar.ts` (`.overlay-sb`) instead, which floats above the
+//! rows and fades in while scrolling, hovered or dragged.
 
 use crate::motion::{self, Easing};
 use crate::theme::{SCROLLBAR_SIZE, Theme};
 use crate::widgets::Axis;
 use gpui_kit::{
-    AnyElement, App, DispatchPhase, ElementId, InteractiveElement, IntoElement, MouseButton,
-    MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Point, RenderOnce, ScrollHandle,
-    StatefulInteractiveElement, Styled, Window, canvas, div, point, px,
+    AnyElement, App, DispatchPhase, ElementId, Global, InteractiveElement, IntoElement,
+    MouseButton, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Point, RenderOnce,
+    ScrollHandle, StatefulInteractiveElement, Styled, Window, canvas, div, point, px,
 };
 use std::time::{Duration, Instant};
 
@@ -87,6 +91,215 @@ pub fn page_step(visible: f32) -> f32 {
     (visible * 0.875).max(visible - 40.).max(1.)
 }
 
+/// AppKit's overlay `NSScroller` at the regular control size, measured from `NSScrollerImp`:
+/// a 17px scroller whose knob keeps 3px from the outer edge and the track ends, 6px thick at
+/// rest and 11px expanded, at least 26px long.
+pub const OVERLAY_BOX: f32 = 17.;
+const OVERLAY_INSET: f32 = 3.;
+const OVERLAY_THIN: f32 = 6.;
+const OVERLAY_WIDE: f32 = 11.;
+const OVERLAY_MIN_KNOB: f32 = 26.;
+/// The expanded track over the thumb color. AppKit paints a faint slot, and `scrollbar-color`'s
+/// transparent track leaves no color of its own.
+const OVERLAY_TRACK: f32 = 0.25;
+/// A scroll shows the knob at once (`knobAlpha` 1 on the first sample); it holds this long
+/// after the last scroll, pointer leave or release, then fades out ease-in-out.
+const OVERLAY_HOLD: Duration = Duration::from_millis(500);
+const OVERLAY_FADE: Duration = Duration::from_millis(225);
+/// `mouseEnteredScroller` expands the knob after a rollover delay, then widens it.
+const OVERLAY_ROLLOVER: Duration = Duration::from_millis(40);
+const OVERLAY_EXPAND: Duration = Duration::from_millis(120);
+
+/// The overlay knob along a track of `track` px: (length, offset from the track start).
+pub fn overlay_knob(pos: f32, total: f32, visible: f32, track: f32) -> (f32, f32) {
+    let slot = track - 2. * OVERLAY_INSET;
+    let max = total - visible;
+    if max <= 0. || slot <= 0. {
+        return (0., 0.);
+    }
+    let len = (visible / total * slot).max(OVERLAY_MIN_KNOB).min(slot);
+    (len, OVERLAY_INSET + pos.clamp(0., max) / max * (slot - len))
+}
+
+/// The scroll position that puts the overlay knob's start at `at` along the track.
+pub fn overlay_scroll(at: f32, total: f32, visible: f32, track: f32) -> f32 {
+    let (len, _) = overlay_knob(0., total, visible, track);
+    scroll_for_thumb(
+        at - OVERLAY_INSET,
+        len,
+        track - 2. * OVERLAY_INSET,
+        total - visible,
+    )
+}
+
+/// The show, fade and expand timing of an AppKit overlay scroller.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Overlay {
+    /// The last scroll, pointer leave or release, which starts the hold before the fade.
+    idle: Option<Instant>,
+    hovered: bool,
+    pressed: bool,
+    /// When the knob starts to widen; it stays wide until the scroller hides.
+    expand: Option<Instant>,
+}
+
+impl Overlay {
+    /// A wheel or trackpad scroll. Programmatic scrolls leave the scroller hidden.
+    pub fn scrolled(&mut self, now: Instant) {
+        if !self.visible(now) {
+            self.expand = None;
+        }
+        self.idle = Some(now);
+    }
+
+    /// The pointer is over the scroller's box or not; whether that changed anything. A hidden
+    /// scroller ignores the pointer, as WebKit hit tests overlay scrollbars only while they show.
+    pub fn hover(&mut self, on: bool, now: Instant) -> bool {
+        let on = on && (self.hovered || self.visible(now));
+        if on == self.hovered {
+            return false;
+        }
+        self.hovered = on;
+        if on {
+            self.expand.get_or_insert(now + OVERLAY_ROLLOVER);
+        } else {
+            self.idle = Some(now);
+        }
+        true
+    }
+
+    /// A press on the scroller (track paging or a knob drag) starts or ends.
+    pub fn press(&mut self, on: bool, now: Instant) {
+        if self.pressed && !on {
+            self.idle = Some(now);
+        }
+        self.pressed = on;
+    }
+
+    fn held(&self) -> bool {
+        self.hovered || self.pressed
+    }
+
+    pub fn opacity(&self, now: Instant) -> f32 {
+        if self.held() {
+            return 1.;
+        }
+        let Some(t) = self.idle else { return 0. };
+        let fading = now
+            .saturating_duration_since(t)
+            .saturating_sub(OVERLAY_HOLD);
+        1. - Easing::EASE_IN_OUT.apply(fading.as_secs_f32() / OVERLAY_FADE.as_secs_f32())
+    }
+
+    /// Showing, and so taking the pointer.
+    pub fn visible(&self, now: Instant) -> bool {
+        self.opacity(now) > 0.
+    }
+
+    /// The knob's thickness across the track.
+    pub fn thickness(&self, now: Instant) -> f32 {
+        let p = match self.expand {
+            Some(t) if self.visible(now) => {
+                let d = now.saturating_duration_since(t).as_secs_f32();
+                Easing::EASE_IN_OUT.apply(d / OVERLAY_EXPAND.as_secs_f32())
+            }
+            _ => 0.,
+        };
+        OVERLAY_THIN + (OVERLAY_WIDE - OVERLAY_THIN) * p
+    }
+
+    /// The expanded track's alpha over the thumb color.
+    pub fn track_alpha(&self, now: Instant) -> f32 {
+        if self.expand.is_some_and(|t| now >= t) {
+            self.opacity(now) * OVERLAY_TRACK
+        } else {
+            0.
+        }
+    }
+
+    /// The knob's distance from the scroller's outer edge.
+    pub fn edge_inset(&self) -> f32 {
+        OVERLAY_INSET
+    }
+
+    /// Whether a later frame looks different: holding, fading or widening.
+    pub fn animating(&self, now: Instant) -> bool {
+        if self.held() {
+            return self.expand.is_some_and(|t| now < t + OVERLAY_EXPAND);
+        }
+        self.idle
+            .is_some_and(|t| now < t + OVERLAY_HOLD + OVERLAY_FADE)
+    }
+}
+
+/// "Show scroll bars: Always" (`NSScroller.preferredScrollerStyle` legacy): scrollers keep the
+/// classic bar. Off until [`watch_system_style`] or [`set_legacy`] sets it, so Linux and tests
+/// get the overlay scroller.
+pub fn legacy(cx: &App) -> bool {
+    cx.try_global::<Legacy>().is_some_and(|l| l.0)
+}
+
+/// The layout space a scrollbar takes while its content overflows.
+pub fn layout_size(cx: &App) -> f32 {
+    if legacy(cx) {
+        f32::from(SCROLLBAR_SIZE)
+    } else {
+        0.
+    }
+}
+
+/// Switch between the classic bar and overlay scrollers, repainting.
+pub fn set_legacy(legacy: bool, cx: &mut App) {
+    cx.set_global(Legacy(legacy));
+    cx.refresh_windows();
+}
+
+struct Legacy(bool);
+
+impl Global for Legacy {}
+
+/// Follow the macOS scroller style preference, repainting when it changes.
+pub fn watch_system_style(cx: &mut App) {
+    #[cfg(target_os = "macos")]
+    {
+        use futures::StreamExt;
+        use objc2_app_kit::{
+            NSPreferredScrollerStyleDidChangeNotification, NSScroller, NSScrollerStyle,
+        };
+        use objc2_foundation::{MainThreadMarker, NSNotificationCenter};
+
+        let Some(mtm) = MainThreadMarker::new() else {
+            return;
+        };
+        let legacy = move || NSScroller::preferredScrollerStyle(mtm) == NSScrollerStyle::Legacy;
+        set_legacy(legacy(), cx);
+        let (tx, mut rx) = futures::channel::mpsc::unbounded();
+        // The center may call back while GPUI holds the app; hand off to the executor.
+        let block = block2::RcBlock::new(move |_| {
+            let _ = tx.unbounded_send(());
+        });
+        // SAFETY: the block only sends on a channel, and the observer lives as long as the app.
+        #[allow(unsafe_code)]
+        let observer = unsafe {
+            NSNotificationCenter::defaultCenter().addObserverForName_object_queue_usingBlock(
+                Some(NSPreferredScrollerStyleDidChangeNotification),
+                None,
+                None,
+                &block,
+            )
+        };
+        cx.spawn(async move |cx| {
+            let _observer = observer;
+            while rx.next().await.is_some() {
+                cx.update(|cx| set_legacy(legacy(), cx));
+            }
+        })
+        .detach();
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = cx;
+}
+
 /// Before the overlay hides after the last scroll or pointer leave.
 const HIDE: Duration = Duration::from_millis(700);
 const FADE_IN: Duration = Duration::from_millis(120);
@@ -104,6 +317,9 @@ struct State {
     hover_track: bool,
     hover_thumb: bool,
     last_pos: Option<f32>,
+    /// A wheel event since the last render, so the next move shows the overlay scroller.
+    wheeled: bool,
+    mac: Overlay,
     hide_at: Option<Instant>,
     /// `.overlay-sb.on` and its opacity transition (start, starting opacity).
     on: bool,
@@ -153,7 +369,7 @@ fn along(p: Point<Pixels>, h: &ScrollHandle, axis: Axis) -> f32 {
     })
 }
 
-/// A scroller with the web UI's scrollbar. Vertical with the classic bar by default.
+/// A scroller with the web UI's scrollbar. Vertical with the overlay scroller by default.
 #[derive(IntoElement)]
 pub struct ScrollArea {
     id: ElementId,
@@ -179,7 +395,7 @@ pub fn scroll_area(id: impl Into<ElementId>) -> ScrollArea {
 }
 
 impl ScrollArea {
-    /// Scroll sideways; the 11px bar sits along the bottom.
+    /// Scroll sideways; the bar sits along the bottom.
     pub fn horizontal(mut self) -> Self {
         self.axis = Axis::X;
         self
@@ -220,6 +436,7 @@ impl ScrollArea {
     fn render_view(self, window: &mut Window, cx: &mut App) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let (axis, overlay) = (self.axis, self.overlay);
+        let native = !overlay && !legacy(cx);
         let state = window.use_keyed_state(self.id.clone(), cx, |_, _| State::default());
         let handle = match self.handle {
             Some(h) => h,
@@ -229,12 +446,16 @@ impl ScrollArea {
         let overflow = total - client > if overlay { 1. } else { 0.5 };
         let size = if overlay {
             6.
+        } else if native {
+            OVERLAY_BOX
         } else {
             f32::from(SCROLLBAR_SIZE)
         };
         let (thumb_len, thumb_at) = if overlay {
             let (h, top, _) = overlay_thumb(pos, total, client, 24.);
             (h, top)
+        } else if native {
+            overlay_knob(pos, total, client, client)
         } else {
             // WebKit lays native scrollbars out on whole CSS pixels (`snappedIntRect`), so a
             // scroller at a fractional offset draws its thumb from the rounded edge.
@@ -249,15 +470,22 @@ impl ScrollArea {
 
         let now = crate::motion::now(cx);
         let opacity = state.update(cx, |s, cx| {
-            if s.last_pos.is_some_and(|l| (l - pos).abs() > 0.01) {
+            let moved = s.last_pos.is_some_and(|l| (l - pos).abs() > 0.01);
+            if moved {
                 s.hide_soon(now);
+            }
+            if std::mem::take(&mut s.wheeled) && moved {
+                s.mac.scrolled(now);
             }
             s.last_pos = Some(pos);
             if let Some((at, next)) = s.paging
                 && now >= next
             {
-                page(&handle, axis, at);
+                page(&handle, axis, at, native);
                 s.paging = Some((at, now + PAGE_REPEAT));
+            }
+            if native {
+                return s.mac.opacity(now);
             }
             if !overlay {
                 return 1.;
@@ -276,7 +504,10 @@ impl ScrollArea {
             let fading = s.fade.is_some_and(|(start, _)| {
                 motion::progress(start, if s.on { FADE_IN } else { FADE_OUT }, cx) < 1.
             });
-            if s.paging.is_some() || (overlay && (fading || s.hide_at.is_some_and(|h| now < h))) {
+            if s.paging.is_some()
+                || (overlay && (fading || s.hide_at.is_some_and(|h| now < h)))
+                || (native && overflow && s.mac.animating(now))
+            {
                 window.request_animation_frame();
             }
         }
@@ -287,16 +518,23 @@ impl ScrollArea {
         } else {
             t.scrollbar_thumb
         };
+        let (thickness, track_alpha) = (s.mac.thickness(now), s.mac.track_alpha(now));
         let mut base = div().id(self.id.clone()).flex_1().min_w_0().min_h_0();
         if let Some(f) = self.scroller {
             base = f(base);
         }
-        let content = match axis {
+        let mut content = match axis {
             Axis::X => base.overflow_x_scroll(),
             Axis::Y => base.overflow_y_scroll(),
         }
         .track_scroll(&handle)
         .children(self.children);
+        if native {
+            let state = state.clone();
+            content = content.on_scroll_wheel(move |_, _, cx| {
+                state.update(cx, |s, _| s.wheeled = true);
+            });
+        }
 
         let mut root = div().relative().flex().size_full().min_w_0().min_h_0();
         root = match axis {
@@ -304,10 +542,11 @@ impl ScrollArea {
             Axis::Y => root.flex_row(),
         }
         .child(content);
-        if !overflow {
+        // A hidden overlay scroller takes no pointer, so the content under it stays clickable.
+        if !overflow || (native && opacity <= 0.) {
             return root;
         }
-        if !overlay {
+        if !overlay && !native {
             root = match axis {
                 Axis::X => root.pb(px(size)),
                 Axis::Y => root.pr(px(size)),
@@ -317,11 +556,24 @@ impl ScrollArea {
         let thumb = div()
             .id("thumb")
             .absolute()
-            .rounded(px(if overlay { 99. } else { 8. }))
+            .rounded(px(if native {
+                thickness / 2.
+            } else if overlay {
+                99.
+            } else {
+                8.
+            }))
             .bg(thumb_color.fade(opacity));
+        let edge = s.mac.edge_inset();
         let thumb = match axis {
-            Axis::X => thumb.top_0().bottom_0().left(px(thumb_at)).w(px(thumb_len)),
-            Axis::Y => thumb.left_0().right_0().top(px(thumb_at)).h(px(thumb_len)),
+            Axis::X if native => thumb.bottom(px(edge)).h(px(thickness)),
+            Axis::Y if native => thumb.right(px(edge)).w(px(thickness)),
+            Axis::X => thumb.top_0().bottom_0(),
+            Axis::Y => thumb.left_0().right_0(),
+        };
+        let thumb = match axis {
+            Axis::X => thumb.left(px(thumb_at)).w(px(thumb_len)),
+            Axis::Y => thumb.top(px(thumb_at)).h(px(thumb_len)),
         };
         let thumb = {
             let state = state.clone();
@@ -331,12 +583,16 @@ impl ScrollArea {
             })
         };
 
-        let track = div()
+        let mut track = div()
             .id((self.id.clone(), "scrollbar"))
             .absolute()
             .occlude()
             .child(thumb);
+        if native {
+            track = track.bg(thumb_color.fade(track_alpha));
+        }
         let track = match axis {
+            Axis::X if native => track.left_0().right_0().bottom_0().h(px(size)),
             Axis::X => track.left_0().right(px(size)).bottom_0().h(px(size)),
             Axis::Y if overlay => track.top_0().bottom_0().right(px(1.)).w(px(size)),
             Axis::Y => track.top_0().bottom_0().right_0().w(px(size)),
@@ -349,6 +605,7 @@ impl ScrollArea {
                     let now = crate::motion::now(cx);
                     enter.update(cx, |s, _| {
                         s.hover_track = *on;
+                        s.mac.hover(*on, now);
                         if !*on {
                             s.hide_soon(now);
                         }
@@ -364,11 +621,12 @@ impl ScrollArea {
                         let (len, top, _) = overlay_thumb(pos, total, client, 24.);
                         (len, top)
                     } else {
-                        classic_thumb(pos, total, client, client)
+                        knob(native, pos, total, client)
                     };
                     let on_thumb = at >= thumb_at && at <= thumb_at + len;
                     let now = crate::motion::now(cx);
                     press.update(cx, |s, _| {
+                        s.mac.press(true, now);
                         if overlay {
                             // The overlay jumps so the pointer holds the thumb where it grabbed.
                             let grab = if on_thumb { at - thumb_at } else { len / 2. };
@@ -377,7 +635,7 @@ impl ScrollArea {
                         } else if on_thumb {
                             s.grab = Some(at - thumb_at);
                         } else {
-                            page(&h, axis, at);
+                            page(&h, axis, at, native);
                             s.paging = Some((at, now + PAGE_FIRST));
                         }
                     });
@@ -408,6 +666,8 @@ impl ScrollArea {
                                 let (_, total, client) = metrics(&h, axis);
                                 let pos = if overlay {
                                     scroll_from_track(at - grab, total, client, 24.)
+                                } else if native {
+                                    overlay_scroll(at - grab, total, client, client)
                                 } else {
                                     let (len, _) = classic_thumb(0., total, client, client);
                                     scroll_for_thumb(at - grab, len, client, total - client)
@@ -427,6 +687,7 @@ impl ScrollArea {
                         up.update(cx, |s, _| {
                             s.grab = None;
                             s.paging = None;
+                            s.mac.press(false, now);
                             s.hide_soon(now);
                         });
                         window.refresh();
@@ -449,14 +710,23 @@ impl RenderOnce for ScrollArea {
     }
 }
 
+/// The overlay knob or the classic thumb: (length, offset along the track).
+fn knob(native: bool, pos: f32, total: f32, client: f32) -> (f32, f32) {
+    if native {
+        overlay_knob(pos, total, client, client)
+    } else {
+        classic_thumb(pos, total, client, client)
+    }
+}
+
 /// One `autoscrollPressedPart` step: page toward the pointer unless the thumb would land
 /// under it.
-fn page(h: &ScrollHandle, axis: Axis, at: f32) {
+fn page(h: &ScrollHandle, axis: Axis, at: f32, native: bool) {
     let (pos, total, client) = metrics(h, axis);
-    let (len, thumb_at) = classic_thumb(pos, total, client, client);
+    let (len, thumb_at) = knob(native, pos, total, client);
     let dir = if at < thumb_at { -1. } else { 1. };
     let next = (pos + dir * page_step(client)).clamp(0., total - client);
-    let (_, next_at) = classic_thumb(next, total, client, client);
+    let (_, next_at) = knob(native, next, total, client);
     if (at >= next_at && at < next_at + len) || (at >= thumb_at && at < thumb_at + len) {
         return;
     }
@@ -478,6 +748,86 @@ mod tests {
         assert_eq!(scroll_from_track(-5., 1000., 200., 24.), 0.);
         assert_eq!(scroll_from_track(500., 1000., 200., 24.), 800.);
         assert_eq!(scroll_from_track(10., 200., 200., 24.), 0.);
+    }
+
+    #[test]
+    fn overlay_knob_geometry() {
+        // 3px from the track ends, proportional, at least 26px.
+        assert_eq!(overlay_knob(0., 1030., 206., 206.), (40., 3.));
+        assert_eq!(overlay_knob(824., 1030., 206., 206.), (40., 163.));
+        assert_eq!(overlay_knob(0., 100_000., 206., 206.).0, 26.);
+        assert_eq!(overlay_knob(0., 206., 206., 206.), (0., 0.));
+        assert_eq!(overlay_scroll(83., 1030., 206., 206.), 412.);
+        assert_eq!(overlay_scroll(-10., 1030., 206., 206.), 0.);
+        assert_eq!(overlay_scroll(500., 1030., 206., 206.), 824.);
+    }
+
+    #[test]
+    fn overlay_shows_on_scroll_and_fades() {
+        let t0 = Instant::now();
+        let at = |ms| t0 + Duration::from_millis(ms);
+        let mut o = Overlay::default();
+        assert_eq!(o.opacity(t0), 0.);
+        assert!(!o.animating(t0));
+        o.scrolled(t0);
+        assert_eq!(o.opacity(t0), 1.);
+        assert_eq!(o.opacity(at(500)), 1.);
+        assert!((o.opacity(at(612)) - 0.5).abs() < 0.05);
+        assert_eq!(o.opacity(at(725)), 0.);
+        assert!(o.animating(at(600)));
+        assert!(!o.animating(at(725)));
+        // Another scroll restarts the hold.
+        o.scrolled(at(400));
+        assert_eq!(o.opacity(at(900)), 1.);
+        assert_eq!(o.thickness(at(400)), 6.);
+        assert_eq!(o.track_alpha(at(400)), 0.);
+    }
+
+    #[test]
+    fn overlay_hover_expands_and_holds() {
+        let t0 = Instant::now();
+        let at = |ms| t0 + Duration::from_millis(ms);
+        let mut o = Overlay::default();
+        // A hidden scroller does not take the pointer.
+        assert!(!o.hover(true, t0));
+        assert_eq!(o.opacity(at(10)), 0.);
+        o.scrolled(at(100));
+        assert!(o.hover(true, at(200)));
+        assert_eq!(o.thickness(at(239)), 6.);
+        assert_eq!(o.track_alpha(at(239)), 0.);
+        assert!((o.thickness(at(300)) - 8.5).abs() < 0.5);
+        assert_eq!(o.thickness(at(360)), 11.);
+        assert_eq!(o.track_alpha(at(360)), 0.25);
+        assert!(o.animating(at(300)));
+        assert!(!o.animating(at(360)));
+        // Hovered, it stays.
+        assert_eq!(o.opacity(at(5000)), 1.);
+        // Leaving holds, fades, and stays wide until hidden.
+        assert!(o.hover(false, at(5000)));
+        assert_eq!(o.thickness(at(5600)), 11.);
+        assert_eq!(o.opacity(at(5725)), 0.);
+        assert_eq!(o.thickness(at(5725)), 6.);
+        // Shown again by a scroll, it starts thin.
+        o.scrolled(at(6000));
+        assert_eq!(o.thickness(at(6000)), 6.);
+    }
+
+    #[test]
+    fn overlay_press_holds_until_release() {
+        let t0 = Instant::now();
+        let at = |ms| t0 + Duration::from_millis(ms);
+        let mut o = Overlay::default();
+        // A release without a press shows nothing.
+        o.press(false, t0);
+        assert_eq!(o.opacity(t0), 0.);
+        o.scrolled(t0);
+        o.hover(true, at(100));
+        o.press(true, at(150));
+        o.hover(false, at(200));
+        assert_eq!(o.opacity(at(3000)), 1.);
+        o.press(false, at(3000));
+        assert_eq!(o.opacity(at(3500)), 1.);
+        assert_eq!(o.opacity(at(3725)), 0.);
     }
 
     #[test]

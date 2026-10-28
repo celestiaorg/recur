@@ -232,6 +232,18 @@ pub(crate) enum MouseDrag {
     Chip,
 }
 
+/// An overlay scroller's box and knob, in window coordinates along its axis.
+pub(crate) struct OverlayBar {
+    pub area: Bounds<Pixels>,
+    pub start: f32,
+    pub track: f32,
+    pub total: f32,
+    pub visible: f32,
+    pub knob_len: f32,
+    /// From `start`.
+    pub knob_at: f32,
+}
+
 impl EditorView {
     // ---- commands ----
 
@@ -1030,10 +1042,88 @@ impl EditorView {
         }
     }
 
-    /// The scrollbar under `p`, as (vertical, on thumb, thumb start, thumb
-    /// length, track start, track length).
-    fn scrollbar_hit(&self, p: Point<Pixels>) -> Option<(bool, bool, f32, f32, f32, f32)> {
+    /// An overlay scroller's box and knob from the last frame, while its
+    /// content overflows.
+    pub(crate) fn overlay_bar(&self, vertical: bool) -> Option<OverlayBar> {
+        use recur_ui::widgets::scrollbar::{OVERLAY_BOX, overlay_knob};
         let f = self.frame.as_ref()?;
+        let (bx, by) = (f32::from(f.bounds.origin.x), f32::from(f.bounds.origin.y));
+        let (bw, bh) = (
+            f32::from(f.bounds.size.width),
+            f32::from(f.bounds.size.height),
+        );
+        let bar = |start, track, total: f32, visible, pos, area| {
+            let (knob_len, knob_at) = overlay_knob(pos, total, visible, track);
+            OverlayBar {
+                area,
+                start,
+                track,
+                total,
+                visible,
+                knob_len,
+                knob_at,
+            }
+        };
+        if vertical {
+            let view = f.scroller_height;
+            (f.max_scroll_top > 0.0).then(|| {
+                let area = gpui_kit::bounds(
+                    point(px(bx + bw - OVERLAY_BOX), px(by)),
+                    gpui_kit::size(px(OVERLAY_BOX), px(view)),
+                );
+                bar(
+                    by,
+                    view,
+                    f.max_scroll_top + view,
+                    view,
+                    self.scroll_top,
+                    area,
+                )
+            })
+        } else {
+            // The vertical scroller keeps the corner.
+            let corner = if f.max_scroll_top > 0.0 {
+                OVERLAY_BOX
+            } else {
+                0.0
+            };
+            let track = f.scroller_width - corner;
+            (f.max_scroll_left > 0.0).then(|| {
+                let area = gpui_kit::bounds(
+                    point(px(bx), px(by + bh - OVERLAY_BOX)),
+                    gpui_kit::size(px(track), px(OVERLAY_BOX)),
+                );
+                let total = f.gutter_width + f.content_width;
+                bar(bx, track, total, f.scroller_width, self.scroll_left, area)
+            })
+        }
+    }
+
+    /// The scrollbar under `p`, as (vertical, on thumb, thumb start, thumb
+    /// length, track start, track length). Overlay scrollers take the pointer
+    /// only while they show.
+    fn scrollbar_hit(
+        &self,
+        p: Point<Pixels>,
+        now: std::time::Instant,
+    ) -> Option<(bool, bool, f32, f32, f32, f32)> {
+        let f = self.frame.as_ref()?;
+        if !f.legacy_bars {
+            return self
+                .bars
+                .iter()
+                .zip([true, false])
+                .find_map(|(o, vertical)| {
+                    let bar = self.overlay_bar(vertical)?;
+                    if !o.visible(now) || !bar.area.contains(&p) {
+                        return None;
+                    }
+                    let along = f32::from(if vertical { p.y } else { p.x });
+                    let at = bar.start + bar.knob_at;
+                    let on = along >= at && along < at + bar.knob_len;
+                    Some((vertical, on, at, bar.knob_len, bar.start, bar.track))
+                });
+        }
         let (bx, by) = (f32::from(f.bounds.origin.x), f32::from(f.bounds.origin.y));
         let (bw, bh) = (
             f32::from(f.bounds.size.width),
@@ -1125,12 +1215,14 @@ impl EditorView {
             cx.stop_propagation();
             return;
         }
+        let now = recur_ui::motion::now(cx);
         if let Some((vertical, on_thumb, start, len, track, track_len)) =
-            self.scrollbar_hit(e.position)
+            self.scrollbar_hit(e.position, now)
         {
             if e.button != MouseButton::Left {
                 return;
             }
+            self.bars[usize::from(!vertical)].press(true, now);
             let along = if vertical {
                 f32::from(e.position.y)
             } else {
@@ -1268,7 +1360,24 @@ impl EditorView {
                 self.end_drag(window, cx);
             }
             Some(MouseDrag::Thumb { vertical, grab }) => {
-                if let Some(f) = self.frame.clone() {
+                if let Some(bar) = self
+                    .overlay_bar(vertical)
+                    .filter(|_| self.frame.as_ref().is_some_and(|f| !f.legacy_bars))
+                {
+                    let along = f32::from(if vertical { e.position.y } else { e.position.x });
+                    let pos = recur_ui::widgets::scrollbar::overlay_scroll(
+                        along - grab - bar.start,
+                        bar.total,
+                        bar.visible,
+                        bar.track,
+                    );
+                    if vertical {
+                        self.scroll_top = pos;
+                    } else {
+                        self.scroll_left = pos;
+                    }
+                    cx.notify();
+                } else if let Some(f) = self.frame.clone() {
                     let (track, track_len, max) = if vertical {
                         (
                             f32::from(f.bounds.origin.y),
@@ -1452,6 +1561,10 @@ impl EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let now = recur_ui::motion::now(cx);
+        for o in &mut self.bars {
+            o.press(false, now);
+        }
         let Some(drag) = self.drag.clone() else {
             return;
         };
@@ -1585,12 +1698,20 @@ impl EditorView {
             let left = (self.scroll_left - dx).clamp(0.0, f.max_scroll_left);
             if left != self.scroll_left {
                 self.scroll_left = left;
+                self.bars[1].scrolled(recur_ui::motion::now(cx));
                 cx.notify();
             }
             return;
         }
         let top = (self.scroll_top - dy).clamp(0.0, f.max_scroll_top);
         let left = (self.scroll_left - dx).clamp(0.0, f.max_scroll_left);
+        let now = recur_ui::motion::now(cx);
+        if top != self.scroll_top {
+            self.bars[0].scrolled(now);
+        }
+        if left != self.scroll_left {
+            self.bars[1].scrolled(now);
+        }
         if top != self.scroll_top || left != self.scroll_left {
             self.scroll_top = top;
             self.scroll_left = left;
@@ -1606,6 +1727,17 @@ impl EditorView {
     /// Pointer moved over the editor with no button held: revert chip
     /// tracking, hover tooltips, gutter titles.
     fn pointer_hover(&mut self, p: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
+        let now = recur_ui::motion::now(cx);
+        let bar = self.scrollbar_hit(p, now);
+        let mut changed = false;
+        for (o, vertical) in self.bars.iter_mut().zip([true, false]) {
+            changed |= o.hover(bar.is_some_and(|b| b.0 == vertical), now);
+        }
+        let knob = bar.filter(|b| b.1).map(|b| b.0);
+        if changed || knob != self.knob_hover {
+            self.knob_hover = knob;
+            cx.notify();
+        }
         let chip = self.on_chip(p);
         if chip != self.chip_hover {
             self.chip_hover = chip;
@@ -1642,7 +1774,7 @@ impl EditorView {
             self.title_seen = title;
             cx.notify();
         }
-        if gutter.is_some() || self.scrollbar_hit(p).is_some() {
+        if gutter.is_some() || bar.is_some() {
             return;
         }
         self.hover_moved(p, window, cx);
@@ -1650,6 +1782,13 @@ impl EditorView {
 
     fn mouse_left(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.hover_task = None;
+        let now = recur_ui::motion::now(cx);
+        for o in &mut self.bars {
+            if o.hover(false, now) {
+                cx.notify();
+            }
+        }
+        self.knob_hover = None;
         if self.title_seen.take().is_some() {
             cx.notify();
         }

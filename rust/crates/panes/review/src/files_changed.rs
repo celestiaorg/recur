@@ -1312,7 +1312,7 @@ impl FilesChangedView {
                 move |b, _, cx| {
                     // `contentRect`: inside the 14px padding and the scrollbar while it overflows.
                     let bar = if pane.max_scroll() > 0.5 {
-                        f32::from(recur_ui::theme::SCROLLBAR_SIZE)
+                        recur_ui::widgets::scrollbar::layout_size(cx)
                     } else {
                         0.
                     };

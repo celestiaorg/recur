@@ -500,7 +500,7 @@ impl PrDetail {
             canvas(
                 move |b, _, cx| {
                     let bar = if pane.max_scroll() > 0.5 {
-                        f32::from(recur_ui::theme::SCROLLBAR_SIZE)
+                        recur_ui::widgets::scrollbar::layout_size(cx)
                     } else {
                         0.
                     };

@@ -311,8 +311,8 @@ impl AgentChat {
                 .child(col)
                 .into_any_element()
         } else {
-            // `.chat-scroll` keeps WebKit's classic scrollbar, which takes layout width
-            // while the transcript overflows.
+            // `.chat-scroll` gets the default scroller; the classic bar ("Show scroll bars:
+            // Always") takes layout width while the transcript overflows.
             let pad = if compact { 18. } else { 28. };
             let area = recur_ui::widgets::scrollbar::scroll_area(id)
                 .track(&self.scroll)

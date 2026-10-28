@@ -196,6 +196,9 @@ fn render(specs: &[SceneSpec], out: &Path, bench: Option<usize>) -> Result<()> {
     cx.update(|cx| {
         gpui_kit::init(cx);
         recur_ui::init(cx);
+        // Playwright's WebKit draws the classic `::-webkit-scrollbar`, as "Show scroll bars:
+        // Always" does, not the overlay scroller WKWebView shows by default.
+        recur_ui::widgets::scrollbar::set_legacy(true, cx);
         recur_terminal_view::init(cx);
         cx.set_global(scene_host());
     });

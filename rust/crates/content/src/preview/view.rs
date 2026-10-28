@@ -664,15 +664,10 @@ impl FilePreview {
         };
         let surface = match &self.surface {
             Surface::Markdown(v) => {
-                let scroller = div()
-                    .id("file-preview-md")
-                    .track_scroll(&self.handle)
-                    .relative()
-                    .size_full()
-                    .overflow_scroll()
-                    .bg(t.bg)
-                    .flex()
-                    .flex_col()
+                let bg = t.bg;
+                let scroller = recur_ui::widgets::scroll_area("file-preview-md")
+                    .track(&self.handle)
+                    .scroller(move |d| d.relative().overflow_x_scroll().bg(bg).flex().flex_col())
                     .child(track)
                     .child(
                         div()

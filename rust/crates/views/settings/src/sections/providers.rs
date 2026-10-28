@@ -1,5 +1,5 @@
-//! Providers: permissions, the Claude Code, Cursor and Codex accounts, and OpenAI-compatible
-//! endpoints.
+//! Providers: permissions, the Claude Code and Cursor accounts, the OpenAI group (ChatGPT,
+//! the Codex runtime and the OpenAI API endpoint), and OpenAI-compatible endpoints.
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
@@ -11,16 +11,18 @@ use recur_domain::CompatibleProvider;
 use recur_ui::guard::Guarded;
 use recur_ui::style::progress;
 use recur_ui::text::{Span, TextStyled, span, text};
-use recur_ui::widgets::{ToastKind, settings_group, settings_groups};
+use recur_ui::widgets::{SettingsGroup, ToastKind, settings_group, settings_groups};
 use recur_ui::{IconName, icon};
 use recur_view_core::models::provider_enabled;
 use recur_view_core::{bridge_error_message, call, toast};
 
 use crate::field::{FieldEvent, FieldOpts};
-use crate::rules::{PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, can_disable_provider};
+use crate::rules::{
+    PROVIDER_CHATGPT, PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, can_disable_provider,
+};
 use crate::style::{
-    Head, InpStyle, Row, RowsCtx, code, copy, ctrl, desc, field_msg, inp, rows, status_head,
-    status_table, tbtn, tbtn_icon, tbtn_label, tog, tokens,
+    Head, InpStyle, Row, RowsCtx, code, copy, ctrl, desc, desc_text, field_msg, inp, rows,
+    status_head, status_table, tbtn, tbtn_icon, tbtn_label, tog, tokens,
 };
 use crate::view::SettingsView;
 
@@ -73,46 +75,21 @@ impl SettingsView {
         out = out.child(claude);
         if s.is_some() {
             out = out.child(self.cursor_group(cursor_on, window, cx));
-            out = out.child(self.codex_group(codex_on, window, cx));
             let compat = s
                 .as_ref()
                 .map(|s| s.compatible_providers.clone())
                 .unwrap_or_default();
-            let disabled = self.disabled_providers(cx);
-            for p in compat {
+            let (api, others): (Vec<_>, Vec<_>) =
+                compat.into_iter().partition(|p| p.id == "openai");
+            out = out.child(self.openai_group(codex_on, api, window, cx));
+            for p in others {
                 let name = if p.name.is_empty() {
                     p.id.clone()
                 } else {
                     p.name.clone()
                 };
-                let on = provider_enabled(&disabled, &p.id);
-                let card = self.compat_card(&p, window, cx);
-                let testing = self.compat_testing.get(&p.id).copied().unwrap_or(false);
-                let msg = self.compat_test.get(&p.id).cloned().flatten();
-                let props = format!("{:?}", (&p, testing, &msg));
-                if self.props_changed(&format!("compat:{}", p.id), props) {
-                    let pc = p.clone();
-                    card.update(cx, |c, cx| c.set(pc, testing, msg, cx));
-                }
-                let id = p.id.clone();
-                let this = cx.entity().downgrade();
-                out = out.child(
-                    settings_group(
-                        SharedString::from(format!("grp-compat-{}", p.id)),
-                        name.clone(),
-                    )
-                    .override_toggle(
-                        on,
-                        false,
-                        Some(format!("Enable {name}").into()),
-                        move |on, _, cx| {
-                            let id = id.clone();
-                            let _ =
-                                this.update(cx, |this, cx| this.set_provider_enabled(&id, on, cx));
-                        },
-                    )
-                    .child(card),
-                );
+                let label = format!("Enable {name}");
+                out = out.child(self.compat_group(&p, name, label, window, cx));
             }
             out = out.child(
                 settings_group("grp-compat-add", "OpenAI-compatible").child(rows(
@@ -516,6 +493,87 @@ impl SettingsView {
             .into_any_element()
     }
 
+    /// One compatible endpoint's group and card.
+    fn compat_group(
+        &mut self,
+        p: &CompatibleProvider,
+        title: String,
+        label: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> SettingsGroup {
+        let on = provider_enabled(&self.disabled_providers(cx), &p.id);
+        let card = self.compat_card(p, window, cx);
+        let testing = self.compat_testing.get(&p.id).copied().unwrap_or(false);
+        let msg = self.compat_test.get(&p.id).cloned().flatten();
+        let props = format!("{:?}", (p, testing, &msg));
+        if self.props_changed(&format!("compat:{}", p.id), props) {
+            let pc = p.clone();
+            card.update(cx, |c, cx| c.set(pc, testing, msg, cx));
+        }
+        let id = p.id.clone();
+        let this = cx.entity().downgrade();
+        settings_group(SharedString::from(format!("grp-compat-{}", p.id)), title)
+            .override_toggle(on, false, Some(label.into()), move |on, _, cx| {
+                let id = id.clone();
+                let _ = this.update(cx, |this, cx| this.set_provider_enabled(&id, on, cx));
+            })
+            .child(card)
+    }
+
+    /// The OpenAI group: the ChatGPT account, the Codex runtime and the API endpoint.
+    fn openai_group(
+        &mut self,
+        codex_on: bool,
+        api: Vec<CompatibleProvider>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let chatgpt_on = self.provider_on(PROVIDER_CHATGPT, cx);
+        let this = cx.entity().downgrade();
+        let mut chatgpt = settings_group("grp-chatgpt", "ChatGPT account")
+            .nested()
+            .override_toggle(
+                chatgpt_on,
+                false,
+                Some("Enable ChatGPT".into()),
+                move |on, _, cx| {
+                    let _ = this.update(cx, |this, cx| {
+                        this.set_provider_enabled(PROVIDER_CHATGPT, on, cx)
+                    });
+                },
+            );
+        if chatgpt_on {
+            chatgpt = chatgpt.child(self.chatgpt_card(window, cx));
+        }
+        let this = cx.entity().downgrade();
+        let mut group = settings_group("grp-openai", "OpenAI")
+            .blurb("Connect a ChatGPT account, use a Codex runtime, or configure an API endpoint.")
+            .override_toggle(
+                self.openai_on(cx),
+                false,
+                Some("Enable OpenAI".into()),
+                move |on, _, cx| {
+                    let _ = this.update(cx, |this, cx| this.set_openai_enabled(on, cx));
+                },
+            )
+            .child(chatgpt)
+            .child(self.codex_group(codex_on, window, cx));
+        for p in api {
+            group = group.child(
+                self.compat_group(
+                    &p,
+                    "API endpoint".into(),
+                    "Enable OpenAI API endpoint".into(),
+                    window,
+                    cx,
+                )
+                .nested(),
+            );
+        }
+        group.into_any_element()
+    }
+
     fn codex_group(&mut self, on: bool, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let s = self.settings(cx).cloned().unwrap_or_default();
         let st = self.codex_status.clone();
@@ -525,9 +583,21 @@ impl SettingsView {
                 .filter(|c| !c.bin_path.is_empty())
                 .map(|c| status_table("codex", vec![("Path", c.bin_path.clone(), true)], cx))
         };
+        let signing_in = self.codex_login.signing_in();
         let mut status = acct();
         if self.codex_busy && st.is_none() {
             status = status.child(status_head(Head::Muted, "Checking…", cx));
+        } else if let Some(c) = st.as_ref().filter(|c| !c.bin_installed) {
+            let err = if c.error.is_empty() {
+                "Codex binary not found".to_string()
+            } else {
+                c.error.clone()
+            };
+            status = status.child(status_head(Head::Bad, err, cx)).child(desc(
+                "codex-desc",
+                vec![span("Install Codex or set its native Binary path below.")],
+                cx,
+            ));
         } else if !configured {
             status = status
                 .child(status_head(Head::Bad, "Not configured", cx))
@@ -535,7 +605,7 @@ impl SettingsView {
                 .child(desc(
                     "codex-desc",
                     vec![span(
-                        "Add an API key or enable ChatGPT auth below to connect Codex models.",
+                        "Sign in with ChatGPT or add an API key below to connect Codex models.",
                     )],
                     cx,
                 ));
@@ -553,16 +623,7 @@ impl SettingsView {
             }
             status = status
                 .child(status_head(Head::Ok, "Connected", cx))
-                .child(status_table("codex", items, cx))
-                .child(desc(
-                    "codex-desc",
-                    vec![
-                        span("To switch ChatGPT accounts, run "),
-                        code("codex login", cx),
-                        span(" in your terminal."),
-                    ],
-                    cx,
-                ));
+                .child(status_table("codex", items, cx));
         } else {
             let err = st
                 .as_ref()
@@ -579,11 +640,9 @@ impl SettingsView {
                     span("."),
                 ]
             } else {
-                vec![
-                    span("Set an API key or enable ChatGPT auth, or run "),
-                    code("codex login", cx),
-                    span(" in your terminal."),
-                ]
+                vec![span(
+                    "Sign in with ChatGPT below, reuse an existing CLI login, or set an API key.",
+                )]
             };
             status = status
                 .child(status_head(Head::Bad, err, cx))
@@ -592,14 +651,16 @@ impl SettingsView {
         }
 
         let chatgpt = s.codex_chat_gpt_auth;
+        let login_row = self.codex_login_row(cx);
         let mut list = vec![
             Row::stack().child(status),
+            login_row,
             Row::new()
                 .child(copy(
                     "chatgpt",
                     "Use ChatGPT login",
                     Some(vec![
-                        span("Reuse the account from "),
+                        span("Use the account signed in above, or reuse an existing "),
                         code("codex login", cx),
                         span(" on this machine."),
                     ]),
@@ -611,12 +672,14 @@ impl SettingsView {
                             "tog-chatgpt",
                             "toggle Codex ChatGPT auth",
                             chatgpt,
-                            false,
+                            signing_in,
                             cx,
                         )
-                        .on_click(cx.guarded_listener(
-                            move |this, _, _, cx| this.toggle_chatgpt(!chatgpt, cx),
-                        )),
+                        .when(!signing_in, |d| {
+                            d.on_click(cx.guarded_listener(move |this, _, _, cx| {
+                                this.toggle_chatgpt(!chatgpt, cx)
+                            }))
+                        }),
                     ),
                 ),
         ];
@@ -629,80 +692,91 @@ impl SettingsView {
             let draft = self.field_value("codex-key", cx);
             let testing = self.codex_key_testing;
             let dirty = self.codex_key_dirty;
-            let mut key_row =
-                Row::stack()
-                    .child(copy(
-                        "codex-key",
-                        "API key",
-                        Some(vec![
-                            span("Exported as "),
-                            code("CODEX_API_KEY", cx),
-                            span(". Stored locally in Recur’s data directory."),
-                        ]),
-                        cx,
-                    ))
-                    .child(
-                        div()
-                            .flex()
-                            .items_stretch()
-                            .gap(px(8.))
-                            .w_full()
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .flex()
-                                    .debug_selector(|| "inp:Codex API key".into())
-                                    .child(inp(&input, &"sk-…".into(), InpStyle::BASE, window, cx)),
-                            )
-                            .child(recur_ui::tooltip::titled(
-                                "codex-eye-tip",
-                                if visible { "Hide" } else { "Show" },
-                                tbtn("codex-eye", draft.is_empty(), cx)
-                                    .h_auto()
-                                    .debug_selector(move || {
-                                        format!(
-                                            "btn:{}",
-                                            if visible {
-                                                "Hide API key"
-                                            } else {
-                                                "Show API key"
-                                            }
-                                        )
-                                    })
-                                    .child(tbtn_icon(if visible {
-                                        IconName::EyeOff
-                                    } else {
-                                        IconName::Eye
+            let mut key_row = Row::stack()
+                .child(copy(
+                    "codex-key",
+                    "API key",
+                    Some(vec![
+                        span("Exported as "),
+                        code("CODEX_API_KEY", cx),
+                        span(". Stored locally in Recur’s data directory."),
+                    ]),
+                    cx,
+                ))
+                .child(
+                    div()
+                        .flex()
+                        .items_stretch()
+                        .gap(px(8.))
+                        .w_full()
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .flex()
+                                .debug_selector(|| "inp:Codex API key".into())
+                                .child(inp(&input, &"sk-…".into(), InpStyle::BASE, window, cx)),
+                        )
+                        .child(recur_ui::tooltip::titled(
+                            "codex-eye-tip",
+                            if visible { "Hide" } else { "Show" },
+                            tbtn("codex-eye", draft.is_empty(), cx)
+                                .h_auto()
+                                .debug_selector(move || {
+                                    format!(
+                                        "btn:{}",
+                                        if visible {
+                                            "Hide API key"
+                                        } else {
+                                            "Show API key"
+                                        }
+                                    )
+                                })
+                                .child(tbtn_icon(if visible {
+                                    IconName::EyeOff
+                                } else {
+                                    IconName::Eye
+                                }))
+                                .when(!draft.is_empty(), |d| {
+                                    d.on_click(cx.guarded_listener(|this, _, _, cx| {
+                                        this.codex_key_visible = !this.codex_key_visible;
+                                        cx.notify();
                                     }))
-                                    .when(!draft.is_empty(), |d| {
-                                        d.on_click(cx.guarded_listener(|this, _, _, cx| {
-                                            this.codex_key_visible = !this.codex_key_visible;
-                                            cx.notify();
-                                        }))
-                                    }),
-                            ))
-                            .child(
-                                tbtn_label("codex-test", "Test", testing || draft.is_empty(), cx)
-                                    .h_auto()
-                                    .debug_selector(|| "btn:Test".into())
-                                    .when(!(testing || draft.is_empty()), |d| {
-                                        d.on_click(cx.guarded_listener(|this, _, _, cx| {
-                                            this.test_codex_key(cx)
-                                        }))
-                                    }),
+                                }),
+                        ))
+                        .child(
+                            tbtn_label(
+                                "codex-test",
+                                "Test",
+                                signing_in || testing || draft.is_empty(),
+                                cx,
                             )
-                            .child(
-                                tbtn_label("codex-save", "Save", !dirty || testing, cx)
-                                    .h_auto()
-                                    .debug_selector(|| "btn:Save".into())
-                                    .when(dirty && !testing, |d| {
-                                        d.on_click(cx.guarded_listener(|this, _, _, cx| {
-                                            this.save_codex_key(cx)
-                                        }))
-                                    }),
+                            .h_auto()
+                            .debug_selector(|| "btn:Test".into())
+                            .when(
+                                !(signing_in || testing || draft.is_empty()),
+                                |d| {
+                                    d.on_click(
+                                        cx.guarded_listener(|this, _, _, cx| {
+                                            this.test_codex_key(cx)
+                                        }),
+                                    )
+                                },
                             ),
-                    );
+                        )
+                        .child(
+                            tbtn_label("codex-save", "Save", signing_in || !dirty || testing, cx)
+                                .h_auto()
+                                .debug_selector(|| "btn:Save".into())
+                                .when(!signing_in && dirty && !testing, |d| {
+                                    d.on_click(
+                                        cx.guarded_listener(|this, _, _, cx| {
+                                            this.save_codex_key(cx)
+                                        }),
+                                    )
+                                }),
+                        ),
+                );
             if testing {
                 key_row = key_row.child(field_msg("codex-msg", "Testing…", None, cx));
             } else if let Some((ok, msg)) = self.codex_key_test.clone() {
@@ -730,18 +804,32 @@ impl SettingsView {
                         })),
                 )),
         );
-        let bin_desc: Vec<Span> = match st.as_ref().filter(|c| c.bin_installed) {
-            Some(c) => vec![span(if c.bin_path.is_empty() {
-                "Found".to_string()
-            } else {
-                format!("Found · {}", c.bin_path)
-            })],
-            None => vec![
-                span("Install with "),
-                code("brew install --cask codex", cx),
-                span(", or set a path / "),
-                code("$RECUR_CODEX", cx),
-            ],
+        let bin_desc = match st.as_ref().filter(|c| c.bin_installed) {
+            Some(c) => desc_text(
+                "codex-bin-desc",
+                vec![span(if c.bin_path.is_empty() {
+                    "Found".to_string()
+                } else {
+                    format!("Found · {}", c.bin_path)
+                })],
+                cx,
+            ),
+            None => desc_text(
+                "codex-bin-desc",
+                vec![
+                    span("Install Codex from "),
+                    span("official releases").color(tokens(cx).amber),
+                    span(", or set a native binary path / "),
+                    code("$RECUR_CODEX", cx),
+                ],
+                cx,
+            )
+            .on_click_span(1, |_, cx| {
+                recur_content::links::open_external_url(
+                    "https://github.com/openai/codex/releases",
+                    cx,
+                )
+            }),
         };
         let bin_placeholder = st
             .as_ref()
@@ -762,7 +850,7 @@ impl SettingsView {
                         .flex_1()
                         .min_w_0()
                         .child(crate::style::title("Binary", cx))
-                        .child(desc("codex-bin-desc", bin_desc, cx)),
+                        .child(div().mt(px(3.)).child(bin_desc)),
                 )
                 .child(
                     div()
@@ -779,7 +867,8 @@ impl SettingsView {
                 ),
         );
         let this = cx.entity().downgrade();
-        settings_group("grp-codex", "Codex")
+        settings_group("grp-codex", "Codex runtime")
+            .nested()
             .override_toggle(on, false, Some("Enable Codex".into()), move |on, _, cx| {
                 let _ = this.update(cx, |this, cx| {
                     this.set_provider_enabled(PROVIDER_CODEX, on, cx)

@@ -142,7 +142,7 @@ pub(crate) async fn fetch_codex(ctx: &Ctx, f: &Fetcher) -> ProviderQuota {
         Ok(a) if a.has_chatgpt || a.has_api_key => a,
         _ => {
             out.error = "Not signed in to Codex".into();
-            out.hint = "Enable ChatGPT auth in Settings, or run codex login.".into();
+            out.hint = "Sign in with ChatGPT in Settings → Providers → Codex.".into();
             return out;
         }
     };
@@ -180,7 +180,7 @@ pub(crate) async fn fetch_codex(ctx: &Ctx, f: &Fetcher) -> ProviderQuota {
     }
     if is_auth_err(status) {
         out.error = "Codex login expired".into();
-        out.hint = "Run codex login, then reopen Recur.".into();
+        out.hint = "Sign in with ChatGPT again in Settings → Providers → Codex.".into();
         return out;
     }
     if status >= 300 {

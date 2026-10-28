@@ -101,7 +101,9 @@ pub async fn probe(
             .await
             .map_err(|e| format!("account/read: {e}"))?;
         let Some(account) = acct.account else {
-            return Err("not authenticated — set an API key or run `codex login`".to_owned());
+            return Err(
+                "not authenticated: sign in with ChatGPT in Settings or set an API key".to_owned(),
+            );
         };
         let models = client.model_list(&ctx, 50).await.ok();
         Ok(Probe {

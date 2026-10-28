@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 pub const PROVIDER_CLAUDE_CODE: &str = "claude-code";
 pub const PROVIDER_CURSOR: &str = "cursor";
 pub const PROVIDER_CODEX: &str = "codex";
+pub const PROVIDER_CHATGPT: &str = "chatgpt";
 pub const PROVIDER_ANTHROPIC: &str = "anthropic";
 pub const PROVIDER_OPENAI: &str = "openai";
 pub const PROVIDER_GEMINI: &str = "gemini";
@@ -22,6 +23,7 @@ pub fn provider_label(provider: &str) -> &str {
     match provider {
         PROVIDER_CURSOR => "Cursor",
         PROVIDER_CODEX => "Codex",
+        PROVIDER_CHATGPT => "ChatGPT",
         PROVIDER_CLAUDE_CODE => "Claude Code",
         _ => provider,
     }

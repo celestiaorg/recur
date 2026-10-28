@@ -411,7 +411,7 @@ while next; do :; done
         probe(&env, &bin.to_string_lossy(), "sk", false)
             .await
             .unwrap_err(),
-        "not authenticated — set an API key or run `codex login`"
+        "not authenticated: sign in with ChatGPT in Settings or set an API key"
     );
 }
 

@@ -8,8 +8,8 @@ use serde_json::{Value, json};
 
 use crate::rpc::{Conn, Ctx, RpcError};
 use crate::types::{
-    AccountReadResult, Model, Thread, ThreadStartParams, Turn, TurnInterruptParams,
-    TurnStartParams, TurnSteerParams,
+    AccountReadResult, LoginStartResult, Model, Thread, ThreadStartParams, Turn,
+    TurnInterruptParams, TurnStartParams, TurnSteerParams,
 };
 
 #[derive(Clone)]
@@ -44,6 +44,23 @@ impl Client {
                 .call("account/read", &json!({"refreshToken": false})),
         )
         .await
+    }
+
+    pub async fn account_login_start(&self, ctx: &Ctx) -> Result<LoginStartResult, RpcError> {
+        ctx.run(
+            self.conn
+                .call("account/login/start", &json!({"type": "chatgpt"})),
+        )
+        .await
+    }
+
+    pub async fn account_login_cancel(&self, ctx: &Ctx, login_id: &str) -> Result<(), RpcError> {
+        ctx.run(
+            self.conn
+                .call::<_, Value>("account/login/cancel", &json!({"loginId": login_id})),
+        )
+        .await
+        .map(drop)
     }
 
     /// Visible models; `limit <= 0` means 50.

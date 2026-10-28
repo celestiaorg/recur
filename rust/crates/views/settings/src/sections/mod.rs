@@ -9,6 +9,7 @@ pub mod integrations;
 pub mod loops;
 pub mod mcp;
 pub mod models;
+pub mod openai;
 pub mod providers;
 pub mod prs;
 pub mod skills;

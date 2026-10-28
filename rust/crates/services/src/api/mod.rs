@@ -56,6 +56,8 @@ pub use prs::PrsService;
 pub use questions::QuestionsService;
 pub use recur_agent::catalog::{FlagDimension, FlagOption, ModelChoice, ModelGroup};
 pub use recur_lsp::{EnsureResult, LanguageServerInfo, SessionInfo};
+pub use recur_provider_chatgpt::{Account as ChatGPTAccount, ChatGPTStatus, Login as ChatGPTLogin};
+pub use recur_provider_codex::login::CodexLogin;
 pub use recur_provider_compatible::CompatibleTestResult;
 pub use recur_provider_cursor::CursorStatus;
 pub use recur_usage::{CursorUsageConnect, ModelRow, ProviderQuota, Snapshot, Window};

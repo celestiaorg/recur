@@ -95,9 +95,10 @@ macro_rules! struct_reply {
 }
 
 use crate::api::{
-    AppChatSelection, ClaudeStatus, CodexStatus, CompatibleTestResult, CursorStatus,
-    CursorUsageConnect, EnsureResult, IssuesView, PaletteSearchDto, PromptCompleteResultDto,
-    PromptResultDto, RunResultDto, ShellState, Snapshot, WorkspaceChatSelection,
+    AppChatSelection, ChatGPTLogin, ChatGPTStatus, ClaudeStatus, CodexLogin, CodexStatus,
+    CompatibleTestResult, CursorStatus, CursorUsageConnect, EnsureResult, IssuesView,
+    PaletteSearchDto, PromptCompleteResultDto, PromptResultDto, RunResultDto, ShellState, Snapshot,
+    WorkspaceChatSelection,
 };
 use recur_domain::{
     Agent, Artifact, AttentionCounts, BriefingSnapshot, Commit, CopyFilesPreview, Escalation,
@@ -113,7 +114,10 @@ struct_reply!(
     Artifact,
     AttentionCounts,
     BriefingSnapshot,
+    ChatGPTLogin,
+    ChatGPTStatus,
     ClaudeStatus,
+    CodexLogin,
     CodexStatus,
     Commit,
     CompatibleTestResult,

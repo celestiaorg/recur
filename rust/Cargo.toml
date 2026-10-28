@@ -34,6 +34,7 @@ recur-provider-claude = { path = "providers/claude" }
 recur-provider-codex = { path = "providers/codex" }
 recur-provider-cursor = { path = "providers/cursor" }
 recur-provider-compatible = { path = "providers/compatible" }
+recur-provider-chatgpt = { path = "providers/chatgpt" }
 recur-agent-tools = { path = "crates/agent-tools" }
 recur-mcp = { path = "crates/mcp" }
 recur-bundles = { path = "crates/bundles" }
@@ -173,6 +174,7 @@ pkg-config = "0.3"
 tempfile = "3"
 pretty_assertions = "1"
 hex = "0.4"
+aws-lc-rs = { version = "1", default-features = false, features = ["aws-lc-sys"] }
 yaml-rust2 = "0.10"
 swc_core = { version = "82", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_transforms_typescript", "ecma_transforms_module", "ecma_transforms_compat", "ecma_codegen", "ecma_visit", "ecma_utils", "ecma_helpers_inline"] }
 

@@ -4,7 +4,9 @@
 use std::collections::BTreeMap;
 
 use crate::Settings;
-use crate::model::{PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, parse_model_ref};
+use crate::model::{
+    PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, parse_model_ref,
+};
 use crate::settings::Flags;
 use crate::skills::name_listed;
 
@@ -33,6 +35,7 @@ impl Settings {
             PROVIDER_CLAUDE_CODE | "" => true,
             PROVIDER_CURSOR => self.cursor_configured(),
             PROVIDER_CODEX => self.codex_configured(),
+            PROVIDER_CHATGPT => self.chatgpt_configured(),
             _ => self
                 .compatible_by_id(provider)
                 .is_some_and(|p| p.configured()),
@@ -49,9 +52,14 @@ impl Settings {
     }
 
     fn offers_any_models(&self) -> bool {
-        [PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, PROVIDER_CODEX]
-            .into_iter()
-            .any(|p| self.provider_offers_models(p))
+        [
+            PROVIDER_CLAUDE_CODE,
+            PROVIDER_CURSOR,
+            PROVIDER_CODEX,
+            PROVIDER_CHATGPT,
+        ]
+        .into_iter()
+        .any(|p| self.provider_offers_models(p))
             || self
                 .compatible_providers
                 .iter()
@@ -68,7 +76,13 @@ impl Settings {
             .iter()
             .map(|p| p.id.clone())
             .collect();
-        let builtin = [PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, PROVIDER_CODEX].map(String::from);
+        let builtin = [
+            PROVIDER_CLAUDE_CODE,
+            PROVIDER_CURSOR,
+            PROVIDER_CODEX,
+            PROVIDER_CHATGPT,
+        ]
+        .map(String::from);
         for p in compatible.iter().chain(&builtin) {
             drop_string(&mut self.disabled_providers, p);
             if self.offers_any_models() {
@@ -161,7 +175,9 @@ impl Settings {
             return true;
         }
         match p.as_str() {
-            PROVIDER_CLAUDE_CODE | PROVIDER_CURSOR | PROVIDER_CODEX | "" => false,
+            PROVIDER_CLAUDE_CODE | PROVIDER_CURSOR | PROVIDER_CODEX | PROVIDER_CHATGPT | "" => {
+                false
+            }
             // Removed compatible slugs are unavailable even if not listed as disabled.
             _ => self.compatible_by_id(&p).is_none(),
         }
@@ -393,5 +409,39 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(s.normalize_providers().model_agent, FALLBACK_CLAUDE_MODEL);
+    }
+
+    #[test]
+    fn chatgpt_native_provider_enablement() {
+        let mut s = Settings {
+            chat_gpt_account_id: "registration".into(),
+            chat_gpt_models: vec![CompatibleModel {
+                id: "gpt-test".into(),
+                ..Default::default()
+            }],
+            disabled_providers: disabled(&[PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, PROVIDER_CODEX]),
+            ..Default::default()
+        };
+        s.model_agent = "chatgpt/gpt-test".into();
+        let s = s.normalize_providers();
+        assert!(
+            !s.provider_enabled(PROVIDER_CLAUDE_CODE)
+                && s.provider_offers_models(PROVIDER_CHATGPT)
+                && !s.model_ref_unavailable(&s.model_agent, false),
+            "a connected ChatGPT provider was not usable independently"
+        );
+        assert!(
+            s.uses_native_harness(PROVIDER_CHATGPT) && !crate::builtin_provider(PROVIDER_CHATGPT),
+            "ChatGPT should use Recur's tool loop and context"
+        );
+        assert!(
+            crate::validate_compatible_providers(&[compatible(
+                PROVIDER_CHATGPT,
+                "https://example.com",
+                "x"
+            )])
+            .is_err(),
+            "custom endpoint can shadow ChatGPT credentials"
+        );
     }
 }

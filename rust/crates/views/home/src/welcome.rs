@@ -14,9 +14,11 @@ use gpui_kit::{
     InteractiveElement, IntoElement, ParentElement, Render, ScrollHandle, SharedString, Stateful,
     StatefulInteractiveElement, Styled, Subscription, Task, Window, div, px,
 };
-use recur_domain::{PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Workspace};
+use recur_domain::{
+    PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Workspace,
+};
 use recur_services::AppEvent;
-use recur_services::api::{CodexStatus, CursorStatus};
+use recur_services::api::{ChatGPTStatus, CodexStatus, CursorStatus};
 use recur_ui::fonts::{Family, weight};
 use recur_ui::style::{Tbtn, TbtnSize, button_label, is_focus_visible, outline, tbtn};
 use recur_ui::text::{InlineBox, LineHeight, Text, TextStyled, span, text};
@@ -97,13 +99,16 @@ pub struct Probe {
     pub claude_on: bool,
     pub codex_on: bool,
     pub cursor_on: bool,
+    pub chatgpt_on: bool,
     pub detected: String,
     pub detect_failed: bool,
     pub codex: Option<CodexStatus>,
     pub cursor: Option<CursorStatus>,
+    pub chatgpt: Option<ChatGPTStatus>,
     pub claude_checked: bool,
     pub codex_checked: bool,
     pub cursor_checked: bool,
+    pub chatgpt_checked: bool,
     pub cursor_key: bool,
 }
 
@@ -125,14 +130,25 @@ impl Probe {
     pub fn codex_ready(&self) -> bool {
         self.codex_on && self.codex.as_ref().is_some_and(|c| c.authenticated)
     }
+    pub fn chatgpt_ready(&self) -> bool {
+        self.chatgpt_on
+            && self
+                .chatgpt
+                .as_ref()
+                .is_some_and(|c| c.status.authenticated && c.model_count > 0)
+    }
+    pub fn openai_ready(&self) -> bool {
+        self.chatgpt_ready() || self.codex_ready()
+    }
     pub fn has_provider(&self) -> bool {
-        self.claude_ready() || self.cursor_ready() || self.codex_ready()
+        self.claude_ready() || self.cursor_ready() || self.openai_ready()
     }
     /// Until the first probes settle, a started task is taken as proof an agent works.
     pub fn probing(&self) -> bool {
         (self.claude_on && !self.claude_checked)
             || (self.codex_on && !self.codex_checked)
             || (self.cursor_on && !self.cursor_checked)
+            || (self.chatgpt_on && !self.chatgpt_checked)
     }
     /// `claudeDetail`: the detector's line without its `Claude Code ·` prefix
     /// (`/^Claude Code(\s*·\s*)?/`).
@@ -161,6 +177,18 @@ impl Probe {
         .find(|s| !s.is_empty())
         .unwrap_or("Signed in")
         .to_string()
+    }
+    /// The OpenAI row's detail: the ChatGPT account, else Codex's.
+    pub fn openai_detail(&self) -> String {
+        if self.chatgpt_ready() {
+            return self
+                .chatgpt
+                .as_ref()
+                .map(|c| c.status.email.clone())
+                .filter(|e| !e.is_empty())
+                .unwrap_or_else(|| "ChatGPT account".into());
+        }
+        self.codex_detail()
     }
     pub fn cursor_detail(&self) -> String {
         let c = self.cursor.as_ref();
@@ -319,6 +347,7 @@ impl WelcomeView {
         self.probe.claude_on = provider_enabled(&disabled, PROVIDER_CLAUDE_CODE);
         self.probe.codex_on = provider_enabled(&disabled, PROVIDER_CODEX);
         self.probe.cursor_on = provider_enabled(&disabled, PROVIDER_CURSOR);
+        self.probe.chatgpt_on = provider_enabled(&disabled, PROVIDER_CHATGPT);
         self.probe.cursor_key = s
             .settings
             .as_ref()
@@ -329,6 +358,17 @@ impl WelcomeView {
     pub fn check_agents(&mut self, cx: &mut Context<Self>) {
         self.toggles(cx);
         let services = self.vcx.services.clone();
+        if self.probe.chatgpt_on {
+            let s = services.clone();
+            self.probes.push(cx.spawn(async move |this, cx| {
+                let r = s.settings.get_chat_gpt_status().await;
+                let _ = this.update(cx, |v, cx| {
+                    v.probe.chatgpt = r.ok();
+                    v.probe.chatgpt_checked = true;
+                    cx.notify();
+                });
+            }));
+        }
         if self.probe.claude_on {
             let s = services.clone();
             self.probes.push(cx.spawn(async move |this, cx| {
@@ -573,7 +613,7 @@ impl WelcomeView {
         for (ready, slug, name) in [
             (self.probe.claude_ready(), "claude", "Claude Code"),
             (self.probe.cursor_ready(), "cursor", "Cursor"),
-            (self.probe.codex_ready(), "codex", "Codex"),
+            (self.probe.openai_ready(), "openai", "OpenAI"),
         ] {
             if !ready {
                 continue;
@@ -829,57 +869,79 @@ impl WelcomeView {
             cx,
         ));
 
-        // Codex.
-        let (note, action) = if p.codex_ready() {
-            (Self::on_note("codex", p.codex_detail(), cx), None)
-        } else if !p.codex_on {
+        // OpenAI: a ChatGPT account or the Codex runtime.
+        let (note, action) = if p.openai_ready() {
+            (Self::on_note("openai", p.openai_detail(), cx), None)
+        } else if !p.codex_on && !p.chatgpt_on {
             (
-                Self::plain_note("codex", vec![span("Turned off.")], cx),
+                Self::plain_note("openai", vec![span("Turned off.")], cx),
                 Some(
-                    self.lnk("wprov:codex:Turn on", "Turn on", window, cx, |v, _, cx| {
+                    self.lnk("wprov:openai:Turn on", "Turn on", window, cx, |v, _, cx| {
                         v.go_settings("agent", cx)
-                    }),
+                    })
+                    .into_any_element(),
                 ),
             )
-        } else if !p.codex_checked {
-            (Self::plain_note("codex", vec![span("Checking…")], cx), None)
-        } else if codex_chatgpt {
+        } else if (p.codex_on && !p.codex_checked) || (p.chatgpt_on && !p.chatgpt_checked) {
             (
-                Self::plain_note(
-                    "codex",
-                    vec![
-                        span("Not signed in. Run "),
-                        Self::code("codex login", &t),
-                        span(" in a terminal."),
-                    ],
+                Self::plain_note("openai", vec![span("Checking…")], cx),
+                None,
+            )
+        } else if codex_chatgpt {
+            let actions = div()
+                .flex()
+                .gap(px(10.))
+                .child(self.lnk(
+                    "wprov:openai:Continue with ChatGPT",
+                    "Continue with ChatGPT",
+                    window,
                     cx,
-                ),
-                Some(self.lnk(
-                    "wprov:codex:Check again",
+                    |v, _, cx| v.go_settings("agent", cx),
+                ))
+                .child(self.lnk(
+                    "wprov:openai:Check again",
                     "Check again",
                     window,
                     cx,
                     |v, _, cx| v.check_agents(cx),
-                )),
+                ));
+            (
+                Self::plain_note(
+                    "openai",
+                    vec![
+                        span("Sign in with ChatGPT or check your existing "),
+                        Self::code("codex login", &t),
+                        span("."),
+                    ],
+                    cx,
+                ),
+                Some(actions.into_any_element()),
             )
         } else {
             (
                 Self::plain_note(
-                    "codex",
-                    vec![span("Sign in with ChatGPT or an API key.")],
+                    "openai",
+                    vec![span(
+                        "Use your ChatGPT plan directly or configure a Codex runtime.",
+                    )],
                     cx,
                 ),
                 Some(
-                    self.lnk("wprov:codex:Connect", "Connect", window, cx, |v, _, cx| {
-                        v.go_settings("agent", cx)
-                    }),
+                    self.lnk(
+                        "wprov:openai:Continue with ChatGPT",
+                        "Continue with ChatGPT",
+                        window,
+                        cx,
+                        |v, _, cx| v.go_settings("agent", cx),
+                    )
+                    .into_any_element(),
                 ),
             )
         };
         rows.push(self.provider_row(
-            "codex",
-            "Codex",
-            (p.codex_ready(), false),
+            "openai",
+            "OpenAI",
+            (p.openai_ready(), false),
             note,
             action.map(IntoElement::into_any_element),
             false,
@@ -1332,7 +1394,7 @@ impl WelcomeView {
         }
         if step < 4 {
             let body = if !loaded {
-                Self::note("Checking Claude Code and Codex…", cx)
+                Self::note("Checking providers…", cx)
             } else {
                 self.providers(step, window, cx)
             };

@@ -27,6 +27,7 @@
 ..TestWindowOptionsTitleFromInstanceLabel	crates/platform/src/identity.rs::window_title_uses_label_or_app_name
 internal/app.TestAllowedGitHubImageURL	crates/forge/src/github/images.rs::allowed_urls
 internal/app.TestApplyCursorPin	providers/cursor/src/status.rs::apply_pin
+internal/app.TestChatGPTCatalogueAndFallbackWithoutCodex	crates/services/src/app/tests/model_catalog.rs::chatgpt_catalogue_and_fallback_without_codex
 internal/app.TestClampShellState	crates/services/src/app/tests/shell.rs::clamp_shell_state_keeps_view_ids
 internal/app.TestClassifyClaudeStatusLoggedOutStillDetected	providers/claude/src/status.rs::logged_out_still_detected
 internal/app.TestClassifyClaudeStatusMissingBinary	providers/claude/src/status.rs::missing_and_timed_out
@@ -34,6 +35,10 @@ internal/app.TestClassifyClaudeStatusTimedOut	providers/claude/src/status.rs::mi
 internal/app.TestClaudeBinaryMissing	providers/claude/src/status.rs::missing_binary
 internal/app.TestClaudeCatalogHasEffortAndContextFlags	providers/claude/src/flags.rs::catalog_flags
 internal/app.TestClaudeCatalogTracksFable51	providers/claude/src/flags.rs::catalog_tracks_fable_51
+internal/app.TestCodexBrowserLoginCancelAndShutdown	providers/codex/src/login.rs::cancel_and_shutdown
+internal/app.TestCodexBrowserLoginFailureAndRetry	providers/codex/src/login.rs::failure_and_retry, crates/services/src/app/tests/codex_login.rs::codex_browser_login_failure_and_cancel_keep_saved_auth
+internal/app.TestCodexBrowserLoginLive	n/a: opt-in smoke against a real Codex binary (RECUR_CODEX_LOGIN_E2E); the fake app-server in recur_provider_codex::login covers the protocol
+internal/app.TestCodexBrowserLoginTimeoutAndExit	providers/codex/src/login.rs::timeout_and_exit
 internal/app.TestCodexCatalogModelsFriendlyLabels	providers/codex/src/catalog.rs::friendly_rows_with_all_flags
 internal/app.TestCodexCatalogShowsGPT6Astra	providers/codex/src/catalog.rs::shows_gpt6_astra_and_hides_hidden
 internal/app.TestCodexSpeedFlagsOmittedWithoutTiers	providers/codex/src/catalog.rs::speed_flag_omitted_without_tiers
@@ -49,6 +54,7 @@ internal/app.TestFormatClaudeLoginMethodFallsBackToAuthMethod	providers/claude/s
 internal/app.TestFormatClaudeProvider	providers/claude/src/status.rs::login_method_and_provider
 internal/app.TestFriendlyCodexEffortLabel	providers/codex/src/catalog.rs::labels
 internal/app.TestFriendlyCodexModelLabel	providers/codex/src/catalog.rs::labels
+internal/app.TestGetMissingEscalationReturnsEmptyState	crates/services/src/app/tests/services.rs::getters_error_on_missing
 internal/app.TestInstanceLabel	crates/platform/src/identity.rs::instance_label_trims
 internal/app.TestLinearAppURL	crates/issues/src/linear/tests.rs::linear_app_urls
 internal/app.TestModelCatalogRefsAreQualified	providers/claude/src/flags.rs::catalog_refs_are_qualified
@@ -106,6 +112,8 @@ internal/bundles.TestRunPromptShebangTimeout	crates/bundles/tests/suite/prompt.r
 internal/bundles.TestSameOrStricter	crates/bundles/tests/suite/loops.rs::same_or_stricter_rules
 internal/bundles.TestShippedChatFreshSession	crates/bundles/tests/suite/prompt.rs::shipped_chat_fresh_session_and_tab_groups
 internal/bundles.TestShippedChatTabGroup	crates/bundles/tests/suite/prompt.rs::shipped_chat_fresh_session_and_tab_groups
+internal/chatgpt.TestCodexOAuthEndpoints	providers/chatgpt/src/tests.rs::codex_oauth_endpoints
+internal/chatgpt.TestOAuthErrorsDoNotExposeTokenBodies	providers/chatgpt/src/tests.rs::oauth_errors_do_not_expose_token_bodies
 internal/cli.TestIsCLIBinary	crates/cli/tests/cli.rs::is_cli_binary_cases
 internal/cli.TestLooksLikeOpenPath	crates/cli/tests/cli.rs::looks_like_open_path_cases
 internal/cli.TestResolveBundleName	crates/cli/tests/env_serial.rs::resolve_bundle_name_via_env
@@ -164,6 +172,7 @@ internal/codex.TestFormatPlan	providers/codex/src/types.rs::plans
 internal/codex.TestHomeDir	providers/codex/src/locate.rs::home
 internal/codex.TestResolveCandidateRejectsNodeShim	providers/codex/src/locate.rs::rejects_node_shim
 internal/codex.TestServerLaunchEnvStripsLinearAPIKey	providers/codex/src/server.rs::launch_env_scrubs_and_sets_home
+internal/codex.TestServerLaunchEnvUsesOnlyChosenAPIKey	providers/codex/src/server.rs::launch_env_uses_only_chosen_api_key
 internal/copyfiles.TestCopyRespectsCancel	crates/code/src/copyfiles_tests.rs::copy_respects_cancel_and_deadline
 internal/copyfiles.TestParsePatterns	crates/code/src/copyfiles_tests.rs::parse_patterns_rules
 internal/cursor.TestBridgeAlive	providers/cursor/src/bridge/tests.rs::alive
@@ -224,6 +233,7 @@ internal/cursor.TestRunStatusTerminal	providers/cursor/src/events/tests.rs::run_
 internal/cursor.TestVendor	providers/cursor/src/context.rs::vendors
 internal/cursor.TestWriteAttributionConfigRoundTrip	providers/cursor/src/attribution/tests.rs::write_config_round_trip
 internal/cursor.TestWriteAttributionPreloadSkipsIdentical	providers/cursor/src/attribution/tests.rs::preload_skips_identical
+internal/domain.TestChatGPTNativeProviderEnablement	crates/domain/src/providers.rs::chatgpt_native_provider_enablement
 internal/domain.TestCompatibleFlagPreset	crates/domain/src/compatible.rs::flag_preset
 internal/domain.TestCompatibleProviderOffersModels	crates/domain/src/compatible.rs::offers_models_and_lookup
 internal/domain.TestEffectiveAgentTurnTimeoutMinutes	crates/domain/src/settings.rs::turn_timeout_minutes
@@ -385,6 +395,8 @@ internal/engine.TestChatCheckpointResumeReusesStart	crates/engine/src/chat/tests
 internal/engine.TestChatCheckpointTurnDiffAndReset	crates/engine/src/turn/checkpoint_tests.rs::turn_diff_and_reset
 internal/engine.TestChatChildAutoResumesInterruptedFirstTurn	crates/engine/src/chat/tests/children.rs::a_chat_child_auto_resumes_its_interrupted_first_turn
 internal/engine.TestChatChildReportsCreateFailureWithoutWorktree	crates/engine/src/chat/tests/children.rs::a_failed_create_without_a_worktree_still_reports
+internal/engine.TestChatGPTStreamsToolRoundAndReplaysReasoningWithoutCodex	providers/chatgpt/src/tests.rs::chatgpt_streams_tool_round_and_replays_reasoning_without_codex
+internal/engine.TestChatGPTUsesNativeHarnessWithoutCLIOrMCP	providers/chatgpt/src/tests.rs::chatgpt_uses_native_harness_without_cli_or_mcp
 internal/engine.TestChatModeShapeAgentPrefersChildWorkspaces	crates/engine/src/chat/tests/switch_mode.rs::the_agent_shape_prefers_child_workspaces_and_children_execute_locally
 internal/engine.TestChatModeShapeAllowsArtifacts	crates/engine/src/chat/tests/switch_mode.rs::every_shape_allows_artifacts_and_read_only_modes_say_so
 internal/engine.TestChatResetWithoutEditsKeepsWorktree	crates/engine/src/turn/checkpoint_tests.rs::unedited_turn_hides_checkpoint_and_reset_keeps_manual_edits

@@ -50,6 +50,7 @@ fn items(v: &Value) -> Vec<InputItem> {
                     arguments: s(&i["arguments"]),
                     output: s(&i["output"]),
                     id: s(&i["id"]),
+                    raw: None,
                 })
                 .collect()
         })

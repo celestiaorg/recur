@@ -6,10 +6,10 @@
 use async_trait::async_trait;
 use recur_agent::{CredentialDraft, Provider as _, ProviderStatus};
 use recur_domain::{
-    BranchPrefixMode, CompatibleFlagDim, CompatibleProvider, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX,
-    PROVIDER_CURSOR, Resource, Settings, effective_agent_turn_timeout_minutes,
-    effective_max_agents, effective_max_loops, normalize_mcp_servers,
-    validate_compatible_providers, validate_mcp_servers,
+    BranchPrefixMode, CompatibleFlagDim, CompatibleProvider, PROVIDER_CHATGPT,
+    PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Resource, Settings,
+    effective_agent_turn_timeout_minutes, effective_max_agents, effective_max_loops,
+    normalize_mcp_servers, validate_compatible_providers, validate_mcp_servers,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -17,8 +17,8 @@ use super::model_catalog::{apply_catalog_fallbacks, provider_enablement_changed}
 use super::rt::{blocking, rt};
 use super::{AppServices, err};
 use crate::api::{
-    AssignedIssue, ClaudeStatus, CodexStatus, CompatibleTestResult, CursorStatus,
-    CursorUsageConnect, ModelGroup, SettingsService, Snapshot,
+    AssignedIssue, ChatGPTLogin, ChatGPTStatus, ClaudeStatus, CodexLogin, CodexStatus,
+    CompatibleTestResult, CursorStatus, CursorUsageConnect, ModelGroup, SettingsService, Snapshot,
 };
 use crate::events::{AppEvent, CursorInstall};
 use crate::{Error, Result};
@@ -78,7 +78,7 @@ impl AppServices {
 
     /// Whether `provider` could run a turn now: on, configured, and (Cursor,
     /// Codex) its bridge or binary installed.
-    fn provider_runnable(&self, set: &Settings, provider: &str) -> bool {
+    pub(crate) fn provider_runnable(&self, set: &Settings, provider: &str) -> bool {
         if !set.provider_enabled(provider) {
             return false;
         }
@@ -91,6 +91,7 @@ impl AppServices {
                 set.codex_configured()
                     && recur_provider_codex::locate::locate(&set.codex_bin_path).is_ok()
             }
+            PROVIDER_CHATGPT => set.chatgpt_configured(),
             _ => set
                 .compatible_by_id(provider)
                 .is_some_and(|p| p.configured()),
@@ -100,7 +101,12 @@ impl AppServices {
     /// Turns Claude Code back on when every other enabled provider is missing
     /// its binary or bridge, so the pickers cannot go fully empty.
     fn ensure_runnable_catalogue(&self, mut set: Settings) -> Settings {
-        let fixed = [PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, PROVIDER_CODEX];
+        let fixed = [
+            PROVIDER_CLAUDE_CODE,
+            PROVIDER_CURSOR,
+            PROVIDER_CODEX,
+            PROVIDER_CHATGPT,
+        ];
         if fixed.iter().any(|p| self.provider_runnable(&set, p))
             || set
                 .compatible_providers
@@ -225,6 +231,56 @@ impl AppServices {
             .into_owned()
     }
 
+    /// Go `RefreshChatGPTModels`.
+    async fn refresh_chatgpt_models_at(&self) -> Result<ChatGPTStatus> {
+        let auth = self.providers.chatgpt.auth();
+        let status = auth.status().await.map_err(Error::new)?;
+        if !status.authenticated {
+            return Err(Error::new("continue with ChatGPT to sign in"));
+        }
+        let models = tokio::time::timeout(
+            std::time::Duration::from_secs(45),
+            auth.models(&status.account_id),
+        )
+        .await
+        .map_err(|_| Error::new("context deadline exceeded"))?
+        .map_err(Error::new)?;
+        let mut set = self.store().settings();
+        set.chat_gpt_account_id.clone_from(&status.account_id);
+        set.chat_gpt_models = models
+            .iter()
+            .map(|m| recur_domain::CompatibleModel {
+                id: m.id.clone(),
+                label: m.name.clone(),
+                ..Default::default()
+            })
+            .collect();
+        self.save_settings(set).await?;
+        Ok(ChatGPTStatus {
+            status,
+            model_count: models.len() as i64,
+            error: String::new(),
+        })
+    }
+
+    /// Go `WaitCodexLogin`: on success, ChatGPT auth replaces any saved key.
+    async fn wait_codex_login_at(&self, login_id: &str) -> Result<CodexStatus> {
+        let st = self
+            .providers
+            .codex
+            .wait_login(login_id)
+            .await
+            .map_err(Error::new)?;
+        let mut set = self.store().settings();
+        if !set.provider_enabled(PROVIDER_CODEX) {
+            return Err(Error::new("Codex was disabled during sign-in"));
+        }
+        set.codex_chat_gpt_auth = true;
+        set.codex_api_key.clear();
+        self.save_settings(set).await?;
+        Ok(codex_status(st))
+    }
+
     async fn github_login_at(&self) -> String {
         match self.engine.forges().get("github") {
             Some(f) => f.login().await,
@@ -235,6 +291,79 @@ impl AppServices {
 
 #[async_trait]
 impl SettingsService for AppServices {
+    async fn cancel_chat_gpt_login(&self, login_id: &str) -> Result<()> {
+        rt!(self, login_id => |s| {
+            s.providers.chatgpt.auth().cancel_login(&login_id).await;
+            Ok(())
+        })
+    }
+
+    async fn cancel_codex_login(&self, login_id: &str) -> Result<()> {
+        rt!(self, login_id => |s| {
+            s.providers.codex.cancel_login(&login_id).await;
+            Ok(())
+        })
+    }
+
+    async fn disconnect_chat_gpt(&self) -> Result<ChatGPTStatus> {
+        rt!(self, => |s| {
+            s.providers.chatgpt.auth().disconnect().await.map_err(Error::new)?;
+            let mut set = s.store().settings();
+            set.chat_gpt_account_id.clear();
+            set.chat_gpt_models.clear();
+            let set = s.save_settings(set).await?;
+            Ok(s.providers.chatgpt.account_status(&set).await)
+        })
+    }
+
+    async fn get_chat_gpt_status(&self) -> Result<ChatGPTStatus> {
+        rt!(self, => |s| Ok(s.providers.chatgpt.account_status(&s.store().settings()).await))
+    }
+
+    async fn refresh_chat_gpt_models(&self) -> Result<ChatGPTStatus> {
+        rt!(self, => |s| s.refresh_chatgpt_models_at().await)
+    }
+
+    async fn start_chat_gpt_login(&self, account_id: &str, method: &str) -> Result<ChatGPTLogin> {
+        rt!(self, account_id, method => |s| {
+            if !s.store().settings().provider_enabled(PROVIDER_CHATGPT) {
+                return Err(Error::new("enable ChatGPT before signing in"));
+            }
+            s.providers
+                .chatgpt
+                .auth()
+                .start_login(&account_id, &method)
+                .await
+                .map_err(Error::new)
+        })
+    }
+
+    async fn start_codex_login(&self) -> Result<CodexLogin> {
+        rt!(self, => |s| {
+            let set = s.store().settings();
+            if !set.provider_enabled(PROVIDER_CODEX) {
+                return Err(Error::new("enable Codex before signing in"));
+            }
+            s.providers.codex.start_login(&set).await.map_err(Error::new)
+        })
+    }
+
+    async fn wait_chat_gpt_login(&self, login_id: &str) -> Result<ChatGPTStatus> {
+        rt!(self, login_id => |s| {
+            s.providers
+                .chatgpt
+                .auth()
+                .wait_login(&login_id)
+                .await
+                .map_err(Error::new)?;
+            s.refresh_chatgpt_models_at().await
+        })
+    }
+
+    async fn wait_codex_login(&self, login_id: &str) -> Result<CodexStatus> {
+        rt!(self, login_id => |s| s.wait_codex_login_at(&login_id).await)
+    }
+
     async fn cancel_cursor_usage_connect(&self) -> Result<()> {
         rt!(self, => |s| {
             s.usage.cancel_cursor_usage_connect();

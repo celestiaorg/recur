@@ -7,20 +7,50 @@ use recur_services::api::{FlagDimension, ModelGroup};
 
 pub type FlagMap = recur_domain::Flags;
 
-/// `flattenModelCatalog`.
+const OPENAI: &str = "OpenAI";
+
+/// `flattenModelCatalog`. ChatGPT and Codex share one OpenAI section at the first one's place
+/// (with an `openai` endpoint group); refs still name the runtime, and labels say which when
+/// more than one is listed.
 pub fn flatten_model_catalog(groups: &[ModelGroup]) -> Vec<CatalogModel> {
-    groups
+    let models: Vec<CatalogModel> = groups
         .iter()
         .flat_map(|g| {
-            g.models.iter().map(|m| CatalogModel {
+            let group = if g.provider == "chatgpt" || g.provider == "codex" {
+                OPENAI.to_string()
+            } else {
+                g.label.clone()
+            };
+            g.models.iter().map(move |m| CatalogModel {
                 r#ref: m.model_ref.clone(),
                 label: m.label.clone(),
-                group: g.label.clone(),
+                group: group.clone(),
                 provider: g.provider.clone(),
                 flags: m.flags.clone(),
             })
         })
-        .collect()
+        .collect();
+    let Some(first) = models.iter().position(|m| m.group == OPENAI) else {
+        return models;
+    };
+    let (openai, rest): (Vec<CatalogModel>, Vec<CatalogModel>) =
+        models.into_iter().partition(|m| m.group == OPENAI);
+    let multiple = openai.iter().any(|m| m.provider != openai[0].provider);
+    let openai = openai.into_iter().map(|mut m| {
+        if multiple {
+            let runtime = match m.provider.as_str() {
+                "chatgpt" => "ChatGPT",
+                "codex" => "Codex",
+                _ => "API",
+            };
+            m.label = format!("{} ({runtime})", m.label);
+        }
+        m
+    });
+    let mut out: Vec<CatalogModel> = rest[..first].to_vec();
+    out.extend(openai);
+    out.extend(rest[first..].iter().cloned());
+    out
 }
 
 /// `normalizeFlags`: fill missing dimensions from the catalog defaults; drop dimensions the
@@ -76,7 +106,7 @@ pub fn short_model_label(model_ref: &str) -> String {
         Some(i) => (&model_ref[..i], &model_ref[i + 1..]),
         None => ("", model_ref),
     };
-    if provider == "codex" || provider == "openai" {
+    if provider == "codex" || provider == "openai" || provider == "chatgpt" {
         return friendly_codex_slug(id);
     }
     id.to_string()
@@ -159,6 +189,64 @@ pub fn chat_steer_follow_up(busy: bool, mode: &str, has_attachments: bool, code:
 mod tests {
     use super::*;
     use recur_services::api::{FlagOption, ModelChoice};
+
+    fn group(provider: &str, label: &str, refs: &[(&str, &str)]) -> ModelGroup {
+        ModelGroup {
+            provider: provider.into(),
+            label: label.into(),
+            models: refs
+                .iter()
+                .map(|(r, l)| ModelChoice {
+                    model_ref: (*r).into(),
+                    label: (*l).into(),
+                    ..Default::default()
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn offers_one_openai_section_while_preserving_the_selected_model_runtime() {
+        let models = flatten_model_catalog(&[
+            group("claude-code", "Claude Code", &[("claude-code/a", "A")]),
+            group("codex", "Codex", &[("codex/shared", "Shared")]),
+            group("local", "Local", &[("local/q", "Q")]),
+            group("chatgpt", "ChatGPT", &[("chatgpt/shared", "Shared")]),
+            group("openai", "OpenAI", &[("openai/api", "API model")]),
+        ]);
+        let groups: Vec<&str> = models.iter().map(|m| m.group.as_str()).collect();
+        assert_eq!(
+            groups,
+            ["Claude Code", "OpenAI", "OpenAI", "OpenAI", "Local"]
+        );
+        let rows: Vec<(&str, &str, &str)> = models[1..4]
+            .iter()
+            .map(|m| (m.r#ref.as_str(), m.provider.as_str(), m.label.as_str()))
+            .collect();
+        assert_eq!(
+            rows,
+            [
+                ("codex/shared", "codex", "Shared (Codex)"),
+                ("chatgpt/shared", "chatgpt", "Shared (ChatGPT)"),
+                ("openai/api", "openai", "API model (API)"),
+            ]
+        );
+    }
+
+    #[test]
+    fn keeps_model_labels_short_when_only_one_openai_runtime_is_available() {
+        let m =
+            &flatten_model_catalog(&[group("chatgpt", "ChatGPT", &[("chatgpt/gpt", "GPT")])])[0];
+        assert_eq!(
+            (
+                m.r#ref.as_str(),
+                m.group.as_str(),
+                m.label.as_str(),
+                m.provider.as_str()
+            ),
+            ("chatgpt/gpt", "OpenAI", "GPT", "chatgpt")
+        );
+    }
 
     #[test]
     fn flatten_keeps_group_and_provider() {

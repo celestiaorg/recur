@@ -8274,6 +8274,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-provider-chatgpt"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "aws-lc-rs",
+ "base64 0.23.1",
+ "chrono",
+ "hex",
+ "parking_lot",
+ "recur-agent",
+ "recur-agent-tools",
+ "recur-domain",
+ "recur-http",
+ "recur-provider-compatible",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "url",
+]
+
+[[package]]
 name = "recur-provider-claude"
 version = "0.0.0"
 dependencies = [
@@ -8311,6 +8335,7 @@ dependencies = [
  "tokio-util",
  "toml 0.9.12+spec-1.1.0",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -8386,6 +8411,7 @@ dependencies = [
  "recur-lsp",
  "recur-platform",
  "recur-project",
+ "recur-provider-chatgpt",
  "recur-provider-claude",
  "recur-provider-codex",
  "recur-provider-compatible",

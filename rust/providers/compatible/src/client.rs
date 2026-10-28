@@ -2,12 +2,14 @@
 //! turns with a JSON fallback, and the Settings ping.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use recur_domain::CompatibleProvider;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use tokio_util::sync::CancellationToken;
 
+use crate::chatgpt::chatgpt_body;
 use crate::gojson::clip;
 use crate::sse::{SseParser, decode_response, parse_sse};
 use crate::types::{Event, Request, user_text};
@@ -25,6 +27,13 @@ pub enum ClientError {
     Failed(String),
 }
 
+/// Adds per-request credentials, so rotating OAuth tokens are never frozen
+/// into a runner.
+#[async_trait::async_trait]
+pub trait Authorize: Send + Sync {
+    async fn authorize(&self, headers: &mut HeaderMap) -> Result<(), String>;
+}
+
 /// Talks to one OpenAI-compatible endpoint.
 ///
 /// The stream client has no overall timeout: the turn's cancellation (Settings
@@ -32,12 +41,16 @@ pub enum ClientError {
 /// that generate slower than it. Responses are never requested compressed: a
 /// gzipped event stream only surfaces tokens when the compressor flushes, so
 /// the chat would look frozen while the model is still generating.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client {
     pub base_url: String,
     pub api_key: String,
     pub extra_headers: BTreeMap<String, String>,
     http: reqwest::Client,
+    /// The ChatGPT Codex subscription contract: `{base}/responses`, the
+    /// stateless streaming body, and OAuth from `authorize` on every request.
+    pub chatgpt: bool,
+    authorize: Option<Arc<dyn Authorize>>,
 }
 
 impl Client {
@@ -47,7 +60,16 @@ impl Client {
             api_key: p.api_key.clone(),
             extra_headers: p.extra_headers.clone(),
             http: recur_http::default_client(),
+            chatgpt: false,
+            authorize: None,
         }
+    }
+
+    /// Speaks the ChatGPT Codex route, authorizing each request with `auth`.
+    pub fn with_chatgpt(mut self, auth: Arc<dyn Authorize>) -> Self {
+        self.chatgpt = true;
+        self.authorize = Some(auth);
+        self
     }
 
     /// Uses `http` for every request (tests, shared pools).
@@ -58,10 +80,12 @@ impl Client {
 
     /// The Responses URL for this client.
     pub fn endpoint(&self) -> String {
-        format!(
-            "{}/v1/responses",
-            self.base_url.trim().trim_end_matches('/')
-        )
+        let base = self.base_url.trim().trim_end_matches('/');
+        if self.chatgpt {
+            format!("{base}/responses")
+        } else {
+            format!("{base}/v1/responses")
+        }
     }
 
     /// POSTs `req` with `stream: true` and calls `emit` for each parsed event.
@@ -98,8 +122,13 @@ impl Client {
         body: String,
         emit: &mut (dyn FnMut(Event) + Send),
     ) -> Result<(), String> {
+        let body = if self.chatgpt {
+            chatgpt_body(&body)?
+        } else {
+            body
+        };
         let url = self.endpoint();
-        let mut headers = self.headers()?;
+        let mut headers = self.headers().await?;
         headers.insert(
             reqwest::header::ACCEPT,
             HeaderValue::from_static("text/event-stream"),
@@ -179,7 +208,7 @@ impl Client {
         let mut resp = self
             .http
             .post(&url)
-            .headers(self.headers()?)
+            .headers(self.headers().await?)
             .timeout(PING_TIMEOUT)
             .body(body)
             .send()
@@ -226,8 +255,9 @@ impl Client {
         Ok(())
     }
 
-    /// Content type, bearer key, then extra headers (which may override).
-    fn headers(&self) -> Result<HeaderMap, String> {
+    /// Content type, bearer key, extra headers (which may override), then
+    /// the authorizer.
+    async fn headers(&self) -> Result<HeaderMap, String> {
         let mut h = HeaderMap::new();
         h.insert(
             reqwest::header::CONTENT_TYPE,
@@ -248,6 +278,9 @@ impl Client {
             let value = HeaderValue::from_str(v)
                 .map_err(|_| format!("net/http: invalid header field value for {k:?}"))?;
             h.insert(name, value);
+        }
+        if let Some(auth) = &self.authorize {
+            auth.authorize(&mut h).await?;
         }
         Ok(h)
     }

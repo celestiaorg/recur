@@ -1253,6 +1253,43 @@ impl QuestionsService for MockBridge {
 
 #[async_trait]
 impl SettingsService for MockBridge {
+    async fn cancel_chat_gpt_login(&self, login_id: &str) -> Result<()> {
+        self.call("CancelChatGPTLogin", vec![json(login_id)]).await
+    }
+
+    async fn cancel_codex_login(&self, login_id: &str) -> Result<()> {
+        self.call("CancelCodexLogin", vec![json(login_id)]).await
+    }
+
+    async fn disconnect_chat_gpt(&self) -> Result<ChatGPTStatus> {
+        self.call("DisconnectChatGPT", vec![]).await
+    }
+
+    async fn get_chat_gpt_status(&self) -> Result<ChatGPTStatus> {
+        self.call("GetChatGPTStatus", vec![]).await
+    }
+
+    async fn refresh_chat_gpt_models(&self) -> Result<ChatGPTStatus> {
+        self.call("RefreshChatGPTModels", vec![]).await
+    }
+
+    async fn start_chat_gpt_login(&self, account_id: &str, method: &str) -> Result<ChatGPTLogin> {
+        self.call("StartChatGPTLogin", vec![json(account_id), json(method)])
+            .await
+    }
+
+    async fn start_codex_login(&self) -> Result<CodexLogin> {
+        self.call("StartCodexLogin", vec![]).await
+    }
+
+    async fn wait_chat_gpt_login(&self, login_id: &str) -> Result<ChatGPTStatus> {
+        self.call("WaitChatGPTLogin", vec![json(login_id)]).await
+    }
+
+    async fn wait_codex_login(&self, login_id: &str) -> Result<CodexStatus> {
+        self.call("WaitCodexLogin", vec![json(login_id)]).await
+    }
+
     async fn cancel_cursor_usage_connect(&self) -> Result<()> {
         self.call("CancelCursorUsageConnect", vec![]).await
     }

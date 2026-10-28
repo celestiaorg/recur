@@ -27,7 +27,9 @@ use crate::compatible::modal::{CompatibleProviderModal, ModalEvent};
 use crate::field::{Field, FieldEvent, FieldOpts};
 use crate::mono_fonts::MonoFont;
 use crate::nav::{Section, filtered_nav, section_after_filter};
-use crate::rules::{PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, compatible_configured};
+use crate::rules::{
+    PROVIDER_CHATGPT, PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, compatible_configured,
+};
 use crate::style::{hsla, tokens};
 
 /// A list loaded for a pane: rows, the loading flag and the error text.
@@ -71,7 +73,9 @@ pub(crate) struct Effects {
     pub prefetch: Option<bool>,
     pub claude: Option<bool>,
     pub cursor: Option<Option<String>>,
-    pub codex: Option<bool>,
+    pub codex: Option<Option<String>>,
+    pub codex_mounted: Option<bool>,
+    pub chatgpt: Option<bool>,
     pub models: Option<Option<ModelsKey>>,
     pub section: Option<Section>,
     pub codex_key: Option<(bool, String)>,
@@ -130,6 +134,10 @@ pub struct SettingsView {
     pub(crate) compat_test: HashMap<String, TestMsg>,
     pub(crate) compat_testing: HashMap<String, bool>,
     pub(crate) compat_modal: Option<Entity<CompatibleProviderModal>>,
+    pub(crate) chatgpt: crate::sections::openai::ChatGPTCard,
+    pub(crate) chatgpt_method: Entity<Select>,
+    pub(crate) chatgpt_account: Entity<Select>,
+    pub(crate) codex_login: crate::sections::openai::CodexLogin,
 
     // Models
     pub(crate) catalog_models: Vec<CatalogModel>,
@@ -240,6 +248,19 @@ impl SettingsView {
                 .label("Terminal font")
                 .menu_variant(recur_ui::logic::menu_space::MenuVariant::Font)
         });
+        let chatgpt_method = cx.new(|cx| {
+            Select::new(
+                vec![
+                    recur_ui::widgets::SelectOption::new("browser", "Browser"),
+                    recur_ui::widgets::SelectOption::new("headless", "Headless (device code)"),
+                ],
+                window,
+                cx,
+            )
+            .label("ChatGPT sign-in method")
+        });
+        let chatgpt_account =
+            cx.new(|cx| Select::new(Vec::new(), window, cx).label("ChatGPT sign-in account"));
         let mut subs =
             vec![
                 cx.observe_state_in(&state, Topics::ALL, window, |this, _, window, cx| {
@@ -288,6 +309,24 @@ impl SettingsView {
                     this.vcx
                         .state
                         .update(cx, |s, cx| s.set_terminal_prefs(|p| p.font_face = v, cx));
+                }
+            },
+        ));
+        subs.push(cx.guarded_subscribe(
+            &chatgpt_method,
+            |this: &mut Self, _, ev: &SelectEvent, cx| {
+                if let SelectEvent::Change(v) = ev {
+                    this.chatgpt.method = v.to_string();
+                    cx.notify();
+                }
+            },
+        ));
+        subs.push(cx.guarded_subscribe(
+            &chatgpt_account,
+            |this: &mut Self, _, ev: &SelectEvent, cx| {
+                if let SelectEvent::Change(v) = ev {
+                    this.chatgpt.account = v.to_string();
+                    cx.notify();
                 }
             },
         ));
@@ -342,6 +381,13 @@ impl SettingsView {
             compat_test: HashMap::new(),
             compat_testing: HashMap::new(),
             compat_modal: None,
+            chatgpt: crate::sections::openai::ChatGPTCard {
+                method: "browser".into(),
+                ..Default::default()
+            },
+            chatgpt_method,
+            chatgpt_account,
+            codex_login: Default::default(),
             catalog_models: state.read(cx).peek_model_catalog().to_vec(),
             model_pickers,
             catalog_loops: recur_engine::view::loops::fallback_loops(),
@@ -440,9 +486,11 @@ impl SettingsView {
             .is_some_and(|s| !s.codex_api_key.is_empty() || s.codex_chat_gpt_auth)
     }
 
-    /// `extraReady`: configured compatible provider slugs.
+    /// `extraReady`: configured compatible provider slugs, and ChatGPT once connected with
+    /// models.
     pub(crate) fn extra_ready(&self, cx: &App) -> Vec<String> {
-        self.settings(cx)
+        let mut out: Vec<String> = self
+            .settings(cx)
             .map(|s| {
                 s.compatible_providers
                     .iter()
@@ -450,7 +498,11 @@ impl SettingsView {
                     .map(|p| p.id.clone())
                     .collect()
             })
-            .unwrap_or_default()
+            .unwrap_or_default();
+        if self.chatgpt_ready() {
+            out.push(PROVIDER_CHATGPT.into());
+        }
+        out
     }
 
     // ---- effects ----
@@ -500,13 +552,31 @@ impl SettingsView {
                 self.probe_cursor(prev, g, cx);
             }
         }
-        let codex = agent && codex_on;
-        if self.fx.codex != Some(codex) {
-            self.fx.codex = Some(codex);
+        // A newly saved binary path refreshes discovery in this pane.
+        let codex = (agent && codex_on).then(|| {
+            self.settings(cx)
+                .map(|s| s.codex_bin_path.clone())
+                .unwrap_or_default()
+        });
+        if self.fx.codex.as_ref() != Some(&codex) {
+            self.fx.codex = Some(codex.clone());
             let g = self.fx.bump("codex");
-            if codex {
+            if codex.is_some() {
                 self.probe_codex(g, cx);
             }
+        }
+        let codex_mounted = agent && codex_on;
+        if self.fx.codex_mounted != Some(codex_mounted) {
+            self.fx.codex_mounted = Some(codex_mounted);
+            if !codex_mounted {
+                self.cancel_codex_login(cx);
+            }
+        }
+        let chatgpt = agent && self.provider_on(PROVIDER_CHATGPT, cx);
+        if self.fx.chatgpt != Some(chatgpt) {
+            self.fx.chatgpt = Some(chatgpt);
+            let g = self.fx.bump("chatgpt");
+            self.chatgpt_mounted(chatgpt, g, cx);
         }
         let models = (section == Some(Section::Models)).then(|| {
             (

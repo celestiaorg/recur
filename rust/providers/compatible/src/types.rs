@@ -2,7 +2,7 @@
 //! `responses/types.go`). JSON names and `omitempty` rules match Go.
 
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 /// The JSON body for `POST /v1/responses`.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
@@ -77,6 +77,11 @@ pub struct InputItem {
     pub output: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub id: String,
+    /// A provider output item replayed verbatim (encrypted reasoning
+    /// included) when the stateless ChatGPT route needs it on the next tool
+    /// round. The other fields stay empty.
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub raw: Option<Map<String, Value>>,
 }
 
 /// One part of a message item.
@@ -110,6 +115,9 @@ pub struct Usage {
 /// One parsed stream (or final JSON) event.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Event {
+    /// Output items to replay: the `response.output_item.done` item, or a
+    /// terminal response's whole output.
+    pub output: Vec<Value>,
     pub r#type: String,
     pub response_id: String,
     pub delta: String,

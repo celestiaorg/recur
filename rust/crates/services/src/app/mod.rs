@@ -2,8 +2,8 @@
 //!
 //! [`AppServices`] is the composition root (Go `NewServices` plus the
 //! provider, forge and tracker wiring `engine.New` did): it registers the
-//! shipped agent providers (Claude Code, Codex, Cursor and one compatible
-//! provider per configured endpoint), the GitHub forge and the GitHub Issues
+//! shipped agent providers (Claude Code, Codex, Cursor, ChatGPT and one
+//! compatible provider per configured endpoint), the GitHub forge and the GitHub Issues
 //! and Linear trackers under their persisted ids, builds the engine, bridges
 //! its bus onto [`AppEvent`]s, and answers every trait in [`crate::api`].
 //!
@@ -45,6 +45,7 @@ use recur_engine::registry::{ForgeRegistry, ProviderRegistry, TrackerRegistry};
 use recur_engine::{Engine, GitSetup};
 use recur_forge::Forge;
 use recur_issues::IssueTracker;
+use recur_provider_chatgpt::ChatGPTProvider;
 use recur_provider_claude::{ClaudeConfig, ClaudeProvider};
 use recur_provider_codex::{CodexConfig, CodexProvider};
 use recur_provider_compatible::CompatibleProvider;
@@ -129,6 +130,7 @@ struct Providers {
     claude: Arc<ClaudeProvider>,
     cursor: Arc<CursorProvider>,
     codex: Arc<CodexProvider>,
+    chatgpt: Arc<ChatGPTProvider>,
     /// One per Settings compatible endpoint, by id, with the name its picker
     /// label was built from.
     compatible: Mutex<Vec<(String, String, Arc<CompatibleProvider>)>>,
@@ -190,6 +192,10 @@ impl AppServices {
                 env_scrub,
                 seed_auth_from: None,
             })),
+            chatgpt: Arc::new(ChatGPTProvider::new(
+                config.data_dir.clone(),
+                settings.clone(),
+            )),
             compatible: Mutex::new(Vec::new()),
         };
         providers.sync_compatible(&settings, &config.data_dir);
@@ -410,8 +416,12 @@ impl AppServices {
 
 impl Providers {
     fn all(&self) -> Vec<Arc<dyn Provider>> {
-        let mut out: Vec<Arc<dyn Provider>> =
-            vec![self.claude.clone(), self.cursor.clone(), self.codex.clone()];
+        let mut out: Vec<Arc<dyn Provider>> = vec![
+            self.claude.clone(),
+            self.cursor.clone(),
+            self.codex.clone(),
+            self.chatgpt.clone(),
+        ];
         for (_, _, p) in self.compatible.lock().iter() {
             out.push(p.clone());
         }

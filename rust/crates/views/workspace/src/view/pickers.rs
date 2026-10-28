@@ -4,6 +4,7 @@
 
 use futures::FutureExt as _;
 use gpui_kit::{App, Context, Task};
+use recur_engine::view::loops::{LoopInfo, PolicyInfo, fallback_loops, fallback_policies};
 use recur_ui::widgets::ToastKind;
 use recur_view_chat::heap::ChatPickerSnap;
 use recur_view_core::models::{
@@ -15,6 +16,21 @@ use recur_view_core::modes::{
 use recur_view_core::toast;
 
 use super::WorkspaceView;
+
+/// The loop and policy lists the last shell loaded: a shell built later shows them in its
+/// first frame instead of the fallbacks.
+pub(crate) struct LoopCatalog(pub Vec<LoopInfo>, pub Vec<PolicyInfo>);
+
+impl gpui_kit::Global for LoopCatalog {}
+
+impl LoopCatalog {
+    pub fn get(cx: &App) -> (Vec<LoopInfo>, Vec<PolicyInfo>) {
+        cx.try_global::<LoopCatalog>().map_or_else(
+            || (fallback_loops(), fallback_policies()),
+            |c| (c.0.clone(), c.1.clone()),
+        )
+    }
+}
 
 impl WorkspaceView {
     fn simplify_setting(&self, cx: &App) -> bool {
@@ -456,7 +472,7 @@ impl WorkspaceView {
                 if !loops.is_empty() {
                     v.catalog_loops = loops
                         .into_iter()
-                        .map(|l| recur_engine::view::loops::LoopInfo {
+                        .map(|l| LoopInfo {
                             id: l.id,
                             name: l.name,
                             hint: l.hint,
@@ -466,13 +482,17 @@ impl WorkspaceView {
                 if !policies.is_empty() {
                     v.catalog_policies = policies
                         .into_iter()
-                        .map(|p| recur_engine::view::loops::PolicyInfo {
+                        .map(|p| PolicyInfo {
                             id: p.id,
                             name: p.name,
                             hint: p.hint,
                         })
                         .collect();
                 }
+                cx.set_global(LoopCatalog(
+                    v.catalog_loops.clone(),
+                    v.catalog_policies.clone(),
+                ));
                 v.touch(cx);
             });
         })

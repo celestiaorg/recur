@@ -231,3 +231,41 @@ async fn a_key_in_a_long_draft_lays_out_its_paragraph_and_the_visible_lines(
         "{placed} text runs laid out for 3 keys: {layouts:?}"
     );
 }
+
+/// A chat mounted fresh (a workspace shell built on a switch) lays its dock out at the dock's
+/// height and draws its draft's text and chips in its first frame: nothing in it asks for a
+/// second one. A test update draws until the window is clean, so the counts are the check.
+#[gpui::test]
+async fn a_new_chat_draws_its_dock_in_the_first_frame(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let draft = "look at @src/main.rs please";
+    h.fill(draft);
+    let composer = h.bounds("chat-composer").expect("composer");
+    let chip = h.bounds("chip:main.rs").expect("draft chip");
+    let (host, old) = (h.host.clone(), h.chat());
+    recur_ui::guard::count_renders(true);
+    h.cx.update(|window, cx| {
+        let c = old.read(cx);
+        let vcx = recur_view_core::ViewContext {
+            state: c.state.clone(),
+            services: c.services.clone(),
+        };
+        let chat = gpui_kit::AppContext::new(cx, |cx| {
+            crate::chat::AgentChat::new(&vcx, ws_props(), window, cx)
+        });
+        chat.update(cx, |c, cx| {
+            c.set_hooks(ws_hooks(), cx);
+            c.set_draft(draft.into(), Vec::new(), cx);
+        });
+        host.update(cx, |h, cx| {
+            h.chat = chat;
+            cx.notify();
+        });
+    });
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    assert_eq!(renders("::AgentChat", &counts), 1, "{counts:?}");
+    assert_eq!(renders("::DockPane", &counts), 1, "{counts:?}");
+    assert_eq!(h.cx.debug_bounds("chat-composer"), Some(composer));
+    assert_eq!(h.cx.debug_bounds("chip:main.rs"), Some(chip));
+}

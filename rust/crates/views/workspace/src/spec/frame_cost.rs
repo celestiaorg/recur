@@ -468,3 +468,118 @@ async fn a_key_that_empties_the_commit_message_leaves_the_panes_alone(cx: &mut T
         "{counts:?}"
     );
 }
+
+/// The toolbar's chip handles as the settled dock draws them (`sel:{label}={value}`, `:off`
+/// while disabled).
+fn toolbar_chips(s: &mut super::shell::S) -> Vec<String> {
+    let view = bound(s);
+    let handles = s.cx.update(|_, cx| {
+        let v = view.read(cx);
+        let ma = v.active_code() == "MA";
+        let mode = if ma {
+            recur_view_core::modes::ChatMode::Loop
+        } else {
+            v.chat_mode(cx)
+        };
+        let mut out = vec![format!("sel:Chat mode={}", mode.label())];
+        let name = |id: String, all: Vec<(&str, &str)>| {
+            all.into_iter()
+                .find(|(i, _)| *i == id)
+                .map_or(id.clone(), |(_, n)| n.to_string())
+        };
+        if v.show_loop_pickers(cx) {
+            let loops = v.catalog_loops.iter().map(|l| (&*l.id, &*l.name)).collect();
+            let policies = v
+                .catalog_policies
+                .iter()
+                .map(|p| (&*p.id, &*p.name))
+                .collect();
+            out.push(format!("sel:Loop={}", name(v.dock_loop_id(cx), loops)));
+            out.push(format!(
+                "sel:Policy={}",
+                name(v.dock_policy_id(cx), policies)
+            ));
+        } else if !ma {
+            let models = v
+                .catalog_models
+                .iter()
+                .map(|m| (&*m.r#ref, &*m.label))
+                .collect();
+            out.push(format!("sel:Model={}", name(v.dock_model(cx).0, models)));
+        }
+        out
+    });
+    handles
+        .into_iter()
+        .map(|h| {
+            let off = format!("{h}:off");
+            if s.has(&off) { off } else { h }
+        })
+        .collect()
+}
+
+/// The frame on screen, as it was drawn (no settling).
+fn drawn(s: &mut super::shell::S, sel: &str) -> Option<gpui::Bounds<gpui::Pixels>> {
+    s.cx.debug_bounds(Box::leak(sel.to_string().into_boxed_str()))
+}
+
+/// A switch draws the incoming workspace's dock in its first frame, for a parked hot shell and
+/// for one built again after it left the hot list: the composer where it settles, its draft
+/// with its chips, and the toolbar's chips, with nothing in the dock left for a later frame.
+/// A test update draws until the window is clean, so the last check catches a dock that only
+/// a second frame would fix.
+#[gpui::test]
+async fn a_workspace_switch_draws_the_dock_in_its_first_frame(cx: &mut TestAppContext) {
+    use recur_view_core::modes::ChatMode;
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let docks = [
+        (
+            ACTIVE,
+            Some(ChatMode::Ask),
+            "look at @src/main.rs please",
+            "chip:main.rs",
+        ),
+        ("LOOP-2224", None, "fix @src/lib.rs", "chip:lib.rs"),
+    ];
+    let mut settled = std::collections::HashMap::new();
+    for (id, mode, draft, chip) in docks {
+        s.open(id);
+        if let Some(m) = mode {
+            s.click("tab-chip:chat-tab-PA");
+            let view = bound(&mut s);
+            s.cx.update(|_, cx| view.update(cx, |v, cx| v.on_chat_mode_change(m, cx).detach()));
+        }
+        let chat = bound(&mut s).read_with(s.cx, |v, _| v.chat().clone());
+        s.cx.update(|_, cx| chat.update(cx, |c, cx| c.set_draft(draft.into(), Vec::new(), cx)));
+        s.settle();
+        let composer = s.bounds("chat-composer").expect("composer");
+        let chip_at = s.bounds(chip).expect("draft chip");
+        settled.insert(id, (composer, chip_at, toolbar_chips(&mut s)));
+    }
+    // LOOP-2224 leaves the hot list for LOOP-2229 and is built again on the last switch.
+    for id in [ACTIVE, "LOOP-2224", ACTIVE, "LOOP-2229", "LOOP-2224"] {
+        let state = s.state.clone();
+        s.cx.update(|_, cx| state.update(cx, |st, cx| st.open_workspace(id, false, cx)));
+        if let Some((_, _, _, chip)) = docks.iter().find(|d| d.0 == id) {
+            let (composer, chip_at, chips) = settled[id].clone();
+            assert_eq!(
+                drawn(&mut s, "chat-composer"),
+                Some(composer),
+                "{id}: composer"
+            );
+            assert_eq!(drawn(&mut s, chip), Some(chip_at), "{id}: draft chip");
+            for h in &chips {
+                assert!(
+                    drawn(&mut s, h).is_some(),
+                    "{id}: no {h} in the first frame"
+                );
+            }
+            recur_ui::guard::count_renders(true);
+            s.cx.update(|window, cx| window.draw(cx).clear(cx));
+            let counts = recur_ui::guard::take_render_counts();
+            recur_ui::guard::count_renders(false);
+            assert_eq!(renders("::DockPane", &counts), 0, "{id}: {counts:?}");
+        }
+        s.settle();
+    }
+}

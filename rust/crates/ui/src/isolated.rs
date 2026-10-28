@@ -144,13 +144,14 @@ pub struct Fit {
 }
 
 impl Fit {
-    /// The isolated view's content, measured; the host redraws when its height changes.
+    /// The isolated view's content, measured; the host redraws when its height changes. The
+    /// first measure is the height the host just laid it out at in place.
     pub fn content(self: &Rc<Self>, child: impl IntoElement) -> gpui_kit::Div {
         let fit = self.clone();
         let probe = canvas(
             move |b, _, cx| {
                 let h = f32::from(b.size.height);
-                if fit.height.replace(Some(h)) != Some(h)
+                if fit.height.replace(Some(h)).is_some_and(|was| was != h)
                     && let Some(host) = fit.host.get()
                 {
                     cx.defer(move |cx| cx.notify(host));
@@ -163,20 +164,24 @@ impl Fit {
         div().relative().w_full().child(child).child(probe)
     }
 
-    /// The host's side: `entity` isolated, full width, at its content's measured height
-    /// (`estimate` until it has measured).
+    /// The host's side: `entity` isolated, full width, at its content's measured height. Until
+    /// it has measured (a new view) it is laid out in place at its content's height, so its
+    /// first frame is not drawn at a guess.
     pub fn view<V: Render>(
         self: &Rc<Self>,
         entity: &Entity<V>,
-        estimate: f32,
         window: &Window,
         cx: &App,
     ) -> AnyElement {
         self.host.set(Some(window.current_view()));
-        let mut style = div()
-            .w_full()
-            .flex_none()
-            .h(px(self.height.get().unwrap_or(estimate)));
+        let Some(h) = self.height.get() else {
+            return div()
+                .w_full()
+                .flex_none()
+                .child(entity.clone())
+                .into_any_element();
+        };
+        let mut style = div().w_full().flex_none().h(px(h));
         crate::style::isolated_view(entity, style.style().clone(), cx)
     }
 }

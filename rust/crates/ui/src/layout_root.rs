@@ -126,6 +126,43 @@ impl Fractions {
     }
 }
 
+/// `child` laid out and prepainted as its own root over the box `layout` was laid out at
+/// (`bounds`), its edges where in-place layout puts them; paint the returned root. For content
+/// an element can only build after layout.
+pub fn prepaint_over(
+    layout: LayoutId,
+    bounds: Bounds<Pixels>,
+    child: AnyElement,
+    window: &mut Window,
+    cx: &mut App,
+) -> AnyElement {
+    let s = window.scale_factor();
+    let edges = Fractions::read(layout, bounds, window);
+    let (x0, y0) = (edges.x0, edges.y0);
+    let (sx, sy) = (edges.left + 1., edges.top + 1.);
+    let (w, h) = (edges.w, edges.h);
+    let dp = 1. / s;
+    // The content box sits at the shift and takes the unrounded size, both as percentages
+    // of the root (authored lengths would round to device pixels), and lays out once: no
+    // flex container above it to measure it again.
+    let (aw, ah) = (w + sx * dp, h + sy * dp);
+    let mut content = div().absolute().flex().flex_col().child(child);
+    let st = content.style();
+    st.inset.left = Some(gpui_kit::relative(sx * dp / aw.max(1e-6)).into());
+    st.inset.top = Some(gpui_kit::relative(sy * dp / ah.max(1e-6)).into());
+    st.size.width = Some(gpui_kit::relative(w / aw.max(1e-6)).into());
+    st.size.height = Some(gpui_kit::relative(h / ah.max(1e-6)).into());
+    let mut root = div()
+        .size_full()
+        .relative()
+        .child(content)
+        .into_any_element();
+    let origin = gpui_kit::point(px(x0 / s - dp), px(y0 / s - dp));
+    let available = gpui_kit::size(px(aw), px(ah));
+    root.prepaint_as_root(origin, available.into(), window, cx);
+    root
+}
+
 impl Element for LayoutRoot {
     type RequestLayoutState = LayoutId;
     type PrepaintState = ();
@@ -166,31 +203,7 @@ impl Element for LayoutRoot {
         let Some(child) = self.child.take() else {
             return;
         };
-        let s = window.scale_factor();
-        let edges = Fractions::read(*layout, bounds, window);
-        let (x0, y0) = (edges.x0, edges.y0);
-        let (sx, sy) = (edges.left + 1., edges.top + 1.);
-        let (w, h) = (edges.w, edges.h);
-        let dp = 1. / s;
-        // The content box sits at the shift and takes the unrounded size, both as percentages
-        // of the root (authored lengths would round to device pixels), and lays out once: no
-        // flex container above it to measure it again.
-        let (aw, ah) = (w + sx * dp, h + sy * dp);
-        let mut content = div().absolute().flex().flex_col().child(child);
-        let st = content.style();
-        st.inset.left = Some(gpui_kit::relative(sx * dp / aw.max(1e-6)).into());
-        st.inset.top = Some(gpui_kit::relative(sy * dp / ah.max(1e-6)).into());
-        st.size.width = Some(gpui_kit::relative(w / aw.max(1e-6)).into());
-        st.size.height = Some(gpui_kit::relative(h / ah.max(1e-6)).into());
-        let mut root = div()
-            .size_full()
-            .relative()
-            .child(content)
-            .into_any_element();
-        let origin = gpui_kit::point(px(x0 / s - dp), px(y0 / s - dp));
-        let available = gpui_kit::size(px(aw), px(ah));
-        root.prepaint_as_root(origin, available.into(), window, cx);
-        self.root = Some(root);
+        self.root = Some(prepaint_over(*layout, bounds, child, window, cx));
     }
 
     fn paint(

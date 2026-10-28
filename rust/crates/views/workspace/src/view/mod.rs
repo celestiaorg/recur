@@ -26,7 +26,7 @@ use gpui_kit::{
 use recur_agent::context_usage::ContextUsage;
 use recur_domain::{Escalation, Finding, Workspace, WorkspaceChatTab};
 use recur_engine::view::chat::{AgentMsg, ChatAttachmentDraft};
-use recur_engine::view::loops::{LoopInfo, PolicyInfo, fallback_loops, fallback_policies};
+use recur_engine::view::loops::{LoopInfo, PolicyInfo};
 use recur_services::Services;
 use recur_view_chat::chat::{AgentChat, ChatHooks, ChatProps};
 use recur_view_chat::heap::{ChatHeapCache, ChatPickerSnap, PendingChatSend};
@@ -266,6 +266,7 @@ impl WorkspaceView {
             .unwrap_or(true);
 
         let catalog_models = state.read(cx).peek_model_catalog().to_vec();
+        let (catalog_loops, catalog_policies) = pickers::LoopCatalog::get(cx);
         let feed = cx.new(|_| SessionFeed::new(services.clone()));
         let chat = cx.new(|cx| AgentChat::new(vcx, ChatProps::default(), window, cx));
         chat.update(cx, |c, cx| {
@@ -368,8 +369,8 @@ impl WorkspaceView {
             pending_focus_refetching: String::new(),
             viewed_for: String::new(),
             focus_composer_pending: false,
-            catalog_loops: fallback_loops(),
-            catalog_policies: fallback_policies(),
+            catalog_loops,
+            catalog_policies,
             catalog_models,
             catalog_rev: None,
             pickers_by_key,

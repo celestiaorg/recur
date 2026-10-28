@@ -23,10 +23,10 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use gpui_kit::{
-    AnyElement, App, Bounds, ClipboardItem, Element, ElementId, Entity, EntityId, FocusHandle,
-    GlobalElementId, InspectorElementId, InteractiveElement, IntoElement, KeyDownEvent, LayoutId,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Point,
-    Styled, Window, div,
+    AnyElement, App, Bounds, ClipboardItem, CursorStyle, Element, ElementId, Entity, EntityId,
+    FocusHandle, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId, InteractiveElement,
+    IntoElement, KeyDownEvent, LayoutId, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
+    ParentElement, Pixels, Point, Styled, Window, div,
 };
 
 /// What a text element gives the scope: its geometry and text, from its current layout.
@@ -48,6 +48,7 @@ struct Item {
     /// The scope's pass that registered it last.
     pass: u64,
     geom: Rc<dyn Geometry>,
+    hitbox: Hitbox,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -90,12 +91,13 @@ pub fn register(
     sep: &'static str,
     bounds: Bounds<Pixels>,
     geom: Rc<dyn Geometry>,
-    window: &Window,
+    window: &mut Window,
     cx: &mut App,
 ) {
     let Some(scope) = STACK.with(|s| s.borrow().last().cloned()) else {
         return;
     };
+    let hitbox = window.insert_hitbox(bounds, HitboxBehavior::Normal);
     let view = window.current_view();
     let stack = window.view_stack().to_vec();
     scope.update(cx, |s, _| {
@@ -110,6 +112,7 @@ pub fn register(
                 stack,
                 pass,
                 geom,
+                hitbox,
             },
         );
     });
@@ -554,6 +557,13 @@ impl Element for Host {
         window: &mut Window,
         cx: &mut App,
     ) {
+        // Before the children paint, so a link or button over the text keeps its own cursor.
+        let s = self.state.read(cx);
+        if !s.disabled {
+            for it in s.items.values() {
+                window.set_cursor_style(CursorStyle::IBeam, &it.hitbox);
+            }
+        }
         STACK.with(|s| s.borrow_mut().push(self.state.clone()));
         self.child.paint(window, cx);
         STACK.with(|s| s.borrow_mut().pop());

@@ -2966,6 +2966,10 @@ pub enum CursorStyle {
     /// A magnifying glass cursor indicating that clicking zooms in
     /// corresponds to the CSS cursor value `zoom-in`
     ZoomIn,
+
+    /// A magnifying glass cursor indicating that clicking zooms out
+    /// corresponds to the CSS cursor value `zoom-out`
+    ZoomOut,
 }
 
 /// A clipboard item that should be copied to the clipboard

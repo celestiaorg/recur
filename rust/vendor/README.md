@@ -84,9 +84,9 @@ Upgrade it with gpui-pre: replace the source, commit it alone, `git apply --3way
 git diff cb8279c1 -- rust/vendor/gpui-pre-apple > rust/vendor/gpui-pre-apple.patch
 ```
 
-## gpui-pre-macos, gpui-pre-linux 0.3.9 (zoom-in cursor)
+## gpui-pre-macos, gpui-pre-linux 0.3.9 (zoom cursors)
 
-`gpui-pre-macos/` and `gpui-pre-linux/` are the crates.io sources of GPUI's macOS and Linux platforms (same snapshot), wired in by `[patch.crates-io]` (`src/`, `Cargo.toml`, the license). They map gpui-pre's `CursorStyle::ZoomIn` (CSS `zoom-in`, an image that opens a lightbox): `NSCursor zoomInCursor` on macOS 15+ and the pointing hand before it, `zoom-in` from the cursor theme or Wayland's cursor shape on Linux. gpui-pre-macos also allows the `deprecated` lint, which crates.io sources had capped. Commit `f7e929f2` ("rust: vendor gpui-pre-macos and gpui-pre-linux 0.3.9 unchanged") is the pristine import, and `gpui-pre-macos.patch` / `gpui-pre-linux.patch` are the change. Upgrade them with gpui-pre: replace the sources, commit them alone, `git apply --3way` each patch, and regenerate:
+`gpui-pre-macos/` and `gpui-pre-linux/` are the crates.io sources of GPUI's macOS and Linux platforms (same snapshot), wired in by `[patch.crates-io]` (`src/`, `Cargo.toml`, the license). They map gpui-pre's `CursorStyle::ZoomIn` and `ZoomOut` (CSS `zoom-in` / `zoom-out`: an image that opens a lightbox, the lightbox's actual size): `NSCursor zoomInCursor` / `zoomOutCursor` on macOS 15+ (the pointing hand and the arrow before it), the cursor theme's `zoom-in` / `zoom-out` or Wayland's cursor shapes on Linux. gpui-pre-macos also allows the `deprecated` lint, which crates.io sources had capped. Commit `f7e929f2` ("rust: vendor gpui-pre-macos and gpui-pre-linux 0.3.9 unchanged") is the pristine import, and `gpui-pre-macos.patch` / `gpui-pre-linux.patch` are the change. Upgrade them with gpui-pre: replace the sources, commit them alone, `git apply --3way` each patch, and regenerate:
 
 ```sh
 git diff f7e929f2 -- rust/vendor/gpui-pre-macos > rust/vendor/gpui-pre-macos.patch

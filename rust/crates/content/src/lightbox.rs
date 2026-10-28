@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    App, AppContext, Context, Corners, Entity, EventEmitter, FocusHandle, Focusable,
+    App, AppContext, Context, Corners, CursorStyle, Entity, EventEmitter, FocusHandle, Focusable,
     InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent, ParentElement,
     Render, StatefulInteractiveElement, Styled, Task, Window, canvas, deferred, div, px,
 };
@@ -281,6 +281,13 @@ impl AttachmentLightbox {
             .id("lb-img")
             .relative()
             .flex_none()
+            .cursor(if self.actual {
+                CursorStyle::ZoomOut
+            } else if scaled {
+                CursorStyle::ZoomIn
+            } else {
+                CursorStyle::Arrow
+            })
             // The fitted side is whole; the other reaches layout unrounded through the ratio
             // (GPUI rounds authored lengths), so its edges snap where WebKit's do.
             .map(|d| {
@@ -334,6 +341,7 @@ impl AttachmentLightbox {
             .flex()
             .p(px(32.))
             .overflow_scroll()
+            .cursor(CursorStyle::ZoomOut)
             .on_mouse_down(
                 MouseButton::Left,
                 cx.guarded_listener(|lb, _, window, cx| lb.close(window, cx)),
@@ -361,11 +369,17 @@ impl AttachmentLightbox {
                 .absolute()
                 .inset_0()
                 .p(px(32.))
+                .cursor(CursorStyle::ZoomOut)
                 .on_mouse_down(
                     MouseButton::Left,
                     cx.guarded_listener(|lb, _, window, cx| lb.close(window, cx)),
                 )
-                .child(v.clone()),
+                .child(
+                    div()
+                        .size_full()
+                        .cursor(CursorStyle::Arrow)
+                        .child(v.clone()),
+                ),
             None => scroll,
         };
         let copy_glyph = if self.copied {

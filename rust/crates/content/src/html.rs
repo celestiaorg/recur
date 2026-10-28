@@ -215,6 +215,8 @@ impl HtmlPreview {
                     "grabbing" => gpui_kit::CursorStyle::ClosedHand,
                     "crosshair" => gpui_kit::CursorStyle::Crosshair,
                     "not-allowed" => gpui_kit::CursorStyle::OperationNotAllowed,
+                    "zoom-in" => gpui_kit::CursorStyle::ZoomIn,
+                    "zoom-out" => gpui_kit::CursorStyle::ZoomOut,
                     _ => gpui_kit::CursorStyle::Arrow,
                 };
                 if next != self.cursor {

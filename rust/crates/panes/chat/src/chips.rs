@@ -411,7 +411,7 @@ impl AgentChat {
                     .border_1()
                     .border_color(hsla(t.line))
                     .bg(hsla(t.pane_2))
-                    .cursor(gpui_kit::CursorStyle::PointingHand)
+                    .cursor(gpui_kit::CursorStyle::ZoomIn)
                     .when_some(d, |el, d| {
                         el.child(image_box(d.image.clone(), d.width, d.height, Fit::Fill, 5.))
                     })
@@ -700,7 +700,7 @@ impl AgentChat {
                     .border_color(hsla(t.line))
                     .bg(hsla(t.pane_2))
                     .hover(|s| s.border_color(hsla(t.line_bright)).bg(hsla(t.pane)))
-                    .cursor(gpui_kit::CursorStyle::PointingHand)
+                    .cursor(gpui_kit::CursorStyle::ZoomIn)
                     .child(div().size(px(28.)).rounded(px(4.)).when_some(d, |el, d| {
                         el.child(image_box(
                             d.image.clone(),

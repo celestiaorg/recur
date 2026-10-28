@@ -1,23 +1,25 @@
 diff --git a/rust/vendor/gpui-pre-linux/src/linux/platform.rs b/rust/vendor/gpui-pre-linux/src/linux/platform.rs
-index 1fd41390..607c982d 100644
+index 1fd41390..a59a7a84 100644
 --- a/rust/vendor/gpui-pre-linux/src/linux/platform.rs
 +++ b/rust/vendor/gpui-pre-linux/src/linux/platform.rs
-@@ -1332,6 +1332,7 @@ pub(super) fn cursor_style_to_icon_names(style: CursorStyle) -> &'static [&'stat
+@@ -1332,6 +1332,8 @@ pub(super) fn cursor_style_to_icon_names(style: CursorStyle) -> &'static [&'stat
          CursorStyle::DragLink => &["alias"],
          CursorStyle::DragCopy => &["copy"],
          CursorStyle::ContextualMenu => &["context-menu"],
 +        CursorStyle::ZoomIn => &["zoom-in", "pointer", "hand2"],
++        CursorStyle::ZoomOut => &["zoom-out", DEFAULT_CURSOR_ICON_NAME],
      }
  }
  
 diff --git a/rust/vendor/gpui-pre-linux/src/linux/wayland.rs b/rust/vendor/gpui-pre-linux/src/linux/wayland.rs
-index cbc962bc..6bb44f3d 100644
+index cbc962bc..746faa93 100644
 --- a/rust/vendor/gpui-pre-linux/src/linux/wayland.rs
 +++ b/rust/vendor/gpui-pre-linux/src/linux/wayland.rs
-@@ -38,5 +38,6 @@ pub(super) fn to_shape(style: CursorStyle) -> Shape {
+@@ -38,5 +38,7 @@ pub(super) fn to_shape(style: CursorStyle) -> Shape {
          CursorStyle::DragLink => Shape::Alias,
          CursorStyle::DragCopy => Shape::Copy,
          CursorStyle::ContextualMenu => Shape::ContextMenu,
 +        CursorStyle::ZoomIn => Shape::ZoomIn,
++        CursorStyle::ZoomOut => Shape::ZoomOut,
      }
  }

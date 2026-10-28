@@ -500,9 +500,10 @@ impl Build<'_, '_> {
                     .w(px(w))
                     .h(px(h))
                     .when(self.env.enhance, |d| {
-                        d.on_click(move |_, window, cx| {
-                            open((src2.clone(), name.clone()), window, cx)
-                        })
+                        d.cursor(gpui_kit::CursorStyle::ZoomIn)
+                            .on_click(move |_, window, cx| {
+                                open((src2.clone(), name.clone()), window, cx)
+                            })
                     })
                     .child(
                         canvas(

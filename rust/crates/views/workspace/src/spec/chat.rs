@@ -279,6 +279,92 @@ async fn a_tab_switch_draws_the_transcript_where_it_was_left_in_its_first_frame(
     }
 }
 
+/// The first live block the scroller shows and its top in the window, as last drawn.
+fn first_shown(h: &mut H, keys: &[String]) -> (String, f32) {
+    let chat = h.chat();
+    let top = chat.read_with(h.cx, |c, _| f32::from(c.test_scroll().bounds().top()));
+    keys.iter()
+        .find_map(|k| {
+            let b =
+                h.cx.debug_bounds(Box::leak(format!("cblk:{k}").into_boxed_str()))?;
+            (f32::from(b.bottom()) > top + 1.).then(|| (k.clone(), f32::from(b.top())))
+        })
+        .expect("a block in view")
+}
+
+/// The user's steps on a long working-copy chat whose blocks above the viewport were never
+/// measured: wheel up through it, switch tabs and back. Blocks that turn live as they near
+/// the viewport lay out taller or shorter than their stubs reserved; like the browser's
+/// `overflow-anchor`, that never moves what the scroller shows, and the switch back draws the
+/// block that was at the top where it was.
+#[gpui::test]
+async fn wheeling_up_a_long_chat_and_switching_back_keeps_what_is_on_screen(
+    cx: &mut TestAppContext,
+) {
+    let store = Store::default();
+    let mut h = boot(cx, items_opts(store.clone()));
+    h.select_tab("PA");
+    load(
+        &mut h,
+        &store,
+        "PA",
+        json!([{"role": "user", "kind": "text", "text": "hi"}]),
+    );
+    h.select_tab("MA");
+    let mut items = Vec::new();
+    for i in 0..120 {
+        items.push(json!({"role": "user", "kind": "text", "text": format!("question {i}")}));
+        items.push(
+            json!({"role": "assistant", "kind": "thinking", "text": format!("thinking about {i}")}),
+        );
+        items.push(json!({"role": "assistant", "kind": "tool", "tool": "Bash",
+            "toolInput": format!("rg pattern{i}"), "description": "Search",
+            "input": format!("{{\"command\":\"rg pattern{i}\"}}"), "result": "line\n".repeat(i % 12)}));
+        let body = format!(
+            "## Answer {i}\n\n{}\n\n- one\n- two\n- three\n\n```rust\nfn f{i}() {{}}\n```\n\n{}",
+            "words ".repeat(i % 50),
+            "more ".repeat(i % 30)
+        );
+        items.push(json!({"role": "assistant", "kind": "text", "text": body}));
+    }
+    load(&mut h, &store, "MA", Value::Array(items));
+    h.settle();
+    let chat = h.chat();
+    let keys = chat.read_with(h.cx, |c, _| c.test_block_keys());
+    let at = chat.read_with(h.cx, |c, _| c.test_scroll().bounds().center());
+    h.cx.simulate_mouse_move(at, None, Modifiers::none());
+    h.cx.run_until_parked();
+    let stop = max_scroll(&mut h) * 0.55;
+    while scroll_top(&mut h) > stop {
+        let (key, y) = first_shown(&mut h, &keys);
+        h.cx.simulate_event(gpui::ScrollWheelEvent {
+            position: at,
+            delta: gpui::ScrollDelta::Pixels(point(px(0.), px(200.))),
+            modifiers: Modifiers::none(),
+            touch_phase: gpui::TouchPhase::Moved,
+        });
+        h.cx.run_until_parked();
+        let moved =
+            h.cx.debug_bounds(Box::leak(format!("cblk:{key}").into_boxed_str()))
+                .map(|b| f32::from(b.top()) - y);
+        assert!(
+            moved.is_some_and(|d| (d - 200.).abs() < 1.),
+            "a 200px wheel step moved {key} by {moved:?}"
+        );
+    }
+    let before = first_shown(&mut h, &keys);
+    let view = h.view();
+    for code in ["PA", "MA"] {
+        h.cx.update(|_, cx| view.update(cx, |v, cx| v.select_chat_tab(code, cx)));
+        // Not `settle`: its whole-window refresh redraws what a mouse move would.
+        h.cx.run_until_parked();
+    }
+    assert_eq!(first_shown(&mut h, &keys), before, "after the switch back");
+    h.cx.update(|window, _| window.refresh());
+    h.cx.run_until_parked();
+    assert_eq!(first_shown(&mut h, &keys), before, "after a redraw");
+}
+
 // ---- Chat follow-up queue ----
 
 #[gpui::test]

@@ -899,18 +899,22 @@ impl Observatory {
         if self.props.main_blocked
             && let Some(v) = self.slots.main_overlay.clone()
         {
+            // `z-index: 10`: over the side panels' resize handles (8).
             work = work.child(
-                div()
-                    .debug_selector(|| "obs-work-overlay".into())
-                    .absolute()
-                    .inset_0()
-                    .flex()
-                    .flex_col()
-                    .min_w_0()
-                    .min_h_0()
-                    .occlude()
-                    .child(recur_ui::style::backdrop_blur(3., t.bg.fade(0.68)))
-                    .child(v),
+                gpui_kit::deferred(
+                    div()
+                        .debug_selector(|| "obs-work-overlay".into())
+                        .absolute()
+                        .inset_0()
+                        .flex()
+                        .flex_col()
+                        .min_w_0()
+                        .min_h_0()
+                        .occlude()
+                        .child(recur_ui::style::backdrop_blur(3., t.bg.fade(0.68)))
+                        .child(v),
+                )
+                .with_priority(10),
             );
         }
         body.child(work).into_any_element()
@@ -969,11 +973,12 @@ impl Observatory {
             .children(ctx)
             .children(self.review_note_portals(cx))
             .children(self.layers.iter().map(|l| {
-                recur_ui::style::cached_view(
+                gpui_kit::deferred(recur_ui::style::cached_view(
                     l,
                     gpui_kit::StyleRefinement::default().absolute().inset_0(),
                     cx,
-                )
+                ))
+                .with_priority(recur_ui::style::OVERLAY_PRIORITY)
             }));
         if self.term_overlaying() {
             root = root.overflow_hidden();

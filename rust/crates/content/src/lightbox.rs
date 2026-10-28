@@ -419,6 +419,7 @@ impl AttachmentLightbox {
         let overlay = div()
             .id("chat-att-lb")
             .debug_selector(|| "chat-att-lb".into())
+            .occlude()
             .track_focus(&self.focus)
             .key_context("Lightbox")
             .capture_key_down(cx.guarded_listener(Self::key_down))
@@ -449,5 +450,77 @@ mod tests {
         assert!(scaled && w == 736. && (h - 490.666).abs() < 0.01);
         assert_eq!(fit((100., 50.), (736., 496.)), ((100., 50.), false));
         assert_eq!(fit((0., 0.), (10., 10.)), ((0., 0.), false));
+    }
+
+    struct Page(gpui_kit::AnyView, Rc<std::cell::Cell<usize>>);
+
+    impl Render for Page {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let under = self.1.clone();
+            div()
+                .size_full()
+                .child(
+                    deferred(
+                        div()
+                            .id("handle")
+                            .size_full()
+                            .on_mouse_down(MouseButton::Left, move |_, _, _| {
+                                under.set(under.get() + 1)
+                            }),
+                    )
+                    .with_priority(8),
+                )
+                .child(self.0.clone())
+        }
+    }
+
+    /// Presses at `at` with `overlay` over a resize handle (priority 8); how many reach it.
+    fn presses_under(
+        cx: &mut gpui_kit::TestAppContext,
+        at: (f32, f32),
+        overlay: impl FnOnce(&mut Window, &mut App) -> gpui_kit::AnyView + 'static,
+    ) -> usize {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            recur_ui::init(cx);
+        });
+        let under = Rc::new(std::cell::Cell::new(0));
+        let u = under.clone();
+        let (_, cx) = cx.add_window_view(move |window, cx| Page(overlay(window, cx), u));
+        cx.run_until_parked();
+        let at = gpui_kit::point(px(at.0), px(at.1));
+        cx.simulate_mouse_move(at, None, gpui_kit::Modifiers::none());
+        cx.simulate_mouse_down(at, MouseButton::Left, gpui_kit::Modifiers::none());
+        cx.run_until_parked();
+        under.get()
+    }
+
+    /// The page's deferred layers (resize handles at 8) take no press under the lightbox.
+    #[gpui_kit::test]
+    fn the_page_under_it_takes_no_pointer(cx: &mut gpui_kit::TestAppContext) {
+        let n = presses_under(cx, (1., 200.), |window, cx| {
+            cx.new(|cx| {
+                AttachmentLightbox::new(
+                    String::new(),
+                    "x.png".into(),
+                    None,
+                    Rc::new(|_: &mut Window, _: &mut App| {}),
+                    window,
+                    cx,
+                )
+            })
+            .into()
+        });
+        assert_eq!(n, 0);
+    }
+
+    /// Nor under the image menu's panel.
+    #[gpui_kit::test]
+    fn the_page_under_the_image_menu_takes_no_pointer(cx: &mut gpui_kit::TestAppContext) {
+        let n = presses_under(cx, (20., 215.), |window, cx| {
+            cx.new(|cx| ImageContextMenu::new((10., 200.), None, window, cx))
+                .into()
+        });
+        assert_eq!(n, 0);
     }
 }

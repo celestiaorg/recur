@@ -584,25 +584,29 @@ impl VideoPlayer {
             .on_click(cx.guarded_listener(|p, _, _, cx| p.toggle(cx)));
         if self.fullscreen {
             let vp = window.viewport_size();
-            // Element full screen: the video over the whole window.
-            root = root.child(deferred(
-                gpui_kit::anchored()
-                    .position_mode(gpui_kit::AnchoredPositionMode::Window)
-                    .position(gpui_kit::point(px(0.), px(0.)))
-                    .child(
-                        div()
-                            .id("video-full")
-                            .debug_selector(|| "video-fullscreen".into())
-                            .w(vp.width)
-                            .h(vp.height)
-                            .bg(Hsla::from(recur_ui::hex(0x000000)))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .occlude()
-                            .child(boxed),
-                    ),
-            ));
+            // Element full screen: the video over the whole window, the top layer (only the
+            // title tooltips paint over it).
+            root = root.child(
+                deferred(
+                    gpui_kit::anchored()
+                        .position_mode(gpui_kit::AnchoredPositionMode::Window)
+                        .position(gpui_kit::point(px(0.), px(0.)))
+                        .child(
+                            div()
+                                .id("video-full")
+                                .debug_selector(|| "video-fullscreen".into())
+                                .w(vp.width)
+                                .h(vp.height)
+                                .bg(Hsla::from(recur_ui::hex(0x000000)))
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .occlude()
+                                .child(boxed),
+                        ),
+                )
+                .with_priority(usize::MAX - 2),
+            );
             return root.into_any_element();
         }
         root.child(boxed).into_any_element()

@@ -219,6 +219,7 @@ impl CommentReactions {
         .absolute()
         .inset_0();
         let card = recur_ui::style::card(t.pane, t.line, 10.)
+            .occlude()
             .p(px(4.))
             .child(row)
             .child(probe);

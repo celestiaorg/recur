@@ -1260,7 +1260,8 @@ impl Issues {
                         .child(menu),
                 ),
             )
-            .with_priority(3)
+            // `.obs-ctx`'s `z-index: 80`.
+            .with_priority(80)
             .into_any_element(),
         )
     }

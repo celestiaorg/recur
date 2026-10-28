@@ -1090,6 +1090,7 @@ impl LineNoteThread {
         .absolute()
         .inset_0();
         let card = recur_ui::style::card(t.rail, t.line, 8.)
+            .occlude()
             .min_w(px(168.))
             .p(px(4.))
             .flex()

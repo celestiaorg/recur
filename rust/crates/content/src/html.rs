@@ -307,7 +307,7 @@ impl HtmlPreview {
                     )
                     .child(at),
             )
-            .with_priority(1)
+            .with_priority(210)
             .into_any_element(),
         )
     }

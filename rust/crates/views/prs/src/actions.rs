@@ -818,6 +818,7 @@ fn split_menu(items: Vec<AnyElement>, probe: Option<AnyElement>, cx: &App) -> An
             .absolute()
             .top(px(26. + 6.))
             .right_0()
+            .occlude()
             .child(with_shadow(
                 style::card(t.rail, t.line, 8.)
                     .min_w(px(180.))
@@ -830,7 +831,7 @@ fn split_menu(items: Vec<AnyElement>, probe: Option<AnyElement>, cx: &App) -> An
                 8.,
             )),
     )
-    .with_priority(1)
+    .with_priority(90)
     .into_any_element()
 }
 

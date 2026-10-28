@@ -2008,7 +2008,8 @@ impl Sidebar {
                     8.,
                 ),
             ))
-            .with_priority(4)
+            // `.rail-move-menu`'s `z-index: 400`: over the rail's resize handle.
+            .with_priority(400)
             .into_any_element(),
         )
     }

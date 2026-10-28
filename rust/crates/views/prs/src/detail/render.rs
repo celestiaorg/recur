@@ -1055,6 +1055,7 @@ impl PrDetail {
         .inset_0();
         let card = recur_ui::style::card(t.rail, t.line, 8.)
             .debug_selector(|| "cmt-more-menu".into())
+            .occlude()
             .min_w(px(168.))
             .p(px(4.))
             .flex()

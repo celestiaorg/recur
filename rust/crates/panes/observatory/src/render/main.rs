@@ -1505,12 +1505,10 @@ impl Observatory {
         let (_, d) = self.dock.clone()?;
         let r = self.overlay_rect;
         let _ = TermMaxPhase::Idle;
+        // `z-index: 21`: over the side panels' resize handles (8).
         Some(
-            div()
-                .absolute()
-                .inset_0()
-                .occlude()
-                .child(
+            gpui_kit::deferred(
+                div().absolute().inset_0().occlude().child(
                     div()
                         .absolute()
                         .top(px(r.top))
@@ -1519,8 +1517,10 @@ impl Observatory {
                         .h(px(r.height))
                         .child(crate::geometry::probe(&self.bounds.dock))
                         .child(cached_view(&d, fill(), cx)),
-                )
-                .into_any_element(),
+                ),
+            )
+            .with_priority(21)
+            .into_any_element(),
         )
     }
 }

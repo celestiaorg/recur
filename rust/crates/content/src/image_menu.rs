@@ -3,7 +3,7 @@
 use gpui_kit::{
     App, ClipboardItem, Context, EventEmitter, FocusHandle, Focusable, Image, ImageFormat,
     InteractiveElement, IntoElement, KeyDownEvent, MouseButton, ParentElement, Render,
-    StatefulInteractiveElement, Styled, Window, div, px,
+    StatefulInteractiveElement, Styled, Window, deferred, div, px,
 };
 use recur_ui::guard::Guarded;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
@@ -117,33 +117,38 @@ impl ImageContextMenu {
             &[css_box_shadow(0., 12., 32., 0., rgba(0, 0, 0, 0.45))],
             8.,
         );
-        div()
-            .id("att-ctx")
-            .track_focus(&self.focus)
-            .key_context("ImageContextMenu")
-            .absolute()
-            .inset_0()
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.guarded_listener(|_, _, _, cx| cx.emit(ImageMenuEvent::Close)),
-            )
-            .on_mouse_down(
-                MouseButton::Right,
-                cx.guarded_listener(|_, _, _, cx| cx.emit(ImageMenuEvent::Close)),
-            )
-            .capture_key_down(cx.guarded_listener(|_, e: &KeyDownEvent, _, cx| {
-                if e.keystroke.key == "escape" {
-                    cx.stop_propagation();
-                    cx.emit(ImageMenuEvent::Close);
-                }
-            }))
-            .child(anchored_at(
-                self.x,
-                self.y,
-                div()
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                    .child(menu),
-            ))
+        // `.att-ctx`'s `z-index: 230`: over the page's resize handles and the lightbox.
+        deferred(
+            div()
+                .id("att-ctx")
+                .track_focus(&self.focus)
+                .key_context("ImageContextMenu")
+                .absolute()
+                .inset_0()
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.guarded_listener(|_, _, _, cx| cx.emit(ImageMenuEvent::Close)),
+                )
+                .on_mouse_down(
+                    MouseButton::Right,
+                    cx.guarded_listener(|_, _, _, cx| cx.emit(ImageMenuEvent::Close)),
+                )
+                .capture_key_down(cx.guarded_listener(|_, e: &KeyDownEvent, _, cx| {
+                    if e.keystroke.key == "escape" {
+                        cx.stop_propagation();
+                        cx.emit(ImageMenuEvent::Close);
+                    }
+                }))
+                .child(anchored_at(
+                    self.x,
+                    self.y,
+                    div()
+                        .occlude()
+                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                        .child(menu),
+                )),
+        )
+        .with_priority(230)
     }
 }
 

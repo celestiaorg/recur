@@ -155,16 +155,16 @@ pub(crate) fn tc_icon_shift(window: &Window) -> f32 {
     (14. - line.baseline).max(0.)
 }
 
-/// `.tc-pre`: mono 11 / 1.55, pre-wrap, 320px scroll.
+/// `.tc-pre`: mono 11 / 1.55, pre-wrap, 320px scroll, selectable in the transcript.
 pub(crate) fn tc_pre(id: SharedString, body: Text, max_h: f32) -> Div {
-    div().child(
-        div()
-            .id(id)
-            .max_h(px(max_h))
-            .overflow_y_scroll()
-            .px(px(10.))
-            .py(px(8.))
-            .child(body),
+    let key = crate::transcript::select_key(&id);
+    div().max_h(px(max_h)).flex().child(
+        recur_ui::widgets::scroll_area(id).child(
+            div()
+                .px(px(10.))
+                .py(px(8.))
+                .child(body.selectable(key, "\n")),
+        ),
     )
 }
 

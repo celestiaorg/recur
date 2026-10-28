@@ -45,6 +45,8 @@ mod kit;
 pub mod layout_root;
 pub mod logic;
 pub mod motion;
+#[cfg(test)]
+mod nested_scroll_spec;
 pub mod pane;
 pub mod resize;
 pub mod selection;

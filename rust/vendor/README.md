@@ -43,6 +43,10 @@ Anything else (a notify reaching a non-isolated view, a notify of a non-view ent
 
 A deferred draw nested in another takes at least its parent's priority (`Window::defer_draw` against `deferred_priority_floor`, which `prepaint_deferred_draws` sets to the draw being prepainted and an isolated view records and restores). Upstream sorts every deferred draw by its own priority across the window, so a popover inside a modal (`suggest` at 60 in the New Task modal at 190) painted under the modal; CSS keeps it above, as the modal's `z-index` makes a stacking context. `recur-ui`'s `deferred_floor_spec` checks the order.
 
+### Nested scrolling
+
+A scroller's wheel listener clamps the offset to the last prepaint's maximum and stops the event when the offset moved, so the scroller under the pointer scrolls alone and one at its edge passes the wheel to its ancestors, as the browser chains scrolling. Upstream adds the unclamped delta and lets the event through, so every scroller under the pointer moves at once (a tool's output and the chat transcript around it). The listener registers before the element's mouse listeners, so its own `on_scroll_wheel` still runs. `recur-ui`'s `nested_scroll_spec` checks both.
+
 ### Contained panics
 
 A panic must not unwind into a platform callback: AppKit, GCD and GLib frames cannot be unwound through, so the process aborts. Recur's own guards (`recur_ui::guard`) contain renders and the callbacks Recur wraps; the patch contains the rest inside GPUI (`src/unwind.rs`):

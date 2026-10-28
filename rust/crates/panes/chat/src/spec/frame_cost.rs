@@ -73,24 +73,28 @@ async fn a_long_transcript_mounts_a_bounded_window(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn the_wheel_redraws_the_cached_transcript(cx: &mut TestAppContext) {
     let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
-    h.set_messages(long_chat(2));
+    h.set_messages(long_chat(300));
+    h.settle();
     let handle = h.read(|c| c.test_scroll().clone());
     let at = handle.bounds().center();
+    let before = f32::from(handle.offset().y);
     h.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
     h.cx.run_until_parked();
     recur_ui::guard::count_renders(true);
     h.cx.simulate_event(gpui::ScrollWheelEvent {
         position: at,
-        delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(1e6))),
+        delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(200.))),
         modifiers: gpui::Modifiers::none(),
         touch_phase: gpui::TouchPhase::Moved,
     });
     h.cx.run_until_parked();
     let counts = recur_ui::guard::take_render_counts();
     recur_ui::guard::count_renders(false);
-    // The scroller laid out again and clamped the offset: the transcript fits.
     assert!(renders("::TranscriptPane", &counts) >= 1, "{counts:?}");
-    assert_eq!(f32::from(handle.offset().y), 0.);
+    assert!(
+        f32::from(handle.offset().y) > before,
+        "the wheel scrolled up"
+    );
 }
 
 /// A cached child its parent builds while rendering.

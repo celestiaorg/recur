@@ -5,8 +5,8 @@
 //! `parent.postMessage` reaches the host (scroll, find results, find keys) and the host
 //! answers by `message` events, as with the iframe.
 //!
-//! Native views sit above GPUI's drawing, so overlays do not cover the page (see
-//! `ui-parity.md`).
+//! Native views sit above GPUI's drawing, so the page is masked wherever GPUI paints an overlay
+//! (tooltips, menus, dialogs) over it.
 
 use futures::StreamExt as _;
 use futures::channel::mpsc;
@@ -611,8 +611,10 @@ mod mac {
     use objc2::rc::Retained;
     use objc2::runtime::{NSObject, NSObjectProtocol, ProtocolObject};
     use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send};
-    use objc2_app_kit::NSView;
+    use objc2_app_kit::{NSResponder, NSView};
+    use objc2_core_graphics::CGMutablePath;
     use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
+    use objc2_quartz_core::{CAShapeLayer, CATransaction};
     use objc2_web_kit::{
         WKNavigation, WKNavigationAction, WKNavigationActionPolicy, WKNavigationDelegate,
         WKScriptMessage, WKScriptMessageHandler, WKUserContentController, WKUserScript,
@@ -626,6 +628,34 @@ mod mac {
     pub struct Ivars {
         tx: RefCell<Option<UnboundedSender<String>>>,
     }
+
+    define_class!(
+        // SAFETY: WKWebView may be subclassed; the class does not implement Drop.
+        #[unsafe(super(WKWebView, NSView, NSResponder, NSObject))]
+        #[thread_kind = MainThreadOnly]
+        #[name = "RecurNextHtmlPreviewWebView"]
+        #[ivars = RefCell<Vec<Rect>>]
+        pub struct WebView;
+
+        impl WebView {
+            /// Clicks in a hole reach the overlay GPUI drew there.
+            #[unsafe(method_id(hitTest:))]
+            fn hit_test(&self, point: NSPoint) -> Option<Retained<NSView>> {
+                // SAFETY: main thread; the superview is retained for the call.
+                let superview = unsafe { self.superview() };
+                let local = self.convertPoint_fromView(point, superview.as_deref());
+                let in_hole = self.ivars().borrow().iter().any(|h| {
+                    local.x >= h[0] && local.x < h[2] && local.y >= h[1] && local.y < h[3]
+                });
+                if in_hole {
+                    None
+                } else {
+                    // SAFETY: NSView's hitTest:, with the point it was given.
+                    unsafe { msg_send![super(self), hitTest: point] }
+                }
+            }
+        }
+    );
 
     define_class!(
         // SAFETY: NSObject has no subclassing requirements and the class does not implement
@@ -696,18 +726,20 @@ mod mac {
     }
 
     pub struct Page {
-        web: Retained<WKWebView>,
+        web: Retained<WebView>,
         bridge: Retained<Bridge>,
         attached: Rc<Cell<bool>>,
         painted: Rc<Cell<u64>>,
+        mask: Rc<RefCell<Mask>>,
     }
 
     /// What the paint closure needs.
     #[derive(Clone)]
     pub struct Handle {
-        web: Retained<WKWebView>,
+        web: Retained<WebView>,
         attached: Rc<Cell<bool>>,
         painted: Rc<Cell<u64>>,
+        mask: Rc<RefCell<Mask>>,
     }
 
     thread_local! {
@@ -735,8 +767,9 @@ mod mac {
                 );
                 ucc.addUserScript(&script);
                 let frame = NSRect::new(NSPoint::new(0., 0.), NSSize::new(10., 10.));
-                let web =
-                    WKWebView::initWithFrame_configuration(WKWebView::alloc(mtm), frame, &config);
+                let this = WebView::alloc(mtm).set_ivars(RefCell::default());
+                let web: Retained<WebView> =
+                    msg_send![super(this), initWithFrame: frame, configuration: &*config];
                 web.setNavigationDelegate(Some(ProtocolObject::from_ref(&*bridge)));
                 web.setHidden(true);
                 web
@@ -746,6 +779,7 @@ mod mac {
                 bridge,
                 attached: Rc::new(Cell::new(false)),
                 painted: Rc::new(Cell::new(0)),
+                mask: Rc::default(),
             };
             page.load(srcdoc, tx);
             Some(page)
@@ -776,6 +810,7 @@ mod mac {
                 web: self.web.clone(),
                 attached: self.attached.clone(),
                 painted: self.painted.clone(),
+                mask: self.mask.clone(),
             }
         }
 
@@ -821,25 +856,158 @@ mod mac {
         });
         page.painted.set(frame);
         let stack: Rc<[EntityId]> = window.view_stack().into();
-        hide_unless_drawn(page.web.clone(), page.painted.clone(), frame, stack, window);
+        track(page.clone(), b, frame, stack, true, window);
     }
 
-    fn hide_unless_drawn(
-        web: Retained<WKWebView>,
-        painted: Rc<Cell<u64>>,
+    /// At the end of each draw the page is up in: cut what GPUI painted over it out of the page,
+    /// since the native view sits above GPUI's drawing. Hide the page after the first draw that
+    /// neither paints it nor replays a view around it.
+    fn track(
+        page: Handle,
+        b: Bounds<Pixels>,
         frame: u64,
         stack: Rc<[EntityId]>,
+        painted_now: bool,
         window: &mut Window,
     ) {
         window.after_next_draw(move |window, _| {
-            if painted.get() != frame {
+            if page.painted.get() != frame {
                 return;
             }
-            if stack.iter().any(|v| window.replayed_view(*v)) {
-                hide_unless_drawn(web, painted, frame, stack, window);
+            if painted_now || stack.iter().any(|v| window.replayed_view(*v)) {
+                set_mask(&page, holes(b, &window.overlay_bounds()));
+                track(page, b, frame, stack, false, window);
             } else {
-                web.setHidden(true);
+                page.web.setHidden(true);
             }
         });
+    }
+
+    /// The page's size and the overlays cut out of it, in page points (y down).
+    #[derive(Default, PartialEq)]
+    pub struct Mask {
+        size: (f64, f64),
+        holes: Vec<Rect>,
+    }
+
+    /// `[left, top, right, bottom]`.
+    type Rect = [f64; 4];
+
+    fn holes(b: Bounds<Pixels>, overlays: &[Bounds<Pixels>]) -> Mask {
+        let (x, y) = (
+            f64::from(f32::from(b.origin.x)),
+            f64::from(f32::from(b.origin.y)),
+        );
+        let (w, h) = (
+            f64::from(f32::from(b.size.width)),
+            f64::from(f32::from(b.size.height)),
+        );
+        let holes = overlays
+            .iter()
+            .filter_map(|o| {
+                let left = f64::from(f32::from(o.origin.x)) - x;
+                let top = f64::from(f32::from(o.origin.y)) - y;
+                let hole = [
+                    left.max(0.),
+                    top.max(0.),
+                    (left + f64::from(f32::from(o.size.width))).min(w),
+                    (top + f64::from(f32::from(o.size.height))).min(h),
+                ];
+                (hole[0] < hole[2] && hole[1] < hole[3]).then_some(hole)
+            })
+            .collect();
+        Mask {
+            size: (w, h),
+            holes,
+        }
+    }
+
+    /// `[0, 0, w, h]` less the holes, as disjoint rects.
+    fn visible(mask: &Mask) -> Vec<Rect> {
+        let mut rects = vec![[0., 0., mask.size.0, mask.size.1]];
+        for h in &mask.holes {
+            rects = rects
+                .into_iter()
+                .flat_map(|r| {
+                    if h[0] >= r[2] || h[2] <= r[0] || h[1] >= r[3] || h[3] <= r[1] {
+                        return vec![r];
+                    }
+                    let (top, bottom) = (h[1].max(r[1]), h[3].min(r[3]));
+                    [
+                        [r[0], r[1], r[2], top],
+                        [r[0], bottom, r[2], r[3]],
+                        [r[0], top, h[0].max(r[0]), bottom],
+                        [h[2].min(r[2]), top, r[2], bottom],
+                    ]
+                    .into_iter()
+                    .filter(|p| p[0] < p[2] && p[1] < p[3])
+                    .collect()
+                })
+                .collect();
+        }
+        rects
+    }
+
+    fn set_mask(page: &Handle, mask: Mask) {
+        if *page.mask.borrow() == mask {
+            return;
+        }
+        page.web.setWantsLayer(true);
+        let Some(layer) = page.web.layer() else {
+            return;
+        };
+        CATransaction::begin();
+        CATransaction::setDisableActions(true);
+        if mask.holes.is_empty() {
+            // SAFETY: main thread.
+            unsafe { layer.setMask(None) };
+        } else {
+            let path = CGMutablePath::new();
+            for [l, t, r, b] in visible(&mask) {
+                let rect = NSRect::new(NSPoint::new(l, t), NSSize::new(r - l, b - t));
+                // SAFETY: a null transform is allowed.
+                unsafe { CGMutablePath::add_rect(Some(&path), std::ptr::null(), rect) };
+            }
+            let shape = CAShapeLayer::new();
+            shape.setFrame(NSRect::new(
+                NSPoint::new(0., 0.),
+                NSSize::new(mask.size.0, mask.size.1),
+            ));
+            shape.setPath(Some(&path));
+            // SAFETY: main thread; the shape layer has no superlayer. The WKWebView is flipped,
+            // so its layer and the mask are y down, as the rects are.
+            unsafe { layer.setMask(Some(&shape)) };
+        }
+        CATransaction::commit();
+        page.web.ivars().replace(mask.holes.clone());
+        *page.mask.borrow_mut() = mask;
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use gpui_kit::{point, px, size};
+
+        fn area(rects: &[Rect]) -> f64 {
+            rects.iter().map(|r| (r[2] - r[0]) * (r[3] - r[1])).sum()
+        }
+
+        #[test]
+        fn overlapping_overlays_cut_their_union_out_of_the_page() {
+            let page = Bounds::new(point(px(100.), px(50.)), size(px(200.), px(100.)));
+            let tooltip = Bounds::new(point(px(80.), px(40.)), size(px(60.), px(30.)));
+            let menu = Bounds::new(point(px(120.), px(60.)), size(px(40.), px(40.)));
+            let away = Bounds::new(point(px(0.), px(0.)), size(px(50.), px(50.)));
+            let mask = holes(page, &[tooltip, menu, away]);
+            assert_eq!(mask.holes, vec![[0., 0., 40., 20.], [20., 10., 60., 50.]]);
+            let shown = visible(&mask);
+            // 200x100 less 40x20 and 40x40, which share 20x10.
+            assert_eq!(area(&shown), 20_000. - 800. - 1_600. + 200.);
+            for (i, a) in shown.iter().enumerate() {
+                for b in &shown[i + 1..] {
+                    assert!(a[0] >= b[2] || b[0] >= a[2] || a[1] >= b[3] || b[1] >= a[3]);
+                }
+            }
+        }
     }
 }

@@ -23,7 +23,7 @@ Anything else (a notify reaching a non-isolated view, a notify of a non-view ent
 
 `Window::replayed_view(id)` says whether the frame being drawn replayed a cached view instead of rendering it, and `Window::view_stack` lists the views being drawn. `recur_ui::selection` keeps the items of a replayed view in a scope that spans cached views (a PR conversation's items, a transcript's session cards), whose texts do not register again while they replay.
 
-`Window::after_next_draw` runs a callback at the end of the next draw, while `replayed_view` still answers for it, and never on a frame that draws nothing (unlike `on_next_frame`). The macOS HTML preview hides its WKWebView from it once a draw neither paints the page nor replays a view around it.
+`Window::after_next_draw` runs a callback at the end of the draw in progress (or the next one), while `replayed_view` and `Window::overlay_bounds` still answer for it, and never on a frame that draws nothing (unlike `on_next_frame`). `overlay_bounds` is what that frame painted above the root's content (each deferred draw, then the prompt, drag or tooltip). The macOS HTML preview masks those out of its WKWebView, which sits above GPUI's drawing, and hides the page once a draw neither paints it nor replays a view around it.
 
 ### Unsnapped bounds
 

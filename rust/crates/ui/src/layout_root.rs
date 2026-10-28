@@ -861,38 +861,61 @@ mod block_tests {
         );
     }
 
-    struct ArmsOnce(std::rc::Rc<std::cell::Cell<u32>>, bool);
+    struct ArmsOnce(
+        std::rc::Rc<std::cell::RefCell<Vec<Vec<gpui_kit::Bounds<gpui_kit::Pixels>>>>>,
+        bool,
+    );
 
     impl Render for ArmsOnce {
         fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
             if !std::mem::replace(&mut self.1, true) {
-                let ran = self.0.clone();
-                window.after_next_draw(move |_, _| ran.set(ran.get() + 1));
+                let seen = self.0.clone();
+                window.after_next_draw(move |window, _| {
+                    seen.borrow_mut().push(window.overlay_bounds());
+                    window.after_next_draw(move |window, _| {
+                        seen.borrow_mut().push(window.overlay_bounds());
+                    });
+                });
             }
-            div()
+            div().size_full().child(
+                gpui_kit::deferred(
+                    div()
+                        .absolute()
+                        .top(px(10.))
+                        .left(px(20.))
+                        .size(px(30.))
+                        .bg(gpui_kit::black()),
+                )
+                .with_priority(1),
+            )
         }
     }
 
-    /// The macOS HTML preview hides its page from `Window::after_next_draw` (vendored
-    /// gpui-pre): a callback armed mid-draw must wait for a later draw, not an idle frame.
+    /// The macOS HTML preview masks and hides its page from `Window::after_next_draw` and
+    /// `Window::overlay_bounds` (vendored gpui-pre): a callback armed in a draw runs at its end,
+    /// one armed from that callback after the next draw, and neither on an idle frame.
     #[gpui_kit::test]
-    fn after_next_draw_waits_for_a_later_draw(cx: &mut gpui_kit::TestAppContext) {
-        let ran = std::rc::Rc::new(std::cell::Cell::new(0));
+    fn after_next_draw_runs_once_per_draw_and_sees_the_overlays(cx: &mut gpui_kit::TestAppContext) {
+        let seen = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
         let (_, cx) = cx.add_window_view({
-            let ran = ran.clone();
-            |_, _| ArmsOnce(ran, false)
+            let seen = seen.clone();
+            |_, _| ArmsOnce(seen, false)
         });
-        assert_eq!(ran.get(), 0, "armed in the first draw, so not run by it");
+        let overlay = gpui_kit::Bounds::new(
+            gpui_kit::point(px(20.), px(10.)),
+            gpui_kit::size(px(30.), px(30.)),
+        );
+        assert_eq!(
+            *seen.borrow(),
+            [vec![overlay]],
+            "runs at the end of the draw that armed it"
+        );
         cx.update(|window, cx| window.simulate_next_frame(cx));
-        assert_eq!(ran.get(), 0, "an idle frame runs nothing");
+        assert_eq!(seen.borrow().len(), 1, "an idle frame runs nothing");
         cx.update(|window, cx| {
             window.refresh();
             let _ = window.draw(cx);
         });
-        assert_eq!(
-            ran.get(),
-            1,
-            "armed in one draw, runs at the end of the next"
-        );
+        assert_eq!(*seen.borrow(), [vec![overlay], vec![overlay]]);
     }
 }

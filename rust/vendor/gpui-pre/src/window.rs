@@ -2925,11 +2925,54 @@ impl Window {
         self.invalidator.wake_platform();
     }
 
-    /// Run `callback` at the end of the next draw that starts after this call, while
-    /// [`Self::replayed_view`] still answers for that frame. Unlike [`Self::on_next_frame`] it
+    /// Run `callback` at the end of the draw in progress (or of the next one, when called between
+    /// draws or from such a callback), while [`Self::replayed_view`] and
+    /// [`Self::overlay_bounds`] still answer for that frame. Unlike [`Self::on_next_frame`] it
     /// creates no frame demand and never runs on a frame that draws nothing.
     pub fn after_next_draw(&mut self, callback: impl FnOnce(&mut Window, &mut App) + 'static) {
         self.after_draw_callbacks.push(Box::new(callback));
+    }
+
+    /// What the frame being drawn paints above the root's content (deferred draws, then the
+    /// prompt, drag or tooltip): the bounds of each one's visible primitives, in window pixels.
+    pub fn overlay_bounds(&self) -> Vec<Bounds<Pixels>> {
+        let frame = &self.next_frame;
+        let Some((_, root_paint, _)) = &frame.root else {
+            return Vec::new();
+        };
+        let ops = &frame.scene.paint_operations;
+        let mut ranges: Vec<Range<usize>> = frame
+            .deferred_draws
+            .iter()
+            .map(|d| d.paint_range.start.scene_index..d.paint_range.end.scene_index)
+            .collect();
+        let rest = ranges
+            .iter()
+            .map(|r| r.end)
+            .fold(root_paint.end.scene_index, usize::max);
+        ranges.push(rest..ops.len());
+        let scale = self.scale_factor();
+        ranges
+            .into_iter()
+            .filter_map(|range| {
+                ops.get(range)?
+                    .iter()
+                    .filter_map(|op| match op {
+                        crate::scene::PaintOperation::Primitive(p) => {
+                            Some(p.bounds().intersect(&p.content_mask().bounds))
+                        }
+                        _ => None,
+                    })
+                    .filter(|b| !b.is_empty())
+                    .reduce(|a, b| a.union(&b))
+            })
+            .map(|b| {
+                Bounds::new(
+                    point(px(b.origin.x.0 / scale), px(b.origin.y.0 / scale)),
+                    size(px(b.size.width.0 / scale), px(b.size.height.0 / scale)),
+                )
+            })
+            .collect()
     }
 
     /// Schedule a frame to be drawn on the next animation frame.
@@ -3648,7 +3691,6 @@ impl Window {
         // Set up the per-App arena for element allocation during this draw.
         // This ensures that multiple test Apps have isolated arenas.
         let arena_scope = ElementArenaScope::enter(&cx.element_arena);
-        let after_draw = mem::take(&mut self.after_draw_callbacks);
 
         if self.platform_window.prepare_frame() {
             self.refresh();
@@ -3729,7 +3771,7 @@ impl Window {
         self.text_system().finish_frame();
         self.next_frame.finish(&mut self.rendered_frame);
         self.rebase_cached_view_states(ends);
-        for callback in after_draw {
+        for callback in mem::take(&mut self.after_draw_callbacks) {
             callback(self, cx);
         }
 

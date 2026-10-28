@@ -2,9 +2,8 @@
 //! A port of vscode-textmate's `main.ts` (`Registry`), `registry.ts`
 //! (`SyncRegistry`) and `grammar/grammarDependencies.ts`.
 
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::sync::{Arc, Mutex, RwLock};
 
 use crate::grammar::{Grammar, IncludeKind, parse_include};
 use crate::raw::{RawGrammar, RawRule};
@@ -13,23 +12,24 @@ use crate::theme::{RawTheme, Theme};
 /// State grammars read at tokenize time: the theme can change under a
 /// compiled grammar, and included grammars are looked up lazily.
 pub struct RegistryShared {
-    theme: RefCell<Rc<Theme>>,
-    raw_grammars: RefCell<HashMap<String, Rc<RawGrammar>>>,
-    injection_grammars: RefCell<HashMap<String, Vec<String>>>,
+    theme: RwLock<Arc<Theme>>,
+    raw_grammars: Mutex<HashMap<String, Arc<RawGrammar>>>,
+    injection_grammars: Mutex<HashMap<String, Vec<String>>>,
 }
 
 impl RegistryShared {
-    pub(crate) fn theme(&self) -> Rc<Theme> {
-        self.theme.borrow().clone()
+    pub(crate) fn theme(&self) -> Arc<Theme> {
+        self.theme.read().unwrap().clone()
     }
 
-    pub(crate) fn lookup(&self, scope: &str) -> Option<Rc<RawGrammar>> {
-        self.raw_grammars.borrow().get(scope).cloned()
+    pub(crate) fn lookup(&self, scope: &str) -> Option<Arc<RawGrammar>> {
+        self.raw_grammars.lock().unwrap().get(scope).cloned()
     }
 
     pub(crate) fn injections(&self, scope: &str) -> Vec<String> {
         self.injection_grammars
-            .borrow()
+            .lock()
+            .unwrap()
             .get(scope)
             .cloned()
             .unwrap_or_default()
@@ -38,10 +38,11 @@ impl RegistryShared {
     fn add_grammar(&self, grammar: RawGrammar, injections: Option<Vec<String>>) {
         let scope = grammar.scope_name.clone();
         self.raw_grammars
-            .borrow_mut()
-            .insert(scope.clone(), Rc::new(grammar));
+            .lock()
+            .unwrap()
+            .insert(scope.clone(), Arc::new(grammar));
         if let Some(inj) = injections {
-            self.injection_grammars.borrow_mut().insert(scope, inj);
+            self.injection_grammars.lock().unwrap().insert(scope, inj);
         }
     }
 }
@@ -62,8 +63,8 @@ pub trait GrammarSource {
 }
 
 pub struct Registry {
-    shared: Rc<RegistryShared>,
-    grammars: HashMap<String, Rc<Grammar>>,
+    shared: Arc<RegistryShared>,
+    grammars: HashMap<String, Arc<Grammar>>,
     /// Scopes whose load was attempted (vscode-textmate caches the promise,
     /// failures included, for the registry's lifetime).
     attempted: HashSet<String>,
@@ -72,10 +73,10 @@ pub struct Registry {
 impl Registry {
     pub fn new(theme: Option<&RawTheme>) -> Registry {
         Registry {
-            shared: Rc::new(RegistryShared {
-                theme: RefCell::new(Rc::new(Theme::from_raw(theme))),
-                raw_grammars: RefCell::new(HashMap::new()),
-                injection_grammars: RefCell::new(HashMap::new()),
+            shared: Arc::new(RegistryShared {
+                theme: RwLock::new(Arc::new(Theme::from_raw(theme))),
+                raw_grammars: Mutex::new(HashMap::new()),
+                injection_grammars: Mutex::new(HashMap::new()),
             }),
             grammars: HashMap::new(),
             attempted: HashSet::new(),
@@ -84,7 +85,7 @@ impl Registry {
 
     /// Change the theme. Rule stacks from before must not be reused.
     pub fn set_theme(&self, theme: &RawTheme) {
-        *self.shared.theme.borrow_mut() = Rc::new(Theme::from_raw(Some(theme)));
+        *self.shared.theme.write().unwrap() = Arc::new(Theme::from_raw(Some(theme)));
     }
 
     /// Colour id -> colour. Entry 0 is empty ("unset").
@@ -97,7 +98,7 @@ impl Registry {
         &mut self,
         scope: &str,
         source: &mut dyn GrammarSource,
-    ) -> Result<Option<Rc<Grammar>>, LoadGrammarError> {
+    ) -> Result<Option<Arc<Grammar>>, LoadGrammarError> {
         let mut deps = ScopeDependencyProcessor::new(scope);
         while !deps.queue.is_empty() {
             let scopes: Vec<String> = deps.queue.iter().map(|r| r.scope().to_string()).collect();
@@ -125,19 +126,19 @@ impl Registry {
     }
 
     /// Register a raw grammar directly and compile it (`Registry.addGrammar`).
-    pub fn add_grammar(&mut self, raw: RawGrammar, injections: Vec<String>) -> Rc<Grammar> {
+    pub fn add_grammar(&mut self, raw: RawGrammar, injections: Vec<String>) -> Arc<Grammar> {
         let scope = raw.scope_name.clone();
         self.shared.add_grammar(raw, Some(injections));
         self.grammar_for_scope_name(&scope)
             .expect("grammar was just added")
     }
 
-    fn grammar_for_scope_name(&mut self, scope: &str) -> Option<Rc<Grammar>> {
+    fn grammar_for_scope_name(&mut self, scope: &str) -> Option<Arc<Grammar>> {
         if let Some(g) = self.grammars.get(scope) {
             return Some(g.clone());
         }
         let raw = self.shared.lookup(scope)?;
-        let g = Rc::new(Grammar::new(scope, &raw, self.shared.clone()));
+        let g = Arc::new(Grammar::new(scope, &raw, self.shared.clone()));
         self.grammars.insert(scope.to_string(), g.clone());
         Some(g)
     }
@@ -181,9 +182,9 @@ impl Collector {
 
 #[derive(Clone)]
 struct Context {
-    base: Rc<RawGrammar>,
-    self_grammar: Rc<RawGrammar>,
-    repository: Option<Rc<HashMap<String, Rc<RawRule>>>>,
+    base: Arc<RawGrammar>,
+    self_grammar: Arc<RawGrammar>,
+    repository: Option<Arc<HashMap<String, Arc<RawRule>>>>,
 }
 
 impl ScopeDependencyProcessor {
@@ -282,21 +283,21 @@ fn collect_in_top_level_rule(ctx: &Context, result: &mut Collector) {
         collect_in_rules(patterns, &with_repo, result);
     }
     if let Some(injections) = &ctx.self_grammar.injections {
-        let rules: Vec<Rc<RawRule>> = injections.iter().map(|(_, r)| r.clone()).collect();
+        let rules: Vec<Arc<RawRule>> = injections.iter().map(|(_, r)| r.clone()).collect();
         collect_in_rules(&rules, &with_repo, result);
     }
 }
 
-fn collect_in_rules(rules: &[Rc<RawRule>], ctx: &Context, result: &mut Collector) {
+fn collect_in_rules(rules: &[Arc<RawRule>], ctx: &Context, result: &mut Collector) {
     for rule in rules {
-        if !result.visited.insert(Rc::as_ptr(rule)) {
+        if !result.visited.insert(Arc::as_ptr(rule)) {
             continue;
         }
         let pattern_repository = match &rule.repository {
             Some(own) => {
                 let mut merged = ctx.repository.as_deref().cloned().unwrap_or_default();
                 merged.extend(own.iter().map(|(k, v)| (k.clone(), v.clone())));
-                Some(Rc::new(merged))
+                Some(Arc::new(merged))
             }
             None => ctx.repository.clone(),
         };

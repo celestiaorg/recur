@@ -217,6 +217,39 @@ fn fill_advances_monotonically_under_a_tiny_budget() {
 }
 
 #[test]
+fn fill_jobs_on_another_thread_match_the_foreground_fill_and_drop_stale_results() {
+    let text = synth_ts(1200);
+    let mut fg = ts_engine();
+    assert!(fg.ensure_grammar("source.ts").unwrap());
+    fg.open_doc("d", "source.ts", &text);
+    assert!(fg.fill_sync("d", LONG));
+    let mut bg = ts_engine();
+    assert!(bg.ensure_grammar("source.ts").unwrap());
+    bg.open_doc("d", "source.ts", &text);
+
+    let job = bg.fill_job("d", 300).unwrap();
+    let stale = std::thread::spawn(move || job.run(LONG)).join().unwrap();
+    bg.edit_doc(
+        "d",
+        &LineReplace {
+            from_line: 1,
+            old_line_count: 1,
+            new_lines: vec!["export function f0(x: number): number {".into()],
+        },
+    );
+    assert_eq!(bg.apply_fill("d", stale).filled, 0);
+
+    while let Some(job) = bg.fill_job("d", 300) {
+        let chunk = std::thread::spawn(move || job.run(LONG)).join().unwrap();
+        bg.apply_fill("d", chunk);
+    }
+    assert_eq!(bg.filled_through("d"), 1200);
+    for n in 1..=1200 {
+        assert_eq!(bg.tokens_for_line("d", n), fg.tokens_for_line("d", n));
+    }
+}
+
+#[test]
 fn close_doc_drops_a_live_doc_close_if_idle_does_not() {
     let mut e = TmEngine::new();
     e.open_doc("live.ts", "source.ts", "const a = 1");

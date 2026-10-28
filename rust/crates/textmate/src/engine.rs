@@ -7,7 +7,7 @@
 //!    reaches them and never written to the state store.
 
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::delta::{LineReplace, TmDocFingerprint, splice_line_map, tm_doc_fingerprint};
@@ -25,6 +25,8 @@ pub const MAX_IDLE_LINES: usize = 500_000;
 const MAX_TOKENIZE_LINE_LENGTH: usize = 20_000;
 /// Upper bound on the backwards indentation walk for guessed starts.
 const MAX_GUESS_SCAN_LINES: usize = 5_000;
+/// Lines one [`TmEngine::fill_slice`] step snapshots.
+const SLICE_JOB_LINES: usize = 256;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GrammarSourceText {
@@ -59,6 +61,59 @@ pub struct FillProgress {
     pub done: bool,
 }
 
+/// An owned snapshot of the next stretch of the accurate sweep, so it can
+/// tokenize off the UI thread. [`TmEngine::apply_fill`] takes the result.
+pub struct FillJob {
+    grammar: Arc<Grammar>,
+    version: u64,
+    filled: usize,
+    from: usize,
+    stack: Option<StateStack>,
+    /// Text and stale end stack of each line from `from`.
+    lines: Vec<(String, Option<StateStack>)>,
+}
+
+/// What a [`FillJob`] tokenized, for [`TmEngine::apply_fill`].
+pub struct FillChunk {
+    version: u64,
+    filled: usize,
+    from: usize,
+    lines: Vec<(Vec<u32>, StateStack)>,
+    /// The last line ended in its stale state.
+    restabilized: bool,
+    failed: bool,
+}
+
+impl FillJob {
+    /// Tokenize until a line ends in its stale state, the snapshot runs out
+    /// or `budget` is spent (at least one line).
+    pub fn run(self, budget: Duration) -> FillChunk {
+        let deadline = Instant::now() + budget;
+        let mut chunk = FillChunk {
+            version: self.version,
+            filled: self.filled,
+            from: self.from,
+            lines: Vec::with_capacity(self.lines.len()),
+            restabilized: false,
+            failed: false,
+        };
+        let mut stack = self.stack;
+        for (text, stale) in self.lines {
+            let Ok(r) = self.grammar.tokenize_line2(&text, stack.as_ref()) else {
+                chunk.failed = true;
+                break;
+            };
+            chunk.restabilized = stale.is_some_and(|s| r.rule_stack.equals(&s));
+            stack = Some(r.rule_stack.clone());
+            chunk.lines.push((r.tokens, r.rule_stack));
+            if chunk.restabilized || Instant::now() > deadline {
+                break;
+            }
+        }
+        chunk
+    }
+}
+
 /// A token with its scope list (`tokenizeLine`), byte offsets.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScopeToken {
@@ -72,6 +127,8 @@ struct TmDoc {
     lines: Vec<String>,
     cache: TmStackCache,
     provisional: HashMap<usize, LineTokens>,
+    /// Changes on every edit, so fill results for older text are dropped.
+    version: u64,
     /// A grammar regex failed to compile; highlighting stops for this doc.
     failed: bool,
 }
@@ -140,11 +197,12 @@ pub struct TmEngine {
     sources: HashMap<String, GrammarSourceText>,
     inject_to: HashMap<String, Vec<String>>,
     path_hints: HashMap<String, String>,
-    grammar_cache: HashMap<String, Rc<Grammar>>,
+    grammar_cache: HashMap<String, Arc<Grammar>>,
     docs: HashMap<String, TmDoc>,
     source_loader: Option<GrammarSourceLoader>,
     live_refs: HashMap<String, usize>,
     idle_docs: Vec<String>,
+    versions: u64,
 }
 
 impl TmEngine {
@@ -239,6 +297,7 @@ impl TmEngine {
         {
             return true;
         }
+        self.versions += 1;
         self.docs.insert(
             doc_id.to_string(),
             TmDoc {
@@ -246,6 +305,7 @@ impl TmEngine {
                 lines,
                 cache: TmStackCache::default(),
                 provisional: HashMap::new(),
+                version: self.versions,
                 failed: false,
             },
         );
@@ -339,6 +399,8 @@ impl TmEngine {
         let Some(doc) = self.docs.get_mut(doc_id) else {
             return;
         };
+        self.versions += 1;
+        doc.version = self.versions;
         let from = replace.from_line.max(1);
         let start = (from - 1).min(doc.lines.len());
         let end = (start + replace.old_line_count).min(doc.lines.len());
@@ -573,83 +635,114 @@ impl TmEngine {
     /// Advance the accurate sweep for about `budget`, correcting provisional
     /// guesses on the way and reporting the line range whose tokens changed.
     pub fn fill_slice(&mut self, doc_id: &str, budget: Duration) -> FillProgress {
-        let empty = FillProgress {
-            filled: 0,
-            total: 0,
-            changed_from: None,
-            changed_to: 0,
-            done: true,
+        let Some(doc) = self.docs.get(doc_id) else {
+            return FillProgress {
+                filled: 0,
+                total: 0,
+                changed_from: None,
+                changed_to: 0,
+                done: true,
+            };
         };
-        let Some(doc) = self.docs.get_mut(doc_id) else {
-            return empty;
-        };
-        let total = doc.lines.len();
-        let grammar = match self.grammar_cache.get(&doc.scope) {
-            Some(g) if !doc.failed => g.clone(),
-            _ => {
-                return FillProgress {
-                    filled: doc.cache.filled(),
-                    total,
-                    changed_from: None,
-                    changed_to: 0,
-                    done: false,
-                };
-            }
-        };
+        if doc.failed || !self.grammar_cache.contains_key(&doc.scope) {
+            return FillProgress {
+                filled: doc.cache.filled(),
+                total: doc.lines.len(),
+                changed_from: None,
+                changed_to: 0,
+                done: false,
+            };
+        }
         let deadline = Instant::now() + budget;
         let mut changed_from: Option<usize> = None;
         let mut changed_to = 0;
-        let progress = |doc: &TmDoc, changed_from, changed_to, done| FillProgress {
+        while let Some(job) = self.fill_job(doc_id, SLICE_JOB_LINES) {
+            let chunk = job.run(deadline.saturating_duration_since(Instant::now()));
+            let p = self.apply_fill(doc_id, chunk);
+            if let Some(f) = p.changed_from {
+                changed_from.get_or_insert(f);
+                changed_to = changed_to.max(p.changed_to);
+            }
+            if p.done || Instant::now() > deadline {
+                break;
+            }
+        }
+        let doc = &self.docs[doc_id];
+        FillProgress {
             filled: doc.cache.filled(),
-            total,
+            total: doc.lines.len(),
             changed_from,
             changed_to,
-            done,
+            done: doc.cache.filled() >= doc.lines.len(),
+        }
+    }
+
+    /// Snapshot up to `max_lines` of the accurate sweep for [`FillJob::run`].
+    /// `None` when the doc is filled, failed or its grammar is not compiled.
+    pub fn fill_job(&self, doc_id: &str, max_lines: usize) -> Option<FillJob> {
+        let doc = self.docs.get(doc_id)?;
+        let total = doc.lines.len();
+        let filled = doc.cache.filled();
+        if doc.failed || filled >= total {
+            return None;
+        }
+        let grammar = self.grammar_cache.get(&doc.scope)?.clone();
+        let (from, stack) = doc.cache.resume_at(filled + 1);
+        let to = total.min(from + max_lines.max(1) - 1);
+        Some(FillJob {
+            grammar,
+            version: doc.version,
+            filled,
+            from,
+            stack,
+            lines: (from..=to)
+                .map(|n| (line_text_for_tokenize(doc, n), doc.cache.stack_at(n)))
+                .collect(),
+        })
+    }
+
+    /// Apply a [`FillJob`]'s result, unless the doc was edited or the sweep
+    /// moved since the snapshot.
+    pub fn apply_fill(&mut self, doc_id: &str, chunk: FillChunk) -> FillProgress {
+        let Some(doc) = self.docs.get_mut(doc_id) else {
+            return FillProgress {
+                filled: 0,
+                total: 0,
+                changed_from: None,
+                changed_to: 0,
+                done: true,
+            };
         };
-        while doc.cache.filled() < total {
-            let n = doc.cache.filled() + 1;
-            let (mut line, mut stack) = doc.cache.resume_at(n);
-            while line <= total {
-                let stale = doc.cache.stack_at(line);
+        let mut changed_from: Option<usize> = None;
+        let mut changed_to = 0;
+        if doc.version == chunk.version && doc.cache.filled() == chunk.filled {
+            let mut line = chunk.from;
+            for (tokens, stack) in chunk.lines {
                 let shown = doc
                     .provisional
-                    .get(&line)
-                    .cloned()
+                    .remove(&line)
                     .or_else(|| doc.cache.tokens_at(line));
-                let r = match grammar
-                    .tokenize_line2(&line_text_for_tokenize(doc, line), stack.as_ref())
-                {
-                    Ok(r) => r,
-                    Err(_) => {
-                        doc.failed = true;
-                        return progress(doc, changed_from, changed_to, false);
-                    }
-                };
-                let tokens: LineTokens = r.tokens.into();
-                doc.cache
-                    .remember(line, r.rule_stack.clone(), Some(tokens.clone()));
-                doc.provisional.remove(&line);
+                let tokens: LineTokens = tokens.into();
                 if shown.as_deref() != Some(&*tokens) {
                     changed_from.get_or_insert(line);
                     changed_to = line;
                 }
-                let restabilized = stale.as_ref().is_some_and(|s| r.rule_stack.equals(s));
-                stack = Some(r.rule_stack);
-                if restabilized {
-                    doc.cache.mark_stable(line);
-                    break;
-                }
-                if Instant::now() > deadline {
-                    return progress(doc, changed_from, changed_to, false);
-                }
+                doc.cache.remember(line, stack, Some(tokens));
                 line += 1;
             }
-            if Instant::now() > deadline {
-                break;
+            if chunk.restabilized {
+                doc.cache.mark_stable(line - 1);
             }
+            doc.failed |= chunk.failed;
         }
-        let done = doc.cache.filled() >= total;
-        progress(doc, changed_from, changed_to, done)
+        let total = doc.lines.len();
+        FillProgress {
+            filled: doc.cache.filled(),
+            total,
+            changed_from,
+            changed_to,
+            done: doc.cache.filled() >= total,
+        }
     }
 
     pub fn filled_through(&self, doc_id: &str) -> usize {

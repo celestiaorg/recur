@@ -1,8 +1,9 @@
 //! TextMate highlighting for an editor (`cm-textmate.ts`, `cm-tm-deco.ts`,
 //! `cm-tm-paint.ts`, `cm-mini-script-highlight.ts`): synchronous viewport
 //! tokenization on edits and first paint, a debounced pass after cold
-//! scrolls, an idle fill to the end of the document, and per-line paint
-//! spans rebuilt from the engine's token cache.
+//! scrolls, a fill to the end of the document that tokenizes on the
+//! background executor, and per-line paint spans rebuilt from the engine's
+//! token cache.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -10,8 +11,8 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use recur_textmate::{
-    ChangedRange, FillSubscription, LineDoc, TmCatalog, TmEngine, TmFill, TokenPaint,
-    line_replace_from_changes, paint_for_meta, tm_doc_fingerprint,
+    ChangedRange, FillChunk, FillJob, FillSubscription, LineDoc, TmCatalog, TmEngine, TmFill,
+    TokenPaint, line_replace_from_changes, paint_for_meta, tm_doc_fingerprint,
 };
 
 use crate::state::{EditorState, Transaction};
@@ -59,11 +60,11 @@ pub const MAX_TM_LINES: usize = 200_000;
 pub const MAX_BUILD_LINES: usize = 1500;
 /// `tokenizeViewport` budget.
 pub const VIEWPORT_BUDGET: Duration = Duration::from_millis(25);
-/// Idle fill budget per callback.
-/// simplify: GPUI has no idle callback; the view runs the fill on a short
-/// timer with this budget, like the browser's `setTimeout` fallback.
-pub const FILL_IDLE_BUDGET: Duration = Duration::from_millis(4);
+/// Delay before the fill starts, and between retries while it cannot run.
 pub const FILL_IDLE_DELAY_MS: u64 = 32;
+/// Lines and time one background fill step covers before the UI applies it.
+pub const FILL_CHUNK_LINES: usize = 1000;
+pub const FILL_CHUNK_BUDGET: Duration = Duration::from_millis(20);
 
 /// A painted token span in document offsets.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -534,19 +535,25 @@ impl Highlighter {
         *self.fill_events.borrow_mut() = FillEvents::default();
     }
 
-    /// One idle fill slice; repaints when visible lines changed or the fill
-    /// finished. Returns whether to keep filling.
-    pub fn run_fill(
+    /// The next stretch of the fill, to run off the UI thread. `None` while
+    /// nothing can run (filled, grammar not compiled).
+    pub fn fill_job(&self) -> Option<FillJob> {
+        self.fill_sub?;
+        self.with_engine(|e| e.fill_job(&self.doc_id, FILL_CHUNK_LINES))
+            .flatten()
+    }
+
+    /// Apply a finished fill step (`None` when no job could run); repaints
+    /// when visible lines changed or the fill finished.
+    pub fn apply_fill(
         &mut self,
+        chunk: Option<FillChunk>,
         state: &EditorState,
         win: (usize, usize),
-        budget: Duration,
     ) -> HighlightNeeds {
         if self.fill_sub.is_none() {
             return HighlightNeeds::default();
         }
-        let doc_id = self.doc_id.clone();
-        let deadline = std::time::Instant::now() + budget;
         let more = {
             let mut guard = self.tm.borrow_mut();
             let TextMate { catalog, fill } = &mut *guard;
@@ -557,9 +564,7 @@ impl Highlighter {
                 }
             };
             match engine {
-                Some(e) => fill.run_idle(e, &doc_id, || {
-                    deadline.saturating_duration_since(std::time::Instant::now())
-                }),
+                Some(e) => fill.apply(e, &self.doc_id, chunk),
                 None => false,
             }
         };

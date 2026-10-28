@@ -1,7 +1,6 @@
 //! Compiled grammar rules, a port of vscode-textmate's `rule.ts`.
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use crate::onig_lib::{CaptureIndex, OnigError, OnigScanner, OnigString};
 use crate::utils::{escape_reg_exp_characters, has_captures, replace_captures};
@@ -186,8 +185,8 @@ impl CompiledRule {
 pub(crate) struct RegExpSourceList {
     items: Vec<RegExpSource>,
     has_anchors: bool,
-    cached: Option<Rc<CompiledRule>>,
-    anchor_cache: [Option<Rc<CompiledRule>>; 4],
+    cached: Option<Arc<CompiledRule>>,
+    anchor_cache: [Option<Arc<CompiledRule>>; 4],
 }
 
 impl RegExpSourceList {
@@ -213,11 +212,11 @@ impl RegExpSourceList {
         }
     }
 
-    pub fn compile(&mut self) -> Result<Rc<CompiledRule>, OnigError> {
+    pub fn compile(&mut self) -> Result<Arc<CompiledRule>, OnigError> {
         if self.cached.is_none() {
             let sources: Vec<&str> = self.items.iter().map(|e| e.source.as_str()).collect();
             let rules = self.items.iter().map(|e| e.rule_id).collect();
-            self.cached = Some(Rc::new(CompiledRule::new(&sources, rules)?));
+            self.cached = Some(Arc::new(CompiledRule::new(&sources, rules)?));
         }
         Ok(self.cached.clone().expect("compiled above"))
     }
@@ -226,7 +225,7 @@ impl RegExpSourceList {
         &mut self,
         allow_a: bool,
         allow_g: bool,
-    ) -> Result<Rc<CompiledRule>, OnigError> {
+    ) -> Result<Arc<CompiledRule>, OnigError> {
         if !self.has_anchors {
             return self.compile();
         }
@@ -238,7 +237,7 @@ impl RegExpSourceList {
                 .map(|e| e.resolve_anchors(allow_a, allow_g))
                 .collect();
             let rules = self.items.iter().map(|e| e.rule_id).collect();
-            self.anchor_cache[i] = Some(Rc::new(CompiledRule::new(&sources, rules)?));
+            self.anchor_cache[i] = Some(Arc::new(CompiledRule::new(&sources, rules)?));
         }
         Ok(self.anchor_cache[i].clone().expect("compiled above"))
     }
@@ -251,12 +250,12 @@ pub(crate) enum RuleKind {
     Match {
         match_: RegExpSource,
         captures: Vec<Option<RuleId>>,
-        cached: RefCell<Option<RegExpSourceList>>,
+        cached: Mutex<Option<RegExpSourceList>>,
     },
     IncludeOnly {
         patterns: Vec<RuleId>,
         has_missing_patterns: bool,
-        cached: RefCell<Option<RegExpSourceList>>,
+        cached: Mutex<Option<RegExpSourceList>>,
     },
     BeginEnd {
         begin: RegExpSource,
@@ -266,7 +265,7 @@ pub(crate) enum RuleKind {
         apply_end_pattern_last: bool,
         patterns: Vec<RuleId>,
         has_missing_patterns: bool,
-        cached: RefCell<Option<RegExpSourceList>>,
+        cached: Mutex<Option<RegExpSourceList>>,
     },
     BeginWhile {
         begin: RegExpSource,
@@ -275,8 +274,8 @@ pub(crate) enum RuleKind {
         while_captures: Vec<Option<RuleId>>,
         patterns: Vec<RuleId>,
         has_missing_patterns: bool,
-        cached: RefCell<Option<RegExpSourceList>>,
-        cached_while: RefCell<Option<RegExpSourceList>>,
+        cached: Mutex<Option<RegExpSourceList>>,
+        cached_while: Mutex<Option<RegExpSourceList>>,
     },
 }
 
@@ -290,7 +289,7 @@ pub(crate) struct Rule {
 
 /// Rule lookup for pattern collection (the grammar's rule registry).
 pub(crate) trait RuleRegistry {
-    fn rule(&self, id: RuleId) -> Option<Rc<Rule>>;
+    fn rule(&self, id: RuleId) -> Option<Arc<Rule>>;
 }
 
 impl Rule {
@@ -385,14 +384,14 @@ impl Rule {
         end_regex_source: Option<&str>,
         allow_a: bool,
         allow_g: bool,
-    ) -> Result<Rc<CompiledRule>, OnigError> {
+    ) -> Result<Arc<CompiledRule>, OnigError> {
         match &self.kind {
             RuleKind::Capture { .. } => {
                 let mut empty = RegExpSourceList::default();
                 empty.compile()
             }
             RuleKind::Match { match_, cached, .. } => {
-                let mut c = cached.borrow_mut();
+                let mut c = cached.lock().unwrap();
                 let list = c.get_or_insert_with(|| {
                     let mut l = RegExpSourceList::default();
                     l.push(match_.clone());
@@ -406,13 +405,8 @@ impl Rule {
             | RuleKind::BeginWhile {
                 patterns, cached, ..
             } => {
-                if cached.borrow().is_none() {
-                    let list = Self::collect_list(reg, patterns);
-                    *cached.borrow_mut() = Some(list);
-                }
-                let mut c = cached.borrow_mut();
-                c.as_mut()
-                    .expect("filled above")
+                let mut c = cached.lock().unwrap();
+                c.get_or_insert_with(|| Self::collect_list(reg, patterns))
                     .compile_ag(allow_a, allow_g)
             }
             RuleKind::BeginEnd {
@@ -422,17 +416,16 @@ impl Rule {
                 cached,
                 ..
             } => {
-                if cached.borrow().is_none() {
+                let mut c = cached.lock().unwrap();
+                let list = c.get_or_insert_with(|| {
                     let mut list = Self::collect_list(reg, patterns);
                     if *apply_end_pattern_last {
                         list.push(end.clone());
                     } else {
                         list.unshift(end.clone());
                     }
-                    *cached.borrow_mut() = Some(list);
-                }
-                let mut c = cached.borrow_mut();
-                let list = c.as_mut().expect("filled above");
+                    list
+                });
                 if end.has_back_references
                     && let Some(src) = end_regex_source
                 {
@@ -454,7 +447,7 @@ impl Rule {
         end_regex_source: Option<&str>,
         allow_a: bool,
         allow_g: bool,
-    ) -> Result<Rc<CompiledRule>, OnigError> {
+    ) -> Result<Arc<CompiledRule>, OnigError> {
         let RuleKind::BeginWhile {
             while_,
             cached_while,
@@ -464,7 +457,7 @@ impl Rule {
             let mut empty = RegExpSourceList::default();
             return empty.compile();
         };
-        let mut c = cached_while.borrow_mut();
+        let mut c = cached_while.lock().unwrap();
         let list = c.get_or_insert_with(|| {
             let mut l = RegExpSourceList::default();
             l.push(while_.clone());

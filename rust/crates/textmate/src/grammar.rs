@@ -5,9 +5,9 @@
 //! Token offsets are UTF-8 byte offsets into the line (vscode-textmate reports
 //! UTF-16 offsets; the tokens are otherwise identical).
 
-use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
 
 use crate::matcher::{Matcher, create_matchers};
 use crate::onig_lib::{CaptureIndex, OnigError, OnigString};
@@ -106,7 +106,7 @@ fn standard_token_type(scope: &str) -> u32 {
 
 /// A scope list with resolved token metadata at each level.
 #[derive(Clone)]
-pub(crate) struct AttributedScopeStack(Rc<AttrNode>);
+pub(crate) struct AttributedScopeStack(Arc<AttrNode>);
 
 struct AttrNode {
     parent: Option<AttributedScopeStack>,
@@ -116,7 +116,7 @@ struct AttrNode {
 
 impl AttributedScopeStack {
     fn create_root(scope_name: &str, token_attributes: u32) -> AttributedScopeStack {
-        AttributedScopeStack(Rc::new(AttrNode {
+        AttributedScopeStack(Arc::new(AttrNode {
             parent: None,
             scope_path: ScopeStack::new(None, scope_name),
             token_attributes,
@@ -131,7 +131,7 @@ impl AttributedScopeStack {
         let token_type = g.token_type_for_scope(scope_name);
         let scope_path = ScopeStack::new(None, scope_name);
         let style = g.theme_match(&scope_path);
-        AttributedScopeStack(Rc::new(AttrNode {
+        AttributedScopeStack(Arc::new(AttrNode {
             parent: None,
             token_attributes: merge_attributes(token_attributes, token_type, style),
             scope_path,
@@ -151,7 +151,7 @@ impl AttributedScopeStack {
     }
 
     fn ptr_eq(a: &AttributedScopeStack, b: &AttributedScopeStack) -> bool {
-        Rc::ptr_eq(&a.0, &b.0)
+        Arc::ptr_eq(&a.0, &b.0)
     }
 
     fn equals(a: Option<&AttributedScopeStack>, b: Option<&AttributedScopeStack>) -> bool {
@@ -198,7 +198,7 @@ impl AttributedScopeStack {
         let token_type = g.token_type_for_scope(scope_name);
         let new_path = target.0.scope_path.push(scope_name);
         let style = g.theme_match(&new_path);
-        AttributedScopeStack(Rc::new(AttrNode {
+        AttributedScopeStack(Arc::new(AttrNode {
             parent: Some(target.clone()),
             token_attributes: merge_attributes(target.token_attributes(), token_type, style),
             scope_path: new_path,
@@ -218,15 +218,15 @@ fn merge_attributes(existing: u32, token_type: u32, style: Option<StyleAttribute
 /// Immutable apart from the per-line enter/anchor positions, which
 /// vscode-textmate also mutates in place.
 #[derive(Clone)]
-pub struct StateStack(Rc<StateNode>);
+pub struct StateStack(Arc<StateNode>);
 
 struct StateNode {
     parent: Option<StateStack>,
     rule_id: RuleId,
-    enter_pos: Cell<i64>,
-    anchor_pos: Cell<i64>,
+    enter_pos: AtomicI64,
+    anchor_pos: AtomicI64,
     begin_rule_captured_eol: bool,
-    end_rule: Option<Rc<str>>,
+    end_rule: Option<Arc<str>>,
     name_scopes_list: Option<AttributedScopeStack>,
     content_name_scopes_list: Option<AttributedScopeStack>,
     depth: u32,
@@ -240,16 +240,16 @@ impl StateStack {
         enter_pos: i64,
         anchor_pos: i64,
         begin_rule_captured_eol: bool,
-        end_rule: Option<Rc<str>>,
+        end_rule: Option<Arc<str>>,
         name_scopes_list: Option<AttributedScopeStack>,
         content_name_scopes_list: Option<AttributedScopeStack>,
     ) -> StateStack {
         let depth = parent.as_ref().map_or(1, |p| p.0.depth + 1);
-        StateStack(Rc::new(StateNode {
+        StateStack(Arc::new(StateNode {
             parent,
             rule_id,
-            enter_pos: Cell::new(enter_pos),
-            anchor_pos: Cell::new(anchor_pos),
+            enter_pos: AtomicI64::new(enter_pos),
+            anchor_pos: AtomicI64::new(anchor_pos),
             begin_rule_captured_eol,
             end_rule,
             name_scopes_list,
@@ -264,7 +264,7 @@ impl StateStack {
 
     /// Same rules, end rules and scopes all the way down.
     pub fn equals(&self, other: &StateStack) -> bool {
-        if Rc::ptr_eq(&self.0, &other.0) {
+        if Arc::ptr_eq(&self.0, &other.0) {
             return true;
         }
         if !Self::structural_equals(Some(self), Some(other)) {
@@ -281,7 +281,7 @@ impl StateStack {
             match (a, b) {
                 (None, None) => return true,
                 (Some(x), Some(y)) => {
-                    if Rc::ptr_eq(&x.0, &y.0) {
+                    if Arc::ptr_eq(&x.0, &y.0) {
                         return true;
                     }
                     if x.0.depth != y.0.depth
@@ -301,8 +301,8 @@ impl StateStack {
     fn reset(&self) {
         let mut el = Some(self);
         while let Some(e) = el {
-            e.0.enter_pos.set(-1);
-            e.0.anchor_pos.set(-1);
+            e.0.enter_pos.store(-1, Ordering::Relaxed);
+            e.0.anchor_pos.store(-1, Ordering::Relaxed);
             el = e.0.parent.as_ref();
         }
     }
@@ -322,7 +322,7 @@ impl StateStack {
         enter_pos: i64,
         anchor_pos: i64,
         begin_rule_captured_eol: bool,
-        end_rule: Option<Rc<str>>,
+        end_rule: Option<Arc<str>>,
         name_scopes_list: Option<AttributedScopeStack>,
         content_name_scopes_list: Option<AttributedScopeStack>,
     ) -> StateStack {
@@ -338,7 +338,7 @@ impl StateStack {
         )
     }
 
-    fn rule(&self, g: &Grammar) -> Option<Rc<Rule>> {
+    fn rule(&self, g: &Grammar) -> Option<Arc<Rule>> {
         g.rule(self.0.rule_id)
     }
 
@@ -358,8 +358,8 @@ impl StateStack {
         StateStack::new(
             self.0.parent.clone(),
             self.0.rule_id,
-            self.0.enter_pos.get(),
-            self.0.anchor_pos.get(),
+            self.0.enter_pos.load(Ordering::Relaxed),
+            self.0.anchor_pos.load(Ordering::Relaxed),
             self.0.begin_rule_captured_eol,
             self.0.end_rule.clone(),
             self.0.name_scopes_list.clone(),
@@ -374,8 +374,8 @@ impl StateStack {
         StateStack::new(
             self.0.parent.clone(),
             self.0.rule_id,
-            self.0.enter_pos.get(),
-            self.0.anchor_pos.get(),
+            self.0.enter_pos.load(Ordering::Relaxed),
+            self.0.anchor_pos.load(Ordering::Relaxed),
             self.0.begin_rule_captured_eol,
             Some(end_rule.into()),
             self.0.name_scopes_list.clone(),
@@ -386,7 +386,7 @@ impl StateStack {
     fn has_same_rule_as(&self, other: &StateStack) -> bool {
         let mut el = Some(self);
         while let Some(e) = el {
-            if e.0.enter_pos.get() != other.0.enter_pos.get() {
+            if e.0.enter_pos.load(Ordering::Relaxed) != other.0.enter_pos.load(Ordering::Relaxed) {
                 break;
             }
             if e.0.rule_id == other.0.rule_id {
@@ -557,31 +557,39 @@ pub enum TokenizeError {
 pub struct Grammar {
     root_scope_name: String,
     grammar: RawGrammar,
-    root_id: Cell<RuleId>,
-    rules: RefCell<Vec<Option<Rc<Rule>>>>,
-    included_grammars: RefCell<HashMap<String, Rc<RawGrammar>>>,
-    registry: Rc<RegistryShared>,
-    injections: RefCell<Option<Rc<Vec<Injection>>>>,
-    token_types: RefCell<HashMap<String, u32>>,
+    root_id: OnceLock<RuleId>,
+    rules: RwLock<Vec<Option<Arc<Rule>>>>,
+    included_grammars: Mutex<HashMap<String, Arc<RawGrammar>>>,
+    registry: Arc<RegistryShared>,
+    injections: OnceLock<Vec<Injection>>,
+    token_types: Mutex<HashMap<String, u32>>,
 }
 
 impl RuleRegistry for Grammar {
-    fn rule(&self, id: RuleId) -> Option<Rc<Rule>> {
-        self.rules.borrow().get(id as usize).and_then(Clone::clone)
+    fn rule(&self, id: RuleId) -> Option<Arc<Rule>> {
+        self.rules
+            .read()
+            .unwrap()
+            .get(id as usize)
+            .and_then(Clone::clone)
     }
 }
 
 impl Grammar {
-    pub(crate) fn new(scope_name: &str, raw: &RawGrammar, registry: Rc<RegistryShared>) -> Grammar {
+    pub(crate) fn new(
+        scope_name: &str,
+        raw: &RawGrammar,
+        registry: Arc<RegistryShared>,
+    ) -> Grammar {
         Grammar {
             root_scope_name: scope_name.to_string(),
             grammar: raw.init(None),
-            root_id: Cell::new(0),
-            rules: RefCell::new(vec![None]),
-            included_grammars: RefCell::new(HashMap::new()),
+            root_id: OnceLock::new(),
+            rules: RwLock::new(vec![None]),
+            included_grammars: Mutex::new(HashMap::new()),
             registry,
-            injections: RefCell::new(None),
-            token_types: RefCell::new(HashMap::new()),
+            injections: OnceLock::new(),
+            token_types: Mutex::new(HashMap::new()),
         }
     }
 
@@ -590,11 +598,12 @@ impl Grammar {
     }
 
     fn token_type_for_scope(&self, scope: &str) -> u32 {
-        if let Some(t) = self.token_types.borrow().get(scope) {
+        let mut types = self.token_types.lock().unwrap();
+        if let Some(t) = types.get(scope) {
             return *t;
         }
         let t = standard_token_type(scope);
-        self.token_types.borrow_mut().insert(scope.to_string(), t);
+        types.insert(scope.to_string(), t);
         t
     }
 
@@ -604,32 +613,32 @@ impl Grammar {
 
     fn register_rule(&self, build: impl FnOnce() -> Rule) -> RuleId {
         let id = {
-            let mut rules = self.rules.borrow_mut();
+            let mut rules = self.rules.write().unwrap();
             rules.push(None);
             (rules.len() - 1) as RuleId
         };
         let rule = build();
-        self.rules.borrow_mut()[id as usize] = Some(Rc::new(rule));
+        self.rules.write().unwrap()[id as usize] = Some(Arc::new(rule));
         id
     }
 
     /// `RuleFactory.getCompiledRuleId`.
-    fn compiled_rule_id(&self, desc: &Rc<RawRule>, repository: &RawRepository) -> RuleId {
-        if desc.id.get() != 0 {
-            return desc.id.get();
+    fn compiled_rule_id(&self, desc: &Arc<RawRule>, repository: &RawRepository) -> RuleId {
+        if desc.id.load(Ordering::Relaxed) != 0 {
+            return desc.id.load(Ordering::Relaxed);
         }
         let id = {
-            let mut rules = self.rules.borrow_mut();
+            let mut rules = self.rules.write().unwrap();
             rules.push(None);
             (rules.len() - 1) as RuleId
         };
-        desc.id.set(id);
+        desc.id.store(id, Ordering::Relaxed);
         let rule = self.build_rule(id, desc, repository);
-        self.rules.borrow_mut()[id as usize] = Some(Rc::new(rule));
+        self.rules.write().unwrap()[id as usize] = Some(Arc::new(rule));
         id
     }
 
-    fn build_rule(&self, id: RuleId, desc: &Rc<RawRule>, repository: &RawRepository) -> Rule {
+    fn build_rule(&self, id: RuleId, desc: &Arc<RawRule>, repository: &RawRepository) -> Rule {
         if let Some(m) = desc.match_.as_deref().filter(|m| !m.is_empty()) {
             let captures = self.compile_captures(desc.captures.as_ref(), repository);
             return Rule::new(
@@ -638,7 +647,7 @@ impl Grammar {
                 RuleKind::Match {
                     match_: RegExpSource::new(m, i64::from(id)),
                     captures,
-                    cached: RefCell::new(None),
+                    cached: Mutex::new(None),
                 },
             );
         }
@@ -647,7 +656,7 @@ impl Grammar {
                 Some(own) => {
                     let mut merged = (**repository).clone();
                     merged.extend(own.iter().map(|(k, v)| (k.clone(), v.clone())));
-                    Rc::new(merged)
+                    Arc::new(merged)
                 }
                 None => repository.clone(),
             };
@@ -655,7 +664,7 @@ impl Grammar {
             let patterns = match (&desc.patterns, desc.include.as_deref()) {
                 (Some(p), _) => Some(p.as_slice()),
                 (None, Some(inc)) if !inc.is_empty() => {
-                    include_only = vec![Rc::new(RawRule {
+                    include_only = vec![Arc::new(RawRule {
                         include: Some(inc.to_string()),
                         ..RawRule::default()
                     })];
@@ -670,7 +679,7 @@ impl Grammar {
                 RuleKind::IncludeOnly {
                     patterns,
                     has_missing_patterns,
-                    cached: RefCell::new(None),
+                    cached: Mutex::new(None),
                 },
             );
         };
@@ -695,8 +704,8 @@ impl Grammar {
                     while_captures,
                     patterns,
                     has_missing_patterns,
-                    cached: RefCell::new(None),
-                    cached_while: RefCell::new(None),
+                    cached: Mutex::new(None),
+                    cached_while: Mutex::new(None),
                 },
             );
         }
@@ -726,7 +735,7 @@ impl Grammar {
                 apply_end_pattern_last: desc.apply_end_pattern_last,
                 patterns,
                 has_missing_patterns,
-                cached: RefCell::new(None),
+                cached: Mutex::new(None),
             },
         )
     }
@@ -774,7 +783,7 @@ impl Grammar {
 
     fn compile_patterns(
         &self,
-        patterns: Option<&[Rc<RawRule>]>,
+        patterns: Option<&[Arc<RawRule>]>,
         repository: &RawRepository,
     ) -> (Vec<RuleId>, bool) {
         let mut r = Vec::new();
@@ -826,15 +835,16 @@ impl Grammar {
         &self,
         scope_name: &str,
         repository: Option<&RawRepository>,
-    ) -> Option<Rc<RawGrammar>> {
-        if let Some(g) = self.included_grammars.borrow().get(scope_name) {
+    ) -> Option<Arc<RawGrammar>> {
+        if let Some(g) = self.included_grammars.lock().unwrap().get(scope_name) {
             return Some(g.clone());
         }
         let raw = self.registry.lookup(scope_name)?;
         let base = repository.and_then(|r| r.get("$base").cloned());
-        let g = Rc::new(raw.init(base));
+        let g = Arc::new(raw.init(base));
         self.included_grammars
-            .borrow_mut()
+            .lock()
+            .unwrap()
             .insert(scope_name.to_string(), g.clone());
         Some(g)
     }
@@ -843,7 +853,7 @@ impl Grammar {
         let mut result = Vec::new();
         let push = |result: &mut Vec<Injection>,
                     selector: &str,
-                    rule: &Rc<RawRule>,
+                    rule: &Arc<RawRule>,
                     repo: &RawRepository| {
             let matchers = create_matchers(selector);
             let rule_id = self.compiled_rule_id(rule, repo);
@@ -865,7 +875,7 @@ impl Grammar {
                 continue;
             };
             if let Some(selector) = &g.injection_selector {
-                let as_rule = Rc::new(RawRule {
+                let as_rule = Arc::new(RawRule {
                     name: g.name.clone(),
                     patterns: g.patterns.clone(),
                     repository: Some(g.repository.clone()),
@@ -878,23 +888,22 @@ impl Grammar {
         result
     }
 
-    fn injections(&self) -> Rc<Vec<Injection>> {
-        if let Some(i) = self.injections.borrow().as_ref() {
-            return i.clone();
-        }
-        let i = Rc::new(self.collect_injections());
-        *self.injections.borrow_mut() = Some(i.clone());
-        i
+    fn injections(&self) -> &[Injection] {
+        self.injections.get_or_init(|| self.collect_injections())
     }
 
-    fn ensure_root(&self) {
-        if self.root_id.get() == 0
-            && let Some(self_rule) = self.grammar.repository.get("$self")
-        {
+    /// Compile the whole rule graph once. Rule ids are assigned in compile
+    /// order and stacks compare them, so threads sharing the grammar must not
+    /// compile concurrently; the `OnceLock` makes later callers wait.
+    fn ensure_root(&self) -> RuleId {
+        *self.root_id.get_or_init(|| {
+            let Some(self_rule) = self.grammar.repository.get("$self") else {
+                return 0;
+            };
             let id = self.compiled_rule_id(self_rule, &self.grammar.repository);
-            self.root_id.set(id);
             self.injections();
-        }
+            id
+        })
     }
 
     fn tokenize(
@@ -903,7 +912,7 @@ impl Grammar {
         prev_state: Option<&StateStack>,
         emit_binary: bool,
     ) -> Result<(usize, LineTokens, StateStack), TokenizeError> {
-        self.ensure_root();
+        let root_id = self.ensure_root();
         let (is_first_line, prev) = match prev_state {
             None => {
                 let defaults = self.registry.theme().defaults();
@@ -916,9 +925,7 @@ impl Grammar {
                     defaults.foreground_id,
                     defaults.background_id,
                 );
-                let root_name = self
-                    .rule(self.root_id.get())
-                    .and_then(|r| r.get_name(None, None));
+                let root_name = self.rule(root_id).and_then(|r| r.get_name(None, None));
                 let scope_list = match root_name {
                     Some(name) => AttributedScopeStack::create_root_and_look_up_scope_name(
                         &name,
@@ -931,7 +938,7 @@ impl Grammar {
                     true,
                     StateStack::new(
                         None,
-                        self.root_id.get(),
+                        root_id,
                         -1,
                         -1,
                         false,
@@ -1074,7 +1081,7 @@ fn match_rule_or_injections(
         return Ok(match_result);
     }
     let Some(injection_result) = match_injections(
-        &injections,
+        injections,
         g,
         line,
         is_first_line,
@@ -1118,7 +1125,7 @@ fn check_while_conditions(
     } else {
         -1
     };
-    let mut while_rules: Vec<(StateStack, Rc<Rule>)> = Vec::new();
+    let mut while_rules: Vec<(StateStack, Arc<Rule>)> = Vec::new();
     let mut node = Some(stack.clone());
     while let Some(n) = node {
         if let Some(rule) = n.rule(g)
@@ -1306,8 +1313,8 @@ fn tokenize_string(
             tokens.produce(&stack, caps[0].end);
             let popped = stack.clone();
             stack = stack.pop().unwrap_or_else(|| popped.clone());
-            anchor_position = popped.0.anchor_pos.get();
-            if !has_advanced && popped.0.enter_pos.get() == line_pos as i64 {
+            anchor_position = popped.0.anchor_pos.load(Ordering::Relaxed);
+            if !has_advanced && popped.0.enter_pos.load(Ordering::Relaxed) == line_pos as i64 {
                 // The grammar pushed and popped a rule without advancing
                 // (vscode-textmate#12): stay in the pushed state.
                 stack = popped;

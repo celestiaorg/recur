@@ -201,8 +201,7 @@ pub struct DiffFile {
     geom: Rc<RefCell<Geom>>,
     pending_pin: Option<(usize, f32, f32)>,
     pending_jump: Option<i64>,
-    /// The sticky `.df-head`'s offset below its natural place, and `.stuck`.
-    head_shift: f32,
+    /// The sticky `.df-head`'s `.stuck`.
     head_stuck: bool,
     /// The composer's placeholder (`composePlaceholder`).
     placeholder: String,
@@ -302,7 +301,6 @@ impl DiffFile {
             geom: Rc::default(),
             pending_pin: None,
             pending_jump: None,
-            head_shift: 0.,
             head_stuck: false,
             placeholder: "Comment…".into(),
             line_window_key: String::new(),
@@ -367,10 +365,9 @@ impl DiffFile {
         self.hooks = hooks;
     }
 
-    /// Where the stack's sticky header logic puts `.df-head` this frame.
-    pub fn set_head_shift(&mut self, shift: f32, stuck: bool, cx: &mut Context<Self>) {
-        if (shift - self.head_shift).abs() > 1e-3 || stuck != self.head_stuck {
-            self.head_shift = shift;
+    /// Whether the stack's sticky header logic has `.df-head` stuck to the pane top.
+    pub fn set_head_stuck(&mut self, stuck: bool, cx: &mut Context<Self>) {
+        if stuck != self.head_stuck {
             self.head_stuck = stuck;
             cx.notify();
         }
@@ -2364,13 +2361,13 @@ impl DiffFile {
             .w_full()
             .flex()
             .flex_col();
-        let floating = self.head_shift > 1e-3;
-        root = if floating {
+        // In a pane the header floats over a placeholder, placed from each frame's scroll.
+        let float_head = self.pane.clone().map(|pane| (pane, self.head(window, cx)));
+        root = if float_head.is_some() {
             root.child(div().flex_none().h(px(self.geom.borrow().head_h.max(40.))))
         } else {
             root.child(self.head(window, cx))
         };
-        let float_head = floating.then(|| (self.head_shift, self.head(window, cx)));
         if !collapsed {
             let mut slots_el: Vec<AnyElement> = Vec::new();
             let split = self.props.layout == DiffLayout::Split;
@@ -2643,18 +2640,86 @@ impl DiffFile {
         .absolute()
         .inset_0();
         let _ = t;
-        let layer = float_head.map(|(shift, head)| {
-            div()
-                .absolute()
-                .top_0()
-                .left_0()
-                .right_0()
-                .flex()
-                .flex_col()
-                .child(vgap(shift, window))
-                .child(head)
+        let layer = float_head.map(|(pane, head)| StickyHead {
+            pane,
+            head_h: self.geom.borrow().head_h.max(40.),
+            child: head,
         });
         root.children(layer).child(frame)
+    }
+}
+
+/// `.df-head`'s `position: sticky; top: 0` inside its card: a layer over the card that puts
+/// the header at the pane top during prepaint, from the scroll being drawn. Placing it from
+/// the previous frame's scroll made it ride each scroll step, then snap back.
+struct StickyHead {
+    pane: Pane,
+    head_h: f32,
+    child: AnyElement,
+}
+
+impl IntoElement for StickyHead {
+    type Element = Self;
+    fn into_element(self) -> Self {
+        self
+    }
+}
+
+impl gpui_kit::Element for StickyHead {
+    type RequestLayoutState = ();
+    type PrepaintState = ();
+
+    fn id(&self) -> Option<gpui_kit::ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static std::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _: Option<&gpui_kit::GlobalElementId>,
+        _: Option<&gpui_kit::InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (gpui_kit::LayoutId, ()) {
+        let child = self.child.request_layout(window, cx);
+        let mut layer = div().absolute().inset_0().flex().flex_col();
+        let style = layer.style().clone();
+        let mut s = gpui_kit::Style::default();
+        gpui_kit::Refineable::refine(&mut s, &style);
+        (window.request_layout(s, [child], cx), ())
+    }
+
+    fn prepaint(
+        &mut self,
+        _: Option<&gpui_kit::GlobalElementId>,
+        _: Option<&gpui_kit::InspectorElementId>,
+        bounds: Bounds<Pixels>,
+        _: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        let top = self.pane.bounds().map_or(bounds.top(), |b| b.top());
+        let max = (f32::from(bounds.size.height) - self.head_h).max(0.);
+        let dy = f32::from(top - bounds.top()).clamp(0., max);
+        window.with_element_offset(gpui_kit::point(px(0.), px(dy)), |window| {
+            self.child.prepaint(window, cx)
+        });
+    }
+
+    fn paint(
+        &mut self,
+        _: Option<&gpui_kit::GlobalElementId>,
+        _: Option<&gpui_kit::InspectorElementId>,
+        _: Bounds<Pixels>,
+        _: &mut (),
+        _: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        self.child.paint(window, cx);
     }
 }
 

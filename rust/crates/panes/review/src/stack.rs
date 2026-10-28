@@ -340,22 +340,14 @@ impl FileStack {
         changed
     }
 
-    /// `syncStuckHeaders` and the sticky `.df-head` itself: each live card's header follows
-    /// the pane top inside its card.
+    /// `syncStuckHeaders`. The header itself follows the pane top as it draws (`StickyHead`).
     fn sync_stuck_headers(&mut self, ranges: &[CardRange], top: f32, cx: &mut App) {
         for r in ranges {
             let Some(df) = self.diff_files.get(&r.path) else {
                 continue;
             };
             let stuck = header_is_stuck(r.top, r.bottom, top);
-            let head_h = df.read(cx).head_height().max(40.);
-            // Inside the 1px card border; the header stays within its `.diff-file`.
-            let inner_top = r.top + 1.;
-            let inner_bottom = r.bottom - 1.;
-            let shift = (top - inner_top)
-                .max(0.)
-                .min((inner_bottom - inner_top - head_h).max(0.));
-            df.update(cx, |d, cx| d.set_head_shift(shift, stuck, cx));
+            df.update(cx, |d, cx| d.set_head_stuck(stuck, cx));
         }
     }
 

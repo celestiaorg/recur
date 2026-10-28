@@ -398,6 +398,59 @@ async fn review_changes_survives_scrolling_a_large_mixed_size_diff(cx: &mut Test
     assert!(live > 0 && live <= crate::review_window::REVIEW_HYDRATE_MAX);
 }
 
+/// A stuck file header sits at the pane top at every scroll step.
+#[gpui::test]
+async fn a_stuck_file_header_holds_the_pane_top_while_scrolling(cx: &mut TestAppContext) {
+    let files = crate::gallery::large_files(40);
+    let paths: Vec<String> = files
+        .as_array()
+        .expect("files")
+        .iter()
+        .map(|f| f["path"].as_str().expect("path").to_string())
+        .collect();
+    let opts = MockOptions::default().resolver("DiffVsBase", move |_, _, _| {
+        Reply::value(json!({ "files": files.clone() }))
+    });
+    let (mut h, host) = surface(cx, opts, |p| p.count = 40);
+    let pane = host.read_with(h.cx, |hst, cx| {
+        hst.surface
+            .read(cx)
+            .files_view()
+            .read(cx)
+            .stack()
+            .pane
+            .clone()
+    });
+    h.settle();
+    let view = h.cx.debug_bounds("diffscroll").expect("pane");
+    let mut checked = 0;
+    for _ in 0..40 {
+        pane.set_scroll_top(pane.scroll_top() + 37.);
+        h.cx.update(|window, _| window.refresh());
+        h.cx.run_until_parked();
+        // The card spanning the pane top, well past its header, has its header at the top.
+        for p in &paths {
+            let card = format!("cfile:live:{p}");
+            let Some(card) = h.cx.debug_bounds(Box::leak(card.into_boxed_str())) else {
+                continue;
+            };
+            if card.top() < view.top() - gpui::px(20.) && card.bottom() > view.top() + gpui::px(80.)
+            {
+                let head = format!("df-head:{p}:open");
+                let head =
+                    h.cx.debug_bounds(Box::leak(head.into_boxed_str()))
+                        .expect("header");
+                assert!(
+                    (head.top() - view.top()).abs() < gpui::px(0.5),
+                    "{head:?} under {view:?}"
+                );
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked > 5, "only {checked} frames had a stuck header");
+}
+
 #[gpui::test]
 async fn a_huge_diff_mounts_only_the_cards_near_the_viewport(cx: &mut TestAppContext) {
     let files = crate::gallery::large_files(2000);

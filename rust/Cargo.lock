@@ -8192,7 +8192,6 @@ dependencies = [
  "parking_lot",
  "portable-pty",
  "regex",
- "regress",
  "serde",
  "serde_json",
  "tempfile",

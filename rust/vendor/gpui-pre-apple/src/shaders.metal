@@ -903,6 +903,91 @@ fragment float4 surface_fragment(SurfaceFragmentInput input [[stage_in]],
   return ycbcrToRGBTransform * ycbcr;
 }
 
+// Recur: backdrop blur. Separable Gaussian passes between scratch textures (after one that
+// halves the resolution, for wide blurs), then a composite back into the frame, clipped to
+// the rounded rect.
+
+struct BackdropBlurPass {
+  float2 source_origin; // the blurred region in the source, in source pixels
+  float2 source_size;
+  float2 step;          // one source pixel along the blur
+  float scale;          // source pixels per target pixel
+  float sigma;          // in source pixels, 0 to copy (or downsample)
+};
+
+struct BackdropBlurComposite {
+  Bounds_ScaledPixels bounds;
+  Corners_ScaledPixels corner_radii;
+  Bounds_ScaledPixels clip;
+  Bounds_ScaledPixels region; // the drawn pixels, whole
+  float2 blurred_size;        // the region in the blurred texture, in its pixels
+  float scale;                // frame pixels per blurred pixel
+};
+
+struct BackdropBlurVertexOutput {
+  float4 position [[position]];
+};
+
+vertex BackdropBlurVertexOutput backdrop_blur_pass_vertex(
+    uint unit_vertex_id [[vertex_id]],
+    constant float2 *unit_vertices [[buffer(0)]]) {
+  float2 unit_vertex = unit_vertices[unit_vertex_id];
+  return BackdropBlurVertexOutput{
+      float4(unit_vertex * float2(2., -2.) + float2(-1., 1.), 0., 1.)};
+}
+
+fragment float4 backdrop_blur_pass_fragment(
+    BackdropBlurVertexOutput input [[stage_in]],
+    constant BackdropBlurPass *pass [[buffer(0)]],
+    texture2d<float> source [[texture(0)]]) {
+  constexpr sampler s(coord::pixel, filter::linear, address::clamp_to_edge);
+  // A scale of 2 samples between four source pixels and averages them (no blur, a sigma of 0).
+  float2 center = pass->source_origin + input.position.xy * pass->scale;
+  float2 lo = pass->source_origin + 0.5;
+  float2 hi = pass->source_origin + pass->source_size - 0.5;
+  float sigma = pass->sigma;
+  float4 sum = source.sample(s, center);
+  float total = 1.;
+  if (sigma > 0.) {
+    // Neighboring taps in pairs: one linear sample between them weighs both.
+    int radius = min(int(ceil(sigma * 3.)), 64);
+    for (int i = 1; i <= radius; i += 2) {
+      float w1 = exp(-float(i * i) / (2. * sigma * sigma));
+      float w2 = exp(-float((i + 1) * (i + 1)) / (2. * sigma * sigma));
+      float2 offset = (float(i) + w2 / (w1 + w2)) * pass->step;
+      sum += (w1 + w2) * (source.sample(s, clamp(center + offset, lo, hi)) +
+                          source.sample(s, clamp(center - offset, lo, hi)));
+      total += 2. * (w1 + w2);
+    }
+  }
+  return sum / total;
+}
+
+vertex BackdropBlurVertexOutput backdrop_blur_composite_vertex(
+    uint unit_vertex_id [[vertex_id]],
+    constant float2 *unit_vertices [[buffer(0)]],
+    constant BackdropBlurComposite *blur [[buffer(1)]],
+    constant Size_DevicePixels *viewport_size [[buffer(2)]]) {
+  return BackdropBlurVertexOutput{to_device_position(
+      unit_vertices[unit_vertex_id], blur->region, viewport_size)};
+}
+
+fragment float4 backdrop_blur_composite_fragment(
+    BackdropBlurVertexOutput input [[stage_in]],
+    constant BackdropBlurComposite *blur [[buffer(1)]],
+    texture2d<float> blurred [[texture(0)]]) {
+  constexpr sampler s(coord::pixel, filter::linear, address::clamp_to_edge);
+  float2 p = input.position.xy;
+  float2 clip_min = float2(blur->clip.origin.x, blur->clip.origin.y);
+  float2 clip_max = clip_min + float2(blur->clip.size.width, blur->clip.size.height);
+  float2 region_origin = float2(blur->region.origin.x, blur->region.origin.y);
+  float2 q = clamp((p - region_origin) / blur->scale, 0.5, blur->blurred_size - 0.5);
+  float2 inside = saturate(min(p - clip_min, clip_max - p) + 0.5);
+  float coverage = saturate(0.5 - quad_sdf(p, blur->bounds, blur->corner_radii)) *
+                   inside.x * inside.y;
+  return float4(blurred.sample(s, q).rgb, coverage);
+}
+
 float4 hsla_to_rgba(Hsla hsla) {
   float h = hsla.h * 6.0; // Now, it's an angle but scaled in [0, 6) range
   float s = hsla.s;

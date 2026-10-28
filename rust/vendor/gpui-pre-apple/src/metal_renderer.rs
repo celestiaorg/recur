@@ -3,8 +3,8 @@ use anyhow::{Context as _, Result};
 use block2::RcBlock;
 use core_graphics::geometry::CGSize;
 use gpui::{
-    AtlasTextureId, Background, Bounds, ContentMask, DevicePixels, PaintSurface, Path, Point,
-    PrimitiveBatch, ScaledPixels, Scene, Size, point, size,
+    AtlasTextureId, BackdropBlur, Background, Bounds, ContentMask, Corners, DevicePixels,
+    PaintSurface, Path, Point, PrimitiveBatch, ScaledPixels, Scene, SceneBatch, Size, point, size,
 };
 #[cfg(any(test, feature = "bench-support", feature = "test-support"))]
 use image::RgbaImage;
@@ -124,6 +124,10 @@ pub struct MetalRenderer {
     monochrome_sprites_pipeline_state: metal::RenderPipelineState,
     polychrome_sprites_pipeline_state: metal::RenderPipelineState,
     surfaces_pipeline_state: metal::RenderPipelineState,
+    backdrop_blur_pass_pipeline_state: metal::RenderPipelineState,
+    backdrop_blur_composite_pipeline_state: metal::RenderPipelineState,
+    /// Two scratch textures for backdrop blurs, grown to the largest blurred region.
+    backdrop_blur_textures: Option<[metal::Texture; 2]>,
     unit_vertices: metal::Buffer,
     #[allow(clippy::arc_with_non_send_sync)]
     instance_buffer_pool: Arc<Mutex<InstanceBufferPool>>,
@@ -359,6 +363,22 @@ impl MetalRenderer {
             "surface_fragment",
             MTLPixelFormat::BGRA8Unorm,
         );
+        let backdrop_blur_pass_pipeline_state = build_unblended_pipeline_state(
+            &device,
+            &library,
+            "backdrop_blur_pass",
+            "backdrop_blur_pass_vertex",
+            "backdrop_blur_pass_fragment",
+            MTLPixelFormat::BGRA8Unorm,
+        );
+        let backdrop_blur_composite_pipeline_state = build_pipeline_state(
+            &device,
+            &library,
+            "backdrop_blur_composite",
+            "backdrop_blur_composite_vertex",
+            "backdrop_blur_composite_fragment",
+            MTLPixelFormat::BGRA8Unorm,
+        );
 
         let command_queue = device.new_command_queue();
         let supports_shared_storage = cfg!(target_os = "ios") || is_apple_gpu;
@@ -399,6 +419,9 @@ impl MetalRenderer {
             monochrome_sprites_pipeline_state,
             polychrome_sprites_pipeline_state,
             surfaces_pipeline_state,
+            backdrop_blur_pass_pipeline_state,
+            backdrop_blur_composite_pipeline_state,
+            backdrop_blur_textures: None,
             unit_vertices,
             instance_buffer_pool,
             sprite_atlas,
@@ -504,6 +527,12 @@ impl MetalRenderer {
             (viewport_size.width.ceil() as i32).into(),
             (viewport_size.height.ceil() as i32).into(),
         );
+        // A backdrop blur reads the drawable back.
+        let framebuffer_only = !cfg!(all(feature = "test-support", debug_assertions))
+            && scene.backdrop_blurs.is_empty();
+        if layer.framebuffer_only() != framebuffer_only {
+            layer.set_framebuffer_only(framebuffer_only);
+        }
         let drawable = if let Some(drawable) = layer.next_drawable() {
             drawable
         } else {
@@ -728,7 +757,23 @@ impl MetalRenderer {
             Some(metal::MTLClearColor::new(0., 0., 0., alpha)),
         );
 
-        for batch in scene.batches() {
+        for batch in scene.batches_with_backdrop_blurs() {
+            let batch = match batch {
+                SceneBatch::Primitives(batch) => batch,
+                SceneBatch::BackdropBlurs(range) => {
+                    command_encoder.end_encoding();
+                    for blur in &scene.backdrop_blurs[range] {
+                        self.draw_backdrop_blur(blur, texture, viewport_size, command_buffer);
+                    }
+                    command_encoder = new_command_encoder_for_texture(
+                        command_buffer,
+                        texture,
+                        viewport_size,
+                        None,
+                    );
+                    continue;
+                }
+            };
             match batch {
                 PrimitiveBatch::Shadows(range) => {
                     self.draw_shadows(range, instance_bindings, viewport_size, command_encoder)
@@ -799,6 +844,151 @@ impl MetalRenderer {
         command_encoder.end_encoding();
 
         Ok(command_buffer.to_owned())
+    }
+
+    /// Blurs the frame under `blur`: horizontal and vertical passes between two scratch
+    /// textures, at half resolution once the blur is wide enough to hide it (a first pass
+    /// averages each 2x2 block), and a composite back into `texture` through the rounded rect.
+    fn draw_backdrop_blur(
+        &mut self,
+        blur: &BackdropBlur,
+        texture: &metal::TextureRef,
+        viewport_size: Size<DevicePixels>,
+        command_buffer: &metal::CommandBufferRef,
+    ) {
+        let clip = blur.bounds.intersect(&blur.content_mask.bounds);
+        let (vw, vh) = (viewport_size.width.0 as f32, viewport_size.height.0 as f32);
+        let (x0, y0) = (
+            clip.origin.x.0.max(0.).floor(),
+            clip.origin.y.0.max(0.).floor(),
+        );
+        let (x1, y1) = (
+            clip.right().0.min(vw).ceil(),
+            clip.bottom().0.min(vh).ceil(),
+        );
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        let sigma = blur.blur_radius.0;
+        let scale = if sigma >= 4. { 2. } else { 1. };
+        let (w, h) = (x1 - x0, y1 - y0);
+        let (bw, bh) = ((w / scale).ceil(), (h / scale).ceil());
+
+        let fits =
+            |t: &[metal::Texture; 2]| t[0].width() >= bw as u64 && t[0].height() >= bh as u64;
+        if !self.backdrop_blur_textures.as_ref().is_some_and(fits) {
+            let (cw, ch) = self
+                .backdrop_blur_textures
+                .as_ref()
+                .map_or((0, 0), |t| (t[0].width(), t[0].height()));
+            let descriptor = metal::TextureDescriptor::new();
+            descriptor.set_width(cw.max(bw as u64));
+            descriptor.set_height(ch.max(bh as u64));
+            descriptor.set_pixel_format(MTLPixelFormat::BGRA8Unorm);
+            descriptor.set_storage_mode(metal::MTLStorageMode::Private);
+            descriptor.set_usage(
+                metal::MTLTextureUsage::RenderTarget | metal::MTLTextureUsage::ShaderRead,
+            );
+            self.backdrop_blur_textures = Some([
+                self.device.new_texture(&descriptor),
+                self.device.new_texture(&descriptor),
+            ]);
+        }
+        let [a, b] = self.backdrop_blur_textures.as_ref().unwrap();
+
+        let pass =
+            |source: &metal::TextureRef, target: &metal::TextureRef, uniforms: BackdropBlurPass| {
+                let descriptor = metal::RenderPassDescriptor::new();
+                let attachment = descriptor.color_attachments().object_at(0).unwrap();
+                attachment.set_texture(Some(target));
+                attachment.set_load_action(metal::MTLLoadAction::DontCare);
+                attachment.set_store_action(metal::MTLStoreAction::Store);
+                let encoder = command_buffer.new_render_command_encoder(descriptor);
+                encoder.set_viewport(metal::MTLViewport {
+                    originX: 0.,
+                    originY: 0.,
+                    width: bw as f64,
+                    height: bh as f64,
+                    znear: 0.,
+                    zfar: 1.,
+                });
+                encoder.set_render_pipeline_state(&self.backdrop_blur_pass_pipeline_state);
+                encoder.set_vertex_buffer(0, Some(&self.unit_vertices), 0);
+                encoder.set_fragment_bytes(
+                    0,
+                    mem::size_of_val(&uniforms) as u64,
+                    &uniforms as *const BackdropBlurPass as *const _,
+                );
+                encoder.set_fragment_texture(0, Some(source));
+                encoder.draw_primitives(metal::MTLPrimitiveType::Triangle, 0, 6);
+                encoder.end_encoding();
+            };
+        let region = BackdropBlurPass {
+            source_origin: point(x0, y0),
+            source_size: size(w, h),
+            step: point(1., 0.),
+            scale,
+            sigma,
+        };
+        let blurred = |step| BackdropBlurPass {
+            source_origin: point(0., 0.),
+            source_size: size(bw, bh),
+            step,
+            scale: 1.,
+            sigma: sigma / scale,
+        };
+        let result = if scale > 1. {
+            pass(
+                texture,
+                a,
+                BackdropBlurPass {
+                    sigma: 0.,
+                    ..region
+                },
+            );
+            pass(a, b, blurred(point(1., 0.)));
+            pass(b, a, blurred(point(0., 1.)));
+            a
+        } else {
+            pass(texture, a, region);
+            pass(a, b, blurred(point(0., 1.)));
+            b
+        };
+
+        let encoder = new_command_encoder_for_texture(command_buffer, texture, viewport_size, None);
+        let composite = BackdropBlurComposite {
+            bounds: blur.bounds,
+            corner_radii: blur.corner_radii,
+            clip,
+            region: Bounds {
+                origin: point(ScaledPixels(x0), ScaledPixels(y0)),
+                size: size(ScaledPixels(w), ScaledPixels(h)),
+            },
+            blurred_size: size(bw, bh),
+            scale,
+            pad: 0.,
+        };
+        encoder.set_render_pipeline_state(&self.backdrop_blur_composite_pipeline_state);
+        encoder.set_vertex_buffer(0, Some(&self.unit_vertices), 0);
+        for set_bytes in [
+            metal::RenderCommandEncoderRef::set_vertex_bytes,
+            metal::RenderCommandEncoderRef::set_fragment_bytes,
+        ] {
+            set_bytes(
+                encoder,
+                1,
+                mem::size_of_val(&composite) as u64,
+                &composite as *const BackdropBlurComposite as *const _,
+            );
+        }
+        encoder.set_vertex_bytes(
+            2,
+            mem::size_of_val(&viewport_size) as u64,
+            &viewport_size as *const Size<DevicePixels> as *const _,
+        );
+        encoder.set_fragment_texture(0, Some(result));
+        encoder.draw_primitives(metal::MTLPrimitiveType::Triangle, 0, 6);
+        encoder.end_encoding();
     }
 
     fn draw_paths_to_intermediate(
@@ -1372,6 +1562,33 @@ fn build_pipeline_state(
         .expect("could not create render pipeline state")
 }
 
+fn build_unblended_pipeline_state(
+    device: &metal::DeviceRef,
+    library: &metal::LibraryRef,
+    label: &str,
+    vertex_fn_name: &str,
+    fragment_fn_name: &str,
+    pixel_format: metal::MTLPixelFormat,
+) -> metal::RenderPipelineState {
+    let vertex_fn = library
+        .get_function(vertex_fn_name, None)
+        .expect("error locating vertex function");
+    let fragment_fn = library
+        .get_function(fragment_fn_name, None)
+        .expect("error locating fragment function");
+
+    let descriptor = metal::RenderPipelineDescriptor::new();
+    descriptor.set_label(label);
+    descriptor.set_vertex_function(Some(vertex_fn.as_ref()));
+    descriptor.set_fragment_function(Some(fragment_fn.as_ref()));
+    let color_attachment = descriptor.color_attachments().object_at(0).unwrap();
+    color_attachment.set_pixel_format(pixel_format);
+
+    device
+        .new_render_pipeline_state(&descriptor)
+        .expect("could not create render pipeline state")
+}
+
 fn build_path_sprite_pipeline_state(
     device: &metal::DeviceRef,
     library: &metal::LibraryRef,
@@ -1655,6 +1872,27 @@ enum PathRasterizationInputIndex {
 #[repr(C)]
 pub struct PathSprite {
     pub bounds: Bounds<ScaledPixels>,
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct BackdropBlurPass {
+    source_origin: Point<f32>,
+    source_size: Size<f32>,
+    step: Point<f32>,
+    scale: f32,
+    sigma: f32,
+}
+
+#[repr(C)]
+struct BackdropBlurComposite {
+    bounds: Bounds<ScaledPixels>,
+    corner_radii: Corners<ScaledPixels>,
+    clip: Bounds<ScaledPixels>,
+    region: Bounds<ScaledPixels>,
+    blurred_size: Size<f32>,
+    scale: f32,
+    pad: f32, // Metal pads the struct to its float2 alignment
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

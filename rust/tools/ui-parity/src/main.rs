@@ -188,6 +188,7 @@ fn render(specs: &[SceneSpec], out: &Path, bench: Option<usize>) -> Result<()> {
     // A scene is captured from the frames it is built in: markdown renders there, not on a
     // worker the headless app does not wait for (the test harnesses do the same).
     recur_content::markdown::set_markdown_render_inline(true);
+    recur_ui::style::set_backdrop_blur(false);
     let mut cx = HeadlessAppContext::with_platform(
         gpui_kit::platform::current_platform(true).text_system(),
         Arc::new(recur_ui::Assets),

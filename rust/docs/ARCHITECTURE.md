@@ -298,6 +298,7 @@ Packaging files live in `rust/build/` (not `build/`), so they move with the port
 - **Notifications** go through `notify-send` with no click-through, and there is no dock badge. The Go app does the same.
 - **Window icon** comes from the desktop entry, matched by the app id / `WM_CLASS` `build.recur.next` (the Go app also sets it on the window).
 - **The updater** runs only in a macOS `.app`, as in the Go app.
+- **Backdrop blur.** GPUI's Linux renderer (gpui-pre-wgpu, not vendored) skips backdrop blurs, so the palette, modal and lightbox scrims show their color alone (`vendor/README.md`).
 - **Keys.** ⌘ chords are Ctrl (GPUI's `secondary`), as `isCmdOrCtrl` makes them in the web UI. As in the Go app, menu items carry no accelerators off macOS, and a focused terminal keeps its Ctrl chords (Ctrl+R, Ctrl+K, Ctrl+T…). The terminal dock's own chords are Ctrl+Shift, and CodeMirror's `Mod` bindings (Ctrl+G find next, Ctrl+End) take precedence over the emacs keymap. Specs press `secondary-…`; the few whose steps only hold on macOS are `ignore`d on Linux, each with the reason beside it.
 
 ## Promotion

@@ -14,6 +14,7 @@ use gpui_kit::{
     IntoElement, ParentElement, Pixels, SharedString, Stateful, Styled, Window, div, point,
     prelude::FluentBuilder, px, relative,
 };
+use std::sync::atomic::{AtomicBool, Ordering};
 
 impl From<Color> for Fill {
     fn from(c: Color) -> Fill {
@@ -874,15 +875,41 @@ pub fn panel(cx: &App) -> Div {
         .rounded(px(8.))
 }
 
-/// The overlay scrim, `rgba(5, 7, 10, .55)` with a 2px backdrop blur (GPUI has no backdrop
-/// filter; see `ui-parity.md`), centering its card at the top.
+static BACKDROP_BLUR: AtomicBool = AtomicBool::new(true);
+
+/// Turns [`backdrop_blur`]'s blur on or off. The parity renderer turns it off: Playwright's
+/// WebKit captures leave backdrop filters out, so the references show scrims unblurred.
+pub fn set_backdrop_blur(on: bool) {
+    BACKDROP_BLUR.store(on, Ordering::Relaxed);
+}
+
+/// `backdrop-filter: blur(radius)` under a `background` filling the parent: an absolute child
+/// that blurs what is painted behind the parent, then fills it. Off macOS only the fill shows.
+pub fn backdrop_blur(radius: f32, background: Color) -> impl IntoElement {
+    gpui_kit::canvas(
+        |_, _, _| {},
+        move |bounds, _, window, _| {
+            if BACKDROP_BLUR.load(Ordering::Relaxed) {
+                window.paint_backdrop_blur(bounds, Default::default(), px(radius));
+            }
+            window.paint_quad(gpui_kit::fill(bounds, Hsla::from(background)));
+        },
+    )
+    .absolute()
+    .top_0()
+    .left_0()
+    .size_full()
+}
+
+/// The overlay scrim, `rgba(5, 7, 10, .55)` with a 2px backdrop blur, centering its card at
+/// the top.
 fn scrim() -> Div {
     div()
         .absolute()
         .top_0()
         .left_0()
         .size_full()
-        .bg(rgba(5, 7, 10, 0.55))
+        .child(backdrop_blur(2., rgba(5, 7, 10, 0.55)))
         .flex()
         .justify_center()
         .items_start()

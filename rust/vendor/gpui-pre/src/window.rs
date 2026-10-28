@@ -6,8 +6,8 @@ use crate::Inspector;
 use crate::profiler;
 use crate::{
     Action, AnyDrag, AnyElement, AnyImageCache, AnyTooltip, AnyView, App, AppContext, Arena, Asset,
-    AsyncWindowContext, AtlasTile, AvailableSpace, Background, BorderStyle, Bounds, BoxShadow,
-    Capslock, Context, Corners, CursorHideMode, CursorStyle, Decorations, DevicePixels,
+    AsyncWindowContext, AtlasTile, AvailableSpace, BackdropBlur, Background, BorderStyle, Bounds,
+    BoxShadow, Capslock, Context, Corners, CursorHideMode, CursorStyle, Decorations, DevicePixels,
     DispatchActionListener, DispatchNodeId, DispatchTree, DisplayId, Edges, Effect, Entity,
     EntityId, EventEmitter, FileDropEvent, FontId, Global, GlobalElementId, GlyphId, GpuSpecs,
     Hsla, InputHandler, InputPreference, IsZero, KeyBinding, KeyContext, KeyDownEvent, KeyEvent,
@@ -3799,6 +3799,16 @@ impl Window {
         ]
     }
 
+    /// The last frame's scene batches as labels (test support), backdrop blurs included.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn scene_batch_labels(&self) -> Vec<String> {
+        self.rendered_frame
+            .scene
+            .batches_with_backdrop_blurs()
+            .map(|batch| batch.label())
+            .collect()
+    }
+
     /// Points every cached view's state at where this frame put it, so a later frame that
     /// renders an ancestor again finds what it replays (a replayed root moves them all).
     fn rebase_cached_view_states(&mut self, (prepaint_end, paint_end): (PrepaintStateIndex, PaintIndex)) {
@@ -5218,6 +5228,29 @@ impl Window {
                 pad: 0,
             });
         }
+    }
+
+    /// Recur: blurs what is painted under `bounds` by a Gaussian of standard deviation
+    /// `blur_radius`, clipped to `corner_radii`, as CSS `backdrop-filter: blur()`. Paint it
+    /// before the element's background. Renderers without backdrop blur skip it.
+    ///
+    /// This method should only be called as part of the paint phase of element drawing.
+    pub fn paint_backdrop_blur(
+        &mut self,
+        bounds: Bounds<Pixels>,
+        corner_radii: Corners<Pixels>,
+        blur_radius: Pixels,
+    ) {
+        self.invalidator.debug_assert_paint();
+
+        let scale_factor = self.scale_factor();
+        self.next_frame.scene.insert_primitive(BackdropBlur {
+            order: 0,
+            blur_radius: blur_radius.scale(scale_factor),
+            bounds: self.snap_bounds(bounds),
+            corner_radii: corner_radii.scale(scale_factor),
+            content_mask: self.snapped_content_mask(),
+        });
     }
 
     fn largest_border_interior(quad: &Quad) -> Bounds<ScaledPixels> {

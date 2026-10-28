@@ -283,7 +283,10 @@ impl Observatory {
     }
 
     pub(crate) fn can_toggle_find(&self) -> bool {
-        if self.show_image_pane() || self.show_pdf_pane() || self.show_video_pane() {
+        if self.show_pdf_pane() {
+            return self.pdf_preview.is_some();
+        }
+        if self.show_image_pane() || self.show_video_pane() {
             return false;
         }
         if self.show_diff() {

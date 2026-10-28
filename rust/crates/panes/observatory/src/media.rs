@@ -7,9 +7,10 @@ use std::sync::Arc;
 use futures::future::BoxFuture;
 use gpui_kit::{App, AppContext as _, Context, Entity, Window};
 use recur_content::images::{Decoded, ImageCache, ImageLoader};
-use recur_content::{AttachmentLightbox, PdfPreview};
+use recur_content::{AttachmentLightbox, FilePreviewEvent, PdfPreview};
 use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
 use recur_services::Services;
+use recur_ui::guard::Guarded;
 use recur_view_core::file_drag::is_abs_filesystem_path;
 
 use crate::model::is_scratch_path;
@@ -255,6 +256,11 @@ impl Observatory {
             Some(p) => p.clone(),
             None => {
                 let p = cx.new(|cx| PdfPreview::new(None, window, cx));
+                let sub =
+                    cx.guarded_subscribe_in(&p, window, |obs, _, _: &FilePreviewEvent, _, cx| {
+                        obs.sync_find_panel_open(cx)
+                    });
+                self.editor_subs.push(sub);
                 self.pdf_preview = Some(p.clone());
                 p
             }

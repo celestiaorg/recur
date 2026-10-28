@@ -559,7 +559,11 @@ impl Observatory {
 
     /// `syncFindPanelOpen`: the crumb bar's find toggle follows the focused surface.
     pub(crate) fn sync_find_panel_open(&mut self, cx: &mut Context<Self>) {
-        let open = if self.show_diff() {
+        let open = if self.show_pdf_pane() {
+            self.pdf_preview
+                .as_ref()
+                .is_some_and(|p| p.read(cx).is_search_open())
+        } else if self.show_diff() {
             self.merge_editor
                 .as_ref()
                 .is_some_and(|(_, e)| e.read(cx).is_search_open())
@@ -586,7 +590,11 @@ impl Observatory {
     /// `toggleFindPanel` (the crumb bar's search button).
     pub(crate) fn toggle_find_panel(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_editors(window, cx);
-        if self.show_diff() {
+        if self.show_pdf_pane() {
+            if let Some(p) = self.pdf_preview.clone() {
+                p.update(cx, |p, cx| p.toggle_search(window, cx));
+            }
+        } else if self.show_diff() {
             if let Some((_, e)) = self.merge_editor.clone() {
                 e.update(cx, |e, cx| e.toggle_search(window, cx));
             }

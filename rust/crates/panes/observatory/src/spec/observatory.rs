@@ -1368,3 +1368,51 @@ async fn a_long_changes_list_lays_out_the_rows_near_its_viewport(cx: &mut TestAp
     assert!(h.has("scm-stage:u:f249.txt"));
     assert!(!h.has("scm-stage:u:f000.txt"));
 }
+
+#[gpui::test]
+async fn pdf_find_opens_from_the_crumb_bar_and_takes_typing(cx: &mut TestAppContext) {
+    use base64::Engine as _;
+    const PDF: &[u8] = include_bytes!("../../../../../tools/ui-parity/content/page.pdf");
+    let opts = MockOptions::default()
+        .resolver("ListTree", |a, _, _| {
+            Reply::value(if s(a, 2).is_empty() {
+                json!([{"name": "page.pdf", "path": "page.pdf", "dir": false}])
+            } else {
+                json!([])
+            })
+        })
+        .resolver("ListChangedFiles", |_, _, _| {
+            Reply::value(json!(["page.pdf"]))
+        })
+        .resolver("GitStatus", |_, _, _| {
+            Reply::value(json!({"page.pdf": "u"}))
+        })
+        .resolver("WorkingStatus", |_, _, _| {
+            Reply::value(json!({"page.pdf": "u"}))
+        })
+        .resolver("ReadFile", |a, _, _| {
+            Reply::value(json!({
+                "path": s(a, 2), "language": "", "content": "", "size": PDF.len(),
+                "writable": true, "mime": "application/pdf",
+            }))
+        })
+        .resolver("FetchAsset", |_, _, _| {
+            Reply::value(json!({
+                "contentType": "application/pdf",
+                "body": base64::engine::general_purpose::STANDARD.encode(PDF),
+            }))
+        });
+    let mut h = mount(cx, opts, |_| {}, |_| {});
+    h.click("obs-node:file:page.pdf");
+    h.wait(500);
+    assert!(h.read(|o, _| o.can_toggle_find()));
+    h.click("crumb:find");
+    let pdf = h.read(|o, _| o.pdf_preview.clone()).unwrap();
+    assert!(h.read(|o, _| o.find_panel_open));
+    h.keys("t h e");
+    let label = h.cx.update(|_, cx| pdf.read(cx).find_count_label(cx));
+    assert!(label.starts_with("1 / "), "{label:?}");
+    h.keys("escape");
+    assert!(h.cx.update(|_, cx| !pdf.read(cx).is_search_open()));
+    assert!(!h.read(|o, _| o.find_panel_open));
+}

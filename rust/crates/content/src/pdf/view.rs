@@ -22,6 +22,7 @@ use super::engine::{self, Document, FindText, NormRect, Opened};
 use super::logic::{MAX_SCALE, MIN_SCALE, clamp_page, fit_width_scale, page_at_scroll, zoom_step};
 use crate::preview::find::collect_preview_find_ranges;
 use crate::preview::find_bar::{FindBarEvent, PreviewFindBar};
+use crate::preview::view::FilePreviewEvent;
 
 const PAGE_GAP: f32 = 12.;
 const VIEW_PAD: f32 = 12.;
@@ -64,6 +65,8 @@ pub struct PdfPreview {
     index: usize,
     _subscriptions: Vec<Subscription>,
 }
+
+impl gpui_kit::EventEmitter<FilePreviewEvent> for PdfPreview {}
 
 impl PdfPreview {
     /// `src`: the document's bytes (`None` shows nothing).
@@ -364,6 +367,14 @@ impl PdfPreview {
         self.find_open
     }
 
+    pub fn toggle_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.find_open {
+            self.close_search(window, cx);
+        } else {
+            self.open_search(window, cx);
+        }
+    }
+
     /// The find bar's count: empty while there is no query.
     pub fn find_count_label(&self, cx: &gpui_kit::App) -> String {
         self.bar.read(cx).count_label(cx)
@@ -374,7 +385,10 @@ impl PdfPreview {
         if !self.ready() {
             return;
         }
-        self.find_open = true;
+        if !self.find_open {
+            self.find_open = true;
+            cx.emit(FilePreviewEvent::SearchOpenChanged(true));
+        }
         self.bar.update(cx, |b, cx| b.focus_and_select(window, cx));
         self.refresh_find(cx);
         cx.notify();
@@ -385,6 +399,7 @@ impl PdfPreview {
             return;
         }
         self.find_open = false;
+        cx.emit(FilePreviewEvent::SearchOpenChanged(false));
         self.matches.clear();
         self.index = 0;
         self.bar.update(cx, |b, cx| {

@@ -280,6 +280,7 @@ pub struct TerminalView {
     unacked: usize,
     disposed: bool,
     last_size: (usize, usize),
+    size_held: bool,
     resize_task: Option<Task<()>>,
     attach_task: Option<Task<()>>,
     tick_task: Option<(Instant, Task<()>)>,
@@ -361,6 +362,7 @@ impl TerminalView {
             unacked: 0,
             disposed: false,
             last_size: (0, 0),
+            size_held: false,
             resize_task: None,
             attach_task: None,
             tick_task: None,
@@ -567,6 +569,14 @@ impl TerminalView {
         }));
     }
 
+    /// Keep the grid at its size while the pane's box animates; release refits it.
+    pub fn hold_size(&mut self, hold: bool, cx: &mut Context<Self>) {
+        if self.size_held != hold {
+            self.size_held = hold;
+            cx.notify();
+        }
+    }
+
     /// Layout: refits the grid to the content box (`refit`) and pins it to the bottom, so leftover
     /// sub-row pixels sit at the top and the last row stays fully visible.
     pub(crate) fn fit(
@@ -580,7 +590,7 @@ impl TerminalView {
             f32::from(content.size.height),
         );
         // A collapsed or hidden container measures 0x0; fitting to that would shrink the PTY.
-        if w > 0.0 && h > 0.0 {
+        if w > 0.0 && h > 0.0 && !self.size_held {
             let (cols, rows) = term_fit_size(
                 w,
                 h,

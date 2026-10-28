@@ -568,6 +568,34 @@ async fn ctrl_shift_backtick_maximizes_the_dock_over_the_observatory_and_back(
 }
 
 #[gpui::test]
+async fn the_grid_keeps_its_size_while_maximize_animates(cx: &mut TestAppContext) {
+    let t = Term::default();
+    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    h.state_update(|s, cx| s.set_terminal_dock_open(WS, true, cx));
+    h.wait(100);
+    let grid = |h: &mut H| {
+        h.read(|o, cx| {
+            let d = o.dock.as_ref().expect("dock").1.read(cx);
+            d.pane(d.active_id()).expect("pane").read(cx).size()
+        })
+    };
+    let normal = grid(&mut h);
+    h.update(|_, _, cx| recur_ui::motion::thaw(cx));
+    h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, true, cx));
+    h.wait(100);
+    assert!(h.read(|o, _| o.term_max_anim.is_some()));
+    assert_eq!(grid(&mut h), normal);
+    h.wait(400);
+    let max = grid(&mut h);
+    assert!(max.1 > normal.1, "{normal:?} {max:?}");
+    h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, false, cx));
+    h.wait(100);
+    assert_eq!(grid(&mut h), max);
+    h.wait(400);
+    assert_eq!(grid(&mut h), normal);
+}
+
+#[gpui::test]
 async fn maximize_and_restore_while_the_dock_is_beside_the_editor(cx: &mut TestAppContext) {
     let t = Term::default();
     let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});

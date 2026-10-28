@@ -943,6 +943,7 @@ impl Observatory {
             cx,
         );
         let body = self.render_body(window, cx);
+        self.step_term_anim(window, cx);
         let overlay = self.render_term_overlay(cx);
         let ctx = self.render_ctx_menu(cx);
         let mut root = div()

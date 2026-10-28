@@ -1040,7 +1040,6 @@ impl Observatory {
         let max = self.term_maximized(cx);
         if id != self.term_max_for_ws {
             self.term_max_for_ws = id;
-            self.term_max_gen += 1;
             self.term_max_phase = TermMaxPhase::Idle;
             self.term_max_anim = None;
         }
@@ -1048,12 +1047,10 @@ impl Observatory {
             if matches!(self.term_max_phase, TermMaxPhase::Enter | TermMaxPhase::Max) {
                 return;
             }
-            self.term_max_gen += 1;
-            self.animate_term_fill(self.term_max_gen, window, cx);
+            self.animate_term_fill(window, cx);
             return;
         }
         if !open {
-            self.term_max_gen += 1;
             self.term_max_phase = TermMaxPhase::Idle;
             self.term_max_anim = None;
             return;
@@ -1061,8 +1058,7 @@ impl Observatory {
         if matches!(self.term_max_phase, TermMaxPhase::Idle | TermMaxPhase::Exit) {
             return;
         }
-        self.term_max_gen += 1;
-        self.animate_term_shrink(self.term_max_gen, window, cx);
+        self.animate_term_shrink(cx);
     }
 
     fn rect_of(
@@ -1103,7 +1099,7 @@ impl Observatory {
     }
 
     /// `animateTermFill`: FLIP the dock from its slot to the whole Observatory.
-    fn animate_term_fill(&mut self, token: u64, window: &mut Window, cx: &mut Context<Self>) {
+    fn animate_term_fill(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let reversing = self.term_max_phase == TermMaxPhase::Exit;
         if !reversing {
             self.overlay_keep_editor_hidden = self.editor_hidden(cx);
@@ -1128,13 +1124,12 @@ impl Observatory {
         self.term_max_phase = TermMaxPhase::Enter;
         let root = self.root_token;
         self.focus_terminal_panel(root, window, cx);
-        let to = self.full_rect();
-        self.term_max_anim = Some((from, to, recur_ui::motion::now(cx)));
-        self.run_term_anim(token, TermMaxPhase::Max, window, cx);
+        self.term_max_anim = Some((from, recur_ui::motion::now(cx)));
+        cx.notify();
     }
 
     /// `animateTermShrink`: back to the slot (or `.obs-main` when the editor was hidden).
-    fn animate_term_shrink(&mut self, token: u64, window: &mut Window, cx: &mut Context<Self>) {
+    fn animate_term_shrink(&mut self, cx: &mut Context<Self>) {
         let obs = self.bounds.obs.get();
         let dock = self.bounds.dock.get();
         if dock.size.width <= gpui_kit::px(0.) || obs.size.width <= gpui_kit::px(0.) {
@@ -1145,70 +1140,49 @@ impl Observatory {
         }
         let from = self.overlay_rect;
         self.term_max_phase = TermMaxPhase::Exit;
-        let to = self.restore_target_rect();
-        self.term_max_anim = Some((from, to, recur_ui::motion::now(cx)));
-        self.run_term_anim(token, TermMaxPhase::Idle, window, cx);
+        self.term_max_anim = Some((from, recur_ui::motion::now(cx)));
+        cx.notify();
     }
 
-    /// Step the overlay rectangle each frame over `TERM_MAX_MS`, then settle in `end`.
-    fn run_term_anim(
-        &mut self,
-        token: u64,
-        end: TermMaxPhase,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        cx.spawn_in(window, async move |this, cx| {
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_millis(16))
-                    .await;
-                let done = this
-                    .update(cx, |o, cx| {
-                        if o.term_max_gen != token {
-                            return true;
-                        }
-                        let Some((from, to, start)) = o.term_max_anim else {
-                            return true;
-                        };
-                        // The destination tracks layout while it animates (resize).
-                        let to = if end == TermMaxPhase::Max {
-                            o.full_rect()
-                        } else {
-                            let _ = to;
-                            o.restore_target_rect()
-                        };
-                        let t = recur_ui::motion::progress(
-                            start,
-                            Duration::from_millis(TERM_MAX_MS),
-                            cx,
-                        );
-                        let e = recur_ui::motion::Easing::Bezier(0.22, 1., 0.36, 1.).apply(t);
-                        let lerp = |a: f32, b: f32| a + (b - a) * e;
-                        o.overlay_rect = OverlayRect {
-                            top: lerp(from.top, to.top),
-                            left: lerp(from.left, to.left),
-                            width: lerp(from.width, to.width),
-                            height: lerp(from.height, to.height),
-                        };
-                        if t >= 1. {
-                            o.term_max_anim = None;
-                            o.term_max_phase = end;
-                            if end == TermMaxPhase::Max {
-                                o.overlay_rect = o.full_rect();
-                            }
-                            o.sync_side_effects(cx);
-                        }
-                        cx.notify();
-                        t >= 1.
-                    })
-                    .unwrap_or(true);
-                if done {
-                    return;
-                }
+    /// Step the overlay rectangle on display frames over `TERM_MAX_MS`, then settle the phase.
+    /// The terminals keep their grid while the box moves and refit once when it lands: a
+    /// resize reflows the whole scrollback.
+    pub(crate) fn step_term_anim(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some((from, start)) = self.term_max_anim {
+            let max = self.term_max_phase == TermMaxPhase::Enter;
+            // The destination tracks layout while it animates (resize).
+            let to = if max {
+                self.full_rect()
+            } else {
+                self.restore_target_rect()
+            };
+            let t = recur_ui::motion::progress(start, Duration::from_millis(TERM_MAX_MS), cx);
+            let e = recur_ui::motion::Easing::Bezier(0.22, 1., 0.36, 1.).apply(t);
+            let lerp = |a: f32, b: f32| a + (b - a) * e;
+            self.overlay_rect = OverlayRect {
+                top: lerp(from.top, to.top),
+                left: lerp(from.left, to.left),
+                width: lerp(from.width, to.width),
+                height: lerp(from.height, to.height),
+            };
+            if t >= 1. {
+                self.term_max_anim = None;
+                self.term_max_phase = if max {
+                    TermMaxPhase::Max
+                } else {
+                    TermMaxPhase::Idle
+                };
+            } else {
+                window.request_animation_frame();
             }
-        })
-        .detach();
+        }
+        let held = self.term_max_anim.is_some();
+        if let Some((_, d)) = &self.dock {
+            let panes: Vec<_> = d.read(cx).panes.values().cloned().collect();
+            for p in panes {
+                p.update(cx, |v, cx| v.hold_size(held, cx));
+            }
+        }
     }
 
     // ---- full screen ----

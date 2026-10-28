@@ -177,6 +177,13 @@ tasks:
     env:
       ARCH: '{{.ARCH | default ARCH}}'
 
+  linux:test:rust:wpe:
+    summary: The WPE WebKit HTML preview spike's checks (recur-content tests/wpe.rs) in rust/build/linux/wpe.Dockerfile, which builds WPE 2.54 on first use (long)
+    cmds:
+      - WPE=1 rust/build/linux/in-docker.sh sh -c 'cargo clippy -p recur-content --all-targets --locked -- -D warnings && cargo test -p recur-content --test wpe --locked'
+    env:
+      ARCH: '{{.ARCH | default ARCH}}'
+
   linux:build:rust:
     summary: Release Linux build of the Rust port into rust/target/package/recur-next-linux-<arch> (recur, recur-cli, recur.png; in Docker on non-Linux hosts, see rust/build/linux/in-docker.sh)
     deps:

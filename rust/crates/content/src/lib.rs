@@ -8,6 +8,8 @@ pub mod gallery;
 pub mod html;
 #[cfg(target_os = "linux")]
 pub mod html_gtk;
+#[cfg(all(target_os = "linux", recur_wpe))]
+pub mod html_wpe;
 pub mod image_menu;
 pub mod images;
 pub mod js;

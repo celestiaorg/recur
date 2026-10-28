@@ -45,6 +45,59 @@ pub const BRIDGE_JS: &str = r#"(function(){var post=function(d){try{window.webki
 #[cfg(target_os = "linux")]
 type Laid = Option<(Bounds<Pixels>, f32)>;
 
+/// The offscreen WebKitGTK page, or with `RECUR_HTML_WPE=1` WPE WebKit's (`html_wpe`).
+#[cfg(target_os = "linux")]
+enum LinuxPage {
+    Gtk(crate::html_gtk::Page),
+    #[cfg(recur_wpe)]
+    Wpe(crate::html_wpe::Page),
+}
+
+#[cfg(target_os = "linux")]
+macro_rules! each_page {
+    ($page:expr, $p:ident => $e:expr) => {
+        match $page {
+            LinuxPage::Gtk($p) => $e,
+            #[cfg(recur_wpe)]
+            LinuxPage::Wpe($p) => $e,
+        }
+    };
+}
+
+#[cfg(target_os = "linux")]
+impl LinuxPage {
+    fn new(
+        srcdoc: &str,
+        events: mpsc::UnboundedSender<crate::html_gtk::PageEvent>,
+    ) -> Option<Self> {
+        #[cfg(recur_wpe)]
+        if crate::html_wpe::enabled() {
+            return crate::html_wpe::Page::new(srcdoc, events).map(LinuxPage::Wpe);
+        }
+        crate::html_gtk::Page::new(srcdoc, events).map(LinuxPage::Gtk)
+    }
+
+    fn load(&self, srcdoc: &str, events: mpsc::UnboundedSender<crate::html_gtk::PageEvent>) {
+        each_page!(self, p => p.load(srcdoc, events))
+    }
+
+    fn resize(&self, w: f32, h: f32, scale: f32) {
+        each_page!(self, p => p.resize(w, h, scale))
+    }
+
+    fn set_active(&self, active: bool) {
+        each_page!(self, p => p.set_active(active))
+    }
+
+    fn dispatch(&self, data: &Value) {
+        each_page!(self, p => p.dispatch(data))
+    }
+
+    fn input(&self, event: &Value) {
+        each_page!(self, p => p.input(event))
+    }
+}
+
 /// A `<select>` the page asked to pop up: its box (CSS px in the page), options and choice.
 #[cfg(target_os = "linux")]
 #[derive(serde::Deserialize)]
@@ -73,7 +126,7 @@ pub struct HtmlPreview {
     #[cfg(target_os = "macos")]
     web: Option<mac::Page>,
     #[cfg(target_os = "linux")]
-    gtk: Option<crate::html_gtk::Page>,
+    page: Option<LinuxPage>,
     /// The Linux page's latest snapshot, and images to release after the next draw.
     #[cfg(target_os = "linux")]
     frame: Option<std::sync::Arc<gpui_kit::RenderImage>>,
@@ -112,7 +165,7 @@ impl HtmlPreview {
             #[cfg(target_os = "macos")]
             web: None,
             #[cfg(target_os = "linux")]
-            gtk: None,
+            page: None,
             #[cfg(target_os = "linux")]
             frame: None,
             #[cfg(target_os = "linux")]
@@ -156,12 +209,11 @@ impl HtmlPreview {
         }
         #[cfg(target_os = "linux")]
         {
-            use crate::html_gtk::{Page, PageEvent};
-            let (tx, mut rx) = mpsc::unbounded::<PageEvent>();
-            match &self.gtk {
+            let (tx, mut rx) = mpsc::unbounded::<crate::html_gtk::PageEvent>();
+            match &self.page {
                 Some(page) => page.load(&self.srcdoc, tx),
                 None => {
-                    self.gtk = Page::new(&self.srcdoc, tx);
+                    self.page = LinuxPage::new(&self.srcdoc, tx);
                     self.laid.set(None);
                 }
             }
@@ -179,7 +231,7 @@ impl HtmlPreview {
     pub fn set_parked(&mut self, parked: bool) {
         self.parked = parked;
         #[cfg(target_os = "linux")]
-        if let Some(page) = &self.gtk {
+        if let Some(page) = &self.page {
             page.set_active(!parked);
         }
     }
@@ -319,7 +371,7 @@ impl HtmlPreview {
             page.dispatch(&data);
         }
         #[cfg(target_os = "linux")]
-        if let Some(page) = &self.gtk {
+        if let Some(page) = &self.page {
             page.dispatch(&data);
         }
         #[cfg(not(any(target_os = "macos", target_os = "linux")))]
@@ -396,7 +448,7 @@ impl HtmlPreview {
 impl HtmlPreview {
     /// One event for the page's input shim, at `pos` in window coordinates.
     fn send(&self, mut ev: Value, pos: Option<gpui_kit::Point<Pixels>>, m: &gpui_kit::Modifiers) {
-        let (Some(page), Some((b, _))) = (&self.gtk, self.laid.get()) else {
+        let (Some(page), Some((b, _))) = (&self.page, self.laid.get()) else {
             return;
         };
         if let Some(p) = pos {
@@ -419,7 +471,7 @@ impl HtmlPreview {
         for img in self.stale.drain(..) {
             let _ = window.drop_image(img);
         }
-        if let Some(page) = &self.gtk {
+        if let Some(page) = &self.page {
             page.set_active(!self.parked);
         }
         let laid = self.laid.clone();
@@ -432,7 +484,7 @@ impl HtmlPreview {
                     laid.set(Some((b, scale)));
                     if let Some(e) = entity.upgrade() {
                         e.update(cx, |p: &mut HtmlPreview, _| {
-                            if let Some(page) = &p.gtk {
+                            if let Some(page) = &p.page {
                                 page.resize(
                                     f32::from(b.size.width),
                                     f32::from(b.size.height),

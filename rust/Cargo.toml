@@ -164,6 +164,12 @@ dispatch2 = "0.3"
 webkit6 = "0.6"
 # webkit6 0.6 names `gtk::Accessible`, which gtk4 0.11 gates behind GTK 4.10.
 gtk4 = { version = "0.11", features = ["v4_10"] }
+# Linux: the WPE WebKit HTML preview spike (`recur-content` `html_wpe`), built when
+# pkg-config finds WPE 2.54 (rust/build/linux/wpe.Dockerfile).
+libloading = "0.8"
+libc = "0.2"
+cc = "1"
+pkg-config = "0.3"
 tempfile = "3"
 pretty_assertions = "1"
 hex = "0.4"

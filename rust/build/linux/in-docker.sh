@@ -23,9 +23,15 @@ docker info >/dev/null 2>&1 || { echo "Docker (or OrbStack) is required to build
 JOBS=$(( $(docker info --format '{{.MemTotal}}') / 2147483648 ))
 IMAGE="recur-next-linux-build:$ARCH"
 docker build -q --platform "linux/$ARCH" -t "$IMAGE" -f "$ROOT/rust/build/linux/Dockerfile" "$ROOT/rust/build/linux" >/dev/null
+# WPE=1: the image plus WPE WebKit 2.54 (wpe.Dockerfile, the HTML preview spike).
+if [ "${WPE:-}" = 1 ]; then
+  docker build -q --platform "linux/$ARCH" --build-arg ARCH="$ARCH" -t "recur-next-linux-wpe:$ARCH" \
+    -f "$ROOT/rust/build/linux/wpe.Dockerfile" "$ROOT/rust/build/linux" >/dev/null
+  IMAGE="recur-next-linux-wpe:$ARCH"
+fi
 exec docker run --rm --init --platform "linux/$ARCH" \
   -v "$ROOT:/app" \
   -v "recur-next-linux-cargo-$ARCH:/usr/local/cargo/registry" \
   -v "recur-next-linux-target-$ARCH:/target" \
-  -e CARGO_TARGET_DIR=/target -e CARGO_BUILD_JOBS="$JOBS" -e ARCH -e VERSION -e RECUR_NEXT_UPDATE_URL \
+  -e CARGO_TARGET_DIR=/target -e CARGO_BUILD_JOBS="$JOBS" -e ARCH -e VERSION -e RECUR_NEXT_UPDATE_URL -e WPE_NETWORK \
   "$IMAGE" "$@"

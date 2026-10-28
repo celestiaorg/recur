@@ -869,7 +869,21 @@ impl Observatory {
         } else {
             work.flex_row()
         };
-        work = work.child(div().flex().flex_1().min_w_0().min_h_0().child(main));
+        work = if self.editor_fullscreen {
+            // `.obs-main.fullscreen`: the editor pane over the whole window (`z-index: 150`).
+            let vp = window.viewport_size();
+            work.child(
+                gpui_kit::deferred(
+                    gpui_kit::anchored()
+                        .position_mode(gpui_kit::AnchoredPositionMode::Window)
+                        .position(gpui_kit::point(px(0.), px(0.)))
+                        .child(div().flex().w(vp.width).h(vp.height).occlude().child(main)),
+                )
+                .with_priority(150),
+            )
+        } else {
+            work.child(div().flex().flex_1().min_w_0().min_h_0().child(main))
+        };
         if self.has_right(cx)
             && self.show_side
             && let Some(kind) = self.right_meta(cx)

@@ -797,6 +797,9 @@ async fn artifact_full_screen_fills_the_window_and_esc_restores_it(cx: &mut Test
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Preview);
     assert!(!h.has("obs-crumbbar"));
     assert!(!h.has("obs-statusbar"));
+    let main = h.bounds("obs-main").unwrap();
+    let vp = h.cx.update(|w, _| w.viewport_size());
+    assert_eq!((main.origin, main.size), (gpui::Point::default(), vp));
     h.click("fs-exit");
     assert!(!h.read(|o, _| o.editor_fullscreen));
     h.click("crumb:fullscreen");

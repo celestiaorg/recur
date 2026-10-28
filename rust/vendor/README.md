@@ -84,6 +84,15 @@ Upgrade it with gpui-pre: replace the source, commit it alone, `git apply --3way
 git diff cb8279c1 -- rust/vendor/gpui-pre-apple > rust/vendor/gpui-pre-apple.patch
 ```
 
+## gpui-pre-macos, gpui-pre-linux 0.3.9 (zoom-in cursor)
+
+`gpui-pre-macos/` and `gpui-pre-linux/` are the crates.io sources of GPUI's macOS and Linux platforms (same snapshot), wired in by `[patch.crates-io]` (`src/`, `Cargo.toml`, the license). They map gpui-pre's `CursorStyle::ZoomIn` (CSS `zoom-in`, an image that opens a lightbox): `NSCursor zoomInCursor` on macOS 15+ and the pointing hand before it, `zoom-in` from the cursor theme or Wayland's cursor shape on Linux. gpui-pre-macos also allows the `deprecated` lint, which crates.io sources had capped. Commit `f7e929f2` ("rust: vendor gpui-pre-macos and gpui-pre-linux 0.3.9 unchanged") is the pristine import, and `gpui-pre-macos.patch` / `gpui-pre-linux.patch` are the change. Upgrade them with gpui-pre: replace the sources, commit them alone, `git apply --3way` each patch, and regenerate:
+
+```sh
+git diff f7e929f2 -- rust/vendor/gpui-pre-macos > rust/vendor/gpui-pre-macos.patch
+git diff f7e929f2 -- rust/vendor/gpui-pre-linux > rust/vendor/gpui-pre-linux.patch
+```
+
 ## shiguredo_libvpx, shiguredo_aom, shiguredo_opus (Intel Mac source build)
 
 `shiguredo_libvpx/` (2026.2.0-canary.3), `shiguredo_aom/` (2026.3.0) and `shiguredo_opus/` (2026.4.0) are the crates.io releases, wired in by `[patch.crates-io]`. Commit `f1e0965c` is the pristine import, so `git diff f1e0965c -- rust/vendor/shiguredo_*` is the patch.

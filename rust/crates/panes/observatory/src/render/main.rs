@@ -509,7 +509,7 @@ impl Observatory {
                 if base { "base" } else { "cur" }
             )))
             .debug_selector(move || format!("obs-image:{}", if base { "base" } else { "current" }))
-            .cursor_pointer()
+            .cursor(gpui_kit::CursorStyle::ZoomIn)
             .w(px(w))
             .h(px(h))
             .child({

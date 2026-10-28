@@ -2056,7 +2056,7 @@ function stripVT(s: string): string {
 }
 
 /** Keep in sync with Go codexLoginExpiredMsg. */
-const CODEX_LOGIN_EXPIRED = 'Codex login expired — run `codex login` in a terminal, then retry.'
+const CODEX_LOGIN_EXPIRED = 'Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry.'
 
 function knownAgentError(s: string): string {
   const d = s.toLowerCase()

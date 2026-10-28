@@ -1,13 +1,17 @@
 package app
 
 import (
+	"context"
+	"slices"
 	"strings"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
 
 	"recur/internal/codex"
 	"recur/internal/cursor"
 	"recur/internal/domain"
+	"recur/internal/engine"
 )
 
 // The model catalogue backs every model picker in the app. It lists all
@@ -117,7 +121,7 @@ func claudeFlags(withContext bool) []FlagDimension {
 // claudeCodeModels is the Claude Code picker list. Every row is a pinned id,
 // never an alias, so a saved choice keeps meaning the same model. Extended context is a flag (200k / 1m) only where
 // Claude Code still distinguishes them — ResolveClaude applies [1m] at run time.
-// Sonnet 5 / Fable 5.1 / Opus 4.7+ always run at 1M on the Anthropic API.
+// Sonnet 5 / Fable 5.1 / Opus 4.7+ / Haiku 5.5 always run at 1M on the Anthropic API.
 var claudeCodeModels = []ModelChoice{
 	{Ref: "claude-code/claude-fable-5-1", Label: "Fable 5.1", Flags: claudeFlags(false), ContextWindow: 1_000_000},
 	{Ref: "claude-code/claude-fable-5", Label: "Fable 5", Flags: claudeFlags(false), ContextWindow: 1_000_000},
@@ -129,13 +133,47 @@ var claudeCodeModels = []ModelChoice{
 	{Ref: "claude-code/claude-sonnet-5-5", Label: "Sonnet 5.5", Flags: claudeFlags(false), ContextWindow: 1_000_000},
 	{Ref: "claude-code/claude-sonnet-5", Label: "Sonnet 5", Flags: claudeFlags(false), ContextWindow: 1_000_000},
 	{Ref: "claude-code/claude-sonnet-4-6", Label: "Sonnet 4.6", Flags: claudeFlags(true)},
+	{Ref: "claude-code/claude-haiku-5-5", Label: "Haiku 5.5", Flags: claudeFlags(false), ContextWindow: 1_000_000},
 	{Ref: "claude-code/claude-haiku-4-5-20251001", Label: "Haiku 4.5", Flags: claudeFlags(false), ContextWindow: 200_000},
+}
+
+// withProbedClaudeModels appends models Claude Code reports for this account
+// that the pinned list lacks (e.g. Mythos 5.1 on accounts with access).
+// Aliases resolve to pinned ids, so they dedupe against existing rows.
+func withProbedClaudeModels(probed []claudeModelInfo) []ModelChoice {
+	out := slices.Clone(claudeCodeModels)
+	seen := make(map[string]bool, len(out))
+	for _, m := range out {
+		seen[m.Ref] = true
+	}
+	for _, p := range probed {
+		id := strings.TrimSpace(p.ResolvedModel)
+		if id == "" {
+			id = strings.TrimSpace(p.Value)
+		}
+		id, _, _ = strings.Cut(id, "[")
+		if !strings.HasPrefix(id, "claude-") {
+			continue
+		}
+		ref := domain.NewModelRef(domain.ProviderClaudeCode, id).String()
+		if seen[ref] {
+			continue
+		}
+		seen[ref] = true
+		label := strings.TrimSpace(p.DisplayName)
+		if label == "" {
+			label = id
+		}
+		out = append(out, ModelChoice{Ref: ref, Label: label, Flags: claudeFlags(false), ContextWindow: engine.ResolveClaudeContextWindow(id, nil)})
+	}
+	return out
 }
 
 // ListModelCatalog returns the grouped model list for the pickers.
 //
 // Each provider appears only when it is on in Settings → Providers. Claude Code
-// needs no Recur-stored key. Cursor appears once Connect has minted a key, and
+// needs no Recur-stored key; its pinned list gains any extra models the local
+// CLI reports for the account. Cursor appears once Connect has minted a key, and
 // its models (+ parameters) are fetched live. Codex appears once an API key or
 // ChatGPT auth is set.
 //
@@ -144,11 +182,60 @@ var claudeCodeModels = []ModelChoice{
 // remembered so SetSettings can remap Claude-off slots without starting another
 // throwaway bridge (boot prefetchModelCatalog warms this).
 func (s *SettingsService) ListModelCatalog() []ModelGroup {
+	return s.listModelCatalog(true)
+}
+
+// lastClaudeModels is the most recent non-empty probe result. It is package
+// level because callers such as schedule validation build a fresh service.
+var lastClaudeModels atomic.Pointer[[]claudeModelInfo]
+
+// claudeProbe returns a fresh probe, falling back to the last good one when the
+// probe fails or times out so account-only models do not flicker out.
+func claudeProbe() []claudeModelInfo {
+	ctx, cancel := context.WithTimeout(context.Background(), claudeCmdTimeout)
+	defer cancel()
+	if probed := probeClaudeModels(ctx); len(probed) > 0 {
+		lastClaudeModels.Store(&probed)
+		return probed
+	}
+	if last := lastClaudeModels.Load(); last != nil {
+		return *last
+	}
+	return nil
+}
+
+// cachedClaudeProbe returns the last good probe, probing only until one succeeds.
+func cachedClaudeProbe() []claudeModelInfo {
+	if last := lastClaudeModels.Load(); last != nil {
+		return *last
+	}
+	return claudeProbe()
+}
+
+// listModelCatalog is ListModelCatalog; probeClaude=false reuses the last good
+// probe, spawning claude only until one succeeds (schedule validation runs on
+// every save).
+func (s *SettingsService) listModelCatalog(probeClaude bool) []ModelGroup {
 	set := s.st().Settings()
+	claudeCh := make(chan []claudeModelInfo, 1)
+	go func() {
+		switch {
+		case !set.ProviderEnabled(domain.ProviderClaudeCode):
+			claudeCh <- nil
+		case probeClaude:
+			claudeCh <- claudeProbe()
+		default:
+			claudeCh <- cachedClaudeProbe()
+		}
+	}()
 	cur := s.listCursorModelsFor(set)
 	cod := s.listCodexModelsFor(set)
 	s.rememberCatalog(cur, cod)
-	return buildModelCatalog(set, cur, cod)
+	groups := buildModelCatalog(set, cur, cod)
+	if probed := <-claudeCh; len(groups) > 0 && groups[0].Provider == domain.ProviderClaudeCode {
+		groups[0].Models = withProbedClaudeModels(probed)
+	}
+	return groups
 }
 
 func (s *SettingsService) rememberCatalog(cur []cursor.Model, cod []codex.Model) {
@@ -320,6 +407,10 @@ func buildModelCatalog(set domain.Settings, cursorModels []cursor.Model, codexMo
 			Label:    set.DisplayLabel(p.ID),
 			Models:   compatibleCatalogModels(p),
 		})
+	}
+	if set.ProviderOffersModels(domain.ProviderChatGPT) {
+		p := set.ChatGPTProvider()
+		groups = append(groups, ModelGroup{Provider: p.ID, Label: p.Name, Models: compatibleCatalogModels(p)})
 	}
 	return groups
 }

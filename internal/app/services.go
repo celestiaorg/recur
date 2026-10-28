@@ -1161,7 +1161,9 @@ type EscalationService struct{ base }
 func (s *EscalationService) GetEscalation(workspaceID string) (domain.Escalation, error) {
 	e, ok := s.st().Escalation(workspaceID)
 	if !ok {
-		return domain.Escalation{}, fmt.Errorf("no escalation for loop %q", workspaceID)
+		// Most workspaces have no escalation. The UI probes this while loading
+		// each workspace, so absence is an ordinary empty state, not an error.
+		return domain.Escalation{}, nil
 	}
 	return e, nil
 }
@@ -1620,6 +1622,10 @@ type SettingsService struct {
 
 	usageMu     sync.Mutex
 	usagePoller *usage.Poller
+
+	codexLoginMu     sync.Mutex
+	codexLogin       *codexLoginSession
+	codexLoginClosed bool
 }
 
 func (s *SettingsService) GetSettings() domain.Settings {
@@ -1698,12 +1704,12 @@ func (s *SettingsService) SetSettings(set domain.Settings) (domain.Settings, err
 }
 
 func providerEnablementChanged(a, b domain.Settings) bool {
-	for _, p := range []string{domain.ProviderClaudeCode, domain.ProviderCursor, domain.ProviderCodex} {
+	for _, p := range []string{domain.ProviderClaudeCode, domain.ProviderCursor, domain.ProviderCodex, domain.ProviderChatGPT} {
 		if a.ProviderEnabled(p) != b.ProviderEnabled(p) {
 			return true
 		}
 	}
-	if a.CursorConfigured() != b.CursorConfigured() || a.CodexConfigured() != b.CodexConfigured() {
+	if a.CursorConfigured() != b.CursorConfigured() || a.CodexConfigured() != b.CodexConfigured() || a.ChatGPTConfigured() != b.ChatGPTConfigured() {
 		return true
 	}
 	if len(a.CompatibleProviders) != len(b.CompatibleProviders) {
@@ -1733,7 +1739,7 @@ func providerEnablementChanged(a, b domain.Settings) bool {
 func (s *SettingsService) ensureRunnableCatalogue(set domain.Settings) domain.Settings {
 	if s.providerRunnable(set, domain.ProviderClaudeCode) ||
 		s.providerRunnable(set, domain.ProviderCursor) ||
-		s.providerRunnable(set, domain.ProviderCodex) {
+		s.providerRunnable(set, domain.ProviderCodex) || s.providerRunnable(set, domain.ProviderChatGPT) {
 		return set
 	}
 	for _, p := range set.CompatibleProviders {
@@ -1771,6 +1777,8 @@ func (s *SettingsService) providerRunnable(set domain.Settings, provider string)
 		}
 		_, err := codex.Locate(set.CodexBinPath)
 		return err == nil
+	case domain.ProviderChatGPT:
+		return set.ChatGPTConfigured()
 	default:
 		p := set.CompatibleByID(provider)
 		return p != nil && p.Configured()

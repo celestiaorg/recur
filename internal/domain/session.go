@@ -24,6 +24,7 @@ const (
 	ProviderClaudeCode = "claude-code"
 	ProviderCursor     = "cursor"
 	ProviderCodex      = "codex"
+	ProviderChatGPT    = "chatgpt"
 	ProviderAnthropic  = "anthropic"
 	ProviderOpenAI     = "openai"
 	ProviderGemini     = "gemini"

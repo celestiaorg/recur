@@ -14,6 +14,7 @@ var reservedProviderSlugs = map[string]bool{
 	ProviderClaudeCode: true,
 	ProviderCursor:     true,
 	ProviderCodex:      true,
+	ProviderChatGPT:    true,
 	ProviderAnthropic:  true,
 	ProviderGemini:     true,
 	ProviderOllama:     true,
@@ -130,6 +131,19 @@ func (p CompatibleProvider) Configured() bool {
 // (configured or not). Built-in harness slugs are never compatible.
 func (s Settings) IsCompatibleSlug(slug string) bool {
 	return s.CompatibleByID(slug) != nil
+}
+
+// UsesNativeHarness reports providers whose tools and history Recur owns.
+func (s Settings) UsesNativeHarness(slug string) bool {
+	return slug == ProviderChatGPT || s.IsCompatibleSlug(slug)
+}
+
+func (s Settings) ChatGPTConfigured() bool {
+	return s.ChatGPTAccountID != "" && len(s.ChatGPTModels) > 0
+}
+
+func (s Settings) ChatGPTProvider() CompatibleProvider {
+	return CompatibleProvider{ID: ProviderChatGPT, Name: "ChatGPT", BaseURL: "https://chatgpt.com/backend-api/codex", Models: s.ChatGPTModels}
 }
 
 // DisplayLabel returns the human name for a provider slug, preferring a

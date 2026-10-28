@@ -208,6 +208,7 @@ func decodeEvent(payload []byte) (Event, bool) {
 				ev.ErrorMessage = resp.Error.Message
 			}
 			if head.Type == "response.completed" || head.Type == "response.failed" {
+				ev.Output = resp.Output
 				for _, raw := range resp.Output {
 					for _, sub := range eventsFromOutputItem(raw) {
 						if sub.Call != nil && ev.Call == nil {
@@ -222,6 +223,9 @@ func decodeEvent(payload []byte) (Event, bool) {
 		}
 	}
 	if len(head.Item) > 0 {
+		if head.Type == "response.output_item.done" {
+			ev.Output = []json.RawMessage{head.Item}
+		}
 		if call := parseFunctionCall(head.Item); call != nil {
 			ev.Call = call
 		}

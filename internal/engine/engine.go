@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"recur/internal/agenttools"
+	"recur/internal/chatgpt"
 	"recur/internal/cursor"
 	"recur/internal/domain"
 	gitpkg "recur/internal/git"
@@ -80,6 +81,9 @@ type Engine struct {
 	// bound to it, started lazily on the first turn when the Cursor provider is
 	// selected (see provider.go).
 	cursor cursorProvider
+
+	chatGPTMu sync.Mutex
+	chatGPT   *chatgpt.Client
 
 	// todos is the native-harness TodoWrite store (session-scoped, in-process).
 	todos agenttools.TodoStore
@@ -587,7 +591,7 @@ var errMCPUnavailable = errors.New("the Recur MCP server could not start, so age
 // wedged loop that says why is strictly better than a green one that is wrong.
 func (e *Engine) registerMCP(workspaceID, agentCode, chatCode string, allowedTools []string, model string) (token, url string, err error) {
 	provider := domain.ParseModelRef(model).Provider
-	if e.settings().IsCompatibleSlug(provider) {
+	if e.settings().UsesNativeHarness(provider) {
 		// Native harness calls host tools in-process; still return a turn token
 		// so unregisterMCP can clear "remember for this turn" approvals.
 		return compatTurnToken(workspaceID, agentCode), "", nil

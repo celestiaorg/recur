@@ -36,6 +36,8 @@ func (s Settings) ProviderOffersModels(provider string) bool {
 		return s.CursorConfigured()
 	case ProviderCodex:
 		return s.CodexConfigured()
+	case ProviderChatGPT:
+		return s.ChatGPTConfigured()
 	default:
 		p := s.CompatibleByID(provider)
 		return p != nil && p.Configured()
@@ -54,7 +56,7 @@ func (s Settings) NormalizeProviders() Settings {
 func (s Settings) offersAnyModels() bool {
 	if s.ProviderOffersModels(ProviderClaudeCode) ||
 		s.ProviderOffersModels(ProviderCursor) ||
-		s.ProviderOffersModels(ProviderCodex) {
+		s.ProviderOffersModels(ProviderCodex) || s.ProviderOffersModels(ProviderChatGPT) {
 		return true
 	}
 	for _, p := range s.CompatibleProviders {
@@ -76,7 +78,7 @@ func (s Settings) ensureSomeProviderOffersModels() Settings {
 			return s
 		}
 	}
-	for _, p := range []string{ProviderClaudeCode, ProviderCursor, ProviderCodex} {
+	for _, p := range []string{ProviderClaudeCode, ProviderCursor, ProviderCodex, ProviderChatGPT} {
 		s.DisabledProviders = dropString(s.DisabledProviders, p)
 		if s.offersAnyModels() {
 			return s
@@ -160,7 +162,7 @@ func (s Settings) modelSlotDisabled(ref string, emptyMeansClaude bool) bool {
 		return true
 	}
 	switch p {
-	case ProviderClaudeCode, ProviderCursor, ProviderCodex, "":
+	case ProviderClaudeCode, ProviderCursor, ProviderCodex, ProviderChatGPT, "":
 		return false
 	default:
 		// Removed compatible slugs are unavailable even if not listed in DisabledProviders.

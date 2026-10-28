@@ -11,8 +11,8 @@ test.describe('welcome / first run', () => {
     await expect(welcome).toHaveClass(/on/)
     await expect(welcome.locator('.wprov li[data-provider="claude"]')).toHaveClass(/on/)
     await expect(welcome.locator('.wprov li[data-provider="claude"]')).toContainText('dev@example.com')
-    await expect(welcome.locator('.wprov li[data-provider="codex"]')).not.toHaveClass(/on/)
-    await expect(welcome.locator('.wprov li[data-provider="codex"]')).toContainText('codex login')
+    await expect(welcome.locator('.wprov li[data-provider="openai"]')).not.toHaveClass(/on/)
+    await expect(welcome.locator('.wprov li[data-provider="openai"]')).toContainText('codex login')
     await expect(welcome.locator('.wprov li[data-provider="cursor"]').getByRole('button', { name: 'Connect' })).toBeVisible()
     await expect(welcome.locator('.ws[data-step="2"]')).toHaveClass(/current/)
     await welcome.getByRole('button', { name: 'Choose a repository' }).click()
@@ -81,7 +81,7 @@ test.describe('welcome / first run', () => {
     })
     await gotoApp(page)
     const welcome = page.locator('#v-welcome')
-    await expect(welcome.locator('.wprov li[data-provider="codex"]')).toHaveClass(/on/)
+    await expect(welcome.locator('.wprov li[data-provider="openai"]')).toHaveClass(/on/)
     await expect(welcome.locator('.ws[data-step="2"]')).toHaveClass(/current/)
     await welcome.locator('.wprov li[data-provider="cursor"]').getByRole('button', { name: 'Connect' }).click()
     await expect(page.locator('#v-settings .set-head h2')).toHaveText('Providers')
@@ -109,7 +109,7 @@ test.describe('welcome / first run', () => {
     await step1.getByRole('button', { name: 'Providers' }).click()
     await expect(page.locator('#v-settings .set-head h2')).toHaveText('Providers')
     await page.getByRole('button', { name: 'Get started', exact: true }).click()
-    await expect(step1.locator('.ws-chip')).toHaveText(['Claude Code', 'Codex'])
+    await expect(step1.locator('.ws-chip')).toHaveText(['Claude Code', 'OpenAI'])
   })
 
   test('with a project but no workspace, a mode row opens an empty New workspace dialog in that mode', async ({ page }) => {

@@ -39,14 +39,25 @@ type Tool struct {
 
 // InputItem is one Responses input item (message, function_call, or output).
 type InputItem struct {
-	Type      string         `json:"type,omitempty"`
-	Role      string         `json:"role,omitempty"`
-	Content   []InputContent `json:"content,omitempty"`
-	CallID    string         `json:"call_id,omitempty"`
-	Name      string         `json:"name,omitempty"`
-	Arguments string         `json:"arguments,omitempty"`
-	Output    string         `json:"output,omitempty"`
-	ID        string         `json:"id,omitempty"`
+	// Raw preserves provider output items, including encrypted reasoning, when
+	// the stateless ChatGPT route needs them on the next tool round.
+	Raw       json.RawMessage `json:"-"`
+	Type      string          `json:"type,omitempty"`
+	Role      string          `json:"role,omitempty"`
+	Content   []InputContent  `json:"content,omitempty"`
+	CallID    string          `json:"call_id,omitempty"`
+	Name      string          `json:"name,omitempty"`
+	Arguments string          `json:"arguments,omitempty"`
+	Output    string          `json:"output,omitempty"`
+	ID        string          `json:"id,omitempty"`
+}
+
+func (i InputItem) MarshalJSON() ([]byte, error) {
+	if len(i.Raw) > 0 {
+		return i.Raw, nil
+	}
+	type plain InputItem
+	return json.Marshal(plain(i))
 }
 
 // InputContent is one part of a message item.
@@ -74,6 +85,7 @@ type Usage struct {
 
 // Event is one parsed stream (or final JSON) event.
 type Event struct {
+	Output       []json.RawMessage
 	Type         string
 	ResponseID   string
 	Delta        string

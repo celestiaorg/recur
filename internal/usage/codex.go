@@ -110,7 +110,7 @@ func fetchCodex(ctx context.Context, f *Fetcher) ProviderQuota {
 	auth, err := f.codexAuth()
 	if err != nil || (!auth.HasChatGPT && !auth.HasAPIKey) {
 		out.Error = "Not signed in to Codex"
-		out.Hint = "Enable ChatGPT auth in Settings, or run codex login."
+		out.Hint = "Sign in with ChatGPT in Settings → Providers → Codex."
 		return out
 	}
 	if auth.HasAPIKey && !auth.HasChatGPT {
@@ -141,7 +141,7 @@ func fetchCodex(ctx context.Context, f *Fetcher) ProviderQuota {
 	}
 	if isAuthErr(status) {
 		out.Error = "Codex login expired"
-		out.Hint = "Run codex login, then reopen Recur."
+		out.Hint = "Sign in with ChatGPT again in Settings → Providers → Codex."
 		return out
 	}
 	if status >= 300 {

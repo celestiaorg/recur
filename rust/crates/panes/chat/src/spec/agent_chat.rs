@@ -370,3 +370,41 @@ async fn select_all_copies_tool_rows(cx: &mut TestAppContext) {
     assert!(copied.contains(&label), "{label:?} in {copied:?}");
     assert!(copied.ends_with("Done."), "{copied:?}");
 }
+
+#[gpui::test]
+async fn a_bubble_with_an_image_grows_with_its_wrapped_text(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    let text = "and runs in the nearest loop tab. but if there are no loop tabs then you have no idea what is going on. I'd think that resolve conflicts would just run in the nearest ops tab like other git-operations that need AI";
+    let body = format!("if PR has conflicts it shows this: ⟦attachment:i1⟧ {text}");
+    h.set_messages(vec![AgentMsg {
+        me: true,
+        body: body.clone(),
+        ts: Some(1),
+        attachments: vec![recur_engine::view::chat::ChatAttachmentView {
+            id: "i1".into(),
+            data_url: "data:image/png;base64,AA".into(),
+            name: "shot.png".into(),
+            ..Default::default()
+        }],
+        ..Default::default()
+    }]);
+    let plain = recur_engine::view::mentions::strip_attachment_markers(&body);
+    let me = h
+        .bounds(&format!("me:{}", crate::chat::debug_key(&plain)))
+        .expect("bubble");
+    let inner = f32::from(me.size.width) - 24.;
+    let text_h = h.cx.update(|window, _| {
+        let style = crate::flow::FlowStyle {
+            family: recur_ui::fonts::Family::Ui,
+            size: 12.5,
+            weight: 400.,
+            leading: 1.5,
+            color: gpui::black(),
+        };
+        crate::flow::FlowLayout::compute(&format!(" {text}"), &[], &style, inner, window).height
+    });
+    assert!(
+        f32::from(me.size.height) >= 18. + 18. + text_h,
+        "bubble {me:?} vs text {text_h}"
+    );
+}

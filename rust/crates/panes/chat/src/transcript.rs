@@ -1549,6 +1549,7 @@ impl AgentChat {
                             style.clone(),
                         )
                         .selectable(select_key(&fid))
+                        .fit_content()
                         .into_any_element()
                     }
                     other => match self.bubble_atom(

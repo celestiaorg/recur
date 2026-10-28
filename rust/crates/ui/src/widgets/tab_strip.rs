@@ -501,11 +501,17 @@ impl TabStrip {
             .children(chips);
         {
             let state = state.clone();
-            strip = strip.on_scroll_wheel(move |_, window, cx| {
-                let now = crate::motion::now(cx);
-                state.update(cx, |s, _| s.scroller.scrolled(now));
-                window.refresh();
-            });
+            let moved = state.clone();
+            strip = strip
+                .on_scroll_wheel(move |_, window, cx| {
+                    let now = crate::motion::now(cx);
+                    state.update(cx, |s, _| s.scroller.scrolled(now));
+                    window.refresh();
+                })
+                .on_mouse_move(move |_, _, cx| {
+                    let now = crate::motion::now(cx);
+                    moved.update(cx, |s, _| s.scroller.pointer_moved(now));
+                });
         }
         // `scrollbar-width: thin` is a macOS overlay scroller in WebKit: no layout space, and
         // only shown while the user scrolls.

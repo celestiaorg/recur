@@ -168,6 +168,18 @@ impl Overlay {
         true
     }
 
+    /// The pointer moved inside the scroll container. A scroller still in its hold stays up,
+    /// so the pointer can reach it; one already fading is left to fade.
+    pub fn pointer_moved(&mut self, now: Instant) {
+        if !self.held()
+            && self
+                .idle
+                .is_some_and(|t| now.saturating_duration_since(t) < OVERLAY_HOLD)
+        {
+            self.idle = Some(now);
+        }
+    }
+
     /// A press on the scroller (track paging or a knob drag) starts or ends.
     pub fn press(&mut self, on: bool, now: Instant) {
         if self.pressed && !on {
@@ -531,9 +543,15 @@ impl ScrollArea {
         .children(self.children);
         if native {
             let state = state.clone();
-            content = content.on_scroll_wheel(move |_, _, cx| {
-                state.update(cx, |s, _| s.wheeled = true);
-            });
+            let moved = state.clone();
+            content = content
+                .on_scroll_wheel(move |_, _, cx| {
+                    state.update(cx, |s, _| s.wheeled = true);
+                })
+                .on_mouse_move(move |_, _, cx| {
+                    let now = crate::motion::now(cx);
+                    moved.update(cx, |s, _| s.mac.pointer_moved(now));
+                });
         }
 
         let mut root = div().relative().flex().size_full().min_w_0().min_h_0();
@@ -760,6 +778,27 @@ mod tests {
         assert_eq!(overlay_scroll(83., 1030., 206., 206.), 412.);
         assert_eq!(overlay_scroll(-10., 1030., 206., 206.), 0.);
         assert_eq!(overlay_scroll(500., 1030., 206., 206.), 824.);
+    }
+
+    /// Moving inside the container keeps a showing scroller up; stopping lets it fade, and
+    /// moving again once it fades does not bring it back.
+    #[test]
+    fn pointer_moves_hold_the_overlay_until_it_fades() {
+        let t0 = Instant::now();
+        let at = |ms| t0 + Duration::from_millis(ms);
+        let mut o = Overlay::default();
+        o.pointer_moved(t0);
+        assert_eq!(o.opacity(t0), 0., "moving alone does not show it");
+        o.scrolled(t0);
+        for ms in (100..=2000).step_by(100) {
+            o.pointer_moved(at(ms));
+            assert_eq!(o.opacity(at(ms)), 1., "held at {ms}ms");
+        }
+        assert_eq!(o.opacity(at(2400)), 1.);
+        assert!(o.opacity(at(2600)) < 1., "fades once the pointer stops");
+        o.pointer_moved(at(2600));
+        assert!(o.opacity(at(2600)) < 1., "a fading scroller is not revived");
+        assert_eq!(o.opacity(at(2800)), 0.);
     }
 
     #[test]

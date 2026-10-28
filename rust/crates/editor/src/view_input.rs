@@ -1354,6 +1354,12 @@ impl EditorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if bounds.contains(&e.position) {
+            let now = recur_ui::motion::now(cx);
+            for o in &mut self.bars {
+                o.pointer_moved(now);
+            }
+        }
         let pressed = e.pressed_button == Some(MouseButton::Left);
         match self.drag.clone() {
             Some(_) if !pressed => {

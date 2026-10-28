@@ -20,9 +20,9 @@ pub mod gallery;
 use std::path::PathBuf;
 
 use gpui_kit::{
-    App, AppContext, Bounds, Context, Entity, IntoElement, ParentElement, Render, Styled,
-    TitlebarOptions, Window, WindowBounds, WindowHandle, WindowKind, WindowOptions, div, point, px,
-    size,
+    App, AppContext, Bounds, Context, Entity, IntoElement, KeyBinding, NoAction, ParentElement,
+    Render, Styled, TitlebarOptions, Window, WindowBounds, WindowHandle, WindowKind, WindowOptions,
+    div, point, px, size,
 };
 use recur_platform::window_state;
 use recur_services::Services;
@@ -44,6 +44,13 @@ pub const TRAFFIC_LIGHT_POSITION: (f32, f32) = (20., 18.);
 /// One-time app setup: the design system, menubar accelerators and every view crate's init.
 pub fn init(registry: &ViewRegistry, cx: &mut App) {
     gpui_kit::init(cx);
+    // gpui-base's Root binds Tab to focus traversal, and bindings outrank key-down listeners.
+    // Tab goes to the focused element first; the shell's key handler traverses only if the
+    // element passes on it, as a browser does.
+    cx.bind_keys([
+        KeyBinding::new("tab", NoAction, Some("Root")),
+        KeyBinding::new("shift-tab", NoAction, Some("Root")),
+    ]);
     recur_ui::init(cx);
     menu::bind_menu_keys(cx);
     for init in &registry.inits {

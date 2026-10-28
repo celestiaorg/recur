@@ -128,6 +128,13 @@ impl Shell {
             })
         } else if k.key == "escape" {
             self.escape_to_back(window, cx)
+        } else if k.key == "tab" && !m.platform && !m.control && !m.alt {
+            if m.shift {
+                window.focus_prev(cx);
+            } else {
+                window.focus_next(cx);
+            }
+            true
         } else {
             false
         };

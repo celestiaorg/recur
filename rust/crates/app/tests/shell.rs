@@ -1021,3 +1021,51 @@ fn ctrl_shift_backtick_maximizes_the_terminal(cx: &mut TestAppContext) {
     h.keys("ctrl-~");
     assert!(!h.read(|s| s.dock.is_maximized(ACTIVE)));
 }
+
+struct TabProbe {
+    focus: gpui_kit::FocusHandle,
+    tabs: usize,
+}
+
+impl gpui_kit::Render for TabProbe {
+    fn render(
+        &mut self,
+        _: &mut gpui_kit::Window,
+        cx: &mut gpui_kit::Context<Self>,
+    ) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{InteractiveElement, Styled};
+        use recur_ui::guard::Guarded;
+        gpui_kit::div()
+            .size_full()
+            .track_focus(&self.focus)
+            .on_key_down(
+                cx.guarded_listener(|this, e: &gpui_kit::KeyDownEvent, _, cx| {
+                    if e.keystroke.key == "tab" {
+                        this.tabs += 1;
+                        cx.stop_propagation();
+                    }
+                }),
+            )
+    }
+}
+
+/// The window's gpui-base `Root` binds Tab to focus traversal, which ran before the focused
+/// terminal, editor or composer saw the key.
+#[gpui_kit::test]
+fn tab_reaches_the_focused_element_under_the_window_root(cx: &mut TestAppContext) {
+    cx.update(|cx| recur_app::init(&ViewRegistry::default(), cx));
+    let probe = gpui_kit::AppContext::new(cx, |cx| TabProbe {
+        focus: cx.focus_handle(),
+        tabs: 0,
+    });
+    let root_probe = probe.clone();
+    let (_, cx) =
+        cx.add_window_view(move |window, cx| gpui_kit::base::Root::new(root_probe, window, cx));
+    cx.update(|window, cx| {
+        let f = probe.read(cx).focus.clone();
+        window.focus(&f, cx);
+    });
+    cx.run_until_parked();
+    cx.simulate_keystrokes("tab shift-tab");
+    assert_eq!(probe.read_with(cx, |p, _| p.tabs), 2);
+}

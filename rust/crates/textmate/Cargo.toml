@@ -11,6 +11,7 @@ publish = false
 onig.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sum_tree.workspace = true
 thiserror.workspace = true
 
 [lints]

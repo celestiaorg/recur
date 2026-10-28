@@ -683,7 +683,7 @@ impl Observatory {
                 .h_full()
                 .border_r_1()
                 .border_color(hsla(t.line))
-                .child(handle)
+                .when(!self.term_overlaying(), |d| d.child(handle))
         };
         aside.into_any_element()
     }
@@ -783,7 +783,7 @@ impl Observatory {
                 .h_full()
                 .border_l_1()
                 .border_color(hsla(t.line));
-            if !self.props.main_blocked {
+            if !self.props.main_blocked && !self.term_overlaying() {
                 let state = self.state.clone();
                 aside = aside.child(
                     resize_handle(

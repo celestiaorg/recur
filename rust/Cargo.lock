@@ -8029,6 +8029,7 @@ dependencies = [
  "futures",
  "gpui-kit",
  "gpui-pre",
+ "gpui-pre-sum-tree",
  "pulldown-cmark",
  "recur-bundles",
  "recur-editor",
@@ -8469,6 +8470,7 @@ dependencies = [
 name = "recur-textmate"
 version = "0.0.0"
 dependencies = [
+ "gpui-pre-sum-tree",
  "onig",
  "serde",
  "serde_json",

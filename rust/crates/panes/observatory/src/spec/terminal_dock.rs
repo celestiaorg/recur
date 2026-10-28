@@ -15,6 +15,7 @@ use serde_json::{Value, json};
 
 use super::harness::*;
 use crate::model::FocusZone;
+use recur_view_core::prefs::PanelKey;
 
 type CallLog = Arc<Mutex<Vec<(String, Vec<Value>)>>>;
 
@@ -560,6 +561,15 @@ async fn ctrl_shift_backtick_maximizes_the_dock_over_the_observatory_and_back(
     assert!(max.size.height > normal.size.height);
     // The chrome stays in the tree under the overlay.
     assert!(h.has("obs-toolbar") && h.has("obs-side"));
+    // The side panel's resize handle does not drag through the overlay.
+    let side = h.bounds("obs-side").expect("side");
+    let width = h.read(|o, cx| o.state.read(cx).panels.size(PanelKey::ObsSide));
+    let edge = gpui::point(side.left() + gpui::px(1.), side.center().y);
+    h.drag_points(edge, gpui::point(edge.x - gpui::px(80.), edge.y));
+    assert_eq!(
+        h.read(|o, cx| o.state.read(cx).panels.size(PanelKey::ObsSide)),
+        width
+    );
     h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, false, cx));
     h.wait(400);
     assert!(!h.read(|o, _| o.term_overlaying()));

@@ -10,7 +10,10 @@
 //! use fixed advances and the editor uses GPUI's shaper.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::rc::Rc;
+
+use sum_tree::{Bias, ContextLessSummary, Item, SeekTarget, SumTree};
 
 use crate::selection::SelectionRange;
 use crate::state::EditorState;
@@ -269,61 +272,72 @@ pub fn wrap_rows(text: &str, xs: &[f32], width: f32) -> Vec<usize> {
     rows
 }
 
-/// A Fenwick tree of line heights.
-#[derive(Clone, Debug, Default)]
-struct Fenwick {
-    tree: Vec<f64>,
+/// Seek target: the first `n` lines of a per-line tree.
+struct Lines(usize);
+
+/// Replace items `from..to` (0-based lines) of a per-line tree with `items`.
+fn splice_lines<T, S>(tree: &mut SumTree<T>, from: usize, to: usize, items: Vec<T>) -> Option<T>
+where
+    T: Item<Summary = S>,
+    S: ContextLessSummary,
+    for<'a> Lines: SeekTarget<'a, S, S>,
+{
+    let mut cursor = tree.cursor::<S>(());
+    let mut out = cursor.slice(&Lines(from), Bias::Right);
+    let old = cursor.item().cloned();
+    cursor.seek_forward(&Lines(to), Bias::Right);
+    out.extend(items, ());
+    out.append(cursor.suffix(), ());
+    drop(cursor);
+    *tree = out;
+    old
 }
 
-impl Fenwick {
-    fn build(values: &[f64]) -> Fenwick {
-        let n = values.len();
-        let mut tree = vec![0.0; n + 1];
-        for (i, v) in values.iter().enumerate() {
-            tree[i + 1] += v;
-            let j = (i + 1) + ((i + 1) & (!(i + 1) + 1));
-            if j <= n {
-                let t = tree[i + 1];
-                tree[j] += t;
-            }
-        }
-        Fenwick { tree }
+#[derive(Clone, Debug)]
+struct LineHeight {
+    height: f64,
+    measured: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct HeightSummary {
+    lines: usize,
+    height: f64,
+}
+
+impl ContextLessSummary for HeightSummary {
+    fn zero() -> Self {
+        HeightSummary::default()
     }
 
-    fn add(&mut self, i: usize, delta: f64) {
-        let mut k = i + 1;
-        while k < self.tree.len() {
-            self.tree[k] += delta;
-            k += k & (!k + 1);
+    fn add_summary(&mut self, other: &Self) {
+        self.lines += other.lines;
+        self.height += other.height;
+    }
+}
+
+impl Item for LineHeight {
+    type Summary = HeightSummary;
+
+    fn summary(&self, _: ()) -> HeightSummary {
+        HeightSummary {
+            lines: 1,
+            height: self.height,
         }
     }
+}
 
-    /// Sum of `values[..i]`.
-    fn prefix(&self, i: usize) -> f64 {
-        let mut k = i.min(self.tree.len().saturating_sub(1));
-        let mut s = 0.0;
-        while k > 0 {
-            s += self.tree[k];
-            k -= k & (!k + 1);
-        }
-        s
+impl SeekTarget<'_, HeightSummary, HeightSummary> for Lines {
+    fn cmp(&self, at: &HeightSummary, _: ()) -> Ordering {
+        Ord::cmp(&self.0, &at.lines)
     }
+}
 
-    /// The largest `i` with `prefix(i) <= y`, and that prefix.
-    fn lower(&self, y: f64) -> usize {
-        let n = self.tree.len() - 1;
-        let mut pos = 0;
-        let mut rem = y;
-        let mut step = n.next_power_of_two();
-        while step > 0 {
-            let next = pos + step;
-            if next <= n && self.tree[next] <= rem {
-                pos = next;
-                rem -= self.tree[next];
-            }
-            step >>= 1;
-        }
-        pos
+struct Height(f64);
+
+impl SeekTarget<'_, HeightSummary, HeightSummary> for Height {
+    fn cmp(&self, at: &HeightSummary, _: ()) -> Ordering {
+        self.0.partial_cmp(&at.height).unwrap_or(Ordering::Equal)
     }
 }
 
@@ -331,86 +345,127 @@ impl Fenwick {
 /// zero for lines hidden by folds), estimated until measured.
 #[derive(Clone, Debug, Default)]
 pub struct HeightMap {
-    heights: Vec<f64>,
-    measured: Vec<bool>,
-    fen: Fenwick,
+    tree: SumTree<LineHeight>,
 }
 
 impl HeightMap {
+    fn estimated(heights: impl IntoIterator<Item = f64>) -> impl Iterator<Item = LineHeight> {
+        heights.into_iter().map(|height| LineHeight {
+            height,
+            measured: false,
+        })
+    }
+
+    fn line(&self, n: usize) -> Option<&LineHeight> {
+        self.tree
+            .find::<HeightSummary, _>((), &Lines(n.checked_sub(1)?), Bias::Right)
+            .2
+    }
+
     pub fn new(heights: Vec<f64>) -> HeightMap {
-        let n = heights.len();
         HeightMap {
-            fen: Fenwick::build(&heights),
-            measured: vec![false; n],
-            heights,
+            tree: SumTree::from_iter(HeightMap::estimated(heights), ()),
         }
     }
 
     pub fn len(&self) -> usize {
-        self.heights.len()
+        self.tree.summary().lines
     }
 
     pub fn is_empty(&self) -> bool {
-        self.heights.is_empty()
+        self.len() == 0
     }
 
     /// Top of 1-based line `n` (relative to the first line).
     pub fn top(&self, n: usize) -> f64 {
-        self.fen.prefix(n.saturating_sub(1))
+        let before = Lines(n.saturating_sub(1));
+        self.tree
+            .find::<HeightSummary, _>((), &before, Bias::Right)
+            .0
+            .height
     }
 
     pub fn height(&self, n: usize) -> f64 {
-        self.heights.get(n.wrapping_sub(1)).copied().unwrap_or(0.0)
+        self.line(n).map_or(0.0, |l| l.height)
     }
 
     pub fn total(&self) -> f64 {
-        self.fen.prefix(self.heights.len())
+        self.tree.summary().height
     }
 
     /// Set line `n`'s height; returns the change.
     pub fn set(&mut self, n: usize, h: f64, measured: bool) -> f64 {
-        let i = n - 1;
-        let delta = h - self.heights[i];
-        if delta != 0.0 {
-            self.heights[i] = h;
-            self.fen.add(i, delta);
-        }
-        self.measured[i] = measured;
-        delta
+        let line = LineHeight {
+            height: h,
+            measured,
+        };
+        let old = splice_lines(&mut self.tree, n - 1, n, vec![line]).expect("line in range");
+        h - old.height
     }
 
     pub fn is_measured(&self, n: usize) -> bool {
-        self.measured
-            .get(n.wrapping_sub(1))
-            .copied()
-            .unwrap_or(false)
+        self.line(n).is_some_and(|l| l.measured)
     }
 
     /// The 1-based line covering vertical offset `y` (clamped).
     pub fn line_at_height(&self, y: f64) -> usize {
-        if self.heights.is_empty() {
+        if self.is_empty() {
             return 1;
         }
-        let i = self.fen.lower(y.max(0.0));
-        let mut n = (i + 1).min(self.heights.len());
-        while n < self.heights.len() && self.heights[n - 1] == 0.0 {
-            n += 1;
+        let (above, _, line) =
+            self.tree
+                .find::<HeightSummary, _>((), &Height(y.max(0.0)), Bias::Right);
+        if line.is_some() {
+            above.lines + 1
+        } else {
+            self.len()
         }
-        n
     }
 
     /// Splice heights for a line replacement (1-based `from`, `old`
     /// lines replaced by `new` estimates).
     pub fn splice(&mut self, from: usize, old: usize, new: Vec<f64>) {
         let i = from - 1;
-        let n_new = new.len();
-        self.heights
-            .splice(i..(i + old).min(self.heights.len()), new);
-        self.measured.splice(
-            i..(i + old).min(self.measured.len()),
-            std::iter::repeat_n(false, n_new),
-        );
-        self.fen = Fenwick::build(&self.heights);
+        let new = HeightMap::estimated(new).collect();
+        splice_lines(&mut self.tree, i, i + old, new);
+    }
+}
+
+/// A line's measurement, if it has one.
+#[derive(Clone, Debug, Default)]
+struct Measured(Option<Rc<MeasuredLine>>);
+
+#[derive(Clone, Copy, Debug, Default)]
+struct MeasuredSummary {
+    lines: usize,
+    max_width: f32,
+}
+
+impl ContextLessSummary for MeasuredSummary {
+    fn zero() -> Self {
+        MeasuredSummary::default()
+    }
+
+    fn add_summary(&mut self, other: &Self) {
+        self.lines += other.lines;
+        self.max_width = self.max_width.max(other.max_width);
+    }
+}
+
+impl Item for Measured {
+    type Summary = MeasuredSummary;
+
+    fn summary(&self, _: ()) -> MeasuredSummary {
+        MeasuredSummary {
+            lines: 1,
+            max_width: self.0.as_ref().map_or(0.0, |m| m.width()),
+        }
+    }
+}
+
+impl SeekTarget<'_, MeasuredSummary, MeasuredSummary> for Lines {
+    fn cmp(&self, at: &MeasuredSummary, _: ()) -> Ordering {
+        Ord::cmp(&self.0, &at.lines)
     }
 }
 
@@ -574,7 +629,8 @@ pub fn estimate_rows(chars: usize, line_length: f32) -> usize {
 pub struct Layout {
     pub config: LayoutConfig,
     pub heights: HeightMap,
-    measured: HashMap<usize, MeasuredLine>,
+    /// Item `n - 1` is line n's measurement.
+    measured: SumTree<Measured>,
     /// Fold ranges as `(first line, last line)`, sorted.
     folded: Vec<(usize, usize)>,
     widgets: Vec<BlockWidget>,
@@ -585,7 +641,7 @@ impl Layout {
         let mut l = Layout {
             config,
             heights: HeightMap::default(),
-            measured: HashMap::new(),
+            measured: SumTree::default(),
             folded: Vec::new(),
             widgets: Vec::new(),
         };
@@ -651,7 +707,7 @@ impl Layout {
     fn line_height_total(&self, state: &EditorState, n: usize) -> f64 {
         let own = if self.hidden(n) {
             0.0
-        } else if let Some(m) = self.measured.get(&n) {
+        } else if let Some(m) = self.measured(n) {
             m.rows.len() as f64 * self.config.line_height as f64
         } else {
             self.estimate(state, n)
@@ -664,10 +720,12 @@ impl Layout {
     pub fn rebuild(&mut self, state: &EditorState, widgets: Vec<BlockWidget>) {
         self.folded = Layout::fold_lines(state);
         self.widgets = widgets;
-        self.measured.clear();
+        self.measured = SumTree::default();
         let heights: Vec<f64> = (1..=state.doc.lines())
             .map(|n| self.line_height_total(state, n))
             .collect();
+        self.measured =
+            SumTree::from_iter(std::iter::repeat_n(Measured::default(), heights.len()), ());
         self.heights = HeightMap::new(heights);
     }
 
@@ -693,7 +751,12 @@ impl Layout {
         let wrap = self.config.wrap.then_some(self.config.wrap_width);
         let m = MeasuredLine::new(display, measure, wrap);
         let rows = m.rows.len();
-        self.measured.insert(n, m);
+        splice_lines(
+            &mut self.measured,
+            n - 1,
+            n,
+            vec![Measured(Some(Rc::new(m)))],
+        );
         let h = if self.hidden(n) {
             0.0
         } else {
@@ -705,26 +768,22 @@ impl Layout {
     /// After lines `old_from..=old_to` were replaced and later lines moved
     /// by `delta`, drop their measurements and shift the rest.
     pub fn forget_measured_from(&mut self, old_from: usize, old_to: usize, delta: isize) {
-        let old = std::mem::take(&mut self.measured);
-        for (n, m) in old {
-            if n < old_from {
-                self.measured.insert(n, m);
-            } else if n > old_to {
-                self.measured.insert(n.wrapping_add_signed(delta), m);
-            }
-        }
+        let new = (old_to - old_from + 1).saturating_add_signed(delta);
+        let blank = std::iter::repeat_n(Measured::default(), new).collect();
+        splice_lines(&mut self.measured, old_from - 1, old_to, blank);
     }
 
     /// Widest measured line, for horizontal scrolling.
     pub fn max_measured_width(&self) -> f32 {
-        self.measured
-            .values()
-            .map(MeasuredLine::width)
-            .fold(0.0, f32::max)
+        self.measured.summary().max_width
     }
 
     pub fn measured(&self, n: usize) -> Option<&MeasuredLine> {
-        self.measured.get(&n)
+        self.measured
+            .find::<MeasuredSummary, _>((), &Lines(n.checked_sub(1)?), Bias::Right)
+            .2?
+            .0
+            .as_deref()
     }
 
     /// Top of line `n`'s text (after any widget above it), in content
@@ -1024,6 +1083,72 @@ mod tests {
         // A fractional line length is kept, as CodeMirror's oracle does.
         assert_eq!(estimate_rows(60, 52.3), 2);
         assert_eq!(estimate_rows(100, 52.3), 3);
+    }
+
+    /// xorshift64, so the randomized checks need no dependency.
+    fn rng(mut x: u64) -> impl FnMut(usize) -> usize {
+        move |n| {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            (x % n.max(1) as u64) as usize
+        }
+    }
+
+    #[test]
+    fn height_map_matches_a_vec_under_random_edits() {
+        let mut r = rng(0x9e37_79b9_7f4a_7c15);
+        let mut naive = vec![10.0; 40];
+        let mut h = HeightMap::new(naive.clone());
+        for _ in 0..3000 {
+            let len = naive.len();
+            if r(3) == 0 && len > 0 {
+                let n = r(len) + 1;
+                let v = (r(4) * 10) as f64;
+                assert_eq!(h.set(n, v, true), v - naive[n - 1]);
+                naive[n - 1] = v;
+            } else {
+                let from = r(len + 1) + 1;
+                let old = r(4).min(len + 1 - from);
+                let new: Vec<f64> = (0..r(4)).map(|_| (r(3) * 10) as f64).collect();
+                naive.splice(from - 1..from - 1 + old, new.clone());
+                h.splice(from, old, new);
+            }
+            assert_eq!(h.len(), naive.len());
+            assert_eq!(h.total(), naive.iter().sum::<f64>());
+            for n in 1..=naive.len() + 1 {
+                assert_eq!(
+                    h.top(n),
+                    naive[..(n - 1).min(naive.len())].iter().sum::<f64>()
+                );
+                assert_eq!(h.height(n), naive.get(n - 1).copied().unwrap_or(0.0));
+            }
+            let y = r(naive.len() * 20 + 1) as f64;
+            let mut top = 0.0;
+            let want = naive
+                .iter()
+                .position(|v| {
+                    top += v;
+                    top > y
+                })
+                .map_or(naive.len().max(1), |i| i + 1);
+            assert_eq!(h.line_at_height(y), want, "y={y} {naive:?}");
+        }
+    }
+
+    /// `cargo test --release -p recur-editor -- --ignored --nocapture height_map_splice_timing`
+    #[test]
+    #[ignore]
+    fn height_map_splice_timing() {
+        let mut h = HeightMap::new(vec![18.0; 1_000_000]);
+        let mut r = rng(1);
+        let t = std::time::Instant::now();
+        for _ in 0..1000 {
+            let n = r(h.len()) + 1;
+            h.splice(n, 1, vec![18.0, 18.0]);
+            std::hint::black_box((h.top(n), h.line_at_height(n as f64 * 9.0)));
+        }
+        println!("HeightMap 1M lines: {:?} per newline", t.elapsed() / 1000);
     }
 
     #[test]

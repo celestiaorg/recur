@@ -2,7 +2,7 @@
 //!
 //! [`Manager`] owns the live shells (spawn, I/O, resize, flow control, replay, busy/idle
 //! detection, interrupt and teardown) and publishes [`Event`]s. The emulator half lives in
-//! [`screen`]: an xterm.js-compatible terminal state the UI renders and feeds input through.
+//! [`screen`]: alacritty's terminal state the UI renders and feeds input through.
 
 mod cwd;
 pub mod input;
@@ -10,7 +10,6 @@ mod manager;
 mod osc7;
 mod plain;
 mod process;
-mod queries;
 mod ring;
 pub mod screen;
 

@@ -4,12 +4,12 @@
 
 use alacritty_terminal::index::{Column, Line};
 use alacritty_terminal::term::cell::{Cell, Flags};
-use alacritty_terminal::vte::ansi::{Color, NamedColor};
+use alacritty_terminal::vte::ansi::{Color, CursorShape as Style, NamedColor};
 
+use super::Screen;
 use super::buffer::Buffer;
 use super::overline;
 use super::theme::Rgba;
-use super::{CursorStyle, Screen};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UnderlineStyle {
@@ -207,14 +207,15 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
     let ydisp = buf.ydisp();
     let ybase = buf.ybase();
 
-    let (style, blinks) = s.cursor_style();
+    let ansi_style = s.cursor_style();
+    let (style, blinks) = (ansi_style.shape, ansi_style.blinking);
     let cursor_visible =
         s.cursor_initialized && !s.cursor_hidden() && (!blinks || !focused || cursor_blink_on);
     let cursor = s.term.grid().cursor.point;
     let cursor_row_abs = ybase as i64 + cursor.line.0 as i64;
     let cursor_x = cursor.column.0.min(cols - 1);
     let block = if focused {
-        style == CursorStyle::Block
+        style == Style::Block
     } else {
         false
     };
@@ -321,9 +322,9 @@ pub(super) fn frame(s: &Screen, focused: bool, cursor_blink_on: bool) -> Frame {
                 if !block {
                     let shape = match (focused, style) {
                         (false, _) => CursorShape::Outline,
-                        (true, CursorStyle::Bar) => CursorShape::Bar,
-                        (true, CursorStyle::Underline) => CursorShape::Underline,
-                        (true, CursorStyle::Block) => CursorShape::Outline,
+                        (true, Style::Beam) => CursorShape::Bar,
+                        (true, Style::Underline) => CursorShape::Underline,
+                        (true, _) => CursorShape::Outline,
                     };
                     frame.cursor = Some(CursorDraw {
                         col: cursor_x,

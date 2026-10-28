@@ -12,7 +12,6 @@ mod links;
 mod move_to_cell;
 mod overline;
 mod render;
-mod scanner;
 mod search;
 mod selection;
 mod theme;
@@ -32,7 +31,6 @@ use crate::input::{MouseEncoding, MouseProtocol};
 use buffer::Buffer;
 pub use links::{Link, LinkKind};
 pub use render::{BgRect, CursorDraw, CursorShape, Frame, Glyph, Underline, UnderlineStyle};
-use scanner::{Csi, Item, Scanner};
 pub use search::{Decorations, HIGHLIGHT_LIMIT, InvalidRegex, SearchOptions, SearchResults};
 pub use selection::{
     ALT_CLICK_MOVE_CURSOR_MS, DRAG_SCROLL_INTERVAL_MS, MouseUp, SelectionMode, WORD_SEPARATOR,
@@ -42,8 +40,6 @@ pub use theme::{Palette, Rgba, Theme, default_ansi};
 
 /// xterm.js scrollback in Recur's pane.
 pub const SCROLLBACK: usize = 10_000;
-/// The xterm.js build the Svelte app shipped, reported by XTVERSION.
-pub const XTERM_VERSION: &str = "6.1.0-beta.304";
 
 /// Something the screen produced while parsing output.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,14 +50,6 @@ pub enum Output {
     Reply(String),
     /// BEL (`onBell`; Recur's pane did not react to it).
     Bell,
-}
-
-/// The cursor style programs select with DECSCUSR.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CursorStyle {
-    Block,
-    Underline,
-    Bar,
 }
 
 #[derive(Clone, Default)]
@@ -93,57 +81,14 @@ impl Dimensions for Size {
     }
 }
 
-/// The xterm.js state alacritty does not model the same way.
-#[derive(Debug, Clone)]
-struct Xterm {
-    mouse_protocol: MouseProtocol,
-    mouse_encoding: MouseEncoding,
-    send_focus: bool,
-    color_scheme_updates: bool,
-    reverse_wraparound: bool,
-    synchronized_output: bool,
-    /// `options.cursorBlink`, which DECSET 12 rewrites. Recur's pane opens with it on.
-    option_cursor_blink: bool,
-    /// DECSCUSR override (`decPrivateModes.cursorStyle` / `cursorBlink`).
-    decscusr: Option<(CursorStyle, bool)>,
-    /// DECSTBM per buffer, 0-based inclusive (normal, alternate).
-    scroll_region: [Option<(usize, usize)>; 2],
-}
-
-impl Default for Xterm {
-    fn default() -> Self {
-        Self {
-            mouse_protocol: MouseProtocol::None,
-            mouse_encoding: MouseEncoding::Default,
-            send_focus: false,
-            color_scheme_updates: false,
-            reverse_wraparound: false,
-            synchronized_output: false,
-            option_cursor_blink: true,
-            decscusr: None,
-            scroll_region: [None, None],
-        }
-    }
-}
-
-impl Xterm {
-    /// `CoreService.reset()`: DEC private modes back to defaults (DECSTR and RIS).
-    fn reset_dec_modes(&mut self) {
-        self.send_focus = false;
-        self.color_scheme_updates = false;
-        self.reverse_wraparound = false;
-        self.synchronized_output = false;
-        self.decscusr = None;
-    }
-}
-
 pub struct Screen {
     term: Term<Events>,
     parser: Processor<StdSyncHandler>,
     events: Events,
-    scanner: Scanner,
+    /// An unfinished `CSI` at the end of the last feed, held until the next one so overline
+    /// SGRs are seen whole.
+    sgr_tail: Vec<u8>,
     palette: Palette,
-    xt: Xterm,
     selection: selection::Selection,
     search: search::Search,
     /// Set once the cursor has been shown (first focus or keystroke), like xterm's
@@ -176,9 +121,8 @@ impl Screen {
             term,
             parser: Processor::new(),
             events,
-            scanner: Scanner::new(),
+            sgr_tail: Vec::new(),
             palette: Palette::default(),
-            xt: Xterm::default(),
             selection: selection::Selection::default(),
             search: search::Search::default(),
             cursor_initialized: false,
@@ -210,20 +154,28 @@ impl Screen {
 
     /// Parses PTY output. Returns titles, bells and the reports the PTY must receive.
     pub fn feed(&mut self, bytes: &[u8]) -> Vec<Output> {
-        let mut out = Vec::new();
-        for item in self.scanner.feed(bytes) {
-            match item {
-                Item::Forward(b) => self.advance(&b),
-                Item::Esc { final_byte, raw } => {
-                    if final_byte == b'c' {
-                        self.full_reset();
+        let mut data = std::mem::take(&mut self.sgr_tail);
+        data.extend_from_slice(bytes);
+        let (mut done, mut from) = (0, 0);
+        loop {
+            match overline::next_sgr(&data, from) {
+                Ok(Some(body)) => {
+                    if let Some(on) = overline::sgr_effect(&data[body.clone()]) {
+                        self.advance(&data[done..=body.end]);
+                        self.advance(if on { overline::ON } else { overline::OFF });
+                        done = body.end + 1;
                     }
-                    self.advance(&raw);
+                    from = body.end + 1;
                 }
-                Item::Csi(csi) => self.csi(csi, &mut out),
-                Item::Decrqss(payload) => out.push(Output::Reply(self.decrqss(&payload))),
+                Ok(None) => break,
+                Err(esc) => {
+                    self.sgr_tail = data.split_off(esc);
+                    break;
+                }
             }
         }
+        self.advance(&data[done..]);
+        let mut out = Vec::new();
         self.drain_events(&mut out);
         self.bump();
         if self.search.cached_term().is_some()
@@ -293,277 +245,24 @@ impl Screen {
                 TermEvent::Title(t) => out.push(Output::Title(t)),
                 TermEvent::Bell => out.push(Output::Bell),
                 TermEvent::PtyWrite(s) => out.push(Output::Reply(s)),
-                // OSC 4 queries are answered from the palette; Recur's pane swallowed OSC 10/11/12
-                // queries (the PTY side answers those).
-                TermEvent::ColorRequest(index, _) if index < 256 => {
-                    let c = self.term.colors()[index]
-                        .map_or(self.palette.ansi[index], |c| Rgba::rgb(c.r, c.g, c.b));
-                    out.push(Output::Reply(format!(
-                        "\x1b]4;{index};rgb:{:02x}{0:02x}/{:02x}{1:02x}/{:02x}{2:02x}\x1b\\",
-                        c.r(),
-                        c.g(),
-                        c.b()
-                    )));
+                // OSC 4 / 10 / 11 / 12 queries, answered from the live palette.
+                TermEvent::ColorRequest(index, reply) => {
+                    let fallback = match index {
+                        0..256 => self.palette.ansi[index],
+                        256 => self.palette.foreground,
+                        257 => self.palette.background,
+                        _ => self.palette.cursor,
+                    };
+                    let c =
+                        self.term.colors()[index].map_or(fallback, |c| Rgba::rgb(c.r, c.g, c.b));
+                    out.push(Output::Reply(reply(ansi::Rgb {
+                        r: c.r(),
+                        g: c.g(),
+                        b: c.b(),
+                    })));
                 }
                 _ => {}
             }
-        }
-    }
-
-    fn full_reset(&mut self) {
-        let blink = self.xt.option_cursor_blink;
-        self.xt = Xterm {
-            option_cursor_blink: blink,
-            ..Xterm::default()
-        };
-        self.selection.clear();
-        self.search.clear_decorations(true);
-    }
-
-    fn reply(out: &mut Vec<Output>, s: String) {
-        out.push(Output::Reply(s));
-    }
-
-    fn csi(&mut self, csi: Csi, out: &mut Vec<Output>) {
-        let inter = csi.intermediates.as_slice();
-        match (csi.private, inter, csi.final_byte) {
-            (None, [], b'c') => {
-                if csi.param(0) == 0 {
-                    Self::reply(out, "\x1b[?1;2c".into());
-                }
-            }
-            (Some(b'>'), [], b'c') => {
-                if csi.param(0) == 0 {
-                    Self::reply(out, "\x1b[>0;276;0c".into());
-                }
-            }
-            (Some(b'>'), [], b'q') => {
-                if csi.param(0) == 0 {
-                    Self::reply(out, format!("\x1bP>|xterm.js({XTERM_VERSION})\x1b\\"));
-                }
-            }
-            (None, [], b'n') => match csi.param(0) {
-                5 => Self::reply(out, "\x1b[0n".into()),
-                6 => {
-                    let (x, y) = self.cursor_report();
-                    Self::reply(out, format!("\x1b[{y};{x}R"));
-                }
-                _ => {}
-            },
-            (Some(b'?'), [], b'n') => match csi.param(0) {
-                6 => {
-                    let (x, y) = self.cursor_report();
-                    Self::reply(out, format!("\x1b[?{y};{x}R"));
-                }
-                996 => Self::reply(out, self.color_scheme_report()),
-                _ => {}
-            },
-            (p, [b'$'], b'p') if p.is_none() || p == Some(b'?') => {
-                Self::reply(out, self.decrpm(csi.param(0), p.is_none()));
-            }
-            // windowOptions are all disabled in xterm.js by default (reports, resize, title stack).
-            (None, [], b't') => {}
-            // Kitty keyboard protocol is off in Recur's pane.
-            (Some(b'?' | b'=' | b'>' | b'<'), [], b'u') => {}
-            (Some(b'?'), [], b'h' | b'l') => {
-                let set = csi.final_byte == b'h';
-                for &p in &csi.params {
-                    self.dec_mode(p, set);
-                }
-                self.advance(&csi.raw);
-            }
-            (None, [b' '], b'q') => {
-                self.xt.decscusr = match csi.param(0) {
-                    0 => None,
-                    1 => Some((CursorStyle::Block, true)),
-                    2 => Some((CursorStyle::Block, false)),
-                    3 => Some((CursorStyle::Underline, true)),
-                    4 => Some((CursorStyle::Underline, false)),
-                    5 => Some((CursorStyle::Bar, true)),
-                    6 => Some((CursorStyle::Bar, false)),
-                    _ => self.xt.decscusr,
-                };
-                self.advance(&csi.raw);
-            }
-            (None, [b'!'], b'p') => {
-                // DECSTR: xterm.js's soft reset, expressed to alacritty as the resets it implies.
-                self.xt.reset_dec_modes();
-                self.xt.scroll_region[self.buffer_index()] = None;
-                self.advance(b"\x1b[?25h\x1b[0m\x1b[r\x1b[?6l\x1b[?1l\x1b>\x1b[4l\x1b[?7h\x1b[?2004l\x1b[?1004l\x1b(B");
-            }
-            (None, [], b'J') if csi.param(0) == 2 && !self.alt_screen() => {
-                // xterm.js erases the screen in place (scrollOnEraseInDisplay is off); alacritty
-                // would push it into the scrollback.
-                let point = self.term.grid().cursor.point;
-                self.term.grid_mut().cursor.point = Point::new(Line(0), Column(0));
-                self.term.clear_screen(ansi::ClearMode::Below);
-                self.term.grid_mut().cursor.point = point;
-            }
-            (None, [], b'm') => {
-                self.advance(&csi.raw);
-                let body = &csi.raw[2..csi.raw.len() - 1];
-                match overline::sgr_effect(body) {
-                    Some(true) => self.advance(overline::ON),
-                    Some(false) => self.advance(overline::OFF),
-                    None => {}
-                }
-                let (not_bold, not_faint) = overline::sgr_cancels(body);
-                if not_bold {
-                    self.advance(overline::NOT_BOLD);
-                }
-                if not_faint {
-                    self.advance(overline::NOT_FAINT);
-                }
-            }
-            (None, [], b'r') => {
-                let rows = self.rows() as i64;
-                let top = csi.param(0).max(1);
-                let bottom = match csi.param(1) {
-                    0 => rows,
-                    b => b.min(rows),
-                };
-                if bottom > top {
-                    self.xt.scroll_region[self.buffer_index()] =
-                        Some((top as usize - 1, bottom as usize - 1));
-                }
-                self.advance(&csi.raw);
-            }
-            _ => self.advance(&csi.raw),
-        }
-    }
-
-    fn buffer_index(&self) -> usize {
-        usize::from(self.term.mode().contains(TermMode::ALT_SCREEN))
-    }
-
-    fn dec_mode(&mut self, p: i64, set: bool) {
-        let xt = &mut self.xt;
-        match p {
-            9 => {
-                xt.mouse_protocol = if set {
-                    MouseProtocol::X10
-                } else {
-                    MouseProtocol::None
-                }
-            }
-            1000 => {
-                xt.mouse_protocol = if set {
-                    MouseProtocol::Vt200
-                } else {
-                    MouseProtocol::None
-                }
-            }
-            1002 => {
-                xt.mouse_protocol = if set {
-                    MouseProtocol::Drag
-                } else {
-                    MouseProtocol::None
-                }
-            }
-            1003 => {
-                xt.mouse_protocol = if set {
-                    MouseProtocol::Any
-                } else {
-                    MouseProtocol::None
-                }
-            }
-            1004 => xt.send_focus = set,
-            1006 => {
-                xt.mouse_encoding = if set {
-                    MouseEncoding::Sgr
-                } else {
-                    MouseEncoding::Default
-                }
-            }
-            1016 => {
-                xt.mouse_encoding = if set {
-                    MouseEncoding::SgrPixels
-                } else {
-                    MouseEncoding::Default
-                }
-            }
-            12 => xt.option_cursor_blink = set,
-            45 => xt.reverse_wraparound = set,
-            2026 => xt.synchronized_output = set,
-            2031 => xt.color_scheme_updates = set,
-            _ => {}
-        }
-        // Selection is disabled (and cleared) while mouse events are active.
-        if matches!(p, 9 | 1000 | 1002 | 1003) && self.xt.mouse_protocol != MouseProtocol::None {
-            self.selection.clear();
-        }
-    }
-
-    fn cursor_report(&self) -> (usize, usize) {
-        let p = self.term.grid().cursor.point;
-        (p.column.0 + 1, p.line.0 as usize + 1)
-    }
-
-    fn color_scheme_report(&self) -> String {
-        format!("\x1b[?997;{}n", if self.palette.is_dark() { 1 } else { 2 })
-    }
-
-    fn decrpm(&self, p: i64, ansi: bool) -> String {
-        const NOT_RECOGNIZED: u8 = 0;
-        let b2v = |v: bool| if v { 1 } else { 2 };
-        let mode = *self.term.mode();
-        let has = |m: TermMode| b2v(mode.contains(m));
-        let v = if ansi {
-            match p {
-                2 => 4,
-                4 => has(TermMode::INSERT),
-                12 => 3,
-                20 => 2,
-                _ => NOT_RECOGNIZED,
-            }
-        } else {
-            let xt = &self.xt;
-            match p {
-                1 => has(TermMode::APP_CURSOR),
-                3 => NOT_RECOGNIZED,
-                6 => has(TermMode::ORIGIN),
-                7 => has(TermMode::LINE_WRAP),
-                8 => 3,
-                9 => b2v(xt.mouse_protocol == MouseProtocol::X10),
-                12 => b2v(xt.option_cursor_blink),
-                25 => has(TermMode::SHOW_CURSOR),
-                45 => b2v(xt.reverse_wraparound),
-                66 => has(TermMode::APP_KEYPAD),
-                67 => 4,
-                1000 => b2v(xt.mouse_protocol == MouseProtocol::Vt200),
-                1002 => b2v(xt.mouse_protocol == MouseProtocol::Drag),
-                1003 => b2v(xt.mouse_protocol == MouseProtocol::Any),
-                1004 => b2v(xt.send_focus),
-                1005 | 1015 => 4,
-                1006 => b2v(xt.mouse_encoding == MouseEncoding::Sgr),
-                1016 => b2v(xt.mouse_encoding == MouseEncoding::SgrPixels),
-                1048 => 1,
-                47 | 1047 | 1049 => has(TermMode::ALT_SCREEN),
-                2004 => has(TermMode::BRACKETED_PASTE),
-                2026 => b2v(xt.synchronized_output),
-                _ => NOT_RECOGNIZED,
-            }
-        };
-        format!("\x1b[{}{p};{v}$y", if ansi { "" } else { "?" })
-    }
-
-    fn decrqss(&self, data: &[u8]) -> String {
-        let reply = |s: String| format!("\x1b{s}\x1b\\");
-        match data {
-            b"\"q" => reply("P1$r0\"q".into()),
-            b"\"p" => reply("P1$r61;1\"p".into()),
-            b"r" => {
-                let (top, bottom) =
-                    self.xt.scroll_region[self.buffer_index()].unwrap_or((0, self.rows() - 1));
-                reply(format!("P1$r{};{}r", top + 1, bottom + 1))
-            }
-            b"m" => reply("P1$r0m".into()),
-            // xterm.js reports the configured option (block, blink on), not DECSCUSR.
-            b" q" => reply(format!(
-                "P1$r{} q",
-                2 - u8::from(self.xt.option_cursor_blink)
-            )),
-            _ => reply("P0$r".into()),
         }
     }
 
@@ -575,29 +274,22 @@ impl Screen {
         }
         let rows_changed = rows != self.rows();
         self.term.resize(Size { cols, rows });
-        self.xt.scroll_region = [None, None];
         if rows_changed {
             self.selection.clear();
         }
         self.bump();
     }
 
-    /// Replaces the colour palette (a theme switch). OSC 4/10/11/12 overrides reset with it, and
-    /// apps that asked for DECSET 2031 get a colour-scheme notification.
-    pub fn set_palette(&mut self, palette: Palette) -> Vec<Output> {
+    /// Replaces the colour palette (a theme switch). OSC 4/10/11/12 overrides reset with it.
+    pub fn set_palette(&mut self, palette: Palette) {
         if palette == self.palette {
-            return Vec::new();
+            return;
         }
         self.palette = palette;
         for i in 0..alacritty_terminal::term::color::COUNT {
             self.term.reset_color(i);
         }
         self.bump();
-        if self.xt.color_scheme_updates {
-            vec![Output::Reply(self.color_scheme_report())]
-        } else {
-            Vec::new()
-        }
     }
 
     pub fn palette(&self) -> &Palette {
@@ -634,15 +326,28 @@ impl Screen {
     }
 
     pub fn mouse_protocol(&self) -> MouseProtocol {
-        self.xt.mouse_protocol
+        let mode = self.term.mode();
+        if mode.contains(TermMode::MOUSE_MOTION) {
+            MouseProtocol::Any
+        } else if mode.contains(TermMode::MOUSE_DRAG) {
+            MouseProtocol::Drag
+        } else if mode.contains(TermMode::MOUSE_REPORT_CLICK) {
+            MouseProtocol::Vt200
+        } else {
+            MouseProtocol::None
+        }
     }
 
     pub fn mouse_encoding(&self) -> MouseEncoding {
-        self.xt.mouse_encoding
+        if self.term.mode().contains(TermMode::SGR_MOUSE) {
+            MouseEncoding::Sgr
+        } else {
+            MouseEncoding::Default
+        }
     }
 
     pub fn mouse_events_active(&self) -> bool {
-        self.xt.mouse_protocol != MouseProtocol::None
+        self.term.mode().intersects(TermMode::MOUSE_MODE)
     }
 
     pub fn bracketed_paste(&self) -> bool {
@@ -661,11 +366,8 @@ impl Screen {
         !self.term.mode().contains(TermMode::SHOW_CURSOR)
     }
 
-    /// Cursor style and whether it blinks (`decPrivateModes ?? options`).
-    pub fn cursor_style(&self) -> (CursorStyle, bool) {
-        self.xt
-            .decscusr
-            .unwrap_or((CursorStyle::Block, self.xt.option_cursor_blink))
+    pub fn cursor_style(&self) -> ansi::CursorStyle {
+        self.term.cursor_style()
     }
 
     /// Cursor cell, viewport-relative, if it is on screen.
@@ -690,8 +392,9 @@ impl Screen {
 
     /// The focus report to send when focus changes and the app asked for DECSET 1004.
     pub fn focus_report(&self, focused: bool) -> Option<&'static str> {
-        self.xt
-            .send_focus
+        self.term
+            .mode()
+            .contains(TermMode::FOCUS_IN_OUT)
             .then_some(if focused { "\x1b[I" } else { "\x1b[O" })
     }
 

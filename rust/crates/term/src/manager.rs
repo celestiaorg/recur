@@ -36,7 +36,6 @@ use crate::cwd::process_cwd;
 use crate::osc7::Osc7Parser;
 use crate::plain::tail_plain;
 use crate::process::{is_shell_foreground, kill_after_grace, signal_group, tree_groups};
-use crate::queries::QueryFilter;
 use crate::ring::Ring;
 
 /// PTY read buffer. Large enough that a burst costs few syscalls.
@@ -809,7 +808,6 @@ impl Session {
     }
 
     fn read_loop(&self, mut reader: FileDescriptor, stop: FileDescriptor) {
-        let mut queries = QueryFilter::new();
         let mut osc7 = Osc7Parser::default();
         let mut buf = vec![0u8; READ_CHUNK];
         loop {
@@ -831,7 +829,7 @@ impl Session {
             match reader.read(&mut buf) {
                 // EOF / EIO on a closed PTY is the normal "shell exited" path.
                 Ok(0) => break,
-                Ok(n) => self.ingest(&buf[..n], &mut queries, &mut osc7),
+                Ok(n) => self.ingest(&buf[..n], &mut osc7),
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => continue,
                 Err(_) => break,
@@ -847,27 +845,18 @@ impl Session {
     }
 
     /// Records output for replay and, when a client is attached, queues it for the next flush.
-    /// Colour/CPR probes are answered synchronously on the PTY and stripped first.
-    fn ingest(&self, p: &[u8], queries: &mut QueryFilter, osc7: &mut Osc7Parser) {
-        let (forward, replies) = queries.process(p);
-        if !replies.is_empty() {
-            // Best-effort: a failed write means the PTY is already gone.
-            let _ = self.write_pty(&replies);
-        }
-        if forward.is_empty() {
-            return;
-        }
-        let cwd = osc7.feed(&forward).filter(|c| dir_exists(c));
+    fn ingest(&self, data: &[u8], osc7: &mut Osc7Parser) {
+        let cwd = osc7.feed(data).filter(|c| dir_exists(c));
         let big = {
             let mut st = self.st.lock();
             if let Some(cwd) = cwd {
                 st.cwd = cwd;
                 st.cwd_from_osc = true;
             }
-            st.replay.write(&forward);
+            st.replay.write(data);
             if st.attached {
-                st.pending.extend_from_slice(&forward);
-                st.outstanding += forward.len();
+                st.pending.extend_from_slice(data);
+                st.outstanding += data.len();
                 Some(st.pending.len() >= MAX_PENDING)
             } else {
                 None

@@ -510,8 +510,7 @@ impl TerminalView {
     /// Cursor blink and timers after the screen changed.
     fn after_change(&mut self, cursor_before: Option<(usize, usize)>, cx: &mut Context<Self>) {
         let now = cx.background_executor().now();
-        let (_, blinks) = self.screen.cursor_style();
-        match (&mut self.blink, blinks) {
+        match (&mut self.blink, self.screen.cursor_style().blinking) {
             (None, true) => self.blink = Some(CursorBlink::new(now, self.focused)),
             (Some(_), false) => self.blink = None,
             (Some(b), true) if self.screen.cursor_in_viewport() != cursor_before => b.restart(now),
@@ -784,9 +783,7 @@ impl TerminalView {
     fn push_theme(&mut self, cx: &mut Context<Self>) {
         let app = recur_ui::Theme::of(cx).id;
         let palette = Palette::from_theme(&self.theme.resolve(app, self.frosted));
-        for out in self.screen.set_palette(palette) {
-            self.handle_output(out, cx);
-        }
+        self.screen.set_palette(palette);
         cx.notify();
     }
 
@@ -1052,8 +1049,6 @@ impl TerminalView {
         let e = MouseReport {
             col: (x / l.cell_w()).floor() as i64,
             row: (y / l.cell_h()).floor() as i64,
-            x: x.floor() as i64,
-            y: y.floor() as i64,
             button,
             action,
             ctrl: m.control,

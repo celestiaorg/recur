@@ -35,114 +35,30 @@ fn prints_text_and_wraps() {
 }
 
 #[test]
-fn answers_device_attributes_like_xterm_js() {
+fn alacritty_answers_status_queries() {
     let mut s = screen(80, 24);
-    assert_eq!(replies(&s.feed(b"\x1b[c")), vec!["\x1b[?1;2c"]);
-    assert_eq!(replies(&s.feed(b"\x1b[0c")), vec!["\x1b[?1;2c"]);
-    assert!(replies(&s.feed(b"\x1b[1c")).is_empty());
-    assert_eq!(replies(&s.feed(b"\x1b[>c")), vec!["\x1b[>0;276;0c"]);
-    assert_eq!(
-        replies(&s.feed(b"\x1b[>q")),
-        vec![format!("\x1bP>|xterm.js({XTERM_VERSION})\x1b\\")]
-    );
-    assert_eq!(replies(&s.feed(b"\x1b[5n")), vec!["\x1b[0n"]);
+    assert_eq!(replies(&s.feed(b"\x1b[c")), vec!["\x1b[?6c"]);
     s.feed(b"ab\r\ncd");
     assert_eq!(replies(&s.feed(b"\x1b[6n")), vec!["\x1b[2;3R"]);
-    assert_eq!(replies(&s.feed(b"\x1b[?6n")), vec!["\x1b[?2;3R"]);
 }
 
 #[test]
-fn window_ops_and_kitty_queries_are_ignored() {
-    let mut s = screen(80, 24);
-    assert!(replies(&s.feed(b"\x1b[18t\x1b[14t\x1b[22;0t\x1b[?u\x1b[>1u")).is_empty());
-}
-
-#[test]
-fn reports_modes_with_decrpm() {
-    let mut s = screen(80, 24);
-    assert_eq!(replies(&s.feed(b"\x1b[?2004$p")), vec!["\x1b[?2004;2$y"]);
-    s.feed(b"\x1b[?2004h\x1b[?1000h\x1b[?1006h");
-    assert_eq!(replies(&s.feed(b"\x1b[?2004$p")), vec!["\x1b[?2004;1$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[?1000$p")), vec!["\x1b[?1000;1$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[?1006$p")), vec!["\x1b[?1006;1$y"]);
-    assert_eq!(
-        replies(&s.feed(b"\x1b[?12$p")),
-        vec!["\x1b[?12;1$y"],
-        "Recur opens with cursorBlink on"
-    );
-    assert_eq!(replies(&s.feed(b"\x1b[?1005$p")), vec!["\x1b[?1005;4$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[?9999$p")), vec!["\x1b[?9999;0$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[4$p")), vec!["\x1b[4;2$y"]);
-    assert_eq!(replies(&s.feed(b"\x1b[20$p")), vec!["\x1b[20;2$y"]);
-}
-
-#[test]
-fn decrqss_reports() {
-    let mut s = screen(80, 24);
-    assert_eq!(
-        replies(&s.feed(b"\x1bP$q q\x1b\\")),
-        vec!["\x1bP1$r1 q\x1b\\"]
-    );
-    assert_eq!(
-        replies(&s.feed(b"\x1bP$qm\x1b\\")),
-        vec!["\x1bP1$r0m\x1b\\"]
-    );
-    assert_eq!(
-        replies(&s.feed(b"\x1bP$qr\x1b\\")),
-        vec!["\x1bP1$r1;24r\x1b\\"]
-    );
-    s.feed(b"\x1b[3;10r");
-    assert_eq!(
-        replies(&s.feed(b"\x1bP$qr\x1b\\")),
-        vec!["\x1bP1$r3;10r\x1b\\"]
-    );
-    assert_eq!(replies(&s.feed(b"\x1bP$qz\x1b\\")), vec!["\x1bP0$r\x1b\\"]);
-}
-
-#[test]
-fn tracks_xterm_mouse_protocols() {
+fn mouse_and_focus_modes_come_from_the_terminal() {
     let mut s = screen(80, 24);
     assert_eq!(
         (s.mouse_protocol(), s.mouse_encoding()),
         (MouseProtocol::None, MouseEncoding::Default)
     );
-    s.feed(b"\x1b[?1002h\x1b[?1006h");
+    s.feed(b"\x1b[?1002h\x1b[?1006h\x1b[?1004h");
     assert_eq!(
         (s.mouse_protocol(), s.mouse_encoding()),
         (MouseProtocol::Drag, MouseEncoding::Sgr)
     );
-    s.feed(b"\x1b[?1003;1016h");
-    assert_eq!(
-        (s.mouse_protocol(), s.mouse_encoding()),
-        (MouseProtocol::Any, MouseEncoding::SgrPixels)
-    );
-    s.feed(b"\x1b[?1003l");
-    assert_eq!(s.mouse_protocol(), MouseProtocol::None);
-    s.feed(b"\x1b[?9h\x1b[?1004h");
-    assert_eq!(s.mouse_protocol(), MouseProtocol::X10);
     assert_eq!(s.focus_report(true), Some("\x1b[I"));
     s.feed(b"\x1bc");
     assert_eq!(
-        (s.mouse_protocol(), s.mouse_encoding(), s.focus_report(true)),
-        (MouseProtocol::None, MouseEncoding::Default, None)
-    );
-}
-
-#[test]
-fn cursor_style_follows_decscusr_and_options() {
-    let mut s = screen(80, 24);
-    assert_eq!(s.cursor_style(), (CursorStyle::Block, true));
-    s.feed(b"\x1b[6 q");
-    assert_eq!(s.cursor_style(), (CursorStyle::Bar, false));
-    s.feed(b"\x1b[3 q");
-    assert_eq!(s.cursor_style(), (CursorStyle::Underline, true));
-    s.feed(b"\x1b[0 q\x1b[?12l");
-    assert_eq!(s.cursor_style(), (CursorStyle::Block, false));
-    s.feed(b"\x1b[5 q\x1b[!p");
-    assert_eq!(
-        s.cursor_style(),
-        (CursorStyle::Block, false),
-        "DECSTR drops DECSCUSR but keeps the option"
+        (s.mouse_protocol(), s.focus_report(true)),
+        (MouseProtocol::None, None)
     );
 }
 
@@ -156,49 +72,25 @@ fn emits_titles_and_bells() {
 }
 
 #[test]
-fn answers_osc4_queries_from_the_palette() {
+fn colour_queries_answer_from_the_live_palette() {
     let mut s = screen(80, 24);
     assert_eq!(
         replies(&s.feed(b"\x1b]4;1;?\x07")),
-        vec!["\x1b]4;1;rgb:cccc/0000/0000\x1b\\"]
+        vec!["\x1b]4;1;rgb:cccc/0000/0000\x07"]
     );
-    s.feed(b"\x1b]4;1;rgb:12/34/56\x07");
-    assert_eq!(
-        replies(&s.feed(b"\x1b]4;1;?\x07")),
-        vec!["\x1b]4;1;rgb:1212/3434/5656\x1b\\"]
-    );
-    assert!(
-        replies(&s.feed(b"\x1b]11;?\x07")).is_empty(),
-        "OSC 11 queries are swallowed"
-    );
-}
-
-#[test]
-fn color_scheme_query_and_updates() {
-    let mut s = screen(80, 24);
-    assert_eq!(replies(&s.feed(b"\x1b[?996n")), vec!["\x1b[?997;1n"]);
-    s.feed(b"\x1b[?2031h");
-    let light = Palette::from_theme(&Theme {
+    s.set_palette(Palette::from_theme(&Theme {
         background: Some("#ffffff".into()),
-        foreground: Some("#000000".into()),
         ..Default::default()
-    });
-    assert_eq!(replies(&s.set_palette(light)), vec!["\x1b[?997;2n"]);
-}
-
-#[test]
-fn erase_display_does_not_push_the_screen_into_scrollback() {
-    let mut s = screen(20, 3);
-    s.feed(b"one\r\ntwo\r\nthree\r\nfour");
-    assert_eq!(s.scrollback_len(), 1);
-    s.feed(b"\x1b[2J");
+    }));
     assert_eq!(
-        s.scrollback_len(),
-        1,
-        "xterm.js scrollOnEraseInDisplay is off"
+        replies(&s.feed(b"\x1b]11;?\x1b\\")),
+        vec!["\x1b]11;rgb:ffff/ffff/ffff\x1b\\"]
     );
-    assert_eq!(s.viewport_text(), vec!["", "", ""]);
-    assert_eq!(s.row_text(0, true), "one");
+    s.feed(b"\x1b]11;rgb:12/34/56\x07");
+    assert_eq!(
+        replies(&s.feed(b"\x1b]11;?\x07")),
+        vec!["\x1b]11;rgb:1212/3434/5656\x07"]
+    );
 }
 
 #[test]
@@ -760,8 +652,6 @@ fn overline_is_saved_restored_and_reset() {
     let mut s = screen(10, 3);
     s.feed(b"\x1b[53m\x1b7\x1b[55ma\x1b8b");
     assert_eq!(overlines(&s)[0], "o");
-    s.feed(b"\x1b[53m\x1b[!p\x1b[2;1Hc");
-    assert_eq!(overlines(&s)[1], "", "DECSTR resets attributes");
     s.feed(b"\x1b[53m\x1bcd");
     assert_eq!(s.viewport_text()[0], "d");
     assert_eq!(overlines(&s)[0], "", "RIS");
@@ -786,10 +676,10 @@ fn title_stack_requests_do_not_toggle_overline() {
 #[test]
 fn overline_handler_delegates_everything_else() {
     // Each case exercises handler calls the overline wrapper forwards; the screen must end up
-    // exactly where the bare emulator does. (Calls alacritty ignores and requests the scanner
-    // answers itself have nothing to observe.)
+    // exactly where the bare emulator does. (Calls alacritty ignores have nothing to observe.)
     let cases: &[&[u8]] = &[
         b"\x1b]2;title\x07\x07",
+        b"\x1b]2;a\x07\x1b[22t\x1b]2;b\x07\x1b[23t",
         b"\x1b[2 qx",
         b"\x1b]50;CursorShape=2\x07",
         b"\x1b[3;4Ha\x1b[5db\x1b[9Gc",
@@ -884,40 +774,4 @@ fn overline_handler_delegates_everything_else() {
             .collect();
         assert_eq!(screen_out, bare_out, "{name:?}");
     }
-}
-
-#[test]
-fn sgr_21_is_a_double_underline_and_sgr_5_draws_steady() {
-    let mut s = screen(12, 1);
-    s.feed(b"\x1b[1ma\x1b[21mb\x1b[24mc\x1b[5md\x1b[25me\x1b[6mf\x1b[0m");
-    let f = s.frame(false, false);
-    let style = |x| find_glyph(&f, x, 0).underline.map(|u| u.style);
-    assert_eq!(style(1), Some(UnderlineStyle::Double), "xterm.js: SGR 21");
-    assert!(find_glyph(&f, 1, 0).bold, "SGR 21 leaves bold on");
-    assert_eq!(style(2), None);
-    // Recur leaves xterm.js's `blinkIntervalDuration` at 0, which turns text blink off: SGR 5
-    // and 6 set an attribute nothing draws, in either phase of the cursor blink.
-    let plain = find_glyph(&s.frame(false, true), 0, 0).clone();
-    for x in 3..6 {
-        for phase in [false, true] {
-            let g = find_glyph(&s.frame(true, phase), x, 0).clone();
-            assert_eq!((g.fg, g.text.len()), (plain.fg, 1));
-        }
-    }
-}
-
-#[test]
-fn sgr_221_and_222_clear_bold_and_faint_alone() {
-    use alacritty_terminal::index::{Column, Line};
-    use alacritty_terminal::term::cell::Flags;
-    let mut s = screen(8, 1);
-    s.feed(b"\x1b[1;2ma\x1b[221mb\x1b[1;222mc\x1b[221;1md\x1b[0m");
-    let flags = |x: usize| {
-        let f = s.term.grid()[Line(0)][Column(x)].flags;
-        (f.contains(Flags::BOLD), f.contains(Flags::DIM))
-    };
-    assert_eq!(flags(0), (true, true));
-    assert_eq!(flags(1), (false, true), "221 clears bold only");
-    assert_eq!(flags(2), (true, false), "222 clears faint only");
-    assert_eq!(flags(3), (true, false), "a later 1 wins over 221");
 }

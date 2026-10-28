@@ -551,6 +551,24 @@ async fn quick_open_filters_the_file_index(cx: &mut TestAppContext) {
     assert!(!h.has("qo-row:0"));
 }
 
+/// Quick Open covers the whole window like the palettes, and nothing under it takes the
+/// pointer: a press on a panel toggle under the scrim only closes it.
+#[gpui::test]
+async fn quick_open_covers_the_window_and_blocks_the_page(cx: &mut TestAppContext) {
+    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let toggle = h.bounds("panel-toggle:search").expect("toggle").center();
+    let before = h.read(|o, _| o.right_kind);
+    h.keys("secondary-p");
+    let back = h.bounds("qo-back").expect("scrim");
+    let viewport = h.cx.update(|window, _| window.viewport_size());
+    assert_eq!(back.size, viewport);
+    h.cx.simulate_mouse_move(toggle, None, gpui::Modifiers::none());
+    h.cx.simulate_click(toggle, gpui::Modifiers::none());
+    h.wait(50);
+    assert!(!h.has("quick-open"));
+    assert_eq!(h.read(|o, _| o.right_kind), before);
+}
+
 #[gpui::test]
 async fn quick_open_hydrates_the_picked_file_without_a_read_failed_toast(cx: &mut TestAppContext) {
     let f = two();

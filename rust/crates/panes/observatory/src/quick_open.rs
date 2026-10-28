@@ -500,34 +500,33 @@ impl QuickOpen {
             &[css_box_shadow(0., 18., 48., 0., rgba(0, 0, 0, 0.35))],
             10.,
         );
-        let vh = f32::from(window.viewport_size().height);
-        deferred(
-            div()
+        let vp = window.viewport_size();
+        let panel = div()
+            .id("qo")
+            .w(px(560.))
+            .max_w(gpui_kit::relative(0.92))
+            .occlude()
+            .on_key_down(
+                cx.guarded_listener(|q, e: &gpui_kit::KeyDownEvent, _, cx| q.on_key(e, cx)),
+            )
+            .child(card);
+        // The palettes' scrim over the whole window: nothing under it takes the pointer.
+        deferred(recur_ui::style::anchored_at(
+            0.,
+            0.,
+            recur_ui::style::palette_scrim(window, panel)
+                .relative()
+                .w(vp.width)
+                .h(vp.height)
                 .id("qo-back")
-                .absolute()
-                .inset_0()
-                .bg(hsla(t.bg.fade(0.55)))
-                .flex()
-                .flex_col()
-                .items_center()
-                .child(recur_ui::exact::vgap(vh * 0.12, window))
-                .child(
-                    div()
-                        .id("qo")
-                        .w(px(560.))
-                        .max_w(gpui_kit::relative(0.92))
-                        .occlude()
-                        .on_key_down(cx.guarded_listener(|q, e: &gpui_kit::KeyDownEvent, _, cx| {
-                            q.on_key(e, cx)
-                        }))
-                        .child(card),
-                )
+                .debug_selector(|| "qo-back".into())
+                .occlude()
                 .on_mouse_down(
                     gpui_kit::MouseButton::Left,
                     cx.guarded_listener(|q, _, _, cx| q.close(cx)),
                 ),
-        )
-        .with_priority(80)
+        ))
+        .with_priority(recur_ui::style::OVERLAY_PRIORITY)
         .into_any_element()
     }
 }

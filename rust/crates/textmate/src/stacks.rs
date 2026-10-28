@@ -4,8 +4,11 @@
 //! kept so re-tokenizing can stop as soon as a line ends in the same state
 //! it did before (usually 1-3 lines, not the whole viewport).
 
+use std::cmp::Ordering;
 use std::rc::Rc;
 use std::time::Instant;
+
+use sum_tree::{Bias, ContextLessSummary, Item, SeekTarget, SumTree};
 
 use crate::grammar::StateStack;
 
@@ -23,43 +26,104 @@ impl RuleStack for StateStack {
     }
 }
 
-pub struct TmStackCache<S = StateStack> {
-    /// `after[n]` = stack after 1-based line n. Index 0 unused.
-    after: Vec<Option<S>>,
-    tokens: Vec<Option<LineTokens>>,
+pub struct TmStackCache<S: Clone = StateStack> {
+    /// Item `n - 1` holds 1-based line n's stack and tokens.
+    lines: SumTree<Slot<S>>,
     filled_through: usize,
 }
 
-impl<S> Default for TmStackCache<S> {
+impl<S: Clone> Default for TmStackCache<S> {
     fn default() -> Self {
         TmStackCache {
-            after: vec![None],
-            tokens: vec![None],
+            lines: SumTree::default(),
             filled_through: 0,
         }
     }
 }
 
-fn get<T: Clone>(v: &[Option<T>], n: usize) -> Option<T> {
-    v.get(n).cloned().flatten()
+#[derive(Clone)]
+struct Slot<S> {
+    after: Option<S>,
+    tokens: Option<LineTokens>,
 }
 
-fn set<T>(v: &mut Vec<Option<T>>, n: usize, value: T) {
-    if v.len() <= n {
-        v.resize_with(n + 1, || None);
+impl<S> Default for Slot<S> {
+    fn default() -> Self {
+        Slot {
+            after: None,
+            tokens: None,
+        }
     }
-    v[n] = Some(value);
 }
 
-fn splice_holes<T>(v: &mut Vec<Option<T>>, index: usize, del: usize, ins: usize) {
-    if v.len() < index {
-        v.resize_with(index, || None);
+/// Lines, and lines missing a stack or tokens.
+#[derive(Clone, Copy, Debug, Default)]
+struct SlotSummary {
+    lines: usize,
+    gaps: usize,
+}
+
+impl ContextLessSummary for SlotSummary {
+    fn zero() -> Self {
+        SlotSummary::default()
     }
-    let end = (index + del).min(v.len());
-    v.splice(index..end, std::iter::repeat_with(|| None).take(ins));
+
+    fn add_summary(&mut self, other: &Self) {
+        self.lines += other.lines;
+        self.gaps += other.gaps;
+    }
+}
+
+impl<S: Clone> Item for Slot<S> {
+    type Summary = SlotSummary;
+
+    fn summary(&self, _: ()) -> SlotSummary {
+        SlotSummary {
+            lines: 1,
+            gaps: usize::from(self.after.is_none() || self.tokens.is_none()),
+        }
+    }
+}
+
+struct Lines(usize);
+struct Gaps(usize);
+
+impl SeekTarget<'_, SlotSummary, SlotSummary> for Lines {
+    fn cmp(&self, at: &SlotSummary, _: ()) -> Ordering {
+        self.0.cmp(&at.lines)
+    }
+}
+
+impl SeekTarget<'_, SlotSummary, SlotSummary> for Gaps {
+    fn cmp(&self, at: &SlotSummary, _: ()) -> Ordering {
+        self.0.cmp(&at.gaps)
+    }
 }
 
 impl<S: Clone> TmStackCache<S> {
+    fn slot(&self, line: usize) -> Option<&Slot<S>> {
+        let index = line.checked_sub(1)?;
+        self.lines
+            .find::<SlotSummary, _>((), &Lines(index), Bias::Right)
+            .2
+    }
+
+    /// Replace items `from..to` (0-based) with `items(old)`.
+    fn replace(
+        &mut self,
+        from: usize,
+        to: usize,
+        items: impl FnOnce(SumTree<Slot<S>>) -> Vec<Slot<S>>,
+    ) {
+        let mut cursor = self.lines.cursor::<SlotSummary>(());
+        let mut out = cursor.slice(&Lines(from), Bias::Right);
+        let old = cursor.slice(&Lines(to), Bias::Right);
+        out.extend(items(old), ());
+        out.append(cursor.suffix(), ());
+        drop(cursor);
+        self.lines = out;
+    }
+
     pub fn filled(&self) -> usize {
         self.filled_through
     }
@@ -69,7 +133,7 @@ impl<S: Clone> TmStackCache<S> {
     pub fn resume_at(&self, from_line: usize) -> (usize, Option<S>) {
         let before = (from_line.max(1) - 1).min(self.filled_through);
         if before >= 1
-            && let Some(stack) = get(&self.after, before)
+            && let Some(stack) = self.stack_at(before)
         {
             return (before + 1, Some(stack));
         }
@@ -80,54 +144,82 @@ impl<S: Clone> TmStackCache<S> {
         if line < 1 {
             return;
         }
-        set(&mut self.after, line, stack);
-        if let Some(t) = tokens {
-            set(&mut self.tokens, line, t);
+        let len = self.lines.summary().lines;
+        if line > len {
+            self.lines
+                .extend(std::iter::repeat_with(Slot::default).take(line - len), ());
         }
+        self.replace(line - 1, line, |old| {
+            let old = old.first().cloned().unwrap_or_default();
+            vec![Slot {
+                after: Some(stack),
+                tokens: tokens.or(old.tokens),
+            }]
+        });
         if line == self.filled_through + 1 {
             self.filled_through = line;
         }
     }
 
     pub fn stack_at(&self, line: usize) -> Option<S> {
-        get(&self.after, line)
+        self.slot(line)?.after.clone()
     }
 
     pub fn tokens_at(&self, line: usize) -> Option<LineTokens> {
-        get(&self.tokens, line)
+        self.slot(line)?.tokens.clone()
     }
 
     pub fn has_tokens(&self, from_line: usize, to_line: usize) -> bool {
-        (from_line..=to_line).all(|n| self.tokens.get(n).is_some_and(Option::is_some))
+        if from_line > to_line {
+            return true;
+        }
+        if from_line == 0 {
+            return false;
+        }
+        let mut cursor = self.lines.cursor::<SlotSummary>(());
+        cursor.seek(&Lines(from_line - 1), Bias::Right);
+        for _ in from_line..=to_line {
+            if cursor.item().is_none_or(|s| s.tokens.is_none()) {
+                return false;
+            }
+            cursor.next();
+        }
+        true
     }
 
     /// Line `n` ended in its previous state, so later cached lines are valid
     /// again while they still have both a stack and tokens.
     pub fn mark_stable(&mut self, n: usize) {
-        let mut end = n;
-        while self.after.get(end + 1).is_some_and(Option::is_some)
-            && self.tokens.get(end + 1).is_some_and(Option::is_some)
-        {
-            end += 1;
-        }
-        self.filled_through = self.filled_through.max(end);
+        let (before, _, _) = self
+            .lines
+            .find::<SlotSummary, _>((), &Lines(n), Bias::Right);
+        let (gap, _, _) = self
+            .lines
+            .find::<SlotSummary, _>((), &Gaps(before.gaps), Bias::Right);
+        self.filled_through = self.filled_through.max(gap.lines.max(n));
     }
 
     /// 1-based splice matching a document line replace. Same-length replaces
     /// keep stale stacks (for early-stop) but drop their tokens.
     pub fn splice(&mut self, from_line: usize, delete_count: usize, insert_count: usize) {
-        let i = from_line.max(1);
+        let i = from_line.max(1) - 1;
         if delete_count != insert_count {
-            splice_holes(&mut self.after, i, delete_count, insert_count);
-            splice_holes(&mut self.tokens, i, delete_count, insert_count);
+            self.replace(i, i + delete_count, |_| {
+                std::iter::repeat_with(Slot::default)
+                    .take(insert_count)
+                    .collect()
+            });
         } else {
-            for n in i..i + insert_count {
-                if let Some(slot) = self.tokens.get_mut(n) {
-                    *slot = None;
-                }
-            }
+            self.replace(i, i + insert_count, |old| {
+                old.iter()
+                    .map(|s| Slot {
+                        after: s.after.clone(),
+                        tokens: None,
+                    })
+                    .collect()
+            });
         }
-        self.filled_through = self.filled_through.min(i - 1);
+        self.filled_through = self.filled_through.min(i);
     }
 }
 
@@ -340,6 +432,130 @@ mod tests {
         .unwrap();
         assert_eq!(cache.tokens_at(5).as_deref(), Some(&[0, 4][..]));
         assert_eq!(cache.filled(), 5);
+    }
+
+    /// The `Vec` layout the cache had before its sum tree, as a model.
+    #[derive(Default)]
+    struct Naive {
+        after: Vec<Option<usize>>,
+        tokens: Vec<Option<u32>>,
+        filled: usize,
+    }
+
+    impl Naive {
+        fn stable_end(&self, n: usize) -> usize {
+            let mut end = n;
+            while self.after.get(end).is_some_and(Option::is_some)
+                && self.tokens.get(end).is_some_and(Option::is_some)
+            {
+                end += 1;
+            }
+            end
+        }
+    }
+
+    fn splice_vec<T>(v: &mut Vec<Option<T>>, i: usize, del: usize, ins: usize) {
+        let i = i.min(v.len());
+        let end = (i + del).min(v.len());
+        v.splice(i..end, std::iter::repeat_with(|| None).take(ins));
+    }
+
+    #[test]
+    fn matches_a_vec_under_random_edits() {
+        let mut x = 0x2545_f491_4f6c_dd1du64;
+        let mut r = move |n: usize| {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            (x % n.max(1) as u64) as usize
+        };
+        let mut cache = TmStackCache::default();
+        let mut naive = Naive::default();
+        for _ in 0..5000 {
+            let len = naive.after.len().max(naive.tokens.len());
+            match r(4) {
+                0 | 1 => {
+                    let line = r(len + 3) + 1;
+                    let tok = (r(2) == 0).then_some(line as u32);
+                    cache.remember(line, Fake(line), tok.map(|t| toks(&[t])));
+                    let i = line - 1;
+                    if naive.after.len() <= i {
+                        naive.after.resize(i + 1, None);
+                    }
+                    naive.after[i] = Some(line);
+                    if let Some(t) = tok {
+                        if naive.tokens.len() <= i {
+                            naive.tokens.resize(i + 1, None);
+                        }
+                        naive.tokens[i] = Some(t);
+                    }
+                    if line == naive.filled + 1 {
+                        naive.filled = line;
+                    }
+                }
+                2 => {
+                    let from = r(len + 2) + 1;
+                    let (del, ins) = (r(4), r(4));
+                    cache.splice(from, del, ins);
+                    if del != ins {
+                        splice_vec(&mut naive.after, from - 1, del, ins);
+                        splice_vec(&mut naive.tokens, from - 1, del, ins);
+                    } else {
+                        for t in naive.tokens.iter_mut().skip(from - 1).take(ins) {
+                            *t = None;
+                        }
+                    }
+                    naive.filled = naive.filled.min(from - 1);
+                }
+                _ => {
+                    let n = r(len + 2);
+                    cache.mark_stable(n);
+                    naive.filled = naive.filled.max(naive.stable_end(n));
+                }
+            }
+            assert_eq!(cache.filled(), naive.filled);
+            for n in 0..=len + 2 {
+                let i = n.wrapping_sub(1);
+                assert_eq!(
+                    cache.stack_at(n),
+                    naive.after.get(i).copied().flatten().map(Fake)
+                );
+                assert_eq!(
+                    cache.tokens_at(n).map(|t| t[0]),
+                    naive.tokens.get(i).copied().flatten()
+                );
+            }
+            let (a, b) = (r(len + 2), r(len + 2));
+            let want = (a..=b).all(|n| {
+                naive
+                    .tokens
+                    .get(n.wrapping_sub(1))
+                    .is_some_and(Option::is_some)
+            });
+            assert_eq!(cache.has_tokens(a, b), want);
+        }
+    }
+
+    /// `cargo test --release -p recur-textmate -- --ignored --nocapture splice_timing`
+    #[test]
+    #[ignore]
+    fn splice_timing() {
+        let mut cache = TmStackCache::default();
+        for n in 1..=1_000_000 {
+            cache.remember(n, Fake(n), Some(toks(&[0])));
+        }
+        let t = std::time::Instant::now();
+        for k in 0..1000 {
+            let n = 1 + k * 997 % 999_000;
+            cache.splice(n, 1, 2);
+            cache.remember(n, Fake(n), Some(toks(&[0])));
+            cache.remember(n + 1, Fake(n), Some(toks(&[0])));
+            cache.mark_stable(n + 1);
+        }
+        println!(
+            "TmStackCache 1M lines: {:?} per newline",
+            t.elapsed() / 1000
+        );
     }
 
     #[test]

@@ -271,11 +271,15 @@ impl AgentChat {
         )
         .absolute()
         .inset_0();
+        // A switch back restores the saved offset as the content above it settles; showing
+        // those frames would scroll in from the top, so the content shows once it is in place.
+        let restoring = self.restoring_scroll();
         let col = div()
             .flex()
             .flex_col()
             .w_full()
             .when(!session, |d| d.max_w(px(720.)).mx_auto())
+            .when(restoring, |d| d.opacity(0.))
             .children(kids);
         // The horizontal half of the tie nudge (see the spacer above the scroller), inside
         // the content-sized scroll column.

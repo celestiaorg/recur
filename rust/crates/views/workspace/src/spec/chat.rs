@@ -360,6 +360,10 @@ async fn wheeling_up_a_long_chat_and_switching_back_keeps_what_is_on_screen(
         h.cx.run_until_parked();
     }
     assert_eq!(first_shown(&mut h, &keys), before, "after the switch back");
+    assert!(
+        !chat.read_with(h.cx, |c, _| c.restoring_scroll()),
+        "the restore settled and the transcript shows"
+    );
     h.cx.update(|window, _| window.refresh());
     h.cx.run_until_parked();
     assert_eq!(first_shown(&mut h, &keys), before, "after a redraw");

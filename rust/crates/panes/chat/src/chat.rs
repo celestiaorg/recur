@@ -1654,6 +1654,11 @@ impl AgentChat {
         });
     }
 
+    /// A restore to a saved offset (not the bottom pin) is still settling.
+    pub fn restoring_scroll(&self) -> bool {
+        self.pending_scroll.as_ref().is_some_and(|p| !p.near_bottom)
+    }
+
     /// Before the transcript lays out: a pending restore moves the scroller now, so a tab
     /// switch draws its first frame at the saved offset, and the stub window covers the offset
     /// this frame draws (a wheel jump), not the last frame's.

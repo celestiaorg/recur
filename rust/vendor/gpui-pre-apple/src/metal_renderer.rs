@@ -3,7 +3,7 @@ use anyhow::{Context as _, Result};
 use block2::RcBlock;
 use core_graphics::geometry::CGSize;
 use gpui::{
-    AtlasTextureId, BackdropBlur, Background, Bounds, ContentMask, Corners, DevicePixels,
+    AtlasTextureId, BackdropBlur, Background, Bounds, ContentMask, Corners, DevicePixels, Hole,
     PaintSurface, Path, Point, PrimitiveBatch, ScaledPixels, Scene, SceneBatch, Size, point, size,
 };
 #[cfg(any(test, feature = "bench-support", feature = "test-support"))]
@@ -126,6 +126,7 @@ pub struct MetalRenderer {
     surfaces_pipeline_state: metal::RenderPipelineState,
     backdrop_blur_pass_pipeline_state: metal::RenderPipelineState,
     backdrop_blur_composite_pipeline_state: metal::RenderPipelineState,
+    holes_pipeline_state: metal::RenderPipelineState,
     /// Two scratch textures for backdrop blurs, grown to the largest blurred region.
     backdrop_blur_textures: Option<[metal::Texture; 2]>,
     unit_vertices: metal::Buffer,
@@ -371,12 +372,22 @@ impl MetalRenderer {
             "backdrop_blur_pass_fragment",
             MTLPixelFormat::BGRA8Unorm,
         );
-        let backdrop_blur_composite_pipeline_state = build_pipeline_state(
+        // Premultiplied, so a blur over a hole keeps it transparent.
+        let backdrop_blur_composite_pipeline_state = build_path_rasterization_pipeline_state(
             &device,
             &library,
             "backdrop_blur_composite",
             "backdrop_blur_composite_vertex",
             "backdrop_blur_composite_fragment",
+            MTLPixelFormat::BGRA8Unorm,
+            1,
+        );
+        let holes_pipeline_state = build_unblended_pipeline_state(
+            &device,
+            &library,
+            "holes",
+            "hole_vertex",
+            "hole_fragment",
             MTLPixelFormat::BGRA8Unorm,
         );
 
@@ -421,6 +432,7 @@ impl MetalRenderer {
             surfaces_pipeline_state,
             backdrop_blur_pass_pipeline_state,
             backdrop_blur_composite_pipeline_state,
+            holes_pipeline_state,
             backdrop_blur_textures: None,
             unit_vertices,
             instance_buffer_pool,
@@ -532,6 +544,11 @@ impl MetalRenderer {
             && scene.backdrop_blurs.is_empty();
         if layer.framebuffer_only() != framebuffer_only {
             layer.set_framebuffer_only(framebuffer_only);
+        }
+        // A hole shows what is behind the layer.
+        let opaque = self.opaque && scene.holes.is_empty();
+        if layer.is_opaque() != opaque {
+            layer.set_opaque(opaque);
         }
         let drawable = if let Some(drawable) = layer.next_drawable() {
             drawable
@@ -773,6 +790,10 @@ impl MetalRenderer {
                     );
                     continue;
                 }
+                SceneBatch::Holes(range) => {
+                    self.draw_holes(&scene.holes[range], viewport_size, command_encoder);
+                    continue;
+                }
             };
             match batch {
                 PrimitiveBatch::Shadows(range) => {
@@ -989,6 +1010,30 @@ impl MetalRenderer {
         encoder.set_fragment_texture(0, Some(result));
         encoder.draw_primitives(metal::MTLPrimitiveType::Triangle, 0, 6);
         encoder.end_encoding();
+    }
+
+    fn draw_holes(
+        &self,
+        holes: &[Hole],
+        viewport_size: Size<DevicePixels>,
+        command_encoder: &metal::RenderCommandEncoderRef,
+    ) {
+        command_encoder.set_render_pipeline_state(&self.holes_pipeline_state);
+        command_encoder.set_vertex_buffer(0, Some(&self.unit_vertices), 0);
+        command_encoder.set_vertex_bytes(
+            2,
+            mem::size_of_val(&viewport_size) as u64,
+            &viewport_size as *const Size<DevicePixels> as *const _,
+        );
+        for hole in holes {
+            let clip = hole.bounds.intersect(&hole.content_mask.bounds);
+            command_encoder.set_vertex_bytes(
+                1,
+                mem::size_of_val(&clip) as u64,
+                &clip as *const Bounds<ScaledPixels> as *const _,
+            );
+            command_encoder.draw_primitives(metal::MTLPrimitiveType::Triangle, 0, 6);
+        }
     }
 
     fn draw_paths_to_intermediate(
@@ -2008,5 +2053,51 @@ mod tests {
             assert!(blue.abs_diff(128) <= 2);
             assert_eq!(*alpha, 255);
         }
+    }
+
+    /// A hole clears what was painted under it, a backdrop blur over it keeps it clear, and
+    /// what is painted later composites over it with its own alpha.
+    #[test]
+    fn a_hole_is_transparent_under_later_paint() {
+        let rect = |x: f32, y: f32, w: f32, h: f32| Bounds {
+            origin: point(ScaledPixels(x), ScaledPixels(y)),
+            size: size(ScaledPixels(w), ScaledPixels(h)),
+        };
+        let all = rect(0., 0., 32., 32.);
+        let quad = |bounds, color| gpui::Quad {
+            bounds,
+            content_mask: ContentMask { bounds: all },
+            background: gpui::solid_background(color),
+            ..Default::default()
+        };
+        let mut scene = Scene::default();
+        scene.insert_primitive(quad(all, gpui::hsla(0., 1., 0.5, 1.)));
+        scene.insert_primitive(Hole {
+            order: 0,
+            bounds: rect(4., 4., 20., 20.),
+            content_mask: ContentMask { bounds: all },
+        });
+        scene.insert_primitive(BackdropBlur {
+            order: 0,
+            blur_radius: ScaledPixels(1.),
+            bounds: all,
+            corner_radii: Corners::default(),
+            content_mask: ContentMask { bounds: all },
+        });
+        scene.insert_primitive(quad(rect(16., 16., 16., 16.), gpui::hsla(0., 0., 0., 0.5)));
+        scene.finish();
+
+        let mut renderer = MetalRenderer::new_headless(Arc::new(Mutex::new(Default::default())));
+        let image = renderer
+            .render_scene_to_image(&scene, size(DevicePixels(32), DevicePixels(32)))
+            .unwrap();
+        let at = |x, y| image.get_pixel(x, y).0;
+        let [r, g, _, a] = at(1, 1);
+        assert!(r > 250 && g < 5 && a == 255, "background: {:?}", at(1, 1));
+        assert!(at(10, 10)[3] <= 2, "hole: {:?}", at(10, 10));
+        let [r, _, _, a] = at(20, 20);
+        assert!(r <= 2 && a.abs_diff(128) <= 2, "overlay over the hole: {:?}", at(20, 20));
+        let [r, _, _, a] = at(28, 28);
+        assert!(r.abs_diff(128) <= 2 && a == 255, "overlay elsewhere: {:?}", at(28, 28));
     }
 }

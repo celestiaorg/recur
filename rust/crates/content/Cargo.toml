@@ -45,8 +45,6 @@ objc2-av-foundation = { workspace = true, features = ["objc2-core-media", "objc2
 objc2-core-media.workspace = true
 objc2-core-video.workspace = true
 objc2-web-kit.workspace = true
-objc2-quartz-core.workspace = true
-objc2-core-graphics.workspace = true
 block2.workspace = true
 raw-window-handle.workspace = true
 

@@ -185,7 +185,12 @@ impl ProjectPic {
         }
         match parsed {
             ParsedPic::Image(src) => match data_url_image(&src) {
-                Some(image) => el.child(img(image).size_full().object_fit(ObjectFit::Cover)),
+                Some(image) => el.child(
+                    img(image)
+                        .size_full()
+                        .rounded(px(b.radius))
+                        .object_fit(ObjectFit::Cover),
+                ),
                 None => el,
             },
             ParsedPic::Icon(name) => {

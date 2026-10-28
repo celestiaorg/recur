@@ -6,6 +6,7 @@
 //!
 //! The `mock` feature swaps in the e2e mock bridge for UI work without a backend.
 
+mod image_http;
 mod macro_runtime;
 
 use std::cell::RefCell;
@@ -282,6 +283,7 @@ fn main() {
     let rt_handle = rt.handle().clone();
     app.run(move |cx: &mut App| {
         let rt = rt_handle;
+        cx.set_http_client(Arc::new(image_http::ImageHttp::new(rt.clone())));
         let registry = registry();
         recur_app::init(&registry, cx);
         recur_ui::widgets::scrollbar::watch_system_style(cx);

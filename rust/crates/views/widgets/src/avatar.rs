@@ -167,6 +167,7 @@ pub fn avatar_with(
                 .absolute()
                 .inset_0()
                 .size_full()
+                .rounded(px(radius))
                 .object_fit(ObjectFit::Cover),
         )
     })

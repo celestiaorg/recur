@@ -1,5 +1,5 @@
 //! App-server wire types (Go `codex/types.go`). Field order and `omitempty`
-//! follow the Go structs so requests encode byte for byte like Go's.
+//! follow the Go structs so requests encode compatibly with Go's.
 
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
@@ -263,7 +263,7 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(
-            recur_domain::json::to_string(&p).unwrap(),
+            serde_json::to_string(&p).unwrap(),
             r#"{"threadId":"t","input":[{"type":"text","text":"hi"}],"sandboxPolicy":{"type":"workspaceWrite"},"effort":"high"}"#
         );
         let s = ThreadStartParams {
@@ -272,7 +272,7 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(
-            recur_domain::json::to_string(&s).unwrap(),
+            serde_json::to_string(&s).unwrap(),
             r#"{"model":"m","serviceName":"recur"}"#
         );
     }

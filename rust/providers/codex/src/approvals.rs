@@ -152,8 +152,7 @@ pub fn enrich_params(method: &str, params: &str, file_items: &FileItems) -> Stri
     };
     let mut out = head;
     out.extend(extra);
-    recur_domain::json::to_string(&sort_keys(Value::Object(out)))
-        .unwrap_or_else(|_| params.to_owned())
+    serde_json::to_string(&sort_keys(Value::Object(out))).unwrap_or_else(|_| params.to_owned())
 }
 
 /// `{changes, path, file_path, diff}` for a permission card from a

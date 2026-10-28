@@ -1,7 +1,7 @@
 //! The engine event bus (Go `engine/bus.go`): every engine event, typed.
 //!
 //! Go published `Event{Name, Data any}`; here each [`EngineEvent`] variant
-//! carries a payload struct whose JSON is the Go payload byte for byte. Go
+//! carries a payload struct whose JSON is compatible with the Go payload. Go
 //! built most payloads as `map[string]any`, which `json.Marshal` writes with
 //! sorted keys, so those structs declare their fields in sorted key order and
 //! serialize straight to the writer (never through `serde_json::Value`, whose
@@ -170,9 +170,9 @@ impl EngineEvent {
         }
     }
 
-    /// The payload as Go `json.Marshal` wrote it (the `events` table format).
+    /// The payload JSON (the `events` table format).
     pub fn payload_json(&self) -> String {
-        recur_domain::json::to_string(self).unwrap_or_default()
+        serde_json::to_string(self).unwrap_or_default()
     }
 }
 
@@ -217,7 +217,6 @@ pub struct WorkspaceUpdated {
     pub phase: String,
     pub plan: Option<Plan>,
     pub port: i64,
-    #[serde(with = "recur_domain::json::float")]
     pub progress: f64,
     pub schedule_id: String,
     pub short: String,

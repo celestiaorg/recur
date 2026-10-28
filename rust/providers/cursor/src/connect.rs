@@ -334,7 +334,7 @@ impl Client {
         method: &str,
         input: &I,
     ) -> Result<Vec<u8>, Error> {
-        let body = recur_domain::json::to_string(input)
+        let body = serde_json::to_string(input)
             .map_err(|e| Error::msg(format!("cursor bridge: marshal {service}/{method}: {e}")))?;
         let call = async {
             let resp = self
@@ -383,7 +383,7 @@ impl Client {
         input: &I,
         mut on_msg: impl FnMut(&[u8]) -> Result<(), Error>,
     ) -> Result<(), Error> {
-        let payload = recur_domain::json::to_string(input)
+        let payload = serde_json::to_string(input)
             .map_err(|e| Error::msg(format!("cursor bridge: marshal {service}/{method}: {e}")))?;
         let body = encode_frame(0, payload.as_bytes());
         let send = self.request(service, method, body, true).send();

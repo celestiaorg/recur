@@ -41,7 +41,6 @@ pub struct AssignedIssue {
     pub state: String,
     pub state_color: String,
     /// Workflow order within a Linear team.
-    #[serde(with = "recur_domain::json::float")]
     pub state_position: f64,
     /// Linear: 0 none, 1 urgent … 4 low.
     pub priority: i64,
@@ -233,11 +232,7 @@ mod tests {
         assert_eq!(got["labels"], serde_json::Value::Null);
         assert_eq!(got["projectId"], "");
         assert_eq!(got["ref"], "");
-        assert!(
-            recur_domain::json::to_string(&got)
-                .unwrap()
-                .contains("\"statePosition\":2")
-        );
+        assert_eq!(got["statePosition"], 2.0);
     }
 
     #[tokio::test]

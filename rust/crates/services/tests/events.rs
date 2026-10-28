@@ -350,17 +350,6 @@ fn partial_and_present_fields() {
     );
     assert_eq!(u.phase, None);
     assert_eq!(
-        AppEvent::from_wire(
-            "workspace.updated",
-            json!({ "workspaceId": "W", "progress": 1.0 })
-        )
-        .unwrap()
-        .payload(),
-        json!({ "workspaceId": "W", "progress": 1 }),
-        "Go float formatting"
-    );
-
-    assert_eq!(
         AppEvent::from_wire("menu.action", json!({ "action": "settings" })).unwrap(),
         AppEvent::MenuAction("settings".into())
     );

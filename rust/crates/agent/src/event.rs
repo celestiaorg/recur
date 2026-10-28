@@ -306,7 +306,7 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(
-            recur_domain::json::to_string(&r).unwrap(),
+            serde_json::to_string(&r).unwrap(),
             r#"{"sessionId":"s","subtype":"success","isError":false,"numTurns":2,"durationMs":10,"text":"ok","inputTokens":5,"contextWindow":200000}"#
         );
     }

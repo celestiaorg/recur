@@ -1,6 +1,5 @@
 //! The slice of Go `encoding/json` semantics the Responses wire depends on:
-//! `map[string]any` re-encoding (sorted keys, HTML-safe strings, float64
-//! numbers) and typed-struct decoding where `null` is the zero value and any
+//! `map[string]any` re-encoding (sorted keys, float64 numbers) and typed-struct decoding where `null` is the zero value and any
 //! other type mismatch fails the whole decode.
 
 use serde_json::{Map, Number, Value};
@@ -10,9 +9,9 @@ use serde_json::{Map, Number, Value};
 pub(crate) struct Mismatch;
 
 /// `json.Marshal` of a value that went through `map[string]any`: keys sorted
-/// at every level, Go string escaping.
+/// at every level.
 pub(crate) fn marshal_sorted(v: &Value) -> String {
-    recur_domain::json::to_string(&sorted(v)).unwrap_or_default()
+    serde_json::to_string(&sorted(v)).unwrap_or_default()
 }
 
 fn sorted(v: &Value) -> Value {
@@ -116,11 +115,11 @@ mod tests {
     }
 
     #[test]
-    fn marshal_sorts_nested_keys_and_escapes() {
+    fn marshal_sorts_nested_keys() {
         let v = serde_json::json!({"b": {"z": 1, "a": "<&>"}, "a": [ {"y": 1, "x": 2} ]});
         assert_eq!(
             marshal_sorted(&v),
-            r#"{"a":[{"x":2,"y":1}],"b":{"a":"\u003c\u0026\u003e","z":1}}"#
+            r#"{"a":[{"x":2,"y":1}],"b":{"a":"<&>","z":1}}"#
         );
     }
 

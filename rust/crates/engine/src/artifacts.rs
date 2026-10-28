@@ -62,69 +62,9 @@ fn rfc3339_nano_utc(t: chrono::DateTime<chrono::Utc>) -> String {
     }
 }
 
-/// Go `json.MarshalIndent(v, "", "  ")`: the `json.Marshal` bytes re-indented.
+/// Two-space indented JSON, the layout of Go's `json.MarshalIndent(v, "", "  ")`.
 pub fn marshal_indent<T: serde::Serialize>(v: &T) -> Option<String> {
-    let compact = recur_domain::json::to_string(v).ok()?;
-    Some(go_indent(&compact, "  "))
-}
-
-/// Go `json.Indent` over compact JSON (no prefix).
-fn go_indent(src: &str, indent: &str) -> String {
-    let mut out = String::with_capacity(src.len() * 2);
-    let mut depth = 0usize;
-    let mut in_str = false;
-    let mut esc = false;
-    let mut need_indent = false;
-    let newline = |out: &mut String, depth: usize| {
-        out.push('\n');
-        for _ in 0..depth {
-            out.push_str(indent);
-        }
-    };
-    for c in src.chars() {
-        if in_str {
-            out.push(c);
-            if esc {
-                esc = false;
-            } else if c == '\\' {
-                esc = true;
-            } else if c == '"' {
-                in_str = false;
-            }
-            continue;
-        }
-        if need_indent && c != ']' && c != '}' {
-            need_indent = false;
-            depth += 1;
-            newline(&mut out, depth);
-        }
-        match c {
-            '"' => {
-                in_str = true;
-                out.push(c);
-            }
-            '{' | '[' => {
-                out.push(c);
-                need_indent = true;
-            }
-            ',' => {
-                out.push(c);
-                newline(&mut out, depth);
-            }
-            ':' => out.push_str(": "),
-            '}' | ']' => {
-                if need_indent {
-                    need_indent = false;
-                } else {
-                    depth = depth.saturating_sub(1);
-                    newline(&mut out, depth);
-                }
-                out.push(c);
-            }
-            _ => out.push(c),
-        }
-    }
-    out
+    serde_json::to_string_pretty(v).ok()
 }
 
 fn io_err(e: std::io::Error) -> EngineError {
@@ -375,7 +315,7 @@ impl Engine {
             let body = read_artifact_text_limit(&self.data_dir, &a, 0)?;
             out.insert("content", Value::String(body));
         }
-        recur_domain::json::to_string(&out).map_err(|e| EngineError(e.to_string()))
+        serde_json::to_string(&out).map_err(|e| EngineError(e.to_string()))
     }
 
     /// Retitles an artifact (republished as `artifact.created`).

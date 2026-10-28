@@ -17,7 +17,6 @@ use std::time::Duration;
 
 use chrono::{DateTime, TimeZone as _, Utc};
 use parking_lot::Mutex;
-use recur_domain::json::to_string as marshal;
 use recur_domain::{
     AnalysisRun, Escalation, Finding, FindingNote, IdType, MergeCommitMessage, MergeMethod,
     Project, ProjectGroup, Severity, SquashCommitMessage, StoredEvent, UpdateBaseMethod,
@@ -26,6 +25,7 @@ use recur_domain::{
 use rusqlite::{Connection, OptionalExtension as _, Transaction, params};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::to_string as marshal;
 
 use crate::error::{Error, Result, SqlContext as _, json_err};
 use crate::migrations::run_migrations;

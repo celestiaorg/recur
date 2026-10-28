@@ -18,9 +18,9 @@ const PERMISSION_REQUEST_SCHEMA: &str = r#"{
 }"#;
 
 static PERMISSION_REQUEST_IN: Shape = Shape::anon(&[
-    field("tool_name", "ToolName", Ty::Str),
-    field("input", "Input", Ty::Raw),
-    field("tool_use_id", "ToolUseID", Ty::Str),
+    field("tool_name", Ty::Str),
+    field("input", Ty::Raw),
+    field("tool_use_id", Ty::Str),
 ]);
 
 #[derive(Serialize)]
@@ -46,7 +46,7 @@ pub fn marshal_permission_verdict(v: &PermissionVerdict, input: &str) -> String 
     if reason.is_empty() {
         reason = "the human denied this tool call";
     }
-    recur_domain::json::to_string(&Deny {
+    serde_json::to_string(&Deny {
         behavior: "deny",
         message: reason,
     })
@@ -174,7 +174,7 @@ const SWITCH_MODE_SCHEMA: &str = r#"{
   "required": ["mode"]
 }"#;
 
-static SWITCH_MODE_IN: Shape = Shape::anon(&[field("mode", "Mode", Ty::Str)]);
+static SWITCH_MODE_IN: Shape = Shape::anon(&[field("mode", Ty::Str)]);
 
 pub struct SwitchModeTool;
 
@@ -218,7 +218,7 @@ const RENAME_SESSION_SCHEMA: &str = r#"{
   "required": ["title"]
 }"#;
 
-static TITLE_IN: Shape = Shape::anon(&[field("title", "Title", Ty::Str)]);
+static TITLE_IN: Shape = Shape::anon(&[field("title", Ty::Str)]);
 
 pub struct RenameSessionTool;
 
@@ -295,7 +295,7 @@ const RENAME_BRANCH_SCHEMA: &str = r#"{
   "required": ["name"]
 }"#;
 
-static NAME_IN: Shape = Shape::anon(&[field("name", "Name", Ty::Str)]);
+static NAME_IN: Shape = Shape::anon(&[field("name", Ty::Str)]);
 
 pub struct RenameBranchTool;
 
@@ -339,9 +339,9 @@ const OPEN_PR_SCHEMA: &str = r#"{
 }"#;
 
 static OPEN_PR_IN: Shape = Shape::anon(&[
-    field("title", "Title", Ty::Str),
-    field("body", "Body", Ty::Str),
-    field("draft", "Draft", Ty::Bool),
+    field("title", Ty::Str),
+    field("body", Ty::Str),
+    field("draft", Ty::Bool),
 ]);
 
 pub struct OpenPrTool;

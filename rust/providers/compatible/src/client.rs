@@ -74,7 +74,7 @@ impl Client {
     ) -> Result<(), ClientError> {
         req.stream = true;
         req.store = false;
-        let body = recur_domain::json::to_string(&req)
+        let body = serde_json::to_string(&req)
             .map_err(|e| ClientError::Failed(format!("responses encode: {e}")))?;
         self.stream_json(cancel, body, emit).await
     }
@@ -174,7 +174,7 @@ impl Client {
             max_output_tokens: 16,
             ..Default::default()
         };
-        let body = recur_domain::json::to_string(&req).map_err(|e| e.to_string())?;
+        let body = serde_json::to_string(&req).map_err(|e| e.to_string())?;
         let url = self.endpoint();
         let mut resp = self
             .http

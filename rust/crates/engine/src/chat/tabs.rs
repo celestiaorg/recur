@@ -112,7 +112,7 @@ pub fn remap_chat_off_disabled(set: &Settings, r#ref: &str, flags: &Flags) -> (S
 }
 
 fn flags_json(flags: &Flags) -> String {
-    recur_domain::json::to_string(flags).unwrap_or_else(|_| "{}".into())
+    serde_json::to_string(flags).unwrap_or_else(|_| "{}".into())
 }
 
 impl Engine {
@@ -565,7 +565,7 @@ impl Engine {
         };
         let mut m = BTreeMap::new();
         m.insert("promptGroup", group);
-        let Ok(raw) = recur_domain::json::to_string(&m) else {
+        let Ok(raw) = serde_json::to_string(&m) else {
             return;
         };
         let _ = self.store.patch_session_config_merge(&sess.id, &raw);
@@ -593,7 +593,7 @@ impl Engine {
                 }
                 let mut patch = BTreeMap::new();
                 patch.insert("model", next);
-                let Ok(patch) = recur_domain::json::to_string(&patch) else {
+                let Ok(patch) = serde_json::to_string(&patch) else {
                     continue;
                 };
                 let _ = self

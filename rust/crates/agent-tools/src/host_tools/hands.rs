@@ -7,7 +7,7 @@ use crate::json::{Shape, Ty, field};
 use crate::names;
 use crate::tool::{Call, Tool, ToolError};
 
-static EDIT_PLAN_IN: Shape = Shape::anon(&[field("plan", "Plan", Ty::Str)]);
+static EDIT_PLAN_IN: Shape = Shape::anon(&[field("plan", Ty::Str)]);
 
 pub struct EditPlanTool;
 
@@ -73,10 +73,8 @@ const DISPATCH_SPECIALIST_SCHEMA: &str = r#"{
   "required": ["role","instruction"]
 }"#;
 
-static DISPATCH_SPECIALIST_IN: Shape = Shape::anon(&[
-    field("role", "Role", Ty::Str),
-    field("instruction", "Instruction", Ty::Str),
-]);
+static DISPATCH_SPECIALIST_IN: Shape =
+    Shape::anon(&[field("role", Ty::Str), field("instruction", Ty::Str)]);
 
 pub struct DispatchSpecialistTool;
 
@@ -125,7 +123,7 @@ const EXTEND_ITERATIONS_SCHEMA: &str = r#"{
   "required": ["iterations"]
 }"#;
 
-static EXTEND_ITERATIONS_IN: Shape = Shape::anon(&[field("iterations", "Iterations", Ty::Int)]);
+static EXTEND_ITERATIONS_IN: Shape = Shape::anon(&[field("iterations", Ty::Int)]);
 
 pub struct ExtendIterationsTool;
 
@@ -162,7 +160,7 @@ const EXTEND_ROUNDS_SCHEMA: &str = r#"{
   }
 }"#;
 
-static EXTEND_ROUNDS_IN: Shape = Shape::anon(&[field("n", "N", Ty::Int)]);
+static EXTEND_ROUNDS_IN: Shape = Shape::anon(&[field("n", Ty::Int)]);
 
 pub struct ExtendRoundsTool;
 
@@ -198,7 +196,7 @@ const PHASE_ID_SCHEMA: &str = r#"{
   "required": ["phase_id"]
 }"#;
 
-static PHASE_ID_IN: Shape = Shape::anon(&[field("phase_id", "PhaseID", Ty::Str)]);
+static PHASE_ID_IN: Shape = Shape::anon(&[field("phase_id", Ty::Str)]);
 
 pub struct ReenterPhaseTool;
 

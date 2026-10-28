@@ -1,6 +1,6 @@
-//! Go-computed answers for the byte-identical text and display rules (risk
-//! R2): constants, feed summaries, chat detail bounds, listing compaction,
-//! failure classification, attachment blocks. See
+//! Go-computed answers for the text and display rules (risk R2): constants,
+//! feed summaries, chat detail bounds, listing compaction, failure
+//! classification, attachment blocks. JSON outputs compare as values. See
 //! `golden/gen_go_agent.go.txt` to regenerate.
 
 use std::collections::BTreeMap;
@@ -78,6 +78,24 @@ fn report(what: &str, mismatches: Vec<String>) {
         mismatches.len(),
         mismatches.join("\n")
     );
+}
+
+fn json(s: &str) -> Option<Value> {
+    serde_json::from_str(s)
+        .ok()
+        .map(recur_domain::json::canonical)
+}
+
+fn same_json(got: &str, want: &str) -> bool {
+    json(got).is_some_and(|g| Some(g) == json(want))
+}
+
+/// A listing compacted to the chat detail budget keeps different items once
+/// the encoding differs, so only its envelope and size are comparable.
+fn same_compaction(got: &str, want: &str) -> bool {
+    let keys =
+        |s: &str| json(s).and_then(|v| Some(v.as_object()?.keys().cloned().collect::<Vec<_>>()));
+    got.len() <= CHAT_DETAIL_LIMIT && keys(got).is_some() && keys(got) == keys(want)
 }
 
 fn short(s: &str) -> String {
@@ -163,7 +181,7 @@ fn summaries_match_go() {
             ),
         ];
         for (what, got, want) in got {
-            if got != want {
+            if got != want && !same_json(&got, &want) {
                 bad.push(format!(
                     "{what}({tool}, {}): rust {:?} go {:?}",
                     short(&input),
@@ -181,7 +199,7 @@ fn chat_results_match_go() {
     let mut bad = Vec::new();
     for [tool, result, want] in golden().results {
         let got = display::chat_tool_result(&tool, &result);
-        if got != want {
+        if got != want && !same_json(&got, &want) && !same_compaction(&got, &want) {
             bad.push(format!(
                 "chat_tool_result({tool}, {}): rust {:?} go {:?}",
                 short(&result),
@@ -265,7 +283,7 @@ fn content_blocks_match_go() {
         let got: Value = if blocks.is_empty() {
             Value::Null
         } else {
-            serde_json::from_str(&recur_domain::json::to_string(&blocks).unwrap()).unwrap()
+            serde_json::from_str(&serde_json::to_string(&blocks).unwrap()).unwrap()
         };
         assert_eq!(got, c.blocks, "blocks({:?}, {:?})", c.text, c.display);
         let order: Vec<String> = attach::images_in_marker_order(&c.text, &imgs)

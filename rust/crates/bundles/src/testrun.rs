@@ -432,8 +432,7 @@ async fn run_type_script_macro(
 ) -> Result<RunResult, Error> {
     let compiled = crate::compile_macro(cache_dir, cmd)?;
     let ctx = ctx.or_timeout(DEFAULT_TIMEOUT);
-    let ctx_json =
-        recur_domain::json::to_string(&macro_ctx_from_test(tc, cmd)).map_err(|e| err!("{e}"))?;
+    let ctx_json = serde_json::to_string(&macro_ctx_from_test(tc, cmd)).map_err(|e| err!("{e}"))?;
     let run = run_node(
         &ctx,
         "recur-macro-test-",

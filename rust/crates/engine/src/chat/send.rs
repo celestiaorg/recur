@@ -756,7 +756,7 @@ impl Engine {
         };
         let mut m = std::collections::BTreeMap::new();
         m.insert("nativeHistoryAfter", last);
-        let Ok(raw) = recur_domain::json::to_string(&m) else {
+        let Ok(raw) = serde_json::to_string(&m) else {
             return;
         };
         let _ = self.store.patch_session_config_merge(&sess.id, &raw);
@@ -809,7 +809,7 @@ impl Engine {
             return;
         }
         cfg.standing_mode = mode.to_owned();
-        let Ok(raw) = recur_domain::json::to_string(&cfg) else {
+        let Ok(raw) = serde_json::to_string(&cfg) else {
             return;
         };
         let _ = self.store.update_session_config_json(&sess.id, &raw);

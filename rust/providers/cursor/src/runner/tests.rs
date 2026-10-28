@@ -1526,7 +1526,7 @@ fn strict_config_opt_in() {
             .all(|s| s != crate::client::SETTING_SOURCE_PROJECT
                 && s != crate::client::SETTING_SOURCE_USER)
     );
-    let b = recur_domain::json::to_string(&local).unwrap();
+    let b = serde_json::to_string(&local).unwrap();
     assert!(
         b.contains("settingSources") && !b.contains(r#""settingSources":[]"#),
         "{b}"

@@ -285,7 +285,7 @@ fn current_user_item(prompt: &str, images: &[UserImage]) -> InputItem {
 }
 
 fn encoded_len(items: &[InputItem]) -> Option<usize> {
-    recur_domain::json::to_string(items).ok().map(|s| s.len())
+    serde_json::to_string(items).ok().map(|s| s.len())
 }
 
 /// Drops the oldest history groups until the encoded input fits

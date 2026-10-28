@@ -42,7 +42,7 @@ App coordinator only."
     }
 }
 
-static WORKSPACE_ID_IN: Shape = Shape::anon(&[field("workspace_id", "WorkspaceID", Ty::Str)]);
+static WORKSPACE_ID_IN: Shape = Shape::anon(&[field("workspace_id", Ty::Str)]);
 
 pub struct GetWorkspaceContextTool;
 
@@ -82,7 +82,7 @@ recent chat headers, PR state, and a short conversation excerpt. App coordinator
     }
 }
 
-static TARGET_IN: Shape = Shape::anon(&[field("target", "Target", Ty::Str)]);
+static TARGET_IN: Shape = Shape::anon(&[field("target", Ty::Str)]);
 
 pub struct PresentWorkspaceTool;
 

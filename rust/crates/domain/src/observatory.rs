@@ -157,20 +157,18 @@ pub struct SymbolRef {
 pub struct MetricSnapshot {
     pub files: i64,
     pub loc: i64,
-    #[serde(with = "crate::json::float")]
     pub avg_complexity: f64,
     pub max_complexity: i64,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub hotspots: Vec<Hotspot>,
     /// 0..1 fraction of LOC covered by clone blocks.
-    #[serde(with = "crate::json::float")]
     pub duplication: f64,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub duplicates: Vec<DupClone>,
     pub todo_count: i64,
     pub test_files: i64,
     /// 0 when unknown.
-    #[serde(with = "crate::json::float", skip_serializing_if = "is_zero_f64")]
+    #[serde(skip_serializing_if = "is_zero_f64")]
     pub coverage_pct: f64,
 }
 
@@ -255,7 +253,6 @@ pub struct AnalysisRun {
 pub struct MetricDelta {
     pub loc: i64,
     pub max_complexity: i64,
-    #[serde(with = "crate::json::float")]
     pub duplication: f64,
     pub todo_count: i64,
     pub hotspots: i64,

@@ -12,7 +12,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 /// One NDJSON user turn: `{"type":"user","message":{…},"parent_tool_use_id":null}`
-/// plus the trailing newline, encoded exactly as Go's `json.Marshal`.
+/// plus the trailing newline.
 pub fn user_message_line(content: &str, imgs: &[UserImage]) -> String {
     #[derive(Serialize)]
     struct Line {
@@ -26,7 +26,7 @@ pub fn user_message_line(content: &str, imgs: &[UserImage]) -> String {
         message: json!({"content": user_content(content, imgs), "role": "user"}),
         parent_tool_use_id: None,
     };
-    let mut out = recur_domain::json::to_string(&line).unwrap_or_default();
+    let mut out = serde_json::to_string(&line).unwrap_or_default();
     out.push('\n');
     out
 }
@@ -136,7 +136,7 @@ mod tests {
     fn plain_text_without_images() {
         assert_eq!(
             user_message_line("hi <b> & co", &[]),
-            "{\"type\":\"user\",\"message\":{\"content\":\"hi \\u003cb\\u003e \\u0026 co\",\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+            "{\"type\":\"user\",\"message\":{\"content\":\"hi <b> & co\",\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
         );
     }
 
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn interleaves_images_at_markers() {
         let text = format!("look at this\n{}\nespecially the header", marker("img1"));
-        let raw = recur_domain::json::to_string(&user_content(&text, &[img("img1")])).unwrap();
+        let raw = serde_json::to_string(&user_content(&text, &[img("img1")])).unwrap();
         assert!(raw.contains(r#""type":"image""#), "{raw}");
         assert!(raw.contains("look at this") && raw.contains("especially the header"));
         assert!(raw.contains("⟦attachment:img1⟧") && raw.contains("submit_plan"));

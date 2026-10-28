@@ -396,7 +396,7 @@ impl Engine {
                 html_escape(state)
             ));
         }
-        let Ok(data) = recur_domain::json::to_string(&FanOutWave {
+        let Ok(data) = serde_json::to_string(&FanOutWave {
             wave,
             title: title.into(),
             after: Vec::new(),

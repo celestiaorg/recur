@@ -334,7 +334,7 @@ fn block<T: Serialize>(typ: &str, payload: &T) -> ContentBlock {
     ContentBlock {
         r#type: typ.to_owned(),
         // The payloads are plain structs; marshal cannot fail in practice.
-        content_json: crate::json::to_string(payload).unwrap_or_else(|_| "{}".to_owned()),
+        content_json: serde_json::to_string(payload).unwrap_or_else(|_| "{}".to_owned()),
         ..Default::default()
     }
 }
@@ -527,11 +527,11 @@ impl ContentBlock {
         else {
             return self;
         };
-        let Ok(p) = crate::json::to_string(parent).and_then(RawValue::from_string) else {
+        let Ok(p) = serde_json::to_string(parent).and_then(RawValue::from_string) else {
             return self;
         };
         m.insert("parent_tool_use_id".to_owned(), p);
-        if let Ok(raw) = crate::json::to_string(&m) {
+        if let Ok(raw) = serde_json::to_string(&m) {
             self.content_json = raw;
         }
         self
@@ -693,10 +693,7 @@ mod tests {
 
     #[test]
     fn constructors_match_go_payloads() {
-        assert_eq!(
-            ContentBlock::text("a<b").content_json,
-            r#"{"text":"a\u003cb"}"#
-        );
+        assert_eq!(ContentBlock::text("a<b").content_json, r#"{"text":"a<b"}"#);
         assert_eq!(
             ContentBlock::text_display("wire", "ui").content_json,
             r#"{"text":"wire","display_text":"ui"}"#
@@ -709,7 +706,7 @@ mod tests {
         assert_eq!(tu.r#type, BLOCK_TOOL_USE);
         assert_eq!(
             tu.content_json,
-            r#"{"id":"tu-1","provider_tool_use_id":"toolu_1","name":"Bash","input":{"command":"ls"}}"#
+            r#"{"id":"tu-1","provider_tool_use_id":"toolu_1","name":"Bash","input":{ "command": "ls" }}"#
         );
         assert_eq!(
             ContentBlock::tool_use("tu-1", "", "Read", "").content_json,
@@ -839,7 +836,7 @@ mod tests {
             ContentBlock::raw("x", r#"{"z": { "k" : 1 }, "a": "<"}"#)
                 .with_parent("p")
                 .content_json,
-            r#"{"a":"\u003c","parent_tool_use_id":"p","z":{"k":1}}"#
+            r#"{"a":"<","parent_tool_use_id":"p","z":{ "k" : 1 }}"#
         );
     }
 

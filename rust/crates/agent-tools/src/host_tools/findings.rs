@@ -22,12 +22,12 @@ const REPORT_FINDING_SCHEMA: &str = r#"{
 }"#;
 
 static REPORT_FINDING_IN: Shape = Shape::anon(&[
-    field("file", "File", Ty::Str),
-    field("line", "Line", Ty::Int),
-    field("end_line", "EndLine", Ty::Int),
-    field("severity", "Severity", Ty::Str),
-    field("message", "Message", Ty::Str),
-    field("summary", "Summary", Ty::Str),
+    field("file", Ty::Str),
+    field("line", Ty::Int),
+    field("end_line", Ty::Int),
+    field("severity", Ty::Str),
+    field("message", Ty::Str),
+    field("summary", Ty::Str),
 ]);
 
 /// Structured JSON for the chat digest (id/file/summary); agents read the
@@ -131,7 +131,7 @@ const LIST_FINDINGS_SCHEMA: &str = r#"{
   }
 }"#;
 
-static LIST_FINDINGS_IN: Shape = Shape::anon(&[field("status", "Status", Ty::Str)]);
+static LIST_FINDINGS_IN: Shape = Shape::anon(&[field("status", Ty::Str)]);
 
 #[derive(Serialize)]
 struct NoteRow<'a> {
@@ -260,9 +260,9 @@ const UPDATE_FINDING_SCHEMA: &str = r#"{
 }"#;
 
 static UPDATE_FINDING_IN: Shape = Shape::anon(&[
-    field("finding_id", "FindingID", Ty::Str),
-    field("status", "Status", Ty::Str),
-    field("reason", "Reason", Ty::Str),
+    field("finding_id", Ty::Str),
+    field("status", Ty::Str),
+    field("reason", Ty::Str),
 ]);
 
 /// Structured JSON for the chat card (id/status/file/reason).

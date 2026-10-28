@@ -27,16 +27,16 @@ const SCHEMA: &str = concat!(
 );
 
 static IN: Shape = Shape::anon(&[
-    field("pattern", "Pattern", Ty::Str),
-    field("path", "Path", Ty::Str),
-    field("glob", "Glob", Ty::Str),
-    field("type", "Type", Ty::Str),
-    field("output_mode", "OutputMode", Ty::Str),
-    field("-i", "I", Ty::Bool),
-    field("-A", "A", Ty::Float),
-    field("-B", "B", Ty::Float),
-    field("-C", "C", Ty::Float),
-    field("multiline", "Multiline", Ty::Bool),
+    field("pattern", Ty::Str),
+    field("path", Ty::Str),
+    field("glob", Ty::Str),
+    field("type", Ty::Str),
+    field("output_mode", Ty::Str),
+    field("-i", Ty::Bool),
+    field("-A", Ty::Float),
+    field("-B", Ty::Float),
+    field("-C", Ty::Float),
+    field("multiline", Ty::Bool),
 ]);
 
 pub struct GrepTool;

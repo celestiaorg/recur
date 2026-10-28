@@ -9,10 +9,7 @@ use crate::tool::{Call, Tool, ToolError};
 
 const SCHEMA: &str = r#"{"type":"object","properties":{"pattern":{"type":"string"},"path":{"type":"string"}},"required":["pattern"]}"#;
 
-static IN: Shape = Shape::anon(&[
-    field("pattern", "Pattern", Ty::Str),
-    field("path", "Path", Ty::Str),
-]);
+static IN: Shape = Shape::anon(&[field("pattern", Ty::Str), field("path", Ty::Str)]);
 
 pub struct GlobTool;
 

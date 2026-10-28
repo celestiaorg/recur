@@ -98,7 +98,7 @@ async fn cancel_non_terminal_runs() {
 #[test]
 fn sandbox_disabled_marshals_false() {
     // The bridge only honors an explicit enabled:false.
-    let b = recur_domain::json::to_string(&LocalOptions {
+    let b = serde_json::to_string(&LocalOptions {
         sandbox: Some(SandboxOptions { enabled: false }),
         ..Default::default()
     })
@@ -282,7 +282,7 @@ fn user_display_name_and_summary() {
 fn mcp_server_marshals_as_oneof_wrapper() {
     // A flat {url,type} is rejected: the transport is wrapped in its oneof.
     assert_eq!(
-        recur_domain::json::to_string(&McpServer::http("http://127.0.0.1:9/tok/mcp")).unwrap(),
+        serde_json::to_string(&McpServer::http("http://127.0.0.1:9/tok/mcp")).unwrap(),
         r#"{"http":{"type":"HTTP_MCP_TRANSPORT_TYPE_HTTP","url":"http://127.0.0.1:9/tok/mcp"}}"#
     );
 }
@@ -290,7 +290,7 @@ fn mcp_server_marshals_as_oneof_wrapper() {
 #[test]
 fn local_options_cwd_is_repeated() {
     assert_eq!(
-        recur_domain::json::to_string(&LocalOptions {
+        serde_json::to_string(&LocalOptions {
             cwd: vec!["/tmp/wt".into()],
             ..Default::default()
         })

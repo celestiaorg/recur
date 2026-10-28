@@ -353,7 +353,7 @@ impl Engine {
             }),
             source: plan.source.clone(),
         };
-        let Ok(data) = recur_domain::json::to_string(&d) else {
+        let Ok(data) = serde_json::to_string(&d) else {
             return;
         };
         let nanos = self.now().timestamp_nanos_opt().unwrap_or_default();

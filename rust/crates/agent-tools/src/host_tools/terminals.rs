@@ -48,10 +48,7 @@ const READ_TERMINAL_SCHEMA: &str = r#"{
   }
 }"#;
 
-static READ_TERMINAL_IN: Shape = Shape::anon(&[
-    field("id", "ID", Ty::Str),
-    field("tail_lines", "TailLines", Ty::Int),
-]);
+static READ_TERMINAL_IN: Shape = Shape::anon(&[field("id", Ty::Str), field("tail_lines", Ty::Int)]);
 
 pub struct ReadTerminalTool;
 

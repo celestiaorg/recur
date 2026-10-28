@@ -253,7 +253,7 @@ pub fn mcp_config_json(req: &TurnRequest) -> String {
     if servers.is_empty() {
         return String::new();
     }
-    recur_domain::json::to_string(&BTreeMap::from([("mcpServers", servers)])).unwrap_or_default()
+    serde_json::to_string(&BTreeMap::from([("mcpServers", servers)])).unwrap_or_default()
 }
 
 /// Microsoft's Playwright MCP server, fetched on demand by npx. Its tools are

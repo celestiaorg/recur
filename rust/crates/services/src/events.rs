@@ -1147,7 +1147,7 @@ pub struct WorkspaceUpdated {
     pub group: Option<Group>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status_label: Option<String>,
-    #[serde(with = "opt_float", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub progress: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub goal: Option<String>,
@@ -1189,21 +1189,4 @@ pub struct WorkspaceUpdated {
     pub chats_changed: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub focus_chat_code: Option<String>,
-}
-
-/// Go `float64` in an optional field: integral values print without a
-/// fractional part, as Go does.
-mod opt_float {
-    use serde::{Deserialize, Deserializer, Serializer};
-
-    pub fn serialize<S: Serializer>(v: &Option<f64>, s: S) -> Result<S::Ok, S::Error> {
-        match v {
-            Some(f) => recur_domain::json::float::serialize(f, s),
-            None => s.serialize_none(),
-        }
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<f64>, D::Error> {
-        Option::<f64>::deserialize(d)
-    }
 }

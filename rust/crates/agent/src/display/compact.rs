@@ -47,7 +47,7 @@ fn fits_as_is(result: &str) -> bool {
 }
 
 fn marshal<T: Serialize>(v: &T) -> Option<String> {
-    recur_domain::json::to_string(v).ok()
+    serde_json::to_string(v).ok()
 }
 
 fn marshal_if_under<T: Serialize>(v: &T) -> Option<String> {

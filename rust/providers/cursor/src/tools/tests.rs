@@ -376,7 +376,7 @@ fn summarize_recur_and_web_tools() {
 #[test]
 fn chat_input_keeps_create_plan_and_task_parseable() {
     let body = "plan step — with detail. ".repeat(900);
-    let raw = recur_domain::json::to_string(&json!({ "plan": body })).unwrap();
+    let raw = serde_json::to_string(&json!({ "plan": body })).unwrap();
     assert!(raw.len() > CHAT_DETAIL_LIMIT);
     let got = chat_tool_input("CreatePlan", &raw);
     let v: Value = serde_json::from_str(&got).expect("parseable CreatePlan input");
@@ -384,7 +384,7 @@ fn chat_input_keeps_create_plan_and_task_parseable() {
     assert_eq!(chat_tool_input("Bash", ARGS_SHELL), ARGS_SHELL);
 
     let prompt = "Search the Svelte frontend for PR detail. ".repeat(600);
-    let raw = recur_domain::json::to_string(&json!({
+    let raw = serde_json::to_string(&json!({
         "description": "Map PR detail UI structure", "subagent_type": "Explore", "prompt": prompt
     }))
     .unwrap();
@@ -429,7 +429,7 @@ fn findings_json(n: usize, extra: Value) -> String {
             r
         })
         .collect();
-    recur_domain::json::to_string(&json!({"status": "all", "count": n, "findings": rows})).unwrap()
+    serde_json::to_string(&json!({"status": "all", "count": n, "findings": rows})).unwrap()
 }
 
 #[test]
@@ -506,7 +506,7 @@ fn chat_result_keeps_list_artifacts_parseable() {
             })
         })
         .collect();
-    let raw = recur_domain::json::to_string(&json!({"count": 80, "artifacts": rows})).unwrap();
+    let raw = serde_json::to_string(&json!({"count": 80, "artifacts": rows})).unwrap();
     assert!(raw.len() > CHAT_DETAIL_LIMIT);
     let got = chat_tool_result("mcp__recur__list_artifacts", &raw);
     assert!(got.len() <= CHAT_DETAIL_LIMIT);
@@ -527,7 +527,7 @@ fn chat_result_keeps_list_artifacts_parseable() {
 #[test]
 fn compact_list_artifacts_keeps_row_when_title_is_huge() {
     let title = "Modes as bundle items — ".repeat(900);
-    let raw = recur_domain::json::to_string(&json!({"count": 1, "artifacts": [{
+    let raw = serde_json::to_string(&json!({"count": 1, "artifacts": [{
         "id": "aaaaaaaa-bbbb-4ccc-8ddd-000000000001", "title": title, "kind": "html",
         "path": "workspaces/recur.bubbly-parfait/artifacts/aaaaaaaa-bbbb-4ccc-8ddd-000000000001.html",
     }]}))
@@ -558,7 +558,7 @@ fn chat_result_keeps_briefs_and_context_parseable() {
             })
         })
         .collect();
-    let raw = recur_domain::json::to_string(
+    let raw = serde_json::to_string(
         &json!({"counts": {"needs": 3, "working": 0, "pickup": 40}, "workspaces": briefs}),
     )
     .unwrap();
@@ -580,7 +580,7 @@ fn chat_result_keeps_briefs_and_context_parseable() {
         .contains(r#""workspaces""#)
     );
 
-    let ctx = recur_domain::json::to_string(&json!({
+    let ctx = serde_json::to_string(&json!({
         "brief": {
             "workspaceId": "recur.zesty-quiche", "title": "Account linking architecture", "bucket": "needs",
             "now": "Plan is ready but not approved", "next": "Review and approve the plan",

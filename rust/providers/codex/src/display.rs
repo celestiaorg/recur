@@ -61,7 +61,7 @@ pub fn tool_input(name: &str, raw: &str) -> String {
     if out.is_empty() {
         return raw.to_owned();
     }
-    recur_domain::json::to_string(&out).unwrap_or_else(|_| raw.to_owned())
+    serde_json::to_string(&out).unwrap_or_else(|_| raw.to_owned())
 }
 
 #[cfg(test)]

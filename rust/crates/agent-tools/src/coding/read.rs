@@ -7,9 +7,9 @@ use crate::tool::{Call, Tool, ToolError};
 const SCHEMA: &str = r#"{"type":"object","properties":{"file_path":{"type":"string"},"offset":{"type":"integer"},"limit":{"type":"integer"}},"required":["file_path"]}"#;
 
 static IN: Shape = Shape::anon(&[
-    field("file_path", "FilePath", Ty::Str),
-    field("offset", "Offset", Ty::Int),
-    field("limit", "Limit", Ty::Int),
+    field("file_path", Ty::Str),
+    field("offset", Ty::Int),
+    field("limit", Ty::Int),
 ]);
 
 pub struct ReadTool;

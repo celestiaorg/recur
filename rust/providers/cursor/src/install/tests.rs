@@ -238,11 +238,11 @@ fn progress_percent() {
     // An unknown total is indeterminate, not 0% or a divide panic.
     assert_eq!(p(50, 0).percent(), -1);
     assert_eq!(
-        recur_domain::json::to_string(&p(50, 200).event_payload()).unwrap(),
+        serde_json::to_string(&p(50, 200).event_payload()).unwrap(),
         r#"{"current":50,"message":"","percent":25,"phase":"downloading","total":200}"#
     );
     assert_eq!(
-        recur_domain::json::to_string(&install_error_payload("boom")).unwrap(),
+        serde_json::to_string(&install_error_payload("boom")).unwrap(),
         r#"{"message":"boom","percent":-1,"phase":"error"}"#
     );
 }

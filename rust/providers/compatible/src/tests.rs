@@ -921,7 +921,7 @@ async fn test_compatible_provider_needs_model() {
 #[test]
 fn test_result_json() {
     assert_eq!(
-        recur_domain::json::to_string(&CompatibleTestResult {
+        serde_json::to_string(&CompatibleTestResult {
             ok: true,
             error: String::new()
         })

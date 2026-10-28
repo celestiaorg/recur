@@ -6,7 +6,6 @@
 
 use std::collections::BTreeMap;
 
-use recur_domain::json::to_string as marshal;
 use recur_domain::{
     BLOCK_FALLBACK, BLOCK_IMAGE, BLOCK_TEXT, BLOCK_THINKING, BLOCK_TOOL_RESULT, BLOCK_TOOL_USE,
     CONTEXT_MODE_PROVIDER, ContentBlock, FallbackPayload, Message, STREAM_COMPLETE,
@@ -14,6 +13,7 @@ use recur_domain::{
 };
 use rusqlite::{Connection, OptionalExtension as _, Row, params};
 use serde::Deserialize;
+use serde_json::to_string as marshal;
 
 use crate::db::{Db, upsert_doc_tx};
 use crate::error::{Error, Result, SqlContext as _, json_err};

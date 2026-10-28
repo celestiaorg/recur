@@ -34,7 +34,7 @@ pub fn app_code(code: &str) -> String {
 }
 
 fn config_json(cfg: &AgentConfig) -> String {
-    recur_domain::json::to_string(cfg).unwrap_or_else(|_| "{}".into())
+    serde_json::to_string(cfg).unwrap_or_else(|_| "{}".into())
 }
 
 impl Engine {

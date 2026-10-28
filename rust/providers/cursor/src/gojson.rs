@@ -86,7 +86,7 @@ impl Serialize for GoAny<'_> {
 
 /// `json.Marshal` of a decoded value.
 pub(crate) fn marshal_any(v: &Value) -> String {
-    recur_domain::json::to_string(&GoAny(v)).unwrap_or_default()
+    serde_json::to_string(&GoAny(v)).unwrap_or_default()
 }
 
 /// Go `encoding/json` float64 text: shortest round-trip digits, exponent form
@@ -149,7 +149,7 @@ mod tests {
             serde_json::from_str(r#"{"b":1,"a":[2.5,"<x>"],"c":{"z":1e21,"y":null}}"#).unwrap();
         assert_eq!(
             marshal_any(&v),
-            r#"{"a":[2.5,"\u003cx\u003e"],"b":1,"c":{"y":null,"z":1e+21}}"#
+            r#"{"a":[2.5,"<x>"],"b":1,"c":{"y":null,"z":1e+21}}"#
         );
     }
 

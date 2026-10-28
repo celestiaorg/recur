@@ -170,8 +170,7 @@ fn history_matches_go() {
             images,
             ..Default::default()
         };
-        let got = recur_domain::json::to_string(&harness_history(&msgs, &req, Some(root.path())))
-            .unwrap();
+        let got = serde_json::to_string(&harness_history(&msgs, &req, Some(root.path()))).unwrap();
         let got: Value = serde_json::from_str(&got).unwrap();
         assert_eq!(got, c["out"], "{}", c["name"]);
     }
@@ -391,7 +390,9 @@ async fn run_matches_go_wire_and_events() {
     let want: Vec<String> = serde_json::from_value(run["bodies"].clone()).unwrap();
     assert_eq!(bodies.len(), want.len());
     for (got, want) in bodies.iter().zip(&want) {
-        pretty_assertions::assert_eq!(got, want, "request body bytes");
+        let got: Value = serde_json::from_str(got).unwrap();
+        let want: Value = serde_json::from_str(want).unwrap();
+        pretty_assertions::assert_eq!(got, want, "request body");
     }
     for (r, h) in seen.iter().zip(run["headers"].as_array().unwrap()) {
         assert_eq!(r.path, s(&h["path"]));

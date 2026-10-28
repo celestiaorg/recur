@@ -54,7 +54,7 @@ const ACTIVATE_SKILL_SCHEMA: &str = r#"{
   "required": ["name"]
 }"#;
 
-static ACTIVATE_SKILL_IN: Shape = Shape::anon(&[field("name", "Name", Ty::Str)]);
+static ACTIVATE_SKILL_IN: Shape = Shape::anon(&[field("name", Ty::Str)]);
 
 pub struct ActivateSkillTool;
 

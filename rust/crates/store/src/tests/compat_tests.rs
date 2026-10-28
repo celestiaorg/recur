@@ -2,9 +2,9 @@
 //! `tests/fixtures/gen_store.go.txt`:
 //!
 //! - `go_store.db`, populated by the Go store, reads back here exactly as Go
-//!   reads it (`go_dump.json`), its JSON columns re-encode byte for byte,
-//!   and rewriting every row through recur-store leaves every table
-//!   unchanged.
+//!   reads it (`go_dump.json`), its JSON columns re-encode to equal JSON
+//!   values, and rewriting every row through recur-store leaves every table
+//!   unchanged (JSON cells compared as values).
 //! - `rust_written.db` (made by `generate_rust_written_db` below from a copy
 //!   of `go_store.db`) passes the Go verifier, and Go reads it exactly as
 //!   recur-store does (`go_reads_rust.json`).
@@ -16,7 +16,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use recur_domain::json::to_string as marshal;
+use recur_domain::json::canonical;
 use recur_domain::*;
 use rusqlite::Connection;
 use serde::Serialize;
@@ -193,7 +193,7 @@ fn dump(s: &Store) -> Value {
         schedule_runs: s.scheduled_prompt_runs().unwrap(),
         active_runs: s.active_scheduled_prompt_runs().unwrap(),
     };
-    serde_json::from_str(&marshal(&d).unwrap()).unwrap()
+    serde_json::to_value(&d).unwrap()
 }
 
 /// Reports the first differing path, so a mismatch is readable.
@@ -214,11 +214,12 @@ fn assert_same(got: &Value, want: &Value, path: &str) {
                 assert_same(a, b, &format!("{path}[{i}]"));
             }
         }
-        _ => assert_eq!(got, want, "{path}"),
+        _ => assert_eq!(canonical(got.clone()), canonical(want.clone()), "{path}"),
     }
 }
 
-/// Every row of every table, as text, ordered.
+/// Every row of every table, as text, ordered. JSON object and array cells
+/// are re-encoded canonically so equal values compare equal.
 fn table_dump(path: &Path) -> BTreeMap<String, Vec<Vec<String>>> {
     let c = Connection::open(path).unwrap();
     let tables: Vec<String> = {
@@ -247,7 +248,13 @@ fn table_dump(path: &Path) -> BTreeMap<String, Vec<Vec<String>>> {
                             rusqlite::types::ValueRef::Real(v) => v.to_string(),
                             rusqlite::types::ValueRef::Text(v)
                             | rusqlite::types::ValueRef::Blob(v) => {
-                                String::from_utf8_lossy(v).into_owned()
+                                let text = String::from_utf8_lossy(v).into_owned();
+                                match serde_json::from_str::<Value>(&text) {
+                                    Ok(j) if j.is_object() || j.is_array() => {
+                                        canonical(j).to_string()
+                                    }
+                                    _ => text,
+                                }
                             }
                         })
                     })
@@ -309,13 +316,18 @@ fn go_db_reads_back_identically() {
 
 fn reencodes<T: DeserializeOwned + Serialize>(table: &str, doc: &str) {
     let v: T = serde_json::from_str(doc).unwrap_or_else(|e| panic!("{table}: {e}\n{doc}"));
-    assert_eq!(marshal(&v).unwrap(), doc, "{table} re-encode");
+    let doc: Value = serde_json::from_str(doc).unwrap();
+    assert_eq!(
+        canonical(serde_json::to_value(&v).unwrap()),
+        canonical(doc),
+        "{table} re-encode"
+    );
 }
 
 /// The JSON Go stored in each column decodes into the domain type and
-/// re-encodes to the identical bytes, so recur-store writes what Go wrote.
+/// re-encodes to an equal JSON value, so recur-store writes what Go wrote.
 #[test]
-fn go_json_columns_reencode_byte_for_byte() {
+fn go_json_columns_reencode() {
     let c = Connection::open(fixtures().join("go_store.db")).unwrap();
     let docs = |q: &str| -> Vec<String> {
         let mut stmt = c.prepare(q).unwrap();
@@ -387,7 +399,7 @@ fn go_json_columns_reencode_byte_for_byte() {
 }
 
 /// Writing every loaded row back through recur-store leaves every table of
-/// the Go database byte-identical.
+/// the Go database unchanged.
 #[test]
 fn rust_rewrite_of_go_db_changes_nothing() {
     isolated_home("rust_rewrite_of_go_db_changes_nothing", || {

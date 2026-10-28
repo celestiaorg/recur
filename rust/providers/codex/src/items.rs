@@ -84,7 +84,7 @@ fn item_of(params: &str, started: bool) -> Option<(String, Obj, String, String)>
 }
 
 fn encode(m: &BTreeMap<&str, &str>) -> String {
-    recur_domain::json::to_string(m).unwrap_or_default()
+    serde_json::to_string(m).unwrap_or_default()
 }
 
 /// `item/started`: a tool call begins.

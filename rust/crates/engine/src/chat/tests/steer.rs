@@ -111,7 +111,7 @@ async fn workspace_sessions_are_scoped_by_owner_and_code() {
                 workspace_id: "WS-scoped".into(),
                 kind: "coder".into(),
                 provider: PROVIDER_CLAUDE_CODE.into(),
-                config_json: recur_domain::json::to_string(&cfg).unwrap(),
+                config_json: serde_json::to_string(&cfg).unwrap(),
                 ..Session::default()
             })
             .unwrap();
@@ -281,7 +281,7 @@ async fn a_steer_never_carries_the_fork_preamble() {
     cfg.fork_inject = true;
     fx.te
         .store
-        .update_session_config_json(&sess.id, &recur_domain::json::to_string(&cfg).unwrap())
+        .update_session_config_json(&sess.id, &serde_json::to_string(&cfg).unwrap())
         .unwrap();
     let got = fx
         .send(&ws.id, "PA", "steer later", "cursor/composer-2.5")

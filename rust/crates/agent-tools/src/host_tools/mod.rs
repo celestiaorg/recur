@@ -1,5 +1,6 @@
 //! Recur's host tools: one engine callback each, with the name, description,
-//! JSON schema and result text agents rely on (byte-identical to Go).
+//! JSON schema and result text agents rely on (as Go; JSON results are
+//! compatible, not byte-identical).
 
 mod artifacts;
 mod briefing;
@@ -52,9 +53,8 @@ pub(crate) fn strict(args: &str, shape: &'static Shape) -> Result<Obj, ToolError
     strict_unmarshal(args, shape).map_err(ToolError)
 }
 
-/// Go `json.Marshal`.
 pub(crate) fn marshal<T: Serialize + ?Sized>(v: &T) -> Result<String, ToolError> {
-    recur_domain::json::to_string(v).map_err(|e| ToolError(e.to_string()))
+    serde_json::to_string(v).map_err(|e| ToolError(e.to_string()))
 }
 
 pub(crate) fn xml_escape_catalog(s: &str) -> String {

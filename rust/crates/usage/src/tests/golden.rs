@@ -27,7 +27,7 @@ fn s(v: &Value) -> &str {
 
 /// Go marshals nil slices as `null`; compare through the Rust encoding.
 fn enc<T: serde::Serialize>(v: &T) -> Value {
-    serde_json::from_str(&recur_domain::json::to_string(v).unwrap()).unwrap()
+    recur_domain::json::canonical(serde_json::to_value(v).unwrap())
 }
 
 fn quota_cases(key: &str, parse: fn(&[u8]) -> Result<ProviderQuota, String>) {
@@ -213,7 +213,7 @@ fn claude_oauth_matches_go() {
 }
 
 #[test]
-fn cursor_auth_files_match_go_bytes() {
+fn cursor_auth_files_match_go() {
     let want = golden()["cursorAuthFiles"].clone();
     let dir = tempfile::tempdir().unwrap();
     let toks = [
@@ -234,7 +234,8 @@ fn cursor_auth_files_match_go_bytes() {
     for (i, tok) in toks.iter().enumerate() {
         let p = dir.path().join(format!("{i}.json"));
         write_cursor_auth_file(&p, tok).unwrap();
-        assert_eq!(std::fs::read_to_string(&p).unwrap(), s(&want[i]));
+        let got: Value = serde_json::from_str(&std::fs::read_to_string(&p).unwrap()).unwrap();
+        assert_eq!(got, serde_json::from_str::<Value>(s(&want[i])).unwrap());
     }
 }
 

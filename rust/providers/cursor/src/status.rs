@@ -282,7 +282,7 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(
-            recur_domain::json::to_string(&s).unwrap(),
+            serde_json::to_string(&s).unwrap(),
             r#"{"bridgeInstalled":true,"bridgePath":"","bridgeVersion":"","pinnedVersion":"","updateAvailable":false,"authenticated":false,"account":"","apiKeyName":"k","email":"","name":"","modelCount":3,"error":""}"#
         );
         assert_eq!(CursorStatus::from(&ProviderStatus::from(s.clone())), s);

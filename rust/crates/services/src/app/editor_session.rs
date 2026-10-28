@@ -98,7 +98,7 @@ pub(crate) fn write_gz_json<T: serde::Serialize>(
     name: &str,
     v: &T,
 ) -> std::io::Result<PathBuf> {
-    let mut body = recur_domain::json::to_string(v).map_err(std::io::Error::other)?;
+    let mut body = serde_json::to_string(v).map_err(std::io::Error::other)?;
     body.push('\n');
     let tmp = dir.join(format!("{tmp_prefix}{}.tmp", uuid::Uuid::new_v4().simple()));
     let res = (|| {

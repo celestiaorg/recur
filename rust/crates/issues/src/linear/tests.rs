@@ -390,7 +390,10 @@ fn golden_matches_go() {
     assert_eq!(unassigned_query(), g["unassignedQuery"].as_str().unwrap());
     assert_eq!(TEAMS_QUERY, g["teamsQuery"].as_str().unwrap());
     let nodes: Vec<IssueNode> = recur_forge::json::decode(g["nodes"].as_str().unwrap()).unwrap();
-    assert_eq!(serde_json::to_value(to_issues(nodes)).unwrap(), g["issues"]);
+    assert_eq!(
+        recur_domain::json::canonical(serde_json::to_value(to_issues(nodes)).unwrap()),
+        g["issues"]
+    );
     for case in g["appURLs"].as_array().unwrap() {
         let raw = case[0].as_str().unwrap();
         let want = case[2]

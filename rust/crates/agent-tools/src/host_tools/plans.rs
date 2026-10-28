@@ -36,16 +36,16 @@ const SUBMIT_PLAN_SCHEMA: &str = r#"{
 }"#;
 
 static SUBMIT_PLAN_IN: Shape = Shape::anon(&[
-    field("summary", "Summary", Ty::Str),
-    field("body", "Body", Ty::Str),
-    field("steps", "Steps", Ty::List(&Ty::Raw)),
-    field("attachments", "Attachments", Ty::List(&Ty::Str)),
+    field("summary", Ty::Str),
+    field("body", Ty::Str),
+    field("steps", Ty::List(&Ty::Raw)),
+    field("attachments", Ty::List(&Ty::Str)),
 ]);
 
 static STEP_OBJECT: Shape = Shape::anon(&[
-    field("title", "Title", Ty::Str),
-    field("files", "Files", Ty::List(&Ty::Str)),
-    field("depends_on", "DependsOn", Ty::List(&Ty::Str)),
+    field("title", Ty::Str),
+    field("files", Ty::List(&Ty::Str)),
+    field("depends_on", Ty::List(&Ty::Str)),
 ]);
 
 pub struct SubmitPlanTool;
@@ -167,9 +167,9 @@ const UPDATE_PLAN_STEP_SCHEMA: &str = r#"{
 }"#;
 
 static UPDATE_PLAN_STEP_IN: Shape = Shape::anon(&[
-    field("step_id", "StepID", Ty::Str),
-    field("status", "Status", Ty::Str),
-    field("note", "Note", Ty::Str),
+    field("step_id", Ty::Str),
+    field("status", Ty::Str),
+    field("note", Ty::Str),
 ]);
 
 pub struct UpdatePlanStepTool;

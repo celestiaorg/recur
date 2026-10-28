@@ -1032,12 +1032,13 @@ impl Observatory {
 
     /// `onMainDocChange`.
     pub(crate) fn on_main_doc_change(&mut self, v: String, cx: &mut Context<Self>) {
-        self.draft = v.clone();
         let buf_path = if self.editor_path.is_empty() {
             self.selected_path.clone()
         } else {
             self.editor_path.clone()
         };
+        let shown = self.doc_change_shows(&buf_path);
+        self.draft = v.clone();
         if !buf_path.is_empty()
             && let Some(file) = self.file.clone()
         {
@@ -1057,11 +1058,12 @@ impl Observatory {
         self.sync_scratch_docs();
         self.schedule_lsp_outline(cx);
         self.persist_editor_session(cx);
-        cx.notify();
+        self.notify_if_doc_change_shows(&buf_path, shown, cx);
     }
 
     /// `onSplitDocChange`.
     pub(crate) fn on_split_doc_change(&mut self, v: String, cx: &mut Context<Self>) {
+        let shown = self.doc_change_shows(&self.split_path);
         self.split_draft = v.clone();
         if self.split_path == self.selected_path {
             self.draft = v.clone();
@@ -1095,7 +1097,30 @@ impl Observatory {
         }
         self.sync_scratch_docs();
         self.persist_editor_session(cx);
-        cx.notify();
+        let p = self.split_path.clone();
+        self.notify_if_doc_change_shows(&p, shown, cx);
+    }
+
+    /// What a doc change can show outside the editor that typed it: the dirty markers (tab
+    /// dot, crumb, `Modified`), or everything when the other pane shows the same file (it, or
+    /// the main pane's preview or merge view, mirrors the text on the next render).
+    fn doc_change_shows(&self, path: &str) -> Option<(bool, bool, bool)> {
+        if self.split_open && self.split_path == self.selected_path {
+            return None;
+        }
+        Some((self.dirty(), self.split_dirty(), self.tab_is_dirty(path)))
+    }
+
+    /// A render clones the whole document into the editors and redraws every pane.
+    fn notify_if_doc_change_shows(
+        &mut self,
+        path: &str,
+        before: Option<(bool, bool, bool)>,
+        cx: &mut Context<Self>,
+    ) {
+        if before.is_none() || self.doc_change_shows(path) != before {
+            cx.notify();
+        }
     }
 
     /// Keep scratch docs in step with the live buffers (session persist reads them).

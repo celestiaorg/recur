@@ -322,6 +322,9 @@ impl FilePreview {
             return;
         }
         self.set_find_open(true, cx);
+        if let Surface::Html(h) = &self.surface {
+            h.read(cx).release_keyboard(window);
+        }
         self.bar.update(cx, |b, cx| b.focus_and_select(window, cx));
         self.refresh(window, cx);
     }

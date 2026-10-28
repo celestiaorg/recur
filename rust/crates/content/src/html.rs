@@ -381,6 +381,14 @@ impl HtmlPreview {
     pub fn path(&self) -> &str {
         &self.path
     }
+
+    /// Takes the keyboard back from the native page so GPUI focus (the find field) gets keys.
+    pub fn release_keyboard(&self, window: &Window) {
+        #[cfg(target_os = "macos")]
+        mac::focus_content_view(window);
+        #[cfg(not(target_os = "macos"))]
+        let _ = window;
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -827,6 +835,14 @@ mod mac {
         };
         // SAFETY: AppKit hands out the window's content NSView; retain it for our use.
         unsafe { Retained::retain(h.ns_view.as_ptr().cast::<NSView>()) }
+    }
+
+    pub fn focus_content_view(window: &Window) {
+        if let Some(view) = content_view(window)
+            && let Some(w) = view.window()
+        {
+            w.makeFirstResponder(Some(&view));
+        }
     }
 
     /// Lay the page over `b` (window coordinates) and show it; hide it again after the first

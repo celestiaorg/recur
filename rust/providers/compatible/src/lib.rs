@@ -7,6 +7,7 @@
 //! [`HarnessTools::new`]) and the Recur transcript as `TurnContext::history`.
 
 pub mod catalog;
+mod chatgpt;
 pub mod client;
 pub mod flags;
 mod gojson;
@@ -29,12 +30,14 @@ use recur_agent::{
 use recur_domain::{CompatibleProvider as Config, Settings};
 
 pub use catalog::{compatible_catalog_models, compatible_flag_dims};
-pub use client::{Client, ClientError};
+pub use client::{Authorize, Client, ClientError};
 pub use harness::{HARNESS_PARALLEL_LIMIT, responses_fresh_input, terminal_response_error};
 pub use status::{CompatibleTestResult, compatible_flag_preset, test_compatible_provider};
 pub use tools::{HarnessTools, harness_agent_code, harness_tools, tool_allowed_on_turn};
 
-const CAPS: ProviderCaps = ProviderCaps {
+/// What Recur's own harness offers: callback permissions, live steers, the
+/// Recur transcript as history and in-process tools.
+pub const HARNESS_CAPS: ProviderCaps = ProviderCaps {
     permission: PermissionRoute::Callback,
     steer: SteerSupport::Live,
     history: HistoryMode::App,
@@ -132,7 +135,7 @@ impl Provider for CompatibleProvider {
     }
 
     fn caps(&self) -> &ProviderCaps {
-        &CAPS
+        &HARNESS_CAPS
     }
 
     fn availability(&self, settings: &Settings) -> Availability {
@@ -214,13 +217,7 @@ impl Provider for CompatibleProvider {
             .data_dir
             .clone()
             .or_else(|| recur_store::paths::data_dir().ok());
-        harness::Harness {
-            provider: &config,
-            client: &client,
-            data_root,
-        }
-        .run(req, cx)
-        .await
+        run_harness(&config, &client, data_root, req, cx).await
     }
 
     /// History lives in the Recur store, so any stored handle (a previous
@@ -241,6 +238,24 @@ impl Provider for CompatibleProvider {
             *self.config.write() = p.clone();
         }
     }
+}
+
+/// Runs one turn of Recur's coding agent against `client` (the ChatGPT
+/// provider drives the same loop over its own client).
+pub async fn run_harness(
+    provider: &Config,
+    client: &Client,
+    data_root: Option<PathBuf>,
+    req: TurnRequest,
+    cx: TurnContext,
+) -> Result<TurnResult, ProviderError> {
+    harness::Harness {
+        provider,
+        client,
+        data_root,
+    }
+    .run(req, cx)
+    .await
 }
 
 #[cfg(test)]

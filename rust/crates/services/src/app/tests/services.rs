@@ -505,7 +505,11 @@ async fn getters_error_on_missing() {
     let bogus = "does-not-exist";
     assert!(fx.s.projects.get_project(bogus).await.is_err());
     assert!(fx.s.workspaces.get_workspace(bogus).await.is_err());
-    assert!(fx.s.escalation.get_escalation(bogus).await.is_err());
+    let esc = fx.s.escalation.get_escalation(bogus).await.unwrap();
+    assert!(
+        esc.id.is_empty() && esc.status.is_empty(),
+        "missing escalation = {esc:?}, want empty value"
+    );
     assert!(fx.s.agents.get_agent_trace(bogus, "CO").await.is_err());
     assert!(fx.s.prs.get_pr(bogus).await.is_err());
     assert!(fx.s.prs.get_commit_diff("482", bogus).await.is_err());

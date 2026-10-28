@@ -7,8 +7,8 @@ use std::collections::{BTreeMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::model::{
-    PROVIDER_ANTHROPIC, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, PROVIDER_GEMINI,
-    PROVIDER_OLLAMA, provider_label,
+    PROVIDER_ANTHROPIC, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR,
+    PROVIDER_GEMINI, PROVIDER_OLLAMA, provider_label,
 };
 use crate::serde_util::{is_false, is_zero};
 use crate::text::kebab_slug;
@@ -16,10 +16,11 @@ use crate::{Settings, gourl};
 
 /// Slugs that collide with Recur's built-in harnesses or reserved session
 /// identifiers. "openai" is allowed: users add it as a compatible endpoint.
-const RESERVED_PROVIDER_SLUGS: [&str; 6] = [
+const RESERVED_PROVIDER_SLUGS: [&str; 7] = [
     PROVIDER_CLAUDE_CODE,
     PROVIDER_CURSOR,
     PROVIDER_CODEX,
+    PROVIDER_CHATGPT,
     PROVIDER_ANTHROPIC,
     PROVIDER_GEMINI,
     PROVIDER_OLLAMA,
@@ -185,6 +186,27 @@ impl Settings {
     /// not). Built-in harness slugs are never compatible.
     pub fn is_compatible_slug(&self, slug: &str) -> bool {
         self.compatible_by_id(slug).is_some()
+    }
+
+    /// Providers whose tools and history Recur owns.
+    pub fn uses_native_harness(&self, slug: &str) -> bool {
+        slug == PROVIDER_CHATGPT || self.is_compatible_slug(slug)
+    }
+
+    /// Whether a ChatGPT account is connected with at least one model.
+    pub fn chatgpt_configured(&self) -> bool {
+        !self.chat_gpt_account_id.is_empty() && !self.chat_gpt_models.is_empty()
+    }
+
+    /// The ChatGPT subscription endpoint as a Responses provider.
+    pub fn chatgpt_provider(&self) -> CompatibleProvider {
+        CompatibleProvider {
+            id: PROVIDER_CHATGPT.into(),
+            name: "ChatGPT".into(),
+            base_url: "https://chatgpt.com/backend-api/codex".into(),
+            models: self.chat_gpt_models.clone(),
+            ..Default::default()
+        }
     }
 
     /// The human name for a provider slug, preferring a compatible

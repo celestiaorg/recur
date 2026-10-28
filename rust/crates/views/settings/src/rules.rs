@@ -10,6 +10,7 @@ use recur_view_core::models::provider_enabled;
 pub const PROVIDER_CLAUDE: &str = "claude-code";
 pub const PROVIDER_CURSOR: &str = "cursor";
 pub const PROVIDER_CODEX: &str = "codex";
+pub const PROVIDER_CHATGPT: &str = "chatgpt";
 
 const CATALOGUE_PROVIDERS: [&str; 3] = [PROVIDER_CLAUDE, PROVIDER_CURSOR, PROVIDER_CODEX];
 
@@ -68,10 +69,11 @@ pub const COMPATIBLE_WIRES: [&str; 5] = [
     "max_output_tokens",
 ];
 
-pub const RESERVED_PROVIDER_SLUGS: [&str; 6] = [
+pub const RESERVED_PROVIDER_SLUGS: [&str; 7] = [
     "claude-code",
     "cursor",
     "codex",
+    "chatgpt",
     "anthropic",
     "gemini",
     "ollama",

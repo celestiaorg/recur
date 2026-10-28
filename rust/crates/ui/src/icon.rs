@@ -59,7 +59,7 @@ pub fn provider_icon(provider: &str) -> Icon {
     let slug = match provider.trim().to_lowercase().as_str() {
         "cursor" => "cursor",
         "claude-code" | "anthropic" | "claude" => "claude",
-        "codex" | "openai" => "codex",
+        "codex" | "openai" | "chatgpt" => "codex",
         "ollama" => "ollama",
         _ => "generic",
     };

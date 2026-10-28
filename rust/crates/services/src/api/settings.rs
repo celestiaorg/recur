@@ -2,7 +2,8 @@ use async_trait::async_trait;
 use recur_domain::{CompatibleFlagDim, CompatibleProvider, Resource, Settings};
 
 use super::{
-    AssignedIssue, ClaudeStatus, CodexStatus, CompatibleTestResult, CursorStatus, ModelGroup,
+    AssignedIssue, ChatGPTLogin, ChatGPTStatus, ClaudeStatus, CodexLogin, CodexStatus,
+    CompatibleTestResult, CursorStatus, ModelGroup,
 };
 use super::{CursorUsageConnect, Snapshot};
 use crate::Result;
@@ -10,6 +11,12 @@ use crate::Result;
 /// Rust port of Go `app.SettingsService` (`frontend/bindings/recur/internal/app/settingsservice.ts`).
 #[async_trait]
 pub trait SettingsService: Send + Sync {
+    /// CancelChatGPTLogin cancels only the given sign-in attempt.
+    async fn cancel_chat_gpt_login(&self, login_id: &str) -> Result<()>;
+
+    /// CancelCodexLogin cancels only the specified attempt, leaving newer logins alone.
+    async fn cancel_codex_login(&self, login_id: &str) -> Result<()>;
+
     /// CancelCursorUsageConnect aborts an in-flight Connect Cursor login.
     async fn cancel_cursor_usage_connect(&self) -> Result<()>;
 
@@ -30,10 +37,17 @@ pub trait SettingsService: Send + Sync {
     /// that would paint Welcome step 1 green before a real login exists.
     async fn detect_agent(&self) -> Result<String>;
 
+    /// DisconnectChatGPT signs out of the active ChatGPT account, keeping its
+    /// metadata for a later sign-in, and clears its models from Settings.
+    async fn disconnect_chat_gpt(&self) -> Result<ChatGPTStatus>;
+
     /// DisconnectCursorUsage deletes Recur-owned Cursor Connect tokens and the
     /// minted SDK key. A leftover pasted key is also cleared — Connect is the
     /// only Cursor sign-in.
     async fn disconnect_cursor_usage(&self) -> Result<()>;
+
+    /// GetChatGPTStatus exposes account metadata only, never OAuth tokens.
+    async fn get_chat_gpt_status(&self) -> Result<ChatGPTStatus>;
 
     /// GetClaudeStatus probes the local Claude Code CLI for login + version info.
     /// Safe to call from Settings: bounded, never invents a success state.
@@ -111,6 +125,9 @@ pub trait SettingsService: Send + Sync {
     /// xdg-mime handler check for Linux if Linear ships a desktop build there.
     async fn open_linear_in_app(&self, raw: &str) -> Result<bool>;
 
+    /// RefreshChatGPTModels queries the signed-in ChatGPT Codex model catalogue.
+    async fn refresh_chat_gpt_models(&self) -> Result<ChatGPTStatus>;
+
     /// RefreshProviderUsage forces a fetch, joining any in-flight collect.
     async fn refresh_provider_usage(&self) -> Result<Snapshot>;
 
@@ -119,6 +136,13 @@ pub trait SettingsService: Send + Sync {
     async fn reveal_logs(&self) -> Result<()>;
 
     async fn set_settings(&self, set: &Settings) -> Result<Settings>;
+
+    /// StartChatGPTLogin starts Codex-compatible browser or headless sign-in.
+    /// An empty accountID allows a new account; a saved ID pins the selected account.
+    async fn start_chat_gpt_login(&self, account_id: &str, method: &str) -> Result<ChatGPTLogin>;
+
+    /// StartCodexLogin starts a Recur-owned ChatGPT browser sign-in. No CLI login is needed.
+    async fn start_codex_login(&self) -> Result<CodexLogin>;
 
     /// TestCodexKey validates an API key (or ChatGPT auth) before save.
     async fn test_codex_key(&self, api_key: &str, chat_gpt_auth: bool) -> Result<CodexStatus>;
@@ -133,4 +157,10 @@ pub trait SettingsService: Send + Sync {
     /// TestCursorKey validates an API key that has NOT been saved yet, so the user
     /// gets a verdict before committing it. An empty key falls back to the saved one.
     async fn test_cursor_key(&self, api_key: &str) -> Result<CursorStatus>;
+
+    /// WaitChatGPTLogin waits for the sign-in, then refreshes the account's models.
+    async fn wait_chat_gpt_login(&self, login_id: &str) -> Result<ChatGPTStatus>;
+
+    /// WaitCodexLogin waits for browser sign-in, then selects the signed-in ChatGPT account.
+    async fn wait_codex_login(&self, login_id: &str) -> Result<CodexStatus>;
 }

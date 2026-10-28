@@ -2336,6 +2336,16 @@ pub(super) fn base() -> Table {
             "error": "Not logged in. Run `codex login`.",
         }))
     });
+    t.insert("GetChatGPTStatus", |_a, _s, _t| {
+        Reply::Value(json!({
+            "authenticated": false,
+            "accountId": "",
+            "email": "",
+            "accounts": [],
+            "modelCount": 0,
+            "error": "",
+        }))
+    });
     t.insert("GetCursorStatus", |_a, _s, _t| {
         Reply::Value(cursor_status("1.0.31"))
     });

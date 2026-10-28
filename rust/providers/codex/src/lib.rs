@@ -12,6 +12,7 @@ pub mod client;
 pub mod display;
 pub mod items;
 pub mod locate;
+pub mod login;
 pub mod mcp;
 mod proc;
 pub mod rpc;
@@ -55,6 +56,7 @@ pub struct CodexProvider {
     settings: Mutex<Settings>,
     /// The last good `model/list` (offline fallback for slot remaps).
     last_models: Mutex<Option<Vec<types::Model>>>,
+    logins: login::Logins,
 }
 
 const CAPS: ProviderCaps = ProviderCaps {
@@ -79,7 +81,37 @@ impl CodexProvider {
             settings: Mutex::new(cfg.settings.clone()),
             cfg,
             last_models: Mutex::default(),
+            logins: login::Logins::default(),
         }
+    }
+
+    /// Starts a Recur-owned ChatGPT browser sign-in (Go `StartCodexLogin`).
+    /// Credentials land in Recur's `CODEX_HOME`, never `~/.codex`.
+    pub async fn start_login(&self, settings: &Settings) -> Result<login::CodexLogin, String> {
+        let bin = locate::locate(&settings.codex_bin_path)?;
+        let env = self.probe_env();
+        self.logins
+            .start(server::ServerConfig {
+                bin,
+                home: env.home,
+                worktree: env.data_dir,
+                // Persist in this CODEX_HOME, independent of any global keyring config.
+                config_overrides: vec![r#"cli_auth_credentials_store="file""#.into()],
+                env_scrub: env.env_scrub,
+                ..Default::default()
+            })
+            .await
+    }
+
+    /// Waits for the sign-in and remembers the models it listed.
+    pub async fn wait_login(&self, login_id: &str) -> Result<ProviderStatus, String> {
+        let out = self.logins.wait(login_id).await?;
+        self.remember(out.models);
+        Ok(out.status)
+    }
+
+    pub async fn cancel_login(&self, login_id: &str) {
+        self.logins.cancel(login_id).await;
     }
 
     fn data_dir(&self) -> PathBuf {
@@ -249,6 +281,11 @@ impl Provider for CodexProvider {
 
     async fn settings_changed(&self, _old: &Settings, new: &Settings) {
         *self.settings.lock() = new.clone();
+    }
+
+    /// Joins any sign-in so its callback listener cannot outlive Recur.
+    async fn shutdown(&self) {
+        self.logins.shutdown().await;
     }
 }
 

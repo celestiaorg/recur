@@ -178,12 +178,10 @@ impl EscalationService for AppServices {
         })
     }
 
+    /// Most workspaces have no escalation. The UI probes this while loading
+    /// each workspace, so absence is an ordinary empty state, not an error.
     async fn get_escalation(&self, workspace_id: &str) -> Result<Escalation> {
-        rt!(self, workspace_id => |s| {
-            s.store().escalation(&workspace_id).ok_or_else(|| {
-                Error::new(format!("no escalation for loop {}", quote(&workspace_id)))
-            })
-        })
+        rt!(self, workspace_id => |s| Ok(s.store().escalation(&workspace_id).unwrap_or_default()))
     }
 }
 

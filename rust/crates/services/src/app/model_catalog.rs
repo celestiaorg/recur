@@ -5,14 +5,15 @@
 use recur_agent::Provider as _;
 use recur_agent::catalog::{ModelChoice, ModelGroup, default_flags_from_dims};
 use recur_domain::{
-    Flags, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Settings, provider_label,
+    Flags, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Settings,
+    provider_label,
 };
 
 use super::AppServices;
 
-/// The grouped catalog: Claude Code, Cursor, Codex, then each compatible
-/// endpoint. Disabled providers are omitted; Cursor and Codex appear only
-/// with models.
+/// The grouped catalog: Claude Code, Cursor, Codex, each compatible
+/// endpoint, then ChatGPT. Disabled providers are omitted; Cursor and Codex
+/// appear only with models, ChatGPT once an account is connected.
 pub fn build_model_catalog(
     set: &Settings,
     cursor_models: Vec<ModelChoice>,
@@ -48,6 +49,14 @@ pub fn build_model_catalog(
             provider: p.id.clone(),
             label: set.display_label(&p.id).to_owned(),
             models: recur_provider_compatible::compatible_catalog_models(p),
+        });
+    }
+    if set.provider_offers_models(PROVIDER_CHATGPT) {
+        let p = set.chatgpt_provider();
+        groups.push(ModelGroup {
+            provider: p.id.clone(),
+            label: p.name.clone(),
+            models: recur_provider_compatible::compatible_catalog_models(&p),
         });
     }
     groups
@@ -102,17 +111,23 @@ pub fn apply_catalog_fallbacks(mut set: Settings, groups: &[ModelGroup]) -> Sett
     set
 }
 
-/// Whether a save turns a provider on or off, (un)configures Cursor or Codex,
-/// or adds, removes or (un)configures a compatible endpoint.
+/// Whether a save turns a provider on or off, (un)configures Cursor, Codex or
+/// ChatGPT, or adds, removes or (un)configures a compatible endpoint.
 pub fn provider_enablement_changed(a: &Settings, b: &Settings) -> bool {
-    if [PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, PROVIDER_CODEX]
-        .iter()
-        .any(|p| a.provider_enabled(p) != b.provider_enabled(p))
+    if [
+        PROVIDER_CLAUDE_CODE,
+        PROVIDER_CURSOR,
+        PROVIDER_CODEX,
+        PROVIDER_CHATGPT,
+    ]
+    .iter()
+    .any(|p| a.provider_enabled(p) != b.provider_enabled(p))
     {
         return true;
     }
     if a.cursor_configured() != b.cursor_configured()
         || a.codex_configured() != b.codex_configured()
+        || a.chatgpt_configured() != b.chatgpt_configured()
     {
         return true;
     }

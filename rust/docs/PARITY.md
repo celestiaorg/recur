@@ -253,7 +253,7 @@ Source: `frontend/bindings/recur/internal/app/*.ts`, implemented in `internal/ap
 ### escalationservice (2)
 
 - [x] `AnswerEscalation`: `EscalationService::answer_escalation`
-- [x] `GetEscalation`: `EscalationService::get_escalation`
+- [x] `GetEscalation`: `EscalationService::get_escalation` (a workspace without one answers an empty escalation, not an error)
 
 ### inboxservice (3)
 
@@ -349,14 +349,18 @@ Source: `frontend/bindings/recur/internal/app/*.ts`, implemented in `internal/ap
 - [x] `AnswerQuestion`: `QuestionsService::answer_question`
 - [x] `ListPendingQuestions`: `QuestionsService::list_pending_questions`
 
-### settingsservice (26)
+### settingsservice (35)
 
+- [x] `CancelChatGPTLogin`: `SettingsService::cancel_chat_gpt_login`
+- [x] `CancelCodexLogin`: `SettingsService::cancel_codex_login`
 - [x] `CancelCursorUsageConnect`: `SettingsService::cancel_cursor_usage_connect`
 - [x] `ClearAllData`: `SettingsService::clear_all_data`
 - [x] `CompatibleFlagPreset`: `SettingsService::compatible_flag_preset`
 - [x] `ConnectCursorUsage`: `SettingsService::connect_cursor_usage`
 - [x] `DetectAgent`: `SettingsService::detect_agent`
+- [x] `DisconnectChatGPT`: `SettingsService::disconnect_chat_gpt`
 - [x] `DisconnectCursorUsage`: `SettingsService::disconnect_cursor_usage`
+- [x] `GetChatGPTStatus`: `SettingsService::get_chat_gpt_status`
 - [x] `GetClaudeStatus`: `SettingsService::get_claude_status`
 - [x] `GetCodexStatus`: `SettingsService::get_codex_status`
 - [x] `GetCursorStatus`: `SettingsService::get_cursor_status`
@@ -371,12 +375,17 @@ Source: `frontend/bindings/recur/internal/app/*.ts`, implemented in `internal/ap
 - [x] `ListMonospaceFonts`: `SettingsService::list_monospace_fonts`
 - [x] `LogsPath`: `SettingsService::logs_path`
 - [x] `OpenLinearInApp`: `SettingsService::open_linear_in_app`
+- [x] `RefreshChatGPTModels`: `SettingsService::refresh_chat_gpt_models`
 - [x] `RefreshProviderUsage`: `SettingsService::refresh_provider_usage`
 - [x] `RevealLogs`: `SettingsService::reveal_logs`
 - [x] `SetSettings`: `SettingsService::set_settings`
+- [x] `StartChatGPTLogin`: `SettingsService::start_chat_gpt_login`
+- [x] `StartCodexLogin`: `SettingsService::start_codex_login`
 - [x] `TestCodexKey`: `SettingsService::test_codex_key`
 - [x] `TestCompatibleProvider`: `SettingsService::test_compatible_provider`
 - [x] `TestCursorKey`: `SettingsService::test_cursor_key`
+- [x] `WaitChatGPTLogin`: `SettingsService::wait_chat_gpt_login`
+- [x] `WaitCodexLogin`: `SettingsService::wait_codex_login`
 
 ### shellservice (7)
 
@@ -558,7 +567,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [x] `PRDetail.svelte` (2329 lines) → `recur_view_prs::detail::PrDetail` (the `prdetail` route): header (state pill, number, title edit, people stack, attention pills, branch), the agent dock with its toggle and ⌥⌘B focus moves, tabs with chips and the checks rollup, Conversation (description edit, summary, focus callout, findings card with post / post all / resolve and settle, verify, timeline commits and events, comment threads with review badges, nested line notes with hunk context, replies, resolve, reactions, edit, delete, quote reply, permalinks, emoji and `@mention` typeahead, composer, merged and closed states), Commits (list and per-commit stack with lazy diffs), Files changed (`ReviewFileList` beside `FileStack`, filters, layout and mode prefs, Post all, open in workspace), Checks (groups, live durations, Fix); skeletons, hydrate give-up and polling, live `PrComment` / `PrUpdated` / findings events, every keyboard path. Scenes `prs/detail-*`; `spec::{detail, conversation, checks, dock}`
 - [x] `PRList.svelte` (226 lines) → `recur_view_prs::list::PrList` (the `pr` route): lifecycle segments, project / status / sort selects, GitHub sync, grouped buckets with sticky headers, rows (source icon and number, open in GitHub, running dot, unseen count, why, checks, diff, files, CI mark, when; the wide layout's people and why columns), people popouts, empty and skeleton states. Scenes `prs/list*`, `prs/filters`, `prs/people`; `spec::list`
 - [x] `Project.svelte` (1302 lines) → `recur_view_projects::project::ProjectView` (the `project` route): searchable nav, General (name, avatar letter / icon / image with the system color panel, repository, default branch, group, hide, Linear projects), Run (project.toml note, Files to copy with its preview, setup / teardown / run commands / env on `MiniScriptEditor`, App URL), Schedules, Pull requests, Skills and MCP overrides, Danger zone; 450ms autosave with `writeProjectFile`. Scenes `projects/*`; `spec::project`
-- [x] `Settings.svelte` (3571 lines) → `recur_view_settings::view::SettingsView` (the `settings` route; the menu item and ⌘, through the shell): the searchable nav with its groups, every pane (General, Appearance, Code editor, Skills, Data, Providers, Models, Loops, Pull requests, Integrations, MCP, Commands, Prompt actions, Grammars, Themes, Snippets, Language servers) with each control's persistence and side effects through the services, the Cursor SDK install with progress, the usage meters (`recur_view_sidebar::usage`) and the keybinding menu (`recur_view_widgets::keybinding_menu`). Scenes `settings/*`; `spec::{settings, compatible, bundles}`
+- [x] `Settings.svelte` (3571 lines) → `recur_view_settings::view::SettingsView` (the `settings` route; the menu item and ⌘, through the shell): the searchable nav with its groups, every pane (General, Appearance, Code editor, Skills, Data, Providers, Models, Loops, Pull requests, Integrations, MCP, Commands, Prompt actions, Grammars, Themes, Snippets, Language servers) with each control's persistence and side effects through the services, the Cursor SDK install with progress, the OpenAI group (ChatGPT account, Codex runtime with its browser sign-in, the `openai` API endpoint) under one toggle, the usage meters (`recur_view_sidebar::usage`) and the keybinding menu (`recur_view_widgets::keybinding_menu`). Scenes `settings/*`; `spec::{settings, compatible, bundles}`
 - [x] `Welcome.svelte` (300 lines) → `recur_view_home::welcome::WelcomeView` (scenes `home/welcome*`; `spec::welcome`)
 - [x] `WorkspaceDetail.svelte` (190 lines) → `recur_view_workspace::detail::WorkspaceDetail` (the `detail` route, kept laid out; the parked hot shell; the PR agent workspace binding)
 - [x] `WorkspaceView.svelte` (3652 lines) → `recur_view_workspace::view::WorkspaceView` (chat tabs, the chat / Observatory split, mode / model / loop pickers, session cards, prompt routing, send / queue / steer / Stop / Retry, findings and plan panels, the titlebar head, the maestro dock, every keyboard path; `spec::{chat, activity, shell}` and scenes `workspace/*`)
@@ -589,6 +598,7 @@ Source: `frontend/src`. Rust home: `recur-app` (views), `recur-ui` (shared widge
 - [x] `CommentReactions.svelte` (114 lines) → `recur_view_review::reactions::CommentReactions` (pills with counts and the viewer's tint, the add button and picker anchored above or below, optimistic toggles through `store::toggle_pr_comment_reaction` with the 2-minute hold; scene `review/thread`, spec `toggles_reactions_on_the_diff_thread`)
 - [x] `CommitRow.svelte` (80 lines) → `recur_view_review::commits::commit_row` (avatar or WIP disc, subject, byline, short hash with copy and its copied state, the uncommitted row; scenes `review/commits*`)
 - [x] `CommitsView.svelte` (80 lines) → `recur_view_review::commits::CommitsView` (loading / error / empty states, the uncommitted row only when the worktree is dirty, open-commit and open-working events; scenes `review/commits*`, specs `commits_tab_*`, `clean_worktree_hides_the_uncommitted_commits_row`)
+- [x] `ChatGPTProviderCard.svelte` (171 lines) → `recur_view_settings::sections::openai` (sign-in method and saved-account selects, browser and headless sign-in with the link and one-time code, cancel on Cancel and on leaving Providers, attempt-stale replies dropped, refresh models, sign out; `spec::openai`)
 - [x] `CompatibleProviderCard.svelte` (468 lines) → `recur_view_settings::compatible::card` (headers, models, picker controls with the flag summary and editor, Test, Remove; `spec::compatible`)
 - [x] `CompatibleProviderModal.svelte` (215 lines) → `recur_view_settings::compatible::modal` (presets, fields, Tab cycle, ⌘↵, Escape; scenes `settings/compat-modal*`)
 - [x] `ContextUsageMeter.svelte` (278 lines) → `recur_view_chat::meter::ContextMeter` (ring, popover, compacting pulse; values test)
@@ -850,7 +860,7 @@ Non-visual TypeScript that holds real behavior (stores, keymaps, composer, edito
 - [x] `lib/menu-space.ts` (248 lines) → `recur_ui::logic::menu_space` (`menu_viewport_space`, `menu_prefer_up`, `menu_fixed_box`, `clamp_menu_left`, `popover_top`, `more_menu_fixed_box`, `rects_overlap`, `MenuVariant` sizes; cases ported). Window resize/scroll watching belongs to the overlay owner
 - [x] `lib/menu.ts` (152 lines) → `recur_view_core::menu` (`MenuState` merge, idle state, `terminalIdFromMenu`, theme lists and state) and `recur_app::menu`
 - [x] `lib/mermaid.ts` (137 lines) → `recur_content::mermaid` (theme variables, hydration); mmdr lays diagrams out, drawn natively (decision in `ARCHITECTURE.md`)
-- [x] `lib/models.ts` (179 lines) → `recur_view_core::models` (catalog, options, flags) and `recur_view_settings::sections::models` (per-mode refs and flags, picker labels; the catalog cache is `AppState`'s)
+- [x] `lib/models.ts` (179 lines) → `recur_view_core::models` (catalog, options, flags) and `recur_view_settings::sections::models` (per-mode refs and flags, picker labels; the catalog cache is `AppState`'s); ChatGPT, Codex and an `openai` endpoint share one OpenAI picker section, labelled by runtime when more than one is listed
 - [x] `lib/modes.ts` (419 lines): shell and sidebar predicates (`wsRunActive`, `workspaceIsRunning`, `parkedNeedsYouByWorkspace`, `sidebarUnreadTitle`, `workspaceShowsRemove`, `workspaceCanRemove`, `wsCreating`, `wsMainBlocked`) → `recur_view_core::modes`; the chat-mode half (dock mode list, cycling, per-mode Settings default model, picker rule after a switch, create/setup predicates) → `recur_engine::view::modes`; `modes.test.ts` ported; the chat's mode labels, icons and tints → `recur_view_core::modes::ChatMode`
 - [x] `lib/mono-fonts.ts` (236 lines) → `recur_view_settings::mono_fonts` (bundled fonts, candidates probed through the text system, `ListMonospaceFonts` merge, font stacks; cases tested)
 - [x] `lib/new-workspace.ts` (278 lines): `createBlankWorkspace` (⇧⌘N, File > New Blank Workspace) → `recur_app::new_workspace`; the pure launch rules (eager-create input, the eager handle and its abandon, opening chat seed, parked-opening failures) → `recur_engine::view::new_workspace` with `new-workspace.test.ts`; the modal's flows (wait for the worktree, reveal, parked opening, Linear link, attachments) → `recur_view_home::new_workspace`
@@ -996,6 +1006,7 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] `model_catalog.go` Cursor branch → `recur_provider_cursor::catalog` (drops `default`, house models first, ListModels params to dims with variant defaults and On/Off booleans, context windows from the table) behind `Provider::{models, cached_models}`; the status probe also warms the cache
   - [x] `cursor_service.go` + test → `recur_provider_cursor::status` and `CursorProvider::{cursor_status, test_cursor_key, install}` (`CursorStatus` JSON-identical, throwaway probe bridges, Connect-file gate, pin/update rules) behind `Provider::{status, test_credentials}`. The orphan-key drop, `cursor.install` publishing and `CursorBridgePath` save in `GetCursorStatus` / `InstallCursorBridge` are SV
   - [x] `codex_service.go` → `recur_provider_codex::status` (throwaway app-server probe with 60 s budget, account/read + model/list, login method, plan names, ChatGPT-auth precedence, `test_key` draft fallback to saved key) behind `Provider::{status, test_credentials, models}`. The `GetCodexStatus` / `TestCodexKey` service methods are SV
+  - [x] `chatgpt_service.go` + test → `app/settings.rs` (status from `ChatGPTProvider::account_status`, login enablement check, models saved as `chatGPTAccountId` / `chatGPTModels`, sign-out clears them) and the ChatGPT group of `model_catalog.rs`; `codex_login.go` settings half (ChatGPT auth replaces a saved key) in `app/settings.rs` (`tests/codex_login.rs`)
   - [x] `compatible_service.go` + test → `recur_provider_compatible::status` (`test_compatible_provider` with normalization, first model, 20 s; `compatible_flag_preset`) behind `Provider::{status, test_credentials}`. The `TestCompatibleProvider` / `CompatibleFlagPreset` service methods are SV
   - [x] `model_catalog.go` compatible branch → `recur_provider_compatible::catalog` (`compatible_catalog_models`, `compatible_flag_dims`) behind `Provider::{models, cached_models}`; Go-matched in `go_catalog.json`, including the enabled+configured groups. Merge and fallbacks stay SV
   - [x] `provider_usage.go` + test → `recur_usage::UsageService` (see `internal/usage`); `lsp_service.go` → `recur_lsp::service` (see `internal/lsp`)
@@ -1033,12 +1044,18 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] File index (`FileIndex`, `IndexHub`): byte budget with LRU eviction and a pinned workspace, coalesced and superseding builds on tokio tasks, partial batches, dirty-sequence race guard, file-system splices, 300 ms debounced publishes, `files.exclude` fast matchers and rg globs, `rank_files` / `rank_files_and_dirs` / `rank_hits`
   - [x] Skills discovery (`list_skills`, `list_skills_for_menu`, `skill_by_name`, `read_skill_body`, `skill_disables_model_invocation`, `list_skill_resources`)
   - [x] Open (`open_in_editor`, `reveal_in_finder`, `list_open_in_targets` with 64 px NSWorkspace icons as PNG data URLs via objc2, `open_in`)
+- [x] `internal/chatgpt`: 4 files, 888 lines, 1 test file → `recur-provider-chatgpt` (`client_test.go` ported in `tests.rs` against a signed local OAuth server)
+  - [x] `client.go` → `auth::Auth` (`<data dir>/chatgpt-auth.json` owner-only through a temp file and rename, status without tokens, refresh under the store lock so concurrent turns cannot race a rotating refresh token, the account bound per request, sign-out keeping metadata, the `visibility: list` model catalogue; error bodies never echoed)
+  - [x] `oidc.go` → `oidc` (RS256 against the issuer's JWKS through aws-lc-rs, issuer, audience string or list, expiry, account from the claim, the auth claim or the first organization)
+  - [x] `login.go`, `device.go` → `login` (browser PKCE on 127.0.0.1:1455 then 1457, state check, five-minute browser and fifteen-minute device attempts, device polling on 403/404 with its interval, one attempt at a time, cancel and close join the attempt so the listener is gone when they return, a foreign or cancelled attempt never replaces the active account)
+  - [x] `engine/chatgpt.go`, the ChatGPT branch of `engine/provider.go` → `ChatGPTProvider` (the `chatgpt` provider over `recur_provider_compatible::run_harness`, `HARNESS_CAPS` so the engine runs it in-process like a compatible endpoint, the account bound at turn start, `shutdown` closes the store)
 - [x] `internal/codex`: 6 files, 1173 lines, 5 test files → `recur-provider-codex` (all 5 test files ported)
   - [x] `types.go` → `types` (wire structs with Go field order and `omitempty`, `format_plan`)
   - [x] `rpc.go` → `rpc` (newline JSON-RPC without `jsonrpc`, ordered reader task, sync notification handler, server requests on tasks with `-32000` errors, pending calls fail `-32001` on EOF, `null` results decode as defaults, `Ctx` = Go context cancel + deadline). After EOF new calls fail fast instead of waiting on their context
   - [x] `client.go` → `client` (account/read, model/list, thread start/resume, turn start/steer/interrupt). `DecodeNotification` (unused in Go) not ported
   - [x] `server.go` → `server` (Recur `CODEX_HOME`, seeded `auth.json` only when newer, trusted-project entry, `app-server -c …` in its own process group, env scrub + `CODEX_HOME`/`CODEX_API_KEY`, 45 s handshake, 80-line stderr ring, auto-approve failsafe, SIGTERM → 2 s → SIGKILL close)
   - [x] `locate.go` → `locate` (`$RECUR_CODEX`, Settings path, PATH, Homebrew cask dirs; Mach-O/ELF magic rejects the npm shim; `home_dir`)
+  - [x] Browser sign-in (`app/codex_login.go`, `account/login/start` / `cancel`, the `recur-browser-login` marker that stops a newer `~/.codex/auth.json` replacing it, ambient `CODEX_API_KEY` / `OPENAI_API_KEY` dropped) → `login::Logins` behind `CodexProvider::{start_login, wait_login, cancel_login}` and `Provider::shutdown`; `codex_login_test.go` ported against a fake app-server (`login::fake_login_server`)
   - [x] `mcp.go` → `mcp` (`-c mcp_servers…` overrides, TOML escaping, automation defaults incl. skills/multi-agent off)
 - [x] `internal/copyfiles`: 1 files, 414 lines, 1 test files → `recur_code::copyfiles` (`parse_patterns`, `matches`, `preview`, `copy`; cancel token plus deadline for Go's context; test file ported, plus `tests/golden/go_copyfiles.json`)
 - [x] `internal/cursor`: 12 files, 3691 lines, 17 test files → `recur-provider-cursor` (all 17 test files ported; smoke files env-gated as in Go)
@@ -1198,6 +1215,7 @@ Source: `internal/`, root `*.go`, `cmd/`. Each Go test file is a behavior spec: 
   - [x] SSE: dispatch on a blank line or as soon as the data is valid JSON (LM Studio / llama.cpp), `[DONE]`, Go typed-decode semantics (null = zero, mismatched types drop the event), deltas as string or `{text}`, function calls from items and completed outputs, usage with cached-token fallback
   - [x] `DecodeResponse`: envelope and `{response}` wrap overlay, Responses-object detection, terminal statuses, error events
   - [x] Flags: wire paths, temperature/max tokens coercion with Go float formatting, `reasoning.summary=auto`, `text.format`
+  - [x] `chatgpt.go` and the ChatGPT client mode → `chatgpt` and `Client::with_chatgpt` (`{base}/responses`, stateless streaming body with encrypted reasoning, unsupported fields dropped, non-strict function tools, per-request `Authorize`); the harness replays a ChatGPT round's raw output items instead of rebuilt ones
 - [x] `internal/rg`: 2 files, 403 lines, 2 test files → `recur_code::rg` (`locate`, `files_args`, `files`, `ensure` with the pinned 15.2.0 release, SHA-256 check and tar.gz extraction); both test files ported (`tests/env_serial.rs` for the `$RECUR_RG` cases)
 - [x] `internal/runconfig`: 1 files, 333 lines, 1 test files → `recur_project::runconfig` (test file ported)
   - [x] Boot: free or persisted port, `$RECUR_PORT`/`${PORT}` substitution, own process group, single reaper, probe until any HTTP response (2s per request, redirects, no proxy for loopback), exits/timeouts/cancel tear down; the server outlives the boot token and `Booted::stop` is idempotent (SIGTERM, 2s grace, SIGKILL)
@@ -1404,6 +1422,8 @@ Playwright e2e specs (`frontend/e2e/*.spec.ts`) and the seeded fixture (`fronten
 - [x] `briefing.spec.ts` (18 tests) → `recur-view-projects`'s `spec::briefing` (17, plus the drawer under 1100px); and `go_to_palette_reaches_briefing` on a registry with the palettes
 - [x] `bundles.spec.ts` (7 tests) → `recur-view-settings`'s `spec::bundles` (5: the Bundles nav pages and every disable toggle, incl. a disabled willSave command not running on save in the workspace editor). The ⌘⇧P Sort Lines run is `recur-view-palettes`' `spec::editor` (with a macro runner standing in for the TypeScript worker); the enabled willSave transform is `recur-view-observatory`'s `spec::observatory::will_save_runs_the_gofmt_transform_before_write_file`
 - [x] `chat.spec.ts` (68 tests) → `recur-view-workspace`'s `spec::chat` (69 tests: the queue / steer scenario runs once per setting) over the real `WorkspaceView`; the chat-only halves stay in `recur-view-chat`'s `spec::{agent_chat, composer}`
+- [x] `chatgpt-login.spec.ts` (10 tests) → `recur-view-settings`'s `spec::openai` (9: sign-in with every CLI provider off, OpenAI kept on as the only ready provider, the four cancels, failure and retry, headless link and code; the first also checks the OpenAI, ChatGPT and Codex overrides of "OpenAI contains ChatGPT, Codex and API setup", whose API endpoint group is not asserted). "Browser launch failure keeps the link" is n/a: the native open has no failure result to report
+- [x] `codex-login.spec.ts` (8 tests) → `recur-view-settings`'s `spec::openai` (6: missing binary, binary path recheck, saves ChatGPT auth, both cancels, errors and retry). The two webview browser-bridge cases are n/a: the native open has no bridge or failure result
 - [x] `compatible-provider.spec.ts` (1 tests) → `recur-view-settings`'s `spec::compatible`
 - [x] `editor-hotpath.spec.ts` (27 tests) → `recur-view-observatory`'s `spec::editor_hotpath` (27, plus the FilePreview.test.ts split-editor ⌘F case)
 - [x] `editor-syntax.spec.ts` (2 tests) → `recur-view-observatory`'s `spec::editor_syntax` (the pick goes through `apply_language_mode`); the same two scenarios through the picker's rows are `recur-view-palettes`' `spec::editor`, with the association step

@@ -155,7 +155,12 @@ impl Harness<'_> {
                 usage = round.usage;
             }
             text.push_str(&round.text);
-            if !round.text.is_empty() {
+            // The stateless ChatGPT route needs its own output items back,
+            // encrypted reasoning included, in place of the rebuilt ones.
+            let preserve = self.client.chatgpt && !round.output.is_empty();
+            if preserve {
+                input.extend(round.output.into_iter().filter_map(raw_item));
+            } else if !round.text.is_empty() {
                 input.push(assistant_text(&round.text));
             }
 
@@ -167,11 +172,13 @@ impl Harness<'_> {
                     return Err(self.canceled(&req, start, &text, usage, &last_id));
                 }
                 for (call, res) in round.calls.iter().zip(&results) {
-                    input.push(function_call_item(
-                        &call.call_id,
-                        &call.name,
-                        &call.arguments,
-                    ));
+                    if !preserve {
+                        input.push(function_call_item(
+                            &call.call_id,
+                            &call.name,
+                            &call.arguments,
+                        ));
+                    }
                     input.push(function_output_item(&call.call_id, &res.text));
                     halt |= res.halt;
                 }
@@ -265,7 +272,10 @@ impl Harness<'_> {
         }
         let payload = marshal_sorted(&body);
 
-        let mut st = RoundState::default();
+        let mut st = RoundState {
+            keep_output: self.client.chatgpt,
+            ..Default::default()
+        };
         let streamed = self
             .client
             .stream_json(cancel, payload, &mut |ev| {
@@ -309,6 +319,7 @@ impl Harness<'_> {
             text,
             usage: st.usage,
             resp_id: st.resp_id,
+            output: st.output,
         })
     }
 
@@ -387,6 +398,18 @@ struct Round {
     text: String,
     usage: Usage,
     resp_id: String,
+    output: Vec<Value>,
+}
+
+/// An output item replayed as is; a non-object item is dropped.
+fn raw_item(v: Value) -> Option<InputItem> {
+    match v {
+        Value::Object(m) => Some(InputItem {
+            raw: Some(m),
+            ..Default::default()
+        }),
+        _ => None,
+    }
 }
 
 /// One Responses output item's streamed vs final text.
@@ -410,6 +433,8 @@ struct RoundState {
     fail: Option<String>,
     usage: Usage,
     resp_id: String,
+    keep_output: bool,
+    output: Vec<Value>,
 }
 
 impl RoundState {
@@ -431,6 +456,12 @@ impl RoundState {
     }
 
     fn on_event(&mut self, ev: Event, partials: bool, emitter: &TurnEmitter) {
+        if self.keep_output && !ev.output.is_empty() {
+            if ev.r#type == "response.completed" {
+                self.output.clear();
+            }
+            self.output.extend(ev.output.iter().cloned());
+        }
         if !ev.response_id.is_empty() {
             self.resp_id = ev.response_id.clone();
         }

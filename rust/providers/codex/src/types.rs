@@ -94,6 +94,23 @@ pub struct AccountReadResult {
     pub requires_openai_auth: bool,
 }
 
+/// The managed ChatGPT browser login returned by `account/login/start`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct LoginStartResult {
+    pub login_id: String,
+    pub auth_url: String,
+}
+
+/// The `account/login/completed` notification.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct LoginCompleted {
+    pub login_id: String,
+    pub success: bool,
+    pub error: String,
+}
+
 /// `thread/start` params.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -64,14 +64,14 @@ pub const TRANSIENT_MARKERS: &[&str] = &[
     "network is unreachable",
     // Cursor Send treated a dropped stream as success, then Run invents this.
     "ended without a result",
-    // Codex ChatGPT session expired; Retry works after `codex login`.
+    // Codex ChatGPT session expired; Retry works after signing in again.
     "failed to refresh token",
     "login expired",
 ];
 
 /// Keep in sync with frontend `CODEX_LOGIN_EXPIRED`.
 pub const CODEX_LOGIN_EXPIRED: &str =
-    "Codex login expired — run `codex login` in a terminal, then retry.";
+    "Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry.";
 
 /// How a provider failed, as far as the provider can tell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

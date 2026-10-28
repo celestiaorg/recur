@@ -51,7 +51,7 @@ impl S<'_> {
         let candidates = [
             "Claude Code",
             "Cursor",
-            "Codex",
+            "OpenAI",
             "storefront",
             "payments-api",
             "marketing-site",
@@ -99,8 +99,8 @@ fn a_fresh_app_with_a_detected_agent_lands_on_step_2_and_opens_the_project_dialo
     assert!(s.has("v-welcome:on"));
     assert!(s.has("wprov:claude:on"));
     assert!(s.has("wprov-note:claude=dev@example.com (Acme)"));
-    assert!(s.has("wprov:codex"));
-    assert!(s.has("wprov-note:codex=Not signed in. Run codex login in a terminal."));
+    assert!(s.has("wprov:openai"));
+    assert!(s.has("wprov-note:openai=Sign in with ChatGPT or check your existing codex login."));
     assert!(s.has("wprov:cursor:Connect"));
     assert_eq!(s.current_step(), 2);
     s.click("ws-body:Choose a repository");
@@ -111,15 +111,15 @@ fn a_fresh_app_with_a_detected_agent_lands_on_step_2_and_opens_the_project_dialo
 fn without_an_agent_step_1_offers_providers_and_can_be_skipped(cx: &mut TestAppContext) {
     let mut s = with(cx, codex_login, no_agent(first_run()));
     assert_eq!(s.current_step(), 1);
-    for p in ["claude", "codex", "cursor"] {
+    for p in ["claude", "openai", "cursor"] {
         assert!(!s.has(&format!("wprov:{p}:on")), "{p}");
     }
     assert!(s.has("wprov:claude:Check again"));
-    assert!(s.has("wprov:codex:Check again"));
+    assert!(s.has("wprov:openai:Check again"));
     assert!(!s.has("wprov:cursor:Check again"));
     s.click("ws-links:Continue without an agent");
     assert_eq!(s.current_step(), 2);
-    for p in ["claude", "codex", "cursor"] {
+    for p in ["claude", "openai", "cursor"] {
         assert!(s.has(&format!("wprov:{p}")), "{p} row");
     }
     assert!(!s.has("ws-links:Continue without an agent"));
@@ -183,7 +183,7 @@ fn a_signed_in_codex_counts_and_the_cursor_connect_link_lands_on_providers_setti
         }))
     });
     let mut s = with(cx, |_| {}, opts);
-    assert!(s.has("wprov:codex:on"));
+    assert!(s.has("wprov:openai:on"));
     assert_eq!(s.current_step(), 2);
     s.click("wprov:cursor:Connect");
     assert_eq!(s.view(), ViewName::Settings);
@@ -215,7 +215,7 @@ fn agents_are_probed_only_while_get_started_is_shown_and_again_on_return_from_se
     s.click("ws-head-link:Providers");
     assert!(s.has("set-head=Providers"));
     s.get_started();
-    assert!(s.until(|s| s.chips(1) == vec!["Claude Code", "Codex"]));
+    assert!(s.until(|s| s.chips(1) == vec!["Claude Code", "OpenAI"]));
 }
 
 #[gpui::test]

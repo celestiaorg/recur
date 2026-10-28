@@ -150,9 +150,11 @@ impl SettingsGroup {
             });
         head = if let Some(o) = self.over {
             let on = o.on;
+            let sel = o.label.clone();
             let mut switch = toggle((self.id.clone(), "override"), on, o.disabled, cx)
                 .role(gpui_kit::accesskit::Role::Switch)
-                .aria_label(o.label.clone());
+                .aria_label(o.label.clone())
+                .debug_selector(move || format!("override:{sel}:{on}"));
             if !o.disabled
                 && let Some(cb) = o.on_change.clone()
             {

@@ -116,6 +116,7 @@ pub(crate) fn decode_event(payload: &str) -> Option<Event> {
             ev.error_message = msg;
         }
         if typ == "response.completed" || typ == "response.failed" {
+            ev.output = resp.output.clone();
             for raw in &resp.output {
                 for sub in events_from_output_item(raw) {
                     if sub.call.is_some() && ev.call.is_none() {
@@ -129,6 +130,9 @@ pub(crate) fn decode_event(payload: &str) -> Option<Event> {
         }
     }
     if let Some(item) = item {
+        if typ == "response.output_item.done" {
+            ev.output = vec![item.clone()];
+        }
         if let Some(call) = parse_function_call(item) {
             ev.call = Some(call);
         }

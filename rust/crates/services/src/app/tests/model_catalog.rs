@@ -4,8 +4,8 @@
 
 use recur_agent::catalog::ModelGroup;
 use recur_domain::{
-    CompatibleModel, CompatibleProvider, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR,
-    Settings, compatible_flag_preset,
+    CompatibleModel, CompatibleProvider, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX,
+    PROVIDER_CURSOR, Settings, compatible_flag_preset,
 };
 
 use super::Fx;
@@ -336,4 +336,37 @@ fn model_catalog_includes_compatible_providers() {
         providers(&build_model_catalog(&set, vec![], vec![])),
         ["groq"]
     );
+}
+
+/// `chatgpt_service_test.go`.
+#[tokio::test(flavor = "multi_thread")]
+async fn chatgpt_catalogue_and_fallback_without_codex() {
+    let s = Settings {
+        chat_gpt_account_id: "registration".into(),
+        chat_gpt_models: vec![CompatibleModel {
+            id: "gpt-first".into(),
+            label: "First".into(),
+            ..Default::default()
+        }],
+        disabled_providers: vec![
+            PROVIDER_CLAUDE_CODE.into(),
+            PROVIDER_CURSOR.into(),
+            PROVIDER_CODEX.into(),
+        ],
+        ..Default::default()
+    };
+    let groups = build_model_catalog(&s, Vec::new(), Vec::new());
+    assert_eq!(providers(&groups), [PROVIDER_CHATGPT]);
+    assert_eq!(groups[0].models[0].model_ref, "chatgpt/gpt-first");
+    let s = apply_catalog_fallbacks(s, &groups);
+    assert!(
+        s.model_ask == "chatgpt/gpt-first" && s.model_agent == "chatgpt/gpt-first",
+        "ChatGPT-only setup did not remap model slots"
+    );
+    let fx = Fx::new().await;
+    assert!(
+        fx.svc.provider_runnable(&s, PROVIDER_CHATGPT),
+        "ChatGPT required a binary"
+    );
+    fx.close().await;
 }

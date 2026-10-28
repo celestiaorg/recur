@@ -209,11 +209,22 @@ pub fn ensure_trusted_project(home: &Path, worktree: &Path) -> Result<(), String
 /// refreshed there: re-seed only when Recur has no auth yet or the source is
 /// strictly newer.
 pub fn seed_auth(from: &Path, to: &Path) -> Result<(), String> {
+    if to
+        .parent()
+        .is_some_and(|home| home.join(BROWSER_LOGIN_MARKER).exists())
+    {
+        return Ok(());
+    }
     let raw = match std::fs::read(from) {
         Ok(raw) => raw,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // Browser sign-in can create Recur-owned credentials without a
+            // machine-wide CLI login. Importing that login is optional then.
+            if std::fs::metadata(to).is_ok_and(|m| m.len() > 0) {
+                return Ok(());
+            }
             return Err(format!(
-                "codex ChatGPT auth: {} not found — run `codex login` or set an API key",
+                "codex ChatGPT auth: sign in with ChatGPT in Settings, run `codex login`, or set an API key ({} not found)",
                 from.display()
             ));
         }
@@ -234,6 +245,15 @@ pub fn seed_auth(from: &Path, to: &Path) -> Result<(), String> {
     write_private(to, &raw).map_err(|e| path_error("open", to, &e))
 }
 
+/// In `CODEX_HOME`, marks `auth.json` as a browser sign-in in Recur, so the
+/// machine `codex login` must not replace it.
+const BROWSER_LOGIN_MARKER: &str = "recur-browser-login";
+
+/// Records that `home`'s `auth.json` is a Recur browser sign-in.
+pub fn mark_browser_login(home: &Path) -> std::io::Result<()> {
+    write_private(&home.join(BROWSER_LOGIN_MARKER), b"")
+}
+
 fn write_private(path: &Path, data: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
     use std::os::unix::fs::OpenOptionsExt;
@@ -251,9 +271,9 @@ pub fn default_seed_auth_path() -> Option<PathBuf> {
     std::env::home_dir().map(|h| h.join(".codex/auth.json"))
 }
 
-/// The child environment: `base` minus `scrub`, plus `CODEX_HOME` and (when
-/// set) `CODEX_API_KEY`. A host `CODEX_API_KEY` survives when Recur sets
-/// none, as in Go.
+/// The child environment: `base` minus `scrub` and any ambient
+/// `CODEX_API_KEY` / `OPENAI_API_KEY`, plus `CODEX_HOME` and (when set) the
+/// chosen `CODEX_API_KEY`.
 pub fn launch_env(
     base: impl IntoIterator<Item = (OsString, OsString)>,
     home: &Path,
@@ -262,11 +282,13 @@ pub fn launch_env(
 ) -> Vec<(OsString, OsString)> {
     let mut env: Vec<(OsString, OsString)> = base
         .into_iter()
-        .filter(|(k, _)| k != "CODEX_HOME" && !scrub.iter().any(|s| k == s.as_str()))
+        .filter(|(k, _)| {
+            !["CODEX_HOME", "CODEX_API_KEY", "OPENAI_API_KEY"].contains(&&*k.to_string_lossy())
+                && !scrub.iter().any(|s| k == s.as_str())
+        })
         .collect();
     env.push(("CODEX_HOME".into(), home.into()));
     if !api_key.is_empty() {
-        env.retain(|(k, _)| k != "CODEX_API_KEY");
         env.push(("CODEX_API_KEY".into(), api_key.into()));
     }
     env
@@ -391,14 +413,67 @@ mod tests {
         );
         let missing = dir.path().join("nope.json");
         assert_eq!(
-            seed_auth(&missing, &to).unwrap_err(),
+            seed_auth(&missing, &dir.path().join("fresh/auth.json")).unwrap_err(),
             format!(
-                "codex ChatGPT auth: {} not found — run `codex login` or set an API key",
+                "codex ChatGPT auth: sign in with ChatGPT in Settings, run `codex login`, or set an API key ({} not found)",
                 missing.display()
             )
         );
         std::fs::write(&from, b"").unwrap();
         assert!(seed_auth(&from, &to).unwrap_err().ends_with(" is empty"));
+    }
+
+    #[test]
+    fn seed_auth_uses_recur_login_without_machine_login() {
+        let dir = tempfile::tempdir().unwrap();
+        let to = dir.path().join("auth.json");
+        std::fs::write(&to, br#"{"tokens":{"access_token":"recur-login"}}"#).unwrap();
+        let missing = dir.path().join("missing-machine-auth.json");
+        seed_auth(&missing, &to).expect("Recur-owned login required a machine login");
+        assert!(
+            seed_auth(&missing, &dir.path().join("missing-auth.json")).is_err(),
+            "missing both logins should still report an error"
+        );
+    }
+
+    #[test]
+    fn seed_auth_keeps_browser_login_over_newer_machine_login() {
+        let home = tempfile::tempdir().unwrap();
+        let to = home.path().join("auth.json");
+        std::fs::write(&to, b"browser").unwrap();
+        mark_browser_login(home.path()).unwrap();
+        let other = tempfile::tempdir().unwrap();
+        let from = other.path().join("auth.json");
+        std::fs::write(&from, b"machine").unwrap();
+        let future = std::time::SystemTime::now() + Duration::from_secs(3600);
+        std::fs::File::options()
+            .write(true)
+            .open(&from)
+            .unwrap()
+            .set_modified(future)
+            .unwrap();
+        seed_auth(&from, &to).unwrap();
+        assert_eq!(std::fs::read(&to).unwrap(), b"browser");
+    }
+
+    #[test]
+    fn launch_env_uses_only_chosen_api_key() {
+        let base = [
+            ("PATH", "/bin"),
+            ("CODEX_API_KEY", "ambient-codex"),
+            ("OPENAI_API_KEY", "ambient-openai"),
+        ]
+        .map(|(k, v)| (OsString::from(k), OsString::from(v)));
+        for key in ["", "chosen-key"] {
+            let env = launch_env(base.clone(), Path::new("/tmp/codex-home"), key, &[]);
+            for (k, v) in &env {
+                assert!(
+                    k != "OPENAI_API_KEY"
+                        && (k != "CODEX_API_KEY" || (!key.is_empty() && v == key)),
+                    "key {key:?}: unexpected inherited credential {k:?}={v:?}"
+                );
+            }
+        }
     }
 
     #[test]

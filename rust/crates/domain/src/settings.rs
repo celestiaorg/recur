@@ -12,8 +12,8 @@ use crate::session::{
 };
 use crate::skills::name_enabled;
 use crate::{
-    CompatibleProvider, McpServer, MergeCommitMessage, MergeMethod, SquashCommitMessage,
-    UpdateBaseMethod,
+    CompatibleModel, CompatibleProvider, McpServer, MergeCommitMessage, MergeMethod,
+    SquashCommitMessage, UpdateBaseMethod,
 };
 
 /// Flags for one model slot: dimension → value, e.g. {"effort":"high"}.
@@ -184,6 +184,13 @@ pub struct Settings {
     /// workspace-write sandbox. Ignored when bypass is on.
     #[serde(skip_serializing_if = "is_false")]
     pub codex_network_access: bool,
+
+    /// A saved ChatGPT account. Tokens are kept separately in
+    /// `chatgpt-auth.json` and are never returned to the frontend.
+    #[serde(rename = "chatGPTAccountId", skip_serializing_if = "String::is_empty")]
+    pub chat_gpt_account_id: String,
+    #[serde(rename = "chatGPTModels", skip_serializing_if = "Vec::is_empty")]
+    pub chat_gpt_models: Vec<CompatibleModel>,
 
     /// Settings → Bundles off-lists. Empty → all enabled.
     #[serde(skip_serializing_if = "Vec::is_empty")]

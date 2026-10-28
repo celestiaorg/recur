@@ -6,6 +6,7 @@
 mod assets;
 mod bundle;
 mod code_service;
+mod codex_login;
 mod editor_session;
 mod model_catalog;
 mod observatory;

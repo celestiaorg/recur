@@ -1,11 +1,11 @@
 //! The real services and the mock bridge agree: the mock answers from the
 //! e2e seed, which is a dump of the same demo-seeded store the real services
 //! open here, so every read returns the same JSON and a missing id fails on
-//! both. Two divergences come from `mock-bridge.ts` itself and are pinned
+//! both. One divergence comes from `mock-bridge.ts` itself and is pinned
 //! here so a view handles both: GetPR's commits carry diffs only on the mock
-//! (the real service leaves them to GetCommitDiff), and GetEscalation for a
-//! loop with none answers `{}` on the mock where Go errors. GetSettings
-//! normalizes the branch prefix only on the real side.
+//! (the real service leaves them to GetCommitDiff). GetEscalation for a loop
+//! with none answers an empty escalation on both. GetSettings normalizes the
+//! branch prefix only on the real side.
 #![cfg(feature = "mock")]
 
 use std::sync::Arc;
@@ -171,7 +171,8 @@ async fn real_and_mock_agree_on_reads() {
                 .all(|c| c.files.as_ref().is_none_or(Vec::is_empty))
     );
     let ws = "LOOP-2231";
-    assert!(real.services().escalation.get_escalation(ws).await.is_err());
+    let esc = real.services().escalation.get_escalation(ws).await.unwrap();
+    assert!(esc.id.is_empty(), "{esc:?}");
     let esc = mock.services().escalation.get_escalation(ws).await.unwrap();
     assert!(esc.id.is_empty(), "{esc:?}");
     real.shutdown().await;

@@ -2,7 +2,7 @@
  "constants": {
   "attachmentMarker": "⟦attachment:ID⟧",
   "chatDetailLimit": 16000,
-  "codexLoginExpired": "Codex login expired — run `codex login` in a terminal, then retry.",
+  "codexLoginExpired": "Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry.",
   "displayHiddenSentinel": "⁤",
   "feedInputLimit": 8000,
   "imageMime": {
@@ -939,7 +939,7 @@
    "text": "",
    "stderr": "Error: FAILED TO REFRESH TOKEN happened",
    "isError": false,
-   "reason": "Codex login expired — run `codex login` in a terminal, then retry.",
+   "reason": "Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry.",
    "transient": true
   },
   {
@@ -1047,7 +1047,7 @@
    "text": "",
    "stderr": "2026-01-01T00:00:00Z ERROR codex_login: refresh 401 {\"a\":1}",
    "isError": false,
-   "reason": "Codex login expired — run `codex login` in a terminal, then retry.",
+   "reason": "Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry.",
    "transient": true
   },
   {
@@ -1056,7 +1056,7 @@
    "text": "Failed To Refresh Token",
    "stderr": "",
    "isError": false,
-   "reason": "Codex login expired — run `codex login` in a terminal, then retry.",
+   "reason": "Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry.",
    "transient": true
   },
   {

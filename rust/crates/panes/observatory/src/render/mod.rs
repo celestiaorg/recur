@@ -909,7 +909,7 @@ impl Observatory {
                     .min_w_0()
                     .min_h_0()
                     .occlude()
-                    .bg(hsla(t.bg.fade(0.68)))
+                    .child(recur_ui::style::backdrop_blur(3., t.bg.fade(0.68)))
                     .child(v),
             );
         }

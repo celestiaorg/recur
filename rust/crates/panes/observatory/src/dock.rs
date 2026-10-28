@@ -1425,7 +1425,14 @@ impl TerminalDock {
                 .flex_col()
                 .size_full()
                 .min_h_0()
-                .bg(hsla(bg))
+                // `.term-dock-frost`: the maximized dock blurs the Observatory behind it.
+                .map(|d| {
+                    if overlay && frosts {
+                        d.child(recur_ui::style::backdrop_blur(10., bg))
+                    } else {
+                        d.bg(hsla(bg))
+                    }
+                })
                 .capture_key_down(cx.guarded_listener(
                     |d, e: &gpui_kit::KeyDownEvent, window, cx| d.on_dock_key(e, window, cx),
                 ));

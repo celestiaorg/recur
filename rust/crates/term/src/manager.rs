@@ -849,7 +849,8 @@ impl Session {
     /// Records output for replay and, when a client is attached, queues it for the next flush.
     /// Colour/CPR probes are answered synchronously on the PTY and stripped first.
     fn ingest(&self, p: &[u8], queries: &mut QueryFilter, osc7: &mut Osc7Parser) {
-        let (forward, replies) = queries.process(p);
+        let attached = self.st.lock().attached;
+        let (forward, replies) = queries.process(p, attached);
         if !replies.is_empty() {
             // Best-effort: a failed write means the PTY is already gone.
             let _ = self.write_pty(&replies);

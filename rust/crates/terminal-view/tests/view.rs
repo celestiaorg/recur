@@ -480,6 +480,16 @@ fn device_attribute_queries_are_answered(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn queries_in_the_replay_are_not_answered_again(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"\x1b[c\x1b[6nprompt$ ");
+    h.settle();
+    assert_eq!(h.viewport()[0], "prompt$");
+    assert_eq!(h.rec.writes(), "");
+    h.output("\x1b[6n");
+    assert_eq!(h.rec.writes(), "\x1b[1;9R");
+}
+
+#[gpui::test]
 fn wheel_scrolls_the_scrollback(cx: &mut TestAppContext) {
     let mut h = mount(cx, b"");
     h.settle();

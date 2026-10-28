@@ -454,14 +454,16 @@ impl TerminalView {
             cx.notify();
             return;
         }
+        // The replay's queries were asked of an earlier screen; answering them now would type
+        // stale replies into the shell.
         if let Ok(bytes) = replay
             && !bytes.is_empty()
         {
-            self.feed(&bytes, cx);
+            self.feed(&bytes, false, cx);
         }
         self.replayed = true;
         for chunk in std::mem::take(&mut self.queued) {
-            self.feed(&chunk, cx);
+            self.feed(&chunk, true, cx);
             self.count_ack(chunk.len(), cx);
         }
         // The PTY was opened at a guessed size; push the measured one now.
@@ -479,7 +481,7 @@ impl TerminalView {
             self.queued.push(bytes.to_vec());
             return;
         }
-        self.feed(bytes, cx);
+        self.feed(bytes, true, cx);
         self.count_ack(bytes.len(), cx);
     }
 
@@ -495,10 +497,12 @@ impl TerminalView {
             .detach();
     }
 
-    fn feed(&mut self, bytes: &[u8], cx: &mut Context<Self>) {
+    fn feed(&mut self, bytes: &[u8], reply: bool, cx: &mut Context<Self>) {
         let cursor = self.screen.cursor_in_viewport();
         for out in self.screen.feed(bytes) {
-            self.handle_output(out, cx);
+            if reply || !matches!(out, Output::Reply(_)) {
+                self.handle_output(out, cx);
+            }
         }
         self.after_change(cursor, cx);
     }

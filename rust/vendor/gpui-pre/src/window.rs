@@ -1470,6 +1470,10 @@ pub struct Window {
     long_press_timer: Option<Task<()>>,
     long_press_capture: Option<EntityId>,
     pub(crate) refreshing: bool,
+    /// Recur: the priority of the deferred draw being prepainted. A deferred draw nested in
+    /// it never paints below it, as a CSS stacking context keeps its children above what the
+    /// context sits over.
+    pub(crate) deferred_priority_floor: usize,
     pub(crate) activation_observers: SubscriberSet<(), AnyObserver>,
     pub(crate) focus: Option<FocusId>,
     focus_enabled: bool,
@@ -2376,6 +2380,7 @@ impl Window {
             long_press_timer: None,
             long_press_capture: None,
             refreshing: false,
+            deferred_priority_floor: 0,
             activation_observers: SubscriberSet::new(),
             focus: None,
             focus_enabled: true,
@@ -4212,6 +4217,10 @@ impl Window {
                 self.next_frame.dispatch_tree.set_active_node(parent_node);
 
                 let prepaint_start = self.prepaint_index();
+                let floor = mem::replace(
+                    &mut self.deferred_priority_floor,
+                    self.next_frame.deferred_draws[deferred_draw_ix].priority,
+                );
                 if let Some(mut element) = element {
                     self.with_rendered_view(current_view, |window| {
                         window.with_rem_size(Some(rem_size), |window| {
@@ -4224,6 +4233,7 @@ impl Window {
                 } else {
                     self.reuse_prepaint(prepaint_range, cx);
                 }
+                self.deferred_priority_floor = floor;
                 let prepaint_end = self.prepaint_index();
                 self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
                     prepaint_start..prepaint_end;
@@ -5079,7 +5089,7 @@ impl Window {
             text_style_stack: self.text_style_stack.clone(),
             content_mask,
             rem_size: self.rem_size(),
-            priority,
+            priority: priority.max(self.deferred_priority_floor),
             element: Some(element),
             absolute_offset,
             prepaint_range: PrepaintStateIndex::default()..PrepaintStateIndex::default(),

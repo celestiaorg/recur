@@ -875,6 +875,10 @@ pub fn panel(cx: &App) -> Div {
         .rounded(px(8.))
 }
 
+/// The deferred priority of app-wide overlays (`.nt-bg`'s `z-index: 190`): the shell's modal
+/// and palette layers and Quick Open paint and take the pointer over the page's own layers.
+pub const OVERLAY_PRIORITY: usize = 190;
+
 static BACKDROP_BLUR: AtomicBool = AtomicBool::new(true);
 
 /// Turns [`backdrop_blur`]'s blur on or off. The parity renderer turns it off: Playwright's

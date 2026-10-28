@@ -24,6 +24,8 @@ mod contained_panic_spec;
 mod ct_text;
 #[cfg(test)]
 mod date_time_spec;
+#[cfg(test)]
+mod deferred_floor_spec;
 pub mod exact;
 pub mod field;
 pub mod file_icons;

@@ -585,6 +585,7 @@ fn prepaint_view(
                         content_mask,
                         rem_size: window.rem_size(),
                         bounds,
+                        deferred_priority_floor: window.deferred_priority_floor,
                     })
                 });
                 let recorded = island.is_some() || window.cached_depth == 0;
@@ -756,6 +757,7 @@ pub(crate) struct Island {
     content_mask: ContentMask<Pixels>,
     rem_size: Pixels,
     bounds: Bounds<Pixels>,
+    deferred_priority_floor: usize,
 }
 
 impl Island {
@@ -766,6 +768,10 @@ impl Island {
     fn with_context<R>(&self, window: &mut Window, f: impl FnOnce(&mut Window) -> R) -> R {
         let ids = mem::replace(&mut window.element_id_stack, self.element_id_stack.clone());
         let styles = mem::replace(&mut window.text_style_stack, self.text_style_stack.clone());
+        let floor = mem::replace(
+            &mut window.deferred_priority_floor,
+            self.deferred_priority_floor,
+        );
         let result = window.with_rendered_view(self.entity_id(), |window| {
             window.with_rem_size(Some(self.rem_size), |window| {
                 window.with_content_mask(Some(self.content_mask), f)
@@ -773,6 +779,7 @@ impl Island {
         });
         window.element_id_stack = ids;
         window.text_style_stack = styles;
+        window.deferred_priority_floor = floor;
         result
     }
 

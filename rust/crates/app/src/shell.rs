@@ -534,12 +534,15 @@ impl Shell {
                         .when(rail_collapsed, |d| d.child(self.sidebar.clone())),
                 ),
             )
+            // Deferred at `.nt-bg`'s `z-index: 190`: the page's own deferred layers (resize
+            // handles, sticky headers) paint and take the pointer under the overlays.
             .children(self.layers.iter().map(|l| {
-                recur_ui::style::cached_view(
+                gpui_kit::deferred(recur_ui::style::cached_view(
                     l,
                     gpui_kit::StyleRefinement::default().absolute().inset_0(),
                     cx,
-                )
+                ))
+                .with_priority(recur_ui::style::OVERLAY_PRIORITY)
             }));
         self.with_menu_actions(root, cx)
     }

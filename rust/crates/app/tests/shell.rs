@@ -38,6 +38,15 @@ fn open(
     bridge: Arc<MockBridge>,
     storage: LocalStorage,
 ) -> (Entity<AppState>, &mut VisualTestContext) {
+    open_with(cx, bridge, storage, ViewRegistry::default())
+}
+
+fn open_with(
+    cx: &mut TestAppContext,
+    bridge: Arc<MockBridge>,
+    storage: LocalStorage,
+    registry: ViewRegistry,
+) -> (Entity<AppState>, &mut VisualTestContext) {
     let services = bridge.services();
     let state = cx.update(|cx| AppState::install(services.clone(), storage, cx));
     let ctx = ViewContext {
@@ -45,13 +54,7 @@ fn open(
         services,
     };
     let (shell, cx) = cx.add_window_view(move |window, cx| {
-        Shell::new(
-            ctx,
-            ViewRegistry::default(),
-            ShellOptions::default(),
-            window,
-            cx,
-        )
+        Shell::new(ctx, registry, ShellOptions::default(), window, cx)
     });
     cx.run_until_parked();
     cx.update(|window, cx| {
@@ -929,4 +932,68 @@ fn opening_a_workspace_elsewhere_scrolls_it_into_the_sidebar_tree(cx: &mut TestA
         shown_in_tree(&mut h, &last),
         "the opened row is scrolled into view"
     );
+}
+
+/// A modal on the New Task slot whose scrim closes it on a press, as the real ones do.
+struct ScrimModal {
+    state: Entity<AppState>,
+    _sub: gpui_kit::Subscription,
+}
+
+impl gpui_kit::Render for ScrimModal {
+    fn render(
+        &mut self,
+        window: &mut gpui_kit::Window,
+        cx: &mut gpui_kit::Context<Self>,
+    ) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{InteractiveElement as _, IntoElement as _, Styled as _};
+        if !self.state.read(cx).overlays.new_task {
+            return gpui_kit::div().into_any_element();
+        }
+        let state = self.state.clone();
+        recur_ui::style::modal_scrim(window, gpui_kit::div().w(px(200.)).h(px(100.)))
+            .id("scrim-modal")
+            .occlude()
+            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                state.update(cx, |s, cx| s.close_new_task(cx))
+            })
+            .into_any_element()
+    }
+}
+
+/// An open modal covers the page's resize handles: a press on the sidebar's edge lands on the
+/// scrim (closing the modal) instead of dragging the rail under it.
+#[gpui_kit::test]
+fn resize_handles_under_a_modal_take_no_pointer(cx: &mut TestAppContext) {
+    use gpui_kit::AppContext as _;
+    use recur_ui::guard::Guarded as _;
+    use recur_view_core::prefs::PanelKey;
+    use recur_view_core::view::OverlaySlot;
+    init(cx);
+    let mut registry = ViewRegistry::default();
+    registry.overlay(OverlaySlot::NewTask, |vcx, _, cx| {
+        let state = vcx.state.clone();
+        cx.new(|cx| ScrimModal {
+            _sub: cx.guarded_observe(&state, |_, _, cx| cx.notify()),
+            state,
+        })
+        .into()
+    });
+    let bridge = bridge(json!({}), MockOptions::default());
+    let (state, cx) = open_with(cx, bridge.clone(), LocalStorage::in_memory(), registry);
+    let mut h = H { state, bridge, cx };
+    h.settle();
+    let rail = h.bounds("rail").expect("rail");
+    let width = h.read(|s| s.panels.size(PanelKey::Rail));
+    h.state.update(h.cx, |s, cx| s.open_new_task("", None, cx));
+    h.settle();
+    let edge = point(rail.right() - px(1.), rail.center().y);
+    let past = point(edge.x + px(80.), edge.y);
+    h.cx.simulate_mouse_move(edge, None, Modifiers::none());
+    h.cx.simulate_mouse_down(edge, MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_move(past, Some(MouseButton::Left), Modifiers::none());
+    h.cx.simulate_mouse_up(past, MouseButton::Left, Modifiers::none());
+    h.settle();
+    assert_eq!(h.read(|s| s.panels.size(PanelKey::Rail)), width);
+    assert!(!h.read(|s| s.overlays.new_task), "the scrim took the press");
 }

@@ -2308,14 +2308,36 @@ fn paint_lines(
                 probe.flatten().unwrap_or(left + o)
             };
             let rect = Bounds::from_corners(point(px(x(*x0)), px(y0)), point(px(x(*x1)), px(y1)));
-            window.paint_quad(quad(
-                rect,
-                px(b.radius),
-                b.background.unwrap_or_default(),
-                px(b.border),
-                b.border_color,
-                BorderStyle::Solid,
-            ));
+            // A box broken across lines paints each fragment as a slice of the whole box
+            // (`box-decoration-break: slice`), cut at the line's edges.
+            let fragment = Bounds::from_corners(
+                point(
+                    if r.start < line.range.start {
+                        px(x(start_x))
+                    } else {
+                        rect.left()
+                    },
+                    rect.top(),
+                ),
+                point(
+                    if r.end > line.range.end {
+                        px(x(start_x + line.width))
+                    } else {
+                        rect.right()
+                    },
+                    rect.bottom(),
+                ),
+            );
+            window.with_content_mask(Some(gpui_kit::ContentMask { bounds: fragment }), |window| {
+                window.paint_quad(quad(
+                    rect,
+                    px(b.radius),
+                    b.background.unwrap_or_default(),
+                    px(b.border),
+                    b.border_color,
+                    BorderStyle::Solid,
+                ));
+            });
         }
         // The selection paints over inline box backgrounds and under the glyphs, as WebKit's.
         if let Some((rects, color)) = selection {

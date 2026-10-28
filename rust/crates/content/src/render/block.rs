@@ -1229,12 +1229,15 @@ impl Build<'_, '_> {
             }
             grid = grid.child(row);
         }
+        // The scroller clips vertically too, so at 1x the outer half of the bottom border needs
+        // a whole device pixel to survive snapping.
+        let outer = 0.5f32.max(1. / self.window.scale_factor());
         let table = div()
             .relative()
             .flex_none()
             .flex()
             .flex_col()
-            .child(vgap(0.5, self.window))
+            .child(vgap(outer, self.window))
             .child(
                 div()
                     .flex()
@@ -1243,7 +1246,7 @@ impl Build<'_, '_> {
                     .child(grid)
                     .child(hgap(0.5, self.window)),
             )
-            .child(vgap(0.5, self.window));
+            .child(vgap(outer, self.window));
         self.n.table += 1;
         let el = div()
             .id(("md-table", self.n.table))

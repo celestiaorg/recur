@@ -76,7 +76,7 @@ The bar since 2026-10-28: same look and feel, minor differences fine, never trad
 
 ### Linux
 
-From `ARCHITECTURE.md` "Linux differences": the HTML preview is an offscreen WebKitGTK page drawn as snapshots with input forwarded as DOM events (a shim mirrors `:hover` / `:active` and pops `<select>` menus natively; subframes are refused); the system UI font comes from fontconfig's `system-ui`; Mermaid measures at the first monitor's integer scale; the icon color picker is a GTK-style chooser window; notifications go through `notify-send` with no click-through and no dock badge (as in the Go app); the window icon comes from the desktop entry; the updater runs only in a macOS `.app` (as in the Go app); scrims are not blurred; ⌘ chords are Ctrl, and menu items carry no accelerators. Date and time fields use the en-US pattern off macOS.
+From `ARCHITECTURE.md` "Linux differences": the HTML preview is an offscreen WebKitGTK page drawn as snapshots with input forwarded as DOM events (a shim mirrors `:hover` / `:active` and pops `<select>` menus natively; subframes are refused); the system UI font comes from fontconfig's `system-ui`; the icon color picker is a GTK-style chooser window; notifications go through `notify-send` with no click-through and no dock badge (as in the Go app); the window icon comes from the desktop entry; the updater runs only in a macOS `.app` (as in the Go app); scrims are not blurred; ⌘ chords are Ctrl, and menu items carry no accelerators. Date and time fields use the en-US pattern off macOS.
 
 ### Deliberate changes
 

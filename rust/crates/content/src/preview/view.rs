@@ -216,13 +216,13 @@ impl FilePreview {
                 Surface::Html(h)
             }
             (PreviewKind::Mermaid, Surface::Mermaid(m)) => {
-                m.update(cx, |m, cx| m.set_content(&content, window, cx));
+                m.update(cx, |m, cx| m.set_content(&content, cx));
                 Surface::Mermaid(m.clone())
             }
             (PreviewKind::Mermaid, _) => {
                 let path = self.path.clone();
                 let scroll = self.scroll.clone();
-                let m = cx.new(|cx| MermaidPreview::new(&content, &path, Some(scroll), window, cx));
+                let m = cx.new(|cx| MermaidPreview::new(&content, &path, Some(scroll), cx));
                 self._subs.push(cx.guarded_subscribe_in(
                     &m,
                     window,

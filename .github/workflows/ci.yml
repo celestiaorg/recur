@@ -171,7 +171,7 @@ jobs:
       - run: wails3 task test:rust
 
   # The Rust port on Linux: GPUI's X11/Wayland backend and WebKitGTK 6.0 for
-  # Mermaid and PDF. Those tests open WebKitGTK, so they run under Xvfb, with
+  # the HTML preview. Those tests open WebKitGTK, so they run under Xvfb, with
   # WebKit's sandbox off (the runner's AppArmor blocks bubblewrap's namespaces).
   rust-linux:
     runs-on: ubuntu-24.04

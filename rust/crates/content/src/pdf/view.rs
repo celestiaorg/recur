@@ -1,26 +1,27 @@
-//! `PdfPreview.svelte`: every page as a fit-to-width slot, pages rendered by pdf.js while
+//! `PdfPreview.svelte`: every page as a fit-to-width slot, pages rendered by hayro while
 //! they intersect the viewport (and discarded when they leave it), a page field that follows
-//! the scroll, and zoom by toolbar or ⌘+ / ⌘-.
+//! the scroll, zoom by toolbar or ⌘+ / ⌘-, and find (⌘F) over the pages' text layer.
 
 use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, AppContext, Bounds, Context, Corners, Entity, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, KeyDownEvent, ParentElement, Pixels, Render, ScrollHandle,
-    SharedString, StatefulInteractiveElement, Styled, Subscription, Task, Window, canvas, div,
-    point, px,
+    InteractiveElement, IntoElement, KeyDownEvent, ParentElement, Pixels, Render, RenderImage,
+    ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Subscription, Task, Window,
+    canvas, div, point, px,
 };
 use recur_ui::fonts::Family;
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, TextStyled, Theme, icon};
 
-use super::engine::{self, Document, Opened, PageImage};
+use super::engine::{self, Document, FindText, NormRect, Opened};
 use super::logic::{MAX_SCALE, MIN_SCALE, clamp_page, fit_width_scale, page_at_scroll, zoom_step};
+use crate::preview::find::collect_preview_find_ranges;
+use crate::preview::find_bar::{FindBarEvent, PreviewFindBar};
 
 const PAGE_GAP: f32 = 12.;
 const VIEW_PAD: f32 = 12.;
@@ -29,14 +30,13 @@ const VIEW_PAD: f32 = 12.;
 struct Slot {
     scale: f32,
     dpr: f32,
-    task: u64,
-    painted: Option<PageImage>,
+    painted: Option<Arc<RenderImage>>,
     _render: Option<Task<()>>,
 }
 
 pub struct PdfPreview {
     data: Option<Arc<[u8]>>,
-    doc: Option<Rc<Document>>,
+    doc: Option<Arc<Document>>,
     load: Option<Task<()>>,
     error: String,
     pending: bool,
@@ -48,12 +48,20 @@ pub struct PdfPreview {
     /// Opened before the viewport had a size: fit once it has one.
     fit_on_measure: bool,
     slots: HashMap<usize, Slot>,
-    next_task: u64,
     handle: ScrollHandle,
     viewport: Option<Bounds<Pixels>>,
     last_offset: f32,
     input: Entity<InputState>,
     focus: FocusHandle,
+    find_open: bool,
+    bar: Entity<PreviewFindBar>,
+    /// Extracted on the first find, then kept for the document.
+    find_text: Option<FindText>,
+    find_task: Option<Task<()>>,
+    /// Every match: its page (1-based) and its rects on that page.
+    matches: Vec<(usize, Vec<NormRect>)>,
+    /// The current match, 1-based (0: none).
+    index: usize,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -66,18 +74,28 @@ impl PdfPreview {
             s
         });
         recur_ui::style::set_field_shape(&input, false, gpui_kit::TextAlign::Center, cx);
-        let subs =
-            vec![
-                cx.guarded_subscribe_in(
-                    &input,
-                    window,
-                    |p, _, ev: &InputEvent, window, cx| match ev {
-                        InputEvent::PressEnter { .. } => p.commit_page(window, cx),
-                        InputEvent::Blur => p.commit_page(window, cx),
-                        InputEvent::Change | InputEvent::Focus => cx.notify(),
-                    },
-                ),
-            ];
+        let bar = cx.new(|cx| PreviewFindBar::new(window, cx));
+        let subs = vec![
+            cx.guarded_subscribe_in(
+                &input,
+                window,
+                |p, _, ev: &InputEvent, window, cx| match ev {
+                    InputEvent::PressEnter { .. } => p.commit_page(window, cx),
+                    InputEvent::Blur => p.commit_page(window, cx),
+                    InputEvent::Change | InputEvent::Focus => cx.notify(),
+                },
+            ),
+            cx.guarded_subscribe_in(
+                &bar,
+                window,
+                |p, _, ev: &FindBarEvent, window, cx| match ev {
+                    FindBarEvent::Changed => p.refresh_find(cx),
+                    FindBarEvent::Next => p.step_find(1, cx),
+                    FindBarEvent::Previous => p.step_find(-1, cx),
+                    FindBarEvent::Close => p.close_search(window, cx),
+                },
+            ),
+        ];
         let mut p = Self {
             data: None,
             doc: None,
@@ -91,12 +109,17 @@ impl PdfPreview {
             sizes: Vec::new(),
             fit_on_measure: false,
             slots: HashMap::new(),
-            next_task: 1,
             handle: ScrollHandle::new(),
             viewport: None,
             last_offset: 0.,
             input,
             focus: cx.focus_handle(),
+            find_open: false,
+            bar,
+            find_text: None,
+            find_task: None,
+            matches: Vec::new(),
+            index: 0,
             _subscriptions: subs,
         };
         p.set_data(data, window, cx);
@@ -119,7 +142,11 @@ impl PdfPreview {
         }
         self.data = data.clone();
         self.load = None;
-        self.cancel_slots();
+        self.slots.clear();
+        self.find_text = None;
+        self.find_task = None;
+        self.matches.clear();
+        self.index = 0;
         self.doc = None;
         self.page_count = 0;
         self.page_width = 0.;
@@ -134,12 +161,12 @@ impl PdfPreview {
         };
         self.pending = true;
         if crate::webhost::blocking(cx) {
-            let (doc, r) = engine::open_blocking(bytes);
-            self.opened(doc, r, cx);
+            self.opened(engine::open(&bytes), cx);
         } else {
+            let open = cx.background_spawn(async move { engine::open(&bytes) });
             self.load = Some(cx.spawn(async move |this, cx| {
-                let (doc, r) = engine::open(bytes).await;
-                let _ = this.update(cx, |p, cx| p.opened(doc, r, cx));
+                let r = open.await;
+                let _ = this.update(cx, |p, cx| p.opened(r, cx));
             }));
         }
         cx.notify();
@@ -157,21 +184,20 @@ impl PdfPreview {
         self.scale
     }
 
-    fn opened(&mut self, doc: Document, r: Result<Opened, String>, cx: &mut Context<Self>) {
+    fn opened(&mut self, r: Result<Opened, String>, cx: &mut Context<Self>) {
         self.load = None;
         self.pending = false;
         match r {
             Ok(o) => {
-                self.page_width = o.width;
-                // simplify: page 1's size is every slot's placeholder; a later page's first
-                // render corrects its slot if it differs (as the web preview does).
-                self.sizes = vec![(o.width, o.height); o.pages];
-                self.page_count = o.pages;
-                self.doc = Some(Rc::new(doc));
+                self.page_width = o.sizes[0].0;
+                self.page_count = o.sizes.len();
+                self.sizes = o.sizes;
+                self.doc = Some(o.doc);
                 match self.viewport {
                     Some(_) => self.fit_width(cx),
                     None => self.fit_on_measure = true,
                 }
+                self.refresh_find(cx);
             }
             Err(e) => self.error = e,
         }
@@ -274,15 +300,6 @@ impl PdfPreview {
         out
     }
 
-    fn cancel_slots(&mut self) {
-        for s in self.slots.values() {
-            if s.painted.is_none() {
-                engine::cancel(s.task);
-            }
-        }
-        self.slots.clear();
-    }
-
     /// Render visible pages at the current zoom and device scale; discard the rest.
     fn sync_slots(&mut self, window: &Window, cx: &mut Context<Self>) {
         let Some(doc) = self.doc.clone().filter(|_| self.error.is_empty()) else {
@@ -291,74 +308,50 @@ impl PdfPreview {
         let dpr = window.scale_factor();
         let visible = self.visible_pages();
         let scale = self.scale;
-        self.slots.retain(|n, s| {
-            let keep = visible.contains(n) && s.scale == scale && s.dpr == dpr;
-            if !keep && s.painted.is_none() {
-                engine::cancel(s.task);
-            }
-            keep
-        });
+        // Dropping a slot drops its render task, which cancels a render not yet started.
+        self.slots
+            .retain(|n, s| visible.contains(n) && s.scale == scale && s.dpr == dpr);
         let mut pages: Vec<usize> = visible
             .into_iter()
             .filter(|n| !self.slots.contains_key(n))
             .collect();
         pages.sort_unstable();
         for n in pages {
-            let task = self.next_task;
-            self.next_task += 1;
-            if crate::webhost::blocking(cx) {
-                let r = engine::render_blocking(&doc, n, scale, dpr, task);
-                self.slots.insert(
-                    n,
-                    Slot {
-                        scale,
-                        dpr,
-                        task,
-                        painted: None,
-                        _render: None,
-                    },
-                );
-                self.rendered(n, task, r);
-                continue;
-            }
-            let doc = doc.clone();
-            let render = cx.spawn(async move |this, cx| {
-                let r = engine::render(&doc, n, scale, dpr, task).await;
-                let _ = this.update(cx, |p, cx| {
-                    p.rendered(n, task, r);
-                    cx.notify();
-                });
+            let blocking = crate::webhost::blocking(cx);
+            let render = (!blocking).then(|| {
+                let doc = doc.clone();
+                let r = cx.background_spawn(async move { engine::render(&doc, n, scale, dpr) });
+                cx.spawn(async move |this, cx| {
+                    let r = r.await;
+                    let _ = this.update(cx, |p, cx| {
+                        p.rendered(n, r);
+                        cx.notify();
+                    });
+                })
             });
             self.slots.insert(
                 n,
                 Slot {
                     scale,
                     dpr,
-                    task,
                     painted: None,
-                    _render: Some(render),
+                    _render: render,
                 },
             );
+            if blocking {
+                self.rendered(n, engine::render(&doc, n, scale, dpr));
+            }
         }
     }
 
-    fn rendered(&mut self, n: usize, task: u64, r: Result<Option<PageImage>, String>) {
-        let Some(slot) = self.slots.get_mut(&n).filter(|s| s.task == task) else {
+    fn rendered(&mut self, n: usize, r: Result<Arc<RenderImage>, String>) {
+        let Some(slot) = self.slots.get_mut(&n) else {
             return;
         };
         match r {
-            Ok(Some(img)) => {
-                if let Some(size) = self.sizes.get_mut(n - 1)
-                    && *size != (img.width, img.height)
-                {
-                    *size = (img.width, img.height);
-                }
+            Ok(img) => {
                 slot.painted = Some(img);
                 slot._render = None;
-            }
-            // Cancelled: the slot left the viewport or changed zoom; its replacement renders.
-            Ok(None) => {
-                self.slots.remove(&n);
             }
             Err(e) => {
                 self.slots.remove(&n);
@@ -367,12 +360,149 @@ impl PdfPreview {
         }
     }
 
-    fn key_down(&mut self, e: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.pending || !self.error.is_empty() || self.page_count < 1 {
+    pub fn is_search_open(&self) -> bool {
+        self.find_open
+    }
+
+    /// The find bar's count: empty while there is no query.
+    pub fn find_count_label(&self, cx: &gpui_kit::App) -> String {
+        self.bar.read(cx).count_label(cx)
+    }
+
+    /// Open (or refocus) the find bar and select its query.
+    pub fn open_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.ready() {
+            return;
+        }
+        self.find_open = true;
+        self.bar.update(cx, |b, cx| b.focus_and_select(window, cx));
+        self.refresh_find(cx);
+        cx.notify();
+    }
+
+    pub fn close_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.find_open {
+            return;
+        }
+        self.find_open = false;
+        self.matches.clear();
+        self.index = 0;
+        self.bar.update(cx, |b, cx| {
+            b.reset_counts();
+            cx.notify();
+        });
+        self.focus.focus(window, cx);
+        cx.notify();
+    }
+
+    /// Match the query against every page's text (extracting it off the UI thread first).
+    fn refresh_find(&mut self, cx: &mut Context<Self>) {
+        if !self.find_open {
+            return;
+        }
+        let Some(text) = &self.find_text else {
+            let Some(doc) = self.doc.clone().filter(|_| self.find_task.is_none()) else {
+                return;
+            };
+            if crate::webhost::blocking(cx) {
+                self.find_text = Some(engine::find_text(&doc));
+                return self.refresh_find(cx);
+            }
+            let text = cx.background_spawn(async move { engine::find_text(&doc) });
+            self.find_task = Some(cx.spawn(async move |this, cx| {
+                let text = text.await;
+                let _ = this.update(cx, |p, cx| {
+                    p.find_text = Some(text);
+                    p.find_task = None;
+                    p.refresh_find(cx);
+                });
+            }));
+            return;
+        };
+        let query = self.bar.read(cx).query(cx);
+        let found = collect_preview_find_ranges(&text.blocks, &query, self.bar.read(cx).options());
+        self.matches = found
+            .ranges
+            .iter()
+            .map(|(page, r)| (page + 1, text.rects(*page, r.clone())))
+            .collect();
+        let n = self.matches.len();
+        if !(1..=n).contains(&self.index) {
+            self.index = usize::from(n > 0);
+        }
+        let (index, capped, valid) = (self.index, found.capped, found.valid);
+        self.bar.update(cx, |b, cx| {
+            if query.is_empty() {
+                b.reset_counts();
+                cx.notify();
+            } else {
+                b.set_results(index, n, capped, valid, cx);
+            }
+        });
+        self.reveal_match(cx);
+    }
+
+    fn step_find(&mut self, dir: i64, cx: &mut Context<Self>) {
+        let n = self.matches.len() as i64;
+        if !self.find_open || n == 0 {
+            return;
+        }
+        self.index = ((self.index as i64 - 1 + dir).rem_euclid(n) + 1) as usize;
+        self.refresh_find(cx);
+    }
+
+    /// Scroll the current match to the viewport's middle.
+    // simplify: vertical only; a match outside a zoomed page's visible width stays off screen
+    // horizontally (scroll x by the slot's centered left plus `r.x * w` to add it).
+    fn reveal_match(&mut self, cx: &mut Context<Self>) {
+        let Some((page, rects)) = self.index.checked_sub(1).and_then(|i| self.matches.get(i))
+        else {
+            cx.notify();
+            return;
+        };
+        let (Some(r), Some(vp), Some((_, h))) =
+            (rects.first(), self.viewport, self.sizes.get(page - 1))
+        else {
+            cx.notify();
+            return;
+        };
+        let h = h * self.scale;
+        let mid = self.slot_top(*page) + (r.y + r.h / 2.) * h;
+        let max = f32::from(self.handle.max_offset().y).max(0.);
+        let top = (mid - f32::from(vp.size.height) / 2.).clamp(0., max);
+        let x = self.handle.offset().x;
+        self.handle.set_offset(point(x, px(-top)));
+        cx.notify();
+    }
+
+    /// ⌘F opens find, Escape closes it, ⌘G / ⇧⌘G / F3 step; ⌘+ / ⌘- zoom.
+    fn key_down(&mut self, e: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if self.pending || !self.ready() {
             return;
         }
         let k = &e.keystroke;
-        if !(k.modifiers.platform || k.modifiers.control) {
+        let m = k.modifiers;
+        let cmd = if cfg!(target_os = "macos") {
+            m.platform
+        } else {
+            m.control
+        };
+        if k.key == "escape" && self.find_open {
+            cx.stop_propagation();
+            self.close_search(window, cx);
+            return;
+        }
+        if cmd && !m.alt && !m.shift && k.key.eq_ignore_ascii_case("f") {
+            cx.stop_propagation();
+            self.open_search(window, cx);
+            return;
+        }
+        if self.find_open && ((cmd && !m.alt && k.key.eq_ignore_ascii_case("g")) || k.key == "f3") {
+            cx.stop_propagation();
+            self.step_find(if m.shift { -1 } else { 1 }, cx);
+            return;
+        }
+        if !(m.platform || m.control) {
             return;
         }
         match k.key.as_str() {
@@ -546,13 +676,27 @@ impl PdfPreview {
             .into_any_element()
     }
 
-    /// `.obs-pdf-page-slot`: white, a 1px `--line` ring outside, the canvas stretched over it.
-    fn slot(&self, n: usize, w: f32, h: f32, line: recur_ui::Color) -> AnyElement {
-        let image = self
-            .slots
-            .get(&n)
-            .and_then(|s| s.painted.as_ref())
-            .map(|p| p.image.clone());
+    /// `.obs-pdf-page-slot`: white, a 1px `--line` ring outside, the canvas stretched over it,
+    /// find matches over the canvas.
+    fn slot(&self, n: usize, w: f32, h: f32, t: &recur_ui::Tokens) -> AnyElement {
+        let marks = self
+            .matches
+            .iter()
+            .enumerate()
+            .filter(|(_, (page, _))| *page == n)
+            .flat_map(|(i, (_, rects))| {
+                let fill = t.amber.fade(if i + 1 == self.index { 0.6 } else { 0.3 });
+                rects.iter().map(move |r| {
+                    div()
+                        .absolute()
+                        .left(px(r.x * w))
+                        .top(px(r.y * h))
+                        .w(px(r.w * w))
+                        .h(px(r.h * h))
+                        .bg(fill)
+                })
+            });
+        let image = self.slots.get(&n).and_then(|s| s.painted.clone());
         div()
             .relative()
             .flex_none()
@@ -567,7 +711,7 @@ impl PdfPreview {
                     .right(px(-1.))
                     .bottom(px(-1.))
                     .border_1()
-                    .border_color(line),
+                    .border_color(t.line),
             )
             .children(image.map(|img| {
                 canvas(
@@ -579,6 +723,7 @@ impl PdfPreview {
                 .absolute()
                 .inset_0()
             }))
+            .children(marks)
             .into_any_element()
     }
 }
@@ -629,7 +774,7 @@ impl PdfPreview {
                 self.sizes
                     .iter()
                     .enumerate()
-                    .map(|(i, (w, h))| self.slot(i + 1, w * self.scale, h * self.scale, t.line)),
+                    .map(|(i, (w, h))| self.slot(i + 1, w * self.scale, h * self.scale, &t)),
             );
         let viewport = div()
             .id("obs-pdf-viewport")
@@ -686,6 +831,9 @@ impl PdfPreview {
             .flex_col()
             .overflow_hidden()
             .when(self.ready(), |d| d.child(self.toolbar(window, cx)))
+            .when(self.find_open && self.ready(), |d| {
+                d.child(self.bar.clone())
+            })
             .children(message)
             .child(
                 div()

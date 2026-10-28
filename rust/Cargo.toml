@@ -112,6 +112,10 @@ wuff = "0.2"
 ttf-parser = "0.25"
 unicode-linebreak = "0.1"
 resvg = { version = "0.46", default-features = false }
+# PDF pages, rasterized by hayro (pure Rust).
+gpui-pdf = { version = "0.6", features = ["markup"] }
+# Mermaid diagrams laid out and written as SVG in pure Rust.
+mmdr = { package = "mermaid-rs-renderer", version = "0.3", default-features = false }
 smallvec = "1"
 core-graphics = "0.24"
 core-text = "21"

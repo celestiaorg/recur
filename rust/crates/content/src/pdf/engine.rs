@@ -1,463 +1,94 @@
-//! The pdf.js host: pdf.js 6.3.289 (the build the web UI ships, vendored under
-//! `assets/pdfjs` with the `cmaps`, `standard_fonts` and `wasm` dirs `pdfjsAssetDirs` points
-//! it at) in a hidden WKWebView (WebKitGTK on Linux). Pages render to a canvas exactly as `PdfPreview.svelte`
-//! renders them; their pixels are drawn natively.
-//!
-//! The page is served from the `recur-pdf:` scheme: the library, its assets and the open
-//! documents' bytes, nothing else. Its CSP allows only same-origin script, workers and fetches
-//! (pdf.js runs with eval off and no scripting), the store is non-persistent and the view is
-//! never on screen.
+//! PDF pages through `gpui-pdf` (hayro, pure Rust): parse once, rasterize a page at the zoom
+//! and device scale. Both are CPU-bound; `PdfPreview` runs them on the background executor.
 
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, LazyLock, Mutex};
+use std::ops::Range;
+use std::sync::Arc;
 
-use base64::Engine as _;
 use gpui_kit::RenderImage;
-use serde::Deserialize;
-use serde_json::{Value, json};
-use smallvec::SmallVec;
 
-use crate::webhost::{self, EngineError, Host};
+pub use gpui_pdf::{Document, NormRect};
 
-pub static HOST: Host = Host {
-    name: "PDF",
-    #[cfg(target_os = "macos")]
-    make: mac::make,
-    #[cfg(target_os = "linux")]
-    make: gtk::make,
-};
-
-const SCHEME: &str = "recur-pdf";
-
-const CSP: &str = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self' data: blob:; style-src 'unsafe-inline'";
-
-const INDEX: &str = r#"<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script type="module" src="/host.mjs"></script></body></html>"#;
-
-/// `window.recur(op)`: `open` loads a registered document, `render` draws a page at a zoom
-/// and device scale into a canvas and returns its RGBA, `cancel` stops a render, `close`
-/// destroys a document. Errors resolve as `{ error }`.
-const HOST_JS: &str = r#"
-import { getDocument, GlobalWorkerOptions, RenderingCancelledException } from '/pdfjs/pdf.min.mjs'
-
-// pdf.js yields between operator chunks on animation frames, which a page outside any window
-// never gets; a message-channel turn yields the same way.
-{
-  const channel = new MessageChannel()
-  const queue = new Map()
-  let next = 1
-  channel.port1.onmessage = () => {
-    const due = [...queue.values()]
-    queue.clear()
-    const now = performance.now()
-    for (const cb of due) cb(now)
-  }
-  window.requestAnimationFrame = (cb) => {
-    if (queue.size === 0) channel.port2.postMessage(0)
-    queue.set(next, cb)
-    return next++
-  }
-  window.cancelAnimationFrame = (id) => queue.delete(id)
-}
-
-GlobalWorkerOptions.workerSrc = new URL('/pdfjs/pdf.worker.min.mjs', location.href).href
-const dirs = {
-  cMapUrl: new URL('/pdfjs/cmaps/', location.href).href,
-  standardFontDataUrl: new URL('/pdfjs/standard_fonts/', location.href).href,
-  wasmUrl: new URL('/pdfjs/wasm/', location.href).href,
-}
-const docs = new Map()
-const tasks = new Map()
-
-function base64(bytes) {
-  let s = ''
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000))
-  return btoa(s)
-}
-
-async function open(op) {
-  const res = await fetch('/doc/' + op.doc)
-  if (!res.ok) throw new Error(`PDF fetch failed (${res.status})`)
-  const data = new Uint8Array(await res.arrayBuffer())
-  const loading = getDocument({ data, isEvalSupported: false, isOffscreenCanvasSupported: false, ...dirs })
-  docs.set(op.doc, loading)
-  const pdf = await loading.promise
-  const first = await pdf.getPage(1)
-  const base = first.getViewport({ scale: 1 })
-  return { pages: pdf.numPages, width: base.width, height: base.height }
-}
-
-async function render(op) {
-  const loading = docs.get(op.doc)
-  if (!loading) throw new Error('PDF render failed')
-  const pdf = await loading.promise
-  const pg = await pdf.getPage(op.page)
-  const base = pg.getViewport({ scale: 1 })
-  const vp = pg.getViewport({ scale: op.scale })
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.floor(vp.width * op.dpr)
-  canvas.height = Math.floor(vp.height * op.dpr)
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('PDF render failed')
-  const transform = op.dpr === 1 ? undefined : [op.dpr, 0, 0, op.dpr, 0, 0]
-  const task = pg.render({ canvas, canvasContext: ctx, viewport: vp, transform })
-  tasks.set(op.task, task)
-  try {
-    await task.promise
-  } catch (e) {
-    if (e instanceof RenderingCancelledException) return { cancelled: true }
-    throw e
-  } finally {
-    tasks.delete(op.task)
-  }
-  const { width, height } = canvas
-  const rgba = width && height ? base64(new Uint8Array(ctx.getImageData(0, 0, width, height).data.buffer)) : ''
-  canvas.width = 0
-  canvas.height = 0
-  return { width: base.width, height: base.height, pixelWidth: width, pixelHeight: height, rgba }
-}
-
-window.recur = async function (op) {
-  try {
-    if (op.op === 'open') return await open(op)
-    if (op.op === 'render') return await render(op)
-    if (op.op === 'cancel') {
-      tasks.get(op.task)?.cancel()
-      return {}
-    }
-    if (op.op === 'close') {
-      const loading = docs.get(op.doc)
-      docs.delete(op.doc)
-      if (loading) await loading.destroy()
-      return {}
-    }
-    return { error: 'unknown op' }
-  } catch (e) {
-    const fallback = op.op === 'open' ? 'PDF load failed' : 'PDF render failed'
-    return { error: e instanceof Error ? e.message : fallback }
-  }
-}
-"#;
-
-#[cfg(any(target_os = "macos", target_os = "linux"))]
-static ASSETS: include_dir::Dir<'static> =
-    include_dir::include_dir!("$CARGO_MANIFEST_DIR/assets/pdfjs");
-
-/// Open documents' bytes by id. The scheme reads them on the webview's thread (the main thread
-/// on macOS, the WebKitGTK thread on Linux).
-static DOCS: LazyLock<Mutex<HashMap<u64, Arc<[u8]>>>> = LazyLock::new(Default::default);
-static NEXT: AtomicU64 = AtomicU64::new(1);
-
-fn docs() -> std::sync::MutexGuard<'static, HashMap<u64, Arc<[u8]>>> {
-    DOCS.lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-/// What the scheme serves at `path`: bytes and content type.
-#[cfg_attr(not(any(target_os = "macos", target_os = "linux")), allow(dead_code))]
-fn resource(path: &str) -> Option<(Arc<[u8]>, &'static str)> {
-    let mime = |p: &str| match p.rsplit('.').next() {
-        Some("mjs" | "js") => "text/javascript",
-        Some("wasm") => "application/wasm",
-        _ => "application/octet-stream",
-    };
-    match path {
-        "/" | "/index.html" => Some((Arc::from(INDEX.as_bytes()), "text/html")),
-        "/host.mjs" => Some((Arc::from(HOST_JS.as_bytes()), "text/javascript")),
-        _ => {
-            if let Some(id) = path.strip_prefix("/doc/") {
-                let id = id.parse::<u64>().ok()?;
-                return docs().get(&id).cloned().map(|b| (b, "application/pdf"));
-            }
-            #[cfg(any(target_os = "macos", target_os = "linux"))]
-            if let Some(rest) = path.strip_prefix("/pdfjs/") {
-                return ASSETS
-                    .get_file(rest)
-                    .map(|f| (Arc::from(f.contents()), mime(rest)));
-            }
-            let _ = mime;
-            None
-        }
-    }
-}
-
-/// An open document; closing it frees the page's copy.
-pub struct Document {
-    id: u64,
-}
-
-impl Drop for Document {
-    fn drop(&mut self) {
-        docs().remove(&self.id);
-        drop(webhost::call(
-            &HOST,
-            json!({ "op": "close", "doc": self.id }),
-        ));
-    }
-}
-
-/// `open`'s answer: the page count and page 1's size at scale 1 (CSS px).
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+/// A parsed document and every page's size at scale 1 (PDF points, pdf.js's CSS px).
 pub struct Opened {
-    pub pages: usize,
-    pub width: f32,
-    pub height: f32,
+    pub doc: Arc<Document>,
+    pub sizes: Vec<(f32, f32)>,
 }
 
-/// A rendered page: its size at scale 1 and the canvas pixels.
-pub struct PageImage {
-    pub width: f32,
-    pub height: f32,
-    pub pixel_width: u32,
-    pub pixel_height: u32,
-    pub image: Arc<RenderImage>,
-}
-
-fn error(v: &Value) -> Option<String> {
-    v.get("error").and_then(Value::as_str).map(str::to_string)
-}
-
-fn open_op(bytes: Arc<[u8]>) -> (Document, Value) {
-    let id = NEXT.fetch_add(1, Ordering::Relaxed);
-    docs().insert(id, bytes);
-    (Document { id }, json!({ "op": "open", "doc": id }))
-}
-
-fn opened(v: Result<Value, EngineError>) -> Result<Opened, String> {
-    let v = v.map_err(|e| e.0)?;
-    if let Some(e) = error(&v) {
-        return Err(e);
+pub fn open(bytes: &[u8]) -> Result<Opened, String> {
+    let doc = gpui_pdf::parse(Arc::new(bytes.to_vec())).map_err(|e| match e {
+        gpui_pdf::LoadError::Locked => "This PDF is password-protected.".to_string(),
+        gpui_pdf::LoadError::Other(e) => e,
+    })?;
+    let sizes = gpui_pdf::page_dims(&doc);
+    if sizes.is_empty() {
+        return Err("This PDF has no pages.".into());
     }
-    serde_json::from_value(v).map_err(|e| e.to_string())
+    Ok(Opened { doc, sizes })
 }
 
-/// Load `bytes`; the document stays open while the returned handle lives.
-pub async fn open(bytes: Arc<[u8]>) -> (Document, Result<Opened, String>) {
-    let (doc, op) = open_op(bytes);
-    let out = webhost::call(&HOST, op)
-        .await
-        .unwrap_or_else(|_| Err(EngineError("PDF load failed".into())));
-    (doc, opened(out))
-}
-
-pub fn open_blocking(bytes: Arc<[u8]>) -> (Document, Result<Opened, String>) {
-    let (doc, op) = open_op(bytes);
-    let out = webhost::call_blocking(&HOST, op);
-    (doc, opened(out))
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Rendered {
-    #[serde(default)]
-    cancelled: bool,
-    #[serde(default)]
-    width: f32,
-    #[serde(default)]
-    height: f32,
-    #[serde(default)]
-    pixel_width: u32,
-    #[serde(default)]
-    pixel_height: u32,
-    #[serde(default)]
-    rgba: String,
-}
-
-fn render_op(doc: &Document, page: usize, scale: f32, dpr: f32, task: u64) -> Value {
-    json!({ "op": "render", "doc": doc.id, "page": page, "scale": scale, "dpr": dpr, "task": task })
-}
-
-/// Canvas RGBA (straight alpha) → a GPUI image (BGRA).
-fn page_image(v: Result<Value, EngineError>) -> Result<Option<PageImage>, String> {
-    let v = v.map_err(|e| e.0)?;
-    if let Some(e) = error(&v) {
-        return Err(e);
-    }
-    let r: Rendered = serde_json::from_value(v).map_err(|e| e.to_string())?;
-    if r.cancelled {
-        return Ok(None);
-    }
-    let mut px = base64::engine::general_purpose::STANDARD
-        .decode(r.rgba.as_bytes())
-        .map_err(|e| e.to_string())?;
-    for p in px.chunks_exact_mut(4) {
-        p.swap(0, 2);
-    }
-    let buffer =
-        image::RgbaImage::from_raw(r.pixel_width, r.pixel_height, px).ok_or("PDF render failed")?;
-    Ok(Some(PageImage {
-        width: r.width,
-        height: r.height,
-        pixel_width: r.pixel_width,
-        pixel_height: r.pixel_height,
-        image: Arc::new(RenderImage::new(SmallVec::from_elem(
-            image::Frame::new(buffer),
-            1,
-        ))),
-    }))
-}
-
-/// Render page `page` (1-based) at `scale` for device scale `dpr`, as render task `task`;
-/// `Ok(None)` when [`cancel`]led.
-pub async fn render(
+/// Page `page` (1-based) at `scale` for device scale `dpr`, BGRA on white.
+pub fn render(
     doc: &Document,
     page: usize,
     scale: f32,
     dpr: f32,
-    task: u64,
-) -> Result<Option<PageImage>, String> {
-    let out = webhost::call(&HOST, render_op(doc, page, scale, dpr, task))
-        .await
-        .unwrap_or_else(|_| Err(EngineError("PDF render failed".into())));
-    page_image(out)
+) -> Result<Arc<RenderImage>, String> {
+    gpui_pdf::render_page(doc, page - 1, scale * dpr)
 }
 
-pub fn render_blocking(
-    doc: &Document,
-    page: usize,
-    scale: f32,
-    dpr: f32,
-    task: u64,
-) -> Result<Option<PageImage>, String> {
-    page_image(webhost::call_blocking(
-        &HOST,
-        render_op(doc, page, scale, dpr, task),
-    ))
+/// The text layer find searches: each page's readable text as a block (0-based page ids).
+pub struct FindText {
+    pub blocks: Vec<(usize, String)>,
+    /// Each page's layer and its search key (`search_key` of the block).
+    layers: Vec<(gpui_pdf::PageText, String)>,
 }
 
-/// Cancel render task `task` (`task.cancel()`); its render resolves `Ok(None)`.
-pub fn cancel(task: u64) {
-    drop(webhost::call(
-        &HOST,
-        json!({ "op": "cancel", "task": task }),
-    ));
+/// gpui-pdf's `PageText` index: lowercased with whitespace removed.
+fn search_key(s: &str) -> String {
+    s.chars()
+        .filter(|c| !c.is_whitespace())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
-#[cfg(target_os = "macos")]
-#[allow(unsafe_code)]
-mod mac {
-    use objc2::rc::Retained;
-    use objc2::runtime::{NSObject, NSObjectProtocol, ProtocolObject};
-    use objc2::{AllocAnyThread, MainThreadMarker, MainThreadOnly, define_class, msg_send};
-    use objc2_foundation::{
-        NSData, NSDictionary, NSHTTPURLResponse, NSPoint, NSRect, NSSize, NSString, NSURL,
-        NSURLRequest,
+/// Extract every page's text layer (a parse pass per page, cheaper than rendering).
+pub fn find_text(doc: &Document) -> FindText {
+    let mut out = FindText {
+        blocks: Vec::new(),
+        layers: Vec::new(),
     };
-    use objc2_web_kit::{
-        WKURLSchemeHandler, WKURLSchemeTask, WKWebView, WKWebViewConfiguration, WKWebsiteDataStore,
-    };
-
-    define_class!(
-        // SAFETY: NSObject has no subclassing requirements and the class does not implement
-        // Drop.
-        #[unsafe(super(NSObject))]
-        #[thread_kind = MainThreadOnly]
-        #[name = "RecurNextPdfScheme"]
-        struct Scheme;
-
-        unsafe impl NSObjectProtocol for Scheme {}
-
-        unsafe impl WKURLSchemeHandler for Scheme {
-            #[unsafe(method(webView:startURLSchemeTask:))]
-            fn start(&self, _web: &WKWebView, task: &ProtocolObject<dyn WKURLSchemeTask>) {
-                // SAFETY: the task is live until `didFinish`; all calls are on the main thread.
-                unsafe {
-                    let request: Retained<NSURLRequest> = task.request();
-                    let Some(url) = request.URL() else { return };
-                    let path = url.path().map(|p| p.to_string()).unwrap_or_default();
-                    let found = super::resource(&path);
-                    let (status, body, mime) = match &found {
-                        Some((bytes, mime)) => (200, &bytes[..], *mime),
-                        None => (404, &[][..], "text/plain"),
-                    };
-                    let keys = [
-                        &*NSString::from_str("Content-Type"),
-                        &*NSString::from_str("Content-Security-Policy"),
-                    ];
-                    let values = [&*NSString::from_str(mime), &*NSString::from_str(super::CSP)];
-                    let headers = NSDictionary::from_slices(&keys, &values);
-                    let Some(response) =
-                        NSHTTPURLResponse::initWithURL_statusCode_HTTPVersion_headerFields(
-                            NSHTTPURLResponse::alloc(),
-                            &url,
-                            status,
-                            Some(&NSString::from_str("HTTP/1.1")),
-                            Some(&headers),
-                        )
-                    else {
-                        return;
-                    };
-                    task.didReceiveResponse(&response);
-                    task.didReceiveData(&NSData::with_bytes(body));
-                    task.didFinish();
-                }
-            }
-
-            #[unsafe(method(webView:stopURLSchemeTask:))]
-            fn stop(&self, _web: &WKWebView, _task: &ProtocolObject<dyn WKURLSchemeTask>) {}
-        }
-    );
-
-    pub fn make(mtm: MainThreadMarker) -> Retained<WKWebView> {
-        // SAFETY: WebKit objects are created and used on the main thread (`mtm`).
-        unsafe {
-            let config = WKWebViewConfiguration::new(mtm);
-            config.setWebsiteDataStore(&WKWebsiteDataStore::nonPersistentDataStore(mtm));
-            let scheme: Retained<Scheme> = msg_send![Scheme::alloc(mtm), init];
-            config.setURLSchemeHandler_forURLScheme(
-                Some(ProtocolObject::from_ref(&*scheme)),
-                &NSString::from_str(super::SCHEME),
-            );
-            let frame = NSRect::new(NSPoint::new(0., 0.), NSSize::new(1024., 768.));
-            let web = WKWebView::initWithFrame_configuration(WKWebView::alloc(mtm), frame, &config);
-            if let Some(url) = NSURL::URLWithString(&NSString::from_str(&format!(
-                "{}://app/index.html",
-                super::SCHEME
-            ))) {
-                web.loadRequest(&NSURLRequest::requestWithURL(&url));
-            }
-            web
-        }
-    }
-}
-
-#[cfg(target_os = "linux")]
-mod gtk {
-    use webkit6::prelude::*;
-    use webkit6::{
-        NetworkSession, URISchemeRequest, URISchemeResponse, WebContext, WebView, gio, glib, soup,
-    };
-
-    fn serve(request: &URISchemeRequest) {
-        let path = request.path().unwrap_or_default();
-        let Some((bytes, mime)) = super::resource(&path) else {
-            request.finish_error(&mut glib::Error::new(gio::IOErrorEnum::NotFound, &path));
-            return;
+    for i in 0..doc.pages().len() {
+        let Some(layer) = gpui_pdf::extract_page_text(doc, i) else {
+            break;
         };
-        let len = bytes.len() as i64;
-        let stream = gio::MemoryInputStream::from_bytes(&glib::Bytes::from_owned(bytes));
-        let response = URISchemeResponse::new(&stream, len);
-        response.set_status(200, None);
-        response.set_content_type(mime);
-        let headers = soup::MessageHeaders::new(soup::MessageHeadersType::Response);
-        headers.append("Content-Security-Policy", super::CSP);
-        response.set_http_headers(headers);
-        request.finish_with_response(&response);
+        let text = layer.text();
+        out.layers.push((layer, search_key(&text)));
+        out.blocks.push((i, text));
     }
+    out
+}
 
-    pub fn make() -> WebView {
-        let context = WebContext::new();
-        context.register_uri_scheme(super::SCHEME, serve);
-        if let Some(security) = context.security_manager() {
-            security.register_uri_scheme_as_secure(super::SCHEME);
-            security.register_uri_scheme_as_cors_enabled(super::SCHEME);
+impl FindText {
+    /// Where bytes `range` of page `page`'s block sit, one normalized rect per line. The
+    /// layer only locates the nth whitespace- and case-insensitive occurrence, so `n` is how
+    /// many occurrences start before the range does.
+    pub fn rects(&self, page: usize, range: Range<usize>) -> Vec<NormRect> {
+        let (Some((_, text)), Some((layer, key))) = (self.blocks.get(page), self.layers.get(page))
+        else {
+            return Vec::new();
+        };
+        let Some(needle) = text.get(range.clone()) else {
+            return Vec::new();
+        };
+        let want = search_key(needle);
+        if want.is_empty() {
+            return Vec::new();
         }
-        let web = WebView::builder()
-            .web_context(&context)
-            .network_session(&NetworkSession::new_ephemeral())
-            .build();
-        web.load_uri(&format!("{}://app/index.html", super::SCHEME));
-        web
+        let at = search_key(&text[..range.start]).len();
+        let n = (0..at)
+            .filter(|&i| key.as_bytes()[i..].starts_with(want.as_bytes()))
+            .count();
+        layer.locate(needle, n)
     }
 }
 
@@ -465,34 +96,38 @@ mod gtk {
 mod tests {
     use super::*;
 
+    const PDF: &[u8] = include_bytes!("../../../../tools/ui-parity/content/page.pdf");
+
     #[test]
-    fn serves_the_library_its_assets_and_registered_documents_only() {
-        let (bytes, mime) = resource("/index.html").unwrap();
-        assert!(std::str::from_utf8(&bytes).unwrap().contains("/host.mjs"));
-        assert_eq!(mime, "text/html");
-        assert_eq!(resource("/host.mjs").unwrap().1, "text/javascript");
-        #[cfg(any(target_os = "macos", target_os = "linux"))]
-        {
-            assert_eq!(
-                resource("/pdfjs/pdf.worker.min.mjs").unwrap().1,
-                "text/javascript"
-            );
-            assert_eq!(
-                resource("/pdfjs/wasm/openjpeg.wasm").unwrap().1,
-                "application/wasm"
-            );
-            assert!(resource("/pdfjs/standard_fonts/FoxitSerif.pfb").is_some());
-        }
-        assert!(resource("/pdfjs/../Cargo.toml").is_none());
-        assert!(resource("/etc/passwd").is_none());
-        let (doc, _) = open_op(Arc::from(&b"%PDF-1.7"[..]));
-        assert_eq!(
-            &*resource(&format!("/doc/{}", doc.id)).unwrap().0,
-            b"%PDF-1.7"
+    fn opens_and_renders_the_parity_page() {
+        let o = open(PDF).expect("open");
+        assert_eq!(o.sizes, [(420., 300.)]);
+        let img = render(&o.doc, 1, 1., 2.).expect("render");
+        let size = img.size(0);
+        assert_eq!((size.width.0, size.height.0), (840, 600));
+        let px = img.as_bytes(0).expect("frame");
+        assert!(
+            px.chunks_exact(4).any(|p| p[..3] != [255, 255, 255]),
+            "blank page"
         );
-        let id = doc.id;
-        docs().remove(&id);
-        std::mem::forget(doc);
-        assert!(resource(&format!("/doc/{id}")).is_none());
+        assert!(render(&o.doc, 2, 1., 1.).is_err());
+        assert!(open(b"%PDF-1.7 nope").is_err());
+    }
+
+    #[test]
+    fn find_maps_matches_to_their_occurrence() {
+        let o = open(PDF).expect("open");
+        let f = find_text(&o.doc);
+        let text = &f.blocks[0].1;
+        assert!(text.contains("Quarterly report"), "{text:?}");
+        let hits: Vec<usize> = text.match_indices("the").map(|(i, _)| i).collect();
+        assert!(hits.len() >= 2, "{text:?}");
+        let rect = |i: usize| f.rects(0, i..i + 3)[0];
+        assert_ne!(rect(hits[0]), rect(hits[1]));
+        let title = f.rects(0, 0..9);
+        assert_eq!(title.len(), 1);
+        assert!(title[0].y < rect(hits[0]).y, "the title is above the body");
+        assert!(f.rects(0, 0..0).is_empty());
+        assert!(f.rects(1, 0..3).is_empty());
     }
 }

@@ -58,8 +58,6 @@ pub struct MarkdownView {
     /// A large document rendering off the UI thread.
     render_task: Option<Task<()>>,
     width: f32,
-    /// The window's device scale, from the last frame.
-    scale: Option<f32>,
     hover_link: Option<(usize, usize)>,
     highlights: HashMap<usize, Vec<(std::ops::Range<usize>, bool)>>,
     pub(crate) texts: Rc<RefCell<Vec<TextBlock>>>,
@@ -223,7 +221,6 @@ impl MarkdownView {
             mermaid_task: None,
             render_task: None,
             width: 0.,
-            scale: None,
             hover_link: None,
             highlights: HashMap::new(),
             texts: Rc::default(),
@@ -418,11 +415,10 @@ impl MarkdownView {
         let sources = mermaid_sources(&self.doc);
         self.mermaid = vec![MermaidSlot::Pending; sources.len()];
         self.mermaid_task = None;
-        // Mermaid lays out per device scale, known from the first frame on.
-        let Some(scale) = self.scale.filter(|_| !sources.is_empty()) else {
+        if sources.is_empty() {
             return;
-        };
-        match crate::mermaid::hydrate(sources, scale, cx) {
+        }
+        match crate::mermaid::hydrate(sources, cx) {
             crate::mermaid::Hydration::Done(slots) => self.mermaid = slots,
             crate::mermaid::Hydration::Running(task) => self.mermaid_task = Some(task),
         }
@@ -614,12 +610,6 @@ impl MarkdownView {
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let theme = Theme::of(cx).clone();
-        if self.scale != Some(window.scale_factor()) {
-            self.scale = Some(window.scale_factor());
-            if self.enhance {
-                self.hydrate_mermaid(cx);
-            }
-        }
         let sheet = self
             .sheet
             .clone()

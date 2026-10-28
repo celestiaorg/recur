@@ -17,7 +17,7 @@ use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, TextStyled, Theme, icon, rgba};
 
-use super::{Diagram, Origin};
+use super::Diagram;
 use crate::pdf::logic::{MAX_SCALE, MIN_SCALE, ZOOM_STEP};
 use crate::preview::scroll::{PreviewScroll, preview_camera};
 use crate::preview::view::SharedScroll;
@@ -56,7 +56,6 @@ impl MermaidPreview {
         content: &str,
         path: &str,
         scroll: Option<SharedScroll>,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
         let mut p = MermaidPreview {
@@ -76,13 +75,13 @@ impl MermaidPreview {
             task: None,
             restore: None,
         };
-        p.set_content(content, window, cx);
+        p.set_content(content, cx);
         p
     }
 
     /// The source changed: reset the camera and render again (errors clear first, so an edit
     /// can recover).
-    pub fn set_content(&mut self, content: &str, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn set_content(&mut self, content: &str, cx: &mut Context<Self>) {
         if content == self.content.as_ref()
             && (self.diagram.is_some() || self.pending || !self.error.is_empty())
         {
@@ -112,13 +111,12 @@ impl MermaidPreview {
         let theme = Theme::of(cx).clone();
         let src = content.to_string();
         if crate::webhost::blocking(cx) {
-            let res = super::render_blocking(Origin::File, &src, &theme, window.scale_factor());
+            let res = super::render_blocking(&src, &theme);
             self.finish(res, cx);
             return;
         }
-        let scale = window.scale_factor();
         self.task = Some(cx.spawn(async move |this, cx| {
-            let res = super::render(Origin::File, src, theme, scale).await;
+            let res = super::render(src, &theme, cx).await;
             let _ = this.update(cx, |p, cx| p.finish(res, cx));
         }));
         cx.notify();

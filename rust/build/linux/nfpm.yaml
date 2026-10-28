@@ -31,7 +31,7 @@ contents:
   - src: rust/build/linux/build.recur.next.desktop
     dst: /usr/share/applications/build.recur.next.desktop
 
-# GTK 4 and WebKitGTK 6.0 for Mermaid and PDF, GStreamer and its decoders for video
+# GTK 4 and WebKitGTK 6.0 for the HTML preview, GStreamer and its decoders for video
 # (WebKitGTK plays <video> through the same; -bad carries dav1d for AV1); xkbcommon and xcb for GPUI's
 # X11 backend. GPUI loads Wayland and Vulkan at runtime. The HTTP client reads
 # the system CA store at startup.

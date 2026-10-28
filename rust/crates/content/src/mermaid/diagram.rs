@@ -1,6 +1,6 @@
 //! A rendered Mermaid diagram drawn natively: its sanitized SVG's geometry rasterized at the
-//! device size (text elements removed), and every label as recur-ui text at the start position
-//! WebKit gave it. Labels WebKit transformed beyond translate-and-scale stay in the raster.
+//! device size (text elements removed), and every label line as recur-ui text at the start
+//! position usvg shaped it at. Labels transformed beyond translate-and-scale stay in the raster.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -16,7 +16,6 @@ use markup5ever_rcdom::{Handle, NodeData};
 use recur_ui::fonts::Family;
 use recur_ui::{Color, TextStyled};
 use resvg::{tiny_skia, usvg};
-use serde::Deserialize;
 
 use crate::purify::{self, Config, dom};
 use crate::render::exact::{hgap, vgap};
@@ -31,8 +30,8 @@ pub fn sanitize_svg(svg: &str) -> String {
     purify::sanitize(svg, svg_config())
 }
 
-/// One label run as WebKit laid it out (viewBox units).
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+/// One label line as usvg laid it out (viewBox units, `y` the baseline).
+#[derive(Clone, Debug, PartialEq)]
 pub struct Run {
     pub text: String,
     pub x: f32,
@@ -42,29 +41,16 @@ pub struct Run {
     pub weight: f32,
     pub italic: bool,
     pub fill: String,
-    #[serde(rename = "fillOpacity")]
     pub fill_opacity: f32,
     pub opacity: f32,
-    #[serde(default)]
     pub spacing: f32,
-    #[serde(default)]
     pub decoration: String,
-    /// WebKit's advance for the run, in user units.
-    #[serde(default)]
+    /// The run's advance in user units, when known (0: draw at recur-ui's own advance).
     pub advance: f32,
 }
 
-#[derive(Deserialize)]
-struct Measured {
-    width: f32,
-    height: f32,
-    x: f32,
-    y: f32,
-    runs: Vec<Run>,
-    raster: Vec<usize>,
-    /// The SVG with WebKit's resolved paint inlined.
-    svg: String,
-}
+/// The id `to_xml` gives the `<text>` element at a document-order index.
+const TEXT_ID: &str = "recur-text-";
 
 /// A raster's device size and the bits of its sub-pixel offset.
 type RasterKey = (u32, u32, u32, u32);
@@ -106,26 +92,40 @@ fn xml_escape(s: &str, attr: bool, out: &mut String) {
     }
 }
 
-/// The SVG subtree as XML for usvg, dropping the `<text>` elements labels replace.
-fn to_xml(h: &Handle, root: bool, text_ix: &mut usize, keep: &[usize], out: &mut String) {
+/// The SVG subtree as XML for usvg: the root sized to its viewBox (`root`), each `<text>` given
+/// its [`TEXT_ID`], and with `keep` only the `<text>` elements it lists.
+fn to_xml(
+    h: &Handle,
+    root: Option<(f32, f32)>,
+    text_ix: &mut usize,
+    keep: Option<&[usize]>,
+    out: &mut String,
+) {
     match &h.data {
         NodeData::Element { name, attrs, .. } => {
             let local = &*name.local;
-            if &*name.ns == dom::SVG_NS && local == "text" {
-                let ix = *text_ix;
-                *text_ix += 1;
-                if !keep.contains(&ix) {
-                    return;
-                }
-            }
+            let text = &*name.ns == dom::SVG_NS && local == "text";
             out.push('<');
             out.push_str(local);
-            if root {
-                out.push_str(r#" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink""#);
+            if text {
+                let ix = *text_ix;
+                *text_ix += 1;
+                if keep.is_some_and(|k| !k.contains(&ix)) {
+                    out.truncate(out.len() - local.len() - 1);
+                    return;
+                }
+                out.push_str(&format!(r#" id="{TEXT_ID}{ix}""#));
+            }
+            if let Some((w, h)) = root {
+                out.push_str(&format!(r#" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{w}" height="{h}""#));
             }
             for a in attrs.borrow().iter() {
                 let n = dom::attr_name(a);
-                if n == "xmlns" || n.starts_with("xmlns:") {
+                if n == "xmlns"
+                    || n.starts_with("xmlns:")
+                    || (text && n == "id")
+                    || (root.is_some() && matches!(n.as_str(), "width" | "height"))
+                {
                     continue;
                 }
                 let n = match &*a.name.ns {
@@ -141,7 +141,7 @@ fn to_xml(h: &Handle, root: bool, text_ix: &mut usize, keep: &[usize], out: &mut
             }
             out.push('>');
             for c in h.children.borrow().iter() {
-                to_xml(c, false, text_ix, keep, out);
+                to_xml(c, None, text_ix, keep, out);
             }
             out.push_str("</");
             out.push_str(local);
@@ -157,13 +157,86 @@ fn px_len(s: &str) -> Option<f32> {
     s.parse::<f32>().ok().filter(|v| *v > 0.)
 }
 
-impl Diagram {
-    /// Build from the sanitized SVG markup and the engine's measurement.
-    pub fn build(clean: &str, measured: &serde_json::Value) -> Result<Diagram, String> {
-        if let Some(e) = measured.get("error").and_then(|e| e.as_str()) {
-            return Err(e.to_string());
+/// Each `<text>` usvg laid out: a line drawn by translate-and-scale becomes a [`Run`]; the
+/// indices of the rest stay in the raster.
+fn labels(
+    g: &usvg::Group,
+    opacity: f32,
+    vb: (f32, f32),
+    db: &usvg::fontdb::Database,
+    runs: &mut Vec<Run>,
+    raster: &mut Vec<usize>,
+) {
+    for n in g.children() {
+        let t = match n {
+            usvg::Node::Group(c) => {
+                labels(c, opacity * c.opacity().get(), vb, db, runs, raster);
+                continue;
+            }
+            usvg::Node::Text(t) => t,
+            _ => continue,
+        };
+        let Some(ix) = t.id().strip_prefix(TEXT_ID).and_then(|n| n.parse().ok()) else {
+            continue;
+        };
+        let m = t.abs_transform();
+        let simple_paint = t.layouted().iter().all(|s| {
+            s.stroke.is_none()
+                && s.fill
+                    .as_ref()
+                    .is_none_or(|f| matches!(f.paint(), usvg::Paint::Color(_)))
+        });
+        if !simple_paint || m.kx != 0. || m.ky != 0. || m.sx <= 0. || m.sx != m.sy {
+            raster.push(ix);
+            continue;
         }
-        let m: Measured = serde_json::from_value(measured.clone()).map_err(|e| e.to_string())?;
+        for span in t.layouted() {
+            let Some(fill) = span.fill.as_ref().filter(|_| span.visible) else {
+                continue;
+            };
+            let usvg::Paint::Color(c) = fill.paint() else {
+                continue;
+            };
+            let mut line: Option<Run> = None;
+            for g in &span.positioned_glyphs {
+                let ts = g.transform();
+                let (x, y) = (m.sx * ts.tx + m.tx + vb.0, m.sy * ts.ty + m.ty + vb.1);
+                if let Some(r) = line.as_mut().filter(|r| r.y == y && x >= r.x) {
+                    r.text.push_str(&g.text);
+                    continue;
+                }
+                runs.extend(line.take());
+                let face = db.face(g.font);
+                line = Some(Run {
+                    text: g.text.clone(),
+                    x,
+                    y,
+                    size: span.font_size.get() * m.sx,
+                    family: face
+                        .and_then(|f| f.families.first())
+                        .map_or_else(String::new, |(n, _)| n.clone()),
+                    weight: face.map_or(400., |f| f32::from(f.weight.0)),
+                    italic: face.is_some_and(|f| f.style != usvg::fontdb::Style::Normal),
+                    fill: format!("#{:02x}{:02x}{:02x}", c.red, c.green, c.blue),
+                    fill_opacity: fill.opacity().get(),
+                    opacity,
+                    spacing: 0.,
+                    decoration: if span.underline.is_some() {
+                        "underline".into()
+                    } else {
+                        String::new()
+                    },
+                    advance: 0.,
+                });
+            }
+            runs.extend(line);
+        }
+    }
+}
+
+impl Diagram {
+    /// Build from sanitized SVG markup.
+    pub fn build(clean: &str) -> Result<Diagram, String> {
         let frag = dom::parse_fragment_in_div(clean);
         let svg = find_svg(&frag.root).ok_or("Mermaid returned no SVG")?;
         let width_attr = dom::get_attr(&svg, "width").unwrap_or_default();
@@ -172,15 +245,40 @@ impl Diagram {
             let (k, v) = decl.split_once(':')?;
             (k.trim() == "max-width").then(|| px_len(v)).flatten()
         });
+        let view_box: Vec<f32> = dom::get_attr(&svg, "viewBox")
+            .unwrap_or_default()
+            .split([' ', ','])
+            .filter_map(|v| v.parse().ok())
+            .collect();
+        let vb = match view_box[..] {
+            [x, y, w, h] if w > 0. && h > 0. => (x, y, w, h),
+            _ => {
+                let len = |n| {
+                    dom::get_attr(&svg, n)
+                        .and_then(|v| px_len(&v))
+                        .unwrap_or(0.)
+                };
+                (0., 0., len("width"), len("height"))
+            }
+        };
         let fluid = width_attr.trim().ends_with('%');
-        let natural_width = max_width.or_else(|| px_len(&width_attr)).unwrap_or(m.width);
-        let painted = dom::parse_fragment_in_div(&sanitize_svg(&m.svg));
-        let painted_svg = find_svg(&painted.root).ok_or("Mermaid returned no SVG")?;
-        let mut xml = String::new();
-        let mut ix = 0;
-        to_xml(&painted_svg, true, &mut ix, &m.raster, &mut xml);
-        let tree = crate::svg::parse(&xml)?;
-        let vb = (m.x, m.y, m.width, m.height);
+        let natural_width = max_width.or_else(|| px_len(&width_attr)).unwrap_or(vb.2);
+        let xml = |keep: Option<&[usize]>| {
+            let mut xml = String::new();
+            to_xml(&svg, Some((vb.2, vb.3)), &mut 0, keep, &mut xml);
+            xml
+        };
+        let laid_out = crate::svg::parse(&xml(None))?;
+        let (mut runs, mut raster) = (Vec::new(), Vec::new());
+        labels(
+            laid_out.root(),
+            1.,
+            (vb.0, vb.1),
+            laid_out.fontdb(),
+            &mut runs,
+            &mut raster,
+        );
+        let tree = crate::svg::parse(&xml(Some(&raster)))?;
         let bb = tree.root().abs_stroke_bounding_box();
         let (cx0, cy0) = ((bb.left() + vb.0).min(vb.0), (bb.top() + vb.1).min(vb.1));
         let (cx1, cy1) = (
@@ -193,7 +291,7 @@ impl Diagram {
             content: (cx0, cy0, cx1 - cx0, cy1 - cy0),
             natural_width,
             fluid,
-            runs: m.runs,
+            runs,
             raster: RefCell::new(None),
         })
     }
@@ -487,10 +585,10 @@ mod tests {
         let svg = find_svg(&frag.root).unwrap();
         let mut xml = String::new();
         let mut ix = 0;
-        to_xml(&svg, true, &mut ix, &[1], &mut xml);
-        assert!(xml.starts_with(r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10">"#));
+        to_xml(&svg, Some((10., 10.)), &mut ix, Some(&[1]), &mut xml);
+        assert!(xml.starts_with(r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="10" height="10" viewBox="0 0 10 10">"#));
         assert!(!xml.contains(">a<"));
-        assert!(xml.contains(">b<"));
+        assert!(xml.contains(r#"<text id="recur-text-1">b<"#));
         assert!(xml.contains(r#"xlink:href="data:,""#));
         assert!(crate::svg::parse(&xml).is_ok());
     }

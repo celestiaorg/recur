@@ -13,10 +13,10 @@ use crate::text::{Text, TextStyled};
 use crate::theme::Theme;
 use gpui_kit::{
     AnyElement, App, AppContext, Bounds, Context, DispatchPhase, Element, ElementId, Entity,
-    FocusHandle, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId, IntoElement,
-    KeyDownEvent, LayoutId, MouseDownEvent, MouseExitEvent, MouseMoveEvent, ParentElement, Pixels,
-    Render, ScrollWheelEvent, SharedString, Styled, Task, Window, WindowId, canvas, deferred, div,
-    px, relative,
+    FocusHandle, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId, InteractiveElement,
+    IntoElement, KeyDownEvent, LayoutId, MouseDownEvent, MouseExitEvent, MouseMoveEvent,
+    ParentElement, Pixels, Render, ScrollWheelEvent, SharedString, Styled, Task, Window, WindowId,
+    canvas, deferred, div, px, relative,
 };
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -210,26 +210,20 @@ pub fn apply_timer<T: Copy>(s: TipCore<T>) -> (TipCore<T>, TipAction<T>) {
     }
 }
 
-/// A titled control as painted this frame.
-#[derive(Clone, Debug, PartialEq)]
+/// A titled control as last painted. A replayed cached view keeps its hitbox ids, so the
+/// hitbox still hit-tests while the view replays.
+#[derive(Clone)]
 struct Candidate {
     key: u64,
     text: SharedString,
     bounds: Bounds<Pixels>,
-}
-
-#[derive(Default)]
-struct Frame {
-    /// Hovered titled elements, in paint order (innermost/topmost last).
-    hovered: Vec<Candidate>,
-    /// Keyboard-focused titled element.
-    focused: Option<Candidate>,
-    /// Every titled element painted this frame, for retitle and removal checks.
-    present: HashMap<u64, Candidate>,
+    hitbox: Hitbox,
+    focus: Option<FocusHandle>,
 }
 
 thread_local! {
-    static FRAMES: RefCell<HashMap<WindowId, Frame>> = RefCell::default();
+    /// Titled elements painted since the overlay last collected.
+    static FRAMES: RefCell<HashMap<WindowId, Vec<Candidate>>> = RefCell::default();
 }
 
 fn epoch_ms() -> u64 {
@@ -335,33 +329,11 @@ impl Element for Titled {
             key: key_of(id),
             text,
             bounds,
+            hitbox: hitbox.clone(),
+            focus: self.focus.clone(),
         };
-        let hovered = hitbox.is_hovered(window);
-        let focused = self
-            .focus
-            .as_ref()
-            .is_some_and(|f| f.is_focused(window) && window.last_input_was_keyboard());
         let window_id = window.window_handle().window_id();
-        FRAMES.with(|f| {
-            let mut f = f.borrow_mut();
-            let frame = f.entry(window_id).or_default();
-            frame.present.insert(candidate.key, candidate.clone());
-            if !candidate.text.is_empty() {
-                if hovered {
-                    frame.hovered.push(candidate.clone());
-                }
-                if focused {
-                    frame.focused = Some(candidate);
-                }
-            }
-        });
-        // Re-run the overlay when the pointer crosses this control's edge.
-        let hitbox = hitbox.clone();
-        window.on_mouse_event(move |_: &MouseMoveEvent, phase, window, _| {
-            if phase == DispatchPhase::Bubble && hitbox.is_hovered(window) != hovered {
-                window.refresh();
-            }
-        });
+        FRAMES.with(|f| f.borrow_mut().entry(window_id).or_default().push(candidate));
     }
 }
 
@@ -372,10 +344,15 @@ pub struct TitleTooltip {
     /// The shown (or dismissed) control's last painted state.
     shown: Option<Candidate>,
     dismissed_text: SharedString,
-    /// Last frame's titled controls, for a press that lands before a hover was seen.
-    present: Vec<Candidate>,
+    /// Every titled control by key, as last painted.
+    known: HashMap<u64, Candidate>,
+    /// The hovered control as of the last pass; a pointer move that changes it re-runs one.
+    hovered: Option<u64>,
+    /// When the tip was first drawn, so the fade starts on screen.
     shown_at: Option<Instant>,
     cursor: Option<Pixels>,
+    /// The pointer X at reveal: the tip does not follow the pointer once shown.
+    anchor_x: Option<Pixels>,
     timer: Option<Task<()>>,
     viewport: Option<gpui_kit::Size<Pixels>>,
 }
@@ -386,9 +363,11 @@ impl TitleTooltip {
             core: TipCore::default(),
             shown: None,
             dismissed_text: SharedString::default(),
-            present: Vec::new(),
+            known: HashMap::new(),
+            hovered: None,
             shown_at: None,
             cursor: None,
+            anchor_x: None,
             timer: None,
             viewport: None,
         })
@@ -404,10 +383,7 @@ impl TitleTooltip {
                 .map(|c| c.text.clone())
                 .or_else(|| {
                     let key = pending?;
-                    self.present
-                        .iter()
-                        .find(|c| c.key == key)
-                        .map(|c| c.text.clone())
+                    self.known.get(&key).map(|c| c.text.clone())
                 })
                 .unwrap_or_default();
         }
@@ -417,38 +393,69 @@ impl TitleTooltip {
         self.shown_at = None;
     }
 
-    fn reveal(&mut self, c: Candidate, now: Instant) {
+    fn reveal(&mut self, c: Candidate) {
         self.core.target = Some(c.key);
         self.core.visible = true;
         self.shown = Some(c);
-        self.shown_at = Some(now);
+        self.shown_at = None;
+        self.anchor_x = self.cursor;
     }
 
-    /// Feed this frame's candidates into the machine.
-    fn update(&mut self, frame: Frame, window: &mut Window, cx: &mut Context<Self>) {
-        self.present = frame.present.values().cloned().collect();
-        // Retitle, removal and dismissed-retitle checks (`watch` / `watchDismissed`).
+    /// Take the controls painted since the last pass. A replayed cached view keeps its
+    /// controls' hitboxes, so their entries stay valid while it replays.
+    fn absorb(&mut self, window: &Window) {
+        let window_id = window.window_handle().window_id();
+        let painted = FRAMES
+            .with(|f| f.borrow_mut().remove(&window_id))
+            .unwrap_or_default();
+        // simplify: past this many distinct controls the map restarts, and controls in views
+        // replaying since then lose their tip until they repaint. Prune by frame if it bites.
+        if self.known.len() > 4096 {
+            self.known.clear();
+        }
+        self.known.extend(painted.into_iter().map(|c| (c.key, c)));
+    }
+
+    /// The innermost hovered titled control, like `closest("[title]")`.
+    fn hovered_now(&self, window: &Window) -> Option<&Candidate> {
+        let area =
+            |c: &&Candidate| f32::from(c.bounds.size.width) * f32::from(c.bounds.size.height);
+        self.known
+            .values()
+            .filter(|c| !c.text.is_empty() && c.hitbox.is_hovered(window))
+            .min_by(|a, b| area(a).total_cmp(&area(b)))
+    }
+
+    /// Feed the live hover and focus into the machine.
+    fn update(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.absorb(window);
+        let hovered = self.hovered_now(window).cloned();
+        self.hovered = hovered.as_ref().map(|c| c.key);
+        let titled = || self.known.values().filter(|c| !c.text.is_empty());
+        let focused = titled()
+            .find(|c| {
+                c.focus
+                    .as_ref()
+                    .is_some_and(|f| f.is_focused(window) && window.last_input_was_keyboard())
+            })
+            .cloned();
+        // Retitle and dismissed-retitle checks (`watch` / `watchDismissed`).
         if let Some(key) = self.core.target {
-            match frame.present.get(&key) {
-                None => self.hide(HideReason::Interrupt),
-                Some(c) if c.text.is_empty() => self.hide(HideReason::Interrupt),
-                Some(c) => {
-                    if self.shown.as_ref() != Some(c) {
-                        self.shown = Some(c.clone());
-                    }
-                }
+            match self.known.get(&key).cloned() {
+                Some(c) if !c.text.is_empty() => self.shown = Some(c),
+                _ => self.hide(HideReason::Interrupt),
             }
         }
         if let Some(key) = self.core.dismissed
-            && let Some(c) = frame.present.get(&key)
+            && let Some(c) = self.known.get(&key).cloned()
             && should_reshow_after_dismiss(&self.dismissed_text, Some(&c.text))
-            && frame.hovered.last().is_some_and(|h| h.key == key)
+            && hovered.as_ref().is_some_and(|h| h.key == key)
         {
             self.core.dismissed = None;
-            self.reveal(c.clone(), crate::motion::now(cx));
+            self.reveal(c);
             return;
         }
-        let candidate = frame.hovered.last().cloned().or(frame.focused);
+        let candidate = hovered.or(focused);
         let (next, action) =
             apply_consider(self.core, candidate.as_ref().map(|c| c.key), epoch_ms());
         self.core = next;
@@ -457,7 +464,7 @@ impl TitleTooltip {
             TipAction::Hide(reason) => self.hide(reason),
             TipAction::Reveal(_) => {
                 if let Some(c) = candidate {
-                    self.reveal(c, crate::motion::now(cx));
+                    self.reveal(c);
                 }
             }
             TipAction::Schedule(_, delay) => {
@@ -466,16 +473,15 @@ impl TitleTooltip {
                     cx.background_executor()
                         .timer(Duration::from_millis(delay))
                         .await;
-                    let _ = this.update_in(cx, |this, window, cx| {
+                    let _ = this.update(cx, |this, cx| {
                         let (next, action) = apply_timer(this.core);
                         this.core = next;
                         if let TipAction::Reveal(key) = action
                             && key == c.key
                         {
-                            this.reveal(c.clone(), crate::motion::now(cx));
+                            this.reveal(c.clone());
                         }
                         cx.notify();
-                        window.refresh();
                     });
                 }));
             }
@@ -502,49 +508,64 @@ impl TitleTooltip {
             canvas(
                 |_, _, _| {},
                 move |_, _, window, cx| {
-                    let window_id = window.window_handle().window_id();
-                    let frame = FRAMES
-                        .with(|f| f.borrow_mut().remove(&window_id))
-                        .unwrap_or_default();
                     let before = entity.read(cx).render_key();
-                    entity.update(cx, |this, cx| this.update(frame, window, cx));
+                    entity.update(cx, |this, cx| this.update(window, cx));
                     if entity.read(cx).render_key() != before {
-                        window.refresh();
+                        // `refresh` is ignored while drawing.
+                        let e = entity.clone();
+                        cx.defer(move |cx| e.update(cx, |_, cx| cx.notify()));
                     }
                     let e = entity.clone();
-                    window.on_mouse_event(move |ev: &MouseMoveEvent, _, _, cx| {
-                        e.update(cx, |this, _| this.cursor = Some(ev.position.x));
+                    window.on_mouse_event(move |ev: &MouseMoveEvent, phase, window, cx| {
+                        if phase != DispatchPhase::Bubble {
+                            return;
+                        }
+                        e.update(cx, |this, cx| {
+                            this.cursor = Some(ev.position.x);
+                            this.absorb(window);
+                            if this.hovered_now(window).map(|c| c.key) != this.hovered {
+                                cx.notify();
+                            }
+                        });
                     });
                     let e = entity.clone();
-                    window.on_mouse_event(move |_: &MouseDownEvent, phase, window, cx| {
+                    window.on_mouse_event(move |_: &MouseDownEvent, phase, _, cx| {
                         if phase == DispatchPhase::Capture {
-                            e.update(cx, |this, _| this.hide(HideReason::Dismiss));
-                            window.refresh();
+                            e.update(cx, |this, cx| {
+                                this.hide(HideReason::Dismiss);
+                                cx.notify();
+                            });
                         }
                     });
                     let e = entity.clone();
-                    window.on_mouse_event(move |_: &ScrollWheelEvent, phase, window, cx| {
+                    window.on_mouse_event(move |_: &ScrollWheelEvent, phase, _, cx| {
                         if phase == DispatchPhase::Capture
                             && e.read(cx).core.target.or(e.read(cx).core.pending).is_some()
                         {
-                            e.update(cx, |this, _| this.hide(HideReason::Interrupt));
-                            window.refresh();
+                            e.update(cx, |this, cx| {
+                                this.hide(HideReason::Interrupt);
+                                cx.notify();
+                            });
                         }
                     });
                     let e = entity.clone();
-                    window.on_mouse_event(move |_: &MouseExitEvent, _, window, cx| {
-                        e.update(cx, |this, _| this.hide(HideReason::Interrupt));
-                        window.refresh();
+                    window.on_mouse_event(move |_: &MouseExitEvent, _, _, cx| {
+                        e.update(cx, |this, cx| {
+                            this.hide(HideReason::Interrupt);
+                            cx.notify();
+                        });
                     });
                     let e = entity.clone();
-                    window.on_key_event(move |ev: &KeyDownEvent, phase, window, cx| {
+                    window.on_key_event(move |ev: &KeyDownEvent, phase, _, cx| {
                         let s = e.read(cx).core;
                         if phase == DispatchPhase::Capture
                             && ev.keystroke.key == "escape"
                             && (s.visible || s.target.is_some() || s.pending.is_some())
                         {
-                            e.update(cx, |this, _| this.hide(HideReason::Dismiss));
-                            window.refresh();
+                            e.update(cx, |this, cx| {
+                                this.hide(HideReason::Dismiss);
+                                cx.notify();
+                            });
                         }
                     });
                 },
@@ -560,6 +581,7 @@ impl TitleTooltip {
             .size_full()
             .child(collector);
         if let (Some(c), true) = (self.shown.clone(), self.core.visible) {
+            self.shown_at.get_or_insert_with(|| motion::now(cx));
             root = root.child(self.tip(c, window, cx));
         }
         root
@@ -612,7 +634,7 @@ impl TitleTooltip {
             right: b.right().into(),
             bottom: b.bottom().into(),
         };
-        let place = place_tooltip(target, tip, (vw, vh), self.cursor.map(f32::from));
+        let place = place_tooltip(target, tip, (vw, vh), self.anchor_x.map(f32::from));
         // `ui-tip-in` (.09s ease-out): fade in from 3px below (or above when flipped).
         let p = self.shown_at.map_or(1., |s| {
             motion::eased(s, Duration::from_millis(90), Easing::EASE_OUT, cx)
@@ -637,6 +659,7 @@ impl TitleTooltip {
             .w(px(tip.0))
             .py(px(5.))
             .px(px(9.))
+            .debug_selector(|| "title-tooltip".into())
             .child(div().w(relative(1.)).child(body()));
         let shadows = [shadow, css_box_shadow(0., 0., 0., 1., ring)];
         deferred(crate::style::anchored_at(
@@ -664,13 +687,27 @@ mod tests {
             },
             shown: None,
             dismissed_text: SharedString::default(),
-            present: vec![Candidate {
-                key: 1,
-                text: "Sonnet 5.5".into(),
-                bounds: Bounds::default(),
-            }],
+            known: HashMap::from([(
+                1,
+                Candidate {
+                    key: 1,
+                    text: "Sonnet 5.5".into(),
+                    bounds: Bounds::default(),
+                    hitbox: Hitbox {
+                        id: gpui_kit::HitboxId::placeholder(),
+                        bounds: Bounds::default(),
+                        content_mask: gpui_kit::ContentMask {
+                            bounds: Bounds::default(),
+                        },
+                        behavior: HitboxBehavior::Normal,
+                    },
+                    focus: None,
+                },
+            )]),
+            hovered: None,
             shown_at: None,
             cursor: None,
+            anchor_x: None,
             timer: None,
             viewport: None,
         };
@@ -680,6 +717,110 @@ mod tests {
             &t.dismissed_text,
             Some("Sonnet 5.5")
         ));
+    }
+
+    thread_local! {
+        static BUTTON_RENDERS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    }
+
+    struct Button(&'static str);
+
+    impl Render for Button {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            BUTTON_RENDERS.set(BUTTON_RENDERS.get() + 1);
+            titled(self.0, self.0, div().size(px(40.)))
+        }
+    }
+
+    struct Root {
+        buttons: [Entity<Button>; 2],
+        tip: Entity<TitleTooltip>,
+    }
+
+    impl Render for Root {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let style = div().size(px(40.)).style().clone();
+            div()
+                .size_full()
+                .flex()
+                .gap(px(60.))
+                .children(
+                    self.buttons
+                        .iter()
+                        .map(|b| crate::style::cached_view(b, style.clone(), cx)),
+                )
+                .child(self.tip.clone())
+        }
+    }
+
+    fn fixture(
+        cx: &mut gpui_kit::TestAppContext,
+    ) -> (&mut gpui_kit::VisualTestContext, Entity<TitleTooltip>) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            crate::init(cx);
+        });
+        let mut tip = None;
+        let (_, cx) = cx.add_window_view(|_, cx| {
+            let t = TitleTooltip::new(cx);
+            tip = Some(t.clone());
+            Root {
+                buttons: ["Archive", "Delete"].map(|n| cx.new(|_| Button(n))),
+                tip: t,
+            }
+        });
+        cx.update(|window, _| window.activate_window());
+        cx.run_until_parked();
+        (cx, tip.unwrap())
+    }
+
+    fn hover(cx: &mut gpui_kit::VisualTestContext, x: f32) {
+        cx.simulate_mouse_move(
+            gpui_kit::point(px(x), px(20.)),
+            None,
+            gpui_kit::Modifiers::none(),
+        );
+        cx.run_until_parked();
+    }
+
+    /// Where the drawn tip's center is, if one is drawn.
+    fn drawn_tip_x(cx: &mut gpui_kit::VisualTestContext) -> Option<f32> {
+        cx.debug_bounds("title-tooltip")
+            .map(|b| f32::from(b.center().x))
+    }
+
+    /// The tip's fade-in redraws only the overlay: the cached view around the hovered
+    /// control replays without painting it, and the tip must stay up.
+    #[gpui_kit::test]
+    fn a_replayed_control_keeps_its_tip(cx: &mut gpui_kit::TestAppContext) {
+        let (cx, tip) = fixture(cx);
+        hover(cx, 20.);
+        cx.executor()
+            .advance_clock(Duration::from_millis(SHOW_DELAY_MS + 10));
+        cx.run_until_parked();
+        assert!(tip.read_with(cx, |t, _| t.core.visible));
+        tip.update(cx, |_, cx| cx.notify());
+        cx.run_until_parked();
+        assert!(tip.read_with(cx, |t, _| t.core.visible));
+        assert!(drawn_tip_x(cx).is_some());
+    }
+
+    /// Moving between titled controls changes the tip during a draw; the change is drawn
+    /// without waiting for another event, and without re-rendering the controls' views.
+    #[gpui_kit::test]
+    fn moving_to_the_next_control_draws_its_tip(cx: &mut gpui_kit::TestAppContext) {
+        let (cx, _) = fixture(cx);
+        hover(cx, 20.);
+        cx.executor()
+            .advance_clock(Duration::from_millis(SHOW_DELAY_MS + 10));
+        cx.run_until_parked();
+        assert!(drawn_tip_x(cx).is_some_and(|x| x < 50.));
+        BUTTON_RENDERS.set(0);
+        hover(cx, 120.);
+        assert!(drawn_tip_x(cx).is_some_and(|x| x > 90.));
+        hover(cx, 70.);
+        assert_eq!(drawn_tip_x(cx), None);
+        assert_eq!(BUTTON_RENDERS.get(), 0);
     }
 
     const A: u8 = 1;

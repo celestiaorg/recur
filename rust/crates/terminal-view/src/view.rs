@@ -19,9 +19,11 @@ use gpui_kit::{
 };
 use recur_term::input::{
     Encoded, KeyAction, KeyPress, MouseAction, MouseButton as TermButton, MouseProtocol,
-    MouseReport, MouseReporter, cell_coords, evaluate_key, paste_text,
+    MouseReport, MouseReporter, evaluate_key, paste_text,
 };
-use recur_term::screen::{Link, LinkKind, MouseUp, Output, Palette, Screen, SearchOptions};
+use recur_term::screen::{
+    InvalidRegex, Link, Output, Palette, Screen, SearchOptions, SearchResults, Side,
+};
 
 use crate::backend::TerminalBackend;
 use crate::blink::CursorBlink;
@@ -235,18 +237,24 @@ impl GridLayout {
         x >= 0.0 && y >= 0.0 && x < f32::from(self.content.size.width) && y < self.grid_height()
     }
 
-    /// 1-based cell under `p` (xterm `getCoords`).
-    pub fn cell(&self, p: Point<Pixels>, selection: bool) -> (i64, i64) {
+    /// 0-based viewport cell under `p`, clamped to the grid.
+    pub fn cell(&self, p: Point<Pixels>) -> (usize, usize) {
         let (x, y) = self.local(p);
-        cell_coords(
-            x as f64,
-            y as f64,
-            self.cell_w() as f64,
-            self.cell_h() as f64,
-            self.cols,
-            self.rows,
-            selection,
+        let at = |v: f32, size: f32, n: usize| ((v / size).max(0.0) as usize).min(n.max(1) - 1);
+        (
+            at(x, self.cell_w(), self.cols),
+            at(y, self.cell_h(), self.rows),
         )
+    }
+
+    /// Which half of its cell `p` is over, for selection.
+    pub fn side(&self, p: Point<Pixels>) -> Side {
+        let x = self.local(p).0 / self.cell_w();
+        if x >= self.cols as f32 || (x > 0.0 && x.fract() >= 0.5) {
+            Side::Right
+        } else {
+            Side::Left
+        }
     }
 }
 
@@ -286,8 +294,6 @@ pub struct TerminalView {
     drag_task: Option<Task<()>>,
     pub(crate) blink: Option<CursorBlink>,
     pub(crate) scrollbar: Scrollbar,
-    /// `Viewport._latestYDisp`: the row the scrollbar last scrolled to.
-    latest_ydisp: Option<usize>,
     pub(crate) hovered_link: Option<Link>,
     mouse_down_link: Option<Link>,
     mouse_down_at: Instant,
@@ -297,7 +303,6 @@ pub struct TerminalView {
     pub(crate) slider_hovered: bool,
     pub(crate) mouse_position: Option<Point<Pixels>>,
     pub(crate) composition: Option<Composition>,
-    last_find_key: Option<(bool, bool, bool)>,
     is_mac: bool,
     _subscriptions: Vec<Subscription>,
 }
@@ -367,7 +372,6 @@ impl TerminalView {
             drag_task: None,
             blink: None,
             scrollbar: Scrollbar::default(),
-            latest_ydisp: None,
             hovered_link: None,
             mouse_down_link: None,
             mouse_down_at: cx.background_executor().now(),
@@ -376,7 +380,6 @@ impl TerminalView {
             slider_hovered: false,
             mouse_position: None,
             composition: None,
-            last_find_key: None,
             is_mac: cfg!(target_os = "macos"),
             _subscriptions: subscriptions,
         };
@@ -516,15 +519,8 @@ impl TerminalView {
             (Some(b), true) if self.screen.cursor_in_viewport() != cursor_before => b.restart(now),
             _ => {}
         }
-        if let Some(link) = &self.hovered_link
-            && self
-                .screen
-                .link_at(
-                    link.start.0,
-                    link.start.1 - self.screen.viewport_top() as i64,
-                )
-                .as_ref()
-                != Some(link)
+        if let Some(link) = self.hovered_link.clone()
+            && self.screen.link_at(link.start) != Some(link)
         {
             self.hovered_link = None;
         }
@@ -588,7 +584,7 @@ impl TerminalView {
                 TERM_FIT_SCROLLBAR_WIDTH,
             );
             if (cols, rows) != self.size() {
-                self.screen.resize_and_refresh(cols, rows);
+                self.screen.resize(cols, rows);
                 self.reporter.reset();
                 self.schedule_tick(cx);
                 if self.replayed {
@@ -611,7 +607,7 @@ impl TerminalView {
         if let Some(replay) = self.pending_replay.take() {
             self.replayed(replay, cx);
         }
-        if self.latest_ydisp == Some(self.screen.viewport_top()) {
+        if self.scrollbar_in_sync(&layout) {
             self.scrollbar.set_dimensions(
                 layout.grid_height(),
                 layout.cell_h() * self.screen.total_rows() as f32,
@@ -622,17 +618,21 @@ impl TerminalView {
         layout
     }
 
-    /// `Viewport._sync`: scrollbar dimensions and position from the buffer.
+    /// Scrollbar dimensions and position from the screen.
     fn sync_scrollbar(&mut self) {
         let Some(l) = self.layout else { return };
-        let ydisp = self.screen.viewport_top();
         self.scrollbar.sync(
             l.grid_height(),
             l.cell_h() * self.screen.total_rows() as f32,
-            ydisp,
+            self.screen.scroll_position(),
             l.cell_h(),
         );
-        self.latest_ydisp = Some(ydisp);
+    }
+
+    /// False when output, keys or find moved the viewport since the scrollbar last did. The
+    /// scrollbar keeps a fractional position from trackpad deltas, so it is only resynced then.
+    fn scrollbar_in_sync(&self, l: &GridLayout) -> bool {
+        (self.scrollbar.scroll_top() / l.cell_h()).round() as usize == self.screen.scroll_position()
     }
 
     // ---- timers ----
@@ -684,7 +684,7 @@ impl TerminalView {
         if self.screen.search_refresh_due().is_some_and(|d| d <= now)
             && let Some(res) = self.screen.run_search_refresh()
         {
-            self.emit_find_results(res, cx);
+            self.emit_find_results(Ok(res), cx);
         }
         self.schedule_tick(cx);
         cx.notify();
@@ -841,16 +841,10 @@ impl TerminalView {
             regex: opts.regexp,
             whole_word: opts.whole_word,
             incremental: opts.incremental,
-            decorations: Some(search_decorations(&recur_ui::Theme::of(cx).tokens)),
+            decorations: search_decorations(&recur_ui::Theme::of(cx).tokens),
         };
-        // The addon never re-highlights the same term when only options change.
-        let key = (o.case_sensitive, o.regex, o.whole_word);
-        if self.last_find_key != Some(key) {
-            self.screen.clear_search();
-        }
-        self.last_find_key = Some(key);
         let res = self.screen.find(query, &o, forward);
-        let found = matches!(res, Ok((true, _)));
+        let found = matches!(res, Ok(r) if r.count > 0);
         self.emit_find_results(res, cx);
         self.sync_scrollbar();
         self.schedule_tick(cx);
@@ -860,26 +854,15 @@ impl TerminalView {
 
     fn emit_find_results(
         &mut self,
-        res: Result<
-            (bool, Option<recur_term::screen::SearchResults>),
-            recur_term::screen::InvalidRegex,
-        >,
+        res: Result<SearchResults, InvalidRegex>,
         cx: &mut Context<Self>,
     ) {
         match res {
-            Ok((_, Some(r))) => {
-                let index = if r.index >= 0 {
-                    r.index as usize + 1
-                } else {
-                    usize::from(r.count > 0)
-                };
-                cx.emit(TerminalEvent::FindResults {
-                    index,
-                    total: r.count,
-                    valid: true,
-                });
-            }
-            Ok((_, None)) => {}
+            Ok(r) => cx.emit(TerminalEvent::FindResults {
+                index: r.index.max(usize::from(r.count > 0)),
+                total: r.count,
+                valid: true,
+            }),
             Err(_) => {
                 self.screen.clear_search();
                 cx.emit(TerminalEvent::FindResults {
@@ -1108,15 +1091,13 @@ impl TerminalView {
             self.reported_button = Some(tb);
         }
         self.mouse_down_link = self.hovered_link.clone();
-        let sel = l.cell(pos, true);
-        let cell = l.cell(pos, false);
-        let link_cell = (cell.0, cell.1 + self.screen.viewport_top() as i64);
+        let cell = l.cell(pos);
         match button {
             MouseButton::Left if !self.mouse_events_active() || force => {
                 let shift = !self.mouse_events_active() && m.shift;
                 self.screen.selection_mouse_down(
-                    sel,
-                    link_cell,
+                    cell,
+                    l.side(pos),
                     click_count,
                     shift,
                     self.should_column_select(m.alt),
@@ -1125,7 +1106,7 @@ impl TerminalView {
                 self.write_primary_selection(cx);
             }
             MouseButton::Right if self.is_mac => {
-                self.screen.right_click_select(sel, link_cell);
+                self.screen.right_click_select(cell);
                 self.write_primary_selection(cx);
             }
             #[cfg(target_os = "linux")]
@@ -1172,8 +1153,12 @@ impl TerminalView {
         self.slider_hovered = slider_hover;
         if self.screen.selection_dragging() {
             let offset = f32::from(pos.y - l.origin.y) as f64;
-            self.screen
-                .selection_mouse_move(l.cell(pos, true), offset, l.grid_height() as f64);
+            self.screen.selection_mouse_move(
+                l.cell(pos),
+                l.side(pos),
+                offset,
+                l.grid_height() as f64,
+            );
             self.write_primary_selection(cx);
             dirty = true;
         }
@@ -1191,8 +1176,9 @@ impl TerminalView {
         }
         // Linkifier hover.
         let link = if hovered && l.contains_grid(pos) && !l.scrollbar_bounds().contains(&pos) {
-            let (x, y) = l.cell(pos, false);
-            self.screen.link_at(x, y)
+            let (x, y) = l.cell(pos);
+            let point = self.screen.viewport_point(x, y);
+            self.screen.link_at(point)
         } else {
             None
         };
@@ -1231,10 +1217,7 @@ impl TerminalView {
             let elapsed = now
                 .saturating_duration_since(self.mouse_down_at)
                 .as_millis() as u64;
-            if let MouseUp::MoveCursor(seq) =
-                self.screen
-                    .selection_mouse_up(elapsed, m.alt, l.cell(pos, false))
-            {
+            if let Some(seq) = self.screen.selection_mouse_up(elapsed, m.alt, l.cell(pos)) {
                 self.send_input(seq, cx);
             }
         }
@@ -1243,26 +1226,15 @@ impl TerminalView {
             && down == cur
             && l.contains_grid(pos)
         {
-            let (x, y) = l.cell(pos, false);
-            if self.screen.link_at(x, y).as_ref() == Some(&cur) {
-                self.activate_link(&cur, cx);
+            let (x, y) = l.cell(pos);
+            let point = self.screen.viewport_point(x, y);
+            // Absolute http(s) only, in the OS browser.
+            if self.screen.link_at(point).as_ref() == Some(&cur) && is_external_http_url(&cur.text)
+            {
+                cx.open_url(cur.text.trim());
             }
         }
         cx.notify();
-    }
-
-    fn activate_link(&mut self, link: &Link, cx: &mut Context<Self>) {
-        match link.kind {
-            // openExternalUrl: absolute http(s) only, in the OS browser.
-            LinkKind::Web => {
-                if is_external_http_url(&link.text) {
-                    cx.open_url(link.text.trim());
-                }
-            }
-            // xterm's default OSC 8 handler asked `confirm()`, which Recur's webview never showed,
-            // so these links never opened.
-            LinkKind::Hyperlink => {}
-        }
     }
 
     pub(crate) fn scroll_wheel(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
@@ -1316,7 +1288,7 @@ impl TerminalView {
             cx.stop_propagation();
             return;
         }
-        if self.latest_ydisp != Some(self.screen.viewport_top()) {
+        if !self.scrollbar_in_sync(&l) {
             self.sync_scrollbar();
         }
         if let Some(top) = self.scrollbar.wheel(dy, pixels, m.alt, now) {
@@ -1327,15 +1299,12 @@ impl TerminalView {
         cx.notify();
     }
 
-    /// `Viewport._handleScroll`: whole rows from a pixel scroll position.
+    /// Whole rows from a pixel scroll position.
     fn scroll_to_px(&mut self, top: f32) {
         let Some(l) = self.layout else { return };
-        let row = (top / l.cell_h()).round().max(0.0) as usize;
-        let diff = row as i64 - self.screen.viewport_top() as i64;
-        if diff != 0 {
-            self.screen.scroll_lines(diff);
-        }
-        self.latest_ydisp = Some(self.screen.viewport_top());
+        let row = (top / l.cell_h()).round().max(0.0) as i64;
+        self.screen
+            .scroll_lines(row - self.screen.scroll_position() as i64);
     }
 
     pub(crate) fn mouse_exited(&mut self, cx: &mut Context<Self>) {
@@ -1366,9 +1335,9 @@ impl TerminalView {
                         if !v.screen.selection_dragging() {
                             return false;
                         }
-                        let top = v.screen.viewport_top();
+                        let top = v.screen.scroll_position();
                         v.screen.selection_drag_tick();
-                        if v.screen.viewport_top() != top {
+                        if v.screen.scroll_position() != top {
                             v.sync_scrollbar();
                             v.write_primary_selection(cx);
                             cx.notify();

@@ -51,10 +51,14 @@ impl Default for Scrollbar {
 }
 
 impl Scrollbar {
-    /// `Viewport._sync`: dimensions from the grid and the scroll position from `ydisp`.
-    pub fn sync(&mut self, visible_size: f32, scroll_size: f32, ydisp: usize, cell_height: f32) {
+    /// Dimensions from the grid and the scroll position from the viewport's top row.
+    pub fn sync(&mut self, visible_size: f32, scroll_size: f32, top_row: usize, cell_height: f32) {
         self.set_dimensions(visible_size, scroll_size);
-        self.scroll_top = (ydisp as f32 * cell_height).clamp(0.0, self.max_scroll());
+        self.scroll_top = (top_row as f32 * cell_height).clamp(0.0, self.max_scroll());
+    }
+
+    pub fn scroll_top(&self) -> f32 {
+        self.scroll_top
     }
 
     /// Dimensions only; keeps a fractional `scrollTop` from precise wheel deltas.

@@ -1,6 +1,6 @@
 //! Input encoding ported from xterm.js: keyboard (`Keyboard.ts` plus the keydown/keypress split
-//! in `CoreBrowserTerminal`), mouse reports (`MouseStateService`, `MouseService`), paste
-//! (`Clipboard.ts`) and pointer-to-cell rounding (`Mouse.ts`).
+//! in `CoreBrowserTerminal`), mouse reports (`MouseStateService`, `MouseService`) and paste
+//! (`Clipboard.ts`).
 
 /// A key press as the UI toolkit reports it: `key` is the unmodified key name (`"a"`, `"enter"`,
 /// `"left"`, `"f5"`, `"!"`), `key_char` the text it would type, if any.
@@ -394,25 +394,6 @@ pub fn paste_text(text: &str, bracketed: bool) -> String {
     }
     // Escape characters could end bracketed paste early; xterm shows them as U+241B.
     format!("\x1b[200~{}\x1b[201~", text.replace('\x1b', "\u{241b}"))
-}
-
-/// xterm `getCoords(..., isSelection)`: 1-based cell for a pointer at `(x, y)` relative to the
-/// grid's top-left, clamped to the grid (selection gets one extra column).
-pub fn cell_coords(
-    x: f64,
-    y: f64,
-    cell_w: f64,
-    cell_h: f64,
-    cols: usize,
-    rows: usize,
-    selection: bool,
-) -> (i64, i64) {
-    let cx = ((x + if selection { cell_w / 2.0 } else { 0.0 }) / cell_w).ceil() as i64;
-    let cy = (y / cell_h).ceil() as i64;
-    (
-        cx.clamp(1, cols as i64 + i64::from(selection)),
-        cy.clamp(1, rows as i64),
-    )
 }
 
 /// Mouse buttons as xterm's `CoreMouseButton`.
@@ -840,18 +821,6 @@ mod tests {
     fn paste_converts_newlines_and_brackets() {
         assert_eq!(paste_text("a\nb\r\nc", false), "a\rb\rc");
         assert_eq!(paste_text("x\x1by", true), "\x1b[200~x\u{241b}y\x1b[201~");
-    }
-
-    #[test]
-    fn cell_coords_round_like_xterm() {
-        assert_eq!(cell_coords(0.0, 0.0, 8.0, 16.0, 80, 24, false), (1, 1));
-        assert_eq!(cell_coords(9.0, 17.0, 8.0, 16.0, 80, 24, false), (2, 2));
-        assert_eq!(cell_coords(3.0, 1.0, 8.0, 16.0, 80, 24, true), (1, 1));
-        assert_eq!(cell_coords(5.0, 1.0, 8.0, 16.0, 80, 24, true), (2, 1));
-        assert_eq!(
-            cell_coords(10_000.0, 10_000.0, 8.0, 16.0, 80, 24, true),
-            (81, 24)
-        );
     }
 
     fn rep(button: MouseButton, action: MouseAction) -> MouseReport {

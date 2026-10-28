@@ -486,3 +486,118 @@ fn a_large_edit_refills_on_the_background_executor(cx: &mut TestAppContext) {
     assert_eq!(filled, total);
     assert_ne!(after, before, "the last line is inside the comment now");
 }
+
+fn diag(from: usize, to: usize, message: &str) -> recur_editor::lint::Diagnostic {
+    recur_editor::lint::Diagnostic {
+        from,
+        to,
+        severity: recur_editor::lint::Severity::Error,
+        message: message.into(),
+        source: None,
+        mark_class: None,
+        actions: Vec::new(),
+    }
+}
+
+impl Harness<'_> {
+    /// Rest the pointer on `pos` until the hover tooltip shows.
+    fn hover(&mut self, pos: usize) -> gpui::Bounds<gpui::Pixels> {
+        let p = self.point_at(pos);
+        self.cx
+            .simulate_mouse_move(p, None::<MouseButton>, Modifiers::none());
+        self.cx
+            .executor()
+            .advance_clock(Duration::from_millis(recur_editor::lsp::HOVER_TIME_MS + 50));
+        self.cx.run_until_parked();
+        self.view
+            .read_with(self.cx, |v, _| v.hover_bounds())
+            .expect("hover shown")
+    }
+}
+
+/// A doc whose first line carries a short and a long (scrolling) lint.
+fn hover_doc(cx: &mut TestAppContext) -> Harness<'_> {
+    let doc: String =
+        "alpha beta\n".to_string() + &(0..200).map(|i| format!("line {i}\n")).collect::<String>();
+    let long: String = (0..60).map(|i| format!("detail {i}\n")).collect();
+    let mut h = mount(cx, "a.txt", &doc, EditorKind::Code);
+    h.view.update_in(h.cx, |v, window, cx| {
+        v.set_diagnostics(
+            vec![diag(0, 5, "short"), diag(6, 10, long.trim_end())],
+            window,
+            cx,
+        )
+    });
+    h.settle();
+    h
+}
+
+#[gpui::test]
+fn hover_lands_in_place_on_its_first_frame(cx: &mut TestAppContext) {
+    let mut h = hover_doc(cx);
+    let first = h.hover(1);
+    let away = h.point_at(40);
+    h.cx.simulate_mouse_move(away, None::<MouseButton>, Modifiers::none());
+    h.cx.run_until_parked();
+    assert!(h.view.read_with(h.cx, |v, _| v.hover_bounds()).is_none());
+
+    // Every frame the view draws after this records where the hover went.
+    let seen = Rc::new(RefCell::new(Vec::new()));
+    let log = seen.clone();
+    let view = h.view.clone();
+    let _sub = h.cx.update(|_, cx| {
+        cx.observe(&view, move |v, cx| {
+            log.borrow_mut().push(v.read(cx).hover_bounds())
+        })
+    });
+    let second = h.hover(7);
+    assert_ne!(first.size, second.size);
+    let anchor = h
+        .view
+        .update_in(h.cx, |v, window, _| v.coords_at_pos(6, 1, window))
+        .unwrap();
+    assert_eq!(second.origin.y, anchor.bottom());
+    for b in seen.borrow().iter().flatten() {
+        assert_eq!(*b, second, "painted somewhere else first");
+    }
+}
+
+#[gpui::test]
+fn hover_takes_its_own_clicks_and_copies(cx: &mut TestAppContext) {
+    let mut h = hover_doc(cx);
+    let before = h.sel();
+    h.hover(1);
+    let body = h.cx.debug_bounds("cm-tooltip-hover-body").expect("body");
+    let y = body.top() + px(14.);
+    let (a, b) = (
+        point(body.left() + px(16.), y),
+        point(body.right() - px(8.), y),
+    );
+    h.cx.simulate_mouse_move(a, None::<MouseButton>, Modifiers::none());
+    h.cx.simulate_mouse_down(a, MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_move(b, Some(MouseButton::Left), Modifiers::none());
+    h.cx.simulate_mouse_up(b, MouseButton::Left, Modifiers::none());
+    h.cx.run_until_parked();
+    assert_eq!(h.sel(), before);
+    assert!(h.view.read_with(h.cx, |v, _| v.hover_bounds()).is_some());
+    h.cx.simulate_keystrokes("secondary-c");
+    let copied = h.cx.read_from_clipboard().and_then(|c| c.text());
+    assert_eq!(copied.as_deref(), Some("hort"));
+}
+
+#[gpui::test]
+fn wheel_over_hover_scrolls_it(cx: &mut TestAppContext) {
+    let mut h = hover_doc(cx);
+    let hover = h.hover(7);
+    let top = h.cx.debug_bounds("cm-tooltip-hover-body").unwrap().top();
+    h.cx.simulate_event(gpui::ScrollWheelEvent {
+        position: hover.center(),
+        delta: gpui::ScrollDelta::Pixels(point(px(0.), px(-100.))),
+        ..Default::default()
+    });
+    h.cx.run_until_parked();
+    assert_eq!(h.view.read_with(h.cx, |v, _| v.scroll_top()), 0.0);
+    assert!(h.view.read_with(h.cx, |v, _| v.hover_bounds()).is_some());
+    let scrolled = h.cx.debug_bounds("cm-tooltip-hover-body").unwrap().top();
+    assert!(scrolled < top - px(50.), "{scrolled:?} vs {top:?}");
+}

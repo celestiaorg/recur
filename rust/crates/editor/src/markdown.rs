@@ -3,8 +3,13 @@
 //! `codehl` (`sanitizeLspHTML`), laid out with the UA stylesheet's block
 //! margins (collapsed as CSS collapses them) and `_codemirror.scss`.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use gpui_kit::prelude::FluentBuilder;
-use gpui_kit::{AnyElement, Div, Hsla, IntoElement, ParentElement, Styled, div, px};
+use gpui_kit::{
+    AnyElement, App, Div, Hsla, IntoElement, ParentElement, SharedString, Styled, div, px,
+};
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use recur_textmate::{highlight_line_spans, lang_from_code_class};
 use recur_ui::text::{Align, InlineBox};
@@ -26,6 +31,9 @@ pub struct DocStyle {
     /// Inside `.cm-completionInfo` (`white-space: pre-line`): source line
     /// breaks in paragraphs stay breaks.
     pub pre_line: bool,
+    /// Hands out selection keys when the text is selectable (in a
+    /// `recur_ui::selection` scope).
+    pub select: Option<Rc<Cell<u64>>>,
 }
 
 impl DocStyle {
@@ -39,20 +47,28 @@ impl DocStyle {
             cyan: t.cyan,
             size,
             pre_line: false,
+            select: None,
         }
+    }
+
+    pub(crate) fn selectable(&self, t: Text) -> Text {
+        let Some(keys) = &self.select else { return t };
+        let key = keys.get();
+        keys.set(key + 1);
+        t.selectable(key, "\n")
     }
 }
 
 /// The documentation's `line-height`.
 const LEADING: f32 = 1.45;
 
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 struct Inline {
     code: bool,
     strong: bool,
     em: bool,
     strike: bool,
-    link: bool,
+    link: Option<SharedString>,
 }
 
 #[derive(Default)]
@@ -174,9 +190,9 @@ impl Builder<'_> {
                     out.push(Block::Table(rows));
                 }
                 Event::Text(t) | Event::Code(t) | Event::Html(t) | Event::InlineHtml(t) => {
-                    loose.push(&t, st)
+                    loose.push(&t, st.clone())
                 }
-                Event::SoftBreak | Event::HardBreak => loose.push("\n", st),
+                Event::SoftBreak | Event::HardBreak => loose.push("\n", st.clone()),
                 Event::Start(Tag::Strong) => st.strong = true,
                 Event::End(TagEnd::Strong) => st.strong = false,
                 _ => {}
@@ -202,23 +218,31 @@ impl Builder<'_> {
         for ev in self.events.by_ref() {
             match ev {
                 Event::End(e) if e == end => break,
-                Event::Text(t) => p.push(&t, st),
-                Event::Code(t) => p.push(&t, Inline { code: true, ..st }),
+                Event::Text(t) => p.push(&t, st.clone()),
+                Event::Code(t) => p.push(
+                    &t,
+                    Inline {
+                        code: true,
+                        ..st.clone()
+                    },
+                ),
                 Event::Html(t) | Event::InlineHtml(t)
                     if t.trim_start().to_ascii_lowercase().starts_with("<br") =>
                 {
-                    p.push("\n", st)
+                    p.push("\n", st.clone())
                 }
-                Event::SoftBreak => p.push(self.soft_break, st),
-                Event::HardBreak => p.push("\n", st),
+                Event::SoftBreak => p.push(self.soft_break, st.clone()),
+                Event::HardBreak => p.push("\n", st.clone()),
                 Event::Start(Tag::Strong) => st.strong = true,
                 Event::End(TagEnd::Strong) => st.strong = false,
                 Event::Start(Tag::Emphasis) => st.em = true,
                 Event::End(TagEnd::Emphasis) => st.em = false,
                 Event::Start(Tag::Strikethrough) => st.strike = true,
                 Event::End(TagEnd::Strikethrough) => st.strike = false,
-                Event::Start(Tag::Link { .. }) => st.link = true,
-                Event::End(TagEnd::Link) => st.link = false,
+                Event::Start(Tag::Link { dest_url, .. }) => {
+                    st.link = Some(dest_url.to_string().into())
+                }
+                Event::End(TagEnd::Link) => st.link = None,
                 _ => {}
             }
         }
@@ -265,7 +289,7 @@ fn spans(p: &Para, s: &DocStyle, size: f32, bold: bool) -> Vec<Span> {
         if st.strike {
             sp = sp.line_through(true);
         }
-        if st.link {
+        if st.link.is_some() {
             sp = sp.color(hsla(s.cyan)).underline(true);
         }
         out.push(sp);
@@ -273,12 +297,28 @@ fn spans(p: &Para, s: &DocStyle, size: f32, bold: bool) -> Vec<Span> {
     out
 }
 
+/// `lsp.ts` opens http(s) links from LSP docs in the browser and leaves
+/// the rest alone.
+fn open_link(href: &str, cx: &mut App) {
+    let href = href.trim();
+    let lower = href.to_ascii_lowercase();
+    if lower.starts_with("http://") || lower.starts_with("https://") {
+        cx.open_url(href);
+    }
+}
+
 fn para_text(p: &Para, s: &DocStyle, size: f32, color: Color, bold: bool) -> Text {
-    let t = Text::from_spans(spans(p, s, size, bold))
+    let mut t = Text::from_spans(spans(p, s, size, bold))
         .ui()
         .size(size)
         .leading(LEADING)
         .color(hsla(color));
+    for (i, (_, st)) in p.runs.iter().enumerate() {
+        if let Some(href) = st.link.clone() {
+            t = t.on_click_span(i, move |_, cx| open_link(&href, cx));
+        }
+    }
+    let t = s.selectable(t);
     if s.pre_line || p.text.contains('\n') {
         t.pre_wrap()
     } else {
@@ -317,7 +357,7 @@ fn code_block(lang: &str, text: &str, s: &DocStyle) -> Div {
         runs.push(span(""));
     }
     card(s.pane_2, s.line, 6.).py(px(8.)).px(px(10.)).child(
-        Text::from_spans(runs)
+        s.selectable(Text::from_spans(runs))
             .mono()
             .size(12.)
             .leading(1.4)
@@ -488,7 +528,8 @@ fn root(blocks: Vec<Block>, s: &DocStyle) -> Div {
 /// Render a [`Doc`] as `docToHTML` would.
 pub fn render_doc(doc: &Doc, s: &DocStyle) -> AnyElement {
     if !doc.markdown {
-        let t = recur_ui::text(doc.value.clone())
+        let t = s
+            .selectable(recur_ui::text(doc.value.clone()))
             .ui()
             .size(s.size)
             .leading(LEADING)

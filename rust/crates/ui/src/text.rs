@@ -1968,19 +1968,19 @@ impl Element for Text {
         window: &mut Window,
         cx: &mut App,
     ) {
-        if let Some((key, _)) = self.selectable
-            && let Some(r) = crate::selection::selected(key, cx)
-        {
-            let g = SelectGeometry {
-                layout: state.layout.clone(),
-                bounds,
-                align: self.align,
-            };
-            let color = crate::selection::highlight(cx);
-            for b in crate::selection::Geometry::rects(&g, r) {
-                window.paint_quad(gpui_kit::fill(b, color));
-            }
-        }
+        let selection = self
+            .selectable
+            .and_then(|(key, _)| crate::selection::selected(key, cx))
+            .map(|r| {
+                let g = SelectGeometry {
+                    layout: state.layout.clone(),
+                    bounds,
+                    align: self.align,
+                };
+                let color = crate::selection::highlight(cx);
+                (crate::selection::Geometry::rects(&g, r), color)
+            });
+        let selection = selection.as_ref().map(|(r, c)| (r.as_slice(), *c));
         let slot = state.layout.borrow();
         let Some(laid) = slot.as_ref() else { return };
         let clip = self.ellipsis || self.clamp.is_some();
@@ -2001,6 +2001,7 @@ impl Element for Text {
                     align,
                     self.mask.as_ref(),
                     &hovered,
+                    selection,
                     window,
                 )
             });
@@ -2012,6 +2013,7 @@ impl Element for Text {
                 align,
                 self.mask.as_ref(),
                 &hovered,
+                selection,
                 window,
             );
         }
@@ -2222,10 +2224,10 @@ impl Element for TextStack {
             let at = (y - f32::from(bounds.origin.y), state.snapped.as_slice());
             if t.ellipsis || t.clamp.is_some() {
                 window.with_content_mask(Some(gpui_kit::ContentMask { bounds: b }), |window| {
-                    paint_lines(laid, b, at, t.align, t.mask.as_ref(), &hovered, window)
+                    paint_lines(laid, b, at, t.align, t.mask.as_ref(), &hovered, None, window)
                 });
             } else {
-                paint_lines(laid, b, at, t.align, t.mask.as_ref(), &hovered, window);
+                paint_lines(laid, b, at, t.align, t.mask.as_ref(), &hovered, None, window);
             }
             y += h;
         }
@@ -2234,6 +2236,7 @@ impl Element for TextStack {
 
 /// Paint laid lines in `bounds`. `at` is the block's offset below the box top and the box's
 /// snapped probes; what has no probe snaps from the rounded box origin.
+#[allow(clippy::too_many_arguments)]
 fn paint_lines(
     laid: &Laid,
     bounds: Bounds<Pixels>,
@@ -2241,6 +2244,7 @@ fn paint_lines(
     align: Align,
     mask: Option<&AlphaMask>,
     hovered_links: &[usize],
+    selection: Option<(&[Bounds<Pixels>], Hsla)>,
     window: &mut Window,
 ) {
     let scale = window.scale_factor();
@@ -2294,6 +2298,15 @@ fn paint_lines(
                 b.border_color,
                 BorderStyle::Solid,
             ));
+        }
+        // The selection paints over inline box backgrounds and under the glyphs, as WebKit's.
+        if let Some((rects, color)) = selection {
+            for r in rects {
+                let mid = f32::from(r.origin.y) + f32::from(r.size.height) / 2.;
+                if (top..top + line.height).contains(&mid) {
+                    window.paint_quad(gpui_kit::fill(*r, color));
+                }
+            }
         }
         let text = &laid.key.content[p.range.clone()];
         let in_order =

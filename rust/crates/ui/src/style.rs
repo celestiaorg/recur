@@ -1340,7 +1340,12 @@ pub fn palette_row(
     cx: &App,
 ) -> Stateful<Div> {
     let t = tokens(cx);
-    let mut d = div().id(id).flex().items_center().cursor_pointer();
+    let mut d = div()
+        .id(id)
+        .flex_none()
+        .flex()
+        .items_center()
+        .cursor_pointer();
     d = if dense {
         d.py(px(3.)).px(px(8.)).rounded(px(5.)).min_h(px(24.))
     } else {

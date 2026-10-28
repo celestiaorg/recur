@@ -7986,6 +7986,7 @@ dependencies = [
  "recur-bundles",
  "recur-code",
  "recur-domain",
+ "recur-editor",
  "recur-forge",
  "recur-http",
  "recur-platform",

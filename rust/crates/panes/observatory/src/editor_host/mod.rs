@@ -933,9 +933,16 @@ impl Observatory {
             EditorEvent::CopyLine(line) => self.copy_line(*line, cx),
             EditorEvent::Cursor { line, col } => {
                 if self.focused_pane == pane {
+                    let shown = self.cursor_status_layout();
                     self.cursor_line = *line;
                     self.cursor_col = *col;
-                    cx.notify();
+                    self.cursor_pos.set((*line, *col, self.cursor_pos.get().2));
+                    if let Some(v) = &self.cursor_status {
+                        App::notify(cx, v.entity_id());
+                    }
+                    if self.cursor_status.is_none() || self.cursor_status_layout() != shown {
+                        cx.notify();
+                    }
                 }
             }
             EditorEvent::GotoDefinition(word) => self.goto_def(word, window, cx),

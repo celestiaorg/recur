@@ -41,8 +41,15 @@ fn domain_symbols(v: Vec<recur_textmate::OutlineSymbol>) -> Vec<OutlineSymbol> {
 }
 
 /// The TextMate outline of an open document: `None` without a grammar, engine document or
-/// rules; `Some((symbols, complete))` otherwise.
-pub(crate) fn tm_outline(pane: Pane, path: &str, cx: &App) -> Option<(Vec<OutlineSymbol>, bool)> {
+/// rules; `Some((symbols, complete))` otherwise. Without `partial` (a poll waiting for the
+/// editor's background fill) it returns no symbols until that fill completes: outlining
+/// tokenizes the filled lines again on the UI thread.
+pub(crate) fn tm_outline(
+    pane: Pane,
+    path: &str,
+    partial: bool,
+    cx: &App,
+) -> Option<(Vec<OutlineSymbol>, bool)> {
     let env = recur_view_core::editor_env::editor_env_peek(cx)?;
     let env = env.read(cx);
     if env.symbol_rules.is_empty() {
@@ -50,6 +57,15 @@ pub(crate) fn tm_outline(pane: Pane, path: &str, cx: &App) -> Option<(Vec<Outlin
     }
     let id = recur_textmate::tm_doc_id_for(pane.key(), path);
     let mut tm = env.tm.borrow_mut();
+    if !partial && tm.fill.is_active(&id) {
+        let e = tm.catalog.engine_mut();
+        if !e.has_doc(&id) {
+            return None;
+        }
+        if e.filled_through(&id) < e.line_count(&id) {
+            return Some((Vec::new(), false));
+        }
+    }
     let (syms, complete) =
         recur_textmate::outline_open_file(tm.catalog.engine_mut(), &id, &env.symbol_rules)?;
     Some((domain_symbols(syms), complete))
@@ -628,7 +644,7 @@ impl Observatory {
     ) -> Task<Option<Vec<OutlineSymbol>>> {
         self.sync_editors(window, cx);
         let path = path.to_string();
-        match tm_outline(pane, &path, cx) {
+        match tm_outline(pane, &path, true, cx) {
             Some((syms, complete)) => {
                 if !complete {
                     self.poll_tm_outline(pane, path, cx);
@@ -643,7 +659,7 @@ impl Observatory {
                         .timer(Duration::from_millis(OUTLINE_RETRY_MS))
                         .await;
                     let _ = this.update(cx, |o, cx| {
-                        if let Some((syms, complete)) = tm_outline(pane, &retry_path, cx) {
+                        if let Some((syms, complete)) = tm_outline(pane, &retry_path, true, cx) {
                             o.apply_tm_outline(pane, &retry_path, syms);
                             if !complete {
                                 o.poll_tm_outline(pane, retry_path.clone(), cx);
@@ -665,7 +681,7 @@ impl Observatory {
                     .timer(Duration::from_millis(OUTLINE_RETRY_MS))
                     .await;
                 let done = this
-                    .update(cx, |o, cx| match tm_outline(pane, &path, cx) {
+                    .update(cx, |o, cx| match tm_outline(pane, &path, false, cx) {
                         Some((syms, true)) => {
                             o.apply_tm_outline(pane, &path, syms);
                             cx.notify();
@@ -1649,7 +1665,7 @@ impl Observatory {
                     o.saved_content = f.content.clone();
                     cx.notify();
                     let quiet = o.quiet_outline(&path, cx);
-                    Some(match tm_outline(Pane::Main, &path, cx) {
+                    Some(match tm_outline(Pane::Main, &path, true, cx) {
                         Some((syms, _)) => Task::ready(Some(syms)),
                         None => quiet,
                     })

@@ -11,7 +11,7 @@ use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
 use recur_ui::guard::Guarded;
 use recur_ui::kbd::kbd;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
-use recur_ui::style::cached_view;
+use recur_ui::style::{cached_view, isolated_view};
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme};
@@ -722,7 +722,7 @@ impl Observatory {
             && let Some(ed) = self.main_editor.clone()
         {
             let off = show_preview || show_diff || self.view_mode == EditorViewMode::Diff;
-            pane = pane.child(surface(cached_view(&ed, fill(), cx), off));
+            pane = pane.child(surface(isolated_view(&ed, fill(), cx), off));
         }
         if let Some((_, fp)) = &self.file_preview {
             pane = pane.child(surface(cached_view(fp, fill(), cx), !show_preview));
@@ -736,7 +736,7 @@ impl Observatory {
                         .flex()
                         .flex_col()
                         .overflow_hidden()
-                        .child(cached_view(m, fill(), cx)),
+                        .child(isolated_view(m, fill(), cx)),
                 );
             }
         } else if self.editor_path.is_empty() && !show_preview {
@@ -850,7 +850,7 @@ impl Observatory {
         if !self.split_path.is_empty()
             && let Some(ed) = self.split_editor.clone()
         {
-            side = side.child(surface(cached_view(&ed, fill(), cx), false));
+            side = side.child(surface(isolated_view(&ed, fill(), cx), false));
         } else {
             side = side.child(obs_empty(
                 "Open a file — it will land in this pane while focused.",
@@ -990,10 +990,7 @@ impl Observatory {
             .child(crate::geometry::probe(&self.bounds.status))
             .when(corner.0, |d| d.pl(px(crate::style::WIN_CORNER_PAD)))
             .when(corner.1, |d| d.pr(px(crate::style::WIN_CORNER_PAD)))
-            .child(w(foot_text(format!(
-                "Ln {}, Col {}",
-                self.cursor_line, self.cursor_col
-            ))))
+            .child(self.render_cursor_status(cx))
             .child(foot_sep(cx))
             .child(
                 linkish("status-lang", None, cx)
@@ -1113,22 +1110,7 @@ impl Observatory {
                 .flex_1()
                 .child(crate::geometry::probe(&self.bounds.status_sp)),
         );
-        let line = self.cursor_line as i64;
-        let sym = {
-            let syms: Vec<recur_textmate::OutlineSymbol> = self
-                .outline
-                .iter()
-                .map(|s| recur_textmate::OutlineSymbol {
-                    name: s.name.clone(),
-                    kind: s.kind.clone(),
-                    line: s.line.max(0) as usize,
-                    end: None,
-                })
-                .collect();
-            recur_textmate::symbol_at_line(&syms, line.max(0) as usize)
-                .map(|s| s.name.trim().to_string())
-        };
-        if let Some(name) = sym {
+        if let Some(name) = self.status_symbol() {
             bar = bar
                 .child(foot_sep(cx))
                 .child(titled(
@@ -1154,6 +1136,60 @@ impl Observatory {
             )
             .child(kbd("⌘⇧O").size(10.5));
         bar.into_any_element()
+    }
+
+    /// The outline symbol at the caret (`recur_textmate::symbol_at_line` over the domain
+    /// symbols, which a caret move reads without copying a language server's whole outline).
+    fn status_symbol(&self) -> Option<String> {
+        let line = |s: &recur_domain::OutlineSymbol| s.line.max(0) as usize;
+        let mut best: Option<&recur_domain::OutlineSymbol> = None;
+        for s in self.outline.iter().filter(|s| line(s) <= self.cursor_line) {
+            if best.is_none_or(|b| line(s) >= line(b)) {
+                best = Some(s);
+            }
+        }
+        best.map(|s| s.name.trim().to_string())
+    }
+
+    /// What the status bar lays out from the caret (the mono text's length and the symbol): a
+    /// change needs the Observatory to render, anything else redraws `Ln, Col` alone.
+    pub(crate) fn cursor_status_layout(&self) -> (usize, Option<String>) {
+        (
+            cursor_label(self.cursor_line, self.cursor_col).len(),
+            self.status_symbol(),
+        )
+    }
+
+    /// `Ln, Col`: sized (and wrapped) by an invisible copy of the text, drawn by the isolated
+    /// view over it.
+    fn render_cursor_status(&mut self, cx: &mut Context<Self>) -> AnyElement {
+        let wrap = self.status_wrap;
+        let label = cursor_label(self.cursor_line, self.cursor_col);
+        self.cursor_pos
+            .set((self.cursor_line, self.cursor_col, wrap));
+        let pos = self.cursor_pos.clone();
+        let view = self
+            .cursor_status
+            .get_or_insert_with(|| {
+                recur_ui::isolated::FieldView::new(
+                    move |_, _| {
+                        let (line, col, wrap) = pos.get();
+                        wrap.text(foot_text(cursor_label(line, col)))
+                            .into_any_element()
+                    },
+                    cx,
+                )
+            })
+            .clone();
+        div()
+            .relative()
+            .child(div().invisible().child(wrap.text(foot_text(label))))
+            .child(recur_ui::isolated::FieldView::element(
+                &view,
+                gpui_kit::StyleRefinement::default().absolute().inset_0(),
+                cx,
+            ))
+            .into_any_element()
     }
 
     /// The review status bar (files, totals, scope, findings).
@@ -1551,6 +1587,10 @@ fn surface(child: AnyElement, off: bool) -> AnyElement {
     } else {
         d.into_any_element()
     }
+}
+
+fn cursor_label(line: usize, col: usize) -> String {
+    format!("Ln {line}, Col {col}")
 }
 
 impl Observatory {

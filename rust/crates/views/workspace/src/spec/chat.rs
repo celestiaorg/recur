@@ -255,8 +255,27 @@ async fn a_tab_switch_draws_the_transcript_where_it_was_left_in_its_first_frame(
         });
         assert_eq!(top, saved[code], "{code}: first frame");
         assert!(stubs.is_empty(), "{code}: stubs in view {stubs:?}");
-        h.settle();
+        // Not `settle`: its whole-window refresh redraws what a mouse move would.
+        h.cx.run_until_parked();
         assert_eq!(scroll_top(&mut h), saved[code], "{code}: settled");
+        // What the settled frame drew is where a full redraw draws it: a restore that moved
+        // the scroller after the switch redrew the transcript too.
+        let keys = chat.read_with(h.cx, |c, _| c.test_block_keys());
+        let drawn = |h: &mut H| -> Vec<_> {
+            keys.iter()
+                .map(|k| {
+                    h.cx.debug_bounds(Box::leak(format!("cblk:{k}").into_boxed_str()))
+                })
+                .collect()
+        };
+        let settled = drawn(&mut h);
+        h.cx.update(|window, _| window.refresh());
+        h.cx.run_until_parked();
+        assert_eq!(scroll_top(&mut h), saved[code], "{code}: after a redraw");
+        assert!(
+            settled == drawn(&mut h),
+            "{code}: the settled frame is stale"
+        );
     }
 }
 

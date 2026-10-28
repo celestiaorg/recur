@@ -1450,6 +1450,7 @@ impl AgentChat {
         self.persist_transcript_ui(cx);
         self.pin_bottom();
         cx.notify();
+        self.notify_transcript(cx);
     }
 
     /// Re-applies the offset after this workbench is shown again.
@@ -1461,6 +1462,7 @@ impl AgentChat {
                 .set_offset(point(px(0.), px(-self.last_scroll_top)));
         }
         cx.notify();
+        self.notify_transcript(cx);
     }
 
     pub(crate) fn pin_bottom(&mut self) {
@@ -1521,6 +1523,7 @@ impl AgentChat {
                         held += 1;
                     }
                     cx.notify();
+                    c.notify_transcript(cx);
                     None
                 });
                 match step {
@@ -1665,7 +1668,10 @@ impl AgentChat {
         self.last_scroll_top = -f32::from(self.scroll.offset().y);
         self.near_bottom = scroller_near_bottom(scroll_h, self.last_scroll_top, client_h);
         self.persist_scroll(cx);
+        // The transcript is its own cached view: notifying the chat alone replays it at the
+        // offset it last drew.
         cx.notify();
+        self.notify_transcript(cx);
     }
 
     /// `refreshChatWindow`: which blocks render live while the transcript is windowed; true

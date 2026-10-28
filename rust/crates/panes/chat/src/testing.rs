@@ -94,6 +94,11 @@ impl AgentChat {
         self.window_chat()
     }
 
+    /// The transcript's block keys (`cblk:{key}` handles), in order.
+    pub fn test_block_keys(&self) -> Vec<String> {
+        self.transcript_model().blocks.1.clone()
+    }
+
     /// Blocks the last transcript render laid out as stubs that the scroller shows.
     pub fn test_stubs_in_view(&self) -> Vec<String> {
         let view = self.scroll.bounds();

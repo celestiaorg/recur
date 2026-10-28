@@ -583,3 +583,75 @@ async fn a_workspace_switch_draws_the_dock_in_its_first_frame(cx: &mut TestAppCo
         s.settle();
     }
 }
+
+/// Switching away from a workspace and back leaves its long transcript where it was, drawn
+/// there without waiting for a hover to redraw the window.
+#[gpui::test]
+async fn a_workspace_switch_back_draws_the_transcript_where_it_was(cx: &mut TestAppContext) {
+    use gpui::{point, px};
+    use recur_services::mock::Reply;
+    use serde_json::{Value, json};
+    let mut items = Vec::new();
+    // Shaped like a real working-copy chat: thinking, tool calls with results, then text.
+    for i in 0..160 {
+        items.push(json!({"role": "user", "kind": "text", "text": format!("question {i}")}));
+        items.push(json!({"role": "assistant", "kind": "thinking", "text": format!("thinking about {i} {}", "hmm ".repeat(i % 30))}));
+        for t in 0..2 {
+            items.push(json!({"role": "assistant", "kind": "tool", "tool": "Bash",
+                "toolInput": format!("rg pattern{i}{t}"), "description": "Search",
+                "input": format!("{{\"command\":\"rg pattern{i}{t}\"}}"),
+                "result": "line\n".repeat(i % 12)}));
+        }
+        let body = format!(
+            "answer {i}\n\n{}\n\n- one\n- two\n\n```rust\nfn f{i}() {{}}\n```",
+            "words ".repeat(i % 60)
+        );
+        items.push(json!({"role": "assistant", "kind": "text", "text": body}));
+    }
+    let opts = MockOptions::default().resolver("WorkspaceChatItems", move |a, _, _| {
+        if a.first().and_then(Value::as_str) == Some(ACTIVE) {
+            Reply::value(Value::Array(items.clone()))
+        } else {
+            Reply::value(json!([]))
+        }
+    });
+    let mut s = boot(cx, |_| {}, opts, |_| {});
+    s.open(ACTIVE);
+    s.settle();
+    let chat = bound(&mut s).read_with(s.cx, |v, _| v.chat().clone());
+    let max = chat.read_with(s.cx, |c, _| f32::from(c.test_scroll().max_offset().y));
+    assert!(max > 2000., "a long transcript ({max})");
+    let top = (max * 0.4).round();
+    s.cx.update(|_, cx| {
+        chat.update(cx, |c, cx| {
+            c.test_scroll().set_offset(point(px(0.), px(-top)));
+            cx.notify();
+        })
+    });
+    s.settle();
+    let at = |s: &mut super::shell::S| {
+        chat.read_with(s.cx, |c, _| -f32::from(c.test_scroll().offset().y))
+    };
+    let saved = at(&mut s);
+    let keys = chat.read_with(s.cx, |c, _| c.test_block_keys());
+    let drawn = |s: &mut super::shell::S| -> Vec<_> {
+        keys.iter()
+            .map(|k| s.cx.debug_bounds(Box::leak(format!("cblk:{k}").into_boxed_str())))
+            .collect()
+    };
+    let before = drawn(&mut s);
+    for id in ["LOOP-2224", ACTIVE] {
+        let state = s.state.clone();
+        s.cx.update(|_, cx| state.update(cx, |st, cx| st.open_workspace(id, false, cx)));
+        // Not `settle`: its whole-window refresh redraws what a mouse move would.
+        s.cx.run_until_parked();
+    }
+    assert_eq!(at(&mut s), saved, "offset after the switch back");
+    let back = drawn(&mut s);
+    s.cx.update(|window, _| window.refresh());
+    s.cx.run_until_parked();
+    assert_eq!(at(&mut s), saved, "offset after a redraw");
+    let redrawn = drawn(&mut s);
+    assert!(back == redrawn, "the frame after the switch back is stale");
+    assert!(back == before, "the transcript moved");
+}

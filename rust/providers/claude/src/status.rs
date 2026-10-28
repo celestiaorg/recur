@@ -7,9 +7,11 @@ use std::time::Duration;
 
 use recur_agent::ProviderStatus;
 use serde::Deserialize;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
 
-use crate::proc::look_path;
+use crate::flags::ProbedModel;
+use crate::proc::{look_path, signal_group};
 
 /// Each CLI probe's budget.
 pub const CMD_TIMEOUT: Duration = Duration::from_secs(5);
@@ -49,6 +51,81 @@ async fn output(bin: &str, args: &[&str]) -> std::io::Result<(Vec<u8>, bool)> {
         .output()
         .await?;
     Ok((out.stdout, out.status.success()))
+}
+
+/// Asks Claude Code which models the logged-in account can use. Only the
+/// initialize handshake is sent, so no turn runs and no tokens are spent.
+/// Empty when claude is missing, times out, or the reply is unreadable; a
+/// timeout kills the whole process group.
+pub async fn probe_models(bin: &str) -> Vec<ProbedModel> {
+    let Ok(mut child) = Command::new(bin)
+        .args([
+            "-p",
+            "--input-format",
+            "stream-json",
+            "--output-format",
+            "stream-json",
+            "--verbose",
+        ])
+        .current_dir(std::env::temp_dir())
+        .env_remove("LINEAR_API_KEY")
+        .process_group(0)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+    else {
+        return Vec::new();
+    };
+    let (Some(mut stdin), Some(mut stdout)) = (child.stdin.take(), child.stdout.take()) else {
+        return Vec::new();
+    };
+    let read = async move {
+        let init = r#"{"type":"control_request","request_id":"models","request":{"subtype":"initialize"}}"#;
+        let _ = stdin.write_all(format!("{init}\n").as_bytes()).await;
+        drop(stdin);
+        let mut out = Vec::new();
+        let _ = stdout.read_to_end(&mut out).await;
+        out
+    };
+    match tokio::time::timeout(CMD_TIMEOUT, read).await {
+        Ok(out) => parse_init_models(&out),
+        Err(_) => {
+            if let Some(pid) = child.id() {
+                signal_group(pid, rustix::process::Signal::KILL);
+            }
+            Vec::new()
+        }
+    }
+}
+
+/// The models of the `initialize` control response in stream-json output.
+pub fn parse_init_models(out: &[u8]) -> Vec<ProbedModel> {
+    #[derive(Default, Deserialize)]
+    #[serde(default)]
+    struct Line {
+        #[serde(rename = "type")]
+        kind: String,
+        response: Response,
+    }
+    #[derive(Default, Deserialize)]
+    #[serde(default)]
+    struct Response {
+        request_id: String,
+        response: Models,
+    }
+    #[derive(Default, Deserialize)]
+    #[serde(default)]
+    struct Models {
+        models: Vec<ProbedModel>,
+    }
+    serde_json::Deserializer::from_slice(out)
+        .into_iter::<Line>()
+        .map_while(Result::ok)
+        .find(|l| l.kind == "control_response" && l.response.request_id == "models")
+        .map(|l| l.response.response.models)
+        .unwrap_or_default()
 }
 
 /// Turns path, version and the auth-status output into the card.
@@ -179,6 +256,19 @@ pub fn detect_agent(st: &ProviderStatus) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn init_models() {
+        let out = br#"{"type":"system","subtype":"init"}
+{"type":"control_response","response":{"request_id":"models","response":{"models":[{"value":"default","resolvedModel":"claude-opus-5-5","displayName":"Default"},{"value":"claude-mythos-5-1","displayName":"Mythos 5.1"}]}}}
+"#;
+        let got = parse_init_models(out);
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0].resolved_model, "claude-opus-5-5");
+        assert_eq!(got[1].value, "claude-mythos-5-1");
+        assert!(parse_init_models(b"not json").is_empty());
+        assert!(parse_init_models(b"").is_empty());
+    }
 
     #[test]
     fn auth_status_logged_in() {

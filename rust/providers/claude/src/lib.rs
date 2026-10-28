@@ -50,6 +50,9 @@ impl Default for ClaudeConfig {
 /// The production Claude Code provider.
 pub struct ClaudeProvider {
     cfg: ClaudeConfig,
+    /// The catalog from the last probe that reported models, so
+    /// account-only models do not flicker out when a probe fails.
+    probed: parking_lot::Mutex<Option<Vec<ModelChoice>>>,
 }
 
 const CAPS: ProviderCaps = ProviderCaps {
@@ -70,7 +73,19 @@ const CAPS: ProviderCaps = ProviderCaps {
 
 impl ClaudeProvider {
     pub fn new(cfg: ClaudeConfig) -> Self {
-        Self { cfg }
+        Self {
+            cfg,
+            probed: parking_lot::Mutex::default(),
+        }
+    }
+
+    /// The last good probed catalog, probing only until one succeeds
+    /// (schedule validation runs on every save).
+    pub async fn known_models(&self, settings: &Settings) -> Vec<ModelChoice> {
+        if let Some(last) = self.probed.lock().clone() {
+            return last;
+        }
+        self.models(settings).await.unwrap_or_default()
     }
 
     fn bin(&self) -> &str {
@@ -108,12 +123,20 @@ impl Provider for ClaudeProvider {
         status::probe(self.bin()).await
     }
 
-    async fn models(&self, _settings: &Settings) -> Result<Vec<ModelChoice>, ProviderError> {
-        Ok(flags::catalog())
+    /// The pinned list plus any extra models the local CLI reports for the
+    /// account.
+    async fn models(&self, settings: &Settings) -> Result<Vec<ModelChoice>, ProviderError> {
+        let probed = status::probe_models(self.bin()).await;
+        if probed.is_empty() {
+            return Ok(self.cached_models(settings));
+        }
+        let models = flags::with_probed(&probed);
+        *self.probed.lock() = Some(models.clone());
+        Ok(models)
     }
 
     fn cached_models(&self, _settings: &Settings) -> Vec<ModelChoice> {
-        flags::catalog()
+        self.probed.lock().clone().unwrap_or_else(flags::catalog)
     }
 
     fn resolve_model(&self, model: &str, flags: &Flags) -> String {
@@ -161,6 +184,49 @@ impl Provider for ClaudeProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn script(dir: &std::path::Path, body: &str) -> String {
+        use std::os::unix::fs::PermissionsExt;
+        let path = dir.join("claude");
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path.to_string_lossy().into_owned()
+    }
+
+    /// A failed probe keeps the last good list; `known_models` spawns
+    /// claude only until a probe succeeds.
+    #[tokio::test]
+    async fn probed_models_survive_failures_and_cache() {
+        let dir = tempfile::tempdir().unwrap();
+        let ran = dir.path().join("ran");
+        let reply = r#"{"type":"control_response","response":{"request_id":"models","response":{"models":[{"value":"claude-mythos-5-1","displayName":"Mythos 5.1"}]}}}"#;
+        let bin = script(
+            dir.path(),
+            &format!(
+                "touch '{}'\n[ -f '{}.off' ] || echo '{reply}'",
+                ran.display(),
+                ran.display()
+            ),
+        );
+        let p = ClaudeProvider::new(ClaudeConfig {
+            bin,
+            ..Default::default()
+        });
+        let set = Settings::default();
+        let mythos = |m: &[ModelChoice]| m.iter().any(|m| m.label == "Mythos 5.1");
+
+        assert!(mythos(&p.known_models(&set).await));
+        assert!(ran.exists());
+
+        std::fs::remove_file(&ran).unwrap();
+        assert!(mythos(&p.known_models(&set).await));
+        assert!(!ran.exists(), "spawned despite a cached probe");
+
+        std::fs::write(ran.with_extension("off"), "").unwrap();
+        assert!(mythos(&p.models(&set).await.unwrap()));
+        assert!(ran.exists());
+        assert!(mythos(&p.cached_models(&set)));
+    }
 
     #[test]
     fn availability_and_identity() {

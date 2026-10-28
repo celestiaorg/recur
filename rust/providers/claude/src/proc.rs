@@ -57,7 +57,7 @@ pub async fn kill_group(pid: u32, reaped: &mut Reaped) {
     }
 }
 
-fn signal_group(pid: u32, sig: Signal) {
+pub fn signal_group(pid: u32, sig: Signal) {
     // process_group(0) makes pgid == pid.
     if let Some(pgid) = i32::try_from(pid).ok().and_then(Pid::from_raw) {
         let _ = kill_process_group(pgid, sig);

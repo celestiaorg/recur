@@ -369,6 +369,40 @@
    ]
   },
   {
+   "ref": "claude-code/claude-haiku-5-5",
+   "label": "Haiku 5.5",
+   "flags": [
+    {
+     "id": "effort",
+     "label": "Effort",
+     "options": [
+      {
+       "value": "low",
+       "label": "Low"
+      },
+      {
+       "value": "medium",
+       "label": "Medium"
+      },
+      {
+       "value": "high",
+       "label": "High",
+       "default": true
+      },
+      {
+       "value": "xhigh",
+       "label": "Extra High"
+      },
+      {
+       "value": "max",
+       "label": "Max"
+      }
+     ]
+    }
+   ],
+   "contextWindow": 1000000
+  },
+  {
    "ref": "claude-code/claude-haiku-4-5-20251001",
    "label": "Haiku 4.5",
    "flags": [

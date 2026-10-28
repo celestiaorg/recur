@@ -2,6 +2,7 @@
 //! Claude branch of `app/model_catalog.go`; Claude Code has no catalogue API).
 
 use recur_agent::{FlagDimension, FlagOption, Flags, ModelChoice};
+use serde::Deserialize;
 
 fn flag<'a>(flags: &'a Flags, key: &str) -> &'a str {
     flags.get(key).map_or("", String::as_str)
@@ -57,9 +58,15 @@ fn always_1m(model: &str) -> bool {
             | "claude-opus-5"
             | "claude-opus-4-8"
             | "claude-opus-4-7"
-    ) || ["claude-sonnet-5", "claude-fable-5", "claude-opus-5"]
-        .iter()
-        .any(|p| id.starts_with(p))
+    ) || [
+        "claude-sonnet-5",
+        "claude-fable-5",
+        "claude-mythos-5",
+        "claude-haiku-5",
+        "claude-opus-5",
+    ]
+    .iter()
+    .any(|p| id.starts_with(p))
 }
 
 /// Models that still expose a 200K↔1M toggle through the `[1m]` suffix.
@@ -142,20 +149,8 @@ fn context_dim() -> FlagDimension {
 /// The Claude Code picker list. Every row is a pinned id, never an alias, so
 /// a saved choice keeps meaning the same model. Extended context is a flag
 /// only where Claude Code still distinguishes it ([`resolve_model`] applies
-/// `[1m]` at run time); Sonnet 5, Fable 5.1 and Opus 4.7+ always run at 1M.
+/// `[1m]` at run time); Sonnet 5, Fable 5.1, Opus 4.7+ and Haiku 5.5 always run at 1M.
 pub fn catalog() -> Vec<ModelChoice> {
-    let row = |id: &str, label: &str, with_context: bool, context_window: i64| {
-        let mut flags = vec![effort_dim()];
-        if with_context {
-            flags.push(context_dim());
-        }
-        ModelChoice {
-            model_ref: format!("claude-code/{id}"),
-            label: label.into(),
-            flags,
-            context_window,
-        }
-    };
     vec![
         row("claude-fable-5-1", "Fable 5.1", false, 1_000_000),
         row("claude-fable-5", "Fable 5", false, 1_000_000),
@@ -167,8 +162,55 @@ pub fn catalog() -> Vec<ModelChoice> {
         row("claude-sonnet-5-5", "Sonnet 5.5", false, 1_000_000),
         row("claude-sonnet-5", "Sonnet 5", false, 1_000_000),
         row("claude-sonnet-4-6", "Sonnet 4.6", true, 0),
+        row("claude-haiku-5-5", "Haiku 5.5", false, 1_000_000),
         row("claude-haiku-4-5-20251001", "Haiku 4.5", false, 200_000),
     ]
+}
+
+fn row(id: &str, label: &str, with_context: bool, context_window: i64) -> ModelChoice {
+    let mut flags = vec![effort_dim()];
+    if with_context {
+        flags.push(context_dim());
+    }
+    ModelChoice {
+        model_ref: format!("claude-code/{id}"),
+        label: label.into(),
+        flags,
+        context_window,
+    }
+}
+
+/// One model the CLI's stream-json initialize handshake reports.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ProbedModel {
+    pub value: String,
+    pub resolved_model: String,
+    pub display_name: String,
+}
+
+/// [`catalog`] plus the models Claude Code reports for this account that
+/// the pinned list lacks (e.g. Mythos 5.1 on accounts with access). Aliases
+/// resolve to pinned ids, so they dedupe against existing rows.
+pub fn with_probed(probed: &[ProbedModel]) -> Vec<ModelChoice> {
+    let mut out = catalog();
+    for p in probed {
+        let id = match p.resolved_model.trim() {
+            "" => p.value.trim(),
+            id => id,
+        };
+        let id = id.split_once('[').map_or(id, |(head, _)| head);
+        let model_ref = format!("claude-code/{id}");
+        if !id.starts_with("claude-") || out.iter().any(|m| m.model_ref == model_ref) {
+            continue;
+        }
+        let label = match p.display_name.trim() {
+            "" => id,
+            l => l,
+        };
+        out.push(row(id, label, false, context_window(id, &Flags::new())));
+    }
+    out
 }
 
 #[cfg(test)]
@@ -193,6 +235,8 @@ mod tests {
             ("claude-code/opus", none.clone(), 1_000_000),
             ("claude-code/claude-opus-5", none.clone(), 1_000_000),
             ("claude-fable-5-1", none.clone(), 1_000_000),
+            ("claude-mythos-5-1", none.clone(), 1_000_000),
+            ("claude-haiku-5-5", none.clone(), 1_000_000),
             ("claude-sonnet-4-6", flags(&[("context", "200k")]), 200_000),
             ("claude-opus-4-6", none.clone(), 200_000),
             ("claude-sonnet-4-6", flags(&[("context", "1m")]), 1_000_000),
@@ -200,6 +244,33 @@ mod tests {
         ] {
             assert_eq!(context_window(model, &f), want, "{model} {f:?}");
         }
+    }
+
+    /// Models Claude Code reports beyond the pinned list (Mythos on accounts
+    /// with access) join the picker; aliases, pinned ids and `[1m]` suffixes
+    /// do not duplicate rows.
+    #[test]
+    fn probed_models_add_account_only_models() {
+        let p = |value: &str, resolved: &str, label: &str| ProbedModel {
+            value: value.into(),
+            resolved_model: resolved.into(),
+            display_name: label.into(),
+        };
+        let pinned = catalog().len();
+        let models = with_probed(&[
+            p("default", "claude-opus-5-5", "Default (recommended)"),
+            p("claude-fable-5", "claude-fable-5", "Fable 5"),
+            p("opus[1m]", "claude-opus-5-5[1m]", "Opus"),
+            p("mythos[1m]", "claude-mythos-5-1[1m]", "Mythos 5.1"),
+            p("gpt-5", "", ""),
+        ]);
+        assert_eq!(models.len(), pinned + 1);
+        let last = models.last().unwrap();
+        assert_eq!(last.model_ref, "claude-code/claude-mythos-5-1");
+        assert_eq!(last.label, "Mythos 5.1");
+        assert_eq!(last.context_window, 1_000_000);
+        assert!(!last.flags.is_empty());
+        assert_eq!(with_probed(&[]).len(), pinned);
     }
 
     #[test]

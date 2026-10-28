@@ -314,7 +314,7 @@ impl SettingsService for AppServices {
     }
 
     async fn list_model_catalog(&self) -> Result<Vec<ModelGroup>> {
-        rt!(self, => |s| Ok(s.model_catalog().await))
+        rt!(self, => |s| Ok(s.model_catalog(true).await))
     }
 
     async fn list_monospace_fonts(&self) -> Result<Vec<String>> {

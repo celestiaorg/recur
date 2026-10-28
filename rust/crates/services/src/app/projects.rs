@@ -19,7 +19,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::rt::{blocking, rt};
 use super::{AppServices, err};
-use crate::api::{ProjectsService, SettingsService};
+use crate::api::ProjectsService;
 use crate::{Error, Result};
 
 /// Parallel `is_repo` probes when listing projects, so boot does not spawn
@@ -283,7 +283,7 @@ impl AppServices {
     }
 
     async fn save_scheduled_prompt_at(&self, p: ScheduledPrompt) -> Result<ScheduledPrompt> {
-        let catalog = self.list_model_catalog().await?;
+        let catalog = self.model_catalog(false).await;
         if catalog
             .iter()
             .any(|g| g.models.iter().any(|m| m.model_ref == p.model))

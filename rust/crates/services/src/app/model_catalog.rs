@@ -135,12 +135,34 @@ pub fn provider_enablement_changed(a: &Settings, b: &Settings) -> bool {
 
 impl AppServices {
     /// Go `ListModelCatalog`: Cursor and Codex list live (a throwaway bridge
-    /// or app-server); each provider remembers the result for remaps.
-    pub(crate) async fn model_catalog(&self) -> Vec<ModelGroup> {
+    /// or app-server); each provider remembers the result for remaps. Claude
+    /// Code's pinned list gains the models the local CLI reports for the
+    /// account; `probe_claude = false` reuses the last good probe, spawning
+    /// claude only until one succeeds.
+    pub(crate) async fn model_catalog(&self, probe_claude: bool) -> Vec<ModelGroup> {
         let set = self.store().settings();
-        let cursor = self.providers.cursor.models(&set).await.unwrap_or_default();
-        let codex = self.providers.codex.models(&set).await.unwrap_or_default();
-        build_model_catalog(&set, cursor, codex)
+        let claude = async {
+            if !set.provider_enabled(PROVIDER_CLAUDE_CODE) {
+                Vec::new()
+            } else if probe_claude {
+                self.providers.claude.models(&set).await.unwrap_or_default()
+            } else {
+                self.providers.claude.known_models(&set).await
+            }
+        };
+        let rest = async {
+            let cursor = self.providers.cursor.models(&set).await.unwrap_or_default();
+            let codex = self.providers.codex.models(&set).await.unwrap_or_default();
+            build_model_catalog(&set, cursor, codex)
+        };
+        let (claude, mut groups) = tokio::join!(claude, rest);
+        if let Some(g) = groups
+            .first_mut()
+            .filter(|g| g.provider == PROVIDER_CLAUDE_CODE)
+        {
+            g.models = claude;
+        }
+        groups
     }
 
     /// The catalog a Settings save remaps slots with: the remembered lists

@@ -711,6 +711,7 @@ impl IntoElement for Flow {
 struct Placed(Rc<Cell<Option<f32>>>);
 
 pub struct FlowState {
+    node: LayoutId,
     layout: Rc<RefCell<Option<FlowLayout>>>,
     placed: Placed,
     placed_at: Option<f32>,
@@ -846,9 +847,11 @@ impl Element for Flow {
             align_items: Some(gpui_kit::AlignItems::FlexStart),
             ..Default::default()
         };
+        let node = window.request_layout(style, nodes, cx);
         (
-            window.request_layout(style, nodes, cx),
+            node,
             FlowState {
+                node,
                 layout,
                 placed,
                 placed_at,
@@ -892,8 +895,8 @@ impl Element for Flow {
         }
         // The owning view lays out again, not the whole window: a transcript mounts flows as
         // it scrolls.
-        if state.placed_at != Some(width) {
-            state.placed.0.set(Some(width));
+        state.placed.0.set(Some(width));
+        if state.placed_at.is_some_and(|w| w != width) {
             cx.notify(window.current_view());
         }
         if let Some(key) = self.selectable {
@@ -903,6 +906,21 @@ impl Element for Flow {
                 bounds,
             });
             recur_ui::selection::register(key, "\n", bounds, geom, window, cx);
+        }
+        if state.placed_at.is_none() {
+            // A new element (a parked shell laid out again) has nothing placed: place the
+            // children now, laid out once as their own root, so its first frame is drawn.
+            let l = state.layout.borrow().clone();
+            let children = l.map(|l| self.place(&l, window)).unwrap_or_default();
+            let root = div().relative().size_full().children(children);
+            state.children = vec![recur_ui::layout_root::prepaint_over(
+                state.node,
+                bounds,
+                root.into_any_element(),
+                window,
+                cx,
+            )];
+            return;
         }
         for c in &mut state.children {
             c.prepaint(window, cx);

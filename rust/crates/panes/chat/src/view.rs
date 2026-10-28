@@ -411,7 +411,7 @@ impl AgentChat {
                     gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
                     cx,
                 ))
-                .child(fit.view(&dock, crate::composer::composer_min_height(), window, cx));
+                .child(fit.view(&dock, window, cx));
         }
         if let Some(lb) = &self.lightbox {
             root = root.child(lb.clone());

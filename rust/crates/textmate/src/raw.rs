@@ -1,23 +1,23 @@
 //! Raw grammar model (`rawGrammar.ts`) and `parseRawGrammar`.
 //!
-//! Rules are shared by `Rc` the way JS shares object references: a rule
+//! Rules are shared by `Arc` the way JS shares object references: a rule
 //! reachable from several repositories is one object and is compiled once
 //! (its id is cached on the rule). Each `Grammar` works on its own deep copy
 //! (`initGrammar` clones), so ids never leak between grammars.
 
-use std::cell::Cell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use crate::node::Node;
 use crate::plist::{PlistError, parse_plist};
 
-pub type RawRepository = Rc<HashMap<String, Rc<RawRule>>>;
+pub type RawRepository = Arc<HashMap<String, Arc<RawRule>>>;
 
 #[derive(Default, Debug)]
 pub struct RawRule {
     /// Compiled rule id within the owning grammar (0 = not compiled yet).
-    pub(crate) id: Cell<u32>,
+    pub(crate) id: AtomicU32,
     pub include: Option<String>,
     pub name: Option<String>,
     pub content_name: Option<String>,
@@ -29,22 +29,22 @@ pub struct RawRule {
     pub end_captures: Option<RawCaptures>,
     pub while_: Option<String>,
     pub while_captures: Option<RawCaptures>,
-    pub patterns: Option<Vec<Rc<RawRule>>>,
+    pub patterns: Option<Vec<Arc<RawRule>>>,
     pub repository: Option<RawRepository>,
     pub apply_end_pattern_last: bool,
 }
 
 /// Capture rules keyed by the original property name, in JS iteration order.
 #[derive(Default, Debug, Clone)]
-pub struct RawCaptures(pub Vec<(String, Rc<RawRule>)>);
+pub struct RawCaptures(pub Vec<(String, Arc<RawRule>)>);
 
 #[derive(Debug)]
 pub struct RawGrammar {
     pub repository: RawRepository,
     pub scope_name: String,
-    pub patterns: Option<Vec<Rc<RawRule>>>,
+    pub patterns: Option<Vec<Arc<RawRule>>>,
     /// Injection selector -> rule, in JS iteration order.
-    pub injections: Option<Vec<(String, Rc<RawRule>)>>,
+    pub injections: Option<Vec<(String, Arc<RawRule>)>>,
     pub injection_selector: Option<String>,
     pub file_types: Vec<String>,
     pub name: Option<String>,
@@ -65,12 +65,12 @@ fn opt_string(n: &Node, key: &str) -> Option<String> {
     n.str_field(key).map(str::to_string)
 }
 
-fn rule_list(n: Option<&Node>) -> Option<Vec<Rc<RawRule>>> {
+fn rule_list(n: Option<&Node>) -> Option<Vec<Arc<RawRule>>> {
     match n {
         Some(Node::Array(items)) => Some(
             items
                 .iter()
-                .map(|i| Rc::new(RawRule::from_node(i)))
+                .map(|i| Arc::new(RawRule::from_node(i)))
                 .collect(),
         ),
         _ => None,
@@ -82,7 +82,7 @@ fn captures(n: Option<&Node>) -> Option<RawCaptures> {
         Some(node @ (Node::Map(_) | Node::Array(_))) => Some(RawCaptures(
             node.js_entries()
                 .into_iter()
-                .map(|(k, v)| (k, Rc::new(RawRule::from_node(v))))
+                .map(|(k, v)| (k, Arc::new(RawRule::from_node(v))))
                 .collect(),
         )),
         _ => None,
@@ -91,10 +91,10 @@ fn captures(n: Option<&Node>) -> Option<RawCaptures> {
 
 fn repository(n: Option<&Node>) -> Option<RawRepository> {
     match n {
-        Some(Node::Map(entries)) => Some(Rc::new(
+        Some(Node::Map(entries)) => Some(Arc::new(
             entries
                 .iter()
-                .map(|(k, v)| (k.clone(), Rc::new(RawRule::from_node(v))))
+                .map(|(k, v)| (k.clone(), Arc::new(RawRule::from_node(v))))
                 .collect(),
         )),
         _ => None,
@@ -104,7 +104,7 @@ fn repository(n: Option<&Node>) -> Option<RawRepository> {
 impl RawRule {
     pub fn from_node(n: &Node) -> RawRule {
         RawRule {
-            id: Cell::new(0),
+            id: AtomicU32::new(0),
             include: opt_string(n, "include"),
             name: opt_string(n, "name"),
             content_name: opt_string(n, "contentName"),
@@ -127,13 +127,13 @@ impl RawRule {
             c.as_ref().map(|c| {
                 RawCaptures(
                     c.0.iter()
-                        .map(|(k, r)| (k.clone(), Rc::new(r.deep_clone())))
+                        .map(|(k, r)| (k.clone(), Arc::new(r.deep_clone())))
                         .collect(),
                 )
             })
         };
         RawRule {
-            id: Cell::new(self.id.get()),
+            id: AtomicU32::new(self.id.load(Ordering::Relaxed)),
             include: self.include.clone(),
             name: self.name.clone(),
             content_name: self.content_name.clone(),
@@ -148,16 +148,16 @@ impl RawRule {
             patterns: self
                 .patterns
                 .as_ref()
-                .map(|p| p.iter().map(|r| Rc::new(r.deep_clone())).collect()),
-            repository: self.repository.as_ref().map(|r| Rc::new(clone_repo(r))),
+                .map(|p| p.iter().map(|r| Arc::new(r.deep_clone())).collect()),
+            repository: self.repository.as_ref().map(|r| Arc::new(clone_repo(r))),
             apply_end_pattern_last: self.apply_end_pattern_last,
         }
     }
 }
 
-fn clone_repo(r: &HashMap<String, Rc<RawRule>>) -> HashMap<String, Rc<RawRule>> {
+fn clone_repo(r: &HashMap<String, Arc<RawRule>>) -> HashMap<String, Arc<RawRule>> {
     r.iter()
-        .map(|(k, v)| (k.clone(), Rc::new(v.deep_clone())))
+        .map(|(k, v)| (k.clone(), Arc::new(v.deep_clone())))
         .collect()
 }
 
@@ -170,7 +170,7 @@ impl RawGrammar {
             Some(node @ Node::Map(_)) => Some(
                 node.js_entries()
                     .into_iter()
-                    .map(|(k, v)| (k, Rc::new(RawRule::from_node(v))))
+                    .map(|(k, v)| (k, Arc::new(RawRule::from_node(v))))
                     .collect(),
             ),
             _ => None,
@@ -195,19 +195,19 @@ impl RawGrammar {
     }
 
     /// `initGrammar`: a deep copy with `$self` and `$base` in the repository.
-    pub(crate) fn init(&self, base: Option<Rc<RawRule>>) -> RawGrammar {
+    pub(crate) fn init(&self, base: Option<Arc<RawRule>>) -> RawGrammar {
         let patterns = self.patterns.as_ref().map(|p| {
             p.iter()
-                .map(|r| Rc::new(r.deep_clone()))
+                .map(|r| Arc::new(r.deep_clone()))
                 .collect::<Vec<_>>()
         });
         let injections = self.injections.as_ref().map(|inj| {
             inj.iter()
-                .map(|(k, r)| (k.clone(), Rc::new(r.deep_clone())))
+                .map(|(k, r)| (k.clone(), Arc::new(r.deep_clone())))
                 .collect()
         });
         let mut repo = clone_repo(&self.repository);
-        let self_rule = Rc::new(RawRule {
+        let self_rule = Arc::new(RawRule {
             patterns: patterns.clone(),
             name: Some(self.scope_name.clone()),
             ..RawRule::default()
@@ -215,7 +215,7 @@ impl RawGrammar {
         repo.insert("$self".into(), self_rule.clone());
         repo.insert("$base".into(), base.unwrap_or(self_rule));
         RawGrammar {
-            repository: Rc::new(repo),
+            repository: Arc::new(repo),
             scope_name: self.scope_name.clone(),
             patterns,
             injections,
@@ -275,13 +275,15 @@ mod tests {
         let b = g.init(None);
         a.repository["$self"].patterns.as_ref().unwrap()[0]
             .id
-            .set(7);
+            .store(7, Ordering::Relaxed);
         assert_eq!(
-            b.repository["$self"].patterns.as_ref().unwrap()[0].id.get(),
+            b.repository["$self"].patterns.as_ref().unwrap()[0]
+                .id
+                .load(Ordering::Relaxed),
             0
         );
-        assert!(Rc::ptr_eq(&a.repository["$self"], &a.repository["$base"]));
-        assert!(Rc::ptr_eq(
+        assert!(Arc::ptr_eq(&a.repository["$self"], &a.repository["$base"]));
+        assert!(Arc::ptr_eq(
             &a.repository["$self"].patterns.as_ref().unwrap()[0],
             &a.patterns.as_ref().unwrap()[0]
         ));

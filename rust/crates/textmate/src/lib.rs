@@ -48,10 +48,10 @@ pub use delta::{
     splice_line_map, tm_doc_fingerprint, tm_doc_id_for,
 };
 pub use engine::{
-    FillProgress, GrammarSourceLoader, GrammarSourceText, MAX_IDLE_DOCS, MAX_IDLE_LINES,
-    ScopeToken, TmEngine, ViewportMode, ViewportResult,
+    FillChunk, FillJob, FillProgress, GrammarSourceLoader, GrammarSourceText, MAX_IDLE_DOCS,
+    MAX_IDLE_LINES, ScopeToken, TmEngine, ViewportMode, ViewportResult,
 };
-pub use fill::{FillListener, FillSubscription, SLICE as FILL_SLICE, TmFill};
+pub use fill::{FillListener, FillSubscription, TmFill};
 pub use fold::{
     CompiledFoldMarkers, FoldRange, TmFoldMarkers, compile_fold_markers, fold_by_indent,
     fold_by_markers, textmate_fold,

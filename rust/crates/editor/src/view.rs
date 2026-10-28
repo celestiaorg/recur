@@ -23,7 +23,8 @@ use crate::bindings::{Cmd, code_editor_keymap, merge_editor_keymap};
 use crate::clock::now_ms;
 use crate::display::{BlockWidget, Layout, LayoutConfig, LayoutView, TextMeasure};
 use crate::highlight::{
-    FILL_IDLE_BUDGET, FILL_IDLE_DELAY_MS, Highlighter, PaintSource, SharedTextMate, viewport_window,
+    FILL_CHUNK_BUDGET, FILL_IDLE_DELAY_MS, Highlighter, PaintSource, SharedTextMate,
+    viewport_window,
 };
 use crate::history_cache::EDITOR_HISTORY_MIN_DEPTH;
 use crate::keymap::{Keymap, Platform};
@@ -952,10 +953,27 @@ impl EditorView {
         }
         if needs.fill && self.fill_task.is_none() {
             self.fill_task = Some(cx.spawn_in(window, async move |this, cx| {
+                let mut idle = true;
                 loop {
-                    cx.background_executor()
-                        .timer(Duration::from_millis(FILL_IDLE_DELAY_MS))
-                        .await;
+                    if idle {
+                        cx.background_executor()
+                            .timer(Duration::from_millis(FILL_IDLE_DELAY_MS))
+                            .await;
+                    }
+                    let Ok(Some(job)) =
+                        this.update(cx, |v, _| v.highlighter.as_ref().map(Highlighter::fill_job))
+                    else {
+                        break;
+                    };
+                    let chunk = match job {
+                        Some(job) => Some(
+                            cx.background_executor()
+                                .spawn(async move { job.run(FILL_CHUNK_BUDGET) })
+                                .await,
+                        ),
+                        None => None,
+                    };
+                    idle = chunk.is_none();
                     let more = this
                         .update_in(cx, |v, window, cx| {
                             let win = v.highlight_window(window);
@@ -963,7 +981,7 @@ impl EditorView {
                             let Some(h) = v.highlighter.as_mut() else {
                                 return false;
                             };
-                            let needs = h.run_fill(&state, win, FILL_IDLE_BUDGET);
+                            let needs = h.apply_fill(chunk, &state, win);
                             if needs.redraw {
                                 cx.notify();
                             }

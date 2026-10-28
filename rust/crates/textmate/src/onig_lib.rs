@@ -6,8 +6,9 @@
 //! `onig_regset_search(..., ONIG_REGSET_POSITION_LEAD)`. Offsets are byte
 //! offsets into the searched string.
 
-use std::cell::{Cell, RefCell};
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::cell::RefCell;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
 use onig::{Regex, RegexOptions, Region, SearchOptions, Syntax};
 
@@ -74,13 +75,18 @@ struct LastSearch {
 struct CachedRegex {
     regex: Regex,
     has_g_anchor: bool,
-    last: RefCell<Option<LastSearch>>,
+    last: Mutex<Option<LastSearch>>,
 }
 
+/// Shared across threads (a grammar's scanners serve the UI and background
+/// tokenizers); the search scratch is per thread.
 pub struct OnigScanner {
     regexes: Vec<CachedRegex>,
-    region: RefCell<Region>,
-    searches: Cell<u64>,
+    searches: AtomicU64,
+}
+
+thread_local! {
+    static REGION: RefCell<Region> = RefCell::new(Region::new());
 }
 
 fn has_g_anchor(pattern: &str) -> bool {
@@ -105,20 +111,19 @@ impl OnigScanner {
             regexes.push(CachedRegex {
                 has_g_anchor: has_g_anchor(p),
                 regex,
-                last: RefCell::new(None),
+                last: Mutex::new(None),
             });
         }
         Ok(Self {
             regexes,
-            region: RefCell::new(Region::new()),
-            searches: Cell::new(0),
+            searches: AtomicU64::new(0),
         })
     }
 
     fn search_one(&self, i: usize, s: &OnigString, position: usize) -> Option<Vec<CaptureIndex>> {
         let r = &self.regexes[i];
         if !r.has_g_anchor
-            && let Some(last) = r.last.borrow().as_ref()
+            && let Some(last) = r.last.lock().unwrap().as_ref()
             && last.string_id == s.id
             && last.position <= position
         {
@@ -128,30 +133,31 @@ impl OnigScanner {
                 Some(_) => {}
             }
         }
-        self.searches.set(self.searches.get() + 1);
+        self.searches.fetch_add(1, Ordering::Relaxed);
         let text = s.content();
-        let mut region = self.region.borrow_mut();
-        region.clear();
-        let found = r.regex.search_with_options(
-            text,
-            position,
-            text.len(),
-            SearchOptions::SEARCH_OPTION_NONE,
-            Some(&mut region),
-        );
-        let result = found.map(|_| {
-            (0..region.len())
-                .map(|g| match region.pos(g) {
-                    Some((start, end)) => CaptureIndex { start, end },
-                    None => CaptureIndex {
-                        start: text.len(),
-                        end: text.len(),
-                    },
-                })
-                .collect::<Vec<_>>()
+        let result = REGION.with_borrow_mut(|region| {
+            region.clear();
+            let found = r.regex.search_with_options(
+                text,
+                position,
+                text.len(),
+                SearchOptions::SEARCH_OPTION_NONE,
+                Some(region),
+            );
+            found.map(|_| {
+                (0..region.len())
+                    .map(|g| match region.pos(g) {
+                        Some((start, end)) => CaptureIndex { start, end },
+                        None => CaptureIndex {
+                            start: text.len(),
+                            end: text.len(),
+                        },
+                    })
+                    .collect::<Vec<_>>()
+            })
         });
         if !r.has_g_anchor {
-            *r.last.borrow_mut() = Some(LastSearch {
+            *r.last.lock().unwrap() = Some(LastSearch {
                 string_id: s.id,
                 position,
                 result: result.clone(),
@@ -186,7 +192,7 @@ impl OnigScanner {
 
     /// Regex executions so far (cache misses). Tests use it to verify caching.
     pub fn search_count(&self) -> u64 {
-        self.searches.get()
+        self.searches.load(Ordering::Relaxed)
     }
 }
 

@@ -1,14 +1,11 @@
-//! Idle-time background tokenization sweep (`tm-fill.ts`; VS Code's
-//! DefaultBackgroundTokenizer). The host calls [`TmFill::run_idle`] from its
-//! idle scheduling with a time-remaining probe; each call sweeps in ~1.5ms
-//! slices and fans the changed line range out to the document's listeners.
+//! Background tokenization sweep (`tm-fill.ts`; VS Code's
+//! DefaultBackgroundTokenizer). The host runs [`TmEngine::fill_job`]s off the
+//! UI thread and hands each result to [`TmFill::apply`], which fans the
+//! changed line range out to the document's listeners.
 
 use std::collections::HashMap;
-use std::time::Duration;
 
-use crate::engine::TmEngine;
-
-pub const SLICE: Duration = Duration::from_micros(1500);
+use crate::engine::{FillChunk, TmEngine};
 
 /// `(changed 1-based line range, done)`.
 pub type FillListener = Box<dyn FnMut(Option<(usize, usize)>, bool)>;
@@ -59,45 +56,29 @@ impl TmFill {
         self.fills.contains_key(doc_id)
     }
 
-    /// One idle callback for `doc_id`. Returns true while more work remains.
-    pub fn run_idle(
-        &mut self,
-        engine: &mut TmEngine,
-        doc_id: &str,
-        time_remaining: impl Fn() -> Duration,
-    ) -> bool {
-        if !self.fills.contains_key(doc_id) {
+    /// Apply a fill result for `doc_id`, or with `None` (no job could run)
+    /// just report whether the sweep is done. Returns true while more work
+    /// remains.
+    pub fn apply(&mut self, engine: &mut TmEngine, doc_id: &str, chunk: Option<FillChunk>) -> bool {
+        let Some(st) = self.fills.get_mut(doc_id) else {
             return false;
-        }
-        let mut changed_from: Option<usize> = None;
-        let mut changed_to = 0;
-        let mut done;
-        let mut last_filled: Option<usize> = None;
-        loop {
-            let p = engine.fill_slice(doc_id, SLICE);
-            if let Some(f) = p.changed_from {
-                changed_from = Some(changed_from.map_or(f, |c| c.min(f)));
-                changed_to = changed_to.max(p.changed_to);
+        };
+        let (changed, done) = match chunk {
+            Some(chunk) => {
+                let p = engine.apply_fill(doc_id, chunk);
+                (p.changed_from.map(|f| (f, p.changed_to)), p.done)
             }
-            done = p.done;
-            // No progress (grammar still loading): back off to the next slot.
-            if done || last_filled == Some(p.filled) {
-                break;
-            }
-            last_filled = Some(p.filled);
-            if time_remaining() <= SLICE {
-                break;
-            }
-        }
-        let changed = changed_from.map(|f| (f, changed_to));
-        if let Some(st) = self.fills.get_mut(doc_id) {
-            for (_, listener) in st.listeners.iter_mut() {
-                listener(changed, done);
-            }
+            None => (
+                None,
+                engine.filled_through(doc_id) >= engine.line_count(doc_id),
+            ),
+        };
+        for (_, listener) in st.listeners.iter_mut() {
+            listener(changed, done);
         }
         if done {
             self.fills.remove(doc_id);
         }
-        !done && self.fills.contains_key(doc_id)
+        !done
     }
 }

@@ -6,6 +6,9 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use gpui::{Entity, Modifiers, MouseButton, TestAppContext, VisualTestContext, point, px};
+use recur_editor::change::Change;
+use recur_editor::highlight::{FILL_IDLE_DELAY_MS, SharedTextMate, TextMate};
+use recur_editor::state::TransactionSpec;
 use recur_editor::view::{EditorEvent, EditorKind, EditorOptions, EditorView};
 
 struct Harness<'a> {
@@ -398,4 +401,88 @@ fn find_field_takes_typed_keys(cx: &mut TestAppContext) {
         .view
         .read_with(h.cx, |v, _| v.state().search.query.search.clone());
     assert_eq!(q, "fmt");
+}
+
+fn go_textmate() -> SharedTextMate {
+    let bundles = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../bundles");
+    let grammar =
+        std::fs::read_to_string(bundles.join("Languages/syntaxes/go.tmLanguage.json")).unwrap();
+    let theme =
+        std::fs::read_to_string(bundles.join("Recur/themes/charcoal.tmTheme.json")).unwrap();
+    let tm: SharedTextMate = Rc::new(RefCell::new(TextMate::default()));
+    {
+        let mut t = tm.borrow_mut();
+        t.catalog.add_grammar(
+            recur_textmate::GrammarInfo {
+                scope_name: "source.go".into(),
+                file_types: Some(vec!["go".into()]),
+                ..Default::default()
+            },
+            Rc::new(move || Some(grammar.clone())),
+        );
+        t.catalog.set_active_theme(Rc::new(
+            recur_textmate::parse_theme_json(&theme, "charcoal").unwrap(),
+        ));
+    }
+    tm
+}
+
+#[gpui::test]
+fn a_large_edit_refills_on_the_background_executor(cx: &mut TestAppContext) {
+    let tm = go_textmate();
+    let lines = 3000;
+    let doc: String = (0..lines)
+        .map(|i| format!("func f{i}() int {{ return {i} }}\n"))
+        .collect();
+    let mut options = EditorOptions::new("big.go", &doc);
+    options.textmate = Some(tm.clone());
+    let mut h = mount_with(cx, options);
+    h.settle();
+    let total = lines + 1;
+    let sweep = |tm: &SharedTextMate| {
+        let t = tm.borrow();
+        let e = t.catalog.engine();
+        let id = e.doc_ids().into_iter().next().unwrap();
+        (e.filled_through(&id), e.tokens_for_line(&id, total - 1))
+    };
+    let (filled, before) = sweep(&tm);
+    assert_eq!(filled, total);
+
+    // Opening a block comment at the top changes the state of every line.
+    h.view.update_in(h.cx, |v, window, cx| {
+        v.dispatch(
+            TransactionSpec::default().changes(Change::insert(0, "/*")),
+            window,
+            cx,
+        )
+    });
+    h.cx.run_until_parked();
+    let (viewport, _) = sweep(&tm);
+    assert!(
+        viewport < total / 2,
+        "the edit tokenized {viewport} lines inline"
+    );
+
+    // The fill task snapshots a job and hands it to the background executor
+    // without tokenizing on the foreground. (`advance_clock` would run every
+    // task, so move the clock alone and step.)
+    let executor = h.cx.executor();
+    let scheduler = executor.dispatcher().as_test().unwrap().scheduler().clone();
+    scheduler
+        .clock()
+        .advance(Duration::from_millis(FILL_IDLE_DELAY_MS));
+    while scheduler.pending_task_counts().1 == 0 {
+        assert!(
+            executor.tick(),
+            "the fill never reached the background executor"
+        );
+    }
+    assert_eq!(sweep(&tm).0, viewport);
+    while scheduler.tick_background_only() {}
+    assert_eq!(sweep(&tm).0, viewport, "results wait for the UI thread");
+
+    h.settle();
+    let (filled, after) = sweep(&tm);
+    assert_eq!(filled, total);
+    assert_ne!(after, before, "the last line is inside the comment now");
 }

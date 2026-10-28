@@ -3,9 +3,8 @@
 //! The theme's font family / size / line-height extensions are not carried:
 //! Recur never reads the per-token font output they feed.
 
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use crate::utils::is_valid_hex_color;
 
@@ -44,17 +43,17 @@ pub struct RawTheme {
 
 /// Immutable scope path, innermost scope last.
 #[derive(Clone, Debug)]
-pub struct ScopeStack(Rc<ScopeStackNode>);
+pub struct ScopeStack(Arc<ScopeStackNode>);
 
 #[derive(Debug)]
 struct ScopeStackNode {
     parent: Option<ScopeStack>,
-    scope_name: Rc<str>,
+    scope_name: Arc<str>,
 }
 
 impl ScopeStack {
     pub fn new(parent: Option<ScopeStack>, scope_name: &str) -> ScopeStack {
-        ScopeStack(Rc::new(ScopeStackNode {
+        ScopeStack(Arc::new(ScopeStackNode {
             parent,
             scope_name: scope_name.into(),
         }))
@@ -219,7 +218,7 @@ impl ColorMap {
 #[derive(Clone, Debug, PartialEq)]
 struct TrieRule {
     scope_depth: u32,
-    parent_scopes: Rc<[String]>,
+    parent_scopes: Arc<[String]>,
     font_style: i32,
     foreground: u32,
     background: u32,
@@ -432,7 +431,7 @@ pub struct Theme {
     color_map: ColorMap,
     defaults: StyleAttributes,
     root: TrieElement,
-    cache: RefCell<HashMap<String, Rc<Vec<TrieRule>>>>,
+    cache: Mutex<HashMap<String, Arc<Vec<TrieRule>>>>,
 }
 
 impl Theme {
@@ -454,11 +453,11 @@ impl Theme {
         };
         let name = scope_path.scope_name();
         let rules = {
-            let mut cache = self.cache.borrow_mut();
+            let mut cache = self.cache.lock().unwrap();
             match cache.get(name) {
                 Some(r) => r.clone(),
                 None => {
-                    let r = Rc::new(self.root.match_scope(name));
+                    let r = Arc::new(self.root.match_scope(name));
                     cache.insert(name.to_string(), r.clone());
                     r
                 }
@@ -509,7 +508,7 @@ fn resolve_parsed_theme_rules(mut rules: Vec<ParsedThemeRule>) -> Theme {
     let mut root = TrieElement::new(
         TrieRule {
             scope_depth: 0,
-            parent_scopes: Rc::from(Vec::new()),
+            parent_scopes: Arc::from(Vec::new()),
             font_style: font_style::NOT_SET,
             foreground: 0,
             background: 0,
@@ -532,7 +531,7 @@ fn resolve_parsed_theme_rules(mut rules: Vec<ParsedThemeRule>) -> Theme {
         color_map: colors,
         defaults,
         root,
-        cache: RefCell::new(HashMap::new()),
+        cache: Mutex::new(HashMap::new()),
     }
 }
 

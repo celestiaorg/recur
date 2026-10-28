@@ -27,6 +27,7 @@
 ..TestWindowOptionsTitleFromInstanceLabel	crates/platform/src/identity.rs::window_title_uses_label_or_app_name
 internal/app.TestAllowedGitHubImageURL	crates/forge/src/github/images.rs::allowed_urls
 internal/app.TestApplyCursorPin	providers/cursor/src/status.rs::apply_pin
+internal/app.TestCachedClaudeProbeSpawnsOnlyWithoutCache	providers/claude/src/lib.rs::probed_models_survive_failures_and_cache
 internal/app.TestChatGPTCatalogueAndFallbackWithoutCodex	crates/services/src/app/tests/model_catalog.rs::chatgpt_catalogue_and_fallback_without_codex
 internal/app.TestClampShellState	crates/services/src/app/tests/shell.rs::clamp_shell_state_keeps_view_ids
 internal/app.TestClassifyClaudeStatusLoggedOutStillDetected	providers/claude/src/status.rs::logged_out_still_detected
@@ -35,6 +36,7 @@ internal/app.TestClassifyClaudeStatusTimedOut	providers/claude/src/status.rs::mi
 internal/app.TestClaudeBinaryMissing	providers/claude/src/status.rs::missing_binary
 internal/app.TestClaudeCatalogHasEffortAndContextFlags	providers/claude/src/flags.rs::catalog_flags
 internal/app.TestClaudeCatalogTracksFable51	providers/claude/src/flags.rs::catalog_tracks_fable_51
+internal/app.TestClaudeProbeFallsBackToLastGood	providers/claude/src/lib.rs::probed_models_survive_failures_and_cache
 internal/app.TestCodexBrowserLoginCancelAndShutdown	providers/codex/src/login.rs::cancel_and_shutdown
 internal/app.TestCodexBrowserLoginFailureAndRetry	providers/codex/src/login.rs::failure_and_retry, crates/services/src/app/tests/codex_login.rs::codex_browser_login_failure_and_cancel_keep_saved_auth
 internal/app.TestCodexBrowserLoginLive	n/a: opt-in smoke against a real Codex binary (RECUR_CODEX_LOGIN_E2E); the fake app-server in recur_provider_codex::login covers the protocol
@@ -62,6 +64,8 @@ internal/app.TestParseClaudeAuthStatus	providers/claude/src/status.rs::auth_stat
 internal/app.TestParseClaudeAuthStatusNotLoggedIn	providers/claude/src/status.rs::auth_status_logged_out
 internal/app.TestParseClaudeVersion	providers/claude/src/status.rs::versions
 internal/app.TestPreviewScheduledPrompt	crates/services/src/app/tests/shell.rs::preview_scheduled_prompt_next_three
+internal/app.TestProbedClaudeModelsAddAccountOnlyModels	providers/claude/src/flags.rs::probed_models_add_account_only_models
+internal/app.TestProbedClaudeModelsStripContextSuffix	providers/claude/src/flags.rs::probed_models_add_account_only_models
 internal/app.TestProviderEnablementChanged	crates/services/src/app/tests/model_catalog.rs::provider_enablement_changed_cases
 internal/app.TestProviderLabel	crates/domain/src/model.rs::labels
 internal/app.TestSeededDefaultIsInCatalog	providers/claude/src/flags.rs::catalog_refs_are_qualified

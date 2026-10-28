@@ -269,3 +269,29 @@ async fn a_new_chat_draws_its_dock_in_the_first_frame(cx: &mut TestAppContext) {
     assert_eq!(h.cx.debug_bounds("chat-composer"), Some(composer));
     assert_eq!(h.cx.debug_bounds("chip:main.rs"), Some(chip));
 }
+
+/// Scrolling a long transcript in jumps (to the end and back, and across the middle) draws
+/// the blocks the scroller shows in the frame that jumps there, and they stay drawn once it
+/// settles. A test update draws until the window is clean, so the wheel's step (move the
+/// offset, notify the pane) and its frame run inside one update.
+#[gpui::test]
+async fn a_long_transcript_draws_what_the_scroller_shows_after_any_jump(cx: &mut TestAppContext) {
+    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    h.set_messages(long_chat(400));
+    let chat = h.chat();
+    let handle = h.read(|c| c.test_scroll().clone());
+    let max = f32::from(handle.max_offset().y);
+    assert!(max > 20_000., "{max}");
+    for at in [0.5, 0., 1., 0.25, 0.9, 0., 0.6, 1., 0.1] {
+        let stubs = h.cx.update(|window, cx| {
+            handle.set_offset(gpui::point(gpui::px(0.), gpui::px(-max * at)));
+            chat.update(cx, |c, cx| c.notify_transcript(cx));
+            window.draw(cx).clear(cx);
+            chat.read(cx).test_stubs_in_view()
+        });
+        assert!(stubs.is_empty(), "{at}: first frame drew stubs {stubs:?}");
+        h.settle();
+        let stubs = h.read(|c| c.test_stubs_in_view());
+        assert!(stubs.is_empty(), "{at}: settled with stubs {stubs:?}");
+    }
+}

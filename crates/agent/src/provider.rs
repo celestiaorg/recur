@@ -1,5 +1,5 @@
 //! The `Provider` trait: everything the engine asks of an agent backend.
-//! Every behavior Go branched on by provider name is a capability or a
+//! Every behavior that depends on the provider is a capability or a
 //! method here, so the engine never compares provider ids.
 
 use std::path::Path;
@@ -59,12 +59,11 @@ pub trait Provider: Send + Sync + 'static {
     /// Flags for one-shot title-model turns (commit message, PR text).
     fn oneshot_flags(&self, model: &str) -> Flags;
 
-    /// One agent turn (Go `AgentRunner.Run`). Events go to `cx.sink`
-    /// synchronously and in order, each run through a
-    /// [`crate::ContextUsageTracker`] unless the provider meters the result
-    /// itself (Cursor); every provider result frame is also
-    /// emitted as [`crate::AgentEvent::TurnEnd`]. On cancel the provider
-    /// stops the remote run, emits nothing further, and returns
+    /// One agent turn. Events go to `cx.sink` synchronously and in order, each
+    /// run through a [`crate::ContextUsageTracker`] unless the provider meters
+    /// the result itself (Cursor); every provider result frame is also emitted
+    /// as [`crate::AgentEvent::TurnEnd`]. On cancel the provider stops the
+    /// remote run, emits nothing further, and returns
     /// [`ProviderError::canceled`] carrying the partial result.
     async fn run_turn(
         &self,
@@ -96,8 +95,8 @@ pub trait Provider: Send + Sync + 'static {
     }
     /// A worktree is being removed: drop pooled processes bound to it and
     /// provider-side project dirs. `Err` carries the complete sentence the
-    /// engine shows in the workspace feed (Go emitted "Could not remove
-    /// Cursor project dirs: …" as a Maestro event, or logged it when the
+    /// engine shows in the workspace feed ("Could not remove
+    /// Cursor project dirs: …" as a Maestro event, or logged when the
     /// workspace was already gone).
     async fn release_worktree(&self, _worktree: &Path) -> Result<(), ProviderError> {
         Ok(())
@@ -190,7 +189,7 @@ pub enum Availability {
     Unavailable(String),
 }
 
-/// The Settings → Providers card: the union of the Go per-provider status
+/// The Settings → Providers card: the union of the per-provider status
 /// payloads (`ClaudeStatus`, `CodexStatus`, `CursorStatus`,
 /// `CompatibleTestResult`). Each provider fills the fields it has.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

@@ -487,7 +487,7 @@ struct Golden {
     write: Vec<WriteCase>,
 }
 
-/// Go's encodeProjectFile output (fresh file and in-place merges), recorded
+/// Encoded project files (fresh file and in-place merges), recorded
 /// by `tests/fixtures/gen_projfile.go.txt`.
 #[test]
 fn encode_matches_go() {

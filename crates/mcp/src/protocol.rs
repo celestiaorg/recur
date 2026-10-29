@@ -39,7 +39,7 @@ pub(crate) struct RpcRequest {
 }
 
 impl RpcRequest {
-    /// Go `json.Unmarshal` into `rpcRequest`.
+    /// Decodes a JSON-RPC request body.
     pub fn parse(body: &str) -> Result<RpcRequest, String> {
         let a = unmarshal(body, &RPC_REQUEST)?;
         Ok(RpcRequest {

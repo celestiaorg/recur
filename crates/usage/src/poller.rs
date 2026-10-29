@@ -1,4 +1,4 @@
-//! The cached snapshot and its conservative refresh (Go `usage/poller.go`).
+//! The cached snapshot and its conservative refresh.
 
 use std::sync::Arc;
 use std::time::Duration;

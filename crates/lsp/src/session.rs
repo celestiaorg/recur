@@ -1,6 +1,5 @@
-//! One long-lived language server process for a workspace (Go
-//! `lsp/session.go`): stdio framing, events in stdout order, process-group
-//! teardown.
+//! One long-lived language server process for a workspace: stdio framing,
+//! events in stdout order, process-group teardown.
 
 use std::sync::Arc;
 
@@ -41,7 +40,7 @@ impl LspEvent {
         }
     }
 
-    /// The event payload as Go wrote it (`{id, message}` / `{id}`).
+    /// The event payload (`{id, message}` / `{id}`).
     pub fn payload(&self) -> serde_json::Value {
         match self {
             LspEvent::Message { id, message } => {

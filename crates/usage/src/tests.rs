@@ -1,5 +1,4 @@
-//! Go `usage/fetch_test.go`, `parse_test.go`, `poller_test.go` and
-//! `app/provider_usage_test.go`.
+//! Fetch, parse, poller and provider usage service tests.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

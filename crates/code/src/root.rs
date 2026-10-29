@@ -107,9 +107,9 @@ pub(crate) fn skip_dir(name: &str) -> bool {
     ) || name.starts_with('.')
 }
 
-/// Binary and noise files the walks skip, by lowercase extension. Go matched
-/// `filepath.Ext`, so `.min.js` / `.min.css` never hit (the extension is
-/// `.js`); kept for parity.
+/// Binary and noise files the walks skip, by lowercase extension. Only the
+/// last extension counts, so `.min.js` / `.min.css` never hit (the extension is
+/// `.js`).
 pub(crate) fn skip_file(name: &str) -> bool {
     matches!(
         path::ext(name).to_ascii_lowercase().as_str(),

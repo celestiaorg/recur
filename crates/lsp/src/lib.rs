@@ -1,6 +1,6 @@
 //! Language server client: process lifecycle, JSON-RPC framing, and server
-//! resolution from builtins, bundles and pinned installs (Go `internal/lsp`,
-//! `app/lsp_service.go`, and the transport rules of the frontend LSP client).
+//! resolution from builtins, bundles and pinned installs, with the frontend LSP
+//! client's transport rules.
 //!
 //! The editor talks to servers through a [`Manager`]: [`service::ensure_lsp`]
 //! starts or reuses sessions for a file, [`Manager::write`] sends JSON-RPC

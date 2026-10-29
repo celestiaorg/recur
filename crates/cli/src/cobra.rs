@@ -1,5 +1,5 @@
-//! The parts of spf13/cobra v1.10.2 and spf13/pflag v1.0.10 the Go CLI
-//! exercised, ported so help, usage, version, flag errors, the `help` and
+//! The parts of spf13/cobra v1.10.2 and spf13/pflag v1.0.10 the CLI
+//! uses, reproduced so help, usage, version, flag errors, the `help` and
 //! `completion` commands and the `__complete` protocol are byte-identical.
 //!
 //! Commands and flags live in arenas; ids are indices. Like cobra, the
@@ -1452,7 +1452,7 @@ fn unquote_usage(f: &Flag) -> (String, String) {
     (name.to_string(), usage.clone())
 }
 
-/// Go `strconv.ParseBool`.
+/// `1`, `t`, `T`, `TRUE`, `true`, `True` and their false forms.
 pub fn parse_go_bool(s: &str) -> Option<bool> {
     match s {
         "1" | "t" | "T" | "TRUE" | "true" | "True" => Some(true),
@@ -1465,7 +1465,7 @@ fn rpad(s: &str, n: usize) -> String {
     format!("{s:<n$}")
 }
 
-/// Go `strings.TrimRightFunc(s, unicode.IsSpace)`.
+/// Trims trailing Unicode whitespace.
 fn trim_right_space(s: &str) -> &str {
     s.trim_end()
 }

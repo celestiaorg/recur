@@ -12,7 +12,7 @@ use crate::scope_selector::{
     CompiledSelector, compile_selector, scope_prefix_match, selector_score,
 };
 
-/// A `[[symbol]]` rule (Go `SymbolInfo` fields used here).
+/// A `[[symbol]]` rule.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SymbolRule {
@@ -23,7 +23,7 @@ pub struct SymbolRule {
     pub kind: String,
 }
 
-/// Go `domain.OutlineSymbol`.
+/// An outline symbol.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct OutlineSymbol {

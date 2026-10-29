@@ -1,5 +1,5 @@
 //! Recur's host tools: one engine callback each, with the name, description,
-//! JSON schema and result text agents rely on (as Go; JSON results are
+//! JSON schema and result text agents rely on (JSON results are
 //! compatible, not byte-identical).
 
 mod artifacts;
@@ -42,7 +42,6 @@ use crate::tool::ToolError;
 
 pub(crate) const EMPTY_OBJECT_SCHEMA: &str = r#"{"type":"object","properties":{}}"#;
 
-/// Go `schemaSummaryOnly`.
 pub(crate) fn schema_summary_only(field: &str) -> String {
     format!(
         "{{\n  \"type\": \"object\",\n  \"properties\": {{\"{field}\": {{\"type\": \"string\", \"description\": \"A short summary\"}}}},\n  \"required\": [\"{field}\"]\n}}"

@@ -1,5 +1,5 @@
 //! Claude subscription quota from the OAuth usage endpoint, and the Claude
-//! Code login on this machine (Go `usage/claude.go`, `claude_creds.go`).
+//! Code login on this machine.
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -470,7 +470,7 @@ fn humanize_scoped_name(s: &str) -> String {
                 Some(first) if first.is_ascii() => {
                     first.to_ascii_uppercase().to_string() + c.as_str()
                 }
-                // Go uppercases the first byte only; a non-ASCII first byte is
+                // Only the first byte is uppercased; a non-ASCII first byte is
                 // left as is.
                 Some(first) => first.to_string() + c.as_str(),
                 None => String::new(),

@@ -1,6 +1,5 @@
-//! Go `bufio.Scanner` with `ScanLines` and a 1 MiB token cap: lines lose
-//! their `\n` and a trailing `\r`, and a longer line stops the scan with
-//! `bufio.Scanner: token too long`.
+//! A line scanner with a 1 MiB token cap: lines lose their `\n` and a trailing
+//! `\r`, and a longer line stops the scan with `bufio.Scanner: token too long`.
 
 use std::io::{self, BufRead, BufReader, Read};
 use std::ops::ControlFlow;

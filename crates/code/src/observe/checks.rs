@@ -167,7 +167,7 @@ pub async fn run_light_checks(
 }
 
 /// The run's cancellation: the caller's token, or one that fires after the
-/// default bound (Go's nil context).
+/// default bound.
 pub(super) struct Ctx {
     cancel: CancellationToken,
 }
@@ -220,7 +220,7 @@ impl Ctx {
 }
 
 /// Runs `bin args` in `root` with stdout and stderr in one buffer. The error
-/// is Go's `exec` text (`exit status 1`, `signal: killed`, …).
+/// is the exit text (`exit status 1`, `signal: killed`, …).
 async fn run_combined(
     cancel: &CancellationToken,
     root: &str,
@@ -297,7 +297,7 @@ fn exit_text(s: std::process::ExitStatus) -> String {
     }
 }
 
-/// Go's `syscall.Signal.String()` for the signals a check can die of.
+/// Signal names for the signals a check can die of.
 fn signal_name(sig: i32) -> String {
     match sig {
         1 => "hangup".into(),
@@ -341,8 +341,8 @@ fn has_binary(name: &str) -> bool {
     look_path(name).is_some()
 }
 
-/// Whether package.json mentions `"name"` anywhere (as Go checks it, for
-/// both scripts and dev dependencies).
+/// Whether package.json mentions `"name"` anywhere (for both scripts and dev
+/// dependencies).
 fn has_script(root: &str, name: &str) -> bool {
     fs::read_to_string(path::join(&[root, "package.json"]))
         .is_ok_and(|b| b.contains(&format!("\"{name}\"")))

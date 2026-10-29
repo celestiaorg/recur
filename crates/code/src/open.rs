@@ -14,7 +14,7 @@ use crate::error::{Error, Result};
 use crate::rg::look_path;
 
 /// Starts `name args…` without waiting; the child is reaped in the
-/// background. Errors carry Go's `exec` text.
+/// background. Errors carry the exec error text.
 fn start_detached_cmd(name: &str, args: &[String]) -> std::result::Result<(), String> {
     let program = if name.contains('/') {
         name.to_string()

@@ -342,7 +342,7 @@ fn family_from_name_table(data: &[u8]) -> String {
 }
 
 /// Each code unit becomes one char; unpaired or paired surrogates become
-/// U+FFFD, as Go's `string([]rune)` conversion does.
+/// U+FFFD.
 fn decode_utf16be(b: &[u8]) -> String {
     if !b.len().is_multiple_of(2) {
         return String::new();

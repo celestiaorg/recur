@@ -66,7 +66,7 @@ pub fn load(data_dir: &Path) -> WindowState {
     let Ok(data) = std::fs::read(state_path(data_dir)) else {
         return WindowState::default();
     };
-    // Go decodes into a zero value, so absent fields are 0, not the defaults.
+    // Absent fields are 0, not the defaults.
     let zero = WindowState {
         width: 0,
         height: 0,
@@ -103,8 +103,7 @@ impl Partial {
     }
 }
 
-/// Writes `window.json` (two-space indented, like Go's `MarshalIndent`).
-/// Best effort.
+/// Writes `window.json` (two-space indented). Best effort.
 pub fn save(data_dir: &Path, st: WindowState) {
     let st = st.clamped();
     if let Ok(data) = serde_json::to_vec_pretty(&st) {

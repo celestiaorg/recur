@@ -20,9 +20,9 @@ const OPEN_RETRY_WAIT: Duration = Duration::from_millis(250);
 /// Why one open call failed.
 #[derive(Debug)]
 pub enum OpenError {
-    /// No live listener (Go `openipc.DialError`).
+    /// No live listener.
     Dial(String),
-    /// The app asked us to retry (Go `openipc.ErrUnavailable`).
+    /// The app asked us to retry.
     Unavailable,
     /// Anything else: reached the app and it failed, or timed out.
     Other(String),
@@ -123,7 +123,7 @@ pub fn call_open(sock: &str, abs: &str) -> Result<(), OpenError> {
     Ok(())
 }
 
-/// Go's `net` error text for a failed call.
+/// The error text for a failed call.
 fn ipc_error(sock: &str, e: IpcError) -> OpenError {
     match e {
         IpcError::Dial(err) => OpenError::Dial(match err.kind() {
@@ -188,7 +188,7 @@ pub fn launch_recur(abs: &str) -> Result<(), String> {
     Err("Recur desktop binary not found (set RECUR_APP)".to_string())
 }
 
-/// Go `exec.Command(name, args...).Start()`.
+/// Starts `name args…` without waiting.
 fn start(name: &str, args: &[&str]) -> Result<(), String> {
     let path = if name.contains('/') {
         name.to_string()
@@ -206,7 +206,7 @@ fn start(name: &str, args: &[&str]) -> Result<(), String> {
         .map_err(|e| format!("{path}: {e}"))
 }
 
-/// Go `exec.LookPath`.
+/// The first executable named `name` on `$PATH`.
 fn look_path(name: &str) -> Option<String> {
     use std::os::unix::fs::PermissionsExt;
     let path = std::env::var_os("PATH")?;

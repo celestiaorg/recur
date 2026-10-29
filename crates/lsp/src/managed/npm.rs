@@ -1,5 +1,4 @@
-//! npm language servers installed with `npm install --prefix` (Go
-//! `lsp/managed/{npm,npm_servers,typescript}.go`).
+//! npm language servers installed with `npm install --prefix`.
 
 use std::path::{Path, PathBuf};
 

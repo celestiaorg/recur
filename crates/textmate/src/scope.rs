@@ -1,5 +1,5 @@
-//! Command applicability by grammar scope and file glob
-//! (`internal/bundles/scope.go`), with Go's `path.Match` glob semantics.
+//! Command applicability by grammar scope and file glob (`*` and `?` stop at
+//! `/`, `[…]` classes).
 
 /// Whether a command scoped to `want_scope` / `file_glob` applies to a file.
 /// Unscoped commands match everything; scopes match by TextMate prefix
@@ -66,7 +66,7 @@ pub fn glob_match(pattern: &str, file_path: &str) -> bool {
     false
 }
 
-/// Go `filepath.Base` for slash paths.
+/// The last element of a slash path.
 fn go_base(p: &str) -> String {
     if p.is_empty() {
         return ".".into();
@@ -99,7 +99,7 @@ fn expand_braces(pattern: &str) -> Vec<String> {
     }
 }
 
-/// Go `path.Match`; a malformed pattern never matches.
+/// Glob match (`*` and `?` stop at `/`, `[…]` classes); a malformed pattern never matches.
 pub fn path_match(pattern: &str, name: &str) -> bool {
     let mut pattern = pattern;
     let mut name = name;

@@ -1,4 +1,4 @@
-//! Go `lsp/managed/managed_test.go` and `assets_test.go`.
+//! Managed install and asset tests.
 
 use super::binaries::release_url;
 use super::*;
@@ -195,8 +195,7 @@ fn archives_extract_named_binary() {
     );
 }
 
-/// Go `TestEnsureGoplsInstallsWhenGoPresent`: downloads gopls with `go
-/// install`. Network; run with `--ignored`.
+/// Downloads gopls with `go install`. Network; run with `--ignored`.
 #[tokio::test]
 #[ignore]
 async fn ensure_gopls_installs_when_go_present() {

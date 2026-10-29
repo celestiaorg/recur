@@ -1,6 +1,5 @@
-//! Lexical path helpers with Go `path/filepath` semantics on Unix. Rust's
-//! `Path` keeps `..` and redundant components, which changes the outcome of
-//! the prefix and escape checks ported from Go.
+//! Lexical path helpers for Unix. Rust's `Path` keeps `..` and redundant
+//! components, which changes the outcome of the prefix and escape checks.
 
 use std::path::{Path, PathBuf};
 

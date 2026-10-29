@@ -1,4 +1,4 @@
-//! Normalized agent events and turn results (Go `ParsedEvent`, `Result`).
+//! Normalized agent events and turn results.
 //!
 //! Events carry the provider's RAW tool vocabulary: a step's name and input
 //! and a result's text are verbatim provider data, because the session store
@@ -6,10 +6,10 @@
 //! common cross-provider vocabulary happens at the display boundary
 //! ([`crate::Provider::display_tool`]).
 //!
-//! String fields follow Go's zero values: empty means absent. `parent` is the
-//! provider tool-use id of the Task subagent an event belongs to (Claude
-//! `parent_tool_use_id`); empty for the parent turn. `uuid` is the provider
-//! frame id used for fallback retraction.
+//! Empty string fields mean absent. `parent` is the provider tool-use id of the
+//! Task subagent an event belongs to (Claude `parent_tool_use_id`); empty for
+//! the parent turn. `uuid` is the provider frame id used for fallback
+//! retraction.
 
 use serde::{Deserialize, Serialize};
 
@@ -65,7 +65,7 @@ impl TokenUsage {
     }
 }
 
-/// The final outcome of an agent turn. JSON names match Go `Result`.
+/// The final outcome of an agent turn.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct TurnResult {
@@ -209,7 +209,7 @@ pub enum AgentEvent {
 }
 
 impl AgentEvent {
-    /// The Go `ParsedKind` name.
+    /// The event kind's name.
     pub fn kind(&self) -> &'static str {
         match self {
             Self::Init { .. } => "init",
@@ -267,9 +267,8 @@ impl AgentEvent {
 }
 
 /// Remembers the latest `Usage` footprint so a following `TurnEnd` stamps the
-/// meter with it instead of cumulative result usage (Go
-/// `contextUsageTracker`). Providers run every event through `observe` before
-/// emitting it.
+/// meter with it instead of cumulative result usage. Providers run every event
+/// through `observe` before emitting it.
 #[derive(Debug, Clone, Default)]
 pub struct ContextUsageTracker {
     last: TokenUsage,

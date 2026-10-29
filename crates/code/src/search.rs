@@ -265,7 +265,7 @@ pub fn replace_in_files(
 }
 
 /// Case-insensitive replace: matches in the lowercased text, slices the
-/// original by the same byte offsets (as Go does). If lowercasing changed
+/// original by the same byte offsets. If lowercasing changed
 /// byte lengths so the offsets no longer line up, nothing is replaced.
 fn replace_fold(src: &str, query: &str, replacement: &str) -> (String, usize) {
     if query.is_empty() {

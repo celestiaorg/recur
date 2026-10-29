@@ -1,4 +1,4 @@
-//! Path and `file://` URI conversion (Go `lsp/uri.go`).
+//! Path and `file://` URI conversion.
 
 use std::path::Path;
 
@@ -12,7 +12,7 @@ pub fn canon_path(abs_path: &str) -> String {
     }
 }
 
-/// Go `filepath.Clean` for absolute and relative Unix paths.
+/// Lexical clean for absolute and relative Unix paths.
 pub fn clean(p: &str) -> String {
     if p.is_empty() {
         return ".".into();
@@ -40,13 +40,12 @@ pub fn clean(p: &str) -> String {
     }
 }
 
-/// An absolute filesystem path as a `file://` URI, escaped like Go's
-/// `url.URL{Scheme: "file", Path: p}.String()`.
+/// An absolute filesystem path as a `file://` URI, path-escaped.
 pub fn path_to_uri(abs_path: &str) -> String {
     format!("file://{}", escape_path(&clean(abs_path)))
 }
 
-/// Go `shouldEscape(c, encodePath)`.
+/// Percent-escapes the bytes a URI path cannot carry as is.
 fn escape_path(p: &str) -> String {
     let mut out = String::with_capacity(p.len());
     for &b in p.as_bytes() {
@@ -84,7 +83,7 @@ pub fn uri_to_path(uri: &str) -> Result<String, String> {
     unescape(u.path()).ok_or_else(|| format!("parse {uri:?}: invalid URL escape"))
 }
 
-/// Strict `%XX` unescaping: a malformed escape fails, as in Go.
+/// Strict `%XX` unescaping: a malformed escape fails.
 fn unescape(s: &str) -> Option<String> {
     let b = s.as_bytes();
     let mut out = Vec::with_capacity(b.len());

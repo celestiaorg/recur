@@ -1,5 +1,5 @@
-//! Go `context.Context` for the fetchers: a cancellation token plus an
-//! optional deadline that child steps narrow.
+//! The fetchers' context: a cancellation token plus an optional deadline that
+//! child steps narrow.
 
 use std::fmt;
 use std::time::Duration;
@@ -7,7 +7,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-/// Why a context ended (Go `context.Canceled` / `DeadlineExceeded`).
+/// Why a context ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CtxError {
     Canceled,

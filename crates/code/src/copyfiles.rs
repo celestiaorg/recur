@@ -53,7 +53,7 @@ pub fn matches(rel: &str, patterns: &[String]) -> bool {
     Matcher::new(patterns).matches(rel)
 }
 
-/// Cancellation plus an optional deadline (Go's `context.Context`).
+/// Cancellation plus an optional deadline.
 struct Ctx<'a> {
     cancel: &'a CancellationToken,
     deadline: Option<Instant>,

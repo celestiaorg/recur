@@ -382,8 +382,7 @@ fn is_control_keyword(s: &str) -> bool {
     )
 }
 
-/// Everything from the last `.` in the path (even inside a directory name),
-/// as the Go outline did.
+/// Everything from the last `.` in the path (even inside a directory name).
 pub(crate) fn filepath_ext(p: &str) -> &str {
     p.rfind('.').map_or("", |i| &p[i..])
 }

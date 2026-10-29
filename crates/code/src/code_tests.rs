@@ -734,7 +734,7 @@ fn write_file_is_atomic_and_preserves_mode() {
 }
 
 /// The walk root is never skipped, even when its name starts with a dot (a temp dir such as
-/// `/tmp/.tmpXXXX`), as `files.rs` already did. Go's `search.go` and `symbols.go` skip it.
+/// `/tmp/.tmpXXXX`).
 #[test]
 fn search_replace_and_symbols_walk_a_dot_named_root() {
     let tmp = tmp();

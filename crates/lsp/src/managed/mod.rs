@@ -1,4 +1,4 @@
-//! Pinned language-server installs under the data dir (Go `lsp/managed`):
+//! Pinned language-server installs under the data dir:
 //!
 //! - gopls: `go install` (no official multi-arch tarballs)
 //! - rust-analyzer, marksman, ruff, taplo: GitHub release assets checked
@@ -150,7 +150,7 @@ where
         .ok_or_else(|| format!("lsp managed: no data directory and {path_name} not on PATH"))
 }
 
-/// Go's `runtime.GOOS/runtime.GOARCH` for this build.
+/// This build's platform as `GOOS/GOARCH` (`darwin/arm64`).
 pub fn host_platform() -> String {
     let os = match std::env::consts::OS {
         "macos" => "darwin",

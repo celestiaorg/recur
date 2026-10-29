@@ -1,4 +1,4 @@
-//! The JSON HTTP helper every fetcher uses (Go `usage/http.go`).
+//! The JSON HTTP helper every fetcher uses.
 
 use std::time::Duration;
 
@@ -15,7 +15,7 @@ pub fn default_client() -> reqwest::Client {
 }
 
 /// Sends one request and reads at most 1 MiB of the answer. Empty header
-/// values are not sent. Transport failures read like Go's `url.Error`.
+/// values are not sent. Transport failures read `Post "url": cause`.
 pub(crate) async fn do_json(
     ctx: &Ctx,
     client: &reqwest::Client,
@@ -85,7 +85,7 @@ fn url_error(verb: &str, url: &str, e: &reqwest::Error) -> String {
     format!("{verb} {url:?}: {cause}")
 }
 
-/// The causes of an error joined Go-style.
+/// The causes of an error joined with `: `.
 fn err_chain(e: &(dyn std::error::Error + 'static)) -> String {
     let mut parts: Vec<String> = Vec::new();
     let mut cur = e.source();

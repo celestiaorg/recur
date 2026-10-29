@@ -43,7 +43,7 @@ impl Tool for EditTool {
         };
         let replace_all = a.bool("replace_all");
         let abs = resolve_path(&c.worktree, file_path)?;
-        // Byte-wise like Go strings, so non-UTF-8 files keep their bytes.
+        // Byte-wise, so non-UTF-8 files keep their bytes.
         let content = read_file(&abs)?;
         let hits = find_all(&content, old);
         if hits.is_empty() {
@@ -73,7 +73,7 @@ impl Tool for EditTool {
     }
 }
 
-/// Start offsets of non-overlapping matches, left to right (Go strings.Count).
+/// Start offsets of non-overlapping matches, left to right.
 fn find_all(hay: &[u8], needle: &[u8]) -> Vec<usize> {
     let mut out = Vec::new();
     let mut i = 0;

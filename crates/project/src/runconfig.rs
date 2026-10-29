@@ -3,8 +3,8 @@
 //! URL, and tear the group down. [`boot`] keeps the server for
 //! verify-in-browser (PRD §10); [`run_cmd`] is for setup_cmd / teardown_cmd.
 //!
-//! Go's `context.Context` becomes a [`CancellationToken`] plus an optional
-//! deadline, so callers can still tell a cancel from a timeout.
+//! Runs take a [`CancellationToken`] plus an optional deadline, so callers can
+//! still tell a cancel from a timeout.
 
 use std::io::Read as _;
 use std::os::unix::process::ExitStatusExt as _;
@@ -84,7 +84,7 @@ pub enum BootError {
 /// Why [`run_cmd_output`] failed.
 #[derive(Debug, thiserror::Error)]
 pub enum RunError {
-    /// The command could not be started (Go returns the start error as-is).
+    /// The command could not be started (the start error as-is).
     #[error("{0}")]
     Start(std::io::Error),
     #[error("{0}")]
@@ -102,7 +102,7 @@ pub enum RunError {
 
 impl RunError {
     /// The exit code for a non-zero exit (`None` when killed by a signal or
-    /// for other errors), like Go's `ExitError.ExitCode` (-1 there).
+    /// for other errors).
     pub fn exit_code(&self) -> Option<i32> {
         match self {
             RunError::Exit(s) => s.code(),
@@ -178,7 +178,7 @@ impl Group {
 /// and [`Booted::stop`], which tears the whole process group down.
 ///
 /// The caller must call `stop`; dropping a `Booted` leaves the server
-/// running, as in Go.
+/// running.
 pub struct Booted {
     pub port: String,
     pub app_url: String,
@@ -470,7 +470,7 @@ pub fn free_port() -> std::io::Result<u16> {
 }
 
 /// Replaces `${RECUR_PORT}`, `$RECUR_PORT`, `${PORT}` and `$PORT` in s,
-/// left to right without overlaps (Go's `strings.NewReplacer`).
+/// left to right without overlaps.
 pub fn substitute_port(s: &str, port: &str) -> String {
     const PATTERNS: [&str; 4] = ["${RECUR_PORT}", "$RECUR_PORT", "${PORT}", "$PORT"];
     let mut out = String::with_capacity(s.len());
@@ -492,8 +492,8 @@ pub fn substitute_port(s: &str, port: &str) -> String {
     out
 }
 
-/// The probe client: a 2s timeout, redirects followed, and, like Go's
-/// `ProxyFromEnvironment`, never a proxy for localhost or loopback hosts.
+/// The probe client: a 2s timeout, redirects followed, and never a proxy for
+/// localhost or loopback hosts.
 fn probe_client(url: &str) -> reqwest::Client {
     let loopback = reqwest::Url::parse(url).ok().is_some_and(|u| {
         let host = u.host_str().unwrap_or_default();
@@ -521,8 +521,8 @@ async fn probe(client: &reqwest::Client, url: &str) -> Option<u16> {
         .map(|r| r.status().as_u16())
 }
 
-/// Go's `ProcessState.String` for a finished process: `exit status N`,
-/// or `signal: NAME` (plus ` (core dumped)`).
+/// A finished process's status: `exit status N`, or `signal: NAME` (plus
+/// ` (core dumped)`).
 pub fn exit_status_string(s: ExitStatus) -> String {
     if let Some(code) = s.code() {
         return format!("exit status {code}");
@@ -539,7 +539,7 @@ pub fn exit_status_string(s: ExitStatus) -> String {
     }
 }
 
-/// Go's `syscall.Signal.String` names.
+/// Signal names.
 fn signal_name(sig: i32) -> String {
     #[cfg(target_os = "macos")]
     const NAMES: [&str; 31] = [
@@ -616,7 +616,7 @@ fn signal_name(sig: i32) -> String {
         .map_or_else(|| format!("signal {sig}"), |n| (*n).to_owned())
 }
 
-/// Go's `time.Duration.String`: `1h2m3.5s`, `300ms`, `1.5µs`, `0s`.
+/// A duration as `1h2m3.5s`, `300ms`, `1.5µs`, `0s`.
 pub fn go_duration(d: Duration) -> String {
     let u = d.as_nanos().min(u128::from(u64::MAX)) as u64;
     if u < 1_000_000_000 {

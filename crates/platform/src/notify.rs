@@ -179,8 +179,8 @@ fn fallback_command(title: &str, body: &str) -> Command {
     }
 }
 
-/// Go's `%q`: a double-quoted literal with backslash escapes, which
-/// AppleScript string literals accept for quotes, backslashes and controls.
+/// A double-quoted literal with backslash escapes, which AppleScript string
+/// literals accept for quotes, backslashes and controls.
 fn go_quote(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('"');

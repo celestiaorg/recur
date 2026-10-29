@@ -1,7 +1,7 @@
 //! Recur host tool names. The bare names are what MCP `tools/list` advertises;
 //! [`mcp`] holds the `mcp__recur__<name>` forms runner allowlists use
 //! (`--allowedTools`). acceptEdits/dontAsk do not auto-approve MCP tools, so
-//! each role that needs one lists it explicitly (Go `engine/roles.go`).
+//! each role that needs one lists it explicitly.
 
 /// How runner allowlists name Recur host tools.
 pub const RECUR_MCP_PREFIX: &str = "mcp__recur__";

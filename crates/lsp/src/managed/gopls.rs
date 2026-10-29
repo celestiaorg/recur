@@ -1,4 +1,4 @@
-//! gopls via `go install` (Go `lsp/managed/gopls.go`).
+//! gopls via `go install`.
 
 use std::path::PathBuf;
 

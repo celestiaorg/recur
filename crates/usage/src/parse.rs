@@ -1,5 +1,5 @@
 //! Loose JSON readers over `map[string]any`-style payloads, JWT claims and
-//! email discovery (Go `usage/parse.go`).
+//! email discovery.
 
 use base64::Engine as _;
 use base64::engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig};
@@ -9,7 +9,7 @@ use crate::types::clamp_pct;
 
 pub(crate) type Obj = Map<String, Value>;
 
-/// Go `base64.RawURLEncoding` (non-canonical trailing bits accepted).
+/// Unpadded URL-safe base64 (non-canonical trailing bits accepted).
 const RAW_URL: GeneralPurpose = GeneralPurpose::new(
     &base64::alphabet::URL_SAFE,
     GeneralPurposeConfig::new()
@@ -18,7 +18,7 @@ const RAW_URL: GeneralPurpose = GeneralPurpose::new(
         .with_decode_padding_mode(DecodePaddingMode::RequireNone),
 );
 
-/// Go `base64.URLEncoding`.
+/// Padded URL-safe base64.
 const PADDED_URL: GeneralPurpose = GeneralPurpose::new(
     &base64::alphabet::URL_SAFE,
     GeneralPurposeConfig::new()

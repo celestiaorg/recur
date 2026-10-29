@@ -78,8 +78,8 @@ impl Vars {
     }
 }
 
-/// The process environment as `KEY=VALUE` strings (Go's `os.Environ`).
-/// Non-UTF-8 bytes are replaced with U+FFFD.
+/// The process environment as `KEY=VALUE` strings. Non-UTF-8 bytes are replaced
+/// with U+FFFD.
 pub fn host_environ() -> Vec<String> {
     std::env::vars_os()
         .map(|(k, v)| format!("{}={}", k.to_string_lossy(), v.to_string_lossy()))
@@ -185,8 +185,8 @@ fn merge_env(base: &[String], vals: &BTreeMap<String, String>) -> Vec<String> {
     out
 }
 
-/// Go's `os.Expand`: replaces `$var` and `${var}` using mapping. Invalid
-/// syntax (`${`, `${}`) is eaten; a `$` not followed by a name stays.
+/// Replaces `$var` and `${var}` using mapping. Invalid syntax (`${`, `${}`) is
+/// eaten; a `$` not followed by a name stays.
 pub fn expand(s: &str, mut mapping: impl FnMut(&str) -> String) -> String {
     let b = s.as_bytes();
     let mut buf: Option<String> = None;

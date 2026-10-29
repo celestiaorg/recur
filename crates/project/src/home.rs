@@ -1,8 +1,7 @@
-//! Home-relative paths with Go's exact rules: `git.ExpandHome`,
-//! `os.UserHomeDir`, `os.UserConfigDir`, and the lexical `filepath.Clean` /
-//! `filepath.Abs` they rely on.
+//! Home-relative paths: `~` expansion, the home and user config dirs, and the
+//! lexical clean / abs helpers they rely on.
 
-/// Go's `os.UserHomeDir`: `$HOME`, an error when unset or empty.
+/// `$HOME`, an error when unset or empty.
 pub fn user_home_dir() -> Result<String, String> {
     match std::env::var("HOME") {
         Ok(v) if !v.is_empty() => Ok(v),
@@ -10,8 +9,8 @@ pub fn user_home_dir() -> Result<String, String> {
     }
 }
 
-/// Go's `os.UserConfigDir`: `$HOME/Library/Application Support` on macOS,
-/// `$XDG_CONFIG_HOME` (absolute) or `$HOME/.config` elsewhere.
+/// `$HOME/Library/Application Support` on macOS, `$XDG_CONFIG_HOME` (absolute)
+/// or `$HOME/.config` elsewhere.
 pub fn user_config_dir() -> Result<String, String> {
     let env = |k: &str| std::env::var(k).unwrap_or_default();
     if cfg!(target_os = "macos") {
@@ -36,7 +35,7 @@ pub fn user_config_dir() -> Result<String, String> {
 }
 
 /// Expands a leading `~` (`~` or `~/…`) to the home directory, leaving other
-/// paths (and `~user`) unchanged. Go's `git.ExpandHome`.
+/// paths (and `~user`) unchanged.
 pub fn expand_home(p: &str) -> String {
     if (p == "~" || p.starts_with("~/"))
         && let Ok(home) = user_home_dir()
@@ -46,8 +45,7 @@ pub fn expand_home(p: &str) -> String {
     p.to_owned()
 }
 
-/// Go's `filepath.Join` for two elements: empty elements are skipped and
-/// the result is cleaned.
+/// Joins two elements: empty elements are skipped and the result is cleaned.
 pub fn join(a: &str, b: &str) -> String {
     match (a.is_empty(), b.is_empty()) {
         (true, true) => String::new(),
@@ -57,8 +55,8 @@ pub fn join(a: &str, b: &str) -> String {
     }
 }
 
-/// Go's `filepath.Abs`: joins relative paths onto the working directory and
-/// cleans the result lexically (no symlink resolution).
+/// Joins relative paths onto the working directory and cleans the result
+/// lexically (no symlink resolution).
 pub fn abs(p: &str) -> std::io::Result<String> {
     if p.starts_with('/') {
         return Ok(clean(p));
@@ -67,7 +65,7 @@ pub fn abs(p: &str) -> std::io::Result<String> {
     Ok(join(&wd.to_string_lossy(), p))
 }
 
-/// Go's `filepath.Clean` (Unix): the shortest lexically equivalent path.
+/// The shortest lexically equivalent path.
 pub fn clean(p: &str) -> String {
     if p.is_empty() {
         return ".".to_owned();

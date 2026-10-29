@@ -1,5 +1,5 @@
 //! The code observatory: metrics, light checks, impact, and projecting
-//! reviewer findings onto diffs (Go `internal/observe`).
+//! reviewer findings onto diffs.
 
 mod analyze;
 mod checks;

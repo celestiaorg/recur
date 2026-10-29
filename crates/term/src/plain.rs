@@ -89,7 +89,7 @@ fn strip(p: &[u8]) -> String {
     b
 }
 
-/// One UTF-8 scalar at the start of `p`, like Go's `utf8.DecodeRune` minus the error rune.
+/// One UTF-8 scalar at the start of `p`, or `None`.
 pub(crate) fn decode_rune(p: &[u8]) -> Option<(char, usize)> {
     let len = match p.first()? {
         0x00..=0x7f => 1,

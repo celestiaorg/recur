@@ -156,7 +156,7 @@ fn parse_skill_file(raw: &str) -> (SkillFileMeta, String, bool) {
     (meta, body.to_string(), ok)
 }
 
-/// Every field Go's `readSkillFile` returns, for the golden replay.
+/// Every field `read_skill_file` returns, for the golden replay.
 #[cfg(test)]
 pub(crate) fn read_skill_meta(path: &str) -> (String, bool, bool, String, bool) {
     let Ok(raw) = fs::read(path) else {

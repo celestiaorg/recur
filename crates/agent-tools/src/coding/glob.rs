@@ -73,7 +73,7 @@ fn walk_glob(root: &str, pattern: &str) -> Result<String, ToolError> {
     Ok(matches.join("\n"))
 }
 
-/// Go `filepath.WalkDir` order (lexical per directory, symlinks not followed);
+/// Walk order (lexical per directory, symlinks not followed);
 /// unreadable entries are skipped.
 fn walk(root: &str, p: &str, pattern: &str, out: &mut Vec<String>) {
     let Ok(meta) = fs::symlink_metadata(p) else {

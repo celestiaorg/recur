@@ -78,7 +78,7 @@ pub enum Event {
 }
 
 impl Event {
-    /// The Wails event name the Go app published this as.
+    /// The app event name.
     pub fn name(&self) -> &'static str {
         match self {
             Event::Data { .. } => "term.data",
@@ -1096,7 +1096,7 @@ fn basename(p: &str) -> String {
         .map_or_else(|| p.to_string(), |n| n.to_string_lossy().into_owned())
 }
 
-/// Go's `time.RFC3339Nano`: fractional seconds with trailing zeros trimmed.
+/// RFC 3339 with fractional seconds with trailing zeros trimmed.
 fn rfc3339_nano(t: DateTime<Utc>) -> String {
     let base = t.format("%Y-%m-%dT%H:%M:%S").to_string();
     let frac = format!("{:09}", t.timestamp_subsec_nanos());

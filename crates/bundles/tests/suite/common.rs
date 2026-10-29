@@ -1,4 +1,4 @@
-//! Shared helpers for the ported Go tests.
+//! Shared test helpers.
 #![allow(dead_code)]
 
 use std::path::Path;

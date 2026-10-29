@@ -103,7 +103,7 @@ pub struct PromptRunContext {
     pub work_dir: String,
 }
 
-/// One environment entry (Go `KEY=VALUE`; values may hold arbitrary bytes).
+/// One environment entry (`KEY=VALUE`; values may hold arbitrary bytes).
 pub type EnvVar = (OsString, OsString);
 
 fn inherited(skip: impl Fn(&[u8]) -> bool) -> Vec<EnvVar> {
@@ -167,7 +167,7 @@ pub fn environ(rc: &RunContext) -> Vec<EnvVar> {
 /// the Worker JSON context instead.
 const PROMPT_ENV_BLOB_MAX: usize = 64 * 1024;
 
-/// Byte-exact Go truncation: may cut inside a UTF-8 sequence like Go does.
+/// Byte-exact truncation: may cut inside a UTF-8 sequence.
 fn truncate_prompt_env_blob(s: &str) -> Vec<u8> {
     let b = s.as_bytes();
     if b.len() <= PROMPT_ENV_BLOB_MAX {

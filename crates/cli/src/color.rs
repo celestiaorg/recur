@@ -9,9 +9,9 @@ pub enum Stream {
     Stderr = 2,
 }
 
-/// `NO_COLOR` / `FORCE_COLOR` / `CLICOLOR_FORCE`, else whether the stream
-/// is a character device (Go checks `os.ModeCharDevice`, so `/dev/null`
-/// counts, unlike `isatty`). `FORCE_COLOR` wins over `NO_COLOR`.
+/// `NO_COLOR` / `FORCE_COLOR` / `CLICOLOR_FORCE`, else whether the stream is a
+/// character device (so `/dev/null` counts, unlike `isatty`). `FORCE_COLOR`
+/// wins over `NO_COLOR`.
 pub fn want_color(stream: Stream) -> bool {
     if let Some(force) = color_force_env() {
         return force;

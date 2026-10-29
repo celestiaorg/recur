@@ -4,9 +4,8 @@
 //! themes, language data, snippets, symbols, language servers, settings,
 //! and loop/role/policy definitions.
 //!
-//! Port of Go `internal/bundles`. Every user-visible message (parse errors,
-//! skip reasons, lint findings, test details, report text) matches the Go
-//! text byte for byte; [`go`] holds the Go stdlib semantics that requires.
+//! Every user-visible message (parse errors, skip reasons, lint findings,
+//! test details, report text) is stable text, byte for byte.
 //!
 //! - Manifests: [`parse_manifest`], [`parse_manifest_full`] → [`ParsedBundle`].
 //! - Discovery: [`discover_catalog`] over [`DiscoverRoots`] → [`Catalog`].
@@ -58,12 +57,12 @@ pub use symbol::*;
 pub use testcase::*;
 pub use testrun::*;
 
-/// A bundles error. The text is the exact message Go produced.
+/// A bundles error. The text is the exact user-facing message.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]
 pub struct Error(pub String);
 
-/// `Error(format!(…))`, the counterpart of Go's `fmt.Errorf`.
+/// `Error(format!(…))`.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! err {

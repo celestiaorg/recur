@@ -276,7 +276,7 @@ const code = fs.readFileSync(codePath, "utf8");
 const ctx = JSON.parse(fs.readFileSync(ctxPath, "utf8"));
 (async () => {
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-  // In this Go raw string, \n is two chars (backslash + n) so the written JS
+  // In this raw string, \n is two chars (backslash + n) so the written JS
   // source has real escape sequences — same shape as macro-worker WORKER_BOOT.
   const runner = new AsyncFunction(
     "ctx",
@@ -316,7 +316,7 @@ const ctx = JSON.parse(fs.readFileSync(ctxPath, "utf8"));
 });
 "#;
 
-/// Outcome of a node run under a context (Go `exec.CommandContext`).
+/// Outcome of a node run under a context.
 pub(crate) struct NodeRun {
     pub stdout: Vec<u8>,
     pub stderr: Vec<u8>,
@@ -326,7 +326,7 @@ pub(crate) struct NodeRun {
 
 /// Why [`run_node`] produced no [`NodeRun`].
 pub(crate) enum NodeError {
-    /// Temp dir or file setup failed (Go returns these unwrapped).
+    /// Temp dir or file setup failed (unwrapped).
     Setup(String),
     /// node could not be started.
     Exec(String),
@@ -392,7 +392,7 @@ pub(crate) async fn run_node(
     })
 }
 
-/// `node` resolved on `PATH` like Go's `exec.LookPath`.
+/// `node` resolved on `PATH`.
 fn which_node() -> Option<std::path::PathBuf> {
     use std::os::unix::fs::PermissionsExt;
     let path = std::env::var_os("PATH")?;

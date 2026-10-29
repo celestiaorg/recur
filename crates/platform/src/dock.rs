@@ -32,7 +32,7 @@ pub fn badge_count(inbox_unread: i64, unseen_chats: i64) -> i64 {
 }
 
 /// Applies an attention count: removes the badge at zero, else shows it.
-/// Failures are ignored, as in the Go app.
+/// Failures are ignored.
 pub fn sync_badge(count: i64) {
     let _ = if count <= 0 {
         remove_badge()

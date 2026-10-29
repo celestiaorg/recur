@@ -112,7 +112,7 @@ async fn collect_metrics_and_impact() {
         "package b\nvar _ = UniqueWidgetName\n",
     );
     let r = root.path().to_str().unwrap();
-    // Recorded from Go's CollectMetrics / ComputeImpact on the same tree.
+    // Recorded metrics and impact for the same tree.
     assert_eq!(
         json(&collect_metrics(r)),
         go(
@@ -180,7 +180,7 @@ fn collect_metrics_finds_duplicate_blocks() {
         "b.go",
         format!("package p\n\n{block}\n\nfunc other() {{}}\n"),
     );
-    // Recorded from Go's CollectMetrics on the same tree.
+    // Recorded metrics for the same tree.
     assert_eq!(
         json(&collect_metrics(root.path().to_str().unwrap())),
         go(

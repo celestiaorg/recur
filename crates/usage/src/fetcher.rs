@@ -1,5 +1,5 @@
-//! One snapshot collection across Claude, Codex and Cursor (Go
-//! `usage/fetcher.go`). Tests and services replace the hook fields.
+//! One snapshot collection across Claude, Codex and Cursor.
+//! Tests and services replace the hook fields.
 
 use std::path::PathBuf;
 use std::sync::Arc;

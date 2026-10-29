@@ -1,5 +1,5 @@
 //! VS Code-style `*` / `**` / `?` globs for repo-relative paths: the
-//! translation Go's file index, copy-files and the UI's `lib/glob.ts` share,
+//! translation the file index, copy-files and the UI's `lib/glob.ts` share,
 //! and the UI's explorer exclude check (JavaScript regex semantics).
 
 use std::collections::HashMap;

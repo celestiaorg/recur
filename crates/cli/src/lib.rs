@@ -1,9 +1,7 @@
 //! The Recur CLI: open paths in the desktop app and author Recur Bundles.
 //!
-//! Port of Go `cmd/recur`, `cmd/bundles` and `internal/cli` (Cobra +
-//! Viper). Help, usage, errors, reports and exit codes are byte-identical
-//! to the Go CLI; [`cobra`] reproduces the Cobra/pflag behavior that
-//! requires.
+//! Help, usage, errors, reports and exit codes are stable byte for byte;
+//! [`cobra`] reproduces the Cobra/pflag behavior that requires.
 
 mod app;
 pub mod cobra;
@@ -55,7 +53,7 @@ fn exit_code(err: CliError, io: &mut Io) -> i32 {
     code
 }
 
-/// Process args as strings (Go keeps raw bytes; invalid UTF-8 is replaced).
+/// Process args as strings (invalid UTF-8 is replaced).
 pub fn os_args() -> Vec<String> {
     std::env::args_os()
         .skip(1)

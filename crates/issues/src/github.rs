@@ -43,7 +43,7 @@ impl GitHubIssues {
         }
     }
 
-    /// Go `githubIssues`: one `gh search issues` call; nothing on failure.
+    /// One `gh search issues` call; nothing on failure.
     async fn search(&self, filter: &[String]) -> Vec<AssignedIssue> {
         if !self.gh.installed() {
             return Vec::new();
@@ -67,9 +67,9 @@ impl GitHubIssues {
         }
     }
 
-    /// Go `githubRemoteRepos`: lower-cased `owner/repo` of every remote
-    /// (origin, upstream, …) → the first project that has it, so fork
-    /// checkouts still claim upstream issues.
+    /// Lower-cased `owner/repo` of every remote (origin, upstream, …) → the
+    /// first project that has it, so fork checkouts still claim upstream
+    /// issues.
     pub async fn remote_repos(&self, projects: &[Project]) -> BTreeMap<String, String> {
         let mut out = BTreeMap::new();
         for p in projects {
@@ -206,8 +206,8 @@ impl IssueTracker for GitHubIssues {
         out
     }
 
-    /// Go `claimGitHubIssue`: `gh issue edit --add-assignee @me` unless the
-    /// issue already has an assignee.
+    /// `gh issue edit --add-assignee @me` unless the issue already has an
+    /// assignee.
     async fn claim(&self, issue: &IssueRef, _settings: &Settings) -> Result<(), IssueError> {
         let key = issue.key.as_str();
         let Some(i) = key.rfind('#').filter(|&i| i > 0) else {

@@ -1,5 +1,5 @@
 //! LSP base-protocol framing: `Content-Length` headers around JSON-RPC
-//! bodies (Go `lsp/frame.go`).
+//! bodies.
 
 use std::io;
 

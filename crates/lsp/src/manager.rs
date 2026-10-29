@@ -1,5 +1,4 @@
-//! Language server processes keyed by workspace and server (Go
-//! `lsp/manager.go`).
+//! Language server processes keyed by workspace and server.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};

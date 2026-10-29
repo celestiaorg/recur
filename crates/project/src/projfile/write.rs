@@ -6,7 +6,7 @@ use recur_domain::{Project, effective_runs};
 use super::{FILE_HEADER, File, FileRun, REL_PATH, invalidate, repo_root};
 use crate::tomledit::{Document, Value, array_tables, encode_string, key_value, multiline_field};
 
-/// Why [`write`] could not save project.toml. The message matches Go's.
+/// Why [`write`] could not save project.toml.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]
 pub struct WriteError(String);

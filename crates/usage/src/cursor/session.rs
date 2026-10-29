@@ -1,4 +1,4 @@
-//! Recur-owned Cursor Connect tokens on disk (Go `usage/cursor_session.go`).
+//! Recur-owned Cursor Connect tokens on disk.
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -78,7 +78,7 @@ pub(crate) fn parse_cursor_auth_file(raw: &[u8]) -> Result<CursorTok, String> {
     Ok(tok)
 }
 
-/// The file, laid out like Go's `json.MarshalIndent(…, "", "  ")`, mode 0600.
+/// The file, two-space indented, mode 0600.
 pub(crate) fn write_cursor_auth_file(path: &Path, tok: &CursorTok) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;

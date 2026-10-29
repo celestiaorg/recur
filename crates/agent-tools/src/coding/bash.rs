@@ -19,7 +19,7 @@ const SCHEMA: &str = r#"{"type":"object","properties":{"command":{"type":"string
 static IN: Shape = Shape::anon(&[field("command", Ty::Str), field("timeout", Ty::Float)]);
 
 const MAX_CAPTURE: usize = (MAX_BASH_LINES + 2) * (MAX_LINE_CHARS + 8);
-/// Go `exec.Cmd.WaitDelay`.
+/// How long to wait for the pipes to drain once the process is gone.
 const WAIT_DELAY: Duration = Duration::from_secs(2);
 const CLIPPED: &str = "<response clipped>";
 const DEADLINE: &str = "context deadline exceeded";
@@ -72,7 +72,7 @@ impl Tool for BashTool {
     }
 }
 
-/// Go `time.Duration(timeout * float64(time.Second))`, capped at ten minutes.
+/// `timeout` seconds, capped at ten minutes.
 fn bash_wait(timeout: f64) -> Duration {
     if timeout <= 0.0 {
         return DEFAULT_BASH_WAIT;
@@ -148,7 +148,7 @@ async fn run(c: &Call, command: &str, wait: Duration) -> (String, Option<&'stati
     let status = match waited {
         Some(s) => s,
         None => {
-            // Go's Cmd.Cancel: SIGKILL the whole group, then give it WaitDelay
+            // Cancel: SIGKILL the whole group, then give it WaitDelay
             // to exit before killing the process itself.
             if let Some(pid) = pid {
                 let _ = killpg(pid, Signal::SIGKILL);
@@ -169,7 +169,7 @@ async fn run(c: &Call, command: &str, wait: Duration) -> (String, Option<&'stati
         Ok(s) => Some(exit_status_text(s)),
         Err(e) => Some(e.to_string()),
     };
-    // Go WaitDelay: once the process is gone (or the context fired), wait at
+    // Once the process is gone (or the context fired), wait at
     // most WAIT_DELAY for the pipes to drain, then close them.
     let pipes_by = delay_from.unwrap_or_else(Instant::now) + WAIT_DELAY;
     let drained = tokio::time::timeout_at(pipes_by, async {
@@ -207,7 +207,7 @@ async fn drain<R: AsyncRead + Unpin>(pipe: Option<R>, sink: Arc<Mutex<CapBuffer>
     }
 }
 
-/// Go `exec.LookPath`.
+/// The first executable named `file` on `$PATH` (or `file` itself when it has a slash).
 fn look_path(file: &str) -> Result<String, String> {
     let path = std::env::var("PATH").unwrap_or_default();
     for dir in path.split(':') {
@@ -232,7 +232,7 @@ fn is_executable(p: &str) -> bool {
     std::fs::metadata(p).is_ok_and(|m| !m.is_dir() && m.permissions().mode() & 0o111 != 0)
 }
 
-/// Go `os.ProcessState.String()`.
+/// The exit text (`exit status 1`, `signal: killed`).
 pub(crate) fn exit_status_text(s: &ExitStatus) -> String {
     let mut res = if let Some(code) = s.code() {
         format!("exit status {code}")
@@ -251,7 +251,7 @@ pub(crate) fn exit_status_text(s: &ExitStatus) -> String {
     res
 }
 
-/// Go `syscall.Signal.String()` for this platform.
+/// Signal names for this platform.
 fn signal_name(sig: i32) -> String {
     #[cfg(target_os = "macos")]
     const SIGNALS: [&str; 32] = [

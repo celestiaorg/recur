@@ -1,4 +1,4 @@
-//! Test doubles (Go `ScriptedRunner`). Never a production provider.
+//! Test doubles. Never a production provider.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -42,7 +42,7 @@ impl crate::turn::EventSink for EventRecorder {
 /// cancellation is checked between frames. Each event runs through a
 /// [`ContextUsageTracker`] before it is emitted. When steering is armed, one
 /// queued steer is taken after each tool result and held unacked until the
-/// turn returns, like Go's ScriptedRunner draining `Inject`.
+/// turn returns.
 ///
 /// Every call replays the same script. With [`ScriptedProvider::imitating`]
 /// everything but the turn itself (id, caps, models, context window,

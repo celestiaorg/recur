@@ -8,7 +8,7 @@ use include_dir::{Dir, DirEntry, include_dir};
 use recur_domain::path;
 use regex::Regex;
 
-/// The `recur bundles create` template tree, embedded from its Go home.
+/// The `recur bundles create` template tree.
 static SCAFFOLD: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/scaffold");
 
 static SAFE_BUNDLE_NAME: LazyLock<Regex> =
@@ -67,7 +67,7 @@ pub fn create_bundle(name: &str, dest_parent: &str, force: bool) -> Result<Strin
     Ok(dest)
 }
 
-/// Walks the embedded tree in lexical order (Go `fs.WalkDir`).
+/// Walks the embedded tree in lexical order.
 fn write_tree(dir: &Dir<'static>, dest: &str, pairs: &[(&str, String)]) -> Result<(), String> {
     let mut entries: Vec<&DirEntry<'static>> = dir.entries().iter().collect();
     entries.sort_by_key(|e| e.path().file_name().map(|n| n.to_os_string()));
@@ -102,8 +102,8 @@ fn write_tree(dir: &Dir<'static>, dest: &str, pairs: &[(&str, String)]) -> Resul
     Ok(())
 }
 
-/// Go `strings.NewReplacer`: one left-to-right pass; at each position the
-/// first listed pattern that matches wins.
+/// One left-to-right pass; at each position the first listed pattern that
+/// matches wins.
 fn replace_all(s: &str, pairs: &[(&str, String)]) -> String {
     let mut out = String::with_capacity(s.len());
     let mut rest = s;

@@ -1,6 +1,6 @@
 //! Host tools exposed to agents: the engine callback seam ([`Host`]), the
 //! Recur host tools served over MCP, and the coding tools the in-process
-//! harness runs (Go `internal/agenttools`).
+//! harness runs.
 
 pub mod catalog;
 pub mod coding;

@@ -16,6 +16,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Full debuginfo for every crate fills the Linux runner's disk.
+env:
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+
 jobs:
   # Platform-independent checks, so they run once; the jobs below wait on them.
   sanity:
@@ -32,6 +36,11 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
+      # The Go bundle's gofmt test; ubuntu-24.04 already has Go.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
       - uses: jdx/mise-action@v5
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets -- -D warnings

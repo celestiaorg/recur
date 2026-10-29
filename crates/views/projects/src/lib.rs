@@ -7,8 +7,6 @@
 //! (`recur_view_widgets::schedules::ScheduledPrompts`).
 
 mod color_panel;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod pic;
 pub mod project;
 #[cfg(test)]

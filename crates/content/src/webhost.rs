@@ -1,15 +1,4 @@
-//! Blocking renders, and on Linux the WebKitGTK thread the HTML preview's pages run on.
-
-/// Whether PDF pages and Mermaid diagrams render synchronously (gallery scenes, which run no
-/// application loop).
-pub fn blocking(cx: &gpui_kit::App) -> bool {
-    cx.try_global::<BlockingRenders>().is_some()
-}
-
-/// Installed by hosts that have no running application loop (the gallery scenes).
-pub struct BlockingRenders;
-
-impl gpui_kit::Global for BlockingRenders {}
+//! On Linux, the WebKitGTK thread the HTML preview's pages run on.
 
 /// GPUI's Linux event loop is not GLib's, so WebKitGTK runs on a thread of its own that
 /// initializes GTK and owns the default main context.

@@ -48,13 +48,6 @@ struct EnvHandle(Entity<EditorEnv>);
 
 impl Global for EnvHandle {}
 
-/// Drops the app's editor environment (gallery scenes and spec remounts share one app).
-pub fn reset(cx: &mut App) {
-    if cx.has_global::<EnvHandle>() {
-        cx.remove_global::<EnvHandle>();
-    }
-}
-
 /// The app's editor environment, created (and bootstrapped) on first use.
 pub fn editor_env(state: &Entity<AppState>, cx: &mut App) -> Entity<EditorEnv> {
     if let Some(h) = cx.try_global::<EnvHandle>() {

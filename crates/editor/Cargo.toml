@@ -7,11 +7,6 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-[features]
-# Gallery scenes and the shipped-bundle TextMate loader
-# the example shares.
-gallery = ["dep:recur-bundles"]
-
 [dependencies]
 unicode-linebreak.workspace = true
 chrono.workspace = true
@@ -27,11 +22,10 @@ sum_tree.workspace = true
 unicode-normalization.workspace = true
 pulldown-cmark.workspace = true
 unicode-segmentation.workspace = true
-recur-bundles = { workspace = true, optional = true }
 
 [lints]
 workspace = true
 
 [dev-dependencies]
-recur-editor = { path = ".", features = ["gallery"] }
+recur-bundles.workspace = true
 gpui = { workspace = true, features = ["test-support"] }

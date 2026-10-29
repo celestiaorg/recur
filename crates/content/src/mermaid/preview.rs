@@ -110,11 +110,6 @@ impl MermaidPreview {
         self.pending = true;
         let theme = Theme::of(cx).clone();
         let src = content.to_string();
-        if crate::webhost::blocking(cx) {
-            let res = super::render_blocking(&src, &theme);
-            self.finish(res, cx);
-            return;
-        }
         self.task = Some(cx.spawn(async move |this, cx| {
             let res = super::render(src, &theme, cx).await;
             let _ = this.update(cx, |p, cx| p.finish(res, cx));

@@ -8,8 +8,6 @@ license.workspace = true
 publish = false
 
 [features]
-# Gallery scenes (`gallery::build`, listed in `crates/ui/gallery/scenes.json`).
-gallery = ["recur-services/mock", "recur-ui/gallery", "recur-content/gallery"]
 # Read access to the chat's internals for other crates' specs (`testing`).
 test-support = []
 
@@ -41,9 +39,8 @@ tracing.workspace = true
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["mock"] }
-recur-view-chat = { path = ".", features = ["gallery"] }
 pretty_assertions.workspace = true
-recur-app = { workspace = true, features = ["gallery"] }
+recur-app.workspace = true
 parking_lot.workspace = true
 
 [lints]

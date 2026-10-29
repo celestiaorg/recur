@@ -7,10 +7,6 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-[features]
-# Gallery scenes (`gallery::build`, listed in `crates/ui/gallery/scenes.json`).
-gallery = ["recur-ui/gallery"]
-
 [dependencies]
 gpui-kit.workspace = true
 recur-ui.workspace = true
@@ -76,7 +72,6 @@ pkg-config.workspace = true
 [dev-dependencies]
 pretty_assertions.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
-recur-content = { path = ".", features = ["gallery"] }
 
 # The Linux HTML preview's WebKitGTK page.
 [[test]]

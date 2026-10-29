@@ -7,15 +7,17 @@
 //! `--wrap`.
 
 use std::cell::RefCell;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use gpui_kit::{
     App, AppContext, Bounds, Context, Entity, IntoElement, ParentElement, Render, Styled, Window,
     WindowBounds, WindowOptions, px, size,
 };
+use recur_editor::highlight::TextMate;
 use recur_editor::prefs::{EditorKeymap, EditorPrefs};
 use recur_editor::view::{EditorEvent, EditorKind, EditorOptions, EditorView};
+use recur_textmate::{GrammarInfo, LanguageDataFields, ParsedTmTheme, parse_theme_json};
 
 struct Args {
     file: PathBuf,
@@ -79,6 +81,60 @@ impl Render for Root {
     }
 }
 
+/// The repository's shipped bundles.
+fn bundles_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bundles")
+}
+
+/// Every grammar in `bundles` registered (with its language data), and the
+/// editor theme `theme_id` parsed (`ensureTextMateBootstrap`).
+fn shipped_textmate(bundles: &Path, theme_id: &str) -> (TextMate, Option<Rc<ParsedTmTheme>>) {
+    let mut tm = TextMate::default();
+    let roots = recur_bundles::DiscoverRoots {
+        user_dir: String::new(),
+        default_dir: bundles.display().to_string(),
+    };
+    let Ok(catalog) = recur_bundles::discover_catalog(&roots) else {
+        return (tm, None);
+    };
+    for g in &catalog.grammars {
+        let language_data =
+            recur_bundles::resolve_language_data(&catalog.language_data, &g.scope_name)
+                .and_then(|d| serde_json::to_value(d).ok())
+                .and_then(|v| serde_json::from_value::<LanguageDataFields>(v).ok())
+                .unwrap_or_default();
+        let path = g.abs_path.clone();
+        tm.catalog.add_grammar(
+            GrammarInfo {
+                scope_name: g.scope_name.clone(),
+                id: g.id.clone(),
+                path: g.path.clone(),
+                language: Some(g.language.clone()).filter(|s| !s.is_empty()),
+                file_types: Some(g.file_types.clone()),
+                first_line_match: Some(g.first_line_match.clone()).filter(|s| !s.is_empty()),
+                inject_to: Some(g.inject_to.clone()).filter(|v| !v.is_empty()),
+                embedded_languages: Some(g.embedded_languages.clone().into_iter().collect())
+                    .filter(|m: &std::collections::HashMap<_, _>| !m.is_empty()),
+                bundle_name: g.bundle_name.clone(),
+                source_root: g.source_root.clone(),
+                language_data,
+            },
+            Rc::new(move || std::fs::read_to_string(&path).ok()),
+        );
+    }
+    let theme = catalog
+        .themes
+        .iter()
+        .find(|t| t.id == theme_id)
+        .and_then(|t| std::fs::read_to_string(&t.abs_path).ok())
+        .and_then(|text| parse_theme_json(&text, theme_id).ok())
+        .map(Rc::new);
+    if let Some(t) = theme.clone() {
+        tm.activate_theme(t);
+    }
+    (tm, theme)
+}
+
 fn main() {
     let a = args();
     if a.file.as_os_str().is_empty() {
@@ -98,10 +154,7 @@ fn main() {
             gpui_kit::init(cx);
             recur_ui::init(cx);
             recur_ui::Theme::set(recur_ui::ThemeId::from_key(&a.app_theme), cx);
-            let (tm, theme) = recur_editor::gallery::shipped_textmate(
-                &recur_editor::gallery::bundles_dir(),
-                &a.theme,
-            );
+            let (tm, theme) = shipped_textmate(&bundles_dir(), &a.theme);
             let tm = Rc::new(RefCell::new(tm));
             let dark = theme
                 .as_ref()

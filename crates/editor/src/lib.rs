@@ -15,8 +15,6 @@ pub mod display;
 pub mod element;
 pub mod emacs;
 pub mod fold;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod gutters;
 pub mod highlight;
 pub mod history;

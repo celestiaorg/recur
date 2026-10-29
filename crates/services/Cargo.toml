@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [features]
-# In-memory mock services over the e2e seed, for view specs and gallery scenes.
+# In-memory mock services over the e2e seed, for view specs.
 mock = []
 
 [dependencies]

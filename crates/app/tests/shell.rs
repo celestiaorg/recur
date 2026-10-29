@@ -9,9 +9,8 @@ use gpui_kit::{
     Bounds, Entity, Focusable, Modifiers, MouseButton, Pixels, TestAppContext, VisualTestContext,
     point, px,
 };
-use recur_app::gallery::scene_seed;
 use recur_app::{Shell, ShellOptions};
-use recur_services::mock::{MockBridge, MockOptions, Reply};
+use recur_services::mock::{MockBridge, MockOptions, Reply, Seed};
 use recur_ui::widgets::ToastStore;
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
 use serde_json::{Value, json};
@@ -30,7 +29,104 @@ fn init(cx: &mut TestAppContext) {
 }
 
 fn bridge(patch: Value, opts: MockOptions) -> Arc<MockBridge> {
-    MockBridge::new(scene_seed(&patch), opts)
+    MockBridge::new(patched_seed(&patch), opts)
+}
+
+const SEED_JSON: &str = include_str!("../../services/src/mock/seed.json");
+
+fn merge(into: &mut Value, patch: &Value) {
+    if let (Some(a), Some(b)) = (into.as_object_mut(), patch.as_object()) {
+        for (k, v) in b {
+            a.insert(k.clone(), v.clone());
+        }
+    }
+}
+
+/// Upsert `rows` into the array at `list` by `id` (merging fields into an existing row), and
+/// mirror each into the `by_id` map when there is one.
+fn upsert(seed: &mut Value, list: &str, by_id: Option<&str>, rows: &Value) {
+    for row in rows.as_array().into_iter().flatten() {
+        let id = row
+            .get("id")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let arr = seed.as_object_mut().and_then(|o| {
+            o.entry(list)
+                .or_insert_with(|| Value::Array(Vec::new()))
+                .as_array_mut()
+        });
+        let Some(arr) = arr else { continue };
+        match arr
+            .iter_mut()
+            .find(|x| x.get("id").and_then(Value::as_str) == Some(id.as_str()))
+        {
+            Some(x) => merge(x, row),
+            None => arr.push(row.clone()),
+        }
+        if let Some(map) = by_id
+            && let Some(m) = seed.as_object_mut().and_then(|o| {
+                o.entry(map)
+                    .or_insert_with(|| Value::Object(Default::default()))
+                    .as_object_mut()
+            })
+        {
+            match m.get_mut(&id) {
+                Some(x) => merge(x, row),
+                None => {
+                    m.insert(id.clone(), row.clone());
+                }
+            }
+        }
+    }
+}
+
+/// Seed edits: `projects` and `loops` upsert rows by id; `projectGroups` replaces; `settings`
+/// merges.
+fn patch_seed(seed: &mut Value, patch: &Value) {
+    let Some(p) = patch.as_object() else { return };
+    if let Some(rows) = p.get("projects") {
+        upsert(seed, "projects", None, rows);
+    }
+    if let Some(rows) = p.get("loops") {
+        upsert(seed, "loops", Some("loopById"), rows);
+    }
+    if let Some(v) = p.get("projectGroups")
+        && let Some(o) = seed.as_object_mut()
+    {
+        o.insert("projectGroups".to_string(), v.clone());
+    }
+    if let Some(v) = p.get("settings")
+        && let Some(s) = seed.get_mut("settings")
+    {
+        merge(s, v);
+    }
+}
+
+/// The e2e seed with `patch` applied ([`patch_seed`]).
+fn patched_seed(patch: &Value) -> Seed {
+    let mut raw: Value = serde_json::from_str(SEED_JSON).unwrap_or(Value::Null);
+    patch_seed(&mut raw, patch);
+    let set_path = |l: &mut Value| {
+        let empty = l
+            .get("worktreePath")
+            .and_then(Value::as_str)
+            .is_none_or(str::is_empty);
+        if empty {
+            let id = l.get("id").and_then(Value::as_str).unwrap_or_default();
+            let path = format!("/mock/worktrees/{id}");
+            if let Some(o) = l.as_object_mut() {
+                o.insert("worktreePath".into(), Value::String(path));
+            }
+        }
+    };
+    if let Some(loops) = raw.get_mut("loops").and_then(Value::as_array_mut) {
+        loops.iter_mut().for_each(set_path);
+    }
+    if let Some(m) = raw.get_mut("loopById").and_then(Value::as_object_mut) {
+        m.values_mut().for_each(set_path);
+    }
+    Seed::from_json(&raw)
 }
 
 fn open(

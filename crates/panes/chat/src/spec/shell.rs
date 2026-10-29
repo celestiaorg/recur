@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use gpui::{Entity, TestAppContext, VisualTestContext};
 use gpui_kit::{AppContext as _, Focusable};
-use recur_app::gallery::scene_seed;
 use recur_app::{Shell, ShellOptions};
 use recur_services::mock::{MockBridge, MockOptions};
 use recur_ui::widgets::ToastStore;
@@ -23,7 +22,7 @@ struct S<'a> {
 
 fn boot(cx: &mut TestAppContext, opts: MockOptions) -> S<'_> {
     init(cx);
-    let bridge = MockBridge::new(scene_seed(&json!({})), opts);
+    let bridge = MockBridge::fresh(opts);
     let services = bridge.services();
     let state = cx.update(|cx| AppState::install(services.clone(), LocalStorage::in_memory(), cx));
     let ctx = ViewContext {

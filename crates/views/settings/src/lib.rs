@@ -9,8 +9,6 @@
 
 pub mod compatible;
 pub mod field;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod mono_fonts;
 pub mod nav;
 pub mod rules;

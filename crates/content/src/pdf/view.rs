@@ -163,15 +163,11 @@ impl PdfPreview {
             return;
         };
         self.pending = true;
-        if crate::webhost::blocking(cx) {
-            self.opened(engine::open(&bytes), cx);
-        } else {
-            let open = cx.background_spawn(async move { engine::open(&bytes) });
-            self.load = Some(cx.spawn(async move |this, cx| {
-                let r = open.await;
-                let _ = this.update(cx, |p, cx| p.opened(r, cx));
-            }));
-        }
+        let open = cx.background_spawn(async move { engine::open(&bytes) });
+        self.load = Some(cx.spawn(async move |this, cx| {
+            let r = open.await;
+            let _ = this.update(cx, |p, cx| p.opened(r, cx));
+        }));
         cx.notify();
     }
 
@@ -320,17 +316,14 @@ impl PdfPreview {
             .collect();
         pages.sort_unstable();
         for n in pages {
-            let blocking = crate::webhost::blocking(cx);
-            let render = (!blocking).then(|| {
-                let doc = doc.clone();
-                let r = cx.background_spawn(async move { engine::render(&doc, n, scale, dpr) });
-                cx.spawn(async move |this, cx| {
-                    let r = r.await;
-                    let _ = this.update(cx, |p, cx| {
-                        p.rendered(n, r);
-                        cx.notify();
-                    });
-                })
+            let doc = doc.clone();
+            let r = cx.background_spawn(async move { engine::render(&doc, n, scale, dpr) });
+            let render = cx.spawn(async move |this, cx| {
+                let r = r.await;
+                let _ = this.update(cx, |p, cx| {
+                    p.rendered(n, r);
+                    cx.notify();
+                });
             });
             self.slots.insert(
                 n,
@@ -338,12 +331,9 @@ impl PdfPreview {
                     scale,
                     dpr,
                     painted: None,
-                    _render: render,
+                    _render: Some(render),
                 },
             );
-            if blocking {
-                self.rendered(n, engine::render(&doc, n, scale, dpr));
-            }
         }
     }
 
@@ -419,10 +409,6 @@ impl PdfPreview {
             let Some(doc) = self.doc.clone().filter(|_| self.find_task.is_none()) else {
                 return;
             };
-            if crate::webhost::blocking(cx) {
-                self.find_text = Some(engine::find_text(&doc));
-                return self.refresh_find(cx);
-            }
             let text = cx.background_spawn(async move { engine::find_text(&doc) });
             self.find_task = Some(cx.spawn(async move |this, cx| {
                 let text = text.await;

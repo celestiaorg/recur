@@ -8,8 +8,6 @@
 //! `AppState::overlays`.
 
 mod dialog;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod new_project;
 pub mod new_task;
 pub mod new_workspace;

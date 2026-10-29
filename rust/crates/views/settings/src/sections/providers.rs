@@ -686,6 +686,7 @@ impl SettingsView {
         if !chatgpt {
             let visible = self.codex_key_visible;
             let input = self.field("codex-key", FieldOpts::default(), window, cx);
+            input.update(cx, |s, cx| s.set_disabled(signing_in, cx));
             if let Some(f) = self.fields.get("codex-key") {
                 f.set_masked(!visible, window, cx);
             }

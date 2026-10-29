@@ -100,6 +100,35 @@ fn direct_chatgpt_sign_in_works_with_every_cli_provider_disabled(cx: &mut TestAp
 }
 
 #[gpui::test]
+fn openai_contains_chatgpt_codex_and_api_setup_under_one_provider_toggle(cx: &mut TestAppContext) {
+    let mut s = with(
+        cx,
+        |sd| {
+            sd.settings["disabledProviders"] = json!([]);
+            sd.settings["compatibleProviders"] = json!([{
+                "id": "openai", "name": "OpenAI", "baseUrl": "https://api.openai.com",
+                "models": [{ "id": "gpt-api", "label": "API GPT" }],
+            }]);
+        },
+        MockOptions::default(),
+    );
+    s.open_settings();
+    s.section("Providers");
+    assert!(s.has("override:Enable ChatGPT:true"));
+    assert!(s.has("override:Enable Codex:true"));
+    assert!(s.has("override:Enable OpenAI API endpoint:true"));
+    let off = |s: &mut super::harness::S<'_>| {
+        let off = s.saved()["disabledProviders"].clone();
+        ["chatgpt", "codex", "openai"]
+            .map(|p| off.as_array().is_some_and(|a| a.contains(&json!(p))))
+    };
+    s.click("override:Enable OpenAI:true");
+    assert!(s.until(|s| off(s) == [true; 3]));
+    s.click("override:Enable OpenAI:false");
+    assert!(s.until(|s| off(s) == [false; 3]));
+}
+
+#[gpui::test]
 fn openai_cannot_be_turned_off_when_it_is_the_only_ready_provider(cx: &mut TestAppContext) {
     let opts =
         MockOptions::default().resolver("GetChatGPTStatus", |_, _, _| Reply::value(signed_in()));
@@ -300,6 +329,7 @@ fn codex_browser_sign_in_cancels_on_cancel_and_on_leaving_settings(cx: &mut Test
         s.click("btn:Sign in with ChatGPT");
         assert!(s.until(|s| s.has("btn:Cancel sign-in")));
         assert!(s.has("tog:toggle Codex ChatGPT auth:false"));
+        s.fill("inp:Codex API key", "sk-typed");
         if leave {
             s.section("General");
         } else {
@@ -308,6 +338,10 @@ fn codex_browser_sign_in_cancels_on_cancel_and_on_leaving_settings(cx: &mut Test
         }
         assert!(s.until(|_| *cancelled.lock() == [json!("codex-login")]));
         assert_eq!(s.saved()["codexChatGPTAuth"], json!(false));
+        if !leave {
+            s.click("btn:Save");
+            assert_ne!(s.saved()["codexApiKey"], json!("sk-typed"));
+        }
     }
 }
 

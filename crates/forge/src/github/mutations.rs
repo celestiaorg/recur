@@ -133,8 +133,8 @@ impl GitHub {
         decode(out.trim()).map_err(|e| ForgeError::failed(format!("parse gh pr view: {e}")))
     }
 
-    /// Go `postGitHubPRComment`: a line note when `file` and `line` are set,
-    /// falling back to a conversation comment prefixed with the location.
+    /// A line note when `file` and `line` are set, falling back to a
+    /// conversation comment prefixed with the location.
     pub(crate) async fn post(
         &self,
         repo: &Path,
@@ -207,7 +207,7 @@ impl GitHub {
         Ok(())
     }
 
-    /// Go `submitGitHubPRReview`. `kind` is `approve`, `request` or a comment.
+    /// `kind` is `approve`, `request` or a comment.
     pub(crate) async fn review(
         &self,
         repo: &Path,
@@ -307,7 +307,7 @@ impl GitHub {
             .map_err(|e| ForgeError::wrap(format!("gh api pull review {number}"), e))
     }
 
-    /// Go `fetchGitHubViewer`: login, write access and merge methods.
+    /// Login, write access and merge methods.
     pub(crate) async fn fetch_viewer(&self, repo: &Path, owner_repo: &str) -> Viewer {
         let repo_path = format!("repos/{owner_repo}");
         let settings_args = [
@@ -335,7 +335,7 @@ impl GitHub {
         v
     }
 
-    /// Go `setGitHubPRDraft`: `gh pr ready` (or `--undo` to convert to draft).
+    /// `gh pr ready` (or `--undo` to convert to draft).
     pub(crate) async fn draft(
         &self,
         repo: &Path,
@@ -361,7 +361,7 @@ impl GitHub {
         })
     }
 
-    /// Go `editGitHubPR`: title, and the body unless `None`.
+    /// Title, and the body unless `None`.
     pub(crate) async fn edit(
         &self,
         repo: &Path,
@@ -390,8 +390,8 @@ impl GitHub {
             .map_err(|e| ForgeError::wrap(format!("gh pr edit {number}"), e))
     }
 
-    /// Go `editGitHubPRComment`: description, issue comment, review body or
-    /// line note, chosen by the Recur row id.
+    /// Description, issue comment, review body or line note, chosen by the
+    /// Recur row id.
     pub(crate) async fn edit_comment_body(
         &self,
         repo: &Path,
@@ -522,7 +522,7 @@ impl GitHub {
             .map_err(|e| ForgeError::wrap(format!("gh api pull comment {rest_id}"), e))
     }
 
-    /// Go `deleteGitHubPRComment`: issue comments and line notes.
+    /// Issue comments and line notes.
     pub(crate) async fn delete(
         &self,
         repo: &Path,
@@ -573,8 +573,7 @@ impl GitHub {
         Err(ForgeError::invalid(format!("unsupported comment id {id}")))
     }
 
-    /// Go `replyGitHubPRComment` + `parsePostedInlineComment`: the reply row
-    /// GitHub created, or `None` when its answer did not parse.
+    /// The reply row GitHub created, or `None` when its answer did not parse.
     pub(crate) async fn reply_to(
         &self,
         repo: &Path,
@@ -613,7 +612,6 @@ impl GitHub {
         Ok(parse_posted_inline_comment(&out, Utc::now(), pr_url))
     }
 
-    /// Go `setGitHubReviewThread`.
     pub(crate) async fn resolve_thread(
         &self,
         repo: &Path,
@@ -645,9 +643,8 @@ impl GitHub {
         )
     }
 
-    /// Go `SearchPRMentionableUsers` (GitHub half): people who can be
-    /// @mentioned in the PR's repo. String variables go as `-f` so a query
-    /// like `123` stays a string.
+    /// People who can be @mentioned in the PR's repo. String variables go as
+    /// `-f` so a query like `123` stays a string.
     pub(crate) async fn search_mentionable(
         &self,
         repo: &Path,

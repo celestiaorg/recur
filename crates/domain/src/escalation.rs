@@ -30,7 +30,7 @@ pub struct Escalation {
     pub agent_code: String,
     pub question: String,
     pub context: String,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub options: Option<Vec<EscalationOption>>,
     /// The single-line resolved value (free text wins, else the choice).
     pub answer: String,

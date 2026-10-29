@@ -25,7 +25,7 @@ impl PrListState {
         }
     }
 
-    /// Rows the PR sweep asks for (Go `githubOpenPRLimit` / `githubMergedPRLimit`).
+    /// Rows the PR sweep asks for.
     pub fn sweep_limit(self) -> usize {
         match self {
             Self::Open => 100,

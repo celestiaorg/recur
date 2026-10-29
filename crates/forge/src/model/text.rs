@@ -2,7 +2,7 @@
 
 use recur_domain::{Commit, Pr};
 
-/// The first non-empty line of `s`, trimmed (Go `singleLine`).
+/// The first non-empty line of `s`, trimmed.
 pub fn single_line(s: &str) -> String {
     let s = s.trim();
     match s.find('\n') {
@@ -11,7 +11,7 @@ pub fn single_line(s: &str) -> String {
     }
 }
 
-/// The first `n` characters of `s` (Go `hardTruncateRunes`).
+/// The first `n` characters of `s`.
 pub fn hard_truncate_chars(s: &str, n: usize) -> String {
     match s.char_indices().nth(n) {
         Some((i, _)) => s[..i].to_owned(),
@@ -49,7 +49,6 @@ pub fn pr_description(pr: &Pr) -> String {
         .unwrap_or_default()
 }
 
-/// Go `html.EscapeString`.
 pub fn html_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
@@ -76,12 +75,12 @@ pub fn comment_avatar_css(code: &str) -> &'static str {
     }
 }
 
-/// `a` when it has non-space text, else `b` (Go `firstNonEmptyStr`).
+/// `a` when it has non-space text, else `b`.
 pub(crate) fn first_non_empty<'a>(a: &'a str, b: &'a str) -> &'a str {
     if a.trim().is_empty() { b } else { a }
 }
 
-/// Go `strings.EqualFold` for the ASCII-only values forges send.
+/// ASCII case-insensitive equality for the values forges send.
 pub(crate) fn eq_fold(a: &str, b: &str) -> bool {
     a.chars()
         .flat_map(char::to_lowercase)

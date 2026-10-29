@@ -1435,7 +1435,7 @@ fn git_in(dir: &Path, args: &[&str]) {
     );
 }
 
-/// A repo on `main` with one commit (Go `initRepo`).
+/// A repo on `main` with one commit.
 fn init_repo() -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::tempdir().unwrap();
     let repo = dir.path().join("repo");

@@ -101,8 +101,8 @@ struct UrlOnly {
 }
 
 impl GitHub {
-    /// Go `githubRepoOwnerName`: `gh repo view` (gh's default repo for the
-    /// checkout), cached per checkout.
+    /// `gh repo view` (gh's default repo for the checkout), cached per
+    /// checkout.
     pub(crate) async fn repo_owner_name(
         &self,
         repo: &Path,
@@ -131,7 +131,7 @@ impl GitHub {
         Ok(pair)
     }
 
-    /// Go `githubPRViewURL`: the PR page URL, or empty.
+    /// The PR page URL, or empty.
     pub(crate) async fn pr_view_url(&self, repo: &Path, number: i64) -> String {
         let Ok(out) = self
             .gh
@@ -154,7 +154,6 @@ impl GitHub {
             .unwrap_or_default()
     }
 
-    /// Go `ownerRepoForPR`.
     pub(crate) async fn owner_repo_for_pr(
         &self,
         repo: &Path,
@@ -179,7 +178,6 @@ impl GitHub {
             .ok_or_else(|| ForgeError::failed("missing repo for pull comment"))
     }
 
-    /// Go `githubOwnerRepoForRemote`.
     pub(crate) async fn owner_repo_for_remote(
         &self,
         repo: &Path,

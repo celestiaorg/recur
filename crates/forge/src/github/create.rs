@@ -140,8 +140,7 @@ pub(crate) fn strip_cmd_wrap(s: &str) -> String {
 }
 
 impl GitHub {
-    /// Go `CreateGitHubPR`. `Err` is the user-facing reason (the caller falls
-    /// back to a Local PR).
+    /// `Err` is the user-facing reason (the caller falls back to a Local PR).
     pub(crate) async fn create(&self, req: CreatePr<'_>) -> Result<i64, String> {
         if !self.cli_available().await {
             return Err(
@@ -211,7 +210,7 @@ impl GitHub {
         Err("gh pr create did not print a PR URL".into())
     }
 
-    /// Go `githubPRNumberForHead`: the open PR for head/base, or 0.
+    /// The open PR for head/base, or 0.
     pub(crate) async fn pr_number_for_head(&self, repo: &Path, branch: &str, base: &str) -> i64 {
         if branch.trim().is_empty() {
             return 0;
@@ -222,9 +221,9 @@ impl GitHub {
         }
     }
 
-    /// Go `pushGitHubHead`: pushes HEAD to the remote head an open PR tracks.
-    /// `force` uses `--force-with-lease`. A fork PR pushes to the head repo,
-    /// leases against the fetched PR head, and advances that ref.
+    /// Pushes HEAD to the remote head an open PR tracks. `force` uses
+    /// `--force-with-lease`. A fork PR pushes to the head repo, leases against
+    /// the fetched PR head, and advances that ref.
     pub(crate) async fn push(
         &self,
         worktree: &Path,
@@ -276,7 +275,7 @@ impl GitHub {
         Ok(())
     }
 
-    /// Go `githubPRHeadRepoURL`: a fork PR's push URL in origin's scheme.
+    /// A fork PR's push URL in origin's scheme.
     async fn head_repo_url(&self, repo: &Path, number: i64) -> Result<String, ForgeError> {
         let out = self
             .gh

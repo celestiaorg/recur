@@ -25,8 +25,8 @@
 //!   hands the left gutter to the host (`onToggleLeft`); `None` keeps it local.
 //!   `shell_active: false` parks the Observatory (hot shells): no watcher, menu, keys or focus.
 //! - **Slots** ([`ObservatorySlots`]): views the host owns: the agent chat (`left_panel`), its
-//! tab strip (`left_head`), the plan panel and head, and the overlay shown while
-//! `main_blocked`. Replace them with [`Observatory::set_slots`].
+//!   tab strip (`left_head`), the plan panel and head, and the overlay shown while
+//!   `main_blocked`. Replace them with [`Observatory::set_slots`].
 //! - **Events** ([`ObservatoryEvent`]): the callbacks (`ToggleLeft`, agent tab commands,
 //!   `FixFindings`, `AddEditorMention`, `FocusAgentComposer`) and the snippet arguments
 //!   (`MaestroVisible`, `AgentLit`, `SelectedArtifact`); the same values are readable with

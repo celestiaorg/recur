@@ -5,10 +5,8 @@
 //! docs; rich nested aggregates (a PR's commits/files, an agent's steps, a
 //! workspace's feed and convergence) are JSON documents in one column.
 //!
-//! Go caps `database/sql` at one connection, so every statement and
-//! transaction is serialized on it. Here that connection sits behind a
-//! mutex: a transaction holds it from begin to commit, exactly like Go's
-//! pooled single connection.
+//! One SQLite connection serializes every statement and transaction. It sits
+//! behind a mutex: a transaction holds it from begin to commit.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -458,7 +456,7 @@ impl Db {
     }
 }
 
-/// Go's `json.Unmarshal` leaves a field at its zero value for JSON `null`.
+/// JSON `null` leaves a field at its default value.
 fn nullable<'de, D: Deserializer<'de>, T: Deserialize<'de> + Default>(
     d: D,
 ) -> std::result::Result<T, D::Error> {

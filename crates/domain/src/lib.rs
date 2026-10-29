@@ -1,16 +1,15 @@
 //! Recur's domain model: projects, workspaces, sessions, loops, findings,
 //! schedules, settings and their IDs. Pure data and rules, no I/O.
 //!
-//! Port of Go `internal/domain` and `internal/shortid`. Every type
-//! serializes with the Go JSON tags, so `recur.db` JSON columns and
-//! view-state files round-trip as equal JSON values:
+//! Every type serializes with stable JSON field names, so `recur.db` JSON
+//! columns and view-state files round-trip as equal JSON values:
 //!
-//! - Go string enums (`type X string`) are [`string_enum!`] types whose
-//!   `Other(String)` variant keeps unknown and empty values.
-//! - Go `omitempty` fields skip their zero value; other fields always
-//!   serialize. A non-`omitempty` Go slice or map is `Option<…>` because Go
-//!   writes a nil one as `null`.
-//! - Plain Go string consts (chat modes, block types, …) stay `&str` consts
+//! - String enums are [`string_enum!`] types whose `Other(String)` variant
+//!   keeps unknown and empty values.
+//! - `omitempty` fields skip their zero value; other fields always
+//!   serialize. A non-`omitempty` slice or map is `Option<…>` because it can be
+//!   `null`.
+//! - Plain string consts (chat modes, block types, …) stay `&str` consts
 //!   and the matching fields stay `String`.
 
 #[macro_use]

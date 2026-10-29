@@ -1,13 +1,11 @@
 //! The Recur process log, `<root>/logs/recur.log`, rotated to
 //! `recur.log.old` past 2 MiB (also mid-session).
 //!
-//! Go tees the standard `log` package to this file and points
-//! `debug.SetCrashOutput` at it. In Rust the process logger is the `tracing`
-//! subscriber the binary installs, so [`tee_app_log`] returns a writer for
-//! it ([`AppLogWriter`] is a `MakeWriter`) plus [`GoLogFormat`], which keeps
-//! Go's `2006/01/02 15:04:05 message` lines (multi-line messages and stack
-//! traces stay verbatim). Panics are the crash output: a panic hook appends
-//! the message and a backtrace to the file.
+//! The process logger is the `tracing` subscriber the binary installs, so
+//! [`tee_app_log`] returns a writer for it ([`AppLogWriter`] is a `MakeWriter`)
+//! plus [`GoLogFormat`], which keeps `2006/01/02 15:04:05 message` lines
+//! (multi-line messages and stack traces stay verbatim). Panics are the crash
+//! output: a panic hook appends the message and a backtrace to the file.
 
 use std::io::{self, Write};
 use std::panic::PanicHookInfo;
@@ -264,7 +262,7 @@ pub fn tee_app_log_to(
     )
 }
 
-/// `2006/01/02 15:04:05 msg\n` in local time, like Go's default logger.
+/// `2006/01/02 15:04:05 msg\n` in local time.
 fn go_log_line(msg: &str) -> String {
     let ts = chrono::Local::now().format("%Y/%m/%d %H:%M:%S");
     if msg.ends_with('\n') {
@@ -274,9 +272,8 @@ fn go_log_line(msg: &str) -> String {
     }
 }
 
-/// A `tracing` event format matching Go's `log.Printf` output: local
-/// timestamp, then the message and fields exactly as written (no level, no
-/// target, no escaping), one trailing newline.
+/// A `tracing` event format: local timestamp, then the message and fields
+/// exactly as written (no level, no target, no escaping), one trailing newline.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct GoLogFormat;
 

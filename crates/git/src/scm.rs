@@ -217,7 +217,7 @@ pub async fn recent_commit_subjects(dir: &str, n: i64) -> Vec<String> {
     }
 }
 
-/// git `-C dir` from the current directory (Go `runGit`).
+/// git `-C dir` from the current directory.
 pub(crate) async fn run_git<I, S>(dir: &str, args: I) -> Result<String>
 where
     I: IntoIterator<Item = S>,

@@ -63,7 +63,7 @@ pub struct Pr {
     pub branch: String,
     pub base: String,
     pub title: String,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub summary: Option<Vec<SummaryPara>>,
     pub focus: FocusNote,
     /// "In review" / "Merged".
@@ -83,18 +83,18 @@ pub struct Pr {
     /// The last activity time (RFC3339).
     #[serde(skip_serializing_if = "String::is_empty")]
     pub updated_at: String,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub commits: Option<Vec<Commit>>,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub files: Option<Vec<FileDiff>>,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub comments: Option<Vec<PrComment>>,
     /// Line notes not yet submitted with a review.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub pending_comments: Vec<PendingLineComment>,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub verify: Option<Vec<VerifyStep>>,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub checks: Option<Vec<Check>>,
     /// How many commits the base is ahead of the PR branch (0 = up to date).
     #[serde(skip_serializing_if = "is_zero")]
@@ -278,7 +278,7 @@ pub struct Commit {
     pub iter_label: String,
     pub diff: DiffStat,
     pub when: String,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub files: Option<Vec<FileDiff>>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub avatar_url: String,
@@ -300,7 +300,7 @@ pub struct FileDiff {
     /// m/a/d/r.
     pub status: String,
     pub diff: DiffStat,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub lines: Option<Vec<DiffLine>>,
 }
 
@@ -309,7 +309,7 @@ pub struct FileDiff {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct FileDiffResult {
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub files: Option<Vec<FileDiff>>,
     #[serde(skip_serializing_if = "is_false")]
     pub truncated: bool,

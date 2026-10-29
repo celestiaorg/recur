@@ -75,7 +75,7 @@ impl Manager {
             .unwrap_or_else(|| DEFAULT_BRANCH_PREFIX.to_string())
     }
 
-    /// git in the repository (Go `m.run`).
+    /// git in the repository.
     pub(crate) fn git<I, S>(&self, args: I) -> Command
     where
         I: IntoIterator<Item = S>,
@@ -84,7 +84,7 @@ impl Manager {
         command(args).current_dir(&self.repo_path)
     }
 
-    /// git `-C worktree` (Go `m.runIn`).
+    /// git `-C worktree`.
     pub(crate) fn git_in<I, S>(&self, worktree: &str, args: I) -> Command
     where
         I: IntoIterator<Item = S>,
@@ -1252,7 +1252,7 @@ impl Manager {
 }
 
 /// Runs a prepared git command and returns stdout, or an error that leads
-/// with git's stderr (Go `m.runEnv`).
+/// with git's stderr.
 pub(crate) async fn exec(cmd: Command) -> Result<String> {
     let ran = cmd.capture().await;
     match ran.result {
@@ -1906,7 +1906,7 @@ pub(crate) fn clean_path(p: &str) -> String {
     path::eval_symlinks(&abs).unwrap_or(abs)
 }
 
-/// Go `os.RemoveAll`: removes a file or tree; a missing path is not an error.
+/// Removes a file or tree; a missing path is not an error.
 pub(crate) fn remove_all(path: &str) -> std::io::Result<()> {
     let res = match std::fs::symlink_metadata(path) {
         Ok(m) if m.is_dir() => std::fs::remove_dir_all(path),

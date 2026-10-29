@@ -46,7 +46,7 @@ pub fn builtin_provider(provider: &str) -> bool {
 /// Model ids MAY contain "/": [`parse_model_ref`] splits on the first slash,
 /// so `openrouter/openai/gpt-4o` is provider `openrouter`, id `openai/gpt-4o`.
 ///
-/// Go has no JSON tags on this type, so it encodes with the field names.
+/// Encodes with the PascalCase field names.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ModelRef {

@@ -1,11 +1,11 @@
-//! Go `encoding/json` decoding semantics that serde does not have by default.
+//! JSON decoding semantics that serde does not have by default.
 //!
-//! Domain types derive serde with the Go JSON tags, so `serde_json` reads and
+//! Domain types derive serde with their JSON field names, so `serde_json` reads and
 //! writes compatible documents.
 
 use serde::Deserialize;
 
-/// Decodes JSON `null` as the zero value, as Go does for non-pointer fields.
+/// Decodes JSON `null` as the zero value.
 pub(crate) fn null_default<'de, D, T>(d: D) -> Result<T, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -14,8 +14,8 @@ where
     Ok(Option::<T>::deserialize(d)?.unwrap_or_default())
 }
 
-/// A Go `json.RawMessage` held as its JSON text. Empty text is the nil
-/// message and encodes as `null`, like Go.
+/// A raw JSON message held as its text. Empty text is the nil
+/// message and encodes as `null`.
 pub mod raw {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use serde_json::value::RawValue;

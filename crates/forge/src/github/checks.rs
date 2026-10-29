@@ -104,7 +104,7 @@ pub(crate) struct CheckRow {
     pub link: String,
 }
 
-/// Go `bucketFromGHState`: a GitHub check state or conclusion as a bucket.
+/// A GitHub check state or conclusion as a bucket.
 pub(crate) fn bucket_from_state(state: &str) -> &'static str {
     match state.trim().to_uppercase().as_str() {
         "SUCCESS" | "NEUTRAL" => BUCKET_PASS,
@@ -118,8 +118,8 @@ pub(crate) fn bucket_from_state(state: &str) -> &'static str {
     }
 }
 
-/// Go `parseGitHubPRChecksAt`: `gh pr checks --json` output. Empty output
-/// or "no checks reported" is a clean rollup.
+/// Parses `gh pr checks --json` output. Empty output or "no checks reported" is
+/// a clean rollup.
 pub(crate) fn parse_cli_checks(
     raw: &str,
     now: DateTime<Utc>,
@@ -316,8 +316,7 @@ struct TotalCount {
     total_count: i64,
 }
 
-/// Go `parseGitHubPRChecksGraphQLAt`. A rollup that does not fit one page is
-/// never green.
+/// A rollup that does not fit one page is never green.
 pub(crate) fn parse_graphql_checks(
     raw: &str,
     now: DateTime<Utc>,
@@ -630,7 +629,6 @@ pub(crate) fn apply_checks_tab_urls(mut checks: Vec<Check>, pr_url: &str) -> Vec
     checks
 }
 
-/// Go `githubCheckFromRow`.
 pub(crate) fn check_from_row(row: &CheckRow, now: DateTime<Utc>) -> Check {
     let mut bucket = row.bucket.trim().to_lowercase();
     if bucket.is_empty() {
@@ -676,8 +674,7 @@ fn check_detail(row: &CheckRow, bucket: &str, now: DateTime<Utc>) -> String {
     }
 }
 
-/// Go `githubGraphQLCommandError`: gh's own diagnostic (capped) over JSON
-/// parse noise when the command failed.
+/// gh's own diagnostic (capped) over JSON parse noise when the command failed.
 pub(crate) fn graphql_command_error(
     out: &str,
     exec_err: Option<&str>,
@@ -707,7 +704,7 @@ pub(crate) fn truncate_diag(s: &str) -> String {
 }
 
 impl GitHub {
-    /// Go `fetchGitHubPRChecks`: GraphQL first, then `gh pr checks`.
+    /// GraphQL first, then `gh pr checks`.
     pub(crate) async fn fetch_checks(
         &self,
         repo: &Path,
@@ -819,7 +816,7 @@ impl GitHub {
     }
 }
 
-/// Go's `exec.ExitError` text.
+/// The exit error text (`exit status 1`).
 fn exit_error_text(o: &crate::cli::Outcome) -> String {
     match &o.exit {
         crate::cli::Exit::Code(-1) => "signal: killed".to_owned(),

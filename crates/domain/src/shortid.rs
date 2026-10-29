@@ -28,7 +28,7 @@ pub enum Error {
     Length,
     #[error("shortid: {0}")]
     Random(getrandom::Error),
-    /// No unused id within the attempt budget (Go `ErrCollision`).
+    /// No unused id within the attempt budget.
     #[error("shortid: exhausted {0} attempts: shortid: collision")]
     Collision(i64),
 }

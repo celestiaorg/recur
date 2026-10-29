@@ -14,7 +14,7 @@ pub fn parse_time(s: &str) -> Option<DateTime<Utc>> {
         .map(|t| t.with_timezone(&Utc))
 }
 
-/// RFC3339 in UTC with whole seconds (Go `t.UTC().Format(time.RFC3339)`).
+/// RFC3339 in UTC with whole seconds.
 pub fn format_time(t: DateTime<Utc>) -> String {
     t.to_rfc3339_opts(SecondsFormat::Secs, true)
 }

@@ -1,8 +1,8 @@
 //! Recur's managed directories.
 //!
 //! The managed root is `<UserConfigDir>/Recur` and the worktree parent
-//! `~/.recur/worktrees`, the same as the Go app's, so it opens existing data.
-//! `RECUR_DATA_DIR` and `RECUR_WORKTREES_DIR` override them.
+//! `~/.recur/worktrees`, so it opens existing data. `RECUR_DATA_DIR` and
+//! `RECUR_WORKTREES_DIR` override them.
 
 use std::io;
 use std::os::unix::fs::DirBuilderExt as _;
@@ -210,10 +210,9 @@ pub fn bundles_cache_dir() -> io::Result<PathBuf> {
     Ok(dir)
 }
 
-/// `~/.codex/auth.json`, where `codex login` stores credentials; "" when
-/// the home directory is unknown. Go's `codex.DefaultSeedAuthPath`, here
-/// because the settings seed is its first user; the Codex provider crate
-/// should call this one rather than redefine it.
+/// `~/.codex/auth.json`, where `codex login` stores credentials; "" when the
+/// home directory is unknown. Here because the settings seed is its first user;
+/// the Codex provider crate should call this one rather than redefine it.
 pub fn codex_default_seed_auth_path() -> String {
     match user_home_dir() {
         Ok(home) => recur_project::home::join(&home, ".codex/auth.json"),

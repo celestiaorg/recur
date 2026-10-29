@@ -137,8 +137,7 @@ fn status_from_upstream(code: u16) -> u16 {
     }
 }
 
-/// Go `http.DetectContentType`, image signatures only (anything else is not
-/// an image).
+/// Sniffs image signatures only (anything else is not an image).
 fn sniff_image(b: &[u8]) -> Option<&'static str> {
     let webp = b.len() >= 14 && &b[..4] == b"RIFF" && &b[8..14] == b"WEBPVP";
     [
@@ -159,7 +158,7 @@ fn sniff_image(b: &[u8]) -> Option<&'static str> {
     .or_else(|| b.starts_with(b"\xFF\xD8\xFF").then_some("image/jpeg"))
 }
 
-/// Go's redirect rule for sensitive headers: keep them only on the same
+/// The redirect rule for sensitive headers: keep them only on the same
 /// host or a subdomain of it.
 fn keeps_auth(initial: &Url, dest: &Url) -> bool {
     let host = |u: &Url| {
@@ -178,7 +177,7 @@ fn http_err(status: u16, message: impl Into<String>) -> ForgeError {
 }
 
 impl GitHub {
-    /// Go `cachedGHAuthToken`: `gh auth token`, reused for 30 s.
+    /// `gh auth token`, reused for 30 s.
     async fn auth_token(&self) -> String {
         if let Some((tok, at)) = self.image_token.lock().clone()
             && !tok.is_empty()
@@ -199,7 +198,7 @@ impl GitHub {
         tok
     }
 
-    /// Go `ServeGitHubImage`. `Ok(None)` when the URL is not a GitHub image.
+    /// `Ok(None)` when the URL is not a GitHub image.
     pub(crate) async fn image(&self, raw: &str) -> Result<Option<ImageBytes>, ForgeError> {
         let Ok(target) = Url::parse(raw.trim()) else {
             return Ok(None);

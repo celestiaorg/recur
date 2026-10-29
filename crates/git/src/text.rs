@@ -1,6 +1,6 @@
-//! Go string semantics the port relies on.
+//! String semantics the crate relies on.
 
-/// Go `strings.EqualFold`: equal under simple Unicode case folding.
+/// Equal under simple Unicode case folding.
 pub(crate) fn eq_fold(a: &str, b: &str) -> bool {
     let mut x = a.chars();
     let mut y = b.chars();
@@ -23,7 +23,6 @@ fn fold_eq(c: char, d: char) -> bool {
     lower(c) == lower(d) || upper(c) == upper(d)
 }
 
-/// Go `strconv.Atoi`.
 pub(crate) fn atoi(s: &str) -> Option<i64> {
     s.parse().ok()
 }

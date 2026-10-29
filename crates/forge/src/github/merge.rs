@@ -71,8 +71,8 @@ pub(crate) enum MergePlan {
     Cli(Vec<String>),
 }
 
-/// Go `planGitHubMerge`: one merge API call when the URL or node id is
-/// known (`gh pr merge` re-fetches and waits on mergeability).
+/// One merge API call when the URL or node id is known (`gh pr merge`
+/// re-fetches and waits on mergeability).
 pub(crate) fn plan_merge(pr: &Pr, method: &MergeMethod) -> MergePlan {
     let rest_method = normalize_merge_method(method.as_str());
     if let Some(owner_repo) = owner_repo_from_pr_url(&pr.url)
@@ -145,8 +145,7 @@ pub(crate) fn merge_failure_note(err: &str) -> String {
     format!("GitHub merge failed: {}", html_escape(msg))
 }
 
-/// Go `retryGitHubRESTMerge`: up to three attempts while mergeability is
-/// pending, `delay` apart.
+/// Up to three attempts while mergeability is pending, `delay` apart.
 pub(crate) async fn retry_rest_merge<F, Fut>(
     delay: Duration,
     mut attempt: F,
@@ -180,8 +179,7 @@ const ENQUEUE_MUTATION: &str =
 const MERGE_MUTATION: &str = "mutation($id:ID!,$method:PullRequestMergeMethod!){mergePullRequest(input:{pullRequestId:$id,mergeMethod:$method}){pullRequest{merged}}}";
 
 impl GitHub {
-    /// Go `runGitHubGraphQLMutation`: the query on stdin; an `"errors"` key in
-    /// the answer is a failure.
+    /// The query on stdin; an `"errors"` key in the answer is a failure.
     pub(crate) async fn graphql_mutation<V: Serialize>(
         &self,
         repo: &Path,
@@ -204,7 +202,6 @@ impl GitHub {
         Ok(())
     }
 
-    /// Go `doMergeGitHubPR`.
     pub(crate) async fn merge_pr(
         &self,
         repo: &Path,
@@ -253,8 +250,8 @@ impl GitHub {
         }
     }
 
-    /// Go `enqueueGitHubPR`: `gh pr merge` enables auto-merge into the queue;
-    /// repos with auto-merge disabled get `enqueuePullRequest`.
+    /// `gh pr merge` enables auto-merge into the queue; repos with auto-merge
+    /// disabled get `enqueuePullRequest`.
     async fn enqueue(&self, repo: &Path, pr: &Pr) -> Result<MergeOutcome, ForgeError> {
         let mut res = self
             .gh
@@ -279,7 +276,7 @@ impl GitHub {
         res.map(|()| MergeOutcome::Queued)
     }
 
-    /// Go `fetchGitHubMergeFields`: live title, body and commits.
+    /// Live title, body and commits.
     pub async fn merge_fields(&self, repo: &Path, number: i64) -> Result<MergeFields, ForgeError> {
         if number <= 0 {
             return Err(ForgeError::invalid(format!(
@@ -311,7 +308,6 @@ pub struct MergeFields {
     pub commits: Vec<Commit>,
 }
 
-/// Go `parseGitHubMergeFields`.
 pub fn parse_merge_fields(raw: &str) -> Result<MergeFields, String> {
     #[derive(Default, Deserialize)]
     #[serde(default)]
@@ -355,8 +351,7 @@ fn commits_newest_first(cs: &[super::thread::ViewCommit]) -> Vec<Commit> {
     out
 }
 
-/// Go `overlayGitHubMergeFields`: the live title, commits and description
-/// replace the stored ones.
+/// The live title, commits and description replace the stored ones.
 pub fn overlay_merge_fields(mut pr: Pr, fields: &MergeFields) -> Pr {
     pr.title = fields.title.trim().to_owned();
     pr.commits = Some(fields.commits.clone());
@@ -373,9 +368,9 @@ pub fn overlay_merge_fields(mut pr: Pr, fields: &MergeFields) -> Pr {
     pr
 }
 
-/// Go `withGitHubMergeFields` on a fetch error: drop cached title, commits
-/// and comments so the merge omits `--subject`/`--body` rather than
-/// overwriting GitHub's message with a stale copy.
+/// On a fetch error: drop cached title, commits and comments so the merge omits
+/// `--subject`/`--body` rather than overwriting GitHub's message with a stale
+/// copy.
 pub fn without_merge_fields(mut pr: Pr) -> Pr {
     pr.title.clear();
     pr.commits = None;
@@ -383,7 +378,7 @@ pub fn without_merge_fields(mut pr: Pr) -> Pr {
     pr
 }
 
-/// Go `formatPRMergeMessage` for a GitHub PR: `<title> (#n)`; an empty title
+/// A GitHub PR's merge message: `<title> (#n)`; an empty title
 /// lets GitHub choose; rebase carries no message.
 pub(crate) fn merge_message(
     pr: &Pr,

@@ -1,6 +1,6 @@
-//! Go `strings` semantics that std does not spell the same way.
+//! String semantics that std does not spell the same way.
 
-/// Go `strings.EqualFold`: equal under simple Unicode case folding.
+/// Equal under simple Unicode case folding.
 pub(crate) fn eq_fold(a: &str, b: &str) -> bool {
     let fold = |c: char| {
         let mut lower = c.to_lowercase();
@@ -15,7 +15,7 @@ pub(crate) fn eq_fold(a: &str, b: &str) -> bool {
             .all(|(x, y)| x == y || fold(x) == fold(y))
 }
 
-/// Go `html.EscapeString`, as diff lines' `code_html` carries code.
+/// HTML-escapes `s`, as diff lines' `code_html` carries code.
 pub fn html_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {

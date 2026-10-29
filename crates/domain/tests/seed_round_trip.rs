@@ -1,4 +1,4 @@
-//! The e2e seed fixture (real Go seed data dumped by cmd/seeddump) decodes
+//! The e2e seed fixture (dumped by the `seeddump` binary) decodes
 //! into the domain types and re-encodes to the same JSON values.
 
 use std::collections::BTreeMap;

@@ -1,6 +1,5 @@
-//! Ports of the Go `internal/store` tests (`store_test.go`,
-//! `sessions_test.go`, `schedules_test.go`, `paths*_test.go`; applog tests
-//! live with applog). They reach into the store like the Go tests do.
+//! Store, session, schedule and path tests (applog tests live with applog).
+//! They reach into the store's internals.
 
 use std::path::{Path, PathBuf};
 
@@ -49,7 +48,7 @@ pub(crate) fn query_i64(s: &Store, q: &str) -> i64 {
         .unwrap()
 }
 
-/// Runs statements on a bare migrated DB (Go's openDB) and closes it.
+/// Runs statements on a bare migrated DB and closes it.
 pub(crate) fn raw(path: &Path, stmts: &[&str]) {
     let d = Db::open(path).unwrap();
     for q in stmts {

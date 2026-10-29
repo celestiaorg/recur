@@ -37,23 +37,6 @@ pub fn specs() -> Vec<SceneSpec> {
         .unwrap_or_default()
 }
 
-/// Placeholder root for a name without a builder.
-pub struct Missing;
-
-impl gpui_kit::Render for Missing {
-    fn render(
-        &mut self,
-        _: &mut Window,
-        cx: &mut gpui_kit::Context<Self>,
-    ) -> impl gpui_kit::IntoElement {
-        use gpui_kit::Styled;
-        crate::style::body(cx).size_full()
-    }
-}
-
-/// Scene prefixes built by other crates' galleries (`recur_editor::gallery`).
-pub const EXTERNAL: &[&str] = &["editor/"];
-
 /// Whether a builder exists for this scene name.
 pub fn exists(name: &str) -> bool {
     scenes::NAMES.iter().any(|p| scenes::matches(p, name))
@@ -75,7 +58,7 @@ mod tests {
         let missing: Vec<&str> = specs
             .iter()
             .map(|s| s.name.as_str())
-            .filter(|n| !exists(n) && !EXTERNAL.iter().any(|p| n.starts_with(p)))
+            .filter(|n| !exists(n))
             .collect();
         assert!(missing.is_empty(), "no builder for {missing:?}");
     }

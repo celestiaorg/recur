@@ -36,7 +36,7 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
-      # The Go bundle's gofmt test; ubuntu-24.04 already has Go.
+      # The Go bundle's gofmt test.
       - uses: actions/setup-go@v6
         with:
           go-version: stable
@@ -62,6 +62,10 @@ jobs:
           libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good gstreamer1.0-libav
       # Tests commit in temp repos; the runner's hostname gives git no identity.
       - run: git config --global user.name ci && git config --global user.email ci@example.com
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
       - uses: jdx/mise-action@v5
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings

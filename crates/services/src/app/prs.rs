@@ -59,16 +59,17 @@ impl AppServices {
         if self.store().pr(id).is_none() {
             return Err(pr_not_found(id));
         }
-        // Behind must finish before commits: it fetches a stale
-        // remote-tracking base the commit log then reads. Checks are
-        // independent; conversation and diff stay backgrounded.
+        // Conversation and diff start first, in the background: Files
+        // changed must not wait on the fetches below. Behind must finish
+        // before commits: it fetches a stale remote-tracking base the commit
+        // log then reads. Checks are independent.
+        self.engine.schedule_refresh_pr_diff(id);
+        self.engine.schedule_refresh_pr_conversation(id);
         let commits = async {
             self.engine.refresh_pr_behind(id).await;
             self.engine.refresh_pr_commits(id).await;
         };
         tokio::join!(commits, self.engine.refresh_pr_checks(id));
-        self.engine.schedule_refresh_pr_diff(id);
-        self.engine.schedule_refresh_pr_conversation(id);
         let mut p = self.store().pr(id).unwrap_or_default();
         self.ensure_pr_enriched(&mut p);
         // The checks poll calls this every 15s and per-commit diffs can be

@@ -98,7 +98,6 @@ pub struct PrDetail {
     pub(crate) hydrate_give_up: bool,
     give_up: Option<Task<()>>,
     poll: Option<Task<()>>,
-    poll_busy: Rc<Cell<bool>>,
     findings_gen: u64,
     pub(crate) findings: Vec<Finding>,
     /// Thread entries `pr.comment` appended that GetPR has not echoed yet.
@@ -128,8 +127,9 @@ pub struct PrDetail {
     check_tick: Option<Task<()>>,
     // Commits.
     pub(crate) commit_idx: Option<usize>,
-    pub(crate) commit_files: Option<Vec<FileDiff>>,
-    commit_cache: HashMap<String, Vec<FileDiff>>,
+    /// The open commit's files in display order, shared with its cards across renders.
+    pub(crate) commit_files: Option<Vec<Rc<FileDiff>>>,
+    commit_cache: HashMap<String, Vec<Rc<FileDiff>>>,
     pub(crate) commit_loading: bool,
     pub(crate) commit_error: bool,
     commit_gen: u64,
@@ -154,6 +154,9 @@ pub struct PrDetail {
     /// The conversation's items as of its last render, for the timeline's item panes.
     pub(crate) conv_items: Rc<Vec<PrComment>>,
     render_pr: Option<Option<Rc<Pr>>>,
+    /// The selected PR's files as of a store revision: a render never copies a big diff, and
+    /// its cards keep their files (and highlighting) until a file changes.
+    review_rcs: Option<((String, u64), FileRows)>,
     /// The selected PR's own comments for a render, until the store next notifies.
     render_comments: Option<Rc<Vec<PrComment>>>,
     pub(crate) commits_scroll: ScrollHandle,
@@ -282,7 +285,6 @@ impl PrDetail {
             hydrate_give_up: false,
             give_up: None,
             poll: None,
-            poll_busy: Rc::default(),
             findings_gen: 0,
             findings: Vec::new(),
             live_comments: Vec::new(),
@@ -331,6 +333,7 @@ impl PrDetail {
             timeline: Default::default(),
             conv_items: Rc::default(),
             render_pr: None,
+            review_rcs: None,
             render_comments: None,
             store_key: None,
             composer_part: None,
@@ -595,14 +598,10 @@ impl PrDetail {
                 cx.notify();
             });
         }));
-        let busy = self.poll_busy.clone();
         let pid = id.to_string();
         self.poll = Some(cx.spawn(async move |d, cx| {
             loop {
                 cx.background_executor().timer(POLL).await;
-                if busy.get() {
-                    continue;
-                }
                 let go = d
                     .update(cx, |d, cx| {
                         let s = d.state().read(cx);
@@ -616,12 +615,10 @@ impl PrDetail {
                 if !go {
                     continue;
                 }
-                busy.set(true);
                 let task = d.update(cx, |d, cx| d.refresh(&pid, true, false, cx));
                 if let Ok(t) = task {
                     t.await;
                 }
-                busy.set(false);
             }
         }));
     }
@@ -833,6 +830,35 @@ impl PrDetail {
         self.pr_ref(cx)
             .and_then(|p| p.files.as_deref())
             .unwrap_or_default()
+    }
+
+    /// [`Self::review_files`] as shared rows, rebuilt only when the PR's store revision moves
+    /// and then reusing every row whose file is unchanged.
+    pub(crate) fn review_rcs(&mut self, cx: &App) -> FileRows {
+        let key = {
+            let s = self.state().read(cx);
+            (s.selected_pr_id.clone(), s.pr_rev(&s.selected_pr_id))
+        };
+        let old = match self.review_rcs.take() {
+            Some((k, v)) if k == key => {
+                self.review_rcs = Some((k, v.clone()));
+                return v;
+            }
+            Some((_, v)) => v,
+            None => Rc::default(),
+        };
+        let rows: Vec<Rc<FileDiff>> = self
+            .review_files(cx)
+            .iter()
+            .enumerate()
+            .map(|(i, f)| match old.get(i) {
+                Some(o) if **o == *f => o.clone(),
+                _ => Rc::new(f.clone()),
+            })
+            .collect();
+        let rows = Rc::new(rows);
+        self.review_rcs = Some((key, rows.clone()));
+        rows
     }
 
     /// `listedFindings`: open, without a pending draft, not settling.
@@ -1774,16 +1800,16 @@ impl PrDetail {
     }
 
     /// `detailFiles`.
-    pub(crate) fn detail_files(&self, cx: &App) -> Vec<FileDiff> {
-        let raw = match &self.commit_files {
+    pub(crate) fn detail_files(&self, cx: &App) -> Vec<Rc<FileDiff>> {
+        match &self.commit_files {
             Some(f) if !f.is_empty() => f.clone(),
-            _ => self
-                .commit_idx
-                .and_then(|i| self.commits(cx).get(i).cloned())
-                .and_then(|c| c.files)
-                .unwrap_or_default(),
-        };
-        recur_code::view::changed_tree::sort_files_by_changed_tree(&raw, |f| f.path.as_str())
+            _ => sorted_rows(
+                self.commit_idx
+                    .and_then(|i| self.commits(cx).get(i))
+                    .and_then(|c| c.files.clone())
+                    .unwrap_or_default(),
+            ),
+        }
     }
 
     pub(crate) fn discard_commit_diff(&mut self) {
@@ -1817,10 +1843,11 @@ impl PrDetail {
         } else {
             c.hash.trim().to_string()
         };
-        if let Some(files) = c.files.as_ref().filter(|f| !f.is_empty()) {
+        if let Some(files) = c.files.clone().filter(|f| !f.is_empty()) {
+            let files = sorted_rows(files);
             self.commit_gen += 1;
             self.commit_files = Some(files.clone());
-            self.select_first_commit_file(files);
+            self.select_first_commit_file(&files);
             self.commit_loading = false;
             self.commit_error = false;
             if !hash.is_empty() {
@@ -1859,7 +1886,7 @@ impl PrDetail {
                 }
                 match res {
                     Ok(full) => {
-                        let files = full.files.unwrap_or_default();
+                        let files = sorted_rows(full.files.unwrap_or_default());
                         d.select_first_commit_file(&files);
                         if !hash.is_empty() && !files.is_empty() {
                             d.commit_cache.insert(hash, files.clone());
@@ -1878,7 +1905,7 @@ impl PrDetail {
         .detach();
     }
 
-    fn select_first_commit_file(&mut self, files: &[FileDiff]) {
+    fn select_first_commit_file(&mut self, files: &[Rc<FileDiff>]) {
         let first = files.first().map(|f| f.path.clone()).unwrap_or_default();
         self.commit_stack.set_selected(&first);
     }
@@ -2171,6 +2198,14 @@ struct StoreKey {
     agent_ws: String,
     agent_running: bool,
     agent_root: String,
+}
+
+type FileRows = Rc<Vec<Rc<FileDiff>>>;
+
+/// A commit's files as shared rows in the changed-tree order its stack shows.
+fn sorted_rows(files: Vec<FileDiff>) -> Vec<Rc<FileDiff>> {
+    let rows: Vec<Rc<FileDiff>> = files.into_iter().map(Rc::new).collect();
+    recur_code::view::changed_tree::sort_files_by_changed_tree(&rows, |f| f.path.as_str())
 }
 
 fn flush(state: &Entity<AppState>, ui: &Entity<PrUi>, cx: &mut App) {

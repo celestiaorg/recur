@@ -232,3 +232,102 @@ async fn a_key_that_empties_the_comment_box_leaves_the_conversation_alone(cx: &m
     );
     assert_quiet("emptying key", &CONVERSATION, &counts);
 }
+
+const BIG: &str = "Vendor the generated client";
+
+/// A commit of `files` new files, `lines` lines each.
+fn big_commit(files: usize, lines: usize) -> serde_json::Value {
+    let files: Vec<_> = (0..files)
+        .map(|i| {
+            let mut rows = vec![serde_json::json!({
+                "type": "hunk", "codeHtml": format!("@@ -0,0 +1,{lines} @@ new file"),
+            })];
+            rows.extend((1..=lines).map(|n| {
+                serde_json::json!({
+                    "new": n.to_string(), "type": "add",
+                    "codeHtml": format!("export const v{n} = {n};"),
+                })
+            }));
+            serde_json::json!({
+                "path": format!("gen/client/f{i:03}.ts"), "status": "a",
+                "diff": { "add": lines, "del": 0 }, "lines": rows,
+            })
+        })
+        .collect();
+    serde_json::json!({
+        "hash": "b16c0de", "sha": "b16c0de0000000000000000000000000000000000",
+        "message": BIG, "authorRole": "Author", "diff": { "add": 0, "del": 0 },
+        "when": "1m", "files": files,
+    })
+}
+
+fn detail(s: &mut S) -> gpui::Entity<crate::detail::PrDetail> {
+    s.cx.update(|_, cx| crate::detail::spec_handle::current(cx))
+        .expect("pr detail")
+}
+
+/// The rows a stack draws, by identity.
+fn rows(
+    s: &mut S,
+    stack: fn(&crate::detail::PrDetail) -> &recur_view_review::stack::FileStack,
+) -> Vec<*const recur_domain::FileDiff> {
+    let d = detail(s);
+    s.cx.update(|_, cx| {
+        stack(d.read(cx))
+            .files()
+            .iter()
+            .map(std::rc::Rc::as_ptr)
+            .collect()
+    })
+}
+
+fn redraw(s: &mut S) {
+    let d = detail(s);
+    s.cx.update(|_, cx| d.update(cx, |_, cx| cx.notify()));
+    s.settle();
+}
+
+/// A big commit's diff mounts a window of its cards, and a redraw (every scroll step is one)
+/// hands those cards the rows they already have instead of a fresh copy of the whole diff.
+#[gpui::test]
+async fn a_large_commit_redraws_without_copying_its_diff(cx: &mut TestAppContext) {
+    let mut s = super::harness::plain_with(cx, |sd| {
+        let mut commits = sd.pr_by_id("482").unwrap()["commits"].clone();
+        commits
+            .as_array_mut()
+            .unwrap()
+            .insert(0, big_commit(200, 200));
+        super::harness::patch_pr(sd, "482", serde_json::json!({ "commits": commits }));
+    });
+    s.open_pr("482");
+    s.tab("Commits");
+    s.click(&format!("commit:{BIG}"));
+    assert!(s.has("cfile:live:gen/client/f000.ts"));
+    assert!(!s.has("cfile:live:gen/client/f199.ts"));
+    let before = rows(&mut s, |d| &d.commit_stack);
+    assert_eq!(before.len(), 200);
+    redraw(&mut s);
+    assert_eq!(rows(&mut s, |d| &d.commit_stack), before);
+}
+
+/// Files changed hands its cards the same rows on a redraw and on a store change that leaves
+/// the PR's files as they were (the 15s poll, a new comment).
+#[gpui::test]
+async fn files_changed_keeps_its_rows_across_redraws_and_store_changes(cx: &mut TestAppContext) {
+    let mut s = open(cx);
+    s.tab("Files changed");
+    assert!(s.has("cfile:live:src/auth/oauth.ts"));
+    let before = rows(&mut s, |d| &d.stack);
+    assert_eq!(before.len(), 3);
+    redraw(&mut s);
+    assert_eq!(rows(&mut s, |d| &d.stack), before);
+    let state = s.state.clone();
+    s.cx.update(|_, cx| {
+        state.update(cx, |st, cx| {
+            let id = st.selected_pr_id.clone();
+            st.update_pr(&id, |p| p.title.push('!'), cx);
+        })
+    });
+    s.settle();
+    assert_eq!(rows(&mut s, |d| &d.stack), before);
+}

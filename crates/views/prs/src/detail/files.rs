@@ -96,10 +96,10 @@ impl PrDetail {
     }
 
     /// `matchedFiles`.
-    fn matched_files(&self, cx: &App) -> Vec<FileDiff> {
+    fn matched_files(&mut self, cx: &App) -> Vec<Rc<FileDiff>> {
         let q = self.filter_q(cx);
-        let mut list: Vec<FileDiff> = self
-            .review_files(cx)
+        let mut list: Vec<Rc<FileDiff>> = self
+            .review_rcs(cx)
             .iter()
             .filter(|f| {
                 q.is_empty()
@@ -224,7 +224,7 @@ impl PrDetail {
             .height;
 
         // The stack and the list follow the inputs each frame.
-        let files: Vec<Rc<FileDiff>> = matched.iter().cloned().map(Rc::new).collect();
+        let files = matched.clone();
         self.stack.set_files(files.clone());
         let state = self.state().clone();
         let ws = pr.workspace_id.clone();

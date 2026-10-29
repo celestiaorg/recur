@@ -106,11 +106,12 @@ pub struct EditorTheme {
 }
 
 /// `MiniScriptEditor`'s layout chrome (`layoutChrome` in `MiniScriptEditor.svelte`): an
-/// 18px line in the app's mono face (Inter for `md` prose), its own content and line
+/// 18px line in the app's mono face (the code editor's font for `md`), its own content and line
 /// padding, a 10.5px line-number gutter, and the faint placeholder.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MiniChrome {
-    /// `md` prose: Inter at 12.5px with 6px content padding; else mono 12px with 8px.
+    /// `md` prose: the code editor's font, size and line height with 6px content padding; else
+    /// mono 12px with 8px.
     pub prose: bool,
     /// `fill`: 4px content padding (the host stretches the editor).
     pub fill: bool,
@@ -176,13 +177,11 @@ impl EditorMetrics {
     /// `MiniScriptEditor`'s metrics: `.cm-line { padding: 0 10px 0 4px }`.
     pub fn mini(prefs: &EditorPrefs, mini: &MiniChrome) -> EditorMetrics {
         let mut m = EditorMetrics::from_prefs(prefs);
-        m.font_families = if mini.prose {
-            vec![recur_ui::fonts::UI.to_string()]
-        } else {
-            crate::prefs::font_stack(recur_ui::fonts::MONO)
-        };
-        m.font_size = mini.font_size();
-        m.line_height_factor = mini.line_factor();
+        if !mini.prose {
+            m.font_families = crate::prefs::font_stack(recur_ui::fonts::MONO);
+            m.font_size = mini.font_size();
+            m.line_height_factor = mini.line_factor();
+        }
         m.content_padding_y = mini.content_padding_y();
         m.line_padding_left = 4.0;
         m.line_padding_right = 10.0;

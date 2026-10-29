@@ -97,3 +97,26 @@ fn project_settings_toggle_hides_the_project_from_the_sidebar(cx: &mut TestAppCo
     s.click("tog:toggle hide from sidebar:true");
     assert!(s.has("ph:storefront"));
 }
+
+/// The script editors take the editor's own keys (Enter, Backspace), not only typed text.
+#[gpui::test]
+fn project_setup_script_editor_takes_enter_and_backspace(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    open_project(&mut s, "storefront");
+    s.click("set-nav:Run");
+    let shell = s.root.read_with(s.cx, |r, _| r.shell.clone());
+    let project =
+        s.cx.update(|_, cx| shell.read(cx).route_view(ViewName::Project))
+            .and_then(|v| v.downcast::<crate::project::ProjectView>().ok())
+            .expect("the project view");
+    let ed = project
+        .read_with(s.cx, |p, _| p.setup.clone())
+        .expect("the setup editor");
+    s.cx.update(|window, cx| ed.update(cx, |e, cx| e.focus(window, cx)));
+    s.settle();
+    let before = ed.read_with(s.cx, |e, cx| e.value(cx));
+    s.type_text("ab");
+    s.keys("backspace enter");
+    let value = ed.read_with(s.cx, |e, cx| e.value(cx));
+    assert_eq!(value, format!("a\n{before}"));
+}

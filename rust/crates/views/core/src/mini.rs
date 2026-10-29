@@ -16,7 +16,6 @@ use gpui_kit::{
     App, AppContext as _, Context, Entity, EventEmitter, Focusable, Global, Hsla, IntoElement,
     ParentElement, Render, Styled, Subscription, Task, Window, div, px,
 };
-use recur_editor::element::EditorElement;
 use recur_editor::highlight::{SharedTextMate, TextMate};
 use recur_editor::theme::MiniChrome;
 use recur_editor::theme::catalog::editor_theme_id_for_app_chrome;
@@ -228,7 +227,10 @@ impl MiniScriptEditor {
                 {
                     this.last_emitted = text.clone();
                     cx.emit(MiniChange(text.clone()));
-                    cx.notify();
+                    // Only a growing editor's box follows its content.
+                    if !this.props.fill {
+                        cx.notify();
+                    }
                 }
             }),
             cx.observe_window_appearance(window, |_, _, cx| cx.notify()),
@@ -334,21 +336,19 @@ impl MiniScriptEditor {
         } else {
             t.line
         };
-        let editor = div()
-            .relative()
-            .flex()
-            .flex_col()
-            .size_full()
-            .child(EditorElement {
-                view: self.editor.clone(),
-            });
+        // A filled editor's box never follows its content, so it is isolated: a key (or a caret
+        // blink) renders the editor alone instead of every view up to the window root.
         if self.props.fill {
             return div()
                 .flex()
                 .flex_col()
                 .size_full()
                 .min_h_0()
-                .child(editor)
+                .child(recur_ui::style::isolated_view(
+                    &self.editor,
+                    gpui_kit::StyleRefinement::default().size_full(),
+                    cx,
+                ))
                 .into_any_element();
         }
         let h = self.height(cx);
@@ -361,7 +361,7 @@ impl MiniScriptEditor {
             .bg(t.pane)
             .overflow_hidden()
             .when(ro, |d| d.cursor_default())
-            .child(div().w_full().h(px(h)).child(editor))
+            .child(div().w_full().h(px(h)).child(self.editor.clone()))
             .into_any_element()
     }
 }

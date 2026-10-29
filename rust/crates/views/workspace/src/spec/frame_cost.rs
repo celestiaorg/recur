@@ -723,3 +723,53 @@ async fn a_key_in_the_code_editor_renders_the_editor_only(cx: &mut TestAppContex
         "an editor key rendered beside the editor: {counts:?}"
     );
 }
+
+#[gpui::test]
+async fn a_key_in_the_plan_body_editor_renders_the_editor_only(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    s.open(ACTIVE);
+    let view = bound(&mut s);
+    let (obs, panel) = view.read_with(s.cx, |v, _| (v.observatory().clone(), v.plan_panel.clone()));
+    s.cx.update(|window, cx| {
+        obs.update(cx, |o, cx| {
+            o.select_code_panel(recur_view_core::prefs::CodePanelKey::Plan, window, cx)
+        })
+    });
+    s.settle();
+    s.cx.update(|window, cx| panel.update(cx, |p, cx| p.start_edit(window, cx)));
+    s.settle();
+    let ed = panel
+        .read_with(s.cx, |p, _| p.test_body_editor().0)
+        .expect("the body editor");
+    s.cx.update(|window, cx| ed.update(cx, |e, cx| e.focus(window, cx)));
+    s.settle();
+    s.cx.simulate_input("a");
+    s.cx.run_until_parked();
+    recur_ui::guard::count_renders(true);
+    for ch in ["b", "c", "d"] {
+        s.cx.simulate_input(ch);
+        s.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    let value = ed.read_with(s.cx, |e, cx| e.value(cx));
+    assert!(
+        value.starts_with("abcd"),
+        "the keys did not reach the editor: {value:?}"
+    );
+    assert!(
+        counts.is_empty(),
+        "a plan body key rendered beside the editor: {counts:?}"
+    );
+    // The editor's own keys still work, and the pane still hears Escape before the editor.
+    s.cx.simulate_keystrokes("backspace");
+    s.cx.run_until_parked();
+    let value = ed.read_with(s.cx, |e, cx| e.value(cx));
+    assert!(
+        value.starts_with("abc") && !value.starts_with("abcd"),
+        "{value:?}"
+    );
+    s.cx.simulate_keystrokes("escape");
+    s.cx.run_until_parked();
+    assert!(panel.read_with(s.cx, |p, _| p.test_body_editor().0.is_none()));
+}

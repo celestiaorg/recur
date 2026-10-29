@@ -1045,7 +1045,9 @@ impl PlanPanel {
             .flex_col()
             .flex_1()
             .min_h_0()
-            .on_key_down(cx.guarded_listener(|p, ev: &KeyDownEvent, _, cx| p.on_edit_key(ev, cx)));
+            .capture_key_down(
+                cx.guarded_listener(|p, ev: &KeyDownEvent, _, cx| p.on_edit_key(ev, cx)),
+            );
         if self.editing {
             let headline = div()
                 .flex()
@@ -1115,12 +1117,9 @@ impl PlanPanel {
                 None if !dod.is_empty() => Some(dod),
                 _ => None,
             };
-            let mut scroll = div()
-                .id("plan-body-scroll")
-                .debug_selector(|| "plan-body-scroll".into())
-                .track_scroll(&self.body_scroll)
-                .overflow_y_scroll()
-                .size_full();
+            let mut scroll = recur_ui::widgets::scroll_area("plan-body-scroll")
+                .track(&self.body_scroll)
+                .scroller(|d| d.debug_selector(|| "plan-body-scroll".into()));
             if let Some(md) = md {
                 self.markdown.update(cx, |m, cx| m.set_text(md, cx));
                 scroll = scroll.child(

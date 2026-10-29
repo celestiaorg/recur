@@ -111,8 +111,8 @@ pub trait SettingsService: Send + Sync {
     async fn list_model_catalog(&self) -> Result<Vec<ModelGroup>>;
 
     /// ListMonospaceFonts returns installed monospace font family names for the
-    /// editor font picker. Native enumeration is required because the webview's
-    /// canvas font probe often cannot see user-installed faces (e.g. ~/Library/Fonts).
+    /// editor font picker, enumerated natively so user-installed faces (e.g.
+    /// ~/Library/Fonts) are included.
     async fn list_monospace_fonts(&self) -> Result<Vec<String>>;
 
     /// LogsPath returns the Recur process log path (<dataDir>/logs/recur.log).

@@ -332,7 +332,7 @@ impl PrTitlebarActions {
                 s.view == ViewName::PrDetail,
             )
         };
-        // The bar mounts with PR detail on the web: entering the route starts it fresh.
+        // Entering the route starts the bar fresh.
         if on && !self.mounted {
             self.mount();
         }
@@ -349,7 +349,7 @@ impl PrTitlebarActions {
             .map(|p| p.workspace_id.trim().to_string())
             .unwrap_or_default();
         let open = pr.as_ref().is_some_and(github_open);
-        // `$effect.pre`: another workspace recalls its last snapshot until git answers.
+        // Another workspace recalls its last snapshot until git answers.
         if land_ws != self.land_tracked {
             self.land_tracked = land_ws.clone();
             self.land_seq += 1;

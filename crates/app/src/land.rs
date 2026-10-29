@@ -463,8 +463,7 @@ impl Shell {
             };
             (s.selected_workspace_id.clone(), key, s.scan_pending)
         };
-        // `$effect.pre`: a new workspace recalls its last snapshot, disabled until git
-        // confirms.
+        // A new workspace recalls its last snapshot, disabled until git confirms.
         if id != self.land.workspace_id {
             self.land.workspace_id = id.clone();
             self.land.seq += 1;

@@ -418,7 +418,7 @@ impl NewTaskModal {
     }
 
     fn on_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        // `$effect.pre`: a fresh open has not claimed its eager row.
+        // A fresh open has not claimed its eager row.
         self.claimed = false;
         // Re-probe isGit so a mid-session `git init` shows up.
         self.vcx
@@ -509,7 +509,7 @@ impl NewTaskModal {
         self.focus_composer(window, cx);
     }
 
-    /// Every `$effect` that follows store and picker state.
+    /// Every effect that follows store and picker state.
     fn effects(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.open {
             self.repo_preference(cx);

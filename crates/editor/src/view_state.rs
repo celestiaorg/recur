@@ -21,7 +21,7 @@ pub enum EditorViewMode {
 }
 
 /// Caret, scroll and view mode for one file (`FileViewState`). Lines and
-/// columns are 1-based; columns count UTF-16 units like the web editor.
+/// columns are 1-based; columns count UTF-16 units, as stored in sessions.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileViewState {

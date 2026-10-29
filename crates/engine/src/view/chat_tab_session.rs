@@ -154,7 +154,7 @@ mod tests {
         assert_eq!(resolve_active_chat_code(&[], Some("PA")), "PA");
     }
 
-    /// Writes through the stored string each time, as the web UI did.
+    /// Writes through the stored string each time.
     fn round(raw: &mut Option<String>, f: impl FnOnce(&mut ActiveChatTabs)) {
         let mut all = ActiveChatTabs::parse(raw.as_deref());
         f(&mut all);

@@ -114,7 +114,7 @@ pub fn lucide_suggested() -> impl Iterator<Item = &'static LucideEntry> {
     l.suggested.iter().map(|&i| &l.icons[i])
 }
 
-/// The catalog entry for a name or alias (`lucideNode`); trims and lowercases like the web UI.
+/// The catalog entry for a name or alias; trims and lowercases the name first.
 pub fn lucide_entry(name: &str) -> Option<&'static LucideEntry> {
     let l = lucide();
     l.by_name

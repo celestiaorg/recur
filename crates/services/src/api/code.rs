@@ -225,7 +225,7 @@ pub trait CodeService: Send + Sync {
     ) -> Result<Vec<OutlineSymbol>>;
 
     /// ReadFile returns file metadata (and inlined text for small files) for preview/edit.
-    /// Images and large text leave Content empty; the webview streams those from /workspace-file.
+    /// Images and large text leave Content empty; the UI streams those from /workspace-file.
     async fn read_file(
         &self,
         project_id: &str,

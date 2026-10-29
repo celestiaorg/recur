@@ -612,7 +612,7 @@ pub struct RunResultDto {
 
 /// ShellState is the last top-level UI the user was looking at. Persisted under
 /// the managed data root (next to window.json) so the open workspace/view
-/// survives app restarts, webview storage wipes, and dev↔packaged origin changes.
+/// survives app restarts.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct ShellState {

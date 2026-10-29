@@ -74,7 +74,7 @@ const UI_MONOSPACE: &str = ".SF NS Mono";
 #[cfg(not(target_os = "macos"))]
 const UI_MONOSPACE: &str = "";
 
-/// A CSS `font-family` stack used by the web UI.
+/// A CSS `font-family` stack.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Family {
     /// `'Inter', system-ui, sans-serif`

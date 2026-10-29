@@ -68,7 +68,7 @@ fn live(codes: &[&str]) -> Vec<String> {
     codes.iter().map(|c| (*c).to_owned()).collect()
 }
 
-/// `m.body || m.log?.kind` (and `m.tool`, `factText`) as the TS tests read.
+/// A row's label: its body, else its log kind (and the tool or fact text).
 fn label(m: &AgentMsg) -> String {
     if !m.body.is_empty() {
         return m.body.clone();

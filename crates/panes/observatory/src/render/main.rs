@@ -971,7 +971,7 @@ impl Observatory {
     fn render_editor_status(&mut self, corner: (bool, bool), cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
         // Nowrap text keeps each item's exact width; once the bar overflows (the spacer is
-        // gone) the items wrap like the web bar's, until it is wider than where that began.
+        // gone) the items wrap, until it is wider than where that began.
         let (bar_w, sp_w) = (
             f32::from(self.bounds.status.get().size.width),
             f32::from(self.bounds.status_sp.get().size.width),

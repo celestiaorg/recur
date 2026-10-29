@@ -166,12 +166,11 @@ struct State {
     last_write: Option<f32>,
     /// The overlay thumb, shown by wheel scrolls.
     scroller: crate::widgets::scrollbar::Overlay,
-    /// What the last reveal saw: the active key, its chip's width and the chip count. The web
+    /// What the last reveal saw: the active key, its chip's width and the chip count. The
     /// strip reveals on a key change, a chip resize or a chip list mutation, not every frame.
     revealed: Option<(SharedString, f32, usize)>,
     /// The active chip's left and the strip's width at the last reveal, and whether they have
-    /// held for a frame since mount. The web's first reveal reads the settled layout; until
-    /// it settles here, a move re-reveals.
+    /// held for a frame since mount. Until layout settles, a move re-reveals.
     revealed_at: (f32, f32),
     settled: bool,
     drag: Drag,
@@ -1053,8 +1052,7 @@ mod tests {
         }
     }
 
-    /// The strip's width settles a frame after mount: the reveal follows it, as the web's
-    /// first reveal reads the settled layout.
+    /// The strip's width settles a frame after mount: the reveal follows it.
     #[gpui_kit::test]
     fn the_mount_reveal_follows_the_strip_while_its_layout_settles(
         cx: &mut gpui_kit::TestAppContext,

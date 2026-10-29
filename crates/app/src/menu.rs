@@ -7,7 +7,7 @@
 //! shell registers a handler only while the item is enabled.
 //!
 //! Accelerators are native on macOS only. There the menubar owns ⌘ chords (an enabled item
-//! wins over the focused pane, as WKWebView behaved); elsewhere the focused pane decides
+//! wins over the focused pane); elsewhere the focused pane decides
 //! first and the shell's key handler covers the chords (`nativeMenuAccelerators`).
 
 use gpui_kit::{

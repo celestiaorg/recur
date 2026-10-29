@@ -470,7 +470,7 @@ impl Theme {
         cx.refresh_windows();
     }
 
-    /// Resolve a CSS color as the web UI writes it inline: `var(--token)`, hex, `rgb()`.
+    /// Resolve an inline CSS color: `var(--token)`, hex, `rgb()`.
     pub fn resolve_css_color(&self, css: &str) -> Option<Color> {
         let t = css.trim();
         if let Some(inner) = t.strip_prefix("var(").and_then(|s| s.strip_suffix(')')) {

@@ -131,7 +131,7 @@ fn fico(path: &str) -> AnyElement {
 }
 
 impl AgentChat {
-    /// A decoded image for `src`, loading it once (the webview's image cache).
+    /// A decoded image for `src`, loading it once.
     pub(crate) fn image_for(&mut self, src: &str, cx: &mut Context<Self>) -> Option<Decoded> {
         if let Some(d) = cx.try_global::<ImageCache>().and_then(|c| c.0.get(src)) {
             return Some(d.clone());

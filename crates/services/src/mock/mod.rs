@@ -170,7 +170,7 @@ impl Table {
     }
 
     /// Calls another resolver (`table.ListTree(args, seed, table)`); a missing
-    /// one throws in the TypeScript, here it is a failed call.
+    /// one is a failed call.
     pub fn call(&self, name: &str, args: &[Value], seed: &mut Seed) -> Reply {
         match self.resolvers.get(name) {
             Some(f) => f(args, seed, self),
@@ -288,9 +288,8 @@ impl MockBridge {
     }
 
     /// One bound call: dispatch by method name, settle the reply, then
-    /// publish what the call queued (the bridge dispatched those after
-    /// `route.fulfill`). A failed call publishes nothing; its queue waits for
-    /// the next successful call, as in the TypeScript.
+    /// publish what the call queued. A failed call publishes nothing; its
+    /// queue waits for the next successful call.
     pub(crate) async fn call<R: FromReply>(
         &self,
         name: &'static str,

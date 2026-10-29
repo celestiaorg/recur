@@ -1,4 +1,4 @@
-//! Props, roots and lifecycle: the root switch (`$effect.pre` keyed by project + workspace)
+//! Props, roots and lifecycle: the root switch (keyed by project + workspace)
 //! with the keep-alive snapshot and the backend editor session, persisting that session,
 //! backend events (worktree changes, findings, artifacts), deep links (`observatoryJump`), the
 //! shell activation edges (hot shells), the worktree watcher and the native menu state.
@@ -68,7 +68,7 @@ pub(crate) struct ObsStoreKey {
 }
 
 impl Observatory {
-    /// Push new props (`$props()`): a new project / workspace switches roots.
+    /// Push new props: a new project / workspace switches roots.
     pub fn set_props(
         &mut self,
         props: ObservatoryProps,
@@ -318,7 +318,7 @@ impl Observatory {
         cx.notify();
     }
 
-    /// `$effect`s that mirror state outward: occluder, menu state, editor command owner,
+    /// Effects that mirror state outward: occluder, menu state, editor command owner,
     /// unseen artifacts, the chord index, emitted snippet values.
     pub(crate) fn sync_side_effects(&mut self, cx: &mut Context<Self>) {
         self.clamp_view_mode();
@@ -1187,7 +1187,7 @@ impl Observatory {
         }
     }
 
-    /// The persist `$effect`: write (debounced) whenever tabs, buffers or chrome change.
+    /// Persist: write (debounced) whenever tabs, buffers or chrome change.
     pub(crate) fn persist_editor_session(&mut self, cx: &mut Context<Self>) {
         if self.props.project_id.is_empty() && self.props.workspace_id.is_empty() {
             return;

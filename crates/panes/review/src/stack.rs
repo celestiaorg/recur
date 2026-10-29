@@ -848,7 +848,7 @@ impl FileStack {
 /// device pixel under the opaque border), the stub stripes
 /// (`repeating-linear-gradient(to bottom, transparent 0 19px, var(--line) 19px 20px)`), then
 /// the 1px radius-9 border. GPUI would paint a border after the children; translucent rows
-/// composite over the border's corner arcs in the web view.
+/// composite over the border's corner arcs instead.
 fn cfile_frame(bg: recur_ui::Color, line: recur_ui::Color, stripes: bool) -> impl IntoElement {
     canvas(
         |_, _, _| {},

@@ -25,7 +25,7 @@ pub enum MergeActionKind {
 }
 
 impl MergeActionKind {
-    /// The TS string.
+    /// The kind's string id.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Hidden => "hidden",

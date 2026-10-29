@@ -506,7 +506,7 @@ impl SettingsView {
 
     // ---- effects ----
 
-    /// Re-run every `$effect` whose inputs changed.
+    /// Re-run every effect whose inputs changed.
     pub(crate) fn sync(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let section = self.section(cx);
         let agent = section == Some(Section::Agent);

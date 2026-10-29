@@ -225,7 +225,7 @@ impl NewProjectModal {
         }
     }
 
-    /// The modal's two `$effect`s: suggest a base for a new path, and list its branches
+    /// The modal's two effects: suggest a base for a new path, and list its branches
     /// (again once the suggestion lands, preferring it).
     fn effects(&mut self, cx: &mut Context<Self>) {
         if !self.open {

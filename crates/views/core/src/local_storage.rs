@@ -1,6 +1,6 @@
-//! The web UI's `localStorage`, for the prefs it kept there (themes, rail, panel widths,
-//! terminal prefs). Keys and values are the exact `localStorage` strings, so a pref reads
-//! back as written. Stored as one JSON object in the data dir ([`LOCAL_STORAGE_FILE`]);
+//! A `localStorage`-style key/value store for UI prefs (themes, rail, panel widths, terminal
+//! prefs). Values are strings, so a pref reads back as written. Stored as one JSON object in
+//! the data dir ([`LOCAL_STORAGE_FILE`]);
 //! without a path (tests, galleries) it lives in memory.
 
 use std::collections::BTreeMap;
@@ -20,7 +20,7 @@ impl LocalStorage {
         Self::default()
     }
 
-    /// Reads `path`; a missing or malformed file starts empty, as a wiped webview did.
+    /// Reads `path`; a missing or malformed file starts empty.
     pub fn open(path: impl Into<PathBuf>) -> Self {
         let path = path.into();
         let items = std::fs::read(&path)
@@ -46,7 +46,7 @@ impl LocalStorage {
         self.items.get(key).map(String::as_str)
     }
 
-    /// `localStorage.setItem`. Writes through like the webview did; a failed write is ignored.
+    /// `localStorage.setItem`. Writes through; a failed write is ignored.
     pub fn set(&mut self, key: &str, value: impl Into<String>) {
         let value = value.into();
         if self.items.get(key) == Some(&value) {

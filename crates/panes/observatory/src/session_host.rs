@@ -19,7 +19,7 @@ use recur_services::api::EditorSessionPatch;
 use recur_view_core::{AppState, LocalStorage};
 use serde_json::{Map, Value, json};
 
-/// Legacy single blob and per-workspace keys from the localStorage era.
+/// Legacy single blob and per-workspace session keys in local storage.
 const LEGACY_V1_KEY: &str = "recur.editorSession.v1";
 const LEGACY_V2_PREFIX: &str = "recur.editorSession.v2:";
 /// The synchronous last line of defence for quit: written in the same turn as a flush.
@@ -145,7 +145,7 @@ fn non_empty(m: BTreeMap<String, String>) -> Option<BTreeMap<String, String>> {
     (!m.is_empty()).then_some(m)
 }
 
-/// A session object as the TypeScript stored it (quit journal, legacy keys).
+/// A session object as local storage holds it (quit journal, legacy keys).
 pub fn session_from_object(v: &Value) -> Option<LoadedSession> {
     let o = v.as_object()?;
     let open: Vec<String> = o
@@ -211,7 +211,7 @@ pub fn session_from_object(v: &Value) -> Option<LoadedSession> {
     })
 }
 
-/// The session as the TypeScript serialized it (`JSON.stringify(session)`).
+/// The session as local storage holds it.
 pub fn session_to_object(s: &Session, syntax_maps_known: Option<bool>) -> Value {
     let mut o = Map::new();
     o.insert("openFiles".into(), json!(s.open_files));

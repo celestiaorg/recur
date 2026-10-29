@@ -6,7 +6,7 @@
 //! which the `regex` crate lacks. Each pattern here is the lookaround-free
 //! core plus an explicit boundary check; none of the cores can contain a
 //! second token start, so skipping a rejected match never hides a later one.
-//! Offsets are byte offsets (the TS works in UTF-16 units).
+//! Offsets are byte offsets.
 
 use std::sync::LazyLock;
 

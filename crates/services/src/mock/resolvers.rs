@@ -1,8 +1,6 @@
-//! The base resolvers, keyed by method name, in the TypeScript's order. Getters
-//! return seed data; mutations update the seed and return a shape-correct value
-//! so the UI's optimistic updates work. Where the TypeScript object literal
-//! names a method twice the later entry is the one the UI saw, and that is the
-//! one ported here.
+//! The base resolvers, keyed by method name. Getters return seed data;
+//! mutations update the seed and return a shape-correct value so the UI's
+//! optimistic updates work.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -1257,9 +1255,8 @@ pub(super) fn base() -> Table {
     t.insert("AddProject", |a, s, _t| {
         let a0 = a.first().unwrap_or(&Value::Null);
         let name = or(get(a0, "name"), &json!("new-project")).clone();
-        // The UI never sends `open` or `isGit` on create, so the TypeScript's
-        // `?? default` always applied; a typed caller sends the zero value
-        // for them, which reads the same.
+        // The UI never sends `open` or `isGit` on create; a typed caller sends
+        // the zero value for them, which reads as the default.
         let is_git = get(a0, "isGit") == Some(&Value::Bool(true))
             || !js::string(or(get(a0, "repoPath"), &json!(""))).contains("no-git");
         let p = js::spread(&[
@@ -1909,8 +1906,7 @@ pub(super) fn base() -> Table {
     t.insert("UpdatePlan", |_a, _s, _t| Reply::null());
     t.insert("RetryLoop", |_a, _s, _t| Reply::null());
     t.insert("RestartLoop", |_a, _s, _t| Reply::value("Restarting"));
-    // `ListLoops` appears twice in the TypeScript object literal; this later
-    // pre-rename alias (the workspace list) is what the UI's ListLoops got.
+    // The pre-rename `ListLoops` alias answers the workspace list.
     t.insert("ListLoops", |_a, s, _t| arr(s.loops().cloned().collect()));
     t.insert("PauseLoop", |_a, _s, _t| Reply::null());
     t.insert("ResumeLoop", |_a, _s, _t| Reply::null());

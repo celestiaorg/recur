@@ -3,11 +3,10 @@
 //! as they run (`chatsByLoop`, `editorSessions`, …).
 //!
 //! Workspaces and PRs live in an object arena so the two views of each
-//! (`loops` / `loopById`, `prs` / `prById`) share an object exactly when the
-//! TypeScript mock's do: `JSON.parse` gives the seed rows distinct objects,
-//! and a resolver that stores one object in both makes later in-place edits
-//! visible through both. [`Clone`] is `structuredClone`: it keeps that
-//! sharing.
+//! (`loops` / `loopById`, `prs` / `prById`) share an object only where a
+//! resolver stored one object in both: the seed rows start distinct, and
+//! later in-place edits through a shared object show through both views.
+//! [`Clone`] keeps that sharing.
 
 use std::collections::{BTreeMap, BTreeSet};
 

@@ -965,7 +965,7 @@ impl Observatory {
             return;
         }
         // Behind another route the shell is not laid out: focus there would leave keys no
-        // path to the shell (the web drops focus from a hidden element). Only the agent dock
+        // path to the shell. Only the agent dock
         // shows, portaled into PR detail.
         let on_screen = self.state.read(cx).view == recur_view_core::ViewName::Detail
             || (zone == FocusZone::Agent && self.portal_agent_to_pr(cx));

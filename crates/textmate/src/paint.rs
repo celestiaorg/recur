@@ -6,7 +6,7 @@ use crate::tm_theme::{
 };
 
 /// What to paint for one token: colour-map indices and font style bits
-/// (`tm_font::*`). The web UI expresses the same as `cm-tm-*` classes.
+/// (`tm_font::*`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TokenPaint {
     pub foreground: Option<u32>,

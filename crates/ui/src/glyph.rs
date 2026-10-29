@@ -1,6 +1,6 @@
 //! Glyph painting. On macOS, glyphs from the bundled faces are rasterized through
-//! CoreGraphics with WebKit's text settings (the app's WKWebView draws text this way), so
-//! text matches the web UI pixel for pixel. Glyphs from other fonts (system fallbacks) and
+//! CoreGraphics with WebKit's text settings, so text renders as it does in Safari. Glyphs
+//! from other fonts (system fallbacks) and
 //! other platforms use GPUI's glyph atlas.
 
 use gpui_kit::{FontId, GlyphId, Hsla, Pixels, Point, Window, px};

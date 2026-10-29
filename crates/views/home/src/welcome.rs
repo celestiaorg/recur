@@ -317,7 +317,7 @@ impl WelcomeView {
         v
     }
 
-    /// The `$effect` on `$view === 'welcome' && settingsLoaded`, and the `.on` entrance.
+    /// On the welcome route once settings loaded, and the entrance animation.
     fn sync(&mut self, cx: &mut Context<Self>) {
         let (on, loaded) = {
             let s = self.vcx.state.read(cx);

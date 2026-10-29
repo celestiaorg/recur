@@ -468,7 +468,7 @@ pub struct ThreadEditorDraft {
     pub edit: String,
 }
 
-/// The drafts by thread root id (one per app, as the TS module map).
+/// The drafts by thread root id (one per app).
 #[derive(Debug, Default)]
 pub struct ThreadEditorDrafts(HashMap<String, ThreadEditorDraft>);
 

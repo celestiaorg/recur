@@ -10,8 +10,8 @@ use recur_view_core::{AppState, ViewName};
 
 use crate::shell::Shell;
 
-/// Key contexts of text entry (the web UI's `INPUT` / `TEXTAREA` / `contenteditable`, the
-/// terminal's helper textarea). A view's own text widget adds `TextEntry` to its context.
+/// Key contexts of text entry (inputs, textareas, the editor, the terminal). A view's own
+/// text widget adds `TextEntry` to its context.
 pub const TEXT_ENTRY_CONTEXTS: [&str; 5] = [
     "Input",
     "RecurEditor",

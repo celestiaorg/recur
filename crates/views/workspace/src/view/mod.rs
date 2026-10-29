@@ -102,7 +102,7 @@ impl Abort {
     }
 }
 
-/// What a WorkspaceView instance is bound to (`$props()`).
+/// What a WorkspaceView instance is bound to.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WorkspaceProps {
     pub workspace_id: String,

@@ -1069,7 +1069,7 @@ impl TerminalDock {
         });
     }
 
-    /// The incremental search `$effect`: query, options or active tab changed.
+    /// Incremental search: query, options or active tab changed.
     fn refresh_find(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if !self.find_open {
             return;

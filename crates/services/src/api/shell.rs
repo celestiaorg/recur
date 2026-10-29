@@ -17,7 +17,7 @@ pub trait ShellService: Send + Sync {
     async fn flush(&self) -> Result<()>;
 
     /// GetExpandedSchedules returns which schedule dashboard rows are expanded.
-    /// Lives next to shell.json so accordion state survives a webview storage wipe.
+    /// Lives next to shell.json.
     async fn get_expanded_schedules(&self) -> Result<Vec<String>>;
 
     /// GetIssuesView returns the saved Issues view, or a zero value when none

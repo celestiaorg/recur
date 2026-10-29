@@ -351,7 +351,7 @@ pub fn collect_from_engine(
     )
 }
 
-/// How long one outline call tokenizes (the web's 80ms is four frames of typing).
+/// How long one outline call tokenizes (80ms would be four frames of typing).
 pub const OUTLINE_FILL_SLICE: Duration = Duration::from_millis(6);
 
 /// Outline an open document (`outlineOpenFile` without the async plumbing):
@@ -411,8 +411,8 @@ pub struct SymbolHit<'a> {
 
 /// Go to Symbol ranking. An empty query keeps document order; typed
 /// queries use the app's fuzzy ranker over `"<name> <kind>"` and tie-break
-/// by line. `rank` is `fuzzyFilterPrepared` (lib/fuzzy, ported with Quick
-/// Open): it returns `(index, score)` pairs for the best `limit` labels.
+/// by line. `rank` is the fuzzy ranker (`recur_code::fuzzy`): it returns
+/// `(index, score)` pairs for the best `limit` labels.
 pub fn filter_symbols<'a>(
     symbols: &'a [OutlineSymbol],
     query: &str,

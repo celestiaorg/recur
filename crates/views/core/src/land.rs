@@ -45,7 +45,7 @@ impl From<&WorkspaceLandState> for Land {
 }
 
 impl Land {
-    /// The resident bytes the web cache budgeted for one snapshot.
+    /// The resident bytes budgeted for one snapshot.
     fn bytes(&self, id: &str) -> usize {
         let s = |x: &str| 24 + x.len() * 2;
         32 + s(id) + s(&self.base) + s(&self.remote) + s(&self.pr_id) + s(&self.pr_source) + 13 * 32

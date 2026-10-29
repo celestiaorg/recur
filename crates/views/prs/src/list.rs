@@ -214,7 +214,7 @@ impl PrList {
         &self.vcx.state
     }
 
-    /// The `$effect` on `$view === 'pr'`: sync GitHub PRs when due, `prListSyncing` while it
+    /// On the PR route: sync GitHub PRs when due, `prListSyncing` while it
     /// runs; leaving the route drops the flag (and ignores a late result).
     fn sync_route(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         let on = self.state().read(cx).view == ViewName::Pr;

@@ -1,4 +1,4 @@
-//! SVG as the webview draws an `<img src="data:image/svg+xml…">` or inline diagram: parsed
+//! SVG as a browser draws an `<img src="data:image/svg+xml…">` or inline diagram: parsed
 //! with usvg (no scripts, no external resources: only `data:` images resolve) and rasterized
 //! through CoreGraphics on macOS, WebKit's SVG painter, at the exact device size.
 

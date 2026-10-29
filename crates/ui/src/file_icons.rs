@@ -53,7 +53,7 @@ pub struct FileIconClass {
 }
 
 impl FileIconClass {
-    /// The exact class string the web UI puts on the `<span>`.
+    /// The file-icons class string (icon and color classes).
     pub fn class_string(&self) -> String {
         match &self.color {
             Some(c) => format!("icon {} {c}", self.icon),
@@ -129,7 +129,7 @@ fn match_name(name: &str, directory: bool) -> Option<&'static DbIcon> {
             .as_ref()
             .is_some_and(|re| re.is_match(name).unwrap_or(false))
     });
-    // The web UI caches hits only; misses are cheap to cache here and change nothing.
+    // Misses are cheap to cache and change nothing.
     if let Ok(mut c) = cache.lock() {
         c.insert(key, found);
     }

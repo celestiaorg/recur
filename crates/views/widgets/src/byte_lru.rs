@@ -3,7 +3,7 @@
 
 use std::collections::VecDeque;
 
-/// JS strings are UTF-16; the header is a budgeting fudge, as in the TypeScript.
+/// Strings are budgeted as UTF-16 plus a fixed header.
 const STR_HDR: usize = 24;
 pub const OBJ_HDR: usize = 32;
 

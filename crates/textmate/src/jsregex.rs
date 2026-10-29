@@ -2,8 +2,8 @@
 //!
 //! Bundle metadata (`[[languageData]]` indent patterns, `[[symbol]]`
 //! transforms, grammar fold markers, `firstLineMatch`) is compiled with
-//! `new RegExp(...)` in the web UI. This compiles the same sources the same
-//! way: constructs JS rejects are rejected here too (possessive quantifiers,
+//! JavaScript `new RegExp(...)` semantics, since bundle authors write them as
+//! JS regexes: constructs JS rejects are rejected here too (possessive quantifiers,
 //! inline flags, atomic groups), unknown letter escapes are literal letters
 //! (Annex B), `\d` / `\w` / `\b` are ASCII, and `^` / `$` anchor to the whole
 //! input unless the `m` flag is set.

@@ -1,9 +1,9 @@
 //! Absolute paths the user dropped onto the app. `/chat-image` and
-//! `/external-file` only serve paths from this set, so the webview cannot
+//! `/external-file` only serve paths from this set, so the UI cannot
 //! fetch arbitrary files by crafting a URL.
 //!
 //! Native drops persist under the data dir so a relaunch can still serve a
-//! transcript chip or a restored editor tab. Nothing the webview can call
+//! transcript chip or a restored editor tab. Nothing the UI can call
 //! grants a path; editor-session restore is not evidence of a user drop.
 
 use std::collections::HashSet;

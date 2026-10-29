@@ -40,7 +40,7 @@ pub(crate) fn glob_to_regexp(glob: &str) -> String {
     out
 }
 
-/// One explorer exclude pattern compiled as the webview compiles it.
+/// One explorer exclude pattern compiled as a JavaScript regex.
 #[derive(Clone)]
 pub struct CompiledGlob(Arc<regress::Regex>);
 

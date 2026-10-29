@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-/// One served file: what the webview's asset server answered a `GET` with.
+/// One served file: what an asset route answers a `GET` with.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Asset {
     pub content_type: String,
@@ -30,7 +30,7 @@ impl AssetError {
     }
 }
 
-/// The app's asset routes, for a native UI that has no webview to fetch them: per-workspace
+/// The app's asset routes, served natively: per-workspace
 /// managed files (`/workspaces/<id>/…`), worktree files
 /// (`/workspace-file?project=&workspace=&path=[&at=base]`), dropped chat images
 /// (`/chat-image?path=`), dropped external files (`/external-file?path=`) and GitHub attachment

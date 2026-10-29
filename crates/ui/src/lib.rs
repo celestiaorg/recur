@@ -1,5 +1,4 @@
-//! Recur's design system on GPUI: theme tokens, fonts, icons, and shared widgets matching the
-//! web UI.
+//! Recur's design system on GPUI: theme tokens, fonts, icons, and shared widgets.
 //!
 //! Call [`init`] once after `gpui_kit::init`, and give the application [`Assets`]:
 //!

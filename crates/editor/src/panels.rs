@@ -773,7 +773,7 @@ impl EditorView {
     }
 
     /// The rename prompt: a window-modal card with the field and
-    /// Cancel / OK, standing in for the webview's `window.prompt`.
+    /// Cancel / OK.
     pub(crate) fn render_rename_prompt(
         &self,
         window: &Window,

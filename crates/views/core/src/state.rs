@@ -1,7 +1,7 @@
 //! [`AppState`]: the app-wide stores of `lib/stores.ts` and the module state of `lib/api.ts`,
 //! as one GPUI entity every view reads. Views observe it for changes and subscribe to its
 //! [`ShellEvent`]s; mutations go through its methods so the persistence and side effects the
-//! Svelte stores carried stay in one place.
+//! stores carry stay in one place.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::future::Future;

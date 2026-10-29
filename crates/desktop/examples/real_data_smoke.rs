@@ -1556,8 +1556,8 @@ async fn run(
             continue;
         }
         visit_workspace(start, cx, window, &state, id, live).await;
-        // A PR chat host of a settled PR is archived in place once its turn goes idle (Go's
-        // `maybeArchiveLinkedPRChatHost`), so the streamed turn would vanish with it.
+        // A PR chat host of a settled PR is archived in place once its turn goes idle,
+        // so the streamed turn would vanish with it.
         if live && !*pr_host && !streamed {
             streamed = stream_turn(start, cx, window, &state, id).await;
         }

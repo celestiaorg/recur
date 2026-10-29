@@ -43,7 +43,7 @@ use crate::view_state::{FileViewState, is_buffer_dirty};
 /// Debounce for `DocChanged` (`EMIT_DEBOUNCE_MS`).
 pub const EMIT_DEBOUNCE_MS: u64 = 120;
 
-/// Events the host listens to (the Svelte component's callbacks).
+/// Events the host listens to.
 #[derive(Clone, Debug, PartialEq)]
 pub enum EditorEvent {
     /// Full text, debounced (`onDocChange`). Saving must read

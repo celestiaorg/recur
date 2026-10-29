@@ -5,8 +5,8 @@ use std::collections::HashSet;
 
 use recur_domain::Workspace;
 
-/// Svelte caps at 2 because parked shells stay in the WKWebView DOM. Parked GPUI shells are not
-/// laid out (`WorkspaceDetail`), so the cap here is memory plus a cheap `sync` per store change.
+/// Parked shells are not laid out (`WorkspaceDetail`), so the cap here is memory plus a cheap
+/// `sync` per store change.
 pub const HOT_SHELL_MAX: usize = 12;
 
 /// Newest-first LRU: `id` becomes the head; entries missing from `live` drop.

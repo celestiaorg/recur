@@ -140,7 +140,7 @@ pub fn format_bytes(n: i64) -> String {
     }
 }
 
-/// Matches Go `maxEditBytes`: above this the buffer is view-only.
+/// Above this the buffer is view-only.
 pub const MAX_EDIT_BYTES: i64 = 16 * 1024 * 1024;
 
 #[cfg(test)]

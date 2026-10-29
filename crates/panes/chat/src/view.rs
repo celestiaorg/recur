@@ -1,6 +1,6 @@
 //! `AgentChat`'s root (`<div class="chat">`): the scrolling transcript with its edge fades,
 //! the fork menu, the dock, the lightbox and image menu, drops, and the window-level keys
-//! the Svelte component listened for.
+//! the chat listens for.
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{

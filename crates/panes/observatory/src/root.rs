@@ -255,7 +255,7 @@ impl Observatory {
         crate::session_host::set_services(self.services.clone(), cx);
     }
 
-    /// Things the Svelte derived from stores (`$workspaces`, `$codePanelSides`, dock maps…).
+    /// Things derived from stores (workspaces, code panel sides, dock maps…).
     /// Whether what this Observatory reads of the [`KEYED_TOPICS`] changed since it last looked.
     fn store_key_changed(&mut self, cx: &App) -> bool {
         let s = self.state.read(cx);

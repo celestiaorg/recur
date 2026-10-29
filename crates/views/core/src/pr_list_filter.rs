@@ -281,7 +281,7 @@ mod tests {
             review_requested: true,
             checks_ok: true,
             has_checks: true,
-            // `{ name: 'test' }` in the TS fixture is skipped by `prChecksRollup`; Go always
+            // `{ name: 'test' }` in the TS fixture is skipped by `prChecksRollup`; the backend always
             // sends `passed`, so the equivalent row here is a passed check.
             checks: Some(vec![Check {
                 name: "test".into(),

@@ -1,5 +1,5 @@
 //! Modal plumbing shared by New workspace and New project (`lib/dialog-focus.ts`): window
-//! keys in the capture phase, as the Svelte modals listen on `window` with `capture`.
+//! keys in the capture phase.
 
 use gpui_kit::{Context, KeyDownEvent, KeystrokeEvent, Subscription, Window};
 

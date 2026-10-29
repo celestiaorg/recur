@@ -1,6 +1,6 @@
 //! Widget gallery scenes. `crates/ui/gallery/scenes.json` is the single scene list: the
-//! Svelte reference harness, the headless parity renderer and `examples/gallery.rs` all read
-//! it, and each scene name maps to one builder here.
+//! headless parity renderer and `examples/gallery.rs` both read it, and each scene name
+//! maps to one builder here.
 
 mod scenes;
 

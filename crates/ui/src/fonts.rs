@@ -14,7 +14,7 @@ pub const DISPLAY: &str = "Space Grotesk";
 pub const SYSTEM: &str = ".SystemUIFont";
 
 /// The family `system-ui` resolves to. macOS: SF through [`SYSTEM`], as WebKit draws it.
-/// Linux: fontconfig's match for `system-ui`, the face WebKitGTK (and so the Go app and the
+/// Linux: fontconfig's match for `system-ui`, the face WebKitGTK (and so the
 /// Mermaid labels it measures) uses; GPUI's own `.SystemUIFont` there is IBM Plex Sans.
 pub fn system_family() -> SharedString {
     #[cfg(target_os = "linux")]

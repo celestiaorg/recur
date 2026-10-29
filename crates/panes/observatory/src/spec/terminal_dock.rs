@@ -19,7 +19,7 @@ use recur_view_core::prefs::PanelKey;
 
 type CallLog = Arc<Mutex<Vec<(String, Vec<Value>)>>>;
 
-/// Every terminal call, answered the way Go would (`terminalResolvers`).
+/// Every terminal call, answered as the terminal service would.
 #[derive(Clone, Default)]
 struct Term {
     calls: CallLog,
@@ -310,7 +310,7 @@ async fn reopening_adopts_the_running_shell_instead_of_spawning_another(cx: &mut
     open_dock(&mut h);
     assert_eq!(dock_tabs(&mut h)[0].1, "npm run dev");
     assert!(t.calls("OpenTerminal").is_empty());
-    // Hiding parks the view (Go stays attached); only Close kills the shell.
+    // Hiding parks the view (the session stays attached); only Close kills the shell.
     h.click("term-act:hide");
     assert!(!dock_open(&mut h));
     assert!(t.calls("CloseTerminal").is_empty());

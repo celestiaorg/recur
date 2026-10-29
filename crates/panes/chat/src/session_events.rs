@@ -1,6 +1,6 @@
 //! Live chat events as the chat surfaces consume them (`lib/api.ts`'s `onSession*` and
 //! `onAgent` wrappers): the session's workspace (`""` for Ask Recur), its code, and the
-//! payload with the same filters the Svelte listeners applied.
+//! payload with the same filters the listeners applied.
 
 use recur_agent::context_usage::ContextUsage;
 use recur_engine::view::chat::{CompactEvt, FallbackEvt, StreamOpts, ToolExtras, WorkspaceStep};
@@ -89,7 +89,7 @@ fn usage(input: i64, creation: i64, read: i64, window: i64) -> Option<ContextUsa
     (window > 0 && u.used_tokens() > 0).then_some(u)
 }
 
-/// Decodes a `session.*` event; `None` for other events and for payloads the Svelte
+/// Decodes a `session.*` event; `None` for other events and for payloads the
 /// listeners dropped.
 pub fn session_event(ev: &AppEvent) -> Option<SessionEvent> {
     let (tag, signal) = match ev {

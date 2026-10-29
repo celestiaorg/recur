@@ -391,7 +391,7 @@ impl SettingsView {
                 d.push_str(&format!(" · v{}", st.bridge_version));
             }
             if st.update_available && !st.pinned_version.is_empty() {
-                // Svelte trims the space opening the `{#if}` block.
+                // No space before the update note.
                 d.push_str(&format!("— update available (v{})", st.pinned_version));
             }
             d

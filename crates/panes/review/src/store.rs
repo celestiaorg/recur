@@ -1,6 +1,6 @@
-//! App-wide review state the Svelte modules kept at module scope: in-flight resolve and
-//! reaction holds (`lib/pr-thread-resolved.ts`, `lib/comment-reactions.ts`), unsent thread
-//! editors (`threadEditorDrafts`) and the finding ids already posted as review drafts
+//! App-wide review state: in-flight resolve and reaction holds
+//! (`lib/pr-thread-resolved.ts`, `lib/comment-reactions.ts`), unsent thread editors
+//! (`threadEditorDrafts`) and the finding ids already posted as review drafts
 //! (`postedFindingIds`), with the optimistic writes that use them.
 
 use std::collections::{HashMap, HashSet};

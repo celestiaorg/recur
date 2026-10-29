@@ -778,8 +778,8 @@ impl Observatory {
     // ---- focus ----
 
     /// `onObsFocusIn`: map the focused region to the tab-underline zone.
-    /// Recompute the zone whenever focus enters or leaves `h` inside the Observatory (the
-    /// Svelte `focusin` fires on every move; GPUI only reports entering a handle's subtree).
+    /// Recompute the zone whenever focus enters or leaves `h` inside the Observatory
+    /// (GPUI only reports entering a handle's subtree).
     pub(crate) fn watch_zone(
         &self,
         h: &gpui_kit::FocusHandle,

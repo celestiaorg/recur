@@ -353,8 +353,8 @@ impl PrDetail {
     }
 }
 
-/// The `.cm-by` spans: role and amber iteration, or the author byline, then `suffix`. Svelte
-/// drops the whitespace an `{#if}` block opens with, so the separators read `Coder· iter`.
+/// The `.cm-by` spans: role and amber iteration, or the author byline, then `suffix`. No
+/// whitespace opens the separators, so they read `Coder· iter`.
 fn byline(c: &Commit, suffix: &str, t: &recur_ui::Tokens) -> Vec<Span> {
     if !c.author_role.is_empty() && c.author_role != "Author" {
         let mut v = vec![span(c.author_role.clone())];

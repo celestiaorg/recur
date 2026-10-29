@@ -1,8 +1,7 @@
 //! `FilesChangedView.svelte`: Review → Changes. The toolbar (file list toggle and mode, file
 //! count against the base, findings link, totals, unified / split, fold all), the file list
 //! panel with its filter and findings-only toggle, and the stacked diffs for the branch vs its
-//! base, the working tree vs HEAD, or one commit, loaded with the queue and scope rules of
-//! the Svelte `load()`.
+//! base, the working tree vs HEAD, or one commit, loaded with its queue and scope rules.
 
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};

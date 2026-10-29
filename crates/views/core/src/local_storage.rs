@@ -1,7 +1,7 @@
 //! The web UI's `localStorage`, for the prefs it kept there (themes, rail, panel widths,
 //! terminal prefs). Keys and values are the exact `localStorage` strings, so a pref reads
-//! back the way the Svelte code parsed it. Stored as one JSON object in the data dir
-//! ([`LOCAL_STORAGE_FILE`]); without a path (tests, galleries) it lives in memory.
+//! back as written. Stored as one JSON object in the data dir ([`LOCAL_STORAGE_FILE`]);
+//! without a path (tests, galleries) it lives in memory.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -46,8 +46,7 @@ impl LocalStorage {
         self.items.get(key).map(String::as_str)
     }
 
-    /// `localStorage.setItem`. Writes through like the webview did; a failed write is ignored
-    /// (`try { … } catch {}` in the Svelte code).
+    /// `localStorage.setItem`. Writes through like the webview did; a failed write is ignored.
     pub fn set(&mut self, key: &str, value: impl Into<String>) {
         let value = value.into();
         if self.items.get(key) == Some(&value) {

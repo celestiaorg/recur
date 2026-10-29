@@ -24,9 +24,9 @@
 //!   (then revalidates) or loads cold and restores its editor session. `left_open: Some(_)`
 //!   hands the left gutter to the host (`onToggleLeft`); `None` keeps it local.
 //!   `shell_active: false` parks the Observatory (hot shells): no watcher, menu, keys or focus.
-//! - **Slots** ([`ObservatorySlots`]): the Svelte snippets as views the host owns: the agent
-//!   chat (`left_panel`), its tab strip (`left_head`), the plan panel and head, and the overlay
-//!   shown while `main_blocked`. Replace them with [`Observatory::set_slots`].
+//! - **Slots** ([`ObservatorySlots`]): views the host owns: the agent chat (`left_panel`), its
+//! tab strip (`left_head`), the plan panel and head, and the overlay shown while
+//! `main_blocked`. Replace them with [`Observatory::set_slots`].
 //! - **Events** ([`ObservatoryEvent`]): the callbacks (`ToggleLeft`, agent tab commands,
 //!   `FixFindings`, `AddEditorMention`, `FocusAgentComposer`) and the snippet arguments
 //!   (`MaestroVisible`, `AgentLit`, `SelectedArtifact`); the same values are readable with
@@ -85,7 +85,7 @@ pub use obs::{
 };
 
 /// Unseen artifact ids per workspace, shared across Observatories so a background workspace's
-/// badge survives until its shell exists (module `$state` in the Svelte).
+/// badge survives until its shell exists.
 #[derive(Default)]
 pub struct UnseenArtifacts(pub BTreeMap<String, Vec<String>>);
 
@@ -96,7 +96,7 @@ pub fn unseen_artifacts(cx: &App) -> &BTreeMap<String, Vec<String>> {
     cx.try_global::<UnseenArtifacts>().map_or(&EMPTY, |u| &u.0)
 }
 
-/// The module-level owners the Svelte kept so a parked shell cannot disarm the live one's
+/// Shared owners so a parked shell cannot disarm the live one's
 /// watcher, command handlers, menu or occluder.
 #[derive(Default)]
 pub struct Owners {

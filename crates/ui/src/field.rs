@@ -1,5 +1,5 @@
 //! Text fields with the DOM's event model: `input` on every edit, `change` when a value edited
-//! since focus is committed (Enter or blur), `focus` / `blur`, and Svelte's one-way
+//! since focus is committed (Enter or blur), `focus` / `blur`, and a one-way
 //! `value={expr}` (the field takes the expression's value whenever the expression changes).
 
 use crate::guard::Guarded;

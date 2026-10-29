@@ -3,7 +3,7 @@
 //! tabs `PA`, `PA2`, …), each with its own mode, model, draft, queue and transcript. The plan
 //! panel and its head ride the Observatory's plan pane.
 //!
-//! Per-tab state is keyed `workspaceId\tcode` ([`chat_tab_key`]) as in the Svelte, so hoisted
+//! Per-tab state is keyed `workspaceId\tcode` ([`chat_tab_key`]), so hoisted
 //! sends and drafts can move between workspaces.
 
 mod live;
@@ -46,7 +46,7 @@ use crate::plan_head::PlanHead;
 use crate::plan_panel::PlanPanel;
 use crate::toolbar::DockToolbar;
 
-/// The tab the Svelte falls back to before ListWorkspaceChats lands.
+/// The fallback tab before ListWorkspaceChats lands.
 pub(crate) const DEFAULT_CODE: &str = "PA";
 /// `DELETE_ARM_MS`: a closed chat's delete stays armed this long.
 pub(crate) const DELETE_ARM_MS: u64 = 3000;

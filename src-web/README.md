@@ -1,7 +1,7 @@
 # Splash page
 
-Run `npm run dev` or `npm run build` from `src-web`. Both first build the
-interactive demo using the frontend's existing locked dependencies (requires pnpm).
+Run `pnpm run dev` or `pnpm run build` from `src-web`. Both first build the
+interactive demo from the Svelte app in `demo/` with its locked dependencies (requires pnpm).
 Run `wails3 task test:splash` from the repository root to build and browser-test it.
 
 The hero tour and PR section use real captures from `public/screenshots`.
@@ -15,8 +15,8 @@ still be mixed independently. It composes the app views in an isolated iframe.
 The loop graph stays animated and interactive.
 
 The showcase and capture builds share the dedicated product dataset in
-`frontend/captures/dataset.json`, service resolvers, and shipped TextMate themes. Rebuild it after changing frontend components. Generated demo assets live
+`demo/captures/dataset.json`, service resolvers, and shipped TextMate themes. Rebuild it after changing demo components. Generated demo assets live
 in `public/demo` and are ignored by Git. The website build copies them into `dist`.
 
 Generate product screenshots with `wails3 task capture:splash`. See
-[the capture guide](../frontend/captures/README.md) for datasets, presets, and outputs.
+[the capture guide](demo/captures/README.md) for datasets, presets, and outputs.

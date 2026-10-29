@@ -1,11 +1,11 @@
-// Uses the frontend's existing Playwright dependency. Start the src-web dev or
+// Uses the demo app's (src-web/demo) Playwright dependency. Start the src-web dev or
 // preview server, then run: node scripts/check-splash.mjs http://localhost:5174
 // With no URL, serves the production build itself. Task: wails3 task test:splash.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 const require = createRequire(
-  new URL("../frontend/package.json", import.meta.url),
+  new URL("../src-web/demo/package.json", import.meta.url),
 );
 const { chromium, expect } = require("@playwright/test");
 const server = process.argv[2]

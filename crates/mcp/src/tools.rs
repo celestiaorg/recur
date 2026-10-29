@@ -58,8 +58,6 @@ pub fn append_permission_request(mut names: Vec<String>) -> Vec<String> {
 /// 16 random bytes as 32 hex characters: the per-turn URL token.
 pub(crate) fn new_token() -> String {
     let mut b = [0u8; 16];
-    if getrandom::fill(&mut b).is_err() {
-        return "0".repeat(32);
-    }
+    getrandom::fill(&mut b).expect("getrandom failed for MCP token");
     b.iter().map(|x| format!("{x:02x}")).collect()
 }

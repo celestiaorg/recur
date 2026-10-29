@@ -209,6 +209,9 @@ pub(crate) fn decode_lenient<T: DeserializeOwned + Default>(raw: &[u8]) -> Resul
     if v.is_null() {
         return Ok(T::default());
     }
+    if !v.is_object() {
+        return Err("want a JSON object".into());
+    }
     drop_nulls(&mut v);
     serde_json::from_value(v).map_err(|e| e.to_string())
 }
@@ -513,4 +516,32 @@ pub fn theme_convention_ok(path: &str) -> bool {
 pub fn terminal_theme_convention_ok(path: &str) -> bool {
     let lower = path.to_lowercase();
     lower.ends_with(".json") && !lower.ends_with(".tmtheme.json")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, Default, PartialEq, Deserialize)]
+    #[serde(default)]
+    struct Doc {
+        prompt: String,
+        tags: Vec<String>,
+    }
+
+    #[test]
+    fn decode_lenient_cases() {
+        let ok = |raw: &str| decode_lenient::<Doc>(raw.as_bytes()).unwrap();
+        assert_eq!(ok("null"), Doc::default());
+        assert_eq!(
+            ok(r#"{"prompt":null,"tags":["a",null,"b"],"extra":1}"#),
+            Doc {
+                prompt: String::new(),
+                tags: vec!["a".into(), "b".into()],
+            }
+        );
+        for bad in ["[]", r#"["fix it"]"#, r#""x""#, r#"{"prompt":3}"#, "nope"] {
+            assert!(decode_lenient::<Doc>(bad.as_bytes()).is_err(), "{bad}");
+        }
+    }
 }

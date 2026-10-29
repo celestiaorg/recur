@@ -20,7 +20,7 @@ description = "Lints the shipped Recur Bundles (schema, TS compile, shebang, key
 run = "cargo run -p recur-cli -- bundles lint ./bundles"
 
 ["test:bundles"]
-description = "Runs the shipped Recur Bundle engine tests (needs node on PATH)"
+description = "Runs the shipped Recur Bundle engine tests"
 run = "cargo run -p recur-cli -- bundles test ./bundles"
 
 ["check:cursor-sdk-pin"]

@@ -1,12 +1,7 @@
 //! The Recur CLI: open paths in the desktop app and author Recur Bundles.
-//!
-//! Help, usage, errors, reports and exit codes are stable byte for byte;
-//! [`cobra`] reproduces the Cobra/pflag behavior that requires.
 
 mod app;
-pub mod cobra;
 mod color;
-mod completion;
 mod config;
 mod create;
 pub mod open;
@@ -15,10 +10,21 @@ mod resolve;
 
 use std::io::Write;
 
-pub use app::{VERSION, looks_like_open_path};
-pub use cobra::CliError;
+use clap::Parser;
+use clap::error::ErrorKind;
 
-/// The streams a run writes to (Cobra's out and err writers).
+pub use app::{VERSION, looks_like_open_path};
+
+/// A command failure.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CliError {
+    /// A plain error: printed red, exit 1.
+    Msg(String),
+    /// An optional message and an explicit exit code.
+    Exit(i32, Option<String>),
+}
+
+/// The streams a run writes to.
 pub struct Io<'a> {
     pub out: &'a mut dyn Write,
     pub err: &'a mut dyn Write,
@@ -26,24 +32,40 @@ pub struct Io<'a> {
 
 /// Runs `recur <args>` and returns the process exit code.
 pub fn execute(args: &[String], io: &mut Io) -> i32 {
-    let mut cli = app::build();
-    match cli.execute_c(args, io, &mut app::run) {
+    let argv = std::iter::once("recur").chain(args.iter().map(String::as_str));
+    let cli = match app::Cli::try_parse_from(argv) {
+        Ok(cli) => cli,
+        Err(err) => return clap_exit(err, io),
+    };
+    match app::run(cli, io) {
         Ok(()) => 0,
         Err(err) => exit_code(err, io),
     }
 }
 
-/// Runs as `recur bundles <args>` (the deprecated `cmd/bundles` binary).
-pub fn execute_bundles_forward(args: &[String], io: &mut Io) -> i32 {
-    let mut full = vec!["bundles".to_string()];
-    full.extend_from_slice(args);
-    execute(&full, io)
+/// Help and version go to stdout with exit 0; usage errors to stderr with
+/// exit 1.
+fn clap_exit(err: clap::Error, io: &mut Io) -> i32 {
+    let (code, w, stream) = match err.kind() {
+        ErrorKind::DisplayHelp
+        | ErrorKind::DisplayVersion
+        | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
+            (0, &mut *io.out, color::Stream::Stdout)
+        }
+        _ => (1, &mut *io.err, color::Stream::Stderr),
+    };
+    let text = err.render();
+    let _ = if color::want_color(stream) {
+        write!(w, "{}", text.ansi())
+    } else {
+        write!(w, "{text}")
+    };
+    code
 }
 
 fn exit_code(err: CliError, io: &mut Io) -> i32 {
     let color = color::want_color(color::Stream::Stderr);
     let (code, msg) = match err {
-        CliError::Help => (0, None),
         CliError::Msg(m) => (1, Some(m)),
         CliError::Exit(code, m) => (code, m),
     };

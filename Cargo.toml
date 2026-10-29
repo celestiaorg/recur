@@ -106,6 +106,7 @@ unicode-segmentation = "1.12"
 unicode-normalization = "0.1"
 pulldown-cmark = { version = "0.13", default-features = false }
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
 include_dir = "0.7"
 fancy-regex = "0.16"
 wuff = "0.2"

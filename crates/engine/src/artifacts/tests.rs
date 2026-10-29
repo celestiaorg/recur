@@ -1,4 +1,4 @@
-//! Go `artifacts_test.go` (the PR chat host hoist cases are E5's; the
+//! Artifact tests (the PR chat host hoist cases are E5's; the
 //! artifact move they rely on is tested here).
 
 use std::collections::HashMap;

@@ -1,5 +1,4 @@
-//! Router, mirror and broadcast (Go `mirror_test.go`, router cases of
-//! `provider_test.go`, `mcp_required_test.go` registration cases).
+//! Router, mirror and broadcast tests, including MCP registration.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -918,8 +917,8 @@ async fn ensure_mcp_retries_after_failure_and_register_scopes_tools() {
     te.close().await;
 }
 
-/// Go `TestEnsureMCPRetriesAfterFailure`: a bind failure is not remembered,
-/// so Retry can work once the condition clears.
+/// A bind failure is not remembered, so Retry can work once the condition
+/// clears.
 #[tokio::test]
 async fn ensure_mcp_start_failure_is_retried() {
     // Below the ephemeral range, so a parallel test binding :0 cannot take
@@ -1225,9 +1224,8 @@ async fn last_assistant_usage_wins_over_cumulative_result() {
     te.close().await;
 }
 
-/// Go `TestRealPermissionPromptE2E`: a real `claude -p` asks through Recur's
-/// MCP prompt tool and the approval lets the tool run. Spends credit, so it
-/// is skipped unless `RECUR_E2E=1`.
+/// A real `claude -p` asks through Recur's MCP prompt tool and the approval
+/// lets the tool run. Spends credit, so it is skipped unless `RECUR_E2E=1`.
 #[tokio::test]
 async fn real_permission_prompt_e2e() {
     if std::env::var("RECUR_E2E").as_deref() != Ok("1") {

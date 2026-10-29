@@ -1,7 +1,6 @@
-//! The turn pipeline (E2): the provider router every agent turn goes
-//! through (Go `provider.go` `runAgent` / `runnerFor`), the session mirror
-//! and live broadcast that wrap every turn (Go `mirroringRunner`), per-turn
-//! MCP registration, and the user-visible turn outcome.
+//! The turn pipeline (E2): the provider router every agent turn goes through,
+//! the session mirror and live broadcast that wrap every turn, per-turn MCP
+//! registration, and the user-visible turn outcome.
 //!
 //! Routing happens in exactly one place: the qualified model ref
 //! (`provider/id`) picks the provider; the provider gets the bare id. One
@@ -51,7 +50,7 @@ pub type Emit = Arc<dyn Fn(&AgentEvent) + Send + Sync>;
 #[derive(Default)]
 pub struct AgentSpec {
     pub req: TurnRequest,
-    /// The armed mid-turn steer channel (Go `Inject` / `InjectAck`).
+    /// The armed mid-turn steer channel.
     pub steer: Option<SteerInbox>,
     pub emit: Option<Emit>,
 }
@@ -262,8 +261,7 @@ impl Engine {
             .await
     }
 
-    /// One turn under the session mirror and the live broadcast (Go
-    /// `mirroringRunner.Run`).
+    /// One turn under the session mirror and the live broadcast.
     async fn run_mirrored(
         &self,
         cancel: &CancellationToken,

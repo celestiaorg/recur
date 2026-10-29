@@ -1,7 +1,6 @@
-//! Classified phase failures (Go `agenterr.go` `turnError` /
-//! `transientFailure`): a failed agent turn keeps its classification and the
-//! provider's message up to the walk, so a transient failure (D56) parks the
-//! loop as retryable instead of failing it for good.
+//! Classified phase failures: a failed agent turn keeps its classification and
+//! the provider's message up to the walk, so a transient failure (D56) parks
+//! the loop as retryable instead of failing it for good.
 
 use std::error::Error;
 
@@ -16,7 +15,7 @@ pub struct LoopError {
     turn: Option<TurnFailure>,
 }
 
-/// A classified agent-turn failure (Go `turnError`).
+/// A classified agent-turn failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TurnFailure {
     pub role: String,
@@ -33,7 +32,7 @@ impl LoopError {
         }
     }
 
-    /// Classifies a failed agent turn (Go `newTurnError`).
+    /// Classifies a failed agent turn.
     pub fn turn(role: &str, err: Option<&(dyn Error + 'static)>, res: &TurnResult) -> Self {
         let (reason, transient) = classify(err, res);
         let msg = if reason.is_empty() {
@@ -71,9 +70,9 @@ impl From<crate::EngineError> for LoopError {
 }
 
 /// Whether a phase error is a transient agent failure, and the reason to
-/// record (Go `transientFailure`): a classified turn keeps its verdict, a
-/// failed MCP bind is transient (the bind is retried), and any other error
-/// is scanned for the transient markers.
+/// record: a classified turn keeps its verdict, a failed MCP bind is transient
+/// (the bind is retried), and any other error is scanned for the transient
+/// markers.
 pub fn transient_failure(err: &LoopError) -> (String, bool) {
     if let Some(t) = &err.turn {
         return (t.reason.clone(), t.transient);

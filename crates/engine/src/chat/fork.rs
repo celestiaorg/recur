@@ -1,8 +1,8 @@
-//! Forking a chat at a turn (Go `chat_fork.go`): a new tab (or a sibling
-//! workspace) whose transcript is the parent's messages through the fork
-//! point. Every fork starts a fresh provider session; the copied transcript
-//! rides the first send as a fork preamble. The same inject repairs a
-//! foreign resume handle after a provider switch.
+//! Forking a chat at a turn: a new tab (or a sibling workspace) whose
+//! transcript is the parent's messages through the fork point. Every fork
+//! starts a fresh provider session; the copied transcript rides the first send
+//! as a fork preamble. The same inject repairs a foreign resume handle after a
+//! provider switch.
 
 use recur_agent::{HistoryMode, TurnRequest, TurnResult};
 use recur_domain::{

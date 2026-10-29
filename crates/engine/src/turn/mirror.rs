@@ -1,5 +1,5 @@
-//! The session mirror (Go `mirror.go` `sessionMirror`): projects one turn's
-//! normalized events onto the session store as a lossless transcript.
+//! The session mirror: projects one turn's normalized events onto the session
+//! store as a lossless transcript.
 //!
 //! Message boundaries follow Anthropic's conversation shape: assistant
 //! thinking, text and tool_use blocks accrue into an assistant message;

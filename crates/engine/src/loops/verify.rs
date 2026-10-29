@@ -1,8 +1,7 @@
-//! Verify in a real browser (Go `verify.go`, PRD §10): boot the app on the
-//! workspace's port, have the QA agent drive it (Playwright MCP + evidence
-//! tools only) and settle pass/fail off the recorded evidence and its
-//! report_result handshake. The dev server's process group never outlives
-//! the phase.
+//! Verify in a real browser (PRD §10): boot the app on the workspace's port,
+//! have the QA agent drive it (Playwright MCP + evidence tools only) and settle
+//! pass/fail off the recorded evidence and its report_result handshake. The dev
+//! server's process group never outlives the phase.
 
 use std::sync::Arc;
 use std::time::Duration;

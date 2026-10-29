@@ -1,11 +1,10 @@
-//! The chat send pipeline (Go `workspace_chat.go` `SendWorkspaceMessage` /
-//! `sendWorkspaceTurn`): one turn of a workspace coding-agent tab.
+//! The chat send pipeline: one turn of a workspace coding-agent tab.
 //!
 //! Per tab, sends are FIFO by ticket. A text follow-up steers a live turn
 //! (with the life lock released: Claude acks after the next tool result and
 //! switch_mode needs the lock, R6); otherwise the send waits out the live
 //! predecessor, applies any fork inject, registers its turn atomically with
-//! the Stop check, and runs. Cleanup runs in Go's defer order.
+//! the Stop check, and runs.
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -74,7 +73,7 @@ impl Drop for Ticket {
     }
 }
 
-/// The turn's teardown, in Go's defer order: idle status, the agent slot,
+/// The turn's teardown, in order: idle status, the agent slot,
 /// the MCP token, the remount continuation, the turn handle, the cancel.
 struct TurnCleanup<'a> {
     eng: &'a Engine,

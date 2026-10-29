@@ -1,7 +1,7 @@
-//! Role tool sets (Go `role_tools.go`): the closed tool set of each
-//! `[[role]].mode`, bundle role allowlists, slot → role resolution, and
-//! model slot mapping. Allowlist syntax is Claude's (`Bash(git diff:*)`,
-//! `mcp__<server>__*`); each provider translates (R9).
+//! Role tool sets: the closed tool set of each `[[role]].mode`, bundle role
+//! allowlists, slot → role resolution, and model slot mapping. Allowlist syntax
+//! is Claude's (`Bash(git diff:*)`, `mcp__<server>__*`); each provider
+//! translates (R9).
 
 use std::collections::BTreeMap;
 

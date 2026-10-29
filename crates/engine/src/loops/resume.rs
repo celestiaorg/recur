@@ -1,7 +1,7 @@
-//! Resume-from-checkpoint (Go `resume.go`, D55, PRD §6.5): the durable
-//! checkpoint decides where a re-dispatched walk re-enters, and each role's
-//! prior provider session continues on its first post-resume turn. Also the
-//! failure record (D56), Retry, Restart, idle re-dispatch, and AutoResume.
+//! Resume-from-checkpoint (D55, PRD §6.5): the durable checkpoint decides where
+//! a re-dispatched walk re-enters, and each role's prior provider session
+//! continues on its first post-resume turn. Also the failure record (D56),
+//! Retry, Restart, idle re-dispatch, and AutoResume.
 //!
 //! What is deliberately NOT resumed: the killed turn itself. Its phase is
 //! re-run with the session resumed, and the engine re-counts findings and

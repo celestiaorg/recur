@@ -1,4 +1,4 @@
-//! Disk cases of Go `attachments_test.go`.
+//! Attachment disk tests.
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;

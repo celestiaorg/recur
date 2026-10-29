@@ -1,6 +1,6 @@
-//! Port of Go `chat_child_test.go`: subagents created from an Agent chat,
-//! their report turn on the creator tab, read/merge/archive/message_child,
-//! waves, removal with the parent, and the settled rule.
+//! Chat child tests: subagents created from an Agent chat, their report turn on
+//! the creator tab, read/merge/archive/message_child, waves, removal with the
+//! parent, and the settled rule.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -26,7 +26,7 @@ use crate::loops::test_support::CaptureScript;
 use crate::testing::wait_for;
 use crate::turn::finalize::CHAT_INJECTED_SENTINEL;
 
-/// Go `scheduleWG.Wait()` / `teardownWG.Wait()`.
+/// Waits for every tracked task, then reopens the tracker.
 async fn drain(t: &TaskTracker) {
     t.close();
     t.wait().await;
@@ -66,8 +66,8 @@ async fn create(fx: &Fx, caller: &Workspace, title: &str) -> String {
         .await
 }
 
-/// Go `spawnChild`: creates a child of `caller` via the tool, waits for its
-/// first turn, commits helper.txt in it, and returns it settled.
+/// Creates a child of `caller` via the tool, waits for its first turn, commits
+/// helper.txt in it, and returns it settled.
 async fn spawn_child(fx: &Fx, caller: &Workspace, title: &str) -> Workspace {
     let reply = create(fx, caller, title).await;
     assert!(reply.starts_with("Created subagent "), "reply = {reply}");

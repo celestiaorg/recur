@@ -1,6 +1,6 @@
-//! Port of Go `handoff_test.go`: done notes onto the walk, the Reviewer's
-//! handoff briefing and the replan turn, board-pass accumulation, and a
-//! resumed board keeping its landed children's notes.
+//! Handoff tests: done notes onto the walk, the Reviewer's handoff briefing and
+//! the replan turn, board-pass accumulation, and a resumed board keeping its
+//! landed children's notes.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -104,7 +104,7 @@ fn plan_execution_changed_detects_files_and_deps() {
     assert!(!plan_execution_changed(&before, &after));
 }
 
-/// Go `handoffRunner`.
+/// Records the Reviewer's handoff briefing and counts replan turns.
 #[derive(Default)]
 struct HandoffRunner {
     reviewer_brief: Mutex<String>,

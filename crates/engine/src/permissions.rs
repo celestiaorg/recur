@@ -1,8 +1,6 @@
-//! The human permission broker (Go `permission.go` broker half,
-//! `reporter.go` `RequestPermission` / `permissionSurfaceFor`, and the
-//! `engine.go` request/resolve publishers): agent permission prompts reach a
-//! human and block the asking MCP handler (or Codex approval) until an
-//! answer, the turn ends, or the 10-minute timeout denies.
+//! The human permission broker: agent permission prompts reach a human and
+//! block the asking MCP handler (or Codex approval) until an answer, the turn
+//! ends, or the 10-minute timeout denies.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;

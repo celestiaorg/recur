@@ -1,8 +1,7 @@
-//! The engine's `recur_agent_tools::Host` (Go `engineReporter`): the single
-//! seam through which an agent's tool call re-enters the engine as a typed
-//! signal. Callbacks arrive from MCP request tasks concurrently with loop
-//! walks; the host keeps no state of its own and routes to the running
-//! walk's control plane and the store.
+//! The engine's `recur_agent_tools::Host`: the single seam through which an
+//! agent's tool call re-enters the engine as a typed signal. Callbacks arrive
+//! from MCP request tasks concurrently with loop walks; the host keeps no state
+//! of its own and routes to the running walk's control plane and the store.
 //!
 //! Ownership is per method (plan §2.4). E1 implements the loop-flow
 //! signals, E2 the chat, artifact, rename, permission, plan, skill and
@@ -50,8 +49,8 @@ impl EngineHost {
 }
 
 impl Engine {
-    /// A chat tab's persisted mode as the dock selection reads it (Go
-    /// `WorkspaceChatSelection`'s mode): MA is always loop.
+    /// A chat tab's persisted mode as the dock selection reads it:
+    /// MA is always loop.
     pub fn chat_selection_mode(&self, workspace_id: &str, code: &str) -> String {
         let code = normalize_pair_chat_code(code);
         if code == MAESTRO_AGENT_CODE {

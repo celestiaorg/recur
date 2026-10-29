@@ -1,5 +1,4 @@
-//! Loop test doubles (Go `convergeRunner`, `verifyRunner`, `headlineRunner`,
-//! the MCP posting helpers and `verifyDevProject`): providers that drive a
+//! Loop test doubles and MCP posting helpers: providers that drive a
 //! walk through the REAL MCP HTTP path (report_finding, list/update_finding,
 //! attach_evidence, report_result) the production agents use, with
 //! everything but the turn borrowed from the real Claude provider.
@@ -107,7 +106,7 @@ pub fn success(session_id: &str, text: &str) -> TurnResult {
     }
 }
 
-/// Writes repo-relative files into the worktree (Go `ScriptedRunner.Edits`).
+/// Writes repo-relative files into the worktree.
 pub fn apply_edits(worktree: &Path, edits: &[(&str, &str)]) -> std::io::Result<()> {
     if worktree.as_os_str().is_empty() {
         return Ok(());
@@ -122,7 +121,7 @@ pub fn apply_edits(worktree: &Path, edits: &[(&str, &str)]) -> std::io::Result<(
     Ok(())
 }
 
-/// Emits one tool step (Go `emit(ParsedEvent{Kind: KindStep, ...})`).
+/// Emits one tool step.
 pub fn emit_step(cx: &TurnContext, id: &str, name: &str, summary: &str, input: &str) {
     cx.sink.emit(AgentEvent::Step(ToolStep {
         id: id.into(),
@@ -138,7 +137,7 @@ fn failed(e: impl std::fmt::Display) -> ProviderError {
 }
 
 /// POSTs a tools/call to the MCP URL and returns the first text block
-/// (Go `postMCPToolResult`). An `isError` result is an error.
+/// An `isError` result is an error.
 pub async fn post_mcp_tool_result(url: &str, name: &str, args: Value) -> Result<String, String> {
     let body = json!({
         "jsonrpc": "2.0", "id": 1, "method": "tools/call",
@@ -227,7 +226,7 @@ pub async fn close_open_findings_mcp(url: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// An attach_evidence call (its result is ignored, as in Go).
+/// An attach_evidence call (its result is ignored).
 pub async fn post_evidence(url: &str, step: &str, shot: &str, passed: bool) -> Result<(), String> {
     let _ = post_mcp_tool_result(
         url,
@@ -256,7 +255,7 @@ pub struct StepEvidence {
     pub passed: bool,
 }
 
-/// Go `convergeRunner`'s counters.
+/// The converge runner's counters.
 #[derive(Debug, Default)]
 pub struct ConvergeState {
     pub coder_runs: usize,
@@ -415,7 +414,7 @@ pub fn set_default_policy(store: &Store, id: &str) {
 }
 
 /// A project whose dev command serves HTTP on $RECUR_PORT so verify can
-/// boot (Go `verifyDevProject`). `None` when python3 is missing.
+/// boot. `None` when python3 is missing.
 pub fn verify_dev_project(store: &Store, repo: &str) -> Option<String> {
     let has_python = std::process::Command::new("python3")
         .arg("--version")
@@ -439,8 +438,7 @@ pub fn verify_dev_project(store: &Store, repo: &str) -> Option<String> {
     Some(add_run_project(store, p).id)
 }
 
-/// A Claude NDJSON script that also writes `edits` (Go `ScriptedRunner{Edits,
-/// Lines}`).
+/// A Claude NDJSON script that also writes `edits`.
 pub fn scripted_with_edits(lines: Vec<String>, edits: &[(&str, &str)]) -> Arc<dyn Provider> {
     Arc::new(
         recur_provider_claude::testing::NdjsonScript::new(lines)
@@ -454,7 +452,7 @@ pub fn scripted_with_edits(lines: Vec<String>, edits: &[(&str, &str)]) -> Arc<dy
 }
 
 /// Applies optional edits, emits one Bash step, then blocks until the gate
-/// opens or the turn is cancelled (Go `blockingRunner`).
+/// opens or the turn is cancelled.
 pub fn blocking_runner(
     gate: CancellationToken,
     edits: &'static [(&'static str, &'static str)],
@@ -472,7 +470,7 @@ pub fn blocking_runner(
     })
 }
 
-/// Blocks until the turn is cancelled (Go `ctxRunner`).
+/// Blocks until the turn is cancelled.
 pub fn ctx_runner() -> Arc<dyn Provider> {
     AsyncProvider::wrap(|_req, cx| async move {
         emit_step(&cx, "", "Bash", "long op", "");
@@ -504,7 +502,7 @@ pub fn esc_req() -> recur_agent_tools::EscalationRequest {
 }
 
 /// A Coder that edits and fires the escalate tool on its running loop
-/// (Go `escalatingRunner`); everything else succeeds.
+/// Everything else succeeds.
 pub struct EscalatingRunner {
     pub eng: Mutex<std::sync::Weak<crate::Engine>>,
 }
@@ -537,7 +535,7 @@ impl EscalatingRunner {
     }
 }
 
-/// Go `stepIDsIn`: the distinct `S<n>` step ids in a prompt, in order.
+/// The distinct `S<n>` step ids in a prompt, in order.
 pub fn step_ids_in(prompt: &str) -> Vec<String> {
     let re = regex::Regex::new(r"\bS[0-9]+\b").expect("step id regex");
     let mut out: Vec<String> = Vec::new();
@@ -549,7 +547,7 @@ pub fn step_ids_in(prompt: &str) -> Vec<String> {
     out
 }
 
-/// Go `fanOutRunner` (+ `plannedFanOutRunner` when `plans`): each Coder
+/// A fan-out runner (planning too when `plans`): each Coder
 /// edits a file named after its worktree, closes findings, closes the plan
 /// steps its prompt names and calls done with notes; a child whose prompt
 /// names `fail_on` fails; `slow_on` sleeps first; `mark_on` titles record
@@ -700,7 +698,7 @@ impl FanOutRunner {
     }
 }
 
-/// Every turn fails with a provider error result (Go `failAgentRunner`).
+/// Every turn fails with a provider error result.
 pub fn fail_agent_runner() -> Arc<dyn Provider> {
     AsyncProvider::wrap(|_req, _cx| async move {
         Ok(TurnResult {
@@ -712,8 +710,7 @@ pub fn fail_agent_runner() -> Arc<dyn Provider> {
     })
 }
 
-/// A shebang `[[prompt]]` bundle under the default bundles root (Go
-/// `writePromptBundle`).
+/// A shebang `[[prompt]]` bundle under the default bundles root.
 pub fn write_prompt_bundle(t: &crate::testing::TestEngine, slash: &str, body: &str, id: &str) {
     let dir = Path::new(&t.engine.bundle_roots().default_dir).join("ChatTest");
     std::fs::create_dir_all(dir.join("src")).unwrap();
@@ -728,7 +725,7 @@ pub fn write_prompt_bundle(t: &crate::testing::TestEngine, slash: &str, body: &s
     .unwrap();
 }
 
-/// The first user text bubble of a session (Go `contentItems(...)` scan).
+/// The first user text bubble of a session.
 pub async fn first_user_bubble(eng: &crate::Engine, ws: &str, code: &str) -> String {
     crate::turn::transcript::content_items(&eng.workspace_chat_items(ws, code).await)
         .into_iter()
@@ -740,7 +737,7 @@ pub async fn first_user_bubble(eng: &crate::Engine, ws: &str, code: &str) -> Str
 type LinesFor = Arc<dyn Fn(usize) -> Vec<String> + Send + Sync>;
 
 /// Records every request and replays per-call Claude stream-json through
-/// the real parser (Go `captureRunner`).
+/// the real parser.
 pub struct CaptureScript {
     pub specs: Mutex<Vec<TurnRequest>>,
     lines_for: Option<LinesFor>,
@@ -787,8 +784,7 @@ impl CaptureScript {
 }
 
 /// Maestro turns replay `maestro`; every other role emits a Bash step and
-/// blocks until the gate opens or the turn is cancelled (Go
-/// `roleRouterRunner`).
+/// blocks until the gate opens or the turn is cancelled.
 pub fn role_router_runner(gate: CancellationToken, maestro: Vec<String>) -> Arc<dyn Provider> {
     AsyncProvider::wrap(move |req, cx| {
         let (gate, maestro) = (gate.clone(), maestro.clone());
@@ -807,9 +803,8 @@ pub fn role_router_runner(gate: CancellationToken, maestro: Vec<String>) -> Arc<
     })
 }
 
-/// Go `steerCaptureRunner`: records specs; specialists emit a step, signal
-/// `gated`, block on the gate, then emit the tool result and take one
-/// queued steer (Claude's D49 timing).
+/// Records specs; specialists emit a step, signal `gated`, block on the gate,
+/// then emit the tool result and take one queued steer (Claude's D49 timing).
 #[derive(Default)]
 pub struct SteerCapture {
     pub specs: Mutex<Vec<TurnRequest>>,
@@ -853,7 +848,7 @@ impl SteerCapture {
 }
 
 /// Counts Coder turns per workspace (a double dispatch runs the Coder twice)
-/// and optionally holds each Coder turn on a gate (Go `countingRunner`).
+/// and optionally holds each Coder turn on a gate.
 #[derive(Default)]
 pub struct CountingRunner {
     pub counts: Mutex<std::collections::HashMap<String, usize>>,
@@ -914,8 +909,8 @@ pub fn release_slots(t: &crate::testing::TestEngine, n: usize) {
     }
 }
 
-/// Linear on in Settings with an API key (Go `enableLinearMCP`); the
-/// engine needs [`linear_trackers`] to build it.
+/// Linear on in Settings with an API key; the engine needs [`linear_trackers`]
+/// to build it.
 pub fn enable_linear_mcp(store: &Store) {
     let mut set = store.settings();
     set.mcp_servers = vec![recur_domain::McpServer {

@@ -1,6 +1,6 @@
-//! Remove (archive) and Delete (Go `engine.go`): settle checks, tombstones,
-//! the background disk teardown (teardown_cmd, worktree, branch, data dir),
-//! cascading to children, discard-risk copy, ClearAll and DeleteProject.
+//! Remove (archive) and Delete: settle checks, tombstones, the background disk
+//! teardown (teardown_cmd, worktree, branch, data dir), cascading to children,
+//! discard-risk copy, ClearAll and DeleteProject.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -102,7 +102,7 @@ impl Engine {
         }
     }
 
-    /// Deletes a workspace's checkpoint refs (Go `pruneCheckpoints`).
+    /// Deletes a workspace's checkpoint refs.
     pub async fn prune_checkpoints(&self, repo_path: &str, workspace_id: &str) {
         if repo_path.is_empty() || workspace_id.is_empty() {
             return;
@@ -116,7 +116,7 @@ impl Engine {
     }
 
     /// Runs teardown_cmd and removes the worktree, branch and data dir of a
-    /// workspace whose row is already gone (Go `removeDeletedWorkspaceDisk`).
+    /// workspace whose row is already gone.
     async fn remove_deleted_workspace_disk(&self, mut l: Workspace) {
         if !l.is_main && !l.is_pr_chat_host() {
             let mut path = l.worktree_path.clone();
@@ -409,7 +409,7 @@ impl Engine {
         if l.is_main {
             return String::new();
         }
-        // Go bounded the whole inspection with one 10 s context; git calls
+        // One 10 s bound covers the whole inspection; git calls
         // past it report nothing.
         let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
         let mut parts = self.workspace_own_discard_risk(&l, deadline).await;
@@ -581,7 +581,7 @@ impl Engine {
     }
 }
 
-/// Go `filepath.Clean` for comparing two absolute paths.
+/// Lexically cleans an absolute path for comparing two paths.
 fn clean_path(p: &str) -> String {
     if p.is_empty() {
         return String::new();

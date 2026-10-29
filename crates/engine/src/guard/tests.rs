@@ -1,6 +1,5 @@
-//! Port of Go `policy_test.go`, plus guard resolution against the fixture
-//! pack (the refusals `TestEngageMissingLoopRefused` and the walk tests rely
-//! on).
+//! Policy tests, plus guard resolution against the fixture pack (the refusals
+//! `TestEngageMissingLoopRefused` and the walk tests rely on).
 
 use std::collections::{BTreeMap, HashMap};
 

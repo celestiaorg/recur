@@ -1,7 +1,6 @@
-//! Transcript flattening (Go `workspace_chat.go` transcript half): the
-//! durable session transcript, the single source of truth the mirror wrote,
-//! turned into UI-ready chat items, plus the stored-prompt readers Retry and
-//! loop goals replay.
+//! Transcript flattening: the durable session transcript, the single source of
+//! truth the mirror wrote, turned into UI-ready chat items, plus the
+//! stored-prompt readers Retry and loop goals replay.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -24,7 +23,7 @@ use crate::codes::{CHAT_RETRY_DISPLAY_SENTINEL, normalize_pair_chat_code};
 use crate::registry::ProviderRegistry;
 use crate::session_config::AgentConfig;
 
-/// The first line of a fork-inject preamble (Go `forkPreambleLead`).
+/// The first line of a fork-inject preamble.
 pub const FORK_PREAMBLE_LEAD: &str = "This chat was forked from an earlier conversation.";
 
 /// A switch_mode remount's user display ("Switched to Plan: continuing").
@@ -214,7 +213,7 @@ struct RawToolRef {
 }
 
 /// A raw tool call in the common vocabulary. A provider that is not
-/// registered gets Go's default (Claude) rules.
+/// registered gets the default (Claude) rules.
 pub(crate) fn display_tool(p: Option<&dyn Provider>, name: &str, input: &str) -> ToolDisplay {
     match p {
         Some(p) => p.display_tool(name, input),

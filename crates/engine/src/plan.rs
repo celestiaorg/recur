@@ -1,8 +1,8 @@
-//! Structured plans (Go `plan.go`): Plan-mode chats and the loop planner
-//! file plans through `submit_plan`; the engine assigns step ids, owns
-//! statuses, and mirrors `Plan::text()` into DefinitionOfDone so every prose
-//! consumer stays coherent. Also the Plan panel's human edits and approval,
-//! and the Cursor createPlan prose harvest.
+//! Structured plans: Plan-mode chats and the loop planner file plans through
+//! `submit_plan`; the engine assigns step ids, owns statuses, and mirrors
+//! `Plan::text()` into DefinitionOfDone so every prose consumer stays coherent.
+//! Also the Plan panel's human edits and approval, and the Cursor createPlan
+//! prose harvest.
 
 use std::path::Path;
 

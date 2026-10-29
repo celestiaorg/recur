@@ -1,4 +1,4 @@
-//! Go `skill_mentions_test.go` (worktree-scope cases; the `$HOME` cases run
+//! Skill mention tests (worktree-scope cases; the `$HOME` cases run
 //! in `tests/skills_home.rs`, which owns its process env).
 
 use std::path::Path;

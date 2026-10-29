@@ -1,6 +1,6 @@
-//! Store write-through and bus helpers (Go `engine.go`): workspace state
-//! transitions, the activity feed, the durable event log, agent records,
-//! and the status-bar rollup. Every slice publishes through these.
+//! Store write-through and bus helpers: workspace state transitions, the
+//! activity feed, the durable event log, agent records, and the status-bar
+//! rollup. Every slice publishes through these.
 
 use recur_agent::display::FEED_INPUT_LIMIT;
 use recur_domain::{
@@ -45,8 +45,7 @@ pub fn progress_for(s: &WorkspaceState) -> f64 {
     }
 }
 
-/// Real progress off structured plan steps while coding or reviewing
-/// (Go `runProgress`).
+/// Real progress off structured plan steps while coding or reviewing.
 pub fn run_progress(state: &WorkspaceState, p: Option<&Plan>) -> Option<f64> {
     let p = p?;
     if !matches!(state, WorkspaceState::Coding | WorkspaceState::Reviewing) {
@@ -458,7 +457,7 @@ impl Engine {
         }));
     }
 
-    /// `pr.updated` for a PR row (Go `publishPRUpdated`).
+    /// `pr.updated` for a PR row.
     pub fn publish_pr_updated(&self, pr_id: &str) {
         self.emit_pr_updated(pr_id, false);
     }

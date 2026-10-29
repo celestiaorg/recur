@@ -1,6 +1,5 @@
-//! The engine's forge glue (Go `github_test.go` engine half): base
-//! mapping, forge merges and the merge queue, check refresh, the
-//! branch-rules cache, PR creation and head pushes.
+//! The engine's forge glue: base mapping, forge merges and the merge queue,
+//! check refresh, the branch-rules cache, PR creation and head pushes.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

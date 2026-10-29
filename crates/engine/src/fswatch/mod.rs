@@ -1,6 +1,6 @@
-//! The active-worktree watcher (Go `fswatch.go`): exactly one workspace (the
-//! one on screen) is watched, and `workspace.fs_changed` is the single
-//! refresh trigger every surface reacts to.
+//! The active-worktree watcher: exactly one workspace (the one on screen) is
+//! watched, and `workspace.fs_changed` is the single refresh trigger every
+//! surface reacts to.
 //!
 //! The fast path is the platform stream ([`backend`]): one recursive
 //! FSEvents stream on macOS, per-directory inotify watches elsewhere,
@@ -23,7 +23,7 @@ use tokio_util::sync::CancellationToken;
 use crate::Engine;
 use crate::bus::{EngineEvent, FsChanged, WorkspaceRef};
 
-/// The watched workspace and the cancel of its watch task (Go `watchMu`).
+/// The watched workspace and the cancel of its watch task.
 #[derive(Default)]
 pub struct WatchState {
     pub cancel: Option<CancellationToken>,

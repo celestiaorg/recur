@@ -1,8 +1,8 @@
-//! Go text helpers the engine's user-visible strings depend on.
+//! Text helpers the engine's user-visible strings depend on.
 
 pub use recur_agent::display::{hard_truncate_runes, truncate};
 
-/// Go `html.EscapeString`.
+/// Escapes `<`, `>`, `&`, `'` and `"` as HTML entities.
 pub fn html_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
@@ -18,9 +18,9 @@ pub fn html_escape(s: &str) -> String {
     out
 }
 
-/// Go `html.UnescapeString` for diff code HTML: the five `html_escape`
-/// entities, `&quot;`/`&apos;`/`&nbsp;` and numeric references. Anything
-/// else stays literal.
+/// Unescapes diff code HTML: the five `html_escape` entities,
+/// `&quot;`/`&apos;`/`&nbsp;` and numeric references. Anything else stays
+/// literal.
 // simplify: not the full HTML5 named-entity table; diff code HTML only ever
 // carries the entities above.
 pub fn html_unescape(s: &str) -> String {
@@ -68,24 +68,22 @@ pub fn html_unescape(s: &str) -> String {
     out
 }
 
-/// Go `time.Now().UnixNano()`.
 pub fn unix_nanos() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| i64::try_from(d.as_nanos()).unwrap_or(i64::MAX))
 }
 
-/// Go `time.Now().UnixMilli()`.
 pub fn unix_millis() -> i64 {
     unix_nanos() / 1_000_000
 }
 
-/// Go `time.Time.Format(time.RFC3339)` in local time.
+/// `t` as RFC 3339 in local time, whole seconds.
 pub fn rfc3339(t: chrono::DateTime<chrono::Local>) -> String {
     t.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
-/// `n one` / `n many` (Go `plural`).
+/// `n one` / `n many`.
 pub fn plural(n: i64, one: &str, many: &str) -> String {
     if n == 1 {
         format!("1 {one}")
@@ -94,9 +92,9 @@ pub fn plural(n: i64, one: &str, many: &str) -> String {
     }
 }
 
-/// Go `base64.StdEncoding.DecodeString` (padded, not strict): `\r` and
-/// `\n` are skipped anywhere, trailing bits are ignored, and an error names
-/// the byte offset ("illegal base64 data at input byte N").
+/// Standard padded base64, not strict: `\r` and `\n` are skipped anywhere,
+/// trailing bits are ignored, and an error names the byte offset ("illegal
+/// base64 data at input byte N").
 pub fn go_base64_decode(s: &str) -> Result<Vec<u8>, String> {
     fn val(c: u8) -> Option<u8> {
         match c {
@@ -179,12 +177,12 @@ pub fn go_base64_decode(s: &str) -> Result<Vec<u8>, String> {
     }
 }
 
-/// `a` when it has non-space text, else `b` (Go `firstNonEmptyStr`).
+/// `a` when it has non-space text, else `b`.
 pub fn first_non_empty_str<'a>(a: &'a str, b: &'a str) -> &'a str {
     if a.trim().is_empty() { b } else { a }
 }
 
-/// Go `strings.EqualFold`: equal under simple Unicode case folding.
+/// Equal under simple Unicode case folding.
 pub fn equal_fold(a: &str, b: &str) -> bool {
     let fold = |c: char| {
         let mut lower = c.to_lowercase();
@@ -199,7 +197,7 @@ pub fn equal_fold(a: &str, b: &str) -> bool {
             .all(|(x, y)| x == y || fold(x) == fold(y))
 }
 
-/// Go `strings.EqualFold(s, lit)` for an ASCII `lit`: only ASCII case and
+/// Case-insensitive equality with an ASCII `lit`: only ASCII case and
 /// the two runes that simple-fold into ASCII letters (U+017F ſ → s, U+212A
 /// Kelvin sign → k) match.
 pub fn equal_fold_ascii(s: &str, lit: &str) -> bool {
@@ -218,8 +216,7 @@ pub fn equal_fold_ascii(s: &str, lit: &str) -> bool {
     a.next().is_none()
 }
 
-/// Go `time.ParseDuration`, in nanoseconds:
-/// `[-+]?([0-9]*(\.[0-9]*)?[a-z]+)+`.
+/// A duration like `1h30m` in nanoseconds: `[-+]?([0-9]*(\.[0-9]*)?[a-z]+)+`.
 pub fn go_parse_duration(orig: &str) -> Result<i64, String> {
     const LIMIT: u64 = 1 << 63;
     let invalid = || format!("time: invalid duration {orig:?}");

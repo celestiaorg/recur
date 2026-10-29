@@ -1,5 +1,4 @@
-//! Merging, commit messages and the PR rows a walk opens (Go
-//! `merge_message_test.go`, `pr_test.go` engine cases).
+//! Merging, commit messages and the PR rows a walk opens.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -366,8 +365,8 @@ async fn pr_created_at_pr_open() {
     t.close().await;
 }
 
-/// Go `describePRConverge`: the PR description one-shot answers with a
-/// workspace-wide title and summary; everything else is converge.
+/// The PR description one-shot answers with a workspace-wide title and summary;
+/// everything else is converge.
 fn describe_pr_converge() -> Arc<dyn Provider> {
     let inner = ConvergeRunner::new(&[0]).provider();
     AsyncProvider::wrap(move |req: TurnRequest, cx| {

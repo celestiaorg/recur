@@ -1,4 +1,4 @@
-//! Port of Go `maestro_test.go`: the conductor's reply and session resume,
+//! Maestro tests: the conductor's reply and session resume,
 //! its tool scope, standing-prompt refresh, the conductor-not-specialist
 //! prompt, the `[[loop]]` mission on follow-ups, failure display, live
 //! deltas, running beside a live walk, and steering within the rails.
@@ -214,7 +214,7 @@ reviewer = "recur.roles.reviewer"
         .create_workspace(&proj, "scratch", "")
         .await
         .unwrap();
-    // Go's ListWorkspaceChats (E4) creates the PA tab of a fresh workspace.
+    // Listing chats (E4) creates the PA tab of a fresh workspace.
     t.engine.ensure_pair_agent(&ws.id, "PA", "");
     t.engine
         .remember_chat_loop_policy(&ws.id, "PA", "test.charter.loop", "")

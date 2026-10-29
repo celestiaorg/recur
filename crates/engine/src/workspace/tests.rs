@@ -1,7 +1,5 @@
-//! Port of Go `workspace_id_test.go`, `workspace_create_test.go` (allocate
-//! cases), `setup_teardown_test.go`, `diff_sync_test.go`,
-//! `branch_sync_test.go` and the hand-workspace halves of
-//! `lifecycle_test.go`. Cases that dispatch a loop (`dispatch`,
+//! Workspace id, allocation, setup/teardown, diff sync, branch sync and
+//! hand-workspace lifecycle tests. Cases that dispatch a loop (`dispatch`,
 //! `StartRunOnWorkspace`, `BeginStartWorkspace*`) move with E3; Open PR
 //! after rename moves with E5.
 

@@ -1,4 +1,4 @@
-//! Go `feedkind_test.go`: the engine stamps `FeedItem.kind` at the source.
+//! Feed kind tests: the engine stamps `FeedItem.kind` at the source.
 
 use std::collections::HashMap;
 

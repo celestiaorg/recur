@@ -1,7 +1,7 @@
-//! Sidebar +N/−M and behind-base sync (Go `diff_sync.go`): a 600 ms debounce
-//! per workspace for bursty edits, a generation guard so a slow older git
-//! never overwrites a fresher result, and a single-flight refresh of every
-//! workspace (one trailing rerun, four gits at a time).
+//! Sidebar +N/−M and behind-base sync: a 600 ms debounce per workspace for
+//! bursty edits, a generation guard so a slow older git never overwrites a
+//! fresher result, and a single-flight refresh of every workspace (one trailing
+//! rerun, four gits at a time).
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,7 +17,7 @@ pub const DIFF_SYNC_DELAY: Duration = Duration::from_millis(600);
 /// Workspace numstat gits run at once during a full refresh.
 pub const DIFF_REFRESH_PARALLEL: usize = 4;
 
-/// Go `diffSyncMu` and what it guards.
+/// The diff sync lock and what it guards.
 #[derive(Default)]
 pub struct DiffSync {
     /// Pending debounce per workspace: (timer id, cancel before it fires).

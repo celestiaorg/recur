@@ -1,6 +1,6 @@
-//! A chat/agent session's config JSON (Go `agentConfig` in `mirror.go`):
-//! identity, picker state, mode, and the per-chat loop stamp. The store's
-//! patch helpers merge keys into it and keep unknown ones.
+//! A chat/agent session's config JSON: identity, picker state, mode, and the
+//! per-chat loop stamp. The store's patch helpers merge keys into it and keep
+//! unknown ones.
 
 use std::collections::BTreeMap;
 
@@ -10,7 +10,7 @@ fn is_false(b: &bool) -> bool {
     !*b
 }
 
-/// Go leaves a map nil on `null`; serde would reject it.
+/// `null` reads as an empty map; serde would reject it.
 fn null_as_empty<'de, D: serde::Deserializer<'de>>(
     d: D,
 ) -> Result<BTreeMap<String, String>, D::Error> {
@@ -71,7 +71,7 @@ pub struct AgentConfig {
 }
 
 impl AgentConfig {
-    /// Go `json.Unmarshal` into a zero config, ignoring errors.
+    /// Parses into a default config, ignoring errors.
     pub fn parse(config_json: &str) -> Self {
         serde_json::from_str(config_json).unwrap_or_default()
     }

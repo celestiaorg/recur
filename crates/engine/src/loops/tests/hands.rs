@@ -1,7 +1,7 @@
-//! Port of Go `maestro_hands_test.go`: edit_plan, dispatch_specialist and
-//! extend_iterations through the Host seam, and every hand scoped to the
-//! calling chat's walk (context liveness, grants, steers, extend_rounds,
-//! reenter_phase, run_phase, Resume, Restart, resume_loop, answers).
+//! Maestro hands tests: edit_plan, dispatch_specialist and extend_iterations
+//! through the Host seam, and every hand scoped to the calling chat's walk
+//! (context liveness, grants, steers, extend_rounds, reenter_phase, run_phase,
+//! Resume, Restart, resume_loop, answers).
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -53,7 +53,7 @@ async fn loop_ws(
     t.store.workspace(&ws.id).unwrap()
 }
 
-/// A registered walk with no task behind it (Go `newHandLoop`).
+/// A registered walk with no task behind it.
 fn hand_loop(
     t: &TestEngine,
     ws: &str,

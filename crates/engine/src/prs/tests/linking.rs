@@ -1,5 +1,4 @@
-//! Workspace ↔ PR linking, create-from-PR and reconciling missing PRs (Go
-//! `github_prs_test.go`).
+//! Workspace ↔ PR linking, create-from-PR and reconciling missing PRs.
 
 use std::collections::HashSet;
 use std::time::Duration;

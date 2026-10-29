@@ -1,6 +1,5 @@
-//! `@path[:line[:col][-line[:col]]]` mentions (Go `file_mentions.go`): the
-//! attached-files system instruction mapping absolute paths to the short
-//! chips left in the body.
+//! `@path[:line[:col][-line[:col]]]` mentions: the attached-files system
+//! instruction mapping absolute paths to the short chips left in the body.
 
 use std::collections::HashSet;
 use std::sync::LazyLock;
@@ -116,7 +115,7 @@ pub fn format_file_mention_chip(
     format!("{path}:{start_line}")
 }
 
-/// Go `filepath.EvalSymlinks`; the path unchanged when it cannot resolve.
+/// `p` with symlinks resolved; `None` when it cannot resolve.
 fn eval_symlinks(p: &str) -> Option<String> {
     std::fs::canonicalize(p)
         .ok()

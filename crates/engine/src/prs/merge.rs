@@ -1,7 +1,6 @@
-//! Landing a PR (Go `pr.go` `MergePR`, `mergeLocal`, `markMerged` and the
-//! commit message formats; `github.go` `mergeGitHub`). A Local PR merges
-//! its branch into the base on disk and pushes a remote-tracking base; a
-//! forge PR merges (or joins the merge queue) on the forge.
+//! Landing a PR and its commit message formats. A Local PR merges its branch
+//! into the base on disk and pushes a remote-tracking base; a forge PR merges
+//! (or joins the merge queue) on the forge.
 
 use std::path::Path;
 use std::time::Duration;

@@ -1,7 +1,7 @@
-//! Port of Go `loop_prompts_test.go`: bundle role prompts never carry the
-//! loop's walk recipe, prompt-action slots keep their display label, the
-//! goal display is every specialist's user bubble, and Linear raw regions
-//! unwrap in phase prompts without losing the label.
+//! Loop prompt tests: bundle role prompts never carry the loop's walk recipe,
+//! prompt-action slots keep their display label, the goal display is every
+//! specialist's user bubble, and Linear raw regions unwrap in phase prompts
+//! without losing the label.
 
 use std::time::Duration;
 

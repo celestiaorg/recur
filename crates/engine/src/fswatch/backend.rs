@@ -1,6 +1,5 @@
-//! Platform file-event streams (Go `fswatch_darwin.go`,
-//! `fswatch_fsnotify.go`) behind one contract: batches of [`FsEvent`]s, the
-//! first event after idle at once and bursts coalesced into one batch per
+//! Platform file-event streams behind one contract: batches of [`FsEvent`]s,
+//! the first event after idle at once and bursts coalesced into one batch per
 //! latency window.
 //!
 //! - macOS: one recursive FSEvents stream on the (symlink-resolved) root;
@@ -171,8 +170,7 @@ fn fold(
         return;
     }
     // notify's inotify backend also watches opens and closes; reads are not
-    // changes (Go's fsnotify never reported them), and git's own reads
-    // would otherwise refresh forever.
+    // changes, and git's own reads would otherwise refresh forever.
     if matches!(ev.kind, EventKind::Access(_)) {
         return;
     }
@@ -209,7 +207,7 @@ fn fold(
     }
 }
 
-/// The latency batcher (Go `startFSWatch`'s select loop).
+/// The latency batcher.
 async fn batch(
     mut w: notify::RecommendedWatcher,
     mut tree: WatchTree,

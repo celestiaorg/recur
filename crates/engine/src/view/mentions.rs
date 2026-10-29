@@ -15,12 +15,12 @@ use regex::Regex;
 use super::js;
 
 /// `⟦attachment:<id>⟧`, embedded in wire and transcript text where an image
-/// was pasted (matches Go).
+/// was pasted.
 pub static ATTACHMENT_MARKER_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("⟦attachment:([^⟧]+)⟧").expect("attachment re"));
 
 /// The path body of an `@file` mention (no loc suffix). Absolute segments
-/// omit `:` so a `:line` span can follow. Keep in sync with Go `fileAtRe`.
+/// omit `:` so a `:line` span can follow.
 fn file_at_path() -> String {
     let ws = js::WS_CLASS;
     format!(
@@ -113,7 +113,7 @@ pub fn artifact_at_hits(text: &str) -> Vec<Hit<'_>> {
     hits(&ARTIFACT_AT_CORE, text, js::space_after)
 }
 
-/// `AT_NAME_RE` matches: a whitespace-bounded `@token` (Go `atNameRe`).
+/// `AT_NAME_RE` matches: a whitespace-bounded `@token`.
 pub fn at_name_hits(text: &str) -> Vec<Hit<'_>> {
     hits(&AT_NAME_CORE, text, js::space_after)
 }

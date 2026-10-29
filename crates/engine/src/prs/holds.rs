@@ -1,5 +1,4 @@
-//! Local holds over stale forge snapshots (Go `github_thread.go`,
-//! `github_reaction.go` engine halves): a just-deleted comment, a
+//! Local holds over stale forge snapshots: a just-deleted comment, a
 //! just-resolved thread and a just-toggled reaction win over a conversation
 //! snapshot taken before the forge caught up, for [`HOLD_TTL`].
 

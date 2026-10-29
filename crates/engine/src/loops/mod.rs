@@ -1,13 +1,12 @@
-//! Loops (slice E3): the walk task that drives one run through its
-//! `[[loop]]` graph under its `[[policy]]` guard (Go `loop.go` data plane,
-//! `walker.go`), converge rounds and the rails, the board and fan-out,
-//! handoff and replanning, browser verify, escalations, resume and restart,
-//! the Maestro conductor and its hands, loop engage from a chat, and the PR
-//! a converged walk opens.
+//! Loops (slice E3): the walk task that drives one run through its `[[loop]]`
+//! graph under its `[[policy]]` guard, converge rounds and the rails, the board
+//! and fan-out, handoff and replanning, browser verify, escalations, resume and
+//! restart, the Maestro conductor and its hands, loop engage from a chat, and
+//! the PR a converged walk opens.
 //!
-//! One task per walk. [`Walk`] owns the walk-local state (Go fields the
-//! loop goroutine alone touched); everything an MCP callback or the UI also
-//! reads or writes lives in the walk's [`LoopHandle`] (E1).
+//! One task per walk. [`Walk`] owns the walk-local state; everything an MCP
+//! callback or the UI also reads or writes lives in the walk's [`LoopHandle`]
+//! (E1).
 
 pub mod board;
 pub mod converge;
@@ -55,15 +54,15 @@ use resume::{ResumePoint, resume_point_for};
 
 pub use failure::TurnFailure;
 
-/// The walker's "keep walking" outcome of a phase (Go `stateAdvance`).
+/// The walker's "keep walking" outcome of a phase.
 pub const STATE_ADVANCE: &str = "advance";
 
-/// Go `context.DeadlineExceeded.Error()`.
+/// The error text of a turn cut by its deadline.
 pub const DEADLINE_EXCEEDED: &str = "context deadline exceeded";
-/// Go `context.Canceled.Error()`.
+/// The error text of a cancelled turn.
 pub const CONTEXT_CANCELED: &str = "context canceled";
 
-/// One running walk (Go `Loop`, the fields its goroutine owns).
+/// One running walk (the state its task owns).
 pub struct Walk {
     pub(crate) eng: Arc<Engine>,
     pub(crate) h: Arc<LoopHandle>,
@@ -110,12 +109,12 @@ pub struct Walk {
     /// A child workspace working one plan step for its parent.
     pub(crate) parent_id: String,
     pub(crate) started_at: Option<Instant>,
-    /// The board's event budget (Go `boardMaxRounds`; tests shrink it).
+    /// The board's event budget (tests shrink it).
     pub(crate) board_max_rounds: usize,
 }
 
-/// A phase/policy-timeout scope around one specialist turn (Go
-/// `turnContext`): a child token cancelled by the parent or the deadline.
+/// A phase/policy-timeout scope around one specialist turn:
+/// a child token cancelled by the parent or the deadline.
 pub(crate) struct TurnScope {
     pub token: CancellationToken,
     timed_out: Arc<AtomicBool>,
@@ -158,7 +157,7 @@ impl TurnScope {
         self.timed_out.load(Ordering::SeqCst)
     }
 
-    /// Go `ctx.Err()` for the turn context.
+    /// Why the turn scope ended: deadline, cancel, or `None` while live.
     pub fn err(&self) -> Option<LoopError> {
         if self.timed_out() {
             Some(LoopError::msg(DEADLINE_EXCEEDED))
@@ -169,8 +168,8 @@ impl TurnScope {
         }
     }
 
-    /// A provider error as Go saw it: a run cut by the deadline is
-    /// `context.DeadlineExceeded`, not a plain cancel.
+    /// A provider error for the scope: a run cut by the deadline is
+    /// a deadline-exceeded error, not a plain cancel.
     pub fn provider_err(&self, e: ProviderError) -> ProviderError {
         if self.timed_out() && e.kind == ErrorKind::Canceled {
             let partial = e.partial;
@@ -202,7 +201,7 @@ pub struct WrapUpInputs {
 }
 
 impl Walk {
-    /// Builds a walk from a durable record (Go `newLoop`): the chat-scoped
+    /// Builds a walk from a durable record: the chat-scoped
     /// goal, the resume point, the resolved guard (or the reason it cannot
     /// resolve), the catalog snapshot, the checkpoint's phase and a persisted
     /// escalation answer to apply. The handle's map key is set at dispatch
@@ -318,7 +317,7 @@ impl Walk {
         }
     }
 
-    /// A bare walk over a workspace id (Go tests' `&Loop{ID: id, eng: eng}`).
+    /// A bare walk over a workspace id.
     #[cfg(test)]
     pub(crate) fn bare(eng: &Arc<Engine>, id: &str) -> Walk {
         let mut w = Walk::new(
@@ -453,7 +452,7 @@ impl Walk {
         cat
     }
 
-    /// The role spec a phase slot resolves to (Go `slotRoleSpec`).
+    /// The role spec a phase slot resolves to.
     pub(crate) fn slot_role_spec(&mut self, slot: &str, fallback: RoleSpec) -> RoleSpec {
         let id = self.phase_role_id(slot);
         if id.is_empty() {
@@ -476,7 +475,7 @@ impl Walk {
         spec
     }
 
-    /// The Settings model + flags for a role's slot (Go `roleModel`).
+    /// The Settings model + flags for a role's slot.
     pub(crate) fn role_model(
         &self,
         rs: &RoleSpec,

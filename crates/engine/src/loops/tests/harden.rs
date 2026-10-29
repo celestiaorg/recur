@@ -1,10 +1,9 @@
-//! Port of Go `harden_test.go`, the cases that drive real walks: a panic
-//! inside a turn fails the loop and frees its slot, queued loops drain,
-//! concurrent starts are clean, Resume re-dispatches a not-running loop,
-//! Shutdown joins a live walk, and `dispatch_mu` serializes drain and
-//! Resume storms (no double dispatch, balanced slots). Recover, the
-//! not-running Pause/Stop rules and Shutdown over fake walks are E1's
-//! (`lifecycle::tests`).
+//! Hardening tests that drive real walks: a panic inside a turn fails the loop
+//! and frees its slot, queued loops drain, concurrent starts are clean, Resume
+//! re-dispatches a not-running loop, Shutdown joins a live walk, and
+//! `dispatch_mu` serializes drain and Resume storms (no double dispatch,
+//! balanced slots). Recover, the not-running Pause/Stop rules and Shutdown over
+//! fake walks are E1's (`lifecycle::tests`).
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -27,7 +26,6 @@ async fn start(t: &TestEngine, proj: &str, task: &str) -> String {
         .unwrap()
 }
 
-/// Go `newQueuedLoop`.
 fn queued_loop(store: &Store, proj: &str, i: usize) -> String {
     let id = format!("LOOP-Q-{}-{i}", (b'A' + (i % 26) as u8) as char);
     store
@@ -61,7 +59,7 @@ fn paused_loop(store: &Store, proj: &str, id: &str, goal: &str) {
 }
 
 /// A promote hook that holds the `dispatch_mu` section open for `d` and
-/// records the most callers seen inside it at once (Go `windowWidener`).
+/// records the most callers seen inside it at once.
 fn window_widener(
     d: Duration,
 ) -> (

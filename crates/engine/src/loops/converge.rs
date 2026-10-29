@@ -1,8 +1,8 @@
-//! Converge rounds (Go `loop.go` `converge` and its rails): the Coder edits,
-//! the engine commits, a separate Reviewer files findings, and the ENGINE
-//! declares convergence off the remaining open findings (PRD §7.3). At the
-//! round cap the policy's `on_max_rounds` proceeds, fails, or escalates
-//! (rail #4). Also the plan adoption and approval gate of the plan verb.
+//! Converge rounds and their rails: the Coder edits, the engine commits, a
+//! separate Reviewer files findings, and the ENGINE declares convergence off
+//! the remaining open findings (PRD §7.3). At the round cap the policy's
+//! `on_max_rounds` proceeds, fails, or escalates (rail #4). Also the plan
+//! adoption and approval gate of the plan verb.
 
 use recur_agent::display::PLAN_MAX_PERSIST_CHARS;
 use recur_agent_tools::{EscalationOption, EscalationRequest};

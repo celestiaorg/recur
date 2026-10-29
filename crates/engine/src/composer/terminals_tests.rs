@@ -1,4 +1,4 @@
-//! Go `terminal_mentions_test.go`. Snapshot rules run against a fake
+//! Terminal mention tests. Snapshot rules run against a fake
 //! terminal source; the PTY cases open real shells through `recur-term`.
 
 use std::collections::HashMap;
@@ -249,7 +249,7 @@ fn terminal_output_cannot_activate_a_skill() {
     assert!(got.contains("GET /run 200"));
 }
 
-/// A real login shell on "ws" (Go `openTestShell`).
+/// A real login shell on "ws".
 fn open_shell(mgr: &recur_term::Manager, cwd: &Path) -> recur_term::Info {
     mgr.open("ws", &cwd.to_string_lossy(), 80, 24, &[])
         .expect("open shell")

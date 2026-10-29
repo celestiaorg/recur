@@ -1,7 +1,6 @@
-//! The host-side composer expansion (Go `composer.go`, `raw_regions.go`
-//! `wrapComposer`): a leading `/slash` prompt action through the bundles,
-//! then `@file`, `/skill`, `@terminal` and `@artifact` wrapping with raw
-//! regions masked.
+//! The host-side composer expansion: a leading `/slash` prompt action through
+//! the bundles, then `@file`, `/skill`, `@terminal` and `@artifact` wrapping
+//! with raw regions masked.
 
 pub mod artifacts;
 pub mod files;
@@ -74,8 +73,8 @@ pub fn leading_prompt_slash(text: &str) -> Option<String> {
         .map(|m| m.as_str().to_owned())
 }
 
-/// `@file` and `/skill` wrapping only, raw regions skipped (Go
-/// `wrapComposerDialect`). `enabled` filters skill activation.
+/// `@file` and `/skill` wrapping only, raw regions skipped.
+/// `enabled` filters skill activation.
 pub fn wrap_composer_dialect(
     text: &str,
     worktree: &str,

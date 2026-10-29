@@ -1,9 +1,9 @@
-//! The `create_workspace` tool (Go `create_workspace_tool.go`): an Agent
-//! chat starts a fresh workspace (triage schedules, one workspace per
-//! issue). Model and flags follow Settings (the calling chat's pick, or the
-//! mode's default); Simplify follows the calling chat. Idempotent on title,
-//! so a recurring schedule cannot fan out the same issue twice. By default
-//! the new workspace is a merge-back child of the caller.
+//! The `create_workspace` tool: an Agent chat starts a fresh workspace (triage
+//! schedules, one workspace per issue). Model and flags follow Settings (the
+//! calling chat's pick, or the mode's default); Simplify follows the calling
+//! chat. Idempotent on title, so a recurring schedule cannot fan out the same
+//! issue twice. By default the new workspace is a merge-back child of the
+//! caller.
 
 use std::sync::Arc;
 use std::time::Duration;

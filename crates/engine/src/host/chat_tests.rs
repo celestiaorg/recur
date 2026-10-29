@@ -1,5 +1,4 @@
-//! Go `skills_settings_test.go`, the read_terminal case of
-//! `terminal_mentions_test.go`, and `mcp_tool_backfill_test.go`.
+//! Skills settings, read_terminal and MCP argument backfill tests.
 
 use std::time::{Duration, Instant};
 

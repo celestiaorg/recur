@@ -1,10 +1,8 @@
-//! PR chat hosts and hoisting (Go `github_prs_test.go` EnsurePRChatHost,
-//! hoist, unregister and reservation cases; `artifacts_test.go`'s
-//! `hoistPRChatHost` cases).
+//! PR chat host tests: ensure, hoist, unregister and reservation cases,
+//! plus the artifact hoist.
 //!
-//! Go hoisted on the unregistering goroutine; here the deferred hoist runs
-//! as a task (`maybe_archive_linked_pr_chat_host`), so those cases wait for
-//! it.
+//! The deferred hoist runs as a task (`maybe_archive_linked_pr_chat_host`), so
+//! those cases wait for it.
 
 use std::time::Duration;
 

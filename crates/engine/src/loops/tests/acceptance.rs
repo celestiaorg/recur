@@ -1,8 +1,7 @@
-//! Port of Go `acceptance_test.go` (`TestHeadlineE2E`), the loop half: a
-//! typed task plans, converges code↔review [2,0], verifies in a browser with
-//! evidence, opens a Local PR, takes an inline note and a Send Back, merges
-//! on disk, and the record survives a store reopen. Also the env-gated
-//! real-agent run (Go `real_e2e_test.go`).
+//! The headline acceptance test, loop half: a typed task plans, converges
+//! code↔review [2,0], verifies in a browser with evidence, opens a Local PR,
+//! takes an inline note and a Send Back, merges on disk, and the record
+//! survives a store reopen. Also the env-gated real-agent run.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -239,7 +238,7 @@ async fn headline_e2e() {
     t.close().await;
 }
 
-/// Go `TestRealHeadlineE2E`, the loop half: real `claude -p` agents, the
+/// The real headline run, loop half: real `claude -p` agents, the
 /// real MCP and Playwright driving a real dev server, real git. Gated on
 /// `RECUR_E2E=1` because it spends credit.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

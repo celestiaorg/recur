@@ -1,4 +1,4 @@
-//! Port of Go `feedproject_test.go`: the reload projection reproduces the
+//! Feed projection tests: the reload projection reproduces the
 //! live feed of a converging loop, and stored provider tool names render in
 //! the common vocabulary.
 

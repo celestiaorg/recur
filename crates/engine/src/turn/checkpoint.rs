@@ -1,8 +1,7 @@
-//! Per-turn worktree checkpoints (Go `checkpoint.go`): every agent turn
-//! snapshots the worktree under
+//! Per-turn worktree checkpoints: every agent turn snapshots the worktree under
 //! `refs/recur/checkpoints/<workspace>/<userMessageID>/{start,end}`; start →
-//! end is the turn's own diff, end is what "reset to here" restores. Also
-//! the review-pass checkpoint for `/re-review`.
+//! end is the turn's own diff, end is what "reset to here" restores. Also the
+//! review-pass checkpoint for `/re-review`.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -21,8 +20,8 @@ pub fn checkpoint_ref(workspace_id: &str, user_msg_id: &str, phase: &str) -> Str
     format!("{CHECKPOINT_REF_PREFIX}{workspace_id}/{user_msg_id}/{phase}")
 }
 
-/// Go `context.WithTimeout` around a git call: dropping the future on
-/// expiry kills the process group.
+/// A timeout around a git call: dropping the future on expiry kills the process
+/// group.
 async fn within<T>(d: Duration, f: impl Future<Output = T>) -> Option<T> {
     tokio::time::timeout(d, f).await.ok()
 }

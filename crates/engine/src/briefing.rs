@@ -1,8 +1,7 @@
-//! The Briefing projection (Go `briefing.go`): one deterministic
-//! cross-workspace Now/Next view for the Overview and Ask Recur, the bounded
-//! per-workspace context the coordinator reads, and the activity
-//! watermarks (`mark_workspace_viewed`, `touch_workspace_activity`) that
-//! drive "changed since you looked".
+//! The Briefing projection: one deterministic cross-workspace Now/Next view for
+//! the Overview and Ask Recur, the bounded per-workspace context the
+//! coordinator reads, and the activity watermarks (`mark_workspace_viewed`,
+//! `touch_workspace_activity`) that drive "changed since you looked".
 
 use std::collections::HashMap;
 
@@ -424,7 +423,7 @@ fn collect_brief_reasons(inp: &BriefInputs) -> Vec<BriefReason> {
             ),
         });
     }
-    // Go's exchange sort, kept for identical tie order.
+    // Exchange sort, kept for its tie order.
     for i in 0..out.len() {
         for j in i + 1..out.len() {
             if out[j].rank < out[i].rank {
@@ -724,7 +723,7 @@ fn quiet_age(activity_ms: i64, now_ms: i64) -> String {
     format!("quiet for {}", format_age(d))
 }
 
-/// Hours under two days, else days (Go `formatAge` over milliseconds).
+/// Hours under two days, else days, from milliseconds.
 pub fn format_age(d_ms: i64) -> String {
     let h = d_ms.max(0) / 3_600_000;
     if h < 48 {
@@ -733,7 +732,7 @@ pub fn format_age(d_ms: i64) -> String {
     format!("{}d", h / 24)
 }
 
-/// Go's exchange sort with its bucket, recency and id tie-breaks.
+/// Exchange sort with bucket, recency and id tie-breaks.
 pub fn sort_briefs(briefs: &mut [WorkspaceBrief]) {
     let rank = |b: &WorkspaceBrief| match b.bucket.as_str() {
         BRIEF_BUCKET_NEEDS => 0,

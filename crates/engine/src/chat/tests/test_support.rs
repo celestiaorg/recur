@@ -1,6 +1,5 @@
 //! Shared E4 test scaffolding: a temp project with a scripted provider, the
-//! Go `captureRunner` lookups, and small store/registry pokes Go tests did
-//! through package internals.
+//! capture-script lookups, and small store/registry pokes.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -19,8 +18,7 @@ use crate::testing::{TempRepo, TestEngine, add_project, init_repo};
 use crate::turn::test_support::maestro_fixture;
 use crate::turn::transcript::content_items;
 
-/// Go `failCallRunner`: call `at` fails with "provider unavailable", the
-/// rest replay `inner`.
+/// Call `at` fails with "provider unavailable", the rest replay `inner`.
 pub fn fail_at(inner: &Arc<CaptureScript>, at: usize) -> Arc<dyn Provider> {
     let (inner, ok) = (Arc::clone(inner), inner.provider());
     AsyncProvider::wrap(move |req, cx| {
@@ -70,9 +68,8 @@ pub fn shipped_providers(home: &std::path::Path) -> Vec<Arc<dyn Provider>> {
 }
 
 impl Fx {
-    /// Turns go to `provider` (Go `SetRunner`; `None` fails them closed);
-    /// the shipped providers stay registered for their per-provider rules,
-    /// which Go applied statically.
+    /// Turns go to `provider` (`None` fails them closed); the shipped providers
+    /// stay registered for their per-provider rules.
     pub fn new(provider: Option<Arc<dyn Provider>>) -> Self {
         Self::with(provider, crate::testing::TestOptions::default())
     }
@@ -108,7 +105,7 @@ impl Fx {
         self.te.store.workspace(id).expect("workspace")
     }
 
-    /// The transcript's content rows (Go `contentItems(WorkspaceChatItems)`).
+    /// The transcript's content rows.
     pub async fn items(&self, ws: &str, code: &str) -> Vec<ChatItem> {
         content_items(&self.te.engine.workspace_chat_items(ws, code).await)
     }
@@ -146,7 +143,7 @@ pub fn capture_same(session: &'static str, reply: &'static str) -> Arc<CaptureSc
     CaptureScript::new(move |_| maestro_fixture(session, reply))
 }
 
-/// Go `specsWithAgentID`: every turn of one agent id (role set).
+/// Every turn of one agent id (role set).
 pub fn with_agent(c: &CaptureScript, agent_id: &str) -> Vec<TurnRequest> {
     c.specs
         .lock()
@@ -170,8 +167,7 @@ pub fn tab_codes(tabs: &[WorkspaceChatTab]) -> Vec<String> {
     tabs.iter().map(|t| t.code.clone()).collect()
 }
 
-/// A registered walk on `key` driving tab `chat` (Go
-/// `eng.loops.Store(key, &runningLoop{loop: &Loop{ChatCode: chat}})`).
+/// A registered walk on `key` driving tab `chat`.
 pub fn walk(te: &TestEngine, ws: &str, chat: &str, key: &str) -> Arc<LoopHandle> {
     let h = LoopHandle::new(
         ws,
@@ -189,7 +185,7 @@ pub fn walk(te: &TestEngine, ws: &str, chat: &str, key: &str) -> Arc<LoopHandle>
     h
 }
 
-/// A registered turn no send owns (Go `eng.chats.Store(key, &chatTurn{})`).
+/// A registered turn no send owns.
 pub fn bare_turn(te: &TestEngine, ws: &str, code: &str) -> Arc<ChatTurn> {
     let t = te
         .engine
@@ -220,8 +216,8 @@ fn turn_end(session: &str) -> TurnResult {
     }
 }
 
-/// Go `holdInjectRunner`: holds the turn until `release`, recording every
-/// steer (prompt, display) and acking it (after `ack_wait` when set).
+/// Holds the turn until `release`, recording every steer (prompt, display) and
+/// acking it (after `ack_wait` when set).
 #[derive(Default)]
 pub struct HoldInject {
     pub started: CancellationToken,
@@ -252,8 +248,7 @@ impl HoldInject {
         self.specs.lock().last().cloned()
     }
 
-    /// The injected user text: the display, else the prompt (Go
-    /// `decodeInjectPlain`).
+    /// The injected user text: the display, else the prompt.
     pub fn injected_users(&self) -> Vec<String> {
         self.injected
             .lock()
@@ -329,8 +324,8 @@ impl HoldInject {
     }
 }
 
-/// Go `holdAfterResultRunner`: emits the result first, then the first run
-/// waits for `release` and later runs for `second_release`.
+/// Emits the result first, then the first run waits for `release` and later
+/// runs for `second_release`.
 #[derive(Default)]
 pub struct HoldAfterResult {
     pub started: CancellationToken,
@@ -375,8 +370,7 @@ impl HoldAfterResult {
     }
 }
 
-/// Go `holdUntilRunner`: holds until `release` without reading steers;
-/// counts runs and cancels.
+/// Holds until `release` without reading steers; counts runs and cancels.
 #[derive(Default)]
 pub struct HoldUntil {
     pub started: CancellationToken,
@@ -408,7 +402,7 @@ impl HoldUntil {
     }
 }
 
-/// How long a step may take before a test calls it hung. Go's tests used 3s, but a stopped
+/// How long a step may take before a test calls it hung. Longer than 3s: a stopped
 /// or finished turn writes its git checkpoint before the send returns, and under a loaded
 /// full-suite run that alone can pass 3s (0.2s idle, 1.4s at load 66).
 const HANG: Duration = Duration::from_secs(10);
@@ -428,8 +422,8 @@ pub async fn join_hang<T>(h: tokio::task::JoinHandle<T>, what: &str) -> T {
         .expect("task")
 }
 
-/// Go `durationCancelRunner`: text, then wait for cancel and return the
-/// wall-clock duration without a result frame.
+/// Text, then wait for cancel and return the wall-clock duration without a
+/// result frame.
 pub fn duration_cancel_runner() -> Arc<dyn Provider> {
     AsyncProvider::wrap(|_req, cx| async move {
         cx.sink.emit(AgentEvent::Text {
@@ -446,7 +440,7 @@ pub fn duration_cancel_runner() -> Arc<dyn Provider> {
     })
 }
 
-/// Go `countRunner`: counts runs, each a quick success.
+/// Counts runs, each a quick success.
 pub fn count_runner(n: Arc<std::sync::atomic::AtomicUsize>) -> Arc<dyn Provider> {
     AsyncProvider::wrap(move |_req, _cx| {
         let n = Arc::clone(&n);
@@ -461,8 +455,7 @@ pub fn count_runner(n: Arc<std::sync::atomic::AtomicUsize>) -> Arc<dyn Provider>
     })
 }
 
-/// Go `slowUnwindRunner`: the first run waits for cancel and then `unwind`;
-/// later runs succeed.
+/// The first run waits for cancel and then `unwind`; later runs succeed.
 pub fn slow_unwind_runner(
     started: CancellationToken,
     unwind: CancellationToken,
@@ -487,8 +480,8 @@ pub fn slow_unwind_runner(
     })
 }
 
-/// A test hook that signals `entered` and then waits for `proceed` (Go's
-/// `close(blocked); <-proceed`), only on the calls `pick` selects.
+/// A test hook that signals `entered` and then waits for `proceed`,
+/// only on the calls `pick` selects.
 pub fn gate_hook(
     pick: impl Fn(usize) -> Option<(CancellationToken, Option<CancellationToken>)>
     + Send
@@ -511,8 +504,7 @@ pub fn gate_hook(
     }
 }
 
-/// Go `holdFirstRunner` / `delayAfterCancelRunner`: the first run waits for
-/// cancel (then `delay`), later runs replay a success.
+/// The first run waits for cancel (then `delay`), later runs replay a success.
 pub fn hold_first_runner(
     c: &Arc<CaptureScript>,
     started: CancellationToken,
@@ -534,7 +526,7 @@ pub fn hold_first_runner(
     })
 }
 
-/// Whether the inbox holds a row with this id (Go `inboxByID`).
+/// Whether the inbox holds a row with this id.
 pub fn inbox_has(te: &TestEngine, id: &str) -> bool {
     te.store
         .inbox()
@@ -575,8 +567,7 @@ pub async fn wait_coder_turns(
     panic!("timed out waiting for {n} coder turns");
 }
 
-/// Runs `pre` with each request before `inner` takes the turn (Go's
-/// wrapping runners: `editingRunner`, `messageFromReportRunner`).
+/// Runs `pre` with each request before `inner` takes the turn.
 pub fn before_turn<F, Fut>(inner: Arc<dyn Provider>, pre: F) -> Arc<dyn Provider>
 where
     F: Fn(TurnRequest) -> Fut + Send + Sync + 'static,

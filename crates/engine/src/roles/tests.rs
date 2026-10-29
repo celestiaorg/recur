@@ -1,4 +1,4 @@
-//! Port of Go `roles_test.go` and `role_tools_test.go`.
+//! Role and role tool tests.
 
 use std::collections::BTreeMap;
 

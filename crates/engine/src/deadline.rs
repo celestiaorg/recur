@@ -1,4 +1,4 @@
-//! Go `context.WithTimeout` for sync walks that take a cancellation token:
+//! A deadline for sync walks that take a cancellation token:
 //! a token that fires after `d`.
 
 use std::time::Duration;
@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 /// A token cancelled after `d`. Outside a tokio runtime it never fires (the
-/// walk runs to completion, as with Go's `context.Background()`).
+/// walk runs to completion).
 pub fn deadline_token(d: Duration) -> CancellationToken {
     let tok = CancellationToken::new();
     if let Ok(rt) = tokio::runtime::Handle::try_current() {

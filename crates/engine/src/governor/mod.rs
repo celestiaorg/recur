@@ -1,5 +1,5 @@
-//! The machine-global resource limits (Go `governor.go`, PRD §6.4): a cap on
-//! concurrently running loops and on concurrently running agent turns.
+//! The machine-global resource limits (PRD §6.4): a cap on concurrently running
+//! loops and on concurrently running agent turns.
 //!
 //! Loop slots never block (a loop that cannot get one stays queued). Agent
 //! slots block until one frees or the caller is cancelled; a release wakes
@@ -88,7 +88,7 @@ impl Governor {
 
     /// Waits for an agent slot; true once taken. False when `cancel` fired
     /// before one freed (a free slot is still taken when `cancel` already
-    /// fired, as in Go). Pair every true with one [`Governor::release_agent`].
+    /// fired). Pair every true with one [`Governor::release_agent`].
     pub async fn acquire_agent(&self, cancel: &CancellationToken) -> bool {
         loop {
             let notified = self.agent_wait.notified();

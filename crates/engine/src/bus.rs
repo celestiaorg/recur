@@ -1,12 +1,10 @@
-//! The engine event bus (Go `engine/bus.go`): every engine event, typed.
+//! The engine event bus: every engine event, typed.
 //!
-//! Go published `Event{Name, Data any}`; here each [`EngineEvent`] variant
-//! carries a payload struct whose JSON is compatible with the Go payload. Go
-//! built most payloads as `map[string]any`, which `json.Marshal` writes with
-//! sorted keys, so those structs declare their fields in sorted key order and
-//! serialize straight to the writer (never through `serde_json::Value`, whose
-//! key order depends on the workspace feature set). Payloads that were Go
-//! structs (`resource.updated`, `permission.requested`) keep struct order.
+//! Each [`EngineEvent`] variant carries a typed payload struct. Most
+//! payloads serialize with sorted keys, so those structs declare their fields
+//! in sorted key order and serialize straight to the writer (never through
+//! `serde_json::Value`, whose key order depends on the workspace feature
+//! set). A few (`resource.updated`, `permission.requested`) keep struct order.
 //!
 //! Delivery never drops and keeps per-publisher order: channel subscribers
 //! get an unbounded queue, callback subscribers run synchronously in the
@@ -24,7 +22,7 @@ use recur_domain::{
 use serde::Serialize;
 use tokio::sync::mpsc;
 
-/// One engine event. [`EngineEvent::name`] is the Go event name the UI
+/// One engine event. [`EngineEvent::name`] is the event name the UI
 /// listens on; serializing the event writes only its payload.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(untagged)]
@@ -120,7 +118,7 @@ pub enum EngineEvent {
 }
 
 impl EngineEvent {
-    /// The Go event name.
+    /// The event name.
     pub fn name(&self) -> &'static str {
         use EngineEvent as E;
         match self {
@@ -227,8 +225,8 @@ pub struct WorkspaceUpdated {
 }
 
 impl WorkspaceUpdated {
-    /// Go `publishLoopUpdated`: state/phase/iteration are the caller's, the
-    /// rest comes from the stored row (zero values when it is gone).
+    /// State/phase/iteration are the caller's, the rest comes from the stored
+    /// row (zero values when it is gone).
     pub fn from_workspace(
         workspace_id: &str,
         state: WorkspaceState,
@@ -474,9 +472,9 @@ pub struct AppChatTab {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 pub struct AppFocused {}
 
-/// The routing fields every `session.*` live event carries (Go
-/// `sessionBroadcast.publish`): `surface` ("app" for Ask Recur), the
-/// workspace (omitted for app chats), the tab code and its conductor.
+/// The routing fields every `session.*` live event carries: `surface` ("app"
+/// for Ask Recur), the workspace (omitted for app chats), the tab code and its
+/// conductor.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SessionRoute {
     pub surface: String,
@@ -642,7 +640,7 @@ pub struct SessionFallback {
     pub workspace_id: String,
 }
 
-/// The context fill a usage-bearing result reports (Go `mergeContextUsage`).
+/// The context fill a usage-bearing result reports.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ContextUsage {
     pub input_tokens: i64,
@@ -815,9 +813,8 @@ impl SessionRoute {
 }
 
 /// `pr.updated`: every PR field the list and detail views merge live.
-/// `pendingOnly` marks a draft-comment-only change (skip GetPR). Go read the
-/// slices off a decoded row, where an empty omitempty slice is nil, so empty
-/// ones serialize as `null`.
+/// `pendingOnly` marks a draft-comment-only change (skip GetPR). Empty
+/// slices serialize as `null`.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrUpdated {
@@ -857,7 +854,7 @@ fn nil_if_empty<T: Clone>(v: &[T]) -> Option<Vec<T>> {
 }
 
 impl PrUpdated {
-    /// Go `emitPRUpdated`.
+    /// The `pr.updated` payload for a PR row.
     pub fn from_pr(pr_id: &str, pr: &Pr, pending_only: bool) -> Self {
         Self {
             allowed_merge_methods: nil_if_empty(&pr.allowed_merge_methods),

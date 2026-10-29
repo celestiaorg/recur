@@ -1,7 +1,6 @@
-//! Cozy-kitchen workspace ids (Go `workspace_id.go` + `newWorkspaceID`):
-//! `{project}.{adj}-{dish}`, with `-N` on the kitchen pair on collision
-//! (recur.toasty-bagel, demo.simmered-ramen-2). The word lists are a
-//! contract (ids and branches already on disk use them).
+//! Cozy-kitchen workspace ids: `{project}.{adj}-{dish}`, with `-N` on the
+//! kitchen pair on collision (recur.toasty-bagel, demo.simmered-ramen-2). The
+//! word lists are a contract (ids and branches already on disk use them).
 
 use std::collections::HashSet;
 
@@ -63,8 +62,7 @@ pub const KITCHEN_DISHES: [&str; 44] = [
 
 const KITCHEN_ID_RESHUFFLES: usize = 16;
 
-/// A uniform index below `n` from OS randomness (rejection sampling, like
-/// Go `rand.IntN`).
+/// A uniform index below `n` from OS randomness (rejection sampling).
 fn rand_index(n: usize) -> usize {
     let n = u64::try_from(n).unwrap_or(u64::MAX).max(1);
     let zone = u64::MAX - (u64::MAX % n);
@@ -149,7 +147,7 @@ pub fn repo_key(p: &str) -> String {
     }
 }
 
-/// Go `filepath.Clean` for slash paths.
+/// Lexically cleans a slash path (`.`, `..` and doubled slashes).
 fn clean(p: &str) -> String {
     if p.is_empty() {
         return ".".into();

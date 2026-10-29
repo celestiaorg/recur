@@ -1,4 +1,4 @@
-//! Port of Go `schedules_test.go`: occurrences, missed/skipped/interrupted
+//! Scheduled prompt tests: occurrences, missed/skipped/interrupted
 //! runs, Run now, the plan and loop modes, Keep last N, and the
 //! create_workspace tool that shares `launch_prompt_workspace`.
 
@@ -66,7 +66,7 @@ impl Sx {
         &self.te.engine
     }
 
-    /// Go `saveTestSchedule`.
+    /// Saves a test schedule with the clock pinned.
     async fn save(&self, project_id: &str) -> ScheduledPrompt {
         pin_clock(self.eng(), utc(2026, 9, 8, 8));
         self.eng()
@@ -865,7 +865,7 @@ async fn keep_last_n_prunes_the_oldest() {
     sx.te.close().await;
 }
 
-/// Go `scheduledKeepPair`.
+/// Two scheduled workspaces (older, newer) under a Keep last `keep` setting.
 async fn keep_pair(keep: i64) -> (Sx, String, recur_domain::Workspace, recur_domain::Workspace) {
     let sx = Sx::new(None);
     let p = sx.save(&sx.proj).await;

@@ -1,4 +1,4 @@
-//! Go `plan_test.go` (the approval-gate run is E3's).
+//! Plan tests (the approval-gate run is E3's).
 
 use recur_agent::display::PLAN_MAX_PERSIST_CHARS;
 use recur_agent_tools::{CreateArtifactRequest, Host, PlanStepMeta, PlanSubmission};

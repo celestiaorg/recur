@@ -1,7 +1,6 @@
 //! Orchestration: chats, loops, walker, governor, maestro, schedules, workspace lifecycle,
 //! event bus, recovery.
 //!
-//! Port of Go `internal/engine`, built slice by slice (`docs/engine-port-plan.md`).
 //! E1 (engine core) provides the [`Engine`] and its shared state, the typed
 //! [`bus`], the [`governor`], the chat concurrency kernel ([`chatlife`]), the
 //! loop control plane ([`loop_handle`], [`loop_registry`]), attention and the

@@ -1,5 +1,4 @@
-//! Sending a PR back to its loop and updating a PR's worktree with its base
-//! (Go `rework.go`).
+//! Sending a PR back to its loop and updating a PR's worktree with its base.
 
 use std::path::Path;
 use std::time::Duration;

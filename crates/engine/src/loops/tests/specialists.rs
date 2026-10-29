@@ -1,8 +1,6 @@
-//! Loop cases moved here from other Go files: `plan_test.go`
-//! `TestPlanApprovalGate`, `user_mcp_test.go`
-//! `TestLoopSpecialistsAttachLinear`, `mcp_required_test.go`
-//! `TestDeadMCPFailsTheLoopInsteadOfConverging`, and the loop-start cases
-//! of `simplify_test.go`.
+//! Loop cases that belong to other areas: the plan approval gate, Linear
+//! attached to loop specialists, a dead MCP failing the loop instead of
+//! converging, and the loop-start Simplify cases.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -34,8 +32,7 @@ fn assert_linear(req: &TurnRequest, url: &str) {
     assert!(has_tool(req, "mcp__linear__*"), "{:?}", req.role);
 }
 
-/// The dock's Remember with an explicit Simplify chip (Go
-/// `rememberDockSimplify`).
+/// The dock's Remember with an explicit Simplify chip.
 async fn remember_dock_simplify(t: &TestEngine, ws: &str, code: &str, on: bool) {
     t.engine
         .remember_workspace_chat_selection(ws, code, "sonnet", None, CHAT_MODE_AGENT, Some(on))

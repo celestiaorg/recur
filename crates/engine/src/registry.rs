@@ -1,5 +1,5 @@
 //! The extension-point registries: agent providers, forges and issue
-//! trackers, keyed by the ids Go persists (`claude-code`, `codex`, `cursor`,
+//! trackers, keyed by their persisted ids (`claude-code`, `codex`, `cursor`,
 //! each compatible provider's own id; forge `github` with PR rows keeping
 //! `source = "gh"`; trackers `github`, `linear`). `recur-services` is the
 //! composition root that fills them; the engine only looks things up here
@@ -13,9 +13,9 @@ use recur_domain::{PrSource, parse_model_ref};
 use recur_forge::Forge;
 use recur_issues::IssueTracker;
 
-/// Registered agent providers. A pinned provider (tests, Go `SetRunner`)
-/// receives every turn regardless of the model ref; pinning `None` fails
-/// every turn closed rather than reaching a real provider.
+/// Registered agent providers. A pinned provider (tests) receives every turn
+/// regardless of the model ref; pinning `None` fails every turn closed rather
+/// than reaching a real provider.
 #[derive(Default)]
 pub struct ProviderRegistry {
     providers: RwLock<Vec<Arc<dyn Provider>>>,
@@ -37,7 +37,7 @@ impl ProviderRegistry {
         r
     }
 
-    /// Pins (Go `SetRunner`).
+    /// Pins `provider` for every turn.
     pub fn pin(&self, provider: Option<Arc<dyn Provider>>) {
         *self.pinned.write() = Some(provider);
     }

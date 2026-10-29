@@ -143,18 +143,17 @@ fn utf16_len(s: &str) -> usize {
     s.encode_utf16().count()
 }
 
-/// Stable prefix of backend-synthesized chat failure replies (matches Go).
+/// Stable prefix of backend-synthesized chat failure replies.
 pub const AGENT_ERROR_PREFIX: &str = "Agent error:";
 
 /// The durable note when the user interrupts an in-flight turn.
 pub const CHAT_STOPPED_REPLY: &str = "Stopped by user";
 
-/// The UI-only display_text Retry sends (Go `chatRetryDisplaySentinel`), so
-/// a retry adds no second user bubble.
+/// The UI-only display_text Retry sends, so a retry adds no second user bubble.
 pub const CHAT_RETRY_DISPLAY: &str = crate::codes::CHAT_RETRY_DISPLAY_SENTINEL;
 
-/// The send reply when a follow-up was injected into a live turn (Go
-/// `chatInjectedSentinel`): it must not finish or idle the tab.
+/// The send reply when a follow-up was injected into a live turn:
+/// it must not finish or idle the tab.
 pub const CHAT_INJECTED_REPLY: &str = crate::turn::finalize::CHAT_INJECTED_SENTINEL;
 
 const GENERIC_AGENT_ERROR_REPLIES: [&str; 2] = [
@@ -300,7 +299,7 @@ pub fn option_choice_text(s: &str) -> String {
     js::trim(&WS_RUN.replace_all(&stripped, " ")).to_owned()
 }
 
-/// The short bubble label of an ask_user answer (Go `formatAskUserDisplay`).
+/// The short bubble label of an ask_user answer.
 pub fn format_ask_user_display_text(choice: &str, free_text: &str) -> String {
     let c = js::trim(choice);
     let f = js::trim(free_text);
@@ -940,7 +939,7 @@ fn map_chat_item(it: &ChatItem) -> Option<AgentMsg> {
         });
     }
     Some(AgentMsg {
-        // User text is already display_text || text from Go flatten;
+        // User text is already display_text || text from the flatten;
         // display_user_chat_text covers wire that landed without it.
         body: if user {
             display_user_chat_text(&it.text)
@@ -1317,9 +1316,8 @@ fn settle_in_flight(m: &AgentMsg) -> AgentMsg {
     }
 }
 
-/// The label of an engine-to-agent notice (Go `displayHiddenSentinel`): the
-/// bare marker is a hidden bubble (`Some("")`), marker + label a "Subagent"
-/// row; `None` for ordinary text.
+/// The label of an engine-to-agent notice: the bare marker is a hidden bubble
+/// (`Some("")`), marker + label a "Subagent" row; `None` for ordinary text.
 pub fn subagent_notice_label(text: &str) -> Option<String> {
     text.strip_prefix(DISPLAY_HIDDEN_SENTINEL)
         .map(|rest| js::trim(rest).to_owned())

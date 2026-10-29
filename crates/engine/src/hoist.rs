@@ -1,7 +1,6 @@
-//! PR chat hosts and hoisting (Go `github_prs.go`, `archivePRChatHosts` ..
-//! `maybeArchiveLinkedPRChatHost`): the hidden chat-only workspace the PR
-//! detail dock binds to, and the move of its chats, agent tabs, artifacts,
-//! findings and plan onto the live worktree once one is linked.
+//! PR chat hosts and hoisting: the hidden chat-only workspace the PR detail
+//! dock binds to, and the move of its chats, agent tabs, artifacts, findings
+//! and plan onto the live worktree once one is linked.
 //!
 //! A hoist reserves both ids (the hoist tombstone, exclusive with
 //! Remove/Delete's deleting reservation under `hoist_mu`), waits for both
@@ -220,8 +219,8 @@ impl Engine {
         Ok(())
     }
 
-    /// The tab codes of a workspace's agents and sessions, in Go's order
-    /// (agents, then sessions).
+    /// The tab codes of a workspace's agents and sessions (agents, then
+    /// sessions).
     fn hoist_source_codes(&self, from_id: &str) -> Vec<String> {
         let mut out: Vec<String> = self
             .store
@@ -458,9 +457,9 @@ impl Engine {
     /// remount). Settled PRs have no destination: the host is archived in
     /// place. An open PR with only a chat host keeps it.
     ///
-    /// Go ran the hoist on the caller's goroutine. Its callers here include
-    /// `Drop` of a life-lock guard, which cannot wait, so the decision is
-    /// made synchronously and the hoist itself runs as a tracked task.
+    /// Callers include `Drop` of a life-lock guard, which cannot wait, so the
+    /// decision is made synchronously and the hoist itself runs as a tracked
+    /// task.
     pub(crate) fn maybe_archive_linked_pr_chat_host(&self, workspace_id: &str) {
         let workspace_id = workspace_id.trim();
         if workspace_id.is_empty() || self.hoisting.lock().contains(workspace_id) {

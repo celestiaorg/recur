@@ -1,7 +1,6 @@
-//! The send-path halves of Go `checkpoint_test.go`: a turn's start/end
-//! snapshots through `send_workspace_message` (diff and reset), and the
-//! AutoResume continuation reusing an interrupted turn's pair without
-//! stealing a completed one.
+//! Send-path checkpoint tests: a turn's start/end snapshots through
+//! `send_workspace_message` (diff and reset), and the AutoResume continuation
+//! reusing an interrupted turn's pair without stealing a completed one.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -20,8 +19,7 @@ use crate::testing::{git_out, wait_for};
 use crate::turn::checkpoint::{checkpoint_ref, last_chat_prompt_id};
 use crate::turn::finalize::CHAT_RESUME_DISPLAY;
 
-/// Go `editingRunner`: writes `name(call)` into the worktree, then replays
-/// the capture script.
+/// Writes `name(call)` into the worktree, then replays the capture script.
 fn editing(c: &Arc<CaptureScript>, name: fn(usize) -> &'static str) -> Arc<dyn Provider> {
     let counter = Arc::clone(c);
     before_turn(c.provider(), move |req| {

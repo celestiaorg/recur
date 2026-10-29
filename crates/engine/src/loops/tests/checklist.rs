@@ -1,6 +1,6 @@
-//! Port of Go `findings_checklist_test.go`: the Coder's open-findings
-//! checklist (done refusal, update_finding attribution, disputes the
-//! Reviewer re-judges) and done-summary routing between sibling walks.
+//! Findings checklist tests: the Coder's open-findings checklist (done refusal,
+//! update_finding attribution, disputes the Reviewer re-judges) and
+//! done-summary routing between sibling walks.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

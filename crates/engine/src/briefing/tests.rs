@@ -1,6 +1,6 @@
-//! Port of Go `briefing_test.go`: reason precedence and targets, the chat
-//! copy, settled rows, PR hosts, sorting, the activity watermark, and the
-//! snapshot and context services.
+//! Briefing tests: reason precedence and targets, the chat copy, settled rows,
+//! PR hosts, sorting, the activity watermark, and the snapshot and context
+//! services.
 
 use chrono::{Local, TimeZone, Utc};
 use recur_domain::*;

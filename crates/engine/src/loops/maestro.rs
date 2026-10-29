@@ -1,8 +1,8 @@
-//! The Maestro: a loop's conductor chat (Go `maestro.go`, PRD §8.5). One
-//! chat turn runs on the caller's task, never the walk's, with the live loop
-//! context in its system prompt; a steer it files is applied within the rails
-//! and queued onto the running walk. Multi-turn continuity resumes the
-//! conductor's provider session.
+//! The Maestro: a loop's conductor chat (PRD §8.5). One chat turn runs on the
+//! caller's task, never the walk's, with the live loop context in its system
+//! prompt; a steer it files is applied within the rails and queued onto the
+//! running walk. Multi-turn continuity resumes the conductor's provider
+//! session.
 
 use std::time::{Duration, Instant};
 
@@ -56,8 +56,8 @@ impl Engine {
             .await
     }
 
-    /// One conductor turn on tab `code` (Go `sendMaestroMessage`). A turn
-    /// that produces no reply returns an honest fallback, never an error.
+    /// One conductor turn on tab `code`. A turn that produces no reply returns
+    /// an honest fallback, never an error.
     pub async fn send_maestro_message_to(
         &self,
         workspace_id: &str,

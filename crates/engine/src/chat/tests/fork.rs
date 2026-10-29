@@ -1,4 +1,4 @@
-//! Port of Go `chat_fork_test.go`: forking a tab at a turn (same workspace
+//! Chat fork tests: forking a tab at a turn (same workspace
 //! or a sibling one, with the dirty tree), the fork-inject preamble and its
 //! compaction watermark, dropping foreign resume handles on retry and dock
 //! switches, and the one-shot `forkInject` flag.

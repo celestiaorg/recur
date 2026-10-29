@@ -1,7 +1,7 @@
-//! The project's "main working copy" workspace (Go `OpenMainWorkspace`): no
-//! worktree, no branch of its own; the path is the real checkout, so the
-//! Observatory edits and commits land in the user's repo. Never runs setup,
-//! never engages the autopilot, never has its checkout removed.
+//! The project's "main working copy" workspace: no worktree, no branch of its
+//! own; the path is the real checkout, so the Observatory edits and commits
+//! land in the user's repo. Never runs setup, never engages the autopilot,
+//! never has its checkout removed.
 
 use std::time::Duration;
 
@@ -125,7 +125,7 @@ impl Engine {
     }
 }
 
-/// Go `filepath.Abs`: joins a relative path onto the cwd and cleans.
+/// Joins a relative path onto the cwd and cleans.
 fn abs_path(p: &str) -> std::io::Result<String> {
     let joined = if p.starts_with('/') {
         p.to_owned()

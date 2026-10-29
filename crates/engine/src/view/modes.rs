@@ -75,7 +75,7 @@ pub const CHAT_MODES: [ChatModeOption; 5] = [
     },
 ];
 
-/// Placeholder tab label until the first user turn (Go `chatTabTitle`).
+/// Placeholder tab label until the first user turn.
 pub const NEW_CHAT_TITLE: &str = "New chat";
 
 /// Unknown and empty modes degrade to agent.

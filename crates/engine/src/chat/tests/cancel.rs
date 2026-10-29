@@ -1,7 +1,7 @@
-//! Port of the `SendWorkspaceMessage` cases of Go `chat_cancel_test.go`:
-//! Stop on a live turn (one footer, the calm stop note), on a Loop-mode
-//! tab's walk, on the Maestro, in the ticketed prologue and fork window, and
-//! the waits a follow-up does on a stopped or ownerless predecessor.
+//! Chat cancel tests through `send_workspace_message`: Stop on a live turn (one
+//! footer, the calm stop note), on a Loop-mode tab's walk, on the Maestro, in
+//! the ticketed prologue and fork window, and the waits a follow-up does on a
+//! stopped or ownerless predecessor.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

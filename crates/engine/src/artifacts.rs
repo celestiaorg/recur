@@ -1,7 +1,7 @@
-//! Workspace artifacts on disk (Go `artifacts.go` and the file helpers of
-//! `artifact_mentions.go`): `<data>/workspaces/<id>/artifacts/<uuidv7>.<ext>`
-//! plus `<uuidv7>.meta.json`, outside the git worktree. Create, list, read,
-//! present, rename, delete, absolute path, and hoisting between workspaces.
+//! Workspace artifacts on disk:
+//! `<data>/workspaces/<id>/artifacts/<uuidv7>.<ext>` plus `<uuidv7>.meta.json`,
+//! outside the git worktree. Create, list, read, present, rename, delete,
+//! absolute path, and hoisting between workspaces.
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
@@ -46,8 +46,8 @@ pub fn artifact_kind_is_binary(k: &ArtifactKind) -> bool {
     matches!(k, ArtifactKind::Png | ArtifactKind::Jpeg)
 }
 
-/// Go `time.Now().UTC().Format(time.RFC3339Nano)`: trailing fraction zeros
-/// trimmed, no fraction when it is zero.
+/// RFC 3339 UTC with nanoseconds: trailing fraction zeros trimmed, no fraction
+/// when it is zero.
 fn rfc3339_nano_utc(t: chrono::DateTime<chrono::Utc>) -> String {
     use chrono::Timelike;
     let base = t.format("%Y-%m-%dT%H:%M:%S").to_string();
@@ -60,7 +60,7 @@ fn rfc3339_nano_utc(t: chrono::DateTime<chrono::Utc>) -> String {
     }
 }
 
-/// Two-space indented JSON, the layout of Go's `json.MarshalIndent(v, "", "  ")`.
+/// Two-space indented JSON.
 pub fn marshal_indent<T: serde::Serialize>(v: &T) -> Option<String> {
     serde_json::to_string_pretty(v).ok()
 }
@@ -108,7 +108,7 @@ pub fn list_artifacts(data_dir: &Path, workspace_id: &str) -> Result<Vec<Artifac
     Ok(out)
 }
 
-/// Go `time.Parse(time.RFC3339, …)`; the zero time when unparsable.
+/// An RFC 3339 time; `None` when unparsable.
 fn artifact_time(s: &str) -> Option<chrono::DateTime<chrono::FixedOffset>> {
     chrono::DateTime::parse_from_rfc3339(s.trim()).ok()
 }
@@ -162,7 +162,7 @@ pub fn read_artifact_text_limit(
         f.read_to_end(&mut raw).map_err(|e| path_err(&full, &e))?;
         raw
     } else {
-        // Go read once into a max+1 buffer.
+        // One read into a max+1 buffer.
         let mut buf = vec![0u8; max_bytes + 1];
         let n = f.read(&mut buf).map_err(|e| path_err(&full, &e))?;
         more = n > max_bytes;
@@ -287,7 +287,7 @@ impl Engine {
     }
 
     /// Host `read_artifact`: metadata plus the full text body (binary kinds
-    /// flagged, not inlined), as Go's sorted-key JSON.
+    /// flagged, not inlined), as sorted-key JSON.
     pub fn read_artifact(
         &self,
         workspace_id: &str,
@@ -422,7 +422,7 @@ impl Engine {
     }
 }
 
-/// Go's error text for a failed fallback copy (the read of the source).
+/// The error text for a failed fallback copy (the read of the source).
 fn hoist_move_err(src: &Path, _dst: &Path, e: &std::io::Error) -> String {
     format!("{}: {e}", src.to_string_lossy())
 }

@@ -1,9 +1,8 @@
-//! Scheduled prompts (Go `schedules.go`): saved local times that start an
-//! independent workspace and run a prompt on its first tab (or engage its
-//! loop). One ticker task checks once a second under `schedule`, which
-//! also serializes configuration changes, occurrence claims and Shutdown.
-//! Startup never replays overdue occurrences: anything a minute late is
-//! missed; busy targets are skipped, not queued.
+//! Scheduled prompts: saved local times that start an independent workspace and
+//! run a prompt on its first tab (or engage its loop). One ticker task checks
+//! once a second under `schedule`, which also serializes configuration changes,
+//! occurrence claims and Shutdown. Startup never replays overdue occurrences:
+//! anything a minute late is missed; busy targets are skipped, not queued.
 //!
 //! `launch_prompt_workspace` is shared with the create_workspace tool.
 

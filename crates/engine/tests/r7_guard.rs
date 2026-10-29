@@ -1,6 +1,6 @@
-//! Static guards over the engine's non-test sources (Go
-//! `TestNoDirectRunnerDispatch`, the R7 rule that no behavior keys off a
-//! provider id, and the R8 rule that PR code goes through `Forge`).
+//! Static guards over the engine's non-test sources: no direct provider
+//! dispatch, the R7 rule that no behavior keys off a provider id, and the R8
+//! rule that PR code goes through `Forge`.
 
 use std::path::Path;
 
@@ -71,7 +71,7 @@ fn no_forge_specifics_outside_the_forge() {
     )
     .unwrap();
     // E4's surface marker: its wire values (`github_pr` and aliases) and the
-    // Local PR subject that says it is not a forge PR, verbatim from Go.
+    // Local PR subject that says it is not a forge PR.
     let allowed = |path: &str| path.ends_with("src/chat/surface.rs");
     for (path, src) in engine_sources() {
         if path.contains("/src/view/") {

@@ -1,9 +1,8 @@
-//! The dispatch cases E1/E2 left for E3: Go `attention_test.go` (closed or
-//! deleted conductors never run, the Docs loop raises unseen),
-//! `workspace_id_test.go` (fresh dispatch skips a leftover branch, keeps
-//! the issue link) and `workspace_create_test.go` (StartRunOn over a
-//! failed create, BeginStartWorkspace slots and rollback). Tab close is
-//! E4's; [`close_tab`] stands in for its effect on the record.
+//! The dispatch cases E1/E2 left for E3: closed or deleted conductors never
+//! run, the Docs loop raises unseen; fresh dispatch skips a leftover branch,
+//! keeps the issue link; StartRunOn over a failed create, BeginStartWorkspace
+//! slots and rollback. Tab close is E4's; [`close_tab`] stands in for its
+//! effect on the record.
 
 use std::path::Path;
 use std::sync::Arc;

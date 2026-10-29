@@ -1,4 +1,4 @@
-//! The chat concurrency kernel (Go `chat_cancel.go`).
+//! The chat concurrency kernel.
 //!
 //! - [`ChatTurn`]: one in-flight chat turn's cancel handle, its park / stop /
 //!   timeout flags, its armed wedged-turn deadline, its `ended` signal
@@ -10,11 +10,9 @@
 //! - Continue generations for live switch_mode remounts.
 //! - Delete/hoist tombstones that refuse new chats on a dying workspace.
 //!
-//! Go's `chatTabSlot.claim` returned holding the slot mutex and the send
-//! path released it around blocking work with `pause`/`resume`. Here
 //! [`ChatTabSlot::claim`] waits for the caller's turn without holding
-//! anything, and the short sync sections Go ran under the mutex take
-//! [`ChatTabSlot::lock`]; [`ChatTabSlot::finish`] consumes that guard.
+//! anything, and the short sync sections take [`ChatTabSlot::lock`];
+//! [`ChatTabSlot::finish`] consumes that guard.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -257,7 +255,7 @@ impl ChatTabSlot {
         }
     }
 
-    /// The slot's sync critical section (Go's held slot mutex).
+    /// The slot's sync critical section.
     pub fn lock(&self) -> MutexGuard<'_, SlotCounters> {
         self.counters.lock()
     }

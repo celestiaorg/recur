@@ -1,8 +1,7 @@
-//! Keeping a stored PR current (Go `pr.go` refreshers, `github_thread.go`
-//! `RefreshPRConversation`, `github_prs.go` diff hydration): the forge's
-//! conversation and review state, commits from the worktree, one commit's
-//! diff on demand, the behind-base count and the check rollup. Every
-//! refresh is best effort: a failed read leaves the stored row alone.
+//! Keeping a stored PR current: the forge's conversation and review state,
+//! commits from the worktree, one commit's diff on demand, the behind-base
+//! count and the check rollup. Every refresh is best effort: a failed read
+//! leaves the stored row alone.
 
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -25,8 +24,8 @@ const BEHIND_TIMEOUT: Duration = Duration::from_secs(20);
 const CHECKS_TIMEOUT: Duration = Duration::from_secs(15);
 const HEAD_FETCH_TIMEOUT: Duration = Duration::from_secs(4);
 
-/// Go `Manager.BehindBase`'s three results: the ref to merge and the count;
-/// an error answers (base, 0) unless the inputs were missing.
+/// The ref to merge and the behind count; an error answers (base, 0) unless the
+/// inputs were missing.
 pub(crate) async fn behind_base(
     mgr: &recur_git::Manager,
     worktree: &str,

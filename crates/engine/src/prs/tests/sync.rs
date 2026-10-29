@@ -1,5 +1,4 @@
-//! The PR sweep and list-row import (Go `github_prs_test.go` sync and
-//! `applyListedGitHubPR` cases).
+//! The PR sweep and list-row import.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

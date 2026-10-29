@@ -1,7 +1,7 @@
-//! Go `chat_errors_test.go` plus the finalize cases of `ask_user_test.go`.
-//! The SendWorkspaceMessage-driven footer cases run the same turns through
-//! `run_agent` + `finalize_chat_reply` here; E4 re-runs them through the
-//! send path.
+//! Chat error tests plus the ask_user finalize cases. The
+//! SendWorkspaceMessage-driven footer cases run the same turns through
+//! `run_agent` + `finalize_chat_reply` here; E4 re-runs them through the send
+//! path.
 
 use std::error::Error;
 use std::sync::Arc;

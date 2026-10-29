@@ -1,8 +1,8 @@
-//! `/skill-name` host activation (Go `skill_mentions.go`): each mention's
-//! SKILL.md body becomes a `<skill_content>` block ahead of the user text,
-//! so every provider gets the instructions without native slash expansion.
-//! Also the skill-guidance and comment-hygiene overlays the router adds to
-//! every turn that can use them, and `join_append_prompt`.
+//! `/skill-name` host activation: each mention's SKILL.md body becomes a
+//! `<skill_content>` block ahead of the user text, so every provider gets the
+//! instructions without native slash expansion. Also the skill-guidance and
+//! comment-hygiene overlays the router adds to every turn that can use them,
+//! and `join_append_prompt`.
 
 use std::sync::LazyLock;
 use std::time::Duration;

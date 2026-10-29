@@ -1,4 +1,4 @@
-//! Go `file_mentions_test.go`.
+//! File mention tests.
 
 use std::path::Path;
 

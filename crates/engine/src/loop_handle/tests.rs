@@ -1,5 +1,5 @@
-//! The loop control plane's contracts (Go `loop.go` send / checkpoint wait /
-//! escalation / steer / done-summary rules).
+//! The loop control plane's contracts: send, checkpoint wait, escalation,
+//! steer and done-summary rules.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

@@ -1,8 +1,7 @@
-//! A workspace for a PR (Go `github_prs.go` `CreateWorkspaceFromPR`,
-//! `EnsurePRChatHost`, `promotePRChatHost`): reuse a workspace already on
-//! the head, else allocate one on the PR head; the PR-detail dock gets a
-//! hidden chat host on the project checkout until then, and that host is
-//! promoted in place so its chats survive.
+//! A workspace for a PR: reuse a workspace already on the head, else allocate
+//! one on the PR head; the PR-detail dock gets a hidden chat host on the
+//! project checkout until then, and that host is promoted in place so its chats
+//! survive.
 
 use recur_domain::{CHAT_MODE_REVIEW, Group, Pr, WORKSPACE_SOLO, Workspace};
 

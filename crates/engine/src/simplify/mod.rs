@@ -1,7 +1,6 @@
-//! Simplify mode (Go `engine/simplify.go`): the per-session composer chip,
-//! frozen on a chat's first write so a later Settings change does not flip
-//! it, and inherited into the loops a chat starts. The rails text is
-//! [`text`].
+//! Simplify mode: the per-session composer chip, frozen on a chat's first write
+//! so a later Settings change does not flip it, and inherited into the loops a
+//! chat starts. The rails text is [`text`].
 
 pub mod text;
 

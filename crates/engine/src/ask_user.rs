@@ -1,4 +1,4 @@
-//! The park-and-return `ask_user` broker (Go `ask_user.go`, broker half).
+//! The park-and-return `ask_user` broker.
 //!
 //! Parking returns immediately: the asking chat turn is stopped quietly so
 //! the tab goes idle, and the human's answer later starts a resumed turn with

@@ -1,5 +1,5 @@
-//! Engine-wide control (Go `engine.go`): Pause and Stop of a workspace's
-//! walks, Shutdown, and restart recovery of loop states.
+//! Engine-wide control: Pause and Stop of a workspace's walks, Shutdown, and
+//! restart recovery of loop states.
 
 use std::time::Duration;
 

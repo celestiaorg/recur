@@ -1,7 +1,6 @@
-//! Settings → MCP servers onto a turn (Go `user_mcp.go`, generic half). A
-//! server whose id or preset an issue tracker claims (Linear) is built by
-//! that tracker (`IssueTracker::agent_mcp`: URL by mode, key, team hint);
-//! the rest are custom HTTP or stdio servers.
+//! Settings → MCP servers onto a turn. A server whose id or preset an issue
+//! tracker claims (Linear) is built by that tracker (`IssueTracker::agent_mcp`:
+//! URL by mode, key, team hint); the rest are custom HTTP or stdio servers.
 
 use std::sync::Arc;
 

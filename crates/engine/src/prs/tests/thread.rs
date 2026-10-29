@@ -1,5 +1,4 @@
-//! Conversation refresh, drafts, comments and reviews (Go
-//! `github_thread_test.go` engine cases).
+//! Conversation refresh, drafts, comments and reviews.
 
 use std::collections::HashMap;
 use std::sync::Arc;

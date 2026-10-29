@@ -39,8 +39,8 @@ fn write(path: &std::path::Path, body: &str) {
     std::fs::write(path, body).unwrap();
 }
 
-/// Go `installFreshSessionPrompts`: `/re-review` (fresh_session) and
-/// `/fix-findings`, both expanding to the wire `WIRE`.
+/// Installs `/re-review` (fresh_session) and `/fix-findings`, both expanding to
+/// the wire `WIRE`.
 fn install_fresh_session_prompts(fx: &Fx) {
     let root = std::path::Path::new(&fx.eng().bundle_roots().default_dir).join("ChatTest");
     let script = root.join("src").join("act.sh");
@@ -94,7 +94,7 @@ fn turn_message_id(items: &[recur_domain::ChatItem]) -> String {
 }
 
 /// The messages a history-rebuilding provider replays: those after the
-/// fresh_session cutoff (Go `harnessHistory`'s start index).
+/// fresh_session cutoff.
 fn after_cutoff(msgs: &[Message], after_id: &str) -> Vec<Message> {
     let start = msgs
         .iter()
@@ -302,8 +302,8 @@ async fn a_fresh_session_cuts_native_history() {
     fx.te.close().await;
 }
 
-/// A skill under the worktree's `.agents/skills` (Go put these under
-/// `$HOME`, which is process-global here).
+/// A skill under the worktree's `.agents/skills` (`$HOME` is
+/// process-global).
 fn write_skill(worktree: &str, name: &str, body: &str) {
     write(
         &std::path::Path::new(worktree)

@@ -1,5 +1,5 @@
-//! The skills and terminals host tools (Go `reporter.go` `ListSkills`,
-//! `ActivateSkill`, `ListTerminals`, `ReadTerminal`).
+//! The skills and terminals host tools: list and activate skills, list and
+//! read terminals.
 
 use recur_agent_tools::{HostError, TerminalInfo};
 use recur_domain::AgentSkill;
@@ -75,7 +75,7 @@ impl Engine {
         Ok(format_skill_content(&sk.name, &sk.path, &body))
     }
 
-    /// Host `list_terminals`: `None` without a terminal source (Go's nil).
+    /// Host `list_terminals`: `None` without a terminal source.
     pub fn list_agent_terminals(&self, workspace_id: &str) -> Option<Vec<TerminalInfo>> {
         let src = self.terminals.as_ref()?;
         let active = src.active_id(workspace_id);

@@ -1,6 +1,5 @@
-//! Unseen-chat attention (Go `engine.go` focus/attention publishers and
-//! `flagChatUnseen`, D-attention): a chat tab that finishes a turn while the
-//! human is not really looking at it (selected tab + OS window focused + no
+//! Unseen-chat attention (D-attention): a chat tab that finishes a turn while
+//! the human is not really looking at it (selected tab + OS window focused + no
 //! modal covering the chat) gets an Unseen badge and an inbox row.
 //!
 //! Lock order: `watch` → `chat_focus`; `chat_unseen_mu` → `chat_focus`.
@@ -233,7 +232,7 @@ impl Engine {
 
     /// Raises Unseen on a tab the human is not looking at (and its inbox
     /// row), re-checking focus after the write so a concurrent mark-seen
-    /// wins (Go `flagChatUnseen`).
+    /// wins.
     pub fn flag_chat_unseen(&self, workspace_id: &str, code: &str, loop_finished: bool) {
         if !is_chat_attention_code(code) || self.is_chat_focused(workspace_id, code) {
             return;

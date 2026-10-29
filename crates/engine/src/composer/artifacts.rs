@@ -1,6 +1,6 @@
-//! `@artifact[:id-or-title]` and loose `@Title` mentions (Go
-//! `artifact_mentions.go`): mentioned artifacts are inlined (text kinds,
-//! capped) into a system instruction ahead of the wire prompt.
+//! `@artifact[:id-or-title]` and loose `@Title` mentions: mentioned artifacts
+//! are inlined (text kinds, capped) into a system instruction ahead of the wire
+//! prompt.
 
 use std::collections::HashSet;
 use std::path::Path;

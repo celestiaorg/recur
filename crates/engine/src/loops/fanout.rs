@@ -1,9 +1,9 @@
-//! Fan-out (Go `fanout.go`): every ready plan step runs in a CHILD
-//! WORKSPACE branched off this walk's branch, converging under the parent's
-//! policy, and merges back the moment it settles. Ready steps are grouped by
-//! file overlap (sharers ride together; file-less steps share one child).
-//! Children never fan out. A WAVE is the set of children started together:
-//! a record of a dispatch, not a barrier.
+//! Fan-out: every ready plan step runs in a CHILD WORKSPACE branched off this
+//! walk's branch, converging under the parent's policy, and merges back the
+//! moment it settles. Ready steps are grouped by file overlap (sharers ride
+//! together; file-less steps share one child). Children never fan out. A WAVE
+//! is the set of children started together: a record of a dispatch, not a
+//! barrier.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::time::Duration;
@@ -40,7 +40,7 @@ fn null_if_empty<S: serde::Serializer>(v: &[String], s: S) -> Result<S::Ok, S::E
 pub struct FanOutChild {
     pub id: String,
     pub title: String,
-    /// Go's nil slice: `null` when empty.
+    /// `null` when empty.
     #[serde(serialize_with = "null_if_empty")]
     pub steps: Vec<String>,
     /// A chat child's chat mode chip.
@@ -138,7 +138,7 @@ pub fn group_by_files(steps: &[PlanStep]) -> Vec<Vec<PlanStep>> {
         let r = find(&mut parent, i);
         by_root.entry(r).or_default().push(s.clone());
     }
-    // Go sorts the roots; a BTreeMap iterates them ascending.
+    // A BTreeMap yields the roots ascending.
     by_root.into_values().collect()
 }
 

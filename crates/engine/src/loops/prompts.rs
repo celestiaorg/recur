@@ -1,6 +1,6 @@
-//! Phase prompts and roles (Go `loop_prompts.go`): phase prompt slots, the
-//! slot → role id lookup, bundle role prompts as specialist system prompts,
-//! slot expansion through the composer, and the findings-bar briefing.
+//! Phase prompts and roles: phase prompt slots, the slot → role id lookup,
+//! bundle role prompts as specialist system prompts, slot expansion through the
+//! composer, and the findings-bar briefing.
 
 use recur_bundles::{FindingsThreshold, SEVERITY_LEVELS, find_role};
 use tokio_util::sync::CancellationToken;

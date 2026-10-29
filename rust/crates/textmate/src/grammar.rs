@@ -36,6 +36,9 @@ pub mod meta {
 /// `OptionalStandardTokenType.NotSet`.
 const TOKEN_TYPE_NOT_SET: u32 = 8;
 
+/// The rule-graph compile thread's stack. Only the pages it touches are committed.
+const COMPILE_STACK: usize = 64 << 20;
+
 /// `EncodedTokenAttributes.set`. Zero / `NotSet` / `None` keep the field.
 pub(crate) fn set_metadata(
     existing: u32,
@@ -895,15 +898,32 @@ impl Grammar {
     /// Compile the whole rule graph once. Rule ids are assigned in compile
     /// order and stacks compare them, so threads sharing the grammar must not
     /// compile concurrently; the `OnceLock` makes later callers wait.
+    ///
+    /// The compile recurses once per include level, which overflows a GCD
+    /// worker's 512 KiB stack in a debug build (and the kernel then kills the
+    /// process with SIGILL), so it runs on its own thread with a large stack.
     fn ensure_root(&self) -> RuleId {
         *self.root_id.get_or_init(|| {
-            let Some(self_rule) = self.grammar.repository.get("$self") else {
-                return 0;
-            };
-            let id = self.compiled_rule_id(self_rule, &self.grammar.repository);
-            self.injections();
-            id
+            std::thread::scope(|s| {
+                match std::thread::Builder::new()
+                    .name("textmate-compile".into())
+                    .stack_size(COMPILE_STACK)
+                    .spawn_scoped(s, || self.compile_root())
+                {
+                    Ok(h) => h.join().unwrap_or_else(|e| std::panic::resume_unwind(e)),
+                    Err(_) => self.compile_root(),
+                }
+            })
         })
+    }
+
+    fn compile_root(&self) -> RuleId {
+        let Some(self_rule) = self.grammar.repository.get("$self") else {
+            return 0;
+        };
+        let id = self.compiled_rule_id(self_rule, &self.grammar.repository);
+        self.injections();
+        id
     }
 
     fn tokenize(

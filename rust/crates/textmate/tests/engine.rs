@@ -641,3 +641,26 @@ fn every_shipped_grammar_loads() {
         assert!(r.complete, "{scope}");
     }
 }
+
+#[test]
+fn a_deep_grammar_compiles_on_a_gcd_sized_stack() {
+    let depth = 500;
+    let repo = (0..depth)
+        .map(|i| format!(r##""r{i}":{{"patterns":[{{"include":"#r{}"}}]}}"##, i + 1))
+        .chain([format!(r#""r{depth}":{{"match":"x","name":"keyword.x"}}"#)])
+        .collect::<Vec<_>>()
+        .join(",");
+    let json = format!(
+        r##"{{"scopeName":"source.deep","patterns":[{{"include":"#r0"}}],"repository":{{{repo}}}}}"##
+    );
+    let mut e = TmEngine::new();
+    e.register_grammar("source.deep", &json, "deep.json", &[]);
+    assert!(matches!(e.ensure_grammar("source.deep"), Ok(true)));
+    let g = e.grammar("source.deep").unwrap();
+    std::thread::Builder::new()
+        .stack_size(512 << 10)
+        .spawn(move || g.tokenize_line("x", None).unwrap().tokens.len())
+        .unwrap()
+        .join()
+        .unwrap();
+}

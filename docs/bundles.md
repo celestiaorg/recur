@@ -17,7 +17,7 @@ Each bundle is a directory containing a single `bundle.toml` manifest.
 ## Why TOML
 
 Manifests use TOML so script bodies embed in `'''…'''` literals without escaping.
-Parsing is Go-only (`pelletier/go-toml/v2`); the UI sees plain structs.
+Parsing happens in `recur-bundles` (the `toml` crate); views see plain structs.
 
 ## Manifest schema
 
@@ -209,7 +209,7 @@ There is no single “official TextMate.org CDN.” In practice editors use:
 Recur vendors grammars into **`bundles/Languages/`** and the full Shiki
 **tm-themes** catalog (plus Cool Glow, Made of Code, Aura, and a short list of
 classic TextMate ports) into **`bundles/Themes/`** (re-fetch with
-`wails3 task fetch:tm-grammars` / `fetch:tm-themes`). First-party Charcoal /
+`mise run fetch:tm-grammars` / `fetch:tm-themes`). First-party Charcoal /
 Paper live in **`bundles/Recur/`**.
 Provenance JSON and a compact `NOTICE` (SPDX + upstream links; full license
 texts stay at the Shiki NOTICE URL) sit next to each pack. Tokenization is
@@ -246,16 +246,16 @@ Examples: `cmd+shift+u`, `opt+cmd+j`. Modifiers are order-independent; matching 
 
 | Interpreter | How it runs |
 |-------------|-------------|
-| `typescript` | esbuild in Go → cache `<DataDir>/BundleCache` → classic Worker + frozen `MacroContext` |
+| `typescript` | swc in `recur-bundles` → cache `<DataDir>/BundleCache` → classic Worker + frozen `MacroContext` |
 | `shebang` | OS subprocess, stdin = input, `RECUR_*` env |
 
 `interpreter = "js"` and `"native"` are **rejected**. Use TypeScript (even for
-plain JS-shaped code — esbuild accepts it under the `typescript` loader) or shebang.
+plain JS-shaped code: the TypeScript compiler accepts it) or shebang.
 
 ### TypeScript contract
 
 Import what you need from **`@recur/sdk`** (authoring copy: `bundles/sdk/`;
-esbuild resolves the same module at compile and bundles it into the Worker JS).
+the compiler resolves the same module and bundles it into the Worker JS).
 
 | Export | Kind |
 |--------|------|
@@ -458,15 +458,15 @@ Other context knobs stay inline (`scope`, `tabSize`, `softTabs`, `prompts`, …)
 Non-deterministic commands may set `skipStdout = true` (still checks exit / output).
 
 Shipped packs under `bundles/*/tests/` are the reference suite (also covered by
-`go test ./internal/bundles`).
+`cargo test -p recur-bundles`).
 
 ## CLI (`recur`)
 
 The Recur CLI (Cobra + Viper) is separate from the desktop GUI binary. A
 packaged Recur.app ships it at `Contents/MacOS/recur-cli` and, on
 launch, symlinks that file to `/usr/local/bin/recur` (when writable) and
-`~/.local/bin/recur` so `recur` is on PATH. Contributors can still build
-`bin/recur-cli` with `wails3 task build:cli` or `go install ./cmd/recur`.
+`~/.local/bin/recur` so `recur` is on PATH. Contributors run it with
+`cargo run -p recur-cli -- …` (or `target/debug/recur-cli` after `mise run build`).
 
 A bare path opens that file or folder in Recur (`recur .` is the current
 directory):
@@ -489,12 +489,12 @@ Config / env (Viper):
 
 Optional file: `~/.recur/config.yaml` (`bundles-dir: …`).
 
-**Create scaffold** lives as real files under `internal/cli/scaffold/` (embedded
+**Create scaffold** lives as real files under `crates/cli/scaffold/` (embedded
 into the CLI). Edit that tree to change what `recur bundles create` drops —
 placeholders: `{{BUNDLE_NAME}}`, `{{BUNDLE_ID}}`, `{{TS_CMD_ID}}`,
 `{{SH_CMD_ID}}`.
 
-TypeScript cases compile with the same esbuild path as the app, then run via
+TypeScript cases compile with the same swc path as the app, then run via
 `node` (Worker twin — needs `node` on `PATH`). Shebang cases use `bundles.Run`.
 
 ## Chat prompt actions (`[[prompt]]`)

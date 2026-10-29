@@ -1,0 +1,37 @@
+[package]
+name = "recur-editor"
+description = "Code editor view: TextMate highlighting, LSP UI, vim/emacs keymaps, snippets, search, merge editor."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Gallery scenes and the shipped-bundle TextMate loader
+# the example shares.
+gallery = ["dep:recur-bundles"]
+
+[dependencies]
+unicode-linebreak.workspace = true
+chrono.workspace = true
+futures.workspace = true
+gpui-kit.workspace = true
+recur-textmate.workspace = true
+recur-ui.workspace = true
+ropey.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+sum_tree.workspace = true
+unicode-normalization.workspace = true
+pulldown-cmark.workspace = true
+unicode-segmentation.workspace = true
+recur-bundles = { workspace = true, optional = true }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+recur-editor = { path = ".", features = ["gallery"] }
+gpui = { workspace = true, features = ["test-support"] }

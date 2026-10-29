@@ -2,17 +2,16 @@
 
 setup_cmd = """
 set -e
-# install deps
-go mod download
-wails3 task common:install:frontend:deps
+# install tools (node, pnpm, nfpm, dmgbuild)
+mise install
 
 if command -v sqlite3 >/dev/null 2>&1; then
   # Recur uses WAL. Byte-copying recur.db misses in-WAL rows (often hours).
   # VACUUM INTO snapshots through the WAL; retry if Recur's writer is busy.
   if [ "$(uname)" = Darwin ]; then
-    SRC="$HOME/Library/Application Support/Recur"
+    SRC="$HOME/Library/Application Support/RecurNext"
   else
-    SRC="${XDG_CONFIG_HOME:-$HOME/.config}/Recur"
+    SRC="${XDG_CONFIG_HOME:-$HOME/.config}/RecurNext"
   fi
   DEST="$HOME/.recur/data/$RECUR_WORKSPACE_ID"
   rm -rf "$DEST"
@@ -67,35 +66,26 @@ app_url = ""
 # Secrets: .env, .env.local, .recur/.env, .recur/.env.local (gitignored).
 env = """
 RECUR_DATA_DIR=$HOME/.recur/data/$RECUR_WORKSPACE_ID
-WAILS_VITE_PORT=$RECUR_PORT
 RECUR_INSTANCE_LABEL=$RECUR_BRANCH
 """
 copy_files = ''
 
 [[run]]
 name = "dev"
-cmd = "wails3 task dev"
+cmd = "mise run run"
 
 [[run]]
-name = "test:go"
-cmd = "wails3 task test:go"
+name = "lint"
+cmd = "mise run lint"
 
 [[run]]
-name = "test:frontend"
-cmd = "wails3 task test:frontend"
-
-[[run]]
-name = "test:all"
-cmd = "wails3 task test"
+name = "test"
+cmd = "mise run test"
 
 [[run]]
 name = "check"
-cmd = "wails3 task check"
+cmd = "mise run check"
 
 [[run]]
 name = "check cursor sdk"
-cmd = "wails3 task check:cursor-sdk-pin"
-
-[[run]]
-name = "tidy"
-cmd = "wails3 task common:go:mod:tidy"
+cmd = "mise run check:cursor-sdk-pin"

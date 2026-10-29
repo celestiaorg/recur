@@ -1,0 +1,50 @@
+[package]
+name = "recur-view-settings"
+description = "Settings: every pane of the Settings view, the compatible provider card and modal."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Gallery scenes (`gallery::build`, listed in `crates/ui/gallery/scenes.json`).
+gallery = [
+    "recur-services/mock",
+    "recur-view-core/gallery",
+    "recur-ui/gallery",
+    "recur-content/gallery",
+    "recur-view-chat/gallery",
+]
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-agent.workspace = true
+recur-code.workspace = true
+recur-editor.workspace = true
+recur-view-core.workspace = true
+recur-view-widgets.workspace = true
+recur-view-chat.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+recur-view-review = { workspace = true, features = ["gallery"] }
+recur-view-observatory = { workspace = true, features = ["gallery"] }
+recur-view-workspace = { workspace = true, features = ["gallery"] }
+recur-view-prs = { workspace = true, features = ["gallery"] }
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["mock"] }
+recur-view-settings = { path = ".", features = ["gallery"] }
+recur-app = { workspace = true, features = ["gallery"] }
+parking_lot.workspace = true
+pretty_assertions.workspace = true
+
+[lints]
+workspace = true

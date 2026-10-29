@@ -3,10 +3,9 @@ name: CI
 # Branch protection requires only the "CI success" job. To add a check, add a
 # job here and list it under ci-success.needs; no GitHub settings change.
 #
-# Go jobs run on macos-26: the app is cgo + WebKit, and `wails3 generate icons`
-# compiles build/appicon.icon with actool, which needs Xcode 26+. Jobs that
-# only need Node or the pure-Go CLI run on Linux. The *-linux jobs build the
-# Linux app (GTK4 + WebKitGTK 6.0, Ubuntu 24.04+).
+# Tools (node, pnpm, nfpm, dmgbuild) come from mise.toml through mise-action;
+# Rust from rust-toolchain.toml. Mac jobs run on macos-26: `generate:icons`
+# compiles build/appicon.icon with actool, which needs Xcode 26+.
 on:
   push:
     branches: [main]
@@ -18,167 +17,25 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  go-mac:
+  # fmt, clippy, the layering check, the workspace tests and the shipped
+  # bundles' lint and engine tests.
+  mac:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          node: "false"
-          wails: "true"
-      - run: wails3 task lint:go
-      - run: wails3 task check:vulns
-      - run: wails3 task test:go
-
-  # Race detector on Linux: the slowest job, on the cheapest runner. Covers the
-  # shared engine and the Linux-only paths; darwin-only code (FSEvents, cgo
-  # titlebar) is not raced.
-  go-race:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libxml2-utils
-      - uses: ./.github/actions/setup
-        with:
-          node: "false"
-          wails: "true"
-      - run: wails3 task test:go:race
-
-  bundles:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-      - run: sudo apt-get update && sudo apt-get install -y libxml2-utils
-      - run: go build -o bin/recur-cli ./cmd/recur
-      - run: bin/recur-cli bundles lint ./bundles
-      - run: bin/recur-cli bundles test ./bundles
-
-  frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          go: "false"
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run check
-      - run: pnpm test
-
-  # Playwright drives the real Svelte UI in headless Chromium against a mocked
-  # Wails bridge (frontend/e2e/helpers/mock-bridge.ts) seeded from the committed
-  # fixture, so it needs no Go backend, no `claude`, and no native window.
-  # macOS because the specs assume ⌘ chords, CodeMirror's mac keymap, and mac
-  # native editing (Meta+A); Linux Chromium sends Ctrl for ControlOrMeta.
-  e2e:
-    runs-on: macos-26
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          go: "false"
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm run e2e
-      - name: Upload Playwright report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-report
-          path: frontend/playwright-report
-          retention-days: 14
-
-  # Ad-hoc signed arm64 Recur.app in a DMG. Also fails if the build regenerates
-  # committed Wails bindings or go.mod/go.sum (someone forgot to commit them).
-  package-mac:
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          wails: "true"
-      - run: wails3 task darwin:package:dmg
-      - name: Committed bindings and go.mod are current
-        run: |
-          drift=$(git status --porcelain -- frontend/bindings go.mod go.sum)
-          if [ -n "$drift" ]; then echo "$drift"; git diff -- frontend/bindings go.mod go.sum; exit 1; fi
-      - run: mv bin/Recur.dmg bin/Recur-macos-arm64.dmg
-      - uses: actions/upload-artifact@v7
-        with:
-          name: Recur-macos-arm64
-          path: bin/Recur-macos-arm64.dmg
-          retention-days: 14
-
-  # Lint and test the Linux build: the fsnotify watcher and other non-darwin
-  # code only compile here.
-  go-linux:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev libxml2-utils
-      - uses: ./.github/actions/setup
-        with:
-          node: "false"
-          wails: "true"
-      - run: wails3 task lint:go
-      - run: wails3 task test:go
-
-  # bin/recur-linux-amd64.tar.gz: recur + recur-cli + icon.
-  package-linux:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
-      - uses: ./.github/actions/setup
-        with:
-          wails: "true"
-      - run: wails3 task linux:package
-      - name: Install the .deb
-        run: |
-          sudo apt-get install -y ./bin/recur-linux-amd64.deb desktop-file-utils
-          test "$(readlink -f /usr/bin/recur)" = /opt/recur/recur-cli
-          recur --version
-          desktop-file-validate /usr/share/applications/org.wails.recur.desktop
-      - uses: actions/upload-artifact@v7
-        with:
-          name: Recur-linux-amd64
-          path: |
-            bin/recur-linux-amd64.tar.gz
-            bin/recur-linux-amd64.deb
-            bin/recur-linux-amd64.rpm
-          retention-days: 14
-
-  # Rust/GPUI port (rust/), built side by side with the Wails app.
-  rust-mac:
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          node: "false"
-          wails: "true"
+      - uses: jdx/mise-action@v5
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
-      - run: wails3 task lint:rust
-      - run: wails3 task check:rust:parity
-      - run: wails3 task test:rust
+      - run: mise run lint
+      - run: mise run test
+      - run: mise run lint:bundles
+      - run: mise run test:bundles
 
-  # The Rust port on Linux: GPUI's X11/Wayland backend and WebKitGTK 6.0 for
-  # the HTML preview. Those tests open WebKitGTK, so they run under Xvfb, with
-  # WebKit's sandbox off (the runner's AppArmor blocks bubblewrap's namespaces).
-  rust-linux:
+  # GPUI's X11/Wayland backend and WebKitGTK 6.0 for the HTML preview. Those
+  # tests open WebKitGTK, so they run under Xvfb, with WebKit's sandbox off
+  # (the runner's AppArmor blocks bubblewrap's namespaces).
+  linux:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    defaults:
-      run:
-        working-directory: rust
     steps:
       - uses: actions/checkout@v7
       - run: >-
@@ -188,9 +45,8 @@ jobs:
           libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good gstreamer1.0-libav
       # Tests commit in temp repos; the runner's hostname gives git no identity.
       - run: git config --global user.name ci && git config --global user.email ci@example.com
+      - uses: jdx/mise-action@v5
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
       - run: xvfb-run -a cargo test --workspace --all-features --locked
@@ -198,30 +54,26 @@ jobs:
           WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: "1"
 
   # Ad-hoc signed arm64 Recur Next.app in a DMG, plus the updater zip.
-  package-rust-mac:
+  package-mac:
     runs-on: macos-26
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          node: "false"
-          wails: "true"
+      - uses: jdx/mise-action@v5
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: rust
           key: package
-      - run: wails3 task package:rust
-      - run: hdiutil verify "rust/target/package/Recur Next.dmg"
+      - run: mise run package
+      - run: hdiutil verify "target/package/Recur Next.dmg"
       - uses: actions/upload-artifact@v7
         with:
           name: RecurNext-macos-arm64
-          path: rust/target/package/Recur Next.dmg
+          path: target/package/Recur Next.dmg
           retention-days: 14
 
-  # rust/target/package/recur-next-linux-amd64.{tar.gz,deb,rpm}, installed and
-  # launched in a clean Debian 13 container by linux:smoke:rust.
-  package-rust-linux:
+  # target/package/recur-next-linux-amd64.{tar.gz,deb,rpm}, installed and
+  # launched in a clean Debian 13 container by linux:smoke.
+  package-linux:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -231,29 +83,25 @@ jobs:
           libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev
           libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev
           libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-      - uses: ./.github/actions/setup
-        with:
-          node: "false"
-          wails: "true"
+      - uses: jdx/mise-action@v5
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: rust
           key: package
-      - run: wails3 task linux:package:rust
-      - run: wails3 task linux:smoke:rust
+      - run: mise run linux:package
+      - run: mise run linux:smoke
       - uses: actions/upload-artifact@v7
         with:
           name: RecurNext-linux-amd64
           path: |
-            rust/target/package/recur-next-linux-amd64.tar.gz
-            rust/target/package/recur-next-linux-amd64.deb
-            rust/target/package/recur-next-linux-amd64.rpm
+            target/package/recur-next-linux-amd64.tar.gz
+            target/package/recur-next-linux-amd64.deb
+            target/package/recur-next-linux-amd64.rpm
           retention-days: 14
 
   ci-success:
     name: CI success
     if: always()
-    needs: [go-mac, go-race, bundles, frontend, e2e, package-mac, go-linux, package-linux, rust-mac, rust-linux, package-rust-mac, package-rust-linux]
+    needs: [mac, linux, package-mac, package-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any required job failed or was cancelled

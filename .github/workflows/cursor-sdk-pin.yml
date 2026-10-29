@@ -1,7 +1,8 @@
 name: Cursor SDK pin
 
-# Flags when PyPI publishes a cursor-sdk newer than pinnedSDKVersion so the
-# attribution minify anchors can be refreshed deliberately (not on every PR).
+# Flags when PyPI publishes a cursor-sdk newer than PINNED_SDK_VERSION
+# (providers/cursor/src/install.rs) so the attribution minify anchors can be
+# refreshed deliberately (not on every PR).
 on:
   schedule:
     # Mondays 15:00 UTC
@@ -16,15 +17,11 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
+      - uses: jdx/mise-action@v5
+      - uses: Swatinem/rust-cache@v2
 
       - name: Compare pin to PyPI latest
-        env:
-          RECUR_CURSOR_SDK_PIN_CHECK: "1"
-        run: go test ./internal/cursor -run CheckCursorSDKPinDrift -count=1 -v
+        run: mise run check:cursor-sdk-pin
 
       # Also fires when PyPI is unreachable; the linked log says which.
       - name: Open or update drift issue

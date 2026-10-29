@@ -1,20 +1,15 @@
-.task
 .DS_Store
 node_modules/
+/target
+__pycache__/
 /bin/
-frontend/dist/*
-!frontend/dist/.gitkeep
-frontend/.vite-build-mode
-frontend/node_modules
 src-web/dist
 src-web/node_modules
 src-docs/dist
 src-docs/node_modules
 node_modules/
-build/linux/appimage/build
-build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
-# Compiled by `wails3 generate icons` from appicon.icon (actool); non-deterministic
-# across machines/worktrees, so tracking it just dirties every `task dev`.
+# Compiled by `mise run generate:icons` from appicon.icon (actool); non-deterministic
+# across machines/worktrees, so tracking it just dirties every package build.
 build/darwin/Assets.car
 .env
 .env.local
@@ -25,12 +20,5 @@ TODO.md
 # Copied from src-docs by `generate:help-skill` before go:embed.
 recur-skills/recur-help/references/
 
-# Playwright e2e
-frontend/playwright-report
-frontend/test-results
-frontend/blob-report
-frontend/.playwright
-/test-results/
-
-# Real frontend browser demo, rebuilt with src-web.
+# The Svelte demo app (src-web/demo), rebuilt with src-web.
 src-web/public/demo/

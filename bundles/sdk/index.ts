@@ -1,5 +1,5 @@
 // Recur Bundle macro SDK: import from `@recur/sdk` in command scripts.
-// Compile resolves this module via esbuild (embedded twin: internal/bundles/macro_sdk.ts).
+// Compile resolves this module via esbuild (embedded twin: crates/bundles/src/macro_sdk.ts).
 
 export type OutputRouting =
   | "discard"

@@ -1,0 +1,39 @@
+[package]
+name = "recur-terminal-view"
+description = "GPUI terminal view rendering recur-term sessions."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Gallery scenes (`gallery::build`, listed in `crates/ui/gallery/scenes.json`).
+gallery = ["recur-ui/gallery", "dep:serde_json", "dep:toml", "dep:include_dir"]
+
+[dependencies]
+futures.workspace = true
+gpui-kit.workspace = true
+image.workspace = true
+recur-ui.workspace = true
+recur-term.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
+include_dir = { workspace = true, optional = true }
+smallvec.workspace = true
+
+# xterm.js draws glyphs through WebKit's canvas, which is CoreText and CoreGraphics on macOS.
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics.workspace = true
+core-text.workspace = true
+core-foundation.workspace = true
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+parking_lot.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

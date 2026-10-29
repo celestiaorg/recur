@@ -5,7 +5,7 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: ["src-web/**", "src-docs/**", "frontend/**", ".github/workflows/pages.yml"]
+    paths: ["src-web/**", "src-docs/**", "bundles/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -25,16 +25,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          go: "false"
+      - uses: jdx/mise-action@v5
 
       - id: pages
         uses: actions/configure-pages@v6
 
       # simplify: the splash and its demo use root-absolute asset paths, so the
       # site needs a custom domain or private Pages. A project path like
-      # /recur would need a Vite base on src-web and frontend/showcase.
+      # /recur would need a Vite base on src-web and src-web/demo/showcase.
       - name: Require a root-hosted site
         if: steps.pages.outputs.base_path != ''
         run: |

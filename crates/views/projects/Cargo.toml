@@ -1,0 +1,66 @@
+[package]
+name = "recur-view-projects"
+description = "Projects and schedules: project settings, the Schedules list and the schedule editor."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Gallery scenes (`gallery::build`, listed in `crates/ui/gallery/scenes.json`).
+gallery = [
+    "recur-services/mock",
+    "recur-view-core/gallery",
+    "recur-ui/gallery",
+    "recur-content/gallery",
+    "recur-view-chat/gallery",
+    "dep:serde",
+]
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-bundles.workspace = true
+recur-editor.workspace = true
+recur-textmate.workspace = true
+recur-code.workspace = true
+recur-agent.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+base64.workspace = true
+recur-view-core.workspace = true
+recur-view-widgets.workspace = true
+recur-view-chat.workspace = true
+serde = { workspace = true, optional = true }
+serde_json.workspace = true
+futures.workspace = true
+image = { workspace = true, features = ["png"] }
+smallvec.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-foundation.workspace = true
+objc2-app-kit = { workspace = true, features = ["NSColorPanel", "NSColor", "NSColorSpace", "NSPanel", "NSWindow", "NSResponder", "NSView"] }
+
+[dev-dependencies]
+recur-view-briefing.workspace = true
+recur-view-review = { workspace = true, features = ["gallery"] }
+recur-view-observatory = { workspace = true, features = ["gallery"] }
+recur-view-workspace = { workspace = true, features = ["gallery"] }
+recur-view-prs = { workspace = true, features = ["gallery"] }
+recur-view-settings = { workspace = true, features = ["gallery"] }
+recur-view-home = { workspace = true, features = ["gallery"] }
+gpui = { workspace = true, features = ["test-support"] }
+recur-view-palettes.workspace = true
+recur-services = { workspace = true, features = ["mock"] }
+recur-view-projects = { path = ".", features = ["gallery"] }
+recur-app = { workspace = true, features = ["gallery"] }
+parking_lot.workspace = true
+
+[lints]
+workspace = true

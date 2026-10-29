@@ -20,8 +20,8 @@ shell tool falls back to `process.cwd()` when the model omits
 `cmd.Dir = <worktree>`, multiplexing agents for that worktree by `agentId`.
 
 ```
-Recur (Go)  ──Connect/JSON──▶  cursor-sdk-bridge (Node, cwd=worktree A)
-             ──Connect/JSON──▶  cursor-sdk-bridge (Node, cwd=worktree B)
+Recur  ──Connect/JSON──▶  cursor-sdk-bridge (Node, cwd=worktree A)
+       ──Connect/JSON──▶  cursor-sdk-bridge (Node, cwd=worktree B)
                                         │
                                         ▼  agent.v1 / protobuf
                                  api2.cursor.sh
@@ -50,22 +50,24 @@ The bridge takes `mcpServers` **inline, per agent**. Nothing is written to disk.
 
 ## Code map
 
+The provider is `providers/cursor/src` (`recur-provider-cursor`).
+
 | File | Role |
 |---|---|
-| `internal/cursor/bridge.go` | Spawn the bridge, parse its stderr discovery line, process-group lifecycle |
-| `internal/cursor/connect.go` | Connect protocol: JSON unary + 5-byte-framed server streams |
-| `internal/cursor/client.go` | Typed `sdk.v1` calls (CreateAgent, ResumeAgent, Send, …) |
-| `internal/cursor/events.go` | Run-stream event decoding |
-| `internal/cursor/locate.go` | Bridge resolution |
-| `internal/cursor/install.go` | On-demand download + unpack of the bridge |
-| `internal/engine/cursor.go` | `CursorRunner` — `AgentSpec` ⇄ Cursor, events → `ParsedEvent` |
-| `internal/engine/cursortools.go` | Cursor's tool vocabulary → the common one |
-| `internal/engine/toolview.go` | The display boundary: raw provider data → UI shapes |
-| `internal/engine/provider.go` | Provider routing, lazy bridge start |
-| `internal/app/model_catalog.go` | Grouped model catalogue across configured providers |
-| `internal/app/cursor_service.go` | Settings probes (status, Connect) |
-| `internal/usage` | Sidebar plan-quota fetch (dashboard API; not the API key) |
-| `internal/domain/model.go` | `ModelRef` — the `provider/id` selection type |
+| `bridge.rs` | Spawn the bridge, parse its stderr discovery line, process-group lifecycle |
+| `connect.rs` | Connect protocol: JSON unary + 5-byte-framed server streams |
+| `client.rs` | Typed `sdk.v1` calls (CreateAgent, ResumeAgent, Send, …) |
+| `events.rs` | Run-stream event decoding |
+| `locate.rs` | Bridge resolution |
+| `install.rs`, `attribution.rs` | On-demand download + unpack of the pinned bridge, and its attribution patch |
+| `runner.rs`, `turn.rs`, `steer.rs` | The runner: `AgentSpec` ⇄ Cursor, events → `ParsedEvent` |
+| `tools.rs` | Cursor's tool vocabulary → the common one |
+| `pool.rs`, `provider.rs` | Bridge per worktree, lazy start, the `Provider` impl |
+| `status.rs` | Settings probes (status, Connect) |
+| `crates/agent/src/display` | The display boundary: raw provider data → UI shapes |
+| `crates/services/src/app/model_catalog.rs` | Grouped model catalogue across configured providers |
+| `crates/usage/src/cursor` | Sidebar plan-quota fetch (dashboard API; not the API key) |
+| `crates/domain/src/model.rs` | `ModelRef`: the `provider/id` selection type |
 
 ## Selecting a provider
 
@@ -127,7 +129,7 @@ Two rules that pull in opposite directions:
 2. **The UI shows one vocabulary across providers**, so a Cursor `shell` call and
    a Claude `Bash` call render in the same terminal card.
 
-So translation happens at the **display boundary** (`internal/engine/toolview.go`),
+So translation happens at the **display boundary** (`recur_agent::display`),
 never on the way in. `ParsedEvent` carries the provider slug and the provider's
 raw tool name, args and result; `displayTool` / `displayToolResult` render them.
 
@@ -330,7 +332,7 @@ Recur does not vendor the bridge — it is ~50MB compressed and ~155MB unpacked
 per platform, almost all of it a bundled Node runtime. **Settings → Providers →
 SDK → Install** fetches it on demand (`cursor.Install`):
 
-1. Fetch the **pinned** release `https://pypi.org/pypi/cursor-sdk/<pinnedSDKVersion>/json`
+1. Fetch the **pinned** release `https://pypi.org/pypi/cursor-sdk/<PINNED_SDK_VERSION>/json`
    (not "latest") and pick the wheel for this OS/arch. The pin matches the
    minify anchors used by the attribution patch — bump both together. Filenames
    are MATCHED rather than a PEP 425 tag being constructed — macOS wheels are
@@ -364,51 +366,47 @@ export RECUR_CURSOR_BRIDGE=/tmp/cs/w/cursor_sdk/_vendor/bridge
 
 ## Re-pinning cursor-sdk
 
-Install never follows PyPI "latest" — `pinnedSDKVersion` and
-`sdkAttributionAnchors` must move together. To detect drift:
+Install never follows PyPI "latest": `PINNED_SDK_VERSION` (`install.rs`) and
+the attribution anchors (`attribution.rs`) must move together. To detect drift:
 
 ```sh
-wails3 task check:cursor-sdk-pin
-# or: RECUR_CURSOR_SDK_PIN_CHECK=1 go test ./internal/cursor -run CheckCursorSDKPinDrift -count=1
+mise run check:cursor-sdk-pin
+# or: RECUR_CURSOR_SDK_PIN_CHECK=1 cargo test -p recur-provider-cursor --lib check_cursor_sdk_pin_drift
 ```
 
 A scheduled workflow (`.github/workflows/cursor-sdk-pin.yml`) runs the same
 check weekly. When it fails, agents should use the project skill
 `.agents/skills/repin-cursor-sdk/SKILL.md`: download the new wheel, refresh
-cjs/esm minify anchors, bump the pin + `TestPinnedSDKVersionInPyPIURL`
+cjs/esm minify anchors, bump the pin + the `pinned_sdk_version_in_pypi_url`
 hardcode, then validate with
-`RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 go test ./internal/cursor -run AgainstPinnedWheel`.
+`RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 cargo test -p recur-provider-cursor --lib attribution_patch_against_pinned_wheel`.
 The same pass also rewrites `RunInteractionAccumulator.apply` so summary
-`onDelta` events are forwarded (`sdkSummaryDeltaAnchors`); if that minify
+`onDelta` events are forwarded (`sdk_summary_delta_anchors`); if that minify
 site moves, refresh those needles too.
 
 ## Tests
 
-Hermetic tests (run in CI, no bridge needed):
-
-- `internal/cursor/events_test.go` — decoding, against frames captured verbatim
-  from a live bridge. These pin the wire quirks: payload nested under `message`,
-  snake_case payload keys with camelCase nested structs, int64s as JSON strings
-  in the result but numbers in usage messages, `running` (not `started`) as the
-  in-flight tool status, and every MCP tool reporting `name: "mcp"`.
-- `internal/engine/cursor_test.go` — spec mapping, event translation.
-- `internal/engine/provider_test.go` — model-ref parsing, per-role provider
-  routing, and the failure modes (unknown provider, missing key, missing bridge).
-- `internal/app/model_catalog_test.go` — catalogue shape; every ref qualified.
-- `internal/cursor/install_test.go` — platform matching against real published
-  filenames, executable bits surviving extraction, zip-slip rejection.
+Hermetic tests (run in CI, no bridge needed): `cargo test -p recur-provider-cursor`
+covers event decoding against frames captured verbatim from a live bridge
+(`events`; these pin the wire quirks: payload nested under `message`,
+snake_case payload keys with camelCase nested structs, int64s as JSON strings
+in the result but numbers in usage messages, `running` (not `started`) as the
+in-flight tool status, and every MCP tool reporting `name: "mcp"`), spec mapping
+and event translation (`runner`, `turn`), provider routing and its failure
+modes (`provider`), and installs (`install`: platform matching against real
+published filenames, executable bits surviving extraction, zip-slip rejection).
+The catalogue shape is `crates/services/src/app/tests/model_catalog.rs`.
 
 A real download+install+start (~50MB from PyPI):
 
 ```sh
-RECUR_CURSOR_INSTALL_TEST=1 go test ./internal/cursor -run InstallRealSmoke -v
+RECUR_CURSOR_INSTALL_TEST=1 cargo test -p recur-provider-cursor --lib install_real_smoke -- --nocapture
 ```
 
 Live tests (skipped unless the env vars are set; they cost real Cursor usage):
 
 ```sh
-RECUR_CURSOR_BRIDGE=... CURSOR_API_KEY=... go test ./internal/cursor -run Smoke -v
-RECUR_CURSOR_BRIDGE=... CURSOR_API_KEY=... go test ./internal/engine -run CursorRunnerEndToEnd -v
+RECUR_CURSOR_BRIDGE=... CURSOR_API_KEY=... cargo test -p recur-provider-cursor smoke -- --nocapture
 ```
 
 The live tests assert on the **MCP server's own wire log**, not just the model's

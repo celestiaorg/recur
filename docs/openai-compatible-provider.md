@@ -14,13 +14,13 @@ and flag dimensions.
 ## Architecture
 
 ```
-Recur (Go)  ──POST {baseURL}/v1/responses──▶  OpenAI / OpenRouter / Groq / …
-                │
-                │  Recur-owned tool loop
-                │  Host tools in-process (no MCP HTTP)
-                │  Coding tools: Read, Edit, Write, Glob, Grep, Bash, TodoWrite
-                ▼
-         HarnessRunner → ParsedEvent / Result → withMirroring
+Recur  ──POST {baseURL}/v1/responses──▶  OpenAI / OpenRouter / Groq / …
+          │
+          │  Recur-owned tool loop
+          │  Host tools in-process (no MCP HTTP)
+          │  Coding tools: Read, Edit, Write, Glob, Grep, Bash, TodoWrite
+          ▼
+   HarnessRunner → ParsedEvent / Result → withMirroring
 ```
 
 Why Recur owns the loop:
@@ -38,15 +38,14 @@ meters, price tables.
 
 | File | Role |
 |---|---|
-| `internal/domain/compatible_provider.go` | Types, slug validation, flag presets, enablement |
-| `internal/responses` | HTTP client, SSE parser, flag wiring onto the request body |
-| `internal/agenttools` | First-class Recur tools (`HostTools`, `CodingTools`); MCP wraps `Execute` |
-| `internal/mcp/tools.go` | MCP HTTP wrap of `agenttools.HostTools()` |
-| `internal/engine/harness.go` | `HarnessRunner` — Responses API ⇄ Recur tool loop |
-| `internal/engine/harness_prompt.go` | Recur-owned coding system prompt |
-| `internal/engine/provider.go` | Compatible slug routing through `runnerFor` |
-| `internal/app/compatible_service.go` | Settings Test / flag presets |
-| `internal/app/model_catalog.go` | One picker group per enabled+configured provider |
+| `crates/domain/src/compatible.rs` | Types, slug validation, flag presets, enablement |
+| `providers/compatible/src/client.rs`, `sse.rs`, `flags.rs` | HTTP client, SSE parser, flag wiring onto the request body |
+| `crates/agent-tools` | First-class Recur tools (host and coding tools); MCP wraps the same `execute` |
+| `crates/mcp/src/server.rs` | MCP HTTP wrap of the host tools |
+| `providers/compatible/src/harness.rs`, `tools.rs` | The harness runner: Responses API ⇄ Recur tool loop |
+| `providers/compatible/src/prompt.rs` | Recur-owned coding system prompt |
+| `providers/compatible/src/status.rs` | Settings Test / flag presets |
+| `providers/compatible/src/catalog.rs` | One picker group per enabled+configured provider |
 
 ## Selecting a provider
 

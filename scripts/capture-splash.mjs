@@ -17,7 +17,7 @@ import { execFileSync } from "node:child_process";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const require = createRequire(
-  new URL("../frontend/package.json", import.meta.url),
+  new URL("../src-web/demo/package.json", import.meta.url),
 );
 const { chromium, expect } = require("@playwright/test");
 const { values } = parseArgs({
@@ -29,10 +29,10 @@ const { values } = parseArgs({
   },
 });
 const datasetBytes = await readFile(
-  join(root, "frontend/captures/dataset.json"),
+  join(root, "src-web/demo/captures/dataset.json"),
 );
 const presetsBytes = await readFile(
-  join(root, "frontend/captures/screens.json"),
+  join(root, "src-web/demo/captures/screens.json"),
 );
 const dataset = JSON.parse(datasetBytes);
 const presets = JSON.parse(presetsBytes);
@@ -122,7 +122,7 @@ try {
     }).trim(),
     appDirty: !!execFileSync(
       "git",
-      ["diff", "HEAD", "--", "frontend/src", "frontend/bindings"],
+      ["diff", "HEAD", "--", "src-web/demo/src", "src-web/demo/bindings"],
       { cwd: root, encoding: "utf8" },
     ).trim(),
     datasetSha256: sha(datasetBytes),

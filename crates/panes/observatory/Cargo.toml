@@ -1,0 +1,54 @@
+[package]
+name = "recur-view-observatory"
+description = "The workspace's right-hand IDE pane: explorer, editor tabs, previews, review, terminal dock and tool panels."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Gallery scenes (`gallery::build`, listed in `crates/ui/gallery/scenes.json`).
+gallery = [
+    "recur-services/mock",
+    "recur-ui/gallery",
+    "recur-content/gallery",
+    "recur-editor/gallery",
+    "recur-terminal-view/gallery",
+    "recur-view-review/gallery",
+]
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-editor.workspace = true
+recur-terminal-view.workspace = true
+recur-textmate.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-code.workspace = true
+recur-lsp.workspace = true
+recur-term.workspace = true
+recur-view-core.workspace = true
+recur-view-widgets.workspace = true
+recur-view-review.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+regex.workspace = true
+futures.workspace = true
+base64.workspace = true
+chrono.workspace = true
+url.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["mock"] }
+recur-view-observatory = { path = ".", features = ["gallery"] }
+pretty_assertions.workspace = true
+parking_lot.workspace = true
+
+[lints]
+workspace = true

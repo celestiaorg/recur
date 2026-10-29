@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "build:demo": "pnpm --dir ../frontend install --frozen-lockfile && pnpm --dir ../frontend exec vite build --config showcase/vite.config.ts",
+    "build:demo": "pnpm --dir demo install --frozen-lockfile && pnpm --dir demo run build",
     "predev": "pnpm run build:demo",
     "prebuild": "pnpm run build:demo"
   },

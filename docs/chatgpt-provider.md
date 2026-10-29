@@ -52,17 +52,17 @@ Recur does not read or modify OpenCode's credentials or `~/.codex` for this prov
 ## Inference
 
 ```
-Recur (Go) → HTTPS chatgpt.com/backend-api/codex/responses
-             OAuth bearer token
-             store:false, stream:true
-             Recur tool loop and transcript history
+Recur → HTTPS chatgpt.com/backend-api/codex/responses
+        OAuth bearer token
+        store:false, stream:true
+        Recur tool loop and transcript history
 ```
 
 The model catalogue comes from `https://chatgpt.com/backend-api/codex/models`
 with the Codex protocol compatibility version. Only models with
 `visibility: "list"` are offered, preserving server order.
 
-`internal/responses/chatgpt.go` applies the Codex route's streaming/stateless
+`providers/compatible/src/chatgpt.rs` applies the Codex route's streaming/stateless
 request contract and omits unsupported fields. Function tools keep their normal
 schemas. Encrypted reasoning and model output are replayed between tool rounds.
 Account switching refreshes the model list; an existing runner is bound to its
@@ -71,12 +71,11 @@ coding and workspace tools in-process.
 
 | File | Role |
 |---|---|
-| `internal/chatgpt/` | Browser PKCE, device polling, ID-token verification, credentials, refresh, models |
-| `internal/app/chatgpt_service.go` | Settings bridge and account-specific model cache |
-| `internal/engine/chatgpt.go`, `provider.go` | Shared auth client and native runner routing |
-| `internal/engine/harness.go` | Recur tool loop and streamed output |
-| `internal/responses/chatgpt.go` | ChatGPT request adapter |
-| `frontend/src/components/ChatGPTProviderCard.svelte` | Account settings and browser sign-in |
+| `providers/chatgpt/src` | Browser PKCE, device polling, ID-token verification, credentials, refresh, models, the provider |
+| `crates/services/src/app/settings.rs` | Settings bridge and account-specific model cache |
+| `providers/compatible/src/harness.rs` | Recur tool loop and streamed output |
+| `providers/compatible/src/chatgpt.rs` | ChatGPT request adapter |
+| `crates/views/settings/src/sections/openai.rs` | Account settings and browser sign-in |
 
 ### Live verification
 
@@ -101,13 +100,7 @@ not use a real account or require Codex.
 ### Automated checks
 
 ```sh
-wails3 task check
-go test -race ./internal/chatgpt ./internal/responses
-go test ./internal/engine ./internal/app ./internal/domain -run ChatGPT
-```
-
-From `frontend/`:
-
-```sh
-pnpm exec playwright test e2e/chatgpt-login.spec.ts e2e/welcome.spec.ts
+mise run check
+cargo test -p recur-provider-chatgpt -p recur-provider-compatible
+cargo test -p recur-view-settings openai
 ```

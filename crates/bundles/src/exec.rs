@@ -8,14 +8,13 @@ use std::time::Duration;
 
 use recur_domain::path;
 use recur_domain::workspace::IssueRef;
-use serde::Serialize;
-use serde_json::{Map, Value};
+use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use crate::env::{EnvVar, PromptRunContext, RunContext, environ, prompt_environ, resolve_input};
-use crate::grammar::{go_json_field, go_json_kind};
+use crate::grammar::decode_lenient;
 use crate::manifest::{
     Command, EXPAND_TIMEOUT, ExpandAction, INTERPRETER_NATIVE, INTERPRETER_SHEBANG,
     PROMPT_COMPLETE_MAX_HITS, PROMPT_COMPLETE_TIMEOUT, PROMPT_TIMEOUT, PromptAction, SearchAction,
@@ -365,7 +364,8 @@ async fn kill_group(pid: Option<u32>, child: &mut tokio::process::Child) {
 }
 
 /// Validated outcome of a `[[prompt]]` action.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct PromptResult {
     pub prompt: String,
     pub display: String,
@@ -430,29 +430,6 @@ pub async fn run_prompt_shebang(
     }
 }
 
-/// Decodes a JSON object field as a `string`.
-fn json_string(obj: &Map<String, Value>, name: &str) -> Result<String, String> {
-    match go_json_field(obj, name) {
-        None | Some(Value::Null) => Ok(String::new()),
-        Some(Value::String(s)) => Ok(s.clone()),
-        Some(other) => Err(format!(
-            "json: cannot unmarshal {} into Go struct field .{name} of type string",
-            go_json_kind(other)
-        )),
-    }
-}
-
-fn json_object<'a>(v: &'a Value, what: &str) -> Result<Option<&'a Map<String, Value>>, String> {
-    match v {
-        Value::Null => Ok(None),
-        Value::Object(o) => Ok(Some(o)),
-        other => Err(format!(
-            "json: cannot unmarshal {} into Go value of type {what}",
-            go_json_kind(other)
-        )),
-    }
-}
-
 pub(crate) fn parse_prompt_result_json(
     stdout: &str,
     fallback_name: &str,
@@ -463,32 +440,8 @@ pub(crate) fn parse_prompt_result_json(
             "prompt stdout empty (want JSON {{\"prompt\",\"display\"}})"
         ));
     }
-    let bad = |e: String| err!("prompt stdout is not valid JSON: {e}");
-    let value: Value = serde_json::from_str(raw).map_err(|e| bad(e.to_string()))?;
-    let mut res = PromptResult::default();
-    if let Some(obj) = json_object(&value, "struct").map_err(bad)? {
-        res.prompt = json_string(obj, "prompt").map_err(bad)?;
-        res.display = json_string(obj, "display").map_err(bad)?;
-        res.skip = match go_json_field(obj, "skip") {
-            None | Some(Value::Null) => false,
-            Some(Value::Bool(b)) => *b,
-            Some(other) => {
-                return Err(bad(format!(
-                    "json: cannot unmarshal {} into Go struct field .skip of type bool",
-                    go_json_kind(other)
-                )));
-            }
-        };
-        if let Some(issue) = go_json_field(obj, "issue")
-            && let Some(o) = json_object(issue, "domain.IssueRef").map_err(bad)?
-        {
-            res.issue = Some(IssueRef {
-                source: json_string(o, "source").map_err(bad)?,
-                id: json_string(o, "id").map_err(bad)?,
-                key: json_string(o, "key").map_err(bad)?,
-            });
-        }
-    }
+    let res: PromptResult =
+        decode_lenient(raw.as_bytes()).map_err(|e| err!("prompt stdout is not valid JSON: {e}"))?;
     // An empty prompt is a no-send success (e.g. /update finished in git
     // with no LLM turn); display still falls back to the action name.
     Ok(PromptResult {
@@ -500,7 +453,8 @@ pub(crate) fn parse_prompt_result_json(
 }
 
 /// One trailing-arg suggestion from a complete script.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct PromptCompleteHit {
     pub insert: String,
     pub label: String,
@@ -516,7 +470,8 @@ pub struct PromptCompleteHit {
 }
 
 /// Stdout JSON from a complete script.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct PromptCompleteResult {
     pub hits: Vec<PromptCompleteHit>,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -576,38 +531,10 @@ pub(crate) fn parse_prompt_complete_json(stdout: &str) -> Result<PromptCompleteR
     if raw.is_empty() {
         return Ok(PromptCompleteResult::default());
     }
-    let bad = |e: String| err!("complete stdout is not valid JSON: {e}");
-    let value: Value = serde_json::from_str(raw).map_err(|e| bad(e.to_string()))?;
-    let Some(obj) = json_object(&value, "bundles.PromptCompleteResult").map_err(bad)? else {
-        return Ok(PromptCompleteResult::default());
-    };
-    let mut hits_raw = Vec::new();
-    match go_json_field(obj, "hits") {
-        None | Some(Value::Null) => {}
-        Some(Value::Array(items)) => {
-            for item in items {
-                let mut h = PromptCompleteHit::default();
-                if let Some(o) = json_object(item, "bundles.PromptCompleteHit").map_err(bad)? {
-                    h.insert = json_string(o, "insert").map_err(bad)?;
-                    h.label = json_string(o, "label").map_err(bad)?;
-                    h.psub = json_string(o, "psub").map_err(bad)?;
-                    h.detail = json_string(o, "detail").map_err(bad)?;
-                    h.badge = json_string(o, "badge").map_err(bad)?;
-                    h.action = json_string(o, "action").map_err(bad)?;
-                }
-                hits_raw.push(h);
-            }
-        }
-        Some(other) => {
-            return Err(bad(format!(
-                "json: cannot unmarshal {} into Go struct field PromptCompleteResult.hits of type []bundles.PromptCompleteHit",
-                go_json_kind(other)
-            )));
-        }
-    }
-    let message = json_string(obj, "message").map_err(bad)?;
-    let mut hits = Vec::with_capacity(hits_raw.len());
-    for mut h in hits_raw {
+    let res: PromptCompleteResult = decode_lenient(raw.as_bytes())
+        .map_err(|e| err!("complete stdout is not valid JSON: {e}"))?;
+    let mut hits = Vec::with_capacity(res.hits.len());
+    for mut h in res.hits {
         for f in [
             &mut h.insert,
             &mut h.label,
@@ -631,7 +558,7 @@ pub(crate) fn parse_prompt_complete_json(stdout: &str) -> Result<PromptCompleteR
     }
     Ok(PromptCompleteResult {
         hits,
-        message: message.trim().to_string(),
+        message: res.message.trim().to_string(),
     })
 }
 

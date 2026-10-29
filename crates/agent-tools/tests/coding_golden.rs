@@ -122,7 +122,7 @@ async fn coding_tools_match_go() {
             Ok(r) => (norm(&r), String::new()),
             Err(e) => (String::new(), norm(&e.0)),
         };
-        // Go returns the output alongside a context error; the error wins.
+        // Output alongside a context error: the error wins.
         let want_result = if c.error.is_empty() {
             c.result.as_str()
         } else {

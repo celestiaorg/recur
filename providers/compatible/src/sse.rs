@@ -253,7 +253,7 @@ pub fn decode_response(body: &[u8]) -> Result<Vec<Event>, String> {
         return Err("not a Responses object".into());
     }
     let v: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
-    let mismatch = |_| "json: cannot unmarshal into a Responses object".to_owned();
+    let mismatch = |_| "not a Responses object".to_owned();
     let mut env = Envelope::default();
     if let Value::Object(obj) = &v {
         env.overlay(obj).map_err(mismatch)?;

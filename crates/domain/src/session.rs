@@ -468,7 +468,7 @@ impl ContentBlock {
         if self.r#type != typ {
             return None;
         }
-        decode_go(&self.content_json)
+        decode_doc(&self.content_json)
     }
 
     /// The text payload; `None` for other types or an undecodable payload.
@@ -509,7 +509,7 @@ impl ContentBlock {
             #[serde(deserialize_with = "null_default")]
             parent_tool_use_id: String,
         }
-        decode_go::<Head>(&self.content_json)
+        decode_doc::<Head>(&self.content_json)
             .map(|h| h.parent_tool_use_id.trim().to_owned())
             .unwrap_or_default()
     }
@@ -540,7 +540,7 @@ impl ContentBlock {
 
 /// Decodes a struct: a JSON `null` document decodes to the zero value instead
 /// of failing.
-fn decode_go<T: DeserializeOwned + Default>(raw: &str) -> Option<T> {
+fn decode_doc<T: DeserializeOwned + Default>(raw: &str) -> Option<T> {
     if raw.trim() == "null" {
         return Some(T::default());
     }

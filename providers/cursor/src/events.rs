@@ -155,8 +155,8 @@ struct Payload {
 impl<'de> Deserialize<'de> for SdkMessage {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let raw = Box::<serde_json::value::RawValue>::deserialize(d)?;
-        let outer: Payload = decode_struct(raw.get())
-            .map_err(|_| serde::de::Error::custom("json: cannot unmarshal into SDKMessage"))?;
+        let outer: Payload =
+            decode_struct(raw.get()).map_err(|_| serde::de::Error::custom("not an SDK message"))?;
         // When `message` is itself a typed payload, it is the real event body
         // and the outer object is an envelope; otherwise the outer object
         // already is the payload.

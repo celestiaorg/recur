@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use recur_domain::path;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -95,7 +96,8 @@ pub struct Theme {
 }
 
 /// An xterm.js `ITheme` JSON object.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct TerminalPalette {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub background: String,
@@ -185,58 +187,30 @@ impl TerminalPalette {
             ("brightWhite", &mut self.bright_white),
         ]
     }
+}
 
-    /// Decodes the palette struct: unknown keys are ignored, field names match
-    /// case-insensitively, `null` leaves a field empty, and any other
-    /// non-string value is an error.
-    fn from_json(body: &[u8]) -> Result<Self, String> {
-        let value: Value = serde_json::from_slice(body).map_err(|e| e.to_string())?;
-        let Value::Object(obj) = value else {
-            return Err(format!(
-                "json: cannot unmarshal {} into Go value of type bundles.TerminalPalette",
-                go_json_kind(&value)
-            ));
-        };
-        let mut pal = TerminalPalette::default();
-        for (name, dst) in pal.color_fields() {
-            match go_json_field(&obj, name) {
-                None | Some(Value::Null) => {}
-                Some(Value::String(s)) => *dst = s.clone(),
-                Some(other) => {
-                    return Err(format!(
-                        "json: cannot unmarshal {} into Go struct field TerminalPalette.{name} of type string",
-                        go_json_kind(other)
-                    ));
-                }
+/// Decodes a JSON document into `T`, treating `null` anywhere as absent so it
+/// leaves the default value; unknown keys are ignored.
+pub(crate) fn decode_lenient<T: DeserializeOwned + Default>(raw: &[u8]) -> Result<T, String> {
+    fn drop_nulls(v: &mut Value) {
+        match v {
+            Value::Object(o) => {
+                o.retain(|_, x| !x.is_null());
+                o.values_mut().for_each(drop_nulls);
             }
+            Value::Array(a) => {
+                a.retain(|x| !x.is_null());
+                a.iter_mut().for_each(drop_nulls);
+            }
+            _ => {}
         }
-        Ok(pal)
     }
-}
-
-/// JSON field lookup: exact key first, then case-insensitive.
-pub(crate) fn go_json_field<'a>(
-    obj: &'a serde_json::Map<String, Value>,
-    name: &str,
-) -> Option<&'a Value> {
-    obj.get(name).or_else(|| {
-        let lower = name.to_lowercase();
-        obj.iter()
-            .find(|(k, _)| k.to_lowercase() == lower)
-            .map(|(_, v)| v)
-    })
-}
-
-/// The value kind names decode errors use.
-pub(crate) fn go_json_kind(v: &Value) -> &'static str {
-    match v {
-        Value::Null => "null",
-        Value::Bool(_) => "bool",
-        Value::Number(_) => "number",
-        Value::String(_) => "string",
-        Value::Array(_) => "array",
-        Value::Object(_) => "object",
+    let mut v: Value = serde_json::from_slice(raw).map_err(|e| e.to_string())?;
+    if v.is_null() {
+        return Ok(T::default());
     }
+    drop_nulls(&mut v);
+    serde_json::from_value(v).map_err(|e| e.to_string())
 }
 
 /// One `[[terminalTheme]]` entry: an xterm.js `ITheme` JSON file.
@@ -435,7 +409,7 @@ pub(crate) fn parse_terminal_themes(
             .map_err(|e| err!("terminalTheme {qid}: {e}"))?;
         let body = std::fs::read(&abs)
             .map_err(|e| err!("terminalTheme {qid}: read path {:?}: {e}", t.path))?;
-        let mut pal = TerminalPalette::from_json(&body)
+        let mut pal = decode_lenient::<TerminalPalette>(&body)
             .map_err(|e| err!("terminalTheme {qid}: parse {:?}: {e}", t.path))?;
         for (name, dst) in pal.color_fields() {
             *dst =

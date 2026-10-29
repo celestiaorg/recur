@@ -108,7 +108,7 @@ pub(crate) fn decode_map(raw: &[u8]) -> Result<Obj, String> {
     match serde_json::from_slice::<Value>(raw).map_err(|e| e.to_string())? {
         Value::Object(m) => Ok(m),
         Value::Null => Ok(Obj::new()),
-        _ => Err("json: cannot unmarshal into map[string]interface {}".into()),
+        _ => Err("not a JSON object".into()),
     }
 }
 

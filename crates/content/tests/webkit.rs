@@ -3,6 +3,13 @@
 //! a GPUI window's drawing.
 
 fn main() {
+    // nextest lists a custom harness's tests first; this binary is the one test `webkit`.
+    if std::env::args().any(|a| a == "--list") {
+        if !std::env::args().any(|a| a == "--ignored") {
+            println!("webkit: test");
+        }
+        return;
+    }
     let no_display = ["DISPLAY", "WAYLAND_DISPLAY"]
         .iter()
         .all(|v| std::env::var_os(v).is_none_or(|s| s.is_empty()));

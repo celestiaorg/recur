@@ -12,8 +12,8 @@ run = [
 ]
 
 [test]
-description = "Runs the workspace tests"
-run = "cargo test --workspace"
+description = "Runs the workspace tests with cargo-nextest, then the doctests (nextest skips those)"
+run = ["cargo nextest run --workspace", "cargo test --workspace --doc"]
 
 ["lint:bundles"]
 description = "Lints the shipped Recur Bundles (schema, TS compile, shebang, keyEquivalent collisions)"

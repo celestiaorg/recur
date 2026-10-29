@@ -1,4 +1,4 @@
-//! `expandEmojiShortcodes` from `lib/emoji.ts`: GitHub gemoji `:name:` aliases.
+//! Emoji shortcode expansion: GitHub gemoji `:name:` aliases.
 
 use std::collections::HashMap;
 use std::sync::OnceLock;

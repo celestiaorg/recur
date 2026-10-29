@@ -1,4 +1,4 @@
-//! Loops (slice E3): the walk task that drives one run through its `[[loop]]`
+//! Loops: the walk task that drives one run through its `[[loop]]`
 //! graph under its `[[policy]]` guard, converge rounds and the rails, the board
 //! and fan-out, handoff and replanning, browser verify, escalations, resume and
 //! restart, the Maestro conductor and its hands, loop engage from a chat, and
@@ -6,7 +6,7 @@
 //!
 //! One task per walk. [`Walk`] owns the walk-local state; everything an MCP
 //! callback or the UI also reads or writes lives in the walk's [`LoopHandle`]
-//! (E1).
+//! (see `loop_handle`).
 
 pub mod board;
 pub mod converge;
@@ -87,7 +87,7 @@ pub struct Walk {
     pub(crate) missing_guard: String,
     pub(crate) on_demand_walk: bool,
     pub(crate) resume_phase_id: String,
-    /// The bundle catalog snapshotted for the run (R17).
+    /// The bundle catalog snapshotted for the run.
     pub(crate) catalog: Catalog,
     /// This walk's own worktree manager, bound to its project's repo (D22).
     pub(crate) git: Option<recur_git::Manager>,

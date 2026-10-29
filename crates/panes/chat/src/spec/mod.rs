@@ -1,4 +1,4 @@
-//! GPUI ports of the chat e2e specs and `AgentChat.test.ts` on the mock bridge.
+//! The agent chat's specs on the mock bridge.
 
 mod agent_chat;
 mod composer;

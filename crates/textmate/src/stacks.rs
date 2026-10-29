@@ -1,4 +1,4 @@
-//! Incremental rule-stack + token checkpoints (`cm-tm-stacks.ts`).
+//! Incremental rule-stack + token checkpoints.
 //!
 //! Line N+1 needs the stack after line N. After an edit, stale stacks are
 //! kept so re-tokenizing can stop as soon as a line ends in the same state

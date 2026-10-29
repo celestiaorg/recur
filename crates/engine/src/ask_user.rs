@@ -3,7 +3,7 @@
 //! Parking returns immediately: the asking chat turn is stopped quietly so
 //! the tab goes idle, and the human's answer later starts a resumed turn with
 //! the answer as user input (MCP clients time out a blocked POST). The resume
-//! send itself is E4's ([`Engine::send_ask_user_resume`] in `chat::ask_resume`).
+//! send itself is [`Engine::send_ask_user_resume`] in `chat::ask_resume`.
 
 use std::collections::HashMap;
 use std::sync::Arc;

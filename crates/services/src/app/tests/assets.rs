@@ -1,4 +1,4 @@
-//! `fileserver_test.go` and the `/gh-image` route of `gh_image_test.go`
+//! The asset file server and the `/gh-image` route
 //! (URL policy and fetching are covered in recur-forge).
 
 use std::sync::Arc;

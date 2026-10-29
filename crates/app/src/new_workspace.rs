@@ -1,4 +1,4 @@
-//! ⇧⌘N / New Blank Workspace (`createBlankWorkspace` in `lib/new-workspace.ts`): a blank
+//! ⇧⌘N / New Blank Workspace: a blank
 //! Agent-mode workspace in the focused git project, without the modal.
 
 use std::cell::Cell;

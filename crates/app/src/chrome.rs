@@ -1,11 +1,8 @@
-//! Window chrome behavior (`window_titlebar.go`, `window_titlebar_darwin.go`,
-//! `lib/titlebar.ts`): the titlebar double-click action, and the drag / no-drag regions the
-//! web UI marked with `-webkit-app-region`.
+//! Window chrome behavior: the titlebar double-click action, and the drag / no-drag regions.
 //!
 //! The window owns its titlebar drag (`app_owns_titlebar_drag`), so a press on bare titlebar
 //! chrome moves the window and a second press of a double-click runs the system's
-//! "Double-click a window's title bar to" action. Controls stop the press first ([`no_drag`]),
-//! as `no-drag` regions did.
+//! "Double-click a window's title bar to" action. Controls stop the press first ([`no_drag`]).
 
 use gpui_kit::{InteractiveElement, MouseButton, MouseDownEvent, Window};
 

@@ -1,4 +1,4 @@
-//! Port of `snippet_test.go`.
+//! Bundle snippets.
 
 use recur_bundles::*;
 

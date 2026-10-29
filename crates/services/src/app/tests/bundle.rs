@@ -1,4 +1,4 @@
-//! `bundle_service_test.go`.
+//! The bundle service.
 
 use super::{Fx, write};
 

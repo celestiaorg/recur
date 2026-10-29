@@ -1,4 +1,4 @@
-//! `workspace_issue_test.go` (the service half: link moves, clear, claim).
+//! Workspace issue links (the service half: link moves, clear, claim).
 
 use recur_domain::{IssueRef, Workspace};
 

@@ -1,4 +1,4 @@
-//! Port of `filesearch_test.go`.
+//! File search tests.
 
 use recur_domain::path;
 

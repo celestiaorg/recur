@@ -1,4 +1,4 @@
-//! The live workbench budget (`lib/hot-shells.ts`): the visible shell plus the most recent
+//! The live workbench budget: the visible shell plus the most recent
 //! others stay alive; A→B→A is then a reuse, not a rebuild.
 
 use std::collections::HashSet;

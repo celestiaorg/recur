@@ -1,4 +1,4 @@
-//! `Kbd.svelte` and `shortcutParts` (`lib/shortcut.ts`): keycap text in the system UI font,
+//! Keycap text in the system UI font,
 //! weight 500, tracking .02em, with modifier glyphs split into `.kbd-mod` runs.
 
 use crate::fonts::weight;

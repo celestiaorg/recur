@@ -1,4 +1,4 @@
-//! Composer context-meter rules (frontend `lib/contextUsage.ts`).
+//! Composer context-meter rules.
 
 use recur_domain::ChatItem;
 
@@ -75,8 +75,7 @@ pub fn from_chat_items(items: &[ChatItem]) -> Option<ContextUsage> {
     }
 }
 
-/// Compact token label: 460, 1.2k, 184k, 1.0M style (frontend
-/// `formatCompactCount`).
+/// Compact token label: 460, 1.2k, 184k, 1.0M style.
 pub fn format_tokens(n: i64) -> String {
     let v = n.max(0);
     if v < 1000 {

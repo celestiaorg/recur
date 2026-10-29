@@ -1,13 +1,13 @@
-//! The agent-chat transcript rules shared by every chat surface (frontend
-//! `lib/agentchat.ts`): mapping persisted `ChatItem`s to rows, merging a live
+//! The agent-chat transcript rules shared by every chat surface: mapping
+//! persisted `ChatItem`s to rows, merging a live
 //! stream onto a store snapshot, the live reducers (stream, thinking, tools,
 //! compaction, fallback, notices, footers), the turn-clock gates, and the
 //! chat sentinels and error-card wording. Pure list transforms: the view
 //! owns the per-workspace lists and streaming flags and calls these.
 //!
-//! Unset TS fields are the Rust defaults (`""`, `false`, `0`, empty vec);
-//! `ts` stays an `Option` because `??` and `||` treat a stored `0` and an
-//! absent stamp differently.
+//! Unset fields are the Rust defaults (`""`, `false`, `0`, empty vec);
+//! `ts` stays an `Option` because a stored `0` and an absent stamp are
+//! treated differently.
 
 use std::collections::HashSet;
 use std::sync::LazyLock;
@@ -70,7 +70,7 @@ pub enum ChatLog {
     },
 }
 
-/// One transcript row (frontend `AgentMsg`).
+/// One transcript row.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct AgentMsg {
     pub body: String,
@@ -117,7 +117,7 @@ pub struct AgentMsg {
     pub children: Vec<AgentMsg>,
 }
 
-/// A live `session.step` (frontend `WorkspaceStep`).
+/// A live `session.step`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WorkspaceStep {
     pub id: String,
@@ -486,8 +486,7 @@ fn or_ts(a: Option<i64>, b: Option<i64>) -> Option<i64> {
 }
 
 /// `{...persisted, ...live}` for two tool rows: live's set fields win.
-// simplify: an unset field cannot shadow a set one, where the TS spread lets
-// a live key that is explicitly `undefined`/`false` win. Upgrade to
+// simplify: an unset live field cannot clear a set persisted one. Upgrade to
 // `Option` fields if a row ever needs to clear a persisted value this way.
 fn spread_tool(p: &AgentMsg, l: &AgentMsg) -> AgentMsg {
     let pick = |a: &str, b: &str| or_str(b, a);

@@ -1,4 +1,4 @@
-//! `PermissionCard.svelte`: one live "may I run this tool?" card, inline in a transcript
+//! One live "may I run this tool?" card, inline in a transcript
 //! (`compact`) or as the floating corner panel.
 
 use recur_ui::guard::Guarded;

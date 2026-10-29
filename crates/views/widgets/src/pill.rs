@@ -1,4 +1,4 @@
-//! `_chat.scss`'s bordered inline pills (`.tc-chip`, `.tc-file`, `.tc-sev`, …) and the tints
+//! The chat's bordered inline pills (`.tc-chip`, `.tc-file`, `.tc-sev`, …) and the tints
 //! they wash with, shared by the chat's rows and the Observatory's findings.
 
 use gpui_kit::{Div, ParentElement, Styled, px};

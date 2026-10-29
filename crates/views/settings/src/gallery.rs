@@ -1,5 +1,5 @@
-//! Parity scenes: the `settings` list in `crates/ui/gallery/scenes.json`, built the way
-//! `web/scenes/SettingsPage.svelte` mounts `App.svelte`: the whole shell with every view crate
+//! Gallery scenes: the `settings` list in `crates/ui/gallery/scenes.json`: the whole shell
+//! with every view crate
 //! registered, over the e2e seed edited by the scene's fixture in `content/settings.json`, then
 //! Settings on `section`, then the scene's `act`.
 
@@ -116,7 +116,7 @@ impl Render for SceneView {
     }
 }
 
-/// The scene's interaction, as `SettingsPage.svelte`'s `act`.
+/// The scene's interaction (`act`).
 fn run_act(act: &str, bridge: &Arc<MockBridge>, cx: &mut App) {
     match act {
         "compat-modal" => {

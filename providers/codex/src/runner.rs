@@ -15,7 +15,7 @@
 //! | read-only allowlist or reviewer | `read-only` sandbox with network (`gh pr view`) |
 //! | `bypassPermissions` | `danger-full-access`, approvals `never` |
 //!
-//! ## Allowlist translation (risk R9)
+//! ## Allowlist translation
 //!
 //! Codex has no per-tool allowlist. The engine's Claude-syntax list is read
 //! for one bit: a non-empty list without `Edit`, `Write` or `NotebookEdit`

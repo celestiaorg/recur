@@ -1,5 +1,4 @@
-//! Avatar stacks, reviewer summaries and @mention suggestions for PR views
-//! (`lib/pr-participants.ts`, `lib/user-mention.ts`).
+//! Avatar stacks, reviewer summaries and @mention suggestions for PR views.
 
 use std::collections::{HashMap, HashSet};
 
@@ -278,7 +277,7 @@ pub fn mention_people(pr: &Pr) -> Vec<PrPerson> {
 
 /// Suggestions for an `@query`: people with a login, ranked on
 /// `"<login> <name>"`. `rank(labels, query, limit)` returns label indexes
-/// best first (the UI's fuzzy ranker, `lib/fuzzy.ts`).
+/// best first (the UI's fuzzy ranker, `recur_code::fuzzy`).
 pub fn suggest_user_mentions(
     people: &[PrPerson],
     query: &str,

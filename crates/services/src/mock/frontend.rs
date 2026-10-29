@@ -1,6 +1,5 @@
-//! The two frontend helpers mock-bridge.ts imports: `applyChatTabOrder`
-//! (`src/lib/chat-tab-reorder.ts`) and `peelChatSurface`
-//! (`src/lib/chat-surface.ts`).
+//! The two UI rules the mock resolvers apply: the saved chat tab order and
+//! peeling the looking-at surface off a chat wire.
 
 use std::collections::{HashMap, HashSet};
 

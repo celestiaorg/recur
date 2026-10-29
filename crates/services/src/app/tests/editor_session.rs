@@ -1,4 +1,4 @@
-//! `editor_session_test.go`.
+//! The editor session service.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;

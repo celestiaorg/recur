@@ -1,4 +1,4 @@
-//! The pure launch rules of `lib/new-workspace.ts`: when the New-workspace
+//! The pure New-workspace launch rules: when the
 //! modal may create eagerly, the eager-create handle (abandon a row the
 //! user walked away from, even one still in flight), the opening chat seed
 //! after ExpandGoal, and which first replies are pre-turn failures that

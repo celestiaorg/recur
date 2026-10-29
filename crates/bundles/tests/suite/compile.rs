@@ -1,4 +1,4 @@
-//! Port of `compile_test.go`.
+//! TypeScript compilation.
 
 use recur_bundles::*;
 use recur_domain::path;

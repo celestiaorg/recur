@@ -1,8 +1,8 @@
 //! Chat-send helpers shared by the Loop and Agent send paths: first-message
 //! titles and rename nudges, provisional titles stamped ahead of a queued send,
 //! the standing system-prompt fingerprint, and the dock selection a send
-//! persists. Ported with E3 because `send_maestro_message` and loop engage need
-//! them; E4's send pipeline uses the same functions.
+//! persists. `send_maestro_message`, loop engage and the chat send pipeline
+//! all use them.
 
 use std::collections::BTreeMap;
 

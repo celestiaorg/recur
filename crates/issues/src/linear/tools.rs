@@ -1,4 +1,4 @@
-//! Display rules for Linear MCP tool cards in chat (`lib/lineartools.ts`):
+//! Display rules for Linear MCP tool cards in chat:
 //! friendly labels and parsed result rows instead of JSON dumps.
 
 use std::sync::LazyLock;

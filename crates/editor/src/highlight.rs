@@ -1,5 +1,4 @@
-//! TextMate highlighting for an editor (`cm-textmate.ts`, `cm-tm-deco.ts`,
-//! `cm-tm-paint.ts`, `cm-mini-script-highlight.ts`): synchronous viewport
+//! TextMate highlighting for an editor: synchronous viewport
 //! tokenization on edits and first paint, a debounced pass after cold
 //! scrolls, a fill to the end of the document that tokenizes on the
 //! background executor, and per-line paint spans rebuilt from the engine's

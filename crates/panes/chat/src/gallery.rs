@@ -1,5 +1,5 @@
-//! Parity scenes: the `chat` list in `crates/ui/gallery/scenes.json`, built the way
-//! `web/scenes/Chat.svelte` mounts AgentChat and AppChat, over `content/chat.json`.
+//! Gallery scenes: the `chat` list in `crates/ui/gallery/scenes.json`, the agent chat and
+//! Ask Recur over `content/chat.json`.
 
 use gpui_kit::{
     AnyView, App, AppContext as _, Context, Entity, IntoElement, ParentElement, Render, Styled,

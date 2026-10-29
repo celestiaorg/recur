@@ -1,4 +1,4 @@
-//! `lib/providerUsage.ts`: which providers get a usage chip, their session rings, model buckets,
+//! Which providers get a usage chip, their session rings, model buckets,
 //! reset and percent formatting, and the error / disconnect checks Settings shares with the
 //! sidebar's meter.
 

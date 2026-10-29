@@ -1,4 +1,4 @@
-//! The chat-mode half of `lib/modes.ts`: the dock's mode list (labels,
+//! Chat modes: the dock's mode list (labels,
 //! hints, icons, tints), mode cycling, each mode's Settings default model,
 //! the picker rule after a mode switch, and the create/setup predicates the
 //! composer reads. The workspace run and Remove predicates live in
@@ -122,7 +122,7 @@ pub fn chat_mode_options(exclude_loop: bool, exclude_agent: bool) -> Vec<ChatMod
     mode_rows(exclude_loop, exclude_agent)
 }
 
-/// One picker row of the flattened model catalog (`lib/models.ts`).
+/// One picker row of the flattened model catalog.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CatalogModel {
     pub r#ref: String,

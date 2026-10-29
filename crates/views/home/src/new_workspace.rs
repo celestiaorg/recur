@@ -1,4 +1,4 @@
-//! The store-driven flows of `lib/new-workspace.ts` the New workspace modal runs: revealing
+//! The store-driven flows the New workspace modal runs: revealing
 //! the created workspace (open it from Welcome, else stay and park the opening prompt),
 //! `startParkedOpening`, `waitForWorktree` and `linkLinearProject`. The pure launch rules are
 //! `recur_engine::view::new_workspace`.

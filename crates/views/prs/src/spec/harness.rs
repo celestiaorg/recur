@@ -1,6 +1,5 @@
 //! The shell with every view registered, as the desktop mounts it, on the mock bridge over the
-//! e2e seed, with selector-driven input (`debug_selector` keys) for the `pr-review.spec.ts`
-//! and `activity.spec.ts` ports.
+//! e2e seed, with selector-driven input (`debug_selector` keys) for the PR specs.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -36,7 +35,7 @@ pub fn boot<'a>(
     seed: impl FnOnce(&mut Seed),
     opts: MockOptions,
 ) -> S<'a> {
-    // playwright.config.ts's viewport.
+    // The specs' window size.
     boot_sized(cx, seed, opts, 1380., 880.)
 }
 
@@ -50,7 +49,7 @@ pub fn boot_sized<'a>(
     let registry = registry();
     cx.update(|cx| {
         recur_app::init(&registry, cx);
-        recur_ui::motion::freeze(None, cx);
+        recur_ui::motion::freeze(cx);
         recur_content::markdown::set_markdown_render_inline(true);
         crate::ui::reset(cx);
     });

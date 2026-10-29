@@ -1,4 +1,4 @@
-//! `ScheduledPrompts.svelte`: the schedules list. On the Schedules page (`project` is `None`)
+//! The schedules list. On the Schedules page (`project` is `None`)
 //! it lists every project's schedules grouped by project under the filters bar; embedded in
 //! project Settings → Schedules it lists one project's in a card. Rows expand to the
 //! workspaces their runs created, which open, multi-select and two-click remove.
@@ -1957,8 +1957,8 @@ impl Render for ScheduledPrompts {
     }
 }
 
-/// The Schedules route: App.svelte mounts the list only while `$view === 'schedules'`, so
-/// each visit starts a fresh list (and its poll).
+/// The Schedules route: the list is built on each visit, so each visit starts a fresh list
+/// (and its poll).
 pub struct SchedulesPage {
     vcx: ViewContext,
     list: Option<Entity<ScheduledPrompts>>,

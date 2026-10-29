@@ -3,8 +3,8 @@
 //! signals re-enter the engine; tests drive findings through the same interface
 //! the live MCP handler calls.
 //!
-//! Default bodies do nothing, so an engine slice that has not
-//! ported a method yet behaves exactly like a Recur with no engine attached.
+//! Default bodies do nothing, so a host that does not implement a method
+//! behaves exactly like a Recur with no engine attached.
 //! Implementations must be safe for concurrent use: MCP requests from agent
 //! processes run concurrently with the loop task.
 

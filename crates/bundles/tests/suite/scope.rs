@@ -1,4 +1,4 @@
-//! Port of `scope_test.go`.
+//! Scope and file-glob matching.
 
 use recur_bundles::*;
 

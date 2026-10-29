@@ -1,4 +1,4 @@
-//! Terminal parity scenes: the `terminal` list in `crates/ui/gallery/scenes.json`. A scene
+//! Terminal gallery scenes: the `terminal` list in `crates/ui/gallery/scenes.json`. A scene
 //! is the dock body (find bar when open, then the panes) around one pane whose session
 //! replays the scene's input bytes.
 

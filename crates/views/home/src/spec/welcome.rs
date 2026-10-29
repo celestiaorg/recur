@@ -1,4 +1,4 @@
-//! `welcome.spec.ts`: the first-run path.
+//! The first-run path.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

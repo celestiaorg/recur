@@ -1,5 +1,5 @@
-//! Transcript windowing for long chats (`lib/chat-window.ts` with the `review-window.ts` and
-//! `spy-pick.ts` helpers the chat uses): past a length only the blocks near the viewport and
+//! Transcript windowing for long chats (with the review window and spy-pick helpers): past a
+//! length only the blocks near the viewport and
 //! the live tail mount; the rest are stubs at their measured (or estimated) height.
 
 use std::collections::BTreeSet;
@@ -12,8 +12,8 @@ pub const CHAT_HYDRATE_OVERSCAN: usize = 4;
 pub const CHAT_HYDRATE_ALL_BELOW: usize = 48;
 /// Always mount this many trailing blocks so streaming never paints a stub.
 pub const CHAT_TAIL_LIVE: usize = 3;
-/// Prefetch band above and below the scrollport, in px. Half the web's 600: GPUI lays the
-/// whole window out on every frame, where the browser lays out only what changed.
+/// Prefetch band above and below the scrollport, in px. Kept small because GPUI lays the
+/// whole window out on every frame.
 pub const CHAT_VIEW_PAD_PX: f32 = 300.;
 /// A collapsed step-group header.
 pub const CHAT_BLOCK_HEAD_PX: f32 = 36.;
@@ -190,7 +190,6 @@ pub fn viewport_pin_target(
 mod tests {
     use super::*;
 
-    // chat-window.test.ts
     #[test]
     fn estimates() {
         assert_eq!(estimate_chat_block_height(BlockShape::Steps), 36.);
@@ -232,7 +231,7 @@ mod tests {
         }
     }
 
-    // review-window.test.ts / spy-pick.test.ts cases the chat relies on
+    // Review window / spy-pick cases the chat relies on
     #[test]
     fn in_view_and_hydrate() {
         let ranges = vec![r("a", 0., 100.), r("b", 100., 900.), r("c", 900., 1000.)];

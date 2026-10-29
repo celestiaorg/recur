@@ -1,4 +1,4 @@
-//! `Lexer.ts` and `Tokenizer.ts`: block lexing, the deferred inline queue and inline
+//! marked's `Lexer.ts` and `Tokenizer.ts`: block lexing, the deferred inline queue and inline
 //! lexing, with every tokenizer rule as marked 18 applies it.
 //!
 //! Offsets are UTF-8 bytes where marked counts UTF-16 units. The masked source keeps its

@@ -104,7 +104,7 @@ On first use of a worktree path, Recur appends
 | Model | bare id on thread/turn |
 | Flags `effort` | `turn/start` `effort` |
 | Flags `fast` | `turn/start` `serviceTier` (`true` → `priority` / Fast; `false` → omit) |
-| Thinking | `--config model_reasoning_summary=auto` + `model_supports_reasoning_summaries=true`; stream `item/reasoning/summaryTextDelta` → `KindThinkingDelta`, completed `reasoning.summary` → `KindThinking` |
+| Thinking | `--config model_reasoning_summary=auto` + `model_supports_reasoning_summaries=true`; stream `item/reasoning/summaryTextDelta` → `AgentEvent::ThinkingDelta`, completed `reasoning.summary` → `AgentEvent::Thinking` |
 | `fileChange` add | `Write` with `{file_path, content}` (body lives in `changes[].diff`) |
 | `fileChange` update | `Edit` with path args + hunk-only unified diff result (`@@` without `---`/`+++`) |
 | SystemPrompt | `developerInstructions` on thread/start and thread/resume (not also prepended into the user text) |

@@ -1,4 +1,4 @@
-//! User-chosen TextMate language per file (`syntax-mode.ts`).
+//! User-chosen TextMate language per file.
 //!
 //! Path overrides and `*.ext` / basename associations, persisted on the
 //! workspace editor session by the app. Maps keep insertion order (JS object

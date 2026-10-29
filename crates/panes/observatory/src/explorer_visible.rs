@@ -1,4 +1,4 @@
-//! Whether a path is already rendered in the explorer listing (`lib/explorer-visible.ts`).
+//! Whether a path is already rendered in the explorer listing.
 
 use recur_domain::TreeEntry;
 

@@ -45,7 +45,7 @@ struct Mcp {
     env: Option<BTreeMap<String, String>>,
 }
 
-/// The Go `p1Spec` projection of an AgentSpec.
+/// The fixture's projection of an AgentSpec.
 #[derive(Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub(crate) struct Spec {

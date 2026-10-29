@@ -1,5 +1,4 @@
-//! The chat turn-end findings digest (frontend `stillOpenFindingsForTurn`
-//! in `lib/agentchat.ts`): findings filed in a turn and still open, from
+//! The chat turn-end findings digest: findings filed in a turn and still open, from
 //! modern JSON `report_finding` results or legacy prose results matched
 //! through the tool input.
 
@@ -51,7 +50,7 @@ pub struct DigestFindingRef {
     pub notes: Vec<TurnDigestNote>,
 }
 
-/// The public id: the short id when set (frontend `findingPublicId`).
+/// The public id: the short id when set.
 pub fn finding_public_id(id: &str, short_id: &str) -> String {
     if short_id.is_empty() { id } else { short_id }.to_owned()
 }

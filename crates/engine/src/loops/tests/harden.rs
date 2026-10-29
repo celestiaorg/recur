@@ -3,7 +3,7 @@
 //! re-dispatches a not-running loop, Shutdown joins a live walk, and
 //! `dispatch_mu` serializes drain and Resume storms (no double dispatch,
 //! balanced slots). Recover, the not-running Pause/Stop rules and Shutdown over
-//! fake walks are E1's (`lifecycle::tests`).
+//! fake walks are in `lifecycle::tests`.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};

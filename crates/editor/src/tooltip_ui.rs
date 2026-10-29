@@ -1,5 +1,5 @@
 //! Editor tooltips: the completion list and its info pane
-//! (`@codemirror/autocomplete` restyled by `_codemirror.scss`), the hover
+//! (`@codemirror/autocomplete` in Recur's styling), the hover
 //! host (LSP hover + lint diagnostics) and LSP signature help, positioned by
 //! CodeMirror's tooltip placement (`writeMeasure`).
 

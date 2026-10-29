@@ -53,7 +53,7 @@ pub fn boot(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: MockOpt
     let registry = registry();
     cx.update(|cx| {
         recur_app::init(&registry, cx);
-        recur_ui::motion::freeze(None, cx);
+        recur_ui::motion::freeze(cx);
     });
     let mut sd = recur_services::mock::fixtures::seed();
     seed(&mut sd);
@@ -68,7 +68,7 @@ pub fn boot(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: MockOpt
         let shell = cx.new(|cx| Shell::new(ctx, registry, ShellOptions::default(), window, cx));
         Root { shell }
     });
-    // playwright.config.ts's viewport.
+    // The specs' window size.
     cx.simulate_resize(gpui::size(px(1380.), px(880.)));
     cx.run_until_parked();
     let shell = root.read_with(cx, |r, _| r.shell.clone());

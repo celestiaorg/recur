@@ -1,5 +1,5 @@
-//! Loading the app's data and keeping it live (`lib/api.ts`: `loadInitial`, `wireEvents` and
-//! the store helpers). Event handlers here update the shared stores only; a view that needs an
+//! Loading the app's data and keeping it live: the initial load, event wiring and the store
+//! helpers. Event handlers here update the shared stores only; a view that needs an
 //! event's details (session deltas, PR comments, …) subscribes to `Services::subscribe` itself.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -27,7 +27,7 @@ const BRIEFING_REFRESH_DELAY: Duration = Duration::from_millis(120);
 const APP_AGENTS_BUCKET: &str = "app";
 
 /// A backend event re-emitted after [`AppState::apply_event`] applied it, so a view's handler
-/// reads the updated stores (`agentsRunning` before `onAgent`), as api.ts's listeners did.
+/// reads the updated stores.
 #[derive(Clone, Debug)]
 pub struct AppliedEvent(pub AppEvent);
 
@@ -302,7 +302,7 @@ impl AppState {
         originals
     }
 
-    /// `removeWorkspace` (`lib/remove-workspace.ts`): hide the row at once (leaving the detail
+    /// Hide the row at once (leaving the detail
     /// view if it is on screen), archive it, and restore the list on failure.
     pub fn remove_workspace(&mut self, id: &str, cx: &mut Context<Self>) -> Task<bool> {
         if id.is_empty() {

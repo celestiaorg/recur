@@ -1,7 +1,7 @@
-//! The review-surface halves of `pr-review.spec.ts`, on PR #482 in PR detail's Files pane
-//! (file list beside the stacked diffs, PR note mode). The PR detail host's own parts (the
-//! PR list, tabs, titlebar review actions and the review modal, conversation cards, checks,
-//! merge) move with the PR detail port.
+//! The review surface on PR #482 in PR detail's Files pane (file list beside the stacked
+//! diffs, PR note mode). The PR detail host's own parts (the PR list, tabs, titlebar review
+//! actions and the review modal, conversation cards, checks, merge) are specced in
+//! `recur-view-prs`.
 
 use gpui::TestAppContext;
 use recur_domain::Finding;

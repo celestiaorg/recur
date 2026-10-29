@@ -1,5 +1,4 @@
-//! `TabStrip.svelte` with `lib/tab-strip-scroll.ts` and `lib/tab-strip-drag.svelte.ts`: a
-//! horizontally scrolling tab row with pinned leading/trailing actions, active-tab reveal,
+//! A horizontally scrolling tab row with pinned leading/trailing actions, active-tab reveal,
 //! keep-alive scroll restore, and drag (or ⌥←/⌥→) reorder.
 
 use crate::motion::{self, Easing};
@@ -74,7 +73,7 @@ pub fn restore_strip_order<T: Clone, K: PartialEq + std::hash::Hash + Eq>(
     out
 }
 
-/// `scrollDeltaToReveal` (`lib/workspace-nav.ts`).
+/// The scroll delta that brings a child fully into view.
 pub fn scroll_delta_to_reveal(
     row_top: f32,
     row_bottom: f32,
@@ -167,12 +166,11 @@ struct State {
     last_write: Option<f32>,
     /// The overlay thumb, shown by wheel scrolls.
     scroller: crate::widgets::scrollbar::Overlay,
-    /// What the last reveal saw: the active key, its chip's width and the chip count. The web
+    /// What the last reveal saw: the active key, its chip's width and the chip count. The
     /// strip reveals on a key change, a chip resize or a chip list mutation, not every frame.
     revealed: Option<(SharedString, f32, usize)>,
     /// The active chip's left and the strip's width at the last reveal, and whether they have
-    /// held for a frame since mount. The web's first reveal reads the settled layout; until
-    /// it settles here, a move re-reveals.
+    /// held for a frame since mount. Until layout settles, a move re-reveals.
     revealed_at: (f32, f32),
     settled: bool,
     drag: Drag,
@@ -627,8 +625,7 @@ fn scrollbar(scroll: &ScrollHandle, color: crate::color::Color) -> AnyElement {
         .into_any_element()
 }
 
-/// Reveal the active chip (or apply a keep-alive restore), following the `$effect`s in
-/// `TabStrip.svelte` and the chase in `tab-strip-scroll.ts`.
+/// Reveal the active chip (or apply a keep-alive restore), chasing it while layout settles.
 fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window, cx: &mut App) {
     let reduced = motion::reduced(cx);
     let order: Vec<SharedString> = state.read(cx).drag.order.clone();
@@ -1055,8 +1052,7 @@ mod tests {
         }
     }
 
-    /// The strip's width settles a frame after mount: the reveal follows it, as the web's
-    /// first reveal reads the settled layout.
+    /// The strip's width settles a frame after mount: the reveal follows it.
     #[gpui_kit::test]
     fn the_mount_reveal_follows_the_strip_while_its_layout_settles(
         cx: &mut gpui_kit::TestAppContext,

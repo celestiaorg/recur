@@ -1,4 +1,4 @@
-//! `PRDetail.svelte`: one pull request. The header (state, number, title editing, people,
+//! PR detail: one pull request. The header (state, number, title editing, people,
 //! attention, branch), the agent dock beside the tabs, and the Conversation, Commits, Files
 //! changed and Checks panes with every flow the view runs: GetPR hydration and polling,
 //! live comments, replies, edits, deletes, resolves, reactions, findings posted as review

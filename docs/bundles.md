@@ -165,9 +165,9 @@ Several servers may attach to one language (Python: basedpyright + ruff).
   After grammar / language-data id-dedupe, colliding `scopeName`s also prefer user.
 - **Override a language:** ship a user grammar with the same `id` as the shipped
   entry (e.g. `recur.languages.solidity`) and your own `path` / `fileTypes`.
-- **Runtime:** the webview tokenizes with `vscode-textmate` + Oniguruma WASM and
-  paints CodeMirror 6 decorations from theme scope colours (no conversion to
-  CodeMirror/Lezer token names). Go only discovers and serves file bytes.
+- **Runtime:** the editor tokenizes with `recur-textmate` (vscode-textmate
+  semantics on Oniguruma) and paints from theme scope colours (no conversion to
+  other token names). The bundle loader only discovers and serves file bytes.
 - **Grammar-only / theme-only / terminal-theme-only / language-data-only / snippet-only / symbol-only / language-server-only / setting-only bundles** (no `[[command]]`) are valid.
 - `[[languageData]]` is not a Settings preference. Recur merges it onto `ListGrammars`
   by `scopeName` (then dotted prefixes: `source.go` → `source`) so CodeMirror
@@ -344,7 +344,7 @@ falls back to Charcoal (or the next enabled theme).
 
 | Root | Path |
 |------|------|
-| Default | `<DataDir>/Bundles` (seeded from repo `bundles/` via `main.go` embed; each folder is content-hashed — when the shipped hash changes the directory is replaced and stamped with `.recur-seed`) |
+| Default | `<DataDir>/Bundles` (seeded from repo `bundles/`, embedded in the app; each folder is content-hashed — when the shipped hash changes the directory is replaced and stamped with `.recur-seed`) |
 | User | `~/.recur/bundles` (id wins over default; **prefer this for customizations**) |
 | Cache | `<DataDir>/BundleCache` |
 
@@ -538,7 +538,7 @@ script = "src/fix-findings.ts"
 composer is generic. Optional `icon = "icon.svg"` (pack-relative, static SVG)
 replaces the default hash glyph on those complete rows and on ⌘K hits for
 that slash. Hardcoded `fill="#…"` is rewritten to `currentColor`. Interpreter is inferred from the extension (`.ts` / `.js` →
-frontend Worker; anything else → shebang). TypeScript complete must not touch
+the TypeScript Worker; anything else → shebang). TypeScript complete must not touch
 secrets (Worker sandbox); it also gets `ctx.diagnostics`, the workspace's LSP problems. Shebang complete gets the same env as the invoke
 script (`RECUR_PROMPT_ARGS`, named `RECUR_PROMPT_ARG_*`, `RECUR_PROMPT_PARAMS`,
 `RECUR_PROMPT_COMPLETE_ARG` for the focused slot, and that bundle’s

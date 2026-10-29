@@ -1,11 +1,11 @@
 //! The state every view shares and the seam views register with the shell through.
 //!
-//! - [`AppState`]: the app-wide stores of `lib/stores.ts` and the data layer of `lib/api.ts`
+//! - [`AppState`]: the app-wide stores and data layer
 //!   (projects, workspaces, PRs, inbox, attention, settings, navigation, overlays, prefs,
 //!   terminal dock chrome, run sessions) as one GPUI entity.
 //! - [`view`]: how a view crate plugs into the shell (routes, titlebar parts, overlays,
 //!   key bindings).
-//! - Pure ports the shell, sidebar and views share: [`workspace_nav`], [`shell_state`],
+//! - Pure rules the shell, sidebar and views share: [`workspace_nav`], [`shell_state`],
 //!   [`modes`], [`models`], [`file_drag`], [`pr`], [`run`], [`commands`], [`chat_route`],
 //!   [`format`].
 //!

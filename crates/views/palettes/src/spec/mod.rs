@@ -1,5 +1,5 @@
-//! Spec ports on the whole shell: the palette scenarios of `shell.spec.ts`,
-//! `terminal-dock.spec.ts`, `bundles.spec.ts` and `editor-syntax.spec.ts`.
+//! Palette specs on the whole shell: Go to, shortcuts, Open in, Run and Stop, Run Command
+//! and the language picker.
 
 mod command;
 mod editor;

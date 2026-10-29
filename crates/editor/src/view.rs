@@ -1,7 +1,7 @@
 //! The editor entity: owns the [`EditorState`], dispatches transactions
 //! and runs everything CodeMirror's view plugins do after an update
 //! (layout, highlighting, completion, panels, dirty tracking, scrolling,
-//! caret blink). Mirrors `CodeEditor.svelte` and `MergeEditor.svelte`.
+//! caret blink), for both the code editor and the merge editor.
 
 use recur_ui::guard::Guarded;
 use std::cell::RefCell;
@@ -1081,7 +1081,7 @@ impl EditorView {
     }
 
     /// `cm-blink` (`steps(1)`, opaque for the first half of each period),
-    /// on recur-ui's motion clock so parity captures freeze it.
+    /// on recur-ui's motion clock so frozen specs hold it still.
     pub(crate) fn caret_visible(&self, cx: &gpui_kit::App) -> bool {
         let rate = self.metrics.cursor_blink_ms;
         if rate == 0 {

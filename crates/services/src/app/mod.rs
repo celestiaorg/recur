@@ -346,7 +346,7 @@ impl AppServices {
         self.engine.recover();
     }
 
-    /// The boot work `main.go` ran once the bus reached the UI: the git and
+    /// The boot work that runs once the bus reaches the UI: the git and
     /// Cursor bridge checks, scheduled prompts, auto-resume, the PR sweep and
     /// the provider usage poller.
     pub async fn start(self: &Arc<Self>) {

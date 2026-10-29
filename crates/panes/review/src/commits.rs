@@ -1,5 +1,5 @@
-//! `CommitsView.svelte` and `CommitRow.svelte`: the commit list (uncommitted work first), and
-//! the commit header Files changed shows for a commit scope. `.commit*` rules from `_prs.scss`.
+//! The commit list (uncommitted work first), and the commit header Files changed shows for a
+//! commit scope.
 
 use recur_ui::guard::Guarded;
 use std::collections::HashSet;
@@ -285,7 +285,7 @@ pub struct RowOpts {
 
 pub type RowAction = Rc<dyn Fn(&mut Window, &mut App)>;
 
-/// `CommitRow.svelte`. `on_open` makes the row a button; `on_copy` copies the full SHA.
+/// One commit row. `on_open` makes the row a button; `on_copy` copies the full SHA.
 pub fn commit_row(
     c: &Commit,
     opts: RowOpts,
@@ -489,7 +489,7 @@ pub enum CommitsEvent {
     OpenWorking,
 }
 
-/// `CommitsView.svelte`.
+/// The commit list.
 pub struct CommitsView {
     pub commits: Vec<Commit>,
     pub loading: bool,

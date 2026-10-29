@@ -1,5 +1,5 @@
-//! Agent transcripts and dock state across workspace remounts
-//! (`lib/caches/chat-heap-cache.ts`): messages, composer drafts, queued unsent turns, dock
+//! Agent transcripts and dock state across workspace remounts: messages, composer drafts,
+//! queued unsent turns, dock
 //! pickers, Simplify, the turn clock and the context ring, keyed `workspaceId\tcode`, byte
 //! capped per workspace. A GPUI global ([`ChatHeapCache`]).
 
@@ -373,7 +373,6 @@ mod tests {
         }
     }
 
-    // chat-heap-cache.test.ts
     #[test]
     fn round_trips_one_workspace() {
         let mut c = ChatHeapCache::default();

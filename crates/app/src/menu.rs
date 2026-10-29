@@ -1,13 +1,13 @@
-//! The native application menu (`app_menu.go`) on GPUI menus.
+//! The native application menu on GPUI menus.
 //!
-//! Every item dispatches a GPUI action that the shell turns into the `menu.action` string the
-//! web UI handled (`check-updates`, `toggle-sidebar`, `app-theme:<key>`, …). Contextual items
-//! (New Tab, Save, Close Tab, the panel and focus toggles, Run…) follow the frontend's
+//! Every item dispatches a GPUI action that the shell turns into a `menu.action` string
+//! (`check-updates`, `toggle-sidebar`, `app-theme:<key>`, …). Contextual items
+//! (New Tab, Save, Close Tab, the panel and focus toggles, Run…) follow the views'
 //! `menu.state`: AppKit validates a menu item by whether its action has a handler, and the
 //! shell registers a handler only while the item is enabled.
 //!
 //! Accelerators are native on macOS only. There the menubar owns ⌘ chords (an enabled item
-//! wins over the focused pane, as WKWebView behaved); elsewhere the focused pane decides
+//! wins over the focused pane); elsewhere the focused pane decides
 //! first and the shell's key handler covers the chords (`nativeMenuAccelerators`).
 
 use gpui_kit::{
@@ -144,7 +144,7 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
     None
 }
 
-/// The menubar accelerators (`accel(item, chord)` in `app_menu.go`), registered on macOS.
+/// The menubar accelerators, registered on macOS.
 pub fn bind_menu_keys(cx: &mut App) {
     if !NATIVE_MENU_ACCELERATORS {
         return;
@@ -228,7 +228,7 @@ fn item(name: &str, action: impl Action) -> MenuItem {
     MenuItem::action(name.to_string(), action)
 }
 
-/// A contextual item: shown disabled until the frontend's `menu.state` enables it.
+/// A contextual item: shown disabled until the views' `menu.state` enables it.
 fn contextual(name: &str, action: impl Action, on: Option<bool>) -> MenuItem {
     item(name, action).disabled(!enabled(on))
 }

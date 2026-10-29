@@ -1,5 +1,5 @@
-//! The OpenAI group of Providers: `ChatGPTProviderCard.svelte` (direct ChatGPT sign-in), the
-//! Codex runtime's browser sign-in (`signInCodex`), and `setOpenAIEnabled`.
+//! The OpenAI group of Providers: direct ChatGPT sign-in, the Codex runtime's browser
+//! sign-in, and the OpenAI enable switch.
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{

@@ -33,7 +33,7 @@ pub const CHAT_RESUME_DISPLAY: &str = "Recur restarted: continuing";
 pub const CHAT_AGENT_ERROR_PREFIX: &str = "Agent error: ";
 
 /// The reply when a follow-up was steered into a live turn instead of
-/// starting one (word joiner + "inject"; frontend `CHAT_INJECTED_REPLY`).
+/// starting one (word joiner + "inject"; `crate::view::chat::CHAT_INJECTED_REPLY`).
 pub const CHAT_INJECTED_SENTINEL: &str = "\u{2060}inject";
 
 /// The note when a turn's wedged-turn deadline fires.

@@ -1,4 +1,4 @@
-//! `observatory_test.go`.
+//! The Observatory service.
 
 use recur_domain::{FINDING_SOURCE_USER, Finding, FindingStatus, Project, Severity, Workspace};
 

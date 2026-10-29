@@ -1,4 +1,4 @@
-//! `lib/commit-meta.ts`.
+//! Commit metadata for review rows.
 
 use recur_domain::Commit;
 

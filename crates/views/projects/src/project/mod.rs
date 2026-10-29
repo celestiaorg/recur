@@ -1,4 +1,4 @@
-//! `Project.svelte` (the `project` route): one project's settings in the Settings layout. A
+//! The `project` route: one project's settings in the Settings layout. A
 //! local copy of the project is edited and autosaved 450ms after it settles (run settings go
 //! to `.recur/project.toml`); skills and MCP overrides save at once.
 

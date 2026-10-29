@@ -724,7 +724,7 @@ fn provider_metadata() {
     assert_eq!(p.caps().history, recur_agent::HistoryMode::App);
 }
 
-// ---- responses/client_test.go
+// ---- Responses client
 
 #[tokio::test]
 async fn client_stream_sse() {
@@ -880,7 +880,7 @@ fn endpoint_trims_slash() {
     assert_eq!(c.endpoint(), "https://api.openai.com/v1/responses");
 }
 
-// ---- app/compatible_service_test.go
+// ---- compatible service
 
 #[tokio::test]
 async fn test_compatible_provider_hits_responses() {

@@ -170,12 +170,12 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   itself, so the transcript remembers the originating call's provider and tool
   name to unpack it.
 - **Cursor's `edit` args carry ONLY the path.** The change itself is a unified
-  diff in the *result*, so the Edit card parses that (`parseUnifiedDiff` in
-  `lib/codehl.ts`) into the same `DiffRow[]` it builds from Claude's
+  diff in the *result*, so the Edit card parses that
+  (`recur_textmate::codehl::parse_unified_diff`) into the same `DiffRow`s it builds from Claude's
   `old_string`/`new_string`. One diff viewer, two providers.
 - **A tool call is a RUN of frames, not one running + one terminal.** `read`
   sends `running, completed`; `edit` sends `running, running, completed`
-  (progress is re-reported). Emitting a `KindStep` per frame minted a second
+  (progress is re-reported). Emitting an `AgentEvent::Step` per frame minted a second
   tool_use block per edit, and since the id map keeps only the last, the result
   attached to the second — so the first rendered as a bare input card with no
   diff. The runner folds frames into exactly one step and one result per call id.
@@ -215,7 +215,7 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   next, so a reloaded transcript rendered ```` ```bash\ngo ```` and
   ```` run .\n``` ```` as two broken fragments, and `Result.Text` held only the
   last fragment. The runner accumulates and writes ONE block per contiguous run
-  of text, while still emitting a `KindTextDelta` per chunk so the reply streams
+  of text, while still emitting an `AgentEvent::TextDelta` per chunk so the reply streams
   live (the mirror's `gotDelta` guard suppresses the duplicate publish).
 - **Nothing about an edit can be streamed.** Its `running` frames carry only
   `{"path": …}` (18 bytes, twice), and the diff arrives whole with `completed`.
@@ -232,10 +232,10 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   pending state rather than a dump of its input JSON.
 - **Reasoning is a run of frames, not one event.** Cursor streams thinking as
   text chunks terminated by an empty frame carrying `thinking_duration_ms`. The
-  runner accumulates and emits a single `KindThinking`, flushing on the next
+  runner accumulates and emits a single `AgentEvent::Thinking`, flushing on the next
   tool call, assistant reply or run result — otherwise reasoning is lost and the
   Activity panel shows an unexplained gap before each tool call. Live reasoning
-  streams as `KindThinkingDelta` (gated on `IncludePartials`, like Claude's
+  streams as `AgentEvent::ThinkingDelta` (gated on `include_partials`, like Claude's
   `--include-partial-messages`); emitting it as a text delta would splice the
   model's private reasoning into its visible reply.
 
@@ -267,7 +267,7 @@ DefinitionOfDone — enough for the Plan panel and approval gate, without
 inventing fake todos.
 
 The shapes above are transcribed from live bridge traffic. Cursor documents
-neither the tool list nor the argument schemas, so `cursortools_test.go` pins
+neither the tool list nor the argument schemas, so `providers/cursor/src/tools/tests.rs` pins
 verbatim captured payloads as fixtures.
 
 ## Limitations

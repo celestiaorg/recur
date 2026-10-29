@@ -1,4 +1,4 @@
-//! The Observatory terminals as the engine reads them (R16): `@terminal`
+//! The Observatory terminals as the engine reads them: `@terminal`
 //! mentions and the list/read_terminal host tools snapshot live shells
 //! through this seam instead of reaching into `recur-term` directly.
 

@@ -1,4 +1,4 @@
-//! `PRList.svelte`: the pull request dashboard. Rows grouped into needs-you, workspace
+//! The pull request dashboard. Rows grouped into needs-you, workspace
 //! responding, open and merged buckets under sticky headers, with the lifecycle segments,
 //! status facets, project filter and sort in the pane header, and a GitHub sync when the
 //! route opens.
@@ -214,7 +214,7 @@ impl PrList {
         &self.vcx.state
     }
 
-    /// The `$effect` on `$view === 'pr'`: sync GitHub PRs when due, `prListSyncing` while it
+    /// On the PR route: sync GitHub PRs when due, `prListSyncing` while it
     /// runs; leaving the route drops the flag (and ignores a late result).
     fn sync_route(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         let on = self.state().read(cx).view == ViewName::Pr;

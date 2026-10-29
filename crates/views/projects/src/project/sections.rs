@@ -1,6 +1,5 @@
-//! The project page's sections (`Project.svelte`'s `{#if section === …}` blocks) and the
-//! `_settings.scss` rules only they use (`.proj-ident*`, `.copy-files*`, `.run-*`,
-//! `.set-confirm*`).
+//! The project page's sections and the styles only they use (identity, copy files, runs,
+//! confirmations).
 
 use recur_ui::guard::Guarded;
 use std::rc::Rc;

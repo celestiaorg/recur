@@ -1,4 +1,4 @@
-//! `DecodeText.svelte`: a label that scrambles then resolves left to right when its text
+//! A label that scrambles then resolves left to right when its text
 //! changes (LLM renames of chat tabs and worktrees). Switching to another entity
 //! (`source_key`) snaps without animating.
 

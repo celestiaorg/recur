@@ -1,4 +1,4 @@
-//! `lib/changed-tree.ts`: the Changed explorer and review TOC tree built
+//! The Changed explorer and review TOC tree built
 //! from a flat list of changed paths.
 
 use std::borrow::Cow;

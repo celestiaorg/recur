@@ -1,5 +1,5 @@
-//! Which workspace a PR's agent dock binds to (frontend
-//! `lib/pr-workspace.ts`): a hidden PR chat host or the linked worktree.
+//! Which workspace a PR's agent dock binds to: a hidden PR chat host or the
+//! linked worktree.
 
 use std::collections::{HashMap, HashSet};
 

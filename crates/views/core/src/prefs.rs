@@ -1,4 +1,4 @@
-//! The persisted UI prefs from `lib/stores.ts`: panel sizes, Observatory panel sides, the
+//! The persisted UI prefs: panel sizes, Observatory panel sides, the
 //! rail toggle, the app / editor / terminal theme picks with their system sync, terminal font
 //! prefs, and the per-workspace terminal dock chrome.
 
@@ -291,7 +291,7 @@ impl PanelLayout {
         storage.set(PANEL_STORAGE_KEY, format!("{{{}}}", body.join(",")));
     }
 
-    /// `initPanelWidths` then `initCodePanelSides`, as `main.ts` runs them.
+    /// Panel widths, then the Observatory panel sides.
     pub fn load(storage: &LocalStorage) -> Self {
         let mut layout = PanelLayout::default();
         let saved: BTreeMap<String, Value> = storage

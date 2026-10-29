@@ -1,4 +1,4 @@
-//! File drags from explorer rows and OS/Finder drops (`lib/file-drag.ts`): workspace-relative
+//! File drags from explorer rows and OS/Finder drops: workspace-relative
 //! `@file` chips and image attachments for the composer, shell-quoted paths for the terminal.
 //!
 //! An explorer row drags a [`WorkspaceFileDrag`] (GPUI's typed drag payload replaces the
@@ -263,7 +263,6 @@ mod tests {
         a.iter().map(|s| s.to_string()).collect()
     }
 
-    // file-drag.test.ts
     #[test]
     fn normalize_trims_and_dedupes() {
         assert_eq!(

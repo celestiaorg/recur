@@ -1,4 +1,4 @@
-//! Per-file undo history that outlives an editor (`cm-editor-history.ts`):
+//! Per-file undo history that outlives an editor:
 //! history and selection serialized under a `scope\0path` key, kept within
 //! a 20 MiB byte budget, newest first.
 
@@ -34,7 +34,7 @@ pub struct RestoredEditor {
     pub scroll_left: f32,
 }
 
-/// The app's history cache (the module-level map of `cm-editor-history.ts`).
+/// The app's history cache.
 #[derive(Default)]
 pub struct EditorHistory(pub EditorHistoryCache);
 

@@ -1,4 +1,4 @@
-//! `helpers.ts`.
+//! marked's `helpers.ts`.
 
 use super::rules::rules;
 use crate::js::{self, encode_uri};

@@ -1,4 +1,4 @@
-//! The parts of `lib/project-pic.ts` the project form needs beyond `recur_ui`'s avatar:
+//! What the project form's avatar picker needs beyond `recur_ui`'s avatar:
 //! hex parsing, resolving a palette color to hex for the color panel, and turning a picked
 //! image into the stored data URL.
 

@@ -1,4 +1,4 @@
-//! `TerminalDock.svelte`: the Observatory's terminal drawer. One tab per live shell of the
+//! The Observatory's terminal drawer. One tab per live shell of the
 //! workspace (adopted from `ListTerminals`, else restored, else spawned), every pane mounted so
 //! background shells keep streaming, the find bar, run / stop of the workspace's dev command,
 //! tab drag reorder, and the dock's own chords. Shells outlive the dock: unmounting parks the
@@ -1069,7 +1069,7 @@ impl TerminalDock {
         });
     }
 
-    /// The incremental search `$effect`: query, options or active tab changed.
+    /// Incremental search: query, options or active tab changed.
     fn refresh_find(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if !self.find_open {
             return;

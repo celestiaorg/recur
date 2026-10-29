@@ -1,5 +1,5 @@
-//! The pure rules behind Settings: `lib/compatible-providers.ts`, the `lib/providers.ts`
-//! catalogue rules, and the view's own derivations (branch prefix presets, governor caps, the
+//! The pure rules behind Settings: OpenAI-compatible providers, the provider catalogue
+//! rules, and the view's own derivations (branch prefix presets, governor caps, the
 //! `onchange` number parsing of an `<input type="number">`).
 
 use std::collections::{BTreeMap, HashSet};
@@ -174,7 +174,7 @@ pub fn persistable_flags(flags: &[CompatibleFlagDim]) -> Vec<CompatibleFlagDim> 
         .collect()
 }
 
-/// `flagKind` in `CompatibleProviderCard.svelte`: which picker-controls preset a model's flags
+/// Which picker-controls preset a model's flags
 /// look like.
 pub fn flag_kind(m: &CompatibleModel) -> &'static str {
     if m.flags.is_empty() {
@@ -365,7 +365,6 @@ mod tests {
         }
     }
 
-    // compatible-providers.test.ts
     #[test]
     fn persistable_models_drops_empty_ids() {
         assert_eq!(
@@ -471,7 +470,7 @@ mod tests {
         assert_eq!(flag_kind(&m), "custom");
     }
 
-    // providers.test.ts (the catalogue halves; `providerEnabled` and friends are view-core's)
+    // Provider catalogue
     #[test]
     fn provider_offers_models_rules() {
         let none: Vec<String> = vec![];

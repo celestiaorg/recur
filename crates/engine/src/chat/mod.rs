@@ -1,4 +1,4 @@
-//! Chat and coordination (slice E4): the workspace chat send pipeline and
+//! Chat and coordination: the workspace chat send pipeline and
 //! its tabs, chat modes and the privilege-safe `switch_mode`, the looking-at
 //! surface, forks, restart recovery, subagent child workspaces, the
 //! `create_workspace` tool, and the ask_user resume.

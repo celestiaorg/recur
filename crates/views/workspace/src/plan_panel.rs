@@ -1,4 +1,4 @@
-//! `PlanPanel.svelte`: Details (headline and brief, edited in place), Attachments (the plan's
+//! The plan panel: Details (headline and brief, edited in place), Attachments (the plan's
 //! pinned artifacts) and Todos (the living checklist plus the agents' TodoWrite lists). The
 //! Observatory's plan pane header owns the tabs ([`crate::plan_head::PlanHead`]); edits ride
 //! `SubmitPlan` / `UpdatePlanStep` / `UpdatePlan`.

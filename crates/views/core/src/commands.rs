@@ -1,4 +1,4 @@
-//! The Recur Bundle command registry (`lib/commands.ts`): discovered bundle commands
+//! The Recur Bundle command registry: discovered bundle commands
 //! (TypeScript macros and shebang scripts), scope and file-glob matching, input resolution and
 //! running a command against an editor context.
 

@@ -1,6 +1,6 @@
 //! The Observatory's window-level keys (workbench focus, panels, review, tabs, split, view
-//! mode, reload, bundle key equivalents, ⌘S in Preview) and the native menu's actions. Like
-//! the webview's bubble phase they run after the focused element handled the key; a key an
+//! mode, reload, bundle key equivalents, ⌘S in Preview) and the native menu's actions. They
+//! run after the focused element handled the key (bubble phase); a key an
 //! action binding consumed (a menu accelerator) arrives as the menu action instead.
 
 use gpui_kit::{App, Context, KeystrokeEvent, Subscription, Window};

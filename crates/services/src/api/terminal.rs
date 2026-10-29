@@ -12,7 +12,7 @@ use crate::Result;
 /// ack-based flow control, replay on re-attach) lives in the term package, which is
 /// deliberately free of any UI or engine dependency.
 ///
-/// The frontend contract, per tab:
+/// The UI contract, per tab:
 ///
 /// ```text
 /// OpenTerminal      -> session id
@@ -54,7 +54,7 @@ pub trait TerminalService: Send + Sync {
     async fn interrupt_terminal(&self, id: &str) -> Result<()>;
 
     /// ListTerminalDockChrome returns dock layouts that are not the closed default,
-    /// so the frontend can restore open/maximized/editor-hidden before first paint.
+    /// so the UI can restore open/maximized/editor-hidden before first paint.
     async fn list_terminal_dock_chrome(&self) -> Result<Vec<TerminalDockChrome>>;
 
     /// ListTerminals returns the workspace's live sessions in tab order. The dock calls

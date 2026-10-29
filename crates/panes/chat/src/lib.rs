@@ -1,4 +1,4 @@
-//! The agent chat (`AgentChat.svelte`) that the workspace view and Ask Recur embed, with its
+//! The agent chat that the workspace view and Ask Recur embed, with its
 //! cards, pickers, composer and the app-wide prompt overlays.
 //!
 //! # Embedding the chat
@@ -31,7 +31,7 @@
 //!   [`session_events::session_event`] and the `recur_engine::view::chat` reducers (see
 //!   [`app_chat::AppChat`] for a complete host), or attach a [`session_feed::SessionFeed`].
 //!
-//! [`app_chat::AppChat`] is the Ask Recur panel (`AppChat.svelte`): build it with
+//! [`app_chat::AppChat`] is the Ask Recur panel: build it with
 //! `AppChat::new(&vcx, visible, window, cx)`, call `set_visible` as the host panel shows or
 //! hides, and handle [`app_chat::AppChatEvent::Hide`] (the header's hide button).
 //!

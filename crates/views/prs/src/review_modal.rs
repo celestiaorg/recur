@@ -1,5 +1,5 @@
-//! `PRReviewModal.svelte`: Approve / Request changes with the pending line comments that post
-//! with the review (`#v-pr-review`, the `.nt-modal` chrome).
+//! The PR review modal: Approve / Request changes with the pending line comments that post
+//! with the review.
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{

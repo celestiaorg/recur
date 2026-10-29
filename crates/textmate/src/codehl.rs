@@ -1,10 +1,10 @@
 //! Lightweight per-line highlighting and line diffs for chat tool cards and
-//! LSP hover code blocks (`codehl.ts`). Not a grammar: strings, comments,
+//! LSP hover code blocks. Not a grammar: strings, comments,
 //! numbers and keywords, tuned for card-sized snippets.
 
 use crate::jsregex::JsRegex;
 
-/// Token classes (`sh-*` in the web UI).
+/// Token classes (the `sh-*` colors).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ShKind {
     Comment,

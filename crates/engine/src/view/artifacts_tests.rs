@@ -1,5 +1,3 @@
-//! Frontend `lib/artifacts.test.ts`.
-
 use serde_json::json;
 
 use super::*;

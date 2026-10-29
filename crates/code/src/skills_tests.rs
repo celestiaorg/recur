@@ -1,4 +1,4 @@
-//! Port of `skills_test.go`.
+//! Skill discovery tests.
 
 use std::fs;
 use std::path::Path;

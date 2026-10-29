@@ -1,4 +1,4 @@
-//! `lib/pr-list-filter.ts`: the PR dashboard's lifecycle segments, status facets, sort orders,
+//! The PR dashboard's lifecycle segments, status facets, sort orders,
 //! groups and titlebar tallies.
 
 use std::cmp::Ordering;
@@ -281,8 +281,7 @@ mod tests {
             review_requested: true,
             checks_ok: true,
             has_checks: true,
-            // `{ name: 'test' }` in the TS fixture is skipped by `prChecksRollup`; the backend always
-            // sends `passed`, so the equivalent row here is a passed check.
+            // The backend always sends a status, so a named check here is a passed one.
             checks: Some(vec![Check {
                 name: "test".into(),
                 passed: true,

@@ -25,8 +25,8 @@ pub fn init(cx: &mut TestAppContext) {
         gpui_kit::init(cx);
         recur_ui::init(cx);
         recur_terminal_view::init(cx);
-        // Finite animations (the maximize FLIP) settle at once, as in the parity captures.
-        recur_ui::motion::freeze(None, cx);
+        // Finite animations (the maximize FLIP) settle at once.
+        recur_ui::motion::freeze(cx);
         cx.set_global(recur_view_review::store::ReviewStore::default());
     });
 }

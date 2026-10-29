@@ -1,7 +1,7 @@
 //! Workspace id, allocation, setup/teardown, diff sync, branch sync and
 //! hand-workspace lifecycle tests. Cases that dispatch a loop (`dispatch`,
-//! `StartRunOnWorkspace`, `BeginStartWorkspace*`) move with E3; Open PR
-//! after rename moves with E5.
+//! `StartRunOnWorkspace`, `BeginStartWorkspace*`) are in `loops::tests`; Open
+//! PR after rename is in `prs::tests`.
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -60,7 +60,7 @@ async fn branch_exists(repo: &str, branch: &str) -> bool {
         .await
 }
 
-// ---- workspace_id_test.go
+// ---- workspace id
 
 #[test]
 fn alloc_kitchen_id_format() {
@@ -438,7 +438,7 @@ async fn create_refuses_non_git_and_unknown_projects() {
     assert_eq!(err.0, "project \"empty\" has no repo path");
 }
 
-// ---- workspace_create_test.go (allocate)
+// ---- workspace create (allocate)
 
 #[tokio::test]
 async fn begin_create_returns_before_worktree() {
@@ -916,7 +916,7 @@ async fn remove_workspace_refuses_in_flight_chat() {
     );
 }
 
-// ---- setup_teardown_test.go
+// ---- setup teardown
 
 #[tokio::test]
 async fn create_workspace_runs_setup_once() {
@@ -1131,7 +1131,7 @@ async fn delete_failed_begin_create_prunes_empty_branch() {
     t.close().await;
 }
 
-// ---- lifecycle_test.go (hand workspaces)
+// ---- lifecycle (hand workspaces)
 
 #[tokio::test]
 async fn remove_keeps_history_and_branch_by_default() {
@@ -1565,7 +1565,7 @@ async fn push_working_copy() {
     t.engine.fetch_working_copy_upstream(&ws.id).await;
 }
 
-// ---- diff_sync_test.go
+// ---- diff sync
 
 #[tokio::test]
 async fn schedule_refresh_all_single_flight() {
@@ -1639,7 +1639,7 @@ async fn sync_workspace_diff_from_git() {
     );
 }
 
-// ---- branch_sync_test.go
+// ---- branch sync
 
 #[tokio::test]
 async fn sync_workspace_branch_after_rename() {
@@ -1706,7 +1706,7 @@ async fn sync_workspace_branch_after_rename() {
     );
     assert_eq!(t.store.workspace(&ws.id).unwrap().branch, "human/renamed");
     assert_eq!(t.store.pr("1").unwrap().branch, "human/renamed");
-    assert_eq!(h.branch(), "human/renamed", "the live walk follows (R18)");
+    assert_eq!(h.branch(), "human/renamed", "the live walk follows");
     assert!(t.events.has("pr.updated"));
     assert_eq!(t.store.pr("gh-9").unwrap().branch, "recur/original-gh-head");
 

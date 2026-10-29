@@ -39,7 +39,7 @@ pub fn boot<'a>(
     let registry = registry();
     cx.update(|cx| {
         recur_app::init(&registry, cx);
-        recur_ui::motion::freeze(None, cx);
+        recur_ui::motion::freeze(cx);
     });
     let mut sd = recur_services::mock::fixtures::seed();
     seed(&mut sd);
@@ -53,7 +53,7 @@ pub fn boot<'a>(
     let (shell, cx) = cx.add_window_view(move |window, cx| {
         Shell::new(ctx, registry, ShellOptions::default(), window, cx)
     });
-    // playwright.config.ts's viewport.
+    // The specs' window size.
     cx.simulate_resize(gpui::size(px(1380.), px(880.)));
     cx.run_until_parked();
     cx.update(|window, cx| {

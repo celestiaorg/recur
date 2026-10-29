@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Rebuilds the bundled UI fonts from the Google Fonts request below (the Svelte UI's).
+# Rebuilds the bundled UI fonts from the Google Fonts request below.
 #
 # GPUI selects faces by family + weight and cannot pick a wght inside a variable font,
-# so every weight the web UI requests is bundled as a static TTF. Google serves those
+# so every weight the UI uses is bundled as a static TTF. Google serves those
 # statics to non-woff2 clients; they are instanced from the same variable masters the
 # browser renders. Inter 450 has no Google static, so it is instanced here from the
 # google/fonts variable source (opsz pinned to its default 14, as Google does for

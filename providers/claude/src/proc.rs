@@ -1,5 +1,5 @@
 //! Process plumbing shared by the turn runner and the status probe: PATH
-//! lookup, the single reaper, process-group kill (risk R12), and the error
+//! lookup, the single reaper, process-group kill, and the error
 //! wording for spawn and exit failures, which reaches the UI.
 
 use std::future::Future;

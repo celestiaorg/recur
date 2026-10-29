@@ -1,4 +1,4 @@
-//! Port of `testcase_test.go`.
+//! Bundle test cases.
 
 use recur_bundles::*;
 

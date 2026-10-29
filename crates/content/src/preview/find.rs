@@ -1,4 +1,4 @@
-//! `lib/preview-find.ts`: find-in-page over a preview's rendered text. The haystack joins the
+//! Find-in-page over a preview's rendered text. The haystack joins the
 //! rendered text blocks with newlines (inline runs inside a block concatenate, so matches span
 //! formatting but never blocks); matches are capped at 999.
 

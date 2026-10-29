@@ -1,5 +1,4 @@
-//! `SettingsGroup.svelte` / `SettingsGroups.svelte`: settings subsection cards (`.set-subsec*`
-//! in `_settings.scss`), with the optional override switch that collapses the body.
+//! Settings subsection cards, with the optional override switch that collapses the body.
 
 use crate::fonts::weight;
 use crate::style::toggle;
@@ -169,8 +168,7 @@ impl SettingsGroup {
             head.flex_col().child(copy)
         };
 
-        // `.set-subsec-nested`'s own background and radius lose to `.set-subsec`, which comes
-        // later in `_settings.scss` at the same specificity.
+        // Nested and top-level cards share one background and radius.
         let bg = t.pane.mix(0.7, t.bg);
         div()
             .id(self.id)

@@ -1,6 +1,5 @@
-//! The list views of the briefing family (`_briefing.scss`): the Inbox (`Briefing.svelte`
-//! with its Ask Recur dock), Issues (`Issues.svelte`) and Schedules (`ScheduledPrompts.svelte`
-//! with `lib/schedule-expanded.ts`).
+//! The list views of the briefing family: the Inbox (with its Ask Recur dock), Issues and
+//! Schedules.
 //!
 //! # Embedding
 //!

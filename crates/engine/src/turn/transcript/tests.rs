@@ -348,7 +348,7 @@ fn finished_transcripts_do_not_spin() {
     assert!(flat(&[m], "")[0].result_pending, "legacy rows stay pending");
 }
 
-// ---- flatten_user_message / reconstruct (attachments_test.go)
+// ---- flatten_user_message / reconstruct (attachments)
 
 #[test]
 fn flatten_restores_markers() {

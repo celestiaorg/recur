@@ -1,5 +1,5 @@
-//! PR conversation and line-note thread rules (frontend
-//! `lib/comment-thread.ts`): timeline roots, review children, replies,
+//! PR conversation and line-note thread rules: timeline roots, review
+//! children, replies,
 //! diff-row anchoring, optimistic replies, edit / delete / react / resolve
 //! permissions, resolved paint and the unmounted thread-editor drafts.
 
@@ -468,7 +468,7 @@ pub struct ThreadEditorDraft {
     pub edit: String,
 }
 
-/// The drafts by thread root id (one per app, as the TS module map).
+/// The drafts by thread root id (one per app).
 #[derive(Debug, Default)]
 pub struct ThreadEditorDrafts(HashMap<String, ThreadEditorDraft>);
 

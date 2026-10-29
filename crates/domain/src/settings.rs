@@ -186,7 +186,7 @@ pub struct Settings {
     pub codex_network_access: bool,
 
     /// A saved ChatGPT account. Tokens are kept separately in
-    /// `chatgpt-auth.json` and are never returned to the frontend.
+    /// `chatgpt-auth.json` and are never returned to the UI.
     #[serde(rename = "chatGPTAccountId", skip_serializing_if = "String::is_empty")]
     pub chat_gpt_account_id: String,
     #[serde(rename = "chatGPTModels", skip_serializing_if = "Vec::is_empty")]

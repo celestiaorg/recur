@@ -1,4 +1,4 @@
-//! `components/AgentChat.test.ts` (with `AgentChat.harness.svelte`'s SessionCard snippet).
+//! The agent chat view, with session cards rendered inside it.
 
 use std::cell::RefCell;
 use std::collections::HashMap;

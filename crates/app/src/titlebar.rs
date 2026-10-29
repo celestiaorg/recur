@@ -1,4 +1,4 @@
-//! The titlebar (`.titlebar` in App.svelte, `_base.scss`): the traffic-light spacer, the
+//! The titlebar: the traffic-light spacer, the
 //! sidebar toggle, the breadcrumb and back buttons, the dev instance chip, and the per-view
 //! chrome on the right.
 

@@ -1,4 +1,4 @@
-//! `AppChat.svelte` ("Ask Recur"): the app-surface chat with its own tab strip, the ask
+//! Ask Recur: the app-surface chat with its own tab strip, the ask
 //! chips on an empty transcript, and the model pickers. Transcripts and live events are the
 //! `""` workspace's; the host shows or hides the panel and handles [`AppChatEvent::Hide`].
 

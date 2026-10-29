@@ -1,4 +1,4 @@
-//! `WorkspaceBriefCard.svelte`: one workspace's briefing as a dense table row (the Inbox list)
+//! One workspace's briefing as a dense table row (the Inbox list)
 //! or as the card a `present_workspace` pin shows in a transcript. Clicking opens the
 //! primary target and marks the workspace's notifications read.
 

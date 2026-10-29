@@ -1,4 +1,4 @@
-//! `CommandPrompts.svelte`: a bundle command's `prompts` form before it runs.
+//! A bundle command's `prompts` form before it runs.
 
 use std::collections::BTreeMap;
 
@@ -32,7 +32,7 @@ enum Field {
     Choice(Entity<Select>, SharedString),
 }
 
-/// `CommandPrompts.svelte`: open it with [`CommandPrompts::open`]; it emits
+/// The prompts form: open it with [`CommandPrompts::open`]; it emits
 /// [`CommandPromptsEvent`].
 pub struct CommandPrompts {
     title: String,

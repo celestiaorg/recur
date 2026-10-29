@@ -98,12 +98,12 @@ The OpenAI preset is effort + verbosity. Unknown wires are dropped at save.
 
 | AgentSpec | Compatible harness |
 |---|---|
-| Worktree | Coding-tool sandbox (`SafeJoin` + symlink check) |
+| Worktree | Coding-tool sandbox (`safe_join` + symlink check) |
 | Model | Bare id on `POST /v1/responses` |
-| Flags | `ApplyFlags` via each model's `Wire` paths |
-| Thinking | `reasoning*` SSE deltas → `KindThinking` / `KindThinkingDelta` |
-| Coding tools | Canonical Claude names so `toolview.go` cards work |
-| Host tools | In-process `agenttools.Tool` (same Execute as MCP HTTP) |
+| Flags | `apply_flags` via each model's `wire` paths |
+| Thinking | `reasoning*` SSE deltas → `AgentEvent::Thinking` / `ThinkingDelta` |
+| Coding tools | Canonical Claude names so the chat's tool cards work |
+| Host tools | In-process `recur_agent_tools::Tool` (same `execute` as MCP HTTP) |
 | Environment | Worktree path, platform, and date appended to the base prompt |
 | Repo rules | Worktree `AGENTS.md` (else `CLAUDE.md`) inlined, 32 KiB cap, regular files only |
 | Ask mode | Allowlist omits Edit/Write/Bash |

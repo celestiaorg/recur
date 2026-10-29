@@ -1,6 +1,6 @@
-//! Parity scenes (`editor/*` in `crates/ui/gallery/scenes.json`): the
+//! Gallery scenes (`editor/*` in `crates/ui/gallery/scenes.json`): the
 //! code editor on a Go file with the shipped bundles' grammars and editor
-//! themes, mounted as `web/scenes/Editor.svelte` mounts `CodeEditor`.
+//! themes.
 
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -12,7 +12,7 @@ use recur_textmate::{GrammarInfo, LanguageDataFields, ParsedTmTheme, parse_theme
 use crate::highlight::TextMate;
 use crate::view::{EditorOptions, EditorView};
 
-/// The scenes' document (`Editor.svelte`'s `doc`).
+/// The scenes' document.
 pub const DOC: &str = r#"package main
 
 import (

@@ -1,5 +1,5 @@
 //! The app chrome, code editor and terminal theme picks on [`AppState`], each with its
-//! "sync with system" light/dark pair (`lib/stores.ts`), and the catalogs the Appearance menu
+//! "sync with system" light/dark pair, and the catalogs the Appearance menu
 //! lists.
 
 use std::cmp::Ordering;

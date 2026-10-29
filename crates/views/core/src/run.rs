@@ -1,6 +1,5 @@
-//! Named run commands (`lib/run-commands.ts`) and the run sessions they start in Observatory
-//! terminals (the store half of `lib/run-dev.ts`; the timers and calls live on
-//! [`crate::AppState`]).
+//! Named run commands and the run sessions they start in Observatory terminals (the store
+//! half; the timers and calls live on [`crate::AppState`]).
 
 use std::collections::{BTreeMap, HashSet};
 

@@ -1,4 +1,4 @@
-//! PR detail's checks from `pr-review.spec.ts`: Fix checks, live durations, rollups, collapsed
+//! PR detail's checks: Fix checks, live durations, rollups, collapsed
 //! groups, timeline commit rows, the composer and merged PRs.
 
 use std::sync::Arc;

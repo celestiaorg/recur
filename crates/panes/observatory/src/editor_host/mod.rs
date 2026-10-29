@@ -1,4 +1,4 @@
-//! The editor host side of `Observatory.svelte` and `CodeEditor.svelte` / `MergeEditor.svelte`:
+//! The Observatory's editor host:
 //! the main, split and merge `EditorView`s driven from the Observatory's buffers (mount on path
 //! change, external doc drift kept out of undo, read-only, findings and SCM gutter, saved
 //! baseline), per-workspace tab parking across root switches, the file preview and PDF pane,
@@ -103,7 +103,7 @@ fn parkable(tabs: Vec<(String, TabSnapshot)>) -> Vec<(String, TabSnapshot)> {
 }
 
 impl Observatory {
-    // ---- derived (the editor `$derived`s) ----
+    // ---- derived editor state ----
 
     pub(crate) fn file_is_binary_preview(&self) -> bool {
         self.file
@@ -493,8 +493,8 @@ impl Observatory {
         ed
     }
 
-    /// Mirror the editor props onto every editor and preview (`CodeEditor` / `MergeEditor` /
-    /// `FilePreview` `$effect`s). Runs before each paint and after state changes.
+    /// Mirror the editor props onto every editor and preview. Runs before each paint and
+    /// after state changes.
     pub(crate) fn sync_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let epoch =
             recur_view_core::editor_env::editor_env_peek(cx).map_or(0, |e| e.read(cx).epoch);

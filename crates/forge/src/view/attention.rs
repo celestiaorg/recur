@@ -1,4 +1,4 @@
-//! "Needs your attention" codes and labels for PR rows (`lib/pr-attention.ts`).
+//! "Needs your attention" codes and labels for PR rows.
 
 use recur_domain::{
     ATTENTION_ASSIGNED, ATTENTION_AWAITING_REVIEW, ATTENTION_CHANGES_REQUESTED,

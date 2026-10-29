@@ -1,4 +1,4 @@
-//! Pure UI logic ported from `frontend/src/lib`, shared by the widgets and by views.
+//! Pure UI logic shared by the widgets and by views.
 
 pub mod date_time;
 pub mod fuzzy;

@@ -1,4 +1,4 @@
-//! Per-tool presentation for transcript rows (`AgentChat.svelte`'s script): the row label, the
+//! Per-tool presentation for transcript rows: the row label, the
 //! dim meta line, the icon, the in-flight copy, and the parsed payloads each tool card shows.
 //! Never a JSON dump where a structured view exists.
 

@@ -1,4 +1,4 @@
-//! Port of `langdata_test.go`.
+//! Bundle `[[languageData]]`.
 
 use recur_bundles::*;
 

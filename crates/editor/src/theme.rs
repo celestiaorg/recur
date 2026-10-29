@@ -15,7 +15,7 @@ pub fn chrome_font(family: recur_ui::fonts::Family) -> gpui_kit::Font {
     family.font(400., false, Default::default())
 }
 
-/// `editor.background` when a theme has none (`cm-themes.ts`, `tm-theme.ts`).
+/// `editor.background` when a theme has none.
 pub const EDITOR_BACKGROUND_FALLBACK: &str = "#1e1e1e";
 
 /// `.cm-fat-cursor` (vim and emacs block cursor).
@@ -105,7 +105,7 @@ pub struct EditorTheme {
     pub light: bool,
 }
 
-/// `MiniScriptEditor`'s layout chrome (`layoutChrome` in `MiniScriptEditor.svelte`): an
+/// The mini script editor's layout chrome: an
 /// 18px line in the app's mono face (the code editor's font for `md`), its own content and line
 /// padding, a 10.5px line-number gutter, and the faint placeholder.
 #[derive(Clone, Debug, PartialEq)]
@@ -409,7 +409,7 @@ impl EditorTheme {
         wash(current, 0.16)
     }
 
-    /// Merge view washes from the host stylesheet (`MergeEditor.svelte`).
+    /// Merge view washes.
     pub fn merge(&self) -> MergeColors {
         let (git_a, git_d): (Rgba, Rgba) = (self.tokens.git_a.into(), self.tokens.git_d.into());
         MergeColors {
@@ -561,7 +561,7 @@ pub struct MergeColors {
     pub revert_border: Rgba,
 }
 
-/// Cycle order and picker helpers from `cm-themes.ts`.
+/// Theme cycle order and picker helpers.
 pub mod catalog {
     use std::cmp::Ordering;
 

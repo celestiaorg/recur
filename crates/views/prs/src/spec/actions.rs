@@ -1,4 +1,4 @@
-//! PR detail's titlebar actions from `pr-review.spec.ts`: draft state, Approve on your own PR,
+//! PR detail's titlebar actions: draft state, Approve on your own PR,
 //! Update with base and its method menu, merge methods, the optimistic merge and its rollback.
 
 use gpui::TestAppContext;
@@ -304,7 +304,7 @@ fn a_failed_merge_restores_the_button_and_keeps_updates_from_the_round_trip(
     assert_eq!(s.view(), ViewName::PrDetail);
 }
 
-// ---- toasts.spec.ts ----
+// ---- toasts ----
 
 #[gpui::test]
 fn approving_a_pr_shows_a_success_toast_that_auto_dismisses(cx: &mut TestAppContext) {

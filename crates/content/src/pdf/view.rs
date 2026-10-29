@@ -1,4 +1,4 @@
-//! `PdfPreview.svelte`: every page as a fit-to-width slot, pages rendered by hayro while
+//! The PDF preview: every page as a fit-to-width slot, pages rendered by hayro while
 //! they intersect the viewport (and discarded when they leave it), a page field that follows
 //! the scroll, zoom by toolbar or ⌘+ / ⌘-, and find (⌘F) over the pages' text layer.
 

@@ -1,4 +1,4 @@
-//! `lib/menu-space.ts`: fitting dropdown menus and popovers to the window.
+//! Fitting dropdown menus and popovers to the window.
 
 /// Gap between trigger and menu (`.sel-menu`).
 pub const MENU_GAP_PX: f32 = 6.;

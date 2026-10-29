@@ -1,4 +1,4 @@
-//! Port of `prompt_test.go` (cases that need a fake `gh` on PATH live in
+//! Bundle `[[prompt]]` actions (cases that need a fake `gh` on PATH live in
 //! `tests/env_serial`).
 
 use std::collections::BTreeMap;

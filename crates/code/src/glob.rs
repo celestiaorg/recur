@@ -1,5 +1,5 @@
 //! VS Code-style `*` / `**` / `?` globs for repo-relative paths: the
-//! translation the file index, copy-files and the UI's `lib/glob.ts` share,
+//! translation the file index, copy-files and the UI's glob filters share,
 //! and the UI's explorer exclude check (JavaScript regex semantics).
 
 use std::collections::HashMap;
@@ -40,7 +40,7 @@ pub(crate) fn glob_to_regexp(glob: &str) -> String {
     out
 }
 
-/// One explorer exclude pattern compiled as the webview compiles it.
+/// One explorer exclude pattern compiled as a JavaScript regex.
 #[derive(Clone)]
 pub struct CompiledGlob(Arc<regress::Regex>);
 

@@ -1,4 +1,4 @@
-//! Ask Recur briefing tool cards (`lib/briefingtools.ts`): list_workspace_briefs,
+//! Ask Recur briefing tool cards: list_workspace_briefs,
 //! get_workspace_context and present_workspace, parsed from their JSON results.
 
 use recur_domain::{BriefAction, WorkspaceBrief};
@@ -632,7 +632,6 @@ pub fn present_workspace_label(pending: bool, card: Option<&PresentWorkspaceView
     "Presented workspace".into()
 }
 
-// Port of briefingtools.test.ts.
 #[cfg(test)]
 mod tests {
     use serde_json::json;

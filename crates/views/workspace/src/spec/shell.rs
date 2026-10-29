@@ -1,6 +1,5 @@
 //! The shell with every view registered, as the desktop mounts it: the workspace titlebar's
-//! target branch and git chrome (`workspace-base.spec.ts`), Remove (`loop-lifecycle.spec.ts`)
-//! and the chat dock (`maestro-dock.spec.ts`). Titlebar buttons carry `{id}` and
+//! target branch and git chrome, Remove and the chat dock. Titlebar buttons carry `{id}` and
 //! `{id}={label}` (`{id}={label}:off:{title}` while disabled); Selects carry
 //! `sel:{aria label}={value}` (`:off` while disabled).
 
@@ -41,7 +40,7 @@ pub fn boot<'a>(
     crate::register(&mut registry);
     cx.update(|cx| {
         recur_app::init(&registry, cx);
-        recur_ui::motion::freeze(None, cx);
+        recur_ui::motion::freeze(cx);
         recur_content::markdown::set_markdown_render_inline(true);
         install_prompt_runner(cx);
     });
@@ -297,7 +296,7 @@ fn str_of(v: &Value, k: &str) -> String {
 
 const PICKER: &str = "sel:Target branch";
 
-// ---- workspace-base.spec.ts: workspace target branch ----
+// ---- workspace target branch ----
 
 #[gpui::test]
 async fn loop_workspaces_show_name_and_branch_not_the_id(cx: &mut TestAppContext) {
@@ -916,7 +915,7 @@ async fn hides_pull_push_force_push_when_the_github_pr_is_already_in_sync(cx: &m
     assert!(!s.has("tb-force-push-pr"));
 }
 
-// ---- loop-lifecycle.spec.ts ----
+// ---- remove ----
 
 fn agent(s: &mut S, ws: &str, status: &str) {
     s.wire(
@@ -985,7 +984,7 @@ async fn remove_confirms_on_a_double_click(cx: &mut TestAppContext) {
     assert!(!s.has(&format!("hit:{SETTLED}")));
 }
 
-// ---- maestro-dock.spec.ts (the PR detail's own agent dock is not ported yet) ----
+// ---- chat dock ----
 
 #[gpui::test]
 async fn hiding_the_left_panel_still_works_after_visiting_the_linked_pr(cx: &mut TestAppContext) {

@@ -1,4 +1,4 @@
-//! `frontend/e2e/activity.spec.ts`: the Loop chat cockpit (specialist session cards, fan-out
+//! The Loop chat cockpit (specialist session cards, fan-out
 //! packing, facts, tool cards inside a session), the plan panel's checklist and agent todos,
 //! and the closed-chat recents menu.
 

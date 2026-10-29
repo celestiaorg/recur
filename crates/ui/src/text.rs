@@ -1,4 +1,4 @@
-//! A text element with the CSS text behavior the web UI depends on and GPUI's built-in text
+//! A text element with the CSS text behavior the app's styles depend on and GPUI's built-in text
 //! lacks: `letter-spacing`, `text-transform: uppercase`, `line-height: normal`, `tabular-nums`,
 //! `white-space` (normal / nowrap / pre-wrap), UAX #14 line breaking with
 //! `overflow-wrap: anywhere`, `text-overflow: ellipsis`, `-webkit-line-clamp`, inline boxes

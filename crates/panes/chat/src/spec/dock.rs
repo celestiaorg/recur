@@ -1,6 +1,5 @@
-//! The chat halves of `maestro-dock.spec.ts` and `loading-states.spec.ts` (the dock's routing
-//! and panel placement are the workspace view's, specced there), and Ask Recur
-//! (`AppChat.svelte`).
+//! The chat dock and its loading states (the dock's routing and panel placement are the
+//! workspace view's, specced there), and Ask Recur.
 
 use std::sync::Arc;
 

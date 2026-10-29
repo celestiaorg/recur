@@ -1,4 +1,4 @@
-//! Parked editor tab snapshots across workspace switches (`lib/caches/cm-session-tabs.ts`).
+//! Parked editor tab snapshots across workspace switches.
 //! The editor keeps each tab's state for in-workspace switches; this LRU holds a workspace's
 //! whole tab map so returning to it reuses parsed buffers instead of building them again.
 //! Empty parks never clobber a previous snapshot. States are sized from their document length.

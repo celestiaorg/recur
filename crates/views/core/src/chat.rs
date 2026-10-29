@@ -1,6 +1,6 @@
-//! The chat stores several views share (`lib/stores.ts`): the live terminal and artifact lists
+//! The chat stores several views share: the live terminal and artifact lists
 //! behind `@terminal` / `@artifact` mentions, one-shot focus requests between the chat and the
-//! terminal dock or a fan-out card, the model catalog cache (`lib/models.ts`), and whether an
+//! terminal dock or a fan-out card, the model catalog cache, and whether an
 //! agent transcript is the on-screen chat surface.
 
 use futures::FutureExt;
@@ -388,7 +388,6 @@ mod tests {
         }
     }
 
-    // models-catalog.test.ts
     #[gpui::test]
     async fn invalidate_bumps_the_revision_and_reloads(cx: &mut TestAppContext) {
         let groups = Arc::new(parking_lot::Mutex::new(vec![group(
@@ -449,7 +448,7 @@ mod tests {
         assert_eq!(now[0].r#ref, "claude-code/b");
     }
 
-    // file-index.ts `syncFileIndexExclude` / `wireFileIndexEvents`.
+    // The file index exclude follows settings and index events.
     #[gpui::test]
     async fn the_file_index_follows_the_explorer_excludes(cx: &mut TestAppContext) {
         let sent = Arc::new(parking_lot::Mutex::new(Vec::<serde_json::Value>::new()));
@@ -478,8 +477,7 @@ mod tests {
         assert_eq!(sent.lock().len(), 2);
     }
 
-    // remove-workspace.ts: `hideWorkspacesNow` flushes the editor session of the workspace on
-    // screen before hiding it.
+    // Removing flushes the editor session of the workspace on screen before hiding it.
     #[gpui::test]
     async fn removing_the_workspace_on_screen_flushes_the_editor_session_first(
         cx: &mut TestAppContext,

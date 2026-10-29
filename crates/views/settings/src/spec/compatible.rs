@@ -1,4 +1,4 @@
-//! `compatible-provider.spec.ts`.
+//! OpenAI-compatible providers.
 
 use gpui::TestAppContext;
 use recur_services::mock::{MockOptions, Reply};

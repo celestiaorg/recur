@@ -1,6 +1,6 @@
 //! Image sources for markdown and the lightbox. `data:` URLs decode here; everything else
 //! (`/gh-image?url=…`, `/workspace-file?…`, `https://…`) goes through the host's
-//! [`ImageLoader`], the native stand-in for the webview's asset server and network stack.
+//! [`ImageLoader`] (the app's asset routes and network fetches).
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -179,7 +179,7 @@ pub fn workspace_file_url(
     format!("/workspace-file?{}", q.finish())
 }
 
-/// Decoded images by `src`, shared by every view in the app (the webview's image cache).
+/// Decoded images by `src`, shared by every view in the app.
 #[derive(Default)]
 pub struct ImageCache(pub HashMap<String, Decoded>);
 

@@ -1,6 +1,5 @@
 //! Menubar actions on the shell: the action listeners behind each native menu item, the
-//! `menu.action` switch App.svelte ran (`onMenuAction`), and the updater toasts
-//! (`lib/updater.ts`).
+//! `menu.action` switch, and the updater toasts.
 
 use gpui_kit::{Context, Div, InteractiveElement, Stateful, Window};
 use recur_platform::updater::UpdaterEvent;
@@ -141,7 +140,7 @@ impl Shell {
             .update(cx, |s, cx| s.dispatch_menu_action(name, cx));
     }
 
-    /// App.svelte's `onMenuAction` handler.
+    /// The `menu.action` handler.
     pub(crate) fn menu_action(
         &mut self,
         action: &str,

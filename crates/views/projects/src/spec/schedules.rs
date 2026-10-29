@@ -1,4 +1,4 @@
-//! `scheduled-prompts.spec.ts`: the schedule editor, the project's Schedules section and the
+//! The schedule editor, the project's Schedules section and the
 //! Schedules page.
 
 use std::sync::Arc;

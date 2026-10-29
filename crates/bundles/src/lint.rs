@@ -624,8 +624,7 @@ fn key_equivalent_finding(raw: &str) -> Option<(LintSeverity, String)> {
     }
 }
 
-/// Whether a newDocument language gets an Observatory Code/Preview chip
-/// (mirrors `frontend/src/lib/preview.ts`).
+/// Whether a newDocument language gets an Observatory Code/Preview chip.
 pub fn previewable_language(lang: &str) -> bool {
     let s = lang.trim().to_lowercase();
     matches!(

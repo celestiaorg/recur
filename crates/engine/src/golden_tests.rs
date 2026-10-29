@@ -640,7 +640,7 @@ fn roles_and_tool_tables_match_go() {
     for (mode, want) in g["roles"]["modeTools"].as_object().unwrap() {
         assert_eq!(mode_tools(mode), strs(want), "mode_tools({mode:?})");
     }
-    // Go wrote these with its JSON names; bundles::Role reads TOML names.
+    // The fixture writes these with JSON names; bundles::Role reads TOML names.
     let sample: Vec<recur_bundles::Role> = g["inputs"]["sampleRoles"]
         .as_array()
         .unwrap()
@@ -813,7 +813,7 @@ fn kitchen_words_and_guards_match_go() {
 }
 
 mod erased {
-    /// Serializes to a `Value` for structural comparison with the Go JSON
+    /// Serializes to a `Value` for structural comparison with the fixture JSON
     /// (key order does not matter for these).
     pub trait Ser {
         fn json(&self) -> serde_json::Value;

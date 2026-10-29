@@ -1,4 +1,4 @@
-//! Steer (R6), active-run, options, prompt and runner-contract tests, against
+//! Steer, active-run, options, prompt and runner-contract tests, against
 //! an HTTP stand-in for the bridge.
 
 use std::sync::Arc;
@@ -134,7 +134,7 @@ fn user_texts(evs: &[AgentEvent], live: Option<bool>) -> Vec<String> {
         .collect()
 }
 
-// ---- cursor_steer_test.go
+// ---- cursor steer
 
 /// D49 on Cursor: a steer mid-run cancels the run (SDK run.cancel), joins
 /// every waiting steer, and Sends one follow-up on the same agent. The turn
@@ -923,7 +923,7 @@ async fn live_steer_flushes_streamed_text() {
     );
 }
 
-// ---- cursor_active_run_test.go
+// ---- cursor active run
 
 fn conflict_frame() -> String {
     r#"{"error":{"code":"internal","message":"Agent agent-stuck already has active run"}}"#
@@ -1393,7 +1393,7 @@ async fn recover_then_live_steer() {
     );
 }
 
-// ---- cursor_test.go: options, prompts, contract
+// ---- cursor: options, prompts, contract
 
 fn opts(r: &CursorRunner, req: TurnRequest) -> crate::client::AgentOptions {
     r.agent_options(&req)

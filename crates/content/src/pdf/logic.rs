@@ -1,4 +1,4 @@
-//! `lib/pdf-preview.ts`: paging and zoom arithmetic for the PDF preview.
+//! Paging and zoom arithmetic for the PDF preview.
 
 pub const MIN_SCALE: f32 = 0.1;
 pub const MAX_SCALE: f32 = 8.;

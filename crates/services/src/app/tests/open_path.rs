@@ -1,4 +1,4 @@
-//! `open_path_test.go`.
+//! Opening paths.
 
 use recur_domain::{FILES_PROJECT_ID, Project};
 

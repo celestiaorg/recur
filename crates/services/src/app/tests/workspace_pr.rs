@@ -1,4 +1,4 @@
-//! `workspace_pr_test.go`.
+//! Workspace PR services.
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};

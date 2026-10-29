@@ -1,4 +1,4 @@
-//! The component's `$effect`s, run before each frame from what changed since the last one,
+//! The view's side effects, run before each frame from what changed since the last one,
 //! and the props the children get (the chat, its toolbar, the Observatory).
 
 use std::cell::RefCell;

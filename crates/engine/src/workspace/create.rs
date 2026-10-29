@@ -1,6 +1,6 @@
-//! Workspace creation (E1): persist the row, allocate the git worktree (+ port,
+//! Workspace creation: persist the row, allocate the git worktree (+ port,
 //! copied files, setup_cmd) in the background, retry a failed setup, and roll a
-//! failed create back. The loop start paths are E3.
+//! failed create back. The loop start paths are in `loops`.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -31,7 +31,7 @@ pub struct CreatingAlloc {
 }
 
 /// The PR whose head a creating workspace checks out instead of the base
-/// (E5's `create_workspace_from_pr` stores it before allocating).
+/// (`create_workspace_from_pr` stores it before allocating).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PrHeadCheckoutSpec {
     pub number: i64,

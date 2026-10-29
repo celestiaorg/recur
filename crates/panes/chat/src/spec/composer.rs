@@ -1,6 +1,5 @@
-//! `composerDom.test.ts` cases that are about the composer's behavior rather than its DOM:
-//! prompt chips with arg slots and the wire caret. The rest of that file
-//! (hydrate / serialize, chip labels) is `recur_engine::view::composer`'s tests.
+//! The composer's behavior: prompt chips with arg slots and the wire caret. Hydrate /
+//! serialize and chip labels are `recur_engine::view::composer`'s tests.
 
 use gpui::TestAppContext;
 use recur_engine::view::composer::Segment;

@@ -13,7 +13,7 @@ use super::files::FILE_AT_RE;
 use super::terminals::{at_token_bounded, fence_snapshot, scrub_instruction_text};
 use crate::artifacts::{artifact_kind_is_binary, list_artifacts, read_artifact_text};
 
-/// Keep in sync with the frontend `ARTIFACT_AT_RE`.
+/// Keep in sync with `ARTIFACT_AT_CORE` in `crate::view::mentions`.
 static ARTIFACT_AT_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"@artifact(?::([^\s@]+))?").expect("artifact pattern"));
 

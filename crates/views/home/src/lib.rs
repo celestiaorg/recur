@@ -1,6 +1,5 @@
-//! The first-run path and the creation flows: Welcome (`Welcome.svelte`), New workspace
-//! (`NewTask.svelte` with the modal flows of `lib/new-workspace.ts`) and New project
-//! (`NewProject.svelte`), with `_welcome.scss`.
+//! The first-run path and the creation flows: Welcome, New workspace (with its modal
+//! flows) and New project.
 //!
 //! # Embedding
 //!

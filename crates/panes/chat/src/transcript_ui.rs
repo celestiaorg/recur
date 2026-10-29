@@ -1,5 +1,5 @@
-//! In-memory transcript chrome per chat key (workspace + agent code), as
-//! `lib/caches/chat-transcript-ui.ts`: one chat view serves every tab, so a swap saves the
+//! In-memory transcript chrome per chat key (workspace + agent code): one chat view serves
+//! every tab, so a swap saves the
 //! leaving chat's expanded groups, rows, finding accordions, stub heights and scroll, and a
 //! return restores them. The cache is a GPUI global ([`TranscriptUiCache`]).
 
@@ -487,7 +487,6 @@ mod tests {
         }
     }
 
-    // chat-transcript-ui.test.ts
     #[test]
     fn live_row_keys_stay_distinct_across_chats() {
         assert_ne!(

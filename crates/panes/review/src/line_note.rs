@@ -1,4 +1,4 @@
-//! `LineNoteThread.svelte`: a posted line-note thread inside a diff (`.icmt-thread`): the root
+//! A posted line-note thread inside a diff: the root
 //! note and its replies with reactions, reply / edit composers with the emoji and `@mention`
 //! typeaheads, the ⋯ menu (Open in GitHub, Copy link, Quote reply, Edit, Delete) and resolve.
 

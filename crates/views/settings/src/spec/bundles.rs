@@ -1,4 +1,4 @@
-//! `bundles.spec.ts`: the Settings → Bundles scenarios. The run-command palette and the
+//! The Settings → Bundles scenarios. The run-command palette and the
 //! enabled willSave transform are the Observatory editor's.
 
 use std::sync::Arc;

@@ -1,4 +1,4 @@
-//! `codex_login_test.go` over the services: a successful browser sign-in
+//! Codex sign-in over the services: a successful browser sign-in
 //! switches from an API key to ChatGPT auth; a failed or cancelled one leaves
 //! the saved auth alone. The sign-in worker is tested in
 //! `recur_provider_codex::login`.

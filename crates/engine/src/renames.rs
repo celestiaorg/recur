@@ -1,5 +1,5 @@
 //! The rename host tools: chat tab titles, workspace titles and branch names.
-//! `open_pr` lives with the PR slice.
+//! `open_pr` lives in `prs`.
 
 use std::time::Duration;
 

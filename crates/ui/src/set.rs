@@ -1,5 +1,5 @@
-//! `_settings.scss` and the shared rules Settings and project settings use (`.seg`, `.tbtn`,
-//! `.inp`, the theme cards of `_overlays.scss`): rows, copy, controls, notes and fields.
+//! The shared styles Settings and project settings use (segmented controls, buttons, inputs,
+//! theme cards): rows, copy, controls, notes and fields.
 
 use crate::fonts::{Family, weight};
 use crate::style::{card, text_field};
@@ -708,7 +708,7 @@ pub fn note(warn: bool, cx: &App) -> Div {
         .text_color(hsla(t.muted))
 }
 
-// ---- theme cards (`_overlays.scss`) ----
+// ---- theme cards ----
 
 /// `.thauto-l`: the Light mode / Dark mode label over a grid.
 pub fn thauto_label(label: &str, cx: &App) -> Div {
@@ -869,7 +869,7 @@ pub fn nav_panel(
             ),
         );
     }
-    // Light palettes darken instead (`_tokens.scss`).
+    // Light palettes darken instead.
     let (hover, on_bg) = if Theme::of(cx).is_light() {
         (rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.07))
     } else {

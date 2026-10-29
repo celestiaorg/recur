@@ -1,4 +1,4 @@
-//! Port of `setting_test.go`.
+//! Bundle settings.
 
 use recur_bundles::*;
 

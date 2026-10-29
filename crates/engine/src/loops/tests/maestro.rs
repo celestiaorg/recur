@@ -214,7 +214,7 @@ reviewer = "recur.roles.reviewer"
         .create_workspace(&proj, "scratch", "")
         .await
         .unwrap();
-    // Listing chats (E4) creates the PA tab of a fresh workspace.
+    // Listing chats creates the PA tab of a fresh workspace.
     t.engine.ensure_pair_agent(&ws.id, "PA", "");
     t.engine
         .remember_chat_loop_policy(&ws.id, "PA", "test.charter.loop", "")

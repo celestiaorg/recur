@@ -1,4 +1,4 @@
-//! `lib/review-scroll.ts`.
+//! Scrolling a review pane to a thread.
 
 /// `paneScrollTo`: the scrollTop that puts an element (`el_top`, viewport y) in the upper part
 /// of the pane (`pane_top`, viewport y) so its thread shows below it.

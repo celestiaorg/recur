@@ -1,4 +1,4 @@
-//! `_chat.scss` primitives the transcript and dock reuse: the literal colors the stylesheet
+//! Chat style primitives the transcript and dock reuse: the literal colors the styles
 //! hard-codes, the bordered pills (`.tc-chip`, `.tc-file`, `.tc-url`, status chips, …), the
 //! agent tints and small text builders.
 

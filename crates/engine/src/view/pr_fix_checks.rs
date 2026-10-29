@@ -1,4 +1,4 @@
-//! `/fix-checks` from the PR checks tab (frontend `lib/pr-fix-checks.ts`):
+//! `/fix-checks` from the PR checks tab:
 //! run it in the PR's Agent-capable worktree, or create one from the PR
 //! first and fire the queued request once it is ready.
 

@@ -1,4 +1,4 @@
-//! `workspace_create_test.go`.
+//! Workspace creation services.
 
 use recur_domain::{Project, WORKSPACE_SOLO};
 use recur_git::LOCAL_BRANCH_GROUP;

@@ -1,7 +1,7 @@
-//! The engine (E1): every piece of shared state, its construction, and the
-//! small helpers every slice leans on.
+//! The engine: every piece of shared state, its construction, and the
+//! small helpers every module leans on.
 //!
-//! Lock map (plan §4.2), field by field:
+//! Lock map, field by field:
 //!
 //! | Field | Kind |
 //! |---|---|
@@ -112,7 +112,7 @@ pub struct Tasks {
     pub chat_turns: TaskTracker,
 }
 
-/// The schedule ticker's stop signal and task. E4's `start_scheduled_prompts`
+/// The schedule ticker's stop signal and task. `start_scheduled_prompts`
 /// installs them; Shutdown fires `stop` under `schedule` and joins `ticker`.
 #[derive(Default)]
 pub struct ScheduleControl {
@@ -262,7 +262,7 @@ pub struct Engine {
     /// The looking-at surface of each tab's last send, for Retry.
     pub(crate) last_chat_surfaces: Mutex<HashMap<String, crate::chat::surface::ChatSurface>>,
     /// Pull requests: holds, throttles, the sync single-flight and hoist
-    /// aliases (E5).
+    /// aliases.
     pub(crate) prs: crate::prs::PrState,
     /// PA*/MA tabs Recover found live with no turn, for AutoResume.
     pub(crate) interrupted_chats: Mutex<Vec<crate::chat::recover::InterruptedChat>>,
@@ -546,7 +546,7 @@ impl Engine {
     }
 }
 
-/// Test seams (R15). Production never sets them.
+/// Test seams. Production never sets them.
 #[cfg(any(test, feature = "testing"))]
 impl Engine {
     /// Freezes the clock (`nowFn`).

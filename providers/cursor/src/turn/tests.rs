@@ -133,7 +133,7 @@ fn turn_ends(evs: &[AgentEvent]) -> Vec<&recur_agent::TurnResult> {
         .collect()
 }
 
-// ---- cursor_test.go
+// ---- cursor
 
 #[test]
 fn task_message_is_not_compact() {
@@ -581,7 +581,7 @@ fn deferred_result_waits_for_finish() {
     assert_eq!(turn_ends(&rec.all()).len(), 1, "held once");
 }
 
-// ---- cursor_steer_test.go: user rows
+// ---- cursor steer: user rows
 
 #[test]
 fn fire_users_uses_display_text() {
@@ -626,7 +626,7 @@ fn live_fire_flushes_text() {
     );
 }
 
-// ---- cursortools_test.go: frames
+// ---- cursortools: frames
 
 #[test]
 fn emits_raw_provider_tool_data() {

@@ -2,11 +2,11 @@
 //! blocks.
 //!
 //! The tokenizer is a port of vscode-textmate 9.3 over Oniguruma (the `onig`
-//! crate, same engine and options as vscode-oniguruma). The rest ports
-//! Recur's `lib/tm-*.ts`, `lib/codehl.ts`, the editor-independent parts of
-//! `lib/cm-lang-data.ts` / `lib/cm-tm-*.ts` / `lib/syntax-mode.ts`, and
-//! `internal/bundles/scope.go`. Grammars, themes, language data and symbol
-//! rules are inputs; nothing here depends on the bundles crate.
+//! crate, same engine and options as vscode-oniguruma). Around it: the
+//! per-document engine and background fill, theme loading, card highlighting,
+//! language data, folding, outline symbols, user syntax modes and bundle scope
+//! selectors. Grammars, themes, language data and symbol rules are inputs;
+//! nothing here depends on the bundles crate.
 
 mod catalog;
 mod codehl;

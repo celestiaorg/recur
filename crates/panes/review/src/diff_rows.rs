@@ -1,4 +1,4 @@
-//! `DiffFile.svelte`'s row rules: line numbers per side, which rows carry notes, pending
+//! A file diff's row rules: line numbers per side, which rows carry notes, pending
 //! comments and the draft range, hunk folding and the windowed slots.
 
 use std::collections::HashSet;

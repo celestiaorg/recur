@@ -1,5 +1,4 @@
-//! PR chrome (`lib/colors.ts` PR helpers) and the PR chat-host bookkeeping
-//! (`lib/pr-workspace.ts`).
+//! PR chrome colors and the PR chat-host bookkeeping.
 
 use std::collections::{BTreeMap, HashSet};
 

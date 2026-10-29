@@ -1,4 +1,4 @@
-//! `FilePreview.svelte`: the Preview surface of dual-nature files (markdown, SVG, HTML,
+//! The Preview surface of dual-nature files (markdown, SVG, HTML,
 //! Mermaid) with find-in-page and per-path scroll that survives remounts and restores.
 
 use recur_ui::guard::Guarded;

@@ -878,7 +878,7 @@ async fn bundles_catalog_from_shipped_manifests() {
             .any(|t| t.id == "vga" && !t.palette.background.is_empty())
     );
 
-    // The TypeScript names ListLoops twice; the UI got the workspace list.
+    // The pre-rename ListLoops alias answers the workspace list.
     let loops = b.list_loops().await.unwrap();
     assert_eq!(loops.len(), 5);
     assert_eq!(loops[0].id, "LOOP-2218");

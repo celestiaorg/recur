@@ -1,7 +1,6 @@
 //! The asset routes (workspace files, workspace data, `/gh-image`), served
-//! through [`AssetsService`] for a UI that has no webview. Statuses and
-//! error text match the HTTP handlers; ranges and `HEAD` have no native
-//! caller and are not served.
+//! through [`AssetsService`]. Statuses and error text are HTTP-style; ranges
+//! and `HEAD` have no caller and are not served.
 
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -262,8 +261,8 @@ impl AppServices {
         serve_prepared(&abs, mime)
     }
 
-    /// GitHub attachment images with the user's `gh` token (the webview had
-    /// no GitHub cookies; user-attachments 404 without auth).
+    /// GitHub attachment images with the user's `gh` token (user-attachments
+    /// 404 without auth).
     async fn serve_forge_image(&self, raw: &str) -> Served {
         let raw = raw.trim();
         if raw.is_empty() {

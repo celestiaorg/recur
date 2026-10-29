@@ -1,4 +1,4 @@
-//! The window's root view (`App.svelte`): titlebar, sidebar, the routed main area, the
+//! The window's root view: titlebar, sidebar, the routed main area, the
 //! overlays host, global keys, menu actions and boot.
 
 use recur_ui::guard::Guarded;
@@ -292,7 +292,7 @@ impl Shell {
         .detach();
     }
 
-    /// Effects App.svelte ran off store changes.
+    /// Effects that run off store changes.
     fn state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let occluded = self.state.read(cx).chat_occluded();
         if self.occluded != Some(occluded) {
@@ -478,7 +478,7 @@ impl Shell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
-        // App.svelte's window keydown sees keys with nothing focused (focus on `body`).
+        // The window keydown handler sees keys with nothing focused.
         if window.focused(cx).is_none() {
             window.focus(&self.focus, cx);
         }

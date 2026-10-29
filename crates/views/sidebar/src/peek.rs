@@ -1,4 +1,4 @@
-//! The collapsed rail's left-edge flyout (`lib/rail-peek.ts`): hovering or tapping the
+//! The collapsed rail's left-edge flyout: hovering or tapping the
 //! window's left edge overlays the sidebar so navigation stays reachable.
 
 use std::time::Duration;

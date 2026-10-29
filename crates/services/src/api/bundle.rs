@@ -9,7 +9,7 @@ use super::{
 use crate::Result;
 
 /// BundleService discovers Recur Bundles, runs shebang commands, and compiles
-/// typescript macros for the frontend Worker (CompiledModule).
+/// typescript macros for the macro runtime (CompiledModule).
 #[async_trait]
 pub trait BundleService: Send + Sync {
     /// CompiledCompleteModule returns esbuild-compiled CommonJS for a typescript
@@ -17,8 +17,8 @@ pub trait BundleService: Send + Sync {
     async fn compiled_complete_module(&self, id: &str) -> Result<String>;
 
     /// CompiledModule returns esbuild-compiled CommonJS for a typescript command,
-    /// using the on-disk BundleCache (rebuilt when source changes). The frontend
-    /// runs it in a sandboxed Worker.
+    /// using the on-disk BundleCache (rebuilt when source changes). The macro
+    /// runtime runs it in a sandboxed worker.
     async fn compiled_module(&self, id: &str) -> Result<String>;
 
     /// CompiledPromptModule returns esbuild-compiled CommonJS for a typescript prompt.
@@ -79,15 +79,15 @@ pub trait BundleService: Send + Sync {
     async fn read_theme(&self, id: &str) -> Result<String>;
 
     /// RunCommand looks up a shebang command by id and executes it as a subprocess.
-    /// TypeScript macros must use CompiledModule + the frontend Worker instead.
+    /// TypeScript macros must use CompiledModule + the macro runtime instead.
     async fn run_command(&self, id: &str, rc: &RunContextDto) -> Result<RunResultDto>;
 
     /// RunPromptAction looks up a shebang prompt by id and executes it.
-    /// TypeScript prompts must use CompiledPromptModule + the frontend Worker.
+    /// TypeScript prompts must use CompiledPromptModule + the macro runtime.
     async fn run_prompt_action(&self, id: &str, rc: &PromptContextDto) -> Result<PromptResultDto>;
 
     /// RunPromptComplete runs a shebang [[prompt]] complete script.
-    /// TypeScript complete scripts must use CompiledCompleteModule + the frontend Worker.
+    /// TypeScript complete scripts must use CompiledCompleteModule + the macro runtime.
     async fn run_prompt_complete(
         &self,
         id: &str,

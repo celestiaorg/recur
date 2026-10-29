@@ -1,4 +1,4 @@
-//! `PRListTitlebar.svelte`: the dashboard's counts beside the crumb.
+//! The PR dashboard's counts beside the crumb.
 
 use gpui_kit::{
     Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div,

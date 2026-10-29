@@ -1,4 +1,4 @@
-//! `NewTask.svelte`: the New workspace modal (`newTaskOpen`). One workspace noun; the mode
+//! The New workspace modal (`newTaskOpen`). One workspace noun; the mode
 //! decides what starts inside it: Loop engages the autopilot with the task as its goal, every
 //! other mode opens the workspace with its first chat tab in that mode (the opening prompt is
 //! optional). A non-loop workspace is created eagerly as soon as the repository and base are
@@ -418,7 +418,7 @@ impl NewTaskModal {
     }
 
     fn on_open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        // `$effect.pre`: a fresh open has not claimed its eager row.
+        // A fresh open has not claimed its eager row.
         self.claimed = false;
         // Re-probe isGit so a mid-session `git init` shows up.
         self.vcx
@@ -509,7 +509,7 @@ impl NewTaskModal {
         self.focus_composer(window, cx);
     }
 
-    /// Every `$effect` that follows store and picker state.
+    /// Every effect that follows store and picker state.
     fn effects(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.open {
             self.repo_preference(cx);
@@ -1699,7 +1699,7 @@ impl Render for NewTaskModal {
     }
 }
 
-/// The window's New workspace modal, for specs and parity scenes.
+/// The window's New workspace modal, for specs and gallery scenes.
 pub struct CurrentNewTask(pub gpui_kit::WeakEntity<NewTaskModal>);
 
 impl gpui_kit::Global for CurrentNewTask {}

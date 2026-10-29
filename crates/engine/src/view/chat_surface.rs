@@ -1,4 +1,4 @@
-//! `lib/chat-surface.ts`: the looking-at surface the UI stamps onto a chat
+//! The looking-at surface the UI stamps onto a chat
 //! wire (never the bubble) so the engine knows whether the operator is on a
 //! workspace, a Local PR or a forge PR. The engine side is
 //! `chat::surface`.

@@ -1,4 +1,4 @@
-//! The review-surface scenarios of `observatory.spec.ts`. The Observatory host's own halves
+//! The review surface in the Observatory. The Observatory host's own halves
 //! (the Review changes toggle and ⌥⌘R, the Changes / Commits chips, file tabs, remembered
 //! panes) are covered in `recur-view-observatory`'s `spec::observatory`; the surface's events
 //! stand in for them here.

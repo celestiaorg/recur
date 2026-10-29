@@ -1,5 +1,5 @@
 //! Recur's state-driven gutters: the SCM change bars against the git base
-//! (`cm-diff-gutter.ts`) and reviewer findings (`cm-findings-gutter.ts`).
+//! and reviewer findings.
 
 use std::collections::BTreeMap;
 use std::rc::Rc;

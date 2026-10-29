@@ -1,4 +1,4 @@
-//! `lib/split-diff.ts`: pair a unified diff into side-by-side rows (GitHub-style: deletions
+//! Pair a unified diff into side-by-side rows (GitHub-style: deletions
 //! zip with the following additions).
 
 use recur_domain::{DiffLine, PrComment};

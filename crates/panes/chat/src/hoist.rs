@@ -1,5 +1,5 @@
-//! Chat key remaps when a PR chat host is hoisted onto a live worktree
-//! (`lib/hoist-chat-keys.ts`): host-prefixed drafts, queues and in-flight sends move onto the
+//! Chat key remaps when a PR chat host is hoisted onto a live worktree: host-prefixed drafts,
+//! queues and in-flight sends move onto the
 //! destination workspace's tab codes, and late events addressed to the host follow the alias.
 //! The module state is a GPUI global ([`HoistState`]).
 
@@ -428,7 +428,6 @@ mod tests {
         }
     }
 
-    // hoist-chat-keys.test.ts
     #[test]
     fn cache_bust_codes() {
         assert!(hoist_cache_bust_codes(&v(&["PA", "PA2"]), None, &[]).is_empty());

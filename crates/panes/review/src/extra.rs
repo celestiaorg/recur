@@ -1,6 +1,5 @@
-//! A diff row's trusted `extraHtml` (`{@html extraHTML(l)}`): backend risk flags (`.flag`,
-//! `observe.FindingFlagHTML`) and the inline comment cards of seeded diffs (`.icmt .cmt`),
-//! laid out with the rules `_prs.scss` and `_settings.scss` give those classes. Elements
+//! A diff row's trusted `extraHtml`: backend risk flags (`.flag`) and the inline comment cards
+//! of seeded diffs (`.icmt .cmt`), laid out with the styles those classes get. Elements
 //! without a rule lay out as plain blocks and inline text.
 
 use gpui_kit::prelude::FluentBuilder;

@@ -1,4 +1,4 @@
-//! `StreamingMarkdown.svelte` and `lib/stream-reveal.ts`: live assistant text revealed a unit
+//! Streaming markdown: live assistant text revealed a unit
 //! at a time. A block with no newline paints whole; after the first newline the unfinished tail
 //! waits for the next newline or `complete`. Nothing renders while hidden, and returning shows
 //! the latest text at once. Parsing runs off the UI thread with streaming prefixes coalesced
@@ -196,7 +196,6 @@ mod tests {
         assert_eq!(complete_stream_prefix("a\nb", 0, true), 3);
     }
 
-    /// `stream-reveal.test.ts`.
     #[test]
     fn stream_reveal_cases() {
         assert_eq!(

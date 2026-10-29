@@ -1,4 +1,4 @@
-//! Shared widgets ported from `frontend/src/components`.
+//! Shared widgets.
 
 pub mod armed_button;
 pub mod calendar;

@@ -1,5 +1,4 @@
-//! Live vs settled specialist cards in the Loop cockpit (frontend
-//! `lib/session-live.ts`).
+//! Live vs settled specialist cards in the Loop cockpit.
 //!
 //! Stream events (delta/step/turn_end) can still land after `agent.updated`
 //! idle. Settled latches only on idle: `turn_end` is per provider run and a

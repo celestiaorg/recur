@@ -1,4 +1,4 @@
-//! `ContextUsageMeter.svelte`: the last turn's context fill as a 14px ring in the composer,
+//! The last turn's context fill as a 14px ring in the composer,
 //! with a popover breaking it down. Disabled until a turn reports usage.
 
 use recur_ui::guard::Guarded;

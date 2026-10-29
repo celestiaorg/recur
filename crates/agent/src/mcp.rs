@@ -1,4 +1,4 @@
-//! Settings → MCP / Project → MCP list rules (frontend `lib/mcp.ts`), over
+//! Settings → MCP / Project → MCP list rules, over
 //! the stored [`McpServer`] rows. Enablement matches
 //! [`recur_domain::mcp_global_disabled`].
 

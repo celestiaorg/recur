@@ -1,4 +1,4 @@
-//! `Toasts.svelte` and the toast store in `lib/stores.ts`: transient notices stacked at the
+//! Toasts and their store: transient notices stacked at the
 //! bottom right, with optional actions, replace-in-place keys, auto-dismiss TTLs, and the
 //! richer ask_user notice with its draining TTL bar.
 

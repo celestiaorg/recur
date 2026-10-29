@@ -1,4 +1,4 @@
-//! Port of `seed_test.go` and the seed case in `testrun_test.go`.
+//! Bundle seeding, and seeding through a test run.
 
 use std::collections::BTreeMap;
 use std::os::unix::fs::PermissionsExt;

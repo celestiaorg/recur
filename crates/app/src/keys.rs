@@ -1,4 +1,4 @@
-//! App.svelte's window `keydown` handler. It runs after the focused element (bubble phase),
+//! The window `keydown` handler. It runs after the focused element (bubble phase),
 //! and after any menubar accelerator the native menu handled: on macOS an enabled menu item
 //! owns its chord, so these paths cover the rest (disabled items, Linux, chords without an
 //! accelerator such as ⇧⌘N).
@@ -10,8 +10,8 @@ use recur_view_core::{AppState, ViewName};
 
 use crate::shell::Shell;
 
-/// Key contexts of text entry (the web UI's `INPUT` / `TEXTAREA` / `contenteditable`, the
-/// terminal's helper textarea). A view's own text widget adds `TextEntry` to its context.
+/// Key contexts of text entry (inputs, textareas, the editor, the terminal). A view's own
+/// text widget adds `TextEntry` to its context.
 pub const TEXT_ENTRY_CONTEXTS: [&str; 5] = [
     "Input",
     "RecurEditor",

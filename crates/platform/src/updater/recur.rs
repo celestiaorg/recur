@@ -1,4 +1,4 @@
-//! Recur's updater wiring (root `updater.go`): a signed-only endpoint
+//! Recur's updater wiring: a signed-only endpoint
 //! provider, the pinned public key, and the background check schedule.
 
 use std::sync::Arc;

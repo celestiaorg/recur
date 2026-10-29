@@ -1,4 +1,4 @@
-//! `lib/markdown-parse.ts`: marked with Recur's renderers and fence highlighting. The output
+//! Marked with Recur's renderers and fence highlighting. The output
 //! is unsanitized; [`super::sanitize_markdown`] runs before anything renders it.
 
 use std::cell::Cell;

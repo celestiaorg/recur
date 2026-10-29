@@ -1,4 +1,4 @@
-//! The transcript blocks (`AgentChat.svelte`'s `{#each blocks}`): engine facts and their
+//! The transcript blocks: engine facts and their
 //! wave / plan cards, specialist sessions, the turn footer with its actions, presented card and
 //! findings digest, notices, stopped and error rows, user bubbles, assistant replies, step
 //! groups, and the inline permission / question cards with the live turn row under them.

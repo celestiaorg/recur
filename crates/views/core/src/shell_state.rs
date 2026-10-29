@@ -1,4 +1,4 @@
-//! The last-open shell across restarts (`lib/shell-state.ts`). The snapshot lives in
+//! The last-open shell across restarts. The snapshot lives in
 //! `<DataDir>/shell.json` behind `ShellService`; this is the snapshot, the restore resolver,
 //! and the coalescing writer.
 

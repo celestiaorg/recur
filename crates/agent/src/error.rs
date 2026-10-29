@@ -68,7 +68,7 @@ pub const TRANSIENT_MARKERS: &[&str] = &[
     "login expired",
 ];
 
-/// Keep in sync with frontend `CODEX_LOGIN_EXPIRED`.
+/// The error detail when Codex's ChatGPT login has expired.
 pub const CODEX_LOGIN_EXPIRED: &str =
     "Codex login expired: sign in with ChatGPT in Settings → Providers → Codex, then retry.";
 

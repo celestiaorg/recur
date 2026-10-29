@@ -1,4 +1,4 @@
-//! Glanceable live turns (`lib/chat-glance.ts`): the first thinking window stays open, inner
+//! Glanceable live turns: the first thinking window stays open, inner
 //! narration and subagent notices fold into the step group once more tools follow.
 
 use recur_engine::view::chat::AgentMsg;
@@ -52,7 +52,6 @@ mod tests {
         m
     }
 
-    // chat-glance.test.ts
     #[test]
     fn first_checkpoint() {
         let think = m(|m| m.thinking = true);

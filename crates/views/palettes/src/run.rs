@@ -1,4 +1,4 @@
-//! `RunPalette.svelte`: the named-run picker (⌘R, View → Run…, the titlebar chevron). Same
+//! The named-run picker (⌘R, View → Run…, the titlebar chevron). Same
 //! keys as Open in: filter, ↑↓, 1–9, ↵ runs, ⌘↩ or the pin makes a run the project default.
 
 use gpui_kit::base::input::{InputEvent, InputState};

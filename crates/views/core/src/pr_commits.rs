@@ -1,4 +1,4 @@
-//! `lib/pr-commits.ts`.
+//! PR commit lists.
 
 use recur_domain::Commit;
 

@@ -1,5 +1,5 @@
-//! Services poll E5's async methods from GPUI tasks, so every one of them
-//! (and the hooks earlier slices await) must be a `Send` future.
+//! Services poll the PR async methods from GPUI tasks, so every one of them
+//! (and the hooks they await) must be a `Send` future.
 
 use recur_domain::{MergeMethod, Project, Workspace};
 

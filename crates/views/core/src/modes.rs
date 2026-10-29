@@ -1,4 +1,4 @@
-//! Workspace run and lifecycle predicates the shell chrome reads (`lib/modes.ts`).
+//! Workspace run and lifecycle predicates the shell chrome reads.
 
 use std::collections::{BTreeMap, HashSet};
 

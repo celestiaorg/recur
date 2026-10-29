@@ -1,4 +1,4 @@
-//! The preferred Open In target (`lib/open-in-pref.ts`), kept in the app's local storage.
+//! The preferred Open In target, kept in the app's local storage.
 
 use crate::LocalStorage;
 

@@ -1,8 +1,8 @@
 //! Loop engage tests through `send_loop_chat_message`: one chat = one loop,
 //! engage without a conductor turn, the planner's rename nudge, attachments,
 //! refused launches, owner stamping, and `start_chat_loop_walk` against closed
-//! tabs. The run-lock, retry sentinel and tab list/close cases go through E4's
-//! `SendWorkspaceMessage` / `CloseWorkspaceChat` and are E4's.
+//! tabs. The run-lock, retry sentinel and tab list/close cases go through
+//! `SendWorkspaceMessage` / `CloseWorkspaceChat` and are in `chat::tests`.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -482,7 +482,7 @@ async fn loop_goal_images_use_engage_turn_not_first_chat() {
     let runner = CaptureScript::new(|_| maestro_fixture("engage-img", "OK."));
     let t = TestEngine::new(Some(runner.provider()));
     let (ws, _repo) = scratch(&t, "scratch").await;
-    // E4's Agent-mode turn records imgA on PA's first user message.
+    // The Agent-mode turn records imgA on PA's first user message.
     let (text, imgs) = crate::attachments::prepare_chat_attachments(
         &t.data_dir,
         &ws,

@@ -1,6 +1,6 @@
 //! Store write-through and bus helpers: workspace state transitions, the
 //! activity feed, the durable event log, agent records, and the status-bar
-//! rollup. Every slice publishes through these.
+//! rollup. Every engine area publishes through these.
 
 use recur_agent::display::FEED_INPUT_LIMIT;
 use recur_domain::{

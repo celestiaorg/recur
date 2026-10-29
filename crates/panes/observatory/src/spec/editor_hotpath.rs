@@ -1,4 +1,4 @@
-//! `editor-hotpath.spec.ts`: lazy grammars, the synchronous dirty path and Cmd-S, live
+//! The editor hot path: lazy grammars, the synchronous dirty path and Cmd-S, live
 //! refresh versus unsaved edits, tab-switch buffers, session restore across restarts (stashes,
 //! caret and scroll, the view chip), Quick Open, read retries, and stash drift warnings.
 
@@ -831,7 +831,7 @@ async fn opening_a_restored_stash_in_the_split_pane_warns_when_disk_moved(
     );
 }
 
-/// `FilePreview.test.ts` ("does not intercept ⌘F when ... a CodeMirror editor owns the event"):
+/// The preview does not intercept ⌘F when an editor owns the event:
 /// with the preview in the main pane and the same file's code in the split, ⌘F from the split
 /// editor opens the editor's search and leaves the preview's find bar closed.
 #[gpui::test]

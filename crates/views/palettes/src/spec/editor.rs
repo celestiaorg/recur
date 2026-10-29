@@ -1,5 +1,5 @@
-//! The palettes over the Observatory's editor: `bundles.spec.ts`'s ⌘⇧P Sort Lines run,
-//! `editor-syntax.spec.ts` through the language picker's rows, and Run Command's Recent
+//! The palettes over the Observatory's editor: the ⌘⇧P Sort Lines run, syntax changes
+//! through the language picker's rows, and Run Command's Recent
 //! section in frecency order.
 
 use std::rc::Rc;
@@ -25,7 +25,7 @@ fn file_opts(calls: &Calls) -> MockOptions {
     calls.record(opts, "WriteFile", Value::Null)
 }
 
-/// A macro runner that sorts its input's lines, standing in for the TypeScript worker.
+/// A macro runner that sorts its input's lines, standing in for the macro runtime.
 fn sort_lines_runner(s: &mut S) {
     s.state.update(s.cx, |st, _| {
         st.set_macro_runner(Some(Rc::new(|_module, ctx: MacroContext, _| {

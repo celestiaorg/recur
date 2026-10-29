@@ -1,5 +1,5 @@
 //! The Observatory entity: props, slots and events, its state,
-//! and the values `Observatory.svelte` derived from it.
+//! and the values derived from it.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
@@ -22,7 +22,7 @@ use recur_view_review::surface::ReviewSurface;
 
 use crate::model::{FocusZone, MainSurface, Pane, TabBuffer};
 
-/// What the workspace view passes (`$props()` of `Observatory.svelte`).
+/// What the workspace view passes.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ObservatoryProps {
     pub project_id: String,

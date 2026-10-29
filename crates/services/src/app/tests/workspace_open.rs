@@ -1,4 +1,4 @@
-//! `workspace_open_test.go`.
+//! Opening workspaces.
 
 use recur_domain::Workspace;
 

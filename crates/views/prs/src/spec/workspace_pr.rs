@@ -1,4 +1,4 @@
-//! `workspace-base.spec.ts`'s `PR view …` tests: PR detail's Pull / Push / Force push over
+//! PR detail's Pull / Push / Force push over
 //! the linked workspace's land state.
 
 use std::sync::Arc;

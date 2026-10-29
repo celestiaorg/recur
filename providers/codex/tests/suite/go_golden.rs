@@ -41,7 +41,7 @@ struct Mcp {
     env: Option<BTreeMap<String, String>>,
 }
 
-/// The Go `p1Spec` projection of an AgentSpec.
+/// The fixture's projection of an AgentSpec.
 #[derive(Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct Spec {
@@ -123,7 +123,7 @@ fn golden() -> Golden {
     serde_json::from_str(include_str!("../golden/go_codex.json")).unwrap()
 }
 
-/// Go `codex.MCPServer` encodes with its field names.
+/// An MCP server as the fixture encodes it, with its field names.
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 struct GoServer {

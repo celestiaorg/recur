@@ -1,4 +1,4 @@
-//! Chat tab codes and the small rules every slice keys on.
+//! Chat tab codes and the small rules every engine area keys on.
 
 use recur_domain::{APP_AGENT_CODE, Workspace};
 

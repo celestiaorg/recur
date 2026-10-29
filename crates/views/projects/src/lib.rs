@@ -1,4 +1,4 @@
-//! Project settings (`Project.svelte`; its `MiniScriptEditor` lives in `recur_view_core::mini`): one project's identity,
+//! Project settings (the script editor lives in `recur_view_core::mini`): one project's identity,
 //! repository, run settings, schedules, pull request defaults, skill and MCP overrides.
 //!
 //! # Embedding

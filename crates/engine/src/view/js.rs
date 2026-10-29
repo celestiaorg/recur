@@ -1,4 +1,4 @@
-//! JavaScript string and regex semantics the frontend rules rely on. JS `\s`
+//! JavaScript string and regex semantics the view rules use. JS `\s`
 //! and `String.prototype.trim` use ECMAScript WhiteSpace + LineTerminator,
 //! which differs from Rust's `char::is_whitespace` (JS adds U+FEFF and drops
 //! U+0085); JS `\w`, `\d` and `\b` are ASCII.

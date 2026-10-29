@@ -1,4 +1,4 @@
-//! `FindingsPanel.svelte`: the reviewer findings master–detail (the dense list above, the
+//! The reviewer findings master–detail (the dense list above, the
 //! inspector with body, notes and Ignore / Mark invalid / Reopen below), its resizable split
 //! (`recur.findingsSplitPct`), deep-link selection and the note composer.
 

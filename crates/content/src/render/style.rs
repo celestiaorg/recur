@@ -1,5 +1,5 @@
-//! The markdown stylesheets: `.chat-canvas` (`_chat.scss`) and `.file-preview-md .md-doc`
-//! (`_observatory.scss`), with the UA defaults they leave in place. Lengths are CSS px at
+//! The markdown stylesheets: chat and file preview, with the UA defaults they leave in
+//! place. Lengths are CSS px at
 //! the element's font size; [`lu`] truncates them to WebKit LayoutUnits.
 
 use recur_ui::{Color, Tokens};
@@ -184,7 +184,7 @@ impl Sheet {
     }
 }
 
-/// `sh-*` token colors (`_chat.scss`, global rules shared by every theme).
+/// `sh-*` token colors, shared by every theme.
 pub fn sh_color(class: &str) -> Option<Color> {
     let rgb = match class {
         "sh-kw" => 0x6cb6ff,

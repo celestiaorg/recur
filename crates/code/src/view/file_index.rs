@@ -1,4 +1,4 @@
-//! `lib/file-index.ts`: normalizing Quick Open / @-mention hits.
+//! Normalizing Quick Open / @-mention hits.
 
 use recur_domain::FileSearchHit;
 

@@ -1,4 +1,4 @@
-//! TodoWrite / Cursor updateTodos checklist rules (frontend `lib/todos.ts`).
+//! TodoWrite / Cursor updateTodos checklist rules.
 //! A flat per-agent checklist, distinct from the workspace Plan.
 
 use recur_domain::ChatItem;

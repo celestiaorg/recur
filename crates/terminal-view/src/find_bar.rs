@@ -1,4 +1,4 @@
-//! The terminal find bar (`.term-dock-find.cm-recur-search` in `TerminalDock.svelte`): query
+//! The terminal find bar: query
 //! field, match count, previous / next, match-case / regexp / whole-word toggles and close.
 //!
 //! The dock owns when it opens and which pane it searches; the bar owns its fields and keys

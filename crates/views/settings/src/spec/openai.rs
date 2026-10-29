@@ -1,4 +1,4 @@
-//! `chatgpt-login.spec.ts` and `codex-login.spec.ts`.
+//! ChatGPT and Codex sign-in.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

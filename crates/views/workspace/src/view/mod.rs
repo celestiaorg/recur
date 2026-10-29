@@ -1,4 +1,4 @@
-//! `WorkspaceView.svelte`: one workspace's workbench. The Observatory fills it; the agent chat
+//! One workspace's workbench. The Observatory fills it; the agent chat
 //! sits in its left dock with a tab strip of chat sessions (the Loop conductor `MA` and pair
 //! tabs `PA`, `PA2`, …), each with its own mode, model, draft, queue and transcript. The plan
 //! panel and its head ride the Observatory's plan pane.
@@ -102,7 +102,7 @@ impl Abort {
     }
 }
 
-/// What a WorkspaceView instance is bound to (`$props()`).
+/// What a WorkspaceView instance is bound to.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WorkspaceProps {
     pub workspace_id: String,

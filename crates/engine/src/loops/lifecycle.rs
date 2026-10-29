@@ -921,7 +921,7 @@ impl Engine {
         let _d = self.dispatch_mu.lock().await;
         let mut seen = std::collections::HashSet::new();
         loop {
-            // Insertion order: the oldest queued wins (R4).
+            // Insertion order: the oldest queued wins.
             let Some(next) = self.store.workspaces().into_iter().find(|l| {
                 l.state == WorkspaceState::Queued
                     && !self.loop_key_running(&l.id)

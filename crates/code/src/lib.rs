@@ -1,8 +1,7 @@
 //! Worktree file access: tree, index, search/replace (ripgrep), outline,
 //! symbols, open-in, copy-files and observatory analysis. Also
-//! the UI's pure file rules (`lib/fuzzy.ts`, `lib/glob.ts`,
-//! `lib/file-index.ts`, `lib/changed-tree.ts`, `lib/finding-paths.ts`,
-//! `lib/skills.ts`).
+//! the UI's pure file rules (fuzzy ranking, globs, file index hits, the
+//! changed tree, finding paths, skills).
 //!
 //! Paths are always validated under a root (project repo or loop worktree) so
 //! the UI cannot escape the sandbox. Filesystem walks are synchronous and stop

@@ -1,4 +1,4 @@
-//! Navigate → Reload Bundles (`lib/bundle-reload.ts`): re-read installed bundles without a
+//! Navigate → Reload Bundles: re-read installed bundles without a
 //! restart. Views holding bundle-derived state (grammars, snippets, prompt actions) rebuild
 //! off `AppState::bundles_epoch`.
 

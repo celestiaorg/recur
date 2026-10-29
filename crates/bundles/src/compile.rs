@@ -17,8 +17,7 @@
 //!   checked, as in esbuild's TypeScript loader).
 //! - Top-level await fails as it does for esbuild's ES2020 target.
 //!
-//! The output text differs from esbuild's; behavior is identical (proven
-//! over every shipped TypeScript file by `tests/compile_parity.rs`).
+//! The output text differs from esbuild's; behavior is the same.
 
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
@@ -47,7 +46,7 @@ use crate::manifest::{Command, INTERPRETER_TYPESCRIPT, PromptAction};
 use crate::{Error, err};
 
 /// Bumped when the SDK or Worker contract changes so cached JS is
-/// invalidated (`macro_sdk.ts`, `frontend/src/lib/macro-worker.ts`).
+/// invalidated (`macro_sdk.ts`, the macro runtime).
 pub const MACRO_SDK_VERSION: &str = "8";
 
 /// The import path authors use in TypeScript commands.
@@ -57,7 +56,7 @@ pub const MACRO_SDK_MODULE: &str = "@recur/sdk";
 /// Author-facing copy: `bundles/sdk/index.ts` (kept in sync; see tests).
 pub const MACRO_SDK_SOURCE: &str = include_str!("macro_sdk.ts");
 
-/// Whether `interp` runs as compiled TypeScript in the frontend Worker
+/// Whether `interp` runs as compiled TypeScript in the macro runtime
 /// rather than as a shebang subprocess.
 pub fn is_script_interpreter(interp: &str) -> bool {
     interp == INTERPRETER_TYPESCRIPT

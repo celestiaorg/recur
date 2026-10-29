@@ -1,4 +1,4 @@
-//! E5 tests: PR linking, conversation, reactions, forge glue, merge messages,
+//! PR tests: linking, conversation, reactions, forge glue, merge messages,
 //! open-PR results, rework, merge base and workspace landing. Forge calls are
 //! [`recur_forge::testing::FakeForge`] handlers.
 

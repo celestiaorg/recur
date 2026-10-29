@@ -1,5 +1,5 @@
-//! Terminal palettes: the app-chrome mapping and bundle `[[terminalTheme]]` palettes
-//! (`frontend/src/lib/terminal.ts`), and the find highlight colours (`TerminalPane.svelte`).
+//! Terminal palettes: the app-chrome mapping and bundle `[[terminalTheme]]` palettes, and the
+//! find highlight colours.
 
 use recur_term::screen::{Decorations, Rgba, Theme};
 use recur_ui::{ThemeId, Tokens};

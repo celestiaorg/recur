@@ -1,4 +1,4 @@
-//! The workspace's right-hand IDE pane (`Observatory.svelte`): the file explorer, editor tabs,
+//! The workspace's right-hand IDE pane: the file explorer, editor tabs,
 //! the code / merge editor hosts, file previews, branch review, the tool panels (Source
 //! Control, Outline, Problems, Search, References, Findings, Artifacts), Quick Open, the
 //! terminal dock and the bundle command prompts.
@@ -109,7 +109,7 @@ pub struct Owners {
 impl Global for Owners {}
 
 #[cfg(any(test, feature = "gallery"))]
-/// Parity scenes and spec remounts share one app: drop the previous scene's keep-alive caches, parked tabs, editor
+/// Gallery scenes and spec remounts share one app: drop the previous scene's keep-alive caches, parked tabs, editor
 /// environment and event wiring (bound to its services and state).
 pub(crate) fn reset_globals(cx: &mut App) {
     fn clear<G: gpui_kit::Global>(cx: &mut App) {

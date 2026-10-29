@@ -1,4 +1,4 @@
-//! Issue links for workspace chips (`lib/issue-link.ts`).
+//! Issue links for workspace chips.
 
 use std::sync::Arc;
 

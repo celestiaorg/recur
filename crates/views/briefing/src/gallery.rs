@@ -1,4 +1,4 @@
-//! Parity scenes: the `briefing` list in `crates/ui/gallery/scenes.json` (Inbox, Issues,
+//! Gallery scenes: the `briefing` list in `crates/ui/gallery/scenes.json` (Inbox, Issues,
 //! Schedules), built like the home scenes (`recur_view_core::gallery::build_in`).
 
 use gpui_kit::{AnyView, App, Window};

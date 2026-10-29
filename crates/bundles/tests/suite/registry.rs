@@ -1,4 +1,4 @@
-//! Port of `registry_test.go`.
+//! The bundle registry.
 
 use recur_bundles::*;
 

@@ -1,7 +1,6 @@
-//! Per-file view state and buffer bookkeeping: caret/scroll/view mode
-//! (`editor-view-state.ts`), dirty tracking (`editor-dirty.ts`), the
-//! Code/Diff/Preview chip and SCM base rules (`editor-view.ts`) and the
-//! `@file` mention span (`cm-mention-sel.ts`).
+//! Per-file view state and buffer bookkeeping: caret/scroll/view mode,
+//! dirty tracking, the Code/Diff/Preview chip and SCM base rules and the
+//! `@file` mention span.
 
 use std::collections::BTreeMap;
 
@@ -22,7 +21,7 @@ pub enum EditorViewMode {
 }
 
 /// Caret, scroll and view mode for one file (`FileViewState`). Lines and
-/// columns are 1-based; columns count UTF-16 units like the web editor.
+/// columns are 1-based; columns count UTF-16 units, as stored in sessions.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileViewState {

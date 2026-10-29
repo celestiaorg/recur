@@ -1,5 +1,5 @@
 //! Chat concurrency kernel tests (the send-path cases that drive
-//! `SendWorkspaceMessage` move with E4), plus the slot, life-lock and
+//! `SendWorkspaceMessage` are in `chat::tests`), plus the slot, life-lock and
 //! remount-generation contracts they rely on.
 
 use std::sync::Arc;

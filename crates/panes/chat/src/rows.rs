@@ -1,4 +1,4 @@
-//! The step rows (`AgentChat.svelte`'s `stepRow` and the snippets it renders): tool cards with
+//! The step rows: tool cards with
 //! their per-tool bodies, thinking and compaction cards, fallback and notice rows, folded
 //! narration, and the flat skill / mode / rename / child / PR / artifact rows.
 

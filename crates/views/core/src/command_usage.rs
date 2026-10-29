@@ -1,4 +1,4 @@
-//! Frecency for the Run Command palette (`lib/command-usage.ts`): most recently run × most
+//! Frecency for the Run Command palette: most recently run × most
 //! often, persisted under `recur.commandUsage`. The Observatory records bundle commands run
 //! from their key equivalents.
 

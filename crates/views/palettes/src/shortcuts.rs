@@ -1,4 +1,4 @@
-//! `ShortcutsHelp.svelte` (⌘⇧/) over the static cheatsheet of `lib/shortcuts.ts`, plus every
+//! The keyboard shortcuts list (⌘⇧/): the static cheatsheet, plus every
 //! bound bundle command under its category.
 
 use gpui_kit::base::input::{InputEvent, InputState};
@@ -17,7 +17,7 @@ use recur_view_core::{ObserveState as _, Topics};
 
 use crate::chrome::{self, Kind};
 
-/// One cheatsheet row. Display glyphs match `Kbd.svelte`.
+/// One cheatsheet row. Display glyphs match the keycaps.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ShortcutEntry {
     pub group: String,

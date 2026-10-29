@@ -1,4 +1,4 @@
-//! `lib/review-diff.ts`: the Files changed / Commits layout prefs (the same `localStorage`
+//! The Files changed / Commits layout prefs (the same local storage
 //! keys as the PR detail view), rename labels and the no-op refresh check.
 
 use std::rc::Rc;
@@ -148,7 +148,7 @@ fn file_diff_body_equal(a: &FileDiff, b: &FileDiff) -> bool {
 }
 
 /// Keep previous file identities when a live refresh is a no-op. `None` is "keep `prev` as is"
-/// (the TS function returned the very same array).
+/// (the caller keeps its own list).
 pub fn reuse_file_diffs(prev: &[Rc<FileDiff>], next: Vec<FileDiff>) -> Option<Vec<Rc<FileDiff>>> {
     if next.is_empty() {
         return if prev.is_empty() {

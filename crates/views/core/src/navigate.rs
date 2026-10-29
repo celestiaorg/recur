@@ -1,5 +1,5 @@
 //! Navigation on [`AppState`] (`go`, `openWorkspace`, `openPR`, `openProject`, `routeTarget`,
-//! keyboard workspace cycling and the shell snapshot in `lib/stores.ts`).
+//! keyboard workspace cycling and the shell snapshot).
 
 use std::time::Duration;
 
@@ -316,7 +316,7 @@ impl AppState {
         self.arm_workspace_scan_commit(&next, cx);
     }
 
-    // ---- shell persistence (`lib/shell-state.ts`) ----
+    // ---- shell persistence ----
 
     fn nav_changed(&mut self, cx: &mut Context<Self>) {
         self.persist_open_shell(cx);
@@ -367,7 +367,7 @@ impl AppState {
         .detach();
     }
 
-    /// The boot routing in App.svelte: Welcome for an empty app, else the restored shell.
+    /// The boot routing: Welcome for an empty app, else the restored shell.
     pub fn apply_boot_route(
         &mut self,
         saved: Option<&recur_services::api::ShellState>,

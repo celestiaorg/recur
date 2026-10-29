@@ -1,4 +1,4 @@
-//! `CommentReactions.svelte`: a comment's reaction pills and the reaction picker.
+//! A comment's reaction pills and the reaction picker.
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{

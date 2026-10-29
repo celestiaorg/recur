@@ -1,5 +1,5 @@
-//! Keep-alive for Observatory UI state across workspace switches
-//! (`lib/caches/observatory-cache.ts`): returning to a recently viewed root restores tabs, tree
+//! Keep-alive for Observatory UI state across workspace switches: returning to a recently
+//! viewed root restores tabs, tree
 //! and editor at once, then the Observatory revalidates in the background.
 
 use std::collections::{BTreeMap, BTreeSet};

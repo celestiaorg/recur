@@ -1,4 +1,4 @@
-//! `Issues.svelte`: the assigned GitHub and Linear issues, grouped by status as a list or a
+//! The assigned GitHub and Linear issues, grouped by status as a list or a
 //! board, with source / assignee / status / project filters and a sort kept in
 //! `issues-view.json` (and for the session in memory, so coming back is instant). Rows open
 //! the issue; their action starts or views the issue's workspace; the context menu links the
@@ -64,7 +64,7 @@ struct SavedView(Option<IssuesView>);
 
 impl Global for SavedView {}
 
-/// Forgets the session's view (a fresh app, as the parity scenes start).
+/// Forgets the session's view (a fresh app, as specs and gallery scenes start).
 pub fn reset_saved_view(cx: &mut App) {
     cx.set_global(SavedView(None));
 }
@@ -1548,7 +1548,7 @@ impl Render for Issues {
     }
 }
 
-/// The Issues route: App.svelte mounts the list only while `$view === 'issues'`.
+/// The Issues route, built on each visit.
 pub struct IssuesPage {
     vcx: ViewContext,
     list: Option<Entity<Issues>>,

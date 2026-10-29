@@ -1,4 +1,4 @@
-//! `ReviewSurface.svelte`: Review changes in the workspace Observatory. Changes (Files changed
+//! Review changes in the workspace Observatory. Changes (Files changed
 //! vs the base) and Commits (uncommitted work and the branch's commits), with a commit or the
 //! working tree opened as a Files changed scope and stepped through newest-first.
 

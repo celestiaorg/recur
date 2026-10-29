@@ -1,4 +1,4 @@
-//! The composer's behavior (`AgentChat.svelte`'s composer half and `lib/composerDom.ts`): the
+//! The composer's behavior: the
 //! `@` / `/` / prompt-argument menus driven by the caret, chip picks, the Discord-style prompt
 //! chip with its slot inputs, editing keys, paste and drops of images and files, undo, and the
 //! platform text input (IME) over the [`ComposerDoc`].

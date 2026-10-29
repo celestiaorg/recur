@@ -1,6 +1,6 @@
-//! `lib/mono-fonts.ts`: the monospace fonts the editor and terminal font pickers offer. The
+//! The monospace fonts the editor and terminal font pickers offer. The
 //! union of the native list (`ListMonospaceFonts`) and a probe of common coding faces through
-//! the text system (the page probed with a canvas; WKWebView has no Local Font Access), with the
+//! the text system, with the
 //! bundled faces always first.
 
 use std::sync::OnceLock;

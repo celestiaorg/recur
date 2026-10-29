@@ -1,7 +1,8 @@
 //! Plan brief tests: the planning turn's tool scope, the plan
 //! in every Coder and Reviewer system prompt (never duplicated into the fix
 //! prompt), the createPlan harvest over narration, and rune-safe truncation.
-//! The argv spill case is P1's; the send-back case is E5's.
+//! The argv spill case is the Claude provider's; the send-back case is in
+//! `prs::tests`.
 
 use std::sync::Arc;
 use std::time::Duration;

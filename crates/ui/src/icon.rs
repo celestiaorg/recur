@@ -1,9 +1,9 @@
 //! SVG icons drawn the way the browser draws inline `<svg>`: rasterized once per device-pixel
 //! size and color, straight into the target pixels, with CoreGraphics on macOS (WebKit's SVG
 //! painter) and tiny-skia elsewhere. GPUI's own `svg()` supersamples and downsamples on the GPU, which
-//! softens edges that the web UI renders crisp.
+//! softens edges.
 //!
-//! `Icon.svelte`, `LucideIcon.svelte` and `ProviderIcon.svelte` all map here.
+//! App icons, Lucide icons and provider marks all render here.
 
 use crate::assets::{APP_ICONS, LUCIDE_ICONS, PROVIDER_ICONS, lucide_entry, svg_bytes};
 use crate::color::Color;
@@ -41,20 +41,19 @@ pub struct Icon {
     style: StyleRefinement,
 }
 
-/// An app icon from `lib/icons.ts` with its registry stroke width.
+/// An app icon with its registry stroke width.
 pub fn icon(name: IconName) -> Icon {
     Icon::new(Source::Asset(format!("{APP_ICONS}/{}.svg", name.key())))
 }
 
-/// `LucideIcon.svelte`: any Lucide name or alias, stroke 2. Unknown names draw nothing, like
-/// the empty `<svg>` the web UI renders.
+/// Any Lucide name or alias, stroke 2. Unknown names draw nothing.
 pub fn lucide_icon(name: &str) -> Icon {
     let path =
         lucide_entry(name).map_or(String::new(), |e| format!("{LUCIDE_ICONS}/{}.svg", e.name));
     Icon::new(Source::Asset(path))
 }
 
-/// `ProviderIcon.svelte`: the brand mark for a provider slug, filled with the current color.
+/// The brand mark for a provider slug, filled with the current color.
 pub fn provider_icon(provider: &str) -> Icon {
     let slug = match provider.trim().to_lowercase().as_str() {
         "cursor" => "cursor",

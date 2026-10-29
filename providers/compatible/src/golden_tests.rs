@@ -202,7 +202,7 @@ fn flags_match_go() {
     }
 }
 
-/// Go writes integral float64s without a fraction; compare numbers by value.
+/// The fixtures write integral floats without a fraction; compare numbers by value.
 fn floats(v: Value) -> Value {
     match v {
         Value::Number(n) => n.as_f64().into(),
@@ -294,7 +294,7 @@ fn fresh_input_matches_go() {
     }
 }
 
-/// Go `ParsedEvent` fields the golden records.
+/// The parsed-event fields the fixture records.
 fn go_event(ev: &AgentEvent) -> Value {
     let mut m = json!({"kind": ev.kind(), "text": "", "display": "", "tool": "", "toolUseId": "",
         "toolInput": "", "isError": false, "model": "", "sessionId": ""});

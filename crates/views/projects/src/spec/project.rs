@@ -1,4 +1,4 @@
-//! `settings-newloop.spec.ts`: the project-settings scenarios.
+//! The project-settings scenarios.
 
 use gpui::{Modifiers, TestAppContext, point, px};
 use recur_ui::text::{TextStyled, text};

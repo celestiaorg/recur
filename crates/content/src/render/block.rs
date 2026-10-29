@@ -1465,7 +1465,7 @@ pub fn stack(blocks: Vec<Laid>, window: &Window) -> (Div, f32, f32) {
     (col, first, last)
 }
 
-/// `mdcopy.ts`'s copied check.
+/// The copy button's copied check.
 const CHECK_ICON: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg>"#;
 
 /// The native checkmark, in the control's 12px box.

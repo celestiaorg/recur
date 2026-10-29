@@ -1,5 +1,5 @@
 //! Chat and fork rename tests (tab titles read through `chat_tab_title`; the
-//! strip itself is E4's).
+//! strip itself is tested with the chat).
 
 use recur_agent_tools::Host;
 use recur_domain::WorkspaceState;

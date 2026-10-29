@@ -1,4 +1,4 @@
-//! Bundle `[[prompt]]` chat-action rules (frontend `lib/promptActions.ts`):
+//! Bundle `[[prompt]]` chat-action rules:
 //! slash lookup, arg slots, the `/` menu gates, tab routing, the prompt
 //! context and failure wording. Listing and running go through the engine
 //! (`Engine::run_prompt_action`); the titlebar request store is app state.
@@ -290,7 +290,7 @@ pub struct PromptEditor {
     pub soft_tabs: Option<bool>,
 }
 
-/// The run context for a composer prompt (frontend `buildPromptContext`).
+/// The run context for a composer prompt.
 /// `surface` defaults to "workspace".
 pub fn build_prompt_context(
     ws: &PromptWorkspace,

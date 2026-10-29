@@ -1,4 +1,4 @@
-//! `lib/preview-scroll.ts`: per-path preview scroll (markdown / SVG overflow, the HTML page's
+//! Per-path preview scroll (markdown / SVG overflow, the HTML page's
 //! scroll over its message bridge, Mermaid pan and zoom), copied into `fileViews` so it survives
 //! session restore. The editor parks its own view; this covers the preview surfaces.
 

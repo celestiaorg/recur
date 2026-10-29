@@ -1,4 +1,4 @@
-//! `editor-syntax.spec.ts`: the status bar's language button opens the language picker, and
+//! The status bar's language button opens the language picker, and
 //! the per-file pick it applies relabels the file and survives a restart through the editor
 //! session. The picker's own list is `SyntaxPalette` (the palettes' port); its pick goes
 //! through [`recur_view_core::editor_env::EditorEnv::apply_language_mode`] as here.

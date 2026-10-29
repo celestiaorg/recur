@@ -1,4 +1,4 @@
-//! E3 loop tests, one module per area.
+//! Loop tests, one module per area.
 
 mod acceptance;
 mod checklist;

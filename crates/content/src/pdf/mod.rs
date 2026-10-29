@@ -1,4 +1,4 @@
-//! `PdfPreview.svelte` and `lib/pdf-preview.ts`.
+//! The PDF preview.
 
 pub mod engine;
 pub mod logic;

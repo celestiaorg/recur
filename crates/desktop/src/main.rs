@@ -1,4 +1,4 @@
-//! The desktop app entry (root `main.go` and `open_boot.go`): own the data dir or hand the
+//! The desktop app entry: own the data dir or hand the
 //! launch to the running instance, tee the log, fix PATH, open the store, seed shipped bundles
 //! and skills, start the runtime, open IPC, build the services and recover interrupted work
 //! before any UI, start the boot work once events reach the desktop, then run the GPUI app and

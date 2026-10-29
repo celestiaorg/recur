@@ -1,4 +1,4 @@
-//! `lib/hoverGate.ts`: ignore hover selection until the pointer actually moves, so a menu
+//! Ignore hover selection until the pointer actually moves, so a menu
 //! opened under a resting cursor keeps the keyboard's default row.
 
 /// Minimum movement before hover may change selection.

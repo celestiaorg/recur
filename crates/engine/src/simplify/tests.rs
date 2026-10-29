@@ -1,5 +1,5 @@
-//! Simplify tests (the send and loop-start cases run through E3/E4;
-//! the session flag rules they rest on are tested here).
+//! Simplify tests (the send and loop-start cases live with the chat and loop
+//! tests; the session flag rules they rest on are tested here).
 
 use recur_agent_tools::{Host, PlanSubmission};
 

@@ -113,7 +113,6 @@ pub(crate) fn write_file(path: &str, data: &[u8]) -> Result<(), String> {
 mod tests {
     use super::*;
 
-    // Port of path_test.go TestResolvePathSandbox.
     #[test]
     fn resolve_path_sandbox() {
         let wt = tempfile::tempdir().unwrap();

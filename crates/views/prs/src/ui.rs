@@ -1,5 +1,5 @@
-//! The PR stores of `lib/stores.ts` the PR views share (the dashboard's filters, sort and
-//! sync flag; PR detail's tab, drafts and focus zone) and `lib/pr-fix-checks.ts`'s queue.
+//! The PR stores the PR views share (the dashboard's filters, sort and sync flag; PR
+//! detail's tab, drafts and focus zone) and the fix-checks queue.
 //! They live for the session only.
 
 use gpui_kit::{App, AppContext as _, Context, Entity, Global};

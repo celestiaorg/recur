@@ -1,10 +1,9 @@
-//! What every whole-window parity scene shares (`crates/ui/gallery/scenes.json`): the e2e
+//! What every whole-window gallery scene shares (`crates/ui/gallery/scenes.json`): the e2e
 //! seed with a scene's edits, a fixture's canned replies, and [`view_scene`], the shell over
-//! the mock bridge, navigated once booted, as `web/scenes/Views.svelte` mounts `App.svelte`.
+//! the mock bridge, navigated once booted.
 //!
-//! The shell and the full view registry sit above every view crate, so the parity tool
-//! installs them as a [`SceneHost`] before it builds a scene; view crates reach them only
-//! through it.
+//! The shell and the full view registry sit above every view crate, so a scene host installs
+//! them as a [`SceneHost`] before it builds a scene; view crates reach them only through it.
 
 use std::collections::BTreeMap;
 
@@ -123,7 +122,7 @@ fn upsert(seed: &mut Value, list: &str, by_id: Option<&str>, rows: &Value) {
     }
 }
 
-/// The scene's seed edits, applied the same way `capture.spec.ts` applies them: `projects`,
+/// The scene's seed edits: `projects`,
 /// `loops` and `prs` upsert rows by id; `projectGroups` and `inbox` replace; `settings` merges.
 pub fn patch_seed(seed: &mut Value, patch: &Value) {
     let Some(p) = patch.as_object() else { return };
@@ -299,7 +298,7 @@ pub fn build_in(list: &str, name: &str, window: &mut Window, cx: &mut App) -> Op
     reset(cx);
     let mut registry = registry(cx);
     run_inits_once(&registry, cx);
-    // `Views.svelte`: only the routed view shows in `.main`; modal routes leave it empty.
+    // Only the routed view shows in the main area; modal routes leave it empty.
     let kind = scene.route.split(':').next().unwrap_or("");
     let shown = match kind {
         "welcome" => Some(ViewName::Welcome),

@@ -1,4 +1,4 @@
-//! The mention cases of frontend `lib/agentchat.test.ts`.
+//! Mention parsing, chips and caret queries.
 
 use super::*;
 

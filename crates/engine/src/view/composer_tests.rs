@@ -1,5 +1,5 @@
-//! The text-model cases of frontend `lib/composerDom.test.ts` (DOM-only
-//! cases such as caret placement and focus stay with the GPUI view).
+//! The composer text model (caret placement and focus are tested with the
+//! GPUI view).
 
 use super::*;
 

@@ -1,9 +1,9 @@
-//! An insertion-order LRU with a resident-byte budget (`lib/caches/byte-lru.ts`). The newest
+//! An insertion-order LRU with a resident-byte budget. The newest
 //! entry is always kept even when it alone exceeds the budget.
 
 use std::collections::VecDeque;
 
-/// JS strings are UTF-16; the header is a budgeting fudge, as in the TypeScript.
+/// Strings are budgeted as UTF-16 plus a fixed header.
 const STR_HDR: usize = 24;
 pub const OBJ_HDR: usize = 32;
 
@@ -214,7 +214,6 @@ mod tests {
         s.len()
     }
 
-    // byte-lru.test.ts
     #[test]
     fn string_and_object_estimates() {
         assert_eq!(string_bytes("ab"), 24 + 4);

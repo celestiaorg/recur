@@ -1,5 +1,5 @@
 //! CSS color math: hex parsing, `rgba()`, `color-mix(in srgb, …)` and the luminance rule
-//! `lib/project-pic.ts` uses. Results are kept as unrounded sRGB floats, exactly as a
+//! project avatars use. Results are kept as unrounded sRGB floats, exactly as a
 //! browser holds a computed color before rasterizing it.
 
 use gpui_kit::{Hsla, Rgba};
@@ -150,7 +150,7 @@ impl Color {
         }
     }
 
-    /// WCAG relative luminance, with the 0.03928 knee `lib/project-pic.ts` uses.
+    /// WCAG relative luminance, with the 0.03928 knee.
     pub fn luminance(self) -> f32 {
         let lin = |c: f32| {
             if c <= 0.03928 {

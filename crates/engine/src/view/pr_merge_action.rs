@@ -1,4 +1,4 @@
-//! The titlebar's merge slot for a PR (frontend `lib/pr-merge-action.ts`):
+//! The titlebar's merge slot for a PR:
 //! which one merge-adjacent action shows, its label and tooltip, and the
 //! merge / update-with-base method pickers.
 
@@ -25,7 +25,7 @@ pub enum MergeActionKind {
 }
 
 impl MergeActionKind {
-    /// The TS string.
+    /// The kind's string id.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Hidden => "hidden",

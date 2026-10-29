@@ -1,5 +1,4 @@
-//! The chat composer's text model (the DOM-free half of frontend
-//! `lib/composerDom.ts`): wire text ↔ inline chips (`@file`, `/skill`,
+//! The chat composer's text model: wire text ↔ inline chips (`@file`, `/skill`,
 //! `@terminal`, `@artifact`, `⟦attachment:id⟧`, `/prompt` arg slots), one
 //! line per paragraph. The GPUI composer renders [`Segment`]s; caret, focus
 //! and DOM normalization stay in the view.

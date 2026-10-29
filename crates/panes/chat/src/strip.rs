@@ -1,4 +1,4 @@
-//! The agent-panel tab strip across workspace remounts (`lib/caches/chat-strip-cache.ts`): the
+//! The agent-panel tab strip across workspace remounts: the
 //! warm tier that paints the strip at once on A→B→A after a hot shell was evicted.
 
 use gpui_kit::{App, Global};
@@ -119,7 +119,6 @@ mod tests {
         }
     }
 
-    // chat-strip-cache.test.ts
     #[test]
     fn round_trips_tabs_active_and_scroll() {
         let mut c = ChatStripCache::default();

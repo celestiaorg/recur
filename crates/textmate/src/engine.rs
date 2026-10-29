@@ -1,4 +1,4 @@
-//! Tokenizer engine with per-document line-state caches (`tm-engine.ts`).
+//! Tokenizer engine with per-document line-state caches.
 //!
 //! Two token tiers per document:
 //!  - accurate: state-chained from line 1, watermark = `cache.filled()`

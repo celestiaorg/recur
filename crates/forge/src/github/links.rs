@@ -1,5 +1,4 @@
-//! GitHub web links the PR views show (`lib/comment-permalink.ts`, the
-//! GitHub half of `lib/pr-checks.ts`).
+//! GitHub web links the PR views show: comment permalinks and check runs.
 
 use recur_domain::PrComment;
 use url::Url;

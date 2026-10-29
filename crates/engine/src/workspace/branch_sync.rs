@@ -39,7 +39,7 @@ impl Engine {
         else {
             return live;
         };
-        // R18: the walk's branch lives under its handle's lock.
+        // The walk's branch lives under its handle's lock.
         for rl in self.running_loops_on(workspace_id) {
             if rl.handle.map_key == workspace_id {
                 rl.handle.set_branch(&live);

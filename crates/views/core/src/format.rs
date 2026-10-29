@@ -1,4 +1,4 @@
-//! Compact labels for UI chrome (`lib/format.ts`).
+//! Compact labels for UI chrome.
 
 /// `formatCompactCount`: 460, 1.2k, 184k, 1.6M.
 pub fn format_compact_count(n: f64) -> String {

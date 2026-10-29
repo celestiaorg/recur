@@ -1,6 +1,5 @@
-//! `pr-review.spec.ts`'s PR agent chat dock: the linked or host workspace's chat beside PR
-//! detail, its tabs and hide toggle, attention and unread counts; plus `activity.spec.ts`'s
-//! PR-opened fact.
+//! The PR agent chat dock: the linked or host workspace's chat beside PR detail, its tabs
+//! and hide toggle, attention and unread counts; plus the PR-opened fact.
 
 use gpui::TestAppContext;
 use recur_services::mock::{MockOptions, Reply};
@@ -383,7 +382,7 @@ fn a_finish_on_a_host_pr_with_no_workspace_lands_in_inbox(cx: &mut TestAppContex
     assert_eq!(s.pr_nav().1, 1);
     assert!(s.has("prrow-ct:gh-host-inbox=1"));
 
-    // The Briefing card opens a host's PR (the Briefing view is not ported yet).
+    // Open a host's PR the way the Briefing card does.
     s.state
         .update(s.cx, |st, cx| st.open_pr("gh-host-inbox", cx));
     s.settle();

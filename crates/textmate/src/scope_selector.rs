@@ -1,4 +1,4 @@
-//! TextMate scope selectors for `[[symbol]]` rules (`tm-scope-selector.ts`).
+//! TextMate scope selectors for `[[symbol]]` rules.
 //!
 //! Subset: comma OR, space descendant, `>` child, ` - ` exclusion. An atom
 //! matches a stack entry by dotted prefix.

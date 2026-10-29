@@ -1,10 +1,9 @@
 //! Diagnostics: `@codemirror/lint`'s state (underline marks and point
 //! widgets, hover lookup) as Recur uses it through `setDiagnostics`, plus
-//! Recur's severity-icon gutter (`cm-lint-gutter.ts`).
+//! Recur's severity-icon gutter.
 //!
-//! Recur binds neither `lintKeymap` nor a linter source, so the lint panel,
-//! `nextDiagnostic` and the stock lint gutter are unreachable there and are
-//! not ported.
+//! Recur binds neither `lintKeymap` nor a linter source, so there is no lint
+//! panel, `nextDiagnostic` or stock lint gutter.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -216,7 +215,7 @@ fn map_ranges(ranges: &[LintRange], tr: &Transaction) -> Vec<LintRange> {
         .collect()
 }
 
-/// `hitsByLine` from `cm-lint-gutter.ts`.
+/// Diagnostics grouped by line for the gutter.
 fn gutter_hits(
     doc: &Text,
     source: &[(usize, usize, Rc<Diagnostic>)],

@@ -1,4 +1,4 @@
-//! Folding for TextMate languages (`cm-tm-fold.ts`): grammar
+//! Folding for TextMate languages: grammar
 //! `foldingStartMarker` / `foldingStopMarker` when present, else indentation.
 //! Ranges are 1-based lines: the fold hides everything after the end of
 //! `start_line` through the end of `end_line`.

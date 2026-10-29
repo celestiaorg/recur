@@ -1,4 +1,4 @@
-//! `ProjectPic.svelte` and `lib/project-pic.ts`: a project avatar that is a letter, a Lucide
+//! A project avatar that is a letter, a Lucide
 //! icon or an image, on the project color.
 
 use crate::assets::lucide_entry;
@@ -53,7 +53,7 @@ pub fn is_letter_pic(pic: &str) -> bool {
     matches!(parse_project_pic(pic, "?"), ParsedPic::Letter(_))
 }
 
-/// `projectPicFromName` (`lib/colors.ts`): the first character, uppercased.
+/// The letter avatar for a project name: the first character, uppercased.
 pub fn project_pic_from_name(name: &str) -> String {
     name.trim()
         .chars()
@@ -68,7 +68,7 @@ pub fn letter_from_name(name: &str, fallback: &str) -> String {
     if p.is_empty() { fallback.into() } else { p }
 }
 
-/// `projectColors` (`lib/colors.ts`; keep in sync with `services.go`).
+/// The project color choices.
 pub const PROJECT_COLORS: [&str; 5] = [
     "var(--cyan)",
     "var(--amber)",

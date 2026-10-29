@@ -10,11 +10,11 @@ use std::sync::OnceLock;
 
 static ICONS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets/icons");
 
-/// Asset prefix for app icons (`lib/icons.ts`).
+/// Asset prefix for app icons.
 pub const APP_ICONS: &str = "recur/icons/app";
-/// Asset prefix for the Lucide catalog (`lib/lucide-icons.ts`).
+/// Asset prefix for the Lucide catalog.
 pub const LUCIDE_ICONS: &str = "recur/icons/lucide";
-/// Asset prefix for agent provider marks (`ProviderIcon.svelte`).
+/// Asset prefix for agent provider marks.
 pub const PROVIDER_ICONS: &str = "recur/icons/provider";
 
 /// The application asset source: Recur's assets first, then gpui-kit's.
@@ -114,7 +114,7 @@ pub fn lucide_suggested() -> impl Iterator<Item = &'static LucideEntry> {
     l.suggested.iter().map(|&i| &l.icons[i])
 }
 
-/// The catalog entry for a name or alias (`lucideNode`); trims and lowercases like the web UI.
+/// The catalog entry for a name or alias; trims and lowercases the name first.
 pub fn lucide_entry(name: &str) -> Option<&'static LucideEntry> {
     let l = lucide();
     l.by_name

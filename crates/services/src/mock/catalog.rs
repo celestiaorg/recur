@@ -1,7 +1,7 @@
 //! The mock's TextMate and terminal theme catalogs. Metadata comes from the
 //! shipped `bundle.toml` files (so ids and paths cannot drift); file bodies
 //! are read only by `ReadGrammar` / `ReadTheme`, so a missing file fails that
-//! call. Read once per process, like the TypeScript module cache.
+//! call. Read once per process.
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;

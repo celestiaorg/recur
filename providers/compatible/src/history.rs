@@ -25,7 +25,7 @@ pub const MAX_HISTORY_BYTES: usize = 8 << 20;
 /// Codex's default AGENTS.md budget.
 pub const MAX_REPO_RULES_BYTES: u64 = 32 << 10;
 
-/// The AutoResume continuation display (engine `chat_errors.go`). Its turn's
+/// The AutoResume continuation display. Its turn's
 /// prompt is only a continue note, so the original user row stays in input.
 pub const CHAT_RESUME_DISPLAY: &str = "Recur restarted: continuing";
 
@@ -149,8 +149,7 @@ fn hidden_continuation(req: &TurnRequest) -> bool {
     is_mode_switch_continue_display(&req.display_text) || req.display_text == CHAT_RESUME_DISPLAY
 }
 
-/// The `Switched to <Mode>: continuing` display of a switch_mode remount
-/// (engine `switch_mode.go`).
+/// The `Switched to <Mode>: continuing` display of a switch_mode remount.
 pub fn is_mode_switch_continue_display(s: &str) -> bool {
     s.starts_with("Switched to ") && s.ends_with(": continuing")
 }

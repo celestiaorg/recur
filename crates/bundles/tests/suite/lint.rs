@@ -1,4 +1,4 @@
-//! Port of `lint_test.go`.
+//! Bundle lint.
 
 use recur_bundles::*;
 

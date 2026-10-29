@@ -1,5 +1,5 @@
-//! SVG rasterization through CoreGraphics, the painter WebKit (and so the app's WKWebView)
-//! uses for inline SVG. Same paths, strokes and anti-aliasing as the web UI on macOS.
+//! SVG rasterization through CoreGraphics, the painter WebKit uses for inline SVG: the same
+//! paths, strokes and anti-aliasing as a browser on macOS.
 
 use core_graphics::base::kCGImageAlphaPremultipliedLast;
 use core_graphics::color_space::CGColorSpace;

@@ -1,4 +1,4 @@
-//! Top-level views and the titlebar breadcrumb (`ViewName`, `crumbFor` in `lib/stores.ts`).
+//! Top-level views and the titlebar breadcrumb.
 
 /// A routable top-level view (`ViewName`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -85,8 +85,8 @@ pub struct CrumbSeg {
     pub style: CrumbStyle,
 }
 
-/// The titlebar breadcrumb. Structured instead of the web UI's escaped HTML string, so a
-/// user-provided workspace name is always text.
+/// The titlebar breadcrumb. Structured rather than an HTML string, so a user-provided
+/// workspace name is always text.
 pub type Crumb = Vec<CrumbSeg>;
 
 pub(crate) fn seg(text: impl Into<String>, style: CrumbStyle) -> CrumbSeg {

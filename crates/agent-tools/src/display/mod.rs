@@ -1,8 +1,6 @@
-//! Display parsing for Recur tool cards: the frontend's tool modules
-//! (`lib/permissionTools.ts`, `lib/plantools.ts`, `lib/briefingtools.ts`,
-//! `lib/open-pr-tool.ts`, `lib/reenter-phase-tool.ts`). Tool inputs arrive as
-//! parsed JSON values; the rules follow the TypeScript, including JavaScript's
-//! whitespace set for `trim()` and `\s`.
+//! Display parsing for Recur tool cards (permissions, plans, briefings, open PR,
+//! reenter phase). Tool inputs arrive as parsed JSON values; trimming uses
+//! JavaScript's whitespace set for `trim()` and `\s`.
 
 pub mod briefing_tools;
 pub mod open_pr_tool;

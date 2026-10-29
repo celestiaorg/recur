@@ -1,4 +1,4 @@
-//! Sidebar order and keyboard workspace cycling (`lib/workspace-nav.ts`).
+//! Sidebar order and keyboard workspace cycling.
 
 use std::collections::{HashMap, HashSet};
 

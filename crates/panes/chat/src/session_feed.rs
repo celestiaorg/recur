@@ -1,4 +1,4 @@
-//! Live workspace session + fact feed (`lib/session-feed.svelte.ts`). One per workspace view;
+//! Live workspace session + fact feed. One per workspace view;
 //! the Plan panel and the Loop cockpit both read it.
 
 use std::collections::{BTreeSet, HashMap};
@@ -519,7 +519,6 @@ mod tests {
         feed.sessions[i].messages[0].body.clone()
     }
 
-    // session-feed.test.ts
     #[gpui::test]
     async fn loads_only_the_selected_chat_and_refreshes_only_the_completed_specialist(
         cx: &mut TestAppContext,

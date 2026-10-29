@@ -28,8 +28,8 @@ fn is_zero(n: &i64) -> bool {
     *n == 0
 }
 
-/// One workspace's snapshot. The dock layout lives here, not in webview
-/// storage, so it survives a storage wipe the way the editor session does.
+/// One workspace's snapshot, dock layout included, persisted with the
+/// workspace like the editor session.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub(crate) struct PersistedTerminals {

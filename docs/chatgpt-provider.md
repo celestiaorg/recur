@@ -29,7 +29,7 @@ Both methods exchange authorization codes at `https://auth.openai.com/oauth/toke
 Recur verifies the ID-token signature, issuer, audience, expiry, and selected
 identity. The account and rotating tokens are saved atomically in
 `<RECUR_DATA_DIR>/chatgpt-auth.json` with owner-only permissions. Tokens are not
-part of Settings or returned to the frontend. The ChatGPT account/workspace ID
+part of Settings or returned to the UI. The ChatGPT account/workspace ID
 is sent with the bearer token when fetching models or performing inference.
 
 Browser attempts expire after five minutes, device-code attempts after fifteen.

@@ -128,7 +128,7 @@ fn fill_pr_times(p: &mut Pr, existing_created: &str) {
 }
 
 /// Copies a known sibling stamp when only one of CreatedAt / UpdatedAt is
-/// set. Both-empty rows stay empty: the frontend treats missing stamps as
+/// set. Both-empty rows stay empty: the UI treats missing stamps as
 /// unknown, which is safer than claiming the upgrade instant.
 pub(crate) fn fill_missing_pr_times(p: &mut Pr) -> bool {
     let c = p.created_at.trim().is_empty();

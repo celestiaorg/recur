@@ -1,7 +1,5 @@
-//! Ports of the forge halves of `github_thread_test.go`,
-//! `github_snapshot_test.go`, `github_reaction_test.go`,
-//! `github_mentions_test.go` and `github_test.go`, plus fake-`gh` runs of
-//! the command paths.
+//! GitHub forge tests: threads, snapshots, reactions, mentions and the
+//! client, plus fake-`gh` runs of the command paths.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

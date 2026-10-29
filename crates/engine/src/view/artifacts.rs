@@ -1,5 +1,4 @@
-//! Artifact rules of the Observatory and the chat list card (frontend
-//! `lib/artifacts.ts`).
+//! Artifact rules of the Observatory and the chat list card.
 
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -227,7 +226,7 @@ pub fn artifact_kind_tally<'a>(kinds: impl IntoIterator<Item = &'a str>) -> Vec<
 }
 
 /// A compact age (`just now`, `12m`, `3h`, `2d`, `3w`, `2mo`, `1y`) plus the
-/// full stamp for a tooltip (frontend `formatRelativeAge`).
+/// full stamp for a tooltip.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RelativeAge {
     pub rel: String,

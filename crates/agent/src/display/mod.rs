@@ -134,7 +134,7 @@ pub fn is_list_findings_tool(name: &str) -> bool {
 }
 
 /// A tool call's input JSON for the live/history detail card. A mid-JSON
-/// byte cut breaks the frontend parser, so CreatePlan re-serializes with a
+/// byte cut breaks the card's JSON parse, so CreatePlan re-serializes with a
 /// cleanly truncated body and Task keeps a parseable envelope.
 pub fn chat_tool_input(tool: &str, input: &str) -> String {
     if input.is_empty() {
@@ -176,7 +176,7 @@ fn chat_task_input(input: &str) -> String {
 }
 
 /// A tool result for the live/history detail card. Listing tools return
-/// JSON the frontend accordion parses, so they get a compact, still-parseable
+/// JSON the card's accordion parses, so they get a compact, still-parseable
 /// envelope instead of a byte cut.
 pub fn chat_tool_result(tool: &str, result: &str) -> String {
     if result.is_empty() {

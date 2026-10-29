@@ -1,4 +1,4 @@
-//! `lib/preview.ts`: which files have a Preview, and the HTML preview's sandbox document.
+//! Which files have a Preview, and the HTML preview's sandbox document.
 
 pub mod find;
 pub mod find_bar;

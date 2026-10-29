@@ -1,4 +1,4 @@
-//! Editor session persistence logic (`editor-session.ts`): the session
+//! Editor session persistence logic: the session
 //! shape, its caps and pruning, the wire format the backend stores, and the
 //! change gate that turns a session into a minimal patch. Scheduling the
 //! debounced writes and the RPC queue is the host's job.

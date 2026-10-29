@@ -1,5 +1,5 @@
 //! Walker, converge and rails tests (the loop halves; merge and send-back
-//! are E5's) and the loop-driven fixture cases.
+//! are in `prs::tests`) and the loop-driven fixture cases.
 
 use std::time::Duration;
 
@@ -50,7 +50,7 @@ fn add_ws(t: &TestEngine, id: &str, state: WorkspaceState, phase: &str) {
         .expect("add workspace");
 }
 
-// ---- walker_test.go
+// ---- walker
 
 #[tokio::test]
 async fn inbound_graph_phase() {
@@ -340,7 +340,7 @@ async fn run_phase_attempt_board_cap_is_terminal() {
     );
 }
 
-// ---- rails_test.go
+// ---- rails
 
 #[tokio::test]
 async fn can_open_pr_policy_bar() {
@@ -377,7 +377,7 @@ async fn can_open_pr_policy_bar() {
     assert!(ok, "leftover low under Balanced: {reason}");
 }
 
-// ---- converge_test.go
+// ---- converge
 
 fn workspace_events(t: &TestEngine) -> Vec<recur_domain::FeedItem> {
     t.events
@@ -482,7 +482,7 @@ async fn convergence_cap_stops_no_infinite_loop() {
     t.close().await;
 }
 
-// ---- m8_test.go (loop halves; MergePR / SendBackToLoop are E5's)
+// ---- PR-backed inbox (loop halves; MergePR / SendBackToLoop are in `prs::tests`)
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn inbox_derived_from_real_pr() {

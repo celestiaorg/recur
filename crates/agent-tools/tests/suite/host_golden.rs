@@ -532,8 +532,8 @@ pub fn embedded_json(v: Value) -> Value {
     }
 }
 
-/// Go `encoding/json` quirks Recur does not keep: Unicode case folding of
-/// keys, duplicate keys merging, and trailing data after the arguments.
+/// Fixture cases Recur deliberately answers differently: Unicode case folding
+/// of keys, duplicate keys merging, and trailing data after the arguments.
 const GO_ONLY_ARGS: &[&str] = &[
     r#"{"ſeverity":"low","file":"k.go","message":"x"}"#,
     r#"{"file":"a.go","file":null,"severity":"low","message":"x"}"#,

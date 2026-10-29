@@ -1,5 +1,5 @@
-//! Optimistic resolve / unresolve of a line-note thread (frontend
-//! `lib/pr-thread-resolved.ts`): the in-flight holds that stop a stale GetPR
+//! Optimistic resolve / unresolve of a line-note thread: the in-flight holds
+//! that stop a stale GetPR
 //! flipping the button back, and how the service's answer merges into the
 //! PR the UI already shows.
 

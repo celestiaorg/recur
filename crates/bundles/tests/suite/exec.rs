@@ -1,4 +1,4 @@
-//! Port of `exec_test.go` (the env-mutating case lives in `tests/env_serial`).
+//! Command execution (the env-mutating case lives in `tests/env_serial`).
 
 use std::collections::BTreeMap;
 use std::time::Duration;

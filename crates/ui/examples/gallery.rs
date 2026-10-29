@@ -1,4 +1,4 @@
-//! The recur-ui widget gallery: every parity scene (`crates/ui/gallery/scenes.json`), live and
+//! The recur-ui widget gallery: every widget scene (`crates/ui/gallery/scenes.json`), live and
 //! interactive, in any theme.
 //!
 //! ```text

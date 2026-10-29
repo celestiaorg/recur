@@ -1,10 +1,9 @@
-//! `lib/chat-tab-reorder.ts`. `reorderByInsert`, `insertIndexFromPointerX` and
-//! `restoreStripOrder` (and the 4px drag threshold) are the tab strip's
-//! (`recur_ui::widgets::tab_strip`); this is the chat strip's saved-order rule.
+//! The chat strip's saved-order rule. Drag reordering and its 4px threshold are the tab
+//! strip's (`recur_ui::widgets::tab_strip`).
 
 use recur_domain::WorkspaceChatTab;
 
-/// `applyChatTabOrder`: apply a saved strip order. Unknown and closed codes are skipped; Loop
+/// Apply a saved strip order. Unknown and closed codes are skipped; Loop
 /// still leads when it is open but missing from the order; other new tabs append.
 pub fn apply_chat_tab_order(tabs: &[WorkspaceChatTab], order: &[String]) -> Vec<WorkspaceChatTab> {
     if order.is_empty() || tabs.len() < 2 {

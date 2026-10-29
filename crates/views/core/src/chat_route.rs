@@ -1,4 +1,4 @@
-//! Inbox / palette route targets (`lib/chat-route.ts`).
+//! Inbox / palette route targets.
 
 /// `chat:<workspaceId>:<code>` (workspace ids may contain dots).
 pub fn parse_chat_route_target(target: &str) -> Option<(String, String)> {

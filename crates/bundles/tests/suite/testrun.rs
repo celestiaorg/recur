@@ -1,4 +1,4 @@
-//! Port of `testrun_test.go`.
+//! Bundle test runs.
 
 use recur_bundles::*;
 

@@ -1,4 +1,4 @@
-//! Port of `fileindex_test.go`.
+//! File index tests.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 

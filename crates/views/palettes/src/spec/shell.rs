@@ -1,4 +1,4 @@
-//! `shell.spec.ts`'s palette scenarios: Go to (⌘K), the shortcuts list (⌘⇧/) and Open in (⌘O,
+//! The shell's palette scenarios: Go to (⌘K), the shortcuts list (⌘⇧/) and Open in (⌘O,
 //! the titlebar button).
 
 use gpui::TestAppContext;

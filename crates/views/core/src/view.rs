@@ -1,11 +1,10 @@
 //! The seam between the shell (`recur-app`) and view crates (`crates/views/<area>`).
 //!
-//! App.svelte mounted every view at once and each one showed itself while `$view` matched.
-//! Here a view crate hands the shell a [`ViewRegistry`] entry: the routes it renders, a
+//! A view crate hands the shell a [`ViewRegistry`] entry: the routes it renders, a
 //! builder the shell calls once when the window opens, and optional titlebar parts. The shell
 //! renders the entry whose route is current; routes nobody registered render nothing.
 //! Overlays (modals, palettes, prompts) register into fixed [`OverlaySlot`]s so their paint
-//! order stays App.svelte's. Each crate's `init(cx)` binds its actions and keys.
+//! order is fixed. Each crate's `init(cx)` binds its actions and keys.
 //!
 //! Everything a view needs at build time is in [`ViewContext`]: the shared [`AppState`]
 //! (observe it, subscribe to its [`crate::ShellEvent`]s, call its methods) and the
@@ -45,8 +44,7 @@ pub struct ViewEntry {
     pub titlebar: Option<TitlebarBuilder>,
 }
 
-/// App.svelte's overlay order, top of the DOM first. The shell paints the registered
-/// overlays in this order, then `Toasts`, then `TitleTooltip` (always last).
+/// Overlay slots. The shell paints the registered overlays in this order, then `Toasts`, then `TitleTooltip` (always last).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum OverlaySlot {
     /// Settings → Providers' Add provider modal (`.nt-bg` inside the Settings view, under the
@@ -94,7 +92,7 @@ impl ViewRegistry {
         self.views.last_mut().expect("just pushed")
     }
 
-    /// Register an overlay in its App.svelte slot.
+    /// Register an overlay in its slot.
     pub fn overlay(
         &mut self,
         slot: OverlaySlot,

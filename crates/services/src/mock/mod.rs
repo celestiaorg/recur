@@ -1,6 +1,6 @@
 //! A mock bridge: every service answered from the e2e seed, with in-memory
-//! mutations, canned responses, emitted events and timing hooks, so a view
-//! driven by it reaches the same state under e2e and UI-parity runs.
+//! mutations, canned responses, emitted events and timing hooks, so view
+//! specs and gallery scenes run without a backend.
 //!
 //! It works at the JSON level. Each bound method is a [`Resolver`] keyed by
 //! its PascalCase method name that gets the call's positional arguments (as
@@ -152,7 +152,7 @@ pub struct Table {
 }
 
 impl Table {
-    /// The base resolvers (`resolvers` in mock-bridge.ts).
+    /// The base resolvers.
     pub fn base() -> Self {
         resolvers::base()
     }
@@ -170,7 +170,7 @@ impl Table {
     }
 
     /// Calls another resolver (`table.ListTree(args, seed, table)`); a missing
-    /// one throws in the TypeScript, here it is a failed call.
+    /// one is a failed call.
     pub fn call(&self, name: &str, args: &[Value], seed: &mut Seed) -> Reply {
         match self.resolvers.get(name) {
             Some(f) => f(args, seed, self),
@@ -215,7 +215,7 @@ pub struct MockBridge {
 
 impl MockBridge {
     /// Installs the bridge over `seed`. Resolvers mutate it in place; pass a
-    /// clone of a shared seed (fixtures.ts clones per test).
+    /// clone of a shared seed.
     pub fn new(seed: Seed, opts: MockOptions) -> Arc<Self> {
         let attention = Arc::new(Mutex::new(attention::State::default()));
         let mut table = Table::base();
@@ -232,8 +232,7 @@ impl MockBridge {
         })
     }
 
-    /// A bridge over a fresh clone of the e2e seed (the fixtures.ts `bridge`
-    /// auto fixture).
+    /// A bridge over a fresh clone of the e2e seed.
     pub fn fresh(opts: MockOptions) -> Arc<Self> {
         Self::new(fixtures::seed(), opts)
     }
@@ -289,9 +288,8 @@ impl MockBridge {
     }
 
     /// One bound call: dispatch by method name, settle the reply, then
-    /// publish what the call queued (the bridge dispatched those after
-    /// `route.fulfill`). A failed call publishes nothing; its queue waits for
-    /// the next successful call, as in the TypeScript.
+    /// publish what the call queued. A failed call publishes nothing; its
+    /// queue waits for the next successful call.
     pub(crate) async fn call<R: FromReply>(
         &self,
         name: &'static str,

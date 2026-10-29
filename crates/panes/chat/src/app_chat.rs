@@ -22,7 +22,7 @@ use recur_services::Services;
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::widgets::tab_chip::{ChipIcon, tab_chip};
-use recur_ui::widgets::tab_strip::{tab_strip, tab_strip_action};
+use recur_ui::widgets::tab_strip::{tab_bar_rule, tab_strip, tab_strip_action};
 use recur_ui::{IconName, Theme, icon, motion};
 use recur_view_core::models::{CatalogModel, FlagMap, flags_for_model, normalize_flags};
 use recur_view_core::modes::{ChatMode, resolved_default_for_mode};
@@ -776,6 +776,7 @@ impl AppChat {
                 .on_click(cx.guarded_listener(|_, _, _, cx| cx.emit(AppChatEvent::Hide))),
         );
         let head = div()
+            .relative()
             .flex()
             .flex_none()
             .items_stretch()
@@ -784,9 +785,8 @@ impl AppChat {
             .pl(px(8.))
             .pr(px(4.))
             .min_w_0()
-            .border_b_1()
-            .border_color(hsla(t.line))
             .bg(hsla(t.pane))
+            .child(tab_bar_rule(cx))
             .child(div().flex().items_center().child(toggle))
             .child(div().flex_1().min_w_0().flex().child(strip));
         let focus = self.focus.clone();

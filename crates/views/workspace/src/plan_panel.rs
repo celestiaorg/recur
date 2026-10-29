@@ -1053,8 +1053,8 @@ impl PlanPanel {
                 .flex()
                 .flex_none()
                 .border_b_1()
-                .border_color(hsla(t.line))
-                .bg(hsla(t.pane))
+                .border_color(hsla(t.line_soft))
+                .bg(hsla(t.bg))
                 // `grid-template-columns: calc(14px + 2.2ch) minmax(0, 1fr)` at 10.5px.
                 .child(div().flex_none().w(px(14. + 2.2 * mono_ch(10.5, window))))
                 .child(
@@ -1098,8 +1098,8 @@ impl PlanPanel {
                         .px(px(GUTTER))
                         .py(px(10.))
                         .border_b_1()
-                        .border_color(hsla(t.line))
-                        .bg(hsla(t.pane))
+                        .border_color(hsla(t.line_soft))
+                        .bg(hsla(t.bg))
                         .child(
                             text(summary)
                                 .id("plan-summary")
@@ -1373,8 +1373,8 @@ impl PlanPanel {
                     .py(px(8.))
                     .px(px(GUTTER))
                     .border_b_1()
-                    .border_color(hsla(t.line))
-                    .bg(hsla(t.pane))
+                    .border_color(hsla(t.line_soft))
+                    .bg(hsla(t.bg))
                     .child(
                         text(format!("{} of {total} done", done + skipped))
                             .size(11.)

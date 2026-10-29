@@ -742,7 +742,26 @@ fn tabs(_: &mut Window, cx: &mut App) -> AnyElement {
                 .child(action("add", false, IconName::Plus, cx))
                 .child(action("max", true, IconName::Maximize, cx)),
         );
-    body(cx).size_full().child(strip).into_any_element()
+    // An unfocused strip over a terminal: the first tab is selected and takes its black.
+    let term = crate::hex(0x000000);
+    let dock = tab_strip("term", "Terminal sessions")
+        .chrome(true)
+        .surface(term)
+        .active_key("zsh")
+        .tab(
+            "zsh",
+            tab_chip("zsh", "zsh").active(true).on_close(|_, _, _| {}),
+        )
+        .tab("logs", tab_chip("logs", "logs"));
+    body(cx)
+        .size_full()
+        .flex()
+        .flex_col()
+        .child(strip)
+        .child(div().h(px(24.)))
+        .child(dock)
+        .child(div().flex_1().bg(term))
+        .into_any_element()
 }
 
 const MANY: [&str; 8] = [

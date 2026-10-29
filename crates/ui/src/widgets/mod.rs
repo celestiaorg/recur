@@ -30,7 +30,7 @@ pub use scrollbar::{ScrollArea, scroll_area};
 pub use select::{Select, SelectEvent, SelectOption, SelectSize, TriggerStyle};
 pub use settings_group::{SettingsGroup, blurb_code, settings_group, settings_groups};
 pub use tab_chip::{ChipIcon, TabChip, tab_chip};
-pub use tab_strip::{TabItem, TabStrip, tab_strip, tab_strip_action};
+pub use tab_strip::{TabItem, TabStrip, tab_bar_rule, tab_strip, tab_strip_action};
 pub use toasts::{
     Toast, ToastAction, ToastAsk, ToastKind, ToastOptions, ToastStore, Toasts, push_toast,
     toast_action,

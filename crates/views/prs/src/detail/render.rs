@@ -377,18 +377,18 @@ impl PrDetail {
         let dock_open = self.state().read(cx).pr_agent_dock_open;
         let focus_agent = self.ui.read(cx).focus_agent;
         let lit = agent_ws.is_empty() || !dock_open || !focus_agent;
+        let toggle = !agent_ws.is_empty() && !dock_open;
         let mut bar = div()
             .debug_selector(|| "prtabs".into())
+            .relative()
             .flex()
             .flex_none()
             .items_stretch()
-            .gap(px(2.))
             .h(px(recur_ui::style::CHROME_H))
-            .px(px(8.))
+            .pr(px(8.))
             .bg(hsla(t.pane))
-            .border_b_1()
-            .border_color(hsla(t.line));
-        if !agent_ws.is_empty() && !dock_open {
+            .child(recur_ui::widgets::tab_bar_rule(cx));
+        if toggle {
             let running = {
                 let s = self.state().read(cx);
                 pr_agent_is_running(pr, &s.workspaces, &s.workspaces_running)
@@ -410,41 +410,46 @@ impl PrDetail {
             let hover = if running { t.amber } else { t.text };
             let ring = recur_ui::style::is_focus_visible(&self.toggle_focus, window);
             bar = bar.child(
-                div().flex().items_center().child(titled(
-                    "prd-chat-toggle-t",
-                    title,
-                    div()
-                        .id("prd-chat-toggle")
-                        .debug_selector(move || {
-                            format!("button:{label}{}", if running { ":running" } else { "" })
-                        })
-                        .track_focus(&self.toggle_focus)
-                        .relative()
-                        .flex()
-                        .flex_none()
-                        .items_center()
-                        .justify_center()
-                        .size(px(28.))
-                        .rounded(px(5.))
-                        .cursor_pointer()
-                        .text_color(hsla(color))
-                        .hover(move |s| s.text_color(hsla(hover)).bg(hsla(t.pane_2)))
-                        .child(
-                            div()
-                                .opacity(o)
-                                .child(icon(IconName::PanelLeft).size(px(16.))),
-                        )
-                        .when(ring, |d| d.child(recur_ui::style::focus_ring(4., 0., cx)))
-                        .on_mouse_down(
-                            MouseButton::Left,
-                            cx.guarded_listener(|d, _, window, cx| {
-                                window.focus(&d.toggle_focus, cx);
-                            }),
-                        )
-                        .on_click(
-                            cx.guarded_listener(|d, _, window, cx| d.show_agent_dock(window, cx)),
-                        ),
-                )),
+                div()
+                    .flex()
+                    .items_center()
+                    .pl(px(8.))
+                    .pr(px(2.))
+                    .child(titled(
+                        "prd-chat-toggle-t",
+                        title,
+                        div()
+                            .id("prd-chat-toggle")
+                            .debug_selector(move || {
+                                format!("button:{label}{}", if running { ":running" } else { "" })
+                            })
+                            .track_focus(&self.toggle_focus)
+                            .relative()
+                            .flex()
+                            .flex_none()
+                            .items_center()
+                            .justify_center()
+                            .size(px(28.))
+                            .rounded(px(5.))
+                            .cursor_pointer()
+                            .text_color(hsla(color))
+                            .hover(move |s| s.text_color(hsla(hover)).bg(hsla(t.pane_2)))
+                            .child(
+                                div()
+                                    .opacity(o)
+                                    .child(icon(IconName::PanelLeft).size(px(16.))),
+                            )
+                            .when(ring, |d| d.child(recur_ui::style::focus_ring(4., 0., cx)))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.guarded_listener(|d, _, window, cx| {
+                                    window.focus(&d.toggle_focus, cx);
+                                }),
+                            )
+                            .on_click(cx.guarded_listener(|d, _, window, cx| {
+                                d.show_agent_dock(window, cx)
+                            })),
+                    )),
             );
         }
         let pending = (
@@ -506,13 +511,7 @@ impl PrDetail {
                   cx: &mut Context<Self>| {
             let on = tab == key;
             let fg = if on { t.text } else { t.muted };
-            let border = if on && lit {
-                t.amber
-            } else if on {
-                t.line
-            } else {
-                recur_ui::color::TRANSPARENT
-            };
+            let first = key == PrTab::Conv && !toggle;
             let _ = me;
             div()
                 .id(SharedString::from(format!("prtab-{name}")))
@@ -523,19 +522,42 @@ impl PrDetail {
                         if on && lit { ":lit" } else { "" }
                     )
                 })
+                .relative()
                 .flex()
                 .items_center()
                 .gap(px(6.))
                 .h_full()
                 .px(px(10.))
-                .border_b_2()
-                .border_color(hsla(border))
+                .border_r_1()
+                .border_color(hsla(if on { t.line } else { t.line_soft }))
                 .cursor_pointer()
                 .text_color(hsla(fg))
                 .hover(move |s| s.text_color(hsla(t.text)))
                 .child(lead)
                 .child(recur_ui::style::button_label(name, 12., 500.).family(Family::Ui))
                 .child(count)
+                .when(on, |d| {
+                    d.bg(hsla(t.bg)).child(
+                        div()
+                            .absolute()
+                            .top_0()
+                            .left_0()
+                            .right_0()
+                            .h(px(2.))
+                            .bg(hsla(if lit { t.amber } else { t.line_bright })),
+                    )
+                })
+                .when(on && !first, |d| {
+                    d.child(
+                        div()
+                            .absolute()
+                            .top_0()
+                            .bottom_0()
+                            .left(px(-1.))
+                            .w(px(1.))
+                            .bg(hsla(t.line)),
+                    )
+                })
                 .on_click(cx.guarded_listener(move |d, _, _, cx| d.set_tab(key, cx)))
         };
         let conv_chip = chip(conv_n.to_string(), None, pending.0, window, cx);

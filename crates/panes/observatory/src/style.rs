@@ -104,13 +104,19 @@ pub fn side_head(tabbed: bool, cx: &App) -> Div {
         .flex_none()
         .h(px(CHROME_H))
         .min_w_0()
-        .border_b_1()
-        .border_color(hsla(t.line))
         .bg(hsla(t.pane));
     if tabbed {
-        d.items_stretch().pr(px(4.))
+        d.relative()
+            .items_stretch()
+            .pr(px(4.))
+            .child(recur_ui::widgets::tab_bar_rule(cx))
     } else {
-        d.items_center().gap(px(8.)).pl(px(12.)).pr(px(8.))
+        d.items_center()
+            .gap(px(8.))
+            .pl(px(12.))
+            .pr(px(8.))
+            .border_b_1()
+            .border_color(hsla(t.line))
     }
 }
 

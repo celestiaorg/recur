@@ -67,3 +67,9 @@ Each is a limit of GPUI or of matching a browser's private rendering, not a choi
 - **Native checkbox.** A task list's checked, disabled `<input type=checkbox>` is WebKit's native control; recur-content draws its look (fill, border and check calibrated per theme), and the edge pixels of the rounded box and check differ.
 - **Image resampling.** Scaled images (the lightbox, PDF pages stretched to their slot, the inline chart) are sampled by GPUI's bilinear texture filter where WebKit uses CoreGraphics interpolation; internal edges differ by a few levels.
 - **LSP documentation links and signature indent.** recur-ui text has no per-side inline border, inline underline color or `text-indent`: a link in hover or completion documentation draws its `border-bottom` (cyan at 45%) as a full-cyan underline, and a signature that wraps in signature help starts its continuation lines at the left edge instead of under CodeMirror's `1em hanging` indent.
+
+## Design departures
+
+These differ from the Svelte app on purpose:
+
+- **Cut-out tabs.** A selected tab takes the color of the content under its strip (`TabStrip::surface`, `--bg` by default), with `--line` sides and a 2px top line (`--amber` when its pane has focus, `--line-bright` otherwise), and covers the bar's bottom line (`tab_bar_rule`) so it opens into its page. Unselected tabs are divided by `--line-soft`. A row under a tab bar that belongs to the selected tab (the editor breadcrumb, the review toolbars, the plan summary) takes `--bg` with a `--line-soft` bottom border, so the tab bar stays the only chrome row.

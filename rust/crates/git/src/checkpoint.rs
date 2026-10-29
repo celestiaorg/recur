@@ -19,7 +19,7 @@ use recur_domain::FileDiff;
 use recur_domain::path;
 
 use crate::command::command;
-use crate::diff::{commit_ref_exists, parse_highlighted_patch};
+use crate::diff::{commit_ref_exists, parse_unified_diff};
 use crate::error::{Error, Result};
 
 /// The namespace every checkpoint ref lives under.
@@ -126,10 +126,10 @@ pub async fn delete_checkpoints(repo: &str, prefix: &str) -> Result<()> {
 }
 
 /// The unified diff `from` → `to` (checkpoint refs or any commit-ish),
-/// parsed and highlighted like the Commits tab.
+/// parsed like the Commits tab.
 pub async fn diff_checkpoints(worktree: &str, from: &str, to: &str) -> Result<Vec<FileDiff>> {
     let out = run(worktree, &[], &["diff", "--no-color", from, to]).await?;
-    Ok(parse_highlighted_patch(&out))
+    Ok(parse_unified_diff(&out))
 }
 
 /// Makes the working tree match `ref_name`: tracked files are restored or

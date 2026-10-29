@@ -13,7 +13,6 @@ rust/
     domain/             recur-domain       pure model + rules        (internal/domain, internal/shortid)
     store/              recur-store        SQLite, migrations, paths (internal/store)
     git/                recur-git          local git                 (internal/git)
-    chroma/             recur-chroma       syntax highlighting       (internal/git highlight.go, chroma)
     project/            recur-project      project.toml, env, runs   (internal/projfile, wsenv, runconfig)
     forge/              recur-forge        remote hosting: GitHub    (engine github*, pr*, app/gh_image)
     issues/             recur-issues       issue trackers: Linear    (app/issues, Linear bundle glue)
@@ -75,6 +74,7 @@ terminal-view ────► term, ui
 services ─────────► engine, providers/*, forge, issues, usage, lsp, platform, store, git, code, bundles
 engine ───────────► agent, agent-tools, mcp, bundles, code, git, store, term, forge, issues, project, platform
 agent, forge, issues, bundles, git, code, store, project ─► domain (and each other, downward)
+code ─────────────► textmate (a file's language id)
 textmate, term, ui, http ─ standalone
 ```
 
@@ -105,7 +105,7 @@ The engine port is planned slice by slice in `docs/engine-port-plan.md`.
 
 ## Editor
 
-`recur-editor` ports Recur's CodeMirror 6 editor (`CodeEditor.svelte`, `MergeEditor.svelte`, `lib/cm-*`) and `recur-textmate` its TextMate stack (`vscode-textmate` semantics on Oniguruma, `tm-*`, `codehl`). `recur-textmate` stands alone: grammars and themes reach it as loaders and parsed JSON, never through `recur-bundles`.
+`recur-editor` ports Recur's CodeMirror 6 editor (`CodeEditor.svelte`, `MergeEditor.svelte`, `lib/cm-*`) and `recur-textmate` its TextMate stack (`vscode-textmate` semantics on Oniguruma, `tm-*`, `codehl`). `recur-textmate` stands alone: grammars and themes reach it as loaders and parsed JSON, never through `recur-bundles`. The review pane highlights diff rows with the same grammars, off the UI thread (`recur-view-review` `syntax.rs`).
 
 **Architecture.** The editor is not built on gpui-base's text input. It ports CodeMirror's model: an immutable `EditorState` over a rope `Text` (UTF-8 offsets; LSP positions convert to UTF-16), `ChangeSet` / `Transaction` / `Effect`, the selection, history, search, autocomplete, close-brackets, snippet, fold, lint and merge state, and the keymap with its precedence. `EditorView` is a GPUI entity that applies transactions and lays rows out (`display.rs`, wrapping and folds measured through the GPUI text system). One custom `EditorElement` paints in CodeMirror's layer order (scroller fill, selection, line and mark backgrounds, text, cursors, gutters, scrollbars), visible rows only, so large files stay cheap. Chrome around it (panels, tooltips, documentation, the vim panel, gutter icons) is ordinary `recur-ui` elements. vim and emacs are full ports of `@replit/codemirror-vim` 6.3.0 and `@replit/codemirror-emacs` 6.1.0 that run after the editor keymap, as Recur's keymap compartment orders them.
 

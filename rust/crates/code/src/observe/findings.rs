@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use recur_chroma::html_escape;
+use recur_domain::html_escape;
 use recur_domain::{FileDiff, Finding};
 
 use super::{parse_line, to_slash};

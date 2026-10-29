@@ -1347,7 +1347,10 @@ internal/git.TestDirtyBaseErrorError	crates/git/src/worktree.rs::dirty_base_erro
 internal/git.TestExpandHome	crates/project/src/home.rs::expand_home_leaves_other_paths
 internal/git.TestFileAtBase	crates/git/src/working_diff.rs::file_at_base_and_rev_helpers
 internal/git.TestFormatHunkLabel	crates/git/src/diff.rs::format_hunk_label_cases
-internal/git.TestHighlightLine	crates/chroma/src/highlight.rs::highlight_line_typescript_and_fallbacks
+internal/git.TestHighlightLine	crates/panes/review/src/syntax.rs::highlights_into_the_palette_per_side
+internal/git.TestHighlightFilesBackfillsPlain	n/a: the review pane highlights at render time; nothing is backfilled
+internal/git.TestHighlightFilesTotalBudget	crates/panes/review/src/syntax.rs::budget_stops_at_the_cap
+internal/git.TestDiffWorkingVsBaseSkipsChroma	n/a: no diff is highlighted on the backend
 internal/git.TestIdentity	crates/git/tests/env_isolated.rs::identity_comes_from_git_and_errors_without_one
 internal/git.TestIgnoredSet	crates/git/src/ignore.rs::ignored_set_reads_gitignore
 internal/git.TestInspectDiscardRisk	crates/git/src/worktree.rs::inspect_discard_risk_cases

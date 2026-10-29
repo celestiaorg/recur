@@ -18,7 +18,7 @@ use crate::working_diff::{
     MAX_SYNTHETIC_ADD_BYTES, merge_base, omitted_untracked_diff, read_capped, synthetic_add_diff,
 };
 use crate::worktree::Manager;
-use recur_chroma::{highlight_files, html_escape};
+use recur_domain::html_escape;
 
 /// Caps so a dirty worktree (unignored build output, data dumps) cannot blow
 /// the diff-sync deadline. Partial counts beat stalls.
@@ -199,7 +199,7 @@ impl Manager {
     }
 
     /// The branch's own changes versus the base (`git diff <merge-base> HEAD`),
-    /// parsed and highlighted. An up-to-date branch is an empty diff, not an
+    /// parsed. An up-to-date branch is an empty diff, not an
     /// error.
     pub async fn diff_pr(&self, worktree: &str, base_branch: &str) -> Result<PrDiff> {
         let mut base = base_branch.to_string();
@@ -214,13 +214,12 @@ impl Manager {
             .run_in(worktree, ["diff", "--no-color", base.as_str(), "HEAD"])
             .await
             .map_err(|e| e.wrap(format!("git diff {base_branch}..HEAD")))?;
-        Ok(PrDiff::new(parse_highlighted_patch(&out), false))
+        Ok(PrDiff::new(parse_unified_diff(&out), false))
     }
 
     /// The Observatory files-changed view: the working tree (staged, unstaged
     /// and untracked text files) versus the merge-base with `base_branch`, or
-    /// HEAD when empty (the empty tree when HEAD is unborn). Lines are plain
-    /// escaped: highlighting a 100-file working diff froze the review.
+    /// HEAD when empty (the empty tree when HEAD is unborn).
     pub async fn diff_working_vs_base(&self, worktree: &str, base_branch: &str) -> Result<PrDiff> {
         let worktree = worktree.trim();
         if worktree.is_empty() {
@@ -240,7 +239,7 @@ impl Manager {
             )
             .await
             .map_err(|e| e.wrap(format!("git diff {against}")))?;
-        let mut files = parse_unified_diff_plain(&out);
+        let mut files = parse_unified_diff(&out);
         let seen: HashSet<String> = files.iter().map(|f| f.path.clone()).collect();
         let (mut bodies, mut bytes_read) = (0, 0);
         let (untracked, list_truncated) = untracked_rel_paths(worktree).await;
@@ -345,7 +344,7 @@ impl Manager {
         Ok(commits)
     }
 
-    /// One commit's own diff (`git show --format= <hash>`), highlighted. A
+    /// One commit's own diff (`git show --format= <hash>`). A
     /// merge commit has no patch here, so eager fills never persist a
     /// whole-branch delta; the drill-in uses
     /// [`commit_diff_first_parent`](Self::commit_diff_first_parent).
@@ -378,7 +377,7 @@ impl Manager {
             .run_in(worktree, &args)
             .await
             .map_err(|e| e.wrap(format!("git show {hash}")))?;
-        Ok(parse_highlighted_patch(&out))
+        Ok(parse_unified_diff(&out))
     }
 }
 
@@ -526,8 +525,8 @@ pub(crate) fn author_initials(name: &str) -> String {
     }
     let take = |s: &str, n: usize| -> Vec<char> {
         s.chars()
-            .filter(|&c| recur_chroma::is_letter(c) || recur_chroma::is_number(c))
-            .map(recur_chroma::to_upper)
+            .filter(|&c| c.is_alphabetic() || c.is_numeric())
+            .flat_map(char::to_uppercase)
             .take(n)
             .collect()
     };
@@ -561,25 +560,11 @@ pub(crate) fn format_commit_when(iso: &str, now: DateTime<Utc>) -> String {
     }
 }
 
-/// The fast path: HTML-escaped code, no highlighting. Callers that want
-/// highlighting run [`highlight_files`] afterward (capped).
-pub fn parse_unified_diff_plain(diff: &str) -> Vec<FileDiff> {
-    parse_unified_diff(diff)
-}
-
-/// Escapes, then highlights within [`highlight_files`]' caps, so a large
-/// commit cannot highlight unboundedly while the UI waits.
-pub(crate) fn parse_highlighted_patch(diff: &str) -> Vec<FileDiff> {
-    let mut files = parse_unified_diff_plain(diff);
-    highlight_files(&mut files);
-    files
-}
-
 fn push_line(f: &mut FileDiff, line: DiffLine) {
     f.lines.get_or_insert_with(Vec::new).push(line);
 }
 
-fn parse_unified_diff(diff: &str) -> Vec<FileDiff> {
+pub fn parse_unified_diff(diff: &str) -> Vec<FileDiff> {
     let mut files = Vec::new();
     let mut cur: Option<FileDiff> = None;
     let (mut old_line, mut new_line) = (0i64, 0i64);
@@ -1009,7 +994,7 @@ mod tests {
     #[test]
     fn parse_unified_diff_hunk_content_dashes() {
         let diff = "diff --git a/q.sql b/q.sql\n--- a/q.sql\n+++ b/q.sql\n@@ -1,2 +1,2 @@\n SELECT 1;\n--- old comment\n+++ new thing\n";
-        let files = parse_unified_diff_plain(diff);
+        let files = parse_unified_diff(diff);
         assert_eq!(files.len(), 1);
         let l = lines(&files[0]);
         assert!(
@@ -1021,36 +1006,6 @@ mod tests {
             l.iter()
                 .any(|l| l.r#type == "add" && l.code_html.contains("++ new thing")),
             "{l:?}"
-        );
-    }
-
-    #[tokio::test]
-    async fn diff_working_vs_base_skips_chroma() {
-        let repo = init_repo();
-        let r = repo.path.as_str();
-        git(r, &["checkout", "-b", "recur/feature"]);
-        write(r, "main.go", "package main\n");
-        commit_as_coder(r, "add go");
-        write(r, "main.go", "package main\nfunc F() {}\n");
-        let (m, _root) = mgr(r);
-        let has_spans = |files: &[FileDiff]| {
-            files
-                .iter()
-                .flat_map(|f| f.lines.iter().flatten())
-                .any(|l| l.code_html.contains("<span class=\""))
-        };
-        assert!(
-            has_spans(&m.diff_pr(r, "main").await.expect("diff_pr").files),
-            "diff_pr should highlight .go"
-        );
-        assert!(
-            !has_spans(
-                &m.diff_working_vs_base(r, "main")
-                    .await
-                    .expect("working")
-                    .files
-            ),
-            "the working diff stays plain escaped"
         );
     }
 
@@ -1074,9 +1029,9 @@ mod tests {
 
     #[test]
     fn parse_unified_diff_edge_cases() {
-        assert!(parse_unified_diff_plain("").is_empty());
+        assert!(parse_unified_diff("").is_empty());
         let diff = "diff --git a/x.html b/x.html\nnew file mode 100644\n--- /dev/null\n+++ b/x.html\n@@ -0,0 +1,1 @@\n+<script>alert('xss')</script>\n";
-        let files = parse_unified_diff_plain(diff);
+        let files = parse_unified_diff(diff);
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].status, "a");
         let code = lines(&files[0])
@@ -1090,7 +1045,7 @@ mod tests {
             "{code}"
         );
 
-        let bin = parse_unified_diff_plain(
+        let bin = parse_unified_diff(
             "diff --git a/img.png b/img.png\nnew file mode 100644\nBinary files /dev/null and b/img.png differ\n",
         );
         assert_eq!(bin.len(), 1);
@@ -1100,7 +1055,7 @@ mod tests {
             ("img.png", "a")
         );
 
-        let modified = parse_unified_diff_plain(
+        let modified = parse_unified_diff(
             "diff --git a/img.png b/img.png\nindex 1111111..2222222 100644\nBinary files a/img.png and b/img.png differ\n",
         );
         assert_eq!(modified.len(), 1);
@@ -1110,7 +1065,7 @@ mod tests {
         );
         assert!(modified[0].lines.is_none());
 
-        let ren = parse_unified_diff_plain(
+        let ren = parse_unified_diff(
             "diff --git a/old.sql b/new.sql\nsimilarity index 100%\nrename from old.sql\nrename to new.sql\n",
         );
         assert_eq!(ren.len(), 1);

@@ -175,25 +175,7 @@ impl Engine {
             .ok_or_else(|| EngineError(format!("PR {pr_id:?} not found")))?;
         let (_, mut c) = find_pr_commit(pr.commits.as_deref().unwrap_or_default(), hash)
             .ok_or_else(|| EngineError(format!("commit {hash:?} not found on PR {pr_id:?}")))?;
-        if let Some(files) = c.files.as_mut().filter(|f| !f.is_empty()) {
-            if recur_git::highlight_files(files) {
-                let files = files.clone();
-                if let Some(updated) = self.store.update_pr(pr_id, |p| {
-                    if let Some(cs) = p.commits.as_mut()
-                        && let Some((i, _)) = find_pr_commit(cs, hash)
-                    {
-                        cs[i].files = Some(files);
-                    }
-                }) && let Some((_, filled)) =
-                    find_pr_commit(updated.commits.as_deref().unwrap_or_default(), hash)
-                {
-                    return Ok(filled);
-                }
-            }
-            return Ok(c);
-        }
         if c.files.is_some() {
-            // Already shown: a merge or empty commit.
             return Ok(c);
         }
         let lp = self
@@ -240,11 +222,10 @@ impl Engine {
             }
             res.map_err(|e| e.to_string())
         };
-        let mut files = tokio::time::timeout(COMMITS_TIMEOUT, work)
+        let files = tokio::time::timeout(COMMITS_TIMEOUT, work)
             .await
             .unwrap_or_else(|_| Err("context deadline exceeded".into()))
             .map_err(|e| EngineError(format!("commit diff {r}: {e}")))?;
-        recur_git::highlight_files(&mut files);
         let filled_files = files.clone();
         let updated = self.store.update_pr(pr_id, |p| {
             if let Some(cs) = p.commits.as_mut()
@@ -377,7 +358,7 @@ impl Engine {
         else {
             return;
         };
-        let files = recur_git::parse_unified_diff_plain(&out);
+        let files = recur_git::parse_unified_diff(&out);
         if files.is_empty() {
             return;
         }

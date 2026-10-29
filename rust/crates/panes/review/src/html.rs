@@ -1,5 +1,5 @@
-//! The diff's trusted markup: `codeHtml` (chroma token spans over escaped text) and the hunk
-//! header labels, parsed as `{@html}` parses them.
+//! The diff's trusted markup: `codeHtml` (escaped text, with token spans in rows older builds
+//! highlighted on the backend) and the hunk header labels, parsed as `{@html}` parses them.
 
 use std::cell::RefCell;
 use std::collections::HashMap;

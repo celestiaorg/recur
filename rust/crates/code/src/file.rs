@@ -445,8 +445,7 @@ fn create_temp(dir: &str, prefix: &str) -> Result<(String, File)> {
     ))
 }
 
-/// The file's language for the editor, from the same cached lexer lookup as
-/// diff highlighting.
+/// The file's language id (`go`, `js`, `text`, …).
 pub(crate) fn language_for(path: &str) -> String {
-    recur_chroma::lexer_name(&path::base(path))
+    recur_textmate::lang_from_path(path).to_string()
 }

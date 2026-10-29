@@ -9,7 +9,6 @@ publish = false
 
 [dependencies]
 recur-domain.workspace = true
-recur-chroma.workspace = true
 recur-project.workspace = true
 chrono.workspace = true
 nix.workspace = true

@@ -57,6 +57,7 @@ pub mod stack;
 pub mod store;
 pub mod style;
 pub mod surface;
+pub mod syntax;
 pub mod tree_sticky;
 
 use recur_view_core::ViewRegistry;

@@ -33,26 +33,16 @@ impl AppServices {
             .is_some_and(|p| p.conversation_locked())
     }
 
-    /// Backfills syntax highlighting onto PRs persisted before it shipped and
-    /// projects open findings onto the diff, writing through when anything
+    /// Projects open findings onto the diff, writing through when anything
     /// changed (Go `ensurePREnriched`).
     fn ensure_pr_enriched(&self, p: &mut Pr) {
-        let mut changed = recur_git::highlight_files(p.files.as_deref_mut().unwrap_or_default());
-        for c in p.commits.iter_mut().flatten() {
-            if recur_git::highlight_files(c.files.as_deref_mut().unwrap_or_default()) {
-                changed = true;
-            }
-        }
         let findings = self
             .store()
             .findings(&self.engine.pr_findings_workspace_id(p));
-        if recur_code::observe::project_findings_onto_diff(
+        if !recur_code::observe::project_findings_onto_diff(
             p.files.as_deref_mut().unwrap_or_default(),
             &findings,
         ) {
-            changed = true;
-        }
-        if !changed {
             return;
         }
         let (files, commits, impact) = (p.files.clone(), p.commits.clone(), p.impact.clone());

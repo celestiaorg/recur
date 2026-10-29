@@ -286,6 +286,11 @@ impl TmEngine {
         }
     }
 
+    /// A compiled grammar ([`TmEngine::ensure_grammar`]), to tokenize with off the UI thread.
+    pub fn grammar(&self, scope: &str) -> Option<Arc<Grammar>> {
+        self.grammar_cache.get(scope).cloned()
+    }
+
     /// Open or reuse a document and take a live ref on it. Same id, scope and
     /// text keeps the line-state cache.
     pub fn open_doc(&mut self, doc_id: &str, scope: &str, text: &str) -> bool {

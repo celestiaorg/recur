@@ -1,5 +1,4 @@
-//! Local git: worktrees, branches, status, diffs, checkpoints, and highlighting
-//! of diff hunks. Port of Go `internal/git`.
+//! Local git: worktrees, branches, status, diffs and checkpoints. Port of Go `internal/git`.
 //!
 //! Recur shells out to the system `git` (never a git library) so behavior and
 //! edge cases match what agents and users see in a terminal. Every function
@@ -26,7 +25,6 @@ pub use command::{CANCEL_GRACE, Command, command};
 pub use diff::*;
 pub use error::{Error, ErrorKind, Result};
 pub use ignore::*;
-pub use recur_chroma::{highlight_files, lexer_name};
 pub use recur_project::home::expand_home;
 pub use scm::*;
 pub use status::{StatusLetters, parse_status_porcelain, status_map};

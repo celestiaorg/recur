@@ -44,7 +44,7 @@ use crate::diff_rows::{
     pending_on, row_num, row_side, split_slot_of_line, split_slots, unified_slot_of_line,
     unified_slots,
 };
-use crate::html::{Token, code_runs, hunk_label};
+use crate::html::{CodeRun, Token, code_runs, hunk_label};
 use crate::line_note::{LineNoteThread, pr_conversation_locked};
 use crate::note_portal::{Draft, Slot};
 use crate::pane::Pane;
@@ -63,6 +63,7 @@ use crate::style::{
     ADD_BG, ADD_CD, BLANK_BG, DEL_BG, DEL_CD, HUNK_BG, HUNK_HOVER_BG, PENDING_BG, hsla, icon_btn,
     label, light_diff_text, note_btn, token_color,
 };
+use crate::syntax::{self, Highlighted};
 
 /// Who the line-note composer writes for.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -211,6 +212,10 @@ pub struct DiffFile {
     line_window_key: String,
     /// What the card reads of the selected PR, kept until the store changes it.
     facts: Rc<PrFacts>,
+    /// The code's syntax runs, for the file and editor environment epoch in `hl_for`.
+    hl: Highlighted,
+    hl_for: Option<(Rc<FileDiff>, u64)>,
+    hl_task: Option<Task<()>>,
     /// `.diff-file.selecting` hovered row for `draft-tip` hover state.
     _subs: Vec<Subscription>,
 }
@@ -267,10 +272,12 @@ impl DiffFile {
         crate::style::style_textarea(&draft, cx);
         let emoji = attach_emoji(&draft, None, window, cx);
         let mentions = attach_user_mentions(&draft, state.clone(), None, window, cx);
+        let env = recur_view_core::editor_env::editor_env(&state, cx);
         let subs = vec![
             cx.observe_state(&state, Topics::PRS, |this: &mut Self, _, cx| {
                 this.refresh_facts(cx)
             }),
+            cx.guarded_observe(&env, |this: &mut Self, _, cx| this.highlight(cx)),
         ];
         let mut me = DiffFile {
             state,
@@ -305,9 +312,13 @@ impl DiffFile {
             placeholder: "Comment…".into(),
             line_window_key: String::new(),
             facts: Rc::default(),
+            hl: Vec::new(),
+            hl_for: None,
+            hl_task: None,
             _subs: subs,
         };
         me.facts = Rc::new(me.read_facts(cx));
+        me.highlight(cx);
         me.reset_for_path();
         if me.props.highlight_line > 0 {
             me.begin_jump(me.props.highlight_line, window, cx);
@@ -344,6 +355,7 @@ impl DiffFile {
         let jump = props.highlight_line != self.props.highlight_line;
         self.props = props;
         self.facts = Rc::new(self.read_facts(cx));
+        self.highlight(cx);
         let path_changed = self.props.file.path != self.loaded_path;
         self.reset_for_path();
         if path_changed {
@@ -359,6 +371,46 @@ impl DiffFile {
             }
         }
         cx.notify();
+    }
+
+    /// Tokenizes the file's first lines ([`syntax::budgeted`]) off the UI thread once its
+    /// grammar loads. Rows show their markup as is until then, and past the cap.
+    fn highlight(&mut self, cx: &mut Context<Self>) {
+        let env = recur_view_core::editor_env::editor_env(&self.state, cx);
+        let (tm, epoch) = {
+            let env = env.read(cx);
+            (env.tm.clone(), env.epoch)
+        };
+        let file = self.props.file.clone();
+        if self
+            .hl_for
+            .as_ref()
+            .is_some_and(|(f, e)| Rc::ptr_eq(f, &file) && *e == epoch)
+        {
+            return;
+        }
+        self.hl_for = Some((file.clone(), epoch));
+        let grammar = {
+            let mut tm = tm.borrow_mut();
+            tm.catalog
+                .resolve_scope_for_path(&file.path, None)
+                .filter(|scope| tm.catalog.load_grammar(scope))
+                .and_then(|scope| tm.catalog.engine().grammar(&scope))
+        };
+        let Some(grammar) = grammar else {
+            self.hl.clear();
+            self.hl_task = None;
+            return;
+        };
+        let lines = syntax::budgeted(file.lines.as_deref().unwrap_or_default()).to_vec();
+        let job = cx.background_spawn(async move { syntax::highlight_lines(&grammar, &lines) });
+        self.hl_task = Some(cx.spawn(async move |this, cx| {
+            let hl = job.await;
+            let _ = this.update(cx, |this, cx| {
+                this.hl = hl;
+                cx.notify();
+            });
+        }));
     }
 
     pub fn set_hooks(&mut self, hooks: DiffFileHooks) {
@@ -1151,18 +1203,13 @@ impl DiffFile {
         h.finish()
     }
 
-    fn code_cell(
-        &self,
-        html: &str,
-        kind: &str,
-        id: SharedString,
-        sel: u64,
-        cx: &App,
-    ) -> Option<Text> {
-        (!html.is_empty()).then(|| self.code_text(html, kind, id, cx).selectable(sel, "\n"))
+    fn code_cell(&self, i: usize, id: SharedString, sel: u64, cx: &App) -> Option<Text> {
+        let l = &self.lines()[i];
+        (!l.code_html.is_empty())
+            .then(|| self.code_text(i, &l.r#type, id, cx).selectable(sel, "\n"))
     }
 
-    fn code_text(&self, html: &str, kind: &str, id: SharedString, cx: &App) -> Text {
+    fn code_text(&self, i: usize, kind: &str, id: SharedString, cx: &App) -> Text {
         let t = Theme::of(cx).tokens;
         let light = light_diff_text(cx);
         let base = match kind {
@@ -1171,8 +1218,17 @@ impl DiffFile {
             "add" | "del" => t.text,
             _ => t.muted,
         };
+        let html = &self.lines()[i].code_html;
+        let parsed;
+        let runs: &[CodeRun] = match self.hl.get(i) {
+            Some(Some((src, runs))) if src == html => runs,
+            _ => {
+                parsed = code_runs(html);
+                &parsed
+            }
+        };
         let mut col = 0usize;
-        let spans: Vec<Span> = code_runs(html)
+        let spans: Vec<Span> = runs
             .iter()
             .map(|r| {
                 let c = r.token.map_or(base, |tok: Token| token_color(tok, &t));
@@ -1460,8 +1516,7 @@ impl DiffFile {
                     .min_w_0()
                     .px(px(14.))
                     .children(self.code_cell(
-                        &l.code_html,
-                        &l.r#type,
+                        i,
                         SharedString::from(format!("cd-{key}")),
                         self.sel_key(i, 2),
                         cx,
@@ -1613,8 +1668,7 @@ impl DiffFile {
                     .min_w_0()
                     .px(px(14.))
                     .children(self.code_cell(
-                        &l.code_html,
-                        &l.r#type,
+                        i,
                         SharedString::from(format!("cd-{key}")),
                         self.sel_key(i, if right { 6 } else { 4 }),
                         cx,

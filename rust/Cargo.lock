@@ -7854,15 +7854,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "recur-chroma"
-version = "0.0.0"
-dependencies = [
- "include_dir",
- "recur-domain",
- "serde_json",
-]
-
-[[package]]
 name = "recur-cli"
 version = "0.0.0"
 dependencies = [
@@ -7891,11 +7882,11 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "parking_lot",
  "pretty_assertions",
- "recur-chroma",
  "recur-domain",
  "recur-exec",
  "recur-git",
  "recur-http",
+ "recur-textmate",
  "regex",
  "regress",
  "reqwest",
@@ -8126,7 +8117,6 @@ dependencies = [
  "chrono",
  "nix 0.31.3",
  "pretty_assertions",
- "recur-chroma",
  "recur-domain",
  "recur-project",
  "serde_json",
@@ -8401,7 +8391,6 @@ dependencies = [
  "pretty_assertions",
  "recur-agent",
  "recur-bundles",
- "recur-chroma",
  "recur-code",
  "recur-domain",
  "recur-engine",
@@ -8863,6 +8852,7 @@ dependencies = [
  "recur-engine",
  "recur-forge",
  "recur-services",
+ "recur-textmate",
  "recur-ui",
  "recur-view-core",
  "recur-view-review",

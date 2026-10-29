@@ -15,6 +15,22 @@ pub(crate) fn eq_fold(a: &str, b: &str) -> bool {
             .all(|(x, y)| x == y || fold(x) == fold(y))
 }
 
+/// Go `html.EscapeString`, as diff lines' `code_html` carries code.
+pub fn html_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '\'' => out.push_str("&#39;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&#34;"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
 /// Matches `^[a-z][a-z0-9-]{0,max_rest}$`.
 pub(crate) fn kebab_slug(s: &str, max_rest: usize) -> bool {
     let b = s.as_bytes();

@@ -18,11 +18,11 @@ pub fn html_escape(s: &str) -> String {
     out
 }
 
-/// Go `html.UnescapeString` for text the diff highlighter escaped: the
-/// five `html_escape` entities, `&quot;`/`&apos;`/`&nbsp;` and numeric
-/// references. Anything else stays literal.
-// simplify: not the full HTML5 named-entity table (recur-chroma keeps that
-// one crate-private); diff code HTML only ever carries the entities above.
+/// Go `html.UnescapeString` for diff code HTML: the five `html_escape`
+/// entities, `&quot;`/`&apos;`/`&nbsp;` and numeric references. Anything
+/// else stays literal.
+// simplify: not the full HTML5 named-entity table; diff code HTML only ever
+// carries the entities above.
 pub fn html_unescape(s: &str) -> String {
     if !s.contains('&') {
         return s.to_owned();

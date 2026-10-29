@@ -67,5 +67,6 @@ pub use schedule::*;
 pub use session::*;
 pub use settings::*;
 pub use skills::*;
+pub use text::html_escape;
 pub use transcript::*;
 pub use workspace::*;

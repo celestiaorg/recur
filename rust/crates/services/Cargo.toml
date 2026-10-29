@@ -31,7 +31,6 @@ recur-lsp.workspace = true
 recur-term.workspace = true
 recur-usage.workspace = true
 recur-platform.workspace = true
-recur-chroma.workspace = true
 recur-project.workspace = true
 async-trait.workspace = true
 base64.workspace = true

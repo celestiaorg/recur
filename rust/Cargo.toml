@@ -26,7 +26,6 @@ recur-http = { path = "crates/http" }
 recur-store = { path = "crates/store" }
 recur-project = { path = "crates/project" }
 recur-git = { path = "crates/git" }
-recur-chroma = { path = "crates/chroma" }
 recur-forge = { path = "crates/forge" }
 recur-issues = { path = "crates/issues" }
 recur-agent = { path = "crates/agent" }

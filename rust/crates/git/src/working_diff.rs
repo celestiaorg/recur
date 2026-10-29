@@ -4,17 +4,16 @@
 use std::path::Path;
 
 use recur_domain::path;
-use recur_domain::{DiffLine, FileDiff};
+use recur_domain::{DiffLine, FileDiff, html_escape};
 use tokio::io::{AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::time::Instant;
 
 use crate::command::command;
-use crate::diff::parse_unified_diff_plain;
+use crate::diff::parse_unified_diff;
 use crate::error::{Error, Result};
 use crate::status::{
     CHANGE_STATUS_FLIGHTS, StatusLetters, hooks, parse_status_porcelain, status_map,
 };
-use recur_chroma::{highlight_files, html_escape};
 
 /// Caps for the synthetic diff of an untracked or new file: bytes read and
 /// lines rendered are both bounded.
@@ -144,8 +143,7 @@ fn parse_name_status(out: &str) -> StatusLetters {
 
 /// One path's diff versus `base_branch`'s merge-base with HEAD (HEAD when
 /// empty), working tree included. Untracked files render as a full-file
-/// addition. Only the first [`recur_chroma::MAX_HIGHLIGHT_LINES`] lines
-/// are highlighted.
+/// addition.
 pub async fn working_diff(dir: &str, base_branch: &str, rel: &str) -> Result<FileDiff> {
     let rel = rel.strip_prefix('/').unwrap_or(rel);
     if dir.is_empty() || rel.is_empty() {
@@ -172,7 +170,7 @@ pub async fn working_diff(dir: &str, base_branch: &str, rel: &str) -> Result<Fil
     {
         let out = String::from_utf8_lossy(&out).into_owned();
         if !out.trim().is_empty()
-            && let Some(fd) = first_highlighted(&out)
+            && let Some(fd) = first_file(&out)
         {
             return Ok(fd);
         }
@@ -202,7 +200,7 @@ pub async fn working_diff(dir: &str, base_branch: &str, rel: &str) -> Result<Fil
         ])
         .output()
         .await
-        && let Some(fd) = first_highlighted(&String::from_utf8_lossy(&cached))
+        && let Some(fd) = first_file(&String::from_utf8_lossy(&cached))
     {
         return Ok(fd);
     }
@@ -212,19 +210,11 @@ pub async fn working_diff(dir: &str, base_branch: &str, rel: &str) -> Result<Fil
     let (body, truncated) = read_capped(Path::new(&abs), MAX_SYNTHETIC_ADD_BYTES)
         .await
         .map_err(|e| e.wrap(format!("read {rel}")))?;
-    let mut files = vec![synthetic_add_diff(rel, &body, truncated)];
-    highlight_files(&mut files);
-    Ok(files.remove(0))
+    Ok(synthetic_add_diff(rel, &body, truncated))
 }
 
-fn first_highlighted(diff: &str) -> Option<FileDiff> {
-    let mut files = parse_unified_diff_plain(diff);
-    if files.is_empty() {
-        return None;
-    }
-    files.truncate(1);
-    highlight_files(&mut files);
-    files.pop()
+fn first_file(diff: &str) -> Option<FileDiff> {
+    parse_unified_diff(diff).into_iter().next()
 }
 
 /// The status letter for one path, or empty.

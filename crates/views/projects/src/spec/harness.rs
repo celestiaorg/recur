@@ -69,7 +69,7 @@ pub fn boot<'a>(
     let registry = registry();
     cx.update(|cx| {
         recur_app::init(&registry, cx);
-        recur_ui::motion::freeze(None, cx);
+        recur_ui::motion::freeze(cx);
         fresh_modules(cx);
     });
     let mut sd = recur_services::mock::fixtures::seed();

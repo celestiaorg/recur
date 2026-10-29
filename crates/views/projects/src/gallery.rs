@@ -1,4 +1,4 @@
-//! Parity scenes: the `projects` list in `crates/ui/gallery/scenes.json` (project settings
+//! Gallery scenes: the `projects` list in `crates/ui/gallery/scenes.json` (project settings
 //! and its embedded schedules), built like the home scenes
 //! (`recur_view_core::gallery::build_in`).
 

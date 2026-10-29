@@ -1,4 +1,4 @@
-//! Parity scenes: the `content` list in `crates/ui/gallery/scenes.json`.
+//! Gallery scenes: the `content` list in `crates/ui/gallery/scenes.json`.
 
 use gpui_kit::{
     AnyView, App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Window,
@@ -38,7 +38,7 @@ pub fn exists(name: &str) -> bool {
     specs().iter().any(|s| s.name == name)
 }
 
-/// A padded markdown block on the page body (`.pad` in `Content.svelte`).
+/// A padded markdown block on the page body.
 struct Padded(Entity<MarkdownView>);
 
 impl Padded {
@@ -162,7 +162,7 @@ fn preview(
 }
 
 pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
-    // No application loop answers the webview here: Mermaid renders on the spot.
+    // No application loop runs here: Mermaid renders on the spot.
     cx.set_global(crate::webhost::BlockingRenders);
     use crate::preview::PreviewKind;
     let md = |text: &'static str, cx: &mut App| {

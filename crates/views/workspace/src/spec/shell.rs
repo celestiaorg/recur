@@ -40,7 +40,7 @@ pub fn boot<'a>(
     crate::register(&mut registry);
     cx.update(|cx| {
         recur_app::init(&registry, cx);
-        recur_ui::motion::freeze(None, cx);
+        recur_ui::motion::freeze(cx);
         recur_content::markdown::set_markdown_render_inline(true);
         install_prompt_runner(cx);
     });

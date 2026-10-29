@@ -17,8 +17,7 @@
 //!   checked, as in esbuild's TypeScript loader).
 //! - Top-level await fails as it does for esbuild's ES2020 target.
 //!
-//! The output text differs from esbuild's; behavior is identical (proven
-//! over every shipped TypeScript file by `tests/compile_parity.rs`).
+//! The output text differs from esbuild's; behavior is the same.
 
 use std::collections::BTreeSet;
 use std::sync::LazyLock;

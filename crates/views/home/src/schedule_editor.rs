@@ -1391,7 +1391,7 @@ impl Render for ScheduleEditor {
     }
 }
 
-/// The window's schedule editor, for specs and parity scenes.
+/// The window's schedule editor, for specs and gallery scenes.
 pub struct CurrentScheduleEditor(pub gpui_kit::WeakEntity<ScheduleEditor>);
 
 impl gpui_kit::Global for CurrentScheduleEditor {}

@@ -48,7 +48,7 @@ struct EnvHandle(Entity<EditorEnv>);
 
 impl Global for EnvHandle {}
 
-/// Drops the app's editor environment (parity scenes and spec remounts share one app).
+/// Drops the app's editor environment (gallery scenes and spec remounts share one app).
 pub fn reset(cx: &mut App) {
     if cx.has_global::<EnvHandle>() {
         cx.remove_global::<EnvHandle>();

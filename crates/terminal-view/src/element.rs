@@ -212,7 +212,7 @@ impl Element for TerminalElement {
         let cursor_cell = view.screen.cursor_in_viewport();
         let now = cx.background_executor().now();
         // xterm's slider fades are CSS transitions without a reduced-motion rule: they always
-        // run, and only a parity capture's freeze settles them.
+        // run, and only a frozen motion clock settles them.
         let opacity = view.scrollbar.opacity_with(|start, dur| {
             if recur_ui::motion::is_frozen(cx) {
                 recur_ui::motion::progress(start, dur, cx)

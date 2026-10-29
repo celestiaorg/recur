@@ -1,12 +1,12 @@
-//! Headless renders, and on Linux the WebKitGTK thread the HTML preview's pages run on.
+//! Blocking renders, and on Linux the WebKitGTK thread the HTML preview's pages run on.
 
-/// Whether PDF pages and Mermaid diagrams render synchronously (headless parity renders, which
-/// run no application loop).
+/// Whether PDF pages and Mermaid diagrams render synchronously (gallery scenes, which run no
+/// application loop).
 pub fn blocking(cx: &gpui_kit::App) -> bool {
     cx.try_global::<BlockingRenders>().is_some()
 }
 
-/// Installed by headless hosts (the parity tool) that have no running application loop.
+/// Installed by hosts that have no running application loop (the gallery scenes).
 pub struct BlockingRenders;
 
 impl gpui_kit::Global for BlockingRenders {}

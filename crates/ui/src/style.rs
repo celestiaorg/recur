@@ -14,7 +14,6 @@ use gpui_kit::{
     IntoElement, ParentElement, Pixels, SharedString, Stateful, Styled, Window, div, point,
     prelude::FluentBuilder, px, relative,
 };
-use std::sync::atomic::{AtomicBool, Ordering};
 
 impl From<Color> for Fill {
     fn from(c: Color) -> Fill {
@@ -883,23 +882,13 @@ pub fn panel(cx: &App) -> Div {
 /// and palette layers and Quick Open paint and take the pointer over the page's own layers.
 pub const OVERLAY_PRIORITY: usize = 190;
 
-static BACKDROP_BLUR: AtomicBool = AtomicBool::new(true);
-
-/// Turns [`backdrop_blur`]'s blur on or off. The parity renderer turns it off: Playwright's
-/// WebKit captures leave backdrop filters out, so the references show scrims unblurred.
-pub fn set_backdrop_blur(on: bool) {
-    BACKDROP_BLUR.store(on, Ordering::Relaxed);
-}
-
 /// `backdrop-filter: blur(radius)` under a `background` filling the parent: an absolute child
 /// that blurs what is painted behind the parent, then fills it. Off macOS only the fill shows.
 pub fn backdrop_blur(radius: f32, background: Color) -> impl IntoElement {
     gpui_kit::canvas(
         |_, _, _| {},
         move |bounds, _, window, _| {
-            if BACKDROP_BLUR.load(Ordering::Relaxed) {
-                window.paint_backdrop_blur(bounds, Default::default(), px(radius));
-            }
+            window.paint_backdrop_blur(bounds, Default::default(), px(radius));
             window.paint_quad(gpui_kit::fill(bounds, Hsla::from(background)));
         },
     )
@@ -1160,8 +1149,8 @@ pub fn input_box(
 }
 
 /// Colors a [`text_field`]'s editor; call each render, as themes change. gpui-base reads a fully
-/// transparent color as unset, so what is hidden (its placeholder; the caret in a parity capture,
-/// which hides carets) is nearly transparent instead.
+/// transparent color as unset, so what is hidden (its placeholder; the caret while motion is
+/// frozen) is nearly transparent instead.
 pub fn style_text_input(input: &Entity<InputState>, cx: &mut App) {
     let t = tokens(cx);
     style_text_input_fg(input, t.text, cx);
@@ -1211,8 +1200,8 @@ fn style_field_editor(input: &Entity<InputState>, fg: Color, overlay: bool, cx: 
     });
 }
 
-/// Colors a `<textarea>` (gpui-base's own placeholder in `placeholder`); the caret hides in a
-/// parity capture as in [`style_text_input`].
+/// Colors a `<textarea>` (gpui-base's own placeholder in `placeholder`); the caret hides while
+/// motion is frozen, as in [`style_text_input`].
 pub fn style_textarea(
     area: &Entity<gpui_kit::base::input::TextareaState>,
     placeholder: Color,

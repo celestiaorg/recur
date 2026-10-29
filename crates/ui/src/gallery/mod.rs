@@ -1,6 +1,5 @@
-//! Widget gallery scenes. `crates/ui/gallery/scenes.json` is the single scene list: the
-//! headless parity renderer and `examples/gallery.rs` both read it, and each scene name
-//! maps to one builder here.
+//! Widget gallery scenes. `crates/ui/gallery/scenes.json` lists them for
+//! `examples/gallery.rs`, and each scene name maps to one builder here.
 
 mod scenes;
 
@@ -11,20 +10,6 @@ use serde::Deserialize;
 const SCENES_JSON: &str = include_str!("../../gallery/scenes.json");
 pub(crate) const CALIBRATION_JSON: &str = include_str!("../../gallery/calibration.json");
 
-/// One input step, replayed identically by Playwright and by the Rust renderer.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum Step {
-    Move([f32; 2]),
-    Down([f32; 2]),
-    Up([f32; 2]),
-    Click([f32; 2]),
-    /// A Playwright key name (`Tab`, `ArrowDown`, `Escape`, `Enter`, `a`).
-    Key(String),
-    Type(String),
-    Wait(u64),
-}
-
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SceneSpec {
@@ -32,17 +17,6 @@ pub struct SceneSpec {
     pub width: f32,
     pub height: f32,
     pub theme: String,
-    /// Differing text and anti-aliased pixels allowed. Documented in `ui-rendering.md`.
-    #[serde(default)]
-    pub tolerance: u64,
-    /// Hard differences allowed, each one explained in `ui-rendering.md` (curved-edge coverage
-    /// where GPUI's shader and CoreGraphics disagree, gradient dither beside a glyph).
-    #[serde(default)]
-    pub hard_tolerance: u64,
-    #[serde(default)]
-    pub steps: Vec<Step>,
-    /// Where infinite animations are frozen, in ms (finite ones settle at their end).
-    pub animation_time: Option<u64>,
 }
 
 impl SceneSpec {
@@ -77,8 +51,7 @@ impl gpui_kit::Render for Missing {
     }
 }
 
-/// Scene prefixes built by other crates' galleries (`recur_editor::gallery`), which the parity
-/// tool asks first.
+/// Scene prefixes built by other crates' galleries (`recur_editor::gallery`).
 pub const EXTERNAL: &[&str] = &["editor/"];
 
 /// Whether a builder exists for this scene name.

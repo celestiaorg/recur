@@ -1,5 +1,5 @@
-//! Parity scenes: the `prs` list in `crates/ui/gallery/scenes.json`, built the way
-//! `web/scenes/Prs.svelte` mounts `App.svelte`: the whole shell with every view crate
+//! Gallery scenes: the `prs` list in `crates/ui/gallery/scenes.json`: the whole shell with
+//! every view crate
 //! registered, over the e2e seed edited by the scene's fixture in `content/prs.json`, then the
 //! dashboard (`route: "pr"`, `seg`) or PR detail (`route: "prdetail"`, `pr`, `tab`, `dock`,
 //! `review`).
@@ -80,7 +80,7 @@ struct PrSceneView {
     scene: PrScene,
     navigated: bool,
     /// Frames since navigating; the tab is picked a few frames later, after PR detail's
-    /// per-PR reset (which lands on Conversation), as `Prs.svelte` does.
+    /// per-PR reset (which lands on Conversation).
     frames: u8,
 }
 

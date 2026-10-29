@@ -1,5 +1,5 @@
-//! Parity scenes: the `workspace` list in `crates/ui/gallery/scenes.json`, built the way
-//! `web/scenes/Workspace.svelte` mounts the detail route for LOOP-2231, over
+//! Gallery scenes: the `workspace` list in `crates/ui/gallery/scenes.json`, the detail route
+//! for LOOP-2231 over
 //! `content/workspace.json` (each scene's chat rows, tabs, sessions, facts and findings) and
 //! the Observatory fixture of the scene's `session`. A scene can edit the e2e seed (`seed`).
 

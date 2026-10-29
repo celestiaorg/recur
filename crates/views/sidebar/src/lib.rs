@@ -624,7 +624,7 @@ impl Sidebar {
         self.set_scroll_top((scroll + delta).clamp(0., max));
     }
 
-    /// Whether the project tree has data and a viewport (parity scenes scroll it then).
+    /// Whether the project tree has data and a viewport (gallery scenes scroll it then).
     pub fn tree_ready(&self, cx: &App) -> bool {
         self.state.read(cx).booted && self.scroll.bounds().size.height > px(0.)
     }

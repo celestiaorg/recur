@@ -53,7 +53,7 @@ pub fn boot(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: MockOpt
     let registry = registry();
     cx.update(|cx| {
         recur_app::init(&registry, cx);
-        recur_ui::motion::freeze(None, cx);
+        recur_ui::motion::freeze(cx);
     });
     let mut sd = recur_services::mock::fixtures::seed();
     seed(&mut sd);

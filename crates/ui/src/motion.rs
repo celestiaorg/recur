@@ -1,8 +1,8 @@
 //! Animation clock shared by recur-ui widgets, plus the reduced-motion preference.
 //!
-//! Widgets read elapsed time through [`elapsed`] instead of `Instant::now()` directly, so the
-//! parity renderer can freeze every animation at a chosen time, the way the reference capture
-//! pauses `document.getAnimations()`. Starts and elapsed time come from the executor's clock
+//! Widgets read elapsed time through [`elapsed`] instead of `Instant::now()` directly, so spec
+//! harnesses can freeze every animation for deterministic frames. Starts and elapsed time come
+//! from the executor's clock
 //! ([`now`]): `Instant::now()` in the app, and in tests the clock specs advance with their
 //! timers, so an animation is where the spec's time says it is however loaded the machine.
 
@@ -11,25 +11,24 @@ use std::time::{Duration, Instant};
 
 #[derive(Default)]
 struct Motion {
-    frozen: Option<Option<Duration>>,
+    frozen: bool,
 }
 
 impl Global for Motion {}
 
-/// Freeze animations: `Some(t)` pins infinite animations at `t`, `None` pins them at 0. Finite
-/// animations always render settled while frozen. Pass through [`thaw`] to resume.
-pub fn freeze(at: Option<Duration>, cx: &mut App) {
-    cx.default_global::<Motion>().frozen = Some(at);
+/// Freeze animations: infinite animations pin at 0 and finite ones render settled. Pass
+/// through [`thaw`] to resume.
+pub fn freeze(cx: &mut App) {
+    cx.default_global::<Motion>().frozen = true;
 }
 
 pub fn thaw(cx: &mut App) {
-    cx.default_global::<Motion>().frozen = None;
+    cx.default_global::<Motion>().frozen = false;
 }
 
-/// Whether animations are frozen for capture.
+/// Whether animations are frozen.
 pub fn is_frozen(cx: &App) -> bool {
-    cx.try_global::<Motion>()
-        .is_some_and(|m| m.frozen.is_some())
+    cx.try_global::<Motion>().is_some_and(|m| m.frozen)
 }
 
 /// The animation clock: start animations at this instant.
@@ -41,27 +40,22 @@ fn since(start: Instant, cx: &App) -> Duration {
     now(cx).saturating_duration_since(start)
 }
 
-/// Time since `start` for an infinite animation, or the frozen time.
+/// Time since `start` for an infinite animation, or zero while frozen.
 pub fn elapsed(start: Instant, cx: &App) -> Duration {
-    match cx.try_global::<Motion>().and_then(|m| m.frozen) {
-        Some(at) => at.unwrap_or_default(),
-        None => since(start, cx),
+    if is_frozen(cx) {
+        Duration::ZERO
+    } else {
+        since(start, cx)
     }
 }
 
-/// Progress `0..=1` of a finite animation of `duration` started at `start`. While frozen it
-/// is the frozen time over the duration (settled when frozen without a time), matching the
-/// reference capture's `currentTime`.
+/// Progress `0..=1` of a finite animation of `duration` started at `start`. Settled while
+/// frozen.
 pub fn progress(start: Instant, duration: Duration, cx: &App) -> f32 {
-    if duration.is_zero() || reduced(cx) {
+    if duration.is_zero() || reduced(cx) || is_frozen(cx) {
         return 1.;
     }
-    let elapsed = match cx.try_global::<Motion>().and_then(|m| m.frozen) {
-        Some(Some(at)) => at,
-        Some(None) => return 1.,
-        None => since(start, cx),
-    };
-    (elapsed.as_secs_f32() / duration.as_secs_f32()).min(1.)
+    (since(start, cx).as_secs_f32() / duration.as_secs_f32()).min(1.)
 }
 
 /// `prefers-reduced-motion: reduce`, read from the platform by gpui-base at init.

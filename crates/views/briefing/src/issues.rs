@@ -64,7 +64,7 @@ struct SavedView(Option<IssuesView>);
 
 impl Global for SavedView {}
 
-/// Forgets the session's view (a fresh app, as the parity scenes start).
+/// Forgets the session's view (a fresh app, as specs and gallery scenes start).
 pub fn reset_saved_view(cx: &mut App) {
     cx.set_global(SavedView(None));
 }

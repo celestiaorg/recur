@@ -24,7 +24,7 @@ pub fn init(cx: &mut TestAppContext) {
         gpui_kit::init(cx);
         recur_ui::init(cx);
         recur_terminal_view::init(cx);
-        recur_ui::motion::freeze(None, cx);
+        recur_ui::motion::freeze(cx);
         recur_content::markdown::set_markdown_render_inline(true);
         cx.set_global(recur_view_review::store::ReviewStore::default());
     });

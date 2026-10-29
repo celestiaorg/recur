@@ -8,8 +8,7 @@ license.workspace = true
 publish = false
 
 [features]
-# In-memory port of frontend/e2e/helpers/mock-bridge.ts for dev builds, tests
-# and the UI-parity harness.
+# In-memory mock services over the e2e seed, for view specs and gallery scenes.
 mock = []
 
 [dependencies]

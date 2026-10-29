@@ -1,6 +1,5 @@
-//! Parity scenes: the `review` list in `crates/ui/gallery/scenes.json`, built the way
-//! `web/scenes/Review.svelte` mounts ReviewSurface and a PR-mode DiffFile, over
-//! `content/review.json`.
+//! Gallery scenes: the `review` list in `crates/ui/gallery/scenes.json`, the review surface
+//! and a PR-mode file diff over `content/review.json`.
 
 use recur_ui::guard::Guarded;
 use std::collections::HashSet;

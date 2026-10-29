@@ -1699,7 +1699,7 @@ impl Render for NewTaskModal {
     }
 }
 
-/// The window's New workspace modal, for specs and parity scenes.
+/// The window's New workspace modal, for specs and gallery scenes.
 pub struct CurrentNewTask(pub gpui_kit::WeakEntity<NewTaskModal>);
 
 impl gpui_kit::Global for CurrentNewTask {}

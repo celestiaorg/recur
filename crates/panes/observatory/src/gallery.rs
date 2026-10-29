@@ -1,5 +1,5 @@
-//! Parity scenes: the `observatory` list in `crates/ui/gallery/scenes.json`, built the way
-//! `web/scenes/Observatory.svelte` mounts the Observatory for LOOP-2231, over
+//! Gallery scenes: the `observatory` list in `crates/ui/gallery/scenes.json`, the
+//! Observatory for LOOP-2231 over
 //! `content/observatory.json` (tree, files, git status, artifacts, a terminal, and each
 //! scene's editor session).
 
@@ -230,7 +230,7 @@ impl Render for ObservatoryScene {
 pub fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
     let spec = specs().into_iter().find(|s| s.name == name)?;
     crate::reset_globals(cx);
-    // No application loop answers the webview here: pdf.js renders on the spot.
+    // No application loop runs here: PDFs render on the spot.
     cx.set_global(recur_content::webhost::BlockingRenders);
     let variant = variant(name);
     let fx = fixtures();

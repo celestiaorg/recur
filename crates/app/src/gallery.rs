@@ -1,6 +1,6 @@
-//! Shell parity scenes: the `shell` list in `crates/ui/gallery/scenes.json`. Each scene is
-//! the full window (titlebar, sidebar, an empty main area) over the mock bridge, as
-//! `web/scenes/Shell.svelte` mounts `App.svelte` with every view hidden. A scene can edit the
+//! Shell gallery scenes: the `shell` list in `crates/ui/gallery/scenes.json`. Each scene is
+//! the full window (titlebar, sidebar, an empty main area) over the mock bridge, with no view
+//! registered. A scene can edit the
 //! e2e seed (`seed`), preset local storage (`storage`), and scroll the project tree
 //! (`treeScroll`) once it has loaded.
 

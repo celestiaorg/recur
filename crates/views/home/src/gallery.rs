@@ -1,5 +1,5 @@
-//! Parity scenes: the `home` list in `crates/ui/gallery/scenes.json`, built the way
-//! `web/scenes/Views.svelte` mounts `App.svelte` (`recur_view_core::gallery::build_in`).
+//! Gallery scenes: the `home` list in `crates/ui/gallery/scenes.json`, the whole shell
+//! (`recur_view_core::gallery::build_in`).
 
 use gpui_kit::{AnyView, App, Window};
 use recur_ui::gallery::SceneSpec;

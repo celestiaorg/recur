@@ -1081,7 +1081,7 @@ impl EditorView {
     }
 
     /// `cm-blink` (`steps(1)`, opaque for the first half of each period),
-    /// on recur-ui's motion clock so parity captures freeze it.
+    /// on recur-ui's motion clock so frozen specs hold it still.
     pub(crate) fn caret_visible(&self, cx: &gpui_kit::App) -> bool {
         let rate = self.metrics.cursor_blink_ms;
         if rate == 0 {

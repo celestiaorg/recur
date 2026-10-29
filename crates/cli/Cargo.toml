@@ -1,6 +1,6 @@
 [package]
 name = "recur-cli"
-description = "Recur command line: open paths in the app and author Recur Bundles (port of cmd/recur and internal/cli)."
+description = "Recur command line: open paths in the app and author Recur Bundles."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -16,6 +16,8 @@ name = "recur-cli"
 path = "src/main.rs"
 
 [dependencies]
+clap.workspace = true
+clap_complete.workspace = true
 include_dir.workspace = true
 recur-bundles.workspace = true
 recur-domain.workspace = true

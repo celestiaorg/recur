@@ -1,15 +1,15 @@
-//! The `recur` command tree (`internal/cli/root.go`, `bundles.go`,
-//! `open.go`) and what each command does.
+//! The `recur` command tree and what each command does.
 
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use recur_bundles::{
     Report, RunCtx, format_lint_report, format_report, lint_bundles, run_bundle_tests,
 };
 use recur_domain::path;
 
-use crate::Io;
-use crate::cobra::{Action, ArgsRule, CliError, Cmd, CmdId, Cobra, FlagKind};
 use crate::color::{Stream, want_color};
-use crate::{completion, config, create, open, paths, resolve};
+use crate::{CliError, Io};
+use crate::{config, create, open, paths, resolve};
 
 /// Stamped at build time from `RECUR_VERSION`.
 pub const VERSION: &str = match option_env!("RECUR_VERSION") {
@@ -17,148 +17,120 @@ pub const VERSION: &str = match option_env!("RECUR_VERSION") {
     None => "dev",
 };
 
-/// `newRootCmd`.
-pub fn build() -> Cobra {
-    let mut root = Cmd::new(
-        "recur [path]",
-        "Open a path in Recur, or run authoring tools",
-    );
-    root.long = "Recur command-line tools.\n\n  recur .                      open the current folder\n  recur ./path/to/file         open a file or folder\n  recur                        focus Recur (launch if needed)\n  recur bundles test …         author Recur Bundles".to_string();
-    root.version = VERSION.to_string();
-    root.args = ArgsRule::Arbitrary;
-    root.persistent_pre_run = true;
-    root.action = Some(Action::Root);
-    let mut c = Cobra::new(root);
-    let root = c.root;
-    c.flag(
-        root,
-        true,
-        (
-            "bundles-dir",
-            None,
-            FlagKind::Str,
-            "user bundles root (env RECUR_BUNDLES_DIR)",
-        ),
-    );
-
-    let mut bundles = Cmd::new("bundles", "Author and test Recur Bundles");
-    bundles.long =
-        "Create, test, lint, and manage Recur Bundle packs (TOML macros for the editor)."
-            .to_string();
-    let bundles = c.add(root, bundles);
-
-    let mut test = Cmd::new(
-        "test [name|path]...",
-        "Run tests/*.toml for one or more bundles",
-    );
-    test.long = "Run in-bundle tests through the real engine (TypeScript on JavaScriptCore, shebang via OS).\n\nArgs may be bundle names (resolved under --bundles-dir, ./bundles, shipped) or paths.\nWith no args, tests the current directory (or every child pack).".to_string();
-    test.example = "  recur bundles test Text\n  recur bundles test ./bundles/Source\n  recur bundles test ~/.recur/bundles/MyPack\n  recur bundles test ./bundles".to_string();
-    test.args = ArgsRule::Arbitrary;
-    test.action = Some(Action::BundlesTest);
-    c.add(bundles, test);
-
-    let mut lint = Cmd::new(
-        "lint [name|path]...",
-        "Lint bundle.toml, scripts, and keyEquivalent collisions",
-    );
-    lint.long = "Validate Recur Bundles: manifest schema, TypeScript compile, shebang #!,\nand keyEquivalent parse / reserved-app collisions.\n\nShared chords across commands and snippets are reported as info (allowed; runtime shows a menu).\nArgs resolve like bundles test.".to_string();
-    lint.example = "  recur bundles lint Text\n  recur bundles lint ./bundles\n  recur bundles lint ~/.recur/bundles/MyPack".to_string();
-    lint.args = ArgsRule::Arbitrary;
-    lint.action = Some(Action::BundlesLint);
-    c.add(bundles, lint);
-
-    let mut create = Cmd::new(
-        "create <Name>",
-        "Scaffold a new bundle under the user bundles directory",
-    );
-    create.long = "Create a starter Recur Bundle: bundle.toml, a typescript sample, a shebang sample, and a test for each.\n\nDefault location: --bundles-dir / RECUR_BUNDLES_DIR / ~/.recur/bundles/<Name>.".to_string();
-    create.example =
-        "  recur bundles create MyPack\n  recur bundles create MyPack --dir ./local-bundles"
-            .to_string();
-    create.args = ArgsRule::Exact(1);
-    create.action = Some(Action::BundlesCreate);
-    let create = c.add(bundles, create);
-    c.flag(
-        create,
-        false,
-        (
-            "dir",
-            None,
-            FlagKind::Str,
-            "parent directory for the new bundle (default: bundles-dir)",
-        ),
-    );
-    c.flag(
-        create,
-        false,
-        (
-            "force",
-            None,
-            FlagKind::Bool,
-            "replace an existing bundle directory",
-        ),
-    );
-
-    let mut open = Cmd::new("open [path]", "Open a file or folder in Recur");
-    open.long = "Open a file or folder in the Recur desktop app.\n\n  recur .\n  recur ./path/to/folder-or-file\n  recur open .\n\nIf Recur is already running, the path is handed to that instance. Otherwise\nthe app is launched (Recur.app) and the path is opened when it is ready.".to_string();
-    open.args = ArgsRule::Max(1);
-    open.action = Some(Action::Open);
-    c.add(root, open);
-    c
+#[derive(Parser)]
+#[command(
+    name = "recur",
+    version = VERSION,
+    about = "Open a path in Recur, or run authoring tools",
+    long_about = "Recur command-line tools.\n\n  recur .                      open the current folder\n  recur ./path/to/file         open a file or folder\n  recur                        focus Recur (launch if needed)\n  recur bundles test …         author Recur Bundles",
+    disable_version_flag = true
+)]
+pub struct Cli {
+    /// user bundles root (env RECUR_BUNDLES_DIR)
+    #[arg(long, global = true, value_name = "DIR")]
+    bundles_dir: Option<String>,
+    /// print version
+    #[arg(short = 'v', long, action = clap::ArgAction::Version)]
+    version: Option<bool>,
+    /// file or folder to open
+    #[arg(value_name = "PATH")]
+    paths: Vec<String>,
+    #[command(subcommand)]
+    command: Option<Command>,
 }
 
-/// Runs command `c` (after cobra parsed flags and validated args).
-pub fn run(cobra: &mut Cobra, c: CmdId, io: &mut Io) -> Result<(), CliError> {
-    if cobra.has_persistent_pre_run(c) {
-        config::init().map_err(CliError::Msg)?;
-    }
-    let args = cobra.args(c).to_vec();
-    let Some(action) = cobra.cmds[c].action else {
-        return Err(CliError::Help);
-    };
-    match action {
-        Action::Root => {
-            let Some(first) = args.first() else {
+#[derive(Subcommand)]
+enum Command {
+    #[command(
+        about = "Author and test Recur Bundles",
+        long_about = "Create, test, lint, and manage Recur Bundle packs (TOML macros for the editor).",
+        subcommand_required = true,
+        arg_required_else_help = true
+    )]
+    Bundles {
+        #[command(subcommand)]
+        command: Bundles,
+    },
+    #[command(
+        about = "Open a file or folder in Recur",
+        long_about = "Open a file or folder in the Recur desktop app.\n\n  recur .\n  recur ./path/to/folder-or-file\n  recur open .\n\nIf Recur is already running, the path is handed to that instance. Otherwise\nthe app is launched (Recur.app) and the path is opened when it is ready."
+    )]
+    Open {
+        /// file or folder to open
+        path: Option<String>,
+    },
+    #[command(about = "Print a shell completion script")]
+    Completion { shell: Shell },
+}
+
+#[derive(Subcommand)]
+enum Bundles {
+    #[command(
+        about = "Run tests/*.toml for one or more bundles",
+        long_about = "Run in-bundle tests through the real engine (TypeScript on JavaScriptCore, shebang via OS).\n\nArgs may be bundle names (resolved under --bundles-dir, ./bundles, shipped) or paths.\nWith no args, tests the current directory (or every child pack).",
+        after_help = "Examples:\n  recur bundles test Text\n  recur bundles test ./bundles/Source\n  recur bundles test ~/.recur/bundles/MyPack\n  recur bundles test ./bundles"
+    )]
+    Test {
+        #[arg(value_name = "NAME|PATH")]
+        targets: Vec<String>,
+    },
+    #[command(
+        about = "Lint bundle.toml, scripts, and keyEquivalent collisions",
+        long_about = "Validate Recur Bundles: manifest schema, TypeScript compile, shebang #!,\nand keyEquivalent parse / reserved-app collisions.\n\nShared chords across commands and snippets are reported as info (allowed; runtime shows a menu).\nArgs resolve like bundles test.",
+        after_help = "Examples:\n  recur bundles lint Text\n  recur bundles lint ./bundles\n  recur bundles lint ~/.recur/bundles/MyPack"
+    )]
+    Lint {
+        #[arg(value_name = "NAME|PATH")]
+        targets: Vec<String>,
+    },
+    #[command(
+        about = "Scaffold a new bundle under the user bundles directory",
+        long_about = "Create a starter Recur Bundle: bundle.toml, a typescript sample, a shebang sample, and a test for each.\n\nDefault location: --bundles-dir / RECUR_BUNDLES_DIR / ~/.recur/bundles/<Name>.",
+        after_help = "Examples:\n  recur bundles create MyPack\n  recur bundles create MyPack --dir ./local-bundles"
+    )]
+    Create {
+        #[arg(value_name = "Name")]
+        name: String,
+        /// parent directory for the new bundle (default: bundles-dir)
+        #[arg(long)]
+        dir: Option<String>,
+        /// replace an existing bundle directory
+        #[arg(long)]
+        force: bool,
+    },
+}
+
+/// Runs the parsed command.
+pub fn run(cli: Cli, io: &mut Io) -> Result<(), CliError> {
+    config::init().map_err(CliError::Msg)?;
+    let flag = cli.bundles_dir.as_deref();
+    match cli.command {
+        None => {
+            let Some(first) = cli.paths.first() else {
                 return open::run_open("");
             };
             if !looks_like_open_path(first) {
                 return Err(CliError::Msg(format!(
-                    "unknown command {:?} for {:?}",
-                    first,
-                    cobra.command_path(c)
+                    "unknown command {first:?} for \"recur\""
                 )));
             }
-            if args.len() > 1 {
+            if cli.paths.len() > 1 {
                 return Err(CliError::Msg(format!(
                     "accepts at most 1 path argument, received {}",
-                    args.len()
+                    cli.paths.len()
                 )));
             }
             open::run_open(first)
         }
-        Action::Open => open::run_open(args.first().map(String::as_str).unwrap_or_default()),
-        Action::BundlesTest => bundles_test(cobra, &args, io),
-        Action::BundlesLint => bundles_lint(cobra, &args, io),
-        Action::BundlesCreate => bundles_create(cobra, c, &args, io),
-        Action::Help => cobra.run_help(c, io),
-        Action::Complete => cobra.run_complete(c, io),
-        Action::CompletionBash
-        | Action::CompletionZsh
-        | Action::CompletionFish
-        | Action::CompletionPowershell => {
-            let no_desc = cobra
-                .flag_named(c, "no-descriptions")
-                .is_some_and(|f| cobra.flag_bool(f));
-            let name = cobra.name(cobra.root).to_string();
-            let script = match action {
-                Action::CompletionBash => completion::bash(&name, !no_desc),
-                Action::CompletionZsh => completion::zsh(&name, !no_desc),
-                Action::CompletionFish => completion::fish(&name, !no_desc),
-                _ => completion::powershell(&name, !no_desc),
-            };
-            io.out
-                .write_all(script.as_bytes())
-                .map_err(|e| CliError::Msg(e.to_string()))
+        Some(Command::Open { path }) => open::run_open(path.as_deref().unwrap_or_default()),
+        Some(Command::Bundles { command }) => match command {
+            Bundles::Test { targets: args } => bundles_test(flag, &args, io),
+            Bundles::Lint { targets: args } => bundles_lint(flag, &args, io),
+            Bundles::Create { name, dir, force } => bundles_create(flag, &name, dir, force, io),
+        },
+        Some(Command::Completion { shell }) => {
+            clap_complete::generate(shell, &mut Cli::command(), "recur", io.out);
+            Ok(())
         }
     }
 }
@@ -176,17 +148,8 @@ pub fn looks_like_open_path(s: &str) -> bool {
     std::fs::metadata(s).is_ok() || std::fs::metadata(path::clean(s)).is_ok()
 }
 
-/// The `--bundles-dir` value when it was set on the command line.
-fn bundles_dir_flag(cobra: &Cobra) -> Option<String> {
-    let id = cobra.flag_named(cobra.root, "bundles-dir")?;
-    cobra.flags[id]
-        .changed
-        .then(|| cobra.flags[id].value.clone())
-}
-
-fn targets(cobra: &Cobra, args: &[String]) -> Result<Vec<String>, CliError> {
-    let user_root = config::bundles_dir(bundles_dir_flag(cobra).as_deref())
-        .map_err(|e| CliError::Exit(2, Some(e)))?;
+fn targets(flag: Option<&str>, args: &[String]) -> Result<Vec<String>, CliError> {
+    let user_root = config::bundles_dir(flag).map_err(|e| CliError::Exit(2, Some(e)))?;
     let shipped_root = paths::shipped_bundles_dir().unwrap_or_default();
     let dirs = resolve::resolve_bundle_targets(args, &user_root, &shipped_root)
         .map_err(|e| CliError::Exit(2, Some(e)))?;
@@ -203,8 +166,8 @@ fn temp_cache(prefix: &str) -> Result<tempfile::TempDir, CliError> {
         .map_err(|e| CliError::Exit(2, Some(e.to_string())))
 }
 
-fn bundles_test(cobra: &Cobra, args: &[String], io: &mut Io) -> Result<(), CliError> {
-    let dirs = targets(cobra, args)?;
+fn bundles_test(flag: Option<&str>, args: &[String], io: &mut Io) -> Result<(), CliError> {
+    let dirs = targets(flag, args)?;
     let cache = temp_cache("recur-bundle-test-cache-")?;
     let cache_dir = cache.path().to_string_lossy().into_owned();
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -230,8 +193,8 @@ fn bundles_test(cobra: &Cobra, args: &[String], io: &mut Io) -> Result<(), CliEr
     Ok(())
 }
 
-fn bundles_lint(cobra: &Cobra, args: &[String], io: &mut Io) -> Result<(), CliError> {
-    let dirs = targets(cobra, args)?;
+fn bundles_lint(flag: Option<&str>, args: &[String], io: &mut Io) -> Result<(), CliError> {
+    let dirs = targets(flag, args)?;
     let cache = temp_cache("recur-bundle-lint-cache-")?;
     let rep = lint_bundles(&dirs, &cache.path().to_string_lossy());
     let _ = io
@@ -243,20 +206,17 @@ fn bundles_lint(cobra: &Cobra, args: &[String], io: &mut Io) -> Result<(), CliEr
     Ok(())
 }
 
-fn bundles_create(cobra: &Cobra, c: CmdId, args: &[String], io: &mut Io) -> Result<(), CliError> {
-    let name = create::normalize_bundle_name(&args[0]);
-    let dir_flag = cobra
-        .flag_named(c, "dir")
-        .map(|f| cobra.flag_value(f).to_string())
-        .unwrap_or_default();
-    let force = cobra
-        .flag_named(c, "force")
-        .is_some_and(|f| cobra.flag_bool(f));
-    let dest_parent = if dir_flag.is_empty() {
-        config::bundles_dir(bundles_dir_flag(cobra).as_deref())
-            .map_err(|e| CliError::Exit(2, Some(e)))?
-    } else {
-        dir_flag
+fn bundles_create(
+    flag: Option<&str>,
+    name: &str,
+    dir: Option<String>,
+    force: bool,
+    io: &mut Io,
+) -> Result<(), CliError> {
+    let name = create::normalize_bundle_name(name);
+    let dest_parent = match dir.filter(|d| !d.is_empty()) {
+        Some(d) => d,
+        None => config::bundles_dir(flag).map_err(|e| CliError::Exit(2, Some(e)))?,
     };
     let dest = create::create_bundle(&name, &dest_parent, force)
         .map_err(|e| CliError::Exit(1, Some(e)))?;

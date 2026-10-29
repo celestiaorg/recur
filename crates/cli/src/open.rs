@@ -1,4 +1,4 @@
-//! `recur .` / `recur open` (`internal/cli/open.go`): hand a path to the
+//! `recur .` / `recur open`: hand a path to the
 //! running app over the open-IPC socket, launching the app if needed.
 
 use std::io;
@@ -11,7 +11,7 @@ use recur_platform::cliinstall::is_bundled_cli_path;
 use recur_platform::identity::{APP_NAME, BUNDLE_ID};
 use recur_platform::openipc::{self, IpcError, Request};
 
-use crate::cobra::CliError;
+use crate::CliError;
 use crate::paths;
 
 const OPEN_RETRY_FOR: Duration = Duration::from_secs(30);
@@ -43,7 +43,7 @@ impl OpenError {
     }
 }
 
-/// `runOpen`: resolve the arg (exit 2 on failure), then send or launch
+/// Resolve the arg (exit 2 on failure), then send or launch
 /// (exit 1 on failure). An empty arg focuses the app.
 pub fn run_open(arg: &str) -> Result<(), CliError> {
     let abs = if arg.is_empty() {

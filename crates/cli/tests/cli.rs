@@ -1,4 +1,4 @@
-//! Port of `internal/cli/cli_test.go` and the env-free `open_test.go` cases.
+//! CLI tests that leave the process environment alone.
 
 use recur_cli::{Io, execute, looks_like_open_path};
 
@@ -154,28 +154,47 @@ fn resolve_bundle_targets_rules() {
 
 #[test]
 fn version_and_help_exit_zero() {
-    let (code, out, _) = run(&["--version"]);
-    assert_eq!(code, 0);
-    assert_eq!(out, format!("recur version {}\n", recur_cli::VERSION));
+    for flag in ["--version", "-v"] {
+        let (code, out, _) = run(&[flag]);
+        assert_eq!(code, 0);
+        assert!(out.contains(recur_cli::VERSION), "{out}");
+    }
     let (code, out, _) = run(&["help"]);
     assert_eq!(code, 0);
-    assert!(out.starts_with("Recur command-line tools.\n"));
-    assert!(out.contains("\nAvailable Commands:\n  bundles     Author and test Recur Bundles\n"));
+    assert!(out.contains("Recur command-line tools."), "{out}");
+    assert!(out.contains("Author and test Recur Bundles"), "{out}");
+    assert!(out.contains("--bundles-dir"), "{out}");
+    let (code, out, _) = run(&["bundles"]);
+    assert_eq!(code, 0);
+    assert!(out.contains("Scaffold a new bundle"), "{out}");
+    let (code, out, _) = run(&["bundles", "create", "--help"]);
+    assert_eq!(code, 0);
+    assert!(out.contains("--force") && out.contains("recur bundles create MyPack"));
 }
 
 #[test]
-fn flag_errors_exit_one() {
+fn usage_errors_exit_one() {
     let (code, _, err) = run(&["bundles", "create", "X", "--force=maybe"]);
     assert_eq!(code, 1);
-    assert_eq!(
-        err,
-        "invalid argument \"maybe\" for \"--force\" flag: strconv.ParseBool: parsing \"maybe\": invalid syntax\n"
-    );
+    assert!(err.contains("--force"), "{err}");
     let (code, _, err) = run(&["-x"]);
-    assert_eq!(
-        (code, err.as_str()),
-        (1, "unknown shorthand flag: 'x' in -x\n")
-    );
+    assert_eq!(code, 1);
+    assert!(err.contains("'-x'"), "{err}");
     let (code, _, err) = run(&["bundles", "create"]);
-    assert_eq!((code, err.as_str()), (1, "accepts 1 arg(s), received 0\n"));
+    assert_eq!(code, 1);
+    assert!(err.contains("<Name>"), "{err}");
+    let (code, _, err) = run(&["open", "a", "b"]);
+    assert_eq!(code, 1);
+    assert!(err.contains("'b'"), "{err}");
+}
+
+#[test]
+fn completion_scripts() {
+    for shell in ["bash", "zsh", "fish", "powershell"] {
+        let (code, out, err) = run(&["completion", shell]);
+        assert_eq!(code, 0, "{shell}: {err}");
+        assert!(out.contains("recur") && out.contains("bundles"), "{shell}");
+    }
+    let (code, _, _) = run(&["completion", "tcsh"]);
+    assert_eq!(code, 1);
 }

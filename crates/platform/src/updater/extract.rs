@@ -534,7 +534,7 @@ pub(super) mod tests {
         assert!(safe_join(root, "a/../../x").is_err());
         assert!(
             safe_join(root, "..foo").is_err(),
-            "Go rejects any leading .."
+            "any leading .. is rejected"
         );
     }
 }

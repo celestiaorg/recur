@@ -78,7 +78,7 @@ pub enum Event {
 }
 
 impl Event {
-    /// The Wails event name the Go app published this as.
+    /// The app event name.
     pub fn name(&self) -> &'static str {
         match self {
             Event::Data { .. } => "term.data",

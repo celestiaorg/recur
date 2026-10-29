@@ -1,5 +1,4 @@
-//! The asset routes `main.go` mounted as Wails asset middleware (Go
-//! `fileserver.go`, `serveWorkspaceData`, the `/gh-image` handler), served
+//! The asset routes (workspace files, workspace data, `/gh-image`), served
 //! through [`AssetsService`] for a UI that has no webview. Statuses and
 //! error text match the HTTP handlers; ranges and `HEAD` have no native
 //! caller and are not served.

@@ -1,6 +1,5 @@
-//! The engine bus onto the app's events (Go `main.go`'s `Bus → Wails emitter`
-//! subscriber) and the services' own bus subscriber (Go `NewServices`): the
-//! file-index lifecycle and the per-workspace caches dropped with a workspace.
+//! The engine bus onto the app's events, and the services' own bus
+//! subscriber: the file-index lifecycle and the per-workspace caches dropped with a workspace.
 
 use std::sync::{Arc, Weak};
 

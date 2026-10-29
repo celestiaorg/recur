@@ -1,6 +1,5 @@
-//! Every service call runs on the backend runtime. Wails ran each bound call
-//! on its own goroutine; here the UI's executor (which is not a tokio
-//! context) awaits a task spawned on the runtime, so git, processes and
+//! Every service call runs on the backend runtime: the UI's executor (which
+//! is not a tokio context) awaits a task spawned on the runtime, so git, processes and
 //! timers work and file I/O never runs on the UI thread.
 
 use std::future::Future;
@@ -21,7 +20,7 @@ macro_rules! rt {
     }};
 }
 
-/// [`rt!`] for methods that took Wails' per-call `context.Context`: dropping
+/// [`rt!`] for cancellable methods: dropping
 /// the call cancels `$c` and aborts the task.
 macro_rules! rt_ctx {
     ($self:ident, $($a:ident),* => |$s:ident, $c:ident| $body:expr) => {{

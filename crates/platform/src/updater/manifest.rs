@@ -15,8 +15,7 @@ use super::verify::{Hasher, Prehashed, pem_decode, run_verification};
 
 const SCHEMA_VERSION: i64 = 1;
 
-/// PKCS#8 v1 DER for an Ed25519 key, before the 32-byte seed (what Go's
-/// `x509.MarshalPKCS8PrivateKey` writes).
+/// PKCS#8 v1 DER for an Ed25519 key, before the 32-byte seed.
 const PKCS8_ED25519_PREFIX: [u8; 16] = [
     0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20,
 ];
@@ -193,8 +192,8 @@ fn hash_file(path: &Path, algo: &str) -> Result<(Vec<u8>, u64), String> {
     }
 }
 
-/// Go `GOOS` from names like `Recur-1.2.3-macos-universal.zip`, then from
-/// the extension; empty matches every platform.
+/// The manifest platform from names like `Recur-1.2.3-macos-universal.zip`,
+/// then from the extension; empty matches every platform.
 fn infer_platform(name: &str) -> String {
     let lower = name.to_lowercase();
     for (goos, re) in [
@@ -228,7 +227,8 @@ fn infer_platform(name: &str) -> String {
     .into()
 }
 
-/// Go `GOARCH` from the name; `universal` and unknown names match every arch.
+/// The manifest arch from the name; `universal` and unknown names match
+/// every arch.
 fn infer_arch(name: &str) -> String {
     let lower = name.to_lowercase();
     // Ordered: `_` is a boundary, so `x86` would match inside `x86_64` first.

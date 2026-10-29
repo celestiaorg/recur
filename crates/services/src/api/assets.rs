@@ -30,7 +30,7 @@ impl AssetError {
     }
 }
 
-/// The asset routes `main.go` mounted as Wails asset middleware, for a native
+/// The asset routes, for a native
 /// UI that has no webview to fetch them: per-workspace managed files
 /// (`/workspaces/<id>/…`), worktree files (`/workspace-file?project=&workspace=&path=[&at=base]`),
 /// dropped chat images (`/chat-image?path=`), dropped external files

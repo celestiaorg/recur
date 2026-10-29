@@ -211,19 +211,19 @@ fn wire() -> Vec<(&'static str, Value)> {
         ("term.idle", json!({ "id": "t", "workspaceId": "W" })),
         ("updater.check", Value::Null),
         (
-            "wails:updater:error",
+            "updater:error",
             json!({ "stage": "check", "message": "offline" }),
         ),
-        ("wails:updater:no-update", Value::Null),
+        ("updater:no-update", Value::Null),
         (
-            "wails:updater:update-available",
+            "updater:update-available",
             json!({ "version": "1.4.0", "publishedAt": "2026-10-01T12:00:00Z", "artifact": { "filename": "Recur.zip", "size": 10 } }),
         ),
         (
-            "wails:updater:update-ready",
+            "updater:update-ready",
             json!({ "version": "1.4.0", "publishedAt": "2026-10-01T12:00:00Z", "artifact": { "filename": "Recur.zip", "size": 10 } }),
         ),
-        ("wails:updater:user:restart", Value::Null),
+        ("updater:user:restart", Value::Null),
         ("window.titlebarDblclick", Value::Null),
         (
             "workspace.chat_tab",
@@ -360,7 +360,7 @@ fn partial_and_present_fields() {
         json!({})
     );
     assert!(AppEvent::from_wire("loop.event", Value::Null).is_err());
-    assert!(AppEvent::from_wire("wails:updater:bogus", Value::Null).is_err());
+    assert!(AppEvent::from_wire("updater:bogus", Value::Null).is_err());
 }
 
 #[test]

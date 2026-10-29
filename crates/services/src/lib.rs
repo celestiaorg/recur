@@ -1,5 +1,5 @@
-//! Application services: the UI-facing API over the engine (the former Wails-bound services)
-//! plus typed app events.
+//! Application services: the UI-facing API over the engine plus typed app
+//! events.
 //!
 //! - [`api`]: one async trait per service ([`api::WorkspacesService`], …), the
 //!   `app` package DTOs, and [`Services`], the aggregate views hold.

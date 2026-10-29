@@ -346,13 +346,10 @@ mod tests {
     #[test]
     fn runs_and_default() {
         assert!(project_runs(Some(&proj(vec![], ""))).is_empty());
-        let p = proj(
-            vec![rc("dev", "wails3 task dev"), rc("test", "go test")],
-            "",
-        );
+        let p = proj(vec![rc("dev", "pnpm dev"), rc("test", "go test")], "");
         assert_eq!(
             project_runs(Some(&p)),
-            [rc("dev", "wails3 task dev"), rc("test", "go test")]
+            [rc("dev", "pnpm dev"), rc("test", "go test")]
         );
         let p = proj(vec![rc("dev", "a"), rc("test", "b")], "test");
         assert_eq!(project_default_run(Some(&p)), Some(rc("test", "b")));
@@ -370,9 +367,9 @@ mod tests {
         assert_eq!(run_label("Stop", "test"), "Stop test");
         assert_eq!(run_label("Run", "  "), "Run dev");
         let list = [
-            rc("dev", "wails3 task dev"),
-            rc("test:go", "wails3 task test:go"),
-            rc("tidy", "wails3 task common:go:mod:tidy"),
+            rc("dev", "pnpm dev"),
+            rc("test:go", "go test ./..."),
+            rc("tidy", "go mod tidy"),
         ];
         assert_eq!(filter_runs(&list, ""), list);
         assert_eq!(filter_runs(&list, "   "), list);

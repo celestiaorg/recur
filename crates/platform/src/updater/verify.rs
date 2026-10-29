@@ -131,13 +131,12 @@ const OID_EC_PUBLIC_KEY: &str = "1.2.840.10045.2.1";
 const OID_RSA: &str = "1.2.840.113549.1.1.1";
 const OID_P256: &str = "1.2.840.10045.3.1.7";
 
-/// The Go type name `x509.ParsePKIXPublicKey` would return for an OID, used
-/// in wrong-type errors.
-fn go_key_type(oid: &str) -> &'static str {
+/// The key type for an OID, used in wrong-type errors.
+fn key_type(oid: &str) -> &'static str {
     match oid {
-        OID_ED25519 => "ed25519.PublicKey",
-        OID_EC_PUBLIC_KEY => "*ecdsa.PublicKey",
-        OID_RSA => "*rsa.PublicKey",
+        OID_ED25519 => "Ed25519",
+        OID_EC_PUBLIC_KEY => "ECDSA",
+        OID_RSA => "RSA",
         _ => "unknown",
     }
 }
@@ -166,7 +165,7 @@ fn parse_ed25519_public(raw: &[u8]) -> Result<ed25519_dalek::VerifyingKey, Updat
         if oid != OID_ED25519 {
             return Err(fail(format!(
                 "ed25519 public key has wrong type {}",
-                go_key_type(&oid)
+                key_type(&oid)
             )));
         }
         key.as_slice()
@@ -183,7 +182,7 @@ fn parse_ecdsa_p256_public(raw: &[u8]) -> Result<p256::ecdsa::VerifyingKey, Upda
     if oid != OID_EC_PUBLIC_KEY {
         return Err(fail(format!(
             "ecdsa public key has wrong type {}",
-            go_key_type(&oid)
+            key_type(&oid)
         )));
     }
     let curve = match params.as_deref() {
@@ -242,8 +241,8 @@ fn der_sequence_len(b: &[u8]) -> Option<usize> {
     (total <= b.len()).then_some(total)
 }
 
-/// The first PEM block's bytes, like Go's `pem.Decode` (leading text and
-/// `Key: value` headers are skipped).
+/// The first PEM block's bytes (leading text and `Key: value` headers are
+/// skipped).
 pub(super) fn pem_decode(raw: &[u8]) -> Option<Vec<u8>> {
     use base64::Engine;
     let text = std::str::from_utf8(raw).ok()?;
@@ -281,10 +280,7 @@ mod tests {
         let pem = include_bytes!("../../../../build/updater.key.pub");
         parse_ed25519_public(pem).expect("shipped updater key is an ed25519 PKIX PEM");
         let err = parse_ecdsa_p256_public(pem).expect_err("not ecdsa");
-        assert!(
-            err.to_string().contains("wrong type ed25519.PublicKey"),
-            "{err}"
-        );
+        assert!(err.to_string().contains("wrong type Ed25519"), "{err}");
     }
 
     #[test]

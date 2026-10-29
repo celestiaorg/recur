@@ -8,8 +8,8 @@
 //! arguments (as the Go-shaped JSON the Svelte UI sent), the mutable
 //! [`Seed`], and the effective [`Table`] (so a batched method can delegate
 //! to its single-item sibling and pick up a test's override). The typed
-//! service traits encode arguments, dispatch, and decode the reply the way
-//! Wails' `createFrom` did: `null` lists and maps become empty, a `null`
+//! service traits encode arguments, dispatch, and decode the reply: `null`
+//! lists and maps become empty, a `null`
 //! struct is a failed call, a `null` scalar is its zero value. A method with
 //! no resolver answers `null`.
 //!
@@ -260,8 +260,7 @@ impl MockBridge {
         self.attention.lock().view.clone()
     }
 
-    /// `window._wails.dispatchWailsEvent(e)`: a backend event, as specs push
-    /// them.
+    /// A backend event, as specs push them.
     pub fn dispatch(&self, event: AppEvent) {
         self.events.publish(event);
     }

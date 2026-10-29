@@ -11,12 +11,10 @@ use crate::Result;
 
 /// CodeService is the observatory code browser / edit surface (ADE phases 1–2, 4).
 ///
-/// Methods that walk the tree, read files, or shell out to git take a
-/// context.Context as their first parameter. Wails injects it per call and
-/// cancels it when the frontend cancels the returned promise, so navigating away
-/// from a search — or firing a pathological regex at a monorepo — actually stops
-/// the work instead of leaving it to run to completion. The ctx parameter is
-/// invisible in the generated TypeScript.
+/// Methods that walk the tree, read files, or shell out to git are cancelled
+/// when the caller drops the call, so navigating away from a search, or
+/// firing a pathological regex at a monorepo, actually stops the work instead
+/// of leaving it to run to completion.
 ///
 /// Rust port of Go `app.CodeService` (`frontend/bindings/recur/internal/app/codeservice.ts`).
 #[async_trait]

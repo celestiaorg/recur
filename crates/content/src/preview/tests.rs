@@ -42,7 +42,7 @@ fn csp_allows_https_but_never_the_app_origin_or_localhost() {
     assert!(HTML_PREVIEW_CSP.contains("style-src https: data: blob: 'unsafe-inline'"));
     assert!(HTML_PREVIEW_CSP.contains("connect-src https: wss: data: blob:"));
     assert!(HTML_PREVIEW_CSP.contains("form-action 'none'"));
-    for bad in ["http:", "ws:", "wails", "localhost", "*"] {
+    for bad in ["http:", "ws:", "localhost", "*"] {
         assert!(!HTML_PREVIEW_CSP.contains(bad), "{bad}");
     }
 }

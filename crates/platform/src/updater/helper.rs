@@ -12,12 +12,12 @@ use std::time::{Duration, Instant};
 
 use super::UpdaterError;
 
-pub(super) const ENV_MODE: &str = "WAILS_UPDATER_HELPER";
-pub(super) const ENV_TARGET: &str = "WAILS_UPDATER_HELPER_TARGET";
-pub(super) const ENV_NEW: &str = "WAILS_UPDATER_HELPER_NEW";
-pub(super) const ENV_PID: &str = "WAILS_UPDATER_HELPER_PID";
-pub(super) const ENV_LOG: &str = "WAILS_UPDATER_HELPER_LOG";
-pub(super) const ENV_READY: &str = "WAILS_UPDATER_HELPER_READY";
+pub(super) const ENV_MODE: &str = "RECUR_UPDATER_HELPER";
+pub(super) const ENV_TARGET: &str = "RECUR_UPDATER_HELPER_TARGET";
+pub(super) const ENV_NEW: &str = "RECUR_UPDATER_HELPER_NEW";
+pub(super) const ENV_PID: &str = "RECUR_UPDATER_HELPER_PID";
+pub(super) const ENV_LOG: &str = "RECUR_UPDATER_HELPER_LOG";
+pub(super) const ENV_READY: &str = "RECUR_UPDATER_HELPER_READY";
 
 pub(super) const HELPER_ENV: [&str; 6] =
     [ENV_MODE, ENV_TARGET, ENV_NEW, ENV_PID, ENV_LOG, ENV_READY];
@@ -263,12 +263,12 @@ pub(super) fn run_helper_swap(
     if let Err(e) = remove_all(&backup) {
         lg.log(format!("backup cleanup: {e} (non-fatal)"));
     }
-    // The download's `wails-update-*` staging dir is empty now; the prefix
+    // The download's `recur-update-*` staging dir is empty now; the prefix
     // guard keeps a caller-supplied path from being deleted.
     if let Some(staging) = new_path.parent()
         && staging
             .file_name()
-            .is_some_and(|n| n.to_string_lossy().starts_with("wails-update-"))
+            .is_some_and(|n| n.to_string_lossy().starts_with("recur-update-"))
         && let Err(e) = remove_all(staging)
     {
         lg.log(format!("staging cleanup: {e} (non-fatal)"));
@@ -383,7 +383,7 @@ struct HelperLog {
 impl HelperLog {
     fn open(path: &Path) -> Self {
         let path = if path.as_os_str().is_empty() {
-            std::env::temp_dir().join(format!("wails-update-{}.log", std::process::id()))
+            std::env::temp_dir().join(format!("recur-update-{}.log", std::process::id()))
         } else {
             path.to_path_buf()
         };

@@ -1,16 +1,15 @@
-//! App events: the typed replacement for the Wails event names the Svelte UI
-//! subscribed to with `Events.On` (and the few it emitted with `Events.Emit`).
+//! App events: everything the backend publishes to the UI, and the few
+//! events the UI sends back.
 //!
 //! Each [`AppEvent`] variant is one wire name; [`AppEvent::name`] and
-//! [`AppEvent::payload`] give the exact Wails event the Go app emitted, and
-//! [`AppEvent::from_wire`] reads one back. Payload fields the frontend treated
-//! as optional (`d.x ?? prev.x`) are `Option`, so a partial event (the mock
-//! bridge and the e2e specs dispatch those) means the same thing it did in
-//! Svelte: absent leaves the view's value alone.
+//! [`AppEvent::payload`] give the event's name and data, and
+//! [`AppEvent::from_wire`] reads one back. Payload fields that may be absent
+//! are `Option`, so a partial event (the mock bridge and the e2e specs
+//! dispatch those) leaves the view's value alone.
 //!
 //! [`EventHub`] fans events out to subscribers over unbounded channels: an
 //! event is never dropped and each subscriber sees one publisher's events in
-//! publish order (engine plan, section 3).
+//! publish order.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -160,10 +159,10 @@ pub enum AppEvent {
     Term(recur_term::Event),
     /// `updater.check` (UI to backend): Check for Updates.
     UpdaterCheck,
-    /// `wails:updater:*`: updater lifecycle (`update-available`, `no-update`,
+    /// `updater:*`: updater lifecycle (`update-available`, `no-update`,
     /// `error`, `update-ready`, …).
     Updater(UpdaterEvent),
-    /// `wails:updater:user:restart` (UI to backend): restart into the update.
+    /// `updater:user:restart` (UI to backend): restart into the update.
     UpdaterUserRestart,
     /// `window.titlebarDblclick` (UI to backend): zoom/minimize per OS setting.
     WindowTitlebarDblclick,
@@ -195,10 +194,10 @@ pub enum WireError {
     },
 }
 
-const UPDATER_PREFIX: &str = "wails:updater:";
+const UPDATER_PREFIX: &str = "updater:";
 
 impl AppEvent {
-    /// The Wails event name.
+    /// The event name.
     pub fn name(&self) -> &'static str {
         match self {
             Self::AgentStep(_) => "agent.step",
@@ -251,7 +250,7 @@ impl AppEvent {
             Self::Term(e) => e.name(),
             Self::UpdaterCheck => "updater.check",
             Self::Updater(e) => e.name(),
-            Self::UpdaterUserRestart => "wails:updater:user:restart",
+            Self::UpdaterUserRestart => "updater:user:restart",
             Self::WindowTitlebarDblclick => "window.titlebarDblclick",
             Self::WorkspaceChatTab(_) => "workspace.chat_tab",
             Self::WorkspaceDeleted(_) => "workspace.deleted",
@@ -263,7 +262,7 @@ impl AppEvent {
         }
     }
 
-    /// The Wails event `data` (`null` for events without one).
+    /// The event `data` (`null` for events without one).
     pub fn payload(&self) -> Value {
         fn json<T: Serialize>(v: &T) -> Value {
             serde_json::to_value(v).unwrap_or(Value::Null)
@@ -328,7 +327,7 @@ impl AppEvent {
         }
     }
 
-    /// Reads a Wails event back: the inverse of [`name`](Self::name) +
+    /// Reads an event back: the inverse of [`name`](Self::name) +
     /// [`payload`](Self::payload).
     pub fn from_wire(name: &str, data: Value) -> Result<Self, WireError> {
         fn de<T: DeserializeOwned>(name: &str, data: Value) -> Result<T, WireError> {
@@ -390,7 +389,7 @@ impl AppEvent {
                 Self::Term(term_from_wire(name, d)?)
             }
             "updater.check" => Self::UpdaterCheck,
-            "wails:updater:user:restart" => Self::UpdaterUserRestart,
+            "updater:user:restart" => Self::UpdaterUserRestart,
             "window.titlebarDblclick" => Self::WindowTitlebarDblclick,
             "workspace.chat_tab" => Self::WorkspaceChatTab(de(name, d)?),
             "workspace.deleted" => Self::WorkspaceDeleted(de(name, d)?),

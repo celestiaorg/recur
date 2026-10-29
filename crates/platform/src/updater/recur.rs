@@ -136,7 +136,7 @@ impl RecurUpdater {
         self.updater.spawn(async move { check(&updater).await });
     }
 
-    /// Forwards a `wails:updater:user:*` event from the UI.
+    /// Forwards an `updater:user:*` event from the UI.
     pub fn user_action(&self, action: UserAction) {
         self.updater.user_action(action);
     }

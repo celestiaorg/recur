@@ -190,7 +190,7 @@ fn overlay_recur_project_toml() {
         got.env
     );
     assert!(got.run_commands.len() >= 2);
-    assert_eq!(got.run_commands[0].cmd, "wails3 task dev");
+    assert_eq!(got.run_commands[0].cmd, "pnpm dev");
 }
 
 #[test]
@@ -292,7 +292,7 @@ fn overlay_named_runs() {
     let dir = tempfile::tempdir().unwrap();
     write_raw(
         dir.path(),
-        "\ndev_cmd = \"legacy\"\n[[run]]\nname = \"dev\"\ncmd = \"wails3 task dev\"\n[[run]]\nname = \"test\"\ncmd = \"go test ./...\"\n",
+        "\ndev_cmd = \"legacy\"\n[[run]]\nname = \"dev\"\ncmd = \"pnpm dev\"\n[[run]]\nname = \"test\"\ncmd = \"go test ./...\"\n",
     );
     let got = overlay(Project {
         repo_path: repo(dir.path()),
@@ -302,7 +302,7 @@ fn overlay_named_runs() {
     assert_eq!(got.pinned_run, "test");
     assert_eq!(got.run_commands.len(), 2);
     assert_eq!(got.run_commands[1].name, "test");
-    assert_eq!(verify_dev_cmd(&got), "wails3 task dev");
+    assert_eq!(verify_dev_cmd(&got), "pnpm dev");
 }
 
 #[test]
@@ -310,7 +310,7 @@ fn write_named_runs() {
     let dir = tempfile::tempdir().unwrap();
     write(&Project {
         repo_path: repo(dir.path()),
-        run_commands: vec![run("dev", "wails3 task dev"), run("test", "go test ./...")],
+        run_commands: vec![run("dev", "pnpm dev"), run("test", "go test ./...")],
         ..Default::default()
     })
     .unwrap();
@@ -327,7 +327,7 @@ fn write_named_runs() {
 #[test]
 fn write_multiline_env() {
     let dir = tempfile::tempdir().unwrap();
-    let env = "RECUR_DATA_DIR=$HOME/tmp\nWAILS_VITE_PORT=$RECUR_PORT\n";
+    let env = "RECUR_DATA_DIR=$HOME/tmp\nVITE_PORT=$RECUR_PORT\n";
     write(&Project {
         repo_path: repo(dir.path()),
         env: env.into(),
@@ -337,7 +337,7 @@ fn write_multiline_env() {
     let text = read_project_toml(dir.path());
     assert!(!text.contains("\\n"), "{text}");
     assert!(text.contains("env = \"\"\""), "{text}");
-    assert!(text.contains("WAILS_VITE_PORT=$RECUR_PORT"), "{text}");
+    assert!(text.contains("VITE_PORT=$RECUR_PORT"), "{text}");
     assert_eq!(overlay(proj(dir.path())).env, env);
 }
 

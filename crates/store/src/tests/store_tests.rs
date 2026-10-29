@@ -126,7 +126,7 @@ fn add_project_persists_across_reopen() {
                     teardown_cmd: "make clean-wt".into(),
                     run_commands: vec![run("dev", "make dev PORT=$RECUR_PORT")],
                     app_url: "http://localhost:$RECUR_PORT".into(),
-                    env: "WAILS_VITE_PORT=$RECUR_PORT\n# dogfood\nRECUR_DATA_DIR=$HOME/tmp".into(),
+                    env: "VITE_PORT=$RECUR_PORT\n# dogfood\nRECUR_DATA_DIR=$HOME/tmp".into(),
                     write_project_file: true,
                     ..Default::default()
                 })
@@ -139,9 +139,7 @@ fn add_project_persists_across_reopen() {
             assert_eq!(verify_dev_cmd(&got), "make dev PORT=$RECUR_PORT");
             assert_eq!(got.repo_path, "~/code/widgets");
             assert_eq!(got.teardown_cmd, "make clean-wt");
-            assert!(
-                got.env.contains("WAILS_VITE_PORT=$RECUR_PORT") && got.env.contains("# dogfood")
-            );
+            assert!(got.env.contains("VITE_PORT=$RECUR_PORT") && got.env.contains("# dogfood"));
         },
     );
 }
@@ -425,7 +423,7 @@ fn update_project_open_does_not_create_toml() {
 fn pinned_run_persists_without_rewriting_toml() {
     let dir = tmp();
     let repo = tmp();
-    let hand = "# keep me\n[[run]]\nname = \"dev\"\ncmd = \"wails3 task dev\"\n";
+    let hand = "# keep me\n[[run]]\nname = \"dev\"\ncmd = \"pnpm dev\"\n";
     write_toml(repo.path(), hand);
     let st = open_temp(dir.path());
     let mut p = st.add_project(proj("app", repo.path())).unwrap();
@@ -467,7 +465,7 @@ fn named_runs_persist_to_toml_and_pin_stays_local() {
     let repo = tmp();
     let st = open_temp(dir.path());
     let mut p = st.add_project(proj("app", repo.path())).unwrap();
-    p.run_commands = vec![run("dev", "wails3 task dev"), run("test", "go test ./...")];
+    p.run_commands = vec![run("dev", "pnpm dev"), run("test", "go test ./...")];
     p.pinned_run = "test".into();
     p.write_project_file = true;
     let saved = st.update_project_run_config(p).unwrap();
@@ -484,7 +482,7 @@ fn named_runs_persist_to_toml_and_pin_stays_local() {
     assert_eq!(from_db.run_commands.len(), 2);
 
     let mut p = from_db;
-    p.run_commands = vec![run("dev", "wails3 task dev")];
+    p.run_commands = vec![run("dev", "pnpm dev")];
     p.pinned_run = "test".into();
     let cleared = st.update_project_run_config(p).unwrap();
     assert_eq!(cleared.pinned_run, "", "stale pin should drop");

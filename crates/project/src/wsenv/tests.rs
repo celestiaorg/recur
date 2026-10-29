@@ -214,9 +214,9 @@ fn environ_defaults_to_host_environment() {
 #[test]
 fn parse_dotenv_cases() {
     let got = parse_dotenv(
-        "\n# comment\nWAILS_VITE_PORT=$RECUR_PORT\nexport FOO=bar\nBAZ=\"qux\"\nQ='single'\nbad line\n=nokey\n  SP = spaced  \nMIX=\"a'\nLATER=1\nLATER=2\n",
+        "\n# comment\nVITE_PORT=$RECUR_PORT\nexport FOO=bar\nBAZ=\"qux\"\nQ='single'\nbad line\n=nokey\n  SP = spaced  \nMIX=\"a'\nLATER=1\nLATER=2\n",
     );
-    assert_eq!(got["WAILS_VITE_PORT"], "$RECUR_PORT");
+    assert_eq!(got["VITE_PORT"], "$RECUR_PORT");
     assert_eq!(got["FOO"], "bar");
     assert_eq!(got["BAZ"], "qux");
     assert_eq!(got["Q"], "single");
@@ -235,7 +235,7 @@ fn environ_injects_recur_and_project_env() {
         project_id: "recur".into(),
         branch: "mycodecrafting/smoky-shortcake".into(),
         project_env: map(&[
-            ("WAILS_VITE_PORT", "$RECUR_PORT"),
+            ("VITE_PORT", "$RECUR_PORT"),
             ("RECUR_DATA_DIR", "/tmp/data-$RECUR_WORKSPACE_ID"),
             ("RECUR_INSTANCE_LABEL", "$RECUR_BRANCH"),
         ]),
@@ -251,7 +251,7 @@ fn environ_injects_recur_and_project_env() {
         got["RECUR_INSTANCE_LABEL"],
         "mycodecrafting/smoky-shortcake"
     );
-    assert_eq!(got["WAILS_VITE_PORT"], "9246");
+    assert_eq!(got["VITE_PORT"], "9246");
     assert_eq!(got["RECUR_DATA_DIR"], "/tmp/data-LOOP-1");
 }
 

@@ -392,7 +392,7 @@ async fn download(p: &EndpointProvider, rel: &Release) -> (Vec<u8>, i64, i64, us
 
 #[tokio::test]
 async fn download_streams_with_progress() {
-    let payload: Vec<u8> = b"wails".repeat(100_000);
+    let payload: Vec<u8> = b"recur".repeat(100_000);
     let auth = Arc::new(Mutex::new(String::new()));
     let srv = serve({
         let (payload, auth) = (payload.clone(), Arc::clone(&auth));
@@ -534,7 +534,7 @@ fn build_url_preserves_existing_query() {
     assert_eq!(
         got.query(),
         Some("arch=arm64&key=abc&platform=darwin&version=1.0.0"),
-        "Go sorts keys"
+        "keys are sorted"
     );
 }
 

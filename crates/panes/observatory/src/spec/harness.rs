@@ -409,7 +409,7 @@ impl H<'_> {
         self.settle();
     }
 
-    /// A backend event by its wire name (`dispatchWailsEvent`).
+    /// A backend event by its wire name.
     pub fn event(&mut self, name: &str, data: serde_json::Value) {
         self.bridge.dispatch_wire(name, data).expect("wire event");
         self.settle();

@@ -116,7 +116,7 @@ fn config(providers: Vec<Arc<dyn Provider>>, public_key: Vec<u8>) -> Config {
 /// exclusively so concurrent tests do not skew its directory count.
 static STAGING: parking_lot::RwLock<()> = parking_lot::RwLock::new(());
 
-/// Removes the staged `wails-update-*` dir when the test ends.
+/// Removes the staged `recur-update-*` dir when the test ends.
 struct Staged(
     Arc<Updater>,
     #[expect(dead_code, reason = "held for the test\'s lifetime")]
@@ -128,7 +128,7 @@ impl Drop for Staged {
         if let Some(p) = self.0.downloaded_path() {
             let dir = p.ancestors().find(|d| {
                 d.file_name()
-                    .is_some_and(|n| n.to_string_lossy().starts_with("wails-update-"))
+                    .is_some_and(|n| n.to_string_lossy().starts_with("recur-update-"))
             });
             if let Some(dir) = dir {
                 let _ = std::fs::remove_dir_all(dir);
@@ -147,7 +147,7 @@ fn configured(host: &Arc<FakeHost>, providers: Vec<Arc<dyn Provider>>, key: Vec<
 fn compact(names: &[&'static str]) -> Vec<&'static str> {
     let mut out: Vec<&'static str> = Vec::new();
     for n in names {
-        if out.last() == Some(n) && *n == "wails:updater:download-progress" {
+        if out.last() == Some(n) && *n == "updater:download-progress" {
             continue;
         }
         out.push(n);
@@ -204,10 +204,7 @@ async fn check_update_available() {
     assert_eq!(u.0.state(), State::Available);
     assert_eq!(
         compact(&host.names()),
-        [
-            "wails:updater:check-started",
-            "wails:updater:update-available"
-        ]
+        ["updater:check-started", "updater:update-available"]
     );
 }
 
@@ -229,7 +226,7 @@ async fn up_to_date_stops_fallback_chain() {
     assert_eq!(u.0.state(), State::UpToDate);
     assert_eq!(
         compact(&host.names()),
-        ["wails:updater:check-started", "wails:updater:no-update"]
+        ["updater:check-started", "updater:no-update"]
     );
 }
 
@@ -269,7 +266,7 @@ async fn all_providers_error() {
     assert_eq!(u.0.state(), State::Error);
     assert_eq!(
         compact(&host.names()),
-        ["wails:updater:check-started", "wails:updater:error"]
+        ["updater:check-started", "updater:error"]
     );
 }
 
@@ -311,14 +308,14 @@ async fn happy_path_without_verification() {
     assert_subsequence(
         &host.names(),
         &[
-            "wails:updater:check-started",
-            "wails:updater:update-available",
-            "wails:updater:download-started",
-            "wails:updater:download-progress",
-            "wails:updater:download-complete",
-            "wails:updater:verifying",
-            "wails:updater:installing",
-            "wails:updater:update-ready",
+            "updater:check-started",
+            "updater:update-available",
+            "updater:download-started",
+            "updater:download-progress",
+            "updater:download-complete",
+            "updater:verifying",
+            "updater:installing",
+            "updater:update-ready",
         ],
     );
     let staged = u.0.downloaded_path().expect("staged");
@@ -359,7 +356,7 @@ fn count_staging_dirs() -> usize {
             rd.flatten()
                 .filter(|e| {
                     e.file_type().is_ok_and(|t| t.is_dir())
-                        && e.file_name().to_string_lossy().starts_with("wails-update-")
+                        && e.file_name().to_string_lossy().starts_with("recur-update-")
                 })
                 .count()
         })
@@ -475,7 +472,7 @@ async fn ed25519_signature_verifies() {
 }
 
 /// Ed25519ph (RFC 8032): sign SHA-512(message) with the "SigEd25519 no
-/// Ed25519 collisions" dom2 prefix, as Go's `ed25519.Options{Hash: SHA512}`.
+/// Ed25519 collisions" dom2 prefix.
 pub(super) fn sign_ed25519ph(key: &ed25519_dalek::SigningKey, prehash: &[u8; 64]) -> Vec<u8> {
     #[derive(Clone)]
     struct Pre([u8; 64]);
@@ -669,10 +666,7 @@ async fn user_actions_need_a_session_and_replay_state() {
     u.0.check_and_install().await.expect("check_and_install");
     host.events.lock().clear();
     u.0.user_action(UserAction::WindowReady);
-    assert_eq!(
-        host.names(),
-        ["wails:updater:meta", "wails:updater:update-ready"]
-    );
+    assert_eq!(host.names(), ["updater:meta", "updater:update-ready"]);
     match &host.events.lock()[0] {
         UpdaterEvent::Meta(m) => assert_eq!(m.current_version, "1.0.0"),
         other => panic!("{other:?}"),
@@ -702,15 +696,15 @@ fn event_wire_names_and_payloads() {
     assert_eq!(
         names,
         [
-            "wails:updater:check-started",
-            "wails:updater:update-available",
-            "wails:updater:no-update",
-            "wails:updater:error",
-            "wails:updater:update-ready",
+            "updater:check-started",
+            "updater:update-available",
+            "updater:no-update",
+            "updater:error",
+            "updater:update-ready",
         ]
     );
     assert_eq!(
-        UserAction::from_event_name("wails:updater:user:restart"),
+        UserAction::from_event_name("updater:user:restart"),
         Some(UserAction::Restart)
     );
     assert_eq!(UserAction::from_event_name("updater.check"), None);
@@ -772,9 +766,9 @@ fn finalise_neutralises_names() {
     for (name, want) in [
         ("app.zip", "app.zip"),
         ("../../evil", "evil"),
-        ("..", "wails-update.bin"),
-        ("", "wails-update.bin"),
-        ("a\\b", "wails-update.bin"),
+        ("..", "recur-update.bin"),
+        ("", "recur-update.bin"),
+        ("a\\b", "recur-update.bin"),
     ] {
         let tmp = dir.path().join(".artifact");
         std::fs::write(&tmp, "x").expect("write");

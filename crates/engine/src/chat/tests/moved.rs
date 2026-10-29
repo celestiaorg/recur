@@ -1,11 +1,8 @@
-//! Send-path cases earlier slices left for E4: `mcp_required_test.go`
-//! `TestDeadMCPFailsChatTurn`, `workspace_chat_fresh_session_test.go`, the
-//! send cases of `skill_mentions_test.go`, `simplify_test.go` and
-//! `user_mcp_test.go`, the footer cases of `chat_errors_test.go`, the
-//! run-lock and close cases of `loop_engage_test.go`, the CloseWorkspaceChat
-//! cases of `chat_inbox_test.go` / `attention_test.go`, and the remount
-//! history case of `harness_test.go` (checked against the transcript the
-//! history source serves, since the Responses builder is P3's).
+//! Send-path cases that drive other areas through a chat send: a dead MCP
+//! server failing the turn, fresh sessions, skill mentions, Simplify, user MCP
+//! servers, error footers, loop engage run-lock and close, CloseWorkspaceChat
+//! against the inbox and attention, and the remount history (checked against
+//! the transcript the history source serves).
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

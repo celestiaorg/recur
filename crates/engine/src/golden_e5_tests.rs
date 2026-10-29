@@ -110,7 +110,7 @@ fn local_and_workspace_land_messages() {
             SquashCommitMessage::from(s(&n["squash"])),
             MergeCommitMessage::from(s(&n["merge"])),
         );
-        // Go's formatPRMergeMessage forge branch is the forge's merge_message (R8).
+        // A forge PR's merge message comes from the forge's merge_message.
         let got = if pr.source == PrSource::Local {
             local_merge_commit_message(pr, &method, &sq, &mg)
         } else {

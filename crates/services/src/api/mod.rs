@@ -66,7 +66,7 @@ pub use workspaces::WorkspacesService;
 use crate::events::{AppEvent, EventHub};
 
 /// A backend that implements every service: the real services over the
-/// engine (slice SV) or [`crate::mock::MockBridge`].
+/// engine or [`crate::mock::MockBridge`].
 pub trait Backend:
     AgentsService
     + ArtifactsService

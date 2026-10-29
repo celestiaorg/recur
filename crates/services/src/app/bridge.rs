@@ -25,7 +25,7 @@ pub fn app_event(ev: &EngineEvent) -> Option<AppEvent> {
 
 pub(super) fn attach(svc: &Arc<AppServices>) {
     // Synchronous on the publisher's task, so one publisher's events reach
-    // every UI subscriber in order (engine plan §3); publishing only
+    // every UI subscriber in order; publishing only
     // enqueues.
     let hub = svc.hub.clone();
     let weak: Weak<AppServices> = Arc::downgrade(svc);

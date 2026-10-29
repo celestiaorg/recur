@@ -5,10 +5,10 @@
 //!
 //! These live in [`LoopState`] behind [`LoopHandle::lock`], and
 //! [`LoopHandle::broadcast`] is the cond broadcast. `send` mutates state and
-//! wakes waiters *before* queueing the command. The walk (E3) owns everything
+//! wakes waiters *before* queueing the command. The walk owns everything
 //! else about a loop.
 //!
-//! R18: the branch (and worktree, chat code) live here under the mutex, since
+//! The branch (and worktree, chat code) live here under the mutex, since
 //! the fswatch task writes the branch while the walk reads it.
 
 use std::sync::Arc;

@@ -1,4 +1,4 @@
-//! The E1 Host methods (ReportFinding, Done, ListFindings, UpdateFinding,
+//! The loop-flow Host methods (ReportFinding, Done, ListFindings, UpdateFinding,
 //! ReportResult, Escalate, AttachEvidence).
 
 use std::sync::Arc;

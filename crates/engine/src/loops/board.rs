@@ -19,7 +19,7 @@ use crate::loops::fanout::in_flight_children;
 /// a safety net, not a budget a healthy plan reaches.
 pub const BOARD_MAX_ROUNDS: usize = 64;
 
-/// The resting phase of a board that hit [`BOARD_MAX_ROUNDS`] (R14).
+/// The resting phase of a board that hit [`BOARD_MAX_ROUNDS`].
 pub const BOARD_CAP_PHASE: &str = "board event cap";
 
 pub fn has_pending_steps(p: &Plan) -> bool {

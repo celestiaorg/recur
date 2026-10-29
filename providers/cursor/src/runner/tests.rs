@@ -1,4 +1,4 @@
-//! Steer (R6), active-run, options, prompt and runner-contract tests, against
+//! Steer, active-run, options, prompt and runner-contract tests, against
 //! an HTTP stand-in for the bridge.
 
 use std::sync::Arc;

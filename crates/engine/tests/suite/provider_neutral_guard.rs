@@ -1,6 +1,6 @@
 //! Static guards over the engine's non-test sources: no direct provider
-//! dispatch, the R7 rule that no behavior keys off a provider id, and the R8
-//! rule that PR code goes through `Forge`.
+//! dispatch, no behavior keyed off a provider id, and PR code that goes
+//! through `Forge` without naming a forge.
 
 use std::path::Path;
 
@@ -57,7 +57,7 @@ fn no_provider_id_compares() {
             let code = line.split("//").next().unwrap_or_default();
             assert!(
                 !compare.is_match(code),
-                "{path}:{}: behavior keyed off a provider id (R7): {line}",
+                "{path}:{}: behavior keyed off a provider id: {line}",
                 i + 1
             );
         }
@@ -70,7 +70,7 @@ fn no_forge_specifics_outside_the_forge() {
         r#"PrSource::GitHub|(==|!=)\s*"gh"|"gh"\s*(=>|\|)|"[^"]*GitHub[^"]*"|"(refs/)?pull/"#,
     )
     .unwrap();
-    // E4's surface marker: its wire values (`github_pr` and aliases) and the
+    // The chat surface marker: its wire values (`github_pr` and aliases) and the
     // Local PR subject that says it is not a forge PR.
     let allowed = |path: &str| path.ends_with("src/chat/surface.rs");
     for (path, src) in engine_sources() {
@@ -81,7 +81,7 @@ fn no_forge_specifics_outside_the_forge() {
             let code = line.split("//").next().unwrap_or_default();
             assert!(
                 !leak.is_match(code) || allowed(&path),
-                "{path}:{}: forge-specific behavior or copy outside recur-forge (R8): {line}",
+                "{path}:{}: forge-specific behavior or copy outside recur-forge: {line}",
                 i + 1
             );
         }

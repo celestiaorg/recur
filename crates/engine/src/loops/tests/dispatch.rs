@@ -1,7 +1,7 @@
-//! The dispatch cases E1/E2 left for E3: closed or deleted conductors never
+//! Dispatch: closed or deleted conductors never
 //! run, the Docs loop raises unseen; fresh dispatch skips a leftover branch,
 //! keeps the issue link; StartRunOn over a failed create, BeginStartWorkspace
-//! slots and rollback. Tab close is E4's; [`close_tab`] stands in for its
+//! slots and rollback. Tab close is the chat's; [`close_tab`] stands in for its
 //! effect on the record.
 
 use std::path::Path;

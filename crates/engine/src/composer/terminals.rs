@@ -1,5 +1,5 @@
 //! `@terminal[:id-or-title]` mentions: an ANSI-stripped tail of the matching
-//! Observatory terminals, fenced into a system instruction (R16: read through
+//! Observatory terminals, fenced into a system instruction (read through
 //! [`TerminalSource`]).
 
 use std::collections::HashSet;

@@ -3,7 +3,7 @@
 //! See `docs/cursor-provider.md` for why Recur drives Cursor through the
 //! bridge.
 //!
-//! The allowlist the engine sends uses Claude's syntax (R9). Cursor has no
+//! The allowlist the engine sends uses Claude's syntax. Cursor has no
 //! per-run allowlist: a list without Edit/Write/NotebookEdit runs the agent
 //! in Cursor's plan mode, and `mcp__recur__create_workspace` in the list
 //! selects the subagent overlay; nothing else is read.

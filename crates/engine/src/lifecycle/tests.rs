@@ -1,7 +1,7 @@
 //! Engine-wide control: Pause/Stop semantics on registered walks and on rows
-//! without one, restart recovery (R14), Shutdown, ClearAll, DeleteProject,
+//! without one, restart recovery, Shutdown, ClearAll, DeleteProject,
 //! CheckGit, and keep-awake. The loop-driving engine cases (end-to-end,
-//! governor queueing, pause/resume to PR) move with E3.
+//! governor queueing, pause/resume to PR) are in `loops::tests`.
 
 use std::sync::Arc;
 use std::time::Duration;

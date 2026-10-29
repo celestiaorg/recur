@@ -1,5 +1,5 @@
 //! Checkpoint tests. The send path's start/end snapshots are taken
-//! here around `run_agent` the way E4's send does; the AutoResume reuse
+//! here around `run_agent` the way the chat send does; the AutoResume reuse
 //! cases go through `last_open_chat_prompt_id`.
 
 use std::path::Path;

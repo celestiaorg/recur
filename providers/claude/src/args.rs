@@ -1,7 +1,7 @@
 //! The `claude -p` argv: permission flags, the MCP config and the append-prompt
 //! spill.
 //!
-//! ## Allowlist translation (risk R9)
+//! ## Allowlist translation
 //!
 //! The engine's allowlist is Claude's own permission-rule syntax, so it passes
 //! through unchanged as `--allowedTools a,b,c` (`Bash(git diff:*)`,

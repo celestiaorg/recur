@@ -2,7 +2,7 @@
 //! are VERBATIM args/results from a live bridge. The frame-fold cases live in
 //! `turn/tests.rs`; the transcript and session-broadcast cases
 //! (`flattenTranscript`, `sessionBroadcast`) belong to the engine's turn
-//! pipeline (E2).
+//! pipeline.
 
 use std::sync::Arc;
 

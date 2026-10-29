@@ -1,4 +1,4 @@
-//! Process plumbing: the reaper, process-group kill (risk R12), PATH lookup
+//! Process plumbing: the reaper, process-group kill, PATH lookup
 //! and the wording for OS errors.
 
 use std::io;

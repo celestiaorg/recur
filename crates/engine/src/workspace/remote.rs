@@ -1,6 +1,6 @@
-//! The main working copy against its remote (E1) fetch the tips the titlebar
+//! The main working copy against its remote: fetch the tips the titlebar
 //! compares against, update from the tracking branch, and push. The open forge
-//! PR head fetch and the land state are E5's (`prs`).
+//! PR head fetch and the land state are in `prs`.
 
 use std::time::Duration;
 

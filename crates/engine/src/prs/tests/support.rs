@@ -1,4 +1,4 @@
-//! Shared E5 test scaffolding.
+//! Shared PR test scaffolding.
 
 use std::path::Path;
 use std::sync::Arc;

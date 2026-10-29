@@ -1,4 +1,4 @@
-//! The turn pipeline (E2): the provider router every agent turn goes through,
+//! The turn pipeline: the provider router every agent turn goes through,
 //! the session mirror and live broadcast that wrap every turn, per-turn MCP
 //! registration, and the user-visible turn outcome.
 //!

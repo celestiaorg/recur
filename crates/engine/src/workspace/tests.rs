@@ -1,7 +1,7 @@
 //! Workspace id, allocation, setup/teardown, diff sync, branch sync and
 //! hand-workspace lifecycle tests. Cases that dispatch a loop (`dispatch`,
-//! `StartRunOnWorkspace`, `BeginStartWorkspace*`) move with E3; Open PR
-//! after rename moves with E5.
+//! `StartRunOnWorkspace`, `BeginStartWorkspace*`) are in `loops::tests`; Open
+//! PR after rename is in `prs::tests`.
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -1706,7 +1706,7 @@ async fn sync_workspace_branch_after_rename() {
     );
     assert_eq!(t.store.workspace(&ws.id).unwrap().branch, "human/renamed");
     assert_eq!(t.store.pr("1").unwrap().branch, "human/renamed");
-    assert_eq!(h.branch(), "human/renamed", "the live walk follows (R18)");
+    assert_eq!(h.branch(), "human/renamed", "the live walk follows");
     assert!(t.events.has("pr.updated"));
     assert_eq!(t.store.pr("gh-9").unwrap().branch, "recur/original-gh-head");
 

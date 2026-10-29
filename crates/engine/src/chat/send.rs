@@ -2,7 +2,7 @@
 //!
 //! Per tab, sends are FIFO by ticket. A text follow-up steers a live turn
 //! (with the life lock released: Claude acks after the next tool result and
-//! switch_mode needs the lock, R6); otherwise the send waits out the live
+//! switch_mode needs the lock); otherwise the send waits out the live
 //! predecessor, applies any fork inject, registers its turn atomically with
 //! the Stop check, and runs.
 
@@ -522,7 +522,7 @@ impl Engine {
         if !retry && !resume_turn && !notice && !continuation && !isolate && imgs.is_empty() {
             let ui = if display.is_empty() { &text } else { &display };
             // Claude acks a steer after a tool result; holding the life lock
-            // across that wait deadlocks switch_mode (R6).
+            // across that wait deadlocks switch_mode.
             life.unlock();
             steered = self
                 .try_inject_chat(

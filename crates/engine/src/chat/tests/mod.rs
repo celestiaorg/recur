@@ -1,4 +1,4 @@
-//! E4 chat tests, one module per area.
+//! Chat tests, one module per area.
 
 mod cancel;
 mod checkpoint;

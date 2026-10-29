@@ -1,4 +1,4 @@
-//! Shared E4 test scaffolding: a temp project with a scripted provider, the
+//! Shared chat test scaffolding: a temp project with a scripted provider, the
 //! capture-script lookups, and small store/registry pokes.
 
 use std::sync::Arc;

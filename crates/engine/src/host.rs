@@ -3,11 +3,11 @@
 //! from MCP request tasks concurrently with loop walks; the host keeps no state
 //! of its own and routes to the running walk's control plane and the store.
 //!
-//! Ownership is per method (plan §2.4). E1 implements the loop-flow
-//! signals, E2 the chat, artifact, rename, permission, plan, skill and
-//! terminal tools, E3 the conductor hands, E4 switch_mode, create_workspace,
-//! the child tools and the Ask Recur briefing tools, E5 `open_pr` and
-//! `send_back`.
+//! Each method lives with the engine area it drives: the loop-flow signals
+//! here, the chat, artifact, rename, permission, plan, skill and terminal
+//! tools with the turn pipeline, the conductor hands with `loops`,
+//! switch_mode, create_workspace, the child tools and the Ask Recur briefing
+//! tools with `chat`, and `open_pr` and `send_back` with `prs`.
 
 pub mod backfill;
 pub mod chat;

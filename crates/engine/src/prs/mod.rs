@@ -1,8 +1,8 @@
-//! Pull requests (slice E5): Local PRs the engine owns end to end, and forge
+//! Pull requests: Local PRs the engine owns end to end, and forge
 //! PRs it mirrors through the registered [`recur_forge::Forge`] whose
 //! `pr_source` matches `Pr.source`.
 //!
-//! The engine never names a forge (R8): user-facing sentences take the
+//! The engine never names a forge: user-facing sentences take the
 //! forge's `label()`, refspecs come from `head_ref`, and comment ids, merge
 //! plans and API calls stay inside the forge.
 
@@ -75,7 +75,7 @@ pub(crate) struct SyncFlight {
     pub wait: Option<CancellationToken>,
 }
 
-/// E5's engine state.
+/// The engine's PR state.
 #[derive(Default)]
 pub(crate) struct PrState {
     /// Leftover PR-host tab key → the live worktree tab it was hoisted onto.

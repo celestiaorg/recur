@@ -1,7 +1,7 @@
 //! Restart healing of chats: agents persisted live with no turn are idled,
 //! their streaming rows closed and unfinished tool calls answered; interrupted
 //! PA*/MA tabs are queued and AutoResume continues them; a zombie live tab is
-//! healed by Stop (R14).
+//! healed by Stop.
 
 use std::collections::HashSet;
 

@@ -12,7 +12,7 @@ use crate::publish::{interrupted, status_label, terminal};
 use crate::text::rfc3339;
 
 /// The resting phase Recover writes on a loop that was in flight when the
-/// app last exited. AutoResume keys on exactly this (R14).
+/// app last exited. AutoResume keys on exactly this.
 pub const PHASE_INTERRUPTED: &str = "interrupted";
 /// The phase of an interrupted scheduled run.
 pub const PHASE_SCHEDULED_INTERRUPTED: &str = "scheduled run interrupted";

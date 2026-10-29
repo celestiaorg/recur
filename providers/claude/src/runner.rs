@@ -2,7 +2,7 @@
 //!
 //! The CLI runs in the worktree in its own process group. A single reaper
 //! task owns `wait()`; on cancel the whole group gets SIGTERM, then SIGKILL
-//! after [`crate::proc::KILL_GRACE`] (risk R12).
+//! after [`crate::proc::KILL_GRACE`].
 //!
 //! With stream-json input (steerable turns, images, prompts too large for
 //! argv) the prompt is the first stdin user message and steers follow as more

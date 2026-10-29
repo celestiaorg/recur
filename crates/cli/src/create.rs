@@ -1,4 +1,4 @@
-//! `recur bundles create` (`internal/cli/bundles_create.go`).
+//! `recur bundles create`.
 
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;

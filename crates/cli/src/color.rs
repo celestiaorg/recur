@@ -1,4 +1,4 @@
-//! Terminal color decisions (`internal/cli/color.go`).
+//! Terminal color decisions.
 
 use std::os::unix::fs::FileTypeExt;
 

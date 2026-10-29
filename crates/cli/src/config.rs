@@ -1,8 +1,8 @@
-//! Viper-equivalent config for the CLI (`internal/cli/config.go`).
+//! CLI config.
 //!
 //! `bundles-dir` precedence: the `--bundles-dir` flag when set, then a
 //! non-empty `$RECUR_BUNDLES_DIR`, then `bundles-dir` in the first config
-//! file Viper finds in `~/.recur` (parsed as YAML), then
+//! file found in `~/.recur` (parsed as YAML), then
 //! `~/.recur/bundles`.
 
 use recur_domain::path;
@@ -10,7 +10,7 @@ use yaml_rust2::{Yaml, YamlLoader};
 
 use crate::paths;
 
-/// Viper's `SupportedExts`, in its search order.
+/// Config file extensions, in search order.
 const SUPPORTED_EXTS: [&str; 12] = [
     "json",
     "toml",
@@ -26,12 +26,12 @@ const SUPPORTED_EXTS: [&str; 12] = [
     "ini",
 ];
 
-/// `initConfig`: fails only when the home dir is unknown.
+/// Fails only when the home dir is unknown.
 pub fn init() -> Result<(), String> {
     paths::user_home_dir().map(|_| ())
 }
 
-/// `viper.GetString("bundles-dir")`. `flag` is the flag value when changed.
+/// The `bundles-dir` setting. `flag` is the `--bundles-dir` value when set.
 pub fn bundles_dir_setting(flag: Option<&str>) -> Result<String, String> {
     if let Some(v) = flag {
         return Ok(v.to_string());
@@ -48,7 +48,7 @@ pub fn bundles_dir_setting(flag: Option<&str>) -> Result<String, String> {
     Ok(path::join(&[&home, ".recur", "bundles"]))
 }
 
-/// `bundlesDir()`: the setting (created), or the store default when blank.
+/// The setting (created), or the store default when blank.
 pub fn bundles_dir(flag: Option<&str>) -> Result<String, String> {
     let d = bundles_dir_setting(flag)?;
     let d = d.trim();
@@ -59,7 +59,7 @@ pub fn bundles_dir(flag: Option<&str>) -> Result<String, String> {
     paths::user_bundles_dir()
 }
 
-/// Viper's config search in `dir` for `config.<ext>` then `config`.
+/// The first `config.<ext>`, then `config`, in `dir`.
 fn find_config_file(dir: &str) -> Option<String> {
     SUPPORTED_EXTS
         .iter()
@@ -75,7 +75,7 @@ fn config_file_value(dir: &str, key: &str) -> Option<String> {
     let Some(Yaml::Hash(map)) = docs.into_iter().next() else {
         return None;
     };
-    // Viper lowercases config keys; the last case-variant wins.
+    // Keys match case-insensitively; the last case-variant wins.
     let mut found = None;
     for (k, v) in map {
         if let Yaml::String(k) = k
@@ -87,7 +87,7 @@ fn config_file_value(dir: &str, key: &str) -> Option<String> {
     yaml_to_string(&found?)
 }
 
-/// `cast.ToString` for YAML scalars; other kinds read as unset.
+/// YAML scalars as strings; other kinds read as unset.
 fn yaml_to_string(v: &Yaml) -> Option<String> {
     Some(match v {
         Yaml::String(s) => s.clone(),

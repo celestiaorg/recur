@@ -1,5 +1,4 @@
-//! Bundle target resolution for `bundles test` / `bundles lint`
-//! (`internal/cli/resolve.go`).
+//! Bundle target resolution for `bundles test` / `bundles lint`.
 
 use recur_domain::path;
 

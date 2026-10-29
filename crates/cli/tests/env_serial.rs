@@ -1,4 +1,4 @@
-//! The `internal/cli` tests that change the process environment
+//! The CLI tests that change the process environment
 //! (`RECUR_DATA_DIR`, `RECUR_BUNDLES_DIR`, `PATH`), serialized by a lock in
 //! their own test binary.
 
@@ -260,7 +260,7 @@ fn bundles_dir_flag_beats_env() {
 }
 
 #[test]
-fn launch_failure_reports_go_text() {
+fn launch_failure_reports_hint() {
     let _l = lock();
     let (_d, _g) = short_data_dir();
     let _a = set_env("RECUR_APP", "/definitely/missing/recur");

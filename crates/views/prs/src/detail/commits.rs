@@ -22,6 +22,22 @@ use super::PrDetail;
 use super::conversation::commit_check;
 use crate::style::hsla;
 
+/// The commits pane's padding, above the list.
+const PANE_PAD: f32 = 18.;
+/// A `commit_row`: 11px padding around a 12.5px message and a 10px byline at 1.45 line height,
+/// and its top border. The last row adds its bottom border.
+// simplify: rows are assumed one height; a byline that wraps (a very narrow pane) makes the
+// spacers drift. Measure laid-out rows (as the review stack does) if that shows up.
+const ROW_H: f32 = 57.625;
+
+/// The rows within a viewport of the visible ones, `scroll` px past the list's top in a
+/// viewport `h` tall: `(first, end)`. Long PRs lay out the rows on screen, not every commit.
+fn row_window(scroll: f32, h: f32, n: usize) -> (usize, usize) {
+    let from = ((scroll - h) / ROW_H).floor().max(0.) as usize;
+    let to = ((scroll + 2. * h) / ROW_H).ceil().max(0.) as usize;
+    (from.min(n), to.min(n).max(from.min(n)))
+}
+
 impl PrDetail {
     /// `.tl-verified` and `commitCheck` after a commit's message.
     fn commit_marks(
@@ -190,7 +206,7 @@ impl PrDetail {
             .w_full()
             .max_w(px(if detail { 1560. } else { 840. }))
             .mx_auto()
-            .p(px(18.))
+            .p(px(PANE_PAD))
             .flex()
             .flex_col();
         let Some(pr) = pr else {
@@ -203,11 +219,22 @@ impl PrDetail {
             }
             None => {
                 let n = commits.len();
+                let scroll = -f32::from(self.commits_scroll.offset().y);
+                let vp = f32::from(self.commits_scroll.bounds().size.height);
+                let vp = if vp > 0. {
+                    vp
+                } else {
+                    f32::from(window.viewport_size().height)
+                };
+                let (first, end) = row_window(scroll - PANE_PAD, vp, n);
                 let mut list = div()
                     .debug_selector(|| "commits-list".into())
                     .flex()
                     .flex_col();
-                for (i, c) in commits.iter().enumerate() {
+                if first > 0 {
+                    list = list.child(div().flex_none().h(px(first as f32 * ROW_H)));
+                }
+                for (i, c) in commits.iter().enumerate().take(end).skip(first) {
                     let sha = commit_sha(c);
                     let opts = RowOpts {
                         id: SharedString::from(format!("commit-{i}")),
@@ -234,6 +261,9 @@ impl PrDetail {
                         }),
                         cx,
                     ));
+                }
+                if end < n {
+                    list = list.child(div().flex_none().h(px((n - end) as f32 * ROW_H + 1.)));
                 }
                 let hint = if pr.source == PrSource::GitHub {
                     "Commits on this pull request. Click any to see its diff."

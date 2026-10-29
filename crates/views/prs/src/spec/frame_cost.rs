@@ -6,7 +6,9 @@ use std::collections::BTreeMap;
 use gpui::TestAppContext;
 use recur_view_core::{PrReviewKind, Topics};
 
-use super::harness::{S, plain};
+use serde_json::json;
+
+use super::harness::{S, patch_pr, plain, plain_with};
 
 fn renders(name: &str, counts: &BTreeMap<&'static str, u32>) -> u32 {
     counts
@@ -231,4 +233,57 @@ async fn a_key_that_empties_the_comment_box_leaves_the_conversation_alone(cx: &m
         "{counts:?}"
     );
     assert_quiet("emptying key", &CONVERSATION, &counts);
+}
+
+/// A PR with a thousand commits lays out the rows on screen, not every commit, so a PR detail
+/// render (a hover, a store sweep, a pending check's spinner) stays cheap. The rows off screen
+/// keep their place: scrolled to the end, the last commit shows where the list ends.
+#[gpui::test]
+async fn a_pr_with_many_commits_lays_out_the_visible_rows_only(cx: &mut TestAppContext) {
+    let base = recur_services::mock::fixtures::seed()
+        .pr_by_id("482")
+        .unwrap()["commits"]
+        .clone();
+    let base = base.as_array().unwrap();
+    let many: Vec<_> = (0..1000)
+        .map(|i| {
+            let mut c = base[i % base.len()].clone();
+            c["hash"] = json!(format!("{i:07x}"));
+            c["message"] = json!(format!("commit {i}"));
+            c
+        })
+        .collect();
+    let mut s = plain_with(cx, move |sd| {
+        patch_pr(sd, "482", json!({ "commits": many }))
+    });
+    s.open_pr("482");
+    s.tab("Commits");
+    let a = s.bounds("commit:commit 0").expect("first row");
+    let b = s.bounds("commit:commit 8").expect("ninth row");
+    assert_eq!(
+        f32::from(b.origin.y - a.origin.y),
+        8. * 57.625,
+        "row height"
+    );
+    assert!(!s.has("commit:commit 100"), "an off-screen row laid out");
+
+    let d =
+        s.cx.update(|_, cx| crate::detail::spec_handle::current(cx))
+            .expect("pr detail");
+    s.cx.update(|_, cx| {
+        d.update(cx, |d, cx| {
+            let max = d.commits_scroll.max_offset().y;
+            d.commits_scroll.set_offset(gpui::point(gpui::px(0.), -max));
+            cx.notify();
+        })
+    });
+    s.settle();
+    assert!(!s.has("commit:commit 0"), "a row scrolled away laid out");
+    let last = s.bounds("commit:commit 999").expect("last row");
+    let pane = s.bounds("prpane:commits:fade-top").expect("pane");
+    let gap = f32::from(pane.bottom() - last.bottom());
+    assert!(
+        gap > 0. && gap < 60.,
+        "the last row ends {gap}px above the pane's end"
+    );
 }

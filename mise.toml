@@ -3,7 +3,10 @@
 # rust-toolchain.toml.
 
 [tools]
-node = "22.23.4"
+# mr-boxington (mbx) shares cargo build output across worktrees.
+rust = { version = "1.95", mr_boxington = true }
+mr-boxington = "1.28.0"
+node = "24.22.2"
 pnpm = "10.34.3"
 nfpm = "2.48.0"
 # uv lets mise install dmgbuild (macOS DMG layout) without a system Python.

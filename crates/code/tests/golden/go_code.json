@@ -2197,7 +2197,6 @@
       "abcd"
     ],
     "ÜberThing camelCase snake_case CONST": [
-      "berThing",
       "camelCase",
       "snake_case",
       "CONST"

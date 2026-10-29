@@ -801,7 +801,7 @@ fn search_opts_pages_and_matches_case() {
     .unwrap_err();
     assert!(
         bad.to_string()
-            .starts_with("invalid regex: error parsing regexp: "),
+            .starts_with("invalid regex: regex parse error"),
         "{bad}"
     );
 }

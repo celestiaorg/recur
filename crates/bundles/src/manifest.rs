@@ -9,7 +9,6 @@ use recur_domain::path;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::go;
 use crate::grammar::{
     Grammar, TerminalTheme, Theme, parse_grammars, parse_terminal_themes, parse_themes,
 };
@@ -825,7 +824,7 @@ fn parse_expand_actions(
         )?;
         e.match_pattern = e.match_pattern.trim().to_string();
         if !e.match_pattern.is_empty() {
-            let re = go::compile_regexp(&e.match_pattern)
+            let re = regex::Regex::new(&e.match_pattern)
                 .map_err(|msg| err!("expand {id}: match: {msg}"))?;
             e.match_re = Some(re);
         }

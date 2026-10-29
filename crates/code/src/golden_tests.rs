@@ -94,13 +94,10 @@ fn search_matches_go() {
             }
             Err(e) => {
                 assert!(!c.error.is_empty(), "{:?}: unexpected error {e}", c.query);
-                // Go's regexp and the regex crate word parse errors
-                // differently; the prefix is what the UI shows.
                 assert!(
                     e.to_string()
-                        .starts_with("invalid regex: error parsing regexp: ")
+                        .starts_with("invalid regex: regex parse error")
                 );
-                assert!(c.error.starts_with("invalid regex: error parsing regexp: "));
             }
         }
     }

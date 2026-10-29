@@ -602,11 +602,15 @@ timeoutMs = 4000         # default 4s, cap 30s
 [[expand]]
 id = "recur.linear.expand"
 name = "Linear issue"
-match = '''(?i)^(https?://\S*linear\.app\S*|…)'''  # RE2; compiled at parse
+match = '''(?i)^(https?://\S*linear\.app\S*|…)'''  # Rust regex; compiled at parse
 interpreter = "shebang"
 script = "src/linear.sh"
 timeoutMs = 15000        # default 15s
 ```
+
+`match` uses the Rust [`regex` crate syntax](https://docs.rs/regex/latest/regex/#syntax).
+Classes like `\d \s \w \b` are Unicode-aware; wrap them in `(?-u:…)` (or start
+the pattern with `(?-u)`) for ASCII-only. `\Q…\E` quoting is not supported.
 
 Empty `match` means the host never auto-runs that expander. Bad regex is a
 parse/lint error. `BundleService.SearchPalette` / `ExpandGoal` inject that

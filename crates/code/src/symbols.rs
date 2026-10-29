@@ -11,15 +11,15 @@ use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{Error, Result};
-use crate::gore;
 use crate::langs::is_source_file;
 use crate::outline::{filepath_ext, outline, outline_line};
 use crate::root::{path_str, rel_slash_str, skip_dir};
 use crate::scan::scan_lines;
 use crate::walk::{Flow, walk_dir};
 
-static IDENT_RE: LazyLock<Regex> =
-    LazyLock::new(|| gore::must(r"\b([A-Z][A-Za-z0-9_]{2,}|[a-z][A-Za-z0-9_]{3,})\b"));
+static IDENT_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\b([A-Z][A-Za-z0-9_]{2,}|[a-z][A-Za-z0-9_]{3,})\b").expect("ident pattern")
+});
 
 static IS_IDENT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[\p{L}_][\p{L}\p{Nd}_]*$").expect("ident pattern"));
@@ -95,8 +95,9 @@ pub fn index_symbols(
     if wanted.is_empty() {
         return Ok(idx);
     }
-    let quoted: Vec<String> = wanted.iter().map(|n| gore::quote_meta(n)).collect();
-    let word = gore::compile(&format!(r"\b(?:{})\b", quoted.join("|"))).map_err(Error::Msg)?;
+    let quoted: Vec<String> = wanted.iter().map(|n| regex::escape(n)).collect();
+    let word = Regex::new(&format!(r"\b(?:{})\b", quoted.join("|")))
+        .map_err(|e| Error::Msg(e.to_string()))?;
     let mut saturated = 0;
     walk_source(cancel, root, |rel, full| {
         let ext = filepath_ext(rel).to_lowercase();

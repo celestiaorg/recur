@@ -11,7 +11,6 @@ use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{Error, Result};
-use crate::gore;
 use crate::root::{path_str, rel_slash_str, skip_dir, skip_file};
 use crate::scan::scan_lines;
 use crate::walk::{Flow, walk_dir};
@@ -166,7 +165,7 @@ impl Matcher {
 
 fn compile_query(q: &str, case_sensitive: bool) -> Result<Regex> {
     let flags = if case_sensitive { "" } else { "(?i)" };
-    gore::compile(&format!("{flags}{q}")).map_err(|e| Error::msg(format!("invalid regex: {e}")))
+    Regex::new(&format!("{flags}{q}")).map_err(|e| Error::msg(format!("invalid regex: {e}")))
 }
 
 /// `*` and `?` globs. The pattern is tried against the whole repo-relative

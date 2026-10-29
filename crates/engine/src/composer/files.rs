@@ -1,29 +1,27 @@
-//! `@path[:line[:col][-line[:col]]]` mentions (Go `file_mentions.go`): the
-//! attached-files system instruction mapping absolute paths to the short
-//! chips left in the body.
+//! `@path[:line[:col][-line[:col]]]` mentions: the attached-files system
+//! instruction mapping absolute paths to the short chips left in the body.
 
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
-use recur_bundles::go;
 use recur_domain::path;
 use regex::Regex;
 
-/// Workspace file mentions. The left boundary is checked by hand (RE2 has
+/// Workspace file mentions. The left boundary is checked by hand (`regex` has
 /// no lookbehind). Keep in sync with the frontend `FILE_AT_RE`.
 pub const FILE_AT_PATTERN: &str = r"@((?:/(?:[^\s@:]+(?:/[^\s@:]+)*)|(?:[\w.-]+/)+[\w./+-]+|[\w.-]+/|[\w.-]+\.[A-Za-z][\w.-]*|\.[A-Za-z0-9_][\w.-]*)(?::\d+(?::\d+)?(?:-\d+(?::\d+)?)?)?)";
 
 pub(crate) static FILE_AT_RE: LazyLock<Regex> =
-    LazyLock::new(|| go::compile_regexp(FILE_AT_PATTERN).expect("file mention pattern"));
+    LazyLock::new(|| Regex::new(FILE_AT_PATTERN).expect("file mention pattern"));
 
 /// The loc suffix: `[:line[:col][-line[:col]]]`.
 static FILE_LOC_RE: LazyLock<Regex> = LazyLock::new(|| {
-    go::compile_regexp(r":(\d+)(?::(\d+))?(?:-(\d+)(?::(\d+))?)?$").expect("file loc pattern")
+    Regex::new(r":(\d+)(?::(\d+))?(?:-(\d+)(?::(\d+))?)?$").expect("file loc pattern")
 });
 
 /// `@token` not covered above (bare dir names like `@src`); existence-gated.
 static LOOSE_AT_RE: LazyLock<Regex> =
-    LazyLock::new(|| go::compile_regexp(r"@([^\s@]+)").expect("loose mention pattern"));
+    LazyLock::new(|| Regex::new(r"@([^\s@]+)").expect("loose mention pattern"));
 
 /// One resolved file or directory mention.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

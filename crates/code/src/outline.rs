@@ -11,7 +11,6 @@ use regex::Regex;
 
 use crate::error::{Error, Result};
 use crate::file::image_mime;
-use crate::gore::must;
 use crate::root::{path_str, safe_join_str};
 use crate::scan::{ScanError, scan_lines};
 
@@ -30,29 +29,35 @@ struct Rules {
 }
 
 static RULES: LazyLock<Rules> = LazyLock::new(|| Rules {
-    go_func: must(r"^func\s+(\([^)]+\)\s+)?([A-Za-z_][\w]*)\s*\("),
-    go_type: must(r"^type\s+([A-Za-z_][\w]*)\s+"),
-    go_const: must(r"^const\s+([A-Za-z_][\w]*)\s*="),
-    go_var: must(r"^var\s+([A-Za-z_][\w]*)\s"),
-    ts_func: must(TS_FUNC),
-    ts_method: must(r"^\s+(?:async\s+)?([A-Za-z_][\w]*)\s*\([^)]*\)\s*[{:]"),
-    svelte_exp: must(r"^(?:export\s+)?(?:let|const)\s+([A-Za-z_][\w]*)"),
+    go_func: Regex::new(r"^func\s+(\([^)]+\)\s+)?([A-Za-z_][\w]*)\s*\(").expect("outline pattern"),
+    go_type: Regex::new(r"^type\s+([A-Za-z_][\w]*)\s+").expect("outline pattern"),
+    go_const: Regex::new(r"^const\s+([A-Za-z_][\w]*)\s*=").expect("outline pattern"),
+    go_var: Regex::new(r"^var\s+([A-Za-z_][\w]*)\s").expect("outline pattern"),
+    ts_func: Regex::new(TS_FUNC).expect("outline pattern"),
+    ts_method: Regex::new(r"^\s+(?:async\s+)?([A-Za-z_][\w]*)\s*\([^)]*\)\s*[{:]")
+        .expect("outline pattern"),
+    svelte_exp: Regex::new(r"^(?:export\s+)?(?:let|const)\s+([A-Za-z_][\w]*)")
+        .expect("outline pattern"),
     ts: vec![
-        (must(TS_FUNC), "func"),
+        (Regex::new(TS_FUNC).expect("outline pattern"), "func"),
         (
-            must(r"^(?:export\s+)?(?:abstract\s+)?class\s+([A-Za-z_][\w]*)"),
+            Regex::new(r"^(?:export\s+)?(?:abstract\s+)?class\s+([A-Za-z_][\w]*)")
+                .expect("outline pattern"),
             "class",
         ),
         (
-            must(r"^(?:export\s+)?(?:type|interface)\s+([A-Za-z_][\w]*)"),
+            Regex::new(r"^(?:export\s+)?(?:type|interface)\s+([A-Za-z_][\w]*)")
+                .expect("outline pattern"),
             "type",
         ),
         (
-            must(r"^(?:export\s+)?(?:const|let)\s+([A-Za-z_][\w]*)\s*=\s*(?:async\s*)?\("),
+            Regex::new(r"^(?:export\s+)?(?:const|let)\s+([A-Za-z_][\w]*)\s*=\s*(?:async\s*)?\(")
+                .expect("outline pattern"),
             "func",
         ),
         (
-            must(r"^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_][\w]*)\s*[:=]"),
+            Regex::new(r"^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_][\w]*)\s*[:=]")
+                .expect("outline pattern"),
             "const",
         ),
     ],
@@ -108,7 +113,7 @@ const LUA_FUNC: &str = r"^(?:local\s+)?function\s+([A-Za-z_][\w.]*)";
 type ExtRules = Vec<(&'static [&'static str], Vec<(Regex, &'static str)>)>;
 
 static EXT_RULES: LazyLock<ExtRules> = LazyLock::new(|| {
-    let r = |p: &str, kind: &'static str| (must(p), kind);
+    let r = |p: &str, kind: &'static str| (Regex::new(p).expect("outline pattern"), kind);
     vec![
         (&[".py"][..], vec![r(PY_DEF, "func"), r(PY_CLASS, "class")]),
         (

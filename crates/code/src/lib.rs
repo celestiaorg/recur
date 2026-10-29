@@ -21,7 +21,6 @@ mod files;
 mod filesearch;
 pub mod fuzzy;
 pub mod glob;
-mod gore;
 mod gostr;
 mod langs;
 pub mod observe;

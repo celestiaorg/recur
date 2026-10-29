@@ -1,5 +1,5 @@
 //! Ordered, versioned schema migrations: the `NNNN_name.sql` files under
-//! `internal/store/migrations/`, embedded from that path, applied with the
+//! `migrations/` in this crate, embedded at build time, applied with the
 //! same `__migrations` bookkeeping as the Go app.
 //!
 //! Never edit a shipped migration in place (a deployed database has recorded
@@ -12,8 +12,7 @@ use rusqlite::Connection;
 
 use crate::error::{Error, Result, SqlContext as _};
 
-static MIGRATION_FILES: Dir<'_> =
-    include_dir!("$CARGO_MANIFEST_DIR/../../../internal/store/migrations");
+static MIGRATION_FILES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/migrations");
 
 /// One parsed migration file.
 #[derive(Debug, Clone)]

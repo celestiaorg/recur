@@ -16,6 +16,7 @@ build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 # Compiled by `wails3 generate icons` from appicon.icon (actool); non-deterministic
 # across machines/worktrees, so tracking it just dirties every `task dev`.
 build/darwin/Assets.car
+rust/build/darwin/Assets.car
 .env
 .env.local
 .recur/.env

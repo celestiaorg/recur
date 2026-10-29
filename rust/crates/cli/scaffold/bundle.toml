@@ -1,0 +1,58 @@
+[bundle]
+name = "{{BUNDLE_NAME}}"
+id = "{{BUNDLE_ID}}"
+version = "0.1.0"
+author = ""
+
+# --- typescript (esbuild → Worker) -----------------------------------------
+
+[[command]]
+id = "{{TS_CMD_ID}}"
+name = "Uppercase Selection"
+category = "{{BUNDLE_NAME}}"
+order = 10
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+# keyEquivalent = "cmd+shift+u"  # macOS: cmd/ctrl/opt/shift/fn + key; app chords win
+# language = "html"              # scratch-tab highlighter when output = newDocument
+# openInPreview = true           # open scratch on Preview chip (html/md/svg)
+interpreter = "typescript"
+script = "src/uppercase.ts"
+
+# --- shebang (OS subprocess) -----------------------------------------------
+
+[[command]]
+id = "{{SH_CMD_ID}}"
+name = "Prefix Lines"
+category = "{{BUNDLE_NAME}}"
+order = 20
+input = "selection"
+fallbackInput = "document"
+output = "replaceInput"
+triggers = ["palette"]
+interpreter = "shebang"
+script = "bin/prefix-lines.sh"
+
+# --- snippets (optional) ---------------------------------------------------
+# [[snippet]]
+# id = "{{BUNDLE_ID}}.ife"
+# name = "If"
+# tabTrigger = "ife"
+# # keyEquivalent = "shift+cmd+w"
+# scope = "source.go"
+# body = '''
+# if ${1:condition} {
+# 	$0
+# }
+# '''
+
+# --- symbols (optional; TextMate showInSymbolList) -----------------------------
+# [[symbol]]
+# id = "{{BUNDLE_ID}}.function"
+# scope = "entity.name.function"
+# kind = "func"
+# # show = false
+# # transform = 's/^func\\s+//'
+

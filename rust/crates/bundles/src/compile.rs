@@ -54,9 +54,9 @@ pub const MACRO_SDK_VERSION: &str = "8";
 /// The import path authors use in TypeScript commands.
 pub const MACRO_SDK_MODULE: &str = "@recur/sdk";
 
-/// The `@recur/sdk` module body, embedded from its Go home as is.
+/// The `@recur/sdk` module body, embedded as is.
 /// Author-facing copy: `bundles/sdk/index.ts` (kept in sync; see tests).
-pub const MACRO_SDK_SOURCE: &str = include_str!("../../../../internal/bundles/macro_sdk.ts");
+pub const MACRO_SDK_SOURCE: &str = include_str!("macro_sdk.ts");
 
 /// Whether `interp` runs as compiled TypeScript in the frontend Worker
 /// rather than as a shebang subprocess.

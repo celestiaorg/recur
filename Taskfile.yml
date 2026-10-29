@@ -173,12 +173,18 @@ tasks:
     summary: Packages the Rust port as rust/target/package/Recur Next.app, .dmg and updater .zip (macOS; UNIVERSAL=true, SIGN_IDENTITY / KEYCHAIN_PROFILE / RECUR_SIGN_IDENTITY as darwin:sign, RECUR_NEXT_UPDATE_URL turns on the updater; see rust/build/darwin/package.sh)
     platforms: [darwin]
     deps:
-      - task: common:generate:icons
+      - task: generate:icons:rust
       - task: common:generate:help-skill
     cmds:
       - rust/build/darwin/package.sh
     env:
       VERSION: '{{.VERSION}}'
+
+  generate:icons:rust:
+    summary: Compiles rust/build/appicon.icon into the Rust app's darwin/icons.icns and Assets.car
+    dir: rust/build
+    cmds:
+      - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename= -iconcomposerinput appicon.icon -macassetdir darwin
 
   linux:test:rust:
     summary: rustfmt, clippy and the Rust port's tests on Linux (natively on Linux, in rust/build/linux/Dockerfile elsewhere; WebKitGTK tests under xvfb-run)

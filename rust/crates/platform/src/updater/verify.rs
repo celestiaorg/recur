@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn shipped_public_key_parses() {
-        let pem = include_bytes!("../../../../../build/updater.key.pub");
+        let pem = include_bytes!("../../../../build/updater.key.pub");
         parse_ed25519_public(pem).expect("shipped updater key is an ed25519 PKIX PEM");
         let err = parse_ecdsa_p256_public(pem).expect_err("not ecdsa");
         assert!(

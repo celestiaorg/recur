@@ -12,7 +12,7 @@ use super::{
 };
 
 /// Pins the key release manifests are signed with (`UPDATER_SIGNING_KEY`).
-const UPDATER_PUBLIC_KEY: &[u8] = include_bytes!("../../../../../build/updater.key.pub");
+const UPDATER_PUBLIC_KEY: &[u8] = include_bytes!("../../../../build/updater.key.pub");
 
 /// Rejects releases whose manifest carries no signature. The updater only
 /// checks a signature that is present, so without this an unsigned manifest

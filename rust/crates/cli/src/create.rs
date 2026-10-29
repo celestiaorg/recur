@@ -9,7 +9,7 @@ use recur_domain::path;
 use regex::Regex;
 
 /// The `recur bundles create` template tree, embedded from its Go home.
-static SCAFFOLD: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../../internal/cli/scaffold");
+static SCAFFOLD: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/scaffold");
 
 static SAFE_BUNDLE_NAME: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("^[A-Za-z][A-Za-z0-9_-]*$").expect("name pattern"));

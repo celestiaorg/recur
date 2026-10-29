@@ -270,7 +270,7 @@ cx.spawn(async move |this, cx| {
 - No `unwrap()` on fallible I/O outside tests. No `todo!()`, `unimplemented!()` or placeholder behavior: a ported item is complete or it is not ticked.
 - Port tests with the code: each Go `_test.go` and each frontend `*.test.ts` / e2e spec scenario becomes a Rust test in the owning crate.
 - Keep modules small and named after what they do; mirror the Go file split where it reflects real boundaries, merge where it was incidental.
-- Shipped content is not copied. `bundles/`, `recur-skills/`, `internal/store/migrations/` and frontend assets (fonts, icons) are embedded from their current repo paths (`include_dir!`, `include_bytes!`). Moving them is part of promotion.
+- Shipped content is not copied. `bundles/` and `recur-skills/` are embedded from their repo paths (`include_dir!`); migrations, file icons, the emoji table and other assets live in the crate that embeds them.
 
 ## Side-by-side operation
 

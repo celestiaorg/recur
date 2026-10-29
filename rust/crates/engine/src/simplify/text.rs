@@ -3,7 +3,7 @@
 //! (https://github.com/DietrichGebert/ponytail, MIT); see [`NOTICE`].
 
 /// The MIT attribution for the adapted rails.
-pub const NOTICE: &str = include_str!("../../../../../internal/simplify/NOTICE");
+pub const NOTICE: &str = include_str!("NOTICE");
 
 /// Whether Simplify rails belong on this chat mode. Agent and Plan write or
 /// design code; Ask and Review do not (over-engineering review is the

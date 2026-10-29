@@ -171,7 +171,7 @@ fn overlay_recur_project_toml() {
     let dir = tempfile::tempdir().unwrap();
     write_raw(
         dir.path(),
-        include_str!("../../../../../internal/projfile/testdata/project.toml"),
+        include_str!("../../tests/fixtures/project.toml"),
     );
     let got = overlay(Project {
         repo_path: repo(dir.path()),

@@ -13,34 +13,32 @@ use gpui_kit::{App, IntoElement, RenderOnce, SharedString, Styled, Window, px};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-const ICONDB: &str = include_str!("../../../../frontend/src/lib/file-icons/generated/icondb.js");
-const ICONS_CSS: &str = include_str!("../../../../frontend/src/lib/file-icons/generated/icons.css");
-const COLORS_CSS: &str =
-    include_str!("../../../../frontend/src/lib/file-icons/generated/colors.css");
-const DOTENV_CSS: &str = include_str!("../../../../frontend/src/lib/file-icons/dotenv-fix.css");
-const OCTICONS_CSS: &str =
-    include_str!("../../../../frontend/src/lib/file-icons/atom-octicons.css");
+const ICONDB: &str = include_str!("../assets/file-icons/icondb.js");
+const ICONS_CSS: &str = include_str!("../assets/file-icons/icons.css");
+const COLORS_CSS: &str = include_str!("../assets/file-icons/colors.css");
+const DOTENV_CSS: &str = include_str!("../assets/file-icons/dotenv-fix.css");
+const OCTICONS_CSS: &str = include_str!("../assets/file-icons/atom-octicons.css");
 
 const FONTS: &[(&str, &[u8])] = &[
     (
         "file-icons",
-        include_bytes!("../../../../frontend/src/lib/file-icons/generated/fonts/file-icons.woff2"),
+        include_bytes!("../assets/file-icons/fonts/file-icons.woff2"),
     ),
     (
         "Octicons Regular",
-        include_bytes!("../../../../frontend/src/lib/file-icons/generated/fonts/octicons.woff2"),
+        include_bytes!("../assets/file-icons/fonts/octicons.woff2"),
     ),
     (
         "Mfizz",
-        include_bytes!("../../../../frontend/src/lib/file-icons/generated/fonts/mfixx.woff2"),
+        include_bytes!("../assets/file-icons/fonts/mfixx.woff2"),
     ),
     (
         "Devicons",
-        include_bytes!("../../../../frontend/src/lib/file-icons/generated/fonts/devopicons.woff2"),
+        include_bytes!("../assets/file-icons/fonts/devopicons.woff2"),
     ),
     (
         "FontAwesome",
-        include_bytes!("../../../../frontend/src/lib/file-icons/generated/fonts/fontawesome.woff2"),
+        include_bytes!("../assets/file-icons/fonts/fontawesome.woff2"),
     ),
 ];
 

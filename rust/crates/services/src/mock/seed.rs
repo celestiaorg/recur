@@ -1,5 +1,5 @@
-//! The mock bridge's backend state: the e2e seed (`frontend/e2e/fixtures/
-//! seed.json`, the real store seed dumped from Go) plus the keys resolvers add
+//! The mock bridge's backend state: the seed (`seed.json`, the real store
+//! seed, written by `cargo run -p recur-store --bin seeddump`) plus the keys resolvers add
 //! as they run (`chatsByLoop`, `editorSessions`, …).
 //!
 //! Workspaces and PRs live in an object arena so the two views of each
@@ -15,7 +15,7 @@ use serde_json::Value;
 
 use super::js;
 
-const SEED_JSON: &str = include_str!("../../../../../frontend/e2e/fixtures/seed.json");
+const SEED_JSON: &str = include_str!("seed.json");
 
 /// A workspace or PR object in [`Seed`]'s arena.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

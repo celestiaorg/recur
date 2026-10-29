@@ -19,18 +19,6 @@ fn pinned_sdk_version_in_pypi_url() {
     );
 }
 
-/// The Go app and this port install the same wheel and patch it with the
-/// same anchors, so a re-pin must bump both.
-#[test]
-fn pin_matches_go_app() {
-    let go = include_str!("../../../../../internal/cursor/install.go");
-    let want = format!("const pinnedSDKVersion = \"{PINNED_SDK_VERSION}\"");
-    assert!(
-        go.contains(&want),
-        "internal/cursor/install.go pins a different cursor-sdk; re-pin both per .agents/skills/repin-cursor-sdk/SKILL.md"
-    );
-}
-
 /// `wails3 task check:cursor-sdk-pin` for the Rust port: fails when PyPI's
 /// latest cursor-sdk is ahead of the pin. Network; opt in with
 /// `RECUR_CURSOR_SDK_PIN_CHECK=1 cargo test -p recur-provider-cursor check_cursor_sdk_pin_drift`.

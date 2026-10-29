@@ -21,7 +21,7 @@ use crate::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
 
 const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
 const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/views.json");
-const SEED_JSON: &str = include_str!("../../../../../frontend/e2e/fixtures/seed.json");
+const SEED_JSON: &str = include_str!("../../../services/src/mock/seed.json");
 
 /// The parts of a whole-window scene above the view crates.
 pub struct SceneHost {

@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 
 use crate::js::Re;
 
-const SHORTCODES_JSON: &str = include_str!("../../../../frontend/src/lib/emoji-shortcodes.json");
+const SHORTCODES_JSON: &str = include_str!("../assets/emoji-shortcodes.json");
 
 fn shortcodes() -> &'static HashMap<String, String> {
     static MAP: OnceLock<HashMap<String, String>> = OnceLock::new();

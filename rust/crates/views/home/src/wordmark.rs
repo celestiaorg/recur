@@ -11,7 +11,7 @@ use gpui_kit::{
 };
 use recur_ui::{Color, Theme};
 
-const PNG: &[u8] = include_bytes!("../../../../../frontend/src/assets/recur-wordmark.png");
+const PNG: &[u8] = include_bytes!("../assets/recur-wordmark.png");
 const BOX: (f32, f32) = (96., 24.);
 
 /// The PNG's alpha, row-major, with its size.

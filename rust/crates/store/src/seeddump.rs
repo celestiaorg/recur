@@ -1,4 +1,4 @@
-//! The e2e seed fixture (`frontend/e2e/fixtures/seed.json`): a seeded
+//! The seed fixture (`recur-services`' `src/mock/seed.json`): a seeded
 //! in-memory store's bound-service data as one JSON object, written like
 //! Go's `cmd/seeddump` (`json.Encoder`, two-space indent, no HTML escaping).
 //! The `seeddump` binary prints it; the UI parity harness seeds from it.

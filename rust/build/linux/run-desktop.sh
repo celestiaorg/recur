@@ -10,7 +10,7 @@ ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 : "${ARCH:?ARCH is required}"
 PORT="${VNC_PORT:-6081}"
 IMAGE="recur-next-linux-desktop:$ARCH"
-docker build -q --platform "linux/$ARCH" -t "$IMAGE" -f "$ROOT/rust/build/linux/Dockerfile.desktop" "$ROOT/build/linux" >/dev/null
+docker build -q --platform "linux/$ARCH" -t "$IMAGE" -f "$ROOT/rust/build/linux/Dockerfile.desktop" "$ROOT/rust/build/linux" >/dev/null
 docker rm -f recur-next-linux >/dev/null 2>&1 || true
 URL="http://127.0.0.1:$PORT/vnc.html?autoconnect=1&resize=scale"
 echo "Recur Next (Linux) desktop: $URL"

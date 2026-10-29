@@ -20,7 +20,7 @@ fn round_trip<T: DeserializeOwned + Serialize>(seed: &Value, key: &str) {
 #[test]
 fn seed_fixture_round_trips() {
     let seed: Value =
-        serde_json::from_str(include_str!("../../../../frontend/e2e/fixtures/seed.json")).unwrap();
+        serde_json::from_str(include_str!("../../services/src/mock/seed.json")).unwrap();
     round_trip::<Vec<Project>>(&seed, "projects");
     round_trip::<Vec<Workspace>>(&seed, "loops");
     round_trip::<Vec<Pr>>(&seed, "prs");
@@ -58,7 +58,7 @@ fn seed_fixture_round_trips() {
 #[test]
 fn seed_semantics_survive_decoding() {
     let seed: Value =
-        serde_json::from_str(include_str!("../../../../frontend/e2e/fixtures/seed.json")).unwrap();
+        serde_json::from_str(include_str!("../../services/src/mock/seed.json")).unwrap();
     let loops: Vec<Workspace> = serde_json::from_value(seed["loops"].clone()).unwrap();
     assert!(
         loops

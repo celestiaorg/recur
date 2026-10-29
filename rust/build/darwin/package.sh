@@ -43,8 +43,8 @@ else
   cp "$RUST/target/release/recur" "$RUST/target/release/recur-cli" "$APP/Contents/MacOS/"
 fi
 
-cp "$ROOT/build/darwin/icons.icns" "$APP/Contents/Resources/"
-if [ -f "$ROOT/build/darwin/Assets.car" ]; then cp "$ROOT/build/darwin/Assets.car" "$APP/Contents/Resources/"; fi
+cp "$RUST/build/darwin/icons.icns" "$APP/Contents/Resources/"
+if [ -f "$RUST/build/darwin/Assets.car" ]; then cp "$RUST/build/darwin/Assets.car" "$APP/Contents/Resources/"; fi
 cp "$RUST/build/darwin/Info.plist" "$APP/Contents/"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
@@ -65,7 +65,7 @@ codesign --verify --deep --strict "$APP"
 
 rm -f "$OUT/$NAME.dmg"
 wails3 tool package --format dmg --name "$NAME" --out "$OUT" \
-  --background "$ROOT/build/darwin/dmg-background.tiff" --volume-icon "$ROOT/build/darwin/icons.icns"
+  --background "$RUST/build/darwin/dmg-background.tiff" --volume-icon "$RUST/build/darwin/icons.icns"
 if [ -n "${SIGN_IDENTITY:-}" ]; then codesign --sign "$SIGN_IDENTITY" --timestamp "$OUT/$NAME.dmg"; fi
 if [ -n "${SIGN_IDENTITY:-}" ] && [ -n "${KEYCHAIN_PROFILE:-}" ]; then
   xcrun notarytool submit "$OUT/$NAME.dmg" --keychain-profile "$KEYCHAIN_PROFILE" --wait

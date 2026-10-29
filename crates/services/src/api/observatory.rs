@@ -4,8 +4,6 @@ use recur_domain::Finding;
 use crate::Result;
 
 /// ObservatoryService exposes Observatory UI affordances (findings today).
-///
-/// Rust port of Go `app.ObservatoryService` (`frontend/bindings/recur/internal/app/observatoryservice.ts`).
 #[async_trait]
 pub trait ObservatoryService: Send + Sync {
     /// AddFindingNote appends a human operator comment on a finding (Findings panel /

@@ -1,5 +1,5 @@
 //! The service traits over the bridge: each method encodes its arguments as
-//! the Go-shaped JSON the Svelte UI sent and dispatches by Go method name.
+//! JSON and dispatches by method name.
 
 use std::collections::BTreeMap;
 

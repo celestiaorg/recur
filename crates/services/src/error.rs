@@ -1,9 +1,7 @@
 //! The one error every service method can return.
 
-/// A failed service call: the Go method's trailing `error`, which Wails
-/// delivered to the UI as a rejected promise. Views show [`Error::message`]
-/// (the Svelte `bridgeErrorMessage`); some match on its stable wording, e.g.
-/// "worktree is not a directory" for a missing worktree.
+/// A failed service call. Views show [`Error::message`]; some match on its stable
+/// wording, e.g. "worktree is not a directory" for a missing worktree.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{message}")]
 pub struct Error {
@@ -17,7 +15,7 @@ impl Error {
         }
     }
 
-    /// Wraps any error by its display text, the way Wails marshals a Go `error`.
+    /// Wraps any error by its display text.
     pub fn from_display(err: impl std::fmt::Display) -> Self {
         Self::new(err.to_string())
     }

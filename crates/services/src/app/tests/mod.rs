@@ -1,7 +1,6 @@
-//! Ports of `internal/app/*_test.go` (the SV acceptance gate) over the real
-//! services: a seeded in-memory store, a temp data dir, a scripted provider
-//! pinned for every turn (Go `SetRunner(&ScriptedRunner{})`), the GitHub
-//! forge with no `gh` (Go CI without gh), and fake issue trackers.
+//! Service tests (the SV acceptance gate) over the real services: a seeded
+//! in-memory store, a temp data dir, a scripted provider pinned for every turn,
+//! the GitHub forge with no `gh`, and fake issue trackers.
 
 mod assets;
 mod bundle;
@@ -52,8 +51,8 @@ pub(super) struct Fx {
 }
 
 pub(super) struct FxOpts {
-    /// A SQLite store under the fixture root (Go `store.New()`); else the
-    /// demo-seeded in-memory store.
+    /// A SQLite store under the fixture root; else the demo-seeded in-memory
+    /// store.
     pub file_store: bool,
     pub provider: Option<Arc<dyn Provider>>,
     pub forges: Option<Vec<Arc<dyn Forge>>>,
@@ -70,7 +69,7 @@ impl Default for FxOpts {
 }
 
 impl Fx {
-    /// Go `newTestServices`: the demo-seeded in-memory store.
+    /// The demo-seeded in-memory store.
     pub async fn new() -> Self {
         Self::with(FxOpts::default()).await
     }
@@ -110,8 +109,8 @@ impl Fx {
         }
     }
 
-    /// Go's second `NewServices(eng)` over the same store and data dir (a
-    /// restart): fresh terminal, shell and editor caches.
+    /// Second services over the same store and data dir (a restart): fresh
+    /// terminal, shell and editor caches.
     pub async fn reopen(&self) -> Arc<AppServices> {
         let config = self.svc.config().clone();
         let opts = test_options(
@@ -127,7 +126,7 @@ impl Fx {
         &self.svc.engine.store
     }
 
-    /// A temp dir that lives as long as the fixture (Go `t.TempDir()`).
+    /// A temp dir that lives as long as the fixture.
     pub fn temp(&self) -> String {
         let d = tempfile::tempdir().expect("tempdir");
         let p = d.path().canonicalize().expect("canonical");
@@ -135,7 +134,7 @@ impl Fx {
         p.to_string_lossy().into_owned()
     }
 
-    /// Go `initGitRepo`: one commit on main.
+    /// A repo with one commit on main.
     pub fn init_git_repo(&self) -> String {
         let dir = self.temp();
         git(&dir, &["init", "-b", "main"]);
@@ -147,7 +146,7 @@ impl Fx {
         dir
     }
 
-    /// Go `initGitRepoWithRemote`: a clone of a bare upstream.
+    /// A clone of a bare upstream.
     pub fn init_git_repo_with_remote(&self) -> (String, String) {
         let bare = format!("{}/upstream.git", self.temp());
         let seed = self.temp();
@@ -165,7 +164,7 @@ impl Fx {
         (clone, bare)
     }
 
-    /// Go `svcAddProject`: project `p` on `repo` with base main.
+    /// Adds project `p` on `repo` with base main.
     pub fn add_project(&self, repo: &str) -> String {
         self.store()
             .add_project(Project {
@@ -179,7 +178,7 @@ impl Fx {
             .id
     }
 
-    /// Go `waitWorkspaceReady`: the background `git worktree add` landed and the allocation
+    /// Ready once the background `git worktree add` landed and the allocation
     /// finished, including its tail that dispatches a run stamped meanwhile; a test that
     /// stamps one before then races that dispatch.
     pub async fn wait_ready(&self, id: &str) -> Workspace {
@@ -201,7 +200,7 @@ impl Fx {
         panic!("timed out waiting for workspace worktree");
     }
 
-    /// A second clone of `bare` with the test identity (Go's `other`).
+    /// A second clone of `bare` with the test identity.
     pub fn clone_other(&self, bare: &str) -> String {
         let other = format!("{}/other", self.temp());
         git(&self.temp(), &["clone", bare, &other]);

@@ -1,6 +1,6 @@
-//! The engine bus onto the app's events (Go `main.go`'s `Bus → Wails emitter`
-//! subscriber) and the services' own bus subscriber (Go `NewServices`): the
-//! file-index lifecycle and the per-workspace caches dropped with a workspace.
+//! The engine bus onto the app's events and the services' own bus subscriber:
+//! the file-index lifecycle and the per-workspace caches dropped with a
+//! workspace.
 
 use std::sync::{Arc, Weak};
 
@@ -50,7 +50,7 @@ pub(super) fn attach(svc: &Arc<AppServices>) {
     });
 
     // File-index work that stats the disk or reads the watched workspace runs
-    // off the publisher (Go ran it in the bus goroutine).
+    // off the publisher.
     let mut rx = svc.engine.bus.subscribe();
     let weak = Arc::downgrade(svc);
     tokio::spawn(async move {

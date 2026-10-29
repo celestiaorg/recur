@@ -1,8 +1,7 @@
-//! The asset routes `main.go` mounted as Wails asset middleware (Go
-//! `fileserver.go`, `serveWorkspaceData`, the `/gh-image` handler), served
-//! through [`AssetsService`] for a UI that has no webview. Statuses and
-//! error text match the HTTP handlers; ranges and `HEAD` have no native
-//! caller and are not served.
+//! The app's asset routes (workspace data, worktree and external files, the
+//! `/gh-image` handler), served through [`AssetsService`] for a UI that has no
+//! webview. Statuses and error text match the HTTP handlers; ranges and `HEAD`
+//! have no native caller and are not served.
 
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
@@ -15,9 +14,8 @@ use recur_domain::path;
 use super::AppServices;
 use crate::api::{Asset, AssetError, AssetsService};
 
-/// Whether TIFFs are served as PNG. Go transcoded where the webview could
-/// not decode TIFF (everything but WKWebView); the native image decoder
-/// cannot either, so it is on everywhere. Tests turn it off.
+/// Whether TIFFs are served as PNG. The native image decoder cannot decode
+/// TIFF, so it is on everywhere. Tests turn it off.
 static TRANSCODE_TIFF: AtomicBool = AtomicBool::new(true);
 
 /// A small compressed TIFF must not balloon into gigabytes of RGBA.
@@ -38,7 +36,7 @@ fn no_cache(content_type: impl Into<String>, body: Vec<u8>) -> Asset {
     }
 }
 
-/// Go `writeTIFFAsPNG`: the file is not modified.
+/// A TIFF transcoded to PNG; the file is not modified.
 fn tiff_as_png(data: &[u8]) -> Served {
     let fail = |e: String| AssetError::new(415, e);
     let dec = image::codecs::tiff::TiffDecoder::new(Cursor::new(data))
@@ -94,7 +92,7 @@ fn serve_prepared(abs: &Path, mime: &str) -> Served {
     Ok(no_cache(mime, body))
 }
 
-/// Go `mime.TypeByExtension` for the files workspaces store (attachments,
+/// The MIME type by extension for the files workspaces store (attachments,
 /// screenshots, artifacts), else a content sniff.
 fn data_content_type(path: &Path, body: &[u8]) -> String {
     let ext = path
@@ -311,7 +309,7 @@ impl AppServices {
     }
 }
 
-/// Go `url.Values.Get`: the first value of a key, decoded.
+/// Query parameters, decoded; a key's first value wins.
 struct Query(Vec<(String, String)>);
 
 impl Query {

@@ -1,4 +1,4 @@
-//! Every service DTO decodes Go's `json.Marshal` output and re-encodes it
+//! Every service DTO decodes its fixture JSON and re-encodes it
 //! to an equal JSON value. Fixtures come from tests/fixtures/gen_fixtures.go.txt: a
 //! zero value, one with non-nil empty collections, and one with every field
 //! set. Types owned by lower crates (`recur-agent`, `recur-lsp`, `recur-usage`,
@@ -101,9 +101,9 @@ dto_tests! {
     lsp_session_info: SessionInfo = "SessionInfo";
 }
 
-// simplify: recur-agent's catalog types hold Go's non-omitempty `options` /
+// simplify: recur-agent's catalog types hold the non-omitempty `options` /
 // `models` as plain `Vec`, so a nil slice (`null`, the zero fixture) does not
-// decode. Go's catalog never sends nil there; switch these to `check` once
+// decode. The catalog never sends `null` there; switch these to `check` once
 // recur-agent models them as `Option<Vec<_>>`.
 #[test]
 fn flag_dimension() {

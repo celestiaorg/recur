@@ -1,8 +1,6 @@
-//! The thin services (Go `services.go`, `briefing.go`,
-//! `observatory_service.go`): agents, artifacts, escalations, permissions,
-//! questions, policy, inbox, Maestro, the briefing and Ask Recur, and
-//! findings. Each is a delegation to the store or engine with Go's error
-//! text.
+//! The thin services: agents, artifacts, escalations, permissions, questions,
+//! policy, inbox, Maestro, the briefing and Ask Recur, and findings. Each is a
+//! delegation to the store or engine with its error text.
 
 use std::collections::BTreeMap;
 
@@ -33,7 +31,7 @@ impl AppServices {
             )));
     }
 
-    /// Publishes the unread count (Go `emitInbox`).
+    /// Publishes the unread count.
     fn emit_inbox(&self) -> i64 {
         let n = self.store().unread_count() as i64;
         self.engine

@@ -3,12 +3,10 @@ use async_trait::async_trait;
 use super::{IssuesView, ShellState};
 use crate::Result;
 
-/// ShellService is the Wails-bound read/write surface for ShellState.
-/// SetShellState updates the in-memory snapshot immediately and coalesces disk
-/// writes; Flush (window close) commits any pending snapshot so a quit inside
-/// the debounce window still restores the last view.
-///
-/// Rust port of Go `app.ShellService` (`frontend/bindings/recur/internal/app/shellservice.ts`).
+/// ShellService is the read/write surface for ShellState. SetShellState updates
+/// the in-memory snapshot immediately and coalesces disk writes; Flush (window
+/// close) commits any pending snapshot so a quit inside the debounce window
+/// still restores the last view.
 #[async_trait]
 pub trait ShellService: Send + Sync {
     /// Flush writes any coalesced snapshot to disk. Called from the window-close

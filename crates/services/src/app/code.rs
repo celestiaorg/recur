@@ -1,6 +1,5 @@
-//! `CodeService` (Go `code_service.go`, `loose_files.go`, `bridge_bench.go`):
-//! the Observatory's file tree, reads and writes, search, diffs, commits and
-//! staging over the resolved workspace root.
+//! `CodeService`: the Observatory's file tree, reads and writes, search, diffs,
+//! commits and staging over the resolved workspace root.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
@@ -25,9 +24,9 @@ use crate::{Error, Result};
 const NOT_WRITABLE: &str =
     "editing is only allowed in a loop worktree — open a loop or use an external editor";
 
-/// The absolute paths the user opened that sit outside every project
-/// worktree (Go `looseFiles`). Observatory reads and writes may touch them;
-/// agent tools still go through `safe_join` and cannot.
+/// The absolute paths the user opened that sit outside every project worktree.
+/// Observatory reads and writes may touch them; agent tools still go through
+/// `safe_join` and cannot.
 #[derive(Default)]
 pub struct LooseFiles(Mutex<HashSet<PathBuf>>);
 
@@ -44,7 +43,7 @@ impl LooseFiles {
     }
 }
 
-/// Go `filepath.Clean` for an absolute path.
+/// Lexically cleans an absolute path.
 fn clean(abs: &str) -> PathBuf {
     PathBuf::from(path::clean(abs))
 }
@@ -65,9 +64,8 @@ fn worktree_missing(e: &recur_code::Error) -> bool {
 
 impl AppServices {
     /// The browse root, whether it is writable, and the base branch the
-    /// workspace (or project) was spun off, in one pass (Go `resolveScope`).
-    /// A recorded worktree that is gone is `WorktreeMissing`, never the
-    /// project checkout.
+    /// workspace (or project) was spun off, in one pass. A recorded worktree
+    /// that is gone is `WorktreeMissing`, never the project checkout.
     pub(crate) fn resolve_scope(
         &self,
         project_id: &str,
@@ -166,7 +164,7 @@ impl AppServices {
         Ok(())
     }
 
-    /// A human edit on the workspace activity feed (Go `recordHumanEdit`).
+    /// A human edit on the workspace activity feed.
     pub(crate) fn record_human_edit(&self, workspace_id: &str, text: String) {
         if workspace_id.is_empty() {
             return;

@@ -1,12 +1,11 @@
-//! Every app event reads the payload its Go emitter (or the Svelte UI)
-//! sent, and writes it back unchanged. Payloads mirror the emitters in
-//! `internal/engine`, `internal/app` and the root `*.go` files.
+//! Every app event reads the payload its emitter sent, and writes it back
+//! unchanged.
 
 use pretty_assertions::assert_eq;
 use recur_services::events::{AppEvent, EventHub, WorkspaceRef};
 use serde_json::{Value, json};
 
-/// `(name, data)` as the Go side published them.
+/// `(name, data)` as published.
 fn wire() -> Vec<(&'static str, Value)> {
     let s = |extra: Value| {
         let mut base = json!({ "workspaceId": "W", "code": "PA", "ownerCode": "MA" });
@@ -255,8 +254,7 @@ fn wire() -> Vec<(&'static str, Value)> {
     ]
 }
 
-/// Go writes a nil slice/map or a nil pointer as `null`; the typed payload
-/// reads `null` the way the frontend did (as absent / empty), so compare
+/// A `null` field reads as absent / empty in the typed payload, so compare
 /// with those dropped.
 fn without_nulls(v: Value) -> Value {
     match v {
@@ -279,8 +277,8 @@ fn every_event_round_trips() {
         let back = ev.payload();
         let expect = without_nulls(data.clone());
         let got = without_nulls(back.clone());
-        // Typed payloads fill fields Go always sent (domain types write their
-        // non-omitempty zero values); every field Go sent must come back.
+        // Typed payloads fill fields always sent (domain types write their
+        // non-omitempty zero values); every field sent must come back.
         if let (Value::Object(want), Value::Object(have)) = (&expect, &got) {
             for (k, v) in want {
                 let h = have.get(k).unwrap_or_else(|| panic!("{name}: lost {k}"));

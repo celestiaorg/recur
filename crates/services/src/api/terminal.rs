@@ -10,7 +10,7 @@ use crate::Result;
 /// The service is a thin shell over term.Manager — it resolves a workspace to a
 /// directory and otherwise forwards. The interesting behaviour (output coalescing,
 /// ack-based flow control, replay on re-attach) lives in the term package, which is
-/// deliberately free of any Wails or engine dependency.
+/// deliberately free of any UI or engine dependency.
 ///
 /// The frontend contract, per tab:
 ///
@@ -29,8 +29,6 @@ use crate::Result;
 /// Acking is not optional. A session stops reading its PTY once too many unacked
 /// bytes are outstanding, so a client that streams without acking will wedge its
 /// own shell after the first few hundred KB.
-///
-/// Rust port of Go `app.TerminalService` (`frontend/bindings/recur/internal/app/terminalservice.ts`).
 #[async_trait]
 pub trait TerminalService: Send + Sync {
     /// AckTerminal reports that n more bytes have been parsed by the renderer, which is

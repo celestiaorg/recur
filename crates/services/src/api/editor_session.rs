@@ -26,8 +26,6 @@ use crate::Result;
 /// explicit drops) and the merge happens here. Because absence in a patch means
 /// "unchanged", deletions MUST be explicit — the frontend sends a drop when a
 /// save lands or a tab closes.
-///
-/// Rust port of Go `app.EditorSessionService` (`frontend/bindings/recur/internal/app/editorsessionservice.ts`).
 #[async_trait]
 pub trait EditorSessionService: Send + Sync {
     /// ClearEditorSession deletes the stored session (last tab closed / discarded)

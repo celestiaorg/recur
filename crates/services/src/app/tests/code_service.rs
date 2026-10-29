@@ -6,8 +6,7 @@ use recur_domain::{FileDiff, Workspace};
 
 use super::{Fx, git, write};
 
-/// Go `addWorktreeWorkspace`: a worktree on `branch` off main, stored as
-/// workspace `id` of project `p`.
+/// A worktree on `branch` off main, stored as workspace `id` of project `p`.
 async fn worktree_workspace(fx: &Fx, repo: &str, id: &str, branch: &str) -> (String, String) {
     let pid = fx.add_project(repo);
     let mgr = recur_git::Manager::new(repo, &fx.temp());

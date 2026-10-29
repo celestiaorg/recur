@@ -1,8 +1,6 @@
-//! Decoding a resolver's JSON into a method's return type, the way the
-//! generated Wails bindings' `createFrom` did: `$Create.Array` / `$Create.Map`
-//! turn `null` into `[]` / `{}`, `Nullable` keeps `null`, and a struct's
-//! `createFrom(null)` throws (the call rejects). A `null` scalar reached the
-//! UI as `null`; here it is the Go zero value.
+//! Decoding a resolver's JSON into a method's return type: `null` lists and
+//! maps become `[]` / `{}`, an optional keeps `null`, a `null` struct fails
+//! the call, and a `null` scalar is its zero value.
 
 use std::collections::BTreeMap;
 

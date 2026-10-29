@@ -1,6 +1,5 @@
-//! `PRsService` (Go `services.go` PRs half): the dashboard, detail
-//! refreshes, review actions and merges over the engine, with Go's error
-//! text for each `(T, ok)` the engine returns.
+//! `PRsService`: the dashboard, detail refreshes, review actions and merges
+//! over the engine, with the error text for each `(T, ok)` the engine returns.
 
 use async_trait::async_trait;
 use recur_domain::{
@@ -34,7 +33,7 @@ impl AppServices {
     }
 
     /// Projects open findings onto the diff, writing through when anything
-    /// changed (Go `ensurePREnriched`).
+    /// changed.
     fn ensure_pr_enriched(&self, p: &mut Pr) {
         let findings = self
             .store()

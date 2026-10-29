@@ -1,6 +1,6 @@
 #![cfg(feature = "mock")]
 //! Every service method answered by the mock bridge, decoded through its
-//! typed return. The failures are exactly the calls the Svelte UI saw
+//! typed return. The failures are exactly the calls the UI saw
 //! reject: a `null` struct reply (no resolver, or a missing seed row) or a
 //! resolver's `BridgeError`.
 

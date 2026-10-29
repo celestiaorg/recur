@@ -18,7 +18,7 @@ fn st(view: &str, ws: &str) -> ShellState {
     }
 }
 
-/// Go `&ShellService{}`: nothing cached, reads from disk.
+/// Nothing cached, reads from disk.
 async fn fresh_shell(fx: &Fx) -> std::sync::Arc<dyn crate::api::ShellService> {
     fx.reopen().await.services().shell
 }

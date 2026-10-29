@@ -1,6 +1,5 @@
-//! `ProjectsService` (Go `services.go` projects half and `schedules.go`):
-//! projects and sidebar groups, base-branch pickers, copy-file previews and
-//! scheduled prompts.
+//! `ProjectsService`: projects and sidebar groups, base-branch pickers,
+//! copy-file previews and scheduled prompts.
 
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -34,7 +33,7 @@ const PROJECT_COLORS: [&str; 5] = [
     "var(--coral)",
 ];
 
-/// Branch listings share one 10 s budget (Go's `context.WithTimeout`).
+/// Branch listings share one 10 s budget.
 const BRANCH_TIMEOUT: Duration = Duration::from_secs(10);
 
 static SLUG_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("[^a-z0-9]+").expect("slug re"));
@@ -57,8 +56,8 @@ fn first_non_empty<'a>(vals: &[&'a str]) -> &'a str {
         .unwrap_or("")
 }
 
-/// Go `strings.ToUpper(string(r))` for the first rune: the simple case
-/// mapping, so a rune whose uppercase is several characters stays as is.
+/// The first rune uppercased with the simple case mapping, so a rune whose
+/// uppercase is several characters stays as is.
 fn avatar_letter(name: &str) -> String {
     let Some(c) = name.chars().next() else {
         return String::new();
@@ -70,7 +69,7 @@ fn avatar_letter(name: &str) -> String {
     }
 }
 
-/// The base branch to suggest for a checkout, bounded like Go's 10 s context.
+/// The base branch to suggest for a checkout, bounded at 10 s.
 pub(crate) async fn suggest_base_branch(repo_path: &str) -> String {
     tokio::time::timeout(
         BRANCH_TIMEOUT,
@@ -80,10 +79,10 @@ pub(crate) async fn suggest_base_branch(repo_path: &str) -> String {
     .unwrap_or_else(|_| "main".into())
 }
 
-/// The grouped base-branch picker for a checkout (Go `listBranchChoices`).
-/// `def` is promoted within its group, never prepended as its own heading.
-/// With `fold_missing` (a saved project) a configured default absent from
-/// the repo is still listed; otherwise only refs that resolve are folded in.
+/// The grouped base-branch picker for a checkout. `def` is promoted within its
+/// group, never prepended as its own heading. With `fold_missing` (a saved
+/// project) a configured default absent from the repo is still listed;
+/// otherwise only refs that resolve are folded in.
 pub(crate) async fn list_branch_choices(
     repo_path: &str,
     def: &str,
@@ -162,7 +161,7 @@ pub(crate) async fn list_branch_choices(
             append_group(remote, names);
         }
     }
-    // BTreeMap iteration is the sorted order Go applied to extra remotes.
+    // BTreeMap iteration sorts the extra remotes.
     for (remote, names) in &by_remote {
         if !remotes.contains(remote) {
             append_group(remote, names);
@@ -228,7 +227,6 @@ impl AppServices {
         Ok(())
     }
 
-    /// Go `AddProject`.
     pub(crate) async fn add_project_at(&self, mut p: Project) -> Result<Project> {
         if p.id.is_empty() {
             p.id = self.unique_project_id(&slugify(first_non_empty(&[&p.name, &p.repo_path])));
@@ -293,7 +291,7 @@ impl AppServices {
     }
 }
 
-/// The next three run times (Go `PreviewScheduledPrompt`).
+/// The next three run times.
 pub(crate) fn preview_scheduled_prompt(
     p: &ScheduledPrompt,
     now: chrono::DateTime<chrono::Utc>,

@@ -1,4 +1,4 @@
-//! The service half of Go `issues.go`: one assigned-issues list merged over
+//! The issues service: one assigned-issues list merged over
 //! the registered trackers, and tracker deep links into desktop apps.
 
 use std::time::Duration;
@@ -45,9 +45,9 @@ fn assigned_issue(i: recur_issues::AssignedIssue) -> AssignedIssue {
 }
 
 impl AppServices {
-    /// Go `ListAssignedIssues`: open issues assigned to the user plus
-    /// unassigned ones in their repos and teams, newest activity first. A
-    /// tracker that is unavailable or fails is skipped.
+    /// Open issues assigned to the user plus unassigned ones in their repos and
+    /// teams, newest activity first. A tracker that is unavailable or fails is
+    /// skipped.
     pub(crate) async fn list_assigned_issues_at(&self) -> Vec<AssignedIssue> {
         let settings = self.store().settings();
         let projects = self.store().projects().unwrap_or_default();
@@ -63,8 +63,8 @@ impl AppServices {
             .collect()
     }
 
-    /// Go `OpenLinearInApp`: opens a tracker web link in its desktop app.
-    /// False means the caller should open the browser instead.
+    /// Opens a tracker web link in its desktop app. False means the caller
+    /// should open the browser instead.
     // simplify: macOS only (`open` fails when no app handles the scheme). Add
     // an xdg-mime handler check for Linux if Linear ships a desktop build.
     pub(crate) async fn open_linear_in_app_at(&self, raw: &str) -> bool {

@@ -1,7 +1,6 @@
-//! Every service call runs on the backend runtime. Wails ran each bound call
-//! on its own goroutine; here the UI's executor (which is not a tokio
-//! context) awaits a task spawned on the runtime, so git, processes and
-//! timers work and file I/O never runs on the UI thread.
+//! Every service call runs on the backend runtime: the UI's executor (which
+//! is not a tokio context) awaits a task spawned on the runtime, so git,
+//! processes and timers work and file I/O never runs on the UI thread.
 
 use std::future::Future;
 use std::sync::Arc;
@@ -12,8 +11,7 @@ use super::AppServices;
 use crate::{Error, Result};
 
 /// Runs `$body` on the runtime with the listed arguments moved in as owned
-/// values; the call keeps running if the caller stops waiting, as a Go
-/// method without a context did.
+/// values; the call keeps running if the caller stops waiting.
 macro_rules! rt {
     ($self:ident, $($a:ident),* => |$s:ident| $body:expr) => {{
         $(#[allow(clippy::clone_on_copy, clippy::useless_conversion)] let $a = $a.to_owned();)*
@@ -21,8 +19,8 @@ macro_rules! rt {
     }};
 }
 
-/// [`rt!`] for methods that took Wails' per-call `context.Context`: dropping
-/// the call cancels `$c` and aborts the task.
+/// [`rt!`] for cancellable methods: dropping the call cancels `$c` and aborts
+/// the task.
 macro_rules! rt_ctx {
     ($self:ident, $($a:ident),* => |$s:ident, $c:ident| $body:expr) => {{
         $(#[allow(clippy::clone_on_copy, clippy::useless_conversion)] let $a = $a.to_owned();)*

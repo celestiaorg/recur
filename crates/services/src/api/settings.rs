@@ -8,7 +8,6 @@ use super::{
 use super::{CursorUsageConnect, Snapshot};
 use crate::Result;
 
-/// Rust port of Go `app.SettingsService` (`frontend/bindings/recur/internal/app/settingsservice.ts`).
 #[async_trait]
 pub trait SettingsService: Send + Sync {
     /// CancelChatGPTLogin cancels only the given sign-in attempt.

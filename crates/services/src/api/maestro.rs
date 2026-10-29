@@ -3,7 +3,6 @@ use recur_domain::{ChatAttachment, ChatItem};
 
 use crate::Result;
 
-/// Rust port of Go `app.MaestroService` (`frontend/bindings/recur/internal/app/maestroservice.ts`).
 #[async_trait]
 pub trait MaestroService: Send + Sync {
     /// CancelMaestroMessage interrupts an in-flight Maestro chat turn. No-op if
@@ -21,7 +20,7 @@ pub trait MaestroService: Send + Sync {
     /// caller's goroutine — it never blocks a running loop's goroutine. Continuity is via
     /// --resume <maestro_session> (the engine persists the session id per loop); steering
     /// (a plan/escalate MCP tool call) is applied by the engine ONLY within the rails — a
-    /// rail can never be crossed via chat (enforced in Go, not the prompt). The turn is
+    /// rail can never be crossed via chat (enforced in the engine, not the prompt). The turn is
     /// mirrored to the durable session store (GetMaestroChat reads it back).
     async fn send_maestro_message(
         &self,

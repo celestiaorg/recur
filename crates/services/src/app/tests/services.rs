@@ -65,8 +65,7 @@ async fn get_pr_omits_commit_diffs() {
     fx.close().await;
 }
 
-/// Go `TestBusFanOut`: every subscriber sees a bridged engine event, in
-/// order.
+/// Every subscriber sees a bridged engine event, in order.
 #[tokio::test(flavor = "multi_thread")]
 async fn bus_fan_out() {
     let fx = Fx::new().await;
@@ -436,8 +435,7 @@ async fn project_group_assign_and_delete() {
     fx.close().await;
 }
 
-/// Go `TestStartWorkspaceServiceEndToEnd`: StartWorkspace over a scripted
-/// provider runs to a ready PR with a live feed.
+/// StartWorkspace over a scripted provider runs to a ready PR with a live feed.
 #[tokio::test(flavor = "multi_thread")]
 async fn start_workspace_service_end_to_end() {
     let provider = NdjsonScript::new([
@@ -534,7 +532,7 @@ async fn getters_error_on_missing() {
             .is_err()
     );
     assert!(fx.s.prs.merge_pr(bogus, "").await.is_err());
-    // Go's %q in the not-found text.
+    // The not-found text quotes the id.
     assert_eq!(
         fx.s.projects.get_project(bogus).await.unwrap_err().message,
         "project \"does-not-exist\" not found"

@@ -3,7 +3,6 @@ use recur_domain::InboxItem;
 
 use crate::Result;
 
-/// Rust port of Go `app.InboxService` (`frontend/bindings/recur/internal/app/inboxservice.ts`).
 #[async_trait]
 pub trait InboxService: Send + Sync {
     async fn get_inbox(&self) -> Result<Vec<InboxItem>>;

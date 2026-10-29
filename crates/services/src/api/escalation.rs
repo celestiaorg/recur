@@ -3,7 +3,6 @@ use recur_domain::Escalation;
 
 use crate::Result;
 
-/// Rust port of Go `app.EscalationService` (`frontend/bindings/recur/internal/app/escalationservice.ts`).
 #[async_trait]
 pub trait EscalationService: Send + Sync {
     /// AnswerEscalation delivers the human's decision to the RUNNING loop and resumes it

@@ -10,7 +10,6 @@ use recur_domain::{
 use super::WorkspaceChatSelection;
 use crate::Result;
 
-/// Rust port of Go `app.WorkspacesService` (`frontend/bindings/recur/internal/app/workspacesservice.ts`).
 #[async_trait]
 #[allow(clippy::too_many_arguments)]
 pub trait WorkspacesService: Send + Sync {
@@ -212,7 +211,7 @@ pub trait WorkspacesService: Send + Sync {
 
     /// OpenWorkspacePR opens a Local (or GitHub, when the project opts in) PR from a
     /// hand-driven workspace's committed changes. Title/body may be agent-written
-    /// via mcp__recur__open_pr (OpenWorkspacePRWith); the Wails path generates a
+    /// via mcp__recur__open_pr (OpenWorkspacePRWith); the UI path generates a
     /// workspace-wide summary versus the base (same job as /open-pr). If a PR is already open, this pushes
     /// new commits and refreshes the snapshot (titlebar Push updates). force is
     /// --force-with-lease (titlebar Force push). Merge is the shared

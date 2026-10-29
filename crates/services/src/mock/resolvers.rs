@@ -1,8 +1,8 @@
-//! The base resolvers (`resolvers` in mock-bridge.ts), keyed by Go method
-//! name, in the TypeScript's order. Getters return seed data; mutations
-//! update the seed and return a shape-correct value so the UI's optimistic
-//! updates work. Where the TypeScript object literal names a method twice the
-//! later entry is the one the UI saw, and that is the one ported here.
+//! The base resolvers, keyed by method name, in the TypeScript's order. Getters
+//! return seed data; mutations update the seed and return a shape-correct value
+//! so the UI's optimistic updates work. Where the TypeScript object literal
+//! names a method twice the later entry is the one the UI saw, and that is the
+//! one ported here.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -1258,7 +1258,7 @@ pub(super) fn base() -> Table {
         let a0 = a.first().unwrap_or(&Value::Null);
         let name = or(get(a0, "name"), &json!("new-project")).clone();
         // The UI never sends `open` or `isGit` on create, so the TypeScript's
-        // `?? default` always applied; a typed caller sends Go's zero value
+        // `?? default` always applied; a typed caller sends the zero value
         // for them, which reads the same.
         let is_git = get(a0, "isGit") == Some(&Value::Bool(true))
             || !js::string(or(get(a0, "repoPath"), &json!(""))).contains("no-git");
@@ -1375,7 +1375,7 @@ pub(super) fn base() -> Table {
         let pid = get(&p, "id").cloned();
         for x in &mut s.projects {
             if get(x, "id").cloned() == pid {
-                // The argument is a whole Project in Go JSON, so a flag it omits is false.
+                // The argument is a whole Project in JSON, so a flag it omits is false.
                 let cleared: serde_json::Map<String, Value> = x
                     .as_object()
                     .into_iter()
@@ -2616,7 +2616,7 @@ pub(super) fn base() -> Table {
     t.insert("SetTerminalTitle", |_a, _s, _t| Reply::null());
     t.insert("SetActiveTerminal", |_a, _s, _t| Reply::null());
     t.insert("ReorderTerminals", |_a, _s, _t| Reply::null());
-    // SearchFiles ranks in Go in production; here it filters whatever
+    // SearchFiles ranks in the backend in production; here it filters whatever
     // ListFiles is in effect, so a ListFiles override drives @-mention menus.
     t.insert("SearchFiles", search_files);
     t.insert("SetFileIndexExclude", |_a, _s, _t| Reply::null());

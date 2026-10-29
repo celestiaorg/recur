@@ -1,6 +1,6 @@
-//! Terminal tab persistence (Go `terminal_persist.go`): each workspace's tabs
-//! and dock layout as `<data>/workspaces/<id>/terminals.json.gz`, written on
-//! a trailing debounce capped at five seconds and flushed on quit.
+//! Terminal tab persistence: each workspace's tabs and dock layout as
+//! `<data>/workspaces/<id>/terminals.json.gz`, written on a trailing debounce
+//! capped at five seconds and flushed on quit.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -44,7 +44,7 @@ pub(crate) struct PersistedTerminals {
     #[serde(skip_serializing_if = "is_zero")]
     pub beside_pct: i64,
     pub active: i64,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` is `null`.
     pub tabs: Option<Vec<PersistedTab>>,
 }
 
@@ -53,7 +53,7 @@ pub(crate) struct PersistedTerminals {
 pub(crate) struct PersistedTab {
     pub title: String,
     pub cwd: String,
-    /// Go `[]byte`: base64 in JSON, omitted when empty.
+    /// Base64 in JSON, omitted when empty.
     #[serde(skip_serializing_if = "Vec::is_empty", with = "b64")]
     pub replay: Vec<u8>,
 }
@@ -179,7 +179,7 @@ struct Inner {
     chrome: HashMap<String, Chrome>,
 }
 
-/// The debounce state (Go's `persist*` fields on `TerminalService`).
+/// The debounce state.
 pub(crate) struct Persist {
     me: Weak<AppServices>,
     handle: tokio::runtime::Handle,
@@ -255,7 +255,7 @@ impl Persist {
         }
     }
 
-    /// Stops accepting writes (Go `persistClosed`), cancelling the timer.
+    /// Stops accepting writes, cancelling the timer.
     pub(crate) fn close(&self) {
         let mut st = self.inner.lock();
         st.closed = true;
@@ -373,9 +373,8 @@ impl AppServices {
         )
     }
 
-    /// Go `TerminalService.ServiceShutdown`: persist every tab, then kill
-    /// every session's process group so a dev server cannot outlive the app
-    /// holding its port.
+    /// Persists every tab, then kills every session's process group so a dev
+    /// server cannot outlive the app holding its port.
     pub(crate) async fn terminal_shutdown(&self) {
         self.term_persist.close();
         let me = self.me();

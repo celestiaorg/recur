@@ -10,8 +10,6 @@ use crate::Result;
 
 /// BundleService discovers Recur Bundles, runs shebang commands, and compiles
 /// typescript macros for the frontend Worker (CompiledModule).
-///
-/// Rust port of Go `app.BundleService` (`frontend/bindings/recur/internal/app/bundleservice.ts`).
 #[async_trait]
 pub trait BundleService: Send + Sync {
     /// CompiledCompleteModule returns esbuild-compiled CommonJS for a typescript

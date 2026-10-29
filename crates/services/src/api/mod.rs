@@ -1,11 +1,9 @@
-//! The UI-facing service contract: one trait per former Wails-bound Go
-//! service, with the Go method names in snake_case and the Go doc comments.
+//! The UI-facing service contract: one trait per service.
 //!
-//! Every method is async and returns [`crate::Result`]: a Go `error` (or any
-//! failed call) is an [`crate::Error`], the rejected promise the Svelte UI saw.
-//! Arguments are borrowed; results are owned. Lists and maps never come back
-//! as `null` (Wails' `createFrom` turned a nil slice into `[]`), so they are
-//! plain `Vec` / `BTreeMap`. Views hold a [`Services`] and never reach past it.
+//! Every method is async and returns [`crate::Result`]: a failed call is an
+//! [`crate::Error`]. Arguments are borrowed; results are owned. Lists and maps
+//! never come back as `null`, so they are plain `Vec` / `BTreeMap`. Views hold
+//! a [`Services`] and never reach past it.
 
 mod agents;
 mod artifacts;
@@ -122,8 +120,7 @@ impl<T> Backend for T where
 {
 }
 
-/// What the app holds: every service plus the app event hub. Cheap to clone;
-/// field names follow Go's `app.Services`.
+/// What the app holds: every service plus the app event hub. Cheap to clone.
 #[derive(Clone)]
 pub struct Services {
     pub agents: Arc<dyn AgentsService>,
@@ -186,7 +183,7 @@ impl Services {
     }
 
     /// Publishes an event to every subscriber. Views use this for the events
-    /// the Svelte UI emitted itself (`menu.state`, `app.ready`, …); the desktop
+    /// views emit themselves (`menu.state`, `app.ready`, …); the desktop
     /// shell subscribes to those.
     pub fn emit(&self, event: AppEvent) {
         self.events.publish(event);

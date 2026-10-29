@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [features]
-# Whole-window parity scenes for `rust/tools/ui-parity` (`gallery`).
+# Whole-window gallery scenes (`gallery`).
 gallery = ["recur-services/mock", "recur-ui/gallery"]
 
 [dependencies]

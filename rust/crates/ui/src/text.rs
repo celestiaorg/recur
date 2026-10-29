@@ -922,7 +922,7 @@ pub struct LineMetrics {
 }
 
 /// WebKit's line box for one font, as measured in the reference engine (see
-/// `rust/docs/ui-parity.md`): ascent rounds and descent ceils to LayoutUnits (1/64 px); `normal` line
+/// `rust/docs/ui-rendering.md`): ascent rounds and descent ceils to LayoutUnits (1/64 px); `normal` line
 /// height is the rounded ascent + descent + line gap; a numeric line height truncates to a
 /// LayoutUnit; the half-leading above the text floors to a LayoutUnit.
 pub fn line_metrics(
@@ -2479,7 +2479,7 @@ mod tests {
 
     #[test]
     fn webkit_line_box_metrics() {
-        // Values WebKit reports for these samples (tools/ui-parity text/calibration).
+        // Values WebKit reports for these samples (`gallery/calibration.json`).
         let inter = |size: f32| (size * 1984. / 2048., size * 494. / 2048.);
         let check = |(a, d): (f32, f32), size: f32, lh: LineHeight, height: f32, baseline: f32| {
             let m = line_metrics(a, d, 0., size, lh);
@@ -2552,7 +2552,7 @@ mod tests {
             let (a, d) = inter(size);
             field_metrics(line_metrics(a, d, 0., size, LineHeight::Normal)).baseline
         };
-        // WebKit's placeholder baselines (tools/ui-parity probes): 14.5px sits at 13.5 where
+        // WebKit's placeholder baselines, as measured: 14.5px sits at 13.5 where
         // block text sits at 13.765625; 11px and 14px (positive half-leading) do not move.
         assert_eq!(at(14.5), 13.484375);
         assert_eq!(at(18.), 16.65625);

@@ -1,4 +1,4 @@
-//! Parity scenes: the `chat` list in `rust/tools/ui-parity/scenes.json`, built the way
+//! Parity scenes: the `chat` list in `crates/ui/gallery/scenes.json`, built the way
 //! `web/scenes/Chat.svelte` mounts AgentChat and AppChat, over `content/chat.json`.
 
 use gpui_kit::{
@@ -24,8 +24,8 @@ use crate::app_chat::AppChat;
 use crate::chat::{AgentChat, ChatHooks, ChatProps, now_ms};
 use crate::pickers::{LoopPolicyPickers, ModelPickers};
 
-const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
-const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/chat.json");
+const SCENES_JSON: &str = include_str!("../../../ui/gallery/scenes.json");
+const FIXTURES: &str = include_str!("../../../ui/gallery/content/chat.json");
 
 #[derive(Deserialize)]
 struct Specs {

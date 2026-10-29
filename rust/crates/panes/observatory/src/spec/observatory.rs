@@ -1375,7 +1375,7 @@ async fn a_long_changes_list_lays_out_the_rows_near_its_viewport(cx: &mut TestAp
 #[gpui::test]
 async fn pdf_find_opens_from_the_crumb_bar_and_takes_typing(cx: &mut TestAppContext) {
     use base64::Engine as _;
-    const PDF: &[u8] = include_bytes!("../../../../../tools/ui-parity/content/page.pdf");
+    const PDF: &[u8] = include_bytes!("../../../../ui/gallery/content/page.pdf");
     let opts = MockOptions::default()
         .resolver("ListTree", |a, _, _| {
             Reply::value(if s(a, 2).is_empty() {

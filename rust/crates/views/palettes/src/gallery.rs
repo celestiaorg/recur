@@ -1,4 +1,4 @@
-//! Parity scenes: the `palettes` list in `rust/tools/ui-parity/scenes.json`, built the way
+//! Parity scenes: the `palettes` list in `crates/ui/gallery/scenes.json`, built the way
 //! `web/scenes/Views.svelte` mounts `App.svelte`: the whole shell over the e2e seed edited by
 //! the scene's fixture in `content/views.json`, then the scene's `route` once booted. Only the
 //! palettes are registered, so the main area stays empty as the reference hides it.

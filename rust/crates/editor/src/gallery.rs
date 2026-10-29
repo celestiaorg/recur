@@ -1,4 +1,4 @@
-//! Parity scenes (`editor/*` in `rust/tools/ui-parity/scenes.json`): the
+//! Parity scenes (`editor/*` in `crates/ui/gallery/scenes.json`): the
 //! code editor on a Go file with the shipped bundles' grammars and editor
 //! themes, mounted as `web/scenes/Editor.svelte` mounts `CodeEditor`.
 

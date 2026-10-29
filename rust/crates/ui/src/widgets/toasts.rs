@@ -321,7 +321,7 @@ impl Render for Toasts {
 }
 
 /// `toastin` (.16s ease-out, or .2s settle for ask): fade up from 8px below. CSS also scales
-/// from .98, which GPUI cannot apply to an element tree (`ui-parity.md`).
+/// from .98, which GPUI cannot apply to an element tree (`ui-rendering.md`).
 fn entrance(
     t: &Toast,
     duration: Duration,

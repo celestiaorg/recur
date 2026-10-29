@@ -1441,7 +1441,7 @@ mod tests {
         assert_eq!(z, sorted);
     }
 
-    /// `tools/ui-parity/time-zones.mjs` writes the golden from WebKit's `Intl`.
+    /// The golden is WebKit's `Intl` output.
     #[test]
     fn zones_match_webkit_intl() {
         let golden: Vec<String> =

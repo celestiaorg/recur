@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn renders_a_flowchart_with_native_labels() {
-        let flow = include_str!("../../../../tools/ui-parity/content/flow.mmd");
+        let flow = include_str!("../../../ui/gallery/content/flow.mmd");
         let d = render_blocking(flow, &Theme::new(ThemeId::Charcoal)).expect("render");
         let mut words: Vec<&str> = d
             .runs

@@ -1,4 +1,4 @@
-//! Shell parity scenes: the `shell` list in `rust/tools/ui-parity/scenes.json`. Each scene is
+//! Shell parity scenes: the `shell` list in `crates/ui/gallery/scenes.json`. Each scene is
 //! the full window (titlebar, sidebar, an empty main area) over the mock bridge, as
 //! `web/scenes/Shell.svelte` mounts `App.svelte` with every view hidden. A scene can edit the
 //! e2e seed (`seed`), preset local storage (`storage`), and scroll the project tree
@@ -21,7 +21,7 @@ use serde_json::Value;
 
 use crate::{Shell, ShellOptions};
 
-const SCENES_JSON: &str = include_str!("../../../tools/ui-parity/scenes.json");
+const SCENES_JSON: &str = include_str!("../../ui/gallery/scenes.json");
 
 /// The shell fields of a scene; the rest is a [`SceneSpec`].
 #[derive(Clone, Debug, Default, Deserialize)]

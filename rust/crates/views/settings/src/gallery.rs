@@ -1,4 +1,4 @@
-//! Parity scenes: the `settings` list in `rust/tools/ui-parity/scenes.json`, built the way
+//! Parity scenes: the `settings` list in `crates/ui/gallery/scenes.json`, built the way
 //! `web/scenes/SettingsPage.svelte` mounts `App.svelte`: the whole shell with every view crate
 //! registered, over the e2e seed edited by the scene's fixture in `content/settings.json`, then
 //! Settings on `section`, then the scene's `act`.
@@ -17,8 +17,8 @@ use serde_json::{Value, json};
 
 use crate::view::SettingsView;
 
-const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
-const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/settings.json");
+const SCENES_JSON: &str = include_str!("../../../ui/gallery/scenes.json");
+const FIXTURES: &str = include_str!("../../../ui/gallery/content/settings.json");
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]

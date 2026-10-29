@@ -1,4 +1,4 @@
-//! What every whole-window parity scene shares (`rust/tools/ui-parity/scenes.json`): the e2e
+//! What every whole-window parity scene shares (`crates/ui/gallery/scenes.json`): the e2e
 //! seed with a scene's edits, a fixture's canned replies, and [`view_scene`], the shell over
 //! the mock bridge, navigated once booted, as `web/scenes/Views.svelte` mounts `App.svelte`.
 //!
@@ -19,8 +19,8 @@ use serde_json::Value;
 
 use crate::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
 
-const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
-const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/views.json");
+const SCENES_JSON: &str = include_str!("../../../ui/gallery/scenes.json");
+const FIXTURES: &str = include_str!("../../../ui/gallery/content/views.json");
 const SEED_JSON: &str = include_str!("../../../services/src/mock/seed.json");
 
 /// The parts of a whole-window scene above the view crates.

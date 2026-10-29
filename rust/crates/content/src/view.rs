@@ -1001,7 +1001,7 @@ mod tests {
             gpui_kit::init(cx);
             recur_ui::init(cx);
         });
-        let md = include_str!("../../../tools/ui-parity/content/chat.md");
+        let md = include_str!("../../ui/gallery/content/chat.md");
         let (column, cx) = cx.add_window_view(|_, cx| {
             Column(cx.new(|cx| MarkdownView::new(md, MarkdownClass::ChatCanvas, false, cx)))
         });

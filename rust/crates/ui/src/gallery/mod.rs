@@ -1,4 +1,4 @@
-//! Widget gallery scenes. `rust/tools/ui-parity/scenes.json` is the single scene list: the
+//! Widget gallery scenes. `crates/ui/gallery/scenes.json` is the single scene list: the
 //! Svelte reference harness, the headless parity renderer and `examples/gallery.rs` all read
 //! it, and each scene name maps to one builder here.
 
@@ -8,9 +8,8 @@ use crate::theme::ThemeId;
 use gpui_kit::{AnyView, App, Window};
 use serde::Deserialize;
 
-const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
-pub(crate) const CALIBRATION_JSON: &str =
-    include_str!("../../../../tools/ui-parity/calibration.json");
+const SCENES_JSON: &str = include_str!("../../gallery/scenes.json");
+pub(crate) const CALIBRATION_JSON: &str = include_str!("../../gallery/calibration.json");
 
 /// One input step, replayed identically by Playwright and by the Rust renderer.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -33,10 +32,10 @@ pub struct SceneSpec {
     pub width: f32,
     pub height: f32,
     pub theme: String,
-    /// Differing text and anti-aliased pixels allowed. Documented in `ui-parity.md`.
+    /// Differing text and anti-aliased pixels allowed. Documented in `ui-rendering.md`.
     #[serde(default)]
     pub tolerance: u64,
-    /// Hard differences allowed, each one explained in `ui-parity.md` (curved-edge coverage
+    /// Hard differences allowed, each one explained in `ui-rendering.md` (curved-edge coverage
     /// where GPUI's shader and CoreGraphics disagree, gradient dither beside a glyph).
     #[serde(default)]
     pub hard_tolerance: u64,

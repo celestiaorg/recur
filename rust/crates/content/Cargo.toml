@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [features]
-# Parity scenes for `rust/tools/ui-parity` (`gallery::build`).
+# Gallery scenes (`gallery::build`, listed in `crates/ui/gallery/scenes.json`).
 gallery = ["recur-ui/gallery"]
 
 [dependencies]

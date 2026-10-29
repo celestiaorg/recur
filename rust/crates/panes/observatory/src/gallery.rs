@@ -1,4 +1,4 @@
-//! Parity scenes: the `observatory` list in `rust/tools/ui-parity/scenes.json`, built the way
+//! Parity scenes: the `observatory` list in `crates/ui/gallery/scenes.json`, built the way
 //! `web/scenes/Observatory.svelte` mounts the Observatory for LOOP-2231, over
 //! `content/observatory.json` (tree, files, git status, artifacts, a terminal, and each
 //! scene's editor session).
@@ -19,22 +19,22 @@ use serde_json::{Value, json};
 
 use crate::obs::{Observatory, ObservatoryProps, ObservatorySlots};
 
-const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
-const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/observatory.json");
+const SCENES_JSON: &str = include_str!("../../../ui/gallery/scenes.json");
+const FIXTURES: &str = include_str!("../../../ui/gallery/content/observatory.json");
 
 /// The fixture's raster and PDF files, by name.
 const ASSETS: [(&str, &[u8]); 3] = [
     (
         "chart.png",
-        include_bytes!("../../../../tools/ui-parity/content/chart.png"),
+        include_bytes!("../../../ui/gallery/content/chart.png"),
     ),
     (
         "screenshot.png",
-        include_bytes!("../../../../tools/ui-parity/content/screenshot.png"),
+        include_bytes!("../../../ui/gallery/content/screenshot.png"),
     ),
     (
         "page.pdf",
-        include_bytes!("../../../../tools/ui-parity/content/page.pdf"),
+        include_bytes!("../../../ui/gallery/content/page.pdf"),
     ),
 ];
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuilds the bundled UI fonts from the Google Fonts request in frontend/index.html.
+# Rebuilds the bundled UI fonts from the Google Fonts request below (the Svelte UI's).
 #
 # GPUI selects faces by family + weight and cannot pick a wght inside a variable font,
 # so every weight the web UI requests is bundled as a static TTF. Google serves those

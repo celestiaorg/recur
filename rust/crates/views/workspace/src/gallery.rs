@@ -1,4 +1,4 @@
-//! Parity scenes: the `workspace` list in `rust/tools/ui-parity/scenes.json`, built the way
+//! Parity scenes: the `workspace` list in `crates/ui/gallery/scenes.json`, built the way
 //! `web/scenes/Workspace.svelte` mounts the detail route for LOOP-2231, over
 //! `content/workspace.json` (each scene's chat rows, tabs, sessions, facts and findings) and
 //! the Observatory fixture of the scene's `session`. A scene can edit the e2e seed (`seed`).
@@ -16,9 +16,9 @@ use serde_json::{Value, json};
 
 use crate::detail::WorkspaceDetail;
 
-const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
-const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/workspace.json");
-const CHAT: &str = include_str!("../../../../tools/ui-parity/content/chat.json");
+const SCENES_JSON: &str = include_str!("../../../ui/gallery/scenes.json");
+const FIXTURES: &str = include_str!("../../../ui/gallery/content/workspace.json");
+const CHAT: &str = include_str!("../../../ui/gallery/content/chat.json");
 
 #[derive(Deserialize)]
 struct Specs {

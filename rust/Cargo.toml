@@ -10,7 +10,6 @@ members = [
     "providers/*",
     "tools/*",
 ]
-exclude = ["tools/parity-sweep"]
 default-members = ["crates/desktop", "crates/cli"]
 
 [workspace.package]
@@ -138,7 +137,7 @@ objc2-foundation = "0.3"
 objc2-app-kit = "0.3"
 objc2-web-kit = "0.3"
 objc2-av-foundation = "0.3"
-# WebM and Ogg on macOS (`recur-content` `video::webm`); licenses in docs/PARITY.md.
+# WebM and Ogg on macOS (`recur-content` `video::webm`); licenses in its module docs.
 matroska-demuxer = "0.8"
 ogg = "0.9"
 lewton = "0.10"

@@ -1,5 +1,4 @@
-//! Scene builders, one per `scenes.json` name prefix. Each mirrors the Svelte scene of the
-//! same name in `rust/tools/ui-parity/web/scenes/`.
+//! Scene builders, one per `scenes.json` name prefix.
 
 use crate::file_icons::file_icon;
 use crate::fonts::{Family, weight};

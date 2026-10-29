@@ -1,4 +1,4 @@
-//! Parity scenes: the `review` list in `rust/tools/ui-parity/scenes.json`, built the way
+//! Parity scenes: the `review` list in `crates/ui/gallery/scenes.json`, built the way
 //! `web/scenes/Review.svelte` mounts ReviewSurface and a PR-mode DiffFile, over
 //! `content/review.json`.
 
@@ -23,8 +23,8 @@ use crate::review_diff::{DiffLayout, ReviewTab};
 use crate::stack::{CardProps, FileStack};
 use crate::surface::{ReviewSurface, SurfaceProps};
 
-const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
-const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/review.json");
+const SCENES_JSON: &str = include_str!("../../../ui/gallery/scenes.json");
+const FIXTURES: &str = include_str!("../../../ui/gallery/content/review.json");
 
 #[derive(Deserialize)]
 struct Specs {

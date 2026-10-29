@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [features]
-# Parity scenes for `rust/tools/ui-parity` (full-window shell and sidebar states on the mock).
+# Gallery scenes (full-window shell and sidebar states on the mock).
 gallery = ["recur-services/mock", "recur-ui/gallery", "recur-view-core/gallery", "dep:serde"]
 # Open Developer Tools (the GPUI inspector) in release builds.
 devtools = ["gpui-kit/inspector"]

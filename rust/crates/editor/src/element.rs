@@ -813,7 +813,7 @@ impl EditorView {
             .push(Op::Quad(fill(rect(bx, by, bw, bh), h(scope_bg))));
 
         // `placeholder()`: the mini editor's faint hint while the document is empty (upright:
-        // the bundled code faces have no italic, see `ui-parity.md`).
+        // the bundled code faces have no italic, see `ui-rendering.md`).
         if let Some(m) = self.mini.as_ref().filter(|_| self.state.doc.is_empty()) {
             let top = doc_top + self.metrics.content_padding_y;
             for (i, line) in m.placeholder.split('\n').enumerate() {

@@ -1,4 +1,4 @@
-//! Parity scenes: the `content` list in `rust/tools/ui-parity/scenes.json`, built the way
+//! Parity scenes: the `content` list in `crates/ui/gallery/scenes.json`, built the way
 //! `web/scenes/Content.svelte` mounts the Svelte components, over the same fixtures.
 
 use gpui_kit::{
@@ -12,15 +12,15 @@ use serde::Deserialize;
 use crate::render::style::MarkdownClass;
 use crate::view::MarkdownView;
 
-const SCENES_JSON: &str = include_str!("../../../tools/ui-parity/scenes.json");
-pub const CHAT_MD: &str = include_str!("../../../tools/ui-parity/content/chat.md");
-pub const README_MD: &str = include_str!("../../../tools/ui-parity/content/readme.md");
-pub const STREAMING_MD: &str = include_str!("../../../tools/ui-parity/content/streaming.md");
-pub const SEQUENCE_MD: &str = include_str!("../../../tools/ui-parity/content/sequence.md");
-pub const FLOW_MMD: &str = include_str!("../../../tools/ui-parity/content/flow.mmd");
-pub const LOGO_SVG: &str = include_str!("../../../tools/ui-parity/content/logo.svg");
-pub const PAGE_PDF: &[u8] = include_bytes!("../../../tools/ui-parity/content/page.pdf");
-pub const SCREENSHOT_PNG: &[u8] = include_bytes!("../../../tools/ui-parity/content/screenshot.png");
+const SCENES_JSON: &str = include_str!("../../ui/gallery/scenes.json");
+pub const CHAT_MD: &str = include_str!("../../ui/gallery/content/chat.md");
+pub const README_MD: &str = include_str!("../../ui/gallery/content/readme.md");
+pub const STREAMING_MD: &str = include_str!("../../ui/gallery/content/streaming.md");
+pub const SEQUENCE_MD: &str = include_str!("../../ui/gallery/content/sequence.md");
+pub const FLOW_MMD: &str = include_str!("../../ui/gallery/content/flow.mmd");
+pub const LOGO_SVG: &str = include_str!("../../ui/gallery/content/logo.svg");
+pub const PAGE_PDF: &[u8] = include_bytes!("../../ui/gallery/content/page.pdf");
+pub const SCREENSHOT_PNG: &[u8] = include_bytes!("../../ui/gallery/content/screenshot.png");
 
 #[derive(Deserialize)]
 struct Specs {

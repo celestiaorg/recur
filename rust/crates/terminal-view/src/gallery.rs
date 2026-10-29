@@ -1,4 +1,4 @@
-//! Terminal parity scenes: the `terminal` list in `rust/tools/ui-parity/scenes.json`, built the
+//! Terminal parity scenes: the `terminal` list in `crates/ui/gallery/scenes.json`, built the
 //! way `web/scenes/Terminal.svelte` mounts the Svelte pane. A scene is the dock body (find bar
 //! when open, then the panes) around one pane whose session replays the scene's input bytes.
 
@@ -21,7 +21,7 @@ use crate::font::TerminalFont;
 use crate::theme::{TerminalThemeInfo, ThemeContext};
 use crate::view::{TerminalEvent, TerminalOptions, TerminalView};
 
-const SCENES_JSON: &str = include_str!("../../../tools/ui-parity/scenes.json");
+const SCENES_JSON: &str = include_str!("../../ui/gallery/scenes.json");
 
 /// The terminal fields of a scene; the rest is a [`SceneSpec`].
 #[derive(Clone, Debug, Deserialize)]

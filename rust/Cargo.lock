@@ -8526,33 +8526,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "recur-ui-parity"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "gpui-kit",
- "image",
- "recur-app",
- "recur-content",
- "recur-editor",
- "recur-terminal-view",
- "recur-ui",
- "recur-view-briefing",
- "recur-view-chat",
- "recur-view-core",
- "recur-view-home",
- "recur-view-observatory",
- "recur-view-palettes",
- "recur-view-projects",
- "recur-view-prs",
- "recur-view-review",
- "recur-view-settings",
- "recur-view-workspace",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "recur-usage"
 version = "0.0.0"
 dependencies = [

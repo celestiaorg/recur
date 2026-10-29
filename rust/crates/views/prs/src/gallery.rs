@@ -1,4 +1,4 @@
-//! Parity scenes: the `prs` list in `rust/tools/ui-parity/scenes.json`, built the way
+//! Parity scenes: the `prs` list in `crates/ui/gallery/scenes.json`, built the way
 //! `web/scenes/Prs.svelte` mounts `App.svelte`: the whole shell with every view crate
 //! registered, over the e2e seed edited by the scene's fixture in `content/prs.json`, then the
 //! dashboard (`route: "pr"`, `seg`) or PR detail (`route: "prdetail"`, `pr`, `tab`, `dock`,
@@ -17,8 +17,8 @@ use serde_json::Value;
 use crate::ui::{PrTab, ui};
 use recur_view_core::pr_list_filter::LIST_SEGS;
 
-const SCENES_JSON: &str = include_str!("../../../../tools/ui-parity/scenes.json");
-const FIXTURES: &str = include_str!("../../../../tools/ui-parity/content/prs.json");
+const SCENES_JSON: &str = include_str!("../../../ui/gallery/scenes.json");
+const FIXTURES: &str = include_str!("../../../ui/gallery/content/prs.json");
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]

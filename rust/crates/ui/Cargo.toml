@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [features]
-# Widget gallery scenes shared by `examples/gallery.rs` and `rust/tools/ui-parity`.
+# Widget gallery scenes shared by `examples/gallery.rs` and the UI crates' tests.
 gallery = []
 
 [dependencies]

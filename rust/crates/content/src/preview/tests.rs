@@ -148,7 +148,7 @@ impl gpui_kit::Render for PreviewHost {
     }
 }
 
-/// A long document of nested lists (`rust/docs/PARITY.md` is 224 KB of them) lays its text
+/// A long document of nested lists (a 224 KB checklist of them) lays its text
 /// out a few times a frame, not once per pass of every list above it: a whole-window refresh
 /// took 1s a frame with that file open.
 #[gpui::test]

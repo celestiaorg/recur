@@ -96,7 +96,7 @@ impl FindText {
 mod tests {
     use super::*;
 
-    const PDF: &[u8] = include_bytes!("../../../../tools/ui-parity/content/page.pdf");
+    const PDF: &[u8] = include_bytes!("../../../ui/gallery/content/page.pdf");
 
     #[test]
     fn opens_and_renders_the_parity_page() {

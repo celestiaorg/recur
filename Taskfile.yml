@@ -1,16 +1,6 @@
 version: '3'
 
-includes:
-  common: ./build/Taskfile.yml
-  darwin: ./build/darwin/Taskfile.yml
-  linux: ./build/linux/Taskfile.yml
-
 vars:
-  APP_NAME: "recur"
-  BIN_DIR: "bin"
-  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
-  # Desktop app is {{.BIN_DIR}}/{{.APP_NAME}}; CLI is a separate binary.
-  CLI_BIN: '{{.BIN_DIR}}/recur-cli'
   VERSION:
     sh: |
       if [ -n "$RECUR_VERSION" ]; then echo "$RECUR_VERSION"; exit; fi
@@ -18,109 +8,19 @@ vars:
       tag=$(git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || true)
       v=${tag#v}
       echo "${v:-0.0.0}+commit.$(git rev-parse --short=8 HEAD)"
-  CLI_LDFLAGS: '-X recur/internal/cli.Version={{.VERSION}}'
-  # Release builds set RECUR_UPDATE_URL to turn on the in-app updater (updater.go).
-  APP_LDFLAGS: '-X main.version={{.VERSION}} -X main.updateManifestURL={{.RECUR_UPDATE_URL}}'
 
 tasks:
-  build:
-    summary: Builds the application
-    cmds:
-      - task: "{{OS}}:build"
-
-  build:cli:
-    summary: Builds the Recur CLI (authoring tools) to {{.CLI_BIN}}
-    sources:
-      - cmd/recur/**/*.go
-      - internal/cli/**/*
-      - internal/bundles/**/*
-      - go.mod
-      - go.sum
-    generates:
-      - '{{.CLI_BIN}}'
-    cmds:
-      - mkdir -p {{.BIN_DIR}}
-      - go build -ldflags="{{.CLI_LDFLAGS}}" -o {{.CLI_BIN}} ./cmd/recur
-
-  package:
-    summary: Packages a production build (RECUR_DEBUG=1 keeps the web inspector and skips frontend minify)
-    cmds:
-      - task: "{{OS}}:package"
-
-  run:
-    summary: Runs the application
-    cmds:
-      - task: "{{OS}}:run"
-
-  run:isolated:
-    summary: Runs the local binary with isolated Recur state
-    cmds:
-      - '"{{.BIN_DIR}}/{{.APP_NAME}}"'
-    vars:
-      PROFILE_DIR: '{{.PROFILE_DIR | default (printf "%s/.recur-local" .HOME)}}'
-    env:
-      RECUR_DATA_DIR: '{{.PROFILE_DIR}}/data'
-      RECUR_WORKTREES_DIR: '{{.PROFILE_DIR}}/worktrees'
-
-  dev:
-    summary: Runs the application in development mode
-    cmds:
-      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
-
-  test:go:
-    summary: Runs Go unit tests
-    cmds:
-      - go test ./...
-    # Match production Darwin min version (build/darwin/Taskfile.yml).
-    # Setting CGO_* replaces Go's defaults, so keep `-O2 -g` and append the pin.
-    env: &darwin_cgo_env
-      CGO_CFLAGS: '{{if eq OS "darwin"}}-O2 -g -mmacosx-version-min=12.0{{end}}'
-      CGO_LDFLAGS: '{{if eq OS "darwin"}}-O2 -g -mmacosx-version-min=12.0{{end}}'
-      MACOSX_DEPLOYMENT_TARGET: '{{if eq OS "darwin"}}12.0{{end}}'
-
-  test:go:race:
-    summary: Runs Go unit tests with the race detector (slow; CI runs it)
-    cmds:
-      - go test -race -timeout 30m ./...
-    env: *darwin_cgo_env
-
-  lint:go:
-    summary: go vet, gofmt, and staticcheck
-    cmds:
-      - go vet ./...
-      - |
-        out=$(git ls-files '*.go' | xargs gofmt -l)
-        if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
-      - go run honnef.co/go/tools/cmd/staticcheck@v0.8.1 ./...
-    env: *darwin_cgo_env
-
-  lint:frontend:
-    summary: Typechecks the frontend (svelte-check)
-    dir: frontend
-    deps:
-      - task: common:install:frontend:deps
-    cmds:
-      - pnpm run check
-
-  check:vulns:
-    summary: Reports known vulnerabilities reachable from Recur's Go code (network)
-    cmds:
-      - go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
-    env: *darwin_cgo_env
-
   test:bundles:
     summary: Runs shipped Recur Bundle engine tests (needs node on PATH)
-    deps:
-      - build:cli
+    dir: rust
     cmds:
-      - '{{.CLI_BIN}} bundles test ./bundles'
+      - cargo run -q -p recur-cli -- bundles test ../bundles
 
   lint:bundles:
     summary: Lints shipped Recur Bundles (schema, TS compile, shebang, keybindings)
-    deps:
-      - build:cli
+    dir: rust
     cmds:
-      - '{{.CLI_BIN}} bundles lint ./bundles'
+      - cargo run -q -p recur-cli -- bundles lint ../bundles
 
   fetch:tm-grammars:
     summary: Re-fetch TextMate grammars from shikijs/textmate-grammars-themes into bundles/Languages
@@ -164,17 +64,12 @@ tasks:
     cmds:
       - cargo test --workspace
 
-  check:rust:parity:
-    summary: Cross-checks rust/docs/PARITY.md against the Go and Svelte sources (bindings, events, agent tools, CLI, components, every Go test; needs python3 and go; see rust/tools/parity-sweep/sweep.py)
-    cmds:
-      - python3 rust/tools/parity-sweep/sweep.py
-
   package:rust:
     summary: Packages the Rust port as rust/target/package/Recur Next.app, .dmg and updater .zip (macOS; UNIVERSAL=true, SIGN_IDENTITY / KEYCHAIN_PROFILE / RECUR_SIGN_IDENTITY as darwin:sign, RECUR_NEXT_UPDATE_URL turns on the updater; see rust/build/darwin/package.sh)
     platforms: [darwin]
     deps:
       - task: generate:icons:rust
-      - task: common:generate:help-skill
+      - task: generate:help-skill
     cmds:
       - rust/build/darwin/package.sh
     env:
@@ -203,7 +98,7 @@ tasks:
   linux:build:rust:
     summary: Release Linux build of the Rust port into rust/target/package/recur-next-linux-<arch> (recur, recur-cli, recur.png; in Docker on non-Linux hosts, see rust/build/linux/in-docker.sh)
     deps:
-      - task: common:generate:help-skill
+      - task: generate:help-skill
     cmds:
       - rust/build/linux/in-docker.sh build/linux/build.sh
     env:
@@ -254,33 +149,6 @@ tasks:
     cmds:
       - cargo run -p recur-desktop --example real_data_smoke -- "{{.DATA}}" {{.SANDBOX}}
 
-  test:rust:ui-parity:
-    summary: Captures WebKit references of the recur-ui scenes from the Svelte UI and diffs the Rust renders against them (macOS; see rust/docs/ui-parity.md)
-    dir: rust/tools/ui-parity
-    deps:
-      - task: common:install:frontend:deps
-    cmds:
-      - pnpm install --frozen-lockfile
-      - pnpm exec playwright install webkit
-      - pnpm exec playwright test
-      - cargo run -p recur-ui-parity -- check {{.CLI_ARGS}}
-
-  test:frontend:
-    summary: Runs frontend Vitest unit tests
-    dir: frontend
-    deps:
-      - task: common:install:frontend:deps
-    cmds:
-      - pnpm test
-
-  test:e2e:
-    summary: Runs frontend Playwright e2e tests
-    dir: frontend
-    deps:
-      - task: common:install:frontend:deps
-    cmds:
-      - pnpm run e2e
-
   test:splash:
     summary: Builds the splash page and checks the real interactive app demo
     cmds:
@@ -295,28 +163,13 @@ tasks:
       - pnpm --dir src-web/demo run build
       - node scripts/capture-splash.mjs {{.CLI_ARGS}}
 
-  test:
-    summary: Runs all automated tests (Go, lints, bundles, frontend unit + e2e)
-    cmds:
-      - task: test:go
-      - task: lint:go
-      - task: lint:frontend
-      - task: lint:bundles
-      - task: test:bundles
-      - task: test:frontend
-      - task: test:e2e
-
-  check:
-    summary: Fast quality gate (Go tests, Go/frontend lint, bundle lint/test, frontend unit; no Playwright)
-    cmds:
-      - task: test:go
-      - task: lint:go
-      - task: lint:frontend
-      - task: lint:bundles
-      - task: test:bundles
-      - task: test:frontend
-
   check:cursor-sdk-pin:
-    summary: Fail if PyPI cursor-sdk is ahead of pinnedSDKVersion (network; flags re-pin)
+    summary: Fail if PyPI cursor-sdk is ahead of PINNED_SDK_VERSION (network; flags re-pin)
+    dir: rust
     cmds:
-      - RECUR_CURSOR_SDK_PIN_CHECK=1 go test ./internal/cursor -run CheckCursorSDKPinDrift -count=1
+      - RECUR_CURSOR_SDK_PIN_CHECK=1 cargo test -p recur-provider-cursor --lib check_cursor_sdk_pin_drift -- --nocapture
+
+  generate:help-skill:
+    summary: Copies the user docs (src-docs) into the shipped recur-help skill before include_dir! embeds it.
+    cmds:
+      - rsync -a --delete --include='*/' --include='*.mdx' --exclude='*' src-docs/src/pages/ recur-skills/recur-help/references/

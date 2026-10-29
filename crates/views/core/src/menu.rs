@@ -52,6 +52,8 @@ pub fn menu_state_idle() -> MenuState {
         next_tab: Some(false),
         run_dev: Some(false),
         stop_run: Some(false),
+        find: Some(false),
+        goto_line: Some(false),
     }
 }
 
@@ -78,7 +80,9 @@ pub fn merge_menu_state(into: &mut MenuState, patch: &MenuState) -> bool {
         prev_tab,
         next_tab,
         run_dev,
-        stop_run
+        stop_run,
+        find,
+        goto_line
     );
     *into != before
 }

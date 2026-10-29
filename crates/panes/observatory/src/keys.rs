@@ -381,6 +381,20 @@ impl Observatory {
                     cx.emit(ObservatoryEvent::AgentCloseTab);
                 }
             }
+            "find" | "find-next" | "find-previous" | "goto-line" => {
+                use recur_editor::bindings::Cmd;
+                let Some(editor) = self.menu_text_editor(cx) else {
+                    return;
+                };
+                let cmd = match action {
+                    "find" => Cmd::OpenSearchPanel,
+                    "find-next" => Cmd::FindNext,
+                    "find-previous" => Cmd::FindPrevious,
+                    _ => Cmd::GotoLine,
+                };
+                editor.update(cx, |e, cx| e.run_cmd(cmd, window, cx));
+                self.sync_find_panel_open(cx);
+            }
             "prev-tab" | "next-tab" => {
                 let dir = if action == "prev-tab" { -1 } else { 1 };
                 if self.focus_zone == FocusZone::Terminal {

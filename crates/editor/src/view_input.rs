@@ -283,12 +283,7 @@ impl EditorView {
     }
 
     /// Run one keymap command (`Command`); true when it applied.
-    pub(crate) fn run_cmd(
-        &mut self,
-        cmd: Cmd,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> bool {
+    pub fn run_cmd(&mut self, cmd: Cmd, window: &mut Window, cx: &mut Context<Self>) -> bool {
         use Cmd::*;
         let state = self.state.clone();
         match cmd {

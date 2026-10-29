@@ -557,6 +557,32 @@ impl Observatory {
 
     // ---- find ----
 
+    /// The text editor the menubar's Find and Go to Line items act on: the focused editor
+    /// surface, not a preview, image or PDF (those keep ⌘F to themselves).
+    pub(crate) fn menu_text_editor(
+        &self,
+        cx: &gpui_kit::App,
+    ) -> Option<gpui_kit::Entity<recur_editor::view::EditorView>> {
+        if self.focus_zone != crate::model::FocusZone::Editor
+            || self.main_surface(cx) != crate::model::MainSurface::Editor
+            || self.show_pdf_pane()
+            || self.show_image_pane()
+            || self.show_video_pane()
+        {
+            return None;
+        }
+        if self.show_diff() {
+            return self.merge_editor.as_ref().map(|(_, e)| e.clone());
+        }
+        if self.focused_pane == Pane::Split && self.split_open {
+            return self.split_editor.clone();
+        }
+        if self.show_preview() {
+            return None;
+        }
+        self.main_editor.clone()
+    }
+
     /// `syncFindPanelOpen`: the crumb bar's find toggle follows the focused surface.
     pub(crate) fn sync_find_panel_open(&mut self, cx: &mut Context<Self>) {
         let open = if self.show_pdf_pane() {

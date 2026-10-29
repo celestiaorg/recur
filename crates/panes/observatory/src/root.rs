@@ -1528,6 +1528,7 @@ impl Observatory {
             .panels_on(recur_view_core::prefs::PanelSide::Left, cx)
             .contains(&CodePanelKey::Maestro);
         let portal = self.portal_agent_to_pr(cx);
+        let text_editor = self.menu_text_editor(cx).is_some();
         let patch = recur_services::events::MenuState {
             new_tab: Some((in_term && has_ws) || (in_agent && self.props.agent_tabs)),
             save: Some(self.dirty()),
@@ -1544,6 +1545,8 @@ impl Observatory {
             next_tab: Some(tab_count > 1),
             run_dev: Some(dev),
             stop_run: Some(running),
+            find: Some(text_editor),
+            goto_line: Some(text_editor),
             ..Default::default()
         };
         self.state.update(cx, |s, cx| s.set_menu_state(patch, cx));

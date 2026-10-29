@@ -759,6 +759,10 @@ pub struct MenuState {
     pub run_dev: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_run: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub find: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub goto_line: Option<bool>,
 }
 
 /// One radio item in a View → Appearance theme menu.

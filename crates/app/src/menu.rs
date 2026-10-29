@@ -36,6 +36,10 @@ gpui_kit::actions!(
         OpenIn,
         CopyPath,
         CloseTab,
+        Find,
+        FindNext,
+        FindPrevious,
+        GoToLine,
         PrevEditorTheme,
         NextEditorTheme,
         ToggleSidebar,
@@ -104,6 +108,10 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
         OpenIn => "open-in",
         CopyPath => "copy-path",
         CloseTab => "close-tab",
+        Find => "find",
+        FindNext => "find-next",
+        FindPrevious => "find-previous",
+        GoToLine => "goto-line",
         PrevEditorTheme => "prev-editor-theme",
         NextEditorTheme => "next-editor-theme",
         ToggleSidebar => "toggle-sidebar",
@@ -152,6 +160,10 @@ pub fn bind_menu_keys(cx: &mut App) {
         KeyBinding::new("cmd-s", Save, None),
         KeyBinding::new("cmd-o", OpenIn, None),
         KeyBinding::new("cmd-w", CloseTab, None),
+        KeyBinding::new("cmd-f", Find, None),
+        KeyBinding::new("cmd-g", FindNext, None),
+        KeyBinding::new("cmd-shift-g", FindPrevious, None),
+        KeyBinding::new("cmd-alt-g", GoToLine, None),
         KeyBinding::new("cmd-alt-[", PrevEditorTheme, None),
         KeyBinding::new("cmd-alt-]", NextEditorTheme, None),
         KeyBinding::new("cmd-b", ToggleSidebar, None),
@@ -430,6 +442,12 @@ pub fn app_menus(
                 Some(OsAction::SelectAll),
                 cx,
             ),
+            Some(MenuItem::separator()),
+            Some(MenuItem::submenu(Menu::new("Find").items([
+                contextual("Find…", Find, state.find),
+                contextual("Find Next", FindNext, state.find),
+                contextual("Find Previous", FindPrevious, state.find),
+            ]))),
         ];
         menus.push(Menu::new("Edit").items(edit.into_iter().flatten()));
     }
@@ -476,6 +494,7 @@ pub fn app_menus(
         item("Reload Bundles", ReloadBundles),
         item("Quick Open…", QuickOpen),
         item("Go to Symbol…", GoToSymbol),
+        contextual("Go to Line…", GoToLine, state.goto_line),
         MenuItem::separator(),
         // Sidebar destinations, so a collapsed rail on a small screen costs nothing.
         item("Inbox", GoInbox),
@@ -536,6 +555,7 @@ mod tests {
         assert_eq!(menu_action_name(&GoTo), Some("palette"));
         assert_eq!(menu_action_name(&ToggleSidebar), Some("toggle-sidebar"));
         assert_eq!(menu_action_name(&GoPullRequests), Some("view:pr"));
+        assert_eq!(menu_action_name(&GoToLine), Some("goto-line"));
         assert_eq!(menu_action_name(&About), None);
     }
 

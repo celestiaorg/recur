@@ -954,7 +954,7 @@ async fn ensure_mcp_start_failure_is_retried() {
     while let Err(e) = te.engine.ensure_mcp().await {
         tries += 1;
         assert!(
-            e.0.ends_with("address already in use") && tries < 200,
+            e.0.contains("Address already in use") && tries < 200,
             "{}",
             e.0
         );

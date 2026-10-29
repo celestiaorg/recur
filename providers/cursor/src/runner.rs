@@ -1,4 +1,4 @@
-//! One Cursor turn over the bridge (Go `engine/cursor.go` `CursorRunner`).
+//! One Cursor turn over the bridge.
 //!
 //! The mapping: worktree → `local.cwd`; model → `model.id` (+ flags as
 //! params); the MCP URL → `mcpServers["recur"]` inline; Playwright →
@@ -240,7 +240,7 @@ impl CursorRunner {
             )
             .await;
 
-        // Go's defers, in order: stop the listener, nack what is left, stop
+        // Teardown, in order: stop the listener, nack what is left, stop
         // the cancel watcher.
         steer_ctx.cancel();
         if let Some(l) = listener {
@@ -993,7 +993,7 @@ pub fn wrap_attached_images_for_cursor(text: &str, imgs: &[recur_agent::UserImag
     b
 }
 
-/// Go `joinAppendPrompt`: trimmed parts joined by a blank line.
+/// Trimmed parts joined by a blank line.
 fn join_append_prompt(base: &str, extra: &str) -> String {
     let (base, extra) = (base.trim(), extra.trim());
     match (base.is_empty(), extra.is_empty()) {

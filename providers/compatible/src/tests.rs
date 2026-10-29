@@ -1,5 +1,4 @@
-//! Go `harness_test.go`, `responses/client_test.go` and
-//! `app/compatible_service_test.go`.
+//! Harness, Responses client and compatible service tests.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

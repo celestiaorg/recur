@@ -1,7 +1,6 @@
-//! Stream-json stdin user messages (headless ref §4) and the Claude half of
-//! Go `attachments.go`: images become content blocks at their
-//! `⟦attachment:id⟧` markers, and an instruction prefix keeps the ids visible
-//! to the model.
+//! Stream-json stdin user messages (headless ref §4) and Claude's attachments:
+//! images become content blocks at their `⟦attachment:id⟧` markers, and an
+//! instruction prefix keeps the ids visible to the model.
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
@@ -140,7 +139,6 @@ mod tests {
         );
     }
 
-    /// Go `TestPrepareChatAttachmentsAndClaudeContent` (content half).
     #[test]
     fn interleaves_images_at_markers() {
         let text = format!("look at this\n{}\nespecially the header", marker("img1"));

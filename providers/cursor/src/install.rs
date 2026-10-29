@@ -1,7 +1,7 @@
-//! On-demand bridge install (Go `cursor/install.go`). The bridge ships only
-//! inside Cursor's `cursor-sdk` Python wheel (~50MB, ~155MB unpacked, mostly
-//! a Node runtime), so Recur downloads the pinned wheel and unpacks
-//! `cursor_sdk/_vendor/bridge/**` instead of vendoring it.
+//! On-demand bridge install. The bridge ships only inside Cursor's `cursor-sdk`
+//! Python wheel (~50MB, ~155MB unpacked, mostly a Node runtime), so Recur
+//! downloads the pinned wheel and unpacks `cursor_sdk/_vendor/bridge/**`
+//! instead of vendoring it.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -84,8 +84,7 @@ impl InstallProgress {
     }
 
     /// The `cursor.install` bus payload:
-    /// `{phase, message, current, total, percent}` (keys sorted like Go's
-    /// map encoding).
+    /// `{phase, message, current, total, percent}` (keys sorted).
     pub fn event_payload(&self) -> serde_json::Value {
         let m: std::collections::BTreeMap<&str, serde_json::Value> = [
             ("current", self.current.into()),
@@ -521,7 +520,7 @@ pub(crate) fn extract_bridge(
     Ok(())
 }
 
-/// Go `path.Clean` on a slash path (lexical; leading `..` kept).
+/// Lexically cleans a slash path (leading `..` kept).
 fn go_path_clean(p: &str) -> PathBuf {
     clean(Path::new(p))
 }

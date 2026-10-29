@@ -1,4 +1,4 @@
-//! Recur's patch of the installed SDK bundle (Go `cursor/attribution.go`).
+//! Recur's patch of the installed SDK bundle.
 //!
 //! The local SDK leaves `attributionConfigProvider` unset, which defaults
 //! commit and PR trailers ON, and its public options have no attribution
@@ -52,8 +52,8 @@ pub fn attribution_config_path(data_dir: &Path) -> Option<PathBuf> {
     (!data_dir.as_os_str().is_empty()).then(|| data_dir.join(ATTRIBUTION_CONFIG_FILE))
 }
 
-/// Writes the file the patched provider reads on every turn, in Go's
-/// `json.MarshalIndent(…, "", "  ")` shape plus a newline.
+/// Writes the file the patched provider reads on every turn, as
+/// two-space indented JSON plus a newline.
 pub fn write_attribution_config(path: &Path, commits: bool, prs: bool) -> Result<(), String> {
     if path.as_os_str().is_empty() {
         return Err("cursor attribution: empty config path".into());

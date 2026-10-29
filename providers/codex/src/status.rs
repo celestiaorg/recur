@@ -1,6 +1,5 @@
-//! Settings → Providers probes for Codex (Go `app/codex_service.go`):
-//! throwaway app-servers, so a bad key or missing binary never wedges a
-//! loop.
+//! Settings → Providers probes for Codex: throwaway app-servers, so a bad key
+//! or missing binary never wedges a loop.
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -118,8 +117,7 @@ pub async fn probe(
     out
 }
 
-/// The status card without touching settings (Go `GetCodexStatus`), plus
-/// the models the probe listed.
+/// The status card without touching settings, plus the models the probe listed.
 pub async fn status(settings: &Settings, env: &ProbeEnv) -> (ProviderStatus, Option<Vec<Model>>) {
     let bin = match locate(&settings.codex_bin_path) {
         Ok(bin) => bin,
@@ -164,8 +162,8 @@ fn fill(out: &mut ProviderStatus, p: &Probe) {
     out.plan = p.plan.clone();
 }
 
-/// Validates a draft key (or ChatGPT auth) before save (Go `TestCodexKey`).
-/// An empty draft key falls back to the saved one.
+/// Validates a draft key (or ChatGPT auth) before save. An empty draft key
+/// falls back to the saved one.
 pub async fn test_key(
     settings: &Settings,
     env: &ProbeEnv,
@@ -206,8 +204,8 @@ pub async fn test_key(
     out
 }
 
-/// The live `model/list` for the picker (Go `listCodexModelsFor`). Turned
-/// off or unconfigured lists nothing without probing.
+/// The live `model/list` for the picker. Turned off or unconfigured lists
+/// nothing without probing.
 pub async fn list_models(
     settings: &Settings,
     env: &ProbeEnv,

@@ -1,5 +1,5 @@
 //! `recur_agent::Provider` for Cursor: the bridge pool, the turn router's
-//! Cursor self-heal (Go `runAgent`), the Settings probes, and the catalog.
+//! Cursor self-heal, the Settings probes, and the catalog.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -95,7 +95,7 @@ impl CursorProvider {
         self.settings.read().clone()
     }
 
-    /// The Settings card in Go's `CursorStatus` JSON shape.
+    /// The Settings card as `CursorStatus`.
     pub async fn cursor_status(&self, settings: &Settings) -> CursorStatus {
         let bin = match locate(&self.data_dir) {
             Ok(b) => b,

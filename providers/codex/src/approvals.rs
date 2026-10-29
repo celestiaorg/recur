@@ -1,5 +1,4 @@
-//! App-server approval requests routed to the human (Go
-//! `handleCodexServerRequest` and helpers in `engine/codex.go`).
+//! App-server approval requests routed to the human.
 //!
 //! With permissions not bypassed the thread runs `approval_policy =
 //! on-request`, and sandbox exceptions arrive as server requests

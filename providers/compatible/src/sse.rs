@@ -1,5 +1,4 @@
-//! OpenAI Responses SSE parsing and the non-stream JSON fallback (Go
-//! `responses/sse.go`).
+//! OpenAI Responses SSE parsing and the non-stream JSON fallback.
 
 use serde_json::{Map, Value};
 
@@ -71,7 +70,7 @@ impl SseParser {
     }
 }
 
-/// Parses a whole SSE body (Go `ParseSSE` over an in-memory reader).
+/// Parses a whole SSE body.
 pub fn parse_sse(body: &[u8], emit: &mut dyn FnMut(Event)) {
     let mut p = SseParser::default();
     p.push(body, emit);
@@ -188,8 +187,8 @@ fn error_field(obj: &Map<String, Value>) -> Result<Option<String>, Mismatch> {
     }
 }
 
-/// The decoded fields of a Responses envelope. Go decodes a `{response: …}`
-/// wrap over the same struct, so a later decode only replaces the keys it
+/// The decoded fields of a Responses envelope. A `{response: …}`
+/// wrap decodes over the same struct, so a later decode only replaces the keys it
 /// carries.
 #[derive(Default)]
 struct Envelope {

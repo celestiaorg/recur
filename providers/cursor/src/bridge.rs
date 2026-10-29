@@ -1,6 +1,6 @@
-//! The cursor-sdk-bridge process (Go `cursor/bridge.go`): the local
-//! Connect/JSON server Cursor ships inside its Python SDK wheel, a bundled
-//! Node runtime running the TypeScript SDK.
+//! The cursor-sdk-bridge process: the local Connect/JSON server Cursor ships
+//! inside its Python SDK wheel, a bundled Node runtime running the TypeScript
+//! SDK.
 //!
 //! Why the bridge and not `cursor-agent`: MCP servers go inline per agent (no
 //! `.cursor/mcp.json` in the worktree), `settingSources` can narrow ambient
@@ -261,8 +261,7 @@ impl Bridge {
     }
 
     /// A bridge bound to an existing Connect endpoint without a process, for
-    /// tests that drive the runner against a stand-in server (Go
-    /// `BindClientForTest` + `SetStartedAtForTest`).
+    /// tests that drive the runner against a stand-in server.
     pub fn bound(base_url: &str, token: &str, started_at: Option<DateTime<Utc>>) -> Arc<Bridge> {
         Arc::new(Bridge {
             cfg: BridgeConfig::default(),

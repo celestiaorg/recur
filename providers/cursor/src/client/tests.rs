@@ -1,5 +1,4 @@
-//! Go `cursor/active_run_test.go`, `client_images_test.go`, `user_test.go`
-//! and the wire-shape cases of `events_test.go`.
+//! Active run, image, user and wire-shape event tests.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

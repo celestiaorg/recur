@@ -1,5 +1,5 @@
-//! The Codex branch of Go `app/model_catalog.go`: live `model/list` entries
-//! to picker rows with effort, long-context and Fast dimensions.
+//! The Codex model catalog: live `model/list` entries to picker rows with
+//! effort, long-context and Fast dimensions.
 
 use recur_agent::{FlagDimension, FlagOption, ModelChoice};
 use recur_domain::{ModelRef, PROVIDER_CODEX};
@@ -100,7 +100,7 @@ fn pretty_slug(id: &str) -> String {
     }
 }
 
-/// Go `unicode.ToUpper` on the first rune (a simple, one-rune mapping).
+/// The first rune uppercased (a simple, one-rune mapping).
 fn upper_first(s: &str) -> String {
     let mut c = s.chars();
     let Some(first) = c.next() else {

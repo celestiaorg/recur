@@ -1,5 +1,5 @@
-//! Recur's in-process coding agent over `POST /v1/responses` (Go
-//! `harness.go`): rounds of model output and tool calls, read-only tools in
+//! Recur's in-process coding agent over `POST /v1/responses`:
+//! rounds of model output and tool calls, read-only tools in
 //! parallel, halting tools, steers between rounds.
 
 use std::collections::{HashMap, HashSet};

@@ -1,8 +1,6 @@
-//! Live smoke tests against a REAL cursor-sdk-bridge (Go
-//! `cursor/bridge_smoke_test.go`, `run_smoke_test.go`,
-//! `engine/cursor_smoke_test.go`). Skipped unless `RECUR_CURSOR_BRIDGE`
-//! points at an unpacked bridge; the credentialed ones also need
-//! `CURSOR_API_KEY` and cost real Cursor usage:
+//! Live smoke tests against a REAL cursor-sdk-bridge. Skipped unless
+//! `RECUR_CURSOR_BRIDGE` points at an unpacked bridge; the credentialed ones
+//! also need `CURSOR_API_KEY` and cost real Cursor usage:
 //!
 //! ```sh
 //! pip download cursor-sdk --no-deps -d /tmp/cs && unzip -q /tmp/cs/*.whl -d /tmp/cs/w

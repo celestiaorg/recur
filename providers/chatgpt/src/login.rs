@@ -1,6 +1,6 @@
-//! Browser PKCE and headless device-code sign-in (Go `chatgpt/login.go`,
-//! `device.go`). One attempt at a time; cancel, timeout and shutdown close
-//! the callback listener or stop polling before they return.
+//! Browser PKCE and headless device-code sign-in. One attempt at a time;
+//! cancel, timeout and shutdown close the callback listener or stop polling
+//! before they return.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -168,8 +168,8 @@ impl Auth {
     }
 
     async fn listen_browser(&self) -> Result<(TcpListener, String), String> {
-        // One address, as Go's `net.Listen("tcp", "localhost:…")`: falling through to the
-        // other address family would share the port with another application's listener.
+        // One address: falling through to the other address family would share the port
+        // with another application's listener.
         for &port in &self.callback_ports {
             if let Ok(l) = TcpListener::bind(("127.0.0.1", port)).await {
                 let actual = l.local_addr().map_err(|e| e.to_string())?.port();

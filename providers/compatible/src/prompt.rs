@@ -1,6 +1,6 @@
-//! The Recur-owned base system prompt for the native coding harness (Go
-//! `harness_prompt.go`). Mode literacy, skills, and role identity are appended
-//! separately and must not be duplicated here.
+//! The Recur-owned base system prompt for the native coding harness. Mode
+//! literacy, skills, and role identity are appended separately and must not be
+//! duplicated here.
 
 pub const RECUR_CODING_PROMPT: &str = r#"You are Recur's coding agent. You work in an isolated git worktree on the user's machine.
 

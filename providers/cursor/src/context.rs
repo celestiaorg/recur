@@ -1,5 +1,4 @@
-//! Cursor model context limits (Go `cursor/context.go`) and the context
-//! window a turn resolves to (Go `engine/cursor_flags.go`).
+//! Cursor model context limits and the context window a turn resolves to.
 
 use recur_agent::Flags;
 
@@ -175,7 +174,6 @@ pub fn parse_context_flag(s: &str) -> i64 {
 mod tests {
     use super::*;
 
-    // Go TestLimitsForDocumentedModels.
     #[test]
     fn limits_for_documented_models() {
         for (id, base, max) in [
@@ -232,7 +230,6 @@ mod tests {
         kv.iter().map(|(k, v)| ((*k).into(), (*v).into())).collect()
     }
 
-    // Go TestResolveCursorContextWindow.
     #[test]
     fn resolve_window() {
         for (model, f, want) in [
@@ -263,7 +260,6 @@ mod tests {
         }
     }
 
-    // Go TestParseContextFlag.
     #[test]
     fn parse_flag() {
         for (input, want) in [

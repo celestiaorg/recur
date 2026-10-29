@@ -1,5 +1,4 @@
-//! A typed façade over [`Conn`] for the methods Recur uses (Go
-//! `codex/client.go`).
+//! A typed façade over [`Conn`] for the methods Recur uses.
 
 use std::collections::BTreeMap;
 

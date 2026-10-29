@@ -1,13 +1,13 @@
-//! The display boundary for Codex tool calls (the Codex branch of Go
-//! `toolview.go`): raw `shell` / `edit` / `write` / `delete` calls render in
-//! the common cards; `mcp__<server>__<tool>` names already are common.
+//! The display boundary for Codex tool calls: raw `shell` / `edit` / `write` /
+//! `delete` calls render in the common cards; `mcp__<server>__<tool>` names
+//! already are common.
 
 use std::collections::BTreeMap;
 
 use serde_json::Value;
 
-/// Cursor and Codex tool names in Recur's common vocabulary (Go
-/// `canonicalTool`); unknown names pass through.
+/// Cursor and Codex tool names in Recur's common vocabulary;
+/// unknown names pass through.
 pub fn canonical_tool(name: &str) -> &str {
     match name {
         "shell" => "Bash",

@@ -1,7 +1,6 @@
-//! The provider surface: availability and caps, the router's Cursor
-//! self-heal and turned-off wrap (Go `runAgent` cases of
-//! `provider_test.go`), the Settings probes (`cursor_service.go`), the
-//! catalog, worktree release and settings changes, against a fake bridge.
+//! The provider surface: availability and caps, the router's Cursor self-heal
+//! and turned-off wrap, the Settings probes, the catalog, worktree release and
+//! settings changes, against a fake bridge.
 
 use std::sync::Arc;
 use std::time::Duration;

@@ -1,7 +1,7 @@
-//! A running `codex app-server` (Go `codex/server.go`): spawned per turn
-//! (and per probe) in its own process group, with Recur's `CODEX_HOME`, a
-//! trusted-project entry for the worktree, optional seeded ChatGPT auth, the
-//! initialize handshake, a stderr ring, and group kill on close.
+//! A running `codex app-server`: spawned per turn (and per probe) in its own
+//! process group, with Recur's `CODEX_HOME`, a trusted-project entry for the
+//! worktree, optional seeded ChatGPT auth, the initialize handshake, a stderr
+//! ring, and group kill on close.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -339,8 +339,7 @@ impl std::fmt::Display for LineRing {
     }
 }
 
-/// Go `strconv.Quote` for a path (what `%q` prints): printable runes as is,
-/// the rest escaped.
+/// A quoted path: printable runes as is, the rest escaped.
 fn go_quote(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('"');
@@ -360,7 +359,7 @@ fn go_quote(s: &str) -> String {
             c if (c as u32) < 0x20 || c == '\u{7f}' => {
                 out.push_str(&format!("\\x{:02x}", c as u32));
             }
-            // simplify: above ASCII only controls are escaped; Go's IsPrint
+            // simplify: above ASCII only controls are escaped; a full printability check
             // also escapes unassigned and format runes, which real paths do
             // not contain.
             c if c.is_control() => out.push_str(&format!("\\u{:04x}", c as u32)),

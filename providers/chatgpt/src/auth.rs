@@ -1,6 +1,5 @@
-//! ChatGPT OAuth credentials (Go `chatgpt/client.go`): the
-//! `chatgpt-auth.json` store, status, refresh shared by Settings and every
-//! turn, sign-out and the model catalogue.
+//! ChatGPT OAuth credentials: the `chatgpt-auth.json` store, status, refresh
+//! shared by Settings and every turn, sign-out and the model catalogue.
 
 use std::path::PathBuf;
 use std::sync::Arc;

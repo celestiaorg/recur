@@ -1,7 +1,6 @@
-//! `ClaudeProvider::run_turn` against fake `claude` shell scripts: Go
-//! `claude_inject_test.go` (stdin close on result, background-task hold,
-//! steer nack, env scrub) plus steer delivery, process-group kill and the
-//! no-result errors.
+//! `ClaudeProvider::run_turn` against fake `claude` shell scripts: stdin close
+//! on result, background-task hold, steer nack, env scrub, plus steer delivery,
+//! process-group kill and the no-result errors.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -288,7 +287,7 @@ cat >/dev/null
     .concat();
     assert_eq!(lines, want);
 
-    // Go flushes at the tool_result before emitting it, so the user row
+    // Flushed at the tool_result before emitting it, so the user row
     // precedes the result it was delivered after.
     let kinds: Vec<_> = turn.rec.take().iter().map(|e| e.kind()).collect();
     assert_eq!(kinds, ["step", "user", "tool_result", "result"]);
@@ -328,7 +327,7 @@ cat >/dev/null
     );
 }
 
-/// Go `TestClaudeRunnerStripsLinearAPIKey`, through `env_scrub` (tracker
+/// The Linear API key is stripped through `env_scrub` (tracker
 /// secrets come from `IssueTracker::secret_env`). HOME stands in for the
 /// secret because tests cannot set process env safely.
 #[tokio::test]

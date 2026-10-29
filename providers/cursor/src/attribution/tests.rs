@@ -1,4 +1,4 @@
-//! Go `cursor/attribution_test.go`.
+//! Attribution patch tests.
 
 use std::path::Path;
 
@@ -317,7 +317,7 @@ fn rejects_bad_roots() {
 }
 
 /// The SDK does `.finally()` on getAgentSkills' result: the stub must be
-/// thenable. Needs `node` on PATH, as in Go.
+/// thenable. Needs `node` on PATH.
 #[test]
 fn agent_skills_stub_is_thenable() {
     let (_, expr) = STUB_AGENT_SKILLS_ASSIGN.split_once(':').unwrap();

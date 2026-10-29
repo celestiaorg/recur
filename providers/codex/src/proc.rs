@@ -1,5 +1,5 @@
 //! Process plumbing: the reaper, process-group kill (risk R12), PATH lookup
-//! and Go's wording for OS errors.
+//! and the wording for OS errors.
 
 use std::io;
 use std::os::unix::fs::PermissionsExt;
@@ -49,8 +49,8 @@ fn signal_group(pid: u32, sig: Signal) {
     }
 }
 
-/// Go `exec.LookPath` for a bare name: the first executable regular file on
-/// `$PATH` (empty entries mean the current directory).
+/// For a bare name, the first executable regular file on `$PATH` (empty entries
+/// mean the current directory).
 pub fn look_path(name: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
     std::env::split_paths(&path)
@@ -66,8 +66,7 @@ pub fn look_path(name: &str) -> Option<PathBuf> {
         })
 }
 
-/// Go `filepath.Abs`: joined onto the working directory, then lexically
-/// cleaned.
+/// Joined onto the working directory, then lexically cleaned.
 pub fn abs(p: &Path) -> io::Result<PathBuf> {
     let joined = if p.is_absolute() {
         p.to_path_buf()

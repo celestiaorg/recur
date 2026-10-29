@@ -1,7 +1,7 @@
-//! Recur-owned ChatGPT browser sign-in through app-server (Go
-//! `app/codex_login.go`): `account/login/start`, the
-//! `account/login/completed` notification, cancellation and shutdown.
-//! Codex owns the localhost callback and writes `<CODEX_HOME>/auth.json`.
+//! Recur-owned ChatGPT browser sign-in through app-server:
+//! `account/login/start`, the `account/login/completed` notification,
+//! cancellation and shutdown. Codex owns the localhost callback and writes
+//! `<CODEX_HOME>/auth.json`.
 
 use std::sync::Arc;
 use std::time::Duration;

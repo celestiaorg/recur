@@ -1,4 +1,4 @@
-//! Go `cursor/install_test.go`, plus the env-gated pin, wheel and install
+//! Bridge install tests, plus the env-gated pin, wheel and install
 //! checks (`RECUR_CURSOR_SDK_PIN_CHECK`, `RECUR_CURSOR_ATTRIBUTION_PATCH_TEST`,
 //! `RECUR_CURSOR_INSTALL_TEST`).
 

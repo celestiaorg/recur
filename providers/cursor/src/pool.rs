@@ -1,6 +1,5 @@
-//! Warm bridges, one per worktree (the Cursor half of Go
-//! `engine/provider.go`). A single shared bridge with the GUI's cwd "/"
-//! leaves agent shells at disk root even with `local.cwd` set, so each
+//! Warm bridges, one per worktree. A single shared bridge with the GUI's cwd
+//! "/" leaves agent shells at disk root even with `local.cwd` set, so each
 //! worktree gets its own `--workspace` bridge, multiplexing that worktree's
 //! agents by agent id.
 
@@ -64,7 +63,7 @@ pub(crate) struct Pool {
     home: Option<PathBuf>,
 }
 
-/// An error that keeps the turn from starting, with Go's wording.
+/// An error that keeps the turn from starting, with its user-facing wording.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PoolError(pub String);
 

@@ -1,6 +1,6 @@
-//! Reaping orphaned bridges from a crashed or force-quit Recur (Go
-//! `cursor/bridge_reap.go`). The bridge runs in its own process group, so it
-//! outlives its parent; a clean shutdown alone is not enough.
+//! Reaping orphaned bridges from a crashed or force-quit Recur. The bridge runs
+//! in its own process group, so it outlives its parent; a clean shutdown alone
+//! is not enough.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

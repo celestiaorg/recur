@@ -1,6 +1,6 @@
-//! Settings probes (Go `app/cursor_service.go`). Each spins up a throwaway
-//! bridge, independent of the pooled ones, so a key can be validated before
-//! it is saved and a bad key never wedges a running bridge.
+//! Settings probes. Each spins up a throwaway bridge, independent of the pooled
+//! ones, so a key can be validated before it is saved and a bad key never
+//! wedges a running bridge.
 
 use std::path::Path;
 use std::time::Duration;
@@ -17,11 +17,11 @@ use crate::locate::{owned_bridge_root, sdk_version};
 /// Bounds a probe: the first bridge start pays the Node cold start.
 const CURSOR_PROBE_TIMEOUT: Duration = Duration::from_secs(120);
 
-/// Recur Connect's session file (Go `usage.cursorAuthFileName`). Its
-/// presence gates the status probe: a key without it is a leftover paste.
+/// Recur Connect's session file. Its presence gates the status probe: a key
+/// without it is a leftover paste.
 pub const CURSOR_USAGE_AUTH_FILE: &str = "cursor-usage-auth.json";
 
-/// The Settings card, JSON-identical to Go `CursorStatus`.
+/// The Settings card.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct CursorStatus {
@@ -235,7 +235,6 @@ mod tests {
         recur_exec::write_executable(p, "#!/bin/sh\n", 0o755).unwrap();
     }
 
-    // Go TestApplyCursorPin.
     #[test]
     fn apply_pin() {
         let data = tempfile::tempdir().unwrap();

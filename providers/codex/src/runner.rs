@@ -1,5 +1,4 @@
-//! One Codex turn over a per-turn `codex app-server` (Go `CodexRunner.Run`
-//! and `consumeTurn`).
+//! One Codex turn over a per-turn `codex app-server`.
 //!
 //! | TurnRequest | Codex |
 //! |---|---|
@@ -119,8 +118,7 @@ pub async fn run(
     res
 }
 
-/// Cancellation wraps Go's `context.Canceled` with `%w`, so a cancelled
-/// turn's error is a cancel even when it carries a step's wording.
+/// A cancelled turn's error is a cancel even when it carries a step's wording.
 fn fail(cx: &TurnContext, msg: String) -> ProviderError {
     let kind = if cx.cancel.is_cancelled() {
         ErrorKind::Canceled
@@ -617,7 +615,7 @@ pub fn sandbox_for(req: &TurnRequest, network: bool) -> (&'static str, SandboxPo
     )
 }
 
-/// A non-empty allowlist without edit tools (Go `isReadOnlyRole`).
+/// A non-empty allowlist without edit tools.
 fn read_only_allowlist(allowed: Option<&[String]>) -> bool {
     let allowed = allowed.unwrap_or_default();
     !allowed.is_empty()
@@ -668,8 +666,8 @@ pub fn parse_context_flag(s: &str) -> i64 {
     }
 }
 
-/// Go `strconv.ParseFloat(s, 64)`: decimal and hex (`0x1p-2`) literals with
-/// Go's digit-separating underscores, an optional sign, and inf/infinity/nan.
+/// A float: decimal and hex (`0x1p-2`) literals with digit-separating
+/// underscores, an optional sign, and inf/infinity/nan.
 fn go_parse_float(s: &str) -> Option<f64> {
     let (neg, body) = match s.as_bytes().first() {
         Some(b'+') => (false, &s[1..]),
@@ -691,7 +689,7 @@ fn go_parse_float(s: &str) -> Option<f64> {
     Some(if neg { -v } else { v })
 }
 
-/// Go's rule: an underscore must sit between two digits (or right after a
+/// An underscore must sit between two digits (or right after a
 /// base prefix).
 fn underscores_ok(s: &str, hex: bool) -> bool {
     let b = s.as_bytes();

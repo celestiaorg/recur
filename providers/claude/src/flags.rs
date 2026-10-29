@@ -1,5 +1,5 @@
-//! Claude Code model flags (Go `claude_flags.go`) and the picker list (the
-//! Claude branch of `app/model_catalog.go`; Claude Code has no catalogue API).
+//! Claude Code model flags and the picker list (Claude Code has no catalogue
+//! API).
 
 use recur_agent::{FlagDimension, FlagOption, Flags, ModelChoice};
 use serde::Deserialize;
@@ -39,7 +39,7 @@ pub fn context_window(model: &str, flags: &Flags) -> i64 {
 
 /// Whether a dock context dimension was set (including legacy `300k`). The
 /// engine resolves a stored message's window from the flags only when a
-/// model or this flag is known (Go `contextWindowForMessage`).
+/// model or this flag is known.
 pub fn has_context_flag(flags: &Flags) -> bool {
     flags.contains_key("context")
 }
@@ -326,8 +326,6 @@ mod tests {
         assert!(!has_context_flag(&Flags::new()));
     }
 
-    /// Go `TestModelCatalogRefsAreQualified` + `TestSeededDefaultIsInCatalog`
-    /// (provider half).
     #[test]
     fn catalog_refs_are_qualified() {
         let models = catalog();
@@ -347,7 +345,6 @@ mod tests {
         );
     }
 
-    /// Go `TestClaudeCatalogHasEffortAndContextFlags`.
     #[test]
     fn catalog_flags() {
         for m in catalog() {
@@ -367,7 +364,6 @@ mod tests {
         }
     }
 
-    /// Go `TestClaudeCatalogTracksFable51`.
     #[test]
     fn catalog_tracks_fable_51() {
         let rows = |pred: &dyn Fn(&str) -> bool| {

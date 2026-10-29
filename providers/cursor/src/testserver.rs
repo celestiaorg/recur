@@ -1,6 +1,5 @@
-//! A minimal HTTP/1.1 stand-in for the bridge (Go `httptest.Server`): each
-//! request reaches a handler that can answer once or stream frames, and can
-//! see the client hang up.
+//! A minimal HTTP/1.1 stand-in for the bridge: each request reaches a handler
+//! that can answer once or stream frames, and can see the client hang up.
 
 use std::future::Future;
 use std::sync::Arc;
@@ -45,7 +44,7 @@ impl Req {
 pub(crate) struct Resp {
     w: OwnedWriteHalf,
     started: bool,
-    /// Fires when the client hangs up (Go `r.Context().Done()`).
+    /// Fires when the client hangs up.
     pub closed: CancellationToken,
 }
 
@@ -181,7 +180,7 @@ where
     TestServer { url, task }
 }
 
-/// Answers an unstarted response with Go's implicit empty 200 when the
+/// Answers an unstarted response with an implicit empty 200 when the
 /// handler dropped it without writing.
 impl Drop for Resp {
     fn drop(&mut self) {
@@ -192,9 +191,8 @@ impl Drop for Resp {
     }
 }
 
-/// A Python stand-in for cursor-sdk-bridge (Go `writeFakeBridge`): prints a
-/// valid discovery line on stderr, serves GetVersion/Ping/Shutdown, and stays
-/// up until killed.
+/// A Python stand-in for cursor-sdk-bridge: prints a valid discovery line on
+/// stderr, serves GetVersion/Ping/Shutdown, and stays up until killed.
 pub(crate) const FAKE_BRIDGE: &str = r#"#!/usr/bin/env python3
 import json, os, sys, threading, time
 from http.server import BaseHTTPRequestHandler
@@ -295,8 +293,7 @@ pub(crate) fn write_fake_bridge(dir: &std::path::Path) -> std::path::PathBuf {
 }
 
 /// A fake bridge installed as Recur's own `<data>/cursor-bridge` tree, with
-/// the minify fixtures the attribution patch needs (Go
-/// `writeFakeCursorBridge`).
+/// the minify fixtures the attribution patch needs.
 pub(crate) fn write_fake_cursor_install(data_dir: &std::path::Path) -> std::path::PathBuf {
     let root = data_dir.join("cursor-bridge");
     let bin = write_fake_bridge(&root.join("bin"));

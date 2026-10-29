@@ -1,6 +1,5 @@
 //! The harness toolbox: Recur host tools plus the coding tools, run
-//! in-process through the same `Tool::execute` path MCP wraps (Go
-//! `harness.go` `responsesTools` / `execOne` / `harnessPermitter`).
+//! in-process through the same `Tool::execute` path MCP wraps.
 
 use std::sync::Arc;
 
@@ -70,8 +69,7 @@ pub struct HarnessTools {
 
 impl HarnessTools {
     /// The full harness toolbox bound to `req`. `host` is the engine seam
-    /// (Go `engineReporter`); `None` runs coding tools only and denies Bash
-    /// prompts.
+    /// `None` runs coding tools only and denies Bash prompts.
     pub fn new(host: Option<Arc<dyn Host>>, todos: Arc<TodoStore>, req: &TurnRequest) -> Self {
         Self::with_tools(harness_tools(), host, todos, req)
     }

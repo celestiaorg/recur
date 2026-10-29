@@ -1,4 +1,4 @@
-//! Finding the `codex` CLI and Recur's `CODEX_HOME` (Go `codex/locate.go`).
+//! Finding the `codex` CLI and Recur's `CODEX_HOME`.
 //!
 //! Recur drives Codex over `codex app-server` JSON-RPC rather than `codex
 //! exec` or an SDK: mid-turn `turn/steer`, server→client approvals and

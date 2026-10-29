@@ -1,5 +1,4 @@
-//! Cursor's picker rows from live ListModels entries (the Cursor branch of
-//! Go `app/model_catalog.go`).
+//! Cursor's picker rows from live ListModels entries.
 
 use std::collections::BTreeMap;
 
@@ -151,7 +150,6 @@ mod tests {
         }
     }
 
-    // Go TestCursorCatalogHouseModelsFirst.
     #[test]
     fn house_models_first() {
         let out = cursor_catalog_models(&[
@@ -177,7 +175,6 @@ mod tests {
         );
     }
 
-    // Go TestCursorCatalogOmitsDefault.
     #[test]
     fn omits_default() {
         let out = cursor_catalog_models(&[
@@ -200,7 +197,6 @@ mod tests {
         assert_eq!(out[2].context_window, 500_000);
     }
 
-    // Go TestCursorParametersToFlags.
     #[test]
     fn parameters_to_flag_dims() {
         let flags = parameters_to_flags(
@@ -232,7 +228,6 @@ mod tests {
         );
     }
 
-    // Go TestCursorThinkingBoolLabels.
     #[test]
     fn thinking_bool_labels() {
         let flags = parameters_to_flags(
@@ -249,7 +244,6 @@ mod tests {
         assert!(o[0].default);
     }
 
-    // Go TestCursorParametersDefaultToFirstWhenNoVariant.
     #[test]
     fn default_to_first_without_variant() {
         let flags = parameters_to_flags(
@@ -265,7 +259,6 @@ mod tests {
         assert_eq!(flags[0].label, "effort");
     }
 
-    // Go TestCursorPassesThroughListModelsContext.
     #[test]
     fn passes_through_list_models_context() {
         let got = cursor_model_choice(&Model {
@@ -293,7 +286,6 @@ mod tests {
         assert!(!ctx.options[0].default && ctx.options[1].default);
     }
 
-    // Go TestCursorModelChoiceDoesNotInventGPTContext.
     #[test]
     fn does_not_invent_context() {
         let got = cursor_model_choice(&model("gpt-5.6-sol", "GPT-5.6 Sol"));

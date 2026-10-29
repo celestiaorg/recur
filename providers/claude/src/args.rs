@@ -1,5 +1,5 @@
-//! The `claude -p` argv (Go `ClaudeRunner.args`, the Claude flag half of
-//! `permission.go`, `mcpConfigJSON`, `spillAppendPrompt`).
+//! The `claude -p` argv: permission flags, the MCP config and the append-prompt
+//! spill.
 //!
 //! ## Allowlist translation (risk R9)
 //!
@@ -97,7 +97,7 @@ pub fn permission_args(mode: &str, mcp_url: &str) -> Vec<String> {
 }
 
 /// Joins two prompt parts with a blank line, trimming both; either may be
-/// empty (Go `joinAppendPrompt`).
+/// empty.
 pub fn join_append_prompt(base: &str, extra: &str) -> String {
     let (base, extra) = (base.trim(), extra.trim());
     match (base.is_empty(), extra.is_empty()) {
@@ -540,8 +540,7 @@ mod tests {
         );
     }
 
-    /// Go `TestPlanCapFitsExecArg` (spill half): a plan-sized append prompt
-    /// never reaches argv over MAX_ARG_STRLEN.
+    /// A plan-sized append prompt never reaches argv over MAX_ARG_STRLEN.
     #[test]
     fn spill_large_append_prompt() {
         let sys = "x".repeat(256 << 10);

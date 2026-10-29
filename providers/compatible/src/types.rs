@@ -1,5 +1,4 @@
-//! Request, tool, input, usage and event types for `POST /v1/responses` (Go
-//! `responses/types.go`). JSON names and `omitempty` rules match Go.
+//! Request, tool, input, usage and event types for `POST /v1/responses`.
 
 use serde::Serialize;
 use serde_json::{Map, Value};

@@ -1,8 +1,7 @@
-//! ChatGPT account provider (Go `internal/chatgpt`, `engine/chatgpt.go`, the
-//! ChatGPT branch of `engine/provider.go` and `app/chatgpt_service.go`):
-//! Codex-compatible browser and device-code OAuth, then Recur's own coding
-//! harness against `chatgpt.com/backend-api/codex/responses`. No Codex
-//! install, CLI login or API key. See `docs/chatgpt-provider.md`.
+//! ChatGPT account provider: Codex-compatible browser and device-code OAuth,
+//! then Recur's own coding harness against
+//! `chatgpt.com/backend-api/codex/responses`. No Codex install, CLI login or
+//! API key. See `docs/chatgpt-provider.md`.
 
 pub mod auth;
 pub mod login;
@@ -72,8 +71,8 @@ impl ChatGPTProvider {
         &self.auth
     }
 
-    /// Go `GetChatGPTStatus`: the account, with its token checked (and
-    /// refreshed) so an expired session shows as signed out.
+    /// The account, with its token checked (and refreshed) so an expired
+    /// session shows as signed out.
     pub async fn account_status(&self, settings: &Settings) -> ChatGPTStatus {
         let mut status = match self.auth.status().await {
             Ok(s) => s,

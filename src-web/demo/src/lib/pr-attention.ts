@@ -92,7 +92,3 @@ export function prChecksRollup(pr: PRAttention | null | undefined): ChecksRollup
   }
   return checksRollup(rows, { checksOk: pr?.checksOk, hasChecks: pr?.hasChecks })
 }
-
-export function prChecksPassing(pr: PRAttention | null | undefined): boolean {
-  return prChecksRollup(pr).kind === 'pass'
-}

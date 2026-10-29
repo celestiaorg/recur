@@ -15,18 +15,6 @@ export function projectPicFromName(name: string): string {
   return [...t][0]!.toLocaleUpperCase()
 }
 
-export const agColor: Record<string, string> = {
-  MA: 'var(--amber)', CO: 'var(--cyan)', QA: 'var(--coral)',
-  RV: 'var(--indigo)', TE: 'var(--emerald)', PR: '#b08bd8',
-}
-
-export const groupColor: Record<string, string> = {
-  needs: 'var(--coral)', active: 'var(--amber)', ready: 'var(--emerald)',
-}
-export const groupLabel: Record<string, string> = {
-  needs: 'Needs you', active: 'Working', ready: 'Ready for you',
-}
-
 // PR list groups
 export const prGroupColor: Record<string, string> = {
   you: 'var(--coral)', loop: 'var(--amber)', open: 'var(--emerald)', merged: 'var(--indigo)',
@@ -63,21 +51,6 @@ export function prStatusLabel(pr: PRChrome | null | undefined): string {
   if (life === 'draft') return 'Draft'
   if (life === 'queued') return 'Queued'
   return (pr?.state ?? '').trim()
-}
-
-/** Merged and closed PRs cannot take new comments or reviews in Recur. */
-export function prConversationLocked(pr: { state?: string; group?: string; draft?: boolean } | null | undefined): boolean {
-  const life = prLifecycle(pr)
-  return life === 'merged' || life === 'closed'
-}
-
-/** Keep a local Merged lifecycle when a stale GetPR or event still looks open. */
-export function keepMergedPR<T extends PRChrome>(prev: T | undefined | null, next: T): T {
-  if (!prev) return next
-  if (prLifecycle(prev) === 'merged' && prLifecycle(next) !== 'merged') {
-    return { ...next, state: prev.state, group: prev.group }
-  }
-  return next
 }
 
 /** Chrome glyph for a PR — draft dotted, closed crossed, merged git-merge, queued dashed git-merge. */
@@ -148,12 +121,4 @@ export function prForWorkspace<T extends WorkspacePR>(
     }
   }
   return best
-}
-
-// Inbox groups
-export const ibGroupColor: Record<string, string> = {
-  needs: 'var(--coral)', ready: 'var(--emerald)', upd: 'var(--indigo)',
-}
-export const ibGroupLabel: Record<string, string> = {
-  needs: 'Needs you', ready: 'Ready for you', upd: 'Updates',
 }

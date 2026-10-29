@@ -1,11 +1,9 @@
 /**
- * TextMate / VS Code theme loading and CM6 chrome mapping.
- * Syntax colors are applied via vscode-textmate Registry.setTheme + tokenizeLine2
- * (full scope fidelity — no CodeMirror/Lezer token conversion).
+ * TextMate / VS Code theme loading and CM6 chrome mapping (background,
+ * gutter, caret, selection).
  */
 import type { Extension } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
-import type { IRawTheme } from 'vscode-textmate'
 
 /** VS Code colour-theme JSON (tokenColors) or classic TextMate settings[]. */
 export type VsCodeThemeJson = {
@@ -25,7 +23,7 @@ export type VsCodeThemeJson = {
       invisibles?: string
     }
   }>
-  settings?: IRawTheme['settings']
+  settings?: MutableTmRule[]
   /** Classic TextMate plist `gutterSettings` (optional; Recur also maps VS Code gutter keys). */
   gutterSettings?: {
     background?: string
@@ -51,7 +49,6 @@ export type RootScopeBackgrounds = {
 export type ParsedTmTheme = {
   name: string
   uiTheme: 'dark' | 'light'
-  rawTheme: IRawTheme
   colors: Record<string, string>
   rootBackgrounds: RootScopeBackgrounds
 }
@@ -67,30 +64,6 @@ type MutableTmRule = {
     selection?: string
     lineHighlight?: string
     invisibles?: string
-  }
-}
-
-/**
- * vscode-textmate hard-codes default token background to #ffffff when the
- * global (scopeless) theme rule omits `background`. Dark themes that only set
- * foreground then paint white boxes behind every token once we honour bg bits.
- */
-export function ensureGlobalThemeChrome(
-  settings: MutableTmRule[],
-  colors?: Record<string, string>,
-): void {
-  const fg = colors?.['editor.foreground'] ?? '#cccccc'
-  const bg = colors?.['editor.background'] ?? '#1e1e1e'
-  const global = settings.find((s) => !s.scope)
-  if (!global) {
-    settings.unshift({ settings: { foreground: fg, background: bg } })
-    return
-  }
-  const gs = global.settings ?? {}
-  global.settings = {
-    ...gs,
-    foreground: gs.foreground || fg,
-    background: gs.background || bg,
   }
 }
 
@@ -122,19 +95,6 @@ export function isRootLanguageScope(scope: unknown): boolean {
   return sels.length > 0 && sels.every(isRootLanguageSelector)
 }
 
-/**
- * Classic TextMate themes shade the whole document via `scope: source` / `text`.
- * Span highlighters must not paint those as glyph-sized boxes.
- */
-export function stripRootScopeTokenBackgrounds(settings: MutableTmRule[]): void {
-  for (const entry of settings) {
-    if (!isRootLanguageScope(entry.scope) || !entry.settings?.background) continue
-    const next = { ...entry.settings }
-    delete next.background
-    entry.settings = next
-  }
-}
-
 function copyThemeSettings(json: VsCodeThemeJson): MutableTmRule[] {
   if (Array.isArray(json.settings) && json.settings.length) {
     return json.settings.map((entry) => ({ ...entry, settings: { ...entry.settings } }))
@@ -145,14 +105,6 @@ function copyThemeSettings(json: VsCodeThemeJson): MutableTmRule[] {
     scope: entry.scope,
     settings: { ...(entry.settings ?? {}) },
   }))
-}
-
-/** Convert VS Code theme JSON into vscode-textmate IRawTheme.settings. */
-export function toRawTheme(json: VsCodeThemeJson, fallbackName = 'theme'): IRawTheme {
-  const settings = copyThemeSettings(json)
-  ensureGlobalThemeChrome(settings, json.colors)
-  stripRootScopeTokenBackgrounds(settings)
-  return { name: json.name ?? fallbackName, settings }
 }
 
 /** Normalize #RGB / #RRGGBB / #RRGGBBAA for equality (alpha ignored). */
@@ -175,34 +127,6 @@ export function isCssTransparent(c: string | undefined): boolean {
   if (/^#[0-9a-f]{4}$/.test(s)) return s[3] === '0'
   if (/^#[0-9a-f]{8}$/.test(s)) return s.slice(7) === '00'
   return false
-}
-
-/** 0–1 opacity from hex; omitted alpha is opaque. Non-hex returns 1. */
-export function cssColorAlpha(c: string): number {
-  const s = c.trim().toLowerCase()
-  if (/^#[0-9a-f]{4}$/.test(s)) return parseInt(s[3], 16) / 15
-  if (/^#[0-9a-f]{8}$/.test(s)) return parseInt(s.slice(7, 9), 16) / 255
-  return 1
-}
-
-/**
- * Skip near-transparent theme washes. On glyph-sized spans they read as patchy
- * boxes (e.g. Made of Code `meta.embedded` `#B1B3BA08` on Svelte).
- */
-export const TOKEN_BG_MIN_ALPHA = 32 / 255
-
-/** Whether a token background should be painted (vs document / editor fill). */
-export function shouldPaintTokenBackground(
-  color: string | undefined,
-  documentBgs: string[],
-): boolean {
-  if (!color || isCssTransparent(color)) return false
-  if (cssColorAlpha(color) < TOKEN_BG_MIN_ALPHA) return false
-  const key = cssColorKey(color)
-  for (const bg of documentBgs) {
-    if (bg && cssColorKey(bg) === key) return false
-  }
-  return true
 }
 
 /** Last-wins `source` / `text` backgrounds from theme settings (before strip). */
@@ -235,54 +159,6 @@ function parseHexRgb(c: string): Rgb | null {
 function hexRgb({ r, g, b }: Rgb): string {
   const h = (n: number) => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')
   return `#${h(r)}${h(g)}${h(b)}`
-}
-
-/** Blend `fg` over `bg` using `fg`’s alpha (opaque `fg` returned as 6-digit hex). */
-export function compositeCssColor(fg: string, bg: string): string {
-  const top = parseHexRgb(fg)
-  const bot = parseHexRgb(bg)
-  if (!top || !bot) return fg
-  const a = cssColorAlpha(fg)
-  if (a >= 1) return cssColorKey(fg)
-  return hexRgb({
-    r: Math.round(a * top.r + (1 - a) * bot.r),
-    g: Math.round(a * top.g + (1 - a) * bot.g),
-    b: Math.round(a * top.b + (1 - a) * bot.b),
-  })
-}
-
-function srgbLuma(c: Rgb): number {
-  const lin = (n: number) => {
-    const x = n / 255
-    return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
-  }
-  return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
-}
-
-/** WCAG contrast ratio of two CSS colours. `fg` alpha is composited onto `bg`. */
-export function contrastRatio(fg: string, bg: string): number | null {
-  const a = parseHexRgb(compositeCssColor(fg, bg))
-  const b = parseHexRgb(bg)
-  if (!a || !b) return null
-  const l1 = srgbLuma(a)
-  const l2 = srgbLuma(b)
-  const hi = Math.max(l1, l2)
-  const lo = Math.min(l1, l2)
-  return (hi + 0.05) / (lo + 0.05)
-}
-
-/**
- * Skip token foregrounds that vanish into the editor (Brilliance Black
- * `punctuation.definition` `#00000080` on `#0D0D0D`). TextMate does the same;
- * Recur falls back to the editor foreground instead.
- */
-export const TOKEN_FG_MIN_CONTRAST = 1.6
-
-export function tokenForegroundReadable(fg: string | undefined, bg: string | undefined): boolean {
-  if (!fg || !bg) return true
-  const c = contrastRatio(fg, bg)
-  if (c == null) return true
-  return c >= TOKEN_FG_MIN_CONTRAST
 }
 
 /** Rec. 601 luma; TextMate `color_is_dark` in theme.cc. */
@@ -455,7 +331,6 @@ export function parseThemeJson(text: string, fallbackName = 'theme'): ParsedTmTh
   return {
     name: json.name ?? fallbackName,
     uiTheme,
-    rawTheme: toRawTheme(json, fallbackName),
     colors: mergeThemeChrome(json),
     rootBackgrounds,
   }
@@ -516,75 +391,4 @@ export function tmChromeExtension(parsed: ParsedTmTheme): Extension {
       '.cm-panels': { backgroundColor: 'var(--pane)', color: 'var(--text)', zIndex: '2' },
     }, { dark }),
   ]
-}
-
-export function isTextMateTextScope(scopeName: string): boolean {
-  return scopeName === 'text' || scopeName.startsWith('text.')
-}
-
-/**
- * Pick the TextMate root-scope fill (`source` vs `text`) for this grammar.
- * Colours live on chrome CSS variables so theme switches stay live.
- */
-export function tmRootContentExtension(scopeName: string): Extension {
-  const varName = isTextMateTextScope(scopeName) ? '--cm-tm-text-bg' : '--cm-tm-source-bg'
-  return EditorView.theme({
-    '&': { '--cm-tm-content-bg': `var(${varName})` },
-  })
-}
-
-/** Bit layout for tokenizeLine2 metadata (vscode-textmate / VS Code). */
-export const TM_META = {
-  FONT_STYLE_MASK: 0b00000000000000000111100000000000,
-  FONT_STYLE_OFFSET: 11,
-  FOREGROUND_MASK: 0b00000000111111111000000000000000,
-  FOREGROUND_OFFSET: 15,
-  BACKGROUND_MASK: 0b11111111000000000000000000000000,
-  BACKGROUND_OFFSET: 24,
-} as const
-
-export const TM_FONT = {
-  Italic: 1,
-  Bold: 2,
-  Underline: 4,
-  Strikethrough: 8,
-} as const
-
-export function decodeForeground(meta: number): number {
-  return (meta & TM_META.FOREGROUND_MASK) >>> TM_META.FOREGROUND_OFFSET
-}
-
-/** Colour-map index for token background; 0 means “no token background”. */
-export function decodeBackground(meta: number): number {
-  return (meta & TM_META.BACKGROUND_MASK) >>> TM_META.BACKGROUND_OFFSET
-}
-
-export function decodeFontStyle(meta: number): number {
-  return (meta & TM_META.FONT_STYLE_MASK) >>> TM_META.FONT_STYLE_OFFSET
-}
-
-/**
- * Build CSS for colour-map classes used by the TM highlighter.
- * Foreground: `.cm-tm-<i>`; background: `.cm-tm-bg-<i>` (skip index 0 — “none”).
- */
-export function colorMapCss(colorMap: string[], prefix = 'cm-tm'): string {
-  const lines: string[] = []
-  for (let i = 0; i < colorMap.length; i++) {
-    const color = colorMap[i]
-    if (!color) continue
-    lines.push(`.${prefix}-${i} { color: ${color}; }`)
-    if (i > 0) {
-      lines.push(
-        `.${prefix}-bg-${i} { background-color: ${color}; border-radius: 2px; padding: 0.05em 0.12em; margin: 0 -0.12em; }`,
-      )
-    }
-  }
-  lines.push(`.${prefix}-italic { font-style: italic; }`)
-  lines.push(`.${prefix}-bold { font-weight: bold; }`)
-  lines.push(`.${prefix}-underline { text-decoration: underline; }`)
-  lines.push(`.${prefix}-strike { text-decoration: line-through; }`)
-  lines.push(
-    `.${prefix}-underline.${prefix}-strike { text-decoration: underline line-through; }`,
-  )
-  return lines.join('\n')
 }

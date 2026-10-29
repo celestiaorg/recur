@@ -7,7 +7,7 @@ import {
 } from '@codemirror/view'
 import { EditorState, type Extension } from '@codemirror/state'
 import { foldGutter, bracketMatching } from '@codemirror/language'
-import type { EditorPrefs, EditorWhitespace, EditorKeymap } from './stores'
+import type { EditorPrefs, EditorWhitespace } from './stores'
 
 /** Quiet marks — CM defaults (#aaa / #888) read as loud as code on dark themes. */
 const subtleWhitespaceTheme = EditorView.theme({
@@ -102,37 +102,6 @@ export function dropCursorExtension(on: boolean): Extension {
 
 export function drawSelectionExtension(blink: boolean): Extension {
   return drawSelection({ cursorBlinkRate: blink ? 1200 : 0 })
-}
-
-/**
- * Vim and Emacs modes are loaded on demand — together they are ~126 kB that the
- * default keymap never touches. Both wrap their bindings in a high precedence
- * internally, so living in their own compartment rather than inline with the
- * other feature extensions does not change which keys win.
- */
-const keymapCache = new Map<EditorKeymap, Extension>()
-
-/** The modal keymap if it is already resident (otherwise nothing, for now). */
-export function keymapExtensionSync(mode: EditorKeymap): Extension {
-  if (mode === 'default') return []
-  return keymapCache.get(mode) ?? []
-}
-
-/** Resolves to null when there is nothing new to apply. */
-export async function loadKeymapExtension(mode: EditorKeymap): Promise<Extension | null> {
-  if (mode === 'default') return null
-  const cached = keymapCache.get(mode)
-  if (cached) return null
-  try {
-    const ext = mode === 'vim'
-      ? (await import('@replit/codemirror-vim')).vim()
-      : (await import('@replit/codemirror-emacs')).emacs()
-    keymapCache.set(mode, ext)
-    return ext
-  } catch (err) {
-    console.error(`failed to load ${mode} keymap`, err)
-    return null
-  }
 }
 
 /** Vertical print-margin rulers at the given 1-based columns (empty = off). */

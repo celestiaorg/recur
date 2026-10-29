@@ -134,12 +134,3 @@ export function fuzzyFilterPrepared<T>(
   }
   return out
 }
-
-export function fuzzyFilter<T>(
-  items: T[],
-  query: string,
-  labelOf: (item: T) => string,
-  limit = 50,
-): FuzzyHit<T>[] {
-  return fuzzyFilterPrepared(prepareFuzzy(items, labelOf), query, limit)
-}

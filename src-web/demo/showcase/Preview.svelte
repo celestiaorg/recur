@@ -71,33 +71,6 @@
     min-height: 0;
   }
 
-  /* simplify: this is a guided preview of one task. Keep the real panel DOM,
-     typography and interactions; omit management and secondary dock controls.
-     Add a corresponding demo interaction before exposing another control. */
-  .showcase :global(.obs-tb-left > .obs-pane-toggle),
-  .showcase :global(.rail-top .nav:last-child),
-  .showcase :global(.rail .sa),
-  .showcase :global(.rail .pacts),
-  .showcase :global(.rail .tmain),
-  .showcase :global(.rail .lact-rm),
-  .showcase :global(.rail-foot-bar),
-  .showcase :global(.briefing-ask-reopen),
-  .showcase :global(.obs-tb-left [aria-label^="Plan"]),
-  .showcase :global(.obs-tb-right),
-  .showcase :global(.obs-term-toggle),
-  .showcase :global(.wsv-chat-new),
-  .showcase :global(.tab-chip-x),
-  .showcase :global([aria-label="Split editor"]),
-  .showcase :global([aria-label="Reload"]),
-  .showcase :global(.obs-statusbar),
-  .showcase :global(.prd-chat-toggle),
-  .showcase :global(.prh .cmt-act),
-  .showcase :global(.prh-side),
-  .showcase :global(.cmt-more),
-  .showcase :global(.finding-note-compose) {
-    display: none;
-  }
-
   .showcase :global(.prh-title) {
     white-space: normal;
   }

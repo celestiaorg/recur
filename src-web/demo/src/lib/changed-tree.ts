@@ -1,4 +1,4 @@
-import type { TreeEntry } from '../../bindings/recur/internal/domain/models'
+import type { TreeEntry } from './types'
 
 /**
  * The nested structure implied by a flat list of repo-relative paths.
@@ -42,59 +42,6 @@ export function buildTreeFromPaths(paths: readonly string[]): TreeEntry[] {
 function compareTreeEntry(a: TreeEntry, b: TreeEntry): number {
   if (!!a.dir !== !!b.dir) return a.dir ? -1 : 1
   return a.name.localeCompare(b.name)
-}
-
-/** Visible DFS rows for a collapsible tree (dirs included; collapsed dirs omit children). */
-export function flattenVisibleTree(
-  tree: readonly TreeEntry[],
-  collapsed: ReadonlySet<string> = new Set(),
-): { entry: TreeEntry; depth: number }[] {
-  const out: { entry: TreeEntry; depth: number }[] = []
-  const walk = (nodes: readonly TreeEntry[], depth: number) => {
-    for (const n of nodes) {
-      out.push({ entry: n, depth })
-      if (n.dir && !collapsed.has(n.path)) walk(n.children ?? [], depth + 1)
-    }
-  }
-  walk(tree, 0)
-  return out
-}
-
-/** Nested copy of `tree` with at most `limit` visible rows (same DFS as flattenVisibleTree). */
-export function capVisibleTree(
-  tree: readonly TreeEntry[],
-  collapsed: ReadonlySet<string> = new Set(),
-  limit = Infinity,
-): TreeEntry[] {
-  if (!Number.isFinite(limit)) return tree as TreeEntry[]
-  if (limit <= 0) return []
-  const left = { n: limit }
-  let truncated = false
-  const take = (nodes: readonly TreeEntry[]): TreeEntry[] => {
-    const out: TreeEntry[] = []
-    for (const n of nodes) {
-      if (left.n <= 0) {
-        truncated = true
-        break
-      }
-      left.n--
-      if (n.dir && !collapsed.has(n.path) && n.children?.length) {
-        out.push({ ...n, children: take(n.children) })
-      } else {
-        out.push(n)
-      }
-    }
-    return out
-  }
-  const next = take(tree)
-  return truncated ? next : tree as TreeEntry[]
-}
-
-/** File paths under dir (`a` matches `a/b`, not `ab`). */
-export function pathsUnderDir(dir: string, paths: readonly string[]): string[] {
-  if (!dir) return paths as string[]
-  const prefix = dir + '/'
-  return paths.filter((p) => p.startsWith(prefix))
 }
 
 /** File paths in the same DFS order the Changed tree / review TOC shows. */

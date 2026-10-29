@@ -1,20 +1,16 @@
 <script lang="ts">
-  import type { Commit } from '../../bindings/recur/internal/domain/models'
+  import type { Commit } from '../lib/types'
   import CommitRow from './CommitRow.svelte'
   import Icon from './Icon.svelte'
 
   let {
     commits = [] as Commit[],
-    loading = false,
-    error = false,
     baseLabel = '',
     workingDirtyCount = 0,
     onOpenCommit,
     onOpenWorking,
   }: {
     commits?: Commit[]
-    loading?: boolean
-    error?: boolean
     baseLabel?: string
     workingDirtyCount?: number
     onOpenCommit?: (c: Commit) => void
@@ -37,11 +33,7 @@
 
 <div class="obs-review prpane on" data-review="commits">
   <div class="commits-wrap">
-    {#if loading && listEmpty}
-      <div class="empty"><div class="et">Loading commits…</div></div>
-    {:else if error && listEmpty}
-      <div class="empty"><div class="et">Could not load commits</div></div>
-    {:else if listEmpty}
+    {#if listEmpty}
       <div class="empty"><div class="et">{vsLabel ? `No commits since ${vsLabel}` : 'No commits yet'}</div></div>
     {:else}
       <div class="commits-list">
@@ -68,13 +60,7 @@
           <CommitRow commit={c} onOpen={() => onOpenCommit?.(c)} />
         {/each}
       </div>
-      {#if error && !commits.length}
-        <div class="empty"><div class="et">Could not load commits</div></div>
-      {:else if loading && !commits.length}
-        <div class="empty"><div class="et">Loading commits…</div></div>
-      {:else}
-        <div class="hint" style="text-align:left;padding:14px 2px 0">{vsLabel ? `Commits on this branch since ${vsLabel}` : 'Recent commits on this branch'}. Click any to see its diff.</div>
-      {/if}
+      <div class="hint" style="text-align:left;padding:14px 2px 0">{vsLabel ? `Commits on this branch since ${vsLabel}` : 'Recent commits on this branch'}. Click any to see its diff.</div>
     {/if}
   </div>
 </div>

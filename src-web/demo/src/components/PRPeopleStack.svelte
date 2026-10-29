@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PR } from '../../bindings/recur/internal/domain/models'
+  import type { PR } from '../lib/types'
   import {
     participantAvatarUrl,
     participantInitials,

@@ -1,29 +1,20 @@
-import type { Session } from "../src/lib/editor-session";
-import dataset from "../captures/dataset.json";
-import { setTransport, objectNames } from "@wailsio/runtime";
-// @ts-expect-error Supplied by the showcase Vite build, never the desktop build.
+// The showcase backend: answers every service call from the product dataset.
+// simplify: edits last only for this frame. Running agents, git operations and
+// terminals require the downloaded app.
+import { setServiceHandler } from "../src/lib/api";
+// @ts-expect-error Supplied by the showcase Vite build.
 import fixtures from "virtual:showcase-fixtures";
+import type rawDataset from "./dataset.json";
 
-const responses = fixtures.responses as Record<string, any>;
-const methods = fixtures.methods as Record<number, string>;
+const dataset = fixtures.dataset as typeof rawDataset;
+const themes = fixtures.themes as { id: string }[];
+const themeFiles = fixtures.themeFiles as Record<string, string>;
+
 export const { workspaceId, prId } = dataset;
-const files: Record<string, string> = structuredClone(dataset.files);
-const { diffs, transcript, prReview } = dataset;
+const { files, diffs, transcript } = dataset;
 const gitStatus = Object.fromEntries(
   diffs.map((diff) => [diff.path, diff.status]),
 );
-let editorSession: Session = {
-  openFiles: ["src/main.go"],
-  selectedPath: "src/main.go",
-  leftKind: "agent",
-  rightKind: "files",
-  leftOpen: true,
-  rightOpen: false,
-};
-
-export function setPreviewEditorSession(session: typeof editorSession) {
-  editorSession = session;
-}
 
 function listTree(path: string) {
   const prefix = path ? `${path}/` : "";
@@ -40,148 +31,150 @@ function listTree(path: string) {
   return [...entries.values()];
 }
 
-// simplify: edits and preferences last only for this frame. Running agents,
-// git operations, native dialogs and terminals require the downloaded app.
-const local: Record<string, (args: any[]) => unknown> = {
-  UpdateProjectRunConfig: (a) => a[0],
-  BridgeBenchEnabled: () => false,
-  ListLoops: () => [
-    {
-      id: "recur.loops.pr",
-      name: "To a PR",
-      description: "Plan, code, review, and open a pull request",
-    },
+// Inbox buckets per workspace, as the engine's briefing reports them.
+function briefing() {
+  const generatedAt = Date.parse(dataset.clock);
+  const workspaces = [];
+  for (const w of dataset.workspaces) {
+    if (w.isMain) continue;
+    const bucket =
+      w.group === "needs" || w.state === "escalated"
+        ? "needs"
+        : w.group === "active"
+          ? "working"
+          : w.group === "ready"
+            ? "pickup"
+            : "";
+    if (!bucket) continue;
+    const reason =
+      bucket === "needs" ? "question" : bucket === "working" ? "active_agent" : "unfinished_plan";
+    workspaces.push({
+      workspaceId: w.id,
+      projectId: w.projectId,
+      projectName: w.projectId,
+      title: w.short || w.goal,
+      branch: w.branch,
+      bucket,
+      reasons: [reason],
+      now: w.last || w.statusLabel || w.phase || "",
+      next:
+        bucket === "needs"
+          ? "Answer the prompt in this workspace"
+          : bucket === "working"
+            ? "Let the agent finish this turn"
+            : "Pick this up where you left off",
+      lastActivityAt: generatedAt - 120000,
+      lastSummary: w.last || "",
+      state: w.state,
+      phase: w.phase,
+      diffAdd: w.diff.add,
+      diffDel: w.diff.del,
+      planDone: 0,
+      planTotal: 0,
+      primary: { label: "Open", target: `workspace:${w.id}`, kind: "open" },
+    });
+  }
+  return { generatedAt, workspaces };
+}
+
+const effort = {
+  id: "effort",
+  label: "Effort",
+  options: [
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High", default: true },
+    { value: "xhigh", label: "Extra High" },
+    { value: "max", label: "Max" },
   ],
-  ListScheduledPrompts: (a) =>
-    dataset.schedules.filter((s) => !a[0] || s.projectId === a[0]),
-  AppChatItems: () => dataset.appChat,
-  AppChatSelection: () => ({
-    mode: "ask",
-    model: "claude-code/claude-sonnet-4-6",
-    flags: {},
-  }),
-  GetShellState: () => ({ view: "detail", workspaceId }),
-  SetTerminalDockChrome: () => null,
-  WorkingCopyState: () => ({
-    behindBase: 0,
-    aheadBase: 0,
-    dirty: false,
-    unmerged: false,
-    base: "main",
-  }),
-  GetEditorSession: () => editorSession,
+};
+const context = {
+  id: "context",
+  label: "Context",
+  options: [
+    { value: "200k", label: "200K", default: true },
+    { value: "1m", label: "1M" },
+  ],
+};
+const modelCatalog = [
+  {
+    provider: "claude-code",
+    label: "Claude Code",
+    models: [
+      ["claude-fable-5-1", "Fable 5.1"],
+      ["claude-fable-5", "Fable 5"],
+      ["claude-opus-5-5", "Opus 5.5"],
+      ["claude-opus-5", "Opus 5"],
+      ["claude-opus-4-6", "Opus 4.6", true],
+      ["claude-sonnet-5-5", "Sonnet 5.5"],
+      ["claude-sonnet-5", "Sonnet 5"],
+      ["claude-sonnet-4-6", "Sonnet 4.6", true],
+      ["claude-haiku-4-5-20251001", "Haiku 4.5"],
+    ].map(([id, label, both]) => ({
+      ref: `claude-code/${id}`,
+      label,
+      flags: both ? [effort, context] : [effort],
+    })),
+  },
+];
+
+const handlers: Record<string, (args: any[]) => unknown> = {
+  ListProjects: () => dataset.projects,
+  ListWorkspaces: () => [...dataset.workspaces].reverse(),
+  ListPRs: () => dataset.pullRequests,
+  GetPR: (a) => dataset.pullRequests.find((pr) => pr.id === a[0]) ?? null,
+  GetInbox: () => dataset.inbox,
+  GetSettings: () => dataset.settings,
+  AttentionCounts: () => ({ byWorkspace: {}, byProject: {} }),
+  GetBriefing: briefing,
+  ListModelCatalog: () => modelCatalog,
+  ListThemes: () => themes,
+  ReadTheme: (a) => themeFiles[a[0]],
+  GetEditorSession: () => ({ openFiles: ["src/main.go"], selectedPath: "src/main.go" }),
   ListTree: (a) => listTree(a[2]),
   ListTrees: (a) =>
     Object.fromEntries((a[2] ?? []).map((p: string) => [p, listTree(p)])),
-  ListFiles: () => Object.keys(files),
   ReadFile: (a) => {
     if (!(a[2] in files))
       throw new Error("This file is not included in the demo.");
-    return {
-      path: a[2],
-      language: a[2].endsWith(".go") ? "go" : "markdown",
-      content: files[a[2]],
-      size: files[a[2]].length,
-      writable: true,
-    };
+    const content = files[a[2] as keyof typeof files];
+    return { path: a[2], content, size: content.length, writable: true };
   },
-  WriteFile: (a) => {
-    if (a[2] in files) files[a[2]] = a[3];
-  },
-  SearchFiles: (a) => ({
-    hits: Object.keys(files)
-      .filter((p) => p.includes(a[2] ?? ""))
-      .map((path) => ({ path, score: 1 })),
-    ready: true,
-    building: false,
-  }),
   GitStatus: () => gitStatus,
   WorkingStatus: () => gitStatus,
-  ListChangedFiles: () => diffs.map((diff) => diff.path),
   FileAtBase: (a) =>
-    (dataset.baseFiles as Record<string, string>)[a[2]] ?? files[a[2]],
-  FileDiff: (a) =>
-    diffs.find((diff) => diff.path === a[2]) ?? {
-      path: a[2],
-      status: "",
-      diff: { add: 0, del: 0 },
-      lines: [],
-    },
+    (dataset.baseFiles as Record<string, string>)[a[2]] ??
+    files[a[2] as keyof typeof files],
   DiffVsBase: () => ({ files: diffs }),
   DiffWorking: () => ({ files: diffs }),
   ListCommits: () => dataset.commits,
   CommitDiff: () => diffs,
+  ListFindings: () => dataset.findings,
+  ListWorkspaceChats: () => dataset.tabs,
   WorkspaceChatItems: (a) =>
-    a[0] === prReview.workspaceId
-      ? prReview.transcript
-      : a[0] === workspaceId && a[1] === "MA"
-        ? dataset.loopTranscript
-        : transcript,
-  WorkspaceFacts: (a) =>
-    a[0] === workspaceId
-      ? dataset.facts.map((fact) => ({
-          ...fact,
-          data: JSON.stringify(fact.data),
-        }))
-      : [],
-  WorkspaceSessions: () => dataset.sessions,
+    a[0] === workspaceId && a[1] === "MA" ? dataset.loopTranscript : transcript,
   WorkspaceChatSelection: (a) => ({
-    mode:
-      a[1] === "MA"
-        ? "loop"
-        : a[1] === "PA2" || a[0] === prReview.workspaceId
-          ? "review"
-          : "agent",
+    mode: a[1] === "MA" ? "loop" : a[1] === "PA2" ? "review" : "agent",
     model: "claude-code/claude-sonnet-4-6",
     flags: {},
     simplify: true,
   }),
-  ListWorkspaceChats: (a) =>
-    a[0] === prReview.workspaceId ? prReview.tabs : dataset.tabs,
   WorkspaceChatTurnDiff: () => ({
     hash: "9a0e6c1",
     message: "Bound session refresh",
     files: diffs,
   }),
-  SyncGitHubPRs: () => responses.ListPRs,
-  Outline: () => [{ name: "refreshSession", kind: "func", line: 13 }],
-  ListFindings: () => dataset.findings,
-  ListAssignedIssues: () => dataset.issues,
-  GetIssuesView: () => null,
+  WorkspaceSessions: () => dataset.sessions,
+  WorkspaceFacts: (a) =>
+    a[0] === workspaceId
+      ? dataset.facts.map((fact) => ({ ...fact, data: JSON.stringify(fact.data) }))
+      : [],
 };
-const emptyLists = new Set([
-  "WorkspaceSessions",
-  "WorkspaceFacts",
-  "WorkspaceChatModels",
-  "ListClosedWorkspaceChats",
-  "ListPendingPermissions",
-  "ListPendingQuestions",
-  "ListTerminalDockChrome",
-  "ListTerminals",
-  "RestoreWorkspaceTerminals",
-  "ListArtifacts",
-  "ListPRFindings",
-  "ListSkippedBundles",
-  "StagedFiles",
-]);
-const preferences =
-  /^(WatchWorkspace|MarkWorkspaceViewed|SetAppChatFocus|MarkAppChatSeen|SetShellState|UpdateEditorSession|ClearEditorSession|SetWorkspaceChatFocus|SetChatUIOccluded|MarkWorkspaceChatSeen|RememberWorkspaceChatSelection|RememberWorkspaceChatSimplify|RememberChatPromptGroup|RememberChatLoopPolicy|SetFileIndexExclude|MarkInboxRead|MarkAllInboxRead|SetIssuesView)$/;
 
-setTransport({
-  async call(objectID, _method, _window, request: any) {
-    if (objectID !== objectNames.Call) return null;
-    const name =
-      methods[request?.methodID] ?? request?.methodName?.split(".").pop();
-    const args = request?.args ?? [];
-    if (local[name]) return structuredClone(local[name](args));
-    if (preferences.test(name)) return null;
-    if (emptyLists.has(name)) return [];
-    const key = `${name}:${args[0]}`;
-    if (key in responses) return structuredClone(responses[key]);
-    if (name in responses) return structuredClone(responses[name]);
-    console.warn("Demo service unavailable:", name);
-    throw new Error(
-      "This is a local demo. Download Recur to run agents and work with your repositories.",
-    );
-  },
+setServiceHandler(async (name, args) => {
+  if (handlers[name]) return structuredClone(handlers[name](args));
+  console.warn("Demo service unavailable:", name);
+  throw new Error(
+    "This is a local demo. Download Recur to run agents and work with your repositories.",
+  );
 });

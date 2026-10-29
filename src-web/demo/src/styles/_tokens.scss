@@ -18,10 +18,8 @@
   --cyan: #6eb6ff;
   --emerald: #4ade80;
   --coral: #f87171;
-  --coral-d: rgba(248, 113, 113, .14);
   --indigo: #a78bfa;
   --warn: #fbbf24;
-  --coral-line: color-mix(in srgb, var(--coral) 42%, var(--line));
   /* Git status letters — theme-stable (not remapped with --amber/--emerald/--coral). */
   --git-m: #e6c84a;
   --git-a: #5dbe7e;
@@ -33,7 +31,6 @@
   --on-amber: #0A0C10;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --ui: 'Inter', system-ui, sans-serif;
-  --disp: 'Space Grotesk', var(--ui);
 }
 
 /* ===== themes (color only — identity & layout stay constant) ===== */
@@ -55,7 +52,6 @@
   --cyan: #4CC6D6;
   --emerald: #5DBE7E;
   --coral: #EB7A5C;
-  --coral-d: rgba(235, 122, 92, .15);
   --indigo: #9486F4;
   --scrollbar-thumb: #2C343F;
   --scrollbar-thumb-hover: #3A4452;
@@ -80,7 +76,6 @@
   --cyan: #6eb8d4;
   --emerald: #6ecf8a;
   --coral: #e87890;
-  --coral-d: rgba(232, 120, 144, .18);
   --indigo: #a78bc4;
   --warn: #d4c98a;
   --scrollbar-thumb: #2a3460;
@@ -106,7 +101,6 @@
   --cyan: #89dceb;
   --emerald: #a6e3a1;
   --coral: #f38ba8;
-  --coral-d: rgba(243, 139, 168, .16);
   --indigo: #b4befe;
   --warn: #f9e2af;
   --scrollbar-thumb: #45475a;
@@ -134,7 +128,6 @@
   --cyan: #209fb5;
   --emerald: #40a02b;
   --coral: #d20f39;
-  --coral-d: rgba(210, 15, 57, .11);
   --indigo: #7287fd;
   --warn: #a86a10;
   --git-m: #a86a10;
@@ -165,7 +158,6 @@
   --cyan: #2a7eb5;
   --emerald: #2d9a5a;
   --coral: #d14b4b;
-  --coral-d: rgba(209, 75, 75, .11);
   --indigo: #6b5bd4;
   --warn: #b8860b;
   --git-m: #a68512;
@@ -178,29 +170,6 @@
 
 :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .toolbar, :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .prh {
   background: rgba(247, 248, 250, .88);
-}
-
-:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .lgroup, :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .kcol-h {
-  background: rgba(0, 0, 0, .03);
-}
-
-:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .set-nav-item:hover, :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .mm-radio:hover {
-  background: rgba(0, 0, 0, .04);
-  color: var(--text);
-}
-
-:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .set-nav-item.on {
-  background: rgba(0, 0, 0, .07);
-  color: var(--text);
-}
-
-:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .chat-composer-chip-x:hover {
-  background: rgba(0, 0, 0, .06);
-  color: var(--text);
-}
-
-:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .skel::after {
-  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, .06), transparent);
 }
 
 :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .obs-editor-pane:not(.lit) .cm-selectionBackground, :root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .obs-editor-pane:not(.lit) .cm-content ::selection {
@@ -226,7 +195,6 @@
   --cyan: #8fbcbb;
   --emerald: #a3be8c;
   --coral: #bf616a;
-  --coral-d: rgba(191, 97, 106, .18);
   --indigo: #b48ead;
   --warn: #ebcb8b;
   --scrollbar-thumb: #4c566a;

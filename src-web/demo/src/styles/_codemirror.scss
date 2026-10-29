@@ -341,11 +341,6 @@
   vertical-align: unset!important;
 }
 
-.cm-completionIcon-snippet:after {
-  content: "S"!important;
-  font-size: 9px!important;
-}
-
 .cm-tooltip.cm-completionInfo {
   background: var(--pane)!important;
   border: 1px solid var(--line-bright)!important;
@@ -367,11 +362,6 @@
   box-shadow: 0 12px 28px rgba(0, 0, 0, .12)!important;
 }
 
-/* Hide stock @codemirror/lint gutter blobs if anything still mounts them. */
-.cm-gutter-lint, .cm-lint-marker {
-  display: none !important;
-}
-
 /* ===== CodeMirror LSP hover / signature / completion docs ===== */
 .cm-tooltip.cm-tooltip-hover {
   padding: 0 !important;
@@ -381,141 +371,7 @@
   max-width: min(40rem, calc(100vw - 48px)) !important;
 }
 
-.cm-lsp-hover-tooltip.cm-lsp-documentation,
-.cm-lsp-documentation.cm-lsp-completion-documentation,
-.cm-lsp-signature-tooltip {
-  font-family: var(--ui) !important;
-  font-size: 12.5px !important;
-  line-height: 1.45 !important;
-  color: var(--text) !important;
-  padding: 10px 12px !important;
-  box-sizing: border-box;
-}
-
-.cm-lsp-documentation p {
-  margin: 0 0 .55em !important;
-  color: var(--muted);
-}
-
-.cm-lsp-documentation p:last-child {
-  margin-bottom: 0 !important;
-}
-
-.cm-lsp-documentation hr {
-  display: block !important;
-  width: 100% !important;
-  margin: .7em 0 !important;
-  border: 0 !important;
-  border-top: 1px solid var(--line) !important;
-  background: none !important;
-  height: 0 !important;
-}
-
-.cm-lsp-documentation pre {
-  margin: .35em 0 .55em !important;
-  padding: 8px 10px !important;
-  border-radius: 6px !important;
-  background: var(--pane-2) !important;
-  border: 1px solid var(--line) !important;
-  font-family: var(--mono) !important;
-  font-size: 12px !important;
-  line-height: 1.4 !important;
-  white-space: pre-wrap !important;
-  word-break: break-word !important;
-  overflow-wrap: anywhere !important;
-}
-
-.cm-lsp-documentation pre:last-child {
-  margin-bottom: 0 !important;
-}
-
-.cm-lsp-documentation code {
-  font-family: var(--mono) !important;
-  font-size: .95em !important;
-}
-
-.cm-lsp-documentation :not(pre) > code {
-  padding: .1em .35em;
-  border-radius: 4px;
-  background: var(--pane-2);
-  border: 1px solid var(--line);
-}
-
-.cm-lsp-documentation a {
-  color: var(--cyan) !important;
-  text-decoration: none !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--cyan) 45%, transparent);
-}
-
-.cm-lsp-documentation a:hover {
-  color: var(--text) !important;
-  border-bottom-color: var(--cyan);
-}
-
-.cm-lsp-signature-tooltip {
-  max-width: min(36rem, 70vw) !important;
-  max-height: min(14rem, 40vh) !important;
-  overflow: auto !important;
-}
-
-.cm-lsp-signature-tooltip .cm-lsp-signature {
-  font-family: var(--mono) !important;
-  color: var(--text) !important;
-}
-
-.cm-lsp-signature-tooltip .cm-lsp-active-parameter {
-  color: var(--amber) !important;
-  font-weight: 700;
-}
-
-/* ===== Native title → themed tooltip =====
-   Overlay is driven by TitleTooltip.svelte; any `title="…"` is picked up. */
-.ui-tip {
-  position: fixed;
-  z-index: 500;
-  left: 0;
-  top: 0;
-  width: max-content;
-  max-width: min(280px, calc(100vw - 16px));
-  padding: 5px 9px;
-  background: var(--pane);
-  color: var(--text);
-  border: 1px solid var(--line-bright);
-  border-radius: 7px;
-  font-family: var(--ui);
-  font-size: 12px;
-  line-height: 1.4;
-  font-weight: 400;
-  letter-spacing: .01em;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, .42), 0 0 0 1px color-mix(in srgb, var(--amber) 12%, transparent);
-  pointer-events: none;
-  visibility: hidden;
-  opacity: 0;
-}
-
-.ui-tip-text {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 12;
-  overflow: hidden;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.ui-tip.ready {
-  visibility: visible;
-  opacity: 1;
-}
-
 @media (prefers-reduced-motion:no-preference) {
-  .ui-tip.ready {
-    animation: ui-tip-in .09s ease-out;
-  }
-
-  .ui-tip.ready.above {
-    animation-name: ui-tip-in-above;
-  }
 
   @keyframes ui-tip-in {
     from {
@@ -542,6 +398,3 @@
   }
 }
 
-:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .ui-tip {
-  box-shadow: 0 10px 24px rgba(0, 0, 0, .12), 0 0 0 1px color-mix(in srgb, var(--amber) 16%, transparent);
-}

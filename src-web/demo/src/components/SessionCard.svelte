@@ -2,7 +2,7 @@
   // Specialist row in the Loop cockpit fanout card (in-workspace run, not a
   // child worktree). Adjacent specialists share one card, like a wave.
   // Live sessions start open and stream inside.
-  import AgentChat, { type AgentMsg, type FindingRef } from './AgentChat.svelte'
+  import AgentChat, { type AgentMsg } from './AgentChat.svelte'
   import Icon from './Icon.svelte'
   import { chatModeMeta } from '../lib/modes'
   import { specialistMode } from '../lib/loop-cockpit'
@@ -12,22 +12,12 @@
     name = '',
     messages = [],
     live = false,
-    presentationActive = true,
-    rootPath = '',
-    workspaceId = '',
-    onOpenFile,
-    findings = [] as FindingRef[],
   }: {
     code?: string
     name?: string
     messages?: AgentMsg[]
     /** The session is currently streaming — render expanded, pin the header. */
     live?: boolean
-    presentationActive?: boolean
-    rootPath?: string
-    workspaceId?: string
-    onOpenFile?: (path: string, line?: number, endLine?: number) => void
-    findings?: FindingRef[]
   } = $props()
 
   let expandedPref = $state<boolean | null>(null)
@@ -82,7 +72,7 @@
 {#if expanded}
   <div class="fanout-transcript">
     <div class="sess-body fanout-body">
-      <AgentChat {messages} readonly sending={live} {presentationActive} {rootPath} {workspaceId} {onOpenFile} {findings} emptyText="No output yet." />
+      <AgentChat {messages} readonly emptyText="No output yet." />
     </div>
   </div>
 {/if}

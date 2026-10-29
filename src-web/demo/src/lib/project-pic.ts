@@ -1,37 +1,5 @@
 import { projectColors, projectPicFromName } from './colors'
 
-export const LUCIDE_PIC_PREFIX = 'lucide:'
-export const DEFAULT_LUCIDE_PIC = `${LUCIDE_PIC_PREFIX}box`
-
-export type ProjectPicKind = 'letter' | 'icon' | 'image'
-
-export type ParsedProjectPic =
-  | { kind: 'letter'; text: string }
-  | { kind: 'icon'; name: string }
-  | { kind: 'image'; src: string }
-
-export function parseProjectPic(pic: string, fallback = '?'): ParsedProjectPic {
-  const t = pic.trim()
-  if (t.startsWith('data:image/')) return { kind: 'image', src: t }
-  if (t.toLowerCase().startsWith(LUCIDE_PIC_PREFIX)) {
-    const name = t.slice(LUCIDE_PIC_PREFIX.length).trim().toLowerCase()
-    if (name) return { kind: 'icon', name }
-  }
-  if (t) {
-    const chars = [...t]
-    return { kind: 'letter', text: chars.slice(0, 2).join('') }
-  }
-  return { kind: 'letter', text: fallback }
-}
-
-export function formatLucidePic(name: string): string {
-  return `${LUCIDE_PIC_PREFIX}${name.trim().toLowerCase()}`
-}
-
-export function isLetterPic(pic: string): boolean {
-  return parseProjectPic(pic).kind === 'letter'
-}
-
 export function letterFromName(name: string, fallback = '?'): string {
   return projectPicFromName(name) || fallback
 }
@@ -89,32 +57,4 @@ export function fgOnBackground(color: string): string {
   const b = srgbLin((n & 255) / 255)
   const L = 0.2126 * r + 0.7152 * g + 0.0722 * b
   return L > 0.12 ? DARK_FG : LIGHT_FG
-}
-
-const PIC_SIZE = 128
-
-/** Cover-fit a picked image into a small PNG data URL for `project.pic`. */
-export async function picFromImageFile(file: File): Promise<string> {
-  if (!file.type.startsWith('image/')) throw new Error('Not an image')
-  const url = URL.createObjectURL(file)
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image()
-      el.onload = () => resolve(el)
-      el.onerror = () => reject(new Error('Could not read image'))
-      el.src = url
-    })
-    const canvas = document.createElement('canvas')
-    canvas.width = PIC_SIZE
-    canvas.height = PIC_SIZE
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Could not draw image')
-    const scale = Math.max(PIC_SIZE / Math.max(img.width, 1), PIC_SIZE / Math.max(img.height, 1))
-    const w = img.width * scale
-    const h = img.height * scale
-    ctx.drawImage(img, (PIC_SIZE - w) / 2, (PIC_SIZE - h) / 2, w, h)
-    return canvas.toDataURL('image/png')
-  } finally {
-    URL.revokeObjectURL(url)
-  }
 }

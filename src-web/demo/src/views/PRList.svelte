@@ -1,12 +1,9 @@
 <script lang="ts">
-  import { untrack } from 'svelte'
-  import { view, prs, openPR, go, booted, openNewTask, projects, prListSeg, prListFacets, prListProjectIds, prListSort, prListSyncing, prListScoped, workspaces, workspacesRunning, attention, PR_LIST_SEGS, PR_LIST_SORTS } from '../lib/stores'
-  import { prAgentIsRunning, prUnseenCount } from '../lib/pr-workspace'
+  import { view, openPR, projects, prListSeg, prListFacets, prListProjectIds, prListSort, prListScoped, PR_LIST_SEGS, PR_LIST_SORTS } from '../lib/stores'
   import { prChromeColor, prGroupColor, prGroupLabel, prIconName, prStatusLabel } from '../lib/colors'
   import { prAttentionLabels, prChecksRollup, prHasCheckStatus } from '../lib/pr-attention'
   import { PR_LIST_FACETS, PR_LIST_GROUP_ORDER, prListGroup, prMatchesListFilter, sortPRList, type PRListSort } from '../lib/pr-list-filter'
-  import { PRsService, githubPRSyncDue, setPRsFromSync } from '../lib/api'
-  import type { PR } from '../../bindings/recur/internal/domain/models'
+  import type { PR } from '../lib/types'
   import Icon from '../components/Icon.svelte'
   import Select from '../components/Select.svelte'
   import PRPeopleStack from '../components/PRPeopleStack.svelte'
@@ -43,44 +40,12 @@
     return bits.join(' · ')
   }
 
-  function open(id: string) {
-    openPR(id)
-  }
-
-  $effect(() => {
-    const onList = $view === 'pr'
-    if (!onList) {
-      untrack(() => prListSyncing.set(false))
-      return
-    }
-    if (!githubPRSyncDue()) return
-    let alive = true
-    untrack(() => prListSyncing.set(true))
-    PRsService.SyncGitHubPRs()
-      .then((list) => {
-        if (alive && list) untrack(() => setPRsFromSync(list))
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (alive) prListSyncing.set(false)
-      })
-    return () => {
-      alive = false
-      prListSyncing.set(false)
-    }
-  })
 </script>
 
 <section class="view briefing" class:on={$view === 'pr'} id="v-pr" aria-label="Pull requests">
   <div class="briefing-body">
     <div class="briefing-col">
       <div class="briefing-filters">
-        {#if $prListSyncing}
-          <span class="tb-refresh" role="status" aria-live="polite">
-            <Icon name="loader" class="spin" />
-            Refreshing
-          </span>
-        {/if}
         <div class="sp"></div>
         {#if showProjectFilter}
           <Select
@@ -124,25 +89,7 @@
       </div>
       <div class="briefing-scroll">
         <div class="briefing-overview prlist">
-          {#if !$booted}
-            <div class="skelrow"><div class="skel" style="width:32px;height:32px;border-radius:8px"></div><div class="skel" style="flex:1;height:14px"></div></div>
-            <div class="skelrow"><div class="skel" style="width:32px;height:32px;border-radius:8px"></div><div class="skel" style="flex:1;height:14px"></div></div>
-            <div class="skelrow"><div class="skel" style="width:32px;height:32px;border-radius:8px"></div><div class="skel" style="flex:1;height:14px"></div></div>
-            <div class="skelrow"><div class="skel" style="width:32px;height:32px;border-radius:8px"></div><div class="skel" style="flex:1;height:14px"></div></div>
-          {:else if $prs.length === 0}
-            <div class="empty">
-              <div class="ei"><Icon name="git-pull-request" strokeWidth={1.8} /></div>
-              <div class="et">No pull requests yet</div>
-              <div class="ed">GitHub PRs from projects you’ve added to Recur show up here — including ones you didn’t open. Loops still land here when they converge.</div>
-              <div class="ea">
-                {#if $projects.some((p) => p.isGit)}
-                  <button class="tbtn amber" onclick={() => openNewTask()}>Start a loop</button>
-                {:else}
-                  <button class="tbtn amber" onclick={() => go('welcome')}>Get started</button>
-                {/if}
-              </div>
-            </div>
-          {:else if grouped.length === 0}
+          {#if grouped.length === 0}
             <div class="empty"><div class="et">Nothing here</div><div class="ed">No pull requests match this filter.</div></div>
           {:else}
             {#each grouped as { g, items } (g)}
@@ -153,15 +100,9 @@
                   {@const why = prAttentionLabels(p)}
                   {@const showChecks = prHasCheckStatus(p)}
                   {@const checks = prChecksRollup(p)}
-                  {@const agentRunning = prAgentIsRunning(p, $workspaces, $workspacesRunning)}
-                  {@const unseen = prUnseenCount(p, $workspaces, $attention.byWorkspace)}
-                  <div class="prrow" class:needs={g === 'you'} role="button" tabindex="0" onclick={() => open(p.id)} onkeydown={(e) => e.key === 'Enter' && open(p.id)}>
+                  <div class="prrow" class:needs={g === 'you'} role="button" tabindex="0" onclick={() => openPR(p.id)} onkeydown={(e) => e.key === 'Enter' && openPR(p.id)}>
                     <div class="pr-ico" style="background:color-mix(in srgb, {tint} 12%, transparent)">
-                      {#if agentRunning}
-                        <span class="sd pulse" title="Agent running" aria-label="Agent running"></span>
-                      {:else}
-                        <span style="color:{tint}"><Icon name={prIconName(p)} /></span>
-                      {/if}
+                      <span style="color:{tint}"><Icon name={prIconName(p)} /></span>
                     </div>
                     <div class="pr-main">
                       <div class="pr-t">
@@ -176,9 +117,6 @@
                           #{p.number}
                         </span>
                         <span class="pr-t-text">{p.title}</span>
-                        {#if unseen > 0}
-                          <span class="ct" title="{unseen} unseen agent response{unseen === 1 ? '' : 's'}" aria-label="{unseen} unseen agent response{unseen === 1 ? '' : 's'}">{unseen > 9 ? '9+' : unseen}</span>
-                        {/if}
                         {#if p.source === 'gh' && p.url}
                           <a
                             class="pr-out"

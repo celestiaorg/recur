@@ -25,18 +25,6 @@ export function formatRelativeAge(ms: number, now = Date.now()): { rel: string; 
   return { rel, full }
 }
 
-/** Live turn clock: `0:00` … `59:59`, then `1:00:00` (`h:mm:ss`). */
-export function formatElapsed(sec: number): string {
-  sec = Math.max(0, Math.floor(sec))
-  const s = String(sec % 60).padStart(2, '0')
-  if (sec >= 3600) {
-    const h = Math.floor(sec / 3600)
-    const m = Math.floor((sec % 3600) / 60)
-    return `${h}:${String(m).padStart(2, '0')}:${s}`
-  }
-  return `${Math.floor(sec / 60)}:${s}`
-}
-
 /** Compact integer label for UI chrome: 460, 1.2k, 184k, 1.0M. */
 export function formatCompactCount(n: number): string {
   const v = Math.max(0, Math.round(n))

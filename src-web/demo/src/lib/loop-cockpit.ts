@@ -4,7 +4,7 @@
 // loop-started PA* conductor — is the cockpit.
 
 import type { AgentMsg, ChatLogSession } from '../components/AgentChat.svelte'
-import type { FeedItem } from '../../bindings/recur/internal/domain/models'
+import type { FeedItem } from './types'
 import type { ChatMode } from './modes'
 
 export type FeedSess = {
@@ -59,25 +59,6 @@ export function specialistMode(code: string): ChatMode {
   }
 }
 
-/** Specialist codes currently running on this workspace (sidebar agent.updated).
- *  simplify: workspace-wide agentsRunning; a sibling Review & fix tab can flash
- *  this walk's CO/RV. Stamp ownerCode on agent.updated to isolate. */
-export function specialistLiveCodes(
-  workspaceId: string,
-  running: Iterable<string>,
-  extra?: Iterable<string>,
-): Set<string> {
-  const out = extra ? new Set(extra) : new Set<string>()
-  if (!workspaceId) return out
-  const prefix = workspaceId + '-'
-  for (const id of running) {
-    if (!id.startsWith(prefix)) continue
-    const code = id.slice(prefix.length)
-    if (code && isSpecialistSession({ code })) out.add(code)
-  }
-  return out
-}
-
 /** Wall-clock label for a finished loop. Keep in sync with Go formatLoopElapsed. */
 export function formatLoopElapsed(ms: number): string {
   if (ms <= 0) return ''
@@ -124,85 +105,6 @@ function insertByTs(messages: AgentMsg[], msg: AgentMsg): AgentMsg[] {
   return next
 }
 
-export type LoopPRFact = {
-  number: number
-  prId?: string
-  duration?: string
-  source: 'local' | 'gh'
-}
-
-/** Detect a PR-opened engine fact (legacy long prose, completed-in line, or a
- *  loop-pr-link / data-pr anchor with no duration prefix). */
-export function parseLoopPRFact(html: string): LoopPRFact | null {
-  if (!html) return null
-  html = stripLoopWrap(html)
-  // "GitHub PR not opened (… #39 …)" is a fallback, not a successful open.
-  if (/not opened/i.test(html)) return null
-  const prId = html.match(/data-pr="([^"]+)"/)?.[1]
-  const isLink = !!prId || /loop-pr-link/.test(html)
-  if (!isLink && !/Opened|Completed in/i.test(html)) return null
-  if (!isLink && !/\bPR\b/i.test(html.replace(/<[^>]+>/g, ' '))) return null
-  const number = Number(html.match(/#(\d+)/)?.[1] || 0)
-  if (!number && !prId) return null
-  const duration = html.match(/Completed in ([^·<]+)/)?.[1]?.trim()
-  const source = /GitHub PR/i.test(html) && !/Local PR/i.test(html) ? 'gh' : 'local'
-  return {
-    number,
-    source,
-    ...(prId ? { prId } : {}),
-    ...(duration ? { duration } : {}),
-  }
-}
-
-export type LoopPRCompletion = {
-  duration: string
-  prId?: string
-  prLabel: string
-}
-
-/** Display fields for a PR-opened fact, filling duration/id from the cockpit when missing. */
-export function loopPRCompletion(
-  html: string,
-  ctx?: {
-    prs?: { id: string; number: number; workspaceId?: string }[]
-    workspaceId?: string
-    factTs?: number
-    startTs?: number
-  },
-): LoopPRCompletion | null {
-  const parsed = parseLoopPRFact(html)
-  if (!parsed) return null
-  let prId = parsed.prId
-  if (!prId && parsed.number && ctx?.prs?.length) {
-    const ws = ctx.workspaceId
-    prId = ctx.prs.find((p) => p.number === parsed.number && (!ws || p.workspaceId === ws))?.id
-  }
-  const start = ctx?.startTs
-  const fact = ctx?.factTs
-  const span = fact && start != null && start > 1 && fact > start ? fact - start : 0
-  const duration = parsed.duration
-    || (span > 0 && span < 30 * 24 * 60 * 60 * 1000
-      ? formatLoopElapsed(span)
-      : '')
-  const kind = parsed.source === 'gh' ? 'GitHub PR' : 'Local PR'
-  const prLabel = parsed.number ? `${kind} #${parsed.number}` : kind
-  return { duration, prLabel, ...(prId ? { prId } : {}) }
-}
-
-const loopWrapRe = /<div class="loop-wrap">([\s\S]*?)<\/div>\s*$/i
-
-/** Inner HTML of the engine's loop-wrap body (issue / done / notes). */
-export function loopCompletionWrap(html: string): string {
-  if (!html) return ''
-  return (html.match(loopWrapRe)?.[1] || '').trim()
-}
-
-/** Fact text with the loop-wrap body stripped so it is not shown twice. */
-export function stripLoopWrap(html: string): string {
-  if (!html) return ''
-  return html.replace(loopWrapRe, '').trim()
-}
-
 function msgTs(m: AgentMsg): number {
   if (m.ts && m.ts > 0) return m.ts
   if (m.optimistic || m.streaming || m.queued) return Number.MAX_SAFE_INTEGER
@@ -214,14 +116,6 @@ function firstTs(messages: AgentMsg[], fallback: number): number {
     if (m.ts && m.ts > 0) return m.ts
   }
   return fallback
-}
-
-/** Previous dispatch is settled — the next patch is a new cockpit card. */
-export function needsLiveTurnBreak(msgs: AgentMsg[]): boolean {
-  if (!msgs.length) return false
-  const last = msgs[msgs.length - 1]
-  if (last.turnEnd || last.streaming || last.resultPending || last.me) return false
-  return true
 }
 
 const LIVE_TS = Number.MAX_SAFE_INTEGER

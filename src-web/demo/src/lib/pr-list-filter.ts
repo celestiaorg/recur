@@ -169,22 +169,3 @@ export function prListGroup(pr: PRListRow | null | undefined): string {
   }
   return g
 }
-
-/** Titlebar tallies — live inbox, not Recur’s you/loop/open buckets. */
-export function prListTitleCounts(prs: PRListRow[]): { you: number; open: number; merged: number } {
-  let you = 0
-  let open = 0
-  let merged = 0
-  for (const p of prs) {
-    const life = prListLifecycle(p)
-    if (life === 'merged') {
-      merged++
-      continue
-    }
-    if (life === 'open' || life === 'draft') {
-      open++
-      if (prListGroup(p) === 'you') you++
-    }
-  }
-  return { you, open, merged }
-}

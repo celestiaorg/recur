@@ -73,30 +73,6 @@ function wholeFileChange(aLen: number, bLen: number): readonly Change[] {
   return [new Change(0, aLen, 0, bLen)]
 }
 
-/** Inclusive line containing `offset`; `docLen` maps to `lines.length`. */
-export function lineIndexAt(split: LineSplit, offset: number, docLen: number): number {
-  if (offset <= 0) return 0
-  if (offset >= docLen) return split.lines.length
-  const { starts } = split
-  let lo = 0
-  let hi = starts.length - 1
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1
-    if (starts[mid]! <= offset) lo = mid
-    else hi = mid - 1
-  }
-  return lo
-}
-
-/** Exclusive end line: a boundary at the start of line i does not include i. */
-export function exclusiveLineAt(split: LineSplit, offset: number, docLen: number): number {
-  if (offset <= 0) return 0
-  if (offset >= docLen) return split.lines.length
-  const i = lineIndexAt(split, offset, docLen)
-  if (split.starts[i] === offset) return i
-  return i + 1
-}
-
 /** Line-index hunk (0-based, exclusive ends) — same bounds git would use. */
 export type LineHunk = {
   fromA: number

@@ -2,7 +2,6 @@
 //! state and attention, check rollups, participants and reviewers, times.
 
 mod checks;
-pub(crate) mod gosort;
 mod people;
 mod state;
 mod text;

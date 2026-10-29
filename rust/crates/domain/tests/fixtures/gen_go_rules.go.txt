@@ -6,7 +6,7 @@
 //
 // then delete the copy. Rows are [cadence, cron, date, time, zone, after,
 // want] where want is the RFC3339 UTC result, "" for no occurrence, or "!"
-// for an error; base URL rows are [input, normalized URL or "!" + error].
+// for an error.
 package domain
 
 import (
@@ -64,25 +64,7 @@ func TestDumpRustRules(t *testing.T) {
 		}
 		rows[i] = append(r, want)
 	}
-	var urls [][]string
-	for _, in := range []string{
-		"https://api.openai.com/", "http://localhost:11434", "HTTP://Example.com:8080/v1?x=1#frag", "localhost:8080",
-		"api.openai.com", "//host/v1", "ftp://host", "http://", "https://", "http://[::1]:8080/", "http://[1.2.3.4]",
-		"http://[fe80::1%25en0]:1/", "http://user:pa ss@host", "http://user@host", "http://exa mple.com",
-		"http://host:port", "http://a:1:2", "http://h%2f.com", "http://h%C3%A9.com", "https://x/%zz", "https://x/#%z",
-		"https://x/?%zz", "http://x[::1]", "http://[::1", "mailto:a@b.com", "http:/x", "http:///x", "1http://x",
-		"https://ok.example///", "  https://trim.example/  ", "http://h^st", "http://h|st", "http://h\"st", "http://h_st.com",
-		"http://h~st", "http://h<st>", "https://x?", "https://x/a b", "*", ":x", "a:b/c", "http://@host", "http://:80",
-		"http://[fe80::1%25]", "http://[::ffff:1.2.3.4]", "http://[::1]x", "http://h%41.com", "http://a@b@c",
-	} {
-		p, err := NormalizeCompatibleProvider(CompatibleProvider{ID: "p", BaseURL: in, Models: []CompatibleModel{{ID: "m"}}}, nil)
-		if err != nil {
-			urls = append(urls, []string{in, "!" + err.Error()})
-		} else {
-			urls = append(urls, []string{in, p.BaseURL})
-		}
-	}
-	b, err := json.Marshal(map[string]any{"schedules": rows, "baseURLs": urls})
+	b, err := json.Marshal(map[string]any{"schedules": rows})
 	if err != nil {
 		t.Fatal(err)
 	}

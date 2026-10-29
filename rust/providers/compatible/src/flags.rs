@@ -4,8 +4,6 @@ use recur_agent::Flags;
 use recur_domain::CompatibleFlagDim;
 use serde_json::{Map, Value, json};
 
-use crate::gojson::go_float;
-
 /// A flag value Go's encoder cannot write (`json: unsupported value`).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("json: unsupported value: {0}")]
@@ -51,7 +49,7 @@ fn coerce_wire_value(wire: &str, val: &str) -> Result<Value, UnsupportedValue> {
             Ok(f) if f.is_infinite() => Err(UnsupportedValue(
                 if f > 0.0 { "+Inf" } else { "-Inf" }.into(),
             )),
-            Ok(f) => Ok(go_float(f)),
+            Ok(f) => Ok(f.into()),
             Err(_) => Ok(Value::String(val.into())),
         },
         "max_output_tokens" => Ok(val

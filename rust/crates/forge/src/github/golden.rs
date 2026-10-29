@@ -70,7 +70,12 @@ fn snapshot_matches_go() {
     assert_eq!(snap.merge_queued, want["mergeQueued"].as_bool().unwrap());
 
     let got: Vec<Value> = snap.comments.iter().map(json_of).collect();
-    let go: Vec<Value> = want["comments"].as_array().unwrap().clone();
+    // Go's comparator was not a total order; Rust sorts undated rows last.
+    let mut go: Vec<Value> = want["comments"].as_array().unwrap().clone();
+    go.sort_by_cached_key(|c| {
+        let at = c["at"].as_str().and_then(parse_time);
+        (c["kind"] != "description", at.is_none(), at)
+    });
     assert_eq!(got.len(), go.len());
     for (g, w) in got.iter().zip(&go) {
         assert_eq!(g, w);
@@ -96,9 +101,19 @@ fn snapshot_matches_go() {
     assert_eq!(json_of(&enriched), want["enrichedCommits"]);
 
     let avatar = |l: &str, p: &str| avatar_url(l, p, 56);
+    // Participants follow comment order, which differs from Go's above.
+    let by_text = |v: &Value| {
+        let mut rows: Vec<String> = v.as_array().unwrap().iter().map(Value::to_string).collect();
+        rows.sort();
+        rows
+    };
     assert_eq!(
-        json_of(&snapshot_participants(&snap, &snap.comments, &avatar)),
-        want["participants"]
+        by_text(&json_of(&snapshot_participants(
+            &snap,
+            &snap.comments,
+            &avatar
+        ))),
+        by_text(&want["participants"])
     );
     assert_eq!(
         json_of(&snapshot_reviewers(&snap, &snap.comments, &avatar)),

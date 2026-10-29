@@ -1,12 +1,11 @@
 //! Scheduled prompts: saved local times that start an independent workspace.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc, Weekday};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
-use crate::gotime::{civil, date, load_location};
+use crate::cron;
 use crate::settings::Flags;
-use crate::{cron, gotime};
 
 /// Starts an independent workspace at a saved local time.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -85,60 +84,48 @@ pub fn next_scheduled_time(
     s: &ScheduledPrompt,
     after: DateTime<Utc>,
 ) -> Result<Option<DateTime<Tz>>, ScheduleError> {
-    let loc = match load_location(&s.time_zone) {
-        Ok(Some(loc)) if !s.time_zone.is_empty() => loc,
-        _ => return Err(ScheduleError::TimeZone),
-    };
-    let at = |unix: i64| DateTime::from_timestamp(unix, 0).map(|t| t.with_timezone(&loc));
+    let loc: Tz = s.time_zone.parse().map_err(|_| ScheduleError::TimeZone)?;
     if s.on_startup() {
         return Ok(None);
     }
     if s.cadence == "cron" {
         let schedule = cron::parse(s.cron.trim()).map_err(ScheduleError::Cron)?;
-        return match schedule.next(loc, after.timestamp()).and_then(at) {
-            Some(t) => Ok(Some(t)),
-            None => Err(ScheduleError::NoOccurrence),
-        };
+        return schedule
+            .next(loc, after.timestamp())
+            .and_then(|unix| DateTime::from_timestamp(unix, 0))
+            .map(|t| Some(t.with_timezone(&loc)))
+            .ok_or(ScheduleError::NoOccurrence);
     }
     let (hour, minute) = parse_clock(&s.time).ok_or(ScheduleError::Time)?;
-    // Candidates are whole seconds, so "strictly after" ignores sub-seconds.
-    let after_unix = after.timestamp();
-    let (mut y, mut m, mut d) = match s.cadence.as_str() {
+    let mut day = match s.cadence.as_str() {
         "once" => parse_date(&s.date).ok_or(ScheduleError::Date)?,
-        "daily" | "weekdays" => {
-            let c = civil(loc, after_unix);
-            (c.year, c.month, c.day)
-        }
+        "daily" | "weekdays" => after.with_timezone(&loc).date_naive(),
         _ => return Err(ScheduleError::Cadence),
     };
     for _ in 0..8 {
-        let noon = date(loc, y, m, d, 12, 0, 0);
-        let weekend = matches!(civil(loc, noon).weekday, 0 | 6);
+        let weekend = matches!(day.weekday(), Weekday::Sat | Weekday::Sun);
         if s.cadence != "weekdays" || !weekend {
-            let mut t = noon - 24 * 3600;
-            while t < noon + 24 * 3600 {
-                let c = civil(loc, t);
-                if (c.year, c.month, c.day, c.hour, c.minute) == (y, m, d, hour, minute) {
-                    if t > after_unix {
-                        return Ok(at(t));
-                    }
-                    break; // The first occurrence already passed, including on a fall-back day.
-                }
-                t += 60;
+            // The first occurrence only, so a fall-back day never runs twice.
+            let first = day
+                .and_hms_opt(hour, minute, 0)
+                .and_then(|wall| loc.from_local_datetime(&wall).earliest());
+            // Candidates are whole seconds, so "strictly after" ignores sub-seconds.
+            if let Some(t) = first.filter(|t| t.timestamp() > after.timestamp()) {
+                return Ok(Some(t));
             }
         }
         if s.cadence == "once" {
             break;
         }
-        let next = civil(loc, date(loc, y, m, d + 1, 12, 0, 0));
-        (y, m, d) = (next.year, next.month, next.day);
+        let Some(next) = day.succ_opt() else { break };
+        day = next;
     }
     Ok(None)
 }
 
 /// Go `time.Parse("15:04", s)`: a one- or two-digit hour below 24, a colon,
 /// and exactly two minute digits below 60.
-fn parse_clock(s: &str) -> Option<(i64, i64)> {
+fn parse_clock(s: &str) -> Option<(u32, u32)> {
     let (h, m) = s.split_once(':')?;
     let digits = |x: &str, lens: std::ops::RangeInclusive<usize>| {
         lens.contains(&x.len()) && x.bytes().all(|b| b.is_ascii_digit())
@@ -146,38 +133,16 @@ fn parse_clock(s: &str) -> Option<(i64, i64)> {
     if !digits(h, 1..=2) || !digits(m, 2..=2) {
         return None;
     }
-    let (hour, minute): (i64, i64) = (h.parse().ok()?, m.parse().ok()?);
+    let (hour, minute): (u32, u32) = (h.parse().ok()?, m.parse().ok()?);
     (hour < 24 && minute < 60).then_some((hour, minute))
 }
 
-/// Go `time.Parse("2006-01-02", s)`: four year characters, two-digit month
-/// and day, validated against the calendar.
-fn parse_date(s: &str) -> Option<(i64, i64, i64)> {
-    let b = s.as_bytes();
-    if b.len() != 10 || b[4] != b'-' || b[7] != b'-' {
+/// Go `time.Parse("2006-01-02", s)`: a zero-padded date that exists.
+fn parse_date(s: &str) -> Option<NaiveDate> {
+    if s.len() != 10 {
         return None;
     }
-    let year = gotime::atoi(&s[..4]).ok()?;
-    let two = |r: std::ops::Range<usize>| -> Option<i64> {
-        b[r.clone()]
-            .iter()
-            .all(u8::is_ascii_digit)
-            .then(|| gotime::atoi(&s[r]).ok())?
-    };
-    let (month, day) = (two(5..7)?, two(8..10)?);
-    if !(1..=12).contains(&month) || day < 1 || day > days_in(month, year) {
-        return None;
-    }
-    Some((year, month, day))
-}
-
-fn days_in(month: i64, year: i64) -> i64 {
-    match month {
-        2 if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 => 29,
-        2 => 28,
-        4 | 6 | 9 | 11 => 30,
-        _ => 31,
-    }
+    NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
 }
 
 #[cfg(test)]
@@ -377,7 +342,10 @@ mod tests {
         ] {
             assert_eq!(next_scheduled_time(&p, now), Err(want), "{p:?}");
         }
-        assert_eq!(parse_date("2028-02-29"), Some((2028, 2, 29)));
+        assert_eq!(
+            parse_date("2028-02-29"),
+            NaiveDate::from_ymd_opt(2028, 2, 29)
+        );
         assert_eq!(parse_date("2100-02-29"), None);
     }
 
@@ -454,13 +422,13 @@ mod tests {
                 "30 2 * * *",
                 "America/New_York",
                 "2026-03-08T05:00:00Z",
-                "2026-03-09T06:30:00Z",
+                "2026-03-08T07:00:00Z",
             ),
             (
                 "30 1 * * *",
                 "America/New_York",
                 "2026-11-01T05:30:00Z",
-                "2026-11-01T06:30:00Z",
+                "2026-11-02T06:30:00Z",
             ),
             (
                 "@every 1m",

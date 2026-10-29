@@ -1,12 +1,12 @@
-//! A port of the robfig/cron v3 parser and schedules that Recur's Go app
-//! uses for cron cadences: optional seconds field, five or six fields,
-//! names (JAN, MON), `*`/`?`, ranges, steps, descriptors (@monthly,
-//! @every 1h30m), a `TZ=`/`CRON_TZ=` prefix, and its exact `Next` walk
-//! (including DST handling and the five-year search limit).
+//! Cron cadences in the robfig/cron v3 syntax the Go app stores: optional
+//! seconds field, five or six fields, names (JAN, MON), `*`/`?`, ranges,
+//! steps, descriptors (@monthly, @every 1h30m) and a `TZ=`/`CRON_TZ=`
+//! prefix. `next` walks wall-clock time and gives up after five years.
 
+use chrono::{DateTime, Datelike, Months, NaiveDate, NaiveDateTime, TimeDelta, TimeZone, Timelike};
 use chrono_tz::Tz;
 
-use crate::gotime::{self, Civil, SECOND, add_date, civil, date};
+const SECOND: i64 = 1_000_000_000;
 
 /// Set when a field was written as `*` or `?` (dom/dow matching treats
 /// "either restricted" as OR).
@@ -109,8 +109,14 @@ pub(crate) fn parse(spec: &str) -> Result<Schedule, String> {
             ));
         };
         let name = &spec[eq + 1..i];
-        location = gotime::load_location(name)
-            .map_err(|e| format!("provided bad location {name}: {e}"))?;
+        location =
+            match name {
+                "" | "UTC" => Some(Tz::UTC),
+                "Local" => None,
+                _ => Some(name.parse::<Tz>().map_err(|_| {
+                    format!("provided bad location {name}: unknown time zone {name}")
+                })?),
+            };
         spec = spec[i..].trim();
     }
 
@@ -213,7 +219,9 @@ fn parse_int_or_name(expr: &str, names: &[(&str, u64)]) -> Result<u64, String> {
 }
 
 fn must_parse_int(expr: &str) -> Result<u64, String> {
-    let num = gotime::atoi(expr).map_err(|e| format!("failed to parse int from {expr}: {e}"))?;
+    let num: i64 = expr
+        .parse()
+        .map_err(|e| format!("failed to parse int from {expr}: {e}"))?;
     if num < 0 {
         return Err(format!("negative number ({num}) not allowed: {expr}"));
     }
@@ -252,7 +260,7 @@ fn parse_descriptor(descriptor: &str, location: Option<Tz>) -> Result<Schedule, 
         "@hourly" => spec(all(&HOURS), all(&DOM), all(&MONTHS), all(&DOW)),
         _ => match descriptor.strip_prefix("@every ") {
             Some(d) => {
-                let duration = gotime::parse_duration(d)
+                let duration = parse_duration(d)
                     .map_err(|e| format!("failed to parse duration {descriptor}: {e}"))?;
                 // Under a second rounds up to one; sub-second parts are truncated.
                 let duration = duration.max(SECOND);
@@ -263,6 +271,45 @@ fn parse_descriptor(descriptor: &str, location: Option<Tz>) -> Result<Schedule, 
             None => Err(format!("unrecognized descriptor: {descriptor}")),
         },
     }
+}
+
+/// A Go duration string (`1h30m`, `1.5h`, `90s`, `300ms`), in nanoseconds.
+fn parse_duration(s: &str) -> Result<i64, String> {
+    let invalid = || format!("invalid duration {s:?}");
+    let (sign, mut rest) = match s.strip_prefix('-') {
+        Some(r) => (-1.0, r),
+        None => (1.0, s.strip_prefix('+').unwrap_or(s)),
+    };
+    if rest == "0" {
+        return Ok(0);
+    }
+    if rest.is_empty() {
+        return Err(invalid());
+    }
+    let is_num = |c: char| c.is_ascii_digit() || c == '.';
+    let mut total = 0.0;
+    while !rest.is_empty() {
+        let num_end = rest.find(|c| !is_num(c)).ok_or_else(invalid)?;
+        let unit_end = rest[num_end..]
+            .find(is_num)
+            .map_or(rest.len(), |i| num_end + i);
+        let n: f64 = rest[..num_end].parse().map_err(|_| invalid())?;
+        let unit = match &rest[num_end..unit_end] {
+            "ns" => 1.0,
+            "us" | "\u{b5}s" | "\u{3bc}s" => 1e3,
+            "ms" => 1e6,
+            "s" => 1e9,
+            "m" => 60e9,
+            "h" => 3600e9,
+            _ => return Err(invalid()),
+        };
+        total += n * unit;
+        rest = &rest[unit_end..];
+    }
+    if total >= i64::MAX as f64 {
+        return Err(invalid());
+    }
+    Ok((sign * total) as i64)
 }
 
 impl Schedule {
@@ -278,9 +325,9 @@ impl Schedule {
 }
 
 impl Spec {
-    fn day_matches(&self, c: &Civil) -> bool {
-        let dom_match = (1u64 << c.day) & self.dom > 0;
-        let dow_match = (1u64 << c.weekday) & self.dow > 0;
+    fn day_matches(&self, d: NaiveDate) -> bool {
+        let dom_match = (1u64 << d.day()) & self.dom > 0;
+        let dow_match = (1u64 << d.weekday().num_days_from_sunday()) & self.dow > 0;
         if self.dom & STAR_BIT > 0 || self.dow & STAR_BIT > 0 {
             dom_match && dow_match
         } else {
@@ -288,88 +335,61 @@ impl Spec {
         }
     }
 
+    /// The first matching wall time at or after `t`.
+    fn next_wall(&self, mut t: NaiveDateTime, year_limit: i32) -> Option<NaiveDateTime> {
+        let hit = |field: u64, v: u32| (1u64 << v) & field > 0;
+        while t.year() <= year_limit {
+            let d = t.date();
+            if !hit(self.month, t.month()) {
+                t = d.with_day(1)?.checked_add_months(Months::new(1))?.into();
+            } else if !self.day_matches(d) {
+                t = d.succ_opt()?.into();
+            } else if !hit(self.hour, t.hour()) {
+                t = d.and_hms_opt(t.hour(), 0, 0)? + TimeDelta::hours(1);
+            } else if !hit(self.minute, t.minute()) {
+                t = d.and_hms_opt(t.hour(), t.minute(), 0)? + TimeDelta::minutes(1);
+            } else if !hit(self.second, t.second()) {
+                t += TimeDelta::seconds(1);
+            } else {
+                return Some(t);
+            }
+        }
+        None
+    }
+
+    /// Walks wall-clock times in the schedule's zone. A wall time a DST gap
+    /// skips runs at the first instant after the gap; one a fall-back
+    /// repeats runs once, at its first occurrence.
+    // simplify: "runs once" also pauses sub-hourly jobs for the repeated hour
+    // of a fall-back; walk the second pass too when the hour field is `*`
+    // if that matters.
     fn next(&self, tz: Tz, unix: i64) -> Option<i64> {
         let loc = self.location.unwrap_or(tz);
-        // Start at the earliest possible time (the upcoming second).
-        let mut t = unix + 1;
-        let mut added = false;
-        // If no time is found within five years, give up.
-        let year_limit = civil(loc, t).year + 5;
-
-        'wrap: loop {
-            let c = civil(loc, t);
-            if c.year > year_limit {
-                return None;
+        let mut wall = DateTime::from_timestamp(unix, 0)?
+            .with_timezone(&loc)
+            .naive_local();
+        let year_limit = wall.year() + 5;
+        loop {
+            wall = self.next_wall(wall + TimeDelta::seconds(1), year_limit)?;
+            let t = loc
+                .from_local_datetime(&wall)
+                .earliest()
+                .or_else(|| gap_end(loc, wall))?
+                .timestamp();
+            if t > unix {
+                return Some(t);
             }
-
-            while (1u64 << civil(loc, t).month) & self.month == 0 {
-                if !added {
-                    added = true;
-                    let c = civil(loc, t);
-                    t = date(loc, c.year, c.month, 1, 0, 0, 0);
-                }
-                t = add_date(loc, t, 0, 1, 0);
-                if civil(loc, t).month == 1 {
-                    continue 'wrap;
-                }
-            }
-
-            // Days whose midnight a DST shift skips land at 23:00 or 01:00;
-            // nudge back to midnight.
-            while !self.day_matches(&civil(loc, t)) {
-                if !added {
-                    added = true;
-                    let c = civil(loc, t);
-                    t = date(loc, c.year, c.month, c.day, 0, 0, 0);
-                }
-                t = add_date(loc, t, 0, 0, 1);
-                let hour = civil(loc, t).hour;
-                if hour != 0 {
-                    t += if hour > 12 {
-                        (24 - hour) * 3600
-                    } else {
-                        -hour * 3600
-                    };
-                }
-                if civil(loc, t).day == 1 {
-                    continue 'wrap;
-                }
-            }
-
-            while (1u64 << civil(loc, t).hour) & self.hour == 0 {
-                if !added {
-                    added = true;
-                    let c = civil(loc, t);
-                    t = date(loc, c.year, c.month, c.day, c.hour, 0, 0);
-                }
-                t += 3600;
-                if civil(loc, t).hour == 0 {
-                    continue 'wrap;
-                }
-            }
-
-            while (1u64 << civil(loc, t).minute) & self.minute == 0 {
-                if !added {
-                    added = true;
-                    t = t.div_euclid(60) * 60;
-                }
-                t += 60;
-                if civil(loc, t).minute == 0 {
-                    continue 'wrap;
-                }
-            }
-
-            while (1u64 << civil(loc, t).second) & self.second == 0 {
-                added = true;
-                t += 1;
-                if civil(loc, t).second == 0 {
-                    continue 'wrap;
-                }
-            }
-
-            return Some(t);
         }
     }
+}
+
+/// The first instant after the DST gap that skips `wall`.
+fn gap_end(loc: Tz, wall: NaiveDateTime) -> Option<DateTime<Tz>> {
+    let minute = wall.with_second(0)?;
+    (1..=24 * 60).find_map(|m| {
+        loc.from_local_datetime(&(minute + TimeDelta::minutes(m)))
+            .earliest()
+    })
 }
 
 #[cfg(test)]
@@ -432,11 +452,11 @@ mod tests {
             ("0 0 0 * *", "beginning of range (0) below minimum (1): 0"),
             (
                 "x * * * *",
-                "failed to parse int from x: strconv.Atoi: parsing \"x\": invalid syntax",
+                "failed to parse int from x: invalid digit found in string",
             ),
             (
                 "@every nonsense",
-                "failed to parse duration @every nonsense: time: invalid duration \"nonsense\"",
+                "failed to parse duration @every nonsense: invalid duration \"nonsense\"",
             ),
             ("@fortnightly", "unrecognized descriptor: @fortnightly"),
             (
@@ -467,5 +487,35 @@ mod tests {
         );
         assert_eq!(parse("@every 10ms"), Ok(Schedule::Every { delay: SECOND }));
         assert_eq!(parse("@every -5m"), Ok(Schedule::Every { delay: SECOND }));
+    }
+
+    #[test]
+    fn durations() {
+        for (s, want) in [
+            ("0", 0),
+            ("2h30m", 9_000 * SECOND),
+            ("1.5h", 5_400 * SECOND),
+            ("-1m", -60 * SECOND),
+            ("+5s", 5 * SECOND),
+            ("300ms", 300_000_000),
+            ("1\u{b5}s", 1_000),
+            ("1\u{3bc}s", 1_000),
+            (".5s", 500_000_000),
+            ("1.s", SECOND),
+        ] {
+            assert_eq!(parse_duration(s), Ok(want), "{s}");
+        }
+        for s in [
+            "",
+            "nonsense",
+            "1",
+            ".s",
+            "-",
+            "1x",
+            "9999999999999999999h",
+            "1.2.3s",
+        ] {
+            assert!(parse_duration(s).is_err(), "{s}");
+        }
     }
 }

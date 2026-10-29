@@ -1101,19 +1101,13 @@ pub(crate) fn apply_review_threads(cs: &mut [PrComment], threads: &[ReviewThread
     }
 }
 
-/// Description first, then by timestamp (Go `sort.SliceStable` semantics).
+/// Description first, then by timestamp. Rows without a parseable timestamp
+/// go last, in their original order: their age is unknown, and trailing them
+/// keeps every dated row in time order.
 pub(crate) fn sort_comments(cs: &mut [PrComment]) {
-    crate::model::gosort::slice_stable(cs, |a, b| {
-        if a.kind == "description" && b.kind != "description" {
-            return true;
-        }
-        if b.kind == "description" && a.kind != "description" {
-            return false;
-        }
-        match (parse_time(&a.at), parse_time(&b.at)) {
-            (Some(ta), Some(tb)) => ta < tb,
-            _ => false,
-        }
+    cs.sort_by_cached_key(|c| {
+        let at = parse_time(&c.at);
+        (c.kind != "description", at.is_none(), at)
     });
 }
 

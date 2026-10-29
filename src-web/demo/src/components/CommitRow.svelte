@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
-  import type { Commit } from '../../bindings/recur/internal/domain/models'
-  import { copyText } from '../lib/clipboard'
+  import type { Commit } from '../lib/types'
   import { pushToast } from '../lib/stores'
   import { commitByline, commitSha } from '../lib/commit-meta'
   import Icon from './Icon.svelte'
@@ -27,7 +26,7 @@
     e.stopPropagation()
     if (!sha) return
     try {
-      await copyText(sha)
+      await navigator.clipboard.writeText(sha)
       copied = true
       clearTimeout(copyTimer)
       copyTimer = setTimeout(() => { copied = false }, 1200)

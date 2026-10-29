@@ -1,9 +1,9 @@
-// The model list is SERVER-owned: SettingsService.ListModelCatalog() returns one
+// The model list is SERVER-owned: service.ListModelCatalog() returns one
 // grouped list across every enabled, configured provider, including per-model
 // flag dimensions. See internal/app/model_catalog.go.
 
 import { writable } from 'svelte/store'
-import { SettingsService } from '../../bindings/recur/internal/app'
+import { service } from './api'
 
 export type FlagOption = { value: string; label: string; default?: boolean }
 export type FlagDimension = { id: string; label: string; options: FlagOption[] }
@@ -48,17 +48,14 @@ export function normalizeFlags(
   return out
 }
 
-export function flagsEqual(a: FlagMap, b: FlagMap): boolean {
-  const aa = coerceFlags(a) ?? {}
-  const bb = coerceFlags(b) ?? {}
-  const ak = Object.keys(aa)
-  const bk = Object.keys(bb)
-  if (ak.length !== bk.length) return false
-  return ak.every((k) => aa[k] === bb[k])
+/** Flatten ListModelCatalog groups into picker rows. */
+type CatalogGroup = {
+  provider: string
+  label: string
+  models?: { ref: string; label: string; flags?: { id: string; label: string; options?: { value: string; label: string; default?: boolean }[] }[] }[]
 }
 
-/** Flatten ListModelCatalog groups into picker rows. */
-export function flattenModelCatalog(groups: Awaited<ReturnType<typeof SettingsService.ListModelCatalog>> | null | undefined): CatalogModel[] {
+export function flattenModelCatalog(groups: CatalogGroup[] | null | undefined): CatalogModel[] {
   if (!groups?.length) return []
   const models = groups.flatMap((g) =>
     (g.models ?? []).map((m) => ({
@@ -117,7 +114,7 @@ export async function loadModelCatalog(opts?: { force?: boolean }): Promise<Cata
     if (catalogCache) return catalogCache
     if (catalogInflight) return catalogInflight
   }
-  const req: Promise<CatalogModel[]> = Promise.resolve(SettingsService.ListModelCatalog()).then((groups) => {
+  const req: Promise<CatalogModel[]> = Promise.resolve(service.ListModelCatalog()).then((groups) => {
     const models = flattenModelCatalog(groups)
     if (catalogInflight === req) catalogCache = models
     return models
@@ -128,11 +125,6 @@ export async function loadModelCatalog(opts?: { force?: boolean }): Promise<Cata
   } finally {
     if (catalogInflight === req) catalogInflight = null
   }
-}
-
-/** Warm the catalogue after boot so the chat dock does not flash a raw ref. */
-export function prefetchModelCatalog() {
-  void loadModelCatalog().catch(() => {})
 }
 
 export type ModelSelectOption = {

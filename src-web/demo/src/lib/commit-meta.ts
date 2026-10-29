@@ -1,4 +1,4 @@
-import type { Commit } from '../../bindings/recur/internal/domain/models'
+import type { Commit } from './types'
 
 export function commitSha(c: Commit): string {
   return (c.sha || c.hash || '').trim()

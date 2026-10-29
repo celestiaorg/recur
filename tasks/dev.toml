@@ -30,14 +30,6 @@ mv "$tmp/Assets.car" darwin/Assets.car
 mv "$tmp"/*.icns darwin/icons.icns
 '''
 
-["capture:splash"]
-description = "Captures the app demo using the product dataset and named screen presets (`-- --screen workspace --theme charcoal`)"
-run = [
-  "pnpm --dir src-web/demo install --frozen-lockfile",
-  "pnpm --dir src-web/demo run build",
-  "node scripts/capture-splash.mjs",
-]
-
 ["fetch:tm-grammars"]
 description = "Re-fetches TextMate grammars from shikijs/textmate-grammars-themes into bundles/Languages"
 run = "node scripts/fetch-tm-grammars.mjs"

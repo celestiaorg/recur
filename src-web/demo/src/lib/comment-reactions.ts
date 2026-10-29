@@ -1,9 +1,5 @@
-import { get } from 'svelte/store'
-import type { PRComment, PRReaction } from '../../bindings/recur/internal/domain/models'
-import { PRsService, call } from './api'
-import { keepPendingReplies } from './comment-thread'
+import type { PRReaction } from './types'
 import type { IconName } from './icons'
-import { prs, selectedPRId } from './stores'
 
 export const GH_REACTIONS: ReadonlyArray<{ content: string; icon: IconName; label: string }> = [
   { content: '+1', icon: 'thumbs-up', label: 'thumbs up' },
@@ -74,64 +70,4 @@ export function reactionMine(rs: PRReaction[] | null | undefined, content: strin
   const c = normalizeReactionContent(content)
   if (!c) return false
   return !!(rs ?? []).find((r) => normalizeReactionContent(r.content) === c)?.mine
-}
-
-type ReactionShape = { id?: string; reactions?: PRReaction[] }
-
-export function applyCommentReactions<T extends ReactionShape>(comments: T[], id: string, reactions: PRReaction[]): T[] {
-  if (!id) return comments
-  return comments.map((c) => (c.id === id ? { ...c, reactions } : c))
-}
-
-export function applyReactionHolds<T extends ReactionShape>(comments: T[], holds: Record<string, PRReaction[]>): T[] {
-  let out = comments
-  for (const [id, rs] of Object.entries(holds)) {
-    if (!id) continue
-    out = applyCommentReactions(out, id, rs)
-  }
-  return out
-}
-
-/** In-flight reaction toggles so a stale GetPR cannot flip the pills back. */
-export const commentReactionHold: Record<string, PRReaction[]> = {}
-
-export function resetCommentReactionHolds() {
-  for (const k of Object.keys(commentReactionHold)) delete commentReactionHold[k]
-}
-
-function paintReactions(prId: string, commentId: string, reactions: PRReaction[]) {
-  prs.update((arr) => arr.map((p) => (
-    p.id !== prId ? p : { ...p, comments: applyCommentReactions(p.comments ?? [], commentId, reactions) }
-  )))
-}
-
-export function mergePRThreadComments(prev: PRComment[] | undefined, next: PRComment[] | undefined): PRComment[] {
-  return applyReactionHolds(keepPendingReplies(prev ?? [], next ?? []), commentReactionHold)
-}
-
-/** Optimistic add/remove. Returns false when the write did not stick. */
-export async function togglePRCommentReaction(c: PRComment, content: string): Promise<boolean> {
-  const id = (c.id ?? '').trim()
-  const n = normalizeReactionContent(content)
-  if (!id || !n) return false
-  const prId = get(selectedPRId)
-  if (!prId) return false
-  const next = toggleReactions(c.reactions, n)
-  commentReactionHold[id] = next
-  paintReactions(prId, id, next)
-  const updated = await call(PRsService.TogglePRCommentReaction(prId, id, n), 'Could not update reaction')
-  if (commentReactionHold[id] !== next) return false
-  if (!updated) {
-    delete commentReactionHold[id]
-    paintReactions(prId, id, c.reactions ?? [])
-    return false
-  }
-  prs.update((arr) => arr.map((p) => {
-    if (p.id !== updated.id) return p
-    return { ...updated, comments: mergePRThreadComments(p.comments ?? [], updated.comments ?? []) }
-  }))
-  window.setTimeout(() => {
-    if (commentReactionHold[id] === next) delete commentReactionHold[id]
-  }, 120_000)
-  return true
 }

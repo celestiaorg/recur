@@ -38,15 +38,6 @@ export function githubCommitUrl(prURL: string | undefined, sha: string): string 
   return repo ? `${repo}/commit/${oid}` : ''
 }
 
-/** File view at `ref` on the same repo as this pull request. */
-export function githubBlobUrl(prURL: string | undefined, ref: string, path: string, line?: number): string {
-  const r = ref.trim()
-  const p = path.replace(/^\/+/, '')
-  const repo = r && p ? githubRepoUrl(prURL) : ''
-  if (!repo) return ''
-  return `${repo}/blob/${r}/${p.split('/').map(encodeURIComponent).join('/')}${line && line > 0 ? `#L${line}` : ''}`
-}
-
 /** Database id from a numeric REST id or a GraphQL node id (PRR_ / IC_ / …). */
 export function githubNodeDatabaseID(id: string): string {
   const rawId = id.trim()

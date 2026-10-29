@@ -32,28 +32,12 @@ export function isAwayFromBottom(
   return maxScroll > slack && scrollTop < maxScroll - slack
 }
 
-export function isScrolledFromBottom(
-  el: Pick<HTMLElement, 'scrollTop' | 'scrollHeight' | 'clientHeight'>,
-  slack = SCROLL_FADE_SLACK,
-): boolean {
-  return isAwayFromBottom(el.scrollTop, el.scrollHeight - el.clientHeight, slack)
-}
-
 export function scrollerIsParked(el: HTMLElement): boolean {
   return !!el.closest('#wsv-park')
 }
 
 export function syncScrollFade(el: HTMLElement, slack = SCROLL_FADE_SLACK): void {
   el.classList.toggle(SCROLL_FADE_TOP_CLASS, isScrolledFromTop(el, slack))
-}
-
-export function syncScrollEdgeFades(
-  el: HTMLElement,
-  topSlack = SCROLL_FADE_SLACK,
-  botSlack = topSlack,
-): void {
-  el.classList.toggle(SCROLL_FADE_TOP_CLASS, isScrolledFromTop(el, topSlack))
-  el.classList.toggle(SCROLL_FADE_BOT_CLASS, isScrolledFromBottom(el, botSlack))
 }
 
 /** `{@attach}` — keeps `.fade-top` in sync with scroll and size changes. */

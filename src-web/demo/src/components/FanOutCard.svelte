@@ -1,32 +1,14 @@
 <script lang="ts">
-  // One wave of the board: the children started together (and what had just
-  // landed to start them — waves are dispatch records, not barriers: their
-  // children merge independently and later waves interleave), with live state
-  // read from the workspace store (so the card updates as children run,
-  // merge, or need you) and the engine's final outcome once a child is
-  // archived. A live row opens the child; a settled row expands in
-  // place into the child's FULL loop transcript — conductor turns, specialist
-  // cards, and engine facts interleaved exactly as its own loop tab showed
-  // them (same mergeLoopCockpit, same AgentChat, read-only). Sessions and
-  // facts outlive the archive, so this works after the worktree is gone.
-  import { tick } from 'svelte'
-  import { get } from 'svelte/store'
-  import { workspaces, workspacesRunning, openWorkspace, childTranscriptRequest } from '../lib/stores'
+  // One wave of the board: the children started together, with live state
+  // read from the workspace store. A row opens the child workspace.
+  import { workspaces, workspacesRunning, openWorkspace } from '../lib/stores'
   import { workspaceIsRunning, chatModeMeta } from '../lib/modes'
-  import { WorkspacesService, ObservatoryService } from '../lib/api'
-  import { mapChatItems } from '../lib/agentchat'
-  import { isPairChatCode, mergeLoopCockpit, type FeedSess } from '../lib/loop-cockpit'
-  import AgentChat, { type AgentMsg, type ChatLogSession, type FindingRef } from './AgentChat.svelte'
-  import SessionCard from './SessionCard.svelte'
   import Icon from './Icon.svelte'
 
   type FanOutChild = { id: string; title: string; steps: string[]; mode?: string; state?: string; note?: string }
   type FanOutWave = { wave: number; title?: string; after?: string[]; children: FanOutChild[]; done?: boolean }
 
-  let { data, fallback = '' }: {
-    data: string
-    fallback?: string
-  } = $props()
+  let { data }: { data: string } = $props()
 
   const wave = $derived.by((): FanOutWave | null => {
     try {
@@ -78,74 +60,6 @@
     }
   }
 
-  /** The child still exists as a workspace you can work in. */
-  function isOpenable(c: FanOutChild): boolean {
-    const ws = get(workspaces).find((w) => w.id === c.id)
-    return !!ws && !ws.archived
-  }
-
-  // ---- inline transcripts for settled children ----
-  type Transcript = { loading: boolean; messages: AgentMsg[]; findings: FindingRef[] }
-  let openIds = $state<Record<string, boolean>>({})
-  let transcripts = $state<Record<string, Transcript>>({})
-
-  async function loadTranscript(c: FanOutChild) {
-    const id = c.id
-    if (transcripts[id]) return
-    transcripts = { ...transcripts, [id]: { loading: true, messages: [], findings: [] } }
-    // Everything is scoped to the tab that owned the child's run: the loop
-    // conductor (MA) for a fan-out child, the default chat tab for a chat
-    // child (no step chips), whose whole run is one PA conversation.
-    const ws = get(workspaces).find((w) => w.id === id)
-    const owner = c.steps.length ? ws?.loopChatCode || 'MA' : 'PA'
-    const [items, sv, fx, findings] = await Promise.all([
-      WorkspacesService.WorkspaceChatItems(id, owner).catch(() => null),
-      WorkspacesService.WorkspaceSessions(id, owner, '').catch(() => null),
-      WorkspacesService.WorkspaceFacts(id).catch(() => null),
-      ObservatoryService.ListFindings(id).catch(() => [] as FindingRef[]),
-    ])
-    const conductor = mapChatItems(items ?? [])
-    const sessions: FeedSess[] = (sv ?? [])
-      .filter((s) => !isPairChatCode(s.code))
-      .map((s) => ({
-        id: s.id, code: s.code, name: s.name, kind: s.kind, ts: s.createdAt,
-        messages: mapChatItems(s.items),
-      }))
-    const messages = mergeLoopCockpit(conductor, sessions, fx ?? [], new Set(), ws?.goal ?? '')
-    transcripts = { ...transcripts, [id]: { loading: false, messages, findings: findings ?? [] } }
-  }
-
-  function toggleTranscript(c: FanOutChild) {
-    const next = !openIds[c.id]
-    openIds = { ...openIds, [c.id]: next }
-    if (next) void loadTranscript(c)
-  }
-
-  function onRow(c: FanOutChild) {
-    if (isOpenable(c)) openWorkspace(c.id)
-    else toggleTranscript(c)
-  }
-
-  // A plan-panel link asked for one of our children: expand it, bring the row
-  // into view, and flash it so the jump is legible.
-  let rootEl = $state<HTMLElement | undefined>(undefined)
-  let flashId = $state('')
-  $effect(() => {
-    const id = $childTranscriptRequest
-    const child = id && wave ? wave.children.find((c) => c.id === id) : undefined
-    if (!id || !child) return
-    childTranscriptRequest.set(null)
-    flashId = id
-    setTimeout(() => { if (flashId === id) flashId = '' }, 1400)
-    const row = () => rootEl?.querySelector<HTMLElement>(`[data-child="${id}"]`)
-    if (!openIds[id]) openIds = { ...openIds, [id]: true }
-    void loadTranscript(child).then(tick).then(() => {
-      // The parent transcript has settled on the card by now; nudge the row in
-      // case the expanded body pushed it, without dragging outer scrollers.
-      row()?.scrollIntoView({ block: 'nearest' })
-    })
-  })
-
   const summary = $derived.by(() => {
     if (!wave) return ''
     const n = wave.children.length
@@ -156,7 +70,7 @@
 </script>
 
 {#if wave}
-  <div class="fanout-card" bind:this={rootEl}>
+  <div class="fanout-card">
     <div class="fanout-head">
       <span class="ico" aria-hidden="true"><Icon name="git-fork" /></span>
       <span class="fanout-title">{wave.title ?? `Wave ${wave.wave}`}</span>
@@ -166,24 +80,15 @@
     </div>
     {#each wave.children as c (c.id)}
       {@const st = rowState(c)}
-      {@const openable = isOpenable(c)}
-      {@const expanded = !!openIds[c.id]}
       <button
         type="button"
         class="fanout-row clickable"
-        class:expandable={!openable}
-        class:expanded
-        class:flash={flashId === c.id}
         data-child={c.id}
-        aria-expanded={openable ? undefined : expanded}
-        title={openable ? `Open ${c.id}` : (c.note ? `${c.note} — click for the transcript` : 'Show the child transcript')}
-        onclick={() => onRow(c)}
+        title={`Open ${c.id}`}
+        onclick={() => openWorkspace(c.id)}
       >
-        <!-- Step chips; on hover an expandable row swaps them for a chevron,
-             the same swap the sidebar's project pictures do. -->
         <span class="fanout-steps">
           <span class="fanout-chips">{#if c.mode}{@const mm = chatModeMeta(c.mode)}<span class="tstep" style="color:{mm.tint};background:color-mix(in srgb, {mm.tint} 14%, transparent)">{mm.label}</span>{/if}{#each c.steps as s (s)}<span class="tstep">{s}</span>{/each}</span>
-          {#if !openable}<span class="fanout-car" aria-hidden="true"><Icon name="chevron-down" strokeWidth={2.4} /></span>{/if}
         </span>
         <span class="fanout-name">
           {c.title}
@@ -202,33 +107,6 @@
           {st.label}
         </span>
       </button>
-      {#if expanded && !openable}
-        {@const t = transcripts[c.id]}
-        <div class="fanout-transcript">
-          {#if !t || t.loading}
-            <span class="fanout-transcript-empty">Loading transcript…</span>
-          {:else if t.messages.length === 0}
-            <span class="fanout-transcript-empty">No transcript was recorded for this child.</span>
-          {:else}
-            <div class="sess-body fanout-body">
-              {#snippet childSessionCard(log: ChatLogSession)}
-                <SessionCard
-                  code={log.code}
-                  name={log.name}
-                  messages={log.messages}
-                  live={false}
-                  rootPath={$workspaces.find((w) => w.id === c.id)?.worktreePath ?? ''}
-                  workspaceId={c.id}
-                  findings={t.findings ?? []}
-                />
-              {/snippet}
-              <AgentChat messages={t.messages} readonly workspaceId={c.id} sessionCard={childSessionCard} emptyText="No transcript was recorded for this child." />
-            </div>
-          {/if}
-        </div>
-      {/if}
     {/each}
   </div>
-{:else}
-  <div class="tc-head static"><span class="tc-meta">{@html fallback}</span></div>
 {/if}

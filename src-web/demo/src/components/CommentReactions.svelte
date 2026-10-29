@@ -1,29 +1,25 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import type { PRComment } from '../../bindings/recur/internal/domain/models'
-  import { appOverlayOpen } from '../lib/stores'
+  import type { PRComment } from '../lib/types'
   import { popoverTop, portalToBody } from '../lib/menu-space'
   import {
     GH_REACTIONS,
     reactionIcon,
     reactionLabel,
     reactionMine,
-    togglePRCommentReaction,
+    toggleReactions,
     visibleReactions,
   } from '../lib/comment-reactions'
   import Icon from './Icon.svelte'
 
-  let { comment, canReact = false }: { comment?: PRComment | null; canReact?: boolean } = $props()
+  let { comment }: { comment?: PRComment | null } = $props()
 
-  const pills = $derived(visibleReactions(comment?.reactions))
-  const show = $derived(!!comment?.id && (pills.length > 0 || canReact))
+  // simplify: reactions toggle locally; the demo has no GitHub to write to.
+  let reactions = $state(untrack(() => comment?.reactions ?? []))
+  const pills = $derived(visibleReactions(reactions))
   let open = $state(false)
   let box = $state<{ top: number; left: number } | null>(null)
   let anchor: DOMRect | null = null
-
-  $effect(() => {
-    if ($appOverlayOpen) open = false
-  })
 
   function close() {
     open = false
@@ -52,10 +48,9 @@
     })
   }
 
-  async function react(content: string) {
-    if (!canReact || !comment) return
+  function react(content: string) {
     close()
-    await togglePRCommentReaction(comment, content)
+    reactions = toggleReactions(reactions, content)
   }
 
   function onKey(e: KeyboardEvent) {
@@ -68,13 +63,11 @@
 
 <svelte:window onmousedown={() => close()} onkeydowncapture={onKey} onwheel={() => close()} />
 
-{#if show && comment}
+{#if comment?.id}
   <div class="rxn">
-    {#if canReact}
-      <button type="button" class="rxn-add" title="Add reaction" aria-label="Add reaction" aria-haspopup="menu" aria-expanded={open} onclick={openPicker}>
-        <Icon name="smile" size={14} />
-      </button>
-    {/if}
+    <button type="button" class="rxn-add" title="Add reaction" aria-label="Add reaction" aria-haspopup="menu" aria-expanded={open} onclick={openPicker}>
+      <Icon name="smile" size={14} />
+    </button>
     {#each pills as r (r.content)}
       {@const label = reactionLabel(r.content)}
       {@const icon = reactionIcon(r.content)}
@@ -83,11 +76,10 @@
         class="rxn-pill"
         class:mine={!!r.mine}
         data-rxn={r.content}
-        disabled={!canReact}
         aria-pressed={!!r.mine}
         aria-label={r.mine ? `Remove ${label} reaction` : `React with ${label}`}
         title={r.mine ? `Remove ${label}` : `React with ${label}`}
-        onclick={() => void react(r.content)}
+        onclick={() => react(r.content)}
       >
         {#if icon}<Icon name={icon} size={13} />{/if}
         <span class="rxn-n">{r.count}</span>
@@ -102,12 +94,12 @@
       <button
         type="button"
         class="rxn-pick-item"
-        class:mine={reactionMine(comment?.reactions, r.content)}
+        class:mine={reactionMine(reactions, r.content)}
         data-rxn={r.content}
         role="menuitem"
         aria-label="React with {r.label}"
         title={r.label}
-        onclick={() => void react(r.content)}
+        onclick={() => react(r.content)}
       ><Icon name={r.icon} size={16} /></button>
     {/each}
   </div>

@@ -74,22 +74,6 @@
   color: var(--muted);
 }
 
-
-.briefing-ask-reopen {
-  position: relative;
-  margin-right: 2px;
-}
-
-.ask-unseen-dot {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--coral);
-}
-
 /* The list is full-width table rows, same grammar as the PR dashboard's
    .prrow / the loops list's .lr (grid columns, soft row rules, hover fill). */
 .wbrief-row {
@@ -140,17 +124,6 @@
 }
 
 .wbrief-row .ity svg {
-  width: 14px;
-  height: 14px;
-}
-
-.briefing-overview .ibrow .ity {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-}
-
-.briefing-overview .ibrow .ity svg {
   width: 14px;
   height: 14px;
 }
@@ -235,20 +208,6 @@
   }
 }
 
-/* Elsewhere notification rows flatten to the same table grammar in compact. */
-.briefing-overview .ibrow {
-  border: none;
-  border-bottom: 1px solid var(--line-soft);
-  border-radius: 0;
-  margin: 0;
-  background: none;
-  padding: 7px 16px;
-}
-
-.briefing-overview .ibrow:hover {
-  background: var(--pane-2);
-}
-
 .briefing-clear {
   border: 1px solid var(--line-bright);
   background: var(--pane-2);
@@ -303,23 +262,6 @@
   line-height: 0;
   /* Caps sit high in the em; geometric center reads low. */
   translate: 0 -1px;
-}
-
-.briefing-more {
-  width: 100%;
-  padding: 8px 12px;
-  border: none;
-  border-bottom: 1px solid var(--line-soft);
-  background: none;
-  color: var(--muted);
-  font-size: 12px;
-  cursor: pointer;
-  transition: .12s;
-}
-
-.briefing-more:hover {
-  color: var(--text);
-  background: var(--pane-2);
 }
 
 /* Card variant: a single pinned workspace in a chat transcript
@@ -409,82 +351,6 @@
   color: var(--faint);
 }
 
-/* Ask Recur dock: left side like every other chat in the app, resizable via
-   the shared panel-width machinery (--inbox-chat-width). */
-.briefing-ask {
-  position: relative;
-  flex: 0 0 auto;
-  width: var(--inbox-chat-width, 360px);
-  border-right: 1px solid var(--line);
-  background: var(--pane);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.briefing-ask.drawer {
-  position: absolute;
-  inset: 0;
-  width: auto;
-  z-index: 6;
-  border-right: none;
-}
-
-.app-chat {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-chat:focus,
-.app-chat:focus-visible {
-  outline: none;
-}
-
-.app-chat :global(.chat) {
-  flex: 1;
-  min-height: 0;
-}
-
-/* Ask dock header mirrors the PR agent dock: hide-toggle + chat tab strip in
-   one .obs-side-head.tabbed row. */
-.app-chat-head.tabbed {
-  padding-left: 8px;
-  gap: 2px;
-}
-
-.ask-empty {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.ask-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ask-chips button {
-  border: 1px solid var(--line);
-  background: var(--pane-2);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: border-color .12s, background .12s;
-}
-
-.ask-chips button:hover,
-.ask-chips button:focus-visible {
-  border-color: var(--line-bright);
-  background: color-mix(in srgb, var(--text) 6%, var(--pane-2));
-}
-
 @keyframes wbrief-live {
   50% { opacity: .4; }
 }
@@ -522,17 +388,3 @@
   color: var(--git-d);
 }
 
-/* Workspace cards inside a present_workspace result / turn footer. */
-.tc-briefs {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.tc-briefs .wbrief {
-  margin-bottom: 0;
-}
-
-.turn-end-wrap .tc-briefs {
-  margin-top: 8px;
-}

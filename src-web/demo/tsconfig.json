@@ -16,5 +16,5 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "bindings"],
+  "include": ["src/**/*.ts", "src/**/*.svelte", "showcase/**/*.ts", "showcase/**/*.svelte"],
 }

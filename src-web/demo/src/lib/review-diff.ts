@@ -7,7 +7,6 @@ export type FileListMode = 'flat' | 'tree'
 const DIFF_LAYOUT_KEY = 'recur.prDiffLayout'
 const FILES_VIEW_KEY = 'recur.prFilesView'
 const REVIEW_SIDEBAR_KEY = 'recur.reviewSidebar'
-const REVIEW_TAB_KEY = 'recur.obsReviewTab'
 const FILE_LIST_MODE_KEY = 'recur.reviewFileListMode'
 
 export function readDiffLayout(): DiffLayout {
@@ -37,18 +36,6 @@ export function writeReviewSidebar(open: boolean) {
   try { localStorage.setItem(REVIEW_SIDEBAR_KEY, open ? 'on' : 'off') } catch { /* ignore */ }
 }
 
-export function readReviewTab(): ReviewTab {
-  try {
-    const v = localStorage.getItem(REVIEW_TAB_KEY)
-    if (v === 'changes' || v === 'commits') return v
-  } catch { /* ignore */ }
-  return 'changes'
-}
-
-export function writeReviewTab(next: ReviewTab) {
-  try { localStorage.setItem(REVIEW_TAB_KEY, next) } catch { /* ignore */ }
-}
-
 export function readFileListMode(): FileListMode {
   try {
     const v = localStorage.getItem(FILE_LIST_MODE_KEY)
@@ -59,14 +46,6 @@ export function readFileListMode(): FileListMode {
 
 export function writeFileListMode(next: FileListMode) {
   try { localStorage.setItem(FILE_LIST_MODE_KEY, next) } catch { /* ignore */ }
-}
-
-type DiffBody = {
-  path: string
-  oldPath?: string
-  status?: string
-  diff?: { add?: number; del?: number } | null
-  lines?: readonly { type?: string; old?: string; new?: string; codeHtml?: string }[] | null
 }
 
 function dirOf(p: string): string {
@@ -97,35 +76,4 @@ export function fileDiffTreeLabel(f: PathLabel): string {
   if (!oldPath || oldPath === path) return name
   if (dirOf(oldPath) === dirOf(path)) return `${baseOf(oldPath)} → ${name}`
   return `${oldPath} → ${name}`
-}
-
-function fileDiffBodyEqual(a: DiffBody, b: DiffBody): boolean {
-  if (a.path !== b.path || (a.oldPath ?? '') !== (b.oldPath ?? '') || (a.status ?? '') !== (b.status ?? '')) return false
-  if ((a.diff?.add ?? 0) !== (b.diff?.add ?? 0) || (a.diff?.del ?? 0) !== (b.diff?.del ?? 0)) return false
-  const al = a.lines ?? []
-  const bl = b.lines ?? []
-  if (al.length !== bl.length) return false
-  for (let i = 0; i < al.length; i++) {
-    const x = al[i], y = bl[i]
-    if (x.type !== y.type || x.old !== y.old || x.new !== y.new || x.codeHtml !== y.codeHtml) return false
-  }
-  return true
-}
-
-/** Keep previous FileDiff object identities when a live refresh is a no-op. */
-export function reuseFileDiffs<T extends DiffBody>(prev: readonly T[], next: readonly T[]): T[] {
-  if (!next.length) return (prev.length ? next : prev) as T[]
-  if (!prev.length) return next as T[]
-  const byPath = new Map(prev.map((f) => [f.path, f]))
-  let changed = prev.length !== next.length
-  const out = next.map((f, i) => {
-    const old = byPath.get(f.path)
-    if (old && fileDiffBodyEqual(old, f)) {
-      if (old !== prev[i]) changed = true
-      return old
-    }
-    changed = true
-    return f
-  })
-  return changed ? out : prev as T[]
 }

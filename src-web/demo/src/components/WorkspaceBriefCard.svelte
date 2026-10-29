@@ -2,7 +2,7 @@
   import { routeTarget } from '../lib/stores'
   import { markWorkspaceInboxRead } from '../lib/inbox-read'
   import { formatRelativeAge } from '../lib/format'
-  import type { InboxItem, WorkspaceBrief } from '../../bindings/recur/internal/domain/models'
+  import type { InboxItem, WorkspaceBrief } from '../lib/types'
   import Icon, { type IconName } from './Icon.svelte'
 
   let { brief, notes = [], compact = false, openTarget = '' }: {

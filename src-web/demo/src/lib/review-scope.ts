@@ -1,4 +1,4 @@
-import type { Commit } from '../../bindings/recur/internal/domain/models'
+import type { Commit } from './types'
 import { commitSha } from './commit-meta'
 
 /** Newest-first tape for Review → Commits: unpublished work, then real commits. */

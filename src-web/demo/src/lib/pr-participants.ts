@@ -66,32 +66,6 @@ export function prPeopleWithReviews(pr: Parameters<typeof prParticipants>[0] & {
   return out
 }
 
-export function reviewerSummary(reviewers: PRReviewer[]): string {
-  const buckets: Record<string, string[]> = {
-    changes_requested: [],
-    pending: [],
-    approved: [],
-  }
-  for (const r of reviewers) {
-    const st = (r.state ?? '').trim()
-    const names = buckets[st]
-    if (!names) continue
-    const label = participantLabel(r)
-    if (label) names.push(label)
-  }
-  const parts: string[] = []
-  if (buckets.approved.length) parts.push(`Approved by ${andList(buckets.approved)}`)
-  if (buckets.changes_requested.length) parts.push(`Changes requested by ${andList(buckets.changes_requested)}`)
-  if (buckets.pending.length) parts.push(`Waiting on ${andList(buckets.pending)}`)
-  return parts.join(' · ')
-}
-
-function andList(names: string[]): string {
-  if (names.length <= 2) return names.join(' and ')
-  return `${names.slice(0, 2).join(', ')} +${names.length - 2}`
-}
-
-
 export function participantLabel(p: PRPerson | null | undefined): string {
   const login = (p?.login ?? '').trim().replace(/^@/, '')
   if (login) return `@${login}`

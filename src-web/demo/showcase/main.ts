@@ -9,10 +9,8 @@ import {
   openPR,
   observatoryJump,
   setPanelWidthLive,
-  prAgentDockOpen,
-  inboxChatOpen,
 } from "../src/lib/stores";
-import { ensureTextMateBootstrap } from "../src/lib/tm-bootstrap";
+import { loadEditorThemes } from "../src/lib/cm-themes";
 
 // Import after the demo transport is installed: no native service can run.
 const { default: Preview } = await import("./Preview.svelte");
@@ -20,12 +18,9 @@ const { loadInitial } = await import("../src/lib/api");
 setTheme("paper");
 setPanelWidthLive("rail", 220);
 setPanelWidthLive("maestroDock", 390);
-setPanelWidthLive("obsSide", 180);
-setPanelWidthLive("prChatDock", 280);
+setPanelWidthLive("obsSide", 256);
 await loadInitial();
-await ensureTextMateBootstrap();
-prAgentDockOpen.set(false);
-inboxChatOpen.set(false);
+await loadEditorThemes();
 openWorkspaceChat(workspaceId, "PA");
 mount(Preview, { target: document.getElementById("app")! });
 await tick();
@@ -46,7 +41,6 @@ window.addEventListener("message", async (event) => {
   if (navigate || sceneKey !== lastScene) {
     lastScene = sceneKey;
     if (scene === "review") {
-      prAgentDockOpen.set(false);
       openPR(prId);
     } else {
       openWorkspaceChat(

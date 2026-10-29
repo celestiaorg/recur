@@ -132,8 +132,6 @@ export function portalMenuMods(
   return { className: cls.join(' '), minWidth }
 }
 
-export type MoreMenuBox = { top: number; right: number }
-
 /** Top for a portaled popover under its trigger, flipped above when
  *  `menuHeight` would cross the bottom window edge. */
 export function popoverTop(
@@ -148,71 +146,6 @@ export function popoverTop(
   const h = opts.menuHeight ?? 0
   if (!h || trigger.top === undefined || below + h <= vh - edge) return below
   return Math.max(edge, trigger.top - gap - h)
-}
-
-/** Viewport-fixed box for a portaled comment ⋯ menu, right-aligned to the trigger. */
-export function moreMenuFixedBox(
-  trigger: { top?: number; bottom: number; right: number },
-  opts: { menuHeight?: number; viewportWidth?: number; viewportHeight?: number; gap?: number; edge?: number } = {},
-): MoreMenuBox {
-  const edge = opts.edge ?? MENU_EDGE_PX
-  const vw = opts.viewportWidth ??
-    (typeof globalThis.window !== 'undefined' ? globalThis.window.innerWidth : 0)
-  return { top: popoverTop(trigger, opts), right: Math.max(edge, vw - trigger.right) }
-}
-
-export type ClipRect = { top: number; right: number; bottom: number; left: number }
-
-export function rectsOverlap(a: ClipRect, b: ClipRect): boolean {
-  return a.bottom > b.top && a.top < b.bottom && a.right > b.left && a.left < b.right
-}
-
-/** Nearest ancestor that clips overflow (the conversation / diff pane). */
-export function overflowClipAncestor(el: Element | null | undefined): HTMLElement | null {
-  let n = el instanceof HTMLElement ? el.parentElement : null
-  while (n) {
-    const { overflowX, overflowY } = getComputedStyle(n)
-    if (/(auto|scroll|hidden|clip)/.test(overflowY) || /(auto|scroll|hidden|clip)/.test(overflowX)) {
-      return n
-    }
-    n = n.parentElement
-  }
-  return null
-}
-
-/** True while the ⋯ button still shows inside its scroll pane (not under the PR chrome). */
-export function triggerVisibleInClip(
-  trigger: HTMLElement,
-  opts: { viewportWidth?: number; viewportHeight?: number; clip?: ClipRect | null } = {},
-): boolean {
-  const t = trigger.getBoundingClientRect()
-  if (t.width <= 0 || t.height <= 0) return false
-  const vw = opts.viewportWidth ?? (typeof globalThis.window !== 'undefined' ? globalThis.window.innerWidth : 0)
-  const vh = opts.viewportHeight ?? (typeof globalThis.window !== 'undefined' ? globalThis.window.innerHeight : 0)
-  const clip = opts.clip ?? overflowClipAncestor(trigger)?.getBoundingClientRect() ?? { top: 0, right: vw, bottom: vh, left: 0 }
-  return rectsOverlap(t, clip)
-}
-
-/** Re-place a portaled ⋯ menu when its trigger moves (pane scroll, resize).
- *  `onHidden` runs when the trigger leaves the pane so the menu cannot sit on
- *  sticky PR chrome. */
-export function followMoreMenu(
-  getTrigger: () => HTMLElement | null | undefined,
-  setBox: (box: MoreMenuBox) => void,
-  onHidden?: () => void,
-): (node: HTMLElement) => () => void {
-  return (node) => {
-    const place = () => {
-      const trigger = getTrigger()
-      if (!trigger?.isConnected || !triggerVisibleInClip(trigger)) {
-        onHidden?.()
-        return
-      }
-      setBox(moreMenuFixedBox(trigger.getBoundingClientRect(), { menuHeight: node.offsetHeight }))
-    }
-    place()
-    return watchMenuViewport(place, node)
-  }
 }
 
 /** Re-run `onChange` when the trigger may have moved: window resize, or

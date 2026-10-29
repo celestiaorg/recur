@@ -132,16 +132,6 @@ export function snapStripScroll(strip: HTMLElement, left: number): void {
   writeScrollLeft(strip, left, true)
 }
 
-/**
- * Live strip offset for a keep-alive snapshot. Missing / display:none /
- * detached geometry would read as 0 and then pin that fake 0 on restore,
- * suppressing the reveal chase — same trap as captureFileViewState.
- */
-export function captureStripScrollLeft(strip: HTMLElement | undefined | null): number | undefined {
-  if (!strip || strip.clientWidth < 1) return undefined
-  return strip.scrollLeft
-}
-
 /** Scroll `child` into view inside `strip` without touching ancestor scrollers. */
 export function scrollChildIntoStrip(
   strip: HTMLElement,

@@ -14,9 +14,10 @@ The bundles section keeps a compact live theme preview so app/editor swatches ca
 still be mixed independently. It composes the app views in an isolated iframe.
 The loop graph stays animated and interactive.
 
-The showcase and capture builds share the dedicated product dataset in
-`demo/captures/dataset.json`, service resolvers, and shipped TextMate themes. Rebuild it after changing demo components. Generated demo assets live
-in `public/demo` and are ignored by Git. The website build copies them into `dist`.
+The showcase builds from the product dataset in `demo/showcase/dataset.json`
+and shipped TextMate themes. Rebuild it after changing demo components. Generated
+demo assets live in `public/demo` and are ignored by Git. The website build copies
+them into `dist`.
 
-Generate product screenshots with `mise run capture:splash`. See
-[the capture guide](demo/captures/README.md) for datasets, presets, and outputs.
+The screenshots in `public/screenshots` are committed. The Svelte capture pipeline
+that produced them was retired with the move to the Rust desktop app.

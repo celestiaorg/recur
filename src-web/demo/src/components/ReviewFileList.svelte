@@ -7,7 +7,7 @@
   import { findingFlagForPath, severityRank, type FindingFlag } from '../lib/findings-ui'
   import { findingsForPath } from '../lib/finding-paths'
   import { commentCountForPath, commentsForPath } from '../lib/comment-thread'
-  import type { FileDiff, Finding, TreeEntry } from '../../bindings/recur/internal/domain/models'
+  import type { FileDiff, Finding, TreeEntry } from '../lib/types'
   import { fileDiffPathLabel, fileDiffTreeLabel, type FileListMode } from '../lib/review-diff'
   import Icon from './Icon.svelte'
 

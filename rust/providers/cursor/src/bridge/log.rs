@@ -1,13 +1,12 @@
 //! Redacted bridge stderr: a ring for error tails and an on-disk log (Go
 //! `cursor/bridge_log.go`).
 
-use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use parking_lot::Mutex;
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use super::READY_PREFIX;
 
@@ -142,25 +141,23 @@ fn open_bridge_log(log_dir: &Path) -> Option<File> {
 }
 
 /// Strips secrets from a stderr line before it reaches disk or the ring: the
-/// ready line carries `authToken` in plaintext JSON. Re-encodes like Go's
-/// `json.Marshal(map[string]any)` (sorted keys).
+/// ready line carries `authToken` in plaintext JSON.
 pub(crate) fn redact_bridge_line(line: &str) -> String {
     let Some(idx) = line.find(READY_PREFIX) else {
         return line.to_owned();
     };
     let head = &line[..idx + READY_PREFIX.len()];
-    let mut d = match serde_json::from_str::<Option<BTreeMap<String, Value>>>(
-        &line[idx + READY_PREFIX.len()..],
-    ) {
-        Ok(Some(d)) => d,
-        Ok(None) => return format!("{head}null"),
-        Err(_) => return format!("{head}[redacted-discovery]"),
-    };
+    let mut d =
+        match serde_json::from_str::<Option<Map<String, Value>>>(&line[idx + READY_PREFIX.len()..])
+        {
+            Ok(Some(d)) => d,
+            Ok(None) => return format!("{head}null"),
+            Err(_) => return format!("{head}[redacted-discovery]"),
+        };
     if let Some(v) = d.get_mut("authToken") {
         *v = Value::String("[redacted]".into());
     }
-    let obj = Value::Object(d.into_iter().collect());
-    format!("{head}{}", crate::gojson::marshal_any(&obj))
+    format!("{head}{}", Value::Object(d))
 }
 
 #[cfg(test)]
@@ -179,7 +176,7 @@ mod tests {
         assert_eq!(
             got,
             format!(
-                r#"{READY_PREFIX}{{"authToken":"[redacted]","schemaVersion":1,"url":"http://127.0.0.1:1"}}"#
+                r#"{READY_PREFIX}{{"schemaVersion":1,"authToken":"[redacted]","url":"http://127.0.0.1:1"}}"#
             )
         );
         assert_eq!(

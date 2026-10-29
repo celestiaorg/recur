@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use recur_agent::display::{FEED_INPUT_LIMIT, ToolDisplay, truncate};
 
 use crate::events::{TOOL_NAME_MCP, tool_call_args};
-use crate::gojson::{marshal_any, trim};
+use crate::gojson::trim;
 
 /// A Cursor tool name in Recur's vocabulary. Unknown names pass through: a
 /// tool added after this build renders with its raw name and a generic icon.
@@ -120,7 +120,7 @@ pub fn cursor_tool_input(name: &str, raw: &str) -> String {
     if out.is_empty() {
         return String::new();
     }
-    marshal_any(&Value::Object(out))
+    Value::Object(out).to_string()
 }
 
 /// A completed Cursor tool call as the text cards and transcript show.

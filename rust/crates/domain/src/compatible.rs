@@ -6,13 +6,13 @@ use std::collections::{BTreeMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
+use crate::Settings;
 use crate::model::{
     PROVIDER_ANTHROPIC, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR,
     PROVIDER_GEMINI, PROVIDER_OLLAMA, provider_label,
 };
 use crate::serde_util::{is_false, is_zero};
 use crate::text::kebab_slug;
-use crate::{Settings, gourl};
 
 /// Slugs that collide with Recur's built-in harnesses or reserved session
 /// identifiers. "openai" is allowed: users add it as a compatible endpoint.
@@ -290,10 +290,11 @@ fn normalize_base_url(raw: &str) -> Result<String, CompatibleError> {
         return Err(CompatibleError::MissingBaseUrl);
     }
     let raw = raw.trim_end_matches('/');
-    let url = gourl::parse(raw)
-        .filter(|u| !u.host.is_empty())
+    let url = url::Url::parse(raw)
+        .ok()
+        .filter(|u| u.host_str().is_some_and(|h| !h.is_empty()))
         .ok_or_else(|| CompatibleError::InvalidBaseUrl(raw.to_owned()))?;
-    if url.scheme != "http" && url.scheme != "https" {
+    if url.scheme() != "http" && url.scheme() != "https" {
         return Err(CompatibleError::BaseUrlScheme);
     }
     Ok(raw.to_owned())
@@ -575,6 +576,14 @@ mod tests {
         assert_eq!(
             normalize_compatible_provider(provider("p", "ftp://x/", models()), &none),
             Err(CompatibleError::BaseUrlScheme)
+        );
+        assert_eq!(
+            normalize_compatible_provider(provider("p", "https://", models()), &none),
+            Err(CompatibleError::InvalidBaseUrl("https:".into()))
+        );
+        assert!(
+            normalize_compatible_provider(provider("p", "http://[::1]:8080/", models()), &none)
+                .is_ok()
         );
         assert_eq!(
             normalize_compatible_provider(provider("p", "https://x", vec![model(" ")]), &none),

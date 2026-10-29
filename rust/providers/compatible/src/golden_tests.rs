@@ -198,7 +198,17 @@ fn flags_match_go() {
         let flags: recur_agent::Flags =
             serde_json::from_value(c["flags"].clone()).unwrap_or_default();
         flags::apply_flags(&mut dst, &dims, &flags).unwrap();
-        assert_eq!(Value::Object(dst), c["out"], "{c}");
+        assert_eq!(floats(Value::Object(dst)), floats(c["out"].clone()), "{c}");
+    }
+}
+
+/// Go writes integral float64s without a fraction; compare numbers by value.
+fn floats(v: Value) -> Value {
+    match v {
+        Value::Number(n) => n.as_f64().into(),
+        Value::Array(a) => a.into_iter().map(floats).collect(),
+        Value::Object(m) => Value::Object(m.into_iter().map(|(k, v)| (k, floats(v))).collect()),
+        o => o,
     }
 }
 

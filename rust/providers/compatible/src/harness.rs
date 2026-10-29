@@ -19,7 +19,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::client::{Client, ClientError};
 use crate::flags::apply_flags;
-use crate::gojson::{marshal_sorted, valid};
+use crate::gojson::valid;
 use crate::history::{harness_history, harness_instructions};
 use crate::tools::{tool_allowed_on_turn, tools_disabled};
 use crate::types::{
@@ -270,7 +270,7 @@ impl Harness<'_> {
             apply_flags(map, &m.flags, &req.flags)
                 .map_err(|e| RoundError::Failed(e.to_string()))?;
         }
-        let payload = marshal_sorted(&body);
+        let payload = body.to_string();
 
         let mut st = RoundState {
             keep_output: self.client.chatgpt,

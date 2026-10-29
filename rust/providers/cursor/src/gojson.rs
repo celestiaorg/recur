@@ -1,8 +1,7 @@
-//! Go `encoding/json` decode and encode rules the bridge wire depends on.
+//! Go `encoding/json` decode rules the bridge wire depends on.
 
+use serde::Deserialize;
 use serde::de::{self, Deserializer};
-use serde::ser::{SerializeMap, SerializeSeq, Serializer};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_json::value::RawValue;
 
@@ -51,59 +50,6 @@ pub(crate) fn go_int<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
     }
 }
 
-/// A decoded JSON value re-encoded the way Go encodes `map[string]any`: keys
-/// sorted, every number a float64.
-pub(crate) struct GoAny<'a>(pub &'a Value);
-
-impl Serialize for GoAny<'_> {
-    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self.0 {
-            Value::Number(n) => {
-                let raw = RawValue::from_string(go_float(n.as_f64().unwrap_or_default()))
-                    .map_err(serde::ser::Error::custom)?;
-                raw.serialize(s)
-            }
-            Value::Array(items) => {
-                let mut seq = s.serialize_seq(Some(items.len()))?;
-                for v in items {
-                    seq.serialize_element(&GoAny(v))?;
-                }
-                seq.end()
-            }
-            Value::Object(m) => {
-                let mut entries: Vec<_> = m.iter().collect();
-                entries.sort_unstable_by_key(|(k, _)| k.as_str());
-                let mut map = s.serialize_map(Some(entries.len()))?;
-                for (k, v) in entries {
-                    map.serialize_entry(k, &GoAny(v))?;
-                }
-                map.end()
-            }
-            other => other.serialize(s),
-        }
-    }
-}
-
-/// `json.Marshal` of a decoded value.
-pub(crate) fn marshal_any(v: &Value) -> String {
-    serde_json::to_string(&GoAny(v)).unwrap_or_default()
-}
-
-/// Go `encoding/json` float64 text: shortest round-trip digits, exponent form
-/// below 1e-6 or from 1e21 up.
-fn go_float(f: f64) -> String {
-    let abs = f.abs();
-    if abs != 0.0 && !(1e-6..1e21).contains(&abs) {
-        let e = format!("{f:e}");
-        match e.split_once('e') {
-            Some((m, x)) if !x.starts_with('-') => format!("{m}e+{x}"),
-            _ => e,
-        }
-    } else {
-        format!("{f}")
-    }
-}
-
 /// Go's `json.Unmarshal` into a struct: an object decodes, `null` leaves the
 /// zero value, anything else fails. (A serde struct would also take an array
 /// positionally.)
@@ -142,16 +88,6 @@ pub(crate) fn truncate_bytes(s: &str, n: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn marshal_any_sorts_and_floats() {
-        let v: Value =
-            serde_json::from_str(r#"{"b":1,"a":[2.5,"<x>"],"c":{"z":1e21,"y":null}}"#).unwrap();
-        assert_eq!(
-            marshal_any(&v),
-            r#"{"a":[2.5,"<x>"],"b":1,"c":{"y":null,"z":1e+21}}"#
-        );
-    }
 
     #[test]
     fn flex_int_cases() {

@@ -17,8 +17,6 @@
 mod macros;
 
 mod cron;
-mod gotime;
-mod gourl;
 mod serde_util;
 mod text;
 

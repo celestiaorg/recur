@@ -4,8 +4,6 @@
 
 use serde_json::{Map, Value, json};
 
-use crate::gojson::marshal_sorted;
-
 const UNSUPPORTED: [&str; 16] = [
     "background",
     "conversation",
@@ -48,7 +46,7 @@ pub(crate) fn chatgpt_body(raw: &str) -> Result<String, String> {
             body.remove("tool_choice");
         }
     }
-    Ok(marshal_sorted(&Value::Object(body)))
+    Ok(Value::Object(body).to_string())
 }
 
 #[cfg(test)]

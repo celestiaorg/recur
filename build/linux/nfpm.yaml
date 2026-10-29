@@ -1,9 +1,9 @@
 # .deb / .rpm for `mise run linux:package`, which sets ARCH (amd64 / arm64),
-# VERSION and PKG_DIR: /opt/recur-next, /usr/bin/recur-next and the
-# build.recur.next menu entry.
+# VERSION and PKG_DIR: /opt/recur, /usr/bin/recur and the
+# build.recur.app menu entry.
 # PGP-signed when RECUR_PGP_KEY names an armored private key file (passphrase
 # in NFPM_PASSPHRASE); otherwise unsigned.
-name: recur-next
+name: recur
 arch: ${ARCH}
 platform: linux
 version: ${VERSION}
@@ -14,22 +14,22 @@ description: Run autonomous AI coding loops locally (Rust/GPUI app).
 section: devel
 
 # The app links nothing onto PATH or into the menu when run from
-# /opt/recur-next (identity::LINUX_PACKAGED_DIR): the package owns those.
+# /opt/recur (identity::LINUX_PACKAGED_DIR): the package owns those.
 contents:
   - src: ${PKG_DIR}/recur
-    dst: /opt/recur-next/recur
+    dst: /opt/recur/recur
     expand: true
   - src: ${PKG_DIR}/recur-cli
-    dst: /opt/recur-next/recur-cli
+    dst: /opt/recur/recur-cli
     expand: true
   - src: ${PKG_DIR}/recur.png
-    dst: /opt/recur-next/recur.png
+    dst: /opt/recur/recur.png
     expand: true
-  - src: /opt/recur-next/recur-cli
-    dst: /usr/bin/recur-next
+  - src: /opt/recur/recur-cli
+    dst: /usr/bin/recur
     type: symlink
-  - src: build/linux/build.recur.next.desktop
-    dst: /usr/share/applications/build.recur.next.desktop
+  - src: build/linux/build.recur.app.desktop
+    dst: /usr/share/applications/build.recur.app.desktop
 
 # GTK 4 and WebKitGTK 6.0 for the HTML preview, GStreamer and its decoders for video
 # (WebKitGTK plays <video> through the same; -bad carries dav1d for AV1); xkbcommon and xcb for GPUI's

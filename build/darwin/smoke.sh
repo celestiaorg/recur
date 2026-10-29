@@ -1,22 +1,22 @@
 #!/bin/sh
-# Smoke test of the packaged Recur Next DMG (mise run smoke:package):
+# Smoke test of the packaged Recur DMG (mise run smoke:package):
 # installs the app from it into a sandbox (a build under target counts as
 # a dev build and never links the CLI), launches it on a throwaway HOME and
 # RECUR_DATA_DIR, checks that it links
-# `recur-next` onto PATH, that `recur-next .` opens a repo in the running app,
+# `recur` onto PATH, that `recur .` opens a repo in the running app,
 # and that the boot-time cursor-bridge notice goes out as a native notification.
 set -eu
 
-DMG="${1:-target/package/Recur Next.dmg}"
+DMG="${1:-target/package/Recur.dmg}"
 # Short: the open-IPC socket path in the data dir must fit in sun_path.
 SB=/tmp/rn-smoke.noindex
 rm -rf "$SB"
 mkdir -p "$SB/home" "$SB/data" "$SB/repo" "$SB/Applications"
 SB=$(cd "$SB" && pwd -P)
 hdiutil attach -quiet -nobrowse -readonly -mountpoint "$SB/dmg" "$DMG"
-ditto "$SB/dmg/Recur Next.app" "$SB/Applications/Recur Next.app"
+ditto "$SB/dmg/Recur.app" "$SB/Applications/Recur.app"
 hdiutil detach -quiet "$SB/dmg"
-APP="$SB/Applications/Recur Next.app"
+APP="$SB/Applications/Recur.app"
 codesign --verify --deep --strict "$APP"
 export HOME="$SB/home" RECUR_DATA_DIR="$SB/data" RECUR_WORKTREES_DIR="$SB/worktrees"
 
@@ -45,7 +45,7 @@ until PID=$(pgrep -f "^$APP/Contents/MacOS/recur"); do
 done
 trap 'kill $PID 2>/dev/null || true' EXIT
 
-LINK="$HOME/.local/bin/recur-next"
+LINK="$HOME/.local/bin/recur"
 i=0
 until [ -L "$LINK" ]; do
   i=$((i + 1)); [ $i -gt 120 ] && fail "no $LINK after 60s"
@@ -55,25 +55,25 @@ done
 [ "$(readlink "$LINK")" = "$APP/Contents/MacOS/recur-cli" ] || fail "$LINK -> $(readlink "$LINK")"
 echo "ok: $LINK -> $(readlink "$LINK")"
 
-(cd "$SB/repo" && "$LINK" .) || fail "recur-next . failed"
+(cd "$SB/repo" && "$LINK" .) || fail "recur . failed"
 i=0
 until [ -n "$(sqlite3 "$SB/data/recur.db" "select id from projects where repo_path = '$SB/repo'" 2>/dev/null)" ]; do
-  i=$((i + 1)); [ $i -gt 40 ] && fail "recur-next . did not add $SB/repo"
+  i=$((i + 1)); [ $i -gt 40 ] && fail "recur . did not add $SB/repo"
   sleep 0.5
 done
-echo "ok: recur-next . opened $SB/repo"
+echo "ok: recur . opened $SB/repo"
 
 # Native delivery logs nothing in the app (the osascript fallback logs only
 # on failure), so read usernoted's record of the request.
 sleep 3
 kill -0 $PID 2>/dev/null || fail "app exited"
 /usr/bin/log show --start "$START" --style compact \
-  --predicate 'process == "usernoted" AND eventMessage CONTAINS "app:\"build.recur.next\""' > "$SB/usernoted.log" 2>&1 || true
-grep -q 'Delivering <NotificationRecord app:"build.recur.next"' "$SB/usernoted.log" ||
-  fail "usernoted delivered no notification from build.recur.next"
-echo "ok: native notification delivered by build.recur.next"
-if grep -q 'Presenting <NotificationRecord app:"build.recur.next".* as none' "$SB/usernoted.log"; then
-  echo "note: not shown on screen until Recur Next is allowed in System Settings > Notifications"
+  --predicate 'process == "usernoted" AND eventMessage CONTAINS "app:\"build.recur.app\""' > "$SB/usernoted.log" 2>&1 || true
+grep -q 'Delivering <NotificationRecord app:"build.recur.app"' "$SB/usernoted.log" ||
+  fail "usernoted delivered no notification from build.recur.app"
+echo "ok: native notification delivered by build.recur.app"
+if grep -q 'Presenting <NotificationRecord app:"build.recur.app".* as none' "$SB/usernoted.log"; then
+  echo "note: not shown on screen until Recur is allowed in System Settings > Notifications"
 fi
 grep -i 'notification' "$SB/app.out" "$SB/data/logs/"*.log 2>/dev/null && fail "notification errors logged"
 echo "ok: package smoke passed"

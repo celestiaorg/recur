@@ -25,7 +25,7 @@ define_class!(
     // SAFETY: NSView has no subclassing requirements and the class does not implement Drop.
     #[unsafe(super(NSView, NSResponder, objc2_foundation::NSObject))]
     #[thread_kind = MainThreadOnly]
-    #[name = "RecurNextDatePickerBackdrop"]
+    #[name = "RecurDatePickerBackdrop"]
     struct Backdrop;
 
     unsafe impl NSObjectProtocol for Backdrop {}
@@ -61,7 +61,7 @@ define_class!(
     // Drop.
     #[unsafe(super(NSDatePicker, objc2_app_kit::NSControl, NSView, NSResponder, objc2_foundation::NSObject))]
     #[thread_kind = MainThreadOnly]
-    #[name = "RecurNextEscapeHandlingDatePicker"]
+    #[name = "RecurEscapeHandlingDatePicker"]
     #[ivars = EscapeIvars]
     struct EscapePicker;
 

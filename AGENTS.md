@@ -32,11 +32,11 @@ Read before inventing architecture:
 
 - Install [mise](https://mise.jdx.dev) and run `mise install` once; Rust comes from `rust-toolchain.toml` through rustup. `mise tasks` lists every task.
 - Task names use **`verb:object`** (`test:bundles`, `lint:bundles`, `linux:package`).
-- Dev app: `mise run run` (`cargo run -p recur-desktop`). It defaults to the `RecurNext` data dir; `RECUR_DATA_DIR` / `RECUR_WORKTREES_DIR` override it.
+- Dev app: `mise run run` (`cargo run -p recur-desktop`). It defaults to the `Recur` data dir, the same as the packaged app; `RECUR_DATA_DIR` / `RECUR_WORKTREES_DIR` override it.
 - Dogfood: `.recur/project.toml` sets `RECUR_INSTANCE_LABEL=$RECUR_BRANCH`. When that env is present, Recur paints a `dev` chip with the branch in the titlebar gap (packaged Recur omits it).
 - Everything builds into `target/`: `target/debug/recur` (desktop) and `target/debug/recur-cli` (CLI). Packages go to `target/package/`.
-- macOS package: `mise run package` (`Recur Next.app`, DMG and updater zip; `UNIVERSAL=true`, signing and notarization env in `build/darwin/package.sh`). `mise run smoke:package` installs and launches the DMG in a sandbox.
-- Linux: `mise run linux:test`, `linux:build`, `linux:package` (tarball, `.deb`, `.rpm` to `/opt/recur-next`) and `linux:smoke`, all in `build/linux/Dockerfile` on a Mac (Docker or OrbStack) for the host arch (`ARCH=amd64|arm64` overrides). `mise run linux:run` opens the Linux app on a throwaway desktop at `http://127.0.0.1:6081` (noVNC). `linux:test:wpe` runs the WPE WebKit spike's checks.
+- macOS package: `mise run package` (`Recur.app`, DMG and updater zip; `UNIVERSAL=true`, signing and notarization env in `build/darwin/package.sh`). `mise run smoke:package` installs and launches the DMG in a sandbox.
+- Linux: `mise run linux:test`, `linux:build`, `linux:package` (tarball, `.deb`, `.rpm` to `/opt/recur`) and `linux:smoke`, all in `build/linux/Dockerfile` on a Mac (Docker or OrbStack) for the host arch (`ARCH=amd64|arm64` overrides). `mise run linux:run` opens the Linux app on a throwaway desktop at `http://127.0.0.1:6081` (noVNC). `linux:test:wpe` runs the WPE WebKit spike's checks.
 - UI view state that should survive view switches or restarts (filters, sort, layout, expanded rows) is persisted on disk as a JSON file in the data dir, through the shell service in `crates/services/src/app/shell.rs` (see `shell.json`, `schedule-view.json`, `issues-view.json`).
 - Bundles need `node` on `PATH` for TypeScript macros and engine tests.
 - Multi-agent coordination (optional): gitignored `TODO.md`: claim work there so sessions do not collide.

@@ -23,7 +23,7 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 /// Whether this binary runs from inside a macOS app bundle
-/// (`…/Recur Next.app/Contents/MacOS/recur`). Native notifications and the
+/// (`…/Recur.app/Contents/MacOS/recur`). Native notifications and the
 /// updater require it: `UNUserNotificationCenter` aborts unbundled binaries.
 pub fn running_in_app_bundle() -> bool {
     std::env::current_exe().is_ok_and(|exe| in_app_bundle(&exe))
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn app_bundle_detection() {
         assert!(in_app_bundle(Path::new(
-            "/Applications/Recur Next.app/Contents/MacOS/recur"
+            "/Applications/Recur.app/Contents/MacOS/recur"
         )));
         assert!(!in_app_bundle(Path::new("/usr/local/bin/recur")));
         assert!(!in_app_bundle(Path::new("/tmp/Recur.app/recur")));

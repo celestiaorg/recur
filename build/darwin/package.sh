@@ -1,9 +1,9 @@
 #!/bin/sh
-# Builds target/package/Recur Next.app, its DMG and the updater zip
+# Builds target/package/Recur.app, its DMG and the updater zip
 # (mise run package).
 #
 # Env: VERSION (Info.plist and `recur-cli --version`; defaults to
-# build/version.sh), UNIVERSAL=true (arm64 + x86_64), RECUR_NEXT_UPDATE_URL
+# build/version.sh), UNIVERSAL=true (arm64 + x86_64), RECUR_UPDATE_URL
 # (the signed update manifest), SIGN_IDENTITY [+ ENTITLEMENTS] for Developer ID
 # with KEYCHAIN_PROFILE (an `xcrun notarytool store-credentials` profile) to
 # notarize, else RECUR_SIGN_IDENTITY or ad-hoc.
@@ -11,7 +11,7 @@ set -eu
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 OUT="$ROOT/target/package"
-NAME="Recur Next"
+NAME="Recur"
 APP="$OUT/$NAME.app"
 # rustup reads rust-toolchain.toml (the pinned toolchain with llvm-tools) from the cwd.
 cd "$ROOT"
@@ -20,7 +20,7 @@ export MACOSX_DEPLOYMENT_TARGET=12.0
 export CARGO_PROFILE_RELEASE_STRIP=symbols
 VERSION="${VERSION:-$(build/version.sh)}"
 export RECUR_VERSION="$VERSION"
-export RECUR_UPDATE_MANIFEST_URL="${RECUR_NEXT_UPDATE_URL:-}"
+export RECUR_UPDATE_MANIFEST_URL="${RECUR_UPDATE_URL:-}"
 
 build() {
   cargo build --release --locked -p recur-desktop -p recur-cli "$@"

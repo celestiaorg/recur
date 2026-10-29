@@ -9,9 +9,9 @@ if command -v sqlite3 >/dev/null 2>&1; then
   # Recur uses WAL. Byte-copying recur.db misses in-WAL rows (often hours).
   # VACUUM INTO snapshots through the WAL; retry if Recur's writer is busy.
   if [ "$(uname)" = Darwin ]; then
-    SRC="$HOME/Library/Application Support/RecurNext"
+    SRC="$HOME/Library/Application Support/Recur"
   else
-    SRC="${XDG_CONFIG_HOME:-$HOME/.config}/RecurNext"
+    SRC="${XDG_CONFIG_HOME:-$HOME/.config}/Recur"
   fi
   DEST="$HOME/.recur/data/$RECUR_WORKSPACE_ID"
   rm -rf "$DEST"

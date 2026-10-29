@@ -248,7 +248,7 @@ mod imp {
         // SAFETY: NSObject has no subclassing requirements and the class does
         // not implement Drop.
         #[unsafe(super(NSObject))]
-        #[name = "RecurNextNotificationsDelegate"]
+        #[name = "RecurNotificationsDelegate"]
         struct Delegate;
 
         unsafe impl NSObjectProtocol for Delegate {}

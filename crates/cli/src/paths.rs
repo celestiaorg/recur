@@ -1,15 +1,13 @@
 //! Managed paths the CLI needs (Go `internal/store` paths, `git.CanonPath`).
 //!
-//! recur-store and recur-git have not landed yet; when they do, these
-//! become calls into them (the data dir is `<UserConfigDir>/RecurNext`, or
-//! `$RECUR_DATA_DIR`, per docs/ARCHITECTURE.md).
+//! The data dir is `<UserConfigDir>/Recur`, or `$RECUR_DATA_DIR`.
 
 use std::path::Path;
 
 use recur_domain::path;
 
-/// Directory name of the Rust app's managed root under `UserConfigDir`.
-pub const DATA_DIR_NAME: &str = "RecurNext";
+/// Directory name of the managed root under `UserConfigDir`.
+pub const DATA_DIR_NAME: &str = "Recur";
 
 /// Go `os.UserHomeDir` on Unix.
 pub fn user_home_dir() -> Result<String, String> {
@@ -43,7 +41,7 @@ fn mkdir_all(dir: &str) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|e| format!("{dir}: {e}"))
 }
 
-/// The managed root (`$RECUR_DATA_DIR` or `<UserConfigDir>/RecurNext`), created.
+/// The managed root (`$RECUR_DATA_DIR` or `<UserConfigDir>/Recur`), created.
 pub fn data_dir() -> Result<String, String> {
     let root = match std::env::var("RECUR_DATA_DIR") {
         Ok(r) if !r.is_empty() => r,

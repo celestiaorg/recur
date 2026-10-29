@@ -679,10 +679,10 @@ mod tests {
         }
         assert_eq!(cmd.get_program(), "/opt/app/recur");
         if cfg!(target_os = "macos") {
-            let app = launch_command(Path::new("/Applications/Recur Next.app"));
+            let app = launch_command(Path::new("/Applications/Recur.app"));
             assert_eq!(app.get_program(), "open");
             let args: Vec<_> = app.get_args().collect();
-            assert_eq!(args, ["-n", "/Applications/Recur Next.app"]);
+            assert_eq!(args, ["-n", "/Applications/Recur.app"]);
         }
     }
 

@@ -1,22 +1,21 @@
-//! App identity while the Rust app runs side by side with the Go app, and the
-//! dogfood instance label (`internal/app/instance.go`).
+//! App identity and the dogfood instance label.
 
 /// Product name: menu bar, notifications, window title fallback.
-pub const APP_NAME: &str = "Recur Next";
+pub const APP_NAME: &str = "Recur";
 
-/// macOS bundle identifier (`build.recur.app` for the Go app).
-pub const BUNDLE_ID: &str = "build.recur.next";
+/// macOS bundle identifier.
+pub const BUNDLE_ID: &str = "build.recur.app";
 
 /// Linux application id. The window's Wayland app id and the desktop entry
 /// name must match it so docks pair the window with its icon.
-pub const LINUX_APP_ID: &str = "build.recur.next";
+pub const LINUX_APP_ID: &str = "build.recur.app";
 
-/// Command the CLI symlink installs as (`recur` for the Go app).
-pub const CLI_LINK_NAME: &str = "recur-next";
+/// Command the CLI symlink installs as.
+pub const CLI_LINK_NAME: &str = "recur";
 
-/// Where the Linux .deb/.rpm install the app (`/opt/recur` for the Go app).
+/// Where the Linux .deb/.rpm install the app.
 /// The package owns the PATH entry and menu entry itself.
-pub const LINUX_PACKAGED_DIR: &str = "/opt/recur-next";
+pub const LINUX_PACKAGED_DIR: &str = "/opt/recur";
 
 /// Short description shown by the desktop entry.
 pub const APP_DESCRIPTION: &str = "Run autonomous AI coding loops locally.";

@@ -10,7 +10,7 @@ Options considered: a native child window (X11 only, and overlays end up under i
 
 ## What exists
 
-- `build/linux/wpe.Dockerfile`: WPE 2.54.2 built from source (WPEPlatform only, headless) into `/opt/recur-next/wpe`. Debian 13 has only 2.48 without WPEPlatform; sid's 2.54 needs a newer glibc.
+- `build/linux/wpe.Dockerfile`: WPE 2.54.2 built from source (WPEPlatform only, headless) into `/opt/recur/wpe`. Debian 13 has only 2.48 without WPEPlatform; sid's 2.54 needs a newer glibc.
 - `crates/content/src/wpe/platform.c`: the custom platform (about 400 lines of C). It reports no GPU device, so frames arrive as SHM and go through the existing `RenderImage` path.
 - `crates/content/build.rs`: compiles the shim only when `pkg-config` finds WPE 2.54 and sets `cfg(recur_wpe)`. `html_wpe.rs` loads it with `RTLD_DEEPBIND` because WebKitGTK in the same process exports the same symbols.
 - `RECUR_HTML_WPE=1` picks the WPE page in `html.rs` (`LinuxPage`). The default stays WebKitGTK.
@@ -35,7 +35,7 @@ Options considered: a native child window (X11 only, and overlays end up under i
 3. **IME.** Connect GPUI's input handler to the platform's input method class.
 4. **Frame timing.** Add a `WPEScreen` with the display's refresh rate (rAF runs near 55 without it). Mouse and key events queue separately in WebKit, so a key right after a click can land first.
 5. **GPU frames.** Import DMA-BUF frames instead of copying SHM. That needs gpui-pre-wgpu vendored, which Linux backdrop blur needs too (the wgpu renderer skips `SceneBatch::BackdropBlurs` today).
-6. **Packaging.** Build amd64 (only arm64 is measured), cache the WPE image in CI, add `/opt/recur-next/wpe` to `linux:package:rust` (tarball, `.deb`, `.rpm`), and plan WebKit security updates.
+6. **Packaging.** Build amd64 (only arm64 is measured), cache the WPE image in CI, add `/opt/recur/wpe` to `linux:package` (tarball, `.deb`, `.rpm`), and plan WebKit security updates.
 7. **Retire WebKitGTK** for web content once WPE is the default, which also drops `RTLD_DEEPBIND`. WebKitGTK still runs mermaid.js and pdf.js; move those too or keep both.
 
 Known pre-existing failure seen during the spike, unrelated: `preview::tests::a_long_markdown_preview_measures_each_text_a_few_times`.

@@ -96,33 +96,33 @@ The bundles under `bundles/` are the reference implementations. User bundles liv
 
 ## Installing
 
-The app currently ships as **Recur Next**. Download `RecurNext-<version>-macos-universal.dmg` from [Releases](../../releases), open it, and drag Recur Next to Applications. If a release is not notarized, macOS blocks the first launch. Clear the quarantine flag once per download:
+Download `Recur-<version>-macos-universal.dmg` from [Releases](../../releases), open it, and drag Recur to Applications. If a release is not notarized, macOS blocks the first launch. Clear the quarantine flag once per download:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/Recur Next.app"
+xattr -dr com.apple.quarantine "/Applications/Recur.app"
 ```
 
 Downloading with `gh release download` skips this step, since the GitHub CLI does not set the flag.
 
-On Linux (Ubuntu 24.04+ / Debian 13 / Fedora 40+), install the `.deb` or `.rpm` (`-linux-amd64` or `-linux-arm64`). It pulls in the GTK, WebKitGTK and GStreamer runtime and puts `recur-next` on PATH and in the app menu:
+On Linux (Ubuntu 24.04+ / Debian 13 / Fedora 40+), install the `.deb` or `.rpm` (`-linux-amd64` or `-linux-arm64`). It pulls in the GTK, WebKitGTK and GStreamer runtime and puts `recur` on PATH and in the app menu:
 
 ```bash
-sudo apt install ./recur-next-<version>-linux-amd64.deb
-sudo dnf install ./recur-next-<version>-linux-amd64.rpm
+sudo apt install ./Recur-<version>-linux-amd64.deb
+sudo dnf install ./Recur-<version>-linux-amd64.rpm
 ```
 
-Elsewhere, install GTK 4, WebKitGTK 6.0 and GStreamer, then run `recur` from `recur-next-<version>-linux-amd64.tar.gz`. Each release lists `SHA256SUMS-next` for its downloads, and the packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
+Elsewhere, install GTK 4, WebKitGTK 6.0 and GStreamer, then run `recur` from `Recur-<version>-linux-amd64.tar.gz`. Each release lists `SHA256SUMS` for its downloads, and the packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
 
 ## Command line
 
-The app installs a `recur-next` command on your PATH at launch.
+The app installs a `recur` command on your PATH at launch.
 
 ```bash
-recur-next .                   # open the current folder
-recur-next ./path/to/file      # open a file or folder
-recur-next                     # focus Recur, launching it if needed
-recur-next bundles lint ./bundles
-recur-next bundles test ./bundles/JSON
+recur .                        # open the current folder
+recur ./path/to/file           # open a file or folder
+recur                          # focus Recur, launching it if needed
+recur bundles lint ./bundles
+recur bundles test ./bundles/JSON
 ```
 
 ## Building from source
@@ -138,8 +138,8 @@ All tasks run through `mise run` from the repository root (`mise tasks` lists th
 ```bash
 mise run run             # run the desktop app (cargo run -p recur-desktop)
 mise run build           # build the app and CLI into target/
-mise run package         # target/package/Recur Next.app, its DMG and updater zip (macOS)
-mise run linux:package   # target/package/recur-next-linux-<arch>.tar.gz, .deb and .rpm
+mise run package         # target/package/Recur.app, its DMG and updater zip (macOS)
+mise run linux:package   # target/package/recur-linux-<arch>.tar.gz, .deb and .rpm
 ```
 
 On a Mac, the `linux:*` tasks build in Docker (or OrbStack), and `mise run linux:run` opens the Linux app in a browser-based desktop.

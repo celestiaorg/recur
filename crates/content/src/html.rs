@@ -694,7 +694,7 @@ mod mac {
         // Drop.
         #[unsafe(super(NSObject))]
         #[thread_kind = MainThreadOnly]
-        #[name = "RecurNextHtmlPreviewBridge"]
+        #[name = "RecurHtmlPreviewBridge"]
         #[ivars = Ivars]
         pub struct Bridge;
 

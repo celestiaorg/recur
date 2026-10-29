@@ -1,11 +1,11 @@
 name: Release
 
-# Pushing a vX.Y.Z tag builds a universal "Recur Next.app" (stamping X.Y.Z into
-# Info.plist) in a styled DMG plus its updater zip, and the recur-next Linux
+# Pushing a vX.Y.Z tag builds a universal "Recur.app" (stamping X.Y.Z into
+# Info.plist) in a styled DMG plus its updater zip, and the recur Linux
 # tarballs, .debs and .rpms, in parallel. Only once every build succeeds does
 # `publish` create the GitHub release and attach them all with a
-# SHA256SUMS-next and the signed manifest-next.json the in-app updater reads
-# (RECUR_NEXT_UPDATE_URL), so a failed build never leaves a partial release.
+# SHA256SUMS and the signed manifest.json the in-app updater reads
+# (RECUR_UPDATE_URL), so a failed build never leaves a partial release.
 #
 # With all the secrets below the app and the DMG are Developer ID signed,
 # notarized, and stapled. With only the MACOS_* ones they are signed but not
@@ -50,7 +50,7 @@ jobs:
       HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
       HAS_NOTARY: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
       SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || 'Developer ID Application' }}
-      RECUR_NEXT_UPDATE_URL: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' && 'https://github.com/celestiaorg/recur-releases/releases/latest/download/manifest-next.json' || '' }}
+      RECUR_UPDATE_URL: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' && 'https://github.com/celestiaorg/recur-releases/releases/latest/download/manifest.json' || '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
@@ -96,12 +96,12 @@ jobs:
 
       - name: Verify
         run: |
-          APP="target/package/Recur Next.app"
+          APP="target/package/Recur.app"
           codesign --verify --deep --strict "$APP"
           if [ "$HAS_NOTARY" = true ]; then spctl --assess --type execute "$APP"; fi
           plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist"
           for bin in recur recur-cli; do lipo "$APP/Contents/MacOS/$bin" -verify_arch arm64 x86_64; done
-          DMG="target/package/Recur Next.dmg"
+          DMG="target/package/Recur.dmg"
           if [ "$HAS_NOTARY" = true ]; then spctl --assess --type open --context context:primary-signature "$DMG"; fi
           hdiutil verify "$DMG"
 
@@ -109,12 +109,12 @@ jobs:
         run: |
           V="${GITHUB_REF_NAME#v}"
           mkdir -p dist
-          mv "target/package/Recur Next.dmg" "dist/RecurNext-$V-macos-universal.dmg"
-          mv "target/package/Recur Next.zip" "dist/RecurNext-$V-macos-universal.zip"
+          mv "target/package/Recur.dmg" "dist/Recur-$V-macos-universal.dmg"
+          mv "target/package/Recur.zip" "dist/Recur-$V-macos-universal.zip"
       - uses: actions/upload-artifact@v7
         with:
           name: release-macos-universal
-          path: dist/RecurNext-*-macos-universal.*
+          path: dist/Recur-*-macos-universal.*
           if-no-files-found: error
 
   # Each arch builds natively (GPUI and WebKitGTK), so arm64 needs an arm runner.
@@ -158,12 +158,12 @@ jobs:
           V="${GITHUB_REF_NAME#v}"
           mkdir -p dist
           for ext in tar.gz deb rpm; do
-            mv "target/package/recur-next-linux-${{ matrix.arch }}.$ext" "dist/recur-next-$V-linux-${{ matrix.arch }}.$ext"
+            mv "target/package/recur-linux-${{ matrix.arch }}.$ext" "dist/Recur-$V-linux-${{ matrix.arch }}.$ext"
           done
       - uses: actions/upload-artifact@v7
         with:
           name: release-linux-${{ matrix.arch }}
-          path: dist/recur-next-*-linux-${{ matrix.arch }}.*
+          path: dist/Recur-*-linux-${{ matrix.arch }}.*
           if-no-files-found: error
 
   publish:
@@ -194,28 +194,28 @@ jobs:
           V="${GITHUB_REF_NAME#v}"
           printf '%s\n' "$UPDATER_SIGNING_KEY" > "$RUNNER_TEMP/updater.key"
           cargo build -q --locked -p recur-platform --bin updater-manifest
-          target/debug/updater-manifest manifest --version "$V" --name "Recur Next $V" --key "$RUNNER_TEMP/updater.key" \
+          target/debug/updater-manifest manifest --version "$V" --name "Recur $V" --key "$RUNNER_TEMP/updater.key" \
             --url-prefix "https://github.com/celestiaorg/recur-releases/releases/download/$GITHUB_REF_NAME" \
-            --output dist/manifest-next.json "dist/RecurNext-$V-macos-universal.zip"
+            --output dist/manifest.json "dist/Recur-$V-macos-universal.zip"
           rm "$RUNNER_TEMP/updater.key"
-          target/debug/updater-manifest verify --manifest dist/manifest-next.json --publickey build/updater.key.pub
+          target/debug/updater-manifest verify --manifest dist/manifest.json --publickey build/updater.key.pub
       # Unversioned copies give the download page stable
       # releases/latest/download/<name> links.
       - name: Latest-download aliases
         run: |
           V="${GITHUB_REF_NAME#v}"
-          cd dist && for f in RecurNext-"$V"-*.dmg recur-next-"$V"-*.{deb,rpm,tar.gz}; do cp "$f" "${f/-$V/}"; done
+          cd dist && for f in Recur-"$V"-*.{dmg,deb,rpm,tar.gz}; do cp "$f" "${f/-$V/}"; done
       - env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          (cd dist && sha256sum -- * > SHA256SUMS-next)
+          (cd dist && sha256sum -- * > SHA256SUMS)
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
           gh release upload "$GITHUB_REF_NAME" dist/* --clobber
 
       # This repo is private, so the download page and the updater read the
       # same files from a public, binaries-only mirror. It stays a draft until
-      # every asset is up, so latest/download/manifest-next.json never points
+      # every asset is up, so latest/download/manifest.json never points
       # at a missing zip.
       - name: Publish public release
         if: env.HAS_PUBLIC == 'true'
@@ -223,6 +223,6 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
           GH_REPO: celestiaorg/recur-releases
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --target main --title "Recur Next ${GITHUB_REF_NAME#v}" --notes ""
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --target main --title "Recur ${GITHUB_REF_NAME#v}" --notes ""
           gh release upload "$GITHUB_REF_NAME" dist/* --clobber
           gh release edit "$GITHUB_REF_NAME" --draft=false --latest

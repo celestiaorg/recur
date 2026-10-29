@@ -4,15 +4,15 @@
         <key>CFBundlePackageType</key>
             <string>APPL</string>
         <key>CFBundleName</key>
-            <string>Recur Next</string>
+            <string>Recur</string>
         <key>CFBundleExecutable</key>
             <string>recur</string>
         <key>CFBundleIdentifier</key>
-            <string>build.recur.next</string>
+            <string>build.recur.app</string>
         <key>CFBundleVersion</key>
             <string>0.1.0</string>
         <key>CFBundleGetInfoString</key>
-            <string>Recur Next: autonomous AI coding, locally</string>
+            <string>Recur: autonomous AI coding, locally</string>
         <key>CFBundleShortVersionString</key>
             <string>0.1.0</string>
         <key>CFBundleIconFile</key>

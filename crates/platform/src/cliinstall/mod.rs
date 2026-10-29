@@ -277,6 +277,8 @@ fn ensure_desktop_entry(data_home: &Path, exe: &Path) -> Result<(), CliInstallEr
         quote_exec(&exe.to_string_lossy()),
         icon.display()
     );
+    // The Go app's tarball wrote its launcher under the Wails app id.
+    let _ = std::fs::remove_file(dir.join("org.wails.recur.desktop"));
     let dest = dir.join(desktop_entry_name());
     if std::fs::read(&dest).is_ok_and(|old| old == body.as_bytes()) {
         return Ok(());
@@ -343,7 +345,7 @@ mod tests {
         std::fs::write(ws.path().join("Cargo.toml"), "[workspace]").expect("write");
         assert!(is_dev_bundle(&ws.path().join("target/debug/recur")));
         assert!(is_dev_bundle(&ws.path().join(
-            "target/release/bundle/osx/Recur Next.app/Contents/MacOS/recur"
+            "target/release/bundle/osx/Recur.app/Contents/MacOS/recur"
         )));
     }
 

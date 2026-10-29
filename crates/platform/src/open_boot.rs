@@ -34,7 +34,7 @@ pub fn peel_open_args(args: &[String]) -> (Vec<String>, Vec<String>) {
 
 /// Asks a live instance to take this launch instead of starting a second
 /// process. OS notification clicks, Finder re-opens and
-/// `open "Recur Next.app" --args --open PATH` all enter `main`. Empty `paths`
+/// `open "Recur.app" --args --open PATH` all enter `main`. Empty `paths`
 /// means focus only. True when the running instance accepted every request
 /// (the caller exits without opening the store).
 pub fn handoff_to_running_instance(data_dir: &Path, paths: &[String]) -> bool {
@@ -166,7 +166,7 @@ type Emit<T> = Arc<dyn Fn(T) + Send + Sync>;
 type Focus = Arc<dyn Fn(Box<dyn FnOnce() + Send>) + Send + Sync>;
 
 /// Replays the last OpenPath onto the UI if it happened before the UI
-/// subscribed (cold start via `recur-next .` / `--open`), and focuses the
+/// subscribed (cold start via `recur .` / `--open`), and focuses the
 /// window for handoffs.
 pub struct OpenHub<T> {
     state: Mutex<HubState<T>>,

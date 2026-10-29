@@ -55,10 +55,10 @@ fn defaults_are_side_by_side_roots() {
             } else {
                 Path::new(&home).join(".config")
             };
-            assert_eq!(data_dir().unwrap(), cfg.join("RecurNext"));
+            assert_eq!(data_dir().unwrap(), cfg.join("Recur"));
             assert_eq!(
                 worktrees_dir().unwrap(),
-                Path::new(&home).join(".recur/worktrees-next")
+                Path::new(&home).join(".recur/worktrees")
             );
             assert_eq!(
                 recur_skills_dir().unwrap(),
@@ -68,13 +68,10 @@ fn defaults_are_side_by_side_roots() {
                 user_bundles_dir().unwrap(),
                 Path::new(&home).join(".recur/bundles")
             );
-            assert_eq!(bundles_dir().unwrap(), cfg.join("RecurNext/Bundles"));
-            assert_eq!(
-                bundles_cache_dir().unwrap(),
-                cfg.join("RecurNext/BundleCache")
-            );
-            assert_eq!(open_sock_path().unwrap(), cfg.join("RecurNext/open.sock"));
-            assert_eq!(open_files_dir().unwrap(), cfg.join("RecurNext/open-files"));
+            assert_eq!(bundles_dir().unwrap(), cfg.join("Recur/Bundles"));
+            assert_eq!(bundles_cache_dir().unwrap(), cfg.join("Recur/BundleCache"));
+            assert_eq!(open_sock_path().unwrap(), cfg.join("Recur/open.sock"));
+            assert_eq!(open_files_dir().unwrap(), cfg.join("Recur/open-files"));
             assert_eq!(
                 codex_default_seed_auth_path(),
                 format!("{home}/.codex/auth.json")

@@ -1,10 +1,8 @@
 //! Recur's managed directories.
 //!
-//! Side by side with the Go app, the Rust port defaults to its own managed
-//! root, `<UserConfigDir>/RecurNext`, and worktree parent,
-//! `~/.recur/worktrees-next`. `RECUR_DATA_DIR` and `RECUR_WORKTREES_DIR`
-//! override exactly as in Go. User-owned roots under `~/.recur` (bundles,
-//! Recur skills) are shared with the Go app.
+//! The managed root is `<UserConfigDir>/Recur` and the worktree parent
+//! `~/.recur/worktrees`, the same as the Go app's, so it opens existing data.
+//! `RECUR_DATA_DIR` and `RECUR_WORKTREES_DIR` override them.
 
 use std::io;
 use std::os::unix::fs::DirBuilderExt as _;
@@ -16,10 +14,10 @@ use recur_project::home::{user_config_dir, user_home_dir};
 pub const DATA_DIR_ENV: &str = "RECUR_DATA_DIR";
 /// Overrides the git-worktrees parent.
 pub const WORKTREES_DIR_ENV: &str = "RECUR_WORKTREES_DIR";
-/// The managed root's name under `UserConfigDir` (Go: `Recur`).
-pub const APP_DIR_NAME: &str = "RecurNext";
-/// The worktrees parent's name under `~/.recur` (Go: `worktrees`).
-pub const WORKTREES_DIR_NAME: &str = "worktrees-next";
+/// The managed root's name under `UserConfigDir`.
+pub const APP_DIR_NAME: &str = "Recur";
+/// The worktrees parent's name under `~/.recur`.
+pub const WORKTREES_DIR_NAME: &str = "worktrees";
 
 fn env(key: &str) -> String {
     std::env::var(key).unwrap_or_default()
@@ -36,8 +34,8 @@ fn home() -> io::Result<PathBuf> {
     user_home_dir().map(PathBuf::from).map_err(io::Error::other)
 }
 
-/// Recur's managed root, created if needed: `<UserConfigDir>/RecurNext`
-/// (`~/Library/Application Support/RecurNext` on macOS), or
+/// Recur's managed root, created if needed: `<UserConfigDir>/Recur`
+/// (`~/Library/Application Support/Recur` on macOS), or
 /// `$RECUR_DATA_DIR`. It holds recur.db, per-workspace data under
 /// `workspaces/<id>/`, the view-state JSON files and caches. Git worktrees
 /// live separately under [`worktrees_dir`].
@@ -74,11 +72,11 @@ pub fn open_files_dir() -> io::Result<PathBuf> {
 /// 1. `$RECUR_WORKTREES_DIR` when set
 /// 2. `$RECUR_DATA_DIR/worktrees` when a data-dir override is active (keeps
 ///    tests and alternate instances self-contained)
-/// 3. `~/.recur/worktrees-next`; checkouts live at
+/// 3. `~/.recur/worktrees`; checkouts live at
 ///    `<parent>/<project-slug>/<workspace-slug>`
 ///
 /// On first use of the default, leftover worktrees under the legacy
-/// `<UserConfigDir>/RecurNext/worktrees` are moved across (best-effort).
+/// `<UserConfigDir>/Recur/worktrees` are moved across (best-effort).
 pub fn worktrees_dir() -> io::Result<PathBuf> {
     let v = env(WORKTREES_DIR_ENV);
     if !v.is_empty() {

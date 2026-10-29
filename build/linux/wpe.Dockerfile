@@ -4,7 +4,7 @@
 # WebKit compiles in the path of its helper processes.
 #
 #   docker build --platform linux/$ARCH --build-arg ARCH=$ARCH -f wpe.Dockerfile \
-#     -t recur-next-linux-wpe:$ARCH build/linux
+#     -t recur-linux-wpe:$ARCH build/linux
 #
 # The second stage is the regular build image (build/linux/Dockerfile) plus the prefix.
 ARG ARCH=arm64
@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ARG WPE_VERSION=2.54.2
-ARG PREFIX=/opt/recur-next/wpe
+ARG PREFIX=/opt/recur/wpe
 RUN curl -fsSL https://wpewebkit.org/releases/wpewebkit-$WPE_VERSION.tar.xz | tar xJ -C /tmp
 # One ninja job per ~1.5 GB of memory: WebKit's unified sources each take that much.
 RUN cd /tmp/wpewebkit-$WPE_VERSION && start=$(date +%s) \
@@ -39,12 +39,12 @@ RUN cd /tmp/wpewebkit-$WPE_VERSION && start=$(date +%s) \
     && echo "wpe build: $(( $(date +%s) - start ))s on $(nproc) cores" | tee $PREFIX/BUILD_TIME \
     && rm -rf /tmp/wpewebkit-$WPE_VERSION
 
-FROM recur-next-linux-build:$ARCH
+FROM recur-linux-build:$ARCH
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsoup-3.0-dev libjxl-dev libavif-dev libwoff-dev liblcms2-dev libgbm-dev libseccomp-dev \
     libgstreamer-plugins-bad1.0-dev bubblewrap xdg-dbus-proxy \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=wpe /opt/recur-next/wpe /opt/recur-next/wpe
-ENV PKG_CONFIG_PATH=/opt/recur-next/wpe/lib/pkgconfig LD_LIBRARY_PATH=/opt/recur-next/wpe/lib
+COPY --from=wpe /opt/recur/wpe /opt/recur/wpe
+ENV PKG_CONFIG_PATH=/opt/recur/wpe/lib/pkgconfig LD_LIBRARY_PATH=/opt/recur/wpe/lib
 USER dev

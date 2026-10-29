@@ -14,7 +14,7 @@ description = "Builds the desktop app and CLI into target/ (`-- --release` for a
 run = "cargo build"
 
 [tasks.run]
-description = "Runs the desktop app on the engine-backed services (data dir defaults to RecurNext; `-- --features mock` for the mock bridge)"
+description = "Runs the desktop app on the engine-backed services (data dir defaults to Recur; `-- --features mock` for the mock bridge)"
 run = "cargo run -p recur-desktop"
 
 [tasks.lint]
@@ -66,12 +66,12 @@ mv "$tmp"/*.icns darwin/icons.icns
 '''
 
 [tasks.package]
-description = "Packages target/package/Recur Next.app, .dmg and updater .zip (macOS; see build/darwin/package.sh for UNIVERSAL, signing and the update URL)"
+description = "Packages target/package/Recur.app, .dmg and updater .zip (macOS; see build/darwin/package.sh for UNIVERSAL, signing and the update URL)"
 depends = ["generate:icons", "generate:help-skill"]
 run = "build/darwin/package.sh"
 
 [tasks."smoke:package"]
-description = "Installs target/package/Recur Next.dmg into a sandbox, launches it and checks the recur-next link, `recur-next .` and a native notification (macOS)"
+description = "Installs target/package/Recur.dmg into a sandbox, launches it and checks the recur link, `recur .` and a native notification (macOS)"
 run = "build/darwin/smoke.sh"
 
 [tasks.smoke]
@@ -88,7 +88,7 @@ env = { WPE = "1" }
 run = "build/linux/in-docker.sh sh -c 'cargo clippy -p recur-content --all-targets --locked -- -D warnings && cargo test -p recur-content --test wpe --locked'"
 
 [tasks."linux:build"]
-description = "Release Linux build into target/package/recur-next-linux-<arch> (recur, recur-cli, recur.png; in Docker on non-Linux hosts). ARCH=amd64|arm64 overrides the host arch"
+description = "Release Linux build into target/package/recur-linux-<arch> (recur, recur-cli, recur.png; in Docker on non-Linux hosts). ARCH=amd64|arm64 overrides the host arch"
 depends = ["generate:help-skill"]
 run = '''
 set -eu
@@ -96,13 +96,13 @@ VERSION="${VERSION:-$(build/version.sh)}" build/linux/in-docker.sh build/linux/b
 '''
 
 [tasks."linux:package"]
-description = "Packages target/package/recur-next-linux-<arch>.tar.gz, .deb and .rpm (install to /opt/recur-next with /usr/bin/recur-next)"
+description = "Packages target/package/recur-linux-<arch>.tar.gz, .deb and .rpm (install to /opt/recur with /usr/bin/recur)"
 run = '''
 set -eu
 export VERSION="${VERSION:-$(build/version.sh)}"
 export ARCH="$(build/linux/arch.sh)"
 mise run linux:build
-PKG="recur-next-linux-$ARCH"
+PKG="recur-linux-$ARCH"
 tar --no-xattrs -C target/package -czf "target/package/$PKG.tar.gz" "$PKG"
 for fmt in deb rpm; do
   PKG_DIR="target/package/$PKG" nfpm pkg --packager "$fmt" --config build/linux/nfpm.yaml --target "target/package/$PKG.$fmt"
@@ -115,12 +115,12 @@ run = '''
 set -eu
 export ARCH="$(build/linux/arch.sh)"
 mise run linux:build
-if [ "$(uname -s)" = Linux ]; then exec "target/package/recur-next-linux-$ARCH/recur"; fi
+if [ "$(uname -s)" = Linux ]; then exec "target/package/recur-linux-$ARCH/recur"; fi
 exec build/linux/run-desktop.sh
 '''
 
 [tasks."linux:smoke"]
-description = "Installs the linux:package .deb and tarball in a clean Debian 13 container and checks paths, the recur-next link, the menu entry, `recur-next .` and a notification"
+description = "Installs the linux:package .deb and tarball in a clean Debian 13 container and checks paths, the recur link, the menu entry, `recur .` and a notification"
 run = "ARCH=\"$(build/linux/arch.sh)\" build/linux/smoke.sh"
 
 [tasks."test:splash"]

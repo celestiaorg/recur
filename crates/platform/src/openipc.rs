@@ -1,4 +1,4 @@
-//! Unix-socket protocol between the CLI (`recur-next .`) and the running
+//! Unix-socket protocol between the CLI (`recur .`) and the running
 //! desktop app. The CLI never touches SQLite; it only hands an absolute path
 //! to the app, which runs OpenPath.
 

@@ -282,12 +282,12 @@ mod tests {
         );
 
         let dir = tempfile::tempdir().unwrap();
-        let zip = dir.path().join("RecurNext-1.2.3-macos-universal.zip");
+        let zip = dir.path().join("Recur-1.2.3-macos-universal.zip");
         std::fs::write(&zip, b"release bytes").unwrap();
         let json = write_manifest(
             &ManifestOptions {
                 version: "1.2.3",
-                name: "Recur Next 1.2.3",
+                name: "Recur 1.2.3",
                 url_prefix: "https://example.com/download/v1.2.3/",
                 key: Some(&key),
             },
@@ -300,7 +300,7 @@ mod tests {
         assert_eq!(v["schemaVersion"], 1);
         assert_eq!(
             a["url"],
-            "https://example.com/download/v1.2.3/RecurNext-1.2.3-macos-universal.zip"
+            "https://example.com/download/v1.2.3/Recur-1.2.3-macos-universal.zip"
         );
         assert_eq!(
             (a["platform"].as_str(), a.get("arch")),
@@ -312,7 +312,7 @@ mod tests {
         );
 
         let lines = verify_manifest(json.as_bytes(), dir.path(), &pub_pem).expect("verifies");
-        assert_eq!(lines, ["RecurNext-1.2.3-macos-universal.zip: ok"]);
+        assert_eq!(lines, ["Recur-1.2.3-macos-universal.zip: ok"]);
 
         std::fs::write(&zip, b"release bytez").unwrap();
         let err = verify_manifest(json.as_bytes(), dir.path(), &pub_pem).unwrap_err();
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn platform_and_arch_from_names() {
-        assert_eq!(infer_platform("recur-next-1.0.0-linux-amd64.deb"), "linux");
+        assert_eq!(infer_platform("recur-1.0.0-linux-amd64.deb"), "linux");
         assert_eq!(infer_platform("App.dmg"), "darwin");
         assert_eq!(infer_platform("notes.zip"), "");
         assert_eq!(infer_arch("app-linux-x86_64.tar.gz"), "amd64");

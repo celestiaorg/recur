@@ -1,10 +1,6 @@
 //! Claude Code provider (headless `claude -p` stream-json).
 //!
-//! Port of Go `engine/claude.go`, `engine/claude_flags.go`, the Claude flag
-//! half of `engine/permission.go`, the Claude half of
-//! `engine/attachments.go`, `app/claude_status.go` and the Claude branch of
-//! `app/model_catalog.go`. The allowlist translation is documented on
-//! [`args`].
+//! The allowlist translation is documented on [`args`].
 
 pub mod args;
 pub mod flags;

@@ -118,8 +118,8 @@ fn osc7_path(seq: &[u8]) -> Option<String> {
     if !host_is_local(&host) {
         return None;
     }
-    // Go's url.Parse rejects malformed escapes and yields a decoded path, which Recur then
-    // unescapes once more.
+    // Malformed escapes are rejected and the decoded path is
+    // unescaped once more.
     let path = path_unescape(u.path())?;
     if path.is_empty() {
         return None;

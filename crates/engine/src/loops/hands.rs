@@ -1,7 +1,7 @@
-//! Maestro hands (Go `maestro_hands.go`): actions the conductor requests
-//! through MCP and the ENGINE validates and executes within the rails. Each
-//! returns the tool result: success, or the named reason it refused (the
-//! refusal also lands on the feed, so chat and feed agree).
+//! Maestro hands: actions the conductor requests through MCP and the ENGINE
+//! validates and executes within the rails. Each returns the tool result:
+//! success, or the named reason it refused (the refusal also lands on the feed,
+//! so chat and feed agree).
 
 use std::sync::Arc;
 

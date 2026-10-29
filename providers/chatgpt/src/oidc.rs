@@ -1,6 +1,5 @@
-//! ID-token verification against the published OpenID issuer and JWKS (Go
-//! `chatgpt/oidc.go`). Merely decoding a JWT does not establish which
-//! account authorized a sign-in.
+//! ID-token verification against the published OpenID issuer and JWKS. Merely
+//! decoding a JWT does not establish which account authorized a sign-in.
 
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;

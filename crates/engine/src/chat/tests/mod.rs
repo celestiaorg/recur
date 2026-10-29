@@ -1,5 +1,4 @@
-//! Ports of the E4 Go test files, one module per file (the large
-//! `workspace_chat_test.go` split by group).
+//! E4 chat tests, one module per area.
 
 mod cancel;
 mod checkpoint;

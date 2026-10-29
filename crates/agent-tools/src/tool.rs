@@ -39,7 +39,7 @@ impl From<HostError> for ToolError {
 pub trait Tool: Send + Sync {
     fn name(&self) -> &'static str;
     fn description(&self) -> &'static str;
-    /// The JSON input schema exactly as Go writes it (tools/list compacts it).
+    /// The JSON input schema exactly as written (tools/list compacts it).
     fn schema(&self) -> String;
     /// Whether a successful call ends the calling turn (ask_user, switch_mode).
     fn halts(&self) -> bool {

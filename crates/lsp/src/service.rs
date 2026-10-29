@@ -1,6 +1,5 @@
-//! The editor-facing LSP API (Go `app/lsp_service.go`). `recur-services`
-//! resolves the workspace root (worktree, else repo: Go
-//! `code.ResolveRootInfo`) and the bundle roots, then calls these.
+//! The editor-facing LSP API. `recur-services` resolves the workspace root
+//! (worktree, else repo) and the bundle roots, then calls these.
 //!
 //! Contract: `ensure_lsp` → [`EnsureResult`]; `write_lsp(id, body)` sends a
 //! JSON-RPC body without headers; `close_lsp(id)`; the manager's emitter
@@ -20,7 +19,7 @@ use crate::uri::{canon_path, clean, path_to_uri};
 #[serde(default, rename_all = "camelCase")]
 pub struct LanguageServerInfo {
     pub id: String,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub languages: Option<Vec<String>>,
     pub command: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -119,8 +118,8 @@ pub async fn write_lsp(mgr: &Manager, id: &str, message: &str) -> Result<(), Str
     mgr.write(id, message).await
 }
 
-/// Go `code.SafeJoin`: `rel` (forward slashes) under `root`, refusing `..`
-/// and anything that escapes.
+/// `rel` (forward slashes) under `root`, refusing `..` and anything that
+/// escapes.
 pub fn safe_join(root: &str, rel: &str) -> Result<String, String> {
     let root_abs = abs(root);
     let rel = rel.strip_prefix('/').unwrap_or(rel);

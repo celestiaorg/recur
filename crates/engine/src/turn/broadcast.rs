@@ -1,6 +1,6 @@
-//! The live session stream (Go `mirror.go` `sessionBroadcast`): one turn's
-//! events onto the bus as `session.*`, tagged with the workspace and agent
-//! code so any surface renders any agent's session live.
+//! The live session stream: one turn's events onto the bus as `session.*`,
+//! tagged with the workspace and agent code so any surface renders any agent's
+//! session live.
 //!
 //! Text and thinking deltas are published as cumulative snapshots with a
 //! monotonic `seq` that continues across turns (seeded from the engine), so
@@ -389,8 +389,8 @@ impl SessionBroadcast {
     }
 }
 
-/// A fallback notice label (Go `claudeModelLabel`): the provider's label for
-/// a model, empty for no model.
+/// A fallback notice label: the provider's label for a model, empty for no
+/// model.
 fn model_label(p: &dyn Provider, model: &str) -> String {
     if model.trim().is_empty() {
         return String::new();

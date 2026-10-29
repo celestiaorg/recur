@@ -1,6 +1,6 @@
-//! `EditorSessionService` (Go `editor_session.go`): per-workspace editor UI
-//! state as one gzipped JSON snapshot, `<data>/workspaces/<id>/editor-session.json.gz`,
-//! merged from patches and written atomically.
+//! `EditorSessionService`: per-workspace editor UI state as one gzipped JSON snapshot,
+//! `<data>/workspaces/<id>/editor-session.json.gz`, merged from patches and written
+//! atomically.
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -83,14 +83,14 @@ pub(crate) fn read_gz_json<T: serde::de::DeserializeOwned>(path: &Path) -> Optio
     let f = std::fs::File::open(path).ok()?;
     let mut raw = Vec::new();
     flate2::read::GzDecoder::new(f).read_to_end(&mut raw).ok()?;
-    // Go's json.Decoder reads the first value; trailing bytes are ignored.
+    // Reads the first JSON value; trailing bytes are ignored.
     let mut de = serde_json::Deserializer::from_slice(&raw).into_iter::<T>();
     de.next()?.ok()
 }
 
-/// Writes `v` as gzipped JSON (Go `json.Encoder` bytes, newline included)
-/// through a temp file in `dir` renamed over `name`. BestSpeed keeps the CPU
-/// cost trivial at the debounce cadence.
+/// Writes `v` as gzipped JSON (newline included) through a temp file in `dir`
+/// renamed over `name`. BestSpeed keeps the CPU cost trivial at the debounce
+/// cadence.
 pub(crate) fn write_gz_json<T: serde::Serialize>(
     dir: &Path,
     tmp_prefix: &str,
@@ -201,7 +201,7 @@ impl AppServices {
         st.loaded = true;
     }
 
-    /// The stored session, or `None` (Go `GetEditorSession`).
+    /// The stored session, or `None`.
     pub(crate) fn editor_session(&self, workspace_id: &str) -> Result<Option<EditorSession>> {
         if workspace_id.is_empty() {
             return Ok(None);

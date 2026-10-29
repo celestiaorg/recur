@@ -1,6 +1,6 @@
-//! The user-visible outcome of a chat turn (Go `chat_errors.go`): Stop,
-//! interrupt and timeout notes, provider-aware error replies, and the
-//! durable failure row that keeps a failed turn visible after a resync.
+//! The user-visible outcome of a chat turn: Stop, interrupt and timeout notes,
+//! provider-aware error replies, and the durable failure row that keeps a
+//! failed turn visible after a resync.
 
 use std::error::Error;
 use std::time::Instant;
@@ -39,7 +39,7 @@ pub const CHAT_INJECTED_SENTINEL: &str = "\u{2060}inject";
 /// The note when a turn's wedged-turn deadline fires.
 pub const CHAT_TURN_TIMED_OUT_REPLY: &str = "Agent error: this turn hit Recur's time limit — send again to continue (use Stop if it looked stuck).";
 
-/// Go `context.DeadlineExceeded`'s text; an error ending in it is a timeout.
+/// The deadline error text; an error ending in it is a timeout.
 pub const DEADLINE_EXCEEDED: &str = "context deadline exceeded";
 
 /// Whether `err` (or anything it wraps) is a turn cancellation.

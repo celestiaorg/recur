@@ -1,7 +1,5 @@
 //! OpenAI-compatible `/v1/responses` provider: Recur owns the agent loop, the
-//! coding tools and the host tools (Go `engine/harness*.go`,
-//! `internal/responses`, `app/compatible_service.go` and the compatible
-//! branch of `app/model_catalog.go`). See `docs/openai-compatible-provider.md`.
+//! coding tools and the host tools. See `docs/openai-compatible-provider.md`.
 //!
 //! The engine passes the turn's tools as `TurnContext::tools` (build one with
 //! [`HarnessTools::new`]) and the Recur transcript as `TurnContext::history`.
@@ -55,9 +53,9 @@ pub const HARNESS_CAPS: ProviderCaps = ProviderCaps {
 /// One user-configured endpoint, registered under its own slug.
 ///
 /// The config is the one turns run with; `settings_changed` refreshes it from
-/// Settings by slug (Go rebuilt the runner from settings every turn). The
-/// picker label is fixed at construction: services label groups with
-/// `Settings::display_label` and re-register a provider whose name changed.
+/// Settings by slug. The picker label is fixed at construction: services label
+/// groups with `Settings::display_label` and re-register a provider whose name
+/// changed.
 pub struct CompatibleProvider {
     id: String,
     label: String,

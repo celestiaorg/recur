@@ -1,6 +1,6 @@
-//! The merge half of Go `model_catalog.go`: one grouped picker list over
-//! every enabled, configured provider (each provider lists its own models),
-//! and the Settings remap that repoints slots naming a turned-off provider.
+//! The model catalog merge: one grouped picker list over every enabled,
+//! configured provider (each provider lists its own models), and the Settings
+//! remap that repoints slots naming a turned-off provider.
 
 use recur_agent::Provider as _;
 use recur_agent::catalog::{ModelChoice, ModelGroup, default_flags_from_dims};
@@ -149,11 +149,11 @@ pub fn provider_enablement_changed(a: &Settings, b: &Settings) -> bool {
 }
 
 impl AppServices {
-    /// Go `ListModelCatalog`: Cursor and Codex list live (a throwaway bridge
-    /// or app-server); each provider remembers the result for remaps. Claude
-    /// Code's pinned list gains the models the local CLI reports for the
-    /// account; `probe_claude = false` reuses the last good probe, spawning
-    /// claude only until one succeeds.
+    /// Cursor and Codex list live (a throwaway bridge or app-server); each
+    /// provider remembers the result for remaps. Claude Code's pinned list
+    /// gains the models the local CLI reports for the account;
+    /// `probe_claude = false` reuses the last good probe, spawning claude only
+    /// until one succeeds.
     pub(crate) async fn model_catalog(&self, probe_claude: bool) -> Vec<ModelGroup> {
         let set = self.store().settings();
         let claude = async {

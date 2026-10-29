@@ -1,5 +1,4 @@
-//! Parity scenes: the `content` list in `crates/ui/gallery/scenes.json`, built the way
-//! `web/scenes/Content.svelte` mounts the Svelte components, over the same fixtures.
+//! Parity scenes: the `content` list in `crates/ui/gallery/scenes.json`.
 
 use gpui_kit::{
     AnyView, App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Window,

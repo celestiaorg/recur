@@ -1,5 +1,5 @@
 //! Recur Connect for Cursor: the browser PKCE login, session refresh, and the
-//! user API key minted from the session (Go `usage/cursor_oauth.go`).
+//! user API key minted from the session.
 
 use std::time::Duration;
 
@@ -50,7 +50,7 @@ pub(crate) fn generate_cursor_pkce(login_base: &str) -> Result<PkceLogin, String
     let id = uuid::Uuid::now_v7().to_string();
     // redirectTarget is Cursor's portal label, not a protocol switch: `sdk`
     // reads "Sign in to an app using the Cursor SDK"; `cli` said Cursor CLI.
-    // Keys sorted as Go's url.Values.Encode writes them.
+    // Keys sorted.
     let query: String = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("challenge", &challenge)
         .append_pair("mode", "login")

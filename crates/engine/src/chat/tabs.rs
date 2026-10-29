@@ -1,7 +1,7 @@
-//! Chat tab management (Go `workspace_chat.go`): the strip of a
-//! workspace's tabs (PA, PA2, … and the Maestro when it is a real chat),
-//! create / close / reorder / reopen / delete closed tabs, the dock
-//! selection and prompt groups, and remapping picks off disabled providers.
+//! Chat tab management: the strip of a workspace's tabs (PA, PA2, … and the
+//! Maestro when it is a real chat), create / close / reorder / reopen / delete
+//! closed tabs, the dock selection and prompt groups, and remapping picks off
+//! disabled providers.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 

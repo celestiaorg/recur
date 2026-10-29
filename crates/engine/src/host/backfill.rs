@@ -1,7 +1,6 @@
-//! MCP argument backfill (Go `mcp_tool_backfill.go`): providers that store
-//! an empty tool_use (Codex mcpToolCall items often record `{}`) get the
-//! real `tools/call` arguments patched in, and the live row is refreshed
-//! with `session.tool_input`.
+//! MCP argument backfill: providers that store an empty tool_use (Codex
+//! mcpToolCall items often record `{}`) get the real `tools/call` arguments
+//! patched in, and the live row is refreshed with `session.tool_input`.
 
 use std::time::Duration;
 

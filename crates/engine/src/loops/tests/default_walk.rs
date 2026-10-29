@@ -1,7 +1,6 @@
-//! Port of Go `default_walk_test.go` and the loop cases of
-//! `fixture_test.go`: an untouched dock walks the shipped To a PR graph, an
-//! unresolvable guard idles with its reason, and the fixture pack's
-//! converge / docs / verify loops.
+//! Default walk and fixture loop tests: an untouched dock walks the shipped To
+//! a PR graph, an unresolvable guard idles with its reason, and the fixture
+//! pack's converge / docs / verify loops.
 
 use std::collections::HashSet;
 use std::time::Duration;

@@ -2,7 +2,7 @@
 //! install, keep-awake, system fonts, notifications, dock badge, updater.
 //!
 //! Paths are always explicit arguments (the data dir is resolved by
-//! `recur-store`). macOS and Linux are supported, matching the Go app.
+//! `recur-store`). macOS and Linux are supported.
 
 pub mod cliinstall;
 pub mod dock;

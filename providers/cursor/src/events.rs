@@ -1,7 +1,7 @@
-//! Run-stream frames from `SdkAgentService/Send` and `ObserveRun` (Go
-//! `cursor/events.go`). Decoding follows Go's `encoding/json` rules: a frame
-//! whose fields have the wrong JSON type fails as a whole (the client skips
-//! it), `null` leaves zero values, and raw fields keep their verbatim text.
+//! Run-stream frames from `SdkAgentService/Send` and `ObserveRun`. Decoding
+//! rules: a frame whose fields have the wrong JSON type fails as a whole (the
+//! client skips it), `null` leaves zero values, and raw fields keep their
+//! verbatim text.
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -254,7 +254,7 @@ pub struct ToolCallArgs {
     pub params: String,
 }
 
-/// Decodes a tool_call args envelope (Go `ToolArgs`). Empty input is an empty
+/// Decodes a tool_call args envelope. Empty input is an empty
 /// envelope.
 pub fn tool_call_args(args: &str) -> Option<ToolCallArgs> {
     if args.is_empty() {
@@ -511,7 +511,7 @@ impl RunResult {
     }
 }
 
-/// Parses one frame; `None` for a frame Go would fail to unmarshal (the
+/// Parses one frame; `None` for a frame of the wrong shape (the
 /// client skips it).
 pub fn decode_frame(raw: &[u8]) -> Option<RunStreamEvent> {
     serde_json::from_slice::<RunStreamEvent>(raw).ok()

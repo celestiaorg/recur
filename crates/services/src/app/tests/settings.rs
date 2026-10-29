@@ -1,6 +1,5 @@
-//! `settings_mcp_test.go`, `settings_prefix_test.go` and the service cases
-//! of `provider_usage_test.go` (the usage poller itself is covered in
-//! recur-usage; Go's nil-poller case cannot occur here).
+//! Settings MCP and branch prefix tests and the provider usage service
+//! cases (the usage poller itself is covered in recur-usage).
 
 use recur_domain::{
     BranchPrefixMode, CompatibleFlagDim, CompatibleFlagOption, CompatibleModel, CompatibleProvider,

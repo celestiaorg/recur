@@ -1,8 +1,7 @@
-//! Port of the mode, dock-selection and tab-title cases of Go
-//! `workspace_chat_test.go`: saved tab order, each mode's turn shape, the
-//! selection persisting before the turn runs, prompt groups, standing-note
-//! refreshes, provider stamping, Review findings, remapping picks off
-//! disabled providers, and stored vs derived tab titles.
+//! Mode, dock-selection and tab-title tests: saved tab order, each mode's turn
+//! shape, the selection persisting before the turn runs, prompt groups,
+//! standing-note refreshes, provider stamping, Review findings, remapping picks
+//! off disabled providers, and stored vs derived tab titles.
 
 use std::sync::Arc;
 

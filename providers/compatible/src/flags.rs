@@ -1,10 +1,10 @@
-//! Flag dimensions onto Responses request JSON paths (Go `responses/flags.go`).
+//! Flag dimensions onto Responses request JSON paths.
 
 use recur_agent::Flags;
 use recur_domain::CompatibleFlagDim;
 use serde_json::{Map, Value, json};
 
-/// A flag value Go's encoder cannot write (`json: unsupported value`).
+/// A flag value JSON cannot encode (`json: unsupported value`).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("json: unsupported value: {0}")]
 pub struct UnsupportedValue(pub String);

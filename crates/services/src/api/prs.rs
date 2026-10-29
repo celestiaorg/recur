@@ -5,7 +5,6 @@ use recur_domain::{
 
 use crate::Result;
 
-/// Rust port of Go `app.PRsService` (`frontend/bindings/recur/internal/app/prsservice.ts`).
 #[async_trait]
 pub trait PrsService: Send + Sync {
     /// AddPRComment records a review note. A file+line note stays pending until

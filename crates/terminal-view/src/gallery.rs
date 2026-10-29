@@ -1,6 +1,6 @@
-//! Terminal parity scenes: the `terminal` list in `crates/ui/gallery/scenes.json`, built the
-//! way `web/scenes/Terminal.svelte` mounts the Svelte pane. A scene is the dock body (find bar
-//! when open, then the panes) around one pane whose session replays the scene's input bytes.
+//! Terminal parity scenes: the `terminal` list in `crates/ui/gallery/scenes.json`. A scene
+//! is the dock body (find bar when open, then the panes) around one pane whose session
+//! replays the scene's input bytes.
 
 use recur_ui::guard::Guarded;
 use std::sync::Arc;

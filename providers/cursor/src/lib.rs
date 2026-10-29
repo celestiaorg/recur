@@ -1,12 +1,7 @@
 //! Cursor provider (cursor-sdk bridge).
 //!
-//! Port of Go `internal/cursor` (bridge install, locate, Connect client,
-//! run events, attribution patch, context table, project dirs, reaping,
-//! logging), `engine/cursor.go`, `cursor_flags.go`, `cursortools.go`, the
-//! Cursor pool and self-heal of `engine/provider.go`,
-//! `wrapAttachedImagesForCursor`, `app/cursor_service.go`, and the Cursor
-//! branch of `app/model_catalog.go`. See `docs/cursor-provider.md` for why
-//! Recur drives Cursor through the bridge.
+//! See `docs/cursor-provider.md` for why Recur drives Cursor through the
+//! bridge.
 //!
 //! The allowlist the engine sends uses Claude's syntax (R9). Cursor has no
 //! per-run allowlist: a list without Edit/Write/NotebookEdit runs the agent

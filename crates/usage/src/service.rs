@@ -1,6 +1,5 @@
-//! The Settings-facing usage API (Go `app/provider_usage.go`): poller
-//! lifecycle, the footer snapshot, and Cursor usage Connect. `recur-services`
-//! wraps it with the store and the bus.
+//! The Settings-facing usage API: poller lifecycle, the footer snapshot, and
+//! Cursor usage Connect. `recur-services` wraps it with the store and the bus.
 
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -17,8 +16,8 @@ use crate::poller::{Poller, Publisher};
 use crate::types::{CursorUsageConnect, ProviderQuota, Snapshot, empty_snapshot};
 
 pub type SettingsSource = Arc<dyn Fn() -> Settings + Send + Sync>;
-/// Saves settings through the full Settings save path (Go `SetSettings`),
-/// whose side effects (provider remap, governor caps) are async.
+/// Saves settings through the full Settings save path, whose side effects
+/// (provider remap, governor caps) are async.
 pub type SettingsSink =
     Arc<dyn Fn(Settings) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send>> + Send + Sync>;
 pub type DataDirSource = Arc<dyn Fn() -> Option<PathBuf> + Send + Sync>;
@@ -47,9 +46,8 @@ impl UsageService {
         })
     }
 
-    /// Starts the background poller once (Go `StartProviderUsage`). Call
-    /// from the app entry point; services built for tests must not hit
-    /// provider APIs.
+    /// Starts the background poller once. Call from the app entry point;
+    /// services built for tests must not hit provider APIs.
     pub fn start(self: &Arc<Self>) {
         let mut slot = self.poller.lock();
         if slot.is_some() {

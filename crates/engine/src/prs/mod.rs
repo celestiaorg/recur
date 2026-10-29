@@ -1,8 +1,6 @@
 //! Pull requests (slice E5): Local PRs the engine owns end to end, and forge
 //! PRs it mirrors through the registered [`recur_forge::Forge`] whose
-//! `pr_source` matches `Pr.source`. Go `pr.go` (minus the walk's open/wrap
-//! up), `rework.go`, `workspace_base.go`, `workspace_pr.go` and the engine
-//! halves of `github*.go` and `workspace_remote.go`.
+//! `pr_source` matches `Pr.source`.
 //!
 //! The engine never names a forge (R8): user-facing sentences take the
 //! forge's `label()`, refspecs come from `head_ref`, and comment ids, merge
@@ -35,9 +33,9 @@ use crate::text::unix_nanos;
 
 pub use recur_forge::model::{GROUP_LOOP, GROUP_MERGED, GROUP_OPEN, GROUP_YOU, pr_settled};
 
-/// How often the PR list sweep may run again (Go `githubPRSyncMinInterval`).
+/// How often the PR list sweep may run again.
 pub const PR_SYNC_MIN_INTERVAL: Duration = Duration::from_secs(30);
-/// The background re-list cadence (Go `githubPRSweepInterval`).
+/// The background re-list cadence.
 pub const PR_SWEEP_INTERVAL: Duration = Duration::from_secs(180);
 /// Projects listed at once by one sweep (two list calls each).
 pub const PR_SYNC_PROJECT_CONCURRENCY: usize = 8;
@@ -51,7 +49,7 @@ pub const BRANCH_RULES_TTL: Duration = Duration::from_secs(600);
 /// stale snapshot.
 pub const HOLD_TTL: Duration = Duration::from_secs(120);
 
-/// The intervals tests shorten (Go's package-level vars).
+/// The intervals tests shorten.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PrTiming {
     pub sync_min_interval: Duration,
@@ -77,7 +75,7 @@ pub(crate) struct SyncFlight {
     pub wait: Option<CancellationToken>,
 }
 
-/// E5's engine state (Go's PR fields on `Engine`).
+/// E5's engine state.
 #[derive(Default)]
 pub(crate) struct PrState {
     /// Leftover PR-host tab key → the live worktree tab it was hoisted onto.
@@ -116,18 +114,17 @@ pub fn now_comment(code: &str, author: &str, body_html: &str) -> PrComment {
     }
 }
 
-/// Go `normalizePRURL`.
+/// Trimmed, lowercased, without a trailing slash.
 pub fn normalize_pr_url(u: &str) -> String {
     u.trim().to_lowercase().trim_end_matches('/').to_owned()
 }
 
-/// The comments of a PR (Go's nil slice is empty).
+/// The comments of a PR, empty when unset.
 pub(crate) fn comments(p: &Pr) -> &[PrComment] {
     p.comments.as_deref().unwrap_or_default()
 }
 
-/// A row of some forge (any source but Local and unset; Go compared to
-/// `SourceGitHub`, the only forge).
+/// A row of some forge (any source but Local and unset).
 pub fn is_forge_source(s: &PrSource) -> bool {
     *s != PrSource::Local && !s.as_str().is_empty()
 }
@@ -243,7 +240,7 @@ impl Engine {
     }
 }
 
-/// Go `githubDefaultRemote`: origin, else the first configured remote.
+/// Origin, else the first configured remote.
 pub(crate) async fn default_remote(mgr: &recur_git::Manager) -> String {
     let Ok(remotes) = mgr.remotes().await else {
         return String::new();
@@ -254,8 +251,8 @@ pub(crate) async fn default_remote(mgr: &recur_git::Manager) -> String {
     remotes.into_iter().next().unwrap_or_default()
 }
 
-/// Test seams (Go's `githubPRSyncMinInterval`, `githubPRSweepInterval`,
-/// `githubBranchPRTTL` and the hold timestamps).
+/// Test seams: the sync and sweep intervals, the branch PR TTL and the
+/// hold timestamps.
 #[cfg(any(test, feature = "testing"))]
 impl Engine {
     pub fn set_pr_sync_min_interval(&self, d: Duration) {
@@ -270,8 +267,7 @@ impl Engine {
         self.prs.timing.lock().branch_rules_ttl = d;
     }
 
-    /// Backdates every PR hold and throttle stamp by `by` (Go tests write
-    /// `time.Now().Add(-…)` into the maps).
+    /// Backdates every PR hold and throttle stamp by `by`.
     pub fn age_pr_holds(&self, by: Duration) {
         let back = |t: &mut Instant| {
             if let Some(b) = t.checked_sub(by) {

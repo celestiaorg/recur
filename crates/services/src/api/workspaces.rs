@@ -10,7 +10,6 @@ use recur_domain::{
 use super::WorkspaceChatSelection;
 use crate::Result;
 
-/// Rust port of Go `app.WorkspacesService` (`frontend/bindings/recur/internal/app/workspacesservice.ts`).
 #[async_trait]
 #[allow(clippy::too_many_arguments)]
 pub trait WorkspacesService: Send + Sync {

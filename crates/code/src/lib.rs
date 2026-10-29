@@ -1,7 +1,6 @@
 //! Worktree file access: tree, index, search/replace (ripgrep), outline,
-//! symbols, open-in, copy-files and observatory analysis. Port of Go
-//! `internal/code`, `internal/rg`, `internal/copyfiles` and `internal/observe`,
-//! plus the UI's pure file rules (`lib/fuzzy.ts`, `lib/glob.ts`,
+//! symbols, open-in, copy-files and observatory analysis. Also
+//! the UI's pure file rules (`lib/fuzzy.ts`, `lib/glob.ts`,
 //! `lib/file-index.ts`, `lib/changed-tree.ts`, `lib/finding-paths.ts`,
 //! `lib/skills.ts`).
 //!

@@ -1,9 +1,8 @@
-//! The looking-at surface the operator and the agent share (Go
-//! `chat_surface.go`): a Recur workspace, a Local PR or a forge PR. The UI
-//! prepends `⟦recur-surface⟧{json}⟦/recur-surface⟧` to the wire; the engine
-//! peels it, infers it for PR chat hosts, and turns it into the turn's
-//! subject note. The forge-specific sentence comes from the PR's forge
-//! (R8).
+//! The looking-at surface the operator and the agent share: a Recur workspace,
+//! a Local PR or a forge PR. The UI prepends
+//! `⟦recur-surface⟧{json}⟦/recur-surface⟧` to the wire; the engine peels it,
+//! infers it for PR chat hosts, and turns it into the turn's subject note. The
+//! forge-specific sentence comes from the PR's forge (R8).
 
 use std::sync::Arc;
 

@@ -1,7 +1,7 @@
-//! The Settings → Providers card for Claude Code (Go `app/claude_status.go`):
-//! `claude --version` and `claude auth status`, each bounded on its own so a
-//! slow version probe cannot starve the auth probe and misreport a logged-in
-//! user. Never invents a success state.
+//! The Settings → Providers card for Claude Code: `claude --version` and
+//! `claude auth status`, each bounded on its own so a slow version probe cannot
+//! starve the auth probe and misreport a logged-in user. Never invents a
+//! success state.
 
 use std::time::Duration;
 
@@ -240,8 +240,8 @@ pub fn format_login_method(auth_method: &str, subscription_type: &str) -> String
     .to_owned()
 }
 
-/// The welcome screen's connected-agent line (Go `DetectAgent`): empty
-/// unless logged in, never a fake success.
+/// The welcome screen's connected-agent line: empty unless logged in, never a
+/// fake success.
 pub fn detect_agent(st: &ProviderStatus) -> String {
     if !st.authenticated {
         return String::new();

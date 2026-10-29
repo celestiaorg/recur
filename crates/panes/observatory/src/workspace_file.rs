@@ -1,5 +1,5 @@
 //! Worktree and external files through the asset routes (`lib/workspace-file.ts`): the URLs
-//! the Svelte UI fetched, served natively by `AssetsService::fetch_asset`.
+//! the UI fetches, served natively by `AssetsService::fetch_asset`.
 
 use recur_domain::FileContent;
 use recur_services::Services;

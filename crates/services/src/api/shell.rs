@@ -7,8 +7,6 @@ use crate::Result;
 /// SetShellState updates the in-memory snapshot immediately and coalesces disk
 /// writes; Flush (window close) commits any pending snapshot so a quit inside
 /// the debounce window still restores the last view.
-///
-/// Rust port of Go `app.ShellService` (`frontend/bindings/recur/internal/app/shellservice.ts`).
 #[async_trait]
 pub trait ShellService: Send + Sync {
     /// Flush writes any coalesced snapshot to disk. Called from the window-close

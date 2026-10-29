@@ -55,7 +55,6 @@ pub(crate) struct ListedActor {
 }
 
 impl ListedActor {
-    /// Go `actorParticipant`.
     pub fn participant(&self) -> PrParticipant {
         let login = self.login.trim();
         PrParticipant {
@@ -180,7 +179,7 @@ pub(crate) struct GhSnapshot {
     pub commit_logins: HashMap<String, String>,
 }
 
-/// Go `parseGitHubPRView` (the `gh pr view --json` shape).
+/// Parses the `gh pr view --json` shape.
 #[cfg(test)]
 pub(crate) fn parse_view(raw: &str, now: DateTime<Utc>) -> Result<GhSnapshot, String> {
     let raw = raw.trim();
@@ -191,7 +190,6 @@ pub(crate) fn parse_view(raw: &str, now: DateTime<Utc>) -> Result<GhSnapshot, St
     Ok(parse_view_json(view, now))
 }
 
-/// Go `parseGitHubPRViewJSON`.
 pub(crate) fn parse_view_json(view: ViewJson, now: DateTime<Utc>) -> GhSnapshot {
     let url = view.url.trim().to_owned();
     let commit_logins = commit_logins(&view.commits);
@@ -309,7 +307,6 @@ pub(crate) fn parse_view_json(view: ViewJson, now: DateTime<Utc>) -> GhSnapshot 
     }
 }
 
-/// Go `parseGitHubInlineComments`.
 pub(crate) fn parse_inline_comments(raw: &str, now: DateTime<Utc>, pr_url: &str) -> Vec<PrComment> {
     let raw = raw.trim();
     if raw.is_empty() || raw == "[]" {
@@ -321,7 +318,6 @@ pub(crate) fn parse_inline_comments(raw: &str, now: DateTime<Utc>, pr_url: &str)
     }
 }
 
-/// Go `commentsFromInlineRows`.
 pub(crate) fn comments_from_inline_rows(
     rows: &[InlineComment],
     now: DateTime<Utc>,
@@ -376,7 +372,7 @@ pub(crate) fn comments_from_inline_rows(
         .collect()
 }
 
-/// Go `parsePostedInlineComment`: the comment a reply POST returned.
+/// The comment a reply POST returned.
 pub(crate) fn parse_posted_inline_comment(
     raw: &str,
     now: DateTime<Utc>,
@@ -511,7 +507,6 @@ pub(crate) fn action_comment(
     thread_comment(id, author, verb, "", when, now, "action")
 }
 
-/// Go `ghThreadComment`.
 pub(crate) fn thread_comment(
     id: &str,
     author: &Actor,
@@ -646,7 +641,7 @@ pub(crate) fn commit_logins(commits: &[ViewCommit]) -> HashMap<String, String> {
     m
 }
 
-/// Go `commitsFromGitHubView`: commits in forge order with display authors.
+/// Commits in forge order with display authors.
 pub(crate) fn commits_from_view(rows: &[ViewCommit], now: DateTime<Utc>) -> Vec<Commit> {
     rows.iter()
         .filter_map(|row| {
@@ -786,7 +781,6 @@ pub(crate) fn rollup_status(state: &str) -> &'static str {
     }
 }
 
-/// Go `parseMentionableUsers`.
 pub(crate) fn parse_mentionable_users(raw: &str) -> Vec<PrParticipant> {
     #[derive(Default, Deserialize)]
     #[serde(default)]
@@ -1013,7 +1007,6 @@ pub struct ReviewThread {
     pub comment_ids: Vec<i64>,
 }
 
-/// Go `parseGitHubReviewThreads`.
 pub(crate) fn parse_review_threads(raw: &str) -> Vec<ReviewThread> {
     #[derive(Default, Deserialize)]
     #[serde(default)]
@@ -1111,10 +1104,9 @@ pub(crate) fn sort_comments(cs: &mut [PrComment]) {
     });
 }
 
-/// Go `mergeGitHubComments`: the snapshot's rows, then stored rows it does
-/// not have that must survive: Recur-only rows, older comments/reviews when
-/// the snapshot was truncated, and just-posted line notes GitHub has not
-/// echoed yet.
+/// The snapshot's rows, then stored rows it does not have that must survive:
+/// Recur-only rows, older comments/reviews when the snapshot was truncated, and
+/// just-posted line notes GitHub has not echoed yet.
 pub(crate) fn merge_comments(
     existing: &[PrComment],
     from_gh: &[PrComment],

@@ -269,10 +269,9 @@ impl WorkspaceDetail {
             .size_full()
             .min_h_0();
         // A parked shell stays alive and keeps running its effects (queues, seeds, live events),
-        // but is not laid out: Svelte keeps `#wsv-park` in the DOM, where layout is incremental,
-        // while GPUI would lay the whole workspace out again on every switch (seconds on a large
-        // one). Unrendered, its editors and terminals keep their size and its entities their
-        // state; it renders fresh when it is bound again.
+        // but is not laid out, since GPUI would lay the whole workspace out again on every
+        // switch (seconds on a large one). Unrendered, its editors and terminals keep their size
+        // and its entities their state; it renders fresh when it is bound again.
         for id in &self.hot {
             let Some(v) = self.views.get(id).cloned() else {
                 continue;

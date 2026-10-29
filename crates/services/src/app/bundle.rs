@@ -1,7 +1,6 @@
-//! `BundleService` (Go `bundle_service.go`): the bundle catalogs (cached on a
-//! `bundle.toml` stamp), shebang commands, prompt actions and complete
-//! scripts, palette search, goal expanders, and TypeScript compilation for
-//! the macro runtime.
+//! `BundleService`: the bundle catalogs (cached on a `bundle.toml` stamp),
+//! shebang commands, prompt actions and complete scripts, palette search, goal
+//! expanders, and TypeScript compilation for the macro runtime.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -350,7 +349,7 @@ impl AppServices {
     }
 
     /// The catalog, re-read when any `bundle.toml` (or the roots) changed
-    /// since the last read (Go `discoverCatalog`).
+    /// since the last read.
     pub(crate) fn discover_catalog(&self) -> Result<Catalog> {
         let DiscoverRoots {
             user_dir,
@@ -384,7 +383,7 @@ impl AppServices {
     }
 
     /// The bundle's `[[setting]]` values by name, Settings first, then the
-    /// process environment for the Linear keys (Go `fillBundleSettingEnv`).
+    /// process environment for the Linear keys.
     fn bundle_setting_env(&self, cat: &Catalog, bundle_id: &str) -> BTreeMap<String, String> {
         let mut out = BTreeMap::new();
         if bundle_id.trim().is_empty() {
@@ -405,7 +404,7 @@ impl AppServices {
 
     /// Stamps the workspace merge base, update method, looking-at surface and
     /// open PR so shebang prompts (`/update`, `/review`, `/open-pr`) need not
-    /// guess (Go `fillPromptGitEnv`).
+    /// guess.
     pub(crate) fn fill_prompt_git_env(&self, rc: &mut PromptRunContext, workspace_id: &str) {
         if workspace_id.is_empty() {
             return;
@@ -664,8 +663,7 @@ impl AppServices {
                 exit_code: res.exit_code,
                 output: res.output,
             }),
-            // Go returned the partial output beside the error; the bridge
-            // rejected the call, so only the error reaches the UI.
+            // Only the error reaches the UI; the partial output is dropped.
             Err(e) => Err(Error::new(e.message)),
         }
     }

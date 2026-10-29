@@ -123,7 +123,7 @@ pub fn next_scheduled_time(
     Ok(None)
 }
 
-/// Go `time.Parse("15:04", s)`: a one- or two-digit hour below 24, a colon,
+/// A clock time: a one- or two-digit hour below 24, a colon,
 /// and exactly two minute digits below 60.
 fn parse_clock(s: &str) -> Option<(u32, u32)> {
     let (h, m) = s.split_once(':')?;
@@ -137,7 +137,7 @@ fn parse_clock(s: &str) -> Option<(u32, u32)> {
     (hour < 24 && minute < 60).then_some((hour, minute))
 }
 
-/// Go `time.Parse("2006-01-02", s)`: a zero-padded date that exists.
+/// A `YYYY-MM-DD` date: a zero-padded date that exists.
 fn parse_date(s: &str) -> Option<NaiveDate> {
     if s.len() != 10 {
         return None;

@@ -1,4 +1,4 @@
-//! Ports of the E3 Go test files, one module per file.
+//! E3 loop tests, one module per area.
 
 mod acceptance;
 mod checklist;

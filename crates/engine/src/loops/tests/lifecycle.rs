@@ -1,4 +1,4 @@
-//! Port of Go `lifecycle_test.go`, the loop-driven half: Remove and Delete
+//! Lifecycle tests, the loop-driven half: Remove and Delete
 //! after a real walk reaches pr_open, and Delete refused while a walk runs.
 //! The hand-workspace cases live in `workspace::tests`. The Cursor project
 //! dir check needs a per-test `$HOME`, which a shared test process cannot
@@ -13,8 +13,8 @@ use tokio_util::sync::CancellationToken;
 use crate::loops::test_support::*;
 use crate::testing::{TestEngine, add_project, git_out, init_repo, wait_for};
 
-/// Drives `id` to pr_open and waits for its walk to deregister (Go
-/// `runToPROpen`): Remove/Delete refuse a walk still in the registry.
+/// Drives `id` to pr_open and waits for its walk to deregister:
+/// Remove/Delete refuse a walk still in the registry.
 async fn run_to_pr_open(t: &TestEngine, id: &str) -> Workspace {
     wait_for(Duration::from_secs(5), "loop to reach pr_open", || {
         t.store

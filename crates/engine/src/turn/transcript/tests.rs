@@ -1,5 +1,5 @@
-//! Go `workspace_chat_items_test.go` and the flatten / reconstruct cases of
-//! `attachments_test.go`.
+//! Chat item flattening tests and the attachment flatten / reconstruct
+//! cases.
 
 use std::sync::Arc;
 
@@ -704,7 +704,7 @@ fn context_window_rules() {
     );
 }
 
-// ---- the provider-neutral flatten cases of Go `cursortools_test.go`.
+// ---- provider-neutral flatten cases.
 
 #[test]
 fn truncation_survives_the_transcript() {

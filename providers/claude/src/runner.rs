@@ -1,5 +1,4 @@
-//! One `claude -p` turn (Go `ClaudeRunner.Run`, `runStdoutOnly`,
-//! `runInjecting`).
+//! One `claude -p` turn.
 //!
 //! The CLI runs in the worktree in its own process group. A single reaper
 //! task owns `wait()`; on cancel the whole group gets SIGTERM, then SIGKILL
@@ -39,7 +38,7 @@ use crate::stream::parse_line;
 /// land there, and they separate transient failures from genuine ones (D56).
 const STDERR_TAIL_MAX: usize = 8 * 1024;
 
-/// Go's `bufio.Scanner` cap for one stream-json line.
+/// The cap on one stream-json line.
 const MAX_LINE: usize = 8 * 1024 * 1024;
 
 pub(crate) async fn run(
@@ -401,7 +400,7 @@ async fn write_line(w: &mut ChildStdin, line: &str) -> std::io::Result<()> {
 /// The still-running background tasks in a `system/background_tasks_changed`
 /// frame (it carries the full list). Ambient entries (housekeeping,
 /// auto-started watchers) are not activity. `None` for any other line,
-/// including one Go's decoder would reject.
+/// including malformed JSON.
 pub(crate) fn background_task_count(line: &[u8]) -> Option<usize> {
     const NEEDLE: &[u8] = b"\"background_tasks_changed\"";
     if !line.windows(NEEDLE.len()).any(|w| w == NEEDLE) {
@@ -444,9 +443,8 @@ pub(crate) fn background_task_count(line: &[u8]) -> Option<usize> {
 #[error("bufio.Scanner: token too long")]
 struct TooLong;
 
-/// One line without its `\n` (and a trailing `\r`), like Go's
-/// `bufio.ScanLines`; `None` at EOF. A line of [`MAX_LINE`] bytes or more is
-/// an error, which ends the stream as Go's scanner does.
+/// One line without its `\n` (and a trailing `\r`); `None` at EOF. A line of
+/// [`MAX_LINE`] bytes or more is an error, which ends the stream.
 async fn read_line<R: AsyncBufRead + Unpin>(r: &mut R) -> std::io::Result<Option<Vec<u8>>> {
     let mut line = Vec::new();
     loop {
@@ -476,7 +474,7 @@ fn trim_cr(mut line: Vec<u8>) -> Vec<u8> {
     line
 }
 
-/// After an oversized line Go's scanner stops reading, which leaves the CLI
+/// After an oversized line a reader that stops leaves the CLI
 /// blocked on a full pipe until the turn is cancelled. Parsing stops here
 /// too, but the rest of stdout is drained so the process can still exit.
 async fn drain_after<R: AsyncBufRead + Unpin>(r: &mut R, err: &std::io::Error) {

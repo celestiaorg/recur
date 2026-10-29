@@ -15,8 +15,6 @@ use crate::Result;
 /// when the caller drops the call, so navigating away from a search, or
 /// firing a pathological regex at a monorepo, actually stops the work instead
 /// of leaving it to run to completion.
-///
-/// Rust port of Go `app.CodeService` (`frontend/bindings/recur/internal/app/codeservice.ts`).
 #[async_trait]
 pub trait CodeService: Send + Sync {
     /// AbsPath returns the absolute filesystem path for a repo-relative path.
@@ -29,8 +27,6 @@ pub trait CodeService: Send + Sync {
     async fn bridge_bench_enabled(&self) -> Result<bool>;
 
     /// BridgeEcho returns len(payload). Times serialization + IPC for larger bodies.
-    /// Uses string (not []byte) so the JS side can pass a plain string without
-    /// TypedArray → Go []uint8 decode failures.
     async fn bridge_echo(&self, payload: &str) -> Result<i64>;
 
     /// BridgePing is a no-op echo used to time a minimal binding round-trip.
@@ -168,7 +164,7 @@ pub trait CodeService: Send + Sync {
     async fn list_commits(&self, project_id: &str, workspace_id: &str) -> Result<Vec<Commit>>;
 
     /// ListFiles returns a flat list of repo-relative file paths. Prefer SearchFiles
-    /// for @-mentions / Quick Open — ranking stays in Go and avoids shipping the
+    /// for @-mentions / Quick Open — ranking stays in the backend and avoids shipping the
     /// full corpus. May return a partial list while the first build is streaming.
     async fn list_files(&self, project_id: &str, workspace_id: &str) -> Result<Vec<String>>;
 

@@ -1,21 +1,21 @@
 use std::io;
 
-/// Errors from worktree file access. `Display` is the Go error string, which
+/// Errors from worktree file access. `Display` is the error string, which
 /// the UI sniffs for `not found: <rel>` and `worktree is not a directory`.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// Go `ErrNotFound`: the path genuinely does not exist under the root
-    /// (deleted, renamed, never existed), as opposed to a transient failure.
+    /// The path genuinely does not exist under the root (deleted, renamed,
+    /// never existed), as opposed to a transient failure.
     #[error("not found: {0}")]
     NotFound(String),
-    /// Go `ErrWorktreeMissing`: the recorded worktree is no longer a
-    /// directory. Callers must not fall back to the project checkout.
+    /// The recorded worktree is no longer a directory. Callers must not fall
+    /// back to the project checkout.
     #[error("worktree is not a directory: {0}")]
     WorktreeMissing(String),
-    /// Go `context.Canceled`.
+    /// The caller cancelled.
     #[error("context canceled")]
     Canceled,
-    /// Go `context.DeadlineExceeded`.
+    /// The deadline passed.
     #[error("context deadline exceeded")]
     DeadlineExceeded,
     #[error("{path}: {source}")]
@@ -42,7 +42,7 @@ impl Error {
         std::fs::create_dir_all(path).map_err(|e| Self::path(path, e))
     }
 
-    /// Go `os.IsNotExist`.
+    /// Whether the error means the path does not exist.
     pub fn is_not_exist(&self) -> bool {
         matches!(self, Self::Path { source, .. } if source.kind() == io::ErrorKind::NotFound)
     }

@@ -186,7 +186,7 @@ pub async fn restore_checkpoint(worktree: &str, ref_name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Go `os.WriteFile(path, data, 0o644)`.
+/// Writes `data` to `path` with mode 0o644.
 fn write_file(path: &str, data: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
     use std::os::unix::fs::OpenOptionsExt;
@@ -205,7 +205,7 @@ async fn run(dir: &str, env: &[(&str, &str)], args: &[&str]) -> Result<String> {
         .map(|b| String::from_utf8_lossy(&b).into_owned())
 }
 
-/// stdout, or `git <verb>: <stderr>: <err>` (Go `run` in checkpoint.go).
+/// stdout, or `git <verb>: <stderr>: <err>`.
 async fn run_raw(dir: &str, env: &[(&str, &str)], args: &[&str]) -> Result<Vec<u8>> {
     let mut cmd = command(["-C", dir]).args(args);
     for (k, v) in env {

@@ -1,7 +1,7 @@
-//! Port of Go `engine_test.go`, the loop halves: the scripted end-to-end
-//! walk (engine commit, events, durable feed, reopen), the git-identity
-//! refusal, governor queueing and the caps drain, Pause/Resume/Stop,
-//! per-loop autonomy, and the env-gated real Claude smoke.
+//! Engine loop tests: the scripted end-to-end walk (engine commit, events,
+//! durable feed, reopen), the git-identity refusal, governor queueing and the
+//! caps drain, Pause/Resume/Stop, per-loop autonomy, and the env-gated real
+//! Claude smoke.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -15,7 +15,7 @@ use crate::bus::EngineEvent;
 use crate::loops::test_support::*;
 use crate::testing::{TestEngine, add_project, git, git_out, init_repo, wait_for};
 
-/// Go `fixtureLines`: one Write tool call, then a success result.
+/// One Write tool call, then a success result.
 fn fixture_lines(session: &str, file: &str, text: &str, cost: &str) -> Vec<String> {
     vec![
         format!(
@@ -146,7 +146,7 @@ async fn engine_end_to_end_scripted() {
 async fn engine_commit_requires_git_identity() {
     let repo = init_repo();
     // Repo-local empty identity masks any global one without touching the
-    // process environment (Go `isolateEngineGitConfig`).
+    // process environment.
     git(&repo.path, &["config", "user.useConfigOnly", "true"]);
     git(&repo.path, &["config", "user.name", ""]);
     git(&repo.path, &["config", "user.email", ""]);
@@ -323,8 +323,8 @@ async fn start_workspace_stamps_autonomy() {
     t.close().await;
 }
 
-/// Go `TestRealClaudeSmoke`: one real Coder turn through the production
-/// Claude provider. Gated on `RECUR_E2E=1`.
+/// One real Coder turn through the production Claude provider. Gated on
+/// `RECUR_E2E=1`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "real claude: RECUR_E2E=1 cargo test -- --ignored real_claude_smoke"]
 async fn real_claude_smoke() {

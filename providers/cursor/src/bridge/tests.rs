@@ -1,5 +1,4 @@
-//! Go `cursor/bridge_alive_test.go`, `bridge_log_test.go`,
-//! `bridge_reap_test.go` and `bridge_shell_test.go`, against a Python fake
+//! Bridge liveness, log, reap and shell tests against a Python fake
 //! bridge.
 
 use std::ffi::OsString;

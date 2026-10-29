@@ -1,5 +1,5 @@
-//! The compatible branch of the model catalogue (Go `app/model_catalog.go`
-//! `compatibleCatalogModels` / `compatibleFlagDims`).
+//! The compatible branch of the model catalogue and its flag
+//! dimensions.
 
 use recur_agent::{FlagDimension, FlagOption, ModelChoice};
 use recur_domain::{CompatibleFlagDim, CompatibleProvider, ModelRef};

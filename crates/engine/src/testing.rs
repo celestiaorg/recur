@@ -1,8 +1,7 @@
-//! The engine test fixture (Go `fixture_test.go` + the `engine_test.go`
-//! helpers): a SQLite store under a temp data dir, an engine whose turns go
-//! to a pinned (scripted) provider, a bus recorder, temp git repos, and the
-//! fixture bundle pack. Everything is per test: no process env is read or
-//! written, so tests run in parallel.
+//! The engine test fixture: a SQLite store under a temp data dir, an engine
+//! whose turns go to a pinned (scripted) provider, a bus recorder, temp git
+//! repos, and the fixture bundle pack. Everything is per test: no process env
+//! is read or written, so tests run in parallel.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -36,7 +35,7 @@ impl BusRecorder {
         self.0.lock().clone()
     }
 
-    /// Every event with this Go name.
+    /// Every event with this name.
     pub fn by_name(&self, name: &str) -> Vec<EngineEvent> {
         self.0
             .lock()
@@ -55,7 +54,7 @@ impl BusRecorder {
     }
 }
 
-/// A temp git repo with one commit on `main` (Go `initRepo`).
+/// A temp git repo with one commit on `main`.
 pub struct TempRepo {
     _dir: tempfile::TempDir,
     pub path: String,
@@ -80,7 +79,7 @@ pub fn git(dir: &str, args: &[&str]) {
     );
 }
 
-/// `git -C <dir> <args>` combined output (Go `gitOut`).
+/// `git -C <dir> <args>` combined output.
 pub fn git_out(dir: &str, args: &[&str]) -> Result<String, String> {
     let out = std::process::Command::new("git")
         .arg("-C")
@@ -106,7 +105,7 @@ pub fn init_repo() -> TempRepo {
     TempRepo { _dir: dir, path }
 }
 
-/// Registers project "proj" on `repo` with base main (Go `addProject`).
+/// Registers project "proj" on `repo` with base main.
 pub fn add_project(store: &Store, repo: &str) -> String {
     let p = Project {
         id: "proj".into(),
@@ -129,7 +128,7 @@ fn has_run_config(p: &Project) -> bool {
 }
 
 /// Adds a project, writing its run config to `.recur/project.toml` first
-/// (run config is read from the file; Go `addRunProject`).
+/// (run config is read from the file).
 pub fn add_run_project(store: &Store, p: Project) -> Project {
     if !p.repo_path.trim().is_empty() && has_run_config(&p) {
         recur_project::projfile::write(&p).expect("projfile write");
@@ -150,7 +149,7 @@ fn copy_dir(src: &Path, dst: &Path) {
     }
 }
 
-/// Polls `cond` every 5 ms for 3× `d` (Go's loaded-machine headroom).
+/// Polls `cond` every 5 ms for 3× `d` (headroom for a loaded machine).
 pub async fn wait_for(d: Duration, what: &str, mut cond: impl FnMut() -> bool) {
     let deadline = tokio::time::Instant::now() + d * 3;
     while tokio::time::Instant::now() < deadline {
@@ -162,7 +161,7 @@ pub async fn wait_for(d: Duration, what: &str, mut cond: impl FnMut() -> bool) {
     panic!("timed out waiting for {what}");
 }
 
-/// The Go fixture pack: QA/writer/editor roles, a failing policy, and the
+/// The fixture pack: QA/writer/editor roles, a failing policy, and the
 /// verify / converge / docs loops engine tests run.
 pub const TEST_LOOPS_TOML: &str = r#"
 [bundle]
@@ -305,7 +304,7 @@ reviewer = "test.roles.editor"
 /// Options for [`TestEngine::with`].
 #[derive(Default)]
 pub struct TestOptions {
-    /// Every turn goes here (`None` fails turns closed, Go `SetRunner(nil)`).
+    /// Every turn goes here (`None` fails turns closed).
     pub provider: Option<Arc<dyn Provider>>,
     /// Route by model ref over these instead of pinning `provider`.
     pub registered: Option<Vec<Arc<dyn Provider>>>,
@@ -319,7 +318,7 @@ pub struct TestOptions {
     pub mcp_addr: Option<String>,
 }
 
-/// One engine over a temp data dir (Go `newTestEngine`).
+/// One engine over a temp data dir.
 pub struct TestEngine {
     pub engine: Arc<Engine>,
     pub store: Arc<Store>,
@@ -379,21 +378,20 @@ impl TestEngine {
         }
     }
 
-    /// Writes a bundle pack under the default bundles root (Go
-    /// `installTestPack`).
+    /// Writes a bundle pack under the default bundles root.
     pub fn install_test_pack(&self, name: &str, toml: &str) {
         let pack = Path::new(&self.engine.bundle_roots().default_dir).join(name);
         std::fs::create_dir_all(&pack).expect("mkdir pack");
         std::fs::write(pack.join("bundle.toml"), toml).expect("write bundle.toml");
     }
 
-    /// The fixture pack (Go `installFixturePack`).
+    /// The fixture pack.
     pub fn install_fixture_pack(&self) {
         self.install_test_pack("TestLoops", TEST_LOOPS_TOML);
     }
 
     /// Copies the shipped `bundles/Loop` pack under the default bundles
-    /// root (Go `installShippedLoopPack`).
+    /// root.
     pub fn install_shipped_loop_pack(&self) {
         let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bundles/Loop");
         assert!(
@@ -404,7 +402,7 @@ impl TestEngine {
         copy_dir(&src, &dst);
     }
 
-    /// A second engine over the same store and data dir (Go `New(st)` after
+    /// A second engine over the same store and data dir (after
     /// a simulated restart), with its own bus.
     pub fn reopen(&self, provider: Option<Arc<dyn Provider>>) -> Arc<Engine> {
         self.reopen_on(Arc::clone(&self.store), provider)
@@ -429,8 +427,7 @@ impl TestEngine {
         )
     }
 
-    /// Joins the engine's tasks before the temp dirs go (Go's
-    /// `t.Cleanup(eng.Shutdown)`).
+    /// Joins the engine's tasks before the temp dirs go.
     pub async fn close(self) {
         self.engine.shutdown().await;
     }

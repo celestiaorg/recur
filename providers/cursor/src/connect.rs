@@ -1,5 +1,4 @@
-//! The Connect protocol with JSON payloads, as the bridge speaks it (Go
-//! `cursor/connect.go`):
+//! The Connect protocol with JSON payloads, as the bridge speaks it:
 //!
 //! - unary: `POST <base>/<service>/<method>`, `Content-Type: application/json`
 //! - server stream: same path, `application/connect+json`, and both bodies
@@ -106,7 +105,7 @@ pub(crate) fn parse_connect_error(raw: &[u8]) -> Option<ConnectError> {
 }
 
 /// Any failure of a bridge call. `Display` is the full wrapped message, the
-/// way Go's `%w` chains read.
+/// prefixes chained with `: `.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Error {
     message: String,
@@ -149,7 +148,7 @@ impl Error {
         }
     }
 
-    /// The turn's context was cancelled (Go `context.Canceled`).
+    /// The turn's context was cancelled.
     pub fn canceled() -> Self {
         Self {
             message: "context canceled".into(),
@@ -158,7 +157,7 @@ impl Error {
         }
     }
 
-    /// Prefixes the message, keeping what the error is (Go `%w`).
+    /// Prefixes the message, keeping what the error is.
     pub fn wrap(mut self, prefix: impl std::fmt::Display) -> Self {
         self.message = format!("{prefix}: {}", self.message);
         self
@@ -170,7 +169,7 @@ impl Error {
         self
     }
 
-    /// The Connect error this wraps, if any (Go `errors.As(err, &*Error)`).
+    /// The Connect error this wraps, if any.
     pub fn connect(&self) -> Option<&ConnectError> {
         self.connect.as_deref()
     }
@@ -179,8 +178,8 @@ impl Error {
         self.kind == Kind::Canceled
     }
 
-    /// Whether the local bridge process is gone or its port is dead (Go
-    /// `BridgeUnreachable`): transport refused/reset, not Connect codes.
+    /// Whether the local bridge process is gone or its port is dead:
+    /// transport refused/reset, not Connect codes.
     pub fn bridge_unreachable(&self) -> bool {
         if self.kind == Kind::Unreachable {
             return true;
@@ -196,7 +195,7 @@ impl Error {
         .any(|m| msg.contains(m))
     }
 
-    /// Go `ActiveRunConflict(err)`.
+    /// Whether the bridge refused the run because another one is active.
     pub fn active_run_conflict(&self) -> bool {
         match self.connect.as_deref() {
             Some(c) => c.active_run_conflict(),
@@ -254,7 +253,7 @@ impl Client {
             base_url: base_url.trim_end_matches('/').to_owned(),
             token: token.to_owned(),
             // No global timeout: streams outlive it. Loopback never goes
-            // through a proxy (Go's ProxyFromEnvironment skips 127.0.0.1).
+            // through a proxy.
             http: recur_http::client(|b| b.no_proxy()),
             log: None,
             unary_timeout: UNARY_TIMEOUT,
@@ -537,7 +536,7 @@ pub(crate) fn encode_frame(flags: u8, payload: &[u8]) -> Vec<u8> {
     buf
 }
 
-/// A Connect frame for tests and fakes (Go `EncodeConnectFrame`).
+/// A Connect frame for tests and fakes.
 pub fn encode_connect_frame(end_stream: bool, payload: &[u8]) -> Vec<u8> {
     encode_frame(if end_stream { END_STREAM_FLAG } else { 0 }, payload)
 }

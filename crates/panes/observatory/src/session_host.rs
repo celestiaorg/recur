@@ -110,7 +110,7 @@ fn enqueue(workspace_id: &str, job: Job, cx: &mut App) {
 
 fn to_patch(p: recur_editor::session::WirePatch) -> EditorSessionPatch {
     let mut v = serde_json::to_value(&p).unwrap_or_default();
-    // Scroll offsets are whole CSS px on the wire (WebKit's `scrollTop`; the Go model is int).
+    // Scroll offsets are whole CSS px on the wire (WebKit's `scrollTop`; the model is an int).
     if let Some(views) = v
         .pointer_mut("/meta/fileViews")
         .and_then(Value::as_object_mut)

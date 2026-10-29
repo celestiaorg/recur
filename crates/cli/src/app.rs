@@ -11,7 +11,7 @@ use crate::cobra::{Action, ArgsRule, CliError, Cmd, CmdId, Cobra, FlagKind};
 use crate::color::{Stream, want_color};
 use crate::{completion, config, create, open, paths, resolve};
 
-/// Stamped at build time from `RECUR_VERSION` (Go: `-ldflags -X`).
+/// Stamped at build time from `RECUR_VERSION`.
 pub const VERSION: &str = match option_env!("RECUR_VERSION") {
     Some(v) => v,
     None => "dev",

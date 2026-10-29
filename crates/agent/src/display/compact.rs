@@ -54,7 +54,7 @@ fn marshal_if_under<T: Serialize>(v: &T) -> Option<String> {
     marshal(v).filter(|b| b.len() <= CHAT_DETAIL_LIMIT)
 }
 
-/// Decodes like Go's `json.Unmarshal` into a struct: `null` is the zero value.
+/// Decodes a struct: `null` is the zero value.
 fn decode<T: for<'de> Deserialize<'de> + Default>(raw: &str) -> Option<T> {
     serde_json::from_str::<Option<T>>(raw)
         .ok()

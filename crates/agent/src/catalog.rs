@@ -1,6 +1,6 @@
-//! Model picker types (Go `app/model_catalog.go`), serde-identical. Each
-//! provider lists its own models through [`crate::Provider::models`]; the
-//! services layer merges them into one grouped list.
+//! Model picker types. Each provider lists its own models through
+//! [`crate::Provider::models`]; the services layer merges them into one grouped
+//! list.
 
 use serde::{Deserialize, Serialize};
 
@@ -72,8 +72,7 @@ impl FlagDimension {
     }
 }
 
-/// Each dimension's default value (Go `defaultFlagsFromDims`); dimensions
-/// without one are omitted.
+/// Each dimension's default value; dimensions without one are omitted.
 pub fn default_flags_from_dims(dims: &[FlagDimension]) -> Flags {
     dims.iter()
         .filter(|d| !d.default_value().is_empty())

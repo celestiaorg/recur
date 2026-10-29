@@ -1,6 +1,6 @@
-//! Port of the wrap-up cases of Go `pr_test.go`: the escaped wrap HTML, the
-//! prompt over every landing, the idle Completed fact (never on a child),
-//! the PR fact patch, and the elapsed label.
+//! Wrap-up tests: the escaped wrap HTML, the prompt over every landing, the
+//! idle Completed fact (never on a child), the PR fact patch, and the elapsed
+//! label.
 
 use std::sync::Arc;
 use std::time::Duration;

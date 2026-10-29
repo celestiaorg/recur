@@ -11,8 +11,7 @@ use super::AppServices;
 use crate::{Error, Result};
 
 /// Runs `$body` on the runtime with the listed arguments moved in as owned
-/// values; the call keeps running if the caller stops waiting, as a Go
-/// method without a context did.
+/// values; the call keeps running if the caller stops waiting.
 macro_rules! rt {
     ($self:ident, $($a:ident),* => |$s:ident| $body:expr) => {{
         $(#[allow(clippy::clone_on_copy, clippy::useless_conversion)] let $a = $a.to_owned();)*

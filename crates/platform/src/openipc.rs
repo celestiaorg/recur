@@ -161,8 +161,8 @@ impl Instance {
     }
 
     /// Releases the listener and the flock. A listener still held here is
-    /// unlinked first (as Go's `UnixListener.Close` does), before the flock
-    /// frees, so the next owner's fresh socket is never removed.
+    /// unlinked first, before the flock frees, so the next owner's fresh socket
+    /// is never removed.
     pub fn close(&mut self) {
         if self.listener.take().is_some() {
             let _ = std::fs::remove_file(&self.sock);
@@ -264,8 +264,7 @@ pub async fn serve_listener(
             Some(_) = inflight.join_next(), if !inflight.is_empty() => {}
         }
     };
-    // Closing a Go unix listener unlinks its socket; match that, then wait
-    // for in-flight handlers.
+    // Unlink the socket, then wait for in-flight handlers.
     drop(ln);
     let _ = std::fs::remove_file(&sock);
     while inflight.join_next().await.is_some() {}
@@ -288,7 +287,7 @@ async fn serve_conn(mut conn: tokio::net::UnixStream, handle: Handler) {
     write_response(&mut conn, &res).await;
 }
 
-/// Reads one JSON value (like Go's `json.Decoder`), tolerating `null`.
+/// Reads one JSON value, tolerating `null`.
 async fn read_request(conn: &mut tokio::net::UnixStream) -> Option<Request> {
     let mut buf = Vec::new();
     let mut chunk = [0u8; 4096];

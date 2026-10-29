@@ -1,6 +1,6 @@
-//! The graph walk (Go `walker.go`): over a `[[loop]]`'s phases from the
-//! entry (or the checkpointed phase), one verb per phase, retries and
-//! `on_fail`, on-demand phases parked and resumed, and the walk-step cap.
+//! The graph walk: over a `[[loop]]`'s phases from the entry (or the
+//! checkpointed phase), one verb per phase, retries and `on_fail`, on-demand
+//! phases parked and resumed, and the walk-step cap.
 
 use recur_bundles::{
     LoopPhase, VERB_ARTIFACT, VERB_CONVERGE, VERB_ENSURE_PR, VERB_IMPLEMENT, VERB_PLAN,
@@ -13,9 +13,7 @@ use crate::loops::failure::LoopError;
 use crate::loops::{STATE_ADVANCE, Walk, board::BOARD_CAP_PHASE};
 use crate::text::html_escape;
 
-/// Go `errVerifyRejected`.
 pub const ERR_VERIFY_REJECTED: &str = "verify rejected";
-/// Go `errPhaseFailed`.
 pub const ERR_PHASE_FAILED: &str = "phase failed";
 
 /// The workspace state a phase outcome names.

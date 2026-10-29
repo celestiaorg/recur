@@ -29,8 +29,6 @@ use crate::Result;
 /// Acking is not optional. A session stops reading its PTY once too many unacked
 /// bytes are outstanding, so a client that streams without acking will wedge its
 /// own shell after the first few hundred KB.
-///
-/// Rust port of Go `app.TerminalService` (`frontend/bindings/recur/internal/app/terminalservice.ts`).
 #[async_trait]
 pub trait TerminalService: Send + Sync {
     /// AckTerminal reports that n more bytes have been parsed by the renderer, which is

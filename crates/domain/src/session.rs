@@ -144,7 +144,7 @@ pub struct Message {
     pub context_window: i64,
     pub created_at: i64,
 
-    /// In block order. `None` is Go's nil slice (`null`).
+    /// In block order. `None` serializes as `null`.
     pub content: Option<Vec<ContentBlock>>,
 }
 
@@ -162,7 +162,7 @@ impl Message {
 pub struct ContentBlock {
     pub id: String,
     pub r#type: String,
-    /// Raw JSON payload text. Empty is Go's nil `json.RawMessage` (`null`).
+    /// Raw JSON payload text. Empty serializes as `null`.
     #[serde(rename = "content", with = "crate::json::raw")]
     pub content_json: String,
     /// When the block was mirrored (unix ms); loaded on read.
@@ -224,7 +224,7 @@ pub struct ToolUsePayload {
     pub parent_tool_use_id: String,
     #[serde(deserialize_with = "null_default")]
     pub name: String,
-    /// Raw JSON input. Empty is Go's nil `json.RawMessage` (omitted).
+    /// Raw JSON input. Empty is omitted.
     #[serde(skip_serializing_if = "String::is_empty", with = "crate::json::raw")]
     pub input: String,
 }
@@ -515,7 +515,7 @@ impl ContentBlock {
     }
 
     /// Stamps parent_tool_use_id onto the payload so nested subagent output
-    /// can be reconstructed without a schema migration. Like Go, the payload
+    /// can be reconstructed without a schema migration. The payload
     /// is re-encoded with sorted keys. Blank parents and payloads that are
     /// not JSON objects are left unchanged.
     pub fn with_parent(mut self, parent: &str) -> Self {
@@ -538,8 +538,8 @@ impl ContentBlock {
     }
 }
 
-/// Go `json.Unmarshal` into a struct: a JSON `null` document decodes to the
-/// zero value instead of failing.
+/// Decodes a struct: a JSON `null` document decodes to the zero value instead
+/// of failing.
 fn decode_go<T: DeserializeOwned + Default>(raw: &str) -> Option<T> {
     if raw.trim() == "null" {
         return Some(T::default());
@@ -585,9 +585,9 @@ pub struct AttentionCounts {
     pub inbox_unread: i64,
     /// unseen + non-chat inbox unread + app unseen.
     pub dock: i64,
-    /// `None` is Go's nil map (`null`).
+    /// `None` serializes as `null`.
     pub by_workspace: Option<BTreeMap<String, i64>>,
-    /// `None` is Go's nil map (`null`).
+    /// `None` serializes as `null`.
     pub by_project: Option<BTreeMap<String, i64>>,
     /// 1 when the Ask Recur session finished a turn the human has not viewed.
     #[serde(skip_serializing_if = "is_zero")]
@@ -608,7 +608,7 @@ pub struct SessionView {
     pub owner_code: String,
     pub created_at: i64,
     pub updated_at: i64,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub items: Option<Vec<ChatItem>>,
 }
 

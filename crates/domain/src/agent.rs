@@ -37,7 +37,7 @@ pub struct Agent {
     pub task: String,
     /// Index of the current (in-progress) step, -1 if none.
     pub cur: i64,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub steps: Option<Vec<AgentStep>>,
     /// A chat-facing agent (PA*/MA) finished a turn the human has not viewed.
     /// Specialists never set this.

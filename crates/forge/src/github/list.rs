@@ -61,7 +61,6 @@ struct CheckItem {
     state: String,
 }
 
-/// Go `parseGitHubPRList`.
 pub(crate) fn parse_list(raw: &str) -> Result<Vec<ListedPr>, String> {
     let mut raw = raw.trim();
     if raw.is_empty() {
@@ -132,7 +131,7 @@ fn listed_check(it: &CheckItem) -> Check {
     }
 }
 
-/// Go `listedChecks`: rows, nothing failed, any reported.
+/// Rows, nothing failed, any reported.
 fn listed_checks(row: &ListedPr) -> (Vec<Check>, bool, bool) {
     let items = check_items(row);
     if items.is_empty() {
@@ -144,7 +143,7 @@ fn listed_checks(row: &ListedPr) -> (Vec<Check>, bool, bool) {
     (items.iter().map(listed_check).collect(), ok, true)
 }
 
-/// Go `listedParticipants`: author, assignees, requested reviewers, reviewers.
+/// Author, assignees, requested reviewers, reviewers.
 fn listed_participants(row: &ListedPr) -> Vec<PrParticipant> {
     let mut out = Vec::new();
     append_participant(&mut out, row.author.participant());
@@ -157,7 +156,6 @@ fn listed_participants(row: &ListedPr) -> Vec<PrParticipant> {
     out
 }
 
-/// Go `listedReviewers`.
 fn listed_reviewers(row: &ListedPr) -> Vec<PrReviewer> {
     let mut out = Vec::new();
     for r in &row.latest_reviews {
@@ -242,7 +240,6 @@ pub(crate) fn list_args(state: PrListState, limit: usize) -> Vec<String> {
     args
 }
 
-/// Go `fetchGitHubPRViewState` answer parsing.
 pub(crate) fn parse_view_state(raw: &str) -> Result<PrStateProbe, String> {
     let mut raw = raw.trim();
     if let Some(i) = raw.find('{')
@@ -265,7 +262,6 @@ pub(crate) fn parse_view_state(raw: &str) -> Result<PrStateProbe, String> {
 }
 
 impl GitHub {
-    /// Go `fetchGitHubPRList`.
     pub(crate) async fn list(
         &self,
         repo: &Path,
@@ -280,7 +276,6 @@ impl GitHub {
         Ok(rows.into_iter().map(ListedPr::into_row).collect())
     }
 
-    /// Go `fetchGitHubPRViewState`.
     pub(crate) async fn view_state(
         &self,
         repo: &Path,

@@ -3,7 +3,7 @@
 //!
 //! # Embedding the chat
 //!
-//! [`chat::AgentChat`] is an entity. Build it with the shell's [`ViewContext`] and the Svelte
+//! [`chat::AgentChat`] is an entity. Build it with the shell's [`ViewContext`] and the
 //! props as [`chat::ChatProps`], declare which callbacks you handle with [`chat::ChatHooks`],
 //! and subscribe to its [`chat::ChatEvent`]s:
 //!

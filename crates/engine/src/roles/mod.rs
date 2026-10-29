@@ -1,7 +1,6 @@
-//! The app-owned agent roles (Go `roles.go`, PRD §8.2): scoped tool sets,
-//! avatar codes, and every specialist and Maestro prompt. The prompt text is
-//! a contract (agents, stored transcripts and tests read it) and matches Go
-//! byte for byte (`tests/golden/go_roles.json`).
+//! The app-owned agent roles (PRD §8.2): scoped tool sets, avatar codes, and
+//! every specialist and Maestro prompt. The prompt text is a contract (agents,
+//! stored transcripts and tests read it).
 
 mod tools;
 
@@ -49,7 +48,7 @@ pub const GIT_READ_TOOLS: [&str; 6] = [
     "Bash(git show:*)",
     "Bash(git show *)",
 ];
-/// Agent Skills progressive disclosure (Go `skillMCPTools`).
+/// Agent Skills progressive disclosure.
 pub const SKILL_MCP_TOOLS: [&str; 2] = [mcp::LIST_SKILLS, mcp::ACTIVATE_SKILL];
 
 fn strings(parts: &[&[&str]]) -> Vec<String> {
@@ -86,8 +85,7 @@ pub fn maestro_plan_tools() -> Vec<String> {
     ]])
 }
 
-/// The static role table (Go `roles`). Roles outside it yield the zero
-/// spec, as a missing Go map key did.
+/// The static role table. Roles outside it yield the zero spec.
 pub fn role_spec(role: &AgentRole) -> RoleSpec {
     match role {
         AgentRole::Coder => RoleSpec {
@@ -559,7 +557,7 @@ pub fn reviewer_system_prompt(task: &str, plan: &str) -> String {
 }
 
 /// The Reviewer's prompt for an iteration plus the findings the Coder
-/// disputed (Go `reviewerPromptFor`).
+/// disputed.
 pub fn reviewer_prompt_for(
     store: &Store,
     workspace_id: &str,

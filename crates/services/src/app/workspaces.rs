@@ -1,6 +1,5 @@
-//! `WorkspacesService` (Go `services.go` workspaces half and
-//! `workspace_open.go`): workspace lifecycle, chat tabs, loops, plans, land
-//! and remote actions over the engine. `OpenPath` is in `open_path.rs`.
+//! `WorkspacesService`: workspace lifecycle, chat tabs, loops, plans, land and
+//! remote actions over the engine. `OpenPath` is in `open_path.rs`.
 
 use std::collections::BTreeMap;
 
@@ -22,7 +21,7 @@ fn not_found(id: &str) -> Error {
 
 impl AppServices {
     /// Empty loop / policy ids fall back to Settings, then the shipped
-    /// defaults (Go `resolveEngageIDs`).
+    /// defaults.
     fn resolve_engage_ids(
         &self,
         loop_id: &str,

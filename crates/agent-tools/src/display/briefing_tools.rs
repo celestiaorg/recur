@@ -101,7 +101,7 @@ pub struct PresentWorkspaceView {
     pub error: String,
 }
 
-/// A finite number field, else 0. Fractions truncate (Go writes integers).
+/// A finite number field, else 0. Fractions truncate.
 fn num(v: Option<&Value>) -> i64 {
     v.and_then(Value::as_f64)
         .filter(|f| f.is_finite())

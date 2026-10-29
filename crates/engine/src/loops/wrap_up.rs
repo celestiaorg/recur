@@ -1,7 +1,7 @@
-//! The Maestro's wrap-up of a settled walk (Go `pr.go`): one bounded,
-//! tool-less turn over the whole run (task, plan, every handoff and done
-//! summary, commits, recent activity) whose prose lands under the
-//! "Completed" fact (or is patched onto the PR-opened fact).
+//! The Maestro's wrap-up of a settled walk: one bounded, tool-less turn over
+//! the whole run (task, plan, every handoff and done summary, commits, recent
+//! activity) whose prose lands under the "Completed" fact (or is patched onto
+//! the PR-opened fact).
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -29,7 +29,7 @@ pub const WRAP_UP_SYSTEM_PROMPT: &str = "You are the Maestro wrapping up ONE fin
 
 /// The compact wall-clock label for a finished loop.
 pub fn format_loop_elapsed(d: Duration) -> String {
-    // Go `d.Round(time.Second)`: halves round away from zero.
+    // Round to the second, halves away from zero.
     let sec = ((d.as_nanos() + 500_000_000) / 1_000_000_000) as u64;
     if sec < 60 {
         return format!("{sec}s");
@@ -92,10 +92,10 @@ pub fn sanitize_wrap_prose(raw: &str) -> String {
 }
 
 impl Engine {
-    /// Go `Loop.emitSettledWrapUp`: the Maestro's wrap-up for a walk that
-    /// settled (not stopped, not idled by composer Stop). Children skip it:
-    /// the parent covers the whole fan-out. A PR-open walk already posted
-    /// its Completed fact, so the wrap is patched onto it.
+    /// The Maestro's wrap-up for a walk that settled (not stopped, not idled by
+    /// composer Stop). Children skip it: the parent covers the whole fan-out. A
+    /// PR-open walk already posted its Completed fact, so the wrap is patched
+    /// onto it.
     pub(crate) async fn emit_settled_wrap_up(&self, h: &Arc<LoopHandle>, w: &WrapUpInputs) {
         if h.wants_idle() || h.is_stopped() {
             return;

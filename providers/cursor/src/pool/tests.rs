@@ -1,5 +1,4 @@
-//! The pool cases of Go `engine/provider_test.go`, against a fake bridge
-//! installed in a temp data dir.
+//! Pool tests, against a fake bridge installed in a temp data dir.
 
 use std::time::Duration;
 

@@ -186,9 +186,9 @@ impl TerminalPalette {
         ]
     }
 
-    /// Go `json.Unmarshal` into the palette struct: unknown keys are
-    /// ignored, field names match case-insensitively, `null` leaves a field
-    /// empty, and any other non-string value is an error.
+    /// Decodes the palette struct: unknown keys are ignored, field names match
+    /// case-insensitively, `null` leaves a field empty, and any other
+    /// non-string value is an error.
     fn from_json(body: &[u8]) -> Result<Self, String> {
         let value: Value = serde_json::from_slice(body).map_err(|e| e.to_string())?;
         let Value::Object(obj) = value else {
@@ -214,7 +214,7 @@ impl TerminalPalette {
     }
 }
 
-/// Go `encoding/json` field lookup: exact key first, then case-insensitive.
+/// JSON field lookup: exact key first, then case-insensitive.
 pub(crate) fn go_json_field<'a>(
     obj: &'a serde_json::Map<String, Value>,
     name: &str,
@@ -227,7 +227,7 @@ pub(crate) fn go_json_field<'a>(
     })
 }
 
-/// Go `json.UnmarshalTypeError` value kind names.
+/// The value kind names decode errors use.
 pub(crate) fn go_json_kind(v: &Value) -> &'static str {
     match v {
         Value::Null => "null",

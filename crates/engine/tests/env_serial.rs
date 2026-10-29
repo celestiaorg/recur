@@ -1,6 +1,5 @@
-//! The `/skill` cases that need `$HOME` (user-scope skills, Go
-//! `skill_mentions_test.go`). They run in their own test binary, serialized
-//! by [`ENV_LOCK`].
+//! The `/skill` cases that need `$HOME` (user-scope skills). They run in their
+//! own test binary, serialized by [`ENV_LOCK`].
 
 use std::path::Path;
 use std::sync::Mutex;

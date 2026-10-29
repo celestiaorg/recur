@@ -10,8 +10,8 @@ pub trait TerminalSource: Send + Sync {
     fn list(&self, workspace_id: &str) -> Vec<TerminalSession>;
     /// The focused session id, or "".
     fn active_id(&self, workspace_id: &str) -> String;
-    /// ANSI-stripped recent output. `tail_lines` ≤ 0 means the default tail
-    /// (Go `TailPlain` clamps the same way). Err is the user-facing text.
+    /// ANSI-stripped recent output. `tail_lines` ≤ 0 means the default tail.
+    /// Err is the user-facing text.
     fn read_plain(&self, id: &str, tail_lines: i64) -> Result<String, String>;
 }
 

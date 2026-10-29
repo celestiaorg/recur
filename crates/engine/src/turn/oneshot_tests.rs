@@ -1,4 +1,4 @@
-//! Go `commit_message_test.go`, plus the one-shot request shape.
+//! Commit message tests, plus the one-shot request shape.
 
 use std::time::Duration;
 

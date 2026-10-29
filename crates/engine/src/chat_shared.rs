@@ -1,9 +1,8 @@
-//! Chat-send helpers shared by the Loop and Agent send paths (Go
-//! `workspace_chat.go` and the rename prompts of `modes.go`): first-message
-//! titles and rename nudges, provisional titles stamped ahead of a queued
-//! send, the standing system-prompt fingerprint, and the dock selection a
-//! send persists. Ported with E3 because `send_maestro_message` and loop
-//! engage need them; E4's send pipeline uses the same functions.
+//! Chat-send helpers shared by the Loop and Agent send paths: first-message
+//! titles and rename nudges, provisional titles stamped ahead of a queued send,
+//! the standing system-prompt fingerprint, and the dock selection a send
+//! persists. Ported with E3 because `send_maestro_message` and loop engage need
+//! them; E4's send pipeline uses the same functions.
 
 use std::collections::BTreeMap;
 
@@ -332,10 +331,10 @@ impl Engine {
         let _ = self.store.update_session_config_json(&sess.id, &raw);
     }
 
-    /// The dock's picks for a pair chat, persisted so a reload restores
-    /// them (Go `RememberWorkspaceChatSelection`). Coerced to a pair-chat
-    /// tab; a missing agent is not recreated (a Remember racing a close
-    /// cannot resurrect the tab). `simplify` `None` leaves the chip unset.
+    /// The dock's picks for a pair chat, persisted so a reload restores them.
+    /// Coerced to a pair-chat tab; a missing agent is not recreated (a Remember
+    /// racing a close cannot resurrect the tab). `simplify` `None` leaves the
+    /// chip unset.
     pub async fn remember_workspace_chat_selection(
         &self,
         workspace_id: &str,
@@ -452,9 +451,8 @@ impl Engine {
         }
     }
 
-    /// Whether a stored resume handle belongs to the provider (Go
-    /// `resumeFitsProvider`): an empty handle fits; an unknown provider fits
-    /// nothing.
+    /// Whether a stored resume handle belongs to the provider: an empty handle
+    /// fits; an unknown provider fits nothing.
     pub fn resume_fits_provider(&self, handle: &str, provider_id: &str) -> bool {
         let handle = handle.trim();
         if handle.is_empty() {
@@ -469,7 +467,7 @@ impl Engine {
     }
 }
 
-/// Go `json.Marshal` of a `map[string]any`: keys sorted.
+/// A JSON object with its keys sorted.
 fn sorted_json(m: serde_json::Map<String, serde_json::Value>) -> String {
     let sorted: BTreeMap<String, serde_json::Value> = m.into_iter().collect();
     serde_json::to_string(&sorted).unwrap_or_else(|_| "{}".into())

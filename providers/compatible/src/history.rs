@@ -1,5 +1,5 @@
 //! Instructions and Responses input rebuilt from the Recur transcript every
-//! turn (Go `harness_history.go`).
+//! turn.
 
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
@@ -54,7 +54,7 @@ pub fn harness_env(worktree: &str) -> String {
     )
 }
 
-/// Go's `runtime.GOOS` / `runtime.GOARCH` for this build.
+/// This build's OS and arch as GOOS / GOARCH names (`darwin`, `amd64`).
 pub fn go_platform() -> (&'static str, &'static str) {
     let os = match std::env::consts::OS {
         "macos" => "darwin",

@@ -1,10 +1,8 @@
 //! OpenAI Codex provider (`codex app-server` JSON-RPC over stdio).
 //!
-//! Port of Go `engine/codex.go`, `internal/codex/*`,
-//! `app/codex_service.go`, the Codex branch of `app/model_catalog.go` and
-//! of `engine/toolview.go`. The allowlist translation is documented on
-//! [`runner`]. App-server is spawned per turn (the MCP URL is per agent), so
-//! there is no warm pool; thread history persists in Recur's `CODEX_HOME`.
+//! The allowlist translation is documented on [`runner`]. App-server is spawned
+//! per turn (the MCP URL is per agent), so there is no warm pool; thread
+//! history persists in Recur's `CODEX_HOME`.
 
 pub mod approvals;
 pub mod catalog;
@@ -35,7 +33,7 @@ use recur_domain::{PROVIDER_CODEX, Settings, provider_label};
 #[derive(Debug, Clone, Default)]
 pub struct CodexConfig {
     /// Recur's data dir; `CODEX_HOME` is `<data_dir>/codex-home` and probes
-    /// run there. Empty = the system temp dir (Go's fallback).
+    /// run there. Empty = the system temp dir.
     pub data_dir: PathBuf,
     /// An explicit `CODEX_HOME` (tests); `None` = under `data_dir`.
     pub home: Option<PathBuf>,
@@ -85,8 +83,8 @@ impl CodexProvider {
         }
     }
 
-    /// Starts a Recur-owned ChatGPT browser sign-in (Go `StartCodexLogin`).
-    /// Credentials land in Recur's `CODEX_HOME`, never `~/.codex`.
+    /// Starts a Recur-owned ChatGPT browser sign-in. Credentials land in
+    /// Recur's `CODEX_HOME`, never `~/.codex`.
     pub async fn start_login(&self, settings: &Settings) -> Result<login::CodexLogin, String> {
         let bin = locate::locate(&settings.codex_bin_path)?;
         let env = self.probe_env();

@@ -1,8 +1,7 @@
-//! Chat modes (Go `modes.go`): the mode is a property of the chat session,
-//! not the workspace. A mode shapes the turn's tools and prompt only;
-//! permissions are machine-global (Settings), so Ask is read-only because it
-//! allowlists no edit tools, not because it runs under a stricter mode.
-//! Every prompt is byte-identical to Go (R2).
+//! Chat modes: the mode is a property of the chat session, not the workspace. A
+//! mode shapes the turn's tools and prompt only; permissions are machine-global
+//! (Settings), so Ask is read-only because it allowlists no edit tools, not
+//! because it runs under a stricter mode.
 
 use recur_agent_tools::names::mcp;
 use recur_domain::{

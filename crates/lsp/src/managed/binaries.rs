@@ -1,5 +1,5 @@
 //! GitHub release binaries checked against pinned digests: rust-analyzer,
-//! marksman, ruff, taplo (Go `lsp/managed/{rust_analyzer,marksman,ruff,taplo}.go`).
+//! marksman, ruff, taplo.
 
 use std::path::{Path, PathBuf};
 
@@ -94,7 +94,7 @@ pub fn taplo_sha256(asset: &str) -> Option<&'static str> {
     }
 }
 
-/// The release asset for a Go `GOOS/GOARCH` platform.
+/// The release asset for a `GOOS/GOARCH` platform.
 pub fn rust_analyzer_asset(platform: &str) -> Result<&'static str, String> {
     match platform {
         "darwin/arm64" => Ok("rust-analyzer-aarch64-apple-darwin.gz"),

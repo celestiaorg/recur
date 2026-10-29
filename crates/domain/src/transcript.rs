@@ -390,7 +390,7 @@ fn clip(s: &str, cap: usize) -> String {
     format!("{}\n…(truncated)…", &s[..end])
 }
 
-/// Go `filepath.Clean` for slash-separated paths: the shortest lexically
+/// Lexically cleans a slash-separated path: the shortest lexically
 /// equivalent path.
 fn clean_path(path: &str) -> String {
     let rooted = path.starts_with('/');

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 /// A temp dir whose name does not start with `.`: the search, symbol and
-/// metrics walks skip dot-dirs, the walked root included (as in Go).
+/// metrics walks skip dot-dirs, the walked root included.
 pub(crate) fn tmp() -> tempfile::TempDir {
     tempfile::Builder::new()
         .prefix("recur-code-")

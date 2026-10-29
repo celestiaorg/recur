@@ -1,6 +1,6 @@
 //! Ordered, versioned schema migrations: the `NNNN_name.sql` files under
 //! `migrations/` in this crate, embedded at build time, applied with the
-//! same `__migrations` bookkeeping as the Go app.
+//! `__migrations` bookkeeping.
 //!
 //! Never edit a shipped migration in place (a deployed database has recorded
 //! its version and will not re-run it); add the next numbered file instead.

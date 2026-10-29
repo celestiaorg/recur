@@ -1,4 +1,4 @@
-//! The PR conversation (Go `pr.go`): comments, pending line notes, reviews,
+//! The PR conversation: comments, pending line notes, reviews,
 //! title/description edits, comment edits and deletes, replies, reactions,
 //! thread resolution and draft state. A Local PR is written in place; a
 //! forge PR goes through its forge first and the local row follows.
@@ -27,7 +27,7 @@ const FORGE_DRAFT_TIMEOUT: Duration = Duration::from_secs(20);
 /// Bounds a mention search.
 const MENTION_TIMEOUT: Duration = Duration::from_secs(15);
 
-/// Runs a forge call under Go's context deadline.
+/// Runs a forge call under a deadline.
 pub(crate) async fn bounded<T>(
     d: Duration,
     fut: impl std::future::Future<Output = Result<T, ForgeError>>,

@@ -1,4 +1,4 @@
-//! Typed `sdk.v1` calls (Go `cursor/client.go`).
+//! Typed `sdk.v1` calls.
 
 use std::collections::BTreeMap;
 
@@ -341,7 +341,7 @@ impl Serialize for ProtoTime {
     }
 }
 
-/// Go `time.RFC3339Nano` in UTC: fractional seconds with trailing zeros
+/// RFC 3339 in UTC with fractional seconds with trailing zeros
 /// dropped.
 pub(crate) fn rfc3339_nano(t: DateTime<Utc>) -> String {
     let base = t.format("%Y-%m-%dT%H:%M:%S").to_string();

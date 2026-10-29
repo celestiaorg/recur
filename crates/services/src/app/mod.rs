@@ -1,14 +1,12 @@
-//! The engine-backed services: Go `internal/app` over [`recur_engine::Engine`].
+//! The engine-backed services over [`recur_engine::Engine`].
 //!
-//! [`AppServices`] is the composition root (Go `NewServices` plus the
-//! provider, forge and tracker wiring `engine.New` did): it registers the
-//! shipped agent providers (Claude Code, Codex, Cursor, ChatGPT and one
-//! compatible provider per configured endpoint), the GitHub forge and the GitHub Issues
-//! and Linear trackers under their persisted ids, builds the engine, bridges
-//! its bus onto [`AppEvent`]s, and answers every trait in [`crate::api`].
+//! [`AppServices`] is the composition root: it registers the shipped agent providers
+//! (Claude Code, Codex, Cursor, ChatGPT and one compatible provider per configured
+//! endpoint), the GitHub forge and the GitHub Issues and Linear trackers under their
+//! persisted ids, builds the engine, bridges its bus onto [`AppEvent`]s, and answers
+//! every trait in [`crate::api`].
 //!
-//! Go read `store.DataDir()` and friends from the process environment; here
-//! the paths arrive in [`AppConfig`] so services built for tests never touch
+//! The paths arrive in [`AppConfig`] so services built for tests never touch
 //! the user's data.
 
 mod assets;
@@ -62,7 +60,7 @@ pub use shell::{clamp_shell_state, known_shell_view};
 pub use terminal_persist::persist_delay;
 
 /// Where the services keep their files. [`AppConfig::from_env`] is the
-/// app's: the managed data root and the bundle roots Go resolved from the
+/// app's: the managed data root and the bundle roots resolved from the
 /// environment.
 #[derive(Debug, Clone, Default)]
 pub struct AppConfig {
@@ -113,7 +111,7 @@ impl AppConfig {
 /// Overrides for tests. Production uses the defaults.
 #[derive(Default)]
 pub struct AppOptions {
-    /// Every turn goes to this provider (Go `SetRunner`); `Some(None)` fails
+    /// Every turn goes to this provider; `Some(None)` fails
     /// turns closed.
     pub pin: Option<Option<Arc<dyn Provider>>>,
     /// Replaces the GitHub forge.
@@ -125,7 +123,7 @@ pub struct AppOptions {
 }
 
 /// The shipped providers, kept typed for the Settings probes the
-/// [`Provider`] trait does not carry (Cursor install, the Go status shapes).
+/// [`Provider`] trait does not carry (Cursor install, the status shapes).
 struct Providers {
     claude: Arc<ClaudeProvider>,
     cursor: Arc<CursorProvider>,
@@ -154,20 +152,19 @@ pub struct AppServices {
     pub(crate) shell: shell::ShellStore,
     pub(crate) catalog: bundle::CatalogCache,
     pub(crate) usage: Arc<UsageService>,
-    /// Serializes `OpenPath` (Go `openMu`).
+    /// Serializes `OpenPath`.
     pub(crate) open_mu: tokio::sync::Mutex<()>,
 }
 
-/// A Go `error` as the service error the UI shows.
+/// An error as the service error the UI shows.
 pub(crate) fn err(e: impl std::fmt::Display) -> Error {
     Error::from_display(e)
 }
 
 impl AppServices {
-    /// Builds the services over `store` (Go `engine.New` + `NewServices`).
-    /// Must run inside the tokio runtime the backend uses: the file index,
-    /// terminals and language servers start their tasks on it. Call
-    /// [`AppServices::start`] once the UI is listening.
+    /// Builds the services over `store`. Must run inside the tokio runtime the
+    /// backend uses: the file index, terminals and language servers start their
+    /// tasks on it. Call [`AppServices::start`] once the UI is listening.
     pub async fn new(store: Arc<Store>, config: AppConfig, opts: AppOptions) -> Arc<Self> {
         let hub = EventHub::new();
         let settings = store.settings();
@@ -212,7 +209,7 @@ impl AppServices {
         };
 
         // Terminal output rides the same event stream as everything else
-        // (Go: the bus), coalesced into ~8ms chunks by the term package.
+        // (the bus), coalesced into ~8ms chunks by the term package.
         let term = {
             let hub = hub.clone();
             recur_term::Manager::new(move |ev| hub.publish(AppEvent::Term(ev)))
@@ -343,8 +340,8 @@ impl AppServices {
         &self.config
     }
 
-    /// Restart recovery (Go `eng.Recover()`): interrupted loops park, zombie
-    /// chats heal. Run before the UI loads.
+    /// Restart recovery: interrupted loops park, zombie chats heal. Run before
+    /// the UI loads.
     pub fn recover(&self) {
         self.engine.recover();
     }
@@ -365,16 +362,14 @@ impl AppServices {
         self.usage.start();
     }
 
-    /// The window lost or regained key status (Go `eng.SetAppFocused`).
+    /// The window lost or regained key status.
     pub fn set_app_focused(&self, focused: bool) {
         self.engine.set_app_focused(focused);
     }
 
-    /// App teardown (Go `eng.Shutdown`, the services' `ServiceShutdown`
-    /// hooks and `StopProviderUsage`): loops and chats are cancelled and
-    /// joined, terminal tabs are persisted and their process groups killed,
-    /// language servers stop, the usage poller stops and the last shell
-    /// snapshot is flushed.
+    /// App teardown: loops and chats are cancelled and joined, terminal tabs
+    /// are persisted and their process groups killed, language servers stop,
+    /// the usage poller stops and the last shell snapshot is flushed.
     pub async fn shutdown(&self) {
         self.engine.shutdown().await;
         self.terminal_shutdown().await;
@@ -383,9 +378,8 @@ impl AppServices {
         self.shell_flush();
     }
 
-    /// Go `CheckCursorBridge`: a bridge behind the pinned cursor-sdk
-    /// announces itself at boot, since nobody opens Settings to find out why
-    /// Cursor turns started failing.
+    /// A bridge behind the pinned cursor-sdk announces itself at boot, since
+    /// nobody opens Settings to find out why Cursor turns started failing.
     pub fn check_cursor_bridge(&self) {
         let Ok(bin) = recur_provider_cursor::locate(&self.config.data_dir) else {
             return;

@@ -1,8 +1,7 @@
-//! Chat image attachments on disk (Go `attachments.go`, I/O half): pasted
-//! images are validated and written under
-//! `<data>/workspaces/<id>/attachments/<id>.<ext>`, and reloaded for Retry,
-//! loop goals and harness history. Marker grammar and content blocks live in
-//! `recur_agent::attach`.
+//! Chat image attachments on disk: pasted images are validated and written
+//! under `<data>/workspaces/<id>/attachments/<id>.<ext>`, and reloaded for
+//! Retry, loop goals and harness history. Marker grammar and content blocks
+//! live in `recur_agent::attach`.
 
 use std::path::Path;
 
@@ -165,7 +164,7 @@ pub fn workspace_user_images(data_dir: &Path, workspace_id: &str) -> Vec<UserIma
         .filter(|e| e.file_type().is_ok_and(|t| !t.is_dir()))
         .map(|e| e.file_name().to_string_lossy().into_owned())
         .collect();
-    // Go os.ReadDir returns entries sorted by name.
+    // Entries sorted by name.
     names.sort();
     let mut out = Vec::new();
     for name in names {

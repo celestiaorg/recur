@@ -1,4 +1,4 @@
-//! The git subprocess runner (Go `git.Command`).
+//! The git subprocess runner.
 //!
 //! Every git process:
 //! - runs with `GIT_OPTIONAL_LOCKS=0`, so a cancelled `git status` / `git diff`
@@ -11,8 +11,7 @@
 //!   clean exit. ssh ControlMaster keeps a background ssh holding git's stderr,
 //!   which must not turn a successful push or fetch into a failure.
 //!
-//! Cancellation is by dropping the future (or a [`Command::deadline`] for the
-//! Go call sites that built their own `context.WithTimeout`).
+//! Cancellation is by dropping the future (or a [`Command::deadline`]).
 
 use std::ffi::{OsStr, OsString};
 use std::os::fd::OwnedFd;
@@ -48,7 +47,7 @@ pub struct Command {
     wait_delay: Duration,
 }
 
-/// Returns a git subprocess for `args` (Go `git.Command`).
+/// Returns a git subprocess for `args`.
 pub fn command<I, S>(args: I) -> Command
 where
     I: IntoIterator<Item = S>,
@@ -149,7 +148,7 @@ impl Command {
         self
     }
 
-    /// Working directory (Go `cmd.Dir`). Empty means the current directory.
+    /// Working directory. Empty means the current directory.
     pub fn current_dir(mut self, dir: impl AsRef<Path>) -> Self {
         let dir = dir.as_ref();
         self.dir = (!dir.as_os_str().is_empty()).then(|| dir.to_path_buf());
@@ -161,8 +160,8 @@ impl Command {
         self
     }
 
-    /// Cancels the process at `deadline` the way a Go context deadline did:
-    /// SIGTERM to the group, then SIGKILL to the leader after [`CANCEL_GRACE`].
+    /// Cancels the process at `deadline`: SIGTERM to the group, then SIGKILL to
+    /// the leader after [`CANCEL_GRACE`].
     pub fn deadline(mut self, deadline: Instant) -> Self {
         self.deadline = Some(deadline);
         self
@@ -185,7 +184,7 @@ impl Command {
     }
 
     /// Runs git and returns stdout. A failure carries stderr
-    /// ([`Error::stderr`]), like Go's `ExitError.Stderr`.
+    /// ([`Error::stderr`]).
     pub async fn output(self) -> Result<Vec<u8>> {
         let ran = Box::pin(self.execute(Pipes::Separate)).await;
         match ran.result {
@@ -411,8 +410,8 @@ impl Running {
     }
 }
 
-/// Owns a running child. Dropping it before the child exits cancels the way
-/// Go's `cmd.Cancel` + `WaitDelay` did.
+/// Owns a running child. Dropping it before the child exits cancels it:
+/// SIGTERM to the group, then SIGKILL to the leader after [`CANCEL_GRACE`].
 struct ChildGuard {
     child: Option<Child>,
 }
@@ -516,7 +515,7 @@ pub(crate) fn git_environ(
     out
 }
 
-/// Go `ProcessState.String()` for a failed exit.
+/// The exit text for a failed exit (`exit status 1`, `signal: killed`).
 pub(crate) fn exit_text(st: ExitStatus) -> String {
     use std::os::unix::process::ExitStatusExt;
     if let Some(code) = st.code() {
@@ -536,7 +535,7 @@ pub(crate) fn exit_text(st: ExitStatus) -> String {
     }
 }
 
-/// Go's `syscall.Signal.String()` names.
+/// Signal names.
 fn signal_name(sig: i32) -> Option<&'static str> {
     #[cfg(target_os = "macos")]
     const NAMES: [&str; 31] = [

@@ -173,7 +173,7 @@ pub struct Workspace {
     #[serde(skip_serializing_if = "is_zero")]
     pub port: i64,
     pub diff: DiffStat,
-    /// e.g. ["MA","CO","QA","RV"]. `None` is Go's nil slice (`null`).
+    /// e.g. ["MA","CO","QA","RV"]. `None` serializes as `null`.
     pub agent_codes: Option<Vec<String>>,
     /// Last activity one-liner.
     pub last: String,
@@ -187,7 +187,7 @@ pub struct Workspace {
     #[serde(skip_serializing_if = "is_zero")]
     pub seen_activity_at: i64,
     pub elapsed_label: String,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub convergence: Option<Vec<ConvPoint>>,
 
     /// Marks a child workspace working a slice of its parent's plan

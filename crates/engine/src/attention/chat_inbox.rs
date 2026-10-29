@@ -1,6 +1,6 @@
-//! Unseen-chat inbox rows (Go `chat_inbox.go`): `ib-chat-<ws>-<code>` rows
-//! derived from Agent.Unseen, Mark all read, the boot heal, and the
-//! "Loop finished" badge on a conductor tab.
+//! Unseen-chat inbox rows: `ib-chat-<ws>-<code>` rows derived from
+//! Agent.Unseen, Mark all read, the boot heal, and the "Loop finished" badge on
+//! a conductor tab.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -15,7 +15,7 @@ use crate::text::{hard_truncate_runes, html_escape, truncate};
 
 const CHAT_INBOX_ID_PREFIX: &str = "ib-chat-";
 
-/// Go `chatTabTitleLimit`.
+/// The length a chat tab title is truncated to.
 pub const CHAT_TAB_TITLE_LIMIT: usize = 28;
 
 pub fn chat_inbox_id(workspace_id: &str, code: &str) -> String {
@@ -44,9 +44,8 @@ fn is_chat_inbox_item(it: &InboxItem) -> bool {
     it.kind == "chat" || it.id.starts_with(CHAT_INBOX_ID_PREFIX)
 }
 
-/// The first non-blank line of a first user message as a tab title (Go
-/// `firstUserChatTitle`): attachment markers stripped, retry markers
-/// ignored, at most 200 runes.
+/// The first non-blank line of a first user message as a tab title: attachment
+/// markers stripped, retry markers ignored, at most 200 runes.
 pub fn first_user_chat_title(text: &str) -> String {
     if is_chat_retry_display(text) {
         return String::new();
@@ -63,8 +62,8 @@ pub fn first_user_chat_title(text: &str) -> String {
     hard_truncate_runes(line, 200).to_owned()
 }
 
-/// Settled outcomes that count as "finished" (Go `loopSettled`): a PR open,
-/// or an idle/artifact pause. `state`/`phase` are the walk's own.
+/// Settled outcomes that count as "finished": a PR open, or an idle/artifact
+/// pause. `state`/`phase` are the walk's own.
 pub fn loop_settled(state: &WorkspaceState, phase: &str) -> bool {
     match state {
         WorkspaceState::PrOpen => true,
@@ -74,7 +73,7 @@ pub fn loop_settled(state: &WorkspaceState, phase: &str) -> bool {
 }
 
 /// Walker-finished pauses (idle, artifact, missing graph) that no longer
-/// keep a schedule busy (Go `scheduledPauseSettled`).
+/// keep a schedule busy.
 pub fn scheduled_pause_settled(phase: &str) -> bool {
     loop_settled(&WorkspaceState::Paused, phase)
         || phase == "phase missing"

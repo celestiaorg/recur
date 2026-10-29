@@ -1,9 +1,8 @@
-//! Port of Go `loop_engage_test.go` through `send_loop_chat_message`: one
-//! chat = one loop, engage without a conductor turn, the planner's rename
-//! nudge, attachments, refused launches, owner stamping, and
-//! `start_chat_loop_walk` against closed tabs. The run-lock, retry
-//! sentinel and tab list/close cases go through E4's `SendWorkspaceMessage`
-//! / `CloseWorkspaceChat` and are E4's.
+//! Loop engage tests through `send_loop_chat_message`: one chat = one loop,
+//! engage without a conductor turn, the planner's rename nudge, attachments,
+//! refused launches, owner stamping, and `start_chat_loop_walk` against closed
+//! tabs. The run-lock, retry sentinel and tab list/close cases go through E4's
+//! `SendWorkspaceMessage` / `CloseWorkspaceChat` and are E4's.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -63,8 +62,7 @@ fn has_tool(spec: &recur_agent::TurnRequest, tool: &str) -> bool {
         .is_some_and(|a| a.iter().any(|t| t == tool))
 }
 
-/// A settled loop workspace whose PA tab owns it (Go
-/// `startChatLoopWalkCloseFixture`).
+/// A settled loop workspace whose PA tab owns it.
 async fn settled_owner(t: &TestEngine) -> (String, TempRepo) {
     let (ws, repo) = scratch(t, "scratch").await;
     t.store.update_workspace(&ws, |w| {

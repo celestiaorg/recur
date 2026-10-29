@@ -175,7 +175,7 @@ fn worktree_prefix(worktree: &str, dir: &str) -> String {
     }
 }
 
-/// bufio.Scanner's maximum token size in Go's runRg.
+/// The maximum line size when scanning rg output.
 const MAX_SCAN_LINE: usize = 1024 * 1024;
 
 /// Runs ripgrep in dir and returns up to `limit` (0 = all) output lines with

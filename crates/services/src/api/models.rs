@@ -1,8 +1,7 @@
-//! Go `internal/app` models: the DTOs the bound services take and return
-//! that no lower crate owns (those are re-exported from [`crate::api`]). Serde-identical to the Go JSON tags,
-//! following the `recur-domain` conventions: `omitempty` fields skip their
-//! zero value, and a non-`omitempty` slice or map is `Option<…>` because Go
-//! writes a nil one as `null`.
+//! Service models: the DTOs the services take and return that no lower
+//! crate owns (those are re-exported from [`crate::api`]). They follow the
+//! `recur-domain` conventions: `omitempty` fields skip their zero value, and
+//! a non-`omitempty` slice or map is `Option<…>` because it can be `null`.
 
 use std::collections::BTreeMap;
 

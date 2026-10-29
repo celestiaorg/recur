@@ -3,8 +3,8 @@
 //! alacritty parses output, answers terminal queries, tracks modes and the cursor style, and
 //! owns selection and regex search. [`Screen`] adds what Recur's pane needs on top: replies to
 //! colour queries from the live theme palette, overline (SGR 53, which alacritty does not
-//! model), link detection, find highlights and the renderable [`Frame`]. The look follows the
-//! Svelte pane; exact xterm.js replies and edge-case behaviour are not a goal.
+//! model), link detection, find highlights and the renderable [`Frame`].
+//! Exact xterm.js replies and edge-case behaviour are not a goal.
 
 mod links;
 mod move_to_cell;

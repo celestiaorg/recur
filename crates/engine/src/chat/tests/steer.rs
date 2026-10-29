@@ -1,9 +1,9 @@
-//! Port of the live-turn cases of Go `workspace_chat_test.go`: a follow-up
-//! steers the live turn instead of starting a second run (with the life lock
-//! released while the steer waits for its ack), FIFO order between racing
-//! sends, Stop between ticket and register, the steer's display and
-//! surface, no steer after Stop or after the result, waiting out a turn that
-//! cannot steer, fresh_session and remount sends, and subagent notices.
+//! Live-turn chat tests: a follow-up steers the live turn instead of starting a
+//! second run (with the life lock released while the steer waits for its ack),
+//! FIFO order between racing sends, Stop between ticket and register, the
+//! steer's display and surface, no steer after Stop or after the result,
+//! waiting out a turn that cannot steer, fresh_session and remount sends, and
+//! subagent notices.
 
 use std::sync::Arc;
 use std::time::Duration;

@@ -1,5 +1,5 @@
-//! The rename cases of Go `workspace_chat_test.go` and `chat_fork_test.go`
-//! (tab titles read through `chat_tab_title`; the strip itself is E4's).
+//! Chat and fork rename tests (tab titles read through `chat_tab_title`; the
+//! strip itself is E4's).
 
 use recur_agent_tools::Host;
 use recur_domain::WorkspaceState;

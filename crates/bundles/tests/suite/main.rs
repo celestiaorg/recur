@@ -1,4 +1,4 @@
-//! The Go `internal/bundles` test files, one module each.
+//! Bundle tests, one module per area.
 
 mod common;
 mod compile;

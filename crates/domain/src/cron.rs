@@ -1,7 +1,7 @@
-//! Cron cadences in the robfig/cron v3 syntax the Go app stores: optional
-//! seconds field, five or six fields, names (JAN, MON), `*`/`?`, ranges,
-//! steps, descriptors (@monthly, @every 1h30m) and a `TZ=`/`CRON_TZ=`
-//! prefix. `next` walks wall-clock time and gives up after five years.
+//! Cron cadences in the robfig/cron v3 syntax: optional seconds field, five or
+//! six fields, names (JAN, MON), `*`/`?`, ranges, steps, descriptors (@monthly,
+//! @every 1h30m) and a `TZ=`/`CRON_TZ=` prefix. `next` walks wall-clock time
+//! and gives up after five years.
 
 use chrono::{DateTime, Datelike, Months, NaiveDate, NaiveDateTime, TimeDelta, TimeZone, Timelike};
 use chrono_tz::Tz;
@@ -87,7 +87,7 @@ pub(crate) struct Spec {
     dom: u64,
     month: u64,
     dow: u64,
-    /// `None` is Go's `time.Local`: the zone of the time passed to `next`.
+    /// `None` is local time: the zone of the time passed to `next`.
     location: Option<Tz>,
 }
 
@@ -101,7 +101,7 @@ pub(crate) fn parse(spec: &str) -> Result<Schedule, String> {
     let mut location = None;
     if spec.starts_with("TZ=") || spec.starts_with("CRON_TZ=") {
         let eq = spec.find('=').unwrap_or_default();
-        // Go slices to the first space and panics without one; refuse instead.
+        // A zone prefix needs a schedule after a space.
         let Some(i) = spec.find(' ') else {
             return Err(format!(
                 "provided bad location {}: missing schedule",
@@ -273,7 +273,7 @@ fn parse_descriptor(descriptor: &str, location: Option<Tz>) -> Result<Schedule, 
     }
 }
 
-/// A Go duration string (`1h30m`, `1.5h`, `90s`, `300ms`), in nanoseconds.
+/// A duration string (`1h30m`, `1.5h`, `90s`, `300ms`), in nanoseconds.
 fn parse_duration(s: &str) -> Result<i64, String> {
     let invalid = || format!("invalid duration {s:?}");
     let (sign, mut rest) = match s.strip_prefix('-') {

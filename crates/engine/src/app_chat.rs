@@ -1,7 +1,6 @@
-//! Ask Recur (Go `app_chat.go`): app-scoped coordinator chat tabs (APP,
-//! AP2, …) over an app-kind session each, turns with the three briefing
-//! tools, unseen/focus for app tabs, and `present_workspace` target
-//! validation with its brief card.
+//! Ask Recur: app-scoped coordinator chat tabs (APP, AP2, …) over an app-kind
+//! session each, turns with the three briefing tools, unseen/focus for app
+//! tabs, and `present_workspace` target validation with its brief card.
 
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
@@ -71,7 +70,7 @@ pub fn session_title(cfg: &AgentConfig) -> String {
     cfg.code.clone()
 }
 
-/// A session config as Go's `map[string]any` (keys sorted on write).
+/// A session config as a map, keys sorted on write.
 fn config_map(raw: &str) -> BTreeMap<String, Value> {
     serde_json::from_str(raw).unwrap_or_default()
 }

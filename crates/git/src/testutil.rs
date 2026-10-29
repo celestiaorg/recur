@@ -1,4 +1,4 @@
-//! Test fixtures: real repositories in temp dirs, like the Go tests.
+//! Test fixtures: real repositories in temp dirs.
 
 use std::path::Path;
 use std::process::Command;
@@ -49,7 +49,7 @@ pub(crate) fn git_as(dir: &str, args: &[&str], env: &[(&str, &str)]) -> String {
     String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
-/// git without a forced identity (Go `gitOut`): combined output.
+/// git without a forced identity: combined output.
 pub(crate) fn git_out(dir: &str, args: &[&str]) -> String {
     let out = Command::new("git")
         .args(args)
@@ -94,7 +94,7 @@ pub(crate) fn exists(path: &str) -> bool {
     std::fs::symlink_metadata(path).is_ok()
 }
 
-/// Go `initRepo`: one commit ("initial", README.md "hello\n") on `main`.
+/// One commit ("initial", README.md "hello\n") on `main`.
 pub(crate) fn init_repo() -> Dir {
     let d = temp_dir();
     git(&d.path, &["init", "-b", "main"]);
@@ -106,8 +106,7 @@ pub(crate) fn init_repo() -> Dir {
     d
 }
 
-/// Go `initDirtyRepo`: `a.go` committed then modified, plus `untracked`
-/// untracked files.
+/// `a.go` committed then modified, plus `untracked` untracked files.
 pub(crate) fn init_dirty_repo(untracked: usize) -> Dir {
     let d = temp_dir();
     git(&d.path, &["init", "-b", "main"]);
@@ -122,8 +121,8 @@ pub(crate) fn init_dirty_repo(untracked: usize) -> Dir {
     d
 }
 
-/// Go `initRepoWithRemote`: a bare upstream and a clone of it (with
-/// `origin`) holding one commit on `main`.
+/// A bare upstream and a clone of it (with `origin`) holding one commit on
+/// `main`.
 pub(crate) struct WithRemote {
     _dirs: Vec<Dir>,
     pub clone: String,
@@ -150,13 +149,12 @@ pub(crate) fn init_repo_with_remote() -> WithRemote {
     }
 }
 
-/// Go `gitConfigIdentity`.
 pub(crate) fn config_identity(dir: &str) {
     git_out(dir, &["config", "user.name", "test"]);
     git_out(dir, &["config", "user.email", "test@example.com"]);
 }
 
-/// Go `commit` in diff_test.go: stage everything as Coder.
+/// Stages everything as Coder.
 pub(crate) fn commit_as_coder(dir: &str, msg: &str) {
     let env = [
         ("GIT_AUTHOR_NAME", "Coder"),
@@ -168,7 +166,7 @@ pub(crate) fn commit_as_coder(dir: &str, msg: &str) {
     git_as(dir, &["commit", "-m", msg], &env);
 }
 
-/// Go `cleanPath` for comparing worktree paths.
+/// A cleaned path for comparing worktree paths.
 pub(crate) fn clean(p: &str) -> String {
     crate::worktree::clean_path(p)
 }

@@ -1,8 +1,5 @@
-//! Durable agent sessions and their config (Go `mirror.go`
-//! `ensureAgentSession` / `agentIdentity` / `ensureRoutedSession`,
-//! `chat_errors.go` `chatSessionMeta`, the session-config half of
-//! `workspace_chat.go`, `app_chat.go` `appSessionByCode`, and the agent
-//! records those need: `ensurePairAgent`, `ensureMaestroAgent`).
+//! Durable agent sessions and their config, the session-config readers, and the
+//! agent records those need (pair and Maestro agents).
 
 use recur_agent::{Flags, TurnRequest};
 use recur_domain::{

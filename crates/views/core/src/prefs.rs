@@ -679,7 +679,7 @@ impl DockChrome {
         true
     }
 
-    /// `applyTerminalDockChrome`: merge the Go-side rows without reverting a toggle that
+    /// `applyTerminalDockChrome`: merge the backend rows without reverting a toggle that
     /// landed while they loaded.
     pub fn apply(&mut self, rows: &[TerminalDockChrome]) {
         for r in rows {

@@ -1,5 +1,5 @@
-//! The E1 Host methods (Go `reporter.go` ReportFinding, Done, ListFindings,
-//! UpdateFinding, ReportResult, Escalate, AttachEvidence).
+//! The E1 Host methods (ReportFinding, Done, ListFindings, UpdateFinding,
+//! ReportResult, Escalate, AttachEvidence).
 
 use std::sync::Arc;
 

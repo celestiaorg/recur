@@ -1,7 +1,7 @@
 //! `AgentChat.svelte` as an entity: the transcript, the live turn chrome, the inline cards and
-//! the composer dock. Hosts set [`ChatProps`] (the Svelte props), declare which callbacks
-//! they handle in [`ChatHooks`], subscribe to [`ChatEvent`] (the callbacks), and read the
-//! draft back (`bind:input` / `bind:attachments`).
+//! the composer dock. Hosts set [`ChatProps`], declare which callbacks they handle in
+//! [`ChatHooks`], subscribe to [`ChatEvent`] (the callbacks), and read the draft back
+//! (`bind:input` / `bind:attachments`).
 
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};
@@ -61,7 +61,7 @@ pub enum ChatSurfaceKind {
     App,
 }
 
-/// The Svelte props (everything but the bindable draft, the snippets and the callbacks).
+/// The props (everything but the bindable draft, the snippets and the callbacks).
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChatProps {
     pub messages: Vec<AgentMsg>,
@@ -152,7 +152,7 @@ impl Default for ChatProps {
     }
 }
 
-/// Which callbacks the host handles (Svelte renders differently when one is absent).
+/// Which callbacks the host handles (the chat renders differently when one is absent).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ChatHooks {
     pub send: bool,

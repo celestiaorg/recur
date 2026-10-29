@@ -1,5 +1,5 @@
 //! Process plumbing shared by the turn runner and the status probe: PATH
-//! lookup, the single reaper, process-group kill (risk R12), and Go's error
+//! lookup, the single reaper, process-group kill (risk R12), and the error
 //! wording for spawn and exit failures, which reaches the UI.
 
 use std::future::Future;
@@ -16,14 +16,13 @@ use tokio::sync::watch;
 /// How long a SIGTERMed process group gets before SIGKILL.
 pub const KILL_GRACE: Duration = Duration::from_secs(2);
 
-/// `None` while running; then `Some(wait error)`, where the error is Go's
-/// `cmd.Wait()` text (`exit status 1`, `signal: killed`) and `None` is a
+/// `None` while running; then `Some(wait error)`, where the error is the
+/// wait text (`exit status 1`, `signal: killed`) and `None` is a
 /// clean exit.
 pub type Reaped = watch::Receiver<Option<Option<String>>>;
 
-/// The sole owner of `wait()`. `after` runs between the exit and the
-/// broadcast (Go's Wait also waits for its stderr copier), so observers see
-/// the exit and the captured output together.
+/// The sole owner of `wait()`. `after` runs between the exit and the broadcast,
+/// so observers see the exit and the captured output together.
 pub fn reap(mut child: Child, after: impl Future<Output = ()> + Send + 'static) -> Reaped {
     let (tx, rx) = watch::channel(None);
     tokio::spawn(async move {
@@ -63,9 +62,8 @@ pub fn signal_group(pid: u32, sig: Signal) {
     }
 }
 
-/// Go `exec.LookPath`: a name with a slash is checked as is; otherwise the
-/// first executable regular file named `name` on `$PATH` (empty entries mean
-/// the current directory).
+/// A name with a slash is checked as is; otherwise the first executable regular
+/// file named `name` on `$PATH` (empty entries mean the current directory).
 pub fn look_path(name: &str) -> Result<PathBuf, String> {
     let not_found = || format!("exec: {}: executable file not found in $PATH", quote(name));
     if name.contains('/') {
@@ -105,7 +103,7 @@ fn quote(s: &str) -> String {
     serde_json::to_string(s).unwrap_or_default()
 }
 
-/// Go's `ProcessState.String()` for a failed exit; `None` for success.
+/// The exit text for a failed exit (`exit status 1`, `signal: killed`); `None` for success.
 pub fn exit_error(st: ExitStatus) -> Option<String> {
     if st.success() {
         return None;
@@ -122,7 +120,7 @@ pub fn exit_error(st: ExitStatus) -> Option<String> {
     Some(format!("signal: {}{core}", signal_name(sig)))
 }
 
-/// Go's `syscall.Signal.String()` for the signals a CLI realistically dies of.
+/// Signal names for the signals a CLI realistically dies of.
 fn signal_name(sig: i32) -> String {
     let name = match sig {
         1 => "hangup",

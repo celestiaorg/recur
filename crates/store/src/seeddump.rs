@@ -1,7 +1,7 @@
 //! The seed fixture (`recur-services`' `src/mock/seed.json`): a seeded
-//! in-memory store's bound-service data as one JSON object, written like
-//! Go's `cmd/seeddump` (`json.Encoder`, two-space indent, no HTML escaping).
-//! The `seeddump` binary prints it; the UI parity harness seeds from it.
+//! in-memory store's bound-service data as one JSON object, written with a
+//! two-space indent and no HTML escaping. The `seeddump` binary prints it; the
+//! UI parity harness seeds from it.
 
 use std::collections::BTreeMap;
 use std::io;
@@ -14,7 +14,7 @@ use serde_json::ser::{Formatter, PrettyFormatter};
 
 use crate::Store;
 
-/// Keys in Go's map order (sorted).
+/// Keys in sorted order.
 #[derive(Serialize)]
 struct Dump {
     #[serde(rename = "agentsByLoop")]
@@ -88,8 +88,8 @@ pub fn dump(st: &Store) -> String {
     String::from_utf8(out).unwrap_or_default()
 }
 
-/// Go's indented encoder without HTML escaping still escapes U+2028 and
-/// U+2029.
+/// The indented encoder escapes U+2028 and U+2029 even without HTML
+/// escaping.
 struct GoIndent<'a>(PrettyFormatter<'a>);
 
 macro_rules! delegate {

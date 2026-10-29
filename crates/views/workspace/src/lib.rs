@@ -13,7 +13,7 @@
 //!
 //! The view reads backend events after `AppState` applied them
 //! ([`recur_view_core::AppliedEvent`]), so store-derived checks (a tab's agent running) see
-//! the same state the Svelte listeners did.
+//! the updated state.
 
 pub mod detail;
 #[cfg(feature = "gallery")]

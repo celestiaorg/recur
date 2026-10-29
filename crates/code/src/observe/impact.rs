@@ -147,7 +147,7 @@ fn test_candidates(p: &str) -> Vec<String> {
     out.push(format!("{dir}/{stem}_test.go"));
     out.push(format!("{dir}/test_{stem}.py"));
     out.push(format!("{dir}/{stem}_test.py"));
-    // Go upper-cases the first byte; a non-ASCII first rune cannot name a
+    // Only the first byte is upper-cased; a non-ASCII first rune cannot name a
     // real file after that byte surgery, so it is left out.
     if let Some(first) = stem.chars().next().filter(char::is_ascii) {
         out.push(format!(

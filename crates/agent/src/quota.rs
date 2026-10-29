@@ -1,5 +1,5 @@
-//! Subscription quota snapshot types (Go `usage/types.go`), serde-identical,
-//! and the probe providers expose for the sidebar footer.
+//! Subscription quota snapshot types, and the probe providers expose for the
+//! sidebar footer.
 
 use serde::{Deserialize, Serialize};
 
@@ -34,7 +34,7 @@ pub const BUCKET_OTHER: &str = "other";
 pub struct Snapshot {
     pub fetched_at: i64,
     pub stale: bool,
-    /// `None` is Go's nil slice (`null`); [`empty_snapshot`] has `[]`.
+    /// `None` serializes as `null`; [`empty_snapshot`] has `[]`.
     pub providers: Option<Vec<ProviderQuota>>,
 }
 

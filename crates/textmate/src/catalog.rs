@@ -18,7 +18,7 @@ use crate::tm_theme::{
     ParsedTmTheme, ThemeParseError, UiTheme, is_text_mate_text_scope, parse_theme_json,
 };
 
-/// A bundle `[[grammar]]` as the app lists it (Go `GrammarInfo`).
+/// A bundle `[[grammar]]` as the app lists it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct GrammarInfo {
@@ -56,7 +56,7 @@ pub struct ThemePreviewInfo {
     pub string: Option<String>,
 }
 
-/// A bundle `[[theme]]` as the app lists it (Go `ThemeInfo`).
+/// A bundle `[[theme]]` as the app lists it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ThemeInfo {

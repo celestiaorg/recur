@@ -1,8 +1,8 @@
-//! Escalations (Go `escalation.go`, PRD §13): a walk raises a question and
-//! blocks at a safe checkpoint until the human answers ("an escalation is
-//! just a pause whose resume payload is the human's answer"), the answer is
-//! delivered to the live walk or re-dispatches an interrupted one, and a
-//! persisted answer that arrived after a restart is applied by the new walk.
+//! Escalations (PRD §13): a walk raises a question and blocks at a safe
+//! checkpoint until the human answers ("an escalation is just a pause whose
+//! resume payload is the human's answer"), the answer is delivered to the live
+//! walk or re-dispatches an interrupted one, and a persisted answer that
+//! arrived after a restart is applied by the new walk.
 
 use std::sync::Arc;
 

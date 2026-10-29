@@ -1,4 +1,4 @@
-//! Local git: worktrees, branches, status, diffs and checkpoints. Port of Go `internal/git`.
+//! Local git: worktrees, branches, status, diffs and checkpoints.
 //!
 //! Recur shells out to the system `git` (never a git library) so behavior and
 //! edge cases match what agents and users see in a terminal. Every function

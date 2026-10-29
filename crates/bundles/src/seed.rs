@@ -30,7 +30,7 @@ pub static SHIPPED_BUNDLES: Dir<'static> =
 pub static SHIPPED_SKILLS: Dir<'static> =
     include_dir::include_dir!("$CARGO_MANIFEST_DIR/../../recur-skills");
 
-/// A read-only tree to seed from (Go `fs.FS`). Paths are slash-separated
+/// A read-only tree to seed from. Paths are slash-separated
 /// and relative to the source root; `"."` is the root.
 pub trait SeedSource {
     /// Entries of `dir` as `(name, is_dir)`, sorted by name.
@@ -65,7 +65,7 @@ impl SeedSource for Dir<'static> {
     }
 }
 
-/// A directory on disk (Go `os.DirFS`).
+/// A directory on disk.
 pub struct DirSource(pub String);
 
 impl SeedSource for DirSource {
@@ -80,7 +80,7 @@ impl SeedSource for DirSource {
     }
 }
 
-/// An in-memory tree keyed by slash path (Go `fstest.MapFS`).
+/// An in-memory tree keyed by slash path.
 #[derive(Debug, Default, Clone)]
 pub struct MapSource(pub BTreeMap<String, Vec<u8>>);
 
@@ -177,8 +177,8 @@ fn seed_root_file(
     write_file(&target, &data, mode).map_err(|e| err!("seed {name}: {e}"))
 }
 
-/// Walks `dir` in lexical order (Go `fs.WalkDir`), calling `visit` with the
-/// slash path and whether it is a directory. Skipped directories are pruned.
+/// Walks `dir` in lexical order, calling `visit` with the slash path and
+/// whether it is a directory. Skipped directories are pruned.
 fn walk(
     src: &dyn SeedSource,
     dir: &str,
@@ -271,7 +271,7 @@ fn remove_all(dir: &str) -> Result<(), String> {
     }
 }
 
-/// Go `os.WriteFile`: create/truncate with `mode` for new files.
+/// Create/truncate with `mode` for new files.
 pub(crate) fn write_file(path: &str, data: &[u8], mode: u32) -> Result<(), String> {
     use std::os::unix::fs::OpenOptionsExt;
     let mut f = fs::OpenOptions::new()

@@ -291,7 +291,7 @@ fn file_name(path: &str) -> String {
     name.to_lowercase()
 }
 
-/// Raster images (Go `imageMIME`; SVG stays text).
+/// Raster images (SVG stays text).
 pub fn is_binary_image_path(path: &str) -> bool {
     let n = file_name(path);
     [

@@ -77,7 +77,7 @@ impl Fx {
         self.s.editor_session.get_editor_session(ws).await.unwrap()
     }
 
-    /// Go's fresh `EditorSessionService`: the file on disk, not the cache.
+    /// A fresh read: the file on disk, not the cache.
     async fn session_from_disk(&self, ws: &str) -> Option<EditorSession> {
         self.svc.editor.forget(ws);
         self.session(ws).await

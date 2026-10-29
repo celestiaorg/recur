@@ -19,7 +19,7 @@ pub struct Rail {
 #[serde(default)]
 pub struct Policy {
     pub autonomy: AutonomyLevel,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub rails: Option<Vec<Rail>>,
 }
 

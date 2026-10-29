@@ -2,13 +2,10 @@
 //! events, model catalog, permissions, and the runner contract every
 //! provider implements.
 //!
-//! Port of the provider-neutral contracts in Go `internal/engine`
-//! (`runner.go`, `toolview.go`, the classification half of `agenterr.go`,
-//! the marker half of `attachments.go`, the label half of `permission.go`,
-//! the display half of `streamjson.go`, `scripted.go`, mirror's
-//! `contextUsageTracker`), the catalog types of `app/model_catalog.go`, the
-//! quota types of `usage/types.go`, and the pure rules of the frontend
-//! `contextUsage`, `tasktools`, `todos`, `webtools` and `mcp` modules.
+//! It also holds error classification, attachment markers, permission
+//! labels, stream display rules, scripted test providers, the context usage
+//! tracker, the catalog and quota types, and the pure display rules for
+//! context usage, tasks, todos, web tools and MCP.
 
 pub mod attach;
 pub mod catalog;

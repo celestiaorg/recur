@@ -33,7 +33,7 @@ use crate::protocol::*;
 use crate::tools::{ToolSpec, all_tools, new_token};
 
 /// Caps one request body (a runaway client); sized for create_artifact
-/// base64 images. Longer bodies are cut off, as Go's `io.LimitReader` does.
+/// base64 images. Longer bodies are cut off.
 const MAX_BODY: usize = 32 << 20;
 const READ_HEADER_TIMEOUT: Duration = Duration::from_secs(10);
 const CLOSE_TIMEOUT: Duration = Duration::from_secs(3);
@@ -292,7 +292,7 @@ async fn serve(listener: TcpListener, inner: Arc<Inner>, stop: CancellationToken
                 stream
             }
             Err(_) => {
-                // Go's Serve: back off 5 ms doubling to 1 s (e.g. out of fds).
+                // Back off 5 ms doubling to 1 s (e.g. out of fds).
                 backoff = (backoff * 2).clamp(Duration::from_millis(5), Duration::from_secs(1));
                 tokio::select! {
                     _ = stop.cancelled() => break,
@@ -340,7 +340,7 @@ fn json_response(resp: &RpcResponse) -> Response<Full<Bytes>> {
     r
 }
 
-/// Go `http.Redirect` with 307, as ServeMux answers a non-canonical path.
+/// A 307 redirect to the canonical path.
 fn redirect(method: &Method, url: &str) -> Response<Full<Bytes>> {
     let body = if method == Method::GET {
         format!(
@@ -372,7 +372,7 @@ fn html_escape(s: &str) -> String {
         .replace('\'', "&#39;")
 }
 
-/// Go `net/http` `cleanPath`.
+/// Cleans a request path lexically (keeping a trailing slash).
 fn clean_path(p: &str) -> String {
     if p.is_empty() {
         return "/".into();
@@ -393,7 +393,7 @@ fn clean_path(p: &str) -> String {
     np
 }
 
-/// The decoded request path (Go `URL.Path`); `None` on a bad escape.
+/// The decoded request path; `None` on a bad escape.
 fn unescape_path(raw: &str) -> Option<String> {
     let b = raw.as_bytes();
     let mut out = Vec::with_capacity(b.len());
@@ -411,7 +411,7 @@ fn unescape_path(raw: &str) -> Option<String> {
     Some(String::from_utf8_lossy(&out).into_owned())
 }
 
-/// Go `url.URL.EscapedPath` for a cleaned path.
+/// The escaped form of a cleaned path.
 fn escape_path(p: &str) -> String {
     let mut out = String::new();
     for &c in p.as_bytes() {

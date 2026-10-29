@@ -1,6 +1,6 @@
-//! Which language server runs for a language (Go `lsp/servers.go`): the
-//! builtin PATH registry, bundle `[[languageServer]]` overrides, and the
-//! servers the user turned off in Settings.
+//! Which language server runs for a language: the builtin PATH registry, bundle
+//! `[[languageServer]]` overrides, and the servers the user turned off in
+//! Settings.
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -124,8 +124,8 @@ pub fn builtin_servers() -> Vec<ServerSpec> {
     ]
 }
 
-/// Bundle-contributed servers and the disabled set. Go kept these as
-/// package state; here the [`crate::Manager`] owns one.
+/// Bundle-contributed servers and the disabled set. The [`crate::Manager`] owns
+/// one.
 #[derive(Debug, Default)]
 pub struct ServerRegistry {
     inner: RwLock<RegistryState>,
@@ -246,8 +246,8 @@ impl ServerSpec {
     }
 }
 
-/// Go `exec.LookPath`: a name with a slash is checked as is; otherwise the
-/// first executable regular file named `name` on `PATH`.
+/// A name with a slash is checked as is; otherwise the first executable regular
+/// file named `name` on `PATH`.
 pub fn look_path(name: &str) -> Option<String> {
     if name.contains('/') {
         return is_executable(Path::new(name)).then(|| name.to_owned());

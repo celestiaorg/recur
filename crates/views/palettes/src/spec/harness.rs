@@ -99,7 +99,7 @@ pub fn with_runs(runs: &[(&str, &str)]) -> impl FnOnce(&mut Seed) {
     }
 }
 
-/// One recorded bound call: its Go name and arguments.
+/// One recorded bound call: its method name and arguments.
 pub type Call = (String, Vec<Value>);
 
 /// Bound calls by name, recorded.

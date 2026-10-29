@@ -119,8 +119,7 @@ impl<T> Backend for T where
 {
 }
 
-/// What the app holds: every service plus the app event hub. Cheap to clone;
-/// field names follow Go's `app.Services`.
+/// What the app holds: every service plus the app event hub. Cheap to clone.
 #[derive(Clone)]
 pub struct Services {
     pub agents: Arc<dyn AgentsService>,
@@ -183,7 +182,7 @@ impl Services {
     }
 
     /// Publishes an event to every subscriber. Views use this for the events
-    /// the Svelte UI emitted itself (`menu.state`, `app.ready`, …); the desktop
+    /// views emit themselves (`menu.state`, `app.ready`, …); the desktop
     /// shell subscribes to those.
     pub fn emit(&self, event: AppEvent) {
         self.events.publish(event);

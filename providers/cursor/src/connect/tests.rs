@@ -1,5 +1,5 @@
-//! Go `cursor/connect_test.go`, plus the error predicates of
-//! `active_run_test.go` and `bridge_alive_test.go`.
+//! Connect protocol tests, plus the active-run and bridge-alive error
+//! predicates.
 
 use std::sync::Arc;
 use std::time::Duration;

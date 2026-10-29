@@ -1,8 +1,8 @@
-//! The reload-path activity feed (Go `feedproject.go`). Agent activity
-//! (tool rows and narration) is projected from the specialists' session
-//! transcripts; loop-level facts (outcomes, deviations) come from the
-//! durable events table. Live streaming is unchanged; this rebuilds what it
-//! showed. A loop with no sessions (pre-mirror) replays its events.
+//! The reload-path activity feed. Agent activity (tool rows and narration) is
+//! projected from the specialists' session transcripts; loop-level facts
+//! (outcomes, deviations) come from the durable events table. Live streaming is
+//! unchanged; this rebuilds what it showed. A loop with no sessions
+//! (pre-mirror) replays its events.
 
 use std::collections::HashMap;
 

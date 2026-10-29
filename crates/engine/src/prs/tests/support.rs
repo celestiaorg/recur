@@ -121,8 +121,8 @@ pub fn with_checks(mut r: PrListRow, checks: Vec<Check>) -> PrListRow {
 /// Temp dirs a test keeps alive.
 pub struct Keep(#[allow(dead_code)] Vec<Box<dyn std::any::Any + Send>>);
 
-/// Go `initCloneTrackingRemoteBranch`: a clone whose `local` branch tracks
-/// `origin/<remote>`. Returns (dirs to keep alive, clone path).
+/// A clone whose `local` branch tracks `origin/<remote>`. Returns (dirs to keep
+/// alive, clone path).
 pub fn clone_tracking(remote: &str, local: &str) -> (Keep, String) {
     let seed = init_repo();
     if remote != "main" {
@@ -166,7 +166,7 @@ pub fn clone_tracking(remote: &str, local: &str) -> (Keep, String) {
     )
 }
 
-/// Go `initCloneWithUpstreamFork`: a clone with origin and upstream remotes.
+/// A clone with origin and upstream remotes.
 pub fn clone_with_upstream_fork() -> (Keep, String) {
     let seed = init_repo();
     let dirs: Vec<tempfile::TempDir> = (0..3).map(|_| tempfile::tempdir().unwrap()).collect();
@@ -205,8 +205,7 @@ pub fn ws(id: &str, branch: &str) -> Workspace {
     }
 }
 
-/// Go `initCloneWithPullHead`: a clone whose origin carries `branch` only
-/// as `refs/pull/<number>/head`.
+/// A clone whose origin carries `branch` only as `refs/pull/<number>/head`.
 pub fn clone_with_pull_head(number: i64, branch: &str) -> (Keep, String) {
     let seed = init_repo();
     git(&seed.path, &["checkout", "-b", branch]);

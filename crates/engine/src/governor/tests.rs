@@ -1,4 +1,4 @@
-//! Port of Go `governor_test.go`.
+//! Governor tests.
 
 use std::sync::Arc;
 use std::time::Duration;

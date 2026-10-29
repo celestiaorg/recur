@@ -1,7 +1,6 @@
-//! The specialist turns of a walk (Go `loop.go`): the Maestro's planning
-//! turn, the Coder (with the open-findings nudge and the engine commit),
-//! and the separate Reviewer (rail #2), plus the feed projection of their
-//! streams.
+//! The specialist turns of a walk: the Maestro's planning turn, the Coder (with
+//! the open-findings nudge and the engine commit), and the separate Reviewer
+//! (rail #2), plus the feed projection of their streams.
 
 use std::sync::Arc;
 
@@ -117,7 +116,7 @@ impl FeedProjector {
         }
     }
 
-    /// Go `onAgentEvent`.
+    /// Projects a specialist's stream event onto the feed.
     pub fn on_event(&self, ev: &AgentEvent) {
         if ev.nested() {
             return;

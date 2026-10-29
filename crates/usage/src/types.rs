@@ -1,5 +1,4 @@
-//! The snapshot payload (Go `usage/types.go`), shared with providers through
-//! `recur_agent::quota`.
+//! The snapshot payload, shared with providers through `recur_agent::quota`.
 
 pub use recur_agent::quota::*;
 

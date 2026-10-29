@@ -2,7 +2,7 @@
 //! launch to the running instance, tee the log, fix PATH, open the store, seed shipped bundles
 //! and skills, start the runtime, open IPC, build the services and recover interrupted work
 //! before any UI, start the boot work once events reach the desktop, then run the GPUI app and
-//! tear down in the Go app's order.
+//! tear down in order.
 //!
 //! The `mock` feature swaps in the e2e mock bridge for UI work without a backend.
 
@@ -31,19 +31,19 @@ use recur_services::{AppEvent, AppServices, Services};
 use recur_view_core::{LOCAL_STORAGE_FILE, LocalStorage, ViewRegistry};
 use recur_view_observatory::lsp::problems;
 
-/// Stamped at build time for release bundles (Go: `-ldflags -X main.version`).
+/// Stamped at build time for release bundles.
 const VERSION: &str = match option_env!("RECUR_VERSION") {
     Some(v) => v,
     None => "",
 };
-/// The signed release manifest (Go: `main.updateManifestURL`).
+/// The signed release manifest.
 const MANIFEST_URL: &str = match option_env!("RECUR_UPDATE_MANIFEST_URL") {
     Some(v) => v,
     None => "",
 };
 
-/// The services the app runs on: the engine-backed ones over `store`, recovered (Go
-/// `eng.Recover()` before `NewServices`), or the mock bridge under the `mock` feature.
+/// The services the app runs on: the engine-backed ones over `store`, recovered,
+/// or the mock bridge under the `mock` feature.
 #[cfg(not(feature = "mock"))]
 fn backend(
     rt: &tokio::runtime::Runtime,
@@ -413,8 +413,8 @@ fn main() {
         .detach();
         // Quit: drop the UI, stop accepting IPC and join in-flight opens, then cancel and join
         // every loop and chat, persist terminals and stop language servers and the usage
-        // poller before the store closes (Go `stopIPC(); eng.Shutdown()` in OnShutdown). The
-        // flock is released when the instance drops, after the run loop.
+        // poller before the store closes. The flock is released when the instance drops, after
+        // the run loop.
         let (hub, gate, ipc, real, handle) = (
             hub.clone(),
             gate.clone(),

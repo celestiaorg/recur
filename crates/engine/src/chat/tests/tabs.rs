@@ -1,7 +1,7 @@
-//! Port of the tab cases of Go `workspace_chat_test.go`: several pair tabs
-//! with separate transcripts, close / reopen / delete closed tabs (and the
-//! remounts and owned specialists that go with them), the Maestro as a peer
-//! tab, saved tab order, and the life-lock edges of tab operations.
+//! Chat tab tests: several pair tabs with separate transcripts, close / reopen
+//! / delete closed tabs (and the remounts and owned specialists that go with
+//! them), the Maestro as a peer tab, saved tab order, and the life-lock edges
+//! of tab operations.
 
 use std::time::Duration;
 

@@ -1,4 +1,4 @@
-//! Steers waiting for delivery (Go `steerBuf` in `engine/cursor.go`).
+//! Steers waiting for delivery.
 //!
 //! Cursor joins every waiting steer into one message: one SteerRun, or one
 //! CancelRun plus one follow-up Send. `seq`/`acked` let the main loop fold a
@@ -189,7 +189,6 @@ mod tests {
         Steer::new(p, None).0
     }
 
-    // Go TestSteerBufTakeAcksBatch.
     #[test]
     fn take_acks_batch() {
         let s = SteerBuf::default();
@@ -210,7 +209,6 @@ mod tests {
         );
     }
 
-    // Go TestSteerBufTakePrefixLeavesRemainder.
     #[test]
     fn take_prefix_leaves_remainder() {
         let s = SteerBuf::default();
@@ -225,7 +223,6 @@ mod tests {
         assert!(s.consumed(s.batch_seq()));
     }
 
-    // Go TestSteerBufReserveExcludesTake.
     #[test]
     fn reserve_excludes_take() {
         let s = SteerBuf::default();
@@ -270,8 +267,7 @@ mod tests {
         assert!(s.consumed(s.batch_seq()));
     }
 
-    // Go TestJoinSteerInjects / TestJoinPlainInjects: the joined follow-up
-    // text and its user rows.
+    // The joined follow-up text and its user rows.
     #[test]
     fn joined_text_and_users() {
         let mixed = [steer("  first  "), steer(""), steer("second")];

@@ -1,7 +1,7 @@
-//! Workspace ↔ forge PR linking by head branch (Go `github_prs.go`): a
-//! workspace checked out on a PR's head, or tracking it under another local
-//! name (`@{upstream}`), is that PR's workspace. The project base is never a
-//! head: a worktree sitting on main is not a PR.
+//! Workspace ↔ forge PR linking by head branch: a workspace checked out on a
+//! PR's head, or tracking it under another local name (`@{upstream}`), is that
+//! PR's workspace. The project base is never a head: a worktree sitting on main
+//! is not a PR.
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -77,7 +77,7 @@ impl Engine {
     }
 
     /// Live workspaces of a project that may be a PR head, with the local
-    /// branch name (Go's shared skip rules).
+    /// branch name.
     fn pr_head_candidates(&self, project_id: &str, base: &str) -> Vec<(Workspace, String)> {
         self.store
             .workspaces()

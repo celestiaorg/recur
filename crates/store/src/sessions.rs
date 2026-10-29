@@ -372,7 +372,7 @@ impl Store {
     }
 
     /// Every app-scoped session of a kind, oldest first (the Ask Recur tab
-    /// strip). `None` when there are none (Go's nil).
+    /// strip). `None` when there are none.
     pub fn sessions_for_app_kind(&self, kind: &str) -> Option<Vec<Session>> {
         let db = self.db.as_ref().filter(|_| !kind.is_empty())?;
         sessions_for_app_kind(db, kind)

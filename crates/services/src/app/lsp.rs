@@ -1,6 +1,6 @@
-//! `LSPService` (Go `lsp_service.go`): language servers for the editor over
-//! `recur_lsp`. This layer resolves the worktree root and the bundle roots;
-//! framing and supervision live in the lsp crate.
+//! `LSPService`: language servers for the editor over `recur_lsp`. This layer
+//! resolves the worktree root and the bundle roots; framing and supervision
+//! live in the lsp crate.
 
 use async_trait::async_trait;
 

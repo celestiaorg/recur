@@ -137,7 +137,7 @@ pub struct Project {
 #[serde(default)]
 pub struct CopyFilesPreview {
     pub root: String,
-    /// `None` is Go's nil slice (encodes as `null`).
+    /// `None` serializes as `null`.
     pub files: Option<Vec<String>>,
     pub count: i64,
     #[serde(skip_serializing_if = "is_false")]

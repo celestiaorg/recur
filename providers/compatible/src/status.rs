@@ -1,4 +1,4 @@
-//! Settings → Providers Test and flag presets (Go `app/compatible_service.go`).
+//! Settings → Providers Test and flag presets.
 
 use std::collections::HashSet;
 use std::time::Duration;

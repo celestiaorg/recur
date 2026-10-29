@@ -1,7 +1,7 @@
-//! `⟦raw[:nonce]⟧ … ⟦/raw[:nonce]⟧` regions (Go `raw_regions.go`): text the
-//! host wrap must not scan for `@path` / `/skill`. Nonce-paired markers let
-//! an embedded blob quote the bare syntax without closing early. Markers
-//! are removed before storage and the provider.
+//! `⟦raw[:nonce]⟧ … ⟦/raw[:nonce]⟧` regions: text the host wrap must not scan
+//! for `@path` / `/skill`. Nonce-paired markers let an embedded blob quote the
+//! bare syntax without closing early. Markers are removed before storage and
+//! the provider.
 
 use std::sync::LazyLock;
 

@@ -197,7 +197,7 @@ fn compile_macro_invalidates_on_edit() {
 
 #[test]
 fn compile_hash_matches_go() {
-    // Same cache key as Go so cache files stay addressable by the same name.
+    // A stable cache key so cache files stay addressable by the same name.
     let (_g, cache) = temp_dir();
     let r = compile_macro(&cache, &ts("h", "export default () => 'x'\n")).unwrap();
     assert_eq!(r.hash.len(), 32);

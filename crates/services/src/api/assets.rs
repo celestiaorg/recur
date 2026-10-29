@@ -24,20 +24,18 @@ impl AssetError {
         }
     }
 
-    /// Go `http.NotFound`.
+    /// A 404 with the plain `404 page not found` body.
     pub fn not_found() -> Self {
         Self::new(404, "404 page not found")
     }
 }
 
-/// The asset routes, for a native
-/// UI that has no webview to fetch them: per-workspace managed files
-/// (`/workspaces/<id>/…`), worktree files (`/workspace-file?project=&workspace=&path=[&at=base]`),
-/// dropped chat images (`/chat-image?path=`), dropped external files
-/// (`/external-file?path=`) and GitHub attachment images (`/gh-image?url=`).
-/// `url` is the path plus query the Svelte UI requested; traversal, the
-/// external-file allowlist and the GitHub host rules are enforced exactly as
-/// the HTTP handlers did.
+/// The app's asset routes, for a native UI that has no webview to fetch them: per-workspace
+/// managed files (`/workspaces/<id>/…`), worktree files
+/// (`/workspace-file?project=&workspace=&path=[&at=base]`), dropped chat images
+/// (`/chat-image?path=`), dropped external files (`/external-file?path=`) and GitHub attachment
+/// images (`/gh-image?url=`). `url` is the requested path plus query; traversal, the external-file
+/// allowlist and the GitHub host rules are enforced.
 #[async_trait]
 pub trait AssetsService: Send + Sync {
     async fn fetch_asset(&self, url: &str) -> Result<Asset, AssetError>;

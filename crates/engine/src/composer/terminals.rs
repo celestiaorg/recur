@@ -1,6 +1,6 @@
-//! `@terminal[:id-or-title]` mentions (Go `terminal_mentions.go`): an
-//! ANSI-stripped tail of the matching Observatory terminals, fenced into a
-//! system instruction (R16: read through [`TerminalSource`]).
+//! `@terminal[:id-or-title]` mentions: an ANSI-stripped tail of the matching
+//! Observatory terminals, fenced into a system instruction (R16: read through
+//! [`TerminalSource`]).
 
 use std::collections::HashSet;
 use std::sync::LazyLock;

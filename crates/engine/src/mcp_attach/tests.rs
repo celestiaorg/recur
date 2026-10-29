@@ -1,5 +1,5 @@
-//! Generic cases of Go `user_mcp_test.go` (the Linear preset itself is
-//! tested in `recur-issues`; here it is reached through the tracker).
+//! Generic MCP attach tests (the Linear preset itself is tested in
+//! `recur-issues`; here it is reached through the tracker).
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

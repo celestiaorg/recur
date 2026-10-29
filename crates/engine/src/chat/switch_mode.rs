@@ -1,8 +1,8 @@
-//! Privilege-safe `switch_mode` (Go `switch_mode.go`). A switch with a turn
-//! in flight parks that turn (the ask_user pattern) and remounts a
-//! continuation with the destination mode's tool shape, so the new tools
-//! are live immediately (a provider binds its allowlist at spawn). A
-//! remount cap stops plan/ask flip-flops from spawning turns forever.
+//! Privilege-safe `switch_mode`. A switch with a turn in flight parks that turn
+//! (the ask_user pattern) and remounts a continuation with the destination
+//! mode's tool shape, so the new tools are live immediately (a provider binds
+//! its allowlist at spawn). A remount cap stops plan/ask flip-flops from
+//! spawning turns forever.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -59,7 +59,7 @@ pub(crate) struct PendingModeContinue {
     pub epoch: u64,
 }
 
-/// Pending remounts and the per-tab remount depth (Go `modeContinueMu`).
+/// Pending remounts and the per-tab remount depth.
 #[derive(Default)]
 pub(crate) struct ModeContinues {
     pending: HashMap<String, PendingModeContinue>,

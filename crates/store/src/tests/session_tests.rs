@@ -659,7 +659,7 @@ fn message_duration_round_trip() {
     let msgs = transcript(&st, &s.id);
     assert_eq!(msgs.len(), 1);
     assert_eq!(msgs[0].duration_ms, 8460);
-    assert!(msgs[0].content.is_none(), "no blocks is Go's nil");
+    assert!(msgs[0].content.is_none(), "no blocks is None");
 }
 
 #[test]

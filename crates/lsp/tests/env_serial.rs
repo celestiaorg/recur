@@ -1,4 +1,4 @@
-//! Go `managed_test.go` cases that set `RECUR_LSP_*` overrides. They run in
+//! Managed install cases that set `RECUR_LSP_*` overrides. They run in
 //! their own test binary, serialized by [`ENV_LOCK`].
 
 static ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());

@@ -1,18 +1,18 @@
 use std::fmt;
 
-/// A store failure. Messages follow Go's `fmt.Errorf` wrapping
+/// A store failure. Messages carry a context prefix
 /// (`upsert project "x": <sqlite error>`).
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// A SQLite error, with Go's context prefix (empty when Go returned the
-    /// driver error bare).
+    /// A SQLite error with its context prefix (empty for a bare driver
+    /// error).
     Sql {
         context: String,
         #[source]
         source: rusqlite::Error,
     },
-    /// Every operation after [`crate::Store::close`] (Go's
-    /// `sql: database is closed`).
+    /// Every operation after [`crate::Store::close`]
+    /// (`sql: database is closed`).
     Closed,
     /// The database records migrations this build does not ship: it was
     /// written by a newer Recur, so it is never opened for writing.
@@ -29,7 +29,7 @@ pub enum Error {
         #[source]
         source: std::io::Error,
     },
-    /// Validation and not-found errors, with Go's message text.
+    /// Validation and not-found errors, with their message text.
     Msg(String),
 }
 
@@ -78,7 +78,7 @@ impl Error {
     }
 }
 
-/// Wraps a rusqlite result with Go's error context.
+/// Wraps a rusqlite result with its error context.
 pub(crate) trait SqlContext<T> {
     fn ctx(self, context: impl FnOnce() -> String) -> Result<T>;
     fn bare(self) -> Result<T>;

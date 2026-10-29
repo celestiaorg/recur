@@ -1,7 +1,7 @@
-//! Newline-delimited JSON-RPC over stdio without the `"jsonrpc":"2.0"`
-//! field (Go `codex/rpc.go`): calls, notifications, and server→client
-//! requests. One reader task dispatches every line in order; notification
-//! handlers run on it synchronously, server requests each get a task.
+//! Newline-delimited JSON-RPC over stdio without the `"jsonrpc":"2.0"` field:
+//! calls, notifications, and server→client requests. One reader task dispatches
+//! every line in order; notification handlers run on it synchronously, server
+//! requests each get a task.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -19,7 +19,7 @@ use tokio::sync::oneshot;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-/// A failed call. Display strings are Go's.
+/// A failed call.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RpcError {
     #[error("codex rpc {code}: {message}")]
@@ -40,7 +40,7 @@ impl RpcError {
     }
 }
 
-/// Go's `context.Context` for one call chain: the turn's cancellation plus an
+/// The context for one call chain: the turn's cancellation plus an
 /// optional deadline.
 #[derive(Debug, Clone, Default)]
 pub struct Ctx {
@@ -142,7 +142,7 @@ struct Peek {
     params: Option<Box<RawValue>>,
 }
 
-/// A present key keeps its raw text, `null` included (Go `json.RawMessage`).
+/// A present key keeps its raw text, `null` included.
 fn keep_null<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Box<RawValue>>, D::Error> {
     Box::<RawValue>::deserialize(d).map(Some)
 }
@@ -184,14 +184,13 @@ impl Conn {
     }
 
     /// Sends a request and waits for its response. A `null` or absent result
-    /// decodes as `R::default()`, like Go unmarshaling `null`.
+    /// decodes as `R::default()`.
     pub async fn call<P, R>(&self, method: &str, params: &P) -> Result<R, RpcError>
     where
         P: Serialize + ?Sized,
         R: DeserializeOwned + Default,
     {
-        // Go keeps writing after EOF and waits on its context; failing fast
-        // gives the same error the pending calls got.
+        // Failing fast after EOF gives the same error the pending calls got.
         if let Some(e) = self.inner.read_err.lock().clone() {
             return Err(RpcError::Rpc {
                 code: -32001,
@@ -389,7 +388,7 @@ fn raw<P: Serialize + ?Sized>(params: &P) -> Result<Box<RawValue>, RpcError> {
     RawValue::from_string(s).map_err(|e| RpcError::Io(e.to_string()))
 }
 
-/// Removes `null` object members so they decode as defaults, as Go does.
+/// Removes `null` object members so they decode as defaults.
 pub fn strip_nulls(v: &mut Value) {
     match v {
         Value::Object(m) => {
@@ -401,8 +400,8 @@ pub fn strip_nulls(v: &mut Value) {
     }
 }
 
-/// Rebuilds objects with sorted keys: Go marshals `map[string]any` sorted,
-/// and the workspace's `preserve_order` would otherwise keep input order.
+/// Rebuilds objects with sorted keys, since the workspace's `preserve_order`
+/// would otherwise keep input order.
 pub fn sort_keys(v: Value) -> Value {
     match v {
         Value::Object(m) => {

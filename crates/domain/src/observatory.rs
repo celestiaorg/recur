@@ -79,7 +79,7 @@ pub struct SearchHit {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct SearchResult {
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub hits: Option<Vec<SearchHit>>,
     /// Files skipped for exceeding the per-file size cap.
     pub skipped_large: i64,
@@ -112,7 +112,7 @@ pub struct OpenInTarget {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct FileSearchResult {
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub hits: Option<Vec<FileSearchHit>>,
     pub building: bool,
     pub ready: bool,

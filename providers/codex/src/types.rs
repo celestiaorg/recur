@@ -1,5 +1,5 @@
-//! App-server wire types (Go `codex/types.go`). Field order and `omitempty`
-//! follow the Go structs so requests encode compatibly with Go's.
+//! App-server wire types. Field order and `omitempty` keep requests in the
+//! app-server's expected shape.
 
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;

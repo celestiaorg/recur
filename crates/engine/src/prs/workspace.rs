@@ -1,7 +1,7 @@
-//! Hand-driven landing from a workspace (Go `workspace_pr.go`): merge
-//! without a PR, the titlebar's land state, update with base, pull the
-//! open PR's remote head, and open or sync the workspace's PR (Local, or on
-//! the project's forge when the project opts in).
+//! Hand-driven landing from a workspace: merge without a PR, the titlebar's
+//! land state, update with base, pull the open PR's remote head, and open or
+//! sync the workspace's PR (Local, or on the project's forge when the project
+//! opts in).
 
 use std::time::Duration;
 

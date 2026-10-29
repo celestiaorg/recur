@@ -1,13 +1,13 @@
-//! Test doubles that replay Claude stream-json (Go `ScriptedRunner`).
+//! Test doubles that replay Claude stream-json.
 
 use recur_agent::testing::ScriptedProvider;
 
 use crate::stream::parse_line;
 
-/// Replays raw stream-json lines through the real parser, one frame per
-/// line (malformed lines yield nothing, as Go's runner skips them), so a
-/// scripted test also exercises the parser end to end. Chain
-/// [`ScriptedProvider`]'s builders for edits, `on_run` and `imitating`.
+/// Replays raw stream-json lines through the real parser, one frame per line
+/// (malformed lines yield nothing), so a scripted test also exercises the
+/// parser end to end. Chain [`ScriptedProvider`]'s builders for edits, `on_run`
+/// and `imitating`.
 pub struct NdjsonScript;
 
 impl NdjsonScript {
@@ -27,9 +27,8 @@ impl NdjsonScript {
 }
 
 /// The canonical happy-path transcript (init, a Write tool_use, its
-/// tool_result, a success result) engine tests replay (Go `fixtureLines`).
-/// `cost` renders as Go's fixture did: 0.05, 0.10 and 0.25 verbatim, anything
-/// else as 0.
+/// tool_result, a success result) engine tests replay. `cost` renders as: 0.05,
+/// 0.10 and 0.25 verbatim, anything else as 0.
 pub fn fixture_lines(
     session_id: &str,
     file_path: &str,
@@ -92,8 +91,7 @@ mod tests {
         assert!(fixture_lines("s", "f", "t", 0.3)[3].ends_with(r#""total_cost_usd":0}"#));
     }
 
-    /// Go `TestLastAssistantUsageWinsOverCumulativeResult` (provider half):
-    /// result usage sums every inference and can exceed the window; the
+    /// Result usage sums every inference and can exceed the window; the
     /// meter stamps the last assistant footprint instead.
     #[tokio::test]
     async fn last_assistant_usage_wins_over_cumulative_result() {

@@ -1,9 +1,9 @@
-//! The engine seam (Go `agenttools.Host`, alias `mcp.Reporter`): every Recur
-//! host tool call becomes one typed call here, attributed to a workspace and
-//! agent. This is the single path structured signals re-enter the engine; tests
-//! drive findings through the same interface the live MCP handler calls.
+//! The engine seam: every Recur host tool call becomes one typed call here,
+//! attributed to a workspace and agent. This is the single path structured
+//! signals re-enter the engine; tests drive findings through the same interface
+//! the live MCP handler calls.
 //!
-//! Default bodies are Go's `noopReporter`, so an engine slice that has not
+//! Default bodies do nothing, so an engine slice that has not
 //! ported a method yet behaves exactly like a Recur with no engine attached.
 //! Implementations must be safe for concurrent use: MCP requests from agent
 //! processes run concurrently with the loop task.
@@ -417,7 +417,7 @@ pub trait Host: Send + Sync {
         Err(HostError::new("no skills"))
     }
 
-    /// `None` is Go's nil slice (encoded `null`).
+    /// `None` serializes as `null`.
     async fn list_terminals(&self, _ws: &str, _agent: &str) -> Option<Vec<TerminalInfo>> {
         None
     }
@@ -450,7 +450,7 @@ pub trait Host: Send + Sync {
     }
 }
 
-/// Go's `noopReporter`: every method keeps its default body.
+/// Every method keeps its default body.
 pub struct NoopHost;
 
 impl Host for NoopHost {}

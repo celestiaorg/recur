@@ -1,5 +1,4 @@
-//! Redacted bridge stderr: a ring for error tails and an on-disk log (Go
-//! `cursor/bridge_log.go`).
+//! Redacted bridge stderr: a ring for error tails and an on-disk log.
 
 use std::fs::File;
 use std::io::Write;

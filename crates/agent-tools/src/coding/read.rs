@@ -50,7 +50,7 @@ impl Tool for ReadTool {
         if offset > n + 1 {
             return Err(format!("offset {offset} is past end of file ({n} lines)").into());
         }
-        // Go int arithmetic: a huge limit wraps like it does there.
+        // Wrapping int arithmetic: a huge limit wraps.
         let end = (offset - 1).wrapping_add(limit).min(n);
         let mut b = String::new();
         for i in (offset - 1)..end.max(offset - 1) {

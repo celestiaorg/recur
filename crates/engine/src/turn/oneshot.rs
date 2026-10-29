@@ -1,8 +1,7 @@
-//! One-shot title-model turns (Go `commit_message.go`): commit messages,
-//! PR titles and descriptions, and the loop's engine commit subject. These
-//! turns have no role, so they are neither mirrored nor broadcast; they run
-//! with tools disabled (or the read-only trio for providers that cannot
-//! disable tools) and one turn.
+//! One-shot title-model turns: commit messages, PR titles and descriptions, and
+//! the loop's engine commit subject. These turns have no role, so they are
+//! neither mirrored nor broadcast; they run with tools disabled (or the
+//! read-only trio for providers that cannot disable tools) and one turn.
 
 use std::time::Duration;
 
@@ -27,7 +26,7 @@ pub(crate) const PR_DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(45);
 
 pub const PR_DESCRIPTION_SYSTEM_PROMPT: &str = "You write pull request titles and descriptions from a branch diff. Describe ALL changes versus the base branch, not one commit or chat turn. Reply with ONLY a title line (at most 80 characters), a blank line, and a markdown body. Keep the body under five sentences unless the change is large. No quotes, no markdown fences around the whole reply, no greeting, no tools.";
 
-/// GitHub's PR body limit (Go `githubPRBodyMax`).
+/// GitHub's PR body limit.
 pub const GITHUB_PR_BODY_MAX: usize = 60000;
 
 /// Caps a PR body to the forge limit with a truncation note.
@@ -52,8 +51,8 @@ fn deadline_error(partial: recur_agent::TurnResult) -> ProviderError {
 
 impl Engine {
     /// A one-shot turn on the Settings workspace-title model with a deadline
-    /// (Go `context.WithTimeout`): an expiry reads "context deadline
-    /// exceeded", a caller cancel stays a cancel.
+    /// (an expiry reads "context deadline exceeded", a caller cancel stays a
+    /// cancel).
     async fn run_oneshot(
         &self,
         cancel: &CancellationToken,
@@ -345,8 +344,7 @@ pub fn build_commit_message_prompt(diff: &str, recent_subjects: &[String]) -> St
     }
     b.push_str("Staged diff:\n\n");
     if diff.len() > COMMIT_MESSAGE_DIFF_CAP {
-        // Go sliced bytes here; keep it on a rune start so the prompt
-        // stays valid text.
+        // Cut on a rune start so the prompt stays valid text.
         let cut = floor_char_boundary(diff, COMMIT_MESSAGE_DIFF_CAP);
         b.push_str(&diff[..cut]);
         b.push_str("\n\n[diff truncated]");

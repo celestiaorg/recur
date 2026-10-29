@@ -1,8 +1,7 @@
-//! The PR dashboard sweep (Go `github_prs.go` sync orchestration): open
-//! and recently merged PRs of every git project, including ones Recur did
-//! not open, applied onto stored rows; rows that fell off both lists are
-//! confirmed with a state probe and settled. Single-flight with a TTL; the
-//! running app re-sweeps every few minutes.
+//! The PR dashboard sweep: open and recently merged PRs of every git project,
+//! including ones Recur did not open, applied onto stored rows; rows that fell
+//! off both lists are confirmed with a state probe and settled. Single-flight
+//! with a TTL; the running app re-sweeps every few minutes.
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;

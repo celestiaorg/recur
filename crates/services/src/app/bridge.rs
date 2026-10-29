@@ -49,7 +49,7 @@ pub(super) fn attach(svc: &Arc<AppServices>) {
     });
 
     // File-index work that stats the disk or reads the watched workspace runs
-    // off the publisher (Go ran it in the bus goroutine).
+    // off the publisher.
     let mut rx = svc.engine.bus.subscribe();
     let weak = Arc::downgrade(svc);
     tokio::spawn(async move {

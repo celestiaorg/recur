@@ -1,8 +1,8 @@
-//! The PR a converged walk opens (Go `pr.go` `Loop.openPR` and its
-//! helpers): the real diff and commits from the worktree, verify evidence and
-//! a checks rollup, an engine-written summary and focus note, the
-//! Observatory projection, the "ready for you" inbox row, and the conductor's
-//! view of the PR thread. A rework round re-creates the PR under the same id.
+//! The PR a converged walk opens: the real diff and commits from the worktree,
+//! verify evidence and a checks rollup, an engine-written summary and focus
+//! note, the Observatory projection, the "ready for you" inbox row, and the
+//! conductor's view of the PR thread. A rework round re-creates the PR under
+//! the same id.
 
 use std::time::Duration;
 
@@ -43,8 +43,7 @@ pub fn pr_fallback_intro(goal: &str, display: &str) -> String {
     goal.trim().to_owned()
 }
 
-/// A factual PR description from the diff when the one-shot is empty (Go
-/// `githubPRMarkdown`).
+/// A factual PR description from the diff when the one-shot is empty.
 pub fn pr_fallback_markdown(
     goal: &str,
     commits: &[Commit],

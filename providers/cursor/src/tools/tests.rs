@@ -1,4 +1,4 @@
-//! Go `engine/cursortools_test.go`: the mapping and display cases. Fixtures
+//! Cursor tool vocabulary tests: the mapping and display cases. Fixtures
 //! are VERBATIM args/results from a live bridge. The frame-fold cases live in
 //! `turn/tests.rs`; the transcript and session-broadcast cases
 //! (`flattenTranscript`, `sessionBroadcast`) belong to the engine's turn

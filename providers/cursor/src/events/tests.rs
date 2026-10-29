@@ -1,4 +1,4 @@
-//! Go `cursor/events_test.go`. The fixtures are VERBATIM frames captured from
+//! Run-stream event tests. The fixtures are VERBATIM frames captured from
 //! a real cursor-sdk-bridge (v1.0.0, sdk 1.0.26). They pin the wire quirks:
 //! the payload nested under `message`, snake_case payload keys with
 //! camelCase nested structs, int64s as strings in the result but numbers in
@@ -264,14 +264,14 @@ fn sub_usage_clamps_at_zero() {
 
 #[test]
 fn frames_with_wrong_types_are_skipped_like_go() {
-    // Go's typed decode fails the whole frame; the client skips it.
+    // A mistyped field fails the whole frame; the client skips it.
     assert!(decode_frame(br#"{"offset":5}"#).is_none());
     assert!(
         decode_frame(br#"{"sdkMessage":{"type":"usage","usage":{"inputTokens":1.5}}}"#).is_none()
     );
     assert!(decode_frame(br#"{"sdkMessage":{"type":"tool_call","truncated":true}}"#).is_none());
     assert!(decode_frame(b"not json").is_none());
-    // Go structs reject arrays (serde would decode them positionally).
+    // Arrays are rejected (serde would decode them positionally).
     assert!(decode_frame(br#"{"sdkMessage":["status","a","r"]}"#).is_none());
     assert!(tool_call_args(r#"["recur","done"]"#).is_none());
     assert_eq!(

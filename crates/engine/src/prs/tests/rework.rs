@@ -1,6 +1,4 @@
-//! Send back, update with base, base retarget and sibling cleanup (Go
-//! `rework_test.go`, `workspace_base_test.go`, `workspace_pr_test.go`,
-//! `open_pr_result_test.go`, and E1's `TestOpenWorkspacePRAfterRename`).
+//! Send back, update with base, base retarget and sibling cleanup.
 
 use std::time::Duration;
 

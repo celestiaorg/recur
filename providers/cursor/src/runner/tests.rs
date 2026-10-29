@@ -1,5 +1,4 @@
-//! Go `engine/cursor_steer_test.go` (R6), `cursor_active_run_test.go`, and
-//! the options, prompt and runner-contract cases of `cursor_test.go`, against
+//! Steer (R6), active-run, options, prompt and runner-contract tests, against
 //! an HTTP stand-in for the bridge.
 
 use std::sync::Arc;
@@ -110,7 +109,7 @@ async fn send_steer(tx: &mpsc::Sender<Steer>, text: &str) {
     let _ = tx.send(Steer::new(text, None).0).await;
 }
 
-/// Waits for `t`, giving up after 5s like the Go helpers.
+/// Waits for `t`, giving up after 5s.
 async fn wait(t: &CancellationToken) -> bool {
     tokio::time::timeout(Duration::from_secs(5), t.cancelled())
         .await

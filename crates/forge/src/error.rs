@@ -1,7 +1,7 @@
 use crate::cli::CmdError;
 
-/// Coarse class of a forge failure. The message is the user-facing text
-/// (Go's `err.Error()`), so callers show it as is.
+/// Coarse class of a forge failure. The message is the user-facing text,
+/// so callers show it as is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ForgeErrorKind {
     /// The forge tool is missing or not authenticated.
@@ -40,7 +40,7 @@ impl ForgeError {
         Self::new(ForgeErrorKind::Unavailable, message)
     }
 
-    /// Go `fmt.Errorf("<prefix>: %w", err)`.
+    /// `<prefix>: <err>`.
     pub fn wrap(prefix: impl std::fmt::Display, err: impl std::fmt::Display) -> Self {
         Self::failed(format!("{prefix}: {err}"))
     }

@@ -1,8 +1,7 @@
-//! The Observatory's window-level keys (the Svelte `window` keydown listeners: workbench
-//! focus, panels, review, tabs, split, view mode, reload, bundle key equivalents, ⌘S in
-//! Preview) and the native menu's actions. Like the webview's bubble phase they run after the
-//! focused element handled the key; a key an action binding consumed (a menu accelerator)
-//! arrives as the menu action instead.
+//! The Observatory's window-level keys (workbench focus, panels, review, tabs, split, view
+//! mode, reload, bundle key equivalents, ⌘S in Preview) and the native menu's actions. Like
+//! the webview's bubble phase they run after the focused element handled the key; a key an
+//! action binding consumed (a menu accelerator) arrives as the menu action instead.
 
 use gpui_kit::{App, Context, KeystrokeEvent, Subscription, Window};
 use recur_editor::keyequiv::{chord_from_keystroke, is_reserved_app_chord};

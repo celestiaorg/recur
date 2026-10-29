@@ -1,7 +1,6 @@
-//! The resume half of ask_user (Go `ask_user.go` `resumeAfterAskUser`): the
-//! human's answer runs as a new turn on the asking tab. The full resume
-//! prompt is the wire (replays and forks see it); the short answer is the
-//! bubble.
+//! The resume half of ask_user: the human's answer runs as a new turn on the
+//! asking tab. The full resume prompt is the wire (replays and forks see it);
+//! the short answer is the bubble.
 
 use recur_domain::{ChatAttachment, UserQuestion};
 

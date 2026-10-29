@@ -1,11 +1,10 @@
-//! Children of Agent chats (Go `chat_child.go`): Recur's subagents. A chat
-//! child is a workspace with a parent and no parent steps (loop fan-out
-//! children carry steps and merge through their parent's board). When a
-//! chat child settles, the parent tab gets one turn carrying its report and
-//! decides: merge_child, archive_child, or keep reading it.
-//! `fan_out.outcome` on the child row is the lifecycle marker the card is
-//! rebuilt from: "" running, settled, merged, closed; report-pending is an
-//! internal delivery marker.
+//! Children of Agent chats: Recur's subagents. A chat child is a workspace with
+//! a parent and no parent steps (loop fan-out children carry steps and merge
+//! through their parent's board). When a chat child settles, the parent tab
+//! gets one turn carrying its report and decides: merge_child, archive_child,
+//! or keep reading it. `fan_out.outcome` on the child row is the lifecycle
+//! marker the card is rebuilt from: "" running, settled, merged, closed;
+//! report-pending is an internal delivery marker.
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -83,9 +82,8 @@ async fn until<T>(deadline: Instant, f: impl std::future::Future<Output = T>) ->
     tokio::time::timeout_at(deadline.into(), f).await.ok()
 }
 
-/// Stdout of a git run in `dir` whatever its exit status (Go
-/// `cmd.Output()` keeps stdout on an exit error; `git diff --no-index`
-/// exits 1 when the files differ).
+/// Stdout of a git run in `dir` whatever its exit status (`git diff
+/// --no-index` exits 1 when the files differ).
 async fn git_stdout(dir: &str, args: &[&str], deadline: Instant) -> Vec<u8> {
     let mut cmd = tokio::process::Command::new("git");
     cmd.arg("-C")

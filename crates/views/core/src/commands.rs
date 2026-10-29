@@ -196,7 +196,7 @@ pub fn scope_for_path(path: &str, grammar_scope: Option<&str>) -> String {
     scope_for_lang(recur_editor::prefs::language_id_for_path(path)).into()
 }
 
-/// One `{a,b,c}` brace group into alternatives (Go `bundles.expandBraces`).
+/// One `{a,b,c}` brace group into alternatives.
 fn expand_braces(pattern: &str) -> Vec<String> {
     let (Some(start), Some(end)) = (pattern.find('{'), pattern.rfind('}')) else {
         return vec![pattern.to_string()];

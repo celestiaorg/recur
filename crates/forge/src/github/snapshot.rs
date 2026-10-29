@@ -239,7 +239,6 @@ struct DatabaseId {
     database_id: i64,
 }
 
-/// Go `parseGitHubPRSnapshotGraphQL`.
 pub(crate) fn parse_snapshot_graphql(raw: &str, now: DateTime<Utc>) -> Result<GhSnapshot, String> {
     let raw = raw.trim();
     if raw.is_empty() {
@@ -416,8 +415,7 @@ fn allowed_merge_methods_from_flags(merge: bool, squash: bool, rebase: bool) -> 
     .collect()
 }
 
-/// Go `finishGitHubPRSnapshot`: adds the timeline, nests reviews, upgrades
-/// avatars and orders the thread.
+/// Adds the timeline, nests reviews, upgrades avatars and orders the thread.
 pub(crate) fn finish(gh: GhSnapshot, timeline_raw: &str, now: DateTime<Utc>) -> PrSnapshot {
     let GhSnapshot {
         mut snap,
@@ -469,8 +467,8 @@ pub(crate) fn finish(gh: GhSnapshot, timeline_raw: &str, now: DateTime<Utc>) -> 
 }
 
 impl GitHub {
-    /// Go `fetchGitHubPRSnapshotGraphQL`: with the check rollup, retried
-    /// without it when the token cannot read checks.
+    /// With the check rollup, retried without it when the token cannot read
+    /// checks.
     async fn snapshot_graphql(
         &self,
         repo: &Path,
@@ -503,8 +501,7 @@ impl GitHub {
         }
     }
 
-    /// Go `fetchGitHubPRSnapshot`: one GraphQL query plus the REST timeline,
-    /// in parallel.
+    /// One GraphQL query plus the REST timeline, in parallel.
     pub(crate) async fn fetch_snapshot(
         &self,
         repo: &Path,

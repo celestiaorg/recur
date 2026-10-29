@@ -1,7 +1,7 @@
-//! Port of Go `switch_mode_test.go`, `modes_test.go` (shape cases) and
-//! `chat_surface_test.go`: the privilege rule, remounting a live turn with
-//! the destination tools, Stop and ask_user dropping the remount, the remount
-//! cap, dead ends, unseen flags, and the mode shapes and surface prompts.
+//! switch_mode, mode shape and chat surface tests: the privilege rule,
+//! remounting a live turn with the destination tools, Stop and ask_user
+//! dropping the remount, the remount cap, dead ends, unseen flags, and the mode
+//! shapes and surface prompts.
 
 use std::sync::Arc;
 use std::time::Duration;

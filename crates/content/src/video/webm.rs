@@ -1,9 +1,10 @@
-//! WebM and Ogg on macOS, which AVFoundation does not open but WebKit (the Go app's player)
-//! plays: VP8 and VP9 through libvpx, AV1 through libaom, Theora through theora-rs, Opus through
-//! libopus and Vorbis through lewton, with `cpal` for the sound. Licenses: `shiguredo_libvpx` is
-//! Apache-2.0 bindings to BSD libvpx; theora-rs is MPL-2.0 (a Rust port of libtheora, unmodified). A thread demuxes and decodes ahead into short queues; the audio device's
-//! clock (samples played) drives which frame shows, or the wall clock without a sound track.
-//! Same interface as `mac::Decoder`, picked by sniffing the container.
+//! WebM and Ogg on macOS, which AVFoundation does not open but WebKit plays: VP8 and VP9 through
+//! libvpx, AV1 through libaom, Theora through theora-rs, Opus through libopus and Vorbis through
+//! lewton, with `cpal` for the sound. Licenses: `shiguredo_libvpx` is Apache-2.0 bindings to BSD
+//! libvpx; theora-rs is MPL-2.0 (a Rust port of libtheora, unmodified). A thread demuxes and
+//! decodes ahead into short queues; the audio device's clock (samples played) drives which frame
+//! shows, or the wall clock without a sound track. Same interface as `mac::Decoder`, picked by
+//! sniffing the container.
 
 use std::collections::VecDeque;
 use std::fs::File;

@@ -7,8 +7,6 @@ use crate::Result;
 /// Settings.BypassPermissions is off. Unlike an escalation these are not
 /// persisted: an agent subprocess is holding an open request while it waits, so
 /// nothing here outlives the turn that asked.
-///
-/// Rust port of Go `app.PermissionsService` (`frontend/bindings/recur/internal/app/permissionsservice.ts`).
 #[async_trait]
 pub trait PermissionsService: Send + Sync {
     /// AnswerPermission delivers the human's verdict to the waiting agent. It errors

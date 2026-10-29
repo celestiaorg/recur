@@ -1,5 +1,4 @@
-//! Cursor's tool vocabulary in the common one, at the display boundary (Go
-//! `engine/cursortools.go` and the Cursor branch of `toolview.go`).
+//! Cursor's tool vocabulary in the common one, at the display boundary.
 //!
 //! The session store keeps what Cursor sent (`shell` with
 //! `{command, timeout}` and its `{"status":…,"value":{…}}` result); the UI
@@ -132,7 +131,7 @@ pub fn cursor_tool_result_text(name: &str, raw: &str) -> String {
     #[derive(serde::Deserialize, Default)]
     #[serde(default)]
     struct Envelope {
-        // Decoded only so a non-string status fails like Go's typed decode.
+        // Decoded only so a non-string status fails the decode.
         #[serde(rename = "status", deserialize_with = "crate::wire::null_default")]
         _status: String,
         #[serde(deserialize_with = "crate::wire::raw")]
@@ -261,7 +260,7 @@ fn grep_result_text(v: &Map<String, Value>) -> String {
 
 /// MCP result text, wrapped one level deeper than the MCP spec:
 /// `{"content":[{"text":{"text":"…"}}]}`. Any shape mismatch reads as empty,
-/// as Go's typed decode fails.
+/// as does a mistyped field.
 fn mcp_result_text(value: &str) -> String {
     #[derive(serde::Deserialize, Default)]
     #[serde(default)]

@@ -1,6 +1,6 @@
-//! Changing a workspace's merge base (Go `workspace_base.go`): diffs, PRs
-//! and update-with-base compare against it. An open PR is retargeted, on
-//! its forge first so Recur and the forge agree.
+//! Changing a workspace's merge base: diffs, PRs and update-with-base compare
+//! against it. An open PR is retargeted, on its forge first so Recur and the
+//! forge agree.
 
 use std::path::Path;
 use std::time::Duration;

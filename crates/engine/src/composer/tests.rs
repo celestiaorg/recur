@@ -1,4 +1,4 @@
-//! Go `raw_regions_test.go` and `composer_test.go`.
+//! Raw region and composer tests.
 
 use std::path::Path;
 

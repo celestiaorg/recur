@@ -3,9 +3,9 @@ use std::process::ExitStatus;
 
 use crate::worktree::DirtyBaseError;
 
-/// A git operation failure. The message reads like the Go error chain
+/// A git operation failure. The message reads as an error chain
 /// (`git add: fatal: …: exit status 128`); [`ErrorKind`] keeps what callers
-/// branch on, the way Go code used `errors.Is` / `errors.As`.
+/// branch on.
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("{message}")]
 pub struct Error {
@@ -19,14 +19,14 @@ pub enum ErrorKind {
     /// The `git` binary is not on PATH.
     NotFound,
     /// git ran and exited unsuccessfully (non-zero or killed by a signal).
-    /// `stderr` is filled by [`crate::Command::output`], like Go's `ExitError.Stderr`.
+    /// `stderr` is filled by [`crate::Command::output`].
     Exit {
         status: ExitStatus,
         stderr: Vec<u8>,
     },
     /// Spawning or talking to git failed.
     Io(std::io::ErrorKind),
-    /// `git version` ran but could not be parsed (Go `ErrUnparsed`).
+    /// `git version` ran but could not be parsed.
     Unparsed,
     /// A local merge would overwrite uncommitted changes in the base checkout.
     DirtyBase(DirtyBaseError),
@@ -55,7 +55,7 @@ impl Error {
         }
     }
 
-    /// Prefixes the message (`prefix: message`), keeping the kind, like Go `fmt.Errorf("prefix: %w", err)`.
+    /// Prefixes the message (`prefix: message`), keeping the kind.
     pub(crate) fn wrap(self, prefix: impl fmt::Display) -> Self {
         Self {
             message: format!("{prefix}: {}", self.message),

@@ -73,8 +73,8 @@ pub fn canonical_claude_tool(name: &str) -> &str {
     }
 }
 
-/// Go `truncate`: at most `n` bytes plus an ellipsis, cut on a rune start
-/// at or before byte `n - 1`.
+/// At most `n` bytes plus an ellipsis, cut on a rune start at or before byte
+/// `n - 1`.
 pub fn truncate(s: &str, n: usize) -> String {
     if s.len() <= n {
         return s.to_owned();

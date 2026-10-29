@@ -1,7 +1,7 @@
-//! Live branch sync (Go `branch_sync.go`): the checkout is the source of
-//! truth (humans and agents rename or switch branches mid-session), so the
-//! cached Workspace.Branch, every live walk on it, and an open Local PR
-//! follow. A forge PR's branch stays frozen at its remote head.
+//! Live branch sync: the checkout is the source of truth (humans and agents
+//! rename or switch branches mid-session), so the cached Workspace.Branch,
+//! every live walk on it, and an open Local PR follow. A forge PR's branch
+//! stays frozen at its remote head.
 
 use std::time::Duration;
 

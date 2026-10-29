@@ -1,7 +1,7 @@
-//! `OpenPath` (Go `open_path.go`): open a file or folder in Recur. Find or
-//! create its project, focus the working copy or the matching workspace, and
-//! jump to the file. Homeless files become absolute-path tabs on the
-//! singleton Files project instead of adding their folder as a project.
+//! `OpenPath`: open a file or folder in Recur. Find or create its project,
+//! focus the working copy or the matching workspace, and jump to the file.
+//! Homeless files become absolute-path tabs on the singleton Files project
+//! instead of adding their folder as a project.
 
 use recur_domain::path;
 use recur_domain::{FILES_PROJECT_ID, OpenPathResult, Project, Workspace};
@@ -29,7 +29,7 @@ fn rel_or_abs(root: &str, abs: &str) -> String {
 }
 
 impl AppServices {
-    /// Go `OpenPath`: serialized, then published as `app.open`.
+    /// Serialized, then published as `app.open`.
     pub(crate) async fn open_path_at(&self, path: &str) -> Result<OpenPathResult> {
         let _guard = self.open_mu.lock().await;
         let res = self.open_path_locked(path).await?;

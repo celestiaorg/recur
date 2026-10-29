@@ -1,6 +1,6 @@
-/// Declares a Go string-typed enum (`type X string` plus consts).
+/// Declares a string-typed enum.
 ///
-/// Known values get variants; anything else (including the empty Go zero
+/// Known values get variants; anything else (including the empty
 /// value, which is `Default`) round-trips through `Other`, so an unknown
 /// persisted value never fails to load. Equality and hashing go through
 /// `as_str`, so `Other("merge")` equals `Merge`.
@@ -15,7 +15,7 @@ macro_rules! string_enum {
         #[derive(Debug, Clone)]
         pub enum $name {
             $( $(#[$vmeta])* $variant, )+
-            /// Any other stored value, including the empty Go zero value.
+            /// Any other stored value, including the empty value.
             Other(String),
         }
 
@@ -32,7 +32,7 @@ macro_rules! string_enum {
                 $( self.as_str() == $value || )+ false
             }
 
-            /// Reports whether this is the empty Go zero value.
+            /// Reports whether this is the empty value.
             pub fn is_empty(&self) -> bool {
                 self.as_str().is_empty()
             }

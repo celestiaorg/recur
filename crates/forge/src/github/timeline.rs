@@ -93,8 +93,8 @@ fn actor_or(primary: Option<&Actor>, fallback: Option<&Actor>) -> Actor {
     fallback.cloned().unwrap_or_else(|| Actor::named("someone"))
 }
 
-/// Go `parseGitHubTimeline`. `commit_logins` maps commit oids to linked
-/// GitHub logins; `head` and `base` name the branches in ref events.
+/// `commit_logins` maps commit oids to linked GitHub logins; `head` and `base`
+/// name the branches in ref events.
 pub(crate) fn parse_timeline(
     raw: &str,
     now: DateTime<Utc>,

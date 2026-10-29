@@ -140,7 +140,7 @@ impl SettingsView {
     ) -> AnyElement {
         let p = self.vcx.state.read(cx).editor_prefs.clone();
         let tp = self.vcx.state.read(cx).terminal_prefs.clone();
-        // Svelte trims the space opening `{#if monoFontsLoading} · scanning…{/if}`.
+        // The scanning note carries no leading space.
         let scanning = if self.mono_loading {
             "· scanning…"
         } else {
@@ -318,7 +318,7 @@ impl SettingsView {
             let d = match (over, conv) {
                 (Some(o), _) => format!("Override · {}", o.label()),
                 (None, Some(c)) => match hint {
-                    // Svelte trims the space opening `{#if lang.hint} (…){/if}`.
+                    // The hint carries no leading space.
                     Some(h) => format!("Auto · {}({h})", c.label()),
                     None => format!("Auto · {}", c.label()),
                 },

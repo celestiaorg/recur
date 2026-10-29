@@ -56,9 +56,9 @@ impl EventHub {
     }
 }
 
-/// Every event in PARITY "App events", plus `notify` (the desktop turns it
-/// into an OS notification). Variants marked "UI to backend" are the ones
-/// the Svelte UI emitted itself; the desktop shell subscribes to them.
+/// Every app event, plus `notify` (the desktop turns it into an OS
+/// notification). Variants marked "UI to backend" are emitted by the UI
+/// itself; the desktop shell subscribes to them.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppEvent {
     /// `agent.step`
@@ -404,8 +404,8 @@ impl AppEvent {
     }
 }
 
-/// Events the Go side emitted with an empty map (`{}`) also arrive as `null`
-/// from callers that emit no data; both read as the empty payload.
+/// Events with an empty map (`{}`) payload also arrive as `null` from callers
+/// that emit no data; both read as the empty payload.
 fn null_object(d: Value) -> Value {
     if d.is_null() {
         Value::Object(Default::default())
@@ -586,7 +586,7 @@ pub struct AgentUpdated {
     pub code: String,
 }
 
-/// `app.focused`. Go sends `{}`; the frontend read an optional workspace id.
+/// `app.focused`: `{}` or an optional workspace id.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppFocused {
@@ -698,7 +698,7 @@ pub struct GithubBranchRules {
     pub require_pr: bool,
 }
 
-/// `inbox.updated`. Go sends the unread count; the frontend refetches.
+/// `inbox.updated`: the unread count; views refetch.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct InboxUpdated {
@@ -822,8 +822,7 @@ pub struct PrCommentEvent {
     pub comment: PrComment,
 }
 
-/// `pr.updated`: the fields the PR list merges. Go sends them all; an absent
-/// one leaves the view's value alone. `pendingOnly` skips the full refetch.
+/// `pr.updated`: the fields the PR list merges. An absent one leaves the view's value alone. `pendingOnly` skips the full refetch.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct PrUpdated {
@@ -891,7 +890,7 @@ pub struct PrUpdated {
 #[serde(default, rename_all = "camelCase")]
 pub struct PrsSynced {
     pub project_id: String,
-    /// `None` is Go's nil slice (`null`). Shared: every subscriber gets the event.
+    /// `None` encodes as `null`. Shared: every subscriber gets the event.
     pub prs: Option<Arc<Vec<Pr>>>,
 }
 
@@ -1124,7 +1123,7 @@ pub struct WorkspaceFsChanged {
     pub paths: Vec<String>,
 }
 
-/// `workspace.updated`. Go sends the full loop shape (every field below the
+/// `workspace.updated`: the full loop shape (every field below the
 /// id up to `scheduleId`) or the hoist shape (`fromWorkspaceId`, `codeRemap`,
 /// `movedCodes`, `chatsChanged`, `focusChatCode`); an absent field leaves the
 /// view's value alone.

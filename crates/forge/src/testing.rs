@@ -1,7 +1,4 @@
-//! [`FakeForge`]: a GitHub-shaped [`Forge`] for engine and services tests,
-//! replacing the Go engine's package-level function seams
-//! (`listGitHubPRsFn`, `getGitHubPRSnapshot`, `postGitHubPRCommentFn`,
-//! `mergeGitHubPR`, `fetchGitHubBranchRequiresPRFn`, …).
+//! [`FakeForge`]: a GitHub-shaped [`Forge`] for engine and services tests.
 //!
 //! Every I/O method records a [`FakeCall`] and runs the handler installed
 //! with the matching `on_*` setter, or a harmless default (Ok/empty;

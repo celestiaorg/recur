@@ -1,4 +1,4 @@
-//! The `claude -p --output-format stream-json` parser (Go `streamjson.go`).
+//! The `claude -p --output-format stream-json` parser.
 //!
 //! One NDJSON line becomes zero or more [`AgentEvent`]s. The top-level `type`
 //! selects the shape and unknown types are ignored (the union has ~30
@@ -16,10 +16,10 @@
 //! onto the parent stream: their tools, text and thinking render inside the
 //! Task card, and their result/init/compact/usage never speak for the parent.
 //!
-//! Decoding follows Go `encoding/json` field rules: `null` is the zero value,
-//! unknown fields are ignored, invalid UTF-8 becomes U+FFFD per byte.
-//! Claude Code writes JSON.stringify output, so Go's case-insensitive key
-//! matching and last-wins duplicate keys never arise and are not emulated.
+//! Decoding rules: `null` is the zero value, unknown fields are ignored,
+//! invalid UTF-8 becomes U+FFFD per byte. Claude Code writes JSON.stringify
+//! output, so case-insensitive key matching and last-wins duplicate keys never
+//! arise and are not emulated.
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -96,7 +96,7 @@ pub fn parse_line(line: &[u8]) -> Result<Vec<AgentEvent>, ParseError> {
     }
 }
 
-/// Go `bytes.TrimSpace` over the four ASCII spaces a line can carry.
+/// Trims the four ASCII spaces a line can carry.
 fn trim_ascii_space(mut b: &[u8]) -> &[u8] {
     let ws = |c: &u8| matches!(c, b' ' | b'\t' | b'\r' | b'\n');
     while b.first().is_some_and(ws) {
@@ -108,8 +108,7 @@ fn trim_ascii_space(mut b: &[u8]) -> &[u8] {
     b
 }
 
-/// Each byte of an invalid UTF-8 sequence becomes its own U+FFFD, as Go's
-/// JSON decoder coerces strings.
+/// Each byte of an invalid UTF-8 sequence becomes its own U+FFFD.
 fn go_lossy(mut b: &[u8]) -> Cow<'_, str> {
     if let Ok(s) = std::str::from_utf8(b) {
         return Cow::Borrowed(s);
@@ -132,20 +131,19 @@ fn go_lossy(mut b: &[u8]) -> Cow<'_, str> {
     }
 }
 
-/// Decodes like Go `json.Unmarshal` into a struct: a top-level `null` is the
-/// zero value.
+/// Decodes a struct: a top-level `null` is the zero value.
 fn decode<T: DeserializeOwned + Default>(line: &str, what: &'static str) -> Result<T, ParseError> {
     serde_json::from_str::<Option<T>>(line)
         .map(Option::unwrap_or_default)
         .map_err(|source| ParseError { what, source })
 }
 
-/// `null` decodes as the zero value (Go non-pointer fields).
+/// `null` decodes as the zero value.
 fn nd<'de, D: Deserializer<'de>, T: Deserialize<'de> + Default>(d: D) -> Result<T, D::Error> {
     Ok(Option::<T>::deserialize(d)?.unwrap_or_default())
 }
 
-/// A present field keeps its raw text, `null` included (Go `json.RawMessage`).
+/// A present field keeps its raw text, `null` included.
 fn raw_some<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Box<RawValue>>, D::Error> {
     Box::<RawValue>::deserialize(d).map(Some)
 }

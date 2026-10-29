@@ -2,7 +2,7 @@
 //!
 //! The `*.tmpl` files are cobra's `fmt.Sprintf` format strings copied
 //! verbatim (Copyright 2013-2023 The Cobra Authors, Apache License 2.0);
-//! [`go_sprintf`] applies the subset of Go's fmt verbs they use.
+//! [`go_sprintf`] applies the subset of `fmt` verbs they use.
 
 const BASH: &str = include_str!("bash.tmpl");
 const ZSH: &str = include_str!("zsh.tmpl");
@@ -98,8 +98,8 @@ pub fn powershell(name: &str, include_desc: bool) -> String {
     go_sprintf(POWERSHELL, &args)
 }
 
-/// Go `fmt.Sprintf` for `%%`, `%s` / `%d` with optional `[n]` argument
-/// index and `-width` (padding counts runes, like Go).
+/// `fmt.Sprintf` for `%%`, `%s` / `%d` with optional `[n]` argument
+/// index and `-width` (padding counts runes).
 fn go_sprintf(format: &str, args: &[Arg]) -> String {
     let mut out = String::with_capacity(format.len() + 256);
     let mut chars = format.chars().peekable();

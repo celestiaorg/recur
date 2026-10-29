@@ -1,5 +1,4 @@
-//! Sends on PR surfaces (Go `github_prs_test.go` SendWorkspaceMessage
-//! cases E4 left for E5).
+//! Sends on PR surfaces (the cases E4 left for E5).
 
 use recur_domain::{AgentRole, Pr, Workspace};
 

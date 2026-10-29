@@ -1,5 +1,4 @@
-//! Where the bridge lives (Go `cursor/locate.go`, `manifest.go`, and the
-//! root helpers of `attribution.go`).
+//! Where the bridge lives, its manifest, and the attribution patch roots.
 
 use std::path::{Component, Path, PathBuf};
 
@@ -108,7 +107,7 @@ pub fn sdk_version(bin_or_root: &Path) -> String {
         .unwrap_or_default()
 }
 
-/// Go `filepath.Clean`: lexical, `..` resolved against earlier elements, an
+/// Lexical clean: `..` resolved against earlier elements, an
 /// empty result is ".".
 pub(crate) fn clean(p: &Path) -> PathBuf {
     let mut out: Vec<Component<'_>> = Vec::new();
@@ -131,8 +130,7 @@ pub(crate) fn clean(p: &Path) -> PathBuf {
     out.iter().collect()
 }
 
-/// Go `filepath.Abs`: joined to the working directory when relative, then
-/// cleaned.
+/// Joined to the working directory when relative, then cleaned.
 pub(crate) fn abs(p: &Path) -> std::io::Result<PathBuf> {
     if p.is_absolute() {
         return Ok(clean(p));
@@ -149,7 +147,6 @@ mod tests {
         recur_exec::write_executable(p, "#!/bin/sh\n", 0o755).unwrap();
     }
 
-    // Go TestLocateOnlyDataDir.
     #[test]
     fn locate_only_data_dir() {
         let data = tempfile::tempdir().unwrap();
@@ -170,7 +167,6 @@ mod tests {
         assert!(locate(Path::new("")).is_err());
     }
 
-    // Go TestSDKVersionFromManifest.
     #[test]
     fn sdk_version_from_manifest() {
         let root = tempfile::tempdir().unwrap();
@@ -186,7 +182,6 @@ mod tests {
         assert_eq!(sdk_version(Path::new("")), "");
     }
 
-    // Go TestBridgeRootRequiresBinLayout.
     #[test]
     fn bridge_root_requires_bin_layout() {
         let dir = tempfile::tempdir().unwrap();
@@ -201,7 +196,6 @@ mod tests {
         assert_eq!(bridge_root(&root), Some(root));
     }
 
-    // Go TestOwnedBridgeRootOnlyRecurDataDir.
     #[test]
     fn owned_bridge_root_only_recur_data_dir() {
         let data = tempfile::tempdir().unwrap();

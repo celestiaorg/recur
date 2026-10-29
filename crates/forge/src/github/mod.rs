@@ -1,5 +1,4 @@
-//! GitHub over the `gh` CLI (same commands, GraphQL queries and parsing as
-//! the Go engine) plus authenticated attachment-image fetches.
+//! GitHub over the `gh` CLI plus authenticated attachment-image fetches.
 
 mod branch_rules;
 mod checks;
@@ -151,8 +150,8 @@ impl GitHub {
         &self.gh
     }
 
-    /// Go `ghCLIAvailable`: `gh` installed and `gh auth status` passes,
-    /// reused for 30 s. Conservative: a hung or missing gh is unavailable.
+    /// `gh` installed and `gh auth status` passes, reused for 30 s.
+    /// Conservative: a hung or missing gh is unavailable.
     pub async fn cli_available(&self) -> bool {
         if let Some((at, ok)) = *self.availability.lock()
             && at.elapsed() < AVAILABILITY_TTL
@@ -177,8 +176,7 @@ impl GitHub {
         matches!(tokio::time::timeout(Duration::from_secs(5), run).await, Ok(o) if o.ok())
     }
 
-    /// Go `GitHubLogin` / `fetchGitHubLogin`: `gh api user -q .login`, or
-    /// empty.
+    /// `gh api user -q .login`, or empty.
     pub async fn viewer_login(&self) -> String {
         if !self.gh.installed() {
             return String::new();
@@ -193,8 +191,8 @@ impl GitHub {
         }
     }
 
-    /// Go `fetchGitHubReviewThreads` (live comparisons; snapshots read
-    /// threads from the combined query).
+    /// Review threads (live comparisons; snapshots read threads from the
+    /// combined query).
     pub async fn review_threads(
         &self,
         repo: &Path,
@@ -212,8 +210,8 @@ impl GitHub {
         Ok(thread::parse_review_threads(&out))
     }
 
-    /// Go `fetchGitHubCommitRollup`: commit signatures/checks and actor
-    /// avatars (live comparisons; snapshots read them from the combined query).
+    /// Commit signatures/checks and actor avatars (live comparisons; snapshots
+    /// read them from the combined query).
     pub async fn commit_rollup(
         &self,
         repo: &Path,

@@ -1,7 +1,7 @@
-//! Implementer handoff (Go `handoff.go`): the Coder's done notes (what
-//! deviated, what worries it, what is unfinished) reach the Reviewer's
-//! briefing for the same round, the conductor's context, and — when the plan
-//! is structured — a bounded Maestro replan turn before the review.
+//! Implementer handoff: the Coder's done notes (what deviated, what worries it,
+//! what is unfinished) reach the Reviewer's briefing for the same round, the
+//! conductor's context, and — when the plan is structured — a bounded Maestro
+//! replan turn before the review.
 
 use recur_agent::display::PLAN_MAX_PERSIST_CHARS;
 use recur_agent::{AgentEvent, TurnRequest};

@@ -1,8 +1,7 @@
-//! Recur's MCP host server (Go `internal/mcp`): a small HTTP server the agent
-//! CLIs connect to. Its tools are not a way to run code: each tool call
-//! becomes a typed engine callback on [`recur_agent_tools::Host`], so
-//! structured signals re-enter the engine as events and the engine enforces
-//! its rules at the tool boundary.
+//! Recur's MCP host server: a small HTTP server the agent CLIs connect to. Its
+//! tools are not a way to run code: each tool call becomes a typed engine
+//! callback on [`recur_agent_tools::Host`], so structured signals re-enter the
+//! engine as events and the engine enforces its rules at the tool boundary.
 
 mod protocol;
 mod server;

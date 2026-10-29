@@ -1,7 +1,7 @@
-//! Loop engage from a chat tab (Go `workspace_chat.go` Loop-mode send):
-//! one chat = one loop. The first Loop-mode message starts this tab's walk
-//! with no conductor LLM turn (specialists do the phase work; the planner
-//! carries the rename nudge); later messages talk to the conductor.
+//! Loop engage from a chat tab: one chat = one loop. The first Loop-mode
+//! message starts this tab's walk with no conductor LLM turn (specialists do
+//! the phase work; the planner carries the rename nudge); later messages talk
+//! to the conductor.
 
 use recur_agent::UserImage;
 use recur_agent::attach::strip_markers;
@@ -14,8 +14,8 @@ use crate::session_config::AgentConfig;
 use crate::turn::mirror::SessionMirror;
 
 impl Engine {
-    /// One Loop-mode send on tab `code` (Go `sendLoopChatMessage`): engages
-    /// this tab's walk on the first message, else a conductor turn.
+    /// One Loop-mode send on tab `code`: engages this tab's walk on the first
+    /// message, else a conductor turn.
     pub async fn send_loop_chat_message(
         &self,
         ws: Workspace,

@@ -70,7 +70,7 @@ fn merge_todos(cur: Vec<TodoItem>, incoming: Vec<TodoItem>) -> Vec<TodoItem> {
     out
 }
 
-/// Go `json.Marshal` of the merged slice: nil (empty) is `null`.
+/// The merged slice as JSON: empty is `null`.
 fn todos_json(items: &[TodoItem]) -> String {
     if items.is_empty() {
         return "null".into();

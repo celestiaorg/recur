@@ -1,7 +1,7 @@
-//! Agent slots with keep-awake (Go `keepawake.go`): while any agent turn
-//! holds a slot and Settings.PreventSleepWhileAgentsRun is on, a macOS
-//! `caffeinate` assertion suppresses idle sleep. The last release also tells
-//! providers the machine went idle (Cursor's deferred bridge close).
+//! Agent slots with keep-awake: while any agent turn holds a slot and
+//! Settings.PreventSleepWhileAgentsRun is on, a macOS `caffeinate` assertion
+//! suppresses idle sleep. The last release also tells providers the machine
+//! went idle (Cursor's deferred bridge close).
 
 use std::sync::Arc;
 

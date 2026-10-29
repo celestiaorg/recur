@@ -26,7 +26,7 @@ pub fn resolve_path(worktree: &str, p: &str) -> Result<String, String> {
     }
 }
 
-/// Go `code.SafeJoin`: joins a slash path under root, refusing any `..`.
+/// Joins a slash path under root, refusing any `..`.
 pub fn safe_join(root: &str, rel_path: &str) -> Result<String, String> {
     let root_abs = abs(root)?;
     let rel_path = rel_path.strip_prefix('/').unwrap_or(rel_path);
@@ -95,7 +95,7 @@ pub(crate) fn read_file(path: &str) -> Result<Vec<u8>, String> {
     fs::read(path).map_err(|e| format!("{path}: {e}"))
 }
 
-/// Go `os.WriteFile(path, data, 0o644)`.
+/// Writes `data` to `path` with mode 0o644.
 pub(crate) fn write_file(path: &str, data: &[u8]) -> Result<(), String> {
     use std::io::Write;
     use std::os::unix::fs::OpenOptionsExt;
@@ -138,7 +138,7 @@ mod tests {
         assert_eq!(
             eval_symlinks(&format!("{root}/l/../x")),
             None,
-            "missing leaf after .. fails like Go"
+            "missing leaf after .. fails"
         );
         assert_eq!(
             eval_symlinks(&format!("{root}/l/..")),

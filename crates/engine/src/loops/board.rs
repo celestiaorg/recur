@@ -1,10 +1,10 @@
-//! The board (Go `board.go`): the first coding pass of a converge entry
-//! works a structured plan continuously. Every ready step runs in a child
-//! workspace (fan-out, grouped by file overlap), a child merges back the
-//! moment it settles, whatever that unblocked starts at once while slower
-//! siblings keep running, and the Maestro may replan off each handoff. The
-//! parent codes only to resolve a merge conflict or, as a fallback, to
-//! finish steps a child failed. The review then judges the aggregate diff.
+//! The board: the first coding pass of a converge entry works a structured plan
+//! continuously. Every ready step runs in a child workspace (fan-out, grouped
+//! by file overlap), a child merges back the moment it settles, whatever that
+//! unblocked starts at once while slower siblings keep running, and the Maestro
+//! may replan off each handoff. The parent codes only to resolve a merge
+//! conflict or, as a fallback, to finish steps a child failed. The review then
+//! judges the aggregate diff.
 
 use std::collections::HashSet;
 

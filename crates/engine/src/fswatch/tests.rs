@@ -1,5 +1,4 @@
-//! Port of Go `fswatch_test.go` (and `TestFingerprintIncludesBranch` from
-//! `branch_sync_test.go`).
+//! Worktree watcher tests, including the fingerprint covering the branch.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;

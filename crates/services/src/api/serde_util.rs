@@ -1,4 +1,4 @@
-//! `skip_serializing_if` predicates for Go `omitempty` fields.
+//! `skip_serializing_if` predicates for `omitempty` fields.
 
 pub(crate) fn is_false(b: &bool) -> bool {
     !*b

@@ -1,7 +1,7 @@
 //! Codex turns and probes against a fake `codex app-server` shell script:
 //! thread start/resume, notifications to events, approvals routed to the
 //! human, steering, cancel, a crashed server, failed turns. Plus the live
-//! smoke (Go `codex_smoke_test.go`), env-gated exactly as in Go.
+//! smoke, env-gated.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -415,8 +415,7 @@ while next; do :; done
     );
 }
 
-/// Live app-server smoke (Go `TestCodexE2ESmoke`). Needs a native binary
-/// and auth:
+/// Live app-server smoke. Needs a native binary and auth:
 ///
 /// ```text
 /// RECUR_CODEX_E2E=1 RECUR_CODEX=/path/to/codex cargo test -p recur-provider-codex --test runner -- codex_e2e_smoke

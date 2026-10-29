@@ -1,6 +1,5 @@
-//! The engine's calls into a project's or a PR's forge (Go `github.go`
-//! engine glue: `CreateGitHubPR`'s base mapping, `pushGitHubHead`,
-//! `githubPRChecks`, PR head fetches and the branch-rules cache).
+//! The engine's calls into a project's or a PR's forge: base mapping, head
+//! pushes, PR checks, PR head fetches and the branch-rules cache.
 
 use std::path::Path;
 use std::time::Duration;

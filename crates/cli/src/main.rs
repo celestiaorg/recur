@@ -1,4 +1,4 @@
-//! `recur-cli`: the Recur command line (Go `cmd/recur`).
+//! `recur-cli`: the Recur command line.
 //!
 //! ```text
 //! recur .

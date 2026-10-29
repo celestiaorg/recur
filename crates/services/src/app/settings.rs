@@ -1,7 +1,5 @@
-//! `SettingsService` (Go `services.go` settings half, `claude_status.go`,
-//! `codex_service.go`, `cursor_service.go`, `compatible_service.go`,
-//! `provider_usage.go`): settings and their save side effects, provider
-//! status cards, the model catalog, usage and assigned issues.
+//! `SettingsService`: settings and their save side effects, provider status
+//! cards, the model catalog, usage and assigned issues.
 
 use async_trait::async_trait;
 use recur_agent::{CredentialDraft, Provider as _, ProviderStatus};
@@ -23,9 +21,9 @@ use crate::api::{
 use crate::events::{AppEvent, CursorInstall};
 use crate::{Error, Result};
 
-/// Go `persistBranchNamePrefix`: the stored prefix is the normalized
-/// effective one; empty is "none", mirrored into the legacy mode so a dropped
-/// empty value cannot silently revert to `recur`.
+/// The stored prefix is the normalized effective one; empty is "none", mirrored
+/// into the legacy mode so a dropped empty value cannot silently revert to
+/// `recur`.
 pub(crate) fn persist_branch_name_prefix(mut set: Settings) -> Settings {
     let raw = match &set.branch_name_prefix {
         Some(p) => p.clone(),
@@ -119,10 +117,10 @@ impl AppServices {
         set.normalize_providers()
     }
 
-    /// Go `SetSettings`: validate, normalize, remap slots off turned-off
-    /// providers, persist, then apply the side effects: Cursor disconnect,
-    /// provider registration and settings, chat remaps, language servers,
-    /// keep-awake, governor caps and the scheduled-workspace prune.
+    /// Validate, normalize, remap slots off turned-off providers, persist, then
+    /// apply the side effects: Cursor disconnect, provider registration and
+    /// settings, chat remaps, language servers, keep-awake, governor caps and
+    /// the scheduled-workspace prune.
     pub(crate) async fn save_settings(&self, set: Settings) -> Result<Settings> {
         validate_mcp_servers(&set.mcp_servers).map_err(err)?;
         validate_compatible_providers(&set.compatible_providers).map_err(err)?;
@@ -231,7 +229,6 @@ impl AppServices {
             .into_owned()
     }
 
-    /// Go `RefreshChatGPTModels`.
     async fn refresh_chatgpt_models_at(&self) -> Result<ChatGPTStatus> {
         let auth = self.providers.chatgpt.auth();
         let status = auth.status().await.map_err(Error::new)?;
@@ -263,7 +260,7 @@ impl AppServices {
         })
     }
 
-    /// Go `WaitCodexLogin`: on success, ChatGPT auth replaces any saved key.
+    /// Waits for a Codex login; on success, ChatGPT auth replaces any saved key.
     async fn wait_codex_login_at(&self, login_id: &str) -> Result<CodexStatus> {
         let st = self
             .providers

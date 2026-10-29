@@ -1,5 +1,5 @@
 //! `Settings.svelte`: the split nav, the header and the active pane, with the panes' state,
-//! their loads (Svelte's `$effect`s keyed on the active section and the values they read) and
+//! their loads (keyed on the active section and the values they read) and
 //! `patchSettings`.
 
 use recur_ui::guard::Guarded;
@@ -66,7 +66,7 @@ pub const MODEL_SLOTS: [&str; 6] = ["ask", "plan", "agent", "review", "loop", "t
 /// The Models effect's key: provider readiness and toggles, and the catalog revision.
 pub(crate) type ModelsKey = (bool, bool, bool, bool, bool, u64);
 
-/// Svelte's `$effect`s, by what they read: one rerun per change of the key, cancelled (by
+/// Effects, by what they read: one rerun per change of the key, cancelled (by
 /// generation) when the key changes again.
 #[derive(Default)]
 pub(crate) struct Effects {

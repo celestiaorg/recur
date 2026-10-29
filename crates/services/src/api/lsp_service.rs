@@ -17,8 +17,6 @@ use crate::Result;
 ///
 /// The frontend @codemirror/lsp-client owns protocol/UI; this service only
 /// frames stdio and resolves worktree roots.
-///
-/// Rust port of Go `app.LSPService` (`frontend/bindings/recur/internal/app/lspservice.ts`).
 #[async_trait]
 pub trait LspService: Send + Sync {
     /// CloseLSP stops one language server session.

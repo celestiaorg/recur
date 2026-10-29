@@ -91,8 +91,8 @@ fn seed_defaults_repo_bundles() {
 
 #[test]
 fn seed_defaults_embedded_matches_repo_stamps() {
-    // The embedded tree must hash exactly like the repo tree (same stamps
-    // the Go app writes), so switching apps never reseeds needlessly.
+    // The embedded tree must hash exactly like the repo tree (same stamps),
+    // so startup never reseeds needlessly.
     let (_g1, from_dir) = temp_dir();
     let (_g2, from_embed) = temp_dir();
     seed_defaults(&from_dir, &DirSource(shipped_root()), ".").unwrap();

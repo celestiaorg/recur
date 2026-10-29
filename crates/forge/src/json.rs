@@ -1,19 +1,19 @@
-//! JSON decoding with Go `encoding/json` leniency: `null` decodes to the zero
-//! value and missing fields default, so every decoded struct is
-//! `#[serde(default)]` and nulls are dropped before decoding.
+//! Lenient JSON decoding: `null` decodes to the zero value and missing fields
+//! default, so every decoded struct is `#[serde(default)]` and nulls are
+//! dropped before decoding.
 
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
-/// Go `json.Unmarshal` into `T` (the whole input must be one JSON value).
+/// Decodes `T` (the whole input must be one JSON value).
 pub fn decode<T: DeserializeOwned>(raw: &str) -> Result<T, serde_json::Error> {
     let mut v: Value = serde_json::from_str(raw)?;
     strip_nulls(&mut v);
     serde_json::from_value(v)
 }
 
-/// Go `json.NewDecoder(r).Decode(&v)`: the first JSON value; trailing text
-/// (gh appends error lines to combined output) is ignored.
+/// The first JSON value; trailing text (gh appends error lines to combined
+/// output) is ignored.
 pub fn decode_first<T: DeserializeOwned>(raw: &str) -> Result<T, serde_json::Error> {
     let mut stream = serde_json::Deserializer::from_str(raw).into_iter::<Value>();
     let mut v = match stream.next() {
@@ -30,7 +30,7 @@ pub fn decode_value<T: DeserializeOwned>(mut v: Value) -> Result<T, serde_json::
 }
 
 /// Object members that are null are removed (field default); null array
-/// elements become `{}` (Go's zero struct).
+/// elements become `{}` (a default struct).
 fn strip_nulls(v: &mut Value) {
     match v {
         Value::Object(m) => {

@@ -1,6 +1,5 @@
-//! App-server notifications to normalized events (Go `consumeTurn`'s
-//! notification switch, `handleItemStarted`, `handleItemCompleted` and the
-//! file-change, reasoning and token-usage helpers in `engine/codex.go`).
+//! App-server notifications to normalized events, including the file-change,
+//! reasoning and token-usage helpers.
 //!
 //! Tool calls keep Codex's raw vocabulary (`shell`, `edit`, `write`,
 //! `delete`, `mcp__<server>__<tool>`); [`crate::display`] maps them to the
@@ -34,7 +33,7 @@ pub struct TurnState {
 }
 
 /// A JSON object with each member's raw text, so arguments and results
-/// survive verbatim (Go `json.RawMessage`).
+/// survive verbatim.
 struct Obj(HashMap<String, Box<RawValue>>);
 
 impl Obj {
@@ -46,14 +45,14 @@ impl Obj {
         self.0.get(k).map(|r| r.get())
     }
 
-    /// The string member; empty when absent, null or another type (Go's
-    /// partial decode leaves a mistyped field zero).
+    /// The string member; empty when absent, null or another type (a
+    /// mistyped field reads as empty).
     fn str(&self, k: &str) -> String {
         self.strict(k).unwrap_or_default()
     }
 
     /// `None` when the member is present with a non-string type, which makes
-    /// Go's decode of the whole head fail.
+    /// the whole head fail to decode.
     fn strict(&self, k: &str) -> Option<String> {
         match self.raw(k) {
             None | Some("null") => Some(String::new()),
@@ -69,7 +68,7 @@ impl Obj {
 }
 
 /// The `item` of an `item/*` notification and its `type`/`id`, or `None`
-/// where Go's head decode fails.
+/// where the head fails to decode.
 fn item_of(params: &str, started: bool) -> Option<(String, Obj, String, String)> {
     let p = Obj::parse(params)?;
     let raw = p.raw("item")?.to_owned();
@@ -513,7 +512,6 @@ mod tests {
         }
     }
 
-    /// Go `TestCodexMCPReportFindingToolName`.
     #[test]
     fn mcp_tool_names() {
         let mut st = TurnState::default();
@@ -657,7 +655,6 @@ mod tests {
         }
     }
 
-    /// Go `TestApplyCodexMeterUsageSplitsInclusiveCache`.
     #[test]
     fn meter_splits_inclusive_cache() {
         let m = meter_usage(&sol_last(), 258_400);
@@ -666,7 +663,6 @@ mod tests {
         assert_eq!(m.context_window, 258_400);
     }
 
-    /// Go `TestStampCodexTurnUsagePrefersLastOverCumulative`.
     #[test]
     fn turn_usage_prefers_last() {
         let cost = TokenUsage {
@@ -685,7 +681,6 @@ mod tests {
         );
     }
 
-    /// Go `TestObserveCodexTokenUsageKeepsLastForMeter`.
     #[test]
     fn observe_keeps_last_for_meter() {
         let params = r#"{"tokenUsage":{"total":{"totalTokens":4034944,"inputTokens":4020424,"cachedInputTokens":3859456,"outputTokens":14520},"last":{"totalTokens":156713,"inputTokens":155843,"cachedInputTokens":154240,"outputTokens":870},"modelContextWindow":258400}}"#;

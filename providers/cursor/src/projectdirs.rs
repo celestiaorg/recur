@@ -1,4 +1,4 @@
-//! `~/.cursor/projects/<slug>` for a worktree (Go `cursor/projectdirs.go`).
+//! `~/.cursor/projects/<slug>` for a worktree.
 
 use std::path::{Path, PathBuf};
 
@@ -91,7 +91,7 @@ pub(crate) fn remove_cursor_project_dirs_in(
     let Some(root) = cursor_project_root(home, &workspace.to_string_lossy())? else {
         return Ok(());
     };
-    // Go `os.RemoveAll`: a file or link at the path goes too.
+    // A file or link at the path goes too.
     let res = match std::fs::symlink_metadata(&root) {
         Ok(m) if m.is_dir() => std::fs::remove_dir_all(&root),
         Ok(_) => std::fs::remove_file(&root),
@@ -117,8 +117,7 @@ mod tests {
         assert_eq!(cursor_project_slug("/a__b/é"), "a-b");
     }
 
-    // Go TestEnsureCursorProjectDirsCreatesTerminals and
-    // TestRemoveCursorProjectDirsDeletesSlugTree, against an explicit home.
+    // Creating and removing the project dirs, against an explicit home.
     #[test]
     fn ensure_and_remove() {
         let home = tempfile::tempdir().unwrap();

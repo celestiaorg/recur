@@ -1,7 +1,6 @@
-//! The in-process toolbox for `ToolTransport::InProcess` providers (Go
-//! `harness.go` `responsesTools` / `execOne` / `harnessPermitter`): Recur
-//! host tools plus the coding tools, run through the same `Tool::execute`
-//! path MCP wraps, bound to one turn.
+//! The in-process toolbox for `ToolTransport::InProcess` providers: Recur host
+//! tools plus the coding tools, run through the same `Tool::execute` path MCP
+//! wraps, bound to one turn.
 
 use std::sync::Arc;
 

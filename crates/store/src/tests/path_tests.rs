@@ -36,7 +36,7 @@ fn worktrees_dir_explicit_override() {
     );
 }
 
-/// Without overrides the Rust app uses its own roots, side by side with Go.
+/// Without overrides the app uses the default data and worktree roots.
 #[test]
 fn defaults_are_side_by_side_roots() {
     let home = tempfile::tempdir().unwrap();

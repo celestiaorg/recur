@@ -1,8 +1,8 @@
-//! Port of Go `fanout_test.go`: ready steps and file grouping, child
-//! workspaces per step group merged back, failed children not respawned, no
-//! wave barrier, planner-filed plans, docs fan-out, the child loop shape,
-//! conflicts (resume, sibling merges, resolve failure), preserve failures,
-//! the dispatch_mu window, and stopping/resuming children.
+//! Fan-out tests: ready steps and file grouping, child workspaces per step
+//! group merged back, failed children not respawned, no wave barrier,
+//! planner-filed plans, docs fan-out, the child loop shape, conflicts (resume,
+//! sibling merges, resolve failure), preserve failures, the dispatch_mu window,
+//! and stopping/resuming children.
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -131,8 +131,7 @@ fn two_step_plan(body: &str, s1: &str, s2: &str) -> Plan {
     }
 }
 
-/// Queues a parent row with `plan` and dispatches it (Go's pre-seeded plan
-/// tests).
+/// Queues a parent row with `plan` and dispatches it.
 async fn dispatch_with_plan(
     t: &TestEngine,
     proj: &str,

@@ -1,5 +1,5 @@
 //! Deprecated: use `recur bundles ...`. Forwards for compatibility with the
-//! earlier `go run ./cmd/bundles` docs (Go `cmd/bundles`).
+//! earlier `go run ./cmd/bundles` docs.
 
 use std::io::Write;
 

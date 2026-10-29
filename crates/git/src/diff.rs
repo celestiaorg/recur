@@ -141,7 +141,7 @@ pub struct DiffStats {
 }
 
 /// The PR-wide diff versus the base: changed files with parsed hunks and the
-/// rolled-up stats. Empty `files` is Go's nil slice.
+/// rolled-up stats.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PrDiff {
     pub files: Vec<FileDiff>,
@@ -973,7 +973,7 @@ mod tests {
         );
     }
 
-    /// Dropping the scan stops it promptly (Go: an already-cancelled context).
+    /// Dropping the scan stops it promptly.
     #[tokio::test]
     async fn untracked_add_lines_honors_cancel() {
         let repo = init_repo();

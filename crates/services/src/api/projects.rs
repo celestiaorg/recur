@@ -3,7 +3,6 @@ use recur_domain::{BranchChoice, CopyFilesPreview, Project, ProjectGroup, Schedu
 
 use crate::Result;
 
-/// Rust port of Go `app.ProjectsService` (`frontend/bindings/recur/internal/app/projectsservice.ts`).
 #[async_trait]
 pub trait ProjectsService: Send + Sync {
     /// AddProject persists a new project and returns the saved copy (PRD §15.1). A

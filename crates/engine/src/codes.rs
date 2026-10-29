@@ -1,5 +1,4 @@
-//! Chat tab codes and the small rules every slice keys on (Go: `maestro.go`,
-//! `workspace_chat.go`, `app_chat.go`, `chat_child.go`, `chat_errors.go`).
+//! Chat tab codes and the small rules every slice keys on.
 
 use recur_domain::{APP_AGENT_CODE, Workspace};
 
@@ -34,7 +33,7 @@ pub fn is_pair_chat_code(code: &str) -> bool {
     !rest.is_empty() && go_atoi(rest).is_some_and(|n| n >= 2)
 }
 
-/// Go `strconv.Atoi`: optional sign, ASCII digits, no surrounding space.
+/// Integer parse: optional sign, ASCII digits, no surrounding space.
 fn go_atoi(s: &str) -> Option<i64> {
     let digits = s.strip_prefix(['+', '-']).unwrap_or(s);
     if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {

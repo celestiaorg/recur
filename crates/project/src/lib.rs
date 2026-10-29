@@ -3,9 +3,8 @@
 //! write), the workspace environment and dotenv files, and run-config
 //! (setup/teardown commands and dev-server boot).
 //!
-//! Port of Go `internal/projfile`, `internal/wsenv` and `internal/runconfig`,
-//! plus `git.ExpandHome` and the `os.UserHomeDir` / `os.UserConfigDir` rules
-//! they and the store build on ([`home`]).
+//! [`home`] holds the `~` expansion and home / config dir rules they and
+//! the store build on.
 
 pub mod home;
 pub mod projfile;

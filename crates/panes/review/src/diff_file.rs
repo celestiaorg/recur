@@ -83,7 +83,7 @@ type OpenFileFn = Rc<dyn Fn(String, Option<i64>, &mut Window, &mut App)>;
 pub type AddFindingFn = Rc<dyn Fn(String, i64, String, i64, &mut Window, &mut App) -> Task<bool>>;
 type FindingFn = Rc<dyn Fn(Finding, &mut Window, &mut App)>;
 
-/// The Svelte callback props. `None` is "not passed".
+/// The callback props. `None` is "not passed".
 #[derive(Clone, Default)]
 pub struct DiffFileHooks {
     /// `onToggleCollapse`: the host owns `collapsed`.
@@ -207,8 +207,7 @@ pub struct DiffFile {
     /// The composer's placeholder (`composePlaceholder`).
     placeholder: String,
     /// What `refreshLineWindow` last ran for: it re-runs on pane scroll, a resize of the file,
-    /// and changes to the slots, composer, drag or highlight (as the Svelte effect), never
-    /// for its own window change.
+    /// and changes to the slots, composer, drag or highlight, never for its own window change.
     line_window_key: String,
     /// What the card reads of the selected PR, kept until the store changes it.
     facts: Rc<PrFacts>,

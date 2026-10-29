@@ -1,7 +1,6 @@
-//! `TerminalService` (Go `terminal_service.go`): the Observatory's terminal
-//! dock over `recur_term::Manager`. It resolves a workspace to a directory
-//! and otherwise forwards; coalescing, flow control and replay live in the
-//! term crate.
+//! `TerminalService`: the Observatory's terminal dock over
+//! `recur_term::Manager`. It resolves a workspace to a directory and otherwise
+//! forwards; coalescing, flow control and replay live in the term crate.
 
 use async_trait::async_trait;
 use base64::Engine as _;

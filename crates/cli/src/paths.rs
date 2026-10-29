@@ -1,4 +1,4 @@
-//! Managed paths the CLI needs (Go `internal/store` paths, `git.CanonPath`).
+//! Managed paths the CLI needs.
 //!
 //! The data dir is `<UserConfigDir>/Recur`, or `$RECUR_DATA_DIR`.
 
@@ -9,7 +9,7 @@ use recur_domain::path;
 /// Directory name of the managed root under `UserConfigDir`.
 pub const DATA_DIR_NAME: &str = "Recur";
 
-/// Go `os.UserHomeDir` on Unix.
+/// `$HOME`.
 pub fn user_home_dir() -> Result<String, String> {
     match std::env::var("HOME") {
         Ok(h) if !h.is_empty() => Ok(h),
@@ -17,7 +17,7 @@ pub fn user_home_dir() -> Result<String, String> {
     }
 }
 
-/// Go `os.UserConfigDir` (macOS and Linux).
+/// The user config dir (macOS and Linux).
 pub fn user_config_dir() -> Result<String, String> {
     if cfg!(target_os = "macos") {
         return Ok(format!("{}/Library/Application Support", user_home_dir()?));
@@ -73,7 +73,7 @@ pub fn user_bundles_dir() -> Result<String, String> {
     Ok(dir)
 }
 
-/// Go `git.ExpandHome`: a leading `~` or `~/` becomes the home dir.
+/// A leading `~` or `~/` becomes the home dir.
 fn expand_home(p: &str) -> String {
     if (p == "~" || p.starts_with("~/"))
         && let Ok(home) = user_home_dir()
@@ -83,7 +83,7 @@ fn expand_home(p: &str) -> String {
     p.to_string()
 }
 
-/// Go `git.CanonPath`: absolute, cleaned, symlinks resolved when possible.
+/// Absolute, cleaned, symlinks resolved when possible.
 pub fn canon_path(p: &str) -> Result<String, String> {
     let p = expand_home(p).trim().to_string();
     if p.is_empty() {

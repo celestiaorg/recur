@@ -1,7 +1,7 @@
-//! `ShellService` (Go `shell.go`): the last top-level view (`shell.json`,
-//! write coalesced and flushed on quit), the schedules dashboard accordion
-//! (`schedule-view.json`) and the Issues page layout (`issues-view.json`),
-//! all under the data root so they survive restarts.
+//! `ShellService`: the last top-level view (`shell.json`, write coalesced and
+//! flushed on quit), the schedules dashboard accordion (`schedule-view.json`)
+//! and the Issues page layout (`issues-view.json`), all under the data root so
+//! they survive restarts.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -87,8 +87,7 @@ pub fn clamp_shell_state(mut st: ShellState) -> ShellState {
     st
 }
 
-/// Indented JSON (Go `json.MarshalIndent(v, "", "  ")`) written through
-/// `<path>.tmp` and renamed (Go `writeDataJSON`).
+/// Two-space indented JSON written through `<path>.tmp` and renamed.
 pub(crate) fn write_data_json<T: Serialize>(path: &Path, v: &T) -> std::io::Result<()> {
     let data = recur_engine::artifacts::marshal_indent(v)
         .ok_or_else(|| std::io::Error::other("json: unsupported value"))?;
@@ -144,7 +143,7 @@ impl AppServices {
         st.schedule_loaded = true;
     }
 
-    /// Arms the coalesced write (Go `scheduleLocked`).
+    /// Arms the coalesced write.
     fn schedule_shell_flush(&self, st: &mut Inner) {
         if let Some(t) = st.timer.take() {
             t.abort();
@@ -171,7 +170,7 @@ impl AppServices {
         self.shell_flush_locked(&mut st);
     }
 
-    /// Writes any coalesced snapshot (Go `Flush`). The lock is held across
+    /// Writes any coalesced snapshot. The lock is held across
     /// the write so overlapping flushes cannot share `shell.json.tmp`. A
     /// failed write keeps the snapshot pending and retries with backoff; only
     /// the first failure (and the recovery) is logged.

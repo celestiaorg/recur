@@ -27,8 +27,7 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 
 const KILL_GRACE: Duration = Duration::from_millis(500);
 
-/// The part of Go's `context.Context` the runners use: an optional
-/// deadline plus cancellation.
+/// The run context: an optional deadline plus cancellation.
 #[derive(Debug, Clone, Default)]
 pub struct RunCtx {
     deadline: Option<Instant>,
@@ -76,7 +75,7 @@ impl RunCtx {
         }
     }
 
-    /// Resolves when the context ends, with Go's `ctx.Err()` text.
+    /// Resolves when the context ends, with its end reason text.
     pub(crate) async fn done(&self) -> &'static str {
         let deadline = async {
             match self.deadline {
@@ -109,8 +108,7 @@ pub struct RunResult {
     pub open_in_preview: Option<bool>,
 }
 
-/// A failed [`run`]. On timeout `partial` holds the output captured so far
-/// (Go returns both the result and the error).
+/// A failed [`run`]. On timeout `partial` holds the output captured so far.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{message}")]
 pub struct RunError {
@@ -299,7 +297,7 @@ async fn execute(
         status = finished => End::Exited(status.map_err(|e| err!("{e}"))?),
         why = ctx.done() => {
             kill_group(pid, &mut child).await;
-            // Like Go's Wait, collect what the group wrote before it died.
+            // Collect what the group wrote before it died.
             let _ = tokio::time::timeout(KILL_GRACE, async {
                 let _ = (&mut out_task).await;
                 let _ = (&mut err_task).await;
@@ -317,8 +315,7 @@ async fn execute(
 }
 
 /// Spawns, retrying briefly on ETXTBSY: a concurrent fork can still hold
-/// the just-written script open for writing (Go avoids this with
-/// `syscall.ForkLock`, which Rust does not expose).
+/// the just-written script open for writing.
 fn spawn_retrying(command: &mut tokio::process::Command) -> io::Result<tokio::process::Child> {
     let mut attempts = 0;
     loop {
@@ -433,7 +430,7 @@ pub async fn run_prompt_shebang(
     }
 }
 
-/// Decodes a JSON object field as Go would into a `string`.
+/// Decodes a JSON object field as a `string`.
 fn json_string(obj: &Map<String, Value>, name: &str) -> Result<String, String> {
     match go_json_field(obj, name) {
         None | Some(Value::Null) => Ok(String::new()),

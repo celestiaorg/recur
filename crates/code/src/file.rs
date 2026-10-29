@@ -221,7 +221,7 @@ fn chat_image_magic_ok(b: &[u8], mime: &str) -> bool {
     }
 }
 
-/// Go `io.ReadFull` tolerating EOF: the number of bytes read.
+/// Fills `buf`, tolerating EOF: the number of bytes read.
 fn read_full(f: &mut impl Read, buf: &mut [u8]) -> io::Result<usize> {
     let mut n = 0;
     while n < buf.len() {
@@ -414,7 +414,7 @@ pub fn write_file(root: &Path, rel: &str, content: &str) -> Result<()> {
     result
 }
 
-/// Go `os.CreateTemp(dir, prefix+"*")`: a new 0600 file with a random suffix.
+/// A new 0600 file with a random suffix.
 fn create_temp(dir: &str, prefix: &str) -> Result<(String, File)> {
     static SEQ: AtomicU64 = AtomicU64::new(0);
     let mut last = None;

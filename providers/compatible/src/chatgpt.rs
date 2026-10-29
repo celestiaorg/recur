@@ -1,6 +1,6 @@
-//! The ChatGPT Codex route's request contract (Go `responses/chatgpt.go`):
-//! streaming and stateless, with the same flat function tools OpenCode uses.
-//! Encrypted reasoning is requested so it can be replayed between tool rounds.
+//! The ChatGPT Codex route's request contract: streaming and stateless, with
+//! the same flat function tools OpenCode uses. Encrypted reasoning is requested
+//! so it can be replayed between tool rounds.
 
 use serde_json::{Map, Value, json};
 

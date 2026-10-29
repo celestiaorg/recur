@@ -1,4 +1,4 @@
-//! Port of Go `verify_test.go`: the verify phase boots the dev server, the
+//! Verify tests: the verify phase boots the dev server, the
 //! QA agent files evidence over the real MCP path, a pass advances to
 //! pr_open, a fail or a missing run config blocks it, and a graph without
 //! verify never runs QA.

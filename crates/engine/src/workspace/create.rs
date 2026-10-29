@@ -1,7 +1,6 @@
-//! Workspace creation (Go `workspace_create.go`, E1 half): persist the row,
-//! allocate the git worktree (+ port, copied files, setup_cmd) in the
-//! background, retry a failed setup, and roll a failed create back. The loop
-//! start paths (`BeginStartWorkspace*`, `queueStartWorkspace`, …) are E3.
+//! Workspace creation (E1): persist the row, allocate the git worktree (+ port,
+//! copied files, setup_cmd) in the background, retry a failed setup, and roll a
+//! failed create back. The loop start paths are E3.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -43,7 +42,7 @@ pub struct PrHeadCheckoutSpec {
     pub head: Option<recur_forge::HeadRef>,
 }
 
-/// `refs/heads/` stripped, trimmed (Go `normalizePRBranch`).
+/// `refs/heads/` stripped, trimmed.
 pub fn normalize_pr_branch(b: &str) -> String {
     let b = b.trim();
     b.strip_prefix("refs/heads/").unwrap_or(b).to_owned()
@@ -61,8 +60,8 @@ pub async fn wait_alloc(alloc: Option<&Arc<CreatingAlloc>>) {
 }
 
 /// Overlays `src_root`'s dirty and untracked files (and deletions) onto
-/// `dest_root`; tracked commits already travelled with the branch (Go
-/// `copyWorktreeDirty`). Errors are joined with newlines.
+/// `dest_root`; tracked commits already travelled with the branch.
+/// Errors are joined with newlines.
 pub async fn copy_worktree_dirty(src_root: &str, dest_root: &str) -> Result<(), String> {
     if src_root.is_empty() || dest_root.is_empty() || src_root == dest_root {
         return Ok(());

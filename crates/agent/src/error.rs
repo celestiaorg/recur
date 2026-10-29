@@ -86,8 +86,8 @@ pub enum ErrorKind {
 }
 
 /// A failed turn. `partial` is whatever result the turn produced before it
-/// failed (Go returns a `Result` alongside the error); its stderr, subtype
-/// and text feed [`classify`] and [`failure_reason`].
+/// failed; its stderr, subtype and text feed [`classify`] and
+/// [`failure_reason`].
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{message}")]
 pub struct ProviderError {
@@ -105,7 +105,7 @@ impl ProviderError {
         }
     }
 
-    /// Cancellation, worded like Go's `context.Canceled`.
+    /// Cancellation (`context canceled`).
     pub fn canceled() -> Self {
         Self::new(ErrorKind::Canceled, "context canceled")
     }
@@ -130,11 +130,11 @@ impl ProviderError {
     }
 }
 
-/// Decides whether a failed turn is transient (retryable from the
-/// checkpoint) and returns the best human-readable reason (Go
-/// `classifyAgentError`). The reason prefers the provider's own words over
-/// the internal subtype. `err` may be any error; a [`ProviderError`] of kind
-/// [`ErrorKind::Transient`] anywhere in its source chain is transient.
+/// Decides whether a failed turn is transient (retryable from the checkpoint)
+/// and returns the best human-readable reason. The reason prefers the
+/// provider's own words over the internal subtype. `err` may be any error; a
+/// [`ProviderError`] of kind [`ErrorKind::Transient`] anywhere in its source
+/// chain is transient.
 pub fn classify(err: Option<&(dyn Error + 'static)>, res: &TurnResult) -> (String, bool) {
     let reason = failure_reason(err, res);
     let mut cur = err;
@@ -156,16 +156,14 @@ pub fn classify(err: Option<&(dyn Error + 'static)>, res: &TurnResult) -> (Strin
     (reason, transient)
 }
 
-/// Whether `s` names a transient condition (Go `transientFailure`'s scan of
-/// a plain phase error).
+/// Whether `s` names a transient condition (scanning a plain phase error).
 pub fn has_transient_marker(s: &str) -> bool {
     let hay = s.to_lowercase();
     TRANSIENT_MARKERS.iter().any(|m| hay.contains(m))
 }
 
-/// The message shown for a failed turn (Go `agentFailureReason`): the
-/// provider's own text (stderr tail, then the error, then the result text),
-/// falling back to the subtype.
+/// The message shown for a failed turn: the provider's own text (stderr tail,
+/// then the error, then the result text), falling back to the subtype.
 pub fn failure_reason(err: Option<&(dyn Error + 'static)>, res: &TurnResult) -> String {
     let text = err_text(err);
     let hay = [res.stderr.as_str(), &text, &res.text].join("\n");
@@ -273,8 +271,7 @@ fn err_text(err: Option<&(dyn Error + 'static)>) -> String {
     err.map(|e| e.to_string()).unwrap_or_default()
 }
 
-/// Drops CSI/OSC/DCS and other C0 controls except newline, tab and CR (Go
-/// `term.StripVT`, byte for byte).
+/// Drops CSI/OSC/DCS and other C0 controls except newline, tab and CR.
 fn strip_vt(s: &str) -> String {
     let p = s.as_bytes();
     let mut out = Vec::with_capacity(p.len());

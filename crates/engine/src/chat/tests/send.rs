@@ -1,6 +1,6 @@
-//! Port of the send and first-message cases of Go `workspace_chat_test.go`:
-//! the coding-agent turn shape, flags and resume, the rename nudges and
-//! provisional titles (incl. titles stamped ahead of a queued send).
+//! Send and first-message chat tests: the coding-agent turn shape, flags and
+//! resume, the rename nudges and provisional titles (incl. titles stamped ahead
+//! of a queued send).
 
 use recur_agent_tools::names::mcp;
 use recur_domain::{AgentRole, CHAT_MODE_AGENT, ChatAttachment, Flags};

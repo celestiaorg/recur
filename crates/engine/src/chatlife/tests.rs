@@ -1,6 +1,6 @@
-//! Port of the kernel cases of Go `chat_cancel_test.go` (the send-path cases
-//! that drive `SendWorkspaceMessage` move with E4), plus the slot, life-lock
-//! and remount-generation contracts they rely on.
+//! Chat concurrency kernel tests (the send-path cases that drive
+//! `SendWorkspaceMessage` move with E4), plus the slot, life-lock and
+//! remount-generation contracts they rely on.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};

@@ -1,5 +1,5 @@
-//! `codex -c key=value` overrides (Go `codex/mcp.go`): MCP servers plus the
-//! automation defaults. Values are TOML-encoded.
+//! `codex -c key=value` overrides: MCP servers plus the automation defaults.
+//! Values are TOML-encoded.
 
 use std::collections::BTreeMap;
 

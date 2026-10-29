@@ -1,5 +1,4 @@
-//! Cursor included-usage from the dashboard API with a Recur Connect session
-//! (Go `usage/cursor.go`).
+//! Cursor included-usage from the dashboard API with a Recur Connect session.
 
 pub(crate) mod oauth;
 pub(crate) mod session;

@@ -1,4 +1,4 @@
-//! Go `artifact_mentions_test.go`.
+//! Artifact mention tests.
 
 use std::path::Path;
 

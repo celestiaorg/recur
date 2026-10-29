@@ -1,7 +1,7 @@
-//! Port of Go `escalation_test.go`: the round-cap escalation round trip,
-//! keep-iterating and extend_rounds, Stop/Shutdown while escalated, answers
-//! after a restart (cap, plan notes, agent questions, delayed dispatch),
-//! chat-owned rows with no live walk, and the persisted-kind rules.
+//! Escalation tests: the round-cap escalation round trip, keep-iterating and
+//! extend_rounds, Stop/Shutdown while escalated, answers after a restart (cap,
+//! plan notes, agent questions, delayed dispatch), chat-owned rows with no live
+//! walk, and the persisted-kind rules.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -48,7 +48,7 @@ async fn wait_slots_free(eng: &Engine, secs: u64) {
     .await;
 }
 
-/// Shutdown, bounded like Go's 8 s hang guard.
+/// Shutdown, bounded by an 8 s hang guard.
 async fn shutdown_within(eng: &Engine) {
     tokio::time::timeout(Duration::from_secs(8), eng.shutdown())
         .await

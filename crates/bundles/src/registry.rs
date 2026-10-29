@@ -329,8 +329,7 @@ fn collapse_by_scope<T>(mut items: Vec<T>, key: impl Fn(&T) -> (String, String, 
     by_scope.into_values().collect()
 }
 
-/// Directory entries sorted by name, like Go `os.ReadDir`. `is_dir` does
-/// not follow symlinks (Go `DirEntry.IsDir`).
+/// Directory entries sorted by name. `is_dir` does not follow symlinks.
 pub(crate) fn read_dir_sorted(dir: &str) -> io::Result<Vec<(String, bool)>> {
     let mut out = Vec::new();
     for entry in std::fs::read_dir(dir)? {

@@ -1,5 +1,4 @@
-//! Go `engine/cursor_test.go` (frame and result cases) and the frame-fold
-//! cases of `cursortools_test.go`.
+//! Turn frame and result tests and the frame-fold cases.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -39,8 +38,8 @@ fn spec(model: &str, partials: bool) -> TurnSpec {
     }
 }
 
-/// Replays frames through a turn (Go `feed`); `emit` is immediate, as in Go's
-/// zero-value cursorTurn.
+/// Replays frames through a turn; `emit` is immediate, as in a
+/// default turn.
 fn feed(spec: TurnSpec, frames: &[&str]) -> (Turn, Rec) {
     let rec = Rec::default();
     let t = Turn::new(spec, Some(rec.sink()), "agent-1", false);
@@ -1273,7 +1272,7 @@ fn expand_and_subtype() {
     );
 }
 
-// ---- Go `context_usage_test.go`: the composer meter from Cursor usage frames.
+// ---- the composer meter from Cursor usage frames.
 
 fn tool_wave(id: &str, name: &str, args: &str) -> [String; 2] {
     [

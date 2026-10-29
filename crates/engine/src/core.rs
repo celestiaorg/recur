@@ -1,29 +1,29 @@
-//! The engine (Go `engine.go`, E1 half): every piece of shared state, its
-//! construction, and the small helpers every slice leans on.
+//! The engine (E1): every piece of shared state, its construction, and the
+//! small helpers every slice leans on.
 //!
 //! Lock map (plan §4.2), field by field:
 //!
-//! | Go | Field | Kind |
-//! |---|---|---|
-//! | `dispatchMu` | `dispatch_mu` | async, outermost |
-//! | `chatLifeMu` + `lifeLock` | `chat_life` + per-tab async mutex | map sync, tab async |
-//! | `chatTabSlot` | `chat_tabs` | FIFO ticket gate |
-//! | `teardownMu` | `teardown` (guards `shutting_down`) | sync |
-//! | `hoistMu` | `hoist_mu` | sync |
-//! | `watchMu` → `chatFocusMu` | `watch` → `chat_focus` | sync, fixed order |
-//! | `chatUnseenMu` | `chat_unseen_mu` | sync |
-//! | `scheduleMu` | `schedule` | async |
-//! | `openMainMu` | `open_main_mu` | async |
-//! | `idMu` | `id_mu` | async (held across `git branch --list`) |
-//! | `diffSyncMu` + `diffApplyMu` | `diff_sync` + per-workspace async apply lock | |
-//! | `streamSeqMu` | `stream_seq` | sync leaf |
-//! | `continueGenMu` | `continue_gens` | sync leaf |
-//! | `keepAwakeMu` | `keep_awake_mu` | sync leaf |
+//! | Field | Kind |
+//! |---|---|
+//! | `dispatch_mu` | async, outermost |
+//! | `chat_life` + per-tab async mutex | map sync, tab async |
+//! | `chat_tabs` | FIFO ticket gate |
+//! | `teardown` (guards `shutting_down`) | sync |
+//! | `hoist_mu` | sync |
+//! | `watch` → `chat_focus` | sync, fixed order |
+//! | `chat_unseen_mu` | sync |
+//! | `schedule` | async |
+//! | `open_main_mu` | async |
+//! | `id_mu` | async (held across `git branch --list`) |
+//! | `diff_sync` + per-workspace async apply lock | |
+//! | `stream_seq` | sync leaf |
+//! | `continue_gens` | sync leaf |
+//! | `keep_awake_mu` | sync leaf |
 //!
 //! Sync (`parking_lot`) locks are never held across an `.await`; the crate
 //! denies `clippy::await_holding_lock`. Events are published after the
-//! store write that caused them, outside engine locks, except where Go
-//! published under a lock to keep order (documented at the call site).
+//! store write that caused them, outside engine locks, except where an
+//! event is published under a lock to keep order (documented at the call site).
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -55,7 +55,7 @@ use crate::terminals::TerminalSource;
 use crate::workspace::create::{CreatingAlloc, PrHeadCheckoutSpec};
 use crate::workspace::diff_sync::{DiffSync, RefreshAll};
 
-/// An engine failure. Its text is the user-facing message Go returned.
+/// An engine failure. Its text is the user-facing message.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]
 pub struct EngineError(pub String);
@@ -90,7 +90,7 @@ pub struct GitSetup {
 }
 
 impl GitSetup {
-    /// Probes the installed git once (Go `gitpkg.Probe` + `UnsupportedAlert`).
+    /// Probes the installed git once.
     pub async fn probe(worktree_root: impl Into<String>) -> Self {
         let probed = recur_git::probe().await;
         let (warning_title, warning) = recur_git::unsupported_alert(&probed);
@@ -102,8 +102,8 @@ impl GitSetup {
     }
 }
 
-/// The task groups Shutdown joins (Go `loopWG`, `teardownWG`, `scheduleWG`,
-/// plus chat turns).
+/// The task groups Shutdown joins (loops, teardowns, schedules and chat
+/// turns).
 #[derive(Default)]
 pub struct Tasks {
     pub loops: TaskTracker,
@@ -112,9 +112,8 @@ pub struct Tasks {
     pub chat_turns: TaskTracker,
 }
 
-/// The schedule ticker's stop signal and task (Go `scheduleStop` /
-/// `scheduleDone`). E4's `start_scheduled_prompts` installs them; Shutdown
-/// fires `stop` under `schedule` and joins `ticker`.
+/// The schedule ticker's stop signal and task. E4's `start_scheduled_prompts`
+/// installs them; Shutdown fires `stop` under `schedule` and joins `ticker`.
 #[derive(Default)]
 pub struct ScheduleControl {
     pub stop: Option<CancellationToken>,
@@ -123,13 +122,12 @@ pub struct ScheduleControl {
 
 type Hook = Arc<dyn Fn() + Send + Sync>;
 type Clock = Arc<dyn Fn() -> DateTime<Local> + Send + Sync>;
-/// A test seam that may wait (Go's blocking hook funcs).
+/// A test seam that may wait.
 pub(crate) type AsyncHook =
     Arc<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> + Send + Sync>;
 
-/// Test seams (Go's package-level `promoteHook`, `startWalkHook`,
-/// `childQueueHook`, `nowFn`, kitchen word lists, fswatch timing). All
-/// unset in production.
+/// Test seams (the promote, start-walk and child-queue hooks, the clock,
+/// kitchen word lists, fswatch timing). All unset in production.
 pub(crate) struct TestHooks {
     pub clock: Option<Clock>,
     pub promote: Option<Hook>,
@@ -138,10 +136,9 @@ pub(crate) struct TestHooks {
     pub kitchen_words: Option<(Vec<String>, Vec<String>)>,
     pub fs_event_latency: Duration,
     pub fs_poll_backstop: Duration,
-    /// After a send takes its FIFO ticket (Go `testBeforeChatClaim`).
+    /// After a send takes its FIFO ticket.
     pub before_chat_claim: Option<AsyncHook>,
-    /// While the tab slot is released for the fork inject (Go
-    /// `testBeforeApplyChatFork`).
+    /// While the tab slot is released for the fork inject.
     pub before_apply_chat_fork: Option<AsyncHook>,
 }
 
@@ -229,9 +226,9 @@ pub struct Engine {
     /// The last live-stream seq per workspace + agent + kind.
     pub(crate) stream_seq: Mutex<HashMap<String, i64>>,
 
-    /// Human permission prompts (Go `perms`).
+    /// Human permission prompts.
     pub(crate) perms: PermissionBroker,
-    /// Parked ask_user questions (Go `askUsers`).
+    /// Parked ask_user questions.
     pub(crate) ask_users: AskUserBroker,
     /// Serializes `ensure_agent_session`'s lookup-then-create.
     pub(crate) session_ensure_mu: Mutex<()>,
@@ -500,7 +497,7 @@ impl Engine {
             .with_branch_prefix(&self.branch_name_prefix())
     }
 
-    /// A manager with the default prefix (teardown paths, as in Go).
+    /// A manager with the default prefix (teardown paths).
     pub(crate) fn plain_git_manager(&self, repo_path: &str) -> recur_git::Manager {
         recur_git::Manager::new(repo_path, &self.worktree_root)
     }
@@ -517,7 +514,7 @@ impl Engine {
         recur_domain::effective_skill_enabled(name, &global, &p.disabled_skills, &p.enabled_skills)
     }
 
-    /// The engine clock (Go `nowFn`), injectable in tests.
+    /// The engine clock, injectable in tests.
     pub fn now(&self) -> DateTime<Local> {
         let clock = self.hooks.lock().clock.clone();
         match clock {
@@ -557,22 +554,22 @@ impl Engine {
         self.hooks.lock().clock = Some(Arc::new(f));
     }
 
-    /// Runs inside the dispatch critical section (Go `promoteHook`).
+    /// Runs inside the dispatch critical section.
     pub fn set_promote_hook(&self, f: impl Fn() + Send + Sync + 'static) {
         self.hooks.lock().promote = Some(Arc::new(f));
     }
 
-    /// Runs after a chat loop walk releases its life lock (Go `startWalkHook`).
+    /// Runs after a chat loop walk releases its life lock.
     pub fn set_start_walk_hook(&self, f: impl Fn() + Send + Sync + 'static) {
         self.hooks.lock().start_walk = Some(Arc::new(f));
     }
 
-    /// Runs after a fan-out child is inserted (Go `childQueueHook`).
+    /// Runs after a fan-out child is inserted.
     pub fn set_child_queue_hook(&self, f: impl Fn() + Send + Sync + 'static) {
         self.hooks.lock().child_queue = Some(Arc::new(f));
     }
 
-    /// Pins the kitchen word lists (Go `pinKitchenPair`).
+    /// Pins the kitchen word lists.
     pub fn set_kitchen_words(&self, adjectives: &[&str], dishes: &[&str]) {
         self.hooks.lock().kitchen_words = Some((
             adjectives.iter().map(|s| (*s).to_owned()).collect(),
@@ -580,7 +577,7 @@ impl Engine {
         ));
     }
 
-    /// Shrinks the fan-out parent's child poll (Go `fanOutPoll`).
+    /// Shrinks the fan-out parent's child poll.
     pub fn set_fan_out_poll(&self, d: Duration) {
         *self.fan_out_poll.lock() = d;
     }
@@ -592,7 +589,7 @@ impl Engine {
         h.fs_poll_backstop = poll;
     }
 
-    /// Runs after a send takes its FIFO ticket (Go `testBeforeChatClaim`).
+    /// Runs after a send takes its FIFO ticket.
     pub fn set_before_chat_claim_hook<F, Fut>(&self, f: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -601,8 +598,7 @@ impl Engine {
         self.hooks.lock().before_chat_claim = Some(Arc::new(move || Box::pin(f())));
     }
 
-    /// Runs while the tab slot is released for the fork inject (Go
-    /// `testBeforeApplyChatFork`).
+    /// Runs while the tab slot is released for the fork inject.
     pub fn set_before_apply_chat_fork_hook<F, Fut>(&self, f: F)
     where
         F: Fn() -> Fut + Send + Sync + 'static,
@@ -620,20 +616,20 @@ impl Engine {
         }
     }
 
-    /// Go `promoteHook`: inside the dispatch critical section, after the
-    /// target was confirmed not running (no-op in production).
+    /// Inside the dispatch critical section, after the target was confirmed not
+    /// running (no-op in production).
     pub fn run_promote_hook(&self) {
         self.run_hook(|h| h.promote.clone());
     }
 
-    /// Go `startWalkHook`: after a chat loop walk releases its life lock and
-    /// before Resume (no-op in production).
+    /// After a chat loop walk releases its life lock and before Resume (no-op
+    /// in production).
     pub fn run_start_walk_hook(&self) {
         self.run_hook(|h| h.start_walk.clone());
     }
 
-    /// Go `childQueueHook`: after a fan-out child row is inserted queued and
-    /// before its parent link is written (no-op in production).
+    /// After a fan-out child row is inserted queued and before its parent link
+    /// is written (no-op in production).
     pub fn run_child_queue_hook(&self) {
         self.run_hook(|h| h.child_queue.clone());
     }
@@ -673,8 +669,7 @@ impl Engine {
     }
 }
 
-/// The permission broker, publishing through the engine (Go `New` wiring
-/// `notify` / `resolved`).
+/// The permission broker, publishing through the engine.
 fn broker_for(weak: &Weak<Engine>) -> PermissionBroker {
     let b = PermissionBroker::new();
     let w = weak.clone();

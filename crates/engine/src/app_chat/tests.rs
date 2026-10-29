@@ -1,5 +1,5 @@
-//! Port of Go `app_chat_test.go`: the Ask Recur turn shape, its status
-//! events, tabs and unseen, Stop, selection, and present_workspace.
+//! Ask Recur tests: the turn shape, its status events, tabs and unseen, Stop,
+//! selection, and present_workspace.
 
 use recur_agent_tools::names::mcp;
 use recur_domain::{APP_AGENT_CODE, AgentRole, Project, SESSION_KIND_APP, Workspace};

@@ -1,5 +1,4 @@
-//! Catalog snapshot against Go (`golden/catalog.json`) plus the ported
-//! `catalog_test.go` cases.
+//! Catalog snapshot (`golden/catalog.json`) plus the `catalog_test.go` cases.
 
 use std::sync::Arc;
 

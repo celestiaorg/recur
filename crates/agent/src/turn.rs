@@ -1,5 +1,5 @@
-//! One agent turn: what the engine asks for (Go `AgentSpec`) and the
-//! channels a provider talks back through.
+//! One agent turn: what the engine asks for and the channels a provider talks
+//! back through.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -13,8 +13,8 @@ use crate::attach::UserImage;
 use crate::event::AgentEvent;
 use crate::provider::Flags;
 
-/// Everything the engine decides for a turn. String fields follow Go's zero
-/// values: empty means unset.
+/// Everything the engine decides for a turn. Empty string fields
+/// mean unset.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TurnRequest {
     /// The owning workspace; empty for app-scoped (Ask Recur) turns.
@@ -135,7 +135,7 @@ pub struct TurnContext {
     pub sink: Arc<dyn EventSink>,
     /// Present iff the provider steers live and the engine armed steering.
     pub steer: Option<SteerInbox>,
-    /// Absent when nobody can answer (approvals auto-resolve as in Go).
+    /// Absent when nobody can answer (approvals auto-resolve).
     pub permissions: Option<Arc<dyn PermissionAsker>>,
     /// The Recur transcript, for [`crate::HistoryMode::App`] providers.
     pub history: Option<Arc<dyn HistorySource>>,
@@ -345,7 +345,7 @@ pub trait ToolHost: Send + Sync {
     /// removed, under the names the model should call.
     fn tools(&self, allowed: Option<&[String]>) -> Vec<ToolSpec>;
     /// Runs one call. Unknown and disallowed tools come back as error
-    /// outcomes with the Go wording.
+    /// outcomes with fixed wording.
     async fn call(&self, name: &str, args: &str, meta: ToolCallMeta) -> ToolOutcome;
 }
 

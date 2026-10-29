@@ -41,7 +41,7 @@ fn lsof_cwd(pid: i32) -> String {
 }
 
 /// Runs `cmd` and returns its stdout if it exits successfully before `timeout`; the process is
-/// killed otherwise (Go's `exec.CommandContext` with a deadline).
+/// killed otherwise.
 pub(crate) fn output_within(cmd: &mut Command, timeout: Duration) -> Option<Vec<u8>> {
     let mut child = cmd
         .stdin(Stdio::null())

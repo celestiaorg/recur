@@ -11,7 +11,7 @@ use super::snapshot::flatten_json_array_pages;
 use crate::cli::CmdError;
 use crate::json::decode;
 
-/// Go `url.PathEscape` for one path segment.
+/// Percent-escapes one URL path segment.
 pub(crate) fn path_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
@@ -79,8 +79,7 @@ pub(crate) fn http_not_found(err: &str) -> bool {
     err.contains("(HTTP 404)")
 }
 
-/// Go `githubBranchRequiresPRFromAPIs`: required when either source says
-/// so; not required only when both answered.
+/// Required when either source says so; not required only when both answered.
 pub(crate) fn requires_pr_from_apis(
     rules_raw: &str,
     rules_err: Option<&CmdError>,
@@ -103,7 +102,7 @@ pub(crate) fn requires_pr_from_apis(
 }
 
 impl GitHub {
-    /// Go `fetchGitHubBranchRequiresPR`. `None` means unknown.
+    /// `None` means unknown.
     pub(crate) async fn fetch_branch_requires_pr(
         &self,
         repo: &Path,

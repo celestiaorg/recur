@@ -1543,7 +1543,7 @@ fn inbox_add_remove_persist() {
     let s2 = open_temp(dir.path());
     let inbox = s2.inbox().unwrap();
     let ids: Vec<&str> = inbox.iter().map(|i| i.id.as_str()).collect();
-    // As in Go, the upsert only rewrites doc_json, so existing rows keep
+    // The upsert only rewrites doc_json, so existing rows keep
     // their seeded sort: the new head ties with ib1 at 0 and loads after it.
     assert_eq!(ids, ["ib1", "ib-new", "ib3", "ib5"]);
     assert_eq!(inbox[0].title, "replaced");

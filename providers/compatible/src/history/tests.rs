@@ -1,4 +1,4 @@
-//! Go `harness_test.go`: instructions, repo rules and history cases.
+//! Harness tests: instructions, repo rules and history cases.
 
 use std::path::PathBuf;
 

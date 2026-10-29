@@ -1,5 +1,4 @@
-//! Workspace ↔ PR linking, create-from-PR and reconciling missing PRs (Go
-//! `github_prs_test.go`).
+//! Workspace ↔ PR linking, create-from-PR and reconciling missing PRs.
 
 use std::collections::HashSet;
 use std::time::Duration;
@@ -721,7 +720,7 @@ async fn unset_source_is_not_a_forge_pr() {
     assert_eq!(
         px.pr("gh-acme-12").workspace_id,
         "",
-        "Go linked only forge PRs"
+        "only forge PRs are linked"
     );
     assert!(px.eng().pr_forge(&px.pr("gh-acme-12")).is_none());
     assert_eq!(px.eng().pr_source_label(&PrSource::default()), "Local");

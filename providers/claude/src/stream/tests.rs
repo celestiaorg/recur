@@ -1,4 +1,4 @@
-//! Go `streamjson_test.go` and the parser half of `context_usage_test.go`.
+//! Stream-json parser and context usage parser tests.
 
 use super::*;
 
@@ -744,8 +744,8 @@ fn invalid_utf8_becomes_replacement_runes() {
     assert_eq!(text_of(&ev[0]), "a\u{FFFD}\u{FFFD}b");
 }
 
-/// Go `TestAssistantUsageEmitsKindUsage`: each assistant.message.usage is a
-/// per-inference footprint, not session billing.
+/// Each assistant.message.usage is a per-inference footprint, not session
+/// billing.
 #[test]
 fn assistant_usage_emits_usage() {
     let evs = parse(

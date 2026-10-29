@@ -1,8 +1,7 @@
-//! Port of Go `chat_recover_test.go` and the resume case of
-//! `ask_user_test.go`: zombie Stop, Recover idling live-but-dead chats and
-//! closing their streams, AutoResume continuing PA*/MA tabs (resuming the
-//! tab's own handle and dock pick), the Maestro rules, and quit leaving an
-//! interrupted chat live for the next boot.
+//! Chat recover tests and the resume case of ask_user: zombie Stop, Recover
+//! idling live-but-dead chats and closing their streams, AutoResume continuing
+//! PA*/MA tabs (resuming the tab's own handle and dock pick), the Maestro
+//! rules, and quit leaving an interrupted chat live for the next boot.
 
 use std::sync::Arc;
 use std::time::Duration;

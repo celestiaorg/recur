@@ -1,17 +1,15 @@
-//! A faithful port of `frontend/e2e/helpers/mock-bridge.ts`: every service
-//! answered from the e2e seed, with the same in-memory mutations, canned
-//! responses, emitted events and timing hooks, so a Rust view driven by it
-//! reaches the state the Svelte view reaches under e2e and UI-parity runs.
+//! A mock bridge: every service answered from the e2e seed, with in-memory
+//! mutations, canned responses, emitted events and timing hooks, so a view
+//! driven by it reaches the same state under e2e and UI-parity runs.
 //!
-//! Like the TypeScript bridge it works at the JSON level. Each bound method
-//! is a [`Resolver`] keyed by its Go name that gets the call's positional
-//! arguments (as the Go-shaped JSON the Svelte UI sent), the mutable
-//! [`Seed`], and the effective [`Table`] (so a batched method can delegate
-//! to its single-item sibling and pick up a test's override). The typed
-//! service traits encode arguments, dispatch, and decode the reply: `null`
-//! lists and maps become empty, a `null`
-//! struct is a failed call, a `null` scalar is its zero value. A method with
-//! no resolver answers `null`.
+//! It works at the JSON level. Each bound method is a [`Resolver`] keyed by
+//! its PascalCase method name that gets the call's positional arguments (as
+//! JSON), the mutable [`Seed`], and the effective [`Table`] (so a batched
+//! method can delegate to its single-item sibling and pick up a test's
+//! override). The typed service traits encode arguments, dispatch, and decode
+//! the reply: `null` lists and maps become empty, a `null` struct is a failed
+//! call, a `null` scalar is its zero value. A method with no resolver answers
+//! `null`.
 //!
 //! ```no_run
 //! # async fn demo() -> recur_services::Result<()> {
@@ -140,7 +138,7 @@ impl Release {
     }
 }
 
-/// Called with the Go name of a method that has no resolver.
+/// Called with the name of a method that has no resolver.
 pub type UnresolvedHook = Arc<dyn Fn(&str) + Send + Sync>;
 
 /// One bound method: `(args, seed, table) -> reply`.
@@ -290,7 +288,7 @@ impl MockBridge {
         }
     }
 
-    /// One bound call: dispatch by Go method name, settle the reply, then
+    /// One bound call: dispatch by method name, settle the reply, then
     /// publish what the call queued (the bridge dispatched those after
     /// `route.fulfill`). A failed call publishes nothing; its queue waits for
     /// the next successful call, as in the TypeScript.

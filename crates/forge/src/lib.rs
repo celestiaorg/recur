@@ -36,7 +36,7 @@ pub use types::*;
 /// [`Forge::pr_source`] matches `Pr.source`; Local PRs have no forge.
 ///
 /// `repo` is the project's checkout (the CLI's working directory). Errors
-/// carry the user-facing text the Go app showed.
+/// carry user-facing text.
 #[async_trait]
 pub trait Forge: Send + Sync + 'static {
     /// Registry key (`github`).

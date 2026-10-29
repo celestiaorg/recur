@@ -1,6 +1,5 @@
-//! Hand-driven landing from a workspace at the engine level (Go
-//! `app/workspace_pr_test.go` and `app/workspace_base_test.go`, whose
-//! services wrappers are SV's).
+//! Hand-driven landing from a workspace at the engine level.
+//! The services wrappers are SV's.
 
 use recur_domain::{
     MergeMethod, Pr, PrSource, Project, UPDATE_WORKSPACE_CONFLICT, UPDATE_WORKSPACE_NOOP,
@@ -252,7 +251,7 @@ async fn update_with_base_conflict() {
     assert!(eng.workspace_land_state(&ws.id).await.unmerged);
 }
 
-/// Go `initGitRepoWithRemote`: (keep, clone, bare). The clone tracks a bare
+/// A repo with a bare origin: (keep, clone, bare). The clone tracks a bare
 /// origin seeded with one commit on main.
 fn repo_with_remote() -> (Vec<tempfile::TempDir>, String, String) {
     let dirs: Vec<tempfile::TempDir> = (0..4).map(|_| tempfile::tempdir().unwrap()).collect();

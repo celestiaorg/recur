@@ -86,8 +86,8 @@ fn hit(n: &Reactable, prefix: &str) -> ReactionHit {
     h
 }
 
-/// Go `parseGitHubReactions`: hits for the description, comments, reviews
-/// and line notes, plus the PR node id.
+/// Hits for the description, comments, reviews and line notes, plus the PR node
+/// id.
 pub(crate) fn parse_reactions(raw: &str) -> Result<(Vec<ReactionHit>, String), String> {
     #[derive(Default, Deserialize)]
     #[serde(default)]
@@ -211,7 +211,7 @@ pub(crate) fn reaction_subject_id(c: &PrComment, pr: &Pr) -> Option<String> {
 const REACTIONS_QUERY: &str = "query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){id reactionGroups{content viewerHasReacted reactors{totalCount}}comments(last:100){nodes{id databaseId reactionGroups{content viewerHasReacted reactors{totalCount}}}}reviews(last:100){nodes{id databaseId reactionGroups{content viewerHasReacted reactors{totalCount}}}}reviewThreads(first:100){nodes{comments(first:50){nodes{id databaseId reactionGroups{content viewerHasReacted reactors{totalCount}}}}}}}}}";
 
 impl GitHub {
-    /// Go `fetchGitHubReactions`: every reaction rollup on a PR.
+    /// Every reaction rollup on a PR.
     pub async fn reactions(
         &self,
         repo: &Path,
@@ -242,7 +242,6 @@ impl GitHub {
         parse_reactions(&out).map_err(ForgeError::failed)
     }
 
-    /// Go `setGitHubReaction`.
     pub(crate) async fn set_reaction_on(
         &self,
         repo: &Path,

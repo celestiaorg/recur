@@ -1,5 +1,4 @@
-//! Turn-pipeline test doubles (Go `captureRunner`, `maestroFixture`,
-//! `maestroToolFixture`, `startedLoop`): a provider that records every
+//! Turn-pipeline test doubles and fixtures: a provider that records every
 //! request and replays per-call Claude stream-json through the real parser,
 //! with every other behavior borrowed from the real Claude provider.
 
@@ -38,7 +37,7 @@ where
     )
 }
 
-/// init → assistant text → success (Go `maestroFixture`).
+/// init → assistant text → success.
 pub fn maestro_fixture(session_id: &str, reply: &str) -> Vec<String> {
     vec![
         format!(
@@ -53,8 +52,7 @@ pub fn maestro_fixture(session_id: &str, reply: &str) -> Vec<String> {
     ]
 }
 
-/// init → text + Read tool_use → tool_result → text → success (Go
-/// `maestroToolFixture`).
+/// init → text + Read tool_use → tool_result → text → success.
 pub fn maestro_tool_fixture(session_id: &str) -> Vec<String> {
     vec![
         format!(
@@ -145,7 +143,7 @@ impl Provider for Capture {
 type TurnFn = Arc<dyn Fn(&TurnContext) -> Result<TurnResult, ProviderError> + Send + Sync>;
 
 /// Claude's id, caps and display around a synchronous scripted `run_turn`
-/// (Go's ad hoc test runners).
+/// for ad hoc test providers.
 pub struct FnProvider {
     inner: Arc<dyn Provider>,
     run: TurnFn,
@@ -215,8 +213,8 @@ impl Provider for FnProvider {
     }
 }
 
-/// A minimal running-ish loop record straight in the store (Go
-/// `startedLoop`), so a turn can target a workspace without a walk.
+/// A minimal running-ish loop record straight in the store,
+/// so a turn can target a workspace without a walk.
 pub async fn started_loop(eng: &Engine, project_id: &str) -> String {
     let id = eng.new_workspace_id(project_id, None).await;
     eng.store
@@ -235,7 +233,7 @@ pub async fn started_loop(eng: &Engine, project_id: &str) -> String {
     id
 }
 
-/// A hand-driven workspace row (Go `addSoloWorkspace`).
+/// A hand-driven workspace row.
 pub fn add_solo_workspace(eng: &Engine, id: &str) {
     eng.store
         .add_workspace(Workspace {
@@ -249,7 +247,7 @@ pub fn add_solo_workspace(eng: &Engine, id: &str) {
 }
 
 /// Text, then a duration-less result carrying usage, then an error whose
-/// result has the duration (Go `durationErrorRunner`).
+/// result has the duration.
 pub fn duration_error() -> Arc<dyn recur_agent::Provider> {
     FnProvider::wrap(|cx| {
         cx.sink.emit(AgentEvent::Text {
@@ -280,8 +278,7 @@ pub fn duration_error() -> Arc<dyn recur_agent::Provider> {
     })
 }
 
-/// The result frame already stamped the duration before the error (Go
-/// `kindResultErrorRunner`).
+/// The result frame already stamped the duration before the error.
 pub fn result_then_error() -> Arc<dyn recur_agent::Provider> {
     FnProvider::wrap(|cx| {
         cx.sink.emit(AgentEvent::Text {

@@ -22,7 +22,7 @@ use recur_domain::{IssueRef, PrParticipant, Project, Settings};
 use serde::{Deserialize, Serialize};
 
 /// One open issue assigned to the user, or unassigned in their repos /
-/// teams. Serialized with the Go field names (`app.AssignedIssue`).
+/// teams.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AssignedIssue {
@@ -47,10 +47,10 @@ pub struct AssignedIssue {
     pub priority_label: String,
     /// `owner/repo`, or the Linear project / team name.
     pub project: String,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub labels: Option<Vec<IssueLabel>>,
     pub comments: i64,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub assignees: Option<Vec<PrParticipant>>,
     /// The Recur project this issue belongs to, or empty.
     #[serde(rename = "projectId")]
@@ -84,7 +84,7 @@ pub struct McpEndpoint {
     pub headers: BTreeMap<String, String>,
 }
 
-/// A tracker call that failed; the message is what Go logged.
+/// A tracker call that failed; the message is what gets logged.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IssueError(pub String);
 
@@ -140,9 +140,8 @@ pub trait IssueTracker: Send + Sync + 'static {
     }
 }
 
-/// Every tracker's open issues, newest activity first (Go
-/// `ListAssignedIssues`). Trackers list concurrently; each one stops at
-/// `q.deadline` with what it has.
+/// Every tracker's open issues, newest activity first. Trackers list
+/// concurrently; each one stops at `q.deadline` with what it has.
 pub async fn list_assigned(
     trackers: &[Arc<dyn IssueTracker>],
     q: IssueQuery<'_>,
@@ -153,7 +152,7 @@ pub async fn list_assigned(
     out
 }
 
-/// Go `claimIssue`: best effort with a 20 s bound; failures are logged.
+/// Best effort with a 20 s bound; failures are logged.
 pub async fn claim(trackers: &[Arc<dyn IssueTracker>], issue: &IssueRef, settings: &Settings) {
     let Some(t) = trackers.iter().find(|t| t.id() == issue.source) else {
         return;

@@ -1,7 +1,7 @@
-//! Run guards (Go `policy.go`): resolve a run's `[[loop]]` and `[[policy]]`
-//! from the bundle catalog (or the shipped synthetic defaults), derive a
-//! fan-out child's loop from its parent's converge phase, and the findings
-//! bar math. The catalog is re-read on every call (R17).
+//! Run guards: resolve a run's `[[loop]]` and `[[policy]]` from the bundle
+//! catalog (or the shipped synthetic defaults), derive a fan-out child's loop
+//! from its parent's converge phase, and the findings bar math. The catalog is
+//! re-read on every call (R17).
 
 use std::collections::{BTreeMap, HashMap};
 

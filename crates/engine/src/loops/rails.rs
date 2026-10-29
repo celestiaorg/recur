@@ -1,4 +1,4 @@
-//! The PR-door rail (Go `rails.go`): the policy findings bar a PR must pass.
+//! The PR-door rail: the policy findings bar a PR must pass.
 
 use recur_domain::AutonomyLevel;
 

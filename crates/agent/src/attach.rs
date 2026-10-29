@@ -1,5 +1,5 @@
-//! Chat attachment markers and user content blocks (the pure half of Go
-//! `attachments.go`; disk I/O lives in the engine).
+//! Chat attachment markers and user content blocks; disk I/O lives in the
+//! engine.
 //!
 //! The composer appends `⟦attachment:<id>⟧` after the text in chip order.
 //! Claude splits the prompt into interleaved text/image content blocks;
@@ -79,7 +79,7 @@ impl MarkerSpan {
     }
 }
 
-/// Every marker in `s`, left to right (Go `⟦attachment:([^⟧]+)⟧`).
+/// Every marker in `s`, left to right (`⟦attachment:([^⟧]+)⟧`).
 pub fn parse_markers(s: &str) -> Vec<MarkerSpan> {
     let mut out = Vec::new();
     let mut from = 0;
@@ -140,7 +140,7 @@ pub fn ensure_markers(text: &str, imgs: &[UserImage]) -> String {
 
 /// Keeps letters, digits, `-` and `_`, capped at 64 bytes.
 // simplify: non-ASCII letters/digits use Rust's Alphabetic/Numeric
-// properties, a superset of Go's L/Nd categories. Composer ids are ASCII.
+// properties, a superset of the L/Nd categories. Composer ids are ASCII.
 pub fn sanitize_attachment_id(id: &str) -> String {
     let out: String = id
         .trim()

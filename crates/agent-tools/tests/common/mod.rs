@@ -1,5 +1,5 @@
-//! Go-recorded tool outputs compare loosely: JSON as values, and a Go
-//! `encoding/json` error matches any error with the same Recur prefix.
+//! Recorded tool outputs compare loosely: JSON as values, and a decoder
+//! error matches any error with the same Recur prefix.
 
 use serde_json::Value;
 

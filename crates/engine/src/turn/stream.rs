@@ -1,7 +1,6 @@
-//! One interactive turn's reply collector (Go `workspace_chat.go`
-//! `chatStream`): the assistant text for the call's return value, the
-//! provider session id on init, and the Plan-mode createPlan harvest. Live
-//! streaming to the UI is the broadcast's job, not this.
+//! One interactive turn's reply collector: the assistant text for the call's
+//! return value, the provider session id on init, and the Plan-mode createPlan
+//! harvest. Live streaming to the UI is the broadcast's job, not this.
 
 use std::sync::Arc;
 

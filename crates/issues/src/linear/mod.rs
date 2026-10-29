@@ -104,7 +104,7 @@ impl Linear {
         }
     }
 
-    /// Go `linearGraphQL`: one query; the decoded `data`.
+    /// One query; the decoded `data`.
     async fn graphql<T: for<'de> Deserialize<'de> + Default>(
         &self,
         key: &str,
@@ -319,7 +319,6 @@ struct Team {
     name: String,
 }
 
-/// Go `linearToIssues`.
 fn to_issues(nodes: Vec<IssueNode>) -> Vec<AssignedIssue> {
     nodes
         .into_iter()
@@ -401,7 +400,7 @@ pub fn link_projects(issues: &mut [AssignedIssue], projects: &[Project]) {
     }
 }
 
-/// `linear://…` for a `https://linear.app/…` URL: Go's request URI (path,
+/// `linear://…` for a `https://linear.app/…` URL: the request URI (path,
 /// and the query when a `?` is present) after `linear:/`.
 pub fn app_url(raw: &str) -> Option<String> {
     let s = raw.trim();
@@ -478,7 +477,7 @@ impl IssueTracker for Linear {
         out
     }
 
-    /// Go `claimLinearIssue`: assigns to the viewer when unassigned.
+    /// Assigns to the viewer when unassigned.
     async fn claim(&self, issue: &IssueRef, settings: &Settings) -> Result<(), IssueError> {
         let key = self.api_key(settings);
         if key.is_empty() {

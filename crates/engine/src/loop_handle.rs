@@ -1,15 +1,15 @@
-//! The loop control plane (Go `loop.go`, the state shared between a loop's
+//! The loop control plane (the state shared between a loop's
 //! walk task and MCP / UI callers): commands, pause/stop/escalation flags,
 //! the human's answer, pending agent escalations, Maestro steers, granted
 //! extensions, done summaries, findings and verify evidence.
 //!
-//! Go guarded these with `Loop.mu` + `cond`; here they live in
-//! [`LoopState`] behind [`LoopHandle::lock`], and [`LoopHandle::broadcast`]
-//! is the cond broadcast. `send` mutates state and wakes waiters *before*
-//! queueing the command. The walk (E3) owns everything else about a loop.
+//! These live in [`LoopState`] behind [`LoopHandle::lock`], and
+//! [`LoopHandle::broadcast`] is the cond broadcast. `send` mutates state and
+//! wakes waiters *before* queueing the command. The walk (E3) owns everything
+//! else about a loop.
 //!
-//! R18: Go wrote `loop.Branch` from the fswatch goroutine while the walk read
-//! it. The branch (and worktree, chat code) live here under the mutex.
+//! R18: the branch (and worktree, chat code) live here under the mutex, since
+//! the fswatch task writes the branch while the walk reads it.
 
 use std::sync::Arc;
 
@@ -44,8 +44,7 @@ pub struct EscalationAnswer {
     pub grant: i64,
 }
 
-/// The `[[loop]]` role slots and catalog a done/finding attribution reads
-/// (Go `slotRoleSpec` read the walk's guard, current phase and catalog).
+/// The `[[loop]]` role slots and catalog a done/finding attribution reads.
 #[derive(Debug, Clone, Default)]
 pub struct RoleView {
     /// The guard loop's `roles`.
@@ -131,13 +130,13 @@ pub struct LoopHandle {
     evidence: Mutex<Vec<Evidence>>,
 }
 
-/// Go buffered the command channel at 8 so a send never blocks.
+/// Buffered so a send never blocks.
 const CMD_BUFFER: usize = 8;
 
-/// Go `handoffMaxChars`.
+/// The cap on an accumulated handoff note.
 pub const HANDOFF_MAX_CHARS: usize = 4000;
 
-/// Appends a handoff note, capped (Go `accumulateHandoff`).
+/// Appends a handoff note, capped.
 pub fn accumulate_handoff(prev: &str, next: &str) -> String {
     let next = crate::text::truncate(next.trim(), HANDOFF_MAX_CHARS);
     if next.is_empty() {
@@ -170,12 +169,12 @@ impl LoopHandle {
         })
     }
 
-    /// The shared state (Go `l.mu`). Never hold across an await.
+    /// The shared state. Never hold across an await.
     pub fn lock(&self) -> MutexGuard<'_, LoopState> {
         self.state.lock()
     }
 
-    /// Wakes every waiter (Go `l.cond.Broadcast`).
+    /// Wakes every waiter.
     pub fn broadcast(&self) {
         self.cond.notify_waiters();
     }
@@ -439,7 +438,7 @@ impl LoopHandle {
     }
 }
 
-/// Clears a specialist turn's steer binding (Go `bindInject` cleanup).
+/// Clears a specialist turn's steer binding on drop.
 pub struct InjectBinding {
     handle: Arc<LoopHandle>,
     tx: mpsc::Sender<Steer>,

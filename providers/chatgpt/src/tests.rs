@@ -1,5 +1,5 @@
-//! Go `chatgpt/client_test.go` and `engine/chatgpt_test.go` against a signed
-//! local OAuth server and a streamed Responses fixture.
+//! ChatGPT client and provider tests against a signed local OAuth server and a
+//! streamed Responses fixture.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

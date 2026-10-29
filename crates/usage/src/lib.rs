@@ -1,5 +1,4 @@
-//! Subscription-quota snapshots for Claude, Codex and Cursor (Go
-//! `internal/usage` and `app/provider_usage.go`).
+//! Subscription-quota snapshots for Claude, Codex and Cursor.
 //!
 //! [`Poller`] caches one [`Snapshot`] over a [`Fetcher`] and publishes
 //! `provider.usage`; [`UsageService`] is the Settings-facing API services wrap;

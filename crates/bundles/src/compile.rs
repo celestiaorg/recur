@@ -1,8 +1,7 @@
 //! TypeScript macro compilation for the macro Worker (`crate::js`).
 //!
-//! Go compiled with esbuild (bundle, CommonJS, ES2020, `@recur/sdk` as the
-//! only resolvable import). This port uses swc in-process and reproduces
-//! the observable contract:
+//! Compiles in-process with swc: a CommonJS ES2020 bundle with `@recur/sdk`
+//! as the only resolvable import. The observable contract:
 //!
 //! - TypeScript is stripped with esbuild's defaults (unused and type-only
 //!   imports dropped, define semantics for class fields).

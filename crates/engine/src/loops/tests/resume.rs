@@ -1,8 +1,7 @@
-//! Port of Go `resume_test.go`: crash recovery resumes at the checkpoint
-//! (D55) with the killed Coder session, human pauses stay paused, queued
-//! loops start after a restart, transient failures are retryable (D56), and
-//! the checkpoint write-through. `TestClassifyAgentError` is recur-agent's
-//! (`error::classify`).
+//! Resume tests: crash recovery resumes at the checkpoint (D55) with the killed
+//! Coder session, human pauses stay paused, queued loops start after a restart,
+//! transient failures are retryable (D56), and the checkpoint write-through.
+//! Error classification is tested in recur-agent (`error::classify`).
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -24,7 +23,7 @@ use crate::text::rfc3339;
 const SPEND_LIMIT_MSG: &str = "You've hit your org's monthly spend limit · run /usage-credits to ask your admin for a higher limit";
 
 /// The record an app crash leaves behind: an in-flight state with a
-/// checkpoint and no task (Go `interruptedLoop`).
+/// checkpoint and no task.
 fn interrupted_loop(store: &Store, proj: &str, cp: WorkspaceState, iter: i64) -> String {
     let id = format!("LOOP-RESUME-{}", cp.as_str());
     store
@@ -63,7 +62,7 @@ async fn wait_for_state(store: &Store, id: &str, what: &str, want: &[WorkspaceSt
 }
 
 /// A walk publishes its settled state before it records failure marks and
-/// unwinds (Go `waitLoopExited`).
+/// unwinds.
 async fn wait_loop_exited(t: &TestEngine, id: &str) {
     wait_for(Duration::from_secs(10), "walk to exit", || {
         t.engine.running_loop_by_id(id).is_none()
@@ -140,7 +139,7 @@ async fn resume_skips_coder_when_interrupted_after_commit() {
     }
 }
 
-/// Records the session each coder turn resumes (Go `sessionSpyRunner`).
+/// Records the session each coder turn resumes.
 #[derive(Default)]
 struct SessionSpy {
     coder_resumes: Mutex<Vec<String>>,
@@ -273,7 +272,7 @@ async fn auto_resume_starts_queued_loops() {
 }
 
 /// Fails the first `fail_until` coder turns the way a spend-limit refusal
-/// arrives: stderr carries the provider's message (Go `limitRunner`).
+/// arrives: stderr carries the provider's message.
 fn limit_runner(msg: &'static str, fail_until: usize) -> Arc<dyn Provider> {
     let turns = Arc::new(Mutex::new(0usize));
     AsyncProvider::wrap(move |req, _cx| {
@@ -386,8 +385,7 @@ async fn genuine_failure_is_not_retryable() {
     t.close().await;
 }
 
-/// Fails the planning turn `fail_until` times, then plans (Go
-/// `plannerFailRunner`).
+/// Fails the planning turn `fail_until` times, then plans.
 #[derive(Default)]
 struct PlannerFail {
     planner_turns: Mutex<usize>,
@@ -625,8 +623,8 @@ async fn set_workspace_state_preserves_phase_id() {
     t.close().await;
 }
 
-/// Go `restart_test.go`: Restart re-dispatches a deliberately stopped loop
-/// (Resume/Retry refuse it); other states get a named refusal.
+/// Restart re-dispatches a deliberately stopped loop (Resume/Retry refuse it);
+/// other states get a named refusal.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn restart_stopped_loop() {
     let repo = init_repo();

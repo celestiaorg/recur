@@ -1,6 +1,6 @@
-//! The running-loop registry (Go `reporter.go` lookups + `loopExited`):
-//! which walks are live, keyed by workspace id (or workspace + `\x1e` +
-//! chat for a second walk), and how callers find the one they mean.
+//! The running-loop registry: which walks are live, keyed by workspace id (or
+//! workspace + `\x1e` + chat for a second walk), and how callers find the one
+//! they mean.
 
 use std::sync::Arc;
 
@@ -58,8 +58,7 @@ impl Engine {
         }
     }
 
-    /// Whether a walk is registered under exactly this key (Go
-    /// `e.loops.Load(id)`).
+    /// Whether a walk is registered under exactly this key.
     pub fn loop_key_running(&self, key: &str) -> bool {
         self.loops.lock().contains_key(key)
     }

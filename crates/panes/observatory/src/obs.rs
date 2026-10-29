@@ -1,4 +1,4 @@
-//! The Observatory entity: props, slots and events (the Svelte component's API), its state,
+//! The Observatory entity: props, slots and events, its state,
 //! and the values `Observatory.svelte` derived from it.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -70,7 +70,7 @@ pub(crate) struct PathsMemo {
     changed_tree: Option<ChangedTreeMemo>,
 }
 
-/// The host-owned content the Svelte component took as snippets.
+/// The host-owned content slots.
 #[derive(Clone, Default)]
 pub struct ObservatorySlots {
     /// `leftPanel`: the agent chat (the Maestro panel's body).
@@ -85,7 +85,7 @@ pub struct ObservatorySlots {
     pub main_overlay: Option<AnyView>,
 }
 
-/// The Svelte callbacks, and the values the snippets were called with.
+/// The callbacks, and the values the snippets were called with.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ObservatoryEvent {
     /// `onToggleLeft(open)`.

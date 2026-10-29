@@ -1,5 +1,5 @@
 //! Cursor usage Connect: the browser sign-in that mints Recur-owned tokens,
-//! and the local-only rows the footer shows around it (Go `usage/connect.go`).
+//! and the local-only rows the footer shows around it.
 
 use std::sync::Arc;
 

@@ -1,6 +1,6 @@
-//! Tests that change the process environment, as the Go tests did with
-//! `t.Setenv`. They live in their own test binary and hold one lock while the
-//! environment is changed, so no other thread reads it concurrently.
+//! Tests that change the process environment. They live in their own test
+//! binary and hold one lock while the environment is changed, so no other
+//! thread reads it concurrently.
 #![allow(unsafe_code)]
 
 use std::ffi::OsString;
@@ -46,8 +46,8 @@ impl Env {
         unsafe { std::env::remove_var(key) };
     }
 
-    /// Go `isolateGitConfig`: hide global/system git config and author env so
-    /// only the repository under test is consulted.
+    /// Hides global/system git config and author env so only the repository
+    /// under test is consulted.
     fn isolate_git_config(&mut self, home: &Path) {
         let empty = home.join("empty.gitconfig");
         std::fs::write(&empty, b"").expect("write empty gitconfig");

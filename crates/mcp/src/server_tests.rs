@@ -1543,9 +1543,8 @@ fn all_tools_wraps_host_tools() {
     }
 }
 
-// Rust-side guarantees of the Go contract: an HTTP client that disconnects
-// mid-wait cancels the permission wait (Go: request context), and start/close
-// lifecycle text.
+// Server guarantees: an HTTP client that disconnects mid-wait cancels the
+// permission wait, and start/close lifecycle text.
 
 #[tokio::test]
 async fn client_disconnect_cancels_permission_wait() {

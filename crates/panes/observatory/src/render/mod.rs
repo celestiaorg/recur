@@ -997,7 +997,7 @@ impl Observatory {
         if self.term_overlaying() {
             root = root.overflow_hidden();
         }
-        // The Svelte `$effect`s that mirror this frame's state outward, and `focusin` for a
+        // Effects that mirror this frame's state outward, and `focusin` for a
         // move the zone watchers could not see (focus taken while a watcher was arming).
         cx.defer_in(window, |o, window, cx| {
             o.sync_side_effects(cx);

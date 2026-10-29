@@ -47,7 +47,7 @@ pub const APP_AGENT_CODE: &str = "APP";
 pub struct BriefingSnapshot {
     pub generated_at: i64,
     pub counts: BriefingCounts,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub workspaces: Option<Vec<WorkspaceBrief>>,
 }
 
@@ -73,7 +73,7 @@ pub struct WorkspaceBrief {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub branch: String,
     pub bucket: String,
-    /// `None` is Go's nil slice (`null`).
+    /// `None` serializes as `null`.
     pub reasons: Option<Vec<String>>,
     pub now: String,
     pub next: String,

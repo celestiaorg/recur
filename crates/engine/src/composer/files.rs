@@ -114,7 +114,7 @@ pub fn format_file_mention_chip(
     format!("{path}:{start_line}")
 }
 
-/// Go `filepath.EvalSymlinks`; the path unchanged when it cannot resolve.
+/// `p` with symlinks resolved; `None` when it cannot resolve.
 fn eval_symlinks(p: &str) -> Option<String> {
     std::fs::canonicalize(p)
         .ok()

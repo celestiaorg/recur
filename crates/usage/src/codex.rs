@@ -1,5 +1,4 @@
-//! Codex / ChatGPT rate limits and monthly spend controls (Go
-//! `usage/codex.go`).
+//! Codex / ChatGPT rate limits and monthly spend controls.
 
 use std::path::Path;
 
@@ -464,8 +463,7 @@ fn codex_limit_enforced(mode: &str) -> bool {
     )
 }
 
-/// Codex `planType` / ChatGPT `plan_type` keys to CLI display names (Go
-/// `codex.FormatPlan`).
+/// Codex `planType` / ChatGPT `plan_type` keys to CLI display names.
 pub fn format_codex_plan(raw: &str) -> String {
     match raw.trim().to_lowercase().as_str() {
         "" => "",

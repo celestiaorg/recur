@@ -1,5 +1,4 @@
-//! One turn's frames folded into agent events and a result (Go
-//! `engine/cursor.go` `cursorTurn`).
+//! One turn's frames folded into agent events and a result.
 //!
 //! Cursor streams differently from Claude Code, and each fold below exists
 //! because the naive mapping broke a transcript:

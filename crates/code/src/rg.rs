@@ -99,8 +99,8 @@ pub(crate) fn is_executable_file(p: &str) -> bool {
     fs::metadata(p).is_ok_and(|m| !m.is_dir() && m.permissions().mode() & 0o111 != 0)
 }
 
-/// Go `exec.LookPath` for a bare name: the first executable regular file in
-/// `$PATH`. Matches in relative `PATH` entries are refused (Go's `ErrDot`).
+/// For a bare name, the first executable regular file in `$PATH`. Matches in
+/// relative `PATH` entries are refused.
 pub(crate) fn look_path(name: &str) -> Option<String> {
     let path = std::env::var("PATH").unwrap_or_default();
     for dir in path.split(':') {
@@ -327,7 +327,7 @@ async fn install(data_dir: &str) -> Result<()> {
     result
 }
 
-/// Go `os.MkdirTemp(dir, ".rg-staging-*")`.
+/// Creates a fresh `.rg-staging-*` temp dir in `bin_dir`.
 fn make_staging_dir(bin_dir: &str) -> Result<String> {
     use std::os::unix::fs::DirBuilderExt;
     let pid = std::process::id();

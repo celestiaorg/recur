@@ -1,9 +1,7 @@
-//! Loop lifecycle (Go `engine.go` start/dispatch/resume/drain and
-//! `workspace_create.go` queued starts): persisting a run, taking a governor
-//! slot (or queueing), the single dispatch path that allocates the worktree
-//! and launches the walk task, Resume of live and not-running walks, the
-//! drain that promotes the oldest queued loop, and the walk task itself with
-//! its panic guard.
+//! Loop lifecycle: persisting a run, taking a governor slot (or queueing), the
+//! single dispatch path that allocates the worktree and launches the walk task,
+//! Resume of live and not-running walks, the drain that promotes the oldest
+//! queued loop, and the walk task itself with its panic guard.
 
 use std::future::Future;
 use std::pin::Pin;
@@ -105,8 +103,7 @@ impl Engine {
         self.tasks.loops.spawn(fut);
     }
 
-    /// Go `Loop.recoverPanic`: one walk's panic is a failed loop, never a
-    /// crashed app.
+    /// One walk's panic is a failed loop, never a crashed app.
     fn recover_walk_panic(&self, h: &Arc<LoopHandle>, msg: &str) {
         {
             let mut s = h.lock();
@@ -267,9 +264,8 @@ impl Engine {
         Ok(rec)
     }
 
-    /// Validates and persists a new queued run row (Go `queueStartWorkspace`)
-    /// and takes a loop slot when one is free. True = the slot is held and
-    /// the caller dispatches.
+    /// Validates and persists a new queued run row and takes a loop slot when
+    /// one is free. True = the slot is held and the caller dispatches.
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn queue_start_workspace(
         &self,

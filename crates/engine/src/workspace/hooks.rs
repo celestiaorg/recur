@@ -1,6 +1,6 @@
-//! Project setup/teardown commands (Go `ws_hooks.go`): `setup_cmd` once per
-//! new worktree, `teardown_cmd` on remove/delete, with the workspace env and
-//! a 10-minute bound. Failures land on the feed.
+//! Project setup/teardown commands: `setup_cmd` once per new worktree,
+//! `teardown_cmd` on remove/delete, with the workspace env and a 10-minute
+//! bound. Failures land on the feed.
 
 use std::time::Duration;
 use tokio::time::Instant;

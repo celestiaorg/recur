@@ -1,6 +1,5 @@
-//! Port of Go `walker_test.go`, `converge_test.go`, `rails_test.go`,
-//! `m8_test.go` (the loop halves; merge and send-back are E5's) and the
-//! loop-driven cases of `fixture_test.go`.
+//! Walker, converge and rails tests (the loop halves; merge and send-back
+//! are E5's) and the loop-driven fixture cases.
 
 use std::time::Duration;
 

@@ -1,4 +1,4 @@
-//! Port of Go `planbrief_test.go`: the planning turn's tool scope, the plan
+//! Plan brief tests: the planning turn's tool scope, the plan
 //! in every Coder and Reviewer system prompt (never duplicated into the fix
 //! prompt), the createPlan harvest over narration, and rune-safe truncation.
 //! The argv spill case is P1's; the send-back case is E5's.
@@ -52,7 +52,7 @@ fn plan_section_degrades_to_task_only() {
     );
 }
 
-/// Go `planBriefRunner`.
+/// Plans with `plan_text` (through createPlan when `via_create_plan`) and records Coder turns.
 #[derive(Default)]
 struct PlanBriefRunner {
     plan_text: String,

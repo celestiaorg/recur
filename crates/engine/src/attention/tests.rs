@@ -1,7 +1,6 @@
-//! Port of Go `attention_test.go` and `chat_inbox_test.go`. Cases that need
-//! later slices move with them: the ask_user parks (E2 broker),
-//! CloseWorkspaceChat races (E4 tabs), dispatch of closed conductors (E3),
-//! and the Docs loop end-to-end (E3).
+//! Attention and chat inbox tests. Cases that need later slices move with them:
+//! the ask_user parks (E2 broker), CloseWorkspaceChat races (E4 tabs), dispatch
+//! of closed conductors (E3), and the Docs loop end-to-end (E3).
 
 use std::sync::Arc;
 
@@ -26,7 +25,7 @@ fn workspace(t: &TestEngine, id: &str) {
         .unwrap();
 }
 
-/// Go `ensurePairAgent`.
+/// Ensures a pair agent row for `code`.
 fn pair(t: &TestEngine, ws: &str, code: &str) {
     if t.store.agent(ws, code).is_some() {
         return;
@@ -47,7 +46,7 @@ fn pair(t: &TestEngine, ws: &str, code: &str) {
     );
 }
 
-/// Go `ensureMaestroAgentWithStatus` (the MA tab row).
+/// Writes the idle Maestro (MA) tab row.
 fn maestro(t: &TestEngine, ws: &str) {
     t.engine.put_agent(
         ws,

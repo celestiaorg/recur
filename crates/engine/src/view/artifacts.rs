@@ -19,7 +19,7 @@ pub struct ArtifactRef {
 }
 
 /// Normalizes an `artifact.created` / `artifact.presented` payload. The wire
-/// carries `domain.Artifact`'s lowerCamel JSON tags; exported Go names are
+/// carries `domain.Artifact`'s lowerCamel JSON tags; PascalCase names are
 /// not accepted.
 pub fn artifact_from_event(raw: &Value) -> Option<ArtifactRef> {
     let o = raw.as_object()?;
@@ -144,9 +144,9 @@ pub fn parse_listed_artifact(a: &Value) -> ListedArtifact {
     }
 }
 
-/// Parses a list_artifacts tool result. A leading prose prefix is accepted
-/// so a wrapped MCP payload still yields rows; a Go nil slice
-/// (`"artifacts":null`) is an empty list.
+/// Parses a list_artifacts tool result. A leading prose prefix is accepted so a
+/// wrapped MCP payload still yields rows; a null list (`"artifacts":null`) is
+/// an empty list.
 pub fn parse_list_artifacts_result(text: &str) -> Option<ListedArtifacts> {
     if text.is_empty() {
         return None;

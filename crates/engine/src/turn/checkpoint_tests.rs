@@ -1,4 +1,4 @@
-//! Go `checkpoint_test.go`. The send path's start/end snapshots are taken
+//! Checkpoint tests. The send path's start/end snapshots are taken
 //! here around `run_agent` the way E4's send does; the AutoResume reuse
 //! cases go through `last_open_chat_prompt_id`.
 

@@ -471,7 +471,7 @@ Shipped packs under `bundles/*/tests/` are the reference suite (also covered by
 
 ## CLI (`recur`)
 
-The Recur CLI (Cobra + Viper) is separate from the desktop GUI binary. A
+The Recur CLI is separate from the desktop GUI binary. A
 packaged Recur.app ships it at `Contents/MacOS/recur-cli` and, on
 launch, symlinks that file to `/usr/local/bin/recur` (when writable) and
 `~/.local/bin/recur` so `recur` is on PATH. Contributors run it with
@@ -488,9 +488,10 @@ recur bundles test MyPack            # name under bundles-dir
 recur bundles test Text              # also resolves ./bundles/Text
 recur bundles test ./bundles         # every child with bundle.toml
 recur bundles lint ./bundles         # schema, TS compile, shebang, keyEquivalent
+recur completion zsh > ~/.zfunc/_recur  # bash, zsh, fish, powershell, elvish
 ```
 
-Config / env (Viper):
+Config / env:
 
 | Key | Env | Default |
 |-----|-----|---------|

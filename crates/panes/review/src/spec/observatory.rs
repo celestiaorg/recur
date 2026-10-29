@@ -352,7 +352,7 @@ async fn drag_on_the_comment_control_selects_a_multiline_finding(cx: &mut TestAp
 
 #[gpui::test]
 async fn review_changes_survives_scrolling_a_large_mixed_size_diff(cx: &mut TestAppContext) {
-    let files = crate::gallery::large_files(300);
+    let files = large_files(300);
     let opts = MockOptions::default().resolver("DiffVsBase", move |_, _, _| {
         Reply::value(json!({ "files": files.clone() }))
     });
@@ -401,7 +401,7 @@ async fn review_changes_survives_scrolling_a_large_mixed_size_diff(cx: &mut Test
 /// A stuck file header sits at the pane top at every scroll step.
 #[gpui::test]
 async fn a_stuck_file_header_holds_the_pane_top_while_scrolling(cx: &mut TestAppContext) {
-    let files = crate::gallery::large_files(40);
+    let files = large_files(40);
     let paths: Vec<String> = files
         .as_array()
         .expect("files")
@@ -453,7 +453,7 @@ async fn a_stuck_file_header_holds_the_pane_top_while_scrolling(cx: &mut TestApp
 
 #[gpui::test]
 async fn a_huge_diff_mounts_only_the_cards_near_the_viewport(cx: &mut TestAppContext) {
-    let files = crate::gallery::large_files(2000);
+    let files = large_files(2000);
     let last = files.as_array().and_then(|a| a.last()).expect("files")["path"]
         .as_str()
         .expect("path")
@@ -547,4 +547,37 @@ async fn code_selects_across_rows_and_copies_like_webkit(cx: &mut TestAppContext
         copied.as_deref(),
         Some("func a() {}\n3\nfunc b() {}\n4\nfunc c() {}")
     );
+}
+
+/// `count` files of a large mixed-size diff.
+fn large_files(count: usize) -> serde_json::Value {
+    let files: Vec<serde_json::Value> = (0..count)
+        .map(|i| {
+            let n = if i % 11 == 0 { 400 } else { 2 + (i * 7) % 15 };
+            let mut lines = vec![json!({"old": "", "new": "", "type": "hunk", "codeHtml": format!("@@ -1,{n} +1,{n} @@")})];
+            for k in 1..=n {
+                let t = if k % 3 == 0 {
+                    "add"
+                } else if k % 5 == 0 {
+                    "del"
+                } else {
+                    "ctx"
+                };
+                let width = if (k + i) % 4 == 0 { 40 } else { 6 };
+                lines.push(json!({
+                    "old": if t == "add" { String::new() } else { k.to_string() },
+                    "new": if t == "del" { String::new() } else { k.to_string() },
+                    "type": t,
+                    "codeHtml": format!("l{k} f{i} {}", "word ".repeat(width)),
+                }));
+            }
+            json!({
+                "path": format!("src/pkg{}/file{i}.ts", i % 9),
+                "status": "m",
+                "diff": {"add": n / 3, "del": n / 5},
+                "lines": lines,
+            })
+        })
+        .collect();
+    serde_json::Value::Array(files)
 }

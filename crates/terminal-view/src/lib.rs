@@ -12,8 +12,6 @@ mod custom_glyphs;
 mod element;
 mod find_bar;
 mod font;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 mod park;
 mod scrollbar;
 mod theme;

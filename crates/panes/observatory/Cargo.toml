@@ -7,17 +7,6 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-[features]
-# Gallery scenes (`gallery::build`, listed in `crates/ui/gallery/scenes.json`).
-gallery = [
-    "recur-services/mock",
-    "recur-ui/gallery",
-    "recur-content/gallery",
-    "recur-editor/gallery",
-    "recur-terminal-view/gallery",
-    "recur-view-review/gallery",
-]
-
 [dependencies]
 gpui-kit.workspace = true
 recur-ui.workspace = true
@@ -46,7 +35,6 @@ tracing.workspace = true
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["mock"] }
-recur-view-observatory = { path = ".", features = ["gallery"] }
 pretty_assertions.workspace = true
 parking_lot.workspace = true
 

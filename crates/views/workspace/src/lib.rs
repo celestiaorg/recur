@@ -16,8 +16,6 @@
 //! the updated state.
 
 pub mod detail;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 mod head;
 mod overlay;
 pub mod plan_head;

@@ -20,8 +20,6 @@ mod data;
 pub mod editor_env;
 pub mod file_drag;
 pub mod format;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod land;
 pub mod local_storage;
 pub mod menu;

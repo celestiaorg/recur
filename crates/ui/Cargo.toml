@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [features]
-# Widget gallery scenes shared by `examples/gallery.rs` and the UI crates' tests.
+# Widget gallery scenes for `examples/gallery.rs`.
 gallery = []
 
 [dependencies]

@@ -7,17 +7,6 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-[features]
-# Gallery scenes (`gallery::build`, listed in `crates/ui/gallery/scenes.json`).
-gallery = [
-    "recur-services/mock",
-    "recur-view-core/gallery",
-    "recur-ui/gallery",
-    "recur-content/gallery",
-    "recur-view-chat/gallery",
-    "dep:serde",
-]
-
 [dependencies]
 gpui-kit.workspace = true
 recur-ui.workspace = true
@@ -32,19 +21,17 @@ recur-forge.workspace = true
 recur-editor.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
-serde = { workspace = true, optional = true }
 serde_json.workspace = true
 futures.workspace = true
 
 [dev-dependencies]
-recur-view-review = { workspace = true, features = ["gallery"] }
-recur-view-workspace = { workspace = true, features = ["gallery"] }
-recur-view-settings = { workspace = true, features = ["gallery"] }
-recur-view-home = { workspace = true, features = ["gallery"] }
+recur-view-review.workspace = true
+recur-view-workspace.workspace = true
+recur-view-settings.workspace = true
+recur-view-home.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["mock"] }
-recur-view-briefing = { path = ".", features = ["gallery"] }
-recur-app = { workspace = true, features = ["gallery"] }
+recur-app.workspace = true
 parking_lot.workspace = true
 
 [lints]

@@ -8,8 +8,6 @@ license.workspace = true
 publish = false
 
 [features]
-# Gallery scenes (full-window shell and sidebar states on the mock).
-gallery = ["recur-services/mock", "recur-ui/gallery", "recur-view-core/gallery", "dep:serde"]
 # Open Developer Tools (the GPUI inspector) in release builds.
 devtools = ["gpui-kit/inspector"]
 
@@ -22,7 +20,6 @@ recur-platform.workspace = true
 recur-view-core.workspace = true
 recur-view-sidebar.workspace = true
 serde_json.workspace = true
-serde = { workspace = true, optional = true }
 tracing.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
@@ -34,7 +31,6 @@ objc2-foundation.workspace = true
 parking_lot.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["mock"] }
-recur-app = { path = ".", features = ["gallery"] }
 tempfile.workspace = true
 
 [lints]

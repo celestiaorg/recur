@@ -12,8 +12,6 @@ pub mod actions;
 pub mod chrome;
 pub mod detail;
 pub mod findings;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod list;
 pub mod list_titlebar;
 pub mod review_modal;

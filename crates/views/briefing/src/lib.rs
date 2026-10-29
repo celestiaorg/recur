@@ -7,8 +7,6 @@
 //! are `recur_view_widgets::schedules` and `list_chrome`, which project settings embed too.
 
 pub mod briefing;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod issues;
 
 use gpui_kit::AppContext as _;

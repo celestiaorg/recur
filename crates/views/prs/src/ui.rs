@@ -87,7 +87,7 @@ pub fn ui(cx: &mut App) -> Entity<PrUi> {
     e
 }
 
-/// A fresh session (scenes and tests share one app).
+/// A fresh session (tests share one app).
 pub fn reset(cx: &mut App) {
     let e = cx.new(|_| PrUi::default());
     cx.set_global(PrUiGlobal(e));

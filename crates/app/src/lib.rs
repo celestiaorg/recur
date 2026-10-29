@@ -13,9 +13,6 @@ mod new_workspace;
 mod shell;
 mod titlebar;
 
-#[cfg(feature = "gallery")]
-pub mod gallery;
-
 use std::path::PathBuf;
 
 use gpui_kit::{

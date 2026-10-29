@@ -132,7 +132,7 @@ impl DateTimeField {
         Self::with_pattern(id, kind, &pattern, meridiem, style, cx)
     }
 
-    /// A field over an explicit pattern (tests and gallery scenes pin the locale).
+    /// A field over an explicit pattern (tests pin the locale).
     pub fn with_pattern(
         id: impl Into<SharedString>,
         kind: Kind,

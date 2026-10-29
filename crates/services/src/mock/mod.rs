@@ -1,6 +1,6 @@
 //! A mock bridge: every service answered from the e2e seed, with in-memory
 //! mutations, canned responses, emitted events and timing hooks, so view
-//! specs and gallery scenes run without a backend.
+//! specs run without a backend.
 //!
 //! It works at the JSON level. Each bound method is a [`Resolver`] keyed by
 //! its PascalCase method name that gets the call's positional arguments (as

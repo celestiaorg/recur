@@ -10,8 +10,6 @@
 
 mod chrome;
 pub mod command;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod open_in;
 pub mod run;
 pub mod run_command;

@@ -7,10 +7,6 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-[features]
-# Whole-window gallery scenes (`gallery`).
-gallery = ["recur-services/mock", "recur-ui/gallery"]
-
 [dependencies]
 gpui-kit.workspace = true
 recur-ui.workspace = true

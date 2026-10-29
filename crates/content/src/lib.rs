@@ -3,8 +3,6 @@
 //! find, and the image lightbox.
 
 pub mod emoji;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod html;
 #[cfg(target_os = "linux")]
 pub mod html_gtk;

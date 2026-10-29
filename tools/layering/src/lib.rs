@@ -10,8 +10,7 @@
 //! - `recur-engine` depends on no concrete provider crate, names no concrete forge or tracker
 //!   module, and spells no provider, forge or tracker id.
 //!
-//! Dev-dependencies are exempt: specs mount the whole shell. The `gallery` feature is not, so
-//! a scene reaches the shell and the other views only through `recur_view_core::gallery`.
+//! Dev-dependencies are exempt: specs mount the whole shell.
 
 /// The panes a pane embeds (the Observatory's Review tab is the review surface).
 pub const PANE_EMBEDS: &[(&str, &[&str])] = &[("recur-view-observatory", &["recur-view-review"])];

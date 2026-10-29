@@ -55,8 +55,6 @@ pub mod composer_doc;
 pub mod composer_undo;
 pub mod dock;
 pub mod flow;
-#[cfg(feature = "gallery")]
-pub mod gallery;
 pub mod glance;
 pub mod heap;
 pub mod hoist;

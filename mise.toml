@@ -4,7 +4,7 @@
 
 [tools]
 # mr-boxington (mbx) shares cargo build output across worktrees.
-rust = { version = "1.95", mr_boxington = true }
+rust = { version = "1.95", components = "rustfmt,clippy,llvm-tools", mr_boxington = true }
 mr-boxington = "1.28.0"
 node = "24.22.2"
 pnpm = "10.34.3"

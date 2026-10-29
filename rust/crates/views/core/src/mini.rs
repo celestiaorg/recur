@@ -212,12 +212,14 @@ impl MiniScriptEditor {
             placeholder: props.placeholder.clone(),
         };
         let base = state.read(cx).editor_prefs.clone();
+        // Each editor its own highlighter doc: the setup, teardown and run editors share a path.
+        let pane = format!("mini-{}", cx.entity_id());
         let editor = cx.new(|cx| {
             let mut opts = EditorOptions::new(props.lang.path(), value);
             opts.prefs = mini_prefs(&base);
             opts.read_only = props.readonly;
             opts.mini = Some(mini);
-            opts.pane = format!("mini-{}", props.lang.path());
+            opts.pane = pane;
             EditorView::new(opts, window, cx)
         });
         let subs = vec![

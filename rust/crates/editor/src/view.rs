@@ -641,7 +641,7 @@ impl EditorView {
     ) {
         self.state = state;
         self.rebuild_layout(window);
-        self.mount_highlighter(window);
+        self.mount_highlighter(window, cx);
         let (driver, step) = CompletionDriver::new(&self.state);
         self.completion = driver;
         self.run_driver_step(step, window, cx);
@@ -698,7 +698,7 @@ impl EditorView {
         self.layout.borrow_mut().rebuild(&self.state, widgets);
     }
 
-    fn mount_highlighter(&mut self, window: &Window) {
+    fn mount_highlighter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(h) = self.highlighter.as_mut() {
             h.destroy();
         }
@@ -718,7 +718,7 @@ impl EditorView {
         let win = self.highlight_window(window);
         let needs = h.mount(&self.state, win);
         self.highlighter = Some(h);
-        let _ = needs;
+        self.handle_highlight_needs(needs, window, cx);
     }
 
     fn focus_id(&self) -> String {
@@ -1340,7 +1340,7 @@ impl EditorView {
             cx,
         );
         if scope_changed || self.highlighter.is_none() {
-            self.mount_highlighter(window);
+            self.mount_highlighter(window, cx);
         }
         cx.notify();
     }

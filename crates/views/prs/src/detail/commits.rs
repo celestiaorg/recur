@@ -323,8 +323,7 @@ impl PrDetail {
                             .child(head)
                             .child(empty_state("Could not load this commit's diff", cx));
                     } else {
-                        let files: Vec<Rc<recur_domain::FileDiff>> =
-                            self.detail_files(cx).into_iter().map(Rc::new).collect();
+                        let files = self.detail_files(cx);
                         self.commit_stack.set_files(files.clone());
                         let state = self.state().clone();
                         let ws = pr.workspace_id.clone();

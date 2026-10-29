@@ -65,6 +65,46 @@ async fn get_pr_omits_commit_diffs() {
     fx.close().await;
 }
 
+/// The forge diff starts with GetPR, not after its checks fetch: Files
+/// changed would otherwise wait on the slowest of them first.
+#[tokio::test(flavor = "multi_thread")]
+async fn get_pr_starts_the_diff_before_the_checks_return() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let forge = Arc::new(recur_forge::testing::FakeForge::new());
+    let diffing = Arc::new(AtomicBool::new(false));
+    let seen = Arc::new(AtomicBool::new(false));
+    let (d, d2, s) = (diffing.clone(), diffing.clone(), seen.clone());
+    forge
+        .on_diff(move |_| {
+            d.store(true, Ordering::SeqCst);
+            async { Ok(String::new()) }
+        })
+        .on_checks(move |_| {
+            let (d, s) = (d2.clone(), s.clone());
+            async move {
+                for _ in 0..100 {
+                    if d.load(Ordering::SeqCst) {
+                        s.store(true, Ordering::SeqCst);
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                }
+                Ok(recur_forge::ChecksReport::default())
+            }
+        });
+    let fx = super::Fx::with(super::FxOpts {
+        forges: Some(vec![forge.clone() as Arc<dyn recur_forge::Forge>]),
+        ..super::FxOpts::default()
+    })
+    .await;
+    fx.store().update_pr("482", |p| p.files = None).unwrap();
+    fx.s.prs.get_pr("482").await.unwrap();
+    assert_eq!(forge.calls_to("checks").len(), 1, "{:?}", forge.calls());
+    assert!(seen.load(Ordering::SeqCst), "the diff waited on checks");
+    fx.close().await;
+}
+
 /// Go `TestBusFanOut`: every subscriber sees a bridged engine event, in
 /// order.
 #[tokio::test(flavor = "multi_thread")]

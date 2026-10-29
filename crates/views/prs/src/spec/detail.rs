@@ -434,3 +434,73 @@ fn files_changed_findings_open_in_findings_and_filter_the_toc(cx: &mut TestAppCo
     assert!(s.has(&format!("fl-row:file:{SESSION}")));
     assert!(s.has("button:Show all files:true"));
 }
+
+/// How the GetPR stub answers: the PR without its diff, held, or whole.
+#[derive(Clone, Copy, PartialEq)]
+enum Diff {
+    Missing,
+    Held,
+    Loaded,
+}
+
+fn get_pr_stub(
+    phase: std::sync::Arc<std::sync::Mutex<Diff>>,
+    held: std::sync::Arc<std::sync::Mutex<Vec<recur_services::mock::Release>>>,
+) -> MockOptions {
+    MockOptions::default().resolver("GetPR", move |a, sd, _| {
+        let id = a.first().and_then(Value::as_str).unwrap_or_default();
+        let mut pr = sd.pr_by_id(id).cloned().unwrap_or(Value::Null);
+        match *phase.lock().unwrap() {
+            Diff::Loaded => Reply::value(pr),
+            Diff::Missing => {
+                pr["files"] = Value::Null;
+                Reply::value(pr)
+            }
+            Diff::Held => {
+                let (reply, release) = Reply::deferred();
+                held.lock().unwrap().push(release);
+                reply
+            }
+        }
+    })
+}
+
+/// A GitHub PR whose diff is still hydrating shows the skeleton, then the files once the
+/// engine's `pr.updated` brings them.
+#[gpui::test]
+fn files_changed_fills_in_when_the_diff_lands(cx: &mut TestAppContext) {
+    let phase = std::sync::Arc::new(std::sync::Mutex::new(Diff::Missing));
+    let mut s = boot(cx, |_| {}, get_pr_stub(phase.clone(), Default::default()));
+    s.open_pr("482");
+    s.tab("Files changed");
+    assert!(s.has("pr-skel"));
+    assert!(!s.has("cfile:live:src/auth/oauth.ts"));
+
+    *phase.lock().unwrap() = Diff::Loaded;
+    s.wire("pr.updated", json!({ "prId": "482" }));
+    assert!(s.until(|s| s.has("cfile:live:src/auth/oauth.ts")));
+    assert!(!s.has("pr-skel"));
+}
+
+/// The 15s poll keeps refreshing after one of its refreshes is dropped mid-flight (leaving
+/// the PR while GetPR is out), so a diff that lands later still reaches Files changed.
+#[gpui::test]
+fn the_poll_survives_a_refresh_dropped_mid_flight(cx: &mut TestAppContext) {
+    let phase = std::sync::Arc::new(std::sync::Mutex::new(Diff::Missing));
+    let held = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let mut s = boot(cx, |_| {}, get_pr_stub(phase.clone(), held.clone()));
+    s.open_pr("482");
+    *phase.lock().unwrap() = Diff::Held;
+    s.wait(15_000);
+    assert_eq!(held.lock().unwrap().len(), 1, "the poll's GetPR is out");
+
+    s.prs_nav();
+    *phase.lock().unwrap() = Diff::Missing;
+    s.open_pr("482");
+    s.tab("Files changed");
+    assert!(!s.has("cfile:live:src/auth/oauth.ts"));
+
+    *phase.lock().unwrap() = Diff::Loaded;
+    s.wait(15_000);
+    assert!(s.until(|s| s.has("cfile:live:src/auth/oauth.ts")));
+}

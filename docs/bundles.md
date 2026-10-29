@@ -257,6 +257,15 @@ plain JS-shaped code: the TypeScript compiler accepts it) or shebang.
 Import what you need from **`@recur/sdk`** (authoring copy: `bundles/sdk/`;
 the compiler resolves the same module and bundles it into the Worker JS).
 
+The Worker (`crates/bundles/src/js.rs`, JavaScriptCore) has the ECMAScript
+built-ins with `Intl`, plus `console`, `setTimeout` / `setInterval` /
+`queueMicrotask`, `TextEncoder` / `TextDecoder` (UTF-8), `atob` / `btoa`,
+`URL` / `URLSearchParams`, `crypto.getRandomValues` / `randomUUID`,
+`structuredClone`, `AbortController`, `performance.now` and `self`. It has
+**no `fetch`** (nor `Headers` / `Request` / `Response` / `Blob`, or
+`crypto.subtle`), no `require`, and no file access: use a shebang command for
+network or disk work.
+
 | Export | Kind |
 |--------|------|
 | `MacroContext` | input shape (`input`, `selectedText`, `filepath`, …) |

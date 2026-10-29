@@ -1,4 +1,4 @@
-//! Keeps terminal views alive across dock unmounts (`lib/caches/term-park.ts`).
+//! Keeps terminal views alive across dock unmounts.
 //!
 //! Hiding the dock or switching workspaces parks the view instead of detaching: the session
 //! stays attached and the screen keeps updating, so coming back shows it instantly instead of

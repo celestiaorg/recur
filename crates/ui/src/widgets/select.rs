@@ -1,4 +1,4 @@
-//! `Select.svelte`: the app-styled select (`.sel*` in `_forms.scss`). A trigger button and a
+//! The app-styled select. A trigger button and a
 //! window-anchored menu with keyboard navigation, a hover gate, optional fuzzy search,
 //! provider-grouped options, inline hints, and multi-select.
 

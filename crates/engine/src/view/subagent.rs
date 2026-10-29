@@ -1,4 +1,4 @@
-//! `lib/subagent.ts`: display helpers for Claude Code's Agent/Task subagent
+//! Display helpers for Claude Code's Agent/Task subagent
 //! tool and SendMessage, kept pure so "no JSON dump, no launch metadata"
 //! stays testable. Claude Code renamed Task to Agent in v2.1.63; both are
 //! accepted.

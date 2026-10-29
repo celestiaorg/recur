@@ -193,7 +193,7 @@ impl WorkspaceRef {
     }
 }
 
-/// The loop shape of `workspace.updated`: every field the frontend merges
+/// The loop shape of `workspace.updated`: every field the UI merges
 /// into its live list.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

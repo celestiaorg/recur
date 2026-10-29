@@ -1,4 +1,4 @@
-//! `lib/open-external.ts`: absolute http(s) links leave the app for the OS browser, even when
+//! Link opening: absolute http(s) links leave the app for the OS browser, even when
 //! they point at the app's own origin; relative hrefs do nothing natively.
 
 use gpui_kit::App;

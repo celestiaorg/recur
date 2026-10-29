@@ -1,5 +1,5 @@
-//! The shell over the mock bridge: ports of `frontend/e2e/shell.spec.ts`, `a11y-keys.spec.ts`
-//! and `toasts.spec.ts` scenarios that live in the shell and sidebar. Elements are found by
+//! The shell over the mock bridge: shell, keyboard-accessibility and toast scenarios that
+//! live in the shell and sidebar. Elements are found by
 //! their debug selectors (`row:<id>`, `ph:<project>`, `on:<id>`, `ct:<key>`, …).
 
 use std::sync::Arc;
@@ -715,7 +715,7 @@ fn dragging_a_project_into_a_group_moves_it_there(cx: &mut TestAppContext) {
     assert!(h.has("ph:storefront"));
 }
 
-/// Navigate → Reload Bundles (`lib/bundle-reload.ts` and App.svelte's toasts): the catalog is
+/// Navigate → Reload Bundles and its toasts: the catalog is
 /// re-read, bundle-derived state rebuilds off the epoch, and skipped bundles are reported.
 #[gpui::test]
 fn reload_bundles_rereads_the_catalog_and_reports_skipped_bundles(cx: &mut TestAppContext) {

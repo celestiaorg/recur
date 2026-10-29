@@ -1,5 +1,5 @@
-//! The UI fonts: the exact families and weights `frontend/index.html` loads, bundled as static
-//! instances (see `assets/fonts/fetch.sh`), and the CSS font stacks from `_tokens.scss`.
+//! The UI fonts: the families and weights the app uses, bundled as static instances (see
+//! `assets/fonts/fetch.sh`), and the font stacks.
 
 use gpui_kit::{App, Font, FontFallbacks, FontFeatures, FontStyle, FontWeight, SharedString, font};
 use std::borrow::Cow;
@@ -132,9 +132,8 @@ impl Family {
     }
 }
 
-/// Every bundled face: the families and weights `frontend/index.html` requests from Google
-/// Fonts. Inter, JetBrains Mono and Space Grotesk are the chrome; IBM Plex Mono and Source
-/// Code Pro are editor/terminal picks (`lib/mono-fonts.ts`).
+/// Every bundled face. Inter, JetBrains Mono and Space Grotesk are the chrome; IBM Plex Mono
+/// and Source Code Pro are editor/terminal picks.
 pub const FACES: &[(&str, f32, &[u8])] = &[
     (
         "Inter",

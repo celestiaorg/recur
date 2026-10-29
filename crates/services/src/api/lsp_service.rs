@@ -15,7 +15,7 @@ use crate::Result;
 ///   ...lsp.exit events {id}...
 /// ```
 ///
-/// The frontend @codemirror/lsp-client owns protocol/UI; this service only
+/// The editor's LSP client owns protocol/UI; this service only
 /// frames stdio and resolves worktree roots.
 #[async_trait]
 pub trait LspService: Send + Sync {

@@ -1,4 +1,4 @@
-//! `lib/file-index.ts` as the chat's `@` menu uses it: rank files through the backend index
+//! The file index as the chat's `@` menu uses it: rank files through the backend index
 //! (`SearchFiles`), normalize the hits, and toast a failure. A newer search replaces the task
 //! holding an older one, which cancels it (`SEARCH_CANCELLED`).
 
@@ -107,7 +107,6 @@ mod tests {
         }
     }
 
-    // file-index.test.ts
     #[test]
     fn maps_dirs_from_flags_slashes_and_parents() {
         let hits = map_file_search_hits(&[

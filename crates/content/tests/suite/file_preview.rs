@@ -1,4 +1,4 @@
-//! `components/FilePreview.test.ts`: the preview find bar opens, counts, follows its toggles,
+//! The file preview: the find bar opens, counts, follows its toggles,
 //! closes on Escape, stays out of inactive and SVG previews, recollects when the content
 //! changes, and paints highlights only for the active preview.
 

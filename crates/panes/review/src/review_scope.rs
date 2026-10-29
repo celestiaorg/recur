@@ -1,4 +1,4 @@
-//! `lib/review-scope.ts`: the newest-first tape Review → Commits steps through: unpublished
+//! The newest-first tape Review → Commits steps through: unpublished
 //! work, then real commits.
 
 use recur_domain::Commit;

@@ -1,6 +1,5 @@
-//! GPUI ports of the Observatory's e2e specs (`observatory.spec.ts`, `terminal-dock.spec.ts`,
-//! `editor-hotpath.spec.ts`, `editor-syntax.spec.ts`, `explorer-scope.spec.ts`) on the mock
-//! bridge.
+//! The Observatory's specs (the Observatory, terminal dock, editor hot path, editor syntax and
+//! explorer scope) on the mock bridge.
 
 mod editor_hotpath;
 mod editor_syntax;

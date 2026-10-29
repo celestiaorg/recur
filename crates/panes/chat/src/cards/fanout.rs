@@ -1,4 +1,4 @@
-//! `FanOutCard.svelte`: one wave of the board. Each child's live state comes from the workspace
+//! One wave of the board. Each child's live state comes from the workspace
 //! store; a live row opens the child, a settled row expands into the child's full loop
 //! transcript (conductor turns, specialist cards and engine facts merged as its loop tab showed
 //! them), read-only. A Plan-panel link can ask for a child (`childTranscriptRequest`).

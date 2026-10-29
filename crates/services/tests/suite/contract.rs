@@ -1,7 +1,7 @@
 //! The real services and the mock bridge agree: the mock answers from the
 //! e2e seed, which is a dump of the same demo-seeded store the real services
 //! open here, so every read returns the same JSON and a missing id fails on
-//! both. One divergence comes from `mock-bridge.ts` itself and is pinned
+//! both. One divergence comes from the mock itself and is pinned
 //! here so a view handles both: GetPR's commits carry diffs only on the mock
 //! (the real service leaves them to GetCommitDiff). GetEscalation for a loop
 //! with none answers an empty escalation on both. GetSettings normalizes the

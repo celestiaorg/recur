@@ -1,7 +1,7 @@
-//! `AttachmentLightbox.svelte`: a full-window image viewer. The image fits the window (minus
+//! A full-window image viewer. The image fits the window (minus
 //! 32px padding) and a click toggles actual size when it was shrunk; Escape closes, ⌘C copies,
 //! right-click opens Copy Image. Hosts raise unseen attention while it is open
-//! (`MarkdownEvent::LightboxOpen`, `setChatOccluder`).
+//! (`MarkdownEvent::LightboxOpen`).
 
 use recur_ui::guard::Guarded;
 use std::rc::Rc;

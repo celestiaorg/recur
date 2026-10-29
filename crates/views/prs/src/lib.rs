@@ -1,5 +1,5 @@
-//! Pull requests (`PRList.svelte`, `PRDetail.svelte`, `PRListTitlebar.svelte`,
-//! `PRTitlebarActions.svelte`, `PRReviewModal.svelte`, `PRPeopleStack.svelte`).
+//! Pull requests: the dashboard, PR detail, their titlebar parts, the review modal and
+//! participant stacks.
 //!
 //! # Embedding
 //!

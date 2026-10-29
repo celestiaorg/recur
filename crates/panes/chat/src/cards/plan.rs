@@ -1,4 +1,4 @@
-//! `PlanCard.svelte`: a filed plan as a compact card, the summary and step checklist with
+//! A filed plan as a compact card, the summary and step checklist with
 //! file chips and dependencies. Step status is read live from the workspace's current plan
 //! (matched by id and title) so the card ticks along as the board runs.
 

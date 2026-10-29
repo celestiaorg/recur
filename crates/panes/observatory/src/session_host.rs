@@ -1,4 +1,4 @@
-//! The RPC client half of `lib/editor-session.ts`: debounced, change-gated session writes
+//! The editor session's RPC client: debounced, change-gated session writes
 //! through `EditorSessionService`, one ordered queue per workspace, the synchronous quit
 //! journal, the one-time legacy import, and the explorer scope. The session shape, caps and
 //! patch building are `recur_editor::session`.
@@ -47,7 +47,7 @@ struct PendingSave {
     session: Session,
 }
 
-/// The module state of `editor-session.ts`.
+/// The session writer's state.
 #[derive(Default)]
 pub struct SessionHost {
     sent: HashMap<String, SentState>,

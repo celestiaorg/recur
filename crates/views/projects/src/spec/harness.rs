@@ -85,7 +85,7 @@ pub fn boot<'a>(
         let shell = cx.new(|cx| Shell::new(ctx, registry, ShellOptions::default(), window, cx));
         Root { shell }
     });
-    // playwright.config.ts's viewport.
+    // The specs' window size.
     cx.simulate_resize(gpui::size(px(1380.), px(880.)));
     cx.run_until_parked();
     let mut s = S {

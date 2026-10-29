@@ -1,4 +1,4 @@
-//! WebFetch / WebSearch card rules (frontend `lib/webtools.ts`): never a
+//! WebFetch / WebSearch card rules: never a
 //! JSON dump, friendly URLs.
 
 use serde_json::Value;

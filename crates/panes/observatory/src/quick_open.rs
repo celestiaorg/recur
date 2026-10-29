@@ -1,4 +1,4 @@
-//! `QuickOpen.svelte`: Go to file (⌘P, ranked by the backend file index, `path:line`) and Go
+//! Quick Open: Go to file (⌘P, ranked by the backend file index, `path:line`) and Go
 //! to symbol in the open file (⌘⇧O), as an overlay over the Observatory.
 
 use gpui_kit::base::input::{InputEvent, InputState};

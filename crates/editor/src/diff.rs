@@ -1,6 +1,6 @@
 //! Text diffing: `@codemirror/merge`'s `diff` / `presentableDiff` (Myers
 //! with half-match splitting, scan limits and timeouts) and Recur's
-//! line-oriented diff (`cm-line-diff.ts`).
+//! line-oriented diff.
 //!
 //! The algorithm runs on UTF-16 code units like the JavaScript original,
 //! so hunk boundaries and the imprecise fallbacks land in the same places;

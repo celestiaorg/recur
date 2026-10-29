@@ -1,4 +1,4 @@
-//! The workspace's right-hand IDE pane (`Observatory.svelte`): the file explorer, editor tabs,
+//! The workspace's right-hand IDE pane: the file explorer, editor tabs,
 //! the code / merge editor hosts, file previews, branch review, the tool panels (Source
 //! Control, Outline, Problems, Search, References, Findings, Artifacts), Quick Open, the
 //! terminal dock and the bundle command prompts.

@@ -1,4 +1,4 @@
-//! `AgentChat.svelte` as an entity: the transcript, the live turn chrome, the inline cards and
+//! The agent chat as an entity: the transcript, the live turn chrome, the inline cards and
 //! the composer dock. Hosts set [`ChatProps`], declare which callbacks they handle in
 //! [`ChatHooks`], subscribe to [`ChatEvent`] (the callbacks), and read the draft back
 //! (`bind:input` / `bind:attachments`).

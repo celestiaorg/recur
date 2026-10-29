@@ -1,4 +1,4 @@
-//! The sidebar footer's provider usage meter (`ProviderUsageMeter.svelte`, its rules are
+//! The sidebar footer's provider usage meter (its rules are
 //! `recur_view_core::provider_usage`): one ring chip per provider with session quota, and a
 //! hover / click popover with every window, reset time and Cursor model bucket.
 

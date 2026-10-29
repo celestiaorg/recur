@@ -226,7 +226,7 @@ impl Seed {
         id
     }
 
-    /// The seed workspace id for a goal (`sidebarWorkspace` in fixtures.ts).
+    /// The seed workspace id for a goal.
     pub fn workspace_id_by_goal(&self, goal: &str) -> Option<String> {
         self.loops()
             .find(|l| js::get_str(l, "goal") == goal)

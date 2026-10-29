@@ -1,7 +1,7 @@
 //! The editor entity: owns the [`EditorState`], dispatches transactions
 //! and runs everything CodeMirror's view plugins do after an update
 //! (layout, highlighting, completion, panels, dirty tracking, scrolling,
-//! caret blink). Mirrors `CodeEditor.svelte` and `MergeEditor.svelte`.
+//! caret blink), for both the code editor and the merge editor.
 
 use recur_ui::guard::Guarded;
 use std::cell::RefCell;

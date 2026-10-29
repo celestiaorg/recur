@@ -1,4 +1,4 @@
-//! The transcript cases of frontend `lib/agentchat.test.ts`.
+//! Transcript mapping, live merges and reducers.
 
 use recur_domain::ChatItem;
 

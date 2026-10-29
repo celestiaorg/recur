@@ -1,5 +1,5 @@
-//! What a pane needs from the session layer: the `TerminalService` calls `TerminalPane.svelte`
-//! made (`AttachTerminal`, `DetachTerminal`, `AckTerminal`, `WriteTerminal`, `ResizeTerminal`,
+//! What a pane needs from the session layer: the `TerminalService` calls a pane makes
+//! (`AttachTerminal`, `DetachTerminal`, `AckTerminal`, `WriteTerminal`, `ResizeTerminal`,
 //! `ClearTerminal`). Implemented for [`recur_term::Manager`]; the app can wrap the services layer
 //! instead.
 

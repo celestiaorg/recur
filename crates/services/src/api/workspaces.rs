@@ -50,7 +50,7 @@ pub trait WorkspacesService: Send + Sync {
     /// one workspace noun, the MODE decides what starts inside it. mode="loop"
     /// engages the autopilot immediately — prompt is the run's task (required) and
     /// autonomy overrides the global default. Any other mode creates the workspace
-    /// and lets the chat dock drive (the frontend seeds prompt as the first chat
+    /// and lets the chat dock drive (the UI seeds prompt as the first chat
     /// message in that mode). simplify is the New Workspace chip for mode=loop
     /// (nil → Settings / newest pair-chat inherit); other modes ignore it and seed
     /// the first chat after create. Returns the stored record immediately; the git
@@ -478,7 +478,7 @@ pub trait WorkspacesService: Send + Sync {
     async fn workspace_discard_risk(&self, id: &str) -> Result<String>;
 
     /// WorkspaceFacts returns loop-level facts (outcomes, deviations) with real
-    /// timestamps, interleaved into the Loop chat cockpit by the frontend.
+    /// timestamps, interleaved into the Loop chat cockpit by the UI.
     async fn workspace_facts(&self, workspace_id: &str) -> Result<Vec<FeedItem>>;
 
     /// WorkspaceLandState is the titlebar Commit / Update / Merge (or Push) switch.

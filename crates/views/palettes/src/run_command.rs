@@ -1,4 +1,4 @@
-//! `RunCommandPalette.svelte`: bundle commands and snippets for the focused file (⌘⇧P,
+//! Run Command: bundle commands and snippets for the focused file (⌘⇧P,
 //! Navigate → Run Command…, the status bar's Bundles). Recently run ones lead, in frecency
 //! order (`recur_view_core::command_usage`); snippets show their tab trigger (`ife⇥`).
 

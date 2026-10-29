@@ -1,6 +1,5 @@
-//! The GPUI application shell: the main window (`window_state.go`, `window_titlebar*.go`),
-//! the native menu (`app_menu.go`), and App.svelte's root view: titlebar, sidebar, routed
-//! main area, overlays host, global keys and boot.
+//! The GPUI application shell: the main window, the native menu, and the root view:
+//! titlebar, sidebar, routed main area, overlays host, global keys and boot.
 //!
 //! Views plug in through [`recur_view_core::ViewRegistry`]; see `docs/ARCHITECTURE.md`.
 

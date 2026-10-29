@@ -1,4 +1,4 @@
-//! `WorkspaceDetail.svelte`: the detail route. It binds one [`WorkspaceView`] to the selected
+//! The detail route. It binds one [`WorkspaceView`] to the selected
 //! workspace (or, in PR detail, to the PR's agent workspace, so a turn survives the switch),
 //! keeps the previous one mounted as a parked hot shell, starts a PR's chat host, and leaves
 //! a stale selection for the Briefing.
@@ -41,8 +41,8 @@ pub struct WorkspaceDetail {
 
 impl WorkspaceDetail {
     pub fn new(vcx: &ViewContext, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        // Subscribed before any WorkspaceView, so the hoist bookkeeping api.ts did ahead of its
-        // `onChatsChanged` listeners runs first.
+        // Subscribed before any WorkspaceView, so the hoist bookkeeping runs before the views'
+        // chats-changed handlers.
         let subs = vec![
             cx.guarded_subscribe(&vcx.state, |_, _, ev: &AppliedEvent, cx| {
                 on_hoist(&ev.0, cx)

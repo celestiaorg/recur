@@ -1,6 +1,6 @@
 //! Bracket auto-closing: `@codemirror/autocomplete`'s `closeBrackets`
 //! (input handler, closed-bracket tracking, `deleteBracketPair`) and
-//! Recur's paired-quote input handler from `cm-lang-data.ts`.
+//! Recur's paired-quote input handler from `[[languageData]]`.
 //!
 //! Recur has no Lezer syntax tree, so CodeMirror's `nodeStart` and
 //! `probablyInString` are always false and string prefixes never apply.

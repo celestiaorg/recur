@@ -1,5 +1,5 @@
-//! Document changes -> line splices for the tokenizer document
-//! (`cm-tm-delta.ts`) and the cheap document identity (`cm-tm-doc.ts`).
+//! Document changes -> line splices for the tokenizer document, and the
+//! cheap document identity.
 
 use std::collections::HashMap;
 

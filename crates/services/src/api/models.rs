@@ -168,7 +168,7 @@ pub struct CommandPromptDto {
 }
 
 /// EditorBuffer is one unsaved disk buffer: the user's draft plus a hash of the
-/// on-disk text it diverged from. The frontend computes and compares the hash;
+/// on-disk text it diverged from. The UI computes and compares the hash;
 /// this service just stores it. Keeping a hash instead of the full saved copy
 /// halves the payload and still lets restore detect "disk moved underneath the
 /// stash" (agents rewrite worktree files while tabs sit closed).
@@ -219,7 +219,7 @@ pub struct EditorScratchDoc {
 }
 
 /// EditorSession is the full per-workspace snapshot, as stored on disk and as
-/// returned to the frontend on restore.
+/// returned to the UI on restore.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct EditorSession {
@@ -348,7 +348,7 @@ pub struct GrammarInfo {
     pub close_brackets: Vec<String>,
 }
 
-/// IssuesView is the Issues page's layout and filters. The frontend validates
+/// IssuesView is the Issues page's layout and filters. The UI validates
 /// values on load, so an unknown or stale entry falls back to its default.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -501,8 +501,8 @@ pub struct PromptCompleteResultDto {
     pub message: String,
 }
 
-/// PromptContextDto is workspace + editor state the frontend sends for RunPromptAction.
-/// Workspace fields may be marshaled by the frontend (no store lookup required).
+/// PromptContextDto is workspace + editor state the UI sends for RunPromptAction.
+/// Workspace fields may be filled in by the UI (no store lookup required).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct PromptContextDto {
@@ -574,7 +574,7 @@ pub struct RoleInfo {
     pub source_root: String,
 }
 
-/// RunContextDto is the editor state the frontend sends for RunCommand.
+/// RunContextDto is the editor state the UI sends for RunCommand.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct RunContextDto {

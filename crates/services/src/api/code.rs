@@ -20,10 +20,10 @@ pub trait CodeService: Send + Sync {
     /// AbsPath returns the absolute filesystem path for a repo-relative path.
     async fn abs_path(&self, project_id: &str, workspace_id: &str, path: &str) -> Result<String>;
 
-    /// BridgeBenchDone persists frontend-measured stats for the driving script to read.
+    /// BridgeBenchDone persists UI-measured stats for the driving script to read.
     async fn bridge_bench_done(&self, stats_json: &str) -> Result<()>;
 
-    /// BridgeBenchEnabled reports whether the frontend should run the RTT bench at boot.
+    /// BridgeBenchEnabled reports whether the UI should run the RTT bench at boot.
     async fn bridge_bench_enabled(&self) -> Result<bool>;
 
     /// BridgeEcho returns len(payload). Times serialization + IPC for larger bodies.

@@ -1,4 +1,4 @@
-//! The Observatory's shared chrome from `_observatory.scss` and `_main.scss`: pane toggles
+//! The Observatory's shared chrome: pane toggles
 //! with badges, `.seg` text chips, side heads, status bars, `.linkish` buttons and empty
 //! states.
 

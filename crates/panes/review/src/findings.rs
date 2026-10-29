@@ -1,4 +1,4 @@
-//! The review half of `lib/findings-ui.ts`: explorer flags and the finding ids pending review
+//! Findings in review: explorer flags and the finding ids pending review
 //! drafts carry.
 
 use std::collections::HashSet;

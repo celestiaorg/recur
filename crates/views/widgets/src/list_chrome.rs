@@ -1,4 +1,4 @@
-//! `_briefing.scss` and the shared rules its list views draw with: the pane header
+//! The shared chrome of the briefing list views: the pane header
 //! (`.briefing-filters`), bucket strips (`.briefing-h`), `.empty`, the flattened `.ibrow` and
 //! the Clear filters / Show all buttons.
 

@@ -1,5 +1,5 @@
-//! Live chat events as the chat surfaces consume them (`lib/api.ts`'s `onSession*` and
-//! `onAgent` wrappers): the session's workspace (`""` for Ask Recur), its code, and the
+//! Live chat events as the chat surfaces consume them: the session's workspace (`""` for Ask
+//! Recur), its code, and the
 //! payload with the same filters the listeners applied.
 
 use recur_agent::context_usage::ContextUsage;

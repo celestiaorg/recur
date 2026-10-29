@@ -6,7 +6,7 @@
 //! thread, reaction and draft state). The mention and emoji typeahead in the composers
 //! (`recur_view_widgets::suggest`) paint through the overlays `recur_view_chat::register` adds.
 //!
-//! **Observatory** (`ObservatoryView.svelte` → `ReviewSurface.svelte`): own a
+//! **Observatory**: own a
 //! [`surface::ReviewSurface`] entity built with [`surface::SurfaceProps`] (project, workspace,
 //! base label, `active`, `tab`, `count`, findings by path, dirty paths, working dirty count,
 //! exclude globs, `restore`). Push prop changes with `set_props`; bump `refresh` to reload.
@@ -16,7 +16,7 @@
 //! `view_state` snapshots tab, selection and scroll for the host to persist; feed it back as
 //! `restore`.
 //!
-//! **PR detail** (`PRDetailView.svelte` Files tab): there is no surface. Own a
+//! **PR detail** (Files tab): there is no surface. Own a
 //! [`stack::FileStack`] (stacked [`diff_file::DiffFile`] cards with windowed hydration, sticky
 //! headers, scroll spy and j/k stepping) and a [`file_list::ReviewFileList`] entity. Feed the
 //! stack `set_files` and [`stack::CardProps`] with `note_mode: Some(NoteMode::Pr)`, and call

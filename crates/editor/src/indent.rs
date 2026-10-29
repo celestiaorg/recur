@@ -1,6 +1,6 @@
 //! Indentation: CodeMirror's `IndentContext` / `getIndentation` /
-//! `indentOnInput`, with Recur's `[[languageData]]` indent service
-//! (`cm-lang-data.ts` `indentUsing`). Without a service CodeMirror falls back
+//! `indentOnInput`, with Recur's `[[languageData]]` indent service.
+//! Without a service CodeMirror falls back
 //! to the (empty) syntax tree, which only answers at position 0.
 
 use std::collections::HashMap;

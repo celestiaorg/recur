@@ -1,4 +1,4 @@
-//! `ImageContextMenu.svelte`: right-click Copy Image over an image, clamped into the window.
+//! Right-click Copy Image over an image, clamped into the window.
 
 use gpui_kit::{
     App, ClipboardItem, Context, EventEmitter, FocusHandle, Focusable, Image, ImageFormat,

@@ -1,5 +1,5 @@
-//! The palettes over the Observatory's editor: `bundles.spec.ts`'s ⌘⇧P Sort Lines run,
-//! `editor-syntax.spec.ts` through the language picker's rows, and Run Command's Recent
+//! The palettes over the Observatory's editor: the ⌘⇧P Sort Lines run, syntax changes
+//! through the language picker's rows, and Run Command's Recent
 //! section in frecency order.
 
 use std::rc::Rc;

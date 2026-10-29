@@ -1,4 +1,4 @@
-//! `frontend/e2e/chat.spec.ts` on the real workspace view: the chat dock in the Observatory's
+//! The chat on the real workspace view: the chat dock in the Observatory's
 //! left panel, its tabs, send / queue / steer / Stop / Retry routing, prompt actions, live
 //! events, the transcript UI cache and the tab strip's persistence.
 
@@ -2205,7 +2205,7 @@ async fn http_links_in_agent_output_open_in_the_os_browser(cx: &mut TestAppConte
     );
 }
 
-// ---- maestro-dock.spec.ts ----
+// ---- chat dock ----
 
 #[gpui::test]
 async fn the_dock_opens_with_the_loop_tab_sends_a_message_and_toggles_closed(

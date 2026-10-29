@@ -1,9 +1,9 @@
-//! The HTML kind of `FilePreview.svelte`: agent HTML runs, as the sandboxed iframe let it, in
-//! a WKWebView behind the preview's box. The document is `htmlPreviewSrcdoc` (CSP first:
+//! The HTML file preview: agent HTML runs in a sandboxed WKWebView behind the preview's box.
+//! The document is [`html_preview_srcdoc`] (CSP first:
 //! https/wss only, so the app and Recur's localhost servers are unreachable), the data store
 //! is non-persistent, the main frame never navigates away and popups never open. The page's
 //! `parent.postMessage` reaches the host (scroll, find results, find keys) and the host
-//! answers by `message` events, as with the iframe.
+//! answers by `message` events.
 //!
 //! The page sits behind GPUI's drawing, which leaves a transparent hole over it
 //! (`Window::paint_hole`) and lets mouse events there through to it (`HitboxBehavior::Native`),

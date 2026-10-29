@@ -1,4 +1,4 @@
-//! `lib/markdown.ts`: GitHub-flavored markdown to sanitized HTML for chat and file previews.
+//! GitHub-flavored markdown to sanitized HTML for chat and file previews.
 //! Chat content is LLM output, so raw HTML never reaches a view unsanitized.
 
 mod host;

@@ -1,4 +1,4 @@
-//! `NewProject.svelte`: the quick-create project modal (`newProjectOpen`). Picks a repository
+//! The quick-create project modal (`newProjectOpen`). Picks a repository
 //! (typed or through the folder dialog), names it after the folder until the user renames
 //! it, suggests and lists its branches, and adds it; reopens New workspace afterwards when it
 //! was opened from there.

@@ -1,5 +1,5 @@
 //! Bundle `[[languageData]]`: comment tokens, indent rules, bracket pairing
-//! (the editor-independent parts of `cm-lang-data.ts`). Patterns are
+//! (the editor-independent parts). Patterns are
 //! JavaScript regex sources, compiled with [`JsRegex`].
 
 use serde::{Deserialize, Serialize};

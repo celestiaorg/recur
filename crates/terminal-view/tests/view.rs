@@ -1,5 +1,4 @@
-//! Pane behaviour against a recording backend: the TerminalPane half of
-//! `frontend/e2e/terminal-dock.spec.ts` and `components/TerminalDock.test.ts`.
+//! Pane behaviour against a recording backend: attach, replay, acks, resize and find.
 
 use std::sync::Arc;
 use std::time::Duration;

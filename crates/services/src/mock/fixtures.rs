@@ -1,14 +1,14 @@
-//! `frontend/e2e/helpers/fixtures.ts`: the shared e2e seed (loaded once) and
+//! The shared e2e seed (loaded once) and
 //! the per-test clone every test's bridge gets, so mutations cannot leak into
-//! the next test. The page-level helpers there (clicking a sidebar row,
-//! reading localStorage, asserting no page errors) belong to the view
-//! harness; [`sidebar_workspace_id`] is the lookup they share.
+//! the next test. Page-level helpers (clicking a sidebar row, reading local
+//! storage) belong to the view harnesses; [`sidebar_workspace_id`] is the
+//! lookup they share.
 
 use std::sync::OnceLock;
 
 use super::Seed;
 
-/// The e2e seed (`seed` in fixtures.ts).
+/// The e2e seed.
 pub fn base_seed() -> &'static Seed {
     static SEED: OnceLock<Seed> = OnceLock::new();
     SEED.get_or_init(Seed::load)

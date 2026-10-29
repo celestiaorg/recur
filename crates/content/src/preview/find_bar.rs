@@ -1,4 +1,4 @@
-//! The preview find bar (`.file-preview-find.cm-recur-search` in `FilePreview.svelte`): query
+//! The preview find bar: query
 //! field, match count, previous / next, match-case / regexp / whole-word toggles and close. The
 //! preview owns matching; the bar owns its fields and keys (Enter / Shift+Enter step, Escape
 //! closes, ⌥⌘C / ⌥⌘R / ⌥⌘W toggle while it has focus).

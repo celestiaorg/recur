@@ -299,7 +299,7 @@ async fn run_type_script_macro(
         o => o,
     };
     validate_output(&routing).map_err(|e| err!("macro output: {e}"))?;
-    // Effective values match the app (commands.ts: result ?? cmd).
+    // Effective values match the app: the result's value, else the command's.
     let language = match s("language") {
         l if l.is_empty() => cmd.language.clone(),
         l => l,

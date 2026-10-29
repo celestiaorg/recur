@@ -1,4 +1,4 @@
-//! `lib/spy-pick.ts`: which stacked file owns the scroll position, and keeping the viewport on
+//! Which stacked file owns the scroll position, and keeping the viewport on
 //! it while cards above change height.
 
 use crate::review_window::CardRange;

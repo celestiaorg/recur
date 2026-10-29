@@ -1,6 +1,5 @@
-//! Text-field typeaheads: `lib/emoji.ts` (`:name` shortcodes, expanded as you type) with
-//! `EmojiSuggest.svelte`, and `lib/user-mention.ts` (GitHub `@login`) with
-//! `UserMentionSuggest.svelte`.
+//! Text-field typeaheads: emoji (`:name` shortcodes, expanded as you type) and user
+//! mentions (GitHub `@login`).
 //!
 //! A host attaches a typeahead to its gpui-base input or textarea with [`attach_emoji`] /
 //! [`attach_user_mentions`] and keeps the returned entity alive. The open menu lives in the
@@ -770,7 +769,7 @@ fn pr_face(p: &PrPerson, t: &Tokens) -> impl IntoElement {
         })
 }
 
-/// `EmojiSuggest.svelte` / `UserMentionSuggest.svelte`: the open typeahead, fixed under (or
+/// The open emoji or user-mention typeahead, fixed under (or
 /// over) the caret.
 pub struct SuggestOverlay {
     kind: SuggestKind,
@@ -960,7 +959,6 @@ mod tests {
 
     use recur_content::emoji::{emoji_for_shortcode, expand_emoji_shortcodes};
 
-    // emoji.test.ts
     #[test]
     fn resolves_github_aliases() {
         assert_eq!(emoji_for_shortcode("rocket"), Some("🚀"));
@@ -1038,7 +1036,6 @@ mod tests {
         );
     }
 
-    // user-mention.test.ts
     #[test]
     fn suggests_people_with_logins() {
         let p = |login: &str, name: &str| PrPerson {

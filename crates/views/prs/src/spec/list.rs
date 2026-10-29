@@ -1,4 +1,4 @@
-//! The PR list halves of `pr-review.spec.ts`.
+//! The PR dashboard.
 
 use gpui::{Modifiers, TestAppContext, point, px};
 use recur_services::mock::{MockOptions, Reply};

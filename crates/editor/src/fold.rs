@@ -1,6 +1,6 @@
 //! Code folding (`@codemirror/language` foldState, `foldable`, fold
-//! commands, fold gutter markers) with Recur's TextMate fold service
-//! (`cm-tm-fold.ts`): grammar fold markers, else indentation.
+//! commands, fold gutter markers) with Recur's TextMate fold service:
+//! grammar fold markers, else indentation.
 
 use crate::state::{EditorState, Effect, Transaction, TransactionSpec};
 use crate::view_queries::{LineBlock, ViewQueries};

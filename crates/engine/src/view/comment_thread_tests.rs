@@ -1,5 +1,3 @@
-//! Port of `lib/comment-thread.test.ts`.
-
 use recur_domain::PrSource;
 
 use super::*;

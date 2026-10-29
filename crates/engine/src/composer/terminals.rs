@@ -9,7 +9,7 @@ use regex::Regex;
 
 use crate::terminals::{TerminalSession, TerminalSource};
 
-/// Keep in sync with the frontend `TERMINAL_AT_RE`.
+/// Keep in sync with `TERMINAL_AT_CORE` in `crate::view::mentions`.
 static TERMINAL_AT_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"@terminal(?::([^\s@]+))?").expect("terminal pattern"));
 

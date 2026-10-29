@@ -1,6 +1,6 @@
 //! Language server UI hooks: the [`LspClient`] trait the editor drives
-//! (implemented by the LSP port) and the editor-side logic of
-//! `@codemirror/lsp-client` as Recur's `lsp.ts` configures it: hover
+//! (implemented by the Observatory's LSP client) and the editor-side logic of
+//! `@codemirror/lsp-client` as Recur configures it: hover
 //! tooltips, signature help, formatting (Shift-Alt-f), rename (F2), jump to
 //! definition (F12 / Mod-click), the completion source, and server
 //! diagnostics mapped through unsynced edits.

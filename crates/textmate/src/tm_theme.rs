@@ -1,4 +1,4 @@
-//! TextMate / VS Code theme loading and editor chrome colours (`tm-theme.ts`).
+//! TextMate / VS Code theme loading and editor chrome colours.
 
 use std::collections::HashMap;
 

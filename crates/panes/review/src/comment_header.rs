@@ -1,4 +1,4 @@
-//! `lib/comment-header.ts`.
+//! Review comment headers.
 
 use recur_domain::PrComment;
 use recur_engine::view::js;

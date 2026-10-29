@@ -408,7 +408,7 @@ fn sanitize_input_name(name: &str) -> String {
 }
 
 /// Picks stdin text from the command's input/fallbackInput modes. A
-/// frontend-resolved `rc.input` wins.
+/// UI-resolved `rc.input` wins.
 pub fn resolve_input(cmd: &crate::Command, rc: &RunContext) -> String {
     if !rc.input.is_empty() {
         return rc.input.clone();
@@ -417,7 +417,7 @@ pub fn resolve_input(cmd: &crate::Command, rc: &RunContext) -> String {
         match mode {
             INPUT_NONE | "" => String::new(),
             INPUT_SELECTION => rc.selected_text.clone(),
-            // The frontend sets `input` for full documents.
+            // The UI sets `input` for full documents.
             INPUT_DOCUMENT => rc.selected_text.clone(),
             INPUT_LINE => rc.current_line.clone(),
             INPUT_WORD => rc.current_word.clone(),

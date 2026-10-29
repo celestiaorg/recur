@@ -1,7 +1,7 @@
 //! Differential check against vscode-textmate 9.3.2 + vscode-oniguruma 2.0.1
-//! on real files with the shipped grammars. Fixtures come from
-//! `fixtures/differential/generate.cjs` (run from `frontend/`): scope lists
-//! per token, plus tokenizeLine2 metadata and the colour map under Charcoal.
+//! on real files with the shipped grammars. Each fixture holds the source
+//! lines and vscode-textmate's output: scope lists per token, plus
+//! tokenizeLine2 metadata and the colour map under Charcoal.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

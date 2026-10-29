@@ -1,4 +1,4 @@
-//! `terminal-dock.spec.ts`'s ⌘R / ⌘⇧R palette scenarios: the run picker opens focused on the
+//! The ⌘R / ⌘⇧R palette scenarios: the run picker opens focused on the
 //! default, filters as you type, runs with Enter or 1–9, and the Stop palette follows once
 //! several commands run.
 

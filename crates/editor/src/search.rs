@@ -1,7 +1,6 @@
 //! Search: `@codemirror/search` (cursors, queries, find/replace commands,
 //! selection-match highlighting, `selectNextOccurrence`) with Recur's
-//! find panel (`cm-search-panel.ts`) and go-to-line dialog
-//! (`cm-goto-line.ts`).
+//! find panel and go-to-line dialog.
 //!
 //! Offsets are UTF-8 bytes where CodeMirror counts UTF-16 units; the chunk
 //! sizes and lookback margins below are applied to bytes.

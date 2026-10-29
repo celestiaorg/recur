@@ -1,4 +1,4 @@
-//! `lib/review-window.ts`: which file cards mount in a long Files changed stack, and which
+//! Which file cards mount in a long Files changed stack, and which
 //! diff rows mount inside a long file.
 
 use std::collections::{HashMap, HashSet};

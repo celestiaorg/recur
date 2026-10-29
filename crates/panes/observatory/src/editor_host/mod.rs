@@ -1,4 +1,4 @@
-//! The editor host side of `Observatory.svelte` and `CodeEditor.svelte` / `MergeEditor.svelte`:
+//! The Observatory's editor host:
 //! the main, split and merge `EditorView`s driven from the Observatory's buffers (mount on path
 //! change, external doc drift kept out of undo, read-only, findings and SCM gutter, saved
 //! baseline), per-workspace tab parking across root switches, the file preview and PDF pane,

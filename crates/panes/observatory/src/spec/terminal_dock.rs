@@ -1,4 +1,4 @@
-//! `terminal-dock.spec.ts`: the dock's contract with the terminal service (adopt, restore,
+//! The terminal dock's contract with the terminal service (adopt, restore,
 //! stream and ack, park on hide, close), its tabs and keys, maximize / beside / hide editor,
 //! per-workspace chrome, keep-alive across workspace switches, and the run controls. The
 //! ⌃` / ⌃⇧` bindings and the ⌘R / ⌘⇧R palettes belong to the shell and the palettes; their
@@ -196,7 +196,7 @@ fn with_runs(runs: &[(&str, &str)]) -> impl FnOnce(&mut recur_services::mock::Se
 }
 
 /// The dock's own chords: ⌘ on macOS; on Linux Ctrl+Shift, since the terminal keeps Ctrl chords
-/// (`dock_key`, as `TerminalDock.svelte`).
+/// (`dock_key`).
 fn dock_chord(key: &str) -> String {
     if cfg!(target_os = "macos") {
         format!("cmd-{key}")
@@ -970,7 +970,7 @@ async fn a_palette_run_opens_the_dock_and_types_the_command(cx: &mut TestAppCont
     assert!(!t.calls("InterruptTerminal").is_empty());
 }
 
-/// `TerminalDock.test.ts`: ⌘F opens the find bar, it counts matches, the case toggle narrows
+/// ⌘F opens the find bar, it counts matches, the case toggle narrows
 /// them, and Escape closes it.
 #[gpui::test]
 async fn find_opens_on_cmd_f_counts_matches_and_closes_on_escape(cx: &mut TestAppContext) {

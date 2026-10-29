@@ -1,4 +1,4 @@
-//! `MermaidPreview.svelte`: a whole-file diagram with fit, zoom and pan. Zoom resizes the
+//! A whole-file Mermaid diagram with fit, zoom and pan. Zoom resizes the
 //! drawing (vectors and labels re-rasterize at the new size, as the SVG's width/height do),
 //! the camera persists per path, and find pans to a match.
 

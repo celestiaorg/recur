@@ -1,4 +1,4 @@
-//! `QuestionCard.svelte`: the inline ask_user / loop-escalation answer card. Complete options
+//! The inline ask_user / loop-escalation answer card. Complete options
 //! submit on click; options tagged `notes` select first and Answer sends the choice with the
 //! typed notes (the loop's "Proceed with my notes" plan approval).
 

@@ -1,7 +1,6 @@
-//! The UI's pure file rules, so `recur-app` does not re-derive them:
-//! `lib/file-index.ts`, `lib/changed-tree.ts`, `lib/finding-paths.ts` and
-//! `lib/skills.ts`. (`lib/fuzzy.ts` and `lib/glob.ts` are
-//! [`crate::fuzzy`] and [`crate::glob`].)
+//! The UI's pure file rules, so `recur-app` does not re-derive them: file
+//! index hits, the changed tree, finding paths and skills. (Fuzzy ranking and
+//! globs are [`crate::fuzzy`] and [`crate::glob`].)
 
 pub mod changed_tree;
 pub mod file_index;

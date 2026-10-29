@@ -1,4 +1,4 @@
-//! The workspace view (`WorkspaceView.svelte`, `WorkspaceDetail.svelte`): the Observatory with
+//! The workspace view: the Observatory with
 //! the agent chat in its left dock, the chat tab strip, the dock's mode / model / loop pickers,
 //! the plan panel and head, the worktree setup states, and the detail route that binds a
 //! workspace (or a PR's agent workspace) to it.

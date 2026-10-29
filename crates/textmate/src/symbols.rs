@@ -1,5 +1,5 @@
-//! Open-file outline from TextMate token scopes + bundle `[[symbol]]` rules
-//! (`tm-symbols.ts`). Rules come in as data (the app lists them from
+//! Open-file outline from TextMate token scopes + bundle `[[symbol]]` rules.
+//! Rules come in as data (the app lists them from
 //! bundles); the outline covers what the tokenizer has filled.
 
 use std::time::Duration;

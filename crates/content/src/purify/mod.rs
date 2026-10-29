@@ -1,6 +1,6 @@
 //! A port of DOMPurify 3.4.16's `sanitize` for string input, with the options Recur passes
-//! (`ADD_ATTR`, `ADD_TAGS`, `USE_PROFILES`, `HTML_INTEGRATION_POINTS`) and the hook
-//! `lib/markdown.ts` installs on the shared instance. It walks the same DOM a browser's
+//! (`ADD_ATTR`, `ADD_TAGS`, `USE_PROFILES`, `HTML_INTEGRATION_POINTS`) and Recur's
+//! `afterSanitizeAttributes` hook. It walks the same DOM a browser's
 //! `DOMParser` builds (html5ever is a spec parser) in `NodeIterator` order and serializes it
 //! the way WebKit's `innerHTML` does.
 
@@ -17,8 +17,8 @@ use crate::js::{self, Re};
 use dom::{HTML_NS, MATHML_NS, SVG_NS};
 use lists::*;
 
-/// The `afterSanitizeAttributes` hook `lib/markdown.ts` registers on the app's one
-/// DOMPurify instance, which every sanitize call (markdown, LSP docs, Mermaid) passes through.
+/// Recur's `afterSanitizeAttributes` hook, which every sanitize call (markdown, LSP docs,
+/// Mermaid) passes through.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Hook {
     None,
@@ -27,7 +27,7 @@ pub enum Hook {
     Recur,
 }
 
-/// `ALLOWED_CLASSES` in `lib/markdown.ts`.
+/// The class names the hook keeps on sanitized elements.
 pub const ALLOWED_CLASSES: &[&str] = &[
     "mdref",
     "mdref-file",
@@ -561,7 +561,7 @@ impl Sanitizer<'_> {
     }
 }
 
-/// The `afterSanitizeAttributes` hook from `lib/markdown.ts`.
+/// Recur's `afterSanitizeAttributes` hook.
 fn recur_hook(el: &Handle) {
     let ns = dom::namespace(el).unwrap_or("");
     if ns == HTML_NS && dom::local_name(el) == Some("a") {

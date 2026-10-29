@@ -1,5 +1,5 @@
-//! File-type icons (`lib/file-icons`): the vendored file-icons/atom database, CSS and fonts,
-//! embedded from their frontend paths and matched exactly like `fileIconClass`.
+//! File-type icons: the vendored file-icons/atom database, CSS and fonts, embedded and
+//! matched the way file-icons/atom matches them.
 //!
 //! GPUI's text system refuses fonts without an `m` glyph, which rules out icon fonts, so the
 //! glyph is drawn from its outline. Placement matches the `.fico` box the explorer, tab chips
@@ -42,7 +42,7 @@ const FONTS: &[(&str, &[u8])] = &[
     ),
 ];
 
-/// `FALLBACK` in `lib/file-icons/index.ts`.
+/// The icon for files nothing else matches.
 const FALLBACK: (&str, Option<&str>) = ("text-icon", Some("medium-blue"));
 
 /// The class pair `fileIconClass` returns, split: `icon <icon> <color>`.
@@ -386,7 +386,7 @@ struct Decl {
 }
 
 /// Class → glyph, cascaded over `icons.css`, then `dotenv-fix.css`, then `atom-octicons.css`
-/// (import order in `index.ts`), honoring `!important`.
+/// (in that order), honoring `!important`.
 fn glyphs() -> &'static HashMap<String, Glyph> {
     static MAP: OnceLock<HashMap<String, Glyph>> = OnceLock::new();
     MAP.get_or_init(|| {

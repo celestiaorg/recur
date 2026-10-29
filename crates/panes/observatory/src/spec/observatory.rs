@@ -1,4 +1,4 @@
-//! `observatory.spec.ts`. The project-setup and inbox / Briefing scenarios belong to the
+//! The Observatory. The project-setup and inbox / Briefing scenarios belong to the
 //! views that host them; their Observatory halves (occluder, badges) are here. The review
 //! surface's own scenarios live in `recur_view_review::spec::observatory`.
 
@@ -113,7 +113,7 @@ async fn save_keeps_the_file_tab_selected(cx: &mut TestAppContext) {
     assert!(s(&w[0], 3).contains("}\n // edit"), "wrote {:?}", w[0]);
 }
 
-/// `bundles.spec.ts` "willSave runs mocked gofmt transform before WriteFile": the Go bundle's
+/// willSave runs the mocked gofmt transform before WriteFile: the Go bundle's
 /// save command reformats the buffer (the mock collapses blank-line runs and trims trailing
 /// blanks) before it is written.
 #[gpui::test]

@@ -1,4 +1,4 @@
-//! `lib/comment-hunk.ts`: the code snippet above a review comment, from GitHub's `diff_hunk`.
+//! The code snippet above a review comment, from GitHub's `diff_hunk`.
 
 use recur_engine::view::js;
 

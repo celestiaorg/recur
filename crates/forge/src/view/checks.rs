@@ -1,4 +1,4 @@
-//! Check rows for the PR views (`lib/pr-checks.ts`, `lib/check-duration.ts`).
+//! Check rows for the PR views.
 
 use std::collections::{HashMap, HashSet};
 

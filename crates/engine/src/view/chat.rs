@@ -1,5 +1,5 @@
-//! The agent-chat transcript rules shared by every chat surface (frontend
-//! `lib/agentchat.ts`): mapping persisted `ChatItem`s to rows, merging a live
+//! The agent-chat transcript rules shared by every chat surface: mapping
+//! persisted `ChatItem`s to rows, merging a live
 //! stream onto a store snapshot, the live reducers (stream, thinking, tools,
 //! compaction, fallback, notices, footers), the turn-clock gates, and the
 //! chat sentinels and error-card wording. Pure list transforms: the view
@@ -70,7 +70,7 @@ pub enum ChatLog {
     },
 }
 
-/// One transcript row (frontend `AgentMsg`).
+/// One transcript row.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct AgentMsg {
     pub body: String,
@@ -117,7 +117,7 @@ pub struct AgentMsg {
     pub children: Vec<AgentMsg>,
 }
 
-/// A live `session.step` (frontend `WorkspaceStep`).
+/// A live `session.step`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WorkspaceStep {
     pub id: String,

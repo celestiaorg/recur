@@ -1,4 +1,4 @@
-//! Open http(s) links in the OS browser (`lib/open-external.ts`). Absolute http(s) always
+//! Open http(s) links in the OS browser. Absolute http(s) always
 //! leaves the app; relative in-app hrefs never do.
 
 use gpui_kit::App;

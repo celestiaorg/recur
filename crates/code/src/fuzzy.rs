@@ -1,4 +1,4 @@
-//! The UI's fuzzy ranker (`lib/fuzzy.ts`) for Go to Symbol, palettes and
+//! The UI's fuzzy ranker for Go to Symbol, palettes and
 //! mention typeaheads. Scoring runs on UTF-16 code units like JavaScript; the
 //! same scorer on bytes is Quick Open's path ranking ([`crate::rank_files`]).
 

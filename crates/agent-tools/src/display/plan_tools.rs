@@ -1,4 +1,4 @@
-//! submit_plan / update_plan_step / edit_plan chat cards (`lib/plantools.ts`):
+//! submit_plan / update_plan_step / edit_plan chat cards:
 //! friendly labels, never a JSON dump.
 
 use std::collections::HashSet;

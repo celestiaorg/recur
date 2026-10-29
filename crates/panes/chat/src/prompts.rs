@@ -1,5 +1,5 @@
-//! `PermissionPrompts.svelte` (the floating tool-permission card for requests no focused chat
-//! is showing) and `QuestionPrompts.svelte` (an ask toast for off-tab `ask_user` questions).
+//! The floating tool-permission card for requests no focused chat is showing, and an ask
+//! toast for off-tab `ask_user` questions.
 
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};

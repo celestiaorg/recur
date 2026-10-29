@@ -1,4 +1,4 @@
-//! `briefing.spec.ts`: the Inbox (Briefing with its Ask Recur dock) on the whole shell.
+//! The Inbox (Briefing with its Ask Recur dock) on the whole shell.
 
 use gpui::TestAppContext;
 use recur_services::mock::{MockOptions, Reply};

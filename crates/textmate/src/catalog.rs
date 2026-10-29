@@ -1,5 +1,5 @@
-//! TextMate grammar / theme catalog (`tm-registry.ts`, plus the theme pick
-//! from `tm-bootstrap.ts`). Grammars and themes come from bundles as inputs;
+//! TextMate grammar / theme catalog, plus the theme pick. Grammars and themes
+//! come from bundles as inputs;
 //! file contents load lazily through the loaders the app registers.
 
 use std::cell::RefCell;

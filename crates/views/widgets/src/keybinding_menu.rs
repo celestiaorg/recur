@@ -1,5 +1,5 @@
 //! The numbered picker when several bundle commands or snippets share a chord or Tab trigger
-//! (`KeybindingMenu.svelte`, `lib/keybinding-menu.ts`): 1–9 pick a row, ↑↓ and ↩ move and run,
+//! 1–9 pick a row, ↑↓ and ↩ move and run,
 //! Esc or a click on the scrim closes.
 
 use recur_ui::guard::Guarded;

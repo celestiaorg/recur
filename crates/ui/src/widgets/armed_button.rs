@@ -1,4 +1,4 @@
-//! `ArmedButton.svelte` and `lib/armed-confirm.ts`: a two-click confirm button. The first
+//! A two-click confirm button. The first
 //! click arms it (red, confirm label) for `timeout`; a second click, or releasing the pointer
 //! on it while armed, confirms.
 

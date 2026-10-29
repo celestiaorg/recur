@@ -1,4 +1,4 @@
-//! [`TerminalView`]: one terminal surface bound to one PTY session (`TerminalPane.svelte`).
+//! [`TerminalView`]: one terminal surface bound to one PTY session.
 //!
 //! Mounting attaches and repaints from the replay the session kept while nothing listened;
 //! disposing detaches without killing the shell. Output is parsed as it arrives and acked in

@@ -1,4 +1,4 @@
-//! `lib/skills.ts`: the Settings → Skills and Project → Skills rules.
+//! The Settings → Skills and Project → Skills rules.
 
 use std::sync::LazyLock;
 

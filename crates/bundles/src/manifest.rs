@@ -59,7 +59,7 @@ pub const INPUT_DOCUMENT: &str = "document";
 pub const INPUT_LINE: &str = "line";
 pub const INPUT_WORD: &str = "word";
 
-/// Output routing tells the frontend how to apply a command's stdout.
+/// Output routing tells the UI how to apply a command's stdout.
 pub const OUTPUT_DISCARD: &str = "discard";
 pub const OUTPUT_REPLACE_SELECTION: &str = "replaceSelection";
 pub const OUTPUT_REPLACE_DOCUMENT: &str = "replaceDocument";
@@ -209,7 +209,7 @@ pub struct PromptAction {
     )]
     pub args: Vec<PromptArgSpec>,
     /// Optional pack-relative script suggesting trailing-arg hits. `.ts` /
-    /// `.mts` / `.js` / `.mjs` run in the Worker, anything else is shebang.
+    /// `.mts` / `.js` / `.mjs` run in the macro runtime, anything else is shebang.
     #[serde(skip_serializing)]
     pub complete: String,
     /// Pack-relative `.svg` for complete (and ⌘K) rows.

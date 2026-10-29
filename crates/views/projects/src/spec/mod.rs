@@ -1,5 +1,4 @@
-//! Spec ports on the whole shell: `briefing.spec.ts`, `scheduled-prompts.spec.ts` and the
-//! project-settings scenarios of `settings-newloop.spec.ts`.
+//! Specs on the whole shell: the Inbox, schedules, issues and project settings.
 
 mod briefing;
 mod harness;

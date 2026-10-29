@@ -1,4 +1,4 @@
-//! `StopPalette.svelte` (⌘⇧R: pick a running command to stop).
+//! The Stop palette (⌘⇧R: pick a running command to stop).
 
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};

@@ -1,4 +1,4 @@
-//! Rules of `_prs.scss` (and the shared sheets) the PR views have in common: the infinite
+//! Styles the PR views have in common: the infinite
 //! animations, the pane-header `.seg`, and the controls several views draw.
 
 use gpui_kit::{Div, Hsla, IntoElement, ParentElement, Styled, Window, div, px};

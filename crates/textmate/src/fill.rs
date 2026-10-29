@@ -1,4 +1,4 @@
-//! Background tokenization sweep (`tm-fill.ts`; VS Code's
+//! Background tokenization sweep (like VS Code's
 //! DefaultBackgroundTokenizer). The host runs [`TmEngine::fill_job`]s off the
 //! UI thread and hands each result to [`TmFill::apply`], which fans the
 //! changed line range out to the document's listeners.

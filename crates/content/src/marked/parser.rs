@@ -1,4 +1,4 @@
-//! `Parser.ts` and `Renderer.ts`: tokens to HTML. [`Renderer`]'s default methods are
+//! marked's `Parser.ts` and `Renderer.ts`: tokens to HTML. [`Renderer`]'s default methods are
 //! marked's renderer; an engine overrides the ones it `use`s.
 
 use super::helpers::{clean_url, escape_html_entities};

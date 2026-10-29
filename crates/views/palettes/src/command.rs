@@ -1,4 +1,4 @@
-//! `CommandPalette.svelte` (⌘K, Navigate → Go to…): actions, routes, workspaces, PRs and
+//! Go to (⌘K, Navigate → Go to…): actions, routes, workspaces, PRs and
 //! projects, plus the bundle `[[search]]` groups (`SearchPalette`, such as Linear issues)
 //! once the query has two characters.
 

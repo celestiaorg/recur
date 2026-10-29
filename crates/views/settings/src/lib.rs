@@ -1,6 +1,5 @@
-//! Settings (`Settings.svelte`), with `CompatibleProviderCard.svelte`,
-//! `CompatibleProviderModal.svelte`, `lib/compatible-providers.ts`, the catalogue rules of
-//! `lib/providers.ts` and `lib/mono-fonts.ts`.
+//! Settings, with the OpenAI-compatible provider card and modal, the provider catalogue
+//! rules and the monospace font list.
 //!
 //! # Embedding
 //!

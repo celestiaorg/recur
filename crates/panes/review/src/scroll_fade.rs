@@ -1,4 +1,4 @@
-//! `lib/scroll-fade.ts`: whether a scroller has left each edge, for its `.fade-top` /
+//! Whether a scroller has left each edge, for its `.fade-top` /
 //! `.fade-bot` masks. Hosts call these with the scroller's geometry each frame (GPUI has no
 //! class list to toggle).
 

@@ -1,4 +1,4 @@
-//! `Issues.svelte` (no e2e spec of its own): the saved view's session cache and disk copy, the
+//! The Issues page: the saved view's session cache and disk copy, the
 //! refresh on `issuesStale`, filters and the link menu.
 
 use std::sync::Arc;

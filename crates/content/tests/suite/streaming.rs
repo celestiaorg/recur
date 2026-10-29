@@ -1,4 +1,4 @@
-//! `components/StreamingMarkdown.test.ts`: hidden streams do no presentation work, catch up on
+//! Streaming markdown: hidden streams do no presentation work, catch up on
 //! return, and wait for complete lines.
 
 use std::cell::RefCell;

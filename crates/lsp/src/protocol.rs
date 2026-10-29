@@ -1,8 +1,7 @@
-//! Transport-level client rules from the frontend LSP client
-//! (`frontend/src/lib/lsp.ts`): answers to server requests the CodeMirror
+//! Transport-level LSP client rules: answers to server requests the editor
 //! client leaves unhandled, `initialize` rewrites, and the Vue ↔ TypeScript
-//! `tsserver/request` bridge messages. Pure JSON-in, JSON-out, so the editor
-//! port's LSP client applies them around [`crate::Manager::write`] and the
+//! `tsserver/request` bridge messages. Pure JSON-in, JSON-out, so the editor's
+//! LSP client applies them around [`crate::Manager::write`] and the
 //! `lsp.message` stream (parsed once, off the UI thread).
 
 use serde_json::{Map, Value, json};

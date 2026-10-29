@@ -1,5 +1,4 @@
-//! The app's editor environment (`tm-bootstrap.ts`, `tm-registry.ts`, the `editorTheme` /
-//! `editorPrefs` stores as editors read them): bundle grammars registered with the shared
+//! The app's editor environment: bundle grammars registered with the shared
 //! TextMate catalog (read lazily through `BundleService::read_grammar`), the active editor
 //! theme parsed from `read_theme` and followed as `AppState::editor_theme` changes, the editor
 //! prefs (`recur.editorPrefs`), and the bundle snippet catalog. Editors observe the entity and

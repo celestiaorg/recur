@@ -1,4 +1,4 @@
-//! `SyntaxPalette.svelte`: the focused file's language mode (the editor status bar's language
+//! The focused file's language mode (the editor status bar's language
 //! button, ⌘K → Change language mode). A pick is remembered for the file
 //! ([`EditorEnv::apply_language_mode`]); "Always open *.ext as…" sets a file-type
 //! association instead (VS Code's `files.associations`).

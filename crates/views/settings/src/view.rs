@@ -1,4 +1,4 @@
-//! `Settings.svelte`: the split nav, the header and the active pane, with the panes' state,
+//! Settings: the split nav, the header and the active pane, with the panes' state,
 //! their loads (keyed on the active section and the values they read) and
 //! `patchSettings`.
 
@@ -224,8 +224,7 @@ impl SettingsView {
             let (ml, fl) = crate::sections::models::picker_labels(slot);
             let p = cx.new(|cx| {
                 let mut p = ModelPickers::with_labels(&ml, &fl, true, false, window, cx);
-                // `.model-pickers.chip` also matches `_loop.scss`'s global `.chip`, whose mono
-                // font the ghost triggers inherit.
+                // The ghost triggers here use the mono chip font.
                 p.set_trigger_style(
                     recur_ui::widgets::TriggerStyle {
                         mono_font: true,

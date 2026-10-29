@@ -1,5 +1,4 @@
-//! GPUI ports of the review scenarios of `observatory.spec.ts` and `pr-review.spec.ts` on the
-//! mock bridge.
+//! The review surface in the Observatory and PR detail, on the mock bridge.
 
 mod harness;
 mod observatory;

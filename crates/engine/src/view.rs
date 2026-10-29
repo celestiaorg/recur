@@ -1,16 +1,10 @@
-//! The UI's pure workspace rules E1 owns (frontend `lib/remove-workspace.ts`,
-//! `lib/wait-for-worktree.ts` with `modes.ts`'s `wsCreating`, and
-//! `lib/inbox-read.ts`), so the GPUI views do not re-derive them. The
-//! submodules hold E2's chat-surface rules (`lib/agentchat.ts`,
-//! `lib/session-live.ts`, `lib/artifacts.ts`, `lib/promptActions.ts` and the
-//! text half of `lib/composerDom.ts`) and E3's loop pickers and cockpit
-//! (`lib/loops.ts`, `lib/loop-cockpit.ts`) and E4's chat modes, looking-at
-//! surface, active-tab memory, subagent display and launch rules
-//! (`lib/modes.ts`, `lib/chat-surface.ts`, `lib/chat-tab-session.ts`,
-//! `lib/subagent.ts`, `lib/new-workspace.ts`) and E5's PR rules
-//! (`lib/pr-merge-action.ts`, `lib/pr-workspace.ts`, `lib/comment-thread.ts`,
-//! `lib/pr-thread-resolved.ts`, `lib/pr-detail-pending.ts`,
-//! `lib/pr-fix-checks.ts`).
+//! The UI's pure workspace rules (removal, waiting for a worktree, inbox
+//! read state), so the GPUI views do not re-derive them. The submodules hold
+//! the chat-surface rules (transcript, live sessions, artifacts, prompt
+//! actions and the composer's text model), the loop pickers and cockpit, the
+//! chat modes, looking-at surface, active-tab memory, subagent display and
+//! launch rules, and the PR rules (merge action, PR workspace, comment
+//! threads, resolve holds, detail skeletons, fix checks).
 
 pub mod artifacts;
 pub mod chat;
@@ -178,7 +172,6 @@ mod tests {
         w
     }
 
-    // wait-for-worktree.test.ts
     #[test]
     fn dropped_record_settles_null_even_if_a_replacement_is_ready() {
         let list = vec![ws("new", |w| w.worktree_path = "/tmp/wt".into())];
@@ -232,7 +225,7 @@ mod tests {
         })));
     }
 
-    // remove-workspace.test.ts (the pure parts)
+    // Workspace removal
     #[test]
     fn mark_removed_releases_tree_and_port() {
         let w = ws("a", |w| {

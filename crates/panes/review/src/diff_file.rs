@@ -1,7 +1,7 @@
-//! `DiffFile.svelte`: one file's diff: the `.df-head` and the line-numbered, syntax-highlighted
+//! One file's diff: the header and the line-numbered, syntax-highlighted
 //! rows (unified or split) with folding hunks, inline threads, pending notes, findings and the
 //! line-note composer (click or drag the `+` to pick a range). Long files window their rows
-//! against the scrolling pane (`review-window.ts`).
+//! against the scrolling pane ([`crate::review_window`]).
 
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};
@@ -1703,7 +1703,7 @@ impl DiffFile {
             .items_center()
             .py(px(2.))
             .bg(hsla(HUNK_BG))
-            // `.hline.hunk:hover` (`_overlays.scss`).
+            // `.hline.hunk:hover`.
             .hover(|st| st.bg(hsla(HUNK_HOVER_BG)))
             .cursor_pointer()
             .child(

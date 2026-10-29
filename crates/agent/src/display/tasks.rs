@@ -1,5 +1,5 @@
-//! Claude Code TaskCreate / TaskUpdate / TaskGet / TaskList card rules
-//! (frontend `lib/tasktools.ts`). These are not the Task subagent tool:
+//! Claude Code TaskCreate / TaskUpdate / TaskGet / TaskList card rules.
+//! These are not the Task subagent tool:
 //! TaskCreate's `description` is the task BODY and never the row title.
 
 use serde_json::Value;

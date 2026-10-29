@@ -1,4 +1,4 @@
-//! `lib/schedule-expanded.ts`: the open schedule rows on the Schedules page and in project
+//! The open schedule rows on the Schedules page and in project
 //! Settings → Schedules, kept in `schedule-view.json` through `ShellService`.
 
 use std::collections::BTreeSet;

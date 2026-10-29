@@ -1,4 +1,4 @@
-//! The composer's editable document (`lib/composerDom.ts` as a native model): one string
+//! The composer's editable document: one string
 //! where every chip is [`ATOM`] and lines are `\n`, the chips in order, a caret and a
 //! selection anchor (byte offsets, never inside an atom). Wire text and chip hydration are
 //! `recur_engine::view::composer`; this owns editing.

@@ -1,4 +1,4 @@
-//! The transcript's structure (`AgentChat.svelte`): rows grouped into blocks (contiguous steps
+//! The transcript's structure: rows grouped into blocks (contiguous steps
 //! form one collapsible group), their stable keys, group summaries, the retry gate, the
 //! queued-follow-up split, and a user bubble's inline parts.
 
@@ -418,7 +418,7 @@ mod tests {
 
     #[test]
     fn steps_group_and_fold() {
-        // AgentChat.test.ts: Subagent notices fold into the following steps group.
+        // Subagent notices fold into the following steps group.
         let msgs = vec![
             m(|x| {
                 x.note = true;

@@ -1,7 +1,7 @@
-//! `lib/mermaid.ts`, `MarkdownHtml`'s hydration and `MermaidPreview.svelte`.
+//! Mermaid diagrams: markdown fence hydration and the whole-file preview.
 //!
 //! mmdr (`mermaid-rs-renderer`, pure Rust) lays the diagram out and writes its SVG off the UI
-//! thread; the SVG is sanitized as `sanitizeMermaidSvg` does and drawn natively ([`diagram`]):
+//! thread; the SVG is sanitized and drawn natively ([`diagram`]):
 //! geometry rasterized at the device size, labels as recur-ui text where usvg shapes them.
 
 pub mod diagram;

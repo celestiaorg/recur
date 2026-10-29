@@ -1,4 +1,4 @@
-//! The bundle `[[snippet]]` catalog the editors expand (`lib/snippets.ts`): a 2s per-file
+//! The bundle `[[snippet]]` catalog the editors expand: a 2s per-file
 //! cache (16 entries) for synchronous Tab expansion, scope / glob matching and the
 //! disabled-snippet setting, plus the focused editor's snippet handler for the command palette.
 

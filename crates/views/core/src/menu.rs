@@ -1,4 +1,4 @@
-//! Native menubar plumbing shared by the shell and views (`lib/menu.ts`): the action names,
+//! Native menubar plumbing shared by the shell and views: the action names,
 //! the contextual items' enabled state, and the Appearance catalogs. The shell builds the
 //! menu (`recur-app`); views push enabled state and subscribe to actions here.
 

@@ -1,5 +1,5 @@
-//! `IconPicker.svelte`: pick a Lucide icon for a project. A small select-style trigger and a
-//! searchable 8-column grid (`.ico-menu`, `.ico-grid`, `.ico-cell` in `_settings.scss`).
+//! Pick a Lucide icon for a project. A small select-style trigger and a
+//! searchable 8-column grid.
 
 use crate::assets::{LucideEntry, lucide_icons, lucide_suggested};
 use crate::fonts::UI;

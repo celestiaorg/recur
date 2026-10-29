@@ -1,4 +1,4 @@
-//! Chat wire-text mention rules (frontend `lib/agentchat.ts`): `@file`,
+//! Chat wire-text mention rules: `@file`,
 //! `@terminal`, `@artifact`, loose `@Title`, `/skill` and `⟦attachment:id⟧`
 //! tokens, their chips and labels, and the composer's caret queries.
 //!

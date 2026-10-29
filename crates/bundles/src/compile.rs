@@ -47,7 +47,7 @@ use crate::manifest::{Command, INTERPRETER_TYPESCRIPT, PromptAction};
 use crate::{Error, err};
 
 /// Bumped when the SDK or Worker contract changes so cached JS is
-/// invalidated (`macro_sdk.ts`, `frontend/src/lib/macro-worker.ts`).
+/// invalidated (`macro_sdk.ts`, the macro runtime).
 pub const MACRO_SDK_VERSION: &str = "8";
 
 /// The import path authors use in TypeScript commands.
@@ -57,7 +57,7 @@ pub const MACRO_SDK_MODULE: &str = "@recur/sdk";
 /// Author-facing copy: `bundles/sdk/index.ts` (kept in sync; see tests).
 pub const MACRO_SDK_SOURCE: &str = include_str!("macro_sdk.ts");
 
-/// Whether `interp` runs as compiled TypeScript in the frontend Worker
+/// Whether `interp` runs as compiled TypeScript in the macro runtime
 /// rather than as a shebang subprocess.
 pub fn is_script_interpreter(interp: &str) -> bool {
     interp == INTERPRETER_TYPESCRIPT

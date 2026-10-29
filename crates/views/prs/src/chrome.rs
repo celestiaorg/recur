@@ -1,4 +1,4 @@
-//! The PR chrome rules of `lib/colors.ts` the PR views use: tints, status labels and the
+//! The PR chrome rules the PR views use: tints, status labels and the
 //! dashboard's group headings.
 
 use recur_domain::Pr;

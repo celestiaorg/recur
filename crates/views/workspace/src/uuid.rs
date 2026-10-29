@@ -1,4 +1,4 @@
-//! `lib/uuid.ts`: RFC 9562 UUID v7 ids for queued sends and held prompts.
+//! RFC 9562 UUID v7 ids for queued sends and held prompts.
 
 pub fn uuidv7() -> String {
     uuid::Uuid::now_v7().to_string()

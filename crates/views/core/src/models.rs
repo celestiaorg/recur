@@ -1,4 +1,4 @@
-//! The model catalog the pickers read (`lib/models.ts`). The list is server-owned
+//! The model catalog the pickers read. The list is server-owned
 //! (`SettingsService::list_model_catalog`); [`AppState`](crate::AppState) keeps the shared
 //! cache and its revision, these are the pure rules over it.
 
@@ -315,7 +315,6 @@ mod tests {
         assert!(model_options_for(&[], "").is_empty());
     }
 
-    // providers.test.ts
     #[test]
     fn provider_rules() {
         assert!(provider_enabled(&[], "claude-code"));

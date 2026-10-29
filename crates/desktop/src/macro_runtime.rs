@@ -1,8 +1,8 @@
-//! The macro workers (`lib/macro-worker.ts`) on JavaScriptCore: one long-lived
+//! The macro workers on JavaScriptCore: one long-lived
 //! [`JsWorker`] per contract (macro, prompt, complete) runs the CommonJS the backend
 //! compiled with Worker globals only (no `require`, `process` or filesystem), so a module
-//! sees nothing but the frozen context it is handed. A timeout, or a dropped call (the TS
-//! AbortSignal), stops the call and gives that worker a fresh context.
+//! sees nothing but the frozen context it is handed. A timeout, or a dropped call, stops the
+//! call and gives that worker a fresh context.
 
 use std::rc::Rc;
 use std::sync::Arc;

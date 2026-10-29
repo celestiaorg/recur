@@ -1,4 +1,4 @@
-//! The workspace titlebar's git chrome (App.svelte): Commit / Update / Merge for a
+//! The workspace titlebar's git chrome: Commit / Update / Merge for a
 //! hand-driven workspace, Commit / Update / Push for the main working copy, the GitHub PR
 //! actions (Open PR, Pull / Push / Force push, View PR), and on PR detail View / Create
 //! workspace. Land state is `WorkspaceLandState`, recalled from a per-workspace snapshot so
@@ -65,7 +65,7 @@ pub struct LandChrome {
     update_menu_open: bool,
     open_pr_menu_open: bool,
     menus_for: String,
-    /// `landBusy` as last seen: its menus close when it turns on, as App.svelte's effect does.
+    /// `landBusy` as last seen: its menus close when it turns on.
     was_busy: bool,
     pending_pr_create: Option<(String, String)>,
     base_select: Option<(Entity<Select>, Subscription)>,
@@ -107,7 +107,7 @@ fn update_method_menu_label(m: &str) -> &'static str {
     if m == "rebase" { "Rebase" } else { "Merge" }
 }
 
-/// Everything App.svelte derived for the detail titlebar.
+/// Everything the detail titlebar derives from the store.
 pub struct LandView {
     pub workspace_mode: bool,
     pub main_mode: bool,
@@ -154,7 +154,7 @@ fn is_main_mode(s: &AppState, ws: Option<&Workspace>) -> bool {
 }
 
 impl LandChrome {
-    /// App.svelte's derived values for the selected workspace.
+    /// The derived values for the selected workspace.
     pub fn view(&self, s: &AppState) -> LandView {
         let ws = s.selected_workspace();
         let id = s.selected_workspace_id.as_str();
@@ -447,7 +447,7 @@ fn spec_wrap(id: &'static str, el: impl IntoElement) -> gpui_kit::Div {
 }
 
 impl Shell {
-    /// Refresh the land chrome off store changes (App.svelte's `$effect`s).
+    /// Refresh the land chrome off store changes.
     pub(crate) fn land_state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let (id, key, scan_pending) = {
             let s = self.state.read(cx);
@@ -1063,7 +1063,7 @@ impl Shell {
     }
 
     /// The land buttons, Open PR, the issue control and View PR (detail), or View / Create
-    /// workspace (PR detail), in App.svelte's order.
+    /// workspace (PR detail), in titlebar order.
     pub(crate) fn land_chrome(
         &mut self,
         view: ViewName,

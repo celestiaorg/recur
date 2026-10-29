@@ -1,4 +1,4 @@
-//! `Welcome.svelte` (the `welcome` route) with `_welcome.scss`: the first-run checklist.
+//! The `welcome` route: the first-run checklist.
 //! Connect an agent, add a project, start the first task, then the explore list. The flow is
 //! derived from live state, so it resumes wherever the user left off; agent probes run only
 //! while the page is shown (and again on each return to it).

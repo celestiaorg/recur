@@ -1,5 +1,3 @@
-//! `markdown.test.ts`.
-
 use super::*;
 
 fn render(src: &str) -> String {

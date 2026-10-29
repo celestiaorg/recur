@@ -1,9 +1,9 @@
-//! `TitleTooltip.svelte` and `lib/title-tooltip.ts`: the app's themed replacement for native
+//! The app's themed replacement for native
 //! `title` tooltips. Wrap a control in [`titled`]; render one [`TitleTooltip`] overlay as the
 //! last child of each window root.
 //!
 //! Each frame the hovered titled elements report themselves (innermost last), the overlay
-//! feeds the same state machine as the web UI (160ms first-show delay, 480ms reshow window,
+//! feeds one state machine (160ms first-show delay, 480ms reshow window,
 //! click/Escape dismissal until the pointer leaves) and places the tip below the control,
 //! flipping above when it does not fit.
 

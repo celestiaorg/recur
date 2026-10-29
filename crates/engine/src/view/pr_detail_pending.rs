@@ -1,5 +1,5 @@
 //! When the PR detail tabs show a skeleton instead of an empty state
-//! (frontend `lib/pr-detail-pending.ts`). Forge snapshots always include a
+//! Forge snapshots always include a
 //! description comment; Local PRs render immediately.
 
 use recur_domain::Pr;

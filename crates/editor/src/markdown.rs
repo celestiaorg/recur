@@ -1,7 +1,7 @@
 //! LSP documentation as `.cm-lsp-documentation` renders it: markdown
 //! through `marked` (GFM), plaintext escaped, fenced code tinted by
-//! `codehl` (`sanitizeLspHTML`), laid out with the UA stylesheet's block
-//! margins (collapsed as CSS collapses them) and `_codemirror.scss`.
+//! `codehl`, laid out with the UA stylesheet's block margins (collapsed as
+//! CSS collapses them).
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -297,7 +297,7 @@ fn spans(p: &Para, s: &DocStyle, size: f32, bold: bool) -> Vec<Span> {
     out
 }
 
-/// `lsp.ts` opens http(s) links from LSP docs in the browser and leaves
+/// The LSP client opens http(s) links from LSP docs in the browser and leaves
 /// the rest alone.
 fn open_link(href: &str, cx: &mut App) {
     let href = href.trim();

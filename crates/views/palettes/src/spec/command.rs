@@ -1,4 +1,4 @@
-//! Go to's rows doing what `CommandPalette.svelte`'s `run` does: routes, actions, workspace
+//! Go to's rows running their targets: routes, actions, workspace
 //! actions on the detail route, and bundle `[[search]]` hits after the 200ms debounce.
 
 use gpui::TestAppContext;

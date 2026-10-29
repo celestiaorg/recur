@@ -1,7 +1,7 @@
-//! Generic styles from `_base.scss`, `_forms.scss`, `_overlays.scss` (and the `.tbtn` / `.rbtn`
-//! buttons they build on), as GPUI style builders. Each function documents the class it
-//! ports; hover, active and keyboard-focus states are attached the same way the CSS cascades
-//! them. View-specific rules stay with their views.
+//! Generic styles (base, forms, overlays, and the `.tbtn` / `.rbtn` buttons they build on) as
+//! GPUI style builders. Each function documents the CSS class it is named after; hover, active
+//! and keyboard-focus states are attached in cascade order. View-specific rules stay with
+//! their views.
 
 use crate::color::{Color, rgba};
 use crate::fonts::{Family, MONO, UI, weight};
@@ -551,7 +551,7 @@ pub fn outline(width: f32, offset: f32, radius: f32, border: f32, color: Color) 
         .rounded(px(radius + offset + width))
 }
 
-/// `.tbtn` variants (`_main.scss`, `_observatory.scss`, `_overlays.scss`).
+/// `.tbtn` variants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Tbtn {
     #[default]
@@ -560,7 +560,7 @@ pub enum Tbtn {
     Amber,
     /// `.tbtn.solid`
     Solid,
-    /// `.tbtn.on` (the `_observatory.scss` rule, which cascades last)
+    /// `.tbtn.on`
     On,
     /// `.tbtn.danger`
     Danger,
@@ -668,7 +668,7 @@ pub fn split_divider() -> Div {
         .bg(rgba(0, 0, 0, 0.15))
 }
 
-/// `.rbtn` variants (`_prs.scss`, `_observatory.scss`).
+/// `.rbtn` variants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Rbtn {
     #[default]

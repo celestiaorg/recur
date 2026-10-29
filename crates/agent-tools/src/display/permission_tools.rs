@@ -1,4 +1,4 @@
-//! Human-facing tool names on permission prompts (`lib/permissionTools.ts`).
+//! Human-facing tool names on permission prompts.
 //! The wire field stays the raw tool name (remember/approve key off it);
 //! only display goes through here.
 

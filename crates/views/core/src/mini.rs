@@ -1,7 +1,6 @@
-//! `MiniScriptEditor.svelte`: the compact CodeMirror surface for setup / teardown scripts,
-//! run commands and dotenv. Themed with the bundle theme paired to the app chrome
-//! (`editorThemeIdForAppChrome`), highlighted by its own TextMate engine so the code editor's
-//! theme is untouched (`ensureChromePairedTmEngine`), on `recur_editor`'s mini chrome.
+//! The compact editor surface for setup / teardown scripts, run commands and dotenv.
+//! Themed with the bundle theme paired to the app chrome, highlighted by its own TextMate
+//! engine so the code editor's theme is untouched, on `recur_editor`'s mini chrome.
 
 use recur_ui::guard::Guarded;
 use std::cell::RefCell;

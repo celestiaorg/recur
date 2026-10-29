@@ -1,5 +1,3 @@
-//! Port of `frontend/src/lib/loop-cockpit.test.ts`.
-
 use pretty_assertions::assert_eq;
 use recur_domain::{FeedItem, PrSource};
 

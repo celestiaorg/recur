@@ -1,4 +1,4 @@
-//! `lib/review-diff.ts`: the Files changed / Commits layout prefs (the same `localStorage`
+//! The Files changed / Commits layout prefs (the same local storage
 //! keys as the PR detail view), rename labels and the no-op refresh check.
 
 use std::rc::Rc;

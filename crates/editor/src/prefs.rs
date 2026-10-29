@@ -1,6 +1,5 @@
-//! Editor preferences (`stores.ts` `EditorPrefs`), language ids for
-//! per-language indentation (`cm-lang.ts`) and the font stack
-//! (`mono-fonts.ts`).
+//! Editor preferences, language ids for per-language indentation and the
+//! font stack.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -347,7 +346,7 @@ pub fn wants_diff_line_chrome(path: &str) -> bool {
     ext == ".diff" || ext == ".patch" || lower.ends_with(".diff") || lower.ends_with(".patch")
 }
 
-/// `cm-diff-lines.ts`: the line wash for a unified-diff line.
+/// The line wash for a unified-diff line.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiffLineKind {
     /// `cm-diff-ins`: rgba(63, 185, 80, .14).

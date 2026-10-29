@@ -1,5 +1,5 @@
 //! PR detail's Conversation findings, Files changed filters, Commits and the review modal's
-//! typeaheads, from `pr-review.spec.ts`.
+//! typeaheads.
 
 use gpui::TestAppContext;
 use recur_services::mock::{MockOptions, Reply};

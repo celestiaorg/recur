@@ -1,7 +1,6 @@
-//! Top panels: Recur's find/replace panel (`cm-search-panel.ts`), the
-//! go-to-line dialog (`cm-goto-line.ts`) and CodeMirror's stock dialogs the
-//! LSP client opens (rename prompt, error messages), styled per
-//! `_codemirror.scss`, `.obs-icon-btn` and CodeMirror's base theme.
+//! Top panels: Recur's find/replace panel, the go-to-line dialog and
+//! CodeMirror's stock dialogs the LSP client opens (rename prompt, error
+//! messages), styled after CodeMirror's base theme.
 
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::prelude::FluentBuilder;

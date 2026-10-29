@@ -8,7 +8,7 @@ use recur_domain::path;
 use regex::Regex;
 
 /// Workspace file mentions. The left boundary is checked by hand (`regex` has
-/// no lookbehind). Keep in sync with the frontend `FILE_AT_RE`.
+/// no lookbehind). Keep in sync with `FILE_AT_CORE` in `crate::view::mentions`.
 pub const FILE_AT_PATTERN: &str = r"@((?:/(?:[^\s@:]+(?:/[^\s@:]+)*)|(?:[\w.-]+/)+[\w./+-]+|[\w.-]+/|[\w.-]+\.[A-Za-z][\w.-]*|\.[A-Za-z0-9_][\w.-]*)(?::\d+(?::\d+)?(?:-\d+(?::\d+)?)?)?)";
 
 pub(crate) static FILE_AT_RE: LazyLock<Regex> =

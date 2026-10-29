@@ -1,4 +1,4 @@
-//! `lib/autosize-textarea.ts`: a textarea grows with its text, then scrolls.
+//! A textarea grows with its text, then scrolls.
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AutosizeOpts {

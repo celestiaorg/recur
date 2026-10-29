@@ -1,4 +1,4 @@
-//! `NewTask.svelte`: the New workspace modal (`newTaskOpen`). One workspace noun; the mode
+//! The New workspace modal (`newTaskOpen`). One workspace noun; the mode
 //! decides what starts inside it: Loop engages the autopilot with the task as its goal, every
 //! other mode opens the workspace with its first chat tab in that mode (the opening prompt is
 //! optional). A non-loop workspace is created eagerly as soon as the repository and base are

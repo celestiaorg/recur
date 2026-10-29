@@ -1,7 +1,6 @@
-//! Per-file view state and buffer bookkeeping: caret/scroll/view mode
-//! (`editor-view-state.ts`), dirty tracking (`editor-dirty.ts`), the
-//! Code/Diff/Preview chip and SCM base rules (`editor-view.ts`) and the
-//! `@file` mention span (`cm-mention-sel.ts`).
+//! Per-file view state and buffer bookkeeping: caret/scroll/view mode,
+//! dirty tracking, the Code/Diff/Preview chip and SCM base rules and the
+//! `@file` mention span.
 
 use std::collections::BTreeMap;
 

@@ -1,4 +1,4 @@
-//! `ResizeHandle.svelte`: the 6px drag strip on a panel edge (`.vsplit` / `.hsplit`). The
+//! The 6px drag strip on a panel edge. The
 //! panel store stays with the caller: the handle reports sizes, the caller clamps and keeps
 //! them.
 

@@ -1,4 +1,4 @@
-//! Undo history for the composer (`lib/composerUndo.ts`): wire-text snapshots, with
+//! Undo history for the composer: wire-text snapshots, with
 //! single-character typing (or deleting) at the caret merging within a pause window.
 
 use std::time::Duration;
@@ -224,7 +224,6 @@ mod tests {
         u.undo().map(|s| s.text)
     }
 
-    // composerUndo.test.ts
     #[test]
     fn merges_typing_and_splits_on_pause() {
         let mut u = ComposerUndo::new(UNDO_PAUSE);

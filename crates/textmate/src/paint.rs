@@ -1,4 +1,4 @@
-//! Token metadata -> paint decision (`cm-tm-deco.ts` `classForMeta`).
+//! Token metadata -> paint decision.
 
 use crate::tm_theme::{
     composite_css_color, decode_background, decode_font_style, decode_foreground,
@@ -68,7 +68,6 @@ mod tests {
         v.iter().map(|x| x.to_string()).collect()
     }
 
-    // cm-tm-deco.test.ts
     #[test]
     fn skips_the_editor_background_wash() {
         let map = s(&["", "#cccccc", "#1e1e1e"]);

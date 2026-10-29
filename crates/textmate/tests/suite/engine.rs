@@ -1,6 +1,5 @@
-//! Engine behaviour against the shipped grammars and themes in `bundles/`
-//! (ports `tm-engine.test.ts`, `tm-dotenv-theme.test.ts` and the bundle
-//! theme checks in `tm-theme.test.ts`).
+//! Engine behaviour against the shipped grammars and themes in `bundles/`,
+//! including the dotenv theme and bundle theme checks.
 
 use std::cell::Cell;
 use std::path::{Path, PathBuf};

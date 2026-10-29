@@ -1,4 +1,4 @@
-//! The editor's language server client (`lib/lsp.ts` over `@codemirror/lsp-client` 6.2):
+//! The editor's language server client (`@codemirror/lsp-client` 6.2 behavior):
 //! [`Client`] implements `recur_editor::lsp::LspClient` on `LspService::write_lsp` and the
 //! `lsp.message` / `lsp.exit` events. It owns request ids (12s timeout), the `initialize`
 //! exchange, the workspace's documents and versions (`RecurWorkspace`), `didOpen` /
@@ -997,7 +997,7 @@ pub struct HubState {
     events: Option<Task<()>>,
 }
 
-/// The app's language server sessions (`lsp.ts` module state).
+/// The app's language server sessions.
 #[derive(Clone, Default)]
 pub struct LspHub(pub Rc<RefCell<HubState>>);
 

@@ -1,4 +1,4 @@
-//! mcp__recur__reenter_phase chat cards (`lib/reenter-phase-tool.ts`): never
+//! mcp__recur__reenter_phase chat cards: never
 //! the args JSON, never the engine ack.
 
 use serde_json::Value;
@@ -46,7 +46,6 @@ pub fn reenter_phase_label(pending: bool, failed: bool, phase: &str) -> String {
     }
 }
 
-// Port of reenter-phase-tool.test.ts.
 #[cfg(test)]
 mod tests {
     use serde_json::json;

@@ -1,5 +1,5 @@
-//! The review stylesheet (`_prs.scss`, `_observatory.scss`, `_settings.scss` comment rules):
-//! the literal colors it hard-codes and the controls the review components share.
+//! The review styles: the literal colors they hard-code and the controls the review
+//! components share.
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{

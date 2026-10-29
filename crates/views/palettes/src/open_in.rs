@@ -1,4 +1,4 @@
-//! `OpenInPalette.svelte`: open the selected workspace in an installed app (⌘O, File → Open
+//! Open the selected workspace in an installed app (⌘O, File → Open
 //! In…, the titlebar button), or copy its path. 1–9 pick a row while the filter is empty;
 //! ⌘↩ or the pin makes an app the default, listed first.
 

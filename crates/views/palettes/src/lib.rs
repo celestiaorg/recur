@@ -1,4 +1,4 @@
-//! The palettes App.svelte mounts over every route: Go to (⌘K, `CommandPalette.svelte`), Run
+//! The palettes over every route: Go to (⌘K), Run
 //! Command (⌘⇧P), Open in (⌘O), Run (⌘R), the language-mode picker and the keyboard
 //! shortcuts list (⌘⇧/), and Stop (⌘⇧R). Each reads its open flag from `AppState::overlays`, owns its keys
 //! while its query field has focus and renders nothing while closed. The shell's global keys
@@ -24,7 +24,7 @@ pub mod syntax;
 use gpui_kit::AppContext as _;
 use recur_view_core::{OverlaySlot, ViewContext, ViewRegistry};
 
-/// Registers every palette in its App.svelte overlay slot.
+/// Registers every palette in its overlay slot.
 pub fn register(r: &mut ViewRegistry) {
     r.overlay(
         OverlaySlot::CommandPalette,

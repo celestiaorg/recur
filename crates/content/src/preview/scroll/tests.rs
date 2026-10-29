@@ -1,5 +1,3 @@
-//! `preview-scroll.test.ts`.
-
 use super::*;
 
 fn vs(top: Option<f64>, left: Option<f64>, zoom: Option<f64>) -> FileViewState {

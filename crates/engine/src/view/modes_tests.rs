@@ -1,5 +1,5 @@
-//! Port of the chat-mode cases of `lib/modes.test.ts` (the workspace
-//! predicate cases are `recur_view_core::modes`').
+//! Chat-mode cases (the workspace predicate cases are
+//! `recur_view_core::modes`').
 
 use recur_agent::catalog::{FlagDimension, FlagOption};
 use recur_domain::{Flags, Settings, Workspace};

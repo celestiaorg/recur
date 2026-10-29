@@ -1,4 +1,4 @@
-//! `PRPeopleStack.svelte`: overlapping participant faces (review state as a ring and a corner
+//! Overlapping participant faces (review state as a ring and a corner
 //! mark, `+N` past the cap) and, on hover, the popout naming everyone with their review state.
 
 use std::sync::LazyLock;

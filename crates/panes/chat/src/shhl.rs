@@ -1,4 +1,4 @@
-//! The tiny bash highlighter for terminal tool cards (`lib/shhl.ts`): one pass over the
+//! The tiny bash highlighter for terminal tool cards: one pass over the
 //! command, producing classed runs (`sh-kw` command words, `sh-str` strings, `sh-com`
 //! comments, `sh-flag` flags, `sh-var` variables, `sh-op` operators).
 

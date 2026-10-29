@@ -1,5 +1,5 @@
-//! `lib/tree-sticky.ts`: stuck folder headers in the file tree; only the innermost one fades the
-//! rows beneath it. Positions are viewport y (`getBoundingClientRect().top`); the tree passes
+//! Stuck folder headers in the file tree; only the innermost one fades the
+//! rows beneath it. Positions are viewport y; the tree passes
 //! what the DOM walk read.
 
 use recur_view_core::workspace_nav::scroll_delta_to_reveal;

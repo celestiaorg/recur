@@ -1,4 +1,4 @@
-//! `settings-newloop.spec.ts`: the Settings scenarios. The New workspace modal, the project
+//! The Settings scenarios. The New workspace modal, the project
 //! settings view and the add-project modal halves belong to the views that host them.
 
 use gpui::TestAppContext;
@@ -406,7 +406,7 @@ fn pr_settings_radio_dots_share_a_column(cx: &mut TestAppContext) {
     }
 }
 
-/// The menu item (`menu.action` `settings`, as `observatory.spec.ts` sends it) and ⌘, open
+/// The menu item (`menu.action` `settings`) and ⌘, open
 /// Settings on General.
 #[gpui::test]
 fn the_menu_action_and_cmd_comma_open_settings(cx: &mut TestAppContext) {

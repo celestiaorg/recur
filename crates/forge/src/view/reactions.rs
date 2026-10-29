@@ -1,4 +1,4 @@
-//! Reaction pills on conversation rows (`lib/comment-reactions.ts`). The
+//! Reaction pills on conversation rows. The
 //! content mapping and toggling live in `recur_domain::reaction`.
 
 use std::collections::HashMap;

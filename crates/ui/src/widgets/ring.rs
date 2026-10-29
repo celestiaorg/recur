@@ -1,4 +1,4 @@
-//! `Ring.svelte`: progress ring with five iteration dots and a centered iteration count.
+//! Progress ring with five iteration dots and a centered iteration count.
 
 use crate::color::Color;
 use crate::fonts::weight;
@@ -32,7 +32,7 @@ impl Ring {
     }
 }
 
-/// The SVG `Ring.svelte` builds, with `color` already resolved.
+/// The ring's SVG, with `color` already resolved.
 pub fn ring_svg(size: f32, prog: f32, color: Color) -> String {
     let big = size > 90.;
     let r = size / 2. - if big { 7. } else { 5. };

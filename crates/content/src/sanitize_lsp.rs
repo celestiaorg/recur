@@ -1,4 +1,4 @@
-//! `lib/sanitize-lsp.ts`: language-server hover and completion HTML, with fences tinted by
+//! Language-server hover and completion HTML, with fences tinted by
 //! `codehl` and DOMPurify (plus the app-wide hook) applied before display.
 
 use std::sync::OnceLock;

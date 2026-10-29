@@ -1,4 +1,4 @@
-//! The Loop cockpit transcript (frontend `lib/loop-cockpit.ts`): conductor
+//! The Loop cockpit transcript: conductor
 //! turns merged with specialist sessions (one card per dispatch) and engine
 //! facts, plus the PR-opened / wrap fact parsing the cockpit renders. A PA*
 //! tab that has not engaged a run keeps its own unmerged thread.
@@ -28,7 +28,7 @@ pub struct FeedSess {
     pub messages: Vec<AgentMsg>,
 }
 
-/// `PA` or `PA<digits>` (the frontend's looser test than `codes`).
+/// `PA` or `PA<digits>` (a looser test than `codes`).
 pub fn is_pair_chat_code(code: &str) -> bool {
     code == "PA"
         || code

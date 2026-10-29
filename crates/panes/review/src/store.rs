@@ -1,7 +1,5 @@
-//! App-wide review state: in-flight resolve and reaction holds
-//! (`lib/pr-thread-resolved.ts`, `lib/comment-reactions.ts`), unsent thread editors
-//! (`threadEditorDrafts`) and the finding ids already posted as review drafts
-//! (`postedFindingIds`), with the optimistic writes that use them.
+//! App-wide review state: in-flight resolve and reaction holds, unsent thread editors and
+//! the finding ids already posted as review drafts, with the optimistic writes that use them.
 
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};

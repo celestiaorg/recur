@@ -1,4 +1,4 @@
-//! `Briefing.svelte` (the Inbox): one list of workspace cards in Needs you / Working / Pick up
+//! The Inbox: one list of workspace cards in Needs you / Working / Pick up
 //! buckets with their unread notifications, the Elsewhere notifications that have no card,
 //! label-style filters, and the Ask Recur dock on the left. The dock's visibility
 //! (`inboxChatOpen`, `recur.askRecurOpen`) lives here; below 1100px the dock is a drawer.

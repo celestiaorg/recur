@@ -1,8 +1,8 @@
-//! The native application menu (`app_menu.go`) on GPUI menus.
+//! The native application menu on GPUI menus.
 //!
-//! Every item dispatches a GPUI action that the shell turns into the `menu.action` string the
-//! web UI handled (`check-updates`, `toggle-sidebar`, `app-theme:<key>`, …). Contextual items
-//! (New Tab, Save, Close Tab, the panel and focus toggles, Run…) follow the frontend's
+//! Every item dispatches a GPUI action that the shell turns into a `menu.action` string
+//! (`check-updates`, `toggle-sidebar`, `app-theme:<key>`, …). Contextual items
+//! (New Tab, Save, Close Tab, the panel and focus toggles, Run…) follow the views'
 //! `menu.state`: AppKit validates a menu item by whether its action has a handler, and the
 //! shell registers a handler only while the item is enabled.
 //!
@@ -228,7 +228,7 @@ fn item(name: &str, action: impl Action) -> MenuItem {
     MenuItem::action(name.to_string(), action)
 }
 
-/// A contextual item: shown disabled until the frontend's `menu.state` enables it.
+/// A contextual item: shown disabled until the views' `menu.state` enables it.
 fn contextual(name: &str, action: impl Action, on: Option<bool>) -> MenuItem {
     item(name, action).disabled(!enabled(on))
 }

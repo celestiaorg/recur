@@ -1,6 +1,6 @@
-//! `lib/chat-tab-session.ts`: the active Agent-panel tab per workspace,
-//! kept across reloads under one storage key. The value is the exact JSON
-//! the web UI wrote (`{workspaceId: code}` in insertion order); the view
+//! The active Agent-panel tab per workspace, kept across reloads under one
+//! storage key. The value is a JSON object (`{workspaceId: code}` in
+//! insertion order); the view
 //! host reads and writes it through its local storage.
 
 use serde::de::{Deserializer, MapAccess, Visitor};

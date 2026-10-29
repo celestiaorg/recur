@@ -1,4 +1,4 @@
-//! `settings-newloop.spec.ts`: the New workspace modal and add-project scenarios.
+//! The New workspace modal and add-project scenarios.
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -475,9 +475,9 @@ impl S<'_> {
     }
 }
 
-/// `a11y-keys.spec.ts` "Tab reaches every field and Enter/arrows change them": the
-/// `dialog-focus.ts` cycle (`cycleDialogTab` over `dialogFocusables`, wrapping both ways, the
-/// prompt first), pickers opened and changed from the keyboard keep focus on their trigger.
+/// Tab reaches every field and Enter/arrows change them: the dialog's focus cycle (wrapping
+/// both ways, the prompt first), pickers opened and changed from the keyboard keep focus on
+/// their trigger.
 #[gpui::test]
 fn tab_reaches_every_field_and_enter_and_arrows_change_them(cx: &mut TestAppContext) {
     let mut s = plain(cx);
@@ -539,7 +539,7 @@ fn tab_belongs_to_the_slash_menu_while_it_is_open(cx: &mut TestAppContext) {
     assert!(!menu(&mut s), "the menu took the Tab");
 }
 
-/// `a11y-keys.spec.ts` "select menus ignore a stationary cursor during keyboard nav": a menu
+/// Select menus ignore a stationary cursor during keyboard nav: a menu
 /// reopened with the keyboard under a parked pointer keeps the keyboard's row active.
 #[gpui::test]
 fn select_menus_ignore_a_stationary_cursor_during_keyboard_nav(cx: &mut TestAppContext) {

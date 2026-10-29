@@ -1,4 +1,4 @@
-//! `CompatibleProviderModal.svelte`: add an OpenAI-compatible endpoint from a preset.
+//! Add an OpenAI-compatible endpoint from a preset.
 
 use recur_ui::guard::Guarded;
 use std::collections::HashMap;

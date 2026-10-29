@@ -1,5 +1,5 @@
 //! The shell with the chat's overlays registered: the floating permission card, ask toast,
-//! Stop palette and typeahead overlays. (`loop-lifecycle.spec.ts` is the workspace view's.)
+//! Stop palette and typeahead overlays. (Workspace removal is the workspace view's.)
 
 use std::sync::Arc;
 
@@ -202,8 +202,8 @@ async fn an_emoji_shortcode_in_an_attached_field_expands_and_suggests(cx: &mut T
     assert!(!open);
 }
 
-/// `textarea-caret.test.ts`: the caret rect the typeaheads anchor to (`textareaCaretRect`, here
-/// the field's own `range_to_bounds`) is finite, inside the field, and moves right along a line.
+/// The caret rect the typeaheads anchor to (the field's own `range_to_bounds`) is finite,
+/// inside the field, and moves right along a line.
 #[gpui::test]
 async fn the_caret_rect_sits_in_the_field_and_moves_right_along_a_line(cx: &mut TestAppContext) {
     init(cx);

@@ -1,5 +1,3 @@
-//! Frontend `lib/promptActions.test.ts`.
-
 use super::*;
 
 #[test]

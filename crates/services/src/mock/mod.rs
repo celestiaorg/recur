@@ -152,7 +152,7 @@ pub struct Table {
 }
 
 impl Table {
-    /// The base resolvers (`resolvers` in mock-bridge.ts).
+    /// The base resolvers.
     pub fn base() -> Self {
         resolvers::base()
     }
@@ -215,7 +215,7 @@ pub struct MockBridge {
 
 impl MockBridge {
     /// Installs the bridge over `seed`. Resolvers mutate it in place; pass a
-    /// clone of a shared seed (fixtures.ts clones per test).
+    /// clone of a shared seed.
     pub fn new(seed: Seed, opts: MockOptions) -> Arc<Self> {
         let attention = Arc::new(Mutex::new(attention::State::default()));
         let mut table = Table::base();
@@ -232,8 +232,7 @@ impl MockBridge {
         })
     }
 
-    /// A bridge over a fresh clone of the e2e seed (the fixtures.ts `bridge`
-    /// auto fixture).
+    /// A bridge over a fresh clone of the e2e seed.
     pub fn fresh(opts: MockOptions) -> Arc<Self> {
         Self::new(fixtures::seed(), opts)
     }

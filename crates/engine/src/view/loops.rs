@@ -1,4 +1,4 @@
-//! The `[[loop]]` + `[[policy]]` picker rules (frontend `lib/loops.ts`):
+//! The `[[loop]]` + `[[policy]]` picker rules:
 //! shipped ids, the Settings enable/default rules, a workspace's effective
 //! pick, select options, the legacy autonomy mapping and the shipped
 //! fallback catalog. The service calls (`ListLoops`, `CreateWorkspaceWith`,

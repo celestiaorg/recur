@@ -1,6 +1,6 @@
-//! The composer's pickers: `ModelPickers.svelte` (the base model Select plus
-//! `ModelFlagsSelect.svelte`, one pick per flag dimension in a menu that stays open) and
-//! `LoopPolicyPickers.svelte` (loop + policy Selects with the policy help popover).
+//! The composer's pickers: the model pickers (the base model Select plus a flags menu with one
+//! pick per flag dimension that stays open) and the loop pickers (loop + policy Selects with
+//! the policy help popover).
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{

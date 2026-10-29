@@ -1,4 +1,4 @@
-//! `CompatibleProviderCard.svelte`: one OpenAI-compatible endpoint's name, base URL, key, extra
+//! One OpenAI-compatible endpoint's name, base URL, key, extra
 //! headers, models with their picker controls, and removal.
 
 use recur_ui::guard::Guarded;

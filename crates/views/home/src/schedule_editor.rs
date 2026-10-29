@@ -1,4 +1,4 @@
-//! `ScheduleEditor.svelte`: the New / Edit schedule modal, opened from anywhere through
+//! The New / Edit schedule modal, opened from anywhere through
 //! `AppState::schedule_editor`. It shares New workspace's chrome; a save bumps
 //! `schedulesVersion` so the lists refresh.
 

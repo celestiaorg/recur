@@ -1,4 +1,4 @@
-//! `SessionCard.svelte`: a specialist row in the Loop cockpit's fan-out card (an in-workspace
+//! A specialist row in the Loop cockpit's fan-out card (an in-workspace
 //! run, not a child worktree). Live sessions start open and stream inside a read-only chat.
 
 use gpui_kit::prelude::FluentBuilder;

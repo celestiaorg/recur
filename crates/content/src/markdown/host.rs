@@ -1,7 +1,6 @@
-//! `lib/markdown-host.ts` and `markdown-worker.ts`: the settled-markdown cache and off-thread
-//! rendering for streaming prefixes.
+//! The settled-markdown cache and off-thread rendering for streaming prefixes.
 //!
-//! A worker thread runs marked and highlighting, as the Web Worker does; a coordinator thread
+//! A worker thread runs marked and highlighting; a coordinator thread
 //! owns the queue, the 2 s watchdog and sanitizing, so nothing but layout touches the UI
 //! thread. Settled renders stay synchronous ([`render_markdown_cached`]): tab-swap scroll
 //! restore needs real heights on the first frame.
@@ -397,7 +396,7 @@ fn finish(state: &Mutex<State>, job: Job, res: Result<String, RenderError>) {
 type WorkerReply = (u64, Result<String, String>);
 type Worker = (Sender<(u64, String)>, Receiver<WorkerReply>);
 
-/// The worker: marked and highlighting only (`markdown-worker.ts`).
+/// The worker: marked and highlighting only.
 fn spawn_worker() -> Option<Worker> {
     let (req_tx, req_rx) = mpsc::channel::<(u64, String)>();
     let (res_tx, res_rx) = mpsc::channel::<WorkerReply>();

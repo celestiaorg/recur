@@ -1,5 +1,5 @@
-//! Bundle `keyEquivalent` parsing and display (`keyequiv.ts`, twin of
-//! `internal/bundles/keyequiv.go`).
+//! Bundle `keyEquivalent` parsing and display for the editor (the bundle
+//! side is `recur_bundles::keyequiv`).
 
 use gpui_kit::Keystroke;
 

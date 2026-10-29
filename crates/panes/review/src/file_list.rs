@@ -1,5 +1,5 @@
-//! `ReviewFileList.svelte` inside its `.overlay-sb-shell > .fl-body` scroller: the Files
-//! changed TOC, flat or as a tree with sticky open folders (`tree-sticky.ts`), finding and
+//! The Files changed TOC in its overlay-scrollbar scroller, flat or as a tree with sticky
+//! open folders, finding and
 //! unresolved-comment flags, uncommitted-edit dots, and reveal-on-spy.
 //!
 //! Rows have fixed heights (a file row is `3px + 12.5 × 1.35 + 3px`, a folder 24px), so the

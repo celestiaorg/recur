@@ -1,5 +1,5 @@
 //! Snippets: `@codemirror/autocomplete`'s `snippet()` templates and
-//! tab-stop fields, plus Recur's bundle snippet catalog (`snippets.ts`):
+//! tab-stop fields, plus Recur's bundle snippet catalog:
 //! tab-trigger expansion, `$TM_SELECTED_TEXT` / `$ISO_DATE`, VS Code `$n`
 //! rewriting and the completion source.
 

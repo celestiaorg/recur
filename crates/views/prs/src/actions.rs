@@ -1,4 +1,4 @@
-//! `PRTitlebarActions.svelte`: PR detail's review and merge actions leading `.tb-right`
+//! PR detail's review and merge actions leading `.tb-right`
 //! (Open in GitHub, Send back, Update with base, Pull / Push / Force push, the pending chip,
 //! Approve / Request changes, draft state, Fix checks, and the merge split).
 

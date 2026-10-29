@@ -1,4 +1,4 @@
-//! mcp__recur__open_pr chat cards (`lib/open-pr-tool.ts`).
+//! mcp__recur__open_pr chat cards.
 
 use serde_json::Value;
 
@@ -115,7 +115,6 @@ pub fn open_pr_label(card: &OpenPrCard) -> String {
     }
 }
 
-// Port of open-pr-tool.test.ts.
 #[cfg(test)]
 mod tests {
     use serde_json::json;

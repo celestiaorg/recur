@@ -1,4 +1,4 @@
-//! `MarkdownHtml.svelte`: settled markdown as a native view. Rendered synchronously through
+//! Settled markdown as a native view. Rendered synchronously through
 //! the shared cache (tab-swap scroll restore needs real heights on the first frame), with
 //! copy controls on fences, Mermaid placeholders hydrated into diagrams, and images that open
 //! the lightbox.

@@ -1,4 +1,4 @@
-//! `rules.ts`: marked's block and inline grammars for the options Recur sets (`gfm: true`,
+//! marked's `rules.ts`: block and inline grammars for the options Recur sets (`gfm: true`,
 //! `breaks: true`), built with the same `edit()` source splicing so every regex is
 //! byte-for-byte the one marked compiles.
 

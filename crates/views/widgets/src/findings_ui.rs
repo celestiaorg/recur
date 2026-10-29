@@ -1,5 +1,5 @@
-//! The finding list rows the chat shares with the Findings panel (`lib/findings-ui.ts`, the
-//! parts the transcript uses): titles, locations, severity icons and tallies, and the
+//! The finding list rows the chat shares with the Findings panel: titles, locations,
+//! severity icons and tallies, and the
 //! `list_findings` / `update_finding` payloads hydrated from the workspace store.
 
 use recur_domain::Finding;
@@ -409,7 +409,6 @@ mod tests {
         x
     }
 
-    // findings-ui.test.ts
     #[test]
     fn loc_labels() {
         assert_eq!(finding_loc_suffix(294, 300), ":294–300");

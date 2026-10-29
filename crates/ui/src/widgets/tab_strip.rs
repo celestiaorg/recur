@@ -1,5 +1,4 @@
-//! `TabStrip.svelte` with `lib/tab-strip-scroll.ts` and `lib/tab-strip-drag.svelte.ts`: a
-//! horizontally scrolling tab row with pinned leading/trailing actions, active-tab reveal,
+//! A horizontally scrolling tab row with pinned leading/trailing actions, active-tab reveal,
 //! keep-alive scroll restore, and drag (or ⌥←/⌥→) reorder.
 
 use crate::motion::{self, Easing};
@@ -74,7 +73,7 @@ pub fn restore_strip_order<T: Clone, K: PartialEq + std::hash::Hash + Eq>(
     out
 }
 
-/// `scrollDeltaToReveal` (`lib/workspace-nav.ts`).
+/// The scroll delta that brings a child fully into view.
 pub fn scroll_delta_to_reveal(
     row_top: f32,
     row_bottom: f32,
@@ -627,8 +626,7 @@ fn scrollbar(scroll: &ScrollHandle, color: crate::color::Color) -> AnyElement {
         .into_any_element()
 }
 
-/// Reveal the active chip (or apply a keep-alive restore), following the `$effect`s in
-/// `TabStrip.svelte` and the chase in `tab-strip-scroll.ts`.
+/// Reveal the active chip (or apply a keep-alive restore), chasing it while layout settles.
 fn reveal(state: &gpui_kit::Entity<State>, strip: &TabStrip, window: &mut Window, cx: &mut App) {
     let reduced = motion::reduced(cx);
     let order: Vec<SharedString> = state.read(cx).drag.order.clone();

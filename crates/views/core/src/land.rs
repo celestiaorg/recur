@@ -1,4 +1,4 @@
-//! `workspace-land-cache.ts`: the last titlebar git snapshot per workspace, shared by the
+//! The last titlebar git snapshot per workspace, shared by the
 //! workspace land chrome and PR detail's titlebar actions.
 
 use std::collections::{HashMap, VecDeque};
@@ -52,7 +52,7 @@ impl Land {
     }
 }
 
-/// `workspace-land-cache.ts`: insertion-order LRU with a 4 MiB budget; the newest entry is
+/// Insertion-order LRU with a 4 MiB budget; the newest entry is
 /// always kept.
 #[derive(Default)]
 pub struct LandCache {

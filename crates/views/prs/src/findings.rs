@@ -1,4 +1,4 @@
-//! The PR-detail half of `lib/findings-ui.ts`: where a finding lands as a GitHub review
+//! Findings in PR detail: where a finding lands as a GitHub review
 //! comment, and whether a queued or submitted comment already carries it.
 
 use std::collections::HashSet;

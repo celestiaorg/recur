@@ -1,4 +1,4 @@
-//! `lib/pr-list-filter.ts`: the PR dashboard's lifecycle segments, status facets, sort orders,
+//! The PR dashboard's lifecycle segments, status facets, sort orders,
 //! groups and titlebar tallies.
 
 use std::cmp::Ordering;

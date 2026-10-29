@@ -1,6 +1,5 @@
-//! `pr-review.spec.ts`'s PR agent chat dock: the linked or host workspace's chat beside PR
-//! detail, its tabs and hide toggle, attention and unread counts; plus `activity.spec.ts`'s
-//! PR-opened fact.
+//! The PR agent chat dock: the linked or host workspace's chat beside PR detail, its tabs
+//! and hide toggle, attention and unread counts; plus the PR-opened fact.
 
 use gpui::TestAppContext;
 use recur_services::mock::{MockOptions, Reply};

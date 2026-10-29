@@ -1,9 +1,8 @@
 //! The Diff view's unified merge state: `@codemirror/merge`'s
-//! `unifiedMergeView` as `MergeEditor.svelte` configures it (line-oriented
+//! `unifiedMergeView` as the merge editor configures it (line-oriented
 //! diff, word highlights, change gutter, no accept/reject controls,
 //! unchanged regions collapsed with margin 3 / min 6 lines), plus
-//! `cm-merge-full-line-marks.ts` and the revert chip of
-//! `cm-merge-revert.ts`.
+//! full-line change marks and the revert chip.
 //!
 //! Deleted text is shown without syntax colors, as in Recur: the merge
 //! package only highlights deletions with a Lezer language, which Recur's

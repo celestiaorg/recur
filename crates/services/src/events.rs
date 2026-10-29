@@ -414,8 +414,7 @@ fn null_object(d: Value) -> Value {
     }
 }
 
-/// `menu.action` data is the action string; the frontend also accepted
-/// `{action}`.
+/// `menu.action` data is the action string, or an `{action}` object.
 fn menu_action(name: &str, d: Value) -> Result<String, WireError> {
     match d {
         Value::String(s) => Ok(s),
@@ -528,8 +527,8 @@ fn updater_from_wire(name: &str, d: Value) -> Result<UpdaterEvent, WireError> {
 }
 
 /// Decodes a present key as `Some`, `null` included (as the zero value).
-/// Absent stays `None` via `#[serde(default)]`. For fields where the frontend
-/// tested `'key' in d` rather than `d.key ?? …`.
+/// Absent stays `None` via `#[serde(default)]`. For fields where presence
+/// matters, not just the value.
 fn present<'de, D, T>(d: D) -> Result<Option<T>, D::Error>
 where
     D: Deserializer<'de>,

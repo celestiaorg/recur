@@ -1,4 +1,4 @@
-//! `PRList.svelte`: the pull request dashboard. Rows grouped into needs-you, workspace
+//! The pull request dashboard. Rows grouped into needs-you, workspace
 //! responding, open and merged buckets under sticky headers, with the lifecycle segments,
 //! status facets, project filter and sort in the pane header, and a GitHub sync when the
 //! route opens.

@@ -1,4 +1,4 @@
-//! `lib/finding-paths.ts`: placing findings on diff files and rows.
+//! Placing findings on diff files and rows.
 
 use std::collections::HashSet;
 use std::sync::LazyLock;

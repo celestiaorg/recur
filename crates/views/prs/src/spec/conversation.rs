@@ -1,4 +1,4 @@
-//! PR detail's Conversation thread from `pr-review.spec.ts`: inline comments reviewed from the
+//! PR detail's Conversation thread: inline comments reviewed from the
 //! titlebar, edits, quote replies, deletes, nested review notes, reactions and review events.
 
 use gpui::TestAppContext;

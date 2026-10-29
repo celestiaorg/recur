@@ -1,4 +1,4 @@
-//! The app sidebar (`Sidebar.svelte`, `_sidebar.scss`): the nav, the project tree with groups,
+//! The app sidebar: the nav, the project tree with groups,
 //! sticky headers, drag reorder and the collapsed-rail flyout, and the footer with provider
 //! usage and stats.
 

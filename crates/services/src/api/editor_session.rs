@@ -14,17 +14,15 @@ use crate::Result;
 /// <DataDir>/workspaces/<id>/editor-session.json.gz
 /// ```
 ///
-/// The frontend used to keep this in localStorage, which meant origin-storage
-/// quota gymnastics and sessions that silently didn't survive a webview storage
-/// wipe (or a dev↔packaged origin change). Here the state rides the same
-/// lifecycle as artifacts/attachments: workspace deletion sweeps the directory,
+/// The state rides the same lifecycle as artifacts/attachments: workspace
+/// deletion sweeps the directory,
 /// and the write is a plain atomic temp+rename with no quota ceiling to trim to.
 ///
 /// The wire protocol is patch-based so typing doesn't ship the whole session
 /// over the bridge every debounce: UpdateEditorSession carries only what
 /// changed (optional meta, upserted buffers/scratch docs keyed by path, and
 /// explicit drops) and the merge happens here. Because absence in a patch means
-/// "unchanged", deletions MUST be explicit — the frontend sends a drop when a
+/// "unchanged", deletions MUST be explicit: the UI sends a drop when a
 /// save lands or a tab closes.
 #[async_trait]
 pub trait EditorSessionService: Send + Sync {

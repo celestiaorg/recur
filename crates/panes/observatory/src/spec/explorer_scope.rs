@@ -1,4 +1,4 @@
-//! `explorer-scope.spec.ts`: the Changed view built from the changed-path list (no directory
+//! Explorer scope: the Changed view built from the changed-path list (no directory
 //! listings), sticky folders, the remembered scope, worktree switches without stale rows or
 //! a flash of skeleton, changed submodule directories, and muted gitignored entries.
 

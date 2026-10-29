@@ -1,4 +1,4 @@
-//! Top-level views and the titlebar breadcrumb (`ViewName`, `crumbFor` in `lib/stores.ts`).
+//! Top-level views and the titlebar breadcrumb.
 
 /// A routable top-level view (`ViewName`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

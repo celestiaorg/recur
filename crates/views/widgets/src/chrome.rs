@@ -1,5 +1,5 @@
-//! Small controls from `_main.scss`, `_prs.scss` and `_observatory.scss` that several views
-//! draw: the infinite `.spin` / `.pulse` animations, the running dot, the pane-header `.seg`
+//! Small controls several views draw: the infinite `.spin` / `.pulse` animations, the
+//! running dot, the pane-header `.seg`
 //! and its buttons, dots and the `.obs-pane-toggle`.
 
 use std::time::Instant;
@@ -67,7 +67,7 @@ pub fn running_dot(window: &mut Window, cx: &App) -> Div {
         ))
 }
 
-/// `.seg` (`_main.scss`): `--pane`, a 1px `--line` border, radius 6, padding 2.
+/// `.seg`: `--pane`, a 1px `--line` border, radius 6, padding 2.
 pub fn seg(cx: &App) -> Div {
     let t = Theme::of(cx).tokens;
     recur_ui::style::card(t.pane, t.line, 6.).flex().p(px(2.))

@@ -1,5 +1,5 @@
-//! [`AppState`]: the app-wide stores of `lib/stores.ts` and the module state of `lib/api.ts`,
-//! as one GPUI entity every view reads. Views observe it for changes and subscribe to its
+//! [`AppState`]: the app-wide stores and data-layer state, as one GPUI entity every view
+//! reads. Views observe it for changes and subscribe to its
 //! [`ShellEvent`]s; mutations go through its methods so the persistence and side effects the
 //! stores carry stay in one place.
 
@@ -303,7 +303,7 @@ pub struct AppState {
     pub bundles_epoch: u64,
     pub booted: bool,
 
-    // ---- `lib/api.ts` module state ----
+    // ---- data-layer state ----
     pub(crate) live_diff: HashMap<String, DiffStat>,
     pub(crate) dropped_workspace_ids: HashSet<String>,
     pub(crate) fetching_workspace: HashSet<String>,
@@ -622,7 +622,7 @@ impl AppState {
             || o.pr_review.is_some()
     }
 
-    /// What App.svelte reports through `SetChatUIOccluded`: a dialog covers the chat, so a
+    /// What the shell reports through `SetChatUIOccluded`: a dialog covers the chat, so a
     /// finish on the selected tab still raises unseen.
     pub fn chat_occluded(&self) -> bool {
         let o = &self.overlays;
@@ -816,7 +816,7 @@ impl AppState {
         cx.notify();
     }
 
-    // ---- prompt actions (`lib/promptActions.ts`) ----
+    // ---- prompt actions ----
 
     /// `requestPromptAction`: ask the open workspace view to run a slash prompt.
     pub fn request_prompt_action(
@@ -1024,7 +1024,7 @@ impl AppState {
         }
     }
 
-    // ---- run commands (`lib/run-dev.ts`) ----
+    // ---- run commands ----
 
     /// `openRunMenu`: the named-run picker (⌘R) for a workspace with a run command.
     pub fn open_run_menu(&mut self, workspace_id: &str, cx: &mut Context<Self>) -> bool {

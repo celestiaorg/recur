@@ -1,4 +1,4 @@
-//! `TabChip.svelte`: one tab in a [`super::tab_strip::TabStrip`]: icon, label (with the
+//! One tab in a [`super::tab_strip::TabStrip`]: icon, label (with the
 //! rename decode), badge / dirty / unseen markers, the busy wash, and the close button.
 
 use crate::file_icons::file_icon;

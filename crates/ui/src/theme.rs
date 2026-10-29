@@ -1,5 +1,5 @@
-//! App chrome themes: every token and `data-theme` palette in `frontend/src/styles/_tokens.scss`,
-//! the picker list, aliases and "Sync with system" rules from `lib/stores.ts`.
+//! App chrome themes: every token and palette, the picker list, aliases and "Sync with
+//! system" rules.
 //!
 //! Themes are color only; identity and layout stay constant. A palette that does not set a
 //! token inherits Charcoal's `:root` value, exactly like the CSS cascade.
@@ -8,7 +8,7 @@ use crate::color::{Color, hex, rgba};
 use gpui_kit::{App, Global, Hsla, Pixels, px};
 use serde::{Deserialize, Serialize};
 
-/// The picker order of `themes` in `lib/stores.ts`.
+/// The chrome themes, in picker order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub enum ThemeId {
     #[default]
@@ -290,7 +290,7 @@ pub struct Swatches {
     pub warn: Color,
 }
 
-/// Every custom property in `_tokens.scss`. Names follow the CSS (`--pane-2` → `pane_2`).
+/// Every theme token. Names follow the CSS custom properties (`--pane-2` → `pane_2`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Tokens {
     pub bg: Color,
@@ -396,7 +396,7 @@ impl Tokens {
         })
     }
 
-    /// Every color token with its CSS name, in `_tokens.scss` order.
+    /// Every color token with its CSS name, in declaration order.
     pub fn named(&self) -> [(&'static str, Color); 28] {
         [
             ("bg", self.bg),
@@ -492,9 +492,8 @@ impl Theme {
     }
 }
 
-/// `prefers-color-scheme` answer plus the light/dark picks of one kind of theme. Ported from
-/// `createSystemSync` in `lib/stores.ts`; the field names are the persisted
-/// `recur.<name>Auto|Light|Dark` suffixes.
+/// `prefers-color-scheme` answer plus the light/dark picks of one kind of theme. The field
+/// names are the persisted `recur.<name>Auto|Light|Dark` suffixes.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SystemSync {
     pub auto: bool,
@@ -519,7 +518,7 @@ impl SystemSync {
     }
 }
 
-/// Chrome theme selection exactly as `lib/stores.ts` keeps it: an explicit theme key, and a
+/// Chrome theme selection: an explicit theme key, and a
 /// system sync that overrides it while on. Persist this as one JSON file under the data dir.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Appearance {

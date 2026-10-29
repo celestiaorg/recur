@@ -1,4 +1,4 @@
-//! Pure PR rules the UI applies (ported from `frontend/src/lib`), so the
+//! Pure PR rules the UI applies, so the
 //! GPUI views do not re-derive them.
 
 mod attention;

@@ -1,4 +1,4 @@
-//! A repo-relative path to an LSP `languageId` (`lib/lsp-lang.ts`).
+//! A repo-relative path to an LSP `languageId`.
 
 use std::sync::LazyLock;
 

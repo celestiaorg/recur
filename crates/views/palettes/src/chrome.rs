@@ -1,5 +1,5 @@
-//! What the palettes share: `.palette-bg` / `.palette` and its `.cmd-palette` and
-//! `.open-in-palette` densities (`_overlays.scss`), and the keys they read (`lib/shortcut.ts`).
+//! What the palettes share: the scrim and panel chrome in its two densities, and the keys
+//! they read.
 
 use gpui_kit::base::input::InputState;
 use gpui_kit::{

@@ -1,4 +1,4 @@
-//! The I/O half of `lib/promptActions.ts` the chat uses: the `[[prompt]]` catalog cache, arg
+//! The I/O half of prompt actions the chat uses: the `[[prompt]]` catalog cache, arg
 //! completion and running a prompt. The pure rules (slash lookup, arg slots, `/` menu gates,
 //! tab routing, context, failure wording) are `recur_engine::view::prompts`.
 

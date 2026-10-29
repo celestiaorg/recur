@@ -1,4 +1,4 @@
-//! `ArtifactsPanel.svelte`: a workspace's artifacts (or a given list, for plan attachments)
+//! A workspace's artifacts (or a given list, for plan attachments)
 //! with open, inline rename, reveal, and delete (armed for 3s, or confirmed from the context
 //! menu). Refreshes when an artifact is created or presented.
 

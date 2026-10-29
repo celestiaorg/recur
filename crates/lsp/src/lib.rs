@@ -1,5 +1,5 @@
 //! Language server client: process lifecycle, JSON-RPC framing, and server
-//! resolution from builtins, bundles and pinned installs, with the frontend LSP
+//! resolution from builtins, bundles and pinned installs, with the editor LSP
 //! client's transport rules.
 //!
 //! The editor talks to servers through a [`Manager`]: [`service::ensure_lsp`]

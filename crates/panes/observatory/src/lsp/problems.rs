@@ -1,4 +1,4 @@
-//! LSP diagnostics surfaced in the Problems panel (`lib/lsp-problems.ts`): one store for the
+//! LSP diagnostics surfaced in the Problems panel: one store for the
 //! app, keyed by session and document URI.
 
 use std::cell::RefCell;

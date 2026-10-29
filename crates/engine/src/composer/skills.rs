@@ -16,7 +16,7 @@ use regex::Regex;
 use crate::deadline::deadline_token;
 
 /// Skill name candidates; boundaries are checked by hand (no lookaround).
-/// Keep in sync with the frontend `SKILL_SLASH_RE`.
+/// Keep in sync with `SKILL_SLASH_CORE` in `crate::view::mentions`.
 static SKILL_SLASH_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"/([a-z][a-z0-9-]*)").expect("skill slash pattern"));
 

@@ -1,4 +1,4 @@
-//! The titlebar's merge slot for a PR (frontend `lib/pr-merge-action.ts`):
+//! The titlebar's merge slot for a PR:
 //! which one merge-adjacent action shows, its label and tooltip, and the
 //! merge / update-with-base method pickers.
 

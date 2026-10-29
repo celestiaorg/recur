@@ -1,4 +1,4 @@
-//! `lib/fuzzy.ts`: the fuzzy ranker behind Quick Open, Go to Symbol and searchable selects.
+//! The fuzzy ranker behind Quick Open, Go to Symbol and searchable selects.
 
 use std::cmp::Ordering;
 

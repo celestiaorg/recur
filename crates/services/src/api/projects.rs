@@ -17,7 +17,7 @@ pub trait ProjectsService: Send + Sync {
     async fn add_project_group(&self, g: &ProjectGroup) -> Result<ProjectGroup>;
 
     /// DeleteProject removes a project and everything under it (loops, PRs, inbox rows),
-    /// stopping any running loops first. The frontend re-fetches its lists afterward.
+    /// stopping any running loops first. The UI re-fetches its lists afterward.
     async fn delete_project(&self, id: &str) -> Result<()>;
 
     /// DeleteProjectGroup removes a group; its projects become ungrouped.

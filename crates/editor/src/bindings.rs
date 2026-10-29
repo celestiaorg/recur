@@ -1,6 +1,5 @@
-//! The editor's commands and the keymaps `CodeEditor.svelte` and
-//! `MergeEditor.svelte` compose, in CodeMirror precedence order (highest
-//! first, then extension order).
+//! The editor's commands and the code and merge editors' keymaps, in
+//! CodeMirror precedence order (highest first, then extension order).
 
 use crate::keymap::KeyBinding;
 
@@ -329,7 +328,7 @@ fn signature() -> Vec<KeyBinding<Cmd>> {
     ]
 }
 
-/// `CodeEditor.svelte`'s bindings. `lsp`: an LSP client is attached.
+/// The code editor's bindings. `lsp`: an LSP client is attached.
 pub fn code_editor_keymap(lsp_attached: bool) -> Vec<KeyBinding<Cmd>> {
     let mut v = snippet_highest();
     v.push(k("Enter", InsertNewlineBetweenPairs));
@@ -361,7 +360,7 @@ pub fn code_editor_keymap(lsp_attached: bool) -> Vec<KeyBinding<Cmd>> {
     v
 }
 
-/// `MergeEditor.svelte`'s bindings (no completion or closeBrackets).
+/// The merge editor's bindings (no completion or closeBrackets).
 pub fn merge_editor_keymap() -> Vec<KeyBinding<Cmd>> {
     let mut v = snippet_highest();
     v.push(k("Enter", InsertNewlineBetweenPairs));

@@ -59,7 +59,7 @@ impl ExpandError {
 }
 
 /// A composer-leading `/name` with nothing but whitespace after it (the
-/// frontend's prompt-action query rule).
+/// composer's prompt-action query rule, `crate::view::prompts::prompt_action_query_at`).
 static LEADING_SLASH_TOKEN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^/([A-Za-z0-9][A-Za-z0-9_-]*)\s*$").expect("leading slash pattern")
 });

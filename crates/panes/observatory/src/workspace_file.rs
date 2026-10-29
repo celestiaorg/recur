@@ -1,4 +1,4 @@
-//! Worktree and external files through the asset routes (`lib/workspace-file.ts`): the URLs
+//! Worktree and external files through the asset routes: the URLs
 //! the UI fetches, served natively by `AssetsService::fetch_asset`.
 
 use recur_domain::FileContent;

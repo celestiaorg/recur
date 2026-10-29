@@ -246,7 +246,7 @@ Examples: `cmd+shift+u`, `opt+cmd+j`. Modifiers are order-independent; matching 
 
 | Interpreter | How it runs |
 |-------------|-------------|
-| `typescript` | swc in `recur-bundles` → cache `<DataDir>/BundleCache` → classic Worker + frozen `MacroContext` |
+| `typescript` | swc in `recur-bundles` → cache `<DataDir>/BundleCache` → Worker on JavaScriptCore (`recur_bundles::js`, no node) + frozen `MacroContext` |
 | `shebang` | OS subprocess, stdin = input, `RECUR_*` env |
 
 `interpreter = "js"` and `"native"` are **rejected**. Use TypeScript (even for
@@ -494,8 +494,8 @@ into the CLI). Edit that tree to change what `recur bundles create` drops —
 placeholders: `{{BUNDLE_NAME}}`, `{{BUNDLE_ID}}`, `{{TS_CMD_ID}}`,
 `{{SH_CMD_ID}}`.
 
-TypeScript cases compile with the same swc path as the app, then run via
-`node` (Worker twin — needs `node` on `PATH`). Shebang cases use `bundles.Run`.
+TypeScript cases compile with the same swc path as the app and run on the same
+JavaScriptCore Worker (`recur_bundles::js`). Shebang cases use `bundles.Run`.
 
 ## Chat prompt actions (`[[prompt]]`)
 

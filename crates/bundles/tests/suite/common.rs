@@ -38,10 +38,3 @@ pub fn temp_dir() -> (tempfile::TempDir, String) {
     let s = d.path().to_string_lossy().into_owned();
     (d, s)
 }
-
-pub fn node_available() -> bool {
-    std::process::Command::new("node")
-        .arg("--version")
-        .output()
-        .is_ok_and(|o| o.status.success())
-}

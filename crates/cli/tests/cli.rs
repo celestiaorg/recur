@@ -20,13 +20,6 @@ fn run(args: &[&str]) -> (i32, String, String) {
     )
 }
 
-fn node_available() -> bool {
-    std::process::Command::new("node")
-        .arg("--version")
-        .output()
-        .is_ok_and(|o| o.status.success())
-}
-
 #[test]
 fn bundles_create_and_test() {
     let parent = tempfile::tempdir().unwrap();
@@ -65,9 +58,6 @@ fn bundles_create_and_test() {
     assert!(
         manifest.contains("id = \"demopack\"") && manifest.contains("id = \"demopack.uppercase\"")
     );
-    if !node_available() {
-        return;
-    }
     let (code, out, err) = run(&["bundles", "test", &dest]);
     assert_eq!(code, 0, "test: {out}{err}");
     assert!(out.contains("2 passed"), "{out}");

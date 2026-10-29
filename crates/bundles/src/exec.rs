@@ -89,17 +89,6 @@ impl RunCtx {
             _ = self.cancel.cancelled() => "context canceled",
         }
     }
-
-    /// Go `ctx.Err()`: the end reason if the context already ended.
-    pub(crate) fn err(&self) -> Option<&'static str> {
-        if self.cancel.is_cancelled() {
-            return Some("context canceled");
-        }
-        match self.deadline {
-            Some(at) if Instant::now() >= at => Some("context deadline exceeded"),
-            _ => None,
-        }
-    }
 }
 
 /// Captured outcome of a shebang command (or a TypeScript macro under
@@ -138,8 +127,8 @@ impl From<Error> for RunError {
     }
 }
 
-/// Executes a shebang command. TypeScript commands run in the frontend
-/// Worker (or under node in `recur bundles test`), never here.
+/// Executes a shebang command. TypeScript commands run on a JavaScriptCore
+/// Worker (`crate::js`), never here.
 pub async fn run(ctx: &RunCtx, cmd: &Command, mut rc: RunContext) -> Result<RunResult, RunError> {
     if cmd.interpreter == INTERPRETER_NATIVE || crate::is_script_interpreter(&cmd.interpreter) {
         return Err(err!(

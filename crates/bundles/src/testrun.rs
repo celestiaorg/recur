@@ -1,16 +1,13 @@
 //! `recur bundles test`: runs a bundle's `tests/*.toml` through the real
-//! engine (TypeScript under node as the Worker twin, shebang via the OS).
+//! engine (TypeScript on the app's JavaScriptCore Worker, shebang via the OS).
 
 use std::collections::BTreeMap;
-use std::process::Stdio;
-use std::sync::{Arc, Mutex};
 
 use recur_domain::path;
 use serde_json::{Value, json};
 
 use crate::env::{RunContext, resolve_input};
 use crate::exec::{DEFAULT_TIMEOUT, RunCtx, RunResult, run};
-use crate::grammar::{go_json_field, go_json_kind};
 use crate::manifest::{Command, INTERPRETER_SHEBANG, parse_manifest_full, validate_output};
 use crate::snippet::{Snippet, find_snippet_by_id};
 use crate::testcase::{LoadedTest, TestContext, TestExpect, find_command, load_tests};
@@ -266,150 +263,8 @@ pub fn format_report(r: &Report, color: bool) -> String {
     b
 }
 
-/// Mirrors `frontend/src/lib/macro-worker.ts` WORKER_BOOT so CLI tests
-/// exercise the same CJS + default-export contract as the app Worker.
-const NODE_MACRO_BOOT: &str = r#"
-const fs = require("fs");
-const codePath = process.argv[2];
-const ctxPath = process.argv[3];
-const code = fs.readFileSync(codePath, "utf8");
-const ctx = JSON.parse(fs.readFileSync(ctxPath, "utf8"));
-(async () => {
-  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-  // In this Go raw string, \n is two chars (backslash + n) so the written JS
-  // source has real escape sequences — same shape as macro-worker WORKER_BOOT.
-  const runner = new AsyncFunction(
-    "ctx",
-    "const module = { exports: {} };\n" +
-      "const exports = module.exports;\n" +
-      String(code) +
-      "\n" +
-      "const __fn = module.exports.default || module.exports;\n" +
-      "if (typeof __fn !== 'function') throw new Error('macro must export default function (ctx)');\n" +
-      "return await __fn(ctx);"
-  );
-  const frozen = Object.freeze(
-    Object.assign({}, ctx, {
-      prompts: Object.freeze(Object.assign({}, (ctx && ctx.prompts) || {})),
-    })
-  );
-  const raw = await runner(frozen);
-  let text = "";
-  let output = undefined;
-  let language = undefined;
-  let openInPreview = undefined;
-  if (typeof raw === "string") {
-    text = raw;
-  } else if (raw && typeof raw === "object") {
-    text = raw.text != null ? String(raw.text) : "";
-    if (raw.output != null) output = String(raw.output);
-    if (raw.language != null && String(raw.language).trim()) language = String(raw.language).trim();
-    if (typeof raw.openInPreview === "boolean") openInPreview = raw.openInPreview;
-  } else if (raw != null) {
-    throw new Error("macro must return a string or { text, output?, language?, openInPreview? }");
-  }
-  process.stdout.write(JSON.stringify({ text, output, language, openInPreview }));
-})().catch((err) => {
-  const message = err && err.message ? String(err.message) : String(err);
-  process.stderr.write(message);
-  process.exit(1);
-});
-"#;
-
-/// Outcome of a node run under a context (Go `exec.CommandContext`).
-pub(crate) struct NodeRun {
-    pub stdout: Vec<u8>,
-    pub stderr: Vec<u8>,
-    /// `Some(code)` when node exited non-zero or was killed (-1); `None` on success.
-    pub failed_code: Option<i64>,
-}
-
-/// Why [`run_node`] produced no [`NodeRun`].
-pub(crate) enum NodeError {
-    /// Temp dir or file setup failed (Go returns these unwrapped).
-    Setup(String),
-    /// node could not be started.
-    Exec(String),
-}
-
-/// Writes `files` into a fresh temp dir and runs `node <file_args…>
-/// <extra_args…>` (file args resolve inside that dir). A context that ends first SIGKILLs node, which
-/// then reports exit -1 with whatever output it produced.
-pub(crate) async fn run_node(
-    ctx: &RunCtx,
-    temp_prefix: &str,
-    files: &[(&str, &[u8])],
-    file_args: &[&str],
-    extra_args: &[&str],
-) -> Result<NodeRun, NodeError> {
-    let dir = tempfile::Builder::new()
-        .prefix(temp_prefix)
-        .tempdir()
-        .map_err(|e| NodeError::Setup(e.to_string()))?;
-    let dir_path = dir.path().to_string_lossy().into_owned();
-    for (name, body) in files {
-        let path = path::join(&[&dir_path, name]);
-        crate::seed::write_file(&path, body, 0o644).map_err(NodeError::Setup)?;
-    }
-    let argv: Vec<String> = file_args
-        .iter()
-        .map(|a| path::join(&[&dir_path, a]))
-        .chain(extra_args.iter().map(|a| a.to_string()))
-        .collect();
-    let node = which_node().ok_or_else(|| {
-        NodeError::Exec("exec: \"node\": executable file not found in $PATH".to_string())
-    })?;
-    let mut child = tokio::process::Command::new(&node)
-        .args(&argv)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| NodeError::Exec(format!("{}: {e}", node.display())))?;
-    let stdout = Arc::new(Mutex::new(Vec::new()));
-    let stderr = Arc::new(Mutex::new(Vec::new()));
-    let out_task = crate::exec::drain(child.stdout.take(), stdout.clone());
-    let err_task = crate::exec::drain(child.stderr.take(), stderr.clone());
-    let status = tokio::select! {
-        status = child.wait() => status.ok(),
-        _ = ctx.done() => {
-            let _ = child.start_kill();
-            let _ = child.wait().await;
-            None
-        }
-    };
-    let _ = out_task.await;
-    let _ = err_task.await;
-    let take = |buf: &Arc<Mutex<Vec<u8>>>| buf.lock().map(|b| b.clone()).unwrap_or_default();
-    Ok(NodeRun {
-        stdout: take(&stdout),
-        stderr: take(&stderr),
-        failed_code: match status {
-            Some(s) if s.success() => None,
-            Some(s) => Some(s.code().map_or(-1, i64::from)),
-            None => Some(-1),
-        },
-    })
-}
-
-/// `node` resolved on `PATH` like Go's `exec.LookPath`.
-fn which_node() -> Option<std::path::PathBuf> {
-    use std::os::unix::fs::PermissionsExt;
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .map(|dir| {
-            if dir.as_os_str().is_empty() {
-                std::path::PathBuf::from(".").join("node")
-            } else {
-                dir.join("node")
-            }
-        })
-        .find(|p| {
-            std::fs::metadata(p).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
-        })
-}
-
-/// Compiles `cmd` and executes it with node (the Worker twin).
+/// Compiles `cmd` and runs it on the app's macro Worker contract. A throw is exit 1 with
+/// the message on stderr; a context that ends first is exit -1.
 async fn run_type_script_macro(
     ctx: &RunCtx,
     cache_dir: &str,
@@ -418,117 +273,46 @@ async fn run_type_script_macro(
 ) -> Result<RunResult, Error> {
     let compiled = crate::compile_macro(cache_dir, cmd)?;
     let ctx = ctx.or_timeout(DEFAULT_TIMEOUT);
-    let ctx_json = serde_json::to_string(&macro_ctx_from_test(tc, cmd)).map_err(|e| err!("{e}"))?;
-    let run = run_node(
-        &ctx,
-        "recur-macro-test-",
-        &[
-            ("macro.js", compiled.js.as_bytes()),
-            ("boot.js", NODE_MACRO_BOOT.as_bytes()),
-            ("ctx.json", ctx_json.as_bytes()),
-        ],
-        &["boot.js", "macro.js", "ctx.json"],
-        &[],
-    )
-    .await;
-    let run = match run {
-        Ok(run) => run,
-        Err(NodeError::Setup(e)) => return Err(err!("{e}")),
-        Err(NodeError::Exec(e)) => {
-            if let Some(why) = ctx.err() {
-                return Err(err!("typescript macro timed out: {why}"));
-            }
-            return Err(err!("node: {e} (is node on PATH?)"));
-        }
+    let msg = json!({ "code": compiled.js, "ctx": macro_ctx_from_test(tc, cmd) });
+    let failed = |exit_code, stderr| RunResult {
+        stderr,
+        exit_code,
+        output: cmd.output.clone(),
+        ..Default::default()
     };
-    let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
-    let stderr = String::from_utf8_lossy(&run.stderr).into_owned();
-    if let Some(code) = run.failed_code {
-        return Ok(RunResult {
-            stdout,
-            stderr,
-            exit_code: code,
-            output: cmd.output.clone(),
-            ..Default::default()
-        });
-    }
-    let out = parse_node_macro_out(&stdout).map_err(|e| {
-        err!(
-            "parse node result: {e} (stdout={:?} stderr={:?})",
-            stdout,
-            stderr
-        )
-    })?;
-    let routing = if out.output.is_empty() {
-        cmd.output.clone()
-    } else {
-        out.output
+    let out = tokio::select! {
+        out = crate::js::run_once("macro", crate::js::MACRO_BOOT, &msg, crate::js::UNTIL_CANCELLED) => out,
+        _ = ctx.done() => return Ok(failed(-1, String::new())),
+    };
+    let raw = match out.result {
+        Ok(raw) => raw,
+        Err(e) => return Ok(failed(1, format!("{}{e}", out.logs))),
+    };
+    let s = |k: &str| {
+        raw.get(k)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned()
+    };
+    let routing = match s("output") {
+        o if o.is_empty() => cmd.output.clone(),
+        o => o,
     };
     validate_output(&routing).map_err(|e| err!("macro output: {e}"))?;
     // Effective values match the app (commands.ts: result ?? cmd).
-    let language = if out.language.is_empty() {
-        cmd.language.clone()
-    } else {
-        out.language
+    let language = match s("language") {
+        l if l.is_empty() => cmd.language.clone(),
+        l => l,
     };
+    let open_in_preview = raw.get("openInPreview").and_then(Value::as_bool);
     Ok(RunResult {
-        stdout: out.text,
-        stderr,
+        stdout: s("text"),
+        stderr: out.logs,
         exit_code: 0,
         output: routing,
         language,
-        open_in_preview: Some(out.open_in_preview.unwrap_or(cmd.open_in_preview)),
+        open_in_preview: Some(open_in_preview.unwrap_or(cmd.open_in_preview)),
     })
-}
-
-struct NodeMacroOut {
-    text: String,
-    output: String,
-    language: String,
-    open_in_preview: Option<bool>,
-}
-
-fn parse_node_macro_out(stdout: &str) -> Result<NodeMacroOut, String> {
-    let v: Value = serde_json::from_str(stdout).map_err(|e| e.to_string())?;
-    let mut out = NodeMacroOut {
-        text: String::new(),
-        output: String::new(),
-        language: String::new(),
-        open_in_preview: None,
-    };
-    let Value::Object(obj) = v else {
-        if v.is_null() {
-            return Ok(out);
-        }
-        return Err(format!(
-            "json: cannot unmarshal {} into Go value of type bundles.nodeMacroOut",
-            go_json_kind(&v)
-        ));
-    };
-    let s = |name: &str| -> Result<String, String> {
-        match go_json_field(&obj, name) {
-            None | Some(Value::Null) => Ok(String::new()),
-            Some(Value::String(s)) => Ok(s.clone()),
-            Some(other) => Err(format!(
-                "json: cannot unmarshal {} into Go struct field nodeMacroOut.{name} of type string",
-                go_json_kind(other)
-            )),
-        }
-    };
-    out.text = s("text")?;
-    out.output = s("output")?;
-    out.language = s("language")?;
-    out.open_in_preview = match go_json_field(&obj, "openInPreview") {
-        None | Some(Value::Null) => None,
-        Some(Value::Bool(b)) => Some(*b),
-        Some(other) => {
-            return Err(format!(
-                "json: cannot unmarshal {} into Go struct field nodeMacroOut.openInPreview of type bool",
-                go_json_kind(other)
-            ));
-        }
-    };
-    Ok(out)
 }
 
 fn macro_ctx_from_test(tc: &TestContext, cmd: &Command) -> BTreeMap<&'static str, Value> {

@@ -82,7 +82,7 @@ A command may list both.
 
 | Value | Runtime |
 | --- | --- |
-| `typescript` | esbuild → cache → classic Worker + frozen `MacroContext` |
+| `typescript` | compile → cache → sandboxed Worker + frozen `MacroContext` |
 | `shebang` | OS subprocess; stdin = input; `RECUR_*` env |
 
 `js` and `native` are **rejected**. Plain JS-shaped code still uses `interpreter = "typescript"` (esbuild’s TS loader accepts it).

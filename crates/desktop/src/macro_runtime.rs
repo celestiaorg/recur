@@ -1,303 +1,52 @@
-//! The macro worker (`lib/macro-worker.ts`) on `node`: one long-lived worker per contract
-//! (macro, prompt, complete) runs the CommonJS the backend compiled, inside a `vm` context
-//! that exposes Worker-like globals only (no `require`, `process` or filesystem), so a module
-//! sees nothing but the frozen context it is handed. Calls are NDJSON over stdio and may
-//! overlap; a timeout (or a dropped prompt/complete call, the TS AbortSignal) kills the shared
-//! worker and fails everything in flight, so a runaway module cannot starve later runs.
+//! The macro workers (`lib/macro-worker.ts`) on JavaScriptCore: one long-lived
+//! [`JsWorker`] per contract (macro, prompt, complete) runs the CommonJS the backend
+//! compiled with Worker globals only (no `require`, `process` or filesystem), so a module
+//! sees nothing but the frozen context it is handed. A timeout, or a dropped call (the TS
+//! AbortSignal), stops the call and gives that worker a fresh context.
 
-use std::collections::HashMap;
-use std::process::Stdio;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use futures::FutureExt as _;
-use parking_lot::Mutex;
 use recur_bundles::PromptRunContext;
+use recur_bundles::js::{COMPLETE_BOOT, JsWorker, MACRO_BOOT, PROMPT_BOOT};
 use recur_services::api::{
     PromptCompleteHitDto, PromptCompleteRequestDto, PromptCompleteResultDto, PromptResultDto,
 };
 use recur_view_chat::prompt_actions::{CompleteModuleRunner, PromptModuleRunner};
 use recur_view_core::commands::{MacroContext, MacroResult, MacroRunner};
 use serde_json::{Map, Value, json};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStdin};
 use tokio::runtime::Handle;
-use tokio::sync::oneshot;
-
-/// Shared by every worker: Worker-like globals in a fresh `vm` context, console to stderr
-/// (stdout is the reply channel), and the CommonJS wrapper `macro-worker.ts` builds.
-const BOOT_PRELUDE: &str = r#"
-const readline = require("readline");
-const util = require("util");
-const vm = require("vm");
-const out = process.stdout;
-const err = process.stderr;
-const send = (m) => out.write(JSON.stringify(m) + "\n");
-const log = (...a) => err.write(util.format(...a) + "\n");
-const consoleShim = { log, info: log, debug: log, warn: log, error: log, trace: log };
-const globals = { console: consoleShim };
-for (const n of [
-  "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask",
-  "structuredClone", "URL", "URLSearchParams", "TextEncoder", "TextDecoder",
-  "AbortController", "AbortSignal", "atob", "btoa", "fetch", "Headers", "Request",
-  "Response", "Blob", "performance", "crypto",
-]) {
-  if (n in globalThis) globals[n] = globalThis[n];
-}
-const sandbox = vm.createContext(globals);
-sandbox.self = sandbox;
-const load = (code, what) => vm.runInContext(
-  "(async function (ctx) {\n" +
-  "const module = { exports: {} };\n" +
-  "const exports = module.exports;\n" +
-  String(code) + "\n" +
-  "const __fn = module.exports.default || module.exports;\n" +
-  "if (typeof __fn !== 'function') throw new Error('" + what + " must export default function (ctx) { … }');\n" +
-  "return await __fn(ctx);\n})",
-  sandbox,
-);
-const message = (e) => (e && e.message ? String(e.message) : String(e));
-readline.createInterface({ input: process.stdin }).on("line", (line) => {
-  let msg;
-  try { msg = JSON.parse(line); } catch { return; }
-  run(msg).then(
-    (r) => send(Object.assign({ id: msg.id, ok: true }, r)),
-    (e) => send({ id: msg.id, ok: false, error: message(e) }),
-  );
-});
-"#;
-
-/// `WORKER_BOOT`.
-const MACRO_BOOT: &str = r#"
-async function run({ code, ctx }) {
-  const frozen = Object.freeze(Object.assign({}, ctx, {
-    prompts: Object.freeze(Object.assign({}, (ctx && ctx.prompts) || {})),
-  }));
-  const raw = await load(code, "macro")(frozen);
-  let text = "";
-  let output = undefined;
-  let language = undefined;
-  let openInPreview = undefined;
-  if (typeof raw === "string") {
-    text = raw;
-  } else if (raw && typeof raw === "object") {
-    text = raw.text != null ? String(raw.text) : "";
-    if (raw.output != null) output = String(raw.output);
-    if (raw.language != null && String(raw.language).trim()) language = String(raw.language).trim();
-    if (typeof raw.openInPreview === "boolean") openInPreview = raw.openInPreview;
-  } else if (raw != null) {
-    throw new Error("macro must return a string or { text, output?, language?, openInPreview? }");
-  }
-  return { text, output, language, openInPreview };
-}
-"#;
-
-/// `PROMPT_WORKER_BOOT`.
-const PROMPT_BOOT: &str = r#"
-async function run({ code, ctx, fallbackName }) {
-  const raw = await load(code, "prompt")(Object.freeze(Object.assign({}, ctx)));
-  if (!raw || typeof raw !== "object") {
-    throw new Error("prompt must return { prompt, display? }");
-  }
-  const prompt = raw.prompt != null ? String(raw.prompt) : "";
-  let display = raw.display != null ? String(raw.display) : "";
-  display = display.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
-  if (!display) display = String(fallbackName || "").replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
-  if (display.length > 120) display = display.slice(0, 119) + "…";
-  return { prompt, display };
-}
-"#;
-
-/// `COMPLETE_WORKER_BOOT`.
-const COMPLETE_BOOT: &str = r#"
-async function run({ code, ctx }) {
-  const raw = await load(code, "complete")(Object.freeze(Object.assign({}, ctx)));
-  const hits = [];
-  const list = raw && Array.isArray(raw.hits) ? raw.hits : (Array.isArray(raw) ? raw : []);
-  for (const h of list) {
-    if (!h || typeof h !== "object") continue;
-    const insert = h.insert != null ? String(h.insert) : "";
-    const label = h.label != null ? String(h.label) : insert;
-    const detail = h.detail != null ? String(h.detail) : "";
-    const badge = h.badge != null ? String(h.badge) : "";
-    const action = h.action != null ? String(h.action) : "";
-    if (!label && !action) continue;
-    hits.push({ insert, label, detail, badge, action });
-    if (hits.length >= 25) break;
-  }
-  const message = raw && raw.message != null ? String(raw.message) : "";
-  return { hits, message };
-}
-"#;
 
 /// A workspace's LSP problems as `lspProblemArgs` lines.
 pub type Diagnostics = Rc<dyn Fn(&str) -> Vec<String>>;
-
-type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>;
-
-struct Proc {
-    child: Mutex<Child>,
-    stdin: tokio::sync::Mutex<ChildStdin>,
-    pending: Pending,
-}
 
 /// One worker contract (`getWorker` / `resetWorker` and friends).
 struct Worker {
     /// "macro", "prompt" or "complete": the error wording's subject.
     what: &'static str,
-    boot: String,
-    proc: Mutex<Option<Arc<Proc>>>,
-    seq: AtomicU64,
+    js: JsWorker,
 }
 
 impl Worker {
-    fn new(what: &'static str, body: &str) -> Self {
+    fn new(what: &'static str, boot: &str) -> Self {
         Self {
             what,
-            boot: format!("{body}\n{BOOT_PRELUDE}"),
-            proc: Mutex::new(None),
-            seq: AtomicU64::new(0),
+            js: JsWorker::new(what, boot),
         }
     }
 
-    fn get(self: &Arc<Self>) -> Result<Arc<Proc>, String> {
-        let mut slot = self.proc.lock();
-        if let Some(p) = slot.as_ref() {
-            return Ok(p.clone());
-        }
-        let mut child = tokio::process::Command::new("node")
-            .arg("-e")
-            .arg(&self.boot)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .kill_on_drop(true)
-            .spawn()
-            .map_err(|e| format!("node: {e} (is node on PATH?)"))?;
-        let (Some(stdin), Some(stdout), Some(stderr)) =
-            (child.stdin.take(), child.stdout.take(), child.stderr.take())
-        else {
-            return Err(format!("{} worker error", self.what));
-        };
-        let proc = Arc::new(Proc {
-            child: Mutex::new(child),
-            stdin: tokio::sync::Mutex::new(stdin),
-            pending: Pending::default(),
-        });
-        let what = self.what;
-        tokio::spawn(async move {
-            let mut lines = BufReader::new(stderr).lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                tracing::debug!("{what} worker: {line}");
-            }
-        });
-        let (me, reader) = (Arc::downgrade(self), proc.clone());
-        tokio::spawn(async move {
-            let mut lines = BufReader::new(stdout).lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                let Ok(reply) = serde_json::from_str::<Value>(&line) else {
-                    continue;
-                };
-                let id = reply.get("id").and_then(Value::as_u64).unwrap_or_default();
-                let Some(tx) = reader.pending.lock().remove(&id) else {
-                    continue;
-                };
-                let _ = tx.send(if reply.get("ok") == Some(&Value::Bool(true)) {
-                    Ok(reply)
-                } else {
-                    let msg = reply
-                        .get("error")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default();
-                    Err(if msg.is_empty() {
-                        format!("{what} failed")
-                    } else {
-                        msg.to_owned()
-                    })
-                });
-            }
-            // The worker died (`onerror`): fail what is in flight and start fresh next call.
-            if let Some(me) = me.upgrade() {
-                me.reset_if(&reader, &format!("{what} worker error"));
-            }
-        });
-        *slot = Some(proc.clone());
-        Ok(proc)
-    }
-
-    /// Kills `proc` if it is still the live worker and fails everything in flight.
-    fn reset_if(&self, proc: &Arc<Proc>, err: &str) {
-        {
-            let mut slot = self.proc.lock();
-            if slot.as_ref().is_some_and(|p| Arc::ptr_eq(p, proc)) {
-                *slot = None;
-            }
-        }
-        let _ = proc.child.lock().start_kill();
-        for (_, tx) in proc.pending.lock().drain() {
-            let _ = tx.send(Err(err.to_owned()));
-        }
-    }
-
-    /// Posts one call and waits for its reply, the timeout, or the worker dying. A call
-    /// dropped before it settles (a cancelled prompt or complete) kills the worker.
     async fn call(
         self: Arc<Self>,
-        mut msg: Map<String, Value>,
+        msg: Map<String, Value>,
         timeout: Duration,
     ) -> Result<Value, String> {
-        let proc = self.get()?;
-        let id = self.seq.fetch_add(1, Ordering::SeqCst) + 1;
-        msg.insert("id".into(), json!(id));
-        let (tx, rx) = oneshot::channel();
-        proc.pending.lock().insert(id, tx);
-        let mut guard = CancelGuard {
-            worker: Some((self.clone(), proc.clone())),
-            err: "prompt cancelled",
-        };
-        let mut line = serde_json::to_string(&msg).map_err(|e| e.to_string())?;
-        line.push('\n');
-        if proc
-            .stdin
-            .lock()
-            .await
-            .write_all(line.as_bytes())
-            .await
-            .is_err()
-        {
-            guard.worker = None;
-            proc.pending.lock().remove(&id);
-            self.reset_if(&proc, &format!("{} worker error", self.what));
-            return Err(format!("{} worker error", self.what));
+        let out = self.js.call(&Value::Object(msg), timeout).await;
+        for line in out.logs.lines() {
+            tracing::debug!("{} worker: {line}", self.what);
         }
-        let res = tokio::time::timeout(timeout, rx).await;
-        guard.worker = None;
-        match res {
-            Ok(Ok(reply)) => reply,
-            Ok(Err(_)) => Err(format!("{} worker error", self.what)),
-            Err(_) => {
-                let err = format!("{} timed out", self.what);
-                self.reset_if(&proc, &err);
-                Err(err)
-            }
-        }
-    }
-}
-
-struct CancelGuard {
-    worker: Option<(Arc<Worker>, Arc<Proc>)>,
-    err: &'static str,
-}
-
-impl Drop for CancelGuard {
-    fn drop(&mut self) {
-        if let Some((w, p)) = self.worker.take()
-            && w.what != "macro"
-        {
-            w.reset_if(&p, self.err);
-        }
+        out.result
     }
 }
 

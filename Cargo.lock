@@ -7835,6 +7835,7 @@ name = "recur-bundles"
 version = "0.0.0"
 dependencies = [
  "futures",
+ "getrandom 0.4.3",
  "hex",
  "include_dir",
  "nix 0.31.3",
@@ -7851,6 +7852,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "toml 0.9.12+spec-1.1.0",
+ "url",
 ]
 
 [[package]]

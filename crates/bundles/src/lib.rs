@@ -18,6 +18,7 @@
 //! - Authoring: [`lint_bundles`], [`run_bundle_tests`], [`load_tests`].
 
 pub mod go;
+pub mod js;
 
 mod compile;
 mod env;

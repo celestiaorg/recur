@@ -51,7 +51,7 @@ pub fn build() -> Cobra {
         "test [name|path]...",
         "Run tests/*.toml for one or more bundles",
     );
-    test.long = "Run in-bundle tests through the real engine (TypeScript via esbuild+node, shebang via OS).\n\nArgs may be bundle names (resolved under --bundles-dir, ./bundles, shipped) or paths.\nWith no args, tests the current directory (or every child pack).".to_string();
+    test.long = "Run in-bundle tests through the real engine (TypeScript on JavaScriptCore, shebang via OS).\n\nArgs may be bundle names (resolved under --bundles-dir, ./bundles, shipped) or paths.\nWith no args, tests the current directory (or every child pack).".to_string();
     test.example = "  recur bundles test Text\n  recur bundles test ./bundles/Source\n  recur bundles test ~/.recur/bundles/MyPack\n  recur bundles test ./bundles".to_string();
     test.args = ArgsRule::Arbitrary;
     test.action = Some(Action::BundlesTest);

@@ -6,9 +6,6 @@ use crate::common::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn run_bundle_tests_type_script_and_shebang() {
-    if !node_available() {
-        return;
-    }
     let (_g, dir) = temp_dir();
     must_write(
         &format!("{dir}/bundle.toml"),
@@ -117,9 +114,6 @@ openInPreview = true
 
 #[tokio::test(flavor = "multi_thread")]
 async fn run_bundle_tests_failure_detail() {
-    if !node_available() {
-        return;
-    }
     let (_g, dir) = temp_dir();
     must_write(
         &format!("{dir}/bundle.toml"),
@@ -153,9 +147,6 @@ async fn run_bundle_tests_failure_detail() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn run_bundle_tests_macro_errors_and_timeouts() {
-    if !node_available() {
-        return;
-    }
     let (_g, dir) = temp_dir();
     must_write(
         &format!("{dir}/bundle.toml"),

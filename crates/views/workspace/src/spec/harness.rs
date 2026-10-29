@@ -107,37 +107,41 @@ pub fn boot(cx: &mut TestAppContext, opts: MockOptions) -> H<'_> {
     boot_with(cx, |_| {}, opts, |_| {}, WS)
 }
 
-/// Runs the bundles' compiled TypeScript prompt modules in `node`, as the desktop's macro
-/// workers do (`exports.default(ctx)` → `{prompt, display, …}`).
+/// Runs the bundles' compiled TypeScript prompt modules on a JavaScriptCore worker, as the
+/// desktop's macro workers do (`exports.default(ctx)` → `{prompt, display, …}`).
 pub fn install_prompt_runner(cx: &mut gpui_kit::App) {
     use futures::FutureExt as _;
-    let runner: recur_view_chat::prompt_actions::PromptModuleRunner = std::rc::Rc::new(
-        |code, ctx, chat_code, _name, _timeout| {
+    const RAW_PROMPT_BOOT: &str =
+        "async function run({ code, ctx }) { return load(code, 'prompt')(ctx); }";
+    let runner: recur_view_chat::prompt_actions::PromptModuleRunner =
+        std::rc::Rc::new(|code, ctx, chat_code, _name, _timeout| {
             async move {
-                let ctx = serde_json::json!({
-                    "workspaceId": ctx.workspace_id,
-                    "projectId": ctx.project_id,
-                    "worktree": ctx.worktree,
-                    "args": ctx.args,
-                    "surface": ctx.surface,
-                    "chatCode": chat_code,
+                let msg = serde_json::json!({
+                    "code": code,
+                    "ctx": {
+                        "workspaceId": ctx.workspace_id,
+                        "projectId": ctx.project_id,
+                        "worktree": ctx.worktree,
+                        "args": ctx.args,
+                        "surface": ctx.surface,
+                        "chatCode": chat_code,
+                    },
                 });
-                let script = format!(
-                    "const module={{exports:{{}}}};const exports=module.exports;{code}\n;Promise.resolve((module.exports.default||exports.default)({ctx})).then(r=>process.stdout.write(JSON.stringify(r)))"
-                );
-                let out = std::process::Command::new("node")
-                    .arg("-e")
-                    .arg(script)
-                    .output()
-                    .map_err(|e| e.to_string())?;
-                if !out.status.success() {
-                    return Err(String::from_utf8_lossy(&out.stderr).to_string());
+                let out = recur_bundles::js::run_once(
+                    "prompt",
+                    RAW_PROMPT_BOOT,
+                    &msg,
+                    std::time::Duration::from_secs(10),
+                )
+                .await;
+                let mut r = out.result?;
+                if let Some(o) = r.as_object_mut() {
+                    o.remove("ok");
                 }
-                serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())
+                serde_json::from_value(r).map_err(|e| e.to_string())
             }
             .boxed_local()
-        },
-    );
+        });
     recur_view_chat::prompt_actions::PromptCatalog::set_runners(Some(runner), None, cx);
 }
 

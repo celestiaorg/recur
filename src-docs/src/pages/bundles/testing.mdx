@@ -25,7 +25,7 @@ recur bundles lint ./bundles         # schema, TS compile, shebang, keyEquivalen
 
 Optional file: `~/.recur/config.yaml` (`bundles-dir: …`).
 
-TypeScript tests compile with the same esbuild path as the app, then run in `node` as a twin of the Worker, so `node` must be on your `PATH`. Shebang cases use the same runner as the app.
+TypeScript tests compile and run exactly as in the app: the same compiler and the same JavaScriptCore Worker, so nothing extra is needed on your `PATH`. Shebang cases use the same runner as the app.
 
 ## Test files
 

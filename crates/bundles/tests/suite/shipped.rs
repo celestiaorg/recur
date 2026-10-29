@@ -23,10 +23,6 @@ fn shipped_dirs() -> Vec<(String, String)> {
 /// Runs tests/*.toml for every shipped pack that has cases.
 #[tokio::test(flavor = "multi_thread")]
 async fn shipped_bundle_tests() {
-    if !node_available() {
-        eprintln!("node not on PATH");
-        return;
-    }
     let (_g, cache) = temp_dir();
     let ctx = RunCtx::background();
     let mut any = false;

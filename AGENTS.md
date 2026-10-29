@@ -38,7 +38,7 @@ Read before inventing architecture:
 - macOS package: `mise run macos:package` (`Recur.app`, DMG and updater zip; `UNIVERSAL=true`, signing and notarization env in `build/darwin/package.sh`). `mise run macos:smoke` installs and launches the DMG in a sandbox.
 - Linux: `mise run linux:test`, `linux:build`, `linux:package` (tarball, `.deb`, `.rpm` to `/opt/recur`) and `linux:smoke`, all in `build/linux/Dockerfile` on a Mac (Docker or OrbStack) for the host arch (`ARCH=amd64|arm64` overrides). `mise run linux:run` opens the Linux app on a throwaway desktop at `http://127.0.0.1:6081` (noVNC). `linux:test:wpe` runs the WPE WebKit spike's checks.
 - UI view state that should survive view switches or restarts (filters, sort, layout, expanded rows) is persisted on disk as a JSON file in the data dir, through the shell service in `crates/services/src/app/shell.rs` (see `shell.json`, `schedule-view.json`, `issues-view.json`).
-- Bundles need `node` on `PATH` for TypeScript macros and engine tests.
+- TypeScript bundle code runs on JavaScriptCore (`crates/bundles/src/js.rs`), not node: the system framework on macOS, WebKitGTK's library on Linux.
 - Multi-agent coordination (optional): gitignored `TODO.md`: claim work there so sessions do not collide.
 
 ## Testing instructions

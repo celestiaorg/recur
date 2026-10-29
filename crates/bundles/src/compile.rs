@@ -1,4 +1,4 @@
-//! TypeScript macro compilation for the macro Worker (and node in tests).
+//! TypeScript macro compilation for the macro Worker (`crate::js`).
 //!
 //! Go compiled with esbuild (bundle, CommonJS, ES2020, `@recur/sdk` as the
 //! only resolvable import). This port uses swc in-process and reproduces

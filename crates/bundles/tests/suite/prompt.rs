@@ -539,10 +539,7 @@ fn compile_prompt_and_complete_macros() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn run_prompt_type_script_with_node() {
-    if !node_available() {
-        return;
-    }
+async fn run_prompt_type_script() {
     let (_g, cache) = temp_dir();
     let prompt = PromptAction {
         id: "p-ts".into(),

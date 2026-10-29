@@ -444,10 +444,12 @@ unsafe fn build_window_class(name: &'static str, superclass: &Class) -> *const C
             sel!(canBecomeKeyWindow),
             yes as extern "C" fn(&Object, Sel) -> BOOL,
         );
-        decl.add_method(
-            sel!(_cornerRadius),
-            corner_radius as extern "C" fn(&Object, Sel) -> f64,
-        );
+        if superclass == class!(NSWindow) {
+            decl.add_method(
+                sel!(_cornerRadius),
+                corner_radius as extern "C" fn(&Object, Sel) -> f64,
+            );
+        }
         decl.add_method(
             sel!(windowDidResize:),
             window_did_resize as extern "C" fn(&Object, Sel, id),
@@ -2501,9 +2503,16 @@ extern "C" fn yes(_: &Object, _: Sel) -> BOOL {
 }
 
 /// AppKit's private `-[NSWindow _cornerRadius]`: macOS 26 rounds a window without a toolbar
-/// at 16pt; this keeps the 10pt of earlier releases.
-extern "C" fn corner_radius(_: &Object, _: Sel) -> f64 {
-    10.
+/// at 16pt; this keeps the 10pt of earlier releases. Full screen keeps AppKit's own answer.
+extern "C" fn corner_radius(this: &Object, _: Sel) -> f64 {
+    unsafe {
+        let style_mask: NSWindowStyleMask = msg_send![this, styleMask];
+        if style_mask.contains(NSWindowStyleMask::NSFullScreenWindowMask) {
+            msg_send![super(this, class!(NSWindow)), _cornerRadius]
+        } else {
+            10.
+        }
+    }
 }
 
 extern "C" fn dealloc_window(this: &Object, _: Sel) {

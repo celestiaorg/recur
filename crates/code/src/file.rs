@@ -117,17 +117,36 @@ pub async fn image_at_base<W: AsyncWrite + Unpin>(
     rel: &str,
     dst: Option<&mut W>,
 ) -> Result<()> {
+    let b = base_branch.trim();
+    let rev = if b.is_empty() {
+        "HEAD".to_string()
+    } else {
+        format!("{b}...HEAD")
+    };
+    image_at_rev(root, &rev, rel, dst).await
+}
+
+/// [`image_at_base`] at `rev`: a commit-ish, or `A...B` for the merge-base of
+/// `A` and `B` (`A` when there is none).
+pub async fn image_at_rev<W: AsyncWrite + Unpin>(
+    root: &Path,
+    rev: &str,
+    rel: &str,
+    dst: Option<&mut W>,
+) -> Result<()> {
     let root = path_str(root);
     let abs = safe_join_str(&root, rel)?;
     let rel = rel_slash_str(&root, &abs);
     if image_mime(&rel).is_empty() {
         return Err(Error::msg("not an image"));
     }
-    let b = base_branch.trim();
-    let against = if b.is_empty() {
-        "HEAD".to_string()
-    } else {
-        recur_git::merge_base(&root, b).await
+    let rev = rev.trim();
+    if rev.is_empty() || rev.contains(':') {
+        return Err(Error::msg("invalid revision"));
+    }
+    let against = match rev.split_once("...") {
+        Some((a, b)) => recur_git::merge_base_of(&root, a, b).await,
+        None => rev.to_string(),
     };
     let size = recur_git::file_size_at_rev(&root, &against, &rel).await?;
     let size = match size {

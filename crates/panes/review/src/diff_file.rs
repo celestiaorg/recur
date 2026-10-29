@@ -22,6 +22,7 @@ use recur_code::view::finding_paths::{
     extra_html_without_finding_flags, findings_covering_line, findings_ending_line,
     findings_on_line,
 };
+use recur_content::images::{self, ImageCache, Raster};
 use recur_domain::{DiffLine, FileDiff, Finding, PendingLineComment, Pr, PrComment};
 use recur_engine::view::comment_thread::{
     DiffSide, is_line_note_root, line_notes_covering_row, line_notes_on_row, same_comment_path,
@@ -111,6 +112,9 @@ pub struct DiffFileProps {
     pub findings: Vec<Finding>,
     pub posting_finding_ids: HashSet<String>,
     pub postable_finding_ids: HashSet<String>,
+    /// An image's previous and current revision srcs ("" for a side that does not exist),
+    /// shown side by side in place of rows.
+    pub image: Option<(String, String)>,
 }
 
 impl DiffFileProps {
@@ -127,6 +131,7 @@ impl DiffFileProps {
             findings: Vec::new(),
             posting_finding_ids: HashSet::new(),
             postable_finding_ids: HashSet::new(),
+            image: None,
         }
     }
 }
@@ -216,6 +221,8 @@ pub struct DiffFile {
     hl: Highlighted,
     hl_for: Option<(Rc<FileDiff>, u64)>,
     hl_task: Option<Task<()>>,
+    /// The previous and current rasters of [`DiffFileProps::image`].
+    rasters: [Raster; 2],
     /// `.diff-file.selecting` hovered row for `draft-tip` hover state.
     _subs: Vec<Subscription>,
 }
@@ -315,10 +322,12 @@ impl DiffFile {
             hl: Vec::new(),
             hl_for: None,
             hl_task: None,
+            rasters: Default::default(),
             _subs: subs,
         };
         me.facts = Rc::new(me.read_facts(cx));
         me.highlight(cx);
+        me.load_images(cx);
         me.reset_for_path();
         if me.props.highlight_line > 0 {
             me.begin_jump(me.props.highlight_line, window, cx);
@@ -356,6 +365,7 @@ impl DiffFile {
         self.props = props;
         self.facts = Rc::new(self.read_facts(cx));
         self.highlight(cx);
+        self.load_images(cx);
         let path_changed = self.props.file.path != self.loaded_path;
         self.reset_for_path();
         if path_changed {
@@ -411,6 +421,125 @@ impl DiffFile {
                 cx.notify();
             });
         }));
+    }
+
+    /// Loads the image sides whose src changed, through the shared [`ImageCache`].
+    fn load_images(&mut self, cx: &mut Context<Self>) {
+        let (before, after) = self.props.image.clone().unwrap_or_default();
+        for (i, src) in [before, after].into_iter().enumerate() {
+            if self.rasters[i].src == src {
+                continue;
+            }
+            self.rasters[i] = Raster {
+                src: src.clone(),
+                ..Default::default()
+            };
+            if src.is_empty() {
+                continue;
+            }
+            if let Some(d) = cx.try_global::<ImageCache>().and_then(|c| c.0.get(&src)) {
+                self.rasters[i].image = Some(d.clone());
+                continue;
+            }
+            let Some(fut) = images::fetch(&src, cx) else {
+                self.rasters[i].failed = true;
+                continue;
+            };
+            cx.spawn(async move |this, cx| {
+                let res = cx.background_spawn(fut).await;
+                let _ = this.update(cx, |this, cx| {
+                    if this.rasters[i].src != src {
+                        return;
+                    }
+                    match res {
+                        Ok(d) => {
+                            cx.default_global::<ImageCache>().0.insert(src, d.clone());
+                            this.rasters[i].image = Some(d);
+                        }
+                        Err(_) => this.rasters[i].failed = true,
+                    }
+                    cx.notify();
+                });
+            })
+            .detach();
+        }
+    }
+
+    /// `.obs-image`'s Previous / Current pair for an image file.
+    fn image_pair(&self, window: &Window, cx: &App) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let sides: Vec<(&str, &Raster)> = [
+            ("Previous", &self.rasters[0]),
+            ("Current", &self.rasters[1]),
+        ]
+        .into_iter()
+        .filter(|(_, r)| !r.src.is_empty())
+        .collect();
+        let card_w = self
+            .geom
+            .borrow()
+            .root
+            .map_or(800., |b| f32::from(b.size.width));
+        let n = sides.len().max(1) as f32;
+        let cell_w = ((card_w - 48. - 28. * (n - 1.)) / n).max(40.);
+        let scale = window.scale_factor();
+        let figures = sides.into_iter().map(|(label, r)| {
+            let pic = match &r.image {
+                Some(d) => {
+                    let ((w, h), _) =
+                        recur_content::lightbox::fit((d.width, d.height), (cell_w, 360.));
+                    let image = r
+                        .at((w * scale).round() as u32, (h * scale).round() as u32)
+                        .unwrap_or_else(|| d.image.clone());
+                    recur_ui::shadow::with_shadow(
+                        div().w(px(w)).h(px(h)).child(
+                            canvas(
+                                |_, _, _| {},
+                                move |b, _, window, _| {
+                                    let _ = window.paint_image(
+                                        b,
+                                        b,
+                                        Default::default(),
+                                        image.clone(),
+                                        0,
+                                        false,
+                                    );
+                                },
+                            )
+                            .size_full(),
+                        ),
+                        &[recur_ui::shadow::css_box_shadow(0., 0., 0., 1., t.line)],
+                        0.,
+                    )
+                    .into_any_element()
+                }
+                None => text(if r.failed {
+                    "Image unavailable"
+                } else {
+                    "Loading…"
+                })
+                .size(11.)
+                .color(t.faint)
+                .into_any_element(),
+            };
+            div()
+                .debug_selector(move || format!("diff-image:{label}"))
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .items_center()
+                .gap(px(8.))
+                .child(pic)
+                .child(text(label).size(11.).color(t.muted).nowrap())
+        });
+        crate::style::checkerboard(cx)
+            .flex()
+            .justify_center()
+            .items_center()
+            .gap(px(28.))
+            .p(px(24.))
+            .children(figures)
+            .into_any_element()
     }
 
     pub fn set_hooks(&mut self, hooks: DiffFileHooks) {
@@ -2422,7 +2551,9 @@ impl DiffFile {
         } else {
             root.child(self.head(window, cx))
         };
-        if !collapsed {
+        if !collapsed && self.props.image.is_some() {
+            root = root.child(self.image_pair(window, cx));
+        } else if !collapsed {
             let mut slots_el: Vec<AnyElement> = Vec::new();
             let split = self.props.layout == DiffLayout::Split;
             let count = self.slot_count();

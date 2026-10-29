@@ -51,8 +51,8 @@ pub use changed::{ChangedDef, changed_defs, find_refs_in_package, rank_refs_in_p
 pub use drop_allow::{allow_external_path, load_external_allow_file, reset_external_paths};
 pub use error::{Error, Result};
 pub use file::{
-    image_at_base, image_mime, prepare_chat_image, prepare_external, prepare_serve, preview_mime,
-    read_file, rewind_binary_check, write_file,
+    image_at_base, image_at_rev, image_mime, prepare_chat_image, prepare_external, prepare_serve,
+    preview_mime, read_file, rewind_binary_check, write_file,
 };
 pub use fileindex::{
     BoxFuture, DEFAULT_MAX_INDEX_BYTES, FileIndex, IndexHub, OnUpdate, Publish, ResolveRg, Snapshot,

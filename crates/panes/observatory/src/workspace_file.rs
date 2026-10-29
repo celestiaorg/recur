@@ -12,29 +12,7 @@ fn query(pairs: &[(&str, &str)]) -> String {
     s.finish()
 }
 
-/// `workspaceFileURL`: a worktree file without the JSON bridge. `mtime` 0 is omitted; `base`
-/// asks for the merge-base revision.
-pub fn workspace_file_url(
-    project_id: &str,
-    workspace_id: &str,
-    path: &str,
-    mtime: i64,
-    base: bool,
-) -> String {
-    let t = mtime.to_string();
-    let mut pairs = vec![("project", project_id)];
-    if !workspace_id.is_empty() {
-        pairs.push(("workspace", workspace_id));
-    }
-    pairs.push(("path", path));
-    if mtime != 0 {
-        pairs.push(("t", &t));
-    }
-    if base {
-        pairs.push(("at", "base"));
-    }
-    format!("/workspace-file?{}", query(&pairs))
-}
+pub use recur_content::images::workspace_file_url;
 
 pub const EXTERNAL_FILE_PATH: &str = "/external-file";
 
@@ -69,7 +47,7 @@ pub async fn fetch_workspace_file_text(
     workspace_id: &str,
     path: &str,
 ) -> Result<String, String> {
-    let url = workspace_file_url(project_id, workspace_id, path, 0, false);
+    let url = workspace_file_url(project_id, workspace_id, path, 0, "");
     match services.assets.fetch_asset(&url).await {
         Ok(a) => Ok(String::from_utf8_lossy(&a.body).into_owned()),
         Err(e) => {
@@ -157,11 +135,11 @@ mod tests {
     #[test]
     fn workspace_file_url_encodes_project_path_and_base() {
         assert_eq!(
-            workspace_file_url("p1", "w1", "assets/icon.png", 12, false),
+            workspace_file_url("p1", "w1", "assets/icon.png", 12, ""),
             "/workspace-file?project=p1&workspace=w1&path=assets%2Ficon.png&t=12"
         );
         assert_eq!(
-            workspace_file_url("p1", "w1", "assets/icon.png", 0, true),
+            workspace_file_url("p1", "w1", "assets/icon.png", 0, "base"),
             "/workspace-file?project=p1&workspace=w1&path=assets%2Ficon.png&at=base"
         );
     }

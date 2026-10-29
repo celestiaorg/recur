@@ -283,6 +283,18 @@ async fn image_at_base_reads_head() {
         .await
         .unwrap();
     assert_eq!(got, PNG, "want HEAD bytes, not the working tree");
+    for rev in ["main", "main...HEAD"] {
+        let mut got = Vec::new();
+        image_at_rev(root.path(), rev, "icon.png", Some(&mut got))
+            .await
+            .unwrap();
+        assert_eq!(got, PNG, "{rev}");
+    }
+    assert!(
+        image_at_rev::<Vec<u8>>(root.path(), "HEAD:x", "icon.png", None)
+            .await
+            .is_err()
+    );
     image_at_base::<Vec<u8>>(root.path(), "", "icon.png", None)
         .await
         .unwrap();

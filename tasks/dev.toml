@@ -1,0 +1,51 @@
+# Day-to-day development and generators for shipped content.
+[build]
+description = "Builds the desktop app and CLI into target/ (`-- --release` for a release build)"
+run = "cargo build"
+
+[run]
+description = "Runs the desktop app on the engine-backed services (data dir defaults to Recur; `-- --features mock` for the mock bridge)"
+run = "cargo run -p recur-desktop"
+
+[smoke]
+description = "Boots the desktop on a sandbox built from a Recur data dir (read only) and drives every view: `mise run smoke -- <data dir> [sandbox dir]`"
+run = "cargo run -p recur-desktop --example real_data_smoke --"
+
+["generate:help-skill"]
+description = "Copies the user docs (src-docs) into the shipped recur-help skill that the app embeds"
+run = "rsync -a --delete --include='*/' --include='*.mdx' --exclude='*' src-docs/src/pages/ recur-skills/recur-help/references/"
+
+["generate:icons"]
+description = "Compiles build/appicon.icon into build/darwin/Assets.car and icons.icns (macOS 26+ actool)"
+dir = "build"
+run = '''
+set -eu
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+/usr/bin/actool "$PWD/appicon.icon" --compile "$tmp" --notices --warnings --errors \
+  --output-partial-info-plist "$tmp/partial.plist" --app-icon appicon \
+  --enable-on-demand-resources NO --development-region en --target-device mac \
+  --minimum-deployment-target 26.0 --platform macosx >/dev/null
+mv "$tmp/Assets.car" darwin/Assets.car
+mv "$tmp"/*.icns darwin/icons.icns
+'''
+
+["capture:splash"]
+description = "Captures the app demo using the product dataset and named screen presets (`-- --screen workspace --theme charcoal`)"
+run = [
+  "pnpm --dir src-web/demo install --frozen-lockfile",
+  "pnpm --dir src-web/demo run build",
+  "node scripts/capture-splash.mjs",
+]
+
+["fetch:tm-grammars"]
+description = "Re-fetches TextMate grammars from shikijs/textmate-grammars-themes into bundles/Languages"
+run = "node scripts/fetch-tm-grammars.mjs"
+
+["fetch:tm-themes"]
+description = "Re-fetches pack TextMate themes from shikijs/tm-themes (+ Aura) into bundles/Themes"
+run = "node scripts/fetch-tm-themes.mjs"
+
+["port:filmgirl-themes"]
+description = "Converts filmgirl TextMate plists into local theme ports (skips mods; does not fetch Shiki)"
+run = ["node scripts/port-filmgirl-themes.mjs", "node scripts/fetch-tm-themes.mjs --local-only"]

@@ -138,7 +138,7 @@ All tasks run through `mise run` from the repository root (`mise tasks` lists th
 ```bash
 mise run run             # run the desktop app (cargo run -p recur-desktop)
 mise run build           # build the app and CLI into target/
-mise run package         # target/package/Recur.app, its DMG and updater zip (macOS)
+mise run macos:package   # target/package/Recur.app, its DMG and updater zip (macOS)
 mise run linux:package   # target/package/recur-linux-<arch>.tar.gz, .deb and .rpm
 ```
 
@@ -164,7 +164,7 @@ mise run linux:test      # the same on Linux (Docker on a Mac)
 | `bundles/` | Shipped Recur Bundles |
 | `recur-skills/` | Shipped agent skills |
 | `docs/` | Architecture, bundle authoring and provider docs |
-| `build/`, `mise.toml` | Packaging and tasks |
+| `build/`, `mise.toml`, `tasks/` | Packaging, tools and tasks |
 | `src-web/`, `src-docs/` | Website (with the Svelte demo app in `src-web/demo`) and user docs |
 
 ## Contributing

@@ -1,0 +1,45 @@
+# Linux builds, packages and checks (build/linux; in Docker on a Mac).
+["linux:test"]
+description = "rustfmt, clippy and the tests on Linux (natively on Linux, in build/linux/Dockerfile elsewhere; WebKitGTK tests under xvfb-run)"
+run = "build/linux/in-docker.sh sh -c 'cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features --locked -- -D warnings && xvfb-run -a cargo test --workspace --all-features --locked'"
+
+["linux:test:wpe"]
+description = "The WPE WebKit HTML preview spike's checks (recur-content tests/wpe.rs) in build/linux/wpe.Dockerfile, which builds WPE 2.54 on first use (long)"
+env = { WPE = "1" }
+run = "build/linux/in-docker.sh sh -c 'cargo clippy -p recur-content --all-targets --locked -- -D warnings && cargo test -p recur-content --test wpe --locked'"
+
+["linux:build"]
+description = "Release Linux build into target/package/recur-linux-<arch> (recur, recur-cli, recur.png; in Docker on non-Linux hosts). ARCH=amd64|arm64 overrides the host arch"
+depends = ["generate:help-skill"]
+run = '''
+set -eu
+VERSION="${VERSION:-$(build/version.sh)}" build/linux/in-docker.sh build/linux/build.sh
+'''
+
+["linux:package"]
+description = "Packages target/package/recur-linux-<arch>.tar.gz, .deb and .rpm (install to /opt/recur with /usr/bin/recur)"
+run = '''
+set -eu
+export VERSION="${VERSION:-$(build/version.sh)}"
+export ARCH="$(build/linux/arch.sh)"
+mise run linux:build
+PKG="recur-linux-$ARCH"
+tar --no-xattrs -C target/package -czf "target/package/$PKG.tar.gz" "$PKG"
+for fmt in deb rpm; do
+  PKG_DIR="target/package/$PKG" nfpm pkg --packager "$fmt" --config build/linux/nfpm.yaml --target "target/package/$PKG.$fmt"
+done
+'''
+
+["linux:run"]
+description = "Builds for Linux and runs it (natively on Linux; elsewhere on a Docker desktop at http://127.0.0.1:6081 via noVNC)"
+run = '''
+set -eu
+export ARCH="$(build/linux/arch.sh)"
+mise run linux:build
+if [ "$(uname -s)" = Linux ]; then exec "target/package/recur-linux-$ARCH/recur"; fi
+exec build/linux/run-desktop.sh
+'''
+
+["linux:smoke"]
+description = "Installs the linux:package .deb and tarball in a clean Debian 13 container and checks paths, the recur link, the menu entry, `recur .` and a notification"
+run = "ARCH=\"$(build/linux/arch.sh)\" build/linux/smoke.sh"

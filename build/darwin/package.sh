@@ -1,6 +1,6 @@
 #!/bin/sh
 # Builds target/package/Recur.app, its DMG and the updater zip
-# (mise run package).
+# (mise run macos:package).
 #
 # Env: VERSION (Info.plist and `recur-cli --version`; defaults to
 # build/version.sh), UNIVERSAL=true (arm64 + x86_64), RECUR_UPDATE_URL

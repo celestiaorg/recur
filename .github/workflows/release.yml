@@ -92,7 +92,7 @@ jobs:
           export UNIVERSAL=true VERSION="${GITHUB_REF_NAME#v}"
           if [ "$HAS_SIGNING" != true ]; then unset SIGN_IDENTITY; fi
           if [ "$HAS_NOTARY" = true ]; then export KEYCHAIN_PROFILE=recur-notary; fi
-          mise run package
+          mise run macos:package
 
       - name: Verify
         run: |

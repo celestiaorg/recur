@@ -1,0 +1,37 @@
+# Quality gates: what CI runs, and `mise run check` before merging.
+[check]
+description = "Quality gate before merging: lint, the workspace tests and the shipped bundles' lint and tests"
+run = [{ task = "lint" }, { task = "test" }, { task = "lint:bundles" }, { task = "test:bundles" }]
+
+[lint]
+description = "rustfmt check, clippy and the crate layering check"
+run = [
+  "cargo fmt --all --check",
+  "cargo clippy --workspace --all-targets -- -D warnings",
+  "cargo test -p recur-layering",
+]
+
+[test]
+description = "Runs the workspace tests"
+run = "cargo test --workspace"
+
+["lint:bundles"]
+description = "Lints the shipped Recur Bundles (schema, TS compile, shebang, keyEquivalent collisions)"
+run = "cargo run -p recur-cli -- bundles lint ./bundles"
+
+["test:bundles"]
+description = "Runs the shipped Recur Bundle engine tests (needs node on PATH)"
+run = "cargo run -p recur-cli -- bundles test ./bundles"
+
+["check:cursor-sdk-pin"]
+description = "Fails if PyPI cursor-sdk is ahead of PINNED_SDK_VERSION (network; flags a re-pin)"
+env = { RECUR_CURSOR_SDK_PIN_CHECK = "1" }
+run = "cargo test -p recur-provider-cursor --lib check_cursor_sdk_pin_drift -- --nocapture"
+
+["test:splash"]
+description = "Builds the splash page and checks the real interactive app demo"
+run = [
+  "pnpm --dir src-web install --frozen-lockfile",
+  "pnpm --dir src-web run build",
+  "node scripts/check-splash.mjs",
+]

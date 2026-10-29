@@ -1,0 +1,19 @@
+# Release signing: the update manifest key and its checks.
+["updater:genkey"]
+description = "Writes an Ed25519 update-signing key pair (PEM, as release.yml's UPDATER_SIGNING_KEY and build/updater.key.pub): `mise run updater:genkey [path]`"
+usage = 'arg "[path]" default="updater.key" help="Private key path; the public key is written to <path>.pub"'
+run = '''
+set -eu
+[ ! -e "$usage_path" ] || { echo "$usage_path exists; not overwriting" >&2; exit 1; }
+openssl genpkey -algorithm ed25519 -out "$usage_path"
+openssl pkey -in "$usage_path" -pubout -out "$usage_path.pub"
+echo "wrote $usage_path and $usage_path.pub"
+'''
+
+["updater:verify"]
+description = "Verifies a signed update manifest against its artifacts: `mise run updater:verify <manifest> [public key]`"
+usage = '''
+arg "<manifest>" help="manifest.json; artifacts are read from its directory"
+arg "[publickey]" default="build/updater.key.pub"
+'''
+run = 'cargo run -q --locked -p recur-platform --bin updater-manifest -- verify --manifest "$usage_manifest" --publickey "$usage_publickey"'

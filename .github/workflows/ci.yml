@@ -63,7 +63,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: package
-      - run: mise run package
+      - run: mise run macos:package
       - run: hdiutil verify "target/package/Recur.dmg"
       - uses: actions/upload-artifact@v7
         with:

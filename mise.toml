@@ -70,6 +70,25 @@ description = "Packages target/package/Recur.app, .dmg and updater .zip (macOS; 
 depends = ["generate:icons", "generate:help-skill"]
 run = "build/darwin/package.sh"
 
+[tasks."updater:genkey"]
+description = "Writes an Ed25519 update-signing key pair (PEM, as release.yml's UPDATER_SIGNING_KEY and build/updater.key.pub): `mise run updater:genkey [path]`"
+usage = 'arg "[path]" default="updater.key" help="Private key path; the public key is written to <path>.pub"'
+run = '''
+set -eu
+[ ! -e "$usage_path" ] || { echo "$usage_path exists; not overwriting" >&2; exit 1; }
+openssl genpkey -algorithm ed25519 -out "$usage_path"
+openssl pkey -in "$usage_path" -pubout -out "$usage_path.pub"
+echo "wrote $usage_path and $usage_path.pub"
+'''
+
+[tasks."updater:verify"]
+description = "Verifies a signed update manifest against its artifacts: `mise run updater:verify <manifest> [public key]`"
+usage = '''
+arg "<manifest>" help="manifest.json; artifacts are read from its directory"
+arg "[publickey]" default="build/updater.key.pub"
+'''
+run = 'cargo run -q --locked -p recur-platform --bin updater-manifest -- verify --manifest "$usage_manifest" --publickey "$usage_publickey"'
+
 [tasks."smoke:package"]
 description = "Installs target/package/Recur.dmg into a sandbox, launches it and checks the recur link, `recur .` and a native notification (macOS)"
 run = "build/darwin/smoke.sh"

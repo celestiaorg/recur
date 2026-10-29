@@ -5,13 +5,13 @@ For browser sign-in **without installing Codex**, use the separate
 
 Recur can run loops with OpenAI Codex via **`codex app-server`** (direct
 JSON-RPC over stdio). This is option **D** from the Codex integration
-comparison — a Go client, not the process-per-turn `codex exec` CLI and not a
+comparison: a native client, not the process-per-turn `codex exec` CLI and not a
 Python/TS SDK wrapper.
 
 ## Architecture
 
 ```
-Recur (Go) ──JSON-RPC stdio──▶ codex app-server
+Recur ──JSON-RPC stdio──▶ codex app-server
                 │                 cwd = worktree
                 │                 CODEX_HOME = <dataDir>/codex-home
                 │                 -c mcp_servers.recur.url=…
@@ -35,17 +35,18 @@ Isolation (Cursor’s hard lesson):
 
 ## Code map
 
+All in `providers/codex/src` (`recur-provider-codex`) unless noted.
+
 | File | Role |
 |---|---|
-| `internal/codex/locate.go` | Binary resolution (`$RECUR_CODEX` → Settings → PATH) |
-| `internal/codex/server.go` | Spawn app-server, handshake, process-group kill |
-| `internal/codex/rpc.go` | JSON-RPC framing (header omitted on the wire) |
-| `internal/codex/client.go` | Typed `thread/*` / `turn/*` / `model/list` / `account/read` |
-| `internal/codex/mcp.go` | `--config mcp_servers…` argv builder |
-| `internal/engine/codex.go` | `CodexRunner` — `AgentSpec` ⇄ app-server |
-| `internal/engine/provider.go` | `ProviderCodex` routing through `runnerFor` |
-| `internal/app/codex_service.go`, `codex_login.go` | Settings probes and managed browser sign-in |
-| `internal/app/model_catalog.go` | Live `model/list` → picker group |
+| `locate.rs` | Binary resolution (`$RECUR_CODEX` → Settings → PATH) |
+| `server.rs` | Spawn app-server, handshake, process-group kill |
+| `rpc.rs` | JSON-RPC framing (header omitted on the wire) |
+| `client.rs` | Typed `thread/*` / `turn/*` / `model/list` / `account/read` |
+| `mcp.rs` | `--config mcp_servers…` argv builder |
+| `runner.rs`, `items.rs`, `approvals.rs` | The runner: `AgentSpec` ⇄ app-server, items, server requests |
+| `status.rs`, `login.rs` | Settings probes and managed browser sign-in |
+| `catalog.rs` | Live `model/list` → picker group |
 
 ## Selecting Codex
 
@@ -145,29 +146,13 @@ Recur’s own tools do not double-prompt.
 
 ## Tests
 
-Hermetic: `internal/codex` RPC/MCP/locate tests (no binary needed).
+Hermetic: `cargo test -p recur-provider-codex` (RPC, MCP, locate, runner against a fake app-server; no binary needed).
 
 Live smoke (optional):
 
 ```sh
-export RECUR_CODEX=/path/to/native/codex
-export RECUR_CODEX_E2E=1
-go test ./internal/engine -run CodexE2E -count=1
+RECUR_CODEX_E2E=1 RECUR_CODEX=/path/to/native/codex \
+  cargo test -p recur-provider-codex --test runner -- codex_e2e_smoke
 ```
 
-To check browser-login URL generation and cancellation against the real Codex
-binary without opening a browser or signing in:
-
-```sh
-RECUR_CODEX=/path/to/native/codex RECUR_CODEX_LOGIN_E2E=1 \
-go test ./internal/app -run '^TestCodexBrowserLoginLive$' -count=1 -timeout=60s
-```
-
-Automated checks:
-
-```sh
-wails3 task check
-wails3 task test:e2e
-# Focused UI coverage: run from frontend/.
-pnpm exec playwright test e2e/codex-login.spec.ts
-```
+Automated checks: `mise run check`.

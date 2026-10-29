@@ -1,9 +1,9 @@
 #!/bin/sh
 # Runs the Linux build in target/package/recur-next-linux-<arch> on a
-# throwaway Linux desktop served to the browser by noVNC (wails3 task
-# linux:run:rust). Home persists in the recur-next-linux-home-<arch> volume
+# throwaway Linux desktop served to the browser by noVNC (mise run
+# linux:run). Home persists in the recur-next-linux-home-<arch> volume
 # (`docker volume rm` it to reset to first run); Ctrl+C or File > Quit stops it.
-# VNC_PORT defaults to 6081 so it can run beside the Go app's (6080).
+# VNC_PORT defaults to 6081.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)

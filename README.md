@@ -2,7 +2,7 @@
 
 Recur is a desktop app for running coding agents on your own repositories. Each task gets an isolated git worktree, an agent of your choice, and a place to read the diff, review the result, and merge it back.
 
-Recur is built with [Wails v3](https://v3.wails.io/) (Go backend) and Svelte 5 / TypeScript (frontend). It runs on macOS and Linux.
+Recur is a native Rust app built on [GPUI](https://www.gpui.rs/). It runs on macOS and Linux.
 
 ## What it does
 
@@ -11,7 +11,7 @@ Recur is built with [Wails v3](https://v3.wails.io/) (Go backend) and Svelte 5 /
 - **Loops.** In Loop mode, a chat hands the task to a team of specialist agents instead of one. A loop is a graph of phases, each run by a role with its own prompt and tools, that repeats until the result clears a bar you set. The shipped loops plan, implement, review, fix, and open a PR, but a loop can be any shape you declare. See [Loops](#loops) below.
 - **Child workspaces.** An agent can spawn a child worktree for a subtask, then read, merge, or archive its result.
 - **Review surface.** Diff viewer with inline comments and an approve flow, so review happens where the code is.
-- **Editor.** A CodeMirror editor with TextMate grammars, themes, snippets, symbol outlines, and language servers, all supplied by bundles.
+- **Editor.** A native code editor with TextMate grammars, themes, snippets, symbol outlines, and language servers, all supplied by bundles.
 - **Providers.** Claude Code, Cursor, OpenAI Codex, and any OpenAI-compatible `/v1/responses` endpoint. See `docs/` for how each is wired.
 - **Pull requests.** A PR dashboard across your projects that pulls in every open PR on each repo, not just the ones Recur opened. Review, comment, approve, fix checks, and merge without leaving the app. See [Pull requests](#pull-requests) below.
 - **Schedules.** Save a prompt or loop to run on a cron cadence, once at a set time, or every time Recur starts. Each run gets its own fresh workspace. See [Schedules](#schedules) below.
@@ -96,79 +96,77 @@ The bundles under `bundles/` are the reference implementations. User bundles liv
 
 ## Installing
 
-Download `Recur-<version>-macos-universal.dmg` from [Releases](../../releases), open it, and drag Recur to Applications. Releases are not notarized yet, so macOS blocks the first launch. Clear the quarantine flag once per download:
+The app currently ships as **Recur Next**. Download `RecurNext-<version>-macos-universal.dmg` from [Releases](../../releases), open it, and drag Recur Next to Applications. If a release is not notarized, macOS blocks the first launch. Clear the quarantine flag once per download:
 
 ```bash
-xattr -dr com.apple.quarantine /Applications/Recur.app
+xattr -dr com.apple.quarantine "/Applications/Recur Next.app"
 ```
 
 Downloading with `gh release download` skips this step, since the GitHub CLI does not set the flag.
 
-On Linux (Ubuntu 24.04+ / Debian 13 / Fedora 40+), install the `.deb` or `.rpm` (`-linux-amd64` or `-linux-arm64`). It pulls in the GTK and WebKit runtime and puts `recur` on PATH and in the app menu:
+On Linux (Ubuntu 24.04+ / Debian 13 / Fedora 40+), install the `.deb` or `.rpm` (`-linux-amd64` or `-linux-arm64`). It pulls in the GTK, WebKitGTK and GStreamer runtime and puts `recur-next` on PATH and in the app menu:
 
 ```bash
-sudo apt install ./Recur-<version>-linux-amd64.deb
-sudo dnf install ./Recur-<version>-linux-amd64.rpm
+sudo apt install ./recur-next-<version>-linux-amd64.deb
+sudo dnf install ./recur-next-<version>-linux-amd64.rpm
 ```
 
-Elsewhere, install GTK 4 and WebKitGTK 6.0, then run `recur` from `Recur-<version>-linux-amd64.tar.gz`. Each release lists `SHA256SUMS` for its downloads, and the packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
+Elsewhere, install GTK 4, WebKitGTK 6.0 and GStreamer, then run `recur` from `recur-next-<version>-linux-amd64.tar.gz`. Each release lists `SHA256SUMS-next` for its downloads, and the packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
 
 ## Command line
 
-The app installs a `recur` command on your PATH at launch.
+The app installs a `recur-next` command on your PATH at launch.
 
 ```bash
-recur .                   # open the current folder
-recur ./path/to/file      # open a file or folder
-recur                     # focus Recur, launching it if needed
-recur bundles lint ./bundles
-recur bundles test ./bundles/JSON
+recur-next .                   # open the current folder
+recur-next ./path/to/file      # open a file or folder
+recur-next                     # focus Recur, launching it if needed
+recur-next bundles lint ./bundles
+recur-next bundles test ./bundles/JSON
 ```
 
 ## Building from source
 
 Prerequisites:
 
-- Go 1.25 or newer
-- Node.js and [pnpm](https://pnpm.io/)
-- The Wails v3 CLI: `go install github.com/wailsapp/wails/v3/cmd/wails3@latest`
+- [rustup](https://rustup.rs) (the toolchain is pinned in `rust-toolchain.toml`)
+- [mise](https://mise.jdx.dev), then `mise install` for node, pnpm, nfpm and dmgbuild
+- macOS: Xcode 26+ (for `actool`); Linux: the GTK 4, WebKitGTK 6.0, GStreamer, xkbcommon and Vulkan development packages (see `.github/workflows/ci.yml`)
 
-All tasks run through `wails3 task` from the repository root.
+All tasks run through `mise run` from the repository root (`mise tasks` lists them).
 
 ```bash
-wails3 task dev          # run the app with hot reload
-wails3 task build        # build the desktop binary to bin/recur
-wails3 task package      # produce a packaged app
-wails3 task build:cli    # build the standalone CLI to bin/recur-cli
+mise run run             # run the desktop app (cargo run -p recur-desktop)
+mise run build           # build the app and CLI into target/
+mise run package         # target/package/Recur Next.app, its DMG and updater zip (macOS)
+mise run linux:package   # target/package/recur-next-linux-<arch>.tar.gz, .deb and .rpm
 ```
 
-Set `RECUR_DEBUG=1` before `wails3 task package` to keep the web inspector and skip frontend minification.
-
-Linux builds need `libgtk-4-dev` and `libwebkitgtk-6.0-dev`. `wails3 task linux:package` writes `bin/recur-linux-<arch>.tar.gz`; on a Mac it builds in Docker, and `wails3 task linux:run` opens the Linux app in a browser-based desktop.
+On a Mac, the `linux:*` tasks build in Docker (or OrbStack), and `mise run linux:run` opens the Linux app in a browser-based desktop.
 
 ## Testing
 
 ```bash
-wails3 task check        # Go tests, bundle lint, bundle tests
-wails3 task test         # everything above plus Playwright e2e
-wails3 task test:e2e     # frontend e2e against a mocked Wails bridge
-cd frontend && pnpm run check   # Svelte and TypeScript typecheck
+mise run check           # everything below
+mise run lint            # rustfmt, clippy, the layering check
+mise run test            # workspace tests
+mise run test:bundles    # shipped bundle engine tests (lint:bundles lints them)
+mise run linux:test      # the same on Linux (Docker on a Mac)
 ```
-
-The e2e suite drives the real UI in headless Chromium with the Go bridge mocked, so it needs no backend or agent installed. Details in [`frontend/e2e/README.md`](frontend/e2e/README.md).
 
 ## Repository layout
 
 | Path | Role |
 |------|------|
-| `main.go`, `app_menu.go`, `window_*.go` | Desktop app entry and window chrome |
-| `internal/` | Go packages: engine, store, MCP, bundles, CLI |
-| `frontend/` | Svelte 5 + Vite UI |
+| `crates/` | The app: domain, store, engine, services, UI, views, `desktop` (the app) and `cli` |
+| `providers/` | Agent providers: Claude Code, Codex, Cursor, OpenAI-compatible, ChatGPT |
+| `vendor/` | Patched GPUI and codec crates |
 | `bundles/` | Shipped Recur Bundles |
-| `cmd/recur` | The `recur` CLI |
-| `docs/` | Bundle authoring and provider docs |
-| `Taskfile.yml`, `build/` | Build and packaging tasks |
+| `recur-skills/` | Shipped agent skills |
+| `docs/` | Architecture, bundle authoring and provider docs |
+| `build/`, `mise.toml` | Packaging and tasks |
+| `src-web/`, `src-docs/` | Website (with the Svelte demo app in `src-web/demo`) and user docs |
 
 ## Contributing
 
-Read [`AGENTS.md`](AGENTS.md) for conventions, quality gates, and PR guidance. Keep changes small and focused, run `wails3 task check` before pushing, and include e2e when you touch the UI.
+Read [`AGENTS.md`](AGENTS.md) for conventions, quality gates, and PR guidance. Keep changes small and focused, and run `mise run check` before pushing.

@@ -19,7 +19,7 @@ fn pinned_sdk_version_in_pypi_url() {
     );
 }
 
-/// `wails3 task check:cursor-sdk-pin` for the Rust port: fails when PyPI's
+/// `mise run check:cursor-sdk-pin`: fails when PyPI's
 /// latest cursor-sdk is ahead of the pin. Network; opt in with
 /// `RECUR_CURSOR_SDK_PIN_CHECK=1 cargo test -p recur-provider-cursor check_cursor_sdk_pin_drift`.
 /// On failure, re-pin per `.agents/skills/repin-cursor-sdk/SKILL.md`.

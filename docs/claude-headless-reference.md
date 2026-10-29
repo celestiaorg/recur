@@ -139,7 +139,7 @@ Top-level key `"mcpServers"`. Variants:
 Wildcard `mcp__recur__*` allows the whole server. `acceptEdits` does NOT auto-approve
 MCP tools — use explicit `allowedTools` wildcards.
 
-**Recur decision:** the Go engine hosts the Recur MCP as an **HTTP server on
+**Recur decision:** the engine hosts the Recur MCP as an **HTTP server on
 localhost** (the `claude` CLI is a separate subprocess, so in-process `sdk` type is
 unavailable). Pass `--mcp-config '{"mcpServers":{"recur":{"type":"http","url":"http://127.0.0.1:<port>/mcp"}}}' --strict-mcp-config`.
 Per-agent tokens in headers can scope which loop/agent a call belongs to.

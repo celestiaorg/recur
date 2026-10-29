@@ -1,12 +1,12 @@
-# .deb / .rpm for `wails3 task linux:package:rust`, which sets GOARCH,
-# RECUR_VERSION and PKG_DIR. Side by side with build/linux/nfpm.yaml's `recur`
-# package: its own name, /opt/recur-next, /usr/bin/recur-next and desktop id.
+# .deb / .rpm for `mise run linux:package`, which sets ARCH (amd64 / arm64),
+# VERSION and PKG_DIR: /opt/recur-next, /usr/bin/recur-next and the
+# build.recur.next menu entry.
 # PGP-signed when RECUR_PGP_KEY names an armored private key file (passphrase
 # in NFPM_PASSPHRASE); otherwise unsigned.
 name: recur-next
-arch: ${GOARCH}
+arch: ${ARCH}
 platform: linux
-version: ${RECUR_VERSION}
+version: ${VERSION}
 maintainer: recur.build
 vendor: recur.build
 homepage: https://recur.build

@@ -3,9 +3,9 @@
 From the repository root:
 
 ```sh
-wails3 task capture:splash
-wails3 task capture:splash -- --screen workspace --theme charcoal
-wails3 task capture:splash -- --output /tmp/recur-screens
+mise run capture:splash
+mise run capture:splash -- --screen workspace --theme charcoal
+mise run capture:splash -- --output /tmp/recur-screens
 node scripts/capture-splash.mjs --list
 ```
 

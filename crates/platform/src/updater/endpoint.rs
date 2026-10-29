@@ -301,24 +301,24 @@ async fn read_limited(mut resp: reqwest::Response, limit: usize) -> Result<Vec<u
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
-struct Manifest {
-    schema_version: i64,
-    version: String,
+pub(super) struct Manifest {
+    pub(super) schema_version: i64,
+    pub(super) version: String,
     channel: String,
     name: String,
     notes: String,
     published_at: String,
-    artifacts: Vec<ManifestArtifact>,
+    pub(super) artifacts: Vec<ManifestArtifact>,
     metadata: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
-struct ManifestArtifact {
-    url: String,
-    filename: String,
+pub(super) struct ManifestArtifact {
+    pub(super) url: String,
+    pub(super) filename: String,
     filetype: String,
-    size: i64,
+    pub(super) size: i64,
     platform: String,
     arch: String,
     digest_algo: String,
@@ -366,7 +366,7 @@ fn arch_matches(published: &str, want: &str) -> bool {
 
 /// Maps base64 digest / signature fields; malformed values are errors, since
 /// dropping them would silently downgrade verification.
-fn build_verification(a: &ManifestArtifact) -> Result<Option<Verification>, String> {
+pub(super) fn build_verification(a: &ManifestArtifact) -> Result<Option<Verification>, String> {
     if a.digest.is_empty() && a.signature.is_empty() {
         return Ok(None);
     }
@@ -427,7 +427,7 @@ fn headers_allowed_for(manifest_url: &str, target: &str) -> bool {
     host(&m) == host(&t) && !(m.scheme() == "https" && t.scheme() == "http")
 }
 
-fn filename_from_url(u: &str) -> String {
+pub(super) fn filename_from_url(u: &str) -> String {
     match u.rfind('/') {
         Some(i) if i + 1 < u.len() => {
             let name = &u[i + 1..];

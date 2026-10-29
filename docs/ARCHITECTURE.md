@@ -1,59 +1,55 @@
-# Recur in Rust
+# Architecture
 
-This is the native Rust/GPUI port of Recur. It lives in `rust/` and runs side by side with the Wails app (Go backend in `internal/`, Svelte UI in `frontend/`) until it reaches full parity. Nothing outside `rust/` is changed by the port, except Taskfile and CI entries that build it.
-
-The goal is a faithful port: every feature, behavior, persisted format and keyboard path of the current app carries over, with the same look and feel. Minor native rendering differences are acceptable, and parity never costs performance (`docs/ui-parity.md`). `docs/PARITY.md` is the checklist. An area is done when its items are ticked, its Go and frontend tests are ported, and its screens match within their scenes' tolerances, which guard against regressions.
+Recur is a native Rust app on GPUI (through gpui-kit). It was ported from a Wails app (Go backend, Svelte UI), and keeps that app's persisted formats, behavior, keyboard paths and look and feel: `recur.db`, the JSON view-state files and `bundle.toml` round-trip unchanged. Minor native rendering differences are fine, and the look never costs performance (`docs/ui-rendering.md`). Open items are in `docs/FOLLOWUPS.md`.
 
 ## Layout
 
 ```
-rust/
-  Cargo.toml            workspace, shared dependency versions, lints
-  crates/
-    domain/             recur-domain       pure model + rules        (internal/domain, internal/shortid)
-    store/              recur-store        SQLite, migrations, paths (internal/store)
-    git/                recur-git          local git                 (internal/git)
-    project/            recur-project      project.toml, env, runs   (internal/projfile, wsenv, runconfig)
-    forge/              recur-forge        remote hosting: GitHub    (engine github*, pr*, app/gh_image)
-    issues/             recur-issues       issue trackers: Linear    (app/issues, Linear bundle glue)
-    agent/              recur-agent        Provider trait, events    (engine provider/runner/permission/streamjson contracts)
-    agent-tools/        recur-agent-tools  host tools for agents     (internal/agenttools)
-    mcp/                recur-mcp          MCP host server           (internal/mcp)
-    bundles/            recur-bundles      Recur Bundles             (internal/bundles)
-    textmate/           recur-textmate     grammars + themes         (frontend lib/tm-*, internal/bundles/grammar)
-    lsp/                recur-lsp          language server client    (internal/lsp, frontend lib/lsp.ts)
-    term/               recur-term         PTY + emulator state      (internal/term)
-    http/               recur-http         the reqwest client builder (no CA store: HTTPS fails, never panics)
-    code/               recur-code         worktree files and search (internal/code, rg, copyfiles)
-    usage/              recur-usage        provider usage polling    (internal/usage)
-    engine/             recur-engine       orchestration             (internal/engine minus providers/forge)
-    platform/           recur-platform     OS integration            (power, osfonts, cliinstall, openipc, instance, notifications, updater)
-    services/           recur-services     UI-facing API + events    (internal/app)
-    ui/                 recur-ui           design system on gpui-kit (frontend styles, shared components)
-    editor/             recur-editor       code + merge editor       (CodeEditor, MergeEditor, cm-*)
-    terminal-view/      recur-terminal-view terminal rendering        (TerminalPane, xterm)
-    content/            recur-content      rich content              (MarkdownHtml, StreamingMarkdown, markdown*, sanitize-lsp, Mermaid, PDF, FilePreview, lightbox)
-    views/
-      core/             recur-view-core    shared app state, routing (lib/stores.ts, api.ts, commands.ts, workspace-nav.ts, …)
-      widgets/          recur-view-widgets view pieces several views show (typeaheads, finding rows, pills, Schedules list, …)
-      sidebar/          recur-view-sidebar the app sidebar           (Sidebar.svelte, ProviderUsageMeter.svelte)
-      <area>/           recur-view-<area>  one crate per route area  (views/*.svelte and the components only they use)
-    panes/
-      chat/             recur-view-chat    the agent chat            (AgentChat.svelte, AppChat.svelte, cards, pickers)
-      review/           recur-view-review  the review surface        (ReviewSurface.svelte, diff cards, threads)
-      observatory/      recur-view-observatory the workspace's right side (ObservatoryView.svelte: files, editors, terminals)
-    app/                recur-app          the window shell          (App.svelte: titlebar, routing, overlays, menu, keys)
-    desktop/            bin `recur`        desktop entry point       (main.go, open_boot.go)
-    cli/                bin `recur-cli`    command line              (cmd/recur, internal/cli)
-  providers/
-    claude/ codex/ cursor/ compatible/ chatgpt/  one crate per agent provider
-  tools/
-    ui-parity/          recur-ui-parity    parity scenes vs the Svelte captures (docs/ui-parity.md)
-    layering/           recur-layering     the layering check below (`lint:rust`)
-  docs/
+Cargo.toml              workspace, shared dependency versions, lints
+crates/
+  domain/             recur-domain       pure model + rules
+  store/              recur-store        SQLite, migrations, paths
+  git/                recur-git          local git
+  project/            recur-project      project.toml, env, runs
+  forge/              recur-forge        remote hosting: GitHub
+  issues/             recur-issues       issue trackers: Linear
+  agent/              recur-agent        Provider trait, events
+  agent-tools/        recur-agent-tools  host tools for agents
+  mcp/                recur-mcp          MCP host server
+  bundles/            recur-bundles      Recur Bundles
+  textmate/           recur-textmate     grammars + themes
+  lsp/                recur-lsp          language server client
+  term/               recur-term         PTY + emulator state
+  http/               recur-http         the reqwest client builder (no CA store: HTTPS fails, never panics)
+  code/               recur-code         worktree files and search
+  usage/              recur-usage        provider usage polling
+  engine/             recur-engine       orchestration
+  platform/           recur-platform     OS integration            (power, osfonts, cliinstall, openipc, instance, notifications, updater)
+  services/           recur-services     UI-facing API + events
+  ui/                 recur-ui           design system on gpui-kit (theme, text, widgets, gallery scenes)
+  editor/             recur-editor       code + merge editor
+  terminal-view/      recur-terminal-view terminal rendering
+  content/            recur-content      rich content              (markdown, sanitizing, Mermaid, PDF, file previews, lightbox)
+  views/
+    core/             recur-view-core    shared app state, routing
+    widgets/          recur-view-widgets view pieces several views show (typeaheads, finding rows, pills, Schedules list, …)
+    sidebar/          recur-view-sidebar the app sidebar
+    <area>/           recur-view-<area>  one crate per route area
+  panes/
+    chat/             recur-view-chat    the agent chat
+    review/           recur-view-review  the review surface
+    observatory/      recur-view-observatory the workspace's right side (files, editors, terminals)
+  app/                recur-app          the window shell          (titlebar, routing, overlays, menu, keys)
+  desktop/            bin `recur`        desktop entry point
+  cli/                bin `recur-cli`    command line
+providers/
+  claude/ codex/ cursor/ compatible/ chatgpt/  one crate per agent provider
+tools/
+  layering/           recur-layering     the layering check below (`mise run lint`)
+vendor/               patched crates.io sources (`vendor/README.md`)
+build/                packaging (see "Packaging")
+docs/
 ```
-
-Remaining Go packages map as follows: `observe` and `simplify` live as modules of `recur-engine` (or `recur-code` for pure file logic) unless their consumers show a better home; record the final home in `PARITY.md`.
 
 Views live in their own crates under `crates/views/<area>`, and the panes several of them embed under `crates/panes/<pane>` (see "View crates" below). `crates/views` and `crates/panes` have no manifest, so a plain `crates/*` glob would fail: the workspace `members` list `crates/[!pv]*`, `crates/p[!a]*` (`platform`, `project`), `crates/views/*` and `crates/panes/*`.
 
@@ -62,7 +58,7 @@ Views live in their own crates under `crates/views/<area>`, and the panes severa
 Dependencies point down only (normal dependencies; dev-dependencies are free, since specs mount the whole shell):
 
 ```
-desktop, cli, tools/ui-parity
+desktop, cli
 app ──────────────► views/sidebar, views/core, ui, services, platform
 views/* ──────────► panes/*, views/widgets, views/core, editor, content, textmate, ui, services, engine, forge, code, bundles, agent, domain
 panes/* ──────────► views/widgets, views/core, editor, terminal-view, content, textmate, ui, services, engine, lsp, forge, issues, code, bundles, agent, agent-tools, term, domain
@@ -86,9 +82,9 @@ Rules:
 - A pane (`crates/panes/<pane>`) is a large component several routes embed: the chat (workspace, Inbox, home, project settings), the review surface (Observatory, PR detail) and the Observatory (workspace, PR detail's agent dock). Panes register overlays and globals but no routes. A pane depends on `recur-view-core`, `recur-view-widgets` and only the panes it embeds (the Observatory's Review tab is the review surface). When one route needs another's live view, it goes through a hook in `recur-view-core` that the owner installs (`pr_dock::PrDockHost`: PR detail renders the bound workspace's dock).
 - Views take pure UI rules from the crate that owns their data (`recur_engine::view`, `recur_code::view`, `recur_forge::view`, the `lib/*.ts` ports), not from each other.
 - `recur-engine` depends on the `recur-agent::Provider`, `recur-forge::Forge` and `recur-issues::IssueTracker` traits, never on a concrete implementation. `recur-services` is the composition root that registers the shipped providers, forges and trackers.
-- Parity scenes follow the same rules: a whole-window scene takes the shell, the desktop registry and the global reset from the `recur_view_core::gallery::SceneHost` that `tools/ui-parity` installs, so a view's `gallery` feature adds no view or `recur-app` dependency.
+- Gallery scenes follow the same rules: a whole-window scene takes the shell, the desktop registry and the global reset from the `recur_view_core::gallery::SceneHost` its host installs, so a view's `gallery` feature adds no view or `recur-app` dependency.
 
-`recur-layering`'s tests (run by `lint:rust` and `cargo test --workspace`) fail when a view crate or pane depends on another outside these rules or on `recur-app`, when anything from `recur-services` down depends on GPUI, when the engine reaches a provider crate, or when the engine's non-test sources spell a provider, forge or tracker id (`"claude-code"`, `"codex"`, `"chatgpt"`, `"cursor"`, `"github"`, `"gh"`, `"linear"`, or `"<id>/…"`) or name a concrete forge or tracker module (`recur_forge::github`, `recur_issues::{github,linear}`). Ids the engine needs come from `recur-domain` (`PROVIDER_CLAUDE_CODE`, `PrSource::is_github_alias`).
+`recur-layering`'s tests (run by `mise run lint` and `cargo test --workspace`) fail when a view crate or pane depends on another outside these rules or on `recur-app`, when anything from `recur-services` down depends on GPUI, when the engine reaches a provider crate, or when the engine's non-test sources spell a provider, forge or tracker id (`"claude-code"`, `"codex"`, `"chatgpt"`, `"cursor"`, `"github"`, `"gh"`, `"linear"`, or `"<id>/…"`) or name a concrete forge or tracker module (`recur_forge::github`, `recur_issues::{github,linear}`). Ids the engine needs come from `recur-domain` (`PROVIDER_CLAUDE_CODE`, `PrSource::is_github_alias`).
 
 ## Extension points
 
@@ -191,7 +187,7 @@ fn registry() -> ViewRegistry {
 
 **Hooks back into the shell.** Views that the shell's commands need register themselves on the state: `set_macro_runner` (bundle TypeScript macros), `set_editor_command_handler` and `set_editor_focus_provider` (the focused editor for bundle commands), `set_chat_occluder` (an overlay covers the chat, so it stops counting as seen), and `set_drop_hook` (the desktop allows dropped files).
 
-**Tests and parity.** A view crate tests itself against `MockBridge` the way `crates/app/tests/shell.rs` does: install `AppState` over mock services, open the view (or the whole `Shell` with a registry holding it) in a `VisualTestContext`, find elements by `debug_selector` and drive them with simulated input. Parity scenes for a view go in `tools/ui-parity/scenes.json`. Full-window scenes of the shell alone (`shell/…`) are `recur_app::gallery::build`; a view's full-window scenes call `recur_view_core::gallery` (`view_scene`, `build_in`, `scene_seed`), which builds the shell with the desktop registry from the `SceneHost` the parity tool installs, so a new view is captured in context once `tools/ui-parity` registers it.
+**Tests and gallery scenes.** A view crate tests itself against `MockBridge` the way `crates/app/tests/shell.rs` does: install `AppState` over mock services, open the view (or the whole `Shell` with a registry holding it) in a `VisualTestContext`, find elements by `debug_selector` and drive them with simulated input. Gallery scenes for a view go in `crates/ui/gallery/scenes.json`. Full-window scenes of the shell alone (`shell/…`) are `recur_app::gallery::build`; a view's full-window scenes call `recur_view_core::gallery` (`view_scene`, `build_in`, `scene_seed`), which builds the shell with the desktop registry from the installed `SceneHost`.
 
 ## Frame cost
 
@@ -242,8 +238,8 @@ Views talk to the backend only through `recur_services::Services`, a cloneable s
 - DTOs are serde-identical to Go. `recur-domain` and the owning crates' types are used as is (`recur_agent::catalog`, `recur_usage`, `recur_lsp`, the provider status types, `recur_term::Info`) and re-exported from `api`; the `app` package models without another home are defined in `api::models`.
 - `services.subscribe()` returns an unbounded receiver of `AppEvent` from that point on, in publish order, never dropped. A view bridges it with `cx.spawn` and matches the variants it cares about. `services.emit(event)` publishes the events the UI itself sent (`menu.state`, `app.ready`, …) for the desktop shell. `AppEvent::name` / `payload` / `from_wire` give the exact Wails event.
 - The futures are `Send` and must not assume a tokio context on the caller: GPUI's foreground executor polls them. An implementation that needs tokio spawns onto the runtime handle and awaits the result.
-- `recur_services::AppServices` is the real implementation and the composition root (`services/src/app`, Go `internal/app`). `AppServices::open(store)` reads `AppConfig::from_env()` (data dir, worktrees, bundle roots, cache dir, home; nothing else in the crate reads the environment) and registers Claude Code, Codex, Cursor, ChatGPT and one compatible provider per Settings endpoint, the GitHub forge and the GitHub Issues and Linear trackers under their persisted ids. `AppServices::new(store, config, AppOptions)` is the test seam (pinned provider, forges, trackers, git setup); `AppConfig::under(root)` puts everything under one temp dir. Every call runs on the tokio handle captured at construction (`rt!` / `rt_ctx!`; `rt_ctx` cancels the call's work when the caller drops it, Go's per-call ctx), so GPUI can poll the futures. The engine bus reaches `AppEvent` through `bridge::attach`, synchronously and in publish order (`app_event` is `AppEvent::from_wire(name, json)`); events only the services raise (`term.*`, `lsp.*`, `workspace.file_index`, `cursor.install`, `provider.usage`, `app.open`) go to the hub directly. Lifecycle for the desktop: `recover()` before any UI, `start()` once events reach the desktop, `set_app_focused`, `shutdown()` on quit. `AssetsService::fetch_asset` replaces the Wails asset middleware (`/workspaces/…`, `/workspace-file`, `/chat-image`, `/external-file`, `/gh-image`) with the same statuses and traversal rules.
-- Feature `mock` adds `recur_services::mock`, a port of `frontend/e2e/helpers/mock-bridge.ts`: `MockBridge::fresh(MockOptions::default()).services()` serves the e2e seed with the same mutations, canned replies, chat-attention bookkeeping and post-call events, so a view under the mock reaches the state the Svelte view reaches under e2e. `MockOptions::resolver` overrides one method (a `Reply` value, `BridgeError`, or `Reply::deferred()` to hold a call in flight); `dispatch` / `dispatch_wire` push events the way specs did; `simulate_chat_turn_idle` and `attention()` port the spec helpers. It is for `recur-app` dev builds, tests and the UI-parity harness (`recur-services = { workspace = true, features = ["mock"] }`); release builds leave it off.
+- `recur_services::AppServices` is the real implementation and the composition root (`services/src/app`). `AppServices::open(store)` reads `AppConfig::from_env()` (data dir, worktrees, bundle roots, cache dir, home; nothing else in the crate reads the environment) and registers Claude Code, Codex, Cursor, ChatGPT and one compatible provider per Settings endpoint, the GitHub forge and the GitHub Issues and Linear trackers under their persisted ids. `AppServices::new(store, config, AppOptions)` is the test seam (pinned provider, forges, trackers, git setup); `AppConfig::under(root)` puts everything under one temp dir. Every call runs on the tokio handle captured at construction (`rt!` / `rt_ctx!`; `rt_ctx` cancels the call's work when the caller drops it, Go's per-call ctx), so GPUI can poll the futures. The engine bus reaches `AppEvent` through `bridge::attach`, synchronously and in publish order (`app_event` is `AppEvent::from_wire(name, json)`); events only the services raise (`term.*`, `lsp.*`, `workspace.file_index`, `cursor.install`, `provider.usage`, `app.open`) go to the hub directly. Lifecycle for the desktop: `recover()` before any UI, `start()` once events reach the desktop, `set_app_focused`, `shutdown()` on quit. `AssetsService::fetch_asset` replaces the Wails asset middleware (`/workspaces/…`, `/workspace-file`, `/chat-image`, `/external-file`, `/gh-image`) with the same statuses and traversal rules.
+- Feature `mock` adds `recur_services::mock`, a port of the Svelte app's mock bridge (`src-web/demo/e2e/helpers/mock-bridge.ts`): `MockBridge::fresh(MockOptions::default()).services()` serves the e2e seed with the same mutations, canned replies, chat-attention bookkeeping and post-call events, so a view under the mock reaches the state the Svelte view reaches under e2e. `MockOptions::resolver` overrides one method (a `Reply` value, `BridgeError`, or `Reply::deferred()` to hold a call in flight); `dispatch` / `dispatch_wire` push events the way specs did; `simulate_chat_turn_idle` and `attention()` port the spec helpers. It is for `recur-app` dev builds, tests and the UI-parity harness (`recur-services = { workspace = true, features = ["mock"] }`); release builds leave it off.
 
 ```rust
 let services = MockBridge::fresh(MockOptions::default()).services(); // or the real Services
@@ -267,45 +263,39 @@ cx.spawn(async move |this, cx| {
 - gpui turns on serde_json's `preserve_order` feature for the whole workspace, so `serde_json::Map` keeps insertion order in the app build, while a `-p <crate>` build sorts keys. Go's `json.Marshal` sorts map keys. Never rely on `serde_json::Map` order for output that must match Go: use `BTreeMap` for serialized maps, or sort keys explicitly when re-encoding a `Value`. Run `cargo test --workspace` (feature-unified, as CI does) before finishing, not only `-p`.
 - Libraries return typed errors (`thiserror`); `anyhow` only in binaries and at the services boundary.
 - `serde` names match the Go JSON tags exactly so `recur.db` JSON columns, `*.json` view-state files and `bundle.toml` round-trip unchanged.
-- No `unwrap()` on fallible I/O outside tests. No `todo!()`, `unimplemented!()` or placeholder behavior: a ported item is complete or it is not ticked.
-- Port tests with the code: each Go `_test.go` and each frontend `*.test.ts` / e2e spec scenario becomes a Rust test in the owning crate.
-- Keep modules small and named after what they do; mirror the Go file split where it reflects real boundaries, merge where it was incidental.
+- No `unwrap()` on fallible I/O outside tests. No `todo!()`, `unimplemented!()` or placeholder behavior.
+- Keep modules small and named after what they do.
 - Shipped content is not copied. `bundles/` and `recur-skills/` are embedded from their repo paths (`include_dir!`); migrations, file icons, the emoji table and other assets live in the crate that embeds them.
 
-## Side-by-side operation
+## Identity and data
 
-The two apps must not interfere:
-
-- **Data dir.** Same on-disk formats as the Go app (schema, JSON files, bundle layout), but the Rust app defaults to its own managed root, `<UserConfigDir>/RecurNext`, with worktrees under `~/.recur/worktrees-next`. `RECUR_DATA_DIR` and `RECUR_WORKTREES_DIR` override exactly as in Go, so pointing the Rust app at a copy of real data is one env var. The single-instance lock lives in the data dir, so sharing a dir with the Go app means only one of them runs at a time.
-- **Schema guard.** `recur-store` refuses to open a database with migrations it does not know, so the Rust app never writes to a newer schema.
-- **Identity.** App name `Recur Next`, its own bundle identifier, and its own open-IPC socket (in its data dir). It does not install the `recur` PATH symlink while running side by side; it installs `recur-next` instead.
-- **Build outputs.** Everything builds into `target/`. Nothing writes to `bin/`.
-- **Packages.** `Recur Next.app` (`build.recur.next`) and the `recur-next` Linux packages (`/opt/recur-next`, `/usr/bin/recur-next`, `build.recur.next.desktop`) install beside the Go app's `Recur.app` and `recur` packages, sharing only the icon and the updater's public key.
+- **Data dir.** The app defaults to its own managed root, `<UserConfigDir>/RecurNext`, with worktrees under `~/.recur/worktrees-next`. `RECUR_DATA_DIR` and `RECUR_WORKTREES_DIR` override them, so pointing the app at a copy of real data is one env var. The single-instance lock and the open-IPC socket live in the data dir.
+- **Schema guard.** `recur-store` refuses to open a database with migrations it does not know, so the app never writes to a newer schema.
+- **Identity.** App name `Recur Next`, bundle identifier `build.recur.next`, and the `recur-next` PATH symlink to `recur-cli`. Switching these to `Recur` is the remaining step under "Promotion".
+- **Build outputs.** Everything builds into `target/`; packages go to `target/package/`.
 
 ## Packaging
 
-Packaging files live in `build/` (not `build/`), so they move with the port on promotion and never touch the Go app's build files. Every output goes to `target/package/`.
+Packaging files live in `build/`, tools and tasks in `mise.toml`.
 
-- **macOS.** `wails3 task package:rust` runs `build/darwin/package.sh` to build `Recur Next.app`, its DMG and the updater zip. The app has `build/darwin/Info.plist` (the Go plist's keys under the Rust identity, which `identity.rs` tests), the Go app's `icons.icns` / `Assets.car`, and `recur-cli` embedded as `Contents/MacOS/recur-cli`, which cliinstall links as `recur-next`. It builds for `MACOSX_DEPLOYMENT_TARGET` 12.0. Signing follows the Go tasks: ad-hoc or `RECUR_SIGN_IDENTITY` locally, `SIGN_IDENTITY` (+ `ENTITLEMENTS`, `KEYCHAIN_PROFILE` to notarize) through `wails3 tool sign` for releases. `UNIVERSAL=true` builds arm64 + x86_64. The updater turns on when `RECUR_NEXT_UPDATE_URL` names the Rust app's own signed manifest (`RECUR_UPDATE_MANIFEST_URL` at compile time). It is never the Go app's, whose zip is `Recur.app`. `wails3 task smoke:package:rust` installs the DMG into a sandbox, launches it through LaunchServices and checks the `recur-next` link, `recur-next .` and usernoted's delivery of a native notification.
-- **Linux.** `build/linux/in-docker.sh` runs a command in `build/linux/Dockerfile` (Debian 13: GPUI's X11/Wayland libraries, GTK 4, WebKitGTK 6.0, Xvfb), or directly on Linux. Its cargo registry and target dir live in `recur-next-*` Docker volumes. `linux:test:rust` runs fmt, clippy and the tests (WebKitGTK ones under `xvfb-run`). `linux:build:rust` writes `recur-next-linux-<arch>/` (`recur`, `recur-cli`, `recur.png`), and `linux:package:rust` adds the tarball plus a `.deb` and `.rpm` from `build/linux/nfpm.yaml`. `linux:smoke:rust` installs both in a clean Debian 13 container and checks paths, the link, the menu entry, `recur-next .` and a notification. `linux:run:rust` serves the app on a noVNC desktop at `http://127.0.0.1:6081` (`build/linux/Dockerfile.desktop`, which reuses the Go desktop's entrypoint and adds Mesa's software Vulkan).
-- **CI.** `rust-mac` and `rust-linux` lint and test, and `package-rust-mac` and `package-rust-linux` build the packages (the Linux job also runs `linux:smoke:rust`).
-- **Releases.** A `vX.Y.Z` tag builds Recur Next beside the Go app in `.github/workflows/release.yml`, with the same signing, notarization, PGP and updater secrets: `build-next-mac` runs `package:rust` universal (signed, notarized and stapled as the secrets allow) and `build-next-linux` runs `linux:package:rust` on amd64 and arm64 (amd64 also `linux:smoke:rust`). `publish-next` runs after the Go `publish` and only when every Recur Next build passed, and attaches `RecurNext-<v>-macos-universal.{dmg,zip}`, `recur-next-<v>-linux-<arch>.{tar.gz,deb,rpm}`, unversioned latest-download aliases, `SHA256SUMS-next` and `manifest-next.json` (signed by `wails3 updater manifest` over the Recur Next zip only) to the private release and the public `recur-releases` mirror. `RECUR_NEXT_UPDATE_URL` is `releases/latest/download/manifest-next.json` there, so the Rust app never reads the Go app's `manifest.json`, and a Rust failure never holds back the Go release.
+- **macOS.** `mise run package` compiles `build/appicon.icon` with `actool` (`generate:icons`: `build/darwin/Assets.car` and `icons.icns`), copies the user docs into the `recur-help` skill (`generate:help-skill`), then runs `build/darwin/package.sh` to build `Recur Next.app`, its DMG and the updater zip. The app has `build/darwin/Info.plist` (which `identity.rs` tests), `icons.icns` / `Assets.car`, and `recur-cli` embedded as `Contents/MacOS/recur-cli`, which cliinstall links as `recur-next`. It builds for `MACOSX_DEPLOYMENT_TARGET` 12.0. Signing is ad-hoc or `RECUR_SIGN_IDENTITY` locally; for releases `SIGN_IDENTITY` (+ `ENTITLEMENTS`) signs the CLI and then the bundle with `codesign --timestamp --options runtime`, and `KEYCHAIN_PROFILE` (an `xcrun notarytool store-credentials` profile) notarizes and staples the app and the DMG. `UNIVERSAL=true` builds arm64 + x86_64. The DMG is laid out by dmgbuild (`build/darwin/dmg-settings.py`: a 540x380 window, 96 px icons, the app and an Applications link side by side over `dmg-background.tiff`). The updater turns on when `RECUR_NEXT_UPDATE_URL` names the signed manifest (`RECUR_UPDATE_MANIFEST_URL` at compile time). `mise run smoke:package` installs the DMG into a sandbox, launches it through LaunchServices and checks the `recur-next` link, `recur-next .` and usernoted's delivery of a native notification.
+- **Linux.** `build/linux/in-docker.sh` runs a command in `build/linux/Dockerfile` (Debian 13: GPUI's X11/Wayland libraries, GTK 4, WebKitGTK 6.0, Xvfb), or directly on Linux. Its cargo registry and target dir live in `recur-next-*` Docker volumes. `linux:test` runs fmt, clippy and the tests (WebKitGTK ones under `xvfb-run`). `linux:build` writes `recur-next-linux-<arch>/` (`recur`, `recur-cli`, `recur.png`), and `linux:package` adds the tarball plus a `.deb` and `.rpm` (`nfpm pkg` with `build/linux/nfpm.yaml`). `linux:smoke` installs both in a clean Debian 13 container and checks paths, the link, the menu entry, `recur-next .` and a notification. `linux:run` serves the app on a noVNC desktop at `http://127.0.0.1:6081` (`build/linux/Dockerfile.desktop` with Mesa's software Vulkan).
+- **CI.** `mac` and `linux` lint and test, and `package-mac` and `package-linux` build the packages (the Linux job also runs `linux:smoke`).
+- **Releases.** A `vX.Y.Z` tag runs `.github/workflows/release.yml`: `build-mac` runs `package` universal (signed, notarized and stapled as the secrets allow) and `build-linux` runs `linux:package` on amd64 and arm64 (amd64 also `linux:smoke`). `publish` runs once every build passed and attaches `RecurNext-<v>-macos-universal.{dmg,zip}`, `recur-next-<v>-linux-<arch>.{tar.gz,deb,rpm}`, unversioned latest-download aliases, `SHA256SUMS-next` and `manifest-next.json` to the private release and the public `recur-releases` mirror. The manifest is written and checked by `updater-manifest` (`crates/platform/src/bin`, Ed25519ph over each zip's SHA-512, verified with the same code the app runs after a download). `RECUR_NEXT_UPDATE_URL` is `releases/latest/download/manifest-next.json` there.
 
 ### Linux differences
 
 - **HTML preview.** On macOS a WKWebView sits behind GPUI's view, which paints a transparent hole and a native hitbox over it (`vendor/README.md`, "Native views behind the drawing"), so overlays draw over the page and clicks there reach it; GTK 4 cannot embed a widget in a foreign (GPUI) window, so Linux runs an offscreen WebKitGTK page (`html_gtk.rs`), draws its snapshots and forwards input as DOM events. Those events are untrusted, so the shim mirrors `:hover` / `:active` rules onto attributes it sets on the pointer's chain and answers a `<select>` press with its options for a native menu; subframes are refused because WebKitGTK does not say which frame a navigation targets. A WPE WebKit 2.54 page with real input and frame rates sits behind `RECUR_HTML_WPE=1`; its tabled follow-up is `docs/linux-wpe.md`.
-- **System UI font.** GPUI's Linux backend maps `.SystemUIFont` to IBM Plex Sans, so `recur_ui::fonts::system_family` asks fontconfig for `system-ui` instead, as WebKitGTK and the Go app do; `Family::System` text uses that face.
+- **System UI font.** GPUI's Linux backend maps `.SystemUIFont` to IBM Plex Sans, so `recur_ui::fonts::system_family` asks fontconfig for `system-ui` instead, as WebKitGTK does; `Family::System` text uses that face.
 - **Color panel** (project icon color): GTK's color chooser dialog, ported as `recur_ui::widgets::color_chooser` in its own window, where macOS opens `NSColorPanel` (`color_panel.rs`).
-- **Notifications** go through `notify-send` with no click-through, and there is no dock badge. The Go app does the same.
-- **Window icon** comes from the desktop entry, matched by the app id / `WM_CLASS` `build.recur.next` (the Go app also sets it on the window).
-- **The updater** runs only in a macOS `.app`, as in the Go app.
+- **Notifications** go through `notify-send` with no click-through, and there is no dock badge.
+- **Window icon** comes from the desktop entry, matched by the app id / `WM_CLASS` `build.recur.next`.
+- **The updater** runs only in a macOS `.app`.
 - **Backdrop blur.** GPUI's Linux renderer (gpui-pre-wgpu, not vendored) skips backdrop blurs, so the scrims, the maximized terminal dock and the creating-workspace overlay show their color alone (`vendor/README.md`).
-- **Keys.** ⌘ chords are Ctrl (GPUI's `secondary`), as `isCmdOrCtrl` makes them in the web UI. As in the Go app, menu items carry no accelerators off macOS, and a focused terminal keeps its Ctrl chords (Ctrl+R, Ctrl+K, Ctrl+T…). The terminal dock's own chords are Ctrl+Shift, and CodeMirror's `Mod` bindings (Ctrl+G find next, Ctrl+End) take precedence over the emacs keymap. Specs press `secondary-…`; the few whose steps only hold on macOS are `ignore`d on Linux, each with the reason beside it.
+- **Keys.** ⌘ chords are Ctrl (GPUI's `secondary`), as `isCmdOrCtrl` makes them in the web UI. Menu items carry no accelerators off macOS, and a focused terminal keeps its Ctrl chords (Ctrl+R, Ctrl+K, Ctrl+T…). The terminal dock's own chords are Ctrl+Shift, and CodeMirror's `Mod` bindings (Ctrl+G find next, Ctrl+End) take precedence over the emacs keymap. Specs press `secondary-…`; the few whose steps only hold on macOS are `ignore`d on Linux, each with the reason beside it.
 
 ## Promotion
 
-When `PARITY.md` is fully ticked and the Rust app has been the daily driver for a while:
+The Go/Wails app is gone and the workspace lives at the repo root. One step remains:
 
-1. Delete `internal/`, `cmd/`, root `*.go`, `go.mod`, `frontend/`, Wails build tasks and Go CI jobs.
-2. Move `rust/*` to the repo root (merging `build/` into `build/`) and update `include_dir!` paths for `bundles/`, `recur-skills/`, migrations and assets.
-3. Switch the default data dir back to `Recur`, worktrees to `~/.recur/worktrees`, identity to `Recur`, and the CLI symlink to `recur`.
+- [ ] Switch the default data dir back to `Recur`, worktrees to `~/.recur/worktrees`, identity to `Recur` (app name, bundle id, Linux package and desktop entry), and the CLI symlink to `recur`.

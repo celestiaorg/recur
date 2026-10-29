@@ -102,7 +102,7 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 /// A finished SHA-512 handed to Ed25519ph, which takes the hash state as a
 /// `Digest`. The updater already streamed the hash during download.
 #[derive(Clone)]
-struct Prehashed([u8; 64]);
+pub(super) struct Prehashed(pub(super) [u8; 64]);
 
 impl Default for Prehashed {
     fn default() -> Self {
@@ -244,7 +244,7 @@ fn der_sequence_len(b: &[u8]) -> Option<usize> {
 
 /// The first PEM block's bytes, like Go's `pem.Decode` (leading text and
 /// `Key: value` headers are skipped).
-fn pem_decode(raw: &[u8]) -> Option<Vec<u8>> {
+pub(super) fn pem_decode(raw: &[u8]) -> Option<Vec<u8>> {
     use base64::Engine;
     let text = std::str::from_utf8(raw).ok()?;
     let start = text.find("-----BEGIN ")?;

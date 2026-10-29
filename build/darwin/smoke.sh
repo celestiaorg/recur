@@ -1,5 +1,5 @@
 #!/bin/sh
-# Smoke test of the packaged Recur Next DMG (wails3 task smoke:package:rust):
+# Smoke test of the packaged Recur Next DMG (mise run smoke:package):
 # installs the app from it into a sandbox (a build under target counts as
 # a dev build and never links the CLI), launches it on a throwaway HOME and
 # RECUR_DATA_DIR, checks that it links

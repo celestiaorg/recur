@@ -14,7 +14,7 @@ Options considered: a native child window (X11 only, and overlays end up under i
 - `crates/content/src/wpe/platform.c`: the custom platform (about 400 lines of C). It reports no GPU device, so frames arrive as SHM and go through the existing `RenderImage` path.
 - `crates/content/build.rs`: compiles the shim only when `pkg-config` finds WPE 2.54 and sets `cfg(recur_wpe)`. `html_wpe.rs` loads it with `RTLD_DEEPBIND` because WebKitGTK in the same process exports the same symbols.
 - `RECUR_HTML_WPE=1` picks the WPE page in `html.rs` (`LinuxPage`). The default stays WebKitGTK.
-- Checks: `wails3 task linux:test:rust:wpe` (`crates/content/tests/wpe.rs`).
+- Checks: `mise run linux:test:wpe` (`crates/content/tests/wpe.rs`).
 
 ## Spike results (Docker, 2026-10-28)
 
@@ -31,7 +31,7 @@ Options considered: a native child window (X11 only, and overlays end up under i
 ## Follow-up, in order
 
 1. **Ubuntu 24.04 sandbox.** Run bubblewrap under Ubuntu's AppArmor user namespace restriction on a real host (OrbStack's kernel has no AppArmor). If it fails, decide between shipping an AppArmor profile in the `.deb` and relying on the system `bwrap` profile.
-2. **In a running window.** Try it through `wails3 task linux:run:rust` with `RECUR_HTML_WPE=1`: scrolling, find, overlays, resize, HiDPI, parking.
+2. **In a running window.** Try it through `mise run linux:run` with `RECUR_HTML_WPE=1`: scrolling, find, overlays, resize, HiDPI, parking.
 3. **IME.** Connect GPUI's input handler to the platform's input method class.
 4. **Frame timing.** Add a `WPEScreen` with the display's refresh rate (rAF runs near 55 without it). Mouse and key events queue separately in WebKit, so a key right after a click can land first.
 5. **GPU frames.** Import DMA-BUF frames instead of copying SHM. That needs gpui-pre-wgpu vendored, which Linux backdrop blur needs too (the wgpu renderer skips `SceneBatch::BackdropBlurs` today).

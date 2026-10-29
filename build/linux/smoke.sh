@@ -1,6 +1,6 @@
 #!/bin/sh
-# Smoke test of the Linux packages from linux:package:rust, in a clean Debian 13
-# container (wails3 task linux:smoke:rust). Installs the .deb and checks what it
+# Smoke test of the Linux packages from linux:package, in a clean Debian 13
+# container (mise run linux:smoke). Installs the .deb and checks what it
 # owns (nothing of the Go app's `recur` package); then runs the tarball build as
 # a user install under Xvfb and D-Bus and checks that it links recur-next and
 # writes its menu entry, that `recur-next .` opens a repo in the running app,

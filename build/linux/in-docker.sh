@@ -7,11 +7,7 @@
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-case "${ARCH:-$(uname -m)}" in
-  x86_64 | amd64) ARCH=amd64 ;;
-  aarch64 | arm64) ARCH=arm64 ;;
-  *) echo "unsupported arch ${ARCH:-$(uname -m)}" >&2; exit 1 ;;
-esac
+ARCH=$("$ROOT/build/linux/arch.sh")
 export ARCH
 
 if [ "$(uname -s)" = Linux ]; then

@@ -1,6 +1,5 @@
-# Linux build/test image for the Rust port on non-Linux hosts
-# (wails3 task linux:build:rust on a Mac). Debian 13 like build/linux/Dockerfile:
-# GPUI's X11/Wayland backend plus GTK 4, WebKitGTK 6.0 and GStreamer for recur-content, and the
+# Linux build/test image for non-Linux hosts (mise run linux:build on a Mac).
+# Debian 13: GPUI's X11/Wayland backend plus GTK 4, WebKitGTK 6.0 and GStreamer for recur-content, and the
 # tools tests shell out to that CI runners have (node, rg, ps, gofmt, python3, xmllint).
 FROM debian:trixie
 

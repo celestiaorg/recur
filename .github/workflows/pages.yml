@@ -25,9 +25,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-        with:
-          go: "false"
+      - uses: jdx/mise-action@v5
 
       - id: pages
         uses: actions/configure-pages@v6

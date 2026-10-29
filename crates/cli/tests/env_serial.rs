@@ -268,6 +268,6 @@ fn launch_failure_reports_go_text() {
     let err = recur_cli::open::send_or_launch(&dir.path().to_string_lossy()).unwrap_err();
     assert_eq!(
         err,
-        "Recur isn't running and could not be launched: /definitely/missing/recur: No such file or directory (os error 2)\nStart Recur (or `wails3 task dev`) and retry"
+        "Recur isn't running and could not be launched: /definitely/missing/recur: No such file or directory (os error 2)\nStart Recur (or `mise run run`) and retry"
     );
 }

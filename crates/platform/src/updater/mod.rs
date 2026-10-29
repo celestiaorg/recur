@@ -9,6 +9,7 @@
 mod endpoint;
 mod extract;
 mod helper;
+pub mod manifest;
 mod recur;
 mod semver;
 mod verify;

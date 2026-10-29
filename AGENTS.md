@@ -1,86 +1,80 @@
 # AGENTS.md
 
-Guidance for coding agents working in this repo. Prefer the Taskfile over ad-hoc scripts.
+Guidance for coding agents working in this repo. Prefer `mise run <task>` over ad-hoc scripts.
 
 ## What this is
 
-Recur is a Wails v3 desktop app (Go backend + Svelte 5 / TypeScript frontend) with an optional authoring CLI and TextMate-inspired **Recur Bundles** under `bundles/`.
+Recur is a native desktop app written in Rust on GPUI (through gpui-kit), with an authoring CLI and TextMate-inspired **Recur Bundles** under `bundles/`.
 
 Read before inventing architecture:
 
-- `docs/bundles.md` — bundle authoring, keybindings, CLI
-- `docs/` — living provider docs
+- `docs/ARCHITECTURE.md`: crates, layering, view crates, services contract, packaging
+- `docs/bundles.md`: bundle authoring, keybindings, CLI
+- `docs/`: provider docs, `ui-rendering.md` (how recur-ui draws), `FOLLOWUPS.md` (open items)
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| `main.go`, `app_menu.go`, `window_state.go` | Desktop app entry / chrome |
-| `internal/` | Go packages (engine, store, mcp, bundles, cli, …) |
-| `frontend/` | Svelte 5 + Vite UI |
-| `bundles/` | Shipped Recur Bundles (reference implementations) |
-| `cmd/recur` | CLI (`recur .` opens a path; `recur bundles …` authors bundles) |
-| `Taskfile.yml` | Root tasks (`wails3 task …`) |
-| `build/` | Wails build tasks / platform packaging |
-| `rust/` | Rust/GPUI port, side by side with the Wails app. Read `rust/docs/ARCHITECTURE.md` and `rust/docs/PARITY.md` first |
+| `Cargo.toml`, `rust-toolchain.toml` | Cargo workspace and the pinned toolchain |
+| `crates/` | Workspace crates (domain, store, engine, services, ui, views, desktop, cli, …) |
+| `providers/` | One crate per agent provider (claude, codex, cursor, compatible, chatgpt) |
+| `vendor/` | Patched crates.io sources (gpui-pre and friends; see `vendor/README.md`) |
+| `tools/layering` | The crate layering check (`mise run lint`) |
+| `bundles/` | Shipped Recur Bundles (reference implementations), embedded by `recur-bundles` |
+| `recur-skills/` | Shipped agent skills, embedded by `recur-bundles` |
+| `build/` | Packaging: macOS app/DMG (`build/darwin`), Linux Docker images and packages (`build/linux`) |
+| `mise.toml` | Tools (node, pnpm, nfpm, dmgbuild) and every task |
+| `src-web/` | The website; `src-web/demo` is the Svelte app its interactive demo builds |
+| `src-docs/` | User docs (also copied into the `recur-help` skill) |
 
 ## Dev environment tips
 
-- Orchestrator is **Task via `wails3 task`** (root `Taskfile.yml`). go-task is not required separately.
-- Task names use **`verb:object`** (`test:bundles`, `lint:bundles`, `build:cli`).
-- Dev app: `wails3 task dev` (or `wails3 task run` / `wails3 task build`).
+- Install [mise](https://mise.jdx.dev) and run `mise install` once; Rust comes from `rust-toolchain.toml` through rustup. `mise tasks` lists every task.
+- Task names use **`verb:object`** (`test:bundles`, `lint:bundles`, `linux:package`).
+- Dev app: `mise run run` (`cargo run -p recur-desktop`). It defaults to the `RecurNext` data dir; `RECUR_DATA_DIR` / `RECUR_WORKTREES_DIR` override it.
 - Dogfood: `.recur/project.toml` sets `RECUR_INSTANCE_LABEL=$RECUR_BRANCH`. When that env is present, Recur paints a `dev` chip with the branch in the titlebar gap (packaged Recur omits it).
-- Packaged debug build: `RECUR_DEBUG=1 wails3 task package` keeps the web inspector and skips frontend minification (sourcemaps included).
-- Linux: `wails3 task linux:build` / `linux:package` (GTK4 + WebKitGTK 6.0, so Debian 13 / Ubuntu 24.04+). On a Mac it builds inside `build/linux/Dockerfile` (Docker or OrbStack) for the host arch into `bin/recur-linux-<arch>/`, never `bin/recur`. `linux:package` also writes `bin/recur-linux-<arch>.tar.gz` (`recur` + `recur-cli`), whose `recur` links `~/.local/bin/recur` to the CLI and writes an app-menu entry (`~/.local/share/applications/org.wails.recur.desktop`) at launch, plus a `.deb` and `.rpm` (`build/linux/nfpm.yaml`) that install to `/opt/recur` and own `/usr/bin/recur` and the menu entry instead.
-- Try the Linux app from a Mac: `wails3 task linux:run` builds it and opens a throwaway Linux desktop (Xvfb + noVNC) in the browser at `http://127.0.0.1:6080`. Its home persists in the `recur-linux-home-<arch>` Docker volume; Ctrl+C or File > Quit stops it.
-- Rust port packaging (`Recur Next`, side by side with the Go app; files in `rust/build/`, outputs in `rust/target/package/`, see `rust/docs/ARCHITECTURE.md` "Packaging"): `wails3 task package:rust` (macOS `.app` + DMG + updater zip) and `smoke:package:rust`; `linux:test:rust`, `linux:build:rust`, `linux:package:rust` (tarball, `.deb`, `.rpm` to `/opt/recur-next` with `recur-next`), `linux:smoke:rust` and `linux:run:rust` (noVNC on `:6081`), all in `rust/build/linux/Dockerfile` on a Mac.
-- Desktop binary: `bin/recur`. Dev CLI: `bin/recur-cli` via `wails3 task build:cli` — do not overwrite one with the other. Packaged apps also embed `Contents/MacOS/recur-cli` (same `./cmd/recur` binary) and symlink it onto PATH at launch (D-cli-install).
-- Frontend deps live in `frontend/` (`pnpm` / `pnpm-lock.yaml` there). Typecheck: `cd frontend && pnpm run check`.
-- After changing Go methods exposed to the UI, regenerate bindings through the Wails build path (committed `.ts` bindings are authoritative).
-- UI view state that should survive view switches or reloads (filters, sort, layout, expanded rows) is persisted on disk, never `localStorage`/`sessionStorage`. Add a JSON file under `store.DataDir()` via `ShellService` in `internal/app/shell.go` (see `shell.json`, `schedule-view.json`, `issues-view.json`, written with `writeDataJSON`). Webview storage is wiped on dev↔packaged origin changes.
+- Everything builds into `target/`: `target/debug/recur` (desktop) and `target/debug/recur-cli` (CLI). Packages go to `target/package/`.
+- macOS package: `mise run package` (`Recur Next.app`, DMG and updater zip; `UNIVERSAL=true`, signing and notarization env in `build/darwin/package.sh`). `mise run smoke:package` installs and launches the DMG in a sandbox.
+- Linux: `mise run linux:test`, `linux:build`, `linux:package` (tarball, `.deb`, `.rpm` to `/opt/recur-next`) and `linux:smoke`, all in `build/linux/Dockerfile` on a Mac (Docker or OrbStack) for the host arch (`ARCH=amd64|arm64` overrides). `mise run linux:run` opens the Linux app on a throwaway desktop at `http://127.0.0.1:6081` (noVNC). `linux:test:wpe` runs the WPE WebKit spike's checks.
+- UI view state that should survive view switches or restarts (filters, sort, layout, expanded rows) is persisted on disk as a JSON file in the data dir, through the shell service in `crates/services/src/app/shell.rs` (see `shell.json`, `schedule-view.json`, `issues-view.json`).
 - Bundles need `node` on `PATH` for TypeScript macros and engine tests.
-- Multi-agent coordination (optional): gitignored `TODO.md` — claim work there so sessions do not collide.
+- Multi-agent coordination (optional): gitignored `TODO.md`: claim work there so sessions do not collide.
 
 ## Testing instructions
 
-CI: `.github/workflows/ci.yml` runs Go lint + govulncheck + tests on macOS (`go-mac`) and Go lint + tests on Ubuntu 24.04 (`go-linux`), `-race` on Ubuntu (`go-race`), bundles, frontend, and e2e as separate jobs, and packages Recur.app and the Linux tarball (`package-mac`, `package-linux`), failing if committed bindings or `go.mod` are stale. Branch protection requires only its `CI success` job, so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are Taskfile-driven.
+CI: `.github/workflows/ci.yml` runs lint and tests on macOS (`mac`: fmt, clippy, layering, workspace tests, bundle lint and tests) and Linux (`linux`: fmt, clippy and tests with all features under Xvfb), and packages the app (`package-mac`, `package-linux` with the Debian smoke test). Branch protection requires only its `CI success` job, so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are mise tasks.
 
 | Task | What |
 |------|------|
-| `wails3 task check` | Fast gate: Go tests, `lint:go`, `lint:frontend`, bundle lint/tests, frontend unit (no Playwright) |
-| `wails3 task check:cursor-sdk-pin` | Network: fail if PyPI `cursor-sdk` is ahead of `pinnedSDKVersion` |
-| `wails3 task check:vulns` | Network: govulncheck on reachable Go code |
-| `wails3 task test` | Everything in `check` plus `test:e2e` |
-| `wails3 task test:go` | `go test ./...` |
-| `wails3 task test:go:race` | `go test -race ./...` (slow) |
-| `wails3 task lint:go` | `go vet`, `gofmt`, staticcheck |
-| `wails3 task lint:frontend` | svelte-check |
-| `wails3 task lint:bundles` | Schema, TS compile, shebang, keyEquivalent collisions |
-| `wails3 task test:bundles` | Shipped bundle engine tests under `./bundles` |
-| `wails3 task test:e2e` | Frontend Playwright (mocked Wails bridge) |
-| `wails3 task build:cli` | Build `bin/recur-cli` |
-| `wails3 task lint:rust` / `test:rust` | rustfmt + clippy / `cargo test` for `rust/` |
+| `mise run check` | Gate before merging: `lint`, `test`, `lint:bundles`, `test:bundles` |
+| `mise run lint` | `cargo fmt --check`, clippy (`-D warnings`), the layering check |
+| `mise run test` | `cargo test --workspace` |
+| `mise run lint:bundles` | Schema, TS compile, shebang, keyEquivalent collisions (Rust `recur-cli`) |
+| `mise run test:bundles` | Shipped bundle engine tests under `./bundles` |
+| `mise run check:cursor-sdk-pin` | Network: fail if PyPI `cursor-sdk` is ahead of `PINNED_SDK_VERSION` |
+| `mise run linux:test` | fmt, clippy and tests on Linux (Docker on a Mac) |
+| `mise run test:splash` | Builds the website and browser-checks the demo |
 
 ### Cursor SDK pin
 
-Recur pins `cursor-sdk` (`pinnedSDKVersion`) so the attribution minify patch stays valid. A weekly GitHub Action (`.github/workflows/cursor-sdk-pin.yml`) and `wails3 task check:cursor-sdk-pin` compare the pin to PyPI latest. On drift, follow `.agents/skills/repin-cursor-sdk/SKILL.md` (bump pin + refresh `sdkAttributionAnchors` together). Details: `docs/cursor-provider.md`.
+Recur pins `cursor-sdk` (`PINNED_SDK_VERSION` in `providers/cursor/src/install.rs`) so the attribution minify patch stays valid. A weekly GitHub Action (`.github/workflows/cursor-sdk-pin.yml`) and `mise run check:cursor-sdk-pin` compare the pin to PyPI latest. On drift, follow `.agents/skills/repin-cursor-sdk/SKILL.md` (bump the pin and the attribution anchors together). Details: `docs/cursor-provider.md`.
 
 Focused runs:
 
 ```bash
-go test ./internal/bundles/...
-go test -run TestName ./internal/cli/...
-cd frontend && pnpm run e2e          # or pnpm run e2e:ui
-bin/recur-cli bundles test ./bundles/JSON
-bin/recur-cli bundles lint ./bundles
+cargo test -p recur-bundles
+cargo test -p recur-cli --test cli
+cargo run -q -p recur-cli -- bundles test ./bundles/JSON
+cargo run -q -p recur-cli -- bundles lint ./bundles
 ```
 
 Expectations:
 
-- Before merging non-trivial changes, `wails3 task check` should be green; run `wails3 task test` (or at least `test:e2e`) when touching UI.
+- Before merging non-trivial changes, `mise run check` should be green.
 - Add or update tests for the code you change.
 - Bundle changes: keep `lint:bundles` clean (errors fail; shared keyEquivalents may log info).
-- After store seed / domain shape changes that affect e2e fixtures: `cd frontend && pnpm run e2e:seed`.
+- After store seed / domain shape changes: regenerate the mock seed with `cargo run -p recur-store --bin seeddump > crates/services/src/mock/seed.json`.
 
 ## Scope
 
@@ -95,6 +89,6 @@ Expectations:
 ## PR instructions
 
 - Prefer small, focused PRs; match existing commit tone (why over noise).
-- Run `wails3 task check` before pushing; include e2e when frontend behavior changes.
+- Run `mise run check` before pushing.
 - Update `docs/bundles.md` for author-facing bundle behavior.
-- Do not commit secrets, `bin/`, Vite output under `frontend/dist/` (keep `.gitkeep`), or the gitignored `TODO.md`.
+- Do not commit secrets, `target/`, `src-web/public/demo/`, or the gitignored `TODO.md`.

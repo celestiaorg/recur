@@ -1,6 +1,6 @@
 // Uses the demo app's (src-web/demo) Playwright dependency. Start the src-web dev or
 // preview server, then run: node scripts/check-splash.mjs http://localhost:5174
-// With no URL, serves the production build itself. Task: wails3 task test:splash.
+// With no URL, serves the production build itself. Task: mise run test:splash.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 

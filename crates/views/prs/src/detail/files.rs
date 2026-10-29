@@ -26,7 +26,7 @@ use recur_view_review::diff_file::DiffFileHooks;
 use recur_view_review::file_list::FileListProps;
 use recur_view_review::findings::FindingsByPath;
 use recur_view_review::review_diff::{DiffLayout, FileListMode};
-use recur_view_review::stack::CardProps;
+use recur_view_review::stack::{CardProps, ImageRevs};
 use recur_view_review::style::{icon_btn, note_btn, seg, seg_btn};
 
 use super::PrDetail;
@@ -245,6 +245,11 @@ impl PrDetail {
                 let _ = me.update(cx, |d, cx| d.post_findings(vec![f], cx));
             }));
         }
+        let head = if pr.head_sha.is_empty() {
+            pr.branch.clone()
+        } else {
+            pr.head_sha.clone()
+        };
         let layout = if self.split_fallback() {
             DiffLayout::Unified
         } else {
@@ -261,6 +266,7 @@ impl PrDetail {
             posting_finding_ids: self.posting.clone(),
             postable_finding_ids: postable_ids,
             hooks,
+            image_revs: Some(ImageRevs::pr(pr, format!("{}...{head}", pr.base), head)),
         });
         let props = FileListProps {
             files: files.clone(),

@@ -19,7 +19,8 @@ use gpui_kit::{
     WeakEntity, Window, canvas, div, px,
 };
 use recur_code::view::finding_paths::findings_for_path;
-use recur_domain::FileDiff;
+use recur_content::images::workspace_file_url;
+use recur_domain::{FileDiff, Pr};
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{IconName, Theme, icon};
@@ -81,6 +82,66 @@ pub struct CardProps {
     pub posting_finding_ids: HashSet<String>,
     pub postable_finding_ids: HashSet<String>,
     pub hooks: DiffFileHooks,
+    /// Where image files' previous and current revisions come from.
+    pub image_revs: Option<ImageRevs>,
+}
+
+/// The `/workspace-file` revisions an image card compares: `before` and `after` are `at`
+/// values (`base`, a commit-ish or `A...B`); an empty `after` is the worktree, cached until
+/// `t` changes.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ImageRevs {
+    pub project_id: String,
+    pub workspace_id: String,
+    pub before: String,
+    pub after: String,
+    pub t: i64,
+}
+
+impl ImageRevs {
+    /// `before` and `after` of a PR, read from its project repo (its worktree when it has no
+    /// project), so they resolve after the worktree is gone.
+    pub fn pr(pr: &Pr, before: String, after: String) -> Self {
+        ImageRevs {
+            project_id: pr.project_id.clone(),
+            workspace_id: if pr.project_id.is_empty() {
+                pr.workspace_id.clone()
+            } else {
+                String::new()
+            },
+            before,
+            after,
+            t: 0,
+        }
+    }
+
+    /// The previous and current srcs of `f` ("" for a side it does not have), or `None` when
+    /// `f` is not a raster image without text rows.
+    pub fn srcs(&self, f: &FileDiff) -> Option<(String, String)> {
+        if recur_code::image_mime(&f.path).is_empty()
+            || f.lines.as_ref().is_some_and(|l| !l.is_empty())
+        {
+            return None;
+        }
+        let url = |path: &str, at: &str| {
+            let t = if at.is_empty() { self.t } else { 0 };
+            workspace_file_url(&self.project_id, &self.workspace_id, path, t, at)
+        };
+        let old = if f.old_path.is_empty() {
+            &f.path
+        } else {
+            &f.old_path
+        };
+        let before = match f.status.as_str() {
+            "a" | "u" => String::new(),
+            _ => url(old, &self.before),
+        };
+        let after = match f.status.as_str() {
+            "d" => String::new(),
+            _ => url(&f.path, &self.after),
+        };
+        Some((before, after))
+    }
 }
 
 /// Where each card sits in scroll-content coordinates.
@@ -466,6 +527,7 @@ impl FileStack {
         };
         props.posting_finding_ids = p.posting_finding_ids.clone();
         props.postable_finding_ids = p.postable_finding_ids.clone();
+        props.image = p.image_revs.as_ref().and_then(|r| r.srcs(f));
         props
     }
 

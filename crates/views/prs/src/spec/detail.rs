@@ -247,6 +247,41 @@ fn files_changed_filters_do_not_carry_over_to_another_pr(cx: &mut TestAppContext
     assert!(!s.has("button:Show all files:true"));
 }
 
+#[gpui::test]
+fn files_changed_shows_an_image_file_as_previous_and_current(cx: &mut TestAppContext) {
+    const PNG_1X1: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    let fetched = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<String>::new()));
+    let log = fetched.clone();
+    let mut s = boot(
+        cx,
+        |sd| {
+            let mut files = sd.pr_by_id("482").unwrap()["files"].clone();
+            files.as_array_mut().unwrap().insert(
+                0,
+                json!({"path": "assets/logo.png", "status": "m", "diff": {"add": 0, "del": 0}, "lines": null}),
+            );
+            patch_pr(sd, "482", json!({ "files": files, "headSha": "abc123" }));
+        },
+        MockOptions::default().resolver("FetchAsset", move |a, _, _| {
+            log.lock()
+                .push(a[0].as_str().unwrap_or_default().to_string());
+            Reply::value(json!({"contentType": "image/png", "cacheControl": "", "body": PNG_1X1}))
+        }),
+    );
+    s.open_pr("482");
+    s.tab("Files changed");
+    assert!(s.has("cfile:live:assets/logo.png"));
+    assert!(s.until(|s| s.has("diff-image:Previous") && s.has("diff-image:Current")));
+    let urls = fetched.lock().clone();
+    let at = |rev: &str| {
+        urls.iter().any(|u| {
+            u.starts_with("/workspace-file?project=storefront&path=assets%2Flogo.png")
+                && u.ends_with(&format!("&at={rev}"))
+        })
+    };
+    assert!(at("main...abc123") && at("abc123"), "{urls:?}");
+}
+
 const FIRST_COMMIT: &str = "Add tests for Apple + Google providers";
 const LAST_COMMIT: &str = "Add Apple & Google OAuth providers";
 

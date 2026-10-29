@@ -113,7 +113,8 @@ async fn serve_workspace_file_at_base() {
     assert_eq!(base.content_type, "image/png");
     assert_eq!(fx.get(&file("path=icon.png")).await.body, newer);
     assert_eq!(fx.status(&file("path=notes.txt&at=base")).await, 400);
-    assert_eq!(fx.status(&file("path=icon.png&at=HEAD")).await, 400);
+    assert_eq!(fx.get(&file("path=icon.png&at=HEAD")).await.body, PNG);
+    assert_eq!(fx.status(&file("path=icon.png&at=HEAD:x")).await, 400);
     assert_eq!(fx.status(&file("path=nope.png&at=base")).await, 404);
     assert!(matches!(
         fx.status(&file("path=../secret.png&at=base")).await,

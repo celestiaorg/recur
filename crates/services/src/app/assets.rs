@@ -177,13 +177,10 @@ impl AppServices {
         if project_id.is_empty() || rel.trim().is_empty() {
             return Err(AssetError::new(400, "missing project or path"));
         }
-        let at = q.get("at");
-        if !at.trim().is_empty() {
-            if at.trim() != "base" {
-                return Err(AssetError::new(400, "invalid at"));
-            }
+        let at = q.get("at").trim();
+        if !at.is_empty() {
             return self
-                .serve_workspace_image_at_base(project_id, q.get("workspace"), rel)
+                .serve_workspace_image_at(project_id, q.get("workspace"), rel, at)
                 .await;
         }
         let (root, rel) = self
@@ -202,13 +199,15 @@ impl AppServices {
         serve_prepared(&abs, mime)
     }
 
-    /// The merge-base (or HEAD) revision of a raster image: files deleted on
-    /// disk still exist in git, so this does not go through `prepare_serve`.
-    async fn serve_workspace_image_at_base(
+    /// A raster image at a git revision: `base` (the merge-base, or HEAD), a
+    /// commit-ish, or `A...B`. Files deleted on disk still exist in git, so
+    /// this does not go through `prepare_serve`.
+    async fn serve_workspace_image_at(
         &self,
         project_id: &str,
         workspace_id: &str,
         rel: &str,
+        at: &str,
     ) -> Served {
         if rel.starts_with('/') {
             return Err(AssetError::new(
@@ -227,7 +226,12 @@ impl AppServices {
             return Err(AssetError::new(400, "not an image"));
         }
         let mut buf: Vec<u8> = Vec::new();
-        if let Err(e) = recur_code::image_at_base(&root, &base, &rel, Some(&mut buf)).await {
+        let res = if at == "base" {
+            recur_code::image_at_base(&root, &base, &rel, Some(&mut buf)).await
+        } else {
+            recur_code::image_at_rev(&root, at, &rel, Some(&mut buf)).await
+        };
+        if let Err(e) = res {
             return Err(AssetError::new(status_for(&e, 400), e.to_string()));
         }
         if mime == "image/tiff" && TRANSCODE_TIFF.load(Ordering::SeqCst) {

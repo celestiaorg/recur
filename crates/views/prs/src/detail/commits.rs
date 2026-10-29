@@ -16,7 +16,7 @@ use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, icon};
 use recur_view_review::commit_meta::{commit_byline, commit_sha};
 use recur_view_review::commits::{RowOpts, cav, commit_row, empty_state};
-use recur_view_review::stack::CardProps;
+use recur_view_review::stack::{CardProps, ImageRevs};
 
 use super::PrDetail;
 use super::conversation::commit_check;
@@ -325,6 +325,7 @@ impl PrDetail {
                     } else {
                         let files = self.detail_files(cx);
                         self.commit_stack.set_files(files.clone());
+                        let sha = if c.sha.is_empty() { &c.hash } else { &c.sha }.clone();
                         let state = self.state().clone();
                         let ws = pr.workspace_id.clone();
                         let mut hooks = recur_view_review::diff_file::DiffFileHooks::default();
@@ -340,6 +341,7 @@ impl PrDetail {
                             collapsible: true,
                             open_file_title: Some("Open in workspace".into()),
                             hooks,
+                            image_revs: Some(ImageRevs::pr(pr, format!("{sha}^"), sha)),
                             ..Default::default()
                         });
                         let empty = files

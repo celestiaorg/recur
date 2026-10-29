@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use futures::future::BoxFuture;
 use gpui_kit::{App, AppContext as _, Context, Entity, Window};
-use recur_content::images::{Decoded, ImageCache, ImageLoader};
+use recur_content::images::{ImageCache, ImageLoader, Raster};
 use recur_content::{AttachmentLightbox, FilePreviewEvent, PdfPreview};
 use recur_editor::view_state::{EditorViewMode, is_binary_image_path};
 use recur_services::Services;
@@ -42,38 +42,6 @@ pub fn install_image_loader(services: &Services, cx: &mut App) {
     recur_content::set_image_loader(cx, Arc::new(ServicesImageLoader(services.clone())));
 }
 
-/// A device size and the raster resampled to it.
-type Scaled = ((u32, u32), std::sync::Arc<gpui_kit::RenderImage>);
-
-/// A raster loading or loaded for a `src`.
-#[derive(Clone, Default)]
-pub struct Raster {
-    pub src: String,
-    pub image: Option<Decoded>,
-    pub failed: bool,
-    /// The raster resampled to its painted device size.
-    pub scaled: std::cell::RefCell<Option<Scaled>>,
-}
-
-impl Raster {
-    /// The image to paint at `w`×`h` device pixels.
-    pub fn at(&self, w: u32, h: u32) -> Option<std::sync::Arc<gpui_kit::RenderImage>> {
-        let d = self.image.as_ref()?;
-        if (d.width as u32, d.height as u32) == (w, h) {
-            return Some(d.image.clone());
-        }
-        let mut c = self.scaled.borrow_mut();
-        if let Some((size, img)) = c.as_ref()
-            && *size == (w, h)
-        {
-            return Some(img.clone());
-        }
-        let img = recur_content::images::resized(d, w, h)?;
-        *c = Some(((w, h), img.clone()));
-        Some(img)
-    }
-}
-
 /// The media pane's state (`imageBaseFailedSrc`, the decoded images, the PDF document).
 #[derive(Default)]
 pub struct MediaPane {
@@ -101,7 +69,7 @@ impl Observatory {
             &self.props.workspace_id,
             &f.path,
             f.mtime,
-            false,
+            "",
         )
     }
 
@@ -137,7 +105,7 @@ impl Observatory {
             &self.props.workspace_id,
             p,
             self.base_doc_epoch as i64 + 1,
-            true,
+            "base",
         )
     }
 

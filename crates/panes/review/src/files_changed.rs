@@ -37,7 +37,7 @@ use crate::review_diff::{
     DiffLayout, FileListMode, read_diff_layout, read_file_list_mode, read_review_sidebar,
     reuse_file_diffs, write_diff_layout, write_file_list_mode, write_review_sidebar,
 };
-use crate::stack::{CardProps, FileStack};
+use crate::stack::{CardProps, FileStack, ImageRevs};
 use crate::style::{hsla, icon_btn, seg, seg_btn};
 
 /// Side-by-side needs this much pane width; narrower panes fall back to unified.
@@ -457,6 +457,25 @@ impl FilesChangedView {
         }
     }
 
+    /// Image cards compare the scope's old side with its commit, or the worktree.
+    fn image_revs(&self) -> ImageRevs {
+        let (before, after) = match &self.props.scope {
+            FilesScope::Base => ("base".to_string(), String::new()),
+            FilesScope::Working => ("HEAD".to_string(), String::new()),
+            FilesScope::Commit(c) => {
+                let sha = if c.sha.is_empty() { &c.hash } else { &c.sha };
+                (format!("{sha}^"), sha.clone())
+            }
+        };
+        ImageRevs {
+            project_id: self.props.project_id.clone(),
+            workspace_id: self.props.workspace_id.clone(),
+            before,
+            after,
+            t: self.props.refresh as i64,
+        }
+    }
+
     /// Push matched files and card props into the stack and the list.
     fn sync_stack(&mut self, cx: &mut Context<Self>) {
         let matched = self.matched_files(cx);
@@ -487,6 +506,7 @@ impl FilesChangedView {
             posting_finding_ids: HashSet::new(),
             postable_finding_ids: HashSet::new(),
             hooks,
+            image_revs: Some(self.image_revs()),
         });
         let list_props = FileListProps {
             files: matched.clone(),

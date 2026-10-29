@@ -112,6 +112,38 @@ pub fn resized(d: &Decoded, w: u32, h: u32) -> Option<Arc<RenderImage>> {
     ))))
 }
 
+/// A device size and the raster resampled to it.
+type Scaled = ((u32, u32), Arc<RenderImage>);
+
+/// A raster loading or loaded for a `src`.
+#[derive(Clone, Default)]
+pub struct Raster {
+    pub src: String,
+    pub image: Option<Decoded>,
+    pub failed: bool,
+    /// The raster resampled to its painted device size.
+    pub scaled: std::cell::RefCell<Option<Scaled>>,
+}
+
+impl Raster {
+    /// The image to paint at `w`×`h` device pixels.
+    pub fn at(&self, w: u32, h: u32) -> Option<Arc<RenderImage>> {
+        let d = self.image.as_ref()?;
+        if (d.width as u32, d.height as u32) == (w, h) {
+            return Some(d.image.clone());
+        }
+        let mut c = self.scaled.borrow_mut();
+        if let Some((size, img)) = c.as_ref()
+            && *size == (w, h)
+        {
+            return Some(img.clone());
+        }
+        let img = resized(d, w, h)?;
+        *c = Some(((w, h), img.clone()));
+        Some(img)
+    }
+}
+
 /// Start loading `src`: `data:` URLs decode off the UI thread; others ask the loader.
 pub fn fetch(src: &str, cx: &App) -> Option<BoxFuture<'static, Result<Decoded, String>>> {
     if src.starts_with("data:") {
@@ -121,6 +153,30 @@ pub fn fetch(src: &str, cx: &App) -> Option<BoxFuture<'static, Result<Decoded, S
     let loader = cx.try_global::<Loader>()?.0.clone();
     let fut = loader.load(src);
     Some(Box::pin(async move { decode(&fut.await?) }))
+}
+
+/// `workspaceFileURL`: a worktree file without the JSON bridge. `mtime` 0 is omitted. `at` asks
+/// for a git revision of an image: `base` (the merge-base), a commit-ish, or `A...B`.
+pub fn workspace_file_url(
+    project_id: &str,
+    workspace_id: &str,
+    path: &str,
+    mtime: i64,
+    at: &str,
+) -> String {
+    let mut q = url::form_urlencoded::Serializer::new(String::new());
+    q.append_pair("project", project_id);
+    if !workspace_id.is_empty() {
+        q.append_pair("workspace", workspace_id);
+    }
+    q.append_pair("path", path);
+    if mtime != 0 {
+        q.append_pair("t", &mtime.to_string());
+    }
+    if !at.is_empty() {
+        q.append_pair("at", at);
+    }
+    format!("/workspace-file?{}", q.finish())
 }
 
 /// Decoded images by `src`, shared by every view in the app (the webview's image cache).

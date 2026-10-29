@@ -23,10 +23,20 @@ const MAX_SYNTHETIC_ADD_LINES: usize = 4000;
 /// The merge-base of `base_branch` and HEAD in `dir`, falling back to
 /// `base_branch` when there is none (unrelated histories, missing ref).
 pub async fn merge_base(dir: &str, base_branch: &str) -> String {
-    merge_base_by(dir, base_branch, None).await
+    merge_base_by(dir, base_branch, "HEAD", None).await
 }
 
-async fn merge_base_by(dir: &str, base_branch: &str, deadline: Option<Instant>) -> String {
+/// [`merge_base`] of `base_branch` and `head` instead of HEAD.
+pub async fn merge_base_of(dir: &str, base_branch: &str, head: &str) -> String {
+    merge_base_by(dir, base_branch, head, None).await
+}
+
+async fn merge_base_by(
+    dir: &str,
+    base_branch: &str,
+    head: &str,
+    deadline: Option<Instant>,
+) -> String {
     let base_branch = base_branch.trim();
     if dir.is_empty() || base_branch.is_empty() {
         return base_branch.to_string();
@@ -37,7 +47,7 @@ async fn merge_base_by(dir: &str, base_branch: &str, deadline: Option<Instant>) 
         "merge-base",
         "--end-of-options",
         base_branch,
-        "HEAD",
+        head,
     ]);
     if let Some(d) = deadline {
         cmd = cmd.deadline(d);
@@ -81,7 +91,7 @@ async fn change_status_work(
     deadline: Instant,
 ) -> Option<StatusLetters> {
     hooks::fire("vs-base", &dir).await;
-    let mb = merge_base_by(&dir, &base_branch, Some(deadline)).await;
+    let mb = merge_base_by(&dir, &base_branch, "HEAD", Some(deadline)).await;
     let out = command([
         "-C",
         dir.as_str(),

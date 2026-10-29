@@ -23,6 +23,7 @@ use recur_ui::widgets::{Axis, ChipIcon, Edge, resize_handle, tab_chip, tab_strip
 use recur_ui::{IconName, Theme, motion};
 use recur_view_core::prefs::{CodePanelKey, PanelKey, PanelSide};
 use recur_view_review::review_diff::ReviewTab;
+pub(crate) use recur_view_review::style::checkerboard;
 use recur_view_review::style::hsla;
 
 pub(crate) use scm::ScmProbes;
@@ -45,34 +46,6 @@ pub(crate) fn pulse_opacity(epoch: Instant, window: &mut Window, cx: &App) -> f3
         window.request_animation_frame();
     }
     0.5 + 0.5 * motion::Easing::EASE_IN_OUT.apply(half)
-}
-
-/// The image pane's checkerboard (`--pane-2` 8px squares over `--bg`, `--bg` at the origin).
-pub(crate) fn checkerboard(cx: &App) -> Div {
-    let t = Theme::of(cx).tokens;
-    let sq = t.pane_2;
-    div().relative().bg(hsla(t.bg)).child(
-        gpui_kit::canvas(
-            |_, _, _| {},
-            move |b, _, window, _| {
-                let s = px(8.);
-                let (w, h) = (f32::from(b.size.width), f32::from(b.size.height));
-                let (cols, rows) = ((w / 8.).ceil() as i32, (h / 8.).ceil() as i32);
-                for r in 0..rows {
-                    for c in 0..cols {
-                        if (r + c) % 2 == 0 {
-                            continue;
-                        }
-                        let o = b.origin + gpui_kit::point(s * c as f32, s * r as f32);
-                        let q = gpui_kit::Bounds::new(o, gpui_kit::size(s, s)).intersect(&b);
-                        window.paint_quad(gpui_kit::fill(q, hsla(sq)));
-                    }
-                }
-            },
-        )
-        .absolute()
-        .inset_0(),
-    )
 }
 
 fn panel_icon(k: CodePanelKey) -> IconName {

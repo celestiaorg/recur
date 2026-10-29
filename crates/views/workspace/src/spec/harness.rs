@@ -127,13 +127,13 @@ pub fn install_prompt_runner(cx: &mut gpui_kit::App) {
                         "chatCode": chat_code,
                     },
                 });
-                let out = recur_bundles::js::run_once(
+                // Blocks so the worker's reply never wakes the test scheduler from its thread.
+                let out = futures::executor::block_on(recur_bundles::js::run_once(
                     "prompt",
                     RAW_PROMPT_BOOT,
                     &msg,
                     std::time::Duration::from_secs(10),
-                )
-                .await;
+                ));
                 let mut r = out.result?;
                 if let Some(o) = r.as_object_mut() {
                     o.remove("ok");

@@ -1,6 +1,6 @@
-//! Recur's in-process coding agent over `POST /v1/responses` (Go
-//! `harness.go`): rounds of model output and tool calls, read-only tools in
-//! parallel, halting tools, steers between rounds.
+//! Recur's in-process coding agent over `POST /v1/responses`: rounds of
+//! model output and tool calls, read-only tools in parallel, halting tools,
+//! steers between rounds.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -19,8 +19,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::client::{Client, ClientError};
 use crate::flags::apply_flags;
-use crate::gojson::valid;
 use crate::history::{harness_history, harness_instructions};
+use crate::sse::valid;
 use crate::tools::{tool_allowed_on_turn, tools_disabled};
 use crate::types::{
     Event, FunctionCall, InputItem, Request, Tool, Usage, assistant_text, function_call_item,

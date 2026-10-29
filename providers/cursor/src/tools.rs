@@ -12,7 +12,6 @@ use serde_json::{Map, Value};
 use recur_agent::display::{FEED_INPUT_LIMIT, ToolDisplay, truncate};
 
 use crate::events::{TOOL_NAME_MCP, tool_call_args};
-use crate::gojson::trim;
 
 /// A Cursor tool name in Recur's vocabulary. Unknown names pass through: a
 /// tool added after this build renders with its raw name and a generic icon.
@@ -134,12 +133,12 @@ pub fn cursor_tool_result_text(name: &str, raw: &str) -> String {
     #[serde(default)]
     struct Envelope {
         // Decoded only so a non-string status fails like Go's typed decode.
-        #[serde(rename = "status", deserialize_with = "crate::gojson::null_default")]
+        #[serde(rename = "status", deserialize_with = "crate::wire::null_default")]
         _status: String,
-        #[serde(deserialize_with = "crate::gojson::raw")]
+        #[serde(deserialize_with = "crate::wire::raw")]
         value: String,
     }
-    let Ok(env) = crate::gojson::decode_struct::<Envelope>(raw) else {
+    let Ok(env) = crate::wire::decode_struct::<Envelope>(raw) else {
         return String::new();
     };
     if env.value.is_empty() {
@@ -194,7 +193,7 @@ pub fn cursor_tool_result_text(name: &str, raw: &str) -> String {
         "createPlan" => String::new(),
         TOOL_NAME_MCP => mcp_result_text(&value_raw),
         // Unknown tool: the raw value rather than dropping the output.
-        _ => truncate(trim(&value_raw), FEED_INPUT_LIMIT),
+        _ => truncate(value_raw.trim(), FEED_INPUT_LIMIT),
     }
 }
 
@@ -210,13 +209,13 @@ fn task_result_text(value: &str) -> String {
     }
     let v: Map<String, Value> = match serde_json::from_str::<Option<Map<String, Value>>>(value) {
         Ok(m) => m.unwrap_or_default(),
-        Err(_) => return truncate(trim(value), FEED_INPUT_LIMIT),
+        Err(_) => return truncate(value.trim(), FEED_INPUT_LIMIT),
     };
     ["text", "result", "output", "message", "content"]
         .iter()
         .filter_map(|k| v.get(*k).and_then(Value::as_str))
         .find(|s| !s.is_empty())
-        .map_or_else(|| truncate(trim(value), FEED_INPUT_LIMIT), str::to_owned)
+        .map_or_else(|| truncate(value.trim(), FEED_INPUT_LIMIT), str::to_owned)
 }
 
 /// Cursor's camelCase "inProgress" → the common "in_progress"; anything else
@@ -267,22 +266,22 @@ fn mcp_result_text(value: &str) -> String {
     #[derive(serde::Deserialize, Default)]
     #[serde(default)]
     struct Inner {
-        #[serde(deserialize_with = "crate::gojson::null_default")]
+        #[serde(deserialize_with = "crate::wire::null_default")]
         text: String,
     }
     #[derive(serde::Deserialize, Default)]
     #[serde(default)]
     struct Item {
-        #[serde(deserialize_with = "crate::gojson::null_default")]
+        #[serde(deserialize_with = "crate::wire::null_default")]
         text: Inner,
     }
     #[derive(serde::Deserialize, Default)]
     #[serde(default)]
     struct V {
-        #[serde(deserialize_with = "crate::gojson::null_default")]
+        #[serde(deserialize_with = "crate::wire::null_default")]
         content: Vec<Option<Item>>,
     }
-    match crate::gojson::decode_struct::<V>(value) {
+    match crate::wire::decode_struct::<V>(value) {
         Ok(v) => v
             .content
             .into_iter()

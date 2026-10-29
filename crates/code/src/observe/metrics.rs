@@ -5,9 +5,9 @@ use std::ops::ControlFlow;
 use recur_domain::path;
 use recur_domain::{DupClone, DupLoc, Hotspot, MetricSnapshot};
 
-use crate::gostr::truncate_fields;
 use crate::langs::is_source_file;
 use crate::scan::scan_lines;
+use crate::text::truncate_fields;
 use crate::walk::{Flow, walk_dir};
 
 /// Consecutive significant lines that form a clone fingerprint.
@@ -322,9 +322,7 @@ fn is_noise_line(norm: &str) -> bool {
         return true;
     }
     // Pure punctuation and braces.
-    !norm
-        .chars()
-        .any(|c| crate::gostr::is_letter(c) || crate::gostr::is_digit(c))
+    !norm.chars().any(|c| c.is_alphanumeric())
 }
 
 fn branch_weight(line: &str) -> i64 {

@@ -6,7 +6,7 @@
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::client::ModelSelection;
-use crate::gojson::{decode_struct, flex_int, go_int, null_default, raw};
+use crate::wire::{decode_struct, flex_int, null_default, raw};
 
 /// One frame. The bridge encodes a oneof, so exactly one field is set.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
@@ -122,9 +122,9 @@ struct Payload {
     status: String,
     #[serde(deserialize_with = "null_default")]
     text: String,
-    #[serde(deserialize_with = "go_int")]
+    #[serde(deserialize_with = "null_default")]
     thinking_duration_ms: i64,
-    #[serde(rename = "thinkingDurationMs", deserialize_with = "go_int")]
+    #[serde(rename = "thinkingDurationMs", deserialize_with = "null_default")]
     thinking_duration_ms2: i64,
     #[serde(deserialize_with = "null_default")]
     call_id: String,

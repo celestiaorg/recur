@@ -15,7 +15,6 @@
 use std::error::Error;
 
 use crate::event::TurnResult;
-use crate::gostr::byte_prefix;
 
 /// Matched case-insensitively against a failure's full text (error + result
 /// subtype + text + stderr tail). Each names a condition expected to clear on
@@ -263,7 +262,7 @@ pub fn first_line(s: &str) -> String {
             continue;
         }
         if ln.len() > MAX {
-            return format!("{}…", byte_prefix(ln, MAX));
+            return format!("{}…", &ln[..ln.floor_char_boundary(MAX)]);
         }
         return ln.to_owned();
     }

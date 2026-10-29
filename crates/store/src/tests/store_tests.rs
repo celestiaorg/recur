@@ -1941,17 +1941,12 @@ fn workspace_update_and_count_group() {
         .unwrap();
     assert_eq!(got.phase, "iteration 3");
     assert!(s1.update_workspace("missing", |_| {}).is_none());
-    let added = s1
-        .add_workspace(Workspace {
-            id: "W-new".into(),
-            agent_codes: Some(vec![]),
-            ..Default::default()
-        })
-        .unwrap();
-    assert!(
-        added.agent_codes.is_none(),
-        "clone turns an empty slice into nil like Go"
-    );
+    s1.add_workspace(Workspace {
+        id: "W-new".into(),
+        agent_codes: Some(vec![]),
+        ..Default::default()
+    })
+    .unwrap();
     s1.add_workspace(Workspace {
         id: "W-new".into(),
         goal: "updated".into(),

@@ -4,8 +4,6 @@
 
 use serde_json::Value;
 
-use crate::gostr::{js_space, js_trim};
-
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ClaudeTaskView {
     pub id: String,
@@ -41,7 +39,7 @@ pub fn is_claude_task_tool(tool: &str) -> bool {
 }
 
 pub fn format_task_id(id: &str) -> String {
-    let t = js_trim(id);
+    let t = id.trim();
     if t.is_empty() {
         return String::new();
     }
@@ -54,7 +52,7 @@ pub fn format_task_id(id: &str) -> String {
 
 /// Chip copy: "in_progress" → "in progress".
 pub fn pretty_task_status(status: &str) -> String {
-    js_trim(&status.replace('_', " ")).to_owned()
+    status.replace('_', " ").trim().to_owned()
 }
 
 /// The `.tc-finding-status` chip variant for a task status.
@@ -69,7 +67,7 @@ pub fn task_status_chip_class(status: &str) -> &str {
 
 fn str_of(v: Option<&Value>) -> String {
     match v {
-        Some(Value::String(s)) => js_trim(s).to_owned(),
+        Some(Value::String(s)) => s.trim().to_owned(),
         _ => String::new(),
     }
 }
@@ -96,7 +94,7 @@ fn collapse(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut space = false;
     for c in s.chars() {
-        if js_space(c) {
+        if c.is_whitespace() {
             space = true;
             continue;
         }
@@ -132,7 +130,7 @@ fn strip_prefix_ci<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
 /// `^Task #(\S+) created successfully` (case-insensitive): the id.
 fn task_created_id(t: &str) -> Option<&str> {
     let rest = strip_prefix_ci(t, "Task #")?;
-    let end = rest.find(js_space).unwrap_or(rest.len());
+    let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
     if end == 0 {
         return None;
     }
@@ -143,7 +141,7 @@ fn task_created_id(t: &str) -> Option<&str> {
 /// The id from a TaskCreate result: "Task #1 created successfully: …" or a
 /// JSON ack.
 pub fn parse_task_create_id(result: &str) -> String {
-    let t = js_trim(result);
+    let t = result.trim();
     if t.is_empty() {
         return String::new();
     }
@@ -187,7 +185,7 @@ fn as_task_view(raw: Option<&Value>) -> Option<ClaudeTaskView> {
 /// `Some(vec![])` is a known empty list; `None` means no known shape
 /// matched (show raw).
 pub fn parse_task_list(result: &str) -> Option<Vec<ClaudeTaskView>> {
-    let t = js_trim(result);
+    let t = result.trim();
     if t.is_empty() || t.eq_ignore_ascii_case("no tasks found") {
         return Some(Vec::new());
     }
@@ -212,34 +210,30 @@ fn is_line_terminator(c: char) -> bool {
     matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}')
 }
 
-/// The start of the maximal JS-whitespace run ending at byte `at`; `None`
+/// The start of the maximal whitespace run ending at byte `at`; `None`
 /// when no whitespace precedes it.
 fn space_run_start(s: &str, at: usize) -> Option<usize> {
     let start = s[..at]
         .char_indices()
         .rev()
-        .take_while(|(_, c)| js_space(*c))
+        .take_while(|(_, c)| c.is_whitespace())
         .last()
         .map(|(i, _)| i)?;
     Some(start)
 }
 
-fn trim_end_js(s: &str) -> &str {
-    s.trim_end_matches(js_space)
-}
-
 /// `^#(\S+)\s+\[([^\]]+)\]\s+(.*)$` on a trimmed line, then the trailing
 /// `[blocked by …]` and `(owner)` suffixes.
 fn parse_task_list_line(line: &str) -> Option<ClaudeTaskView> {
-    let line = js_trim(line);
+    let line = line.trim();
     let rest = line.strip_prefix('#')?;
-    let id_end = rest.find(js_space).unwrap_or(rest.len());
+    let id_end = rest.find(char::is_whitespace).unwrap_or(rest.len());
     if id_end == 0 {
         return None;
     }
     let id = &rest[..id_end];
     let after = &rest[id_end..];
-    let after_ws = after.trim_start_matches(js_space);
+    let after_ws = after.trim_start();
     if after_ws.len() == after.len() {
         return None;
     }
@@ -250,7 +244,7 @@ fn parse_task_list_line(line: &str) -> Option<ClaudeTaskView> {
     }
     let status = &inner[..close];
     let tail = &inner[close + 1..];
-    let tail_ws = tail.trim_start_matches(js_space);
+    let tail_ws = tail.trim_start();
     if tail_ws.len() == tail.len() || tail_ws.contains(is_line_terminator) {
         return None;
     }
@@ -260,15 +254,15 @@ fn parse_task_list_line(line: &str) -> Option<ClaudeTaskView> {
     if let Some((idx, inner)) = blocked_suffix(rest) {
         blocked_by = inner
             .split(',')
-            .map(|s| js_trim(s.strip_prefix('#').unwrap_or(s)).to_owned())
+            .map(|s| s.strip_prefix('#').unwrap_or(s).trim().to_owned())
             .filter(|s| !s.is_empty())
             .collect();
-        rest = trim_end_js(&rest[..idx]);
+        rest = rest[..idx].trim_end();
     }
     let mut owner = String::new();
     if let Some((idx, o)) = owner_suffix(rest) {
         owner = o.to_owned();
-        rest = trim_end_js(&rest[..idx]);
+        rest = rest[..idx].trim_end();
     }
     Some(ClaudeTaskView {
         id: id.to_owned(),
@@ -285,7 +279,7 @@ fn parse_task_list_line(line: &str) -> Option<ClaudeTaskView> {
 /// captured list.
 fn blocked_suffix(s: &str) -> Option<(usize, &str)> {
     const OPEN: &str = "[blocked by ";
-    let body = trim_end_js(s);
+    let body = s.trim_end();
     let inner_end = body.len().checked_sub(1).filter(|_| body.ends_with(']'))?;
     let lower = body.to_ascii_lowercase();
     let mut from = 0;
@@ -305,7 +299,7 @@ fn blocked_suffix(s: &str) -> Option<(usize, &str)> {
 
 /// `\s+\(([\w.-]+)\)\s*$`: match index and the owner.
 fn owner_suffix(s: &str) -> Option<(usize, &str)> {
-    let body = trim_end_js(s);
+    let body = s.trim_end();
     let inner = body.strip_suffix(')')?;
     let open = inner.rfind('(')?;
     let owner = &inner[open + 1..];
@@ -322,7 +316,7 @@ fn owner_suffix(s: &str) -> Option<(usize, &str)> {
 /// A TaskGet result: JSON, or the CLI's multiline ack
 /// (`Task #1: Subject`, `Status:`, `Description:`, `Blocked by:`, `Blocks:`).
 pub fn parse_task_get(result: &str) -> Option<ClaudeTaskView> {
-    let t = js_trim(result);
+    let t = result.trim();
     if t.is_empty() || t.eq_ignore_ascii_case("task not found") {
         return None;
     }
@@ -340,7 +334,7 @@ pub fn parse_task_get(result: &str) -> Option<ClaudeTaskView> {
     let mut i = 1;
     let mut status = "";
     if let Some(s) = lines.get(i).and_then(|l| l.strip_prefix("Status:")) {
-        status = js_trim(s);
+        status = s.trim();
         i += 1;
     }
     let mut description = String::new();
@@ -355,11 +349,11 @@ pub fn parse_task_get(result: &str) -> Option<ClaudeTaskView> {
             description.push_str(lines[i]);
             i += 1;
         }
-        description = js_trim(&description).to_owned();
+        description = description.trim().to_owned();
     }
     let ids = |s: &str| -> Vec<String> {
         s.split(',')
-            .map(|x| js_trim(&x.replace('#', "")).to_owned())
+            .map(|x| x.replace('#', "").trim().to_owned())
             .filter(|x| !x.is_empty())
             .collect()
     };
@@ -374,7 +368,7 @@ pub fn parse_task_get(result: &str) -> Option<ClaudeTaskView> {
     }
     Some(ClaudeTaskView {
         id: id.to_owned(),
-        subject: js_trim(subject).to_owned(),
+        subject: subject.trim().to_owned(),
         description,
         status: if status.is_empty() { "pending" } else { status }.to_owned(),
         owner: String::new(),
@@ -387,9 +381,9 @@ pub fn parse_task_get(result: &str) -> Option<ClaudeTaskView> {
 /// colon (greedy `\S+` backtracks to the final `:`).
 fn task_get_head(line: &str) -> Option<(&str, &str)> {
     let rest = line.strip_prefix("Task #")?;
-    let run_end = rest.find(js_space).unwrap_or(rest.len());
+    let run_end = rest.find(char::is_whitespace).unwrap_or(rest.len());
     let colon = rest[..run_end].rfind(':').filter(|&c| c > 0)?;
-    let subject = rest[colon + 1..].trim_start_matches(js_space);
+    let subject = rest[colon + 1..].trim_start();
     if subject.contains(is_line_terminator) {
         return None;
     }
@@ -482,7 +476,7 @@ pub fn claude_task_has_body(tool: &str, args: &ClaudeTaskArgs, opts: BodyOpts<'_
                         || !g.blocks.is_empty()
                         || !g.blocked_by.is_empty()
                 }
-                None => !js_trim(opts.result).is_empty(),
+                None => !opts.result.trim().is_empty(),
             }
         }
         "TaskList" => true,
@@ -492,7 +486,7 @@ pub fn claude_task_has_body(tool: &str, args: &ClaudeTaskArgs, opts: BodyOpts<'_
 
 /// Provider success acks that only restate the header (hidden).
 pub fn claude_task_result_is_ack(tool: &str, result: &str) -> bool {
-    let t = js_trim(result);
+    let t = result.trim();
     if t.is_empty() {
         return true;
     }

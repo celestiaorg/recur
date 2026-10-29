@@ -8,8 +8,8 @@ use recur_domain::{Check, TestResult};
 use tokio::process::Command;
 use tokio_util::sync::CancellationToken;
 
-use crate::gostr::truncate_fields;
 use crate::rg::look_path;
+use crate::text::truncate_fields;
 
 /// The test, typecheck and lint commands available in `root`, as check rows.
 /// Missing toolchains are skipped, not failed. `cancel` stops every command;

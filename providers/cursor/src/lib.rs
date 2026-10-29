@@ -20,7 +20,6 @@ mod client;
 mod connect;
 mod context;
 mod events;
-mod gojson;
 mod install;
 mod locate;
 mod pool;
@@ -31,6 +30,7 @@ mod status;
 mod steer;
 mod tools;
 mod turn;
+mod wire;
 
 #[cfg(test)]
 mod golden_tests;

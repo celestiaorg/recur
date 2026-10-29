@@ -9,7 +9,7 @@ use crate::locate::clean;
 /// collapsed, edge dashes trimmed): agents are told to look at
 /// `~/.cursor/projects/<slug>/terminals` for prior shell output.
 pub fn cursor_project_slug(workspace: &str) -> String {
-    let workspace = crate::gojson::trim(workspace);
+    let workspace = workspace.trim();
     if workspace.is_empty() {
         return String::new();
     }

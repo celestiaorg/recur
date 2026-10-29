@@ -5,8 +5,8 @@ use recur_domain::{BriefingSnapshot, PresentWorkspaceResult, WorkspaceBrief, Wor
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
+use super::null_default;
 use super::{CHAT_DETAIL_LIMIT, is_list_findings_tool, is_tool, truncate};
-use crate::gostr::null_default;
 
 /// The compact form of a listing tool's result (`list_findings`,
 /// `list_artifacts`, `list_workspace_briefs`, `get_workspace_context`,

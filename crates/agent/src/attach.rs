@@ -9,8 +9,6 @@ use std::collections::HashMap;
 
 use recur_domain::ContentBlock;
 
-use crate::gostr::byte_prefix;
-
 pub const ATTACHMENT_MARKER_PREFIX: &str = "⟦attachment:";
 pub const ATTACHMENT_MARKER_SUFFIX: &str = "⟧";
 
@@ -150,7 +148,7 @@ pub fn sanitize_attachment_id(id: &str) -> String {
         .filter(|c| c.is_alphabetic() || c.is_numeric() || *c == '-' || *c == '_')
         .collect();
     if out.len() > 64 {
-        return byte_prefix(&out, 64).into_owned();
+        return out[..out.floor_char_boundary(64)].to_owned();
     }
     out
 }

@@ -1,9 +1,7 @@
-//! OpenAI Responses SSE parsing and the non-stream JSON fallback (Go
-//! `responses/sse.go`).
+//! OpenAI Responses SSE parsing and the non-stream JSON fallback.
 
 use serde_json::{Map, Value};
 
-use crate::gojson::{Mismatch, array_field, as_struct, int_field, str_field, valid};
 use crate::types::{Event, FunctionCall, Usage};
 
 /// An incremental SSE reader. Unknown event types are ignored and a final
@@ -71,7 +69,7 @@ impl SseParser {
     }
 }
 
-/// Parses a whole SSE body (Go `ParseSSE` over an in-memory reader).
+/// Parses a whole SSE body.
 pub fn parse_sse(body: &[u8], emit: &mut dyn FnMut(Event)) {
     let mut p = SseParser::default();
     p.push(body, emit);
@@ -188,8 +186,8 @@ fn error_field(obj: &Map<String, Value>) -> Result<Option<String>, Mismatch> {
     }
 }
 
-/// The decoded fields of a Responses envelope. Go decodes a `{response: …}`
-/// wrap over the same struct, so a later decode only replaces the keys it
+/// The decoded fields of a Responses envelope. A `{response: …}` wrap decodes
+/// over the same fields, so a later decode only replaces the keys it
 /// carries.
 #[derive(Default)]
 struct Envelope {
@@ -430,6 +428,60 @@ fn parse_usage(raw: Option<&Value>) -> Option<Usage> {
         cache_read_tokens: cache,
         total_tokens: total,
     })
+}
+
+// Strict field decoding: absent or `null` is the zero value and any other
+// type mismatch fails the whole decode.
+
+/// A field whose JSON type does not match: the whole decode fails.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Mismatch;
+
+/// Whether `s` is one complete JSON value.
+pub(crate) fn valid(s: &str) -> bool {
+    serde_json::from_str::<serde::de::IgnoredAny>(s).is_ok()
+}
+
+/// A string field of a struct decode: absent or `null` is "", a non-string
+/// fails.
+pub(crate) fn str_field(obj: &Map<String, Value>, key: &str) -> Result<String, Mismatch> {
+    match obj.get(key) {
+        None | Some(Value::Null) => Ok(String::new()),
+        Some(Value::String(s)) => Ok(s.clone()),
+        Some(_) => Err(Mismatch),
+    }
+}
+
+/// An integer field: absent or `null` is 0; fractions, exponents, overflow and
+/// non-numbers fail.
+pub(crate) fn int_field(obj: &Map<String, Value>, key: &str) -> Result<i64, Mismatch> {
+    match obj.get(key) {
+        None | Some(Value::Null) => Ok(0),
+        Some(Value::Number(n)) => n.as_i64().ok_or(Mismatch),
+        Some(_) => Err(Mismatch),
+    }
+}
+
+/// The object a struct decodes from: `null` decodes as an empty struct, any
+/// other non-object fails.
+pub(crate) fn as_struct(v: &Value) -> Result<Option<&Map<String, Value>>, Mismatch> {
+    match v {
+        Value::Null => Ok(None),
+        Value::Object(m) => Ok(Some(m)),
+        _ => Err(Mismatch),
+    }
+}
+
+/// An array field: absent or `null` is empty, a non-array fails.
+pub(crate) fn array_field<'a>(
+    obj: &'a Map<String, Value>,
+    key: &str,
+) -> Result<&'a [Value], Mismatch> {
+    match obj.get(key) {
+        None | Some(Value::Null) => Ok(&[]),
+        Some(Value::Array(a)) => Ok(a),
+        Some(_) => Err(Mismatch),
+    }
 }
 
 #[cfg(test)]

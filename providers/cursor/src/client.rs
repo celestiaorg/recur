@@ -10,7 +10,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::connect::{Client, Error};
 use crate::events::{MSG_STATUS, RunStreamEvent, STATUS_ERROR, decode_frame, run_status_terminal};
-use crate::gojson::null_default;
+use crate::wire::null_default;
 
 const SVC_AGENT: &str = "sdk.v1.SdkAgentService";
 const SVC_CURSOR: &str = "sdk.v1.SdkCursorService";

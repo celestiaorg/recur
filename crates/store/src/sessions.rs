@@ -17,7 +17,7 @@ use serde_json::to_string as marshal;
 
 use crate::db::{Db, upsert_doc_tx};
 use crate::error::{Error, Result, SqlContext as _, json_err};
-use crate::store::{Store, clone_workspace};
+use crate::store::Store;
 
 fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
@@ -944,7 +944,7 @@ impl Store {
             .filter(|c| c.as_str() != code)
             .cloned()
             .collect();
-        let mut persisted = clone_workspace(&s.workspaces[sort_idx]);
+        let mut persisted = s.workspaces[sort_idx].clone();
         persisted.chat_tab_order = next_order.clone();
         let wrap = |e: Error| match e {
             Error::Sql { context, source } if context.is_empty() => Error::Sql {

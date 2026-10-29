@@ -12,7 +12,6 @@ use tokio_util::sync::CancellationToken;
 
 use crate::fuzzy::score_lower;
 use crate::glob::glob_to_regexp;
-use crate::gostr;
 
 /// Scores `paths` for `query` and returns up to `limit` hits (0 means 50),
 /// best first: score descending, then path ascending. An empty query returns
@@ -195,16 +194,16 @@ fn camel_hump_match(text: &str, q: &str) -> bool {
     let mut humps: Vec<String> = Vec::new();
     let mut cur = String::new();
     for (i, r) in text.chars().enumerate() {
-        if i > 0 && (gostr::is_upper(r) || (matches!(r, '_' | '-' | '.') && !cur.is_empty())) {
+        if i > 0 && (r.is_uppercase() || (matches!(r, '_' | '-' | '.') && !cur.is_empty())) {
             if !cur.is_empty() {
                 humps.push(std::mem::take(&mut cur));
             }
-            if gostr::is_letter(r) || gostr::is_digit(r) {
+            if r.is_alphanumeric() {
                 cur.push(r);
             }
             continue;
         }
-        if gostr::is_letter(r) || gostr::is_digit(r) {
+        if r.is_alphanumeric() {
             cur.push(r);
         }
     }

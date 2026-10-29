@@ -4,8 +4,6 @@
 use recur_domain::ChatItem;
 use serde_json::Value;
 
-use crate::gostr::js_trim;
-
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Todo {
     pub content: String,
@@ -33,7 +31,7 @@ pub fn parse_todos(input: &str) -> Vec<Todo> {
                 _ => "pending".to_owned(),
             },
         })
-        .filter(|t| !js_trim(&t.content).is_empty())
+        .filter(|t| !t.content.trim().is_empty())
         .collect()
 }
 

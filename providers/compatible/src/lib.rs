@@ -10,7 +10,6 @@ pub mod catalog;
 mod chatgpt;
 pub mod client;
 pub mod flags;
-mod gojson;
 mod harness;
 pub mod history;
 pub mod prompt;

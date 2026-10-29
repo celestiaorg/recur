@@ -9,7 +9,7 @@ use crate::PANE_EMBEDS;
 const VIEW_CORE: &str = "recur-view-core";
 const WIDGETS: &str = "recur-view-widgets";
 const GPUI: &[&str] = &["gpui", "gpui-kit", "gpui-pre", "gpui-fast"];
-/// The persisted provider, forge and tracker ids (`docs/engine-port-plan.md` section 2).
+/// The persisted provider, forge and tracker ids (`docs/ARCHITECTURE.md`).
 const IDS: &[&str] = &[
     "claude-code",
     "codex",

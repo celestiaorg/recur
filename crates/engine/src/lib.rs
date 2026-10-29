@@ -1,14 +1,12 @@
 //! Orchestration: chats, loops, walker, governor, maestro, schedules, workspace lifecycle,
 //! event bus, recovery.
 //!
-//! Port of Go `internal/engine`, built slice by slice (`docs/engine-port-plan.md`).
-//! E1 (engine core) provides the [`Engine`] and its shared state, the typed
-//! [`bus`], the [`governor`], the chat concurrency kernel ([`chatlife`]), the
-//! loop control plane ([`loop_handle`], [`loop_registry`]), attention and the
-//! chat inbox, workspace lifecycle ([`workspace`]), the worktree watcher
-//! ([`fswatch`]), roles and guards, and the E1 [`host`] methods. Later
-//! slices add the turn pipeline (E2), loops (E3), chat and coordination (E4)
-//! and pull requests with PR chat hosts ([`prs`], [`hoist`], E5).
+//! The [`Engine`] and its shared state, the typed [`bus`], the [`governor`],
+//! the chat concurrency kernel ([`chatlife`]), the loop control plane
+//! ([`loop_handle`], [`loop_registry`]), attention and the chat inbox,
+//! workspace lifecycle ([`workspace`]), the worktree watcher ([`fswatch`]),
+//! roles and guards, the [`host`] methods, the turn pipeline, loops, chat and
+//! coordination, and pull requests with PR chat hosts ([`prs`], [`hoist`]).
 
 pub mod app_chat;
 pub mod artifacts;

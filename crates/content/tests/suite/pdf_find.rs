@@ -6,7 +6,7 @@ use std::sync::Arc;
 use gpui::{TestAppContext, VisualTestContext};
 use recur_content::PdfPreview;
 
-const PDF: &[u8] = include_bytes!("../../ui/gallery/content/page.pdf");
+const PDF: &[u8] = include_bytes!("../../../ui/gallery/content/page.pdf");
 
 fn type_find(cx: &mut VisualTestContext, q: &str) {
     cx.simulate_keystrokes("secondary-a backspace");

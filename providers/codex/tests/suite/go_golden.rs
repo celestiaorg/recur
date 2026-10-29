@@ -120,7 +120,7 @@ struct Golden {
 }
 
 fn golden() -> Golden {
-    serde_json::from_str(include_str!("golden/go_codex.json")).unwrap()
+    serde_json::from_str(include_str!("../golden/go_codex.json")).unwrap()
 }
 
 /// Go `codex.MCPServer` encodes with its field names.
@@ -578,7 +578,7 @@ struct LoginRow {
 
 #[test]
 fn catalog_matches_go() {
-    let app: App = serde_json::from_str(include_str!("golden/go_codex_app.json")).unwrap();
+    let app: App = serde_json::from_str(include_str!("../golden/go_codex_app.json")).unwrap();
     let mut models = app.models;
     strip_nulls(&mut models);
     let models: Vec<Model> = serde_json::from_value(models).unwrap();

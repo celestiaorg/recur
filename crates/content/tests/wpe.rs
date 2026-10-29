@@ -1,13 +1,24 @@
 //! The HTML preview's WPE WebKit page (`html_wpe`), built when pkg-config finds WPE 2.54
 //! (build/linux/wpe.Dockerfile). Needs no display. `WPE_NETWORK=0` skips the https iframe.
 
-#[cfg(not(recur_wpe))]
 fn main() {
+    // nextest lists a custom harness's tests first; this binary is the one test `wpe`.
+    if std::env::args().any(|a| a == "--list") {
+        if !std::env::args().any(|a| a == "--ignored") {
+            println!("wpe: test");
+        }
+        return;
+    }
+    run();
+}
+
+#[cfg(not(recur_wpe))]
+fn run() {
     println!("wpe: skipped (built without WPE WebKit 2.54)");
 }
 
 #[cfg(recur_wpe)]
-fn main() {
+fn run() {
     page::trusted_input();
     page::ime();
     page::hover_and_select();

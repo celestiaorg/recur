@@ -10,7 +10,7 @@ use serde::de::DeserializeOwned;
 type Fixture = BTreeMap<String, BTreeMap<String, String>>;
 
 fn fixture() -> Fixture {
-    serde_json::from_str(include_str!("fixtures/go_types.json")).expect("fixture parses")
+    serde_json::from_str(include_str!("../fixtures/go_types.json")).expect("fixture parses")
 }
 
 fn check<T: DeserializeOwned>(fx: &Fixture, go_name: &str) {

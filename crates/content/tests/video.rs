@@ -47,6 +47,13 @@ fn center(f: &Frame) -> (u8, u8, u8) {
 }
 
 fn main() {
+    // nextest lists a custom harness's tests first; this binary is the one test `video`.
+    if std::env::args().any(|a| a == "--list") {
+        if !std::env::args().any(|a| a == "--ignored") {
+            println!("video: test");
+        }
+        return;
+    }
     for clip in CLIPS {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures")

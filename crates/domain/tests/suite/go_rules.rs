@@ -141,7 +141,7 @@ const DST_DIVERGENCES: &[[&str; 4]] = &[
 ];
 
 fn rules() -> Rules {
-    serde_json::from_str(include_str!("fixtures/go_rules.json")).unwrap()
+    serde_json::from_str(include_str!("../fixtures/go_rules.json")).unwrap()
 }
 
 #[test]

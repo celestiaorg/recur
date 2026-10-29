@@ -101,7 +101,7 @@ fn normalize(ev: &AgentEvent) -> Value {
 
 #[test]
 fn parser_matches_go() {
-    let rows: Vec<Row> = serde_json::from_str(include_str!("golden/go_stream.json")).unwrap();
+    let rows: Vec<Row> = serde_json::from_str(include_str!("../golden/go_stream.json")).unwrap();
     assert!(rows.len() > 100, "corpus has {} lines", rows.len());
     let mut bad = Vec::new();
     for row in rows {

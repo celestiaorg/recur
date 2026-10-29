@@ -152,7 +152,7 @@ Live smoke (optional):
 
 ```sh
 RECUR_CODEX_E2E=1 RECUR_CODEX=/path/to/native/codex \
-  cargo test -p recur-provider-codex --test runner -- codex_e2e_smoke
+  cargo test -p recur-provider-codex --test suite -- codex_e2e_smoke
 ```
 
 Automated checks: `mise run check`.

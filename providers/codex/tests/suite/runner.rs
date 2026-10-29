@@ -418,7 +418,7 @@ while next; do :; done
 /// Live app-server smoke. Needs a native binary and auth:
 ///
 /// ```text
-/// RECUR_CODEX_E2E=1 RECUR_CODEX=/path/to/codex cargo test -p recur-provider-codex --test runner -- codex_e2e_smoke
+/// RECUR_CODEX_E2E=1 RECUR_CODEX=/path/to/codex cargo test -p recur-provider-codex --test suite -- codex_e2e_smoke
 /// ```
 #[tokio::test]
 async fn codex_e2e_smoke() {

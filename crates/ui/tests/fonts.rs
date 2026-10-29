@@ -6,6 +6,13 @@ use recur_ui::fonts::{FACES, Family};
 use std::sync::Arc;
 
 fn main() {
+    // nextest lists a custom harness's tests first; this binary is the one test `fonts`.
+    if std::env::args().any(|a| a == "--list") {
+        if !std::env::args().any(|a| a == "--ignored") {
+            println!("fonts: test");
+        }
+        return;
+    }
     let cx = HeadlessAppContext::with_platform(
         gpui_kit::platform::current_platform(true).text_system(),
         Arc::new(()),

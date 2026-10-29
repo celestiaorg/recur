@@ -49,7 +49,7 @@ CI: `.github/workflows/ci.yml` runs `sanity` first (fmt and the layering check, 
 |------|------|
 | `mise run check` | Gate before merging: `lint`, `test`, `lint:bundles`, `test:bundles` |
 | `mise run lint` | `cargo fmt --check`, clippy (`-D warnings`), the layering check |
-| `mise run test` | `cargo test --workspace` |
+| `mise run test` | `cargo nextest run --workspace`, then the doctests |
 | `mise run lint:bundles` | Schema, TS compile, shebang, keyEquivalent collisions (Rust `recur-cli`) |
 | `mise run test:bundles` | Shipped bundle engine tests under `./bundles` |
 | `mise run check:cursor-sdk-pin` | Network: fail if PyPI `cursor-sdk` is ahead of `PINNED_SDK_VERSION` |
@@ -73,6 +73,7 @@ Expectations:
 
 - Before merging non-trivial changes, `mise run check` should be green.
 - Add or update tests for the code you change.
+- Integration tests go in a module under the crate's `tests/suite/` (one test binary per crate, since each binary relinks the dependency tree). Only tests that need their own process, `harness = false` or different features get their own file.
 - Bundle changes: keep `lint:bundles` clean (errors fail; shared keyEquivalents may log info).
 - After store seed / domain shape changes: regenerate the mock seed with `cargo run -p recur-store --bin seeddump > crates/services/src/mock/seed.json`.
 

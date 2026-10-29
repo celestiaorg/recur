@@ -3,7 +3,7 @@
 //! and the host calls. Edit the fixture by hand when the behavior changes on
 //! purpose.
 
-mod common;
+use crate::common;
 
 use std::sync::{Arc, Mutex};
 
@@ -543,7 +543,7 @@ const GO_ONLY_ARGS: &[&str] = &[
 
 #[tokio::test]
 async fn host_tools_match_go() {
-    let cases: Vec<Case> = serde_json::from_str(include_str!("golden/host_calls.json")).unwrap();
+    let cases: Vec<Case> = serde_json::from_str(include_str!("../golden/host_calls.json")).unwrap();
     let tools = host_tools();
     let mut failures = Vec::new();
     for c in cases

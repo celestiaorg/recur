@@ -1,6 +1,7 @@
 use crate::json::{Shape, Ty, field, strict_unmarshal};
-use crate::path::{dir, mkdir_all, resolve_path, write_file};
+use crate::path::{mkdir_all, resolve_path, write_file};
 use crate::tool::{Call, Tool, ToolError};
+use recur_domain::path::dir;
 
 const SCHEMA: &str = r#"{"type":"object","properties":{"file_path":{"type":"string"},"content":{"type":"string"}},"required":["file_path","content"]}"#;
 

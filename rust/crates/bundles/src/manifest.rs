@@ -5,10 +5,11 @@
 use std::sync::LazyLock;
 use std::time::Duration;
 
+use recur_domain::path;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::go::{self, quote};
+use crate::go;
 use crate::grammar::{
     Grammar, TerminalTheme, Theme, parse_grammars, parse_terminal_themes, parse_themes,
 };
@@ -90,7 +91,7 @@ pub(crate) fn valid_bundle_id(s: &str) -> bool {
     if s.contains("..") || s.contains('/') || s.contains('\\') {
         return false;
     }
-    if go::base(s) != s {
+    if path::base(s) != s {
         return false;
     }
     SAFE_ID_CHARS.is_match(s)
@@ -456,7 +457,7 @@ pub fn parse_manifest_full(bundle_dir: &str, data: &[u8]) -> Result<ParsedBundle
         return Err(err!("bundle.toml: [bundle].id is not a safe id"));
     }
     if fm.bundle.name.trim().is_empty() {
-        fm.bundle.name = go::base(bundle_dir);
+        fm.bundle.name = path::base(bundle_dir);
     }
     let meta = fm.bundle;
     let mut commands = Vec::with_capacity(fm.commands.len());
@@ -510,7 +511,7 @@ fn parse_command(
     if !valid_bundle_id(&c.id) {
         return Err(err!("command[{i}]: id is not a safe id"));
     }
-    let id = quote(&c.id);
+    let id = format!("{:?}", c.id);
     if c.name.trim().is_empty() {
         return Err(err!("command {id}: name is required"));
     }
@@ -522,14 +523,14 @@ fn parse_command(
     }
     if !valid_input_kind(&c.input) {
         return Err(err!(
-            "command {id}: unknown input {} (use none|selection|document|line|word)",
-            quote(&c.input)
+            "command {id}: unknown input {:?} (use none|selection|document|line|word)",
+            c.input
         ));
     }
     if !c.fallback_input.is_empty() && !valid_input_kind(&c.fallback_input) {
         return Err(err!(
-            "command {id}: unknown fallbackInput {} (use none|selection|document|line|word)",
-            quote(&c.fallback_input)
+            "command {id}: unknown fallbackInput {:?} (use none|selection|document|line|word)",
+            c.fallback_input
         ));
     }
     if c.output.is_empty() {
@@ -542,12 +543,12 @@ fn parse_command(
     match c.interpreter.as_str() {
         INTERPRETER_NATIVE | "js" => {
             return Err(err!(
-                "command {id}: interpreter {} is not valid (use typescript or shebang)",
-                quote(&c.interpreter)
+                "command {id}: interpreter {:?} is not valid (use typescript or shebang)",
+                c.interpreter
             ));
         }
         INTERPRETER_SHEBANG | INTERPRETER_TYPESCRIPT => {}
-        other => return Err(err!("command {id}: unknown interpreter {}", quote(other))),
+        other => return Err(err!("command {id}: unknown interpreter {:?}", other)),
     }
     if c.triggers.is_empty() {
         c.triggers = vec![TRIGGER_PALETTE.to_string()];
@@ -555,8 +556,8 @@ fn parse_command(
     for tr in &c.triggers {
         if !valid_trigger(tr) {
             return Err(err!(
-                "command {id}: unknown trigger {} (use palette|willSave)",
-                quote(tr)
+                "command {id}: unknown trigger {:?} (use palette|willSave)",
+                tr
             ));
         }
     }
@@ -566,9 +567,9 @@ fn parse_command(
         return Err(err!("command {id}: set body or script, not both"));
     }
     if !script.is_empty() {
-        let p = go::join(&[bundle_dir, &script]);
-        let b = go::read_file_string(&p)
-            .map_err(|e| err!("command {id}: read script {}: {e}", quote(&script)))?;
+        let p = path::join(&[bundle_dir, &script]);
+        let b = std::fs::read_to_string(&p)
+            .map_err(|e| err!("command {id}: read script {:?}: {e}", script))?;
         c.body = b;
         c.script_path = p;
         c.script = script;
@@ -594,24 +595,21 @@ fn parse_language_servers(
             return Err(err!("languageServer[{i}]: id is required"));
         }
         if !valid_bundle_id(&id) {
-            return Err(err!(
-                "languageServer[{i}]: id {} is not a safe id",
-                quote(&id)
-            ));
+            return Err(err!("languageServer[{i}]: id {:?} is not a safe id", id));
         }
         if s.command.trim().is_empty() {
-            return Err(err!("languageServer {}: command is required", quote(&id)));
+            return Err(err!("languageServer {:?}: command is required", id));
         }
         let langs: Vec<String> = s
             .languages
             .iter()
-            .map(|l| go::to_lower(l.trim()))
+            .map(|l| l.trim().to_lowercase())
             .filter(|l| !l.is_empty())
             .collect();
         if langs.is_empty() {
             return Err(err!(
-                "languageServer {}: languages must list at least one language id",
-                quote(&id)
+                "languageServer {:?}: languages must list at least one language id",
+                id
             ));
         }
         s.id = id;
@@ -639,7 +637,7 @@ fn parse_prompt_actions(
         if !valid_bundle_id(&p.id) {
             return Err(err!("prompt[{i}]: id is not a safe id"));
         }
-        let id = quote(&p.id);
+        let id = format!("{:?}", p.id);
         if p.name.trim().is_empty() {
             return Err(err!("prompt {id}: name is required"));
         }
@@ -649,8 +647,8 @@ fn parse_prompt_actions(
         }
         if !PROMPT_SLASH_RE.is_match(&slash) {
             return Err(err!(
-                "prompt {id}: slash {} must match {PROMPT_SLASH_PATTERN}",
-                quote(&slash)
+                "prompt {id}: slash {:?} must match {PROMPT_SLASH_PATTERN}",
+                slash
             ));
         }
         p.slash = slash;
@@ -658,32 +656,29 @@ fn parse_prompt_actions(
         let loop_id = p.loop_id.trim().to_string();
         if !loop_id.is_empty() {
             if !valid_bundle_id(&loop_id) {
-                return Err(err!(
-                    "prompt {id}: loop {} is not a safe id",
-                    quote(&loop_id)
-                ));
+                return Err(err!("prompt {id}: loop {:?} is not a safe id", loop_id));
             }
             if mode.is_empty() {
                 mode = PROMPT_MODE_LOOP.to_string();
             } else if mode != PROMPT_MODE_LOOP {
                 return Err(err!(
-                    "prompt {id}: loop requires mode {}",
-                    quote(PROMPT_MODE_LOOP)
+                    "prompt {id}: loop requires mode {:?}",
+                    PROMPT_MODE_LOOP
                 ));
             }
         }
         if !mode.is_empty() && !valid_prompt_mode(&mode) {
             return Err(err!(
-                "prompt {id}: unknown mode {} (use ask|plan|agent|review|loop, or omit)",
-                quote(&mode)
+                "prompt {id}: unknown mode {:?} (use ask|plan|agent|review|loop, or omit)",
+                mode
             ));
         }
         p.mode = mode;
         p.loop_id = loop_id;
         if p.fresh_session && p.mode == PROMPT_MODE_LOOP {
             return Err(err!(
-                "prompt {id}: fresh_session is not valid with mode {}",
-                quote(PROMPT_MODE_LOOP)
+                "prompt {id}: fresh_session is not valid with mode {:?}",
+                PROMPT_MODE_LOOP
             ));
         }
         let tab_group = p.tab_group.trim().to_string();
@@ -693,8 +688,8 @@ fn parse_prompt_actions(
             }
             if !PROMPT_SLASH_RE.is_match(&tab_group) {
                 return Err(err!(
-                    "prompt {id}: tab_group {} must match {PROMPT_SLASH_PATTERN}",
-                    quote(&tab_group)
+                    "prompt {id}: tab_group {:?} must match {PROMPT_SLASH_PATTERN}",
+                    tab_group
                 ));
             }
         }
@@ -710,12 +705,12 @@ fn parse_prompt_actions(
         match p.interpreter.as_str() {
             INTERPRETER_NATIVE | "js" => {
                 return Err(err!(
-                    "prompt {id}: interpreter {} is not valid (use typescript or shebang)",
-                    quote(&p.interpreter)
+                    "prompt {id}: interpreter {:?} is not valid (use typescript or shebang)",
+                    p.interpreter
                 ));
             }
             INTERPRETER_SHEBANG | INTERPRETER_TYPESCRIPT => {}
-            other => return Err(err!("prompt {id}: unknown interpreter {}", quote(other))),
+            other => return Err(err!("prompt {id}: unknown interpreter {:?}", other)),
         }
         let body = p.body.trim().to_string();
         let script = p.script.trim().to_string();
@@ -726,9 +721,9 @@ fn parse_prompt_actions(
             return Err(err!("prompt {id}: body or script is required"));
         }
         if !script.is_empty() {
-            let path = go::join(&[bundle_dir, &script]);
-            let b = go::read_file_string(&path)
-                .map_err(|e| err!("prompt {id}: read script {}: {e}", quote(&script)))?;
+            let path = path::join(&[bundle_dir, &script]);
+            let b = std::fs::read_to_string(&path)
+                .map_err(|e| err!("prompt {id}: read script {:?}: {e}", script))?;
             p.body = b;
             p.script_path = path;
             p.script = script;
@@ -767,7 +762,7 @@ fn parse_search_actions(
         if !valid_bundle_id(&s.id) {
             return Err(err!("search[{i}]: id is not a safe id"));
         }
-        let id = quote(&s.id);
+        let id = format!("{:?}", s.id);
         if s.name.trim().is_empty() {
             return Err(err!("search {id}: name is required"));
         }
@@ -810,7 +805,7 @@ fn parse_expand_actions(
         if !valid_bundle_id(&e.id) {
             return Err(err!("expand[{i}]: id is not a safe id"));
         }
-        let id = quote(&e.id);
+        let id = format!("{:?}", e.id);
         if e.name.trim().is_empty() {
             return Err(err!("expand {id}: name is required"));
         }
@@ -851,7 +846,7 @@ fn require_shebang_script(
     script_path: &mut String,
     bundle_dir: &str,
 ) -> Result<(), Error> {
-    let id = quote(id);
+    let id = format!("{id:?}");
     let mut interp = interpreter.trim().to_string();
     if interp.is_empty() {
         interp = INTERPRETER_SHEBANG.to_string();
@@ -869,9 +864,9 @@ fn require_shebang_script(
         return Err(err!("{kind} {id}: body or script is required"));
     }
     if !sc.is_empty() {
-        let path = go::join(&[bundle_dir, &sc]);
-        let raw = go::read_file_string(&path)
-            .map_err(|e| err!("{kind} {id}: read script {}: {e}", quote(&sc)))?;
+        let path = path::join(&[bundle_dir, &sc]);
+        let raw = std::fs::read_to_string(&path)
+            .map_err(|e| err!("{kind} {id}: read script {:?}: {e}", sc))?;
         *body = raw;
         *script_path = path;
         *script = sc;
@@ -886,7 +881,7 @@ fn require_shebang_script(
 pub(crate) fn kebab_from_name(name: &str) -> String {
     let mut b = String::new();
     let mut prev_hyphen = false;
-    for r in go::to_lower(name.trim()).chars() {
+    for r in name.trim().to_lowercase().chars() {
         if r.is_ascii_lowercase() || r.is_ascii_digit() {
             b.push(r);
             prev_hyphen = false;
@@ -901,29 +896,26 @@ pub(crate) fn kebab_from_name(name: &str) -> String {
 }
 
 fn normalize_prompt_args(p: &mut PromptAction) -> Result<(), Error> {
-    let id = quote(&p.id);
+    let id = format!("{:?}", p.id);
     let mut out: Vec<PromptArgSpec> = Vec::with_capacity(p.args.len());
     let mut seen = std::collections::HashSet::new();
     for (i, a) in p.args.iter().enumerate() {
-        let name = go::to_lower(a.name.trim());
+        let name = a.name.trim().to_lowercase();
         if name.is_empty() {
             return Err(err!("prompt {id}: arg[{i}]: name is required"));
         }
         if !PROMPT_ARG_NAME_RE.is_match(&name) {
             return Err(err!(
-                "prompt {id}: arg {} must match {PROMPT_ARG_NAME_PATTERN}",
-                quote(&a.name)
+                "prompt {id}: arg {:?} must match {PROMPT_ARG_NAME_PATTERN}",
+                a.name
             ));
         }
         if !seen.insert(name.clone()) {
-            return Err(err!("prompt {id}: duplicate arg {}", quote(&name)));
+            return Err(err!("prompt {id}: duplicate arg {:?}", name));
         }
         let ph = a.placeholder.trim().to_string();
         if ph.chars().count() > 200 {
-            return Err(err!(
-                "prompt {id}: arg {} placeholder is too long",
-                quote(&name)
-            ));
+            return Err(err!("prompt {id}: arg {:?} placeholder is too long", name));
         }
         out.push(PromptArgSpec {
             name,
@@ -959,15 +951,15 @@ fn resolve_prompt_complete(p: &mut PromptAction, bundle_dir: &str) -> Result<(),
     if rel.is_empty() {
         return Ok(());
     }
-    let id = quote(&p.id);
+    let id = format!("{:?}", p.id);
     if !p.takes_args {
         return Err(err!("prompt {id}: complete requires takesArgs"));
     }
-    let path = go::join(&[bundle_dir, &rel]);
-    let b = go::read_file_string(&path)
-        .map_err(|e| err!("prompt {id}: read complete {}: {e}", quote(&rel)))?;
+    let path = path::join(&[bundle_dir, &rel]);
+    let b = std::fs::read_to_string(&path)
+        .map_err(|e| err!("prompt {id}: read complete {:?}: {e}", rel))?;
     if b.trim().is_empty() {
-        return Err(err!("prompt {id}: complete {} is empty", quote(&rel)));
+        return Err(err!("prompt {id}: complete {:?} is empty", rel));
     }
     p.complete_body = b;
     p.complete_path = path;
@@ -998,24 +990,24 @@ pub(crate) fn resolve_pack_icon(
     if rel.is_empty() {
         return Ok(String::new());
     }
-    let id = quote(id);
-    if go::to_lower(go::ext(rel)) != ".svg" {
+    let id = format!("{id:?}");
+    if path::ext(rel).to_lowercase() != ".svg" {
         return Err(err!("{kind} {id}: icon must be a .svg"));
     }
-    let path = go::join(&[bundle_dir, rel]);
-    let b = go::read_file(&path).map_err(|e| err!("{kind} {id}: read icon {}: {e}", quote(rel)))?;
+    let path = path::join(&[bundle_dir, rel]);
+    let b = std::fs::read(&path).map_err(|e| err!("{kind} {id}: read icon {:?}: {e}", rel))?;
     if b.len() > PROMPT_ICON_MAX_BYTES {
         return Err(err!(
             "{kind} {id}: icon is larger than {PROMPT_ICON_MAX_BYTES} bytes"
         ));
     }
     sanitize_prompt_icon_svg(&String::from_utf8_lossy(&b))
-        .map_err(|e| err!("{kind} {id}: icon {}: {e}", quote(rel)))
+        .map_err(|e| err!("{kind} {id}: icon {:?}: {e}", rel))
 }
 
 fn sanitize_prompt_icon_svg(raw: &str) -> Result<String, &'static str> {
     let s = raw.trim();
-    let low = go::to_lower(s);
+    let low = s.to_lowercase();
     if !low.contains("<svg") {
         return Err("not an svg");
     }
@@ -1029,7 +1021,7 @@ fn sanitize_prompt_icon_svg(raw: &str) -> Result<String, &'static str> {
 }
 
 fn complete_interpreter_for(rel: &str) -> &'static str {
-    match go::to_lower(go::ext(rel)).as_str() {
+    match path::ext(rel).to_lowercase().as_str() {
         ".ts" | ".mts" | ".js" | ".mjs" => INTERPRETER_TYPESCRIPT,
         _ => INTERPRETER_SHEBANG,
     }
@@ -1074,7 +1066,7 @@ pub fn validate_output(s: &str) -> Result<(), Error> {
         "showAsHTML" => Err(err!(
             "output showAsHTML was removed — use newDocument with language + openInPreview"
         )),
-        other => Err(err!("unknown output {}", quote(other))),
+        other => Err(err!("unknown output {:?}", other)),
     }
 }
 

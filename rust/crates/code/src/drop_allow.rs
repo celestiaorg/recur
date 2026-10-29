@@ -12,8 +12,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::sync::LazyLock;
 
 use parking_lot::Mutex;
-
-use crate::gopath;
+use recur_domain::path;
 
 const MAX_EXTERNAL_ALLOWED_DEFAULT: usize = 512;
 
@@ -81,13 +80,13 @@ pub(crate) fn set_max_external_allowed(n: usize) {
 }
 
 pub(crate) fn external_path_allowed(abs: &str) -> bool {
-    STATE.lock().allowed.contains(&gopath::clean(abs))
+    STATE.lock().allowed.contains(&path::clean(abs))
 }
 
 impl State {
     fn remember(&mut self, abs: &str) -> bool {
-        let clean = gopath::clean(abs.trim());
-        if clean.is_empty() || !gopath::is_abs(&clean) || self.allowed.contains(&clean) {
+        let clean = path::clean(abs.trim());
+        if clean.is_empty() || !path::is_abs(&clean) || self.allowed.contains(&clean) {
             return false;
         }
         if self.allowed.len() >= self.max && !self.order.is_empty() {

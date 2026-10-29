@@ -242,7 +242,7 @@
     "chat": "PA2",
     "args": "{\"file\":\"a.go\",\"severity\":\"fatal\\u0000é​\\t\\\"q\\\"\",\"message\":\"x\"}",
     "result": "",
-    "error": "report_finding: severity must be one of info/low/medium/high/critical, got \"fatal\\x00é\\u200b\\t\\\"q\\\"\"",
+    "error": "report_finding: severity must be one of info/low/medium/high/critical, got \"fatal\\0é\\u{200b}\\t\\\"q\\\"\"",
     "isError": true,
     "calls": []
   },

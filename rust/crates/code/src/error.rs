@@ -1,7 +1,5 @@
 use std::io;
 
-use crate::gopath::errno_text;
-
 /// Errors from worktree file access. `Display` is the Go error string, which
 /// the UI sniffs for `not found: <rel>` and `worktree is not a directory`.
 #[derive(Debug, thiserror::Error)]
@@ -20,13 +18,8 @@ pub enum Error {
     /// Go `context.DeadlineExceeded`.
     #[error("context deadline exceeded")]
     DeadlineExceeded,
-    /// Go `*os.PathError`: `op path: errno`.
-    #[error("{op} {path}: {}", errno_text(.source))]
-    Path {
-        op: &'static str,
-        path: String,
-        source: io::Error,
-    },
+    #[error("{path}: {source}")]
+    Path { path: String, source: io::Error },
     #[error(transparent)]
     Git(#[from] recur_git::Error),
     #[error("{0}")]
@@ -38,12 +31,15 @@ impl Error {
         Self::Msg(s.into())
     }
 
-    pub(crate) fn path(op: &'static str, path: &str, source: io::Error) -> Self {
+    pub(crate) fn path(path: &str, source: io::Error) -> Self {
         Self::Path {
-            op,
             path: path.to_string(),
             source,
         }
+    }
+
+    pub(crate) fn mkdir_all(path: &str) -> Result<()> {
+        std::fs::create_dir_all(path).map_err(|e| Self::path(path, e))
     }
 
     /// Go `os.IsNotExist`.

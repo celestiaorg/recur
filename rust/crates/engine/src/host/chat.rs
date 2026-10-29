@@ -54,7 +54,7 @@ impl Engine {
         let worktree = self.skill_worktree(workspace_id)?;
         let cancel = deadline_token(SKILL_ACTIVATE_TIMEOUT);
         let sk = recur_code::skill_by_name(&cancel, &worktree, name).map_err(host_err)?;
-        let q = recur_bundles::go::quote(name);
+        let q = format!("{name:?}");
         let Some(sk) = sk.filter(|s| !s.path.is_empty()) else {
             return Err(HostError(format!(
                 "unknown skill {q} — call list_skills for names"
@@ -121,8 +121,8 @@ impl Engine {
         );
         let Some(info) = hits.first() else {
             return Err(HostError(format!(
-                "terminal {} not found — call list_terminals",
-                recur_bundles::go::quote(id)
+                "terminal {:?} not found — call list_terminals",
+                id
             )));
         };
         if id.is_empty() && hits.len() > 1 {

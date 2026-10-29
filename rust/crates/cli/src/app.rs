@@ -4,9 +4,10 @@
 use recur_bundles::{
     Report, RunCtx, format_lint_report, format_report, lint_bundles, run_bundle_tests,
 };
+use recur_domain::path;
 
 use crate::Io;
-use crate::cobra::{Action, ArgsRule, CliError, Cmd, CmdId, Cobra, FlagKind, go_quote};
+use crate::cobra::{Action, ArgsRule, CliError, Cmd, CmdId, Cobra, FlagKind};
 use crate::color::{Stream, want_color};
 use crate::{completion, config, create, open, paths, resolve};
 
@@ -122,9 +123,9 @@ pub fn run(cobra: &mut Cobra, c: CmdId, io: &mut Io) -> Result<(), CliError> {
             };
             if !looks_like_open_path(first) {
                 return Err(CliError::Msg(format!(
-                    "unknown command {} for {}",
-                    go_quote(first),
-                    go_quote(&cobra.command_path(c))
+                    "unknown command {:?} for {:?}",
+                    first,
+                    cobra.command_path(c)
                 )));
             }
             if args.len() > 1 {
@@ -172,7 +173,7 @@ pub fn looks_like_open_path(s: &str) -> bool {
     if s.contains('/') || s.contains('\\') {
         return true;
     }
-    std::fs::metadata(s).is_ok() || std::fs::metadata(recur_bundles::go::clean(s)).is_ok()
+    std::fs::metadata(s).is_ok() || std::fs::metadata(path::clean(s)).is_ok()
 }
 
 /// The `--bundles-dir` value when it was set on the command line.
@@ -199,13 +200,13 @@ fn temp_cache(prefix: &str) -> Result<tempfile::TempDir, CliError> {
     tempfile::Builder::new()
         .prefix(prefix)
         .tempdir()
-        .map_err(|e| CliError::Exit(2, Some(recur_bundles::go::errno_text(&e))))
+        .map_err(|e| CliError::Exit(2, Some(e.to_string())))
 }
 
 fn bundles_test(cobra: &Cobra, args: &[String], io: &mut Io) -> Result<(), CliError> {
     let dirs = targets(cobra, args)?;
     let cache = temp_cache("recur-bundle-test-cache-")?;
-    let cache_dir = recur_bundles::go::path_str(cache.path());
+    let cache_dir = cache.path().to_string_lossy().into_owned();
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -232,7 +233,7 @@ fn bundles_test(cobra: &Cobra, args: &[String], io: &mut Io) -> Result<(), CliEr
 fn bundles_lint(cobra: &Cobra, args: &[String], io: &mut Io) -> Result<(), CliError> {
     let dirs = targets(cobra, args)?;
     let cache = temp_cache("recur-bundle-lint-cache-")?;
-    let rep = lint_bundles(&dirs, &recur_bundles::go::path_str(cache.path()));
+    let rep = lint_bundles(&dirs, &cache.path().to_string_lossy());
     let _ = io
         .out
         .write_all(format_lint_report(&rep, want_color(Stream::Stdout)).as_bytes());

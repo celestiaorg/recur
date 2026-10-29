@@ -141,8 +141,8 @@ impl Provider for CompatibleProvider {
     fn availability(&self, settings: &Settings) -> Availability {
         let Some(p) = settings.compatible_by_id(&self.id) else {
             return Availability::Unavailable(format!(
-                "unknown agent provider {} — pick a model from Settings → Models",
-                recur_agent_tools::gostr::quote(&self.id)
+                "unknown agent provider {:?} — pick a model from Settings → Models",
+                self.id
             ));
         };
         if !settings.provider_enabled(&self.id) {

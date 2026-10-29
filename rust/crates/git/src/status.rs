@@ -11,12 +11,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 use std::time::Duration;
 
+use recur_domain::path;
 use tokio::sync::watch;
 use tokio::time::Instant;
 
 use crate::command::command;
-use crate::gopath;
-use crate::text::go_string;
 
 /// Path → status letter: `m` modified, `a` added, `d` deleted, `u` untracked.
 pub type StatusLetters = HashMap<String, String>;
@@ -100,7 +99,7 @@ async fn status_map_work(dir: String, deadline: Option<Instant>) -> Option<Statu
         cmd = cmd.deadline(d);
     }
     let out = cmd.output().await.ok()?;
-    parse_status_porcelain(&go_string(&out))
+    parse_status_porcelain(&String::from_utf8_lossy(&out))
 }
 
 /// Parses `git status --porcelain` into path → `m|a|d|u`. Renames and copies
@@ -169,7 +168,7 @@ fn unquote_path(p: &str) -> String {
     if p == "." || p.is_empty() {
         return String::new();
     }
-    gopath::clean_slash(&p)
+    path::clean(&p)
 }
 
 /// Collapses the XY pair into one letter. Priority: deleted > added >

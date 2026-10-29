@@ -2,10 +2,10 @@
 
 use std::collections::{BTreeMap, HashSet};
 
+use recur_domain::path;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::go::{self, quote};
 use crate::manifest::{BundleMeta, valid_bundle_id};
 use crate::{Error, err};
 
@@ -220,9 +220,9 @@ pub(crate) fn go_json_field<'a>(
     name: &str,
 ) -> Option<&'a Value> {
     obj.get(name).or_else(|| {
-        let lower = go::to_lower(name);
+        let lower = name.to_lowercase();
         obj.iter()
-            .find(|(k, _)| go::to_lower(k) == lower)
+            .find(|(k, _)| k.to_lowercase() == lower)
             .map(|(_, v)| v)
     })
 }
@@ -272,17 +272,17 @@ pub(crate) fn resolve_bundle_rel_path(bundle_dir: &str, rel: &str) -> Result<Str
     if rel.is_empty() {
         return Err("path is required".to_string());
     }
-    if go::is_abs(rel) || rel.contains("..") {
+    if path::is_abs(rel) || rel.contains("..") {
         return Err(format!(
-            "path {} must be relative and must not contain ..",
-            quote(rel)
+            "path {:?} must be relative and must not contain ..",
+            rel
         ));
     }
-    let abs = go::clean(&go::join(&[bundle_dir, rel]));
-    let base = go::clean(bundle_dir);
-    match go::rel(&base, &abs) {
-        Ok(out) if out != ".." && !out.starts_with("../") => Ok(abs),
-        _ => Err(format!("path {} escapes bundle directory", quote(rel))),
+    let abs = path::clean(&path::join(&[bundle_dir, rel]));
+    let base = path::clean(bundle_dir);
+    match path::rel(&base, &abs) {
+        Some(out) if out != ".." && !out.starts_with("../") => Ok(abs),
+        _ => Err(format!("path {:?} escapes bundle directory", rel)),
     }
 }
 
@@ -298,7 +298,7 @@ pub(crate) fn parse_grammars(
         if scope.is_empty() {
             return Err(err!("grammar[{i}]: scopeName is required"));
         }
-        let qs = quote(&scope);
+        let qs = format!("{scope:?}");
         if !seen_scope.insert(scope.clone()) {
             return Err(err!("grammar: duplicate scopeName {qs} in bundle"));
         }
@@ -315,7 +315,7 @@ pub(crate) fn parse_grammars(
 
         let abs =
             resolve_bundle_rel_path(bundle_dir, &g.path).map_err(|e| err!("grammar {qs}: {e}"))?;
-        go::stat(&abs).map_err(|e| err!("grammar {qs}: read path {}: {e}", quote(&g.path)))?;
+        std::fs::metadata(&abs).map_err(|e| err!("grammar {qs}: read path {:?}: {e}", g.path))?;
         g.abs_path = abs;
         g.path = g.path.trim().to_string();
 
@@ -350,7 +350,7 @@ pub(crate) fn parse_themes(
         if !valid_bundle_id(&id) {
             return Err(err!("theme[{i}]: id is not a safe id"));
         }
-        let qid = quote(&id);
+        let qid = format!("{id:?}");
         if !seen_id.insert(id.clone()) {
             return Err(err!("theme: duplicate id {qid} in bundle"));
         }
@@ -384,7 +384,7 @@ pub(crate) fn parse_themes(
 
         let abs =
             resolve_bundle_rel_path(bundle_dir, &t.path).map_err(|e| err!("theme {qid}: {e}"))?;
-        go::stat(&abs).map_err(|e| err!("theme {qid}: read path {}: {e}", quote(&t.path)))?;
+        std::fs::metadata(&abs).map_err(|e| err!("theme {qid}: read path {:?}: {e}", t.path))?;
         t.abs_path = abs;
         t.path = t.path.trim().to_string();
         t.bundle_name = meta.name.clone();
@@ -410,7 +410,7 @@ pub(crate) fn parse_terminal_themes(
         if !valid_bundle_id(&id) {
             return Err(err!("terminalTheme[{i}]: id is not a safe id"));
         }
-        let qid = quote(&id);
+        let qid = format!("{id:?}");
         if !seen_id.insert(id.clone()) {
             return Err(err!("terminalTheme: duplicate id {qid} in bundle"));
         }
@@ -433,10 +433,10 @@ pub(crate) fn parse_terminal_themes(
 
         let abs = resolve_bundle_rel_path(bundle_dir, &t.path)
             .map_err(|e| err!("terminalTheme {qid}: {e}"))?;
-        let body = go::read_file(&abs)
-            .map_err(|e| err!("terminalTheme {qid}: read path {}: {e}", quote(&t.path)))?;
+        let body = std::fs::read(&abs)
+            .map_err(|e| err!("terminalTheme {qid}: read path {:?}: {e}", t.path))?;
         let mut pal = TerminalPalette::from_json(&body)
-            .map_err(|e| err!("terminalTheme {qid}: parse {}: {e}", quote(&t.path)))?;
+            .map_err(|e| err!("terminalTheme {qid}: parse {:?}: {e}", t.path))?;
         for (name, dst) in pal.color_fields() {
             *dst =
                 normalize_theme_color(dst).map_err(|e| err!("terminalTheme {qid}: {name}: {e}"))?;
@@ -484,7 +484,7 @@ fn normalize_theme_color(s: &str) -> Result<String, &'static str> {
     if s.starts_with('#') {
         return normalize_preview_color(s);
     }
-    let lower = go::to_lower(s);
+    let lower = s.to_lowercase();
     if ["rgb(", "rgba(", "hsl(", "hsla("]
         .iter()
         .any(|p| lower.starts_with(p))
@@ -523,7 +523,7 @@ pub fn find_terminal_theme_by_id<'a>(
 
 /// Whether `path` looks like a TextMate grammar file.
 pub fn grammar_convention_ok(path: &str) -> bool {
-    let lower = go::to_lower(path);
+    let lower = path.to_lowercase();
     lower.ends_with(".tmlanguage.json")
         || lower.ends_with(".tmlanguage")
         || lower.ends_with(".json-tmlanguage")
@@ -531,12 +531,12 @@ pub fn grammar_convention_ok(path: &str) -> bool {
 
 /// Whether `path` looks like a TextMate theme JSON file.
 pub fn theme_convention_ok(path: &str) -> bool {
-    let lower = go::to_lower(path);
+    let lower = path.to_lowercase();
     lower.ends_with(".tmtheme.json") || lower.ends_with(".tmtheme")
 }
 
 /// Whether `path` looks like an xterm `ITheme` JSON file.
 pub fn terminal_theme_convention_ok(path: &str) -> bool {
-    let lower = go::to_lower(path);
+    let lower = path.to_lowercase();
     lower.ends_with(".json") && !lower.ends_with(".tmtheme.json")
 }

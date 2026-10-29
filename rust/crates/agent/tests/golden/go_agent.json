@@ -1084,7 +1084,7 @@
    "stderr": "\u001b]0;title\u0007\u001b[2K\r  warning: Rate LİMIT reached",
    "isError": false,
    "reason": "warning: Rate LİMIT reached",
-   "transient": true
+   "transient": false
   },
   {
    "err": "merge conflict in a.go",
@@ -1519,7 +1519,7 @@
   [
    "Grep",
    "{\"pattern\":\"a\\\"b\\\\c\\t\\n\\u0000é😀 \u2028⁠\"}",
-   "\"a\\\"b\\\\c\\t\\n\\x00é😀\\u00a0\\u2028\\u2060\"",
+   "\"a\\\"b\\\\c\\t\\n\\0é😀\\u{a0}\\u{2028}\\u{2060}\"",
    "{\"pattern\":\"a\\\"b\\\\c\\t\\n\\u0000é😀 \u2028⁠\"}",
    "",
    "Grep: a\"b\\c\t …",

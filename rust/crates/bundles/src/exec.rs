@@ -6,6 +6,7 @@ use std::process::{ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use recur_domain::path;
 use recur_domain::workspace::IssueRef;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -14,7 +15,6 @@ use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use crate::env::{EnvVar, PromptRunContext, RunContext, environ, prompt_environ, resolve_input};
-use crate::go::{self, quote};
 use crate::grammar::{go_json_field, go_json_kind};
 use crate::manifest::{
     Command, EXPAND_TIMEOUT, ExpandAction, INTERPRETER_NATIVE, INTERPRETER_SHEBANG,
@@ -143,9 +143,9 @@ impl From<Error> for RunError {
 pub async fn run(ctx: &RunCtx, cmd: &Command, mut rc: RunContext) -> Result<RunResult, RunError> {
     if cmd.interpreter == INTERPRETER_NATIVE || crate::is_script_interpreter(&cmd.interpreter) {
         return Err(err!(
-            "{} command {} must run in the frontend",
+            "{} command {:?} must run in the frontend",
             cmd.interpreter,
-            quote(&cmd.id)
+            cmd.id
         )
         .into());
     }
@@ -160,7 +160,7 @@ pub async fn run(ctx: &RunCtx, cmd: &Command, mut rc: RunContext) -> Result<RunR
     let body = shebang_body(&cmd.body, &cmd.script_path, "command", &cmd.id)?;
     let script = TempScript::write("recur-cmd-", &body)?;
     let work_dir = first_nonempty(&[&rc.work_dir, &rc.project_directory])
-        .unwrap_or_else(|| go::dir(&script.path));
+        .unwrap_or_else(|| path::dir(&script.path));
     let out = execute(
         &ctx,
         &script.path,
@@ -208,10 +208,10 @@ pub(crate) fn has_shebang(body: &str) -> bool {
 /// bodies without one run under bash.
 fn shebang_body(body: &str, script_path: &str, kind: &str, id: &str) -> Result<String, Error> {
     if body.is_empty() {
-        return Err(err!("{kind} {} has empty body", quote(id)));
+        return Err(err!("{kind} {:?} has empty body", id));
     }
     if !script_path.is_empty() && !has_shebang(body) {
-        return Err(err!("{kind} {} script missing #! shebang", quote(id)));
+        return Err(err!("{kind} {:?} script missing #! shebang", id));
     }
     if has_shebang(body) {
         Ok(body.to_string())
@@ -233,13 +233,13 @@ impl TempScript {
         let file = tempfile::Builder::new()
             .prefix(prefix)
             .make(|p| recur_exec::create_executable(p, body, 0o700))
-            .map_err(|e| err!("temp script: {}", go::errno_text(&e)))?;
+            .map_err(|e| err!("temp script: {e}"))?;
         let path = file
             .into_temp_path()
             .keep()
-            .map_err(|e| err!("temp script: {}", go::errno_text(&e.error)))?;
+            .map_err(|e| err!("temp script: {}", e.error))?;
         Ok(TempScript {
-            path: go::path_str(&path),
+            path: path.to_string_lossy().into_owned(),
         })
     }
 }
@@ -287,8 +287,8 @@ async fn execute(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .process_group(0);
-    let mut child = spawn_retrying(&mut command)
-        .map_err(|e| err!("{}", go::path_err("fork/exec", script, &e)))?;
+    let mut child =
+        spawn_retrying(&mut command).map_err(|e| err!("{}", format!("{script}: {e}")))?;
     if let (Some(input), Some(mut pipe)) = (stdin, child.stdin.take()) {
         tokio::spawn(async move {
             let _ = pipe.write_all(&input).await;
@@ -307,7 +307,7 @@ async fn execute(
         status
     };
     let end = tokio::select! {
-        status = finished => End::Exited(status.map_err(|e| err!("{}", go::errno_text(&e)))?),
+        status = finished => End::Exited(status.map_err(|e| err!("{e}"))?),
         why = ctx.done() => {
             kill_group(pid, &mut child).await;
             // Like Go's Wait, collect what the group wrote before it died.
@@ -398,7 +398,7 @@ pub async fn run_prompt_shebang(
     prompt: &PromptAction,
     mut rc: PromptRunContext,
 ) -> Result<PromptResult, Error> {
-    let id = quote(&prompt.id);
+    let id = format!("{:?}", prompt.id);
     if crate::is_script_interpreter(&prompt.interpreter) {
         return Err(err!(
             "prompt {id} is {} — use CompiledPromptModule",
@@ -407,8 +407,8 @@ pub async fn run_prompt_shebang(
     }
     if prompt.interpreter != INTERPRETER_SHEBANG && !prompt.interpreter.is_empty() {
         return Err(err!(
-            "prompt {id}: unsupported interpreter {}",
-            quote(&prompt.interpreter)
+            "prompt {id}: unsupported interpreter {:?}",
+            prompt.interpreter
         ));
     }
     let timeout = if prompt.timeout_ms > 0 {
@@ -429,7 +429,7 @@ pub async fn run_prompt_shebang(
     let body = shebang_body(&prompt.body, &prompt.script_path, "prompt", &prompt.id)?;
     let script = TempScript::write("recur-prompt-", &body)?;
     let work_dir =
-        first_nonempty(&[&rc.work_dir, &rc.worktree]).unwrap_or_else(|| go::dir(&script.path));
+        first_nonempty(&[&rc.work_dir, &rc.worktree]).unwrap_or_else(|| path::dir(&script.path));
     let out = execute(&ctx, &script.path, &work_dir, &prompt_environ(&rc), None).await?;
     match out.end {
         End::Cancelled(why) => Err(err!("prompt cancelled or timed out: {why}")),
@@ -545,7 +545,7 @@ pub async fn run_prompt_complete_shebang(
     prompt: &PromptAction,
     mut rc: PromptRunContext,
 ) -> Result<PromptCompleteResult, Error> {
-    let id = quote(&prompt.id);
+    let id = format!("{:?}", prompt.id);
     if prompt.complete_interpreter != INTERPRETER_SHEBANG && !prompt.complete_interpreter.is_empty()
     {
         return Err(err!(
@@ -572,7 +572,7 @@ pub async fn run_prompt_complete_shebang(
     }
     let script = TempScript::write("recur-prompt-complete-", &body)?;
     let work_dir =
-        first_nonempty(&[&rc.work_dir, &rc.worktree]).unwrap_or_else(|| go::dir(&script.path));
+        first_nonempty(&[&rc.work_dir, &rc.worktree]).unwrap_or_else(|| path::dir(&script.path));
     let out = execute(&ctx, &script.path, &work_dir, &prompt_environ(&rc), None).await?;
     match out.end {
         End::Cancelled(why) => Err(err!("complete cancelled or timed out: {why}")),

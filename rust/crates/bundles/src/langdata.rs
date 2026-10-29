@@ -5,7 +5,6 @@ use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::go::quote;
 use crate::manifest::{BundleMeta, is_false, valid_bundle_id};
 use crate::{Error, err};
 
@@ -86,7 +85,7 @@ pub(crate) fn parse_language_data(
         if !valid_bundle_id(&id) {
             return Err(err!("languageData[{i}]: id is not a safe id"));
         }
-        let qid = quote(&id);
+        let qid = format!("{id:?}");
         if !seen_id.insert(id.clone()) {
             return Err(err!("languageData: duplicate id {qid} in bundle"));
         }
@@ -98,8 +97,8 @@ pub(crate) fn parse_language_data(
         }
         if !seen_scope.insert(scope.clone()) {
             return Err(err!(
-                "languageData: duplicate scopeName {} in bundle",
-                quote(&scope)
+                "languageData: duplicate scopeName {:?} in bundle",
+                scope
             ));
         }
         d.scope_name = scope;
@@ -125,8 +124,8 @@ pub(crate) fn parse_language_data(
             }
             if ch.chars().count() != 1 {
                 return Err(err!(
-                    "languageData {qid}: closeBrackets extra {} must be a single character",
-                    quote(ch)
+                    "languageData {qid}: closeBrackets extra {:?} must be a single character",
+                    ch
                 ));
             }
             if seen_extra.insert(ch.to_string()) {

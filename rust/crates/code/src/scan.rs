@@ -17,7 +17,7 @@ impl std::fmt::Display for ScanError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::TooLong => f.write_str("bufio.Scanner: token too long"),
-            Self::Io(e) => write!(f, "{}", crate::gopath::errno_text(e)),
+            Self::Io(e) => write!(f, "{}", e),
         }
     }
 }

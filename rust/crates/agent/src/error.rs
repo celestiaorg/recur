@@ -15,7 +15,7 @@
 use std::error::Error;
 
 use crate::event::TurnResult;
-use crate::gostr::{go_lower, go_prefix, go_upper};
+use crate::gostr::byte_prefix;
 
 /// Matched case-insensitively against a failure's full text (error + result
 /// subtype + text + stderr tail). Each names a condition expected to clear on
@@ -147,7 +147,9 @@ pub fn classify(err: Option<&(dyn Error + 'static)>, res: &TurnResult) -> (Strin
         }
         cur = e.source();
     }
-    let hay = go_lower(&[err_text(err).as_str(), &res.subtype, &res.text, &res.stderr].join("\n"));
+    let hay = [err_text(err).as_str(), &res.subtype, &res.text, &res.stderr]
+        .join("\n")
+        .to_lowercase();
     if !known_agent_error(&hay).is_empty() {
         return (reason, true);
     }
@@ -158,7 +160,7 @@ pub fn classify(err: Option<&(dyn Error + 'static)>, res: &TurnResult) -> (Strin
 /// Whether `s` names a transient condition (Go `transientFailure`'s scan of
 /// a plain phase error).
 pub fn has_transient_marker(s: &str) -> bool {
-    let hay = go_lower(s);
+    let hay = s.to_lowercase();
     TRANSIENT_MARKERS.iter().any(|m| hay.contains(m))
 }
 
@@ -201,7 +203,7 @@ pub fn failure_reason(err: Option<&(dyn Error + 'static)>, res: &TurnResult) -> 
 /// Maps CLI dumps Recur recognizes onto a complete sentence; empty otherwise.
 // simplify: one Codex auth phrase; add rows if another dump needs a sentence.
 pub fn known_agent_error(s: &str) -> &'static str {
-    let low = go_lower(&strip_vt(s));
+    let low = strip_vt(s).to_lowercase();
     if low.contains("failed to refresh token")
         || (low.contains("codex_login") && low.contains("401"))
     {
@@ -233,7 +235,7 @@ fn strip_cli_log_prefix(s: &str) -> &str {
 }
 
 fn cli_log_head(head: &str) -> bool {
-    let u = format!(" {} ", go_upper(head));
+    let u = format!(" {} ", head.to_uppercase());
     if ![
         " ERROR ",
         " WARN ",
@@ -261,7 +263,7 @@ pub fn first_line(s: &str) -> String {
             continue;
         }
         if ln.len() > MAX {
-            return format!("{}…", go_prefix(ln, MAX));
+            return format!("{}…", byte_prefix(ln, MAX));
         }
         return ln.to_owned();
     }

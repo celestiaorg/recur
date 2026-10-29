@@ -23,8 +23,8 @@ use hyper_util::rt::{TokioIo, TokioTimer};
 use hyper_util::server::graceful::GracefulShutdown;
 use parking_lot::{Mutex, RwLock};
 use recur_agent_tools::json::{Shape, Ty, field, unmarshal, unmarshal_ignoring_errors};
-use recur_agent_tools::path::{clean, errno_text};
 use recur_agent_tools::{Call, Host, NoopHost};
+use recur_domain::path::clean;
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -126,12 +126,9 @@ impl McpServer {
     /// [`McpServer::url_for`] and [`McpServer::port`] work immediately.
     pub async fn start(&self) -> Result<(), McpError> {
         let addr = self.addr.clone().unwrap_or_else(|| "127.0.0.1:0".into());
-        let listener = TcpListener::bind(&addr).await.map_err(|e| {
-            McpError(format!(
-                "mcp listen: listen tcp {addr}: bind: {}",
-                errno_text(&e)
-            ))
-        })?;
+        let listener = TcpListener::bind(&addr)
+            .await
+            .map_err(|e| McpError(format!("mcp listen: listen tcp {addr}: bind: {}", e)))?;
         let port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
         self.inner.port.store(port, Ordering::SeqCst);
         let stop = CancellationToken::new();
@@ -411,7 +408,7 @@ fn unescape_path(raw: &str) -> Option<String> {
             i += 1;
         }
     }
-    Some(recur_agent_tools::gostr::lossy(&out))
+    Some(String::from_utf8_lossy(&out).into_owned())
 }
 
 /// Go `url.URL.EscapedPath` for a cleaned path.
@@ -629,7 +626,7 @@ async fn read_body(mut body: Incoming) -> Result<String, String> {
             }
         }
     }
-    Ok(recur_agent_tools::gostr::lossy(&buf))
+    Ok(String::from_utf8_lossy(&buf).into_owned())
 }
 
 #[cfg(test)]

@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use parking_lot::{Mutex, RwLock};
 use recur_domain::FileSearchResult;
+use recur_domain::path;
 use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -19,7 +20,6 @@ use crate::filesearch::{
     ExcludeSet, compile_excludes, exclude_to_rg_globs, excluded, normalize_exclude_patterns,
     rank_hits,
 };
-use crate::gopath;
 use crate::root::skip_file;
 use crate::{files, rg};
 
@@ -145,7 +145,7 @@ impl FileIndex {
     /// set before the walk (why it ran) is cleared.
     fn finish_rebuild(&self, mut paths: Vec<String>, start_seq: u64) {
         paths.sort();
-        let basenames: Vec<String> = paths.iter().map(|p| gopath::base(p)).collect();
+        let basenames: Vec<String> = paths.iter().map(|p| path::base(p)).collect();
         let by_path = paths
             .iter()
             .enumerate()
@@ -177,7 +177,7 @@ impl FileIndex {
         if rel.is_empty() || should_skip_indexed(&rel) {
             return;
         }
-        let base = gopath::base(&rel);
+        let base = path::base(&rel);
         let mut st = self.st.write();
         if let Some(&i) = st.by_path.get(&rel) {
             let delta = base.len() as i64 - st.basenames[i].len() as i64;
@@ -221,10 +221,10 @@ impl FileIndex {
         if rel.is_empty() || should_skip_indexed(&rel) {
             return;
         }
-        match std::fs::symlink_metadata(gopath::join(&[root, &rel])) {
+        match std::fs::symlink_metadata(path::join(&[root, &rel])) {
             Err(_) => self.remove(&rel),
             Ok(m) if m.is_dir() => return,
-            Ok(_) if skip_file(&gopath::base(&rel)) => self.remove(&rel),
+            Ok(_) if skip_file(&path::base(&rel)) => self.remove(&rel),
             Ok(_) => self.upsert(&rel),
         }
         self.st.write().dirty_seq += 1;
@@ -317,7 +317,7 @@ fn merge_partial(st: &mut IndexState, partial: Vec<String>, user_skip: &ExcludeS
         if p.is_empty() || !indexable_path(&p, user_skip) || st.by_path.contains_key(&p) {
             continue;
         }
-        let base = gopath::base(&p);
+        let base = path::base(&p);
         st.bytes += (p.len() + base.len()) as i64 + ENTRY_OVERHEAD;
         let i = st.paths.len();
         st.paths.push(p.clone());
@@ -426,7 +426,7 @@ fn should_skip_indexed(rel: &str) -> bool {
     if wrapped.contains("/.git/") || wrapped.contains("/node_modules/") {
         return true;
     }
-    let base = gopath::base(wrapped.trim_end_matches('/'));
+    let base = path::base(wrapped.trim_end_matches('/'));
     base.is_empty() || base == "." || skip_file(&base)
 }
 

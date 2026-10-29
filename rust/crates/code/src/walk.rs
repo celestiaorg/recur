@@ -5,7 +5,7 @@ use std::fs::{self, FileType, Metadata};
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::gopath;
+use recur_domain::path;
 
 /// What a walk callback asks for next (Go `nil`, `SkipDir`, `SkipAll`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,7 +47,7 @@ pub(crate) fn walk_dir<E>(
         Err(e) => f(root, None, Some(e))?,
         Ok(m) => {
             let entry = Entry {
-                name: gopath::base(root),
+                name: path::base(root),
                 path: PathBuf::from(root),
                 ft: Some(m.file_type()),
             };
@@ -84,7 +84,7 @@ fn walk<E>(
         }
     };
     for e in entries {
-        let child = gopath::join(&[path, &e.name]);
+        let child = path::join(&[path, &e.name]);
         match walk(&child, &e, f)? {
             Flow::Continue => {}
             Flow::SkipDir => break,

@@ -76,7 +76,7 @@
     "args": "{\"file_path\":\"latin1.txt\"}",
     "bypass": false,
     "session": "",
-    "result": "     1\tcaf\ufffd \ufffd\ufffd\n",
+    "result": "     1\tcaf\ufffd \ufffd\n",
     "error": "",
     "isError": false
   },
@@ -113,7 +113,7 @@
     "bypass": false,
     "session": "",
     "result": "",
-    "error": "open $WT/missing.txt: no such file or directory",
+    "error": "$WT/missing.txt: No such file or directory (os error 2)",
     "isError": true
   },
   {
@@ -122,7 +122,7 @@
     "bypass": false,
     "session": "",
     "result": "",
-    "error": "read $WT/sub: is a directory",
+    "error": "$WT/sub: Is a directory (os error 21)",
     "isError": true
   },
   {
@@ -275,7 +275,7 @@
     "bypass": false,
     "session": "",
     "result": "",
-    "error": "open $WT/missing.txt: no such file or directory",
+    "error": "$WT/missing.txt: No such file or directory (os error 2)",
     "isError": true
   },
   {
@@ -410,7 +410,7 @@
     "bypass": false,
     "session": "",
     "result": "",
-    "error": "mkdir $WT/a.go: not a directory",
+    "error": "$WT/a.go: File exists (os error 17)",
     "isError": true
   },
   {
@@ -419,7 +419,7 @@
     "bypass": false,
     "session": "",
     "result": "",
-    "error": "open $WT/sub: is a directory",
+    "error": "$WT/sub: Is a directory (os error 21)",
     "isError": true
   },
   {
@@ -464,7 +464,7 @@
     "bypass": false,
     "session": "",
     "result": "",
-    "error": "stat $WT/nope: no such file or directory",
+    "error": "$WT/nope: No such file or directory (os error 2)",
     "isError": true
   },
   {

@@ -4,11 +4,11 @@
 
 use std::collections::BTreeMap;
 
+use recur_domain::path;
 use serde_json::{Value, json};
 
 use crate::env::PromptRunContext;
 use crate::exec::{PromptResult, RunCtx, parse_prompt_result_json, run_prompt_shebang};
-use crate::go::{self, quote};
 use crate::manifest::{PROMPT_TIMEOUT, PromptAction};
 use crate::testrun::{NodeError, run_node};
 use crate::{Error, err};
@@ -68,7 +68,7 @@ pub async fn run_prompt_type_script(
     rc: &PromptRunContext,
 ) -> Result<PromptResult, Error> {
     if !crate::is_script_interpreter(&prompt.interpreter) {
-        return Err(err!("prompt {} is not typescript", quote(&prompt.id)));
+        return Err(err!("prompt {:?} is not typescript", prompt.id));
     }
     let compiled = crate::compile_prompt_macro(cache_dir, prompt)?;
     let timeout = if prompt.timeout_ms > 0 {
@@ -106,8 +106,8 @@ pub async fn run_prompt_type_script(
             return Err(err!("prompt cancelled or timed out: {why}"));
         }
         return Err(err!(
-            "prompt {} exited {code}: {}",
-            quote(&prompt.id),
+            "prompt {:?} exited {code}: {}",
+            prompt.id,
             String::from_utf8_lossy(&run.stderr)
         ));
     }
@@ -116,7 +116,7 @@ pub async fn run_prompt_type_script(
 
 fn prompt_node_ctx(rc: &PromptRunContext) -> BTreeMap<&'static str, Value> {
     let file_name = if rc.file_name.is_empty() && !rc.file_path.is_empty() {
-        go::base(&rc.file_path)
+        path::base(&rc.file_path)
     } else {
         rc.file_name.clone()
     };

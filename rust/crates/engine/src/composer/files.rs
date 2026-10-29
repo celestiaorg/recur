@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use std::sync::LazyLock;
 
 use recur_bundles::go;
+use recur_domain::path;
 use regex::Regex;
 
 /// Workspace file mentions. The left boundary is checked by hand (RE2 has
@@ -43,7 +44,7 @@ fn reserved_at_chip(chip: &str) -> bool {
 }
 
 fn atoi_positive(s: &str) -> i64 {
-    go::atoi(s).ok().filter(|n| *n > 0).unwrap_or(0)
+    s.parse::<i64>().ok().filter(|n| *n > 0).unwrap_or(0)
 }
 
 /// Splits a chip into its path and loc. An invalid line (`:0`, overflow)
@@ -129,13 +130,13 @@ fn canonicalize_abs(chip: &str, worktree: &str) -> Option<String> {
     if chip.is_empty() {
         return None;
     }
-    let abs = if go::is_abs(chip) {
-        go::clean(chip)
+    let abs = if path::is_abs(chip) {
+        path::clean(chip)
     } else {
         if worktree.is_empty() {
             return None;
         }
-        go::clean(&go::join(&[worktree, chip]))
+        path::clean(&path::join(&[worktree, chip]))
     };
     Some(eval_symlinks(&abs).unwrap_or(abs))
 }
@@ -145,7 +146,7 @@ fn canonical_worktree(worktree: &str) -> String {
     if worktree.is_empty() {
         return String::new();
     }
-    eval_symlinks(worktree).unwrap_or_else(|| go::clean(worktree))
+    eval_symlinks(worktree).unwrap_or_else(|| path::clean(worktree))
 }
 
 fn at_mention_boundary(text: &str, start: usize) -> bool {
@@ -153,15 +154,15 @@ fn at_mention_boundary(text: &str, start: usize) -> bool {
 }
 
 fn mention_preamble_path(path_chip: &str, abs: &str, worktree: &str) -> String {
-    if go::is_abs(path_chip)
+    if path::is_abs(path_chip)
         && !worktree.is_empty()
-        && let Ok(rel) = go::rel(worktree, abs)
+        && let Some(rel) = path::rel(worktree, abs)
         && !rel.is_empty()
         && !rel.starts_with("..")
     {
         return rel;
     }
-    let p = go::clean(path_chip);
+    let p = path::clean(path_chip);
     if p == "." || p.is_empty() {
         return path_chip.to_owned();
     }

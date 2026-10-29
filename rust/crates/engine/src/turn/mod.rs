@@ -217,8 +217,8 @@ impl Engine {
             return Err(ProviderError::new(
                 ErrorKind::Unavailable,
                 format!(
-                    "unknown agent provider {} — pick a model from Settings → Models",
-                    recur_bundles::go::quote(provider_id)
+                    "unknown agent provider {:?} — pick a model from Settings → Models",
+                    provider_id
                 ),
             ));
         };

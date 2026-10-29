@@ -47,10 +47,10 @@ impl Error {
         }
     }
 
-    /// Go `*os.PathError` text (`op path: errno`) for an io failure.
-    pub(crate) fn io_path(op: &str, path: &str, e: &std::io::Error) -> Self {
+    /// `path: error` for an io failure.
+    pub(crate) fn io_path(path: &str, e: &std::io::Error) -> Self {
         Self {
-            message: crate::text::path_error(op, path, e),
+            message: format!("{path}: {e}"),
             kind: ErrorKind::Io(e.kind()),
         }
     }

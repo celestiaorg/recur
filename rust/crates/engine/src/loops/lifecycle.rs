@@ -46,10 +46,6 @@ pub fn resumable(rec: &Workspace) -> bool {
     }
 }
 
-fn quote(s: &str) -> String {
-    recur_bundles::go::quote(s)
-}
-
 fn valid_autonomy(a: AutonomyLevel) -> AutonomyLevel {
     match a {
         AutonomyLevel::Cautious | AutonomyLevel::Balanced | AutonomyLevel::Aggressive => a,
@@ -287,15 +283,12 @@ impl Engine {
         simplify: Option<bool>,
     ) -> Result<(Workspace, bool)> {
         let Some(proj) = self.store.project(project_id) else {
-            return Err(EngineError(format!(
-                "project {} not found",
-                quote(project_id)
-            )));
+            return Err(EngineError(format!("project {:?} not found", project_id)));
         };
         if !recur_git::is_repo(&proj.repo_path).await {
             return Err(EngineError(format!(
-                "project {} is not a git repository — workspaces need a git checkout",
-                quote(project_id)
+                "project {:?} is not a git repository — workspaces need a git checkout",
+                project_id
             )));
         }
         let mut base_branch = base_branch.to_owned();
@@ -417,8 +410,8 @@ impl Engine {
         }
         let Some(rec) = self.store.workspace(workspace_id) else {
             return Err(EngineError(format!(
-                "workspace {} not found",
-                quote(workspace_id)
+                "workspace {:?} not found",
+                workspace_id
             )));
         };
         if rec.is_main {
@@ -474,8 +467,8 @@ impl Engine {
             }
         }) else {
             return Err(EngineError(format!(
-                "workspace {} not found",
-                quote(workspace_id)
+                "workspace {:?} not found",
+                workspace_id
             )));
         };
         if !updated.has_run() {
@@ -515,8 +508,8 @@ impl Engine {
     pub(crate) async fn dispatch(&self, mut rec: Workspace) -> Result<()> {
         let Some(proj) = self.store.project(&rec.project_id) else {
             return Err(EngineError(format!(
-                "project {} not found",
-                quote(&rec.project_id)
+                "project {:?} not found",
+                rec.project_id
             )));
         };
         let mgr = self.git_manager(&proj.repo_path);
@@ -744,14 +737,14 @@ impl Engine {
         }
         if rec.worktree_path.is_empty() {
             return Err(EngineError(format!(
-                "workspace {} has no worktree",
-                quote(&rec.id)
+                "workspace {:?} has no worktree",
+                rec.id
             )));
         }
         let Some(proj) = self.store.project(&rec.project_id) else {
             return Err(EngineError(format!(
-                "project {} not found",
-                quote(&rec.project_id)
+                "project {:?} not found",
+                rec.project_id
             )));
         };
         rec.iteration = 0;

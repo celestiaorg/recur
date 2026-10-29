@@ -15,7 +15,7 @@ use serde::Deserialize;
 use serde_json::{Map, Value};
 
 use crate::Provider;
-use crate::gostr::{GoAny, go_lower, go_quote, null_default};
+use crate::gostr::{GoAny, null_default};
 
 pub use compact::compact_tool_result;
 
@@ -281,9 +281,9 @@ pub fn summarize_tool_input(tool: &str, raw: &str) -> String {
             if !p.is_empty() {
                 let path = s("path");
                 if !path.is_empty() {
-                    return format!("{} in {path}", go_quote(p));
+                    return format!("{:?} in {path}", p);
                 }
-                return go_quote(p);
+                return format!("{p:?}");
             }
         }
         "WebFetch" if !s("url").is_empty() => return truncate(s("url"), FEED_INPUT_LIMIT),
@@ -471,7 +471,7 @@ fn is_linear_mcp_tool(tool: &str) -> bool {
         return false;
     };
     match rest.split_once("__") {
-        Some((server, _)) => go_lower(server).contains("linear"),
+        Some((server, _)) => server.to_lowercase().contains("linear"),
         None => false,
     }
 }

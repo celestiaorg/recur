@@ -3,6 +3,7 @@
 //! jump to the file. Homeless files become absolute-path tabs on the
 //! singleton Files project instead of adding their folder as a project.
 
+use recur_domain::path;
 use recur_domain::{FILES_PROJECT_ID, OpenPathResult, Project, Workspace};
 use recur_git::{align_under_root, canon_path, expand_home, path_has_prefix, same_path};
 
@@ -38,10 +39,10 @@ impl AppServices {
 
     async fn open_path_locked(&self, path: &str) -> Result<OpenPathResult> {
         let abs = canon_path(path).map_err(err)?;
-        let st = recur_bundles::go::stat(&abs).map_err(|e| err(format!("open {abs}: {e}")))?;
+        let st = std::fs::metadata(&abs).map_err(|e| err(format!("{abs}: {e}")))?;
         let is_file = !st.is_dir();
         let dir = if is_file {
-            recur_bundles::go::dir(&abs)
+            path::dir(&abs)
         } else {
             abs.clone()
         };
@@ -82,8 +83,7 @@ impl AppServices {
         abs: &str,
         is_file: bool,
     ) -> OpenPathResult {
-        let root = canon_path(&ws.worktree_path)
-            .unwrap_or_else(|_| recur_bundles::go::clean(&ws.worktree_path));
+        let root = canon_path(&ws.worktree_path).unwrap_or_else(|_| path::clean(&ws.worktree_path));
         res.project_id.clone_from(&ws.project_id);
         res.workspace_id.clone_from(&ws.id);
         if let Some(p) = self.store().project(&ws.project_id) {
@@ -115,8 +115,8 @@ impl AppServices {
         res.created = created;
         res.project_id.clone_from(&p.id);
         res.workspace_id.clone_from(&ws.id);
-        let root = canon_path(&p.repo_path)
-            .unwrap_or_else(|_| recur_bundles::go::clean(&expand_home(&p.repo_path)));
+        let root =
+            canon_path(&p.repo_path).unwrap_or_else(|_| path::clean(&expand_home(&p.repo_path)));
         res.project = Some(Box::new(p));
         res.workspace = Some(Box::new(ws));
         if is_file {
@@ -190,7 +190,7 @@ impl AppServices {
         {
             return Ok((p, false));
         }
-        let mut name = recur_bundles::go::base(abs);
+        let mut name = path::base(abs);
         if name.is_empty() || name == "/" || name == "." {
             name = "folder".into();
         }

@@ -79,7 +79,6 @@ fn copy_dirty_files(
     dest_root: &str,
     st: &std::collections::HashMap<String, String>,
 ) -> Result<(), String> {
-    use recur_bundles::go::path_err;
     let mut errs: Vec<String> = Vec::new();
     for (rel, letter) in st {
         let dst = match recur_code::safe_join(std::path::Path::new(dest_root), rel) {
@@ -100,7 +99,7 @@ fn copy_dirty_files(
             if let Err(e) = res
                 && e.kind() != std::io::ErrorKind::NotFound
             {
-                errs.push(path_err("unlinkat", &dst_s, &e));
+                errs.push(format!("{dst_s}: {e}"));
             }
             continue;
         }
@@ -116,7 +115,7 @@ fn copy_dirty_files(
             Ok(m) => m,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
             Err(e) => {
-                errs.push(path_err("lstat", &src_s, &e));
+                errs.push(format!("{src_s}: {e}"));
                 continue;
             }
         };
@@ -126,7 +125,7 @@ fn copy_dirty_files(
         if let Some(parent) = dst.parent()
             && let Err(e) = std::fs::create_dir_all(parent)
         {
-            errs.push(path_err("mkdir", &parent.to_string_lossy(), &e));
+            errs.push(format!("{}: {e}", parent.to_string_lossy()));
             continue;
         }
         if let Err(e) = copy_file_overwrite(&src, &dst, &info) {
@@ -145,19 +144,18 @@ fn copy_file_overwrite(
     to: &std::path::Path,
     info: &std::fs::Metadata,
 ) -> Result<(), String> {
-    use recur_bundles::go::path_err;
     use std::os::unix::fs::{OpenOptionsExt as _, PermissionsExt as _};
     let from_s = from.to_string_lossy().into_owned();
     let to_s = to.to_string_lossy().into_owned();
-    let mut input = std::fs::File::open(from).map_err(|e| path_err("open", &from_s, &e))?;
+    let mut input = std::fs::File::open(from).map_err(|e| format!("{from_s}: {e}"))?;
     let mut out = std::fs::OpenOptions::new()
         .create(true)
         .truncate(true)
         .write(true)
         .mode(info.permissions().mode() & 0o777)
         .open(to)
-        .map_err(|e| path_err("open", &to_s, &e))?;
-    std::io::copy(&mut input, &mut out).map_err(|e| path_err("write", &to_s, &e))?;
+        .map_err(|e| format!("{to_s}: {e}"))?;
+    std::io::copy(&mut input, &mut out).map_err(|e| format!("{to_s}: {e}"))?;
     Ok(())
 }
 

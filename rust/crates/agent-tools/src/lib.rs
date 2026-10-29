@@ -5,7 +5,6 @@
 pub mod catalog;
 pub mod coding;
 pub mod display;
-pub mod gostr;
 pub mod host;
 pub mod host_tools;
 pub mod json;

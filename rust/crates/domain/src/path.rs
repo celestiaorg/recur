@@ -1,61 +1,40 @@
-//! Go `path/filepath` (Unix), `*os.PathError` text and `filepath.Match`, so
-//! paths and error strings compare byte for byte with the Go app's.
+//! Lexical string paths (Unix): `..` resolves against the text, not the
+//! filesystem, which `std::path::Path` does not do on its own.
 
 use std::fs;
 use std::io;
 use std::os::unix::fs::MetadataExt;
 
-/// Go `filepath.Clean`.
-pub(crate) fn clean(path: &str) -> String {
+/// Shortest lexically equivalent path.
+pub fn clean(path: &str) -> String {
     if path.is_empty() {
-        return ".".into();
+        return ".".to_string();
     }
-    let p = path.as_bytes();
-    let rooted = p[0] == b'/';
-    let n = p.len();
-    let mut out: Vec<u8> = Vec::with_capacity(n);
-    let (mut r, mut dotdot) = (0, 0);
-    if rooted {
-        out.push(b'/');
-        r = 1;
-        dotdot = 1;
-    }
-    while r < n {
-        if p[r] == b'/' || (p[r] == b'.' && (r + 1 == n || p[r + 1] == b'/')) {
-            r += 1;
-        } else if p[r] == b'.' && p[r + 1] == b'.' && (r + 2 == n || p[r + 2] == b'/') {
-            r += 2;
-            if out.len() > dotdot {
-                let mut w = out.len() - 1;
-                while w > dotdot && out[w] != b'/' {
-                    w -= 1;
+    let rooted = path.starts_with('/');
+    let mut parts: Vec<&str> = Vec::new();
+    for part in path.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                if parts.last().is_some_and(|p| *p != "..") {
+                    parts.pop();
+                } else if !rooted {
+                    parts.push("..");
                 }
-                out.truncate(w);
-            } else if !rooted {
-                if !out.is_empty() {
-                    out.push(b'/');
-                }
-                out.extend_from_slice(b"..");
-                dotdot = out.len();
             }
-        } else {
-            if (rooted && out.len() != 1) || (!rooted && !out.is_empty()) {
-                out.push(b'/');
-            }
-            while r < n && p[r] != b'/' {
-                out.push(p[r]);
-                r += 1;
-            }
+            p => parts.push(p),
         }
     }
-    if out.is_empty() {
-        out.push(b'.');
+    let joined = parts.join("/");
+    match (rooted, joined.is_empty()) {
+        (true, _) => format!("/{joined}"),
+        (false, true) => ".".to_string(),
+        (false, false) => joined,
     }
-    String::from_utf8_lossy(&out).into_owned()
 }
 
-/// Go `filepath.Join`.
-pub(crate) fn join(elems: &[&str]) -> String {
+/// Non-empty elements joined by `/`, then cleaned.
+pub fn join(elems: &[&str]) -> String {
     let parts: Vec<&str> = elems.iter().copied().filter(|e| !e.is_empty()).collect();
     if parts.is_empty() {
         return String::new();
@@ -63,29 +42,27 @@ pub(crate) fn join(elems: &[&str]) -> String {
     clean(&parts.join("/"))
 }
 
-/// Go `filepath.Dir`.
-pub(crate) fn dir(path: &str) -> String {
-    let i = path.rfind('/').map(|i| i + 1).unwrap_or(0);
-    clean(&path[..i])
-}
-
-/// Go `filepath.Base`.
-pub(crate) fn base(path: &str) -> String {
+pub fn base(path: &str) -> String {
     if path.is_empty() {
-        return ".".into();
+        return ".".to_string();
     }
     let trimmed = path.trim_end_matches('/');
     if trimmed.is_empty() {
-        return "/".into();
+        return "/".to_string();
     }
     match trimmed.rfind('/') {
-        Some(i) => trimmed[i + 1..].into(),
-        None => trimmed.into(),
+        Some(i) => trimmed[i + 1..].to_string(),
+        None => trimmed.to_string(),
     }
 }
 
-/// Go `filepath.Ext`.
-pub(crate) fn ext(path: &str) -> &str {
+pub fn dir(path: &str) -> String {
+    let cut = path.rfind('/').map_or(0, |i| i + 1);
+    clean(&path[..cut])
+}
+
+/// Extension including the dot, or `""`.
+pub fn ext(path: &str) -> &str {
     for (i, b) in path.bytes().enumerate().rev() {
         match b {
             b'/' => return "",
@@ -96,24 +73,48 @@ pub(crate) fn ext(path: &str) -> &str {
     ""
 }
 
-/// Go `filepath.IsAbs`.
-pub(crate) fn is_abs(p: &str) -> bool {
-    p.starts_with('/')
+pub fn is_abs(path: &str) -> bool {
+    path.starts_with('/')
 }
 
-/// Go `filepath.Rel`.
-pub(crate) fn rel(basepath: &str, targpath: &str) -> Result<String, String> {
-    let base_c = clean(basepath);
+/// The working directory: `$PWD` when it is absolute and names the same
+/// directory as `.` (so symlinked paths like macOS `/tmp` are kept), else
+/// `getcwd`.
+pub fn getwd() -> io::Result<String> {
+    let dot = fs::metadata(".")?;
+    if let Ok(pwd) = std::env::var("PWD")
+        && is_abs(&pwd)
+        && let Ok(m) = fs::metadata(&pwd)
+        && m.dev() == dot.dev()
+        && m.ino() == dot.ino()
+    {
+        return Ok(pwd);
+    }
+    Ok(std::env::current_dir()?.to_string_lossy().into_owned())
+}
+
+/// `path` joined onto the working directory and cleaned.
+pub fn abs(path: &str) -> io::Result<String> {
+    if is_abs(path) {
+        return Ok(clean(path));
+    }
+    Ok(join(&[&getwd()?, path]))
+}
+
+/// `targpath` relative to `basepath`, both cleaned first. `None` when one is
+/// absolute and the other is not, or the result would need to know the
+/// working directory.
+pub fn rel(basepath: &str, targpath: &str) -> Option<String> {
+    let base = clean(basepath);
     let targ = clean(targpath);
-    if targ == base_c {
-        return Ok(".".into());
+    if targ == base {
+        return Some(".".to_string());
     }
-    let base_s = if base_c == "." { "" } else { base_c.as_str() };
-    let cant = || format!("Rel: can't make {targpath} relative to {basepath}");
-    if base_s.starts_with('/') != targ.starts_with('/') {
-        return Err(cant());
+    let base = if base == "." { String::new() } else { base };
+    if is_abs(&base) != is_abs(&targ) {
+        return None;
     }
-    let (b, t) = (base_s.as_bytes(), targ.as_bytes());
+    let (b, t) = (base.as_bytes(), targ.as_bytes());
     let (bl, tl) = (b.len(), t.len());
     let (mut b0, mut bi, mut t0, mut ti) = (0, 0, 0, 0);
     loop {
@@ -135,11 +136,11 @@ pub(crate) fn rel(basepath: &str, targpath: &str) -> Result<String, String> {
         b0 = bi;
         t0 = ti;
     }
-    if &b[b0..bi] == b".." {
-        return Err(cant());
+    if &base[b0..bi] == ".." {
+        return None;
     }
     if b0 != bl {
-        let seps = b[b0..bl].iter().filter(|&&c| c == b'/').count();
+        let seps = base[b0..bl].matches('/').count();
         let mut out = String::from("..");
         for _ in 0..seps {
             out.push_str("/..");
@@ -148,47 +149,26 @@ pub(crate) fn rel(basepath: &str, targpath: &str) -> Result<String, String> {
             out.push('/');
             out.push_str(&targ[t0..]);
         }
-        return Ok(out);
+        return Some(out);
     }
-    Ok(targ[t0..].into())
+    Some(targ[t0..].to_string())
 }
 
-/// Go `os.Getwd`: `$PWD` when it names the current directory.
-fn getwd() -> io::Result<String> {
-    if let Ok(pwd) = std::env::var("PWD")
-        && pwd.starts_with('/')
-        && let (Ok(a), Ok(b)) = (fs::metadata(&pwd), fs::metadata("."))
-        && a.dev() == b.dev()
-        && a.ino() == b.ino()
-    {
-        return Ok(pwd);
-    }
-    std::env::current_dir().map(|d| d.to_string_lossy().into_owned())
-}
-
-/// Go `filepath.Abs`.
-pub(crate) fn abs(p: &str) -> io::Result<String> {
-    if is_abs(p) {
-        return Ok(clean(p));
-    }
-    Ok(join(&[&getwd()?, p]))
-}
-
-/// Go `filepath.EvalSymlinks` for absolute paths; `None` on any error.
-pub(crate) fn eval_symlinks(path: &str) -> Option<String> {
+/// Resolves symlinks component by component, applying `..` to the path
+/// resolved so far. `None` when a component is missing or links loop.
+pub fn eval_symlinks(path: &str) -> Option<String> {
     let mut path = path.to_string();
     let mut vol_len = usize::from(path.starts_with('/'));
     let mut vol = path[..vol_len].to_string();
     let mut dest = vol.clone();
     let mut links = 0;
     let mut start = vol_len;
-    let mut end;
     while start < path.len() {
         let b = path.as_bytes();
         while start < b.len() && b[start] == b'/' {
             start += 1;
         }
-        end = start;
+        let mut end = start;
         while end < b.len() && b[end] != b'/' {
             end += 1;
         }
@@ -249,81 +229,13 @@ fn last_slash(dest: &str, vol_len: usize) -> Option<usize> {
     dest.get(vol_len..)?.rfind('/').map(|i| vol_len + i)
 }
 
-/// Go `syscall.Errno.Error()`: strerror with a lower-case first letter.
-pub(crate) fn errno_text(e: &io::Error) -> String {
-    let Some(code) = e.raw_os_error() else {
-        return e.to_string();
-    };
-    let s = io::Error::from_raw_os_error(code).to_string();
-    let s = s
-        .strip_suffix(&format!(" (os error {code})"))
-        .unwrap_or(&s)
-        .to_string();
-    let mut chars = s.chars();
-    match chars.next() {
-        Some(first) => first.to_lowercase().chain(chars).collect(),
-        None => s,
-    }
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("syntax error in pattern")]
+pub struct BadPattern;
 
-/// Go `os.MkdirAll(path, 0o755)`, reporting the component that failed.
-pub(crate) fn mkdir_all(path: &str) -> Result<(), crate::Error> {
-    use std::os::unix::fs::DirBuilderExt;
-    if let Ok(m) = fs::metadata(path) {
-        if m.is_dir() {
-            return Ok(());
-        }
-        return Err(crate::Error::path(
-            "mkdir",
-            path,
-            io::Error::from_raw_os_error(20),
-        ));
-    }
-    let b = path.as_bytes();
-    let mut i = b.len();
-    while i > 0 && b[i - 1] == b'/' {
-        i -= 1;
-    }
-    let mut j = i;
-    while j > 0 && b[j - 1] != b'/' {
-        j -= 1;
-    }
-    if j > 1 {
-        mkdir_all(&path[..j - 1])?;
-    }
-    if let Err(e) = fs::DirBuilder::new().mode(0o755).create(path) {
-        if fs::symlink_metadata(path).is_ok_and(|m| m.is_dir()) {
-            return Ok(());
-        }
-        return Err(crate::Error::path("mkdir", path, e));
-    }
-    Ok(())
-}
-
-/// Go `utf8.DecodeRune`: invalid input decodes as U+FFFD of width 1.
-fn decode_rune(b: &[u8]) -> (char, usize) {
-    if b.is_empty() {
-        return ('\u{FFFD}', 0);
-    }
-    let n = match b[0] {
-        0x00..=0x7f => 1,
-        0xc0..=0xdf => 2,
-        0xe0..=0xef => 3,
-        0xf0..=0xf7 => 4,
-        _ => return ('\u{FFFD}', 1),
-    };
-    match b.get(..n).and_then(|s| std::str::from_utf8(s).ok()) {
-        Some(s) => (s.chars().next().unwrap_or('\u{FFFD}'), n),
-        None => ('\u{FFFD}', 1),
-    }
-}
-
-/// Go `filepath.ErrBadPattern`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct BadPattern;
-
-/// Go `filepath.Match`, on bytes like Go.
-pub(crate) fn glob_match(pattern: &str, name: &str) -> Result<bool, BadPattern> {
+/// Shell-style match of the whole `name`: `*` and `?` stop at `/`, `[...]`
+/// classes, `\` escapes. Errors on a malformed pattern.
+pub fn glob_match(pattern: &str, name: &str) -> Result<bool, BadPattern> {
     let mut pattern = pattern.as_bytes();
     let mut name = name.as_bytes();
     'pattern: while !pattern.is_empty() {
@@ -381,6 +293,24 @@ fn scan_chunk(mut pattern: &[u8]) -> (bool, &[u8], &[u8]) {
         i += 1;
     }
     (star, &pattern[..i], &pattern[i..])
+}
+
+/// First char of `b` and its width; invalid input is U+FFFD of width 1.
+fn decode_rune(b: &[u8]) -> (char, usize) {
+    if b.is_empty() {
+        return ('\u{FFFD}', 0);
+    }
+    let n = match b[0] {
+        0x00..=0x7f => 1,
+        0xc0..=0xdf => 2,
+        0xe0..=0xef => 3,
+        0xf0..=0xf7 => 4,
+        _ => return ('\u{FFFD}', 1),
+    };
+    match b.get(..n).and_then(|s| std::str::from_utf8(s).ok()) {
+        Some(s) => (s.chars().next().unwrap_or('\u{FFFD}'), n),
+        None => ('\u{FFFD}', 1),
+    }
 }
 
 fn match_chunk<'a>(mut chunk: &[u8], mut s: &'a [u8]) -> Result<(&'a [u8], bool), BadPattern> {
@@ -480,33 +410,4 @@ fn get_esc(chunk: &[u8]) -> Result<(char, &[u8]), BadPattern> {
         return Err(BadPattern);
     }
     Ok((r, chunk))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn match_like_go() {
-        assert_eq!(glob_match("*.go", "a.go"), Ok(true));
-        assert_eq!(glob_match("*.go", "dir/a.go"), Ok(false));
-        assert_eq!(glob_match("a/*/c", "a/b/c"), Ok(true));
-        assert_eq!(glob_match("[a-c]x", "bx"), Ok(true));
-        assert_eq!(glob_match("[", "a"), Err(BadPattern));
-        assert_eq!(glob_match("a?c", "a/c"), Ok(false));
-    }
-
-    #[test]
-    fn path_helpers() {
-        assert_eq!(clean("a//b/../c/"), "a/c");
-        assert_eq!(join(&["/root", "x/../y"]), "/root/y");
-        assert_eq!(dir("a/b/c.go"), "a/b");
-        assert_eq!(dir("c.go"), ".");
-        assert_eq!(base("a/b/"), "b");
-        assert_eq!(ext("a.b/c"), "");
-        assert_eq!(ext("x.tar.gz"), ".gz");
-        assert_eq!(rel("/a/b", "/a/b/c/d").as_deref(), Ok("c/d"));
-        assert_eq!(rel("/a/b", "/a/x").as_deref(), Ok("../x"));
-        assert!(rel("/a", "b").is_err());
-    }
 }

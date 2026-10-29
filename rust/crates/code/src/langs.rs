@@ -1,9 +1,9 @@
-use crate::gopath;
+use recur_domain::path;
 
 /// Reports whether `name` looks like a source file the outline, symbol,
 /// metrics and drift walks read. Config and data files are excluded.
 pub fn is_source_file(name: &str) -> bool {
-    is_source_ext(&gopath::ext(name).to_lowercase())
+    is_source_ext(&path::ext(name).to_lowercase())
 }
 
 /// Reports whether `ext` (`.py` or `py`) is a supported source extension.

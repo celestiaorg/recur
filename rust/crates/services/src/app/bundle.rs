@@ -9,7 +9,6 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use parking_lot::Mutex;
-use recur_bundles::go::quote;
 use recur_bundles::{
     Catalog, Command, DiscoverRoots, ExpandAction, Grammar, LanguageData, PromptAction,
     PromptCompleteHit, PromptRunContext, RunContext, RunCtx, SearchAction, Snippet, Symbol,
@@ -53,7 +52,7 @@ fn catalog_stamp(user: &str, def: &str) -> String {
             Ok(e) => e,
             Err(e) => {
                 b.push('\u{1}');
-                b.push_str(&recur_bundles::go::path_err("open", dir, &e));
+                b.push_str(&format!("{dir}: {e}"));
                 continue;
             }
         };
@@ -468,13 +467,12 @@ impl AppServices {
     ) -> Result<PromptResultDto> {
         let cat = self.catalog().await?;
         let prompt = recur_bundles::find_prompt_by_id(&cat.prompts, id)
-            .ok_or_else(|| Error::new(format!("prompt {} not found", quote(id))))?
+            .ok_or_else(|| Error::new(format!("prompt {:?} not found", id)))?
             .clone();
         if recur_bundles::is_script_interpreter(&prompt.interpreter) {
             return Err(Error::new(format!(
-                "prompt {} is {} — use CompiledPromptModule",
-                quote(id),
-                prompt.interpreter
+                "prompt {:?} is {} — use CompiledPromptModule",
+                id, prompt.interpreter
             )));
         }
         let mut timeout = recur_bundles::PROMPT_TIMEOUT;
@@ -516,7 +514,7 @@ impl AppServices {
     ) -> Result<PromptCompleteResultDto> {
         let cat = self.catalog().await?;
         let prompt = recur_bundles::find_prompt_by_id(&cat.prompts, id)
-            .ok_or_else(|| Error::new(format!("prompt {} not found", quote(id))))?
+            .ok_or_else(|| Error::new(format!("prompt {:?} not found", id)))?
             .clone();
         if prompt.complete_body.trim().is_empty() {
             return Ok(PromptCompleteResultDto {
@@ -526,9 +524,8 @@ impl AppServices {
         }
         if recur_bundles::is_script_interpreter(&prompt.complete_interpreter) {
             return Err(Error::new(format!(
-                "prompt {} complete is {} — use CompiledCompleteModule",
-                quote(id),
-                prompt.complete_interpreter
+                "prompt {:?} complete is {} — use CompiledCompleteModule",
+                id, prompt.complete_interpreter
             )));
         }
         let ctx = RunCtx::background().with_timeout(recur_bundles::PROMPT_COMPLETE_TIMEOUT);
@@ -644,13 +641,12 @@ impl AppServices {
     async fn run_command_at(&self, id: &str, rc: &RunContextDto) -> Result<RunResultDto> {
         let cat = self.catalog().await?;
         let cmd = recur_bundles::find_by_id(&cat.commands, id)
-            .ok_or_else(|| Error::new(format!("command {} not found", quote(id))))?
+            .ok_or_else(|| Error::new(format!("command {:?} not found", id)))?
             .clone();
         if recur_bundles::is_script_interpreter(&cmd.interpreter) {
             return Err(Error::new(format!(
-                "command {} is {} — use CompiledModule",
-                quote(id),
-                cmd.interpreter
+                "command {:?} is {} — use CompiledModule",
+                id, cmd.interpreter
             )));
         }
         let timeout = if rc.timeout_ms > 0 {
@@ -694,11 +690,11 @@ impl BundleService for AppServices {
         let id = id.to_owned();
         self.compiled(move |cat, cache| {
             let prompt = recur_bundles::find_prompt_by_id(&cat.prompts, &id)
-                .ok_or_else(|| Error::new(format!("prompt {} not found", quote(&id))))?;
+                .ok_or_else(|| Error::new(format!("prompt {:?} not found", id)))?;
             if prompt.complete_interpreter != recur_bundles::INTERPRETER_TYPESCRIPT {
                 return Err(Error::new(format!(
-                    "prompt {} complete is not typescript",
-                    quote(&id)
+                    "prompt {:?} complete is not typescript",
+                    id
                 )));
             }
             recur_bundles::compile_complete_macro(cache, prompt)
@@ -712,12 +708,9 @@ impl BundleService for AppServices {
         let id = id.to_owned();
         self.compiled(move |cat, cache| {
             let cmd = recur_bundles::find_by_id(&cat.commands, &id)
-                .ok_or_else(|| Error::new(format!("command {} not found", quote(&id))))?;
+                .ok_or_else(|| Error::new(format!("command {:?} not found", id)))?;
             if !recur_bundles::is_script_interpreter(&cmd.interpreter) {
-                return Err(Error::new(format!(
-                    "command {} is not typescript",
-                    quote(&id)
-                )));
+                return Err(Error::new(format!("command {:?} is not typescript", id)));
             }
             recur_bundles::compile_macro(cache, cmd)
                 .map(|r| r.js)
@@ -730,12 +723,9 @@ impl BundleService for AppServices {
         let id = id.to_owned();
         self.compiled(move |cat, cache| {
             let prompt = recur_bundles::find_prompt_by_id(&cat.prompts, &id)
-                .ok_or_else(|| Error::new(format!("prompt {} not found", quote(&id))))?;
+                .ok_or_else(|| Error::new(format!("prompt {:?} not found", id)))?;
             if !recur_bundles::is_script_interpreter(&prompt.interpreter) {
-                return Err(Error::new(format!(
-                    "prompt {} is not typescript",
-                    quote(&id)
-                )));
+                return Err(Error::new(format!("prompt {:?} is not typescript", id)));
             }
             recur_bundles::compile_prompt_macro(cache, prompt)
                 .map(|r| r.js)
@@ -902,12 +892,12 @@ impl BundleService for AppServices {
     async fn read_grammar(&self, scope_name: &str) -> Result<String> {
         let cat = self.catalog().await?;
         let g = recur_bundles::find_grammar_by_scope(&cat.grammars, scope_name)
-            .ok_or_else(|| Error::new(format!("grammar {} not found", quote(scope_name))))?;
+            .ok_or_else(|| Error::new(format!("grammar {:?} not found", scope_name)))?;
         let path = g.abs_path.clone();
         let scope = scope_name.to_owned();
         self.off_thread(move || {
-            recur_bundles::go::read_file_string(&path)
-                .map_err(|e| Error::new(format!("read grammar {}: {e}", quote(&scope))))
+            std::fs::read_to_string(&path)
+                .map_err(|e| Error::new(format!("read grammar {:?}: {e}", scope)))
         })
         .await
     }
@@ -915,12 +905,12 @@ impl BundleService for AppServices {
     async fn read_theme(&self, id: &str) -> Result<String> {
         let cat = self.catalog().await?;
         let t = recur_bundles::find_theme_by_id(&cat.themes, id)
-            .ok_or_else(|| Error::new(format!("theme {} not found", quote(id))))?;
+            .ok_or_else(|| Error::new(format!("theme {:?} not found", id)))?;
         let path = t.abs_path.clone();
         let id = id.to_owned();
         self.off_thread(move || {
-            recur_bundles::go::read_file_string(&path)
-                .map_err(|e| Error::new(format!("read theme {}: {e}", quote(&id))))
+            std::fs::read_to_string(&path)
+                .map_err(|e| Error::new(format!("read theme {:?}: {e}", id)))
         })
         .await
     }

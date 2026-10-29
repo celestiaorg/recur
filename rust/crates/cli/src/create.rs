@@ -5,7 +5,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::sync::LazyLock;
 
 use include_dir::{Dir, DirEntry, include_dir};
-use recur_bundles::go;
+use recur_domain::path;
 use regex::Regex;
 
 /// The `recur bundles create` template tree, embedded from its Go home.
@@ -23,7 +23,9 @@ pub fn normalize_bundle_name(name: &str) -> String {
 
 /// A dotted-safe id from a display name (`MyBundle` → `mybundle`).
 pub fn scaffold_bundle_id(name: &str) -> String {
-    let id: String = go::to_lower(name.trim())
+    let id: String = name
+        .trim()
+        .to_lowercase()
         .chars()
         .filter(|c| ID_CHARS.is_match(c.encode_utf8(&mut [0u8; 4])))
         .collect();
@@ -39,11 +41,11 @@ pub fn scaffold_bundle_id(name: &str) -> String {
 pub fn create_bundle(name: &str, dest_parent: &str, force: bool) -> Result<String, String> {
     if !SAFE_BUNDLE_NAME.is_match(name) {
         return Err(format!(
-            "invalid bundle name {} (use letters, numbers, _ or -; start with a letter)",
-            go::quote(name)
+            "invalid bundle name {:?} (use letters, numbers, _ or -; start with a letter)",
+            name
         ));
     }
-    let dest = go::join(&[dest_parent, name]);
+    let dest = path::join(&[dest_parent, name]);
     if let Ok(st) = std::fs::metadata(&dest) {
         if !force {
             return Err(format!("{dest} already exists (pass --force to replace)"));
@@ -51,7 +53,7 @@ pub fn create_bundle(name: &str, dest_parent: &str, force: bool) -> Result<Strin
         if !st.is_dir() {
             return Err(format!("{dest} exists and is not a directory"));
         }
-        std::fs::remove_dir_all(&dest).map_err(|e| go::path_err("unlinkat", &dest, &e))?;
+        std::fs::remove_dir_all(&dest).map_err(|e| format!("{dest}: {e}"))?;
     }
     mkdir_all(&dest)?;
     let id = scaffold_bundle_id(name);
@@ -70,8 +72,8 @@ fn write_tree(dir: &Dir<'static>, dest: &str, pairs: &[(&str, String)]) -> Resul
     let mut entries: Vec<&DirEntry<'static>> = dir.entries().iter().collect();
     entries.sort_by_key(|e| e.path().file_name().map(|n| n.to_os_string()));
     for e in entries {
-        let rel = go::path_str(e.path());
-        let target = go::join(&[dest, &rel]);
+        let rel = e.path().to_string_lossy().into_owned();
+        let target = path::join(&[dest, &rel]);
         match e {
             DirEntry::Dir(d) => {
                 mkdir_all(&target)?;
@@ -84,16 +86,16 @@ fn write_tree(dir: &Dir<'static>, dest: &str, pairs: &[(&str, String)]) -> Resul
                 } else {
                     0o644
                 };
-                mkdir_all(&go::dir(&target))?;
+                mkdir_all(&path::dir(&target))?;
                 let mut out = std::fs::OpenOptions::new()
                     .write(true)
                     .create(true)
                     .truncate(true)
                     .mode(mode)
                     .open(&target)
-                    .map_err(|e| go::path_err("open", &target, &e))?;
+                    .map_err(|e| format!("{target}: {e}"))?;
                 out.write_all(body.as_bytes())
-                    .map_err(|e| go::path_err("write", &target, &e))?;
+                    .map_err(|e| format!("{target}: {e}"))?;
             }
         }
     }
@@ -121,7 +123,7 @@ fn replace_all(s: &str, pairs: &[(&str, String)]) -> String {
 }
 
 fn mkdir_all(dir: &str) -> Result<(), String> {
-    std::fs::create_dir_all(dir).map_err(|e| go::path_err("mkdir", dir, &e))
+    std::fs::create_dir_all(dir).map_err(|e| format!("{dir}: {e}"))
 }
 
 #[cfg(test)]

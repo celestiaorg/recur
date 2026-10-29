@@ -3,7 +3,8 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use crate::go::{self, quote};
+use recur_domain::path;
+
 use crate::grammar::{grammar_convention_ok, terminal_theme_convention_ok, theme_convention_ok};
 use crate::keyequiv::{RESERVED_APP_CHORDS, is_reserved_app_chord, parse_key_equivalent};
 use crate::loops::{ROLE_MODE_LOOP, Role, VERB_VERIFY, allowed_role_modes, same_or_stricter};
@@ -93,7 +94,7 @@ pub fn lint_bundles(dirs: &[String], cache_dir: &str) -> LintReport {
             Err(e) => {
                 rep.add(LintFinding {
                     severity: LintSeverity::Error,
-                    bundle: go::base(dir),
+                    bundle: path::base(dir),
                     command: String::new(),
                     path: dir.clone(),
                     message: e.0,
@@ -157,8 +158,8 @@ pub fn lint_bundles(dirs: &[String], cache_dir: &str) -> LintReport {
             command: String::new(),
             path: list[0].dir.clone(),
             message: format!(
-                "keyEquivalent {} shared by {} (disambiguation menu at runtime)",
-                quote(chord),
+                "keyEquivalent {:?} shared by {} (disambiguation menu at runtime)",
+                chord,
                 names.join(", ")
             ),
         });
@@ -187,7 +188,7 @@ pub fn lint_bundles(dirs: &[String], cache_dir: &str) -> LintReport {
             bundle: list[0].bundle.clone(),
             command: list[0].name.clone(),
             path: list[0].dir.clone(),
-            message: format!("slash {} duplicated by {}", quote(slash), names.join(", ")),
+            message: format!("slash {:?} duplicated by {}", slash, names.join(", ")),
         });
     }
     rep
@@ -202,7 +203,7 @@ type LintedBundle = (
 );
 
 fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
-    let data = go::read_file(&go::join(&[dir, "bundle.toml"]))
+    let data = std::fs::read(path::join(&[dir, "bundle.toml"]))
         .map_err(|e| err!("read bundle.toml: {e}"))?;
     let parsed = parse_manifest_full(dir, &data)?;
     let meta = parsed.meta.clone();
@@ -225,12 +226,12 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 &g.scope_name,
                 &g.abs_path,
                 format!(
-                    "grammar path {} should end in .tmLanguage.json or .tmLanguage",
-                    quote(&g.path)
+                    "grammar path {:?} should end in .tmLanguage.json or .tmLanguage",
+                    g.path
                 ),
             );
         }
-        match go::stat(&g.abs_path) {
+        match std::fs::metadata(&g.abs_path).map_err(|e| format!("{}: {e}", g.abs_path)) {
             Err(e) => add(E, &g.scope_name, dir, format!("grammar file missing: {e}")),
             Ok(st) if st.is_dir() => add(
                 E,
@@ -241,7 +242,7 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
             Ok(_) => {
                 if let Ok(body) = std::fs::read(&g.abs_path)
                     && !body.is_empty()
-                    && go::to_lower(&g.path).ends_with(".json")
+                    && g.path.to_lowercase().ends_with(".json")
                 {
                     // Lightweight JSON check (plist is XML, skipped).
                     let text = String::from_utf8_lossy(&body);
@@ -265,14 +266,14 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 &t.name,
                 &t.abs_path,
                 format!(
-                    "theme path {} should end in .tmTheme.json (or .tmTheme)",
-                    quote(&t.path)
+                    "theme path {:?} should end in .tmTheme.json (or .tmTheme)",
+                    t.path
                 ),
             );
         }
         if let Ok(body) = std::fs::read(&t.abs_path) {
             let text = String::from_utf8_lossy(&body);
-            if go::to_lower(&t.path).ends_with(".json") && !text.trim().starts_with('{') {
+            if t.path.to_lowercase().ends_with(".json") && !text.trim().starts_with('{') {
                 add(
                     E,
                     &t.name,
@@ -288,7 +289,7 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 I,
                 &t.name,
                 &t.abs_path,
-                format!("terminalTheme path {} should end in .json", quote(&t.path)),
+                format!("terminalTheme path {:?} should end in .json", t.path),
             );
         }
     }
@@ -341,7 +342,7 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 E,
                 &lp.id,
                 dir,
-                format!("conductor {} must have mode = \"loop\"", quote(cond_id)),
+                format!("conductor {:?} must have mode = \"loop\"", cond_id),
             );
         }
         for ph in &lp.phases {
@@ -387,9 +388,9 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                         &at,
                         dir,
                         format!(
-                            "roles.{slot} {} has mode {} (want {})",
-                            quote(rid),
-                            quote(&r.mode),
+                            "roles.{slot} {:?} has mode {:?} (want {})",
+                            rid,
+                            r.mode,
                             allowed.join("|")
                         ),
                     );
@@ -428,8 +429,8 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                     "openInPreview requires language (html, htm, md, mdx, markdown, svg, mmd, or mermaid)".to_string()
                 } else {
                     format!(
-                        "openInPreview: language {} has no Preview chip (use html, htm, md, mdx, markdown, svg, mmd, or mermaid)",
-                        quote(lang)
+                        "openInPreview: language {:?} has no Preview chip (use html, htm, md, mdx, markdown, svg, mmd, or mermaid)",
+                        lang
                     )
                 };
                 add(E, &c.name, dir, msg);
@@ -467,10 +468,7 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 E,
                 &p.name,
                 dir,
-                format!(
-                    "slash {} must match {PROMPT_SLASH_PATTERN}",
-                    quote(&p.slash)
-                ),
+                format!("slash {:?} must match {PROMPT_SLASH_PATTERN}", p.slash),
             );
         }
         if !p.loop_id.is_empty() {
@@ -479,7 +477,7 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                     E,
                     &p.name,
                     dir,
-                    format!("loop {} is not a safe id", quote(&p.loop_id)),
+                    format!("loop {:?} is not a safe id", p.loop_id),
                 );
             }
             if !p.mode.is_empty() && p.mode != PROMPT_MODE_LOOP {
@@ -492,8 +490,8 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 &p.name,
                 dir,
                 format!(
-                    "unknown mode {} (use ask|plan|agent|review|loop, or omit)",
-                    quote(&p.mode)
+                    "unknown mode {:?} (use ask|plan|agent|review|loop, or omit)",
+                    p.mode
                 ),
             );
         }
@@ -514,8 +512,8 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 &p.name,
                 dir,
                 format!(
-                    "tab_group {} must match {PROMPT_SLASH_PATTERN}",
-                    quote(&p.tab_group)
+                    "tab_group {:?} must match {PROMPT_SLASH_PATTERN}",
+                    p.tab_group
                 ),
             );
         }
@@ -532,11 +530,7 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 E,
                 &p.name,
                 dir,
-                format!(
-                    "slash {} duplicated with prompt {}",
-                    quote(&p.slash),
-                    quote(prev)
-                ),
+                format!("slash {:?} duplicated with prompt {:?}", p.slash, prev),
             ),
             None => {
                 seen_slash.insert(p.slash.clone(), p.name.clone());
@@ -622,9 +616,8 @@ fn key_equivalent_finding(raw: &str) -> Option<(LintSeverity, String)> {
             (
                 LintSeverity::Error,
                 format!(
-                    "keyEquivalent {} collides with app shortcut {} (binding dropped in-app)",
-                    quote(&can),
-                    quote(label)
+                    "keyEquivalent {:?} collides with app shortcut {:?} (binding dropped in-app)",
+                    can, label
                 ),
             )
         }),
@@ -634,7 +627,7 @@ fn key_equivalent_finding(raw: &str) -> Option<(LintSeverity, String)> {
 /// Whether a newDocument language gets an Observatory Code/Preview chip
 /// (mirrors `frontend/src/lib/preview.ts`).
 pub fn previewable_language(lang: &str) -> bool {
-    let s = go::to_lower(lang.trim());
+    let s = lang.trim().to_lowercase();
     matches!(
         s.strip_prefix('.').unwrap_or(&s),
         "html" | "htm" | "md" | "mdx" | "markdown" | "svg" | "mmd" | "mermaid"
@@ -646,9 +639,9 @@ fn script_path_or_dir(script_path: &str, script: &str, dir: &str) -> String {
         return script_path.to_string();
     }
     if !script.is_empty() {
-        return go::join(&[dir, script]);
+        return path::join(&[dir, script]);
     }
-    go::join(&[dir, "bundle.toml"])
+    path::join(&[dir, "bundle.toml"])
 }
 
 fn starts_with_shebang(body: &str) -> bool {
@@ -660,10 +653,7 @@ fn lint_shebang(body: &str, script: &str) -> Result<(), String> {
         return Ok(());
     }
     if !script.is_empty() {
-        return Err(format!(
-            "shebang script {} must start with #!",
-            quote(script)
-        ));
+        return Err(format!("shebang script {:?} must start with #!", script));
     }
     Err("shebang body must start with #!".to_string())
 }

@@ -9,13 +9,13 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
+use recur_domain::path;
 use sha2::{Digest, Sha256};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{Error, Result};
-use crate::gopath::{self, errno_text};
 use crate::root::path_str;
 
 /// Overrides ripgrep resolution (dev, tests).
@@ -77,7 +77,7 @@ pub fn locate(data_dir: &Path) -> Result<PathBuf> {
     }
     let data_dir = path_str(data_dir);
     if !data_dir.is_empty()
-        && let Some(p) = add(&gopath::join(&[&data_dir, "bin", BIN_NAME]))
+        && let Some(p) = add(&path::join(&[&data_dir, "bin", BIN_NAME]))
     {
         return Ok(p);
     }
@@ -105,9 +105,9 @@ pub(crate) fn look_path(name: &str) -> Option<String> {
     let path = std::env::var("PATH").unwrap_or_default();
     for dir in path.split(':') {
         let dir = if dir.is_empty() { "." } else { dir };
-        let p = gopath::join(&[dir, name]);
+        let p = path::join(&[dir, name]);
         if fs::metadata(&p).is_ok_and(|m| !m.is_dir() && m.permissions().mode() & 0o111 != 0) {
-            if !gopath::is_abs(&p) {
+            if !path::is_abs(&p) {
                 return None;
             }
             return Some(p);
@@ -145,7 +145,7 @@ pub async fn files(
     if rg_path.as_os_str().is_empty() {
         return Err(Error::msg("rg: empty binary path"));
     }
-    let root_abs = gopath::abs(&path_str(root)).map_err(|e| Error::msg(e.to_string()))?;
+    let root_abs = path::abs(&path_str(root)).map_err(|e| Error::msg(e.to_string()))?;
     let mut child = Command::new(rg_path)
         .args(files_args(&root_abs, extra_globs))
         .current_dir(&root_abs)
@@ -154,13 +154,7 @@ pub async fn files(
         .stderr(Stdio::null())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|e| {
-            Error::msg(format!(
-                "rg start: fork/exec {}: {}",
-                rg_path.display(),
-                errno_text(&e)
-            ))
-        })?;
+        .map_err(|e| Error::msg(format!("rg start: {}: {e}", rg_path.display())))?;
     let Some(stdout) = child.stdout.take() else {
         return Err(Error::msg("rg: no stdout"));
     };
@@ -180,7 +174,7 @@ pub async fn files(
             Ok(0) => break,
             Ok(_) => {}
             Err(e) => {
-                fail = Some(Error::msg(errno_text(&e)));
+                fail = Some(Error::msg(e.to_string()));
                 break;
             }
         }
@@ -212,19 +206,19 @@ pub async fn files(
         return Err(Error::Canceled);
     }
     // A non-zero exit (empty tree, everything filtered) is still a listing.
-    waited.map(|_| ()).map_err(|e| Error::msg(errno_text(&e)))
+    waited.map(|_| ()).map_err(|e| Error::msg(e.to_string()))
 }
 
 fn rel_slash(root: &str, path: &str) -> String {
-    let p = if gopath::is_abs(path) {
+    let p = if path::is_abs(path) {
         path.to_string()
     } else {
-        gopath::join(&[root, path])
+        path::join(&[root, path])
     };
-    match gopath::rel(root, &p) {
-        Ok(rel) if rel == ".." || rel.starts_with("../") => String::new(),
-        Ok(rel) => rel,
-        Err(_) => path.to_string(),
+    match path::rel(root, &p) {
+        Some(rel) if rel == ".." || rel.starts_with("../") => String::new(),
+        Some(rel) => rel,
+        None => path.to_string(),
     }
 }
 
@@ -239,7 +233,7 @@ pub async fn ensure(data_dir: &Path) -> Result<PathBuf> {
     }
     let dir = path_str(data_dir);
     if !dir.is_empty() {
-        let managed = gopath::join(&[&dir, "bin", BIN_NAME]);
+        let managed = path::join(&[&dir, "bin", BIN_NAME]);
         if is_executable_file(&managed) && managed_version(&dir) == RELEASE_VERSION {
             return Ok(PathBuf::from(managed));
         }
@@ -257,16 +251,16 @@ pub async fn ensure(data_dir: &Path) -> Result<PathBuf> {
 }
 
 pub(crate) fn managed_version(data_dir: &str) -> String {
-    fs::read_to_string(gopath::join(&[data_dir, "bin", VERSION_FILE_NAME]))
+    fs::read_to_string(path::join(&[data_dir, "bin", VERSION_FILE_NAME]))
         .map(|s| s.trim().to_string())
         .unwrap_or_default()
 }
 
 pub(crate) fn write_managed_version(data_dir: &str) -> Result<()> {
-    let dir = gopath::join(&[data_dir, "bin"]);
-    gopath::mkdir_all(&dir)?;
-    let p = gopath::join(&[&dir, VERSION_FILE_NAME]);
-    fs::write(&p, format!("{RELEASE_VERSION}\n")).map_err(|e| Error::path("open", &p, e))
+    let dir = path::join(&[data_dir, "bin"]);
+    Error::mkdir_all(&dir)?;
+    let p = path::join(&[&dir, VERSION_FILE_NAME]);
+    fs::write(&p, format!("{RELEASE_VERSION}\n")).map_err(|e| Error::path(&p, e))
 }
 
 pub(crate) fn release_sha256(asset: &str) -> Option<&'static str> {
@@ -293,13 +287,13 @@ async fn install(data_dir: &str) -> Result<()> {
             "rg download: no pinned SHA-256 for {asset}"
         )));
     };
-    let bin_dir = gopath::join(&[data_dir, "bin"]);
-    gopath::mkdir_all(&bin_dir)?;
+    let bin_dir = path::join(&[data_dir, "bin"]);
+    Error::mkdir_all(&bin_dir)?;
     let staging = make_staging_dir(&bin_dir)?;
     let result = async {
         // Buffer and hash the whole archive before extracting: hashing while
         // extracting would miss the unread archive tail.
-        let archive = gopath::join(&[&staging, &asset]);
+        let archive = path::join(&[&staging, &asset]);
         let mut hasher = Sha256::new();
         let mut body = Vec::new();
         while let Some(chunk) = res
@@ -310,18 +304,18 @@ async fn install(data_dir: &str) -> Result<()> {
             hasher.update(&chunk);
             body.extend_from_slice(&chunk);
         }
-        fs::write(&archive, &body).map_err(|e| Error::path("open", &archive, e))?;
+        fs::write(&archive, &body).map_err(|e| Error::path(&archive, e))?;
         let got = hex::encode(hasher.finalize());
         if got != want {
             return Err(Error::msg(format!(
                 "rg download: SHA-256 mismatch for {asset}: got {got} want {want}"
             )));
         }
-        let staged = gopath::join(&[&staging, BIN_NAME]);
+        let staged = path::join(&[&staging, BIN_NAME]);
         extract_rg(&body[..], &staged)?;
         fs::set_permissions(&staged, fs::Permissions::from_mode(0o755))
-            .map_err(|e| Error::path("chmod", &staged, e))?;
-        let dest = gopath::join(&[&bin_dir, BIN_NAME]);
+            .map_err(|e| Error::path(&staged, e))?;
+        let dest = path::join(&[&bin_dir, BIN_NAME]);
         if fs::rename(&staged, &dest).is_err() {
             copy_file(&staged, &dest)?;
         }
@@ -342,7 +336,7 @@ fn make_staging_dir(bin_dir: &str) -> Result<String> {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.subsec_nanos())
             .unwrap_or_default();
-        let p = gopath::join(&[
+        let p = path::join(&[
             bin_dir,
             &format!(
                 ".rg-staging-{}",
@@ -352,7 +346,7 @@ fn make_staging_dir(bin_dir: &str) -> Result<String> {
         match fs::DirBuilder::new().mode(0o700).create(&p) {
             Ok(()) => return Ok(p),
             Err(e) if e.kind() == io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(Error::path("mkdirtemp", &p, e)),
+            Err(e) => return Err(Error::path(&p, e)),
         }
     }
     Err(Error::msg("rg download: could not create staging dir"))
@@ -394,7 +388,7 @@ pub(crate) fn extract_rg(r: impl Read, dest: &str) -> Result<()> {
             .path()
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_default();
-        if gopath::base(&name) != BIN_NAME
+        if path::base(&name) != BIN_NAME
             || entry.header().entry_type() != tar::EntryType::Regular
             || name.contains("..")
         {
@@ -406,7 +400,7 @@ pub(crate) fn extract_rg(r: impl Read, dest: &str) -> Result<()> {
             .truncate(true)
             .mode(0o755)
             .open(dest)
-            .map_err(|e| Error::path("open", dest, e))?;
+            .map_err(|e| Error::path(dest, e))?;
         io::copy(&mut entry, &mut f).map_err(|e| Error::msg(e.to_string()))?;
         return Ok(());
     }
@@ -414,14 +408,14 @@ pub(crate) fn extract_rg(r: impl Read, dest: &str) -> Result<()> {
 }
 
 fn copy_file(src: &str, dest: &str) -> Result<()> {
-    let mut input = fs::File::open(src).map_err(|e| Error::path("open", src, e))?;
+    let mut input = fs::File::open(src).map_err(|e| Error::path(src, e))?;
     let mut out = fs::OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .mode(0o755)
         .open(dest)
-        .map_err(|e| Error::path("open", dest, e))?;
+        .map_err(|e| Error::path(dest, e))?;
     io::copy(&mut input, &mut out).map_err(|e| Error::msg(e.to_string()))?;
     Ok(())
 }
@@ -495,7 +489,7 @@ mod tests {
         .unwrap_err();
         assert_eq!(
             err.to_string(),
-            "rg start: fork/exec /nonexistent/rg-binary: no such file or directory"
+            "rg start: /nonexistent/rg-binary: No such file or directory (os error 2)"
         );
         let Some(rg) = look_path("rg") else {
             return;

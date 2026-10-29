@@ -3,7 +3,6 @@
 use std::collections::{BTreeMap, HashSet};
 use std::sync::LazyLock;
 
-use crate::go::quote;
 use crate::{Error, err};
 
 /// Canonical modifier order for chord strings (Apple display order).
@@ -180,30 +179,27 @@ pub fn parse_key_equivalent(s: &str) -> Result<String, Error> {
     let mut mods = HashSet::new();
     let mut key = String::new();
     for (i, p) in parts.iter().enumerate() {
-        let mut tok = crate::go::to_lower(p.trim());
+        let mut tok = p.trim().to_lowercase();
         if tok.is_empty() {
-            return Err(err!("empty token in {}", quote(s)));
+            return Err(err!("empty token in {:?}", s));
         }
         if let Some(m) = known_mod(&tok) {
             mods.insert(m);
             continue;
         }
         if i != parts.len() - 1 {
-            return Err(err!("{}: unknown modifier {}", quote(s), quote(p)));
+            return Err(err!("{:?}: unknown modifier {:?}", s, p));
         }
         if let Some(alias) = key_alias(&tok) {
             tok = alias.to_string();
         }
         if !KNOWN_KEYS.contains(tok.as_str()) {
-            return Err(err!("{}: unknown key {}", quote(s), quote(p)));
+            return Err(err!("{:?}: unknown key {:?}", s, p));
         }
         key = tok;
     }
     if key.is_empty() {
-        return Err(err!(
-            "{}: missing key (modifier alone is not a chord)",
-            quote(s)
-        ));
+        return Err(err!("{:?}: missing key (modifier alone is not a chord)", s));
     }
     let mut out: Vec<&str> = MOD_ORDER
         .iter()
@@ -244,7 +240,7 @@ pub fn format_key_equivalent_display(canonical: &str) -> String {
             "space" => "␣",
             _ => {
                 if p.len() == 1 || (p.starts_with('f') && p.len() <= 3) {
-                    b.push_str(&crate::go::to_upper(p));
+                    b.push_str(&p.to_uppercase());
                 } else {
                     b.push_str(p);
                 }

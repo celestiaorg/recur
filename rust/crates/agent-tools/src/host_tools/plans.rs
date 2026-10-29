@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use recur_domain::{STEP_DOING, STEP_DONE, STEP_PENDING, STEP_SKIPPED};
 
 use super::strict;
-use crate::gostr::{quote, to_lower};
 use crate::host::{PlanStepMeta, PlanSubmission};
 use crate::json::{Shape, Ty, Val, field, strict_unmarshal, unmarshal_ty};
 use crate::names;
@@ -195,11 +194,11 @@ optional short note. Use it as work advances so plan progress stays honest."
         if a.str("step_id").trim().is_empty() {
             return Err("update_plan_step: step_id is required".into());
         }
-        let status = to_lower(a.str("status").trim());
+        let status = a.str("status").trim().to_lowercase();
         if ![STEP_PENDING, STEP_DOING, STEP_DONE, STEP_SKIPPED].contains(&status.as_str()) {
             return Err(format!(
-                "update_plan_step: status must be pending/doing/done/skipped, got {}",
-                quote(a.str("status"))
+                "update_plan_step: status must be pending/doing/done/skipped, got {:?}",
+                a.str("status")
             )
             .into());
         }

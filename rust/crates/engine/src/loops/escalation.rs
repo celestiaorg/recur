@@ -19,7 +19,6 @@ use crate::loop_handle::{Command, EscalationAnswer, LoopHandle};
 use crate::loops::Walk;
 use crate::publish::terminal;
 use crate::text::{equal_fold_ascii, html_escape, truncate, unix_nanos};
-use recur_bundles::go::to_lower;
 
 /// Engine-stamped escalation provenance (agents cannot set it).
 pub const ESC_KIND_AGENT: &str = "agent";
@@ -639,15 +638,17 @@ fn options(esc: &Escalation) -> &[EscalationOption] {
 }
 
 fn escalation_choice_match(esc: &Escalation, resolved: &str) -> bool {
-    let want = to_lower(resolved.trim());
-    options(esc).iter().any(|o| to_lower(o.text.trim()) == want)
+    let want = resolved.trim().to_lowercase();
+    options(esc)
+        .iter()
+        .any(|o| o.text.trim().to_lowercase() == want)
 }
 
 /// A rail-#4 cap question (the engine's own option text).
 pub fn cap_escalation(esc: &Escalation) -> bool {
     options(esc).iter().any(|o| {
         matches!(
-            to_lower(o.text.trim()).as_str(),
+            o.text.trim().to_lowercase().as_str(),
             "keep iterating" | "ship with caveats"
         )
     })
@@ -660,12 +661,13 @@ pub fn ensure_pr_door_escalation(esc: &Escalation) -> bool {
         return true;
     }
     options(esc).iter().any(|o| {
-        equal_fold_ascii(o.text.trim(), "Ship with caveats") && to_lower(&o.desc).contains("anyway")
+        equal_fold_ascii(o.text.trim(), "Ship with caveats")
+            && o.desc.to_lowercase().contains("anyway")
     })
 }
 
 pub fn plan_approval_escalation(esc: &Escalation) -> bool {
     options(esc)
         .iter()
-        .any(|o| to_lower(o.text.trim()) == "approve and proceed")
+        .any(|o| o.text.trim().to_lowercase() == "approve and proceed")
 }

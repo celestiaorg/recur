@@ -218,11 +218,11 @@ pub fn outline(root: &Path, rel: &str) -> Result<Vec<OutlineSymbol>> {
         return Ok(Vec::new());
     }
     let full = safe_join_str(&path_str(root), rel)?;
-    let st = fs::metadata(&full).map_err(|e| Error::path("stat", &full, e))?;
+    let st = fs::metadata(&full).map_err(|e| Error::path(&full, e))?;
     if st.is_dir() {
         return Ok(Vec::new());
     }
-    let f = File::open(&full).map_err(|e| Error::path("open", &full, e))?;
+    let f = File::open(&full).map_err(|e| Error::path(&full, e))?;
     let ext = filepath_ext(rel).to_lowercase();
     let mut out = Vec::new();
     let res = scan_lines(f, |line_no, raw| {
@@ -241,7 +241,7 @@ pub fn outline(root: &Path, rel: &str) -> Result<Vec<OutlineSymbol>> {
     });
     match res {
         Ok(_) => Ok(out),
-        Err(ScanError::Io(e)) => Err(Error::path("read", &full, e)),
+        Err(ScanError::Io(e)) => Err(Error::path(&full, e)),
         Err(e @ ScanError::TooLong) => Err(Error::msg(e.to_string())),
     }
 }

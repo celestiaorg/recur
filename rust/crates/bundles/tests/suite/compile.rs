@@ -1,12 +1,13 @@
 //! Port of `compile_test.go`.
 
 use recur_bundles::*;
+use recur_domain::path;
 
 use crate::common::*;
 
 /// esbuild's location path for `<id>.ts`: relative to the working directory.
 fn loc(id: &str) -> String {
-    go::rel(&go::getwd().unwrap(), &format!("/{id}.ts")).unwrap()
+    path::rel(&path::getwd().unwrap(), &format!("/{id}.ts")).unwrap()
 }
 
 fn ts(id: &str, body: &str) -> Command {

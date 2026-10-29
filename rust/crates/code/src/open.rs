@@ -8,10 +8,9 @@ use std::sync::LazyLock;
 
 use parking_lot::Mutex;
 use recur_domain::OpenInTarget;
+use recur_domain::path;
 
 use crate::error::{Error, Result};
-use crate::gopath::{self, errno_text};
-use crate::gostr::quote;
 use crate::rg::look_path;
 
 /// Starts `name args…` without waiting; the child is reaped in the
@@ -21,7 +20,7 @@ fn start_detached_cmd(name: &str, args: &[String]) -> std::result::Result<(), St
         name.to_string()
     } else {
         look_path(name)
-            .ok_or_else(|| format!("exec: {}: executable file not found in $PATH", quote(name)))?
+            .ok_or_else(|| format!("exec: {:?}: executable file not found in $PATH", name))?
     };
     let mut child = Command::new(&program)
         .args(args)
@@ -29,7 +28,7 @@ fn start_detached_cmd(name: &str, args: &[String]) -> std::result::Result<(), St
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|e| format!("fork/exec {program}: {}", errno_text(&e)))?;
+        .map_err(|e| format!("{program}: {e}"))?;
     std::thread::spawn(move || {
         let _ = child.wait();
     });
@@ -89,9 +88,9 @@ pub fn open_in_editor(abs_path: &str, line: i64) -> Result<()> {
 pub fn reveal_in_finder(abs_path: &str) -> Result<()> {
     let mut target = abs_path.to_string();
     if let Err(e) = fs::metadata(abs_path) {
-        let parent = gopath::dir(abs_path);
+        let parent = path::dir(abs_path);
         if !fs::metadata(&parent).is_ok_and(|m| m.is_dir()) {
-            return Err(Error::path("stat", abs_path, e));
+            return Err(Error::path(abs_path, e));
         }
         target = parent;
     }
@@ -100,7 +99,7 @@ pub fn reveal_in_finder(abs_path: &str) -> Result<()> {
         "linux" => {
             // xdg-open cannot select a file; open its folder.
             if fs::metadata(&target).is_ok_and(|m| !m.is_dir()) {
-                target = gopath::dir(&target);
+                target = path::dir(&target);
             }
             start_detached_cmd("xdg-open", &[target])
         }
@@ -245,11 +244,11 @@ fn mac_app_path(names: &[&str]) -> String {
         "/System/Library/CoreServices".into(),
     ];
     if !home.is_empty() {
-        dirs.push(gopath::join(&[&home, "Applications"]));
+        dirs.push(path::join(&[&home, "Applications"]));
     }
     for name in names {
         for dir in &dirs {
-            let p = gopath::join(&[dir, name]);
+            let p = path::join(&[dir, name]);
             if fs::metadata(&p).is_ok_and(|m| m.is_dir()) {
                 return p;
             }
@@ -324,12 +323,8 @@ pub fn open_in(abs_path: &str, target_id: &str) -> Result<()> {
 }
 
 pub(crate) fn open_in_with(sys: &dyn OpenSys, abs_path: &str, target_id: &str) -> Result<()> {
-    let st = fs::metadata(abs_path).map_err(|e| {
-        Error::msg(format!(
-            "cannot open {abs_path}: stat {abs_path}: {}",
-            errno_text(&e)
-        ))
-    })?;
+    let st =
+        fs::metadata(abs_path).map_err(|e| Error::msg(format!("cannot open {abs_path}: {e}")))?;
     if !st.is_dir() {
         return Err(Error::msg(format!("{abs_path} is not a directory")));
     }
@@ -348,8 +343,8 @@ pub(crate) fn open_in_with(sys: &dyn OpenSys, abs_path: &str, target_id: &str) -
     }
     let Some(app) = CATALOG.iter().find(|a| a.id == target_id) else {
         return Err(Error::msg(format!(
-            "unknown open-in target {}",
-            quote(target_id)
+            "unknown open-in target {:?}",
+            target_id
         )));
     };
     open_with_app(sys, abs_path, app)
@@ -371,8 +366,8 @@ fn open_with_app(sys: &dyn OpenSys, path: &str, app: &OpenInApp) -> Result<()> {
     for bin in app.bins {
         let Some(p) = sys.look_path(bin) else {
             last = Some(format!(
-                "exec: {}: executable file not found in $PATH",
-                quote(bin)
+                "exec: {:?}: executable file not found in $PATH",
+                bin
             ));
             continue;
         };

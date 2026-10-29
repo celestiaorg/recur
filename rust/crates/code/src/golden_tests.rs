@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 
+use recur_domain::path;
 use recur_domain::{
     FileSearchHit, OutlineSymbol, SearchOpts, SearchResult, SymbolDef, SymbolRef, TreeEntry,
 };
@@ -123,7 +124,7 @@ fn defs_and_refs_match_go() {
 #[test]
 fn ranking_matches_go() {
     let g = golden();
-    let bases: Vec<String> = g.paths.iter().map(|p| crate::gopath::base(p)).collect();
+    let bases: Vec<String> = g.paths.iter().map(|p| path::base(p)).collect();
     for (q, want) in &g.rank {
         assert_eq!(
             &rank_files(None, &g.paths, &bases, q, 8),

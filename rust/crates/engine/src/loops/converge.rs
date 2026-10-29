@@ -36,7 +36,7 @@ pub enum CapAnswer {
 /// Maps a cap answer to an action by the exact option text the engine
 /// offered; free text is guidance; empty stops (the safe default).
 pub fn classify_cap_answer(ans: &EscalationAnswer) -> CapAnswer {
-    match recur_bundles::go::to_lower(ans.choice.trim()).as_str() {
+    match ans.choice.trim().to_lowercase().as_str() {
         "keep iterating" => return CapAnswer::KeepIterating,
         "change approach" => return CapAnswer::ChangeApproach,
         "ship with caveats" => return CapAnswer::Ship,

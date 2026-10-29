@@ -7,7 +7,6 @@ use tokio::sync::OnceCell;
 
 use crate::command::command;
 use crate::error::{Error, ErrorKind, Result};
-use crate::text::{go_string, quote};
 
 /// The oldest supported git. `--diff-merges=first-parent` (commit list
 /// numstat) landed in 2.31; older git fails on that flag and left the Commits
@@ -86,10 +85,10 @@ pub async fn probe() -> Result<Version> {
                 .output()
                 .await
                 .map_err(|e| e.wrap("git version"))?;
-            let out = go_string(&out);
+            let out = String::from_utf8_lossy(&out).into_owned();
             parse_version(&out).ok_or_else(|| {
                 Error::with_kind(
-                    format!("unparsed git version: {}", quote(out.trim())),
+                    format!("unparsed git version: {:?}", out.trim()),
                     ErrorKind::Unparsed,
                 )
             })
@@ -158,7 +157,7 @@ mod tests {
 
     fn unparsed(s: &str) -> Result<Version> {
         Err(Error::with_kind(
-            format!("unparsed git version: {}", quote(s)),
+            format!("unparsed git version: {:?}", s),
             ErrorKind::Unparsed,
         ))
     }

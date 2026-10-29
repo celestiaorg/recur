@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 use parking_lot::Mutex;
-use recur_bundles::go::quote;
+use recur_domain::path;
 use recur_domain::{
     AgentSkill, Commit, FeedItem, FileContent, FileDiff, FileDiffResult, FileSearchResult,
     OutlineSymbol, ReplaceResult, SearchHit, SearchOpts, SearchResult, SymbolDef, SymbolRef,
@@ -46,7 +46,7 @@ impl LooseFiles {
 
 /// Go `filepath.Clean` for an absolute path.
 fn clean(abs: &str) -> PathBuf {
-    PathBuf::from(recur_bundles::go::clean(abs))
+    PathBuf::from(path::clean(abs))
 }
 
 fn is_abs(p: &str) -> bool {
@@ -54,10 +54,7 @@ fn is_abs(p: &str) -> bool {
 }
 
 fn dir_base(p: &str) -> (PathBuf, String) {
-    (
-        PathBuf::from(recur_bundles::go::dir(p)),
-        recur_bundles::go::base(p),
-    )
+    (PathBuf::from(path::dir(p)), path::base(p))
 }
 
 /// A recorded worktree whose directory is gone: live-refresh reads answer
@@ -92,8 +89,8 @@ impl AppServices {
         if !project_id.is_empty() {
             let Some(p) = self.store().project(&project_id) else {
                 return Err(recur_code::Error::Msg(format!(
-                    "project {} not found",
-                    quote(&project_id)
+                    "project {:?} not found",
+                    project_id
                 )));
             };
             repo = p.repo_path;

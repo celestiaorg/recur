@@ -15,7 +15,7 @@ use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 
 use crate::mcp::config_args;
-use crate::proc::{self, Reaped, go_errno, kill_group, path_error, wait_reaped};
+use crate::proc::{self, Reaped, kill_group, wait_reaped};
 use crate::rpc::{BoxFuture, Conn, Ctx};
 
 /// The initialize handshake budget.
@@ -61,8 +61,8 @@ impl Server {
         }
         if let Err(e) = std::fs::create_dir_all(&cfg.home) {
             return Err(format!(
-                "codex server: mkdir CODEX_HOME: {}",
-                path_error("mkdir", &cfg.home, &e)
+                "codex server: mkdir CODEX_HOME: {}: {e}",
+                cfg.home.display()
             ));
         }
         if let Some(from) = &cfg.seed_auth_from {
@@ -92,13 +92,9 @@ impl Server {
         if !cfg.worktree.as_os_str().is_empty() {
             cmd.current_dir(&cfg.worktree);
         }
-        let mut child = cmd.spawn().map_err(|e| {
-            format!(
-                "start codex app-server: fork/exec {}: {}",
-                cfg.bin,
-                go_errno(&e)
-            )
-        })?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("start codex app-server: {}: {e}", cfg.bin))?;
         let pid = child.id().unwrap_or_default();
         let (Some(stdin), Some(stdout), Some(mut stderr)) =
             (child.stdin.take(), child.stdout.take(), child.stderr.take())
@@ -190,7 +186,7 @@ impl Server {
 /// missing. Never touches the worktree or `~/.codex`.
 pub fn ensure_trusted_project(home: &Path, worktree: &Path) -> Result<(), String> {
     use std::io::Write;
-    let abs = proc::abs(worktree).map_err(|e| go_errno(&e))?;
+    let abs = proc::abs(worktree).map_err(|e| e.to_string())?;
     let cfg_path = home.join("config.toml");
     let marker = format!("[projects.{}]", go_quote(&abs.to_string_lossy()));
     if std::fs::read_to_string(&cfg_path).is_ok_and(|raw| raw.contains(&marker)) {
@@ -200,9 +196,9 @@ pub fn ensure_trusted_project(home: &Path, worktree: &Path) -> Result<(), String
         .create(true)
         .append(true)
         .open(&cfg_path)
-        .map_err(|e| path_error("open", &cfg_path, &e))?;
+        .map_err(|e| format!("{}: {e}", cfg_path.display()))?;
     write!(f, "\n{marker}\ntrust_level = \"trusted\"\n")
-        .map_err(|e| path_error("write", &cfg_path, &e))
+        .map_err(|e| format!("{}: {e}", cfg_path.display()))
 }
 
 /// Copies the machine login into Recur's home, preserving tokens Codex
@@ -228,10 +224,10 @@ pub fn seed_auth(from: &Path, to: &Path) -> Result<(), String> {
                 from.display()
             ));
         }
-        Err(e) => return Err(path_error("open", from, &e)),
+        Err(e) => return Err(format!("{}: {e}", from.display())),
     };
     if let Some(dir) = to.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| path_error("mkdir", dir, &e))?;
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
     if raw.is_empty() {
         return Err(format!("codex ChatGPT auth: {} is empty", from.display()));
@@ -242,7 +238,7 @@ pub fn seed_auth(from: &Path, to: &Path) -> Result<(), String> {
     {
         return Ok(());
     }
-    write_private(to, &raw).map_err(|e| path_error("open", to, &e))
+    write_private(to, &raw).map_err(|e| format!("{}: {e}", to.display()))
 }
 
 /// In `CODEX_HOME`, marks `auth.json` as a browser sign-in in Recur, so the
@@ -643,10 +639,10 @@ sleep 30
             .await
             .err()
             .unwrap();
+        assert!(err.starts_with("start codex app-server: "), "{err}");
         assert!(
-            err.starts_with("start codex app-server: fork/exec "),
+            err.ends_with(": No such file or directory (os error 2)"),
             "{err}"
         );
-        assert!(err.ends_with(": no such file or directory"), "{err}");
     }
 }

@@ -6,10 +6,10 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio_util::sync::CancellationToken;
 
 use super::{MAX_GREP_HITS, MAX_LINE_CHARS, data_dir};
-use crate::gostr::lossy;
 use crate::json::{Shape, Ty, field, unmarshal};
-use crate::path::{abs_eval, base, dir, path_err, rel, resolve_path};
+use crate::path::{abs_eval, resolve_path};
 use crate::tool::{Call, Tool, ToolError};
+use recur_domain::path::{base, dir, rel};
 
 const SCHEMA: &str = concat!(
     r#"{"type":"object","properties":{"#,
@@ -157,7 +157,7 @@ pub(crate) fn search_root(worktree: &str, path: &str) -> Result<(String, String)
         return Ok((abs_eval(worktree)?, ".".into()));
     }
     let abs = resolve_path(worktree, path)?;
-    let meta = std::fs::metadata(&abs).map_err(|e| path_err("stat", &abs, &e))?;
+    let meta = std::fs::metadata(&abs).map_err(|e| format!("{abs}: {e}"))?;
     if meta.is_dir() {
         return Ok((abs, ".".into()));
     }
@@ -170,7 +170,7 @@ fn worktree_prefix(worktree: &str, dir: &str) -> String {
         return String::new();
     };
     match rel(&wt, dir) {
-        Ok(r) if r != "." => format!("{r}/"),
+        Some(r) if r != "." => format!("{r}/"),
         _ => String::new(),
     }
 }
@@ -197,12 +197,7 @@ pub(crate) async fn run_rg(
         .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|e| {
-            ToolError(format!(
-                "rg start: {}",
-                path_err("fork/exec", &rg.to_string_lossy(), &e)
-            ))
-        })?;
+        .map_err(|e| ToolError(format!("rg start: {}: {e}", rg.to_string_lossy())))?;
     let mut stderr_pipe = child.stderr.take();
     let stderr_task = tokio::spawn(async move {
         let mut buf = Vec::new();
@@ -239,7 +234,7 @@ pub(crate) async fn run_rg(
                 truncated = true;
                 return;
             }
-            let line = lossy(&buf);
+            let line = String::from_utf8_lossy(&buf).into_owned();
             lines.push(match line.strip_prefix("./") {
                 Some(rest) => format!("{prefix}{rest}"),
                 None => line,
@@ -275,7 +270,10 @@ pub(crate) async fn run_rg(
             Ok((lines, false))
         }
         Ok(s) => {
-            let msg = lossy(&stderr).trim().to_string();
+            let msg = String::from_utf8_lossy(&stderr)
+                .into_owned()
+                .trim()
+                .to_string();
             if !msg.is_empty() {
                 return Err(msg.into());
             }

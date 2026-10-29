@@ -541,9 +541,9 @@ impl Cobra {
             && let Some(first) = args.first()
         {
             return Err(CliError::Msg(format!(
-                "unknown command {} for {}{}",
-                go_quote(first),
-                go_quote(&self.command_path(c)),
+                "unknown command {:?} for {:?}{}",
+                first,
+                self.command_path(c),
                 self.find_suggestions(c, first)
             )));
         }
@@ -578,9 +578,9 @@ impl Cobra {
         let msg = match self.cmds[c].args {
             ArgsRule::Legacy | ArgsRule::Arbitrary => return Ok(()),
             ArgsRule::NoArgs if n > 0 => format!(
-                "unknown command {} for {}",
-                go_quote(&args[0]),
-                go_quote(&self.command_path(c))
+                "unknown command {:?} for {:?}",
+                args[0],
+                self.command_path(c)
             ),
             ArgsRule::Exact(want) if n != want => format!("accepts {want} arg(s), received {n}"),
             ArgsRule::Max(max) if n > max => format!("accepts at most {max} arg(s), received {n}"),
@@ -681,8 +681,8 @@ impl Cobra {
             }
             // pflag formats `rune(name[0])`: the byte, not a decoded char.
             return Err(CliError::Msg(format!(
-                "unknown shorthand flag: {} in -{shorthands}",
-                go_quote_rune(c as char)
+                "unknown shorthand flag: {:?} in -{shorthands}",
+                c as char
             )));
         };
         let rest = shorthands[1..].to_string();
@@ -696,8 +696,8 @@ impl Cobra {
             (args.remove(0), String::new())
         } else {
             return Err(CliError::Msg(format!(
-                "flag needs an argument: {} in -{shorthands}",
-                go_quote_rune(c as char)
+                "flag needs an argument: {:?} in -{shorthands}",
+                c as char
             )));
         };
         self.set_flag(flag, &value)?;
@@ -716,10 +716,8 @@ impl Cobra {
                         None => format!("--{}", f.name),
                     };
                     return Err(CliError::Msg(format!(
-                        "invalid argument {} for {} flag: strconv.ParseBool: parsing {}: invalid syntax",
-                        go_quote(value),
-                        go_quote(&name),
-                        go_quote(value)
+                        "invalid argument {:?} for {:?} flag: strconv.ParseBool: parsing {:?}: invalid syntax",
+                        value, name, value
                     )));
                 }
             },
@@ -764,9 +762,7 @@ impl Cobra {
             line.push_str(&usage);
             if f.value_is_nonzero_default() {
                 match f.kind {
-                    FlagKind::Str => {
-                        line.push_str(&format!(" (default {})", go_quote(&f.def_value)))
-                    }
+                    FlagKind::Str => line.push_str(&format!(" (default {:?})", f.def_value)),
                     FlagKind::Bool => line.push_str(&format!(" (default {})", f.def_value)),
                 }
             }
@@ -1063,7 +1059,7 @@ impl Cobra {
         let args = self.cmds[c].parsed_args.clone();
         let (target, _, err) = self.find(&args);
         if err.is_some() {
-            let topics: Vec<String> = args.iter().map(|a| go_quote_backquote(a)).collect();
+            let topics: Vec<String> = args.iter().map(|a| format!("{a:?}")).collect();
             let msg = format!("Unknown help topic [{}]\n", topics.join(" "));
             let _ = io.err.write_all(msg.as_bytes());
             let usage = self.usage_string(self.root);
@@ -1474,30 +1470,6 @@ fn trim_right_space(s: &str) -> &str {
     s.trim_end()
 }
 
-pub fn go_quote(s: &str) -> String {
-    recur_bundles::go::quote(s)
-}
-
-/// Go `%q` of a rune.
-fn go_quote_rune(c: char) -> String {
-    match c {
-        '\'' => "'\\''".to_string(),
-        '"' => "'\"'".to_string(),
-        c => {
-            let q = recur_bundles::go::quote(&c.to_string());
-            format!("'{}'", &q[1..q.len() - 1])
-        }
-    }
-}
-
-/// Go `%#q`: back-quoted when `strconv.CanBackquote`, else `%q`.
-fn go_quote_backquote(s: &str) -> String {
-    let can = s
-        .chars()
-        .all(|c| c != '`' && c != '\u{feff}' && c != '\u{7f}' && (c >= ' ' || c == '\t'));
-    if can { format!("`{s}`") } else { go_quote(s) }
-}
-
 /// Damerau-free Levenshtein distance with case folding (cobra's `ld`).
 fn levenshtein_fold(s: &str, t: &str) -> usize {
     let s: Vec<char> = s.to_lowercase().chars().collect();
@@ -1535,14 +1507,6 @@ mod tests {
         assert_eq!(levenshtein_fold("bundlez", "bundles"), 1);
         assert_eq!(levenshtein_fold("OPEN", "open"), 0);
         assert_eq!(levenshtein_fold("", "abc"), 3);
-    }
-
-    #[test]
-    fn quoting() {
-        assert_eq!(go_quote_rune('x'), "'x'");
-        assert_eq!(go_quote_rune('\''), "'\\''");
-        assert_eq!(go_quote_backquote("a b"), "`a b`");
-        assert_eq!(go_quote_backquote("a`b"), "\"a`b\"");
     }
 
     #[test]

@@ -32,7 +32,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::args;
 use crate::input::user_message_line;
-use crate::proc::{self, go_errno, kill_group, look_path, wait_reaped};
+use crate::proc::{self, kill_group, look_path, wait_reaped};
 use crate::stream::parse_line;
 
 /// Keeps the last 8 KiB of stderr: usage refusals, auth failures and outages
@@ -56,10 +56,8 @@ pub(crate) async fn run(
         ..
     } = cx;
     let use_stream = args::stream_input(&req, steer.is_some());
-    let (argv, _spilled) =
-        args::spill_append_prompt(args::build(&req, use_stream)).map_err(|e| {
-            ProviderError::failed(format!("claude system prompt file: {}", go_errno(&e)))
-        })?;
+    let (argv, _spilled) = args::spill_append_prompt(args::build(&req, use_stream))
+        .map_err(|e| ProviderError::failed(format!("claude system prompt file: {}", e)))?;
 
     let path = if bin.contains('/') {
         bin.into()
@@ -81,7 +79,7 @@ pub(crate) async fn run(
             return Err(ProviderError::failed(format!(
                 "start claude: chdir {}: {}",
                 req.worktree.display(),
-                go_errno(&e)
+                e
             )));
         }
         cmd.current_dir(&req.worktree);
@@ -89,12 +87,9 @@ pub(crate) async fn run(
     for key in &req.env_scrub {
         cmd.env_remove(key);
     }
-    let mut child = cmd.spawn().map_err(|e| {
-        ProviderError::failed(format!(
-            "start claude: {}",
-            proc::start_error(&path.to_string_lossy(), &e)
-        ))
-    })?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| ProviderError::failed(format!("start claude: {}: {e}", path.display())))?;
     let pid = child.id().unwrap_or_default();
     let mut stdin = child.stdin.take();
     let Some(stdout) = child.stdout.take() else {
@@ -141,10 +136,7 @@ pub(crate) async fn run(
         drop(stdin);
         wait_reaped(&mut reaped).await;
         let _ = killer.await;
-        return Err(ProviderError::failed(format!(
-            "claude seed prompt: {}",
-            go_errno(&e)
-        )));
+        return Err(ProviderError::failed(format!("claude seed prompt: {}", e)));
     }
 
     let (mut result, have_result) = if use_stream {

@@ -1,5 +1,7 @@
 //! Port of `filesearch_test.go`.
 
+use recur_domain::path;
+
 use super::*;
 
 fn s(v: &[&str]) -> Vec<String> {
@@ -7,7 +9,7 @@ fn s(v: &[&str]) -> Vec<String> {
 }
 
 fn basenames_of(paths: &[String]) -> Vec<String> {
-    paths.iter().map(|p| gopath::base(p)).collect()
+    paths.iter().map(|p| path::base(p)).collect()
 }
 
 #[test]

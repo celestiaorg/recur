@@ -3,7 +3,6 @@
 //! wording for spawn and exit failures, which reaches the UI.
 
 use std::future::Future;
-use std::io;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
@@ -32,7 +31,7 @@ pub fn reap(mut child: Child, after: impl Future<Output = ()> + Send + 'static) 
         after.await;
         let err = match status {
             Ok(st) => exit_error(st),
-            Err(e) => Some(go_errno(&e)),
+            Err(e) => Some(e.to_string()),
         };
         let _ = tx.send(Some(err));
     });
@@ -78,7 +77,7 @@ pub fn look_path(name: &str) -> Result<PathBuf, String> {
                 quote(name),
                 match std::fs::metadata(name) {
                     Ok(_) => "permission denied".to_owned(),
-                    Err(e) => go_errno(&e),
+                    Err(e) => e.to_string(),
                 }
             ))
         };
@@ -161,27 +160,6 @@ fn signal_name(sig: i32) -> String {
     name.to_owned()
 }
 
-/// Go's errno text: the OS message without Rust's ` (os error N)` suffix,
-/// lower-cased first letter (`no such file or directory`).
-pub fn go_errno(e: &io::Error) -> String {
-    let s = e.to_string();
-    let s = match s.rfind(" (os error ") {
-        Some(i) if e.raw_os_error().is_some() => &s[..i],
-        _ => &s,
-    };
-    let mut c = s.chars();
-    match c.next() {
-        Some(f) => f.to_lowercase().chain(c).collect(),
-        None => String::new(),
-    }
-}
-
-/// Go's `cmd.Start` failure text for a resolved binary
-/// (`fork/exec /x/claude: no such file or directory`).
-pub fn start_error(bin: &str, e: &io::Error) -> String {
-    format!("fork/exec {bin}: {}", go_errno(e))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,16 +178,6 @@ mod tests {
         assert_eq!(
             exit_error(ExitStatus::from_raw(15)).as_deref(),
             Some("signal: terminated")
-        );
-    }
-
-    #[test]
-    fn errno_text() {
-        let e = io::Error::from_raw_os_error(2);
-        assert_eq!(go_errno(&e), "no such file or directory");
-        assert_eq!(
-            start_error("/x/claude", &e),
-            "fork/exec /x/claude: no such file or directory"
         );
     }
 

@@ -147,7 +147,7 @@ fn open_in_unknown_and_missing() {
         open_in_with(&sys, &missing, "finder")
             .unwrap_err()
             .to_string(),
-        format!("cannot open {missing}: stat {missing}: no such file or directory")
+        format!("cannot open {missing}: No such file or directory (os error 2)")
     );
     let file = format!("{d}/file.txt");
     std::fs::write(&file, "x").unwrap();

@@ -7805,7 +7805,6 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
- "unicode-properties",
 ]
 
 [[package]]
@@ -7869,6 +7868,7 @@ version = "0.0.0"
 dependencies = [
  "include_dir",
  "recur-bundles",
+ "recur-domain",
  "recur-exec",
  "recur-platform",
  "regex",

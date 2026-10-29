@@ -2,9 +2,9 @@
 
 use std::collections::BTreeMap;
 
+use recur_domain::path;
 use serde::Deserialize;
 
-use crate::go::{self, quote};
 use crate::manifest::Command;
 use crate::{Error, err};
 
@@ -102,23 +102,23 @@ pub struct LoadedTest {
 /// Reads `tests/*.toml` under `bundle_dir`. A missing `tests/` is not an
 /// error. `*File` payloads resolve relative to each TOML file.
 pub fn load_tests(bundle_dir: &str) -> Result<Vec<LoadedTest>, Error> {
-    let dir = go::join(&[bundle_dir, "tests"]);
+    let dir = path::join(&[bundle_dir, "tests"]);
     let entries = match crate::registry::read_dir_sorted(&dir) {
         Ok(entries) => entries,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(e) => return Err(err!("read tests/: {}", go::path_err("open", &dir, &e))),
+        Err(e) => return Err(err!("read tests/: {}", format!("{dir}: {e}"))),
     };
     let mut out = Vec::new();
     for (name, is_dir) in entries {
         if is_dir || !name.ends_with(".toml") {
             continue;
         }
-        let path = go::join(&[&dir, &name]);
-        let data = go::read_file(&path).map_err(|e| err!("read {path}: {e}"))?;
+        let path = path::join(&[&dir, &name]);
+        let data = std::fs::read(&path).map_err(|e| err!("read {path}: {e}"))?;
         let text =
             std::str::from_utf8(&data).map_err(|_| err!("parse {path}: toml: invalid UTF-8"))?;
         let tf: TestFile = crate::tomlx::from_str(text).map_err(|e| err!("parse {path}: {e}"))?;
-        let base = go::dir(&path);
+        let base = path::dir(&path);
         for (i, mut tc) in tf.test.into_iter().enumerate() {
             let has_command = !tc.command.trim().is_empty();
             let has_snippet = !tc.snippet.trim().is_empty();
@@ -132,7 +132,7 @@ pub fn load_tests(bundle_dir: &str) -> Result<Vec<LoadedTest>, Error> {
                 tc.name = format!("{name}#{}", i + 1);
             }
             resolve_test_files(&mut tc, &base)
-                .map_err(|e| err!("{path}: test {}: {e}", quote(&tc.name)))?;
+                .map_err(|e| err!("{path}: test {:?}: {e}", tc.name))?;
             out.push(LoadedTest {
                 file: path.clone(),
                 case: tc,
@@ -180,21 +180,15 @@ fn resolve_payload(
             "{field}: set inline value or {field}File, not both"
         ));
     }
-    if go::is_abs(rel_file) {
-        return Err(format!(
-            "{field}File must be relative (got {})",
-            quote(rel_file)
-        ));
+    if path::is_abs(rel_file) {
+        return Err(format!("{field}File must be relative (got {:?})", rel_file));
     }
-    let path = go::clean(&go::join(&[base_dir, rel_file]));
-    let base_clean = go::clean(base_dir);
+    let path = path::clean(&path::join(&[base_dir, rel_file]));
+    let base_clean = path::clean(base_dir);
     if path != base_clean && !path.starts_with(&format!("{base_clean}/")) {
-        return Err(format!(
-            "{field}File {} escapes test directory",
-            quote(rel_file)
-        ));
+        return Err(format!("{field}File {:?} escapes test directory", rel_file));
     }
-    let data = go::read_file(&path).map_err(|e| format!("{field}File {}: {e}", quote(rel_file)))?;
+    let data = std::fs::read(&path).map_err(|e| format!("{field}File {:?}: {e}", rel_file))?;
     Ok(String::from_utf8_lossy(&data).into_owned())
 }
 

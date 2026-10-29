@@ -94,7 +94,6 @@ reqwest = { version = "0.13", default-features = false, features = ["rustls", "h
 nix = { version = "0.31", features = ["signal", "process", "hostname", "poll"] }
 futures = "0.3"
 url = "2"
-unicode-properties = "0.1"
 hyper = { version = "1", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio", "server-graceful", "http1"] }
 http-body-util = "0.1"

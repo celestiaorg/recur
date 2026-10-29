@@ -6,11 +6,11 @@ use std::fs;
 use std::sync::LazyLock;
 
 use recur_domain::AgentSkill;
+use recur_domain::path;
 use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{Error, Result};
-use crate::gopath;
 use crate::gostr::{collapse_space, rune_start};
 use crate::walk::{Flow, walk_dir};
 
@@ -38,7 +38,7 @@ pub(crate) fn list_skills_in(
             if cancel.is_cancelled() {
                 return Err(Error::Canceled);
             }
-            collect_skills(cancel, &gopath::join(&[base, rel]), scope, &mut by_name)?;
+            collect_skills(cancel, &path::join(&[base, rel]), scope, &mut by_name)?;
         }
         Ok(())
     };
@@ -101,7 +101,7 @@ fn collect_skills(
         if d.name != "SKILL.md" && d.name != "skill.md" {
             return Ok(Flow::Continue);
         }
-        let name = gopath::base(&gopath::dir(path));
+        let name = path::base(&path::dir(path));
         if !SKILL_NAME.is_match(&name) || by_name.contains_key(&name) {
             return Ok(Flow::Continue);
         }
@@ -190,7 +190,7 @@ pub fn skill_disables_model_invocation(path: &str) -> bool {
 /// (not read), sorted and capped at `limit` (0 means 40) for prompt size.
 pub fn list_skill_resources(skill_md_path: &str, limit: usize) -> Vec<String> {
     let limit = if limit == 0 { 40 } else { limit };
-    let dir = gopath::dir(skill_md_path);
+    let dir = path::dir(skill_md_path);
     let mut out = Vec::new();
     let _ = walk_dir::<()>(&dir, |path, d, err| {
         let (Some(d), None) = (d, err) else {
@@ -208,7 +208,7 @@ pub fn list_skill_resources(skill_md_path: &str, limit: usize) -> Vec<String> {
         if d.name.eq_ignore_ascii_case("SKILL.md") {
             return Ok(Flow::Continue);
         }
-        let Ok(rel) = gopath::rel(&dir, path) else {
+        let Some(rel) = path::rel(&dir, path) else {
             return Ok(Flow::Continue);
         };
         out.push(rel);

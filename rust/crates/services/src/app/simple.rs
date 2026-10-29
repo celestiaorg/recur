@@ -7,7 +7,6 @@
 use std::collections::BTreeMap;
 
 use async_trait::async_trait;
-use recur_bundles::go::quote;
 use recur_domain::{
     Agent, Artifact, BriefingSnapshot, ChatAttachment, ChatItem, Escalation, FINDING_ACTOR_HUMAN,
     FINDING_SOURCE_USER, Finding, FindingStatus, InboxItem, PermissionDecision, PermissionRequest,
@@ -81,8 +80,8 @@ impl AppServices {
         }
         let Some(ws) = self.store().workspace(workspace_id) else {
             return Err(Error::new(format!(
-                "workspace {} not found",
-                quote(workspace_id)
+                "workspace {:?} not found",
+                workspace_id
             )));
         };
         let f = self.store().add_finding(Finding {
@@ -109,9 +108,9 @@ impl AgentsService for AppServices {
         rt!(self, workspace_id, code => |s| {
             s.store().agent(&workspace_id, &code).ok_or_else(|| {
                 Error::new(format!(
-                    "agent {} not found on loop {}",
-                    quote(&code),
-                    quote(&workspace_id)
+                    "agent {:?} not found on loop {:?}",
+                    code,
+                    workspace_id
                 ))
             })
         })
@@ -171,8 +170,8 @@ impl EscalationService for AppServices {
                 .await
                 .ok_or_else(|| {
                     Error::new(format!(
-                        "escalation for loop {} is missing or already answered",
-                        quote(&workspace_id)
+                        "escalation for loop {:?} is missing or already answered",
+                        workspace_id
                     ))
                 })
         })
@@ -205,8 +204,8 @@ impl PermissionsService for AppServices {
             );
             if !ok {
                 return Err(Error::new(format!(
-                    "permission request {} is no longer waiting",
-                    quote(&id)
+                    "permission request {:?} is no longer waiting",
+                    id
                 )));
             }
             Ok(())
@@ -230,8 +229,8 @@ impl QuestionsService for AppServices {
         rt!(self, id, choice, free_text, attachments => |s| {
             if !s.engine.answer_ask_user(&id, &choice, &free_text, attachments) {
                 return Err(Error::new(format!(
-                    "question {} is no longer waiting",
-                    quote(&id)
+                    "question {:?} is no longer waiting",
+                    id
                 )));
             }
             Ok(())

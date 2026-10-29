@@ -5,14 +5,13 @@ use std::fs::{self, File};
 use std::ops::ControlFlow;
 use std::path::Path;
 
+use recur_domain::path;
 use recur_domain::{ReplaceResult, SearchHit, SearchOpts, SearchResult};
 use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{Error, Result};
-use crate::gopath;
 use crate::gore;
-use crate::gostr;
 use crate::root::{path_str, rel_slash_str, skip_dir, skip_file};
 use crate::scan::scan_lines;
 use crate::walk::{Flow, walk_dir};
@@ -79,11 +78,11 @@ pub fn search_opts(
             return Ok(Flow::Continue);
         }
         if d.is_symlink() {
-            let Some(resolved) = gopath::eval_symlinks(full) else {
+            let Some(resolved) = path::eval_symlinks(full) else {
                 return Ok(Flow::Continue);
             };
-            match gopath::rel(&root, &resolved) {
-                Ok(r) if r != ".." && !r.starts_with("../") => {}
+            match path::rel(&root, &resolved) {
+                Some(r) if r != ".." && !r.starts_with("../") => {}
                 _ => return Ok(Flow::Continue),
             }
         }
@@ -151,7 +150,7 @@ impl Matcher {
         Ok(if opts.case_sensitive {
             Self::Exact(q.to_string())
         } else {
-            Self::Fold(gostr::lower(q))
+            Self::Fold(q.to_lowercase())
         })
     }
 
@@ -160,7 +159,7 @@ impl Matcher {
         match self {
             Self::Re(re) => re.find(line).map(|m| m.start()),
             Self::Exact(n) => line.find(n.as_str()),
-            Self::Fold(n) => gostr::lower(line).find(n.as_str()),
+            Self::Fold(n) => line.to_lowercase().find(n.as_str()),
         }
     }
 }
@@ -174,13 +173,13 @@ fn compile_query(q: &str, case_sensitive: bool) -> Result<Regex> {
 /// path, and a pattern without `/` (like `*.go`, which cannot cross `/`) also
 /// against the basename.
 pub(crate) fn match_simple_glob(pattern: &str, name: &str) -> bool {
-    if gopath::glob_match(pattern, name) == Ok(true) {
+    if path::glob_match(pattern, name) == Ok(true) {
         return true;
     }
     if pattern.contains('/') {
         return false;
     }
-    gopath::glob_match(pattern, &gopath::base(name)) == Ok(true)
+    path::glob_match(pattern, &path::base(name)) == Ok(true)
 }
 
 /// Replaces every match under `root` (a worktree). Regex, case and glob
@@ -272,8 +271,8 @@ fn replace_fold(src: &str, query: &str, replacement: &str) -> (String, usize) {
     if query.is_empty() {
         return (src.to_string(), 0);
     }
-    let lower = gostr::lower(src);
-    let ql = gostr::lower(query);
+    let lower = src.to_lowercase();
+    let ql = query.to_lowercase();
     let (s, l) = (src.as_bytes(), lower.as_bytes());
     let mut out = Vec::with_capacity(s.len());
     let mut n = 0;

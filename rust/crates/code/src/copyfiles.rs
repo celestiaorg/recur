@@ -7,12 +7,12 @@ use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::time::{Duration, Instant};
 
 use recur_domain::CopyFilesPreview;
+use recur_domain::path;
 use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{Error, Result};
 use crate::glob::glob_to_regexp;
-use crate::gopath;
 use crate::root::rel_slash_str;
 use crate::walk::{Flow, walk_dir};
 
@@ -168,8 +168,8 @@ fn copy_capped(
     if src.is_empty() || dest.is_empty() || pats.is_empty() {
         return Ok(0);
     }
-    let src_abs = gopath::abs(&src).map_err(|e| Error::msg(e.to_string()))?;
-    let dest_abs = gopath::abs(dest).map_err(|e| Error::msg(e.to_string()))?;
+    let src_abs = path::abs(&src).map_err(|e| Error::msg(e.to_string()))?;
+    let dest_abs = path::abs(dest).map_err(|e| Error::msg(e.to_string()))?;
     if src_abs == dest_abs {
         return Ok(0);
     }
@@ -208,11 +208,11 @@ fn copy_one(src_root: &str, dest_root: &str, rel: &str) -> std::result::Result<(
     match fs::symlink_metadata(&to) {
         Ok(_) => return Err(CopyErr::Exists),
         Err(e) if e.kind() != io::ErrorKind::NotFound => {
-            return Err(Error::path("lstat", &to, e).into());
+            return Err(Error::path(&to, e).into());
         }
         Err(_) => {}
     }
-    let info = fs::symlink_metadata(&from).map_err(|e| Error::path("lstat", &from, e))?;
+    let info = fs::symlink_metadata(&from).map_err(|e| Error::path(&from, e))?;
     if !info.file_type().is_file() {
         return Ok(());
     }
@@ -221,23 +221,23 @@ fn copy_one(src_root: &str, dest_root: &str, rel: &str) -> std::result::Result<(
             "file larger than {MAX_COPY_FILE_BYTES} bytes"
         )));
     }
-    let mut input = File::open(&from).map_err(|e| Error::path("open", &from, e))?;
-    gopath::mkdir_all(&gopath::dir(&to))?;
+    let mut input = File::open(&from).map_err(|e| Error::path(&from, e))?;
+    Error::mkdir_all(&path::dir(&to))?;
     let mut out = fs::OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .mode(info.permissions().mode() & 0o777)
         .open(&to)
-        .map_err(|e| Error::path("open", &to, e))?;
-    io::copy(&mut input, &mut out).map_err(|e| Error::path("write", &to, e))?;
+        .map_err(|e| Error::path(&to, e))?;
+    io::copy(&mut input, &mut out).map_err(|e| Error::path(&to, e))?;
     Ok(())
 }
 
 /// Joins `root` and `rel` under `root`. Unlike the editor's sandbox it allows
 /// `..` inside a file name (`.env..bak`) and rejects it only as a component.
 fn join_under_root(root: &str, rel: &str) -> Result<String> {
-    let root_abs = gopath::abs(root).map_err(|e| Error::msg(e.to_string()))?;
+    let root_abs = path::abs(root).map_err(|e| Error::msg(e.to_string()))?;
     let rel = rel.strip_prefix('/').unwrap_or(rel);
     if rel.is_empty() || rel == "." {
         return Err(Error::msg("empty path"));
@@ -245,8 +245,7 @@ fn join_under_root(root: &str, rel: &str) -> Result<String> {
     if rel.split('/').any(|p| p == "..") {
         return Err(Error::msg("path escapes root"));
     }
-    let full =
-        gopath::abs(&gopath::join(&[&root_abs, rel])).map_err(|e| Error::msg(e.to_string()))?;
+    let full = path::abs(&path::join(&[&root_abs, rel])).map_err(|e| Error::msg(e.to_string()))?;
     if full != root_abs && !full.starts_with(&format!("{root_abs}/")) {
         return Err(Error::msg("path escapes root"));
     }
@@ -257,8 +256,8 @@ fn list(ctx: &Ctx<'_>, root: &str, patterns: &[String], limit: usize) -> Result<
     if let Some(e) = ctx.err() {
         return Err(e);
     }
-    let root_abs = gopath::abs(root).map_err(|e| Error::msg(e.to_string()))?;
-    let st = fs::metadata(&root_abs).map_err(|e| Error::path("stat", &root_abs, e))?;
+    let root_abs = path::abs(root).map_err(|e| Error::msg(e.to_string()))?;
+    let st = fs::metadata(&root_abs).map_err(|e| Error::path(&root_abs, e))?;
     if !st.is_dir() {
         return Err(Error::msg(format!("{root_abs} is not a directory")));
     }

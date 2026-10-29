@@ -197,8 +197,7 @@ impl Engine {
         opts: &ExpandOpts,
     ) -> Result<PromptResult, EngineError> {
         let cache = self.data_dir.join("BundleCache");
-        std::fs::create_dir_all(&cache)
-            .map_err(|e| EngineError(recur_bundles::go::errno_text(&e)))?;
+        std::fs::create_dir_all(&cache).map_err(|e| EngineError(e.to_string()))?;
         let rc = self.prompt_run_context(&opts.workspace_id, &opts.worktree, p);
         recur_bundles::run_prompt(
             &RunCtx::with_cancel(cancel.clone()),

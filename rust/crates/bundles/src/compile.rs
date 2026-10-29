@@ -24,6 +24,7 @@
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
 
+use recur_domain::path;
 use sha2::{Digest, Sha256};
 use swc_core::common::comments::SingleThreadedComments;
 use swc_core::common::sync::Lrc;
@@ -43,7 +44,6 @@ use swc_core::ecma::transforms::module::util::Config as ModuleConfig;
 use swc_core::ecma::transforms::typescript::{Config as TsConfig, typescript};
 use swc_core::ecma::visit::{Visit, VisitMut, VisitMutWith, VisitWith};
 
-use crate::go::{self, quote};
 use crate::manifest::{Command, INTERPRETER_TYPESCRIPT, PromptAction};
 use crate::{Error, err};
 
@@ -76,11 +76,11 @@ pub struct CompileResult {
 /// Transforms a TypeScript command body to CommonJS for the Worker.
 /// Results are cached under `cache_dir` as `<id>.<hash>.js`.
 pub fn compile_macro(cache_dir: &str, cmd: &Command) -> Result<CompileResult, Error> {
-    let id = quote(&cmd.id);
+    let id = format!("{:?}", cmd.id);
     if !is_script_interpreter(&cmd.interpreter) {
         return Err(err!(
-            "command {id}: interpreter {} is not typescript",
-            quote(&cmd.interpreter)
+            "command {id}: interpreter {:?} is not typescript",
+            cmd.interpreter
         ));
     }
     if cmd.body.trim().is_empty() {
@@ -100,11 +100,11 @@ pub fn compile_prompt_macro(
     cache_dir: &str,
     prompt: &PromptAction,
 ) -> Result<CompileResult, Error> {
-    let id = quote(&prompt.id);
+    let id = format!("{:?}", prompt.id);
     if !is_script_interpreter(&prompt.interpreter) {
         return Err(err!(
-            "prompt {id}: interpreter {} is not typescript",
-            quote(&prompt.interpreter)
+            "prompt {id}: interpreter {:?} is not typescript",
+            prompt.interpreter
         ));
     }
     if prompt.body.trim().is_empty() {
@@ -129,11 +129,11 @@ pub fn compile_complete_macro(
     cache_dir: &str,
     prompt: &PromptAction,
 ) -> Result<CompileResult, Error> {
-    let id = quote(&prompt.id);
+    let id = format!("{:?}", prompt.id);
     if prompt.complete_interpreter != INTERPRETER_TYPESCRIPT {
         return Err(err!(
-            "prompt {id}: complete interpreter {} is not typescript",
-            quote(&prompt.complete_interpreter)
+            "prompt {id}: complete interpreter {:?} is not typescript",
+            prompt.complete_interpreter
         ));
     }
     if prompt.complete_body.trim().is_empty() {
@@ -159,7 +159,7 @@ fn compile_cached(
 ) -> Result<CompileResult, Error> {
     let sum = Sha256::digest(key.as_bytes());
     let hash = hex::encode(&sum[..16]);
-    let cache_path = go::join(&[cache_dir, &format!("{id}.{hash}.js")]);
+    let cache_path = path::join(&[cache_dir, &format!("{id}.{hash}.js")]);
     if let Ok(data) = std::fs::read(&cache_path)
         && !data.is_empty()
     {
@@ -173,8 +173,7 @@ fn compile_cached(
     if js.trim().is_empty() {
         return Err(err!("{what}: empty output"));
     }
-    std::fs::create_dir_all(cache_dir)
-        .map_err(|e| err!("{}", go::path_err("mkdir", cache_dir, &e)))?;
+    std::fs::create_dir_all(cache_dir).map_err(|e| err!("{}", format!("{cache_dir}: {e}")))?;
     let _ = crate::seed::write_file(&cache_path, js.as_bytes(), 0o644);
     prune_old_cache(cache_dir, id, &hash);
     Ok(CompileResult {
@@ -436,9 +435,9 @@ fn pretty_path(sourcefile: &str) -> String {
         return sourcefile.to_string();
     }
     let abs = format!("/{sourcefile}");
-    go::getwd()
+    path::getwd()
         .ok()
-        .and_then(|wd| go::rel(&wd, &abs).ok())
+        .and_then(|wd| path::rel(&wd, &abs))
         .unwrap_or(abs)
 }
 
@@ -467,9 +466,8 @@ impl ImportCheck<'_> {
         self.errors.push((
             src.span,
             format!(
-                "import {} is not allowed (only {})",
-                quote(&path),
-                quote(MACRO_SDK_MODULE)
+                "import {:?} is not allowed (only {:?})",
+                path, MACRO_SDK_MODULE
             ),
         ));
         false
@@ -482,8 +480,8 @@ impl ImportCheck<'_> {
             self.errors.push((
                 span,
                 format!(
-                    "No matching export in \"recur-sdk:{MACRO_SDK_MODULE}\" for import {}",
-                    quote(name)
+                    "No matching export in \"recur-sdk:{MACRO_SDK_MODULE}\" for import {:?}",
+                    name
                 ),
             ));
         }

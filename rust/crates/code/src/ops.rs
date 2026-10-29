@@ -6,8 +6,9 @@ use std::io;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
+use recur_domain::path;
+
 use crate::error::{Error, Result};
-use crate::gopath;
 use crate::root::{path_str, safe_join_str};
 use crate::walk::read_dir_sorted;
 
@@ -15,13 +16,13 @@ use crate::walk::read_dir_sorted;
 pub fn create_file(root: &Path, rel: &str) -> Result<()> {
     let full = safe_target(root, rel)?;
     not_existing(&full, rel)?;
-    gopath::mkdir_all(&gopath::dir(&full))?;
+    Error::mkdir_all(&path::dir(&full))?;
     fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .mode(0o644)
         .open(&full)
-        .map_err(|e| Error::path("open", &full, e))?;
+        .map_err(|e| Error::path(&full, e))?;
     Ok(())
 }
 
@@ -32,8 +33,8 @@ pub fn mkdir(root: &Path, rel: &str) -> Result<()> {
     match fs::symlink_metadata(&full) {
         Ok(st) if st.is_dir() => Ok(()),
         Ok(_) => Err(Error::msg(format!("{rel} already exists"))),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => gopath::mkdir_all(&full),
-        Err(e) => Err(Error::path("lstat", &full, e)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Error::mkdir_all(&full),
+        Err(e) => Err(Error::path(&full, e)),
     }
 }
 
@@ -46,11 +47,11 @@ pub fn rename(root: &Path, from_rel: &str, to_rel: &str) -> Result<()> {
     }
     lstat(&from)?;
     not_existing(&to, to_rel)?;
-    gopath::mkdir_all(&gopath::dir(&to))?;
+    Error::mkdir_all(&path::dir(&to))?;
     if is_nested_path(&from, &to) {
         return Err(Error::msg("cannot move into itself"));
     }
-    fs::rename(&from, &to).map_err(|e| Error::path("rename", &format!("{from} {to}"), e))
+    fs::rename(&from, &to).map_err(|e| Error::path(&format!("{from} {to}"), e))
 }
 
 /// Deletes a file or directory tree under `root`.
@@ -63,7 +64,7 @@ pub fn remove(root: &Path, rel: &str) -> Result<()> {
         fs::remove_file(&full)
     };
     match res {
-        Err(e) if e.kind() != io::ErrorKind::NotFound => Err(Error::path("unlinkat", &full, e)),
+        Err(e) if e.kind() != io::ErrorKind::NotFound => Err(Error::path(&full, e)),
         _ => Ok(()),
     }
 }
@@ -85,7 +86,7 @@ pub fn copy(root: &Path, from_rel: &str, to_rel: &str) -> Result<()> {
         }
         return copy_dir(&from, &to);
     }
-    gopath::mkdir_all(&gopath::dir(&to))?;
+    Error::mkdir_all(&path::dir(&to))?;
     copy_file(&from, &to, st.permissions().mode())
 }
 
@@ -105,14 +106,14 @@ fn safe_target(root: &Path, rel: &str) -> Result<String> {
 }
 
 fn lstat(p: &str) -> Result<fs::Metadata> {
-    fs::symlink_metadata(p).map_err(|e| Error::path("lstat", p, e))
+    fs::symlink_metadata(p).map_err(|e| Error::path(p, e))
 }
 
 fn not_existing(full: &str, rel: &str) -> Result<()> {
     match fs::symlink_metadata(full) {
         Ok(_) => Err(Error::msg(format!("{rel} already exists"))),
         Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(e) => Err(Error::path("lstat", full, e)),
+        Err(e) => Err(Error::path(full, e)),
     }
 }
 
@@ -121,28 +122,28 @@ fn is_nested_path(parent: &str, child: &str) -> bool {
 }
 
 fn copy_file(from: &str, to: &str, mode: u32) -> Result<()> {
-    let mut input = File::open(from).map_err(|e| Error::path("open", from, e))?;
+    let mut input = File::open(from).map_err(|e| Error::path(from, e))?;
     let mut out = fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .mode(mode & 0o777)
         .open(to)
-        .map_err(|e| Error::path("open", to, e))?;
+        .map_err(|e| Error::path(to, e))?;
     if let Err(e) = io::copy(&mut input, &mut out) {
         drop(out);
         let _ = fs::remove_file(to);
-        return Err(Error::path("write", to, e));
+        return Err(Error::path(to, e));
     }
     Ok(())
 }
 
 fn copy_dir(from: &str, to: &str) -> Result<()> {
-    gopath::mkdir_all(to)?;
-    let entries = read_dir_sorted(Path::new(from)).map_err(|e| Error::path("open", from, e))?;
+    Error::mkdir_all(to)?;
+    let entries = read_dir_sorted(Path::new(from)).map_err(|e| Error::path(from, e))?;
     for e in entries {
-        let src = gopath::join(&[from, &e.name]);
-        let dst = gopath::join(&[to, &e.name]);
-        let info = e.info().map_err(|err| Error::path("lstat", &src, err))?;
+        let src = path::join(&[from, &e.name]);
+        let dst = path::join(&[to, &e.name]);
+        let info = e.info().map_err(|err| Error::path(&src, err))?;
         if e.is_dir() {
             copy_dir(&src, &dst)?;
             continue;

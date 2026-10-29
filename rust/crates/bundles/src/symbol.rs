@@ -4,7 +4,6 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::go::quote;
 use crate::manifest::{BundleMeta, valid_bundle_id};
 use crate::{Error, err};
 
@@ -58,7 +57,7 @@ pub(crate) fn parse_symbols(
         if !valid_bundle_id(&id) {
             return Err(err!("symbol[{i}]: id is not a safe id"));
         }
-        let qid = quote(&id);
+        let qid = format!("{id:?}");
         if !seen_id.insert(id.clone()) {
             return Err(err!("symbol: duplicate id {qid} in bundle"));
         }

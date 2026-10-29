@@ -1,5 +1,4 @@
 use super::{MAX_READ_LINES, clip_line, is_binary};
-use crate::gostr::lossy;
 use crate::json::{Shape, Ty, field, unmarshal};
 use crate::path::{read_file, resolve_path};
 use crate::tool::{Call, Tool, ToolError};
@@ -41,7 +40,7 @@ impl Tool for ReadTool {
             n if n <= 0 => MAX_READ_LINES as i64,
             n => n,
         };
-        let text = lossy(&data);
+        let text = String::from_utf8_lossy(&data).into_owned();
         let mut lines: Vec<&str> = text.split('\n').collect();
         // Split leaves a trailing empty element when the file ends in newline.
         if lines.last() == Some(&"") {

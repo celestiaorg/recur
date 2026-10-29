@@ -83,7 +83,7 @@ pub async fn render(source: String, theme: &Theme, cx: &AsyncApp) -> Result<Rc<D
     build(&svg)
 }
 
-/// [`render`] on the calling thread (headless renders and tests).
+/// [`render`] on the calling thread (tests).
 pub fn render_blocking(source: &str, theme: &Theme) -> Result<Rc<Diagram>, String> {
     build(&svg(source, self::theme(theme))?)
 }
@@ -95,31 +95,11 @@ fn slot(d: Rc<Diagram>) -> MermaidSlot {
     }))
 }
 
-/// A hydration: done on the spot (headless) or running.
-pub enum Hydration {
-    Done(Vec<MermaidSlot>),
-    Running(Task<()>),
-}
-
 /// `hydrateMermaid`: each placeholder in order; empty sources are hidden; failures keep the
 /// source with the error border.
-pub fn hydrate(sources: Vec<String>, cx: &mut Context<MarkdownView>) -> Hydration {
+pub fn hydrate(sources: Vec<String>, cx: &mut Context<MarkdownView>) -> Task<()> {
     let theme = Theme::of(cx).clone();
-    if crate::webhost::blocking(cx) {
-        return Hydration::Done(
-            sources
-                .iter()
-                .map(|src| {
-                    if src.trim().is_empty() {
-                        MermaidSlot::Empty
-                    } else {
-                        render_blocking(src, &theme).map_or(MermaidSlot::Error, slot)
-                    }
-                })
-                .collect(),
-        );
-    }
-    Hydration::Running(cx.spawn(async move |this, cx| {
+    cx.spawn(async move |this, cx| {
         for (i, src) in sources.into_iter().enumerate() {
             let s = if src.trim().is_empty() {
                 MermaidSlot::Empty
@@ -133,7 +113,7 @@ pub fn hydrate(sources: Vec<String>, cx: &mut Context<MarkdownView>) -> Hydratio
                 return;
             }
         }
-    }))
+    })
 }
 
 #[cfg(test)]

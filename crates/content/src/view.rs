@@ -418,10 +418,7 @@ impl MarkdownView {
         if sources.is_empty() {
             return;
         }
-        match crate::mermaid::hydrate(sources, cx) {
-            crate::mermaid::Hydration::Done(slots) => self.mermaid = slots,
-            crate::mermaid::Hydration::Running(task) => self.mermaid_task = Some(task),
-        }
+        self.mermaid_task = Some(crate::mermaid::hydrate(sources, cx));
     }
 
     pub(crate) fn set_mermaid(&mut self, i: usize, slot: MermaidSlot, cx: &mut Context<Self>) {

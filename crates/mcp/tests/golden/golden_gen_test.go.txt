@@ -1,0 +1,233 @@
+package mcp
+
+// Generates crates/mcp/tests/golden/*.json for the Rust port.
+// Run: RECUR_GOLDEN=1 go test -run TestGenerateRustGolden ./internal/mcp
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+
+	"recur/internal/domain"
+)
+
+type goldenReporter struct {
+	noopReporter
+	mu    sync.Mutex
+	notes []map[string]any
+}
+
+func (g *goldenReporter) NoteToolArgs(ws, agent, tool string, args json.RawMessage) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.notes = append(g.notes, map[string]any{"ws": ws, "agent": agent, "tool": tool, "args": string(args)})
+}
+
+func (g *goldenReporter) ReportFinding(ws, agent string, f Finding) domain.Finding {
+	return domain.Finding{ID: "uuid-1", ShortID: "find_1", File: f.File, Line: f.Line, Severity: f.Severity, Message: f.Message, Status: "open"}
+}
+
+func (g *goldenReporter) RenameSession(ws, agent, owner, title string) string {
+	return "Renamed " + ws + "/" + agent + " (" + owner + ") to " + title
+}
+
+type httpCase struct {
+	Name     string            `json:"name"`
+	Method   string            `json:"method"`
+	Path     string            `json:"path"`
+	Body     string            `json:"body"`
+	Status   int               `json:"status"`
+	Headers  map[string]string `json:"headers"`
+	RespBody string            `json:"respBody"`
+	Notes    []map[string]any  `json:"notes"`
+}
+
+func TestGenerateRustGolden(t *testing.T) {
+	if os.Getenv("RECUR_GOLDEN") == "" {
+		t.Skip("set RECUR_GOLDEN=1")
+	}
+	rep := &goldenReporter{}
+	s := New(rep)
+	if err := s.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	tok, _ := s.RegisterOwned("W1", "PA", "MA", nil)
+	restricted, _ := s.Register("W2", "PA", AppendPermissionRequest(NamesFromAllowedTools([]string{"Read", "mcp__recur__list_skills", "mcp__recur__rename_session"})))
+	inactive, _ := s.Register("W3", "PA", nil)
+	s.Unregister(inactive)
+	base := "http://127.0.0.1:" + strconv.Itoa(s.Port())
+
+	call := func(id, name, args string) string {
+		if args == "-" {
+			return `{"jsonrpc":"2.0","id":` + id + `,"method":"tools/call","params":{"name":"` + name + `"}}`
+		}
+		return `{"jsonrpc":"2.0","id":` + id + `,"method":"tools/call","params":{"name":"` + name + `","arguments":` + args + `}}`
+	}
+	type req struct{ name, method, path, body string }
+	P := "/$TOKEN/mcp"
+	reqs := []req{
+		{"initialize echo", "POST", P, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"claude-code","version":"2.1"}}}`},
+		{"initialize no params", "POST", P, `{"jsonrpc":"2.0","id":"abc","method":"initialize"}`},
+		{"initialize empty version", "POST", P, `{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":""}}`},
+		{"initialize bad params", "POST", P, `{"jsonrpc":"2.0","id":2,"method":"initialize","params":"x"}`},
+		{"initialize version type", "POST", P, `{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":5}}`},
+		{"initialized notification", "POST", P, `{"jsonrpc":"2.0","method":"notifications/initialized"}`},
+		{"initialized with id", "POST", P, `{"jsonrpc":"2.0","id":5,"method":"initialized"}`},
+		{"ping", "POST", P, `{"jsonrpc":"2.0","id":3,"method":"ping"}`},
+		{"unknown method", "POST", P, `{"jsonrpc":"2.0","id":9,"method":"foo/bar"}`},
+		{"unknown notification", "POST", P, `{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":1}}`},
+		{"unknown null id", "POST", P, `{"jsonrpc":"2.0","id":null,"method":"foo"}`},
+		{"tools/list", "POST", P, `{"jsonrpc":"2.0","id":4,"method":"tools/list"}`},
+		{"tools/list null id", "POST", P, `{"jsonrpc":"2.0","id":null,"method":"tools/list"}`},
+		{"tools/list no id", "POST", P, `{"jsonrpc":"2.0","method":"tools/list","params":{}}`},
+		{"tools/list restricted", "POST", "/$RESTRICTED/mcp", `{"jsonrpc":"2.0","id":4,"method":"tools/list"}`},
+		{"call report_finding", "POST", P, call("10", "report_finding", `{"file":"x.go","line":1,"severity":"medium","message":"smell"}`)},
+		{"call raw args kept", "POST", P, call("11", "report_finding", `{ "file" : "y.go",  "severity":"low", "message":"a<b>&c" }`)},
+		{"call html in error", "POST", P, call("12", "report_finding", `{"file":"y.go","severity":"<b>&","message":"m"}`)},
+		{"call unknown tool", "POST", P, call("13", "no_such_tool", `{}`)},
+		{"call case-sensitive name", "POST", P, call("14", "Report_Finding", `{}`)},
+		{"call not allowed", "POST", "/$RESTRICTED/mcp", call("15", "done", `{"summary":"x"}`)},
+		{"call allowed restricted", "POST", "/$RESTRICTED/mcp", call("16", "rename_session", `{"title":"T"}`)},
+		{"call owner chat", "POST", P, call("17", "rename_session", `{"title":"Dark mode"}`)},
+		{"call no params", "POST", P, `{"jsonrpc":"2.0","id":18,"method":"tools/call"}`},
+		{"call params number", "POST", P, `{"jsonrpc":"2.0","id":19,"method":"tools/call","params":5}`},
+		{"call params null", "POST", P, `{"jsonrpc":"2.0","id":20,"method":"tools/call","params":null}`},
+		{"call name type", "POST", P, `{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":7}}`},
+		{"call no arguments", "POST", P, call("22", "report_finding", "-")},
+		{"call null arguments", "POST", P, call("23", "report_finding", "null")},
+		{"call list_findings", "POST", P, call("24", "list_findings", `{}`)},
+		{"call permission allow", "POST", P, call("25", "permission_request", `{"tool_name":"Write","input":{"b":1, "a":[1, 2]}}`)},
+		{"call ask_user default", "POST", P, call("26", "ask_user", `{"question":"q?"}`)},
+		{"call invalid utf8", "POST", P, call("27", "rename_session", "{\"title\":\"caf\xe9 \xe2\x82\"}")},
+		{"call surrogate", "POST", P, call("28", "rename_session", `{"title":"a\ud800b\udc00c😀"}`)},
+		{"call args case-insensitive", "POST", P, call("29", "rename_session", `{"TITLE":"Upper"}`)},
+		{"call params case-insensitive", "POST", P, `{"jsonrpc":"2.0","id":30,"method":"tools/call","params":{"NAME":"rename_session","Arguments":{"title":"P"}}}`},
+		{"call strict args", "POST", P, call("31", "rename_session", `{"title":"T","x":1}`)},
+		{"jsonrpc 1.0", "POST", P, `{"jsonrpc":"1.0","id":40,"method":"ping"}`},
+		{"jsonrpc missing", "POST", P, `{"id":41,"method":"ping"}`},
+		{"jsonrpc missing no id", "POST", P, `{"method":"ping"}`},
+		{"jsonrpc number", "POST", P, `{"jsonrpc":2.0,"id":42,"method":"ping"}`},
+		{"parse truncated", "POST", P, `{`},
+		{"parse empty", "POST", P, ``},
+		{"parse array", "POST", P, `[{"jsonrpc":"2.0","id":1,"method":"ping"}]`},
+		{"parse null", "POST", P, `null`},
+		{"parse method type", "POST", P, `{"jsonrpc":"2.0","id":43,"method":5}`},
+		{"parse trailing", "POST", P, `{"jsonrpc":"2.0","id":44,"method":"ping"} x`},
+		{"whitespace body", "POST", P, " \n{\"jsonrpc\":\"2.0\",\"id\":45,\"method\":\"ping\"}\n "},
+		{"id float", "POST", P, `{"jsonrpc":"2.0","id":1.50,"method":"ping"}`},
+		{"id object", "POST", P, `{"jsonrpc":"2.0","id": {"a" : [1, 2]},"method":"ping"}`},
+		{"id string escape", "POST", P, `{"jsonrpc":"2.0","id":"a<b&\"","method":"ping"}`},
+		{"id huge", "POST", P, `{"jsonrpc":"2.0","id":1e400,"method":"ping"}`},
+		{"id bool", "POST", P, `{"jsonrpc":"2.0","id":false,"method":"nope"}`},
+		{"keys case-insensitive", "POST", P, `{"JSONRPC":"2.0","ID":7,"METHOD":"ping"}`},
+		{"duplicate keys", "POST", P, `{"jsonrpc":"1.0","jsonrpc":"2.0","id":1,"id":2,"method":"x","method":"ping"}`},
+		{"unknown fields", "POST", P, `{"jsonrpc":"2.0","id":46,"method":"ping","extra":{"deep":[1]}}`},
+		{"GET", "GET", P, ``},
+		{"DELETE", "DELETE", P, ``},
+		{"PUT", "PUT", P, `{}`},
+		{"PATCH", "PATCH", P, `{}`},
+		{"HEAD", "HEAD", P, ``},
+		{"OPTIONS", "OPTIONS", P, ``},
+		{"unknown token", "POST", "/deadbeef/mcp", `{"jsonrpc":"2.0","id":1,"method":"ping"}`},
+		{"unknown token GET", "GET", "/deadbeef/mcp", ``},
+		{"inactive token", "POST", "/$INACTIVE/mcp", `{"jsonrpc":"2.0","id":1,"method":"ping"}`},
+		{"root", "POST", "/", `{}`},
+		{"root GET", "GET", "/", ``},
+		{"one segment", "POST", "/$TOKEN", `{}`},
+		{"extra segment", "POST", "/$TOKEN/mcp/extra", `{}`},
+		{"not mcp", "POST", "/$TOKEN/sse", `{}`},
+		{"empty token", "POST", "//mcp", `{}`},
+		{"trailing slash", "POST", "/$TOKEN/mcp/", `{"jsonrpc":"2.0","id":47,"method":"ping"}`},
+		{"double slash", "POST", "//$TOKEN/mcp", `{"jsonrpc":"2.0","id":48,"method":"ping"}`},
+		{"dot segment", "POST", "/$TOKEN/./mcp", `{"jsonrpc":"2.0","id":49,"method":"ping"}`},
+		{"dot segment GET", "GET", "/x/../$TOKEN/mcp?q=1", ``},
+		{"query", "POST", "/$TOKEN/mcp?x=1", `{"jsonrpc":"2.0","id":50,"method":"ping"}`},
+	}
+
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	var out []httpCase
+	for _, r := range reqs {
+		path := strings.NewReplacer("$TOKEN", tok, "$RESTRICTED", restricted, "$INACTIVE", inactive).Replace(r.path)
+		var body io.Reader
+		if r.body != "" {
+			body = strings.NewReader(r.body)
+		}
+		hr, err := http.NewRequest(r.method, base+path, body)
+		if err != nil {
+			t.Fatalf("%s: %v", r.name, err)
+		}
+		if r.method == "POST" {
+			hr.Header.Set("Content-Type", "application/json")
+		}
+		rep.mu.Lock()
+		rep.notes = nil
+		rep.mu.Unlock()
+		resp, err := client.Do(hr)
+		if err != nil {
+			t.Fatalf("%s: %v", r.name, err)
+		}
+		rb, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		h := map[string]string{}
+		for _, k := range []string{"Content-Type", "Allow", "X-Content-Type-Options", "Location"} {
+			if v := resp.Header.Get(k); v != "" {
+				h[strings.ToLower(k)] = strings.NewReplacer(tok, "$TOKEN").Replace(v)
+			}
+		}
+		rep.mu.Lock()
+		notes := rep.notes
+		rep.mu.Unlock()
+		if notes == nil {
+			notes = []map[string]any{}
+		}
+		out = append(out, httpCase{Name: r.name, Method: r.method, Path: r.path, Body: r.body, Status: resp.StatusCode, Headers: h, RespBody: strings.ReplaceAll(string(rb), tok, "$TOKEN"), Notes: notes})
+		if r.name == "tools/list" {
+			writeMCPGolden(t, "tools_list.json", string(rb))
+		}
+	}
+	writeMCPGolden(t, "http_cases.json", out)
+
+	names := []string{}
+	for _, sp := range allTools() {
+		names = append(names, sp.name)
+	}
+	consts := map[string]string{
+		"protocolVersion": protocolVersion, "serverName": serverName, "serverVersion": serverVersion,
+		"recurMCPPrefix": recurMCPPrefix,
+	}
+	keys := make([]string, 0, len(consts))
+	for k := range consts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	writeMCPGolden(t, "constants.json", map[string]any{"consts": consts, "toolOrder": names})
+}
+
+func writeMCPGolden(t *testing.T, name string, v any) {
+	dir := filepath.Join("..", "..", "rust", "crates", "mcp", "tests", "golden")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var b []byte
+	if s, ok := v.(string); ok {
+		b = []byte(s)
+	} else {
+		var err error
+		b, err = json.MarshalIndent(v, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		b = append(b, '\n')
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

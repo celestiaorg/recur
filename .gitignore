@@ -1,6 +1,8 @@
 .task
 .DS_Store
 node_modules/
+/target
+__pycache__/
 /bin/
 src-web/dist
 src-web/node_modules
@@ -10,7 +12,6 @@ node_modules/
 # Compiled by `wails3 generate icons` from appicon.icon (actool); non-deterministic
 # across machines/worktrees, so tracking it just dirties every `task dev`.
 build/darwin/Assets.car
-rust/build/darwin/Assets.car
 .env
 .env.local
 .recur/.env

@@ -1,0 +1,301 @@
+// Generator for go_cursor_engine.json. To regenerate, copy into
+// internal/engine as zz_rustgolden_cursor_test.go and run from the repo root:
+//
+//	RECUR_RUST_GOLDEN=$PWD/providers/cursor/tests/golden/go_cursor_engine.json \
+//	  go test ./internal/engine -run TestDumpRustCursorEngineGolden -count=1
+//
+// then delete the copy.
+package engine
+
+import (
+	"encoding/json"
+	"os"
+	"testing"
+
+	"recur/internal/cursor"
+	"recur/internal/domain"
+)
+
+func TestDumpRustCursorEngineGolden(t *testing.T) {
+	path := os.Getenv("RECUR_RUST_GOLDEN")
+	if path == "" {
+		t.Skip()
+	}
+	type toolCase struct{ Name, Input string }
+	inputs := []toolCase{
+		{"shell", `{"command":"echo hi","timeout":30000}`},
+		{"shell", `{"timeout":1}`},
+		{"read", `{"path":"/wt/hello.txt"}`},
+		{"edit", `{"path":"/wt/a<b>.txt"}`},
+		{"delete", `{"path":"/wt/out.txt"}`},
+		{"write", `{"path":"/wt/new.txt","content":"x"}`},
+		{"glob", `{"globPattern":"*.md","targetDirectory":"/wt"}`},
+		{"grep", `{"offset":0,"path":"/wt","pattern":"bravo"}`},
+		{"updateTodos", `{"todos":[{"content":"a","status":"inProgress","id":3,"w":1.5,"big":1e21},{"content":"b","status":"pending"},"odd",7]}`},
+		{"updateTodos", `{"todos":"nope"}`},
+		{"task", `{"description":"Explore","prompt":"Find it","subagent_type":"explore","model":"fast","extra":1}`},
+		{"createPlan", `{"plan":"Summary: x\n\nSteps:\n1. y"}`},
+		{"createPlan", `{"plan":""}`},
+		{"mcp", `{"providerIdentifier":"recur","toolName":"done","args":{"summary":"finished"}}`},
+		{"mcp", `{"toolName":"done","args":{"z":1,"a":2}}`},
+		{"mcp", `{"providerIdentifier":"recur"}`},
+		{"mcp", `not json`},
+		{"brandNew", `{"foo":"bar"}`},
+		{"read", `not json`},
+		{"read", `null`},
+		{"read", ``},
+		{"brandNew", `null`},
+		{"shell", `{"command":5}`},
+	}
+	var tools []map[string]any
+	for _, c := range inputs {
+		d := displayTool(domain.ProviderCursor, c.Name, json.RawMessage(c.Input))
+		tools = append(tools, map[string]any{
+			"name": c.Name, "input": c.Input,
+			"canonical":    canonicalTool(c.Name),
+			"toolInput":    string(cursorToolInput(c.Name, json.RawMessage(c.Input))),
+			"displayName":  d.Name,
+			"displayInput": string(d.Input),
+			"summary":      summarizeDisplayInput(domain.ProviderCursor, c.Name, json.RawMessage(c.Input)),
+		})
+	}
+
+	results := []toolCase{
+		{"shell", `{"status":"success","value":{"executionTime":467,"exitCode":0,"signal":"","stderr":"","stdout":"hi\n"}}`},
+		{"shell", `{"status":"success","value":{"exitCode":2,"stderr":"boom","stdout":"partial\n"}}`},
+		{"shell", `{"status":"success","value":{"exitCode":-1.7,"stderr":"e"}}`},
+		{"shell", `{"status":"success","value":{"exitCode":"3"}}`},
+		{"read", `{"status":"success","value":{"content":"alpha\nbravo\n","fileSize":20}}`},
+		{"edit", `{"status":"success","value":{"diffString":"--- a\n+++ b\n@@ -1 +1 @@\n-x\n+y","linesAdded":1}}`},
+		{"glob", `{"status":"success","value":{"files":["./a.md",3,"./b.txt"],"totalFiles":2}}`},
+		{"grep", `{"status":"success","value":{"workspaceResults":{"/wt":{"output":{"matches":[{"file":"./hello.txt"},{"x":1}],"totalMatches":0},"type":"content"}}}}`},
+		{"delete", `{"status":"success","value":{}}`},
+		{"updateTodos", `{"status":"success","value":{}}`},
+		{"task", `{"status":"success","value":{"text":"Errors land here."}}`},
+		{"task", `{"status":"success","value":{"result":"","output":"out"}}`},
+		{"task", `{"status":"success","value":{"n":1}}`},
+		{"task", `{"status":"success","value":"plain"}`},
+		{"createPlan", `{"status":"success","value":{}}`},
+		{"mcp", `{"status":"success","value":{"content":[{"text":{"text":"The magic number is 4271."}},{"text":{"text":""}},{"text":{"text":"second"}}],"isError":false}}`},
+		{"mcp", `{"status":"success","value":{"content":[{"text":"flat"}]}}`},
+		{"mcp", `{"status":"success","value":{"content":[null]}}`},
+		{"brandNew", `{"status":"success","value":  { "a" : 1 }  }`},
+		{"brandNew", `{"status":"success","value":null}`},
+		{"shell", `{"status":5,"value":{"stdout":"x"}}`},
+		{"shell", `{"status":"error"}`},
+		{"shell", `[]`},
+		{"shell", `not json`},
+		{"shell", ``},
+		{"read", `{"value":"str"}`},
+	}
+	var res []map[string]any
+	for _, c := range results {
+		res = append(res, map[string]any{
+			"name": c.Name, "raw": c.Input,
+			"text":    cursorToolResultText(c.Name, json.RawMessage(c.Input)),
+			"display": displayToolResult(domain.ProviderCursor, c.Name, c.Input),
+		})
+	}
+
+	marker := AttachmentMarker("img_1")
+	marker2 := AttachmentMarker("img_2")
+	imgs := []UserImage{{ID: "img_2", Mime: "image/png", Data: "BBBB"}, {ID: "img_1", Mime: "image/jpeg", Data: "AAAA"}}
+	type promptCase struct {
+		Spec     AgentSpec
+		Standing bool
+	}
+	prompts := []promptCase{
+		{AgentSpec{SystemPrompt: "You are the Reviewer.", Prompt: "Review the diff."}, true},
+		{AgentSpec{SystemPrompt: "  role  ", AppendSystemPrompt: " mode ", Prompt: "  p  ", TurnAppendPrompt: " subject "}, true},
+		{AgentSpec{SystemPrompt: "role", AppendSystemPrompt: "mode", Prompt: "p", TurnAppendPrompt: "subject"}, false},
+		{AgentSpec{Prompt: "hi", AllowedTools: []string{"Read", mcpCreateWorkspace}}, true},
+		{AgentSpec{Prompt: "hi", ChatChild: true, AllowedTools: []string{mcpCreateWorkspace}}, true},
+		{AgentSpec{Prompt: "see " + marker2 + " and " + marker, Images: imgs}, true},
+		{AgentSpec{Prompt: "no markers", Images: imgs}, false},
+		{AgentSpec{Prompt: ""}, true},
+	}
+	var wire []map[string]any
+	for _, c := range prompts {
+		r := &CursorRunner{}
+		var ids []string
+		for _, im := range cursorImages(c.Spec) {
+			ids = append(ids, im.Data+"|"+im.MimeType)
+		}
+		wire = append(wire, map[string]any{
+			"systemPrompt": c.Spec.SystemPrompt, "appendSystemPrompt": c.Spec.AppendSystemPrompt,
+			"prompt": c.Spec.Prompt, "turnAppendPrompt": c.Spec.TurnAppendPrompt,
+			"chatChild": c.Spec.ChatChild, "allowedTools": c.Spec.AllowedTools, "images": len(c.Spec.Images),
+			"standing": c.Standing,
+			"wire":     r.wirePrompt(c.Spec, c.Standing),
+			"imageIDs": ids,
+		})
+	}
+
+	var expand [][]string
+	for _, m := range []string{"[resource_exhausted] Error", "[Unavailable] x", "[deadline_exceeded]", "[internal] internal error",
+		"[other] x", "no bracket", "[unterminated", ""} {
+		expand = append(expand, []string{m, expandCursorRunError(m)})
+	}
+
+	var scale [][]int64
+	for _, c := range [][5]int64{
+		{1000, 2000, 0, 200000, 1}, {1000, 2000, 0, 200000, 3}, {100000, 200000, 50000, 200000, 2},
+		{900000, 0, 0, 200000, 1}, {900000, 0, 0, 0, 1}, {7, 3, 1, 200000, 5}, {0, 0, 0, 200000, 4},
+		{123457, 98765, 4321, 272000, 7}, {1, 0, 0, 200000, 9},
+	} {
+		out := Result{InputTokens: c[0], CacheReadTokens: c[1], CacheCreationTokens: c[2], OutputTokens: 11}
+		scaleCursorMeterUsage(&out, c[3], int(c[4]))
+		scale = append(scale, []int64{c[0], c[1], c[2], c[3], c[4], out.InputTokens, out.CacheReadTokens, out.CacheCreationTokens, out.OutputTokens})
+	}
+
+	var noResult [][]string
+	for _, tail := range []string{"", "Error: spawn /bin/zsh ENOENT\n at x", "cursor-sdk-bridge SIGTERM received", "spawn npx ENOENT\ncode: 'ENOENT'"} {
+		noResult = append(noResult, []string{tail, cursorNoResultMessage(tail, " (bridge log: /tmp/b.log)")})
+	}
+
+	scripts := map[string]struct {
+		Spec   AgentSpec
+		Frames []string
+	}{
+		"tools": {AgentSpec{Model: "composer-2.5", IncludePartials: true}, []string{
+			`{"sdkMessage":{"type":"status","message":{"type":"status","agent_id":"agent-1","run_id":"run-1","status":"RUNNING"}}}`,
+			`{"sdkMessage":{"type":"thinking","message":{"type":"thinking","text":"let me "}}}`,
+			`{"sdkMessage":{"type":"thinking","message":{"type":"thinking","text":"look"}}}`,
+			`{"sdkMessage":{"type":"thinking","message":{"type":"thinking","text":"","thinking_duration_ms":42}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"c1","name":"read","status":"running","args":{"path":"/wt/a"}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"c1","name":"read","status":"running","args":{"path":"/wt/a"}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"c1","name":"read","status":"completed","args":{"path":"/wt/a"},"result":{"status":"success","value":{"content":"x"}},"truncated":{"result":true}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"c2","name":"mcp","status":"running","args":{"providerIdentifier":"recur","toolName":"done","args":{"summary":"finished"}}}}}`,
+			`{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":1000,"outputTokens":500,"cacheReadTokens":2000,"cacheWriteTokens":0,"totalTokens":3500}}}}`,
+			`{"sdkMessage":{"type":"assistant","message":{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Do"},{"type":"image","text":"skip"}]}}}}`,
+			`{"sdkMessage":{"type":"assistant","message":{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"ne."}]}}}}`,
+			`{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"all good","durationMs":"1500","usage":{"inputTokens":"1000","outputTokens":"500","cacheReadTokens":"2000","totalTokens":"3500"}}}}`,
+		}},
+		"unreported": {AgentSpec{Model: "gpt-5.6-sol"}, []string{
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"a","name":"read","status":"running","args":{"path":"x"}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"b","name":"glob","status":"running","args":{"globPattern":"*"}}}}`,
+			`{"sdkMessage":{"type":"thinking","message":{"type":"thinking","text":"x"}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"","name":"shell","status":"running","args":{"command":"ls"}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"","name":"shell","status":"aborted","args":{"command":"ls"},"result":{"status":"success","value":{"isError":true}}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"c","name":"read","status":"running","args":{"path":"y"}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"c","name":"read","status":"error","args":{"path":"y"},"result":{"status":"error","value":{"message":"ENOENT"}}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"d","name":"edit","status":"running","args":{"path":"z"}}}}`,
+			`{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":300000,"outputTokens":10,"cacheReadTokens":500000,"cacheWriteTokens":7,"totalTokens":800017}}}}`,
+			`{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-9","status":"RUN_LIFECYCLE_STATUS_FINISHED"}}}`,
+		}},
+		"compact": {AgentSpec{Model: "claude-opus-5", Flags: map[string]string{"maxMode": "true"}}, []string{
+			`{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":100000,"outputTokens":500,"cacheReadTokens":400000,"cacheWriteTokens":1000,"totalTokens":501500}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"s1","name":"shell","status":"completed","args":{"command":"go test"},"result":{"status":"success","value":{"stdout":"ok"}}}}}`,
+			`{"sdkMessage":{"type":"assistant","message":{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"before"}]}}}}`,
+			`{"interactionUpdate":{"type":"summary-started"}}`,
+			`{"interactionUpdate":{"type":"summary","update":{"type":"summary","summary":"older turns folded"}}}`,
+			`{"interactionUpdate":{"summaryCompleted":{}}}`,
+			`{"interactionUpdate":{"type":"turn-ended","update":{"usage":{"inputTokens":50000,"cacheReadTokens":20000}}}}`,
+			`{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":150000,"outputTokens":900,"cacheReadTokens":450000,"cacheWriteTokens":1000,"totalTokens":601900}}}}`,
+			`{"interactionUpdate":{"turnEnded":{"usage":{"inputTokens":"900000","cacheReadTokens":"900000"}}}}`,
+			`{"result":{"status":"RUN_LIFECYCLE_STATUS_FINISHED","result":{"runId":"run-c","status":"RUN_LIFECYCLE_STATUS_FINISHED","result":"","durationMs":"99"}}}`,
+		}},
+		"compactNoStart": {AgentSpec{Model: "composer-2.5"}, []string{
+			`{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"totalTokens":4242}}}}`,
+			`{"interactionUpdate":{"type":"summary-completed"}}`,
+			`{"interactionUpdate":{"type":"summary-completed"}}`,
+			`{"interactionUpdate":{"type":"turn-ended","update":{"usage":{"inputTokens":10}}}}`,
+		}},
+		"createPlan": {AgentSpec{}, []string{
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"p1","name":"createPlan","status":"running","args":{"plan":""}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"p1","name":"createPlan","status":"running","args":{"plan":"Summary: the whole thing\n\nSteps: lots"}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"p1","name":"createPlan","status":"completed","args":{"plan":"Summary: stub"},"result":{"status":"success","value":{}}}}}`,
+		}},
+		"statusError": {AgentSpec{}, []string{
+			`{"sdkMessage":{"type":"status","message":{"type":"status","agent_id":"agent-1","run_id":"run-1","status":"ERROR","message":"[resource_exhausted] Error"}}}`,
+			`{"sdkMessage":{"type":"assistant","message":{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"partial"}]}}}}`,
+			`{"result":{"status":"RUN_LIFECYCLE_STATUS_ERROR","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_ERROR"}}}`,
+		}},
+		"resultError": {AgentSpec{}, []string{
+			`{"result":{"status":"RUN_LIFECYCLE_STATUS_ERROR","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_ERROR","error":{"message":"model overloaded"}}}}`,
+		}},
+		"noResult": {AgentSpec{Model: "composer-2.5"}, []string{
+			`{"sdkMessage":{"type":"thinking","message":{"type":"thinking","text":"hmm"}}}`,
+			`{"sdkMessage":{"type":"usage","message":{"type":"usage","usage":{"inputTokens":1000,"outputTokens":500,"cacheReadTokens":2000}}}}`,
+			`{"sdkMessage":{"type":"assistant","message":{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"done"}]}}}}`,
+			`{"sdkMessage":{"type":"tool_call","message":{"type":"tool_call","call_id":"x","name":"read","status":"running","args":{"path":"q"}}}}`,
+		}},
+		"cancelled": {AgentSpec{}, []string{
+			`{"result":{"status":"RUN_LIFECYCLE_STATUS_CANCELLED","result":{"runId":"run-1","status":"RUN_LIFECYCLE_STATUS_CANCELLED","durationMs":"10"}}}`,
+		}},
+	}
+	folds := map[string]any{}
+	for name, sc := range scripts {
+		var evs []ParsedEvent
+		st := &cursorTurn{spec: sc.Spec, agentID: "agent-1", emit: func(e ParsedEvent) { evs = append(evs, e) }}
+		for _, f := range sc.Frames {
+			var ev cursor.RunStreamEvent
+			if err := json.Unmarshal([]byte(f), &ev); err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			_ = st.onEvent(ev)
+		}
+		st.finish()
+		var dumped []map[string]any
+		for _, e := range evs {
+			dumped = append(dumped, dumpEvent(e))
+		}
+		folds[name] = map[string]any{
+			"model": sc.Spec.Model, "flags": sc.Spec.Flags, "partials": sc.Spec.IncludePartials,
+			"frames": sc.Frames, "events": dumped, "result": dumpResult(st.result()),
+			"runIDs": st.allRunIDs(),
+		}
+	}
+
+	out := map[string]any{
+		"tools":    tools,
+		"results":  res,
+		"wire":     wire,
+		"expand":   expand,
+		"scale":    scale,
+		"noResult": noResult,
+		"folds":    folds,
+		"constants": map[string]any{
+			"unreported":     unreportedResultText,
+			"steerCancelled": steerCancelledCallText,
+			"subagent":       cursorSubagentPrompt,
+			"childSubagent":  cursorChildSubagentPrompt,
+		},
+	}
+	b, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(b, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func dumpResult(r Result) map[string]any {
+	return map[string]any{
+		"sessionId": r.SessionID, "subtype": r.Subtype, "isError": r.IsError, "durationMs": r.DurationMS,
+		"text": r.Text, "inputTokens": r.InputTokens, "outputTokens": r.OutputTokens,
+		"cacheCreationTokens": r.CacheCreationTokens, "cacheReadTokens": r.CacheReadTokens, "stderr": r.Stderr,
+	}
+}
+
+func dumpEvent(e ParsedEvent) map[string]any {
+	m := map[string]any{"kind": string(e.Kind)}
+	switch e.Kind {
+	case KindText, KindTextDelta, KindThinking, KindThinkingDelta, KindNotice:
+		m["text"] = e.Text
+	case KindStep:
+		m["id"], m["name"], m["summary"], m["input"] = e.ToolUseID, e.Tool, e.ToolInput, string(e.ToolInputRaw)
+	case KindToolResult:
+		m["id"], m["name"], m["text"], m["isError"], m["truncated"] = e.ToolUseID, e.Tool, e.Text, e.IsError, e.Truncated
+	case KindUsage:
+		m["result"] = dumpResult(*e.Result)
+	case KindCompact:
+		m["status"], m["trigger"], m["summary"], m["preTokens"] = e.CompactStatus, e.CompactTrigger, e.Text, e.Tokens
+	case KindResult:
+		m["result"] = dumpResult(*e.Result)
+	case KindUser:
+		m["text"], m["display"], m["live"] = e.Text, e.DisplayText, e.LiveSteer
+	}
+	return m
+}

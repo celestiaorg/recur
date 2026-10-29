@@ -12,15 +12,13 @@ vars:
 tasks:
   test:bundles:
     summary: Runs shipped Recur Bundle engine tests (needs node on PATH)
-    dir: rust
     cmds:
-      - cargo run -q -p recur-cli -- bundles test ../bundles
+      - cargo run -q -p recur-cli -- bundles test ./bundles
 
   lint:bundles:
     summary: Lints shipped Recur Bundles (schema, TS compile, shebang, keybindings)
-    dir: rust
     cmds:
-      - cargo run -q -p recur-cli -- bundles lint ../bundles
+      - cargo run -q -p recur-cli -- bundles lint ./bundles
 
   fetch:tm-grammars:
     summary: Re-fetch TextMate grammars from shikijs/textmate-grammars-themes into bundles/Languages
@@ -39,20 +37,17 @@ tasks:
       - node scripts/fetch-tm-themes.mjs --local-only
 
   build:rust:
-    summary: Builds the Rust/GPUI port (rust/target; never touches bin/)
-    dir: rust
+    summary: Builds the Rust/GPUI port (target; never touches bin/)
     cmds:
       - cargo build {{.CLI_ARGS}}
 
   run:rust:
     summary: Runs the Rust/GPUI desktop app on the engine-backed services (data dir defaults to RecurNext; `-- --features mock` for the mock bridge)
-    dir: rust
     cmds:
       - cargo run -p recur-desktop {{.CLI_ARGS}}
 
   lint:rust:
     summary: rustfmt check, clippy and the crate layering check for the Rust port
-    dir: rust
     cmds:
       - cargo fmt --all --check
       - cargo clippy --workspace --all-targets -- -D warnings
@@ -60,53 +55,52 @@ tasks:
 
   test:rust:
     summary: Runs the Rust port's tests
-    dir: rust
     cmds:
       - cargo test --workspace
 
   package:rust:
-    summary: Packages the Rust port as rust/target/package/Recur Next.app, .dmg and updater .zip (macOS; UNIVERSAL=true, SIGN_IDENTITY / KEYCHAIN_PROFILE / RECUR_SIGN_IDENTITY as darwin:sign, RECUR_NEXT_UPDATE_URL turns on the updater; see rust/build/darwin/package.sh)
+    summary: Packages the Rust port as target/package/Recur Next.app, .dmg and updater .zip (macOS; UNIVERSAL=true, SIGN_IDENTITY / KEYCHAIN_PROFILE / RECUR_SIGN_IDENTITY as darwin:sign, RECUR_NEXT_UPDATE_URL turns on the updater; see build/darwin/package.sh)
     platforms: [darwin]
     deps:
       - task: generate:icons:rust
       - task: generate:help-skill
     cmds:
-      - rust/build/darwin/package.sh
+      - build/darwin/package.sh
     env:
       VERSION: '{{.VERSION}}'
 
   generate:icons:rust:
-    summary: Compiles rust/build/appicon.icon into the Rust app's darwin/icons.icns and Assets.car
-    dir: rust/build
+    summary: Compiles build/appicon.icon into the Rust app's darwin/icons.icns and Assets.car
+    dir: build
     cmds:
       - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename= -iconcomposerinput appicon.icon -macassetdir darwin
 
   linux:test:rust:
-    summary: rustfmt, clippy and the Rust port's tests on Linux (natively on Linux, in rust/build/linux/Dockerfile elsewhere; WebKitGTK tests under xvfb-run)
+    summary: rustfmt, clippy and the Rust port's tests on Linux (natively on Linux, in build/linux/Dockerfile elsewhere; WebKitGTK tests under xvfb-run)
     cmds:
-      - rust/build/linux/in-docker.sh sh -c 'cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features --locked -- -D warnings && xvfb-run -a cargo test --workspace --all-features --locked'
+      - build/linux/in-docker.sh sh -c 'cargo fmt --all --check && cargo clippy --workspace --all-targets --all-features --locked -- -D warnings && xvfb-run -a cargo test --workspace --all-features --locked'
     env:
       ARCH: '{{.ARCH | default ARCH}}'
 
   linux:test:rust:wpe:
-    summary: The WPE WebKit HTML preview spike's checks (recur-content tests/wpe.rs) in rust/build/linux/wpe.Dockerfile, which builds WPE 2.54 on first use (long)
+    summary: The WPE WebKit HTML preview spike's checks (recur-content tests/wpe.rs) in build/linux/wpe.Dockerfile, which builds WPE 2.54 on first use (long)
     cmds:
-      - WPE=1 rust/build/linux/in-docker.sh sh -c 'cargo clippy -p recur-content --all-targets --locked -- -D warnings && cargo test -p recur-content --test wpe --locked'
+      - WPE=1 build/linux/in-docker.sh sh -c 'cargo clippy -p recur-content --all-targets --locked -- -D warnings && cargo test -p recur-content --test wpe --locked'
     env:
       ARCH: '{{.ARCH | default ARCH}}'
 
   linux:build:rust:
-    summary: Release Linux build of the Rust port into rust/target/package/recur-next-linux-<arch> (recur, recur-cli, recur.png; in Docker on non-Linux hosts, see rust/build/linux/in-docker.sh)
+    summary: Release Linux build of the Rust port into target/package/recur-next-linux-<arch> (recur, recur-cli, recur.png; in Docker on non-Linux hosts, see build/linux/in-docker.sh)
     deps:
       - task: generate:help-skill
     cmds:
-      - rust/build/linux/in-docker.sh build/linux/build.sh
+      - build/linux/in-docker.sh build/linux/build.sh
     env:
       ARCH: '{{.ARCH | default ARCH}}'
       VERSION: '{{.VERSION}}'
 
   linux:package:rust:
-    summary: Packages rust/target/package/recur-next-linux-<arch>.tar.gz, .deb and .rpm (install to /opt/recur-next with /usr/bin/recur-next and the build.recur.next menu entry, beside the Go app's packages)
+    summary: Packages target/package/recur-next-linux-<arch>.tar.gz, .deb and .rpm (install to /opt/recur-next with /usr/bin/recur-next and the build.recur.next menu entry, beside the Go app's packages)
     vars:
       TARGET_ARCH: '{{.ARCH | default ARCH}}'
       PKG: 'recur-next-linux-{{.TARGET_ARCH}}'
@@ -114,38 +108,37 @@ tasks:
       - task: linux:build:rust
         vars:
           ARCH: '{{.TARGET_ARCH}}'
-      - tar --no-xattrs -C rust/target/package -czf "rust/target/package/{{.PKG}}.tar.gz" "{{.PKG}}"
+      - tar --no-xattrs -C target/package -czf "target/package/{{.PKG}}.tar.gz" "{{.PKG}}"
       - for: [deb, rpm]
-        cmd: GOARCH={{.TARGET_ARCH}} RECUR_VERSION={{.VERSION}} PKG_DIR="rust/target/package/{{.PKG}}" wails3 tool package -name "{{.PKG}}" -format {{.ITEM}} -config rust/build/linux/nfpm.yaml -out rust/target/package
+        cmd: GOARCH={{.TARGET_ARCH}} RECUR_VERSION={{.VERSION}} PKG_DIR="target/package/{{.PKG}}" wails3 tool package -name "{{.PKG}}" -format {{.ITEM}} -config build/linux/nfpm.yaml -out target/package
 
   linux:run:rust:
-    summary: Builds the Rust port for Linux and runs it (natively on Linux; elsewhere on a Docker desktop at http://127.0.0.1:6081 via noVNC, see rust/build/linux/run-desktop.sh)
+    summary: Builds the Rust port for Linux and runs it (natively on Linux; elsewhere on a Docker desktop at http://127.0.0.1:6081 via noVNC, see build/linux/run-desktop.sh)
     vars:
       TARGET_ARCH: '{{.ARCH | default ARCH}}'
     cmds:
       - task: linux:build:rust
         vars:
           ARCH: '{{.TARGET_ARCH}}'
-      - '{{if eq OS "linux"}}rust/target/package/recur-next-linux-{{.TARGET_ARCH}}/recur{{else}}rust/build/linux/run-desktop.sh{{end}}'
+      - '{{if eq OS "linux"}}target/package/recur-next-linux-{{.TARGET_ARCH}}/recur{{else}}build/linux/run-desktop.sh{{end}}'
     env:
       ARCH: '{{.TARGET_ARCH}}'
 
   linux:smoke:rust:
-    summary: Installs the linux:package:rust .deb and tarball in a clean Debian 13 container and checks paths, the recur-next link, the menu entry, `recur-next .` and a notification (see rust/build/linux/smoke.sh)
+    summary: Installs the linux:package:rust .deb and tarball in a clean Debian 13 container and checks paths, the recur-next link, the menu entry, `recur-next .` and a notification (see build/linux/smoke.sh)
     cmds:
-      - rust/build/linux/smoke.sh
+      - build/linux/smoke.sh
     env:
       ARCH: '{{.ARCH | default ARCH}}'
 
   smoke:package:rust:
-    summary: Installs rust/target/package/Recur Next.dmg into a sandbox, launches it, and checks the recur-next link, `recur-next .` and a native notification (macOS; see rust/build/darwin/smoke.sh)
+    summary: Installs target/package/Recur Next.dmg into a sandbox, launches it, and checks the recur-next link, `recur-next .` and a native notification (macOS; see build/darwin/smoke.sh)
     platforms: [darwin]
     cmds:
-      - rust/build/darwin/smoke.sh
+      - build/darwin/smoke.sh
 
   smoke:rust:
-    summary: Boots the Rust desktop on a sandbox built from a Recur data dir (read only) and drives every view; `wails3 task smoke:rust DATA="<data dir>" [SANDBOX=<dir>]` (see rust/crates/desktop/examples/real_data_smoke.rs)
-    dir: rust
+    summary: Boots the Rust desktop on a sandbox built from a Recur data dir (read only) and drives every view; `wails3 task smoke:rust DATA="<data dir>" [SANDBOX=<dir>]` (see crates/desktop/examples/real_data_smoke.rs)
     cmds:
       - cargo run -p recur-desktop --example real_data_smoke -- "{{.DATA}}" {{.SANDBOX}}
 
@@ -165,7 +158,6 @@ tasks:
 
   check:cursor-sdk-pin:
     summary: Fail if PyPI cursor-sdk is ahead of PINNED_SDK_VERSION (network; flags re-pin)
-    dir: rust
     cmds:
       - RECUR_CURSOR_SDK_PIN_CHECK=1 cargo test -p recur-provider-cursor --lib check_cursor_sdk_pin_drift -- --nocapture
 

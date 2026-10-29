@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   # Platform-independent checks, so they run once; the jobs below wait on them.
-  preflight:
+  sanity:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -28,7 +28,7 @@ jobs:
   # Clippy and the tests run on both platforms: cfg(target_os) code (AppKit,
   # WKWebView, GTK, WebKitGTK) only compiles on its own OS.
   mac:
-    needs: preflight
+    needs: sanity
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
@@ -41,7 +41,7 @@ jobs:
   # tests open WebKitGTK, so they run under Xvfb, with WebKit's sandbox off
   # (the runner's AppArmor blocks bubblewrap's namespaces).
   linux:
-    needs: preflight
+    needs: sanity
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -113,7 +113,7 @@ jobs:
   ci-success:
     name: CI success
     if: always()
-    needs: [preflight, mac, linux, package-mac, package-linux]
+    needs: [sanity, mac, linux, package-mac, package-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any required job failed or was cancelled

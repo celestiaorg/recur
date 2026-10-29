@@ -1,6 +1,7 @@
 //! Scope and file-glob filtering for commands and snippets.
 
-use crate::go;
+use recur_domain::path;
+
 use crate::manifest::Command;
 
 /// Whether `cmd` applies to the editor grammar scope and file path.
@@ -62,8 +63,8 @@ fn glob_match(pattern: &str, file_path: &str) -> bool {
     if alts.len() > 1 {
         return alts.iter().any(|p| glob_match(p, file_path));
     }
-    let m = |p: &str, s: &str| go::glob_match(p, s).unwrap_or(false);
-    let base = go::base(file_path);
+    let m = |p: &str, s: &str| path::glob_match(p, s).unwrap_or(false);
+    let base = path::base(file_path);
     if m(pattern, &base) || m(pattern, file_path) {
         return true;
     }

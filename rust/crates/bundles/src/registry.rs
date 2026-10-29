@@ -5,7 +5,8 @@
 use std::collections::{BTreeMap, HashMap};
 use std::io;
 
-use crate::go::{self, quote};
+use recur_domain::path;
+
 use crate::grammar::{Grammar, TerminalTheme, Theme};
 use crate::langdata::LanguageData;
 use crate::loops::{LoopDef, Policy, Role};
@@ -86,10 +87,6 @@ fn theme_sort_order(order: i64) -> i64 {
     if order == 0 { 1_000_000 } else { order }
 }
 
-fn lower(s: &str) -> String {
-    go::to_lower(s)
-}
-
 /// Every contribution kind across both roots. User wins on id; grammars and
 /// language data then collapse onto unique scopeNames (user wins again).
 pub fn discover_catalog(roots: &DiscoverRoots) -> Result<Catalog, Error> {
@@ -131,9 +128,9 @@ pub fn discover_catalog(roots: &DiscoverRoots) -> Result<Catalog, Error> {
             Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
             Err(e) => {
                 return Err(err!(
-                    "read bundles dir {}: {}",
-                    quote(dir),
-                    go::path_err("open", dir, &e)
+                    "read bundles dir {:?}: {}",
+                    dir,
+                    format!("{dir}: {e}")
                 ));
             }
         };
@@ -141,8 +138,8 @@ pub fn discover_catalog(roots: &DiscoverRoots) -> Result<Catalog, Error> {
             if !is_dir {
                 continue;
             }
-            let bundle_dir = go::join(&[dir, &name]);
-            let manifest = go::join(&[&bundle_dir, "bundle.toml"]);
+            let bundle_dir = path::join(&[dir, &name]);
+            let manifest = path::join(&[&bundle_dir, "bundle.toml"]);
             let data = match std::fs::read(&manifest) {
                 Ok(data) => data,
                 Err(e) => {
@@ -189,8 +186,8 @@ pub fn discover_catalog(roots: &DiscoverRoots) -> Result<Catalog, Error> {
     out_commands.sort_by(|a, b| {
         a.order
             .cmp(&b.order)
-            .then_with(|| lower(&a.category).cmp(&lower(&b.category)))
-            .then_with(|| lower(&a.name).cmp(&lower(&b.name)))
+            .then_with(|| a.category.to_lowercase().cmp(&b.category.to_lowercase()))
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
 
     let (out_prompts, slash_skips) = resolve_prompt_slashes(prompts.into_values().collect());
@@ -204,17 +201,17 @@ pub fn discover_catalog(roots: &DiscoverRoots) -> Result<Catalog, Error> {
     out_themes.sort_by(|a, b| {
         theme_sort_order(a.order)
             .cmp(&theme_sort_order(b.order))
-            .then_with(|| lower(&a.name).cmp(&lower(&b.name)))
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
 
     let mut out_servers: Vec<LanguageServer> = servers.into_values().collect();
-    out_servers.sort_by_key(|s| lower(&s.id));
+    out_servers.sort_by_key(|s| s.id.to_lowercase());
 
     let mut out_term_themes: Vec<TerminalTheme> = term_themes.into_values().collect();
     out_term_themes.sort_by(|a, b| {
         theme_sort_order(a.order)
             .cmp(&theme_sort_order(b.order))
-            .then_with(|| lower(&a.name).cmp(&lower(&b.name)))
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
 
     let out_lang_data = collapse_by_scope(lang_data.into_values().collect(), |d| {
@@ -225,29 +222,36 @@ pub fn discover_catalog(roots: &DiscoverRoots) -> Result<Catalog, Error> {
     out_snippets.sort_by(|a, b| {
         a.order
             .cmp(&b.order)
-            .then_with(|| lower(&a.bundle_name).cmp(&lower(&b.bundle_name)))
-            .then_with(|| lower(&a.name).cmp(&lower(&b.name)))
+            .then_with(|| {
+                a.bundle_name
+                    .to_lowercase()
+                    .cmp(&b.bundle_name.to_lowercase())
+            })
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
 
     let mut out_symbols: Vec<Symbol> = symbols.into_values().collect();
     out_symbols.sort_by(|a, b| {
-        lower(&a.bundle_name)
-            .cmp(&lower(&b.bundle_name))
+        a.bundle_name
+            .to_lowercase()
+            .cmp(&b.bundle_name.to_lowercase())
             .then_with(|| a.id.cmp(&b.id))
     });
 
     let mut out_settings: Vec<Setting> = settings.into_values().collect();
     out_settings.sort_by(|a, b| {
-        lower(&a.bundle_name)
-            .cmp(&lower(&b.bundle_name))
-            .then_with(|| lower(&a.label).cmp(&lower(&b.label)))
+        a.bundle_name
+            .to_lowercase()
+            .cmp(&b.bundle_name.to_lowercase())
+            .then_with(|| a.label.to_lowercase().cmp(&b.label.to_lowercase()))
             .then_with(|| a.id.cmp(&b.id))
     });
 
     let mut out_searches: Vec<SearchAction> = searches.into_values().collect();
     out_searches.sort_by(|a, b| {
-        lower(&a.name)
-            .cmp(&lower(&b.name))
+        a.name
+            .to_lowercase()
+            .cmp(&b.name.to_lowercase())
             .then_with(|| a.id.cmp(&b.id))
     });
 
@@ -277,18 +281,18 @@ pub fn discover_catalog(roots: &DiscoverRoots) -> Result<Catalog, Error> {
         code_owner.insert(r.code.clone(), r.id.clone());
         out_roles.push(r);
     }
-    out_roles.sort_by_key(|r| lower(&r.name));
+    out_roles.sort_by_key(|r| r.name.to_lowercase());
 
     let mut out_loops: Vec<LoopDef> = loops.into_values().collect();
-    out_loops.sort_by_key(|l| lower(&l.name));
+    out_loops.sort_by_key(|l| l.name.to_lowercase());
 
     let mut out_policies: Vec<Policy> = policies.into_values().collect();
-    out_policies.sort_by_key(|p| lower(&p.name));
+    out_policies.sort_by_key(|p| p.name.to_lowercase());
 
     skips.sort_by(|a, b| {
         a.source
             .cmp(&b.source)
-            .then_with(|| lower(&a.name).cmp(&lower(&b.name)))
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
 
     Ok(Catalog {
@@ -364,12 +368,8 @@ fn resolve_prompt_slashes(prompts: Vec<PromptAction>) -> (Vec<PromptAction>, Vec
                 name: p.slash.clone(),
                 source: p.source_root.clone(),
                 reason: format!(
-                    "slash {} collides with prompt {} from bundle {} (kept {}/{})",
-                    quote(&slash),
-                    quote(&winner.name),
-                    quote(&winner.bundle_name),
-                    winner.source_root,
-                    winner.id
+                    "slash {:?} collides with prompt {:?} from bundle {:?} (kept {}/{})",
+                    slash, winner.name, winner.bundle_name, winner.source_root, winner.id
                 ),
             });
         }
@@ -395,14 +395,7 @@ fn skip_read_reason(path: &str, e: &io::Error) -> String {
         io::ErrorKind::PermissionDenied => {
             "cannot read bundle.toml (permission denied) — check directory permissions".to_string()
         }
-        _ => {
-            let op = if e.raw_os_error() == Some(nix::libc::EISDIR) {
-                "read"
-            } else {
-                "open"
-            };
-            format!("cannot read bundle.toml: {}", go::path_err(op, path, e))
-        }
+        _ => format!("cannot read bundle.toml: {path}: {e}"),
     }
 }
 

@@ -5,7 +5,7 @@
 //! file Viper finds in `~/.recur` (parsed as YAML), then
 //! `~/.recur/bundles`.
 
-use recur_bundles::go;
+use recur_domain::path;
 use yaml_rust2::{Yaml, YamlLoader};
 
 use crate::paths;
@@ -42,10 +42,10 @@ pub fn bundles_dir_setting(flag: Option<&str>) -> Result<String, String> {
         return Ok(v);
     }
     let home = paths::user_home_dir()?;
-    if let Some(v) = config_file_value(&go::join(&[&home, ".recur"]), "bundles-dir") {
+    if let Some(v) = config_file_value(&path::join(&[&home, ".recur"]), "bundles-dir") {
         return Ok(v);
     }
-    Ok(go::join(&[&home, ".recur", "bundles"]))
+    Ok(path::join(&[&home, ".recur", "bundles"]))
 }
 
 /// `bundlesDir()`: the setting (created), or the store default when blank.
@@ -53,7 +53,7 @@ pub fn bundles_dir(flag: Option<&str>) -> Result<String, String> {
     let d = bundles_dir_setting(flag)?;
     let d = d.trim();
     if !d.is_empty() {
-        std::fs::create_dir_all(d).map_err(|e| go::path_err("mkdir", d, &e))?;
+        std::fs::create_dir_all(d).map_err(|e| format!("{d}: {e}"))?;
         return Ok(d.to_string());
     }
     paths::user_bundles_dir()
@@ -63,8 +63,8 @@ pub fn bundles_dir(flag: Option<&str>) -> Result<String, String> {
 fn find_config_file(dir: &str) -> Option<String> {
     SUPPORTED_EXTS
         .iter()
-        .map(|ext| go::join(&[dir, &format!("config.{ext}")]))
-        .chain(std::iter::once(go::join(&[dir, "config"])))
+        .map(|ext| path::join(&[dir, &format!("config.{ext}")]))
+        .chain(std::iter::once(path::join(&[dir, "config"])))
         .find(|p| std::fs::metadata(p).is_ok_and(|m| !m.is_dir()))
 }
 

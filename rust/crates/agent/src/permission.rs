@@ -3,7 +3,7 @@
 
 use serde_json::Value;
 
-use crate::gostr::go_prefix;
+use crate::gostr::byte_prefix;
 
 /// The MCP tool Claude Code calls to ask permission under
 /// `--permission-mode default`. Claude invokes it itself, so unlike every
@@ -125,7 +125,7 @@ fn truncate_line(s: &str, max: usize) -> String {
         s.push_str(" …");
     }
     if s.len() > max {
-        return format!("{}…", go_prefix(&s, max));
+        return format!("{}…", byte_prefix(&s, max));
     }
     s
 }

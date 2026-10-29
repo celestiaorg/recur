@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use parking_lot::Mutex;
-use recur_bundles::go::quote;
 
 use super::rt::{blocking, rt};
 use super::{AppServices, err};
@@ -225,8 +224,8 @@ impl AppServices {
         // just deleted.
         if self.store().workspace(workspace_id).is_none() {
             return Err(Error::new(format!(
-                "workspace {} not found",
-                quote(workspace_id)
+                "workspace {:?} not found",
+                workspace_id
             )));
         }
         let st = self.editor.state(workspace_id);

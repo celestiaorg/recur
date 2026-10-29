@@ -6,12 +6,12 @@ use std::sync::{Arc, LazyLock};
 
 use parking_lot::Mutex;
 use recur_domain::FileSearchHit;
+use recur_domain::path;
 use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
 use crate::fuzzy::score_lower;
 use crate::glob::glob_to_regexp;
-use crate::gopath;
 use crate::gostr;
 
 /// Scores `paths` for `query` and returns up to `limit` hits (0 means 50),
@@ -27,7 +27,7 @@ pub fn rank_files(
     limit: usize,
 ) -> Vec<FileSearchHit> {
     let limit = if limit == 0 { 50 } else { limit };
-    let q = gostr::lower(query);
+    let q = query.to_lowercase();
     let q = q.trim();
     if q.is_empty() {
         return paths
@@ -49,10 +49,10 @@ pub fn rank_files(
         }
         let base = match basenames.get(i) {
             Some(b) if !b.is_empty() => b.clone(),
-            _ => gopath::base(p),
+            _ => path::base(p),
         };
-        let pl = gostr::lower(p);
-        let bl = gostr::lower(&base);
+        let pl = p.to_lowercase();
+        let bl = base.to_lowercase();
         let Some(base_score) = score_lower(pl.as_bytes(), q.as_bytes()) else {
             continue;
         };
@@ -145,7 +145,7 @@ pub fn rank_files_and_dirs(
     if dirs.is_empty() {
         return files;
     }
-    let bases: Vec<String> = dirs.iter().map(|d| gopath::base(d)).collect();
+    let bases: Vec<String> = dirs.iter().map(|d| path::base(d)).collect();
     let dir_hits = rank_files(cancel, &dirs, &bases, query, limit);
     merge_file_dir_hits(files, dir_hits, limit)
 }
@@ -216,7 +216,7 @@ fn camel_hump_match(text: &str, q: &str) -> bool {
     }
     let initials: String = humps
         .iter()
-        .filter_map(|h| h.chars().next().map(gostr::lower_rune))
+        .filter_map(|h| h.chars().next().and_then(|c| c.to_lowercase().next()))
         .collect();
     if initials.starts_with(q) {
         return true;
@@ -224,7 +224,7 @@ fn camel_hump_match(text: &str, q: &str) -> bool {
     let q = q.as_bytes();
     let mut qi = 0;
     for h in &humps {
-        let hl = gostr::lower(h);
+        let hl = h.to_lowercase();
         for (i, &c) in hl.as_bytes().iter().enumerate() {
             if qi >= q.len() {
                 break;
@@ -366,7 +366,7 @@ fn compile_exclude_pattern(p: &str) -> ExcludeMatcher {
     }
     match Regex::new(&glob_to_regexp(p)) {
         Ok(re) => ExcludeMatcher::Re(re),
-        Err(e) => panic!("regexp: Compile({}): {e}", gostr::quote(p)),
+        Err(e) => panic!("regexp: Compile({:?}): {e}", p),
     }
 }
 

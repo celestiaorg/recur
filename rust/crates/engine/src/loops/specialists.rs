@@ -709,16 +709,16 @@ impl Walk {
         let coder = self.slot_role_spec("implementer", role_spec(&AgentRole::Coder));
         if rs.code == coder.code {
             return Err(LoopError::msg(format!(
-                "rail #2 violation: reviewer and coder share agent code {}",
-                recur_bundles::go::quote(&rs.code)
+                "rail #2 violation: reviewer and coder share agent code {:?}",
+                rs.code
             )));
         }
         let reviewer_id = format!("{}-{}", self.id, rs.code);
         let coder_id = format!("{}-{}", self.id, coder.code);
         if reviewer_id == coder_id {
             return Err(LoopError::msg(format!(
-                "rail #2 violation: reviewer and coder share agent id {}",
-                recur_bundles::go::quote(&reviewer_id)
+                "rail #2 violation: reviewer and coder share agent id {:?}",
+                reviewer_id
             )));
         }
         let set = self.eng.settings();

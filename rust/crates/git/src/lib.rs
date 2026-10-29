@@ -10,7 +10,6 @@ mod checkpoint;
 mod command;
 mod diff;
 mod error;
-mod gopath;
 mod ignore;
 mod scm;
 mod status;

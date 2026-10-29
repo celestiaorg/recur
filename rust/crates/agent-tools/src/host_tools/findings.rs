@@ -2,7 +2,6 @@ use recur_domain::{Finding as StoredFinding, FindingNote};
 use serde::Serialize;
 
 use super::{is_zero, marshal, parse_severity, strict};
-use crate::gostr::quote;
 use crate::host::Finding;
 use crate::json::{Shape, Ty, field};
 use crate::names;
@@ -77,8 +76,8 @@ filed findings in your closing reply — the app summarizes still-open filings."
         }
         let Some(severity) = parse_severity(a.str("severity")) else {
             return Err(format!(
-                "report_finding: severity must be one of info/low/medium/high/critical, got {}",
-                quote(a.str("severity"))
+                "report_finding: severity must be one of info/low/medium/high/critical, got {:?}",
+                a.str("severity")
             )
             .into());
         };
@@ -217,8 +216,8 @@ findings[{id,file,line,severity,message,…}]."
             "open" | "resolved" | "ignored" | "invalid" | "all"
         ) {
             return Err(format!(
-                "list_findings: status must be open/resolved/ignored/invalid/all, got {}",
-                quote(&status)
+                "list_findings: status must be open/resolved/ignored/invalid/all, got {:?}",
+                status
             )
             .into());
         }
@@ -316,8 +315,8 @@ decide convergence; a later review still re-checks the diff."
         }
         if !matches!(a.str("status").trim(), "resolved" | "invalid") {
             return Err(format!(
-                "update_finding: status must be resolved or invalid, got {}",
-                quote(a.str("status"))
+                "update_finding: status must be resolved or invalid, got {:?}",
+                a.str("status")
             )
             .into());
         }

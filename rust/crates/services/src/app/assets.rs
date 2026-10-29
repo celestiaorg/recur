@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use async_trait::async_trait;
 use image::ImageDecoder as _;
+use recur_domain::path;
 
 use super::AppServices;
 use crate::api::{Asset, AssetError, AssetsService};
@@ -155,7 +156,7 @@ impl AppServices {
     /// escapes it.
     fn serve_workspace_data(&self, rel: &str) -> Served {
         let base = self.data_dir().join("workspaces");
-        let cleaned = recur_bundles::go::clean(&format!("/{rel}"));
+        let cleaned = path::clean(&format!("/{rel}"));
         let full: PathBuf = base.join(cleaned.trim_start_matches('/'));
         if full != base && !full.starts_with(&base) {
             return Err(AssetError::not_found());

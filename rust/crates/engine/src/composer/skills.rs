@@ -10,6 +10,7 @@ use std::time::Duration;
 use recur_agent::TurnRequest;
 use recur_agent_tools::names::mcp as tool;
 use recur_domain::AgentSkill;
+use recur_domain::path;
 use regex::Regex;
 
 use crate::deadline::deadline_token;
@@ -163,8 +164,8 @@ pub fn format_skill_content(name: &str, skill_md_path: &str, body: &str) -> Stri
     } else {
         body.to_owned()
     };
-    let dir = recur_bundles::go::dir(skill_md_path);
-    let mut b = format!("<skill_content name={}>\n", recur_bundles::go::quote(name));
+    let dir = path::dir(skill_md_path);
+    let mut b = format!("<skill_content name={:?}>\n", name);
     b.push_str(&body);
     b.push('\n');
     b.push_str(&format!("\nSkill directory: {dir}\n"));

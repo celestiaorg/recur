@@ -24,13 +24,14 @@ use std::path::Path;
 use std::process::{Command as Proc, Stdio};
 
 use recur_bundles::*;
+use recur_domain::path;
 use serde_json::{Value, json};
 
 fn repo_path(rel: &str) -> String {
     let p = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../..")
         .join(rel);
-    go::clean(&p.to_string_lossy())
+    path::clean(&p.to_string_lossy())
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -75,7 +76,7 @@ fn reference_bin() -> Option<String> {
             .current_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/esbuild_ref"))
             .output();
         match built {
-            Ok(o) if o.status.success() => Some(go::path_str(&bin)),
+            Ok(o) if o.status.success() => Some(bin.to_string_lossy().into_owned()),
             Ok(o) => {
                 eprintln!(
                     "skipped: building esbuild_ref failed: {}",
@@ -414,7 +415,7 @@ fn walk_ts(dir: &str) -> Vec<String> {
         .collect();
     entries.sort_by_key(|e| e.file_name());
     for e in entries {
-        let p = go::path_str(&e.path());
+        let p = e.path().to_string_lossy().into_owned();
         if e.file_type().is_ok_and(|t| t.is_dir()) {
             out.extend(walk_ts(&p));
         } else if p.ends_with(".ts") {
@@ -467,7 +468,7 @@ fn swc_output_behaves_like_esbuild_for_every_shipped_ts_file() {
         return;
     };
     let cache = tempfile::tempdir().expect("cache");
-    let cache = go::path_str(cache.path());
+    let cache = cache.path().to_string_lossy().into_owned();
     let entries = collect_entries();
     let all_ts = walk_ts(&repo_path("bundles"));
     let files: BTreeSet<&str> = entries.iter().map(|e| e.file.as_str()).collect();
@@ -521,7 +522,7 @@ fn import_rule_errors_match_esbuild() {
         return;
     };
     let cache = tempfile::tempdir().expect("cache");
-    let cache = go::path_str(cache.path());
+    let cache = cache.path().to_string_lossy().into_owned();
     for (id, src) in [
         (
             "fs-import",

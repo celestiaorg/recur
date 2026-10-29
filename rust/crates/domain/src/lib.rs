@@ -32,6 +32,7 @@ pub mod mcp;
 pub mod merge;
 pub mod model;
 pub mod observatory;
+pub mod path;
 pub mod plan;
 pub mod policy;
 pub mod pr;

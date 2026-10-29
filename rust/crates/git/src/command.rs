@@ -245,9 +245,9 @@ impl Command {
         }
         let message = match &self.dir {
             Some(dir) if !dir.is_dir() => {
-                format!("chdir {}: {}", dir.display(), crate::text::errno_text(&e))
+                format!("{}: {e}", dir.display())
             }
-            _ => format!("fork/exec {program}: {}", crate::text::errno_text(&e)),
+            _ => format!("{program}: {e}"),
         };
         Error::with_kind(message, ErrorKind::Io(e.kind()))
     }

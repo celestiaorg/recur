@@ -4,7 +4,8 @@ use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 
-use crate::go;
+use recur_domain::path;
+
 use crate::manifest::{
     INPUT_DOCUMENT, INPUT_LINE, INPUT_NONE, INPUT_SELECTION, INPUT_WORD, PROMPT_DISPLAY_MAX_LEN,
     PromptAction,
@@ -123,12 +124,12 @@ fn push(env: &mut Vec<EnvVar>, key: &str, value: impl AsRef<[u8]>) {
 pub fn environ(rc: &RunContext) -> Vec<EnvVar> {
     let mut env = inherited(|k| k.starts_with(b"RECUR_"));
     let file_name = if rc.file_name.is_empty() && !rc.file_path.is_empty() {
-        go::base(&rc.file_path)
+        path::base(&rc.file_path)
     } else {
         rc.file_name.clone()
     };
     let dir = if rc.directory.is_empty() && !rc.file_path.is_empty() {
-        go::dir(&rc.file_path)
+        path::dir(&rc.file_path)
     } else {
         rc.directory.clone()
     };
@@ -249,7 +250,7 @@ fn split_prompt_arg_tokens(s: &str) -> Vec<String> {
 pub fn prompt_environ(rc: &PromptRunContext) -> Vec<EnvVar> {
     let mut env = inherited(|k| k.starts_with(b"RECUR_") || k == b"PORT");
     let file_name = if rc.file_name.is_empty() && !rc.file_path.is_empty() {
-        go::base(&rc.file_path)
+        path::base(&rc.file_path)
     } else {
         rc.file_name.clone()
     };
@@ -310,7 +311,7 @@ pub fn prompt_environ(rc: &PromptRunContext) -> Vec<EnvVar> {
         for (name, val) in &rc.params {
             let val = val.trim();
             obj.insert(name.as_str(), val);
-            kv.push((format!("RECUR_PROMPT_ARG_{}", go::to_upper(name)), t(val)));
+            kv.push((format!("RECUR_PROMPT_ARG_{}", name.to_uppercase()), t(val)));
         }
         if let Ok(json) = serde_json::to_string(&obj) {
             kv.push(("RECUR_PROMPT_PARAMS".into(), t(&json)));
@@ -388,7 +389,8 @@ pub fn normalize_prompt_display(display: &str, fallback_name: &str) -> String {
 
 /// Uppercases and replaces each non-alphanumeric rune with `_`.
 fn sanitize_input_name(name: &str) -> String {
-    let out: String = go::to_upper(name)
+    let out: String = name
+        .to_uppercase()
         .chars()
         .map(|r| {
             if r.is_ascii_uppercase() || r.is_ascii_digit() {

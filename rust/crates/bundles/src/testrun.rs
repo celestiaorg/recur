@@ -5,11 +5,11 @@ use std::collections::BTreeMap;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
 
+use recur_domain::path;
 use serde_json::{Value, json};
 
 use crate::env::{RunContext, resolve_input};
 use crate::exec::{DEFAULT_TIMEOUT, RunCtx, RunResult, run};
-use crate::go::{self, quote};
 use crate::grammar::{go_json_field, go_json_kind};
 use crate::manifest::{Command, INTERPRETER_SHEBANG, parse_manifest_full, validate_output};
 use crate::snippet::{Snippet, find_snippet_by_id};
@@ -49,9 +49,9 @@ pub async fn run_bundle_tests(
     bundle_dir: &str,
     cache_dir: &str,
 ) -> Result<Report, Error> {
-    let bundle_dir = go::abs(bundle_dir).map_err(|e| err!("{}", go::errno_text(&e)))?;
-    let manifest = go::join(&[&bundle_dir, "bundle.toml"]);
-    let data = go::read_file(&manifest).map_err(|e| err!("read bundle.toml: {e}"))?;
+    let bundle_dir = path::abs(bundle_dir).map_err(|e| err!("{e}"))?;
+    let manifest = path::join(&[&bundle_dir, "bundle.toml"]);
+    let data = std::fs::read(&manifest).map_err(|e| err!("read {manifest}: {e}"))?;
     let parsed = parse_manifest_full(&bundle_dir, &data)?;
     let tests = load_tests(&bundle_dir)?;
     let mut report = Report::default();
@@ -85,7 +85,7 @@ async fn run_one_test(
         ..Default::default()
     };
     let Some(cmd) = find_command(cmds, &lt.case.command) else {
-        cr.detail = format!("unknown command {}", quote(&lt.case.command));
+        cr.detail = format!("unknown command {:?}", lt.case.command);
         return cr;
     };
     let res = match execute_test_command(ctx, cache_dir, cmd, &lt.case.context).await {
@@ -111,7 +111,7 @@ fn run_one_snippet_test(bundle_name: &str, snippets: &[Snippet], lt: &LoadedTest
         ..Default::default()
     };
     let Some(sn) = find_snippet_by_id(snippets, &lt.case.snippet) else {
-        cr.detail = format!("unknown snippet {}", quote(&lt.case.snippet));
+        cr.detail = format!("unknown snippet {:?}", lt.case.snippet);
         return cr;
     };
     let got = sn.body.trim();
@@ -122,7 +122,7 @@ fn run_one_snippet_test(bundle_name: &str, snippets: &[Snippet], lt: &LoadedTest
         return cr;
     }
     if !skip && got != want {
-        cr.detail = format!("body mismatch:\n got {}\nwant {}", quote(got), quote(want));
+        cr.detail = format!("body mismatch:\n got {:?}\nwant {:?}", got, want);
         return cr;
     }
     cr.ok = true;
@@ -142,10 +142,7 @@ async fn execute_test_command(
         let rc = run_context_from_test(tc, &cmd.bundle_dir);
         return run(ctx, cmd, rc).await.map_err(|e| Error(e.message));
     }
-    Err(err!(
-        "interpreter {} cannot be tested",
-        quote(&cmd.interpreter)
-    ))
+    Err(err!("interpreter {:?} cannot be tested", cmd.interpreter))
 }
 
 fn run_context_from_test(tc: &TestContext, bundle_dir: &str) -> RunContext {
@@ -157,7 +154,7 @@ fn run_context_from_test(tc: &TestContext, bundle_dir: &str) -> RunContext {
             s.to_string()
         }
     };
-    let parent = go::dir(bundle_dir);
+    let parent = path::dir(bundle_dir);
     RunContext {
         selected_text: or_input(&tc.selected_text),
         current_line: tc.current_line.clone(),
@@ -183,9 +180,8 @@ fn check_expect(exp: &TestExpect, res: &RunResult) -> Option<String> {
     let want_exit = exp.exit_code.unwrap_or(0);
     if res.exit_code != want_exit {
         return Some(format!(
-            "exitCode = {}, want {want_exit} (stderr={})",
-            res.exit_code,
-            quote(&res.stderr)
+            "exitCode = {}, want {want_exit} (stderr={:?})",
+            res.exit_code, res.stderr
         ));
     }
     if !exp.skip_stdout
@@ -193,30 +189,20 @@ fn check_expect(exp: &TestExpect, res: &RunResult) -> Option<String> {
         && res.stdout != exp.stdout
     {
         return Some(format!(
-            "stdout mismatch:\n got {}\nwant {}",
-            quote(&res.stdout),
-            quote(&exp.stdout)
+            "stdout mismatch:\n got {:?}\nwant {:?}",
+            res.stdout, exp.stdout
         ));
     }
     if !exp.output.is_empty() && res.output != exp.output {
-        return Some(format!(
-            "output = {}, want {}",
-            quote(&res.output),
-            quote(&exp.output)
-        ));
+        return Some(format!("output = {:?}, want {:?}", res.output, exp.output));
     }
     if !exp.stderr.is_empty() && res.stderr != exp.stderr {
-        return Some(format!(
-            "stderr = {}, want {}",
-            quote(&res.stderr),
-            quote(&exp.stderr)
-        ));
+        return Some(format!("stderr = {:?}, want {:?}", res.stderr, exp.stderr));
     }
     if !exp.language.is_empty() && res.language != exp.language {
         return Some(format!(
-            "language = {}, want {}",
-            quote(&res.language),
-            quote(&exp.language)
+            "language = {:?}, want {:?}",
+            res.language, exp.language
         ));
     }
     if let Some(want) = exp.open_in_preview {
@@ -359,15 +345,15 @@ pub(crate) async fn run_node(
     let dir = tempfile::Builder::new()
         .prefix(temp_prefix)
         .tempdir()
-        .map_err(|e| NodeError::Setup(go::errno_text(&e)))?;
-    let dir_path = go::path_str(dir.path());
+        .map_err(|e| NodeError::Setup(e.to_string()))?;
+    let dir_path = dir.path().to_string_lossy().into_owned();
     for (name, body) in files {
-        let path = go::join(&[&dir_path, name]);
+        let path = path::join(&[&dir_path, name]);
         crate::seed::write_file(&path, body, 0o644).map_err(NodeError::Setup)?;
     }
     let argv: Vec<String> = file_args
         .iter()
-        .map(|a| go::join(&[&dir_path, a]))
+        .map(|a| path::join(&[&dir_path, a]))
         .chain(extra_args.iter().map(|a| a.to_string()))
         .collect();
     let node = which_node().ok_or_else(|| {
@@ -379,7 +365,7 @@ pub(crate) async fn run_node(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| NodeError::Exec(go::path_err("fork/exec", &go::path_str(&node), &e)))?;
+        .map_err(|e| NodeError::Exec(format!("{}: {e}", node.display())))?;
     let stdout = Arc::new(Mutex::new(Vec::new()));
     let stderr = Arc::new(Mutex::new(Vec::new()));
     let out_task = crate::exec::drain(child.stdout.take(), stdout.clone());
@@ -468,9 +454,9 @@ async fn run_type_script_macro(
     }
     let out = parse_node_macro_out(&stdout).map_err(|e| {
         err!(
-            "parse node result: {e} (stdout={} stderr={})",
-            quote(&stdout),
-            quote(&stderr)
+            "parse node result: {e} (stdout={:?} stderr={:?})",
+            stdout,
+            stderr
         )
     })?;
     let routing = if out.output.is_empty() {

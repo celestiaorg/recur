@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+use recur_domain::path;
 use recur_domain::{FileDiff, ImpactItem};
 use tokio_util::sync::CancellationToken;
 
 use super::{parse_line, to_slash};
-use crate::gopath;
 use crate::{SymbolIndex, changed_defs, index_symbols, rank_refs_in_package, safe_join};
 
 /// Reference sites reported per changed symbol.
@@ -104,7 +104,7 @@ pub fn compute_impact(
             seen.insert(format!("test:{c}"));
             impact.push(ImpactItem {
                 kind: "test".into(),
-                name: gopath::base(&c),
+                name: path::base(&c),
                 path: c,
                 line: 0,
                 detail: format!("likely covers {p}"),
@@ -118,13 +118,13 @@ pub fn compute_impact(
 
 /// Test files that likely cover `p`, by language convention.
 fn test_candidates(p: &str) -> Vec<String> {
-    let base = gopath::base(p);
-    let mut stem = base.strip_suffix(gopath::ext(&base)).unwrap_or(&base);
+    let base = path::base(p);
+    let mut stem = base.strip_suffix(path::ext(&base)).unwrap_or(&base);
     for suffix in ["_test", ".test", ".spec"] {
         stem = stem.strip_suffix(suffix).unwrap_or(stem);
     }
-    let base_no_ext = p.strip_suffix(gopath::ext(p)).unwrap_or(p);
-    let dir = gopath::dir(p);
+    let base_no_ext = p.strip_suffix(path::ext(p)).unwrap_or(p);
+    let dir = path::dir(p);
     let mut out: Vec<String> = [
         "_test.go",
         "_test.py",

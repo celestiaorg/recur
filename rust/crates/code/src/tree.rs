@@ -6,12 +6,11 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+use recur_domain::path;
 use recur_domain::{FileDiff, TreeEntry};
 
 use crate::error::{Error, Result};
 use crate::file::MAX_EDIT_BYTES;
-use crate::gopath;
-use crate::gostr;
 use crate::root::{path_str, rel_slash_str, safe_join_str};
 use crate::walk::read_dir_sorted;
 
@@ -117,10 +116,8 @@ fn list_tree_with(root: &str, rel: &str, depth: i64, idx: &StatusIndex) -> Resul
     read_dir(root, &base, depth, idx).map_err(|e| {
         if e.kind() == io::ErrorKind::NotFound {
             Error::NotFound(rel.to_string())
-        } else if e.raw_os_error() == Some(20) {
-            Error::path("readdirent", &base, e)
         } else {
-            Error::path("open", &base, e)
+            Error::path(&base, e)
         }
     })
 }
@@ -140,7 +137,7 @@ impl StatusIndex {
             if st != "d" || p.is_empty() {
                 continue;
             }
-            let mut parent = gopath::dir(p);
+            let mut parent = path::dir(p);
             if parent == "." {
                 parent.clear();
             }
@@ -189,7 +186,7 @@ fn read_dir(root: &str, abs: &str, depth: i64, idx: &StatusIndex) -> io::Result<
     let mut out = Vec::with_capacity(entries.len());
     for e in entries {
         // Unfiltered: the UI applies files.exclude globs.
-        let full = gopath::join(&[abs, &e.name]);
+        let full = path::join(&[abs, &e.name]);
         let is_dir =
             e.is_dir() || (e.is_symlink() && fs::metadata(&e.path).is_ok_and(|m| m.is_dir()));
         let mut ent = TreeEntry {
@@ -216,7 +213,7 @@ fn read_dir(root: &str, abs: &str, depth: i64, idx: &StatusIndex) -> io::Result<
             continue;
         }
         out.push(TreeEntry {
-            name: gopath::base(p),
+            name: path::base(p),
             path: p.clone(),
             status: "d".into(),
             ..Default::default()
@@ -225,7 +222,7 @@ fn read_dir(root: &str, abs: &str, depth: i64, idx: &StatusIndex) -> io::Result<
     out.sort_by(|a, b| {
         b.dir
             .cmp(&a.dir)
-            .then_with(|| gostr::lower(&a.name).cmp(&gostr::lower(&b.name)))
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
     Ok(out)
 }

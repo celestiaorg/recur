@@ -128,7 +128,7 @@ fn resolve_open_arg_cases() {
     assert!(got.ends_with("/a.txt"), "{got}");
     let missing = format!("{}/missing", dir.path().to_string_lossy());
     let err = recur_cli::open::resolve_open_arg(&missing).unwrap_err();
-    assert!(err.starts_with(&format!("{missing}: stat ")), "{err}");
+    assert!(err.starts_with(&format!("{missing}: ")), "{err}");
 }
 
 #[test]

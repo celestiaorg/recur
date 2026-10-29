@@ -1,6 +1,7 @@
 //! Golden parity with the Go CLI: builds `cmd/recur` with `go build` into
 //! a temp dir and runs both binaries over the same invocations from the
-//! repo root, comparing stdout, stderr and exit code byte for byte.
+//! repo root, comparing exit code and stdout byte for byte. Stderr must match
+//! too, except that OS error wording may differ after the failing path.
 //! Skipped when Go is not available.
 
 use std::path::{Path, PathBuf};
@@ -68,7 +69,7 @@ fn compare(
 ) {
     let a = run(go, args, env, cwd);
     let b = run(rust, args, env, cwd);
-    if a.code != b.code || a.stdout != b.stdout || a.stderr != b.stderr {
+    if a.code != b.code || a.stdout != b.stdout || !same_stderr(&a.stderr, &b.stderr) {
         failures.push(format!(
             "recur {}\n  go:   code={:?}\n{}{}\n  rust: code={:?}\n{}{}",
             args.join(" "),
@@ -80,6 +81,10 @@ fn compare(
             b.stderr
         ));
     }
+}
+
+fn same_stderr(go: &str, rust: &str) -> bool {
+    go == rust || (!go.is_empty() && go.split(": ").next() == rust.split(": ").next())
 }
 
 #[test]

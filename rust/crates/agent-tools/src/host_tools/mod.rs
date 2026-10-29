@@ -64,7 +64,7 @@ pub(crate) fn xml_escape_catalog(s: &str) -> String {
 }
 
 pub(crate) fn parse_severity(s: &str) -> Option<Severity> {
-    let sev = Severity::from(crate::gostr::to_lower(s.trim()).as_str());
+    let sev = Severity::from(s.trim().to_lowercase().as_str());
     sev.is_known().then_some(sev)
 }
 

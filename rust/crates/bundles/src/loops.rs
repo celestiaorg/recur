@@ -3,9 +3,9 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use recur_domain::path;
 use serde::{Deserialize, Serialize};
 
-use crate::go::{self, quote};
 use crate::manifest::{BundleMeta, valid_bundle_id};
 use crate::{Error, err};
 
@@ -275,7 +275,7 @@ pub(crate) fn parse_roles(
         if !valid_bundle_id(&r.id) {
             return Err(err!("role[{i}]: id is not a safe id"));
         }
-        let qid = quote(&r.id);
+        let qid = format!("{:?}", r.id);
         if r.name.trim().is_empty() {
             return Err(err!("role {qid}: name is required"));
         }
@@ -287,19 +287,19 @@ pub(crate) fn parse_roles(
         }
         if !valid_role_mode(&r.mode) {
             return Err(err!(
-                "role {qid}: unknown mode {} (use ask|plan|agent|review|loop)",
-                quote(&r.mode)
+                "role {qid}: unknown mode {:?} (use ask|plan|agent|review|loop)",
+                r.mode
             ));
         }
-        r.code = go::to_upper(r.code.trim());
+        r.code = r.code.trim().to_uppercase();
         if r.code.len() != 2 || !r.code.bytes().all(|c| c.is_ascii_uppercase()) {
             return Err(err!("role {qid}: code must be 2 letters"));
         }
         if let Some(other) = seen_code.get(&r.code) {
             return Err(err!(
-                "role {qid}: code {} collides with {}",
-                quote(&r.code),
-                quote(other)
+                "role {qid}: code {:?} collides with {:?}",
+                r.code,
+                other
             ));
         }
         seen_code.insert(r.code.clone(), r.id.clone());
@@ -329,7 +329,7 @@ pub(crate) fn parse_policies(
         if !valid_bundle_id(&p.id) {
             return Err(err!("policy[{i}]: id is not a safe id"));
         }
-        let qid = quote(&p.id);
+        let qid = format!("{:?}", p.id);
         if p.name.trim().is_empty() {
             return Err(err!("policy {qid}: name is required"));
         }
@@ -388,7 +388,7 @@ pub(crate) fn parse_loops(
         if !valid_bundle_id(&lp.id) {
             return Err(err!("loop[{i}]: id is not a safe id"));
         }
-        let qid = quote(&lp.id);
+        let qid = format!("{:?}", lp.id);
         if lp.name.trim().is_empty() {
             return Err(err!("loop {qid}: name is required"));
         }
@@ -405,7 +405,7 @@ pub(crate) fn parse_loops(
         for (j, ph) in lp.phases.iter_mut().enumerate() {
             normalize_phase(ph, bundle_dir).map_err(|e| err!("loop {qid} phase[{j}]: {e}"))?;
             if !seen_phase.insert(ph.id.clone()) {
-                return Err(err!("loop {qid}: duplicate phase id {}", quote(&ph.id)));
+                return Err(err!("loop {qid}: duplicate phase id {:?}", ph.id));
             }
         }
         lint_loop_graph(&lp).map_err(|e| err!("loop {qid}: {e}"))?;
@@ -457,10 +457,10 @@ fn normalize_phase(ph: &mut LoopPhase, bundle_dir: &str) -> Result<(), Error> {
         return Err(err!("id is required"));
     }
     if reserved_phase_id(&ph.id) {
-        return Err(err!("phase id {} is reserved", quote(&ph.id)));
+        return Err(err!("phase id {:?} is reserved", ph.id));
     }
     ph.uses = ph.uses.trim().to_string();
-    let uses = quote(&ph.uses);
+    let uses = format!("{:?}", ph.uses);
     let Some(spec) = verb_slots(&ph.uses) else {
         return Err(err!("unknown uses {uses}"));
     };
@@ -515,12 +515,12 @@ fn normalize_phase(ph: &mut LoopPhase, bundle_dir: &str) -> Result<(), Error> {
             return Err(err!("empty role slot for uses {uses}"));
         }
         if !spec.role_slots.contains(&k.as_str()) {
-            return Err(err!("unknown role slot {} for uses {uses}", quote(k)));
+            return Err(err!("unknown role slot {:?} for uses {uses}", k));
         }
     }
     for k in ph.prompts.keys() {
         if !spec.prompt_slots.contains(&k.as_str()) {
-            return Err(err!("unknown prompt slot {} for uses {uses}", quote(k)));
+            return Err(err!("unknown prompt slot {:?} for uses {uses}", k));
         }
     }
     for slot in spec.required_roles {
@@ -537,7 +537,7 @@ fn normalize_phase(ph: &mut LoopPhase, bundle_dir: &str) -> Result<(), Error> {
         }
     }
     if !ph.gate.is_empty() && ph.gate != "plan_approval" {
-        return Err(err!("unknown gate {}", quote(&ph.gate)));
+        return Err(err!("unknown gate {:?}", ph.gate));
     }
     if !ph.on_fail.is_empty() && !valid_on_fail(&ph.on_fail) {
         return Err(err!("on_fail must be fail|escalate|skip"));
@@ -560,7 +560,7 @@ fn normalize_phase(ph: &mut LoopPhase, bundle_dir: &str) -> Result<(), Error> {
 
 fn lint_loop_graph(lp: &LoopDef) -> Result<(), String> {
     let by_id: HashMap<&str, &LoopPhase> = lp.phases.iter().map(|p| (p.id.as_str(), p)).collect();
-    let entry = quote(&lp.entry);
+    let entry = format!("{:?}", lp.entry);
     match by_id.get(lp.entry.as_str()) {
         None => return Err(format!("entry {entry} is not a phase")),
         Some(ph) if ph.dispatch == "on_demand" => {
@@ -570,9 +570,9 @@ fn lint_loop_graph(lp: &LoopDef) -> Result<(), String> {
     }
     for id in &lp.reenter {
         match by_id.get(id.as_str()) {
-            None => return Err(format!("reenter {} is not a phase", quote(id))),
+            None => return Err(format!("reenter {:?} is not a phase", id)),
             Some(ph) if ph.dispatch == "on_demand" => {
-                return Err(format!("reenter cannot list on-demand id {}", quote(id)));
+                return Err(format!("reenter cannot list on-demand id {:?}", id));
             }
             _ => {}
         }
@@ -586,27 +586,19 @@ fn lint_loop_graph(lp: &LoopDef) -> Result<(), String> {
             }
             if reserved_phase_id(edge) {
                 return Err(format!(
-                    "phase {}: {} is reserved (not a phase id)",
-                    quote(&ph.id),
-                    quote(edge)
+                    "phase {:?}: {:?} is reserved (not a phase id)",
+                    ph.id, edge
                 ));
             }
             if !by_id.contains_key(edge.as_str()) {
-                return Err(format!(
-                    "phase {} names missing id {}",
-                    quote(&ph.id),
-                    quote(edge)
-                ));
+                return Err(format!("phase {:?} names missing id {:?}", ph.id, edge));
             }
             inbound.insert(edge);
         }
     }
     for ph in &lp.phases {
         if ph.dispatch == "on_demand" && inbound.contains(ph.id.as_str()) {
-            return Err(format!(
-                "on-demand phase {} has inbound next",
-                quote(&ph.id)
-            ));
+            return Err(format!("on-demand phase {:?} has inbound next", ph.id));
         }
     }
     // Success-next DAG.
@@ -694,9 +686,9 @@ fn parse_findings_threshold(
         toml::Value::Table(t) => {
             let mut levels = BTreeMap::new();
             for (k, val) in t {
-                let k = go::to_lower(k.trim());
+                let k = k.trim().to_lowercase();
                 if !SEVERITY_LEVELS.contains(&k.as_str()) {
-                    return Err(format!("unknown severity {}", quote(&k)));
+                    return Err(format!("unknown severity {:?}", k));
                 }
                 let n = any_to_int(val).map_err(|e| format!("findings_threshold.{k}: {e}"))?;
                 if n < 0 {
@@ -722,7 +714,7 @@ fn any_to_int(v: &toml::Value) -> Result<i64, String> {
             }
             Ok(*f as i64)
         }
-        toml::Value::String(s) => go::atoi(s),
+        toml::Value::String(s) => s.parse::<i64>().map_err(|e| e.to_string()),
         _ => Err("not an integer".to_string()),
     }
 }
@@ -736,7 +728,7 @@ pub fn looks_like_prompt_path(s: &str) -> bool {
     if s.contains([' ', '\t', '\n']) {
         return false;
     }
-    s.contains('/') || go::to_lower(s).ends_with(".md")
+    s.contains('/') || s.to_lowercase().ends_with(".md")
 }
 
 fn resolve_prompt_field(
@@ -750,17 +742,16 @@ fn resolve_prompt_field(
         *slot = s;
         return Ok(());
     }
-    let escapes = || err!("{owner} {field}: path {} escapes the bundle", quote(&s));
-    if go::is_abs(&s) || s.split('/').any(|part| part == "..") {
+    let escapes = || err!("{owner} {field}: path {:?} escapes the bundle", s);
+    if path::is_abs(&s) || s.split('/').any(|part| part == "..") {
         return Err(escapes());
     }
-    let p = go::join(&[bundle_dir, &s]);
-    match go::rel(bundle_dir, &p) {
-        Ok(rel) if !rel.starts_with("..") => {}
+    let p = path::join(&[bundle_dir, &s]);
+    match path::rel(bundle_dir, &p) {
+        Some(rel) if !rel.starts_with("..") => {}
         _ => return Err(escapes()),
     }
-    let body =
-        go::read_file(&p).map_err(|_| err!("{owner} {field}: missing path {}", quote(&s)))?;
+    let body = std::fs::read(&p).map_err(|_| err!("{owner} {field}: missing path {:?}", s))?;
     *slot = String::from_utf8_lossy(&body).into_owned();
     Ok(())
 }
@@ -864,7 +855,7 @@ pub fn find_policy<'a>(policies: &'a [Policy], id: &str) -> Option<&'a Policy> {
 
 /// Maps a stored autonomy level onto a shipped policy id.
 pub fn policy_from_autonomy(a: &str) -> &'static str {
-    match go::to_lower(a.trim()).as_str() {
+    match a.trim().to_lowercase().as_str() {
         "cautious" => "recur.policies.cautious",
         "aggressive" => "recur.policies.aggressive",
         _ => DEFAULT_POLICY_ID,

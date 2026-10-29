@@ -3,12 +3,12 @@ use std::io::Read;
 use std::process::Stdio;
 use std::time::Duration;
 
+use recur_domain::path;
 use recur_domain::{Check, TestResult};
 use tokio::process::Command;
 use tokio_util::sync::CancellationToken;
 
-use crate::gopath;
-use crate::gostr::{quote, truncate_fields};
+use crate::gostr::truncate_fields;
 use crate::rg::look_path;
 
 /// The test, typecheck and lint commands available in `root`, as check rows.
@@ -235,8 +235,8 @@ async fn run_combined(
         return (
             String::new(),
             Some(format!(
-                "exec: {}: executable file not found in $PATH",
-                quote(bin)
+                "exec: {:?}: executable file not found in $PATH",
+                bin
             )),
         );
     };
@@ -259,10 +259,7 @@ async fn run_combined(
     let mut child = match spawned {
         Ok(c) => c,
         Err(e) => {
-            return (
-                String::new(),
-                Some(format!("fork/exec {program}: {}", gopath::errno_text(&e))),
-            );
+            return (String::new(), Some(format!("{program}: {e}")));
         }
     };
     let collect = tokio::task::spawn_blocking(move || {
@@ -337,7 +334,7 @@ fn is_missing_binary(err: &str, out: &str) -> bool {
 }
 
 fn has_file(root: &str, name: &str) -> bool {
-    fs::metadata(gopath::join(&[root, name])).is_ok()
+    fs::metadata(path::join(&[root, name])).is_ok()
 }
 
 fn has_binary(name: &str) -> bool {
@@ -347,7 +344,7 @@ fn has_binary(name: &str) -> bool {
 /// Whether package.json mentions `"name"` anywhere (as Go checks it, for
 /// both scripts and dev dependencies).
 fn has_script(root: &str, name: &str) -> bool {
-    fs::read_to_string(gopath::join(&[root, "package.json"]))
+    fs::read_to_string(path::join(&[root, "package.json"]))
         .is_ok_and(|b| b.contains(&format!("\"{name}\"")))
 }
 
@@ -356,7 +353,7 @@ fn has_dev_dep(root: &str, name: &str) -> bool {
 }
 
 fn has_node_bin(root: &str, name: &str) -> bool {
-    fs::metadata(gopath::join(&[root, "node_modules", ".bin", name])).is_ok()
+    fs::metadata(path::join(&[root, "node_modules", ".bin", name])).is_ok()
 }
 
 fn first_line(s: &str) -> &str {

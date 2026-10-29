@@ -5,7 +5,6 @@
 
 use async_trait::async_trait;
 use base64::Engine as _;
-use recur_bundles::go::quote;
 use recur_term::{Info as TermInfo, OpenOptions};
 
 use super::rt::rt;
@@ -25,8 +24,8 @@ impl AppServices {
     pub(crate) fn terminal_cwd(&self, workspace_id: &str) -> Result<String> {
         let Some(ws) = self.store().workspace(workspace_id) else {
             return Err(Error::new(format!(
-                "workspace {} not found",
-                quote(workspace_id)
+                "workspace {:?} not found",
+                workspace_id
             )));
         };
         let repo = self
@@ -40,8 +39,8 @@ impl AppServices {
                 "this workspace's folder no longer exists: {e}"
             ))),
             Err(e) => Err(Error::new(format!(
-                "terminal: no directory for workspace {}: {e}",
-                quote(workspace_id)
+                "terminal: no directory for workspace {:?}: {e}",
+                workspace_id
             ))),
         }
     }

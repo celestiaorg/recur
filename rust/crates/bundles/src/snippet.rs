@@ -7,7 +7,6 @@ use std::sync::LazyLock;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::go::quote;
 use crate::manifest::{BundleMeta, valid_bundle_id};
 use crate::scope::matches_scope_glob;
 use crate::{Error, err};
@@ -60,7 +59,7 @@ pub(crate) fn parse_snippets(
         if !valid_bundle_id(&id) {
             return Err(err!("snippet[{i}]: id is not a safe id"));
         }
-        let qid = quote(&id);
+        let qid = format!("{id:?}");
         if !seen_id.insert(id.clone()) {
             return Err(err!("snippet: duplicate id {qid} in bundle"));
         }
@@ -79,8 +78,8 @@ pub(crate) fn parse_snippets(
         }
         if !s.tab_trigger.is_empty() && !valid_tab_trigger(&s.tab_trigger) {
             return Err(err!(
-                "snippet {qid}: tabTrigger {} must be a word (letter, then letters/digits/_)",
-                quote(&s.tab_trigger)
+                "snippet {qid}: tabTrigger {:?} must be a word (letter, then letters/digits/_)",
+                s.tab_trigger
             ));
         }
 

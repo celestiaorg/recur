@@ -12,7 +12,7 @@ use tokio::io::AsyncReadExt;
 
 use crate::command::command;
 use crate::error::{Error, ErrorKind, Result};
-use crate::text::{atoi, go_lower, go_string};
+use crate::text::atoi;
 use crate::version::{log_numstat_flags, probe};
 use crate::working_diff::{
     MAX_SYNTHETIC_ADD_BYTES, merge_base, omitted_untracked_diff, read_capped, synthetic_add_diff,
@@ -46,7 +46,7 @@ pub async fn diff_stat_vs_base(worktree: &str, base_branch: &str) -> Result<(i64
             .output()
             .await
         {
-            let mb = go_string(&out);
+            let mb = String::from_utf8_lossy(&out).into_owned();
             if !mb.trim().is_empty() {
                 base = mb.trim().to_string();
             }
@@ -57,7 +57,7 @@ pub async fn diff_stat_vs_base(worktree: &str, base_branch: &str) -> Result<(i64
         .output()
         .await
         .map_err(|e| {
-            let stderr = go_string(e.stderr());
+            let stderr = String::from_utf8_lossy(e.stderr()).into_owned();
             let msg = stderr.trim();
             if matches!(e.kind(), ErrorKind::Exit { .. }) && !msg.is_empty() {
                 e.wrap(format!("git diff --numstat: {msg}"))
@@ -65,7 +65,7 @@ pub async fn diff_stat_vs_base(worktree: &str, base_branch: &str) -> Result<(i64
                 e.wrap("git diff --numstat")
             }
         })?;
-    let (add, del) = parse_numstat(&go_string(&out));
+    let (add, del) = parse_numstat(&String::from_utf8_lossy(&out));
     Ok((add + untracked_add_lines(worktree).await, del))
 }
 
@@ -192,13 +192,9 @@ impl Manager {
             .await
             .map_err(|e| e.wrap(format!("git rev-list {spec}")))?;
         let s = out.trim();
-        let n = s.parse::<i64>().map_err(|e| {
-            Error::msg(format!(
-                "parse rev-list count {}: {}",
-                crate::text::quote(s),
-                crate::text::num_error("Atoi", s, &e)
-            ))
-        })?;
+        let n = s
+            .parse::<i64>()
+            .map_err(|e| Error::msg(format!("parse rev-list count {s:?}: {e}")))?;
         Ok(n.max(0))
     }
 
@@ -249,7 +245,7 @@ impl Manager {
         let (mut bodies, mut bytes_read) = (0, 0);
         let (untracked, list_truncated) = untracked_rel_paths(worktree).await;
         for rel in untracked {
-            let shown = go_string(&rel);
+            let shown = String::from_utf8_lossy(&rel).into_owned();
             if seen.contains(&shown) {
                 continue;
             }
@@ -423,7 +419,10 @@ async fn empty_tree_oid(worktree: &str) -> Result<String> {
         .stdin(Vec::new())
         .output()
         .await?;
-    let oid = go_string(&out).trim().to_string();
+    let oid = String::from_utf8_lossy(&out)
+        .into_owned()
+        .trim()
+        .to_string();
     if oid.is_empty() {
         return Err(Error::msg("empty oid"));
     }
@@ -490,7 +489,7 @@ pub(crate) fn classify_commit_message(
         author_initials(author_name),
         "var(--indigo)",
     );
-    let low = go_lower(msg);
+    let low = msg.to_lowercase();
     let roles = [
         (
             "security reviewer",

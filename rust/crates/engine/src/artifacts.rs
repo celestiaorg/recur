@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 use recur_agent_tools::CreateArtifactRequest;
+use recur_domain::path;
 use recur_domain::{Artifact, ArtifactKind};
 use serde_json::Value;
 
@@ -35,10 +36,7 @@ pub fn artifact_ext(kind: &ArtifactKind) -> Option<&'static str> {
 pub fn parse_artifact_kind(s: &str) -> Result<ArtifactKind, EngineError> {
     let k = ArtifactKind::from(s.trim().to_lowercase().as_str());
     if artifact_ext(&k).is_none() {
-        return Err(EngineError(format!(
-            "unsupported artifact kind {}",
-            recur_bundles::go::quote(s)
-        )));
+        return Err(EngineError(format!("unsupported artifact kind {:?}", s)));
     }
     Ok(k)
 }
@@ -68,11 +66,11 @@ pub fn marshal_indent<T: serde::Serialize>(v: &T) -> Option<String> {
 }
 
 fn io_err(e: std::io::Error) -> EngineError {
-    EngineError(recur_bundles::go::errno_text(&e))
+    EngineError(e.to_string())
 }
 
-fn path_err(op: &str, path: &Path, e: &std::io::Error) -> EngineError {
-    EngineError(recur_bundles::go::path_err(op, &path.to_string_lossy(), e))
+fn path_err(path: &Path, e: &std::io::Error) -> EngineError {
+    EngineError(format!("{}: {e}", path.display()))
 }
 
 /// Every artifact of a workspace, newest first (ties by id, descending).
@@ -88,7 +86,7 @@ pub fn list_artifacts(data_dir: &Path, workspace_id: &str) -> Result<Vec<Artifac
     let entries = match std::fs::read_dir(&dir) {
         Ok(e) => e,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(e) => return Err(path_err("open", &dir, &e)),
+        Err(e) => return Err(path_err(&dir, &e)),
     };
     let mut out: Vec<Artifact> = Vec::new();
     for ent in entries.flatten() {
@@ -132,7 +130,7 @@ pub fn find_artifact(
 /// artifacts dir.
 pub fn artifact_abs_path(data_dir: &Path, a: &Artifact) -> Result<PathBuf, EngineError> {
     let rel = a.path.trim_start_matches('/');
-    let full = PathBuf::from(recur_bundles::go::join(&[&data_dir.to_string_lossy(), rel]));
+    let full = PathBuf::from(path::join(&[&data_dir.to_string_lossy(), rel]));
     let dir = recur_store::paths::artifacts_dir(data_dir, &a.workspace_id).map_err(io_err)?;
     let dir_s = dir.to_string_lossy().into_owned();
     let full_s = full.to_string_lossy();
@@ -157,17 +155,16 @@ pub fn read_artifact_text_limit(
 ) -> Result<String, EngineError> {
     use std::io::Read;
     let full = artifact_abs_path(data_dir, a)?;
-    let mut f = std::fs::File::open(&full).map_err(|e| path_err("open", &full, &e))?;
+    let mut f = std::fs::File::open(&full).map_err(|e| path_err(&full, &e))?;
     let mut more = false;
     let raw = if max_bytes == 0 {
         let mut raw = Vec::new();
-        f.read_to_end(&mut raw)
-            .map_err(|e| path_err("read", &full, &e))?;
+        f.read_to_end(&mut raw).map_err(|e| path_err(&full, &e))?;
         raw
     } else {
         // Go read once into a max+1 buffer.
         let mut buf = vec![0u8; max_bytes + 1];
-        let n = f.read(&mut buf).map_err(|e| path_err("read", &full, &e))?;
+        let n = f.read(&mut buf).map_err(|e| path_err(&full, &e))?;
         more = n > max_bytes;
         let mut n = n.min(max_bytes);
         while n > 0 && n < buf.len() && (buf[n] & 0xC0) == 0x80 {
@@ -213,7 +210,7 @@ pub(crate) fn commit_hoisted_artifact(
     };
     if let Err(e) = std::fs::write(dest_meta, b) {
         let _ = move_artifact_file(dest_file, src_file);
-        return Err(path_err("open", dest_meta, &e));
+        return Err(path_err(dest_meta, &e));
     }
     let _ = std::fs::remove_file(src_meta);
     Ok(())
@@ -249,7 +246,7 @@ impl Engine {
         } else {
             req.content.into_bytes()
         };
-        std::fs::write(&full, data).map_err(|e| path_err("open", &full, &e))?;
+        std::fs::write(&full, data).map_err(|e| path_err(&full, &e))?;
         let a = Artifact {
             id: id.clone(),
             workspace_id: workspace_id.to_owned(),
@@ -333,7 +330,7 @@ impl Engine {
         let meta = artifact_meta_path(&self.data_dir, &a)?;
         a.title = title.to_owned();
         let b = marshal_indent(&a).ok_or_else(|| EngineError("json: unsupported value".into()))?;
-        std::fs::write(&meta, b).map_err(|e| path_err("open", &meta, &e))?;
+        std::fs::write(&meta, b).map_err(|e| path_err(&meta, &e))?;
         self.publish_artifact_created(workspace_id, &a);
         Ok(a)
     }
@@ -347,11 +344,9 @@ impl Engine {
         let a = find_artifact(&self.data_dir, workspace_id, artifact_id)?;
         let full = artifact_abs_path(&self.data_dir, &a)?;
         let meta = artifact_meta_path(&self.data_dir, &a)?;
-        std::fs::remove_file(&meta).map_err(|e| path_err("remove", &meta, &e))?;
+        std::fs::remove_file(&meta).map_err(|e| path_err(&meta, &e))?;
         match std::fs::remove_file(&full) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
-                Err(path_err("remove", &full, &e))
-            }
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(path_err(&full, &e)),
             _ => Ok(()),
         }
     }
@@ -429,7 +424,7 @@ impl Engine {
 
 /// Go's error text for a failed fallback copy (the read of the source).
 fn hoist_move_err(src: &Path, _dst: &Path, e: &std::io::Error) -> String {
-    recur_bundles::go::path_err("open", &src.to_string_lossy(), e)
+    format!("{}: {e}", src.to_string_lossy())
 }
 
 #[cfg(test)]

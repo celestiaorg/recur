@@ -10,9 +10,8 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::time::Instant;
 
 use super::{DEFAULT_BASH_WAIT, MAX_BASH_LINES, MAX_BASH_WAIT, MAX_LINE_CHARS, clip_line};
-use crate::gostr::lossy;
 use crate::json::{Shape, Ty, field, unmarshal};
-use crate::path::{abs, path_err};
+use crate::path::abs;
 use crate::tool::{Call, Tool, ToolError};
 
 const SCHEMA: &str = r#"{"type":"object","properties":{"command":{"type":"string"},"timeout":{"type":"number"}},"required":["command"]}"#;
@@ -121,7 +120,7 @@ async fn run(c: &Call, command: &str, wait: Duration) -> (String, Option<&'stati
     let mut child = match cmd.spawn() {
         Ok(ch) => ch,
         Err(e) => {
-            let err = path_err("fork/exec", &bash, &e);
+            let err = format!("{bash}: {e}");
             return (truncate_cmd_output("", "", Some(&err)), None);
         }
     };
@@ -357,7 +356,7 @@ impl CapBuffer {
     }
 
     fn string(&self) -> String {
-        let mut s = clip_lines(&lossy(&self.buf));
+        let mut s = clip_lines(&String::from_utf8_lossy(&self.buf));
         if self.clipped && !s.contains(CLIPPED) {
             if !s.is_empty() {
                 s.push('\n');

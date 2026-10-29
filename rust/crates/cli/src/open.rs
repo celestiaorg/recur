@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use recur_bundles::go;
+use recur_domain::path;
 use recur_platform::cliinstall::is_bundled_cli_path;
 use recur_platform::identity::{APP_NAME, BUNDLE_ID};
 use recur_platform::openipc::{self, IpcError, Request};
@@ -56,7 +56,7 @@ pub fn run_open(arg: &str) -> Result<(), CliError> {
 
 pub fn resolve_open_arg(arg: &str) -> Result<String, String> {
     let abs = paths::canon_path(arg)?;
-    go::stat(&abs).map_err(|e| format!("{arg}: {e}"))?;
+    std::fs::metadata(&abs).map_err(|e| format!("{arg}: {e}"))?;
     Ok(abs)
 }
 
@@ -130,14 +130,14 @@ fn ipc_error(sock: &str, e: IpcError) -> OpenError {
             io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock => {
                 format!("dial unix {sock}: i/o timeout")
             }
-            _ => format!("dial unix {sock}: connect: {}", go::errno_text(&err)),
+            _ => format!("dial unix {sock}: connect: {}", err),
         }),
         IpcError::Io(err) => OpenError::Other(match err.kind() {
             io::ErrorKind::UnexpectedEof => "EOF".to_string(),
             io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock => {
                 format!("read unix ->{sock}: i/o timeout")
             }
-            _ => go::errno_text(&err),
+            _ => err.to_string(),
         }),
         other => OpenError::Other(other.to_string()),
     }
@@ -193,12 +193,8 @@ fn start(name: &str, args: &[&str]) -> Result<(), String> {
     let path = if name.contains('/') {
         name.to_string()
     } else {
-        look_path(name).ok_or_else(|| {
-            format!(
-                "exec: {}: executable file not found in $PATH",
-                go::quote(name)
-            )
-        })?
+        look_path(name)
+            .ok_or_else(|| format!("exec: {:?}: executable file not found in $PATH", name))?
     };
     Command::new(&path)
         .args(args)
@@ -207,7 +203,7 @@ fn start(name: &str, args: &[&str]) -> Result<(), String> {
         .stderr(Stdio::null())
         .spawn()
         .map(|_| ())
-        .map_err(|e| go::path_err("fork/exec", &path, &e))
+        .map_err(|e| format!("{path}: {e}"))
 }
 
 /// Go `exec.LookPath`.
@@ -225,14 +221,14 @@ fn look_path(name: &str) -> Option<String> {
         .find(|p| {
             std::fs::metadata(p).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
         })
-        .map(|p| go::path_str(&p))
+        .map(|p| p.to_string_lossy().into_owned())
 }
 
 /// The desktop binary: `recur` next to this executable (a local build), or
 /// `recur` on PATH, as long as it is not a CLI binary.
 pub fn look_desktop_binary() -> Result<String, String> {
     if let Ok(exe) = std::env::current_exe() {
-        let cand = go::join(&[&go::dir(&go::path_str(&exe)), "recur"]);
+        let cand = path::join(&[&path::dir(&exe.to_string_lossy()), "recur"]);
         if std::fs::metadata(&cand).is_ok_and(|m| !m.is_dir()) && !is_cli_binary(&cand) {
             return Ok(cand);
         }
@@ -253,7 +249,8 @@ pub fn is_cli_binary(p: &str) -> bool {
     {
         return true;
     }
-    let resolved = std::fs::canonicalize(p).map_or_else(|_| p.to_string(), |r| go::path_str(&r));
+    let resolved = std::fs::canonicalize(p)
+        .map_or_else(|_| p.to_string(), |r| r.to_string_lossy().into_owned());
     is_bundled_cli_path(Path::new(p)) || is_bundled_cli_path(Path::new(&resolved))
 }
 

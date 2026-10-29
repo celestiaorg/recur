@@ -3,6 +3,7 @@
 
 use std::path::Path;
 
+use recur_domain::path;
 use recur_domain::{DiffLine, FileDiff};
 use tokio::io::{AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::time::Instant;
@@ -13,7 +14,6 @@ use crate::error::{Error, Result};
 use crate::status::{
     CHANGE_STATUS_FLIGHTS, StatusLetters, hooks, parse_status_porcelain, status_map,
 };
-use crate::text::go_string;
 use recur_chroma::{highlight_files, html_escape};
 
 /// Caps for the synthetic diff of an untracked or new file: bytes read and
@@ -45,7 +45,7 @@ async fn merge_base_by(dir: &str, base_branch: &str, deadline: Option<Instant>) 
     }
     match cmd.output().await {
         Ok(out) => {
-            let mb = go_string(&out);
+            let mb = String::from_utf8_lossy(&out).into_owned();
             let mb = mb.trim();
             if mb.is_empty() {
                 base_branch.to_string()
@@ -102,7 +102,7 @@ async fn change_status_work(
             .ok()
             .flatten();
     };
-    let mut m = parse_name_status(&go_string(&out));
+    let mut m = parse_name_status(&String::from_utf8_lossy(&out));
     // Untracked files never appear in a diff against the base; fold them in.
     if let Ok(Some(st)) = tokio::time::timeout_at(deadline, status_map(&dir)).await {
         for (p, letter) in st {
@@ -170,7 +170,7 @@ pub async fn working_diff(dir: &str, base_branch: &str, rel: &str) -> Result<Fil
     .output()
     .await
     {
-        let out = go_string(&out);
+        let out = String::from_utf8_lossy(&out).into_owned();
         if !out.trim().is_empty()
             && let Some(fd) = first_highlighted(&out)
         {
@@ -202,13 +202,13 @@ pub async fn working_diff(dir: &str, base_branch: &str, rel: &str) -> Result<Fil
         ])
         .output()
         .await
-        && let Some(fd) = first_highlighted(&go_string(&cached))
+        && let Some(fd) = first_highlighted(&String::from_utf8_lossy(&cached))
     {
         return Ok(fd);
     }
 
     // Untracked or new: render the whole (bounded) file as an addition.
-    let abs = crate::gopath::join(&[dir, rel]);
+    let abs = path::join(&[dir, rel]);
     let (body, truncated) = read_capped(Path::new(&abs), MAX_SYNTHETIC_ADD_BYTES)
         .await
         .map_err(|e| e.wrap(format!("read {rel}")))?;
@@ -235,7 +235,7 @@ async fn path_porcelain(dir: &str, rel: &str) -> String {
     else {
         return String::new();
     };
-    let m = parse_status_porcelain(&go_string(&out)).unwrap_or_default();
+    let m = parse_status_porcelain(&String::from_utf8_lossy(&out)).unwrap_or_default();
     if let Some(s) = m.get(rel).filter(|s| !s.is_empty()) {
         return s.clone();
     }
@@ -248,13 +248,13 @@ pub(crate) async fn read_capped(path: &Path, limit: usize) -> Result<(Vec<u8>, b
     let shown = path.to_string_lossy();
     let f = tokio::fs::File::open(path)
         .await
-        .map_err(|e| Error::io_path("open", &shown, &e))?;
+        .map_err(|e| Error::io_path(&shown, &e))?;
     let mut buf = Vec::new();
     // One extra byte, so a file exactly at the limit is not truncated.
     f.take(limit as u64 + 1)
         .read_to_end(&mut buf)
         .await
-        .map_err(|e| Error::io_path("read", &shown, &e))?;
+        .map_err(|e| Error::io_path(&shown, &e))?;
     if buf.len() > limit {
         buf.truncate(limit);
         return Ok((buf, true));
@@ -289,7 +289,9 @@ pub(crate) fn synthetic_add_diff(path: &str, content: &[u8], truncated: bool) ->
     if content_looks_binary(content) {
         return f;
     }
-    let text = go_string(content).replace("\r\n", "\n");
+    let text = String::from_utf8_lossy(content)
+        .into_owned()
+        .replace("\r\n", "\n");
     let mut lines: Vec<&str> = text.split('\n').collect();
     if lines.last() == Some(&"") {
         lines.pop();
@@ -353,13 +355,11 @@ pub async fn file_size_at_rev(dir: &str, rev: &str, rel: &str) -> Result<Option<
     else {
         return Ok(None);
     };
-    let s = go_string(&out);
-    let n: i64 = s.trim().parse().map_err(|e| {
-        Error::msg(format!(
-            "file size: {}",
-            crate::text::num_error("ParseInt", s.trim(), &e)
-        ))
-    })?;
+    let s = String::from_utf8_lossy(&out).into_owned();
+    let n: i64 = s
+        .trim()
+        .parse()
+        .map_err(|e| Error::msg(format!("file size: {e}")))?;
     if n < 0 {
         return Err(Error::msg("file size: negative"));
     }

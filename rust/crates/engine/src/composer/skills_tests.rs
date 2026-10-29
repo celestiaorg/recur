@@ -4,6 +4,7 @@
 use std::path::Path;
 
 use recur_agent::TurnRequest;
+use recur_domain::path;
 
 use super::*;
 
@@ -38,7 +39,7 @@ fn wraps_activated_skills() {
     let w = wt.path().to_string_lossy();
     let input = "/recur-t-go-review look at internal/engine";
     let out = wrap_activated_skills(input, &w, None);
-    let dir = recur_bundles::go::dir(&p.to_string_lossy());
+    let dir = path::dir(&p.to_string_lossy());
     assert_eq!(
         out,
         format!(

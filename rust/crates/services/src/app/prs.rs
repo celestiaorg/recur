@@ -3,7 +3,6 @@
 //! text for each `(T, ok)` the engine returns.
 
 use async_trait::async_trait;
-use recur_bundles::go::quote;
 use recur_domain::{
     Commit, FileDiff, Finding, MergeMethod, Pr, PrComment, PrParticipant, UpdateWorkspaceResult,
     Workspace,
@@ -15,7 +14,7 @@ use crate::api::PrsService;
 use crate::{Error, Result};
 
 fn pr_not_found(id: &str) -> Error {
-    Error::new(format!("PR {} not found", quote(id)))
+    Error::new(format!("PR {:?} not found", id))
 }
 
 impl AppServices {

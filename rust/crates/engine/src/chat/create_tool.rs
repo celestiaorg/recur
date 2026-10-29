@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use recur_agent_tools::CreateWorkspaceRequest;
-use recur_bundles::go::quote;
 use recur_domain::{
     CHAT_MODE_AGENT, CHAT_MODE_LOOP, CHILD_WORKSPACE_MODEL_MODE, ChildFanOut, Workspace,
     normalize_chat_mode,
@@ -77,7 +76,7 @@ impl Engine {
             project_id = caller.project_id.clone();
         }
         let Some(proj) = self.store.project(&project_id) else {
-            return format!("create_workspace: project {} not found", quote(&project_id));
+            return format!("create_workspace: project {:?} not found", project_id);
         };
         let mode = match normalize_chat_mode(&req.mode) {
             "" => CHAT_MODE_AGENT,
@@ -110,9 +109,8 @@ impl Engine {
         .unwrap_or(false);
         if !exists {
             return format!(
-                "create_workspace: base branch {} not found in {}",
-                quote(&l.base_branch),
-                proj.name
+                "create_workspace: base branch {:?} not found in {}",
+                l.base_branch, proj.name
             );
         }
         if mode == CHAT_MODE_LOOP {
@@ -142,9 +140,8 @@ impl Engine {
                 && equal_fold(w.goal.trim(), &title)
             {
                 return format!(
-                    "Workspace {} already exists for {}; not creating a duplicate.",
-                    w.id,
-                    quote(&title)
+                    "Workspace {} already exists for {:?}; not creating a duplicate.",
+                    w.id, title
                 );
             }
         }
@@ -196,14 +193,13 @@ impl Engine {
             }
             self.spawn_chat_child_watcher(caller_workspace_id, &id);
             return format!(
-                "Created subagent {id} ({}) as a child workspace off {base}; its {mode} chat is running the prompt. This turn does not wait: when it finishes you get a new turn here with its report, then read_child, merge_child, or archive_child it.",
-                quote(&title)
+                "Created subagent {id} ({:?}) as a child workspace off {base}; its {mode} chat is running the prompt. This turn does not wait: when it finishes you get a new turn here with its report, then read_child, merge_child, or archive_child it.",
+                title
             );
         }
         format!(
-            "Created workspace {id} ({}) in {} from {base}; its {mode} chat is running the prompt. It appears in the sidebar as it allocates.",
-            quote(&title),
-            proj.name
+            "Created workspace {id} ({:?}) in {} from {base}; its {mode} chat is running the prompt. It appears in the sidebar as it allocates.",
+            title, proj.name
         )
     }
 }

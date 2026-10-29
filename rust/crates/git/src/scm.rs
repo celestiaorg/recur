@@ -3,6 +3,8 @@
 
 use std::collections::HashMap;
 
+use recur_domain::path;
+
 use crate::error::{Error, Result};
 use crate::status::{status_map, status_map_now};
 use crate::worktree::{CommitResult, Manager, is_repo, remove_all};
@@ -16,12 +18,8 @@ pub async fn identity(dir: &str) -> Result<(String, String)> {
         .await
         .map_err(|e| e.wrap("git identity"))?;
     let ident = out.trim();
-    parse_git_ident(ident).ok_or_else(|| {
-        Error::msg(format!(
-            "git identity: unparseable {}",
-            crate::text::quote(ident)
-        ))
-    })
+    parse_git_ident(ident)
+        .ok_or_else(|| Error::msg(format!("git identity: unparseable {:?}", ident)))
 }
 
 /// Splits `Name <email> timestamp tz` from `git var GIT_*_IDENT`.
@@ -56,9 +54,9 @@ pub async fn discard_file(dir: &str, rel: &str) -> Result<()> {
     let Some(letter) = st.get(rel) else {
         return Ok(()); // already clean versus HEAD
     };
-    let full = crate::gopath::join(&[dir, rel]);
+    let full = path::join(&[dir, rel]);
     if letter == "u" {
-        return remove_all(&full).map_err(|e| Error::io_path("unlinkat", &full, &e));
+        return remove_all(&full).map_err(|e| Error::io_path(&full, &e));
     }
     // Restore a tracked file (also resurrects a deleted one).
     if let Err(e) = run_git(

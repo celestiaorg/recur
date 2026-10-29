@@ -16,11 +16,11 @@ use std::os::unix::fs::DirBuilderExt;
 use std::path::Path;
 
 use recur_domain::FileDiff;
+use recur_domain::path;
 
 use crate::command::command;
 use crate::diff::{commit_ref_exists, parse_highlighted_patch};
 use crate::error::{Error, Result};
-use crate::text::go_string;
 
 /// The namespace every checkpoint ref lives under.
 pub const CHECKPOINT_REF_PREFIX: &str = "refs/recur/checkpoints/";
@@ -40,16 +40,16 @@ const CHECKPOINT_IDENTITY: [(&str, &str); 4] = [
 pub async fn checkpoint(worktree: &str, index_dir: &str, ref_name: &str) -> Result<String> {
     if !ref_name.starts_with(CHECKPOINT_REF_PREFIX) {
         return Err(Error::msg(format!(
-            "checkpoint ref {} outside {CHECKPOINT_REF_PREFIX}",
-            crate::text::quote(ref_name)
+            "checkpoint ref {:?} outside {CHECKPOINT_REF_PREFIX}",
+            ref_name
         )));
     }
     std::fs::DirBuilder::new()
         .recursive(true)
         .mode(0o755)
         .create(index_dir)
-        .map_err(|e| Error::io_path("mkdir", index_dir, &e))?;
-    let priv_index = crate::gopath::join(&[index_dir, "index"]);
+        .map_err(|e| Error::io_path(index_dir, &e))?;
+    let priv_index = path::join(&[index_dir, "index"]);
     // Seed from the real index so `add -A` only re-hashes files whose stat
     // changed (milliseconds on a large repo instead of a full rehash).
     let real_index = run(
@@ -59,9 +59,7 @@ pub async fn checkpoint(worktree: &str, index_dir: &str, ref_name: &str) -> Resu
     )
     .await?;
     match std::fs::read(real_index.trim()) {
-        Ok(data) => {
-            write_file(&priv_index, &data).map_err(|e| Error::io_path("open", &priv_index, &e))?
-        }
+        Ok(data) => write_file(&priv_index, &data).map_err(|e| Error::io_path(&priv_index, &e))?,
         // Unborn repo: start from an empty index.
         Err(_) => {
             let _ = std::fs::remove_file(&priv_index);
@@ -182,7 +180,7 @@ pub async fn restore_checkpoint(worktree: &str, ref_name: &str) -> Result<()> {
         if let Err(e) = std::fs::remove_file(&full)
             && e.kind() != std::io::ErrorKind::NotFound
         {
-            return Err(Error::io_path("remove", &full.to_string_lossy(), &e));
+            return Err(Error::io_path(&full.to_string_lossy(), &e));
         }
     }
     Ok(())
@@ -202,7 +200,9 @@ fn write_file(path: &str, data: &[u8]) -> std::io::Result<()> {
 }
 
 async fn run(dir: &str, env: &[(&str, &str)], args: &[&str]) -> Result<String> {
-    run_raw(dir, env, args).await.map(|b| go_string(&b))
+    run_raw(dir, env, args)
+        .await
+        .map(|b| String::from_utf8_lossy(&b).into_owned())
 }
 
 /// stdout, or `git <verb>: <stderr>: <err>` (Go `run` in checkpoint.go).
@@ -216,7 +216,7 @@ async fn run_raw(dir: &str, env: &[(&str, &str)], args: &[&str]) -> Result<Vec<u
     match ran.result {
         Ok(()) => Ok(ran.stdout),
         Err(e) => {
-            let msg = go_string(&ran.stderr);
+            let msg = String::from_utf8_lossy(&ran.stderr).into_owned();
             let msg = msg.trim();
             Err(if msg.is_empty() {
                 e.wrap(format!("git {verb}"))

@@ -11,7 +11,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use recur_agent::attach::DISPLAY_HIDDEN_SENTINEL;
-use recur_bundles::go::quote;
 use recur_domain::{
     ChildFanOut, FEED_CARD_FAN_OUT, FeedItem, Group, Workspace, WorkspaceState, finding_loc,
 };
@@ -516,9 +515,9 @@ impl Engine {
     /// count and the verbs; read_child has the rest.
     async fn child_notice(&self, parent_id: &str, child: &Workspace) -> String {
         let mut b = format!(
-            "Subagent {} ({}) has {}.",
+            "Subagent {} ({:?}) has {}.",
             child.id,
-            quote(&child.goal),
+            child.goal,
             describe_child_state(child)
         );
         let err = child.last_error.trim();
@@ -611,16 +610,16 @@ impl Engine {
         let running = !child.archived && !self.child_settled_for_chat(&child.id);
         if running {
             b.push_str(&format!(
-                "Subagent {} ({}, branch {}) is STILL RUNNING. What follows is a partial snapshot; its commits and reply are not final. You will get a turn here with its report when it finishes — do not wait, poll, merge, or archive it now.\n\n",
+                "Subagent {} ({:?}, branch {}) is STILL RUNNING. What follows is a partial snapshot; its commits and reply are not final. You will get a turn here with its report when it finishes — do not wait, poll, merge, or archive it now.\n\n",
                 child.id,
-                quote(&child.goal),
+                child.goal,
                 child.branch
             ));
         } else {
             b.push_str(&format!(
-                "Subagent {} ({}, branch {}) has {}",
+                "Subagent {} ({:?}, branch {}) has {}",
                 child.id,
-                quote(&child.goal),
+                child.goal,
                 child.branch,
                 describe_child_state(child)
             ));
@@ -866,17 +865,13 @@ impl Engine {
         }
         if dropped > 0 {
             return format!(
-                "Archived subagent {} ({}) without merging: its worktree and branch {} are deleted, discarding {dropped} unmerged commit(s).",
-                child.id,
-                quote(&child.goal),
-                child.branch
+                "Archived subagent {} ({:?}) without merging: its worktree and branch {} are deleted, discarding {dropped} unmerged commit(s).",
+                child.id, child.goal, child.branch
             );
         }
         format!(
-            "Archived subagent {} ({}): its worktree and branch {} are deleted; it had no unmerged commits.",
-            child.id,
-            quote(&child.goal),
-            child.branch
+            "Archived subagent {} ({:?}): its worktree and branch {} are deleted; it had no unmerged commits.",
+            child.id, child.goal, child.branch
         )
     }
 
@@ -929,10 +924,8 @@ impl Engine {
         let timed_out = || "context deadline exceeded".to_owned();
         let git = self.git_manager(&proj.repo_path);
         let label = format!(
-            "subagent {} ({}, branch {})",
-            child.id,
-            quote(&child.goal),
-            child.branch
+            "subagent {} ({:?}, branch {})",
+            child.id, child.goal, child.branch
         );
         if until(deadline, git.merge_head(&parent.worktree_path))
             .await

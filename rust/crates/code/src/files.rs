@@ -3,7 +3,6 @@ use std::path::Path;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{Error, Result};
-use crate::gostr;
 use crate::root::{path_str, rel_slash_str, skip_dir, skip_file};
 use crate::walk::{Flow, walk_dir};
 
@@ -42,7 +41,7 @@ pub fn list_files(cancel: &CancellationToken, root: &Path) -> Result<Vec<String>
 
 /// Filters paths by a simple fuzzy query (substring, then subsequence).
 pub fn match_files(paths: &[String], query: &str, limit: usize) -> Vec<String> {
-    let q = gostr::lower(query);
+    let q = query.to_lowercase();
     let q = q.trim();
     let limit = if limit == 0 { 50 } else { limit };
     if q.is_empty() {
@@ -50,7 +49,7 @@ pub fn match_files(paths: &[String], query: &str, limit: usize) -> Vec<String> {
     }
     paths
         .iter()
-        .filter(|p| fuzzy_match(gostr::lower(p).as_bytes(), q.as_bytes()))
+        .filter(|p| fuzzy_match(p.to_lowercase().as_bytes(), q.as_bytes()))
         .take(limit)
         .cloned()
         .collect()

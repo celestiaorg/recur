@@ -245,7 +245,7 @@ pub fn user_image_from_stored(p: &ImagePayload, data_root: Option<&Path>) -> Opt
         return None;
     }
     let root = data_root?.to_string_lossy();
-    let full = recur_agent_tools::path::join(&[&root, &p.path]);
+    let full = recur_domain::path::join(&[&root, &p.path]);
     let raw = std::fs::read(full).ok()?;
     if raw.is_empty() || raw.len() > MAX_CHAT_ATTACHMENT_BYTES {
         return None;

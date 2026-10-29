@@ -7,6 +7,7 @@
 use std::time::Duration;
 
 use recur_agent::{ProviderError, TurnRequest};
+use recur_domain::path;
 use recur_domain::{PERMISSION_MODE_DENY, parse_model_ref};
 use tokio_util::sync::CancellationToken;
 
@@ -473,7 +474,7 @@ pub fn file_hint(paths: &[String]) -> String {
 fn unique_basenames(paths: &[String]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for p in paths {
-        let b = recur_bundles::go::base(&p.trim().replace('\\', "/"));
+        let b = path::base(&p.trim().replace('\\', "/"));
         if b.is_empty() || b == "." || b == "/" || out.contains(&b) {
             continue;
         }

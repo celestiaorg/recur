@@ -9,11 +9,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use recur_domain::FileContent;
+use recur_domain::path;
 use tokio::io::AsyncWrite;
 
 use crate::drop_allow::external_path_allowed;
 use crate::error::{Error, Result};
-use crate::gopath;
 use crate::root::{path_str, rel_slash_str, safe_join_str};
 
 /// Text preview/edit cap.
@@ -71,7 +71,7 @@ fn chat_image_mime_ext(ext: &str) -> &'static str {
 }
 
 fn lower_ext(path: &str) -> String {
-    gopath::ext(path).to_lowercase()
+    path::ext(path).to_lowercase()
 }
 
 /// The preview MIME type for a path, or `""` if it is not a known image.
@@ -163,11 +163,11 @@ pub fn prepare_chat_image(abs: &str) -> Result<(PathBuf, &'static str)> {
         if e.kind() == io::ErrorKind::NotFound {
             not_found(&clean)
         } else {
-            Error::path("open", &clean, e)
+            Error::path(&clean, e)
         }
     })?;
     let mut buf = [0u8; 12];
-    let n = read_full(&mut f, &mut buf).map_err(|e| Error::path("read", &clean, e))?;
+    let n = read_full(&mut f, &mut buf).map_err(|e| Error::path(&clean, e))?;
     if !chat_image_magic_ok(&buf[..n], mime) {
         return Err(Error::msg("not a chat image"));
     }
@@ -183,8 +183,8 @@ fn check_external(abs: &str) -> Result<String> {
     if abs.contains('\0') {
         return Err(Error::msg("invalid path"));
     }
-    let clean = gopath::clean(abs);
-    if !gopath::is_abs(&clean) {
+    let clean = path::clean(abs);
+    if !path::is_abs(&clean) {
         return Err(Error::msg("path must be absolute"));
     }
     if !external_path_allowed(&clean) {
@@ -199,14 +199,11 @@ fn stat_external(clean: &str) -> Result<fs::Metadata> {
         if e.kind() == io::ErrorKind::NotFound {
             not_found(clean)
         } else {
-            Error::path("stat", clean, e)
+            Error::path(clean, e)
         }
     })?;
     if st.is_dir() {
-        return Err(Error::msg(format!(
-            "{} is a directory",
-            gopath::base(clean)
-        )));
+        return Err(Error::msg(format!("{} is a directory", path::base(clean))));
     }
     if !st.is_file() {
         return Err(Error::msg("not a regular file"));
@@ -263,7 +260,7 @@ pub fn read_file(root: &Path, rel: &str, writable: bool) -> Result<FileContent> 
         if e.kind() == io::ErrorKind::NotFound {
             not_found(rel)
         } else {
-            Error::path("open", &full, e)
+            Error::path(&full, e)
         }
     })?;
     let Ok(content) = String::from_utf8(raw) else {
@@ -325,7 +322,7 @@ fn stat_file(root: &str, rel: &str) -> Result<(String, &'static str, fs::Metadat
         if e.kind() == io::ErrorKind::NotFound {
             not_found(rel)
         } else {
-            Error::path("stat", &abs, e)
+            Error::path(&abs, e)
         }
     })?;
     if st.is_dir() {
@@ -343,9 +340,9 @@ fn reject_binary_file(full: &str, size: i64) -> Result<()> {
     if n <= 0 {
         return Ok(());
     }
-    let mut f = File::open(full).map_err(|e| Error::path("open", full, e))?;
+    let mut f = File::open(full).map_err(|e| Error::path(full, e))?;
     let mut probe = vec![0u8; n as usize];
-    let got = read_full(&mut f, &mut probe).map_err(|e| Error::path("read", full, e))?;
+    let got = read_full(&mut f, &mut probe).map_err(|e| Error::path(full, e))?;
     if is_binary(&probe[..got], size > got as i64) {
         return Err(Error::msg("binary or non-UTF-8 file"));
     }
@@ -396,22 +393,20 @@ pub fn write_file(root: &Path, rel: &str, content: &str) -> Result<()> {
         )));
     }
     let full = safe_join_str(&path_str(root), rel)?;
-    let dir = gopath::dir(&full);
-    gopath::mkdir_all(&dir)?;
+    let dir = path::dir(&full);
+    Error::mkdir_all(&dir)?;
     let perm = fs::metadata(&full)
         .map(|m| m.permissions().mode() & 0o777)
         .unwrap_or(0o644);
-    let (tmp_name, mut tmp) = create_temp(&dir, &format!(".{}.tmp", gopath::base(&full)))?;
+    let (tmp_name, mut tmp) = create_temp(&dir, &format!(".{}.tmp", path::base(&full)))?;
     let result = (|| {
         tmp.write_all(content.as_bytes())
-            .map_err(|e| Error::path("write", &tmp_name, e))?;
-        tmp.sync_all()
-            .map_err(|e| Error::path("sync", &tmp_name, e))?;
+            .map_err(|e| Error::path(&tmp_name, e))?;
+        tmp.sync_all().map_err(|e| Error::path(&tmp_name, e))?;
         drop(tmp);
         fs::set_permissions(&tmp_name, fs::Permissions::from_mode(perm))
-            .map_err(|e| Error::path("chmod", &tmp_name, e))?;
-        fs::rename(&tmp_name, &full)
-            .map_err(|e| Error::path("rename", &format!("{tmp_name} {full}"), e))
+            .map_err(|e| Error::path(&tmp_name, e))?;
+        fs::rename(&tmp_name, &full).map_err(|e| Error::path(&format!("{tmp_name} {full}"), e))
     })();
     if result.is_err() {
         let _ = fs::remove_file(&tmp_name);
@@ -432,7 +427,7 @@ fn create_temp(dir: &str, prefix: &str) -> Result<(String, File)> {
             ^ SEQ
                 .fetch_add(1, Ordering::Relaxed)
                 .wrapping_mul(0x9E37_79B9_7F4A_7C15);
-        let name = gopath::join(&[dir, &format!("{prefix}{}", seed % 1_000_000_000)]);
+        let name = path::join(&[dir, &format!("{prefix}{}", seed % 1_000_000_000)]);
         match fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -441,12 +436,11 @@ fn create_temp(dir: &str, prefix: &str) -> Result<(String, File)> {
         {
             Ok(f) => return Ok((name, f)),
             Err(e) if e.kind() == io::ErrorKind::AlreadyExists => last = Some(e),
-            Err(e) => return Err(Error::path("open", &name, e)),
+            Err(e) => return Err(Error::path(&name, e)),
         }
     }
     Err(Error::path(
-        "createtemp",
-        &gopath::join(&[dir, &format!("{prefix}*")]),
+        &path::join(&[dir, &format!("{prefix}*")]),
         last.unwrap_or_else(|| io::Error::from(io::ErrorKind::AlreadyExists)),
     ))
 }
@@ -454,5 +448,5 @@ fn create_temp(dir: &str, prefix: &str) -> Result<(String, File)> {
 /// The file's language for the editor, from the same cached lexer lookup as
 /// diff highlighting.
 pub(crate) fn language_for(path: &str) -> String {
-    recur_chroma::lexer_name(&gopath::base(path))
+    recur_chroma::lexer_name(&path::base(path))
 }

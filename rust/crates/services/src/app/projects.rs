@@ -8,7 +8,6 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use futures::StreamExt as _;
-use recur_bundles::go::quote;
 use recur_domain::{
     BranchChoice, CopyFilesPreview, FILES_PROJECT_ID, Project, ProjectGroup, ScheduledPrompt,
     next_scheduled_time,
@@ -200,7 +199,7 @@ impl AppServices {
         let p = self
             .store()
             .project(id)
-            .ok_or_else(|| Error::new(format!("project {} not found", quote(id))))?;
+            .ok_or_else(|| Error::new(format!("project {:?} not found", id)))?;
         Ok(self.with_is_git(p).await)
     }
 
@@ -222,8 +221,8 @@ impl AppServices {
     fn check_group(&self, group_id: &str) -> Result<()> {
         if !group_id.is_empty() && !self.store().has_project_group(group_id) {
             return Err(Error::new(format!(
-                "project group {} not found",
-                quote(group_id)
+                "project group {:?} not found",
+                group_id
             )));
         }
         Ok(())
@@ -359,7 +358,7 @@ impl ProjectsService for AppServices {
     async fn list_branches(&self, project_id: &str) -> Result<Vec<BranchChoice>> {
         rt!(self, project_id => |s| {
             let p = s.store().project(&project_id).ok_or_else(|| {
-                Error::new(format!("project {} not found", quote(&project_id)))
+                Error::new(format!("project {:?} not found", project_id))
             })?;
             let def = if p.base_branch.is_empty() { "main".to_owned() } else { p.base_branch };
             // A saved default may name a deleted branch: still show it.
@@ -430,7 +429,7 @@ impl ProjectsService for AppServices {
     async fn set_project_group(&self, project_id: &str, group_id: &str) -> Result<Project> {
         rt!(self, project_id, group_id => |s| {
             let mut p = s.store().project(&project_id).ok_or_else(|| {
-                Error::new(format!("project {} not found", quote(&project_id)))
+                Error::new(format!("project {:?} not found", project_id))
             })?;
             s.check_group(&group_id)?;
             p.group_id = group_id;

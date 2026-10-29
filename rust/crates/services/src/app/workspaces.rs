@@ -5,7 +5,6 @@
 use std::collections::BTreeMap;
 
 use async_trait::async_trait;
-use recur_bundles::go::quote;
 use recur_domain::{
     AttentionCounts, AutonomyLevel, CHAT_MODE_LOOP, ChatAttachment, ChatItem, Commit, FeedItem,
     IssueRef, MergeMethod, OpenInTarget, OpenPathResult, SessionView, UpdateBaseMethod,
@@ -18,7 +17,7 @@ use crate::api::{WorkspaceChatSelection, WorkspacesService};
 use crate::{Error, Result};
 
 fn not_found(id: &str) -> Error {
-    Error::new(format!("workspace {} not found", quote(id)))
+    Error::new(format!("workspace {:?} not found", id))
 }
 
 impl AppServices {
@@ -194,8 +193,8 @@ impl AppServices {
             .ok_or_else(|| not_found(workspace_id))?;
         if ws.worktree_path.is_empty() {
             return Err(Error::new(format!(
-                "workspace {} has no folder on disk",
-                quote(workspace_id)
+                "workspace {:?} has no folder on disk",
+                workspace_id
             )));
         }
         recur_code::open_in(&ws.worktree_path, target_id).map_err(err)
@@ -363,7 +362,7 @@ impl WorkspacesService for AppServices {
         rt!(self, id => |s| {
             s.store()
                 .workspace(&id)
-                .ok_or_else(|| Error::new(format!("loop {} not found", quote(&id))))
+                .ok_or_else(|| Error::new(format!("loop {:?} not found", id)))
         })
     }
 

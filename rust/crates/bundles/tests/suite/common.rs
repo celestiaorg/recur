@@ -3,6 +3,8 @@
 
 use std::path::Path;
 
+use recur_domain::path;
+
 /// Repo-root `bundles/` (the shipped reference packs).
 pub fn shipped_root() -> String {
     repo_path("bundles")
@@ -13,7 +15,7 @@ pub fn repo_path(rel: &str) -> String {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../..")
         .join(rel);
-    recur_bundles::go::clean(&root.to_string_lossy())
+    path::clean(&root.to_string_lossy())
 }
 
 /// Writes `body` to `path`, creating parent directories.

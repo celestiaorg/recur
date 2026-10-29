@@ -248,7 +248,7 @@ impl Conn {
             w.flush().await
         }
         .await;
-        res.map_err(|e| RpcError::Io(format!("write: {}", crate::proc::go_errno(&e))))
+        res.map_err(|e| RpcError::Io(format!("write: {}", e)))
     }
 
     async fn read_loop<R: AsyncRead + Unpin>(self, r: R) {
@@ -259,7 +259,7 @@ impl Conn {
             match r.read_until(b'\n', &mut line).await {
                 Ok(0) => break "EOF".to_owned(),
                 Ok(_) => {}
-                Err(e) => break crate::proc::go_errno(&e),
+                Err(e) => break e.to_string(),
             }
             while matches!(line.last(), Some(b'\n' | b'\r')) {
                 line.pop();

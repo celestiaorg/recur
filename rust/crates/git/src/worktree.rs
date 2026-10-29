@@ -10,13 +10,13 @@ use std::fmt;
 use std::os::unix::fs::{DirBuilderExt, MetadataExt};
 use std::time::Duration;
 
+use recur_domain::path;
 use tokio::time::Instant;
 
 use crate::command::{Command, command};
 use crate::error::{Error, Result};
-use crate::gopath;
 use crate::scm::identity;
-use crate::text::{atoi, eq_fold, go_lower, go_string, quote};
+use crate::text::{atoi, eq_fold};
 use recur_project::home::expand_home;
 
 /// One checked-out worktree of a repository.
@@ -272,7 +272,7 @@ impl Manager {
         } else {
             restore_branch.to_string()
         };
-        let wt_path = gopath::join(&[&self.root, &worktree_rel_path(workspace_id)]);
+        let wt_path = path::join(&[&self.root, &worktree_rel_path(workspace_id)]);
 
         // A registered worktree at the path is reused only while its directory
         // is still on disk. A stale registration after a partial delete must
@@ -286,8 +286,8 @@ impl Manager {
             let _ = self.run(["worktree", "prune"]).await;
             if matches!(self.worktree_at(&wt_path).await, Ok(Some(_))) {
                 return Err(Error::msg(format!(
-                    "stale worktree registration at {} could not be cleared",
-                    quote(&wt_path)
+                    "stale worktree registration at {:?} could not be cleared",
+                    wt_path
                 )));
             }
         }
@@ -301,17 +301,17 @@ impl Manager {
                 return Ok((existing, false));
             }
             remove_all(&wt_path).map_err(|e| {
-                Error::io_path("unlinkat", &wt_path, &e)
-                    .wrap(format!("remove stale worktree path {}", quote(&wt_path)))
+                Error::io_path(&wt_path, &e)
+                    .wrap(format!("remove stale worktree path {:?}", wt_path))
             })?;
         }
 
-        let parent = gopath::dir(&wt_path);
+        let parent = path::dir(&wt_path);
         std::fs::DirBuilder::new()
             .recursive(true)
             .mode(0o755)
             .create(&parent)
-            .map_err(|e| Error::io_path("mkdir", &parent, &e).wrap("create worktrees root"))?;
+            .map_err(|e| Error::io_path(&parent, &e).wrap("create worktrees root"))?;
 
         let mut args: Vec<String> = vec!["worktree".into(), "add".into()];
         if !restore_branch.is_empty() && self.branch_exists(&branch).await {
@@ -324,9 +324,8 @@ impl Manager {
             let blocked = self.blocking_ref_for_branch(&branch).await;
             if !blocked.is_empty() {
                 return Err(Error::msg(format!(
-                    "cannot create branch {}: existing branch {} blocks it (git cannot nest refs under a branch of the same name) — pick a different prefix in Settings or rename that branch",
-                    quote(&branch),
-                    quote(&blocked)
+                    "cannot create branch {:?}: existing branch {:?} blocks it (git cannot nest refs under a branch of the same name) — pick a different prefix in Settings or rename that branch",
+                    branch, blocked
                 )));
             }
             let mut base_branch = base_branch.to_string();
@@ -336,18 +335,18 @@ impl Manager {
             // Remote bases: fetch the tip once so spin-off doesn't need a pull.
             self.refresh_remote_base_if_needed(&base_branch)
                 .await
-                .map_err(|e| e.wrap(format!("refresh base {}", quote(&base_branch))))?;
+                .map_err(|e| e.wrap(format!("refresh base {:?}", base_branch)))?;
             if !self.commit_exists(&base_branch).await {
                 if self.has_any_commit().await {
                     return Err(Error::msg(format!(
-                        "base branch {} does not exist (or has no commits)",
-                        quote(&base_branch)
+                        "base branch {:?} does not exist (or has no commits)",
+                        base_branch
                     )));
                 }
                 if self.parse_remote_tracking(&base_branch).await.is_some() {
                     return Err(Error::msg(format!(
-                        "base branch {} is a remote ref but is missing — fetch failed or remote is empty",
-                        quote(&base_branch)
+                        "base branch {:?} is a remote ref but is missing — fetch failed or remote is empty",
+                        base_branch
                     )));
                 }
                 self.ensure_initial_commit(&base_branch).await?;
@@ -391,7 +390,7 @@ impl Manager {
             if !cur.is_empty() && cur != base_branch {
                 self.run(["checkout", "-B", base_branch])
                     .await
-                    .map_err(|e| e.wrap(format!("prepare base branch {}", quote(base_branch))))?;
+                    .map_err(|e| e.wrap(format!("prepare base branch {:?}", base_branch)))?;
             }
         }
         let (name, email) = identity(&self.repo_path).await?;
@@ -750,7 +749,7 @@ impl Manager {
             .run_in(worktree, ["log", "-1", "--format=%s", "refs/stash"])
             .await
         {
-            Ok(subj) => go_lower(subj.trim()).contains("autostash"),
+            Ok(subj) => subj.trim().to_lowercase().contains("autostash"),
             Err(_) => false,
         }
     }
@@ -907,16 +906,14 @@ impl Manager {
         }
         if !self.under_managed_root(path) {
             return Err(Error::msg(format!(
-                "refuse to remove worktree path {}: not under managed root {}",
-                quote(path),
-                quote(&self.root)
+                "refuse to remove worktree path {:?}: not under managed root {:?}",
+                path, self.root
             )));
         }
         let git_err = self.force_remove_worktree(path).await.err();
         // Wipe the directory even when git never knew about it (orphan).
         if let Err(e) = remove_all(path) {
-            return Err(Error::io_path("unlinkat", path, &e)
-                .wrap(format!("remove worktree dir {}", quote(path))));
+            return Err(Error::io_path(path, &e).wrap(format!("remove worktree dir {:?}", path)));
         }
         if matches!(self.worktree_at(path).await, Ok(Some(_))) {
             let _ = self.run(["worktree", "prune"]).await;
@@ -925,16 +922,13 @@ impl Manager {
         }
         if matches!(self.worktree_at(path).await, Ok(Some(_))) {
             return Err(match git_err {
-                Some(e) => e.wrap(format!("git worktree remove {}", quote(path))),
-                None => Error::msg(format!(
-                    "worktree {} still registered after remove",
-                    quote(path)
-                )),
+                Some(e) => e.wrap(format!("git worktree remove {:?}", path)),
+                None => Error::msg(format!("worktree {:?} still registered after remove", path)),
             });
         }
         // Nested <root>/<project>/<slug>: drop the project dir when this was
         // its last worktree (fails, ignored, when not empty).
-        let parent = gopath::dir(path);
+        let parent = path::dir(path);
         if self.under_managed_root(&parent) {
             let _ = std::fs::remove_dir(&parent);
         }
@@ -1005,7 +999,7 @@ impl Manager {
         if p == root {
             return false;
         }
-        match gopath::rel(&root, &p) {
+        match path::rel(&root, &p) {
             Some(rel) => !(rel == "." || rel == ".." || rel.starts_with("../")),
             None => false,
         }
@@ -1262,9 +1256,9 @@ impl Manager {
 pub(crate) async fn exec(cmd: Command) -> Result<String> {
     let ran = cmd.capture().await;
     match ran.result {
-        Ok(()) => Ok(go_string(&ran.stdout)),
+        Ok(()) => Ok(String::from_utf8_lossy(&ran.stdout).into_owned()),
         Err(e) => {
-            let msg = go_string(&ran.stderr);
+            let msg = String::from_utf8_lossy(&ran.stderr).into_owned();
             let msg = msg.trim();
             Err(if msg.is_empty() { e } else { e.wrap(msg) })
         }
@@ -1416,7 +1410,7 @@ async fn worktree_unmerged(worktree: &str) -> bool {
         if let Ok(out) = command(["-C", worktree, "rev-parse", "-q", "--verify", r])
             .output()
             .await
-            && !go_string(&out).trim().is_empty()
+            && !String::from_utf8_lossy(&out).into_owned().trim().is_empty()
         {
             return true;
         }
@@ -1425,7 +1419,7 @@ async fn worktree_unmerged(worktree: &str) -> bool {
         .output()
         .await
     {
-        Ok(out) => porcelain_has_conflict(&go_string(&out)),
+        Ok(out) => porcelain_has_conflict(&String::from_utf8_lossy(&out)),
         Err(_) => false,
     }
 }
@@ -1440,7 +1434,7 @@ pub async fn is_repo(path: &str) -> bool {
     if path.is_empty() {
         return false;
     }
-    let Ok(abs) = gopath::abs(path) else {
+    let Ok(abs) = path::abs(path) else {
         return false;
     };
     // --show-toplevel must equal the project path so a docs/ subfolder (or a
@@ -1457,11 +1451,11 @@ async fn show_toplevel(abs: &str) -> Option<String> {
         .combined_output()
         .await;
     res.ok()?;
-    let top = gopath::clean(go_string(&out).trim());
+    let top = path::clean(String::from_utf8_lossy(&out).into_owned().trim());
     if top.is_empty() {
         return None;
     }
-    gopath::abs(&top).ok()
+    path::abs(&top).ok()
 }
 
 /// An absolute, clean path with `~` expanded and symlinks resolved when it
@@ -1473,8 +1467,8 @@ pub fn canon_path(p: &str) -> Result<String> {
     if p.is_empty() {
         return Err(Error::msg("empty path"));
     }
-    let abs = gopath::abs(p)?;
-    Ok(gopath::eval_symlinks(&abs).unwrap_or(abs))
+    let abs = path::abs(p)?;
+    Ok(path::eval_symlinks(&abs).unwrap_or(abs))
 }
 
 /// Whether `path` is `root` or below it. Both should be [`canon_path`]
@@ -1552,12 +1546,12 @@ pub async fn repo_root(path: &str) -> Option<String> {
     if path.is_empty() {
         return None;
     }
-    let mut abs = gopath::abs(path).ok()?;
+    let mut abs = path::abs(path).ok()?;
     if std::fs::metadata(&abs).is_ok_and(|m| !m.is_dir()) {
-        abs = gopath::dir(&abs);
+        abs = path::dir(&abs);
     }
     let top_abs = show_toplevel(&abs).await?;
-    Some(gopath::eval_symlinks(&top_abs).unwrap_or(top_abs))
+    Some(path::eval_symlinks(&top_abs).unwrap_or(top_abs))
 }
 
 /// Whether `a` and `b` are the same directory, resolving symlinks.
@@ -1565,8 +1559,8 @@ fn same_dir_path(a: &str, b: &str) -> bool {
     if a == b {
         return true;
     }
-    match (gopath::eval_symlinks(a), gopath::eval_symlinks(b)) {
-        (Ok(ae), Ok(be)) => ae == be,
+    match (path::eval_symlinks(a), path::eval_symlinks(b)) {
+        (Some(ae), Some(be)) => ae == be,
         _ => false,
     }
 }
@@ -1633,7 +1627,7 @@ pub fn workspace_slug(id: &str) -> String {
 pub fn worktree_rel_path(workspace_id: &str) -> String {
     let workspace_id = workspace_id.trim();
     match split_workspace_id(workspace_id) {
-        Some((project, slug)) => gopath::join(&[&project, &slug]),
+        Some((project, slug)) => path::join(&[&project, &slug]),
         None => workspace_id.to_string(),
     }
 }
@@ -1648,7 +1642,7 @@ pub async fn current_branch(worktree: &str) -> Result<String> {
     let (out, res) = command(["-C", worktree, "branch", "--show-current"])
         .combined_output()
         .await;
-    let out = go_string(&out);
+    let out = String::from_utf8_lossy(&out).into_owned();
     if let Err(e) = res {
         let msg = out.trim();
         return Err(if msg.is_empty() {
@@ -1697,7 +1691,7 @@ fn apply_branch_prefix(prefix: &str, name: &str) -> String {
 /// Lowercases `name`, maps illegal characters to hyphens, and collapses empty
 /// path components. Empty input is an error.
 fn sanitize_git_path(name: &str) -> Result<String> {
-    let name = go_lower(name.trim());
+    let name = name.trim().to_lowercase();
     if name.is_empty() {
         return Err(Error::msg("empty branch name"));
     }
@@ -1751,12 +1745,12 @@ pub(crate) async fn check_ref_format(branch: &str) -> Result<()> {
         .combined_output()
         .await;
     if res.is_err() {
-        let out = go_string(&out);
+        let out = String::from_utf8_lossy(&out).into_owned();
         let msg = out.trim();
         return Err(Error::msg(if msg.is_empty() {
-            format!("invalid branch name {}", quote(branch))
+            format!("invalid branch name {:?}", branch)
         } else {
-            format!("invalid branch name {}: {msg}", quote(branch))
+            format!("invalid branch name {:?}: {msg}", branch)
         }));
     }
     Ok(())
@@ -1802,15 +1796,15 @@ pub async fn rename_branch_with_prefix(
     .is_ok()
     {
         return Err(Error::msg(format!(
-            "rename branch: {} already exists",
-            quote(&new_name)
+            "rename branch: {:?} already exists",
+            new_name
         )));
     }
     let (out, res) = command(["-C", worktree, "branch", "-m", new_name.as_str()])
         .combined_output()
         .await;
     if let Err(e) = res {
-        let out = go_string(&out);
+        let out = String::from_utf8_lossy(&out).into_owned();
         let msg = out.trim();
         return Err(if msg.is_empty() {
             e.wrap(format!("git branch -m {new_name}"))
@@ -1825,18 +1819,18 @@ pub async fn rename_branch_with_prefix(
 /// empty). `{project}.{slug}` becomes two segments; legacy ids stay one.
 pub(crate) fn validate_managed_workspace_id(id: &str) -> Result<()> {
     let id = id.trim();
-    let invalid = || Error::msg(format!("invalid worktree id {}", quote(id)));
+    let invalid = || Error::msg(format!("invalid worktree id {:?}", id));
     if id.is_empty() || id == "." || id == ".." {
         return Err(invalid());
     }
     if id.contains('/') || id.contains('\\') {
         return Err(Error::msg(format!(
-            "invalid worktree id {}: must not contain path separators",
-            quote(id)
+            "invalid worktree id {:?}: must not contain path separators",
+            id
         )));
     }
     let rel = worktree_rel_path(id);
-    if rel.is_empty() || rel == "." || rel == ".." || gopath::is_abs(&rel) {
+    if rel.is_empty() || rel == "." || rel == ".." || path::is_abs(&rel) {
         return Err(invalid());
     }
     if rel
@@ -1845,7 +1839,7 @@ pub(crate) fn validate_managed_workspace_id(id: &str) -> Result<()> {
     {
         return Err(invalid());
     }
-    if gopath::clean(&rel) != rel {
+    if path::clean(&rel) != rel {
         return Err(invalid());
     }
     Ok(())
@@ -1854,20 +1848,20 @@ pub(crate) fn validate_managed_workspace_id(id: &str) -> Result<()> {
 /// An absolute, symlink-resolved path. When trailing components do not exist
 /// yet, the longest existing prefix is resolved and the rest re-attached.
 fn resolve_path_prefix(path: &str) -> std::io::Result<String> {
-    let abs = gopath::abs(path)?;
-    if let Ok(resolved) = gopath::eval_symlinks(&abs) {
+    let abs = path::abs(path)?;
+    if let Some(resolved) = path::eval_symlinks(&abs) {
         return Ok(resolved);
     }
     let mut suffix = String::new();
     let mut cur = abs.clone();
     loop {
-        let parent = gopath::dir(&cur);
+        let parent = path::dir(&cur);
         if parent == cur {
             return Ok(abs);
         }
-        suffix = gopath::join(&[&gopath::base(&cur), &suffix]);
-        if let Ok(resolved) = gopath::eval_symlinks(&parent) {
-            return Ok(gopath::join(&[&resolved, &suffix]));
+        suffix = path::join(&[&path::base(&cur), &suffix]);
+        if let Some(resolved) = path::eval_symlinks(&parent) {
+            return Ok(path::join(&[&resolved, &suffix]));
         }
         cur = parent;
     }
@@ -1908,8 +1902,8 @@ pub(crate) fn parse_porcelain(out: &str) -> Vec<Worktree> {
 }
 
 pub(crate) fn clean_path(p: &str) -> String {
-    let abs = gopath::abs(p).unwrap_or_else(|_| p.to_string());
-    gopath::eval_symlinks(&abs).unwrap_or(abs)
+    let abs = path::abs(p).unwrap_or_else(|_| p.to_string());
+    path::eval_symlinks(&abs).unwrap_or(abs)
 }
 
 /// Go `os.RemoveAll`: removes a file or tree; a missing path is not an error.
@@ -1971,9 +1965,9 @@ mod tests {
         assert_eq!(repo_root(&plain.path).await, None);
         let repo = crate::testutil::init_repo();
         let top = repo_root(&repo.path).await.expect("repo_root(repo)");
-        let want = gopath::eval_symlinks(&repo.path).unwrap_or_default();
+        let want = path::eval_symlinks(&repo.path).unwrap_or_default();
         assert!(
-            top == want || top == gopath::clean(&repo.path),
+            top == want || top == path::clean(&repo.path),
             "repo_root = {top}, want {want}"
         );
         write(&repo.path, "nested/a.txt", "x\n");

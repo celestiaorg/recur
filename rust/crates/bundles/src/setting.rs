@@ -7,7 +7,6 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::go::{self, quote};
 use crate::manifest::{BundleMeta, PROMPT_ARG_NAME_PATTERN, PROMPT_ARG_NAME_RE, valid_bundle_id};
 use crate::{Error, err};
 
@@ -40,7 +39,7 @@ pub struct Setting {
 
 /// Shebang env name for a setting (`api_key` → `RECUR_SETTING_API_KEY`).
 pub fn setting_env_name(name: &str) -> String {
-    format!("RECUR_SETTING_{}", go::to_upper(name.trim()))
+    format!("RECUR_SETTING_{}", name.trim().to_uppercase())
 }
 
 pub(crate) fn parse_settings(
@@ -62,7 +61,7 @@ pub(crate) fn parse_settings(
         if !valid_bundle_id(&id) {
             return Err(err!("setting[{i}]: id is not a safe id"));
         }
-        let qid = quote(&id);
+        let qid = format!("{id:?}");
         if !seen_id.insert(id.clone()) {
             return Err(err!("setting: duplicate id {qid} in bundle"));
         }
@@ -74,12 +73,12 @@ pub(crate) fn parse_settings(
         }
         if !PROMPT_ARG_NAME_RE.is_match(&name) {
             return Err(err!(
-                "setting {qid}: name {} must match {PROMPT_ARG_NAME_PATTERN}",
-                quote(&name)
+                "setting {qid}: name {:?} must match {PROMPT_ARG_NAME_PATTERN}",
+                name
             ));
         }
         if !seen_name.insert(name.clone()) {
-            return Err(err!("setting: duplicate name {} in bundle", quote(&name)));
+            return Err(err!("setting: duplicate name {:?} in bundle", name));
         }
         s.name = name;
 

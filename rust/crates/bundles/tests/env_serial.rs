@@ -8,6 +8,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use recur_bundles::*;
+use recur_domain::path;
 
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
@@ -51,7 +52,7 @@ fn temp_dir() -> (tempfile::TempDir, String) {
 
 fn chat_dir() -> String {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../bundles/Chat");
-    go::clean(&p.to_string_lossy())
+    path::clean(&p.to_string_lossy())
 }
 
 fn shebang_ctx() -> RunCtx {
@@ -87,7 +88,7 @@ fn install_fake_gh_checks(bin: &str, payload: &str) -> EnvGuard {
     };
     write_exe(
         &format!("{bin}/gh"),
-        &format!("#!/bin/sh\ncat {}\nexit {exit}\n", go::quote(&out)),
+        &format!("#!/bin/sh\ncat {:?}\nexit {exit}\n", out),
     );
     prepend_path(bin)
 }

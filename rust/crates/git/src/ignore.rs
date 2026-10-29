@@ -3,7 +3,6 @@
 use std::collections::HashSet;
 
 use crate::command::command;
-use crate::text::go_string;
 
 /// Which of `paths` git ignores in `dir` (gitignore, `info/exclude` and the
 /// user's global excludes). Tracked files that match a pattern are not
@@ -37,7 +36,7 @@ pub fn parse_check_ignore(out: &[u8]) -> Option<HashSet<String>> {
     let set: HashSet<String> = out
         .split(|&b| b == 0)
         .filter(|p| !p.is_empty())
-        .map(go_string)
+        .map(|p| String::from_utf8_lossy(p).into_owned())
         .collect();
     (!set.is_empty()).then_some(set)
 }

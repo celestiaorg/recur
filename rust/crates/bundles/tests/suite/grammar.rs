@@ -194,9 +194,7 @@ fn parse_manifest_missing_grammar_file_reports_stat_error() {
     .unwrap_err();
     assert_eq!(
         err.0,
-        format!(
-            "grammar \"source.x\": read path \"syntaxes/x.tmLanguage.json\": stat {dir}/syntaxes/x.tmLanguage.json: no such file or directory"
-        )
+        "grammar \"source.x\": read path \"syntaxes/x.tmLanguage.json\": No such file or directory (os error 2)"
     );
 }
 

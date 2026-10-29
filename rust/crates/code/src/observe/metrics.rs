@@ -2,10 +2,10 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::ops::ControlFlow;
 
+use recur_domain::path;
 use recur_domain::{DupClone, DupLoc, Hotspot, MetricSnapshot};
 
-use crate::gopath;
-use crate::gostr::{go_chars, lower_rune, truncate_fields};
+use crate::gostr::truncate_fields;
 use crate::langs::is_source_file;
 use crate::scan::scan_lines;
 use crate::walk::{Flow, walk_dir};
@@ -52,7 +52,7 @@ pub fn collect_metrics(root: &str) -> MetricSnapshot {
         if !is_source_file(&d.name) {
             return Ok(Flow::Continue);
         }
-        let rel = gopath::rel(root, path).unwrap_or_default();
+        let rel = path::rel(root, path).unwrap_or_default();
         let Ok(f) = File::open(path) else {
             return Ok(Flow::Continue);
         };
@@ -227,7 +227,7 @@ impl<'a> PreviewReader<'a> {
             return v.clone();
         }
         let mut out = String::new();
-        if let Ok(f) = File::open(gopath::join(&[self.root, rel])) {
+        if let Ok(f) = File::open(path::join(&[self.root, rel])) {
             let _ = scan_lines(f, |n, raw| {
                 if n as i64 == line {
                     out = truncate_fields(String::from_utf8_lossy(raw).trim(), 80);
@@ -337,11 +337,12 @@ fn branch_weight(line: &str) -> i64 {
     .count() as i64
 }
 
-/// Lowercased, with every space removed (runes decoded as Go does).
+/// Lowercased, with every space removed.
 fn normalize_line(raw: &[u8]) -> String {
-    go_chars(raw)
+    String::from_utf8_lossy(raw)
+        .chars()
         .filter(|c| !c.is_whitespace())
-        .map(lower_rune)
+        .flat_map(char::to_lowercase)
         .collect()
 }
 

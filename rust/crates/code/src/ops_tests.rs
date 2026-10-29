@@ -51,7 +51,7 @@ fn create_mkdir_rename_copy_remove() {
         remove(r, "src/gone")
             .unwrap_err()
             .to_string()
-            .starts_with("lstat ")
+            .contains("src/gone: ")
     );
 }
 

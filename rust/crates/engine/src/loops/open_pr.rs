@@ -252,7 +252,7 @@ pub fn format_pr_thread(pr: &Pr) -> String {
         b.push_str(&format!("PR #{}", pr.number));
         let t = pr.title.trim();
         if !t.is_empty() {
-            b.push_str(&format!(" {}", recur_bundles::go::quote(t)));
+            b.push_str(&format!(" {:?}", t));
         }
         b.push('\n');
     }

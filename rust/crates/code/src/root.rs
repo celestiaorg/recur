@@ -4,9 +4,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use recur_domain::path;
+
 use crate::error::{Error, Result};
-use crate::gopath;
-use crate::gostr::quote;
 
 /// The absolute root to browse for a project/loop pair. A non-empty
 /// `loop_worktree` that exists wins (loop-scoped observatory); one that is
@@ -21,8 +21,7 @@ pub fn resolve_root(repo_path: &str, loop_worktree: &str) -> Result<PathBuf> {
 pub fn resolve_root_info(repo_path: &str, loop_worktree: &str) -> Result<(PathBuf, bool)> {
     let wt = loop_worktree.trim();
     if !wt.is_empty() {
-        let abs =
-            gopath::abs(&recur_git::expand_home(wt)).map_err(|e| Error::msg(e.to_string()))?;
+        let abs = path::abs(&recur_git::expand_home(wt)).map_err(|e| Error::msg(e.to_string()))?;
         if fs::metadata(&abs).is_ok_and(|m| m.is_dir()) {
             return Ok((PathBuf::from(abs), true));
         }
@@ -32,11 +31,11 @@ pub fn resolve_root_info(repo_path: &str, loop_worktree: &str) -> Result<(PathBu
     if repo.is_empty() {
         return Err(Error::msg("no repository path"));
     }
-    let abs = gopath::abs(&recur_git::expand_home(repo)).map_err(|e| Error::msg(e.to_string()))?;
+    let abs = path::abs(&recur_git::expand_home(repo)).map_err(|e| Error::msg(e.to_string()))?;
     if !fs::metadata(&abs).is_ok_and(|m| m.is_dir()) {
         return Err(Error::msg(format!(
-            "repository path {} is not a directory",
-            quote(repo)
+            "repository path {:?} is not a directory",
+            repo
         )));
     }
     Ok((PathBuf::from(abs), false))
@@ -49,7 +48,7 @@ pub fn safe_join(root: &Path, rel: &str) -> Result<PathBuf> {
 }
 
 pub(crate) fn safe_join_str(root: &str, rel: &str) -> Result<String> {
-    let root_abs = gopath::abs(root).map_err(|e| Error::msg(e.to_string()))?;
+    let root_abs = path::abs(root).map_err(|e| Error::msg(e.to_string()))?;
     let rel = rel.strip_prefix('/').unwrap_or(rel);
     if rel == "." || rel.is_empty() {
         return Ok(root_abs);
@@ -57,8 +56,8 @@ pub(crate) fn safe_join_str(root: &str, rel: &str) -> Result<String> {
     if rel.contains("..") {
         return Err(Error::msg("path escapes root"));
     }
-    let full = gopath::join(&[&root_abs, rel]);
-    let full_abs = gopath::abs(&full).map_err(|e| Error::msg(e.to_string()))?;
+    let full = path::join(&[&root_abs, rel]);
+    let full_abs = path::abs(&full).map_err(|e| Error::msg(e.to_string()))?;
     if full_abs != root_abs && !full_abs.starts_with(&format!("{root_abs}/")) {
         return Err(Error::msg("path escapes root"));
     }
@@ -71,7 +70,7 @@ pub fn rel_slash(root: &Path, abs: &Path) -> String {
 }
 
 pub(crate) fn rel_slash_str(root: &str, abs: &str) -> String {
-    gopath::rel(root, abs).unwrap_or_else(|_| abs.to_string())
+    path::rel(root, abs).unwrap_or_else(|| abs.to_string())
 }
 
 pub(crate) fn path_str(p: &Path) -> String {
@@ -113,7 +112,7 @@ pub(crate) fn skip_dir(name: &str) -> bool {
 /// `.js`); kept for parity.
 pub(crate) fn skip_file(name: &str) -> bool {
     matches!(
-        gopath::ext(name).to_ascii_lowercase().as_str(),
+        path::ext(name).to_ascii_lowercase().as_str(),
         ".png"
             | ".jpg"
             | ".jpeg"

@@ -8,6 +8,7 @@ use std::path::Path;
 
 use recur_agent::display::PLAN_MAX_PERSIST_CHARS;
 use recur_agent_tools::{PlanStepMeta, PlanSubmission};
+use recur_domain::path;
 use recur_domain::{
     FEED_CARD_PLAN, FeedItem, Plan, PlanAttachment, PlanStep, STEP_DOING, STEP_DONE, STEP_PENDING,
     STEP_SKIPPED,
@@ -134,7 +135,7 @@ fn lookup_chat_plan_attachment(
     let name = names
         .into_iter()
         .find(|n| *n == id || n.starts_with(&prefix))?;
-    let ext = recur_bundles::go::ext(&name).trim_start_matches('.');
+    let ext = path::ext(&name).trim_start_matches('.');
     let kind = match ext.to_lowercase().as_str() {
         "jpg" => "jpeg".to_owned(),
         "" => "image".to_owned(),
@@ -410,10 +411,7 @@ impl Engine {
             }
         });
         let Some(title) = title else {
-            return format!(
-                "Refused: no plan step with id {}.",
-                recur_bundles::go::quote(step_id)
-            );
+            return format!("Refused: no plan step with id {:?}.", step_id);
         };
         if let Some(u) = updated {
             self.publish_loop_updated(&u.id, u.state.clone(), &u.phase, u.iteration);
@@ -539,10 +537,7 @@ impl Engine {
         status: &str,
     ) -> String {
         if ![STEP_PENDING, STEP_DOING, STEP_DONE, STEP_SKIPPED].contains(&status) {
-            return format!(
-                "Refused: unknown step status {}.",
-                recur_bundles::go::quote(status)
-            );
+            return format!("Refused: unknown step status {:?}.", status);
         }
         self.apply_plan_step_update(workspace_id, "AR", step_id, status, "")
     }

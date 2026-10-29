@@ -2,7 +2,6 @@
 //! the rails, returning success or the named refusal.
 
 use super::{EMPTY_OBJECT_SCHEMA, schema_summary_only, strict};
-use crate::gostr::{quote, to_lower};
 use crate::json::{Shape, Ty, field};
 use crate::names;
 use crate::tool::{Call, Tool, ToolError};
@@ -97,11 +96,11 @@ turn is governed like any agent turn; findings are recorded."
     async fn execute(&self, c: Call) -> Result<String, ToolError> {
         let h = c.host()?;
         let a = strict(&c.args, &DISPATCH_SPECIALIST_IN)?;
-        let role = to_lower(a.str("role").trim());
+        let role = a.str("role").trim().to_lowercase();
         if role != "reviewer" && role != "security" {
             return Err(format!(
-                "dispatch_specialist: role must be reviewer or security, got {}",
-                quote(a.str("role"))
+                "dispatch_specialist: role must be reviewer or security, got {:?}",
+                a.str("role")
             )
             .into());
         }

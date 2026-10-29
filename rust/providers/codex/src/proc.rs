@@ -87,26 +87,6 @@ pub fn abs(p: &Path) -> io::Result<PathBuf> {
     Ok(out)
 }
 
-/// Go's errno text: the OS message without Rust's ` (os error N)` suffix,
-/// lower-cased first letter (`no such file or directory`).
-pub fn go_errno(e: &io::Error) -> String {
-    let s = e.to_string();
-    let s = match s.rfind(" (os error ") {
-        Some(i) if e.raw_os_error().is_some() => &s[..i],
-        _ => &s,
-    };
-    let mut c = s.chars();
-    match c.next() {
-        Some(f) => f.to_lowercase().chain(c).collect(),
-        None => String::new(),
-    }
-}
-
-/// Go's `*PathError` text (`open /x: permission denied`).
-pub fn path_error(op: &str, path: &Path, e: &io::Error) -> String {
-    format!("{op} {}: {}", path.display(), go_errno(e))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -118,13 +98,5 @@ mod tests {
             PathBuf::from("/a/c")
         );
         assert!(abs(Path::new("x")).unwrap().is_absolute());
-    }
-
-    #[test]
-    fn errno() {
-        assert_eq!(
-            path_error("open", Path::new("/x"), &io::Error::from_raw_os_error(13)),
-            "open /x: permission denied"
-        );
     }
 }

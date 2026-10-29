@@ -1,4 +1,4 @@
-//! Port of `symbol_test.go`.
+//! Bundle `[[symbol]]` rules.
 
 use recur_bundles::*;
 

@@ -1,4 +1,4 @@
-//! `code_service_test.go`.
+//! The code service.
 
 use std::collections::BTreeSet;
 

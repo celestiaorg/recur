@@ -148,7 +148,7 @@ fn excludes_and_globs_match_go() {
         }
     }
     let mut pats: Vec<String> = g.excluded.keys().cloned().collect();
-    // Go listed them in declaration order; the map sorted them.
+    // The fixture lists them in declaration order; the map sorted them.
     pats.sort_by_key(|p| {
         [
             "**/.git",

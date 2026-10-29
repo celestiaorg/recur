@@ -1,4 +1,4 @@
-//! Port of `shipped_tests_test.go` and `seed_shipped_test.go`.
+//! The shipped bundles' own tests, and seeding them.
 
 use std::collections::HashSet;
 

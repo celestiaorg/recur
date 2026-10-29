@@ -60,8 +60,8 @@ struct Case {
     notes: Vec<Value>,
 }
 
-/// JSON compares as values, also inside JSON-text strings; a Go
-/// `encoding/json` error matches any text with the same prefix.
+/// JSON compares as values, also inside JSON-text strings; a fixture JSON
+/// decode error matches any text with the same prefix.
 fn same(got: &Value, want: &Value) -> bool {
     match (got, want) {
         (Value::String(g), Value::String(w)) => same_text(g, w),
@@ -91,8 +91,9 @@ fn same_text(got: &str, want: &str) -> bool {
     }
 }
 
-/// Go keeps raw JSON text verbatim: an out-of-range number id still echoes,
-/// and lone surrogate escapes reach the host unrepaired.
+/// Fixture cases that keep raw JSON text verbatim (an out-of-range number id
+/// still echoes, lone surrogate escapes reach the host unrepaired), which
+/// Recur does not.
 const GO_RAW_ONLY: &[&str] = &["id huge"];
 const GO_RAW_NOTES: &[&str] = &["call surrogate"];
 

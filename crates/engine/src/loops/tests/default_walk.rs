@@ -90,7 +90,7 @@ async fn unresolvable_guard_idles_with_reason() {
     t.close().await;
 }
 
-// ---- fixture_test.go
+// ---- fixture
 
 #[test]
 fn fixture_pack_parses() {

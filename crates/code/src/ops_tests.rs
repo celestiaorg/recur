@@ -1,4 +1,4 @@
-//! Ports of `ops_test.go` and `search_replace_test.go`.
+//! File operation and search/replace tests.
 
 use std::fs;
 

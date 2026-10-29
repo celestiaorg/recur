@@ -559,7 +559,7 @@ mod tests {
         assert!(res.is_err(), "a remote base on an empty repo must fail");
     }
 
-    // --- remote_test.go ---
+    // --- remote ---
 
     #[tokio::test]
     async fn upstream_push_and_fetch() {
@@ -764,7 +764,7 @@ mod tests {
         );
     }
 
-    // --- pr_head_test.go ---
+    // --- pr head ---
 
     #[tokio::test]
     async fn fetch_pr_head_rejects_invalid_number() {

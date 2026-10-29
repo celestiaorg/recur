@@ -1,4 +1,4 @@
-//! Port of `grammar_test.go`.
+//! Bundle grammars.
 
 use recur_bundles::*;
 

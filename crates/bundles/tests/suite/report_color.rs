@@ -1,4 +1,4 @@
-//! Port of `report_color_test.go`.
+//! Report colors.
 
 use recur_bundles::*;
 

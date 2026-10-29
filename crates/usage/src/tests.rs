@@ -1478,7 +1478,7 @@ async fn disconnect_revokes_and_removes_tokens() {
     p.stop();
 }
 
-// ---- app/provider_usage_test.go
+// ---- provider usage
 
 fn service(
     settings: Arc<Mutex<recur_domain::Settings>>,

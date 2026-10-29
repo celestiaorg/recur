@@ -60,7 +60,7 @@ async fn branch_exists(repo: &str, branch: &str) -> bool {
         .await
 }
 
-// ---- workspace_id_test.go
+// ---- workspace id
 
 #[test]
 fn alloc_kitchen_id_format() {
@@ -438,7 +438,7 @@ async fn create_refuses_non_git_and_unknown_projects() {
     assert_eq!(err.0, "project \"empty\" has no repo path");
 }
 
-// ---- workspace_create_test.go (allocate)
+// ---- workspace create (allocate)
 
 #[tokio::test]
 async fn begin_create_returns_before_worktree() {
@@ -916,7 +916,7 @@ async fn remove_workspace_refuses_in_flight_chat() {
     );
 }
 
-// ---- setup_teardown_test.go
+// ---- setup teardown
 
 #[tokio::test]
 async fn create_workspace_runs_setup_once() {
@@ -1131,7 +1131,7 @@ async fn delete_failed_begin_create_prunes_empty_branch() {
     t.close().await;
 }
 
-// ---- lifecycle_test.go (hand workspaces)
+// ---- lifecycle (hand workspaces)
 
 #[tokio::test]
 async fn remove_keeps_history_and_branch_by_default() {
@@ -1565,7 +1565,7 @@ async fn push_working_copy() {
     t.engine.fetch_working_copy_upstream(&ws.id).await;
 }
 
-// ---- diff_sync_test.go
+// ---- diff sync
 
 #[tokio::test]
 async fn schedule_refresh_all_single_flight() {
@@ -1639,7 +1639,7 @@ async fn sync_workspace_diff_from_git() {
     );
 }
 
-// ---- branch_sync_test.go
+// ---- branch sync
 
 #[tokio::test]
 async fn sync_workspace_branch_after_rename() {

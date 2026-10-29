@@ -1,4 +1,4 @@
-//! Port of `github_snapshot_live_test.go`: real-GitHub checks that the
+//! Real-GitHub checks that the
 //! snapshot keeps Copilot work events (REST timeline) and a timing
 //! comparison of snapshot strategies. Run with
 //! `RECUR_GH_BENCH=1 [RECUR_GH_BENCH_PR=owner/repo#N] cargo test -p recur-forge -- --ignored live_`.

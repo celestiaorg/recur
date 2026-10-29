@@ -96,7 +96,8 @@ fn known_key(k: &str) -> bool {
         )
 }
 
-/// Reserved app chords (canonical). Keep in sync with `keyequiv.go`.
+/// Reserved app chords (canonical). Keep in sync with
+/// `recur_bundles::keyequiv::RESERVED_APP_CHORDS`.
 pub const RESERVED_APP_CHORDS: &[&str] = &[
     "shift+cmd+/",
     "cmd+k",

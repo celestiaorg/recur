@@ -1,4 +1,4 @@
-//! Port of `copyfiles_test.go`.
+//! Copy-files tests.
 
 use std::fs;
 use std::path::Path;

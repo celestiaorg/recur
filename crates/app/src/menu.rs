@@ -144,7 +144,7 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
     None
 }
 
-/// The menubar accelerators (`accel(item, chord)` in `app_menu.go`), registered on macOS.
+/// The menubar accelerators, registered on macOS.
 pub fn bind_menu_keys(cx: &mut App) {
     if !NATIVE_MENU_ACCELERATORS {
         return;

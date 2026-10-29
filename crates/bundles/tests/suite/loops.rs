@@ -1,4 +1,4 @@
-//! Port of `loop_test.go`.
+//! Bundle `[[loop]]` and `[[policy]]` parsing.
 
 use std::collections::{BTreeMap, HashMap};
 

@@ -1,4 +1,4 @@
-//! Port of `coding_test.go`, plus Bash cancellation and WaitDelay.
+//! The coding tools, plus Bash cancellation and WaitDelay.
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};

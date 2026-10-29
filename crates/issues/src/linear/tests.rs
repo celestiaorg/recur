@@ -1,6 +1,5 @@
-//! Ports of `app/issues_test.go`, the claim half of
-//! `app/workspace_issue_test.go`, and the Linear cases of
-//! `engine/user_mcp_test.go`, plus GraphQL runs against a local server.
+//! Linear issues, issue claims and the Linear MCP server, plus GraphQL runs
+//! against a local server.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

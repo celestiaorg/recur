@@ -1,4 +1,4 @@
-//! Catalog snapshot (`golden/catalog.json`) plus the `catalog_test.go` cases.
+//! Catalog snapshot (`golden/catalog.json`) plus catalog rules.
 
 use std::sync::Arc;
 

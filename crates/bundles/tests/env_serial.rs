@@ -1,4 +1,4 @@
-//! The `prompt_test.go` / `exec_test.go` cases that change the process
+//! The prompt and exec cases that change the process
 //! environment (a fake `gh` on PATH, a stale `RECUR_*` var). They run in
 //! their own test binary, serialized by [`ENV_LOCK`], so no other test can
 //! observe the mutation.

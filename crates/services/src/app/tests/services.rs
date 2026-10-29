@@ -1,4 +1,4 @@
-//! `services_test.go`.
+//! Service wiring.
 
 use std::sync::Arc;
 use std::time::Duration;

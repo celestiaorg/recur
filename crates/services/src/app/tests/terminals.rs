@@ -1,4 +1,4 @@
-//! `terminal_service_test.go` and `terminal_persist_test.go`.
+//! The terminal service and terminal persistence.
 
 use std::path::Path;
 use std::time::{Duration, Instant};

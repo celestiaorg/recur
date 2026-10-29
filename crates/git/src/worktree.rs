@@ -2772,7 +2772,7 @@ mod tests {
         assert_eq!(m.commits_ahead(&wt.path, "main").await.expect("ahead"), 1);
     }
 
-    // --- merge_test.go ---
+    // --- merge ---
 
     async fn add_branch_commit(
         m: &Manager,

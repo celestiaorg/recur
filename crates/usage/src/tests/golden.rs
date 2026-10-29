@@ -25,7 +25,7 @@ fn s(v: &Value) -> &str {
     v.as_str().unwrap_or_default()
 }
 
-/// Go marshals nil slices as `null`; compare through the Rust encoding.
+/// The fixture writes empty lists as `null`; compare through the Rust encoding.
 fn enc<T: serde::Serialize>(v: &T) -> Value {
     recur_domain::json::canonical(serde_json::to_value(v).unwrap())
 }

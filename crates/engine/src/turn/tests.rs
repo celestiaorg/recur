@@ -720,7 +720,7 @@ async fn compact_writes_session_context() {
     te.close().await;
 }
 
-// ---- router (provider_test.go)
+// ---- router
 
 #[tokio::test]
 async fn nil_pin_fails_closed() {
@@ -993,7 +993,7 @@ async fn in_process_providers_get_a_turn_token() {
     te.close().await;
 }
 
-// ---- broadcast (thinking_broadcast_test.go, context_usage_test.go)
+// ---- broadcast (thinking, context usage)
 
 fn bc(te: &TestEngine) -> SessionBroadcast {
     SessionBroadcast::new(

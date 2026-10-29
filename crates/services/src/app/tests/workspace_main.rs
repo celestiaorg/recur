@@ -1,4 +1,4 @@
-//! `workspace_main_test.go`.
+//! The main working copy.
 
 use recur_domain::{
     Project, UPDATE_WORKSPACE_AUTOSTASH, UPDATE_WORKSPACE_NOOP, UPDATE_WORKSPACE_UPDATED,

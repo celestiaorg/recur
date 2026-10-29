@@ -1,4 +1,4 @@
-//! `shell_test.go` and `schedules_test.go`.
+//! The shell service and schedules.
 
 use chrono::{Datelike, TimeZone, Timelike};
 use recur_domain::{Project, ScheduledPrompt};

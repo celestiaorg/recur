@@ -1,4 +1,4 @@
-//! Port of `open_in_test.go`.
+//! Open-in tests.
 
 use std::cell::RefCell;
 

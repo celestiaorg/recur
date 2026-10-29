@@ -1,4 +1,4 @@
-//! The merge and remap cases of `model_catalog_test.go`. The per-provider
+//! The model catalog's merge and remap cases. The per-provider
 //! lists (Claude flags, Cursor ordering and params, Codex labels) are tested
 //! in their provider crates.
 
@@ -338,7 +338,7 @@ fn model_catalog_includes_compatible_providers() {
     );
 }
 
-/// `chatgpt_service_test.go`.
+/// The ChatGPT catalogue without Codex.
 #[tokio::test(flavor = "multi_thread")]
 async fn chatgpt_catalogue_and_fallback_without_codex() {
     let s = Settings {

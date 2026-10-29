@@ -1,4 +1,4 @@
-//! Port of `observe_test.go`.
+//! Observatory analysis tests.
 
 use recur_domain::{DiffLine, FileDiff, Finding, Severity, TestResult};
 use tokio_util::sync::CancellationToken;

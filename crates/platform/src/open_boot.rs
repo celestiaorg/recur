@@ -1,4 +1,4 @@
-//! Launch-time single-instance flow (root `open_boot.go`): claim the data dir
+//! Launch-time single-instance flow: claim the data dir
 //! or hand the launch to the running instance, park IPC requests until the
 //! services exist, and replay opens the UI missed.
 

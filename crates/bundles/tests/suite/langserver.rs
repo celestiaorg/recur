@@ -1,4 +1,4 @@
-//! Port of `langserver_test.go`.
+//! Bundle language servers.
 
 use std::collections::HashMap;
 

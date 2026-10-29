@@ -1,4 +1,4 @@
-//! `workspace_base_test.go`.
+//! Workspace base branches.
 
 use super::{Fx, git, git_out};
 

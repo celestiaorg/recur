@@ -150,7 +150,7 @@ fn unknown_role_is_the_zero_spec() {
     assert_eq!(role_spec(&AgentRole::Maestro), RoleSpec::default());
 }
 
-// role_tools_test.go
+// role tools
 
 #[test]
 fn mode_tools_include_skill_mcp() {

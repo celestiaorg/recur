@@ -1,4 +1,4 @@
-//! Port of `code_test.go`.
+//! Worktree file access tests.
 
 use std::collections::HashMap;
 use std::fs;

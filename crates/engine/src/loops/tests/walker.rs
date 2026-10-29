@@ -50,7 +50,7 @@ fn add_ws(t: &TestEngine, id: &str, state: WorkspaceState, phase: &str) {
         .expect("add workspace");
 }
 
-// ---- walker_test.go
+// ---- walker
 
 #[tokio::test]
 async fn inbound_graph_phase() {
@@ -340,7 +340,7 @@ async fn run_phase_attempt_board_cap_is_terminal() {
     );
 }
 
-// ---- rails_test.go
+// ---- rails
 
 #[tokio::test]
 async fn can_open_pr_policy_bar() {
@@ -377,7 +377,7 @@ async fn can_open_pr_policy_bar() {
     assert!(ok, "leftover low under Balanced: {reason}");
 }
 
-// ---- converge_test.go
+// ---- converge
 
 fn workspace_events(t: &TestEngine) -> Vec<recur_domain::FeedItem> {
     t.events

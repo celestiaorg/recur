@@ -1,4 +1,4 @@
-//! Port of `server_test.go`, `tools_briefing_test.go` and `wrap_test.go`.
+//! MCP server tests, the briefing tools and wrapping.
 
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
@@ -1478,7 +1478,7 @@ async fn open_pr_tool() {
     assert!(!draft.is_error && text(&draft).contains("draft"));
 }
 
-// tools_briefing_test.go
+// tools briefing
 
 #[tokio::test]
 async fn briefing_tools_refuse_non_app() {
@@ -1531,7 +1531,7 @@ async fn briefing_tools_app_happy_path() {
     );
 }
 
-// wrap_test.go
+// wrap
 
 #[test]
 fn all_tools_wraps_host_tools() {

@@ -30,9 +30,9 @@ Read before inventing architecture:
 
 ## Dev environment tips
 
-- Install [mise](https://mise.jdx.dev) and run `mise install` once; Rust comes from `rust-toolchain.toml` through rustup. `mise tasks` lists every task.
+- Install [mise](https://mise.jdx.dev) and run `mise install` once. mise pins Rust (overriding `rust-toolchain.toml`, which CI uses; bump both together) and routes `cargo` through [mr-boxington](https://mr-boxington.jdx.dev) (`mbx`), which shares build output across worktrees and makes `target/` a symlink into its cache. `mise tasks` lists every task.
 - Task names use **`verb:object`** (`test:bundles`, `lint:bundles`, `linux:package`).
-- Dev app: `mise run run` (`cargo run -p recur-desktop`). It defaults to the `Recur` data dir, the same as the packaged app; `RECUR_DATA_DIR` / `RECUR_WORKTREES_DIR` override it.
+- Dev app: `mise run dev` (`cargo run -p recur-desktop`). It defaults to the `Recur` data dir, the same as the packaged app; `RECUR_DATA_DIR` / `RECUR_WORKTREES_DIR` override it.
 - Dogfood: `.recur/project.toml` sets `RECUR_INSTANCE_LABEL=$RECUR_BRANCH`. When that env is present, Recur paints a `dev` chip with the branch in the titlebar gap (packaged Recur omits it).
 - Everything builds into `target/`: `target/debug/recur` (desktop) and `target/debug/recur-cli` (CLI). Packages go to `target/package/`.
 - macOS package: `mise run macos:package` (`Recur.app`, DMG and updater zip; `UNIVERSAL=true`, signing and notarization env in `build/darwin/package.sh`). `mise run macos:smoke` installs and launches the DMG in a sandbox.

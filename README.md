@@ -136,7 +136,7 @@ Prerequisites:
 All tasks run through `mise run` from the repository root (`mise tasks` lists them).
 
 ```bash
-mise run run             # run the desktop app (cargo run -p recur-desktop)
+mise run dev             # run the desktop app (cargo run -p recur-desktop)
 mise run build           # build the app and CLI into target/
 mise run macos:package   # target/package/Recur.app, its DMG and updater zip (macOS)
 mise run linux:package   # target/package/recur-linux-<arch>.tar.gz, .deb and .rpm

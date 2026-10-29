@@ -72,7 +72,7 @@ copy_files = ''
 
 [[run]]
 name = "dev"
-cmd = "mise run run"
+cmd = "mise run dev"
 
 [[run]]
 name = "lint"

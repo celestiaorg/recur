@@ -1,6 +1,6 @@
 # Tools for Recur; tasks live in tasks/*.toml. `mise install` once, then
-# `mise run <task>` (`mise tasks` lists them). Rust itself comes from
-# rust-toolchain.toml.
+# `mise run <task>` (`mise tasks` lists them). The rust pin overrides
+# rust-toolchain.toml (CI's toolchain); keep the two in step.
 
 [tools]
 # mr-boxington (mbx) shares cargo build output across worktrees.

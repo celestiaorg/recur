@@ -71,7 +71,7 @@ pub fn send_or_launch(abs: &str) -> Result<(), String> {
     }
     let launch_failed = |e: String| {
         format!(
-            "Recur isn't running and could not be launched: {e}\nStart Recur (or `mise run run`) and retry"
+            "Recur isn't running and could not be launched: {e}\nStart Recur (or `mise run dev`) and retry"
         )
     };
     let mut launched = false;

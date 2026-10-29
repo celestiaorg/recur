@@ -668,7 +668,7 @@ impl CursorRunner {
             );
         }
         for u in &req.user_mcp {
-            let name = crate::gojson::trim(&u.name);
+            let name = u.name.trim();
             if !name.is_empty() {
                 servers.insert(name.to_owned(), cursor_user_mcp(u));
             }
@@ -941,7 +941,7 @@ pub(crate) fn mcp_status_for(req: &TurnRequest) -> Vec<McpServerStatus> {
         out.push(connected("playwright"));
     }
     for u in &req.user_mcp {
-        let name = crate::gojson::trim(&u.name);
+        let name = u.name.trim();
         if !name.is_empty() {
             out.push(connected(name));
         }

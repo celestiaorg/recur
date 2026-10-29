@@ -62,8 +62,7 @@ impl ExpandError {
 /// A composer-leading `/name` with nothing but whitespace after it (the
 /// frontend's prompt-action query rule).
 static LEADING_SLASH_TOKEN: LazyLock<Regex> = LazyLock::new(|| {
-    recur_bundles::go::compile_regexp(r"^/([A-Za-z0-9][A-Za-z0-9_-]*)\s*$")
-        .expect("leading slash pattern")
+    Regex::new(r"^/([A-Za-z0-9][A-Za-z0-9_-]*)\s*$").expect("leading slash pattern")
 });
 
 /// The action token of a composer that is only `/name`.

@@ -10,8 +10,6 @@
 //! quota types of `usage/types.go`, and the pure rules of the frontend
 //! `contextUsage`, `tasktools`, `todos`, `webtools` and `mcp` modules.
 
-mod gostr;
-
 pub mod attach;
 pub mod catalog;
 pub mod context_usage;

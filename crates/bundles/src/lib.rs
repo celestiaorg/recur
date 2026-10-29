@@ -17,7 +17,6 @@
 //!   [`collect_search_groups`], [`expand_matching`].
 //! - Authoring: [`lint_bundles`], [`run_bundle_tests`], [`load_tests`].
 
-pub mod go;
 pub mod js;
 
 mod compile;

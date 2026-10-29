@@ -61,7 +61,7 @@ const CONTEXT_WINDOWS: &[(&str, ContextLimits)] = &[
 const DEFAULT_CONTEXT_WINDOW: i64 = 200_000;
 
 fn normalize_model_id(id: &str) -> String {
-    crate::gojson::trim(id).to_lowercase().replace('.', "-")
+    id.trim().to_lowercase().replace('.', "-")
 }
 
 /// The context limits for a bare Cursor model id; unknown ids get 200k.
@@ -138,7 +138,7 @@ pub fn resolve_context_window(model: &str, flags: &Flags) -> i64 {
 }
 
 fn max_mode_enabled(flags: &Flags) -> bool {
-    let get = |k: &str| flags.get(k).map_or("", |v| crate::gojson::trim(v));
+    let get = |k: &str| flags.get(k).map_or("", |v| v.trim());
     if matches!(
         get("maxMode").to_lowercase().as_str(),
         "true" | "on" | "1" | "max"
@@ -150,7 +150,7 @@ fn max_mode_enabled(flags: &Flags) -> bool {
 
 /// "1m", "200k", "300000", …; 0 when unparseable.
 pub fn parse_context_flag(s: &str) -> i64 {
-    let s = crate::gojson::trim(s).to_lowercase();
+    let s = s.trim().to_lowercase();
     if s.is_empty() {
         return 0;
     }
@@ -161,7 +161,7 @@ pub fn parse_context_flag(s: &str) -> i64 {
     } else {
         (s.as_str(), 1.0)
     };
-    let num = crate::gojson::trim(num);
+    let num = num.trim();
     if num.is_empty() {
         return 0;
     }

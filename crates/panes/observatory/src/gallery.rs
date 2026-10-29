@@ -182,7 +182,7 @@ pub fn resolvers(variant: &str) -> MockOptions {
         })
         .resolver("FetchAsset", move |a, _, _| {
             let url = arg(a, 0);
-            let Ok(u) = url::Url::parse(&format!("http://wails{url}")) else {
+            let Ok(u) = url::Url::parse(&format!("http://recur{url}")) else {
                 return Reply::null();
             };
             let q = |k: &str| {

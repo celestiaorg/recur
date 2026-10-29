@@ -15,7 +15,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
-use crate::gojson::{null_default, trim, truncate_bytes};
+use crate::wire::{null_default, truncate_bytes};
 
 const CONNECT_PROTOCOL_VERSION: &str = "1";
 
@@ -101,7 +101,7 @@ pub(crate) fn parse_connect_error(raw: &[u8]) -> Option<ConnectError> {
         code: b.code,
         message: b.message,
         details: b.details.map(|d| d.get().to_owned()).unwrap_or_default(),
-        raw: truncate_bytes(trim(&String::from_utf8_lossy(raw)), 800),
+        raw: truncate_bytes(String::from_utf8_lossy(raw).trim(), 800),
     })
 }
 
@@ -508,7 +508,7 @@ async fn read_limited(
 /// The terminal frame as an error, or `Ok` on success. A malformed trailer
 /// is not worth failing an otherwise complete run.
 pub(crate) fn decode_end_stream(frame: &[u8]) -> Result<(), Error> {
-    if trim(&String::from_utf8_lossy(frame)).is_empty() {
+    if String::from_utf8_lossy(frame).trim().is_empty() {
         return Ok(());
     }
     #[derive(Deserialize)]

@@ -92,10 +92,7 @@ pub fn sdk_version(bin_or_root: &Path) -> String {
     #[derive(serde::Deserialize, Default)]
     #[serde(default)]
     struct Manifest {
-        #[serde(
-            rename = "sdkVersion",
-            deserialize_with = "crate::gojson::null_default"
-        )]
+        #[serde(rename = "sdkVersion", deserialize_with = "crate::wire::null_default")]
         sdk_version: String,
     }
     let Some(root) = bridge_root(bin_or_root) else {
@@ -107,7 +104,7 @@ pub fn sdk_version(bin_or_root: &Path) -> String {
     serde_json::from_slice::<Option<Manifest>>(&data)
         .ok()
         .flatten()
-        .map(|m| crate::gojson::trim(&m.sdk_version).to_owned())
+        .map(|m| m.sdk_version.trim().to_owned())
         .unwrap_or_default()
 }
 

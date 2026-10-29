@@ -24,11 +24,11 @@ fn running(s: &mut S) -> Vec<String> {
 }
 
 const FIVE: [(&str, &str); 5] = [
-    ("dev", "wails3 task dev"),
-    ("test:go", "wails3 task test:go"),
-    ("test:frontend", "wails3 task test:frontend"),
-    ("check", "wails3 task check"),
-    ("tidy", "wails3 task common:go:mod:tidy"),
+    ("dev", "pnpm dev"),
+    ("test:go", "go test ./..."),
+    ("test:frontend", "pnpm test"),
+    ("check", "pnpm check"),
+    ("tidy", "go mod tidy"),
 ];
 const NAMES: [&str; 5] = ["dev", "test:go", "test:frontend", "check", "tidy"];
 

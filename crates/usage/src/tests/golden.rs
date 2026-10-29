@@ -1,5 +1,5 @@
-//! Replays `tests/golden/go_usage.json`, recorded from the Go usage package
-//! (generator next to it as `gen_go_usage.go.txt`).
+//! Snapshot tests over `tests/golden/go_usage.json`. Edit the fixture by hand
+//! when the behavior changes on purpose.
 
 use serde_json::{Value, json};
 

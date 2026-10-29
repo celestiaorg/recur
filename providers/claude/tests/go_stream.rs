@@ -1,8 +1,6 @@
-//! Go-parsed answers for the stream-json parser (risk R3): every corpus line
-//! through `parseStreamLine`, normalized per event kind. The Go generator
-//! fails if its parser sets a field outside that projection, so a match here
-//! means nothing the Go events carried was lost. See
-//! `golden/gen_go_stream.go.txt` to regenerate.
+//! Snapshot answers for the stream-json parser: every corpus line through
+//! `parse_line`, normalized per event kind (`golden/go_stream.json`). Edit the
+//! fixture by hand when the behavior changes on purpose.
 
 use recur_agent::{AgentEvent, TokenUsage, TurnResult};
 use recur_provider_claude::stream::parse_line;

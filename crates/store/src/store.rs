@@ -67,52 +67,8 @@ pub(crate) fn now_rfc3339() -> String {
     Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
 }
 
-fn nil_empty<T>(v: &mut Option<Vec<T>>) {
-    if v.as_ref().is_some_and(Vec::is_empty) {
-        *v = None;
-    }
-}
-
 fn nil_if_empty<T>(v: Vec<T>) -> Option<Vec<T>> {
     (!v.is_empty()).then_some(v)
-}
-
-/// The getters hand out fully owned copies. Go's deep copy re-slices every
-/// nested slice with `append([]T(nil), …)`, which turns an empty slice into
-/// nil; these mirror that so JSON keeps Go's `null`.
-pub(crate) fn clone_workspace(w: &Workspace) -> Workspace {
-    let mut w = w.clone();
-    nil_empty(&mut w.agent_codes);
-    nil_empty(&mut w.convergence);
-    w
-}
-
-fn clone_agent(a: &Agent) -> Agent {
-    let mut a = a.clone();
-    nil_empty(&mut a.steps);
-    a
-}
-
-fn clone_files(files: &mut Option<Vec<recur_domain::FileDiff>>) {
-    if let Some(files) = files {
-        for f in files {
-            nil_empty(&mut f.lines);
-        }
-    }
-}
-
-fn clone_pr(p: &Pr) -> Pr {
-    let mut p = p.clone();
-    if let Some(commits) = &mut p.commits {
-        for c in commits {
-            clone_files(&mut c.files);
-        }
-    }
-    clone_files(&mut p.files);
-    nil_empty(&mut p.comments);
-    nil_empty(&mut p.verify);
-    nil_empty(&mut p.checks);
-    p
 }
 
 /// Keeps a pin only when that command still exists.
@@ -346,7 +302,7 @@ fn inbox_targets_deleted_workspace(
 }
 
 fn mergeable_agent(dst: &Agent, src: &Agent) -> Agent {
-    let mut out = clone_agent(dst);
+    let mut out = dst.clone();
     if !src.session_id.is_empty() {
         out.session_id = src.session_id.clone();
         if !src.model.is_empty() {
@@ -410,8 +366,7 @@ impl Store {
     }
 
     /// Releases the database (checkpointing the WAL first). Safe to call
-    /// twice and on an in-memory store; later writes fail or are skipped as
-    /// in Go after `Close`.
+    /// twice and on an in-memory store; later writes fail or are skipped.
     pub fn close(&self) -> Result<()> {
         match &self.db {
             Some(db) => db.close(),
@@ -419,8 +374,8 @@ impl Store {
         }
     }
 
-    /// The whole state replaced by the demo seed and written through, as the
-    /// Go tests' persistDemoSeed does. Test and fixture use only.
+    /// The whole state replaced by the demo seed and written through. Test
+    /// and fixture use only.
     #[doc(hidden)]
     pub fn persist_demo_seed(&self) -> Result<()> {
         let mut s = self.state.write();
@@ -433,7 +388,7 @@ impl Store {
 
     // ---- Project groups ----
 
-    /// Go returns nil (JSON `null`) when there are none.
+    /// `None` when there are none.
     pub fn project_groups(&self) -> Option<Vec<ProjectGroup>> {
         nil_if_empty(self.state.read().project_groups.clone())
     }
@@ -542,7 +497,7 @@ impl Store {
     // ---- Projects ----
 
     /// Every project with run-config overlaid from its project.toml (read
-    /// outside the store lock). Go returns nil when there are none.
+    /// outside the store lock). `None` when there are none.
     pub fn projects(&self) -> Option<Vec<Project>> {
         let list = self.state.read().projects.clone();
         nil_if_empty(list.into_iter().map(projfile::overlay).collect())
@@ -642,8 +597,8 @@ impl Store {
 
     /// Removes a project and cascades: every workspace in it and all their
     /// data (agents, feed, findings, events, escalations, sessions, PRs, inbox
-    /// rows). Returns the deleted workspace ids (`None` when there were none,
-    /// Go's nil). A missing project is a no-op.
+    /// rows). Returns the deleted workspace ids (`None` when there were none).
+    /// A missing project is a no-op.
     pub fn delete_project(&self, id: &str) -> Result<Option<Vec<String>>> {
         let mut s = self.state.write();
         let ws_ids: Vec<String> = s
@@ -745,12 +700,7 @@ impl Store {
 
     /// Workspaces in insertion order (oldest first).
     pub fn workspaces(&self) -> Vec<Workspace> {
-        self.state
-            .read()
-            .workspaces
-            .iter()
-            .map(clone_workspace)
-            .collect()
+        self.state.read().workspaces.clone()
     }
 
     pub fn workspace(&self, id: &str) -> Option<Workspace> {
@@ -759,7 +709,7 @@ impl Store {
             .workspaces
             .iter()
             .find(|w| w.id == id)
-            .map(clone_workspace)
+            .cloned()
     }
 
     /// Applies f under the store lock and writes the result through
@@ -785,7 +735,7 @@ impl Store {
         if let Some(db) = &self.db {
             db.upsert_doc("workspaces", &w.id, &w, sort)?;
         }
-        let out = clone_workspace(&w);
+        let out = w.clone();
         match idx {
             Some(i) => s.workspaces[i] = w,
             None => s.workspaces.push(w),
@@ -810,7 +760,7 @@ impl Store {
             .read()
             .agents
             .get(workspace_id)
-            .map(|l| l.iter().map(clone_agent).collect())
+            .map(|l| l.to_vec())
             .unwrap_or_default()
     }
 
@@ -822,7 +772,7 @@ impl Store {
             .get(workspace_id)?
             .iter()
             .find(|a| a.code == code || a.id == code)
-            .map(clone_agent)
+            .cloned()
     }
 
     fn persist_agents(&self, s: &State, workspace_id: &str) {
@@ -901,7 +851,7 @@ impl Store {
             .map(|(i, a)| (a.code.clone(), i))
             .collect();
         for a in &from {
-            let mut a = clone_agent(a);
+            let mut a = a.clone();
             if let Some(next) = remap.get(&a.code).filter(|n| !n.is_empty()) {
                 a.code = next.clone();
             }
@@ -946,7 +896,7 @@ impl Store {
 
     // ---- Activity feed ----
 
-    /// Newest first; `None` when empty (Go's nil).
+    /// Newest first; `None` when empty.
     pub fn feed(&self, workspace_id: &str) -> Option<Vec<FeedItem>> {
         nil_if_empty(
             self.state
@@ -1297,7 +1247,7 @@ impl Store {
         Ok(f.clone())
     }
 
-    /// Still-open findings (insertion order); `None` when none (Go's nil).
+    /// Still-open findings (insertion order); `None` when none.
     pub fn open_findings(&self, workspace_id: &str) -> Option<Vec<Finding>> {
         self.findings_by_status(workspace_id, FindingStatus::Open.as_str())
     }
@@ -1365,12 +1315,7 @@ impl Store {
     /// List rows: every field except commits and files, which can be tens
     /// of megabytes per PR. [`Store::pr`] returns the full record.
     pub fn prs(&self) -> Vec<Pr> {
-        self.state
-            .read()
-            .prs
-            .iter()
-            .map(|p| clone_pr(&pr_list_row(p)))
-            .collect()
+        self.state.read().prs.iter().map(pr_list_row).collect()
     }
 
     /// What a sweep indexes the stored PRs by, without copying their comments and checks.
@@ -1397,16 +1342,11 @@ impl Store {
             .prs
             .iter()
             .find(|p| p.id == id)
-            .map(|p| clone_pr(&pr_list_row(p)))
+            .map(pr_list_row)
     }
 
     pub fn pr(&self, id: &str) -> Option<Pr> {
-        self.state
-            .read()
-            .prs
-            .iter()
-            .find(|p| p.id == id)
-            .map(clone_pr)
+        self.state.read().prs.iter().find(|p| p.id == id).cloned()
     }
 
     /// The PR linked to a workspace. A Local row older than a GitHub row is
@@ -1426,11 +1366,11 @@ impl Store {
                 continue;
             }
             if pr_is_unmerged(p) {
-                return Some(clone_pr(p));
+                return Some(p.clone());
             }
             last.get_or_insert(i);
         }
-        last.map(|i| clone_pr(&s.prs[i]))
+        last.map(|i| s.prs[i].clone())
     }
 
     /// An unmerged PR for the workspace, preferring GitHub over a leftover
@@ -1443,11 +1383,11 @@ impl Store {
                 continue;
             }
             if p.source == PrSource::GitHub {
-                return Some(clone_pr(p));
+                return Some(p.clone());
             }
             local.get_or_insert(p);
         }
-        local.map(clone_pr)
+        local.cloned()
     }
 
     /// Removes a PR by id; false when missing or the delete failed.
@@ -1481,7 +1421,7 @@ impl Store {
         if let Some(db) = &self.db {
             db.upsert_doc("prs", &p.id, &p, sort)?;
         }
-        let out = clone_pr(&p);
+        let out = p.clone();
         let (source, number) = (p.source.clone(), p.number);
         match idx {
             Some(i) => s.prs[i] = p,
@@ -1526,7 +1466,7 @@ impl Store {
         if let Some(db) = &self.db {
             let _ = db.upsert_doc("prs", id, &s.prs[i], i);
         }
-        let out = clone_pr(&s.prs[i]);
+        let out = s.prs[i].clone();
         self.note_local_pr_number_locked(&mut s, &out.source, out.number);
         Some(out)
     }
@@ -1626,7 +1566,7 @@ impl Store {
 
     // ---- Inbox ----
 
-    /// Newest first; `None` when empty (Go's nil).
+    /// Newest first; `None` when empty.
     pub fn inbox(&self) -> Option<Vec<InboxItem>> {
         nil_if_empty(self.state.read().inbox.clone())
     }

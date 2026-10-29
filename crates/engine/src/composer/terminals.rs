@@ -10,9 +10,8 @@ use regex::Regex;
 use crate::terminals::{TerminalSession, TerminalSource};
 
 /// Keep in sync with the frontend `TERMINAL_AT_RE`.
-static TERMINAL_AT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    recur_bundles::go::compile_regexp(r"@terminal(?::([^\s@]+))?").expect("terminal pattern")
-});
+static TERMINAL_AT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"@terminal(?::([^\s@]+))?").expect("terminal pattern"));
 
 const TERMINAL_WRAP_TAIL_LINES: i64 = recur_term::DEFAULT_TAIL_LINES as i64;
 const MAX_TERMINAL_SNAPSHOTS: usize = 4;

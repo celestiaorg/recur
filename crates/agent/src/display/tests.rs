@@ -124,10 +124,10 @@ fn chat_input_keeps_task_envelope() {
     let prompt = "p".repeat(CHAT_DETAIL_LIMIT);
     let input =
         format!(r#"{{"subagent_type":"Explore","prompt":"{prompt}","n":2.0,"description":"d"}}"#);
-    let got = chat_tool_input("Agent", &input);
+    let got: Value = serde_json::from_str(&chat_tool_input("Agent", &input)).unwrap();
     assert_eq!(
         got,
-        format!(r#"{{"description":"d","n":2,"prompt":"{prompt}","subagent_type":"Explore"}}"#)
+        serde_json::json!({"description": "d", "n": 2.0, "prompt": prompt, "subagent_type": "Explore"})
     );
     let small = r#"{"prompt": "hi"}"#;
     assert_eq!(chat_tool_input("Task", small), small);

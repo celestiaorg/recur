@@ -277,6 +277,19 @@ fn parse_shipped_prompt_complete() {
     assert!(ex.body.starts_with("#!"));
 }
 
+#[test]
+fn parse_shipped_github_expand() {
+    let dir = repo_path("bundles/GitHub");
+    let data = std::fs::read(format!("{dir}/bundle.toml")).unwrap();
+    let parsed = parse_manifest_full(&dir, &data).unwrap();
+    let ex = &parsed.expands[0];
+    assert!(ex.matches("https://github.com/acme/app/issues/42"));
+    assert!(ex.matches("acme/app#42 please"));
+    assert!(ex.matches("/github"));
+    assert!(!ex.matches("acme/app#42x"));
+    assert!(!ex.matches("fix the flaky test"));
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn shipped_chat_loop_prompts() {
     let prompts = chat_prompts();
@@ -353,7 +366,7 @@ fn parse_manifest_prompt_validation() {
         ("complete without args", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\ninterpreter = \"shebang\"\n{body}complete = \"complete.sh\"\n"), "prompt \"p1\": complete requires takesArgs"),
         ("bad arg name", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\ninterpreter = \"shebang\"\n{body}[[prompt.arg]]\nname = \"Issue-ID\"\n"), "prompt \"p1\": arg \"Issue-ID\" must match ^[a-z][a-z0-9_]{0,39}$"),
         ("search typescript", "[[search]]\nid = \"s1\"\nname = \"S\"\ninterpreter = \"typescript\"\nbody = \"export function complete() { return { hits: [] } }\"\n".to_string(), "search \"s1\": interpreter must be shebang"),
-        ("expand bad match", format!("[[expand]]\nid = \"e1\"\nname = \"E\"\nmatch = \"(\"\ninterpreter = \"shebang\"\n{body}"), "expand \"e1\": match: error parsing regexp: "),
+        ("expand bad match", format!("[[expand]]\nid = \"e1\"\nname = \"E\"\nmatch = \"(\"\ninterpreter = \"shebang\"\n{body}"), "expand \"e1\": match: regex parse error"),
     ] {
         let err = parse(&format!("{base}{rest}")).unwrap_err();
         assert!(err.0.starts_with(want), "{name}: got {err}, want {want}");
@@ -645,7 +658,7 @@ async fn expand_matching_cases() {
         id: "e".into(),
         name: "E".into(),
         interpreter: INTERPRETER_SHEBANG.into(),
-        match_re: Some(go::compile_regexp(r"(?i)^[A-Z][A-Z0-9]+-\d+").unwrap()),
+        match_re: Some(regex::Regex::new(r"(?i)^[A-Z][A-Z0-9]+-\d+").unwrap()),
         body: "#!/bin/sh\nprintf '{\"prompt\":\"Work on %s\",\"display\":\"Linear\"}\\n' \"$RECUR_PROMPT_ARGS\"\n".into(),
         ..Default::default()
     };
@@ -653,7 +666,7 @@ async fn expand_matching_cases() {
         id: "s".into(),
         name: "S".into(),
         interpreter: INTERPRETER_SHEBANG.into(),
-        match_re: Some(go::compile_regexp("^ENG-123").unwrap()),
+        match_re: Some(regex::Regex::new("^ENG-123").unwrap()),
         body: "#!/bin/sh\nprintf '%s\\n' '{\"skip\":true}'\n".into(),
         ..Default::default()
     };

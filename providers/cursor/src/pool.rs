@@ -230,7 +230,7 @@ impl Pool {
     /// reaped yet, and before a worktree is removed.
     pub(crate) async fn invalidate(&self, worktree: &Path) {
         let mut p = self.state.lock().await;
-        if crate::gojson::trim(&worktree.to_string_lossy()).is_empty() {
+        if worktree.to_string_lossy().trim().is_empty() {
             close_all_locked(&mut p).await;
             return;
         }
@@ -320,7 +320,7 @@ pub(crate) fn release(r: &CursorRunner) -> bool {
 /// bridge at "/".
 pub(crate) fn normalize_cursor_worktree(worktree: &Path) -> Result<PathBuf, PoolError> {
     let s = worktree.to_string_lossy();
-    let trimmed = crate::gojson::trim(&s);
+    let trimmed = s.trim();
     let required =
         || PoolError("cursor bridge: worktree path is required (refusing to start at /)".into());
     if trimmed.is_empty() {

@@ -11,7 +11,7 @@ use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{Error, Result};
-use crate::gostr::{collapse_space, rune_start};
+use crate::text::collapse_space;
 use crate::walk::{Flow, walk_dir};
 
 static SKILL_NAME: LazyLock<Regex> =
@@ -243,11 +243,7 @@ fn truncate_skill_desc(val: &str, max: usize) -> String {
     if max == 0 || val.len() <= max {
         return val;
     }
-    let mut cut = max - 1;
-    while cut > 0 && !rune_start(val.as_bytes()[cut]) {
-        cut -= 1;
-    }
-    format!("{}…", &val[..cut])
+    format!("{}…", &val[..val.floor_char_boundary(max - 1)])
 }
 
 fn parse_frontmatter_description(fm: &str) -> String {

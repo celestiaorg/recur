@@ -283,7 +283,7 @@ mod tests {
     fn effective_runs_explicit_wins() {
         let got = effective_runs(&Project {
             run_commands: vec![
-                run("dev", "wails3 task dev"),
+                run("dev", "pnpm dev"),
                 run("test", "go test ./..."),
                 run("  ", ""),
                 run("", "echo hi"),
@@ -310,11 +310,11 @@ mod tests {
     #[test]
     fn verify_dev_cmd_prefers_named_dev() {
         let mut p = Project {
-            run_commands: vec![run("test", "go test"), run("dev", "wails3 task dev")],
+            run_commands: vec![run("test", "go test"), run("dev", "pnpm dev")],
             pinned_run: "test".into(),
             ..Default::default()
         };
-        assert_eq!(verify_dev_cmd(&p), "wails3 task dev");
+        assert_eq!(verify_dev_cmd(&p), "pnpm dev");
         p.run_commands = vec![run("test", "go test")];
         assert_eq!(verify_dev_cmd(&p), "go test");
     }

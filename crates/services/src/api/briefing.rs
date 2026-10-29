@@ -6,7 +6,7 @@ use recur_domain::{BriefingSnapshot, ChatItem, WorkspaceChatTab};
 use super::AppChatSelection;
 use crate::Result;
 
-/// BriefingService is the Wails-bound surface for the Inbox and Ask Recur.
+/// BriefingService is the surface for the Inbox and Ask Recur.
 /// Copy and routes come from the engine projection so the UI and coordinator
 /// cannot disagree.
 ///

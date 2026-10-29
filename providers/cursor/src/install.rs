@@ -12,8 +12,8 @@ use sha2::{Digest, Sha256};
 use tokio_util::sync::CancellationToken;
 
 use crate::attribution::ensure_attribution_patch;
-use crate::gojson::null_default;
 use crate::locate::{BRIDGE_DIR_NAME, clean, is_executable_file, launcher_rel_path};
+use crate::wire::null_default;
 
 /// The cursor-sdk release Recur installs. The attribution patch matches
 /// minified anchors from this build; fetching "latest" would break them on

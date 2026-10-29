@@ -38,7 +38,7 @@ pub use titlebar::{TITLEBAR_HEIGHT, TRAFFIC_LIGHTS};
 pub const INSPECTOR_AVAILABLE: bool = cfg!(any(debug_assertions, feature = "devtools"));
 
 /// Where the macOS traffic lights sit: centered in the 52px titlebar (16px tall buttons), at
-/// AppKit's unified-toolbar inset, as Wails' hidden-inset titlebar placed them.
+/// AppKit's unified-toolbar inset.
 pub const TRAFFIC_LIGHT_POSITION: (f32, f32) = (20., 18.);
 
 /// One-time app setup: the design system, menubar accelerators and every view crate's init.

@@ -1,5 +1,6 @@
-//! Go-computed next run times for stored schedules (robfig/cron cadences and
-//! once/daily/weekdays). See `fixtures/gen_go_rules.go.txt` to regenerate.
+//! Snapshot next run times for stored schedules (cron cadences and
+//! once/daily/weekdays) in `fixtures/go_rules.json`. Edit the fixture by hand
+//! when the behavior changes on purpose.
 
 use chrono::{DateTime, Utc};
 use recur_domain::*;

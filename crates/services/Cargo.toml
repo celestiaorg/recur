@@ -1,6 +1,6 @@
 [package]
 name = "recur-services"
-description = "Application services: the UI-facing API over the engine (the former Wails-bound services) plus typed app events."
+description = "Application services: the UI-facing API over the engine plus typed app events."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

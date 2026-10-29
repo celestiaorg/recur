@@ -1,5 +1,6 @@
-//! Replays the Go-recorded coding-tool cases (`golden/coding_calls.json`) in
-//! the same fixture worktree. Paths are normalized to `$WT`.
+//! Snapshot of the coding-tool cases (`golden/coding_calls.json`) in a fixture
+//! worktree. Paths are normalized to `$WT`. Edit the fixture by hand when the
+//! behavior changes on purpose.
 
 mod common;
 

@@ -1,6 +1,6 @@
-//! Replays `tests/golden/go_harness.json` and `go_catalog.json`, recorded from
-//! the Go harness, responses package and model catalogue (generators next to
-//! the fixtures as `.go.txt`).
+//! Snapshot tests over `tests/golden/go_harness.json` and `go_catalog.json`:
+//! the harness, the Responses wire and the model catalogue. Edit the fixtures
+//! by hand when the behavior changes on purpose.
 
 use std::sync::Arc;
 

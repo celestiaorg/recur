@@ -15,9 +15,17 @@ use serde::Deserialize;
 use serde_json::{Map, Value};
 
 use crate::Provider;
-use crate::gostr::{GoAny, null_default};
 
 pub use compact::compact_tool_result;
+
+/// Decodes JSON `null` as the field's default.
+pub(crate) fn null_default<'de, D, T>(d: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Ok(Option::<T>::deserialize(d)?.unwrap_or_default())
+}
 
 /// Feed summaries stay readable in Activity expand; collapsed rows clip in
 /// the UI, so no "…" is baked into stored feed text below this.
@@ -164,7 +172,7 @@ fn chat_task_input(input: &str) -> String {
     {
         *p = truncate(p, PLAN_MAX_PERSIST_CHARS);
     }
-    serde_json::to_string(&GoAny(&v)).unwrap_or_else(|_| truncate(input, CHAT_DETAIL_LIMIT))
+    serde_json::to_string(&v).unwrap_or_else(|_| truncate(input, CHAT_DETAIL_LIMIT))
 }
 
 /// A tool result for the live/history detail card. Listing tools return

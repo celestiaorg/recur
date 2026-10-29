@@ -66,15 +66,10 @@ pub fn bundled_cli(exe: &Path) -> Option<PathBuf> {
     cli.is_file().then_some(cli)
 }
 
-/// A `*.dev.app`, a Go checkout's `bin/` (dir of dir has `go.mod`), or a
-/// cargo `target/` dir in a workspace checkout: local builds must not steal
-/// the user's production symlink.
+/// A `*.dev.app` or a cargo `target/` dir in a workspace checkout: local
+/// builds must not steal the user's production symlink.
 pub fn is_dev_bundle(exe: &Path) -> bool {
     if exe.to_string_lossy().contains(".dev.app/") {
-        return true;
-    }
-    let grand = exe.parent().and_then(Path::parent).unwrap_or(Path::new(""));
-    if grand.join("go.mod").exists() {
         return true;
     }
     exe.ancestors().skip(1).any(|dir| {
@@ -277,8 +272,6 @@ fn ensure_desktop_entry(data_home: &Path, exe: &Path) -> Result<(), CliInstallEr
         quote_exec(&exe.to_string_lossy()),
         icon.display()
     );
-    // The Go app's tarball wrote its launcher under the Wails app id.
-    let _ = std::fs::remove_file(dir.join("org.wails.recur.desktop"));
     let dest = dir.join(desktop_entry_name());
     if std::fs::read(&dest).is_ok_and(|old| old == body.as_bytes()) {
         return Ok(());
@@ -336,10 +329,6 @@ mod tests {
         assert!(!is_dev_bundle(Path::new(
             "/Applications/Recur.app/Contents/MacOS/recur"
         )));
-
-        let root = tempfile::tempdir().expect("tempdir");
-        std::fs::write(root.path().join("go.mod"), "module recur").expect("write");
-        assert!(is_dev_bundle(&root.path().join("bin/recur")));
 
         let ws = tempfile::tempdir().expect("tempdir");
         std::fs::write(ws.path().join("Cargo.toml"), "[workspace]").expect("write");

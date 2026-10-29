@@ -3,17 +3,15 @@
 
 use serde_json::Value;
 
-use crate::gostr::js_trim;
-
 fn str_of<'a>(raw: Option<&'a Value>, key: &str) -> &'a str {
     match raw.and_then(|v| v.get(key)) {
-        Some(Value::String(s)) => js_trim(s),
+        Some(Value::String(s)) => s.trim(),
         _ => "",
     }
 }
 
 fn parse_fallback(fallback: &str) -> Option<Value> {
-    let fb = js_trim(fallback);
+    let fb = fallback.trim();
     if !fb.starts_with('{') {
         return None;
     }
@@ -33,7 +31,7 @@ pub fn web_fetch_url(raw: Option<&Value>, fallback: &str) -> String {
     if !from_args.is_empty() {
         return from_args.to_owned();
     }
-    let fb = js_trim(fallback);
+    let fb = fallback.trim();
     let lower = fb.get(..8).unwrap_or(fb).to_ascii_lowercase();
     if (lower.starts_with("http://") || lower.starts_with("https://")) && !fb.starts_with('{') {
         return fb.to_owned();
@@ -63,7 +61,7 @@ pub fn web_search_query(raw: Option<&Value>, fallback: &str) -> String {
             return q.to_owned();
         }
     }
-    let fb = js_trim(fallback);
+    let fb = fallback.trim();
     if !fb.is_empty() && !fb.starts_with('{') {
         return fb.to_owned();
     }
@@ -73,7 +71,7 @@ pub fn web_search_query(raw: Option<&Value>, fallback: &str) -> String {
 /// Chip label: host + path, no scheme. Long paths keep the host and the last
 /// segment (`docs.example.com/…/create-token`).
 pub fn compact_url(url: &str) -> String {
-    let raw = js_trim(url);
+    let raw = url.trim();
     if raw.is_empty() {
         return String::new();
     }
@@ -115,7 +113,7 @@ pub fn compact_url(url: &str) -> String {
 /// start with a badge link (`[![CI](…)](…)`), which stays on the markdown
 /// path.
 pub fn web_result_is_json(text: &str) -> bool {
-    let t = js_trim(text);
+    let t = text.trim();
     if !t.starts_with('{') && !t.starts_with('[') {
         return false;
     }

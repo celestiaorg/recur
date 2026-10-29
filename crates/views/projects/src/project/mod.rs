@@ -586,7 +586,7 @@ impl ProjectView {
                 2,
                 f.env.clone(),
                 MiniLang::Env,
-                "# injected into setup, teardown, dev, and terminals\nWAILS_VITE_PORT=$RECUR_PORT\nRECUR_DATA_DIR=$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID",
+                "# injected into setup, teardown, dev, and terminals\nVITE_PORT=$RECUR_PORT\nRECUR_DATA_DIR=$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID",
                 4,
                 14,
             ),

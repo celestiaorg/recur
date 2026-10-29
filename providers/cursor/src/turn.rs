@@ -569,11 +569,11 @@ impl Turn {
                 #[derive(Deserialize, Default)]
                 #[serde(default)]
                 struct P {
-                    #[serde(deserialize_with = "crate::gojson::null_default")]
+                    #[serde(deserialize_with = "crate::wire::null_default")]
                     summary: String,
                 }
-                if let Ok(p) = crate::gojson::decode_struct::<P>(&body)
-                    && !crate::gojson::trim(&p.summary).is_empty()
+                if let Ok(p) = crate::wire::decode_struct::<P>(&body)
+                    && !p.summary.trim().is_empty()
                 {
                     f.compact_summary = p.summary;
                 }
@@ -584,7 +584,7 @@ impl Turn {
                 struct P {
                     usage: Option<TokenUsage>,
                 }
-                let Ok(P { usage: Some(u) }) = crate::gojson::decode_struct::<P>(&body) else {
+                let Ok(P { usage: Some(u) }) = crate::wire::decode_struct::<P>(&body) else {
                     return;
                 };
                 let window = resolve_context_window(&self.spec.model, &self.spec.flags);

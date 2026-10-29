@@ -1,4 +1,4 @@
-//! The Wails Update Manifest provider: one JSON document describing the
+//! The update manifest provider: one JSON document describing the
 //! latest release and its per-platform artifacts, served statically (one
 //! manifest per channel) or dynamically (the server reads the platform /
 //! arch / version query parameters).
@@ -38,8 +38,8 @@ pub struct EndpointConfig {
     /// A custom client. `None` uses one with a 30 second total timeout.
     /// Redirects drop `Authorization` when they cross hosts or downgrade.
     pub client: Option<reqwest::Client>,
-    /// Fail a request when response headers take longer than this (Go's
-    /// `Transport.ResponseHeaderTimeout`); the body is not bounded by it.
+    /// Fail a request when response headers take longer than this; the body
+    /// is not bounded by it.
     pub response_header_timeout: Option<Duration>,
 }
 
@@ -51,7 +51,7 @@ fn err(msg: impl std::fmt::Display) -> ProviderError {
     Box::new(EndpointError(msg.to_string()))
 }
 
-/// Provider for a Wails update manifest.
+/// Provider for an update manifest.
 #[derive(Debug, Clone)]
 pub struct EndpointProvider {
     cfg: EndpointConfig,
@@ -341,7 +341,8 @@ fn pick_artifact<'a>(
     })
 }
 
-/// Go `GOOS` values plus common aliases, case-insensitive.
+/// Manifest platform names (`darwin`, `linux`, `windows`) plus common
+/// aliases, case-insensitive.
 fn platform_matches(published: &str, want: &str) -> bool {
     let p = published.to_lowercase();
     p == want
@@ -352,7 +353,8 @@ fn platform_matches(published: &str, want: &str) -> bool {
         }
 }
 
-/// Go `GOARCH` values plus common aliases, case-insensitive.
+/// Manifest arch names (`amd64`, `arm64`, `386`) plus common aliases,
+/// case-insensitive.
 fn arch_matches(published: &str, want: &str) -> bool {
     let p = published.to_lowercase();
     p == want
@@ -385,7 +387,7 @@ pub(super) fn build_verification(a: &ManifestArtifact) -> Result<Option<Verifica
     Ok(Some(v))
 }
 
-/// Raw (unpadded) or standard base64, with Go's lenient trailing bits.
+/// Raw (unpadded) or standard base64, with lenient trailing bits.
 fn decode_b64(s: &str) -> Option<Vec<u8>> {
     use base64::engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig};
     let lenient = GeneralPurposeConfig::new().with_decode_allow_trailing_bits(true);
@@ -457,12 +459,12 @@ fn escape(s: &str, keep: impl Fn(u8) -> bool, space_plus: bool) -> String {
     out
 }
 
-/// Go's `url.QueryEscape`.
+/// Percent-encodes a query component, space as `+`.
 fn query_escape(s: &str) -> String {
     escape(s, |_| false, true)
 }
 
-/// Go's `url.PathEscape` (a single path segment).
+/// Percent-encodes a single path segment.
 fn path_escape(s: &str) -> String {
     escape(
         s,

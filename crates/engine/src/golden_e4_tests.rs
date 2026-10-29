@@ -1,9 +1,9 @@
-//! Go-generated golden fixtures for slice E4 (R2): every chat mode's turn
-//! shape, the switch_mode matrix with its resume prompt and display, the
-//! surface marker peel and subject prompts, child-state text, the
-//! create_workspace child rule, Ask Recur's prompt and ids, briefing age and
-//! chat nouns, full briefs from named inputs, and the fork preamble
-//! (`tests/golden/go_e4.json`, generator `tests/golden/gen_e4_golden.go.txt`).
+//! Snapshot fixtures for every chat mode's turn shape, the switch_mode matrix
+//! with its resume prompt and display, the surface marker peel and subject
+//! prompts, child-state text, the create_workspace child rule, Ask Recur's
+//! prompt and ids, briefing age and chat nouns, full briefs from named inputs,
+//! and the fork preamble (`tests/golden/go_e4.json`). Edit the fixture by hand
+//! when the behavior changes on purpose.
 
 use std::sync::Arc;
 

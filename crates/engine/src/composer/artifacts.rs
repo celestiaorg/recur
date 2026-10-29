@@ -14,12 +14,11 @@ use super::terminals::{at_token_bounded, fence_snapshot, scrub_instruction_text}
 use crate::artifacts::{artifact_kind_is_binary, list_artifacts, read_artifact_text};
 
 /// Keep in sync with the frontend `ARTIFACT_AT_RE`.
-static ARTIFACT_AT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    recur_bundles::go::compile_regexp(r"@artifact(?::([^\s@]+))?").expect("artifact pattern")
-});
+static ARTIFACT_AT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"@artifact(?::([^\s@]+))?").expect("artifact pattern"));
 
 static AT_NAME_RE: LazyLock<Regex> =
-    LazyLock::new(|| recur_bundles::go::compile_regexp(r"@([^\s@]+)").expect("at-name pattern"));
+    LazyLock::new(|| Regex::new(r"@([^\s@]+)").expect("at-name pattern"));
 
 const MAX_ARTIFACT_SNAPSHOTS: usize = 4;
 

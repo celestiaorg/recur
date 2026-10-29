@@ -21,7 +21,7 @@ const KNOWN_QUERIES: &[&[u8]] = &[
 /// Answers terminal status probes on the PTY side and strips them from the stream forwarded to
 /// the emulator.
 ///
-/// Tools built on muesli/termenv (wails3 → pterm, charmbracelet, …) probe OSC 10/11/12, fenced
+/// Tools built on muesli/termenv (pterm, charmbracelet, …) probe OSC 10/11/12, fenced
 /// by CSI 6n, to learn fg/bg colours. A real terminal replies on the same fd within microseconds;
 /// answering here keeps the probe synchronous with the reader so the reply cannot land after the
 /// tool moved on and show up as typed garbage (`11;rgb:1414/1414/1414`, `1R`) on the prompt.

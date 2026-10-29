@@ -25,8 +25,8 @@ use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
 use crate::connect::{Client, Error};
-use crate::gojson::{go_int, null_default, trim};
 use crate::projectdirs::ensure_cursor_project_dirs_in;
+use crate::wire::null_default;
 
 #[cfg(test)]
 pub(crate) use log::redact_bridge_line;
@@ -50,11 +50,11 @@ pub const ENV_ATTRIBUTION_PATH: &str = "RECUR_CURSOR_ATTRIBUTION_PATH";
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Discovery {
-    #[serde(deserialize_with = "go_int")]
+    #[serde(deserialize_with = "null_default")]
     pub schema_version: i64,
     #[serde(deserialize_with = "null_default")]
     pub server_version: String,
-    #[serde(deserialize_with = "go_int")]
+    #[serde(deserialize_with = "null_default")]
     pub pid: i64,
     /// "tcp".
     #[serde(deserialize_with = "null_default")]
@@ -64,7 +64,7 @@ pub struct Discovery {
     pub protocol: String,
     #[serde(deserialize_with = "null_default")]
     pub host: String,
-    #[serde(deserialize_with = "go_int")]
+    #[serde(deserialize_with = "null_default")]
     pub port: i64,
     #[serde(deserialize_with = "null_default")]
     pub url: String,
@@ -230,7 +230,7 @@ impl Bridge {
         let mut token = disc.auth_token.clone();
         if token.is_empty() && !disc.auth_token_file.is_empty() {
             match std::fs::read_to_string(&disc.auth_token_file) {
-                Ok(raw) => token = trim(&raw).to_owned(),
+                Ok(raw) => token = raw.trim().to_owned(),
                 Err(e) => {
                     kill(&proc).await;
                     log.close();

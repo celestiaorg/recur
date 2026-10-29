@@ -132,7 +132,7 @@ pub struct CodexStatus {
 }
 
 /// CommandInfo is the plain-struct view of a bundle command for the UI.
-/// No TOML crosses the Wails bridge.
+/// No TOML crosses the service boundary.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct CommandInfo {

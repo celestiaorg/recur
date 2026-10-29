@@ -10,7 +10,7 @@ use crate::Result;
 /// The service is a thin shell over term.Manager — it resolves a workspace to a
 /// directory and otherwise forwards. The interesting behaviour (output coalescing,
 /// ack-based flow control, replay on re-attach) lives in the term package, which is
-/// deliberately free of any Wails or engine dependency.
+/// deliberately free of any UI or engine dependency.
 ///
 /// The frontend contract, per tab:
 ///

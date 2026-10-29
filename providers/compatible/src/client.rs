@@ -1,5 +1,5 @@
-//! The `POST {base}/v1/responses` client (Go `responses/client.go`): streamed
-//! turns with a JSON fallback, and the Settings ping.
+//! The `POST {base}/v1/responses` client: streamed turns with a
+//! JSON fallback, and the Settings ping.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -10,7 +10,6 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use tokio_util::sync::CancellationToken;
 
 use crate::chatgpt::chatgpt_body;
-use crate::gojson::clip;
 use crate::sse::{SseParser, decode_response, parse_sse};
 use crate::types::{Event, Request, user_text};
 
@@ -292,7 +291,7 @@ fn looks_like_sse(raw: &[u8]) -> bool {
     s.starts_with("event:") || s.starts_with("data:")
 }
 
-/// Go's `resp.Status` ("401 Unauthorized").
+/// The status line text ("401 Unauthorized").
 fn status_text(s: reqwest::StatusCode) -> String {
     match s.canonical_reason() {
         Some(r) => format!("{} {r}", s.as_u16()),
@@ -300,7 +299,7 @@ fn status_text(s: reqwest::StatusCode) -> String {
     }
 }
 
-/// Reads at most `limit` bytes of the body (Go `io.LimitReader`).
+/// Reads at most `limit` bytes of the body.
 async fn read_limited(resp: &mut reqwest::Response, limit: usize) -> Result<Vec<u8>, String> {
     let mut out = Vec::new();
     while out.len() < limit {
@@ -316,7 +315,7 @@ async fn read_limited(resp: &mut reqwest::Response, limit: usize) -> Result<Vec<
     Ok(out)
 }
 
-/// A transport error in Go's `url.Error` shape: `Post "url": cause`.
+/// A transport error as `Post "url": cause`.
 pub(crate) fn url_error(method: &str, url: &str, e: &reqwest::Error) -> String {
     let cause = if e.is_timeout() {
         "context deadline exceeded (Client.Timeout exceeded while awaiting headers)".to_owned()
@@ -326,7 +325,7 @@ pub(crate) fn url_error(method: &str, url: &str, e: &reqwest::Error) -> String {
     format!("{method} {url:?}: {cause}")
 }
 
-/// The innermost causes of an error joined Go-style, so markers like
+/// The innermost causes of an error joined with `: `, so markers like
 /// "connection refused" stay visible to failure classification.
 pub(crate) fn err_chain(e: &(dyn std::error::Error + 'static)) -> String {
     let mut parts: Vec<String> = Vec::new();
@@ -342,6 +341,14 @@ pub(crate) fn err_chain(e: &(dyn std::error::Error + 'static)) -> String {
         return e.to_string();
     }
     parts.join(": ")
+}
+
+/// `s` cut to at most `n` bytes on a char boundary, with `…` when cut.
+fn clip(s: &str, n: usize) -> String {
+    if s.len() <= n {
+        return s.to_owned();
+    }
+    format!("{}…", &s[..s.floor_char_boundary(n)])
 }
 
 #[cfg(test)]

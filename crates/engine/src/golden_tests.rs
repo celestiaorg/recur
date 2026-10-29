@@ -1,7 +1,7 @@
-//! Go-generated golden fixtures (R2, R10): every engine event payload, the
-//! role prompts and tool tables, the kitchen word lists and the synthetic
-//! guards, compared with what the Go engine produced (payloads as JSON values)
-//! (`tests/golden/go_e1.json`, generator `tests/golden/gen_e1_golden.go.txt`).
+//! Snapshot fixtures: every engine event payload, the role prompts and tool
+//! tables, the kitchen word lists and the synthetic guards (payloads as JSON
+//! values, `tests/golden/go_e1.json`). Edit the fixture by hand when the
+//! behavior changes on purpose.
 
 use std::collections::BTreeMap;
 
@@ -78,7 +78,7 @@ async fn engine_published_events_match_go() {
     t.engine
         .publish_loop_updated("missing.ws", WorkspaceState::Paused, "paused", 0);
     check(&g, "loop-updated-missing", t.events.all().last().unwrap());
-    // Persisted exactly as published (R10).
+    // Persisted exactly as published.
     let stored = t.store.events_for_loop(&ws.id).unwrap().unwrap_or_default();
     let (_, want) = go_event(&g, "loop-updated");
     assert!(

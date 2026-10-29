@@ -361,23 +361,23 @@
             "runCommands": [
               {
                 "name": "dev",
-                "cmd": "wails3 task dev"
+                "cmd": "pnpm dev"
               },
               {
                 "name": "test:go",
-                "cmd": "wails3 task test:go"
+                "cmd": "go test ./..."
               },
               {
                 "name": "test:frontend",
-                "cmd": "wails3 task test:frontend"
+                "cmd": "pnpm test"
               },
               {
                 "name": "check",
-                "cmd": "wails3 task check"
+                "cmd": "pnpm check"
               },
               {
                 "name": "tidy",
-                "cmd": "wails3 task common:go:mod:tidy"
+                "cmd": "go mod tidy"
               }
             ],
             "pinnedRun": "check"

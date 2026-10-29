@@ -1,7 +1,6 @@
-//! In-app self-update, a port of Wails' `pkg/updater` in the headless mode
-//! Recur uses (`Window: WindowNone`): the updater drives check → download →
-//! verify → install → restart and reports every step as an [`UpdaterEvent`];
-//! the UI renders them as toasts and answers with [`UserAction`]s.
+//! In-app self-update: the updater drives check → download → verify →
+//! install → restart and reports every step as an [`UpdaterEvent`]; the UI
+//! renders them as toasts and answers with [`UserAction`]s.
 //!
 //! Providers only look up and stream a release; verification, atomic
 //! staging, archive extraction, the swap and the restart helper live here.
@@ -154,8 +153,8 @@ pub struct CheckRequest {
     pub arch: String,
 }
 
-/// Lifecycle events. [`UpdaterEvent::name`] is the Wails wire name the
-/// frontend listens for.
+/// Lifecycle events. [`UpdaterEvent::name`] is the event name the UI
+/// listens for.
 #[derive(Debug, Clone, PartialEq)]
 pub enum UpdaterEvent {
     CheckStarted,
@@ -176,17 +175,17 @@ pub enum UpdaterEvent {
 impl UpdaterEvent {
     pub fn name(&self) -> &'static str {
         match self {
-            Self::CheckStarted => "wails:updater:check-started",
-            Self::UpdateAvailable(_) => "wails:updater:update-available",
-            Self::NoUpdate => "wails:updater:no-update",
-            Self::DownloadStarted(_) => "wails:updater:download-started",
-            Self::DownloadProgress(_) => "wails:updater:download-progress",
-            Self::DownloadComplete(_) => "wails:updater:download-complete",
-            Self::Verifying(_) => "wails:updater:verifying",
-            Self::Installing(_) => "wails:updater:installing",
-            Self::UpdateReady(_) => "wails:updater:update-ready",
-            Self::Error(_) => "wails:updater:error",
-            Self::Meta(_) => "wails:updater:meta",
+            Self::CheckStarted => "updater:check-started",
+            Self::UpdateAvailable(_) => "updater:update-available",
+            Self::NoUpdate => "updater:no-update",
+            Self::DownloadStarted(_) => "updater:download-started",
+            Self::DownloadProgress(_) => "updater:download-progress",
+            Self::DownloadComplete(_) => "updater:download-complete",
+            Self::Verifying(_) => "updater:verifying",
+            Self::Installing(_) => "updater:installing",
+            Self::UpdateReady(_) => "updater:update-ready",
+            Self::Error(_) => "updater:error",
+            Self::Meta(_) => "updater:meta",
         }
     }
 
@@ -208,33 +207,33 @@ impl UpdaterEvent {
     }
 }
 
-/// User actions the UI sends back (Wails `wails:updater:*` user events).
+/// User actions the UI sends back (`updater:*` user events).
 /// They are only honoured while a check-and-install session is open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UserAction {
-    /// `wails:updater:window:ready`: replay the current state.
+    /// `updater:window:ready`: replay the current state.
     WindowReady,
-    /// `wails:updater:user:install`
+    /// `updater:user:install`
     Install,
-    /// `wails:updater:user:skip`: skip the pending version.
+    /// `updater:user:skip`: skip the pending version.
     Skip,
-    /// `wails:updater:user:remind`
+    /// `updater:user:remind`
     Remind,
-    /// `wails:updater:user:cancel`
+    /// `updater:user:cancel`
     Cancel,
-    /// `wails:updater:user:restart`
+    /// `updater:user:restart`
     Restart,
 }
 
 impl UserAction {
     pub fn from_event_name(name: &str) -> Option<Self> {
         Some(match name {
-            "wails:updater:window:ready" => Self::WindowReady,
-            "wails:updater:user:install" => Self::Install,
-            "wails:updater:user:skip" => Self::Skip,
-            "wails:updater:user:remind" => Self::Remind,
-            "wails:updater:user:cancel" => Self::Cancel,
-            "wails:updater:user:restart" => Self::Restart,
+            "updater:window:ready" => Self::WindowReady,
+            "updater:user:install" => Self::Install,
+            "updater:user:skip" => Self::Skip,
+            "updater:user:remind" => Self::Remind,
+            "updater:user:cancel" => Self::Cancel,
+            "updater:user:restart" => Self::Restart,
             _ => return None,
         })
     }
@@ -323,8 +322,9 @@ fn failed(msg: impl std::fmt::Display) -> UpdaterError {
 
 const HELPER_READY_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Go's `runtime.GOOS` / `runtime.GOARCH` for this build.
-fn go_platform() -> (&'static str, &'static str) {
+/// This build's platform and arch as the manifest names them (`darwin`,
+/// `amd64`, …).
+fn manifest_platform() -> (&'static str, &'static str) {
     let os = if cfg!(target_os = "macos") {
         "darwin"
     } else {
@@ -423,7 +423,7 @@ impl Updater {
                 "updater: Config.Providers must contain at least one Provider",
             ));
         }
-        let (os, arch) = go_platform();
+        let (os, arch) = manifest_platform();
         if cfg.platform.is_empty() {
             cfg.platform = os.to_string();
         }
@@ -630,7 +630,7 @@ impl Updater {
         }
     }
 
-    /// Streams the artifact into a fresh `wails-update-*` temp dir, hashing
+    /// Streams the artifact into a fresh `recur-update-*` temp dir, hashing
     /// as the bytes pass. On error everything it created is removed.
     async fn download(
         &self,
@@ -640,7 +640,7 @@ impl Updater {
         self.transition(State::Downloading);
         self.emit(UpdaterEvent::DownloadStarted(rel.clone()));
 
-        let dir = extract::mkdir_temp(&std::env::temp_dir(), "wails-update-")
+        let dir = extract::mkdir_temp(&std::env::temp_dir(), "recur-update-")
             .map_err(|e| failed(format!("updater: temp dir: {e}")))?;
         match self.download_into(p, rel, &dir).await {
             Ok(path) => Ok((path, dir)),
@@ -809,9 +809,9 @@ impl Updater {
         let target = bundle_target(&self_exe);
         let pid = std::process::id();
         let tmp = std::env::temp_dir();
-        let log_path = tmp.join(format!("wails-update-{pid}.log"));
+        let log_path = tmp.join(format!("recur-update-{pid}.log"));
         let nanos = chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default();
-        let ready_path = tmp.join(format!("wails-update-{pid}-{nanos}.ready"));
+        let ready_path = tmp.join(format!("recur-update-{pid}-{nanos}.ready"));
         let _ = std::fs::remove_file(&ready_path);
         let _ready_cleanup = RemoveOnDrop(ready_path.clone());
 
@@ -864,7 +864,7 @@ fn bundle_target(exe: &Path) -> PathBuf {
 fn finalise_download(tmp_path: &Path, filename: &str) -> Result<PathBuf, UpdaterError> {
     let base = filename.rsplit('/').find(|s| !s.is_empty()).unwrap_or("");
     let base = if base.is_empty() || base == "." || base == ".." || base.contains('\\') {
-        "wails-update.bin"
+        "recur-update.bin"
     } else {
         base
     };

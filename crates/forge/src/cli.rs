@@ -1,10 +1,8 @@
 //! Subprocess runner for the `gh` and `git` command lines.
 //!
-//! Output capture matches Go's `exec.Cmd`: `Combined` interleaves stdout and
-//! stderr in one pipe (`CombinedOutput`), `Stdout` keeps stdout only
-//! (`Output`). Dropping a run cancels it: `gh` gets SIGKILL like
-//! `exec.CommandContext`; `git` runs in its own process group that gets
-//! SIGTERM, then SIGKILL after two seconds, like `gitpkg.Command`.
+//! `Combined` interleaves stdout and stderr in one pipe, `Stdout` keeps
+//! stdout only. Dropping a run cancels it: `gh` gets SIGKILL; `git` runs in
+//! its own process group that gets SIGTERM, then SIGKILL after two seconds.
 
 use std::ffi::OsStr;
 use std::io::Read;
@@ -43,7 +41,7 @@ impl Outcome {
         self.exit == Exit::Success
     }
 
-    /// Go `ExitError.ExitCode()`, or -1 when the process did not run.
+    /// The exit code, or -1 for a signal or when the process did not run.
     #[cfg(test)]
     pub fn code(&self) -> i32 {
         match &self.exit {
@@ -54,8 +52,8 @@ impl Outcome {
     }
 }
 
-/// A failed `gh` or `git` run: `<program> <args>: <trimmed output>`, the
-/// error text Go's `runGH` / `runGit` produce. `out` is the untrimmed output.
+/// A failed `gh` or `git` run, shown as `<program> <args>: <trimmed output>`.
+/// `out` is the untrimmed output.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CmdError {
     pub program: &'static str,
@@ -160,7 +158,7 @@ async fn spawn_and_wait<S: AsRef<OsStr>>(spec: &Spec<'_, S>) -> std::io::Result<
 }
 
 /// SIGTERMs a git process group when its run is dropped mid-flight, then
-/// SIGKILLs the leader after the grace period (Go `gitpkg.Command`).
+/// SIGKILLs the leader after the grace period.
 struct GroupKill(Option<u32>);
 
 impl GroupKill {
@@ -193,7 +191,7 @@ impl Drop for GroupKill {
     }
 }
 
-/// Go `exec.LookPath`: a path with a separator must be an executable file;
+/// A path with a separator must be an executable file;
 /// a bare name is searched on `PATH`.
 pub(crate) fn look_path(program: &Path) -> Option<PathBuf> {
     if program.components().count() > 1 {
@@ -223,7 +221,7 @@ fn is_executable(p: &Path) -> bool {
     }
 }
 
-/// The `gh` executable plus the `runGH` family of helpers.
+/// The `gh` executable and its run helpers.
 #[derive(Debug, Clone)]
 pub struct Gh {
     program: PathBuf,
@@ -248,23 +246,23 @@ impl Gh {
         &self.program
     }
 
-    /// Go `exec.LookPath("gh")`.
+    /// Whether `gh` resolves to an executable.
     pub fn installed(&self) -> bool {
         look_path(&self.program).is_some()
     }
 
-    /// Go `runGHOutput`: combined output and the exit status.
+    /// Combined output and the exit status.
     pub(crate) async fn output<S: AsRef<str>>(&self, dir: &Path, args: &[S]) -> Outcome {
         self.exec(dir, args, None, Capture::Combined).await
     }
 
-    /// Go `runGH`: combined output, or an error wrapping argv and output.
+    /// Combined output, or an error wrapping argv and output.
     pub async fn run<S: AsRef<str>>(&self, dir: &Path, args: &[S]) -> Result<String, CmdError> {
         let o = self.output(dir, args).await;
         wrap("gh", args, o)
     }
 
-    /// Go `runGHWithStdin`.
+    /// [`Gh::run`] with `stdin` piped in.
     pub async fn run_stdin<S: AsRef<str>>(
         &self,
         dir: &Path,
@@ -275,7 +273,7 @@ impl Gh {
         wrap("gh", args, o)
     }
 
-    /// Go `exec.Command("gh", …).Output()`: stdout only.
+    /// Stdout only.
     pub async fn stdout<S: AsRef<str>>(&self, dir: &Path, args: &[S]) -> Result<String, String> {
         let o = self.exec(dir, args, None, Capture::Stdout).await;
         match o.exit {
@@ -305,7 +303,7 @@ impl Gh {
     }
 }
 
-/// Go `runGit` (on `gitpkg.Command`): combined output, or an error wrapping
+/// Runs git in its own process group: combined output, or an error wrapping
 /// argv and output.
 pub async fn git<S: AsRef<str>>(dir: &Path, args: &[S]) -> Result<String, CmdError> {
     let argv: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
@@ -321,8 +319,7 @@ pub async fn git<S: AsRef<str>>(dir: &Path, args: &[S]) -> Result<String, CmdErr
     wrap("git", args, o)
 }
 
-/// Go `exec.Command("git", …).Output()` (stdout only), without the
-/// `gitpkg.Command` environment, as `app/issues.go` runs it.
+/// Stdout only, without [`git`]'s process group.
 pub async fn plain_stdout(program: &str, args: &[&str]) -> Result<String, String> {
     let o = run(Spec {
         program: Path::new(program),

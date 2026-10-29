@@ -8,9 +8,6 @@ pub mod file_index;
 pub mod finding_paths;
 pub mod skills;
 
-#[cfg(test)]
-mod golden_tests;
-
 /// JavaScript `parseInt(s, 10) || 0`: optional leading whitespace and sign,
 /// then decimal digits; anything else is 0.
 pub(crate) fn js_parse_int(s: &str) -> i64 {

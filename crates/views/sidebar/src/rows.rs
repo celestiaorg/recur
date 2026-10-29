@@ -29,8 +29,8 @@ use recur_view_core::workspace_nav::project_id_from_main_scan;
 use recur_view_core::{ScanKind, ScheduleEditorRequest, ViewName};
 
 use crate::tree::{
-    FADE, GROUP_H, GROUP_PB, GroupNode, PROJ_H, ProjectNode, ROW_H, Row, SCHED_H, SCHED_MT, Tree,
-    empty_h, is_stuck, sticky_top, thumb,
+    FADE, GROUP_H, GROUP_PB, GUTTER, GroupNode, PROJ_H, ProjectNode, ROW_H, Row, SCHED_H, SCHED_MT,
+    Tree, empty_h, is_stuck, sticky_top, thumb,
 };
 use crate::{FADE_IN, Fade, SCROLLBAR_LINGER, Sidebar, fade_gradient};
 
@@ -1218,7 +1218,7 @@ impl Sidebar {
             .top_0()
             .bottom_0()
             .left(px(inset_left))
-            .right(px(9.))
+            .right(px(GUTTER))
             .child(content);
         let band = if bleed {
             div()
@@ -1232,7 +1232,7 @@ impl Sidebar {
             div()
                 .absolute()
                 .left(px(inset_left))
-                .right(px(9.))
+                .right(px(GUTTER))
                 .top_0()
                 .bottom_0()
                 .bg(bg)
@@ -1268,7 +1268,7 @@ impl Sidebar {
             return None;
         }
         let (left, right, color) = match inset {
-            Some((left, color)) => (left, 9., color),
+            Some((left, color)) => (left, GUTTER, color),
             None => (0., 0., t.rail),
         };
         Some(
@@ -1410,7 +1410,7 @@ impl Sidebar {
                 .debug_selector(|| "drag-ph".into())
                 .relative()
                 .top(px(off))
-                .mx(px(9.))
+                .mx(px(GUTTER))
                 .h(px(hole_h))
                 .rounded(px(radius))
                 .bg(t.pane)
@@ -1428,7 +1428,7 @@ impl Sidebar {
             let mut block = div()
                 .relative()
                 .top(px(goff))
-                .px(px(9.))
+                .px(px(GUTTER))
                 .pb(px(GROUP_PB))
                 .when(drop, |d| {
                     let gid = g.group.id.clone();
@@ -1436,8 +1436,8 @@ impl Sidebar {
                         div()
                             .debug_selector(move || format!("drop-target:{gid}"))
                             .absolute()
-                            .left(px(9.))
-                            .right(px(9.))
+                            .left(px(GUTTER))
+                            .right(px(GUTTER))
                             .top_0()
                             .bottom(px(GROUP_PB))
                             .bg(t.pane),
@@ -1481,7 +1481,7 @@ impl Sidebar {
                 div()
                     .relative()
                     .top(px(off))
-                    .px(px(9.))
+                    .px(px(GUTTER))
                     .child(div().h(px(PROJ_H)))
                     .children(loops),
             );
@@ -1515,7 +1515,7 @@ impl Sidebar {
             } else {
                 t.rail
             };
-            let inset = if gi.is_some() { 15. } else { 9. };
+            let inset = if gi.is_some() { GUTTER + 6. } else { GUTTER };
             let header = self.project_header(p, true, window, cx);
             let boxed = self.header_box(false, &p.project.id, header, window, cx);
             let opacity = if p.project.hidden { 0.55 } else { 1. };
@@ -1541,12 +1541,12 @@ impl Sidebar {
             let header = self.group_header(g, true, window, cx);
             let boxed = self.header_box(true, &g.group.id, header, window, cx);
             group_layer.push(
-                Self::header_band(h.top, GROUP_H, 9., !in_drop, bg, 1., boxed, width)
+                Self::header_band(h.top, GROUP_H, GUTTER, !in_drop, bg, 1., boxed, width)
                     .into_any_element(),
             );
             let under_on = h.stuck && !stuck_children.contains(gi);
             seen_under.insert(key.clone());
-            let fade_inset = in_drop.then_some((9., t.pane));
+            let fade_inset = in_drop.then_some((GUTTER, t.pane));
             fades.extend(self.under_fade(&key, h.top + GROUP_H, under_on, fade_inset, cx));
             if in_drop && let Some(span) = layout.group(&g.group.id) {
                 rings.push(
@@ -1554,8 +1554,8 @@ impl Sidebar {
                         .absolute()
                         .top(px(span.top + goff))
                         .h(px(span.height))
-                        .left(px(9.))
-                        .right(px(9.))
+                        .left(px(GUTTER))
+                        .right(px(GUTTER))
                         .rounded(px(8.))
                         .border_1()
                         .border_color(Hsla::from(t.line))
@@ -1713,7 +1713,7 @@ impl Sidebar {
             let header = self.group_header(&g, false, window, cx);
             let mut el = div()
                 .w(px(w))
-                .px(px(9.))
+                .px(px(GUTTER))
                 .pb(px(GROUP_PB))
                 .rounded(px(8.))
                 .bg(t.rail)
@@ -1759,7 +1759,7 @@ impl Sidebar {
             let loops = (!p.collapsed).then(|| self.project_loops(&p, rc, false, None, window, cx));
             div()
                 .w(px(w))
-                .px(px(9.))
+                .px(px(GUTTER))
                 .rounded(px(6.))
                 .bg(t.rail)
                 .border_1()

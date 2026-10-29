@@ -29,7 +29,7 @@ pub enum ModalEvent {
 }
 
 /// `.titlebar`'s height: the part of the window the scrim leaves to the titlebar.
-const TITLEBAR_H: f32 = 52.;
+const TITLEBAR_H: f32 = 38.;
 
 /// The modal's fields, in tab order.
 const FIELDS: [(&str, &str, &str); 5] = [
@@ -502,7 +502,7 @@ impl CompatibleProviderModal {
                     cx.notify();
                 }),
             );
-        // `.nt-bg` sits inside `.body`, so the titlebar paints over its top 52px; the panel
+        // `.nt-bg` sits inside `.body`, so the titlebar paints over its top 38px; the panel
         // still hangs 22vh below the window top.
         let vh = f32::from(window.viewport_size().height);
         let drop = recur_ui::exact::lu(0.22 * vh) - TITLEBAR_H;

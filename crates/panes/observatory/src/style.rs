@@ -15,8 +15,7 @@ use recur_view_review::style::hsla;
 
 pub use recur_view_widgets::chrome::pane_toggle;
 
-/// `--obs-chrome-h`.
-pub const CHROME_H: f32 = 40.;
+pub use recur_ui::style::CHROME_H;
 /// `--chrome-foot-h`.
 pub const FOOT_H: f32 = 26.;
 /// `--win-corner-pad`.

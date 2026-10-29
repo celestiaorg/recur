@@ -21,10 +21,10 @@ use recur_view_core::{AppState, CrumbStyle, ViewName, toast};
 use crate::chrome::{no_drag, titlebar_mouse_down};
 use crate::shell::Shell;
 
-/// `.titlebar { height: 52px }`: the macOS toolbar height the traffic lights center in.
-pub const TITLEBAR_HEIGHT: f32 = 52.;
+/// The titlebar height the traffic lights center in.
+pub const TITLEBAR_HEIGHT: f32 = 38.;
 /// `.tb-traffic-clear`: room for the native traffic lights.
-const TRAFFIC_CLEAR_WIDTH: f32 = 68.;
+const TRAFFIC_CLEAR_WIDTH: f32 = 60.;
 
 /// Whether the titlebar leaves room for the native traffic lights (macOS).
 pub const TRAFFIC_LIGHTS: bool = cfg!(target_os = "macos");

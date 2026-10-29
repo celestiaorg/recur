@@ -538,7 +538,7 @@ impl TabStrip {
         if self.chrome {
             root = root
                 .flex_none()
-                .h(px(40.))
+                .h(px(crate::style::CHROME_H))
                 .bg(t.pane)
                 .border_b(px(1.))
                 .border_color(Hsla::from(t.line))

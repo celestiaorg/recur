@@ -12,6 +12,8 @@ use recur_view_core::workspace_nav::{
     is_nested_child, main_scan_id, nest_workspaces, split_scheduled, unique_refs,
 };
 
+/// The rail's inset from its edges to the rows.
+pub const GUTTER: f32 = 5.;
 /// `--rail-group-h`.
 pub const GROUP_H: f32 = 26.;
 /// `--rail-proj-h`.

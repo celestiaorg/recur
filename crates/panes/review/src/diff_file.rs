@@ -1163,7 +1163,11 @@ impl DiffFile {
         }
         let mut changed = self.measure();
         let scroll_top = pane.scroll_top();
-        let head_h = if head_h > 0. { head_h } else { 40. };
+        let head_h = if head_h > 0. {
+            head_h
+        } else {
+            recur_ui::style::CHROME_H
+        };
         let body_top = painted_top + (f32::from(root.origin.y) - pane.top()) + head_h;
         let mut win = line_window(
             count,
@@ -2361,7 +2365,7 @@ impl DiffFile {
             .flex()
             .items_center()
             .gap(px(10.))
-            .h(px(40.))
+            .h(px(recur_ui::style::CHROME_H))
             .px(px(13.))
             .flex_none()
             .bg(hsla(t.pane))
@@ -2546,7 +2550,11 @@ impl DiffFile {
         // In a pane the header floats over a placeholder, placed from each frame's scroll.
         let float_head = self.pane.clone().map(|pane| (pane, self.head(window, cx)));
         root = if float_head.is_some() {
-            root.child(div().flex_none().h(px(self.geom.borrow().head_h.max(40.))))
+            root.child(
+                div()
+                    .flex_none()
+                    .h(px(self.geom.borrow().head_h.max(recur_ui::style::CHROME_H))),
+            )
         } else {
             root.child(self.head(window, cx))
         };
@@ -2826,7 +2834,7 @@ impl DiffFile {
         let _ = t;
         let layer = float_head.map(|(pane, head)| StickyHead {
             pane,
-            head_h: self.geom.borrow().head_h.max(40.),
+            head_h: self.geom.borrow().head_h.max(recur_ui::style::CHROME_H),
             child: head,
         });
         root.children(layer).child(frame)

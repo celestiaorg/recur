@@ -680,7 +680,7 @@ impl PdfPreview {
             .items_center()
             .justify_end()
             .gap(px(8.))
-            .h(px(40.))
+            .h(px(recur_ui::style::CHROME_H))
             .px(px(8.))
             .min_w_0()
             .border_b_1()

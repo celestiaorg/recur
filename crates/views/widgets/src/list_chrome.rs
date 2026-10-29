@@ -14,8 +14,7 @@ pub fn hsla(c: Color) -> Hsla {
     c.into()
 }
 
-/// `--obs-chrome-h`.
-pub const CHROME_H: f32 = 40.;
+pub use recur_ui::style::CHROME_H;
 /// `.briefing-h`: 8px padding, a 9px line, 8px padding and the 1px rule.
 pub const HEAD_H: f32 = 26.;
 

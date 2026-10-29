@@ -10,7 +10,7 @@ pub const REVIEW_HYDRATE_OVERSCAN: usize = 2;
 /// Prefetch band above/below the scrollport, in px.
 pub const REVIEW_VIEW_PAD_PX: f32 = 900.;
 
-const HEAD_PX: f32 = 38.;
+const HEAD_PX: f32 = recur_ui::style::CHROME_H;
 pub const DIFF_LINE_PX: f32 = 20.;
 /// Extra rows above/below the viewport. Wrapping + comments make estimates drift.
 pub const DIFF_LINE_OVERSCAN: usize = 60;

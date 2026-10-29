@@ -389,7 +389,7 @@ impl PrList {
             .flex_none()
             .items_center()
             .gap(px(8.))
-            .h(px(40.))
+            .h(px(recur_ui::style::CHROME_H))
             .px(px(12.))
             .bg(hsla(t.pane))
             .border_b_1()

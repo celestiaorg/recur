@@ -490,7 +490,7 @@ impl EditorView {
         };
         let bg = if theme.is_light() { t.pane } else { t.bg };
         card(bg, border, 6.)
-            .h(px(28.))
+            .h(px(26.))
             .px(px(9.))
             .flex()
             .items_center()
@@ -535,9 +535,9 @@ impl EditorView {
         let (find, replace) = (s.find.clone(), s.replace.clone());
         let row = |d: gpui_kit::Div| d.flex().items_center().gap(px(6.)).pl(px(10.)).pr(px(8.));
         let mut find_row = row(div())
-            .min_h(px(36.))
-            .pt(px(5.))
-            .pb(px(5.))
+            .min_h(px(34.))
+            .pt(px(4.))
+            .pb(px(4.))
             .child(self.glyph(IconName::Search, cx))
             .child(
                 self.input_field(&find, "Find", window, cx)
@@ -650,7 +650,7 @@ impl EditorView {
         if SearchPanel::has_replace(&self.state) {
             panel = panel.child(
                 row(div())
-                    .pb(px(8.))
+                    .pb(px(4.))
                     .child(self.glyph(IconName::Replace, cx))
                     .child(
                         self.input_field(&replace, "Replace", window, cx)
@@ -696,9 +696,9 @@ impl EditorView {
             .flex()
             .items_center()
             .gap(px(6.))
-            .min_h(px(36.))
-            .pt(px(5.))
-            .pb(px(5.))
+            .min_h(px(34.))
+            .pt(px(4.))
+            .pb(px(4.))
             .pl(px(10.))
             .pr(px(8.))
             .text_color(h(t.text))

@@ -46,7 +46,7 @@ use crate::peek::{
     DEFAULT_SLACK, PeekFlags, PeekRect, RAIL_PEEK_EDGE_PX, RAIL_PEEK_HIDE, RAIL_PEEK_SHOW,
     pointer_far_from_rail_edge, pointer_in_left_edge, rail_peek_held,
 };
-use crate::tree::{Collapse, FADE, GROUP_H, Hole, Layout, PROJ_H, Tree};
+use crate::tree::{Collapse, FADE, GROUP_H, GUTTER, Hole, Layout, PROJ_H, Tree};
 use crate::usage::UsageMeter;
 
 const REMOVE_ARM: Duration = Duration::from_millis(3000);
@@ -1555,8 +1555,8 @@ impl Sidebar {
                 );
         div()
             .flex_none()
-            .pt(px(10.))
-            .px(px(9.))
+            .pt(px(6.))
+            .px(px(GUTTER))
             .pb(px(6.))
             .child(inbox)
             .child(issues)
@@ -1638,7 +1638,7 @@ impl Sidebar {
             .items_center()
             .gap(px(6.))
             .pt(px(13.))
-            .px(px(17.))
+            .px(px(GUTTER + 8.))
             .pb(px(6.))
             .bg(t.rail)
             .child(
@@ -1770,8 +1770,8 @@ impl Sidebar {
             .flex()
             .items_center()
             .gap(px(4.))
-            .py(px(8.))
-            .px(px(12.))
+            .py(px(3.))
+            .px(px(GUTTER))
             .border_t_1()
             .border_color(Hsla::from(t.line))
             .child(titled("foot-settings-tip", settings_label, settings))
@@ -1835,7 +1835,6 @@ impl Sidebar {
             .border_color(Hsla::from(t.line))
             .flex()
             .items_stretch()
-            .px(px(12.))
             .min_w_0()
             .child(stat(proj_label, t.muted, false, false))
             .child(second);

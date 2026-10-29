@@ -16,7 +16,7 @@ use recur_view_core::call;
 use recur_view_core::workspace_nav::unique_by_id;
 
 use crate::Sidebar;
-use crate::tree::{GROUP_H, Layout, Span};
+use crate::tree::{GROUP_H, GUTTER, Layout, Span};
 
 const DRAG_THRESHOLD: f32 = 4.;
 const SETTLE: Duration = Duration::from_millis(200);
@@ -453,7 +453,7 @@ impl Sidebar {
         };
         let in_group =
             self.drag.as_ref().is_some_and(|d| !d.group) && self.hole_in_group(&layout, hole, cx);
-        let x = self.tree_left() + if in_group { 11. + 9. } else { 9. };
+        let x = self.tree_left() + if in_group { 11. + GUTTER } else { GUTTER };
         let to = (x, self.window_y(hole.top));
         let Some(d) = self.drag.as_mut() else { return };
         if motion::reduced(cx) {

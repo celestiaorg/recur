@@ -12,7 +12,7 @@ pub const MIN_WIDTH: i32 = 1100;
 pub const MIN_HEIGHT: i32 = 720;
 /// Matches the `.titlebar` height and the hidden-inset drag strip
 /// (DECISIONS D-window).
-pub const TITLEBAR_HEIGHT: i32 = 52;
+pub const TITLEBAR_HEIGHT: i32 = 38;
 /// Window background (`--bg` = #0A0C10).
 pub const BACKGROUND_RGB: (u8, u8, u8) = (10, 12, 16);
 pub const STATE_FILE: &str = "window.json";

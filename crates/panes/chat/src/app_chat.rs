@@ -780,7 +780,7 @@ impl AppChat {
             .flex_none()
             .items_stretch()
             .gap(px(2.))
-            .h(px(40.))
+            .h(px(recur_ui::style::CHROME_H))
             .pl(px(8.))
             .pr(px(4.))
             .min_w_0()

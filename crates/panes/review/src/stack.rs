@@ -43,8 +43,8 @@ use crate::style::hsla;
 const SPY_SUPPRESS: Duration = Duration::from_millis(700);
 /// A card's bottom margin (`.cfile`).
 const CARD_GAP: f32 = 14.;
-/// A stub card: its 40px header inside the 1px frame.
-const STUB_CARD_H: f32 = 42.;
+/// A stub card: its header inside the 1px frame.
+const STUB_CARD_H: f32 = recur_ui::style::CHROME_H + 2.;
 /// How far beyond the viewport stub cards stay mounted.
 const STACK_MOUNT_PAD_PX: f32 = 1200.;
 
@@ -665,7 +665,7 @@ impl FileStack {
                         .flex()
                         .items_center()
                         .gap(px(10.))
-                        .h(px(40.))
+                        .h(px(recur_ui::style::CHROME_H))
                         .px(px(13.))
                         .rounded(px(8.))
                         .bg(hsla(t.pane))

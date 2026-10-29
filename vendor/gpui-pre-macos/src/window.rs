@@ -445,6 +445,10 @@ unsafe fn build_window_class(name: &'static str, superclass: &Class) -> *const C
             yes as extern "C" fn(&Object, Sel) -> BOOL,
         );
         decl.add_method(
+            sel!(_cornerRadius),
+            corner_radius as extern "C" fn(&Object, Sel) -> f64,
+        );
+        decl.add_method(
             sel!(windowDidResize:),
             window_did_resize as extern "C" fn(&Object, Sel, id),
         );
@@ -2494,6 +2498,12 @@ unsafe fn drop_window_state(object: &Object) {
 
 extern "C" fn yes(_: &Object, _: Sel) -> BOOL {
     YES
+}
+
+/// AppKit's private `-[NSWindow _cornerRadius]`: macOS 26 rounds a window without a toolbar
+/// at 16pt; this keeps the 10pt of earlier releases.
+extern "C" fn corner_radius(_: &Object, _: Sel) -> f64 {
+    10.
 }
 
 extern "C" fn dealloc_window(this: &Object, _: Sel) {

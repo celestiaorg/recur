@@ -311,6 +311,10 @@ pub fn body(cx: &App) -> Div {
 
 /// How far [`window_root`] shifts the tree so half-pixel ties round down and right, as WebKit's
 /// do. A cached view lays out as its own root and applies it again inside.
+/// A pane's tab or toolbar bar (`--obs-chrome-h`): 26px buttons, 4px above and below, and
+/// the 1px rule.
+pub const CHROME_H: f32 = 35.;
+
 pub const TIE_NUDGE: f32 = 1. / 4096.;
 
 /// `anchored()` at a fractional window position, as WebKit places a box. GPUI rounds an anchored

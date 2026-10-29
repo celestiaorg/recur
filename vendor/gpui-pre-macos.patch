@@ -1,5 +1,5 @@
 diff --git a/rust/vendor/gpui-pre-macos/Cargo.toml b/rust/vendor/gpui-pre-macos/Cargo.toml
-index 0e1322a4..bbe2cbf3 100644
+index 0e1322a..bbe2cbf 100644
 --- a/rust/vendor/gpui-pre-macos/Cargo.toml
 +++ b/rust/vendor/gpui-pre-macos/Cargo.toml
 @@ -305,3 +305,7 @@ priority = -1
@@ -11,7 +11,7 @@ index 0e1322a4..bbe2cbf3 100644
 +level = "allow"
 +priority = 0
 diff --git a/rust/vendor/gpui-pre-macos/src/window.rs b/rust/vendor/gpui-pre-macos/src/window.rs
-index b0428255..e5b9cfec 100644
+index b042825..de61731 100644
 --- a/rust/vendor/gpui-pre-macos/src/window.rs
 +++ b/rust/vendor/gpui-pre-macos/src/window.rs
 @@ -177,6 +177,10 @@ unsafe fn build_classes() {
@@ -25,7 +25,18 @@ index b0428255..e5b9cfec 100644
              decl.add_method(
                  sel!(pressureChangeWithEvent:),
                  handle_view_event as extern "C" fn(&Object, Sel, id),
-@@ -661,6 +665,10 @@ struct MacWindowState {
+@@ -440,6 +444,10 @@ unsafe fn build_window_class(name: &'static str, superclass: &Class) -> *const C
+             sel!(canBecomeKeyWindow),
+             yes as extern "C" fn(&Object, Sel) -> BOOL,
+         );
++        decl.add_method(
++            sel!(_cornerRadius),
++            corner_radius as extern "C" fn(&Object, Sel) -> f64,
++        );
+         decl.add_method(
+             sel!(windowDidResize:),
+             window_did_resize as extern "C" fn(&Object, Sel, id),
+@@ -661,6 +669,10 @@ struct MacWindowState {
      background_executor: BackgroundExecutor,
      native_window: id,
      native_view: NonNull<Object>,
@@ -36,7 +47,7 @@ index b0428255..e5b9cfec 100644
      blurred_view: Option<id>,
      background_appearance: WindowBackgroundAppearance,
      cursor_style: CursorStyle,
-@@ -1095,6 +1103,8 @@ impl MacWindow {
+@@ -1095,6 +1107,8 @@ impl MacWindow {
                  background_executor,
                  native_window,
                  native_view: NonNull::new_unchecked(native_view),
@@ -45,7 +56,7 @@ index b0428255..e5b9cfec 100644
                  blurred_view: None,
                  background_appearance: WindowBackgroundAppearance::Opaque,
                  cursor_style: CursorStyle::Arrow,
-@@ -2061,6 +2071,10 @@ impl PlatformWindow for MacWindow {
+@@ -2061,6 +2075,10 @@ impl PlatformWindow for MacWindow {
      fn on_hit_test_window_control(&self, _callback: Box<dyn FnMut() -> Option<WindowControlArea>>) {
      }
  
@@ -56,7 +67,20 @@ index b0428255..e5b9cfec 100644
      fn on_appearance_changed(&self, callback: Box<dyn FnMut()>) {
          self.0.lock().appearance_changed_callback = Some(callback);
      }
-@@ -2526,7 +2540,13 @@ extern "C" fn reset_cursor_rects(this: &Object, _: Sel) {
+@@ -2482,6 +2500,12 @@ extern "C" fn yes(_: &Object, _: Sel) -> BOOL {
+     YES
+ }
+ 
++/// AppKit's private `-[NSWindow _cornerRadius]`: macOS 26 rounds a window without a toolbar
++/// at 16pt; this keeps the 10pt of earlier releases.
++extern "C" fn corner_radius(_: &Object, _: Sel) -> f64 {
++    10.
++}
++
+ extern "C" fn dealloc_window(this: &Object, _: Sel) {
+     unsafe {
+         drop_window_state(this);
+@@ -2526,7 +2550,13 @@ extern "C" fn reset_cursor_rects(this: &Object, _: Sel) {
          let _: () = msg_send![super(this, class!(NSView)), resetCursorRects];
  
          let window_state = get_window_state(this);
@@ -71,7 +95,7 @@ index b0428255..e5b9cfec 100644
  
          let cursor: id = match cursor_style {
              CursorStyle::Arrow => msg_send![class!(NSCursor), arrowCursor],
-@@ -2562,6 +2582,25 @@ extern "C" fn reset_cursor_rects(this: &Object, _: Sel) {
+@@ -2562,6 +2592,25 @@ extern "C" fn reset_cursor_rects(this: &Object, _: Sel) {
              CursorStyle::DragLink => msg_send![class!(NSCursor), dragLinkCursor],
              CursorStyle::DragCopy => msg_send![class!(NSCursor), dragCopyCursor],
              CursorStyle::ContextualMenu => msg_send![class!(NSCursor), contextualMenuCursor],
@@ -97,7 +121,7 @@ index b0428255..e5b9cfec 100644
          };
  
          let bounds = NSView::bounds(this as *const Object as id);
-@@ -2569,6 +2608,54 @@ extern "C" fn reset_cursor_rects(this: &Object, _: Sel) {
+@@ -2569,6 +2618,54 @@ extern "C" fn reset_cursor_rects(this: &Object, _: Sel) {
      }
  }
  
@@ -152,7 +176,7 @@ index b0428255..e5b9cfec 100644
  extern "C" fn handle_key_equivalent(this: &Object, _: Sel, native_event: id) -> BOOL {
      handle_key_event(this, native_event, true)
  }
-@@ -2936,11 +3023,18 @@ extern "C" fn handle_view_event(this: &Object, _: Sel, native_event: id) {
+@@ -2936,11 +3033,18 @@ extern "C" fn handle_view_event(this: &Object, _: Sel, native_event: id) {
              _ => {}
          }
  

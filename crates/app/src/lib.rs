@@ -37,9 +37,8 @@ pub use titlebar::{TITLEBAR_HEIGHT, TRAFFIC_LIGHTS};
 /// (`inspectorAvailable`).
 pub const INSPECTOR_AVAILABLE: bool = cfg!(any(debug_assertions, feature = "devtools"));
 
-/// Where the macOS traffic lights sit: centered in the 52px titlebar (16px tall buttons), at
-/// AppKit's unified-toolbar inset.
-pub const TRAFFIC_LIGHT_POSITION: (f32, f32) = (20., 18.);
+/// Where the macOS traffic lights sit: centered in the 38px titlebar (16px tall buttons).
+pub const TRAFFIC_LIGHT_POSITION: (f32, f32) = (12., 11.);
 
 /// One-time app setup: the design system, menubar accelerators and every view crate's init.
 pub fn init(registry: &ViewRegistry, cx: &mut App) {

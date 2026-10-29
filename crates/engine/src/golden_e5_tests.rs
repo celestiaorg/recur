@@ -1,10 +1,10 @@
-//! Go-generated golden fixtures for slice E5 (R2): squash / merge commit
-//! messages, Local PR and workspace land messages, the open_pr tool result,
-//! the send-back instruction, the workspace PR summary, diff hunks for line
-//! notes, pending note locations and sides, review labels, PR URL and
-//! checkout-head rules, hoist path and code remaps, diff text, thread keys
-//! and the commit log merge (`tests/golden/go_e5.json`, generator
-//! `tests/golden/gen_e5_golden.go.txt`).
+//! Snapshot fixtures for squash / merge commit messages, Local PR and workspace
+//! land messages, the open_pr tool result, the send-back instruction, the
+//! workspace PR summary, diff hunks for line notes, pending note locations and
+//! sides, review labels, PR URL and checkout-head rules, hoist path and code
+//! remaps, diff text, thread keys and the commit log merge
+//! (`tests/golden/go_e5.json`). Edit the fixture by hand when the behavior
+//! changes on purpose.
 
 use pretty_assertions::assert_eq;
 use recur_domain::{

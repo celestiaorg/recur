@@ -1,6 +1,6 @@
-//! Go-computed answers for the GitHub parsers and rules
-//! (`tests/golden/github.json`, generator `gen_github_golden.go.txt`). Every
-//! field is compared as JSON, including ones the Go tests do not assert.
+//! Snapshot answers for the GitHub parsers and rules
+//! (`tests/golden/github.json`), every field compared as JSON. Edit the fixture
+//! by hand when the behavior changes on purpose.
 
 use std::collections::HashMap;
 

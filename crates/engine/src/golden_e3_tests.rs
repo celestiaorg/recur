@@ -1,10 +1,10 @@
-//! Go-generated golden fixtures for slice E3 (R2): loop error strings and
-//! prompts, the PR fallback text, handoff/replan/reviewer briefings, the
-//! findings threshold line, wrap-up HTML and elapsed labels, title rules,
-//! the child step plan, the PR thread, and — from real walks — the cap and
-//! plan-approval escalations and the Maestro's feed lines
-//! (`tests/golden/go_e3.json`, generator `tests/golden/gen_e3_golden.go.txt`).
-//! Walk ids are written as `$ID`, commit hashes `$HASH`, durations `$DUR`.
+//! Snapshot fixtures for loop error strings and prompts, the PR fallback text,
+//! handoff/replan/reviewer briefings, the findings threshold line, wrap-up HTML
+//! and elapsed labels, title rules, the child step plan, the PR thread, and,
+//! from real walks, the cap and plan-approval escalations and the Maestro's
+//! feed lines (`tests/golden/go_e3.json`). Walk ids are written as `$ID`,
+//! commit hashes `$HASH`, durations `$DUR`. Edit the fixture by hand when the
+//! behavior changes on purpose.
 
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;

@@ -1,8 +1,8 @@
-//! Go-generated golden fixtures for slice E2 (R2): chat sentinels and
-//! one-shot prompts, the composer wraps and mention collectors, formatter
-//! outputs and the plan card, compared with the Go engine (JSON as values)
-//! (`tests/golden/go_e2.json`, generator `tests/golden/gen_e2_golden.go.txt`).
-//! Paths under the fixture worktree are written as `$WT`.
+//! Snapshot fixtures for chat sentinels and one-shot prompts, the composer
+//! wraps and mention collectors, formatter outputs and the plan card (JSON as
+//! values, `tests/golden/go_e2.json`). Paths under the fixture worktree are
+//! written as `$WT`. Edit the fixture by hand when the behavior changes on
+//! purpose.
 
 use std::path::Path;
 

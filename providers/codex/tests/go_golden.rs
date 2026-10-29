@@ -1,9 +1,8 @@
-//! Go-generated answers for Codex (risk R2): `-c` overrides, user prompts,
-//! sandbox and approval policy, notification → event mapping, the usage
-//! meter, approval answers, file-change enrichment, the display boundary,
-//! request encodings, and the picker list. Fixtures `golden/go_codex.json`
-//! (generator `../../claude/tests/golden/gen_go_p1.go.txt`) and
-//! `golden/go_codex_app.json` (generator `golden/gen_go_p1_app.go.txt`).
+//! Snapshot answers for Codex: `-c` overrides, user prompts, sandbox and
+//! approval policy, notification → event mapping, the usage meter, approval
+//! answers, file-change enrichment, the display boundary, request encodings,
+//! and the picker list (`golden/go_codex.json`, `golden/go_codex_app.json`).
+//! Edit the fixture by hand when the behavior changes on purpose.
 
 use std::collections::BTreeMap;
 

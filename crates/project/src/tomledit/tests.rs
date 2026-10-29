@@ -25,9 +25,8 @@ struct Golden {
     edit: Vec<Edit>,
 }
 
-/// Replays go-toml `unstable/edit` operations recorded by
-/// `tests/fixtures/gen_projfile.go.txt` and checks every intermediate
-/// document byte for byte.
+/// Replays the edit operations in `tests/fixtures/projfile_golden.json` and
+/// checks every intermediate document byte for byte.
 #[test]
 fn edits_match_go_toml() {
     let golden: Golden =

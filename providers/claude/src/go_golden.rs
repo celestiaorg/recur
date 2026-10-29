@@ -1,8 +1,7 @@
-//! Go-generated answers for byte-identical argv, stdin user messages (as JSON
-//! values), model flags, the background-task frame, the status card and the
-//! picker list (risk R2). Fixtures: `tests/golden/go_claude.json` and
-//! `go_claude_app.json`; generators `gen_go_p1.go.txt` and
-//! `../../codex/tests/golden/gen_go_p1_app.go.txt`.
+//! Snapshot answers for argv, stdin user messages (as JSON values), model
+//! flags, the background-task frame, the status card and the picker list
+//! (`tests/golden/go_claude.json` and `go_claude_app.json`). Edit the fixtures
+//! by hand when the behavior changes on purpose.
 
 use std::collections::BTreeMap;
 

@@ -1,6 +1,6 @@
-//! Replays `tests/golden/go_lsp.json` and `go_managed.json`, recorded from
-//! the Go `lsp` and `lsp/managed` packages, and drives a real session
-//! through the manager.
+//! Snapshot tests over `tests/golden/go_lsp.json` and `go_managed.json`, plus
+//! a real session driven through the manager. Edit the fixtures by hand when
+//! the behavior changes on purpose.
 
 use std::sync::Arc;
 use std::time::Duration;

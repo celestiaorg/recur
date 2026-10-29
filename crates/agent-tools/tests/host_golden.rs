@@ -1,7 +1,7 @@
-//! Replays every host-tool case the Go generator recorded
-//! (`golden/host_calls.json`, generator `golden/golden_gen_test.go.txt`)
-//! against the Rust tools: result text (JSON as values), error text (Go
-//! decode wording excepted) and the host calls.
+//! Snapshot of every host-tool case (`golden/host_calls.json`) against the Rust
+//! tools: result text (JSON as values), error text (decode wording excepted)
+//! and the host calls. Edit the fixture by hand when the behavior changes on
+//! purpose.
 
 mod common;
 

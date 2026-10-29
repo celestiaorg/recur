@@ -1,5 +1,5 @@
-//! Replays `tests/golden/go_code.json` and `go_copyfiles.json`, recorded from
-//! the Go packages by `tests/golden/gen_go_*.go.txt`, against this crate.
+//! Snapshot tests over `tests/golden/go_code.json` and `go_copyfiles.json`.
+//! Edit the fixture by hand when the behavior changes on purpose.
 
 use std::collections::BTreeMap;
 use std::fs;

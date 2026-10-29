@@ -1,7 +1,7 @@
-//! The HTTP contract the agent CLIs depend on, replayed from the Go server
-//! (`golden/http_cases.json`, generator `golden/golden_gen_test.go.txt`):
+//! The HTTP contract the agent CLIs depend on (`golden/http_cases.json`):
 //! status, headers, body and the arguments the host sees, compared as JSON
-//! values. Includes the `tools/list` snapshot (R2).
+//! values. Includes the `tools/list` snapshot. Edit the fixtures by hand when
+//! the contract changes on purpose.
 
 mod common;
 

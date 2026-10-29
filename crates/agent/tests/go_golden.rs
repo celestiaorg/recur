@@ -1,7 +1,7 @@
-//! Go-computed answers for the text and display rules (risk R2): constants,
-//! feed summaries, chat detail bounds, listing compaction, failure
-//! classification, attachment blocks. JSON outputs compare as values. See
-//! `golden/gen_go_agent.go.txt` to regenerate.
+//! Snapshot answers for the text and display rules: constants, feed
+//! summaries, chat detail bounds, listing compaction, failure classification,
+//! attachment blocks. JSON outputs compare as values. Edit
+//! `golden/go_agent.json` by hand when a rule changes on purpose.
 
 use std::collections::BTreeMap;
 

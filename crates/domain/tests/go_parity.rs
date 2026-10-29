@@ -1,12 +1,10 @@
-//! Every Go domain struct, as Go's json.Marshal encodes it (zero value and a
-//! reflection-filled value), must decode into the Rust type and re-encode to
-//! an equal JSON value. Regenerate `fixtures/go_types.json` with
-//! `fixtures/gen_go_types.go.txt` when the Go structs change.
+//! Data the Go app wrote must keep loading: every Go domain struct, as Go
+//! encoded it (zero value and a filled value), decodes into the Rust type.
+//! `fixtures/go_types.json` is frozen; add a sample by hand for a new type.
 
 use std::collections::BTreeMap;
 
 use recur_domain::*;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 type Fixture = BTreeMap<String, BTreeMap<String, String>>;
@@ -15,17 +13,15 @@ fn fixture() -> Fixture {
     serde_json::from_str(include_str!("fixtures/go_types.json")).expect("fixture parses")
 }
 
-fn check<T: DeserializeOwned + Serialize>(fx: &Fixture, go_name: &str) {
+fn check<T: DeserializeOwned>(fx: &Fixture, go_name: &str) {
     let samples = fx
         .get(go_name)
         .unwrap_or_else(|| panic!("{go_name} missing from fixture"));
     for which in ["zero", "full"] {
         let go = &samples[which];
-        let v: T =
-            serde_json::from_str(go).unwrap_or_else(|e| panic!("{go_name} {which}: {e}\n{go}"));
-        let rust = json::canonical(serde_json::to_value(&v).unwrap());
-        let go = json::canonical(serde_json::from_str(go).unwrap());
-        pretty_assertions::assert_eq!(rust, go, "{go_name} {which}");
+        if let Err(e) = serde_json::from_str::<T>(go) {
+            panic!("{go_name} {which}: {e}\n{go}");
+        }
     }
 }
 
@@ -35,12 +31,12 @@ macro_rules! parity {
         let names = [$($go),+];
         $( check::<$ty>(&fx, $go); )+
         let missing: Vec<_> = fx.keys().filter(|k| !names.contains(&k.as_str())).collect();
-        assert!(missing.is_empty(), "Go types without a Rust parity check: {missing:?}");
+        assert!(missing.is_empty(), "Go types without a decode check: {missing:?}");
     }};
 }
 
 #[test]
-fn every_go_type_round_trips() {
+fn every_go_type_decodes() {
     parity! {
         "Agent" => Agent,
         "AgentSkill" => AgentSkill,

@@ -550,16 +550,13 @@ impl CommitsView {
         let vs = js::trim(&self.base_label).to_string();
         let show_working = self.working_dirty_count > 0;
         let list_empty = self.commits.is_empty() && !show_working;
-        let mut wrap = div()
-            .id("commits-wrap")
-            .debug_selector(|| "commits-wrap".into())
-            .flex_1()
-            .min_h_0()
-            .min_w_0()
-            .w_full()
-            .overflow_y_scroll()
-            .track_scroll(&self.scroll)
-            .p(px(18.));
+        let mut wrap = recur_ui::widgets::scroll_area("commits-wrap")
+            .track(&self.scroll)
+            .scroller(|d| {
+                d.debug_selector(|| "commits-wrap".into())
+                    .w_full()
+                    .p(px(18.))
+            });
         if self.loading && list_empty {
             wrap = wrap.child(empty_state("Loading commits…", cx));
         } else if self.error && list_empty {

@@ -20,7 +20,7 @@ struct Catalog {
 }
 
 fn golden() -> Catalog {
-    serde_json::from_str(include_str!("golden/catalog.json")).unwrap()
+    serde_json::from_str(include_str!("../golden/catalog.json")).unwrap()
 }
 
 fn assert_same(want: &[Entry], got: &[Arc<dyn Tool>]) {

@@ -2,7 +2,7 @@
 //! worktree. Paths are normalized to `$WT`. Edit the fixture by hand when the
 //! behavior changes on purpose.
 
-mod common;
+use crate::common;
 
 use std::sync::Arc;
 
@@ -98,7 +98,8 @@ async fn coding_tools_match_go() {
         .to_string();
     let norm = |s: &str| s.replace(&eval, "$WT").replace(&wt, "$WT");
 
-    let cases: Vec<Case> = serde_json::from_str(include_str!("golden/coding_calls.json")).unwrap();
+    let cases: Vec<Case> =
+        serde_json::from_str(include_str!("../golden/coding_calls.json")).unwrap();
     let todos = Arc::new(TodoStore::default());
     let mut failures = Vec::new();
     let mut ran = 0;

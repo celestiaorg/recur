@@ -85,8 +85,8 @@ impl Observatory {
             .flex_none()
             .h(px(CHROME_H))
             .border_b_1()
-            .border_color(hsla(t.line))
-            .bg(hsla(t.pane))
+            .border_color(hsla(t.line_soft))
+            .bg(hsla(t.bg))
             .text_color(hsla(t.muted))
             .min_w_0();
         if split {

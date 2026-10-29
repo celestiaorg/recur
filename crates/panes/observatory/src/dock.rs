@@ -1232,6 +1232,7 @@ impl TerminalDock {
             "Terminal sessions",
         )
         .chrome(true)
+        .surface(term_bg)
         .active_key(SharedString::from(self.active_id.clone()))
         .can_start(move |_| n > 1)
         .on_reorder({

@@ -450,7 +450,7 @@ async fn opt_cmd_arrows_rotate_through_tabs_while_the_dock_is_focused(cx: &mut T
 }
 
 #[gpui::test]
-async fn the_active_tab_underline_tracks_which_panel_has_focus(cx: &mut TestAppContext) {
+async fn the_active_tab_accent_tracks_which_panel_has_focus(cx: &mut TestAppContext) {
     let t = Term::default();
     let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
     h.keys("secondary-p");

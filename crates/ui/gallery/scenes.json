@@ -177,13 +177,13 @@
     {
       "name": "tab-strip/default",
       "width": 640,
-      "height": 48,
+      "height": 128,
       "theme": "default"
     },
     {
       "name": "tab-strip/hover",
       "width": 640,
-      "height": 48,
+      "height": 128,
       "theme": "default"
     },
     {
@@ -195,7 +195,7 @@
     {
       "name": "tab-strip/paper",
       "width": 640,
-      "height": 48,
+      "height": 128,
       "theme": "paper"
     },
     {

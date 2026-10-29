@@ -217,6 +217,7 @@ pub struct TabStrip {
     trailing: Vec<AnyElement>,
     on_reorder: Option<Reorder>,
     can_start: Option<CanStart>,
+    surface: Option<crate::color::Color>,
 }
 
 pub fn tab_strip(id: impl Into<ElementId>, label: impl Into<SharedString>) -> TabStrip {
@@ -235,6 +236,7 @@ pub fn tab_strip(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Ta
         trailing: Vec::new(),
         on_reorder: None,
         can_start: None,
+        surface: None,
     }
 }
 
@@ -249,6 +251,12 @@ impl TabStrip {
     /// file tabs).
     pub fn grow(mut self, on: bool) -> Self {
         self.grow = on;
+        self
+    }
+
+    /// The color of the content under the strip, which the selected tab takes (default `--bg`).
+    pub fn surface(mut self, c: crate::color::Color) -> Self {
+        self.surface = Some(c);
         self
     }
 
@@ -338,6 +346,18 @@ pub fn tab_strip_action(
     d
 }
 
+/// A tab bar's bottom line, drawn under the tabs so the selected one covers it and opens into
+/// the content below. Use it in place of a bottom border, before the strip in a `relative` bar.
+pub fn tab_bar_rule(cx: &App) -> gpui_kit::Div {
+    div()
+        .absolute()
+        .left_0()
+        .right_0()
+        .bottom_0()
+        .h(px(1.))
+        .bg(Theme::of(cx).tokens.line)
+}
+
 fn chip_index(order: &[SharedString], key: &str) -> Option<usize> {
     order.iter().position(|k| k == key)
 }
@@ -390,10 +410,14 @@ impl TabStrip {
         };
         let mut floating: Option<TabChip> = None;
         let mut chips: Vec<AnyElement> = Vec::new();
-        for key in &order {
+        for (ix, key) in order.iter().enumerate() {
             let Some(mut chip) = by_key.remove(key) else {
                 continue;
             };
+            if let Some(c) = self.surface {
+                chip = chip.surface(c);
+            }
+            chip.first = ix == 0 && self.leading.is_empty();
             let dx = now_flip(key, cx);
             if from.as_ref() == Some(key) {
                 // `.tab-chip-ph`: the slot the dragged chip will land in.
@@ -491,7 +515,6 @@ impl TabStrip {
             .self_stretch()
             .flex()
             .items_stretch()
-            .gap(px(2.))
             .overflow_x_scroll()
             .track_scroll(&scroll)
             .role(gpui_kit::accesskit::Role::TabList)
@@ -528,7 +551,7 @@ impl TabStrip {
             .flex()
             .items_stretch()
             .gap(px(6.))
-            .when(!flush, |d| d.pl(px(8.)).pr(px(4.)))
+            .when(!flush, |d| d.pr(px(4.)))
             .when(flush || self.grow, |d| d.flex_1())
             .min_w_0()
             .min_h_0()
@@ -538,9 +561,8 @@ impl TabStrip {
                 .flex_none()
                 .h(px(crate::style::CHROME_H))
                 .bg(t.pane)
-                .border_b(px(1.))
-                .border_color(Hsla::from(t.line))
-                .overflow_hidden();
+                .overflow_hidden()
+                .child(tab_bar_rule(cx));
         }
         let side = |items: Vec<AnyElement>| {
             div()

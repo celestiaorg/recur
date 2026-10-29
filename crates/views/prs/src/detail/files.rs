@@ -429,7 +429,7 @@ impl PrDetail {
             let list = postable.clone();
             main = main.child(
                 div().ml(px(8.)).child(
-                    note_btn("pr-fl-post-all", "Post all", false, busy, t.pane, lh, cx)
+                    note_btn("pr-fl-post-all", "Post all", false, busy, t.bg, lh, cx)
                         .debug_selector(|| "fl-head:Post all".into())
                         .when(!busy, |b| {
                             b.on_click(cx.guarded_listener(move |d, _, _, cx| {
@@ -445,9 +445,9 @@ impl PrDetail {
             .items_center()
             .flex_none()
             .h(px(recur_ui::style::CHROME_H))
-            .bg(hsla(t.pane))
+            .bg(hsla(t.bg))
             .border_b_1()
-            .border_color(hsla(t.line))
+            .border_color(hsla(t.line_soft))
             .overflow_hidden()
             .child(if open {
                 div().flex_none().w(px(list_w)).h_full().child(cluster)
@@ -624,7 +624,7 @@ impl PrDetail {
             .h(px(recur_ui::style::CHROME_H))
             .px(px(8.))
             .border_b_1()
-            .border_color(hsla(t.line))
+            .border_color(hsla(t.line_soft))
             .text_color(hsla(t.faint))
             .child(
                 div()

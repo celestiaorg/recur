@@ -19,7 +19,7 @@ use gpui_kit::{
 };
 use recur_ui::text::{TextStyled, text};
 use recur_ui::tooltip::titled;
-use recur_ui::widgets::{Axis, ChipIcon, Edge, resize_handle, tab_chip, tab_strip};
+use recur_ui::widgets::{Axis, ChipIcon, Edge, resize_handle, tab_bar_rule, tab_chip, tab_strip};
 use recur_ui::{IconName, Theme, motion};
 use recur_view_core::prefs::{CodePanelKey, PanelKey, PanelSide};
 use recur_view_review::review_diff::ReviewTab;
@@ -156,11 +156,11 @@ impl Observatory {
             .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
             .flex()
             .items_stretch()
+            .relative()
             .flex_none()
             .h(px(CHROME_H))
-            .border_b_1()
-            .border_color(hsla(t.line))
-            .bg(hsla(t.pane));
+            .bg(hsla(t.pane))
+            .child(tab_bar_rule(cx));
 
         let dock_w = self.maestro_dock_width(cx);
         let left_col = |d: Div| {

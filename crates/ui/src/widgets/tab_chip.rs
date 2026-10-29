@@ -80,6 +80,8 @@ pub struct TabChip {
     on_context_menu: Option<Press>,
     click_guard: Option<Guard>,
     lift: f32,
+    surface: Option<crate::color::Color>,
+    pub(crate) first: bool,
 }
 
 pub fn tab_chip(id: impl Into<ElementId>, label: impl Into<SharedString>) -> TabChip {
@@ -107,6 +109,8 @@ pub fn tab_chip(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Tab
         on_context_menu: None,
         click_guard: None,
         lift: 1.,
+        surface: None,
+        first: false,
     }
 }
 
@@ -120,7 +124,7 @@ impl TabChip {
         self.active = on;
         self
     }
-    /// Amber underline: the panel holding this tab has keyboard focus.
+    /// Amber top line: the panel holding this tab has keyboard focus.
     pub fn lit(mut self, on: bool) -> Self {
         self.lit = on;
         self
@@ -207,6 +211,10 @@ impl TabChip {
     /// The floating chip's lift while it settles: 1 is the full drag shadow, 0 none.
     pub fn lift(mut self, lift: f32) -> Self {
         self.lift = lift;
+        self
+    }
+    pub(crate) fn surface(mut self, c: crate::color::Color) -> Self {
+        self.surface = Some(c);
         self
     }
     pub fn on_context_menu(
@@ -318,11 +326,8 @@ impl TabChip {
             body = body.child(div().flex_none().size(px(5.)).rounded_full().bg(t.amber));
         }
 
-        let border = if self.active {
-            if self.lit { t.amber } else { t.line }
-        } else {
-            crate::color::TRANSPARENT
-        };
+        let divider = if self.active { t.line } else { t.line_soft };
+        let accent = if self.lit { t.amber } else { t.line_bright };
         let hover_text = t.text;
         let sel = format!(
             "tab-chip:{}{}",
@@ -338,9 +343,10 @@ impl TabChip {
             .items_center()
             .gap(px(6.))
             .h_full()
+            .relative()
             .px(px(10.))
-            .border_b(px(2.))
-            .border_color(Hsla::from(border))
+            .border_r(px(1.))
+            .border_color(Hsla::from(divider))
             .text_color(fg)
             .font_family(UI)
             .text_size(px(12.))
@@ -355,6 +361,32 @@ impl TabChip {
                 CursorStyle::PointingHand
             })
             .child(body);
+        if self.active {
+            // The left edge overlays the previous chip's divider, so selecting a tab never
+            // shifts the row.
+            chip = chip
+                .bg(self.surface.unwrap_or(t.bg))
+                .child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .right_0()
+                        .h(px(2.))
+                        .bg(accent),
+                )
+                .when(!self.first && !self.floating, |d| {
+                    d.child(
+                        div()
+                            .absolute()
+                            .top_0()
+                            .bottom_0()
+                            .left(px(-1.))
+                            .w(px(1.))
+                            .bg(t.line),
+                    )
+                });
+        }
         // `0 8px 24px rgba(0,0,0,.35)` under the floating chip, eased to nothing as it settles.
         let lift = self.floating.then(|| {
             let l = self.lift;

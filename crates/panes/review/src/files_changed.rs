@@ -948,7 +948,7 @@ impl FilesChangedView {
         )));
         let fallback = self.split_fallback();
         let layout = self.diff_layout;
-        let backdrop = t.pane;
+        let backdrop = t.bg;
         main = main.child(
             div().ml(px(8.)).child(seg(
                 [
@@ -1029,9 +1029,9 @@ impl FilesChangedView {
             .items_center()
             .flex_none()
             .h(px(recur_ui::style::CHROME_H))
-            .bg(hsla(t.pane))
+            .bg(hsla(t.bg))
             .border_b_1()
-            .border_color(hsla(t.line))
+            .border_color(hsla(t.line_soft))
             .overflow_hidden();
         bar = if open && !stacked {
             bar.child(div().flex_none().w(px(list_w)).h_full().child(cluster))
@@ -1074,7 +1074,7 @@ impl FilesChangedView {
             .h(px(recur_ui::style::CHROME_H))
             .px(px(8.))
             .border_b_1()
-            .border_color(hsla(t.line))
+            .border_color(hsla(t.line_soft))
             .text_color(hsla(t.faint))
             .child(
                 div()

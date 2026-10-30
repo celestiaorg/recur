@@ -271,6 +271,10 @@ fn main() {
     // Production .app only: symlink the bundled CLI onto PATH (D-cli-install).
     rt.spawn_blocking(cliinstall::install_bundled_cli);
 
+    let native_title_bar = cfg!(target_os = "linux")
+        && rt
+            .block_on(services.settings.get_settings())
+            .is_ok_and(|s| s.use_native_title_bar);
     let app = gpui_kit::application().with_assets(recur_ui::Assets);
     {
         let main_tx = main_tx.clone();
@@ -295,6 +299,7 @@ fn main() {
             registry,
             shell: recur_app::ShellOptions {
                 updates: updater.is_some(),
+                native_title_bar,
                 on_window_active: real.clone().map(|svc| {
                     Rc::new(move |active: bool| svc.set_app_focused(active)) as Rc<dyn Fn(bool)>
                 }),

@@ -827,6 +827,27 @@ fn reload_bundles_rereads_the_catalog_and_reports_skipped_bundles(cx: &mut TestA
     ));
 }
 
+#[cfg(not(target_os = "macos"))]
+#[gpui_kit::test]
+fn titlebar_menu_button_runs_a_menu_item(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    assert_eq!(h.view(), ViewName::Briefing);
+    h.click("tb-menu");
+    assert!(h.has("app-menu"));
+    assert!(!h.has("app-menu-row:Issues"), "submenus start collapsed");
+    h.click("app-menu-row:Navigate");
+    h.click("app-menu-row:Issues");
+    assert!(!h.has("app-menu"), "picking an item closes the menu");
+    assert_eq!(h.view(), ViewName::Issues);
+    h.click("tb-menu");
+    h.click("tb-menu");
+    assert!(!h.has("app-menu"), "the button toggles the menu closed");
+}
+
 #[gpui_kit::test]
 fn sidebar_usage_meter_opens_a_popover_with_quota_bars(cx: &mut TestAppContext) {
     let usage = json!({

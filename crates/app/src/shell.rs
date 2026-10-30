@@ -27,6 +27,9 @@ use crate::titlebar::TitlebarState;
 pub struct ShellOptions {
     /// The updater is installed: show Check for Updates… (release app bundles).
     pub updates: bool,
+    /// Settings → Appearance "Use native title bar": the window manager's title bar instead of
+    /// Recur's window controls (Linux; read at launch).
+    pub native_title_bar: bool,
     /// The OS window became key / lost key (`eng.SetAppFocused`).
     pub on_window_active: Option<Rc<dyn Fn(bool)>>,
     /// Persist geometry to `window.json` in this data dir, starting from the loaded state.

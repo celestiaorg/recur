@@ -4,6 +4,7 @@
 //! Views plug in through [`recur_view_core::ViewRegistry`]; see `docs/ARCHITECTURE.md`.
 
 mod actions;
+mod app_menu;
 mod bundles;
 pub mod chrome;
 mod keys;
@@ -17,8 +18,8 @@ use std::path::PathBuf;
 
 use gpui_kit::{
     App, AppContext, Bounds, Context, Entity, IntoElement, KeyBinding, NoAction, ParentElement,
-    Render, Styled, TitlebarOptions, Window, WindowBounds, WindowHandle, WindowKind, WindowOptions,
-    div, point, px, size,
+    Render, Styled, TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowHandle,
+    WindowKind, WindowOptions, div, point, px, size,
 };
 use recur_platform::window_state;
 use recur_services::Services;
@@ -72,8 +73,13 @@ impl Render for WindowRoot {
     }
 }
 
-/// GPUI window options from the saved geometry (`windowOptionsFromState`).
-pub fn window_options(opts: &window_state::WindowOptions, cx: &App) -> WindowOptions {
+/// GPUI window options from the saved geometry (`windowOptionsFromState`). On Linux the window
+/// draws its own decorations unless `native_title_bar`.
+pub fn window_options(
+    opts: &window_state::WindowOptions,
+    native_title_bar: bool,
+    cx: &App,
+) -> WindowOptions {
     let sz = size(px(opts.width as f32), px(opts.height as f32));
     let bounds = match opts.position {
         Some((x, y)) => Bounds {
@@ -97,6 +103,8 @@ pub fn window_options(opts: &window_state::WindowOptions, cx: &App) -> WindowOpt
         kind: WindowKind::Normal,
         is_movable: true,
         app_owns_titlebar_drag: true,
+        window_decorations: (cfg!(target_os = "linux") && !native_title_bar)
+            .then_some(WindowDecorations::Client),
         is_resizable: true,
         is_minimizable: true,
         app_id: Some(recur_platform::identity::LINUX_APP_ID.to_string()),
@@ -126,7 +134,11 @@ pub fn open_main_window(
         .as_deref()
         .map(window_state::load)
         .unwrap_or_default();
-    let opts = window_options(&window_state::WindowOptions::from_state(&loaded), cx);
+    let opts = window_options(
+        &window_state::WindowOptions::from_state(&loaded),
+        main.shell.native_title_bar,
+        cx,
+    );
     let state = AppState::install(main.services.clone(), main.storage, cx);
     let ctx = ViewContext {
         state: state.clone(),

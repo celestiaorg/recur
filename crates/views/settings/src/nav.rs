@@ -139,7 +139,7 @@ pub fn nav() -> Vec<NavGroup> {
                     Section::Appearance,
                     "Appearance",
                     IconName::Monitor,
-                    "theme color palette chrome app editor theme dark light charcoal slate cool glow catppuccin mocha latte paper nord terminal xterm ansi solarized vga tango campbell homebrew snazzy ubuntu",
+                    "theme color palette chrome app editor theme dark light charcoal slate cool glow catppuccin mocha latte paper nord terminal xterm ansi solarized vga tango campbell homebrew snazzy ubuntu native title bar window linux",
                 ),
                 item(
                     Section::Editor,

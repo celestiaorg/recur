@@ -25,7 +25,10 @@ use recur_view_core::prefs::TERMINAL_MATCH_EDITOR;
 use recur_view_core::themes::is_light_theme;
 
 use crate::field::FieldOpts;
-use crate::style::{copy, css_color, ctrl, hsla, seg, seg_btn, swatch, thauto_label, tokens};
+use crate::style::{
+    Row, RowsCtx, copy, css_color, ctrl, hsla, rows, seg, seg_btn, swatch, thauto_label, tog,
+    tokens,
+};
 use crate::view::{SettingsView, ThemeKind};
 
 /// What a theme card shows: background, three dots, and the `.tha` sample (text and accent).
@@ -733,6 +736,51 @@ impl SettingsView {
                     .blurb("ANSI colours in the dock. Match app follows the chrome palette.")
                     .child(term_body),
             )
+            .when(cfg!(target_os = "linux"), |d| {
+                d.child(self.window_group(window, cx))
+            })
+            .into_any_element()
+    }
+
+    /// Linux: the window manager's title bar instead of Recur's window controls.
+    fn window_group(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let native = self.settings(cx).is_some_and(|s| s.use_native_title_bar);
+        let row = Row::new()
+            .child(copy(
+                "native-title-bar",
+                "Use native title bar",
+                Some(vec![span(
+                    "Show the system title bar instead of Recur’s window controls. Takes effect after restarting Recur.",
+                )]),
+                cx,
+            ))
+            .child(
+                ctrl().child(
+                    tog(
+                        "tog-native-title-bar",
+                        "toggle native title bar",
+                        native,
+                        false,
+                        cx,
+                    )
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                        this.patch(false, |s| s.use_native_title_bar = !native, cx)
+                            .detach();
+                    })),
+                ),
+            );
+        settings_group("grp-window", "Window")
+            .blurb("Linux title bar.")
+            .child(rows(
+                RowsCtx {
+                    sides: true,
+                    in_group: true,
+                    more: false,
+                },
+                vec![row],
+                window,
+                cx,
+            ))
             .into_any_element()
     }
 

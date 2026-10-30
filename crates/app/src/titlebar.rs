@@ -18,7 +18,7 @@ use recur_view_core::modes::{workspace_can_remove, workspace_shows_remove, ws_ma
 use recur_view_core::run::{run_label, workspace_dev_cmd, workspace_run};
 use recur_view_core::{AppState, CrumbStyle, ViewName, toast};
 
-use crate::chrome::{no_drag, titlebar_mouse_down};
+use crate::chrome::{no_drag, titlebar_mouse_down, window_controls};
 use crate::shell::Shell;
 
 /// The titlebar height the traffic lights center in.
@@ -44,6 +44,7 @@ pub(crate) struct CrumbName {
 #[derive(Default)]
 pub(crate) struct TitlebarState {
     pub name: CrumbName,
+    pub menu: crate::app_menu::AppMenu,
     /// The dirty / unmerged work Remove would discard (`WorkspaceDiscardRisk`).
     discard_risk: String,
     discard_seq: u64,
@@ -279,6 +280,7 @@ impl Shell {
         };
         let left = self.titlebar_left(view, rail_collapsed, window, cx);
         let right = self.titlebar_right(view, window, cx);
+        let controls = window_controls(window, cx);
         div()
             .id("titlebar")
             .relative()
@@ -295,12 +297,16 @@ impl Shell {
                 titlebar_mouse_down(ev, true, window);
                 cx.stop_propagation();
             })
+            .on_mouse_down(MouseButton::Right, |ev, window, _| {
+                window.show_window_menu(ev.position)
+            })
             .child(left)
             .when_some(
                 (!label.is_empty()).then(|| instance_chip(&label, cx)),
                 |d, chip| d.child(chip),
             )
             .child(right)
+            .children(controls)
             .into_any_element()
     }
 
@@ -308,7 +314,7 @@ impl Shell {
         &mut self,
         view: ViewName,
         rail_collapsed: bool,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
@@ -337,6 +343,9 @@ impl Shell {
                         cx.stop_propagation();
                     }),
             );
+        }
+        if crate::app_menu::IN_APP_MENU {
+            left = left.child(self.app_menu_button(window, cx));
         }
         let title = if rail_collapsed {
             "Show sidebar (⌘B)"

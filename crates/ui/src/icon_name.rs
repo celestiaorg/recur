@@ -133,6 +133,7 @@ pub enum IconName {
     Copy,
     Heart,
     List,
+    Menu,
     Hash,
     AlignLeft,
     Refs,
@@ -174,7 +175,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 168] = [
+    pub const ALL: [IconName; 169] = [
         IconName::Plus,
         IconName::Box,
         IconName::Github,
@@ -305,6 +306,7 @@ impl IconName {
         IconName::Copy,
         IconName::Heart,
         IconName::List,
+        IconName::Menu,
         IconName::Hash,
         IconName::AlignLeft,
         IconName::Refs,
@@ -478,6 +480,7 @@ impl IconName {
             IconName::Copy => "copy",
             IconName::Heart => "heart",
             IconName::List => "list",
+            IconName::Menu => "menu",
             IconName::Hash => "hash",
             IconName::AlignLeft => "align-left",
             IconName::Refs => "refs",

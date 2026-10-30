@@ -158,6 +158,10 @@ pub struct Settings {
     /// Reveal hidden projects in the sidebar tree.
     #[serde(skip_serializing_if = "is_false")]
     pub show_hidden_projects: bool,
+    /// Linux: keep the window manager's title bar instead of Recur's own window controls.
+    /// Read at launch, so a change applies after a restart.
+    #[serde(skip_serializing_if = "is_false")]
+    pub use_native_title_bar: bool,
     /// Enter queues a follow-up while an agent runs (⌘/Ctrl+Enter steers);
     /// default false is the reverse.
     #[serde(skip_serializing_if = "is_false")]

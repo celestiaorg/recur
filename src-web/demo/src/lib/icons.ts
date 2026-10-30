@@ -438,6 +438,10 @@ export const icons = {
     strokeWidth: 1.75,
     body: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
   },
+  menu: {
+    // lucide menu — Linux application menu button
+    body: '<path d="M4 5h16M4 12h16M4 19h16"/>',
+  },
   hash: {
     // lucide hash — go-to-line dialog glyph
     body: '<path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>',

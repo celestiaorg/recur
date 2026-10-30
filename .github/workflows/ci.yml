@@ -4,8 +4,11 @@ name: CI
 # job here and list it under ci-success.needs; no GitHub settings change.
 #
 # Tools (node, pnpm, nfpm, dmgbuild) come from mise.toml through mise-action;
-# Rust from rust-toolchain.toml. Mac jobs run on macos-26: `generate:icons`
-# compiles build/appicon.icon with actool, which needs Xcode 26+.
+# Rust from rust-toolchain.toml. mise routes cargo through mbx;
+# mr-boxington-action caches target/ and Cargo's downloads, and turns off mbx's
+# managed target dirs so the runner holds one copy of the build. Mac jobs run
+# on macos-26: `generate:icons` compiles build/appicon.icon with actool, which
+# needs Xcode 26+.
 on:
   push:
     branches: [main]
@@ -16,11 +19,8 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# The Linux runner's disk is tight. mbx's shared store and incremental state
-# would duplicate target/ on a one-shot runner, and full debuginfo bloats it.
+# Full debuginfo for every crate fills the Linux runner's disk.
 env:
-  MBX_DISABLE: "1"
-  CARGO_INCREMENTAL: "0"
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
 jobs:
@@ -45,7 +45,9 @@ jobs:
           go-version: stable
           cache: false
       - uses: jdx/mise-action@v5
-      - uses: Swatinem/rust-cache@v2
+      - uses: jdx/mr-boxington-action@v1
+        with:
+          save-on-pull-request: true
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: mise run test
 
@@ -72,7 +74,9 @@ jobs:
           go-version: stable
           cache: false
       - uses: jdx/mise-action@v5
-      - uses: Swatinem/rust-cache@v2
+      - uses: jdx/mr-boxington-action@v1
+        with:
+          save-on-pull-request: true
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
       - run: xvfb-run -a cargo nextest run --workspace --all-features --locked
         env:
@@ -90,9 +94,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
-      - uses: Swatinem/rust-cache@v2
+      - uses: jdx/mr-boxington-action@v1
         with:
-          key: package
+          cache-key-suffix: package
+          save-on-pull-request: true
       - run: mise run macos:package
       - run: hdiutil verify "target/package/Recur.dmg"
       - uses: actions/upload-artifact@v7
@@ -115,9 +120,10 @@ jobs:
           libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev
           libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - uses: jdx/mise-action@v5
-      - uses: Swatinem/rust-cache@v2
+      - uses: jdx/mr-boxington-action@v1
         with:
-          key: package
+          cache-key-suffix: package
+          save-on-pull-request: true
       - run: mise run linux:package
       - run: mise run linux:smoke
       - uses: actions/upload-artifact@v7

@@ -176,10 +176,11 @@ fn open_in_palette_pins_a_default_app_to_the_top_of_the_list(cx: &mut TestAppCon
 fn open_in_keys_pick_digits_and_cmd_enter_makes_the_default(cx: &mut TestAppContext) {
     let calls = Calls::default();
     let c = calls.clone();
-    let opts = recur_services::fake::Overrides::default().open_workspace_in(move |_, (ws, target)| {
-        c.push("open_workspace_in", &[&ws, &target]);
-        Ok(())
-    });
+    let opts =
+        recur_services::fake::Overrides::default().open_workspace_in(move |_, (ws, target)| {
+            c.push("open_workspace_in", &[&ws, &target]);
+            Ok(())
+        });
     let mut s = boot(cx, |_| {}, opts);
     s.open_workspace(ACTIVE_ID);
     s.keys("secondary-o");

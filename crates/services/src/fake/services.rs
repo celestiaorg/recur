@@ -12,8 +12,8 @@ use recur_domain::{
     BriefingSnapshot, ChatAttachment, ChatItem, Commit, CompatibleFlagDim, CompatibleProvider,
     CopyFilesPreview, DiffLine, DiffStat, Escalation, FeedItem, FileContent, FileDiff,
     FileDiffResult, FileSearchHit, FileSearchResult, Finding, Group, InboxItem, IssueRef,
-    OpenInTarget, OpenPathResult, OutlineSymbol, PendingLineComment, PermissionRequest, Policy,
-    Pr, PrComment, PrParticipant, PrReaction, Project, ProjectGroup, ReplaceResult, Resource,
+    OpenInTarget, OpenPathResult, OutlineSymbol, PendingLineComment, PermissionRequest, Policy, Pr,
+    PrComment, PrParticipant, PrReaction, Project, ProjectGroup, ReplaceResult, Resource,
     ScheduledPrompt, SearchHit, SearchOpts, SearchResult, SessionView, Settings, SymbolDef,
     SymbolRef, TreeEntry, UpdateWorkspaceResult, UserQuestion, Workspace, WorkspaceBrief,
     WorkspaceChatTab, WorkspaceLandState, WorkspaceState, WorktreeCommitResult,
@@ -48,9 +48,7 @@ fn now_ms() -> i64 {
 /// without one.
 fn with_mock_worktree(w: &Workspace) -> Workspace {
     let mut w = w.clone();
-    if !w.archived
-        && w.worktree_path.is_empty()
-        && !(w.phase == "failed" && !w.last_error.is_empty())
+    if !w.archived && w.worktree_path.is_empty() && (w.phase != "failed" || w.last_error.is_empty())
     {
         let id = if w.id.is_empty() { "ws" } else { &w.id };
         w.worktree_path = format!("/tmp/recur-e2e/{id}");
@@ -89,7 +87,6 @@ fn branch_choices(names: &[&str]) -> Vec<BranchChoice> {
     let choice = |n: &&str, group: &str| BranchChoice {
         name: (*n).to_owned(),
         group: group.into(),
-        ..Default::default()
     };
     let remote = uniq.iter().filter(|n| n.starts_with("origin/"));
     let local = uniq.iter().filter(|n| !n.starts_with("origin/"));
@@ -135,23 +132,27 @@ fn mock_briefing(s: &Seed) -> BriefingSnapshot {
             .iter()
             .find(|it| it.unread && it.kind == "chat" && it.workspace_id == l.id);
         let (group, state) = (l.group.as_str(), l.state.as_str());
-        let (bucket, reason, next) = if group == "needs" || state == "escalated" || state == "failed"
-        {
-            let reason = if state == "failed" {
-                "failure"
+        let (bucket, reason, next) =
+            if group == "needs" || state == "escalated" || state == "failed" {
+                let reason = if state == "failed" {
+                    "failure"
+                } else {
+                    "question"
+                };
+                ("needs", reason, "Answer the prompt in this workspace")
+            } else if chat_note.is_some() {
+                ("needs", "unseen_chat", "Read the response")
+            } else if group == "active" {
+                ("working", "active_agent", "Let the agent finish this turn")
+            } else if group == "ready" {
+                (
+                    "pickup",
+                    "unfinished_plan",
+                    "Pick this up where you left off",
+                )
             } else {
-                "question"
+                continue;
             };
-            ("needs", reason, "Answer the prompt in this workspace")
-        } else if chat_note.is_some() {
-            ("needs", "unseen_chat", "Read the response")
-        } else if group == "active" {
-            ("working", "active_agent", "Let the agent finish this turn")
-        } else if group == "ready" {
-            ("pickup", "unfinished_plan", "Pick this up where you left off")
-        } else {
-            continue;
-        };
         let steps = l.plan.as_ref().map(|p| p.steps.as_slice()).unwrap_or(&[]);
         let plan_done = steps
             .iter()
@@ -180,7 +181,12 @@ fn mock_briefing(s: &Seed) -> BriefingSnapshot {
             plan_done: plan_done as i64,
             plan_total: steps.len() as i64,
             primary: BriefAction {
-                label: if reason == "unseen_chat" { "Read" } else { "Open" }.into(),
+                label: if reason == "unseen_chat" {
+                    "Read"
+                } else {
+                    "Open"
+                }
+                .into(),
                 target,
                 kind: "open".into(),
             },
@@ -251,7 +257,8 @@ fn list_workspace_chats(s: &Seed, ws_id: &str) -> Vec<WorkspaceChatTab> {
     apply_chat_tab_order(tabs, order)
         .into_iter()
         .map(|mut t| {
-            if let Some((loop_id, policy_id)) = s.chat_loops.get(&(ws_id.to_owned(), t.code.clone()))
+            if let Some((loop_id, policy_id)) =
+                s.chat_loops.get(&(ws_id.to_owned(), t.code.clone()))
             {
                 t.loop_id.clone_from(loop_id);
                 t.policy_id.clone_from(policy_id);
@@ -271,7 +278,6 @@ fn app_tabs(extra: &[WorkspaceChatTab]) -> Vec<WorkspaceChatTab> {
         .collect()
 }
 
-#[allow(clippy::too_many_arguments)]
 fn created_workspace(
     project_id: &str,
     base_branch: &str,
@@ -445,7 +451,14 @@ fn model_catalog() -> Vec<ModelGroup> {
 }
 
 fn prompt_actions() -> Vec<PromptActionInfo> {
-    let p = |id: &str, name: &str, desc: &str, slash: &str, mode: &str, timeout: i64, interp: &str, extra: serde_json::Value| {
+    let p = |id: &str,
+             name: &str,
+             desc: &str,
+             slash: &str,
+             mode: &str,
+             timeout: i64,
+             interp: &str,
+             extra: serde_json::Value| {
         let mut v = json!({
             "id": id, "name": name, "description": desc, "slash": slash, "mode": mode,
             "timeoutMs": timeout, "interpreter": interp, "bundleName": "Chat", "sourceRoot": "default",
@@ -457,28 +470,163 @@ fn prompt_actions() -> Vec<PromptActionInfo> {
     };
     let ops = json!({ "freshSession": true, "tabGroup": "ops" });
     canned(json!([
-        p("recur.chat.fix-findings", "Fix Findings", "Fix or dispute open reviewer findings", "fix-findings", "agent", 0, "typescript", ops.clone()),
-        p("recur.chat.commit", "Commit", "Stage and commit all worktree changes", "commit", "agent", 0, "typescript", ops.clone()),
-        p("recur.chat.commit-push", "Commit Push", "Commit all changes and push to remote", "commit-push", "agent", 0, "typescript", ops.clone()),
-        p("recur.chat.open-pr", "Open PR", "Open a GitHub pull request with an agent-written description", "open-pr", "agent", 15000, "shebang", ops.clone()),
-        p("recur.chat.open-draft-pr", "Open draft PR", "Open a GitHub draft pull request with an agent-written description", "open-draft-pr", "agent", 15000, "shebang", ops),
-        p("recur.chat.fix-checks", "Fix checks", "Investigate and fix failing GitHub checks on this pull request", "fix-checks", "agent", 15000, "shebang", json!({
-            "takesArgs": true,
-            "hasComplete": true,
-            "freshSession": true,
-            "tabGroup": "ops",
-            "argPlaceholder": "all or a failing check",
-            "args": [{ "name": "check", "placeholder": "all or a failing check", "optional": true }],
-        })),
-        p("recur.chat.review", "Review", "Review the current surface (workspace or pull request) and file findings", "review", "review", 15000, "shebang", json!({ "freshSession": true, "tabGroup": "review" })),
-        p("recur.chat.re-review", "Re-review", "Re-review the current surface after fixes", "re-review", "review", 15000, "shebang", json!({ "freshSession": true })),
-        p("recur.chat.simplify-review", "Simplify review", "Review the current surface for over-engineering and file findings", "simplify-review", "review", 30000, "shebang", json!({ "freshSession": true, "tabGroup": "simplify-review" })),
-        p("recur.chat.simplify-audit", "Simplify audit", "Audit the whole repository for over-engineering and file findings", "simplify-audit", "review", 30000, "shebang", json!({ "freshSession": true, "tabGroup": "simplify-audit" })),
-        p("recur.chat.review-and-fix", "Review & fix", "Review the current worktree and fix until the bar passes", "review-and-fix", "loop", 0, "shebang", json!({ "loop": "recur.loops.converge" })),
-        p("recur.chat.review-to-pr", "Review & fix to a PR", "Review and fix the current diff, then open a PR", "review-to-pr", "loop", 0, "shebang", json!({ "loop": "recur.loops.converge-pr" })),
-        p("recur.chat.to-a-pr", "To a PR", "Plan, implement, review, and open a pull request", "to-a-pr", "loop", 0, "shebang", json!({ "loop": "recur.loops.pr" })),
-        p("recur.chat.write-docs", "Write docs", "Plan, write, and edit documentation — no PR", "write-docs", "loop", 0, "shebang", json!({ "loop": "recur.loops.docs" })),
-        p("recur.chat.security-review", "Security review & fix", "Review and fix auth, secrets, and permissions until the bar passes", "security-review", "loop", 0, "shebang", json!({ "loop": "recur.loops.security" })),
+        p(
+            "recur.chat.fix-findings",
+            "Fix Findings",
+            "Fix or dispute open reviewer findings",
+            "fix-findings",
+            "agent",
+            0,
+            "typescript",
+            ops.clone()
+        ),
+        p(
+            "recur.chat.commit",
+            "Commit",
+            "Stage and commit all worktree changes",
+            "commit",
+            "agent",
+            0,
+            "typescript",
+            ops.clone()
+        ),
+        p(
+            "recur.chat.commit-push",
+            "Commit Push",
+            "Commit all changes and push to remote",
+            "commit-push",
+            "agent",
+            0,
+            "typescript",
+            ops.clone()
+        ),
+        p(
+            "recur.chat.open-pr",
+            "Open PR",
+            "Open a GitHub pull request with an agent-written description",
+            "open-pr",
+            "agent",
+            15000,
+            "shebang",
+            ops.clone()
+        ),
+        p(
+            "recur.chat.open-draft-pr",
+            "Open draft PR",
+            "Open a GitHub draft pull request with an agent-written description",
+            "open-draft-pr",
+            "agent",
+            15000,
+            "shebang",
+            ops
+        ),
+        p(
+            "recur.chat.fix-checks",
+            "Fix checks",
+            "Investigate and fix failing GitHub checks on this pull request",
+            "fix-checks",
+            "agent",
+            15000,
+            "shebang",
+            json!({
+                "takesArgs": true,
+                "hasComplete": true,
+                "freshSession": true,
+                "tabGroup": "ops",
+                "argPlaceholder": "all or a failing check",
+                "args": [{ "name": "check", "placeholder": "all or a failing check", "optional": true }],
+            })
+        ),
+        p(
+            "recur.chat.review",
+            "Review",
+            "Review the current surface (workspace or pull request) and file findings",
+            "review",
+            "review",
+            15000,
+            "shebang",
+            json!({ "freshSession": true, "tabGroup": "review" })
+        ),
+        p(
+            "recur.chat.re-review",
+            "Re-review",
+            "Re-review the current surface after fixes",
+            "re-review",
+            "review",
+            15000,
+            "shebang",
+            json!({ "freshSession": true })
+        ),
+        p(
+            "recur.chat.simplify-review",
+            "Simplify review",
+            "Review the current surface for over-engineering and file findings",
+            "simplify-review",
+            "review",
+            30000,
+            "shebang",
+            json!({ "freshSession": true, "tabGroup": "simplify-review" })
+        ),
+        p(
+            "recur.chat.simplify-audit",
+            "Simplify audit",
+            "Audit the whole repository for over-engineering and file findings",
+            "simplify-audit",
+            "review",
+            30000,
+            "shebang",
+            json!({ "freshSession": true, "tabGroup": "simplify-audit" })
+        ),
+        p(
+            "recur.chat.review-and-fix",
+            "Review & fix",
+            "Review the current worktree and fix until the bar passes",
+            "review-and-fix",
+            "loop",
+            0,
+            "shebang",
+            json!({ "loop": "recur.loops.converge" })
+        ),
+        p(
+            "recur.chat.review-to-pr",
+            "Review & fix to a PR",
+            "Review and fix the current diff, then open a PR",
+            "review-to-pr",
+            "loop",
+            0,
+            "shebang",
+            json!({ "loop": "recur.loops.converge-pr" })
+        ),
+        p(
+            "recur.chat.to-a-pr",
+            "To a PR",
+            "Plan, implement, review, and open a pull request",
+            "to-a-pr",
+            "loop",
+            0,
+            "shebang",
+            json!({ "loop": "recur.loops.pr" })
+        ),
+        p(
+            "recur.chat.write-docs",
+            "Write docs",
+            "Plan, write, and edit documentation — no PR",
+            "write-docs",
+            "loop",
+            0,
+            "shebang",
+            json!({ "loop": "recur.loops.docs" })
+        ),
+        p(
+            "recur.chat.security-review",
+            "Security review & fix",
+            "Review and fix auth, secrets, and permissions until the bar passes",
+            "security-review",
+            "loop",
+            0,
+            "shebang",
+            json!({ "loop": "recur.loops.security" })
+        ),
     ]))
 }
 
@@ -625,7 +773,18 @@ const COMPILED_IDENTITY: &str =
     r#"exports.default = function (ctx) { return { text: ctx.input }; };"#;
 
 fn commands() -> Vec<CommandInfo> {
-    let cmd = |id: &str, name: &str, cat: &str, scope: &str, glob: &str, input: &str, fallback: &str, output: &str, trigger: &str, key: &str, interp: &str, bundle: &str| {
+    let cmd = |id: &str,
+               name: &str,
+               cat: &str,
+               scope: &str,
+               glob: &str,
+               input: &str,
+               fallback: &str,
+               output: &str,
+               trigger: &str,
+               key: &str,
+               interp: &str,
+               bundle: &str| {
         json!({
             "id": id, "name": name, "category": cat, "order": if cat == "Text" && name == "Uppercase" { 20 } else { 10 },
             "scope": scope, "fileGlob": glob, "input": input, "fallbackInput": fallback, "output": output,
@@ -634,9 +793,48 @@ fn commands() -> Vec<CommandInfo> {
         })
     };
     canned(json!([
-        cmd("recur.text.sort-lines-asc", "Sort Lines Ascending", "Text", "", "", "selection", "document", "replaceInput", "palette", "ctrl+f5", "typescript", "Text"),
-        cmd("recur.text.uppercase", "Uppercase", "Text", "", "", "selection", "document", "replaceInput", "palette", "ctrl+u", "typescript", "Text"),
-        cmd("recur.go.gofmt-on-save", "Gofmt on Save", "Go", "source.go", "*.go", "document", "", "replaceDocument", "willSave", "", "shebang", "Go"),
+        cmd(
+            "recur.text.sort-lines-asc",
+            "Sort Lines Ascending",
+            "Text",
+            "",
+            "",
+            "selection",
+            "document",
+            "replaceInput",
+            "palette",
+            "ctrl+f5",
+            "typescript",
+            "Text"
+        ),
+        cmd(
+            "recur.text.uppercase",
+            "Uppercase",
+            "Text",
+            "",
+            "",
+            "selection",
+            "document",
+            "replaceInput",
+            "palette",
+            "ctrl+u",
+            "typescript",
+            "Text"
+        ),
+        cmd(
+            "recur.go.gofmt-on-save",
+            "Gofmt on Save",
+            "Go",
+            "source.go",
+            "*.go",
+            "document",
+            "",
+            "replaceDocument",
+            "willSave",
+            "",
+            "shebang",
+            "Go"
+        ),
     ]))
 }
 
@@ -805,7 +1003,6 @@ fn toggle_reaction(pr: &mut Pr, comment_id: &str, content: &str) {
                 content: n.clone(),
                 count: 1,
                 mine: true,
-                ..Default::default()
             }),
         }
         c.reactions.retain(|r| r.count > 0);
@@ -820,7 +1017,6 @@ fn search_files(files: Vec<String>, query: &str, limit: i64, files_only: bool) -
         path: path.into(),
         score: 1,
         dir,
-        ..Default::default()
     };
     let file_hits = files.iter().filter(|p| matches(p)).map(|p| hit(p, false));
     let hits: Vec<FileSearchHit> = if files_only {

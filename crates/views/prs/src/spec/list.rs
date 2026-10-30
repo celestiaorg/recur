@@ -400,9 +400,7 @@ fn renders_github_description_and_comment_images_via_gh_image(cx: &mut TestAppCo
     let mut comments = Seed::e2e().pr("482").unwrap().comments.clone().unwrap();
     for c in &mut comments {
         match c.id.as_str() {
-            "gh-description" => {
-                c.body_md = format!("<img alt=\"Screenshot\" src=\"{asset}\" />")
-            }
+            "gh-description" => c.body_md = format!("<img alt=\"Screenshot\" src=\"{asset}\" />"),
             "c1" => c.body_md = format!("![inline]({asset})"),
             _ => {}
         }

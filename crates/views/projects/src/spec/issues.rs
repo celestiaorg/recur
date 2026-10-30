@@ -38,7 +38,6 @@ fn issues() -> Vec<AssignedIssue> {
             project_id: "payments".into(),
             linear_project: "Payments".into(),
             linear_team: "ENG".into(),
-            ..Default::default()
         },
         AssignedIssue {
             source: "github".into(),

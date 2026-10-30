@@ -360,12 +360,7 @@ fn main_navigation_shows_schedules_across_projects_and_restores_after_reload(
     s.reload();
     assert_eq!(s.view(), ViewName::Schedules);
     assert!(s.until(|s| s.has("v-schedules")));
-    let next = rows
-        .lock()
-        .iter()
-        .map(|p| p.next_run_at)
-        .min()
-        .unwrap_or(0);
+    let next = rows.lock().iter().map(|p| p.next_run_at).min().unwrap_or(0);
     let sub = format!(
         "tb-sub=2 active · next {}",
         format_medium_short_in(next, &local_time_zone())

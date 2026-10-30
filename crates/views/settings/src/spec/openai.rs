@@ -6,11 +6,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use gpui::TestAppContext;
 use parking_lot::Mutex;
 use recur_domain::CompatibleModel;
-use recur_services::{Error, Result};
 use recur_services::api::{
     ChatGPTAccount, ChatGPTAuth, ChatGPTLogin, ChatGPTStatus, CodexLogin, CodexStatus,
 };
 use recur_services::fake::{Answer, Overrides, Release, Seed, hold};
+use recur_services::{Error, Result};
 use recur_ui::widgets::ToastKind;
 
 use super::harness::with;
@@ -208,7 +208,11 @@ fn chatgpt_login_cancels_on_cancel_and_on_leaving_providers(cx: &mut TestAppCont
         let c = cancelled.clone();
         let opts = Overrides::default()
             .start_chat_gpt_login(move |_, _| {
-                let code = if method == "headless" { "ABCD-1234" } else { "" };
+                let code = if method == "headless" {
+                    "ABCD-1234"
+                } else {
+                    ""
+                };
                 Ok(chatgpt_login("pending-login", BROWSER_URL, method, code))
             })
             .wait_chat_gpt_login(held())

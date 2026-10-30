@@ -13,10 +13,10 @@ use recur_app::{Shell, ShellOptions};
 use recur_domain::Workspace;
 use recur_services::api::{BundleSkipInfo, Snapshot};
 use recur_services::fake::{Fake, Overrides, Seed};
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use recur_ui::widgets::ToastStore;
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
 struct H<'a> {
@@ -71,7 +71,11 @@ fn patched_seed(patch: &Value) -> Seed {
     }
     if let Some(rows) = patch.get("loops") {
         upsert(&mut s.workspaces, rows, |w| &w.id);
-        for w in s.workspaces.iter_mut().filter(|w| w.worktree_path.is_empty()) {
+        for w in s
+            .workspaces
+            .iter_mut()
+            .filter(|w| w.worktree_path.is_empty())
+        {
             w.worktree_path = format!("/mock/worktrees/{}", w.id);
         }
     }
@@ -709,9 +713,8 @@ fn window_shortcuts_work_with_nothing_focused(cx: &mut TestAppContext) {
 
 #[gpui_kit::test]
 fn a_failed_save_shows_an_error_toast_that_auto_dismisses(cx: &mut TestAppContext) {
-    let opts = Overrides::default().update_project_run_config(|_, _| {
-        Err(recur_services::Error::new("disk is read-only"))
-    });
+    let opts = Overrides::default()
+        .update_project_run_config(|_, _| Err(recur_services::Error::new("disk is read-only")));
     let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
     h.click("ph:storefront");
     let texts = |h: &mut H| {

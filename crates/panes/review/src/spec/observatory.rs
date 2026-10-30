@@ -335,10 +335,7 @@ async fn drag_on_the_comment_control_selects_a_multiline_finding(cx: &mut TestAp
     h.wait(50);
     assert!(h.has("icmt-finding:f-user-span"));
     let created = notes.lock()[0].clone();
-    assert_eq!(
-        (created.line, created.end_line),
-        (2, 4)
-    );
+    assert_eq!((created.line, created.end_line), (2, 4));
     let df = host
         .read_with(h.cx, |hst, cx| {
             hst.surface

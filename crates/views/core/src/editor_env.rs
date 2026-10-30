@@ -324,7 +324,8 @@ mod tests {
     /// the grammars register once every read has landed.
     #[gpui::test]
     fn grammars_load_without_blocking_the_ui_thread(cx: &mut TestAppContext) {
-        let held: Arc<Mutex<Vec<(String, Release<Result<String>>)>>> = Arc::default();
+        type Held = Vec<(String, Release<Result<String>>)>;
+        let held: Arc<Mutex<Held>> = Arc::default();
         let h = held.clone();
         let fake = Fake::fresh(Overrides::default().read_grammar(move |_, scope| {
             let (answer, release) = hold();

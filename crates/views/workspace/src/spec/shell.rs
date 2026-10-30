@@ -15,7 +15,9 @@ use recur_domain::{
     WorkspaceLandState, WorkspaceState,
 };
 use recur_services::AppEvent;
-use recur_services::events::{AgentUpdated, GithubBranchRules, WorkspaceEvent, WorkspaceFsChanged, WorkspaceUpdated};
+use recur_services::events::{
+    AgentUpdated, GithubBranchRules, WorkspaceEvent, WorkspaceFsChanged, WorkspaceUpdated,
+};
 use recur_services::fake::{Answer, Fake, Overrides, Release, Seed, hold};
 use recur_ui::widgets::{ToastKind, ToastStore};
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
@@ -339,7 +341,6 @@ fn choice(name: &str, group: &str) -> BranchChoice {
     BranchChoice {
         name: name.into(),
         group: group.into(),
-        ..Default::default()
     }
 }
 

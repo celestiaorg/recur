@@ -63,12 +63,7 @@ pub fn boot<'a>(
 }
 
 pub fn plain(cx: &mut TestAppContext) -> S<'_> {
-    boot(
-        cx,
-        |_| {},
-        Overrides::default(),
-        LocalStorage::in_memory(),
-    )
+    boot(cx, |_| {}, Overrides::default(), LocalStorage::in_memory())
 }
 
 pub fn with(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: Overrides) -> S<'_> {

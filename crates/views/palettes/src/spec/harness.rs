@@ -135,7 +135,10 @@ impl Calls {
             self.clone(),
         );
         opts.open_terminal(move |_, (ws, cols, rows)| {
-            c1.push("open_terminal", &[&ws, &cols.to_string(), &rows.to_string()]);
+            c1.push(
+                "open_terminal",
+                &[&ws, &cols.to_string(), &rows.to_string()],
+            );
             let mut n = n.lock();
             *n += 1;
             Ok(TermInfo {
@@ -161,7 +164,10 @@ impl Calls {
             Ok(())
         })
         .resize_terminal(move |_, (id, cols, rows)| {
-            c5.push("resize_terminal", &[&id, &cols.to_string(), &rows.to_string()]);
+            c5.push(
+                "resize_terminal",
+                &[&id, &cols.to_string(), &rows.to_string()],
+            );
             Ok(())
         })
     }

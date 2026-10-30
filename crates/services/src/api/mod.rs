@@ -58,8 +58,8 @@ pub use recur_provider_chatgpt::{
 };
 pub use recur_provider_codex::login::CodexLogin;
 pub use recur_provider_compatible::CompatibleTestResult;
-pub use recur_term::Info as TermInfo;
 pub use recur_provider_cursor::CursorStatus;
+pub use recur_term::Info as TermInfo;
 pub use recur_usage::{CursorUsageConnect, ModelRow, ProviderQuota, Snapshot, Window};
 pub use settings::SettingsService;
 pub use shell::ShellService;

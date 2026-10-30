@@ -3,8 +3,8 @@
 //! and the closed-chat recents menu.
 
 use gpui::{Entity, TestAppContext};
-use recur_engine::view::chat::{AgentMsg, ChatLog, ChatLogSession};
 use recur_domain::{FeedItem, SessionView};
+use recur_engine::view::chat::{AgentMsg, ChatLog, ChatLogSession};
 use recur_services::AppEvent;
 use recur_services::events::{AgentUpdated, SessionDelta, SessionTag, SessionTurnEnd};
 use recur_services::fake::Overrides;
@@ -42,7 +42,9 @@ fn sessions() -> Vec<SessionView> {
 }
 
 fn facts() -> Vec<FeedItem> {
-    de(json!([{"id": "f1", "agentCode": "MA", "name": "Maestro", "text": "Converged: 0 findings.", "time": "now", "ts": 2_500, "isDeviation": false}]))
+    de(
+        json!([{"id": "f1", "agentCode": "MA", "name": "Maestro", "text": "Converged: 0 findings.", "time": "now", "ts": 2_500, "isDeviation": false}]),
+    )
 }
 
 fn cockpit_opts(sessions: Vec<SessionView>, facts: Vec<FeedItem>) -> Overrides {
@@ -424,7 +426,9 @@ async fn long_loop_fact_errors_wrap_instead_of_ellipsizing(cx: &mut TestAppConte
         cx,
         cockpit_opts(
             sessions(),
-            de(json!([{"id": "f-err", "agentCode": "MA", "name": "Maestro", "text": text, "time": "now", "ts": 2_500, "isDeviation": false}])),
+            de(
+                json!([{"id": "f-err", "agentCode": "MA", "name": "Maestro", "text": text, "time": "now", "ts": 2_500, "isDeviation": false}]),
+            ),
         ),
     );
     let fact = h.bounds("loop-fact:f-err").expect("the fact");
@@ -442,7 +446,9 @@ async fn pr_opened_fact_shows_completed_time_and_opens_the_pr(cx: &mut TestAppCo
         cx,
         cockpit_opts(
             sessions(),
-            de(json!([{"id": "f-pr", "agentCode": "MA", "name": "Maestro", "ts": 5_000, "isDeviation": false, "text": html}])),
+            de(
+                json!([{"id": "f-pr", "agentCode": "MA", "name": "Maestro", "ts": 5_000, "isDeviation": false, "text": html}]),
+            ),
         ),
     );
     assert!(h.has("loop-fact:f-pr"));
@@ -574,8 +580,7 @@ fn coder_delta(text: &str, seq: i64) -> AppEvent {
 async fn late_turn_end_and_stream_after_idle_do_not_keep_the_running_timer(
     cx: &mut TestAppContext,
 ) {
-    let opts = cockpit_opts(Vec::new(), Vec::new())
-        .list_loop_agents(|_, _| Ok(Vec::new()));
+    let opts = cockpit_opts(Vec::new(), Vec::new()).list_loop_agents(|_, _| Ok(Vec::new()));
     let mut h = open_cockpit(cx, opts);
     assert!(cards(&mut h).is_empty());
 

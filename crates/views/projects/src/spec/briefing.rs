@@ -401,12 +401,7 @@ fn ask_recur_briefing_tools_skip_json_only_present_workspace_is_a_card(cx: &mut 
 
 #[gpui::test]
 fn the_ask_dock_is_a_drawer_below_1100px_and_escape_closes_it(cx: &mut TestAppContext) {
-    let mut s = boot(
-        cx,
-        |_| {},
-        Overrides::default(),
-        LocalStorage::in_memory(),
-    );
+    let mut s = boot(cx, |_| {}, Overrides::default(), LocalStorage::in_memory());
     s.cx.simulate_resize(gpui::size(gpui::px(1000.), gpui::px(800.)));
     s.settle();
     let ask = s.bounds("briefing-ask").expect("drawer");

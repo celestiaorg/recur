@@ -106,9 +106,7 @@ fn pr_view_disables_merge_while_push_updates_is_in_flight(cx: &mut TestAppContex
     s.click("pr-act:pr-push=Push updates");
     assert!(s.has("pr-act:pr-push=Pushing…:off"));
     assert!(s.has("pr-act:pr-merge=Merge:off"));
-    rx.try_recv()
-        .expect("pushing")
-        .send(Ok("gh-91".into()));
+    rx.try_recv().expect("pushing").send(Ok("gh-91".into()));
     s.settle();
     assert!(s.until(|s| s.toasted(ToastKind::Success, "Pushed to PR #91")));
 }

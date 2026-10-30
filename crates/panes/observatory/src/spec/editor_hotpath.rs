@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use gpui::TestAppContext;
 use parking_lot::Mutex;
-use recur_editor::view_state::EditorViewMode;
 use recur_domain::{FileContent, TreeEntry};
+use recur_editor::view_state::EditorViewMode;
 use recur_services::Error;
 use recur_services::fake::{Answer, Overrides, hold};
 use recur_ui::widgets::ToastKind;
@@ -69,7 +69,13 @@ fn go_files(f: &Files, opts: Overrides) -> Overrides {
         })
     })
     .list_changed_files(move |_, _| Ok(f2.lock().keys().cloned().collect()))
-    .git_status(move |_, _| Ok(f3.lock().keys().map(|p| (p.clone(), "m".to_owned())).collect()))
+    .git_status(move |_, _| {
+        Ok(f3
+            .lock()
+            .keys()
+            .map(|p| (p.clone(), "m".to_owned()))
+            .collect())
+    })
     .read_file(move |_, (_, _, p)| {
         let body = f4.lock().get(&p).cloned().unwrap_or_else(|| MAIN.into());
         Ok(file(&p, &body))

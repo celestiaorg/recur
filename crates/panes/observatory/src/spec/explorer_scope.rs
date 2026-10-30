@@ -42,7 +42,11 @@ fn children_of(list: &[String], dir: &str) -> Vec<TreeEntry> {
     }
     kids.into_iter()
         .map(|(n, d)| TreeEntry {
-            path: if dir.is_empty() { n.clone() } else { format!("{dir}/{n}") },
+            path: if dir.is_empty() {
+                n.clone()
+            } else {
+                format!("{dir}/{n}")
+            },
             name: n,
             dir: d,
             ..Default::default()
@@ -273,7 +277,12 @@ async fn clicking_a_changed_submodule_directory_opens_diff_without_error_toasts(
             Ok(Vec::new())
         })
         .file_at_base(|_, (_, _, path)| {
-            Ok(if path == SUB { "Subproject commit abcdef1\n" } else { "" }.into())
+            Ok(if path == SUB {
+                "Subproject commit abcdef1\n"
+            } else {
+                ""
+            }
+            .into())
         });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.wait(100);

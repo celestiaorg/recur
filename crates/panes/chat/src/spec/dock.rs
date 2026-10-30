@@ -6,8 +6,8 @@ use std::sync::Arc;
 use gpui::{Entity, TestAppContext, VisualTestContext};
 use gpui_kit::AppContext as _;
 use parking_lot::Mutex;
-use recur_engine::view::loop_cockpit::merge_loop_cockpit;
 use recur_domain::SessionView;
+use recur_engine::view::loop_cockpit::merge_loop_cockpit;
 use recur_services::Result;
 use recur_services::fake::{Fake, Overrides, Release, hold};
 use recur_view_core::{AppState, LocalStorage, ViewContext};
@@ -21,7 +21,8 @@ use crate::session_feed::SessionFeed;
 async fn the_loop_chat_renders_session_cards_once_the_delayed_fetch_resolves(
     cx: &mut TestAppContext,
 ) {
-    let pending: Arc<Mutex<Vec<Release<Result<Vec<SessionView>>>>>> = Default::default();
+    type Pending = Vec<Release<Result<Vec<SessionView>>>>;
+    let pending: Arc<Mutex<Pending>> = Default::default();
     let p = pending.clone();
     let opts = Overrides::default()
         .workspace_sessions(move |_, _| {
@@ -139,12 +140,7 @@ async fn ask_chips_send_with_an_optimistic_bubble_and_stamp_the_tab_title(cx: &m
     let mut a = ask(cx, Overrides::default(), LocalStorage::in_memory());
     assert!(a.has("ask-chip:What needs me?"));
     a.click("ask-chip:What needs me?");
-    let sent: Vec<String> = a
-        .sent
-        .lock()
-        .iter()
-        .map(|c| c[1].clone())
-        .collect();
+    let sent: Vec<String> = a.sent.lock().iter().map(|c| c[1].clone()).collect();
     assert_eq!(sent, ["What needs me?"]);
     assert!(a.has("me:What needs me?"));
     assert!(a.has("chat-stop"));

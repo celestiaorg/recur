@@ -140,6 +140,7 @@ macro_rules! fake_services {
         )*)*}
 
         #[async_trait::async_trait]
+        #[allow(clippy::too_many_arguments)]
         trait Defaults {$($(
             async fn $m(&self $(, $p: $t)*) -> $ret;
         )*)*}

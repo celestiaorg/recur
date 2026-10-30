@@ -123,7 +123,12 @@ fn search_opts(calls: &Calls) -> Overrides {
                     group(
                         "Linear",
                         vec![
-                            hit("ENG-412", "ENG-412 Rate-limit the public API", "In Progress", ""),
+                            hit(
+                                "ENG-412",
+                                "ENG-412 Rate-limit the public API",
+                                "In Progress",
+                                "",
+                            ),
                             hit("", "Linear settings", "", "settings:integrations"),
                         ],
                     ),

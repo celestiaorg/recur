@@ -590,8 +590,8 @@ async fn a_workspace_switch_draws_the_dock_in_its_first_frame(cx: &mut TestAppCo
 /// there without waiting for a hover to redraw the window.
 #[gpui::test]
 async fn a_workspace_switch_back_draws_the_transcript_where_it_was(cx: &mut TestAppContext) {
-    use gpui::{point, px};
     use super::harness::{assistant, item, user};
+    use gpui::{point, px};
     use recur_domain::ChatItem;
     let mut items = Vec::new();
     // Shaped like a real working-copy chat: thinking, tool calls with results, then text.

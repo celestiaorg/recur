@@ -3,8 +3,8 @@
 //! (`debug_selector` keys).
 
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 

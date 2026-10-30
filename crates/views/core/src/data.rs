@@ -1411,9 +1411,8 @@ mod tests {
     #[gpui::test]
     async fn a_pr_sweep_that_changes_nothing_does_not_notify(cx: &mut gpui::TestAppContext) {
         let fake = recur_services::fake::Fake::fresh(Default::default());
-        let state = cx.update(|cx| {
-            AppState::install(fake.services(), crate::LocalStorage::in_memory(), cx)
-        });
+        let state = cx
+            .update(|cx| AppState::install(fake.services(), crate::LocalStorage::in_memory(), cx));
         let pr = |id: &str, title: &str| Pr {
             id: id.into(),
             title: title.into(),

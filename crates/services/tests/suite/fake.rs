@@ -6,9 +6,9 @@ use std::collections::BTreeMap;
 
 use pretty_assertions::assert_eq;
 use recur_domain::{Pr, Project, ProjectGroup, TreeEntry};
+use recur_services::Error;
 use recur_services::api::{EditorBuffer, EditorSessionMeta, EditorSessionPatch, ShellState};
 use recur_services::events::{AppEvent, WorkspaceUpdated};
-use recur_services::Error;
 use recur_services::fake::{Fake, Overrides, Seed, hold};
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -731,7 +731,11 @@ async fn overrides_errors_and_held_answers() {
                     ..Default::default()
                 }])
             })
-            .list_files(|_, _| Ok(["a/b/c.rs", "a/x.rs", "README.md"].map(String::from).to_vec())),
+            .list_files(|_, _| {
+                Ok(["a/b/c.rs", "a/x.rs", "README.md"]
+                    .map(String::from)
+                    .to_vec())
+            }),
     );
     let s = fake.services();
     assert_eq!(
@@ -793,9 +797,8 @@ async fn overrides_errors_and_held_answers() {
 
 #[tokio::test]
 async fn failed_calls_hold_their_queued_events() {
-    let fake = Fake::fresh(
-        Overrides::default().cancel_workspace_message(|_, _| Err(Error::new("nope"))),
-    );
+    let fake =
+        Fake::fresh(Overrides::default().cancel_workspace_message(|_, _| Err(Error::new("nope"))));
     let s = fake.services();
     let mut rx = s.subscribe();
     assert!(

@@ -157,7 +157,11 @@ fn escape_abandons_eager_create_so_a_second_cmd_n_is_one_row(cx: &mut TestAppCon
 
 #[gpui::test]
 fn create_workspace_model_menu_stays_inside_the_window(cx: &mut TestAppContext) {
-    let effort = dim("effort", "Effort", &[("low", "Low", false), ("high", "High", true)]);
+    let effort = dim(
+        "effort",
+        "Effort",
+        &[("low", "Low", false), ("high", "High", true)],
+    );
     let models: Vec<ModelChoice> = (0..24)
         .map(|i| ModelChoice {
             model_ref: format!("claude-code/model-{i}"),
@@ -192,10 +196,22 @@ fn model_and_flags_stay_on_one_row_in_create_workspace_and_chat_composer(cx: &mu
         dim(
             "effort",
             "Effort",
-            &[("low", "Low", false), ("medium", "Medium", true), ("high", "High", false)],
+            &[
+                ("low", "Low", false),
+                ("medium", "Medium", true),
+                ("high", "High", false),
+            ],
         ),
-        dim("context", "Context", &[("272k", "272K", true), ("1m", "1M", false)]),
-        dim("thinking", "On", &[("true", "Yes", true), ("false", "No", false)]),
+        dim(
+            "context",
+            "Context",
+            &[("272k", "272K", true), ("1m", "1M", false)],
+        ),
+        dim(
+            "thinking",
+            "On",
+            &[("true", "Yes", true), ("false", "No", false)],
+        ),
     ];
     let opts = Overrides::default().list_model_catalog(move |_, ()| {
         Ok(vec![ModelGroup {
@@ -362,7 +378,6 @@ fn a_late_project_refresh_does_not_reload_branches_or_disable_create(cx: &mut Te
             let local = |name: &str| BranchChoice {
                 name: name.into(),
                 group: "Local".into(),
-                ..Default::default()
             };
             Ok(vec![local("main"), local("develop")])
         });

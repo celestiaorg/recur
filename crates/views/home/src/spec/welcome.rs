@@ -158,7 +158,12 @@ fn a_cursor_key_without_the_sdk_is_not_ready_until_install_sdk_completes(cx: &mu
         bridge_installed: on,
         authenticated: on,
         email: if on { "dev@example.com" } else { "" }.into(),
-        error: if on { "" } else { "cursor-sdk-bridge not found" }.into(),
+        error: if on {
+            ""
+        } else {
+            "cursor-sdk-bridge not found"
+        }
+        .into(),
         ..Default::default()
     };
     let (a, b) = (installed.clone(), installed.clone());

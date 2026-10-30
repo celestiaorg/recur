@@ -8,8 +8,8 @@ use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext, point, px};
 use gpui_kit::{
     AppContext as _, Bounds, Context, IntoElement, ParentElement, Pixels, Render, Styled, Window,
 };
-use recur_engine::view::chat::AgentMsg;
 use recur_domain::ChatItem;
+use recur_engine::view::chat::AgentMsg;
 use recur_services::AppEvent;
 use recur_services::fake::{Fake, Overrides, Seed};
 use recur_view_chat::chat::{AgentChat, debug_key};

@@ -159,7 +159,10 @@ impl Term {
             Ok(())
         })
         .resize_terminal(move |_, (id, cols, rows)| {
-            t12.log("ResizeTerminal", &[&id, &cols.to_string(), &rows.to_string()]);
+            t12.log(
+                "ResizeTerminal",
+                &[&id, &cols.to_string(), &rows.to_string()],
+            );
             Ok(())
         })
         .clear_terminal({
@@ -789,9 +792,7 @@ async fn maximize_survives_a_reload(cx: &mut TestAppContext, restarted: &mut Tes
     h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, true, cx));
     h.wait(400);
     assert!(h.read(|o, _| o.term_overlaying()));
-    assert!(
-        t.chrome_sets.lock().iter().any(|c| c.maximized)
-    );
+    assert!(t.chrome_sets.lock().iter().any(|c| c.maximized));
     h.quit();
     let mut h = restart_mount(restarted, &t);
     h.wait(400);
@@ -809,9 +810,7 @@ async fn beside_survives_a_reload_via_dock_chrome(
     h.click("obs-term-beside-toggle");
     h.wait(100);
     assert!(h.read(|o, cx| o.term_beside_layout(cx)));
-    assert!(
-        t.chrome_sets.lock().iter().any(|c| c.beside)
-    );
+    assert!(t.chrome_sets.lock().iter().any(|c| c.beside));
     h.quit();
     let mut h = restart_mount(restarted, &t);
     h.wait(100);

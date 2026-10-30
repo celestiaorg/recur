@@ -40,7 +40,12 @@ fn cursor_without_the_sdk_warns_and_installs(cx: &mut TestAppContext) {
         bridge_installed: on,
         authenticated: on,
         email: if on { "dev@example.com" } else { "" }.into(),
-        error: if on { "" } else { "cursor-sdk-bridge not found" }.into(),
+        error: if on {
+            ""
+        } else {
+            "cursor-sdk-bridge not found"
+        }
+        .into(),
         ..Default::default()
     };
     let usage = Snapshot {
@@ -338,8 +343,7 @@ fn loops_section_shows_loop_and_policy_pickers(cx: &mut TestAppContext) {
 
 #[gpui::test]
 fn a_failed_policy_save_shows_an_error_toast(cx: &mut TestAppContext) {
-    let opts =
-        Overrides::default().set_settings(|_, _| Err(Error::new("settings save failed")));
+    let opts = Overrides::default().set_settings(|_, _| Err(Error::new("settings save failed")));
     let mut s = with(cx, |_| {}, opts);
     s.open_settings();
     s.section("Loops");

@@ -8,9 +8,11 @@ use std::sync::Arc;
 use gpui::{Modifiers, TestAppContext, point, px};
 use parking_lot::Mutex;
 use recur_domain::{AgentSkill, Artifact, ChatItem, Finding, WorkspaceChatTab};
-use recur_services::api::TermInfo;
-use recur_services::events::{AgentUpdated, FilesDropped, SessionDelta, SessionTag, SessionTurnEnd};
 use recur_services::api::PromptResultDto;
+use recur_services::api::TermInfo;
+use recur_services::events::{
+    AgentUpdated, FilesDropped, SessionDelta, SessionTag, SessionTurnEnd,
+};
 use recur_services::fake::{Overrides, Release, Seed, hold};
 use recur_services::{AppEvent, Result};
 use serde_json::json;
@@ -89,10 +91,7 @@ fn bridge_opts(
         }
         match reply(n, text) {
             Some(r) => {
-                s2.lock()
-                    .entry(code)
-                    .or_default()
-                    .push(assistant(&r));
+                s2.lock().entry(code).or_default().push(assistant(&r));
                 Ok(r).into()
             }
             None => {
@@ -235,7 +234,10 @@ async fn scrolling_away_from_the_bottom_keeps_position_when_a_reply_streams_in(
     let mut prior = Vec::new();
     for i in 0..10 {
         prior.push(user(format!("question {i}")));
-        prior.push(assistant(format!("answer {i}\n\n{}", "paragraph ".repeat(30))));
+        prior.push(assistant(format!(
+            "answer {i}\n\n{}",
+            "paragraph ".repeat(30)
+        )));
     }
     load(&mut h, &store, "MA", prior);
     h.fill("kick off a slow reply");
@@ -262,10 +264,11 @@ async fn a_tab_switch_draws_the_transcript_where_it_was_left_in_its_first_frame(
         h.select_tab(code);
         let mut items = Vec::new();
         for i in 0..turns {
-            items.push(
-                user(format!("{code} question {i}")),
-            );
-            items.push(assistant(format!("answer {i}\n\n{}", "paragraph ".repeat(i % 40))));
+            items.push(user(format!("{code} question {i}")));
+            items.push(assistant(format!(
+                "answer {i}\n\n{}",
+                "paragraph ".repeat(i % 40)
+            )));
         }
         load(&mut h, &store, code, items);
         let top = (max_scroll(&mut h) * at).round();
@@ -334,19 +337,12 @@ async fn wheeling_up_a_long_chat_and_switching_back_keeps_what_is_on_screen(
     let store = Store::default();
     let mut h = boot(cx, items_opts(store.clone()));
     h.select_tab("PA");
-    load(
-        &mut h,
-        &store,
-        "PA",
-        vec![user("hi")],
-    );
+    load(&mut h, &store, "PA", vec![user("hi")]);
     h.select_tab("MA");
     let mut items = Vec::new();
     for i in 0..120 {
         items.push(user(format!("question {i}")));
-        items.push(
-            item("assistant", "thinking", format!("thinking about {i}")),
-        );
+        items.push(item("assistant", "thinking", format!("thinking about {i}")));
         items.push(ChatItem {
             tool: "Bash".into(),
             tool_input: format!("rg pattern{i}"),
@@ -411,10 +407,7 @@ async fn a_first_switch_draws_the_transcript_once_it_loads(cx: &mut TestAppConte
     let store = Store::default();
     let mut h = boot(cx, items_opts(store.clone()));
     h.select_tab("PA");
-    store.lock().insert(
-        "MA".into(),
-        vec![user("first load")],
-    );
+    store.lock().insert("MA".into(), vec![user("first load")]);
     let view = h.view();
     h.cx.update(|_, cx| view.update(cx, |v, cx| v.select_chat_tab("MA", cx)));
     // Not `settle`: its whole-window refresh redraws what a mouse move would.
@@ -739,7 +732,9 @@ async fn failed_deferred_commit_retry_sends_a_fresh_grouped_action_without_eatin
             *c
         };
         if n == 1 {
-            return Err(recur_services::Error::new("create_workspace_chat returned null"));
+            return Err(recur_services::Error::new(
+                "create_workspace_chat returned null",
+            ));
         }
         let list = s.chats.entry(ws).or_default();
         let tab = WorkspaceChatTab {
@@ -1177,10 +1172,11 @@ async fn an_autonomous_turn_after_idle_still_streams_past_the_previous_footer(
     assert!(h.has("chat-turn-elapsed"));
     delta(&mut h, "MA", "first reply", 1);
     turn_end(&mut h, "MA", 1200);
-    store.lock().entry("MA".into()).or_default().extend([
-        assistant("first reply"),
-        turn(1200),
-    ]);
+    store
+        .lock()
+        .entry("MA".into())
+        .or_default()
+        .extend([assistant("first reply"), turn(1200)]);
     idle(&mut h, "MA");
     assert!(h.has("turn-end"));
     assert!(!h.has("chat-turn-elapsed"));
@@ -1299,11 +1295,7 @@ async fn spend_limit_error_renders_a_card_with_retry_that_re_sends_the_last_prom
     assert_eq!(me_rows(&mut h), 1);
     h.click("chat-error-retry");
     assert!(h.assistant("ok, continuing"));
-    let displays: Vec<String> = sent
-        .lock()
-        .iter()
-        .map(|a| a[7].clone())
-        .collect();
+    let displays: Vec<String> = sent.lock().iter().map(|a| a[7].clone()).collect();
     assert_eq!(displays, ["", "\u{2060}"]);
     assert_eq!(texts(&sent)[1], "\u{2060}");
     assert_eq!(me_rows(&mut h), 1);

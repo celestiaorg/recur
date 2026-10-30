@@ -3,8 +3,8 @@
 //! surface's own scenarios live in `recur_view_review::spec::observatory`.
 
 use gpui::TestAppContext;
-use recur_editor::view_state::EditorViewMode;
 use recur_domain::{Artifact, FileContent, TreeEntry};
+use recur_editor::view_state::EditorViewMode;
 use recur_services::AppEvent;
 use recur_services::api::{Asset, AssetError};
 use recur_services::events::{ArtifactEvent, WorkspaceUpdated};
@@ -135,7 +135,12 @@ async fn will_save_runs_the_gofmt_transform_before_write_file(cx: &mut TestAppCo
         .read_file(|_, _| {
             Ok(FileContent {
                 size: 40,
-                ..file("src/main.go", "go", "package main\n\n\nfunc main() {}   \n", true)
+                ..file(
+                    "src/main.go",
+                    "go",
+                    "package main\n\n\nfunc main() {}   \n",
+                    true,
+                )
             })
         })
         .write_file(move |_, (p, ws, path, content)| {

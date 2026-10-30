@@ -233,10 +233,7 @@ impl QuickOpen {
                     Err(err) => {
                         recur_view_core::toast(
                             recur_ui::widgets::ToastKind::Error,
-                            format!(
-                                "Search files failed: {}",
-                                recur_view_core::bridge_error_message(&err)
-                            ),
+                            format!("Search files failed: {}", err.message.clone()),
                             cx,
                         );
                         q.file_hits.clear();

@@ -8,7 +8,7 @@ use gpui_kit::{App, Task};
 use recur_domain::FileSearchHit as RawHit;
 use recur_services::Services;
 use recur_ui::widgets::toasts::ToastKind;
-use recur_view_core::{bridge_error_message, toast};
+use recur_view_core::toast;
 
 /// One ranked file or directory.
 #[derive(Clone, Debug, PartialEq)]
@@ -87,7 +87,7 @@ pub fn search_files(
                 ready: res.ready,
             },
             Err(err) => {
-                let msg = format!("Search files failed: {}", bridge_error_message(&err));
+                let msg = format!("Search files failed: {}", err.message);
                 cx.update(|cx| toast(ToastKind::Error, msg, cx));
                 FileSearchResult::default()
             }

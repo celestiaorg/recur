@@ -827,10 +827,7 @@ impl PlanPanel {
                     let _ = this.update(cx, |_, cx| {
                         toast(
                             ToastKind::Error,
-                            format!(
-                                "Could not engage the loop: {}",
-                                recur_view_core::bridge_error_message(&err)
-                            ),
+                            format!("Could not engage the loop: {}", err.message.clone()),
                             cx,
                         )
                     });

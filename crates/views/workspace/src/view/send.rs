@@ -20,7 +20,7 @@ use recur_view_chat::hoist::HoistState;
 use recur_view_core::chat::AskUserAnswer;
 use recur_view_core::models::{FlagMap, chat_steer_follow_up};
 use recur_view_core::modes::ChatMode;
-use recur_view_core::{bridge_error_message, toast};
+use recur_view_core::toast;
 
 use super::{WorkspaceView, now_ms};
 use crate::uuid::uuidv7;
@@ -1091,7 +1091,7 @@ impl WorkspaceView {
             let ok = res.is_ok();
             let _ = this.update(cx, |v, cx| {
                 if let Err(err) = res {
-                    let msg = bridge_error_message(&err);
+                    let msg = err.message.clone();
                     toast(
                         ToastKind::Error,
                         if msg.is_empty() {

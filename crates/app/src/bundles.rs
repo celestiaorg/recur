@@ -4,7 +4,7 @@
 
 use gpui_kit::{App, Entity};
 use recur_ui::widgets::ToastKind;
-use recur_view_core::{AppState, bridge_error_message, toast};
+use recur_view_core::{AppState, toast};
 
 pub fn reload_bundles(state: &Entity<AppState>, cx: &mut App) {
     let services = state.read(cx).services().clone();
@@ -36,7 +36,7 @@ pub fn reload_bundles(state: &Entity<AppState>, cx: &mut App) {
             ),
             Err(err) => toast(
                 ToastKind::Error,
-                format!("Reload bundles failed: {}", bridge_error_message(&err)),
+                format!("Reload bundles failed: {}", err.message),
                 cx,
             ),
         });

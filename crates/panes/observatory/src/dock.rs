@@ -905,7 +905,7 @@ impl TerminalDock {
                     .await;
             }
             if let Err(err) = svc.terminal.interrupt_terminal(&id).await {
-                let msg = recur_view_core::bridge_error_message(&err);
+                let msg = err.message.clone();
                 cx.update(|_, cx| {
                     recur_view_core::toast(
                         recur_ui::widgets::ToastKind::Error,

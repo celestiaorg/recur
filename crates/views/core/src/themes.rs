@@ -387,10 +387,7 @@ impl AppState {
         let services = self.services.clone();
         gpui_kit::AppContext::background_spawn(cx, async move {
             if let Err(err) = services.code.set_file_index_exclude(&patterns).await {
-                tracing::warn!(
-                    "SetFileIndexExclude failed: {}",
-                    crate::state::bridge_error_message(&err)
-                );
+                tracing::warn!("SetFileIndexExclude failed: {}", err.message.clone());
             }
         })
         .detach();

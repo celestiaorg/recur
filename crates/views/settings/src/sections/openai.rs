@@ -12,7 +12,7 @@ use recur_ui::guard::Guarded;
 use recur_ui::text::span;
 use recur_ui::widgets::{SelectOption, ToastKind};
 use recur_view_core::models::provider_enabled;
-use recur_view_core::{bridge_error_message, call, toast};
+use recur_view_core::{call, toast};
 
 use crate::field::FieldOpts;
 use crate::rules::{PROVIDER_CHATGPT, can_disable_provider};
@@ -56,7 +56,7 @@ impl CodexLogin {
 }
 
 fn msg_or(e: &recur_services::Error, fallback: &str) -> String {
-    let m = bridge_error_message(e);
+    let m = e.message.clone();
     if m.is_empty() { fallback.into() } else { m }
 }
 

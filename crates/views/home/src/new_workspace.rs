@@ -19,7 +19,7 @@ use recur_engine::view::new_workspace::is_parked_opening_failure;
 use recur_ui::widgets::ToastKind;
 use recur_view_core::modes::ws_creating;
 use recur_view_core::state::SeedAttachment;
-use recur_view_core::{AppState, ViewName, WorkspaceSeed, bridge_error_message, call, toast};
+use recur_view_core::{AppState, ViewName, WorkspaceSeed, call, toast};
 
 /// The first chat tab of a new workspace.
 const FIRST_CHAT: &str = "PA";
@@ -224,7 +224,7 @@ pub async fn start_parked_opening(state: &Entity<AppState>, seed: OpeningSeed, c
     }
     let services = state.read_with(cx, |s, _| s.services().clone());
     if let Err(err) = persist_opening_chat(state, &seed, &mode, cx).await {
-        let msg = bridge_error_message(&err);
+        let msg = err.message.clone();
         cx.update(|cx| {
             toast(
                 ToastKind::Error,
@@ -297,7 +297,7 @@ pub async fn start_parked_opening(state: &Entity<AppState>, seed: OpeningSeed, c
             state.update(cx, |s, cx| s.set_workspace_seed(seed.workspace_seed(), cx));
         }
         Err(err) => {
-            let msg = bridge_error_message(&err);
+            let msg = err.message.clone();
             cx.update(|cx| {
                 toast(
                     ToastKind::Error,

@@ -2046,7 +2046,7 @@ impl AgentChat {
                         Some(p) => c.digest_status_by_id.insert(id.clone(), p),
                         None => c.digest_status_by_id.remove(&id),
                     };
-                    let msg = recur_view_core::bridge_error_message(&err);
+                    let msg = err.message.clone();
                     recur_view_core::toast(
                         recur_ui::widgets::toasts::ToastKind::Error,
                         if msg.is_empty() {
@@ -2153,7 +2153,7 @@ impl AgentChat {
                         );
                     }
                     Err(err) => {
-                        let msg = recur_view_core::bridge_error_message(&err);
+                        let msg = err.message.clone();
                         recur_view_core::toast(
                             recur_ui::widgets::toasts::ToastKind::Error,
                             if msg.is_empty() {
@@ -2226,7 +2226,7 @@ impl AgentChat {
                     ),
                     Err(err) => {
                         c.apply_digest_notes(&fid, current);
-                        let msg = recur_view_core::bridge_error_message(&err);
+                        let msg = err.message.clone();
                         recur_view_core::toast(
                             recur_ui::widgets::toasts::ToastKind::Error,
                             if msg.is_empty() {

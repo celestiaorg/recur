@@ -11,7 +11,7 @@ use gpui_kit::{App, AppContext, Context, Entity, Task};
 use recur_editor::keyequiv::{effective_key_equivalent, format_key_equivalent_display};
 use recur_services::api::{CommandInfo, RunContextDto};
 
-use crate::state::{AppState, bridge_error_message};
+use crate::state::AppState;
 
 /// Where a command's output goes (`OutputRouting`).
 pub const OUTPUT_ROUTINGS: [&str; 10] = [
@@ -589,7 +589,7 @@ impl AppState {
                     .bundle
                     .compiled_module(&id)
                     .await
-                    .map_err(|e| bridge_error_message(&e))?;
+                    .map_err(|e| e.message.clone())?;
                 let Some(runner) = runner else {
                     return Err("TypeScript commands need the macro runner".into());
                 };
@@ -679,7 +679,7 @@ impl AppState {
                 .bundle
                 .run_command(&id, &rc)
                 .await
-                .map_err(|e| bridge_error_message(&e))?;
+                .map_err(|e| e.message.clone())?;
             let output = non_empty(&res.output, &cmd.output);
             let bad = validate_output_routing(&output);
             if let Some(bad) = bad.clone().filter(|_| res.exit_code == 0) {

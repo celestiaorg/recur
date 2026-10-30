@@ -23,9 +23,7 @@ use recur_ui::{Color, IconName, Theme, svg_markup};
 use recur_view_core::modes::ws_main_blocked;
 use recur_view_core::pr::pr_icon_name;
 use recur_view_core::run::workspace_dev_cmd;
-use recur_view_core::{
-    AppState, NewTaskDraft, ScheduleEditorRequest, ViewName, bridge_error_message,
-};
+use recur_view_core::{AppState, NewTaskDraft, ScheduleEditorRequest, ViewName};
 
 use crate::chrome::{self, Kind, js_len, plain, step};
 
@@ -625,7 +623,7 @@ fn pick_search_hit(insert: String, action: String, s: &mut AppState, cx: &mut Co
                 s.open_new_task("", Some(draft), cx);
             }
             Err(e) => {
-                let msg = bridge_error_message(&e);
+                let msg = e.message.clone();
                 let msg = if msg.is_empty() {
                     "Could not expand search hit".to_string()
                 } else {

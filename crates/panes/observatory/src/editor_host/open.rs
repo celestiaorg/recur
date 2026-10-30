@@ -16,7 +16,7 @@ use recur_editor::view_state::{
 };
 use recur_ui::widgets::ToastKind;
 use recur_view_core::file_drag::is_abs_filesystem_path;
-use recur_view_core::{bridge_error_message, call, toast};
+use recur_view_core::{call, toast};
 
 use crate::explorer::{is_directory_error, is_not_found, is_worktree_missing};
 use crate::model::{MAX_EDIT_BYTES, Pane, TabBuffer, is_scratch_path};
@@ -1005,7 +1005,7 @@ impl Observatory {
                         } else {
                             toast(
                                 ToastKind::Error,
-                                format!("Read failed: {}", bridge_error_message(&err)),
+                                format!("Read failed: {}", err.message),
                                 cx,
                             );
                         }
@@ -1286,7 +1286,7 @@ impl Observatory {
                             o.hydrate_failed_path = path.clone();
                             toast(
                                 ToastKind::Error,
-                                format!("Read failed: {}", bridge_error_message(&err)),
+                                format!("Read failed: {}", err.message),
                                 cx,
                             );
                         }

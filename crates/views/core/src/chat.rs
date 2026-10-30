@@ -117,7 +117,7 @@ impl AppState {
                                 q, answer,
                             ))));
                         }
-                        let msg = crate::bridge_error_message(&err);
+                        let msg = err.message.clone();
                         crate::toast(
                             recur_ui::widgets::toasts::ToastKind::Error,
                             if msg.is_empty() {

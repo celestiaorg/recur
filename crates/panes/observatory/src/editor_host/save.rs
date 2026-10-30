@@ -8,7 +8,7 @@ use recur_editor::prefs::{EditorIndent, language_id_for_path};
 use recur_editor::session::ScratchDoc;
 use recur_ui::widgets::ToastKind;
 use recur_view_core::commands::{EditorContext, scope_for_path};
-use recur_view_core::{bridge_error_message, toast};
+use recur_view_core::toast;
 
 use crate::model::{Pane, TabBuffer, file_with_body, is_scratch_path};
 use crate::obs::{ExplorerReveal, Observatory, OpenRequest};
@@ -197,7 +197,7 @@ impl Observatory {
                     cx.update(|cx| {
                         toast(
                             ToastKind::Error,
-                            format!("Save failed: {}", bridge_error_message(&err)),
+                            format!("Save failed: {}", err.message),
                             cx,
                         )
                     });
@@ -273,7 +273,7 @@ impl Observatory {
                 cx.update(|cx| {
                     toast(
                         ToastKind::Error,
-                        format!("Save failed: {}", bridge_error_message(&err)),
+                        format!("Save failed: {}", err.message),
                         cx,
                     )
                 });

@@ -12,7 +12,7 @@ use recur_code::glob::{CompiledGlob, is_excluded_by};
 use recur_domain::TreeEntry;
 use recur_editor::session::remap_open_files;
 use recur_ui::widgets::ToastKind;
-use recur_view_core::{bridge_error_message, call, toast};
+use recur_view_core::{call, toast};
 
 use crate::explorer_visible::is_path_visible_in_explorer_tree;
 use crate::model::{base_name, is_under, join_path, parent_path, rewrite_under};
@@ -391,14 +391,8 @@ impl Observatory {
                     return;
                 }
                 match &tree {
-                    Err(e) if is_worktree_missing(&bridge_error_message(e)) => {
-                        o.worktree_missing = true
-                    }
-                    Err(e) => toast(
-                        ToastKind::Error,
-                        format!("Tree failed: {}", bridge_error_message(e)),
-                        cx,
-                    ),
+                    Err(e) if is_worktree_missing(&e.message) => o.worktree_missing = true,
+                    Err(e) => toast(ToastKind::Error, format!("Tree failed: {}", e.message), cx),
                     Ok(_) => o.worktree_missing = false,
                 }
                 if let Ok(t) = tree {
@@ -1022,7 +1016,7 @@ impl Observatory {
                 if token == o.root_token {
                     match batch {
                         Err(e) => {
-                            if is_worktree_missing(&bridge_error_message(&e)) {
+                            if is_worktree_missing(&e.message) {
                                 o.worktree_missing = true;
                             }
                         }

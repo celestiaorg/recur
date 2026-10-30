@@ -882,7 +882,7 @@ impl NewTaskModal {
                         display = d;
                     }
                     Err(err) => {
-                        let msg = recur_view_core::bridge_error_message(&err);
+                        let msg = err.message.clone();
                         cx.update(|cx| {
                             toast(
                                 ToastKind::Error,

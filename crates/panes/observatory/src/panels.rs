@@ -12,7 +12,7 @@ use gpui_kit::{App, AppContext as _, Context, Task, Window};
 use recur_domain::Finding;
 use recur_ui::widgets::ToastKind;
 use recur_view_core::prefs::{CodePanelKey, PanelSide};
-use recur_view_core::{bridge_error_message, call, toast};
+use recur_view_core::{call, toast};
 use recur_view_review::review_diff::{ReviewTab, write_review_tab};
 use recur_view_review::surface::{ReviewSurface, SurfaceEvent, SurfaceProps};
 
@@ -605,7 +605,7 @@ impl Observatory {
                 }
                 Err(err) => {
                     cx.update(|cx| {
-                        let m = bridge_error_message(&err);
+                        let m = err.message.clone();
                         toast(
                             ToastKind::Error,
                             if m.is_empty() {
@@ -656,7 +656,7 @@ impl Observatory {
                                 x.status = prev.clone();
                             }
                         }
-                        let m = bridge_error_message(&err);
+                        let m = err.message.clone();
                         toast(
                             ToastKind::Error,
                             if m.is_empty() {
@@ -763,7 +763,7 @@ impl Observatory {
                         x.notes = prev_notes.clone();
                     }
                 }
-                let m = bridge_error_message(&err);
+                let m = err.message.clone();
                 toast(
                     ToastKind::Error,
                     if m.is_empty() { fail.to_string() } else { m },

@@ -395,19 +395,6 @@ pub struct AppState {
 
 impl EventEmitter<ShellEvent> for AppState {}
 
-/// `bridgeErrorMessage`: a human message out of a rejected call (sometimes JSON-wrapped).
-pub fn bridge_error_message(err: &Error) -> String {
-    let raw = err.message.as_str();
-    if raw.starts_with('{')
-        && let Ok(v) = serde_json::from_str::<serde_json::Value>(raw)
-        && let Some(m) = v.get("message").and_then(|m| m.as_str())
-        && !m.is_empty()
-    {
-        return m.to_string();
-    }
-    raw.to_string()
-}
-
 /// `call()`: await a service call; on failure push `"{fail}: {message}"` as an error toast and
 /// return `None`.
 pub async fn call<T>(
@@ -418,7 +405,7 @@ pub async fn call<T>(
     match fut.await {
         Ok(v) => Some(v),
         Err(err) => {
-            let text = format!("{fail}: {}", bridge_error_message(&err));
+            let text = format!("{fail}: {}", err.message);
             cx.update(|cx| push_toast(ToastKind::Error, text, ToastOptions::default(), cx));
             None
         }
@@ -1175,7 +1162,7 @@ impl AppState {
                         s.run.clear_run_session(&ws, &name, Some(&sid));
                     }
                     Err(err) => {
-                        let msg = bridge_error_message(&err);
+                        let msg = err.message;
                         if is_missing_session(&msg) {
                             s.run.clear_run_session(&ws, &name, Some(&sid));
                         } else {

@@ -50,7 +50,7 @@ pub use nav::{Crumb, CrumbSeg, CrumbStyle, ViewName};
 pub use state::{
     AppState, Attention, ChatRef, NewTaskDraft, ObsJump, Overlays, PrReviewKind,
     PromptActionRequest, ScanKind, ScheduleEditorRequest, ShellEvent, WorkspaceScanEvent,
-    WorkspaceSeed, bridge_error_message, call, toast,
+    WorkspaceSeed, call, toast,
 };
 pub use topics::{ObserveState, StateChanged, Topics, observe_state_app};
 pub use view::{OverlaySlot, TitlebarParts, ViewContext, ViewRegistry};

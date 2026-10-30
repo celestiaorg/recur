@@ -149,10 +149,7 @@ impl AgentChat {
                     }
                     Err(err) => toast(
                         ToastKind::Error,
-                        format!(
-                            "List skills failed: {}",
-                            recur_view_core::bridge_error_message(&err)
-                        ),
+                        format!("List skills failed: {}", err.message.clone()),
                         cx,
                     ),
                 }

@@ -14,7 +14,7 @@ use recur_ui::text::{Span, TextStyled, span, text};
 use recur_ui::widgets::{SettingsGroup, ToastKind, settings_group, settings_groups};
 use recur_ui::{IconName, icon};
 use recur_view_core::models::provider_enabled;
-use recur_view_core::{bridge_error_message, call, toast};
+use recur_view_core::{call, toast};
 
 use crate::field::{FieldEvent, FieldOpts};
 use crate::rules::{
@@ -1022,7 +1022,7 @@ impl SettingsView {
                 }
                 Ok(_) => {}
                 Err(e) => {
-                    let m = bridge_error_message(&e);
+                    let m = e.message.clone();
                     let m = if m.is_empty() {
                         "Could not start Cursor sign-in".to_string()
                     } else {
@@ -1068,7 +1068,7 @@ impl SettingsView {
             }
             .await;
             if let Err(e) = res {
-                let m = bridge_error_message(&e);
+                let m = e.message.clone();
                 let m = if m.is_empty() {
                     "Could not disconnect Cursor".to_string()
                 } else {
@@ -1202,7 +1202,7 @@ impl SettingsView {
                     },
                 ),
                 Err(e) => {
-                    let m = bridge_error_message(&e);
+                    let m = e.message.clone();
                     (
                         false,
                         if m.is_empty() {
@@ -1310,7 +1310,7 @@ impl SettingsView {
                     },
                 ),
                 Err(e) => {
-                    let m = bridge_error_message(&e);
+                    let m = e.message.clone();
                     (
                         false,
                         if m.is_empty() {

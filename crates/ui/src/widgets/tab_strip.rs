@@ -581,10 +581,10 @@ impl TabStrip {
                 .gap(px(2.))
                 .children(items)
         };
-        if !self.leading.is_empty() {
+        let (lead, trail) = (!self.leading.is_empty(), !self.trailing.is_empty());
+        if lead {
             root = root.child(side(self.leading));
         }
-        let (lead, trail) = (!self.leading.is_empty(), !self.trailing.is_empty());
         root = root.child(
             div()
                 .relative()

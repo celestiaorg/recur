@@ -7,7 +7,8 @@ use super::{Fx, FxOpts, write};
 use crate::api::{IssuesView, ShellState};
 use crate::app::projects::preview_scheduled_prompt;
 use crate::app::shell::{
-    ISSUES_VIEW_FILE, SCHEDULE_VIEW_FILE, SHELL_SAVE_DEBOUNCE, SHELL_STATE_FILE, clamp_shell_state,
+    ISSUES_VIEW_FILE, SCHEDULE_VIEW_FILE, SHELL_SAVE_DEBOUNCE, SHELL_STATE_FILE, UI_VIEW_FILE,
+    clamp_shell_state,
 };
 
 fn st(view: &str, ws: &str) -> ShellState {
@@ -192,6 +193,22 @@ async fn issues_view_round_trip() {
     );
     write(fx.root.join(ISSUES_VIEW_FILE), "{not json");
     assert_eq!(sh.get_issues_view().await.unwrap().layout, "");
+    fx.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn ui_zoom_round_trip_and_clamp() {
+    let fx = Fx::new().await;
+    let sh = &fx.s.shell;
+    assert_eq!(sh.get_ui_zoom().await.unwrap(), 1.);
+    sh.set_ui_zoom(1.25).await.unwrap();
+    assert_eq!(fresh_shell(&fx).await.get_ui_zoom().await.unwrap(), 1.25);
+    for (set, want) in [(0.1, 0.5), (9., 2.), (0., 1.)] {
+        sh.set_ui_zoom(set).await.unwrap();
+        assert_eq!(sh.get_ui_zoom().await.unwrap(), want);
+    }
+    write(fx.root.join(UI_VIEW_FILE), "{not json");
+    assert_eq!(sh.get_ui_zoom().await.unwrap(), 1.);
     fx.close().await;
 }
 

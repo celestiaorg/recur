@@ -61,7 +61,10 @@ impl Shell {
             GoSchedules,
             GoWelcome,
             PrevWorkspace,
-            NextWorkspace
+            NextWorkspace,
+            ZoomIn,
+            ZoomOut,
+            ActualSize
         );
         macro_rules! contextual {
             ($root:expr, $($t:ty => $on:expr),*) => {{
@@ -147,7 +150,7 @@ impl Shell {
     pub(crate) fn menu_action(
         &mut self,
         action: &str,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let state = self.state.clone();
@@ -216,6 +219,9 @@ impl Shell {
             "settings" => state.update(cx, |s, cx| s.go(ViewName::Settings, None, cx)),
             "check-updates" => self.check_for_updates(cx),
             "reload-bundles" => crate::bundles::reload_bundles(&state, cx),
+            "zoom-in" => self.zoom(crate::zoom::Zoom::In, window, cx),
+            "zoom-out" => self.zoom(crate::zoom::Zoom::Out, window, cx),
+            "zoom-reset" => self.zoom(crate::zoom::Zoom::Reset, window, cx),
             "toggle-terminal" => state.update(cx, |s, cx| {
                 if let Some(id) = dock_workspace(s) {
                     s.toggle_terminal_dock(&id, cx);

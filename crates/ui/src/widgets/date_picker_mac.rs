@@ -108,6 +108,7 @@ impl Picker {
         let mtm = MainThreadMarker::new()?;
         let view = content_view(window)?;
         let parent = view.window()?;
+        let anchor = window.zoom_to_platform(anchor);
         let (x, y, h) = (
             f64::from(f32::from(anchor.origin.x)),
             f64::from(f32::from(anchor.origin.y)),

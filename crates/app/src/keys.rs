@@ -49,7 +49,10 @@ impl Shell {
         let k = &ev.keystroke;
         let m = k.modifiers;
         let state = self.state.clone();
-        let handled = if cmd_or_ctrl(k) && key_is(k, "k") && !m.shift {
+        let handled = if let Some(step) = crate::zoom::zoom_chord(k) {
+            self.zoom(step, window, cx);
+            true
+        } else if cmd_or_ctrl(k) && key_is(k, "k") && !m.shift {
             state.update(cx, |s, cx| s.toggle_go_palette(cx));
             true
         } else if cmd_or_ctrl(k) && m.shift && !m.alt && key_is(k, "p") {

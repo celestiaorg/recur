@@ -887,11 +887,20 @@ mod mac {
             );
             page.attached.set(true);
         }
+        // The page zooms with the UI, as an iframe under CSS `zoom` does.
+        let zoom = f64::from(window.ui_zoom());
+        // SAFETY: main thread.
+        unsafe {
+            if page.web.pageZoom() != zoom {
+                page.web.setPageZoom(zoom);
+            }
+        }
+        let at = window.zoom_to_platform(b);
         let (x, y, w, h) = (
-            f64::from(f32::from(b.origin.x)),
-            f64::from(f32::from(b.origin.y)),
-            f64::from(f32::from(b.size.width)),
-            f64::from(f32::from(b.size.height)),
+            f64::from(f32::from(at.origin.x)),
+            f64::from(f32::from(at.origin.y)),
+            f64::from(f32::from(at.size.width)),
+            f64::from(f32::from(at.size.height)),
         );
         let y = if view.isFlipped() {
             y
@@ -926,7 +935,8 @@ mod mac {
                 return;
             }
             if painted_now || stack.iter().any(|v| window.replayed_view(*v)) {
-                let radius = window.backdrop_blur_over_hole(b).map_or(0., f32::from);
+                let radius =
+                    window.backdrop_blur_over_hole(b).map_or(0., f32::from) * window.ui_zoom();
                 blur(&page, radius);
                 track(page, b, frame, stack, false, window);
             } else {

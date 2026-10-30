@@ -29,6 +29,10 @@ pub trait ShellService: Send + Sync {
     /// "stay on the default Inbox" unless first-run routing sends Welcome.
     async fn get_shell_state(&self) -> Result<ShellState>;
 
+    /// GetUIZoom returns the saved whole-UI zoom factor, or 1 when none exists or
+    /// the file is corrupt.
+    async fn get_ui_zoom(&self) -> Result<f32>;
+
     /// SetExpandedSchedules records expanded schedule dashboard rows.
     async fn set_expanded_schedules(&self, ids: &[String]) -> Result<()>;
 
@@ -39,4 +43,7 @@ pub trait ShellService: Send + Sync {
     /// are ignored so a future client cannot wipe a good shell.json. The disk write
     /// is coalesced; call Flush on shutdown so the last snapshot is durable.
     async fn set_shell_state(&self, st: &ShellState) -> Result<()>;
+
+    /// SetUIZoom records the whole-UI zoom factor, clamped to the step range.
+    async fn set_ui_zoom(&self, zoom: f32) -> Result<()>;
 }

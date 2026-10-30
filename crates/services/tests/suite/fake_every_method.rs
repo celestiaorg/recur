@@ -1057,6 +1057,7 @@ async fn every_method_answers() {
         "GetShellState",
         s.shell.get_shell_state().await.err(),
     );
+    note(&mut errs, "GetUIZoom", s.shell.get_ui_zoom().await.err());
     note(
         &mut errs,
         "SetExpandedSchedules",
@@ -1072,6 +1073,7 @@ async fn every_method_answers() {
         "SetShellState",
         s.shell.set_shell_state(&Default::default()).await.err(),
     );
+    note(&mut errs, "SetUIZoom", s.shell.set_ui_zoom(1.).await.err());
     note(
         &mut errs,
         "AckTerminal",

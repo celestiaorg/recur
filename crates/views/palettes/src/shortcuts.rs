@@ -142,6 +142,30 @@ pub const SHORTCUTS: &[(&str, &str, &str, &[&str])] = &[
     ("Workbench", "Stop run", "⌘⇧R", &["dev server", "interrupt"]),
     ("Workbench", "Reload from disk", "F5", &[]),
     (
+        "Workbench",
+        "Zoom in",
+        "⌘+",
+        &["bigger", "larger", "scale", "ui size"],
+    ),
+    (
+        "Workbench",
+        "Zoom out",
+        "⌘-",
+        &["smaller", "scale", "ui size"],
+    ),
+    (
+        "Workbench",
+        "Actual size",
+        "⌘0",
+        &["reset zoom", "scale", "ui size"],
+    ),
+    (
+        "Workbench",
+        "Zoom with mouse wheel",
+        "⌘Scroll",
+        &["ctrl", "scale", "ui size"],
+    ),
+    (
         "Editor",
         "Cycle view",
         "⌘⇧V",

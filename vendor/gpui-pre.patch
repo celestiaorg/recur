@@ -342,7 +342,7 @@ index 2f755b1d..98f87965 100644
      }
  
 diff --git a/rust/vendor/gpui-pre/src/platform.rs b/rust/vendor/gpui-pre/src/platform.rs
-index c08d9646..debaa48d 100644
+index c08d9646..99b59f8a 100644
 --- a/rust/vendor/gpui-pre/src/platform.rs
 +++ b/rust/vendor/gpui-pre/src/platform.rs
 @@ -1270,6 +1270,9 @@ pub trait PlatformWindow: HasWindowHandle + HasDisplayHandle {
@@ -355,7 +355,39 @@ index c08d9646..debaa48d 100644
      fn on_close(&self, callback: Box<dyn FnOnce()>);
      fn on_appearance_changed(&self, callback: Box<dyn FnMut()>);
      fn on_button_layout_changed(&self, _callback: Box<dyn FnMut()>) {}
-@@ -2962,6 +2965,14 @@ pub enum CursorStyle {
+@@ -2077,7 +2080,10 @@ impl PlatformInputHandler {
+ 
+     pub fn bounds_for_range(&mut self, range_utf16: Range<usize>) -> Option<Bounds<Pixels>> {
+         self.cx
+-            .update(|window, cx| self.handler.bounds_for_range(range_utf16, window, cx))
++            .update(|window, cx| {
++                let b = self.handler.bounds_for_range(range_utf16, window, cx)?;
++                Some(window.zoom_to_platform(b))
++            })
+             .ok()
+             .flatten()
+     }
+@@ -2132,6 +2138,7 @@ impl PlatformInputHandler {
+         Self::compute_ime_candidate_bounds(marked_range, &selection, |range| {
+             self.handler.bounds_for_range(range, window, cx)
+         })
++        .map(|b| window.zoom_to_platform(b))
+     }
+ 
+     pub fn ime_candidate_bounds(&mut self) -> Option<Bounds<Pixels>> {
+@@ -2145,7 +2152,10 @@ impl PlatformInputHandler {
+     #[allow(unused)]
+     pub fn character_index_for_point(&mut self, point: Point<Pixels>) -> Option<usize> {
+         self.cx
+-            .update(|window, cx| self.handler.character_index_for_point(point, window, cx))
++            .update(|window, cx| {
++                let point = point.map(|v| v / window.ui_zoom());
++                self.handler.character_index_for_point(point, window, cx)
++            })
+             .ok()
+             .flatten()
+     }
+@@ -2962,6 +2972,14 @@ pub enum CursorStyle {
      /// A cursor indicating that the operation will result in a context menu
      /// corresponds to the CSS cursor value `context-menu`
      ContextualMenu,
@@ -1311,7 +1343,7 @@ index 081edd9a..0012ba2b 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..99ff4631 100644
+index 1214b035..650f3e5e 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
 @@ -6,8 +6,8 @@ use crate::Inspector;
@@ -1325,7 +1357,17 @@ index 1214b035..99ff4631 100644
      DispatchActionListener, DispatchNodeId, DispatchTree, DisplayId, Edges, Effect, Entity,
      EntityId, EventEmitter, FileDropEvent, FontId, Global, GlobalElementId, GlyphId, GpuSpecs,
      Hsla, InputHandler, InputPreference, IsZero, KeyBinding, KeyContext, KeyDownEvent, KeyEvent,
-@@ -942,6 +942,11 @@ pub enum HitboxBehavior {
+@@ -16,7 +16,8 @@ use crate::{
+     PlatformAtlas, PlatformDisplay, PlatformInput, PlatformInputHandler, PlatformWindow, Point,
+     PolychromeSprite, Priority, PromptButton, PromptLevel, Quad, Render, RenderGlyphParams,
+     RenderImage, RenderImageParams, RenderSvgParams, Replay, ResizeEdge, SMOOTH_SVG_SCALE_FACTOR,
+-    SUBPIXEL_VARIANTS_X, SUBPIXEL_VARIANTS_Y, ScaledPixels, Scene, Shadow, SharedString, Size,
++    SUBPIXEL_VARIANTS_X, SUBPIXEL_VARIANTS_Y, ScaledPixels, Scene, ScrollDelta, Shadow,
++    SharedString, Size,
+     StrikethroughStyle, Style, SubpixelSprite, SubscriberSet, Subscription, SystemWindowTab,
+     SystemWindowTabController, TabStopMap, TaffyLayoutEngine, Task, TextInputConfiguration,
+     TextInputStateChange, TextRenderingMode, TextStyle, TextStyleRefinement, ThermalState,
+@@ -942,6 +943,11 @@ pub enum HitboxBehavior {
      /// inconsistent UI where clicks and moves interact with elements that are not considered to
      /// be hovered.
      BlockMouseExceptScroll,
@@ -1337,7 +1379,7 @@ index 1214b035..99ff4631 100644
  }
  
  /// An identifier for a tooltip.
-@@ -999,6 +1004,16 @@ impl ElementIdStack {
+@@ -999,6 +1005,16 @@ impl ElementIdStack {
          self.hashes.clear();
      }
  
@@ -1354,7 +1396,7 @@ index 1214b035..99ff4631 100644
      /// The hash of the whole path on the stack.
      fn hash(&self) -> u64 {
          self.hashes
-@@ -1057,6 +1072,118 @@ pub(crate) struct Frame {
+@@ -1057,6 +1073,118 @@ pub(crate) struct Frame {
      #[cfg(any(feature = "inspector", debug_assertions))]
      pub(crate) inspector_hitboxes: FxHashMap<HitboxId, crate::InspectorElementId>,
      pub(crate) tab_stops: TabStopMap,
@@ -1473,7 +1515,7 @@ index 1214b035..99ff4631 100644
  }
  
  #[derive(Clone, Default)]
-@@ -1116,9 +1243,55 @@ impl Frame {
+@@ -1116,9 +1244,55 @@ impl Frame {
              #[cfg(any(feature = "inspector", debug_assertions))]
              inspector_hitboxes: FxHashMap::default(),
              tab_stops: TabStopMap::default(),
@@ -1481,9 +1523,9 @@ index 1214b035..99ff4631 100644
 +            island_ids: FxHashSet::default(),
 +            replayed_views: FxHashSet::default(),
 +            root: None,
-+        }
-+    }
-+
+         }
+     }
+ 
 +    pub(crate) fn push_cached_view(
 +        &mut self,
 +        global_id: GlobalElementId,
@@ -1519,9 +1561,9 @@ index 1214b035..99ff4631 100644
 +        record.opacity = opacity;
 +        if !painted.is_empty() {
 +            Rc::make_mut(&mut record.accessed).extend(painted.iter().copied());
-         }
-     }
- 
++        }
++    }
++
 +    pub(crate) fn is_island(&self, ix: usize) -> bool {
 +        self.cached_views[ix].island.is_some()
 +    }
@@ -1529,7 +1571,7 @@ index 1214b035..99ff4631 100644
      pub(crate) fn clear(&mut self) {
          self.element_states.clear();
          self.accessed_element_states.clear();
-@@ -1132,6 +1305,10 @@ impl Frame {
+@@ -1132,6 +1306,10 @@ impl Frame {
          self.window_control_hitboxes.clear();
          self.deferred_draws.clear();
          self.tab_stops.clear();
@@ -1540,7 +1582,7 @@ index 1214b035..99ff4631 100644
          self.focus = None;
  
          #[cfg(any(test, feature = "test-support"))]
-@@ -1253,7 +1430,22 @@ pub struct Window {
+@@ -1253,7 +1431,22 @@ pub struct Window {
      pub(crate) next_tooltip_id: TooltipId,
      pub(crate) tooltip_bounds: Option<TooltipBounds>,
      pub(crate) next_frame_callbacks: Rc<RefCell<Vec<FrameCallback>>>,
@@ -1563,7 +1605,15 @@ index 1214b035..99ff4631 100644
      focus_listeners: SubscriberSet<(), AnyWindowFocusListener>,
      pub(crate) focus_lost_listeners: SubscriberSet<(), AnyObserver>,
      focus_lost_path: SmallVec<[FocusId; 8]>,
-@@ -1284,6 +1476,10 @@ pub struct Window {
+@@ -1263,6 +1456,7 @@ pub struct Window {
+     modifiers: Modifiers,
+     capslock: Capslock,
+     scale_factor: f32,
++    ui_zoom: f32,
+     pub(crate) bounds_observers: SubscriberSet<(), AnyObserver>,
+     appearance: WindowAppearance,
+     pub(crate) appearance_observers: SubscriberSet<(), AnyObserver>,
+@@ -1284,6 +1478,10 @@ pub struct Window {
      long_press_timer: Option<Task<()>>,
      long_press_capture: Option<EntityId>,
      pub(crate) refreshing: bool,
@@ -1574,7 +1624,19 @@ index 1214b035..99ff4631 100644
      pub(crate) activation_observers: SubscriberSet<(), AnyObserver>,
      pub(crate) focus: Option<FocusId>,
      focus_enabled: bool,
-@@ -2063,6 +2259,14 @@ impl Window {
+@@ -2042,7 +2240,10 @@ impl Window {
+             let mut cx = cx.to_async();
+             Box::new(move |event| {
+                 handle
+-                    .update(&mut cx, |_, window, cx| window.dispatch_event(event, cx))
++                    .update(&mut cx, |_, window, cx| {
++                        let event = window.unzoom_input(event);
++                        window.dispatch_event(event, cx)
++                    })
+                     .log_err()
+                     .unwrap_or(DispatchEventResult::default())
+             })
+@@ -2063,6 +2264,16 @@ impl Window {
                      .unwrap_or(None)
              })
          });
@@ -1582,14 +1644,16 @@ index 1214b035..99ff4631 100644
 +            let mut cx = cx.to_async();
 +            Box::new(move |position| {
 +                handle
-+                    .update(&mut cx, |_, window, _| window.native_hit_test(position))
++                    .update(&mut cx, |_, window, _| {
++                        window.native_hit_test(position.map(|v| v / window.ui_zoom))
++                    })
 +                    .unwrap_or(false)
 +            })
 +        });
          platform_window.on_move_tab_to_new_window({
              let mut cx = cx.to_async();
              Box::new(move || {
-@@ -2150,10 +2354,16 @@ impl Window {
+@@ -2150,10 +2361,16 @@ impl Window {
              rendered_frame: Frame::new(DispatchTree::new(cx.keymap.clone(), cx.actions.clone())),
              next_frame: Frame::new(DispatchTree::new(cx.keymap.clone(), cx.actions.clone())),
              next_frame_callbacks,
@@ -1606,7 +1670,15 @@ index 1214b035..99ff4631 100644
              focus_listeners: SubscriberSet::new(),
              focus_lost_listeners: SubscriberSet::new(),
              focus_lost_path: SmallVec::new(),
-@@ -2185,6 +2395,7 @@ impl Window {
+@@ -2163,6 +2380,7 @@ impl Window {
+             modifiers,
+             capslock,
+             scale_factor,
++            ui_zoom: 1.,
+             bounds_observers: SubscriberSet::new(),
+             appearance,
+             appearance_observers: SubscriberSet::new(),
+@@ -2185,6 +2403,7 @@ impl Window {
              long_press_timer: None,
              long_press_capture: None,
              refreshing: false,
@@ -1614,7 +1686,7 @@ index 1214b035..99ff4631 100644
              activation_observers: SubscriberSet::new(),
              focus: None,
              focus_enabled: true,
-@@ -2251,16 +2462,28 @@ impl ContentMask<Pixels> {
+@@ -2251,16 +2470,28 @@ impl ContentMask<Pixels> {
  impl Window {
      fn mark_view_dirty(&mut self, view_id: EntityId) {
          // Mark ancestor views as dirty. If already in the `dirty_views` set, then all its ancestors
@@ -1645,7 +1717,7 @@ index 1214b035..99ff4631 100644
      }
  
      pub(crate) fn refresh_visibility(&mut self, cx: &mut App) {
-@@ -2715,6 +2938,14 @@ impl Window {
+@@ -2715,6 +2946,14 @@ impl Window {
          self.invalidator.wake_platform();
      }
  
@@ -1660,7 +1732,97 @@ index 1214b035..99ff4631 100644
      /// Schedule a frame to be drawn on the next animation frame.
      ///
      /// This is useful for elements that need to animate continuously, such as a video player or an animated GIF.
-@@ -3472,6 +3703,8 @@ impl Window {
+@@ -2789,9 +3028,9 @@ impl Window {
+     /// the platform window, then notifies observers. Normally called automatically
+     /// by the platform's resize callback, but exposed publicly for test infrastructure.
+     pub fn bounds_changed(&mut self, cx: &mut App) {
+-        self.scale_factor = self.platform_window.scale_factor();
+-        self.viewport_size = self.platform_window.content_size();
+-        self.mouse_position = self.platform_window.mouse_position();
++        self.scale_factor = self.platform_window.scale_factor() * self.ui_zoom;
++        self.viewport_size = self.platform_window.content_size().map(|v| v / self.ui_zoom);
++        self.mouse_position = self.platform_window.mouse_position().map(|v| v / self.ui_zoom);
+ 
+         self.refresh();
+ 
+@@ -2996,7 +3235,8 @@ impl Window {
+ 
+     /// Opens the native title bar context menu, useful when implementing client side decorations (Wayland and X11)
+     pub fn show_window_menu(&self, position: Point<Pixels>) {
+-        self.platform_window.show_window_menu(position)
++        self.platform_window
++            .show_window_menu(position.map(|v| v * self.ui_zoom))
+     }
+ 
+     /// Handle window movement for Linux and macOS.
+@@ -3099,6 +3339,66 @@ impl Window {
+         self.refresh();
+     }
+ 
++    /// Recur: the whole-UI zoom factor, as CSS `zoom` on the root element. The window lays out
++    /// in logical pixels of `zoom` platform points: [`Self::scale_factor`] is the display's
++    /// times the zoom and [`Self::viewport_size`] the content size over it, so every length
++    /// scales and rasterizes at the zoomed resolution. Platform input, native hit tests, IME
++    /// bounds and the window menu position convert at the boundary; anything else that places
++    /// a native view converts with [`Self::zoom_to_platform`].
++    pub fn ui_zoom(&self) -> f32 {
++        self.ui_zoom
++    }
++
++    /// Sets the whole-UI zoom factor (see [`Self::ui_zoom`]) and redraws the window.
++    pub fn set_ui_zoom(&mut self, zoom: f32, cx: &mut App) {
++        if zoom > 0. && zoom != self.ui_zoom {
++            self.ui_zoom = zoom;
++            self.bounds_changed(cx);
++        }
++    }
++
++    /// `bounds` in platform window points, for a native view laid over the window.
++    pub fn zoom_to_platform(&self, bounds: Bounds<Pixels>) -> Bounds<Pixels> {
++        let z = self.ui_zoom;
++        Bounds::new(bounds.origin.map(|v| v * z), bounds.size.map(|v| v * z))
++    }
++
++    /// Platform input in the window's logical pixels.
++    fn unzoom_input(&self, mut event: PlatformInput) -> PlatformInput {
++        let z = self.ui_zoom;
++        if z == 1. {
++            return event;
++        }
++        let at = |p: &mut Point<Pixels>| *p = p.map(|v| v / z);
++        match &mut event {
++            PlatformInput::MouseDown(e) => at(&mut e.position),
++            PlatformInput::MouseUp(e) => at(&mut e.position),
++            PlatformInput::MousePressure(e) => at(&mut e.position),
++            PlatformInput::MouseMove(e) => at(&mut e.position),
++            PlatformInput::MouseExited(e) => at(&mut e.position),
++            PlatformInput::ScrollWheel(e) => {
++                at(&mut e.position);
++                if let ScrollDelta::Pixels(d) = &mut e.delta {
++                    at(d);
++                }
++            }
++            PlatformInput::Pinch(e) => at(&mut e.position),
++            PlatformInput::Touch(e) => {
++                at(&mut e.position);
++                if let Some(p) = &mut e.predicted_position {
++                    at(p);
++                }
++            }
++            PlatformInput::FileDrop(
++                FileDropEvent::Entered { position, .. }
++                | FileDropEvent::Pending { position }
++                | FileDropEvent::Submit { position },
++            ) => at(position),
++            _ => {}
++        }
++        event
++    }
++
+     /// The size of an em for the base font of the application. Adjusting this value allows the
+     /// UI to scale, just like zooming a web page.
+     pub fn rem_size(&self) -> Pixels {
+@@ -3472,6 +3772,8 @@ impl Window {
              }
          }
          self.dirty_views.clear();
@@ -1669,7 +1831,7 @@ index 1214b035..99ff4631 100644
          self.next_frame.window_active = self.active.get();
  
          // Register requested input handler with the platform window.
-@@ -3503,9 +3736,15 @@ impl Window {
+@@ -3503,9 +3805,15 @@ impl Window {
                  });
          }
  
@@ -1685,7 +1847,7 @@ index 1214b035..99ff4631 100644
  
          self.invalidator.set_phase(DrawPhase::Focus);
          let previous_focus_path = self.rendered_frame.focus_path();
-@@ -3578,9 +3817,60 @@ impl Window {
+@@ -3578,9 +3886,60 @@ impl Window {
          arena_scope.exit(&cx.element_arena)
      }
  
@@ -1746,7 +1908,7 @@ index 1214b035..99ff4631 100644
          let handle = self.handle;
          cx.record_entities_accessed(
              handle,
-@@ -3699,15 +3989,46 @@ impl Window {
+@@ -3699,15 +4058,46 @@ impl Window {
          let scale_factor = self.scale_factor();
          #[cfg(feature = "profiler")]
          let request_layout_start = Instant::now();
@@ -1801,7 +1963,7 @@ index 1214b035..99ff4631 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          let inspector_element = self.prepaint_inspector(_inspector_width, cx);
-@@ -3743,7 +4064,16 @@ impl Window {
+@@ -3743,7 +4133,16 @@ impl Window {
          #[cfg(feature = "profiler")]
          let paint_start = Instant::now();
          self.invalidator.set_phase(DrawPhase::Paint);
@@ -1819,7 +1981,7 @@ index 1214b035..99ff4631 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          self.paint_inspector(inspector_element, cx);
-@@ -3913,6 +4243,10 @@ impl Window {
+@@ -3913,6 +4312,10 @@ impl Window {
                  self.next_frame.dispatch_tree.set_active_node(parent_node);
  
                  let prepaint_start = self.prepaint_index();
@@ -1830,7 +1992,7 @@ index 1214b035..99ff4631 100644
                  if let Some(mut element) = element {
                      self.with_rendered_view(current_view, |window| {
                          window.with_rem_size(Some(rem_size), |window| {
-@@ -3923,8 +4257,9 @@ impl Window {
+@@ -3923,8 +4326,9 @@ impl Window {
                      });
                      self.next_frame.deferred_draws[deferred_draw_ix].element = Some(element);
                  } else {
@@ -1841,7 +2003,7 @@ index 1214b035..99ff4631 100644
                  let prepaint_end = self.prepaint_index();
                  self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
                      prepaint_start..prepaint_end;
-@@ -3966,7 +4301,7 @@ impl Window {
+@@ -3966,7 +4370,7 @@ impl Window {
                      })
                  })
              } else {
@@ -1850,7 +2012,7 @@ index 1214b035..99ff4631 100644
              }
              let paint_end = self.paint_index();
              deferred_draw.paint_range = paint_start..paint_end;
-@@ -3982,6 +4317,99 @@ impl Window {
+@@ -3982,6 +4386,99 @@ impl Window {
          sorted_indices
      }
  
@@ -1950,7 +2112,7 @@ index 1214b035..99ff4631 100644
      pub(crate) fn prepaint_index(&self) -> PrepaintStateIndex {
          PrepaintStateIndex {
              hitboxes_index: self.next_frame.hitboxes.len(),
-@@ -3993,7 +4421,105 @@ impl Window {
+@@ -3993,7 +4490,105 @@ impl Window {
          }
      }
  
@@ -2057,7 +2219,7 @@ index 1214b035..99ff4631 100644
          self.next_frame.hitboxes.extend(
              self.rendered_frame.hitboxes[range.start.hitboxes_index..range.end.hitboxes_index]
                  .iter()
-@@ -4011,19 +4537,17 @@ impl Window {
+@@ -4011,19 +4606,17 @@ impl Window {
                  .iter()
                  .map(|(id, type_id)| (id.clone(), *type_id)),
          );
@@ -2082,7 +2244,7 @@ index 1214b035..99ff4631 100644
          self.next_frame.deferred_draws.extend(
              self.rendered_frame.deferred_draws
                  [range.start.deferred_draws_index..range.end.deferred_draws_index]
-@@ -4042,6 +4566,7 @@ impl Window {
+@@ -4042,6 +4635,7 @@ impl Window {
                      paint_range: deferred_draw.paint_range.clone(),
                  }),
          );
@@ -2090,7 +2252,7 @@ index 1214b035..99ff4631 100644
      }
  
      pub(crate) fn paint_index(&self) -> PaintIndex {
-@@ -4058,7 +4583,78 @@ impl Window {
+@@ -4058,7 +4652,78 @@ impl Window {
          }
      }
  
@@ -2170,7 +2332,7 @@ index 1214b035..99ff4631 100644
          // Cached elements still exist in the frame even when their paint methods don't run.
          #[cfg(any(test, feature = "test-support"))]
          for (selector, bounds) in &self.rendered_frame.debug_bounds_records
-@@ -4096,12 +4692,14 @@ impl Window {
+@@ -4096,12 +4761,14 @@ impl Window {
                  [range.start.tab_handle_index..range.end.tab_handle_index],
          );
  
@@ -2187,7 +2349,7 @@ index 1214b035..99ff4631 100644
      }
  
      /// Push a text style onto the stack, and call a function with that style active.
-@@ -4517,7 +5115,7 @@ impl Window {
+@@ -4517,7 +5184,7 @@ impl Window {
              text_style_stack: self.text_style_stack.clone(),
              content_mask,
              rem_size: self.rem_size(),
@@ -2196,7 +2358,7 @@ index 1214b035..99ff4631 100644
              element: Some(element),
              absolute_offset,
              prepaint_range: PrepaintStateIndex::default()..PrepaintStateIndex::default(),
-@@ -4525,6 +5123,41 @@ impl Window {
+@@ -4525,6 +5192,41 @@ impl Window {
          });
      }
  
@@ -2238,7 +2400,7 @@ index 1214b035..99ff4631 100644
      /// Creates a new painting layer for the specified bounds. A "layer" is a batch
      /// of geometry that are non-overlapping and have the same draw order. This is typically used
      /// for performance reasons.
-@@ -4633,6 +5266,78 @@ impl Window {
+@@ -4633,6 +5335,78 @@ impl Window {
          }
      }
  
@@ -2317,7 +2479,7 @@ index 1214b035..99ff4631 100644
      fn largest_border_interior(quad: &Quad) -> Bounds<ScaledPixels> {
          let radii = &quad.corner_radii;
          let widths = &quad.border_widths;
-@@ -5268,6 +5973,17 @@ impl Window {
+@@ -5268,6 +6042,17 @@ impl Window {
          self.layout_engine = Some(layout_engine);
      }
  
@@ -2335,7 +2497,7 @@ index 1214b035..99ff4631 100644
      /// Obtain the bounds computed for the given LayoutId relative to the window. This method will usually be invoked by
      /// GPUI itself automatically in order to pass your element its `Bounds` automatically.
      ///
-@@ -5947,7 +6663,9 @@ impl Window {
+@@ -5947,7 +6732,9 @@ impl Window {
          // special purposes, such as detecting events outside of a given Bounds.
          for listener in &mut mouse_listeners {
              let listener = listener.as_mut().unwrap();
@@ -2346,7 +2508,7 @@ index 1214b035..99ff4631 100644
              if !cx.propagate_event {
                  break;
              }
-@@ -5957,7 +6675,9 @@ impl Window {
+@@ -5957,7 +6744,9 @@ impl Window {
          if cx.propagate_event {
              for listener in mouse_listeners.iter_mut().rev() {
                  let listener = listener.as_mut().unwrap();
@@ -2357,7 +2519,7 @@ index 1214b035..99ff4631 100644
                  if !cx.propagate_event {
                      break;
                  }
-@@ -6268,7 +6988,9 @@ impl Window {
+@@ -6268,7 +7057,9 @@ impl Window {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
  
              for key_listener in node.key_listeners.clone() {
@@ -2368,7 +2530,7 @@ index 1214b035..99ff4631 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6280,7 +7002,9 @@ impl Window {
+@@ -6280,7 +7071,9 @@ impl Window {
              // Handle low level key events
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for key_listener in node.key_listeners.clone() {
@@ -2379,7 +2541,7 @@ index 1214b035..99ff4631 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6300,7 +7024,7 @@ impl Window {
+@@ -6300,7 +7093,7 @@ impl Window {
          for node_id in dispatch_path.iter().rev() {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for listener in node.modifiers_changed_listeners.clone() {
@@ -2388,7 +2550,7 @@ index 1214b035..99ff4631 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6503,7 +7227,9 @@ impl Window {
+@@ -6503,7 +7296,9 @@ impl Window {
              for listener in &global_listeners {
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -2399,7 +2561,7 @@ index 1214b035..99ff4631 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -6537,7 +7263,9 @@ impl Window {
+@@ -6537,7 +7332,9 @@ impl Window {
                  if action_type == any_action.type_id() {
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -2410,7 +2572,7 @@ index 1214b035..99ff4631 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6561,7 +7289,9 @@ impl Window {
+@@ -6561,7 +7358,9 @@ impl Window {
                      cx.propagate_event = false; // Actions stop propagation by default during the bubble phase
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -2421,7 +2583,7 @@ index 1214b035..99ff4631 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6582,7 +7312,9 @@ impl Window {
+@@ -6582,7 +7381,9 @@ impl Window {
  
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -2432,7 +2594,7 @@ index 1214b035..99ff4631 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -7317,7 +8049,9 @@ impl Window {
+@@ -7317,7 +8118,9 @@ impl Window {
          state_type: TypeId,
      ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
          let key = (global_id.clone(), state_type);

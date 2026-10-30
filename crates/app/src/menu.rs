@@ -71,6 +71,9 @@ gpui_kit::actions!(
         NextWorkspace,
         Minimize,
         Zoom,
+        ZoomIn,
+        ZoomOut,
+        ActualSize,
         BringAllToFront,
         ToggleAppMenu,
     ]
@@ -141,6 +144,9 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
         NextTab => "next-tab",
         PrevWorkspace => "prev-workspace",
         NextWorkspace => "next-workspace",
+        ZoomIn => "zoom-in",
+        ZoomOut => "zoom-out",
+        ActualSize => "zoom-reset",
     );
     None
 }
@@ -206,20 +212,26 @@ pub fn bind_menu_keys(cx: &mut App) {
         .ok()
         .map(std::rc::Rc::new);
     let context = if mac { None } else { label_only.clone() };
-    for (key, action) in keys {
+    // The zoom chords label the menu only on every platform: the shell's key handler zooms,
+    // after a focused PDF preview's own ⌘+ / ⌘-.
+    let zoom: [(&str, Box<dyn Action>); 3] = [
+        ("cmd-+", Box::new(ZoomIn)),
+        ("cmd--", Box::new(ZoomOut)),
+        ("cmd-0", Box::new(ActualSize)),
+    ];
+    let keys = keys
+        .into_iter()
+        .map(|(k, a)| (k, a, context.clone()))
+        .chain(zoom.into_iter().map(|(k, a)| (k, a, label_only.clone())));
+    for (key, action, context) in keys {
         let key = if mac {
             key.to_string()
         } else {
             key.replace("cmd-", "ctrl-")
         };
-        if let Ok(binding) = KeyBinding::load(
-            &key,
-            action,
-            context.clone(),
-            false,
-            None,
-            &DummyKeyboardMapper,
-        ) {
+        if let Ok(binding) =
+            KeyBinding::load(&key, action, context, false, None, &DummyKeyboardMapper)
+        {
             cx.bind_keys([binding]);
         }
     }
@@ -503,6 +515,10 @@ pub fn app_menus(
         ),
         contextual("Run…", RunDev, state.run_dev),
         contextual("Stop Run", StopRun, state.stop_run),
+        MenuItem::separator(),
+        item("Zoom In", ZoomIn),
+        item("Zoom Out", ZoomOut),
+        item("Actual Size", ActualSize),
     ];
     if !mac {
         view.extend([MenuItem::separator(), item("Settings…", OpenSettings)]);

@@ -1,7 +1,7 @@
 //! `ShellService`: the last top-level view (`shell.json`, write coalesced and
 //! flushed on quit), the schedules dashboard accordion (`schedule-view.json`)
-//! and the Issues page layout (`issues-view.json`), all under the data root so
-//! they survive restarts.
+//! the Issues page layout (`issues-view.json`) and the whole-UI zoom (`ui-view.json`),
+//! all under the data root so they survive restarts.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -19,6 +19,9 @@ use crate::api::{IssuesView, ShellService, ShellState};
 pub(crate) const SHELL_STATE_FILE: &str = "shell.json";
 pub(crate) const SCHEDULE_VIEW_FILE: &str = "schedule-view.json";
 pub(crate) const ISSUES_VIEW_FILE: &str = "issues-view.json";
+pub(crate) const UI_VIEW_FILE: &str = "ui-view.json";
+const MIN_UI_ZOOM: f32 = 0.5;
+const MAX_UI_ZOOM: f32 = 2.;
 pub(crate) const SHELL_SAVE_DEBOUNCE: Duration = Duration::from_millis(250);
 const SHELL_SAVE_BACKOFF_MAX: Duration = Duration::from_secs(30);
 
@@ -98,6 +101,20 @@ pub(crate) fn write_data_json<T: Serialize>(path: &Path, v: &T) -> std::io::Resu
         return Err(e);
     }
     Ok(())
+}
+
+#[derive(Serialize, Deserialize)]
+struct UiView {
+    zoom: f32,
+}
+
+/// `z` within the UI zoom step range; NaN and unset become 1.
+fn clamp_ui_zoom(z: f32) -> f32 {
+    if z.is_nan() || z == 0. {
+        1.
+    } else {
+        z.clamp(MIN_UI_ZOOM, MAX_UI_ZOOM)
+    }
 }
 
 fn normalize_expanded(ids: &[String]) -> Vec<String> {
@@ -261,6 +278,21 @@ impl AppServices {
         write_data_json(&self.shell_path(ISSUES_VIEW_FILE), v).map_err(err)
     }
 
+    pub(crate) fn ui_zoom(&self) -> f32 {
+        std::fs::read(self.shell_path(UI_VIEW_FILE))
+            .ok()
+            .and_then(|data| serde_json::from_slice::<UiView>(&data).ok())
+            .map_or(1., |v| clamp_ui_zoom(v.zoom))
+    }
+
+    pub(crate) fn set_ui_zoom_sync(&self, zoom: f32) -> Result<()> {
+        let _st = self.shell.0.lock();
+        let v = UiView {
+            zoom: clamp_ui_zoom(zoom),
+        };
+        write_data_json(&self.shell_path(UI_VIEW_FILE), &v).map_err(err)
+    }
+
     #[cfg(test)]
     pub(crate) fn shell_fail_delay(&self) -> Duration {
         self.shell.0.lock().fail_delay
@@ -288,6 +320,10 @@ impl ShellService for AppServices {
         rt!(self, => |s| Ok(s.shell_state()))
     }
 
+    async fn get_ui_zoom(&self) -> Result<f32> {
+        rt!(self, => |s| Ok(s.ui_zoom()))
+    }
+
     async fn set_expanded_schedules(&self, ids: &[String]) -> Result<()> {
         rt!(self, ids => |s| s.set_expanded_schedules_sync(&ids))
     }
@@ -301,5 +337,9 @@ impl ShellService for AppServices {
             s.set_shell_state_sync(&st);
             Ok(())
         })
+    }
+
+    async fn set_ui_zoom(&self, zoom: f32) -> Result<()> {
+        rt!(self, zoom => |s| s.set_ui_zoom_sync(zoom))
     }
 }

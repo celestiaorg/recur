@@ -53,6 +53,8 @@ pub mod style;
 pub mod text;
 pub mod theme;
 pub mod tooltip;
+#[cfg(test)]
+mod ui_zoom_spec;
 pub mod widgets;
 
 pub use assets::Assets;

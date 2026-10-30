@@ -13,6 +13,7 @@ pub mod menu;
 mod new_workspace;
 mod shell;
 mod titlebar;
+mod zoom;
 
 use std::path::PathBuf;
 

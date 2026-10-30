@@ -16,7 +16,8 @@ use crate::{
     PlatformAtlas, PlatformDisplay, PlatformInput, PlatformInputHandler, PlatformWindow, Point,
     PolychromeSprite, Priority, PromptButton, PromptLevel, Quad, Render, RenderGlyphParams,
     RenderImage, RenderImageParams, RenderSvgParams, Replay, ResizeEdge, SMOOTH_SVG_SCALE_FACTOR,
-    SUBPIXEL_VARIANTS_X, SUBPIXEL_VARIANTS_Y, ScaledPixels, Scene, Shadow, SharedString, Size,
+    SUBPIXEL_VARIANTS_X, SUBPIXEL_VARIANTS_Y, ScaledPixels, Scene, ScrollDelta, Shadow,
+    SharedString, Size,
     StrikethroughStyle, Style, SubpixelSprite, SubscriberSet, Subscription, SystemWindowTab,
     SystemWindowTabController, TabStopMap, TaffyLayoutEngine, Task, TextInputConfiguration,
     TextInputStateChange, TextRenderingMode, TextStyle, TextStyleRefinement, ThermalState,
@@ -1455,6 +1456,7 @@ pub struct Window {
     modifiers: Modifiers,
     capslock: Capslock,
     scale_factor: f32,
+    ui_zoom: f32,
     pub(crate) bounds_observers: SubscriberSet<(), AnyObserver>,
     appearance: WindowAppearance,
     pub(crate) appearance_observers: SubscriberSet<(), AnyObserver>,
@@ -2238,7 +2240,10 @@ impl Window {
             let mut cx = cx.to_async();
             Box::new(move |event| {
                 handle
-                    .update(&mut cx, |_, window, cx| window.dispatch_event(event, cx))
+                    .update(&mut cx, |_, window, cx| {
+                        let event = window.unzoom_input(event);
+                        window.dispatch_event(event, cx)
+                    })
                     .log_err()
                     .unwrap_or(DispatchEventResult::default())
             })
@@ -2263,7 +2268,9 @@ impl Window {
             let mut cx = cx.to_async();
             Box::new(move |position| {
                 handle
-                    .update(&mut cx, |_, window, _| window.native_hit_test(position))
+                    .update(&mut cx, |_, window, _| {
+                        window.native_hit_test(position.map(|v| v / window.ui_zoom))
+                    })
                     .unwrap_or(false)
             })
         });
@@ -2373,6 +2380,7 @@ impl Window {
             modifiers,
             capslock,
             scale_factor,
+            ui_zoom: 1.,
             bounds_observers: SubscriberSet::new(),
             appearance,
             appearance_observers: SubscriberSet::new(),
@@ -3020,9 +3028,9 @@ impl Window {
     /// the platform window, then notifies observers. Normally called automatically
     /// by the platform's resize callback, but exposed publicly for test infrastructure.
     pub fn bounds_changed(&mut self, cx: &mut App) {
-        self.scale_factor = self.platform_window.scale_factor();
-        self.viewport_size = self.platform_window.content_size();
-        self.mouse_position = self.platform_window.mouse_position();
+        self.scale_factor = self.platform_window.scale_factor() * self.ui_zoom;
+        self.viewport_size = self.platform_window.content_size().map(|v| v / self.ui_zoom);
+        self.mouse_position = self.platform_window.mouse_position().map(|v| v / self.ui_zoom);
 
         self.refresh();
 
@@ -3227,7 +3235,8 @@ impl Window {
 
     /// Opens the native title bar context menu, useful when implementing client side decorations (Wayland and X11)
     pub fn show_window_menu(&self, position: Point<Pixels>) {
-        self.platform_window.show_window_menu(position)
+        self.platform_window
+            .show_window_menu(position.map(|v| v * self.ui_zoom))
     }
 
     /// Handle window movement for Linux and macOS.
@@ -3328,6 +3337,66 @@ impl Window {
     pub fn set_scale_factor(&mut self, scale_factor: f32) {
         self.scale_factor = scale_factor;
         self.refresh();
+    }
+
+    /// Recur: the whole-UI zoom factor, as CSS `zoom` on the root element. The window lays out
+    /// in logical pixels of `zoom` platform points: [`Self::scale_factor`] is the display's
+    /// times the zoom and [`Self::viewport_size`] the content size over it, so every length
+    /// scales and rasterizes at the zoomed resolution. Platform input, native hit tests, IME
+    /// bounds and the window menu position convert at the boundary; anything else that places
+    /// a native view converts with [`Self::zoom_to_platform`].
+    pub fn ui_zoom(&self) -> f32 {
+        self.ui_zoom
+    }
+
+    /// Sets the whole-UI zoom factor (see [`Self::ui_zoom`]) and redraws the window.
+    pub fn set_ui_zoom(&mut self, zoom: f32, cx: &mut App) {
+        if zoom > 0. && zoom != self.ui_zoom {
+            self.ui_zoom = zoom;
+            self.bounds_changed(cx);
+        }
+    }
+
+    /// `bounds` in platform window points, for a native view laid over the window.
+    pub fn zoom_to_platform(&self, bounds: Bounds<Pixels>) -> Bounds<Pixels> {
+        let z = self.ui_zoom;
+        Bounds::new(bounds.origin.map(|v| v * z), bounds.size.map(|v| v * z))
+    }
+
+    /// Platform input in the window's logical pixels.
+    fn unzoom_input(&self, mut event: PlatformInput) -> PlatformInput {
+        let z = self.ui_zoom;
+        if z == 1. {
+            return event;
+        }
+        let at = |p: &mut Point<Pixels>| *p = p.map(|v| v / z);
+        match &mut event {
+            PlatformInput::MouseDown(e) => at(&mut e.position),
+            PlatformInput::MouseUp(e) => at(&mut e.position),
+            PlatformInput::MousePressure(e) => at(&mut e.position),
+            PlatformInput::MouseMove(e) => at(&mut e.position),
+            PlatformInput::MouseExited(e) => at(&mut e.position),
+            PlatformInput::ScrollWheel(e) => {
+                at(&mut e.position);
+                if let ScrollDelta::Pixels(d) = &mut e.delta {
+                    at(d);
+                }
+            }
+            PlatformInput::Pinch(e) => at(&mut e.position),
+            PlatformInput::Touch(e) => {
+                at(&mut e.position);
+                if let Some(p) = &mut e.predicted_position {
+                    at(p);
+                }
+            }
+            PlatformInput::FileDrop(
+                FileDropEvent::Entered { position, .. }
+                | FileDropEvent::Pending { position }
+                | FileDropEvent::Submit { position },
+            ) => at(position),
+            _ => {}
+        }
+        event
     }
 
     /// The size of an em for the base font of the application. Adjusting this value allows the

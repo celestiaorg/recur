@@ -177,6 +177,11 @@ pub fn evaluate_key(
     if k.ctrl && !k.alt && ev.code == "Backquote" {
         return KeyAction::Ignore;
     }
+    // Zoom chords (⌃+ / ⌃- / ⌃0 off macOS) zoom the whole UI, as in VS Code, rather than
+    // reaching the shell as readline chords such as undo.
+    if !is_mac && k.ctrl && !k.alt && matches!(ev.code.as_str(), "Equal" | "Minus" | "Digit0") {
+        return KeyAction::Ignore;
+    }
     let (shift, alt, ctrl, meta) = (ev.shift, k.alt, k.ctrl, k.meta);
     let modifiers =
         u32::from(shift) | u32::from(alt) << 1 | u32::from(ctrl) << 2 | u32::from(meta) << 3;
@@ -607,6 +612,20 @@ mod tests {
 
     fn eval(k: KeyPress) -> KeyAction {
         evaluate_key(&k, false, true, false)
+    }
+
+    #[test]
+    fn zoom_chords_go_to_the_app_off_macos() {
+        let ctrl = |k: &str| KeyPress {
+            ctrl: true,
+            ..key(k, None)
+        };
+        for k in ["=", "+", "-", "0"] {
+            assert_eq!(
+                evaluate_key(&ctrl(k), false, false, false),
+                KeyAction::Ignore
+            );
+        }
     }
 
     #[test]

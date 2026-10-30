@@ -2373,6 +2373,10 @@ fake_services! {
             Ok(self.with(|s| s.shell_state.clone().unwrap_or_default()))
         }
 
+        async fn get_ui_zoom(&self) -> Result<f32> {
+            Ok(1.)
+        }
+
         async fn set_expanded_schedules(&self, ids: &[String]) -> Result<()> {
             self.with(|s| s.expanded_schedules = ids.to_vec());
             Ok(())
@@ -2384,6 +2388,10 @@ fake_services! {
 
         async fn set_shell_state(&self, st: &ShellState) -> Result<()> {
             self.with(|s| s.shell_state = Some(st.clone()));
+            Ok(())
+        }
+
+        async fn set_ui_zoom(&self, zoom: f32) -> Result<()> {
             Ok(())
         }
     }

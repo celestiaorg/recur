@@ -39,6 +39,10 @@ A deferred draw nested in another takes at least its parent's priority (`Window:
 
 A scroller's wheel listener clamps the offset to the last prepaint's maximum and stops the event when the offset moved, so the scroller under the pointer scrolls alone and one at its edge passes the wheel to its ancestors, as the browser chains scrolling. Upstream adds the unclamped delta and lets the event through, so every scroller under the pointer moves at once (a tool's output and the chat transcript around it). The listener registers before the element's mouse listeners, so its own `on_scroll_wheel` still runs. `recur-ui`'s `nested_scroll_spec` checks both.
 
+### UI zoom
+
+`Window::set_ui_zoom(zoom)` zooms the whole window as CSS `zoom` on the root element does: the window lays out in logical pixels of `zoom` platform points, so `Window::scale_factor` is the display's times the zoom and `Window::viewport_size` the content size over it, and every length, glyph, icon and image rasterizes at the zoomed resolution with no change to the views. Platform input (`unzoom_input`: mouse positions, pixel wheel deltas, pinch, touch, file drops), `native_hit_test`, the IME bounds (`PlatformInputHandler`) and `show_window_menu` convert at the boundary; anything else that places a native view converts with `Window::zoom_to_platform` (the HTML preview's WKWebView, the date picker). `recur-ui`'s `ui_zoom_spec` checks the layout, a click and a wheel at zoom 2.
+
 ### Contained panics
 
 A panic must not unwind into a platform callback: AppKit, GCD and GLib frames cannot be unwound through, so the process aborts. Recur's own guards (`recur_ui::guard`) contain renders and the callbacks Recur wraps; the patch contains the rest inside GPUI (`src/unwind.rs`):
@@ -56,12 +60,13 @@ An isolated view's size comes from its `style`, never from its content, and anyt
 
 ### Upgrading
 
-gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way vendor/gpui-pre.patch` and fix what moved. The patch touches `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`, `paint_backdrop_blur`, `paint_hole`, `backdrop_blur_over_hole`, `HitboxBehavior::Native`), `platform.rs` (`on_hit_test_native`), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`, `BackdropBlur`, `Hole`, `SceneBatch`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec`, `backdrop_blur_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
+gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way vendor/gpui-pre.patch` and fix what moved. The patch touches `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`, `paint_backdrop_blur`, `paint_hole`, `backdrop_blur_over_hole`, `HitboxBehavior::Native`, the UI zoom), `platform.rs` (`on_hit_test_native`, zoomed IME bounds), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`, `BackdropBlur`, `Hole`, `SceneBatch`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec`, `backdrop_blur_spec`, `ui_zoom_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
 
-Regenerate the patch after editing the vendored source:
+Regenerate the patch after editing the vendored source (the pristine import predates the move from `rust/`, so the diff maps that path):
 
 ```sh
-git diff dddd0fe0 -- vendor/gpui-pre > vendor/gpui-pre.patch
+export GIT_INDEX_FILE=$(mktemp) && git read-tree HEAD && git add vendor/gpui-pre && tree=$(git write-tree) && unset GIT_INDEX_FILE
+git diff --abbrev=8 dddd0fe0:rust/vendor/gpui-pre $tree:vendor/gpui-pre --src-prefix=a/rust/vendor/gpui-pre/ --dst-prefix=b/rust/vendor/gpui-pre/ > vendor/gpui-pre.patch
 ```
 
 ## gpui-pre-scheduler 0.3.9 (task panics)

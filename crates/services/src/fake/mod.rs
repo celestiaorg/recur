@@ -105,7 +105,7 @@ macro_rules! own_by_value {
     )*};
 }
 
-own_by_value!(bool, i64, Option<bool>);
+own_by_value!(bool, i64, f32, Option<bool>);
 
 /// Generates [`Overrides`] (one slot and builder per method), the default
 /// bodies, and each service trait's impl on [`Fake`]: the override when set,

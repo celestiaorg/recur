@@ -8,8 +8,8 @@ use std::rc::Rc;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyView, App, AppContext, Context, Entity, ExternalPaths, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, ParentElement, Render, Styled, Subscription, Window,
-    WindowAppearance, div,
+    InteractiveElement, IntoElement, ParentElement, Render, ScrollWheelEvent, Styled, Subscription,
+    Window, WindowAppearance, div,
 };
 use recur_services::AppEvent;
 use recur_services::events::MenuThemes;
@@ -76,6 +76,7 @@ pub struct Shell {
     pub(crate) update_manual: bool,
     pub(crate) update_ready: Option<String>,
     picking_path: bool,
+    pub(crate) last_wheel_zoom: Option<std::time::Instant>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -177,6 +178,7 @@ impl Shell {
             update_manual: false,
             update_ready: None,
             picking_path: false,
+            last_wheel_zoom: None,
             _subscriptions: subscriptions,
         };
         let dark = matches!(
@@ -187,6 +189,7 @@ impl Shell {
         if let Some((dir, loaded)) = shell.opts.geometry.clone() {
             shell.persist_window_geometry(dir, loaded, window, cx);
         }
+        shell.restore_zoom(window, cx);
         shell.boot(cx);
         shell
     }
@@ -507,6 +510,20 @@ impl Shell {
         );
         let main = self.main_area(view, cx);
         let state = self.state.clone();
+        let wheel_zoom = {
+            let this = cx.entity().downgrade();
+            gpui_kit::canvas(
+                |_, _, _| {},
+                move |_, _, window, _| {
+                    window.on_mouse_event(move |ev: &ScrollWheelEvent, phase, window, cx| {
+                        if phase == gpui_kit::DispatchPhase::Capture {
+                            let _ = this.update(cx, |this, cx| this.zoom_wheel(ev, window, cx));
+                        }
+                    });
+                },
+            )
+            .absolute()
+        };
         let root = style::body(cx)
             .id("shell")
             .key_context("RecurShell")
@@ -516,6 +533,7 @@ impl Shell {
             .on_key_down(
                 cx.guarded_listener(|this, ev, window, cx| this.on_key_down(ev, window, cx)),
             )
+            .child(wheel_zoom)
             .on_drop(move |paths: &ExternalPaths, _, cx| {
                 let files: Vec<String> = paths
                     .paths()

@@ -442,6 +442,8 @@ impl BriefingView {
                     cx,
                 )
                 .debug_selector(|| "ask-reopen".into())
+                // Line up with the chat head's Hide button (8px in; the filters bar pads 12).
+                .ml(px(-4.))
                 .mr(px(2.))
                 .on_click(cx.guarded_listener(|v, _, _, cx| v.set_chat_open(true, cx)))
                 .when(unseen, |d| {

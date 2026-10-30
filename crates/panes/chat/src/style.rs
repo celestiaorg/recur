@@ -56,13 +56,12 @@ pub fn line_box(
         .measure(None, window);
     let above = s.baseline.max(baseline);
     let below = (s.height - s.baseline).max(height - baseline);
-    // Exact gaps above and below the box: GPUI would round authored fractional lengths.
     div()
         .flex()
         .flex_col()
-        .child(recur_ui::exact::vgap(above - baseline, window))
+        .child(div().flex_none().h(px(above - baseline)))
         .child(div().child(child))
-        .child(recur_ui::exact::vgap(below - (height - baseline), window))
+        .child(div().flex_none().h(px(below - (height - baseline))))
 }
 
 /// The baseline of one line of text from its line box's top.

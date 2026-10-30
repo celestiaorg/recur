@@ -29,7 +29,6 @@ use recur_engine::view::comment_thread::{
     thread_replies,
 };
 use recur_engine::view::js;
-use recur_ui::exact::vgap;
 use recur_ui::fonts::Family;
 use recur_ui::text::{Align, LineHeight, Span, Text, TextStyled, span, text};
 use recur_ui::tooltip::titled;
@@ -1435,7 +1434,6 @@ impl DiffFile {
         group: SharedString,
         tip: bool,
         key: &str,
-        window: &Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
@@ -1485,9 +1483,9 @@ impl DiffFile {
             .when(!tip, |d| {
                 d.opacity(0.).group_hover(group.clone(), |s| s.opacity(1.))
             })
-            .child(vgap((hline - 16.) / 2., window))
+            .child(div().flex_none().h(px((hline - 16.) / 2.)))
             .child(square)
-            .child(vgap((hline - 16.) / 2., window))
+            .child(div().flex_none().h(px((hline - 16.) / 2.)))
             .child(probe)
             .on_mouse_down(
                 MouseButton::Left,
@@ -1601,7 +1599,6 @@ impl DiffFile {
         pr: Option<&Pr>,
         pending: &[PendingLineComment],
         notes: &[PrComment],
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let l = self.lines()[i].clone();
@@ -1662,7 +1659,6 @@ impl DiffFile {
                 group,
                 self.selecting.is_some() && flags.draft_tip,
                 &key,
-                window,
                 cx,
             ));
         }
@@ -1736,7 +1732,6 @@ impl DiffFile {
         pending: &[PendingLineComment],
         notes: &[PrComment],
         group: SharedString,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
@@ -1814,7 +1809,6 @@ impl DiffFile {
                 side_group,
                 self.selecting.is_some() && flags.draft_tip,
                 &key,
-                window,
                 cx,
             ));
         }
@@ -2586,7 +2580,6 @@ impl DiffFile {
                                 pending,
                                 notes,
                                 group.clone(),
-                                window,
                                 cx,
                             );
                             let r_el = self.split_side(
@@ -2597,7 +2590,6 @@ impl DiffFile {
                                 pending,
                                 notes,
                                 group.clone(),
-                                window,
                                 cx,
                             );
                             kids.push(
@@ -2746,7 +2738,7 @@ impl DiffFile {
                     let kids = if self.lines()[i].r#type == "hunk" {
                         vec![self.hunk_row(i, slot, window, cx)]
                     } else {
-                        let mut v = vec![self.unified_row(i, slot, pr, pending, notes, window, cx)];
+                        let mut v = vec![self.unified_row(i, slot, pr, pending, notes, cx)];
                         v.extend(self.comment_block(
                             i,
                             true,
@@ -2769,9 +2761,9 @@ impl DiffFile {
                     .w_full()
                     .flex()
                     .flex_col()
-                    .child(vgap(pad_top, window))
+                    .child(div().flex_none().h(px(pad_top)))
                     .children(slots_el)
-                    .child(vgap(pad_bot, window)),
+                    .child(div().flex_none().h(px(pad_bot))),
             );
         }
         // Drop threads whose rows left the window; their drafts park in the store.

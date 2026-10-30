@@ -533,7 +533,7 @@ impl FileStack {
 
     /// A run of unmounted stub cards: one exact spacer as tall as the cards and their gaps,
     /// recording each card's bounds where it would have painted.
-    fn skipped_cards(&self, run: Vec<(String, f32)>, first: bool, window: &Window) -> AnyElement {
+    fn skipped_cards(&self, run: Vec<(String, f32)>, first: bool) -> AnyElement {
         let total: f32 = run.iter().map(|(_, h)| h + CARD_GAP).sum();
         let cards = self.cards.clone();
         let probe = canvas(
@@ -552,7 +552,7 @@ impl FileStack {
         div()
             .when(first, |d| d.mt(px(self.chrome.pad)))
             .relative()
-            .child(recur_ui::exact::vgap(total, window))
+            .child(div().flex_none().h(px(total)))
             .child(probe)
             .into_any_element()
     }
@@ -628,8 +628,7 @@ impl FileStack {
                     continue;
                 }
                 if !skipped.is_empty() {
-                    col =
-                        col.child(self.skipped_cards(std::mem::take(&mut skipped), first, window));
+                    col = col.child(self.skipped_cards(std::mem::take(&mut skipped), first));
                     first = false;
                 }
                 let body = if live {
@@ -746,7 +745,7 @@ impl FileStack {
                 first = false;
             }
             if !skipped.is_empty() {
-                col = col.child(self.skipped_cards(skipped, first, window));
+                col = col.child(self.skipped_cards(skipped, first));
             }
         }
         let paths: HashSet<&str> = self.files.iter().map(|f| f.path.as_str()).collect();

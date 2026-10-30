@@ -361,7 +361,7 @@ impl SettingsView {
                 .into_any_element();
         }
         let vh = f32::from(window.viewport_size().height);
-        let max = 420f32.min(recur_ui::exact::lu(0.55 * vh));
+        let max = 420f32.min(0.55 * vh);
         let reveal = self.edth_scroll_pending;
         let mut rows: Vec<AnyElement> = Vec::new();
         for (i, th) in list.iter().enumerate() {

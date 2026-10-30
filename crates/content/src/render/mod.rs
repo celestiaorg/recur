@@ -2,7 +2,6 @@
 
 pub mod block;
 pub mod doc;
-pub mod exact;
 pub mod inline;
 pub mod mirror;
 pub mod style;

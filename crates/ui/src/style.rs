@@ -308,35 +308,15 @@ pub fn body(cx: &App) -> Div {
         .line_height(relative(1.45))
 }
 
-/// How far [`window_root`] shifts the tree so half-pixel ties round down and right, as WebKit's
-/// do. A cached view lays out as its own root and applies it again inside.
 /// A pane's tab or toolbar bar (`--obs-chrome-h`): 26px buttons, 4px above and below, and
 /// the 1px rule.
 pub const CHROME_H: f32 = 35.;
 
-pub const TIE_NUDGE: f32 = 1. / 4096.;
-
-/// `anchored()` at a fractional window position, as WebKit places a box. GPUI rounds an anchored
-/// offset to whole CSS pixels; this anchors at the whole pixel and moves the child the exact rest
-/// of the way with `aspect_ratio` spacers (authored lengths would round), so the child and its
-/// descendants keep their fractional positions and snap as WebKit snaps them. Set `.anchor(..)`
-/// on the result as usual.
+/// `anchored()` at a window position. Set `.anchor(..)` on the result as usual.
 pub fn anchored_at(x: f32, y: f32, child: impl IntoElement) -> gpui_kit::Anchored {
-    let (x, y) = (x + TIE_NUDGE, y + TIE_NUDGE);
-    let (ix, iy) = (x.floor(), y.floor());
-    let (fx, fy) = (x - ix, y - iy);
-    gpui_kit::anchored().position(point(px(ix), px(iy))).child(
-        div()
-            .flex()
-            .flex_col()
-            .child(div().flex_none().w(px(1.)).aspect_ratio(1. / fy))
-            .child(
-                div()
-                    .flex()
-                    .child(div().flex_none().h(px(1.)).aspect_ratio(fx))
-                    .child(child),
-            ),
-    )
+    gpui_kit::anchored()
+        .position(point(px(x), px(y)))
+        .child(child)
 }
 
 /// `flex: <grow> 1 0` on a padded or bordered item. CSS takes a zero flex basis as the item's
@@ -445,25 +425,9 @@ impl gpui_kit::Element for ClippedDeferred {
     }
 }
 
-/// The root every window renders its content in. WebKit snaps a box edge that lands exactly on
-/// a half device pixel down and to the right; GPUI rounds halves toward zero. Shifting the whole
-/// tree by 1/4096 px (through `aspect_ratio` spacers, since authored lengths round to whole
-/// device pixels) makes those ties round as WebKit does and moves nothing else.
+/// The root every window renders its content in.
 pub fn window_root(content: impl IntoElement) -> Div {
-    const NUDGE: f32 = 1. / TIE_NUDGE;
-    div()
-        .size_full()
-        .flex()
-        .flex_col()
-        .child(div().flex_none().w(px(1.)).aspect_ratio(NUDGE))
-        .child(
-            div()
-                .flex_1()
-                .min_h_0()
-                .flex()
-                .child(div().flex_none().h(px(1.)).aspect_ratio(1. / NUDGE))
-                .child(div().flex_1().min_w_0().size_full().child(content)),
-        )
+    div().size_full().child(content)
 }
 
 /// `entity` as a cached view laid out at `style` (see `docs/ARCHITECTURE.md`, "Frame
@@ -493,23 +457,9 @@ pub fn isolated_view<V: gpui_kit::Render>(
     entity.clone().isolated(style).into_any_element()
 }
 
-/// The root of a cached view's content: [`window_root`]'s tie nudge (a cached view lays out as
-/// its own root from a snapped origin, without the window's) around a column the content fills.
+/// The root of a cached view's content: a column the content fills.
 pub fn cached_root(content: impl IntoElement) -> Div {
-    const NUDGE: f32 = 1. / TIE_NUDGE;
-    div()
-        .size_full()
-        .flex()
-        .flex_col()
-        .child(div().flex_none().w(px(1.)).aspect_ratio(NUDGE))
-        .child(
-            div()
-                .flex_1()
-                .min_h_0()
-                .flex()
-                .child(div().flex_none().h(px(1.)).aspect_ratio(1. / NUDGE))
-                .child(div().flex_1().min_w_0().flex().flex_col().child(content)),
-        )
+    div().size_full().flex().flex_col().child(content)
 }
 
 /// Button label text: `<button>` resets `font` (13.333px, line-height normal) and the class
@@ -929,21 +879,19 @@ pub fn palette_scrim_capped(max_vh: f32, window: &Window, panel: impl IntoElemen
 }
 
 /// A viewport scrim whose panel hangs `top` vh below its top (`padding-top: 11vh` on a
-/// centering flex row) and is at most `max` vh tall, both at the exact LayoutUnits WebKit
-/// resolves them to: authored lengths would round, a percentage of the scrim reaches layout
-/// as is. The panel never shrinks below its content otherwise, as in a flex row.
+/// centering flex row) and is at most `max` vh tall. The panel never shrinks below its content
+/// otherwise, as in a flex row.
 fn vh_scrim(top: f32, max: Option<f32>, window: &Window, panel: impl IntoElement) -> Div {
     let vh = f32::from(window.viewport_size().height);
-    let top = crate::exact::lu(top * vh / 100.);
     let mut slot = div().flex_none().flex().flex_col();
     if let Some(m) = max {
-        slot = slot.max_h(gpui_kit::relative(crate::exact::lu(m * vh / 100.) / vh));
+        slot = slot.max_h(px(m * vh / 100.));
     }
     scrim()
         .flex_col()
         .justify_start()
         .items_center()
-        .child(crate::exact::vgap(top, window))
+        .child(div().flex_none().h(px(top * vh / 100.)))
         .child(slot.child(panel))
 }
 

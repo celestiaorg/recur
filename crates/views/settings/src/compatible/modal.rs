@@ -505,7 +505,7 @@ impl CompatibleProviderModal {
         // `.nt-bg` sits inside `.body`, so the titlebar paints over its top 38px; the panel
         // still hangs 22vh below the window top.
         let vh = f32::from(window.viewport_size().height);
-        let drop = recur_ui::exact::lu(0.22 * vh) - TITLEBAR_H;
+        let drop = 0.22 * vh - TITLEBAR_H;
         div()
             .absolute()
             .top(px(TITLEBAR_H))
@@ -518,7 +518,7 @@ impl CompatibleProviderModal {
             .items_center()
             .px(px(16.))
             .pb(px(24.))
-            .child(recur_ui::exact::vgap(drop.max(0.), window))
+            .child(div().flex_none().h(px(drop.max(0.))))
             .child(div().flex_none().flex().flex_col().child(panel))
             .id("v-compat-provider")
             .debug_selector(|| "v-compat-provider".into())

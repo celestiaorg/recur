@@ -25,7 +25,6 @@ mod ct_text;
 mod date_time_spec;
 #[cfg(test)]
 mod deferred_floor_spec;
-pub mod exact;
 pub mod field;
 pub mod file_icons;
 pub mod font_metrics;

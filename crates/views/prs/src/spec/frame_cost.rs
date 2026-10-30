@@ -257,11 +257,7 @@ async fn a_pr_with_many_commits_lays_out_the_visible_rows_only(cx: &mut TestAppC
     s.tab("Commits");
     let a = s.bounds("commit:commit 0").expect("first row");
     let b = s.bounds("commit:commit 8").expect("ninth row");
-    assert_eq!(
-        f32::from(b.origin.y - a.origin.y),
-        8. * 57.625,
-        "row height"
-    );
+    assert_eq!(f32::from(b.origin.y - a.origin.y), 8. * 58., "row height");
     assert!(!s.has("commit:commit 100"), "an off-screen row laid out");
 
     let d =

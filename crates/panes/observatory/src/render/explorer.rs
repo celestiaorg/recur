@@ -17,7 +17,6 @@ use gpui_kit::{
     Window, div, point, px,
 };
 use recur_domain::TreeEntry;
-use recur_ui::exact::vgap;
 use recur_ui::file_icons::file_icon;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
@@ -37,12 +36,12 @@ use crate::style::{git_color, obs_empty, statusbar};
 pub const TREE_ROW_H: f32 = 24.;
 /// `--tree-fade`.
 pub const TREE_FADE: f32 = 20.;
-/// `.obs-node` file row: padding 3px around a 12.5px × 1.35 line.
-pub const FILE_ROW_H: f32 = 3. + 12.5 * 1.35 + 3.;
+/// `.obs-node` file row: padding 3px around a 12.5px × 1.35 line, in whole pixels.
+pub const FILE_ROW_H: f32 = 23.;
 /// The rename / new field row: padding 3px around the 20px input.
 pub const DRAFT_ROW_H: f32 = 26.;
-/// `.obs-tree-empty`: padding 3px around 12px × 1.35.
-pub const EMPTY_ROW_H: f32 = 3. + 12. * 1.35 + 3.;
+/// `.obs-tree-empty`: padding 3px around 12px × 1.35, in whole pixels.
+pub const EMPTY_ROW_H: f32 = 22.;
 /// Rows painted beyond the viewport on each side.
 const OVERSCAN: f32 = 240.;
 
@@ -476,7 +475,7 @@ impl Observatory {
             .text_color(hsla(fg))
             .when_some(bg, |d, c| d.bg(hsla(c)))
             .when(e.dir, |d| d.h(px(TREE_ROW_H)))
-            .when(!e.dir, |d| d.py(px(3.)))
+            .when(!e.dir, |d| d.h(px(FILE_ROW_H)))
             .when(cut, |d| d.opacity(0.45))
             .child(lead)
             .child(label_row);
@@ -802,15 +801,17 @@ impl Observatory {
                 continue;
             }
             if gap > 0. {
-                flow = flow.child(vgap(gap, window));
+                flow = flow.child(div().flex_none().h(px(gap)));
                 gap = 0.;
             }
             let el = match r.kind {
                 RowKind::Draft => self.draft_row(r.depth, window, cx),
                 RowKind::Empty => div()
+                    .flex()
+                    .items_center()
+                    .h(px(EMPTY_ROW_H))
                     .pl(px(22. + r.depth as f32 * 12.))
                     .pr(px(10.))
-                    .py(px(3.))
                     .child(
                         text("empty")
                             .size(12.)
@@ -825,7 +826,7 @@ impl Observatory {
             flow = flow.child(el);
         }
         if gap > 0. {
-            flow = flow.child(vgap(gap, window));
+            flow = flow.child(div().flex_none().h(px(gap)));
         }
         let mut order: Vec<usize> = (0..open_dirs.len()).filter(|&k| !sticky[k].0).collect();
         let mut stuck: Vec<usize> = (0..open_dirs.len()).filter(|&k| sticky[k].0).collect();
@@ -874,7 +875,7 @@ impl Observatory {
                     .right_0()
                     .flex()
                     .flex_col()
-                    .child(vgap(top, window))
+                    .child(div().flex_none().h(px(top)))
                     .child({
                         let p = r.entry.path.clone();
                         div()

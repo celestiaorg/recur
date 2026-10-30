@@ -20,7 +20,6 @@ use recur_code::view::changed_tree::build_tree_from_paths;
 use recur_code::view::finding_paths::findings_for_path;
 use recur_domain::{FileDiff, PrComment, TreeEntry};
 use recur_engine::view::comment_thread::{comment_count_for_path, comments_for_path};
-use recur_ui::exact::vgap;
 use recur_ui::file_icons::file_icon;
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, TextStyled, text};
@@ -40,8 +39,8 @@ pub const TREE_ROW_H: f32 = 24.;
 pub const TREE_FADE: f32 = 20.;
 /// How far beyond the viewport the list keeps rows mounted.
 const LIST_PAD_PX: f32 = 600.;
-/// A file row: `padding: 3px 10px` around a 12.5px × 1.35 line.
-pub const FILE_ROW_H: f32 = 3. + 12.5 * 1.35 + 3.;
+/// A file row: `padding: 3px 10px` around a 12.5px × 1.35 line, in whole pixels.
+pub const FILE_ROW_H: f32 = 23.;
 
 /// `onSelect(path, { highlight })`.
 /// Unresolved line notes grouped by file.
@@ -405,7 +404,7 @@ impl ReviewFileList {
         d = if is_dir && tree {
             d.h(px(TREE_ROW_H))
         } else {
-            d.py(px(3.))
+            d.h(px(FILE_ROW_H))
         };
         let fp = text(label_s)
             .size(12.5)
@@ -664,7 +663,7 @@ impl ReviewFileList {
         let last = rows.iter().rposition(near);
         let mut flow = div().relative().flex().flex_col().w_full();
         if let (Some(a), Some(b)) = (first, last) {
-            flow = flow.child(vgap(rows[a].top, window));
+            flow = flow.child(div().flex_none().h(px(rows[a].top)));
             for (i, r) in rows.iter().enumerate().take(b + 1).skip(a) {
                 if open_dirs.binary_search(&i).is_ok() {
                     flow = flow.child(div().flex_none().h(px(TREE_ROW_H)));
@@ -672,9 +671,13 @@ impl ReviewFileList {
                     flow = flow.child(self.row_el(r, rows, None, &flags, by, window, cx));
                 }
             }
-            flow = flow.child(vgap(content_h - (rows[b].top + rows[b].height), window));
+            flow = flow.child(
+                div()
+                    .flex_none()
+                    .h(px(content_h - (rows[b].top + rows[b].height))),
+            );
         } else {
-            flow = flow.child(vgap(content_h, window));
+            flow = flow.child(div().flex_none().h(px(content_h)));
         }
         // The header layer: non-stuck headers in tree order, then stuck ones deepest first; a
         // header out of reach stays unmounted like its rows.
@@ -720,7 +723,7 @@ impl ReviewFileList {
                     .right_0()
                     .flex()
                     .flex_col()
-                    .child(vgap(tops[k], window))
+                    .child(div().flex_none().h(px(tops[k])))
                     .child(div().relative().child(row_el).children(fade))
                     .into_any_element(),
             );

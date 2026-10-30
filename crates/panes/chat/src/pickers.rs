@@ -589,7 +589,7 @@ impl LoopPolicyPickers {
                     b("Policy"),
                     span(" is how hard this loop pushes before it asks you."),
                 ];
-                let gap = |h: f32, window: &Window| recur_ui::exact::vgap(h, window);
+                let gap = |h: f32| div().flex_none().h(px(h));
                 let pop = recur_ui::style::popover(cx)
                     .child(
                         Text::from_spans(intro)
@@ -602,7 +602,7 @@ impl LoopPolicyPickers {
                             .mt(px(8.))
                             .mb(px(3.))
                             .flex()
-                            .child(recur_ui::exact::hgap(13.2, window))
+                            .child(div().flex_none().w(px(13.2)))
                             .child(
                                 div()
                                     .flex_1()
@@ -614,13 +614,13 @@ impl LoopPolicyPickers {
                                         " — every finding; escalate after 2 rounds",
                                         window,
                                     ))
-                                    .child(gap(3., window))
+                                    .child(gap(3.))
                                     .child(item(
                                         "Balanced",
                                         " — medium and up; escalate after 4",
                                         window,
                                     ))
-                                    .child(gap(3., window))
+                                    .child(gap(3.))
                                     .child(item(
                                         "Aggressive",
                                         " — ship-blockers only; proceed after 6",

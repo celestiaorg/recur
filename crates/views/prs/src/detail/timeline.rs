@@ -247,7 +247,7 @@ impl ItemPane {
         let id = self.id.clone();
         let el = detail.update(cx, |d, cx| d.timeline_item_by_id(&id, window, cx));
         if let Some(slot) = &self.block {
-            return recur_ui::layout_root::block_content(slot, el, window);
+            return recur_ui::layout_root::block_content(slot, el);
         }
         let (rec, view) = (self.probe.clone(), detail.entity_id());
         let measure = canvas(

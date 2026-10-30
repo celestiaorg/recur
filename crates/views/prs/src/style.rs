@@ -32,7 +32,7 @@ pub fn baseline_icon(
         .flex()
         .flex_col()
         .flex_none()
-        .child(recur_ui::exact::vgap(above - size, window))
+        .child(div().flex_none().h(px(above - size)))
         .child(div().flex_none().size(px(size)).child(el))
-        .child(recur_ui::exact::vgap(below, window))
+        .child(div().flex_none().h(px(below)))
 }

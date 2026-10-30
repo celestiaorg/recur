@@ -1063,11 +1063,11 @@ fn lsp_title_with_badge(
             .left_0()
             .flex()
             .flex_col()
-            .child(recur_ui::exact::vgap(top.max(0.), window))
+            .child(div().flex_none().h(px(top.max(0.))))
             .child(
                 div()
                     .flex()
-                    .child(recur_ui::exact::hgap(w + 8., window))
+                    .child(div().flex_none().w(px(w + 8.)))
                     .child(badge),
             ),
     )

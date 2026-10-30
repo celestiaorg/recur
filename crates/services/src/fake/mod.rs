@@ -1,5 +1,5 @@
 //! Typed in-memory fakes of every service, so view specs and the desktop's
-//! `mock` feature run without a backend.
+//! `fake` feature run without a backend.
 //!
 //! [`Fake`] implements each service trait over a typed [`Seed`] (the e2e
 //! store dump plus what calls add as they run). Every method has a default

@@ -1,7 +1,7 @@
 //! Every service method's default: seed reads, in-memory mutations that
 //! return a shape-correct value so the UI's optimistic updates work, canned
-//! answers, or an empty value. Methods the e2e mock never answered fail with
-//! [`unanswered`] when they return a record.
+//! answers, or an empty value. A record method with no default answer fails
+//! with [`unanswered`], so specs that need one override it.
 
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
@@ -30,7 +30,7 @@ use super::{Answer, Fake, Own, Seed, fake_services};
 use crate::api::*;
 use crate::{Error, Result};
 
-/// The error a record-returning method gives when the e2e mock had no answer.
+/// The error a record method with no default answer gives.
 fn unanswered<T>() -> Result<T> {
     Err(Error::new("not answered by the fake"))
 }
@@ -670,10 +670,10 @@ fn commits() -> Vec<Commit> {
     ]
 }
 
-/// The shipped catalog entries the e2e mock served: the Go grammar and three
+/// The shipped catalog entries the fake serves: the Go grammar and three
 /// themes, in this order.
-const MOCK_GRAMMAR_SCOPES: &[&str] = &["source.go"];
-const MOCK_THEME_IDS: &[&str] = &["recur", "paper", "cool-glow"];
+const GRAMMAR_SCOPES: &[&str] = &["source.go"];
+const THEME_IDS: &[&str] = &["recur", "paper", "cool-glow"];
 
 fn catalog() -> &'static recur_bundles::Catalog {
     static CAT: OnceLock<recur_bundles::Catalog> = OnceLock::new();
@@ -689,7 +689,7 @@ fn catalog() -> &'static recur_bundles::Catalog {
 
 fn grammars() -> Vec<&'static recur_bundles::Grammar> {
     let cat = catalog();
-    MOCK_GRAMMAR_SCOPES
+    GRAMMAR_SCOPES
         .iter()
         .filter_map(|s| recur_bundles::find_grammar_by_scope(&cat.grammars, s))
         .collect()
@@ -697,7 +697,7 @@ fn grammars() -> Vec<&'static recur_bundles::Grammar> {
 
 fn themes() -> Vec<&'static recur_bundles::Theme> {
     let cat = catalog();
-    MOCK_THEME_IDS
+    THEME_IDS
         .iter()
         .filter_map(|id| recur_bundles::find_theme_by_id(&cat.themes, id))
         .collect()
@@ -1017,7 +1017,7 @@ fake_services! {
                 .collect())
         }
 
-        // The pre-rename `ListLoops` alias answered the workspace list.
+        // The workspaces stand in for loops, as the e2e seed's `ListLoops` alias.
         async fn list_loops(&self) -> Result<Vec<LoopInfo>> {
             Ok(self.with(|s| {
                 s.workspaces

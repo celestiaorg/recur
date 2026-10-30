@@ -91,7 +91,6 @@ fn adding_a_compatible_provider_reaches_the_model_catalog(cx: &mut TestAppContex
             provider: "claude-code".into(),
             label: "Claude Code".into(),
             models: vec![choice("claude-code/claude-opus-5-5".into(), "Opus 5.5")],
-            ..Default::default()
         }];
         for p in &sd.settings.compatible_providers {
             out.push(ModelGroup {
@@ -102,7 +101,6 @@ fn adding_a_compatible_provider_reaches_the_model_catalog(cx: &mut TestAppContex
                     .iter()
                     .map(|m| choice(format!("{}/{}", p.id, m.id), &m.label))
                     .collect(),
-                ..Default::default()
             });
         }
         Ok(out)

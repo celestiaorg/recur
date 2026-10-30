@@ -83,7 +83,7 @@ fn run_command_palette_runs_sort_lines_ascending_on_the_open_buffer(cx: &mut Tes
     s.keys("secondary-s");
     assert!(s.until(|_| !calls.named("write_file").is_empty()));
     let written = calls
-        .named("WriteFile")
+        .named("write_file")
         .last()
         .and_then(|a| a.get(3).cloned())
         .unwrap_or_default();
@@ -170,7 +170,7 @@ fn run_command_palette_inserts_a_snippet_with_its_tab_trigger_hint(cx: &mut Test
     s.keys("secondary-s");
     assert!(s.until(|_| !calls.named("write_file").is_empty()));
     let written = calls
-        .named("WriteFile")
+        .named("write_file")
         .last()
         .and_then(|a| a.get(3).cloned())
         .unwrap_or_default();

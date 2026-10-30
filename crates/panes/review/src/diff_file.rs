@@ -14,8 +14,8 @@ use gpui_kit::base::input::{Textarea, TextareaMode, TextareaState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, AppContext as _, Bounds, ClickEvent, ClipboardItem, Context, DispatchPhase,
-    Entity, FocusHandle, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
-    MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Render, SharedString,
+    Entity, FocusHandle, Hsla, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
+    MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Render, Rgba, SharedString,
     StatefulInteractiveElement, Styled, Subscription, Task, Window, canvas, div, px,
 };
 use recur_code::view::finding_paths::{
@@ -33,7 +33,7 @@ use recur_ui::fonts::Family;
 use recur_ui::text::{Align, LineHeight, Span, Text, TextStyled, span, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::ToastKind;
-use recur_ui::{Color, IconName, Theme, icon};
+use recur_ui::{Color, IconName, Theme, ThemeId, icon};
 use recur_view_core::{AppState, call, toast};
 use recur_view_widgets::findings_ui::finding_sev_icon;
 use recur_view_widgets::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
@@ -44,7 +44,7 @@ use crate::diff_rows::{
     pending_on, row_num, row_side, split_slot_of_line, split_slots, unified_slot_of_line,
     unified_slots,
 };
-use crate::html::{CodeRun, Token, code_runs, hunk_label};
+use crate::html::{cell_text, hunk_label};
 use crate::line_note::{LineNoteThread, pr_conversation_locked};
 use crate::note_portal::{Draft, Slot};
 use crate::pane::Pane;
@@ -59,11 +59,9 @@ use crate::split_diff::{
     split_row_data_line,
 };
 use crate::store::patch_pr_pending_comments;
-use crate::style::{
-    ADD_BG, ADD_CD, BLANK_BG, DEL_BG, DEL_CD, HUNK_BG, HUNK_HOVER_BG, PENDING_BG, hsla, icon_btn,
-    label, light_diff_text, note_btn, token_color,
-};
+use crate::style::{BLANK_BG, HUNK_BG, HUNK_HOVER_BG, PENDING_BG, hsla, icon_btn, label, note_btn};
 use crate::syntax::{self, Highlighted};
+use recur_editor::theme::EditorTheme;
 
 /// Who the line-note composer writes for.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -219,6 +217,11 @@ pub struct DiffFile {
     hl: Highlighted,
     hl_for: Option<(Rc<FileDiff>, u64)>,
     hl_task: Option<Task<()>>,
+    /// The file's grammar scope, for the code area's fill.
+    hl_scope: String,
+    /// The editor theme the code area paints with, for the env epoch and app theme in `ed_for`.
+    ed: EditorTheme,
+    ed_for: Option<(u64, ThemeId)>,
     /// The previous and current rasters of [`DiffFileProps::image`].
     rasters: [Raster; 2],
     /// `.diff-file.selecting` hovered row for `draft-tip` hover state.
@@ -320,6 +323,9 @@ impl DiffFile {
             hl: Vec::new(),
             hl_for: None,
             hl_task: None,
+            hl_scope: String::new(),
+            ed: EditorTheme::resolve(None, true, Theme::of(cx).id),
+            ed_for: None,
             rasters: Default::default(),
             _subs: subs,
         };
@@ -398,20 +404,29 @@ impl DiffFile {
             return;
         }
         self.hl_for = Some((file.clone(), epoch));
-        let grammar = {
+        let (grammar, color_map, pane_bg) = {
             let mut tm = tm.borrow_mut();
-            tm.catalog
+            let scope = tm
+                .catalog
                 .resolve_scope_for_path(&file.path, None)
-                .filter(|scope| tm.catalog.load_grammar(scope))
-                .and_then(|scope| tm.catalog.engine().grammar(&scope))
+                .unwrap_or_default();
+            let grammar = (!scope.is_empty() && tm.catalog.load_grammar(&scope))
+                .then(|| tm.catalog.engine().grammar(&scope))
+                .flatten();
+            let pane_bg = tm.catalog.active_pane_background(&scope);
+            self.hl_scope = scope;
+            (grammar, tm.catalog.color_map().to_vec(), pane_bg)
         };
         let Some(grammar) = grammar else {
             self.hl.clear();
             self.hl_task = None;
+            cx.notify();
             return;
         };
         let lines = syntax::budgeted(file.lines.as_deref().unwrap_or_default()).to_vec();
-        let job = cx.background_spawn(async move { syntax::highlight_lines(&grammar, &lines) });
+        let job = cx.background_spawn(async move {
+            syntax::highlight_lines(&grammar, &lines, &color_map, &pane_bg)
+        });
         self.hl_task = Some(cx.spawn(async move |this, cx| {
             let hl = job.await;
             let _ = this.update(cx, |this, cx| {
@@ -419,6 +434,17 @@ impl DiffFile {
                 cx.notify();
             });
         }));
+    }
+
+    /// Resolves the editor theme the code area paints with when it or the app theme changed.
+    fn sync_editor_theme(&mut self, cx: &mut Context<Self>) {
+        let env = recur_view_core::editor_env::editor_env(&self.state, cx);
+        let env = env.read(cx);
+        let key = (env.epoch, Theme::of(cx).id);
+        if self.ed_for != Some(key) {
+            self.ed = EditorTheme::resolve(env.theme.as_deref(), env.dark_fallback, key.1);
+            self.ed_for = Some(key);
+        }
     }
 
     /// Loads the image sides whose src changed, through the shared [`ImageCache`].
@@ -1334,69 +1360,84 @@ impl DiffFile {
         h.finish()
     }
 
-    fn code_cell(&self, i: usize, id: SharedString, sel: u64, cx: &App) -> Option<Text> {
-        let l = &self.lines()[i];
-        (!l.code_html.is_empty())
-            .then(|| self.code_text(i, &l.r#type, id, cx).selectable(sel, "\n"))
+    fn code_cell(&self, i: usize, id: SharedString, sel: u64) -> Option<Text> {
+        (!self.lines()[i].code_html.is_empty()).then(|| self.code_text(i, id).selectable(sel, "\n"))
     }
 
-    fn code_text(&self, i: usize, kind: &str, id: SharedString, cx: &App) -> Text {
-        let t = Theme::of(cx).tokens;
-        let light = light_diff_text(cx);
-        let base = match kind {
-            "add" if !light => ADD_CD,
-            "del" if !light => DEL_CD,
-            "add" | "del" => t.text,
-            _ => t.muted,
-        };
+    /// The code in the editor theme: highlighted runs in their colors, any other line in the
+    /// theme's foreground.
+    fn code_text(&self, i: usize, id: SharedString) -> Text {
+        use recur_textmate::tm_font::{BOLD, ITALIC};
+        let fg = self.ed.foreground;
         let html = &self.lines()[i].code_html;
-        let parsed;
-        let runs: &[CodeRun] = match self.hl.get(i) {
-            Some(Some((src, runs))) if src == html => runs,
-            _ => {
-                parsed = code_runs(html);
-                &parsed
-            }
-        };
         let mut col = 0usize;
-        let spans: Vec<Span> = runs
-            .iter()
-            .map(|r| {
-                let c = r.token.map_or(base, |tok: Token| token_color(tok, &t));
-                span(expand_tabs(&r.text, &mut col)).color(c)
-            })
-            .collect();
+        let spans: Vec<Span> = match self.hl.get(i) {
+            Some(Some((src, runs))) if src == html => runs
+                .iter()
+                .map(|r| {
+                    let mut s = span(expand_tabs(&r.text, &mut col)).color(r.color.unwrap_or(fg));
+                    if r.font_style & BOLD != 0 {
+                        s = s.weight(700.);
+                    }
+                    if r.font_style & ITALIC != 0 {
+                        s = s.italic();
+                    }
+                    s
+                })
+                .collect(),
+            _ => vec![span(expand_tabs(&cell_text(html), &mut col))],
+        };
         Text::from_spans(spans)
             .id(id)
             .family(Family::Mono)
             .size(CODE_PX)
             .line_height(LineHeight::Scale(CODE_LH))
-            .color(base)
+            .color(fg)
             .pre_wrap()
             .break_anywhere()
     }
 
+    /// A line number in the editor's gutter colors, with its git gutter bar (`mark`).
+    #[allow(clippy::too_many_arguments)]
     fn ln_cell(
         &self,
         s: &str,
         open_n: i64,
         drafting: bool,
+        mark: Option<Rgba>,
         key: &str,
         sel: u64,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let color = if drafting { t.cyan } else { t.faint };
+        let ed = &self.ed;
+        let (color, bg): (Hsla, Hsla) = if drafting {
+            (t.cyan.into(), t.cyan.fade(0.12).into())
+        } else {
+            (ed.gutter_foreground.into(), ed.gutter_background.into())
+        };
         let open = self.hooks.open_file.clone();
         let path = self.props.file.path.clone();
         div()
             .id(SharedString::from(format!("ln-{key}")))
+            .relative()
             .flex_none()
             .w(px(GUTTER))
             .px(px(8.))
             .border_r_1()
-            .border_color(hsla(t.line_soft))
-            .when(drafting, |d| d.bg(hsla(t.cyan.fade(0.12))))
+            .border_color(ed.gutter_border)
+            .bg(bg)
+            .when_some(mark, |d, c| {
+                d.child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .bottom_0()
+                        .right_0()
+                        .w(px(2.))
+                        .bg(c),
+                )
+            })
             .child(
                 label(
                     s.to_string(),
@@ -1512,7 +1553,16 @@ impl DiffFile {
         .into_any_element()
     }
 
-    fn row_bg(kind: &str, f: RowFlags, cx: &App) -> Option<Color> {
+    /// The git gutter bar of an added or deleted line.
+    fn mark(&self, kind: &str) -> Option<Rgba> {
+        match kind {
+            "add" => Some(self.ed.gutter_added),
+            "del" => Some(self.ed.gutter_deleted),
+            _ => None,
+        }
+    }
+
+    fn row_bg(&self, kind: &str, f: RowFlags, cx: &App) -> Option<Color> {
         let t = Theme::of(cx).tokens;
         if f.drafting {
             return Some(t.cyan.fade(0.16));
@@ -1521,8 +1571,8 @@ impl DiffFile {
             return Some(t.warn.fade(0.16));
         }
         match kind {
-            "add" => Some(ADD_BG),
-            "del" => Some(DEL_BG),
+            "add" => Some(self.ed.merge().changed_line.into()),
+            "del" => Some(self.ed.merge().deleted_chunk.into()),
             _ if f.noted => Some(t.cyan.fade(0.1)),
             _ => None,
         }
@@ -1621,12 +1671,13 @@ impl DiffFile {
             .relative()
             .w_full()
             .flex()
-            .when_some(Self::row_bg(&l.r#type, flags, cx), |d, c| d.bg(hsla(c)))
+            .when_some(self.row_bg(&l.r#type, flags, cx), |d, c| d.bg(hsla(c)))
             .children(Self::row_marks(flags, 80., cx))
             .child(self.ln_cell(
                 &l.old,
                 open_line_no(&l),
                 flags.drafting,
+                None,
                 &format!("o{key}"),
                 self.sel_key(i, 0),
                 cx,
@@ -1635,6 +1686,7 @@ impl DiffFile {
                 &l.new,
                 open_line_no(&l),
                 flags.drafting,
+                self.mark(&l.r#type),
                 &format!("n{key}"),
                 self.sel_key(i, 1),
                 cx,
@@ -1648,7 +1700,6 @@ impl DiffFile {
                         i,
                         SharedString::from(format!("cd-{key}")),
                         self.sel_key(i, 2),
-                        cx,
                     )),
             );
         if self.can_note_side(side, pr) {
@@ -1678,10 +1729,7 @@ impl DiffFile {
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let html = hunk_label(&self.lines()[i].code_html);
-        let text_runs = code_runs(&html)
-            .iter()
-            .map(|r| r.text.as_str())
-            .collect::<String>();
+        let text_runs = cell_text(&html).to_string();
         let caret = if self.collapsed_hunks.contains(&i) {
             "▸"
         } else {
@@ -1750,7 +1798,8 @@ impl DiffFile {
                         .flex_none()
                         .w(px(GUTTER))
                         .border_r_1()
-                        .border_color(hsla(t.line_soft)),
+                        .border_color(self.ed.gutter_border)
+                        .bg(self.ed.gutter_background),
                 )
                 .child(div().flex_1())
                 .into_any_element();
@@ -1779,12 +1828,13 @@ impl DiffFile {
             .when(side == DiffSide::Left, |d| {
                 d.border_r_1().border_color(hsla(t.line_soft))
             })
-            .when_some(Self::row_bg(&l.r#type, flags, cx), |d, c| d.bg(hsla(c)))
+            .when_some(self.row_bg(&l.r#type, flags, cx), |d, c| d.bg(hsla(c)))
             .children(Self::row_marks(flags, 38., cx))
             .child(self.ln_cell(
                 &num,
                 open_line_no(&l),
                 flags.drafting,
+                self.mark(&l.r#type),
                 &key,
                 self.sel_key(i, if right { 5 } else { 3 }),
                 cx,
@@ -1798,7 +1848,6 @@ impl DiffFile {
                         i,
                         SharedString::from(format!("cd-{key}")),
                         self.sel_key(i, if right { 6 } else { 4 }),
-                        cx,
                     )),
             );
         if self.can_note_side(side, pr) {
@@ -2517,6 +2566,7 @@ impl DiffFile {
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
+        self.sync_editor_theme(cx);
         {
             let mut g = self.geom.borrow_mut();
             g.slots.clear();
@@ -2761,6 +2811,7 @@ impl DiffFile {
                     .w_full()
                     .flex()
                     .flex_col()
+                    .bg(self.ed.content_background(&self.hl_scope))
                     .child(div().flex_none().h(px(pad_top)))
                     .children(slots_el)
                     .child(div().flex_none().h(px(pad_bot))),

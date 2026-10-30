@@ -8898,6 +8898,7 @@ dependencies = [
  "recur-code",
  "recur-content",
  "recur-domain",
+ "recur-editor",
  "recur-engine",
  "recur-forge",
  "recur-services",

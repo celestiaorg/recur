@@ -785,6 +785,7 @@ impl Observatory {
         let busy = self.commit_busy;
         let msg_busy = self.commit_msg_busy;
         let msg = self.inputs.commit_msg(cx);
+        recur_ui::style::style_textarea(&self.inputs.commit, t.faint, cx);
         let gen_disabled = msg_busy || staged == 0;
         let gen_title = if msg_busy {
             "Generating…".to_string()

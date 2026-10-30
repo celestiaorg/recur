@@ -5,6 +5,7 @@ use super::cm::Cm;
 use super::helpers::*;
 use super::state::{is_upper, with_global};
 use super::types::*;
+use crate::bindings::Cmd;
 
 fn first_non_ws_of(cm: &Cm, p: Pos) -> Pos {
     Pos::new(p.line, first_non_ws(&cm.get_line(p.line)))
@@ -45,7 +46,7 @@ pub(crate) fn run(
         Operator::Delete => Some(delete(cm, args, ranges)),
         Operator::Indent => indent(cm, args, ranges),
         Operator::IndentAuto => {
-            cm.exec_command("indentAuto");
+            cm.run(Cmd::IndentSelection);
             Some(first_non_ws_of(cm, ranges[0].anchor))
         }
         Operator::HardWrap => {
@@ -228,11 +229,11 @@ fn delete(cm: &mut Cm, args: &OperatorArgs, ranges: &[Range]) -> Pos {
         let mut anchor = ranges[0].anchor;
         let head = ranges[0].head;
         if args.linewise
-            && head.line != cm.first_line()
+            && head.line != 0
             && anchor.line == cm.last_line()
             && anchor.line == head.line - 1
         {
-            if anchor.line == cm.first_line() {
+            if anchor.line == 0 {
                 anchor.ch = 0;
             } else {
                 anchor = Pos::new(anchor.line - 1, cm.line_len(anchor.line - 1));
@@ -305,11 +306,11 @@ fn indent(cm: &mut Cm, args: &OperatorArgs, ranges: &[Range]) -> Option<Pos> {
         return Some(cursor);
     }
     for _ in 0..repeat {
-        if args.indent_right == Some(true) {
-            cm.indent_more();
+        cm.run(if args.indent_right == Some(true) {
+            Cmd::IndentMore
         } else {
-            cm.indent_less();
-        }
+            Cmd::IndentLess
+        });
     }
     Some(first_non_ws_of(cm, ranges[0].anchor))
 }

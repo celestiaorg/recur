@@ -1,7 +1,9 @@
-//! The CodeMirror 5 API vim.js runs against (`cm_adapter`'s `CodeMirror`
-//! class), over an [`EditorView`]. Columns are character indices within a
-//! line; changes go through the view like `dispatchChange`, tagged
-//! `input.type.compose` so one vim operation undoes as one step.
+//! The part of the CodeMirror 5 API (`cm_adapter`'s `CodeMirror` class)
+//! vim.js still needs, over an [`EditorView`]. Editor commands run as
+//! [`Cmd`](crate::bindings::Cmd)s through [`Cm::run`]. Columns are
+//! character indices within a line; changes go through the view like
+//! `dispatchChange`, tagged `input.type.compose` so one vim operation
+//! undoes as one step.
 
 use std::collections::BTreeMap;
 
@@ -43,7 +45,6 @@ pub struct CmState {
     pub last_change_end: usize,
     pub line_handle_changes: Option<Vec<ChangeDesc>>,
     pub overwrite: bool,
-    pub key_map: String,
     pub textwidth: Option<i64>,
     /// The `change` listener (`onChange`) is registered (insert mode).
     pub listening_changes: bool,
@@ -118,10 +119,6 @@ impl<'a, 'b> Cm<'a, 'b> {
     }
 
     // ---- positions ----
-
-    pub fn first_line(&self) -> i64 {
-        0
-    }
 
     pub fn last_line(&self) -> i64 {
         self.doc().lines() as i64 - 1
@@ -488,7 +485,7 @@ impl<'a, 'b> Cm<'a, 'b> {
         let line_end = if dir > 0 {
             (where_.line + max_lines).min(self.last_line() + 1)
         } else {
-            (self.first_line() - 1).max(where_.line - max_lines)
+            (-1).max(where_.line - max_lines)
         };
         let matching = |c: char| -> Option<&'static str> {
             Some(match c {
@@ -532,63 +529,15 @@ impl<'a, 'b> Cm<'a, 'b> {
             }
             line_no += dir;
         }
-        if line_no - dir
-            == if dir > 0 {
-                self.last_line()
-            } else {
-                self.first_line()
-            }
-        {
+        if line_no - dir == if dir > 0 { self.last_line() } else { 0 } {
             Err(())
         } else {
             Ok(None)
         }
     }
 
-    pub fn indent_more(&mut self) {
-        self.view
-            .run_cmd(crate::bindings::Cmd::IndentMore, self.window, self.cx);
-    }
-
-    pub fn indent_less(&mut self) {
-        self.view
-            .run_cmd(crate::bindings::Cmd::IndentLess, self.window, self.cx);
-    }
-
-    /// `indentLine` (indents the selection, like the adapter).
-    pub fn indent_line(&mut self, _line: i64, more: bool) {
-        if more {
-            self.indent_more()
-        } else {
-            self.indent_less()
-        }
-    }
-
-    /// `execCommand`.
-    pub fn exec_command(&mut self, name: &str) {
-        use crate::bindings::Cmd;
-        match name {
-            "indentAuto" => {
-                self.view
-                    .run_cmd(Cmd::IndentSelection, self.window, self.cx);
-            }
-            "goLineLeft" => {
-                self.view
-                    .run_cmd(Cmd::CursorLineBoundaryBackward, self.window, self.cx);
-            }
-            "goLineRight" => {
-                self.view
-                    .run_cmd(Cmd::CursorLineBoundaryForward, self.window, self.cx);
-                let state = &self.view.state;
-                let cur = state.selection.main().head();
-                if cur < state.doc.len()
-                    && state.slice_doc(cur, state.doc.clamp_to_char(cur + 1).max(cur + 1)) != "\n"
-                {
-                    self.view.run_cmd(Cmd::CursorCharLeft, self.window, self.cx);
-                }
-            }
-            _ => {}
-        }
+    pub fn run(&mut self, cmd: crate::bindings::Cmd) {
+        self.view.run_cmd(cmd, self.window, self.cx);
     }
 
     /// `CodeMirror.commands.newlineAndIndent`.
@@ -619,11 +568,6 @@ impl<'a, 'b> Cm<'a, 'b> {
         if let Some(start) = self.st().cur_op.as_ref().and_then(|o| o.change_start) {
             self.dispatch(TransactionSpec::default().selection(EditorSelection::cursor(start)));
         }
-    }
-
-    pub fn cursor_char_left(&mut self) {
-        self.view
-            .run_cmd(crate::bindings::Cmd::CursorCharLeft, self.window, self.cx);
     }
 
     // ---- bookmarks ----
@@ -862,12 +806,6 @@ impl<'a, 'b> Cm<'a, 'b> {
         }
     }
 
-    /// `moveH(increment, 'char')`.
-    pub fn move_h(&mut self, increment: i64) {
-        let cur = self.get_cursor();
-        self.set_cursor(Pos::new(cur.line, cur.ch + increment));
-    }
-
     // ---- options ----
 
     pub fn tab_size(&self) -> i64 {
@@ -888,12 +826,6 @@ impl<'a, 'b> Cm<'a, 'b> {
 
     pub fn overwrite(&self) -> bool {
         self.view.vim.as_ref().is_some_and(|v| v.cm.overwrite)
-    }
-
-    /// `getTokenTypeAt`: Recur has no syntax tree, so nothing is a comment
-    /// or string.
-    pub fn token_type_at(&self, _pos: Pos) -> &'static str {
-        ""
     }
 
     /// `overWriteSelection`.

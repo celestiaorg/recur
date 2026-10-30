@@ -131,10 +131,7 @@ impl Vim {
     pub fn new() -> Vim {
         Vim {
             state: VimState::default(),
-            cm: CmState {
-                key_map: "vim".into(),
-                ..CmState::default()
-            },
+            cm: CmState::default(),
             highlight: None,
             dialog: None,
             notification_timer: None,
@@ -289,7 +286,7 @@ pub(crate) fn handle_plugin_key(cm: &mut Cm, key: &str, dom_key: &str) -> bool {
             cm.overwrite_selection(dom_key);
         } else if dom_key == "Backspace" {
             result = true;
-            cm.cursor_char_left();
+            cm.run(crate::bindings::Cmd::CursorCharLeft);
         }
     }
     cm.view.restart_blink(cm.cx);

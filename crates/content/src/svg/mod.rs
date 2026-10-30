@@ -1,9 +1,6 @@
 //! SVG as a browser draws an `<img src="data:image/svg+xml…">` or inline diagram: parsed
 //! with usvg (no scripts, no external resources: only `data:` images resolve) and rasterized
-//! through CoreGraphics on macOS, WebKit's SVG painter, at the exact device size.
-
-#[cfg(target_os = "macos")]
-mod cg;
+//! by resvg at the exact device size.
 
 use std::sync::{Arc, OnceLock};
 
@@ -40,41 +37,10 @@ pub fn parse(svg: &str) -> Result<usvg::Tree, String> {
     usvg::Tree::from_str(svg, &options()).map_err(|e| e.to_string())
 }
 
-/// Whether the tree needs resvg's full pipeline (filters, masks, patterns, blend modes,
-/// spread methods other than pad).
-#[cfg(target_os = "macos")]
-fn needs_full_pipeline(g: &usvg::Group) -> bool {
-    if !g.filters().is_empty() || g.mask().is_some() || g.blend_mode() != usvg::BlendMode::Normal {
-        return true;
-    }
-    let paint_is_simple = |p: &usvg::Paint| match p {
-        usvg::Paint::Color(_) => true,
-        usvg::Paint::LinearGradient(l) => l.spread_method() == usvg::SpreadMethod::Pad,
-        usvg::Paint::RadialGradient(r) => r.spread_method() == usvg::SpreadMethod::Pad,
-        usvg::Paint::Pattern(_) => false,
-    };
-    g.children().iter().any(|n| match n {
-        usvg::Node::Group(c) => needs_full_pipeline(c),
-        usvg::Node::Path(p) => {
-            !p.fill().is_none_or(|f| paint_is_simple(f.paint()))
-                || !p.stroke().is_none_or(|s| paint_is_simple(s.paint()))
-        }
-        usvg::Node::Image(i) => match i.kind() {
-            usvg::ImageKind::SVG(t) => needs_full_pipeline(t.root()),
-            _ => false,
-        },
-        usvg::Node::Text(t) => needs_full_pipeline(t.flattened()),
-    }) || g.clip_path().is_some_and(|c| needs_full_pipeline(c.root()))
-}
-
 /// Premultiplied RGBA of `tree` on a `w`×`h` device canvas under `ts` (user space → device).
 pub fn rasterize(tree: &usvg::Tree, ts: tiny_skia::Transform, w: u32, h: u32) -> Option<Vec<u8>> {
     if w == 0 || h == 0 {
         return None;
-    }
-    #[cfg(target_os = "macos")]
-    if !needs_full_pipeline(tree.root()) {
-        return Some(cg::render(tree, ts, w, h));
     }
     let mut pixmap = tiny_skia::Pixmap::new(w, h)?;
     resvg::render(tree, ts, &mut pixmap.as_mut());

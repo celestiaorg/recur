@@ -32,8 +32,6 @@ ogg.workspace = true
 lewton.workspace = true
 theora-rs.workspace = true
 cpal.workspace = true
-core-graphics.workspace = true
-core-foundation.workspace = true
 objc2.workspace = true
 objc2-foundation.workspace = true
 objc2-app-kit.workspace = true
@@ -72,6 +70,10 @@ pkg-config.workspace = true
 [dev-dependencies]
 pretty_assertions.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+core-graphics.workspace = true
+core-foundation.workspace = true
 
 # The Linux HTML preview's WebKitGTK page.
 [[test]]

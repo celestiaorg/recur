@@ -760,7 +760,8 @@ mod mac {
     pub struct Page {
         web: Retained<WKWebView>,
         bridge: Retained<Bridge>,
-        attached: Rc<Cell<bool>>,
+        /// GPUI's view, once the page is laid behind it.
+        host: Rc<RefCell<Option<Retained<NSView>>>>,
         painted: Rc<Cell<u64>>,
         blur: Rc<Cell<f32>>,
     }
@@ -769,7 +770,8 @@ mod mac {
     #[derive(Clone)]
     pub struct Handle {
         web: Retained<WKWebView>,
-        attached: Rc<Cell<bool>>,
+        /// GPUI's view, once the page is laid behind it.
+        host: Rc<RefCell<Option<Retained<NSView>>>>,
         painted: Rc<Cell<u64>>,
         blur: Rc<Cell<f32>>,
     }
@@ -808,7 +810,7 @@ mod mac {
             let page = Page {
                 web,
                 bridge,
-                attached: Rc::new(Cell::new(false)),
+                host: Rc::default(),
                 painted: Rc::new(Cell::new(0)),
                 blur: Rc::new(Cell::new(0.)),
             };
@@ -839,7 +841,7 @@ mod mac {
         pub fn handle(&self) -> Handle {
             Handle {
                 web: self.web.clone(),
-                attached: self.attached.clone(),
+                host: self.host.clone(),
                 painted: self.painted.clone(),
                 blur: self.blur.clone(),
             }
@@ -847,6 +849,7 @@ mod mac {
 
         pub fn remove(self) {
             *self.bridge.ivars().tx.borrow_mut() = None;
+            release(&self.web, &self.host);
             self.web.removeFromSuperview();
         }
     }
@@ -869,6 +872,23 @@ mod mac {
         }
     }
 
+    /// Gives GPUI's view the keyboard back if the page has it, as the page leaves the screen.
+    fn release(web: &WKWebView, host: &RefCell<Option<Retained<NSView>>>) {
+        let Some(host) = host.borrow().clone() else {
+            return;
+        };
+        let Some(w) = host.window() else {
+            return;
+        };
+        let in_page = w.firstResponder().is_some_and(|r| {
+            r.downcast_ref::<NSView>()
+                .is_some_and(|r| r.isDescendantOf(web))
+        });
+        if in_page {
+            w.makeFirstResponder(Some(&host));
+        }
+    }
+
     /// Lay the page behind GPUI's view at `b` (window coordinates) and show it; hide it again
     /// after the first draw that neither paints it nor replays a view around it.
     pub fn place(page: &Handle, b: Bounds<Pixels>, window: &mut Window) {
@@ -879,13 +899,13 @@ mod mac {
         let Some(superview) = (unsafe { view.superview() }) else {
             return;
         };
-        if !page.attached.get() {
+        if page.host.borrow().is_none() {
             superview.addSubview_positioned_relativeTo(
                 &page.web,
                 NSWindowOrderingMode::Below,
                 Some(&view),
             );
-            page.attached.set(true);
+            *page.host.borrow_mut() = Some(view.clone());
         }
         // The page zooms with the UI, as an iframe under CSS `zoom` does.
         let zoom = f64::from(window.ui_zoom());
@@ -940,6 +960,7 @@ mod mac {
                 blur(&page, radius);
                 track(page, b, frame, stack, false, window);
             } else {
+                release(&page.web, &page.host);
                 page.web.setHidden(true);
             }
         });

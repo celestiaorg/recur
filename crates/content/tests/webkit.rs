@@ -394,7 +394,9 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
 
         // AppKit takes a click in an inactive app's window as activation, so the input checks
         // bring the app forward; locally only on request, since that takes focus.
-        if std::env::var_os("CI").is_none() && std::env::var_os("RECUR_WEBKIT_INPUT").is_none() {
+        let input_checks =
+            std::env::var_os("CI").is_some() || std::env::var_os("RECUR_WEBKIT_INPUT").is_some();
+        if !input_checks {
             println!("html preview: input skipped (set RECUR_WEBKIT_INPUT=1, takes focus)");
         } else {
             input(window, &v, &web, preview, clicks, keys, cx).await?;
@@ -410,6 +412,9 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
         frames(cx, window, 100).await;
         if !web.isHidden() || !layer_opaque(&v) {
             return Err("the page stays up after the preview leaves".into());
+        }
+        if input_checks && !first_responder_in(&v, &v.gpui) {
+            return Err("hiding the page leaves it the keyboard".into());
         }
         println!("html preview: hidden once undrawn");
         Ok(())
@@ -513,6 +518,14 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
                 keys.borrow()
             ));
         }
+        if !first_responder_in(v, &v.gpui) {
+            return Err("a click on GPUI's view does not take the keyboard back".into());
+        }
+        click(v, 50., 20.);
+        frames(cx, window, 200).await;
+        if !first_responder_in(v, web) {
+            return Err("a second click on the page does not give it the keyboard".into());
+        }
         cx.update_window(window, |_, window, cx| {
             preview.read(cx).release_keyboard(window)
         })
@@ -520,6 +533,9 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
         if !first_responder_in(v, &v.gpui) {
             return Err("release_keyboard does not give GPUI the keyboard".into());
         }
+        // The page keeps the keyboard for the hide check.
+        click(v, 50., 20.);
+        frames(cx, window, 200).await;
         println!("html preview: the overlay keeps its clicks");
         Ok(())
     }

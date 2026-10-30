@@ -2989,6 +2989,14 @@ extern "C" fn handle_view_event(this: &Object, _: Sel, native_event: id) {
             PlatformInput::MouseDown(_) => {
                 drop(lock);
                 unsafe {
+                    // Recur: a click on GPUI's view takes the keyboard back from a native view
+                    // (the HTML preview's WKWebView), since the view never accepts first
+                    // responder from AppKit's own click handling.
+                    let window: id = msg_send![this, window];
+                    let responder: id = msg_send![window, firstResponder];
+                    if responder != this as *const Object as id {
+                        let _: BOOL = msg_send![window, makeFirstResponder: this];
+                    }
                     let input_context: id = msg_send![this, inputContext];
                     msg_send![input_context, handleEvent: native_event]
                 }

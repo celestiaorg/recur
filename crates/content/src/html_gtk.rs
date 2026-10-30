@@ -216,6 +216,12 @@ impl Page {
             }
             // No popups, and the document never navigates away from `about:blank`.
             web.connect_create(|_, _| None);
+            // The host draws `<select>` menus (INPUT_JS). WebKitGTK 2.52 opens its own from the
+            // shim's mousedown too, which crashes GTK with no toplevel to parent it.
+            web.connect_show_option_menu(|_, menu, _| {
+                menu.close();
+                true
+            });
             web.connect_decide_policy(|_, decision, ty| match ty {
                 PolicyDecisionType::NavigationAction | PolicyDecisionType::NewWindowAction => {
                     let uri = decision

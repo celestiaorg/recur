@@ -118,6 +118,9 @@ impl Shell {
         .on_action(cx.guarded_listener(|_, _: &HideOthers, _, cx| cx.hide_other_apps()))
         .on_action(cx.guarded_listener(|_, _: &ShowAll, _, cx| cx.unhide_other_apps()))
         .on_action(cx.guarded_listener(|_, _: &QuitApp, _, cx| cx.quit()))
+        .on_action(cx.guarded_listener(|this, _: &ToggleAppMenu, window, cx| {
+            this.toggle_app_menu(window, cx)
+        }))
         .on_action(cx.guarded_listener(|_, _: &Minimize, window, _| window.minimize_window()))
         .on_action(cx.guarded_listener(|_, _: &Zoom, window, _| window.zoom_window()))
         .on_action(cx.guarded_listener(|_, _: &BringAllToFront, window, cx| {

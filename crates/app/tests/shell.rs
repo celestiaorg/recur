@@ -848,6 +848,38 @@ fn titlebar_menu_button_runs_a_menu_item(cx: &mut TestAppContext) {
     assert!(!h.has("app-menu"), "the button toggles the menu closed");
 }
 
+#[cfg(not(target_os = "macos"))]
+#[gpui_kit::test]
+fn alt_and_arrow_keys_drive_the_titlebar_menu(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    h.cx.update(|_, cx| recur_app::menu::bind_menu_keys(cx));
+    let alt = |h: &mut H| {
+        h.cx.simulate_modifiers_change(Modifiers::alt());
+        h.cx.simulate_modifiers_change(Modifiers::none());
+        h.settle();
+    };
+    alt(&mut h);
+    assert!(h.has("app-menu"), "a lone Alt opens the menu");
+    // File is highlighted; down twice reaches Navigate, right expands it, left folds it.
+    h.keys("down down right");
+    assert!(h.has("app-menu-row:Issues"));
+    h.keys("down left");
+    assert!(
+        !h.has("app-menu-row:Issues"),
+        "left from a child folds its submenu"
+    );
+    h.keys("right down enter");
+    assert!(!h.has("app-menu"), "enter runs the item and closes");
+    assert!(h.read(|s| s.overlays.palette), "Go to… opened the palette");
+    alt(&mut h);
+    h.keys("escape");
+    assert!(!h.has("app-menu"));
+}
+
 #[gpui_kit::test]
 fn sidebar_usage_meter_opens_a_popover_with_quota_bars(cx: &mut TestAppContext) {
     let usage = json!({

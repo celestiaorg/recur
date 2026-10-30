@@ -72,6 +72,7 @@ gpui_kit::actions!(
         Minimize,
         Zoom,
         BringAllToFront,
+        ToggleAppMenu,
     ]
 );
 
@@ -144,63 +145,90 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
     None
 }
 
-/// The menubar accelerators, registered on macOS.
+/// The menu items' chords. On macOS they are the menubar's accelerators. Elsewhere the shell
+/// and the panes match the same chords (Ctrl for ⌘) themselves, so they are bound label-only,
+/// for the in-app menu, and a lone Alt opens that menu.
 pub fn bind_menu_keys(cx: &mut App) {
-    if !NATIVE_MENU_ACCELERATORS {
-        return;
+    let mac = NATIVE_MENU_ACCELERATORS;
+    let mut keys: Vec<(&str, Box<dyn Action>)> = vec![
+        ("cmd-,", Box::new(OpenSettings)),
+        ("cmd-alt-o", Box::new(OpenPath)),
+        ("cmd-n", Box::new(NewWorkspace)),
+        ("cmd-t", Box::new(NewTab)),
+        ("cmd-s", Box::new(Save)),
+        ("cmd-o", Box::new(OpenIn)),
+        ("cmd-w", Box::new(CloseTab)),
+        ("cmd-f", Box::new(Find)),
+        ("cmd-g", Box::new(FindNext)),
+        ("cmd-shift-g", Box::new(FindPrevious)),
+        ("cmd-alt-g", Box::new(GoToLine)),
+        ("cmd-alt-[", Box::new(PrevEditorTheme)),
+        ("cmd-alt-]", Box::new(NextEditorTheme)),
+        ("cmd-b", Box::new(ToggleSidebar)),
+        ("cmd-alt-b", Box::new(ToggleLeftPanel)),
+        ("cmd-alt-shift-b", Box::new(ToggleRightPanel)),
+        ("cmd-alt-e", Box::new(ToggleEditor)),
+        ("ctrl-`", Box::new(ToggleTerminal)),
+        // The menu shows the first binding (⌃⇧`).
+        ("ctrl-shift-`", Box::new(MaximizeTerminal)),
+        ("cmd-r", Box::new(RunDev)),
+        ("cmd-shift-r", Box::new(StopRun)),
+        ("cmd-k", Box::new(GoTo)),
+        ("cmd-shift-p", Box::new(RunCommand)),
+        ("cmd-shift-/", Box::new(KeyboardShortcuts)),
+        ("cmd-p", Box::new(QuickOpen)),
+        ("cmd-shift-o", Box::new(GoToSymbol)),
+        ("cmd-alt-1", Box::new(GoInbox)),
+        ("cmd-alt-2", Box::new(GoIssues)),
+        ("cmd-alt-3", Box::new(GoPullRequests)),
+        ("cmd-alt-4", Box::new(GoSchedules)),
+        ("cmd-1", Box::new(FocusAgent)),
+        ("cmd-2", Box::new(FocusEditor)),
+        ("cmd-3", Box::new(FocusTerminal)),
+        ("cmd-alt-left", Box::new(PrevTab)),
+        ("cmd-alt-right", Box::new(NextTab)),
+        ("cmd-alt-up", Box::new(PrevWorkspace)),
+        ("cmd-alt-down", Box::new(NextWorkspace)),
+    ];
+    if mac {
+        // GPUI reports a shifted punctuation key as its shifted character without Shift, so
+        // ⌃⇧` arrives as ⌃~.
+        keys.extend([
+            ("ctrl-~", Box::new(MaximizeTerminal) as Box<dyn Action>),
+            ("cmd-h", Box::new(HideApp)),
+            ("cmd-alt-h", Box::new(HideOthers)),
+            ("cmd-q", Box::new(QuitApp)),
+            ("cmd-alt-i", Box::new(OpenDevTools)),
+            ("cmd-m", Box::new(Minimize)),
+        ]);
     }
-    cx.bind_keys([
-        KeyBinding::new("cmd-,", OpenSettings, None),
-        KeyBinding::new("cmd-h", HideApp, None),
-        KeyBinding::new("cmd-alt-h", HideOthers, None),
-        KeyBinding::new("cmd-q", QuitApp, None),
-        KeyBinding::new("cmd-alt-o", OpenPath, None),
-        KeyBinding::new("cmd-n", NewWorkspace, None),
-        KeyBinding::new("cmd-t", NewTab, None),
-        KeyBinding::new("cmd-s", Save, None),
-        KeyBinding::new("cmd-o", OpenIn, None),
-        KeyBinding::new("cmd-w", CloseTab, None),
-        KeyBinding::new("cmd-f", Find, None),
-        KeyBinding::new("cmd-g", FindNext, None),
-        KeyBinding::new("cmd-shift-g", FindPrevious, None),
-        KeyBinding::new("cmd-alt-g", GoToLine, None),
-        KeyBinding::new("cmd-alt-[", PrevEditorTheme, None),
-        KeyBinding::new("cmd-alt-]", NextEditorTheme, None),
-        KeyBinding::new("cmd-b", ToggleSidebar, None),
-        KeyBinding::new("cmd-alt-b", ToggleLeftPanel, None),
-        KeyBinding::new("cmd-alt-shift-b", ToggleRightPanel, None),
-        KeyBinding::new("cmd-alt-e", ToggleEditor, None),
-        KeyBinding::new("ctrl-`", ToggleTerminal, None),
-        // The menu shows the first binding (⌃⇧`). GPUI reports a shifted punctuation key as
-        // its shifted character without Shift, so the press itself arrives as ⌃~.
-        KeyBinding::new("ctrl-shift-`", MaximizeTerminal, None),
-        KeyBinding::new("ctrl-~", MaximizeTerminal, None),
-        KeyBinding::new("cmd-r", RunDev, None),
-        KeyBinding::new("cmd-shift-r", StopRun, None),
-        KeyBinding::new("cmd-alt-i", OpenDevTools, None),
-        KeyBinding::new("cmd-k", GoTo, None),
-        KeyBinding::new("cmd-shift-p", RunCommand, None),
-        KeyBinding::new("cmd-shift-/", KeyboardShortcuts, None),
-        KeyBinding::new("cmd-p", QuickOpen, None),
-        KeyBinding::new("cmd-shift-o", GoToSymbol, None),
-        KeyBinding::new("cmd-alt-1", GoInbox, None),
-        KeyBinding::new("cmd-alt-2", GoIssues, None),
-        KeyBinding::new("cmd-alt-3", GoPullRequests, None),
-        KeyBinding::new("cmd-alt-4", GoSchedules, None),
-        KeyBinding::new("cmd-1", FocusAgent, None),
-        KeyBinding::new("cmd-2", FocusEditor, None),
-        KeyBinding::new("cmd-3", FocusTerminal, None),
-        KeyBinding::new("cmd-alt-left", PrevTab, None),
-        KeyBinding::new("cmd-alt-right", NextTab, None),
-        KeyBinding::new("cmd-alt-up", PrevWorkspace, None),
-        KeyBinding::new("cmd-alt-down", NextWorkspace, None),
-        KeyBinding::new("cmd-m", Minimize, None),
-    ]);
-    // The Edit items dispatch the text-input actions; their shortcuts are the inputs' own.
-    // These label the menu only.
     let label_only = KeyBindingContextPredicate::parse(MENU_LABEL_ONLY)
         .ok()
         .map(std::rc::Rc::new);
+    let context = if mac { None } else { label_only.clone() };
+    for (key, action) in keys {
+        let key = if mac {
+            key.to_string()
+        } else {
+            key.replace("cmd-", "ctrl-")
+        };
+        if let Ok(binding) = KeyBinding::load(
+            &key,
+            action,
+            context.clone(),
+            false,
+            None,
+            &DummyKeyboardMapper,
+        ) {
+            cx.bind_keys([binding]);
+        }
+    }
+    if !mac {
+        cx.bind_keys([KeyBinding::new("alt", ToggleAppMenu, None)]);
+        return;
+    }
+    // The Edit items dispatch the text-input actions; their shortcuts are the inputs' own.
+    // These label the menu only.
     for (key, name) in [
         ("cmd-alt-shift-v", "input::Paste"),
         ("backspace", "input::Delete"),
@@ -564,8 +592,13 @@ mod tests {
         cx.update(|cx| {
             bind_menu_keys(cx);
             let keymap = cx.key_bindings();
-            let saves = keymap.borrow().bindings_for_action(&Save).count();
-            assert_eq!(saves > 0, NATIVE_MENU_ACCELERATORS);
+            let keymap = keymap.borrow();
+            let save = keymap
+                .bindings_for_action(&Save)
+                .next()
+                .expect("Save chord");
+            // Label-only off macOS: the shell and panes own the chord there.
+            assert_eq!(save.predicate().is_none(), NATIVE_MENU_ACCELERATORS);
         });
     }
 }

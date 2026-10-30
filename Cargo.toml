@@ -187,7 +187,9 @@ unicode-width = "0.2"
 image = { version = "0.25", default-features = false }
 regress = "0.12"
 
-# Rich content: the browser's HTML parser for the DOMPurify port.
+# Rich content: GFM markdown, its HTML sanitizer, and the HTML parser the native layout reads.
+comrak = { version = "0.59", default-features = false }
+ammonia = "4.2"
 html5ever = "0.27"
 markup5ever_rcdom = "0.3"
 

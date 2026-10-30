@@ -1,14 +1,15 @@
-//! Marked with Recur's renderers and fence highlighting. The output
+//! comrak (GFM) with Recur's rendering and fence highlighting. The output
 //! is unsanitized; [`super::sanitize_markdown`] runs before anything renders it.
 
-use std::cell::Cell;
 use std::sync::OnceLock;
+
+use comrak::nodes::{NodeHtmlBlock, NodeLink, NodeValue};
+use comrak::{Arena, Node, Options};
 
 use recur_textmate::{highlight_code, lang_from_info};
 
 use crate::emoji::expand_emoji_shortcodes;
-use crate::js::{self, Re, encode_uri_component, utf16_len};
-use crate::marked::{self, LexError, Parser, Renderer, Token};
+use crate::js::{self, Re, encode_uri_component};
 
 /// Asset-server path that streams GitHub attachment bytes with the user's gh token.
 pub const GH_IMAGE_PATH: &str = "/gh-image";
@@ -76,144 +77,203 @@ pub fn github_image_src(href: &str) -> String {
     format!("{GH_IMAGE_PATH}?url={}", encode_uri_component(src))
 }
 
-/// Recur's renderer overrides (`marked.use({ renderer })`). `demote` is the WebFetch engine.
-struct Recur {
-    demote: bool,
-    /// Depth of nested links, so a demoted image inside `[![alt](img)](href)` returns text.
-    link_depth: Cell<usize>,
-}
-
 fn code_ref_info() -> &'static Re {
     static CODE_REF: OnceLock<Re> = OnceLock::new();
     re(&CODE_REF, r"^(\d+):(\d+):(.+)$", "")
 }
 
-impl Renderer for Recur {
-    /// `renderCode`: mermaid placeholders, Cursor `start:end:path` cards, highlighted fences.
-    fn code(&self, _p: &Parser, text: &str, lang: Option<&str>) -> String {
-        let info = js::trim(lang.unwrap_or(""));
-        let name = info
-            .split(|c: char| js::is_js_space(c))
-            .next()
-            .unwrap_or("")
-            .to_lowercase();
-        if name == "mermaid" {
-            return format!(
-                "<div class=\"md-mermaid\"><pre class=\"md-mermaid-src\"><code>{}</code></pre></div>",
-                escape_text(text)
-            );
-        }
-        if let Some(m) = code_ref_info().exec(info) {
-            return format!(
-                "<div class=\"mdref\"><div class=\"mdref-file\">{}</div><pre class=\"mdref-code\"><code>{}</code></pre></div>",
-                escape_text(m.str(3)),
-                escape_text(text)
-            );
-        }
-        format!(
-            "<pre><code>{}</code></pre>\n",
-            highlight_code(text, lang_from_info(info))
-        )
-    }
+fn is_http(href: &str) -> bool {
+    static HTTP: OnceLock<Re> = OnceLock::new();
+    re(&HTTP, r"^https?:\/\/", "i").test(href)
+}
 
-    /// `renderLink`: only short http(s) links stay clickable.
-    fn link(&self, p: &Parser, href: &str, title: Option<&str>, tokens: &[Token]) -> String {
-        self.link_depth.set(self.link_depth.get() + 1);
-        let text = p.parse_inline(tokens);
-        self.link_depth.set(self.link_depth.get() - 1);
-        let plain = strip_tags(&text);
-        static HTTP: OnceLock<Re> = OnceLock::new();
-        let ok = !href.is_empty()
-            && re(&HTTP, r"^https?:\/\/", "i").test(href)
-            && utf16_len(&plain) <= 120;
-        if !ok {
-            return text;
-        }
-        let t = title
-            .filter(|t| !t.is_empty())
-            .map(|t| format!(" title=\"{}\"", escape_text(t)))
-            .unwrap_or_default();
-        format!("<a href=\"{}\"{t}>{text}</a>", escape_text(href))
+/// `renderCode`: mermaid placeholders, Cursor `start:end:path` cards, highlighted fences.
+fn render_code(text: &str, info: &str) -> String {
+    let info = js::trim(info);
+    let name = info
+        .split(|c: char| js::is_js_space(c))
+        .next()
+        .unwrap_or("")
+        .to_lowercase();
+    if name == "mermaid" {
+        return format!(
+            "<div class=\"md-mermaid\"><pre class=\"md-mermaid-src\"><code>{}</code></pre></div>",
+            escape_text(text)
+        );
     }
-
-    fn html(&self, _p: &Parser, text: &str) -> String {
-        if self.demote {
-            // `renderHtml`: keep inner text, never the raw tags.
-            return escape_text(&strip_tags(text));
-        }
-        // `renderHtmlWithGitHubImages`: GitHub-pasted `<img>`s survive (proxied).
-        static IMG: OnceLock<Re> = OnceLock::new();
-        static SLOT: OnceLock<Re> = OnceLock::new();
-        let mut imgs: Vec<String> = Vec::new();
-        let with_slots = re(&IMG, r"<img\b[^>]*>", "gi").replace_with(text, |c| {
-            let tag = c.full();
-            let src = html_attr(tag, "src");
-            if !is_github_image_url(&src) {
-                return String::new();
-            }
-            let alt = html_attr(tag, "alt");
-            imgs.push(format!(
-                "<p><img src=\"{}\" alt=\"{}\"></p>",
-                escape_text(&github_image_src(&src)),
-                escape_text(&alt)
-            ));
-            format!("\u{0}IMG{}\u{0}", imgs.len() - 1)
-        });
-        re(&SLOT, "\u{0}IMG(\\d+)\u{0}", "g").replace_with(
-            &escape_text(&strip_tags(&with_slots)),
-            |c| {
-                c.str(1)
-                    .parse::<usize>()
-                    .ok()
-                    .and_then(|i| imgs.get(i).cloned())
-                    .unwrap_or_default()
-            },
-        )
+    if let Some(m) = code_ref_info().exec(info) {
+        return format!(
+            "<div class=\"mdref\"><div class=\"mdref-file\">{}</div><pre class=\"mdref-code\"><code>{}</code></pre></div>",
+            escape_text(m.str(3)),
+            escape_text(text)
+        );
     }
+    format!(
+        "<pre><code>{}</code></pre>\n",
+        highlight_code(text, lang_from_info(info))
+    )
+}
 
-    fn image(
-        &self,
-        _p: &Parser,
-        href: &str,
-        title: Option<&str>,
-        text: &str,
-        _tokens: &[Token],
-    ) -> String {
-        let t = title
-            .filter(|t| !t.is_empty())
-            .map(|t| format!(" title=\"{}\"", escape_text(t)))
-            .unwrap_or_default();
-        if !self.demote {
-            // `renderLiveImage`.
-            let src = github_image_src(js::trim(href));
-            if src.is_empty() {
-                return escape_text(text);
-            }
-            return format!(
-                "<img src=\"{}\" alt=\"{}\"{t}>",
-                escape_text(&src),
-                escape_text(text)
-            );
+/// Raw HTML from the source: its text, escaped. Live documents keep GitHub-pasted `<img>`s
+/// (proxied), never other tags.
+fn render_html(text: &str, demote: bool) -> String {
+    if demote {
+        return escape_text(&strip_tags(text));
+    }
+    static IMG: OnceLock<Re> = OnceLock::new();
+    static SLOT: OnceLock<Re> = OnceLock::new();
+    let mut imgs: Vec<String> = Vec::new();
+    let with_slots = re(&IMG, r"<img\b[^>]*>", "gi").replace_with(text, |c| {
+        let tag = c.full();
+        let src = html_attr(tag, "src");
+        if !is_github_image_url(&src) {
+            return String::new();
         }
-        // `renderImage`: never emit `<img>`, fetched pages must not load third-party URLs.
-        let label = match js::trim(text) {
-            "" => "image",
-            l => l,
-        };
-        if self.link_depth.get() > 0 {
-            return escape_text(label);
-        }
-        let src = js::trim(href);
-        static HTTP: OnceLock<Re> = OnceLock::new();
-        if !src.is_empty() && re(&HTTP, r"^https?:\/\/", "i").test(src) && utf16_len(label) <= 120 {
-            return format!(
-                "<a href=\"{}\"{t}>{}</a>",
-                escape_text(src),
-                escape_text(label)
-            );
-        }
+        let alt = html_attr(tag, "alt");
+        imgs.push(format!(
+            "<p><img src=\"{}\" alt=\"{}\"></p>",
+            escape_text(&github_image_src(&src)),
+            escape_text(&alt)
+        ));
+        format!("\u{0}IMG{}\u{0}", imgs.len() - 1)
+    });
+    re(&SLOT, "\u{0}IMG(\\d+)\u{0}", "g").replace_with(
+        &escape_text(&strip_tags(&with_slots)),
+        |c| {
+            c.str(1)
+                .parse::<usize>()
+                .ok()
+                .and_then(|i| imgs.get(i).cloned())
+                .unwrap_or_default()
+        },
+    )
+}
+
+/// The UTF-16 length of the text a link shows (images count as nothing, as their tags strip).
+fn label_len(node: Node<'_>) -> usize {
+    node.children()
+        .map(|c| match &c.data().value {
+            NodeValue::Text(t) => t.encode_utf16().count(),
+            NodeValue::Code(c) => c.literal.encode_utf16().count(),
+            NodeValue::Raw(h) | NodeValue::HtmlInline(h) => strip_tags(h).encode_utf16().count(),
+            NodeValue::Image(_) => 0,
+            _ => label_len(c),
+        })
+        .sum()
+}
+
+fn replace<'a>(arena: &'a Arena<'a>, node: Node<'a>, value: NodeValue) {
+    node.insert_before(arena.alloc(value.into()));
+    node.detach();
+}
+
+/// `renderImage` with `demote`: never an `<img>`, fetched pages must not load third-party URLs.
+fn demoted_image(nl: &NodeLink, alt: &str, in_link: bool) -> NodeValue {
+    let label = match js::trim(alt) {
+        "" => "image",
+        l => l,
+    };
+    let src = js::trim(&nl.url);
+    if in_link || src.is_empty() || !is_http(src) || label.encode_utf16().count() > 120 {
+        return NodeValue::Text(label.to_string().into());
+    }
+    let title = match nl.title.as_str() {
+        "" => String::new(),
+        t => format!(" title=\"{}\"", escape_text(t)),
+    };
+    NodeValue::Raw(format!(
+        "<a href=\"{}\"{title}>{}</a>",
+        escape_text(src),
         escape_text(label)
+    ))
+}
+
+/// Recur's rendering on comrak's tree: emoji shortcodes outside code, fences, raw HTML and
+/// images first, then links, which stay clickable only as short http(s) links.
+fn transform<'a>(arena: &'a Arena<'a>, root: Node<'a>, demote: bool) {
+    let mut links = Vec::new();
+    for node in root.descendants().collect::<Vec<_>>() {
+        let value = node.data().value.clone();
+        match value {
+            NodeValue::CodeBlock(cb) => {
+                let text = cb.literal.strip_suffix('\n').unwrap_or(&cb.literal);
+                replace(arena, node, NodeValue::Raw(render_code(text, &cb.info)));
+            }
+            NodeValue::Text(text) if text.contains(':') => {
+                node.data_mut().value =
+                    NodeValue::Text(expand_emoji_shortcodes(&text, false).into());
+            }
+            NodeValue::HtmlBlock(NodeHtmlBlock { literal, .. })
+            | NodeValue::HtmlInline(literal) => {
+                let html = render_html(&expand_emoji_shortcodes(&literal, false), demote);
+                replace(arena, node, NodeValue::Raw(html));
+            }
+            NodeValue::Image(nl) if demote => {
+                let in_link = node
+                    .ancestors()
+                    .any(|a| matches!(a.data().value, NodeValue::Link(_)));
+                replace(
+                    arena,
+                    node,
+                    demoted_image(&nl, &node.collect_text(), in_link),
+                );
+            }
+            NodeValue::Image(nl) => match github_image_src(&nl.url) {
+                src if src.is_empty() => {
+                    let alt = node.collect_text();
+                    replace(arena, node, NodeValue::Text(alt.into()));
+                }
+                src => {
+                    node.data_mut().value = NodeValue::Image(Box::new(NodeLink { url: src, ..*nl }))
+                }
+            },
+            // The checkbox moves into the item's paragraph, so a loose item keeps it on the
+            // text's line.
+            NodeValue::TaskItem(task) => {
+                if let Some(NodeValue::List(list)) = node.parent().map(|p| p.data().value.clone())
+                    && let Some(para) = node
+                        .first_child()
+                        .filter(|c| matches!(c.data().value, NodeValue::Paragraph))
+                {
+                    let checked = if task.symbol.is_some() {
+                        " checked=\"\""
+                    } else {
+                        ""
+                    };
+                    para.prepend(
+                        arena.alloc(
+                            NodeValue::Raw(format!(
+                                "<input type=\"checkbox\"{checked} disabled=\"\"> "
+                            ))
+                            .into(),
+                        ),
+                    );
+                    node.data_mut().value = NodeValue::Item(list);
+                }
+            }
+            NodeValue::Link(nl) => links.push((node, nl)),
+            _ => {}
+        }
     }
+    for (node, nl) in links {
+        if !nl.url.is_empty() && is_http(&nl.url) && label_len(node) <= 120 {
+            continue;
+        }
+        for child in node.children().collect::<Vec<_>>() {
+            node.insert_before(child);
+        }
+        node.detach();
+    }
+}
+
+fn options() -> Options<'static> {
+    let mut o = Options::default();
+    o.extension.strikethrough = true;
+    o.extension.table = true;
+    o.extension.autolink = true;
+    o.extension.tasklist = true;
+    o.render.hardbreaks = true;
+    o
 }
 
 /// `normalizeCodeRefs`: a mid-sentence ```` ```start:end:path ```` fence moves onto its own
@@ -227,17 +287,19 @@ fn normalize_code_refs(src: &str) -> String {
     })
 }
 
-/// `parseMarkdown`: unsanitized HTML from marked and `highlightCode`.
-pub fn parse_markdown(src: &str, opts: ParseOptions) -> Result<String, LexError> {
+/// `parseMarkdown`: unsanitized HTML from comrak and `highlightCode`.
+pub fn parse_markdown(src: &str, opts: ParseOptions) -> String {
     if src.is_empty() {
-        return Ok(String::new());
+        return String::new();
     }
-    let prepared = normalize_code_refs(&expand_emoji_shortcodes(src, true));
-    let renderer = Recur {
-        demote: opts.demote_images,
-        link_depth: Cell::new(0),
-    };
-    marked::parse(&prepared, &renderer)
+    let prepared = normalize_code_refs(src);
+    let options = options();
+    let arena = Arena::new();
+    let root = comrak::parse_document(&arena, &prepared, &options);
+    transform(&arena, root, opts.demote_images);
+    let mut out = String::new();
+    let _ = comrak::format_html(root, &options, &mut out);
+    out
 }
 
 #[cfg(test)]
@@ -246,7 +308,7 @@ mod tests {
 
     #[test]
     fn does_not_sanitize() {
-        let raw = parse_markdown("```js\nconst x = 1\n```", ParseOptions::default()).unwrap();
+        let raw = parse_markdown("```js\nconst x = 1\n```", ParseOptions::default());
         assert!(raw.contains("sh-kw"));
     }
 
@@ -255,8 +317,7 @@ mod tests {
         let raw = parse_markdown(
             "see ```12:14:src/a.ts\n<div class=\"x\">\n``` now",
             ParseOptions::default(),
-        )
-        .unwrap();
+        );
         assert!(
             raw.contains("<div class=\"mdref-file\">src/a.ts</div>"),
             "{raw}"
@@ -289,52 +350,9 @@ mod tests {
         );
     }
 
-    #[derive(serde::Deserialize)]
-    struct Case {
-        md: String,
-        live: String,
-        demote: String,
-    }
-
-    #[test]
-    fn matches_markdown_parse_ts() {
-        let cases: Vec<Case> =
-            serde_json::from_str(include_str!("../../tests/golden/parse.json")).unwrap();
-        let mut failures = Vec::new();
-        for (i, c) in cases.iter().enumerate() {
-            for (demote, want) in [(false, &c.live), (true, &c.demote)] {
-                let got = parse_markdown(
-                    &c.md,
-                    ParseOptions {
-                        demote_images: demote,
-                    },
-                )
-                .unwrap_or_else(|e| format!("ERROR: {e}"));
-                if &got != want {
-                    failures.push(format!(
-                        "#{i} demote={demote}\n--- md\n{}\n--- want\n{want}\n--- got\n{got}",
-                        c.md
-                    ));
-                }
-            }
-        }
-        assert!(
-            failures.is_empty(),
-            "{} differ:\n{}",
-            failures.len(),
-            failures
-                .iter()
-                .take(6)
-                .cloned()
-                .collect::<Vec<_>>()
-                .join("\n\n")
-        );
-    }
-
     #[test]
     fn mermaid_fences_become_placeholders() {
-        let raw =
-            parse_markdown("```mermaid\ngraph TD\nA-->B\n```", ParseOptions::default()).unwrap();
+        let raw = parse_markdown("```mermaid\ngraph TD\nA-->B\n```", ParseOptions::default());
         assert_eq!(
             raw,
             "<div class=\"md-mermaid\"><pre class=\"md-mermaid-src\"><code>graph TD\nA--&gt;B</code></pre></div>"

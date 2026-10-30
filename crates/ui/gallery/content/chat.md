@@ -8,7 +8,7 @@ A paragraph with **bold**, *emphasis*, `inline code`, ~~struck~~ and a [link to 
 - Highlight fences with `codehl`
   - nested item one
   - nested item two
-- [x] Sanitize with DOMPurify
+- [x] Sanitize with ammonia
 
 1. First step
 2. Second step

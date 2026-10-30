@@ -3,14 +3,14 @@
 //! several commands run.
 
 use gpui::TestAppContext;
-use recur_services::mock::MockOptions;
+use recur_services::fake::Overrides;
 
 use super::harness::*;
 
 const WS: &str = "LOOP-2231";
 
 fn mount<'a>(cx: &'a mut TestAppContext, t: &Calls, runs: &[(&str, &str)]) -> S<'a> {
-    let mut s = boot(cx, with_runs(runs), t.terminals(MockOptions::default()));
+    let mut s = boot(cx, with_runs(runs), t.terminals(Overrides::default()));
     s.open_workspace(WS);
     s
 }
@@ -45,7 +45,7 @@ fn cmd_r_opens_the_run_palette_and_enter_runs_the_selected_command(cx: &mut Test
     assert!(!s.has("run-palette"));
     assert!(s.until(|s| running(s) == ["dev"]));
     assert!(s.until(|s| s.has("term-dock")));
-    assert!(s.until(|_| !t.named("WriteTerminal").is_empty()));
+    assert!(s.until(|_| !t.named("write_terminal").is_empty()));
 }
 
 #[gpui::test]
@@ -117,7 +117,7 @@ fn cmd_shift_r_opens_the_stop_palette_when_several_commands_are_running(cx: &mut
     assert!(s.input_focused());
     s.keys("1");
     assert!(!s.has("stop-dev"));
-    assert!(s.until(|_| !t.named("InterruptTerminal").is_empty()));
+    assert!(s.until(|_| !t.named("interrupt_terminal").is_empty()));
 }
 
 #[gpui::test]
@@ -147,7 +147,7 @@ fn cmd_enter_and_the_pin_make_a_run_the_project_default(cx: &mut TestAppContext)
 
 #[gpui::test]
 fn the_stop_palette_lists_running_commands_and_filters_them(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default());
+    let mut s = boot(cx, |_| {}, Overrides::default());
     s.open_workspace("LOOP-2229");
     s.state.update(s.cx, |st, cx| {
         st.set_run_session("LOOP-2229", "dev", "sess-dev", cx);

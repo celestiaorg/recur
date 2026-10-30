@@ -4,7 +4,7 @@
 //! Each [`AppEvent`] variant is one wire name; [`AppEvent::name`] and
 //! [`AppEvent::payload`] give the event's name and data, and
 //! [`AppEvent::from_wire`] reads one back. Payload fields that may be absent
-//! are `Option`, so a partial event (the mock bridge and the e2e specs
+//! are `Option`, so a partial event (the service fakes and the specs
 //! dispatch those) leaves the view's value alone.
 //!
 //! [`EventHub`] fans events out to subscribers over unbounded channels: an

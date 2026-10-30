@@ -368,8 +368,7 @@ mod tests {
 
     use gpui::TestAppContext;
     use recur_services::api::{ModelChoice, ModelGroup};
-    use recur_services::mock::{MockBridge, MockOptions, Reply};
-    use serde_json::json;
+    use recur_services::fake::{Fake, Overrides};
 
     use crate::{AppState, LocalStorage};
 
@@ -396,15 +395,12 @@ mod tests {
         )]));
         let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let (g, c) = (groups.clone(), calls.clone());
-        let bridge = MockBridge::fresh(MockOptions::default().resolver(
-            "ListModelCatalog",
-            move |_, _, _| {
-                c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                Reply::value(json!(g.lock().clone()))
-            },
-        ));
+        let fake = Fake::fresh(Overrides::default().list_model_catalog(move |_, ()| {
+            c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Ok(g.lock().clone())
+        }));
         let state =
-            cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
+            cx.update(|cx| AppState::install(fake.services(), LocalStorage::in_memory(), cx));
         let first = state.update(cx, |s, cx| s.load_model_catalog(cx)).await;
         assert_eq!(first[0].r#ref, "claude-code/a");
         let rev = state.read_with(cx, |s, _| s.model_catalog_rev());
@@ -426,19 +422,17 @@ mod tests {
     async fn a_superseded_request_does_not_overwrite_the_fresh_cache(cx: &mut TestAppContext) {
         let n = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let c = n.clone();
-        let bridge = MockBridge::fresh(MockOptions::default().resolver(
-            "ListModelCatalog",
-            move |_, _, _| {
-                let i = c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                if i == 0 {
-                    Reply::value(json!([group("claude-code", &["claude-code/stale"])]))
-                } else {
-                    Reply::value(json!([group("claude-code", &["claude-code/b"])]))
-                }
-            },
-        ));
+        let fake = Fake::fresh(Overrides::default().list_model_catalog(move |_, ()| {
+            let i = c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let model = if i == 0 {
+                "claude-code/stale"
+            } else {
+                "claude-code/b"
+            };
+            Ok(vec![group("claude-code", &[model])])
+        }));
         let state =
-            cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
+            cx.update(|cx| AppState::install(fake.services(), LocalStorage::in_memory(), cx));
         let a = state.update(cx, |s, cx| s.load_model_catalog(cx));
         state.update(cx, |s, cx| s.invalidate_model_catalog(cx));
         let b = state.update(cx, |s, cx| s.load_model_catalog(cx));
@@ -451,29 +445,29 @@ mod tests {
     // The file index exclude follows settings and index events.
     #[gpui::test]
     async fn the_file_index_follows_the_explorer_excludes(cx: &mut TestAppContext) {
-        let sent = Arc::new(parking_lot::Mutex::new(Vec::<serde_json::Value>::new()));
+        let sent = Arc::new(parking_lot::Mutex::new(Vec::<Vec<String>>::new()));
         let s2 = sent.clone();
-        let bridge = MockBridge::fresh(MockOptions::default().resolver(
-            "SetFileIndexExclude",
-            move |a, _, _| {
-                s2.lock().push(a.first().cloned().unwrap_or_default());
-                Reply::null()
-            },
-        ));
+        let fake = Fake::fresh(Overrides::default().set_file_index_exclude(move |_, p| {
+            s2.lock().push(p);
+            Ok(())
+        }));
         let state =
-            cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
+            cx.update(|cx| AppState::install(fake.services(), LocalStorage::in_memory(), cx));
         state.update(cx, |s, cx| s.wire_events(cx));
         cx.run_until_parked();
         let defaults: Vec<String> = crate::prefs::DEFAULT_EXPLORER_EXCLUDE
             .iter()
             .map(|s| s.to_string())
             .collect();
-        assert_eq!(sent.lock().clone(), [json!(defaults)]);
+        assert_eq!(sent.lock().clone(), [defaults]);
         state.update(cx, |s, cx| {
             s.set_explorer_exclude(vec!["**/dist".into()], cx)
         });
         cx.run_until_parked();
-        assert_eq!(sent.lock().last().cloned(), Some(json!(["**/dist"])));
+        assert_eq!(
+            sent.lock().last().cloned(),
+            Some(vec!["**/dist".to_owned()])
+        );
         assert_eq!(sent.lock().len(), 2);
     }
 
@@ -482,9 +476,9 @@ mod tests {
     async fn removing_the_workspace_on_screen_flushes_the_editor_session_first(
         cx: &mut TestAppContext,
     ) {
-        let bridge = MockBridge::fresh(MockOptions::default());
+        let fake = Fake::fresh(Overrides::default());
         let state =
-            cx.update(|cx| AppState::install(bridge.services(), LocalStorage::in_memory(), cx));
+            cx.update(|cx| AppState::install(fake.services(), LocalStorage::in_memory(), cx));
         state.update(cx, |s, cx| s.load_initial(cx)).await.ok();
         let flushed = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let f = flushed.clone();

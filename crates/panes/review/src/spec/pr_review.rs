@@ -6,7 +6,7 @@
 use gpui::TestAppContext;
 use recur_domain::Finding;
 use recur_engine::view::comment_thread::DiffSide;
-use recur_services::mock::{MockOptions, Reply};
+use recur_services::fake::{Overrides, hold};
 
 use super::harness::*;
 
@@ -27,7 +27,7 @@ fn thread_count(h: &mut H, root: &str) -> usize {
 
 #[gpui::test]
 async fn files_changed_is_a_sidebar_toc_plus_a_scrolling_stack(cx: &mut TestAppContext) {
-    let (mut h, host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, host) = pr_files(cx, Overrides::default(), None);
     assert!(h.has(&format!("cfile:live:{OAUTH}")));
     assert!(h.has("cfile:live:src/hooks/useOAuthSession.ts"));
     h.click("fl-row:file:src/checkout/SignInButtons.tsx");
@@ -41,7 +41,7 @@ async fn files_changed_is_a_sidebar_toc_plus_a_scrolling_stack(cx: &mut TestAppC
 
 #[gpui::test]
 async fn collapsing_a_files_changed_card_shrinks_it_to_the_header(cx: &mut TestAppContext) {
-    let (mut h, _host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, _host) = pr_files(cx, Overrides::default(), None);
     let card = format!("cfile:live:{OAUTH}");
     assert!(f32::from(h.bounds(&card).expect("card").size.height) > 80.);
     h.click(&format!("df-chev:{OAUTH}"));
@@ -52,7 +52,7 @@ async fn collapsing_a_files_changed_card_shrinks_it_to_the_header(cx: &mut TestA
 
 #[gpui::test]
 async fn open_in_workspace_from_a_pr_file_diff(cx: &mut TestAppContext) {
-    let (mut h, host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, host) = pr_files(cx, Overrides::default(), None);
     h.click(&format!("df-open:{OAUTH}"));
     let opened = host.read_with(h.cx, |hst, _| hst.opened.borrow().clone());
     assert_eq!(opened, vec![(OAUTH.to_string(), None)]);
@@ -69,7 +69,7 @@ async fn files_changed_findings_render_as_inline_cards(cx: &mut TestAppContext) 
         severity: "high".into(),
         ..Default::default()
     };
-    let (mut h, host) = pr_files(cx, MockOptions::default(), Some(vec![finding]));
+    let (mut h, host) = pr_files(cx, Overrides::default(), Some(vec![finding]));
     assert!(h.has("obs-finding-flag:src/hooks/useOAuthSession.ts"));
     h.click("fl-row:file:src/hooks/useOAuthSession.ts");
     assert!(h.has("icmt-finding:f-race"));
@@ -81,7 +81,7 @@ async fn files_changed_findings_render_as_inline_cards(cx: &mut TestAppContext) 
 
 #[gpui::test]
 async fn flags_files_with_unresolved_line_comments_and_jumps_to_them(cx: &mut TestAppContext) {
-    let (mut h, host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, host) = pr_files(cx, Overrides::default(), None);
     assert!(h.has(&format!("obs-comment-flag:{OAUTH}")));
     h.click(&format!("obs-comment-flag:{OAUTH}"));
     let hl = host.read_with(h.cx, |hst, _| hst.highlight);
@@ -106,7 +106,7 @@ async fn flags_files_with_unresolved_line_comments_and_jumps_to_them(cx: &mut Te
 
 #[gpui::test]
 async fn shows_a_posted_line_note_on_the_files_diff_and_replies(cx: &mut TestAppContext) {
-    let (mut h, _host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, _host) = pr_files(cx, Overrides::default(), None);
     assert!(h.has(&format!("icmt-thread:{OAUTH}:12")));
     h.click("cmt-more:gh-inline-1");
     assert!(h.has("menuitem:Quote reply"));
@@ -129,7 +129,7 @@ async fn shows_a_posted_line_note_on_the_files_diff_and_replies(cx: &mut TestApp
 
 #[gpui::test]
 async fn quote_reply_prefills_the_reply_box(cx: &mut TestAppContext) {
-    let (mut h, host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, host) = pr_files(cx, Overrides::default(), None);
     h.click("cmt-more:gh-inline-1");
     h.click("menuitem:Quote reply");
     let df = host
@@ -150,7 +150,7 @@ async fn quote_reply_prefills_the_reply_box(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn keyboard_activating_a_plus_opens_the_composer(cx: &mut TestAppContext) {
-    let (mut h, host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, host) = pr_files(cx, Overrides::default(), None);
     to_top(&mut h, &host);
     let focus = host
         .read_with(h.cx, |hst, cx| {
@@ -170,7 +170,7 @@ async fn keyboard_activating_a_plus_opens_the_composer(cx: &mut TestAppContext) 
 
 #[gpui::test]
 async fn leaves_an_inline_comment_anchored_to_a_diff_line(cx: &mut TestAppContext) {
-    let (mut h, host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, host) = pr_files(cx, Overrides::default(), None);
     to_top(&mut h, &host);
     h.click(&format!("addc:{OAUTH}:right:11"));
     assert!(h.has("finding-note-input"));
@@ -185,7 +185,7 @@ async fn leaves_an_inline_comment_anchored_to_a_diff_line(cx: &mut TestAppContex
 
 #[gpui::test]
 async fn drag_on_the_comment_control_selects_a_multiline_line_comment(cx: &mut TestAppContext) {
-    let (mut h, host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, host) = pr_files(cx, Overrides::default(), None);
     h.drag(
         &format!("addc:{OAUTH}:right:13"),
         &format!("addc:{OAUTH}:right:15"),
@@ -238,7 +238,7 @@ async fn drag_on_the_comment_control_selects_a_multiline_line_comment(cx: &mut T
 
 #[gpui::test]
 async fn a_removed_pending_comment_leaves_the_diff(cx: &mut TestAppContext) {
-    let (mut h, host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, host) = pr_files(cx, Overrides::default(), None);
     to_top(&mut h, &host);
     h.click(&format!("addc:{OAUTH}:right:11"));
     h.type_text("remove me");
@@ -262,7 +262,7 @@ async fn a_removed_pending_comment_leaves_the_diff(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn toggles_reactions_on_the_diff_thread(cx: &mut TestAppContext) {
-    let (mut h, _host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, _host) = pr_files(cx, Overrides::default(), None);
     assert!(h.has("rxn-pill:gh-inline-1:eyes"));
     h.click("rxn-add:gh-inline-1");
     h.click("rxn-pick:+1");
@@ -282,7 +282,7 @@ async fn toggles_reactions_on_the_diff_thread(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn deletes_a_line_note_from_the_more_menu(cx: &mut TestAppContext) {
-    let (mut h, _host) = pr_files(cx, MockOptions::default(), None);
+    let (mut h, _host) = pr_files(cx, Overrides::default(), None);
     h.click("cmt-reply-ph:gh-inline-1");
     h.type_text("thread reply from e2e");
     h.click("note-reply");
@@ -307,10 +307,10 @@ async fn deletes_a_line_note_from_the_more_menu(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn closes_the_reply_composer_before_a_slow_github_write_returns(cx: &mut TestAppContext) {
     let (tx, rx) = std::sync::mpsc::channel();
-    let opts = MockOptions::default().resolver("ReplyPRComment", move |_, _, _| {
-        let (reply, release) = Reply::deferred();
+    let opts = Overrides::default().reply_pr_comment(move |_, _| {
+        let (answer, release) = hold();
         let _ = tx.send(release);
-        reply
+        answer
     });
     let (mut h, _host) = pr_files(cx, opts, None);
     h.click("cmt-reply-ph:gh-inline-1");
@@ -325,11 +325,17 @@ async fn closes_the_reply_composer_before_a_slow_github_write_returns(cx: &mut T
             .any(|c| c.body_md == "slow thread reply" && c.id.starts_with("c-pending-"))
     );
     let release = rx.try_recv().expect("in flight");
-    release.send(Reply::value(serde_json::json!({
-        "id": "gh-inline-slow-reply", "code": "YO", "author": "You", "time": "now",
-        "bodyHtml": "", "bodyMd": "slow thread reply", "verb": "commented", "kind": "comment",
-        "inReplyToId": "gh-inline-1",
-    })));
+    release.send(Ok(recur_domain::PrComment {
+        id: "gh-inline-slow-reply".into(),
+        code: "YO".into(),
+        author: "You".into(),
+        time: "now".into(),
+        body_md: "slow thread reply".into(),
+        verb: "commented".into(),
+        kind: "comment".into(),
+        in_reply_to_id: "gh-inline-1".into(),
+        ..Default::default()
+    }));
     h.settle();
     let comments = h.pr("482").comments.unwrap_or_default();
     assert!(comments.iter().any(|c| c.id == "gh-inline-slow-reply"));

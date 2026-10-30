@@ -4,12 +4,29 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::{BranchChoice, Project, Workspace};
+use recur_services::Result;
+use recur_services::api::{FlagDimension, FlagOption, ModelChoice, ModelGroup};
+use recur_services::fake::{Overrides, Release, hold};
 use recur_view_core::ViewName;
-use serde_json::{Value, json};
 
 use super::harness::{S, plain, with};
 use crate::new_task::NewTaskModal;
+
+fn dim(id: &str, label: &str, options: &[(&str, &str, bool)]) -> FlagDimension {
+    FlagDimension {
+        id: id.into(),
+        label: label.into(),
+        options: options
+            .iter()
+            .map(|(value, label, default)| FlagOption {
+                value: (*value).into(),
+                label: (*label).into(),
+                default: *default,
+            })
+            .collect(),
+    }
+}
 
 impl S<'_> {
     /// The non-main, live rows the rail shows (`.rail .tloop:not(.tmain)`).
@@ -110,14 +127,21 @@ fn new_loop_modal_has_repository_and_base_branch_pickers(cx: &mut TestAppContext
 fn escape_abandons_eager_create_so_a_second_cmd_n_is_one_row(cx: &mut TestAppContext) {
     let n = Arc::new(AtomicUsize::new(0));
     let c = n.clone();
-    let opts = MockOptions::default().resolver("CreateWorkspace", move |a, _, _| {
+    let opts = Overrides::default().create_workspace(move |_, (project_id, _, base, ..)| {
         let i = c.fetch_add(1, Ordering::SeqCst) + 1;
         let id = format!("WS-EAGER-{i}");
-        Reply::value(json!({
-            "id": id, "projectId": a[0], "type": "solo", "statusLabel": "Creating",
-            "phase": "creating", "goal": "New Workspace", "short": "New Workspace",
-            "branch": format!("recur/{id}"), "baseBranch": a[2], "archived": false, "isMain": false,
-        }))
+        Ok(Workspace {
+            branch: format!("recur/{id}"),
+            id,
+            project_id,
+            r#type: "solo".into(),
+            status_label: "Creating".into(),
+            phase: "creating".into(),
+            goal: "New Workspace".into(),
+            short: "New Workspace".into(),
+            base_branch: base,
+            ..Default::default()
+        })
     });
     let mut s = with(cx, |_| {}, opts);
     let before = s.rail_rows();
@@ -133,19 +157,25 @@ fn escape_abandons_eager_create_so_a_second_cmd_n_is_one_row(cx: &mut TestAppCon
 
 #[gpui::test]
 fn create_workspace_model_menu_stays_inside_the_window(cx: &mut TestAppContext) {
-    let effort = json!({ "id": "effort", "label": "Effort", "options": [
-        { "value": "low", "label": "Low" }, { "value": "high", "label": "High", "default": true },
-    ]});
-    let models: Vec<Value> = (0..24)
-        .map(|i| {
-            json!({ "ref": format!("claude-code/model-{i}"), "label": format!("Model {:02}", i + 1),
-                "flags": [effort], "contextWindow": 200_000 })
+    let effort = dim(
+        "effort",
+        "Effort",
+        &[("low", "Low", false), ("high", "High", true)],
+    );
+    let models: Vec<ModelChoice> = (0..24)
+        .map(|i| ModelChoice {
+            model_ref: format!("claude-code/model-{i}"),
+            label: format!("Model {:02}", i + 1),
+            flags: vec![effort.clone()],
+            context_window: 200_000,
         })
         .collect();
-    let opts = MockOptions::default().resolver("ListModelCatalog", move |_, _, _| {
-        Reply::value(
-            json!([{ "provider": "claude-code", "label": "Claude Code", "models": models }]),
-        )
+    let opts = Overrides::default().list_model_catalog(move |_, ()| {
+        Ok(vec![ModelGroup {
+            provider: "claude-code".into(),
+            label: "Claude Code".into(),
+            models: models.clone(),
+        }])
     });
     let mut s = with(cx, |_| {}, opts);
     s.open_new_task();
@@ -162,19 +192,38 @@ fn create_workspace_model_menu_stays_inside_the_window(cx: &mut TestAppContext) 
 
 #[gpui::test]
 fn model_and_flags_stay_on_one_row_in_create_workspace_and_chat_composer(cx: &mut TestAppContext) {
-    let flags = json!([
-        { "id": "effort", "label": "Effort", "options": [
-            { "value": "low", "label": "Low" }, { "value": "medium", "label": "Medium", "default": true },
-            { "value": "high", "label": "High" } ] },
-        { "id": "context", "label": "Context", "options": [
-            { "value": "272k", "label": "272K", "default": true }, { "value": "1m", "label": "1M" } ] },
-        { "id": "thinking", "label": "On", "options": [
-            { "value": "true", "label": "Yes", "default": true }, { "value": "false", "label": "No" } ] },
-    ]);
-    let opts = MockOptions::default().resolver("ListModelCatalog", move |_, _, _| {
-        Reply::value(json!([{ "provider": "openai", "label": "OpenAI", "models": [{
-            "ref": "openai/gpt-6-astra", "label": "GPT-6 Astra", "flags": flags, "contextWindow": 272_000,
-        }]}]))
+    let flags = vec![
+        dim(
+            "effort",
+            "Effort",
+            &[
+                ("low", "Low", false),
+                ("medium", "Medium", true),
+                ("high", "High", false),
+            ],
+        ),
+        dim(
+            "context",
+            "Context",
+            &[("272k", "272K", true), ("1m", "1M", false)],
+        ),
+        dim(
+            "thinking",
+            "On",
+            &[("true", "Yes", true), ("false", "No", false)],
+        ),
+    ];
+    let opts = Overrides::default().list_model_catalog(move |_, ()| {
+        Ok(vec![ModelGroup {
+            provider: "openai".into(),
+            label: "OpenAI".into(),
+            models: vec![ModelChoice {
+                model_ref: "openai/gpt-6-astra".into(),
+                label: "GPT-6 Astra".into(),
+                flags: flags.clone(),
+                context_window: 272_000,
+            }],
+        }])
     });
     let mut s = with(cx, |_| {}, opts);
     s.open_new_task();
@@ -253,29 +302,29 @@ fn add_project_is_a_create_modal(cx: &mut TestAppContext) {
 fn adding_a_compatible_provider_shows_its_models_in_an_already_loaded_picker(
     cx: &mut TestAppContext,
 ) {
-    let opts = MockOptions::default().resolver("ListModelCatalog", |_, sd, _| {
-        let mut out = vec![json!({
-            "provider": "claude-code", "label": "Claude Code",
-            "models": [{ "ref": "claude-code/claude-opus-5-5", "label": "Opus 5.5", "flags": [] }],
-        })];
-        for p in sd.settings["compatibleProviders"]
-            .as_array()
-            .into_iter()
-            .flatten()
-        {
-            let id = p["id"].as_str().unwrap_or_default();
-            let models: Vec<Value> = p["models"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .map(|m| {
-                    json!({ "ref": format!("{id}/{}", m["id"].as_str().unwrap_or_default()),
-                    "label": m["label"], "flags": [] })
-                })
-                .collect();
-            out.push(json!({ "provider": id, "label": p["name"], "models": models }));
+    let choice = |model_ref: String, label: &str| ModelChoice {
+        model_ref,
+        label: label.into(),
+        ..Default::default()
+    };
+    let opts = Overrides::default().list_model_catalog(move |sd, ()| {
+        let mut out = vec![ModelGroup {
+            provider: "claude-code".into(),
+            label: "Claude Code".into(),
+            models: vec![choice("claude-code/claude-opus-5-5".into(), "Opus 5.5")],
+        }];
+        for p in &sd.settings.compatible_providers {
+            out.push(ModelGroup {
+                provider: p.id.clone(),
+                label: p.name.clone(),
+                models: p
+                    .models
+                    .iter()
+                    .map(|m| choice(format!("{}/{}", p.id, m.id), &m.label))
+                    .collect(),
+            });
         }
-        Reply::value(Value::Array(out))
+        Ok(out)
     });
     let mut s = with(cx, |_| {}, opts);
     s.open_new_task();
@@ -304,60 +353,52 @@ fn adding_a_compatible_provider_shows_its_models_in_an_already_loaded_picker(
 fn a_late_project_refresh_does_not_reload_branches_or_disable_create(cx: &mut TestAppContext) {
     let gate = Arc::new(AtomicBool::new(false));
     let list_branches = Arc::new(AtomicUsize::new(0));
-    let release: Arc<Mutex<Option<recur_services::mock::Release>>> = Arc::default();
+    type Late = (Release<Result<Vec<Project>>>, Vec<Project>);
+    let release: Arc<Mutex<Option<Late>>> = Arc::default();
     let (g, r, lb) = (gate.clone(), release.clone(), list_branches.clone());
-    let opts = MockOptions::default()
-        .resolver("ListProjects", move |_, sd, _| {
+    let opts = Overrides::default()
+        .list_projects(move |sd, ()| {
             if !g.load(Ordering::SeqCst) {
-                return Reply::value(Value::Array(sd.projects.clone()));
+                return Ok(sd.projects.clone()).into();
             }
-            let late: Vec<Value> = sd
+            let late: Vec<Project> = sd
                 .projects
                 .iter()
-                .map(|p| {
-                    let mut p = p.clone();
-                    p["name"] = json!(format!("{}-late", p["name"].as_str().unwrap_or_default()));
-                    p
+                .map(|p| Project {
+                    name: format!("{}-late", p.name),
+                    ..p.clone()
                 })
                 .collect();
-            let (reply, rel) = Reply::deferred();
-            *r.lock().unwrap() = Some(rel);
-            let _ = late.clone();
-            // The deferred reply is answered with the renamed list on release.
-            LATE.with(|l| *l.borrow_mut() = Some(Value::Array(late)));
-            reply
+            let (answer, rel) = hold();
+            *r.lock().unwrap() = Some((rel, late));
+            answer
         })
-        .resolver("ListBranches", move |_, _, _| {
+        .list_branches(move |_, _| {
             lb.fetch_add(1, Ordering::SeqCst);
-            Reply::value(json!([{ "name": "main", "group": "Local" }, { "name": "develop", "group": "Local" }]))
+            let local = |name: &str| BranchChoice {
+                name: name.into(),
+                group: "Local".into(),
+            };
+            Ok(vec![local("main"), local("develop")])
         });
     let mut s = with(cx, |_| {}, opts);
     gate.store(true, Ordering::SeqCst);
     s.open_new_task();
     assert!(s.until(|s| s.has("nt-go:on")));
     assert!(s.has("sel:Repository=storefront"));
-    let late = LATE
-        .with(|l| l.borrow_mut().take())
-        .expect("refresh in flight");
-    release
-        .lock()
-        .unwrap()
-        .take()
-        .expect("deferred")
-        .send(Reply::value(late));
+    let (rel, late) = release.lock().unwrap().take().expect("refresh in flight");
+    rel.send(Ok(late));
     assert!(s.until(|s| s.has("sel:Repository=storefront-late")));
     assert!(s.has("nt-go:on"));
     assert_eq!(list_branches.load(Ordering::SeqCst), 1);
 }
 
-thread_local! {
-    static LATE: std::cell::RefCell<Option<Value>> = const { std::cell::RefCell::new(None) };
-}
-
 #[gpui::test]
 fn slash_menu_offers_prompts_and_skills_and_at_searches_the_project(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("ListFiles", |_, _, _| {
-        Reply::value(json!(["README.md", "src/main.go", "PROGRESS.md"]))
+    let opts = Overrides::default().list_files(|_, _| {
+        Ok(["README.md", "src/main.go", "PROGRESS.md"]
+            .map(String::from)
+            .to_vec())
     });
     let mut s = with(cx, |_| {}, opts);
     s.open_new_task();
@@ -420,12 +461,18 @@ fn picking_a_skill_chips_it_and_create_sends_it_as_the_opening_message(cx: &mut 
 
 #[gpui::test]
 fn picking_review_runs_the_prompt_and_opens_the_workspace(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("CreateWorkspace", |a, _, _| {
-        Reply::value(json!({
-            "id": "WS-NEW", "projectId": a[0], "type": "solo", "statusLabel": "Creating",
-            "phase": "creating", "branch": "recur/new", "baseBranch": a[2],
-            "worktreePath": "/tmp/recur-e2e/WS-NEW",
-        }))
+    let opts = Overrides::default().create_workspace(|_, (project_id, _, base, ..)| {
+        Ok(Workspace {
+            id: "WS-NEW".into(),
+            project_id,
+            r#type: "solo".into(),
+            status_label: "Creating".into(),
+            phase: "creating".into(),
+            branch: "recur/new".into(),
+            base_branch: base,
+            worktree_path: "/tmp/recur-e2e/WS-NEW".into(),
+            ..Default::default()
+        })
     });
     let mut s = with(cx, |_| {}, opts);
     s.click("foot-help");

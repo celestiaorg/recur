@@ -7,7 +7,7 @@ use std::rc::Rc;
 use gpui::TestAppContext;
 use gpui_kit::{AppContext as _, Entity, IntoElement};
 use recur_engine::view::chat::{AgentMsg, ChatLog, ChatLogSession};
-use recur_services::mock::MockOptions;
+use recur_services::fake::Overrides;
 
 use super::harness::*;
 use crate::blocks::Block;
@@ -49,7 +49,7 @@ fn blocks(h: &mut H) -> Vec<Block> {
 
 #[gpui::test]
 async fn plain_notices_stay_escaped_engine_wrap_facts_render_html(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
     h.set_messages(vec![note(
         "Subagent",
         "fix <img src=x onerror=alert(1)> (child-1)",
@@ -78,7 +78,7 @@ async fn plain_notices_stay_escaped_engine_wrap_facts_render_html(cx: &mut TestA
 
 #[gpui::test]
 async fn subagent_notices_fold_into_the_following_steps_group(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
     h.set_messages(vec![
         note("Subagent", "Goal finished (child-1)", false, 1),
         tool("Read", "a.ts", "ok", 2),
@@ -161,7 +161,7 @@ fn log(l: ChatLog) -> AgentMsg {
 async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(
     cx: &mut TestAppContext,
 ) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
     let vcx = h
         .host
         .read_with(h.cx, |host, cx| recur_view_core::ViewContext {
@@ -219,7 +219,7 @@ async fn session_card_stays_expanded_when_a_sibling_specialist_joins_the_group(
 
 #[gpui::test]
 async fn final_reply_stays_visible_when_compaction_follows_the_turn(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
     let reply = "Check-in only renders when Apollo Sync returns one.";
     h.set_messages(vec![
         AgentMsg {
@@ -275,7 +275,7 @@ async fn final_reply_stays_visible_when_compaction_follows_the_turn(cx: &mut Tes
 
 #[gpui::test]
 async fn text_selects_across_messages(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
     h.set_messages(vec![
         AgentMsg {
             me: true,
@@ -311,7 +311,7 @@ async fn text_selects_across_messages(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn text_selects_across_a_file_chip_and_copies_its_label(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
     h.set_messages(vec![AgentMsg {
         me: true,
         body: "see @docs/notes.md please".into(),
@@ -339,7 +339,7 @@ async fn text_selects_across_a_file_chip_and_copies_its_label(cx: &mut TestAppCo
 
 #[gpui::test]
 async fn select_all_copies_tool_rows(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
     h.set_messages(vec![
         AgentMsg {
             me: true,
@@ -373,7 +373,7 @@ async fn select_all_copies_tool_rows(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn a_bubble_with_an_image_grows_with_its_wrapped_text(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), readonly(), ChatHooks::default());
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
     let text = "and runs in the nearest loop tab. but if there are no loop tabs then you have no idea what is going on. I'd think that resolve conflicts would just run in the nearest ops tab like other git-operations that need AI";
     let body = format!("if PR has conflicts it shows this: ⟦attachment:i1⟧ {text}");
     h.set_messages(vec![AgentMsg {

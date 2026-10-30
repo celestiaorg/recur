@@ -25,7 +25,7 @@ tracing.workspace = true
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
-recur-services = { workspace = true, features = ["mock"] }
+recur-services = { workspace = true, features = ["fake"] }
 pretty_assertions.workspace = true
 parking_lot.workspace = true
 

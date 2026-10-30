@@ -2,7 +2,9 @@
 //! Update with base and its method menu, merge methods, the optimistic merge and its rollback.
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::{Pr, PrComment};
+use recur_services::fake::{Overrides, Seed, hold};
+use recur_services::{Error, Result};
 use recur_ui::widgets::ToastKind;
 use recur_view_core::ViewName;
 use serde_json::json;
@@ -190,7 +192,13 @@ fn a_repo_that_only_allows_squash_hides_the_other_merge_methods(cx: &mut TestApp
     assert!(!s.has("pr-merge-squash"));
 }
 
-fn clean(sd: &mut recur_services::mock::Seed) {
+fn seed_pr(seed: &Seed, id: &str) -> Result<Pr> {
+    seed.pr(id)
+        .cloned()
+        .ok_or_else(|| Error::new("get_pr returned null"))
+}
+
+fn clean(sd: &mut Seed) {
     patch_pr(
         sd,
         "482",
@@ -204,21 +212,13 @@ fn confirming_merge_paints_merged_before_github_returns(cx: &mut TestAppContext)
     let mut s = boot(
         cx,
         clean,
-        MockOptions::default()
-            .resolver("MergePR", move |_, _, _| {
-                let (reply, release) = Reply::deferred();
+        Overrides::default()
+            .merge_pr(move |_, _| {
+                let (answer, release) = hold();
                 let _ = tx.send(release);
-                reply
+                answer
             })
-            .resolver("GetPR", |a, seed, _| {
-                Reply::value(
-                    a.first()
-                        .and_then(|id| id.as_str())
-                        .and_then(|id| seed.pr_by_id(id))
-                        .cloned()
-                        .unwrap_or_default(),
-                )
-            }),
+            .get_pr(|seed, id| seed_pr(seed, &id)),
     );
     s.open_pr("482");
     s.click("pr-act:pr-merge=Merge");
@@ -231,13 +231,12 @@ fn confirming_merge_paints_merged_before_github_returns(cx: &mut TestAppContext)
     assert!(s.has("statepill=Merged"));
     assert!(!s.has("pr-act:pr-merge=Merge"));
 
-    let mut row = recur_services::mock::fixtures::seed()
-        .pr_by_id("482")
-        .cloned()
-        .unwrap();
-    row["state"] = json!("In review");
-    row["group"] = json!("you");
-    rx.try_recv().expect("merging").send(Reply::value(row));
+    let row = Pr {
+        state: "In review".into(),
+        group: "you".into(),
+        ..Seed::e2e().pr("482").cloned().unwrap()
+    };
+    rx.try_recv().expect("merging").send(Ok(row));
     s.settle();
     assert!(s.has("statepill=Merged"));
     assert!(!s.has("pr-act:pr-merge=Merge"));
@@ -253,27 +252,30 @@ fn a_failed_merge_restores_the_button_and_keeps_updates_from_the_round_trip(
     let mut s = boot(
         cx,
         clean,
-        MockOptions::default()
-            .resolver("MergePR", move |_, _, _| {
+        Overrides::default()
+            .merge_pr(move |_, _| {
                 merging.store(true, std::sync::atomic::Ordering::SeqCst);
-                let (reply, release) = Reply::deferred();
+                let (answer, release) = hold();
                 let _ = tx.send(release);
-                reply
+                answer
             })
-            .resolver("GetPR", move |a, seed, _| {
-                let Some(mut pr) = a.first().and_then(|id| id.as_str()).and_then(|id| seed.pr_by_id(id)).cloned() else {
-                    return Reply::null();
-                };
+            .get_pr(move |seed, id| {
+                let mut pr = seed_pr(seed, &id)?;
                 if m2.load(std::sync::atomic::Ordering::SeqCst) {
-                    let list = pr["comments"].as_array_mut().unwrap();
-                    if !list.iter().any(|c| c["id"] == "during-merge") {
-                        list.push(json!({
-                            "id": "during-merge", "kind": "comment", "author": "sam",
-                            "bodyMd": "landed while merging", "bodyHtml": "landed while merging", "time": "now",
-                        }));
+                    let list = pr.comments.get_or_insert_default();
+                    if !list.iter().any(|c| c.id == "during-merge") {
+                        list.push(PrComment {
+                            id: "during-merge".into(),
+                            kind: "comment".into(),
+                            author: "sam".into(),
+                            body_md: "landed while merging".into(),
+                            body_html: "landed while merging".into(),
+                            time: "now".into(),
+                            ..Default::default()
+                        });
                     }
                 }
-                Reply::value(pr)
+                Ok(pr)
             }),
     );
     s.open_pr("482");
@@ -295,7 +297,7 @@ fn a_failed_merge_restores_the_button_and_keeps_updates_from_the_round_trip(
 
     rx.try_recv()
         .expect("merging")
-        .send(Reply::error("protected branch"));
+        .send(Err(Error::new("protected branch")));
     s.settle();
     assert!(s.until(|s| s.toasted(ToastKind::Error, "protected branch")));
     assert!(s.until(|s| s.has("pr-act:pr-merge=Merge")));
@@ -321,7 +323,7 @@ fn failing_merge<'a>(cx: &'a mut TestAppContext, msg: &'static str) -> S<'a> {
     let mut s = boot(
         cx,
         |_| {},
-        MockOptions::default().resolver("MergePR", move |_, _, _| Reply::error(msg)),
+        Overrides::default().merge_pr(move |_, _| Err(Error::new(msg))),
     );
     s.open_pr("482");
     s.click("pr-act:pr-merge=Merge");

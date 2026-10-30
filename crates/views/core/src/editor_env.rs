@@ -314,7 +314,8 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use gpui::TestAppContext;
-    use recur_services::mock::{MockBridge, MockOptions, Release, Reply};
+    use recur_services::Result;
+    use recur_services::fake::{Fake, Overrides, Release, hold};
 
     use super::*;
     use crate::LocalStorage;
@@ -323,19 +324,16 @@ mod tests {
     /// the grammars register once every read has landed.
     #[gpui::test]
     fn grammars_load_without_blocking_the_ui_thread(cx: &mut TestAppContext) {
-        let held: Arc<Mutex<Vec<(String, Release)>>> = Arc::default();
+        type Held = Vec<(String, Release<Result<String>>)>;
+        let held: Arc<Mutex<Held>> = Arc::default();
         let h = held.clone();
-        let bridge = MockBridge::fresh(MockOptions::default().resolver(
-            "ReadGrammar",
-            move |args, _, _| {
-                let (reply, release) = Reply::deferred();
-                let scope = args[0].as_str().unwrap_or_default().to_string();
-                h.lock().unwrap().push((scope, release));
-                reply
-            },
-        ));
+        let fake = Fake::fresh(Overrides::default().read_grammar(move |_, scope| {
+            let (answer, release) = hold();
+            h.lock().unwrap().push((scope, release));
+            answer
+        }));
         let env = cx.update(|cx| {
-            let state = AppState::install(bridge.services(), LocalStorage::in_memory(), cx);
+            let state = AppState::install(fake.services(), LocalStorage::in_memory(), cx);
             editor_env(&state, cx)
         });
         cx.run_until_parked();
@@ -344,9 +342,9 @@ mod tests {
         assert!(!env.read_with(cx, |e, _| e.grammars_ready));
         let first = pending[0].0.clone();
         for (scope, release) in pending {
-            release.send(Reply::value(serde_json::json!(format!(
+            release.send(Ok(format!(
                 "{{\"scopeName\": \"{scope}\", \"patterns\": []}}"
-            ))));
+            )));
         }
         cx.run_until_parked();
         assert!(env.read_with(cx, |e, _| e.grammars_ready));

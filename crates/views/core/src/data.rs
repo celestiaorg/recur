@@ -1410,10 +1410,9 @@ mod tests {
     /// Every view reads the store: a PR sweep that brings back what it has must not wake them.
     #[gpui::test]
     async fn a_pr_sweep_that_changes_nothing_does_not_notify(cx: &mut gpui::TestAppContext) {
-        let bridge = recur_services::mock::MockBridge::fresh(Default::default());
-        let state = cx.update(|cx| {
-            AppState::install(bridge.services(), crate::LocalStorage::in_memory(), cx)
-        });
+        let fake = recur_services::fake::Fake::fresh(Default::default());
+        let state = cx
+            .update(|cx| AppState::install(fake.services(), crate::LocalStorage::in_memory(), cx));
         let pr = |id: &str, title: &str| Pr {
             id: id.into(),
             title: title.into(),

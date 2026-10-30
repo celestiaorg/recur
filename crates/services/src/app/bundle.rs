@@ -141,7 +141,7 @@ fn to_symbol_info(s: &Symbol) -> SymbolInfo {
     }
 }
 
-fn to_grammar_info(g: &Grammar, lang: &[LanguageData]) -> GrammarInfo {
+pub(crate) fn to_grammar_info(g: &Grammar, lang: &[LanguageData]) -> GrammarInfo {
     let mut info = GrammarInfo {
         scope_name: g.scope_name.clone(),
         id: g.id.clone(),
@@ -172,7 +172,7 @@ fn to_grammar_info(g: &Grammar, lang: &[LanguageData]) -> GrammarInfo {
     info
 }
 
-fn to_theme_info(t: &Theme) -> ThemeInfo {
+pub(crate) fn to_theme_info(t: &Theme) -> ThemeInfo {
     ThemeInfo {
         id: t.id.clone(),
         name: t.name.clone(),
@@ -191,7 +191,7 @@ fn to_theme_info(t: &Theme) -> ThemeInfo {
     }
 }
 
-fn to_terminal_theme_info(t: &TerminalTheme) -> TerminalThemeInfo {
+pub(crate) fn to_terminal_theme_info(t: &TerminalTheme) -> TerminalThemeInfo {
     let p = &t.palette;
     TerminalThemeInfo {
         id: t.id.clone(),

@@ -2,7 +2,9 @@
 //! settings view and the add-project modal halves belong to the views that host them.
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_services::api::{CursorStatus, ModelChoice, ModelGroup, ProviderQuota, Snapshot};
+use recur_services::fake::Overrides;
+use recur_services::{AppEvent, Error};
 use recur_ui::widgets::ToastKind;
 use recur_view_core::LocalStorage;
 use serde_json::{Value, json};
@@ -34,35 +36,43 @@ fn settings_exposes_editable_models_and_the_fixed_rail_set(cx: &mut TestAppConte
 #[gpui::test]
 fn cursor_without_the_sdk_warns_and_installs(cx: &mut TestAppContext) {
     let installed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let status = |on: bool| {
-        json!({
-            "bridgeInstalled": on, "authenticated": on,
-            "email": if on { "dev@example.com" } else { "" },
-            "error": if on { "" } else { "cursor-sdk-bridge not found" },
-        })
+    let status = |on: bool| CursorStatus {
+        bridge_installed: on,
+        authenticated: on,
+        email: if on { "dev@example.com" } else { "" }.into(),
+        error: if on {
+            ""
+        } else {
+            "cursor-sdk-bridge not found"
+        }
+        .into(),
+        ..Default::default()
     };
-    let usage = json!({
-        "fetchedAt": 1, "stale": false,
-        "providers": [{ "id": "cursor", "name": "Cursor", "email": "dev@example.com",
-            "source": "Cursor Connect", "sourceId": "cursor_connect", "windows": [] }],
-    });
+    let usage = Snapshot {
+        fetched_at: 1,
+        stale: false,
+        providers: Some(vec![ProviderQuota {
+            id: "cursor".into(),
+            name: "Cursor".into(),
+            email: "dev@example.com".into(),
+            source: "Cursor Connect".into(),
+            source_id: "cursor_connect".into(),
+            ..Default::default()
+        }]),
+    };
     let (a, b) = (installed.clone(), installed.clone());
     let (u1, u2) = (usage.clone(), usage);
-    let opts = MockOptions::default()
-        .resolver("GetCursorStatus", move |_, _, _| {
-            Reply::value(status(a.load(std::sync::atomic::Ordering::SeqCst)))
-        })
-        .resolver("InstallCursorBridge", move |_, _, _| {
+    let opts = Overrides::default()
+        .get_cursor_status(move |_, ()| Ok(status(a.load(std::sync::atomic::Ordering::SeqCst))))
+        .install_cursor_bridge(move |_, ()| {
             b.store(true, std::sync::atomic::Ordering::SeqCst);
-            Reply::value(status(true))
+            Ok(status(true))
         })
-        .resolver("GetProviderUsage", move |_, _, _| Reply::value(u1.clone()))
-        .resolver("RefreshProviderUsage", move |_, _, _| {
-            Reply::value(u2.clone())
-        });
+        .get_provider_usage(move |_, ()| Ok(u1.clone()))
+        .refresh_provider_usage(move |_, ()| Ok(u2.clone()));
     let mut s = with(
         cx,
-        |sd| sd.settings["cursorApiKey"] = json!("crsr_test"),
+        |sd| sd.settings.cursor_api_key = "crsr_test".into(),
         opts,
     );
     s.open_settings();
@@ -76,29 +86,29 @@ fn cursor_without_the_sdk_warns_and_installs(cx: &mut TestAppContext) {
 
 #[gpui::test]
 fn adding_a_compatible_provider_reaches_the_model_catalog(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("ListModelCatalog", |_, sd, _| {
-        let mut out = vec![json!({
-            "provider": "claude-code", "label": "Claude Code",
-            "models": [{ "ref": "claude-code/claude-opus-5-5", "label": "Opus 5.5", "flags": [] }],
-        })];
-        for p in sd.settings["compatibleProviders"]
-            .as_array()
-            .into_iter()
-            .flatten()
-        {
-            let id = p["id"].as_str().unwrap_or_default();
-            let models: Vec<Value> = p["models"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .map(|m| {
-                    json!({ "ref": format!("{id}/{}", m["id"].as_str().unwrap_or_default()),
-                        "label": m["label"], "flags": [] })
-                })
-                .collect();
-            out.push(json!({ "provider": id, "label": p["name"], "models": models }));
+    let choice = |model_ref: String, label: &str| ModelChoice {
+        model_ref,
+        label: label.into(),
+        ..Default::default()
+    };
+    let opts = Overrides::default().list_model_catalog(move |sd, ()| {
+        let mut out = vec![ModelGroup {
+            provider: "claude-code".into(),
+            label: "Claude Code".into(),
+            models: vec![choice("claude-code/claude-opus-5-5".into(), "Opus 5.5")],
+        }];
+        for p in &sd.settings.compatible_providers {
+            out.push(ModelGroup {
+                provider: p.id.clone(),
+                label: p.name.clone(),
+                models: p
+                    .models
+                    .iter()
+                    .map(|m| choice(format!("{}/{}", p.id, m.id), &m.label))
+                    .collect(),
+            });
         }
-        Reply::value(Value::Array(out))
+        Ok(out)
     });
     let mut s = with(cx, |_| {}, opts);
     s.open_settings();
@@ -114,7 +124,7 @@ fn adding_a_compatible_provider_reaches_the_model_catalog(cx: &mut TestAppContex
     s.click("preset:OpenRouter");
     s.click("nt-go:on");
     assert!(!s.has("v-compat-provider"));
-    assert_eq!(s.saved()["compatibleProviders"][0]["id"], "openrouter");
+    assert_eq!(s.saved().compatible_providers[0].id, "openrouter");
 
     s.section("Models");
     s.click("sel:Agent / Coder model=claude-sonnet-5-5");
@@ -129,7 +139,7 @@ fn changing_the_agent_model_is_accepted(cx: &mut TestAppContext) {
     s.pick("Agent / Coder model", "Sonnet 5.5", "Haiku 4.5");
     assert!(s.has("sel:Agent / Coder model=Haiku 4.5"));
     assert_eq!(
-        s.saved()["modelAgent"],
+        s.saved().model_agent,
         "claude-code/claude-haiku-4-5-20251001"
     );
 }
@@ -141,7 +151,7 @@ fn changing_review_flags_is_accepted(cx: &mut TestAppContext) {
     s.section("Models");
     s.pick("Review flags", "High", "Extra High");
     assert!(s.has("sel:Review flags=Extra High"));
-    assert_eq!(s.saved()["flagsReview"]["effort"], "xhigh");
+    assert_eq!(s.saved().flags_review["effort"], "xhigh");
 }
 
 #[gpui::test]
@@ -173,7 +183,7 @@ fn appearance_picker_switches_and_persists_the_theme(cx: &mut TestAppContext) {
 fn legacy_catppuccin_theme_key_migrates_to_mocha(cx: &mut TestAppContext) {
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.theme", "catppuccin".to_string());
-    let mut s = boot(cx, |_| {}, MockOptions::default(), storage);
+    let mut s = boot(cx, |_| {}, Overrides::default(), storage);
     assert_eq!(s.theme(), "catppuccin-mocha");
     assert_eq!(
         s.storage("recur.theme").as_deref(),
@@ -333,9 +343,7 @@ fn loops_section_shows_loop_and_policy_pickers(cx: &mut TestAppContext) {
 
 #[gpui::test]
 fn a_failed_policy_save_shows_an_error_toast(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("SetSettings", |_, _, _| {
-        Reply::error("settings save failed")
-    });
+    let opts = Overrides::default().set_settings(|_, _| Err(Error::new("settings save failed")));
     let mut s = with(cx, |_| {}, opts);
     s.open_settings();
     s.section("Loops");
@@ -355,11 +363,14 @@ fn general_settings_include_a_branch_name_prefix_field(cx: &mut TestAppContext) 
     assert!(s.has("branch-example=typed-prefix/crispy-quiche"));
     s.click("seg:Prefix presets:None");
     assert!(s.has("branch-example=crispy-quiche"));
-    assert_eq!(s.saved()["branchNamePrefix"], "");
+    assert_eq!(s.saved().branch_name_prefix.as_deref(), Some(""));
     assert!(s.until(|s| s.has("seg:Prefix presets:GitHub")));
     s.click("seg:Prefix presets:GitHub");
     assert!(s.has("branch-example=mycodecrafting/crispy-quiche"));
-    assert_eq!(s.saved()["branchNamePrefix"], "mycodecrafting");
+    assert_eq!(
+        s.saved().branch_name_prefix.as_deref(),
+        Some("mycodecrafting")
+    );
     s.click("seg:Prefix presets:Recur");
     assert!(s.has("branch-example=recur/crispy-quiche"));
     assert!(s.has("seg:Prefix presets:Recur:on"));
@@ -411,7 +422,7 @@ fn pr_settings_radio_dots_share_a_column(cx: &mut TestAppContext) {
 #[gpui::test]
 fn the_menu_action_and_cmd_comma_open_settings(cx: &mut TestAppContext) {
     let mut s = plain(cx);
-    s.wire("menu.action", json!("settings"));
+    s.dispatch(AppEvent::MenuAction("settings".into()));
     assert_eq!(s.view(), recur_view_core::ViewName::Settings);
     assert!(s.has("set-head=General"));
     s.section("Data");

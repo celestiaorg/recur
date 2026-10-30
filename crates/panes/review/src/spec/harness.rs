@@ -1,4 +1,4 @@
-//! Windows around the review surface on the mock bridge, as the Observatory and PR detail
+//! Windows around the review surface on the typed service fakes, as the Observatory and PR detail
 //! host it, and selector-driven input (`debug_selector` keys).
 
 use std::cell::RefCell;
@@ -13,7 +13,7 @@ use gpui_kit::{
 use recur_domain::{FileDiff, Finding, Pr};
 use recur_engine::view::comment_thread::unresolved_line_notes_by_path;
 use recur_services::Services;
-use recur_services::mock::{MockBridge, MockOptions};
+use recur_services::fake::{Fake, Overrides};
 use recur_view_core::{AppState, LocalStorage};
 
 use crate::diff_file::{DiffFile, DiffFileHooks};
@@ -203,12 +203,11 @@ impl H<'_> {
 /// A surface on `opts`, as the Observatory mounts it for the seed's first active workspace.
 pub fn surface<'a>(
     cx: &'a mut TestAppContext,
-    opts: MockOptions,
+    opts: Overrides,
     props: impl FnOnce(&mut SurfaceProps),
 ) -> (H<'a>, Entity<SurfaceHost>) {
     init(cx);
-    let bridge = MockBridge::fresh(opts);
-    let services = bridge.services();
+    let services = Fake::fresh(opts).services();
     let state = cx.update(|cx| AppState::install(services.clone(), LocalStorage::in_memory(), cx));
     let mut p = SurfaceProps {
         project_id: PROJECT.into(),
@@ -391,21 +390,25 @@ impl Render for PrHost {
 /// PR #482 (the seed's richest PR) in PR detail's Files tab.
 pub fn pr_files<'a>(
     cx: &'a mut TestAppContext,
-    opts: MockOptions,
+    opts: Overrides,
     findings: Option<Vec<Finding>>,
 ) -> (H<'a>, Entity<PrHost>) {
     init(cx);
-    let bridge = MockBridge::fresh(opts);
-    let services = bridge.services();
+    let fake = Fake::fresh(opts);
+    let services = fake.services();
     let state = cx.update(|cx| AppState::install(services.clone(), LocalStorage::in_memory(), cx));
-    let prs: Vec<Pr> = bridge.with_seed(|s| {
-        s.prs()
-            .filter_map(|v| serde_json::from_value(v.clone()).ok())
+    let prs: Vec<Pr> = fake.with_seed(|s| {
+        s.prs
+            .iter()
+            .map(|p| Pr {
+                files: None,
+                commits: None,
+                ..p.clone()
+            })
             .collect()
     });
-    let full: Pr = bridge
-        .with_seed(|s| s.pr_by_id("482").cloned())
-        .and_then(|v| serde_json::from_value(v).ok())
+    let full: Pr = fake
+        .with_seed(|s| s.pr("482").cloned())
         .expect("seed pr 482");
     cx.update(|cx| {
         state.update(cx, |s, cx| {
@@ -450,4 +453,9 @@ pub fn pr_files<'a>(
     let mut h = H { state, cx: vcx };
     h.settle();
     (h, host)
+}
+
+/// A fixture written as JSON.
+pub fn de<T: serde::de::DeserializeOwned>(v: serde_json::Value) -> T {
+    serde_json::from_value(v).expect("fixture matches its type")
 }

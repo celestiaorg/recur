@@ -2,9 +2,11 @@
 //! actions on the detail route, and bundle `[[search]]` hits after the 200ms debounce.
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_services::api::{
+    PaletteSearchDto, PaletteSearchGroupDto, PromptCompleteHitDto, PromptResultDto,
+};
+use recur_services::fake::Overrides;
 use recur_view_core::ViewName;
-use serde_json::json;
 
 use super::harness::*;
 
@@ -75,7 +77,7 @@ fn the_detail_route_adds_open_in_copy_path_and_the_run_actions(cx: &mut TestAppC
     let mut s = boot(
         cx,
         with_runs(&[("dev", "pnpm dev"), ("test", "go test ./...")]),
-        t.terminals(MockOptions::default()),
+        t.terminals(Overrides::default()),
     );
     s.keys("secondary-k");
     assert!(!s.has("pal-row:Open in…") && !s.has("pal-row:Run…"));
@@ -99,26 +101,49 @@ fn the_detail_route_adds_open_in_copy_path_and_the_run_actions(cx: &mut TestAppC
     assert!(s.until(|s| s.toasted(recur_ui::widgets::ToastKind::Info, "Copied path")));
 }
 
-fn search_opts(calls: &Calls) -> MockOptions {
-    let search = calls.clone();
-    let opts = MockOptions::default().resolver("SearchPalette", move |a, _, _| {
-        search.0.lock().push(("SearchPalette".into(), a.to_vec()));
-        Reply::value(json!({"groups": [
-            {"name": "Linear", "iconSvg": "", "hits": [
-                {"insert": "ENG-412", "label": "ENG-412 Rate-limit the public API", "psub": "In Progress"},
-                {"insert": "", "label": "Linear settings", "action": "settings:integrations"},
-            ]},
-            {"name": "Empty", "hits": []},
-        ]}))
-    });
-    let expand = calls.clone();
-    opts.resolver("ExpandGoal", move |a, _, _| {
-        expand.0.lock().push(("ExpandGoal".into(), a.to_vec()));
-        Reply::value(json!({
-            "prompt": format!("Work on {}", a.first().and_then(|v| v.as_str()).unwrap_or("")),
-            "display": "Linear ENG-412",
-        }))
-    })
+fn search_opts(calls: &Calls) -> Overrides {
+    let (search, expand) = (calls.clone(), calls.clone());
+    let hit = |insert: &str, label: &str, psub: &str, action: &str| PromptCompleteHitDto {
+        insert: insert.into(),
+        label: label.into(),
+        psub: psub.into(),
+        action: action.into(),
+        ..Default::default()
+    };
+    let group = |name: &str, hits| PaletteSearchGroupDto {
+        name: name.into(),
+        hits: Some(hits),
+        ..Default::default()
+    };
+    Overrides::default()
+        .search_palette(move |_, q| {
+            search.push("search_palette", &[&q]);
+            Ok(PaletteSearchDto {
+                groups: Some(vec![
+                    group(
+                        "Linear",
+                        vec![
+                            hit(
+                                "ENG-412",
+                                "ENG-412 Rate-limit the public API",
+                                "In Progress",
+                                "",
+                            ),
+                            hit("", "Linear settings", "", "settings:integrations"),
+                        ],
+                    ),
+                    group("Empty", Vec::new()),
+                ]),
+            })
+        })
+        .expand_goal(move |_, text| {
+            expand.push("expand_goal", &[&text]);
+            Ok(PromptResultDto {
+                prompt: format!("Work on {text}"),
+                display: "Linear ENG-412".into(),
+                ..Default::default()
+            })
+        })
 }
 
 #[gpui::test]
@@ -131,18 +156,18 @@ fn bundle_search_hits_appear_after_the_debounce_and_expand_into_a_new_workspace(
     s.type_text("e");
     s.wait(300);
     // One character never searches.
-    assert!(calls.named("SearchPalette").is_empty());
+    assert!(calls.named("search_palette").is_empty());
     s.type_text("ng");
     s.wait(100);
-    assert!(calls.named("SearchPalette").is_empty());
+    assert!(calls.named("search_palette").is_empty());
     s.wait(150);
-    assert_eq!(calls.named("SearchPalette"), [vec![json!("eng")]]);
+    assert_eq!(calls.named("search_palette"), [vec!["eng"]]);
     assert!(s.has("pal-group:Linear") && !s.has("pal-group:Empty"));
     let hit = "pal-row:ENG-412 Rate-limit the public API";
     assert!(s.has(hit) || s.has(&format!("{hit}:sel")));
     s.click_row(hit);
     assert!(s.until(|s| s.read(|s| s.overlays.new_task)));
-    assert_eq!(calls.named("ExpandGoal"), [vec![json!("ENG-412")]]);
+    assert_eq!(calls.named("expand_goal"), [vec!["ENG-412"]]);
     // The expanded prompt is the modal's task.
     assert!(s.until(|s| s.has("nt-go:on")));
 }

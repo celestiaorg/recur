@@ -1,17 +1,17 @@
-//! The real services and the mock bridge agree: the mock answers from the
+//! The real services and the fake agree: the fake answers from the
 //! e2e seed, which is a dump of the same demo-seeded store the real services
 //! open here, so every read returns the same JSON and a missing id fails on
-//! both. One divergence comes from the mock itself and is pinned
-//! here so a view handles both: GetPR's commits carry diffs only on the mock
+//! both. One divergence comes from the fake itself and is pinned
+//! here so a view handles both: GetPR's commits carry diffs only on the fake
 //! (the real service leaves them to GetCommitDiff). GetEscalation for a loop
 //! with none answers an empty escalation on both. GetSettings normalizes the
 //! branch prefix only on the real side.
-#![cfg(feature = "mock")]
+#![cfg(feature = "fake")]
 
 use std::sync::Arc;
 
 use recur_engine::GitSetup;
-use recur_services::mock::{MockBridge, MockOptions};
+use recur_services::fake::{Fake, Overrides};
 use recur_services::{AppConfig, AppOptions, AppServices, Services};
 use recur_store::Store;
 use serde::Serialize;
@@ -59,7 +59,7 @@ fn diff(path: &str, a: &Value, b: &Value, out: &mut Vec<String>) {
                 diff(&format!("{path}[{i}]"), p, q, out);
             }
         }
-        _ if a != b => out.push(format!("{path}: real={a} mock={b}")),
+        _ if a != b => out.push(format!("{path}: real={a} fake={b}")),
         _ => {}
     }
 }
@@ -113,7 +113,7 @@ async fn calls(s: &Services) -> Vec<(String, Result<Value, String>)> {
 }
 
 /// The two stamps the e2e seed carries: seeddump marks every project a git
-/// checkout (the demo paths are not real repos) and the mock gives each
+/// checkout (the demo paths are not real repos) and the fake gives each
 /// loop a `/mock/worktrees/<id>` path.
 fn stamp_like_seed(v: &mut Value) {
     match v {
@@ -136,11 +136,11 @@ fn stamp_like_seed(v: &mut Value) {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn real_and_mock_agree_on_reads() {
+async fn real_and_fake_agree_on_reads() {
     let dir = tempfile::tempdir().unwrap();
     let real = real(dir.path()).await;
-    let mock = MockBridge::fresh(MockOptions::default());
-    let (r, m) = (calls(&real.services()).await, calls(&mock.services()).await);
+    let fake = Fake::fresh(Overrides::default());
+    let (r, m) = (calls(&real.services()).await, calls(&fake.services()).await);
     let mut out = Vec::new();
     for ((name, a), (_, b)) in r.iter().zip(&m) {
         match (a, b) {
@@ -157,7 +157,7 @@ async fn real_and_mock_agree_on_reads() {
                 diff(name, &a, &b, &mut out);
             }
             (Err(_), Err(_)) => {}
-            _ => out.push(format!("{name}: real={a:?} mock={b:?}")),
+            _ => out.push(format!("{name}: real={a:?} fake={b:?}")),
         }
     }
     assert!(out.is_empty(), "{}", out.join("\n"));
@@ -173,22 +173,22 @@ async fn real_and_mock_agree_on_reads() {
     let ws = "LOOP-2231";
     let esc = real.services().escalation.get_escalation(ws).await.unwrap();
     assert!(esc.id.is_empty(), "{esc:?}");
-    let esc = mock.services().escalation.get_escalation(ws).await.unwrap();
+    let esc = fake.services().escalation.get_escalation(ws).await.unwrap();
     assert!(esc.id.is_empty(), "{esc:?}");
     real.shutdown().await;
 }
 
 /// The demo seed reads this machine's `~/.codex` login (seeddump runs with
 /// an empty HOME), and GetSettings returns the normalized branch prefix
-/// where the mock returns the stored (unset) one.
-fn settings_like_real(real: &mut Value, mock: &mut Value) {
-    for v in [&mut *real, &mut *mock] {
+/// where the fake returns the stored (unset) one.
+fn settings_like_real(real: &mut Value, fake: &mut Value) {
+    for v in [&mut *real, &mut *fake] {
         if let Some(o) = v.as_object_mut() {
             o.remove("codexChatGPTAuth");
         }
     }
-    if mock["branchNamePrefix"].is_null() {
-        mock["branchNamePrefix"] = Value::String(recur_domain::DEFAULT_BRANCH_NAME_PREFIX.into());
+    if fake["branchNamePrefix"].is_null() {
+        fake["branchNamePrefix"] = Value::String(recur_domain::DEFAULT_BRANCH_NAME_PREFIX.into());
     }
 }
 

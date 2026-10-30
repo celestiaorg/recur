@@ -4,7 +4,7 @@ description = "Builds the desktop app and CLI into target/ (`-- --release` for a
 run = "cargo build"
 
 [dev]
-description = "Runs the desktop app on the engine-backed services (data dir defaults to Recur; `-- --features mock` for the mock bridge)"
+description = "Runs the desktop app on the engine-backed services (data dir defaults to Recur; `-- --features fake` for the typed service fakes)"
 run = "cargo run -p recur-desktop"
 
 [smoke]

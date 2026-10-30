@@ -29,8 +29,9 @@ objc2-foundation.workspace = true
 [dev-dependencies]
 parking_lot.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
-recur-services = { workspace = true, features = ["mock"] }
+recur-services = { workspace = true, features = ["fake"] }
 tempfile.workspace = true
+serde.workspace = true
 
 [lints]
 workspace = true

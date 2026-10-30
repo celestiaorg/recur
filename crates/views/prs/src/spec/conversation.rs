@@ -2,7 +2,7 @@
 //! titlebar, edits, quote replies, deletes, nested review notes, reactions and review events.
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_services::fake::{Overrides, hold};
 use recur_ui::widgets::ToastKind;
 use serde_json::json;
 
@@ -77,7 +77,7 @@ fn long_inline_code_in_a_pr_description_and_comment_does_not_widen_the_pane(
 ) {
     let token = "localStorage.setItem('eden-onboarding-storage',JSON.stringify({state:{hasCompletedOnboarding:true,hasSkippedOnboarding:false,hasStartedOnboarding:true,currentStep:0,onboardingVersion:\"v1\"},version:0}))";
     let mut s = plain_with(cx, |sd| {
-        let mut comments = sd.pr_by_id("482").unwrap()["comments"].clone();
+        let mut comments = pr_json(sd, "482")["comments"].clone();
         for c in comments.as_array_mut().unwrap() {
             if c["kind"] == "description" {
                 c["bodyMd"] = json!(format!(
@@ -216,10 +216,10 @@ fn closes_the_conversation_reply_composer_before_a_slow_github_write_returns(
     let mut s = boot(
         cx,
         |_| {},
-        MockOptions::default().resolver("ReplyPRComment", move |_, _, _| {
-            let (reply, release) = Reply::deferred();
+        Overrides::default().reply_pr_comment(move |_, _| {
+            let (answer, release) = hold();
             let _ = tx.send(release);
-            reply
+            answer
         }),
     );
     s.open_pr("482");
@@ -236,10 +236,19 @@ fn closes_the_conversation_reply_composer_before_a_slow_github_write_returns(
         .find(|c| c.body_md == "slow thread reply")
         .expect("optimistic reply");
     assert!(s.has(&format!("cmt-kid-note:{}:slow thread reply", pending.id)));
-    rx.try_recv().expect("in flight").send(Reply::value(json!({
-        "id": "gh-inline-slow-reply", "code": "YO", "author": "You", "time": "now", "bodyHtml": "",
-        "bodyMd": "slow thread reply", "verb": "commented", "kind": "comment", "inReplyToId": "gh-inline-1",
-    })));
+    rx.try_recv()
+        .expect("in flight")
+        .send(Ok(recur_domain::PrComment {
+            id: "gh-inline-slow-reply".into(),
+            code: "YO".into(),
+            author: "You".into(),
+            time: "now".into(),
+            body_md: "slow thread reply".into(),
+            verb: "commented".into(),
+            kind: "comment".into(),
+            in_reply_to_id: "gh-inline-1".into(),
+            ..Default::default()
+        }));
     s.settle();
     assert!(s.has("cmt-kid-note:gh-inline-slow-reply:slow thread reply"));
 }
@@ -301,7 +310,7 @@ fn shows_and_toggles_reactions_on_conversation_items(cx: &mut TestAppContext) {
 #[gpui::test]
 fn review_events_stand_out_and_have_no_reaction_picker(cx: &mut TestAppContext) {
     let mut s = plain_with(cx, |sd| {
-        let mut comments = sd.pr_by_id("482").unwrap()["comments"].clone();
+        let mut comments = pr_json(sd, "482")["comments"].clone();
         let list = comments.as_array_mut().unwrap();
         list.push(json!({ "id": "gh-event-fp", "kind": "action", "author": "jcstein", "bodyMd": "force-pushed the branch", "time": "29d" }));
         list.push(json!({ "id": "gh-review-action-1", "kind": "action", "author": "Ferret-san", "verb": "approved", "bodyMd": "approved", "time": "28d" }));

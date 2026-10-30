@@ -5,39 +5,29 @@ use std::sync::Arc;
 
 use gpui::TestAppContext;
 use parking_lot::Mutex;
-use recur_services::mock::{MockOptions, Reply};
-use serde_json::{Value, json};
+use recur_domain::FileContent;
+use recur_services::fake::Overrides;
 
-use super::harness::{S, plain, with};
-
-fn disabled(s: &mut S, key: &str) -> Vec<String> {
-    s.saved()[key]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|v| v.as_str().map(str::to_string))
-        .collect()
-}
+use super::harness::{plain, with};
 
 #[gpui::test]
 fn bundles_can_disable_a_will_save_command(cx: &mut TestAppContext) {
     let writes: Arc<Mutex<Vec<String>>> = Default::default();
     let w = writes.clone();
-    let opts = MockOptions::default()
-        .resolver("ReadFile", |_, _, _| {
-            Reply::value(json!({
-                "path": "src/main.go", "language": "go",
-                "content": "package main\n\n\nfunc main() {}   \n", "size": 40, "writable": true,
-            }))
+    let opts = Overrides::default()
+        .read_file(|_, _| {
+            Ok(FileContent {
+                path: "src/main.go".into(),
+                language: "go".into(),
+                content: "package main\n\n\nfunc main() {}   \n".into(),
+                size: 40,
+                writable: true,
+                ..Default::default()
+            })
         })
-        .resolver("WriteFile", move |a, _, _| {
-            w.lock().push(
-                a.get(3)
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string(),
-            );
-            Reply::null()
+        .write_file(move |_, (_, _, _, content)| {
+            w.lock().push(content);
+            Ok(())
         });
     let mut s = with(cx, |_| {}, opts);
     s.open_settings();
@@ -45,7 +35,11 @@ fn bundles_can_disable_a_will_save_command(cx: &mut TestAppContext) {
     assert!(s.until(|s| s.has("tog:Disable Gofmt on Save:true")));
     s.click("tog:Disable Gofmt on Save:true");
     assert!(s.has("tog:Enable Gofmt on Save:false"));
-    assert!(disabled(&mut s, "disabledBundleCommands").contains(&"recur.go.gofmt-on-save".into()));
+    assert!(
+        s.saved()
+            .disabled_bundle_commands
+            .contains(&"recur.go.gofmt-on-save".into())
+    );
 
     s.state
         .update(s.cx, |st, cx| st.open_workspace("LOOP-2231", false, cx));
@@ -95,7 +89,11 @@ fn bundles_can_disable_a_prompt_action(cx: &mut TestAppContext) {
     assert!(s.until(|s| s.has("tog:Disable /commit:true")));
     s.click("tog:Disable /commit:true");
     assert!(s.has("tog:Enable /commit:false"));
-    assert!(disabled(&mut s, "disabledBundlePrompts").contains(&"recur.chat.commit".into()));
+    assert!(
+        s.saved()
+            .disabled_bundle_prompts
+            .contains(&"recur.chat.commit".into())
+    );
 }
 
 #[gpui::test]
@@ -106,12 +104,20 @@ fn bundles_can_disable_a_grammar_and_a_theme(cx: &mut TestAppContext) {
     assert!(s.until(|s| s.has("tog:Disable go:true")));
     s.click("tog:Disable go:true");
     assert!(s.has("tog:Enable go:false"));
-    assert!(disabled(&mut s, "disabledBundleGrammars").contains(&"recur.languages.go".into()));
+    assert!(
+        s.saved()
+            .disabled_bundle_grammars
+            .contains(&"recur.languages.go".into())
+    );
     s.section("Themes");
     assert!(s.until(|s| s.has("tog:Disable Cool Glow:true")));
     s.click("tog:Disable Cool Glow:true");
     assert!(s.has("tog:Enable Cool Glow:false"));
-    assert!(disabled(&mut s, "disabledBundleThemes").contains(&"cool-glow".into()));
+    assert!(
+        s.saved()
+            .disabled_bundle_themes
+            .contains(&"cool-glow".into())
+    );
 }
 
 #[gpui::test]
@@ -122,5 +128,9 @@ fn bundles_can_disable_a_snippet(cx: &mut TestAppContext) {
     assert!(s.until(|s| s.has("tog:Disable If Err:true")));
     s.click("tog:Disable If Err:true");
     assert!(s.has("tog:Enable If Err:false"));
-    assert!(disabled(&mut s, "disabledBundleSnippets").contains(&"recur.go.ife".into()));
+    assert!(
+        s.saved()
+            .disabled_bundle_snippets
+            .contains(&"recur.go.ife".into())
+    );
 }

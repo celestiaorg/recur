@@ -1,4 +1,4 @@
-//! The shell over the mock bridge: shell, keyboard-accessibility and toast scenarios that
+//! The shell over the typed service fakes: shell, keyboard-accessibility and toast scenarios that
 //! live in the shell and sidebar. Elements are found by
 //! their debug selectors (`row:<id>`, `ph:<project>`, `on:<id>`, `ct:<key>`, …).
 
@@ -10,14 +10,18 @@ use gpui_kit::{
     point, px,
 };
 use recur_app::{Shell, ShellOptions};
-use recur_services::mock::{MockBridge, MockOptions, Reply, Seed};
+use recur_domain::Workspace;
+use recur_services::api::{BundleSkipInfo, Snapshot};
+use recur_services::fake::{Fake, Overrides, Seed};
 use recur_ui::widgets::ToastStore;
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
 struct H<'a> {
     state: Entity<AppState>,
-    bridge: Arc<MockBridge>,
+    bridge: Arc<Fake>,
     cx: &'a mut VisualTestContext,
 }
 
@@ -28,110 +32,65 @@ fn init(cx: &mut TestAppContext) {
     });
 }
 
-fn bridge(patch: Value, opts: MockOptions) -> Arc<MockBridge> {
-    MockBridge::new(patched_seed(&patch), opts)
+fn bridge(patch: Value, opts: Overrides) -> Arc<Fake> {
+    Fake::new(patched_seed(&patch), opts)
 }
 
-const SEED_JSON: &str = include_str!("../../services/src/mock/seed.json");
-
-fn merge(into: &mut Value, patch: &Value) {
-    if let (Some(a), Some(b)) = (into.as_object_mut(), patch.as_object()) {
-        for (k, v) in b {
-            a.insert(k.clone(), v.clone());
+/// `v` with the fields `over` names replaced (`{ ...v, ...over }`).
+fn patched<T: Serialize + DeserializeOwned>(v: &T, over: &Value) -> T {
+    let mut base = serde_json::to_value(v).expect("seed row serializes");
+    if let (Some(a), Some(b)) = (base.as_object_mut(), over.as_object()) {
+        for (k, x) in b {
+            a.insert(k.clone(), x.clone());
         }
     }
+    serde_json::from_value(base).expect("patched seed row")
 }
 
-/// Upsert `rows` into the array at `list` by `id` (merging fields into an existing row), and
-/// mirror each into the `by_id` map when there is one.
-fn upsert(seed: &mut Value, list: &str, by_id: Option<&str>, rows: &Value) {
+/// Upsert `rows` by `id`, merging fields into an existing row.
+fn upsert<T: Serialize + DeserializeOwned + Default>(
+    list: &mut Vec<T>,
+    rows: &Value,
+    id: impl Fn(&T) -> &str,
+) {
     for row in rows.as_array().into_iter().flatten() {
-        let id = row
-            .get("id")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string();
-        let arr = seed.as_object_mut().and_then(|o| {
-            o.entry(list)
-                .or_insert_with(|| Value::Array(Vec::new()))
-                .as_array_mut()
-        });
-        let Some(arr) = arr else { continue };
-        match arr
-            .iter_mut()
-            .find(|x| x.get("id").and_then(Value::as_str) == Some(id.as_str()))
-        {
-            Some(x) => merge(x, row),
-            None => arr.push(row.clone()),
-        }
-        if let Some(map) = by_id
-            && let Some(m) = seed.as_object_mut().and_then(|o| {
-                o.entry(map)
-                    .or_insert_with(|| Value::Object(Default::default()))
-                    .as_object_mut()
-            })
-        {
-            match m.get_mut(&id) {
-                Some(x) => merge(x, row),
-                None => {
-                    m.insert(id.clone(), row.clone());
-                }
-            }
+        let key = row.get("id").and_then(Value::as_str).unwrap_or_default();
+        match list.iter_mut().find(|x| id(x) == key) {
+            Some(x) => *x = patched(x, row),
+            None => list.push(patched(&T::default(), row)),
         }
     }
 }
 
-/// Seed edits: `projects` and `loops` upsert rows by id; `projectGroups` replaces; `settings`
-/// merges.
-fn patch_seed(seed: &mut Value, patch: &Value) {
-    let Some(p) = patch.as_object() else { return };
-    if let Some(rows) = p.get("projects") {
-        upsert(seed, "projects", None, rows);
-    }
-    if let Some(rows) = p.get("loops") {
-        upsert(seed, "loops", Some("loopById"), rows);
-    }
-    if let Some(v) = p.get("projectGroups")
-        && let Some(o) = seed.as_object_mut()
-    {
-        o.insert("projectGroups".to_string(), v.clone());
-    }
-    if let Some(v) = p.get("settings")
-        && let Some(s) = seed.get_mut("settings")
-    {
-        merge(s, v);
-    }
-}
-
-/// The e2e seed with `patch` applied ([`patch_seed`]).
+/// The e2e seed with `patch` applied: `projects` and `loops` upsert rows by id;
+/// `projectGroups` replaces; `settings` merges.
 fn patched_seed(patch: &Value) -> Seed {
-    let mut raw: Value = serde_json::from_str(SEED_JSON).unwrap_or(Value::Null);
-    patch_seed(&mut raw, patch);
-    let set_path = |l: &mut Value| {
-        let empty = l
-            .get("worktreePath")
-            .and_then(Value::as_str)
-            .is_none_or(str::is_empty);
-        if empty {
-            let id = l.get("id").and_then(Value::as_str).unwrap_or_default();
-            let path = format!("/mock/worktrees/{id}");
-            if let Some(o) = l.as_object_mut() {
-                o.insert("worktreePath".into(), Value::String(path));
-            }
+    let mut s = Seed::e2e();
+    if let Some(rows) = patch.get("projects") {
+        upsert(&mut s.projects, rows, |p| &p.id);
+    }
+    if let Some(rows) = patch.get("loops") {
+        upsert(&mut s.workspaces, rows, |w| &w.id);
+        for w in s
+            .workspaces
+            .iter_mut()
+            .filter(|w| w.worktree_path.is_empty())
+        {
+            w.worktree_path = format!("/mock/worktrees/{}", w.id);
         }
-    };
-    if let Some(loops) = raw.get_mut("loops").and_then(Value::as_array_mut) {
-        loops.iter_mut().for_each(set_path);
     }
-    if let Some(m) = raw.get_mut("loopById").and_then(Value::as_object_mut) {
-        m.values_mut().for_each(set_path);
+    if let Some(v) = patch.get("projectGroups") {
+        s.project_groups = serde_json::from_value(v.clone()).expect("project groups");
     }
-    Seed::from_json(&raw)
+    if let Some(v) = patch.get("settings") {
+        s.settings = patched(&s.settings, v);
+    }
+    s
 }
 
 fn open(
     cx: &mut TestAppContext,
-    bridge: Arc<MockBridge>,
+    bridge: Arc<Fake>,
     storage: LocalStorage,
 ) -> (Entity<AppState>, &mut VisualTestContext) {
     open_with(cx, bridge, storage, ViewRegistry::default())
@@ -139,7 +98,7 @@ fn open(
 
 fn open_with(
     cx: &mut TestAppContext,
-    bridge: Arc<MockBridge>,
+    bridge: Arc<Fake>,
     storage: LocalStorage,
     registry: ViewRegistry,
 ) -> (Entity<AppState>, &mut VisualTestContext) {
@@ -162,7 +121,7 @@ fn open_with(
     (state, cx)
 }
 
-fn boot(cx: &mut TestAppContext, bridge: Arc<MockBridge>, storage: LocalStorage) -> H<'_> {
+fn boot(cx: &mut TestAppContext, bridge: Arc<Fake>, storage: LocalStorage) -> H<'_> {
     init(cx);
     let (state, cx) = open(cx, bridge.clone(), storage);
     let mut h = H { state, bridge, cx };
@@ -242,13 +201,13 @@ impl H<'_> {
         self.read(|s| s.view)
     }
 
-    fn seed_project(&self, id: &str) -> Value {
+    fn seed_project(&self, id: &str) -> recur_domain::Project {
         self.bridge.with_seed(|s| {
             s.projects
                 .iter()
-                .find(|p| p["id"] == id)
+                .find(|p| p.id == id)
                 .cloned()
-                .unwrap_or(Value::Null)
+                .unwrap_or_default()
         })
     }
 }
@@ -263,7 +222,7 @@ const SEED_LOOPS: [&str; 5] = [ESCALATED, ACTIVE, CODING, "LOOP-2235", PR_OPEN];
 fn boots_into_the_briefing_with_seeded_rows(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     assert_eq!(h.view(), ViewName::Briefing);
@@ -277,7 +236,7 @@ fn boots_into_the_briefing_with_seeded_rows(cx: &mut TestAppContext) {
 fn sidebar_flags_a_workspace_waiting_on_the_user(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     assert!(h.has(&format!("ct:row:{ESCALATED}")));
@@ -295,7 +254,7 @@ fn retryable_failed_and_interrupted_workspaces_need_you(cx: &mut TestAppContext)
     ]});
     let mut h = boot(
         cx,
-        bridge(patch, MockOptions::default()),
+        bridge(patch, Overrides::default()),
         LocalStorage::in_memory(),
     );
     assert!(h.has(&format!("ct:row:{ESCALATED}")));
@@ -313,11 +272,12 @@ fn collapsed_group_does_not_badge_a_hidden_pr_chat_host(cx: &mut TestAppContext)
             "type": "solo", "goal": "PR chat", "short": "PR chat", "archived": false,
             "isMain": false, "state": "paused", "diff": {"add": 0, "del": 0}}],
     });
-    let opts = MockOptions::default().resolver("ListPendingQuestions", |_, _, _| {
-        Reply::value(
+    let opts = Overrides::default().list_pending_questions(|_, ()| {
+        Ok(serde_json::from_value(
             json!([{"id": "q-host", "workspaceId": "ws-pr-host", "agentCode": "MA",
             "question": "Ship it?", "askedAgo": "1m"}]),
         )
+        .unwrap())
     });
     let mut h = boot(cx, bridge(patch, opts), LocalStorage::in_memory());
     assert!(h.has("gh:g-sites"));
@@ -332,7 +292,7 @@ fn collapsed_group_does_not_badge_a_hidden_pr_chat_host(cx: &mut TestAppContext)
 #[gpui_kit::test]
 fn restores_the_last_open_workspace_after_a_restart(cx: &mut TestAppContext) {
     init(cx);
-    let b = bridge(json!({}), MockOptions::default());
+    let b = bridge(json!({}), Overrides::default());
     {
         let (state, vcx) = open(cx, b.clone(), LocalStorage::in_memory());
         let mut h = H {
@@ -359,7 +319,7 @@ fn restores_the_last_open_workspace_after_a_restart(cx: &mut TestAppContext) {
 #[gpui_kit::test]
 fn stays_on_the_briefing_after_a_restart_if_that_was_the_last_view(cx: &mut TestAppContext) {
     init(cx);
-    let b = bridge(json!({}), MockOptions::default());
+    let b = bridge(json!({}), Overrides::default());
     {
         let (state, vcx) = open(cx, b.clone(), LocalStorage::in_memory());
         let mut h = H {
@@ -386,7 +346,7 @@ fn stays_on_the_briefing_after_a_restart_if_that_was_the_last_view(cx: &mut Test
 fn inbox_and_pr_dashboard_do_not_keep_the_row_selected(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     let on = format!("on:{ACTIVE}");
@@ -406,7 +366,7 @@ fn inbox_and_pr_dashboard_do_not_keep_the_row_selected(cx: &mut TestAppContext) 
 fn hover_shows_view_pr_and_remove(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     assert!(!h.has(&format!("rm:{PR_OPEN}")));
@@ -423,7 +383,7 @@ fn hover_shows_view_pr_and_remove(cx: &mut TestAppContext) {
 fn hover_remove_archives_a_settled_workspace_after_confirm(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.hover(&format!("row:{PR_OPEN}"));
@@ -434,11 +394,9 @@ fn hover_remove_archives_a_settled_workspace_after_confirm(cx: &mut TestAppConte
     );
     h.click(&format!("rm:{PR_OPEN}"));
     assert!(!h.has(&format!("row:{PR_OPEN}")));
-    let archived = h.bridge.with_seed(|s| {
-        s.loop_by_id(PR_OPEN)
-            .map(|l| l["archived"] == true)
-            .unwrap_or(false)
-    });
+    let archived = h
+        .bridge
+        .with_seed(|s| s.workspace(PR_OPEN).is_some_and(|w| w.archived));
     assert!(archived);
 }
 
@@ -446,7 +404,7 @@ fn hover_remove_archives_a_settled_workspace_after_confirm(cx: &mut TestAppConte
 fn hover_remove_stays_disabled_on_a_running_workspace(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.hover(&format!("row:{CODING}"));
@@ -463,24 +421,24 @@ fn hover_remove_stays_disabled_on_a_running_workspace(cx: &mut TestAppContext) {
 fn project_tree_expand_collapse_follows_open_and_toggles(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     assert!(h.has("main:storefront"), "open project shows its rows");
     assert!(!h.has("main:marketing"), "closed project is collapsed");
     h.click("ph:storefront");
     assert!(!h.has("main:storefront"));
-    assert_eq!(h.seed_project("storefront")["open"], false);
+    assert!(!h.seed_project("storefront").open);
     h.click("ph:storefront");
     assert!(h.has("main:storefront"));
-    assert_eq!(h.seed_project("storefront")["open"], true);
+    assert!(h.seed_project("storefront").open);
 }
 
 #[gpui_kit::test]
 fn right_click_hides_a_project_and_the_eye_toggle_reveals_it(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     assert!(!h.has("sec-hidden"));
@@ -489,7 +447,7 @@ fn right_click_hides_a_project_and_the_eye_toggle_reveals_it(cx: &mut TestAppCon
     h.click("rail-move-hide");
     assert!(!h.has("rail-move-menu"));
     assert!(!h.has("ph:marketing"));
-    assert_eq!(h.seed_project("marketing")["hidden"], true);
+    assert!(h.seed_project("marketing").hidden);
     h.click("sec-hidden");
     assert!(h.read(|s| s.show_hidden_projects()));
     assert!(h.has("ph:marketing"));
@@ -503,7 +461,7 @@ fn boots_with_saved_hidden_projects_and_show_hidden(cx: &mut TestAppContext) {
     });
     let mut h = boot(
         cx,
-        bridge(patch, MockOptions::default()),
+        bridge(patch, Overrides::default()),
         LocalStorage::in_memory(),
     );
     assert!(h.has("ph:marketing"));
@@ -516,7 +474,7 @@ fn boots_with_saved_hidden_projects_and_show_hidden(cx: &mut TestAppContext) {
 fn collapsed_sidebar_flies_out_from_the_left_edge(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.click("tb-rail");
@@ -549,7 +507,7 @@ fn collapsed_sidebar_flies_out_from_the_left_edge(cx: &mut TestAppContext) {
 fn collapsed_flyout_dismisses_with_escape_without_leaving_the_view(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.click(&format!("hit:{ACTIVE}"));
@@ -567,7 +525,7 @@ fn collapsed_flyout_dismisses_with_escape_without_leaving_the_view(cx: &mut Test
 fn alt_cmd_arrows_cycle_workspaces_in_sidebar_order(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     let rows: Vec<(String, f32)> = SEED_LOOPS
@@ -595,7 +553,7 @@ fn alt_cmd_arrows_peek_a_collapsed_project_and_recollapse_unless_you_dwell(
 ) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.click("ph:storefront");
@@ -617,14 +575,14 @@ fn alt_cmd_arrows_peek_a_collapsed_project_and_recollapse_unless_you_dwell(
     h.wait(1200);
     h.keys("alt-secondary-down");
     assert!(h.has("main:storefront"), "a dwell keeps it open");
-    assert_eq!(h.seed_project("storefront")["open"], true);
+    assert!(h.seed_project("storefront").open);
 }
 
 #[gpui_kit::test]
 fn esc_from_workspace_detail_returns_to_the_briefing(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.click(&format!("hit:{ACTIVE}"));
@@ -637,7 +595,7 @@ fn esc_from_workspace_detail_returns_to_the_briefing(cx: &mut TestAppContext) {
 fn esc_from_pr_detail_returns_to_the_pr_list(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     let state = h.state.clone();
@@ -656,7 +614,7 @@ fn esc_while_typing_does_not_navigate_away(cx: &mut TestAppContext) {
     });
     let mut h = boot(
         cx,
-        bridge(patch, MockOptions::default()),
+        bridge(patch, Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.click(&format!("hit:{ACTIVE}"));
@@ -676,7 +634,7 @@ fn rename_commits_on_enter(cx: &mut TestAppContext) {
     });
     let mut h = boot(
         cx,
-        bridge(patch, MockOptions::default()),
+        bridge(patch, Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.hover("gh:g-a");
@@ -693,7 +651,7 @@ fn rename_commits_on_enter(cx: &mut TestAppContext) {
 fn add_project_is_not_left_focused_after_launch(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     // A focused Add project would open the project form on Enter.
@@ -705,16 +663,26 @@ fn add_project_is_not_left_focused_after_launch(cx: &mut TestAppContext) {
 
 #[gpui_kit::test]
 fn shift_cmd_n_creates_a_blank_workspace_without_the_modal(cx: &mut TestAppContext) {
-    let creates: Arc<parking_lot::Mutex<Vec<Vec<Value>>>> = Arc::default();
+    let creates: Arc<parking_lot::Mutex<Vec<Vec<String>>>> = Arc::default();
     let log = creates.clone();
-    let opts = MockOptions::default().resolver("CreateWorkspace", move |a, _, _| {
-        log.lock().push(a.to_vec());
-        Reply::value(json!({
-            "id": "WS-NEW", "projectId": a[0], "type": "solo", "goal": "New Workspace",
-            "short": "New Workspace", "statusLabel": "Creating", "phase": "creating",
-            "branch": "recur/new", "baseBranch": "main",
-        }))
-    });
+    let opts = Overrides::default().create_workspace(
+        move |_, (project_id, name, base, mode, prompt, autonomy, _)| {
+            log.lock()
+                .push(vec![project_id.clone(), name, base, mode, prompt, autonomy]);
+            Ok(Workspace {
+                id: "WS-NEW".into(),
+                project_id,
+                r#type: "solo".into(),
+                goal: "New Workspace".into(),
+                short: "New Workspace".into(),
+                status_label: "Creating".into(),
+                phase: "creating".into(),
+                branch: "recur/new".into(),
+                base_branch: "main".into(),
+                ..Default::default()
+            })
+        },
+    );
     let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
     h.keys("shift-secondary-n");
     assert!(!h.read(|s| s.overlays.new_task));
@@ -734,7 +702,7 @@ fn shift_cmd_n_creates_a_blank_workspace_without_the_modal(cx: &mut TestAppConte
 fn window_shortcuts_work_with_nothing_focused(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.cx.update(|window, cx| window.blur(cx));
@@ -745,9 +713,8 @@ fn window_shortcuts_work_with_nothing_focused(cx: &mut TestAppContext) {
 
 #[gpui_kit::test]
 fn a_failed_save_shows_an_error_toast_that_auto_dismisses(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("UpdateProjectRunConfig", |_, _, _| {
-        Reply::error("disk is read-only")
-    });
+    let opts = Overrides::default()
+        .update_project_run_config(|_, _| Err(recur_services::Error::new("disk is read-only")));
     let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
     h.click("ph:storefront");
     let texts = |h: &mut H| {
@@ -779,7 +746,7 @@ fn dragging_a_project_into_a_group_moves_it_there(cx: &mut TestAppContext) {
     });
     let mut h = boot(
         cx,
-        bridge(patch, MockOptions::default()),
+        bridge(patch, Overrides::default()),
         LocalStorage::in_memory(),
     );
     let from = h.at("ph:storefront");
@@ -796,13 +763,10 @@ fn dragging_a_project_into_a_group_moves_it_there(cx: &mut TestAppContext) {
     }
     h.cx.simulate_mouse_up(to, MouseButton::Left, Modifiers::none());
     h.wait(300);
-    assert_eq!(h.seed_project("storefront")["groupId"], "g-a");
-    let order: Vec<String> = h.bridge.with_seed(|s| {
-        s.projects
-            .iter()
-            .map(|p| p["id"].as_str().unwrap_or_default().to_string())
-            .collect()
-    });
+    assert_eq!(h.seed_project("storefront").group_id, "g-a");
+    let order: Vec<String> = h
+        .bridge
+        .with_seed(|s| s.projects.iter().map(|p| p.id.clone()).collect());
     assert_eq!(
         &order[..2],
         ["storefront", "payments"],
@@ -816,16 +780,16 @@ fn dragging_a_project_into_a_group_moves_it_there(cx: &mut TestAppContext) {
 #[gpui::test]
 fn reload_bundles_rereads_the_catalog_and_reports_skipped_bundles(cx: &mut TestAppContext) {
     let calls = Arc::new(parking_lot::Mutex::new(Vec::<String>::new()));
-    let skipped = Arc::new(parking_lot::Mutex::new(json!([])));
+    let skipped = Arc::new(parking_lot::Mutex::new(Vec::<BundleSkipInfo>::new()));
     let (c1, c2, s2) = (calls.clone(), calls.clone(), skipped.clone());
-    let opts = MockOptions::default()
-        .resolver("InvalidateCatalog", move |_, _, _| {
+    let opts = Overrides::default()
+        .invalidate_catalog(move |_, ()| {
             c1.lock().push("InvalidateCatalog".into());
-            Reply::null()
+            Ok(())
         })
-        .resolver("ListSkippedBundles", move |_, _, _| {
+        .list_skipped_bundles(move |_, ()| {
             c2.lock().push("ListSkippedBundles".into());
-            Reply::value(s2.lock().clone())
+            Ok(s2.lock().clone())
         });
     let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
     let toast = |h: &mut H, kind: recur_ui::widgets::ToastKind, text: &str| {
@@ -848,8 +812,10 @@ fn reload_bundles_rereads_the_catalog_and_reports_skipped_bundles(cx: &mut TestA
         recur_ui::widgets::ToastKind::Success,
         "Bundles reloaded"
     ));
-    *skipped.lock() =
-        json!([{"name": "broken", "reason": "bad toml"}, {"name": "old", "reason": "x"}]);
+    *skipped.lock() = serde_json::from_value(
+        json!([{"name": "broken", "reason": "bad toml"}, {"name": "old", "reason": "x"}]),
+    )
+    .unwrap();
     h.state
         .update(h.cx, |s, cx| s.dispatch_menu_action("reload-bundles", cx));
     h.settle();
@@ -881,12 +847,11 @@ fn sidebar_usage_meter_opens_a_popover_with_quota_bars(cx: &mut TestAppContext) 
             {"id": "cursor", "name": "Cursor", "error": "No Cursor usage session", "hint": "Connect in Settings."}
         ]
     });
+    let usage: Snapshot = serde_json::from_value(usage).unwrap();
     let (u1, u2) = (usage.clone(), usage);
-    let opts = MockOptions::default()
-        .resolver("GetProviderUsage", move |_, _, _| Reply::value(u1.clone()))
-        .resolver("RefreshProviderUsage", move |_, _, _| {
-            Reply::value(u2.clone())
-        });
+    let opts = Overrides::default()
+        .get_provider_usage(move |_, ()| Ok(u1.clone()))
+        .refresh_provider_usage(move |_, ()| Ok(u2.clone()));
     let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
     assert!(h.has("use-chip:claude-code") && h.has("use-chip:codex"));
     assert!(!h.has("use-chip:cursor"), "two chips");
@@ -909,7 +874,7 @@ fn sidebar_usage_meter_opens_a_popover_with_quota_bars(cx: &mut TestAppContext) 
 fn working_copy_row_has_no_hover_actions(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.hover("main:storefront");
@@ -923,10 +888,10 @@ fn working_copy_row_has_no_hover_actions(cx: &mut TestAppContext) {
 fn sidebar_shows_live_pr_count(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
-    let n = h.bridge.with_seed(|s| s.prs().count());
+    let n = h.bridge.with_seed(|s| s.prs.len());
     assert!(n > 0);
     assert!(
         h.has(&format!("ct:nav-pr:{n}")),
@@ -945,7 +910,7 @@ fn dragging_a_project_onto_a_group_highlights_the_whole_group(cx: &mut TestAppCo
     });
     let mut h = boot(
         cx,
-        bridge(patch, MockOptions::default()),
+        bridge(patch, Overrides::default()),
         LocalStorage::in_memory(),
     );
     let from = h.at("ph:storefront");
@@ -992,7 +957,7 @@ fn storefront_rows(h: &mut H) -> Vec<String> {
 fn alt_cmd_arrows_scroll_the_selected_workspace_into_the_sidebar_tree(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     let rows = storefront_rows(&mut h);
@@ -1015,7 +980,7 @@ fn alt_cmd_arrows_scroll_the_selected_workspace_into_the_sidebar_tree(cx: &mut T
 fn opening_a_workspace_elsewhere_scrolls_it_into_the_sidebar_tree(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     let last = storefront_rows(&mut h).pop().unwrap();
@@ -1075,7 +1040,7 @@ fn resize_handles_under_a_modal_take_no_pointer(cx: &mut TestAppContext) {
         })
         .into()
     });
-    let bridge = bridge(json!({}), MockOptions::default());
+    let bridge = bridge(json!({}), Overrides::default());
     let (state, cx) = open_with(cx, bridge.clone(), LocalStorage::in_memory(), registry);
     let mut h = H { state, bridge, cx };
     h.settle();
@@ -1100,7 +1065,7 @@ fn resize_handles_under_a_modal_take_no_pointer(cx: &mut TestAppContext) {
 fn ctrl_shift_backtick_maximizes_the_terminal(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
-        bridge(json!({}), MockOptions::default()),
+        bridge(json!({}), Overrides::default()),
         LocalStorage::in_memory(),
     );
     h.click(&format!("hit:{ACTIVE}"));

@@ -320,8 +320,9 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use gpui::TestAppContext;
-    use recur_services::mock::{MockBridge, MockOptions, Reply};
-    use serde_json::json;
+    use recur_services::Error;
+    use recur_services::api::{PromptCompleteHitDto, PromptCompleteResultDto, PromptResultDto};
+    use recur_services::fake::{Fake, Overrides};
 
     use super::*;
 
@@ -329,14 +330,18 @@ mod tests {
     async fn caches_per_bundle_epoch_and_retries_failures(cx: &mut TestAppContext) {
         let calls = Arc::new(AtomicUsize::new(0));
         let c = calls.clone();
-        let bridge = MockBridge::fresh(MockOptions::default().resolver(
-            "ListPromptActions",
-            move |_, _, _| match c.fetch_add(1, Ordering::SeqCst) {
-                0 => Reply::error("boom"),
-                _ => Reply::value(json!([{"id": "a", "slash": "commit", "name": "Commit"}])),
-            },
-        ));
-        let services = bridge.services();
+        let fake = Fake::fresh(Overrides::default().list_prompt_actions(move |_, ()| {
+            match c.fetch_add(1, Ordering::SeqCst) {
+                0 => Err(Error::new("boom")),
+                _ => Ok(vec![PromptActionInfo {
+                    id: "a".into(),
+                    slash: "commit".into(),
+                    name: "Commit".into(),
+                    ..Default::default()
+                }]),
+            }
+        }));
+        let services = fake.services();
         let failed = cx.update(|cx| PromptCatalog::load(&services, 0, cx)).await;
         assert!(failed.is_empty());
         assert_eq!(
@@ -353,12 +358,16 @@ mod tests {
 
     #[gpui::test]
     async fn completes_with_label_fallback(cx: &mut TestAppContext) {
-        let bridge = MockBridge::fresh(
-            MockOptions::default().resolver("RunPromptComplete", |_, _, _| {
-                Reply::value(json!({"hits": [{"insert": "ENG-1"}], "message": "m"}))
-            }),
-        );
-        let services = bridge.services();
+        let fake = Fake::fresh(Overrides::default().run_prompt_complete(|_, _| {
+            Ok(PromptCompleteResultDto {
+                hits: Some(vec![PromptCompleteHitDto {
+                    insert: "ENG-1".into(),
+                    ..Default::default()
+                }]),
+                message: "m".into(),
+            })
+        }));
+        let services = fake.services();
         let info = PromptActionInfo {
             id: "lin".into(),
             has_complete: true,
@@ -388,15 +397,16 @@ mod tests {
 
     #[gpui::test]
     async fn shebang_run_normalizes_display(cx: &mut TestAppContext) {
-        let bridge = MockBridge::fresh(MockOptions::default().resolver(
-            "RunPromptAction",
-            |args, _, _| {
-                assert_eq!(args[1]["chatCode"], "PA2");
-                assert_eq!(args[1]["timeoutMs"], 5000);
-                Reply::value(json!({"prompt": "go", "display": "  two\nlines "}))
-            },
-        ));
-        let services = bridge.services();
+        let fake = Fake::fresh(Overrides::default().run_prompt_action(|_, (_, rc)| {
+            assert_eq!(rc.chat_code, "PA2");
+            assert_eq!(rc.timeout_ms, 5000);
+            Ok(PromptResultDto {
+                prompt: "go".into(),
+                display: "  two\nlines ".into(),
+                ..Default::default()
+            })
+        }));
+        let services = fake.services();
         let info = PromptActionInfo {
             id: "c".into(),
             name: "Commit".into(),

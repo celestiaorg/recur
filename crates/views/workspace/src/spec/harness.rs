@@ -1,5 +1,5 @@
 //! The detail route in a window as the shell mounts it (the WorkspaceDetail over the e2e seed
-//! on the mock bridge, a workspace opened), with selector-driven input.
+//! on the typed service fakes, a workspace opened), with selector-driven input.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -8,11 +8,12 @@ use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext, point, px};
 use gpui_kit::{
     AppContext as _, Bounds, Context, IntoElement, ParentElement, Pixels, Render, Styled, Window,
 };
+use recur_domain::ChatItem;
 use recur_engine::view::chat::AgentMsg;
-use recur_services::mock::{MockBridge, MockOptions, Seed};
+use recur_services::AppEvent;
+use recur_services::fake::{Fake, Overrides, Seed};
 use recur_view_chat::chat::{AgentChat, debug_key};
 use recur_view_core::{AppState, LocalStorage, ViewContext};
-use serde_json::Value;
 
 use crate::detail::WorkspaceDetail;
 use crate::view::WorkspaceView;
@@ -50,7 +51,7 @@ pub struct H<'a> {
     pub state: Entity<AppState>,
     pub root: Entity<Root>,
     pub detail: Entity<WorkspaceDetail>,
-    pub bridge: Arc<MockBridge>,
+    pub fake: Arc<Fake>,
     pub cx: &'a mut VisualTestContext,
 }
 
@@ -58,22 +59,22 @@ fn leak(s: &str) -> &'static str {
     Box::leak(s.to_string().into_boxed_str())
 }
 
-/// Boot over the e2e seed (edited by `seed`), `opts` on top of the mock's resolvers, local
+/// Boot over the e2e seed (edited by `seed`), `opts` on top of the fake's defaults, local
 /// storage preset by `storage`, then open `ws`.
 pub fn boot_with<'a>(
     cx: &'a mut TestAppContext,
     seed: impl FnOnce(&mut Seed),
-    opts: MockOptions,
+    opts: Overrides,
     storage: impl FnOnce(&mut LocalStorage),
     ws: &str,
 ) -> H<'a> {
     init(cx);
-    let mut sd = recur_services::mock::fixtures::base_seed().clone();
+    let mut sd = Seed::e2e();
     seed(&mut sd);
-    let bridge = MockBridge::new(sd, opts);
+    let fake = Fake::new(sd, opts);
     let mut st = LocalStorage::in_memory();
     storage(&mut st);
-    let services = bridge.services();
+    let services = fake.services();
     let state = cx.update(|cx| AppState::install(services.clone(), st, cx));
     let vcx = ViewContext {
         state: state.clone(),
@@ -95,7 +96,7 @@ pub fn boot_with<'a>(
         state,
         root,
         detail,
-        bridge,
+        fake,
         cx: vcx_cx,
     };
     h.settle();
@@ -103,7 +104,7 @@ pub fn boot_with<'a>(
     h
 }
 
-pub fn boot(cx: &mut TestAppContext, opts: MockOptions) -> H<'_> {
+pub fn boot(cx: &mut TestAppContext, opts: Overrides) -> H<'_> {
     boot_with(cx, |_| {}, opts, |_| {}, WS)
 }
 
@@ -149,7 +150,7 @@ impl H<'_> {
     /// A reload: a fresh `AppState` and detail route over the same backend and local storage,
     /// with the module caches (strip, heap, transcript UI, hoist) cleared as a page load does.
     pub fn reload(&mut self, ws: &str) {
-        let services = self.bridge.services();
+        let services = self.fake.services();
         let state = self.state.clone();
         let root = self.root.clone();
         let new_state = self.cx.update(|window, cx| {
@@ -352,9 +353,9 @@ impl H<'_> {
         }
     }
 
-    /// Push a backend event the way specs dispatched them.
-    pub fn dispatch(&mut self, name: &str, data: Value) {
-        self.bridge.dispatch_wire(name, data).expect("event");
+    /// Push a backend event.
+    pub fn dispatch(&mut self, event: AppEvent) {
+        self.fake.dispatch(event);
         self.settle();
     }
 
@@ -390,12 +391,41 @@ impl H<'_> {
     }
 }
 
-/// Tracks the wire calls a resolver sees.
-pub type Calls = Arc<parking_lot::Mutex<Vec<Vec<Value>>>>;
+/// Tracks the calls an override sees, arguments as strings.
+pub type Calls = Arc<parking_lot::Mutex<Vec<Vec<String>>>>;
 
 pub fn calls() -> Calls {
     Default::default()
 }
 
-/// A per-code transcript store shared by the Send / ChatItems resolvers.
-pub type Store = Arc<parking_lot::Mutex<std::collections::HashMap<String, Vec<Value>>>>;
+/// A per-code transcript store shared by the send / chat items overrides.
+pub type Store = Arc<parking_lot::Mutex<std::collections::HashMap<String, Vec<ChatItem>>>>;
+
+/// A fixture written as JSON.
+pub fn de<T: serde::de::DeserializeOwned>(v: serde_json::Value) -> T {
+    serde_json::from_value(v).expect("fixture matches its type")
+}
+
+pub fn item(role: &str, kind: &str, text: impl Into<String>) -> ChatItem {
+    ChatItem {
+        role: role.into(),
+        kind: kind.into(),
+        text: text.into(),
+        ..Default::default()
+    }
+}
+
+pub fn user(text: impl Into<String>) -> ChatItem {
+    item("user", "text", text)
+}
+
+pub fn assistant(text: impl Into<String>) -> ChatItem {
+    item("assistant", "text", text)
+}
+
+pub fn turn(duration_ms: i64) -> ChatItem {
+    ChatItem {
+        duration_ms,
+        ..item("assistant", "turn", "")
+    }
+}

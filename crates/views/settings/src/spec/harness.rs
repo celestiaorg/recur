@@ -1,5 +1,5 @@
-//! The shell with every view registered, as the desktop mounts it, on the mock bridge over the
-//! e2e seed, with selector-driven input (`debug_selector` keys) for the Settings spec ports.
+//! The shell with every view registered, as the desktop mounts it, on the typed service fakes over
+//! the e2e seed, with selector-driven input (`debug_selector` keys) for the Settings spec ports.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -7,10 +7,11 @@ use std::time::Duration;
 use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext, point, px};
 use gpui_kit::{Bounds, Focusable, Pixels};
 use recur_app::{Shell, ShellOptions};
-use recur_services::mock::{MockBridge, MockOptions, Seed};
+use recur_domain::Settings;
+use recur_services::AppEvent;
+use recur_services::fake::{Fake, Overrides, Seed};
 use recur_ui::widgets::{ToastKind, ToastStore};
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
-use serde_json::Value;
 
 /// The registry the desktop builds, as far as these specs need it.
 pub fn registry() -> ViewRegistry {
@@ -26,14 +27,14 @@ pub fn registry() -> ViewRegistry {
 
 pub struct S<'a> {
     pub state: Entity<AppState>,
-    pub bridge: Arc<MockBridge>,
+    pub fake: Arc<Fake>,
     pub cx: &'a mut VisualTestContext,
 }
 
 pub fn boot<'a>(
     cx: &'a mut TestAppContext,
     seed: impl FnOnce(&mut Seed),
-    opts: MockOptions,
+    opts: Overrides,
     storage: LocalStorage,
 ) -> S<'a> {
     let registry = registry();
@@ -41,10 +42,10 @@ pub fn boot<'a>(
         recur_app::init(&registry, cx);
         recur_ui::motion::freeze(cx);
     });
-    let mut sd = recur_services::mock::fixtures::seed();
+    let mut sd = Seed::e2e();
     seed(&mut sd);
-    let bridge = MockBridge::new(sd, opts);
-    let services = bridge.services();
+    let fake = Fake::new(sd, opts);
+    let services = fake.services();
     let state = cx.update(|cx| AppState::install(services.clone(), storage, cx));
     let ctx = ViewContext {
         state: state.clone(),
@@ -61,21 +62,16 @@ pub fn boot<'a>(
         let f = shell.focus_handle(cx);
         window.focus(&f, cx);
     });
-    let mut s = S { state, bridge, cx };
+    let mut s = S { state, fake, cx };
     s.settle();
     s
 }
 
 pub fn plain(cx: &mut TestAppContext) -> S<'_> {
-    boot(
-        cx,
-        |_| {},
-        MockOptions::default(),
-        LocalStorage::in_memory(),
-    )
+    boot(cx, |_| {}, Overrides::default(), LocalStorage::in_memory())
 }
 
-pub fn with(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: MockOptions) -> S<'_> {
+pub fn with(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: Overrides) -> S<'_> {
     boot(cx, seed, opts, LocalStorage::in_memory())
 }
 
@@ -189,14 +185,14 @@ impl S<'_> {
         })
     }
 
-    pub fn wire(&mut self, name: &str, data: Value) {
-        self.bridge.dispatch_wire(name, data).unwrap();
+    pub fn dispatch(&mut self, event: AppEvent) {
+        self.fake.dispatch(event);
         self.settle();
     }
 
-    /// The settings the bridge holds (what `SetSettings` saved).
-    pub fn saved(&mut self) -> Value {
-        self.bridge.with_seed(|s| s.settings.clone())
+    /// The settings the fake holds (what `set_settings` saved).
+    pub fn saved(&mut self) -> Settings {
+        self.fake.with_seed(|s| s.settings.clone())
     }
 
     pub fn storage(&mut self, key: &str) -> Option<String> {

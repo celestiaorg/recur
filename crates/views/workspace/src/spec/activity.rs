@@ -3,8 +3,11 @@
 //! and the closed-chat recents menu.
 
 use gpui::{Entity, TestAppContext};
+use recur_domain::{FeedItem, SessionView};
 use recur_engine::view::chat::{AgentMsg, ChatLog, ChatLogSession};
-use recur_services::mock::{MockOptions, Reply};
+use recur_services::AppEvent;
+use recur_services::events::{AgentUpdated, SessionDelta, SessionTag, SessionTurnEnd};
+use recur_services::fake::Overrides;
 use recur_view_chat::cards::session::{SessionCard, last_meta};
 use recur_view_chat::chat::AgentChat;
 use recur_view_chat::tools::{ToolCx, ToolView};
@@ -13,8 +16,8 @@ use serde_json::{Value, json};
 
 use super::harness::*;
 
-fn sessions() -> Value {
-    json!([
+fn sessions() -> Vec<SessionView> {
+    de(json!([
         {
             "id": "s-rv", "code": "RV", "name": "Reviewer", "kind": "reviewer", "status": "idle",
             "createdAt": 1_000, "updatedAt": 2_000,
@@ -35,30 +38,30 @@ fn sessions() -> Value {
             "createdAt": 3_000, "updatedAt": 4_000,
             "items": [{"role": "assistant", "kind": "text", "text": "Implemented the rotation fix."}],
         },
-    ])
+    ]))
 }
 
-fn facts() -> Value {
-    json!([{"id": "f1", "agentCode": "MA", "name": "Maestro", "text": "Converged: 0 findings.", "time": "now", "ts": 2_500, "isDeviation": false}])
+fn facts() -> Vec<FeedItem> {
+    de(
+        json!([{"id": "f1", "agentCode": "MA", "name": "Maestro", "text": "Converged: 0 findings.", "time": "now", "ts": 2_500, "isDeviation": false}]),
+    )
 }
 
-fn cockpit_opts(sessions: Value, facts: Value) -> MockOptions {
-    MockOptions::default()
-        .resolver("WorkspaceSessions", move |_, _, _| {
-            Reply::value(sessions.clone())
-        })
-        .resolver("WorkspaceFacts", move |_, _, _| Reply::value(facts.clone()))
+fn cockpit_opts(sessions: Vec<SessionView>, facts: Vec<FeedItem>) -> Overrides {
+    Overrides::default()
+        .workspace_sessions(move |_, _| Ok(sessions.clone()))
+        .workspace_facts(move |_, _| Ok(facts.clone()))
 }
 
-fn one_coder(items: Value) -> Value {
-    json!([{
+fn one_coder(items: Value) -> Vec<SessionView> {
+    de(json!([{
         "id": "s-co", "code": "CO", "name": "Coder", "kind": "coder", "status": "idle",
         "createdAt": 1_000, "updatedAt": 2_000, "items": items,
-    }])
+    }]))
 }
 
 /// `openLoopCockpit`: the active workspace on its Loop tab.
-fn open_cockpit(cx: &mut TestAppContext, opts: MockOptions) -> H<'_> {
+fn open_cockpit(cx: &mut TestAppContext, opts: Overrides) -> H<'_> {
     let mut h = boot(cx, opts);
     assert!(h.chip("MA").is_some(), "the Loop tab");
     h.select_tab("MA");
@@ -199,7 +202,7 @@ async fn session_cards_render_chronologically_and_expand_to_the_full_transcript(
 #[gpui::test]
 async fn sibling_specialists_share_one_fanout_card(cx: &mut TestAppContext) {
     let opts = cockpit_opts(
-        json!([
+        de(json!([
             {
                 "id": "s-co", "code": "CO", "name": "Coder", "kind": "coder", "status": "idle",
                 "createdAt": 1_000, "updatedAt": 2_000,
@@ -210,10 +213,10 @@ async fn sibling_specialists_share_one_fanout_card(cx: &mut TestAppContext) {
                 "createdAt": 3_000, "updatedAt": 4_000,
                 "items": [{"role": "assistant", "kind": "text", "text": "No new findings."}],
             },
-        ]),
-        json!([{"id": "f1", "agentCode": "MA", "name": "Maestro", "text": "Converged: 0 findings.", "time": "now", "ts": 5_000, "isDeviation": false}]),
+        ])),
+        de(json!([{"id": "f1", "agentCode": "MA", "name": "Maestro", "text": "Converged: 0 findings.", "time": "now", "ts": 5_000, "isDeviation": false}])),
     )
-    .resolver("ListLoopAgents", |_, _, _| Reply::value(json!([])));
+    .list_loop_agents(|_, _| Ok(Vec::new()));
     let mut h = open_cockpit(cx, opts);
     let cs = cards(&mut h);
     assert_eq!(cs.len(), 1);
@@ -228,15 +231,15 @@ async fn commit_and_handoff_land_in_the_specialist_timeline_collapsed_shows_the_
     cx: &mut TestAppContext,
 ) {
     let opts = cockpit_opts(
-        json!([{
+        de(json!([{
             "id": "s-co", "code": "CO", "name": "Coder", "kind": "coder", "status": "idle",
             "createdAt": 1_000, "updatedAt": 4_000,
             "items": [{"role": "assistant", "kind": "text", "text": "Implemented the rotation fix.", "ts": 1_100}],
-        }]),
-        json!([
+        }])),
+        de(json!([
             {"id": "f-c", "agentCode": "CO", "name": "Coder", "text": "Committed <code>abc</code> (+1 −0) to <code>main</code>.", "time": "now", "ts": 2_000, "isDeviation": false},
             {"id": "f-h", "agentCode": "CO", "name": "Coder", "text": "Handoff: raised the breakpoint.", "time": "now", "ts": 2_100, "isDeviation": false},
-        ]),
+        ])),
     );
     let mut h = open_cockpit(cx, opts);
     let cs = cards(&mut h);
@@ -268,7 +271,7 @@ async fn commit_and_handoff_land_in_the_specialist_timeline_collapsed_shows_the_
 }
 
 fn coder_tool(cx: &mut TestAppContext, item: Value) -> (H<'_>, String, Vec<AgentMsg>) {
-    let mut h = open_cockpit(cx, cockpit_opts(one_coder(json!([item])), json!([])));
+    let mut h = open_cockpit(cx, cockpit_opts(one_coder(json!([item])), Vec::new()));
     let cs = cards(&mut h);
     let id = cs[0][0].id.clone();
     h.click("sess-head:CO:closed");
@@ -423,7 +426,9 @@ async fn long_loop_fact_errors_wrap_instead_of_ellipsizing(cx: &mut TestAppConte
         cx,
         cockpit_opts(
             sessions(),
-            json!([{"id": "f-err", "agentCode": "MA", "name": "Maestro", "text": text, "time": "now", "ts": 2_500, "isDeviation": false}]),
+            de(
+                json!([{"id": "f-err", "agentCode": "MA", "name": "Maestro", "text": text, "time": "now", "ts": 2_500, "isDeviation": false}]),
+            ),
         ),
     );
     let fact = h.bounds("loop-fact:f-err").expect("the fact");
@@ -441,7 +446,9 @@ async fn pr_opened_fact_shows_completed_time_and_opens_the_pr(cx: &mut TestAppCo
         cx,
         cockpit_opts(
             sessions(),
-            json!([{"id": "f-pr", "agentCode": "MA", "name": "Maestro", "ts": 5_000, "isDeviation": false, "text": html}]),
+            de(
+                json!([{"id": "f-pr", "agentCode": "MA", "name": "Maestro", "ts": 5_000, "isDeviation": false, "text": html}]),
+            ),
         ),
     );
     assert!(h.has("loop-fact:f-pr"));
@@ -460,7 +467,7 @@ async fn one_specialist_session_with_two_turns_renders_two_cards_at_those_times(
     cx: &mut TestAppContext,
 ) {
     let opts = cockpit_opts(
-        json!([{
+        de(json!([{
             "id": "s-co", "code": "CO", "name": "Coder", "kind": "coder", "status": "idle",
             "createdAt": 1_000, "updatedAt": 4_000,
             "items": [
@@ -470,8 +477,8 @@ async fn one_specialist_session_with_two_turns_renders_two_cards_at_those_times(
                 {"role": "user", "kind": "text", "text": "fix again", "ts": 3_000},
                 {"role": "assistant", "kind": "text", "text": "second pass", "ts": 3_100},
             ],
-        }]),
-        json!([]),
+        }])),
+        Vec::new(),
     );
     let mut h = open_cockpit(cx, opts);
     let cs = cards(&mut h);
@@ -519,7 +526,7 @@ async fn coder_fix_turn_prompt_shows_the_short_label_not_the_mcp_dispatch_wire(
             {"role": "user", "kind": "text", "text": wire, "ts": 1_000},
             {"role": "assistant", "kind": "text", "text": "Centered the paddle on integer coords.", "ts": 1_100},
         ])),
-        json!([]),
+        Vec::new(),
     );
     let mut h = open_cockpit(cx, opts);
     let cs = cards(&mut h);
@@ -542,41 +549,56 @@ async fn coder_fix_turn_prompt_shows_the_short_label_not_the_mcp_dispatch_wire(
     assert!(h.me(&me.body));
 }
 
+fn coder_tag() -> SessionTag {
+    SessionTag {
+        workspace_id: WS.into(),
+        code: "CO".into(),
+        ..Default::default()
+    }
+}
+
+fn coder_status(status: &str) -> AppEvent {
+    AppEvent::AgentUpdated(AgentUpdated {
+        workspace_id: WS.into(),
+        agent_id: format!("{WS}-CO"),
+        status: status.into(),
+        ..Default::default()
+    })
+}
+
+fn coder_delta(text: &str, seq: i64) -> AppEvent {
+    AppEvent::SessionDelta(SessionDelta {
+        tag: coder_tag(),
+        text: text.into(),
+        seq: Some(seq),
+        replace: true,
+        ..Default::default()
+    })
+}
+
 #[gpui::test]
 async fn late_turn_end_and_stream_after_idle_do_not_keep_the_running_timer(
     cx: &mut TestAppContext,
 ) {
-    let opts = cockpit_opts(json!([]), json!([]))
-        .resolver("ListLoopAgents", |_, _, _| Reply::value(json!([])));
+    let opts = cockpit_opts(Vec::new(), Vec::new()).list_loop_agents(|_, _| Ok(Vec::new()));
     let mut h = open_cockpit(cx, opts);
     assert!(cards(&mut h).is_empty());
 
-    h.dispatch(
-        "agent.updated",
-        json!({"workspaceId": WS, "agentId": format!("{WS}-CO"), "status": "working"}),
-    );
-    h.dispatch(
-        "session.delta",
-        json!({"workspaceId": WS, "code": "CO", "text": "editing the rotation", "seq": 1, "replace": true}),
-    );
+    h.dispatch(coder_status("working"));
+    h.dispatch(coder_delta("editing the rotation", 1));
     assert!(h.has("sess-live:CO"));
     assert!(h.has("chat-turn-elapsed"));
 
-    h.dispatch(
-        "agent.updated",
-        json!({"workspaceId": WS, "agentId": format!("{WS}-CO"), "status": "idle"}),
-    );
+    h.dispatch(coder_status("idle"));
     assert!(!h.has("sess-live:CO"));
     assert!(!h.has("chat-turn-elapsed"));
 
-    h.dispatch(
-        "session.turn_end",
-        json!({"workspaceId": WS, "code": "CO", "durationMs": 4200}),
-    );
-    h.dispatch(
-        "session.delta",
-        json!({"workspaceId": WS, "code": "CO", "text": "late leftover chunk", "seq": 2, "replace": true}),
-    );
+    h.dispatch(AppEvent::SessionTurnEnd(SessionTurnEnd {
+        tag: coder_tag(),
+        duration_ms: 4200,
+        ..Default::default()
+    }));
+    h.dispatch(coder_delta("late leftover chunk", 2));
     // turn_end splits the session; open the settled slice so its footer renders.
     let ended = cards(&mut h)
         .into_iter()
@@ -613,19 +635,16 @@ async fn plan_panel_shows_the_workspace_checklist_and_agent_todos(cx: &mut TestA
         {"content": "Retarget e2e", "status": "pending"},
     ]})
     .to_string();
-    let opts = MockOptions::default().resolver("WorkspaceSessions", move |_, _, _| {
-        Reply::value(one_coder(json!([
+    let opts = Overrides::default().workspace_sessions(move |_, _| {
+        Ok(one_coder(json!([
             {"role": "assistant", "kind": "tool", "tool": "TodoWrite", "input": todos},
         ])))
     });
     let mut h = boot_with(
         cx,
         |s| {
-            if let Some(o) = s.find_loop(|l| l["id"] == WS) {
-                s.obj_mut(o)["plan"] = plan.clone();
-            }
-            if let Some(w) = s.loop_by_id_mut(WS) {
-                w["plan"] = plan.clone();
+            if let Some(w) = s.workspace_mut(WS) {
+                w.plan = Some(de(plan.clone()));
             }
         },
         opts,
@@ -730,7 +749,7 @@ fn closed_title(h: &mut H, code: &str) -> String {
 
 #[gpui::test]
 async fn reopens_a_closed_pair_tab_from_the_recents_menu(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default());
+    let mut h = boot(cx, Overrides::default());
     let code = new_then_close(&mut h);
     h.click("wsv-recents");
     assert!(h.has(&format!("wsv-recents-item:{code}")));
@@ -759,7 +778,7 @@ async fn reopens_a_closed_pair_tab_from_the_recents_menu(cx: &mut TestAppContext
 
 #[gpui::test]
 async fn permanently_deletes_a_closed_pair_tab_from_the_recents_menu(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default());
+    let mut h = boot(cx, Overrides::default());
     let code = new_then_close(&mut h);
     h.click("wsv-recents");
     let row = format!("wsv-recents-item:{code}");
@@ -774,7 +793,7 @@ async fn permanently_deletes_a_closed_pair_tab_from_the_recents_menu(cx: &mut Te
 
 #[gpui::test]
 async fn closes_the_loop_tab_like_other_chats(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default());
+    let mut h = boot(cx, Overrides::default());
     let loop_chip = h.chip("MA").expect("the Loop tab");
     h.hover(&loop_chip);
     assert!(h.has("tab-close:chat-tab-MA"));

@@ -1,13 +1,12 @@
-#![cfg(feature = "mock")]
-//! Every service method answered by the mock bridge, decoded through its
-//! typed return. The failures are exactly the calls the UI saw
-//! reject: a `null` struct reply (no resolver, or a missing seed row) or a
-//! resolver's `BridgeError`.
+#![cfg(feature = "fake")]
+//! Every service method answered by the fake. The failures are exactly the
+//! calls the UI saw reject: a record the fake has no answer for (no default,
+//! or a missing seed row) or a default's own error.
 
 use std::collections::BTreeMap;
 
 use pretty_assertions::assert_eq;
-use recur_services::mock::{MockBridge, MockOptions};
+use recur_services::fake::{Fake, Overrides};
 
 fn note(errs: &mut Vec<String>, name: &str, err: Option<recur_services::Error>) {
     if let Some(e) = err {
@@ -17,8 +16,7 @@ fn note(errs: &mut Vec<String>, name: &str, err: Option<recur_services::Error>) 
 
 #[tokio::test]
 async fn every_method_answers() {
-    let bridge = MockBridge::fresh(MockOptions::default());
-    let s = bridge.services();
+    let s = Fake::fresh(Overrides::default()).services();
     let mut errs = Vec::new();
     note(
         &mut errs,
@@ -1623,30 +1621,30 @@ async fn every_method_answers() {
             .await
             .err(),
     );
-    // Methods without a resolver whose struct reply is null, missing
+    // Records without a default answer, missing
     // grammar/theme/project/comment rows, and a reorder that must name every
     // open tab (MA, PA and the PA2/PA3 that create and fork opened).
     let expected = [
-        "RenameArtifact: RenameArtifact returned null",
+        "RenameArtifact: not answered by the fake",
         "ReadGrammar: grammar x not found",
         "ReadTheme: theme recur.text.uppercase not found",
-        "SearchPalette: SearchPalette returned null",
-        "EnsureLSP: EnsureLSP returned null",
-        "AddFindingNote: AddFindingNote returned null",
-        "DeleteFindingNote: DeleteFindingNote returned null",
-        "SaveScheduledPrompt: SaveScheduledPrompt returned null",
-        "SetProjectGroup: SetProjectGroup returned null",
-        "ReplyPRComment: ReplyPRComment returned null",
-        "SendBackToLoop: SendBackToLoop returned null",
-        "UpdatePRComment: UpdatePRComment returned null",
-        "TestCodexKey: TestCodexKey returned null",
-        "TestCompatibleProvider: TestCompatibleProvider returned null",
-        "TestCursorKey: TestCursorKey returned null",
-        "GetIssuesView: GetIssuesView returned null",
-        "OpenTerminal: OpenTerminal returned null",
-        "ClearWorkspaceIssue: ClearWorkspaceIssue returned null",
+        "SearchPalette: not answered by the fake",
+        "EnsureLSP: not answered by the fake",
+        "AddFindingNote: not answered by the fake",
+        "DeleteFindingNote: not answered by the fake",
+        "SaveScheduledPrompt: not answered by the fake",
+        "SetProjectGroup: not answered by the fake",
+        "ReplyPRComment: not answered by the fake",
+        "SendBackToLoop: not answered by the fake",
+        "UpdatePRComment: not answered by the fake",
+        "TestCodexKey: not answered by the fake",
+        "TestCompatibleProvider: not answered by the fake",
+        "TestCursorKey: not answered by the fake",
+        "GetIssuesView: not answered by the fake",
+        "OpenTerminal: not answered by the fake",
+        "ClearWorkspaceIssue: not answered by the fake",
         "ReorderWorkspaceChats: reorder chats: got 0 codes, have 4 tabs",
-        "SetWorkspaceIssue: SetWorkspaceIssue returned null",
+        "SetWorkspaceIssue: not answered by the fake",
     ];
     assert_eq!(errs, expected);
 }

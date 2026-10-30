@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use gpui::TestAppContext;
 use parking_lot::Mutex;
-use recur_services::mock::{MockOptions, Reply};
+use recur_services::fake::Overrides;
 use serde_json::{Value, json};
 
 use super::harness::*;
@@ -16,16 +16,15 @@ const CHECKS: &str = "https://github.com/acme/app/pull/482/checks";
 /// What `SendWorkspaceMessage` received: (text, display).
 type Sent = Arc<Mutex<Vec<(String, String)>>>;
 
-fn sender(opts: MockOptions) -> (MockOptions, Sent) {
+fn sender(opts: Overrides) -> (Overrides, Sent) {
     let sent = Arc::new(Mutex::new(Vec::new()));
     let s2 = sent.clone();
     let opts = opts
-        .resolver("ListLoopAgents", |_, _, _| Reply::value(json!([])))
-        .resolver("WorkspaceChatItems", |_, _, _| Reply::value(json!([])))
-        .resolver("SendWorkspaceMessage", move |a, _, _| {
-            let text = |i: usize| a.get(i).and_then(Value::as_str).unwrap_or("").to_string();
-            s2.lock().push((text(2), text(7)));
-            Reply::value(json!("On it."))
+        .list_loop_agents(|_, _| Ok(Vec::new()))
+        .workspace_chat_items(|_, _| Ok(Vec::new()))
+        .send_workspace_message(move |_, (_, _, text, _, _, _, _, display, _)| {
+            s2.lock().push((text, display));
+            Ok("On it.".into())
         });
     (opts, sent)
 }
@@ -34,7 +33,7 @@ fn sender(opts: MockOptions) -> (MockOptions, Sent) {
 fn a_blocked_github_pr_with_failing_checks_offers_fix_checks_instead_of_merge(
     cx: &mut TestAppContext,
 ) {
-    let (opts, sent) = sender(MockOptions::default());
+    let (opts, sent) = sender(Overrides::default());
     let mut s = boot(
         cx,
         |sd| {
@@ -67,7 +66,7 @@ fn a_blocked_github_pr_with_failing_checks_offers_fix_checks_instead_of_merge(
 
 #[gpui::test]
 fn failed_check_rows_offer_fix_which_focuses_that_check(cx: &mut TestAppContext) {
-    let (opts, sent) = sender(MockOptions::default());
+    let (opts, sent) = sender(Overrides::default());
     let mut s = boot(
         cx,
         |sd| {
@@ -100,7 +99,7 @@ fn failed_check_rows_offer_fix_which_focuses_that_check(cx: &mut TestAppContext)
 #[gpui::test]
 fn in_progress_check_duration_keeps_counting(cx: &mut TestAppContext) {
     let mut s = plain_with(cx, |sd| {
-        let mut checks = sd.pr_by_id("482").unwrap()["checks"].clone();
+        let mut checks = pr_json(sd, "482")["checks"].clone();
         checks.as_array_mut().unwrap().insert(
             0,
             json!({"name": "build", "detail": "45s", "passed": false, "status": "pending", "startedAt": "2026-08-21T12:00:00Z"}),
@@ -206,7 +205,7 @@ fn conversation_commit_shas_stay_aligned_when_some_rows_have_no_checks(cx: &mut 
                 "url": "https://github.com/acme/app/commit/162ae9daaaaaaa",
             },
         ]);
-        let existing = sd.pr_by_id("482").unwrap()["comments"].clone();
+        let existing = pr_json(sd, "482")["comments"].clone();
         comments
             .as_array_mut()
             .unwrap()
@@ -244,7 +243,7 @@ fn posts_a_conversation_comment_without_submitting_a_review(cx: &mut TestAppCont
 #[gpui::test]
 fn merged_prs_hide_commenting_and_conversation_checks(cx: &mut TestAppContext) {
     let mut s = plain_with(cx, |sd| {
-        let files = sd.pr_by_id("482").unwrap()["files"].clone();
+        let files = pr_json(sd, "482")["files"].clone();
         patch_pr(
             sd,
             "471",
@@ -297,7 +296,7 @@ fn scroll(s: &mut S, pane: &str, dy: f32) {
 #[gpui::test]
 fn tab_panes_fade_at_the_top_only_after_scroll(cx: &mut TestAppContext) {
     // A short window so every pane scrolls (the spec pads short panes instead).
-    let mut s = boot_sized(cx, |_| {}, MockOptions::default(), 1380., 400.);
+    let mut s = boot_sized(cx, |_| {}, Overrides::default(), 1380., 400.);
     s.open_pr("482");
     for (tab, pane) in [
         ("Conversation", "conv"),

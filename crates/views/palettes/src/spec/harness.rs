@@ -1,4 +1,4 @@
-//! The shell with the desktop's views and the palettes, on the mock bridge over the e2e seed,
+//! The shell with the desktop's views and the palettes, on the typed service fakes over the e2e seed,
 //! driven by `debug_selector` keys.
 
 use std::sync::Arc;
@@ -11,10 +11,11 @@ use gpui_kit::{
 };
 use parking_lot::Mutex;
 use recur_app::{Shell, ShellOptions};
-use recur_services::mock::{MockBridge, MockOptions, Reply, Seed};
+use recur_domain::RunCommand;
+use recur_services::api::TermInfo;
+use recur_services::fake::{Fake, Overrides, Seed};
 use recur_ui::widgets::{ToastKind, ToastStore};
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
-use serde_json::{Value, json};
 
 pub fn registry() -> ViewRegistry {
     let mut r = ViewRegistry::default();
@@ -49,16 +50,15 @@ fn leak(s: &str) -> &'static str {
     Box::leak(s.to_string().into_boxed_str())
 }
 
-pub fn boot(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: MockOptions) -> S<'_> {
+pub fn boot(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: Overrides) -> S<'_> {
     let registry = registry();
     cx.update(|cx| {
         recur_app::init(&registry, cx);
         recur_ui::motion::freeze(cx);
     });
-    let mut sd = recur_services::mock::fixtures::seed();
+    let mut sd = Seed::e2e();
     seed(&mut sd);
-    let bridge = MockBridge::new(sd, opts);
-    let services = bridge.services();
+    let services = Fake::new(sd, opts).services();
     let state = cx.update(|cx| AppState::install(services.clone(), LocalStorage::in_memory(), cx));
     let ctx = ViewContext {
         state: state.clone(),
@@ -83,66 +83,93 @@ pub fn boot(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: MockOpt
 }
 
 pub fn plain(cx: &mut TestAppContext) -> S<'_> {
-    boot(cx, |_| {}, MockOptions::default())
+    boot(cx, |_| {}, Overrides::default())
 }
 
 /// The storefront project with these `[[run]]` commands (`seedWithRuns`).
 pub fn with_runs(runs: &[(&str, &str)]) -> impl FnOnce(&mut Seed) {
-    let runs: Vec<Value> = runs
+    let runs: Vec<RunCommand> = runs
         .iter()
-        .map(|(n, c)| json!({"name": n, "cmd": c}))
+        .map(|(n, c)| RunCommand {
+            name: (*n).into(),
+            cmd: (*c).into(),
+        })
         .collect();
     move |s: &mut Seed| {
-        if let Some(p) = s.projects.iter_mut().find(|p| p["id"] == "storefront") {
-            p["runCommands"] = json!(runs);
+        if let Some(p) = s.projects.iter_mut().find(|p| p.id == "storefront") {
+            p.run_commands = runs;
         }
     }
 }
 
-/// One recorded bound call: its method name and arguments.
-pub type Call = (String, Vec<Value>);
+/// One recorded service call: its method and arguments.
+pub type Call = (&'static str, Vec<String>);
 
-/// Bound calls by name, recorded.
+/// Service calls by method, recorded.
 #[derive(Clone, Default)]
 pub struct Calls(pub Arc<Mutex<Vec<Call>>>);
 
 impl Calls {
-    pub fn named(&self, name: &str) -> Vec<Vec<Value>> {
+    pub fn named(&self, name: &str) -> Vec<Vec<String>> {
         self.0
             .lock()
             .iter()
-            .filter(|(n, _)| n == name)
+            .filter(|(n, _)| *n == name)
             .map(|(_, a)| a.clone())
             .collect()
     }
 
-    /// Record `name`, answering `reply`.
-    pub fn record(&self, opts: MockOptions, name: &'static str, reply: Value) -> MockOptions {
-        let calls = self.0.clone();
-        opts.resolver(name, move |a, _, _| {
-            calls.lock().push((name.into(), a.to_vec()));
-            Reply::value(reply.clone())
-        })
+    pub fn push(&self, name: &'static str, args: &[&str]) {
+        let args = args.iter().map(|a| (*a).to_owned()).collect();
+        self.0.lock().push((name, args));
     }
 
-    /// `terminalResolvers`: a fresh session per OpenTerminal, recorded writes and interrupts.
-    pub fn terminals(&self, opts: MockOptions) -> MockOptions {
-        let calls = self.0.clone();
+    /// A fresh session per `open_terminal`, recorded attaches, writes, interrupts and resizes.
+    pub fn terminals(&self, opts: Overrides) -> Overrides {
         let n = Arc::new(Mutex::new(0u32));
-        let opts = opts.resolver("OpenTerminal", move |a, _, _| {
-            calls.lock().push(("OpenTerminal".into(), a.to_vec()));
+        let (c1, c2, c3, c4, c5) = (
+            self.clone(),
+            self.clone(),
+            self.clone(),
+            self.clone(),
+            self.clone(),
+        );
+        opts.open_terminal(move |_, (ws, cols, rows)| {
+            c1.push(
+                "open_terminal",
+                &[&ws, &cols.to_string(), &rows.to_string()],
+            );
             let mut n = n.lock();
             *n += 1;
-            Reply::value(json!({
-                "id": format!("sess-{n}"), "workspaceId": a.first().cloned().unwrap_or_default(),
-                "cwd": "/tmp/wt", "shell": "/bin/zsh", "title": "zsh",
-                "createdAt": "2026-01-01T00:00:00Z",
-            }))
-        });
-        let opts = self.record(opts, "AttachTerminal", json!(""));
-        let opts = self.record(opts, "WriteTerminal", Value::Null);
-        let opts = self.record(opts, "InterruptTerminal", Value::Null);
-        self.record(opts, "ResizeTerminal", Value::Null)
+            Ok(TermInfo {
+                id: format!("sess-{n}"),
+                workspace_id: ws,
+                cwd: "/tmp/wt".into(),
+                shell: "/bin/zsh".into(),
+                title: "zsh".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+                ..Default::default()
+            })
+        })
+        .attach_terminal(move |_, id| {
+            c2.push("attach_terminal", &[&id]);
+            Ok(String::new())
+        })
+        .write_terminal(move |_, (id, data)| {
+            c3.push("write_terminal", &[&id, &data]);
+            Ok(())
+        })
+        .interrupt_terminal(move |_, id| {
+            c4.push("interrupt_terminal", &[&id]);
+            Ok(())
+        })
+        .resize_terminal(move |_, (id, cols, rows)| {
+            c5.push(
+                "resize_terminal",
+                &[&id, &cols.to_string(), &rows.to_string()],
+            );
+            Ok(())
+        })
     }
 }
 

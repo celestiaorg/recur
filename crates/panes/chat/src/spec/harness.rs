@@ -1,4 +1,4 @@
-//! A window with one `AgentChat` on the mock bridge, for specs of the chat's own rendering and
+//! A window with one `AgentChat` on the typed service fakes, for specs of the chat's own rendering and
 //! composer. The chat sits in a plain container; routing (send, the
 //! queue, Stop, tabs) is the workspace view's and is specced there. Elements are found by
 //! their debug selectors.
@@ -12,9 +12,8 @@ use gpui_kit::{
     div,
 };
 use recur_engine::view::chat::AgentMsg;
-use recur_services::mock::{MockBridge, MockOptions};
+use recur_services::fake::{Fake, Overrides};
 use recur_view_core::{AppState, LocalStorage, ViewContext};
-use serde_json::Value;
 
 use crate::chat::{AgentChat, ChatHooks, ChatProps, debug_key};
 
@@ -38,7 +37,7 @@ impl Render for Host {
 }
 
 pub struct H<'a> {
-    pub bridge: Arc<MockBridge>,
+    pub fake: Arc<Fake>,
     pub host: Entity<Host>,
     pub cx: &'a mut VisualTestContext,
 }
@@ -81,13 +80,13 @@ pub fn ws_hooks() -> ChatHooks {
 
 pub fn boot<'a>(
     cx: &'a mut TestAppContext,
-    opts: MockOptions,
+    opts: Overrides,
     props: ChatProps,
     hooks: ChatHooks,
 ) -> H<'a> {
     init(cx);
-    let bridge = MockBridge::fresh(opts);
-    let services = bridge.services();
+    let fake = Fake::fresh(opts);
+    let services = fake.services();
     let state = cx.update(|cx| AppState::install(services.clone(), LocalStorage::in_memory(), cx));
     let vcx = ViewContext {
         state,
@@ -99,7 +98,7 @@ pub fn boot<'a>(
         Host { chat, services }
     });
     let mut h = H {
-        bridge,
+        fake,
         host,
         cx: vcx_cx,
     };
@@ -208,8 +207,8 @@ impl H<'_> {
     }
 }
 
-/// Tracks the wire calls a resolver sees.
-pub type Calls = Arc<parking_lot::Mutex<Vec<Vec<Value>>>>;
+/// Tracks the calls an override sees, arguments as strings.
+pub type Calls = Arc<parking_lot::Mutex<Vec<Vec<String>>>>;
 
 pub fn calls() -> Calls {
     Default::default()

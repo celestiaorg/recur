@@ -6,15 +6,12 @@ use std::sync::Arc;
 
 use gpui::TestAppContext;
 use parking_lot::Mutex;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::TreeEntry;
+use recur_services::fake::{Overrides, hold};
+use recur_services::{Error, Result};
 use recur_ui::widgets::ToastKind;
-use serde_json::{Value, json};
 
 use super::harness::*;
-
-fn s(a: &[Value], i: usize) -> String {
-    a.get(i).and_then(Value::as_str).unwrap_or("").to_string()
-}
 
 fn changed() -> Vec<String> {
     let mut v = Vec::new();
@@ -26,7 +23,7 @@ fn changed() -> Vec<String> {
     v
 }
 
-fn children_of(list: &[String], dir: &str) -> Value {
+fn children_of(list: &[String], dir: &str) -> Vec<TreeEntry> {
     let mut kids: Vec<(String, bool)> = Vec::new();
     for p in list {
         let rest = if dir.is_empty() {
@@ -43,31 +40,30 @@ fn children_of(list: &[String], dir: &str) -> Value {
             kids.push((name, is_dir));
         }
     }
-    json!(
-        kids.into_iter()
-            .map(|(n, d)| json!({
-                "name": n,
-                "path": if dir.is_empty() { n.clone() } else { format!("{dir}/{n}") },
-                "dir": d,
-            }))
-            .collect::<Vec<_>>()
-    )
+    kids.into_iter()
+        .map(|(n, d)| TreeEntry {
+            path: if dir.is_empty() {
+                n.clone()
+            } else {
+                format!("{dir}/{n}")
+            },
+            name: n,
+            dir: d,
+            ..Default::default()
+        })
+        .collect()
 }
 
-fn status_of(list: &[String]) -> Value {
-    json!(
-        list.iter()
-            .map(|p| (p.clone(), json!("m")))
-            .collect::<serde_json::Map<_, _>>()
-    )
+fn status_of(list: &[String]) -> std::collections::BTreeMap<String, String> {
+    list.iter().map(|p| (p.clone(), "m".to_owned())).collect()
 }
 
-fn changed_opts(list: Vec<String>) -> MockOptions {
+fn changed_opts(list: Vec<String>) -> Overrides {
     let (l1, l2, l3) = (list.clone(), list.clone(), list);
-    MockOptions::default()
-        .resolver("ListChangedFiles", move |_, _, _| Reply::value(json!(l1)))
-        .resolver("GitStatus", move |_, _, _| Reply::value(status_of(&l2)))
-        .resolver("WorkingStatus", move |_, _, _| Reply::value(status_of(&l3)))
+    Overrides::default()
+        .list_changed_files(move |_, _| Ok(l1.clone()))
+        .git_status(move |_, _| Ok(status_of(&l2)))
+        .working_status(move |_, _| Ok(status_of(&l3)))
 }
 
 #[gpui::test]
@@ -76,19 +72,17 @@ async fn the_changed_scope_renders_without_listing_directories(cx: &mut TestAppC
     let listed: Arc<Mutex<Vec<String>>> = Arc::default();
     let (l1, l2, c1, c2) = (listed.clone(), listed.clone(), list.clone(), list.clone());
     let opts = changed_opts(list.clone())
-        .resolver("ListTree", move |a, _, _| {
-            l1.lock().push(s(a, 2));
-            Reply::value(children_of(&c1, &s(a, 2)))
+        .list_tree(move |_, (_, _, path)| {
+            let kids = children_of(&c1, &path);
+            l1.lock().push(path);
+            Ok(kids)
         })
-        .resolver("ListTrees", move |a, _, _| {
-            let dirs: Vec<String> =
-                serde_json::from_value(a.get(2).cloned().unwrap_or_default()).unwrap_or_default();
+        .list_trees(move |_, (_, _, dirs)| {
             l2.lock().extend(dirs.clone());
-            Reply::value(json!(
-                dirs.iter()
-                    .map(|d| (d.clone(), children_of(&c2, d)))
-                    .collect::<serde_json::Map<_, _>>()
-            ))
+            Ok(dirs
+                .iter()
+                .map(|d| (d.clone(), children_of(&c2, d)))
+                .collect())
         });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.wait(1500);
@@ -171,7 +165,15 @@ async fn an_explicit_scope_choice_is_remembered_per_loop(cx: &mut TestAppContext
     assert!(!h.read(|o, _| o.browse_all));
 }
 
-fn two_worktrees() -> MockOptions {
+fn pkg_tree(path: &str) -> Vec<TreeEntry> {
+    if path.is_empty() {
+        tree(&[("pkg", "pkg", true)])
+    } else {
+        Vec::new()
+    }
+}
+
+fn two_worktrees() -> Overrides {
     let files_for = |ws: &str| {
         if ws == "LOOP-2229" {
             "pkg/beta_only.go"
@@ -179,59 +181,47 @@ fn two_worktrees() -> MockOptions {
             "pkg/alpha_only.go"
         }
     };
-    MockOptions::default()
-        .resolver("ListTree", |a, _, _| {
-            Reply::value(if s(a, 2).is_empty() {
-                json!([{"name": "pkg", "path": "pkg", "dir": true}])
-            } else {
-                json!([])
-            })
-        })
-        .resolver("ListChangedFiles", move |a, _, _| {
-            Reply::value(json!([files_for(&s(a, 0))]))
-        })
-        .resolver("GitStatus", move |a, _, _| {
-            Reply::value(json!({ files_for(&s(a, 1)): "m" }))
-        })
-        .resolver("WorkingStatus", move |a, _, _| {
-            Reply::value(json!({ files_for(&s(a, 1)): "m" }))
-        })
+    Overrides::default()
+        .list_tree(|_, (_, _, path)| Ok(pkg_tree(&path)))
+        .list_changed_files(move |_, ws| Ok(strings(&[files_for(&ws)])))
+        .git_status(move |_, (_, ws)| Ok(statuses(&[(files_for(&ws), "m")])))
+        .working_status(move |_, (_, ws)| Ok(statuses(&[(files_for(&ws), "m")])))
 }
 
 #[gpui::test]
 async fn switching_worktree_never_shows_the_previous_ones_files(cx: &mut TestAppContext) {
     // B's reads stay in flight until released: a slow worktree, past the skeleton delay.
-    let pending: Arc<Mutex<Vec<recur_services::mock::Release>>> = Arc::default();
+    // Each held read answers empty when released.
+    type Pending = Arc<Mutex<Vec<Box<dyn FnOnce() + Send>>>>;
+    fn held<T: Default + Send + 'static>(
+        pending: &Pending,
+    ) -> recur_services::fake::Answer<Result<T>> {
+        let (r, rel) = hold::<Result<T>>();
+        pending
+            .lock()
+            .push(Box::new(move || rel.send(Ok(T::default()))));
+        r
+    }
+    let pending: Pending = Arc::default();
     let (p1, p2, p3) = (pending.clone(), pending.clone(), pending.clone());
     let opts = two_worktrees()
-        .resolver("ListTree", move |a, _, _| {
-            let body = if s(a, 2).is_empty() {
-                json!([{"name": "pkg", "path": "pkg", "dir": true}])
-            } else {
-                json!([])
-            };
-            if s(a, 1) == "LOOP-2229" {
-                let (r, rel) = Reply::deferred();
-                p1.lock().push(rel);
-                return r;
+        .list_tree(move |_, (_, ws, path)| {
+            if ws == "LOOP-2229" {
+                return held(&p1);
             }
-            Reply::value(body)
+            Ok(pkg_tree(&path)).into()
         })
-        .resolver("ListChangedFiles", move |a, _, _| {
-            if s(a, 0) == "LOOP-2229" {
-                let (r, rel) = Reply::deferred();
-                p2.lock().push(rel);
-                return r;
+        .list_changed_files(move |_, ws| {
+            if ws == "LOOP-2229" {
+                return held(&p2);
             }
-            Reply::value(json!(["pkg/alpha_only.go"]))
+            Ok(strings(&["pkg/alpha_only.go"])).into()
         })
-        .resolver("GitStatus", move |a, _, _| {
-            if s(a, 1) == "LOOP-2229" {
-                let (r, rel) = Reply::deferred();
-                p3.lock().push(rel);
-                return r;
+        .git_status(move |_, (_, ws)| {
+            if ws == "LOOP-2229" {
+                return held(&p3);
             }
-            Reply::value(json!({"pkg/alpha_only.go": "m"}))
+            Ok(statuses(&[("pkg/alpha_only.go", "m")])).into()
         });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.wait(100);
@@ -240,8 +230,8 @@ async fn switching_worktree_never_shows_the_previous_ones_files(cx: &mut TestApp
     h.wait(400);
     assert!(h.has("obs-skel-row:0"));
     assert!(!h.has("obs-node:file:pkg/alpha_only.go"));
-    for rel in pending.lock().drain(..) {
-        rel.send(Reply::value(json!(null)));
+    for release in pending.lock().drain(..) {
+        release();
     }
     h.wait(100);
     assert!(!h.has("obs-node:file:pkg/alpha_only.go"));
@@ -273,21 +263,26 @@ async fn clicking_a_changed_submodule_directory_opens_diff_without_error_toasts(
     let outlines = Calls::default();
     let o2 = outlines.clone();
     let opts = changed_opts(vec![SUB.to_string()])
-        .resolver("ReadFile", |a, _, _| {
-            if s(a, 2) == SUB {
-                return Reply::error(format!("{SUB} is a directory"));
+        .read_file(|_, (_, _, path)| {
+            if path == SUB {
+                return Err(Error::new(format!("{SUB} is a directory")));
             }
-            Reply::value(json!({"path": s(a, 2), "language": "go", "content": "package main\n", "size": 14, "writable": true}))
+            Ok(file(&path, "go", "package main\n", true))
         })
-        .resolver("Outline", move |a, _, _| {
-            o2.lock().push(a.to_vec());
-            if s(a, 2) == SUB {
-                return Reply::error("should not outline a directory");
+        .outline(move |_, (p, ws, path)| {
+            push(&o2, &[&p, &ws, &path]);
+            if path == SUB {
+                return Err(Error::new("should not outline a directory"));
             }
-            Reply::value(json!([]))
+            Ok(Vec::new())
         })
-        .resolver("FileAtBase", |a, _, _| {
-            Reply::value(if s(a, 2) == SUB { "Subproject commit abcdef1\n" } else { "" })
+        .file_at_base(|_, (_, _, path)| {
+            Ok(if path == SUB {
+                "Subproject commit abcdef1\n"
+            } else {
+                ""
+            }
+            .into())
         });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.wait(100);
@@ -304,17 +299,19 @@ async fn clicking_a_changed_submodule_directory_opens_diff_without_error_toasts(
 
 #[gpui::test]
 async fn gitignored_entries_are_muted_and_tracked_dotfiles_are_not(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("ListTree", |a, _, _| {
-        Reply::value(if s(a, 2).is_empty() {
-            json!([
-                {"name": ".gitignore", "path": ".gitignore", "dir": false},
-                {"name": "TODO.md", "path": "TODO.md", "dir": false, "ignored": true},
-                {"name": "dist", "path": "dist", "dir": true, "ignored": true},
-                {"name": "src", "path": "src", "dir": true},
-            ])
-        } else {
-            json!([])
-        })
+    let opts = Overrides::default().list_tree(|_, (_, _, path)| {
+        if !path.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut rows = tree(&[
+            (".gitignore", ".gitignore", false),
+            ("TODO.md", "TODO.md", false),
+            ("dist", "dist", true),
+            ("src", "src", true),
+        ]);
+        rows[1].ignored = true;
+        rows[2].ignored = true;
+        Ok(rows)
     });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("obs-scope:all");

@@ -5,192 +5,193 @@
 //! effects on the dock (the dock chrome flags, run requests) are driven here through the
 //! app state they set. Xterm's DOM class collisions have no GPUI counterpart.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use base64::Engine as _;
 use gpui::TestAppContext;
 use parking_lot::Mutex;
-use recur_services::mock::{MockOptions, Reply};
-use serde_json::{Value, json};
+use recur_domain::RunCommand;
+use recur_services::api::{TermInfo, TerminalDockChrome};
+use recur_services::fake::{Overrides, Seed};
+use recur_services::{AppEvent, Error};
 
 use super::harness::*;
 use crate::model::FocusZone;
 use recur_view_core::prefs::PanelKey;
 
-type CallLog = Arc<Mutex<Vec<(String, Vec<Value>)>>>;
+type CallLog = Arc<Mutex<Vec<(&'static str, Vec<String>)>>>;
 
 /// Every terminal call, answered as the terminal service would.
 #[derive(Clone, Default)]
 struct Term {
     calls: CallLog,
-    roster: Arc<Mutex<Vec<Value>>>,
-    restored: Arc<Mutex<Vec<Value>>>,
-    chrome: Arc<Mutex<serde_json::Map<String, Value>>>,
+    roster: Arc<Mutex<Vec<TermInfo>>>,
+    restored: Arc<Mutex<Vec<TermInfo>>>,
+    chrome: Arc<Mutex<BTreeMap<String, TerminalDockChrome>>>,
+    /// Every chrome `set_terminal_dock_chrome` saw.
+    chrome_sets: Arc<Mutex<Vec<TerminalDockChrome>>>,
     n: Arc<Mutex<u32>>,
 }
 
-fn session(id: &str, ws: &str) -> Value {
-    json!({
-        "id": id, "workspaceId": ws, "cwd": "/tmp/wt", "shell": "/bin/zsh",
-        "title": "zsh", "createdAt": "2026-01-01T00:00:00Z",
-    })
+fn session(id: &str, ws: &str) -> TermInfo {
+    TermInfo {
+        id: id.into(),
+        workspace_id: ws.into(),
+        cwd: "/tmp/wt".into(),
+        shell: "/bin/zsh".into(),
+        title: "zsh".into(),
+        created_at: "2026-01-01T00:00:00Z".into(),
+        ..Default::default()
+    }
 }
 
 impl Term {
-    fn calls(&self, name: &str) -> Vec<Vec<Value>> {
+    fn calls(&self, name: &str) -> Vec<Vec<String>> {
         self.calls
             .lock()
             .iter()
-            .filter(|(n, _)| n == name)
+            .filter(|(n, _)| *n == name)
             .map(|(_, a)| a.clone())
             .collect()
     }
 
-    fn opts(&self, opts: MockOptions) -> MockOptions {
-        let rec = |t: &Term, name: &'static str| {
-            let calls = t.calls.clone();
-            move |a: &[Value],
-                  _: &mut recur_services::mock::Seed,
-                  _: &recur_services::mock::Table| {
-                calls.lock().push((name.into(), a.to_vec()));
-                Reply::null()
-            }
-        };
-        let (t1, t2, t3, t4, t5, t6, t7, t8, t9) = (
-            self.clone(),
-            self.clone(),
-            self.clone(),
-            self.clone(),
-            self.clone(),
-            self.clone(),
-            self.clone(),
-            self.clone(),
-            self.clone(),
-        );
-        opts.resolver("ListTerminals", move |a, _, _| {
-            t1.calls.lock().push(("ListTerminals".into(), a.to_vec()));
-            let ws = a.first().and_then(Value::as_str).unwrap_or("");
-            Reply::value(json!(
-                t1.roster
-                    .lock()
-                    .iter()
-                    .filter(|s| s["workspaceId"] == ws)
-                    .cloned()
-                    .collect::<Vec<_>>()
-            ))
-        })
-        .resolver("RestoreWorkspaceTerminals", move |a, _, _| {
-            t2.calls
+    fn log(&self, name: &'static str, args: &[&str]) {
+        let args = args.iter().map(|a| (*a).to_owned()).collect();
+        self.calls.lock().push((name, args));
+    }
+
+    fn opts(&self, opts: Overrides) -> Overrides {
+        let t: Vec<Term> = (0..14).map(|_| self.clone()).collect();
+        let t = |i: usize| t[i].clone();
+        let (t1, t2, t3, t4, t5, t6, t7) = (t(1), t(2), t(3), t(4), t(5), t(6), t(7));
+        let (t8, t9, t10, t11, t12, t13) = (t(8), t(9), t(10), t(11), t(12), t(13));
+        opts.list_terminals(move |_, ws| {
+            t1.log("ListTerminals", &[&ws]);
+            Ok(t1
+                .roster
                 .lock()
-                .push(("RestoreWorkspaceTerminals".into(), a.to_vec()));
-            let ws = a.first().and_then(Value::as_str).unwrap_or("").to_string();
+                .iter()
+                .filter(|s| s.workspace_id == ws)
+                .cloned()
+                .collect())
+        })
+        .restore_workspace_terminals(move |_, (ws, cols, rows)| {
+            t2.log(
+                "RestoreWorkspaceTerminals",
+                &[&ws, &cols.to_string(), &rows.to_string()],
+            );
             let mut roster = t2.roster.lock();
-            if roster.iter().any(|s| s["workspaceId"] == ws.as_str()) {
-                return Reply::value(json!(
-                    roster
-                        .iter()
-                        .filter(|s| s["workspaceId"] == ws.as_str())
-                        .cloned()
-                        .collect::<Vec<_>>()
-                ));
+            if roster.iter().any(|s| s.workspace_id == ws) {
+                return Ok(roster
+                    .iter()
+                    .filter(|s| s.workspace_id == ws)
+                    .cloned()
+                    .collect());
             }
             let restored = t2.restored.lock().clone();
             roster.extend(restored.clone());
-            Reply::value(json!(restored))
+            Ok(restored)
         })
-        .resolver("ListTerminalDockChrome", move |_, _, _| {
-            Reply::value(json!(
-                t3.chrome.lock().values().cloned().collect::<Vec<_>>()
-            ))
-        })
-        .resolver("SetTerminalDockChrome", move |a, _, _| {
-            t4.calls
-                .lock()
-                .push(("SetTerminalDockChrome".into(), a.to_vec()));
-            let ws = a.first().and_then(Value::as_str).unwrap_or("").to_string();
-            let c = a.get(1).cloned().unwrap_or_default();
+        .list_terminal_dock_chrome(move |_, ()| Ok(t3.chrome.lock().values().cloned().collect()))
+        .set_terminal_dock_chrome(move |_, (ws, c)| {
+            t4.log("SetTerminalDockChrome", &[&ws]);
+            t4.chrome_sets.lock().push(c.clone());
             let mut chrome = t4.chrome.lock();
-            let flag = |k: &str| c.get(k).and_then(Value::as_bool).unwrap_or(false);
-            let pct = c.get("besidePct").and_then(Value::as_f64).unwrap_or(0.) as i64;
-            if !flag("open") && !flag("beside") && pct <= 0 {
+            if !c.open && !c.beside && c.beside_pct <= 0 {
                 chrome.remove(&ws);
             } else {
                 chrome.insert(
                     ws.clone(),
-                    json!({
-                        "workspaceId": ws, "open": flag("open"), "maximized": flag("maximized"),
-                        "editorHidden": flag("editorHidden"), "beside": flag("beside"),
-                        "besidePct": pct,
-                    }),
+                    TerminalDockChrome {
+                        workspace_id: ws,
+                        ..c
+                    },
                 );
             }
-            Reply::null()
+            Ok(())
         })
-        .resolver("OpenTerminal", move |a, _, _| {
-            t5.calls.lock().push(("OpenTerminal".into(), a.to_vec()));
+        .open_terminal(move |_, (ws, cols, rows)| {
+            t5.log("OpenTerminal", &[&ws, &cols.to_string(), &rows.to_string()]);
             let mut n = t5.n.lock();
             *n += 1;
-            let ws = a.first().and_then(Value::as_str).unwrap_or("");
-            let s = session(&format!("sess-{n}"), ws);
+            let s = session(&format!("sess-{n}"), &ws);
             t5.roster.lock().push(s.clone());
-            Reply::value(s)
+            Ok(s)
         })
-        .resolver("AttachTerminal", move |a, _, _| {
-            t6.calls.lock().push(("AttachTerminal".into(), a.to_vec()));
-            Reply::value(
-                base64::engine::general_purpose::STANDARD.encode("replayed-scrollback\r\n"),
-            )
+        .attach_terminal(move |_, id| {
+            t6.log("AttachTerminal", &[&id]);
+            Ok(base64::engine::general_purpose::STANDARD.encode("replayed-scrollback\r\n"))
         })
-        .resolver("WriteTerminal", move |a, _, _| {
-            t7.calls.lock().push(("WriteTerminal".into(), a.to_vec()));
-            Reply::null()
+        .write_terminal(move |_, (id, data)| {
+            t7.log("WriteTerminal", &[&id, &data]);
+            Ok(())
         })
-        .resolver("CloseTerminal", move |a, _, _| {
-            t8.calls.lock().push(("CloseTerminal".into(), a.to_vec()));
-            let id = a.first().and_then(Value::as_str).unwrap_or("").to_string();
-            t8.roster.lock().retain(|s| s["id"] != id.as_str());
-            Reply::null()
+        .close_terminal(move |_, id| {
+            t8.log("CloseTerminal", &[&id]);
+            t8.roster.lock().retain(|s| s.id != id);
+            Ok(())
         })
-        .resolver("ReorderTerminals", move |a, _, _| {
-            t9.calls
-                .lock()
-                .push(("ReorderTerminals".into(), a.to_vec()));
-            let ws = a.first().and_then(Value::as_str).unwrap_or("").to_string();
-            let ids: Vec<String> =
-                serde_json::from_value(a.get(1).cloned().unwrap_or_default()).unwrap_or_default();
+        .reorder_terminals(move |_, (ws, ids)| {
+            let mut args = vec![ws.as_str()];
+            args.extend(ids.iter().map(String::as_str));
+            t9.log("ReorderTerminals", &args);
             let mut roster = t9.roster.lock();
-            let (mine, others): (Vec<Value>, Vec<Value>) = roster
-                .drain(..)
-                .partition(|s| s["workspaceId"] == ws.as_str());
+            let (mine, others): (Vec<TermInfo>, Vec<TermInfo>) =
+                roster.drain(..).partition(|s| s.workspace_id == ws);
             if ids.len() != mine.len() {
-                return Reply::error("ReorderTerminals: not a permutation");
+                return Err(Error::new("ReorderTerminals: not a permutation"));
             }
             *roster = others;
             for id in ids {
-                if let Some(s) = mine.iter().find(|s| s["id"] == id.as_str()) {
+                if let Some(s) = mine.iter().find(|s| s.id == id) {
                     roster.push(s.clone());
                 }
             }
-            Reply::null()
+            Ok(())
         })
-        .resolver("DetachTerminal", rec(self, "DetachTerminal"))
-        .resolver("AckTerminal", rec(self, "AckTerminal"))
-        .resolver("ResizeTerminal", rec(self, "ResizeTerminal"))
-        .resolver("ClearTerminal", rec(self, "ClearTerminal"))
-        .resolver("InterruptTerminal", rec(self, "InterruptTerminal"))
-        .resolver("ListLoopAgents", |_, _, _| Reply::value(json!([])))
+        .detach_terminal(move |_, id| {
+            t10.log("DetachTerminal", &[&id]);
+            Ok(())
+        })
+        .ack_terminal(move |_, (id, n)| {
+            t11.log("AckTerminal", &[&id, &n.to_string()]);
+            Ok(())
+        })
+        .resize_terminal(move |_, (id, cols, rows)| {
+            t12.log(
+                "ResizeTerminal",
+                &[&id, &cols.to_string(), &rows.to_string()],
+            );
+            Ok(())
+        })
+        .clear_terminal({
+            let t = self.clone();
+            move |_, id| {
+                t.log("ClearTerminal", &[&id]);
+                Ok(())
+            }
+        })
+        .interrupt_terminal(move |_, id| {
+            t13.log("InterruptTerminal", &[&id]);
+            Ok(())
+        })
+        .list_loop_agents(|_, _| Ok(Vec::new()))
     }
 }
 
 /// The Run commands the project's `project.toml` declares (`seedWithRuns`).
-fn with_runs(runs: &[(&str, &str)]) -> impl FnOnce(&mut recur_services::mock::Seed) {
-    let runs: Vec<Value> = runs
+fn with_runs(runs: &[(&str, &str)]) -> impl FnOnce(&mut Seed) {
+    let runs: Vec<RunCommand> = runs
         .iter()
-        .map(|(n, c)| json!({"name": n, "cmd": c}))
+        .map(|(n, c)| RunCommand {
+            name: (*n).into(),
+            cmd: (*c).into(),
+        })
         .collect();
     move |s| {
-        if let Some(p) = s.projects.iter_mut().find(|p| p["id"] == "storefront") {
-            p["runCommands"] = json!(runs);
+        if let Some(p) = s.projects.iter_mut().find(|p| p.id == "storefront") {
+            p.run_commands = runs;
         }
     }
 }
@@ -238,10 +239,10 @@ fn term_lit(h: &mut H) -> bool {
 }
 
 fn term_out(h: &mut H, id: &str, text: &str) {
-    h.event(
-        "term.data",
-        json!({"id": id, "data": base64::engine::general_purpose::STANDARD.encode(text)}),
-    );
+    h.event(AppEvent::Term(recur_term::Event::Data {
+        id: id.into(),
+        data: text.as_bytes().to_vec(),
+    }));
 }
 
 fn open_dock(h: &mut H) {
@@ -253,7 +254,7 @@ fn open_dock(h: &mut H) {
 #[gpui::test]
 async fn toggle_opens_a_shell_streams_output_and_acks_it(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     assert!(h.has("term-pane:sess-1"));
     let opens = t.calls("OpenTerminal");
@@ -261,8 +262,8 @@ async fn toggle_opens_a_shell_streams_output_and_acks_it(cx: &mut TestAppContext
     assert!(!t.calls("AttachTerminal").is_empty());
     // Opened at the dock's measured geometry, not a blind 80×24.
     let (cols, rows) = (
-        opens[0][1].as_i64().unwrap_or(0),
-        opens[0][2].as_i64().unwrap_or(0),
+        opens[0][1].parse::<i64>().unwrap_or(0),
+        opens[0][2].parse::<i64>().unwrap_or(0),
     );
     assert!(cols >= 20 && rows > 3, "{cols}×{rows}");
     term_out(&mut h, "sess-1", &"x".repeat(40 * 1024));
@@ -270,7 +271,7 @@ async fn toggle_opens_a_shell_streams_output_and_acks_it(cx: &mut TestAppContext
     let acks = t.calls("AckTerminal");
     assert!(!acks.is_empty());
     assert_eq!(acks[0][0], "sess-1");
-    assert!(acks[0][1].as_i64().unwrap_or(0) >= 32 * 1024);
+    assert!(acks[0][1].parse::<i64>().unwrap_or(0) >= 32 * 1024);
 }
 
 #[gpui::test]
@@ -278,7 +279,7 @@ async fn dropping_an_explorer_file_or_folder_onto_the_terminal_inserts_the_path(
     cx: &mut TestAppContext,
 ) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     let root = format!("/mock/worktrees/{WS}");
     for (sel, path) in [
@@ -290,11 +291,7 @@ async fn dropping_an_explorer_file_or_folder_onto_the_terminal_inserts_the_path(
         let hits = t
             .calls("WriteTerminal")
             .iter()
-            .filter(|a| {
-                a.get(1)
-                    .and_then(Value::as_str)
-                    .is_some_and(|s| s.trim() == abs)
-            })
+            .filter(|a| a.get(1).is_some_and(|s| s.trim() == abs))
             .count();
         assert_eq!(hits, 1, "{path}");
     }
@@ -303,10 +300,12 @@ async fn dropping_an_explorer_file_or_folder_onto_the_terminal_inserts_the_path(
 #[gpui::test]
 async fn reopening_adopts_the_running_shell_instead_of_spawning_another(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut live = session("sess-live", WS);
-    live["title"] = json!("npm run dev");
+    let live = TermInfo {
+        title: "npm run dev".into(),
+        ..session("sess-live", WS)
+    };
     t.roster.lock().push(live);
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     assert_eq!(dock_tabs(&mut h)[0].1, "npm run dev");
     assert!(t.calls("OpenTerminal").is_empty());
@@ -320,14 +319,18 @@ async fn reopening_adopts_the_running_shell_instead_of_spawning_another(cx: &mut
 #[gpui::test]
 async fn restart_restore_respawns_saved_tabs_instead_of_a_blank_shell(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut a = session("sess-a", WS);
-    a["title"] = json!("server");
-    let mut b = session("sess-b", WS);
-    b["cwd"] = json!("/tmp/other");
-    b["createdAt"] = json!("2026-01-01T00:00:01Z");
-    b["active"] = json!(true);
+    let a = TermInfo {
+        title: "server".into(),
+        ..session("sess-a", WS)
+    };
+    let b = TermInfo {
+        cwd: "/tmp/other".into(),
+        created_at: "2026-01-01T00:00:01Z".into(),
+        active: true,
+        ..session("sess-b", WS)
+    };
     *t.restored.lock() = vec![a, b];
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     let tabs = dock_tabs(&mut h);
     assert_eq!(tabs.len(), 2);
@@ -340,7 +343,7 @@ async fn restart_restore_respawns_saved_tabs_instead_of_a_blank_shell(cx: &mut T
 #[gpui::test]
 async fn tabs_open_switch_and_close(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     assert_eq!(dock_tabs(&mut h).len(), 1);
     h.click("term-act:new");
@@ -365,7 +368,7 @@ async fn tabs_open_switch_and_close(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn dragging_a_terminal_tab_reorders_the_strip_and_survives_remount(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     h.click("term-act:new");
     h.wait(100);
@@ -383,7 +386,7 @@ async fn dragging_a_terminal_tab_reorders_the_strip_and_survives_remount(cx: &mu
         .last()
         .cloned()
         .expect("reorder");
-    assert_eq!(last[1][0], "sess-2");
+    assert_eq!(last[1], "sess-2");
     h.click("obs-term-toggle");
     assert!(!dock_open(&mut h));
     open_dock(&mut h);
@@ -394,7 +397,7 @@ async fn dragging_a_terminal_tab_reorders_the_strip_and_survives_remount(cx: &mu
 #[gpui::test]
 async fn cmd_t_and_cmd_w_open_and_close_tabs_while_the_dock_is_focused(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     h.click("term-pane:sess-1");
     assert!(term_lit(&mut h));
@@ -417,7 +420,7 @@ async fn cmd_t_and_cmd_w_open_and_close_tabs_while_the_dock_is_focused(cx: &mut 
 #[gpui::test]
 async fn cmd_f_opens_the_terminal_find_bar_while_the_dock_is_focused(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     h.click("term-pane:sess-1");
     h.keys(&dock_chord("f"));
@@ -428,7 +431,7 @@ async fn cmd_f_opens_the_terminal_find_bar_while_the_dock_is_focused(cx: &mut Te
 #[gpui::test]
 async fn opt_cmd_arrows_rotate_through_tabs_while_the_dock_is_focused(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     h.click("term-act:new");
     h.click("term-act:new");
@@ -452,7 +455,7 @@ async fn opt_cmd_arrows_rotate_through_tabs_while_the_dock_is_focused(cx: &mut T
 #[gpui::test]
 async fn the_active_tab_accent_tracks_which_panel_has_focus(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.keys("secondary-p");
     h.type_text("main.go");
     h.wait(100);
@@ -474,7 +477,7 @@ async fn the_active_tab_accent_tracks_which_panel_has_focus(cx: &mut TestAppCont
 #[gpui::test]
 async fn cmd_1_2_3_focus_agent_editor_and_terminal(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.keys("secondary-3");
     h.wait(400);
     assert!(dock_open(&mut h));
@@ -518,12 +521,13 @@ async fn cmd_1_2_3_focus_agent_editor_and_terminal(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn an_exited_shell_keeps_its_tab_so_the_final_output_stays_readable(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
-    h.event(
-        "term.exit",
-        json!({"id": "sess-1", "workspaceId": WS, "exitCode": 127}),
-    );
+    h.event(AppEvent::Term(recur_term::Event::Exit {
+        id: "sess-1".into(),
+        workspace_id: WS.into(),
+        exit_code: 127,
+    }));
     let tabs = dock_tabs(&mut h);
     assert_eq!(tabs.len(), 1);
     assert!(tabs[0].1.contains("exited (127)"), "{tabs:?}");
@@ -549,7 +553,7 @@ async fn ctrl_shift_backtick_maximizes_the_dock_over_the_observatory_and_back(
     cx: &mut TestAppContext,
 ) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.state_update(|s, cx| s.set_terminal_dock_open(WS, true, cx));
     h.wait(100);
     let (_, normal) = obs_dock_boxes(&mut h);
@@ -580,7 +584,7 @@ async fn ctrl_shift_backtick_maximizes_the_dock_over_the_observatory_and_back(
 #[gpui::test]
 async fn the_grid_keeps_its_size_while_maximize_animates(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.state_update(|s, cx| s.set_terminal_dock_open(WS, true, cx));
     h.wait(100);
     let grid = |h: &mut H| {
@@ -608,7 +612,7 @@ async fn the_grid_keeps_its_size_while_maximize_animates(cx: &mut TestAppContext
 #[gpui::test]
 async fn maximize_and_restore_while_the_dock_is_beside_the_editor(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.click("obs-term-beside-toggle");
     h.wait(100);
     assert!(h.read(|o, cx| o.term_beside_layout(cx)));
@@ -627,7 +631,7 @@ async fn maximize_and_restore_while_the_dock_is_beside_the_editor(cx: &mut TestA
 #[gpui::test]
 async fn hide_editor_expands_the_terminal_in_the_middle_panel(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     let with_editor = h.bounds("term-dock").expect("dock").size.height;
     h.click("obs-editor-toggle");
@@ -647,7 +651,7 @@ async fn hide_editor_expands_the_terminal_in_the_middle_panel(cx: &mut TestAppCo
 #[gpui::test]
 async fn hiding_the_editor_opens_the_terminal_when_it_was_closed(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     assert!(!dock_open(&mut h));
     h.click("obs-editor-toggle");
     h.wait(100);
@@ -660,7 +664,7 @@ async fn hiding_the_editor_opens_the_terminal_when_it_was_closed(cx: &mut TestAp
 #[cfg_attr(not(target_os = "macos"), ignore)]
 async fn opt_cmd_e_toggles_editor_visibility(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.keys("secondary-alt-e");
     h.wait(100);
     assert!(h.read(|o, cx| o.editor_tucked(cx)));
@@ -672,7 +676,7 @@ async fn opt_cmd_e_toggles_editor_visibility(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn hiding_the_terminal_clears_editor_hidden(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.click("obs-editor-toggle");
     h.wait(100);
     assert!(h.read(|o, cx| o.editor_tucked(cx)));
@@ -685,7 +689,7 @@ async fn hiding_the_terminal_clears_editor_hidden(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn hiding_the_dock_clears_maximize(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     // From closed, maximize opens the dock.
     h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, true, cx));
     h.wait(400);
@@ -703,7 +707,7 @@ async fn hiding_the_dock_clears_maximize(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn dock_visibility_and_maximize_are_per_workspace(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, true, cx));
     h.wait(400);
     assert!(h.read(|o, _| o.term_overlaying()));
@@ -724,7 +728,7 @@ async fn switching_workspaces_restores_the_last_focused_chrome_not_the_terminal(
     cx: &mut TestAppContext,
 ) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.keys("secondary-p");
     h.type_text("main.go");
     h.wait(100);
@@ -762,7 +766,7 @@ async fn switching_workspaces_restores_the_last_focused_chrome_not_the_terminal(
 
 /// The dock chrome store survives a restart (`ListTerminalDockChrome`).
 fn restart_mount<'a>(cx: &'a mut TestAppContext, t: &Term) -> H<'a> {
-    mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {})
+    mount(cx, t.opts(Overrides::default()), |_| {}, |_| {})
 }
 
 #[gpui::test]
@@ -771,7 +775,7 @@ async fn the_dock_survives_a_reload_and_stays_out_of_the_way_when_never_opened(
     restarted: &mut TestAppContext,
 ) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     assert!(!dock_open(&mut h));
     assert!(t.calls("OpenTerminal").is_empty());
     open_dock(&mut h);
@@ -784,15 +788,11 @@ async fn the_dock_survives_a_reload_and_stays_out_of_the_way_when_never_opened(
 #[gpui::test]
 async fn maximize_survives_a_reload(cx: &mut TestAppContext, restarted: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, true, cx));
     h.wait(400);
     assert!(h.read(|o, _| o.term_overlaying()));
-    assert!(
-        t.calls("SetTerminalDockChrome")
-            .iter()
-            .any(|a| a[1]["maximized"] == true)
-    );
+    assert!(t.chrome_sets.lock().iter().any(|c| c.maximized));
     h.quit();
     let mut h = restart_mount(restarted, &t);
     h.wait(400);
@@ -806,15 +806,11 @@ async fn beside_survives_a_reload_via_dock_chrome(
     restarted: &mut TestAppContext,
 ) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.click("obs-term-beside-toggle");
     h.wait(100);
     assert!(h.read(|o, cx| o.term_beside_layout(cx)));
-    assert!(
-        t.calls("SetTerminalDockChrome")
-            .iter()
-            .any(|a| a[1]["beside"] == true)
-    );
+    assert!(t.chrome_sets.lock().iter().any(|c| c.beside));
     h.quit();
     let mut h = restart_mount(restarted, &t);
     h.wait(100);
@@ -826,7 +822,7 @@ fn runs_mount<'a>(cx: &'a mut TestAppContext, t: &Term, runs: &[(&str, &str)]) -
     mount_seeded(
         cx,
         with_runs(runs),
-        t.opts(MockOptions::default()),
+        t.opts(Overrides::default()),
         |_| {},
         |_| {},
     )
@@ -839,11 +835,7 @@ fn dev_running(h: &mut H) -> bool {
 fn writes(t: &Term, pat: &str) -> usize {
     t.calls("WriteTerminal")
         .iter()
-        .filter(|a| {
-            a.get(1)
-                .and_then(Value::as_str)
-                .is_some_and(|s| s.contains(pat))
-        })
+        .filter(|a| a.get(1).is_some_and(|s| s.contains(pat)))
         .count()
 }
 
@@ -857,7 +849,7 @@ async fn run_types_into_a_live_tab_stop_interrupts_another_run_reuses_it(cx: &mu
     h.wait(1000);
     assert!(dev_running(&mut h));
     let last = t.calls("WriteTerminal").last().cloned().expect("write");
-    let cmd = last[1].as_str().unwrap_or("").to_string();
+    let cmd = last[1].clone();
     assert!(cmd.contains("pnpm dev") && !cmd.contains("exec"), "{cmd:?}");
     let opens = t.calls("OpenTerminal").len();
     h.click("term-act:run");
@@ -910,10 +902,10 @@ async fn an_idle_run_returns_the_controls_to_run_without_killing_the_tab(cx: &mu
     assert!(dev_running(&mut h));
     let n = t.calls("OpenTerminal").len();
     for _ in 0..10 {
-        h.event(
-            "term.idle",
-            json!({"id": format!("sess-{n}"), "workspaceId": WS}),
-        );
+        h.event(AppEvent::Term(recur_term::Event::Idle {
+            id: format!("sess-{n}"),
+            workspace_id: WS.into(),
+        }));
         h.wait(200);
         if !dev_running(&mut h) {
             break;
@@ -933,10 +925,11 @@ async fn an_exited_run_session_returns_the_controls_to_run(cx: &mut TestAppConte
     h.wait(1000);
     assert!(dev_running(&mut h));
     let n = t.calls("OpenTerminal").len();
-    h.event(
-        "term.exit",
-        json!({"id": format!("sess-{n}"), "workspaceId": WS, "exitCode": 0}),
-    );
+    h.event(AppEvent::Term(recur_term::Event::Exit {
+        id: format!("sess-{n}"),
+        workspace_id: WS.into(),
+        exit_code: 0,
+    }));
     h.wait(100);
     assert!(!dev_running(&mut h));
 }
@@ -975,7 +968,7 @@ async fn a_palette_run_opens_the_dock_and_types_the_command(cx: &mut TestAppCont
 #[gpui::test]
 async fn find_opens_on_cmd_f_counts_matches_and_closes_on_escape(cx: &mut TestAppContext) {
     let t = Term::default();
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     open_dock(&mut h);
     term_out(&mut h, "sess-1", "hello world\r\nHello again\r\n");
     h.wait(100);
@@ -1010,10 +1003,13 @@ async fn the_maximize_button_puts_keys_in_the_active_shell(cx: &mut TestAppConte
     let t = Term::default();
     t.chrome.lock().insert(
         WS.into(),
-        json!({"workspaceId": WS, "open": true, "maximized": false, "editorHidden": false,
-               "beside": false, "besidePct": 0}),
+        TerminalDockChrome {
+            workspace_id: WS.into(),
+            open: true,
+            ..Default::default()
+        },
     );
-    let mut h = mount(cx, t.opts(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     h.wait(100);
     assert!(dock_open(&mut h));
     h.click("term-act:maximize");

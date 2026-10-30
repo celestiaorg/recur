@@ -76,7 +76,7 @@ Expectations:
 - Add or update tests for the code you change.
 - Integration tests go in a module under the crate's `tests/suite/` (one test binary per crate, since each binary relinks the dependency tree). Only tests that need their own process, `harness = false` or different features get their own file.
 - Bundle changes: keep `lint:bundles` clean (errors fail; shared keyEquivalents may log info).
-- After store seed / domain shape changes: regenerate the mock seed with `cargo run -p recur-store --bin seeddump > crates/services/src/mock/seed.json`.
+- After store seed / domain shape changes: regenerate the fake seed with `cargo run -p recur-store --bin seeddump > crates/services/src/fake/seed.json`.
 
 ## Scope
 

@@ -1,7 +1,10 @@
 //! The PR dashboard.
 
 use gpui::{Modifiers, TestAppContext, point, px};
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::Pr;
+use recur_services::Result;
+use recur_services::api::Asset;
+use recur_services::fake::{Answer, Overrides, Seed, hold};
 use serde_json::json;
 
 use super::harness::*;
@@ -23,16 +26,16 @@ fn row_y(s: &mut S, id: &str) -> f32 {
     f32::from(s.bounds(&format!("prrow:{id}")).expect(id).origin.y)
 }
 
-fn lifecycle_seed(sd: &mut recur_services::mock::Seed) {
-    sd.insert_pr(pr_row(json!({
+fn lifecycle_seed(sd: &mut recur_services::fake::Seed) {
+    sd.prs.push(pr_row(json!({
         "id": "gh-storefront-90", "number": 90, "title": "WIP checkout polish",
         "branch": "feat/wip", "draft": true, "diff": {"add": 3, "del": 0}, "when": "4h",
     })));
-    sd.insert_pr(pr_row(json!({
+    sd.prs.push(pr_row(json!({
         "id": "gh-storefront-91", "number": 91, "title": "Abandoned experiment",
         "branch": "feat/abandoned", "state": "Closed", "diff": {"add": 1, "del": 8}, "when": "3d",
     })));
-    sd.insert_pr(pr_row(json!({
+    sd.prs.push(pr_row(json!({
         "id": "gh-storefront-92", "number": 92, "title": "CI is red", "group": "you",
         "branch": "feat/ci-red", "checksOk": false, "hasChecks": true, "when": "5h",
         "attentionReasons": ["checks_failing"],
@@ -41,7 +44,7 @@ fn lifecycle_seed(sd: &mut recur_services::mock::Seed) {
 
 #[gpui::test]
 fn pr_list_filters_by_lifecycle_and_status(cx: &mut TestAppContext) {
-    let mut s = boot(cx, lifecycle_seed, MockOptions::default());
+    let mut s = boot(cx, lifecycle_seed, Overrides::default());
     s.prs_nav();
     let sub = tb_sub(&mut s);
     assert!(!sub.contains("in the loop"));
@@ -96,7 +99,7 @@ fn pr_list_sorts_within_groups(cx: &mut TestAppContext) {
     let mut s = boot(
         cx,
         |sd| {
-            sd.set_prs(Vec::new());
+            sd.prs.clear();
             for (id, n, title, when, created, updated) in [
                 (
                     "gh-10",
@@ -115,13 +118,13 @@ fn pr_list_sorts_within_groups(cx: &mut TestAppContext) {
                     "2026-08-28T11:00:00Z",
                 ),
             ] {
-                sd.insert_pr(pr_row(json!({
+                sd.prs.push(pr_row(json!({
                     "id": id, "number": n, "title": title, "when": when, "state": "Open",
                     "createdAt": created, "updatedAt": updated,
                 })));
             }
         },
-        MockOptions::default(),
+        Overrides::default(),
     );
     s.prs_nav();
     let order = |s: &mut S| {
@@ -151,7 +154,7 @@ fn pr_list_sorts_within_groups(cx: &mut TestAppContext) {
 
 #[gpui::test]
 fn pr_list_titlebar_keeps_counts_at_the_minimum_window_width(cx: &mut TestAppContext) {
-    let mut s = boot_sized(cx, |_| {}, MockOptions::default(), 1100., 720.);
+    let mut s = boot_sized(cx, |_| {}, Overrides::default(), 1100., 720.);
     s.prs_nav();
     let sub = tb_sub(&mut s);
     let counts = s.bounds(&sub).expect("counts");
@@ -163,7 +166,7 @@ fn pr_list_titlebar_keeps_counts_at_the_minimum_window_width(cx: &mut TestAppCon
 
 #[gpui::test]
 fn pr_list_filter_triggers_stay_in_the_pane_with_multiple_selections(cx: &mut TestAppContext) {
-    let mut s = boot_sized(cx, |_| {}, MockOptions::default(), 1100., 720.);
+    let mut s = boot_sized(cx, |_| {}, Overrides::default(), 1100., 720.);
     s.prs_nav();
     let hug = s.bounds("sel:Filter by status=Any status").expect("status");
     assert!(f32::from(hug.size.width) < 176. - 1.);
@@ -187,7 +190,7 @@ fn pr_list_filter_triggers_stay_in_the_pane_with_multiple_selections(cx: &mut Te
 
 #[gpui::test]
 fn pr_list_meta_columns_align_across_rows(cx: &mut TestAppContext) {
-    let mut s = boot_sized(cx, |_| {}, MockOptions::default(), 1800., 900.);
+    let mut s = boot_sized(cx, |_| {}, Overrides::default(), 1800., 900.);
     s.prs_nav();
     s.seg("All");
     let ids: Vec<String> = s
@@ -219,7 +222,7 @@ fn pr_list_stacks_participant_avatars_and_names_them_on_hover(cx: &mut TestAppCo
     let mut s = boot_sized(
         cx,
         |sd| patch_pr(sd, "479", json!({ "participants": crowd })),
-        MockOptions::default(),
+        Overrides::default(),
         1800.,
         900.,
     );
@@ -247,7 +250,7 @@ fn pr_list_stacks_participant_avatars_and_names_them_on_hover(cx: &mut TestAppCo
 
 #[gpui::test]
 fn sticky_group_headers_stay_above_hovered_pr_row_chrome(cx: &mut TestAppContext) {
-    let mut s = boot_sized(cx, |_| {}, MockOptions::default(), 1280., 320.);
+    let mut s = boot_sized(cx, |_| {}, Overrides::default(), 1280., 320.);
     s.prs_nav();
     s.seg("All");
     let h = s.bounds("briefing-h:you").expect("header");
@@ -315,34 +318,38 @@ fn pr_list_prefixes_titles_with_a_source_icon_and_number_instead_of_a_chip(
 
 #[gpui::test]
 fn github_pr_detail_skeletons_the_thread_until_get_pr_hydrates_it(cx: &mut TestAppContext) {
-    let full = recur_services::mock::fixtures::seed()
-        .pr_by_id("482")
-        .cloned()
-        .unwrap();
-    let mut summary = full.clone();
-    for k in ["comments", "files", "commits", "checks"] {
-        summary[k] = json!([]);
-    }
-    let (reply, release) = Reply::deferred();
-    let gate = std::sync::Arc::new(parking_lot::Mutex::new(Some(reply)));
+    let full = Seed::e2e().pr("482").cloned().unwrap();
+    let summary = Pr {
+        comments: Some(Vec::new()),
+        files: Some(Vec::new()),
+        commits: Some(Vec::new()),
+        checks: Some(Vec::new()),
+        ..full.clone()
+    };
+    let (answer, release) = hold::<Result<Pr>>();
+    let gate = std::sync::Arc::new(parking_lot::Mutex::new(Some(answer)));
     let full2 = full.clone();
     let mut s = boot(
         cx,
-        move |sd| patch_pr(sd, "482", summary),
-        MockOptions::default().resolver("GetPR", move |_, _, _| {
+        move |sd| {
+            if let Some(p) = sd.pr_mut("482") {
+                *p = summary;
+            }
+        },
+        Overrides::default().get_pr(move |_, _| -> Answer<Result<Pr>> {
             gate.lock()
                 .take()
-                .unwrap_or_else(|| Reply::value(full2.clone()))
+                .unwrap_or_else(|| Ok(full2.clone()).into())
         }),
     );
     s.prs_nav();
     s.click("prrow:482");
     assert_eq!(s.view(), recur_view_core::ViewName::PrDetail);
-    let title = full["title"].as_str().unwrap().to_string();
+    let title = full.title.clone();
     assert!(s.has(&format!("prh-title={title}")));
     assert!(s.has("pr-skel"));
     assert!(!s.has("desc-cn=loopbot"));
-    release.send(Reply::value(full));
+    release.send(Ok(full));
     s.settle();
     assert!(s.has("desc-cn=loopbot"));
     assert!(!s.has("pr-skel"));
@@ -376,28 +383,32 @@ fn local_pr_description_is_the_first_conversation_card(cx: &mut TestAppContext) 
 /// A 1×1 PNG for asset fetches.
 const PNG_1X1: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
+fn png() -> Asset {
+    use base64::Engine as _;
+    Asset {
+        content_type: "image/png".into(),
+        cache_control: String::new(),
+        body: base64::engine::general_purpose::STANDARD
+            .decode(PNG_1X1)
+            .unwrap(),
+    }
+}
+
 #[gpui::test]
 fn renders_github_description_and_comment_images_via_gh_image(cx: &mut TestAppContext) {
     let asset = "https://github.com/user-attachments/assets/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    let mut comments = recur_services::mock::fixtures::seed()
-        .pr_by_id("482")
-        .unwrap()["comments"]
-        .clone();
-    for c in comments.as_array_mut().unwrap() {
-        match c["id"].as_str() {
-            Some("gh-description") => {
-                c["bodyMd"] = json!(format!("<img alt=\"Screenshot\" src=\"{asset}\" />"))
-            }
-            Some("c1") => c["bodyMd"] = json!(format!("![inline]({asset})")),
+    let mut comments = Seed::e2e().pr("482").unwrap().comments.clone().unwrap();
+    for c in &mut comments {
+        match c.id.as_str() {
+            "gh-description" => c.body_md = format!("<img alt=\"Screenshot\" src=\"{asset}\" />"),
+            "c1" => c.body_md = format!("![inline]({asset})"),
             _ => {}
         }
     }
     let mut s = boot(
         cx,
         move |sd| patch_pr(sd, "482", json!({ "comments": comments })),
-        MockOptions::default().resolver("FetchAsset", |_, _, _| {
-            Reply::value(json!({"contentType": "image/png", "cacheControl": "", "body": PNG_1X1}))
-        }),
+        Overrides::default().fetch_asset(|_, _| Ok(png())),
     );
     s.open_pr("482");
     let src = format!(
@@ -434,12 +445,12 @@ fn pr_list_drops_avatars_under_the_title_with_attention_copy_on_a_narrow_pane(
 #[gpui::test]
 fn pr_list_and_detail_show_why_a_github_pr_needs_you(cx: &mut TestAppContext) {
     let mut s = plain_with(cx, |sd| {
-        sd.insert_pr(pr_row(json!({
+        sd.prs.push(pr_row(json!({
             "id": "gh-storefront-88", "number": 88, "group": "you", "title": "Please look at this",
             "branch": "feat/review-me", "state": "Review required", "reviewRequested": true,
             "attentionReasons": ["review_requested"],
         })));
-        sd.insert_pr(pr_row(json!({
+        sd.prs.push(pr_row(json!({
             "id": "gh-storefront-87", "number": 87, "group": "you", "title": "My failing PR",
             "branch": "feat/ci", "checksOk": false, "hasChecks": true, "authorLogin": "avery",
             "viewerLogin": "avery", "reviewRequested": false, "attentionReasons": ["checks_failing"],

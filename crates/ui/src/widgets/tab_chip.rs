@@ -231,8 +231,14 @@ impl TabChip {
         let t = Theme::of(cx).tokens;
         let wash = self.busy && !self.active && !motion::reduced(cx);
         let group = SharedString::from(format!("tab-chip-{}", self.id));
+        let surface = self.surface.unwrap_or(t.bg);
+        // A selected tab on a surface of the other polarity (a dark terminal in a light theme)
+        // inks its text in the app background.
+        let inverted =
+            self.active && !self.floating && contrast(t.bg, surface) > contrast(t.text, surface);
+        let ink = if inverted { t.bg } else { t.text };
         let fg = if self.active {
-            t.text
+            ink
         } else if self.muted {
             t.faint
         } else {
@@ -328,7 +334,7 @@ impl TabChip {
 
         let divider = if self.active { t.line } else { t.line_soft };
         let accent = if self.lit { t.amber } else { t.line_bright };
-        let hover_text = t.text;
+        let hover_text = if self.active { ink } else { t.text };
         let sel = format!(
             "tab-chip:{}{}",
             self.id,
@@ -365,7 +371,7 @@ impl TabChip {
             // The left edge overlays the previous chip's divider, so selecting a tab never
             // shifts the row.
             chip = chip
-                .bg(self.surface.unwrap_or(t.bg))
+                .bg(surface)
                 .child(
                     div()
                         .absolute()
@@ -443,7 +449,8 @@ impl TabChip {
                 .clone()
                 .unwrap_or_else(|| format!("Close {}", self.label).into());
             let visible = self.active;
-            let faint = t.faint;
+            let faint = if inverted { ink.fade(0.6) } else { t.faint };
+            let close_hover = t.text;
             let hover_bg = t.pane_2;
             let close_sel = format!("tab-close:{}", self.id);
             let x = div()
@@ -461,7 +468,7 @@ impl TabChip {
                 .when(!visible, |d| {
                     d.invisible().group_hover(group.clone(), |s| s.visible())
                 })
-                .hover(move |s| s.bg(hover_bg).text_color(Hsla::from(hover_text)))
+                .hover(move |s| s.bg(hover_bg).text_color(Hsla::from(close_hover)))
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .on_click(move |e, w, cx| {
                     cx.stop_propagation();
@@ -488,6 +495,12 @@ impl TabChip {
     }
 }
 
+/// WCAG contrast ratio.
+fn contrast(a: crate::color::Color, b: crate::color::Color) -> f32 {
+    let (x, y) = (a.luminance(), b.luminance());
+    (x.max(y) + 0.05) / (x.min(y) + 0.05)
+}
+
 impl RenderOnce for TabChip {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         crate::guard::component(self, window, cx, Self::render_view)
@@ -507,5 +520,17 @@ mod tests {
         assert!((busy_wash_alpha(100., 100., 0.5) - 1.).abs() < 1e-5);
         // Ramp: 15% of the 200% tile (30px of 100) from .45 up to 1.
         assert!((busy_wash_alpha(-15., 100., 0.) - 0.725).abs() < 1e-4);
+    }
+
+    #[test]
+    fn a_dark_terminal_in_a_light_theme_reads_in_the_app_background() {
+        use crate::color::hex;
+        // Catppuccin Latte bg and text over a black terminal, and Charcoal over a white one.
+        let black = hex(0x000000);
+        assert!(contrast(hex(0xeff1f5), black) > contrast(hex(0x4c4f69), black));
+        let white = hex(0xffffff);
+        assert!(contrast(hex(0x141414), white) > contrast(hex(0xe6e6e6), white));
+        // Same polarity keeps the app text.
+        assert!(contrast(hex(0xe6e6e6), black) > contrast(hex(0x141414), black));
     }
 }

@@ -16,7 +16,7 @@ use recur_domain::{
 };
 use recur_services::api::{Snapshot, TerminalDockChrome, TerminalThemeInfo, ThemeInfo};
 use recur_services::events::MenuState;
-use recur_services::{Error, Services};
+use recur_services::Services;
 use recur_ui::theme::{Appearance, SystemSync};
 use recur_ui::widgets::{ToastKind, ToastOptions, push_toast};
 

@@ -33,6 +33,7 @@ recur-services = { workspace = true, features = ["fake"] }
 recur-app.workspace = true
 pretty_assertions.workspace = true
 parking_lot.workspace = true
+serde.workspace = true
 base64.workspace = true
 
 [lints]

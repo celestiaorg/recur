@@ -8887,6 +8887,7 @@ dependencies = [
  "recur-view-widgets",
  "recur-view-workspace",
  "regex",
+ "serde",
  "serde_json",
  "url",
 ]
@@ -8910,6 +8911,7 @@ dependencies = [
  "recur-view-core",
  "recur-view-widgets",
  "regex",
+ "serde",
  "serde_json",
  "tracing",
 ]
@@ -8995,6 +8997,7 @@ dependencies = [
  "recur-view-core",
  "recur-view-observatory",
  "recur-view-review",
+ "serde",
  "serde_json",
  "smallvec",
  "uuid",

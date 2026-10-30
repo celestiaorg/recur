@@ -80,7 +80,7 @@ git diff dddd0fe0 -- vendor/gpui-pre > vendor/gpui-pre.patch
 git diff 9386fc71 -- vendor/gpui-pre-scheduler > vendor/gpui-pre-scheduler.patch
 ```
 
-## gpui-pre-apple 0.3.9 (border coverage, backdrop blur, holes)
+## gpui-pre-apple 0.3.9 (border coverage, backdrop blur, holes, glyph weight)
 
 `gpui-pre-apple/` is the crates.io source of GPUI's macOS renderer and text system (same snapshot), wired in by `[patch.crates-io]`. Commit `cb8279c1` ("rust: vendor gpui-pre-apple 0.3.9 unchanged") is the pristine import (`src/`, `build.rs`, `vendor/`, `Cargo.toml`, the license), and `gpui-pre-apple.patch` is the change.
 
@@ -89,6 +89,8 @@ git diff 9386fc71 -- vendor/gpui-pre-scheduler > vendor/gpui-pre-scheduler.patch
 **Backdrop blur.** `MetalRenderer` draws gpui-pre's `BackdropBlur` (above). At a blur batch it ends the frame's render pass and, per blur, renders the covered region (bounds and content mask, whole device pixels) into a scratch texture, blurs it there with two separable Gaussian passes (`backdrop_blur_pass_fragment`, paired taps through one linear sample each), composites the result back through the rounded rect (`backdrop_blur_composite_fragment`), and resumes the frame with `loadAction = Load`. From a 4 device pixel sigma up (CSS `blur(2px)` at scale 2) the first pass averages each 2x2 block and the Gaussian runs at half resolution, within 1.5 levels of an exact blur. The two scratch textures grow to the largest region seen and are reused. A scene with a blur sets the layer's `framebufferOnly` to false for its drawable, which the passes read; frames without one keep it true. Measured on Apple silicon at 2880 by 1800 under load: a full-window `blur(2px)` adds about 0.55ms of GPU time, `blur(8px)` about 1ms. The composite blends premultiplied (the blurred pixels, alpha included, scaled by coverage), so a blur over a hole stays transparent there instead of painting it opaque black; over opaque pixels it is the same blend as before.
 
 **Holes.** `MetalRenderer` draws gpui-pre's `Hole` (above) inside the frame's render pass, an unblended quad over the clipped bounds that writes transparent pixels (`hole_vertex` / `hole_fragment`). A scene with a hole makes the layer non-opaque for its drawable, so the window composites what is behind it; frames without one keep an opaque window's layer opaque. `a_hole_is_transparent_under_later_paint` renders a background, a hole, a blur and a translucent overlay offscreen and reads the pixels back.
+
+**Glyph weight.** `glyph_dilation_for_color` copies CoreGraphics' font smoothing, which thickens strokes by the text color's luminance, so dark text on a light theme drew thinner than light text on a dark one. It returns the light-text level for every color (still 0 when the user turns smoothing off), so text weighs the same on every theme.
 
 Upgrade it with gpui-pre: replace the source, commit it alone, `git apply --3way vendor/gpui-pre-apple.patch`, and regenerate:
 

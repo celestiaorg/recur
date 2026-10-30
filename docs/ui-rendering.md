@@ -23,7 +23,7 @@ Taffy lays out in unrounded floats and GPUI snaps each box's absolute edges afte
 
 ## How the terminal grid renders
 
-`recur-terminal-view` paints the grid with GPUI primitives (`element.rs`): a quad per background run, `window.paint_glyph` per cell (GPUI's white glyph masks, tinted, so text weighs the same on light and dark themes), underline, overline and strikethrough quads, and the cursor. Box drawing, blocks, shades, powerline and braille fill the cell exactly through `custom_glyphs`, ported from xterm.js's `CustomGlyphRasterizer.ts`. `recur-term` resolves cell colours and lifts any glyph below a 4.5:1 contrast with its background (`screen/render.rs`). Link underlines, the IME composition and the scrollbar slider paint on top; the chrome (find bar, scrollbar fades, focus rings) follows the rules below.
+`recur-terminal-view` paints the grid with GPUI primitives (`element.rs`): a quad per background run, `window.paint_glyph` per cell (text weighs the same on light and dark themes: see "Glyph weight" in `vendor/README.md`), underline, overline and strikethrough quads, and the cursor. Box drawing, blocks, shades, powerline and braille fill the cell exactly through `custom_glyphs`, ported from xterm.js's `CustomGlyphRasterizer.ts`. `recur-term` resolves cell colours and lifts any glyph below a 4.5:1 contrast with its background (`screen/render.rs`). Link underlines, the IME composition and the scrollbar slider paint on top; the chrome (find bar, scrollbar fades, focus rings) follows the rules below.
 
 ## Rules for UI crates
 

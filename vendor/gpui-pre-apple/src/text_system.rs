@@ -50,7 +50,7 @@ use std::{borrow::Cow, char, convert::TryFrom, sync::Arc};
 #[cfg(target_os = "macos")]
 use {
     core_foundation::base::CFType,
-    gpui::{Hsla, Rgba},
+    gpui::Hsla,
     std::sync::OnceLock,
 };
 
@@ -222,17 +222,11 @@ impl PlatformTextSystem for AppleTextSystem {
     }
 
     #[cfg(target_os = "macos")]
-    fn glyph_dilation_for_color(&self, color: Hsla) -> u8 {
-        // When font smoothing is enabled, CoreGraphics thickens glyph strokes by an amount that
-        // depends on the foreground color's luminance. We replicate the logic used by CoreGraphics
-        // to select between the different levels of dilation.
-        if !font_smoothing_allowed_by_user() {
-            return 0;
-        }
-        let rgba: Rgba = color.into();
-        let luminance = 0.2126 * rgba.r + 0.7152 * rgba.g + 0.0722 * rgba.b;
-        let level = ((4.0 * luminance) + 0.5).floor() as i32;
-        level.clamp(0, 4) as u8
+    fn glyph_dilation_for_color(&self, _color: Hsla) -> u8 {
+        // CoreGraphics thickens strokes more the lighter the text, which leaves dark text on a
+        // light theme visibly thinner than the same text on a dark one. Every color gets the
+        // light-text level, so weight does not depend on the theme.
+        if font_smoothing_allowed_by_user() { 4 } else { 0 }
     }
 }
 

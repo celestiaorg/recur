@@ -637,74 +637,29 @@ struct PaintGlyph {
     run: usize,
 }
 
-/// Which painter owns a glyph.
 #[derive(Clone, Copy)]
-enum GlyphSrc {
-    Gpui {
-        font_id: FontId,
-        /// The bundled face of the run's own font, when the glyph is from it (not a fallback).
-        face: Option<usize>,
-        glyph: gpui_kit::GlyphId,
-        is_emoji: bool,
-    },
-    /// CoreText-shaped `system-ui` text (macOS).
-    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
-    Ct { font: usize, glyph: u16 },
+struct GlyphSrc {
+    font_id: FontId,
+    glyph: gpui_kit::GlyphId,
+    is_emoji: bool,
 }
 
 /// One shaped run: (byte index, x, glyph) in run coordinates, and its advance width.
 fn shape_run(window: &Window, run: &RunStyle, text: &str) -> (Vec<(usize, f32, GlyphSrc)>, f32) {
-    #[cfg(target_os = "macos")]
-    if run.family == Family::System {
-        let (glyphs, width) = crate::ct_text::shape(text, run.weight, run.size);
-        let out = glyphs
-            .into_iter()
-            .map(|g| {
-                (
-                    g.index,
-                    g.x,
-                    GlyphSrc::Ct {
-                        font: g.font,
-                        glyph: g.glyph,
-                    },
-                )
-            })
-            .collect();
-        return (out, width);
-    }
     let text_run = run.text_run(text.len());
-    // Which bundled face draws the run's own glyphs: the run's family and weight decide. GPUI
-    // cannot say reliably (several requested fonts can share an id, and CoreText may shape with
-    // another loaded copy of the same face under a new id), so a shaped run is ours when its
-    // glyphs are the ones our face maps their characters to (features may substitute some); a
-    // fallback font's are not.
-    let face = crate::fonts::match_face(&text_run.font.family, text_run.font.weight.0);
-    let parsed = face.and_then(|f| ttf_parser::Face::parse(crate::fonts::FACES[f].2, 0).ok());
-    let own = |r: &gpui_kit::ShapedRun| {
-        parsed.as_ref().is_some_and(|p| {
-            r.glyphs.iter().any(|g| {
-                text.get(g.index..)
-                    .and_then(|t| t.chars().next())
-                    .and_then(|c| p.glyph_index(c))
-                    .is_some_and(|id| u32::from(id.0) == g.id.0)
-            })
-        })
-    };
     let shaped =
         window
             .text_system()
             .shape_line(text.to_string().into(), px(run.size), &[text_run], None);
     let mut out = Vec::new();
     for r in &shaped.runs {
-        let ours = own(r);
         for g in &r.glyphs {
             out.push((
                 // Everything downstream slices the text at glyph indices.
                 text.floor_char_boundary(g.index),
                 f32::from(g.position.x),
-                GlyphSrc::Gpui {
+                GlyphSrc {
                     font_id: r.font_id,
-                    face: face.filter(|_| ours),
                     glyph: g.id,
                     is_emoji: g.is_emoji,
                 },
@@ -1344,10 +1299,6 @@ fn break_para(
 
 /// Unrounded ascent, descent and line gap of a run's primary font.
 fn font_extent(run: &RunStyle, size: f32, window: &Window) -> (f32, f32, f32) {
-    #[cfg(target_os = "macos")]
-    if run.family == Family::System {
-        return crate::ct_text::metrics(run.weight, size);
-    }
     let ts = window.text_system();
     let id = ts.resolve_font(
         &run.family
@@ -2455,21 +2406,16 @@ fn paint_one(
     font_size: f32,
     color: Hsla,
 ) {
-    match g.src {
-        GlyphSrc::Gpui {
-            font_id,
-            face,
-            glyph,
-            is_emoji,
-        } => crate::glyph::paint(
-            window, font_id, face, glyph, font_size, origin, color, is_emoji,
-        ),
-        #[cfg(target_os = "macos")]
-        GlyphSrc::Ct { font, glyph } => {
-            crate::glyph::paint_ct(window, font, glyph, font_size, origin, color)
-        }
-        #[cfg(not(target_os = "macos"))]
-        GlyphSrc::Ct { .. } => {}
+    let GlyphSrc {
+        font_id,
+        glyph,
+        is_emoji,
+    } = g.src;
+    if is_emoji {
+        let _ = window.paint_emoji(origin, font_id, glyph, px(font_size));
+    } else {
+        // A glyph the atlas cannot rasterize paints nothing, as in the browser.
+        let _ = window.paint_glyph(origin, font_id, glyph, px(font_size), color);
     }
 }
 

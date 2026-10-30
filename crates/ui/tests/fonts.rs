@@ -60,5 +60,12 @@ fn main() {
     let inter = face("Inter", 400.);
     assert_eq!(ts.ascent(inter, px(2048.)), px(1984.));
     assert_eq!(ts.descent(inter, px(2048.)), px(-494.));
+    // `system-ui` weights reach SF's named faces. It has no Medium, so 500 (keycaps) is Regular.
+    #[cfg(target_os = "macos")]
+    {
+        let system = |w: f32| ts.resolve_font(&Family::System.font(w, false, Default::default()));
+        assert_eq!(system(500.), system(400.));
+        assert_ne!(system(600.), system(400.));
+    }
     println!("fonts: ok");
 }

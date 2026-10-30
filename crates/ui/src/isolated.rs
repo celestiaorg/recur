@@ -161,7 +161,17 @@ impl Fit {
         )
         .absolute()
         .inset_0();
-        div().relative().w_full().child(child).child(probe)
+        // Bottom-anchored: in the frame the content's height changes, before the host lays
+        // the view out again, it grows or shrinks at its top edge, so what sits at its
+        // bottom stays put.
+        div().size_full().flex().flex_col().justify_end().child(
+            div()
+                .relative()
+                .w_full()
+                .flex_none()
+                .child(child)
+                .child(probe),
+        )
     }
 
     /// The host's side: `entity` isolated, full width, at its content's measured height. Until

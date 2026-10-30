@@ -52,6 +52,29 @@ pub fn composer_max_height() -> f32 {
     (COMPOSER_PAD_PX + COMPOSER_LINE_PX * 6.).round()
 }
 
+/// `scrollComposerCaretIntoView`: keep the caret 6px inside the composer's box.
+pub(crate) fn reveal_caret(
+    l: &crate::flow::FlowLayout,
+    caret: usize,
+    scroll: &gpui_kit::ScrollHandle,
+) {
+    let (_, top, h) = l.caret(caret);
+    let view = composer_max_height() - COMPOSER_PAD_PX;
+    let cur = -f32::from(scroll.offset().y);
+    let pad = 6.;
+    let (top, bottom) = (top + 8., top + 8. + h);
+    let next = if bottom > cur + view + COMPOSER_PAD_PX - pad {
+        bottom - (view + COMPOSER_PAD_PX) + pad
+    } else if top < cur + pad {
+        (top - pad).max(0.)
+    } else {
+        cur
+    };
+    if (next - cur).abs() > 0.01 {
+        scroll.set_offset(point(px(0.), px(-next.max(0.))));
+    }
+}
+
 fn artifact_title_rank(title: &str, q: &str) -> u8 {
     let t = title.to_lowercase();
     if t == q {
@@ -1547,27 +1570,9 @@ impl AgentChat {
         self.notify_dock(cx);
     }
 
-    /// `scrollComposerCaretIntoView`: keep the caret 6px inside the composer's box.
+    /// The edit is not laid out yet: the composer's next layout scrolls the caret into view.
     pub(crate) fn reveal_caret(&mut self) {
-        let Some(l) = self.composer_layout.borrow().clone() else {
-            return;
-        };
-        let (_, top, h) = l.caret(self.doc.caret);
-        let view = composer_max_height() - COMPOSER_PAD_PX;
-        let cur = -f32::from(self.composer_scroll.offset().y);
-        let pad = 6.;
-        let (top, bottom) = (top + 8., top + 8. + h);
-        let next = if bottom > cur + view + COMPOSER_PAD_PX - pad {
-            bottom - (view + COMPOSER_PAD_PX) + pad
-        } else if top < cur + pad {
-            (top - pad).max(0.)
-        } else {
-            cur
-        };
-        if (next - cur).abs() > 0.01 {
-            self.composer_scroll
-                .set_offset(point(px(0.), px(-next.max(0.))));
-        }
+        self.composer_reveal = true;
     }
 
     pub fn focus_composer(&mut self, window: &mut Window, cx: &mut Context<Self>) {

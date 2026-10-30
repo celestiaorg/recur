@@ -795,28 +795,39 @@ impl Element for Flow {
             }),
             None => Placed::default(),
         };
-        let leaf =
-            window.request_measured_layout(Style::default(), move |known, avail, window, _| {
-                let w = known.width.map(f32::from).unwrap_or(match avail.width {
-                    AvailableSpace::Definite(w) => w.into(),
-                    // `overflow-wrap: anywhere`: a shrink-wrapped flow's min-content width is
-                    // its widest unbreakable piece, so a flex parent's cap can narrow it.
-                    AvailableSpace::MinContent if fit => 0.,
-                    _ => f32::MAX / 4.,
-                });
-                let l = FlowLayout::compute(&content, &sizes, &st, w, window);
-                let extra = if trailing {
-                    shape_width(" ", &st, window).0
+        // A block flow's text spans its box, so it measures its height at the box's width.
+        let leaf_style = Style {
+            size: gpui_kit::size(
+                if fit {
+                    gpui_kit::Length::Auto
                 } else {
-                    0.
-                };
-                let out = gpui_kit::size(
-                    px(if fit { (l.max_line + extra).min(w) } else { w }),
-                    px(l.height.max(min_h)),
-                );
-                *slot.borrow_mut() = Some(l);
-                out
+                    gpui_kit::relative(1.).into()
+                },
+                gpui_kit::Length::Auto,
+            ),
+            ..Default::default()
+        };
+        let leaf = window.request_measured_layout(leaf_style, move |known, avail, window, _| {
+            let w = known.width.map(f32::from).unwrap_or(match avail.width {
+                AvailableSpace::Definite(w) => w.into(),
+                // `overflow-wrap: anywhere`: a shrink-wrapped flow's min-content width is
+                // its widest unbreakable piece, so a flex parent's cap can narrow it.
+                AvailableSpace::MinContent if fit => 0.,
+                _ => f32::MAX / 4.,
             });
+            let l = FlowLayout::compute(&content, &sizes, &st, w, window);
+            let extra = if trailing {
+                shape_width(" ", &st, window).0
+            } else {
+                0.
+            };
+            let out = gpui_kit::size(
+                px(if fit { (l.max_line + extra).min(w) } else { w }),
+                px(l.height.max(min_h)),
+            );
+            *slot.borrow_mut() = Some(l);
+            out
+        });
         let mut nodes = vec![leaf];
         // Children are placed from the last frame's line layout; a new width lays the
         // window out again (see `prepaint`).

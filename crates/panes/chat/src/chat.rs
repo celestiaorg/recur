@@ -453,6 +453,8 @@ pub struct AgentChat {
     /// The composer's flow layout from the last frame (caret, hit tests).
     pub(crate) composer_layout: Rc<std::cell::RefCell<Option<FlowLayout>>>,
     pub(crate) composer_scroll: ScrollHandle,
+    /// Scroll the caret into view once the next frame has laid the draft out.
+    pub(crate) composer_reveal: bool,
     pub(crate) composer_marked: Option<std::ops::Range<usize>>,
     /// The prompt chip's slot inputs, by slot index.
     pub(crate) prompt_slots: Vec<Entity<gpui_kit::base::input::InputState>>,
@@ -660,6 +662,7 @@ impl AgentChat {
             undo: ComposerUndo::new(crate::composer_undo::UNDO_PAUSE),
             composer_layout: Rc::default(),
             composer_scroll: ScrollHandle::new(),
+            composer_reveal: false,
             composer_marked: None,
             prompt_slots: Vec::new(),
             prompt_slot_subs: Vec::new(),

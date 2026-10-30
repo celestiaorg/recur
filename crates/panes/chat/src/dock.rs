@@ -18,7 +18,7 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{IconName, Theme, Tokens, icon, motion, rgba};
 
 use crate::chat::{AgentChat, MentionHit, PromptArgHit, SlashHit};
-use crate::composer::{COMPOSER_PAD_PX, composer_max_height, composer_min_height};
+use crate::composer::{composer_max_height, composer_min_height};
 use crate::flow::{ATOM, FlowStyle, flow};
 use crate::style::{INK, hsla, label};
 
@@ -292,18 +292,6 @@ impl AgentChat {
                 }),
             }
         }
-        let content_h = self
-            .composer_layout
-            .borrow()
-            .as_ref()
-            .map_or(style.size * style.leading, |l| {
-                l.height.max(style.size * style.leading)
-            });
-        let height = if composer_only {
-            None
-        } else {
-            Some((content_h + COMPOSER_PAD_PX).clamp(composer_min_height(), composer_max_height()))
-        };
         let focused = self.focus.is_focused(window);
         let entity = cx.entity();
         let geom = self.composer_geom.clone();
@@ -318,6 +306,27 @@ impl AgentChat {
             window.request_animation_frame();
         }
         let focus = self.focus.clone();
+        // Laid out, before the scroller places its content: this frame shows the caret where
+        // it scrolled to, not at the old offset first.
+        let reveal = std::mem::take(&mut self.composer_reveal).then(|| {
+            let (content, scroll, caret, st) = (
+                self.doc.text.clone(),
+                self.composer_scroll.clone(),
+                self.doc.caret,
+                style.clone(),
+            );
+            let sizes: Vec<(f32, f32)> = atoms.iter().map(|a| (a.width, a.height)).collect();
+            canvas(
+                move |b, window, _| {
+                    let w = f32::from(b.size.width) - 2. * pad_x;
+                    let l = crate::flow::FlowLayout::compute(&content, &sizes, &st, w, window);
+                    crate::composer::reveal_caret(&l, caret, &scroll);
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0()
+        });
         let sel_color = t.amber.mix(0.3, recur_ui::color::TRANSPARENT);
         let caret_color: Hsla = t.text.into();
         let overlay = canvas(
@@ -405,8 +414,11 @@ impl AgentChat {
             .relative()
             .w_full()
             .flex_none()
-            .when_some(height, |d, h| d.h(px(h)))
             .when(composer_only, |d| d.min_h(px(148.)).max_h(px(240.)))
+            .when(!composer_only, |d| {
+                d.min_h(px(composer_min_height()))
+                    .max_h(px(composer_max_height()))
+            })
             .overflow_y_scroll()
             .track_scroll(&self.composer_scroll)
             .pl(px(pad_x))
@@ -443,7 +455,13 @@ impl AgentChat {
         if let Some(p) = placeholder {
             el = el.child(p);
         }
-        el.into_any_element()
+        div()
+            .relative()
+            .w_full()
+            .flex_none()
+            .children(reveal)
+            .child(el)
+            .into_any_element()
     }
 
     pub(crate) fn composer_byte_at(&self, p: Point<Pixels>) -> usize {

@@ -35,7 +35,7 @@ pub fn is_word_char(c: char) -> bool {
 pub fn clip_cursor_to_content(cm: &Cm, cur: Pos, _old: Option<Pos>) -> Pos {
     let vim = cm.vim_ref();
     let include_line_break = vim.insert_mode || vim.visual_mode;
-    let line = cur.line.max(cm.first_line()).min(cm.last_line());
+    let line = cur.line.max(0).min(cm.last_line());
     let len = cm.line_len(line);
     let max_ch = len - 1 + i64::from(include_line_break);
     let ch = cur.ch.max(0).min(max_ch);
@@ -196,7 +196,7 @@ pub fn expand_selection(cm: &Cm, mut start: Pos, mut end: Pos, mv: bool) -> (Pos
         anchor = pmin(start, anchor);
         head = pmax(head, end);
         head = offset(head, 0, -1);
-        if head.ch == -1 && head.line != cm.first_line() {
+        if head.ch == -1 && head.line != 0 {
             head = Pos::new(head.line - 1, cm.line_len(head.line - 1));
         }
     }

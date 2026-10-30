@@ -324,7 +324,7 @@ fn parse_line_spec(cm: &mut Cm, stream: &mut Stream) -> Result<Option<i64>, Stri
 fn parse_input(cm: &mut Cm, stream: &mut Stream, p: &mut ExParams) -> Result<(), String> {
     stream.eat_while(':');
     if stream.eat('%') {
-        p.line = Some(cm.first_line());
+        p.line = Some(0);
         p.line_end = Some(cm.last_line());
     } else {
         p.line = parse_line_spec(cm, stream)?;
@@ -1298,7 +1298,7 @@ fn sort(cm: &mut Cm, p: &ExParams) -> Result<(), String> {
         );
         return Ok(());
     }
-    let line_start = or_line(p.line, cm.first_line());
+    let line_start = or_line(p.line, 0);
     let line_end = or_line(p.line_end, or_line(p.line, cm.last_line()));
     if line_start == line_end {
         return Ok(());
@@ -1435,7 +1435,7 @@ fn global(cm: &mut Cm, p: &ExParams) -> Result<(), String> {
         inverted = true;
         arg = arg[1..].to_string();
     }
-    let line_start = p.line.unwrap_or(cm.first_line());
+    let line_start = p.line.unwrap_or(0);
     let line_end = or_line(p.line_end, or_line(p.line, cm.last_line()));
     let tokens = split_by_separator(&arg, '/');
     let (regex_part, cmd) = match tokens {
@@ -1664,7 +1664,7 @@ fn substitute(cm: &mut Cm, p: &ExParams) -> Result<(), String> {
     };
     let mut line_start = p.line.unwrap_or_else(|| cm.get_cursor().line);
     let mut line_end = or_line(p.line_end, line_start);
-    if line_start == cm.first_line() && line_end == cm.last_line() {
+    if line_start == 0 && line_end == cm.last_line() {
         line_end = INF;
     }
     if count != 0 {

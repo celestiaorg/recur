@@ -448,7 +448,7 @@ pub fn find_next(cm: &mut Cm, prev: bool, query: &VimRegex, repeat: i64) -> Opti
                 let start = if prev {
                     Pos::new(cm.last_line(), INF)
                 } else {
-                    Pos::new(cm.first_line(), 0)
+                    Pos::new(0, 0)
                 };
                 cursor = cm.get_search_cursor(query, start);
                 if !cm.cursor_find(&mut cursor, prev) {
@@ -482,7 +482,7 @@ pub fn find_next_from_and_to_inclusive(
                 let start = if prev {
                     Pos::new(cm.last_line(), INF)
                 } else {
-                    Pos::new(cm.first_line(), 0)
+                    Pos::new(0, 0)
                 };
                 cursor = cm.get_search_cursor(query, start);
                 if !cm.cursor_find(&mut cursor, prev) {

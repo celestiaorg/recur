@@ -152,7 +152,6 @@ pub(crate) fn exit_insert_mode(cm: &mut Cm, keep_cursor: bool) {
         let c = cm.get_cursor();
         cm.set_cursor(Pos::new(c.line, c.ch - 1));
     }
-    cm.st().key_map = "vim".into();
     cm.toggle_overwrite(false);
     with_global(|g| {
         let text: String = g

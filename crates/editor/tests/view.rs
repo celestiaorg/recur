@@ -391,6 +391,50 @@ fn vim_macros_text_objects_and_blocks(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn vim_brackets_indent_and_display_lines(cx: &mut TestAppContext) {
+    let mut h = mount_vim(cx, "f(a) \"q\" x\nb");
+    h.cx.simulate_keystrokes("%");
+    h.settle();
+    assert_eq!(h.sel(), (3, 3));
+    h.cx.simulate_keystrokes("%");
+    h.settle();
+    assert_eq!(h.sel(), (1, 1));
+    h.cx.simulate_keystrokes("f q c i \"");
+    h.cx.simulate_input("z");
+    h.cx.simulate_keystrokes("escape escape");
+    h.settle();
+    assert_eq!(h.doc(), "f(a) \"z\" x\nb");
+    h.cx.simulate_keystrokes("g $");
+    h.settle();
+    assert_eq!(h.sel(), (9, 9));
+    h.cx.simulate_keystrokes("g 0");
+    h.settle();
+    assert_eq!(h.sel(), (0, 0));
+    h.cx.simulate_keystrokes("t ) ;");
+    h.settle();
+    assert_eq!(h.sel(), (2, 2));
+    h.cx.simulate_keystrokes("> > j > >");
+    h.settle();
+    assert_eq!(h.doc(), "    f(a) \"z\" x\n    b");
+    h.cx.simulate_keystrokes("< <");
+    h.settle();
+    assert_eq!(h.doc(), "    f(a) \"z\" x\nb");
+    h.cx.simulate_keystrokes("k = =");
+    h.settle();
+    assert_eq!(h.doc(), "f(a) \"z\" x\nb");
+    h.cx.simulate_keystrokes("shift-o");
+    h.cx.simulate_input("t");
+    h.cx.simulate_keystrokes("escape escape");
+    h.settle();
+    assert_eq!(h.doc(), "t\nf(a) \"z\" x\nb");
+    h.cx.simulate_keystrokes("j shift-r");
+    h.cx.simulate_input("gh");
+    h.cx.simulate_keystrokes("backspace escape escape");
+    h.settle();
+    assert_eq!(h.doc(), "t\nga) \"z\" x\nb");
+}
+
+#[gpui::test]
 fn find_field_takes_typed_keys(cx: &mut TestAppContext) {
     let mut h = mount(cx, "a.txt", "fmt x fmt", EditorKind::Code);
     h.cx.simulate_keystrokes("secondary-f");

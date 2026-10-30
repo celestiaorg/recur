@@ -7,6 +7,7 @@ use super::helpers::*;
 use super::state::with_global;
 use super::types::*;
 use super::{insert, mode_change};
+use crate::bindings::Cmd;
 
 pub(crate) fn run(cm: &mut Cm, action: Action, args: &ActionArgs) {
     use Action::*;
@@ -63,11 +64,9 @@ pub(crate) fn run(cm: &mut Cm, action: Action, args: &ActionArgs) {
         ToggleOverwrite => {
             if !cm.overwrite() {
                 cm.toggle_overwrite(true);
-                cm.st().key_map = "vim-replace".into();
                 mode_change(cm, "replace", None);
             } else {
                 cm.toggle_overwrite(false);
-                cm.st().key_map = "vim-insert".into();
                 mode_change(cm, "insert", None);
             }
         }
@@ -99,9 +98,9 @@ pub(crate) fn run(cm: &mut Cm, action: Action, args: &ActionArgs) {
         NewLineAndEnterInsertMode => {
             cm.vim().insert_mode = true;
             let mut at = cm.get_cursor();
-            if at.line == cm.first_line() && !args.after {
-                cm.replace_range("\n", Pos::new(cm.first_line(), 0), None);
-                cm.set_cursor(Pos::new(cm.first_line(), 0));
+            if at.line == 0 && !args.after {
+                cm.replace_range("\n", Pos::new(0, 0), None);
+                cm.set_cursor(Pos::new(0, 0));
             } else {
                 at.line = if args.after { at.line } else { at.line - 1 };
                 at.ch = cm.line_len(at.line);
@@ -179,10 +178,11 @@ pub(crate) fn run(cm: &mut Cm, action: Action, args: &ActionArgs) {
             }
             insert::repeat_last_edit(cm, repeat, false);
         }
-        Indent => {
-            let line = cm.get_cursor().line;
-            cm.indent_line(line, args.indent_right);
-        }
+        Indent => cm.run(if args.indent_right {
+            Cmd::IndentMore
+        } else {
+            Cmd::IndentLess
+        }),
     }
 }
 
@@ -285,11 +285,9 @@ pub(crate) fn enter_insert_mode(cm: &mut Cm, args: &ActionArgs) {
     }
     if args.replace {
         cm.toggle_overwrite(true);
-        cm.st().key_map = "vim-replace".into();
         mode_change(cm, "replace", None);
     } else {
         cm.toggle_overwrite(false);
-        cm.st().key_map = "vim-insert".into();
         mode_change(cm, "insert", None);
     }
     if !with_global(|g| g.macro_mode_state.is_playing) {

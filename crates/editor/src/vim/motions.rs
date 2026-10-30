@@ -5,6 +5,7 @@ use super::cm::Cm;
 use super::helpers::*;
 use super::state::{InputState, with_global};
 use super::types::*;
+use crate::bindings::Cmd;
 
 fn ch_at(line: &[char], i: i64) -> Option<char> {
     (i >= 0).then(|| line.get(i as usize).copied()).flatten()
@@ -31,7 +32,7 @@ fn is_space(c: Option<char>) -> bool {
 
 /// `isLine`.
 fn is_line(cm: &Cm, n: i64) -> bool {
-    n >= cm.first_line() && n <= cm.last_line()
+    (0..=cm.last_line()).contains(&n)
 }
 
 /// Run a motion (`motions[name]`).
@@ -295,10 +296,7 @@ pub(crate) fn run(
             while ch < line.len() {
                 let symbol = line[ch];
                 if "()[]{}".contains(symbol) {
-                    let style = cm.token_type_at(Pos::new(head.line, ch as i64 + 1));
-                    if style != "string" && style != "comment" {
-                        break;
-                    }
+                    break;
                 }
                 ch += 1;
             }
@@ -311,24 +309,28 @@ pub(crate) fn run(
         }
         MoveToStartOfLine => Some(h(Pos::new(head.line, 0))),
         MoveToLineOrEdgeOfDocument => {
-            let mut line = if args.fwd() {
-                cm.last_line()
-            } else {
-                cm.first_line()
-            };
+            let mut line = if args.fwd() { cm.last_line() } else { 0 };
             if args.repeat_is_explicit {
                 line = args.repeat - 1;
             }
             Some(h(Pos::new(line, first_non_ws(&cm.get_line(line)))))
         }
         MoveToStartOfDisplayLine => {
-            cm.exec_command("goLineLeft");
+            cm.run(Cmd::CursorLineBoundaryBackward);
             Some(h(cm.get_cursor()))
         }
         MoveToEndOfDisplayLine => {
-            // The adapter's positions carry no `sticky`, so the package
-            // never steps back here.
-            cm.exec_command("goLineRight");
+            // `goLineRight`: at a wrap the boundary is the next row's
+            // start, so step back onto this row. Positions carry no
+            // `sticky`, so the package's own step back never applies.
+            cm.run(Cmd::CursorLineBoundaryForward);
+            let state = &cm.view.state;
+            let cur = state.selection.main().head();
+            if cur < state.doc.len()
+                && state.slice_doc(cur, state.doc.clamp_to_char(cur + 1).max(cur + 1)) != "\n"
+            {
+                cm.run(Cmd::CursorCharLeft);
+            }
             Some(h(cm.get_cursor()))
         }
         TextObjectManipulation => text_object(cm, head, args),
@@ -337,7 +339,7 @@ pub(crate) fn run(
             let forward = args.fwd() == last.forward;
             let increment =
                 (if last.increment != 0 { 1 } else { 0 }) * if forward { -1 } else { 1 };
-            cm.move_h(-increment);
+            cm.set_cursor(offset(cm.get_cursor(), 0, -increment));
             args.inclusive = forward;
             let Some(mut e) = move_to_character(
                 cm,
@@ -346,7 +348,7 @@ pub(crate) fn run(
                 Some(&last.selected_character),
                 None,
             ) else {
-                cm.move_h(increment);
+                cm.set_cursor(offset(cm.get_cursor(), 0, increment));
                 return Some(h(head));
             };
             e.ch += increment;
@@ -375,7 +377,7 @@ fn move_by_lines(cm: &mut Cm, cur: Pos, args: &MotionArgs) -> Pos {
     } else {
         cur.line - repeat
     };
-    let first = cm.first_line();
+    let first = 0;
     let last = cm.last_line();
     let goal = cm.vim().last_hs_pos;
     let (pos_v, _) = cm.find_pos_v(
@@ -430,7 +432,7 @@ fn move_by_display_lines(cm: &mut Cm, cur: Pos, args: &MotionArgs) -> Pos {
             let last = cm.char_coords(res);
             res = cm.coords_char(goal, last.top + 8.0);
         } else {
-            let first = cm.char_coords(Pos::new(cm.first_line(), 0));
+            let first = cm.char_coords(Pos::new(0, 0));
             res = cm.coords_char(goal, first.top);
         }
     }
@@ -672,7 +674,7 @@ pub fn find_paragraph(
     mut inclusive: bool,
 ) -> (Pos, Pos) {
     let mut line = head.line;
-    let min = cm.first_line();
+    let min = 0;
     let max = cm.last_line();
     let is_empty = |i: i64| cm.get_line(i).is_empty();
     let is_boundary = |i: i64, dir: i64, any: bool| -> bool {
@@ -1197,12 +1199,8 @@ fn find_beginning_and_end(cm: &Cm, head: Pos, symb: char, inclusive: bool) -> Sp
     if cur.ch < first_index {
         cur.ch = first_index;
     } else if first_index < cur.ch && ch_at(&chars, cur.ch) == Some(symb) {
-        let string_after = cm.token_type_at(offset(head, 0, 1)).contains("string");
-        let string_before = cm.token_type_at(head).contains("string");
-        if !string_after || string_before {
-            end = Some(cur.ch);
-            cur.ch -= 1;
-        }
+        end = Some(cur.ch);
+        cur.ch -= 1;
     }
     if ch_at(&chars, cur.ch) == Some(symb) && end.is_none_or(|e| e == 0) {
         start = Some(cur.ch + 1);

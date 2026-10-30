@@ -9,17 +9,10 @@ use gpui_kit::{
     MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent, SharedString, Style, TextRun,
     Window, fill, point, px, relative, rgba, size,
 };
-#[cfg(not(target_os = "macos"))]
-use recur_term::screen::{CursorShape, Glyph, UnderlineStyle};
-use recur_term::screen::{Frame, Rgba};
+use recur_term::screen::{CursorShape, Frame, Glyph, Rgba, UnderlineStyle};
 
-#[cfg(target_os = "macos")]
-use crate::atlas::FontKey;
-#[cfg(not(target_os = "macos"))]
 use crate::custom_glyphs;
 use crate::font::{CellMetrics, mono_font_stack};
-#[cfg(target_os = "macos")]
-use crate::tiles;
 use crate::view::{GridLayout, TerminalView};
 use recur_ui::guard;
 
@@ -45,8 +38,6 @@ pub(crate) struct Prepaint {
     layout: GridLayout,
     frame: Frame,
     fonts: Fonts,
-    #[cfg(target_os = "macos")]
-    atlas_font: FontKey,
     /// None while the pane is hidden: hidden tabs take no pointer events.
     hitboxes: Option<(Hitbox, Hitbox)>,
 }
@@ -58,7 +49,6 @@ pub(crate) struct Fonts {
 }
 
 impl Fonts {
-    #[cfg(not(target_os = "macos"))]
     fn variant(&self, bold: bool, italic: bool) -> Font {
         let mut f = self.regular.clone();
         if bold {
@@ -174,8 +164,6 @@ impl Element for TerminalElement {
             layout,
             frame,
             fonts: Fonts { regular, size },
-            #[cfg(target_os = "macos")]
-            atlas_font: FontKey::new(&font.face, &metrics, font.line_height),
             hitboxes,
         }
     }
@@ -242,32 +230,18 @@ impl Element for TerminalElement {
                 ),
                 gpui_color(p.frame.background),
             ));
-            #[cfg(target_os = "macos")]
-            {
-                tiles::paint(
-                    window,
-                    l.origin,
-                    &p.frame,
-                    &m,
-                    &p.atlas_font,
-                    p.frame.background,
-                );
+            for r in &p.frame.rects {
+                let o = cell(r.col, r.row);
+                window.paint_quad(fill(
+                    Bounds::new(
+                        o,
+                        size(dev(r.len as f32 * m.cell_width), dev(m.cell_height)),
+                    ),
+                    gpui_color(r.color),
+                ));
             }
-            #[cfg(not(target_os = "macos"))]
-            {
-                for r in &p.frame.rects {
-                    let o = cell(r.col, r.row);
-                    window.paint_quad(fill(
-                        Bounds::new(
-                            o,
-                            size(dev(r.len as f32 * m.cell_width), dev(m.cell_height)),
-                        ),
-                        gpui_color(r.color),
-                    ));
-                }
-                for g in &p.frame.glyphs {
-                    paint_glyph(window, g, cell(g.col, g.row), &m, &p.fonts);
-                }
+            for g in &p.frame.glyphs {
+                paint_glyph(window, g, cell(g.col, g.row), &m, &p.fonts);
             }
             if let Some(link) = &link {
                 let (x1, y1) = (
@@ -302,7 +276,6 @@ impl Element for TerminalElement {
                     ));
                 }
             }
-            #[cfg(not(target_os = "macos"))]
             if let Some(c) = p.frame.cursor {
                 paint_cursor(
                     window,
@@ -409,7 +382,6 @@ impl Element for TerminalElement {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
 fn paint_glyph(
     window: &mut Window,
     g: &Glyph,
@@ -475,8 +447,7 @@ fn paint_glyph(
     }
     if g.strikethrough {
         let lw = m.strike_width();
-        // The atlas checks the previous (odd) context line width, so the stroke is centred on a
-        // half pixel.
+        // Centred on a half pixel, as xterm draws it.
         let center = (m.char_height / 2.0).floor() - 0.5;
         window.paint_quad(fill(
             Bounds::new(
@@ -488,7 +459,6 @@ fn paint_glyph(
     }
 }
 
-#[cfg(not(target_os = "macos"))]
 #[allow(clippy::too_many_arguments)]
 fn paint_underline(
     window: &mut Window,
@@ -591,7 +561,6 @@ fn paint_underline(
     }
 }
 
-#[cfg(not(target_os = "macos"))]
 fn paint_cursor(
     window: &mut Window,
     origin: Point<Pixels>,

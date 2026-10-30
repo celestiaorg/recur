@@ -1,8 +1,6 @@
 //! GPUI terminal view rendering `recur-term` sessions, with xterm.js 6's behavior for fit,
 //! search, web links and WebGL-style glyphs.
 
-#[cfg(target_os = "macos")]
-mod atlas;
 mod backend;
 mod blink;
 pub use blink::BLINK_INTERVAL;
@@ -15,8 +13,6 @@ mod font;
 mod park;
 mod scrollbar;
 mod theme;
-#[cfg(target_os = "macos")]
-mod tiles;
 mod view;
 
 pub use backend::TerminalBackend;

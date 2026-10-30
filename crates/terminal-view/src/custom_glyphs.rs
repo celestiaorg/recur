@@ -2,8 +2,8 @@
 //! drawing, block elements, shades, powerline, braille, progress, git-branch and legacy computing
 //! symbols are drawn to fill the cell exactly instead of coming from the font.
 //!
-//! Work happens in device pixels relative to the cell's top-left, like the canvas the atlas
-//! rasterizes into; the table lives in [`crate::custom_glyph_data`].
+//! Work happens in device pixels relative to the cell's top-left; the table lives in
+//! [`crate::custom_glyph_data`].
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -52,12 +52,6 @@ fn lookup(cp: u32) -> Option<&'static [P]> {
         .binary_search_by_key(&cp, |(c, _)| *c)
         .ok()
         .map(|i| GLYPHS[i].1)
-}
-
-/// Whether `cp` has a custom definition.
-#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
-pub(crate) fn has(cp: u32) -> bool {
-    lookup(cp).is_some()
 }
 
 /// Shades use a 2-phase variant so patterns tile seamlessly across odd cell sizes.
@@ -117,7 +111,7 @@ pub(crate) trait Canvas {
     );
 }
 
-/// The atlas configuration the rasterizer reads, in device pixels.
+/// The cell geometry the rasterizer reads, in device pixels.
 #[derive(Clone, Copy)]
 pub(crate) struct Dims {
     pub cell_w: f32,
@@ -410,7 +404,6 @@ fn svg_path(ins: &[I], xp: f32, yp: f32, map: impl Fn(f32, usize) -> f32, full: 
 
 /// Paints `cp` into the cell at `origin` as GPUI primitives. Returns false when `cp` has no
 /// custom definition.
-#[cfg_attr(target_os = "macos", allow(dead_code))]
 pub(crate) fn paint(
     window: &mut Window,
     cp: u32,
@@ -637,9 +630,9 @@ mod tests {
             0x2500, 0x253C, 0x2550, 0x256D, 0x2588, 0x2591, 0x2592, 0x2593, 0xE0B0, 0xE0B6, 0x2800,
             0x28FF,
         ] {
-            assert!(has(cp), "missing U+{cp:04X}");
+            assert!(lookup(cp).is_some(), "missing U+{cp:04X}");
         }
-        assert!(!has('a' as u32));
+        assert!(lookup('a' as u32).is_none());
         assert!(is_pattern(0x2592) && !is_pattern(0x2500));
     }
 

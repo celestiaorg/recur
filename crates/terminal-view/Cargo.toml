@@ -16,12 +16,6 @@ recur-term.workspace = true
 serde.workspace = true
 smallvec.workspace = true
 
-# xterm.js draws glyphs through WebKit's canvas, which is CoreText and CoreGraphics on macOS.
-[target.'cfg(target_os = "macos")'.dependencies]
-core-graphics.workspace = true
-core-text.workspace = true
-core-foundation.workspace = true
-
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
 parking_lot.workspace = true

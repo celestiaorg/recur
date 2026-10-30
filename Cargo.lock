@@ -8573,9 +8573,6 @@ dependencies = [
 name = "recur-terminal-view"
 version = "0.0.0"
 dependencies = [
- "core-foundation 0.10.1",
- "core-graphics 0.24.0",
- "core-text",
  "futures",
  "gpui-kit",
  "gpui-pre",

@@ -20,6 +20,9 @@ pub const LINUX_PACKAGED_DIR: &str = "/opt/recur";
 /// Short description shown by the desktop entry.
 pub const APP_DESCRIPTION: &str = "Run autonomous AI coding loops locally.";
 
+/// About panel copyright. Matches `NSHumanReadableCopyright` in `build/darwin/Info.plist`.
+pub const APP_COPYRIGHT: &str = "© 2026, recur.build";
+
 const INSTANCE_LABEL_ENV: &str = "RECUR_INSTANCE_LABEL";
 
 /// The optional process env Recur paints in the titlebar so dogfood windows

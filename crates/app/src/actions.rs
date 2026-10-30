@@ -108,15 +108,7 @@ impl Shell {
                 this.emit_menu_action(&a.action, window, cx);
             }
         }))
-        .on_action(cx.guarded_listener(|_, _: &About, window, cx| {
-            drop(window.prompt(
-                gpui_kit::PromptLevel::Info,
-                recur_platform::identity::APP_NAME,
-                Some(recur_platform::identity::APP_DESCRIPTION),
-                &["OK"],
-                cx,
-            ));
-        }))
+        .on_action(cx.guarded_listener(|_, _: &About, _, _| show_about_panel()))
         .on_action(cx.guarded_listener(|_, _: &HideApp, _, cx| cx.hide()))
         .on_action(cx.guarded_listener(|_, _: &HideOthers, _, cx| cx.hide_other_apps()))
         .on_action(cx.guarded_listener(|_, _: &ShowAll, _, cx| cx.unhide_other_apps()))
@@ -337,3 +329,38 @@ impl Shell {
         }
     }
 }
+
+/// The standard AppKit About panel. Packaged builds read the icon and version from Info.plist;
+/// unbundled dev builds have none, so those are passed in. The copyright is always passed.
+#[cfg(target_os = "macos")]
+#[allow(unsafe_code)]
+fn show_about_panel() {
+    use objc2::{AllocAnyThread, rc::Retained, runtime::AnyObject};
+    use objc2_app_kit::{NSApplication, NSImage};
+    use objc2_foundation::{NSData, NSDictionary, NSString};
+    let Some(mtm) = objc2::MainThreadMarker::new() else {
+        return;
+    };
+    let mut keys = vec![NSString::from_str("Copyright")];
+    let mut values: Vec<Retained<AnyObject>> =
+        vec![NSString::from_str(recur_platform::identity::APP_COPYRIGHT).into()];
+    if !recur_platform::running_in_app_bundle() {
+        let icon = NSData::with_bytes(include_bytes!("../../../build/darwin/icons.icns"));
+        if let Some(icon) = NSImage::initWithData(NSImage::alloc(), &icon) {
+            keys.push(NSString::from_str("ApplicationIcon"));
+            values.push(icon.into());
+        }
+        keys.push(NSString::from_str("ApplicationVersion"));
+        values.push(NSString::from_str("dev").into());
+    }
+    let keys: Vec<&NSString> = keys.iter().map(|k| &**k).collect();
+    let values: Vec<&AnyObject> = values.iter().map(|v| &**v).collect();
+    let options = NSDictionary::from_slices(&keys, &values);
+    // SAFETY: on the main thread, with values of the documented types for each key.
+    unsafe {
+        NSApplication::sharedApplication(mtm).orderFrontStandardAboutPanelWithOptions(&options)
+    };
+}
+
+#[cfg(not(target_os = "macos"))]
+fn show_about_panel() {}

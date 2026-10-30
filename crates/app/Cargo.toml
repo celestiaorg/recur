@@ -24,7 +24,9 @@ anyhow.workspace = true
 chrono.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
 objc2-foundation.workspace = true
+objc2-app-kit.workspace = true
 
 [dev-dependencies]
 parking_lot.workspace = true

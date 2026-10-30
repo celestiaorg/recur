@@ -241,7 +241,7 @@ impl Observatory {
             if review { "Review" } else { "Open files" },
         )
         .grow(true)
-        .active_key(SharedString::from(active_key))
+        .active_key(SharedString::from(active_key.clone()))
         .reveal_nonce(self.file_tab_reveal_nonce)
         .scroll_handle(self.file_tab_scroll.clone());
         if let Some((left, id)) = self.file_tab_scroll_restore {
@@ -354,7 +354,7 @@ impl Observatory {
                 let mut chip = tab_chip(SharedString::from(format!("file-tab:{p}")), name)
                     .title(title)
                     .icon(ChipIcon::File(icon_name.into()))
-                    .active(self.selected_path == p)
+                    .active(active_key == p)
                     .lit(lit)
                     .dirty(self.tab_is_dirty(&p))
                     .reorderable(!blocked && n > 1)

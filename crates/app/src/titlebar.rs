@@ -319,24 +319,27 @@ impl Shell {
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let state = self.state.clone();
+        let gap = 10.;
         let mut left = div()
             .id("tb-left")
             .debug_selector(|| "tb-left".into())
             .flex_1()
             .flex()
             .items_center()
-            .gap(px(10.))
+            .gap(px(gap))
             .min_w_0()
             .overflow_hidden()
             .p(px(6.))
             .m(px(-6.));
         if TRAFFIC_LIGHTS {
-            // Drag-to-move, but no zoom: the traffic lights sit here.
+            // Drag-to-move, but no zoom: the traffic lights sit here. They keep their native
+            // size under the UI zoom, so the room up to the next item does too.
+            let clear = (TRAFFIC_CLEAR_WIDTH + gap) / window.ui_zoom() - gap;
             left = left.child(
                 div()
                     .id("tb-traffic-clear")
                     .flex_none()
-                    .w(px(TRAFFIC_CLEAR_WIDTH))
+                    .w(px(clear))
                     .h_full()
                     .on_mouse_down(MouseButton::Left, |ev, window, cx| {
                         titlebar_mouse_down(ev, false, window);

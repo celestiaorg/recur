@@ -52,13 +52,25 @@ pub fn zoom_chord(k: &Keystroke) -> Option<Zoom> {
     }
 }
 
+/// Zooms the window. The native traffic lights keep their size, so they re-center in the
+/// zoomed titlebar.
+fn set_zoom(zoom: f32, window: &mut Window, cx: &mut Context<Shell>) {
+    window.set_ui_zoom(zoom, cx);
+    #[cfg(target_os = "macos")]
+    {
+        let (x, y) = crate::TRAFFIC_LIGHT_POSITION;
+        let y = y + crate::TITLEBAR_HEIGHT * (zoom - 1.) / 2.;
+        window.set_traffic_light_position(gpui_kit::point(gpui_kit::px(x), gpui_kit::px(y)));
+    }
+}
+
 impl Shell {
     pub(crate) fn zoom(&mut self, step: Zoom, window: &mut Window, cx: &mut Context<Self>) {
         let next = next_zoom(window.ui_zoom(), step);
         if (next - window.ui_zoom()).abs() < EPS {
             return;
         }
-        window.set_ui_zoom(next, cx);
+        set_zoom(next, window, cx);
         push_toast(
             ToastKind::Info,
             format!("Zoom {}%", (next * 100.).round()),
@@ -106,9 +118,9 @@ impl Shell {
     /// `initZoom`: the saved level, without a toast or a save.
     pub(crate) fn restore_zoom(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let services = self.state.read(cx).services().clone();
-        cx.spawn_in(window, async move |_, cx| {
+        cx.spawn_in(window, async move |this, cx| {
             if let Ok(zoom) = services.shell.get_ui_zoom().await {
-                let _ = cx.update(|window, cx| window.set_ui_zoom(zoom, cx));
+                let _ = this.update_in(cx, |_, window, cx| set_zoom(zoom, window, cx));
             }
         })
         .detach();

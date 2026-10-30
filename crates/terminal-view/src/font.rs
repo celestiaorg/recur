@@ -185,8 +185,6 @@ impl CellMetrics {
     }
 }
 
-/// `@xterm/addon-fit` / `ViewportConstants.DEFAULT_SCROLL_BAR_WIDTH`.
-pub const TERM_FIT_SCROLLBAR_WIDTH: f32 = 14.0;
 pub const TERM_FIT_MIN_COLS: usize = 2;
 pub const TERM_FIT_MIN_ROWS: usize = 1;
 
@@ -292,10 +290,7 @@ mod tests {
         // Border-box 100px with 6px top padding → 94px content. 20px cells.
         assert_eq!(term_fit_size(200.0, 94.0, 10.0, 20.0, 0.0), (20, 4));
         assert_eq!(term_fit_size(80.0, 50.0, 8.0, 17.0, 0.0), (10, 2));
-        assert_eq!(
-            term_fit_size(94.0, 80.0, 8.0, 16.0, TERM_FIT_SCROLLBAR_WIDTH),
-            (((94.0 - TERM_FIT_SCROLLBAR_WIDTH) / 8.0) as usize, 5)
-        );
+        assert_eq!(term_fit_size(94.0, 80.0, 8.0, 16.0, 11.0), (10, 5));
         assert_eq!(term_fit_size(0.0, 0.0, 8.0, 16.0, 0.0), (2, 1));
         assert_eq!(term_fit_size(80.0, 80.0, 0.0, 0.0, 0.0), (2, 1));
     }

@@ -11,7 +11,6 @@ mod element;
 mod find_bar;
 mod font;
 mod park;
-mod scrollbar;
 mod theme;
 mod view;
 

@@ -155,6 +155,7 @@ Otherwise `command` must resolve on `PATH`. Overrides: `RECUR_LSP_GOPLS`,
 `RECUR_LSP_SVELTE_LANGUAGE_SERVER`, `RECUR_LSP_VUE_LANGUAGE_SERVER`. User packs under `~/.recur/bundles`
 override shipped servers with the same `id`. Disable servers in Settings → Bundles → Language servers.
 Several servers may attach to one language (Python: basedpyright + ruff).
+rust-analyzer gets `cargo.targetDir = true`, so its checks build into `target/rust-analyzer` and never hold the build lock your own cargo commands need.
 
 ## Grammars & themes
 

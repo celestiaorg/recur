@@ -32,7 +32,7 @@ Read before inventing architecture:
 
 - Install [mise](https://mise.jdx.dev) and run `mise install` once. mise pins Rust (overriding `rust-toolchain.toml`, which CI uses; bump both together) and routes `cargo` through [mr-boxington](https://mr-boxington.jdx.dev) (`mbx`), which shares build output across worktrees and makes `target/` a symlink into its cache. `mise tasks` lists every task.
 - Task names use **`verb:object`** (`test:bundles`, `lint:bundles`, `linux:package`).
-- Dev app: `mise run dev` (`cargo run -p recur-desktop`). It defaults to the `Recur` data dir, the same as the packaged app; `RECUR_DATA_DIR` / `RECUR_WORKTREES_DIR` override it.
+- Dev app: `mise run dev` (`cargo run -p recur-desktop --profile human`). The `human` profile builds into `target/human/`, so agents' cargo runs in `target/debug/` never block it on the build lock; agents should not use it. It defaults to the `Recur` data dir, the same as the packaged app; `RECUR_DATA_DIR` / `RECUR_WORKTREES_DIR` override it.
 - Dogfood: `.recur/project.toml` sets `RECUR_INSTANCE_LABEL=$RECUR_BRANCH`. When that env is present, Recur paints a `dev` chip with the branch in the titlebar gap (packaged Recur omits it).
 - Dev builds give dependencies (gpui-pre and the other vendored crates included) line tables only, not full debuginfo (`[profile.dev.package."*"]` in `Cargo.toml`): backtraces, profiles and file:line breakpoints work, but lldb shows no locals inside dependency code. To debug inside one, rebuild just that crate with full debuginfo: `cargo run -p recur-desktop --config 'profile.dev.package.gpui-pre.debug=true'`.
 - Everything builds into `target/`: `target/debug/recur` (desktop) and `target/debug/recur-cli` (CLI). Packages go to `target/package/`.

@@ -53,14 +53,23 @@ pub fn handle_server_request(msg: &Value, root_uri: &str) -> ServerRequest {
     };
     match method {
         "workspace/configuration" => {
-            let n = msg
+            let items = msg
                 .get("params")
                 .and_then(|p| p.get("items"))
                 .and_then(Value::as_array)
-                .map_or(0, Vec::len);
+                .map_or(&[][..], Vec::as_slice);
             // `null` reads as unset; some servers (taplo) then treat it as
             // include=[] and exclude every document. `{}` keeps defaults.
-            ServerRequest::Reply(reply(&id, Value::Array(vec![json!({}); n])))
+            // rust-analyzer checks into `target/rust-analyzer` so it never
+            // holds the build lock the user's own cargo runs need.
+            let config = items
+                .iter()
+                .map(|item| match item.get("section").and_then(Value::as_str) {
+                    Some("rust-analyzer") => json!({"cargo": {"targetDir": true}}),
+                    _ => json!({}),
+                })
+                .collect();
+            ServerRequest::Reply(reply(&id, Value::Array(config)))
         }
         "workspace/workspaceFolders" => {
             let folders = if root_uri.is_empty() {
@@ -295,6 +304,14 @@ mod tests {
                 r#"{"jsonrpc":"2.0","id":3,"method":"workspace/configuration","params":{"items":[{},{}]}}"#
             ),
             ServerRequest::Reply(json!({"jsonrpc": "2.0", "id": 3, "result": [{}, {}]}))
+        );
+        assert_eq!(
+            r(
+                r#"{"id":4,"method":"workspace/configuration","params":{"items":[{"section":"rust-analyzer"},{"section":"gopls"}]}}"#
+            ),
+            ServerRequest::Reply(
+                json!({"jsonrpc": "2.0", "id": 4, "result": [{"cargo": {"targetDir": true}}, {}]})
+            )
         );
         assert_eq!(
             r(r#"{"id":"a","method":"workspace/workspaceFolders"}"#),

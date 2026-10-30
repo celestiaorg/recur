@@ -5,7 +5,7 @@ run = "cargo build"
 
 [dev]
 description = "Runs the desktop app on the engine-backed services (data dir defaults to Recur; `-- --features fake` for the typed service fakes)"
-run = "cargo run -p recur-desktop"
+run = "cargo run -p recur-desktop --profile human"
 
 [smoke]
 description = "Boots the desktop on a sandbox built from a Recur data dir (read only) and drives every view: `mise run smoke -- <data dir> [sandbox dir]`"

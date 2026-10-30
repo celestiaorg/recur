@@ -212,6 +212,11 @@ unimplemented = "deny"
 opt-level = 2
 debug = "line-tables-only"
 
+# `mise run dev` builds here (`target/human/`) so agents' cargo runs in `target/debug/` do not
+# hold the build lock while the user is iterating on the app.
+[profile.human]
+inherits = "dev"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

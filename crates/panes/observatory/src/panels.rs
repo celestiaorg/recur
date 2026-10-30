@@ -823,7 +823,8 @@ impl Observatory {
         if zone != self.focus_zone {
             self.focus_zone = zone;
             self.sync_side_effects(cx);
-            cx.notify();
+            // Focus listeners run inside the draw, where a notify does not schedule a frame.
+            cx.defer_in(window, |_, _, cx| cx.notify());
         }
     }
 

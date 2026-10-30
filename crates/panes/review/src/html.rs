@@ -22,98 +22,40 @@ pub fn js_int(s: &str) -> i64 {
     if neg { -v } else { v }
 }
 
-/// A token class from the review palette (`.kw .str .fn .cm .ty .nm`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Token {
-    Kw,
-    Str,
-    Fn,
-    Cm,
-    Ty,
-    Nm,
-}
-
-impl Token {
-    fn of(class: &str) -> Option<Token> {
-        class.split_ascii_whitespace().rev().find_map(|c| {
-            Some(match c {
-                "kw" => Token::Kw,
-                "str" => Token::Str,
-                "fn" => Token::Fn,
-                "cm" => Token::Cm,
-                "ty" => Token::Ty,
-                "nm" => Token::Nm,
-                _ => return None,
-            })
-        })
-    }
-}
-
-/// A run of code text and the innermost token class around it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CodeRun {
-    pub text: String,
-    pub token: Option<Token>,
-}
-
-/// The text runs of a `codeHtml` cell.
-/// Parsed cells kept across frames: every row a stack redraws (each scroll step) parsed its
-/// markup again. Two generations bounded by bytes: a hit in the old one moves to the new, and a
-/// full new one becomes the old.
+/// The decoded text of `codeHtml` cells, kept across frames: every row a stack redraws (each
+/// scroll step) decoded its markup again. Two generations bounded by bytes: a hit in the old one
+/// moves to the new, and a full new one becomes the old.
 #[derive(Default)]
-struct RunsCache {
-    now: HashMap<String, Rc<Vec<CodeRun>>>,
-    old: HashMap<String, Rc<Vec<CodeRun>>>,
+struct TextCache {
+    now: HashMap<String, Rc<str>>,
+    old: HashMap<String, Rc<str>>,
     bytes: usize,
 }
 
-const CODE_RUNS_MAX_BYTES: usize = 16 * 1024 * 1024;
+const CELL_TEXT_MAX_BYTES: usize = 16 * 1024 * 1024;
 
 thread_local! {
-    static RUNS: RefCell<RunsCache> = RefCell::default();
+    static CELLS: RefCell<TextCache> = RefCell::default();
 }
 
-/// [`parse_code_runs`], memoized by the cell's markup.
-pub fn code_runs(html: &str) -> Rc<Vec<CodeRun>> {
-    RUNS.with_borrow_mut(|c| {
+/// [`text_content`] of a `codeHtml` cell, memoized by its markup.
+pub fn cell_text(html: &str) -> Rc<str> {
+    CELLS.with_borrow_mut(|c| {
         if let Some(r) = c.now.get(html) {
             return r.clone();
         }
-        let runs = c
+        let text = c
             .old
             .remove(html)
-            .unwrap_or_else(|| Rc::new(parse_code_runs(html)));
+            .unwrap_or_else(|| text_content(html).into());
         c.bytes += 2 * html.len() + 64;
-        c.now.insert(html.to_string(), runs.clone());
-        if c.bytes > CODE_RUNS_MAX_BYTES {
+        c.now.insert(html.to_string(), text.clone());
+        if c.bytes > CELL_TEXT_MAX_BYTES {
             c.old = std::mem::take(&mut c.now);
             c.bytes = 0;
         }
-        runs
+        text
     })
-}
-
-pub fn parse_code_runs(html: &str) -> Vec<CodeRun> {
-    fn walk(nodes: &[Node], token: Option<Token>, out: &mut Vec<CodeRun>) {
-        for n in nodes {
-            match n {
-                Node::Text(t) => match out.last_mut() {
-                    Some(last) if last.token == token => last.text.push_str(t),
-                    _ => out.push(CodeRun {
-                        text: t.clone(),
-                        token,
-                    }),
-                },
-                Node::El(e) => {
-                    let inner = e.attr("class").and_then(Token::of).or(token);
-                    walk(&e.children, inner, out);
-                }
-            }
-        }
-    }
-    let mut out = Vec::new();
-    walk(&Doc::parse(html).nodes, None, &mut out);
-    out
 }
 
 static TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("tag pattern"));
@@ -200,32 +142,14 @@ mod tests {
     }
 
     #[test]
-    fn code_runs_keep_token_classes_and_decode_entities() {
-        let runs = code_runs(
-            r#"<span class="kw">const</span> a = <span class="str">'&lt;b&gt;'</span> &amp;&amp; x"#,
-        );
+    fn cell_text_drops_token_spans_and_decodes_entities() {
         assert_eq!(
-            *runs,
-            vec![
-                CodeRun {
-                    text: "const".into(),
-                    token: Some(Token::Kw)
-                },
-                CodeRun {
-                    text: " a = ".into(),
-                    token: None
-                },
-                CodeRun {
-                    text: "'<b>'".into(),
-                    token: Some(Token::Str)
-                },
-                CodeRun {
-                    text: " && x".into(),
-                    token: None
-                },
-            ]
+            &*cell_text(
+                r#"<span class="kw">const</span> a = <span class="str">'&lt;b&gt;'</span> &amp;&amp; x"#,
+            ),
+            "const a = '<b>' && x"
         );
-        assert!(code_runs("").is_empty());
+        assert!(cell_text("").is_empty());
     }
 
     #[test]

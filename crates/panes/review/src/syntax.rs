@@ -1,11 +1,15 @@
-//! Diff code highlighting with the bundle grammars the editor uses, into the review palette.
-//! Each side of a hunk keeps its own grammar state: the old side runs through deletions, the
-//! new side through additions, and context lines carry both.
+//! Diff code highlighting with the bundle grammars and theme the editor uses. Each side of a
+//! hunk keeps its own grammar state: the old side runs through deletions, the new side through
+//! additions, and context lines carry both.
 
+use std::collections::HashMap;
+
+use gpui_kit::Rgba;
 use recur_domain::DiffLine;
-use recur_textmate::{Grammar, StateStack};
+use recur_editor::color::parse_css_color;
+use recur_textmate::{Grammar, StateStack, paint_for_meta};
 
-use crate::html::{CodeRun, Token, parse_code_runs};
+use crate::html::text_content;
 
 /// Highlighted lines per card: the diff view's initial line cap, so the first screen is
 /// uniformly styled. At most `REVIEW_HYDRATE_MAX` cards mount, so a patch highlights at most
@@ -15,44 +19,16 @@ pub const MAX_HIGHLIGHT_LINES: usize = 500;
 /// Longer lines (minified code) stay plain.
 const MAX_LINE_BYTES: usize = 20_000;
 
-/// A line's runs and the markup they were made from (`None`: not highlighted).
-pub type Highlighted = Vec<Option<(String, Vec<CodeRun>)>>;
-
-/// Scope prefixes and their palette token, most specific first. `None` keeps the text plain.
-const SCOPES: &[(&str, Option<Token>)] = &[
-    ("comment", Some(Token::Cm)),
-    ("string", Some(Token::Str)),
-    ("constant.character", Some(Token::Str)),
-    ("constant.numeric", Some(Token::Nm)),
-    ("constant.language", Some(Token::Nm)),
-    ("support.constant", Some(Token::Nm)),
-    ("keyword.operator", None),
-    ("entity.name.type", Some(Token::Ty)),
-    ("entity.name.class", Some(Token::Ty)),
-    ("entity.name.tag", Some(Token::Ty)),
-    ("entity.other.inherited-class", Some(Token::Ty)),
-    ("support.type", Some(Token::Ty)),
-    ("support.class", Some(Token::Ty)),
-    ("keyword", Some(Token::Kw)),
-    ("storage", Some(Token::Kw)),
-    ("variable.language", Some(Token::Kw)),
-    ("entity.name.function", Some(Token::Fn)),
-    ("support.function", Some(Token::Fn)),
-    ("entity.other.attribute-name", Some(Token::Fn)),
-    ("meta.decorator", Some(Token::Fn)),
-];
-
-fn token_of(scopes: &[String]) -> Option<Token> {
-    let has = |s: &str, p: &str| {
-        s.strip_prefix(p)
-            .is_some_and(|r| r.is_empty() || r.starts_with('.'))
-    };
-    scopes
-        .iter()
-        .rev()
-        .find_map(|s| SCOPES.iter().find(|(p, _)| has(s, p)).map(|(_, t)| *t))
-        .flatten()
+/// A run of code text in its theme color (`None`: the editor foreground) and `tm_font` bits.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Run {
+    pub text: String,
+    pub color: Option<Rgba>,
+    pub font_style: u32,
 }
+
+/// A line's runs and the markup they were made from (`None`: not highlighted).
+pub type Highlighted = Vec<Option<(String, Vec<Run>)>>;
 
 /// The lines [`highlight_lines`] reads: through the [`MAX_HIGHLIGHT_LINES`]th code line.
 pub fn budgeted(lines: &[DiffLine]) -> &[DiffLine] {
@@ -65,8 +41,25 @@ pub fn budgeted(lines: &[DiffLine]) -> &[DiffLine] {
     &lines[..end]
 }
 
-/// Each line's runs, index for index. Hunks restart both sides at the grammar's top level.
-pub fn highlight_lines(grammar: &Grammar, lines: &[DiffLine]) -> Highlighted {
+/// Each line's runs, index for index, painted as the editor paints them from the active theme's
+/// `color_map` on `pane_bg`. Hunks restart both sides at the grammar's top level.
+pub fn highlight_lines(
+    grammar: &Grammar,
+    lines: &[DiffLine],
+    color_map: &[String],
+    pane_bg: &str,
+) -> Highlighted {
+    let mut paints: HashMap<u32, (Option<Rgba>, u32)> = HashMap::new();
+    let mut paint = |meta: u32| {
+        *paints.entry(meta).or_insert_with(|| {
+            let p = paint_for_meta(meta, false, color_map, &[], pane_bg);
+            let color = p
+                .foreground
+                .and_then(|i| color_map.get(i as usize))
+                .and_then(|c| parse_css_color(c));
+            (color, p.font_style)
+        })
+    };
     let (mut old, mut new): (Option<StateStack>, Option<StateStack>) = (None, None);
     lines
         .iter()
@@ -81,28 +74,30 @@ pub fn highlight_lines(grammar: &Grammar, lines: &[DiffLine]) -> Highlighted {
                 "add" | "ctx" => &mut new,
                 _ => return None,
             };
-            let text: String = parse_code_runs(&l.code_html)
-                .into_iter()
-                .map(|r| r.text)
-                .collect();
+            let text = text_content(&l.code_html);
             if text.is_empty() || text.len() > MAX_LINE_BYTES {
                 return None;
             }
-            let r = grammar.tokenize_line(&text, stack.as_ref()).ok()?;
+            let r = grammar.tokenize_line2(&text, stack.as_ref()).ok()?;
             *stack = Some(r.rule_stack);
             if ctx {
                 old = new.clone();
             }
-            let mut runs: Vec<CodeRun> = Vec::new();
-            for t in &r.tokens {
-                let piece = text.get(t.start_index..t.end_index.min(text.len()))?;
-                let token = token_of(&t.scopes);
+            let mut runs: Vec<Run> = Vec::new();
+            for (k, pair) in r.tokens.chunks_exact(2).enumerate() {
+                let start = (pair[0] as usize).min(text.len());
+                let end = r.tokens.get(2 * k + 2).map_or(text.len(), |&e| e as usize);
+                let piece = text.get(start..end.clamp(start, text.len()))?;
+                let (color, font_style) = paint(pair[1]);
                 match runs.last_mut() {
-                    Some(last) if last.token == token => last.text.push_str(piece),
+                    Some(last) if (last.color, last.font_style) == (color, font_style) => {
+                        last.text.push_str(piece)
+                    }
                     _ if piece.is_empty() => {}
-                    _ => runs.push(CodeRun {
+                    _ => runs.push(Run {
                         text: piece.to_string(),
-                        token,
+                        color,
+                        font_style,
                     }),
                 }
             }
@@ -114,11 +109,33 @@ pub fn highlight_lines(grammar: &Grammar, lines: &[DiffLine]) -> Highlighted {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use recur_textmate::TmEngine;
+    use recur_textmate::{TmEngine, parse_theme_json};
     use std::sync::Arc;
 
-    fn grammar() -> Arc<Grammar> {
+    const FG: &str = "#d4d4d4";
+    const KW: &str = "#c586c0";
+    const STR: &str = "#ce9178";
+    const NUM: &str = "#b5cea8";
+    const FUNC: &str = "#dcdcaa";
+    const CM: &str = "#6a9955";
+
+    fn engine() -> (Arc<Grammar>, Vec<String>) {
         let mut e = TmEngine::new();
+        let theme = parse_theme_json(
+            &format!(
+                r##"{{"name":"t","tokenColors":[
+                    {{"settings":{{"foreground":"{FG}","background":"#1e1e1e"}}}},
+                    {{"scope":"keyword","settings":{{"foreground":"{KW}"}}}},
+                    {{"scope":"string","settings":{{"foreground":"{STR}"}}}},
+                    {{"scope":"constant.numeric","settings":{{"foreground":"{NUM}"}}}},
+                    {{"scope":"entity.name.function","settings":{{"foreground":"{FUNC}"}}}},
+                    {{"scope":"comment","settings":{{"foreground":"{CM}","fontStyle":"italic"}}}}
+                ]}}"##
+            ),
+            "t",
+        )
+        .expect("theme");
+        let map = e.set_theme(theme.raw_theme);
         e.register_grammar(
             "source.t",
             r#"{"scopeName":"source.t","patterns":[
@@ -133,7 +150,12 @@ mod tests {
             &[],
         );
         assert!(matches!(e.ensure_grammar("source.t"), Ok(true)));
-        e.grammar("source.t").expect("compiled")
+        (e.grammar("source.t").expect("compiled"), map)
+    }
+
+    fn highlight(lines: &[DiffLine]) -> Highlighted {
+        let (g, map) = engine();
+        highlight_lines(&g, lines, &map, "#1e1e1e")
     }
 
     fn line(kind: &str, html: &str) -> DiffLine {
@@ -144,15 +166,18 @@ mod tests {
         }
     }
 
-    fn tokens(h: &Option<(String, Vec<CodeRun>)>) -> Vec<(String, Option<Token>)> {
+    fn runs(h: &Option<(String, Vec<Run>)>) -> Vec<(String, Option<Rgba>)> {
         h.as_ref()
-            .map(|(_, r)| r.iter().map(|r| (r.text.clone(), r.token)).collect())
+            .map(|(_, r)| r.iter().map(|r| (r.text.clone(), r.color)).collect())
             .unwrap_or_default()
     }
 
+    fn c(s: &str) -> Option<Rgba> {
+        parse_css_color(s)
+    }
+
     #[test]
-    fn highlights_into_the_palette_per_side() {
-        let g = grammar();
+    fn highlights_in_theme_colors_per_side() {
         let lines = [
             line("hunk", "Lines 1–4"),
             line("ctx", "let a = f(1) == &#34;x&lt;&#34;"),
@@ -163,31 +188,38 @@ mod tests {
             line("add", "<span class=\"cm\">*/</span> 3"),
             line("ctx", ""),
         ];
-        let h = highlight_lines(&g, &lines);
+        let h = highlight(&lines);
         assert_eq!(h.len(), lines.len());
         assert!(h[0].is_none() && h[5].is_none() && h[7].is_none());
         assert_eq!(
-            tokens(&h[1]),
+            runs(&h[1]),
             vec![
-                ("let".into(), Some(Token::Kw)),
-                (" a = ".into(), None),
-                ("f".into(), Some(Token::Fn)),
-                ("(".into(), None),
-                ("1".into(), Some(Token::Nm)),
-                (") == ".into(), None),
-                ("\"x<\"".into(), Some(Token::Str)),
+                ("let".into(), c(KW)),
+                (" a = ".into(), c(FG)),
+                ("f".into(), c(FUNC)),
+                ("(".into(), c(FG)),
+                ("1".into(), c(NUM)),
+                (") ".into(), c(FG)),
+                ("==".into(), c(KW)),
+                (" ".into(), c(FG)),
+                ("\"x<\"".into(), c(STR)),
             ]
         );
-        assert_eq!(tokens(&h[3])[0], ("fn".into(), Some(Token::Kw)));
+        assert_eq!(runs(&h[3])[0], ("fn".into(), c(KW)));
         assert_eq!(
-            tokens(&h[4]),
+            runs(&h[4]),
             vec![
-                ("still */".into(), Some(Token::Cm)),
-                (" ".into(), None),
-                ("2".into(), Some(Token::Nm)),
+                ("still */".into(), c(CM)),
+                (" ".into(), c(FG)),
+                ("2".into(), c(NUM)),
             ]
         );
-        assert_eq!(tokens(&h[6])[1], ("3".into(), Some(Token::Nm)));
+        let cm = &h[4].as_ref().expect("highlighted").1[0];
+        assert_ne!(cm.font_style & recur_textmate::tm_font::ITALIC, 0);
+        assert_eq!(
+            runs(&h[6]),
+            vec![("*/ ".into(), c(FG)), ("3".into(), c(NUM))]
+        );
         assert_eq!(
             h[6].as_ref().map(|(m, _)| m.as_str()),
             Some(lines[6].code_html.as_str())
@@ -201,10 +233,10 @@ mod tests {
         let b = budgeted(&lines);
         assert_eq!(b.len(), MAX_HIGHLIGHT_LINES + 1);
         assert!(
-            highlight_lines(&grammar(), b)
+            highlight(b)
                 .iter()
                 .skip(1)
-                .all(|h| tokens(h) == vec![("let".into(), Some(Token::Kw))])
+                .all(|h| runs(h) == vec![("let".into(), c(KW))])
         );
         assert_eq!(budgeted(&lines[..3]).len(), 3);
     }

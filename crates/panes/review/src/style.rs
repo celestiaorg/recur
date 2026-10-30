@@ -8,9 +8,7 @@ use gpui_kit::{
 };
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, Text, TextStyled, text};
-use recur_ui::{Color, IconName, Theme, Tokens, hex, icon, rgba};
-
-use crate::html::Token;
+use recur_ui::{Color, IconName, Theme, hex, icon, rgba};
 
 pub fn hsla(c: Color) -> Hsla {
     c.into()
@@ -42,18 +40,6 @@ pub fn checkerboard(cx: &App) -> Div {
         .absolute()
         .inset_0(),
     )
-}
-
-/// `.hline .cd .kw` and the other token colors (the same on every theme).
-pub fn token_color(token: Token, t: &Tokens) -> Color {
-    match token {
-        Token::Kw => hex(0xc4a0f5),
-        Token::Str => hex(0x9fe3b5),
-        Token::Fn => t.amber,
-        Token::Cm => t.faint,
-        Token::Ty => t.cyan,
-        Token::Nm => hex(0xe0b88a),
-    }
 }
 
 /// `.hline.add` / `.hline.split .side.add`.

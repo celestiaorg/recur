@@ -35,12 +35,13 @@ use swc_core::ecma::transforms::base::fixer::fixer;
 use swc_core::ecma::transforms::base::helpers::{HELPERS, Helpers, inject_helpers};
 use swc_core::ecma::transforms::base::hygiene::hygiene;
 use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::transforms::compat::{es2021, es2022};
 use swc_core::ecma::transforms::module::common_js::{FeatureFlag, common_js};
 use swc_core::ecma::transforms::module::path::Resolver;
 use swc_core::ecma::transforms::module::util::Config as ModuleConfig;
 use swc_core::ecma::transforms::typescript::{Config as TsConfig, typescript};
 use swc_core::ecma::visit::{Visit, VisitMut, VisitMutWith, VisitWith};
+use swc_ecma_compat_es2021 as es2021;
+use swc_ecma_compat_es2022 as es2022;
 
 use crate::manifest::{Command, INTERPRETER_TYPESCRIPT, PromptAction};
 use crate::{Error, err};

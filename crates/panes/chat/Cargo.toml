@@ -19,7 +19,6 @@ recur-textmate.workspace = true
 recur-services.workspace = true
 recur-domain.workspace = true
 recur-engine.workspace = true
-recur-forge.workspace = true
 recur-agent.workspace = true
 recur-agent-tools.workspace = true
 recur-issues.workspace = true
@@ -32,9 +31,6 @@ regex.workspace = true
 futures.workspace = true
 base64.workspace = true
 chrono.workspace = true
-smallvec.workspace = true
-unicode-segmentation.workspace = true
-tracing.workspace = true
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }

@@ -1,3 +1,6 @@
+// Recur: bindgen and CMake are build dependencies of `source-build` only.
+#![allow(dead_code)]
+
 use std::{
     collections::HashMap,
     env, fs,
@@ -63,22 +66,13 @@ fn main() {
         return;
     }
 
-    let output_lib_dir = if should_use_prebuilt() {
-        download_prebuilt(&out_dir)
-    } else {
-        build_from_source(&out_dir, &output_bindings_path)
-    };
+    #[cfg(not(feature = "source-build"))]
+    let output_lib_dir = download_prebuilt(&out_dir);
+    #[cfg(feature = "source-build")]
+    let output_lib_dir = build_from_source(&out_dir, &output_bindings_path);
 
     println!("cargo::rustc-link-search={}", output_lib_dir.display());
     println!("cargo::rustc-link-lib=static={LIB_NAME}");
-}
-
-// source-build feature が有効でなければ prebuilt を使う
-fn should_use_prebuilt() -> bool {
-    if env::var("CARGO_FEATURE_SOURCE_BUILD").is_ok() {
-        return false;
-    }
-    true
 }
 
 // prebuilt バイナリをダウンロードして展開する
@@ -232,6 +226,7 @@ fn compute_sha256(path: &Path) -> String {
 }
 
 // ソースからビルドする
+#[cfg(feature = "source-build")]
 fn build_from_source(out_dir: &Path, output_bindings_path: &Path) -> PathBuf {
     let out_build_dir = out_dir.join("build/");
     let _ = fs::remove_dir_all(&out_build_dir);
@@ -294,6 +289,7 @@ fn build_from_source(out_dir: &Path, output_bindings_path: &Path) -> PathBuf {
 }
 
 /// モバイル向けの CMake と bindgen に同じ SDK、ABI、最小 OS バージョンを指定する
+#[cfg(feature = "source-build")]
 fn configure_mobile_build(config: &mut shiguredo_cmake::Config) -> Vec<String> {
     let target_os = env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS is not set");
     let target = env::var("TARGET").expect("TARGET is not set");
@@ -464,6 +460,7 @@ struct SymbolLinkNameCallbacks {
     rename_map: HashMap<String, String>,
 }
 
+#[cfg(feature = "source-build")]
 impl bindgen::callbacks::ParseCallbacks for SymbolLinkNameCallbacks {
     /// bindgen がバインディングを生成する際に呼ばれるコールバック
     ///

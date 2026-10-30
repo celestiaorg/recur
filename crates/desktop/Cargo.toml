@@ -39,7 +39,6 @@ recur-view-palettes.workspace = true
 gpui-kit.workspace = true
 anyhow.workspace = true
 futures.workspace = true
-parking_lot.workspace = true
 reqwest.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

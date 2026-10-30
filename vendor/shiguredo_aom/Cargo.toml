@@ -38,7 +38,7 @@ url = "https://aomedia.googlesource.com/aom"
 version = "v3.15.1"
 
 [features]
-source-build = []
+source-build = ["dep:bindgen", "dep:shiguredo_cmake"]
 
 [lib]
 name = "shiguredo_aom"
@@ -48,12 +48,14 @@ path = "src/lib.rs"
 
 [build-dependencies.bindgen]
 version = "0.72"
+optional = true
 
 [build-dependencies.cc]
 version = "1.4"
 
 [build-dependencies.shiguredo_cmake]
 version = "4.4"
+optional = true
 
 [build-dependencies.shiguredo_toml]
 version = "2026.2"

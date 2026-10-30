@@ -174,7 +174,11 @@ pretty_assertions = "1"
 hex = "0.4"
 aws-lc-rs = { version = "1", default-features = false, features = ["aws-lc-sys"] }
 yaml-rust2 = "0.10"
-swc_core = { version = "82", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_transforms_typescript", "ecma_transforms_module", "ecma_transforms_compat", "ecma_codegen", "ecma_visit", "ecma_utils", "ecma_helpers_inline"] }
+swc_core = { version = "82", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_transforms_typescript", "ecma_transforms_module", "ecma_codegen", "ecma_visit", "ecma_utils", "ecma_helpers_inline"] }
+# The two compat passes `recur-bundles` runs, at swc_core 82's versions (bump with it). swc_core's
+# `ecma_transforms_compat` would also build every ES3 to ES2020 pass.
+swc_ecma_compat_es2021 = "51"
+swc_ecma_compat_es2022 = "54"
 
 # Terminal: PTY spawn, process groups, emulator state.
 portable-pty = "0.9"
@@ -202,9 +206,11 @@ dbg_macro = "deny"
 todo = "deny"
 unimplemented = "deny"
 
-# GPUI is unusably slow unoptimized; keep our own crates debuggable.
+# GPUI is unusably slow unoptimized; keep our own crates debuggable. Dependencies keep line
+# tables (backtraces, profiles) but not full DWARF, which roughly doubled `target/`.
 [profile.dev.package."*"]
 opt-level = 2
+debug = "line-tables-only"
 
 [profile.release]
 lto = "thin"
@@ -218,6 +224,8 @@ gpui-pre-scheduler = { path = "vendor/gpui-pre-scheduler" }
 gpui-pre-apple = { path = "vendor/gpui-pre-apple" }
 gpui-pre-macos = { path = "vendor/gpui-pre-macos" }
 gpui-pre-linux = { path = "vendor/gpui-pre-linux" }
+# gpui-pdf without `image`'s default formats, whose AVIF encoder is rav1e (`vendor/README.md`).
+gpui-pdf = { path = "vendor/gpui-pdf" }
 # The WebM / Ogg codecs with an Intel Mac source build (`vendor/README.md`).
 shiguredo_libvpx = { path = "vendor/shiguredo_libvpx" }
 shiguredo_aom = { path = "vendor/shiguredo_aom" }

@@ -23,7 +23,6 @@ recur-term.workspace = true
 recur-view-core.workspace = true
 recur-view-widgets.workspace = true
 recur-view-review.workspace = true
-serde.workspace = true
 serde_json.workspace = true
 regex.workspace = true
 futures.workspace = true

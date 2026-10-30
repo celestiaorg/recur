@@ -40,7 +40,7 @@ sha256 = "6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1"
 [features]
 default = ["dred"]
 dred = []
-source-build = []
+source-build = ["dep:bindgen", "dep:shiguredo_cmake"]
 
 [lib]
 name = "shiguredo_opus"
@@ -50,12 +50,14 @@ path = "src/lib.rs"
 
 [build-dependencies.bindgen]
 version = "0.73"
+optional = true
 
 [build-dependencies.cc]
 version = "1.4"
 
 [build-dependencies.shiguredo_cmake]
 version = "4.4"
+optional = true
 
 [build-dependencies.shiguredo_toml]
 version = "2026.2"

@@ -37,7 +37,7 @@ url = "https://github.com/webmproject/libvpx"
 version = "v1.17.0"
 
 [features]
-source-build = []
+source-build = ["dep:bindgen"]
 
 [lib]
 name = "shiguredo_libvpx"
@@ -47,6 +47,7 @@ path = "src/lib.rs"
 
 [build-dependencies.bindgen]
 version = "0.72"
+optional = true
 
 [build-dependencies.cc]
 version = "1.8"

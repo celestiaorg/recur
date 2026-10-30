@@ -107,6 +107,10 @@ git diff f7e929f2 -- vendor/gpui-pre-macos > vendor/gpui-pre-macos.patch
 git diff f7e929f2 -- vendor/gpui-pre-linux > vendor/gpui-pre-linux.patch
 ```
 
+## gpui-pdf 0.6.1 (no default image formats)
+
+`gpui-pdf/` is gpui-pdf 0.6.1 from crates.io, wired in by `[patch.crates-io]`. Only `src/`, the README and license are kept, and `Cargo.toml` drops the `[[example]]` tables. The patch is one line: its `image` dependency sets `default-features = false`. gpui-pdf only builds an `RgbaImage`, and `image`'s default formats add an AVIF *encoder* (ravif, rav1e and some 25 more crates, about 75 CPU-seconds of a clean build) that nothing in Recur calls; the formats Recur decodes are enabled by gpui-pre and `recur-content`. Drop the copy when gpui-pdf stops enabling `image`'s defaults (0.7.0 still does).
+
 ## shiguredo_libvpx, shiguredo_aom, shiguredo_opus (Intel Mac source build)
 
 `shiguredo_libvpx/` (2026.2.0-canary.3), `shiguredo_aom/` (2026.3.0) and `shiguredo_opus/` (2026.4.0) are the crates.io releases, wired in by `[patch.crates-io]`. Commit `f1e0965c` is the pristine import, so `git diff f1e0965c -- vendor/shiguredo_*` is the patch.

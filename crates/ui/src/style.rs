@@ -45,8 +45,7 @@ fn border_over(border: Color, bg: Color) -> Hsla {
 }
 
 /// A CSS `linear-gradient(<angle>, from, to)` background for its relatively positioned parent with a `border` of
-/// `border_color` and `radius`. See [`inset_background`] for its extent. Painted as a raster of
-/// its device pixels: WebKit's gradients are smooth, GPUI's shader dithers them by ±2 levels.
+/// `border_color` and `radius`. See [`inset_background`] for its extent.
 pub fn css_gradient(
     angle: f32,
     from: (Color, f32),
@@ -59,24 +58,8 @@ pub fn css_gradient(
     gpui_kit::canvas(
         |_, _, _| {},
         move |bounds, _, window, _| {
-            let gradient_box = bounds.dilate(px(border));
             let (bounds, radius) = background_box(bounds, radius, border, opaque, window);
-            let g = Gradient {
-                angle,
-                from,
-                to,
-                line: gradient_box,
-            };
-            if let Some(image) = gradient_image(&g, bounds, window.scale_factor()) {
-                let _ = window.paint_image(
-                    bounds,
-                    bounds,
-                    gpui_kit::Corners::all(px(radius)),
-                    image,
-                    0,
-                    false,
-                );
-            }
+            paint_css_gradient(window, bounds, radius, angle, from, to);
         },
     )
     .absolute()
@@ -91,154 +74,21 @@ pub fn gradient_fill(angle: f32, from: (Color, f32), to: (Color, f32)) -> impl I
     css_gradient(angle, from, to, 0., 0., crate::color::TRANSPARENT)
 }
 
-/// Paint a CSS `linear-gradient(<angle>, from, to)` over `bounds` (its gradient box) with
-/// `radius` corners, undithered (see [`css_gradient`]).
+/// Paint a CSS `linear-gradient(<angle>, from, to)` over `bounds` with `radius` corners.
 pub fn paint_css_gradient(
     window: &mut Window,
     bounds: gpui_kit::Bounds<Pixels>,
     radius: f32,
     angle: f32,
-    from: (Color, f32),
-    to: (Color, f32),
+    (c0, s0): (Color, f32),
+    (c1, s1): (Color, f32),
 ) {
-    let g = Gradient {
+    let g = gpui_kit::linear_gradient(
         angle,
-        from,
-        to,
-        line: bounds,
-    };
-    if let Some(image) = gradient_image(&g, bounds, window.scale_factor()) {
-        let _ = window.paint_image(
-            bounds,
-            bounds,
-            gpui_kit::Corners::all(px(radius)),
-            image,
-            0,
-            false,
-        );
-    }
-}
-
-/// A two-stop CSS `linear-gradient` over the box `line` (its gradient box).
-#[derive(Clone, Copy, PartialEq)]
-struct Gradient {
-    angle: f32,
-    from: (Color, f32),
-    to: (Color, f32),
-    line: gpui_kit::Bounds<Pixels>,
-}
-
-impl Gradient {
-    /// The 8-bit color at `p` (CSS px), interpolated in premultiplied sRGB as CSS does.
-    fn at(&self, p: (f32, f32)) -> [u8; 4] {
-        let a = self.angle.to_radians();
-        let (dx, dy) = (a.sin(), -a.cos());
-        let (w, h) = (
-            f32::from(self.line.size.width),
-            f32::from(self.line.size.height),
-        );
-        let c = self.line.center();
-        let len = (w * dx).abs() + (h * dy).abs();
-        let t = ((p.0 - f32::from(c.x)) * dx + (p.1 - f32::from(c.y)) * dy) / len.max(1e-6) + 0.5;
-        let (c0, s0) = self.from;
-        let (c1, s1) = self.to;
-        let u = if s1 > s0 {
-            ((t - s0) / (s1 - s0)).clamp(0., 1.)
-        } else if t < s0 {
-            0.
-        } else {
-            1.
-        };
-        let alpha = c0.a + (c1.a - c0.a) * u;
-        let ch = |x0: f32, x1: f32| {
-            let pm = x0 * c0.a + (x1 * c1.a - x0 * c0.a) * u;
-            if alpha > 0. { pm / alpha } else { 0. }
-        };
-        Color {
-            r: ch(c0.r, c1.r),
-            g: ch(c0.g, c1.g),
-            b: ch(c0.b, c1.b),
-            a: alpha,
-        }
-        .to_rgba8()
-    }
-}
-
-type GradientKey = (u32, u32, [u32; 12]);
-
-thread_local! {
-    static GRADIENTS: std::cell::RefCell<
-        std::collections::HashMap<GradientKey, std::sync::Arc<gpui_kit::RenderImage>>,
-    > = Default::default();
-}
-
-/// The gradient's pixels over `bounds` (device-aligned), cached by size and gradient.
-fn gradient_image(
-    g: &Gradient,
-    bounds: gpui_kit::Bounds<Pixels>,
-    scale: f32,
-) -> Option<std::sync::Arc<gpui_kit::RenderImage>> {
-    let (w, h) = (
-        (f32::from(bounds.size.width) * scale).round() as u32,
-        (f32::from(bounds.size.height) * scale).round() as u32,
+        gpui_kit::linear_color_stop(c0, s0),
+        gpui_kit::linear_color_stop(c1, s1),
     );
-    if w == 0 || h == 0 {
-        return None;
-    }
-    // Relative to the painted box, so a moved box reuses its raster.
-    let (ox, oy) = (
-        f32::from(g.line.origin.x - bounds.origin.x),
-        f32::from(g.line.origin.y - bounds.origin.y),
-    );
-    let bits = |c: Color| u32::from_le_bytes(c.to_rgba8());
-    let key = (
-        w,
-        h,
-        [
-            g.angle.to_bits(),
-            bits(g.from.0),
-            g.from.1.to_bits(),
-            bits(g.to.0),
-            g.to.1.to_bits(),
-            ox.to_bits(),
-            oy.to_bits(),
-            f32::from(g.line.size.width).to_bits(),
-            f32::from(g.line.size.height).to_bits(),
-            scale.to_bits(),
-            0,
-            0,
-        ],
-    );
-    if let Some(hit) = GRADIENTS.with(|m| m.borrow().get(&key).cloned()) {
-        return Some(hit);
-    }
-    let local = Gradient {
-        line: gpui_kit::Bounds {
-            origin: point(px(ox), px(oy)),
-            size: g.line.size,
-        },
-        ..*g
-    };
-    let mut bgra = Vec::with_capacity((w * h * 4) as usize);
-    for y in 0..h {
-        for x in 0..w {
-            let [r, gr, b, a] = local.at(((x as f32 + 0.5) / scale, (y as f32 + 0.5) / scale));
-            bgra.extend_from_slice(&[b, gr, r, a]);
-        }
-    }
-    let frame = image::Frame::new(image::RgbaImage::from_raw(w, h, bgra)?);
-    let image = std::sync::Arc::new(gpui_kit::RenderImage::new(smallvec::SmallVec::from_elem(
-        frame, 1,
-    )));
-    GRADIENTS.with(|m| {
-        let mut m = m.borrow_mut();
-        // Sizes change while windows resize; keep the cache from growing without bound.
-        if m.len() > 256 {
-            m.clear();
-        }
-        m.insert(key, image.clone());
-    });
-    Some(image)
+    window.paint_quad(gpui_kit::fill(bounds, g).corner_radii(px(radius)));
 }
 
 /// The background of a relatively positioned parent with a `border` of `border_color` and

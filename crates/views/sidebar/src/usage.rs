@@ -487,9 +487,9 @@ impl UsageMeter {
                 .join(". ")
                 .into()
         } else if snap.is_none() {
-            "Provider usage — loading".into()
+            "Provider usage: loading".into()
         } else {
-            "Provider usage — no plan data yet".into()
+            "Provider usage: no plan data yet".into()
         };
         let open = self.open;
         let mut btn = div()
@@ -517,7 +517,7 @@ impl UsageMeter {
         if chips.is_empty() {
             btn = btn.child(
                 div().min_w(px(16.)).flex().justify_center().child(
-                    text("—")
+                    text("-")
                         .mono()
                         .size(10.)
                         .line_height(LineHeight::Scale(1.)),

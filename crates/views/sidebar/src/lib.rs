@@ -1127,7 +1127,7 @@ impl Sidebar {
             return "Remove".into();
         }
         match self.risk.get(id).filter(|r| !r.is_empty()) {
-            Some(risk) => format!("Confirm remove — {risk}"),
+            Some(risk) => format!("Confirm remove: {risk}"),
             None => "Confirm remove".into(),
         }
     }

@@ -610,7 +610,7 @@ fn prompt_actions() -> Vec<PromptActionInfo> {
         p(
             "recur.chat.write-docs",
             "Write docs",
-            "Plan, write, and edit documentation — no PR",
+            "Plan, write, and edit documentation: no PR",
             "write-docs",
             "loop",
             0,
@@ -642,7 +642,7 @@ fn run_prompt_action(id: &str, ctx: &PromptContextDto) -> PromptResultDto {
     match id {
         "recur.chat.review" => match ctx.surface.as_str() {
             "github_pr" => prompt_result(
-                "Review this GitHub pull request and file findings. Use gh pr diff — do not treat git diff in cwd as the PR.",
+                "Review this GitHub pull request and file findings. Use gh pr diff: do not treat git diff in cwd as the PR.",
                 "Please review this GitHub pull request",
             ),
             "local_pr" => prompt_result(
@@ -650,7 +650,7 @@ fn run_prompt_action(id: &str, ctx: &PromptContextDto) -> PromptResultDto {
                 "Please review this Local PR",
             ),
             _ => prompt_result(
-                "Review the changes in this worktree and file findings. Git context is already gathered — do NOT re-run git status/diff/log.",
+                "Review the changes in this worktree and file findings. Git context is already gathered: do NOT re-run git status/diff/log.",
                 "Please review the changes in this worktree and file any real issues",
             ),
         },
@@ -705,7 +705,7 @@ fn run_prompt_action(id: &str, ctx: &PromptContextDto) -> PromptResultDto {
             "To a PR",
         ),
         "recur.chat.write-docs" => prompt_result(
-            "Write the documentation the human asked for. Do not change product code unless the docs require it. Do not open a PR — the write-up lives in this worktree.",
+            "Write the documentation the human asked for. Do not change product code unless the docs require it. Do not open a PR: the write-up lives in this worktree.",
             "Write docs",
         ),
         "recur.chat.security-review" => prompt_result(
@@ -719,7 +719,7 @@ fn run_prompt_action(id: &str, ctx: &PromptContextDto) -> PromptResultDto {
 const COMPILED_FIX_FINDINGS: &str = r#"
 exports.default = function () {
   return {
-    prompt: "Open reviewer findings remain for this workspace. Call mcp__recur__list_findings to load them. Operator notes on a finding are instructions — follow them. For each open finding: verify it against the current code, then either fix it with minimal correct edits and mark it resolved via mcp__recur__update_finding, or mark it invalid with a clear reason if the claim is wrong or out of scope.",
+    prompt: "Open reviewer findings remain for this workspace. Call mcp__recur__list_findings to load them. Operator notes on a finding are instructions: follow them. For each open finding: verify it against the current code, then either fix it with minimal correct edits and mark it resolved via mcp__recur__update_finding, or mark it invalid with a clear reason if the claim is wrong or out of scope.",
     display: "Fix open reviewer findings"
   };
 };
@@ -961,7 +961,7 @@ fn add_pr_comment(
         } else {
             String::new()
         };
-        format!("<code>{file}{suffix}</code> — ")
+        format!("<code>{file}{suffix}</code>: ")
     };
     let mut c = now_comment(&format!("{loc}{body}"));
     c.body_md = body.into();
@@ -1685,7 +1685,7 @@ fake_services! {
         }
 
         async fn send_maestro_message(&self, workspace_id: &str, text: &str, attachments: &[ChatAttachment]) -> Result<String> {
-            Ok("On it — keeping within your rails (mock reply).".into())
+            Ok("On it: keeping within your rails (mock reply).".into())
         }
     }
 
@@ -2545,7 +2545,7 @@ fake_services! {
         }
 
         async fn engage_loop_with(&self, workspace_id: &str, goal: &str, loop_id: &str, policy_id: &str) -> Result<String> {
-            Ok("Loop engaged — planning has started.".into())
+            Ok("Loop engaged: planning has started.".into())
         }
 
         async fn fetch_working_copy_upstream(&self, id: &str) -> Result<WorkspaceLandState> {

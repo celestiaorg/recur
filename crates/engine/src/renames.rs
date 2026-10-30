@@ -153,7 +153,7 @@ impl Engine {
             return "rename_branch: no worktree".into();
         }
         if run_active(&ws.state) && ws.state != WorkspaceState::Planning {
-            return "rename_branch: a loop is running — wait until it pauses".into();
+            return "rename_branch: a loop is running; wait until it pauses".into();
         }
         let applied = match tokio::time::timeout(
             Duration::from_secs(15),

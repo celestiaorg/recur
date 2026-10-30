@@ -27,7 +27,7 @@ worktree is Recur. Else `recur bundles create MyPack`.
 | `body` | * | | Inline script. XOR `script` |
 | `prompts` | | | Pre-run input fields (see below) |
 
-`*` — `body` **or** `script` is required, not both.
+`*`: `body` **or** `script` is required, not both.
 
 ### Output routing
 

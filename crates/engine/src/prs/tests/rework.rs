@@ -100,7 +100,7 @@ async fn maestro_send_back_refusals() {
     );
     assert_eq!(
         eng.maestro_send_back("L-x", "fix it").await,
-        "send_back refused: this loop has no open PR — use plan to steer while it's still running."
+        "send_back refused: this loop has no open PR; use plan to steer while it's still running."
     );
     t.store
         .add_workspace(Workspace {
@@ -121,7 +121,7 @@ async fn maestro_send_back_refusals() {
         .unwrap();
     assert_eq!(
         eng.maestro_send_back("L-x", "fix it").await,
-        "Sent review back — Maestro will answer or call reenter_phase."
+        "Sent review back: Maestro will answer or call reenter_phase."
     );
 }
 
@@ -213,7 +213,7 @@ async fn update_pr_with_base_conflict() {
     assert!(work.exists(), "the scripted coder wrote work.txt");
     std::fs::write(
         std::path::Path::new(&repo.path).join("work.txt"),
-        "base side — conflicting change\n",
+        "base side: conflicting change\n",
     )
     .unwrap();
     git(&repo.path, &["add", "work.txt"]);
@@ -481,11 +481,11 @@ fn open_pr_result_forge_cases() {
     );
     assert_eq!(
         format_open_pr_tool_result(&local, "GitHub", true, true, true, ""),
-        "PR #2 is already open (Local). GitHub create failed — retry Open PR."
+        "PR #2 is already open (Local). GitHub create failed; retry Open PR."
     );
     assert_eq!(
         format_open_pr_tool_result(&local, "GitHub", true, false, false, ""),
-        "Opened Local PR #2 (GitHub create failed — retry Open PR)."
+        "Opened Local PR #2 (GitHub create failed; retry Open PR)."
     );
 }
 
@@ -553,7 +553,7 @@ async fn set_workspace_base_branch() {
         .map(|f| f.text)
         .collect();
     assert!(notes.contains(
-        &"Target branch is now <code>develop</code> — diffs and PRs compare against it.".to_owned()
+        &"Target branch is now <code>develop</code>: diffs and PRs compare against it.".to_owned()
     ));
     let again = px
         .eng()

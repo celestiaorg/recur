@@ -152,11 +152,11 @@ impl Engine {
             .ok_or_else(|| EngineError(format!("workspace {workspace_id:?} not found")))?;
         if ws.is_main || ws.is_pr_chat_host() {
             return Err(
-                "the main working copy can't merge — its checkout is already the project".into(),
+                "the main working copy can't merge: its checkout is already the project".into(),
             );
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running — pause it before merging from the workspace".into());
+            return Err("a loop is running: pause it before merging from the workspace".into());
         }
         if ws.state == WorkspaceState::Merged {
             return Ok(ws);
@@ -179,7 +179,7 @@ impl Engine {
             && existing.state != "Closed"
         {
             return Err(EngineError(format!(
-                "this workspace has a {} PR — merge from the PR",
+                "this workspace has a {} PR: merge from the PR",
                 forge.label()
             )));
         }
@@ -212,13 +212,13 @@ impl Engine {
         let mgr = recur_git::Manager::new(&proj.repo_path, &self.worktree_root);
         let risk = recur_git::inspect_discard_risk(&ws.worktree_path).await;
         if risk.dirty_count > 0 || risk.unmerged {
-            return Err("commit or discard uncommitted changes first — they would not be included in the merge".into());
+            return Err("commit or discard uncommitted changes first: they would not be included in the merge".into());
         }
         if let Ok(behind) = mgr.commits_behind(&ws.worktree_path, base).await
             && behind > 0
         {
             return Err(EngineError(format!(
-                "this branch is {behind} commits behind {base} — update with base first"
+                "this branch is {behind} commits behind {base}: update with base first"
             )));
         }
         // As in land state: `main` upgrades to `origin/main` when that
@@ -235,7 +235,7 @@ impl Engine {
                 if proj.pr_on_github && self.branch_requires_pr(proj, &remote, &short).await {
                     let label = self.forge_word(&proj.repo_path).await;
                     return Err(EngineError(format!(
-                        "{remote}/{short} requires a {label} pull request — Open PR instead of merging here"
+                        "{remote}/{short} requires a {label} pull request: Open PR instead of merging here"
                     )));
                 }
                 Some((remote, short))
@@ -251,7 +251,7 @@ impl Engine {
             .await
             .unwrap_or_default();
         if diff.files.is_empty() && commits.is_empty() {
-            return Err("nothing to merge — commit changes in this workspace first".into());
+            return Err("nothing to merge: commit changes in this workspace first".into());
         }
         let sq = effective_squash_commit_message(proj, &self.settings());
         let msg = workspace_merge_commit_message(ws, base, method, &commits, &sq);
@@ -303,7 +303,7 @@ impl Engine {
                 html_escape(short)
             ),
             None => format!(
-                "{label} into <code>{}</code> on disk — no PR.",
+                "{label} into <code>{}</code> on disk: no PR.",
                 html_escape(&landed)
             ),
         };
@@ -470,7 +470,7 @@ impl Engine {
             return Err("the main working copy is already the project checkout".into());
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running — pause it before updating from the workspace".into());
+            return Err("a loop is running: pause it before updating from the workspace".into());
         }
         if ws.state == WorkspaceState::Merged {
             return Ok(UpdateWorkspaceResult {
@@ -550,7 +550,7 @@ impl Engine {
                         &workspace_id,
                         "AR",
                         "You",
-                        "Update with base hit conflicts — resolve them in chat (/update).",
+                        "Update with base hit conflicts: resolve them in chat (/update).",
                     );
                     return Ok(result(UPDATE_WORKSPACE_CONFLICT, ws, &base));
                 }
@@ -615,7 +615,7 @@ impl Engine {
             return Err("the main working copy has no workspace PR".into());
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running — pause it before pulling".into());
+            return Err("a loop is running: pause it before pulling".into());
         }
         let pr = self
             .store
@@ -628,7 +628,7 @@ impl Engine {
                 .forge_word(proj.as_ref().map_or("", |p| p.repo_path.as_str()))
                 .await;
             return Err(EngineError(format!(
-                "this is a Local PR — there is no {label} head to pull"
+                "this is a Local PR: there is no {label} head to pull"
             )));
         };
         let proj = proj.filter(|p| !p.repo_path.is_empty()).ok_or_else(|| {
@@ -687,7 +687,7 @@ impl Engine {
                             "AR",
                             "You",
                             &format!(
-                                "Pull from {label} hit conflicts — resolve them in chat (/update)."
+                                "Pull from {label} hit conflicts: resolve them in chat (/update)."
                             ),
                         );
                         return Ok(result(UPDATE_WORKSPACE_CONFLICT, ws.clone()));
@@ -745,10 +745,10 @@ impl Engine {
             .workspace(workspace_id)
             .ok_or_else(|| EngineError(format!("workspace {workspace_id:?} not found")))?;
         if ws.is_main || ws.is_pr_chat_host() {
-            return Err("the main working copy can't open a PR — create a workspace for changes you want to review".into());
+            return Err("the main working copy can't open a PR: create a workspace for changes you want to review".into());
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running — wait until it pauses, then open a PR from the titlebar or /open-pr".into());
+            return Err("a loop is running: wait until it pauses, then open a PR from the titlebar or /open-pr".into());
         }
         let proj = self
             .store
@@ -781,7 +781,10 @@ impl Engine {
         let mgr = recur_git::Manager::new(&proj.repo_path, &self.worktree_root);
         let risk = recur_git::inspect_discard_risk(&ws.worktree_path).await;
         if risk.dirty_count > 0 || risk.unmerged {
-            return Err("commit or discard uncommitted changes first — they would not be included in the PR".into());
+            return Err(
+                "commit or discard uncommitted changes first: they would not be included in the PR"
+                    .into(),
+            );
         }
         if let Some(existing) = self.store.open_pr_by_workspace(&workspace_id) {
             // Already open: retry the forge when only a Local fallback
@@ -803,7 +806,7 @@ impl Engine {
             .unwrap_or_default();
         fill_commit_files(&mgr, &ws.worktree_path, &mut commits, false).await;
         if diff.files.is_empty() && commits.is_empty() {
-            return Err("nothing to open a PR for — commit changes in this workspace first".into());
+            return Err("nothing to open a PR for: commit changes in this workspace first".into());
         }
         let mut pr_num = self.store.next_pr_number();
         let mut pr_id = pr_num.to_string();
@@ -892,7 +895,7 @@ impl Engine {
                         "AR",
                         "You",
                         &format!(
-                            "{label} PR not opened ({}) — opening a Local PR instead.",
+                            "{label} PR not opened ({}): opening a Local PR instead.",
                             html_escape(&reason)
                         ),
                     );
@@ -1131,7 +1134,7 @@ impl Engine {
                     "AR",
                     "You",
                     &format!(
-                        "{label} PR still not opened ({}) — keeping the Local PR.",
+                        "{label} PR still not opened ({}): keeping the Local PR.",
                         html_escape(&reason)
                     ),
                 );
@@ -1300,18 +1303,18 @@ pub fn format_open_pr_tool_result(
     match (had_open, want_forge, fail.is_empty()) {
         (true, true, false) => {
             format!(
-                "PR #{n} is already open (Local). {forge_label} create failed ({fail}) — retry Open PR."
+                "PR #{n} is already open (Local). {forge_label} create failed ({fail}); retry Open PR."
             )
         }
         (true, true, true) => {
-            format!("PR #{n} is already open (Local). {forge_label} create failed — retry Open PR.")
+            format!("PR #{n} is already open (Local). {forge_label} create failed; retry Open PR.")
         }
         (true, false, _) => format!("PR #{n} is already open (Local)."),
         (false, true, false) => {
-            format!("Opened Local PR #{n} ({forge_label} create failed: {fail} — retry Open PR).")
+            format!("Opened Local PR #{n} ({forge_label} create failed: {fail}; retry Open PR).")
         }
         (false, true, true) => {
-            format!("Opened Local PR #{n} ({forge_label} create failed — retry Open PR).")
+            format!("Opened Local PR #{n} ({forge_label} create failed; retry Open PR).")
         }
         (false, false, _) => format!("Opened Local PR #{n}."),
     }

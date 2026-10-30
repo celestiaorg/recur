@@ -31,7 +31,7 @@ async fn verify_pass_advances_to_pr_open() {
                 "/shots/02.png",
                 true,
             ),
-            ev("Reloaded — session persisted", "/shots/03.png", true),
+            ev("Reloaded: session persisted", "/shots/03.png", true),
         ]],
         file_body: "edit\n",
         ..ConvergeRunner::default()

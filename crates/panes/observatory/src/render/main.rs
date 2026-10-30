@@ -345,7 +345,7 @@ impl Observatory {
             };
             actions = actions.child(titled(
                 "all-diffs-t",
-                format!("All diffs — review changes since {base} (⌥⌘R)"),
+                format!("All diffs: review changes since {base} (⌥⌘R)"),
                 icon_btn("all-diffs", IconName::Rows3, false, None, cx).on_click(
                     cx.guarded_listener(|o, _, _, cx| {
                         o.set_review_tab(recur_view_review::review_diff::ReviewTab::Changes, cx);
@@ -375,7 +375,7 @@ impl Observatory {
             ))
             .child(titled(
                 "split-t",
-                "Split editor (⌘\\) — click a pane to focus; opens go there",
+                "Split editor (⌘\\): click a pane to focus; opens go there",
                 {
                     let on = self.split_open;
                     let b = icon_btn("split", IconName::Columns, false, None, cx)
@@ -840,7 +840,7 @@ impl Observatory {
             side = side.child(surface(isolated_view(&ed, fill(), cx), false));
         } else {
             side = side.child(obs_empty(
-                "Open a file — it will land in this pane while focused.",
+                "Open a file: it will land in this pane while focused.",
                 true,
                 cx,
             ));
@@ -1102,7 +1102,7 @@ impl Observatory {
                 .child(foot_sep(cx))
                 .child(titled(
                     "status-sym-t",
-                    format!("{name} — Go to Symbol"),
+                    format!("{name}: Go to Symbol"),
                     linkish("status-sym", None, cx)
                         .min_w_0()
                         .max_w(px(28. * 6.3))

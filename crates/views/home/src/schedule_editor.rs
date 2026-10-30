@@ -42,7 +42,7 @@ use crate::new_task::{picker_trigger, simplify_chip};
 
 const LOOP_PLACEHOLDER: &str = "What should the loop work on each run?";
 const AGENT_PLACEHOLDER: &str =
-    "What should the agent do each run? — e.g. review yesterday's commits for missing tests";
+    "What should the agent do each run? e.g. review yesterday's commits for missing tests";
 /// The preview's debounce.
 const PREVIEW_DELAY: Duration = Duration::from_millis(250);
 

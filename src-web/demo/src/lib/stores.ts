@@ -179,7 +179,7 @@ export const prListScoped = derived([prs, prListProjectIds, workspaces], ([$prs,
 })
 export const inbox = writable<InboxItem[]>([])
 
-/** Unread notifications per workspace — the read/unread signal on Briefing cards. */
+/** Unread notifications per workspace: the read/unread signal on Briefing cards. */
 export const inboxByWorkspace = derived(inbox, ($inbox) => {
   const m: Record<string, InboxItem[]> = {}
   for (const i of $inbox) {

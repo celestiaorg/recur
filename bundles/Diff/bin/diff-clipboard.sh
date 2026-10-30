@@ -11,7 +11,7 @@ else
   cat >"$left"
 fi
 printf '%s' "${RECUR_CLIPBOARD-}" >"$right"
-# diff returns 1 when files differ — treat that as success.
+# diff returns 1 when files differ: treat that as success.
 diff -u --label selection --label clipboard "$left" "$right" || {
   code=$?
   if [ "$code" -eq 1 ]; then

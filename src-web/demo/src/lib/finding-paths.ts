@@ -1,6 +1,6 @@
 import type { Finding } from './types'
 
-/** Exact candidate first, then a unique slash-anchored suffix — a wrong-file hit is worse than a miss. */
+/** Exact candidate first, then a unique slash-anchored suffix: a wrong-file hit is worse than a miss. */
 export function matchFindingPath(path: string, candidates: readonly string[]): string {
   if (!path) return ''
   const exact = candidates.find((x) => x === path)

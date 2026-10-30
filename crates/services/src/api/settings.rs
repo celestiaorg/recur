@@ -32,7 +32,7 @@ pub trait SettingsService: Send + Sync {
     /// DetectAgent reports the connected coding agent (PRD §16.13 first-run).
     /// It runs `claude auth status` to surface the logged-in account email/org so
     /// the welcome screen shows who is actually logged in. Returns "" when Claude is
-    /// missing, not logged in, or the status call fails — never a fake success string
+    /// missing, not logged in, or the status call fails: never a fake success string
     /// that would paint Welcome step 1 green before a real login exists.
     async fn detect_agent(&self) -> Result<String>;
 
@@ -41,7 +41,7 @@ pub trait SettingsService: Send + Sync {
     async fn disconnect_chat_gpt(&self) -> Result<ChatGPTStatus>;
 
     /// DisconnectCursorUsage deletes Recur-owned Cursor Connect tokens and the
-    /// minted SDK key. A leftover pasted key is also cleared — Connect is the
+    /// minted SDK key. A leftover pasted key is also cleared: Connect is the
     /// only Cursor sign-in.
     async fn disconnect_cursor_usage(&self) -> Result<()>;
 
@@ -51,7 +51,7 @@ pub trait SettingsService: Send + Sync {
     /// GetClaudeStatus probes the local Claude Code CLI for login + version info.
     /// Safe to call from Settings: bounded, never invents a success state.
     ///
-    /// `claude auth status` exits non-zero when logged out but still prints JSON —
+    /// `claude auth status` exits non-zero when logged out but still prints JSON:
     /// that must read as "Not logged in", not "not detected". "Claude Code not
     /// detected" is reserved for a missing binary.
     async fn get_claude_status(&self) -> Result<ClaudeStatus>;

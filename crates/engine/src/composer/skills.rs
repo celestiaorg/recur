@@ -130,7 +130,7 @@ pub fn wrap_activated_skills(
             "The user activated skill(s) via /name. Follow each skill's instructions below.\n",
         );
         out.push_str(
-            "Do not search for these skills or re-load them — their content is already included.\n",
+            "Do not search for these skills or re-load them: their content is already included.\n",
         );
     }
     if !disabled.is_empty() {

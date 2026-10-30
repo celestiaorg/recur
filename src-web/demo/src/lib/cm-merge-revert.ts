@@ -4,7 +4,7 @@
  * CM's mergeControls sit inside the deleted-chunk widget (top of the hunk)
  * and always emit accept+reject. We paint one button at the hunk's
  * bottom-right, just outside, while the pointer or caret is in that hunk.
- * Click / ⌥⌘Z runs rejectChunk on that same hunk — buffer edit, unsaved.
+ * Click / ⌥⌘Z runs rejectChunk on that same hunk: buffer edit, unsaved.
  */
 import { getChunks, rejectChunk, type Chunk } from '@codemirror/merge'
 import { type EditorState, type Extension } from '@codemirror/state'

@@ -4,15 +4,15 @@
  * Menus portal to `document.body` with `position: fixed` so overflow:hidden
  * cards (SettingsGroup) and overflow:auto panes cannot clip them or grow
  * the page. html/body overflow is also hidden, so a menu taller than the
- * space above (or below) the trigger is clipped by the window — the
+ * space above (or below) the trigger is clipped by the window: the
  * create-workspace model list opening upward is the usual case. Callers
  * set `--sel-space` to this value so CSS can min() it against each
  * variant's designed cap.
  */
 
-/** Gap between trigger and menu — keep in sync with `.sel-menu` CSS. */
+/** Gap between trigger and menu: keep in sync with `.sel-menu` CSS. */
 export const MENU_GAP_PX = 6
-/** Gap under a comment ⋯ trigger — keep in sync with `.cmt-more-menu` placement. */
+/** Gap under a comment ⋯ trigger: keep in sync with `.cmt-more-menu` placement. */
 export const MORE_MENU_GAP_PX = 4
 /** Inset from the window edge so the menu isn't flush against the clip. */
 export const MENU_EDGE_PX = 8
@@ -28,7 +28,7 @@ export type MenuFixedBox = {
 }
 
 /** Pixels the menu may occupy without crossing the viewport edge.
- *  Never larger than the real gap — a floor would overflow a trigger that
+ *  Never larger than the real gap: a floor would overflow a trigger that
  *  sits closer to the edge than the floor. */
 export function menuViewportSpace(
   trigger: MenuSpaceRect,
@@ -106,7 +106,7 @@ export function portalToBody(node: HTMLElement): () => void {
  *  `.sel-menu-hinted` in styles/_terminal.scss. */
 export const HINT_MENU_MIN_WIDTH = 280
 
-/** Classes + min-width for a portaled menu — descendant CSS no longer applies. */
+/** Classes + min-width for a portaled menu: descendant CSS no longer applies. */
 export function portalMenuMods(
   root: HTMLElement | undefined,
   opts: { hinted?: boolean } = {},
@@ -150,7 +150,7 @@ export function popoverTop(
 
 /** Re-run `onChange` when the trigger may have moved: window resize, or
  *  capture-phase scroll (ancestor overflow, not just the viewport).
- *  Scrolls inside `root` (the menu's own list) are ignored — they cannot
+ *  Scrolls inside `root` (the menu's own list) are ignored: they cannot
  *  move the trigger. Bursts collapse to one measurement per frame. */
 export function watchMenuViewport(onChange: () => void, root?: Node | null): () => void {
   let raf = 0

@@ -174,7 +174,7 @@ impl Poller {
             }
             Err(CtxError::Canceled) => {}
             Err(CtxError::DeadlineExceeded) => {
-                p.mark_cursor_connect_failed("Sign-in timed out — try Connect again");
+                p.mark_cursor_connect_failed("Sign-in timed out: try Connect again");
             }
         });
         if conn.pending {

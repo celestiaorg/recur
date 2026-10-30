@@ -1,6 +1,6 @@
 //! Implementer handoff: the Coder's done notes (what deviated, what worries it,
 //! what is unfinished) reach the Reviewer's briefing for the same round, the
-//! conductor's context, and — when the plan is structured — a bounded Maestro
+//! conductor's context, and, when the plan is structured, a bounded Maestro
 //! replan turn before the review.
 
 use recur_agent::display::PLAN_MAX_PERSIST_CHARS;
@@ -36,16 +36,16 @@ pub fn maestro_replan_tools() -> Vec<String> {
 
 pub fn maestro_replan_system_prompt(task: &str, plan: &str, handoff: &str) -> String {
     format!(
-        "You are the Maestro — the conductor of ONE autonomous coding loop. The implementer \
+        "You are the Maestro: the conductor of ONE autonomous coding loop. The implementer \
 just finished a turn and handed off with notes. Decide whether the PLAN needs revising \
 before the Reviewer judges the diff. Revise when a step turned out to be too big (split it), \
 wrong (drop or rewrite it), or missing (add it). You revise HOW the work is decomposed, never \
-WHAT counts as done: the user's task, constraints, and acceptance criteria stay as written — \
+WHAT counts as done: the user's task, constraints, and acceptance criteria stay as written: \
 do not drop or soften a requirement to fit what landed. If the notes say a requirement \
 itself is unachievable, leave the plan and say so; the Reviewer and the human decide. Use \
 Read/Grep/Glob only to check what the notes claim. Investigate, do not edit code.\n\n\
 To revise: call mcp__recur__submit_plan with the FULL plan (summary, body, every step in \
-order — finished steps keep their titles so their status survives; steps other child \
+order: finished steps keep their titles so their status survives; steps other child \
 workspaces are working RIGHT NOW keep their titles too, they close when they land). To change one step's \
 status, mcp__recur__update_plan_step. If the plan still holds, reply in one sentence and call \
 no tools. Be brief.\n\n\
@@ -244,7 +244,7 @@ impl Walk {
         let after = self.eng.store.workspace(&self.id);
         let Some(after) = after.filter(|a| plan_execution_changed(&before, a)) else {
             let msg = if failed {
-                "Replan turn failed — keeping the current plan."
+                "Replan turn failed: keeping the current plan."
             } else {
                 "Plan still holds."
             };
@@ -256,7 +256,7 @@ impl Walk {
         let n = after.plan.as_ref().map_or(0, |p| p.steps.len());
         let msg = if failed {
             format!(
-                "Replan turn failed after revising the plan — the revision it filed stands ({n} steps)."
+                "Replan turn failed after revising the plan: the revision it filed stands ({n} steps)."
             )
         } else {
             format!("Plan revised after the handoff ({n} steps).")

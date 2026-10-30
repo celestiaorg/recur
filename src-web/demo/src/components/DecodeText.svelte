@@ -7,7 +7,7 @@
     /** When false, always show `text` immediately (no scramble). */
     animate = true,
     /** Stable identity for this label surface (workspace id, tab id, …).
-     *  When it changes, snap without scramble — switching entities is not a rename.
+     *  When it changes, snap without scramble: switching entities is not a rename.
      *  Text changes with the same key still animate (LLM renames). */
     sourceKey = '',
     class: className = '',
@@ -18,7 +18,7 @@
     class?: string
   } = $props()
 
-  // Glyph pool for the decode scramble — stay in the mono latin set UI labels use.
+  // Glyph pool for the decode scramble: stay in the mono latin set UI labels use.
   const GLYPHS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789'
   const TICK_MS = 28
   const HOLD_TICKS = 2 // ticks each column keeps scrambling before locking

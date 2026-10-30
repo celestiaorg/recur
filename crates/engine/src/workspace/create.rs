@@ -218,7 +218,7 @@ impl Engine {
         }
         if !recur_git::is_repo(&proj.repo_path).await {
             return Err(EngineError(format!(
-                "project {project_id:?} is not a git repository — workspaces need a git checkout"
+                "project {project_id:?} is not a git repository: workspaces need a git checkout"
             )));
         }
         let mut base = base_branch.to_owned();
@@ -332,7 +332,7 @@ impl Engine {
             || !std::fs::metadata(&ws.worktree_path).is_ok_and(|m| m.is_dir())
         {
             return Err(
-                "the worktree was removed — remove this workspace and create it again".into(),
+                "the worktree was removed: remove this workspace and create it again".into(),
             );
         }
         let proj = self

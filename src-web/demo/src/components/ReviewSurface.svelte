@@ -75,7 +75,7 @@
   }
 
   /** Show a caller-supplied diff (e.g. a chat turn's checkpoint diff) as a
-   *  commit scope. `c.files` must be prefilled — its hash is not on the branch. */
+   *  commit scope. `c.files` must be prefilled: its hash is not on the branch. */
   export function openCommitScope(c: Commit) {
     openCommit(c)
   }

@@ -365,7 +365,7 @@ impl Engine {
                 agent_code: agent_code.to_owned(),
                 name: author.to_owned(),
                 text: format!(
-                    "Filed a structured plan: {} step(s) — {}",
+                    "Filed a structured plan, {} step(s): {}",
                     plan.steps.len(),
                     html_escape(&truncate(&plan.summary, 160))
                 ),
@@ -469,7 +469,7 @@ impl Engine {
             workspace_id,
             agent_code,
             "Agent",
-            "Captured plan from createPlan (prose only — no structured steps).",
+            "Captured plan from createPlan (prose only: no structured steps).",
         );
         true
     }

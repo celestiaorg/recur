@@ -41,7 +41,7 @@ const FOOT_H: f32 = 26.;
 /// `--chat-fade` on `.plan-page`.
 const FADE: f32 = 40.;
 
-const EXECUTE_IN_CHAT: &str = "Implement the approved plan from the Plan panel — follow its steps and satisfy its definition of done.";
+const EXECUTE_IN_CHAT: &str = "Implement the approved plan from the Plan panel: follow its steps and satisfy its definition of done.";
 
 /// Details / Attachments / Todos.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -251,7 +251,7 @@ impl PlanPanel {
         let artifacts = cx.new(|cx| {
             ArtifactsPanel::new(vcx.services.clone(), ws_id, cx).with_items(
                 Vec::new(),
-                "No attachments yet — pin artifacts or pasted images when you submit the plan.",
+                "No attachments yet: pin artifacts or pasted images when you submit the plan.",
             )
         });
         let subs = vec![
@@ -580,7 +580,7 @@ impl PlanPanel {
                     Self::refresh_workspace(svc.clone(), state.clone(), cx).await;
                     if plan.approved {
                         let _ = this.update(cx, |_, cx| {
-                            toast(ToastKind::Success, "Checklist updated — approval reset", cx)
+                            toast(ToastKind::Success, "Checklist updated: approval reset", cx)
                         });
                     }
                     true
@@ -698,7 +698,7 @@ impl PlanPanel {
                 Self::refresh_workspace(svc.clone(), state.clone(), cx).await;
                 let _ = this.update(cx, |p, cx| {
                     p.cancel_edit(cx);
-                    toast(ToastKind::Success, "Plan updated — approval reset", cx);
+                    toast(ToastKind::Success, "Plan updated: approval reset", cx);
                 });
                 return;
             }
@@ -730,7 +730,7 @@ impl PlanPanel {
                 p.cancel_edit(cx);
                 toast(
                     ToastKind::Success,
-                    "Plan updated — logged as a deviation",
+                    "Plan updated: logged as a deviation",
                     cx,
                 );
             });
@@ -1129,7 +1129,7 @@ impl PlanPanel {
             } else if plan.is_none() {
                 scroll = scroll.child(
                     div().px(px(GUTTER)).pt(px(14.)).child(
-                        text("No plan yet — plan it in a Plan-mode chat, or let the loop’s planning turn write one.")
+                        text("No plan yet: plan it in a Plan-mode chat, or let the loop’s planning turn write one.")
                             .id("plan-empty")
                             .size(12.)
                             .line_height(LineHeight::Scale(1.45))
@@ -1316,7 +1316,7 @@ impl PlanPanel {
         let label = step_status_label(status);
         titled(
             SharedString::from(format!("plan-step-check-t-{}", d.key)),
-            format!("{label} — click to change"),
+            format!("{label}: click to change"),
             b.cursor_pointer()
                 .on_click(cx.guarded_listener(move |p, _, _, cx| {
                     let cur = p
@@ -1551,9 +1551,9 @@ impl PlanPanel {
             scroll = scroll.child(list);
         } else {
             let msg = if plan.is_some() {
-                "No checklist yet — add a step below."
+                "No checklist yet: add a step below."
             } else {
-                "No checklist yet — file a plan first, then add steps here."
+                "No checklist yet: file a plan first, then add steps here."
             };
             scroll = scroll.child(
                 div().px(px(GUTTER)).pt(px(14.)).child(

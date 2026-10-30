@@ -3,7 +3,7 @@
 # empty prompt (host toasts display, no LLM turn). Conflicts leave markers
 # and emit a resolve prompt. Other git failures (dirty tree, etc.) emit an
 # agent prompt with the failure so the model can finish the update.
-# RunPromptShebang copies this to a temp file — source siblings via
+# RunPromptShebang copies this to a temp file: source siblings via
 # RECUR_BUNDLE_SUPPORT, not $0.
 set -euo pipefail
 
@@ -102,7 +102,7 @@ git_err = os.environ.get("_UPD_GIT_ERR", "").strip()
 status = os.environ.get("_UPD_STATUS", "")
 prompt = "\n".join([
     f"Updating this worktree with {base} via git {method} failed.",
-    "Git did not leave an in-progress merge/rebase — typically uncommitted local "
+    "Git did not leave an in-progress merge/rebase: typically uncommitted local "
     "changes would be overwritten, or another git error aborted the operation.",
     "Bring the worktree up to date with "
     f"{base}. Preserve local uncommitted work (commit, stash, or otherwise keep it). "
@@ -180,7 +180,7 @@ prompt = "\n".join([
     status.strip() or "(clean)",
     "",
     "## Unmerged files",
-    unmerged.strip() or "(none listed — check git status)",
+    unmerged.strip() or "(none listed: check git status)",
 ])
 print(json.dumps({
     "prompt": prompt,

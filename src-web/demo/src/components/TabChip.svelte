@@ -2,7 +2,7 @@
   // One tab inside a TabStrip. Label + optional dirty marker / busy wash
   // (icon + title; close stays outside the wash) + close.
   // The chip itself is the tab (role=tab); close is a nested <button> so it isn't
-  // a button-in-button — the old file-chip markup used a role=button span inside
+  // a button-in-button: the old file-chip markup used a role=button span inside
   // a <button>, which is invalid.
   import DecodeText from './DecodeText.svelte'
   import Icon, { type IconName } from './Icon.svelte'
@@ -11,12 +11,12 @@
     label,
     title = label,
     active = false,
-    /** Amber underline — panel that currently has keyboard focus. Active-but-unlit
+    /** Amber underline: panel that currently has keyboard focus. Active-but-unlit
      *  keeps the same thick rule in the standard border colour so you can still
      *  see which tab is selected in a background panel. */
     lit = false,
     dirty = false,
-    /** Coral attention dot — finished background turn not yet viewed. */
+    /** Coral attention dot: finished background turn not yet viewed. */
     unseen = false,
     /** Count pill (review Changes/Commits tabs). Hidden when 0. */
     badge = 0,
@@ -25,11 +25,11 @@
     muted = false,
     /** Decode animation when the label string changes (e.g. LLM tab rename). */
     animateLabel = false,
-    /** Identity for DecodeText — keep stable per tab so workspace switches don't scramble. */
+    /** Identity for DecodeText: keep stable per tab so workspace switches don't scramble. */
     labelKey = '',
     /** Optional file-icons/atom class string (e.g. from fileIconClass). */
     iconClass = '',
-    /** Optional app icon (SVG registry) — e.g. a chat tab's mode identity. */
+    /** Optional app icon (SVG registry): e.g. a chat tab's mode identity. */
     icon = undefined,
     /** Accent color for the app icon (chat-mode tint). */
     iconTint = '',
@@ -68,7 +68,7 @@
     controls?: string
     /** Stable id for drag-reorder (agent code, path, …). */
     tabKey?: string
-    /** Grab cursor + touch-action none — drag-reorderable strips. */
+    /** Grab cursor + touch-action none: drag-reorderable strips. */
     reorderable?: boolean
     /** Pointer-drag ghost; visually the chip, not in the tablist flow. */
     floating?: boolean
@@ -193,7 +193,7 @@
     min-width: 0;
   }
 
-  /* Wash on icon + title for background busy tabs — close stays outside.
+  /* Wash on icon + title for background busy tabs: close stays outside.
      Mask (not background-clip:text) so SVG icons shimmer with the label. */
   .tab-chip.busy:not(.on) .tab-chip-body {
     color: var(--text);

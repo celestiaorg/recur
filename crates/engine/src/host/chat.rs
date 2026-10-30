@@ -57,7 +57,7 @@ impl Engine {
         let q = format!("{name:?}");
         let Some(sk) = sk.filter(|s| !s.path.is_empty()) else {
             return Err(HostError(format!(
-                "unknown skill {q} — call list_skills for names"
+                "unknown skill {q}: call list_skills for names"
             )));
         };
         if !self.skill_enabled_for_workspace(workspace_id, name) {
@@ -121,13 +121,13 @@ impl Engine {
         );
         let Some(info) = hits.first() else {
             return Err(HostError(format!(
-                "terminal {:?} not found — call list_terminals",
+                "terminal {:?} not found: call list_terminals",
                 id
             )));
         };
         if id.is_empty() && hits.len() > 1 {
             return Err(HostError::new(
-                "several terminals are open — pass id from list_terminals",
+                "several terminals are open: pass id from list_terminals",
             ));
         }
         let body = src.read_plain(&info.id, tail_lines).map_err(HostError)?;
@@ -139,7 +139,7 @@ impl Engine {
         let note = terminal_exited_note(info);
         if body.trim().is_empty() {
             return Ok(format!(
-                "terminal {} ({title}{note}): idle — no recent output",
+                "terminal {} ({title}{note}): idle: no recent output",
                 info.id
             ));
         }

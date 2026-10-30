@@ -466,7 +466,7 @@ fn simplify_review_and_audit_prompts() {
     );
     assert_eq!(
         rev.display,
-        "Simplify review — file over-engineering findings"
+        "Simplify review: file over-engineering findings"
     );
     for want in [
         "over-engineering only",
@@ -489,7 +489,7 @@ fn simplify_review_and_audit_prompts() {
     let audit = run_kind("simplify-audit.sh", "recur.chat.simplify-audit", rc.clone());
     assert_eq!(
         audit.display,
-        "Simplify audit — file over-engineering findings"
+        "Simplify audit: file over-engineering findings"
     );
     for want in [
         "Audit this repository for over-engineering",
@@ -529,7 +529,7 @@ fn simplify_review_and_audit_prompts() {
     );
     assert_eq!(
         host.display,
-        "Simplify audit isn't available on a GitHub PR — use /simplify-review"
+        "Simplify audit isn't available on a GitHub PR: use /simplify-review"
     );
     for want in ["Refused", "/simplify-review", "working copy"] {
         assert!(host.prompt.contains(want), "host prompt missing {want:?}");

@@ -1633,7 +1633,7 @@
    "name": "Cursor",
    "source": "Recur Connect",
    "sourceId": "cursor_connect",
-   "hint": "Cursor is off in Settings — tokens kept so you can disconnect."
+   "hint": "Cursor is off in Settings: tokens kept so you can disconnect."
   }
  }
 }

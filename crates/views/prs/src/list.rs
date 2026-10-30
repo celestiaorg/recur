@@ -946,7 +946,7 @@ impl PrList {
             ),
             "No pull requests yet",
             Some(
-                "GitHub PRs from projects you’ve added to Recur show up here — including ones you didn’t open. Loops still land here when they converge.",
+                "GitHub PRs from projects you’ve added to Recur show up here, including ones you didn’t open. Loops still land here when they converge.",
             ),
             Some(btn.into_any_element()),
             cx,

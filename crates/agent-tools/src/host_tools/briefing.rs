@@ -26,7 +26,7 @@ impl Tool for ListWorkspaceBriefsTool {
     fn description(&self) -> &'static str {
         "List the current Briefing overview: every workspace that needs attention, \
 is working, or can be picked up, with deterministic Now/Next copy and routes. \
-Always re-query before a factual status claim — the chat transcript is not current truth. \
+Always re-query before a factual status claim: the chat transcript is not current truth. \
 App coordinator only."
     }
 

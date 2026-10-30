@@ -5,14 +5,14 @@ how it works, why it is built this way, and what it cannot do.
 
 ## Architecture
 
-Cursor exposes three client surfaces — the `cursor-agent` CLI, a TypeScript SDK,
+Cursor exposes three client surfaces: the `cursor-agent` CLI, a TypeScript SDK,
 and a Python SDK. They are **all the same client**: each speaks Cursor's private
 `agent.v1.AgentService` ConnectRPC API at `api2.cursor.sh`. The CLI and the
 TypeScript SDK contain byte-identical service definitions; the Python SDK does
 not reimplement anything, it vendors a Node runtime plus the compiled TypeScript
 SDK and drives it over a local server called the **bridge**.
 
-Recur uses that bridge — **one process per worktree**, pooled by the engine.
+Recur uses that bridge: **one process per worktree**, pooled by the engine.
 A single shared bridge inherits the macOS GUI app's cwd (`/`), and Cursor's
 shell tool falls back to `process.cwd()` when the model omits
 `working_directory`, so agents would `pwd` at disk root even with
@@ -29,7 +29,7 @@ Recur  ──Connect/JSON──▶  cursor-sdk-bridge (Node, cwd=worktree A)
 
 The bridge is language-agnostic by design (its `--tool-callback-url` flag is
 documented as "Python/host"), advertises `protocolVersion: "sdk.v1"` plus a
-capability list, and speaks ~120 message types — versus 907+ for `agent.v1`.
+capability list, and speaks ~120 message types: versus 907+ for `agent.v1`.
 
 Key point: **Cursor's backend owns the agent loop.** The client is a
 tool-execution host. The server sends tool-call requests down the stream and the
@@ -39,7 +39,7 @@ rather than merely unimplemented.
 ### Why the bridge and not the CLI
 
 The `cursor-agent` CLI reads MCP configuration only from
-`<projectRoot>/.cursor/mcp.json` and `~/.cursor/mcp.json` — both paths are
+`<projectRoot>/.cursor/mcp.json` and `~/.cursor/mcp.json`: both paths are
 hardcoded to `homedir()`/`projectRoot` in its bundle, and no flag or environment
 variable relocates them (`CURSOR_CONFIG_DIR` resolves the config root but MCP
 discovery bypasses that helper). Using the CLI would mean writing a config file
@@ -72,7 +72,7 @@ The provider is `providers/cursor/src` (`recur-provider-cursor`).
 ## Selecting a provider
 
 There is no per-role provider setting. Each role's model is a fully-qualified
-`ModelRef` — `claude-code/opus`, `cursor/composer-2.5` — and the prefix is what
+`ModelRef`: `claude-code/opus`, `cursor/composer-2.5`: and the prefix is what
 routes the turn. Picking a model IS picking the agent that runs it. Recur's
 picker lists every enabled, configured provider's models in one grouped list.
 
@@ -89,7 +89,7 @@ Two consequences:
 
 Claude Code is offered unless turned off in Settings → Providers. Cursor
 appears in the pickers once Cursor is on (`ProviderEnabled`) and credentials
-are present (`Settings.CursorConfigured`) — Connect mints the SDK key.
+are present (`Settings.CursorConfigured`): Connect mints the SDK key.
 A role
 pointed at Cursor without a working key, or at a turned-off provider, fails
 the turn with a clear message rather than silently falling back to Claude
@@ -104,7 +104,7 @@ The first Cursor build wrapped the Claude runner in `New()` and the injected
 test runner in `SetRunner`, but returned the Cursor runner raw. Cursor turns
 therefore bypassed the session mirror entirely: the run succeeded and edited
 files, but wrote no session, no transcript, no `tool_use` blocks and no
-`session.delta` events — so the Activity panel showed neither streaming nor tool
+`session.delta` events: so the Activity panel showed neither streaming nor tool
 calls, and the database held nothing for the turn. Nothing errored; there was
 simply no record.
 
@@ -122,7 +122,7 @@ Two invariants keep it fixed, both with tests that fail if the fix is reverted:
 Two rules that pull in opposite directions:
 
 1. **The session store is the source of truth** and holds whatever the provider
-   actually sent — Cursor's `shell` with `{command, timeout}` and its nested
+   actually sent: Cursor's `shell` with `{command, timeout}` and its nested
    `{"status":…,"value":{…}}` result, verbatim. A transcript that silently
    rewrites provider data is no longer a record of what happened, and it makes a
    provider's own quirks undebuggable from the database.
@@ -159,7 +159,7 @@ transcripts rather than leaving old rows stale.
 | `mcp` | `{providerIdentifier, toolName, args}` | `mcp__<server>__<tool>` | the tool's own args |
 
 Claude Code defined the common vocabulary, so its calls pass through untouched.
-Unknown Cursor tool names also pass through — a tool added after this build
+Unknown Cursor tool names also pass through: a tool added after this build
 renders with its raw name and a generic icon rather than vanishing.
 
 Three things are easy to get wrong here, and each cost a round of debugging:
@@ -177,7 +177,7 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   sends `running, completed`; `edit` sends `running, running, completed`
   (progress is re-reported). Emitting an `AgentEvent::Step` per frame minted a second
   tool_use block per edit, and since the id map keeps only the last, the result
-  attached to the second — so the first rendered as a bare input card with no
+  attached to the second: so the first rendered as a bare input card with no
   diff. The runner folds frames into exactly one step and one result per call id.
 - **A failed tool call gets NO terminal frame at all**, despite the SDK's own
   type saying otherwise. `SDKToolUseMessage.status` is documented as
@@ -186,7 +186,7 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   nothing. Cursor sends `running`
   and then simply stops: no result, no error status, and the run still finishes
   successfully. The failure is mentioned only in the model's own prose ("None of
-  them exist in this directory") — never machine-readably. Left unresolved, the
+  them exist in this directory"): never machine-readably. Left unresolved, the
   transcript stores a `tool_use` with no `tool_result`, and the card falls back
   to dumping the raw input, so a failed read renders as a bare `{"file_path": …}`
   card. The runner closes every still-open call when the run ends, with an error
@@ -197,7 +197,7 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   think or speak again until its outstanding tool results are back, so by then an
   unreported call is definitively finished. Closing only at the end left a failed
   read showing "Reading go.mod…" for the rest of the session with later work
-  rendered above it — while the very next thought was already "go.mod does not
+  rendered above it: while the very next thought was already "go.mod does not
   exist." A late real result is harmless; it overwrites the synthetic one by
   call id.
 - **Any non-running status is terminal.** Matching only `completed`/`failed` let
@@ -208,10 +208,10 @@ Three things are easy to get wrong here, and each cost a round of debugging:
 - **An assistant reply is a run of CHUNKS, not one complete message.** Both
   providers stream. The difference is that Claude Code sends `stream_event`
   text deltas for the live view AND a final `assistant` line carrying the
-  COMPLETE block, which is what the mirror persists — whereas Cursor's
+  COMPLETE block, which is what the mirror persists: whereas Cursor's
   `assistant` frames ARE the deltas, with no summary block at the end. Treating
   each as complete (correct for Claude) is what broke. Storing a block per frame split replies mid-sentence
-  and mid-markdown — a fenced code block opened in one block and closed in the
+  and mid-markdown: a fenced code block opened in one block and closed in the
   next, so a reloaded transcript rendered ```` ```bash\ngo ```` and
   ```` run .\n``` ```` as two broken fragments, and `Result.Text` held only the
   last fragment. The runner accumulates and writes ONE block per contiguous run
@@ -225,22 +225,22 @@ Three things are easy to get wrong here, and each cost a round of debugging:
   Stock cursor-sdk 1.0.38's `RunInteractionAccumulator.apply` still skips
   those summary members of the union; Recur's install minify patch
   restores the documented callback. `SDKMessage` `type: "task"` is
-  task/subagent status (`SDKTaskMessage`), not compaction — even though
+  task/subagent status (`SDKTaskMessage`), not compaction: even though
   the SDK also maps summary text onto that stream as a side channel. Token-level `token-delta` / `partial-tool-call`
-  frames are ignored — an edit's arguments are still just the path, so those
+  frames are ignored: an edit's arguments are still just the path, so those
   extras do not help the card. A call in flight therefore renders a stated
   pending state rather than a dump of its input JSON.
 - **Reasoning is a run of frames, not one event.** Cursor streams thinking as
   text chunks terminated by an empty frame carrying `thinking_duration_ms`. The
   runner accumulates and emits a single `AgentEvent::Thinking`, flushing on the next
-  tool call, assistant reply or run result — otherwise reasoning is lost and the
+  tool call, assistant reply or run result: otherwise reasoning is lost and the
   Activity panel shows an unexplained gap before each tool call. Live reasoning
   streams as `AgentEvent::ThinkingDelta` (gated on `include_partials`, like Claude's
   `--include-partial-messages`); emitting it as a text delta would splice the
   model's private reasoning into its visible reply.
 
 Text and reasoning close each other, and both flush at a tool call, at the run
-result, and at the end of the turn — so transcript order matches what happened,
+result, and at the end of the turn: so transcript order matches what happened,
 and a stream that dies mid-reply still records what arrived.
 
 `SDKToolUseMessage.truncated` flags args or results the SDK clipped for size.
@@ -253,7 +253,7 @@ differs from the common vocabulary (Claude Code's TodoWrite uses `in_progress`),
 so it is normalized and everything else passes through. It renders as a checklist
 with per-item state, and the collapsed row shows `done/total` plus the item
 currently in flight rather than a truncated JSON array. It is labelled "todos",
-not "plan" — this is a flat checklist the agent keeps for itself, distinct from
+not "plan": this is a flat checklist the agent keeps for itself, distinct from
 Recur's own planning concepts (the Maestro's plan, plan mode).
 
 `createPlan` is Cursor plan mode's native plan surface (args.plan, result `{}`).
@@ -263,7 +263,7 @@ SDK. `emitStepOnce` defers createPlan running frames and emits on terminal with
 the richest args seen. If a planning turn or Plan-mode chat only used createPlan
 (no `submit_plan`), `adoptProsePlan` files the full markdown in `Plan.Body`
 (with a first-paragraph headline in `Summary`) and mirrors it into
-DefinitionOfDone — enough for the Plan panel and approval gate, without
+DefinitionOfDone: enough for the Plan panel and approval gate, without
 inventing fake todos.
 
 The shapes above are transcribed from live bridge traffic. Cursor documents
@@ -285,9 +285,9 @@ failed resume still includes it.
 
 **Mid-turn steering (D49) prefers `run.steer`.** Cursor's SDK can append a
 user message to a run in flight (`SteerRun` on Recur's patched bridge).
-`complete_delivered` means the turn has the text — Recur does not CancelRun or
+`complete_delivered` means the turn has the text: Recur does not CancelRun or
 resend. `revert_to_followup`, a missing RPC, or any other failure maps to
-`CancelRun` then `Send` of the concatenated steers on the **same** agentId —
+`CancelRun` then `Send` of the concatenated steers on the **same** agentId:
 still inside one `Run`, so the engine does not see a failed specialist turn.
 A user Stop still uses `ctx` cancel and must `CancelRun` the follow-up run
 (steer cancel does not consume the Stop `Once`). Newly spawned specialists
@@ -313,7 +313,7 @@ undocumented `api2.cursor.sh` DashboardService (`GetCurrentPeriodUsage`,
 PKCE deep-link as `cursor-agent` (`loginDeepControl` + `auth/poll`), then mints
 a 90-day user API key named `Recur` via `DashboardService/CreateUserApiKey`
 (official `Cursor.auth.login()` does this and drops the session). Recur keeps
-the session for plan usage — a `crsr_` key cannot read the dashboard — and
+the session for plan usage, a `crsr_` key cannot read the dashboard, and
 writes the minted key into Settings so the SDK can run agents. Disconnect
 clears that key; a leftover paste is dropped when there is no Connect file.
 Recur remints
@@ -328,14 +328,14 @@ hardcoded anywhere.
 
 ## Installing the bridge
 
-Recur does not vendor the bridge — it is ~50MB compressed and ~155MB unpacked
+Recur does not vendor the bridge: it is ~50MB compressed and ~155MB unpacked
 per platform, almost all of it a bundled Node runtime. **Settings → Providers →
 SDK → Install** fetches it on demand (`cursor.Install`):
 
 1. Fetch the **pinned** release `https://pypi.org/pypi/cursor-sdk/<PINNED_SDK_VERSION>/json`
    (not "latest") and pick the wheel for this OS/arch. The pin matches the
-   minify anchors used by the attribution patch — bump both together. Filenames
-   are MATCHED rather than a PEP 425 tag being constructed — macOS wheels are
+   minify anchors used by the attribution patch: bump both together. Filenames
+   are MATCHED rather than a PEP 425 tag being constructed: macOS wheels are
    `macosx_11_0_*` and Linux ones carry a compound
    `manylinux2014_x86_64.manylinux_2_17_x86_64`.
 2. Download to a staging dir, verifying PyPI's published sha256.
@@ -351,8 +351,8 @@ Progress is published on the bus as `cursor.install` events (phase, message,
 percent).
 
 `cursor.Locate` only returns `<dataDir>/cursor-bridge`. `$RECUR_CURSOR_BRIDGE`,
-`Settings.CursorBridgePath`, and pip wheels are not production resolution paths
-— those copies skip the skill stub. Agent runs fail if that tree is missing or
+`Settings.CursorBridgePath`, and pip wheels are not production resolution paths:
+those copies skip the skill stub. Agent runs fail if that tree is missing or
 if `EnsureAttributionPatch` cannot match minify anchors (reinstall from Settings).
 
 `$RECUR_CURSOR_BRIDGE` remains the **smoke-test** seam (`ResolveLauncher`); it

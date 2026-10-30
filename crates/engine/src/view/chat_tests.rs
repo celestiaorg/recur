@@ -568,7 +568,7 @@ fn ask_user_display_text() {
     );
     assert_eq!(
         format_ask_user_display_text("Blue", "navy preferred"),
-        "Blue — navy preferred"
+        "Blue: navy preferred"
     );
     assert_eq!(format_ask_user_display_text("  ", "  "), "(empty)");
 }
@@ -606,7 +606,7 @@ fn display_user_chat_text_collapses_resume_and_dispatch_wire() {
         "Continue with this answer. Do not re-ask the same question unless you still need clarification.",
     ]
     .join("\n");
-    assert_eq!(display_user_chat_text(&wire), "Blue — navy preferred");
+    assert_eq!(display_user_chat_text(&wire), "Blue: navy preferred");
     let fix = [
         "You are the Coder agent. A reviewer found issues with the current diff. ",
         "Fix every finding below with minimal, correct edits.",
@@ -636,7 +636,7 @@ fn display_user_chat_text_matches_the_engine_resume_prompt() {
         free_text: "navy preferred".into(),
     };
     let wire = crate::ask_user::format_ask_user_resume_prompt(&q, &ans);
-    assert_eq!(display_user_chat_text(&wire), "Blue — navy preferred");
+    assert_eq!(display_user_chat_text(&wire), "Blue: navy preferred");
     let multi = recur_domain::UserQuestionAnswer {
         free_text: "navy\npreferred".into(),
         ..ans
@@ -699,7 +699,7 @@ fn agent_error_titles_and_details() {
 #[test]
 fn agent_error_reply_detection() {
     assert!(is_agent_error_reply(&prefixed()));
-    assert!(is_agent_error_reply("The agent hit an error — try again."));
+    assert!(is_agent_error_reply("The agent hit an error: try again."));
     assert!(is_agent_error_reply(
         "I hit an error trying to respond just now. Try again."
     ));

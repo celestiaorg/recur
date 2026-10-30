@@ -560,7 +560,7 @@ impl Observatory {
             let loc = if p.line > 0 {
                 format!("{name}:{}", p.line)
             } else if name.is_empty() {
-                "—".into()
+                "-".into()
             } else {
                 name
             };

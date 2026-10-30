@@ -1083,7 +1083,7 @@ async fn plan_approval_notes_option_waits_for_the_text_box(cx: &mut TestAppConte
             "context": "1. Create go.mod\n2. Add the game loop",
             "options": [
                 {"text": "Approve and proceed", "tag": "recommended", "desc": "Start coding to this plan as written."},
-                {"text": "Proceed with my notes", "tag": "notes", "desc": "Add guidance in the text box — I fold it into the plan and start."}
+                {"text": "Proceed with my notes", "tag": "notes", "desc": "Add guidance in the text box: I fold it into the plan and start."}
             ]
         })))
     });
@@ -1110,7 +1110,7 @@ async fn plan_approval_notes_option_waits_for_the_text_box(cx: &mut TestAppConte
     );
     assert!(me(
         &mut s,
-        "Proceed with my notes — use ncurses for the board"
+        "Proceed with my notes: use ncurses for the board"
     ));
 }
 

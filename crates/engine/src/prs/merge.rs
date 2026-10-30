@@ -209,7 +209,7 @@ impl Engine {
             if let Err(e) = mgr.merge(&pr.branch, &base, &msg, method.as_str()).await {
                 let mut note = format!("Local merge failed: {}", html_escape(&e.to_string()));
                 if e.dirty_base().is_none() {
-                    note.push_str(" — resolve the conflict and try again.");
+                    note.push_str(". Resolve the conflict and try again.");
                 }
                 return Err(note);
             }
@@ -233,7 +233,7 @@ impl Engine {
         .await
         .unwrap_or_else(|_| {
             Err(format!(
-                "Local merge failed: {} — resolve the conflict and try again.",
+                "Local merge failed: {}. Resolve the conflict and try again.",
                 html_escape("context deadline exceeded")
             ))
         });
@@ -255,7 +255,7 @@ impl Engine {
                 html_escape(&short)
             ),
             None => format!(
-                "{}: Local PR <code>#{}</code> into <code>{}</code> on disk — you were the only gate.",
+                "{}: Local PR <code>#{}</code> into <code>{}</code> on disk. You were the only gate.",
                 html_escape(label),
                 pr.number,
                 html_escape(&base)

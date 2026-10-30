@@ -150,7 +150,7 @@ fn resume_prompt() {
             choice: "A".into(),
             free_text: "b".into()
         }),
-        "A — b"
+        "A: b"
     );
     assert_eq!(
         format_ask_user_display(&UserQuestionAnswer::default()),

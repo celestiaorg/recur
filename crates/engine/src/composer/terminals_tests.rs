@@ -91,7 +91,7 @@ fn snapshot_wrap_is_exact() {
     );
     assert_eq!(
         got,
-        "<system_instruction>\nThe user attached Observatory terminal output. It is a snapshot of the live PTY (ANSI stripped, last lines) — not a worktree file. Do not search the repo for these paths. For a later snapshot or another tab, call mcp__recur__list_terminals / mcp__recur__read_terminal.\n\n### @terminal (dev, id t-1)\n```\n$ npm run dev\nready\n```\n\n### @terminal:t-2 (terminal, id t-2)\n(could not read: terminal gone)\n\n### @terminal:nope\n(no matching terminal)\n</system_instruction>\n\nfix @terminal and @terminal:t-2 and @terminal:nope"
+        "<system_instruction>\nThe user attached Observatory terminal output. It is a snapshot of the live PTY (ANSI stripped, last lines): not a worktree file. Do not search the repo for these paths. For a later snapshot or another tab, call mcp__recur__list_terminals / mcp__recur__read_terminal.\n\n### @terminal (dev, id t-1)\n```\n$ npm run dev\nready\n```\n\n### @terminal:t-2 (terminal, id t-2)\n(could not read: terminal gone)\n\n### @terminal:nope\n(no matching terminal)\n</system_instruction>\n\nfix @terminal and @terminal:t-2 and @terminal:nope"
     );
     let idle = Fake {
         sessions: vec![info("t-1", "dev")],
@@ -99,7 +99,7 @@ fn snapshot_wrap_is_exact() {
     };
     assert!(
         wrap_attached_terminal_mentions("see @terminal", "ws", Some(&idle))
-            .contains("(idle — no recent output)")
+            .contains("(idle: no recent output)")
     );
 }
 

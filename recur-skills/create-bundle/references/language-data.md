@@ -24,7 +24,7 @@ in any pack.
 | `disableIndentCorrections` | * | Still indent a new line; don't rewrite a non-empty one |
 | `closeBrackets` | * | Extra **single-character** openers merged onto `()[]{} '" \`` |
 
-`*` — set at least one payload (comment token, indent pattern,
+`*`: set at least one payload (comment token, indent pattern,
 `disableIndentCorrections`, or `closeBrackets`). Empty entries are rejected.
 
 `<` pairs with `>`; `_` / `*` pair with themselves. Enter between

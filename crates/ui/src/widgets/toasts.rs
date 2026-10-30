@@ -197,7 +197,7 @@ impl ToastStore {
         let text = if ask.question.is_empty() {
             format!("Agent has a question · {where_}")
         } else {
-            format!("Agent has a question · {where_} — {}", ask.question)
+            format!("Agent has a question · {where_}: {}", ask.question)
         };
         self.toasts.push(Toast {
             id,
@@ -742,7 +742,7 @@ mod tests {
         store.read_with(cx, |s, _| {
             assert_eq!(
                 s.toasts()[0].text.as_ref(),
-                "Agent has a question · recur · honeyed-cannoli — Ship it?"
+                "Agent has a question · recur · honeyed-cannoli: Ship it?"
             );
         });
         cx.executor().advance_clock(Duration::from_secs(60));

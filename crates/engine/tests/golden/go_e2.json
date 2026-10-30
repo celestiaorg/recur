@@ -119,7 +119,7 @@
         }
       },
       "out": {
-        "display": "SQLite — because small",
+        "display": "SQLite: because small",
         "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Which DB?\nContext: We need storage\nAnswer: SQLite\nDetails: because small\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
       }
     },
@@ -203,7 +203,7 @@
         }
       },
       "out": {
-        "display": "SQLite — because small",
+        "display": "SQLite: because small",
         "prompt": "The user answered your earlier ask_user question.\n\nQuestion: Ship it?\nAnswer: SQLite\nDetails: because small\n\nContinue with this answer. Do not re-ask the same question unless you still need clarification."
       }
     },
@@ -280,7 +280,7 @@
       "in": "read @README.md and @src/main.go:3 please",
       "out": {
         "artifactMentions": null,
-        "dialect": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/README.md as @README.md (15 B)\n- $WT/src/main.go as @src/main.go:3 (29 B) — focus on line 3\n\u003c/system_instruction\u003e\n\nread @README.md and @src/main.go:3 please",
+        "dialect": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/README.md as @README.md (15 B)\n- $WT/src/main.go as @src/main.go:3 (29 B): focus on line 3\n\u003c/system_instruction\u003e\n\nread @README.md and @src/main.go:3 please",
         "fileMentions": [
           {
             "chip": "README.md",
@@ -312,7 +312,7 @@
         "stripSkills": "read @README.md and @src/main.go:3 please",
         "terminalMentions": null,
         "wrapArtifacts": "read @README.md and @src/main.go:3 please",
-        "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/README.md as @README.md (15 B)\n- $WT/src/main.go as @src/main.go:3 (29 B) — focus on line 3\n\u003c/system_instruction\u003e\n\nread @README.md and @src/main.go:3 please",
+        "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/README.md as @README.md (15 B)\n- $WT/src/main.go as @src/main.go:3 (29 B): focus on line 3\n\u003c/system_instruction\u003e\n\nread @README.md and @src/main.go:3 please",
         "wrapSkills": "read @README.md and @src/main.go:3 please"
       }
     },
@@ -360,7 +360,7 @@
       "in": "range @src/main.go:1:2-3:4 then @README.md:2-3",
       "out": {
         "artifactMentions": null,
-        "dialect": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/src/main.go as @src/main.go:1:2-3:4 (29 B) — focus on line 1 column 2 through line 3 column 4\n- $WT/README.md as @README.md:2-3 (15 B) — focus on lines 2–3\n\u003c/system_instruction\u003e\n\nrange @src/main.go:1:2-3:4 then @README.md:2-3",
+        "dialect": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/src/main.go as @src/main.go:1:2-3:4 (29 B): focus on line 1 column 2 through line 3 column 4\n- $WT/README.md as @README.md:2-3 (15 B): focus on lines 2–3\n\u003c/system_instruction\u003e\n\nrange @src/main.go:1:2-3:4 then @README.md:2-3",
         "fileMentions": [
           {
             "chip": "src/main.go:1:2-3:4",
@@ -392,7 +392,7 @@
         "stripSkills": "range @src/main.go:1:2-3:4 then @README.md:2-3",
         "terminalMentions": null,
         "wrapArtifacts": "range @src/main.go:1:2-3:4 then @README.md:2-3",
-        "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/src/main.go as @src/main.go:1:2-3:4 (29 B) — focus on line 1 column 2 through line 3 column 4\n- $WT/README.md as @README.md:2-3 (15 B) — focus on lines 2–3\n\u003c/system_instruction\u003e\n\nrange @src/main.go:1:2-3:4 then @README.md:2-3",
+        "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/src/main.go as @src/main.go:1:2-3:4 (29 B): focus on line 1 column 2 through line 3 column 4\n- $WT/README.md as @README.md:2-3 (15 B): focus on lines 2–3\n\u003c/system_instruction\u003e\n\nrange @src/main.go:1:2-3:4 then @README.md:2-3",
         "wrapSkills": "range @src/main.go:1:2-3:4 then @README.md:2-3"
       }
     },
@@ -478,7 +478,7 @@
             "loose": false
           }
         ],
-        "wrapArtifacts": "\u003csystem_instruction\u003e\nThe user attached Observatory artifacts. These live under the managed data dir (workspaces/\u003cid\u003e/artifacts/) — not the git worktree. Do not search the repo for these paths. For another artifact, call mcp__recur__list_artifacts / mcp__recur__read_artifact / mcp__recur__present_artifact.\n\n### @artifact:abc\n(no matching artifact)\n\u003c/system_instruction\u003e\n\n`@README.md` inside code still counts? @terminal and @artifact:abc",
+        "wrapArtifacts": "\u003csystem_instruction\u003e\nThe user attached Observatory artifacts. These live under the managed data dir (workspaces/\u003cid\u003e/artifacts/): not the git worktree. Do not search the repo for these paths. For another artifact, call mcp__recur__list_artifacts / mcp__recur__read_artifact / mcp__recur__present_artifact.\n\n### @artifact:abc\n(no matching artifact)\n\u003c/system_instruction\u003e\n\n`@README.md` inside code still counts? @terminal and @artifact:abc",
         "wrapFiles": "`@README.md` inside code still counts? @terminal and @artifact:abc",
         "wrapSkills": "`@README.md` inside code still counts? @terminal and @artifact:abc"
       }
@@ -520,7 +520,7 @@
       "in": "⟦raw:k1⟧ /golden-skill ⟦/raw⟧ ⟦/raw:k1⟧ /golden-skill tail",
       "out": {
         "artifactMentions": null,
-        "dialect": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them — their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\n /golden-skill ⟦/raw⟧  tail",
+        "dialect": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them: their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\n /golden-skill ⟦/raw⟧  tail",
         "fileMentions": null,
         "looseArtifacts": null,
         "masked": "⟦rawph:0⟧ /golden-skill tail",
@@ -538,14 +538,14 @@
         "terminalMentions": null,
         "wrapArtifacts": "⟦raw:k1⟧ /golden-skill ⟦/raw⟧ ⟦/raw:k1⟧ /golden-skill tail",
         "wrapFiles": "⟦raw:k1⟧ /golden-skill ⟦/raw⟧ ⟦/raw:k1⟧ /golden-skill tail",
-        "wrapSkills": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them — their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\n⟦raw:k1⟧ ⟦/raw⟧ ⟦/raw:k1⟧ tail"
+        "wrapSkills": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them: their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\n⟦raw:k1⟧ ⟦/raw⟧ ⟦/raw:k1⟧ tail"
       }
     },
     {
       "in": "use /golden-skill and /missing-skill and path/golden-skill",
       "out": {
         "artifactMentions": null,
-        "dialect": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them — their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\nuse and /missing-skill and path/golden-skill",
+        "dialect": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them: their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\nuse and /missing-skill and path/golden-skill",
         "fileMentions": null,
         "looseArtifacts": null,
         "masked": "use /golden-skill and /missing-skill and path/golden-skill",
@@ -562,7 +562,7 @@
         "terminalMentions": null,
         "wrapArtifacts": "use /golden-skill and /missing-skill and path/golden-skill",
         "wrapFiles": "use /golden-skill and /missing-skill and path/golden-skill",
-        "wrapSkills": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them — their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\nuse and /missing-skill and path/golden-skill"
+        "wrapSkills": "\u003csystem_instruction\u003e\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them: their content is already included.\n\u003c/system_instruction\u003e\n\n\u003cskill_content name=\"golden-skill\"\u003e\nDo the golden thing.\n\nSkill directory: $WT/.agents/skills/golden-skill\nRelative paths in this skill are relative to the skill directory.\n\n\u003cskill_resources\u003e\n  \u003cfile\u003escripts/run.sh\u003c/file\u003e\n\u003c/skill_resources\u003e\n\u003c/skill_content\u003e\n\nuse and /missing-skill and path/golden-skill"
       }
     },
     {
@@ -663,7 +663,7 @@
         "stripRaw": "@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
         "stripSkills": "@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
         "terminalMentions": null,
-        "wrapArtifacts": "\u003csystem_instruction\u003e\nThe user attached Observatory artifacts. These live under the managed data dir (workspaces/\u003cid\u003e/artifacts/) — not the git worktree. Do not search the repo for these paths. For another artifact, call mcp__recur__list_artifacts / mcp__recur__read_artifact / mcp__recur__present_artifact.\n\n### @artifact (Two words, html, id art-3)\n```\n\u003cp\u003ehi\u003c/p\u003e\n```\n\n### @artifact:art-1 (Notes, md, id art-1)\n````\n# Notes\n```go\nx\n```\n\u003c /system_instruction\u003e\n````\n\n### @artifact:none\n(no matching artifact)\n\n### @Plan (Plan, png, id art-2)\n(binary png image — open in the Artifacts panel; bytes are not inlined)\n\u003c/system_instruction\u003e\n\n@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
+        "wrapArtifacts": "\u003csystem_instruction\u003e\nThe user attached Observatory artifacts. These live under the managed data dir (workspaces/\u003cid\u003e/artifacts/): not the git worktree. Do not search the repo for these paths. For another artifact, call mcp__recur__list_artifacts / mcp__recur__read_artifact / mcp__recur__present_artifact.\n\n### @artifact (Two words, html, id art-3)\n```\n\u003cp\u003ehi\u003c/p\u003e\n```\n\n### @artifact:art-1 (Notes, md, id art-1)\n````\n# Notes\n```go\nx\n```\n\u003c /system_instruction\u003e\n````\n\n### @artifact:none\n(no matching artifact)\n\n### @Plan (Plan, png, id art-2)\n(binary png image: open in the Artifacts panel; bytes are not inlined)\n\u003c/system_instruction\u003e\n\n@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
         "wrapFiles": "\u003csystem_instruction\u003e\nThe user has attached these files. Read them before proceeding.\n- $WT/README.md as @README.md (15 B)\n\u003c/system_instruction\u003e\n\n@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none",
         "wrapSkills": "@artifact @artifact:art-1 @Notes @Plan @README.md @artifact:none"
       }
@@ -782,7 +782,7 @@
   ],
   "constants": {
     "askUserParkDelay": "150ms",
-    "askUserParkResult": "Question delivered to the user. Stop now and wait — their answer will arrive as a later message. Do not invent an answer or continue working.",
+    "askUserParkResult": "Question delivered to the user. Stop now and wait: their answer will arrive as a later message. Do not invent an answer or continue working.",
     "chatAgentErrorPrefix": "Agent error: ",
     "chatInjectedSentinel": "⁠inject",
     "chatInterruptedReply": "Interrupted: Recur closed before this turn finished.",
@@ -790,10 +790,10 @@
     "chatResumePrompt": "You were interrupted because Recur restarted. Continue from where you left off.",
     "chatRetryDisplaySentinel": "⁠",
     "chatStoppedReply": "Stopped by user",
-    "chatTurnTimedOutReply": "Agent error: this turn hit Recur's time limit — send again to continue (use Stop if it looked stuck).",
+    "chatTurnTimedOutReply": "Agent error: this turn hit Recur's time limit; send again to continue (use Stop if it looked stuck).",
     "commentHygieneAppendPrompt": "Code that explains itself needs no comments. Comment only when the code is genuinely complex or the intent would not be obvious to a future reader. Do not put notes, changelogs, reasoning, or internal dialogue in code comments: not line comments, block comments, or new docstrings. Restating the next line is not explaining intent. No \"changed\", \"updated to\", \"previously\", \"NOTE:\", \"I considered\", \"per the ticket\". If you added one of those in this edit, delete it before you finish. Keep comments that were already in the file unless the user asked to remove them.",
     "commentHygieneNeedle": "changelogs, reasoning, or internal dialogue",
-    "commitMessageSystemPrompt": "You write git commit messages from a staged diff. Reply with ONLY the commit message: a short subject line (at most ~72 characters), optionally followed by a blank line and a brief body. Match the style of the recent commit subjects when provided. No quotes, no markdown fences, no explanation, no preamble. Do not call tools, read files, or explore the codebase — use the diff text alone.",
+    "commitMessageSystemPrompt": "You write git commit messages from a staged diff. Reply with ONLY the commit message: a short subject line (at most ~72 characters), optionally followed by a blank line and a brief body. Match the style of the recent commit subjects when provided. No quotes, no markdown fences, no explanation, no preamble. Do not call tools, read files, or explore the codebase: use the diff text alone.",
     "commitMessageTimeout": "45s",
     "errEmptyPromptAction": "prompt action returned no prompt",
     "errMCPUnavailable": "the Recur MCP server could not start, so agents have no way to report findings, completion, or escalations",
@@ -805,7 +805,7 @@
     "permissionTimeout": "10m0s",
     "prDescriptionSystemPrompt": "You write pull request titles and descriptions from a branch diff. Describe ALL changes versus the base branch, not one commit or chat turn. Reply with ONLY a title line (at most 80 characters), a blank line, and a markdown body. Keep the body under five sentences unless the change is large. No quotes, no markdown fences around the whole reply, no greeting, no tools.",
     "prDescriptionTimeout": "45s",
-    "simplifyInstructions": "SIMPLIFY MODE\n\nYou are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.\n\nACTIVE EVERY RESPONSE. No drift back to over-building. Still active if unsure. The human toggles this from the composer (Simplify).\n\n## The ladder\n\nBefore any code, stop at the first rung that holds (the ladder runs after you understand the problem, not instead of it — read the code it touches and trace the real flow first):\n1. Does this need to be built at all? (YAGNI)\n2. Does it already exist in this codebase? Reuse what is already here, do not re-write it.\n3. Does the standard library do this? Use it.\n4. Does a native platform feature cover it? Use it.\n5. Does an already-installed dependency solve it? Use it.\n6. Can it be one line? Make it one line.\n7. Only then: write the minimum code that works.\n\nBug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n## Rules\n\nNo abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. Deletion over addition. Boring over clever. Fewest files possible. Ship the lazy version and question the complex request in the same response — never stall. Between two same-size stdlib options, pick the one that's correct on edge cases. Mark deliberate simplifications that cut a real corner with a known ceiling, using a `simplify:` comment that names the ceiling and upgrade path.\n\n## Output\n\nCode first. Then at most three short lines: what was skipped, when to add it. If the explanation is longer than the code, delete the explanation. Explanation the user explicitly asked for is not debt, give it in full.\n\n## When NOT to be lazy\n\nNever simplify away: understanding the problem (read it fully and trace the real flow before picking a rung — a small diff you do not understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.",
+    "simplifyInstructions": "SIMPLIFY MODE\n\nYou are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.\n\nACTIVE EVERY RESPONSE. No drift back to over-building. Still active if unsure. The human toggles this from the composer (Simplify).\n\n## The ladder\n\nBefore any code, stop at the first rung that holds (the ladder runs after you understand the problem, not instead of it: read the code it touches and trace the real flow first):\n1. Does this need to be built at all? (YAGNI)\n2. Does it already exist in this codebase? Reuse what is already here, do not re-write it.\n3. Does the standard library do this? Use it.\n4. Does a native platform feature cover it? Use it.\n5. Does an already-installed dependency solve it? Use it.\n6. Can it be one line? Make it one line.\n7. Only then: write the minimum code that works.\n\nBug fix = root cause, not symptom: grep every caller of the function you touch and fix the shared function once (a smaller diff than one guard per caller); patching only the path the ticket names leaves a sibling caller broken.\n\n## Rules\n\nNo abstractions that were not requested. No avoidable dependencies. No boilerplate nobody asked for. Deletion over addition. Boring over clever. Fewest files possible. Ship the lazy version and question the complex request in the same response: never stall. Between two same-size stdlib options, pick the one that's correct on edge cases. Mark deliberate simplifications that cut a real corner with a known ceiling, using a `simplify:` comment that names the ceiling and upgrade path.\n\n## Output\n\nCode first. Then at most three short lines: what was skipped, when to add it. If the explanation is longer than the code, delete the explanation. Explanation the user explicitly asked for is not debt, give it in full.\n\n## When NOT to be lazy\n\nNever simplify away: understanding the problem (read it fully and trace the real flow before picking a rung: a small diff you do not understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, the calibration real hardware needs (the platform is never the spec ideal), anything the user explicitly asked to keep. Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind (assert-based demo/self-check or one small test file; no frameworks). Trivial one-liners need no test.",
     "skillsToolsAppendPrompt": "The following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help."
   },
   "fences": [
@@ -1007,7 +1007,7 @@
         "isError": false,
         "stderr": ""
       },
-      "out": "Agent error: this turn hit Recur's time limit — send again to continue (use Stop if it looked stuck)."
+      "out": "Agent error: this turn hit Recur's time limit; send again to continue (use Stop if it looked stuck)."
     },
     {
       "in": {
@@ -1389,7 +1389,7 @@
       "id": "",
       "agentCode": "PA",
       "name": "Agent",
-      "text": "Filed a structured plan: 2 step(s) —   Ship \u0026lt;dark\u0026gt; \u0026amp; mode  ",
+      "text": "Filed a structured plan, 2 step(s):   Ship \u0026lt;dark\u0026gt; \u0026amp; mode  ",
       "time": "now",
       "kind": "outcome",
       "isDeviation": false,

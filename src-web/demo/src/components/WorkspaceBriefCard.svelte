@@ -15,7 +15,7 @@
   } = $props()
 
   const unread = $derived(notes.length)
-  // Hover recall for "what happened since" — the note titles, tags stripped.
+  // Hover recall for "what happened since": the note titles, tags stripped.
   const noteTitles = $derived(
     notes.map((n) => (n.title || '').replace(/<[^>]+>/g, '')).filter(Boolean).join(' · '),
   )

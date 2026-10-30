@@ -70,7 +70,7 @@
 
 <div class="findings-panel">
   {#if !findings.length}
-    <div class="obs-empty">No findings yet — run /review.</div>
+    <div class="obs-empty">No findings yet: run /review.</div>
   {:else if !visible.length}
     <div class="obs-empty">No {filter} findings.</div>
   {:else}

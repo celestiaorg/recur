@@ -1561,7 +1561,7 @@ impl Observatory {
             std::rc::Rc::new(move |cmd: String, cx: &mut gpui_kit::App| {
                 let Some(o) = weak.upgrade() else {
                     return Task::ready(Err(
-                        "No editor is focused — open a file in the Observatory first".into(),
+                        "No editor is focused: open a file in the Observatory first".into(),
                     ));
                 };
                 let Some(window) = o.read(cx).window else {

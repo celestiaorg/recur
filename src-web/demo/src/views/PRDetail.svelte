@@ -574,7 +574,7 @@
               </CommitRow>
             {/each}
           </div>
-          <div class="hint" style="text-align:left;padding:14px 2px 0">{isGitHubPR ? 'Commits on this pull request. Click any to see its diff.' : 'Every commit is the loop\'s work — agent-authored, one per iteration. Click any to see its diff. The messages trace how it converged: build → fix on review → fix on review → tests.'}</div>
+          <div class="hint" style="text-align:left;padding:14px 2px 0">{isGitHubPR ? 'Commits on this pull request. Click any to see its diff.' : 'Every commit is the loop\'s work: agent-authored, one per iteration. Click any to see its diff. The messages trace how it converged: build → fix on review → fix on review → tests.'}</div>
         </div>
       {:else}
         {@const c = prCommits[commitIdx]}
@@ -687,7 +687,7 @@
       <div class="diffscroll" tabindex="-1" bind:this={diffscrollEl} onscroll={onDiffScroll}>
         {#if (filterQ || commentsOnly) && !matchedFiles.length}
           <div class="empty">
-            <div class="et">No files match — <button type="button" class="linkish" onclick={() => { filterText = ''; commentsOnly = false }}>clear filter</button></div>
+            <div class="et">No files match: <button type="button" class="linkish" onclick={() => { filterText = ''; commentsOnly = false }}>clear filter</button></div>
           </div>
         {:else}
         {#each matchedFiles as f (f.path)}
@@ -713,7 +713,7 @@
   <div class="prpane" class:on={prtab === 'checks'} {@attach fadeScrollTop}>
     <div class="conv-wrap" style="max-width:680px">
       {@render checksPanel()}
-      <div class="hint" style="text-align:left;padding:0 2px">{pr?.source === 'gh' ? 'These are the GitHub status checks on this PR.' : 'Verify-in-browser is unique to Recur — the QA agent actually drove the running app. Evidence is in the Conversation tab.'}</div>
+      <div class="hint" style="text-align:left;padding:0 2px">{pr?.source === 'gh' ? 'These are the GitHub status checks on this PR.' : 'Verify-in-browser is unique to Recur: the QA agent actually drove the running app. Evidence is in the Conversation tab.'}</div>
     </div>
   </div>
 

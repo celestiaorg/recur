@@ -375,7 +375,7 @@ fn summarize_recur_and_web_tools() {
 
 #[test]
 fn chat_input_keeps_create_plan_and_task_parseable() {
-    let body = "plan step — with detail. ".repeat(900);
+    let body = "plan step: with detail. ".repeat(900);
     let raw = serde_json::to_string(&json!({ "plan": body })).unwrap();
     assert!(raw.len() > CHAT_DETAIL_LIMIT);
     let got = chat_tool_input("CreatePlan", &raw);
@@ -500,7 +500,7 @@ fn chat_result_keeps_list_artifacts_parseable() {
             let id = format!("aaaaaaaa-bbbb-4ccc-8ddd-{i:012}");
             json!({
                 "id": id, "workspaceId": "recur.bubbly-parfait",
-                "title": format!("Modes as bundle items {i:02} — long agent title"), "kind": "html",
+                "title": format!("Modes as bundle items {i:02}: long agent title"), "kind": "html",
                 "path": format!("workspaces/recur.bubbly-parfait/artifacts/{id}.html"),
                 "createdAt": "2026-08-20T04:32:46Z", "createdBy": "PA",
             })
@@ -526,7 +526,7 @@ fn chat_result_keeps_list_artifacts_parseable() {
 
 #[test]
 fn compact_list_artifacts_keeps_row_when_title_is_huge() {
-    let title = "Modes as bundle items — ".repeat(900);
+    let title = "Modes as bundle items: ".repeat(900);
     let raw = serde_json::to_string(&json!({"count": 1, "artifacts": [{
         "id": "aaaaaaaa-bbbb-4ccc-8ddd-000000000001", "title": title, "kind": "html",
         "path": "workspaces/recur.bubbly-parfait/artifacts/aaaaaaaa-bbbb-4ccc-8ddd-000000000001.html",

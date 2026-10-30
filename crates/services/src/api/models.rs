@@ -279,7 +279,7 @@ pub struct EditorSessionMeta {
     pub main_surface: String,
     /// Observatory pane chrome. Empty kind is the side default (maestro / files).
     /// Open flags are pointers so JSON omitempty does not treat a hidden pane
-    /// (`false`) as "unset" — nil means default-open, matching old sessions.
+    /// (`false`) as "unset": nil means default-open, matching old sessions.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub left_kind: String,
     #[serde(skip_serializing_if = "String::is_empty")]

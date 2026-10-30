@@ -109,7 +109,7 @@ pub fn cursor_connect_tokens_quota() -> ProviderQuota {
     let mut q = ProviderQuota {
         id: PROVIDER_CURSOR.into(),
         name: "Cursor".into(),
-        hint: "Cursor is off in Settings — tokens kept so you can disconnect.".into(),
+        hint: "Cursor is off in Settings: tokens kept so you can disconnect.".into(),
         ..Default::default()
     };
     set_source(&mut q, SOURCE_CURSOR_CONNECT);

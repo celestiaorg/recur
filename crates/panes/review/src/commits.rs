@@ -49,7 +49,7 @@ pub fn empty_state(s: impl Into<SharedString>, cx: &App) -> AnyElement {
         .into_any_element()
 }
 
-/// "No files match — clear filter".
+/// "No files match: clear filter".
 pub fn empty_clear_filter(
     on_clear: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     cx: &App,
@@ -68,7 +68,7 @@ pub fn empty_clear_filter(
             div()
                 .flex()
                 .items_baseline()
-                .child(text("No files match — ").size(14.).weight(600.).nowrap())
+                .child(text("No files match: ").size(14.).weight(600.).nowrap())
                 .child(
                     div()
                         .id("clear-filter")
@@ -614,7 +614,7 @@ impl CommitsView {
                                 ),
                             ),
                     )
-                    .child(chash("—", &t))
+                    .child(chash("-", &t))
                     .child(chevron(group, &t))
                     .on_click(
                         cx.guarded_listener(|_, _, _, cx| cx.emit(CommitsEvent::OpenWorking)),

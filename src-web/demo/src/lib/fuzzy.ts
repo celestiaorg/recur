@@ -2,13 +2,13 @@
 
 export type FuzzyHit<T> = { item: T; score: number; label: string }
 
-/** An item with its label pre-lowercased and masked — see prepareFuzzy. */
+/** An item with its label pre-lowercased and masked: see prepareFuzzy. */
 export type FuzzyItem<T> = { item: T; label: string; lower: string; mask: number }
 
 /**
  * Bit 0-25 = 'a'-'z' present, bit 26 = digit, bit 27 = any other character.
  * A query can only be a subsequence of a text if every bit it sets is also set
- * in the text — one integer AND rejects most of a repo index before the
+ * in the text: one integer AND rejects most of a repo index before the
  * character-by-character scan runs.
  */
 function charMask(s: string): number {
@@ -25,7 +25,7 @@ function charMask(s: string): number {
 /**
  * Score `lowerText` (already lowercased) against `lowerQuery` (already trimmed
  * and lowercased). Split out from fuzzyScore so the hot path can hoist both
- * normalizations out of the per-item loop — Quick Open re-scores the entire
+ * normalizations out of the per-item loop: Quick Open re-scores the entire
  * repo file index on every keystroke, and `toLowerCase()` per item per key was
  * the single largest allocation source in the app.
  */
@@ -79,7 +79,7 @@ export function prepareFuzzy<T>(items: T[], labelOf: (item: T) => string): Fuzzy
 /**
  * Rank `prepared` against `query`, keeping only the best `limit`.
  *
- * Ordering is score desc, then label asc — same as before. Two deliberate
+ * Ordering is score desc, then label asc: same as before. Two deliberate
  * changes for speed on large repos:
  *
  *   - Results are collected into a bounded, always-sorted array of at most
@@ -92,7 +92,7 @@ export function prepareFuzzy<T>(items: T[], labelOf: (item: T) => string): Fuzzy
  *     before the subsequence scan (see charMask).
  *
  * Tie-breaking still goes through a collator so the order is identical to the
- * previous `localeCompare` implementation — a plain `<` looks equivalent but
+ * previous `localeCompare` implementation: a plain `<` looks equivalent but
  * isn't, because code-point order sorts `/` before `_` while the collator
  * weights letters ahead of punctuation, which visibly reorders repo paths.
  */
@@ -114,7 +114,7 @@ export function fuzzyFilterPrepared<T>(
     if ((qMask & ~p.mask) !== 0) continue
     const score = scoreLower(p.lower, q)
     if (score == null) continue
-    // Full and no better than the current tail — skip without allocating.
+    // Full and no better than the current tail: skip without allocating.
     if (out.length === limit) {
       const worst = out[limit - 1]
       if (score < worst.score) continue

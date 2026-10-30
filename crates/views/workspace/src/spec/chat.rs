@@ -753,7 +753,7 @@ async fn failed_deferred_commit_retry_sends_a_fresh_grouped_action_without_eatin
     assert!(
         h.toasts()
             .iter()
-            .any(|t| t.contains("is ready — open a chat tab and retry"))
+            .any(|t| t.contains("is ready: open a chat tab and retry"))
     );
     h.select_tab("PA");
     assert_eq!(h.input(), "unsent draft stays here");
@@ -819,7 +819,7 @@ async fn slash_review_send_stays_on_the_routed_tab_if_the_operator_switches_away
     assert!(h.me("hello from the agent tab"));
     if let Some(r) = gate.lock().take() {
         r.send(Ok(PromptResultDto {
-            prompt: "Review the changes in this worktree and file findings. Git context is already gathered — do NOT re-run git status/diff/log.".into(),
+            prompt: "Review the changes in this worktree and file findings. Git context is already gathered: do NOT re-run git status/diff/log.".into(),
             display: "Please review the changes in this worktree and file any real issues".into(),
             fresh_session: Some(true),
             ..Default::default()
@@ -2266,7 +2266,7 @@ async fn the_dock_opens_with_the_loop_tab_sends_a_message_and_toggles_closed(
 ) {
     let store: Store = Default::default();
     let opts = bridge_opts(store, calls(), Default::default(), |_, _| {
-        Some("On it — steering the loop (mock reply).".into())
+        Some("On it: steering the loop (mock reply).".into())
     });
     let mut h = boot(cx, opts);
     assert!(h.has("obs-left"));

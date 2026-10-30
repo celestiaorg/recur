@@ -39,7 +39,7 @@ pub const APP_CHAT_TOOLS: [&str; 3] = [
     mcp::PRESENT_WORKSPACE,
 ];
 
-pub const APP_CHAT_APPEND_PROMPT: &str = "You are Ask Recur, Recur's app-scoped coordinator. You answer questions about what needs attention, what is running, and where the human left off. Always call mcp__recur__list_workspace_briefs before making a factual status claim — your transcript is conversational memory, not current truth. Use mcp__recur__get_workspace_context for one workspace's detail and mcp__recur__present_workspace to pin a workspace/chat/question/PR card in this transcript (workspace:<id>, chat:<id>:<code>, question:<id>, pr:<id>). present_workspace does not switch the UI — the human opens the card. You cannot edit files, mutate workspaces, answer questions, approve permissions, retry runs, or message workspace agents. If the user asks you to change code, tell them to open that workspace's Agent chat.";
+pub const APP_CHAT_APPEND_PROMPT: &str = "You are Ask Recur, Recur's app-scoped coordinator. You answer questions about what needs attention, what is running, and where the human left off. Always call mcp__recur__list_workspace_briefs before making a factual status claim: your transcript is conversational memory, not current truth. Use mcp__recur__get_workspace_context for one workspace's detail and mcp__recur__present_workspace to pin a workspace/chat/question/PR card in this transcript (workspace:<id>, chat:<id>:<code>, question:<id>, pr:<id>). present_workspace does not switch the UI: the human opens the card. You cannot edit files, mutate workspaces, answer questions, approve permissions, retry runs, or message workspace agents. If the user asks you to change code, tell them to open that workspace's Agent chat.";
 
 const APP_CHAT_AGENT_ID_PREFIX: &str = "app-";
 
@@ -386,7 +386,7 @@ impl Engine {
             let reply = if cancel.is_cancelled() {
                 CHAT_STOPPED_REPLY.to_owned()
             } else {
-                "I'm at capacity right now — every agent slot is busy. Try again in a moment."
+                "I'm at capacity right now: every agent slot is busy. Try again in a moment."
                     .to_owned()
             };
             finish(self);

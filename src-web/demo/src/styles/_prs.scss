@@ -661,7 +661,7 @@
   overflow: hidden;
 }
 
-/* Top fade while scrolled — same dissolve into --bg as .chat-scroll's
+/* Top fade while scrolled: same dissolve into --bg as .chat-scroll's
    leading edge, but only once scrollTop > 0. The files TOC uses sticky
    folder headers, so it cannot mask its top edge. */
 .prpane.fade-top:not(.flexpane) {
@@ -1755,7 +1755,7 @@ button.tl-sha:hover {
   min-height: 0;
   background: var(--bg);
   position: relative;
-  /* No top padding — sticky .df-head uses top: 0, and padding there would
+  /* No top padding: sticky .df-head uses top: 0, and padding there would
      leave a strip where scrolled hunks paint through. Inset the first card
      instead so rest scroll is flush under the toolbar. */
   padding: 0 14px 14px;
@@ -1949,7 +1949,7 @@ button.tl-sha:hover {
   background: color-mix(in srgb, var(--warn) 16%, transparent);
 }
 
-/* Hunk headers are caret + full-width text — not the 3-col line grid (extra cells
+/* Hunk headers are caret + full-width text: not the 3-col line grid (extra cells
    used to shove @@… into the 46px gutter and render it as a vertical strip). */
 .hline.hunk {
   grid-template-columns: 22px 1fr;

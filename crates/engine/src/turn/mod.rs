@@ -216,7 +216,7 @@ impl Engine {
             return Err(ProviderError::new(
                 ErrorKind::Unavailable,
                 format!(
-                    "unknown agent provider {:?} — pick a model from Settings → Models",
+                    "unknown agent provider {:?}: pick a model from Settings → Models",
                     provider_id
                 ),
             ));

@@ -225,7 +225,7 @@ async fn update_with_base() {
         .unwrap_err();
     assert!(
         err.0
-            .contains("commits behind main — update with base first"),
+            .contains("commits behind main: update with base first"),
         "{err}"
     );
     assert!(eng.workspace_land_state(&ws.id).await.behind_base >= 1);
@@ -640,7 +640,7 @@ async fn merge_with_forge_pr_does_not_land_locally() {
         .merge_workspace(&ws.id, &MergeMethod::Squash)
         .await
         .unwrap_err();
-    assert_eq!(err.0, "this workspace has a GitHub PR — merge from the PR");
+    assert_eq!(err.0, "this workspace has a GitHub PR: merge from the PR");
     assert!(git_out(&repo.path, &["show", "HEAD:feature.txt"]).is_err());
 }
 
@@ -717,7 +717,7 @@ async fn pull_refuses_local_pr() {
     });
     assert_eq!(
         px.eng().pull_workspace_pr(&ws.id).await.unwrap_err().0,
-        "this is a Local PR — there is no GitHub head to pull"
+        "this is a Local PR: there is no GitHub head to pull"
     );
 }
 

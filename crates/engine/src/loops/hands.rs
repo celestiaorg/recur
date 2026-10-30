@@ -31,7 +31,7 @@ use crate::turn::AgentSpec;
 pub fn dispatch_reviewer_system_prompt(task: &str) -> String {
     format!(
         "You are a code Reviewer dispatched into a workspace. Review READ-ONLY \
-(Read, Grep, `git diff`/`git log`) — you cannot edit files. For EACH real issue \
+(Read, Grep, `git diff`/`git log`): you cannot edit files. For EACH real issue \
 call mcp__recur__report_finding with file, line (optional end_line for a range), severity, and a clear message. \
 On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. \
 Do not file style nits as findings. If the work is sound, report no findings.\n\n\
@@ -100,7 +100,7 @@ impl Engine {
             );
         }
         self.touch_workspace_activity(workspace_id, "Plan edited", self.now());
-        "Plan updated — logged as a deviation and steered into subsequent turns.".into()
+        "Plan updated: logged as a deviation and steered into subsequent turns.".into()
     }
 
     /// Runs ONE bounded specialist turn (reviewer | security) over the
@@ -120,7 +120,7 @@ impl Engine {
             return "Refused: the workspace has no worktree to inspect.".into();
         }
         if self.running_loop_by_id(workspace_id).is_some() {
-            return "Refused: the loop is running — it already reviews every iteration; wait for it to settle.".into();
+            return "Refused: the loop is running; it already reviews every iteration; wait for it to settle.".into();
         }
         let mut rs = role_spec(&AgentRole::Reviewer);
         rs.mode = ROLE_MODE_REVIEW.into();
@@ -163,7 +163,7 @@ impl Engine {
             },
         );
         let reply = format!(
-            "{} dispatched over the worktree — findings will appear as they are filed.",
+            "{} dispatched over the worktree: findings will appear as they are filed.",
             rs.name
         );
         let eng = self.arc();
@@ -228,7 +228,7 @@ impl Engine {
                 &ws.id,
                 &rs.code,
                 &rs.name,
-                "Could not start — every agent slot is busy.",
+                "Could not start: every agent slot is busy.",
             );
             return;
         };
@@ -243,7 +243,7 @@ impl Engine {
                     &ws.id,
                     &rs.code,
                     &rs.name,
-                    &format!("Could not start — {e}"),
+                    &format!("Could not start: {e}"),
                 );
                 return;
             }
@@ -299,7 +299,7 @@ impl Engine {
             &rs.code,
             &rs.name,
             &format!(
-                "Dispatched turn finished — {} now open.",
+                "Dispatched turn finished: {} now open.",
                 plural(open, "finding", "findings")
             ),
         );
@@ -309,7 +309,7 @@ impl Engine {
     /// allowance (the same arithmetic a cap escalation grants).
     pub fn extend_loop_iterations(&self, workspace_id: &str, agent_code: &str, n: i64) -> String {
         let Some(lp) = self.running_loop_for_hand(workspace_id, agent_code) else {
-            return "Refused: the loop is not running — there is no iteration budget to extend."
+            return "Refused: the loop is not running; there is no iteration budget to extend."
                 .into();
         };
         let autonomy = lp.lock().autonomy.clone();
@@ -329,7 +329,7 @@ impl Engine {
         );
         if granted < n {
             return format!(
-                "Granted {granted} extra iteration(s) — clamped from {n} by the autonomy level's allowance."
+                "Granted {granted} extra iteration(s): clamped from {n} by the autonomy level's allowance."
             );
         }
         format!("Granted {granted} extra iteration(s).")
@@ -339,7 +339,7 @@ impl Engine {
     /// at its round cap.
     pub async fn extend_loop_rounds(&self, workspace_id: &str, agent_code: &str, n: i64) -> String {
         let Some(lp) = self.running_loop_for_hand(workspace_id, agent_code) else {
-            return "Refused: the loop is not running — there is no round budget to extend.".into();
+            return "Refused: the loop is not running; there is no round budget to extend.".into();
         };
         let (at_cap, guard, autonomy) = {
             let s = lp.lock();
@@ -395,7 +395,7 @@ impl Engine {
     ) -> String {
         if let Some(lp) = self.running_loop_for_hand(workspace_id, agent_code) {
             if lp.is_paused() {
-                return "Refused: reenter_phase is idle only — this walk is still running (paused at a checkpoint). Resume continues it.".into();
+                return "Refused: reenter_phase is idle only; this walk is still running (paused at a checkpoint). Resume continues it.".into();
             }
             return "Refused: reenter_phase is idle only.".into();
         }
@@ -462,7 +462,7 @@ impl Engine {
                         );
                     }
                     VERB_ENSURE_PR | VERB_ARTIFACT => {
-                        return "Refused: the current phase is finishing — wait until it settles, then run_phase.".into();
+                        return "Refused: the current phase is finishing; wait until it settles, then run_phase.".into();
                     }
                     VERB_PLAN if !gated => {
                         return "Refused: cannot nest run_phase inside a live plan phase.".into();
@@ -471,7 +471,7 @@ impl Engine {
                 }
             }
             lp.lock().pending_on_demand = ph.id.trim().to_owned();
-            return "Queued — will run at the next graph checkpoint, then resume the parked walk."
+            return "Queued: will run at the next graph checkpoint, then resume the parked walk."
                 .into();
         }
         let Some(ws) = self.store.workspace(workspace_id) else {

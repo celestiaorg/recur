@@ -935,7 +935,7 @@ mod tests {
         ));
         assert!(should_reshow_after_dismiss(
             "Confirm remove",
-            Some("Confirm remove — uncommitted files")
+            Some("Confirm remove: uncommitted files")
         ));
         assert!(!should_reshow_after_dismiss("Remove", Some("Remove")));
         assert!(!should_reshow_after_dismiss("Remove", None));

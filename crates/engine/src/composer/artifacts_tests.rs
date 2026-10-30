@@ -68,7 +68,7 @@ async fn inlines_body_exactly() {
     assert_eq!(
         got,
         format!(
-            "<system_instruction>\nThe user attached Observatory artifacts. These live under the managed data dir (workspaces/<id>/artifacts/) — not the git worktree. Do not search the repo for these paths. For another artifact, call mcp__recur__list_artifacts / mcp__recur__read_artifact / mcp__recur__present_artifact.\n\n### @artifact:{id} (Notes, md, id {id})\n```\n# hello artifact\n```\n</system_instruction>\n\nfix @artifact:{id}",
+            "<system_instruction>\nThe user attached Observatory artifacts. These live under the managed data dir (workspaces/<id>/artifacts/): not the git worktree. Do not search the repo for these paths. For another artifact, call mcp__recur__list_artifacts / mcp__recur__read_artifact / mcp__recur__present_artifact.\n\n### @artifact:{id} (Notes, md, id {id})\n```\n# hello artifact\n```\n</system_instruction>\n\nfix @artifact:{id}",
             id = a.id
         )
     );
@@ -91,9 +91,7 @@ async fn binary_is_noted() {
     let te = TestEngine::new(None);
     let a = create(&te, "ws-png", "Shot", "png", "iVBORw0KGgo=");
     let got = wrap(&te, &format!("see @artifact:{}", a.id), "ws-png");
-    assert!(
-        got.contains("(binary png image — open in the Artifacts panel; bytes are not inlined)")
-    );
+    assert!(got.contains("(binary png image: open in the Artifacts panel; bytes are not inlined)"));
     assert!(!got.contains("iVBORw0KGgo="));
     te.close().await;
 }

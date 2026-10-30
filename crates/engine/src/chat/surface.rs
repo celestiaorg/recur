@@ -240,13 +240,13 @@ impl Engine {
         if let Some(f) = forge {
             b.push(' ');
             b.push_str(&f.pr_label(&pr_subject(s)));
-            b.push_str(" is open for this branch — that is a different surface; only treat it as the subject when they refer to the pull request.");
+            b.push_str(" is open for this branch: that is a different surface; only treat it as the subject when they refer to the pull request.");
         } else if source == PrSource::Local || s.pr_number > 0 {
             b.push_str(" Local PR");
             if s.pr_number > 0 {
                 b.push_str(&format!(" #{}", s.pr_number));
             }
-            b.push_str(" is open for this workspace — only treat it as the subject when they refer to the pull request.");
+            b.push_str(" is open for this workspace: only treat it as the subject when they refer to the pull request.");
         }
         b
     }

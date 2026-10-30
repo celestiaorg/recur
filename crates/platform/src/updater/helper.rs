@@ -196,7 +196,7 @@ pub(super) fn run_helper_swap(
         && let Err(e) = wait(parent_pid, Duration::from_secs(30))
     {
         lg.log(format!(
-            "parent did not exit within timeout: {e} — aborting swap"
+            "parent did not exit within timeout: {e}: aborting swap"
         ));
         return 17;
     }
@@ -245,7 +245,7 @@ pub(super) fn run_helper_swap(
         lg.log(format!("chmod restored mode: {e} (non-fatal)"));
     }
     if !swapped {
-        lg.log("all swap attempts exhausted — restoring backup".into());
+        lg.log("all swap attempts exhausted: restoring backup".into());
         if let Err(e) = restore_from_backup(&backup, target, launcher) {
             lg.log(format!("restore failed: {e}"));
             return 14;
@@ -253,7 +253,7 @@ pub(super) fn run_helper_swap(
         return 13;
     }
     if let Err(e) = launcher.launch(target) {
-        lg.log(format!("launch new failed: {e} — restoring backup"));
+        lg.log(format!("launch new failed: {e}: restoring backup"));
         if let Err(e) = restore_from_backup(&backup, target, launcher) {
             lg.log(format!("restore failed: {e}"));
             return 16;

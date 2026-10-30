@@ -918,7 +918,7 @@ impl Observatory {
             } else if self.filter_changed() {
                 "No changes since base."
             } else {
-                "No files — set a repo path on the project."
+                "No files: set a repo path on the project."
             };
             flow = flow.child(obs_empty(msg, false, cx));
         } else if self.worktree_missing {

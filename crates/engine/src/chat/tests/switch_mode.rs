@@ -327,7 +327,7 @@ async fn a_remount_dead_end_records_its_note_without_a_bubble() {
 #[test]
 fn dead_end_replies() {
     assert!(is_mode_switch_resume_dead_end(
-        "I'm at capacity right now — every agent slot is busy. Try again in a moment."
+        "I'm at capacity right now: every agent slot is busy. Try again in a moment."
     ));
     assert!(!is_mode_switch_resume_dead_end("continued"));
     assert!(!is_mode_switch_resume_dead_end(""));

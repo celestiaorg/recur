@@ -113,7 +113,7 @@ impl Engine {
         };
         if mgr.update_in_progress(&wt).await {
             return Err(
-                "a merge or rebase is already in progress — finish or abort it before updating"
+                "a merge or rebase is already in progress: finish or abort it before updating"
                     .into(),
             );
         }
@@ -176,7 +176,7 @@ impl Engine {
                         )));
                     }
                     return Err(EngineError(format!(
-                        "incoming changes on {} conflict with your branch — your checkout was left unchanged",
+                        "incoming changes on {} conflict with your branch: your checkout was left unchanged",
                         up.ref_name
                     )));
                 }
@@ -221,7 +221,7 @@ impl Engine {
             && behind > 0
         {
             return Err(EngineError(format!(
-                "this branch is {behind} commits behind {} — update first",
+                "this branch is {behind} commits behind {}: update first",
                 up.ref_name
             )));
         }

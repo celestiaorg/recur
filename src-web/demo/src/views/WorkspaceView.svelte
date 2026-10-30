@@ -155,8 +155,8 @@
             compact
             resetKey={`${workspaceId}:${activeCode}`}
             emptyText={activeCode === 'MA'
-              ? 'Ask where this loop stands, or steer it — the Maestro can read the worktree, edit the plan, re-run review, and dispatch specialists; rails hold at execution.'
-              : 'Ask the agent, or tell it what to change — the mode selector below decides whether it may edit.'}
+              ? 'Ask where this loop stands, or steer it: the Maestro can read the worktree, edit the plan, re-run review, and dispatch specialists; rails hold at execution.'
+              : 'Ask the agent, or tell it what to change: the mode selector below decides whether it may edit.'}
             placeholder={activeCode === 'MA'
               ? 'Ask where things stand, or steer the loop… (@ files, / skills)'
               : 'Message the agent… (@ files, / skills, ⏎ to send)'}
@@ -223,7 +223,7 @@
 <style>
   .wsv { display: flex; flex-direction: column; height: 100%; min-height: 0; }
   .wsv-obs { flex: 1; min-height: 0; display: flex; overflow: hidden; }
-  /* Reserve dock space while the catalogue loads — avoids a raw-ref flash. */
+  /* Reserve dock space while the catalogue loads: avoids a raw-ref flash. */
   .model-pickers-pending {
     display: inline-flex; align-items: center; gap: 6px;
     height: 24px; padding: 0 6px; min-width: 118px;

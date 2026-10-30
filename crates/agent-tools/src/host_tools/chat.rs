@@ -133,9 +133,9 @@ impl Tool for AskUserTool {
     fn description(&self) -> &'static str {
         "Ask the human a clarifying question. Use for interactive chats (including Maestro) when \
 you need a decision without pausing the whole workspace. Provide a clear question and \
-optional 2-4 options. This ends your current turn — the chat goes idle and their answer \
+optional 2-4 options. This ends your current turn: the chat goes idle and their answer \
 arrives later as a user message. An inbox notification is raised. Do NOT use escalate \
-from interactive chats — that is for non-interactive loop agents only."
+from interactive chats: that is for non-interactive loop agents only."
     }
 
     fn schema(&self) -> String {
@@ -356,13 +356,13 @@ impl Tool for OpenPrTool {
         "Open a pull request from this workspace. Recur pushes the branch and creates the GitHub \
 PR when the project opts in (otherwise a Local PR). Do not run `gh pr create` yourself. \
 Provide a title under 80 characters and a markdown body describing ALL workspace changes \
-versus the base branch — not only this chat turn. Set draft to true for a GitHub draft \
+versus the base branch: not only this chat turn. Set draft to true for a GitHub draft \
 PR. Commit uncommitted work first. If a GitHub PR is already open, this pushes new \
 commits and does not rewrite the description. If only a Local PR is open, title and \
 body update that Local PR and retry GitHub create when the project opts in. Refused \
 on the main working copy and while a loop is running. After a loop idles (including \
-Review & fix, Docs, and Security review & fix), open a PR from here or the titlebar \
-— the run does not self-open one."
+Review & fix, Docs, and Security review & fix), open a PR from here or the titlebar. \
+The run does not self-open one."
     }
 
     fn schema(&self) -> String {

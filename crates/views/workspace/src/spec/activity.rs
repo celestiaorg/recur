@@ -518,7 +518,7 @@ async fn coder_fix_turn_prompt_shows_the_short_label_not_the_mcp_dispatch_wire(
         "Original task: create a cli game of pong",
         "",
         "Reviewer findings to fix:",
-        "1. id=F-test [medium] pong/game.py:135 — paddle centering mismatch",
+        "1. id=F-test [medium] pong/game.py:135: paddle centering mismatch",
     ]
     .join("\n");
     let opts = cockpit_opts(

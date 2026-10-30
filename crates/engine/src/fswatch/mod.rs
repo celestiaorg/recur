@@ -198,7 +198,7 @@ impl Engine {
             Ok(s) => Some(s),
             Err(err) => {
                 tracing::warn!(
-                    "recur: fs watch on {} failed ({err}) — falling back to {:?} fingerprint poll",
+                    "recur: fs watch on {} failed ({err}): falling back to {:?} fingerprint poll",
                     watch_root.display(),
                     poll_every
                 );

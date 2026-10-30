@@ -994,7 +994,7 @@ fn ensure_pr_door_escalation_rules() {
         ..Escalation::default()
     }));
     assert!(!ensure_pr_door_escalation(&Escalation {
-        question: "I've run 4 iteration(s) without converging — 1 open finding remain. How should I proceed?".into(),
+        question: "I've run 4 iteration(s) without converging: 1 open finding remain. How should I proceed?".into(),
         options: Some(vec![EscalationOption {
             text: "Ship with caveats".into(),
             desc: "Open the PR noting remaining risk (rails currently allow it).".into(),
@@ -1064,9 +1064,9 @@ fn cap_opts() -> Option<Vec<EscalationOption>> {
     ])
 }
 
-const DOOR_Q: &str = "Policy bar blocked the PR: 1 countable finding — policy bar blocks opening a PR. How should I proceed?";
+const DOOR_Q: &str = "Policy bar blocked the PR: 1 countable finding: policy bar blocks opening a PR. How should I proceed?";
 const CAP_Q: &str =
-    "I've run 4 iteration(s) without converging — 1 open finding remain. How should I proceed?";
+    "I've run 4 iteration(s) without converging: 1 open finding remain. How should I proceed?";
 
 #[allow(clippy::too_many_arguments)]
 fn seed_answered(
@@ -1394,7 +1394,7 @@ async fn new_loop_seeds_legacy_stuck_answered_escalation() {
         (
             "WS-legacy-stuck-wait",
             WorkspaceState::Paused,
-            "answered — waiting to resume",
+            "answered: waiting to resume",
         ),
     ] {
         t.store

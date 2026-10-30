@@ -52,7 +52,7 @@
               <div class="cm-t">Uncommitted changes</div>
               <div class="cm-by">Working tree vs HEAD</div>
             </div>
-            <span class="chash">—</span>
+            <span class="chash">-</span>
             <Icon name="chevron-right" class="cchev" />
           </div>
         {/if}

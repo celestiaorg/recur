@@ -1082,7 +1082,7 @@ impl AppState {
         if cmd.is_empty() {
             toast(
                 ToastKind::Info,
-                "No run command — set one in project setup",
+                "No run command: set one in project setup",
                 cx,
             );
             return false;

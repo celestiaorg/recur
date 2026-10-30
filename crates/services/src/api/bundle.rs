@@ -37,7 +37,7 @@ pub trait BundleService: Send + Sync {
 
     /// ListCommands discovers all bundles and returns commands matching scope/path.
     /// When both scope and path are empty, every command is returned (callers that
-    /// need file affinity — e.g. the Run Command palette — re-filter client-side).
+    /// need file affinity: e.g. the Run Command palette: re-filter client-side).
     async fn list_commands(&self, scope: &str, path: &str) -> Result<Vec<CommandInfo>>;
 
     /// ListGrammars returns TextMate grammars from shipped + user bundles.

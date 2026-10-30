@@ -292,7 +292,7 @@ async fn persist_chat_failure_skips_a_committed_teardown() {
         "PA",
         &format_mode_switch_resume_prompt(CHAT_MODE_AGENT, "ask"),
         &format_mode_switch_display("ask"),
-        "I can't find that workspace anymore — it may have been removed.",
+        "I can't find that workspace anymore: it may have been removed.",
         0,
         &recur_agent::TurnResult::default(),
         false,

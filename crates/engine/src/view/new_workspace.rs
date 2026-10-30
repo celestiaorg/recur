@@ -337,7 +337,7 @@ mod tests {
             "I couldn't save that image attachment. Try a smaller PNG/JPEG/GIF/WebP."
         ));
         assert!(is_parked_opening_failure(
-            "I'm at capacity — try again in a moment."
+            "I'm at capacity: try again in a moment."
         ));
         assert!(!is_parked_opening_failure("I'll look at the flaky test."));
         assert!(!is_parked_opening_failure(""));

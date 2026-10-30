@@ -183,7 +183,7 @@ pub fn run_editor_snippet(
     let h = cx
         .try_global::<EditorSnippetHandler>()
         .and_then(|h| h.0.clone())
-        .ok_or_else(|| "No editor is focused — open a file in the Observatory first".to_string())?;
+        .ok_or_else(|| "No editor is focused: open a file in the Observatory first".to_string())?;
     h(sn, window, cx);
     Ok(())
 }

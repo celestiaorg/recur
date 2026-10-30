@@ -261,7 +261,7 @@
         <div class="empty"><div class="et">Loading diff…</div></div>
       {:else if filterQ && !matchedFiles.length}
         <div class="empty">
-          <div class="et">No files match — <button type="button" class="linkish" onclick={() => (filterText = '')}>clear filter</button></div>
+          <div class="et">No files match: <button type="button" class="linkish" onclick={() => (filterText = '')}>clear filter</button></div>
         </div>
       {:else}
         {#each matchedFiles as f (f.path)}
@@ -358,7 +358,7 @@
       type="button"
       class:on={diffLayout === 'split'}
       class:dim={splitFallback}
-      title={splitFallback ? 'Too narrow for side-by-side — widen the pane or hide the file list' : 'Side by side'}
+      title={splitFallback ? 'Too narrow for side-by-side: widen the pane or hide the file list' : 'Side by side'}
       aria-label="Side-by-side diff"
       aria-pressed={diffLayout === 'split'}
       aria-disabled={splitFallback}

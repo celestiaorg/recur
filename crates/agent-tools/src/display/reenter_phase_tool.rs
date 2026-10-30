@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn refusals_fail_restart_ack_does_not() {
         assert!(!reenter_phase_failed(
-            "Loop restarting — it continues from the current worktree, steered by the recorded plan.",
+            "Loop restarting: it continues from the current worktree, steered by the recorded plan.",
             false
         ));
         assert!(reenter_phase_failed(

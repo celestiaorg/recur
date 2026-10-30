@@ -17,7 +17,7 @@ export type CatalogModel = {
   flags: FlagDimension[]
 }
 
-/** Wails maps land as `{ [k]?: string }` — coerce to a plain string map. */
+/** Wails maps land as `{ [k]?: string }`: coerce to a plain string map. */
 export type FlagMap = { [k: string]: string | undefined } | Record<string, string> | null | undefined
 
 export function coerceFlags(cur: FlagMap): Record<string, string> | undefined {

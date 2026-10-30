@@ -1,17 +1,17 @@
 /**
  * Horizontal "keep this chip in view" for TabStrip.
  *
- * Native Element.scrollIntoView also scrolls ancestor overflow containers —
- * the editor, #v-detail — so a workspace restore that only meant to reveal
+ * Native Element.scrollIntoView also scrolls ancestor overflow containers
+ * (the editor, #v-detail), so a workspace restore that only meant to reveal
  * a file tab yanked the buffer the user had scrolled. Adjust scrollLeft on
  * the strip itself, the same way the sidebar uses scrollDeltaToReveal.
  *
  * In-workspace opens animate that offset with a rAF ease. WKWebView does not
  * reliably animate Element.scrollTo({ behavior: 'smooth' }) on overflow:auto
- * (unlike scrollIntoView, which it does animate — and which we cannot use).
+ * (unlike scrollIntoView, which it does animate, and which we cannot use).
  * Restore assigns scrollLeft instantly. User-driven movement (trackpad
  * mapped onto this overflow-x-only strip, keyboard, drag-select) cancels
- * an in-flight ease — sampled at the start of each ease frame, because a
+ * an in-flight ease: sampled at the start of each ease frame, because a
  * coalesced `scroll` event lands after rAF and would otherwise see our
  * write as programmatic.
  */

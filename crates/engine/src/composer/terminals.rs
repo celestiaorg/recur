@@ -119,7 +119,7 @@ pub fn attach_terminal_mentions(
     let active = src.active_id(workspace_id);
     let mut b = String::from("<system_instruction>\n");
     b.push_str("The user attached Observatory terminal output. It is a snapshot of the live PTY ");
-    b.push_str("(ANSI stripped, last lines) — not a worktree file. Do not search the repo for these paths. ");
+    b.push_str("(ANSI stripped, last lines): not a worktree file. Do not search the repo for these paths. ");
     b.push_str("For a later snapshot or another tab, call mcp__recur__list_terminals / mcp__recur__read_terminal.\n");
     let mut wrote = 0;
     for m in mentions {
@@ -149,7 +149,7 @@ pub fn attach_terminal_mentions(
             ));
             match body {
                 Err(e) => b.push_str(&format!("(could not read: {e})\n")),
-                Ok(body) if body.trim().is_empty() => b.push_str("(idle — no recent output)\n"),
+                Ok(body) if body.trim().is_empty() => b.push_str("(idle: no recent output)\n"),
                 Ok(body) => b.push_str(&fence_snapshot(&body)),
             }
             wrote += 1;

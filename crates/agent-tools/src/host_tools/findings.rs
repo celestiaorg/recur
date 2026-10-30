@@ -58,7 +58,7 @@ impl Tool for ReportFindingTool {
         "Report one structured code-review finding for the diff under review. The engine collects \
 these to decide convergence; you cannot approve your own work. Optional summary is \
 markdown shown to the end user in the turn digest (defaults to message). Do not restate \
-filed findings in your closing reply — the app summarizes still-open filings."
+filed findings in your closing reply: the app summarizes still-open filings."
     }
 
     fn schema(&self) -> String {
@@ -253,7 +253,7 @@ const UPDATE_FINDING_SCHEMA: &str = r#"{
   "properties": {
     "finding_id": {"type": "string", "description": "Finding id from list_findings or the fix prompt"},
     "status": {"type": "string", "enum": ["resolved","invalid"], "description": "resolved = fixed; invalid = disputed/wrong"},
-    "reason": {"type": "string", "description": "Required when status is invalid — why the finding is wrong or out of scope"}
+    "reason": {"type": "string", "description": "Required when status is invalid: why the finding is wrong or out of scope"}
   },
   "required": ["finding_id","status"]
 }"#;
@@ -299,7 +299,7 @@ impl Tool for UpdateFindingTool {
 
     fn description(&self) -> &'static str {
         "Update one finding's status. status must be resolved \
-(the issue is fixed) or invalid (wrong/out of scope — reason required). Does not \
+(the issue is fixed) or invalid (wrong/out of scope: reason required). Does not \
 decide convergence; a later review still re-checks the diff."
     }
 

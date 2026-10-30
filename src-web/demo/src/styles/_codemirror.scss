@@ -1,5 +1,5 @@
-/* ===== CodeMirror find/replace — Recur panel (replaces stock CM form) ===== */
-/* CM ships z-index:300 on .cm-panels — that stacks above .palette-bg (200).
+/* ===== CodeMirror find/replace: Recur panel (replaces stock CM form) ===== */
+/* CM ships z-index:300 on .cm-panels: that stacks above .palette-bg (200).
    Keep panels above editor content only; app overlays own the higher bands. */
 .cm-panels {
   z-index: 2!important;
@@ -154,7 +154,7 @@
   background: var(--pane);
 }
 
-/* ===== CodeMirror go-to-line — Recur dialog (replaces stock CM form) ===== */
+/* ===== CodeMirror go-to-line: Recur dialog (replaces stock CM form) ===== */
 .cm-panel.cm-dialog.cm-recur-goto {
   padding: 0;
   font-family: var(--ui);
@@ -198,7 +198,7 @@
   margin-right: auto;
 }
 
-/* ===== CodeMirror autocomplete — Recur tooltip ===== */
+/* ===== CodeMirror autocomplete: Recur tooltip ===== */
 .cm-tooltip {
   background: var(--pane)!important;
   color: var(--text)!important;

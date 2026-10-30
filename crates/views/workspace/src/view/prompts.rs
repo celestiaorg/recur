@@ -25,8 +25,8 @@ use crate::uuid::uuidv7;
 
 const OPEN_PR_IDS: [&str; 2] = ["recur.chat.open-pr", "recur.chat.open-draft-pr"];
 const LOOP_OPEN_PR: &str =
-    "A loop is running — wait until it pauses, then open a PR from the titlebar or /open-pr.";
-const MODELS_LOADING: &str = "Models are still loading — try again in a moment";
+    "A loop is running: wait until it pauses, then open a PR from the titlebar or /open-pr.";
+const MODELS_LOADING: &str = "Models are still loading: try again in a moment";
 
 struct TabRef<'a>(&'a recur_domain::WorkspaceChatTab);
 
@@ -204,7 +204,7 @@ impl WorkspaceView {
                     abort_created(v, cx);
                     toast(
                         ToastKind::Error,
-                        "Chat tab changed — try the command again",
+                        "Chat tab changed: try the command again",
                         cx,
                     );
                     return false;
@@ -281,7 +281,7 @@ impl WorkspaceView {
         let (retry_id, dismiss_id) = (held.hold_id.clone(), held.hold_id.clone());
         push_toast(
             ToastKind::Error,
-            format!("{} is ready — open a chat tab and retry", held.display),
+            format!("{} is ready: open a chat tab and retry", held.display),
             ToastOptions {
                 action: Some(toast_action("Retry", move |window, cx| {
                     let id = retry_id.clone();

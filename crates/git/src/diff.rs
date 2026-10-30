@@ -476,7 +476,7 @@ pub(crate) fn parse_numstat(out: &str) -> (i64, i64) {
 }
 
 /// Role, 2-letter code, iteration label and UI color from a commit message
-/// and author. Legacy engine commits said `recur(<Role>): iteration N — …`;
+/// and author. Legacy engine commits said `recur(<Role>): iteration N: …`;
 /// current ones are plain summaries, so the role falls back to the author's
 /// initials.
 pub(crate) fn classify_commit_message(
@@ -772,7 +772,7 @@ mod tests {
         git(r, &["checkout", "-b", "recur/feature"]);
         write(r, "README.md", "hello world\nsecond line\n");
         write(r, "feature.txt", "alpha\nbeta\n");
-        commit_as_coder(r, "recur(Coder): iteration 1 — add a feature");
+        commit_as_coder(r, "recur(Coder): iteration 1: add a feature");
         let (m, _root) = mgr(r);
 
         let pr = m.diff_pr(r, "main").await.expect("diff_pr");
@@ -957,7 +957,7 @@ mod tests {
         let r = repo.path.as_str();
         git(r, &["checkout", "-b", "recur/feature"]);
         write(r, "feat.txt", "one\ntwo\n");
-        commit_as_coder(r, "recur(Coder): iteration 1 — feat");
+        commit_as_coder(r, "recur(Coder): iteration 1: feat");
         let (add, del) = diff_stat_vs_base(r, "main").await.expect("committed");
         assert!(add >= 2 && del == 0, "+{add} -{del}");
         write(r, "feat.txt", "one\ntwo\nthree\n");
@@ -1096,10 +1096,10 @@ mod tests {
         let r = repo.path.as_str();
         git(r, &["checkout", "-b", "recur/feature"]);
         write(r, "one.txt", "a\n");
-        commit_as_coder(r, "recur(Coder): iteration 1 — first");
+        commit_as_coder(r, "recur(Coder): iteration 1: first");
         write(r, "two.txt", "a\nb\nc\n");
         write(r, "three.txt", "x\ny\n");
-        commit_as_coder(r, "recur(Reviewer): iteration 2 — second");
+        commit_as_coder(r, "recur(Reviewer): iteration 2: second");
         let (m, _root) = mgr(r);
         let commits = m.log_commits(r, "main").await.expect("log");
         assert_eq!(commits.len(), 2);
@@ -1166,13 +1166,13 @@ mod tests {
             ("hello", "mycodecrafting", "Author", "MY"),
             ("", "   ", "Author", "?"),
             (
-                "recur(Coder): iteration 1 — add a feature",
+                "recur(Coder): iteration 1: add a feature",
                 "Recur",
                 "Coder",
                 "CO",
             ),
             (
-                "recur(Reviewer): iteration 2 — nits",
+                "recur(Reviewer): iteration 2: nits",
                 "Recur",
                 "Reviewer",
                 "RV",

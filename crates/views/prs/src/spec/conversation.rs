@@ -105,9 +105,9 @@ fn edits_the_github_pr_title_and_an_owned_comment_and_quote_replies(cx: &mut Tes
     let mut s = plain(cx);
     s.open_pr("482");
     s.click("cmt-act:Edit title");
-    fill(&mut s, "OAuth secrets — retitled");
+    fill(&mut s, "OAuth secrets: retitled");
     s.click("prh-title-save");
-    assert!(s.has("prh-title=OAuth secrets — retitled"));
+    assert!(s.has("prh-title=OAuth secrets: retitled"));
 
     s.click("cmt-more:gh-description");
     s.click("menuitem:Edit");

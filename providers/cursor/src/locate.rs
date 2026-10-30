@@ -29,12 +29,12 @@ pub fn launcher_rel_path() -> PathBuf {
 /// attribution patch and keep native getAgentSkills.
 pub fn locate(data_dir: &Path) -> Result<PathBuf, String> {
     if data_dir.as_os_str().is_empty() {
-        return Err("cursor bridge not found — install it from Settings".into());
+        return Err("cursor bridge not found: install it from Settings".into());
     }
     let p = data_dir.join(BRIDGE_DIR_NAME);
     resolve_candidate(&p).ok_or_else(|| {
         format!(
-            "cursor bridge not found at {} — install it from Settings",
+            "cursor bridge not found at {}: install it from Settings",
             p.display()
         )
     })

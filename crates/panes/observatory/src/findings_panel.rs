@@ -100,7 +100,7 @@ pub fn note_author(author: &str) -> String {
     }
 }
 
-/// `locLabel`: base name with the line or range, else the line alone, else `—`.
+/// `locLabel`: base name with the line or range, else the line alone, else `-`.
 pub fn loc_label(f: &Finding) -> String {
     let name = f.file.rsplit('/').next().unwrap_or("");
     let suffix = if f.line <= 0 {
@@ -115,7 +115,7 @@ pub fn loc_label(f: &Finding) -> String {
     }
     let bare = suffix.trim_start_matches(':');
     if bare.is_empty() {
-        "—".into()
+        "-".into()
     } else {
         bare.into()
     }
@@ -457,7 +457,7 @@ impl FindingsPanel {
             .min_h_0()
             .h_full();
         if self.findings.is_empty() {
-            return root.child(empty("No findings yet — run /review.", &t));
+            return root.child(empty("No findings yet: run /review.", &t));
         }
         let visible: Vec<Finding> = self.visible().into_iter().cloned().collect();
         if visible.is_empty() {
@@ -1292,6 +1292,6 @@ mod tests {
         assert_eq!(loc_label(&f("src/a.go", 3, 0)), "a.go:3");
         assert_eq!(loc_label(&f("src/a.go", 3, 7)), "a.go:3–7");
         assert_eq!(loc_label(&f("", 4, 0)), "4");
-        assert_eq!(loc_label(&f("", 0, 0)), "—");
+        assert_eq!(loc_label(&f("", 0, 0)), "-");
     }
 }

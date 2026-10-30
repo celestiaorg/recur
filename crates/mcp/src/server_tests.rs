@@ -555,7 +555,7 @@ async fn done_and_report_result_and_plan() {
         &s,
         &b,
         "done",
-        json!({"summary": "implemented feature", "notes": "S2 was too big — split it"}),
+        json!({"summary": "implemented feature", "notes": "S2 was too big: split it"}),
     )
     .await;
     call(
@@ -580,7 +580,7 @@ async fn done_and_report_result_and_plan() {
     );
     assert_eq!(
         cap.done_notes.lock().unwrap()[0],
-        "S2 was too big — split it"
+        "S2 was too big: split it"
     );
     let r = cap.results.lock().unwrap()[0].clone();
     assert!(r.2 && r.3 == "all green");

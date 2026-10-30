@@ -468,14 +468,14 @@ fn seed_feed(s: &mut State) {
     s.feed.insert(
         "LOOP-2231".into(),
         vec![
-            feed("f1", "MA", "Maestro", FEED_KIND_OUTCOME, "Review converged at 0 findings — advancing to live verification before opening PR #2.", "45s", ""),
+            feed("f1", "MA", "Maestro", FEED_KIND_OUTCOME, "Review converged at 0 findings: advancing to live verification before opening PR #2.", "45s", ""),
             feed("f2", "QA", "QA / Browser", FEED_KIND_OUTCOME, "Booted dev server on <code>:5173</code>, navigating to <code>/checkout</code> to test the Apple flow.", "38s", "QA"),
             feed("f3", "QA", "QA / Browser", FEED_KIND_OUTCOME, "Clicked “Sign in with Apple” → redirect OK → returned with valid session. <span style=\"color:var(--emerald)\">✓ pass</span>", "12s", "QA"),
-            deviation("f4", "Spawned a second, security-focused reviewer for this iteration.", "default = one reviewer", "diff touches <code>auth/oauth.ts</code> — created on demand, then retired.", "1m"),
+            deviation("f4", "Spawned a second, security-focused reviewer for this iteration.", "default = one reviewer", "diff touches <code>auth/oauth.ts</code>: created on demand, then retired.", "1m"),
             feed("f5", "CO", "Coder", FEED_KIND_OUTCOME, "Resolved reviewer finding: extracted token refresh into <code>useOAuthSession</code>.", "1m", "CO"),
-            feed("f6", "RV", "Reviewer", FEED_KIND_OUTCOME, "Re-reviewed diff after iteration 3 — no remaining findings. Approving.", "1m", "RV"),
-            deviation("f7", "Split the task into 2 PRs instead of 1.", "default = one PR", "mixed secrets-config with UI wiring — separate PRs are easier to review.", "2m"),
-            feed("f8", "TE", "Tester", FEED_KIND_NOTE, "Added 6 tests for Apple + Google providers — all green.", "3m", "TE"),
+            feed("f6", "RV", "Reviewer", FEED_KIND_OUTCOME, "Re-reviewed diff after iteration 3: no remaining findings. Approving.", "1m", "RV"),
+            deviation("f7", "Split the task into 2 PRs instead of 1.", "default = one PR", "mixed secrets-config with UI wiring: separate PRs are easier to review.", "2m"),
+            feed("f8", "TE", "Tester", FEED_KIND_NOTE, "Added 6 tests for Apple + Google providers: all green.", "3m", "TE"),
         ],
     );
 }
@@ -494,11 +494,11 @@ fn seed_escalation(s: &mut State) {
             status: "open".into(),
             asked_ago: "12m".into(),
             question: "When a client goes over the rate limit, what should happen?".into(),
-            context: "The ticket says <i>\"limit bursts to protect the API\"</i> but doesn't define the over-limit behavior. I've built the limiter middleware and tested the under-limit path — this one decision is all that's blocking the rest. I won't guess on something that changes the API's public contract.".into(),
+            context: "The ticket says <i>\"limit bursts to protect the API\"</i> but doesn't define the over-limit behavior. I've built the limiter middleware and tested the under-limit path: this one decision is all that's blocking the rest. I won't guess on something that changes the API's public contract.".into(),
             options: Some(vec![
                 opt("Reject with <code style=\"font-family:var(--mono)\">429</code>", "simplest", "Clear to clients and easy to reason about. Can feel harsh during legitimate spikes."),
                 opt("Queue & delay", "smoothest", "Absorbs short bursts without errors. Adds latency and some memory pressure under load."),
-                opt("Token bucket with refill", "recommended", "Fair, industry-standard, predictable. Slightly more to implement — I can do it in this loop."),
+                opt("Token bucket with refill", "recommended", "Fair, industry-standard, predictable. Slightly more to implement: I can do it in this loop."),
             ]),
             ..Default::default()
         },

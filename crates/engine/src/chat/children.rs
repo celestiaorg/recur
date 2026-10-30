@@ -377,7 +377,7 @@ impl Engine {
         } else {
             "Subagent"
         };
-        let mut text = format!("{title}: {} child workspace(s) — ", rows.len());
+        let mut text = format!("{title}: {} child workspace(s): ", rows.len());
         for (i, r) in rows.iter().enumerate() {
             if i > 0 {
                 text.push_str(" · ");
@@ -452,7 +452,7 @@ impl Engine {
                 parent_id,
                 &child.id,
                 Some(&format!(
-                    "report cancelled by Stop — ask this chat to read_child {}",
+                    "report cancelled by Stop: ask this chat to read_child {}",
                     child.id
                 )),
             );
@@ -548,7 +548,7 @@ impl Engine {
         }
         let id = &child.id;
         b.push_str(&format!(
-            "\n\nread_child {id} for the full report and diff; merge_child {id} to land its commits here; archive_child {id} to close it without merging. Each subagent reports in its own turn; do not assume another child is still running — its report arrives when it finishes."
+            "\n\nread_child {id} for the full report and diff; merge_child {id} to land its commits here; archive_child {id} to close it without merging. Each subagent reports in its own turn; do not assume another child is still running: its report arrives when it finishes."
         ));
         b
     }
@@ -608,7 +608,7 @@ impl Engine {
         let running = !child.archived && !self.child_settled_for_chat(&child.id);
         if running {
             b.push_str(&format!(
-                "Subagent {} ({:?}, branch {}) is STILL RUNNING. What follows is a partial snapshot; its commits and reply are not final. You will get a turn here with its report when it finishes — do not wait, poll, merge, or archive it now.\n\n",
+                "Subagent {} ({:?}, branch {}) is STILL RUNNING. What follows is a partial snapshot; its commits and reply are not final. You will get a turn here with its report when it finishes: do not wait, poll, merge, or archive it now.\n\n",
                 child.id,
                 child.goal,
                 child.branch
@@ -715,7 +715,7 @@ impl Engine {
         {
             b.push_str("Artifacts:\n");
             for a in &arts {
-                b.push_str(&format!("- {} — {} ({})\n", a.id, a.title, a.kind));
+                b.push_str(&format!("- {}: {} ({})\n", a.id, a.title, a.kind));
             }
             b.push('\n');
         }

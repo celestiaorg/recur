@@ -7,7 +7,7 @@ use crate::Result;
 /// TerminalService backs the Observatory's terminal dock: real shells running in
 /// the workspace's worktree, one PTY per tab.
 ///
-/// The service is a thin shell over term.Manager — it resolves a workspace to a
+/// The service is a thin shell over term.Manager: it resolves a workspace to a
 /// directory and otherwise forwards. The interesting behaviour (output coalescing,
 /// ack-based flow control, replay on re-attach) lives in the term package, which is
 /// deliberately free of any UI or engine dependency.
@@ -64,10 +64,10 @@ pub trait TerminalService: Send + Sync {
     /// OpenTerminal starts a shell for the workspace and returns the new session.
     ///
     /// The shell runs in the workspace's git worktree, so a terminal opened next to a
-    /// running loop is already sitting on that loop's branch and changes — which is the
+    /// running loop is already sitting on that loop's branch and changes: which is the
     /// whole point of putting one here. Workspaces with an empty WorktreePath
     /// (archived, or not yet created) fall back to the project checkout. A recorded
-    /// path whose directory is gone is an error — a shell in the checkout would
+    /// path whose directory is gone is an error: a shell in the checkout would
     /// target the wrong branch.
     async fn open_terminal(&self, workspace_id: &str, cols: i64, rows: i64) -> Result<TermInfo>;
 
@@ -81,7 +81,7 @@ pub trait TerminalService: Send + Sync {
     /// RestoreWorkspaceTerminals respawns the workspace's last live tabs after an
     /// app restart: same titles and working directories, with the persisted replay
     /// buffer painted before the new shell's prompt. No-op when sessions are already
-    /// running (drawer remount) or nothing was saved. Does not spawn a default tab —
+    /// running (drawer remount) or nothing was saved. Does not spawn a default tab:
     /// the dock does that when restore returns empty.
     async fn restore_workspace_terminals(
         &self,

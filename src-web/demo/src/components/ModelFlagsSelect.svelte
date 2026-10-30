@@ -41,7 +41,7 @@
   let menuBottom = $state<number | undefined>(undefined)
   let menuLeft = $state(0)
   let menuWidth = $state(0)
-  // Ignore hover selection until the pointer actually moves — opening (or
+  // Ignore hover selection until the pointer actually moves: opening (or
   // keyboard-scrolling) under a stationary cursor fires a synthetic
   // pointerenter on whatever row is beneath it.
   let hoverGate = createHoverGate()
@@ -65,7 +65,7 @@
       .filter((t): t is string => !!t),
   )
 
-  const summary = $derived(tokens.join(' · ') || '—')
+  const summary = $derived(tokens.join(' · ') || '-')
 
   /** Collapsed chip text for one dim. Bool dims (Fast/Thinking): show the
    *  dimension name when On, omit when Off. Other dims show the option label. */

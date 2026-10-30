@@ -1691,7 +1691,7 @@ impl PrDetail {
         let (h, s) = if merged {
             (
                 "Pull request successfully merged and closed",
-                "You're all set — the branch has been merged.",
+                "You're all set: the branch has been merged.",
             )
         } else {
             (

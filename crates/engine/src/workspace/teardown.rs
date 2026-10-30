@@ -22,7 +22,7 @@ impl Engine {
     /// state Archive/Delete accepts (merged, stopped, failed, PR open, or a
     /// finished pause). A workspace that never ran is always settled.
     pub fn check_loop_settled(&self, id: &str, l: &Workspace) -> Result<()> {
-        let busy = || EngineError(format!("workspace {id:?} is running — stop it first"));
+        let busy = || EngineError(format!("workspace {id:?} is running: stop it first"));
         if self.loop_key_running(id) || self.workspace_has_live_chat(id) {
             return Err(busy());
         }
@@ -174,7 +174,7 @@ impl Engine {
             .ok_or_else(|| EngineError(format!("loop {id:?} not found")))?;
         if l.is_main || l.is_pr_chat_host() {
             return Err(
-                "the main working copy can't be removed — it tracks the project's real checkout"
+                "the main working copy can't be removed: it tracks the project's real checkout"
                     .into(),
             );
         }
@@ -199,7 +199,7 @@ impl Engine {
         if self.workspace_has_live_chat(id) {
             self.release_deleting(id);
             return Err(EngineError(format!(
-                "workspace {id:?} is running — stop it first"
+                "workspace {id:?} is running: stop it first"
             )));
         }
         self.wait_chat_life_idle(id).await;

@@ -339,7 +339,7 @@ impl WorkspaceView {
         {
             toast(
                 ToastKind::Error,
-                "This tab is running the loop — pause or stop it before leaving Loop mode.",
+                "This tab is running the loop: pause or stop it before leaving Loop mode.",
                 cx,
             );
             return Task::ready(());
@@ -524,7 +524,7 @@ impl WorkspaceView {
         if self.state.read(cx).settings.is_none() {
             toast(
                 ToastKind::Error,
-                "Models are still loading — try again in a moment",
+                "Models are still loading: try again in a moment",
                 cx,
             );
             return Task::ready(false);
@@ -542,7 +542,7 @@ impl WorkspaceView {
                 if v.catalog_models.is_empty() {
                     toast(
                         ToastKind::Error,
-                        "Models are still loading — try again in a moment",
+                        "Models are still loading: try again in a moment",
                         cx,
                     );
                     return false;

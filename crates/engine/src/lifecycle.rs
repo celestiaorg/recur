@@ -17,7 +17,7 @@ pub const PHASE_INTERRUPTED: &str = "interrupted";
 /// The phase of an interrupted scheduled run.
 pub const PHASE_SCHEDULED_INTERRUPTED: &str = "scheduled run interrupted";
 /// The phase of an escalation answered before the walk could take it.
-pub const PHASE_ANSWERED_WAITING: &str = "answered \u{2014} waiting to resume";
+pub const PHASE_ANSWERED_WAITING: &str = "answered: waiting to resume";
 
 impl Engine {
     /// Pauses the workspace's running walks (at their next checkpoint). A

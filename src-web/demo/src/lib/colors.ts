@@ -1,6 +1,6 @@
 // Shared color/label maps (agcolor, GROUPS, PG, IG).
 
-/** Sidebar / picker avatar colors — keep in sync with `projectColors` in services.go. */
+/** Sidebar / picker avatar colors: keep in sync with `projectColors` in services.go. */
 export const projectColors = [
   'var(--cyan)',
   'var(--amber)',
@@ -53,7 +53,7 @@ export function prStatusLabel(pr: PRChrome | null | undefined): string {
   return (pr?.state ?? '').trim()
 }
 
-/** Chrome glyph for a PR — draft dotted, closed crossed, merged git-merge, queued dashed git-merge. */
+/** Chrome glyph for a PR: draft dotted, closed crossed, merged git-merge, queued dashed git-merge. */
 export function prIconName(pr?: PRChrome | null): 'git-pull-request' | 'git-pull-request-draft' | 'git-pull-request-closed' | 'git-merge' | 'git-merge-queued' {
   const life = prLifecycle(pr)
   if (life === 'merged') return 'git-merge'
@@ -62,7 +62,7 @@ export function prIconName(pr?: PRChrome | null): 'git-pull-request' | 'git-pull
   return life === 'draft' ? 'git-pull-request-draft' : 'git-pull-request'
 }
 
-/** Sidebar / dashboard icon tint. Draft is cyan so it is not green (open) or purple (merged). Changes requested is coral — it is a blocker, not a healthy open state. */
+/** Sidebar / dashboard icon tint. Draft is cyan so it is not green (open) or purple (merged). Changes requested is coral: it is a blocker, not a healthy open state. */
 export function prChromeColor(pr: PRChrome | null | undefined): string {
   switch (prLifecycle(pr)) {
     case 'merged':

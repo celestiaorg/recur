@@ -72,7 +72,7 @@ async fn list_and_activate_respect_disabled_settings() {
         .unwrap_err();
     assert_eq!(
         e.0,
-        "unknown skill \"recur-t-missing\" — call list_skills for names"
+        "unknown skill \"recur-t-missing\": call list_skills for names"
     );
     te.close().await;
 }
@@ -183,7 +183,7 @@ async fn read_terminal_marks_exited_and_lists() {
     );
     assert_eq!(
         h.read_terminal("ws", "PA", "zzz", 20).await.unwrap_err().0,
-        "terminal \"zzz\" not found — call list_terminals"
+        "terminal \"zzz\" not found: call list_terminals"
     );
     mgr.close_all();
     te.close().await;

@@ -604,7 +604,7 @@ impl ScheduledPrompts {
             .filter_map(|id| self.remove_risk.get(id))
             .find(|r| !r.is_empty());
         match risk {
-            Some(r) => format!("Confirm remove — {r}"),
+            Some(r) => format!("Confirm remove: {r}"),
             None => "Confirm remove".into(),
         }
     }

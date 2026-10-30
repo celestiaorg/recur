@@ -82,9 +82,9 @@
         <div class="nt-tip-pop" id="loop-policy-tip" role="tooltip">
           <b>Policy</b> is how hard this loop pushes before it asks you.
           <ul>
-            <li><b>Cautious</b> — every finding; escalate after 2 rounds</li>
-            <li><b>Balanced</b> — medium and up; escalate after 4</li>
-            <li><b>Aggressive</b> — ship-blockers only; proceed after 6</li>
+            <li><b>Cautious</b>: every finding; escalate after 2 rounds</li>
+            <li><b>Balanced</b>: medium and up; escalate after 4</li>
+            <li><b>Aggressive</b>: ship-blockers only; proceed after 6</li>
           </ul>
         </div>
       {/if}

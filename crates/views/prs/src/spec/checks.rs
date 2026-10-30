@@ -227,7 +227,7 @@ fn posts_a_conversation_comment_without_submitting_a_review(cx: &mut TestAppCont
     let mut s = plain(cx);
     s.open_pr("482");
     s.click("composer-textarea");
-    let body = "Just a note on the approach — not a formal review.";
+    let body = "Just a note on the approach: not a formal review.";
     s.type_text(body);
     s.click("composer-go:Comment");
     let comments = s.pr("482").comments.unwrap_or_default();

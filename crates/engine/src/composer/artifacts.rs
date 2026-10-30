@@ -169,7 +169,7 @@ pub fn attach_artifact_mentions(
     }
     let mut b = String::from("<system_instruction>\n");
     b.push_str("The user attached Observatory artifacts. These live under the managed data dir ");
-    b.push_str("(workspaces/<id>/artifacts/) — not the git worktree. Do not search the repo for these paths. ");
+    b.push_str("(workspaces/<id>/artifacts/): not the git worktree. Do not search the repo for these paths. ");
     b.push_str("For another artifact, call mcp__recur__list_artifacts / mcp__recur__read_artifact / mcp__recur__present_artifact.\n");
     let mut wrote = 0;
     let mut seen_id = HashSet::new();
@@ -205,7 +205,7 @@ pub fn attach_artifact_mentions(
         wrote += 1;
         if artifact_kind_is_binary(&hit.kind) {
             b.push_str(&format!(
-                "(binary {} image — open in the Artifacts panel; bytes are not inlined)\n",
+                "(binary {} image: open in the Artifacts panel; bytes are not inlined)\n",
                 hit.kind.as_str()
             ));
             continue;

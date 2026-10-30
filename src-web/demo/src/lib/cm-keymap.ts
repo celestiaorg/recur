@@ -2,7 +2,7 @@ import { defaultKeymap, addCursorAbove, addCursorBelow } from '@codemirror/comma
 import type { KeyBinding } from '@codemirror/view'
 
 /**
- * Stock CodeMirror add-cursor is Mod-Alt-Arrow — Recur's workspace cycle
+ * Stock CodeMirror add-cursor is Mod-Alt-Arrow: Recur's workspace cycle
  * (Wails CmdOrCtrl+OptionOrAlt+Up/Down: ⌥⌘ on macOS, Ctrl+Alt elsewhere).
  * Drop those two keys and bind ⌃⇧↑ / ⌃⇧↓ on every platform (Sublime select-lines;
  * avoids VoiceOver's Control+Option modifier). These two must sit *before*

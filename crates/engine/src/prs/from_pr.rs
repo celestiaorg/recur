@@ -164,7 +164,7 @@ impl Engine {
         }
         if pr_settled(&pr) {
             return Err(EngineError(format!(
-                "PR {pr_id:?} is {} — open an open pull request to chat",
+                "PR {pr_id:?} is {}: open an open pull request to chat",
                 pr.state
             )));
         }
@@ -204,7 +204,7 @@ impl Engine {
             }
             if !recur_git::is_repo(&root).await {
                 return Err(EngineError(format!(
-                    "project {project_id:?} is not a git repository — PR chat needs a git checkout"
+                    "project {project_id:?} is not a git repository: PR chat needs a git checkout"
                 )));
             }
             let name = pr_workspace_name(&pr);

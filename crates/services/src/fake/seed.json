@@ -150,7 +150,7 @@
       "id": "esc-2218",
       "workspaceId": "LOOP-2218",
       "question": "When a client goes over the rate limit, what should happen?",
-      "context": "The ticket says <i>\"limit bursts to protect the API\"</i> but doesn't define the over-limit behavior. I've built the limiter middleware and tested the under-limit path — this one decision is all that's blocking the rest. I won't guess on something that changes the API's public contract.",
+      "context": "The ticket says <i>\"limit bursts to protect the API\"</i> but doesn't define the over-limit behavior. I've built the limiter middleware and tested the under-limit path: this one decision is all that's blocking the rest. I won't guess on something that changes the API's public contract.",
       "options": [
         {
           "text": "Reject with <code style=\"font-family:var(--mono)\">429</code>",
@@ -165,7 +165,7 @@
         {
           "text": "Token bucket with refill",
           "tag": "recommended",
-          "desc": "Fair, industry-standard, predictable. Slightly more to implement — I can do it in this loop."
+          "desc": "Fair, industry-standard, predictable. Slightly more to implement: I can do it in this loop."
         }
       ],
       "answer": "",
@@ -183,7 +183,7 @@
         "id": "f1",
         "agentCode": "MA",
         "name": "Maestro",
-        "text": "Review converged at 0 findings — advancing to live verification before opening PR #2.",
+        "text": "Review converged at 0 findings: advancing to live verification before opening PR #2.",
         "time": "45s",
         "kind": "outcome",
         "isDeviation": false
@@ -217,7 +217,7 @@
         "kind": "deviation",
         "isDeviation": true,
         "rule": "default = one reviewer",
-        "why": "diff touches <code>auth/oauth.ts</code> — created on demand, then retired."
+        "why": "diff touches <code>auth/oauth.ts</code>: created on demand, then retired."
       },
       {
         "id": "f5",
@@ -233,7 +233,7 @@
         "id": "f6",
         "agentCode": "RV",
         "name": "Reviewer",
-        "text": "Re-reviewed diff after iteration 3 — no remaining findings. Approving.",
+        "text": "Re-reviewed diff after iteration 3: no remaining findings. Approving.",
         "time": "1m",
         "kind": "outcome",
         "clickAgent": "RV",
@@ -248,13 +248,13 @@
         "kind": "deviation",
         "isDeviation": true,
         "rule": "default = one PR",
-        "why": "mixed secrets-config with UI wiring — separate PRs are easier to review."
+        "why": "mixed secrets-config with UI wiring: separate PRs are easier to review."
       },
       {
         "id": "f8",
         "agentCode": "TE",
         "name": "Tester",
-        "text": "Added 6 tests for Apple + Google providers — all green.",
+        "text": "Added 6 tests for Apple + Google providers: all green.",
         "time": "3m",
         "kind": "note",
         "clickAgent": "TE",
@@ -269,7 +269,7 @@
       "group": "needs",
       "kind": "pause",
       "color": "var(--coral)",
-      "title": "<b>LOOP-2218</b> paused — needs your decision",
+      "title": "<b>LOOP-2218</b> paused: needs your decision",
       "sub": "Rate-limit the public API · over-limit behavior",
       "time": "12m",
       "action": "Answer",
@@ -311,7 +311,7 @@
       "group": "ready",
       "kind": "pr",
       "color": "var(--emerald)",
-      "title": "<b>#479</b> converged — ready for review",
+      "title": "<b>#479</b> converged: ready for review",
       "sub": "Stabilize flaky E2E tests · local PR · 0 findings",
       "time": "18m",
       "action": "Review",
@@ -389,7 +389,7 @@
       "statusLabel": "Ready",
       "phase": "PR #479 open",
       "iteration": 5,
-      "progress": 1,
+      "progress": 1.0,
       "autonomy": "balanced",
       "branch": "recur/fix-e2e",
       "behindBase": 0,
@@ -660,7 +660,7 @@
       "statusLabel": "Ready",
       "phase": "PR #479 open",
       "iteration": 5,
-      "progress": 1,
+      "progress": 1.0,
       "autonomy": "balanced",
       "branch": "recur/fix-e2e",
       "behindBase": 0,
@@ -778,7 +778,7 @@
           "kind": "bullets",
           "items": [
             "New OAuth provider registry in <code>auth/oauth.ts</code> for Apple + Google.",
-            "Client secrets now resolved from the secrets manager at startup — never read from <code>process.env</code> or logged.",
+            "Client secrets now resolved from the secrets manager at startup: never read from <code>process.env</code> or logged.",
             "Session/token refresh extracted into a reusable <code>useOAuthSession</code> hook."
           ]
         },
@@ -789,7 +789,7 @@
       ],
       "focus": {
         "title": "Where to focus your review",
-        "body": "The token-refresh race in <code>useOAuthSession.ts</code> (lines 5–10) is the subtle part — two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
+        "body": "The token-refresh race in <code>useOAuthSession.ts</code> (lines 5–10) is the subtle part: two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
       },
       "state": "In review",
       "diff": {
@@ -1121,7 +1121,7 @@
               "new": "12",
               "type": "add",
               "codeHtml": "<span class=\"kw\">const</span> secret = <span class=\"kw\">await</span> secrets.<span class=\"fn\">get</span>(<span class=\"str\">'oauth/client_secret'</span>)",
-              "extraHtml": "<div class=\"icmt\"><div class=\"icmt-pad\"><div class=\"cmt\" style=\"padding:0;border:none\"><div class=\"ca\" style=\"background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)\">AR</div><div class=\"cc\"><div class=\"ch\"><span class=\"cn\">Avery Rourke</span><span class=\"ct\">2m</span></div><div class=\"cm\">Good — this was reading from <code>process.env</code> before. Confirm the secrets client is initialised before any provider loads?</div><span class=\"react\" style=\"margin-top:8px\"><span style=\"width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block\"></span>Coder: yes — <code>secrets.init()</code> runs in <code>bootstrap.ts</code> before providers register. ✓ resolved</span></div></div></div></div>"
+              "extraHtml": "<div class=\"icmt\"><div class=\"icmt-pad\"><div class=\"cmt\" style=\"padding:0;border:none\"><div class=\"ca\" style=\"background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)\">AR</div><div class=\"cc\"><div class=\"ch\"><span class=\"cn\">Avery Rourke</span><span class=\"ct\">2m</span></div><div class=\"cm\">Good: this was reading from <code>process.env</code> before. Confirm the secrets client is initialised before any provider loads?</div><span class=\"react\" style=\"margin-top:8px\"><span style=\"width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block\"></span>Coder: yes: <code>secrets.init()</code> runs in <code>bootstrap.ts</code> before providers register. ✓ resolved</span></div></div></div></div>"
             },
             {
               "old": "13",
@@ -1174,7 +1174,7 @@
               "new": "2",
               "type": "add",
               "codeHtml": "  <span class=\"kw\">const</span> [session, setSession] = <span class=\"fn\">useState</span>&lt;<span class=\"ty\">Session</span> | <span class=\"kw\">null</span>&gt;(<span class=\"kw\">null</span>)",
-              "extraHtml": "<div class=\"flag\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M21 21l-4-4\" stroke-linecap=\"round\"/></svg><div><div class=\"ft\">Reviewer flagged this region for human eyes</div><div class=\"fm\">token refresh can race across two tabs — a mutex was added below (lines 5–10). worth confirming the lock releases on error.</div></div></div>"
+              "extraHtml": "<div class=\"flag\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M21 21l-4-4\" stroke-linecap=\"round\"/></svg><div><div class=\"ft\">Reviewer flagged this region for human eyes</div><div class=\"fm\">token refresh can race across two tabs: a mutex was added below (lines 5–10). worth confirming the lock releases on error.</div></div></div>"
             },
             {
               "old": "",
@@ -1293,9 +1293,9 @@
           "authorLogin": "avery",
           "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
           "time": "2m",
-          "bodyHtml": "Left a comment on <code>oauth.ts</code> about the client secret — see Files changed.",
+          "bodyHtml": "Left a comment on <code>oauth.ts</code> about the client secret: see Files changed.",
           "verb": "commented",
-          "bodyMd": "Left a comment on oauth.ts about the client secret — see Files changed.",
+          "bodyMd": "Left a comment on oauth.ts about the client secret: see Files changed.",
           "url": "https://github.com/acme/app/pull/482#issuecomment-1001",
           "reactions": [
             {
@@ -1315,7 +1315,7 @@
           "author": "Maestro",
           "avatarCss": "background:var(--amber);color:#0A0C10",
           "time": "2m",
-          "bodyHtml": "Got the review notes — I'll address the client-secret comment.",
+          "bodyHtml": "Got the review notes: I'll address the client-secret comment.",
           "verb": "commented",
           "url": "https://github.com/acme/app/pull/482#issuecomment-1002"
         },
@@ -1325,7 +1325,7 @@
           "author": "Coder",
           "avatarCss": "background:var(--cyan);color:#0A0C10",
           "time": "now",
-          "bodyHtml": "Pushed <code>a3f91c2</code> — resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
+          "bodyHtml": "Pushed <code>a3f91c2</code>: resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
           "verb": "commented",
           "url": "https://github.com/acme/app/pull/482#issuecomment-1003"
         },
@@ -1382,7 +1382,7 @@
           "passed": true
         },
         {
-          "html": "Reloaded — session persisted; no token in <b>localStorage</b> or logs",
+          "html": "Reloaded: session persisted; no token in <b>localStorage</b> or logs",
           "passed": true
         }
       ],
@@ -1529,7 +1529,7 @@
           "kind": "bullets",
           "items": [
             "New OAuth provider registry in <code>auth/oauth.ts</code> for Apple + Google.",
-            "Client secrets now resolved from the secrets manager at startup — never read from <code>process.env</code> or logged.",
+            "Client secrets now resolved from the secrets manager at startup: never read from <code>process.env</code> or logged.",
             "Session/token refresh extracted into a reusable <code>useOAuthSession</code> hook."
           ]
         },
@@ -1540,7 +1540,7 @@
       ],
       "focus": {
         "title": "Where to focus your review",
-        "body": "The token-refresh race in <code>useOAuthSession.ts</code> (lines 5–10) is the subtle part — two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
+        "body": "The token-refresh race in <code>useOAuthSession.ts</code> (lines 5–10) is the subtle part: two tabs refreshing at once. The Reviewer added a mutex; worth a human look."
       },
       "state": "In review",
       "diff": {
@@ -1580,9 +1580,9 @@
           "authorLogin": "avery",
           "avatarCss": "background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)",
           "time": "2m",
-          "bodyHtml": "Left a comment on <code>oauth.ts</code> about the client secret — see Files changed.",
+          "bodyHtml": "Left a comment on <code>oauth.ts</code> about the client secret: see Files changed.",
           "verb": "commented",
-          "bodyMd": "Left a comment on oauth.ts about the client secret — see Files changed.",
+          "bodyMd": "Left a comment on oauth.ts about the client secret: see Files changed.",
           "url": "https://github.com/acme/app/pull/482#issuecomment-1001",
           "reactions": [
             {
@@ -1602,7 +1602,7 @@
           "author": "Maestro",
           "avatarCss": "background:var(--amber);color:#0A0C10",
           "time": "2m",
-          "bodyHtml": "Got the review notes — I'll address the client-secret comment.",
+          "bodyHtml": "Got the review notes: I'll address the client-secret comment.",
           "verb": "commented",
           "url": "https://github.com/acme/app/pull/482#issuecomment-1002"
         },
@@ -1612,7 +1612,7 @@
           "author": "Coder",
           "avatarCss": "background:var(--cyan);color:#0A0C10",
           "time": "now",
-          "bodyHtml": "Pushed <code>a3f91c2</code> — resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
+          "bodyHtml": "Pushed <code>a3f91c2</code>: resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.",
           "verb": "commented",
           "url": "https://github.com/acme/app/pull/482#issuecomment-1003"
         },
@@ -1669,7 +1669,7 @@
           "passed": true
         },
         {
-          "html": "Reloaded — session persisted; no token in <b>localStorage</b> or logs",
+          "html": "Reloaded: session persisted; no token in <b>localStorage</b> or logs",
           "passed": true
         }
       ],

@@ -634,7 +634,7 @@ mod tests {
             (rows[0].id.as_str(), rows[0].subject.as_str()),
             ("4", "Gate scan")
         );
-        assert_eq!(parse_task_list("• Task 1 — Gate scan (in progress)"), None);
+        assert_eq!(parse_task_list("• Task 1: Gate scan (in progress)"), None);
         assert_eq!(parse_task_list(r#"{"ok":true}"#), None);
     }
 
@@ -732,7 +732,7 @@ mod tests {
             "TaskGet",
             &get,
             BodyOpts {
-                result: "• Task 1 — Guard theme (in progress)",
+                result: "• Task 1: Guard theme (in progress)",
                 ..Default::default()
             }
         ));

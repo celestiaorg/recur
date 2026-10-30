@@ -1,4 +1,4 @@
-// Suppress intra-line word marks when they cover an entire line — the line wash
+// Suppress intra-line word marks when they cover an entire line: the line wash
 // is enough. Chunk.changes must still span those lines (hunk bounds), so we
 // can't drop them from the diff; we tag the line and clear the mark fill in CSS.
 

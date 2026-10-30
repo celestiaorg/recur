@@ -362,7 +362,7 @@ impl PrDetail {
                 let hint = if pr.source == PrSource::GitHub {
                     "These are the GitHub status checks on this PR."
                 } else {
-                    "Verify-in-browser is unique to Recur — the QA agent actually drove the running app. Evidence is in the Conversation tab."
+                    "Verify-in-browser is unique to Recur: the QA agent actually drove the running app. Evidence is in the Conversation tab."
                 };
                 wrap = wrap.child(
                     div().px(px(2.)).child(

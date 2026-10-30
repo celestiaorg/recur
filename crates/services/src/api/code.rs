@@ -141,18 +141,18 @@ pub trait CodeService: Send + Sync {
         workspace_id: &str,
     ) -> Result<Vec<AgentSkill>>;
 
-    /// ListChangedFiles returns paths changed in the loop RIGHT NOW — computed live
+    /// ListChangedFiles returns paths changed in the loop RIGHT NOW: computed live
     /// off disk (including a coding agent's not-yet-committed edits and brand-new
     /// untracked files) versus the loop's base branch (merge-base with HEAD), so
     /// the Observatory's "Changed in loop" list tracks the worktree in
-    /// near-real-time — a PR (pr.Files) doesn't exist until the loop converges
+    /// near-real-time: a PR (pr.Files) doesn't exist until the loop converges
     /// (openPR), which is exactly the window (agent actively editing) this is
     /// meant to cover.
     ///
     /// Live membership matches git.ChangeStatus (and therefore DiffVsBase /
     /// DiffWorkingVsBase) for an intact worktree. The last-known PR snapshot is
     /// unioned on top so files stay listed once a loop converges and its worktree
-    /// is torn down — DiffVsBase errors in that degenerate state, so the extra
+    /// is torn down: DiffVsBase errors in that degenerate state, so the extra
     /// paths are intentional and do not apply to a live checkout.
     async fn list_changed_files(&self, workspace_id: &str) -> Result<Vec<String>>;
 
@@ -164,7 +164,7 @@ pub trait CodeService: Send + Sync {
     async fn list_commits(&self, project_id: &str, workspace_id: &str) -> Result<Vec<Commit>>;
 
     /// ListFiles returns a flat list of repo-relative file paths. Prefer SearchFiles
-    /// for @-mentions / Quick Open — ranking stays in the backend and avoids shipping the
+    /// for @-mentions / Quick Open: ranking stays in the backend and avoids shipping the
     /// full corpus. May return a partial list while the first build is streaming.
     async fn list_files(&self, project_id: &str, workspace_id: &str) -> Result<Vec<String>>;
 
@@ -174,7 +174,7 @@ pub trait CodeService: Send + Sync {
     async fn list_skills(&self, project_id: &str, workspace_id: &str) -> Result<Vec<AgentSkill>>;
 
     /// ListTree returns one level of the file tree under path (repo-relative).
-    /// Depth is always 1 so large repos stay usable — the UI lazy-loads children
+    /// Depth is always 1 so large repos stay usable: the UI lazy-loads children
     /// when a directory is expanded (pass that dir's path on the next call).
     /// Entries carry change status versus the loop/project base branch when set;
     /// deleted paths that are missing on disk are still listed.
@@ -195,7 +195,7 @@ pub trait CodeService: Send + Sync {
     ///
     /// The result maps each requested directory (normalized to a forward-slash
     /// repo-relative path, "" for the repo root) to its children. A directory that
-    /// could not be listed — typically because the agent just deleted it — is absent
+    /// could not be listed, typically because the agent just deleted it, is absent
     /// from the map rather than failing the whole batch.
     async fn list_trees(
         &self,
@@ -286,9 +286,9 @@ pub trait CodeService: Send + Sync {
 
     /// SearchFiles ranks workspace paths for query (basename / camelCase / fuzzy).
     /// The index already applies files.exclude (SetFileIndexExclude) plus always-on
-    /// .git / node_modules — @-mentions and Quick Open share that corpus.
+    /// .git / node_modules: @-mentions and Quick Open share that corpus.
     /// limit <= 0 defaults to 50. filesOnly skips directory hits (Quick Open).
-    /// While the index is still building, Hits may be partial — Building/Ready tell
+    /// While the index is still building, Hits may be partial: Building/Ready tell
     /// the UI whether to keep refreshing.
     async fn search_files(
         &self,
@@ -309,7 +309,7 @@ pub trait CodeService: Send + Sync {
 
     /// StagedFiles returns paths currently staged in the worktree index.
     /// Best-effort read: a non-writable root (project checkout, or a workspace
-    /// whose worktree is not on disk yet — eager create / mid-switch), a
+    /// whose worktree is not on disk yet: eager create / mid-switch), a
     /// recorded worktree whose directory is gone, and a plain-folder working
     /// copy all return an empty list. Observatory live-refresh calls this
     /// after every save and on workspace switch; a 422 here used to toast

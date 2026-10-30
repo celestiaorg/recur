@@ -470,7 +470,7 @@ impl AppServices {
             .clone();
         if recur_bundles::is_script_interpreter(&prompt.interpreter) {
             return Err(Error::new(format!(
-                "prompt {:?} is {} — use CompiledPromptModule",
+                "prompt {:?} is {}: use CompiledPromptModule",
                 id, prompt.interpreter
             )));
         }
@@ -523,7 +523,7 @@ impl AppServices {
         }
         if recur_bundles::is_script_interpreter(&prompt.complete_interpreter) {
             return Err(Error::new(format!(
-                "prompt {:?} complete is {} — use CompiledCompleteModule",
+                "prompt {:?} complete is {}: use CompiledCompleteModule",
                 id, prompt.complete_interpreter
             )));
         }
@@ -644,7 +644,7 @@ impl AppServices {
             .clone();
         if recur_bundles::is_script_interpreter(&cmd.interpreter) {
             return Err(Error::new(format!(
-                "command {:?} is {} — use CompiledModule",
+                "command {:?} is {}: use CompiledModule",
                 id, cmd.interpreter
             )));
         }

@@ -90,7 +90,7 @@ pub fn locate(data_dir: &Path) -> Result<PathBuf> {
         None => tried.push("PATH".into()),
     }
     Err(Error::msg(format!(
-        "ripgrep (rg) not found (looked in: {}) — set {ENV_PATH} or install into <dataDir>/bin/rg",
+        "ripgrep (rg) not found (looked in: {}): set {ENV_PATH} or install into <dataDir>/bin/rg",
         tried.join(", ")
     )))
 }

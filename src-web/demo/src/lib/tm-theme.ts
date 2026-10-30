@@ -89,7 +89,7 @@ function isRootLanguageSelector(sel: string): boolean {
   return sel === 'source' || sel === 'text'
 }
 
-/** Language-root `source` / `text` only — not `source.ts` or `text source`. */
+/** Language-root `source` / `text` only: not `source.ts` or `text source`. */
 export function isRootLanguageScope(scope: unknown): boolean {
   const sels = themeScopeSelectors(scope)
   return sels.length > 0 && sels.every(isRootLanguageSelector)
@@ -202,7 +202,7 @@ export function resolveGutterBackground(
  * Gutter edge: `gutterSettings.divider` / `editorGroup.border` when set.
  * Classic TextMate themes (no VS Code gutter fill) get a softened-foreground
  * divider. Recur/VS Code themes that already set `editorGutter.background`
- * keep the previous hairline — Charcoal/Paper were designed against that.
+ * keep the previous hairline: Charcoal/Paper were designed against that.
  */
 export function resolveGutterBorder(
   colors: Record<string, string>,
@@ -292,7 +292,7 @@ export function withCssAlpha(c: string, alphaByte: number): string | null {
 
 /**
  * Selection wash: theme `editor.selectionBackground` / classic `selection`.
- * TextMate has no soften-algo here — authors set `selection` on the unscoped
+ * TextMate has no soften-algo here: authors set `selection` on the unscoped
  * rule. If omitted, tint the foreground at ~30% so the wash still tracks the
  * theme (Recur used to hardcode a purple).
  */
@@ -336,7 +336,7 @@ export function parseThemeJson(text: string, fallbackName = 'theme'): ParsedTmTh
   }
 }
 
-/** Editor chrome from theme `colors` / global settings — not syntax tokens. */
+/** Editor chrome from theme `colors` / global settings: not syntax tokens. */
 export function tmChromeExtension(parsed: ParsedTmTheme): Extension {
   const c = parsed.colors
   const bg = c['editor.background'] ?? '#1e1e1e'
@@ -362,7 +362,7 @@ export function tmChromeExtension(parsed: ParsedTmTheme): Extension {
         '--cm-gutter-added': resolveGutterHintColor(c, 'editorGutter.addedBackground', 'var(--git-a)'),
         '--cm-gutter-deleted': resolveGutterHintColor(c, 'editorGutter.deletedBackground', 'var(--git-d)'),
       },
-      // Pane fill on the scroller — not `.cm-content`. Content sits above
+      // Pane fill on the scroller: not `.cm-content`. Content sits above
       // CodeMirror’s selection layer; an opaque content background hides it.
       '.cm-scroller': {
         backgroundColor: 'var(--cm-tm-content-bg, var(--cm-tm-source-bg))',

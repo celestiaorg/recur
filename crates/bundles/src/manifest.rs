@@ -1063,7 +1063,7 @@ pub fn validate_output(s: &str) -> Result<(), Error> {
         | OUTPUT_COPY_TO_CLIPBOARD
         | OUTPUT_SHOW_AS_TOAST => Ok(()),
         "showAsHTML" => Err(err!(
-            "output showAsHTML was removed — use newDocument with language + openInPreview"
+            "output showAsHTML was removed: use newDocument with language + openInPreview"
         )),
         other => Err(err!("unknown output {:?}", other)),
     }

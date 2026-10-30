@@ -604,7 +604,7 @@ impl Sidebar {
         }
         let f = self.fh(key.clone(), cx);
         let ring = is_focus_visible(&f, window);
-        let title = format!("Working copy — {}'s real checkout", p.project.name);
+        let title = format!("Working copy: {}'s real checkout", p.project.name);
         let hover_key = key.clone();
         let el =
             el.debug_selector(|| key.clone())

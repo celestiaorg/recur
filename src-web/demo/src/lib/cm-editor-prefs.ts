@@ -9,7 +9,7 @@ import { EditorState, type Extension } from '@codemirror/state'
 import { foldGutter, bracketMatching } from '@codemirror/language'
 import type { EditorPrefs, EditorWhitespace } from './stores'
 
-/** Quiet marks — CM defaults (#aaa / #888) read as loud as code on dark themes. */
+/** Quiet marks: CM defaults (#aaa / #888) read as loud as code on dark themes. */
 const subtleWhitespaceTheme = EditorView.theme({
   '.cm-highlightSpace': {
     backgroundImage:
@@ -156,7 +156,7 @@ export function rulersExtension(columns: number[]): Extension {
         const scroll = view.scrollDOM
         // Pin to the visible viewport (not inset:0 at doc top). Abspos children of
         // scrollDOM scroll with content, so a viewport-tall layer at y=0 only covered
-        // the first screenful. Avoid height=scrollHeight — that can grow overflow.
+        // the first screenful. Avoid height=scrollHeight: that can grow overflow.
         this.layer.style.top = `${scroll.scrollTop}px`
         this.layer.style.height = `${scroll.clientHeight}px`
         const defaultCh = view.defaultCharacterWidth
@@ -184,7 +184,7 @@ export function editorFeatureExtensions(
 ): Extension {
   const rulers = prefs.rulerColumn > 0 ? [prefs.rulerColumn] : []
   return [
-    // CM drops extra ranges unless this is on — Option/Alt-drag columns and Mod-d.
+    // CM drops extra ranges unless this is on: Option/Alt-drag columns and Mod-d.
     EditorState.allowMultipleSelections.of(true),
     whitespaceExtensions(prefs.whitespace),
     specialCharsExtension(prefs.specialChars),

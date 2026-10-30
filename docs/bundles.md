@@ -28,7 +28,7 @@ id = "recur.text"          # filename-safe: ≤80 chars; letters/digits/_-.; no 
 version = "1.0.0"
 author = "You"
 
-[[grammar]]                # optional — TextMate language grammar
+[[grammar]]                # optional: TextMate language grammar
 id = "recur.languages.go"  # override key (user pack with same id wins)
 scopeName = "source.go"    # TextMate runtime identity (injections / embeds)
 path = "syntaxes/go.tmLanguage.json"   # prefer *.tmLanguage.json (plist *.tmLanguage ok)
@@ -38,7 +38,7 @@ fileTypes = ["go"]         # extensions without dot, or full basenames
 # injectTo = ["source.js"]
 # embeddedLanguages = { "source.js" = "javascript" }
 
-[[languageData]]           # optional — comment tokens + indent for a TM scope
+[[languageData]]           # optional: comment tokens + indent for a TM scope
 id = "recur.langdata.go"   # override key (user pack with same id wins)
 scopeName = "source.go"    # merged onto the grammar with this scope (dotted prefixes ok)
 lineComment = "//"
@@ -52,14 +52,14 @@ blockCommentEnd = "*/"
 # disableIndentCorrections = true   # still indent a new line; don't rewrite a non-empty one
 # closeBrackets = ["<", "_", "*"]   # extra openers merged onto CM ()[]{} '" `
 
-[[symbol]]                 # optional — TextMate showInSymbolList (open-file outline)
+[[symbol]]                 # optional: TextMate showInSymbolList (open-file outline)
 id = "recur.symbols.source.function"
 scope = "entity.name.function"   # token-scope selector (comma / space / > / -)
 # show = false                     # exclude a more-specific scope
 # kind = "func"                    # outline label; inferred from scope if omitted
 # transform = 's/^["'']|["'']$//g' # JS regex s/// (not Oniguruma)
 
-[[theme]]                  # optional — TextMate / VS Code colour theme
+[[theme]]                  # optional: TextMate / VS Code colour theme
 id = "cool-glow"           # Settings preference value (and override key)
 name = "Cool Glow"
 path = "themes/cool-glow.tmTheme.json"  # conventional *.tmTheme.json
@@ -68,7 +68,7 @@ order = 30                 # optional Settings display order (lower first)
 # Optional Settings picker swatches (bg/fg + sample fn / main / "hi"):
 preview = { bg = "#06071D", fg = "#E0E0E0", fn = "#B683CA", name = "#2BF1DC", string = "#8DFF8E" }
 
-[[terminalTheme]]          # optional — xterm.js ITheme palette
+[[terminalTheme]]          # optional: xterm.js ITheme palette
 id = "homebrew"
 name = "Homebrew"
 path = "themes/homebrew.json"
@@ -91,7 +91,7 @@ interpreter = "typescript"  # typescript | shebang
 script = "src/sort-lines-asc.ts"
 # Or inline: body = ''' … '''
 
-[[snippet]]                # optional — Tab trigger and/or keyEquivalent
+[[snippet]]                # optional: Tab trigger and/or keyEquivalent
 id = "recur.go.ife"        # override key (user pack with same id wins)
 name = "If Err"
 tabTrigger = "ife"         # word before the caret; letter then letters/digits/_
@@ -115,7 +115,7 @@ command = "gopls"            # PATH fallback name
 args = ["serve"]
 managed = "gopls"            # optional; pin registry key → download into DataDir
 
-[[setting]]                # optional — Settings → Integrations + shebang helpers
+[[setting]]                # optional: Settings → Integrations + shebang helpers
 id = "acme.jira.token"     # override key (user pack with same id wins)
 name = "api_token"         # machine name → RECUR_SETTING_API_TOKEN
 label = "API token"        # Settings row title (default = name)
@@ -214,7 +214,7 @@ classic TextMate ports) into **`bundles/Themes/`** (re-fetch with
 Paper live in **`bundles/Recur/`**.
 Provenance JSON and a compact `NOTICE` (SPDX + upstream links; full license
 texts stay at the Shiki NOTICE URL) sit next to each pack. Tokenization is
-TextMate-only — there is no Lezer / `@codemirror/lang-*` fallback. Settings
+TextMate-only: there is no Lezer / `@codemirror/lang-*` fallback. Settings
 uses a compact searchable list (Charcoal / Paper pinned); **View → Appearance**
 mirrors app / editor / terminal theme choices in the native menu. The editor footer
 language label is clickable (⌘K **Change language mode**): the pick is
@@ -272,7 +272,7 @@ network or disk work.
 | `MacroContext` | input shape (`input`, `selectedText`, `filepath`, …) |
 | `MacroResult` | `string` or `{ text; output?; language?; openInPreview? }` |
 | `OutputRouting` | union of routing literals |
-| `Output` | frozen map — use `Output.replaceSelection`, not raw strings |
+| `Output` | frozen map: use `Output.replaceSelection`, not raw strings |
 | `replaceEdited(ctx, text)` | helper → selection replace, else document |
 
 Only `@recur/sdk` imports are allowed. IDE path mapping: `bundles/tsconfig.json`.
@@ -303,9 +303,9 @@ tools that need the real filesystem, network, or a runtime on `PATH`.
 | `Encode` | URL / HTML entities / Base64 encode+decode |
 | `JSON` | Format / Minify / Validate; Format on Save |
 | `Diff` | Diff with Clipboard (`shebang` + `script=`) |
-| `Go` / `Rust` / `Python` / `JavaScript` / `Shell` / `C` | format-on-save (`gofmt`, `rustfmt`, `ruff`/`black`, `deno fmt`/`prettier`, `shfmt`, `clang-format`) — pass-through if tool missing |
+| `Go` / `Rust` / `Python` / `JavaScript` / `Shell` / `C` | format-on-save (`gofmt`, `rustfmt`, `ruff`/`black`, `deno fmt`/`prettier`, `shfmt`, `clang-format`): pass-through if tool missing |
 | `LanguageData` | comment tokens + indent patterns + extra closeBrackets (`[[languageData]]`); CSS `[[symbol]]` selectors |
-| `HTML` | Insert Open/Close Tag (⌃<); wrap (⌃W); `<br>` (⌃↩); TM HTML tab catalog (`div`, `form`, `table`, `ul`, `audio`, …; HTML5 + HTML 4.01 doctypes, no XHTML); id symbols — markup in HTML, Svelte, Vue, JSX/TSX, Astro, MDX, Handlebars (document-level doctypes/`html`/`head` stay on HTML/Svelte/Vue) |
+| `HTML` | Insert Open/Close Tag (⌃<); wrap (⌃W); `<br>` (⌃↩); TM HTML tab catalog (`div`, `form`, `table`, `ul`, `audio`, …; HTML5 + HTML 4.01 doctypes, no XHTML); id symbols: markup in HTML, Svelte, Vue, JSX/TSX, Astro, MDX, Handlebars (document-level doctypes/`html`/`head` stay on HTML/Svelte/Vue) |
 | `Markdown` | wrap/heading/list; Hard Linebreak (⌃↩, two trailing spaces); heading symbols |
 | `Terminal` | xterm.js `ITheme` palettes (`[[terminalTheme]]`) for Settings → Appearance |
 | `Go` / `JavaScript` / `Python` / `Shell` / `XML` / `Source` / `Text` | snippet catalogs (`ife`, `log`, `def`, shebangs, quote wrap, lorem, `isoD`, …) |
@@ -345,7 +345,7 @@ falls back to Charcoal (or the next enabled theme).
 
 | Root | Path |
 |------|------|
-| Default | `<DataDir>/Bundles` (seeded from repo `bundles/`, embedded in the app; each folder is content-hashed — when the shipped hash changes the directory is replaced and stamped with `.recur-seed`) |
+| Default | `<DataDir>/Bundles` (seeded from repo `bundles/`, embedded in the app; each folder is content-hashed: when the shipped hash changes the directory is replaced and stamped with `.recur-seed`) |
 | User | `~/.recur/bundles` (id wins over default; **prefer this for customizations**) |
 | Cache | `<DataDir>/BundleCache` |
 
@@ -363,7 +363,7 @@ values (never TypeScript Workers). `[[search]]` also sets `RECUR_SEARCH_QUERY`
 (and the complete-script args env so a pack can reuse its `complete` script).
 
 Shebang commands run in a process group with a **30s** default deadline
-(`RunContextDTO.timeoutMs` can lower it — willSave uses ≤12s per command).
+(`RunContextDTO.timeoutMs` can lower it: willSave uses ≤12s per command).
 There is no UI cancel control in v1; the deadline is what stops a runaway
 process (the process group is killed when the context ends).
 
@@ -381,10 +381,10 @@ Reasons show in **Settings → Bundles → Commands → Skipped packs** and via
 stderr and **discards** buffer-mutating routings (`replace*` / `insert*` /
 `newDocument`). `showAsToast` / `showAsTooltip` / `copyToClipboard` may still
 fire when stdout is non-empty. Tools that use exit `1` as a normal outcome
-(e.g. `diff`) must normalize to `0` before returning — see
+(e.g. `diff`) must normalize to `0` before returning: see
 `bundles/Diff/bin/diff-clipboard.sh`.
 
-`showAsHTML` was removed — use `newDocument` with `language` + optional
+`showAsHTML` was removed: use `newDocument` with `language` + optional
 `openInPreview` (HTML Preview is a sandboxed iframe: `allow-scripts allow-forms`,
 no `allow-same-origin`; https CDN scripts/styles and `fetch` to https work,
 `localStorage` is in-memory only).
@@ -414,7 +414,7 @@ open the scratch on the **Preview** chip when the language supports it (`html`,
 Runs before `WriteFile` under a ~15s overall budget (each command gets
 `timeoutMs` ≤ 12s). On failure/timeout, empty stdout, or shrinking the document
 by more than ~90% (when the original is >100 chars), Recur writes the **original**
-document and toasts — the transform is discarded.
+document and toasts: the transform is discarded.
 
 ## Testing
 
@@ -423,7 +423,7 @@ layout under `~/.recur/bundles/MyPack/tests/`. Runtime seeding skips `tests/` so
 DataDir stays lean; tests stay in git / your user pack.
 
 Payloads can be **inline** or **files** (paths relative to the TOML file). Use
-one or the other per field — not both.
+one or the other per field: not both.
 
 ```toml
 # Inline (small cases)
@@ -461,7 +461,7 @@ output = "replaceSelection"
 ```
 
 Optional expect fields: `language`, `openInPreview` (effective values after
-manifest defaults + MacroResult overrides — same resolution as the app).
+manifest defaults + MacroResult overrides: same resolution as the app).
 Optional `*File` fields: `inputFile`, `selectedTextFile`, `documentFile`,
 `currentLineFile`, `currentWordFile`, `clipboardFile`, `stdoutFile`, `stderrFile`.
 Other context knobs stay inline (`scope`, `tabSize`, `softTabs`, `prompts`, …).
@@ -501,7 +501,7 @@ Config / env:
 Optional file: `~/.recur/config.yaml` (`bundles-dir: …`).
 
 **Create scaffold** lives as real files under `crates/cli/scaffold/` (embedded
-into the CLI). Edit that tree to change what `recur bundles create` drops —
+into the CLI). Edit that tree to change what `recur bundles create` drops:
 placeholders: `{{BUNDLE_NAME}}`, `{{BUNDLE_ID}}`, `{{TS_CMD_ID}}`,
 `{{SH_CMD_ID}}`.
 
@@ -515,7 +515,7 @@ commands). They appear in the composer `/` menu above skills (alphabetical,
 distinct “Prompt” badge). Selecting one invokes immediately unless `takesArgs`
 is set: then the host inserts Discord-style labeled arg slots instead of a
 skill chip. The slash-name menu still only opens when `/` is at offset 0 with
-trailing whitespace — once args start, that menu closes and the args picker
+trailing whitespace: once args start, that menu closes and the args picker
 takes over (placeholder plus optional `complete` hits). Enter on a whole-composer
 line `/slash rest` invokes with `ctx.args` / `RECUR_PROMPT_ARGS` set to `rest`.
 Optional mode tab routing → run script → send.
@@ -535,7 +535,7 @@ interpreter = "typescript"      # or shebang
 script = "src/fix-findings.ts"
 ```
 
-`complete` is how a prompt action owns search/autocomplete for its args — the
+`complete` is how a prompt action owns search/autocomplete for its args: the
 composer is generic. Optional `icon = "icon.svg"` (pack-relative, static SVG)
 replaces the default hash glyph on those complete rows and on ⌘K hits for
 that slash. Hardcoded `fill="#…"` is rewritten to `currentColor`. Interpreter is inferred from the extension (`.ts` / `.js` →
@@ -587,7 +587,7 @@ need no `insert` (e.g. “Connect Linear…”).
 
 `mode = "loop"` plus `loop = "recur.loops.converge"` (or another `[[loop]]` id)
 routes like the other modes (idle tab already in Loop, else a new chat) and
-sends a canned engage — `/review-and-fix` from Agent does not need a typed goal.
+sends a canned engage: `/review-and-fix` from Agent does not need a typed goal.
 
 TypeScript / shebang export `(ctx: PromptContext) => PromptResult` with
 `{ prompt, display? }`. `PromptContext` includes workspace vars (`workspaceId`,
@@ -599,7 +599,7 @@ blobs). Scripts that ignore args stay valid.
 
 Shebang only (TypeScript Workers never see `RECUR_SETTING_*`). Search-only or
 expand-only packs are valid. The host debounce (⌘K 200ms) and goroutine fan-out
-live in core — packs do not debounce.
+live in core: packs do not debounce.
 
 ```toml
 [[search]]
@@ -631,7 +631,7 @@ next matching expander, then the original text. A matched expander that errors
 toasts (same as today). No Settings → Bundles toggle in v1.
 
 **Contract:** `@path` and `/skill` tokens inside `prompt` are real composer
-dialect — the host wraps them on send (do not pre-wrap). Wrap embedded blobs
+dialect: the host wraps them on send (do not pre-wrap). Wrap embedded blobs
 that must not be scanned (git diffs, etc.) in nonce-paired
 `⟦raw:ID⟧`…`⟦/raw:ID⟧` (bare `⟦raw⟧`…`⟦/raw⟧` is ok only when the body cannot
 contain those strings). Markers are stripped before storage/provider. Session
@@ -655,7 +655,7 @@ diff), `/fix-checks` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; GitHub
 Embeds git status/diff so the agent writes the GitHub title/body from the
 full workspace diff; Recur owns push + `gh pr create` / `--draft`. If a
 GitHub PR is already open, the shebang emits an empty prompt so the host
-toasts and does not start an LLM turn or open a tab — push from the titlebar
+toasts and does not start an LLM turn or open a tab: push from the titlebar
 instead. A
 Local fallback does not fast-fail so create can retry),
 `/update` (`mode=agent`, `tab_group = "ops"`, `fresh_session` only if git needs the agent;
@@ -664,8 +664,8 @@ to an agent prompt on the ops tab), `/review`
 (`mode=review`, `tab_group = "review"`, shebang embeds git status/diff so the agent can skip discovery
 loops; `fresh_session` isolates a provider session on that tab), `/re-review` (`mode=review`, no `tab_group`, same git embed after
 fixes; routes to the newest idle Review tab like other ungrouped mode prompts, then
-resumes that tab's prior pass when it can — delta diff only),
-`/simplify-review` (`mode=review`, `tab_group = "simplify-review"`, over-engineering only — files findings with
+resumes that tab's prior pass when it can: delta diff only),
+`/simplify-review` (`mode=review`, `tab_group = "simplify-review"`, over-engineering only: files findings with
 yagni/stdlib/native/delete/shrink tags; `/review` stays bugs/risks; `fresh_session`), and
 `/simplify-audit` (`mode=review`, `tab_group = "simplify-audit"`, whole-repo over-engineering, same findings
 contract; `fresh_session`).
@@ -674,7 +674,7 @@ contract; `fresh_session`).
 Composer arg complete is the prompt’s `complete = "src/complete.sh"` (shebang
 GraphQL `searchIssues`). The same script is the pack’s `[[search]]` for ⌘K;
 `[[expand]]` (`src/linear.sh`) paste-expands New Task / ⌘K picks when `match`
-hits. Host only runs matching expanders — prose goals are unchanged.
+hits. Host only runs matching expanders: prose goals are unchanged.
 Agent Linear tools (backlog / triage) are Settings → MCP (`D-user-mcp`), not shebang.
 `bundles/GitHub` ships `/github` (`takesArgs`, shebang over the `gh` CLI, no
 API key): `#12` resolves against the workspace repo, plus `owner/repo#12` and
@@ -689,7 +689,7 @@ follow-ups resume the tab they are typed on.
 ## Security
 
 Shebang = user-privilege OS process. TypeScript = Worker sandbox with a sealed
-context — still only install bundles you trust. File writes stay behind
+context: still only install bundles you trust. File writes stay behind
 `CodeService` worktree gating.
 
 ## Roadmap

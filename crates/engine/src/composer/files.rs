@@ -286,22 +286,22 @@ fn mention_focus_note(m: &FileMention) -> String {
     if m.start_col > 0 && m.end_col > 0 {
         if m.end_line > m.start_line {
             return format!(
-                " — focus on line {} column {} through line {} column {}",
+                ": focus on line {} column {} through line {} column {}",
                 m.start_line, m.start_col, m.end_line, m.end_col
             );
         }
         if m.end_col == m.start_col {
-            return format!(" — focus on line {}, column {}", m.start_line, m.start_col);
+            return format!(": focus on line {}, column {}", m.start_line, m.start_col);
         }
         return format!(
-            " — focus on line {}, columns {}–{}",
+            ": focus on line {}, columns {}–{}",
             m.start_line, m.start_col, m.end_col
         );
     }
     if m.end_line > m.start_line {
-        return format!(" — focus on lines {}–{}", m.start_line, m.end_line);
+        return format!(": focus on lines {}–{}", m.start_line, m.end_line);
     }
-    format!(" — focus on line {}", m.start_line)
+    format!(": focus on line {}", m.start_line)
 }
 
 /// `512 B`, `1.5 KB`, `12 KB`, `3.2 MB`.

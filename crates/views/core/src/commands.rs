@@ -34,7 +34,7 @@ pub fn validate_output_routing(s: &str) -> Option<String> {
     }
     if s == "showAsHTML" {
         return Some(
-            "output showAsHTML was removed — use newDocument with language + openInPreview".into(),
+            "output showAsHTML was removed: use newDocument with language + openInPreview".into(),
         );
     }
     Some(format!(
@@ -725,7 +725,7 @@ impl AppState {
         match handler {
             Some(h) => h(id.to_string(), cx),
             None => Task::ready(Err(
-                "No editor is focused — open a file in the Observatory first".into(),
+                "No editor is focused: open a file in the Observatory first".into(),
             )),
         }
     }

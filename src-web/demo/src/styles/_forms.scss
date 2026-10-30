@@ -287,7 +287,7 @@
   cursor: pointer;
 }
 
-/* Highlight is data-active only — do not use :hover. The menu often opens under a
+/* Highlight is data-active only: do not use :hover. The menu often opens under a
    stationary cursor; :hover would paint that row as selected even though keyboard
    active is the real selection (same reason chat-mention-row drops :hover). */
 .sel-opt[data-active="true"] {
@@ -306,7 +306,7 @@
   white-space: nowrap;
 }
 
-/* Mode identity is the label — never yield it to the hint. Hints already ellipsize. */
+/* Mode identity is the label: never yield it to the hint. Hints already ellipsize. */
 .sel-opt:has(.sel-opt-hint) .sel-opt-lbl {
   flex: none;
   min-width: auto;

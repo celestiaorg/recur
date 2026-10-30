@@ -380,23 +380,18 @@ impl SettingsView {
             } else {
                 msg.clone()
             };
-            if pct >= 0 {
-                format!("{m} — {pct}%")
-            } else {
-                m
-            }
+            if pct >= 0 { format!("{m}: {pct}%") } else { m }
         } else if let Some(st) = status.as_ref().filter(|s| s.bridge_installed) {
             let mut d = "Installed".to_string();
             if !st.bridge_version.is_empty() {
                 d.push_str(&format!(" · v{}", st.bridge_version));
             }
             if st.update_available && !st.pinned_version.is_empty() {
-                // No space before the update note.
-                d.push_str(&format!("— update available (v{})", st.pinned_version));
+                d.push_str(&format!(" · update available (v{})", st.pinned_version));
             }
             d
         } else {
-            "Not installed — about 50 MB to download, 155 MB on disk".into()
+            "Not installed: about 50 MB to download, 155 MB on disk".into()
         };
         let mut sdk_copy = copy("sdk", "SDK", Some(vec![span(sdk_desc)]), cx);
         if installing && pct >= 0 {

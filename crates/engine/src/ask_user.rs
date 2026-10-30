@@ -21,7 +21,7 @@ use crate::chatlife::ChatTurn;
 use crate::text::{html_escape, truncate, unix_nanos};
 
 /// The tool result a parked question returns at once.
-pub const ASK_USER_PARK_RESULT: &str = "Question delivered to the user. Stop now and wait — their answer will arrive as a later message. Do not invent an answer or continue working.";
+pub const ASK_USER_PARK_RESULT: &str = "Question delivered to the user. Stop now and wait: their answer will arrive as a later message. Do not invent an answer or continue working.";
 
 /// Lets the MCP response flush to the agent before the turn is parked.
 pub(crate) const ASK_USER_PARK_DELAY: Duration = Duration::from_millis(150);
@@ -220,7 +220,7 @@ pub fn format_ask_user_display(ans: &UserQuestionAnswer) -> String {
     let choice = ans.choice.trim();
     let free = ans.free_text.trim();
     match (choice.is_empty(), free.is_empty()) {
-        (false, false) => format!("{choice} — {free}"),
+        (false, false) => format!("{choice}: {free}"),
         (false, true) => choice.to_owned(),
         (true, false) => free.to_owned(),
         (true, true) => "(empty)".to_owned(),

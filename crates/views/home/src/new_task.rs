@@ -59,7 +59,7 @@ pub const MODE_KEY: &str = "recur.newWorkspaceMode";
 
 const LOOP_PLACEHOLDER: &str = "What do you want to work on?";
 const AGENT_PLACEHOLDER: &str =
-    "What should the agent do? (optional) — e.g. review PR 123, or add a dark-mode toggle";
+    "What should the agent do? (optional) e.g. review PR 123, or add a dark-mode toggle";
 
 type Pending = Shared<Task<Option<Workspace>>>;
 
@@ -1514,7 +1514,7 @@ impl NewTaskModal {
                     .items_baseline()
                     .px(px(2.))
                     .child(
-                        text("No git projects yet — ")
+                        text("No git projects yet: ")
                             .size(12.5)
                             .color(t.muted)
                             .pre_wrap(),

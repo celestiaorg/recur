@@ -122,7 +122,7 @@ pub fn engine_summary(
         },
         SummaryPara {
             kind: "p".into(),
-            html: "<b>How it converged:</b> the Coder and an independent Reviewer iterated code↔review until the Reviewer filed zero findings; the engine — not the Coder — declared convergence.".into(),
+            html: "<b>How it converged:</b> the Coder and an independent Reviewer iterated code↔review until the Reviewer filed zero findings; the engine, not the Coder, declared convergence.".into(),
             ..SummaryPara::default()
         },
     ]
@@ -149,7 +149,7 @@ pub fn engine_focus(
         }
     }
     let mut body = format!(
-        "The bulk of the change is in <code>{}</code> (+{} −{}) — start there.",
+        "The bulk of the change is in <code>{}</code> (+{} −{}): start there.",
         html_escape(&biggest.path),
         biggest.diff.add,
         biggest.diff.del
@@ -492,7 +492,7 @@ impl Walk {
         } else {
             None
         };
-        let mut notes = vec!["Loop policy bar passed — ready for review.".to_owned()];
+        let mut notes = vec!["Loop policy bar passed: ready for review.".to_owned()];
         if lp.verify_state == VERIFY_STATE_PASSED {
             notes.push("Verified in a browser.".into());
         }
@@ -546,7 +546,7 @@ impl Walk {
                     "MA",
                     "Maestro",
                     &format!(
-                        "{label} PR not opened ({}) — opening a Local PR instead.",
+                        "{label} PR not opened ({}): opening a Local PR instead.",
                         html_escape(&reason)
                     ),
                 ),

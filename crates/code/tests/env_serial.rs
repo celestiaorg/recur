@@ -69,7 +69,7 @@ fn locate_lists_what_it_tried() {
     assert_eq!(
         err,
         format!(
-            "ripgrep (rg) not found (looked in: /nonexistent/rg, {}/bin/rg, PATH) — set RECUR_RG or install into <dataDir>/bin/rg",
+            "ripgrep (rg) not found (looked in: /nonexistent/rg, {}/bin/rg, PATH): set RECUR_RG or install into <dataDir>/bin/rg",
             data.path().display()
         )
     );

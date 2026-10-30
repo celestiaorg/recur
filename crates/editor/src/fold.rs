@@ -201,9 +201,9 @@ pub fn toggle_fold(view: &dyn ViewQueries) -> Option<TransactionSpec> {
 /// Fold gutter marker for a line block.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FoldMarker {
-    /// "⌄" — can fold.
+    /// "⌄": can fold.
     Open,
-    /// "›" — folded.
+    /// "›": folded.
     Closed,
 }
 

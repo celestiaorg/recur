@@ -45,7 +45,7 @@
   flex: 1;
 }
 
-/* Pane-header seg sizing — matches the Observatory's in-pane chips
+/* Pane-header seg sizing: matches the Observatory's in-pane chips
    (.obs-scope Changed|All, .obs-view-seg Code|Diff|Preview), not the larger
    titlebar segs. */
 .briefing-filters .seg {
@@ -79,7 +79,7 @@
 .wbrief-row {
   display: grid;
   /* dot | icon | main (two lines: title+branch over Now snippet, like
-     .prrow's under-row and the .ibrow grammar) | project | plan | diff —
+     .prrow's under-row and the .ibrow grammar) | project | plan | diff:
      separate fixed fact tracks, right-aligned, so numbers line up down the
      list like the PR dashboard; last-activity age on the right edge (gmail's
      date column). No action button: the row IS the action. */
@@ -102,7 +102,7 @@
 }
 
 /* Unread dot follows the workspace's unread notifications, not a row-level
-   read state — rows never dim like read notifications do. */
+   read state: rows never dim like read notifications do. */
 .wbrief-row .udot {
   width: 7px;
   height: 7px;
@@ -234,7 +234,7 @@
   color: var(--faint);
   font-feature-settings: "kern" 1;
   text-rendering: optimizeLegibility;
-  /* Full-width group strip (.lgroup), sticky within .briefing-scroll —
+  /* Full-width group strip (.lgroup), sticky within .briefing-scroll:
      opaque mix stands in for their translucent wash so rows can't show through. */
   padding: 8px 16px;
   border-bottom: 1px solid var(--line-soft);

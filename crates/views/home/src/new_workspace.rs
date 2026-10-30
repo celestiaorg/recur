@@ -302,7 +302,7 @@ pub async fn start_parked_opening(state: &Entity<AppState>, seed: OpeningSeed, c
                 toast(
                     ToastKind::Error,
                     if msg.is_empty() {
-                        "The agent hit an error — try again.".into()
+                        "The agent hit an error: try again.".into()
                     } else {
                         msg
                     },

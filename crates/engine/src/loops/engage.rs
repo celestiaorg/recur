@@ -38,7 +38,7 @@ impl Engine {
         }
         let (mut life, held) = self.lock_chat_life(&ws.id, code).await;
         if !held {
-            return "I can't find that workspace anymore — it may have been removed.".into();
+            return "I can't find that workspace anymore: it may have been removed.".into();
         }
         let (text, imgs) = match crate::attachments::prepare_chat_attachments(
             &self.data_dir,

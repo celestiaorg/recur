@@ -765,7 +765,7 @@ impl TerminalDock {
         });
         for t in &mut self.tabs {
             if t.id == id {
-                t.title = format!("{} — exited ({code})", t.title);
+                t.title = format!("{}: exited ({code})", t.title);
                 t.exited = true;
             }
         }

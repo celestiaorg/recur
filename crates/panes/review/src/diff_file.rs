@@ -124,7 +124,7 @@ impl DiffFileProps {
             layout: DiffLayout::Unified,
             collapsible: false,
             collapsed: false,
-            open_file_title: "Open in editor — ⌘-click any line number to jump there".into(),
+            open_file_title: "Open in editor: ⌘-click any line number to jump there".into(),
             findings: Vec::new(),
             posting_finding_ids: HashSet::new(),
             postable_finding_ids: HashSet::new(),
@@ -1005,7 +1005,7 @@ impl DiffFile {
                     );
                     return;
                 }
-                toast(ToastKind::Success, "Saved — submit your review to post", cx);
+                toast(ToastKind::Success, "Saved: submit your review to post", cx);
             });
         })
         .detach();
@@ -1547,7 +1547,7 @@ impl DiffFile {
             }));
         titled(
             SharedString::from(format!("addc-t-{key}")),
-            "Comment on this line — drag to select a range",
+            "Comment on this line: drag to select a range",
             hit,
         )
         .into_any_element()

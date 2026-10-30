@@ -7,10 +7,10 @@ Read this when the user wants a custom Loop (or a role / policy for one).
 | Ask | Copy |
 |-----|------|
 | Plan → code → PR | `recur.loops.pr` (To a PR) |
-| Review the diff I already wrote | `recur.loops.converge` — `entry = "converge"`, `start = "review"`, no `ensure_pr` |
-| Review that diff, then PR | `recur.loops.converge-pr` — same as converge, then `ensure_pr` |
-| Write docs, no PR | `recur.loops.docs` — custom Writer/Editor roles, `findings_threshold = 0`, terminal `uses = "artifact"` |
-| Security look at this diff | `recur.loops.security` — `start = "review"`, reviewer `recur.roles.security-reviewer` |
+| Review the diff I already wrote | `recur.loops.converge`: `entry = "converge"`, `start = "review"`, no `ensure_pr` |
+| Review that diff, then PR | `recur.loops.converge-pr`: same as converge, then `ensure_pr` |
+| Write docs, no PR | `recur.loops.docs`: custom Writer/Editor roles, `findings_threshold = 0`, terminal `uses = "artifact"` |
+| Security look at this diff | `recur.loops.security`: `start = "review"`, reviewer `recur.roles.security-reviewer` |
 
 Prefer **reuse** `recur.roles.*` and the three shipped policies. Mint a new
 role only when the persona or tool set is actually different (Docs is the
@@ -33,7 +33,7 @@ author = "You"
 [[loop]]
 id = "acme.loops.review"
 name = "Review this"
-hint = "Review and fix the current diff — no PR"
+hint = "Review and fix the current diff: no PR"
 conductor = "recur.roles.maestro"
 prompt = "prompts/mission.md"
 entry = "converge"
@@ -83,7 +83,7 @@ prompt = "prompts/writer.md"
 ## `[[policy]]`
 
 How hard the run pushes. The loop is the graph; the dock policy is the bar.
-Authors who want a different bar write a policy — they do not punch rails.
+Authors who want a different bar write a policy: they do not punch rails.
 
 | | Cautious | Balanced | Aggressive |
 |---|---|---|---|
@@ -111,8 +111,8 @@ Closed `uses` verbs and their slots:
 | `review` | **reviewer** (`review`) | review |
 | `converge` | **implementer** + **reviewer** | implement, review, fix, rereview |
 | `verify` | **verifier** | verify |
-| `ensure_pr` | — | — |
-| `artifact` | — | — |
+| `ensure_pr` | - | - |
+| `artifact` | - | - |
 
 Bold slots are required. Scalar `role =` / `prompt =` is legal only when
 that kind has exactly one slot of that kind. Otherwise use
@@ -138,7 +138,7 @@ that kind has exactly one slot of that kind. Otherwise use
   with `update_finding`, or keep `fix = "/fix-findings"`.
 
 `[[loop]] prompt` (mission) is standing instructions for the **conductor
-session** when the human talks — charter, whether to open a PR, whether
+session** when the human talks: charter, whether to open a PR, whether
 to reopen scope. The engine walks the graph; this is not a free-form
 “do whatever satisfies this prompt,” and it is not sent to specialists.
 Omit it if the conductor role prompt plus the live task are enough.
@@ -151,9 +151,9 @@ bubble/wire (often a short display label), not this field.
 Keep them as short as the shipped Loop pack. Reviewer / editor prompts
 must calibrate severity (the engine does not reclassify):
 
-- critical / high — ship-blockers
-- medium — should-fix before done / PR
-- low / info — nits
+- critical / high: ship-blockers
+- medium: should-fix before done / PR
+- low / info: nits
 
 ## After writing
 

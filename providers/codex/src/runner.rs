@@ -189,7 +189,7 @@ async fn drive(
             }
             Err(e) => {
                 tracing::warn!(
-                    "codex thread/resume {:?} failed ({e}) — starting a new thread",
+                    "codex thread/resume {:?} failed ({e}): starting a new thread",
                     req.resume_session
                 );
                 client.thread_start(&ctx, thread_params).await
@@ -764,7 +764,7 @@ mod tests {
     #[test]
     fn user_text_omits_role() {
         let r = TurnRequest {
-            system_prompt: "You are the Maestro — long charter.".into(),
+            system_prompt: "You are the Maestro: long charter.".into(),
             prompt: "where are we?".into(),
             ..Default::default()
         };

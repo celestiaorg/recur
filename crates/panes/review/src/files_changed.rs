@@ -965,7 +965,7 @@ impl FilesChangedView {
                     titled(
                         "dl-split-t",
                         if fallback {
-                            "Too narrow for side-by-side — widen the pane or hide the file list"
+                            "Too narrow for side-by-side: widen the pane or hide the file list"
                         } else {
                             "Side by side"
                         },
@@ -1479,7 +1479,7 @@ impl FilesChangedView {
         }
         if self.files_truncated {
             header.push(self.empty(
-                "Untracked file list truncated — more files exist vs HEAD",
+                "Untracked file list truncated: more files exist vs HEAD",
                 cx,
             ));
         }

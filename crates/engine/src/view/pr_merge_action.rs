@@ -104,7 +104,7 @@ pub fn pr_merge_action(pr: Option<&Pr>, awaiting_update: bool) -> MergeAction {
         return MergeAction::new(
             K::Merge,
             "Merge",
-            "Local merge — you are the only gate; merges the branch into the base on disk",
+            "Local merge: you are the only gate; merges the branch into the base on disk",
             false,
         );
     }
@@ -182,7 +182,7 @@ pub fn pr_merge_action(pr: Option<&Pr>, awaiting_update: bool) -> MergeAction {
         return MergeAction::new(
             K::Blocked,
             "Merge blocked",
-            "Merge blocked on GitHub — required reviews, checks, or unresolved conversations",
+            "Merge blocked on GitHub: required reviews, checks, or unresolved conversations",
             true,
         );
     }

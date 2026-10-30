@@ -268,7 +268,7 @@ pub(crate) fn omitted_untracked_diff(path: &str) -> FileDiff {
         status: "u".into(),
         lines: Some(vec![DiffLine {
             r#type: "hunk".into(),
-            code_html: "diff omitted — too many untracked files".into(),
+            code_html: "diff omitted: too many untracked files".into(),
             ..DiffLine::default()
         }]),
         ..FileDiff::default()
@@ -319,7 +319,7 @@ pub(crate) fn synthetic_add_diff(path: &str, content: &[u8], truncated: bool) ->
         out.push(DiffLine {
             r#type: "hunk".into(),
             code_html: format!(
-                "@@ truncated — showing the first {} lines of a new file @@",
+                "@@ truncated: showing the first {} lines of a new file @@",
                 lines.len()
             ),
             ..DiffLine::default()

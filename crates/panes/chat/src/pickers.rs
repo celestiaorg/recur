@@ -48,7 +48,7 @@ pub fn summary_token(d: &FlagDimension, v: Option<&str>) -> String {
         .map_or_else(|| v.to_string(), |o| o.label.clone())
 }
 
-/// The closed trigger: tokens joined by ` · `, or `—`.
+/// The closed trigger: tokens joined by ` · `, or `-`.
 pub fn flags_summary(dims: &[FlagDimension], selected: &FlagMap) -> String {
     let toks: Vec<String> = dims
         .iter()
@@ -56,7 +56,7 @@ pub fn flags_summary(dims: &[FlagDimension], selected: &FlagMap) -> String {
         .filter(|t| !t.is_empty())
         .collect();
     if toks.is_empty() {
-        "—".into()
+        "-".into()
     } else {
         toks.join(" · ")
     }
@@ -611,19 +611,19 @@ impl LoopPolicyPickers {
                                     .flex_col()
                                     .child(item(
                                         "Cautious",
-                                        " — every finding; escalate after 2 rounds",
+                                        ": every finding; escalate after 2 rounds",
                                         window,
                                     ))
                                     .child(gap(3.))
                                     .child(item(
                                         "Balanced",
-                                        " — medium and up; escalate after 4",
+                                        ": medium and up; escalate after 4",
                                         window,
                                     ))
                                     .child(gap(3.))
                                     .child(item(
                                         "Aggressive",
-                                        " — ship-blockers only; proceed after 6",
+                                        ": ship-blockers only; proceed after 6",
                                         window,
                                     )),
                             ),
@@ -693,6 +693,6 @@ mod tests {
         assert_eq!(flags_summary(&[fast.clone(), effort.clone()], &sel), "High");
         sel.insert("fast".into(), "true".into());
         assert_eq!(flags_summary(&[fast.clone(), effort], &sel), "Fast · High");
-        assert_eq!(flags_summary(&[fast], &FlagMap::new()), "—");
+        assert_eq!(flags_summary(&[fast], &FlagMap::new()), "-");
     }
 }

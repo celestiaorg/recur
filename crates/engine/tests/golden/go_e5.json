@@ -4092,7 +4092,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "Opened Local PR #7 (GitHub create failed — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed; retry Open PR)."
     },
     {
       "in": {
@@ -4106,7 +4106,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "Opened Local PR #7 (GitHub create failed — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed; retry Open PR)."
     },
     {
       "in": {
@@ -4120,7 +4120,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "Opened Local PR #7 (GitHub create failed: gh: HTTP 422: Validation Failed (https://api.github.com/repos/a/b/pulls)\nA pull request already exists for a:b. — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed: gh: HTTP 422: Validation Failed (https://api.github.com/repos/a/b/pulls)\nA pull request already exists for a:b.; retry Open PR)."
     },
     {
       "in": {
@@ -4134,7 +4134,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "Opened Local PR #7 (GitHub create failed: could not push: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed: could not push: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; retry Open PR)."
     },
     {
       "in": {
@@ -4148,7 +4148,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "Opened Local PR #7 (GitHub create failed: authentication required — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed: authentication required; retry Open PR)."
     },
     {
       "in": {
@@ -4162,7 +4162,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "Opened Local PR #7 (GitHub create failed — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed; retry Open PR)."
     },
     {
       "in": {
@@ -4176,7 +4176,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "Opened Local PR #7 (GitHub create failed — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed; retry Open PR)."
     },
     {
       "in": {
@@ -4190,7 +4190,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "Opened Local PR #7 (GitHub create failed: gh: HTTP 422: Validation Failed (https://api.github.com/repos/a/b/pulls)\nA pull request already exists for a:b. — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed: gh: HTTP 422: Validation Failed (https://api.github.com/repos/a/b/pulls)\nA pull request already exists for a:b.; retry Open PR)."
     },
     {
       "in": {
@@ -4204,7 +4204,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "Opened Local PR #7 (GitHub create failed: could not push: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed: could not push: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; retry Open PR)."
     },
     {
       "in": {
@@ -4218,7 +4218,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "Opened Local PR #7 (GitHub create failed: authentication required — retry Open PR)."
+      "out": "Opened Local PR #7 (GitHub create failed: authentication required; retry Open PR)."
     },
     {
       "in": {
@@ -4232,7 +4232,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "PR #7 is already open (Local). GitHub create failed — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed; retry Open PR."
     },
     {
       "in": {
@@ -4246,7 +4246,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "PR #7 is already open (Local). GitHub create failed — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed; retry Open PR."
     },
     {
       "in": {
@@ -4260,7 +4260,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "PR #7 is already open (Local). GitHub create failed (gh: HTTP 422: Validation Failed (https://api.github.com/repos/a/b/pulls)\nA pull request already exists for a:b.) — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed (gh: HTTP 422: Validation Failed (https://api.github.com/repos/a/b/pulls)\nA pull request already exists for a:b.); retry Open PR."
     },
     {
       "in": {
@@ -4274,7 +4274,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "PR #7 is already open (Local). GitHub create failed (could not push: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx) — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed (could not push: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx); retry Open PR."
     },
     {
       "in": {
@@ -4288,7 +4288,7 @@
         "wantForge": true,
         "wasLocal": false
       },
-      "out": "PR #7 is already open (Local). GitHub create failed (authentication required) — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed (authentication required); retry Open PR."
     },
     {
       "in": {
@@ -4302,7 +4302,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "PR #7 is already open (Local). GitHub create failed — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed; retry Open PR."
     },
     {
       "in": {
@@ -4316,7 +4316,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "PR #7 is already open (Local). GitHub create failed — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed; retry Open PR."
     },
     {
       "in": {
@@ -4330,7 +4330,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "PR #7 is already open (Local). GitHub create failed (gh: HTTP 422: Validation Failed (https://api.github.com/repos/a/b/pulls)\nA pull request already exists for a:b.) — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed (gh: HTTP 422: Validation Failed (https://api.github.com/repos/a/b/pulls)\nA pull request already exists for a:b.); retry Open PR."
     },
     {
       "in": {
@@ -4344,7 +4344,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "PR #7 is already open (Local). GitHub create failed (could not push: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx) — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed (could not push: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx); retry Open PR."
     },
     {
       "in": {
@@ -4358,7 +4358,7 @@
         "wantForge": true,
         "wasLocal": true
       },
-      "out": "PR #7 is already open (Local). GitHub create failed (authentication required) — retry Open PR."
+      "out": "PR #7 is already open (Local). GitHub create failed (authentication required); retry Open PR."
     },
     {
       "in": {

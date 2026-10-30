@@ -396,7 +396,7 @@ impl PrDetail {
             };
             let (title, label) = if running {
                 (
-                    "Show left panel — agent running (⌥⌘B)",
+                    "Show left panel: agent running (⌥⌘B)",
                     "Show left panel. Agent running",
                 )
             } else {

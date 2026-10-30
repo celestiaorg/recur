@@ -1,7 +1,7 @@
 // Loop-chat cockpit: merge conductor turns with specialist sessions and engine
 // facts into one transcript. A PA* tab that is not the engaged Loop stays
-// unmerged (its own Agent/Ask/… thread). The engaged Loop tab — MA or the
-// loop-started PA* conductor — is the cockpit.
+// unmerged (its own Agent/Ask/… thread). The engaged Loop tab (MA or the
+// loop-started PA* conductor) is the cockpit.
 
 import type { AgentMsg, ChatLogSession } from '../components/AgentChat.svelte'
 import type { FeedItem } from './types'
@@ -13,7 +13,7 @@ export type FeedSess = {
   name: string
   kind: string
   ts: number
-  /** Wall time this live dispatch started — last slice stamps here, not createdAt. */
+  /** Wall time this live dispatch started: last slice stamps here, not createdAt. */
   liveTs?: number
   messages: AgentMsg[]
 }
@@ -123,7 +123,7 @@ const LIVE_TS = Number.MAX_SAFE_INTEGER
 /**
  * One durable session per agent code accretes every loop iteration. Split on a
  * new user prompt or a turnEnd so the cockpit paints one card per dispatch,
- * stamped at that turn's time — not one card at the first createdAt.
+ * stamped at that turn's time: not one card at the first createdAt.
  */
 export function splitSessionTurns(s: FeedSess): FeedSess[] {
   const msgs = s.messages
@@ -279,7 +279,7 @@ export function mergeLoopCockpit(
     }
   }
   for (let i = 0; i < maRows.length; i++) {
-    // Opening prompt first — engine facts like "Starting loop for…" are
+    // Opening prompt first: engine facts like "Starting loop for…" are
     // stamped before the planner records the goal as a user message.
     // Unstamped / streaming Maestro rows count as "now" so those facts insert
     // before the live tail instead of after it.

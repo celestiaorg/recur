@@ -61,7 +61,7 @@ impl Walk {
             self.emit_feed(
                 "MA",
                 "Maestro",
-                &format!("{} — idling.", html_escape(&self.missing_guard)),
+                &format!("{}: idling.", html_escape(&self.missing_guard)),
             );
             self.set_state(WorkspaceState::Paused, "loop refs missing");
             return self;
@@ -283,7 +283,7 @@ impl Engine {
         };
         if !recur_git::is_repo(&proj.repo_path).await {
             return Err(EngineError(format!(
-                "project {:?} is not a git repository — workspaces need a git checkout",
+                "project {:?} is not a git repository: workspaces need a git checkout",
                 project_id
             )));
         }
@@ -402,7 +402,7 @@ impl Engine {
     ) -> Result<bool> {
         let goal = goal.trim();
         if goal.is_empty() {
-            return Err("the loop needs a goal — describe the task".into());
+            return Err("the loop needs a goal: describe the task".into());
         }
         let Some(rec) = self.store.workspace(workspace_id) else {
             return Err(EngineError(format!(
@@ -412,21 +412,21 @@ impl Engine {
         };
         if rec.is_main {
             return Err(
-                "the main working copy can't run the autopilot — create a workspace instead".into(),
+                "the main working copy can't run the autopilot: create a workspace instead".into(),
             );
         }
         if rec.is_pr_chat_host() {
             return Err("create a workspace from this pull request to run the autopilot".into());
         }
         if rec.has_run() {
-            return Err("this workspace already has a loop — resume or restart it instead".into());
+            return Err("this workspace already has a loop: resume or restart it instead".into());
         }
         if rec.phase == "failed" || rec.status_label == "Couldn't create" {
-            return Err("this workspace never finished creating — discard it and try again".into());
+            return Err("this workspace never finished creating: discard it and try again".into());
         }
         // An empty path is only OK while the worktree is still allocating.
         if rec.worktree_path.is_empty() && !self.creating_in_flight(workspace_id) {
-            return Err("this workspace never finished creating — discard it and try again".into());
+            return Err("this workspace never finished creating: discard it and try again".into());
         }
         let autonomy = valid_autonomy(self.store.policy().autonomy);
         if !loop_id.trim().is_empty() || !policy_id.trim().is_empty() {
@@ -468,7 +468,7 @@ impl Engine {
             )));
         };
         if !updated.has_run() {
-            return Err("this workspace never finished creating — discard it and try again".into());
+            return Err("this workspace never finished creating: discard it and try again".into());
         }
         self.publish_loop_updated(
             &updated.id,
@@ -788,7 +788,7 @@ impl Engine {
             "Maestro",
             "Restarting the loop over the current worktree.",
         );
-        "Loop restarting — it continues from the current worktree, steered by the recorded plan."
+        "Loop restarting: it continues from the current worktree, steered by the recorded plan."
             .into()
     }
 

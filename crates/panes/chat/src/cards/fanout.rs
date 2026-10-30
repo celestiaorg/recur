@@ -607,7 +607,7 @@ impl FanOutCard {
             let tip = if openable {
                 format!("Open {}", c.id)
             } else if !c.note.is_empty() {
-                format!("{} — click for the transcript", c.note)
+                format!("{}: click for the transcript", c.note)
             } else {
                 "Show the child transcript".into()
             };

@@ -24,7 +24,7 @@
 
 <div class="pr-people" data-ui-tip="off">
   {#if people.length}
-    <div class="pr-faces" aria-label="Participants: {people.map((person) => [participantLabel(person), reviewStateLabel(person.reviewState)].filter(Boolean).join(' — ')).filter(Boolean).join(', ')}">
+    <div class="pr-faces" aria-label="Participants: {people.map((person) => [participantLabel(person), reviewStateLabel(person.reviewState)].filter(Boolean).join(': ')).filter(Boolean).join(', ')}">
       {#each faces.shown as person (personKey(person))}
         {@const url = participantAvatarUrl(person)}
         {@const rev = person.reviewState}

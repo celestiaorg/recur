@@ -86,10 +86,10 @@ impl ChatTabsHead {
                 tab.title.clone()
             };
             let title = format!(
-                "{label} — {} mode{}{}",
+                "{label} · {} mode{}{}",
                 mode.label(),
-                if busy { " — running" } else { "" },
-                if unseen { " — new response" } else { "" }
+                if busy { " · running" } else { "" },
+                if unseen { " · new response" } else { "" }
             );
             let close = format!(
                 "Close {}",

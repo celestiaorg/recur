@@ -694,7 +694,7 @@ fn pr_fact(
 fn parse_loop_pr_facts() {
     assert_eq!(
         parse_loop_pr_fact(
-            "Opened a Local PR <code>#157</code> (+721 −0 across 8 files) — ready for your review."
+            "Opened a Local PR <code>#157</code> (+721 −0 across 8 files): ready for your review."
         ),
         Some(pr_fact(157, None, None, PrSource::Local))
     );
@@ -720,7 +720,7 @@ fn parse_loop_pr_facts() {
 
 #[test]
 fn github_fallback_note_is_not_an_opened_pr() {
-    let html = "GitHub PR not opened (gh pr create failed: a pull request already exists: https://github.com/acme/r/pull/39) — opening a Local PR instead.";
+    let html = "GitHub PR not opened (gh pr create failed: a pull request already exists: https://github.com/acme/r/pull/39): opening a Local PR instead.";
     assert_eq!(parse_loop_pr_fact(html), None);
     let ctx = PrCompletionCtx {
         fact_ts: 1000 + 37 * 60_000 + 11_000,
@@ -780,7 +780,7 @@ fn loop_pr_completions() {
         Some(completion("12m 04s", Some("p1"), "Local PR #157"))
     );
     let legacy =
-        "Opened a Local PR <code>#157</code> (+721 −0 across 8 files) — ready for your review.";
+        "Opened a Local PR <code>#157</code> (+721 −0 across 8 files): ready for your review.";
     let ctx = PrCompletionCtx {
         prs: vec![PrRef {
             id: "p1".into(),
@@ -809,12 +809,12 @@ fn loop_pr_completions() {
 
 #[test]
 fn loop_completion_wraps() {
-    let wrap = r#"<div class="loop-wrap"><b>Issue</b> ACME-1 — Flaky checkout<br><b>Done</b> Retry the token</div>"#;
+    let wrap = r#"<div class="loop-wrap"><b>Issue</b> ACME-1: Flaky checkout<br><b>Done</b> Retry the token</div>"#;
     let head = r#"Completed in 12m 04s · <a class="loop-pr-link" data-pr="p1">Local PR #157</a>"#;
     let html = format!("{head}{wrap}");
     assert_eq!(
         loop_completion_wrap(&html),
-        "<b>Issue</b> ACME-1 — Flaky checkout<br><b>Done</b> Retry the token"
+        "<b>Issue</b> ACME-1: Flaky checkout<br><b>Done</b> Retry the token"
     );
     assert_eq!(strip_loop_wrap(&html), head);
     assert_eq!(

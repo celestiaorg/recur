@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Unified merge view for observatory Diff mode — @codemirror/merge compares
+  // Unified merge view for observatory Diff mode: @codemirror/merge compares
   // current worktree content against the base (spin-off) document.
   import { onMount, onDestroy } from 'svelte'
   import { get } from 'svelte/store'
@@ -20,7 +20,7 @@
   import { editorFeatureExtensions } from '../lib/cm-editor-prefs'
   import { editorTheme, editorPrefs, EDITOR_FONT_STACK } from '../lib/stores'
 
-  /** Editor catalog kind — independent of app chrome light/dark. */
+  /** Editor catalog kind: independent of app chrome light/dark. */
   const edKind = $derived(editorThemeKind($editorTheme))
 
   let {
@@ -56,26 +56,26 @@
         original: orig,
         mergeControls: false,
         gutter: true,
-        // Word marks inside hunks — lineOrientedDiff refines replaces so these
+        // Word marks inside hunks: lineOrientedDiff refines replaces so these
         // aren't whole-line underlines.
         highlightChanges: true,
-        // Line Myers (like git), not CM's default char Myers + scanLimit:500 —
+        // Line Myers (like git), not CM's default char Myers + scanLimit:500:
         // that limiter collapses big edits into one whole-file hunk.
         diffConfig: { override: lineOrientedDiff },
         collapseUnchanged: { margin: 3, minSize: 6 },
       }),
       mergeRevertHover(),
-      // When word marks would paint an entire line, tag it — CSS clears the fill.
+      // When word marks would paint an entire line, tag it: CSS clears the fill.
       suppressFullLineWordMarks(),
       // Layout-only merge chrome. Colors (line washes, word fills, collapsed)
-      // live in the host stylesheet — CM merge baseTheme (`&.cm-merge-b
+      // live in the host stylesheet: CM merge baseTheme (`&.cm-merge-b
       // .cm-changedLine` → rgba(100,160,128,.08)) beats EditorView.theme.
       EditorView.theme({
         '.cm-deletedChunk': {
           position: 'relative',
           boxSizing: 'border-box',
         },
-        // Deleted lines are custom DOM (not .cm-line) — force full content width
+        // Deleted lines are custom DOM (not .cm-line): force full content width
         // so the chunk is one continuous band, not text-width strips.
         '.cm-deletedChunk .cm-deletedLine': {
           display: 'block',
@@ -213,7 +213,7 @@
   .merge-host :global(.cm-editor) {
     height: 100%;
   }
-  /* Collapsed unchanged — keyed to editor theme kind (not app chrome / .cm-dark).
+  /* Collapsed unchanged: keyed to editor theme kind (not app chrome / .cm-dark).
      !important beats CM merge baseTheme light/dark gradients.
      No display:flex + flex-grow (thrashes block-widget measure). */
   .merge-host.ed-dark :global(.cm-collapsedLines) {
@@ -238,7 +238,7 @@
     color: rgba(26, 28, 32, 0.78) !important;
     background: rgba(0, 0, 0, 0.07) !important;
   }
-  /* Line washes — beat `&.cm-merge-b .cm-changedLine` / `&.cm-merge-a .cm-deletedChunk`.
+  /* Line washes: beat `&.cm-merge-b .cm-changedLine` / `&.cm-merge-a .cm-deletedChunk`.
      Active line must compose with the hunk tint; the base rule's !important
      would otherwise replace `--cm-active-line` and leave a leftover sliver. */
   .merge-host :global(.cm-changedLine),
@@ -263,7 +263,7 @@
   .merge-host :global(.cm-deletedChunk) {
     background-color: color-mix(in srgb, var(--git-d) 10%, transparent) !important;
   }
-  /* Word marks — kill CM merge underline gradients (`background: linear-gradient…
+  /* Word marks: kill CM merge underline gradients (`background: linear-gradient…
      bottom/100% 2px`). Must beat `&dark.cm-merge-b .cm-changedText` specificity. */
   .merge-host :global(.cm-changedText),
   .merge-host :global(.cm-insertedLine .cm-changedText) {
@@ -279,7 +279,7 @@
     border-radius: 2px;
     text-decoration: none;
   }
-  /* Whole-line word marks — line wash is enough (see suppressFullLineWordMarks). */
+  /* Whole-line word marks: line wash is enough (see suppressFullLineWordMarks). */
   .merge-host :global(.cm-fullLineChange .cm-changedText) {
     background: transparent !important;
     background-image: none !important;
@@ -289,7 +289,7 @@
     background: transparent !important;
     background-image: none !important;
   }
-  /* Revert chip — floats just below the hunk (hover or caret). Hidden when RO.
+  /* Revert chip: floats just below the hunk (hover or caret). Hidden when RO.
      Opaque editor-surface lift so hunk green/red cannot show through. */
   .merge-host.ro :global(.cm-revertHunk) {
     display: none;

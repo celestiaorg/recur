@@ -132,7 +132,7 @@ impl Default for ChatProps {
             shell_active: true,
             presentation_active: true,
             reset_key: String::new(),
-            empty_text: "Ask where this loop stands, or steer it — it can re-plan within your rails, but never cross them.".into(),
+            empty_text: "Ask where this loop stands, or steer it: it can re-plan within your rails, but never cross them.".into(),
             placeholder: "Ask where things stand, or steer the loop…".into(),
             context_usage: None,
             root_path: String::new(),

@@ -119,7 +119,7 @@ impl Tool for ReadArtifactTool {
 
     fn description(&self) -> &'static str {
         "Read one workspace artifact by id (from list_artifacts). Returns JSON with id, title, \
-kind, path, and content for text kinds. PNG/JPEG are binary and are not inlined — use \
+kind, path, and content for text kinds. PNG/JPEG are binary and are not inlined: use \
 present_artifact to show them. Prefer this over searching the git worktree or the Recur data dir."
     }
 

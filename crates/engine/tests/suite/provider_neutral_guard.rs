@@ -41,7 +41,7 @@ fn every_turn_goes_through_run_mirrored() {
         let allowed = usize::from(path.ends_with("src/turn/mod.rs"));
         assert!(
             n <= allowed,
-            "{path} dispatches a turn via .run_turn( — use Engine::run_agent so routing and the mirror apply"
+            "{path} dispatches a turn via .run_turn(: use Engine::run_agent so routing and the mirror apply"
         );
     }
 }

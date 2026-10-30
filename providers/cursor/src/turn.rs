@@ -38,12 +38,12 @@ use crate::tools::display_tool;
 
 /// What a call shows when Cursor never reported a result. States only what
 /// is known: the provider gives no reason.
-pub(crate) const UNREPORTED_RESULT_TEXT: &str = "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.";
+pub(crate) const UNREPORTED_RESULT_TEXT: &str = "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available: the agent's own reply usually explains it.";
 
 /// The synthetic result when a steer CancelRun interrupts in-flight tools:
 /// cancelled, not failed.
 pub(crate) const STEER_CANCELLED_CALL_TEXT: &str =
-    "Interrupted by a Maestro steer — this call was cancelled, not failed.";
+    "Interrupted by a Maestro steer: this call was cancelled, not failed.";
 
 /// The turn inputs the fold reads.
 #[derive(Debug, Clone, Default)]

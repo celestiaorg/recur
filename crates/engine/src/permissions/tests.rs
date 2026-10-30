@@ -95,7 +95,7 @@ async fn times_out_as_denial() {
         .expect("timeout is a verdict");
     assert!(!d.allow);
     assert!(d.reason.contains("no answer"), "{}", d.reason);
-    assert_eq!(d.reason, "no answer within 10ms — denied automatically");
+    assert_eq!(d.reason, "no answer within 10ms: denied automatically");
     assert!(b.pending().is_empty());
 }
 

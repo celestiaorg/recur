@@ -35,7 +35,7 @@ impl Engine {
             .ok_or_else(|| EngineError(format!("workspace {workspace_id:?} not found")))?;
         if ws.is_main {
             return Err(
-                "the main working copy has no merge base — it tracks the checkout as-is".into(),
+                "the main working copy has no merge base: it tracks the checkout as-is".into(),
             );
         }
         if ws.base_branch == base_branch {
@@ -101,7 +101,7 @@ impl Engine {
             "AR",
             "You",
             &format!(
-                "Target branch is now <code>{}</code> — diffs and PRs compare against it.",
+                "Target branch is now <code>{}</code>: diffs and PRs compare against it.",
                 html_escape(base_branch)
             ),
         );

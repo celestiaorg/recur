@@ -42,7 +42,7 @@ impl Walk {
                     self.emit_feed(
                         "MA",
                         "Maestro",
-                        &format!("Checkpoint phase {} is gone — idling.", html_escape(id)),
+                        &format!("Checkpoint phase {} is gone: idling.", html_escape(id)),
                     );
                     self.set_state(WorkspaceState::Paused, "phase missing");
                     return;
@@ -88,7 +88,7 @@ impl Walk {
                 self.emit_feed(
                     "MA",
                     "Maestro",
-                    &format!("Phase {} is gone — idling.", html_escape(&id)),
+                    &format!("Phase {} is gone: idling.", html_escape(&id)),
                 );
                 self.set_state(WorkspaceState::Paused, "phase missing");
                 return;
@@ -115,7 +115,7 @@ impl Walk {
             }
             steps += 1;
             if steps >= WALK_STEP_CAP {
-                self.emit_feed("MA", "Maestro", "Walk-step cap reached — escalating.");
+                self.emit_feed("MA", "Maestro", "Walk-step cap reached: escalating.");
                 let open = self.eng.store.open_findings_count(&self.id) as i64;
                 let (st, more) = self.escalate_at_cap_apply(cancel, steps as i64, open).await;
                 if more == 0 && st != WorkspaceState::PrOpen {
@@ -169,7 +169,7 @@ impl Walk {
                     "MA",
                     "Maestro",
                     &format!(
-                        "Phase {} failed ({}) — retrying.",
+                        "Phase {} failed ({}): retrying.",
                         html_escape(&ph.id),
                         html_escape(&err.to_string())
                     ),
@@ -279,7 +279,7 @@ impl Walk {
                     );
                 }
                 self.eng.mark_group(&self.id, Group::Ready);
-                self.set_state(WorkspaceState::PrOpen, "PR open — ready for your review");
+                self.set_state(WorkspaceState::PrOpen, "PR open: ready for your review");
                 let n = ph.next.trim();
                 if !n.is_empty() {
                     self.set_walk_phase(n);
@@ -443,7 +443,7 @@ impl Walk {
             "MA",
             "Maestro",
             &format!(
-                "Phase {} findings_threshold is looser than policy {} — using the policy bar.",
+                "Phase {} findings_threshold is looser than policy {}: using the policy bar.",
                 html_escape(&ph.id),
                 html_escape(&self.guard.policy.id)
             ),

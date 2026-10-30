@@ -1,5 +1,5 @@
 /** Chat modes: how a chat tab's agent may act.
- *  The mode is a property of the chat session, not the workspace — it sits in
+ *  The mode is a property of the chat session, not the workspace: it sits in
  *  the chat dock next to the model picker and is switchable mid-chat. Values
  *  mirror internal/domain NormalizeChatMode; unknown/empty degrade to agent. */
 
@@ -27,7 +27,7 @@ export type ChatModeOption = {
 }
 
 /** Selector rows, in display order. Hints are
- *  deliberately terse — they render inline in the dock menu, where a sentence
+ *  deliberately terse: they render inline in the dock menu, where a sentence
  *  gets cut off. Plan's yellow is a literal (no palette var is a true yellow)
  *  and deliberately distinct from both Review's indigo and Loop's amber. */
 export const CHAT_MODES: ChatModeOption[] = [
@@ -57,7 +57,7 @@ const RUN_SETTLED_PAUSE = new Set(['idle', 'artifact', 'phase missing', 'loop re
 
 /** Autopilot currently owns the worktree (mirrors domain.RunActive), plus a live
  *  paused/escalated goroutine that will resume editing. Walker-idle pauses are
- *  settled — the human can commit/merge. */
+ *  settled: the human can commit/merge. */
 export function wsRunActive(w?: { state?: string; phase?: string } | null): boolean {
   if (!w?.state) return false
   if (RUN_ACTIVE.has(w.state)) return true
@@ -78,10 +78,10 @@ export function workspaceIsRunning(
   return RUN_ACTIVE.has(w.state)
 }
 
-/** Parked items that need the human, per workspace. Stays until answered —
+/** Parked items that need the human, per workspace. Stays until answered:
  *  unlike unseen-chat counts, which clear when the row is viewed. GroupNeeds
  *  (retryable fail, interrupted recover) counts once even without a prompt;
- *  hidden PR-chat hosts stay off the sidebar — their attention is the PR surface. */
+ *  hidden PR-chat hosts stay off the sidebar: their attention is the PR surface. */
 export function parkedNeedsYouByWorkspace(
   workspaces: readonly { id?: string; state?: string; group?: string; archived?: boolean; hostPrId?: string }[] = [],
   questions: readonly { workspaceId?: string }[] = [],
@@ -127,8 +127,8 @@ export function wsCreating(w?: {
     (w.phase === 'creating' || (w.phase === 'waiting for a slot' && !w.worktreePath))
 }
 
-/** Editor + files overlay. Unblocked once the worktree is on disk — same as a
- *  loop waiting for a slot after allocate — even while phase is still creating.
+/** Editor + files overlay. Unblocked once the worktree is on disk (same as a
+ *  loop waiting for a slot after allocate), even while phase is still creating.
  *  No tree plus a create/allocate error overlays even for a loop (HasRun),
  *  because there is nothing to show; a failed setup that kept the tree does
  *  not (the status strip surfaces lastError so files stay reachable). */
@@ -163,7 +163,7 @@ export function normalizeChatMode(m?: string | null): ChatMode {
   }
 }
 
-/** Options offered by the dock selector — icon + tint + hint travel to the
+/** Options offered by the dock selector: icon + tint + hint travel to the
  *  Select rows so every mode reads at a glance. excludeLoop drops the Loop row
  *  for surfaces where the autopilot can't run (the main working copy).
  *  excludeAgent drops Agent for PR chat hosts. */

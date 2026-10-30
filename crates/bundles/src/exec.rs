@@ -387,7 +387,7 @@ pub async fn run_prompt_shebang(
     let id = format!("{:?}", prompt.id);
     if crate::is_script_interpreter(&prompt.interpreter) {
         return Err(err!(
-            "prompt {id} is {} — use CompiledPromptModule",
+            "prompt {id} is {}: use CompiledPromptModule",
             prompt.interpreter
         ));
     }
@@ -490,7 +490,7 @@ pub async fn run_prompt_complete_shebang(
     if prompt.complete_interpreter != INTERPRETER_SHEBANG && !prompt.complete_interpreter.is_empty()
     {
         return Err(err!(
-            "prompt {id} complete is {} — use CompiledCompleteModule",
+            "prompt {id} complete is {}: use CompiledCompleteModule",
             prompt.complete_interpreter
         ));
     }

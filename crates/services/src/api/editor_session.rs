@@ -3,11 +3,11 @@ use async_trait::async_trait;
 use super::{EditorSession, EditorSessionPatch};
 use crate::Result;
 
-/// EditorSessionService persists per-workspace editor UI state — open tabs,
+/// EditorSessionService persists per-workspace editor UI state: open tabs,
 /// selection, scratch docs, unsaved ("stashed") buffers, per-file caret /
 /// scroll / Code|Preview|Diff, TextMate language-mode overrides, whether
 /// the Observatory main column is Editor or Review, and left/right pane
-/// kind plus visibility — as one gzipped JSON snapshot under the workspace
+/// kind plus visibility: as one gzipped JSON snapshot under the workspace
 /// data dir:
 ///
 /// ```text
@@ -36,7 +36,7 @@ pub trait EditorSessionService: Send + Sync {
 
     /// UpdateEditorSession merges one patch into the stored session and writes it
     /// through. A session that ends up empty (no tabs, no buffers, no scratch, no
-    /// language-mode maps, editor column) is deleted — an explicitly closed-out
+    /// language-mode maps, editor column) is deleted: an explicitly closed-out
     /// editor must not resurrect on restart. Language overrides and the Review
     /// column outlive the tab strip: closing the last tab keeps the file if
     /// syntax maps remain or Review is showing.

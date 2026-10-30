@@ -803,7 +803,7 @@ async fn run_prompt_shebang_issue_errors_and_timeout() {
         .unwrap_err();
     assert_eq!(
         err.0,
-        "prompt \"p\" is typescript — use CompiledPromptModule"
+        "prompt \"p\" is typescript: use CompiledPromptModule"
     );
 
     let not_json = PromptAction {

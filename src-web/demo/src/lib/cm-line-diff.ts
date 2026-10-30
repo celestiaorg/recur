@@ -2,7 +2,7 @@
 //
 // @codemirror/merge defaults to character Myers with scanLimit: 500. On a
 // medium/large file that has been substantially edited (e.g. agent work vs
-// spin-off base), the limiter collapses the whole remainder into one Change —
+// spin-off base), the limiter collapses the whole remainder into one Change:
 // so Diff paints nearly the entire file as a single hunk even when `git diff`
 // reports many tight hunks. Git diffs lines; we do the same.
 //
@@ -10,7 +10,7 @@
 // own `diff` on the encoded strings (line Myers), then expand offsets back to
 // character ranges in the original documents.
 //
-// Always pass scanLimit/timeout into the inner `diff` — unrestricted Myers on
+// Always pass scanLimit/timeout into the inner `diff`: unrestricted Myers on
 // a large, highly divergent file freezes the UI (main-thread O(n·d)).
 
 import { Change, diff, presentableDiff } from '@codemirror/merge'
@@ -26,7 +26,7 @@ const LINE_DIFF_TIMEOUT_MS = 80
 /** Per-hunk char refine for highlightChanges (word marks inside line chunks). */
 const WORD_DIFF_SCAN_LIMIT = 500
 const WORD_DIFF_TIMEOUT_MS = 40
-/** Skip refine when both sides of a hunk are huge — keep the line Change. */
+/** Skip refine when both sides of a hunk are huge: keep the line Change. */
 const WORD_DIFF_MAX_CHARS = 20_000
 
 export type LineSplit = { lines: string[]; starts: number[] }
@@ -68,12 +68,12 @@ export function toCharChanges(
   )
 }
 
-/** Whole-document replace — last-resort when we can't afford a real diff. */
+/** Whole-document replace: last-resort when we can't afford a real diff. */
 function wholeFileChange(aLen: number, bLen: number): readonly Change[] {
   return [new Change(0, aLen, 0, bLen)]
 }
 
-/** Line-index hunk (0-based, exclusive ends) — same bounds git would use. */
+/** Line-index hunk (0-based, exclusive ends): same bounds git would use. */
 export type LineHunk = {
   fromA: number
   toA: number
@@ -133,7 +133,7 @@ export function lineHunks(a: string, b: string): LineHunk[] {
 /**
  * Word/char refine inside each line-level replace so `highlightChanges` can
  * mark tokens instead of whole lines. Pure inserts/deletes stay as-is.
- * Uses CM `presentableDiff` (word-boundary cleanup) with a tight budget —
+ * Uses CM `presentableDiff` (word-boundary cleanup) with a tight budget:
  * never passes our override, so no recursion.
  */
 export function refineForHighlights(a: string, b: string, lineChanges: readonly Change[]): readonly Change[] {
@@ -174,7 +174,7 @@ export function refineForHighlights(a: string, b: string, lineChanges: readonly 
 }
 
 /**
- * DiffConfig.override for unifiedMergeView — line Myers for hunk boundaries
+ * DiffConfig.override for unifiedMergeView: line Myers for hunk boundaries
  * (close to `git diff`), then char refine inside replaces for word highlights.
  */
 export function lineOrientedDiff(a: string, b: string): readonly Change[] {
@@ -187,7 +187,7 @@ export function lineOrientedDiff(a: string, b: string): readonly Change[] {
 
   let lineChanges: readonly Change[]
   if (!encoded) {
-    // Too many unique lines — bounded char Myers, never unbounded.
+    // Too many unique lines: bounded char Myers, never unbounded.
     try {
       lineChanges = diff(a, b, conf)
     } catch {

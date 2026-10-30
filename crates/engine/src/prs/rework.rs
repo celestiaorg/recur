@@ -154,7 +154,7 @@ impl Engine {
             return "send_back refused: instruction is empty.".into();
         }
         let Some(pr) = self.store.open_pr_by_workspace(workspace_id) else {
-            return "send_back refused: this loop has no open PR — use plan to steer while it's still running.".into();
+            return "send_back refused: this loop has no open PR; use plan to steer while it's still running.".into();
         };
         if pr.state == "Merged" || pr.group == "merged" {
             return "send_back refused: the PR is already merged.".into();
@@ -164,9 +164,9 @@ impl Engine {
             .await
             .1
         {
-            return "send_back failed — the PR or its loop is unavailable.".into();
+            return "send_back failed: the PR or its loop is unavailable.".into();
         }
-        "Sent review back — Maestro will answer or call reenter_phase.".into()
+        "Sent review back: Maestro will answer or call reenter_phase.".into()
     }
 
     /// Integrates the latest base tip into the PR's worktree: a clean

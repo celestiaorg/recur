@@ -990,11 +990,11 @@ impl PrDetail {
             }
             cx.update(|cx| {
                 if n == 1 {
-                    toast(ToastKind::Success, "Saved — submit your review to post", cx);
+                    toast(ToastKind::Success, "Saved: submit your review to post", cx);
                 } else if n > 1 {
                     toast(
                         ToastKind::Success,
-                        format!("{n} comments pending — submit a review to post them"),
+                        format!("{n} comments pending: submit a review to post them"),
                         cx,
                     );
                 }

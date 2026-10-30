@@ -171,7 +171,7 @@ impl Tool for ExtendRoundsTool {
 
     fn description(&self) -> &'static str {
         "Grant extra converge rounds. Legal only while the live converge is still \
-escalated at the round cap — not agent questions, walk-step waits, or a stopped loop. \
+escalated at the round cap: not agent questions, walk-step waits, or a stopped loop. \
 After the loop has stopped, use reenter_phase instead. Optional n defaults to the policy value."
     }
 
@@ -208,7 +208,7 @@ impl Tool for ReenterPhaseTool {
     fn description(&self) -> &'static str {
         "Idle only (no live walk: stopped/failed/settled, or paused with no goroutine). \
 Start a new walk from a graph phase on the loop's reenter list (usually converge). \
-Not for a live walk — including a checkpoint pause (Resume continues that) or a \
+Not for a live walk, including a checkpoint pause (Resume continues that) or a \
 round-cap escalation (extend_rounds)."
     }
 

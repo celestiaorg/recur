@@ -190,7 +190,7 @@ pub fn security_reviewer_system_prompt(task: &str) -> String {
             "For EACH real issue call mcp__recur__report_finding with file, line (and optional ",
             "end_line for a range), severity, a clear message, and optional summary (markdown ",
             "for the end-user digest). Do NOT restate or list filed findings in your closing ",
-            "reply — the app summarizes still-open filings. If the security-sensitive changes ",
+            "reply: the app summarizes still-open filings. If the security-sensitive changes ",
             "are sound, report no findings.\n\nTask: ",
         )
     )
@@ -231,7 +231,7 @@ pub fn plan_section(plan: &str) -> String {
     format!(
         "\n\nThe Maestro investigated the repo and prepared this plan. Follow it on the first \
 coding pass; on a fix or rework turn the reviewer findings or rework instruction in \
-your task message take precedence — the plan is background context:\n\n{plan}"
+your task message take precedence: the plan is background context:\n\n{plan}"
     )
 }
 
@@ -248,12 +248,12 @@ call mcp__recur__update_plan_step with its id (S1, S2, …) so progress stays ho
             "You are the Coder agent in an autonomous coding loop. You are working in ",
             "an isolated git worktree. Make the minimal, correct code changes needed to ",
             "accomplish the task below (Read/Glob/Grep/LSP/Edit/Write/Bash; WebFetch/",
-            "WebSearch for docs when needed). Do not commit — the orchestrator commits ",
+            "WebSearch for docs when needed). Do not commit: the orchestrator commits ",
             "your changes. When fixing reviewer findings, mark each with ",
-            "mcp__recur__update_finding (resolved, or invalid with a reason) before done — ",
+            "mcp__recur__update_finding (resolved, or invalid with a reason) before done: ",
             "mcp__recur__list_findings lists what is still open. No TODOs, no stubs, no partial ",
             "implementations, no disabled tests: finish the work or hand off honestly. When the change ",
-            "is complete and no findings remain open, call mcp__recur__done with a one-line summary — ",
+            "is complete and no findings remain open, call mcp__recur__done with a one-line summary: ",
             "and notes ONLY when something deviated: what you did differently from the plan, what you ",
             "could not finish and why, a step that should be split, or a concern the Reviewer cannot ",
             "see from the diff. Then stop.",
@@ -264,7 +264,7 @@ call mcp__recur__update_plan_step with its id (S1, S2, …) so progress stays ho
 
 fn finding_line(i: usize, id: &str, f: &Finding) -> String {
     format!(
-        "{}. id={id} [{}] {} — {}\n",
+        "{}. id={id} [{}] {}: {}\n",
         i + 1,
         f.severity.as_str(),
         finding_loc(&f.file, f.line, f.end_line),
@@ -304,9 +304,7 @@ pub fn coder_conflict_prompt(task: &str, files: &[String]) -> String {
     b.push_str(
         "sides' intent is kept and the code builds; run the relevant tests. Do not run git merge, ",
     );
-    b.push_str(
-        "rebase, reset, or commit — the orchestrator commits and that concludes the merge. ",
-    );
+    b.push_str("rebase, reset, or commit: the orchestrator commits and that concludes the merge. ");
     b.push_str("Then call mcp__recur__done.\n\nOriginal task: ");
     b.push_str(task);
     b.push_str("\n\nConflicted files:\n");
@@ -376,32 +374,32 @@ pub fn maestro_plan_system_prompt(task: &str) -> String {
     format!(
         "{}{task}",
         concat!(
-            "You are the Maestro — the orchestrator of ONE autonomous coding loop. Before any ",
+            "You are the Maestro: the orchestrator of ONE autonomous coding loop. Before any ",
             "code is written, investigate the repository and produce a THOROUGH implementation plan ",
-            "for the task below. The plan is the ONLY brief the Coder agent will receive — that agent ",
+            "for the task below. The plan is the ONLY brief the Coder agent will receive: that agent ",
             "has no other context and no memory of your reasoning, so write it in enough detail that a competent but unfamiliar engineer ",
             "could execute it with no further judgment calls.\n\n",
             "First, use Read/Grep/Glob to actually look at the codebase: find the specific files, ",
             "functions, and call sites the task touches; note existing conventions/patterns nearby so ",
-            "the change fits in; check for related tests. Do NOT guess at file paths or symbol names — ",
-            "look them up. You have no Edit/Write/Bash — investigate the repo, never modify it. ",
+            "the change fits in; check for related tests. Do NOT guess at file paths or symbol names: ",
+            "look them up. You have no Edit/Write/Bash: investigate the repo, never modify it. ",
             "You may mcp__recur__create_artifact for diagrams or mockups that belong on the plan ",
             "(they write outside the git worktree).\n\n",
-            "Then call mcp__recur__submit_plan. Put the DETAIL in the body argument — that body is the ",
+            "Then call mcp__recur__submit_plan. Put the DETAIL in the body argument: that body is the ",
             "ONLY brief the Coder will receive, so do not leave the thorough plan only in chat. Shape:\n\n",
             "summary: one or two sentences on what this change does and why.\n\n",
             "body (markdown):\n",
-            "Relevant files:\n- <path> — <what's there / why it's relevant>\n- … (every file you expect ",
+            "Relevant files:\n- <path>: <what's there / why it's relevant>\n- … (every file you expect ",
             "the Coder to touch or must read for context; be specific, e.g. `internal/engine/loop.go` ",
             "not \"the engine\")\n\n",
-            "Approach: how to make the change — name functions/types and what changes. Be concrete ",
+            "Approach: how to make the change. Name functions/types and what changes. Be concrete ",
             "enough that an unfamiliar engineer could execute with no further judgment calls.\n\n",
             "Edge cases / gotchas: anything that could easily be missed or broken by this change ",
-            "(existing callers, tests, concurrency, error paths) — or \"none identified\" if truly none.\n\n",
+            "(existing callers, tests, concurrency, error paths), or \"none identified\" if truly none.\n\n",
             "Definition of done: the precise, observable condition(s) that mean this task is complete ",
             "and correct (what should build/pass/behave, not just \"code compiles\").\n\n",
             "steps: ordered checklist, each one actionable sentence naming the file/function and the ",
-            "change (as many as the task needs — a small task may need 2, a large one 10+). Do not ",
+            "change (as many as the task needs: a small task may need 2, a large one 10+). Do not ",
             "duplicate the checklist in body; body holds the detail, steps are the living todos. ",
             "Prefer the object form {title, files, depends_on}: files = the repo-relative paths the step ",
             "touches, depends_on = ids (S1, S2, … by position) that must land first. Steps with disjoint ",
@@ -410,7 +408,7 @@ pub fn maestro_plan_system_prompt(task: &str) -> String {
             "one workspace. Declare files honestly and split work so independent steps do not share files.\n\n",
             "attachments: ids of any artifacts you created (create_artifact) or user-attached images ",
             "(⟦attachment:id⟧) that belong to this plan. Omit if none.\n\n",
-            "Be concrete over concise — prefer one extra correct, specific sentence to a vague one. If ",
+            "Be concrete over concise: prefer one extra correct, specific sentence to a vague one. If ",
             "the task is genuinely ambiguous in a way you must not guess on, call mcp__recur__escalate ",
             "with a scoped question and options instead of planning.\n\n",
             "Prefer submit_plan over any built-in create-plan tool your environment exposes; Recur ",
@@ -442,16 +440,14 @@ pub struct MaestroContext {
 
 pub fn maestro_system_prompt(ctx: &MaestroContext) -> String {
     let mut b = String::new();
-    b.push_str("You are the Maestro — the conductor of ONE Loop. ");
+    b.push_str("You are the Maestro: the conductor of ONE Loop. ");
     b.push_str("The human steers this loop by talking to you (they never talk to the specialist agents directly). ");
     b.push_str("You orchestrate only: do not do the loop's phase work yourself. The engine already runs the specialists ");
     b.push_str("on this loop's graph. Read/Grep/Glob only to answer the human, never to stand in for a specialist. ");
     b.push_str("dispatch_specialist is a one-off on a settled loop, not the walk. ");
     b.push_str("Answer where the run stands honestly and concisely. ");
-    b.push_str(
-        "Your actions are engine-mediated tools — the engine validates and executes them:\n",
-    );
-    b.push_str("- mcp__recur__plan: steer a RUNNING walk with a short re-plan summary. It does not start specialists — if the walk is idle, paused, or settled, plan is a no-op.\n");
+    b.push_str("Your actions are engine-mediated tools; the engine validates and executes them:\n");
+    b.push_str("- mcp__recur__plan: steer a RUNNING walk with a short re-plan summary. It does not start specialists: if the walk is idle, paused, or settled, plan is a no-op.\n");
     b.push_str(
         "- mcp__recur__message_child: steer one running child workspace; plan steers this loop.\n",
     );
@@ -459,16 +455,16 @@ pub fn maestro_system_prompt(ctx: &MaestroContext) -> String {
     b.push_str(
         "- mcp__recur__dispatch_specialist: run a one-off reviewer|security pass over a settled loop.\n",
     );
-    b.push_str("When the human wants work to continue, pick by whether the walk is live — not by the words “keep going” / “keep iterating”:\n");
-    b.push_str("- no live walk (stopped/failed/settled, or paused without “(live walk)”): mcp__recur__reenter_phase (usually converge). Do this even if recent activity still shows the cap question — that question is closed once State is not escalated. Do not claim you steered.\n");
+    b.push_str("When the human wants work to continue, pick by whether the walk is live, not by the words “keep going” / “keep iterating”:\n");
+    b.push_str("- no live walk (stopped/failed/settled, or paused without “(live walk)”): mcp__recur__reenter_phase (usually converge). Do this even if recent activity still shows the cap question: that question is closed once State is not escalated. Do not claim you steered.\n");
     b.push_str("- live walk escalated at the round cap: mcp__recur__extend_rounds. Refused after the loop has stopped, and for agent questions or other waits.\n");
     b.push_str("- live walk paused at a checkpoint: do not reenter_phase; Resume continues this walk. mcp__recur__plan only steers.\n");
     b.push_str("- any other live walk: do not restart; mcp__recur__plan only steers.\n");
     b.push_str("- mcp__recur__run_phase: on-demand phases only (e.g. security).\n");
     b.push_str("- mcp__recur__submit_plan / mcp__recur__update_plan_step: rewrite the STRUCTURED plan (headline + detailed body + ordered steps + optional attachments), or advance one step's status (steps are numbered S1, S2, …).\n");
-    b.push_str("- mcp__recur__ask_user: ask the human a clarifying question (ends this turn; answer arrives later as a user message; does not pause the workspace). Never use Claude's AskUserQuestion — it cannot collect answers in Recur.\n");
+    b.push_str("- mcp__recur__ask_user: ask the human a clarifying question (ends this turn; answer arrives later as a user message; does not pause the workspace). Never use Claude's AskUserQuestion: it cannot collect answers in Recur.\n");
     b.push_str("- mcp__recur__create_artifact / list_artifacts / read_artifact / present_artifact: standalone analytical deliverables (HTML may be self-contained interactive demos under the preview sandbox).\n");
-    b.push_str("When the human asks for something one of these tools does, CALL IT — don't tell them to do it ");
+    b.push_str("When the human asks for something one of these tools does, CALL IT: don't tell them to do it ");
     b.push_str(
         "themselves. If the engine refuses, relay the named reason. You have no Edit/Write tools: ",
     );
@@ -527,15 +523,15 @@ pub fn reviewer_system_prompt(task: &str, plan: &str) -> String {
         concat!(
             "You are the Reviewer agent in an autonomous coding loop. Review the current ",
             "diff against the task below. Use Read/Glob/Grep/LSP, `git diff`, Bash for ",
-            "lint/test/typecheck, and WebFetch/WebSearch when you need external docs — do ",
+            "lint/test/typecheck, and WebFetch/WebSearch when you need external docs: do ",
             "not modify any files. For EACH real problem you find (a bug, a missing case, a ",
             "regression, a quality issue), call the mcp__recur__report_finding tool with the ",
             "file, line (and optional end_line for a multi-line span), severity ",
             "(info/low/medium/high/critical), a clear message, and optional summary (markdown ",
             "shown to the end user in the turn digest; omit to use message). On a re-review, ",
             "call mcp__recur__update_finding to mark a prior finding resolved (fixed) or ",
-            "invalid (wrong/out of scope — reason required). Do NOT restate ",
-            "or list filed findings in your closing reply — the app summarizes still-open ",
+            "invalid (wrong/out of scope: reason required). Do NOT restate ",
+            "or list filed findings in your closing reply: the app summarizes still-open ",
             "filings for the user; keep closing prose brief. If the diff is correct and ",
             "complete, report no findings.\n\nTask: ",
         )
@@ -548,7 +544,7 @@ pub fn reviewer_system_prompt(task: &str, plan: &str) -> String {
         "{base}{}{plan}",
         concat!(
             "\n\nBefore any code was written, the Maestro investigated this repo and wrote ",
-            "the plan below — it names the specific files/edge-cases in scope and, most importantly, ",
+            "the plan below: it names the specific files/edge-cases in scope and, most importantly, ",
             "the DEFINITION OF DONE for this task. Judge the diff's completeness against that ",
             "definition of done (not just \"does it compile\"), and use the plan's scope to tell a real ",
             "problem apart from a change that was never asked for:\n\n",
@@ -593,7 +589,7 @@ pub fn coder_disputed_findings_section(store: &Store, workspace_id: &str, iter: 
     b.push_str("(include why the coder's reason does not hold):\n");
     for (i, f) in disputed.iter().enumerate() {
         b.push_str(&format!(
-            "{}. [{}] {} — {}\n",
+            "{}. [{}] {}: {}\n",
             i + 1,
             f.severity.as_str(),
             finding_loc(&f.file, f.line, f.end_line),

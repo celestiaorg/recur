@@ -35,7 +35,7 @@ const ORDER_PIN = {
   'monokai-dark': 69,
 }
 
-/** Not filmgirl’s copy — Recur already has a better source. */
+/** Not filmgirl’s copy: Recur already has a better source. */
 const SKIP_FILES = new Set([
   'Birds of Paradise.tmTheme',
   'Made of Code.tmTheme',

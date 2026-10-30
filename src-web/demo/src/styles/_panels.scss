@@ -81,8 +81,8 @@ body.resizing-panels * {
 }
 
 /* Maximized (⌃⇧`): the dock overlays the WHOLE Observatory. Chrome stays in
-   layout (so restore has somewhere to shrink to). A sibling frost layer —
-   translucent + backdrop-filter — lets the Observatory show through *behind
+   layout (so restore has somewhere to shrink to). A sibling frost layer
+   (translucent + backdrop-filter) lets the Observatory show through *behind
    the terminal text*, not as a separate sheet around it. */
 /* Loop cockpit specialist runs: same bordered card as fan-out rows. */
 .sesscard {
@@ -404,7 +404,7 @@ body.resizing-panels * {
 }
 
 /* Full child transcript: hugged and capped like a specialist card body (it
-   scrolls inside), flush with the wave card — no second border or background
+   scrolls inside), flush with the wave card: no second border or background
    inside the card it already sits in. */
 .fanout-transcript .fanout-body {
   --sess-body-max: 360px;

@@ -298,7 +298,7 @@ pub async fn check_pin_drift() -> Result<String, String> {
         return Ok(latest);
     }
     Err(format!(
-        "cursor-sdk pin drift: pinned={PINNED_SDK_VERSION} pypi_latest={latest} — re-pin (see .agents/skills/repin-cursor-sdk/SKILL.md)"
+        "cursor-sdk pin drift: pinned={PINNED_SDK_VERSION} pypi_latest={latest}: re-pin (see .agents/skills/repin-cursor-sdk/SKILL.md)"
     ))
 }
 

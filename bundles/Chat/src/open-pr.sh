@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Open-PR prompt with worktree diff embedded so the agent can write the GitHub
 # description without a discovery loop. RunPromptShebang copies this to a temp
-# file — source via RECUR_BUNDLE_SUPPORT, not $0.
+# file: source via RECUR_BUNDLE_SUPPORT, not $0.
 #
 # /open-draft-pr shares this script (RECUR_PR_DRAFT=1 or slash open-draft-pr)
 # and asks the agent to pass draft:true on mcp__recur__open_pr.
@@ -9,7 +9,7 @@
 # If Recur already has an open GitHub PR for this workspace, emit an empty
 # prompt (host toasts display, no LLM turn) so a second /open-pr does not
 # waste tokens rewriting the description. Push new commits from the titlebar
-# instead. A Local fallback (gh create failed) is not treated as open — the
+# instead. A Local fallback (gh create failed) is not treated as open: the
 # agent must be able to retry mcp__recur__open_pr.
 set -euo pipefail
 
@@ -62,7 +62,7 @@ parts = [
     "",
     "- If you have any skills related to creating PRs, invoke them now. Instructions there should take precedence over these instructions.",
     "- If git status shows uncommitted changes, review them and commit them. Write a clear message from the diff. Do not amend unless the user asked. Uncommitted work is not included in the PR.",
-    "- Git context is already gathered below — do NOT re-run git status/diff/log unless something looks incomplete. Describe not just this chat turn but ALL changes versus the base.",
+    "- Git context is already gathered below: do NOT re-run git status/diff/log unless something looks incomplete. Describe not just this chat turn but ALL changes versus the base.",
     open_step,
     "- If any of these steps fail, call mcp__recur__ask_user for help.",
     "",

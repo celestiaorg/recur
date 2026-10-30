@@ -162,12 +162,12 @@ impl Walk {
                 skipped_coder = true;
                 self.set_iteration(iter);
                 let msg = if board_ran {
-                    "Board finished — reviewing the aggregate diff.".to_owned()
+                    "Board finished: reviewing the aggregate diff.".to_owned()
                 } else if self.resume.is_none() {
                     "Reviewing the current worktree first.".to_owned()
                 } else {
                     format!(
-                        "Iteration {iter} was already coded before the interruption — re-reviewing the committed diff."
+                        "Iteration {iter} was already coded before the interruption: re-reviewing the committed diff."
                     )
                 };
                 self.emit_feed("MA", "Maestro", &msg);
@@ -219,7 +219,7 @@ impl Walk {
                 "MA",
                 "Maestro",
                 &format!(
-                    "Iteration {iter}: {} finding(s) — sending back to the Coder.",
+                    "Iteration {iter}: {} finding(s), sending back to the Coder.",
                     bar_findings.len()
                 ),
             );
@@ -228,7 +228,7 @@ impl Walk {
             if iter >= end_iter + extra_cap {
                 match self.cap_on_max_rounds().as_str() {
                     "proceed" => {
-                        self.emit_feed("MA", "Maestro", "Round cap reached — proceeding.");
+                        self.emit_feed("MA", "Maestro", "Round cap reached: proceeding.");
                         return Ok(advance());
                     }
                     "fail" => {
@@ -336,7 +336,7 @@ impl Walk {
         ));
         let question = if question.trim().is_empty() {
             format!(
-                "I've run {iter} iteration(s) without converging — {} remain. How should I proceed?",
+                "I've run {iter} iteration(s) without converging: {} remain. How should I proceed?",
                 plural(open, "open finding", "open findings")
             )
         } else {
@@ -345,7 +345,7 @@ impl Walk {
         let req = EscalationRequest {
             question,
             context: format!(
-                "The reviewer keeps finding issues on the current diff (loop {}). I won't open a PR with unresolved findings, and I won't spin forever — this decision is yours.",
+                "The reviewer keeps finding issues on the current diff (loop {}). I won't open a PR with unresolved findings, and I won't spin forever: this decision is yours.",
                 self.id
             ),
             options: opts,
@@ -368,7 +368,7 @@ impl Walk {
                 self.emit_feed(
                     "MA",
                     "Maestro",
-                    "You chose to keep iterating — extending the convergence budget.",
+                    "You chose to keep iterating: extending the convergence budget.",
                 );
                 (WorkspaceState::Coding, grant)
             }
@@ -376,7 +376,7 @@ impl Walk {
                 self.emit_feed(
                     "MA",
                     "Maestro",
-                    "You asked me to change approach — continuing with that guidance.",
+                    "You asked me to change approach: continuing with that guidance.",
                 );
                 (WorkspaceState::Coding, grant)
             }
@@ -404,7 +404,7 @@ impl Walk {
                         self.emit_feed(
                             "MA",
                             "Maestro",
-                            &format!("Can't ship: {} — stopping instead.", html_escape(&reason)),
+                            &format!("Can't ship: {}. Stopping instead.", html_escape(&reason)),
                         );
                         return (WorkspaceState::Stopped, 0);
                     }
@@ -479,7 +479,7 @@ impl Walk {
             crate::codes::MAESTRO_AGENT_CODE,
             "Maestro",
             &format!(
-                "Using the existing {state} plan ({}, {} steps) — skipping the planning turn.",
+                "Using the existing {state} plan ({}, {} steps): skipping the planning turn.",
                 html_escape(&plan.source),
                 plan.steps.len()
             ),
@@ -531,7 +531,7 @@ impl Walk {
                             text: "Proceed with my notes".into(),
                             tag: "notes".into(),
                             desc:
-                                "Add guidance in the text box — I fold it into the plan and start."
+                                "Add guidance in the text box: I fold it into the plan and start."
                                     .into(),
                         },
                     ],

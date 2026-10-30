@@ -1,6 +1,6 @@
 /* ===== theme tokens ===== */
 :root {
-  /* Charcoal — default: neutral grey surfaces, clay accent, high contrast */
+  /* Charcoal: default: neutral grey surfaces, clay accent, high contrast */
   --bg: #141414;
   --pane: #1c1c1c;
   --pane-2: #262626;
@@ -20,7 +20,7 @@
   --coral: #f87171;
   --indigo: #a78bfa;
   --warn: #fbbf24;
-  /* Git status letters — theme-stable (not remapped with --amber/--emerald/--coral). */
+  /* Git status letters: theme-stable (not remapped with --amber/--emerald/--coral). */
   --git-m: #e6c84a;
   --git-a: #5dbe7e;
   --git-d: #f07178;
@@ -33,7 +33,7 @@
   --ui: 'Inter', system-ui, sans-serif;
 }
 
-/* ===== themes (color only — identity & layout stay constant) ===== */
+/* ===== themes (color only: identity & layout stay constant) ===== */
 :root[data-theme="slate"] {
   --bg: #0A0C10;
   --pane: #101319;
@@ -57,7 +57,7 @@
   --scrollbar-thumb-hover: #3A4452;
 }
 
-/* Cool Glow — deep navy with soft teal accent (glow, not neon). */
+/* Cool Glow: deep navy with soft teal accent (glow, not neon). */
 :root[data-theme="coolglow"] {
   --bg: #0a0c22;
   --pane: #0e1130;
@@ -82,7 +82,7 @@
   --scrollbar-thumb-hover: #3a4578;
 }
 
-/* Catppuccin Mocha — slightly brighter text / darker muted for observatory chrome. */
+/* Catppuccin Mocha: slightly brighter text / darker muted for observatory chrome. */
 :root[data-theme="catppuccin-mocha"] {
   --bg: #0e0e16;
   --pane: #181825;
@@ -138,7 +138,7 @@
   --scrollbar-thumb-hover: #acb0be;
 }
 
-/* Paper — cool daylight twin of Charcoal; clay accent on light grey paper (not cream). */
+/* Paper: cool daylight twin of Charcoal; clay accent on light grey paper (not cream). */
 :root[data-theme="paper"] {
   color-scheme: light;
   --bg: #ebecef;
@@ -176,7 +176,7 @@
   background-color: rgba(0, 0, 0, .1)!important;
 }
 
-/* Nord — darker polar night so frost accents read with more punch. */
+/* Nord: darker polar night so frost accents read with more punch. */
 :root[data-theme="nord"] {
   --bg: #181c24;
   --pane: #222730;

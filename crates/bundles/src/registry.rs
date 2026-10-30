@@ -392,7 +392,7 @@ fn skip_read_reason(path: &str, e: &io::Error) -> String {
     match e.kind() {
         io::ErrorKind::NotFound => "missing bundle.toml".to_string(),
         io::ErrorKind::PermissionDenied => {
-            "cannot read bundle.toml (permission denied) — check directory permissions".to_string()
+            "cannot read bundle.toml (permission denied): check directory permissions".to_string()
         }
         _ => format!("cannot read bundle.toml: {path}: {e}"),
     }

@@ -43,7 +43,7 @@ fn wraps_activated_skills() {
     assert_eq!(
         out,
         format!(
-            "<system_instruction>\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them — their content is already included.\n</system_instruction>\n\n<skill_content name=\"recur-t-go-review\">\n# Go review\n\nCheck error handling.\n\nSkill directory: {dir}\nRelative paths in this skill are relative to the skill directory.\n\n<skill_resources>\n  <file>scripts/lint.sh</file>\n</skill_resources>\n</skill_content>\n\nlook at internal/engine"
+            "<system_instruction>\nThe user activated skill(s) via /name. Follow each skill's instructions below.\nDo not search for these skills or re-load them: their content is already included.\n</system_instruction>\n\n<skill_content name=\"recur-t-go-review\">\n# Go review\n\nCheck error handling.\n\nSkill directory: {dir}\nRelative paths in this skill are relative to the skill directory.\n\n<skill_resources>\n  <file>scripts/lint.sh</file>\n</skill_resources>\n</skill_content>\n\nlook at internal/engine"
         )
     );
     assert_eq!(

@@ -106,7 +106,7 @@ impl Walk {
                     self.emit_feed(
                         "MA",
                         "Maestro",
-                        "Every step landed — reviewing the aggregate diff.",
+                        "Every step landed: reviewing the aggregate diff.",
                     );
                 }
                 return Ok((ran, None));
@@ -123,7 +123,7 @@ impl Walk {
             self.emit_feed(
                 "MA",
                 "Maestro",
-                &format!("Finishing the remaining steps here — {why}."),
+                &format!("Finishing the remaining steps here: {why}."),
             );
             self.set_state(WorkspaceState::Coding, &format!("iteration {iter}"));
             self.set_iteration(iter);
@@ -142,7 +142,7 @@ impl Walk {
         self.emit_feed(
             "MA",
             "Maestro",
-            "Board paused — too many events with work still open.",
+            "Board paused: too many events with work still open.",
         );
         Ok((ran, Some(WorkspaceState::Paused)))
     }

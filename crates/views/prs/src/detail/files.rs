@@ -155,7 +155,7 @@ impl PrDetail {
                 titled(
                     "pr-dl-split-t",
                     if fallback {
-                        "Too narrow for side-by-side — widen the pane or hide the file list"
+                        "Too narrow for side-by-side: widen the pane or hide the file list"
                     } else {
                         "Side by side"
                     },

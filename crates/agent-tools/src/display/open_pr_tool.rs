@@ -186,7 +186,7 @@ mod tests {
     fn local_fallback_mentioning_github_stays_local() {
         let card = parse_open_pr_card(
             &json!({"title": "Add client-side acme.dev API"}),
-            "Opened Local PR #164 (GitHub create failed: gh pr create failed: HTTP 401 — retry Open PR).",
+            "Opened Local PR #164 (GitHub create failed: gh pr create failed: HTTP 401; retry Open PR).",
             false,
             false,
         );
@@ -195,7 +195,7 @@ mod tests {
         assert_eq!(open_pr_label(&card), "Opened Local PR #164");
         let already = parse_open_pr_card(
             &json!({"title": "Retry"}),
-            "PR #164 is already open (Local). GitHub create failed (git push failed) — retry Open PR.",
+            "PR #164 is already open (Local). GitHub create failed (git push failed); retry Open PR.",
             false,
             false,
         );

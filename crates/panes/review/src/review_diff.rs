@@ -54,7 +54,7 @@ pub fn read_review_sidebar(s: &LocalStorage) -> bool {
         Some("off") => return false,
         _ => {}
     }
-    // migrate: old list/stack pref — list had a sidebar, stack didn't
+    // migrate: old list/stack pref: list had a sidebar, stack didn't
     match s.get(FILES_VIEW_KEY) {
         Some("list") => true,
         Some("stack") => false,

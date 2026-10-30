@@ -22,7 +22,7 @@ use crate::api::CodeService;
 use crate::{Error, Result};
 
 const NOT_WRITABLE: &str =
-    "editing is only allowed in a loop worktree — open a loop or use an external editor";
+    "editing is only allowed in a loop worktree: open a loop or use an external editor";
 
 /// The absolute paths the user opened that sit outside every project worktree.
 /// Observatory reads and writes may touch them; agent tools still go through
@@ -158,7 +158,7 @@ impl AppServices {
             && run_active(&ws.state)
         {
             return Err(Error::new(
-                "a loop is running in this workspace — the run owns the worktree; pause or stop it before editing",
+                "a loop is running in this workspace: the run owns the worktree; pause or stop it before editing",
             ));
         }
         Ok(())

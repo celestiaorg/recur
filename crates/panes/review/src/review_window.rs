@@ -187,7 +187,7 @@ pub fn cover_near(win: LineWin, i: isize, count: usize, max_gap: usize) -> LineW
 
 /// `applySlotPin`: the scrollTop that keeps the pinned row where it was after a slice change,
 /// or `None` when nothing should move (no pin, the row unmounted, or the pane moved since
-/// capture — a highlight jump or the user kept scrolling).
+/// capture: a highlight jump or the user kept scrolling).
 pub fn apply_slot_pin(
     scroll_top: f32,
     row_top: Option<f32>,

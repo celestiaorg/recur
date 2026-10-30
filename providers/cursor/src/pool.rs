@@ -129,7 +129,7 @@ impl Pool {
         // An unrecognized SDK cannot stub getAgentSkills: fail closed.
         let Some(root) = owned_bridge_root(&self.data_dir, &bin) else {
             return Err(PoolError(
-                "cursor bridge is not installed in the Recur data dir — install it from Settings"
+                "cursor bridge is not installed in the Recur data dir: install it from Settings"
                     .into(),
             ));
         };
@@ -200,7 +200,7 @@ impl Pool {
             if !v.has(want) {
                 b.close().await;
                 return Err(PoolError(format!(
-                    "cursor bridge {} lacks capability {want:?} — update it from Settings",
+                    "cursor bridge {} lacks capability {want:?}: update it from Settings",
                     v.bridge_version
                 )));
             }

@@ -158,7 +158,7 @@ pub const CHAT_INJECTED_REPLY: &str = crate::turn::finalize::CHAT_INJECTED_SENTI
 
 const GENERIC_AGENT_ERROR_REPLIES: [&str; 2] = [
     "I hit an error trying to respond just now. Try again.",
-    "The agent hit an error — try again.",
+    "The agent hit an error: try again.",
 ];
 
 const CODER_FIX_DISPLAY: &str = crate::roles::CODER_FIX_DISPLAY;
@@ -304,7 +304,7 @@ pub fn format_ask_user_display_text(choice: &str, free_text: &str) -> String {
     let c = js::trim(choice);
     let f = js::trim(free_text);
     match (c.is_empty(), f.is_empty()) {
-        (false, false) => format!("{c} — {f}"),
+        (false, false) => format!("{c}: {f}"),
         (false, true) => c.to_owned(),
         (true, false) => f.to_owned(),
         (true, true) => "(empty)".to_owned(),

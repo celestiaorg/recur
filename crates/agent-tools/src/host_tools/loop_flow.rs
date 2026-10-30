@@ -28,7 +28,7 @@ impl Tool for DoneTool {
 Provide a short summary of what you did. Use notes for the handoff the Reviewer and \
 Maestro cannot see from the diff: deviations from the plan, concerns, work you could \
 not finish, or a step that should be split. Leave notes empty when nothing deviated. \
-Fails if any findings are still open — close each with update_finding first. \
+Fails if any findings are still open: close each with update_finding first. \
 Not for interactive human chat turns."
     }
 
@@ -48,7 +48,7 @@ Not for interactive human chat turns."
             a.str("summary"),
             a.str("notes"),
         )?;
-        Ok("Acknowledged — turn marked done.".into())
+        Ok("Acknowledged: turn marked done.".into())
     }
 }
 
@@ -214,7 +214,7 @@ considered. The loop blocks until the human answers, then resumes with their gui
                 context: a.str("context").into(),
             },
         );
-        Ok("Escalation raised — the loop is paused until the human answers.".into())
+        Ok("Escalation raised: the loop is paused until the human answers.".into())
     }
 }
 
@@ -291,7 +291,7 @@ impl Tool for SendBackTool {
     fn description(&self) -> &'static str {
         "Send an open PR back into the loop for rework. Use this when the loop has already opened \
 a PR (state pr_open) and the human wants corrections, more work, or an update with the \
-latest base branch — plan alone cannot restart a finished loop. Provide a concrete \
+latest base branch: plan alone cannot restart a finished loop. Provide a concrete \
 instruction for the Coder."
     }
 

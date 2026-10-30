@@ -1232,7 +1232,7 @@ pub enum SearchCount {
     Empty,
     /// "No results".
     None,
-    /// "cur / total" (`—` when the selection is not on a match, `999+`
+    /// "cur / total" (`-` when the selection is not on a match, `999+`
     /// when capped).
     Some {
         current: usize,
@@ -1259,7 +1259,7 @@ impl SearchCount {
                 let cur = if *current > 0 {
                     current.to_string()
                 } else {
-                    "\u{2014}".into()
+                    "-".into()
                 };
                 format!("{cur} / {total}")
             }
@@ -1792,7 +1792,7 @@ mod tests {
                 capped: true
             }
             .label(),
-            "\u{2014} / 999+"
+            "- / 999+"
         );
     }
 

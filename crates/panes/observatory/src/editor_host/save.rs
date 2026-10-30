@@ -74,7 +74,7 @@ impl Observatory {
                     cx.update(|cx| {
                         toast(
                             ToastKind::Error,
-                            "Save transforms timed out — writing original",
+                            "Save transforms timed out: writing original",
                             cx,
                         )
                     });
@@ -115,7 +115,7 @@ impl Observatory {
                                 cx.update(|cx| {
                                     toast(
                                         ToastKind::Error,
-                                        format!("{} returned empty — keeping original", cmd.label),
+                                        format!("{} returned empty: keeping original", cmd.label),
                                         cx,
                                     )
                                 });
@@ -128,7 +128,7 @@ impl Observatory {
                                     toast(
                                         ToastKind::Error,
                                         format!(
-                                            "{} shrank output too much — keeping original",
+                                            "{} shrank output too much: keeping original",
                                             cmd.label
                                         ),
                                         cx,

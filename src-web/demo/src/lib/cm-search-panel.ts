@@ -150,7 +150,7 @@ class RecurSearchPanel implements Panel {
   private countEl: HTMLElement
   private replaceRow: HTMLElement
   private query: SearchQuery
-  /** Cached match total — refreshed on query/doc change, reused for selection-only updates. */
+  /** Cached match total: refreshed on query/doc change, reused for selection-only updates. */
   private totalCache: { key: string; total: number; capped: boolean } | null = null
 
   constructor(readonly view: EditorView) {
@@ -313,12 +313,12 @@ class RecurSearchPanel implements Panel {
       this.countEl.classList.add('none')
       return
     }
-    // Only walk matches when there are some — a zero-total query would otherwise
+    // Only walk matches when there are some: a zero-total query would otherwise
     // full-scan the doc on every selection change looking for a current index.
     const current = currentMatchIndex(this.view, this.query)
     this.countEl.classList.remove('none')
     const totalLabel = capped ? `${MATCH_CAP}+` : String(total)
-    const cur = current > 0 ? String(current) : '—'
+    const cur = current > 0 ? String(current) : '-'
     this.countEl.textContent = `${cur} / ${totalLabel}`
   }
 

@@ -35,7 +35,7 @@ async fn maestro_chat_reply_and_resume() {
     let runner = CaptureScript::new(|call| match call {
         0 => maestro_fixture(
             "maestro-sess-1",
-            "Code and review are done — converged to 0 findings.",
+            "Code and review are done: converged to 0 findings.",
         ),
         _ => maestro_fixture(
             "maestro-sess-1",
@@ -311,7 +311,7 @@ async fn maestro_chat_does_not_block_running_loop() {
     let gate = tokio_util::sync::CancellationToken::new();
     let t = TestEngine::new(Some(role_router_runner(
         gate.clone(),
-        maestro_fixture("sess-conc", "We're mid-coding — iteration 2, going well."),
+        maestro_fixture("sess-conc", "We're mid-coding: iteration 2, going well."),
     )));
     let proj = add_project(&t.store, &repo.path);
     let ws = t
@@ -356,8 +356,7 @@ fn deviations(t: &TestEngine) -> Vec<recur_domain::FeedItem> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn maestro_steering_within_rails() {
-    let runner =
-        CaptureScript::new(|_| maestro_fixture("sess-steer", "Sounds good — re-planning."));
+    let runner = CaptureScript::new(|_| maestro_fixture("sess-steer", "Sounds good: re-planning."));
     let (t, ws, _repo) = maestro_engine(&runner).await;
     let host = EngineHost::new(Arc::downgrade(&t.engine));
     host.plan(

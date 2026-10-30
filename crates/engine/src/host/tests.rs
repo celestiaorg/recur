@@ -90,7 +90,7 @@ async fn coder_done_is_refused_while_findings_are_open() {
         .expect_err("open findings refuse done");
     let want_head = "cannot finish: 1 open finding(s) remain. Address each, call mcp__recur__update_finding (resolved or invalid with reason), then call done again.\n";
     assert!(err.0.starts_with(want_head), "{}", err.0);
-    let line = format!("1. id={} [high] a.go:3-5 — nil deref", f.public_id());
+    let line = format!("1. id={} [high] a.go:3-5: nil deref", f.public_id());
     assert!(err.0.contains(&line), "{}", err.0);
     assert!(
         err.0.contains("   operator note: please check"),

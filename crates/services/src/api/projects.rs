@@ -32,7 +32,7 @@ pub trait ProjectsService: Send + Sync {
     /// tracking refs first (one group per remote name), then local heads under
     /// "Local". Within each group tips are newest-first; the project's configured
     /// BaseBranch is promoted to the front of its group when present. An empty /
-    /// unborn repo returns the intended base branch as a Local choice —
+    /// unborn repo returns the intended base branch as a Local choice:
     /// StartWorkspace will create an empty initial commit on it.
     async fn list_branches(&self, project_id: &str) -> Result<Vec<BranchChoice>>;
 

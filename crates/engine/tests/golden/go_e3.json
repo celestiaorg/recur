@@ -1,6 +1,6 @@
 {
   "capEscalation": {
-    "context": "The reviewer keeps finding issues on the current diff (loop $ID). I won't open a PR with unresolved findings, and I won't spin forever — this decision is yours.",
+    "context": "The reviewer keeps finding issues on the current diff (loop $ID). I won't open a PR with unresolved findings, and I won't spin forever: this decision is yours.",
     "options": [
       {
         "desc": "Give me more fix iterations to converge.",
@@ -18,17 +18,17 @@
         "text": "Stop"
       }
     ],
-    "question": "I've run 4 iteration(s) without converging — 2 open findings remain. How should I proceed?"
+    "question": "I've run 4 iteration(s) without converging: 2 open findings remain. How should I proceed?"
   },
   "capFeed": [
     "Maestro: Stopping per your decision.",
-    "Maestro: Answer received: Stop — resuming.",
-    "Maestro: Paused to ask: I\u0026#39;ve run 4 iteration(s) without converging — 2 open findings remain. How should I proceed?",
-    "Maestro: Iteration 4: 2 finding(s) — sending back to the Coder.",
-    "Maestro: Iteration 3: 2 finding(s) — sending back to the Coder.",
-    "Maestro: Iteration 2: 2 finding(s) — sending back to the Coder.",
-    "Maestro: Iteration 1: 2 finding(s) — sending back to the Coder.",
-    "Maestro: The planning turn produced no plan — proceeding with the bare task."
+    "Maestro: Answer received: Stop. Resuming.",
+    "Maestro: Paused to ask: I\u0026#39;ve run 4 iteration(s) without converging: 2 open findings remain. How should I proceed?",
+    "Maestro: Iteration 4: 2 finding(s), sending back to the Coder.",
+    "Maestro: Iteration 3: 2 finding(s), sending back to the Coder.",
+    "Maestro: Iteration 2: 2 finding(s), sending back to the Coder.",
+    "Maestro: Iteration 1: 2 finding(s), sending back to the Coder.",
+    "Maestro: The planning turn produced no plan: proceeding with the bare task."
   ],
   "childStepPlan": {
     "in": {
@@ -84,7 +84,7 @@
     },
     "out": {
       "summary": "Mutex the cart (+1 more)",
-      "body": "You are working a slice of a larger plan in your own workspace, branched from the parent's branch. Do only the steps below. Sibling workspaces are working other steps at the same time, so stay inside the files listed; if a step cannot be done without touching another file, do the minimum and say so in your done notes.\n\nYour steps:\n- S1: Mutex the cart\n- S3: Retry token\nFiles you own: api.go, cart.go\n\nParent task: Fix flaky checkout\nParent plan: Two fixes\n\nParent plan detail (context only — do not work its other steps):\nDetail body",
+      "body": "You are working a slice of a larger plan in your own workspace, branched from the parent's branch. Do only the steps below. Sibling workspaces are working other steps at the same time, so stay inside the files listed; if a step cannot be done without touching another file, do the minimum and say so in your done notes.\n\nYour steps:\n- S1: Mutex the cart\n- S3: Retry token\nFiles you own: api.go, cart.go\n\nParent task: Fix flaky checkout\nParent plan: Two fixes\n\nParent plan detail (context only: do not work its other steps):\nDetail body",
       "steps": [
         {
           "id": "S1",
@@ -124,12 +124,12 @@
   "convergeFeed": [
     "Maestro: Completed in $DUR· \u003ca class=\"loop-pr-link\" data-pr=\"1\"\u003eLocal PR #1\u003c/a\u003e",
     "Maestro: Converged after 2 iteration(s): 0 open findings.",
-    "Maestro: Iteration 1: 1 finding(s) — sending back to the Coder.",
-    "Maestro: The planning turn produced no plan — proceeding with the bare task."
+    "Maestro: Iteration 1: 1 finding(s), sending back to the Coder.",
+    "Maestro: The planning turn produced no plan: proceeding with the bare task."
   ],
   "dispatchReviewerSystemPrompt": {
     "in": "Look at auth",
-    "out": "You are a code Reviewer dispatched into a workspace. Review READ-ONLY (Read, Grep, `git diff`/`git log`) — you cannot edit files. For EACH real issue call mcp__recur__report_finding with file, line (optional end_line for a range), severity, and a clear message. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. Do not file style nits as findings. If the work is sound, report no findings.\n\nInstruction: Look at auth"
+    "out": "You are a code Reviewer dispatched into a workspace. Review READ-ONLY (Read, Grep, `git diff`/`git log`): you cannot edit files. For EACH real issue call mcp__recur__report_finding with file, line (optional end_line for a range), severity, and a clear message. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. Do not file style nits as findings. If the work is sound, report no findings.\n\nInstruction: Look at auth"
   },
   "formatFindingsThreshold": [
     {
@@ -428,7 +428,7 @@
       "1. mutex\n2. retry",
       "S2 split"
     ],
-    "out": "You are the Maestro — the conductor of ONE autonomous coding loop. The implementer just finished a turn and handed off with notes. Decide whether the PLAN needs revising before the Reviewer judges the diff. Revise when a step turned out to be too big (split it), wrong (drop or rewrite it), or missing (add it). You revise HOW the work is decomposed, never WHAT counts as done: the user's task, constraints, and acceptance criteria stay as written — do not drop or soften a requirement to fit what landed. If the notes say a requirement itself is unachievable, leave the plan and say so; the Reviewer and the human decide. Use Read/Grep/Glob only to check what the notes claim. Investigate, do not edit code.\n\nTo revise: call mcp__recur__submit_plan with the FULL plan (summary, body, every step in order — finished steps keep their titles so their status survives; steps other child workspaces are working RIGHT NOW keep their titles too, they close when they land). To change one step's status, mcp__recur__update_plan_step. If the plan still holds, reply in one sentence and call no tools. Be brief.\n\nTask: Fix checkout\n\nCurrent plan:\n1. mutex\n2. retry\n\nImplementer handoff:\nS2 split"
+    "out": "You are the Maestro: the conductor of ONE autonomous coding loop. The implementer just finished a turn and handed off with notes. Decide whether the PLAN needs revising before the Reviewer judges the diff. Revise when a step turned out to be too big (split it), wrong (drop or rewrite it), or missing (add it). You revise HOW the work is decomposed, never WHAT counts as done: the user's task, constraints, and acceptance criteria stay as written: do not drop or soften a requirement to fit what landed. If the notes say a requirement itself is unachievable, leave the plan and say so; the Reviewer and the human decide. Use Read/Grep/Glob only to check what the notes claim. Investigate, do not edit code.\n\nTo revise: call mcp__recur__submit_plan with the FULL plan (summary, body, every step in order: finished steps keep their titles so their status survives; steps other child workspaces are working RIGHT NOW keep their titles too, they close when they land). To change one step's status, mcp__recur__update_plan_step. If the plan still holds, reply in one sentence and call no tools. Be brief.\n\nTask: Fix checkout\n\nCurrent plan:\n1. mutex\n2. retry\n\nImplementer handoff:\nS2 split"
   },
   "planEscalation": {
     "context": "Wire the toggle\n\nSteps:\n1. Edit settings\n2. Add persistence",
@@ -439,7 +439,7 @@
         "text": "Approve and proceed"
       },
       {
-        "desc": "Add guidance in the text box — I fold it into the plan and start.",
+        "desc": "Add guidance in the text box: I fold it into the plan and start.",
         "tag": "notes",
         "text": "Proceed with my notes"
       }

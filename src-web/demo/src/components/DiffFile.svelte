@@ -23,7 +23,7 @@
     collapsed = false,
     onToggleCollapse,
     onOpenFile = undefined,
-    openFileTitle = 'Open in editor — ⌘-click any line number to jump there',
+    openFileTitle = 'Open in editor: ⌘-click any line number to jump there',
   }: {
     file: FileDiff
     highlightLine?: number

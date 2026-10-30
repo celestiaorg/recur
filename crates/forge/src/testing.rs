@@ -308,8 +308,7 @@ impl Forge for FakeForge {
             on_create_pr,
             (c,),
             Err(
-                "gh CLI is not installed or not authenticated — using a Local PR instead"
-                    .to_owned()
+                "gh CLI is not installed or not authenticated: using a Local PR instead".to_owned()
             )
         )
     }

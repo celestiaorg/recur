@@ -422,7 +422,7 @@ async fn create_refuses_non_git_and_unknown_projects() {
         .unwrap_err();
     assert_eq!(
         err.0,
-        "project \"plain\" is not a git repository — workspaces need a git checkout"
+        "project \"plain\" is not a git repository: workspaces need a git checkout"
     );
     t.store
         .add_project(Project {
@@ -1324,7 +1324,7 @@ async fn remove_and_delete_refuse_running_workspaces() {
             ..Workspace::default()
         })
         .unwrap();
-    let running = "workspace \"w\" is running — stop it first";
+    let running = "workspace \"w\" is running: stop it first";
     assert_eq!(t.engine.delete_workspace("w").await.unwrap_err().0, running);
     let h = LoopHandle::new("w", "p", "w", LoopState::default());
     assert!(t.engine.register_loop(RunningLoop {
@@ -1359,7 +1359,7 @@ async fn remove_and_delete_refuse_running_workspaces() {
         .unwrap();
     assert_eq!(
         t.engine.remove_workspace("m").await.unwrap_err().0,
-        "the main working copy can't be removed — it tracks the project's real checkout"
+        "the main working copy can't be removed: it tracks the project's real checkout"
     );
     assert_eq!(
         t.engine.remove_workspace("zz").await.unwrap_err().0,

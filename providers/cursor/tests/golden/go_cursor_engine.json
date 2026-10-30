@@ -1,9 +1,9 @@
 {
   "constants": {
     "childSubagent": "Cursor's built-in subagents are disabled by policy in Recur. Never spawn a Cursor subagent or background agent. Execute the assigned task here.",
-    "steerCancelled": "Interrupted by a Maestro steer — this call was cancelled, not failed.",
+    "steerCancelled": "Interrupted by a Maestro steer: this call was cancelled, not failed.",
     "subagent": "Cursor's built-in subagents are disabled by policy in Recur. Never spawn a Cursor subagent or background agent. For anything beyond a very simple task, call mcp__recur__create_workspace: that is the Recur subagent; you are re-engaged with its report when it finishes. Redirect a running child, or resume a finished one, with mcp__recur__message_child.",
-    "unreported": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it."
+    "unreported": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available: the agent's own reply usually explains it."
   },
   "expand": [
     [
@@ -372,7 +372,7 @@
           "isError": true,
           "kind": "tool_result",
           "name": "read",
-          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available: the agent's own reply usually explains it.",
           "truncated": false
         }
       ],
@@ -545,7 +545,7 @@
           "isError": true,
           "kind": "tool_result",
           "name": "mcp",
-          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available: the agent's own reply usually explains it.",
           "truncated": false
         },
         {
@@ -630,7 +630,7 @@
           "isError": true,
           "kind": "tool_result",
           "name": "read",
-          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available: the agent's own reply usually explains it.",
           "truncated": false
         },
         {
@@ -638,7 +638,7 @@
           "isError": true,
           "kind": "tool_result",
           "name": "glob",
-          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available: the agent's own reply usually explains it.",
           "truncated": false
         },
         {
@@ -709,7 +709,7 @@
           "isError": true,
           "kind": "tool_result",
           "name": "edit",
-          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available — the agent's own reply usually explains it.",
+          "text": "No result reported. Cursor sends no terminal frame for a tool call that fails, so the reason is not available: the agent's own reply usually explains it.",
           "truncated": false
         },
         {

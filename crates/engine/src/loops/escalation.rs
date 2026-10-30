@@ -176,7 +176,7 @@ impl Walk {
                         );
                     }
                     self.eng.mark_group(&self.id, Group::Ready);
-                    self.set_state(WorkspaceState::PrOpen, "PR open — ready for your review");
+                    self.set_state(WorkspaceState::PrOpen, "PR open: ready for your review");
                     if door && self.continue_ensure_pr_graph() {
                         self.mark_cap_answer_applied();
                         return false;
@@ -322,7 +322,7 @@ impl Engine {
             kind: "pause".into(),
             color: "var(--coral)".into(),
             title: format!(
-                "<b>{}</b> paused — needs your decision",
+                "<b>{}</b> paused: needs your decision",
                 html_escape(workspace_id)
             ),
             sub: format!(
@@ -470,7 +470,7 @@ impl Engine {
             "MA",
             "Maestro",
             &format!(
-                "Answer received: {} — resuming.",
+                "Answer received: {}. Resuming.",
                 html_escape(&truncate(&resolved, 160))
             ),
         );

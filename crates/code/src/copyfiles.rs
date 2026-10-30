@@ -112,7 +112,7 @@ fn preview_capped(
         Err(e) => {
             out.error = match e {
                 Error::Canceled | Error::DeadlineExceeded => {
-                    "Scan timed out — narrow the globs".into()
+                    "Scan timed out: narrow the globs".into()
                 }
                 e if e.is_not_exist() => format!("Checkout not found at {root}"),
                 e => e.to_string(),

@@ -48,7 +48,7 @@ function writeCompactNotice(path, themes) {
     const name = t.id || t.key
     const spdx = t.license || (t.source === 'local' ? 'see theme file' : 'see upstream')
     const src = t.url || (t.source?.startsWith('http') ? t.source : '') || ''
-    lines.push(`${name} — ${spdx}${src ? ` — ${src}` : ''}`)
+    lines.push(`${name}: ${spdx}${src ? `: ${src}` : ''}`)
   }
   lines.push('')
   writeFileSync(path, lines.join('\n'))
@@ -261,7 +261,7 @@ function rebuildLocalOnly() {
     const id = name.replace(/\.tmTheme\.json$/, '')
     if (!prevT.license) {
       throw new Error(
-        `missing license for ${name} in provenance.json — re-run a full fetch or add it by hand`,
+        `missing license for ${name} in provenance.json: re-run a full fetch or add it by hand`,
       )
     }
     entries.push({

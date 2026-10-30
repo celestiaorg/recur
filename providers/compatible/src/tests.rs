@@ -686,7 +686,7 @@ fn availability_wording() {
     assert_eq!(
         p.availability(&s),
         recur_agent::Availability::Unavailable(
-            "unknown agent provider \"openai\" — pick a model from Settings → Models".into()
+            "unknown agent provider \"openai\": pick a model from Settings → Models".into()
         )
     );
     s.compatible_providers = vec![test_config("https://api.openai.com")];

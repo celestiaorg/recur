@@ -562,7 +562,7 @@ impl Forge for GitHub {
             b.push_str(base);
             b.push(')');
         }
-        b.push_str(". Questions, plans, and reviews are about this pull request — use `gh pr view`, `gh pr diff`, and existing review threads. Do not treat `git diff` in the current directory as the PR unless cwd is actually checked out on the PR head.");
+        b.push_str(". Questions, plans, and reviews are about this pull request: use `gh pr view`, `gh pr diff`, and existing review threads. Do not treat `git diff` in the current directory as the PR unless cwd is actually checked out on the PR head.");
         if s.host {
             b.push_str(" This chat is attached to the PR, not a Recur worktree of its head; cwd is the project's working copy and may be a different branch.");
         } else {

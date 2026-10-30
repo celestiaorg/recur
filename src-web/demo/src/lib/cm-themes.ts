@@ -27,13 +27,13 @@ export function editorThemeKind(key: string): 'dark' | 'light' {
   return themes.get(key)?.uiTheme === 'light' ? 'light' : 'dark'
 }
 
-/** Color theme only — pair with editorChromeExtension for layout prefs. */
+/** Color theme only: pair with editorChromeExtension for layout prefs. */
 export function editorThemeExtension(key: string): Extension {
   const parsed = themes.get(key)
   return parsed ? tmChromeExtension(parsed) : EditorView.darkTheme.of(true)
 }
 
-/** Layout chrome shared by every color theme (size/font/height — not colors). */
+/** Layout chrome shared by every color theme (size/font/height: not colors). */
 export function editorChromeExtension(
   fontSize = 12,
   fontFamily = "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace",

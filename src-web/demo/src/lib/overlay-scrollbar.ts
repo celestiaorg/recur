@@ -1,4 +1,4 @@
-/** Overlay thumb above sticky rows — native scrollbars sit under z-index. */
+/** Overlay thumb above sticky rows: native scrollbars sit under z-index. */
 
 export function overlayThumb(
   scrollTop: number,
@@ -29,7 +29,7 @@ export function scrollFromTrack(
 
 const HIDE_MS = 700
 
-/** `{@attach overlayScrollbar()}` — parent should be `.overlay-sb-shell`. */
+/** `{@attach overlayScrollbar()}`: parent should be `.overlay-sb-shell`. */
 export function overlayScrollbar() {
   return (el: HTMLElement) => {
     const shell = el.parentElement

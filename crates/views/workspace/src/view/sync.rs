@@ -23,8 +23,8 @@ use recur_view_observatory::ObservatoryProps;
 
 use super::{WorkspaceView, now_ms, tabs::save_active_code};
 
-const EMPTY_MA: &str = "Ask where this loop stands, or steer it — the Maestro can read the worktree, edit the plan, re-run review, and dispatch specialists; rails hold at execution.";
-const EMPTY_PA: &str = "Ask the agent, or tell it what to change — the mode selector below decides whether it may edit.";
+const EMPTY_MA: &str = "Ask where this loop stands, or steer it: the Maestro can read the worktree, edit the plan, re-run review, and dispatch specialists; rails hold at execution.";
+const EMPTY_PA: &str = "Ask the agent, or tell it what to change: the mode selector below decides whether it may edit.";
 
 /// What the effects saw last time they ran.
 #[derive(Default)]
@@ -238,9 +238,9 @@ impl WorkspaceView {
         if self.create_failed(cx) {
             let has_tree = self.ws(cx).is_some_and(|w| !w.worktree_path.is_empty());
             return if self.setup_failed(cx) && has_tree {
-                "Setup failed — retry setup or remove this workspace"
+                "Setup failed: retry setup or remove this workspace"
             } else {
-                "Couldn’t create — remove this workspace to try again"
+                "Couldn’t create: remove this workspace to try again"
             }
             .into();
         }
@@ -692,7 +692,7 @@ impl WorkspaceView {
             });
             recur_view_core::toast(
                 recur_ui::widgets::ToastKind::Success,
-                "Plan filed — review and approve it in the Plan panel",
+                "Plan filed: review and approve it in the Plan panel",
                 cx,
             );
         }

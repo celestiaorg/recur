@@ -1427,7 +1427,7 @@ async fn forget_provider_drops_row() {
 async fn mark_cursor_connect_failed() {
     let p = Poller::new(Arc::new(Fetcher::default()), None);
     p.mark_cursor_connecting(true);
-    p.mark_cursor_connect_failed("Sign-in timed out — try Connect again");
+    p.mark_cursor_connect_failed("Sign-in timed out: try Connect again");
     let q = p.last().providers.unwrap()[0].clone();
     assert!(!q.connecting && !q.error.is_empty() && !q.hint.is_empty());
 }

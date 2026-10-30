@@ -17,7 +17,7 @@
     provider?: string
     /** App icon for the option row AND the closed trigger (e.g. chat modes). */
     icon?: IconName
-    /** Accent color for the icon + label — at-a-glance identity (chat modes). */
+    /** Accent color for the icon + label: at-a-glance identity (chat modes). */
     tint?: string
     /** One-line description rendered after the label in the menu row. */
     hint?: string
@@ -87,7 +87,7 @@
   let menuBottom = $state<number | undefined>(undefined)
   let menuLeft = $state(0)
   let menuWidth = $state(0)
-  // Ignore hover selection until the pointer actually moves — opening (or
+  // Ignore hover selection until the pointer actually moves: opening (or
   // keyboard-scrolling) under a stationary cursor fires a synthetic
   // pointerenter on whatever row is beneath it.
   let hoverGate = createHoverGate()
@@ -100,7 +100,7 @@
     if (!chosen.length) return ''
     return chosen.map((o) => o.label).join(', ')
   })
-  const shown = $derived(display || placeholder || '—')
+  const shown = $derived(display || placeholder || '-')
   const selectedProvider = $derived(selected?.provider ?? '')
   const hinted = $derived(options.some((o) => !!o.hint))
 
@@ -109,7 +109,7 @@
     if (!searchable || !query.trim()) return options
     return fuzzyFilterPrepared(prepared, query, options.length).map((h) => h.item)
   })
-  // Content identity — not array identity — so a parent rebuilding `options`
+  // Content identity, not array identity, so a parent rebuilding `options`
   // with the same values (WorkspaceBaseSelect on workspace.updated) does not
   // re-gate hover.
   const filteredKey = $derived(filtered.map((o) => o.value).join('\0'))
@@ -340,7 +340,7 @@
     if (active < 0 || active >= filtered.length) active = 0
   })
 
-  // Reset only when the menu opens or its rows change — do not read `active`.
+  // Reset only when the menu opens or its rows change: do not read `active`.
   // Hover writes `active` on every row crossing; putting reset in the clamp
   // effect above would disarm the gate after each highlight (QuickOpen / @-menu
   // keep the same split).

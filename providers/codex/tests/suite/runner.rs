@@ -427,7 +427,7 @@ async fn codex_e2e_smoke() {
         return;
     }
     let bin = recur_provider_codex::locate::locate("").unwrap_or_else(|e| {
-        panic!("locate codex: {e} — install `brew install --cask codex` or set RECUR_CODEX to the native binary (full package layout, not a lone copied file)")
+        panic!("locate codex: {e}: install `brew install --cask codex` or set RECUR_CODEX to the native binary (full package layout, not a lone copied file)")
     });
     let wt = tempfile::tempdir().unwrap();
     let home = tempfile::tempdir().unwrap();

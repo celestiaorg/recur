@@ -257,7 +257,7 @@ async fn finalize_persists_error_after_partial_stream() {
     let sess = f.cursor_session();
     for (role, t) in [
         ("user", "write a helper"),
-        ("assistant", "Sure — I'll start by"),
+        ("assistant", "Sure: I'll start by"),
     ] {
         f.te.store
             .append_message(
@@ -275,7 +275,7 @@ async fn finalize_persists_error_after_partial_stream() {
         stderr: "rate limit exceeded".into(),
         ..Default::default()
     };
-    let out = f.finalize("write a helper", "", "Sure — I'll start by", &res, None);
+    let out = f.finalize("write a helper", "", "Sure: I'll start by", &res, None);
     assert_eq!(out, "Agent error: rate limit exceeded");
     let items = content_items(&f.items());
     assert!(items.len() >= 3);

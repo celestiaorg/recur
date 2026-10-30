@@ -1,5 +1,5 @@
 /**
- * Recur-styled go-to-line dialog — replaces stock CM showDialog chrome.
+ * Recur-styled go-to-line dialog: replaces stock CM showDialog chrome.
  * Same parse rules as @codemirror/search's gotoLine (+N / -N / N% / N:col).
  */
 import { EditorSelection, type SelectionRange } from '@codemirror/state'

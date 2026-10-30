@@ -40,7 +40,7 @@ function pushCode(out: string[], seen: Set<string>, code: string) {
 
 /** Stable reason codes for this PR, review-request first.
  *  Local "you" rows and legacy `awaiting_review` are the same as a GitHub review request.
- *  GitHub drafts are not an inbox — they are not ready for review. */
+ *  GitHub drafts are not an inbox: they are not ready for review. */
 export function prAttentionCodes(pr: PRAttention | null | undefined): string[] {
   if (prIsDraft(pr)) return []
   const out: string[] = []
@@ -59,7 +59,7 @@ function prHasConflicts(pr: PRAttention | null | undefined): boolean {
   return (pr?.mergeable ?? '').toUpperCase() === 'CONFLICTING' || (pr?.mergeStateStatus ?? '').toUpperCase() === 'DIRTY'
 }
 
-/** Labels for the list/detail — CI pass/fail is a check/x, not copy. */
+/** Labels for the list/detail: CI pass/fail is a check/x, not copy. */
 export function prAttentionLabels(pr: PRAttention | null | undefined): string[] {
   const labels = prAttentionCodes(pr)
     .filter((c) => c !== ATTENTION_CHECKS_FAILING)

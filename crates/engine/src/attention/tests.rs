@@ -293,7 +293,7 @@ async fn loop_finished_skips_stop_and_idle_cancel() {
         ws,
         PAIR_AGENT_CODE,
         WorkspaceState::PrOpen,
-        "PR open — ready for your review",
+        "PR open: ready for your review",
     );
     stopped.lock().stopped = true;
     t.engine.maybe_flag_loop_finished(&stopped).await;
@@ -308,7 +308,7 @@ async fn loop_finished_skips_stop_and_idle_cancel() {
             ws,
             PAIR_AGENT_CODE,
             WorkspaceState::PrOpen,
-            "PR open — ready for your review",
+            "PR open: ready for your review",
         ))
         .await;
     assert!(
@@ -332,7 +332,7 @@ async fn loop_finished_uses_walk_exit_not_workspace() {
             ws,
             PAIR_AGENT_CODE,
             WorkspaceState::PrOpen,
-            "PR open — ready for your review",
+            "PR open: ready for your review",
         ))
         .await;
     assert!(

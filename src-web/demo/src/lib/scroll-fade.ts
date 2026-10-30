@@ -40,7 +40,7 @@ export function syncScrollFade(el: HTMLElement, slack = SCROLL_FADE_SLACK): void
   el.classList.toggle(SCROLL_FADE_TOP_CLASS, isScrolledFromTop(el, slack))
 }
 
-/** `{@attach}` — keeps `.fade-top` in sync with scroll and size changes. */
+/** `{@attach}`: keeps `.fade-top` in sync with scroll and size changes. */
 export function fadeScrollTop(el: HTMLElement) {
   const sync = () => syncScrollFade(el)
   sync()
@@ -57,7 +57,7 @@ export function fadeScrollTop(el: HTMLElement) {
 }
 
 /**
- * `{@attach fadeScrollEdges({ botSlack })}` — keeps both edge classes in sync.
+ * `{@attach fadeScrollEdges({ botSlack })}`: keeps both edge classes in sync.
  * Scroll only reads `scrollTop`; `scrollHeight` / `clientHeight` are cached
  * from ResizeObserver (post-layout). childList watches the scroller's direct
  * children (the transcript column), not rows inside it.
@@ -108,7 +108,7 @@ export function fadeScrollEdges(opts: ScrollEdgeFadeOpts = {}) {
       el.removeEventListener('scroll', apply)
       ro.disconnect()
       mo.disconnect()
-      // Drop fade-ready so CSS falls back to the default top fade — removing
+      // Drop fade-ready so CSS falls back to the default top fade: removing
       // `.fade-top` while leaving fade-ready would unmask for a frame.
       el.classList.remove(SCROLL_FADE_TOP_CLASS, SCROLL_FADE_BOT_CLASS, SCROLL_FADE_READY_CLASS)
     }

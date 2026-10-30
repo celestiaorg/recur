@@ -16,7 +16,7 @@
     code?: string
     name?: string
     messages?: AgentMsg[]
-    /** The session is currently streaming — render expanded, pin the header. */
+    /** The session is currently streaming: render expanded, pin the header. */
     live?: boolean
   } = $props()
 

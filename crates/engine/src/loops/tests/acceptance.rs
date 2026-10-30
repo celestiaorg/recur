@@ -32,7 +32,7 @@ async fn headline_e2e() {
                 passed: true,
             },
             StepEvidence {
-                step: "Reloaded — state persisted",
+                step: "Reloaded: state persisted",
                 shot: "/shots/03.png",
                 passed: true,
             },

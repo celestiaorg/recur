@@ -215,7 +215,7 @@ pub fn child_step_plan(parent: &Workspace, steps: &[PlanStep]) -> Plan {
         }
         let body = p.body.trim();
         if !body.is_empty() {
-            b.push_str("\nParent plan detail (context only — do not work its other steps):\n");
+            b.push_str("\nParent plan detail (context only: do not work its other steps):\n");
             b.push_str(body);
         }
     }
@@ -351,7 +351,7 @@ impl Walk {
         if w.done {
             b.push_str(&format!(", {merged} merged"));
         }
-        b.push_str(" — ");
+        b.push_str(": ");
         for (i, c) in w.children.iter().enumerate() {
             if i > 0 {
                 b.push_str(" · ");
@@ -729,7 +729,7 @@ impl Walk {
                 self.set_step(
                     &s.id,
                     STEP_PENDING,
-                    "child workspace vanished — running here",
+                    "child workspace vanished: running here",
                     "",
                 );
             }
@@ -750,7 +750,7 @@ impl Walk {
                     break;
                 }
                 b.push_str(&format!(
-                    " [{}] {} — {};",
+                    " [{}] {}: {};",
                     f.severity.as_str(),
                     finding_loc(&f.file, f.line, f.end_line),
                     truncate(&f.message, 120)
@@ -798,7 +798,7 @@ impl Walk {
                 "MA",
                 "Maestro",
                 &format!(
-                    "Could not save uncommitted work in child <code>{}</code> — keeping the worktree ({}).",
+                    "Could not save uncommitted work in child <code>{}</code>: keeping the worktree ({}).",
                     html_escape(&child.id),
                     html_escape(&e)
                 ),
@@ -837,7 +837,7 @@ impl Walk {
                     "MA",
                     "Maestro",
                     &format!(
-                        "Could not merge child branch <code>{}</code> ({}) — {} run here.",
+                        "Could not merge child branch <code>{}</code> ({}): {} run here.",
                         html_escape(&child.branch),
                         html_escape(&e),
                         html_escape(&ids)
@@ -865,7 +865,7 @@ impl Walk {
                 "MA",
                 "Maestro",
                 &format!(
-                    "Merged {} from <code>{}</code> with {} conflicted file(s) — sending to the Coder.",
+                    "Merged {} from <code>{}</code> with {} conflicted file(s): sending to the Coder.",
                     html_escape(&ids),
                     html_escape(&child.branch),
                     conflicts.len()
@@ -895,7 +895,7 @@ impl Walk {
         if failed {
             status = STEP_PENDING;
             note = format!(
-                "child {} — partial work merged; finish here. {note}",
+                "child {}: partial work merged; finish here. {note}",
                 child.state.as_str()
             );
             outcome = "failed";

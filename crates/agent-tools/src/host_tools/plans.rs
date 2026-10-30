@@ -15,7 +15,7 @@ const SUBMIT_PLAN_SCHEMA: &str = r#"{
     "body": {"type": "string", "description": "The FULL detailed plan as markdown: relevant files, approach, edge cases, and a definition of done. Other agents execute from this, not from chat. Do not leave the detail only in the conversation."},
     "steps": {
       "type": "array",
-      "description": "Ordered, concrete checklist — each one actionable sentence naming the file/function and the change. A step may be a string, or an object {title, files, depends_on}: files = repo-relative paths the step touches; depends_on = ids (S1, S2, … by position in this list) that must finish first. Steps with disjoint files and no unmet depends_on can run in parallel.",
+      "description": "Ordered, concrete checklist: each one actionable sentence naming the file/function and the change. A step may be a string, or an object {title, files, depends_on}: files = repo-relative paths the step touches; depends_on = ids (S1, S2, … by position in this list) that must finish first. Steps with disjoint files and no unmet depends_on can run in parallel.",
       "items": {"anyOf": [
         {"type": "string"},
         {"type": "object", "properties": {
@@ -57,11 +57,11 @@ impl Tool for SubmitPlanTool {
 
     fn description(&self) -> &'static str {
         "File the STRUCTURED plan for this task. Put the FULL detailed plan in body (relevant \
-files, approach, edge cases, definition of done) — that is what other agents execute \
+files, approach, edge cases, definition of done): that is what other agents execute \
 from, not the chat transcript. Also provide a short summary headline, an ordered \
 checklist of concrete steps (each one actionable sentence naming the file/function and \
 the change), and optional attachments (artifact ids from create_artifact, or user image \
-ids from ⟦attachment:id⟧). The engine persists this as the workspace's plan artifact — \
+ids from ⟦attachment:id⟧). The engine persists this as the workspace's plan artifact: \
 the human reviews, edits, and approves it in the Plan panel."
     }
 
@@ -77,7 +77,7 @@ the human reviews, edits, and approves it in the Plan panel."
         }
         if a.str("body").trim().is_empty() {
             return Err(
-                "submit_plan: body is required — file the full detailed plan, not just a headline"
+                "submit_plan: body is required: file the full detailed plan, not just a headline"
                     .into(),
             );
         }

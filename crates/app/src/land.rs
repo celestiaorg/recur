@@ -309,7 +309,7 @@ impl LandChrome {
         let merge_hint = if !land.remote.is_empty() && !land.base.is_empty() {
             format!("{merge_label} to {} (push)", land.base)
         } else {
-            format!("{merge_label} into {merge_base_label} on disk — you are the only gate")
+            format!("{merge_label} into {merge_base_label} on disk: you are the only gate")
         };
         LandView {
             workspace_mode,
@@ -799,7 +799,7 @@ impl Shell {
                     "autostash" => cx.update(|cx| {
                         toast(
                             ToastKind::Error,
-                            format!("Updated with latest {base}, but uncommitted edits could not be reapplied — they are in git stash"),
+                            format!("Updated with latest {base}, but uncommitted edits could not be reapplied: they are in git stash"),
                             cx,
                         )
                     }),
@@ -1401,7 +1401,7 @@ impl Shell {
         let tip = if !v.land_busy_title.is_empty() {
             v.land_busy_title.clone()
         } else if self.land.land.unmerged {
-            "A merge or rebase is already in progress — finish or abort it before updating".into()
+            "A merge or rebase is already in progress: finish or abort it before updating".into()
         } else if v.update_method == "rebase" {
             format!("Rebase onto latest {remote_base}")
         } else {

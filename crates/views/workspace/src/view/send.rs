@@ -664,11 +664,7 @@ impl WorkspaceView {
                     }
                     Err(_) => {
                         v.drop_rejected_steer(&key, job, &display, cx);
-                        toast(
-                            ToastKind::Error,
-                            "Could not steer the agent — try again",
-                            cx,
-                        );
+                        toast(ToastKind::Error, "Could not steer the agent: try again", cx);
                     }
                 }
                 v.touch(cx);
@@ -886,7 +882,7 @@ impl WorkspaceView {
             Err(_) => {
                 // The RPC can fail while the engine turn still runs; idle owns the ending then.
                 if !running(self, agent_id, cx) {
-                    self.finish_turn(key, "The agent hit an error — try again.");
+                    self.finish_turn(key, "The agent hit an error: try again.");
                 }
             }
         }

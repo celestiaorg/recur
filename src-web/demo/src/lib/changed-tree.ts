@@ -2,7 +2,7 @@ import type { TreeEntry } from './types'
 
 /**
  * The nested structure implied by a flat list of repo-relative paths.
- * Dirs first, then names — same sort as the Observatory Changed explorer.
+ * Dirs first, then names: same sort as the Observatory Changed explorer.
  */
 export function buildTreeFromPaths(paths: readonly string[]): TreeEntry[] {
   type Node = { entry: TreeEntry; kids: Map<string, Node> }

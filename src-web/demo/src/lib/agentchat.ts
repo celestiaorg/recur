@@ -1,5 +1,5 @@
 // Shared agent-chat transcript logic, used by both chat surfaces (the workspace
-// coding agent and the loop Maestro) so they render the session store identically —
+// coding agent and the loop Maestro) so they render the session store identically:
 // text, reasoning, and tool calls, live and on reload. Pure list transforms: the
 // component owns the per-workspace map + streaming flags and calls these.
 import type { AgentMsg } from '../components/AgentChat.svelte'
@@ -22,7 +22,7 @@ const FILE_AT_PATH =
   '|[\\w.-]+\\.[A-Za-z][\\w.-]*' +
   '|\\.[A-Za-z0-9_][\\w.-]*'
 
-/** Subset used by repairFileMentionBoundaries — no bare `name.ext` (emails). */
+/** Subset used by repairFileMentionBoundaries: no bare `name.ext` (emails). */
 const FILE_AT_PATH_SLASH_OR_DOT =
   '\\/(?:[^\\s@:]+(?:\\/[^\\s@:]+)*)' +
   '|(?:[\\w.-]+\\/)+[\\w./+-]+' +
@@ -41,10 +41,10 @@ const FILE_AT_LOC = ':\\d+(?::\\d+)?(?:-\\d+(?::\\d+)?)?'
 
 /**
  * @-mention of a workspace file in chat wire text. Matches:
- *   - absolute paths (`/Users/…/app.go`) — as sent to the agent
+ *   - absolute paths (`/Users/…/app.go`): as sent to the agent
  *   - paths with a slash (`src/main.go`)
  *   - name.ext (`app.css`)
- *   - leading-dot files (`.gitignore`, `.env`) — no second "extension" dot
+ *   - leading-dot files (`.gitignore`, `.env`): no second "extension" dot
  *   - directories with a trailing slash (`src/`, `src/lib/`) so root dirs and
  *     names like `terminal/` stay distinct from `@terminal`
  *   - optional loc (`@path:12`, `@path:12-40`, `@path:12:5-12:18`, `@path:12:5-13:20`)
@@ -89,12 +89,12 @@ export function sameUserChatBody(a: string | null | undefined, b: string | null 
 /**
  * Insert a space before @file tokens that lost their whitespace boundary so
  * FILE_AT_RE / hydrateComposer(chipFiles) can see them again.
- * Only repairs paths with `/` or leading-dot names — leaves emails like
+ * Only repairs paths with `/` or leading-dot names: leaves emails like
  * `john@acme.io` alone.
  */
 export function repairFileMentionBoundaries(text: string): string {
   if (!text.includes('@')) return text
-  // Absolute, slashy relative, or dotfile + optional :lines — no left-boundary.
+  // Absolute, slashy relative, or dotfile + optional :lines: no left-boundary.
   const re = new RegExp(
     `@((?:${FILE_AT_PATH_SLASH_OR_DOT})(?:${FILE_AT_LOC})?)`,
     'g',
@@ -148,7 +148,7 @@ const ASK_USER_RESUME_RE =
 export function formatAskUserDisplayText(choice = '', freeText = ''): string {
   const c = choice.trim()
   const f = freeText.trim()
-  if (c && f) return `${c} — ${f}`
+  if (c && f) return `${c}: ${f}`
   if (c) return c
   if (f) return f
   return '(empty)'
@@ -434,7 +434,7 @@ export function collapseDuplicateUsersInTurn(list: AgentMsg[]): AgentMsg[] {
 // Live session.delta events can populate an empty in-memory bucket with only
 // the current stream. Align that tail onto the store snapshot so pending tools
 // are not duplicated and settled live rows that post-date the snapshot are kept.
-// When live already has the conversation, keep it — it is ahead of the store.
+// When live already has the conversation, keep it: it is ahead of the store.
 export function mergePersistedWithLive(persisted: AgentMsg[], live: AgentMsg[]): AgentMsg[] {
   return collapseDuplicateUsersInTurn(mergeLiveOntoPersist(persisted, live))
 }
@@ -448,7 +448,7 @@ function mergeLiveOntoPersist(persisted: AgentMsg[], live: AgentMsg[]): AgentMsg
     return liveCore
   }
   // Same display prompt on a later dispatch (Reviewer display is reused) must
-  // not stitch from persist[0] — that overlays the live tail onto turn 1.
+  // not stitch from persist[0]: that overlays the live tail onto turn 1.
   if (!liveCore[0].optimistic && rowEqualLoose(persisted[0], liveCore[0]) && userTurnCount(liveCore) >= userTurnCount(persisted)) {
     return stitchFullTranscripts(persisted, liveCore)
   }
@@ -456,7 +456,7 @@ function mergeLiveOntoPersist(persisted: AgentMsg[], live: AgentMsg[]): AgentMsg
   if (start < persisted.length) return [...persisted.slice(0, start), ...liveCore]
   // Live shares a history prefix but is not a suffix overlay (optimistic user
   // breaks rowEqual at the current turn). Keep the store snapshot and append
-  // only live rows after that prefix — never the whole conversation.
+  // only live rows after that prefix: never the whole conversation.
   const prefix = commonPrefixLen(persisted, liveCore)
   if (prefix > 0) {
     return overlayAligned(persisted, liveCore.slice(prefix), prefix)
@@ -583,7 +583,7 @@ function mapChatItem(it: ChatItem): AgentMsg | null {
 }
 
 // appendStream extends the trailing streaming row of the given kind by APPENDING
-// a chunk (legacy / non-snapshot path). Prefer applyStream for live deltas —
+// a chunk (legacy / non-snapshot path). Prefer applyStream for live deltas:
 // those arrive as cumulative snapshots with a monotonic seq.
 export function appendStream(list: AgentMsg[], kind: 'text' | 'thinking', chunk: string): AgentMsg[] {
   const out = list.slice()
@@ -654,7 +654,7 @@ export function applyStream(
   }
   // Warm remount: WorkspaceChatItems maps the same block without streaming.
   // Only widen a row marked by mapChatItems, and only when this snapshot is
-  // a continuation — a second consecutive block must open a new row.
+  // a continuation: a second consecutive block must open a new row.
   if (last && isKind(last) && !opts?.done && last.widenStream) {
     const prev = last.body ?? ''
     if (!prev || text.startsWith(prev)) {
@@ -720,7 +720,7 @@ export function noteThinkingTokens(list: AgentMsg[], tokens: number, uuid?: stri
   const id = (uuid || '').trim()
   if (last && last.streaming && last.thinking) {
     // Token ticks are progress on the current thought. Claude Code mints a
-    // unique uuid per system/thinking_tokens line — that is not a new frame.
+    // unique uuid per system/thinking_tokens line: that is not a new frame.
     out[out.length - 1] = {
       ...last,
       tokens: Math.max(last.tokens ?? 0, tokens),
@@ -784,7 +784,7 @@ export function subagentNoticeLabel(text: string): string | null {
 // replaced them. Same provider id → update the still-open row in place (a
 // settled match is a real second call, same as attachToolResult). Blank ids
 // cannot be correlated across tools, so only the last in-flight row of that
-// tool name with no id in this turn is reused — better a merged row than a
+// tool name with no id in this turn is reused: better a merged row than a
 // swallowed call. Nested Task-subagent tools (parentId) land under the parent
 // Task card instead of as sibling rows.
 export function addTool(list: AgentMsg[], step: WorkspaceStep): AgentMsg[] {
@@ -908,7 +908,7 @@ export function attachToolResult(
     toolInput: extras?.toolInput || cur.toolInput,
   }
   // Drop in-flight clones of this id (a live step that appended instead of
-  // upserting). Keep any already-settled row — that would be a real second call.
+  // upserting). Keep any already-settled row: that would be a real second call.
   // Blank ids are not unique, so never use them as a drop key.
   const out: AgentMsg[] = []
   for (let i = 0; i < list.length; i++) {
@@ -939,7 +939,7 @@ export function endTurn(list: AgentMsg[], durationMs: number): AgentMsg[] {
  * True when the open turn already ends on a "completed in" footer.
  * sending / agentsRunning can stay lit after session.turn_end (Send RPC lag,
  * lost idle, Maestro still directing). A turn that started after that footer
- * — Retry and autonomous MA turns set turnStartedAt without a `me` bubble —
+ * (Retry and autonomous MA turns set turnStartedAt without a `me` bubble)
  * reopens the clock immediately. So does a new user / stream / tool row.
  * Callers that append live stream/tool rows must also consult
  * `dropLiveAfterFooter` so a leftover delta cannot reopen the elapsed clock,
@@ -965,7 +965,7 @@ export function currentTurnHasEnded(list: AgentMsg[], turnStartedAt = 0): boolea
  * already has its footer and must not grow a tail under it.
  *
  * Leftover events after session.turn_end keep the old turnStartedAt (Send /
- * agentsRunning lag) — drop those. After idle the stamp is cleared; if the
+ * agentsRunning lag): drop those. After idle the stamp is cleared; if the
  * engine is busy again this is a new autonomous / reload turn, so let it
  * through. Retry already stamped turnStartedAt after the footer.
  */
@@ -999,14 +999,14 @@ export const CHAT_STOPPED_REPLY = 'Stopped by user'
 
 /**
  * UI-only display_text the chat Retry button sends (matches Go
- * chatRetryDisplaySentinel). Word joiner — hidden from the transcript so a
+ * chatRetryDisplaySentinel). Word joiner: hidden from the transcript so a
  * retry does not add a second user bubble.
  */
 export const CHAT_RETRY_DISPLAY = '\u2060'
 
 const GENERIC_AGENT_ERROR_REPLIES = new Set([
   'I hit an error trying to respond just now. Try again.',
-  'The agent hit an error — try again.',
+  'The agent hit an error: try again.',
 ])
 
 /** True when text is the user-interrupt note (current or legacy wording). */
@@ -1144,9 +1144,9 @@ export function isSubagentLaunchMeta(text: string | undefined): boolean {
 // finishTurn stops all streaming rows; if the turn produced no assistant text, it
 // appends the returned reply (or an error/"Done.") so a turn never ends silent.
 // Provider error notes (and user-stop) are appended even when some text already
-// streamed — otherwise a partial reply hides the real ending until resync.
+// streamed: otherwise a partial reply hides the real ending until resync.
 // durationMs (optional) stamps the same "completed in …" footer finished turns
-// get — used for user-stop, where the provider often never emits turn_end.
+// get: used for user-stop, where the provider often never emits turn_end.
 export function finishTurn(
   list: AgentMsg[],
   fallback: string,

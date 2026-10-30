@@ -15,12 +15,12 @@ impl Engine {
             match self.resolve_guard(&ws.loop_id, &ws.policy_id, &ws.autonomy) {
                 Ok(g) => th = g.policy.findings_threshold,
                 Err(reason) => {
-                    return (false, format!("{reason} — cannot evaluate the policy bar"));
+                    return (false, format!("{reason}: cannot evaluate the policy bar"));
                 }
             }
         }
         if let Some(why) = self.findings_bar_blocks(workspace_id, &th) {
-            return (false, format!("{why} — policy bar blocks opening a PR"));
+            return (false, format!("{why}: policy bar blocks opening a PR"));
         }
         (true, String::new())
     }

@@ -34,7 +34,7 @@ input, textarea {
   font-family: inherit;
 }
 
-/* Scrollbars — size + thumb colors come from the active theme tokens. */
+/* Scrollbars: size + thumb colors come from the active theme tokens. */
 ::-webkit-scrollbar {
   width: var(--scrollbar-size);
   height: var(--scrollbar-size);
@@ -118,7 +118,7 @@ input, textarea {
   --chrome-foot-h: 26px;
 }
 
-/* title bar — 52px matches macOS toolbar chrome (larger corner radius + traffic
+/* title bar: 52px matches macOS toolbar chrome (larger corner radius + traffic
    light placement under HiddenInset; keep in sync with InvisibleTitleBarHeight). */
 .titlebar {
   height: 52px;

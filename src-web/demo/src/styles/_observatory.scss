@@ -18,7 +18,7 @@
   --obs-chrome-h: 40px;
 }
 
-/* Toolbar columns track left | editor | right — no gutter when a side is closed. */
+/* Toolbar columns track left | editor | right: no gutter when a side is closed. */
 .obs-toolbar {
   display: grid;
   grid-template-columns: auto 1fr var(--obs-side-width, 260px);
@@ -330,7 +330,7 @@
   opacity: .75;
 }
 
-/* file-icons/atom glyphs — package defaults are ~14–18px for Atom's tree; size to fit our rows. */
+/* file-icons/atom glyphs: package defaults are ~14–18px for Atom's tree; size to fit our rows. */
 .obs-node .fico, .tab-chip .fico {
   flex: none;
   width: 14px;
@@ -1062,7 +1062,7 @@
 }
 
 /* Active-line fills come from the editor theme. App chrome only owns the
-   gutter inset bar — amber while this pane is lit (same signal as the tab
+   gutter inset bar: amber while this pane is lit (same signal as the tab
    underline), neutral --line when the pane is in the background. Selection
    wash dims on unfocused panes so caret/selection stay visible without
    competing for attention. */
@@ -1099,7 +1099,7 @@
   text-align: center;
 }
 
-/* Findings left-dock panel — master–detail (status chips in side-head via obs-scope).
+/* Findings left-dock panel: master–detail (status chips in side-head via obs-scope).
    Dense list selects one finding; inspector below holds body, notes, and actions. */
 .findings-panel {
   display: flex;

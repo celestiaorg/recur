@@ -38,7 +38,7 @@ use crate::turn::transcript::is_mode_switch_continue_display;
 use crate::turn::{AgentSpec, Emit};
 
 pub(crate) const WORKSPACE_GONE: &str =
-    "I can't find that workspace anymore — it may have been removed.";
+    "I can't find that workspace anymore: it may have been removed.";
 
 /// A FIFO ticket not yet claimed by the send that took it. A send that
 /// returns early claims and finishes it so later tickets advance; a dropped
@@ -319,7 +319,7 @@ impl Engine {
         let text_in = text;
         let (text, imgs): (String, Vec<UserImage>) = if retry {
             let Some(last) = self.last_chat_user_prompt(workspace_id, code) else {
-                return "There's nothing to retry — send a new message.".into();
+                return "There's nothing to retry: send a new message.".into();
             };
             if let Some(s) = self
                 .last_chat_surfaces
@@ -642,7 +642,7 @@ impl Engine {
                 }
                 return CHAT_STOPPED_REPLY.into();
             }
-            return "I'm at capacity right now — every agent slot is busy. Try again in a moment."
+            return "I'm at capacity right now: every agent slot is busy. Try again in a moment."
                 .into();
         };
         cleanup.permit = Some(permit);

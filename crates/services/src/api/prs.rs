@@ -43,7 +43,7 @@ pub trait PrsService: Send + Sync {
 
     async fn get_pr_files(&self, id: &str) -> Result<Vec<FileDiff>>;
 
-    /// ListPRFindings returns reviewer findings for the PR — the linked workspace
+    /// ListPRFindings returns reviewer findings for the PR: the linked workspace
     /// when one exists, otherwise the hidden PR chat host (imported GitHub PRs).
     async fn list_pr_findings(&self, pr_id: &str) -> Result<Vec<Finding>>;
 

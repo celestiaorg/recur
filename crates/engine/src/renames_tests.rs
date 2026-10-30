@@ -141,7 +141,7 @@ async fn rename_branch_refuses_active_run() {
     });
     assert_eq!(
         te.engine.rename_workspace_branch(&ws.id, "nope").await,
-        "rename_branch: a loop is running — wait until it pauses"
+        "rename_branch: a loop is running; wait until it pauses"
     );
     assert_eq!(te.store.workspace(&ws.id).unwrap().branch, old);
     for (state, name) in [

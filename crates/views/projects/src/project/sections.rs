@@ -570,7 +570,7 @@ impl ProjectView {
                             .flex_1()
                             .min_w_0()
                             .child(recur_ui::set::title(
-                                "project.toml could not be parsed — editing run settings will replace it",
+                                "project.toml could not be parsed: editing run settings will replace it",
                                 cx,
                             ))
                             .child(desc("proj-file-err", vec![span(err)], cx)),
@@ -867,7 +867,7 @@ impl ProjectView {
             )
             .child(
                 settings_group("grp-runs", "Run commands")
-                    .blurb("Named scripts for the titlebar Run button. A command named dev is what verify-in-browser boots — without one a loop can't verify and won't open a PR. Pin the default from that dropdown — it stays on this machine.")
+                    .blurb("Named scripts for the titlebar Run button. A command named dev is what verify-in-browser boots: without one a loop can't verify and won't open a PR. Pin the default from that dropdown: it stays on this machine.")
                     .child(run_list),
             )
             .child(

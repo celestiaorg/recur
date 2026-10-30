@@ -144,11 +144,11 @@ impl GitHub {
     pub(crate) async fn create(&self, req: CreatePr<'_>) -> Result<i64, String> {
         if !self.cli_available().await {
             return Err(
-                "gh CLI is not installed or not authenticated — using a Local PR instead".into(),
+                "gh CLI is not installed or not authenticated: using a Local PR instead".into(),
             );
         }
         if req.branch.trim().is_empty() {
-            return Err("no branch to push — using a Local PR instead".into());
+            return Err("no branch to push: using a Local PR instead".into());
         }
         let mut title = hard_truncate_chars(&single_line(req.title), TITLE_MAX);
         if title.is_empty() {

@@ -138,7 +138,7 @@ pub fn fallback_loops() -> Vec<LoopInfo> {
         info(
             DOCS_LOOP_ID,
             "Docs",
-            "Plan, write, and edit documentation — no PR",
+            "Plan, write, and edit documentation: no PR",
         ),
         info(
             SECURITY_LOOP_ID,

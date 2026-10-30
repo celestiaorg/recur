@@ -20,7 +20,7 @@ pub(crate) const COMMIT_MESSAGE_TIMEOUT: Duration = Duration::from_secs(45);
 pub const COMMIT_MESSAGE_DIFF_CAP: usize = 12000;
 pub(crate) const COMMIT_MESSAGE_MAX_LEN: usize = 500;
 
-pub const COMMIT_MESSAGE_SYSTEM_PROMPT: &str = "You write git commit messages from a staged diff. Reply with ONLY the commit message: a short subject line (at most ~72 characters), optionally followed by a blank line and a brief body. Match the style of the recent commit subjects when provided. No quotes, no markdown fences, no explanation, no preamble. Do not call tools, read files, or explore the codebase — use the diff text alone.";
+pub const COMMIT_MESSAGE_SYSTEM_PROMPT: &str = "You write git commit messages from a staged diff. Reply with ONLY the commit message: a short subject line (at most ~72 characters), optionally followed by a blank line and a brief body. Match the style of the recent commit subjects when provided. No quotes, no markdown fences, no explanation, no preamble. Do not call tools, read files, or explore the codebase: use the diff text alone.";
 
 pub(crate) const PR_DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(45);
 

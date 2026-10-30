@@ -37,7 +37,7 @@ pub const CHAT_AGENT_ERROR_PREFIX: &str = "Agent error: ";
 pub const CHAT_INJECTED_SENTINEL: &str = "\u{2060}inject";
 
 /// The note when a turn's wedged-turn deadline fires.
-pub const CHAT_TURN_TIMED_OUT_REPLY: &str = "Agent error: this turn hit Recur's time limit — send again to continue (use Stop if it looked stuck).";
+pub const CHAT_TURN_TIMED_OUT_REPLY: &str = "Agent error: this turn hit Recur's time limit; send again to continue (use Stop if it looked stuck).";
 
 /// The deadline error text; an error ending in it is a timeout.
 pub const DEADLINE_EXCEEDED: &str = "context deadline exceeded";

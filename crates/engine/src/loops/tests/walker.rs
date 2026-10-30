@@ -218,7 +218,7 @@ async fn finish_stopped_if_in_flight_leaves_pr_open() {
         &t,
         "WS-propen",
         WorkspaceState::PrOpen,
-        "PR open — ready for your review",
+        "PR open: ready for your review",
     );
     Walk::bare(&t.engine, "WS-propen").finish_stopped_if_in_flight();
     assert_eq!(
@@ -235,7 +235,7 @@ async fn finish_stopped_if_in_flight_uses_walk_exit() {
     {
         let mut s = l.h.lock();
         s.exit_state = WorkspaceState::PrOpen;
-        s.exit_phase = "PR open — ready for your review".into();
+        s.exit_phase = "PR open: ready for your review".into();
     }
     l.finish_stopped_if_in_flight();
     assert_eq!(l.h.exit().0, WorkspaceState::PrOpen);

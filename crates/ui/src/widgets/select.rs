@@ -502,7 +502,7 @@ impl Select {
         } else if !self.placeholder.is_empty() {
             self.placeholder.clone()
         } else {
-            "—".into()
+            "-".into()
         }
     }
 

@@ -386,7 +386,7 @@ impl Walk {
                     &rs.code,
                     &rs.name,
                     &format!(
-                        "The planning turn failed — not starting without a plan. Retry, or switch the planner model in Settings and retry. {}",
+                        "The planning turn failed: not starting without a plan. Retry, or switch the planner model in Settings and retry. {}",
                         html_escape(&truncate(&reason, 200))
                     ),
                 );
@@ -396,7 +396,7 @@ impl Walk {
                 &rs.code,
                 &rs.name,
                 &format!(
-                    "The planning turn failed — proceeding with the bare task. {}",
+                    "The planning turn failed: proceeding with the bare task. {}",
                     html_escape(&truncate(&reason, 200))
                 ),
             );
@@ -433,7 +433,7 @@ impl Walk {
             self.emit_feed(
                 &rs.code,
                 &rs.name,
-                "The planning turn produced no plan — proceeding with the bare task.",
+                "The planning turn produced no plan: proceeding with the bare task.",
             );
             return Ok(());
         }
@@ -597,7 +597,7 @@ impl Walk {
                     &rs.code,
                     &rs.name,
                     &format!(
-                        "{} finding(s) still open after {MAX_FINDING_NUDGES} nudge(s) — proceeding to review anyway.",
+                        "{} finding(s) still open after {MAX_FINDING_NUDGES} nudge(s): proceeding to review anyway.",
                         open.len()
                     ),
                 );
@@ -607,7 +607,7 @@ impl Walk {
                 &rs.code,
                 &rs.name,
                 &format!(
-                    "{} finding(s) still open — nudging Coder to close them before review.",
+                    "{} finding(s) still open: nudging Coder to close them before review.",
                     open.len()
                 ),
             );

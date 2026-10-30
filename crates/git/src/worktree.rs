@@ -324,7 +324,7 @@ impl Manager {
             let blocked = self.blocking_ref_for_branch(&branch).await;
             if !blocked.is_empty() {
                 return Err(Error::msg(format!(
-                    "cannot create branch {:?}: existing branch {:?} blocks it (git cannot nest refs under a branch of the same name) — pick a different prefix in Settings or rename that branch",
+                    "cannot create branch {:?}: existing branch {:?} blocks it (git cannot nest refs under a branch of the same name): pick a different prefix in Settings or rename that branch",
                     branch, blocked
                 )));
             }
@@ -345,7 +345,7 @@ impl Manager {
                 }
                 if self.parse_remote_tracking(&base_branch).await.is_some() {
                     return Err(Error::msg(format!(
-                        "base branch {:?} is a remote ref but is missing — fetch failed or remote is empty",
+                        "base branch {:?} is a remote ref but is missing: fetch failed or remote is empty",
                         base_branch
                     )));
                 }
@@ -1311,7 +1311,7 @@ impl fmt::Display for DirtyBaseError {
             }
             write!(f, ")")?;
         }
-        write!(f, " — commit, stash, or discard them there, then try again")
+        write!(f, ": commit, stash, or discard them there, then try again")
     }
 }
 
@@ -2731,7 +2731,7 @@ mod tests {
         let res = m
             .commit(
                 &wt.path,
-                "recur(Coder): iteration 1 — add file",
+                "recur(Coder): iteration 1: add file",
                 "Coder",
                 "coder@recur.local",
             )
@@ -2743,7 +2743,7 @@ mod tests {
             .run_in(&wt.path, ["log", "-1", "--pretty=%an|%s"])
             .await
             .expect("log");
-        assert_eq!(out.trim(), "Coder|recur(Coder): iteration 1 — add file");
+        assert_eq!(out.trim(), "Coder|recur(Coder): iteration 1: add file");
     }
 
     #[tokio::test]

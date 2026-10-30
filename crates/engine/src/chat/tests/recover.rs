@@ -306,11 +306,7 @@ fn the_maestro_resume_needs_a_loop_rule() {
         ),
         (
             "answered waiting",
-            w(
-                WorkspaceState::Paused,
-                "answered — waiting to resume",
-                false,
-            ),
+            w(WorkspaceState::Paused, "answered: waiting to resume", false),
             true,
         ),
         ("escalated", w(WorkspaceState::Escalated, "", false), true),

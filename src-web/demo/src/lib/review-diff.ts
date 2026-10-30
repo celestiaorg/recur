@@ -25,7 +25,7 @@ export function readReviewSidebar(): boolean {
   try {
     const v = localStorage.getItem(REVIEW_SIDEBAR_KEY)
     if (v === 'on' || v === 'off') return v === 'on'
-    // migrate: old list/stack pref — list had a sidebar, stack didn't
+    // migrate: old list/stack pref: list had a sidebar, stack didn't
     const old = localStorage.getItem(FILES_VIEW_KEY)
     if (old === 'list' || old === 'stack') return old === 'list'
   } catch { /* ignore */ }

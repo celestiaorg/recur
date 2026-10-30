@@ -27,7 +27,7 @@ Why Recur owns the loop:
 
 - Compatible endpoints are a completions API, not an agent runtime
 - Coding tools stay sandboxed to the worktree
-- Recur MCP tools (`ask_user`, findings, plans, …) run in-process — the same
+- Recur MCP tools (`ask_user`, findings, plans, …) run in-process: the same
   `Execute` path MCP HTTP wraps for Claude/Cursor/Codex
 - Native turns skip MCP HTTP (`registerMCP` returns empty)
 
@@ -108,7 +108,7 @@ The OpenAI preset is effort + verbosity. Unknown wires are dropped at save.
 | Repo rules | Worktree `AGENTS.md` (else `CLAUDE.md`) inlined, 32 KiB cap, regular files only |
 | Ask mode | Allowlist omits Edit/Write/Bash |
 | `ask_user` / `switch_mode` | Halt the Responses loop after a successful call |
-| Session | `ContextModeApp` — rebuild input from the Recur transcript |
+| Session | `ContextModeApp`: rebuild input from the Recur transcript |
 | `fresh_session` | Cutoff at `nativeHistoryAfter`; later turns replay only since the reset |
 | Mode remount | Hidden continue note; original user turn (and images) stay in input |
 | Chat fork | No provider-transcript inject; history is already in the store (cutoff cleared) |

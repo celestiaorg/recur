@@ -48,7 +48,7 @@ impl Walk {
         let dev_cmd = verify_dev_cmd(&proj);
         if dev_cmd.is_empty() {
             self.record_verify_absent(
-                "no dev server command configured — set the project run config so loops can verify",
+                "no dev server command configured: set the project run config so loops can verify",
             );
             return Ok(false);
         }
@@ -98,7 +98,7 @@ impl Walk {
             "MA",
             "Maestro",
             &format!(
-                "App booted on $RECUR_PORT={} ({}) — handing to QA.",
+                "App booted on $RECUR_PORT={} ({}): handing to QA.",
                 html_escape(&booted.port),
                 html_escape(&booted.app_url)
             ),
@@ -124,7 +124,7 @@ impl Walk {
                 "MA",
                 "Maestro",
                 &format!(
-                    "Verify passed: {} — all green.",
+                    "Verify passed: {}. All green.",
                     plural(evidence.len() as i64, "browser step", "browser steps")
                 ),
             );

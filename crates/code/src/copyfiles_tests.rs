@@ -249,7 +249,7 @@ fn preview_cancel() {
     let cancel = CancellationToken::new();
     cancel.cancel();
     let prev = preview(&cancel, None, s(tmp().path()), ".env*");
-    assert_eq!(prev.error, "Scan timed out — narrow the globs");
+    assert_eq!(prev.error, "Scan timed out: narrow the globs");
 }
 
 #[test]

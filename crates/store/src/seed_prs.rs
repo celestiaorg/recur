@@ -132,7 +132,7 @@ pub(crate) fn seed_prs(s: &mut State) {
                 kind: "bullets".into(),
                 items: vec![
                     "New OAuth provider registry in <code>auth/oauth.ts</code> for Apple + Google.".into(),
-                    "Client secrets now resolved from the secrets manager at startup — never read from <code>process.env</code> or logged.".into(),
+                    "Client secrets now resolved from the secrets manager at startup: never read from <code>process.env</code> or logged.".into(),
                     "Session/token refresh extracted into a reusable <code>useOAuthSession</code> hook.".into(),
                 ],
                 ..Default::default()
@@ -145,13 +145,13 @@ pub(crate) fn seed_prs(s: &mut State) {
         ]),
         focus: FocusNote {
             title: "Where to focus your review".into(),
-            body: "The token-refresh race in <code>useOAuthSession.ts</code> (lines 5–10) is the subtle part — two tabs refreshing at once. The Reviewer added a mutex; worth a human look.".into(),
+            body: "The token-refresh race in <code>useOAuthSession.ts</code> (lines 5–10) is the subtle part: two tabs refreshing at once. The Reviewer added a mutex; worth a human look.".into(),
         },
         verify: Some(vec![
             verify("Booted the app, opened <b>/checkout</b> on a clean session"),
             verify("<b>Sign in with Apple</b> → consent → returned with a valid session"),
             verify("<b>Sign in with Google</b> → consent → returned with a valid session"),
-            verify("Reloaded — session persisted; no token in <b>localStorage</b> or logs"),
+            verify("Reloaded: session persisted; no token in <b>localStorage</b> or logs"),
         ]),
         checks: Some(vec![
             check("test", "1m 12s"),
@@ -166,17 +166,17 @@ pub(crate) fn seed_prs(s: &mut State) {
                 ..comment("gh-description", "https://github.com/acme/app/pull/482#issue-482001", "LO", "loopbot", "loopbot", MUTED_AVATAR, "2m", "")
             },
             PrComment {
-                body_md: "Left a comment on oauth.ts about the client secret — see Files changed.".into(),
-                body_html: "Left a comment on <code>oauth.ts</code> about the client secret — see Files changed.".into(),
+                body_md: "Left a comment on oauth.ts about the client secret: see Files changed.".into(),
+                body_html: "Left a comment on <code>oauth.ts</code> about the client secret: see Files changed.".into(),
                 reactions: vec![reaction("+1", 2, false), reaction("heart", 1, true)],
                 ..comment("c1", "https://github.com/acme/app/pull/482#issuecomment-1001", "AR", "Avery Rourke", "avery", MUTED_AVATAR, "2m", "commented")
             },
             PrComment {
-                body_html: "Got the review notes — I'll address the client-secret comment.".into(),
+                body_html: "Got the review notes: I'll address the client-secret comment.".into(),
                 ..comment("c2", "https://github.com/acme/app/pull/482#issuecomment-1002", "MA", "Maestro", "", "background:var(--amber);color:#0A0C10", "2m", "commented")
             },
             PrComment {
-                body_html: "Pushed <code>a3f91c2</code> — resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.".into(),
+                body_html: "Pushed <code>a3f91c2</code>: resolved via the secrets manager. Reviewer re-ran clean, re-requested your review.".into(),
                 ..comment("c3", "https://github.com/acme/app/pull/482#issuecomment-1003", "CO", "Coder", "", "background:var(--cyan);color:#0A0C10", "now", "commented")
             },
             PrComment {
@@ -303,7 +303,7 @@ fn pr482_files() -> Vec<FileDiff> {
                     "12",
                     "add",
                     r#"<span class="kw">const</span> secret = <span class="kw">await</span> secrets.<span class="fn">get</span>(<span class="str">'oauth/client_secret'</span>)"#,
-                    r#"<div class="icmt"><div class="icmt-pad"><div class="cmt" style="padding:0;border:none"><div class="ca" style="background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)">AR</div><div class="cc"><div class="ch"><span class="cn">Avery Rourke</span><span class="ct">2m</span></div><div class="cm">Good — this was reading from <code>process.env</code> before. Confirm the secrets client is initialised before any provider loads?</div><span class="react" style="margin-top:8px"><span style="width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block"></span>Coder: yes — <code>secrets.init()</code> runs in <code>bootstrap.ts</code> before providers register. ✓ resolved</span></div></div></div></div>"#,
+                    r#"<div class="icmt"><div class="icmt-pad"><div class="cmt" style="padding:0;border:none"><div class="ca" style="background:linear-gradient(135deg,#39434f,#1d242c);color:var(--muted)">AR</div><div class="cc"><div class="ch"><span class="cn">Avery Rourke</span><span class="ct">2m</span></div><div class="cm">Good: this was reading from <code>process.env</code> before. Confirm the secrets client is initialised before any provider loads?</div><span class="react" style="margin-top:8px"><span style="width:5px;height:5px;border-radius:50%;background:var(--emerald);display:inline-block"></span>Coder: yes: <code>secrets.init()</code> runs in <code>bootstrap.ts</code> before providers register. ✓ resolved</span></div></div></div></div>"#,
                 ),
                 h(
                     "13",
@@ -344,7 +344,7 @@ fn pr482_files() -> Vec<FileDiff> {
                     "2",
                     "add",
                     r#"  <span class="kw">const</span> [session, setSession] = <span class="fn">useState</span>&lt;<span class="ty">Session</span> | <span class="kw">null</span>&gt;(<span class="kw">null</span>)"#,
-                    r#"<div class="flag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><div><div class="ft">Reviewer flagged this region for human eyes</div><div class="fm">token refresh can race across two tabs — a mutex was added below (lines 5–10). worth confirming the lock releases on error.</div></div></div>"#,
+                    r#"<div class="flag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg><div><div class="ft">Reviewer flagged this region for human eyes</div><div class="fm">token refresh can race across two tabs: a mutex was added below (lines 5–10). worth confirming the lock releases on error.</div></div></div>"#,
                 ),
                 h(
                     "",
@@ -696,7 +696,7 @@ pub(crate) fn seed_inbox(s: &mut State) {
             true,
             "pause",
             C_CORAL,
-            "<b>LOOP-2218</b> paused — needs your decision",
+            "<b>LOOP-2218</b> paused: needs your decision",
             "Rate-limit the public API · over-limit behavior",
             "12m",
             "Answer",
@@ -738,7 +738,7 @@ pub(crate) fn seed_inbox(s: &mut State) {
             true,
             "pr",
             C_EMERALD,
-            "<b>#479</b> converged — ready for review",
+            "<b>#479</b> converged: ready for review",
             "Stabilize flaky E2E tests · local PR · 0 findings",
             "18m",
             "Review",

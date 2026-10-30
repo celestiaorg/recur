@@ -24,7 +24,7 @@ const TITLES: Record<DiffHintKind, string> = {
   del: 'Deleted lines versus base',
 }
 
-/** Idle recompute after edits — marks remap with the change set in the meantime. */
+/** Idle recompute after edits: marks remap with the change set in the meantime. */
 const DIFF_RECOMPUTE_MS = 80
 
 function setKind(byLine: Map<number, DiffHintKind>, line: number, kind: DiffHintKind, maxLine: number) {
@@ -44,7 +44,7 @@ export function diffMarksFromDocs(base: string, current: string): DiffHintMark[]
   const b = normalizeEditorNewlines(current)
   if (a === b) return []
   const bLineCount = Math.max(b.split('\n').length, 1)
-  // Empty base is a new/untracked file — every current line is an addition.
+  // Empty base is a new/untracked file: every current line is an addition.
   // Don't run Myers: an empty string is one blank line and would match a
   // trailing newline, painting the file as a replace instead of an add.
   if (!a) {

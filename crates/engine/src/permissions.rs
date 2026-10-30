@@ -133,7 +133,7 @@ impl PermissionBroker {
                 self.forget(&req.id);
                 let d = PermissionDecision {
                     reason: format!(
-                        "no answer within {} — denied automatically",
+                        "no answer within {}: denied automatically",
                         recur_project::runconfig::go_duration(timeout)
                     ),
                     ..PermissionDecision::default()

@@ -49,7 +49,7 @@ independent workspaces, one per task. Give each a stable, descriptive title: a l
 workspace in the project with the same title is returned instead of a duplicate, so \
 repeating the call is safe. Model and flags follow Settings (this chat vs that mode's default); Simplify follows this chat. The new \
 workspace runs on its own; this chat does not wait for it. Each call starts an agent \
-run — one child per distinct task, not extras. Prefer a child for anything beyond a very \
+run: one child per distinct task, not extras. Prefer a child for anything beyond a very \
 simple change. By default the workspace is a subagent (child) \
 of this one: it starts from this branch. When it finishes you get a report; call \
 merge_child to land its commits here, or archive_child to close it without merging. \

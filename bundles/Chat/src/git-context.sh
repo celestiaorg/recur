@@ -19,7 +19,7 @@ _recur_cap() {
   # head closes early → producer may SIGPIPE; ignore.
   head -c "$max" >"$tmp" 2>/dev/null || true
   cat "$tmp"
-  # If the stream had more, head stopped at exactly max — peek via wc if we
+  # If the stream had more, head stopped at exactly max: peek via wc if we
   # drained only max bytes. We can't know remaining after head closed the pipe,
   # so note truncation whenever output length equals the cap.
   if [ "$(wc -c <"$tmp" | tr -d ' ')" -ge "$max" ]; then
@@ -86,7 +86,7 @@ else
   export _RECUR_STATUS="$(git status --short 2>/dev/null | _recur_cap || true)"
   if [ -n "${RECUR_REVIEW_SINCE:-}" ] && [ -n "${RECUR_REVIEW_NOW:-}" ]; then
     # /re-review continuing this chat's earlier review: only what changed
-    # since that pass (Recur checkpoint commits — tracked + untracked files).
+    # since that pass (Recur checkpoint commits: tracked + untracked files).
     # The full branch diff is already in the conversation.
     export _RECUR_STAT=""
     export _RECUR_DIFF_COMMITS=""

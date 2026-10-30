@@ -81,7 +81,7 @@ async fn submit_plan_persists_structured_artifact() {
     assert_eq!(card.name, "Agent");
     assert_eq!(
         card.text,
-        "Filed a structured plan: 2 step(s) — Add a dark-mode toggle"
+        "Filed a structured plan, 2 step(s): Add a dark-mode toggle"
     );
     assert_eq!(
         card.data,

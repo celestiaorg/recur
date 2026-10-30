@@ -766,7 +766,7 @@ async fn unknown_provider_fails_without_fallback() {
         .unwrap_err();
     assert_eq!(
         e.message,
-        "unknown agent provider \"nope\" — pick a model from Settings → Models"
+        "unknown agent provider \"nope\": pick a model from Settings → Models"
     );
     te.close().await;
 }

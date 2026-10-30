@@ -125,7 +125,7 @@ Providers → Permissions bypass toggle is shared with Claude Code. When it is
 off, Codex `request_permissions` and sandbox exceptions
 (`item/commandExecution/requestApproval`, `item/fileChange/requestApproval`,
 `item/permissions/requestApproval`) pause the turn until the human answers in
-Recur’s permission UI — the same cards as Claude Code’s `permission_request`
+Recur’s permission UI: the same cards as Claude Code’s `permission_request`
 tool. Codex does not use that MCP tool. MCP elicitations still auto-accept so
 Recur’s own tools do not double-prompt.
 

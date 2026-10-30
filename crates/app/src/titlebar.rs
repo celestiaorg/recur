@@ -559,7 +559,7 @@ impl Shell {
             let confirm = if risk.is_empty() {
                 "Confirm remove".to_string()
             } else {
-                format!("Confirm remove — {risk}")
+                format!("Confirm remove: {risk}")
             };
             let id = ws.id.clone();
             let backdrop = Theme::of(cx).tokens.titlebar;

@@ -197,14 +197,14 @@ printf '%s\n' '{"prompt":"Ship a correct, reviewable change to a pull request. P
 [[prompt]]
 id = "recur.chat.write-docs"
 name = "Write docs"
-description = "Plan, write, and edit documentation — no PR"
+description = "Plan, write, and edit documentation: no PR"
 slash = "write-docs"
 mode = "loop"
 loop = "recur.loops.docs"
 interpreter = "shebang"
 body = '''
 #!/bin/sh
-printf '%s\n' '{"prompt":"Write the documentation the human asked for. Do not change product code unless the docs require it. Do not open a PR — the write-up lives in this worktree.","display":"Write docs"}'
+printf '%s\n' '{"prompt":"Write the documentation the human asked for. Do not change product code unless the docs require it. Do not open a PR: the write-up lives in this worktree.","display":"Write docs"}'
 '''
 
 [[prompt]]

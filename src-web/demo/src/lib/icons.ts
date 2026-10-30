@@ -1,18 +1,18 @@
-/** App chrome icon registry. Add a key here — Icon.svelte looks it up. */
+/** App chrome icon registry. Add a key here: Icon.svelte looks it up. */
 
 export type IconDef = {
-  /** Inner SVG markup (paths/shapes only — no outer <svg>). Trusted constants only. */
+  /** Inner SVG markup (paths/shapes only: no outer <svg>). Trusted constants only. */
   body: string
   /** Default stroke width when the caller doesn't pass one. */
   strokeWidth?: number
   /** Defaults to 0 0 24 24. */
   viewBox?: string
-  /** Filled glyph (Tabler filled, etc.) — uses fill=currentColor, no stroke. */
+  /** Filled glyph (Tabler filled, etc.): uses fill=currentColor, no stroke. */
   filled?: boolean
 }
 
 export const icons = {
-  // lucide box — Open in palette header
+  // lucide box: Open in palette header
   box: {
     strokeWidth: 1.9,
     body:
@@ -20,17 +20,17 @@ export const icons = {
       '<path d="m3.3 7 8.7 5 8.7-5"/>' +
       '<path d="M12 22V12"/>',
   },
-  // GitHub mark — Open in GitHub (PR titlebar)
+  // GitHub mark: Open in GitHub (PR titlebar)
   github: {
     filled: true,
     body: '<path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-4.9 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.8-2.3 4.6-4.6 4.9.4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/>',
   },
-  // Linear logomark — Linear MCP tool rows
+  // Linear logomark: Linear MCP tool rows
   linear: {
     filled: true,
     body: '<path d="M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z"/>',
   },
-  // lucide hard-drive — Local PR source
+  // lucide hard-drive: Local PR source
   'hard-drive': {
     strokeWidth: 2,
     body:
@@ -39,7 +39,7 @@ export const icons = {
       '<path d="M21.946 12.013H2.054"/>' +
       '<path d="M6 16h.01"/>',
   },
-  // tabler queue-pop-out — Open in (titlebar + palette)
+  // tabler queue-pop-out: Open in (titlebar + palette)
   'queue-pop-out': {
     strokeWidth: 2,
     body:
@@ -51,7 +51,7 @@ export const icons = {
   'octagon-x': {
     body: '<path d="m15 9-6 6"/><path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z"/><path d="m9 9 6 6"/>',
   },
-  // lucide circle-slash — skipped GitHub check
+  // lucide circle-slash: skipped GitHub check
   'circle-slash': {
     body: '<circle cx="12" cy="12" r="10"/><line x1="9" x2="15" y1="15" y2="9"/>',
   },
@@ -73,7 +73,7 @@ export const icons = {
       '<path d="M12 9v4"/>' +
       '<path d="M12 17h.01"/>',
   },
-  // lucide feather — Simplify mode composer chip
+  // lucide feather: Simplify mode composer chip
   feather: {
     strokeWidth: 1.9,
     body:
@@ -85,17 +85,17 @@ export const icons = {
     strokeWidth: 1.75,
     body: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
   },
-  // lucide columns-2 — side-by-side diff
+  // lucide columns-2: side-by-side diff
   'columns-2': {
     strokeWidth: 2,
     body: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/>',
   },
-  // lucide rows-2 — unified diff
+  // lucide rows-2: unified diff
   'rows-2': {
     strokeWidth: 2,
     body: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/>',
   },
-  // lucide rows-3 — stacked / whole-branch diffs
+  // lucide rows-3: stacked / whole-branch diffs
   'rows-3': {
     strokeWidth: 2,
     body: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/>',
@@ -143,7 +143,7 @@ export const icons = {
       '<circle cx="18" cy="18" r="3"/>' +
       '<circle cx="6" cy="6" r="3"/>',
   },
-  // mirror of git-branch — out right from the top, then down (tip inset)
+  // mirror of git-branch: out right from the top, then down (tip inset)
   'git-merge': {
     strokeWidth: 2,
     body:
@@ -162,7 +162,7 @@ export const icons = {
       '<path d="M6 9v6"/>' +
       '<path d="M9 6h6a3 3 0 0 1 3 3v4" stroke-dasharray="2.3 1.85" stroke-linecap="butt"/>',
   },
-  // lucide-weight git-branch — out right, then up (tip inset, no arrowhead)
+  // lucide-weight git-branch: out right, then up (tip inset, no arrowhead)
   'git-branch': {
     strokeWidth: 2,
     body:
@@ -175,7 +175,7 @@ export const icons = {
     // lucide git-commit-vertical
     body: '<path d="M12 3v6"/><circle cx="12" cy="12" r="3"/><path d="M12 15v6"/>',
   },
-  // house-style git-fork drawn as a FAN-OUT — one parent node splitting into
+  // house-style git-fork drawn as a FAN-OUT: one parent node splitting into
   // two children (fan-out wave card). Same weights as git-branch/git-merge:
   // r=3 nodes, connectors meeting the node edges, 3-unit corner arcs.
   'git-fork': {
@@ -186,7 +186,7 @@ export const icons = {
       '<circle cx="18" cy="18" r="3"/>' +
       '<path d="M12 9v3M12 12H9a3 3 0 0 0-3 3M12 12h3a3 3 0 0 1 3 3"/>',
   },
-  // lucide split — fork a chat from a finished agent turn
+  // lucide split: fork a chat from a finished agent turn
   split: {
     body:
       '<path d="M16 3h5v5"/>' +
@@ -206,7 +206,7 @@ export const icons = {
     strokeWidth: 1.75,
     body: '<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>',
   },
-  // lucide fold-vertical / unfold-vertical — review collapse-all
+  // lucide fold-vertical / unfold-vertical: review collapse-all
   'fold-vertical': {
     body:
       '<path d="M12 22v-6"/>' +
@@ -230,7 +230,7 @@ export const icons = {
       '<path d="m15 19-3-3-3 3"/>',
   },
   'case-sensitive': {
-    // lucide case-sensitive — editor find/replace match-case toggle
+    // lucide case-sensitive: editor find/replace match-case toggle
     body:
       '<path d="m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16"/>' +
       '<path d="M22 9v7"/>' +
@@ -238,7 +238,7 @@ export const icons = {
       '<circle cx="18.5" cy="12.5" r="3.5"/>',
   },
   regex: {
-    // lucide regex — editor find/replace regexp toggle
+    // lucide regex: editor find/replace regexp toggle
     body:
       '<path d="M17 3v10"/>' +
       '<path d="m12.67 5.5 8.66 5"/>' +
@@ -246,7 +246,7 @@ export const icons = {
       '<path d="M9 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2z"/>',
   },
   'whole-word': {
-    // lucide whole-word — editor find/replace whole-word toggle
+    // lucide whole-word: editor find/replace whole-word toggle
     body:
       '<circle cx="7" cy="12" r="3"/>' +
       '<path d="M10 9v6"/>' +
@@ -299,7 +299,7 @@ export const icons = {
     strokeWidth: 1.75,
     body: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   },
-  // lucide workflow — file-list tree mode
+  // lucide workflow: file-list tree mode
   workflow: {
     body:
       '<rect width="8" height="8" x="3" y="3" rx="2"/>' +
@@ -312,12 +312,12 @@ export const icons = {
       '<path d="M14 2v5h5"/>',
   },
   'file-diff': {
-    // lucide file-diff — Files changed tab
+    // lucide file-diff: Files changed tab
     body:
       '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/>' +
       '<path d="M9 10h6"/><path d="M12 13V7"/><path d="M9 17h6"/>',
   },
-  // lucide face-slightly-smiling — add reaction
+  // lucide face-slightly-smiling: add reaction
   smile: {
     body:
       '<path d="M15 10V9"/>' +
@@ -335,7 +335,7 @@ export const icons = {
       '<path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/>' +
       '<path d="M17 14V2"/>',
   },
-  // lucide face-grinning — laugh
+  // lucide face-grinning: laugh
   'face-grinning': {
     body:
       '<path d="M15 10V9"/>' +
@@ -355,7 +355,7 @@ export const icons = {
       '<path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/>' +
       '<path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/>',
   },
-  // lucide face-slightly-frowning — confused
+  // lucide face-slightly-frowning: confused
   'face-slightly-frowning': {
     body:
       '<path d="M15 10V9"/>' +
@@ -396,7 +396,7 @@ export const icons = {
       '<circle cx="17" cy="18" r="3"/>' +
       '<circle cx="7" cy="18" r="3"/>',
   },
-  // lucide message-square — unresolved review comments on Files changed
+  // lucide message-square: unresolved review comments on Files changed
   'message-square': {
     body: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   },
@@ -415,7 +415,7 @@ export const icons = {
       '<path d="m8 2 1.88 1.88"/>' +
       '<path d="M9.712 4.06A3 3 0 0 1 15 6v1.13"/>',
   },
-  // Lucide "eye" / "eye-off" — reveal / hide secret fields.
+  // Lucide "eye" / "eye-off": reveal / hide secret fields.
   eye: {
     body:
       '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>' +
@@ -439,11 +439,11 @@ export const icons = {
     body: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
   },
   menu: {
-    // lucide menu — Linux application menu button
+    // lucide menu: Linux application menu button
     body: '<path d="M4 5h16M4 12h16M4 19h16"/>',
   },
   hash: {
-    // lucide hash — go-to-line dialog glyph
+    // lucide hash: go-to-line dialog glyph
     body: '<path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>',
   },
   'align-left': {
@@ -461,7 +461,7 @@ export const icons = {
   clock: {
     body: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   },
-  // lucide clock-arrow-down — PR list recently updated
+  // lucide clock-arrow-down: PR list recently updated
   'clock-arrow-down': {
     body:
       '<path d="M12 6v6l2 1"/>' +
@@ -469,7 +469,7 @@ export const icons = {
       '<path d="m14 18 4 4 4-4"/>' +
       '<path d="M18 14v8"/>',
   },
-  // lucide clock-arrow-up — PR list least recently updated
+  // lucide clock-arrow-up: PR list least recently updated
   'clock-arrow-up': {
     body:
       '<path d="M12 6v6l1.56.78"/>' +
@@ -477,7 +477,7 @@ export const icons = {
       '<path d="m14 18 4-4 4 4"/>' +
       '<path d="M18 22v-8"/>',
   },
-  // lucide calendar-arrow-down — PR list newest
+  // lucide calendar-arrow-down: PR list newest
   'calendar-arrow-down': {
     body:
       '<path d="m14 17 4 4 4-4"/>' +
@@ -487,7 +487,7 @@ export const icons = {
       '<path d="M3 9h18"/>' +
       '<path d="M8 2v3"/>',
   },
-  // lucide calendar-arrow-up — PR list oldest
+  // lucide calendar-arrow-up: PR list oldest
   'calendar-arrow-up': {
     body:
       '<path d="m14 17 4-4 4 4"/>' +
@@ -497,7 +497,7 @@ export const icons = {
       '<path d="M3 9h18"/>' +
       '<path d="M8 2v3"/>',
   },
-  // lucide arrow-up-a-z — PR list title A–Z
+  // lucide arrow-up-a-z: PR list title A–Z
   'arrow-up-az': {
     body:
       '<path d="m3 8 4-4 4 4"/>' +
@@ -514,32 +514,32 @@ export const icons = {
   },
   // ---- chat-mode identity (lucide) ----
   'message-question': {
-    // lucide message-circle-question-mark — Ask mode
+    // lucide message-circle-question-mark: Ask mode
     body:
       '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>' +
       '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>' +
       '<path d="M12 17h.01"/>',
   },
   notebook: {
-    // lucide notebook — Plan mode
+    // lucide notebook: Plan mode
     body:
       '<path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/>' +
       '<rect width="16" height="20" x="4" y="2" rx="2"/>' +
       '<path d="M16 2v20"/>',
   },
   'message-code': {
-    // lucide message-circle-code — Agent mode
+    // lucide message-circle-code: Agent mode
     body:
       '<path d="m10 9-3 3 3 3"/><path d="m14 15 3-3-3-3"/>' +
       '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>',
   },
   'git-compare': {
-    // lucide git-compare-arrows — Review mode
+    // lucide git-compare-arrows: Review mode
     body:
       '<circle cx="5" cy="6" r="3"/><path d="M12 6h5a2 2 0 0 1 2 2v7"/><path d="m15 9-3-3 3-3"/>' +
       '<circle cx="19" cy="18" r="3"/><path d="M12 18H7a2 2 0 0 1-2-2V9"/><path d="m9 15 3 3-3 3"/>',
   },
-  // Findings severity — Tabler (filled octagon / triangle / info; outline triangle / circle).
+  // Findings severity: Tabler (filled octagon / triangle / info; outline triangle / circle).
   'sev-critical': {
     filled: true,
     body: '<path d="M15.3 2h-6.6c-.562 0 -1.016 .201 -1.407 .593l-4.7 4.7a1.894 1.894 0 0 0 -.593 1.407v6.6c0 .562 .201 1.016 .593 1.407l4.7 4.7c.391 .392 .845 .593 1.407 .593h6.6c.562 0 1.016 -.201 1.407 -.593l4.7 -4.7c.392 -.391 .593 -.845 .593 -1.407v-6.6c0 -.562 -.201 -1.016 -.593 -1.407l-4.7 -4.7a1.894 1.894 0 0 0 -1.407 -.593z"/>',

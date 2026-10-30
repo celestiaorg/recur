@@ -147,7 +147,7 @@ pub(crate) async fn fetch_codex(ctx: &Ctx, f: &Fetcher) -> ProviderQuota {
     };
     if auth.has_api_key && !auth.has_chatgpt {
         set_source(&mut out, SOURCE_CODEX_API_KEY);
-        out.error = "API key billing — no plan quota".into();
+        out.error = "API key billing: no plan quota".into();
         out.hint = "Codex API keys are pay-as-you-go. Sign in with ChatGPT to see 5-hour and 7-day limits.".into();
         return out;
     }

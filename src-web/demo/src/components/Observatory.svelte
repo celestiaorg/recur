@@ -553,7 +553,7 @@
                 <button
                   type="button"
                   class="obs-icon-btn"
-                  title="All diffs — review changes since {reviewBase || 'HEAD'} (⌥⌘R)"
+                  title="All diffs: review changes since {reviewBase || 'HEAD'} (⌥⌘R)"
                   aria-label="Review all diffs"
                   onclick={() => { setReviewTab('changes'); showReview() }}
                 >

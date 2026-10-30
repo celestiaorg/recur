@@ -48,7 +48,7 @@ pub trait WorkspacesService: Send + Sync {
 
     /// CreateWorkspace is the single creation path:
     /// one workspace noun, the MODE decides what starts inside it. mode="loop"
-    /// engages the autopilot immediately — prompt is the run's task (required) and
+    /// engages the autopilot immediately: prompt is the run's task (required) and
     /// autonomy overrides the global default. Any other mode creates the workspace
     /// and lets the chat dock drive (the UI seeds prompt as the first chat
     /// message in that mode). simplify is the New Workspace chip for mode=loop
@@ -102,12 +102,12 @@ pub trait WorkspacesService: Send + Sync {
     /// DeleteWorkspace permanently removes a settled loop and everything under it (PRs,
     /// agents, feed, findings, escalation, inbox rows, on-disk artifacts + worktree).
     /// Returns after the store record is gone and workspace.deleted has fired; disk
-    /// teardown continues in the background. Used for NewTask cancel / failed create —
+    /// teardown continues in the background. Used for NewTask cancel / failed create:
     /// not the titlebar Remove action.
     async fn delete_workspace(&self, id: &str) -> Result<()>;
 
     /// EngageLoop engages the autopilot on an EXISTING workspace with goal as the
-    /// run's task — the Plan panel's "Run as loop" handoff and the chat dock's Loop
+    /// run's task: the Plan panel's "Run as loop" handoff and the chat dock's Loop
     /// mode share this path. Returns a status string.
     async fn engage_loop(&self, workspace_id: &str, goal: &str) -> Result<String>;
 
@@ -123,7 +123,7 @@ pub trait WorkspacesService: Send + Sync {
 
     /// FetchWorkingCopyUpstream refreshes the remote tip the titlebar compares
     /// against: the main working copy's tracking branch, a workspace's merge base,
-    /// and an open GitHub PR head. Best-effort — never an error.
+    /// and an open GitHub PR head. Best-effort: never an error.
     async fn fetch_working_copy_upstream(&self, id: &str) -> Result<WorkspaceLandState>;
 
     /// ForkWorkspaceChat branches a chat tab at the given turn's message id and
@@ -194,15 +194,15 @@ pub trait WorkspacesService: Send + Sync {
     async fn merge_workspace(&self, workspace_id: &str, method: &str) -> Result<Workspace>;
 
     /// OpenMainWorkspace returns the project's singleton "main working copy"
-    /// workspace — the Observatory scoped to the project's real checkout (not a
-    /// managed worktree) — creating it on first open. It has no Loop mode and no PRs;
+    /// workspace (the Observatory scoped to the project's real checkout, not a
+    /// managed worktree), creating it on first open. It has no Loop mode and no PRs;
     /// edits and commits land directly in the user's repo. Returns the stored record.
     async fn open_main_workspace(&self, project_id: &str) -> Result<Workspace>;
 
     /// OpenPath opens a file or folder in Recur: find-or-create a project, focus
     /// its working copy (or the matching workspace), and optionally jump to a file.
     /// Homeless files (not inside any project or git repo) become absolute-path
-    /// tabs on the singleton Files project — they do not add ~/Downloads as a project.
+    /// tabs on the singleton Files project: they do not add ~/Downloads as a project.
     async fn open_path(&self, path: &str) -> Result<OpenPathResult>;
 
     /// OpenWorkspaceIn opens the workspace's on-disk folder in the named app
@@ -251,7 +251,7 @@ pub trait WorkspacesService: Send + Sync {
     ) -> Result<()>;
 
     /// RememberWorkspaceChatSelection persists the dock's model + flags + mode + simplify for a
-    /// chat tab without sending a turn — so switching to Review (etc.) survives
+    /// chat tab without sending a turn: so switching to Review (etc.) survives
     /// reload even before the first message. simplify nil freezes Settings on first write.
     async fn remember_workspace_chat_selection(
         &self,
@@ -299,15 +299,15 @@ pub trait WorkspacesService: Send + Sync {
         message_id: &str,
     ) -> Result<()>;
 
-    /// RestartLoop re-runs a stopped or failed loop over its existing worktree — the
+    /// RestartLoop re-runs a stopped or failed loop over its existing worktree: the
     /// human's version of the Maestro's mcp__recur__resume_loop hand. Returns the
     /// engine's status string ("Loop restarting…" or a named refusal).
     async fn restart_loop(&self, id: &str) -> Result<String>;
 
     async fn resume_loop(&self, id: &str) -> Result<()>;
 
-    /// RetryLoop re-runs a loop that stopped on a TRANSIENT provider failure — a spend or
-    /// rate limit, an overload, a dropped connection — from its last durable checkpoint
+    /// RetryLoop re-runs a loop that stopped on a TRANSIENT provider failure (a spend or
+    /// rate limit, an overload, a dropped connection) from its last durable checkpoint
     /// (D56). It is a no-op on a loop that failed for any other reason: that would just
     /// fail again. The loop's Retryable flag says which case it is.
     async fn retry_loop(&self, id: &str) -> Result<()>;
@@ -318,7 +318,7 @@ pub trait WorkspacesService: Send + Sync {
     async fn retry_workspace_setup(&self, id: &str) -> Result<()>;
 
     /// SendWorkspaceMessage runs one turn of a workspace coding-agent chat tab: an
-    /// interactive Claude Code agent shaped by the tab's chat MODE — agent (default)
+    /// interactive Claude Code agent shaped by the tab's chat MODE: agent (default)
     /// can edit the worktree; ask/plan/review are read-only tool scopes (no loop, no
     /// Maestro system prompt). code selects the tab (PA, PA2, …; empty → PA). model
     /// is a qualified ref ("" = that mode's Settings → Models default); flags are the
@@ -367,7 +367,7 @@ pub trait WorkspacesService: Send + Sync {
     async fn set_workspace_issue(&self, workspace_id: &str, issue: &IssueRef) -> Result<Workspace>;
 
     /// SetWorkspaceLoopPolicy stamps the dock pickers onto a workspace that has
-    /// not engaged yet. After HasRun() the ids are pinned — switching is a restart.
+    /// not engaged yet. After HasRun() the ids are pinned: switching is a restart.
     async fn set_workspace_loop_policy(
         &self,
         workspace_id: &str,
@@ -392,7 +392,7 @@ pub trait WorkspacesService: Send + Sync {
 
     async fn stop_loop(&self, id: &str) -> Result<()>;
 
-    /// SubmitPlan writes a structured plan from the Plan panel (source=human) —
+    /// SubmitPlan writes a structured plan from the Plan panel (source=human):
     /// headline summary, optional detailed body, and checklist steps. stepIDs is
     /// aligned with steps (blank for a new row) so a retitle keeps status/note.
     /// Same engine path Plan-mode chats and the loop planner use. Returns a status string.
@@ -405,7 +405,7 @@ pub trait WorkspacesService: Send + Sync {
         step_ids: &[String],
     ) -> Result<String>;
 
-    /// UpdatePlan rewrites a loop's plan (DefinitionOfDone) from the plan editor —
+    /// UpdatePlan rewrites a loop's plan (DefinitionOfDone) from the plan editor:
     /// the same engine path as the Maestro's edit_plan tool: logged
     /// as a plan-change deviation and steered into subsequent specialist turns.
     /// Returns the engine's status string ("Plan updated…" or a named refusal).
@@ -441,13 +441,13 @@ pub trait WorkspacesService: Send + Sync {
     ) -> Result<UpdateWorkspaceResult>;
 
     /// WatchWorkspace makes workspaceID the single watched workspace: its worktree is
-    /// watched via FSEvents for on-disk changes (from agents, editors, terminals —
+    /// watched via FSEvents for on-disk changes (from agents, editors, terminals:
     /// anything) and workspace.fs_changed fires on change so the Observatory tracks
     /// the disk live. Empty id stops watching (call on leaving the workspace).
     async fn watch_workspace(&self, workspace_id: &str) -> Result<()>;
 
-    /// WorkspaceChatItems returns the FULL agent-chat transcript for one chat tab —
-    /// text, reasoning, and the agent's tool calls, in order — from the session store
+    /// WorkspaceChatItems returns the FULL agent-chat transcript for one chat tab
+    /// (text, reasoning, and the agent's tool calls, in order) from the session store
     /// (the single source of truth). code selects the tab (PA, PA2, …; empty → PA).
     async fn workspace_chat_items(&self, workspace_id: &str, code: &str) -> Result<Vec<ChatItem>>;
 

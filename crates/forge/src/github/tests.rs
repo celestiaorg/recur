@@ -1567,7 +1567,7 @@ async fn create_without_gh_falls_back() {
     let (_d, repo) = init_repo();
     assert_eq!(
         gh.create(create(&repo, "T", "B")).await.unwrap_err(),
-        "gh CLI is not installed or not authenticated — using a Local PR instead"
+        "gh CLI is not installed or not authenticated: using a Local PR instead"
     );
 }
 

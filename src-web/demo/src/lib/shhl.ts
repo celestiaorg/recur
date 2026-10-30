@@ -1,5 +1,5 @@
 // Tiny bash syntax highlighter for the chat's terminal cards. A real grammar is
-// overkill (and mounting CodeMirror per card is too heavy) — this is a single-pass
+// overkill (and mounting CodeMirror per card is too heavy): this is a single-pass
 // scanner producing safe HTML: text is built from escaped segments only.
 //
 // Colors (span classes, styled in styles/_chat.scss): sh-kw command words, sh-str strings,
@@ -56,7 +56,7 @@ export function highlightBash(src: string): string {
       }
     }
 
-    // operators — a new command follows
+    // operators: a new command follows
     const op = OPS.find((o) => src.startsWith(o, i))
     if (op) {
       out += `<span class="sh-op">${esc(op)}</span>`

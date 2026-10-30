@@ -192,7 +192,7 @@ async fn recover_reconciles_persisted_live_states() {
     let a = t.store.workspace("esc-answered").unwrap();
     assert_eq!(
         (a.state.clone(), a.phase.as_str()),
-        (WorkspaceState::Paused, "answered — waiting to resume")
+        (WorkspaceState::Paused, "answered: waiting to resume")
     );
     assert_eq!(
         t.store.workspace("esc-open").unwrap().state,

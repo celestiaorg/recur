@@ -40,7 +40,7 @@ function compiled(pattern: string): RegExp {
 /**
  * Pre-resolve an exclude list to its regexes. The file tree tests every node
  * against every pattern on each render, and doing the trim/replace/Map lookup
- * per (node × pattern) dominated tree rendering on large repos — hoist it to
+ * per (node × pattern) dominated tree rendering on large repos: hoist it to
  * once per pattern-list change instead.
  */
 export function compileExcludes(patterns: readonly string[]): RegExp[] {

@@ -100,7 +100,7 @@ impl Engine {
             "MA",
             "Maestro",
             &format!(
-                "Loop stopped on a transient error — retry when it clears: {}",
+                "Loop stopped on a transient error. Retry when it clears: {}",
                 html_escape(reason)
             ),
         );
@@ -113,7 +113,7 @@ impl Engine {
             unread: true,
             kind: "pause".into(),
             color: "var(--coral)".into(),
-            title: format!("<b>{}</b> stopped — retry when it clears", html_escape(id)),
+            title: format!("<b>{}</b> stopped: retry when it clears", html_escape(id)),
             sub: format!(
                 "{} · {}",
                 html_escape(&truncate(&rec.short, 64)),
@@ -127,7 +127,7 @@ impl Engine {
         });
         self.publish_inbox_updated();
         self.publish_notify(
-            "A loop stopped — retry available",
+            "A loop stopped: retry available",
             &truncate(reason, 120),
             &format!("workspace:{id}"),
         );
@@ -144,19 +144,19 @@ impl Engine {
             return "Refused: that workspace no longer exists.".into();
         };
         if !rec.has_run() {
-            return "Refused: this workspace has no loop to restart — engage Loop mode in the chat first.".into();
+            return "Refused: this workspace has no loop to restart; engage Loop mode in the chat first.".into();
         }
         match rec.state {
             WorkspaceState::Stopped | WorkspaceState::Failed => {}
             WorkspaceState::PrOpen => {
-                return "Refused: the loop settled with an open PR — Send Back on the PR (talks to Maestro), or reenter_phase.".into();
+                return "Refused: the loop settled with an open PR; Send Back on the PR (talks to Maestro), or reenter_phase.".into();
             }
             WorkspaceState::Merged => {
-                return "Refused: this loop's PR is merged — start new work instead.".into();
+                return "Refused: this loop's PR is merged; start new work instead.".into();
             }
             other => {
                 return format!(
-                    "Refused: the loop is {} — Resume covers that state.",
+                    "Refused: the loop is {}; Resume covers that state.",
                     other.as_str()
                 );
             }
@@ -174,7 +174,7 @@ impl Engine {
             return "Refused: that workspace no longer exists.".into();
         };
         if !rec.has_run() {
-            return "Refused: this workspace has no loop to restart — engage Loop mode in the chat first.".into();
+            return "Refused: this workspace has no loop to restart; engage Loop mode in the chat first.".into();
         }
         match rec.state {
             WorkspaceState::Stopped
@@ -182,10 +182,10 @@ impl Engine {
             | WorkspaceState::Paused
             | WorkspaceState::PrOpen => String::new(),
             WorkspaceState::Merged => {
-                "Refused: this loop's PR is merged — start new work instead.".into()
+                "Refused: this loop's PR is merged; start new work instead.".into()
             }
             other => format!(
-                "Refused: the loop is {} — wait until it settles.",
+                "Refused: the loop is {}; wait until it settles.",
                 other.as_str()
             ),
         }
@@ -223,7 +223,7 @@ impl Engine {
         );
         self.resume_not_running_locked(held, id, "").await;
         self.publish_inbox_updated();
-        "Loop restarting — it continues from the current worktree, steered by the recorded plan."
+        "Loop restarting: it continues from the current worktree, steered by the recorded plan."
             .into()
     }
 
@@ -282,7 +282,7 @@ impl Engine {
                     &l.id,
                     "MA",
                     "Maestro",
-                    "Reloop restarted — resuming from the last checkpoint.",
+                    "Reloop restarted: resuming from the last checkpoint.",
                 );
             } else if l.state == WorkspaceState::Queued {
                 // Nothing ran; without this it would sit queued forever (the

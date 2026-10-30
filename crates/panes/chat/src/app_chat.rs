@@ -710,9 +710,9 @@ impl AppChat {
             let busy = self.tab_busy(&code, cx);
             let unseen = tab.unseen && self.active != code;
             let title = format!(
-                "{label} — Ask mode{}{}",
-                if busy { " — running" } else { "" },
-                if unseen { " — new response" } else { "" }
+                "{label} · Ask mode{}{}",
+                if busy { " · running" } else { "" },
+                if unseen { " · new response" } else { "" }
             );
             let close = format!(
                 "Close {}",

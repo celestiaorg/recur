@@ -3,7 +3,7 @@
  *
  * Menus that open under a stationary cursor receive a synthetic mouseenter
  * (and sometimes a same-coordinate mousemove). Without a gate, that steals
- * keyboard default selection — classic slash/@ menu bug.
+ * keyboard default selection: classic slash/@ menu bug.
  *
  * A small pixel threshold also absorbs trackpad jitter that would otherwise
  * arm the gate immediately on open.

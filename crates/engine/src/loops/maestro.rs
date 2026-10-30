@@ -27,7 +27,7 @@ use crate::turn::stream::ChatStream;
 /// Bounds one Maestro chat turn so a wedged provider never blocks the call.
 pub const MAESTRO_CHAT_TIMEOUT: Duration = Duration::from_secs(120);
 
-const LOOP_GONE: &str = "I can't find that loop anymore — it may have been removed.";
+const LOOP_GONE: &str = "I can't find that loop anymore: it may have been removed.";
 
 /// Removes simple HTML tags from a feed line for a plain-text prompt.
 pub fn strip_tags(s: &str) -> String {
@@ -78,7 +78,7 @@ impl Engine {
         let retry = is_chat_retry_display(display_text);
         let (text, imgs) = if retry {
             let Some(last) = self.last_chat_user_prompt(workspace_id, code) else {
-                return "There's nothing to retry — send a new message.".into();
+                return "There's nothing to retry: send a new message.".into();
             };
             (last.wire, last.imgs)
         } else {
@@ -219,7 +219,7 @@ impl Engine {
                     CHAT_STOPPED_REPLY.to_owned()
                 }
             } else {
-                "I'm at capacity right now — every agent slot is busy. Try again in a moment."
+                "I'm at capacity right now: every agent slot is busy. Try again in a moment."
                     .to_owned()
             };
             finish(self);
@@ -275,7 +275,7 @@ impl Engine {
             streamed: &stream.text(),
             res: &res,
             err: err_dyn,
-            empty_fallback: "On it — I'll keep working within your rails and keep you posted.",
+            empty_fallback: "On it: I'll keep working within your rails and keep you posted.",
             started: Some(started),
             skip_user: retry,
             user_msg_id: "",

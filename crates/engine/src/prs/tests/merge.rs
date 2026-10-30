@@ -289,7 +289,7 @@ async fn local_merge_advances_base() {
         notes
             .iter()
             .any(|n| n.starts_with("Merge: Local PR <code>#")
-                && n.ends_with("into <code>main</code> on disk — you were the only gate.")),
+                && n.ends_with("into <code>main</code> on disk. You were the only gate.")),
         "{notes:?}"
     );
     t.close().await;

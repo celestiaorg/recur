@@ -590,7 +590,7 @@ pub fn list_workspace_briefs_summary(listed: &ListedWorkspaceBriefs) -> String {
                 .into_iter()
                 .filter(|s| !s.is_empty())
                 .collect::<Vec<_>>()
-                .join(" — ")
+                .join(": ")
         }
         many => match briefing_counts_meta(&listed.counts) {
             m if m.is_empty() => format!("{} workspaces", many.len()),
@@ -844,7 +844,7 @@ mod tests {
         };
         assert_eq!(
             list_workspace_briefs_summary(&one),
-            "Account linking architecture — Plan is ready but not approved"
+            "Account linking architecture: Plan is ready but not approved"
         );
     }
 

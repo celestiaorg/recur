@@ -2,7 +2,7 @@
   // Shared chrome tab bar: a horizontally scrolling tab row with pinned trailing
   // (and optional leading) actions that stay in view when the tabs overflow.
   //
-  // Used by the Observatory file strip and the terminal dock — anywhere else that
+  // Used by the Observatory file strip and the terminal dock: anywhere else that
   // grows a tab list should reuse this rather than reimplementing the overflow
   // split. The scroll container is the ONLY child that gets overflow-x:auto; the
   // trailing slot sits outside it so buttons never scroll off-screen.
@@ -10,14 +10,14 @@
   // Pass `activeKey` (the id/path of the selected tab). The strip keeps that
   // chip in view across three moments that used to each need a hand-rolled
   // scroll call: the key changing, the chip first appearing in the DOM (a newly
-  // opened file — selectedPath is set before ensureOpenTab adds the chip), and
+  // opened file: selectedPath is set before ensureOpenTab adds the chip), and
   // the chip growing (a terminal tab renaming from "zsh" to a longer OSC title).
   //
   // Workspace / view restore is different: `restoreScroll` puts the strip back
   // where the user left it instead of chasing the active chip. A user-driven
   // scroll (including a WebKit-mapped vertical wheel on this overflow-x-only
   // strip) pins that offset; a chip click does not. Opening a file still
-  // chases — bump `revealNonce` when the key does not change. Chase eases the
+  // chases: bump `revealNonce` when the key does not change. Chase eases the
   // strip's own scrollLeft (WKWebView will not animate Element.scrollTo on
   // overflow strips, and Element.scrollIntoView yanks the editor). Restore snaps.
   import { tick, type Snippet } from 'svelte'
@@ -37,7 +37,7 @@
   }: {
     /** Accessible name for the tablist. */
     label: string
-    /** Standalone header chrome (height / surface / bottom border) — terminal dock. */
+    /** Standalone header chrome (height / surface / bottom border): terminal dock. */
     chrome?: boolean
     class?: string
     /** Selected tab id/path. Changing it scrolls that chip into view if needed. */
@@ -49,7 +49,7 @@
     restoreScroll?: { left: number; id: number } | undefined
     /** Bump to reveal the active chip even when `activeKey` is unchanged. */
     revealNonce?: number
-    /** The scrolling tab row — exposed for callers that need the DOM node. */
+    /** The scrolling tab row: exposed for callers that need the DOM node. */
     stripEl?: HTMLDivElement | undefined
     /** Tab chips (and anything else that should scroll with them). */
     children: Snippet

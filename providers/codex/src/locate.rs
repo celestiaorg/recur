@@ -75,7 +75,7 @@ fn locate_with(
         "install a native codex binary from https://github.com/openai/codex/releases"
     };
     Err(format!(
-        "codex binary not found (looked in: {}) — {hint} or set {ENV_BIN_PATH}",
+        "codex binary not found (looked in: {}): {hint} or set {ENV_BIN_PATH}",
         tried.join(", ")
     ))
 }

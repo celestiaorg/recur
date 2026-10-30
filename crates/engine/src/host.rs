@@ -132,7 +132,7 @@ impl Engine {
                 );
                 for (i, f) in open.iter().enumerate() {
                     b.push_str(&format!(
-                        "{}. id={} [{}] {} — {}\n",
+                        "{}. id={} [{}] {}: {}\n",
                         i + 1,
                         f.public_id(),
                         f.severity.as_str(),

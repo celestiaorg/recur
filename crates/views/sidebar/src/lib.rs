@@ -158,6 +158,10 @@ pub struct Sidebar {
     body_bounds: Option<Bounds<Pixels>>,
     rail_bounds: Option<Bounds<Pixels>>,
     epoch: Instant,
+    /// The "Agent running" dots by element id, isolated so their pulse redraws the dot and not
+    /// the sidebar. `dots_prev` holds the last render's until this one claims them.
+    dots: HashMap<String, Entity<recur_ui::isolated::FieldView>>,
+    dots_prev: HashMap<String, Entity<recur_ui::isolated::FieldView>>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -241,6 +245,8 @@ impl Sidebar {
             body_bounds: None,
             rail_bounds: None,
             epoch: recur_ui::motion::now(cx),
+            dots: HashMap::new(),
+            dots_prev: HashMap::new(),
             _subscriptions: subs,
         };
         this.seed_collapse(cx);
@@ -1314,29 +1320,21 @@ impl Sidebar {
     // ---- render ----
 
     /// The amber running dot (`.sd.pulse`): a 6px glowing dot in the 14px icon slot.
-    pub(crate) fn running_dot(&self, cx: &App) -> Div {
-        let t = Theme::of(cx).tokens;
-        let opacity = if motion::reduced(cx) {
-            1.
-        } else {
-            let p = (motion::elapsed(self.epoch, cx).as_secs_f32() % 2.4) / 2.4;
-            if p < 0.5 {
-                0.5 + 0.5 * Easing::EASE_IN_OUT.apply(p * 2.)
-            } else {
-                1. - 0.5 * Easing::EASE_IN_OUT.apply((p - 0.5) * 2.)
-            }
-        };
+    /// The pulsing "Agent running" dot, with element id `id`.
+    pub(crate) fn running_dot(&mut self, id: &str, cx: &mut Context<Self>) -> Stateful<Div> {
+        let epoch = self.epoch;
+        let dot = self.dots_prev.remove(id).unwrap_or_else(|| {
+            recur_ui::isolated::FieldView::new(move |window, cx| running_dot(epoch, window, cx), cx)
+        });
+        self.dots.insert(id.to_string(), dot.clone());
         div()
+            .id(SharedString::from(id.to_string()))
             .size(px(14.))
             .flex_none()
-            .flex()
-            .items_center()
-            .justify_center()
-            .opacity(opacity)
-            .child(with_shadow(
-                div().size(px(6.)).rounded_full().bg(t.amber),
-                &[css_box_shadow(0., 0., 5., 0., t.amber)],
-                3.,
+            .child(recur_ui::isolated::FieldView::element(
+                &dot,
+                div().size(px(14.)).style().clone(),
+                cx,
             ))
     }
 
@@ -1465,7 +1463,7 @@ impl Sidebar {
             titled(
                 "nav-pr-sd",
                 "Agent running",
-                self.running_dot(cx).id("nav-pr-sd-dot"),
+                self.running_dot("nav-pr-sd-dot", cx),
             )
             .into_any_element()
         } else {
@@ -2073,6 +2071,7 @@ impl Sidebar {
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
+        self.dots_prev = std::mem::take(&mut self.dots);
         let (collapsed, peek, width) = {
             let s = self.state.read(cx);
             (s.rail_collapsed, s.rail_peek, s.panels.size(PanelKey::Rail))
@@ -2177,6 +2176,37 @@ impl Sidebar {
             .children(rail)
             .into_any_element()
     }
+}
+
+/// The running dot's body: a 6px amber dot pulsing over 2.4s, asking for the next frame
+/// while it runs.
+fn running_dot(epoch: Instant, window: &mut Window, cx: &mut App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    let opacity = if motion::reduced(cx) {
+        1.
+    } else {
+        if !motion::is_frozen(cx) {
+            window.request_animation_frame();
+        }
+        let p = (motion::elapsed(epoch, cx).as_secs_f32() % 2.4) / 2.4;
+        if p < 0.5 {
+            0.5 + 0.5 * Easing::EASE_IN_OUT.apply(p * 2.)
+        } else {
+            1. - 0.5 * Easing::EASE_IN_OUT.apply((p - 0.5) * 2.)
+        }
+    };
+    div()
+        .size_full()
+        .flex()
+        .items_center()
+        .justify_center()
+        .opacity(opacity)
+        .child(with_shadow(
+            div().size(px(6.)).rounded_full().bg(t.amber),
+            &[css_box_shadow(0., 0., 5., 0., t.amber)],
+            3.,
+        ))
+        .into_any_element()
 }
 
 impl Render for Sidebar {

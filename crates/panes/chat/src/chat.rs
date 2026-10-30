@@ -463,6 +463,12 @@ pub struct AgentChat {
     pub(crate) caret_blink_epoch: std::time::Instant,
     /// When this view mounted: the clock CSS animations run on.
     pub(crate) anim_epoch: std::time::Instant,
+    /// The turn row's bouncing dots and the in-flight tool rows' pulsing dots, as isolated views
+    /// so an animation frame redraws the dots and not the transcript. `wait_dots_used` counts
+    /// the pulses the current transcript render has placed.
+    pub(crate) think_dots: Entity<recur_ui::isolated::FieldView>,
+    pub(crate) wait_dots: Vec<Entity<recur_ui::isolated::FieldView>>,
+    pub(crate) wait_dots_used: usize,
     /// The row just built ends in an open `.tc-body` (its 6px bottom margin), for a lone
     /// step to collapse into its own.
     pub(crate) body_tail: bool,
@@ -608,6 +614,7 @@ impl AgentChat {
         cx: &mut Context<Self>,
     ) -> Self {
         let state = vcx.state.clone();
+        let anim_epoch = std::time::Instant::now();
         let initial = if props.reset_key.is_empty() {
             None
         } else {
@@ -668,7 +675,13 @@ impl AgentChat {
             prompt_slot_subs: Vec::new(),
             prompt_slot_focus: None,
             caret_blink_epoch: std::time::Instant::now(),
-            anim_epoch: std::time::Instant::now(),
+            anim_epoch,
+            think_dots: recur_ui::isolated::FieldView::new(
+                move |window, cx| crate::transcript::think_dots(anim_epoch, window, cx),
+                cx,
+            ),
+            wait_dots: Vec::new(),
+            wait_dots_used: 0,
             body_tail: false,
             think_scrolls: HashMap::new(),
             tool_data: Rc::default(),

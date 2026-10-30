@@ -183,29 +183,55 @@ pub(crate) fn pre_text(
         .break_anywhere()
 }
 
+/// `.tc-wait`'s 7px pulsing dot.
+fn wait_dot(epoch: std::time::Instant, window: &mut Window, cx: &gpui_kit::App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    let (opacity, scale) = if motion::reduced(cx) {
+        (0.8, 1.)
+    } else {
+        let e = motion::elapsed(epoch, cx).as_secs_f32();
+        let ph = (e % WAIT_PULSE.as_secs_f32()) / WAIT_PULSE.as_secs_f32();
+        // ease-in-out between the 0/100% (.35, .85) and 50% (1, 1) keyframes.
+        let half = if ph < 0.5 { ph * 2. } else { (1. - ph) * 2. };
+        let k = recur_ui::motion::Easing::EASE_IN_OUT.apply(half);
+        if !motion::is_frozen(cx) {
+            window.request_animation_frame();
+        }
+        (0.35 + 0.65 * k, 0.85 + 0.15 * k)
+    };
+    let d = 7. * scale;
+    div()
+        .size_full()
+        .flex()
+        .items_center()
+        .justify_center()
+        .child(
+            div()
+                .size(px(d))
+                .rounded_full()
+                .bg(hsla(t.amber.fade(opacity))),
+        )
+        .into_any_element()
+}
+
 impl AgentChat {
     /// `.tc-wait`: a pulsing amber dot and the in-flight copy.
     pub(crate) fn tc_wait(
-        &self,
+        &mut self,
         s: impl Into<SharedString>,
-        window: &mut Window,
-        cx: &Context<Self>,
+        _: &mut Window,
+        cx: &mut Context<Self>,
     ) -> Div {
         let t = Theme::of(cx).tokens;
-        let (opacity, scale) = if motion::reduced(cx) {
-            (0.8, 1.)
-        } else {
-            let e = motion::elapsed(self.anim_epoch, cx).as_secs_f32();
-            let ph = (e % WAIT_PULSE.as_secs_f32()) / WAIT_PULSE.as_secs_f32();
-            // ease-in-out between the 0/100% (.35, .85) and 50% (1, 1) keyframes.
-            let half = if ph < 0.5 { ph * 2. } else { (1. - ph) * 2. };
-            let k = recur_ui::motion::Easing::EASE_IN_OUT.apply(half);
-            if !motion::is_frozen(cx) {
-                window.request_animation_frame();
-            }
-            (0.35 + 0.65 * k, 0.85 + 0.15 * k)
-        };
-        let d = 7. * scale;
+        let i = self.wait_dots_used;
+        self.wait_dots_used += 1;
+        if i == self.wait_dots.len() {
+            let epoch = self.anim_epoch;
+            self.wait_dots.push(recur_ui::isolated::FieldView::new(
+                move |window, cx| wait_dot(epoch, window, cx),
+                cx,
+            ));
+        }
         div()
             .flex()
             .items_center()
@@ -214,20 +240,11 @@ impl AgentChat {
             .py(px(9.))
             .text_size(px(12.5))
             .text_color(hsla(t.muted))
-            .child(
-                div()
-                    .flex_none()
-                    .size(px(7.))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .child(
-                        div()
-                            .size(px(d))
-                            .rounded_full()
-                            .bg(hsla(t.amber.fade(opacity))),
-                    ),
-            )
+            .child(recur_ui::isolated::FieldView::element(
+                &self.wait_dots[i],
+                div().flex_none().size(px(7.)).style().clone(),
+                cx,
+            ))
             .child(text(s))
     }
 

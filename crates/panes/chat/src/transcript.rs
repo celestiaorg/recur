@@ -125,6 +125,7 @@ impl AgentChat {
         cx: &mut Context<Self>,
     ) -> Vec<AnyElement> {
         let t = Theme::of(cx).tokens;
+        self.wait_dots_used = 0;
         let msgs = self.transcript();
         let model = self.transcript_model();
         let shared = model.blocks.clone();
@@ -237,9 +238,9 @@ impl AgentChat {
             out.push(div().mt(px(8.)).mb(px(14.)).child(card).into_any_element());
         }
         if self.show_turn_elapsed(cx) {
-            out.push(self.turn_row(format_elapsed(self.turn_elapsed_sec), true, window, cx));
+            out.push(self.turn_row(format_elapsed(self.turn_elapsed_sec), true, cx));
         } else if !self.props.status_text.is_empty() {
-            out.push(self.turn_row(self.props.status_text.clone(), false, window, cx));
+            out.push(self.turn_row(self.props.status_text.clone(), false, cx));
         }
         out
     }
@@ -302,13 +303,7 @@ impl AgentChat {
     }
 
     /// `.chat-turn`: the bouncing dots and the elapsed clock or the setup status.
-    fn turn_row(
-        &self,
-        s: String,
-        elapsed: bool,
-        window: &mut Window,
-        cx: &Context<Self>,
-    ) -> AnyElement {
+    fn turn_row(&self, s: String, elapsed: bool, cx: &Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let label_el = label(s, Family::Mono, 11., 400.).tabular().color(t.faint);
         div()
@@ -322,7 +317,11 @@ impl AgentChat {
                     .mt(px(4.))
                     .mb(px(10.))
                     .py(px(2.))
-                    .child(think_dots(self.anim_epoch, window, cx))
+                    .child(recur_ui::isolated::FieldView::element(
+                        &self.think_dots,
+                        div().flex_none().w(px(23.)).h(px(5.)).style().clone(),
+                        cx,
+                    ))
                     .child(label_el),
             )
             .into_any_element()

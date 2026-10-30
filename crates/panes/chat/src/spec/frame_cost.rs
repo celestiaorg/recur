@@ -299,3 +299,52 @@ async fn a_long_transcript_draws_what_the_scroller_shows_after_any_jump(cx: &mut
         assert!(stubs.is_empty(), "{at}: settled with stubs {stubs:?}");
     }
 }
+
+#[gpui::test]
+async fn a_frame_of_the_turn_and_tool_dots_renders_only_the_dots(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    let chat = h.chat();
+    h.cx.update(|_, cx| {
+        chat.update(cx, |c, cx| {
+            let mut p = c.props().clone();
+            p.messages = long_chat(300);
+            p.messages.push(AgentMsg {
+                tool: "WebFetch".into(),
+                input: r#"{"url":"https://example.com"}"#.into(),
+                result_pending: true,
+                ts: Some(3000),
+                ..Default::default()
+            });
+            p.sending = true;
+            p.turn_started_at = 1;
+            c.set_props(p, cx)
+        })
+    });
+    h.settle();
+    h.cx.update(|_, cx| {
+        chat.update(cx, |c, cx| {
+            // The in-flight tool's card, open (rows key by message index).
+            c.open_rows.insert("600".into(), true);
+            cx.notify();
+        })
+    });
+    h.settle();
+    assert!(h.has("chat-turn-elapsed"));
+    recur_ui::guard::count_renders(true);
+    recur_ui::guard::count_layouts(true);
+    for _ in 0..3 {
+        h.cx.executor()
+            .advance_clock(std::time::Duration::from_millis(16));
+        h.cx.update(|window, cx| window.simulate_next_frame(cx));
+        h.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    let layouts = recur_ui::guard::take_layout_counts();
+    recur_ui::guard::count_renders(false);
+    recur_ui::guard::count_layouts(false);
+    for view in counts.keys() {
+        assert!(view.ends_with("::FieldView"), "{view} rendered: {counts:?}");
+    }
+    assert!(renders("::FieldView", &counts) >= 6, "{counts:?}");
+    assert!(layouts.is_empty(), "{layouts:?}");
+}

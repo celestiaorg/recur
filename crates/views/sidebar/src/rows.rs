@@ -231,13 +231,18 @@ impl Sidebar {
             .child(icon(name).size(px(icon_size)))
     }
 
-    fn icon_slot(&self, running: bool, key: &str, fallback: AnyElement, cx: &App) -> AnyElement {
+    fn icon_slot(
+        &mut self,
+        running: bool,
+        key: &str,
+        fallback: AnyElement,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         if running {
             titled(
                 SharedString::from(format!("{key}-sd")),
                 "Agent running",
-                self.running_dot(cx)
-                    .id(SharedString::from(format!("{key}-sd-dot")))
+                self.running_dot(&format!("{key}-sd-dot"), cx)
                     .aria_label("Agent running"),
             )
             .into_any_element()
@@ -1634,18 +1639,12 @@ impl Sidebar {
                 )
         });
 
-        let pr_host_running = {
-            let s = self.state().read(cx);
-            recur_view_core::pr::pr_chat_host_running_count(&s.workspaces, &s.workspaces_running)
-                > 0
-        };
         let animating = self.sb.animating(cx)
             || self.sec_fade.animating(cx)
             || self.under.values().any(|f| f.animating(cx))
             || self.flip_animating(cx)
             || self.drag.as_ref().is_some_and(|d| d.settle.is_some())
-            || self.carets.values().any(|f| f.animating(cx))
-            || (!motion::reduced(cx) && (self.has_running_dot(&tree, &rc) || pr_host_running));
+            || self.carets.values().any(|f| f.animating(cx));
         if animating && !motion::is_frozen(cx) {
             window.request_animation_frame();
         }
@@ -1660,21 +1659,6 @@ impl Sidebar {
             .children(float)
             .children(listeners)
             .into_any_element()
-    }
-
-    fn has_running_dot(&self, tree: &Tree, rc: &RowCtx) -> bool {
-        let running = |w: &Workspace| workspace_is_running(w, &rc.running);
-        let project = |p: &ProjectNode| {
-            !p.collapsed
-                && (p.main.as_ref().is_some_and(running)
-                    || p.regular.iter().any(|r| running(&r.ws))
-                    || (!p.sched_closed && p.scheduled.iter().any(|r| running(&r.ws))))
-        };
-        tree.ungrouped.iter().any(project)
-            || tree
-                .groups
-                .iter()
-                .any(|g| !g.collapsed && g.members.iter().any(project))
     }
 
     /// A caret's rotation, easing over `.12s` when its block opens or closes.

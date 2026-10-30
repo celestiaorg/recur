@@ -781,3 +781,44 @@ async fn a_key_in_the_plan_body_editor_renders_the_editor_only(cx: &mut TestAppC
     s.cx.run_until_parked();
     assert!(panel.read_with(s.cx, |p, _| p.test_body_editor().0.is_none()));
 }
+
+/// A running agent's pulsing dot in the sidebar redraws the dot alone on each animation frame:
+/// not the sidebar, the shell or the workspace beside it.
+#[gpui::test]
+async fn a_frame_of_the_sidebar_running_dot_renders_only_the_dot(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
+    s.open(ACTIVE);
+    s.dispatch(recur_services::AppEvent::AgentUpdated(
+        recur_services::events::AgentUpdated {
+            workspace_id: ACTIVE.into(),
+            agent_id: format!("{ACTIVE}-MA"),
+            status: "working".into(),
+            ..Default::default()
+        },
+    ));
+    s.settle();
+    s.cx.update(|_, cx| recur_ui::motion::thaw(cx));
+    s.cx.update(|window, _| window.refresh());
+    s.cx.run_until_parked();
+    s.cx.update(|window, cx| window.simulate_next_frame(cx));
+    s.cx.run_until_parked();
+    recur_ui::guard::count_renders(true);
+    for _ in 0..3 {
+        s.cx.executor()
+            .advance_clock(std::time::Duration::from_millis(16));
+        s.cx.update(|window, cx| window.simulate_next_frame(cx));
+        s.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    s.cx.update(|_, cx| recur_ui::motion::freeze(cx));
+    assert!(renders("::FieldView", &counts) >= 3, "{counts:?}");
+    for path in [
+        "::Shell",
+        "::Sidebar",
+        "::WorkspaceDetail",
+        "::WorkspaceView",
+    ] {
+        assert_eq!(renders(path, &counts), 0, "{path}: {counts:?}");
+    }
+}

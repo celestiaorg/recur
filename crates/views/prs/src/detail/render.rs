@@ -415,7 +415,9 @@ impl PrDetail {
                     .flex()
                     .items_center()
                     .pl(px(8.))
-                    .pr(px(2.))
+                    .pr(px(6.))
+                    .border_r_1()
+                    .border_color(hsla(t.line_soft))
                     .child(titled(
                         "prd-chat-toggle-t",
                         title,

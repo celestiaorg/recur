@@ -534,12 +534,15 @@ impl Observatory {
         let mut head = side_head(tabbed, cx);
         if portal {
             let on = self.state.read(cx).pr_agent_dock_open;
+            let line = Theme::of(cx).tokens.line_soft;
             head = head.child(
                 div()
                     .flex()
                     .items_center()
                     .pl(px(8.))
-                    .pr(px(2.))
+                    .pr(px(6.))
+                    .border_r_1()
+                    .border_color(hsla(line))
                     .child(titled(
                         "prd-chat-toggle-t",
                         "Hide left panel (⌥⌘B)",

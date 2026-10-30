@@ -780,7 +780,6 @@ impl AppChat {
             .flex()
             .flex_none()
             .items_stretch()
-            .gap(px(2.))
             .h(px(recur_ui::style::CHROME_H))
             .pl(px(8.))
             .pr(px(4.))
@@ -788,7 +787,15 @@ impl AppChat {
             .pb(px(1.))
             .bg(hsla(t.pane))
             .child(tab_bar_rule(cx))
-            .child(div().flex().items_center().child(toggle))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .pr(px(6.))
+                    .border_r_1()
+                    .border_color(hsla(t.line_soft))
+                    .child(toggle),
+            )
             .child(div().flex_1().min_w_0().mb(px(-1.)).flex().child(strip));
         let focus = self.focus.clone();
         div()

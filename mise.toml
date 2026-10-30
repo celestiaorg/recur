@@ -8,6 +8,8 @@ rust = { version = "1.95", components = "rustfmt,clippy,llvm-tools", mr_boxingto
 mr-boxington = "1.28.0"
 # Prebuilt cargo-nextest: `mise run test` runs the workspace tests with it.
 "aqua:nextest-rs/nextest/cargo-nextest" = "0.9.150"
+# Prebuilt cargo-about: `mise run generate:licenses` lists the crates' licenses for the app.
+"github:EmbarkStudios/cargo-about" = "0.9.3"
 node = "24.22.2"
 pnpm = "10.34.3"
 nfpm = "2.48.0"

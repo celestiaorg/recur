@@ -193,6 +193,9 @@ pub struct SettingsView {
     pub(crate) clearing: bool,
     pub(crate) confirming_clear: bool,
 
+    // Licenses
+    pub(crate) licenses: Option<Entity<recur_content::view::MarkdownView>>,
+
     pub(crate) _subs: Vec<Subscription>,
     pub(crate) _events: Task<()>,
 }
@@ -421,6 +424,7 @@ impl SettingsView {
             logs_path: String::new(),
             clearing: false,
             confirming_clear: false,
+            licenses: None,
             _subs: subs,
             _events: events_task,
         };

@@ -169,4 +169,8 @@ mise run linux:test      # the same on Linux (Docker on a Mac)
 
 ## Contributing
 
-Read [`AGENTS.md`](AGENTS.md) for conventions, quality gates, and PR guidance. Keep changes small and focused, and run `mise run check` before pushing.
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution terms and [`AGENTS.md`](AGENTS.md) for conventions, quality gates, and PR guidance. Keep changes small and focused, and run `mise run check` before pushing.
+
+## License
+
+Recur is source-available under the [Elastic License 2.0](LICENSE): you can use, modify, and redistribute it, but not offer it to others as a hosted or managed service. The shipped bundles (`bundles/`), agent skills (`recur-skills/`), website (`src-web/`), user docs (`src-docs/`), `scripts/` and a few reusable libraries (`recur-exec`, `recur-http`, `recur-term`, `recur-textmate`) are licensed under [Apache 2.0](LICENSE-APACHE) instead, marked by a `LICENSE-APACHE` file in their directory. Neither license covers the Recur name, logos, wordmark or app icon.

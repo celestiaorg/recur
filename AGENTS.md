@@ -17,6 +17,7 @@ Read before inventing architecture:
 | Path | Role |
 |------|------|
 | `Cargo.toml`, `rust-toolchain.toml` | Cargo workspace and the pinned toolchain |
+| `LICENSE`, `LICENSE-APACHE` | Elastic-2.0 for the repo; Apache-2.0 crates, `bundles/`, `recur-skills/`, `src-web/`, `src-docs/` and `scripts/` opt out (`docs/ARCHITECTURE.md`, "Licenses") |
 | `crates/` | Workspace crates (domain, store, engine, services, ui, views, desktop, cli, …) |
 | `providers/` | One crate per agent provider (claude, codex, cursor, compatible, chatgpt) |
 | `vendor/` | Patched crates.io sources (gpui-pre and friends; see `vendor/README.md`) |

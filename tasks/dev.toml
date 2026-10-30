@@ -5,6 +5,8 @@ run = "cargo build"
 
 [dev]
 description = "Runs the desktop app on the engine-backed services (data dir defaults to Recur; `-- --features fake` for the typed service fakes)"
+depends = ["generate:licenses"]
+env = { RECUR_LICENSES_MD = "target/licenses.md" }
 run = "cargo run -p recur-desktop --profile human"
 
 [smoke]
@@ -14,6 +16,34 @@ run = "cargo run -p recur-desktop --example real_data_smoke --"
 ["generate:help-skill"]
 description = "Copies the user docs (src-docs) into the shipped recur-help skill that the app embeds"
 run = "rsync -a --delete --include='*/' --include='*.mdx' --exclude='*' src-docs/src/pages/ recur-skills/recur-help/references/"
+
+["generate:licenses"]
+description = "Writes target/licenses.md, the third-party licenses Settings > Licenses shows: cargo-about's crate list (build/licenses), the other components, the fonts' OFL texts and the NOTICE files of ported code"
+sources = ["Cargo.lock", "build/licenses/*", "crates/ui/assets/fonts/OFL-*.txt", "crates/**/NOTICE", "bundles/*/NOTICE"]
+outputs = ["target/licenses.md"]
+run = '''
+set -eu
+out=target/licenses.md
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+{
+  printf '# Third-party licenses\n\nRecur includes the following third-party software.\n\n'
+  cargo about generate --fail -c build/licenses/about.toml --workspace build/licenses/about.hbs
+  cat build/licenses/components.md
+  for f in crates/ui/assets/fonts/OFL-*.txt; do
+    printf '### Font: %s\n\n```\n' "$(basename "$f" .txt | sed 's/^OFL-//')"
+    cat "$f"
+    printf '\n```\n\n'
+  done
+  printf '## Ported and adapted code\n\n'
+  for f in $(git ls-files --cached --others --exclude-standard '*NOTICE' | grep -v '^vendor/'); do
+    printf '### %s\n\n```\n' "$(dirname "$f")"
+    cat "$f"
+    printf '\n```\n\n'
+  done
+} > "$tmp"
+mv "$tmp" "$out"
+'''
 
 ["generate:icons"]
 description = "Compiles build/appicon.icon into build/darwin/Assets.car and icons.icns (macOS 26+ actool)"

@@ -31,6 +31,8 @@ struct Crate {
     /// Workspace crates and external crates this one depends on outside `[dev-dependencies]`
     /// (any target, optional ones included).
     deps: BTreeSet<String>,
+    /// `Some("Apache-2.0")`, or `None` for the workspace's Elastic-2.0.
+    license: Option<String>,
 }
 
 fn rust_root() -> PathBuf {
@@ -90,7 +92,11 @@ fn crates() -> BTreeMap<String, Crate> {
                 }
             }
         }
-        out.insert(name, Crate { dir, deps });
+        let license = m["package"]
+            .get("license")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        out.insert(name, Crate { dir, deps, license });
     }
     out
 }
@@ -195,6 +201,33 @@ fn the_engine_depends_on_no_provider() {
         .filter(|n| providers.contains(n.as_str()))
         .collect();
     assert!(bad.is_empty(), "the engine reaches {bad:?}");
+}
+
+#[test]
+fn apache_crates_reach_only_apache_crates() {
+    let all = crates();
+    let apache: Vec<&String> = all
+        .iter()
+        .filter(|(_, c)| c.license.as_deref() == Some("Apache-2.0"))
+        .map(|(n, _)| n)
+        .collect();
+    assert!(!apache.is_empty());
+    let mut bad = Vec::new();
+    for name in apache {
+        if !all[name].dir.join("LICENSE-APACHE").is_file() {
+            bad.push(format!("{name} has no LICENSE-APACHE"));
+        }
+        for d in closure(&all, name) {
+            if all[&d].license.as_deref() != Some("Apache-2.0") {
+                bad.push(format!("{name} -> {d}"));
+            }
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "Apache-2.0 crates reach Elastic-2.0 code:\n{}",
+        bad.join("\n")
+    );
 }
 
 fn is_test_file(p: &Path) -> bool {

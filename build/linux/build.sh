@@ -7,6 +7,8 @@ set -eu
 : "${ARCH:?ARCH is required}"
 export CARGO_PROFILE_RELEASE_STRIP=symbols
 export RECUR_VERSION="${VERSION:?VERSION is required}"
+# Settings > Licenses (mise run generate:licenses).
+export RECUR_LICENSES_MD="$PWD/target/licenses.md"
 cargo build --release --locked -p recur-desktop -p recur-cli
 OUT="target/package/recur-linux-$ARCH"
 TARGET="${CARGO_TARGET_DIR:-target}/release"

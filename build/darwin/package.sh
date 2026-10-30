@@ -21,6 +21,8 @@ export CARGO_PROFILE_RELEASE_STRIP=symbols
 VERSION="${VERSION:-$(build/version.sh)}"
 export RECUR_VERSION="$VERSION"
 export RECUR_UPDATE_MANIFEST_URL="${RECUR_UPDATE_URL:-}"
+# Settings > Licenses (mise run generate:licenses).
+export RECUR_LICENSES_MD="$ROOT/target/licenses.md"
 
 build() {
   cargo build --release --locked -p recur-desktop -p recur-cli "$@"

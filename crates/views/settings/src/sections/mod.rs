@@ -6,6 +6,7 @@ pub mod data;
 pub mod editor;
 pub mod general;
 pub mod integrations;
+pub mod licenses;
 pub mod loops;
 pub mod mcp;
 pub mod models;
@@ -45,6 +46,7 @@ pub fn pane(
         Some(Section::Mcp) => v.mcp_pane(window, cx),
         Some(Section::Prs) => v.prs_pane(window, cx),
         Some(Section::Data) => v.data_pane(window, cx),
+        Some(Section::Licenses) => v.licenses_pane(window, cx),
         None => div().into_any_element(),
     }
 }

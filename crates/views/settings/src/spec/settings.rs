@@ -432,3 +432,11 @@ fn the_menu_action_and_cmd_comma_open_settings(cx: &mut TestAppContext) {
     assert_eq!(s.view(), recur_view_core::ViewName::Settings);
     assert!(s.has("v-settings:on"));
 }
+
+#[gpui::test]
+fn licenses_section_shows_the_third_party_licenses(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Licenses");
+    assert!(s.has("set-head=Licenses"));
+}

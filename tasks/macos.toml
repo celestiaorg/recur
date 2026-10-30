@@ -1,7 +1,7 @@
 # macOS packaging (build/darwin).
 ["macos:package"]
 description = "Packages target/package/Recur.app, .dmg and updater .zip (macOS; see build/darwin/package.sh for UNIVERSAL, signing and the update URL)"
-depends = ["generate:icons", "generate:help-skill"]
+depends = ["generate:icons", "generate:help-skill", "generate:licenses"]
 run = "build/darwin/package.sh"
 
 ["macos:smoke"]

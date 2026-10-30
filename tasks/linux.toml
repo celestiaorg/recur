@@ -10,7 +10,7 @@ run = "build/linux/in-docker.sh sh -c 'cargo clippy -p recur-content --all-targe
 
 ["linux:build"]
 description = "Release Linux build into target/package/recur-linux-<arch> (recur, recur-cli, recur.png; in Docker on non-Linux hosts). ARCH=amd64|arm64 overrides the host arch"
-depends = ["generate:help-skill"]
+depends = ["generate:help-skill", "generate:licenses"]
 run = '''
 set -eu
 VERSION="${VERSION:-$(build/version.sh)}" build/linux/in-docker.sh build/linux/build.sh

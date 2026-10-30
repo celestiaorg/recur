@@ -1,0 +1,28 @@
+# cargo-about config for `mise run generate:licenses`: the licenses of the crates the
+# shipped binaries link, for Settings > Licenses. A new license fails generation until it is
+# reviewed and added here.
+accepted = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "MIT-0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "ISC",
+    "Zlib",
+    "BSL-1.0",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "CDLA-Permissive-2.0",
+    "MPL-2.0",
+]
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+private = { ignore = true }

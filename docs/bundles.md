@@ -10,7 +10,7 @@ Observatory editor), and **settings** (persisted secrets/values for
 shebang scripts).
 Each bundle is a directory containing a single `bundle.toml` manifest.
 
-**Shipped bundles are the reference.** Copy `bundles/Text/src/*.ts` or a shebang
+**Shipped bundles are the reference**, licensed Apache 2.0 so you can copy them freely. Copy `bundles/Text/src/*.ts` or a shebang
 `body` when building your own under `~/.recur/bundles`. For highlighting, see
 `bundles/Go/syntaxes/` and `bundles/Themes/themes/`.
 

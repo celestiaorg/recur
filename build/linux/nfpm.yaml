@@ -10,6 +10,7 @@ version: ${VERSION}
 maintainer: recur.build
 vendor: recur.build
 homepage: https://recur.build
+license: Elastic-2.0
 description: Run autonomous AI coding loops locally (Rust/GPUI app).
 section: devel
 

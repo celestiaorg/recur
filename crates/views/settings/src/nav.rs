@@ -17,6 +17,7 @@ pub enum Section {
     Skills,
     Mcp,
     Data,
+    Licenses,
     BundleCommands,
     BundlePrompts,
     BundleGrammars,
@@ -26,7 +27,7 @@ pub enum Section {
 }
 
 impl Section {
-    pub const ALL: [Section; 17] = [
+    pub const ALL: [Section; 18] = [
         Section::Agent,
         Section::Models,
         Section::Loops,
@@ -38,6 +39,7 @@ impl Section {
         Section::Skills,
         Section::Mcp,
         Section::Data,
+        Section::Licenses,
         Section::BundleCommands,
         Section::BundlePrompts,
         Section::BundleGrammars,
@@ -59,6 +61,7 @@ impl Section {
             Section::Skills => "skills",
             Section::Mcp => "mcp",
             Section::Data => "data",
+            Section::Licenses => "licenses",
             Section::BundleCommands => "bundle-commands",
             Section::BundlePrompts => "bundle-prompts",
             Section::BundleGrammars => "bundle-grammars",
@@ -88,6 +91,7 @@ impl Section {
             Section::Editor => "Code editor",
             Section::Skills => "Skills",
             Section::Data => "Data",
+            Section::Licenses => "Licenses",
             Section::BundleCommands => "Commands",
             Section::BundlePrompts => "Prompt actions",
             Section::BundleGrammars => "Grammars",
@@ -158,6 +162,12 @@ pub fn nav() -> Vec<NavGroup> {
                     "Data",
                     IconName::Trash,
                     "clear wipe reset delete logs log reveal finder",
+                ),
+                item(
+                    Section::Licenses,
+                    "Licenses",
+                    IconName::Info,
+                    "license licenses legal open source third party dependencies notices copyright elastic apache",
                 ),
             ],
         },

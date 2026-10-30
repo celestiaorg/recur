@@ -96,8 +96,7 @@ pub fn is_excluded_by(path: &str, compiled: &[CompiledGlob]) -> bool {
         if let Some(&hit) = seen.get(rel) {
             return hit;
         }
-        let units: Vec<u16> = rel.encode_utf16().collect();
-        let hit = re.0.find_from_ucs2(&units, 0).next().is_some();
+        let hit = re.0.find(rel).is_some();
         if seen.len() >= MATCHES_PER_PATTERN {
             seen.clear();
         }

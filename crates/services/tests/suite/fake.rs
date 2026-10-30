@@ -1,17 +1,15 @@
-#![cfg(feature = "mock")]
-//! The mock bridge behaviors the e2e specs rely on, driven through the typed
-//! services the way a Rust view calls them.
+#![cfg(feature = "fake")]
+//! The fake's default behaviors the view specs rely on, driven through the
+//! typed services the way a Rust view calls them.
 
 use std::collections::BTreeMap;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use pretty_assertions::assert_eq;
-use recur_domain::{Project, ProjectGroup};
+use recur_domain::{Pr, Project, ProjectGroup, TreeEntry};
 use recur_services::api::{EditorBuffer, EditorSessionMeta, EditorSessionPatch, ShellState};
 use recur_services::events::{AppEvent, WorkspaceUpdated};
-use recur_services::mock::{BridgeError, MockBridge, MockOptions, Reply, fixtures};
-use serde_json::{Value, json};
+use recur_services::Error;
+use recur_services::fake::{Fake, Overrides, Seed, hold};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 const WORKING: &str = "LOOP-2231";
@@ -34,7 +32,7 @@ fn codes(tabs: &[recur_domain::WorkspaceChatTab]) -> Vec<&str> {
 
 #[tokio::test]
 async fn boot_loads_the_seed() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let projects = s.projects.list_projects().await.unwrap();
     assert_eq!(
         projects.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(),
@@ -76,14 +74,16 @@ async fn boot_loads_the_seed() {
     );
     assert_eq!(s.settings.get_instance_label().await.unwrap(), "");
     assert_eq!(
-        fixtures::sidebar_workspace_id("Dark mode for the dashboard").as_deref(),
+        Seed::e2e()
+            .workspace_id_by_goal("Dark mode for the dashboard")
+            .as_deref(),
         Some("LOOP-2235")
     );
 }
 
 #[tokio::test]
 async fn chat_tabs_create_close_reopen_reorder() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let w = &s.workspaces;
     assert_eq!(
         codes(&w.list_workspace_chats(WORKING).await.unwrap()),
@@ -137,33 +137,15 @@ async fn chat_tabs_create_close_reopen_reorder() {
 
 #[tokio::test]
 async fn closing_the_loop_tab_hides_it_and_clears_loop_chat_code() {
-    let bridge = MockBridge::fresh(MockOptions::default());
-    let s = bridge.services();
+    let fake = Fake::fresh(Overrides::default());
+    let s = fake.services();
     let w = &s.workspaces;
-    bridge.with_seed(|seed| {
-        let row = seed.find_loop(|l| l["id"] == WORKING).unwrap();
-        let by_id = seed.loop_obj(WORKING).unwrap();
-        for o in [by_id, row] {
-            seed.obj_mut(o)
-                .as_object_mut()
-                .unwrap()
-                .insert("loopChatCode".into(), json!("MA"));
-        }
-    });
+    fake.with_seed(|seed| seed.workspace_mut(WORKING).unwrap().loop_chat_code = "MA".into());
     assert_eq!(
         codes(&w.close_workspace_chat(WORKING, "MA").await.unwrap()),
         ["PA"]
     );
     assert_eq!(w.get_workspace(WORKING).await.unwrap().loop_chat_code, "");
-    // The seed's list row is its own object, so only loopById changed.
-    let row = w
-        .list_workspaces()
-        .await
-        .unwrap()
-        .into_iter()
-        .find(|x| x.id == WORKING)
-        .unwrap();
-    assert_eq!(row.loop_chat_code, "MA");
     assert_eq!(
         codes(&w.reopen_workspace_chat(WORKING, "MA").await.unwrap()),
         ["MA", "PA"]
@@ -172,8 +154,8 @@ async fn closing_the_loop_tab_hides_it_and_clears_loop_chat_code() {
 }
 
 #[tokio::test]
-async fn one_object_in_both_lists_shares_later_edits() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+async fn list_and_detail_reads_share_edits() {
+    let s = Fake::fresh(Overrides::default()).services();
     let w = &s.workspaces;
     w.set_workspace_base_branch(WORKING, "develop")
         .await
@@ -187,12 +169,9 @@ async fn one_object_in_both_lists_shares_later_edits() {
         .find(|x| x.id == WORKING)
         .unwrap();
     assert_eq!(row.base_branch, "develop");
-    assert_eq!(
-        row.loop_chat_code, "",
-        "SetWorkspaceBaseBranch stored one object in both"
-    );
+    assert_eq!(row.loop_chat_code, "");
 
-    // SetPRDraft does the same for prs / prById, so a later comment shows in ListPRs.
+    // A draft flip and a later comment show in ListPRs too.
     s.prs.set_pr_draft("482", true).await.unwrap();
     s.prs
         .add_pr_comment("482", "", 0, "hello", 0, "")
@@ -226,7 +205,7 @@ async fn one_object_in_both_lists_shares_later_edits() {
 
 #[tokio::test]
 async fn base_branch_rules_and_pr_retarget() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let w = &s.workspaces;
     let err = w
         .set_workspace_base_branch("NOPE", "main")
@@ -271,21 +250,21 @@ async fn base_branch_rules_and_pr_retarget() {
 
 #[tokio::test]
 async fn chat_attention_follows_focus_and_occlusion() {
-    let bridge = MockBridge::fresh(MockOptions::default());
-    let s = bridge.services();
+    let fake = Fake::fresh(Overrides::default());
+    let s = fake.services();
     let mut rx = s.subscribe();
     s.workspaces
         .set_workspace_chat_focus(WORKING, "MA")
         .await
         .unwrap();
-    let a = bridge.attention();
+    let a = fake.attention();
     assert_eq!(
         (a.focus_ws.as_str(), a.focus_code.as_str(), a.occluded),
         (WORKING, "MA", false)
     );
 
     // A focused, visible tab finishing raises nothing but the idle status.
-    bridge.simulate_chat_turn_idle(WORKING, "MA");
+    fake.simulate_chat_turn_idle(WORKING, "MA");
     let ev = drain(&mut rx);
     assert_eq!(names(&ev), ["agent.updated"]);
     let AppEvent::AgentUpdated(u) = &ev[0] else {
@@ -298,7 +277,7 @@ async fn chat_attention_follows_focus_and_occlusion() {
 
     // Occluded: unseen, an inbox row, attention + inbox events.
     s.workspaces.set_chat_ui_occluded(true).await.unwrap();
-    bridge.simulate_chat_turn_idle(WORKING, "MA");
+    fake.simulate_chat_turn_idle(WORKING, "MA");
     let ev = drain(&mut rx);
     assert_eq!(
         names(&ev),
@@ -331,7 +310,7 @@ async fn chat_attention_follows_focus_and_occlusion() {
         (att.counts.unseen, att.tab_unseen, att.code.as_str()),
         (0, false, "MA")
     );
-    assert!(bridge.attention().unseen.is_empty());
+    assert!(fake.attention().unseen.is_empty());
     assert!(
         s.inbox
             .get_inbox()
@@ -344,11 +323,11 @@ async fn chat_attention_follows_focus_and_occlusion() {
 
 #[tokio::test]
 async fn reading_chat_inbox_rows_clears_unseen() {
-    let bridge = MockBridge::fresh(MockOptions::default());
-    let s = bridge.services();
+    let fake = Fake::fresh(Overrides::default());
+    let s = fake.services();
     let mut rx = s.subscribe();
-    bridge.simulate_chat_turn_idle(WORKING, "PA");
-    bridge.simulate_chat_turn_idle("LOOP-2229", "PA");
+    fake.simulate_chat_turn_idle(WORKING, "PA");
+    fake.simulate_chat_turn_idle("LOOP-2229", "PA");
     drain(&mut rx);
 
     let unread = s
@@ -357,7 +336,7 @@ async fn reading_chat_inbox_rows_clears_unseen() {
         .await
         .unwrap();
     assert_eq!(unread, 5);
-    assert_eq!(bridge.attention().unseen.len(), 1);
+    assert_eq!(fake.attention().unseen.len(), 1);
     assert_eq!(
         names(&drain(&mut rx)),
         ["attention.updated", "inbox.updated"]
@@ -388,7 +367,7 @@ async fn reading_chat_inbox_rows_clears_unseen() {
 
 #[tokio::test]
 async fn cancelling_the_loop_tab_parks_the_run() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let mut rx = s.subscribe();
     s.workspaces
         .cancel_workspace_message(WORKING, "PA")
@@ -426,7 +405,7 @@ async fn cancelling_the_loop_tab_parks_the_run() {
 
 #[tokio::test]
 async fn editor_session_merges_and_deletes_when_empty() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let e = &s.editor_session;
     assert_eq!(e.get_editor_session(WORKING).await.unwrap(), None);
     let meta = EditorSessionMeta {
@@ -506,7 +485,7 @@ async fn editor_session_merges_and_deletes_when_empty() {
 
 #[tokio::test]
 async fn shell_state_and_schedule_view_persist() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     assert_eq!(
         s.shell.get_shell_state().await.unwrap(),
         ShellState::default()
@@ -527,7 +506,7 @@ async fn shell_state_and_schedule_view_persist() {
 
 #[tokio::test]
 async fn pr_review_drafts_reactions_and_threads() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let p = &s.prs;
     let c = p
         .add_pr_comment("482", "src/a.go", 12, " looks off ", 10, "f-1")
@@ -627,7 +606,7 @@ async fn pr_review_drafts_reactions_and_threads() {
 
 #[tokio::test]
 async fn projects_and_open_path_create_working_copies() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let p = Project {
         name: "shop".into(),
         repo_path: "/code/shop".into(),
@@ -714,16 +693,10 @@ async fn projects_and_open_path_create_working_copies() {
 
 #[tokio::test]
 async fn pr_workspaces_promote_the_chat_host() {
-    let bridge = MockBridge::fresh(MockOptions::default());
+    let fake = Fake::fresh(Overrides::default());
     // An imported GitHub PR with no Recur workspace yet.
-    bridge.with_seed(|seed| {
-        seed.pr_by_id_mut("471")
-            .unwrap()
-            .as_object_mut()
-            .unwrap()
-            .remove("workspaceId");
-    });
-    let s = bridge.services();
+    fake.with_seed(|seed| seed.pr_mut("471").unwrap().workspace_id.clear());
+    let s = fake.services();
     let host = s.prs.ensure_pr_chat_host("471").await.unwrap();
     assert_eq!(
         (host.id.as_str(), host.host_pr_id.as_str()),
@@ -744,30 +717,23 @@ async fn pr_workspaces_promote_the_chat_host() {
 }
 
 #[tokio::test]
-async fn overrides_errors_and_deferred_replies() {
-    let unresolved = Arc::new(AtomicUsize::new(0));
-    let seen = unresolved.clone();
-    let (later, release) = Reply::deferred();
+async fn overrides_errors_and_held_answers() {
+    let (later, release) = hold();
     let later = parking_lot::Mutex::new(Some(later));
-    let bridge = MockBridge::fresh(
-        MockOptions::default()
-            .resolver("MergePR", |_a, _s, _t| {
-                Reply::Error(BridgeError::new("protected branch"))
+    let fake = Fake::fresh(
+        Overrides::default()
+            .merge_pr(|_, _| Err(Error::new("protected branch")))
+            .list_prs(move |_, ()| later.lock().take().unwrap_or_else(|| Ok(Vec::new()).into()))
+            .list_tree(|_, (_, _, path)| {
+                Ok(vec![TreeEntry {
+                    name: path.clone(),
+                    path,
+                    ..Default::default()
+                }])
             })
-            .resolver("ListPRs", move |_a, _s, _t| {
-                later.lock().take().unwrap_or_else(Reply::null)
-            })
-            .resolver("ListTree", |a, _s, _t| {
-                Reply::value(json!([{ "name": a[2], "path": a[2] }]))
-            })
-            .resolver("ListFiles", |_a, _s, _t| {
-                Reply::value(json!(["a/b/c.rs", "a/x.rs", "README.md"]))
-            })
-            .on_unresolved(move |_| {
-                seen.fetch_add(1, Ordering::SeqCst);
-            }),
+            .list_files(|_, _| Ok(["a/b/c.rs", "a/x.rs", "README.md"].map(String::from).to_vec())),
     );
-    let s = bridge.services();
+    let s = fake.services();
     assert_eq!(
         s.prs.merge_pr("482", "").await.unwrap_err().message,
         "protected branch"
@@ -779,7 +745,10 @@ async fn overrides_errors_and_deferred_replies() {
     });
     tokio::task::yield_now().await;
     assert!(!held.is_finished());
-    release.send(Reply::value(json!([{ "id": "9" }])));
+    release.send(Ok(vec![Pr {
+        id: "9".into(),
+        ..Default::default()
+    }]));
     assert_eq!(held.await.unwrap().unwrap()[0].id, "9");
 
     let trees = s
@@ -820,16 +789,14 @@ async fn overrides_errors_and_deferred_replies() {
             .is_empty()
     );
     assert_eq!(s.terminal.attach_terminal("t1").await.unwrap(), "");
-    assert_eq!(unresolved.load(Ordering::SeqCst), 2);
 }
 
 #[tokio::test]
 async fn failed_calls_hold_their_queued_events() {
-    let bridge = MockBridge::fresh(
-        MockOptions::default()
-            .resolver("CancelWorkspaceMessage", |_a, _s, _t| Reply::error("nope")),
+    let fake = Fake::fresh(
+        Overrides::default().cancel_workspace_message(|_, _| Err(Error::new("nope"))),
     );
-    let s = bridge.services();
+    let s = fake.services();
     let mut rx = s.subscribe();
     assert!(
         s.workspaces
@@ -844,7 +811,7 @@ async fn failed_calls_hold_their_queued_events() {
 
 #[tokio::test]
 async fn bundles_catalog_from_shipped_manifests() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let b = &s.bundle;
     let grammars = b.list_grammars().await.unwrap();
     assert_eq!(grammars.len(), 1);
@@ -878,7 +845,7 @@ async fn bundles_catalog_from_shipped_manifests() {
             .any(|t| t.id == "vga" && !t.palette.background.is_empty())
     );
 
-    // The pre-rename ListLoops alias answers the workspace list.
+    // The pre-rename ListLoops alias answered the workspace list.
     let loops = b.list_loops().await.unwrap();
     assert_eq!(loops.len(), 5);
     assert_eq!(loops[0].id, "LOOP-2218");
@@ -927,7 +894,7 @@ async fn bundles_catalog_from_shipped_manifests() {
 
 #[tokio::test]
 async fn briefing_buckets_the_seed() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let b = s.briefing.get_briefing().await.unwrap();
     assert_eq!(
         (b.counts.needs, b.counts.working, b.counts.pickup),
@@ -953,7 +920,7 @@ async fn briefing_buckets_the_seed() {
 
 #[tokio::test]
 async fn workspace_creation_shapes() {
-    let s = MockBridge::fresh(MockOptions::default()).services();
+    let s = Fake::fresh(Overrides::default()).services();
     let w = &s.workspaces;
     let lp = w
         .create_workspace("storefront", "", "", "loop", "do it", "", None)
@@ -997,64 +964,9 @@ async fn workspace_creation_shapes() {
         .await
         .unwrap();
     assert_eq!(upd.loop_id, "recur.loops.docs");
-    // The mock returns the workspace object for this string method; the UI
-    // only tested it for truthiness.
-    assert_eq!(
-        w.open_workspace_pr(WORKING, false).await.unwrap(),
-        "[object Object]"
-    );
+    // Any non-empty id: the UI only tests it for truthiness.
+    assert_eq!(w.open_workspace_pr(WORKING, false).await.unwrap(), WORKING);
     let removed = w.remove_workspace("LOOP-2235").await.unwrap();
     assert!(removed.archived);
     assert_eq!(removed.worktree_path, "");
-}
-
-#[tokio::test]
-async fn dispatched_wire_events_decode() {
-    let bridge = MockBridge::fresh(MockOptions::default());
-    let mut rx = bridge.services().subscribe();
-    bridge
-        .dispatch_wire(
-            "workspace.updated",
-            json!({ "workspaceId": WORKING, "phase": "working", "iteration": 1 }),
-        )
-        .unwrap();
-    bridge
-        .dispatch_wire("session.delta", json!({ "workspaceId": WORKING, "code": "PA", "text": "hi", "seq": 2, "replace": true }))
-        .unwrap();
-    bridge
-        .dispatch_wire("term.data", json!({ "id": "t1", "data": "aGk=" }))
-        .unwrap();
-    bridge
-        .dispatch_wire(
-            "workspace.event",
-            json!({ "workspaceId": WORKING, "event": { "text": "edited a file" } }),
-        )
-        .unwrap();
-    let ev = drain(&mut rx);
-    let AppEvent::WorkspaceUpdated(u) = &ev[0] else {
-        unreachable!()
-    };
-    assert_eq!(
-        (u.phase.as_deref(), u.iteration, u.state.is_none()),
-        (Some("working"), Some(1), true)
-    );
-    let AppEvent::SessionDelta(d) = &ev[1] else {
-        unreachable!()
-    };
-    assert_eq!(
-        (d.tag.code.as_str(), d.text.as_str(), d.seq, d.replace),
-        ("PA", "hi", Some(2), true)
-    );
-    assert_eq!(
-        ev[2],
-        AppEvent::Term(recur_term::Event::Data {
-            id: "t1".into(),
-            data: b"hi".to_vec()
-        })
-    );
-    let AppEvent::WorkspaceEvent(e) = &ev[3] else {
-        unreachable!()
-    };
-    assert_eq!(e.event.text, "edited a file");
-    assert!(bridge.dispatch_wire("loop.event", Value::Null).is_err());
 }

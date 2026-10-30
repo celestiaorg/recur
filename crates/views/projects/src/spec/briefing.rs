@@ -1,12 +1,25 @@
 //! The Inbox (Briefing with its Ask Recur dock) on the whole shell.
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::ChatItem;
+use recur_services::AppEvent;
+use recur_services::events::AgentUpdated;
+use recur_services::fake::Overrides;
 use recur_view_briefing::briefing::BriefingView;
 use recur_view_core::{LocalStorage, ViewName};
 use serde_json::json;
 
 use super::harness::{S, boot, plain, with};
+
+fn app_agent(status: &str) -> AppEvent {
+    AppEvent::AgentUpdated(AgentUpdated {
+        workspace_id: String::new(),
+        agent_id: "app-APP".into(),
+        status: status.into(),
+        surface: "app".into(),
+        code: "APP".into(),
+    })
+}
 
 const RATE: &str = "Rate-limit the public API";
 const SIGN_IN: &str = "Add Apple & Google sign-in";
@@ -231,17 +244,11 @@ fn ask_recur_tabs_show_running_status_like_workspace_chats(cx: &mut TestAppConte
         !busy(&mut s, "APP"),
         "a reply that returns at once drops busy"
     );
-    s.wire(
-        "agent.updated",
-        json!({ "workspaceId": "", "agentId": "app-APP", "status": "working", "surface": "app", "code": "APP" }),
-    );
+    s.dispatch(app_agent("working"));
     assert!(busy(&mut s, "APP"));
     s.click("ask-new");
     assert!(busy(&mut s, "APP"), "the primary keeps its running mark");
-    s.wire(
-        "agent.updated",
-        json!({ "workspaceId": "", "agentId": "app-APP", "status": "idle", "surface": "app", "code": "APP" }),
-    );
+    s.dispatch(app_agent("idle"));
     assert!(!busy(&mut s, "APP"));
 }
 
@@ -329,32 +336,49 @@ fn ask_recur_briefing_tools_skip_json_only_present_workspace_is_a_card(cx: &mut 
         "next": "Answer the question",
         "primary": { "label": "Answer", "target": "workspace:LOOP-2218" },
     });
-    let transcript = json!([
-        { "role": "user", "kind": "text", "text": "What needs me?" },
-        {
-            "role": "assistant", "kind": "tool",
-            "tool": "mcp__recur__list_workspace_briefs", "input": "{}",
-            "result": json!({ "counts": { "needs": 1, "working": 0, "pickup": 0 }, "workspaces": [brief] }).to_string(),
+    let text = |role: &str, text: &str| ChatItem {
+        role: role.into(),
+        kind: "text".into(),
+        text: text.into(),
+        ..Default::default()
+    };
+    let tool = |tool: &str, input: &str, result: serde_json::Value| ChatItem {
+        role: "assistant".into(),
+        kind: "tool".into(),
+        tool: tool.into(),
+        input: input.into(),
+        result: result.to_string(),
+        ..Default::default()
+    };
+    let transcript = vec![
+        text("user", "What needs me?"),
+        tool(
+            "mcp__recur__list_workspace_briefs",
+            "{}",
+            json!({ "counts": { "needs": 1, "working": 0, "pickup": 0 }, "workspaces": [brief] }),
+        ),
+        tool(
+            "mcp__recur__get_workspace_context",
+            "{\"workspace_id\":\"LOOP-2218\"}",
+            json!({ "brief": brief, "planSteps": [{ "id": "S1", "title": "Specify burst vs sustained", "status": "pending" }] }),
+        ),
+        tool(
+            "mcp__recur__present_workspace",
+            "{\"target\":\"workspace:LOOP-2218\"}",
+            json!({ "ok": true, "target": "workspace:LOOP-2218", "kind": "workspace", "brief": brief }),
+        ),
+        text("assistant", "Rate-limit is waiting on you."),
+        ChatItem {
+            role: "assistant".into(),
+            kind: "turn".into(),
+            duration_ms: 1400,
+            ..Default::default()
         },
-        {
-            "role": "assistant", "kind": "tool",
-            "tool": "mcp__recur__get_workspace_context", "input": "{\"workspace_id\":\"LOOP-2218\"}",
-            "result": json!({ "brief": brief, "planSteps": [{ "id": "S1", "title": "Specify burst vs sustained", "status": "pending" }] }).to_string(),
-        },
-        {
-            "role": "assistant", "kind": "tool",
-            "tool": "mcp__recur__present_workspace", "input": "{\"target\":\"workspace:LOOP-2218\"}",
-            "result": json!({ "ok": true, "target": "workspace:LOOP-2218", "kind": "workspace", "brief": brief }).to_string(),
-        },
-        { "role": "assistant", "kind": "text", "text": "Rate-limit is waiting on you." },
-        { "role": "assistant", "kind": "turn", "durationMs": 1400 },
-    ]);
+    ];
     let mut s = with(
         cx,
         |_| {},
-        MockOptions::default().resolver("AppChatItems", move |_, _, _| {
-            Reply::value(transcript.clone())
-        }),
+        Overrides::default().app_chat_items(move |_, _| Ok(transcript.clone())),
     );
     assert!(s.has("v-briefing:on"));
     // The tool rows' labels ("Listed 1 workspace", "Looked up …", "Presented …") are the
@@ -380,7 +404,7 @@ fn the_ask_dock_is_a_drawer_below_1100px_and_escape_closes_it(cx: &mut TestAppCo
     let mut s = boot(
         cx,
         |_| {},
-        MockOptions::default(),
+        Overrides::default(),
         LocalStorage::in_memory(),
     );
     s.cx.simulate_resize(gpui::size(gpui::px(1000.), gpui::px(800.)));

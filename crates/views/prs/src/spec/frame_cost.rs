@@ -8,7 +8,7 @@ use recur_view_core::{PrReviewKind, Topics};
 
 use serde_json::json;
 
-use super::harness::{S, patch_pr, plain, plain_with};
+use super::harness::{S, patch_pr, plain, plain_with, pr_json};
 
 fn renders(name: &str, counts: &BTreeMap<&'static str, u32>) -> u32 {
     counts
@@ -240,10 +240,7 @@ async fn a_key_that_empties_the_comment_box_leaves_the_conversation_alone(cx: &m
 /// keep their place: scrolled to the end, the last commit shows where the list ends.
 #[gpui::test]
 async fn a_pr_with_many_commits_lays_out_the_visible_rows_only(cx: &mut TestAppContext) {
-    let base = recur_services::mock::fixtures::seed()
-        .pr_by_id("482")
-        .unwrap()["commits"]
-        .clone();
+    let base = pr_json(&recur_services::fake::Seed::e2e(), "482")["commits"].clone();
     let base = base.as_array().unwrap();
     let many: Vec<_> = (0..1000)
         .map(|i| {
@@ -347,7 +344,7 @@ fn redraw(s: &mut S) {
 #[gpui::test]
 async fn a_large_commit_redraws_without_copying_its_diff(cx: &mut TestAppContext) {
     let mut s = super::harness::plain_with(cx, |sd| {
-        let mut commits = sd.pr_by_id("482").unwrap()["commits"].clone();
+        let mut commits = pr_json(sd, "482")["commits"].clone();
         commits
             .as_array_mut()
             .unwrap()

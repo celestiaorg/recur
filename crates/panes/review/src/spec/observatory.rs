@@ -4,7 +4,8 @@
 //! stand in for them here.
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::{FileDiffResult, Finding};
+use recur_services::fake::Overrides;
 use serde_json::json;
 
 use super::harness::*;
@@ -13,16 +14,36 @@ use crate::review_diff::{FileListMode, ReviewTab};
 use crate::surface::SurfaceEvent;
 use recur_engine::view::comment_thread::DiffSide;
 
-fn main_go_lines(extra: serde_json::Value) -> serde_json::Value {
-    json!({ "files": [ {
+fn main_go_lines(extra: serde_json::Value) -> FileDiffResult {
+    de(json!({ "files": [ {
         "path": "src/main.go", "status": "m", "diff": {"add": 1, "del": 1},
         "lines": extra,
-    } ] })
+    } ] }))
+}
+
+/// A finding the user filed from a review line note.
+fn user_finding(
+    id: &str,
+    (workspace_id, file, line, message, end_line): (String, String, i64, String, i64),
+) -> Finding {
+    Finding {
+        id: id.into(),
+        workspace_id,
+        file,
+        line,
+        end_line,
+        message,
+        status: "open".into(),
+        severity: "info".into(),
+        source: "user".into(),
+        iteration: 1,
+        ..Default::default()
+    }
 }
 
 #[gpui::test]
 async fn branch_review_shows_files_changed_and_commits_without_a_pr(cx: &mut TestAppContext) {
-    let (mut h, host) = surface(cx, MockOptions::default(), |_| {});
+    let (mut h, host) = surface(cx, Overrides::default(), |_| {});
     assert!(h.has("review:changes"));
     // Tree mode by default, one changed file, its card in the stack.
     let files = host.read_with(h.cx, |hst, cx| {
@@ -91,22 +112,22 @@ async fn branch_review_shows_files_changed_and_commits_without_a_pr(cx: &mut Tes
 
 #[gpui::test]
 async fn commits_tab_uncommitted_row_is_vs_head_not_vs_base(cx: &mut TestAppContext) {
-    let opts = MockOptions::default()
-        .resolver("DiffVsBase", |_, _, _| {
-            Reply::value(main_go_lines(json!([
+    let opts = Overrides::default()
+        .diff_vs_base(|_, _| {
+            Ok(main_go_lines(json!([
                 {"old": "", "new": "", "type": "hunk", "codeHtml": "@@ -1,1 +1,2 @@"},
                 {"old": "1", "new": "1", "type": "ctx", "codeHtml": "package main"},
                 {"old": "", "new": "2", "type": "add", "codeHtml": "// edited"},
             ])))
         })
-        .resolver("DiffWorking", |_, _, _| {
-            Reply::value(json!({ "files": [ {
+        .diff_working(|_, _| {
+            Ok(de(json!({ "files": [ {
                 "path": "src/scratch.ts", "status": "a", "diff": {"add": 1, "del": 0},
                 "lines": [
                     {"old": "", "new": "", "type": "hunk", "codeHtml": "@@ -0,0 +1,1 @@"},
                     {"old": "", "new": "1", "type": "add", "codeHtml": "export {}"},
                 ],
-            } ] }))
+            } ] })))
         });
     let (mut h, host) = surface(cx, opts, |_| {});
     assert!(h.has("cfile:live:src/main.go"));
@@ -146,7 +167,7 @@ async fn commits_tab_uncommitted_row_is_vs_head_not_vs_base(cx: &mut TestAppCont
 
 #[gpui::test]
 async fn clean_worktree_hides_the_uncommitted_commits_row(cx: &mut TestAppContext) {
-    let (mut h, _host) = surface(cx, MockOptions::default(), |p| {
+    let (mut h, _host) = surface(cx, Overrides::default(), |p| {
         p.working_dirty_count = 0;
         p.tab = ReviewTab::Commits;
     });
@@ -156,7 +177,7 @@ async fn clean_worktree_hides_the_uncommitted_commits_row(cx: &mut TestAppContex
 
 #[gpui::test]
 async fn working_copy_review_includes_the_commits_tab(cx: &mut TestAppContext) {
-    let (mut h, host) = surface(cx, MockOptions::default(), |p| {
+    let (mut h, host) = surface(cx, Overrides::default(), |p| {
         p.base_label = String::new();
         p.tab = ReviewTab::Commits;
     });
@@ -179,7 +200,7 @@ async fn working_copy_review_includes_the_commits_tab(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn commit_review_stays_open_when_files_are_edited(cx: &mut TestAppContext) {
-    let (mut h, host) = surface(cx, MockOptions::default(), |p| p.tab = ReviewTab::Commits);
+    let (mut h, host) = surface(cx, Overrides::default(), |p| p.tab = ReviewTab::Commits);
     h.click("commit:Add feature");
     assert!(h.has("cback"));
     // Same-string workspaceId re-pass and a live refresh must not clear the commit scope.
@@ -196,7 +217,7 @@ async fn commit_review_stays_open_when_files_are_edited(cx: &mut TestAppContext)
 
 #[gpui::test]
 async fn collapsing_a_files_changed_card_shrinks_it_to_the_header(cx: &mut TestAppContext) {
-    let (mut h, _host) = surface(cx, MockOptions::default(), |_| {});
+    let (mut h, _host) = surface(cx, Overrides::default(), |_| {});
     assert!(h.has("hline:src/main.go:add:right:2"));
     let expanded = h.bounds("cfile:live:src/main.go").expect("card");
     assert!(f32::from(expanded.size.height) > 80.);
@@ -207,15 +228,13 @@ async fn collapsing_a_files_changed_card_shrinks_it_to_the_header(cx: &mut TestA
     assert!(f32::from(collapsed.size.height) < 64.);
 }
 
-fn finding_opts() -> MockOptions {
-    let notes = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<serde_json::Value>::new()));
+fn finding_opts() -> Overrides {
+    let notes = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<Finding>::new()));
     let (n1, n2) = (notes.clone(), notes.clone());
-    MockOptions::default()
-        .resolver("ListFindings", move |_, _, _| {
-            Reply::value(serde_json::Value::Array(n1.lock().clone()))
-        })
-        .resolver("DiffVsBase", |_, _, _| {
-            Reply::value(json!({ "files": [
+    Overrides::default()
+        .list_findings(move |_, _| Ok(n1.lock().clone()))
+        .diff_vs_base(|_, _| {
+            Ok(de(json!({ "files": [
                 { "path": "src/main.go", "status": "m", "diff": {"add": 1, "del": 1}, "lines": [
                     {"old": "", "new": "", "type": "hunk", "codeHtml": "@@ -1,2 +1,2 @@"},
                     {"old": "1", "new": "1", "type": "ctx", "codeHtml": "package main"},
@@ -226,16 +245,12 @@ fn finding_opts() -> MockOptions {
                     {"old": "", "new": "", "type": "hunk", "codeHtml": "@@ -0,0 +1,1 @@"},
                     {"old": "", "new": "1", "type": "add", "codeHtml": "package util"},
                 ] },
-            ] }))
+            ] })))
         })
-        .resolver("CreateFinding", move |a, _, _| {
-            let f = json!({
-                "id": "f-user-1", "workspaceId": a[0], "file": a[1], "line": a[2],
-                "endLine": a[4], "message": a[3], "status": "open", "severity": "info",
-                "source": "user", "iteration": 1,
-            });
+        .create_finding(move |_, args| {
+            let f = user_finding("f-user-1", args);
             n2.lock().push(f.clone());
-            Reply::value(f)
+            Ok(f)
         })
 }
 
@@ -264,14 +279,12 @@ async fn review_line_note_becomes_a_finding(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn drag_on_the_comment_control_selects_a_multiline_finding(cx: &mut TestAppContext) {
-    let notes = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<serde_json::Value>::new()));
+    let notes = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<Finding>::new()));
     let (n1, n2) = (notes.clone(), notes.clone());
-    let opts = MockOptions::default()
-        .resolver("ListFindings", move |_, _, _| {
-            Reply::value(serde_json::Value::Array(n1.lock().clone()))
-        })
-        .resolver("DiffVsBase", |_, _, _| {
-            Reply::value(main_go_lines(json!([
+    let opts = Overrides::default()
+        .list_findings(move |_, _| Ok(n1.lock().clone()))
+        .diff_vs_base(|_, _| {
+            Ok(main_go_lines(json!([
                 {"old": "", "new": "", "type": "hunk", "codeHtml": "@@ -1,1 +1,4 @@"},
                 {"old": "1", "new": "1", "type": "ctx", "codeHtml": "package main"},
                 {"old": "", "new": "2", "type": "add", "codeHtml": "func a() {}"},
@@ -279,14 +292,10 @@ async fn drag_on_the_comment_control_selects_a_multiline_finding(cx: &mut TestAp
                 {"old": "", "new": "4", "type": "add", "codeHtml": "func c() {}"},
             ])))
         })
-        .resolver("CreateFinding", move |a, _, _| {
-            let f = json!({
-                "id": "f-user-span", "workspaceId": a[0], "file": a[1], "line": a[2],
-                "message": a[3], "endLine": a[4], "status": "open", "severity": "info",
-                "source": "user", "iteration": 1,
-            });
+        .create_finding(move |_, args| {
+            let f = user_finding("f-user-span", args);
             n2.lock().push(f.clone());
-            Reply::value(f)
+            Ok(f)
         });
     let (mut h, host) = surface(cx, opts, |_| {});
     h.cx.update(|_, cx| cx.write_to_clipboard(gpui::ClipboardItem::new_string("before".into())));
@@ -327,8 +336,8 @@ async fn drag_on_the_comment_control_selects_a_multiline_finding(cx: &mut TestAp
     assert!(h.has("icmt-finding:f-user-span"));
     let created = notes.lock()[0].clone();
     assert_eq!(
-        (created["line"].as_i64(), created["endLine"].as_i64()),
-        (Some(2), Some(4))
+        (created.line, created.end_line),
+        (2, 4)
     );
     let df = host
         .read_with(h.cx, |hst, cx| {
@@ -353,9 +362,8 @@ async fn drag_on_the_comment_control_selects_a_multiline_finding(cx: &mut TestAp
 #[gpui::test]
 async fn review_changes_survives_scrolling_a_large_mixed_size_diff(cx: &mut TestAppContext) {
     let files = large_files(300);
-    let opts = MockOptions::default().resolver("DiffVsBase", move |_, _, _| {
-        Reply::value(json!({ "files": files.clone() }))
-    });
+    let diff: FileDiffResult = de(json!({ "files": files }));
+    let opts = Overrides::default().diff_vs_base(move |_, _| Ok(diff.clone()));
     let (mut h, host) = surface(cx, opts, |p| p.count = 300);
     let count = host.read_with(h.cx, |hst, cx| {
         hst.surface
@@ -408,9 +416,8 @@ async fn a_stuck_file_header_holds_the_pane_top_while_scrolling(cx: &mut TestApp
         .iter()
         .map(|f| f["path"].as_str().expect("path").to_string())
         .collect();
-    let opts = MockOptions::default().resolver("DiffVsBase", move |_, _, _| {
-        Reply::value(json!({ "files": files.clone() }))
-    });
+    let diff: FileDiffResult = de(json!({ "files": files }));
+    let opts = Overrides::default().diff_vs_base(move |_, _| Ok(diff.clone()));
     let (mut h, host) = surface(cx, opts, |p| p.count = 40);
     let pane = host.read_with(h.cx, |hst, cx| {
         hst.surface
@@ -458,9 +465,8 @@ async fn a_huge_diff_mounts_only_the_cards_near_the_viewport(cx: &mut TestAppCon
         .as_str()
         .expect("path")
         .to_string();
-    let opts = MockOptions::default().resolver("DiffVsBase", move |_, _, _| {
-        Reply::value(json!({ "files": files.clone() }))
-    });
+    let diff: FileDiffResult = de(json!({ "files": files }));
+    let opts = Overrides::default().diff_vs_base(move |_, _| Ok(diff.clone()));
     let (mut h, host) = surface(cx, opts, |p| p.count = 2000);
     let stub = |p: &str| format!("cfile:stub:{p}");
     h.settle();
@@ -499,7 +505,7 @@ async fn a_huge_diff_mounts_only_the_cards_near_the_viewport(cx: &mut TestAppCon
 /// typing) leaves the review, and the Observatory that hosts it, as they were.
 #[gpui::test]
 fn a_reload_that_finds_the_same_diff_does_not_notify(cx: &mut TestAppContext) {
-    let (h, host) = surface(cx, MockOptions::default(), |_| {});
+    let (h, host) = surface(cx, Overrides::default(), |_| {});
     let files =
         h.cx.update(|_, cx| host.read(cx).surface.read(cx).files_view().clone());
     let n = std::rc::Rc::new(std::cell::Cell::new(0));
@@ -515,8 +521,8 @@ fn a_reload_that_finds_the_same_diff_does_not_notify(cx: &mut TestAppContext) {
 /// the same text (line-number cells included, empty ones adding nothing).
 #[gpui::test]
 async fn code_selects_across_rows_and_copies_like_webkit(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("DiffVsBase", |_, _, _| {
-        Reply::value(main_go_lines(json!([
+    let opts = Overrides::default().diff_vs_base(|_, _| {
+        Ok(main_go_lines(json!([
             {"old": "", "new": "", "type": "hunk", "codeHtml": "@@ -1,1 +1,4 @@"},
             {"old": "1", "new": "1", "type": "ctx", "codeHtml": "package main"},
             {"old": "", "new": "2", "type": "add", "codeHtml": "func a() {}"},

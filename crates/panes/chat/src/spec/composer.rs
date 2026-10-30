@@ -3,7 +3,7 @@
 
 use gpui::TestAppContext;
 use recur_engine::view::composer::Segment;
-use recur_services::mock::MockOptions;
+use recur_services::fake::Overrides;
 
 use super::harness::*;
 
@@ -31,7 +31,7 @@ fn skill_chips(h: &mut H) -> usize {
 fn with_prompt<'a>(cx: &'a mut TestAppContext, draft: &str) -> H<'a> {
     let mut props = ws_props();
     props.agent_code = "PA".into();
-    let mut h = boot(cx, MockOptions::default(), props, ws_hooks());
+    let mut h = boot(cx, Overrides::default(), props, ws_hooks());
     h.focus_composer();
     h.type_text("/");
     h.wait(50);
@@ -115,7 +115,7 @@ async fn backspace_at_an_empty_first_slot_removes_the_chip(cx: &mut TestAppConte
 
 #[gpui::test]
 async fn an_artifact_chip_counts_in_the_caret_wire_length(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
     h.fill("see @artifact:abc-def x");
     let chat = h.chat();
     h.cx.update(|_, cx| {

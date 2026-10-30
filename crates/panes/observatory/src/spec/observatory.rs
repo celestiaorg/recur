@@ -4,32 +4,39 @@
 
 use gpui::TestAppContext;
 use recur_editor::view_state::EditorViewMode;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::{Artifact, FileContent, TreeEntry};
+use recur_services::AppEvent;
+use recur_services::api::{Asset, AssetError};
+use recur_services::events::{ArtifactEvent, WorkspaceUpdated};
+use recur_services::fake::{Overrides, Seed};
 use recur_view_core::prefs::CodePanelKey;
-use serde_json::{Value, json};
 
 use super::harness::*;
 use crate::model::MainSurface;
 
-fn s(a: &[Value], i: usize) -> String {
-    a.get(i).and_then(Value::as_str).unwrap_or("").to_string()
+/// A tree of one untracked root file, changed versus base.
+fn one_file(name: &'static str) -> Overrides {
+    Overrides::default()
+        .list_tree(move |_, (_, _, path)| {
+            Ok(if path.is_empty() {
+                tree(&[(name, name, false)])
+            } else {
+                Vec::new()
+            })
+        })
+        .list_changed_files(move |_, _| Ok(strings(&[name])))
+        .git_status(move |_, _| Ok(statuses(&[(name, "u")])))
+        .working_status(move |_, _| Ok(statuses(&[(name, "u")])))
 }
 
-fn file(path: &str, language: &str, content: &str, writable: bool) -> Value {
-    json!({
-        "path": path, "language": language, "content": content,
-        "size": content.len(), "writable": writable,
-    })
-}
-
-/// The mock's tree: `src/main.go`, changed (`m`) versus base.
+/// The fake's tree: `src/main.go`, changed (`m`) versus base.
 fn open_main_go(h: &mut H) {
     h.click("obs-node:file:src/main.go");
 }
 
 #[gpui::test]
 async fn loop_detail_mounts_the_observatory(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     assert!(h.has("obs"));
     assert!(h.has("obs-left"));
     assert!(h.has("agent-chat"));
@@ -40,7 +47,7 @@ async fn loop_detail_mounts_the_observatory(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn agent_chat_icon_shows_an_unread_badge_from_workspace_attention(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     // Agent on screen: the transcript is not occluded.
     let occluded = h.state.read_with(h.cx, |s, _| {
         s.overlays.chat_occluders.contains("agent-pane")
@@ -52,7 +59,7 @@ async fn agent_chat_icon_shows_an_unread_badge_from_workspace_attention(cx: &mut
         s.overlays.chat_occluders.contains("agent-pane")
     });
     assert!(occluded);
-    h.bridge.simulate_chat_turn_idle(WS, "MA");
+    h.fake.simulate_chat_turn_idle(WS, "MA");
     h.settle();
     let title = h.read(|o, cx| o.pane_badge_title(CodePanelKey::Maestro, cx));
     assert_eq!(title, "Agent (1 unread)");
@@ -64,7 +71,7 @@ async fn agent_chat_icon_shows_an_unread_badge_from_workspace_attention(cx: &mut
 
 #[gpui::test]
 async fn agent_chat_unread_badges_when_the_observatory_is_off_screen(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     // Maximizing the terminal (the shell's ⌃⇧`) hides the agent dock: the transcript is
     // occluded.
     h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, true, cx));
@@ -82,7 +89,7 @@ async fn agent_chat_unread_badges_when_the_observatory_is_off_screen(cx: &mut Te
 
 #[gpui::test]
 async fn loop_code_tab_opens_the_editor_for_a_changed_file(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     open_main_go(&mut h);
     // Changed files open in Diff; switch to Code.
     h.click("view-mode:Code");
@@ -95,7 +102,11 @@ async fn loop_code_tab_opens_the_editor_for_a_changed_file(cx: &mut TestAppConte
 #[gpui::test]
 async fn save_keeps_the_file_tab_selected(cx: &mut TestAppContext) {
     let writes = Calls::default();
-    let opts = MockOptions::default().resolver("WriteFile", record(&writes, |_| Reply::null()));
+    let w = writes.clone();
+    let opts = Overrides::default().write_file(move |_, (p, ws, path, content)| {
+        push(&w, &[&p, &ws, &path, &content]);
+        Ok(())
+    });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     open_main_go(&mut h);
     h.click("view-mode:Code");
@@ -110,7 +121,7 @@ async fn save_keeps_the_file_tab_selected(cx: &mut TestAppContext) {
     assert!(!h.read(|o, _| o.tab_is_dirty("src/main.go")));
     let w = writes.lock().clone();
     assert_eq!(w.len(), 1);
-    assert!(s(&w[0], 3).contains("}\n // edit"), "wrote {:?}", w[0]);
+    assert!(w[0][3].contains("}\n // edit"), "wrote {:?}", w[0]);
 }
 
 /// willSave runs the mocked gofmt transform before WriteFile: the Go bundle's
@@ -119,14 +130,18 @@ async fn save_keeps_the_file_tab_selected(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn will_save_runs_the_gofmt_transform_before_write_file(cx: &mut TestAppContext) {
     let writes = Calls::default();
-    let opts = MockOptions::default()
-        .resolver("ReadFile", |_, _, _| {
-            Reply::value(json!({
-                "path": "src/main.go", "language": "go",
-                "content": "package main\n\n\nfunc main() {}   \n", "size": 40, "writable": true,
-            }))
+    let w = writes.clone();
+    let opts = Overrides::default()
+        .read_file(|_, _| {
+            Ok(FileContent {
+                size: 40,
+                ..file("src/main.go", "go", "package main\n\n\nfunc main() {}   \n", true)
+            })
         })
-        .resolver("WriteFile", record(&writes, |_| Reply::null()));
+        .write_file(move |_, (p, ws, path, content)| {
+            push(&w, &[&p, &ws, &path, &content]);
+            Ok(())
+        });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     open_main_go(&mut h);
     h.click("view-mode:Code");
@@ -139,7 +154,7 @@ async fn will_save_runs_the_gofmt_transform_before_write_file(cx: &mut TestAppCo
     h.wait(500);
     let w = writes.lock().clone();
     assert!(!w.is_empty());
-    let text = s(&w[0], 3);
+    let text = w[0][3].clone();
     assert!(
         !regex::Regex::new(r"[ \t]+\n").unwrap().is_match(&text),
         "{text:?}"
@@ -149,7 +164,7 @@ async fn will_save_runs_the_gofmt_transform_before_write_file(cx: &mut TestAppCo
 
 #[gpui::test]
 async fn opening_a_folder_keeps_the_open_file_and_breadcrumbs(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     open_main_go(&mut h);
     h.click("view-mode:Code");
     assert!(h.active_tab("src/main.go"));
@@ -164,7 +179,7 @@ async fn opening_a_folder_keeps_the_open_file_and_breadcrumbs(cx: &mut TestAppCo
 
 #[gpui::test]
 async fn double_clicking_a_file_or_folder_starts_a_rename(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.dblclick("obs-node:file:src/main.go");
     assert!(h.has("obs-node-draft"));
     let name = h.read(|o, cx| o.draft_edit.as_ref().map(|d| d.name(cx)));
@@ -176,33 +191,35 @@ async fn double_clicking_a_file_or_folder_starts_a_rename(cx: &mut TestAppContex
     assert_eq!(name.as_deref(), Some("src"));
 }
 
-fn notes_tree()
--> impl Fn(&[Value], &mut recur_services::mock::Seed, &recur_services::mock::Table) -> Reply
-+ Send
-+ Sync
-+ 'static {
-    |a, _, _| {
-        Reply::value(match s(a, 2).as_str() {
-            "" => json!([
-                {"name": "notes.txt", "path": "notes.txt", "dir": false},
-                {"name": "src", "path": "src", "dir": true},
-            ]),
-            "src" => json!([{"name": "main.go", "path": "src/main.go", "dir": false}]),
-            _ => json!([]),
-        })
-    }
+fn notes_tree(
+    _: &mut Seed,
+    (_, _, path): (String, String, String),
+) -> recur_services::Result<Vec<TreeEntry>> {
+    Ok(match path.as_str() {
+        "" => tree(&[("notes.txt", "notes.txt", false), ("src", "src", true)]),
+        "src" => tree(&[("main.go", "src/main.go", false)]),
+        _ => Vec::new(),
+    })
 }
 
 #[gpui::test]
 async fn dragging_an_explorer_row_onto_a_folder_moves_it_there(cx: &mut TestAppContext) {
     let renames = Calls::default();
-    let opts = MockOptions::default()
-        .resolver("ListTree", notes_tree())
-        .resolver("Rename", record(&renames, |_| Reply::null()));
+    let r2 = renames.clone();
+    let opts = Overrides::default()
+        .list_tree(notes_tree)
+        .rename(move |_, (p, ws, from, to)| {
+            push(&r2, &[&p, &ws, &from, &to]);
+            Ok(())
+        });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("obs-scope:all");
     h.drag("obs-node:file:notes.txt", "obs-node:dir:src");
-    let r: Vec<(String, String)> = renames.lock().iter().map(|a| (s(a, 2), s(a, 3))).collect();
+    let r: Vec<(String, String)> = renames
+        .lock()
+        .iter()
+        .map(|a| (a[2].clone(), a[3].clone()))
+        .collect();
     assert_eq!(r, vec![("notes.txt".into(), "src/notes.txt".into())]);
     // A folder onto a file's row: the row's folder is the root, where it already is.
     h.drag("obs-node:dir:src", "obs-node:file:notes.txt");
@@ -211,20 +228,19 @@ async fn dragging_an_explorer_row_onto_a_folder_moves_it_there(cx: &mut TestAppC
 
 #[gpui::test]
 async fn double_click_rename_stays_focused_after_a_slow_all_scope_open(cx: &mut TestAppContext) {
-    let opts = MockOptions::default()
-        .resolver("ListTree", notes_tree())
-        .resolver("ReadFile", |a, _, _| {
-            let path = s(a, 2);
+    let opts = Overrides::default()
+        .list_tree(notes_tree)
+        .read_file(|_, (_, ws, path)| {
             let body = if path == "notes.txt" {
                 "hello notes\n"
             } else {
                 "package main\n\nfunc main() {}\n"
             };
-            Reply::value(file(
+            Ok(file(
                 &path,
                 if path.ends_with(".txt") { "text" } else { "go" },
                 body,
-                !s(a, 1).is_empty(),
+                !ws.is_empty(),
             ))
         });
     let mut h = mount(cx, opts, |_| {}, |_| {});
@@ -246,9 +262,7 @@ async fn double_click_rename_stays_focused_after_a_slow_all_scope_open(cx: &mut 
 async fn changed_files_list_updates_live_as_the_agent_edits(cx: &mut TestAppContext) {
     let changed = std::sync::Arc::new(parking_lot::Mutex::new(vec!["src/main.go".to_string()]));
     let c2 = changed.clone();
-    let opts = MockOptions::default().resolver("ListChangedFiles", move |_, _, _| {
-        Reply::value(json!(*c2.lock()))
-    });
+    let opts = Overrides::default().list_changed_files(move |_, _| Ok(c2.lock().clone()));
     let mut h = mount(cx, opts, |_| {}, |_| {});
     assert_eq!(h.read(|o, cx| o.review_paths(cx).len()), 1);
     assert!(h.has("obs-node:file:src/main.go"));
@@ -265,10 +279,8 @@ async fn an_open_file_rereads_live_when_the_agent_edits_it_on_disk(cx: &mut Test
         "package main\n\nfunc main() {}\n".to_string(),
     ));
     let c2 = content.clone();
-    let opts = MockOptions::default().resolver("ReadFile", move |a, _, _| {
-        let path = s(a, 2);
-        Reply::value(file(&path, "go", &c2.lock(), !s(a, 1).is_empty()))
-    });
+    let opts = Overrides::default()
+        .read_file(move |_, (_, ws, path)| Ok(file(&path, "go", &c2.lock(), !ws.is_empty())));
     let mut h = mount(cx, opts, |_| {}, |_| {});
     open_main_go(&mut h);
     h.click("view-mode:Code");
@@ -282,7 +294,7 @@ async fn an_open_file_rereads_live_when_the_agent_edits_it_on_disk(cx: &mut Test
 
 #[gpui::test]
 async fn cmd_shift_v_cycles_the_view_chip_through_diff_and_code(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     open_main_go(&mut h);
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Diff);
     assert!(h.read(|o, _| o.merge_editor.is_some()));
@@ -302,59 +314,67 @@ const PNG: [u8; 69] = [
     0x44, 0xae, 0x42, 0x60, 0x82,
 ];
 
-fn png_asset(a: &[Value]) -> Reply {
-    use base64::Engine as _;
-    let url = s(a, 0);
+fn png_asset(url: &str) -> Asset {
     let mime = if url.contains(".mp4") {
         "video/mp4"
     } else {
         "image/png"
     };
-    Reply::value(json!({
-        "contentType": mime,
-        "body": base64::engine::general_purpose::STANDARD.encode(PNG),
-    }))
+    Asset {
+        content_type: mime.into(),
+        cache_control: String::new(),
+        body: PNG.to_vec(),
+    }
+}
+
+/// A file the editor shows as media: no text, its size and mime.
+fn media(path: &str, size: usize, writable: bool, mime: &str) -> FileContent {
+    FileContent {
+        size: size as i64,
+        mime: mime.into(),
+        ..file(path, "", "", writable)
+    }
 }
 
 #[gpui::test]
 async fn binary_images_skip_code_and_modified_ones_offer_preview_and_diff(cx: &mut TestAppContext) {
-    let status =
-        json!({"src/main.go": "m", "src/shot.png": "u", "src/icon.png": "m", "src/gone.png": "d"});
+    let status = statuses(&[
+        ("src/main.go", "m"),
+        ("src/shot.png", "u"),
+        ("src/icon.png", "m"),
+        ("src/gone.png", "d"),
+    ]);
     let (st1, st2) = (status.clone(), status.clone());
-    let opts = MockOptions::default()
-        .resolver("ListTree", |a, _, _| {
-            Reply::value(match s(a, 2).as_str() {
-                "" => json!([{"name": "src", "path": "src", "dir": true}]),
-                "src" => json!([
-                    {"name": "main.go", "path": "src/main.go", "dir": false},
-                    {"name": "shot.png", "path": "src/shot.png", "dir": false},
-                    {"name": "icon.png", "path": "src/icon.png", "dir": false},
-                    {"name": "gone.png", "path": "src/gone.png", "dir": false},
+    let opts = Overrides::default()
+        .list_tree(|_, (_, _, path)| {
+            Ok(match path.as_str() {
+                "" => tree(&[("src", "src", true)]),
+                "src" => tree(&[
+                    ("main.go", "src/main.go", false),
+                    ("shot.png", "src/shot.png", false),
+                    ("icon.png", "src/icon.png", false),
+                    ("gone.png", "src/gone.png", false),
                 ]),
-                _ => json!([]),
+                _ => Vec::new(),
             })
         })
-        .resolver("ListChangedFiles", |_, _, _| {
-            Reply::value(json!([
+        .list_changed_files(|_, _| {
+            Ok(strings(&[
                 "src/main.go",
                 "src/shot.png",
                 "src/icon.png",
-                "src/gone.png"
+                "src/gone.png",
             ]))
         })
-        .resolver("GitStatus", move |_, _, _| Reply::value(st1.clone()))
-        .resolver("WorkingStatus", move |_, _, _| Reply::value(st2.clone()))
-        .resolver("ReadFile", |a, _, _| {
-            let path = s(a, 2);
+        .git_status(move |_, _| Ok(st1.clone()))
+        .working_status(move |_, _| Ok(st2.clone()))
+        .read_file(|_, (_, ws, path)| {
             if path.ends_with(".png") {
-                return Reply::value(json!({
-                    "path": path, "language": "", "content": "", "size": PNG.len(),
-                    "writable": !s(a, 1).is_empty(), "mime": "image/png",
-                }));
+                return Ok(media(&path, PNG.len(), !ws.is_empty(), "image/png"));
             }
-            Reply::value(file(&path, "go", "package main\n\nfunc main() {}\n", true))
+            Ok(file(&path, "go", "package main\n\nfunc main() {}\n", true))
         })
-        .resolver("FetchAsset", |a, _, _| png_asset(a));
+        .fetch_asset(|_, url| Ok(png_asset(&url)));
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("obs-node:file:src/shot.png");
     assert!(h.has("obs-image:current"));
@@ -396,30 +416,13 @@ async fn binary_images_skip_code_and_modified_ones_offer_preview_and_diff(cx: &m
 #[gpui::test]
 async fn videos_play_in_the_pane_and_zoom_into_the_lightbox(cx: &mut TestAppContext) {
     let opened = Calls::default();
-    let opts = MockOptions::default()
-        .resolver("ListTree", |a, _, _| {
-            Reply::value(if s(a, 2).is_empty() {
-                json!([{"name": "clip.mp4", "path": "clip.mp4", "dir": false}])
-            } else {
-                json!([])
-            })
-        })
-        .resolver("ListChangedFiles", |_, _, _| {
-            Reply::value(json!(["clip.mp4"]))
-        })
-        .resolver("GitStatus", |_, _, _| {
-            Reply::value(json!({"clip.mp4": "u"}))
-        })
-        .resolver("WorkingStatus", |_, _, _| {
-            Reply::value(json!({"clip.mp4": "u"}))
-        })
-        .resolver("ReadFile", |a, _, _| {
-            Reply::value(json!({
-                "path": s(a, 2), "language": "", "content": "", "size": 2048,
-                "writable": true, "mime": "video/mp4",
-            }))
-        })
-        .resolver("OpenInEditor", record(&opened, |_| Reply::null()));
+    let o2 = opened.clone();
+    let opts = one_file("clip.mp4")
+        .read_file(|_, (_, _, path)| Ok(media(&path, 2048, true, "video/mp4")))
+        .open_in_editor(move |_, (p, ws, path, line)| {
+            push(&o2, &[&p, &ws, &path, &line.to_string()]);
+            Ok(())
+        });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("obs-node:file:clip.mp4");
     assert!(h.has("obs-video"));
@@ -437,40 +440,31 @@ async fn videos_play_in_the_pane_and_zoom_into_the_lightbox(cx: &mut TestAppCont
 
 #[gpui::test]
 async fn cmd_shift_v_cycles_code_diff_and_preview(cx: &mut TestAppContext) {
-    let opts = MockOptions::default()
-        .resolver("ListTree", |a, _, _| {
-            Reply::value(match s(a, 2).as_str() {
-                "" => json!([
-                    {"name": "README.md", "path": "README.md", "dir": false},
-                    {"name": "src", "path": "src", "dir": true},
-                ]),
-                "src" => json!([{"name": "main.go", "path": "src/main.go", "dir": false}]),
-                _ => json!([]),
+    let opts = Overrides::default()
+        .list_tree(|_, (_, _, path)| {
+            Ok(match path.as_str() {
+                "" => tree(&[("README.md", "README.md", false), ("src", "src", true)]),
+                "src" => tree(&[("main.go", "src/main.go", false)]),
+                _ => Vec::new(),
             })
         })
-        .resolver("ListChangedFiles", |_, _, _| {
-            Reply::value(json!(["src/main.go", "README.md"]))
-        })
-        .resolver("GitStatus", |_, _, _| {
-            Reply::value(json!({"src/main.go": "m", "README.md": "m"}))
-        })
-        .resolver("WorkingStatus", |_, _, _| {
-            Reply::value(json!({"src/main.go": "m", "README.md": "m"}))
-        })
-        .resolver("ReadFile", |a, _, _| {
-            let path = s(a, 2);
-            Reply::value(if path.ends_with(".md") {
+        .list_changed_files(|_, _| Ok(strings(&["src/main.go", "README.md"])))
+        .git_status(|_, _| Ok(statuses(&[("src/main.go", "m"), ("README.md", "m")])))
+        .working_status(|_, _| Ok(statuses(&[("src/main.go", "m"), ("README.md", "m")])))
+        .read_file(|_, (_, _, path)| {
+            Ok(if path.ends_with(".md") {
                 file(&path, "markdown", "# Hello\n\nWorld\n", true)
             } else {
                 file(&path, "go", "package main\n\nfunc main() {}\n", true)
             })
         })
-        .resolver("FileAtBase", |a, _, _| {
-            Reply::value(if s(a, 2).ends_with(".md") {
+        .file_at_base(|_, (_, _, path)| {
+            Ok(if path.ends_with(".md") {
                 "# Hello\n"
             } else {
                 "package main\n\nfunc main() {}\n"
-            })
+            }
+            .into())
         });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("obs-node:file:README.md");
@@ -488,7 +482,7 @@ async fn cmd_shift_v_cycles_code_diff_and_preview(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn review_toggle_switches_the_main_column(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.click("obs-review-toggle");
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
     assert!(h.has("obs-review-host"));
@@ -504,36 +498,32 @@ fn many_files() -> Vec<String> {
     files
 }
 
-fn many_files_opts(files: Vec<String>, main: String) -> MockOptions {
+fn many_files_opts(files: Vec<String>, main: String) -> Overrides {
     let (f1, f2, f3) = (files.clone(), files.clone(), files);
-    MockOptions::default()
-        .resolver("ListTree", move |a, _, _| {
-            Reply::value(match s(a, 2).as_str() {
-                "" => json!([{"name": "src", "path": "src", "dir": true}]),
-                "src" => json!(
-                    f1.iter()
-                        .map(|p| json!({"name": &p[4..], "path": p, "dir": false}))
-                        .collect::<Vec<_>>()
-                ),
-                _ => json!([]),
+    Overrides::default()
+        .list_tree(move |_, (_, _, path)| {
+            Ok(match path.as_str() {
+                "" => tree(&[("src", "src", true)]),
+                "src" => f1
+                    .iter()
+                    .map(|p| TreeEntry {
+                        name: p[4..].into(),
+                        path: p.clone(),
+                        ..Default::default()
+                    })
+                    .collect(),
+                _ => Vec::new(),
             })
         })
-        .resolver("ListChangedFiles", move |_, _, _| Reply::value(json!(f2)))
-        .resolver("GitStatus", move |_, _, _| {
-            Reply::value(json!(
-                f3.iter()
-                    .map(|p| (p.clone(), json!("m")))
-                    .collect::<serde_json::Map<_, _>>()
-            ))
-        })
-        .resolver("ReadFile", move |a, _, _| {
-            let path = s(a, 2);
+        .list_changed_files(move |_, _| Ok(f2.clone()))
+        .git_status(move |_, _| Ok(f3.iter().map(|p| (p.clone(), "m".to_owned())).collect()))
+        .read_file(move |_, (_, _, path)| {
             let body = if path == "src/main.go" {
                 main.clone()
             } else {
                 "package p\n".into()
             };
-            Reply::value(file(&path, "go", &body, true))
+            Ok(file(&path, "go", &body, true))
         })
 }
 
@@ -639,22 +629,14 @@ fn hunk(mid: &str) -> String {
     v.join("\n")
 }
 
-fn diff_opts(current: std::sync::Arc<parking_lot::Mutex<String>>) -> MockOptions {
+fn diff_opts(current: std::sync::Arc<parking_lot::Mutex<String>>) -> Overrides {
     let base = hunk("old");
-    MockOptions::default()
-        .resolver("ListChangedFiles", |_, _, _| {
-            Reply::value(json!(["src/main.go"]))
-        })
-        .resolver("GitStatus", |_, _, _| {
-            Reply::value(json!({"src/main.go": "m"}))
-        })
-        .resolver("WorkingStatus", |_, _, _| {
-            Reply::value(json!({"src/main.go": "m"}))
-        })
-        .resolver("FileAtBase", move |_, _, _| Reply::value(base.clone()))
-        .resolver("ReadFile", move |a, _, _| {
-            Reply::value(file(&s(a, 2), "go", &current.lock(), true))
-        })
+    Overrides::default()
+        .list_changed_files(|_, _| Ok(strings(&["src/main.go"])))
+        .git_status(|_, _| Ok(statuses(&[("src/main.go", "m")])))
+        .working_status(|_, _| Ok(statuses(&[("src/main.go", "m")])))
+        .file_at_base(move |_, _| Ok(base.clone()))
+        .read_file(move |_, (_, _, path)| Ok(file(&path, "go", &current.lock(), true)))
 }
 
 fn merge_view(h: &mut H) -> (String, usize) {
@@ -700,17 +682,34 @@ async fn agent_edit_while_diff_is_open_recollapses_unchanged_lines(cx: &mut Test
     assert!(collapsed > 0);
 }
 
-fn artifact_assets(bodies: Vec<(&'static str, &'static str)>) -> MockOptions {
-    MockOptions::default().resolver("FetchAsset", move |a, _, _| {
-        use base64::Engine as _;
-        let url = s(a, 0);
+fn markdown(body: &str) -> Asset {
+    Asset {
+        content_type: "text/markdown; charset=utf-8".into(),
+        cache_control: String::new(),
+        body: body.as_bytes().to_vec(),
+    }
+}
+
+fn artifact_assets(bodies: Vec<(&'static str, &'static str)>) -> Overrides {
+    Overrides::default().fetch_asset(move |_, url| {
         match bodies.iter().find(|(p, _)| url.ends_with(p)) {
-            Some((_, b)) => Reply::value(json!({
-                "contentType": "text/markdown; charset=utf-8",
-                "body": base64::engine::general_purpose::STANDARD.encode(b),
-            })),
-            None => Reply::value(json!({"status": 404, "message": "not found"})),
+            Some((_, b)) => Ok(markdown(b)),
+            None => Err(AssetError::new(404, "not found")),
         }
+    })
+}
+
+fn created(workspace_id: &str, artifact: Artifact) -> AppEvent {
+    AppEvent::ArtifactCreated(ArtifactEvent {
+        workspace_id: workspace_id.into(),
+        artifact,
+    })
+}
+
+fn presented(workspace_id: &str, artifact: Artifact) -> AppEvent {
+    AppEvent::ArtifactPresented(ArtifactEvent {
+        workspace_id: workspace_id.into(),
+        artifact,
     })
 }
 
@@ -728,14 +727,8 @@ async fn artifacts_pane_badges_unseen_creates_and_present_artifact_opens_it(
         h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
         0
     );
-    let artifact = json!({
-        "id": "art-unseen-1", "title": "Badge test", "kind": "md",
-        "path": format!("workspaces/{WS}/artifacts/art-unseen-1.md"),
-    });
-    h.event(
-        "artifact.created",
-        json!({"workspaceId": WS, "artifact": artifact}),
-    );
+    let artifact = artifact("art-unseen-1", "Badge test");
+    h.event(created(WS, artifact.clone()));
     assert_eq!(
         h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
         1
@@ -745,18 +738,19 @@ async fn artifacts_pane_badges_unseen_creates_and_present_artifact_opens_it(
         "Artifacts (1 new)"
     );
     // A workspaces store refresh re-passes the same id: the badge stays.
-    h.event(
-        "workspace.updated",
-        json!({"workspaceId": WS, "phase": "working", "iteration": 1}),
-    );
+    h.event(AppEvent::WorkspaceUpdated(std::sync::Arc::new(
+        WorkspaceUpdated {
+            workspace_id: WS.into(),
+            phase: Some("working".into()),
+            iteration: Some(1),
+            ..Default::default()
+        },
+    )));
     assert_eq!(
         h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
         1
     );
-    h.event(
-        "artifact.presented",
-        json!({"workspaceId": WS, "artifact": artifact}),
-    );
+    h.event(presented(WS, artifact));
     h.wait(100);
     assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Artifacts);
     assert!(h.read(|o, _| o.show_side));
@@ -779,14 +773,7 @@ async fn artifact_full_screen_fills_the_window_and_esc_restores_it(cx: &mut Test
     open_main_go(&mut h);
     assert!(h.has("crumb:reload"));
     assert!(!h.has("crumb:fullscreen"));
-    let artifact = json!({
-        "id": "art-full-1", "title": "Full screen", "kind": "md",
-        "path": format!("workspaces/{WS}/artifacts/art-full-1.md"),
-    });
-    h.event(
-        "artifact.presented",
-        json!({"workspaceId": WS, "artifact": artifact}),
-    );
+    h.event(presented(WS, artifact("art-full-1", "Full screen")));
     h.wait(100);
     assert!(h.active_tab("scratch://artifact-art-full-1.md"));
     h.click("view-mode:Code");
@@ -809,28 +796,28 @@ async fn artifact_full_screen_fills_the_window_and_esc_restores_it(cx: &mut Test
     assert!(h.active_tab("scratch://artifact-art-full-1.md"));
 }
 
-fn artifact(id: &str, title: &str) -> Value {
-    json!({
-        "id": id, "title": title, "kind": "md",
-        "path": format!("workspaces/{WS}/artifacts/{id}.md"),
-    })
+fn artifact_in(workspace: &str, id: &str, title: &str) -> Artifact {
+    Artifact {
+        id: id.into(),
+        title: title.into(),
+        kind: "md".into(),
+        path: format!("workspaces/{workspace}/artifacts/{id}.md"),
+        ..Default::default()
+    }
+}
+
+fn artifact(id: &str, title: &str) -> Artifact {
+    artifact_in(WS, id, title)
 }
 
 fn artifact_body(
     body: std::sync::Arc<parking_lot::Mutex<String>>,
-) -> impl Fn(&[Value], &mut recur_services::mock::Seed, &recur_services::mock::Table) -> Reply
-+ Send
-+ Sync
-+ 'static {
-    move |a, _, _| {
-        use base64::Engine as _;
-        if !s(a, 0).contains("/artifacts/") {
-            return Reply::value(json!({"status": 404, "message": "not found"}));
+) -> impl Fn(&mut Seed, String) -> Result<Asset, AssetError> + Send + Sync + 'static {
+    move |_, url| {
+        if !url.contains("/artifacts/") {
+            return Err(AssetError::new(404, "not found"));
         }
-        Reply::value(json!({
-            "contentType": "text/markdown; charset=utf-8",
-            "body": base64::engine::general_purpose::STANDARD.encode(body.lock().as_bytes()),
-        }))
+        Ok(markdown(&body.lock()))
     }
 }
 
@@ -850,9 +837,9 @@ async fn clicking_an_artifact_leaves_review_and_opens_it_in_the_editor(cx: &mut 
     let art = artifact("art-from-review-1", "From review");
     let body = std::sync::Arc::new(parking_lot::Mutex::new("# From review\n".to_string()));
     let a2 = art.clone();
-    let opts = MockOptions::default()
-        .resolver("ListArtifacts", move |_, _, _| Reply::value(json!([a2])))
-        .resolver("FetchAsset", artifact_body(body));
+    let opts = Overrides::default()
+        .list_artifacts(move |_, _| Ok(vec![a2.clone()]))
+        .fetch_asset(artifact_body(body));
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("panel-toggle:artifacts");
     assert!(h.has("art-row:art-from-review-1"));
@@ -873,20 +860,17 @@ async fn refocusing_the_editor_on_an_artifact_tab_does_not_outline_it_from_disk(
     let outlines = Calls::default();
     let o2 = outlines.clone();
     let body = std::sync::Arc::new(parking_lot::Mutex::new("# No outline\n".to_string()));
-    let opts = MockOptions::default()
-        .resolver("Outline", move |a, _, _| {
-            if !s(a, 2).starts_with("scratch://") {
-                return Reply::value(json!([]));
+    let opts = Overrides::default()
+        .outline(move |_, (p, ws, path)| {
+            if !path.starts_with("scratch://") {
+                return Ok(Vec::new());
             }
-            o2.lock().push(a.to_vec());
-            Reply::error("no such file")
+            push(&o2, &[&p, &ws, &path]);
+            Err(recur_services::Error::new("no such file"))
         })
-        .resolver("FetchAsset", artifact_body(body));
+        .fetch_asset(artifact_body(body));
     let mut h = mount(cx, opts, |_| {}, |_| {});
-    h.event(
-        "artifact.presented",
-        json!({"workspaceId": WS, "artifact": artifact("art-outline-1", "No outline")}),
-    );
+    h.event(presented(WS, artifact("art-outline-1", "No outline")));
     h.wait(100);
     assert!(h.active_tab("scratch://artifact-art-outline-1.md"));
     h.keys("secondary-1");
@@ -902,14 +886,11 @@ async fn reload_on_an_artifact_tab_refetches_it_from_the_artifact_store(cx: &mut
     let art = artifact("art-reload-1", "Reload me");
     let body = std::sync::Arc::new(parking_lot::Mutex::new("# Version one\n".to_string()));
     let a2 = art.clone();
-    let opts = MockOptions::default()
-        .resolver("ListArtifacts", move |_, _, _| Reply::value(json!([a2])))
-        .resolver("FetchAsset", artifact_body(body.clone()));
+    let opts = Overrides::default()
+        .list_artifacts(move |_, _| Ok(vec![a2.clone()]))
+        .fetch_asset(artifact_body(body.clone()));
     let mut h = mount(cx, opts, |_| {}, |_| {});
-    h.event(
-        "artifact.presented",
-        json!({"workspaceId": WS, "artifact": art}),
-    );
+    h.event(presented(WS, art));
     h.wait(100);
     let path = "scratch://artifact-art-reload-1.md";
     assert!(scratch_text(&mut h, path).contains("Version one"));
@@ -932,30 +913,27 @@ async fn artifact_rename_via_context_menu_and_hover_trash_delete(cx: &mut TestAp
     let deleted = std::sync::Arc::new(parking_lot::Mutex::new(false));
     let (a1, a2, d1, d2) = (art.clone(), art.clone(), deleted.clone(), deleted.clone());
     let body = std::sync::Arc::new(parking_lot::Mutex::new("# Body\n".to_string()));
-    let opts = MockOptions::default()
-        .resolver("ListArtifacts", move |_, _, _| {
-            Reply::value(if *d1.lock() {
-                json!([])
+    let opts = Overrides::default()
+        .list_artifacts(move |_, _| {
+            Ok(if *d1.lock() {
+                Vec::new()
             } else {
-                json!([*a1.lock()])
+                vec![a1.lock().clone()]
             })
         })
-        .resolver("RenameArtifact", move |a, _, _| {
+        .rename_artifact(move |_, (_, _, title)| {
             let mut v = a2.lock();
-            v["title"] = json!(s(a, 2));
-            Reply::value(v.clone())
+            v.title = title;
+            Ok(v.clone())
         })
-        .resolver("DeleteArtifact", move |_, _, _| {
+        .delete_artifact(move |_, _| {
             *d2.lock() = true;
-            Reply::null()
+            Ok(())
         })
-        .resolver("FetchAsset", artifact_body(body));
+        .fetch_asset(artifact_body(body));
     let mut h = mount(cx, opts, |_| {}, |_| {});
     let a = art.lock().clone();
-    h.event(
-        "artifact.presented",
-        json!({"workspaceId": WS, "artifact": a}),
-    );
+    h.event(presented(WS, a));
     h.wait(100);
     let path = "scratch://artifact-art-rename-1.md";
     assert_eq!(h.read(|o, _| o.scratch_tab_label(path)), "Old name");
@@ -977,7 +955,7 @@ async fn artifact_rename_via_context_menu_and_hover_trash_delete(cx: &mut TestAp
 
 #[gpui::test]
 async fn artifacts_badge_increments_while_the_observatory_is_off_screen(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.click("panel-toggle:artifacts");
     assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Artifacts);
     assert_eq!(
@@ -989,10 +967,7 @@ async fn artifacts_badge_increments_while_the_observatory_is_off_screen(cx: &mut
         s.view = recur_view_core::ViewName::Briefing;
         cx.notify();
     });
-    h.event(
-        "artifact.created",
-        json!({"workspaceId": WS, "artifact": artifact("art-inbox-1", "Off-screen")}),
-    );
+    h.event(created(WS, artifact("art-inbox-1", "Off-screen")));
     assert_eq!(
         h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
         1
@@ -1001,20 +976,11 @@ async fn artifacts_badge_increments_while_the_observatory_is_off_screen(cx: &mut
 
 #[gpui::test]
 async fn present_artifact_on_a_background_workspace_badges_that_workspace(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     let other = "LOOP-2229";
-    let art = json!({
-        "id": "art-bg-1", "title": "Background", "kind": "md",
-        "path": format!("workspaces/{other}/artifacts/art-bg-1.md"),
-    });
-    h.event(
-        "artifact.created",
-        json!({"workspaceId": other, "artifact": art}),
-    );
-    h.event(
-        "artifact.presented",
-        json!({"workspaceId": other, "artifact": art}),
-    );
+    let art = artifact_in(other, "art-bg-1", "Background");
+    h.event(created(other, art.clone()));
+    h.event(presented(other, art));
     h.switch_to(PROJECT, other);
     assert_eq!(
         h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
@@ -1022,27 +988,22 @@ async fn present_artifact_on_a_background_workspace_badges_that_workspace(cx: &m
     );
 }
 
-fn two_tabs_opts(main: &'static str, other: &'static str) -> MockOptions {
-    MockOptions::default()
-        .resolver("ListTree", |a, _, _| {
-            Reply::value(match s(a, 2).as_str() {
-                "" => json!([{"name": "src", "path": "src", "dir": true}]),
-                "src" => json!([
-                    {"name": "main.go", "path": "src/main.go", "dir": false},
-                    {"name": "other.go", "path": "src/other.go", "dir": false},
+fn two_tabs_opts(main: &'static str, other: &'static str) -> Overrides {
+    Overrides::default()
+        .list_tree(|_, (_, _, path)| {
+            Ok(match path.as_str() {
+                "" => tree(&[("src", "src", true)]),
+                "src" => tree(&[
+                    ("main.go", "src/main.go", false),
+                    ("other.go", "src/other.go", false),
                 ]),
-                _ => json!([]),
+                _ => Vec::new(),
             })
         })
-        .resolver("ListChangedFiles", |_, _, _| {
-            Reply::value(json!(["src/main.go", "src/other.go"]))
-        })
-        .resolver("GitStatus", |_, _, _| {
-            Reply::value(json!({"src/main.go": "m", "src/other.go": "m"}))
-        })
-        .resolver("ReadFile", move |a, _, _| {
-            let p = s(a, 2);
-            Reply::value(file(
+        .list_changed_files(|_, _| Ok(strings(&["src/main.go", "src/other.go"])))
+        .git_status(|_, _| Ok(statuses(&[("src/main.go", "m"), ("src/other.go", "m")])))
+        .read_file(move |_, (_, _, p)| {
+            Ok(file(
                 &p,
                 "go",
                 if p.ends_with("other.go") { other } else { main },
@@ -1064,21 +1025,15 @@ fn open_two(h: &mut H) {
 
 #[gpui::test]
 async fn dragging_a_file_tab_reorders_the_strip_and_survives_reload(cx: &mut TestAppContext) {
-    let sessions = std::sync::Arc::new(parking_lot::Mutex::new(Value::Null));
+    let sessions = std::sync::Arc::new(parking_lot::Mutex::new(None));
     let (s1, s2) = (sessions.clone(), sessions.clone());
     let opts = two_tabs_opts("package main\n\nfunc main() {}\n", "package other\n")
-        .resolver("GetEditorSession", move |_, _, _| {
-            Reply::value(s1.lock().clone())
-        })
-        .resolver("UpdateEditorSession", move |a, _, _| {
-            if let Some(meta) = a
-                .get(1)
-                .and_then(|p| p.get("meta"))
-                .filter(|m| !m.is_null())
-            {
-                *s2.lock() = meta.clone();
+        .get_editor_session(move |_, _| Ok(s1.lock().clone()))
+        .update_editor_session(move |_, (_, patch)| {
+            if let Some(meta) = &patch.meta {
+                *s2.lock() = Some(session_from_meta(meta, Default::default()));
             }
-            Reply::null()
+            Ok(())
         });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     open_two(&mut h);
@@ -1096,8 +1051,11 @@ async fn dragging_a_file_tab_reorders_the_strip_and_survives_reload(cx: &mut Tes
     assert_eq!(h.open_files(), vec!["src/other.go", "src/main.go"]);
     h.wait(1000);
     // A cold remount restores the order from the editor session.
-    let stored = sessions.lock().clone();
-    assert_eq!(stored["openFiles"], json!(["src/other.go", "src/main.go"]));
+    let stored = sessions.lock().clone().unwrap_or_default();
+    assert_eq!(
+        stored.open_files,
+        Some(strings(&["src/other.go", "src/main.go"]))
+    );
 }
 
 #[gpui::test]
@@ -1166,7 +1124,7 @@ async fn file_tab_close_all_asks_once_for_dirty_tabs_and_cancel_keeps_them(
 async fn opt_cmd_r_toggles_review_from_the_editor_not_while_files_is_focused(
     cx: &mut TestAppContext,
 ) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     open_main_go(&mut h);
     assert!(h.active_tab("src/main.go"));
     // Diff's editable side has focus (it used to count as typing and swallow ⌥⌘R).
@@ -1193,7 +1151,7 @@ async fn review_changes_is_remembered_on_hold_warm_remount_and_cold_reload(
 ) {
     let (a, b, c) = (WS, "LOOP-2229", "LOOP-2235");
     let store = SessionStore::default();
-    let mut h = mount(cx, store.install(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, store.install(Overrides::default()), |_| {}, |_| {});
     h.click("obs-review-toggle");
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
     h.switch_to(PROJECT, b);
@@ -1209,7 +1167,7 @@ async fn review_changes_is_remembered_on_hold_warm_remount_and_cold_reload(
     h.quit();
     let mut h = mount(
         restarted,
-        store.install(MockOptions::default()),
+        store.install(Overrides::default()),
         |_| {},
         |_| {},
     );
@@ -1224,7 +1182,7 @@ async fn pane_kinds_and_visibility_are_remembered_on_hold_warm_remount_and_cold_
 ) {
     let (a, b, c) = (WS, "LOOP-2229", "LOOP-2235");
     let store = SessionStore::default();
-    let mut h = mount(cx, store.install(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, store.install(Overrides::default()), |_| {}, |_| {});
     h.click("panel-toggle:findings");
     h.click("panel-toggle:scm");
     assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
@@ -1255,7 +1213,7 @@ async fn pane_kinds_and_visibility_are_remembered_on_hold_warm_remount_and_cold_
 
     let mut h = mount(
         restarted,
-        store.install(MockOptions::default()),
+        store.install(Overrides::default()),
         |_| {},
         |_| {},
     );
@@ -1268,7 +1226,7 @@ async fn pane_kinds_and_visibility_are_remembered_on_hold_warm_remount_and_cold_
 
 #[gpui::test]
 async fn a_hidden_review_leaves_the_layout(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.click("obs-review-toggle");
     assert!(h.has("obs-review-host"));
     h.click("obs-editor-toggle");
@@ -1285,7 +1243,7 @@ async fn a_hidden_review_leaves_the_layout(cx: &mut TestAppContext) {
 /// every notify: on a large change set that turned keys in the commit box into 700ms frames.
 #[gpui::test]
 async fn a_working_status_refresh_that_changes_nothing_does_not_notify(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.click("panel-toggle:scm");
     h.update(|o, _, cx| o.refresh_working_status(cx).detach());
     let n = std::rc::Rc::new(std::cell::Cell::new(0));
@@ -1301,7 +1259,7 @@ async fn a_working_status_refresh_that_changes_nothing_does_not_notify(cx: &mut 
 /// only on a change: each redrew the explorer tree beside the commit message.
 #[gpui::test]
 async fn a_live_refresh_that_changes_nothing_does_not_notify(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.update(|o, _, cx| {
         o.refresh_changed_files(cx).detach();
         o.refresh_loaded_dirs(cx).detach();
@@ -1323,7 +1281,7 @@ async fn a_live_refresh_that_changes_nothing_does_not_notify(cx: &mut TestAppCon
 /// typed meanwhile included.
 #[gpui::test]
 async fn a_file_event_under_the_review_does_not_notify_the_observatory(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.update(|o, _, cx| o.click_review_toggle(cx));
     h.settle();
     let before = h.read(|o, _| o.review_refresh);
@@ -1346,12 +1304,10 @@ async fn a_file_event_under_the_review_does_not_notify_the_observatory(cx: &mut 
 /// set redrew every row, and that frame landed on keys typed in the commit box beside it.
 #[gpui::test]
 async fn a_long_changes_list_lays_out_the_rows_near_its_viewport(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("WorkingStatus", |_, _, _| {
-        Reply::value(json!(
-            (0..250)
-                .map(|i| (format!("f{i:03}.txt"), json!("m")))
-                .collect::<serde_json::Map<_, _>>()
-        ))
+    let opts = Overrides::default().working_status(|_, _| {
+        Ok((0..250)
+            .map(|i| (format!("f{i:03}.txt"), "m".to_owned()))
+            .collect())
     });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("panel-toggle:scm");
@@ -1374,36 +1330,15 @@ async fn a_long_changes_list_lays_out_the_rows_near_its_viewport(cx: &mut TestAp
 
 #[gpui::test]
 async fn pdf_find_opens_from_the_crumb_bar_and_takes_typing(cx: &mut TestAppContext) {
-    use base64::Engine as _;
     const PDF: &[u8] = include_bytes!("../../../../ui/gallery/content/page.pdf");
-    let opts = MockOptions::default()
-        .resolver("ListTree", |a, _, _| {
-            Reply::value(if s(a, 2).is_empty() {
-                json!([{"name": "page.pdf", "path": "page.pdf", "dir": false}])
-            } else {
-                json!([])
+    let opts = one_file("page.pdf")
+        .read_file(|_, (_, _, path)| Ok(media(&path, PDF.len(), true, "application/pdf")))
+        .fetch_asset(|_, _| {
+            Ok(Asset {
+                content_type: "application/pdf".into(),
+                cache_control: String::new(),
+                body: PDF.to_vec(),
             })
-        })
-        .resolver("ListChangedFiles", |_, _, _| {
-            Reply::value(json!(["page.pdf"]))
-        })
-        .resolver("GitStatus", |_, _, _| {
-            Reply::value(json!({"page.pdf": "u"}))
-        })
-        .resolver("WorkingStatus", |_, _, _| {
-            Reply::value(json!({"page.pdf": "u"}))
-        })
-        .resolver("ReadFile", |a, _, _| {
-            Reply::value(json!({
-                "path": s(a, 2), "language": "", "content": "", "size": PDF.len(),
-                "writable": true, "mime": "application/pdf",
-            }))
-        })
-        .resolver("FetchAsset", |_, _, _| {
-            Reply::value(json!({
-                "contentType": "application/pdf",
-                "body": base64::engine::general_purpose::STANDARD.encode(PDF),
-            }))
         });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("obs-node:file:page.pdf");

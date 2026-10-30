@@ -1,7 +1,7 @@
-//! The shell with every view registered, as the desktop mounts it, on the mock bridge over the
-//! e2e seed, with selector-driven input (`debug_selector` keys) for the briefing, schedules and
+//! The shell with every view registered, as the desktop mounts it, on the typed service fakes over
+//! the e2e seed, with selector-driven input (`debug_selector` keys) for the briefing, schedules and
 //! project spec ports. A
-//! reload builds a fresh app (`AppState`, shell and module state) over the same bridge and
+//! reload builds a fresh app (`AppState`, shell and module state) over the same fake and
 //! local storage.
 
 use std::sync::Arc;
@@ -13,10 +13,10 @@ use gpui_kit::{
     Styled, Window, div,
 };
 use recur_app::{Shell, ShellOptions};
-use recur_services::mock::{MockBridge, MockOptions, Seed};
+use recur_services::AppEvent;
+use recur_services::fake::{Fake, Overrides, Seed};
 use recur_ui::widgets::{ToastKind, ToastStore};
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
-use serde_json::Value;
 
 pub fn registry() -> ViewRegistry {
     let mut r = ViewRegistry::default();
@@ -45,7 +45,7 @@ impl Render for Root {
 
 pub struct S<'a> {
     pub state: Entity<AppState>,
-    pub bridge: Arc<MockBridge>,
+    pub fake: Arc<Fake>,
     pub root: Entity<Root>,
     pub cx: &'a mut VisualTestContext,
 }
@@ -63,7 +63,7 @@ fn fresh_modules(cx: &mut gpui_kit::App) {
 pub fn boot<'a>(
     cx: &'a mut TestAppContext,
     seed: impl FnOnce(&mut Seed),
-    opts: MockOptions,
+    opts: Overrides,
     storage: LocalStorage,
 ) -> S<'a> {
     let registry = registry();
@@ -72,10 +72,10 @@ pub fn boot<'a>(
         recur_ui::motion::freeze(cx);
         fresh_modules(cx);
     });
-    let mut sd = recur_services::mock::fixtures::seed();
+    let mut sd = Seed::e2e();
     seed(&mut sd);
-    let bridge = MockBridge::new(sd, opts);
-    let services = bridge.services();
+    let fake = Fake::new(sd, opts);
+    let services = fake.services();
     let state = cx.update(|cx| AppState::install(services.clone(), storage, cx));
     let ctx = ViewContext {
         state: state.clone(),
@@ -90,7 +90,7 @@ pub fn boot<'a>(
     cx.run_until_parked();
     let mut s = S {
         state,
-        bridge,
+        fake,
         root,
         cx,
     };
@@ -103,12 +103,12 @@ pub fn plain(cx: &mut TestAppContext) -> S<'_> {
     boot(
         cx,
         |_| {},
-        MockOptions::default(),
+        Overrides::default(),
         LocalStorage::in_memory(),
     )
 }
 
-pub fn with(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: MockOptions) -> S<'_> {
+pub fn with(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed), opts: Overrides) -> S<'_> {
     boot(cx, seed, opts, LocalStorage::in_memory())
 }
 
@@ -124,7 +124,7 @@ impl S<'_> {
 
     /// `reloadApp`: a fresh app over the same backend and local storage.
     pub fn reload(&mut self) {
-        let services = self.bridge.services();
+        let services = self.fake.services();
         let old = self.state.clone();
         let root = self.root.clone();
         let state = self.cx.update(|window, cx| {
@@ -315,8 +315,8 @@ impl S<'_> {
         })
     }
 
-    pub fn wire(&mut self, name: &str, data: Value) {
-        self.bridge.dispatch_wire(name, data).unwrap();
+    pub fn dispatch(&mut self, event: AppEvent) {
+        self.fake.dispatch(event);
         self.settle();
     }
 

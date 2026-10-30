@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use gpui::TestAppContext;
 use recur_engine::view::chat::AgentMsg;
-use recur_services::mock::MockOptions;
+use recur_services::fake::Overrides;
 
 use super::shell::boot;
 use crate::detail::WorkspaceDetail;
@@ -57,7 +57,7 @@ async fn a_keystroke_beside_an_open_terminal_does_not_redraw_it(cx: &mut TestApp
 }
 
 fn keystroke_renders_only_the_composer(cx: &mut TestAppContext, terminal: bool) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     if terminal {
         let state = s.state.clone();
@@ -118,7 +118,7 @@ fn bound(s: &mut super::shell::S) -> gpui::Entity<crate::view::WorkspaceView> {
 
 #[gpui::test]
 async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     // Each workspace opens its review, so a parked shell holds the heaviest surface there is.
     let mut visited = Vec::new();
     for id in ["LOOP-2224", "LOOP-2229", "LOOP-2218", "LOOP-2235", ACTIVE] {
@@ -174,7 +174,7 @@ async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) 
 /// live Observatories pushed their menu states over each other in an endless store loop.
 #[gpui::test]
 async fn a_shell_released_while_held_is_parked(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open("LOOP-2224");
     let held = bound(&mut s);
     let state = s.state.clone();
@@ -211,7 +211,7 @@ async fn a_shell_released_while_held_is_parked(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn the_wheel_scrolls_the_live_chat_over_a_parked_one(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     for id in ["LOOP-2229", ACTIVE] {
         s.open(id);
         let view = bound(&mut s);
@@ -248,7 +248,7 @@ async fn the_wheel_scrolls_the_live_chat_over_a_parked_one(cx: &mut TestAppConte
 /// the chat.
 #[gpui::test]
 async fn a_wheel_step_renders_only_the_transcript(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let view = bound(&mut s);
     s.cx.update(|_, cx| {
@@ -300,7 +300,7 @@ async fn a_wheel_step_renders_only_the_transcript(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn a_parked_chat_comes_back_where_it_was_scrolled(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let view = bound(&mut s);
     s.cx.update(|_, cx| {
@@ -338,7 +338,7 @@ async fn a_parked_chat_comes_back_where_it_was_scrolled(cx: &mut TestAppContext)
 
 #[gpui::test]
 async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
     s.cx.update(|_, cx| obs.update(cx, |o, cx| o.click_review_toggle(cx)));
@@ -407,7 +407,7 @@ async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestA
 /// Observatory or the chat beside it.
 #[gpui::test]
 async fn a_key_in_the_commit_message_renders_the_box_only(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
     s.cx.update(|window, cx| {
@@ -444,7 +444,7 @@ async fn a_key_in_the_commit_message_renders_the_box_only(cx: &mut TestAppContex
 /// button), never the Observatory's cached panes (the changes list).
 #[gpui::test]
 async fn a_key_that_empties_the_commit_message_leaves_the_panes_alone(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
     let focused =
@@ -533,7 +533,7 @@ fn drawn(s: &mut super::shell::S, sel: &str) -> Option<gpui::Bounds<gpui::Pixels
 #[gpui::test]
 async fn a_workspace_switch_draws_the_dock_in_its_first_frame(cx: &mut TestAppContext) {
     use recur_view_core::modes::ChatMode;
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     let docks = [
         (
             ACTIVE,
@@ -591,31 +591,39 @@ async fn a_workspace_switch_draws_the_dock_in_its_first_frame(cx: &mut TestAppCo
 #[gpui::test]
 async fn a_workspace_switch_back_draws_the_transcript_where_it_was(cx: &mut TestAppContext) {
     use gpui::{point, px};
-    use recur_services::mock::Reply;
-    use serde_json::{Value, json};
+    use super::harness::{assistant, item, user};
+    use recur_domain::ChatItem;
     let mut items = Vec::new();
     // Shaped like a real working-copy chat: thinking, tool calls with results, then text.
     for i in 0..160 {
-        items.push(json!({"role": "user", "kind": "text", "text": format!("question {i}")}));
-        items.push(json!({"role": "assistant", "kind": "thinking", "text": format!("thinking about {i} {}", "hmm ".repeat(i % 30))}));
+        items.push(user(format!("question {i}")));
+        items.push(item(
+            "assistant",
+            "thinking",
+            format!("thinking about {i} {}", "hmm ".repeat(i % 30)),
+        ));
         for t in 0..2 {
-            items.push(json!({"role": "assistant", "kind": "tool", "tool": "Bash",
-                "toolInput": format!("rg pattern{i}{t}"), "description": "Search",
-                "input": format!("{{\"command\":\"rg pattern{i}{t}\"}}"),
-                "result": "line\n".repeat(i % 12)}));
+            items.push(ChatItem {
+                tool: "Bash".into(),
+                tool_input: format!("rg pattern{i}{t}"),
+                description: "Search".into(),
+                input: format!("{{\"command\":\"rg pattern{i}{t}\"}}"),
+                result: "line\n".repeat(i % 12),
+                ..item("assistant", "tool", "")
+            });
         }
         let body = format!(
             "answer {i}\n\n{}\n\n- one\n- two\n\n```rust\nfn f{i}() {{}}\n```",
             "words ".repeat(i % 60)
         );
-        items.push(json!({"role": "assistant", "kind": "text", "text": body}));
+        items.push(assistant(body));
     }
-    let opts = MockOptions::default().resolver("WorkspaceChatItems", move |a, _, _| {
-        if a.first().and_then(Value::as_str) == Some(ACTIVE) {
-            Reply::value(Value::Array(items.clone()))
+    let opts = Overrides::default().workspace_chat_items(move |_, (ws, _)| {
+        Ok(if ws == ACTIVE {
+            items.clone()
         } else {
-            Reply::value(json!([]))
-        }
+            Vec::new()
+        })
     });
     let mut s = boot(cx, |_| {}, opts, |_| {});
     s.open(ACTIVE);
@@ -665,7 +673,7 @@ async fn a_workspace_switch_back_draws_the_transcript_where_it_was(cx: &mut Test
 /// chat beside it. So does its debounced doc change while the dirty state stays as it was.
 #[gpui::test]
 async fn a_key_in_the_code_editor_renders_the_editor_only(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
     s.cx.update(|window, cx| {
@@ -726,7 +734,7 @@ async fn a_key_in_the_code_editor_renders_the_editor_only(cx: &mut TestAppContex
 
 #[gpui::test]
 async fn a_key_in_the_plan_body_editor_renders_the_editor_only(cx: &mut TestAppContext) {
-    let mut s = boot(cx, |_| {}, MockOptions::default(), |_| {});
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let view = bound(&mut s);
     let (obs, panel) = view.read_with(s.cx, |v, _| (v.observatory().clone(), v.plan_panel.clone()));

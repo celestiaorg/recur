@@ -1,7 +1,7 @@
-//! The seed fixture (`recur-services`' `src/mock/seed.json`): a seeded
+//! The seed fixture (`recur-services`' `src/fake/seed.json`): a seeded
 //! in-memory store's bound-service data as one JSON object, written with a
 //! two-space indent and no HTML escaping. The `seeddump` binary prints it; the
-//! mock services seed from it.
+//! service fakes seed from it.
 
 use std::collections::BTreeMap;
 use std::io;

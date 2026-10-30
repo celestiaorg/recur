@@ -8,23 +8,17 @@ use std::sync::Arc;
 use gpui::TestAppContext;
 use parking_lot::Mutex;
 use recur_editor::view_state::EditorViewMode;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::{FileContent, TreeEntry};
+use recur_services::Error;
+use recur_services::fake::{Answer, Overrides, hold};
 use recur_ui::widgets::ToastKind;
-use serde_json::{Value, json};
 
 use super::harness::*;
 
 const MAIN: &str = "package main\n\nfunc main() {}\n";
 
-fn s(a: &[Value], i: usize) -> String {
-    a.get(i).and_then(Value::as_str).unwrap_or("").to_string()
-}
-
-fn file(path: &str, content: &str) -> Value {
-    json!({
-        "path": path, "language": "go", "content": content,
-        "size": content.len(), "writable": true,
-    })
+fn file(path: &str, content: &str) -> FileContent {
+    super::harness::file(path, "go", content, true)
 }
 
 type Files = Arc<Mutex<BTreeMap<String, String>>>;
@@ -39,7 +33,7 @@ fn files(list: &[(&str, &str)]) -> Files {
 
 /// `goFileResolvers` / `twoFileResolvers`: a `src/` tree over `files`, all changed, with
 /// writes persisted.
-fn go_files(f: &Files, opts: MockOptions) -> MockOptions {
+fn go_files(f: &Files, opts: Overrides) -> Overrides {
     let (f1, f2, f3, f4, f5, f6) = (
         f.clone(),
         f.clone(),
@@ -48,51 +42,42 @@ fn go_files(f: &Files, opts: MockOptions) -> MockOptions {
         f.clone(),
         f.clone(),
     );
-    opts.resolver("ListTree", move |a, _, _| {
-        Reply::value(match s(a, 2).as_str() {
+    let row = |name: &str, path: &str| TreeEntry {
+        name: name.into(),
+        path: path.into(),
+        ..Default::default()
+    };
+    opts.list_tree(move |_, (_, _, path)| {
+        Ok(match path.as_str() {
             "" => {
-                let root: Vec<Value> = f1
-                    .lock()
-                    .keys()
-                    .filter(|p| !p.contains('/'))
-                    .map(|p| json!({"name": p, "path": p, "dir": false}))
-                    .collect();
-                let mut v = vec![json!({"name": "src", "path": "src", "dir": true})];
-                v.extend(root);
-                json!(v)
+                let mut v = tree(&[("src", "src", true)]);
+                v.extend(
+                    f1.lock()
+                        .keys()
+                        .filter(|p| !p.contains('/'))
+                        .map(|p| row(p, p)),
+                );
+                v
             }
-            "src" => json!(
-                f1.lock()
-                    .keys()
-                    .filter(|p| p.starts_with("src/"))
-                    .map(|p| json!({"name": &p[4..], "path": p, "dir": false}))
-                    .collect::<Vec<_>>()
-            ),
-            _ => json!([]),
+            "src" => f1
+                .lock()
+                .keys()
+                .filter(|p| p.starts_with("src/"))
+                .map(|p| row(&p[4..], p))
+                .collect(),
+            _ => Vec::new(),
         })
     })
-    .resolver("ListChangedFiles", move |_, _, _| {
-        Reply::value(json!(f2.lock().keys().cloned().collect::<Vec<_>>()))
-    })
-    .resolver("GitStatus", move |_, _, _| {
-        Reply::value(json!(
-            f3.lock()
-                .keys()
-                .map(|p| (p.clone(), json!("m")))
-                .collect::<serde_json::Map<_, _>>()
-        ))
-    })
-    .resolver("ReadFile", move |a, _, _| {
-        let p = s(a, 2);
+    .list_changed_files(move |_, _| Ok(f2.lock().keys().cloned().collect()))
+    .git_status(move |_, _| Ok(f3.lock().keys().map(|p| (p.clone(), "m".to_owned())).collect()))
+    .read_file(move |_, (_, _, p)| {
         let body = f4.lock().get(&p).cloned().unwrap_or_else(|| MAIN.into());
-        Reply::value(file(&p, &body))
+        Ok(file(&p, &body))
     })
-    .resolver("FileAtBase", move |a, _, _| {
-        Reply::value(f5.lock().get(&s(a, 2)).cloned().unwrap_or_default())
-    })
-    .resolver("WriteFile", move |a, _, _| {
-        f6.lock().insert(s(a, 2), s(a, 3));
-        Reply::null()
+    .file_at_base(move |_, (_, _, path)| Ok(f5.lock().get(&path).cloned().unwrap_or_default()))
+    .write_file(move |_, (_, _, path, content)| {
+        f6.lock().insert(path, content);
+        Ok(())
     })
 }
 
@@ -125,7 +110,7 @@ fn modified(h: &mut H) -> bool {
 async fn grammar_loads_lazily_typing_marks_dirty_synchronously_save_clears_it(
     cx: &mut TestAppContext,
 ) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     assert!(h.editor_doc().contains("func main() {}"));
     assert!(!dirty(&mut h, "src/main.go"));
@@ -143,7 +128,7 @@ async fn grammar_loads_lazily_typing_marks_dirty_synchronously_save_clears_it(
 
 #[gpui::test]
 async fn reverting_a_local_edit_clears_the_unsaved_marker(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     type_at_end(&mut h, "X");
     assert!(dirty(&mut h, "src/main.go"));
@@ -155,9 +140,8 @@ async fn reverting_a_local_edit_clears_the_unsaved_marker(cx: &mut TestAppContex
 
 #[gpui::test]
 async fn crlf_on_disk_does_not_mark_the_buffer_unsaved(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("ReadFile", |a, _, _| {
-        Reply::value(file(&s(a, 2), "package main\r\n\r\nfunc main() {}\r\n"))
-    });
+    let opts = Overrides::default()
+        .read_file(|_, (_, _, path)| Ok(file(&path, "package main\r\n\r\nfunc main() {}\r\n")));
     let mut h = mount(cx, opts, |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     assert!(h.editor_doc().contains("func main() {}"));
@@ -167,7 +151,7 @@ async fn crlf_on_disk_does_not_mark_the_buffer_unsaved(cx: &mut TestAppContext) 
 
 #[gpui::test]
 async fn the_files_explorer_shows_the_same_unsaved_dot_as_the_editor_tab(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     assert!(!h.has("obs-unsaved:src/main.go"));
     type_at_end(&mut h, " // edit");
@@ -182,7 +166,11 @@ async fn save_writes_the_live_buffer_even_when_typed_inside_the_debounce_window(
     cx: &mut TestAppContext,
 ) {
     let writes = Calls::default();
-    let opts = MockOptions::default().resolver("WriteFile", record(&writes, |_| Reply::null()));
+    let w2 = writes.clone();
+    let opts = Overrides::default().write_file(move |_, (p, ws, path, content)| {
+        push(&w2, &[&p, &ws, &path, &content]);
+        Ok(())
+    });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     h.focus_editor();
@@ -193,17 +181,15 @@ async fn save_writes_the_live_buffer_even_when_typed_inside_the_debounce_window(
     assert!(!dirty(&mut h, "src/main.go"));
     let w = writes.lock().clone();
     assert_eq!(w.len(), 1);
-    assert!(s(&w[0], 3).contains('X'));
+    assert!(w[0][3].contains('X'));
 }
 
-fn live_content() -> (Arc<Mutex<String>>, MockOptions) {
+fn live_content() -> (Arc<Mutex<String>>, Overrides) {
     let content = Arc::new(Mutex::new(MAIN.to_string()));
     let c = content.clone();
-    let opts = MockOptions::default()
-        .resolver("ReadFile", move |a, _, _| {
-            Reply::value(file(&s(a, 2), &c.lock()))
-        })
-        .resolver("FileAtBase", |_, _, _| Reply::value(MAIN));
+    let opts = Overrides::default()
+        .read_file(move |_, (_, _, path)| Ok(file(&path, &c.lock())))
+        .file_at_base(|_, _| Ok(MAIN.into()));
     (content, opts)
 }
 
@@ -229,7 +215,7 @@ fn merge_doc(h: &mut H) -> String {
 
 #[gpui::test]
 async fn diff_rehydrates_when_a_deleted_file_comes_back_on_disk(cx: &mut TestAppContext) {
-    let status = Arc::new(Mutex::new(json!({"src/gone.go": "d"})));
+    let status = Arc::new(Mutex::new(statuses(&[("src/gone.go", "d")])));
     let content: Arc<Mutex<Option<String>>> = Arc::default();
     let (s1, s2, c1, c2) = (
         status.clone(),
@@ -237,27 +223,21 @@ async fn diff_rehydrates_when_a_deleted_file_comes_back_on_disk(cx: &mut TestApp
         content.clone(),
         content.clone(),
     );
-    let opts = MockOptions::default()
-        .resolver("ListTree", move |a, _, _| {
-            Reply::value(match s(a, 2).as_str() {
-                "" => json!([{"name": "src", "path": "src", "dir": true}]),
-                "src" if c1.lock().is_some() => {
-                    json!([{"name": "gone.go", "path": "src/gone.go", "dir": false}])
-                }
-                _ => json!([]),
+    let opts = Overrides::default()
+        .list_tree(move |_, (_, _, path)| {
+            Ok(match path.as_str() {
+                "" => tree(&[("src", "src", true)]),
+                "src" if c1.lock().is_some() => tree(&[("gone.go", "src/gone.go", false)]),
+                _ => Vec::new(),
             })
         })
-        .resolver("ListChangedFiles", |_, _, _| {
-            Reply::value(json!(["src/gone.go"]))
-        })
-        .resolver("GitStatus", move |_, _, _| Reply::value(s1.lock().clone()))
-        .resolver("WorkingStatus", move |_, _, _| {
-            Reply::value(s2.lock().clone())
-        })
-        .resolver("FileAtBase", |_, _, _| Reply::value(MAIN))
-        .resolver("ReadFile", move |a, _, _| match c2.lock().clone() {
-            None => Reply::error("src/gone.go: no such file or directory"),
-            Some(c) => Reply::value(file(&s(a, 2), &c)),
+        .list_changed_files(|_, _| Ok(strings(&["src/gone.go"])))
+        .git_status(move |_, _| Ok(s1.lock().clone()))
+        .working_status(move |_, _| Ok(s2.lock().clone()))
+        .file_at_base(|_, _| Ok(MAIN.into()))
+        .read_file(move |_, (_, _, path)| match c2.lock().clone() {
+            None => Err(Error::new("src/gone.go: no such file or directory")),
+            Some(c) => Ok(file(&path, &c)),
         });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("obs-node:file:src/gone.go");
@@ -265,7 +245,7 @@ async fn diff_rehydrates_when_a_deleted_file_comes_back_on_disk(cx: &mut TestApp
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Diff);
     assert!(h.read(|o, _| o.merge_editor.is_some()));
     *content.lock() = Some("package main\n\nfunc main() { RESTORED }\n".into());
-    *status.lock() = json!({"src/gone.go": "m"});
+    *status.lock() = statuses(&[("src/gone.go", "m")]);
     h.fs_changed();
     h.wait(200);
     assert!(merge_doc(&mut h).contains("RESTORED"));
@@ -317,7 +297,7 @@ fn click_tab(h: &mut H, path: &str) {
 #[gpui::test]
 async fn tab_switch_restores_the_saved_buffer(cx: &mut TestAppContext) {
     let f = two();
-    let mut h = mount(cx, go_files(&f, MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, go_files(&f, Overrides::default()), |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     type_at_end(&mut h, "KEEPME");
     h.keys("secondary-s");
@@ -332,7 +312,7 @@ async fn tab_switch_restores_the_saved_buffer(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn unsaved_edits_survive_a_tab_switch_without_discarding(cx: &mut TestAppContext) {
     let f = two();
-    let mut h = mount(cx, go_files(&f, MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, go_files(&f, Overrides::default()), |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     type_at_end(&mut h, "KEEPME");
     assert!(dirty(&mut h, "src/main.go"));
@@ -353,7 +333,7 @@ fn restart<'a>(h: H, restarted: &'a mut TestAppContext, f: &Files, store: &Sessi
     h.quit();
     let mut h = mount(
         restarted,
-        store.install(go_files(f, MockOptions::default())),
+        store.install(go_files(f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -370,7 +350,7 @@ async fn unsaved_edits_survive_an_app_restart(
     let store = SessionStore::default();
     let mut h = mount(
         cx,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -395,7 +375,7 @@ async fn caret_and_scroll_survive_an_app_restart(
     let store = SessionStore::default();
     let mut h = mount(
         cx,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -436,7 +416,7 @@ async fn the_code_chip_survives_an_app_restart(
     let store = SessionStore::default();
     let mut h = mount(
         cx,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -455,7 +435,7 @@ async fn the_diff_chip_survives_an_app_restart(
     let store = SessionStore::default();
     let mut h = mount(
         cx,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -476,7 +456,7 @@ async fn the_diff_chip_survives_restart_when_git_status_lags_the_session(
     let store = SessionStore::default();
     let mut h = mount(
         cx,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -486,19 +466,19 @@ async fn the_diff_chip_survives_restart_when_git_status_lags_the_session(
     h.wait(600);
     h.quit();
     // GitStatus answers late after the restart.
-    let (reply, release) = Reply::deferred();
-    let slot = Arc::new(Mutex::new(Some(reply)));
+    let (answer, release) = hold();
+    let slot = Arc::new(Mutex::new(Some(answer)));
     let opts = store
-        .install(go_files(&f, MockOptions::default()))
-        .resolver("GitStatus", move |_, _, _| {
+        .install(go_files(&f, Overrides::default()))
+        .git_status(move |_, _| -> Answer<recur_services::Result<_>> {
             slot.lock()
                 .take()
-                .unwrap_or_else(|| Reply::value(json!({"src/main.go": "m"})))
+                .unwrap_or_else(|| Ok(statuses(&[("src/main.go", "m")])).into())
         });
     let mut h = mount(restarted, opts, |_| {}, |_| {});
     h.wait(200);
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Diff);
-    release.send(Reply::value(json!({"src/main.go": "m"})));
+    release.send(Ok(statuses(&[("src/main.go", "m")])));
     h.wait(700);
     assert_eq!(h.read(|o, _| o.view_mode), EditorViewMode::Diff);
     assert!(h.read(|o, _| o.merge_editor.is_some()));
@@ -511,12 +491,10 @@ async fn the_preview_chip_survives_an_app_restart(
 ) {
     let f = files(&[("README.md", "# Hello\n\nWorld\n")]);
     let store = SessionStore::default();
-    let opts = |o: MockOptions| {
-        go_files(&f, o).resolver("FileAtBase", |_, _, _| Reply::value("# Hello\n"))
-    };
+    let opts = |o: Overrides| go_files(&f, o).file_at_base(|_, _| Ok("# Hello\n".into()));
     let mut h = mount(
         cx,
-        store.install(opts(MockOptions::default())),
+        store.install(opts(Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -529,7 +507,7 @@ async fn the_preview_chip_survives_an_app_restart(
     h.quit();
     let mut h = mount(
         restarted,
-        store.install(opts(MockOptions::default())),
+        store.install(opts(Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -540,7 +518,7 @@ async fn the_preview_chip_survives_an_app_restart(
 
 #[gpui::test]
 async fn quick_open_filters_the_file_index(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.keys("secondary-p");
     assert!(h.has("quick-open"));
     h.type_text("main");
@@ -555,7 +533,7 @@ async fn quick_open_filters_the_file_index(cx: &mut TestAppContext) {
 /// pointer: a press on a panel toggle under the scrim only closes it.
 #[gpui::test]
 async fn quick_open_covers_the_window_and_blocks_the_page(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     let toggle = h.bounds("panel-toggle:search").expect("toggle").center();
     let before = h.read(|o, _| o.right_kind);
     h.keys("secondary-p");
@@ -573,9 +551,8 @@ async fn quick_open_covers_the_window_and_blocks_the_page(cx: &mut TestAppContex
 async fn quick_open_hydrates_the_picked_file_without_a_read_failed_toast(cx: &mut TestAppContext) {
     let f = two();
     let f2 = f.clone();
-    let opts = go_files(&f, MockOptions::default()).resolver("ListFiles", move |_, _, _| {
-        Reply::value(json!(f2.lock().keys().cloned().collect::<Vec<_>>()))
-    });
+    let opts = go_files(&f, Overrides::default())
+        .list_files(move |_, _| Ok(f2.lock().keys().cloned().collect()));
     let mut h = mount(cx, opts, |_| {}, |_| {});
     // Opening a file must not steal the side panel.
     h.click("panel-toggle:search");
@@ -609,9 +586,8 @@ async fn quick_open_scrolls_the_explorer_to_the_selected_file_when_files_is_show
     }
     let f: Files = Arc::new(Mutex::new(list.into_iter().collect()));
     let f2 = f.clone();
-    let opts = go_files(&f, MockOptions::default()).resolver("ListFiles", move |_, _, _| {
-        Reply::value(json!(f2.lock().keys().cloned().collect::<Vec<_>>()))
-    });
+    let opts = go_files(&f, Overrides::default())
+        .list_files(move |_, _| Ok(f2.lock().keys().cloned().collect()));
     let mut h = mount(cx, opts, |_| {}, |_| {});
     assert_eq!(
         h.read(|o, _| o.right_kind),
@@ -648,7 +624,7 @@ async fn quick_open_scrolls_the_explorer_to_the_selected_file_when_files_is_show
 
 #[gpui::test]
 async fn a_single_keystroke_reaches_diff_after_the_emit_debounce(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     type_at_end(&mut h, "X");
     assert!(dirty(&mut h, "src/main.go"));
@@ -660,7 +636,7 @@ async fn a_single_keystroke_reaches_diff_after_the_emit_debounce(cx: &mut TestAp
 #[gpui::test]
 async fn reverting_a_restored_stash_clears_the_unsaved_marker(cx: &mut TestAppContext) {
     let f = two();
-    let mut h = mount(cx, go_files(&f, MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, go_files(&f, Overrides::default()), |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     type_at_end(&mut h, "X");
     assert!(dirty(&mut h, "src/main.go"));
@@ -684,7 +660,7 @@ async fn closing_the_last_tab_does_not_restore_it_after_restart(
     let store = SessionStore::default();
     let mut h = mount(
         cx,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -700,13 +676,13 @@ async fn closing_the_last_tab_does_not_restore_it_after_restart(
 async fn re_clicking_a_file_retries_after_a_failed_read(cx: &mut TestAppContext) {
     let reads = Arc::new(Mutex::new(0));
     let r = reads.clone();
-    let opts = MockOptions::default().resolver("ReadFile", move |a, _, _| {
+    let opts = Overrides::default().read_file(move |_, (_, _, path)| {
         let mut n = r.lock();
         *n += 1;
         if *n == 1 {
-            return Reply::error("binary or non-UTF-8 file");
+            return Err(Error::new("binary or non-UTF-8 file"));
         }
-        Reply::value(file(&s(a, 2), "package main\n\nfunc main() { RETRY_OK }\n"))
+        Ok(file(&path, "package main\n\nfunc main() { RETRY_OK }\n"))
     });
     let mut h = mount(cx, opts, |_| {}, |_| {});
     h.click("obs-node:file:src/main.go");
@@ -725,7 +701,7 @@ async fn re_clicking_a_file_retries_after_a_failed_read(cx: &mut TestAppContext)
 #[gpui::test]
 async fn restoring_a_stash_warns_when_disk_changed_while_the_tab_was_away(cx: &mut TestAppContext) {
     let f = two();
-    let mut h = mount(cx, go_files(&f, MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, go_files(&f, Overrides::default()), |_| {}, |_| {});
     open_file(&mut h, "src/main.go");
     type_at_end(&mut h, "KEEPME");
     open_file(&mut h, "src/other.go");
@@ -756,7 +732,7 @@ async fn restoring_a_stash_after_a_restart_warns_when_disk_moved_meanwhile(
     let store = SessionStore::default();
     let mut h = mount(
         cx,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -770,7 +746,7 @@ async fn restoring_a_stash_after_a_restart_warns_when_disk_moved_meanwhile(
     );
     let mut h = mount(
         restarted,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -793,7 +769,7 @@ async fn opening_a_restored_stash_in_the_split_pane_warns_when_disk_moved(
     let store = SessionStore::default();
     let mut h = mount(
         cx,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -809,7 +785,7 @@ async fn opening_a_restored_stash_in_the_split_pane_warns_when_disk_moved(
     );
     let mut h = mount(
         restarted,
-        store.install(go_files(&f, MockOptions::default())),
+        store.install(go_files(&f, Overrides::default())),
         |_| {},
         |_| {},
     );
@@ -837,7 +813,7 @@ async fn opening_a_restored_stash_in_the_split_pane_warns_when_disk_moved(
 #[gpui::test]
 async fn cmd_f_in_the_split_editor_stays_out_of_the_preview_find(cx: &mut TestAppContext) {
     let f = files(&[("README.md", "# Hello\n\nneedle\n")]);
-    let mut h = mount(cx, go_files(&f, MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, go_files(&f, Overrides::default()), |_| {}, |_| {});
     h.click("obs-node:file:README.md");
     h.wait(50);
     if h.read(|o, _| o.view_mode) != EditorViewMode::Code {

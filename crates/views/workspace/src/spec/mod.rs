@@ -1,4 +1,4 @@
-//! GPUI ports of the workspace e2e specs on the mock bridge.
+//! GPUI ports of the workspace e2e specs on the typed service fakes.
 
 mod activity;
 mod chat;

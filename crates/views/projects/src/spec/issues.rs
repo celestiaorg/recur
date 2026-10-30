@@ -5,41 +5,68 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::PrParticipant;
+use recur_services::api::{AssignedIssue, IssuesView};
+use recur_services::fake::Overrides;
 use recur_view_core::ViewName;
-use serde_json::{Value, json};
 
 use super::harness::with;
 
-fn issues() -> Value {
-    json!([
-        {
-            "source": "linear", "id": "lin-1", "ref": "ENG-412", "title": "Rate-limit the public API per key",
-            "url": "https://linear.app/acme/issue/ENG-412", "createdAt": "2024-03-01T10:00:00Z",
-            "updatedAt": "2024-06-02T10:00:00Z", "group": "progress", "state": "In Progress",
-            "stateColor": "f2c94c", "statePosition": 2, "priority": 1, "priorityLabel": "Urgent",
-            "project": "Payments", "labels": [], "comments": 0, "assignees": [{ "login": "jd" }],
-            "projectId": "payments", "linearProject": "Payments", "linearTeam": "ENG",
+fn issues() -> Vec<AssignedIssue> {
+    vec![
+        AssignedIssue {
+            source: "linear".into(),
+            id: "lin-1".into(),
+            r#ref: "ENG-412".into(),
+            title: "Rate-limit the public API per key".into(),
+            url: "https://linear.app/acme/issue/ENG-412".into(),
+            created_at: "2024-03-01T10:00:00Z".into(),
+            updated_at: "2024-06-02T10:00:00Z".into(),
+            group: "progress".into(),
+            state: "In Progress".into(),
+            state_color: "f2c94c".into(),
+            state_position: 2.,
+            priority: 1,
+            priority_label: "Urgent".into(),
+            project: "Payments".into(),
+            labels: Some(Vec::new()),
+            comments: 0,
+            assignees: Some(vec![PrParticipant {
+                login: "jd".into(),
+                ..Default::default()
+            }]),
+            project_id: "payments".into(),
+            linear_project: "Payments".into(),
+            linear_team: "ENG".into(),
+            ..Default::default()
         },
-        {
-            "source": "github", "id": "gh-88", "ref": "acme/storefront#88",
-            "title": "Checkout button overlaps the cart drawer",
-            "url": "https://github.com/acme/storefront/issues/88", "createdAt": "2024-02-11T10:00:00Z",
-            "updatedAt": "2024-05-20T10:00:00Z", "group": "todo", "state": "Open", "stateColor": "",
-            "statePosition": 0, "priority": 0, "priorityLabel": "", "project": "acme/storefront",
-            "labels": [], "comments": 1, "assignees": [], "projectId": "storefront",
-            "linearProject": "", "linearTeam": "",
+        AssignedIssue {
+            source: "github".into(),
+            id: "gh-88".into(),
+            r#ref: "acme/storefront#88".into(),
+            title: "Checkout button overlaps the cart drawer".into(),
+            url: "https://github.com/acme/storefront/issues/88".into(),
+            created_at: "2024-02-11T10:00:00Z".into(),
+            updated_at: "2024-05-20T10:00:00Z".into(),
+            group: "todo".into(),
+            state: "Open".into(),
+            project: "acme/storefront".into(),
+            labels: Some(Vec::new()),
+            comments: 1,
+            assignees: Some(Vec::new()),
+            project_id: "storefront".into(),
+            ..Default::default()
         },
-    ])
+    ]
 }
 
 struct Counts {
     list: Arc<AtomicUsize>,
     get_view: Arc<AtomicUsize>,
-    saved: Arc<parking_lot::Mutex<Vec<Value>>>,
+    saved: Arc<parking_lot::Mutex<Vec<IssuesView>>>,
 }
 
-fn opts() -> (MockOptions, Counts) {
+fn opts() -> (Overrides, Counts) {
     let c = Counts {
         list: Arc::default(),
         get_view: Arc::default(),
@@ -51,18 +78,18 @@ fn opts() -> (MockOptions, Counts) {
         c.saved.clone(),
         c.saved.clone(),
     );
-    let o = MockOptions::default()
-        .resolver("ListAssignedIssues", move |_, _, _| {
+    let o = Overrides::default()
+        .list_assigned_issues(move |_, ()| {
             l.fetch_add(1, Ordering::SeqCst);
-            Reply::value(issues())
+            Ok(issues())
         })
-        .resolver("GetIssuesView", move |_, _, _| {
+        .get_issues_view(move |_, ()| {
             g.fetch_add(1, Ordering::SeqCst);
-            Reply::value(s2.lock().last().cloned().unwrap_or(json!({})))
+            Ok(s2.lock().last().cloned().unwrap_or_default())
         })
-        .resolver("SetIssuesView", move |a, _, _| {
-            s.lock().push(a.first().cloned().unwrap_or_default());
-            Reply::null()
+        .set_issues_view(move |_, v| {
+            s.lock().push(v);
+            Ok(())
         });
     (o, c)
 }
@@ -97,10 +124,10 @@ fn the_view_is_saved_to_disk_and_kept_for_the_session(cx: &mut TestAppContext) {
     s.click("iss-layout:board:false");
     assert!(s.has("iss-board"));
     assert!(s.has("iss-card:Checkout button overlaps the cart drawer"));
-    assert_eq!(c.saved.lock().last().unwrap()["layout"], "board");
+    assert_eq!(c.saved.lock().last().unwrap().layout, "board");
     s.click("seg:Mine:false");
     assert!(!s.has("iss-card:Checkout button overlaps the cart drawer"));
-    assert_eq!(c.saved.lock().last().unwrap()["owner"], "mine");
+    assert_eq!(c.saved.lock().last().unwrap().owner, "mine");
     // Back on the route the session copy applies at once, without asking the disk.
     s.click("nav-inbox");
     s.click("nav-issues");

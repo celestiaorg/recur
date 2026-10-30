@@ -2,7 +2,9 @@
 //! typeaheads.
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::{Commit, FileDiff, Finding, Pr, PrParticipant};
+use recur_services::api::Asset;
+use recur_services::fake::{Overrides, Release, Seed, hold};
 use recur_view_widgets::suggest::SuggestKind;
 use serde_json::{Value, json};
 
@@ -43,15 +45,14 @@ fn opens_a_pr_shows_the_diff_and_opens_the_review_modal_from_files(cx: &mut Test
 
 #[gpui::test]
 fn github_only_findings_post_as_pending_review_comments(cx: &mut TestAppContext) {
-    let mut abort = race_finding("");
-    abort["id"] = json!("f-abort");
-    abort["line"] = json!(8);
-    abort["message"] = json!(ABORT);
-    abort["severity"] = json!("medium");
-    let mut race = race_finding("");
-    race.as_object_mut().unwrap().remove("workspaceId");
-    abort.as_object_mut().unwrap().remove("workspaceId");
-    let f = Findings::new(vec![race, abort]);
+    let abort = Finding {
+        id: "f-abort".into(),
+        line: 8,
+        message: ABORT.into(),
+        severity: "medium".into(),
+        ..race_finding("")
+    };
+    let f = Findings::new(vec![race_finding(""), abort]);
     let mut s = boot(
         cx,
         |sd| patch_pr(sd, "482", json!({ "workspaceId": "" })),
@@ -219,8 +220,11 @@ fn a_posted_finding_still_settles_after_the_pr_merges(cx: &mut TestAppContext) {
 #[gpui::test]
 fn files_changed_filters_do_not_carry_over_to_another_pr(cx: &mut TestAppContext) {
     let mut s = plain_with(cx, |sd| {
-        let files = sd.pr_by_id("482").unwrap()["files"].clone();
-        patch_pr(sd, "479", json!({ "files": files, "fileCount": 3 }));
+        let files = sd.pr("482").unwrap().files.clone();
+        if let Some(p) = sd.pr_mut("479") {
+            p.files = files;
+            p.file_count = 3;
+        }
     });
     let paths = [
         "src/auth/oauth.ts",
@@ -255,17 +259,27 @@ fn files_changed_shows_an_image_file_as_previous_and_current(cx: &mut TestAppCon
     let mut s = boot(
         cx,
         |sd| {
-            let mut files = sd.pr_by_id("482").unwrap()["files"].clone();
-            files.as_array_mut().unwrap().insert(
+            let pr = sd.pr_mut("482").unwrap();
+            pr.files.get_or_insert_default().insert(
                 0,
-                json!({"path": "assets/logo.png", "status": "m", "diff": {"add": 0, "del": 0}, "lines": null}),
+                FileDiff {
+                    path: "assets/logo.png".into(),
+                    status: "m".into(),
+                    ..Default::default()
+                },
             );
-            patch_pr(sd, "482", json!({ "files": files, "headSha": "abc123" }));
+            pr.head_sha = "abc123".into();
         },
-        MockOptions::default().resolver("FetchAsset", move |a, _, _| {
-            log.lock()
-                .push(a[0].as_str().unwrap_or_default().to_string());
-            Reply::value(json!({"contentType": "image/png", "cacheControl": "", "body": PNG_1X1}))
+        Overrides::default().fetch_asset(move |_, url| {
+            use base64::Engine as _;
+            log.lock().push(url);
+            Ok(Asset {
+                content_type: "image/png".into(),
+                cache_control: String::new(),
+                body: base64::engine::general_purpose::STANDARD
+                    .decode(PNG_1X1)
+                    .unwrap(),
+            })
         }),
     );
     s.open_pr("482");
@@ -312,41 +326,32 @@ fn commit_detail_shows_the_per_commit_diff(cx: &mut TestAppContext) {
 
 #[gpui::test]
 fn commit_detail_loads_a_lazy_per_commit_diff(cx: &mut TestAppContext) {
-    let original = recur_services::mock::fixtures::seed()
-        .pr_by_id("482")
-        .unwrap()["commits"]
-        .clone();
-    let mut stripped = original.clone();
-    for c in stripped.as_array_mut().unwrap() {
-        c["files"] = json!([]);
-    }
+    let original: Vec<Commit> = Seed::e2e().pr("482").unwrap().commits.clone().unwrap();
+    let stripped: Vec<Commit> = original
+        .iter()
+        .map(|c| Commit {
+            files: Some(Vec::new()),
+            ..c.clone()
+        })
+        .collect();
     let by_hash = original.clone();
     let mut s = boot(
         cx,
-        move |sd| patch_pr(sd, "482", json!({ "commits": stripped })),
-        MockOptions::default().resolver("GetCommitDiff", move |a, _, _| {
-            let r = a.get(1).and_then(Value::as_str).unwrap_or("").to_string();
-            let hit = by_hash
-                .as_array()
-                .unwrap()
+        move |sd| sd.pr_mut("482").unwrap().commits = Some(stripped),
+        Overrides::default().get_commit_diff(move |_, (_, r)| {
+            Ok(by_hash
                 .iter()
-                .find(|c| c["hash"] == r.as_str() || c["sha"] == r.as_str())
+                .find(|c| c.hash == r || c.sha == r)
                 .cloned()
-                .unwrap_or(json!({}));
-            Reply::value(hit)
+                .unwrap_or_default())
         }),
     );
     opens_first_commit(&mut s);
-    let commit = recur_services::mock::fixtures::seed()
-        .pr_by_id("482")
-        .unwrap()["commits"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|c| c["message"] == FIRST_COMMIT)
-        .cloned()
+    let commit = original
+        .into_iter()
+        .find(|c| c.message == FIRST_COMMIT)
         .unwrap();
-    let path = commit["files"][0]["path"].as_str().unwrap().to_string();
+    let path = commit.files.unwrap()[0].path.clone();
     assert!(s.until(|s| s.has(&format!("cfile:live:{path}"))));
 }
 
@@ -389,8 +394,12 @@ fn tab_inserts_a_mentionable_github_user_from_repository_search(cx: &mut TestApp
     let mut s = boot(
         cx,
         |_| {},
-        MockOptions::default().resolver("SearchPRMentionableUsers", |_, _, _| {
-            Reply::value(json!([{ "login": "octocat", "name": "The Octocat" }]))
+        Overrides::default().search_pr_mentionable_users(|_, _| {
+            Ok(vec![PrParticipant {
+                login: "octocat".into(),
+                name: "The Octocat".into(),
+                ..Default::default()
+            }])
         }),
     );
     open_review_modal(&mut s);
@@ -430,19 +439,14 @@ fn request_changes_from_the_titlebar_split_on_any_tab(cx: &mut TestAppContext) {
 
 #[gpui::test]
 fn files_changed_findings_open_in_findings_and_filter_the_toc(cx: &mut TestAppContext) {
-    let mut race = race_finding("");
-    race.as_object_mut().unwrap().remove("workspaceId");
+    let race = race_finding("");
     let r2 = race.clone();
     let mut s = boot(
         cx,
         |_| {},
-        MockOptions::default()
-            .resolver("ListPRFindings", move |_, _, _| {
-                Reply::value(json!([race.clone()]))
-            })
-            .resolver("ListFindings", move |_, _, _| {
-                Reply::value(json!([r2.clone()]))
-            }),
+        Overrides::default()
+            .list_pr_findings(move |_, _| Ok(vec![race.clone()]))
+            .list_findings(move |_, _| Ok(vec![r2.clone()])),
     );
     s.open_pr("482");
     s.tab("Files changed");
@@ -480,21 +484,22 @@ enum Diff {
 
 fn get_pr_stub(
     phase: std::sync::Arc<std::sync::Mutex<Diff>>,
-    held: std::sync::Arc<std::sync::Mutex<Vec<recur_services::mock::Release>>>,
-) -> MockOptions {
-    MockOptions::default().resolver("GetPR", move |a, sd, _| {
-        let id = a.first().and_then(Value::as_str).unwrap_or_default();
-        let mut pr = sd.pr_by_id(id).cloned().unwrap_or(Value::Null);
+    held: std::sync::Arc<std::sync::Mutex<Vec<Release<recur_services::Result<Pr>>>>>,
+) -> Overrides {
+    Overrides::default().get_pr(move |sd, id| {
+        let Some(mut pr) = sd.pr(&id).cloned() else {
+            return Err(recur_services::Error::new("get_pr returned null")).into();
+        };
         match *phase.lock().unwrap() {
-            Diff::Loaded => Reply::value(pr),
+            Diff::Loaded => Ok(pr).into(),
             Diff::Missing => {
-                pr["files"] = Value::Null;
-                Reply::value(pr)
+                pr.files = None;
+                Ok(pr).into()
             }
             Diff::Held => {
-                let (reply, release) = Reply::deferred();
+                let (answer, release) = hold();
                 held.lock().unwrap().push(release);
-                reply
+                answer
             }
         }
     })
@@ -512,7 +517,12 @@ fn files_changed_fills_in_when_the_diff_lands(cx: &mut TestAppContext) {
     assert!(!s.has("cfile:live:src/auth/oauth.ts"));
 
     *phase.lock().unwrap() = Diff::Loaded;
-    s.wire("pr.updated", json!({ "prId": "482" }));
+    s.dispatch(recur_services::AppEvent::PrUpdated(std::sync::Arc::new(
+        recur_services::events::PrUpdated {
+            pr_id: "482".into(),
+            ..Default::default()
+        },
+    )));
     assert!(s.until(|s| s.has("cfile:live:src/auth/oauth.ts")));
     assert!(!s.has("pr-skel"));
 }

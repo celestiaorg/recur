@@ -1,34 +1,50 @@
 //! OpenAI-compatible providers.
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
-use serde_json::{Value, json};
+use recur_domain::{CompatibleFlagDim, CompatibleFlagOption, CompatibleModel, CompatibleProvider};
+use recur_services::fake::Overrides;
 
 use super::harness::with;
 
-fn dim(id: &str, label: &str, wire: &str) -> Value {
-    json!({ "id": id, "label": label, "wire": wire, "options": [
-        { "value": "low", "label": "Low" },
-        { "value": "medium", "label": "Medium", "default": true },
-        { "value": "high", "label": "High" },
-    ] })
+fn dim(id: &str, label: &str, wire: &str) -> CompatibleFlagDim {
+    let opt = |value: &str, label: &str, default: bool| CompatibleFlagOption {
+        value: value.into(),
+        label: label.into(),
+        default,
+    };
+    CompatibleFlagDim {
+        id: id.into(),
+        label: label.into(),
+        wire: wire.into(),
+        options: vec![
+            opt("low", "Low", false),
+            opt("medium", "Medium", true),
+            opt("high", "High", false),
+        ],
+    }
 }
 
 #[gpui::test]
 fn picker_controls_presets_summarize_and_custom_opens_the_editor(cx: &mut TestAppContext) {
     let effort = dim("effort", "Effort", "reasoning.effort");
     let verbosity = dim("verbosity", "Verbosity", "text.verbosity");
-    let preset = json!([effort.clone(), verbosity.clone()]);
-    let opts = MockOptions::default().resolver("CompatibleFlagPreset", move |_, _, _| {
-        Reply::value(preset.clone())
-    });
+    let preset = vec![effort.clone(), verbosity.clone()];
+    let opts = Overrides::default().compatible_flag_preset(move |_, _| Ok(preset.clone()));
     let mut s = with(
         cx,
         |sd| {
-            sd.settings["compatibleProviders"] = json!([{
-                "id": "lmstudio", "name": "LM Studio", "baseUrl": "http://localhost:1234",
-                "models": [{ "id": "qwen", "label": "Qwen", "flags": [effort, verbosity] }],
-            }]);
+            sd.settings.compatible_providers = vec![CompatibleProvider {
+                id: "lmstudio".into(),
+                name: "LM Studio".into(),
+                base_url: "http://localhost:1234".into(),
+                models: vec![CompatibleModel {
+                    id: "qwen".into(),
+                    label: "Qwen".into(),
+                    flags: vec![effort, verbosity],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }];
         },
         opts,
     );

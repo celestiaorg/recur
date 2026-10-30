@@ -34,7 +34,7 @@ recur-view-workspace.workspace = true
 recur-view-prs.workspace = true
 recur-view-settings.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
-recur-services = { workspace = true, features = ["mock"] }
+recur-services = { workspace = true, features = ["fake"] }
 recur-app.workspace = true
 parking_lot.workspace = true
 

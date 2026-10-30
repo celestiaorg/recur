@@ -8,8 +8,8 @@ license.workspace = true
 publish = false
 
 [features]
-# In-memory mock services over the e2e seed, for view specs.
-mock = []
+# Typed in-memory fakes of every service over the e2e seed, for view specs.
+fake = []
 
 [dependencies]
 recur-provider-claude.workspace = true

@@ -4,25 +4,43 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply, Seed};
+use recur_domain::{Workspace, WorkspaceState};
+use recur_services::api::{CodexStatus, CursorStatus};
+use recur_services::fake::{Overrides, Release, Seed, hold};
+use recur_services::{Error, Result};
 use recur_view_core::{LocalStorage, ViewName};
-use serde_json::{Value, json};
 
 use super::harness::{S, boot, plain, with};
 use crate::new_task::NewTaskModal;
 
 fn codex_login(s: &mut Seed) {
-    s.settings["codexChatGPTAuth"] = json!(true);
+    s.settings.codex_chat_gpt_auth = true;
 }
 
-fn first_run() -> MockOptions {
-    MockOptions::default()
-        .resolver("ListProjects", |_, _, _| Reply::value(json!([])))
-        .resolver("ListWorkspaces", |_, _, _| Reply::value(json!([])))
+fn cursor_key(s: &mut Seed) {
+    s.settings.cursor_api_key = "crsr_test".into();
 }
 
-fn no_agent(o: MockOptions) -> MockOptions {
-    o.resolver("DetectAgent", |_, _, _| Reply::error("no agent"))
+fn no_workspaces() -> Overrides {
+    Overrides::default().list_workspaces(|_, ()| Ok(Vec::new()))
+}
+
+fn first_run() -> Overrides {
+    no_workspaces().list_projects(|_, ()| Ok(Vec::new()))
+}
+
+fn no_agent(o: Overrides) -> Overrides {
+    o.detect_agent(|_, ()| Err(Error::new("no agent")))
+}
+
+fn codex(authenticated: bool) -> CodexStatus {
+    CodexStatus {
+        bin_installed: true,
+        authenticated,
+        login_method: "ChatGPT".into(),
+        email: if authenticated { "dev@example.com" } else { "" }.into(),
+        ..Default::default()
+    }
 }
 
 impl S<'_> {
@@ -127,11 +145,7 @@ fn without_an_agent_step_1_offers_providers_and_can_be_skipped(cx: &mut TestAppC
 
 #[gpui::test]
 fn a_cursor_key_counts_as_a_connected_agent_without_claude(cx: &mut TestAppContext) {
-    let mut s = with(
-        cx,
-        |s| s.settings["cursorApiKey"] = json!("crsr_test"),
-        no_agent(first_run()),
-    );
+    let mut s = with(cx, cursor_key, no_agent(first_run()));
     assert!(s.has("wprov:cursor:on"));
     assert!(!s.has("wprov:claude:on"));
     assert_eq!(s.current_step(), 2);
@@ -140,27 +154,21 @@ fn a_cursor_key_counts_as_a_connected_agent_without_claude(cx: &mut TestAppConte
 #[gpui::test]
 fn a_cursor_key_without_the_sdk_is_not_ready_until_install_sdk_completes(cx: &mut TestAppContext) {
     let installed = Arc::new(AtomicBool::new(false));
-    let status = |on: bool| {
-        json!({
-            "bridgeInstalled": on, "authenticated": on,
-            "email": if on { "dev@example.com" } else { "" },
-            "error": if on { "" } else { "cursor-sdk-bridge not found" },
-        })
+    let status = |on: bool| CursorStatus {
+        bridge_installed: on,
+        authenticated: on,
+        email: if on { "dev@example.com" } else { "" }.into(),
+        error: if on { "" } else { "cursor-sdk-bridge not found" }.into(),
+        ..Default::default()
     };
     let (a, b) = (installed.clone(), installed.clone());
     let opts = no_agent(first_run())
-        .resolver("GetCursorStatus", move |_, _, _| {
-            Reply::value(status(a.load(Ordering::SeqCst)))
-        })
-        .resolver("InstallCursorBridge", move |_, _, _| {
+        .get_cursor_status(move |_, ()| Ok(status(a.load(Ordering::SeqCst))))
+        .install_cursor_bridge(move |_, ()| {
             b.store(true, Ordering::SeqCst);
-            Reply::value(status(true))
+            Ok(status(true))
         });
-    let mut s = with(
-        cx,
-        |s| s.settings["cursorApiKey"] = json!("crsr_test"),
-        opts,
-    );
+    let mut s = with(cx, cursor_key, opts);
     assert_eq!(s.current_step(), 1);
     assert!(s.has("wprov:cursor:warn"));
     assert!(s.has(
@@ -176,12 +184,7 @@ fn a_cursor_key_without_the_sdk_is_not_ready_until_install_sdk_completes(cx: &mu
 fn a_signed_in_codex_counts_and_the_cursor_connect_link_lands_on_providers_settings(
     cx: &mut TestAppContext,
 ) {
-    let opts = no_agent(first_run()).resolver("GetCodexStatus", |_, _, _| {
-        Reply::value(json!({
-            "binInstalled": true, "authenticated": true, "loginMethod": "ChatGPT",
-            "email": "dev@example.com", "error": "",
-        }))
-    });
+    let opts = no_agent(first_run()).get_codex_status(|_, ()| Ok(codex(true)));
     let mut s = with(cx, |_| {}, opts);
     assert!(s.has("wprov:openai:on"));
     assert_eq!(s.current_step(), 2);
@@ -197,13 +200,9 @@ fn agents_are_probed_only_while_get_started_is_shown_and_again_on_return_from_se
     let probes = Arc::new(AtomicUsize::new(0));
     let authed = Arc::new(AtomicBool::new(false));
     let (p, a) = (probes.clone(), authed.clone());
-    let opts = MockOptions::default().resolver("GetCodexStatus", move |_, _, _| {
+    let opts = Overrides::default().get_codex_status(move |_, ()| {
         p.fetch_add(1, Ordering::SeqCst);
-        let on = a.load(Ordering::SeqCst);
-        Reply::value(json!({
-            "binInstalled": true, "authenticated": on, "loginMethod": "ChatGPT",
-            "email": if on { "dev@example.com" } else { "" }, "error": "",
-        }))
+        Ok(codex(a.load(Ordering::SeqCst)))
     });
     let mut s = with(cx, |_| {}, opts);
     assert!(!s.has("v-welcome:on"));
@@ -224,8 +223,7 @@ fn with_a_project_but_no_workspace_a_mode_row_opens_an_empty_new_workspace_dialo
 ) {
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.newWorkspaceMode", "loop".to_string());
-    let opts = MockOptions::default().resolver("ListWorkspaces", |_, _, _| Reply::value(json!([])));
-    let mut s = boot(cx, |_| {}, opts, storage);
+    let mut s = boot(cx, |_| {}, no_workspaces(), storage);
     s.get_started();
     assert_eq!(s.current_step(), 3);
     for m in ["Ask", "Plan", "Agent", "Review", "Loop"] {
@@ -243,19 +241,21 @@ fn with_a_project_but_no_workspace_a_mode_row_opens_an_empty_new_workspace_dialo
 fn a_project_whose_only_workspace_is_the_working_copy_still_needs_a_first_task(
     cx: &mut TestAppContext,
 ) {
-    let main: Arc<std::sync::Mutex<Option<Value>>> = Arc::default();
+    let main: Arc<std::sync::Mutex<Option<Workspace>>> = Arc::default();
     let m = main.clone();
-    let opts = MockOptions::default().resolver("ListWorkspaces", move |_, seed, _| {
-        let mut w = m
+    let opts = Overrides::default().list_workspaces(move |seed, ()| {
+        let w = m
             .lock()
             .unwrap()
-            .get_or_insert_with(|| seed.loops().next().cloned().unwrap_or_default())
+            .get_or_insert_with(|| seed.workspaces.first().cloned().unwrap_or_default())
             .clone();
-        w["id"] = json!("MAIN-storefront");
-        w["isMain"] = json!(true);
-        w["archived"] = json!(false);
-        w["hostPrId"] = json!("");
-        Reply::value(json!([w]))
+        Ok(vec![Workspace {
+            id: "MAIN-storefront".into(),
+            is_main: true,
+            archived: false,
+            host_pr_id: String::new(),
+            ..w
+        }])
     });
     let mut s = with(cx, |_| {}, opts);
     s.get_started();
@@ -267,15 +267,20 @@ fn a_project_whose_only_workspace_is_the_working_copy_still_needs_a_first_task(
 fn opening_and_cancelling_the_new_workspace_dialog_does_not_complete_the_first_task(
     cx: &mut TestAppContext,
 ) {
-    let opts = MockOptions::default()
-        .resolver("ListWorkspaces", |_, _, _| Reply::value(json!([])))
-        .resolver("CreateWorkspace", |a, _, _| {
-            Reply::value(json!({
-                "id": "WS-NEW", "projectId": a[0], "type": "solo", "goal": "New Workspace",
-                "short": "New Workspace", "statusLabel": "Creating", "phase": "creating",
-                "branch": "recur/new", "baseBranch": "main",
-            }))
-        });
+    let opts = no_workspaces().create_workspace(|_, (project_id, ..)| {
+        Ok(Workspace {
+            id: "WS-NEW".into(),
+            project_id,
+            r#type: "solo".into(),
+            goal: "New Workspace".into(),
+            short: "New Workspace".into(),
+            status_label: "Creating".into(),
+            phase: "creating".into(),
+            branch: "recur/new".into(),
+            base_branch: "main".into(),
+            ..Default::default()
+        })
+    });
     let mut s = with(cx, |_| {}, opts);
     s.get_started();
     assert_eq!(s.current_step(), 3);
@@ -290,23 +295,21 @@ fn opening_and_cancelling_the_new_workspace_dialog_does_not_complete_the_first_t
 
 #[gpui::test]
 fn a_hand_driven_workspace_counts_once_its_first_message_named_it(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("ListWorkspaces", |_, seed, _| {
-        let mut w = seed.loops().next().cloned().unwrap_or_default();
-        for (k, v) in [
-            ("id", json!("WS-1")),
-            ("type", json!("solo")),
-            ("runStarted", json!(false)),
-            ("isMain", json!(false)),
-            ("archived", json!(false)),
-            ("hostPrId", json!("")),
-            ("goal", json!("Add a timeout to the session refresh")),
-            ("short", json!("Add a timeout")),
-            ("lastActivityAt", json!(0)),
-            ("state", json!("")),
-        ] {
-            w[k] = v;
-        }
-        Reply::value(json!([w]))
+    let opts = Overrides::default().list_workspaces(|seed, ()| {
+        let w = seed.workspaces.first().cloned().unwrap_or_default();
+        Ok(vec![Workspace {
+            id: "WS-1".into(),
+            r#type: "solo".into(),
+            run_started: false,
+            is_main: false,
+            archived: false,
+            host_pr_id: String::new(),
+            goal: "Add a timeout to the session refresh".into(),
+            short: "Add a timeout".into(),
+            last_activity_at: 0,
+            state: WorkspaceState::default(),
+            ..w
+        }])
     });
     let mut s = with(cx, |_| {}, opts);
     s.get_started();
@@ -318,7 +321,7 @@ fn a_hand_driven_workspace_counts_once_its_first_message_named_it(cx: &mut TestA
 fn the_plain_workspace_shortcut_still_uses_the_remembered_mode(cx: &mut TestAppContext) {
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.newWorkspaceMode", "plan".to_string());
-    let mut s = boot(cx, |_| {}, MockOptions::default(), storage);
+    let mut s = boot(cx, |_| {}, Overrides::default(), storage);
     s.keys("secondary-n");
     assert!(s.has("v-newtask"));
     assert_eq!(s.new_task_text(), "");
@@ -347,12 +350,12 @@ fn once_a_workspace_exists_the_page_shows_the_completed_steps_and_links_onward(
 fn a_set_up_user_does_not_see_the_setup_flow_while_agents_are_still_being_probed(
     cx: &mut TestAppContext,
 ) {
-    let release: Arc<std::sync::Mutex<Option<recur_services::mock::Release>>> = Arc::default();
+    let release: Arc<std::sync::Mutex<Option<Release<Result<String>>>>> = Arc::default();
     let r = release.clone();
-    let opts = MockOptions::default().resolver("DetectAgent", move |_, _, _| {
-        let (reply, rel) = Reply::deferred();
+    let opts = Overrides::default().detect_agent(move |_, ()| {
+        let (answer, rel) = hold();
         *r.lock().unwrap() = Some(rel);
-        reply
+        answer
     });
     let mut s = with(cx, |_| {}, opts);
     s.get_started();
@@ -360,7 +363,7 @@ fn a_set_up_user_does_not_see_the_setup_flow_while_agents_are_still_being_probed
     assert!(!s.has("ws-step:1:current"));
     assert!(!s.has("ws-links:Continue without an agent"));
     let rel = release.lock().unwrap().take().expect("probe in flight");
-    rel.send(Reply::value(json!("Claude Code · dev@example.com (Acme)")));
+    rel.send(Ok("Claude Code · dev@example.com (Acme)".into()));
     assert!(s.until(|s| s.chips(1) == vec!["Claude Code"]));
 }
 
@@ -368,8 +371,7 @@ fn a_set_up_user_does_not_see_the_setup_flow_while_agents_are_still_being_probed
 fn fits_a_narrow_pane_in_the_light_theme(cx: &mut TestAppContext) {
     let mut storage = LocalStorage::in_memory();
     storage.set("recur.theme", "paper".to_string());
-    let opts = MockOptions::default().resolver("ListWorkspaces", |_, _, _| Reply::value(json!([])));
-    let mut s = boot(cx, |_| {}, opts, storage);
+    let mut s = boot(cx, |_| {}, no_workspaces(), storage);
     s.cx.simulate_resize(gpui::size(gpui::px(760.), gpui::px(900.)));
     s.settle();
     s.get_started();

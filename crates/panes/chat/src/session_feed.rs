@@ -505,14 +505,37 @@ mod tests {
 
     use gpui::{AppContext as _, TestAppContext};
     use parking_lot::Mutex;
-    use recur_services::mock::{MockBridge, MockOptions, Release, Reply};
-    use serde_json::{Value, json};
+    use recur_domain::{ChatItem, FeedItem, SessionView};
+    use recur_services::events::{
+        AgentUpdated, SessionDelta, SessionTag, SessionTurnEnd, WorkspaceEvent,
+    };
+    use recur_services::fake::{Fake, Overrides, Release, hold};
+    use recur_services::{AppEvent, Result};
 
     use super::*;
 
-    fn session(code: &str, text: &str, owner: &str) -> Value {
-        json!({"id": code, "code": code, "ownerCode": owner, "createdAt": 1,
-            "items": [{"kind": "text", "role": "assistant", "text": text}]})
+    fn session(code: &str, text: &str, owner: &str) -> SessionView {
+        SessionView {
+            id: code.into(),
+            code: code.into(),
+            owner_code: owner.into(),
+            created_at: 1,
+            items: Some(vec![ChatItem {
+                kind: "text".into(),
+                role: "assistant".into(),
+                text: text.into(),
+                ..Default::default()
+            }]),
+            ..Default::default()
+        }
+    }
+
+    fn tag(code: &str) -> SessionTag {
+        SessionTag {
+            workspace_id: "ws".into(),
+            code: code.into(),
+            ..Default::default()
+        }
     }
 
     fn body(feed: &SessionFeed, i: usize) -> String {
@@ -523,112 +546,111 @@ mod tests {
     async fn loads_only_the_selected_chat_and_refreshes_only_the_completed_specialist(
         cx: &mut TestAppContext,
     ) {
-        let calls: Arc<Mutex<Vec<Vec<Value>>>> = Default::default();
+        let calls: Arc<Mutex<Vec<(String, String, String)>>> = Default::default();
         let replies = Arc::new(Mutex::new(vec![
-            json!([session("CO", "finished", "PA2")]),
-            json!([
+            vec![session("CO", "finished", "PA2")],
+            vec![
                 session("CO", "coding", "PA2"),
-                session("RV", "reviewing", "PA2")
-            ]),
+                session("RV", "reviewing", "PA2"),
+            ],
         ]));
         let (c, r) = (calls.clone(), replies.clone());
-        let bridge = MockBridge::fresh(
-            MockOptions::default()
-                .resolver("WorkspaceSessions", move |args, _, _| {
-                    c.lock().push(args.to_vec());
-                    Reply::value(r.lock().pop().unwrap_or(json!([])))
+        let fake = Fake::fresh(
+            Overrides::default()
+                .workspace_sessions(move |_, args| {
+                    c.lock().push(args);
+                    Ok(r.lock().pop().unwrap_or_default())
                 })
-                .resolver("WorkspaceFacts", |_, _, _| Reply::value(json!([]))),
+                .workspace_facts(|_, _| Ok(Vec::new())),
         );
-        let feed = cx.new(|_| SessionFeed::new(bridge.services()));
+        let feed = cx.new(|_| SessionFeed::new(fake.services()));
         feed.update(cx, |f, cx| f.attach("ws", "PA2", cx));
         cx.run_until_parked();
         assert_eq!(feed.read_with(cx, |f, _| f.sessions.len()), 2);
-        assert_eq!(
-            *calls.lock(),
-            vec![vec![json!("ws"), json!("PA2"), json!("")]]
-        );
+        let call = |a: &str, b: &str, c: &str| (a.to_owned(), b.to_owned(), c.to_owned());
+        assert_eq!(*calls.lock(), vec![call("ws", "PA2", "")]);
 
-        bridge
-            .dispatch_wire(
-                "agent.updated",
-                json!({"workspaceId": "ws", "agentId": "ws-CO", "status": "idle"}),
-            )
-            .unwrap();
+        fake.dispatch(AppEvent::AgentUpdated(AgentUpdated {
+            workspace_id: "ws".into(),
+            agent_id: "ws-CO".into(),
+            status: "idle".into(),
+            ..Default::default()
+        }));
         cx.run_until_parked();
         feed.read_with(cx, |f, _| {
             assert_eq!(body(f, 0), "finished");
             assert_eq!(body(f, 1), "reviewing");
         });
-        assert_eq!(
-            calls.lock().last().unwrap(),
-            &vec![json!("ws"), json!("PA2"), json!("CO")]
-        );
+        assert_eq!(calls.lock().last().unwrap(), &call("ws", "PA2", "CO"));
     }
 
     #[gpui::test]
     async fn late_scoped_loads_cannot_overwrite_a_newer_visit_to_the_same_chat(
         cx: &mut TestAppContext,
     ) {
-        let pending: Arc<Mutex<Vec<Release>>> = Default::default();
+        type Pending = Vec<Release<Result<Vec<SessionView>>>>;
+        let pending: Arc<Mutex<Pending>> = Default::default();
         let p = pending.clone();
-        let bridge = MockBridge::fresh(
-            MockOptions::default()
-                .resolver("WorkspaceSessions", move |_, _, _| {
-                    let (reply, release) = Reply::deferred();
+        let fake = Fake::fresh(
+            Overrides::default()
+                .workspace_sessions(move |_, _| {
+                    let (answer, release) = hold();
                     p.lock().push(release);
-                    reply
+                    answer
                 })
-                .resolver("WorkspaceFacts", |_, _, _| Reply::value(json!([]))),
+                .workspace_facts(|_, _| Ok(Vec::new())),
         );
-        let feed = cx.new(|_| SessionFeed::new(bridge.services()));
+        let feed = cx.new(|_| SessionFeed::new(fake.services()));
         feed.update(cx, |f, cx| {
             f.attach("ws", "PA2", cx);
             f.attach("ws", "PA3", cx);
             f.attach("ws", "PA2", cx);
         });
         cx.run_until_parked();
-        let mut rel: Vec<Release> = std::mem::take(&mut *pending.lock());
+        let mut rel: Pending = std::mem::take(&mut *pending.lock());
         assert_eq!(rel.len(), 3);
         rel.pop()
             .unwrap()
-            .send(Reply::value(json!([session("CO", "latest", "PA2")])));
+            .send(Ok(vec![session("CO", "latest", "PA2")]));
         cx.run_until_parked();
         assert_eq!(feed.read_with(cx, |f, _| body(f, 0)), "latest");
         rel.pop()
             .unwrap()
-            .send(Reply::value(json!([session("CO", "other chat", "PA3")])));
+            .send(Ok(vec![session("CO", "other chat", "PA3")]));
         rel.pop()
             .unwrap()
-            .send(Reply::value(json!([session("CO", "stale", "PA2")])));
+            .send(Ok(vec![session("CO", "stale", "PA2")]));
         cx.run_until_parked();
         assert_eq!(feed.read_with(cx, |f, _| body(f, 0)), "latest");
     }
 
     #[gpui::test]
     async fn live_deltas_light_and_turn_end_clears(cx: &mut TestAppContext) {
-        let bridge = MockBridge::fresh(
-            MockOptions::default()
-                .resolver("WorkspaceSessions", |_, _, _| Reply::value(json!([])))
-                .resolver("WorkspaceFacts", |_, _, _| Reply::value(json!([]))),
+        let fake = Fake::fresh(
+            Overrides::default()
+                .workspace_sessions(|_, _| Ok(Vec::new()))
+                .workspace_facts(|_, _| Ok(Vec::new())),
         );
-        let feed = cx.new(|_| SessionFeed::new(bridge.services()));
+        let feed = cx.new(|_| SessionFeed::new(fake.services()));
         feed.update(cx, |f, cx| f.attach("ws", "", cx));
         cx.run_until_parked();
-        let d = |text: &str, seq: i64| json!({"workspaceId": "ws", "code": "CO", "text": text, "seq": seq, "replace": true});
-        bridge.dispatch_wire("session.delta", d("hel", 1)).unwrap();
-        bridge
-            .dispatch_wire("session.delta", d("hello", 2))
-            .unwrap();
-        bridge
-            .dispatch_wire("session.delta", d("stale", 1))
-            .unwrap();
-        bridge
-            .dispatch_wire(
-                "session.delta",
-                json!({"workspaceId": "ws", "code": "PA", "text": "x"}),
-            )
-            .unwrap();
+        let d = |text: &str, seq: i64| {
+            AppEvent::SessionDelta(SessionDelta {
+                tag: tag("CO"),
+                text: text.into(),
+                seq: Some(seq),
+                replace: true,
+                ..Default::default()
+            })
+        };
+        fake.dispatch(d("hel", 1));
+        fake.dispatch(d("hello", 2));
+        fake.dispatch(d("stale", 1));
+        fake.dispatch(AppEvent::SessionDelta(SessionDelta {
+            tag: tag("PA"),
+            text: "x".into(),
+            ..Default::default()
+        }));
         cx.run_until_parked();
         feed.read_with(cx, |f, _| {
             assert_eq!(f.sessions.len(), 1);
@@ -636,18 +658,20 @@ mod tests {
             assert_eq!(body(f, 0), "hello");
             assert!(f.live_codes.contains("CO"));
         });
-        bridge
-            .dispatch_wire(
-                "session.turn_end",
-                json!({"workspaceId": "ws", "code": "CO", "durationMs": 5}),
-            )
-            .unwrap();
-        bridge
-            .dispatch_wire(
-                "workspace.event",
-                json!({"workspaceId": "ws", "event": {"id": "f1", "kind": "outcome", "text": "done"}}),
-            )
-            .unwrap();
+        fake.dispatch(AppEvent::SessionTurnEnd(SessionTurnEnd {
+            tag: tag("CO"),
+            duration_ms: 5,
+            ..Default::default()
+        }));
+        fake.dispatch(AppEvent::WorkspaceEvent(WorkspaceEvent {
+            workspace_id: "ws".into(),
+            event: FeedItem {
+                id: "f1".into(),
+                kind: "outcome".into(),
+                text: "done".into(),
+                ..Default::default()
+            },
+        }));
         cx.run_until_parked();
         feed.read_with(cx, |f, _| {
             assert!(f.live_codes.is_empty());

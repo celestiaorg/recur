@@ -7,7 +7,9 @@ use gpui::{Entity, TestAppContext, VisualTestContext};
 use gpui_kit::AppContext as _;
 use parking_lot::Mutex;
 use recur_engine::view::loop_cockpit::merge_loop_cockpit;
-use recur_services::mock::{MockBridge, MockOptions, Release, Reply};
+use recur_domain::SessionView;
+use recur_services::Result;
+use recur_services::fake::{Fake, Overrides, Release, hold};
 use recur_view_core::{AppState, LocalStorage, ViewContext};
 use serde_json::json;
 
@@ -19,26 +21,32 @@ use crate::session_feed::SessionFeed;
 async fn the_loop_chat_renders_session_cards_once_the_delayed_fetch_resolves(
     cx: &mut TestAppContext,
 ) {
-    let pending: Arc<Mutex<Vec<Release>>> = Default::default();
+    let pending: Arc<Mutex<Vec<Release<Result<Vec<SessionView>>>>>> = Default::default();
     let p = pending.clone();
-    let opts = MockOptions::default()
-        .resolver("WorkspaceSessions", move |_, _, _| {
-            let (r, release) = Reply::deferred();
+    let opts = Overrides::default()
+        .workspace_sessions(move |_, _| {
+            let (r, release) = hold();
             p.lock().push(release);
             r
         })
-        .resolver("WorkspaceFacts", |_, _, _| Reply::value(json!([])));
+        .workspace_facts(|_, _| Ok(Vec::new()));
     let mut h = boot(cx, opts, ws_props(), ws_hooks());
-    let services = h.bridge.services();
+    let services = h.fake.services();
     let feed = h.cx.update(|_, cx| cx.new(|_| SessionFeed::new(services)));
     feed.update(h.cx, |f, cx| f.attach(WS, "MA", cx));
     h.settle();
     assert!(feed.read_with(h.cx, |f, _| f.sessions.is_empty()));
     h.wait(300);
-    pending.lock().pop().expect("a sessions fetch").send(Reply::value(json!([{
+    let sessions = serde_json::from_value(json!([{
         "id": "s1", "code": "CO", "name": "Coder", "kind": "coder", "status": "idle", "createdAt": 1, "updatedAt": 2,
         "items": [{"role": "assistant", "kind": "text", "text": "implemented the change"}],
-    }])));
+    }]))
+    .unwrap();
+    pending
+        .lock()
+        .pop()
+        .expect("a sessions fetch")
+        .send(Ok(sessions));
     h.settle();
     let merged = feed.read_with(h.cx, |f, _| {
         let live: Vec<String> = f.live_codes.iter().cloned().collect();
@@ -62,22 +70,22 @@ struct A<'a> {
     state: Entity<AppState>,
     sent: Calls,
     /// Sends stay in flight while the test runs.
-    _held: Arc<Mutex<Vec<Release>>>,
+    _held: Arc<Mutex<Vec<Release<Result<String>>>>>,
     cx: &'a mut VisualTestContext,
 }
 
-fn ask(cx: &mut TestAppContext, opts: MockOptions, storage: LocalStorage) -> A<'_> {
+fn ask(cx: &mut TestAppContext, opts: Overrides, storage: LocalStorage) -> A<'_> {
     init(cx);
     let sent = calls();
-    let held: Arc<Mutex<Vec<Release>>> = Default::default();
+    let held: Arc<Mutex<Vec<Release<Result<String>>>>> = Default::default();
     let (s2, h2) = (sent.clone(), held.clone());
-    let bridge = MockBridge::fresh(opts.resolver("SendAppMessage", move |a, _, _| {
-        s2.lock().push(a.to_vec());
-        let (r, release) = Reply::deferred();
+    let fake = Fake::fresh(opts.send_app_message(move |_, (code, text, model, _)| {
+        s2.lock().push(vec![code, text, model]);
+        let (r, release) = hold();
         h2.lock().push(release);
         r
     }));
-    let services = bridge.services();
+    let services = fake.services();
     let state = cx.update(|cx| AppState::install(services.clone(), storage, cx));
     let vcx = ViewContext {
         state: state.clone(),
@@ -128,14 +136,14 @@ impl A<'_> {
 
 #[gpui::test]
 async fn ask_chips_send_with_an_optimistic_bubble_and_stamp_the_tab_title(cx: &mut TestAppContext) {
-    let mut a = ask(cx, MockOptions::default(), LocalStorage::in_memory());
+    let mut a = ask(cx, Overrides::default(), LocalStorage::in_memory());
     assert!(a.has("ask-chip:What needs me?"));
     a.click("ask-chip:What needs me?");
     let sent: Vec<String> = a
         .sent
         .lock()
         .iter()
-        .map(|c| c[1].as_str().unwrap_or_default().to_string())
+        .map(|c| c[1].clone())
         .collect();
     assert_eq!(sent, ["What needs me?"]);
     assert!(a.has("me:What needs me?"));
@@ -151,7 +159,7 @@ async fn ask_chips_send_with_an_optimistic_bubble_and_stamp_the_tab_title(cx: &m
 
 #[gpui::test]
 async fn ask_live_events_stream_into_the_active_tab_and_turn_end_settles(cx: &mut TestAppContext) {
-    let mut a = ask(cx, MockOptions::default(), LocalStorage::in_memory());
+    let mut a = ask(cx, Overrides::default(), LocalStorage::in_memory());
     a.click("ask-chip:Where did I leave off?");
     a.app.update(a.cx, |app, cx| {
         app.on_session_for_test(
@@ -199,7 +207,7 @@ async fn ask_live_events_stream_into_the_active_tab_and_turn_end_settles(cx: &mu
 
 #[gpui::test]
 async fn ask_tabs_open_select_and_persist_the_active_one(cx: &mut TestAppContext) {
-    let mut a = ask(cx, MockOptions::default(), LocalStorage::in_memory());
+    let mut a = ask(cx, Overrides::default(), LocalStorage::in_memory());
     assert_eq!(
         a.app.read_with(a.cx, |app, _| app.active().to_string()),
         APP
@@ -228,7 +236,7 @@ async fn ask_tabs_open_select_and_persist_the_active_one(cx: &mut TestAppContext
 async fn ask_falls_back_from_a_saved_tab_the_backend_no_longer_lists(cx: &mut TestAppContext) {
     let mut storage = LocalStorage::in_memory();
     storage.set(ACTIVE_KEY, "AP9");
-    let a = ask(cx, MockOptions::default(), storage);
+    let a = ask(cx, Overrides::default(), storage);
     // A saved tab the backend no longer lists falls back to the primary chat.
     assert_eq!(
         a.app.read_with(a.cx, |app, _| app.active().to_string()),

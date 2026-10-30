@@ -11,7 +11,7 @@
 
 mod assets;
 mod bridge;
-mod bundle;
+pub(crate) mod bundle;
 mod code;
 mod editor_session;
 mod issues;

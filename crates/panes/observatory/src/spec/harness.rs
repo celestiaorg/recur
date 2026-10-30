@@ -1,9 +1,10 @@
 //! The Observatory in a window as the workspace view mounts it (LOOP-2231, workspace mode,
-//! the agent chat in the left dock), over the e2e mock bridge, with selector-driven input
+//! the agent chat in the left dock), over the typed service fakes and the e2e seed, with selector-driven input
 //! (`debug_selector` keys).
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -12,7 +13,10 @@ use gpui_kit::{
     AnyView, AppContext as _, Bounds, Context, InteractiveElement, IntoElement, ParentElement,
     Pixels, Render, Styled, Subscription, Window, div,
 };
-use recur_services::mock::{MockBridge, MockOptions};
+use recur_domain::{FileContent, TreeEntry};
+use recur_services::AppEvent;
+use recur_services::api::{EditorSession, EditorSessionMeta};
+use recur_services::fake::{Fake, Overrides, Seed};
 use recur_view_core::{AppState, LocalStorage};
 
 use crate::obs::{Observatory, ObservatoryEvent, ObservatoryProps, ObservatorySlots};
@@ -62,7 +66,7 @@ impl Render for Host {
 pub struct H<'a> {
     pub state: Entity<AppState>,
     pub obs: Entity<Observatory>,
-    pub bridge: Arc<MockBridge>,
+    pub fake: Arc<Fake>,
     pub events: Rc<RefCell<Vec<ObservatoryEvent>>>,
     pub chat_open: Rc<RefCell<std::collections::HashMap<String, bool>>>,
     pub cx: &'a mut VisualTestContext,
@@ -93,7 +97,7 @@ pub fn workspace_props() -> ObservatoryProps {
 /// it boots.
 pub fn mount<'a>(
     cx: &'a mut TestAppContext,
-    opts: MockOptions,
+    opts: Overrides,
     storage: impl FnOnce(&mut LocalStorage),
     props: impl FnOnce(&mut ObservatoryProps),
 ) -> H<'a> {
@@ -103,18 +107,18 @@ pub fn mount<'a>(
 /// [`mount`] over the e2e seed edited by `seed`.
 pub fn mount_seeded<'a>(
     cx: &'a mut TestAppContext,
-    seed: impl FnOnce(&mut recur_services::mock::Seed),
-    opts: MockOptions,
+    seed: impl FnOnce(&mut Seed),
+    opts: Overrides,
     storage: impl FnOnce(&mut LocalStorage),
     props: impl FnOnce(&mut ObservatoryProps),
 ) -> H<'a> {
     init(cx);
-    let mut sd = recur_services::mock::fixtures::base_seed().clone();
+    let mut sd = Seed::e2e();
     seed(&mut sd);
-    let bridge = MockBridge::new(sd, opts);
+    let fake = Fake::new(sd, opts);
     let mut st = LocalStorage::in_memory();
     storage(&mut st);
-    let services = bridge.services();
+    let services = fake.services();
     let state = cx.update(|cx| AppState::install(services, st, cx));
     let mut p = workspace_props();
     props(&mut p);
@@ -156,7 +160,7 @@ pub fn mount_seeded<'a>(
     let mut h = H {
         state,
         obs,
-        bridge,
+        fake,
         events,
         chat_open: Rc::default(),
         cx: vcx,
@@ -165,72 +169,55 @@ pub fn mount_seeded<'a>(
     h
 }
 
-/// The backend's editor-session store (`GetEditorSession` / `UpdateEditorSession`): meta
+/// The backend's editor-session store (`get_editor_session` / `update_editor_session`): meta
 /// replaces wholesale; buffers and scratch docs upsert by path.
 #[derive(Clone, Default)]
-pub struct SessionStore(pub Arc<parking_lot::Mutex<serde_json::Map<String, serde_json::Value>>>);
+pub struct SessionStore(pub Arc<parking_lot::Mutex<BTreeMap<String, EditorSession>>>);
+
+/// The session `meta` describes, keeping `keep`'s buffers and scratch docs.
+pub fn session_from_meta(meta: &EditorSessionMeta, keep: EditorSession) -> EditorSession {
+    EditorSession {
+        open_files: meta.open_files.clone(),
+        selected_path: meta.selected_path.clone(),
+        split_path: meta.split_path.clone(),
+        scratch_seq: meta.scratch_seq,
+        file_views: meta.file_views.clone(),
+        syntax_by_path: meta.syntax_by_path.clone().unwrap_or_default(),
+        syntax_by_file_type: meta.syntax_by_file_type.clone().unwrap_or_default(),
+        main_surface: meta.main_surface.clone(),
+        left_kind: meta.left_kind.clone(),
+        right_kind: meta.right_kind.clone(),
+        left_open: meta.left_open,
+        right_open: meta.right_open,
+        buffers: keep.buffers,
+        scratch_docs: keep.scratch_docs,
+    }
+}
 
 impl SessionStore {
-    pub fn install(&self, opts: MockOptions) -> MockOptions {
-        let (get, put) = (self.0.clone(), self.0.clone());
-        opts.resolver("GetEditorSession", move |a, _, _| {
-            let ws = a.first().and_then(serde_json::Value::as_str).unwrap_or("");
-            recur_services::mock::Reply::value(get.lock().get(ws).cloned().unwrap_or_default())
-        })
-        .resolver("UpdateEditorSession", move |a, _, _| {
-            let ws = a
-                .first()
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or("")
-                .to_string();
-            let patch = a.get(1).cloned().unwrap_or_default();
-            let mut all = put.lock();
-            let entry = all.entry(ws).or_insert_with(|| serde_json::json!({}));
-            if let Some(meta) = patch.get("meta").and_then(serde_json::Value::as_object) {
-                let keep_buffers = entry.get("buffers").cloned();
-                let keep_scratch = entry.get("scratchDocs").cloned();
-                *entry = serde_json::Value::Object(meta.clone());
-                if let Some(b) = keep_buffers {
-                    entry["buffers"] = b;
+    pub fn install(&self, opts: Overrides) -> Overrides {
+        let (get, put, clear) = (self.0.clone(), self.0.clone(), self.0.clone());
+        opts.get_editor_session(move |_, ws| Ok(get.lock().get(&ws).cloned()))
+            .update_editor_session(move |_, (ws, patch)| {
+                let mut all = put.lock();
+                let entry = all.entry(ws).or_default();
+                if let Some(meta) = &patch.meta {
+                    *entry = session_from_meta(meta, std::mem::take(entry));
                 }
-                if let Some(d) = keep_scratch {
-                    entry["scratchDocs"] = d;
+                entry.buffers.extend(patch.buffers);
+                entry.scratch_docs.extend(patch.scratch_docs);
+                for p in &patch.drop_buffers {
+                    entry.buffers.remove(p);
                 }
-            }
-            for key in ["buffers", "scratchDocs"] {
-                if let Some(m) = patch.get(key).and_then(serde_json::Value::as_object) {
-                    if !entry.get(key).is_some_and(serde_json::Value::is_object) {
-                        entry[key] = serde_json::json!({});
-                    }
-                    for (k, v) in m {
-                        entry[key][k] = v.clone();
-                    }
+                for p in &patch.drop_scratch_docs {
+                    entry.scratch_docs.remove(p);
                 }
-            }
-            for (key, drop) in [
-                ("buffers", "dropBuffers"),
-                ("scratchDocs", "dropScratchDocs"),
-            ] {
-                if let Some(list) = patch.get(drop).and_then(serde_json::Value::as_array)
-                    && let Some(m) = entry
-                        .get_mut(key)
-                        .and_then(serde_json::Value::as_object_mut)
-                {
-                    for p in list.iter().filter_map(serde_json::Value::as_str) {
-                        m.remove(p);
-                    }
-                }
-            }
-            recur_services::mock::Reply::null()
-        })
-        .resolver("ClearEditorSession", {
-            let all = self.0.clone();
-            move |a, _, _| {
-                let ws = a.first().and_then(serde_json::Value::as_str).unwrap_or("");
-                all.lock().remove(ws);
-                recur_services::mock::Reply::null()
-            }
-        })
+                Ok(())
+            })
+            .clear_editor_session(move |_, ws| {
+                clear.lock().remove(&ws);
+                Ok(())
+            })
     }
 }
 
@@ -399,7 +386,7 @@ impl H<'_> {
 
     /// The worktree watcher saw a change (`workspace.fs_changed`).
     pub fn fs_changed(&mut self) {
-        self.bridge
+        self.fake
             .dispatch(recur_services::AppEvent::WorkspaceFsChanged(
                 recur_services::events::WorkspaceFsChanged {
                     workspace_id: WS.into(),
@@ -409,9 +396,9 @@ impl H<'_> {
         self.settle();
     }
 
-    /// A backend event by its wire name.
-    pub fn event(&mut self, name: &str, data: serde_json::Value) {
-        self.bridge.dispatch_wire(name, data).expect("wire event");
+    /// A backend event.
+    pub fn event(&mut self, event: AppEvent) {
+        self.fake.dispatch(event);
         self.settle();
     }
 
@@ -519,24 +506,45 @@ impl H<'_> {
     }
 }
 
-/// Every call's arguments, recorded by a resolver (`calls.push({ name, args })`).
-pub type Calls = Arc<parking_lot::Mutex<Vec<Vec<serde_json::Value>>>>;
+/// Every call's arguments as strings, recorded by an override.
+pub type Calls = Arc<parking_lot::Mutex<Vec<Vec<String>>>>;
 
-/// A resolver that records its calls and answers `reply`.
-pub fn record(
-    calls: &Calls,
-    reply: impl Fn(&[serde_json::Value]) -> recur_services::mock::Reply + Send + Sync + 'static,
-) -> impl Fn(
-    &[serde_json::Value],
-    &mut recur_services::mock::Seed,
-    &recur_services::mock::Table,
-) -> recur_services::mock::Reply
-+ Send
-+ Sync
-+ 'static {
-    let calls = calls.clone();
-    move |a, _, _| {
-        calls.lock().push(a.to_vec());
-        reply(a)
+pub fn push(calls: &Calls, args: &[&str]) {
+    calls
+        .lock()
+        .push(args.iter().map(|a| (*a).to_owned()).collect());
+}
+
+/// Tree rows as `(name, path, dir)`.
+pub fn tree(rows: &[(&str, &str, bool)]) -> Vec<TreeEntry> {
+    rows.iter()
+        .map(|(name, path, dir)| TreeEntry {
+            name: (*name).into(),
+            path: (*path).into(),
+            dir: *dir,
+            ..Default::default()
+        })
+        .collect()
+}
+
+pub fn strings(v: &[&str]) -> Vec<String> {
+    v.iter().map(|s| (*s).to_owned()).collect()
+}
+
+/// Git statuses by path.
+pub fn statuses(v: &[(&str, &str)]) -> BTreeMap<String, String> {
+    v.iter()
+        .map(|(p, s)| ((*p).to_owned(), (*s).to_owned()))
+        .collect()
+}
+
+pub fn file(path: &str, language: &str, content: &str, writable: bool) -> FileContent {
+    FileContent {
+        path: path.into(),
+        language: language.into(),
+        content: content.into(),
+        size: content.len() as i64,
+        writable,
+        ..Default::default()
     }
 }

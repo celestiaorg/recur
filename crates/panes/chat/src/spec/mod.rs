@@ -1,4 +1,4 @@
-//! The agent chat's specs on the mock bridge.
+//! The agent chat's specs on the typed service fakes.
 
 mod agent_chat;
 mod composer;

@@ -12,8 +12,8 @@ name = "recur"
 path = "src/main.rs"
 
 [features]
-# Runs the UI on the e2e mock bridge instead of the engine-backed services.
-mock = ["recur-services/mock"]
+# Runs the UI on the typed service fakes instead of the engine-backed services.
+fake = ["recur-services/fake"]
 
 [dependencies]
 recur-app.workspace = true

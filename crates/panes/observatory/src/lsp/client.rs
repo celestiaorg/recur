@@ -2316,7 +2316,8 @@ mod tests {
 
     use gpui::TestAppContext;
     use parking_lot::Mutex;
-    use recur_services::mock::{MockBridge, MockOptions, Reply};
+    use recur_services::api::EnsureResult;
+    use recur_services::fake::{Fake, Overrides, Release, hold};
 
     use crate::lsp::problems::peek_problems;
 
@@ -2537,10 +2538,10 @@ mod tests {
         );
     }
 
-    type Releases = Arc<Mutex<Vec<recur_services::mock::Release>>>;
+    type Releases = Arc<Mutex<Vec<Release<recur_services::Result<EnsureResult>>>>>;
 
-    fn ensure_res(id: &str, server_key: &str, file_uri: &str, language_id: &str) -> Value {
-        json!({
+    fn ensure_res(id: &str, server_key: &str, file_uri: &str, language_id: &str) -> EnsureResult {
+        serde_json::from_value(json!({
             "available": true,
             "id": id,
             "serverKey": server_key,
@@ -2548,26 +2549,27 @@ mod tests {
             "rootPath": "/tmp/ws",
             "fileUri": file_uri,
             "languageId": language_id,
-        })
+        }))
+        .unwrap()
     }
 
     fn ensure_hub(cx: &mut TestAppContext) -> (LspHub, Releases, Arc<Mutex<Vec<String>>>) {
         let held: Releases = Arc::default();
         let closed: Arc<Mutex<Vec<String>>> = Arc::default();
         let (h, c) = (held.clone(), closed.clone());
-        let bridge = MockBridge::fresh(
-            MockOptions::default()
-                .resolver("EnsureLSP", move |_, _, _| {
-                    let (r, release) = Reply::deferred();
+        let fake = Fake::fresh(
+            Overrides::default()
+                .ensure_lsp(move |_, _| {
+                    let (r, release) = hold();
                     h.lock().push(release);
                     r
                 })
-                .resolver("CloseLSP", move |a, _, _| {
-                    c.lock().push(a[0].as_str().unwrap_or("").to_string());
-                    Reply::null()
+                .close_lsp(move |_, id| {
+                    c.lock().push(id);
+                    Ok(())
                 }),
         );
-        let services = bridge.services();
+        let services = fake.services();
         let hub = LspHub::default();
         cx.update(|cx| hub.wire(&services, cx));
         (hub, held, closed)
@@ -2601,7 +2603,7 @@ mod tests {
         let (hub, held, closed) = ensure_hub(cx);
         let p = attach(cx, &hub, "a.go", "go", Rc::new(Cell::new(false)));
         cx.run_until_parked();
-        held.lock().remove(0).send(Reply::value(ensure_res(
+        held.lock().remove(0).send(Ok(ensure_res(
             "gopls-1",
             "gopls",
             "file:///tmp/ws/a.go",
@@ -2614,8 +2616,8 @@ mod tests {
 
     async fn two_pending(
         cx: &mut TestAppContext,
-        a: (&str, &str, Value),
-        b: (&str, &str, Value),
+        a: (&str, &str, EnsureResult),
+        b: (&str, &str, EnsureResult),
         closes_after_b: &[&str],
     ) {
         let (hub, held, closed) = ensure_hub(cx);
@@ -2625,11 +2627,11 @@ mod tests {
         let pb = attach(cx, &hub, b.0, b.1, Rc::new(Cell::new(false)));
         cx.run_until_parked();
         want_a.set(false);
-        held.lock().remove(0).send(Reply::value(a.2));
+        held.lock().remove(0).send(Ok(a.2));
         assert!(pa.await.is_none());
         cx.run_until_parked();
         assert!(closed.lock().is_empty());
-        held.lock().remove(0).send(Reply::value(b.2));
+        held.lock().remove(0).send(Ok(b.2));
         assert!(pb.await.is_none());
         cx.run_until_parked();
         let mut got = closed.lock().clone();
@@ -2716,7 +2718,7 @@ mod tests {
         let py = ensure_res("pyright-1", "basedpyright", "file:///tmp/ws/a.py", "python");
         let learn = attach(cx, &hub, "a.py", "python", Rc::new(Cell::new(false)));
         cx.run_until_parked();
-        held.lock().remove(0).send(Reply::value(py.clone()));
+        held.lock().remove(0).send(Ok(py.clone()));
         assert!(learn.await.is_none());
         cx.run_until_parked();
         closed.lock().clear();
@@ -2726,7 +2728,7 @@ mod tests {
         let python = attach(cx, &hub, "b.py", "python", Rc::new(Cell::new(false)));
         cx.run_until_parked();
         want_go.set(false);
-        held.lock().remove(0).send(Reply::value(ensure_res(
+        held.lock().remove(0).send(Ok(ensure_res(
             "gopls-1",
             "gopls",
             "file:///tmp/ws/a.go",
@@ -2739,7 +2741,7 @@ mod tests {
             ["gopls-1"],
             "basedpyright's Ensure does not hold gopls"
         );
-        held.lock().remove(0).send(Reply::value(py));
+        held.lock().remove(0).send(Ok(py));
         assert!(python.await.is_none());
         cx.run_until_parked();
         assert_eq!(*closed.lock(), ["gopls-1", "pyright-1"]);
@@ -2850,7 +2852,7 @@ mod tests {
     #[gpui::test]
     async fn wired_messages_reach_the_client_in_order_before_the_exit(cx: &mut TestAppContext) {
         use recur_services::events::{LspExit, LspMessage};
-        let services = MockBridge::fresh(MockOptions::default()).services();
+        let services = Fake::fresh(Overrides::default()).services();
         let hub = LspHub::default();
         cx.update(|cx| hub.wire(&services, cx));
         let (c, _) = stub(cx, &hub, "ws-a", "file:///tmp/ws");

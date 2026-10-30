@@ -5,24 +5,33 @@
 use std::rc::Rc;
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::FileContent;
+use recur_services::fake::Overrides;
 use recur_view_core::commands::{MacroContext, MacroResult};
-use serde_json::{Value, json};
 
 use super::harness::*;
 
 const WS: &str = "LOOP-2231";
 const GO: &str = "package main\n\nzed\nalpha\nbeta\n";
 
-/// The open file and recorded writes (`ReadFile` / `WriteFile` resolvers).
-fn file_opts(calls: &Calls) -> MockOptions {
-    let opts = MockOptions::default().resolver("ReadFile", |_, _, _| {
-        Reply::value(json!({
-            "path": "src/main.go", "language": "go", "content": GO, "size": GO.len(),
-            "writable": true,
-        }))
-    });
-    calls.record(opts, "WriteFile", Value::Null)
+/// The open file and recorded writes.
+fn file_opts(calls: &Calls) -> Overrides {
+    let calls = calls.clone();
+    Overrides::default()
+        .read_file(|_, _| {
+            Ok(FileContent {
+                path: "src/main.go".into(),
+                language: "go".into(),
+                content: GO.into(),
+                size: GO.len() as i64,
+                writable: true,
+                ..Default::default()
+            })
+        })
+        .write_file(move |_, (p, w, path, content)| {
+            calls.push("write_file", &[&p, &w, &path, &content]);
+            Ok(())
+        })
 }
 
 /// A macro runner that sorts its input's lines, standing in for the macro runtime.
@@ -72,11 +81,11 @@ fn run_command_palette_runs_sort_lines_ascending_on_the_open_buffer(cx: &mut Tes
     // The replacement stays selected and the editor has focus again: Save works without a
     // click.
     s.keys("secondary-s");
-    assert!(s.until(|_| !calls.named("WriteFile").is_empty()));
+    assert!(s.until(|_| !calls.named("write_file").is_empty()));
     let written = calls
         .named("WriteFile")
         .last()
-        .and_then(|a| a.get(3).and_then(Value::as_str).map(str::to_string))
+        .and_then(|a| a.get(3).cloned())
         .unwrap_or_default();
     let order: Vec<&str> = written
         .lines()
@@ -159,11 +168,11 @@ fn run_command_palette_inserts_a_snippet_with_its_tab_trigger_hint(cx: &mut Test
     s.keys("enter");
     s.wait(300);
     s.keys("secondary-s");
-    assert!(s.until(|_| !calls.named("WriteFile").is_empty()));
+    assert!(s.until(|_| !calls.named("write_file").is_empty()));
     let written = calls
         .named("WriteFile")
         .last()
-        .and_then(|a| a.get(3).and_then(Value::as_str).map(str::to_string))
+        .and_then(|a| a.get(3).cloned())
         .unwrap_or_default();
     assert!(written.contains("if err != nil {"), "{written}");
     assert!(

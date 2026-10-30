@@ -2,35 +2,43 @@
 //! and hide toggle, attention and unread counts; plus the PR-opened fact.
 
 use gpui::TestAppContext;
-use recur_services::mock::{MockOptions, Reply};
+use recur_domain::{ChatItem, FeedItem, Group, SessionView, WorkspaceChatTab, WorkspaceState};
+use recur_services::AppEvent;
+use recur_services::events::AgentUpdated;
+use recur_services::fake::Overrides;
 use recur_view_core::ViewName;
-use serde_json::{Value, json};
+use serde_json::json;
 
 use super::harness::*;
 
 const LINKED: &str = "LOOP-2231";
 
-fn no_agents() -> MockOptions {
-    MockOptions::default().resolver("ListLoopAgents", |_, _, _| Reply::value(json!([])))
+fn no_agents() -> Overrides {
+    Overrides::default().list_loop_agents(|_, _| Ok(Vec::new()))
 }
 
-/// A transcript `SendWorkspaceMessage` appends to and `WorkspaceChatItems` replays.
-fn echo() -> MockOptions {
-    let log = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<Value>::new()));
+fn text(role: &str, text: String) -> ChatItem {
+    ChatItem {
+        role: role.into(),
+        kind: "text".into(),
+        text,
+        ..Default::default()
+    }
+}
+
+/// A transcript `send_workspace_message` appends to and `workspace_chat_items` replays.
+fn echo() -> Overrides {
+    let log = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<ChatItem>::new()));
     let l2 = log.clone();
     no_agents()
-        .resolver("SendWorkspaceMessage", move |a, _, _| {
-            let text = a.get(2).and_then(Value::as_str).unwrap_or("").to_string();
+        .send_workspace_message(move |_, (_, _, sent, ..)| {
+            let reply = format!("reply to: {sent}");
             let mut l = log.lock();
-            l.push(json!({"role": "user", "kind": "text", "text": text}));
-            l.push(
-                json!({"role": "assistant", "kind": "text", "text": format!("reply to: {text}")}),
-            );
-            Reply::value(json!(format!("reply to: {text}")))
+            l.push(text("user", sent));
+            l.push(text("assistant", reply.clone()));
+            Ok(reply)
         })
-        .resolver("WorkspaceChatItems", move |_, _, _| {
-            Reply::value(Value::Array(l2.lock().clone()))
-        })
+        .workspace_chat_items(move |_, _| Ok(l2.lock().clone()))
 }
 
 fn open_ws(s: &mut S, id: &str) {
@@ -78,10 +86,14 @@ fn selected_agent_chat_tab_stays_in_view_when_opening_a_pr(cx: &mut TestAppConte
         cx,
         |sd| {
             let host = add_host_pr(sd, "gh-tab-scroll", 810, "Tab scroll host");
-            let extra: Vec<Value> = (0..8)
-                .map(|i| json!({ "code": format!("PA{}", i + 2), "title": format!("Chat {}", i + 2), "updatedAt": 0 }))
+            let extra: Vec<WorkspaceChatTab> = (0..8)
+                .map(|i| WorkspaceChatTab {
+                    code: format!("PA{}", i + 2),
+                    title: format!("Chat {}", i + 2),
+                    ..Default::default()
+                })
                 .collect();
-            sd.chats_by_loop.insert(host, extra);
+            sd.chats.insert(host, extra);
         },
         no_agents(),
     );
@@ -168,26 +180,21 @@ fn nav_and_list_show_when_a_host_agent_is_running_with_no_workspace(cx: &mut Tes
         move |sd| {
             let host = add_host_pr(sd, "gh-host-run", 808, "Imported checkout review");
             *h2.lock() = host.clone();
-            for id in sd.loop_ids().to_vec() {
-                let l = sd.obj_mut(id);
-                if l["id"] == host.as_str() {
-                    continue;
-                }
-                l["state"] = json!("paused");
-                l["phase"] = json!("idle");
-                if l["group"] == "needs" {
-                    l["group"] = json!("ready");
+            for l in sd.workspaces.iter_mut().filter(|l| l.id != host) {
+                l.state = WorkspaceState::Paused;
+                l.phase = "idle".into();
+                if l.group.as_str() == "needs" {
+                    l.group = Group::Ready;
                 }
             }
         },
         {
             let host = host_id.clone();
-            MockOptions::default().resolver("ListLoopAgents", move |a, _, _| {
-                let id = a.first().and_then(Value::as_str).unwrap_or("");
-                if id != host.lock().as_str() {
-                    return Reply::value(json!([]));
+            Overrides::default().list_loop_agents(move |_, id| {
+                if id != *host.lock() {
+                    return Ok(Vec::new());
                 }
-                Reply::value(json!([{ "id": format!("{id}-PA"), "workspaceId": id, "code": "PA", "status": "working" }]))
+                Ok(de(json!([{ "id": format!("{id}-PA"), "workspaceId": id, "code": "PA", "status": "working" }])))
             })
         },
     );
@@ -208,10 +215,12 @@ fn nav_and_list_show_when_a_host_agent_is_running_with_no_workspace(cx: &mut Tes
     hide_dock(&mut s);
     assert!(s.has("button:Show left panel. Agent running:running"));
 
-    s.wire(
-        "agent.updated",
-        json!({ "workspaceId": host, "agentId": format!("{host}-PA"), "status": "idle" }),
-    );
+    s.dispatch(AppEvent::AgentUpdated(AgentUpdated {
+        workspace_id: host.clone(),
+        agent_id: format!("{host}-PA"),
+        status: "idle".into(),
+        ..Default::default()
+    }));
     assert!(s.until(|s| s.pr_nav().0 == 0));
     assert!(s.has("button:Show left panel"));
     s.prs_nav();
@@ -256,7 +265,7 @@ fn pr_chat_survives_creating_a_workspace(cx: &mut TestAppContext) {
 #[gpui::test]
 fn open_filter_includes_other_open_prs_and_needs_you_group(cx: &mut TestAppContext) {
     let mut s = plain_with(cx, |sd| {
-        sd.insert_pr(pr_row(json!({
+        sd.prs.push(pr_row(json!({
             "id": "gh-storefront-99", "number": 99, "title": "Docs typo", "branch": "docs/typo",
             "state": "Open", "when": "3h",
         })));
@@ -341,7 +350,7 @@ fn a_finish_while_the_pr_dock_is_hidden_raises_unseen(cx: &mut TestAppContext) {
     hide_dock(&mut s);
     assert!(s.until(|s| s.attention().occluded));
 
-    s.bridge.simulate_chat_turn_idle(LINKED, &code);
+    s.fake.simulate_chat_turn_idle(LINKED, &code);
     s.settle();
     let unseen = |s: &mut S| {
         s.state.read_with(s.cx, |st, _| {
@@ -372,7 +381,7 @@ fn a_finish_on_a_host_pr_with_no_workspace_lands_in_inbox(cx: &mut TestAppContex
     s.click("nav-inbox");
     assert_eq!(s.view(), ViewName::Briefing);
     assert!(s.until(|s| s.attention().occluded));
-    s.bridge.simulate_chat_turn_idle(&host, &code);
+    s.fake.simulate_chat_turn_idle(&host, &code);
     s.settle();
     assert!(s.until(|s| s.pr_nav().1 == 1));
     assert!(!s.has(&format!("hit:{host}")));
@@ -415,8 +424,8 @@ fn pr_nav_unread_is_the_sum_of_hidden_host_chats_and_counts_down_as_they_are_rea
 
     s.click("nav-inbox");
     assert!(s.until(|s| s.attention().occluded));
-    s.bridge.simulate_chat_turn_idle(&a, &code_a);
-    s.bridge.simulate_chat_turn_idle(&b, "PA");
+    s.fake.simulate_chat_turn_idle(&a, &code_a);
+    s.fake.simulate_chat_turn_idle(&b, "PA");
     s.settle();
     assert!(s.until(|s| s.pr_nav().1 == 2));
 
@@ -470,20 +479,20 @@ fn focusing_the_agent_dock_lights_chat_tabs_and_unlits_the_pr_tab(cx: &mut TestA
 #[gpui::test]
 fn pr_opened_fact_shows_completed_time_and_opens_the_pr(cx: &mut TestAppContext) {
     let html = "Completed in 12m 04s · <a class=\"loop-pr-link\" data-pr=\"482\">Local PR #482</a><div class=\"loop-wrap\"><b>Done</b> Retry the payment token once</div>";
-    let facts = json!([{"id": "f-pr", "agentCode": "MA", "name": "Maestro", "ts": 5_000, "isDeviation": false, "text": html}]);
-    let sessions = json!([{
+    let facts: Vec<FeedItem> = de(
+        json!([{"id": "f-pr", "agentCode": "MA", "name": "Maestro", "ts": 5_000, "isDeviation": false, "text": html}]),
+    );
+    let sessions: Vec<SessionView> = de(json!([{
         "id": "s-co", "code": "CO", "name": "Coder", "kind": "coder", "status": "idle",
         "createdAt": 1_000, "updatedAt": 2_000,
         "items": [{"role": "assistant", "kind": "text", "text": "Implemented the rotation fix."}],
-    }]);
+    }]));
     let mut s = boot(
         cx,
         |_| {},
-        MockOptions::default()
-            .resolver("WorkspaceSessions", move |_, _, _| {
-                Reply::value(sessions.clone())
-            })
-            .resolver("WorkspaceFacts", move |_, _, _| Reply::value(facts.clone())),
+        Overrides::default()
+            .workspace_sessions(move |_, _| Ok(sessions.clone()))
+            .workspace_facts(move |_, _| Ok(facts.clone())),
     );
     let ws = s
         .state

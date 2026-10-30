@@ -6,18 +6,22 @@ use std::sync::Arc;
 use gpui::{Entity, TestAppContext};
 use gpui_kit::Focusable as _;
 use parking_lot::Mutex;
-use recur_services::mock::{MockOptions, Reply, Seed};
+use recur_domain::{
+    Group, Project, ScheduledPrompt, ScheduledPromptRun, Workspace, WorkspaceState,
+};
+use recur_services::events::WorkspaceUpdated;
+use recur_services::fake::{Overrides, Seed, hold};
+use recur_services::{AppEvent, Error};
 use recur_ui::widgets::ToastKind;
 use recur_view_core::format::format_medium_short_in;
 use recur_view_core::{LocalStorage, ViewName};
 use recur_view_home::schedule_editor::{ScheduleEditor, local_time_zone};
-use serde_json::{Value, json};
 
 use super::harness::{S, boot, with};
 use super::project::open_project;
 use crate::project::ProjectView;
 
-type Rows = Arc<Mutex<Vec<Value>>>;
+type Rows = Arc<Mutex<Vec<ScheduledPrompt>>>;
 
 fn now() -> i64 {
     chrono::Utc::now().timestamp_millis()
@@ -59,12 +63,10 @@ fn local_zone_label() -> String {
 #[gpui::test]
 fn schedules_save_run_pause_edit_and_delete(cx: &mut TestAppContext) {
     let rows: Rows = Arc::default();
-    let workspace = json!({
-        "id": "scheduled-test", "projectId": "storefront", "goal": "Check tests",
-        "short": "Check tests", "state": "", "phase": "editing", "group": "active",
-        "archived": false, "type": "solo", "runStarted": false, "scheduleId": "schedule-test",
-        "last": "Chat turn finished", "baseBranch": "main", "branch": "recur/check-tests",
-    });
+    let workspace = Workspace {
+        branch: "recur/check-tests".into(),
+        ..run_ws("scheduled-test", "Check tests", "schedule-test")
+    };
     let (r1, r2, r3, r4, r5) = (
         rows.clone(),
         rows.clone(),
@@ -73,68 +75,63 @@ fn schedules_save_run_pause_edit_and_delete(cx: &mut TestAppContext) {
         rows.clone(),
     );
     let ws = workspace.clone();
-    let opts = MockOptions::default()
-        .resolver("ListScheduledPrompts", move |_, _, _| {
-            Reply::value(Value::Array(r1.lock().clone()))
-        })
-        .resolver("PreviewScheduledPrompt", |a, _, _| {
-            if a.first()
-                .and_then(|p| p.get("cron"))
-                .and_then(Value::as_str)
-                == Some("bad cron")
-            {
-                return Reply::error("Invalid cron expression");
+    let opts = Overrides::default()
+        .list_scheduled_prompts(move |_, _| Ok(r1.lock().clone()))
+        .preview_scheduled_prompt(|_, p| {
+            if p.cron == "bad cron" {
+                return Err(Error::new("Invalid cron expression"));
             }
             let n = now();
-            Reply::value(json!([n + 86_400_000, n + 172_800_000, n + 259_200_000]))
+            Ok(vec![n + 86_400_000, n + 172_800_000, n + 259_200_000])
         })
-        .resolver("SaveScheduledPrompt", move |a, _, _| {
-            let mut p = a.first().cloned().unwrap_or_default();
-            if p.get("id").and_then(Value::as_str).unwrap_or("").is_empty() {
-                p["id"] = json!("schedule-test");
+        .save_scheduled_prompt(move |_, mut p| {
+            if p.id.is_empty() {
+                p.id = "schedule-test".into();
             }
-            p["nextRunAt"] = json!(now() + 86_400_000);
+            p.next_run_at = now() + 86_400_000;
             let mut list = r2.lock();
-            match list.iter().position(|s| s["id"] == p["id"]) {
+            match list.iter().position(|s| s.id == p.id) {
                 Some(i) => list[i] = p.clone(),
                 None => list.push(p.clone()),
             }
-            Reply::value(p)
+            Ok(p)
         })
-        .resolver("RunScheduledPromptNow", move |_, s: &mut Seed, _| {
+        .run_scheduled_prompt_now(move |s: &mut Seed, _| {
             let mut list = r3.lock();
             if let Some(first) = list.first_mut() {
-                first["lastRun"] = json!({
-                    "id": "run-test", "scheduleId": first["id"], "dueAt": now(),
-                    "workspaceId": "scheduled-test", "status": "finished",
-                    "detail": "Open the workspace to inspect the result.",
+                first.last_run = Some(ScheduledPromptRun {
+                    id: "run-test".into(),
+                    schedule_id: first.id.clone(),
+                    due_at: now(),
+                    workspace_id: "scheduled-test".into(),
+                    status: "finished".into(),
+                    detail: "Open the workspace to inspect the result.".into(),
                 });
             }
-            s.insert_loop(ws.clone());
-            Reply::value("scheduled-test")
+            s.workspaces.push(ws.clone());
+            Ok("scheduled-test".into())
         })
-        .resolver("PauseScheduledPrompt", move |a, _, _| {
+        .pause_scheduled_prompt(move |_, (id, paused)| {
             let mut list = r4.lock();
-            if let Some(p) = list.iter_mut().find(|p| Some(&p["id"]) == a.first()) {
-                p["paused"] = a.get(1).cloned().unwrap_or(json!(false));
+            if let Some(p) = list.iter_mut().find(|p| p.id == id) {
+                p.paused = paused;
             }
-            Reply::null()
+            Ok(())
         })
-        .resolver("DeleteScheduledPrompt", move |_, _, _| {
+        .delete_scheduled_prompt(move |_, _| {
             r5.lock().clear();
-            Reply::null()
+            Ok(())
         })
-        .resolver("LastAssistantText", |a, _, _| {
-            Reply::value(
-                if a.first().and_then(Value::as_str) == Some("scheduled-test") {
-                    "All tests passed on the nightly run."
-                } else {
-                    ""
-                },
-            )
+        .last_assistant_text(|_, id| {
+            Ok(if id == "scheduled-test" {
+                "All tests passed on the nightly run."
+            } else {
+                ""
+            }
+            .into())
         })
         // Inspect is slower than a double-click; confirm must not wait for it.
-        .resolver("WorkspaceDiscardRisk", |_, _, _| Reply::deferred().0);
+        .workspace_discard_risk(|_, _| hold().0);
     let mut s = with(cx, |_| {}, opts);
     open_project(&mut s, "storefront");
     s.click("set-nav:Schedules");
@@ -207,20 +204,21 @@ fn schedules_save_run_pause_edit_and_delete(cx: &mut TestAppContext) {
     {
         let list = rows.lock();
         let p = &list[0];
-        assert_eq!(p["mode"], "plan");
-        assert_eq!(p["flags"]["effort"], "low");
-        assert_eq!(p["simplify"], false);
-        assert_eq!(p["cron"], "*/15 9-17 * * MON-FRI");
-        assert_eq!(p["timeZone"], "America/New_York");
+        assert_eq!(p.mode, "plan");
+        assert_eq!(p.flags["effort"], "low");
+        assert_eq!(p.simplify, Some(false));
+        assert_eq!(p.cron, "*/15 9-17 * * MON-FRI");
+        assert_eq!(p.time_zone, "America/New_York");
     }
 
     s.hover("article:Check tests:false");
     s.click("sc-btn:Run now:schedule-test");
     assert!(s.until(|s| s.has("sc-status:schedule-test=Finished")));
-    s.wire(
-        "workspace.updated",
-        json!({ "workspaceId": "scheduled-test", "phase": "editing" }),
-    );
+    s.dispatch(AppEvent::WorkspaceUpdated(Arc::new(WorkspaceUpdated {
+        workspace_id: "scheduled-test".into(),
+        phase: Some("editing".into()),
+        ..Default::default()
+    })));
     assert!(s.until(|s| s.has("sc-runs-n:schedule-test=1")));
     s.click("sc-status:schedule-test=Finished");
     assert!(s.has("sc-runs:Check tests"));
@@ -255,16 +253,16 @@ fn schedules_save_run_pause_edit_and_delete(cx: &mut TestAppContext) {
     s.wait(300);
     assert!(s.until(|s| s.has("sc-go:on")));
     s.click("sc-go:on");
-    assert!(s.until(|_| rows.lock()[0]["prompt"] == "Find missing integration tests"));
+    assert!(s.until(|_| rows.lock()[0].prompt == "Find missing integration tests"));
     {
         let list = rows.lock();
         let p = &list[0];
-        assert_eq!(p["mode"], "loop");
-        assert_eq!(p["cron"], "0 9 1,15 * *");
-        assert_eq!(p["flags"]["effort"], "low");
-        assert_eq!(p["simplify"], false);
-        assert!(!p["loopId"].as_str().unwrap_or("").is_empty());
-        assert!(!p["policyId"].as_str().unwrap_or("").is_empty());
+        assert_eq!(p.mode, "loop");
+        assert_eq!(p.cron, "0 9 1,15 * *");
+        assert_eq!(p.flags["effort"], "low");
+        assert_eq!(p.simplify, Some(false));
+        assert!(!p.loop_id.is_empty());
+        assert!(!p.policy_id.is_empty());
     }
 
     s.hover("article:Check tests:false");
@@ -293,23 +291,36 @@ fn has_prefix(s: &mut S, prefix: &str) -> bool {
     loops.iter().any(|sel| s.has(sel))
 }
 
-fn schedule(id: &str, project: &Value, name: &str, extra: Value) -> Value {
-    let mut v = json!({
-        "id": id, "projectId": project["id"], "name": name, "prompt": "Check tests",
-        "baseBranch": project["baseBranch"], "mode": "ask", "model": "claude-code/sonnet",
-        "cadence": "daily", "date": "", "time": "09:00", "timeZone": "UTC", "paused": false,
-        "nextRunAt": now() + 86_400_000,
-    });
-    if let (Some(o), Some(e)) = (v.as_object_mut(), extra.as_object()) {
-        for (k, x) in e {
-            o.insert(k.clone(), x.clone());
-        }
+fn schedule(id: &str, project: &Project, name: &str) -> ScheduledPrompt {
+    ScheduledPrompt {
+        id: id.into(),
+        project_id: project.id.clone(),
+        name: name.into(),
+        prompt: "Check tests".into(),
+        base_branch: project.base_branch.clone(),
+        mode: "ask".into(),
+        model: "claude-code/sonnet".into(),
+        cadence: "daily".into(),
+        time: "09:00".into(),
+        time_zone: "UTC".into(),
+        next_run_at: now() + 86_400_000,
+        ..Default::default()
     }
-    v
 }
 
-fn seed_projects() -> Vec<Value> {
-    recur_services::mock::fixtures::seed().projects.clone()
+fn finished(id: &str, schedule_id: &str, workspace_id: &str) -> Option<ScheduledPromptRun> {
+    Some(ScheduledPromptRun {
+        id: id.into(),
+        schedule_id: schedule_id.into(),
+        due_at: now(),
+        workspace_id: workspace_id.into(),
+        status: "finished".into(),
+        detail: String::new(),
+    })
+}
+
+fn seed_projects() -> Vec<Project> {
+    Seed::e2e().projects
 }
 
 #[gpui::test]
@@ -319,45 +330,27 @@ fn main_navigation_shows_schedules_across_projects_and_restores_after_reload(
     let projects = seed_projects();
     let (first, second) = (projects[0].clone(), projects[1].clone());
     let rows: Rows = Arc::new(Mutex::new(vec![
-        schedule(
-            "schedule-0",
-            &first,
-            &format!("Check {}", first["name"].as_str().unwrap()),
-            json!({}),
-        ),
-        schedule(
-            "schedule-1",
-            &second,
-            &format!("Check {}", second["name"].as_str().unwrap()),
-            json!({}),
-        ),
+        schedule("schedule-0", &first, &format!("Check {}", first.name)),
+        schedule("schedule-1", &second, &format!("Check {}", second.name)),
     ]));
     let (r1, r2) = (rows.clone(), rows.clone());
-    let opts = MockOptions::default()
-        .resolver("PreviewScheduledPrompt", |_, _, _| {
-            Reply::value(json!([now() + 86_400_000]))
+    let opts = Overrides::default()
+        .preview_scheduled_prompt(|_, _| Ok(vec![now() + 86_400_000]))
+        .list_scheduled_prompts(move |_, pid| {
+            Ok(r1
+                .lock()
+                .iter()
+                .filter(|p| pid.is_empty() || p.project_id == pid)
+                .cloned()
+                .collect())
         })
-        .resolver("ListScheduledPrompts", move |a, _, _| {
-            let pid = a.first().and_then(Value::as_str).unwrap_or("").to_string();
-            Reply::value(Value::Array(
-                r1.lock()
-                    .iter()
-                    .filter(|p| pid.is_empty() || p["projectId"] == pid.as_str())
-                    .cloned()
-                    .collect(),
-            ))
-        })
-        .resolver("SaveScheduledPrompt", move |a, _, _| {
-            let mut p = a.first().cloned().unwrap_or_default();
-            p["id"] = json!("created");
+        .save_scheduled_prompt(move |_, mut p| {
+            p.id = "created".into();
             r2.lock().push(p.clone());
-            Reply::value(p)
+            Ok(p)
         });
     let mut s = boot(cx, |_| {}, opts, LocalStorage::in_memory());
-    let (n1, n2) = (
-        first["name"].as_str().unwrap().to_string(),
-        second["name"].as_str().unwrap().to_string(),
-    );
+    let (n1, n2) = (first.name.clone(), second.name.clone());
     s.click("nav-schedules");
     assert_eq!(s.view(), ViewName::Schedules);
     assert!(s.until(|s| s.has(&format!("article:Check {n1}:false"))));
@@ -370,7 +363,7 @@ fn main_navigation_shows_schedules_across_projects_and_restores_after_reload(
     let next = rows
         .lock()
         .iter()
-        .map(|p| p["nextRunAt"].as_i64().unwrap_or(0))
+        .map(|p| p.next_run_at)
         .min()
         .unwrap_or(0);
     let sub = format!(
@@ -387,9 +380,9 @@ fn main_navigation_shows_schedules_across_projects_and_restores_after_reload(
     assert!(s.until(|s| s.has("sc-go:on")));
     s.click("sc-go:on");
     assert!(s.until(|s| s.has("article:New global schedule:false")));
-    assert_eq!(rows.lock().last().unwrap()["projectId"], second["id"]);
+    assert_eq!(rows.lock().last().unwrap().project_id, second.id);
 
-    open_project(&mut s, first["id"].as_str().unwrap());
+    open_project(&mut s, &first.id);
     s.click("set-nav:Schedules");
     assert!(s.until(|s| s.has(&format!("article:Check {n1}:false"))));
     assert!(!s.has(&format!("article:Check {n2}:false")));
@@ -401,8 +394,8 @@ fn main_navigation_shows_schedules_across_projects_and_restores_after_reload(
     assert!(!s.has("v-schedules"));
     s.keys("escape");
     // Project row quick link preselects that project.
-    s.hover(&format!("ph:{}", second["id"].as_str().unwrap()));
-    s.click(&format!("ph-sched:{}", second["id"].as_str().unwrap()));
+    s.hover(&format!("ph:{}", second.id));
+    s.click(&format!("ph-sched:{}", second.id));
     assert!(s.has(&format!("sel:Repository={n2}")));
     s.keys("escape");
     assert!(!s.has("v-schedule-editor"));
@@ -413,59 +406,44 @@ fn main_navigation_shows_schedules_across_projects_and_restores_after_reload(
     assert!(s.has("sc-modal:New schedule"));
 }
 
-fn dash_seed(s: &mut Seed, ws: &[Value]) {
-    for w in ws {
-        s.insert_loop(w.clone());
+fn run_ws(id: &str, name: &str, schedule: &str) -> Workspace {
+    Workspace {
+        id: id.into(),
+        project_id: "storefront".into(),
+        goal: name.into(),
+        short: name.into(),
+        phase: "editing".into(),
+        group: Group::Active,
+        r#type: "solo".into(),
+        schedule_id: schedule.into(),
+        last: "Chat turn finished".into(),
+        base_branch: "main".into(),
+        branch: format!("recur/{id}"),
+        ..Default::default()
     }
-}
-
-fn run_ws(id: &str, name: &str, schedule: &str, extra: Value) -> Value {
-    let mut v = json!({
-        "id": id, "projectId": "storefront", "goal": name, "short": name, "state": "",
-        "phase": "editing", "group": "active", "archived": false, "type": "solo",
-        "runStarted": false, "isMain": false, "scheduleId": schedule, "hostPrId": "",
-        "last": "Chat turn finished", "baseBranch": "main", "branch": format!("recur/{id}"),
-    });
-    if let (Some(o), Some(e)) = (v.as_object_mut(), extra.as_object()) {
-        for (k, x) in e {
-            o.insert(k.clone(), x.clone());
-        }
-    }
-    v
 }
 
 #[gpui::test]
 fn schedule_dashboard_remembers_expanded_rows_after_leaving_and_reload(cx: &mut TestAppContext) {
     let project = seed_projects()[0].clone();
-    let ws = run_ws(
-        "sched-dash-run",
-        "Nightly check",
-        "schedule-dash",
-        json!({}),
-    );
-    let rows = vec![schedule(
-        "schedule-dash",
-        &project,
-        "Nightly check",
-        json!({ "lastRun": { "id": "run-dash", "scheduleId": "schedule-dash", "dueAt": now(), "workspaceId": "sched-dash-run", "status": "finished", "detail": "" } }),
-    )];
-    let opts = MockOptions::default()
-        .resolver("ListScheduledPrompts", move |_, _, _| {
-            Reply::value(Value::Array(rows.clone()))
-        })
-        .resolver("LastAssistantText", |a, _, _| {
-            Reply::value(
-                if a.first().and_then(Value::as_str) == Some("sched-dash-run") {
-                    "All tests passed."
-                } else {
-                    ""
-                },
-            )
+    let ws = run_ws("sched-dash-run", "Nightly check", "schedule-dash");
+    let rows = vec![ScheduledPrompt {
+        last_run: finished("run-dash", "schedule-dash", "sched-dash-run"),
+        ..schedule("schedule-dash", &project, "Nightly check")
+    }];
+    let opts = Overrides::default()
+        .list_scheduled_prompts(move |_, _| Ok(rows.clone()))
+        .last_assistant_text(|_, id| {
+            Ok(if id == "sched-dash-run" {
+                "All tests passed."
+            } else {
+                ""
+            }
+            .into())
         });
-    let w2 = ws.clone();
     let mut s = boot(
         cx,
-        move |sd| dash_seed(sd, &[w2]),
+        move |sd| sd.workspaces.push(ws),
         opts,
         LocalStorage::in_memory(),
     );
@@ -490,47 +468,42 @@ fn schedule_dashboard_remembers_expanded_rows_after_leaving_and_reload(cx: &mut 
 #[gpui::test]
 fn schedule_dashboard_bulk_removes_selected_workspaces(cx: &mut TestAppContext) {
     let project = seed_projects()[0].clone();
-    let settled: Vec<Value> = (0..2)
+    let settled: Vec<Workspace> = (0..2)
         .map(|i| {
             run_ws(
                 &format!("sched-bulk-{i}"),
                 &format!("Nightly {}", i + 1),
                 "schedule-bulk",
-                json!({}),
             )
         })
         .collect();
-    let running = run_ws(
-        "sched-bulk-live",
-        "Nightly live",
-        "schedule-bulk",
-        json!({ "state": "coding", "type": "loop", "runStarted": true, "last": "Still working" }),
-    );
-    let rows = vec![schedule(
-        "schedule-bulk",
-        &project,
-        "Nightly bulk",
-        json!({ "lastRun": { "id": "run-bulk", "scheduleId": "schedule-bulk", "dueAt": now(), "workspaceId": "sched-bulk-1", "status": "finished", "detail": "" } }),
-    )];
-    let opts = MockOptions::default()
-        .resolver("ListScheduledPrompts", move |_, _, _| {
-            Reply::value(Value::Array(rows.clone()))
+    let running = Workspace {
+        state: WorkspaceState::Coding,
+        r#type: "loop".into(),
+        run_started: true,
+        last: "Still working".into(),
+        ..run_ws("sched-bulk-live", "Nightly live", "schedule-bulk")
+    };
+    let rows = vec![ScheduledPrompt {
+        last_run: finished("run-bulk", "schedule-bulk", "sched-bulk-1"),
+        ..schedule("schedule-bulk", &project, "Nightly bulk")
+    }];
+    let opts = Overrides::default()
+        .list_scheduled_prompts(move |_, _| Ok(rows.clone()))
+        .last_assistant_text(|_, id| {
+            Ok(if id == "sched-bulk-live" {
+                "Still working."
+            } else {
+                "All tests passed."
+            }
+            .into())
         })
-        .resolver("LastAssistantText", |a, _, _| {
-            Reply::value(
-                if a.first().and_then(Value::as_str) == Some("sched-bulk-live") {
-                    "Still working."
-                } else {
-                    "All tests passed."
-                },
-            )
-        })
-        .resolver("WorkspaceDiscardRisk", |_, _, _| Reply::deferred().0);
+        .workspace_discard_risk(|_, _| hold().0);
     let mut all = settled.clone();
-    all.push(running.clone());
+    all.push(running);
     let mut s = boot(
         cx,
-        move |sd| dash_seed(sd, &all),
+        move |sd| sd.workspaces.extend(all),
         opts,
         LocalStorage::in_memory(),
     );
@@ -560,7 +533,7 @@ fn schedule_dashboard_bulk_removes_selected_workspaces(cx: &mut TestAppContext) 
 /// value, empty while a field is.
 #[gpui::test]
 fn once_takes_its_date_and_time_from_segmented_fields(cx: &mut TestAppContext) {
-    let mut s = with(cx, |_| {}, MockOptions::default());
+    let mut s = with(cx, |_| {}, Overrides::default());
     open_project(&mut s, "storefront");
     s.click("set-nav:Schedules");
     assert!(s.until(|s| s.has("empty:No schedules yet")));

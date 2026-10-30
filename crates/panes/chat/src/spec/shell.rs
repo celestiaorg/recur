@@ -6,7 +6,7 @@ use std::sync::Arc;
 use gpui::{Entity, TestAppContext, VisualTestContext};
 use gpui_kit::{AppContext as _, Focusable};
 use recur_app::{Shell, ShellOptions};
-use recur_services::mock::{MockBridge, MockOptions};
+use recur_services::fake::{Fake, Overrides};
 use recur_ui::widgets::ToastStore;
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewRegistry};
 use serde_json::json;
@@ -20,10 +20,9 @@ struct S<'a> {
     cx: &'a mut VisualTestContext,
 }
 
-fn boot(cx: &mut TestAppContext, opts: MockOptions) -> S<'_> {
+fn boot(cx: &mut TestAppContext, opts: Overrides) -> S<'_> {
     init(cx);
-    let bridge = MockBridge::fresh(opts);
-    let services = bridge.services();
+    let services = Fake::fresh(opts).services();
     let state = cx.update(|cx| AppState::install(services.clone(), LocalStorage::in_memory(), cx));
     let ctx = ViewContext {
         state: state.clone(),
@@ -84,7 +83,7 @@ fn permission(ws: &str, code: &str, surface: &str) -> serde_json::Value {
 
 #[gpui::test]
 async fn a_loop_permission_floats_and_escape_denies_it(cx: &mut TestAppContext) {
-    let mut s = boot(cx, MockOptions::default());
+    let mut s = boot(cx, Overrides::default());
     let req: recur_domain::PermissionRequest =
         serde_json::from_value(permission(RUNNING, "MA", "loop")).unwrap();
     s.state.update(s.cx, |st, cx| {
@@ -103,7 +102,7 @@ async fn a_loop_permission_floats_and_escape_denies_it(cx: &mut TestAppContext) 
 
 #[gpui::test]
 async fn an_off_tab_question_toasts_once(cx: &mut TestAppContext) {
-    let mut s = boot(cx, MockOptions::default());
+    let mut s = boot(cx, Overrides::default());
     let q: recur_domain::UserQuestion = serde_json::from_value(json!({
         "id": "q1", "workspaceId": RUNNING, "agentCode": "PA", "question": "Ship   it\nnow?", "createdAt": 1,
     }))
@@ -274,8 +273,7 @@ fn mention_field(
     &mut VisualTestContext,
 ) {
     init(cx);
-    let bridge = MockBridge::fresh(MockOptions::default());
-    let services = bridge.services();
+    let services = Fake::fresh(Overrides::default()).services();
     let state = cx.update(|cx| AppState::install(services, LocalStorage::in_memory(), cx));
     state.update(cx, |s, _| {
         s.prs = vec![serde_json::from_value(json!({

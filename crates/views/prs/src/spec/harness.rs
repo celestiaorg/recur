@@ -1,5 +1,5 @@
-//! The shell with every view registered, as the desktop mounts it, on the mock bridge over the
-//! e2e seed, with selector-driven input (`debug_selector` keys) for the PR specs.
+//! The shell with every view registered, as the desktop mounts it, on the typed service fakes over
+//! the e2e seed, with selector-driven input (`debug_selector` keys) for the PR specs.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -7,8 +7,9 @@ use std::time::Duration;
 use gpui::{Entity, Modifiers, MouseButton, TestAppContext, VisualTestContext, point, px};
 use gpui_kit::{Bounds, Focusable, Pixels};
 use recur_app::{Shell, ShellOptions};
-use recur_domain::Pr;
-use recur_services::mock::{MockBridge, MockOptions, Seed};
+use recur_domain::{Finding, Pr, PrComment, Workspace};
+use recur_services::AppEvent;
+use recur_services::fake::{ChatAttention, Fake, Overrides, Seed};
 use recur_ui::widgets::{ToastKind, ToastStore};
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
 use serde_json::{Value, json};
@@ -26,14 +27,14 @@ pub fn registry() -> ViewRegistry {
 
 pub struct S<'a> {
     pub state: Entity<AppState>,
-    pub bridge: Arc<MockBridge>,
+    pub fake: Arc<Fake>,
     pub cx: &'a mut VisualTestContext,
 }
 
 pub fn boot<'a>(
     cx: &'a mut TestAppContext,
     seed: impl FnOnce(&mut Seed),
-    opts: MockOptions,
+    opts: Overrides,
 ) -> S<'a> {
     // The specs' window size.
     boot_sized(cx, seed, opts, 1380., 880.)
@@ -42,7 +43,7 @@ pub fn boot<'a>(
 pub fn boot_sized<'a>(
     cx: &'a mut TestAppContext,
     seed: impl FnOnce(&mut Seed),
-    opts: MockOptions,
+    opts: Overrides,
     w: f32,
     h: f32,
 ) -> S<'a> {
@@ -53,10 +54,10 @@ pub fn boot_sized<'a>(
         recur_content::markdown::set_markdown_render_inline(true);
         crate::ui::reset(cx);
     });
-    let mut sd = recur_services::mock::fixtures::seed();
+    let mut sd = Seed::e2e();
     seed(&mut sd);
-    let bridge = MockBridge::new(sd, opts);
-    let services = bridge.services();
+    let fake = Fake::new(sd, opts);
+    let services = fake.services();
     let state = cx.update(|cx| AppState::install(services.clone(), LocalStorage::in_memory(), cx));
     let ctx = ViewContext {
         state: state.clone(),
@@ -72,81 +73,99 @@ pub fn boot_sized<'a>(
         let f = shell.focus_handle(cx);
         window.focus(&f, cx);
     });
-    let mut s = S { state, bridge, cx };
+    let mut s = S { state, fake, cx };
     s.settle();
     s
 }
 
 pub fn plain(cx: &mut TestAppContext) -> S<'_> {
-    boot(cx, |_| {}, MockOptions::default())
+    boot(cx, |_| {}, Overrides::default())
 }
 
 pub fn plain_with(cx: &mut TestAppContext, seed: impl FnOnce(&mut Seed)) -> S<'_> {
-    boot(cx, seed, MockOptions::default())
+    boot(cx, seed, Overrides::default())
 }
 
 fn leak(s: &str) -> &'static str {
     Box::leak(s.to_string().into_boxed_str())
 }
 
-/// `patchRichPR`: merge `over` into PR #482 in both `prs` and `prById`.
-pub fn patch_pr(s: &mut Seed, id: &str, over: Value) {
-    let merge = |v: &mut Value| {
-        if let (Some(a), Some(b)) = (v.as_object_mut(), over.as_object()) {
-            for (k, x) in b {
-                a.insert(k.clone(), x.clone());
-            }
-        }
-    };
-    let ids: Vec<_> = s.pr_ids().to_vec();
-    for o in ids {
-        if s.obj(o)["id"] == id {
-            merge(s.obj_mut(o));
-        }
-    }
-    if let Some(v) = s.pr_by_id_mut(id) {
-        merge(v);
-    }
+/// A fixture written as JSON.
+pub fn de<T: serde::de::DeserializeOwned>(v: Value) -> T {
+    serde_json::from_value(v).expect("fixture matches its type")
 }
 
-/// A list row in the e2e shape (`row(over)`).
-pub fn pr_row(over: Value) -> Value {
-    let mut base = json!({
-        "projectId": "storefront", "workspaceId": "", "group": "open", "source": "gh",
-        "branch": "feat/x", "base": "main", "state": "In review", "diff": {"add": 1, "del": 0},
-        "fileCount": 1, "checksOk": true, "when": "1h",
-        "comments": [], "commits": [], "files": [], "checks": [],
-    });
+/// `v` with the fields `over` names replaced (`{ ...v, ...over }`).
+pub fn patched<T: serde::Serialize + serde::de::DeserializeOwned>(v: &T, over: Value) -> T {
+    let mut base = serde_json::to_value(v).expect("fixture serializes");
     if let (Some(a), Some(b)) = (base.as_object_mut(), over.as_object()) {
         for (k, x) in b {
             a.insert(k.clone(), x.clone());
         }
     }
-    base
+    de(base)
+}
+
+/// The seed PR `id` as JSON, for fixtures built from it.
+pub fn pr_json(s: &Seed, id: &str) -> Value {
+    serde_json::to_value(s.pr(id).expect("seed PR")).expect("PR serializes")
+}
+
+/// `patchRichPR`: merge `over` into the seed PR `id`.
+pub fn patch_pr(s: &mut Seed, id: &str, over: Value) {
+    if let Some(pr) = s.pr_mut(id) {
+        *pr = patched(pr, over);
+    }
+}
+
+/// A list row in the e2e shape (`row(over)`).
+pub fn pr_row(over: Value) -> Pr {
+    let base = de(json!({
+        "projectId": "storefront", "workspaceId": "", "group": "open", "source": "gh",
+        "branch": "feat/x", "base": "main", "state": "In review", "diff": {"add": 1, "del": 0},
+        "fileCount": 1, "checksOk": true, "when": "1h",
+        "comments": [], "commits": [], "files": [], "checks": [],
+    }));
+    patched::<Pr>(&base, over)
 }
 
 /// `addHostPR`: a GitHub PR with no workspace and its hidden chat host.
 pub fn add_host_pr(s: &mut Seed, id: &str, number: i64, title: &str) -> String {
-    s.insert_pr(pr_row(json!({
+    s.prs.push(pr_row(json!({
         "id": id, "number": number, "title": title, "branch": format!("feat/{id}"),
     })));
     let host = format!("WS-HOST-{id}");
-    s.insert_loop(json!({
-        "id": host, "projectId": "storefront", "type": "solo", "hostPrId": id, "goal": title,
-        "short": title, "statusLabel": "Review", "phase": "editing", "worktreePath": "/tmp/repo",
-        "baseBranch": "main", "archived": false,
-    }));
+    s.workspaces.push(Workspace {
+        id: host.clone(),
+        project_id: "storefront".into(),
+        r#type: "solo".into(),
+        host_pr_id: id.into(),
+        goal: title.into(),
+        short: title.into(),
+        status_label: "Review".into(),
+        phase: "editing".into(),
+        worktree_path: "/tmp/repo".into(),
+        base_branch: "main".into(),
+        ..Default::default()
+    });
     host
 }
 
 /// `addIdlePRWorkspace`.
 pub fn add_idle_pr_workspace(s: &mut Seed, pr_id: &str) -> String {
     let id = format!("WS-IDLE-{pr_id}");
-    s.insert_loop(json!({
-        "id": id, "projectId": "storefront", "type": "solo", "goal": "Idle PR workspace",
-        "short": "Idle PR workspace", "statusLabel": "Idle", "phase": "editing",
-        "worktreePath": "/tmp/from-pr", "baseBranch": "main", "hostPrId": "",
-    }));
+    s.workspaces.push(Workspace {
+        id: id.clone(),
+        project_id: "storefront".into(),
+        r#type: "solo".into(),
+        goal: "Idle PR workspace".into(),
+        short: "Idle PR workspace".into(),
+        status_label: "Idle".into(),
+        phase: "editing".into(),
+        worktree_path: "/tmp/from-pr".into(),
+        base_branch: "main".into(),
+        ..Default::default()
+    });
     patch_pr(s, pr_id, json!({ "workspaceId": id }));
     id
 }
@@ -330,8 +349,8 @@ impl S<'_> {
         })
     }
 
-    pub fn wire(&mut self, name: &str, data: Value) {
-        self.bridge.dispatch_wire(name, data).unwrap();
+    pub fn dispatch(&mut self, event: AppEvent) {
+        self.fake.dispatch(event);
         self.settle();
     }
 
@@ -401,15 +420,15 @@ impl S<'_> {
     }
 }
 
-/// A shared findings list behind `ListPRFindings` / `SetFindingStatus`, counting settles.
+/// A shared findings list behind `list_pr_findings` / `set_finding_status`, counting settles.
 #[derive(Clone, Default)]
 pub struct Findings {
-    pub list: Arc<parking_lot::Mutex<Vec<Value>>>,
+    pub list: Arc<parking_lot::Mutex<Vec<Finding>>>,
     pub settled: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl Findings {
-    pub fn new(list: Vec<Value>) -> Self {
+    pub fn new(list: Vec<Finding>) -> Self {
         Findings {
             list: Arc::new(parking_lot::Mutex::new(list)),
             ..Default::default()
@@ -420,60 +439,73 @@ impl Findings {
         self.settled.load(std::sync::atomic::Ordering::SeqCst)
     }
 
-    /// `ListPRFindings` answers the open ones; `SetFindingStatus` records the status, failing
-    /// the first `fail_first` calls.
-    pub fn options(&self, fail_first: usize) -> MockOptions {
+    /// `list_pr_findings` answers the open ones; `set_finding_status` records the status,
+    /// failing the first `fail_first` calls.
+    pub fn options(&self, fail_first: usize) -> Overrides {
         let (list, list2, settled) = (self.list.clone(), self.list.clone(), self.settled.clone());
-        MockOptions::default()
-            .resolver("ListPRFindings", move |_, _, _| {
-                let open: Vec<Value> = list
+        Overrides::default()
+            .list_pr_findings(move |_, _| {
+                Ok(list
                     .lock()
                     .iter()
-                    .filter(|f| f["status"] == "open")
+                    .filter(|f| f.status == "open")
                     .cloned()
-                    .collect();
-                recur_services::mock::Reply::value(Value::Array(open))
+                    .collect())
             })
-            .resolver("SetFindingStatus", move |a, _, _| {
+            .set_finding_status(move |_, (_, id, status)| {
                 let n = settled.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
                 if n <= fail_first {
-                    return recur_services::mock::Reply::error("nope");
+                    return Err(recur_services::Error::new("nope"));
                 }
-                let id = a.get(1).and_then(Value::as_str).unwrap_or("").to_string();
-                let status = a.get(2).and_then(Value::as_str).unwrap_or("").to_string();
                 let mut l = list2.lock();
-                let f = l.iter_mut().find(|f| f["id"] == id.as_str());
-                let out = match f {
+                Ok(match l.iter_mut().find(|f| f.id == id) {
                     Some(f) => {
-                        f["status"] = json!(status);
+                        f.status = status;
                         f.clone()
                     }
-                    None => json!({ "id": id, "status": status }),
-                };
-                recur_services::mock::Reply::value(out)
+                    None => Finding {
+                        id,
+                        status,
+                        ..Default::default()
+                    },
+                })
             })
     }
 }
 
 /// `f-race` on `useOAuthSession.ts:2`.
-pub fn race_finding(workspace: &str) -> Value {
-    json!({
-        "id": "f-race", "workspaceId": workspace, "file": "src/hooks/useOAuthSession.ts", "line": 2,
-        "message": "token refresh can race across two tabs", "status": "open", "severity": "high",
-    })
+pub fn race_finding(workspace: &str) -> Finding {
+    Finding {
+        id: "f-race".into(),
+        workspace_id: workspace.into(),
+        file: "src/hooks/useOAuthSession.ts".into(),
+        line: 2,
+        message: "token refresh can race across two tabs".into(),
+        status: "open".into(),
+        severity: "high".into(),
+        ..Default::default()
+    }
 }
 
 /// PR #482's seeded comments plus a submitted inline note matching `f-race`.
-pub fn comments_with_race_note(id: &str) -> Value {
-    let mut c = recur_services::mock::fixtures::seed()
-        .pr_by_id("482")
-        .unwrap()["comments"]
-        .clone();
-    c.as_array_mut().unwrap().push(json!({
-        "id": id, "code": "AR", "author": "Avery Rourke", "authorLogin": "avery", "time": "1m",
-        "bodyMd": "token refresh can race across two tabs", "parentId": "gh-review-99",
-        "path": "src/hooks/useOAuthSession.ts", "line": 2, "side": "RIGHT",
-    }));
+pub fn comments_with_race_note(id: &str) -> Vec<PrComment> {
+    let mut c = Seed::e2e()
+        .pr("482")
+        .and_then(|p| p.comments.clone())
+        .unwrap_or_default();
+    c.push(PrComment {
+        id: id.into(),
+        code: "AR".into(),
+        author: "Avery Rourke".into(),
+        author_login: "avery".into(),
+        time: "1m".into(),
+        body_md: "token refresh can race across two tabs".into(),
+        parent_id: "gh-review-99".into(),
+        path: "src/hooks/useOAuthSession.ts".into(),
+        line: 2,
+        side: "RIGHT".into(),
+        ..Default::default()
+    });
     c
 }
 
@@ -535,8 +567,8 @@ impl S<'_> {
         }
     }
 
-    pub fn attention(&mut self) -> recur_services::mock::ChatAttention {
-        self.bridge.attention()
+    pub fn attention(&mut self) -> ChatAttention {
+        self.fake.attention()
     }
 
     /// The PR nav's running and unseen counts, as the sidebar computes them.

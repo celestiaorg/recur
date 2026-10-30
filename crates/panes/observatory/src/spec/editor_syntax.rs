@@ -4,7 +4,7 @@
 //! through [`recur_view_core::editor_env::EditorEnv::apply_language_mode`] as here.
 
 use gpui::TestAppContext;
-use recur_services::mock::MockOptions;
+use recur_services::fake::Overrides;
 
 use super::harness::*;
 
@@ -28,7 +28,7 @@ fn open_main_go(h: &mut H) {
 
 #[gpui::test]
 async fn the_status_bar_language_is_a_picker_and_the_pick_is_remembered(cx: &mut TestAppContext) {
-    let mut h = mount(cx, MockOptions::default(), |_| {}, |_| {});
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     open_main_go(&mut h);
     assert!(label(&mut h).to_lowercase().contains("go"));
     h.click("status:lang");
@@ -48,7 +48,7 @@ async fn the_language_pick_survives_a_restart_via_the_editor_session(
     restarted: &mut TestAppContext,
 ) {
     let store = SessionStore::default();
-    let mut h = mount(cx, store.install(MockOptions::default()), |_| {}, |_| {});
+    let mut h = mount(cx, store.install(Overrides::default()), |_| {}, |_| {});
     open_main_go(&mut h);
     pick(&mut h, Some(recur_textmate::SYNTAX_PLAIN));
     assert_eq!(label(&mut h), "Plain Text");
@@ -56,7 +56,7 @@ async fn the_language_pick_survives_a_restart_via_the_editor_session(
     h.quit();
     let mut h = mount(
         restarted,
-        store.install(MockOptions::default()),
+        store.install(Overrides::default()),
         |_| {},
         |_| {},
     );

@@ -3,7 +3,7 @@
 
 use gpui::TestAppContext;
 use recur_engine::view::chat::AgentMsg;
-use recur_services::mock::MockOptions;
+use recur_services::fake::Overrides;
 
 use super::harness::*;
 
@@ -37,7 +37,7 @@ fn renders(name: &str, counts: &std::collections::BTreeMap<&'static str, u32>) -
 
 #[gpui::test]
 async fn typing_redraws_the_dock_but_not_the_transcript(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
     h.set_messages(long_chat(300));
     h.focus_composer();
     // The first key after a click switches GPUI's input modality, which refreshes the whole
@@ -58,7 +58,7 @@ async fn typing_redraws_the_dock_but_not_the_transcript(cx: &mut TestAppContext)
 
 #[gpui::test]
 async fn a_long_transcript_mounts_a_bounded_window(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
     h.set_messages(long_chat(400));
     h.settle();
     let live = h.read(|c| c.test_live_block_count());
@@ -72,7 +72,7 @@ async fn a_long_transcript_mounts_a_bounded_window(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn the_wheel_redraws_the_cached_transcript(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
     h.set_messages(long_chat(300));
     h.settle();
     let handle = h.read(|c| c.test_scroll().clone());
@@ -169,7 +169,7 @@ async fn gpui_drops_notifies_of_a_lazily_built_cached_view(cx: &mut TestAppConte
 
 #[gpui::test]
 async fn store_changes_redraw_the_transcript_only_when_they_concern_it(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
     h.set_messages(long_chat(40));
     let state = h.read(|c| c.state.clone());
     let pane_renders = |h: &mut H, f: &dyn Fn(&mut recur_view_core::AppState)| {
@@ -207,7 +207,7 @@ async fn store_changes_redraw_the_transcript_only_when_they_concern_it(cx: &mut 
 async fn a_key_in_a_long_draft_lays_out_its_paragraph_and_the_visible_lines(
     cx: &mut TestAppContext,
 ) {
-    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
     let para = "The quick brown fox jumps over the lazy dog and naps in the sun. ".repeat(3);
     let draft: String = (0..200).map(|i| format!("{i}: {para}\n")).collect();
     let chat = h.chat();
@@ -241,7 +241,7 @@ async fn a_key_in_a_long_draft_lays_out_its_paragraph_and_the_visible_lines(
 /// second one. A test update draws until the window is clean, so the counts are the check.
 #[gpui::test]
 async fn a_new_chat_draws_its_dock_in_the_first_frame(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
     let draft = "look at @src/main.rs please";
     h.fill(draft);
     let composer = h.bounds("chat-composer").expect("composer");
@@ -280,7 +280,7 @@ async fn a_new_chat_draws_its_dock_in_the_first_frame(cx: &mut TestAppContext) {
 /// offset, notify the pane) and its frame run inside one update.
 #[gpui::test]
 async fn a_long_transcript_draws_what_the_scroller_shows_after_any_jump(cx: &mut TestAppContext) {
-    let mut h = boot(cx, MockOptions::default(), ws_props(), ws_hooks());
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
     h.set_messages(long_chat(400));
     let chat = h.chat();
     let handle = h.read(|c| c.test_scroll().clone());

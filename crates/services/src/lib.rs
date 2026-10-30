@@ -5,13 +5,13 @@
 //!   `app` package DTOs, and [`Services`], the aggregate views hold.
 //! - [`events`]: [`AppEvent`] and the [`EventHub`] behind
 //!   [`Services::subscribe`].
-//! - `mock` (feature `mock`): the e2e mock bridge, serving the e2e seed.
+//! - `fake` (feature `fake`): typed in-memory fakes of every service over the e2e seed.
 
 pub mod api;
 pub mod app;
 pub mod events;
-#[cfg(feature = "mock")]
-pub mod mock;
+#[cfg(feature = "fake")]
+pub mod fake;
 
 mod error;
 

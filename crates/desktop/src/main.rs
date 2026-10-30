@@ -4,7 +4,8 @@
 //! before any UI, start the boot work once events reach the desktop, then run the GPUI app and
 //! tear down in order.
 //!
-//! The `mock` feature swaps in the e2e mock bridge for UI work without a backend.
+//! The `fake` feature swaps in the typed service fakes over the e2e seed for UI work without a
+//! backend.
 
 mod image_http;
 mod macro_runtime;
@@ -43,8 +44,8 @@ const MANIFEST_URL: &str = match option_env!("RECUR_UPDATE_MANIFEST_URL") {
 };
 
 /// The services the app runs on: the engine-backed ones over `store`, recovered,
-/// or the mock bridge under the `mock` feature.
-#[cfg(not(feature = "mock"))]
+/// or the typed fakes under the `fake` feature.
+#[cfg(not(feature = "fake"))]
 fn backend(
     rt: &tokio::runtime::Runtime,
     store: recur_store::Store,
@@ -56,14 +57,13 @@ fn backend(
     (svc.services(), Some(svc))
 }
 
-#[cfg(feature = "mock")]
+#[cfg(feature = "fake")]
 fn backend(
     _rt: &tokio::runtime::Runtime,
     _store: recur_store::Store,
 ) -> (Services, Option<Arc<AppServices>>) {
-    let bridge =
-        recur_services::mock::MockBridge::fresh(recur_services::mock::MockOptions::default());
-    (bridge.services(), None)
+    let fake = recur_services::fake::Fake::fresh(Default::default());
+    (fake.services(), None)
 }
 
 /// Every view crate registers its routes, overlays and keymaps here.

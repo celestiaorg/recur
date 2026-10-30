@@ -7934,6 +7934,7 @@ dependencies = [
  "recur-ui",
  "recur-view-core",
  "recur-view-sidebar",
+ "serde",
  "serde_json",
  "tempfile",
  "tracing",
@@ -8883,6 +8884,7 @@ dependencies = [
 name = "recur-view-prs"
 version = "0.0.0"
 dependencies = [
+ "base64 0.23.1",
  "chrono",
  "gpui-kit",
  "gpui-pre",

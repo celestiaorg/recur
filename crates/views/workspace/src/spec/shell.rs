@@ -10,12 +10,18 @@ use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext, px};
 use gpui_kit::{Bounds, Focusable, Pixels};
 use parking_lot::Mutex;
 use recur_app::{Shell, ShellOptions};
-use recur_services::mock::{MockBridge, MockOptions, Release, Reply, Seed};
+use recur_domain::{
+    BranchChoice, DiffStat, Escalation, FeedItem, Pr, UpdateWorkspaceResult, Workspace,
+    WorkspaceLandState, WorkspaceState,
+};
+use recur_services::AppEvent;
+use recur_services::events::{AgentUpdated, GithubBranchRules, WorkspaceEvent, WorkspaceFsChanged, WorkspaceUpdated};
+use recur_services::fake::{Answer, Fake, Overrides, Release, Seed, hold};
 use recur_ui::widgets::{ToastKind, ToastStore};
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
 use serde_json::{Value, json};
 
-use super::harness::install_prompt_runner;
+use super::harness::{de, install_prompt_runner};
 
 const SETTLED: &str = "LOOP-2224";
 const CODING: &str = "LOOP-2229";
@@ -23,14 +29,14 @@ const ACTIVE: &str = "LOOP-2231";
 
 pub struct S<'a> {
     pub state: Entity<AppState>,
-    pub bridge: Arc<MockBridge>,
+    pub fake: Arc<Fake>,
     pub cx: &'a mut VisualTestContext,
 }
 
 pub fn boot<'a>(
     cx: &'a mut TestAppContext,
     seed: impl FnOnce(&mut Seed),
-    opts: MockOptions,
+    opts: Overrides,
     storage: impl FnOnce(&mut LocalStorage),
 ) -> S<'a> {
     let mut registry = ViewRegistry::default();
@@ -44,12 +50,12 @@ pub fn boot<'a>(
         recur_content::markdown::set_markdown_render_inline(true);
         install_prompt_runner(cx);
     });
-    let mut sd = recur_services::mock::fixtures::seed();
+    let mut sd = Seed::e2e();
     seed(&mut sd);
-    let bridge = MockBridge::new(sd, opts);
+    let fake = Fake::new(sd, opts);
     let mut st = LocalStorage::in_memory();
     storage(&mut st);
-    let services = bridge.services();
+    let services = fake.services();
     let state = cx.update(|cx| AppState::install(services.clone(), st, cx));
     let ctx = ViewContext {
         state: state.clone(),
@@ -65,12 +71,12 @@ pub fn boot<'a>(
         let f = shell.focus_handle(cx);
         window.focus(&f, cx);
     });
-    let mut s = S { state, bridge, cx };
+    let mut s = S { state, fake, cx };
     s.settle();
     s
 }
 
-fn plain(cx: &mut TestAppContext, opts: MockOptions) -> S<'_> {
+fn plain(cx: &mut TestAppContext, opts: Overrides) -> S<'_> {
     boot(cx, |_| {}, opts, |_| {})
 }
 
@@ -145,15 +151,15 @@ impl S<'_> {
         self.state.read_with(self.cx, |s, _| s.view)
     }
 
-    pub fn wire(&mut self, name: &str, data: Value) {
-        self.bridge.dispatch_wire(name, data).unwrap();
+    pub fn dispatch(&mut self, event: AppEvent) {
+        self.fake.dispatch(event);
         self.settle();
     }
 
     /// Still listed (not archived) on the backend.
     pub fn present(&mut self, id: &str) -> bool {
-        self.bridge
-            .with_seed(|s| s.loop_by_id(id).is_some_and(|l| l["archived"] != true))
+        self.fake
+            .with_seed(|s| s.workspace(id).is_some_and(|w| !w.archived))
     }
 
     pub fn toasted(&mut self, kind: ToastKind, text: &str) -> bool {
@@ -171,24 +177,30 @@ impl S<'_> {
     }
 }
 
-/// Replies held while `hold` is on (a resolver's `await gate`), answered on `release`.
-#[derive(Clone, Default)]
-struct Gate(Arc<Mutex<Held>>);
+/// Answers held while `hold` is on (an override's `await gate`), sent on `release`.
+#[derive(Clone)]
+struct Gate<T>(Arc<Mutex<Held<T>>>);
 
-/// Whether replies are held, and the held ones with their answers.
-type Held = (bool, Vec<(Release, Value)>);
+/// Whether answers are held, and the held ones with their values.
+type Held<T> = (bool, Vec<(Release<recur_services::Result<T>>, T)>);
 
-impl Gate {
+impl<T> Default for Gate<T> {
+    fn default() -> Self {
+        Self(Arc::new(Mutex::new((false, Vec::new()))))
+    }
+}
+
+impl<T: Send + 'static> Gate<T> {
     fn hold(&self) {
         self.0.lock().0 = true;
     }
 
-    fn reply(&self, v: Value) -> Reply {
+    fn reply(&self, v: T) -> Answer<recur_services::Result<T>> {
         let mut g = self.0.lock();
         if !g.0 {
-            return Reply::value(v);
+            return Ok(v).into();
         }
-        let (r, release) = Reply::deferred();
+        let (r, release) = hold();
         g.1.push((release, v));
         r
     }
@@ -200,40 +212,29 @@ impl Gate {
             g.1.drain(..).collect()
         };
         for (r, v) in held {
-            r.send(Reply::value(v));
+            r.send(Ok(v));
         }
     }
 }
 
-/// `WorkspaceLandState` and `FetchWorkingCopyUpstream` both answer `land`.
-fn land(land: Value) -> MockOptions {
+/// `workspace_land_state` and `fetch_working_copy_upstream` both answer `land`.
+fn land(land: WorkspaceLandState) -> Overrides {
     let l2 = land.clone();
-    MockOptions::default()
-        .resolver("WorkspaceLandState", move |_, _, _| {
-            Reply::value(land.clone())
-        })
-        .resolver("FetchWorkingCopyUpstream", move |_, _, _| {
-            Reply::value(l2.clone())
-        })
+    Overrides::default()
+        .workspace_land_state(move |_, _| Ok(land.clone()))
+        .fetch_working_copy_upstream(move |_, _| Ok(l2.clone()))
 }
 
 /// A land the test edits as it goes (`({ ...land })`).
-fn land_cell(land: Arc<Mutex<Value>>) -> MockOptions {
+fn land_cell(land: Arc<Mutex<WorkspaceLandState>>) -> Overrides {
     let l2 = land.clone();
-    MockOptions::default()
-        .resolver("WorkspaceLandState", move |_, _, _| {
-            Reply::value(land.lock().clone())
-        })
-        .resolver("FetchWorkingCopyUpstream", move |_, _, _| {
-            Reply::value(l2.lock().clone())
-        })
+    Overrides::default()
+        .workspace_land_state(move |_, _| Ok(land.lock().clone()))
+        .fetch_working_copy_upstream(move |_, _| Ok(l2.lock().clone()))
 }
 
-fn edit_ws(s: &mut Seed, id: &str, f: impl Fn(&mut Value)) {
-    if let Some(o) = s.find_loop(|l| l["id"] == id) {
-        f(s.obj_mut(o));
-    }
-    if let Some(w) = s.loop_by_id_mut(id) {
+fn edit_ws(s: &mut Seed, id: &str, f: impl Fn(&mut Workspace)) {
+    if let Some(w) = s.workspace_mut(id) {
         f(w);
     }
 }
@@ -260,38 +261,45 @@ fn gh(id: &'static str, number: i64, source: &'static str) -> GhPr {
 /// an optional PR linked to it.
 fn github_seed(pr: Option<GhPr>) -> impl FnOnce(&mut Seed) {
     move |s| {
-        if let Some(p) = s.projects.iter_mut().find(|p| p["id"] == "storefront") {
-            p["prOnGithub"] = json!(true);
+        if let Some(p) = s.projects.iter_mut().find(|p| p.id == "storefront") {
+            p.pr_on_github = true;
         }
         edit_ws(s, CODING, |w| {
-            w["type"] = json!("agent");
-            w["runStarted"] = json!(false);
-            w["state"] = json!("");
+            w.r#type = "agent".into();
+            w.run_started = false;
+            w.state = WorkspaceState::default();
         });
         if let Some(pr) = pr {
-            s.insert_pr(pr_record(pr.id, pr.number, pr.source, pr.state, pr.group));
+            s.prs
+                .push(pr_record(pr.id, pr.number, pr.source, pr.state, pr.group));
         }
     }
 }
 
-fn pr_record(id: &str, number: i64, source: &str, state: &str, group: &str) -> Value {
-    json!({
-        "id": id, "workspaceId": CODING, "group": group, "number": number, "source": source,
-        "branch": "recur/pg16", "base": "main", "title": "Migrate analytics to Postgres 16",
-        "state": state, "diff": {"add": 1, "del": 0}, "fileCount": 1, "checksOk": true,
-        "when": "now", "commits": [], "files": [], "comments": [],
-    })
+fn pr_record(id: &str, number: i64, source: &str, state: &str, group: &str) -> Pr {
+    Pr {
+        id: id.into(),
+        workspace_id: CODING.into(),
+        group: group.into(),
+        number,
+        source: source.into(),
+        branch: "recur/pg16".into(),
+        base: "main".into(),
+        title: "Migrate analytics to Postgres 16".into(),
+        state: state.into(),
+        diff: DiffStat { add: 1, del: 0 },
+        file_count: 1,
+        checks_ok: true,
+        when: "now".into(),
+        commits: Some(Vec::new()),
+        files: Some(Vec::new()),
+        comments: Some(Vec::new()),
+        ..Default::default()
+    }
 }
 
-fn seed_ws(id: &str) -> Value {
-    recur_services::mock::fixtures::base_seed()
-        .loop_by_id(id)
-        .cloned()
-        .unwrap_or(Value::Null)
-}
-
-fn str_of(v: &Value, k: &str) -> String {
-    v[k].as_str().unwrap_or_default().to_string()
+fn seed_ws(id: &str) -> Workspace {
+    Seed::e2e().workspace(id).cloned().unwrap_or_default()
 }
 
 const PICKER: &str = "sel:Target branch";
@@ -300,10 +308,10 @@ const PICKER: &str = "sel:Target branch";
 
 #[gpui::test]
 async fn loop_workspaces_show_name_and_branch_not_the_id(cx: &mut TestAppContext) {
-    let mut s = plain(cx, MockOptions::default());
+    let mut s = plain(cx, Overrides::default());
     s.open(CODING);
     let w = seed_ws(CODING);
-    let (short, branch) = (str_of(&w, "short"), str_of(&w, "branch"));
+    let (short, branch) = (w.short, w.branch);
     assert!(!branch.is_empty());
     let crumb = format!("crumb=/ storefront / {short} {branch}");
     assert!(s.has(&crumb), "{crumb}");
@@ -315,7 +323,7 @@ async fn loop_workspaces_show_name_and_branch_not_the_id(cx: &mut TestAppContext
 async fn titlebar_offers_a_target_branch_picker_that_can_change_after_creation(
     cx: &mut TestAppContext,
 ) {
-    let mut s = plain(cx, MockOptions::default());
+    let mut s = plain(cx, Overrides::default());
     s.open(CODING);
     // Seeded loops inherit the project default (main) when baseBranch is unset.
     assert!(s.has(&format!("{PICKER}=main")));
@@ -327,49 +335,65 @@ async fn titlebar_offers_a_target_branch_picker_that_can_change_after_creation(
     assert!(s.has(&format!("{PICKER}=develop")));
 }
 
-fn branches_for(seed: &Seed, project: &str) -> Value {
+fn choice(name: &str, group: &str) -> BranchChoice {
+    BranchChoice {
+        name: name.into(),
+        group: group.into(),
+        ..Default::default()
+    }
+}
+
+fn local(names: &[&str]) -> Vec<BranchChoice> {
+    names.iter().map(|n| choice(n, "Local")).collect()
+}
+
+fn branches_for(seed: &Seed, project: &str) -> Vec<BranchChoice> {
     let base = seed
         .projects
         .iter()
-        .find(|p| p["id"] == project)
-        .map(|p| str_of(p, "baseBranch"))
+        .find(|p| p.id == project)
+        .map(|p| p.base_branch.clone())
         .unwrap_or_default();
     if base.is_empty() {
-        return json!([]);
+        return Vec::new();
     }
     let mut names = vec![base, "origin/main".to_string(), "develop".to_string()];
     names.dedup();
     let remote = names
         .iter()
         .filter(|n| n.starts_with("origin/"))
-        .map(|n| json!({"name": n, "group": "origin"}));
+        .map(|n| choice(n, "origin"));
     let local = names
         .iter()
         .filter(|n| !n.starts_with("origin/"))
-        .map(|n| json!({"name": n, "group": "Local"}));
-    Value::Array(remote.chain(local).collect())
+        .map(|n| choice(n, "Local"));
+    remote.chain(local).collect()
 }
 
 #[gpui::test]
 async fn target_branch_picker_does_not_refetch_on_workspace_updated(cx: &mut TestAppContext) {
     let calls = Arc::new(Mutex::new(0usize));
     let c = calls.clone();
-    let opts = MockOptions::default().resolver("ListBranches", move |a, s, _| {
+    let opts = Overrides::default().list_branches(move |s, project| {
         *c.lock() += 1;
-        Reply::value(branches_for(s, a[0].as_str().unwrap_or_default()))
+        Ok(branches_for(s, &project))
     });
     let mut s = plain(cx, opts);
     s.open(CODING);
     assert!(s.has(&format!("{PICKER}=main")), "enabled, on main");
     let after_load = *calls.lock();
-    s.wire(
-        "workspace.updated",
-        json!({"workspaceId": CODING, "diff": {"add": 4, "del": 1}}),
-    );
-    s.wire(
-        "workspace.event",
-        json!({"workspaceId": CODING, "event": {"text": "edited a file"}}),
-    );
+    s.dispatch(AppEvent::WorkspaceUpdated(Arc::new(WorkspaceUpdated {
+        workspace_id: CODING.into(),
+        diff: Some(DiffStat { add: 4, del: 1 }),
+        ..Default::default()
+    })));
+    s.dispatch(AppEvent::WorkspaceEvent(WorkspaceEvent {
+        workspace_id: CODING.into(),
+        event: FeedItem {
+            text: "edited a file".into(),
+            ..Default::default()
+        },
+    }));
     let add = s.state.read_with(s.cx, |st, _| {
         st.workspaces
             .iter()
@@ -391,17 +415,11 @@ async fn target_branch_picker_stays_disabled_until_the_new_projects_branches_lan
 ) {
     let gate = Gate::default();
     let g = gate.clone();
-    let opts = MockOptions::default().resolver("ListBranches", move |a, _, _| {
-        if a[0] == "payments" {
-            return g.reply(
-                json!([{"name": "release", "group": "Local"}, {"name": "main", "group": "Local"}]),
-            );
+    let opts = Overrides::default().list_branches(move |_, project| {
+        if project == "payments" {
+            return g.reply(local(&["release", "main"]));
         }
-        Reply::value(json!([
-            {"name": "main", "group": "Local"},
-            {"name": "develop", "group": "Local"},
-            {"name": "feature/auth", "group": "Local"},
-        ]))
+        Ok(local(&["main", "develop", "feature/auth"])).into()
     });
     let mut s = plain(cx, opts);
     s.open(CODING);
@@ -427,23 +445,20 @@ async fn target_branch_picker_stays_disabled_until_the_new_projects_branches_lan
 
 #[gpui::test]
 async fn switching_workspaces_in_the_same_project_reloads_branch_choices(cx: &mut TestAppContext) {
-    let extra = Arc::new(Mutex::new(Vec::<Value>::new()));
+    let extra = Arc::new(Mutex::new(Vec::<BranchChoice>::new()));
     let calls = Arc::new(Mutex::new(0usize));
     let (e, c) = (extra.clone(), calls.clone());
-    let opts = MockOptions::default().resolver("ListBranches", move |_, _, _| {
+    let opts = Overrides::default().list_branches(move |_, _| {
         *c.lock() += 1;
-        let mut list = vec![
-            json!({"name": "main", "group": "Local"}),
-            json!({"name": "develop", "group": "Local"}),
-        ];
+        let mut list = local(&["main", "develop"]);
         list.extend(e.lock().iter().cloned());
-        Reply::value(Value::Array(list))
+        Ok(list)
     });
     let mut s = plain(cx, opts);
     s.open(CODING);
     assert!(s.has(&format!("{PICKER}=main")));
     let after_load = *calls.lock();
-    *extra.lock() = vec![json!({"name": "feature/new-base", "group": "Local"})];
+    *extra.lock() = local(&["feature/new-base"]);
     s.open("LOOP-2235");
     assert!(s.has(&format!("{PICKER}=main")));
     assert!(
@@ -456,18 +471,22 @@ async fn switching_workspaces_in_the_same_project_reloads_branch_choices(cx: &mu
 
 #[gpui::test]
 async fn the_main_working_copy_has_no_target_branch_picker(cx: &mut TestAppContext) {
-    let mut s = plain(cx, MockOptions::default());
+    let mut s = plain(cx, Overrides::default());
     s.open_main("storefront");
     assert!(!s.has("crumb-base"));
 }
 
 // ---- main working copy titlebar git actions ----
 
-fn main_land(behind: i64, ahead: i64, dirty: bool) -> Value {
-    json!({
-        "behindBase": behind, "aheadBase": ahead, "dirty": dirty, "unmerged": false,
-        "base": "origin/main", "remote": "origin",
-    })
+fn main_land(behind: i64, ahead: i64, dirty: bool) -> WorkspaceLandState {
+    WorkspaceLandState {
+        behind_base: behind,
+        ahead_base: ahead,
+        dirty,
+        base: "origin/main".into(),
+        remote: "origin".into(),
+        ..Default::default()
+    }
 }
 
 #[gpui::test]
@@ -483,18 +502,17 @@ async fn recalls_commit_disabled_until_git_status_lands_after_a_switch(cx: &mut 
     let gate = Gate::default();
     let land_for = {
         let gate = gate.clone();
-        move |a: &[Value], s: &mut Seed| {
-            let id = a[0].as_str().unwrap_or_default();
+        move |s: &mut Seed, id: String| {
             let storefront_main = s
-                .loop_by_id(id)
-                .is_some_and(|w| w["isMain"] == true && w["projectId"] == "storefront");
+                .workspace(&id)
+                .is_some_and(|w| w.is_main && w.project_id == "storefront");
             gate.reply(main_land(0, 0, storefront_main))
         }
     };
     let l2 = land_for.clone();
-    let opts = MockOptions::default()
-        .resolver("WorkspaceLandState", move |a, s, _| land_for(a, s))
-        .resolver("FetchWorkingCopyUpstream", move |a, s, _| l2(a, s));
+    let opts = Overrides::default()
+        .workspace_land_state(land_for)
+        .fetch_working_copy_upstream(l2);
     let mut s = plain(cx, opts);
     s.open_main("storefront");
     assert!(s.has("tb-commit=Commit"), "visible and enabled");
@@ -520,10 +538,18 @@ async fn shows_update_from_the_tracking_branch_when_the_remote_is_ahead(cx: &mut
     assert!(s.has("tb-update=Update from origin/main"));
 }
 
-fn fs_changed_clears_update(s: &mut S, land: &Arc<Mutex<Value>>, id: &str, label: &str) {
+fn fs_changed_clears_update(
+    s: &mut S,
+    land: &Arc<Mutex<WorkspaceLandState>>,
+    id: &str,
+    label: &str,
+) {
     assert!(s.has(&format!("tb-update={label}")));
-    land.lock()["behindBase"] = json!(0);
-    s.wire("workspace.fs_changed", json!({"workspaceId": id}));
+    land.lock().behind_base = 0;
+    s.dispatch(AppEvent::WorkspaceFsChanged(WorkspaceFsChanged {
+        workspace_id: id.into(),
+        ..Default::default()
+    }));
     s.wait(100);
     assert!(!s.has("tb-update"));
 }
@@ -584,23 +610,23 @@ async fn shows_commit_and_update_together_when_behind_with_leftover_dirty_files(
 
 // ---- workspace GitHub PR titlebar ----
 
-fn ws_land(extra: Value) -> Value {
+fn ws_land(extra: Value) -> WorkspaceLandState {
     let mut l =
         json!({"behindBase": 0, "aheadBase": 1, "dirty": false, "unmerged": false, "base": "main"});
     if let (Some(l), Some(e)) = (l.as_object_mut(), extra.as_object()) {
         l.extend(e.clone());
     }
-    l
+    de(l)
 }
 
-fn gh_land(ahead_remote: i64, behind_remote: i64) -> Value {
+fn gh_land(ahead_remote: i64, behind_remote: i64) -> WorkspaceLandState {
     ws_land(json!({
         "prId": "gh-91", "prNumber": 91, "prSource": "gh",
         "aheadRemote": ahead_remote, "behindRemote": behind_remote,
     }))
 }
 
-fn gh_boot(cx: &mut TestAppContext, pr: Option<GhPr>, opts: MockOptions) -> S<'_> {
+fn gh_boot(cx: &mut TestAppContext, pr: Option<GhPr>, opts: Overrides) -> S<'_> {
     let mut s = boot(cx, github_seed(pr), opts, |_| {});
     s.open(CODING);
     s
@@ -614,10 +640,14 @@ async fn workspace_behind_its_base_offers_merge_rebase_update_and_auto_pushes_th
         "behindBase": 2, "prId": "gh-91", "prNumber": 91, "prSource": "gh",
         "aheadRemote": 0, "behindRemote": 0,
     }));
-    let opts = land(l).resolver("UpdateWorkspaceWithBase", |_, _, _| {
-        Reply::value(json!({
-            "status": "updated", "workspace": {}, "base": "main", "pushedPR": 91, "forcePushed": true,
-        }))
+    let opts = land(l).update_workspace_with_base(|_, _| {
+        Ok(UpdateWorkspaceResult {
+            status: "updated".into(),
+            base: "main".into(),
+            pushed_pr: 91,
+            force_pushed: true,
+            ..Default::default()
+        })
     });
     let mut s = gh_boot(cx, Some(gh("gh-91", 91, "gh")), opts);
     assert!(s.has("tb-update=Update with main"));
@@ -647,7 +677,7 @@ async fn shows_open_pr_before_a_pull_request_exists(cx: &mut TestAppContext) {
     assert!(s.has("tb-merge"));
 }
 
-fn remote_land(base: &str, require_pr: bool) -> Value {
+fn remote_land(base: &str, require_pr: bool) -> WorkspaceLandState {
     ws_land(json!({"base": base, "remote": "origin", "requirePR": require_pr}))
 }
 
@@ -675,10 +705,7 @@ async fn hides_merge_when_a_background_github_branch_rules_probe_starts_requirin
 ) {
     let mut s = gh_boot(cx, None, land(remote_land("origin/main", false)));
     assert!(s.has("tb-merge"));
-    s.wire(
-        "github.branch_rules",
-        json!({"projectId": "storefront", "branch": "main", "requirePR": true}),
-    );
+    s.dispatch(branch_rules("main", ""));
     assert!(!s.has("tb-merge"));
 }
 
@@ -688,23 +715,24 @@ async fn hides_merge_for_a_slash_containing_base_branch_when_github_requires_a_p
 ) {
     let mut s = gh_boot(cx, None, land(remote_land("origin/release/1.0", false)));
     assert!(s.has("tb-merge"));
-    s.wire(
-        "github.branch_rules",
-        json!({"projectId": "storefront", "branch": "1.0", "remote": "origin", "requirePR": true}),
-    );
+    s.dispatch(branch_rules("1.0", "origin"));
     assert!(s.has("tb-merge"));
-    s.wire(
-        "github.branch_rules",
-        json!({"projectId": "storefront", "branch": "release/1.0", "remote": "origin", "requirePR": true}),
-    );
+    s.dispatch(branch_rules("release/1.0", "origin"));
     assert!(!s.has("tb-merge"));
 }
 
+fn branch_rules(branch: &str, remote: &str) -> AppEvent {
+    AppEvent::GithubBranchRules(GithubBranchRules {
+        project_id: "storefront".into(),
+        branch: branch.into(),
+        remote: remote.into(),
+        require_pr: true,
+        ..Default::default()
+    })
+}
+
 fn rules_main(s: &mut S) {
-    s.wire(
-        "github.branch_rules",
-        json!({"projectId": "storefront", "branch": "main", "remote": "origin", "requirePR": true}),
-    );
+    s.dispatch(branch_rules("main", "origin"));
 }
 
 #[gpui::test]
@@ -712,14 +740,13 @@ async fn keeps_a_branch_rules_event_when_an_in_flight_land_returns_a_stale_requi
     cx: &mut TestAppContext,
 ) {
     let stale = remote_land("origin/main", false);
-    let held: Arc<Mutex<Vec<Release>>> = Default::default();
+    let held: Arc<Mutex<Vec<Release<recur_services::Result<WorkspaceLandState>>>>> =
+        Default::default();
     let (st, h) = (stale.clone(), held.clone());
-    let opts = MockOptions::default()
-        .resolver("WorkspaceLandState", move |_, _, _| {
-            Reply::value(st.clone())
-        })
-        .resolver("FetchWorkingCopyUpstream", move |_, _, _| {
-            let (r, release) = Reply::deferred();
+    let opts = Overrides::default()
+        .workspace_land_state(move |_, _| Ok(st.clone()))
+        .fetch_working_copy_upstream(move |_, _| {
+            let (r, release) = hold();
             h.lock().push(release);
             r
         });
@@ -730,7 +757,7 @@ async fn keeps_a_branch_rules_event_when_an_in_flight_land_returns_a_stale_requi
     rules_main(&mut s);
     assert!(!s.has("tb-merge"));
     for r in held.lock().drain(..) {
-        r.send(Reply::value(stale.clone()));
+        r.send(Ok(stale.clone()));
     }
     s.settle();
     assert!(!s.has("tb-merge"));
@@ -741,16 +768,17 @@ async fn keeps_a_branch_rules_event_that_arrives_before_the_first_land_resolves(
     cx: &mut TestAppContext,
 ) {
     let stale = remote_land("origin/main", false);
-    let held: Arc<Mutex<Vec<Release>>> = Default::default();
+    let held: Arc<Mutex<Vec<Release<recur_services::Result<WorkspaceLandState>>>>> =
+        Default::default();
     let (h1, h2) = (held.clone(), held.clone());
-    let opts = MockOptions::default()
-        .resolver("WorkspaceLandState", move |_, _, _| {
-            let (r, release) = Reply::deferred();
+    let opts = Overrides::default()
+        .workspace_land_state(move |_, _| {
+            let (r, release) = hold();
             h1.lock().push(release);
             r
         })
-        .resolver("FetchWorkingCopyUpstream", move |_, _, _| {
-            let (r, release) = Reply::deferred();
+        .fetch_working_copy_upstream(move |_, _| {
+            let (r, release) = hold();
             h2.lock().push(release);
             r
         });
@@ -762,7 +790,7 @@ async fn keeps_a_branch_rules_event_that_arrives_before_the_first_land_resolves(
     );
     rules_main(&mut s);
     for r in held.lock().drain(..) {
-        r.send(Reply::value(stale.clone()));
+        r.send(Ok(stale.clone()));
     }
     s.settle();
     assert!(s.has("tb-open-pr=Open PR"), "enabled");
@@ -793,7 +821,7 @@ async fn shows_view_pr_after_a_pull_request_is_open(cx: &mut TestAppContext) {
 #[gpui::test]
 async fn shows_view_draft_when_land_pr_draft_is_set(cx: &mut TestAppContext) {
     let mut l = gh_land(0, 0);
-    l["prDraft"] = json!(true);
+    l.pr_draft = true;
     let mut s = gh_boot(cx, Some(gh("gh-91", 91, "gh")), land(l));
     assert!(s.has("tb-view-pr=View draft #91"));
     assert!(!s.has("tb-view-pr=View PR #91"));
@@ -816,15 +844,14 @@ async fn keeps_view_pr_after_the_github_pr_is_merged(cx: &mut TestAppContext) {
             group: "merged",
             ..gh("gh-91", 91, "gh")
         }))(s);
-        edit_ws(s, CODING, |w| w["state"] = json!("merged"));
-        let leftover = s.alloc(pr_record("4", 4, "local", "In review", "you"));
-        let mut ids = vec![leftover];
-        ids.extend(s.pr_ids().iter().copied());
-        s.set_prs(ids);
-        s.set_pr_by_id("4", leftover);
+        edit_ws(s, CODING, |w| w.state = WorkspaceState::Merged);
+        s.prs
+            .insert(0, pr_record("4", 4, "local", "In review", "you"));
     };
-    let l =
-        json!({"behindBase": 0, "aheadBase": 0, "dirty": false, "unmerged": false, "base": "main"});
+    let l = WorkspaceLandState {
+        base: "main".into(),
+        ..Default::default()
+    };
     let mut s = boot(cx, seed, land(l), |_| {});
     s.open(CODING);
     assert!(s.has("tb-view-pr=View PR #91"));
@@ -835,8 +862,7 @@ async fn keeps_view_pr_after_the_github_pr_is_merged(cx: &mut TestAppContext) {
 async fn shows_push_updates_next_to_view_pr_when_head_is_ahead_of_the_github_head(
     cx: &mut TestAppContext,
 ) {
-    let opts =
-        land(gh_land(2, 0)).resolver("OpenWorkspacePR", |_, _, _| Reply::value(json!("gh-91")));
+    let opts = land(gh_land(2, 0)).open_workspace_pr(|_, _| Ok("gh-91".into()));
     let mut s = gh_boot(cx, Some(gh("gh-91", 91, "gh")), opts);
     assert!(!s.has("tb-open-pr"));
     assert!(s.has("tb-view-pr=View PR #91"));
@@ -849,9 +875,7 @@ async fn shows_push_updates_next_to_view_pr_when_head_is_ahead_of_the_github_hea
 
 #[gpui::test]
 async fn shows_pull_updates_next_to_view_pr_when_github_is_ahead_of_head(cx: &mut TestAppContext) {
-    let opts = land(gh_land(0, 2)).resolver("PullWorkspacePR", |_, _, _| {
-        Reply::value(json!({"status": "updated", "workspace": {}, "base": "origin/recur/pg16"}))
-    });
+    let opts = land(gh_land(0, 2)).pull_workspace_pr(|_, _| Ok(pulled()));
     let mut s = gh_boot(cx, Some(gh("gh-91", 91, "gh")), opts);
     assert!(!s.has("tb-open-pr"));
     assert!(s.has("tb-view-pr=View PR #91"));
@@ -867,10 +891,10 @@ async fn hides_open_pr_when_the_workspace_has_no_worktree(cx: &mut TestAppContex
     let seed = |s: &mut Seed| {
         github_seed(None)(s);
         edit_ws(s, CODING, |w| {
-            w["worktreePath"] = json!("");
-            w["phase"] = json!("failed");
-            w["lastError"] = json!("allocate worktree: bad base");
-            w["statusLabel"] = json!("Couldn't create");
+            w.worktree_path.clear();
+            w.phase = "failed".into();
+            w.last_error = "allocate worktree: bad base".into();
+            w.status_label = "Couldn't create".into();
         });
     };
     let mut s = boot(cx, seed, land(ws_land(json!({}))), |_| {});
@@ -893,10 +917,8 @@ async fn shows_pull_updates_and_force_push_when_the_github_head_has_diverged(
     cx: &mut TestAppContext,
 ) {
     let opts = land(gh_land(2, 2))
-        .resolver("OpenWorkspacePR", |_, _, _| Reply::value(json!("gh-91")))
-        .resolver("PullWorkspacePR", |_, _, _| {
-            Reply::value(json!({"status": "updated", "workspace": {}, "base": "origin/recur/pg16"}))
-        });
+        .open_workspace_pr(|_, _| Ok("gh-91".into()))
+        .pull_workspace_pr(|_, _| Ok(pulled()));
     let mut s = gh_boot(cx, Some(gh("gh-91", 91, "gh")), opts);
     assert!(s.has("tb-view-pr=View PR #91"));
     assert!(s.has("tb-pull-pr=Pull updates"));
@@ -917,16 +939,26 @@ async fn hides_pull_push_force_push_when_the_github_pr_is_already_in_sync(cx: &m
 
 // ---- remove ----
 
+fn pulled() -> UpdateWorkspaceResult {
+    UpdateWorkspaceResult {
+        status: "updated".into(),
+        base: "origin/recur/pg16".into(),
+        ..Default::default()
+    }
+}
+
 fn agent(s: &mut S, ws: &str, status: &str) {
-    s.wire(
-        "agent.updated",
-        json!({"workspaceId": ws, "agentId": format!("{ws}-MA"), "status": status}),
-    );
+    s.dispatch(AppEvent::AgentUpdated(AgentUpdated {
+        workspace_id: ws.into(),
+        agent_id: format!("{ws}-MA"),
+        status: status.into(),
+        ..Default::default()
+    }));
 }
 
 #[gpui::test]
 async fn a_settled_loop_offers_remove_a_running_loop_shows_it_disabled(cx: &mut TestAppContext) {
-    let mut s = plain(cx, MockOptions::default());
+    let mut s = plain(cx, Overrides::default());
     s.open(SETTLED);
     assert!(s.has("tb-remove"));
     s.click("tb-back");
@@ -940,7 +972,7 @@ async fn a_settled_loop_offers_remove_a_running_loop_shows_it_disabled(cx: &mut 
 
 #[gpui::test]
 async fn an_armed_remove_disarms_when_an_agent_turn_starts(cx: &mut TestAppContext) {
-    let mut s = plain(cx, MockOptions::default());
+    let mut s = plain(cx, Overrides::default());
     s.open(SETTLED);
     s.click("tb-remove");
     agent(&mut s, SETTLED, "working");
@@ -958,7 +990,7 @@ async fn an_armed_remove_disarms_when_an_agent_turn_starts(cx: &mut TestAppConte
 async fn remove_requires_a_second_click_then_hides_the_loop_and_returns_to_inbox(
     cx: &mut TestAppContext,
 ) {
-    let mut s = plain(cx, MockOptions::default());
+    let mut s = plain(cx, Overrides::default());
     s.open(SETTLED);
     s.click("tb-remove");
     assert!(s.present(SETTLED));
@@ -971,7 +1003,7 @@ async fn remove_requires_a_second_click_then_hides_the_loop_and_returns_to_inbox
 
 #[gpui::test]
 async fn remove_confirms_on_a_double_click(cx: &mut TestAppContext) {
-    let mut s = plain(cx, MockOptions::default());
+    let mut s = plain(cx, Overrides::default());
     s.open(SETTLED);
     let p = s.bounds("tb-remove").expect("remove").center();
     s.cx.simulate_mouse_move(p, None, Modifiers::none());
@@ -988,7 +1020,7 @@ async fn remove_confirms_on_a_double_click(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn hiding_the_left_panel_still_works_after_visiting_the_linked_pr(cx: &mut TestAppContext) {
-    let opts = MockOptions::default().resolver("ListLoopAgents", |_, _, _| Reply::value(json!([])));
+    let opts = Overrides::default().list_loop_agents(|_, _| Ok(Vec::new()));
     let mut s = plain(cx, opts);
     s.open(ACTIVE);
     assert!(s.has("obs-left"));
@@ -1007,11 +1039,11 @@ async fn hiding_the_left_panel_still_works_after_visiting_the_linked_pr(cx: &mut
 
 const ESCALATED: &str = "LOOP-2218";
 
-fn answers(calls: &Arc<Mutex<Vec<Vec<Value>>>>) -> MockOptions {
+fn answers(calls: &Arc<Mutex<Vec<Vec<String>>>>) -> Overrides {
     let log = calls.clone();
-    MockOptions::default().resolver("AnswerEscalation", move |a, _, _| {
-        log.lock().push(a.to_vec());
-        Reply::value(json!({}))
+    Overrides::default().answer_escalation(move |_, (ws, choice, free_text, agent)| {
+        log.lock().push(vec![ws, choice, free_text, agent]);
+        Ok(Escalation::default())
     })
 }
 
@@ -1021,7 +1053,7 @@ fn me(s: &mut S, body: &str) -> bool {
 
 #[gpui::test]
 async fn opens_an_escalated_loop_into_loop_chat_with_an_inline_question(cx: &mut TestAppContext) {
-    let calls: Arc<Mutex<Vec<Vec<Value>>>> = Arc::default();
+    let calls: Arc<Mutex<Vec<Vec<String>>>> = Arc::default();
     let mut s = plain(cx, answers(&calls));
     s.open(ESCALATED);
     assert!(s.has("ask-kicker:Maestro needs a decision"));
@@ -1042,9 +1074,9 @@ async fn opens_an_escalated_loop_into_loop_chat_with_an_inline_question(cx: &mut
 
 #[gpui::test]
 async fn plan_approval_notes_option_waits_for_the_text_box(cx: &mut TestAppContext) {
-    let calls: Arc<Mutex<Vec<Vec<Value>>>> = Arc::default();
-    let opts = answers(&calls).resolver("GetEscalation", |_, _, _| {
-        Reply::value(json!({
+    let calls: Arc<Mutex<Vec<Vec<String>>>> = Arc::default();
+    let opts = answers(&calls).get_escalation(|_, _| {
+        Ok(de(json!({
             "id": "esc-plan", "workspaceId": ESCALATED, "status": "open",
             "question": "Review the plan before I start coding.",
             "context": "1. Create go.mod\n2. Add the game loop",
@@ -1052,7 +1084,7 @@ async fn plan_approval_notes_option_waits_for_the_text_box(cx: &mut TestAppConte
                 {"text": "Approve and proceed", "tag": "recommended", "desc": "Start coding to this plan as written."},
                 {"text": "Proceed with my notes", "tag": "notes", "desc": "Add guidance in the text box — I fold it into the plan and start."}
             ]
-        }))
+        })))
     });
     let mut s = plain(cx, opts);
     s.open(ESCALATED);
@@ -1083,7 +1115,7 @@ async fn plan_approval_notes_option_waits_for_the_text_box(cx: &mut TestAppConte
 
 #[gpui::test]
 async fn opens_a_working_loop_into_the_unified_workspace_view(cx: &mut TestAppContext) {
-    let mut s = plain(cx, MockOptions::default());
+    let mut s = plain(cx, Overrides::default());
     s.open(ACTIVE);
     assert!(s.has("v-detail") && s.has("obs-left"));
     assert!(

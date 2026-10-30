@@ -5,8 +5,8 @@
 //! Work happens in device pixels relative to the cell's top-left; the table lives in
 //! [`crate::custom_glyph_data`].
 
-use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::sync::Arc;
 
 use gpui_kit::{
@@ -52,6 +52,11 @@ fn lookup(cp: u32) -> Option<&'static [P]> {
         .binary_search_by_key(&cp, |(c, _)| *c)
         .ok()
         .map(|i| GLYPHS[i].1)
+}
+
+/// Whether `cp` has a custom definition.
+pub(crate) fn has(cp: u32) -> bool {
+    lookup(cp).is_some()
 }
 
 /// Shades use a 2-phase variant so patterns tile seamlessly across odd cell sizes.
@@ -402,32 +407,211 @@ fn svg_path(ins: &[I], xp: f32, yp: f32, map: impl Fn(f32, usize) -> f32, full: 
     b
 }
 
-/// Paints `cp` into the cell at `origin` as GPUI primitives. Returns false when `cp` has no
-/// custom definition.
+/// Paints `cp` into the cell at `origin`. Returns false when `cp` has no custom definition.
+/// Shades paint as GPUI primitives (their pixels follow the cell's position); every other glyph
+/// is rasterized once per cell size and colour and painted as an image, since GPUI tessellates
+/// and rasterizes a path again on every frame.
 pub(crate) fn paint(
     window: &mut Window,
+    images: &mut GlyphImages,
     cp: u32,
     origin: Point<Pixels>,
     _width: usize,
     m: &CellMetrics,
     color: Hsla,
 ) -> bool {
+    if !has(cp) {
+        return false;
+    }
     let d = Dims::from(m);
-    let variant = pattern_variant(cp, f32::from(origin.x) * m.dpr, f32::from(origin.y) * m.dpr);
-    draw(
-        &mut Gpui {
-            window,
-            origin,
-            dpr: m.dpr,
-            color,
-            polygon: None,
-        },
-        cp,
-        0.0,
-        0.0,
-        &d,
-        variant,
-    )
+    if is_pattern(cp) {
+        let variant = pattern_variant(cp, f32::from(origin.x) * m.dpr, f32::from(origin.y) * m.dpr);
+        return draw(
+            &mut Gpui {
+                window,
+                origin,
+                dpr: m.dpr,
+                color,
+                polygon: None,
+                patterns: &mut images.patterns,
+            },
+            cp,
+            0.0,
+            0.0,
+            &d,
+            variant,
+        );
+    }
+    // Strokes on the cell's edges reach half their width past it.
+    let pad = (2.0 * m.dpr).ceil();
+    let w = (d.cell_w.ceil() + 2.0 * pad) as u32;
+    let h = (d.cell_h.ceil() + 2.0 * pad) as u32;
+    let rgba = gpui_kit::Rgba::from(color);
+    let c = [rgba.r, rgba.g, rgba.b, rgba.a].map(|v| (v * 255.0).round() as u8);
+    let dims = [d.cell_w, d.cell_h, d.char_w, d.char_h, d.font_size, d.dpr].map(f32::to_bits);
+    let image = images
+        .rasters
+        .entry((cp, dims, u32::from_be_bytes(c)))
+        .or_insert_with(|| raster(cp, &d, pad, (w, h), c))
+        .clone();
+    if let Some(image) = image {
+        let dev = |v: f32| px(v / m.dpr);
+        let bounds = Bounds::new(
+            point(origin.x - dev(pad), origin.y - dev(pad)),
+            size(dev(w as f32), dev(h as f32)),
+        );
+        let _ = window.paint_image(bounds, bounds, Corners::default(), image, 0, false);
+    }
+    true
+}
+
+/// Images a terminal keeps before it starts over: a glyph in each colour and cell size it drew.
+/// Truecolor output (gradients, animated graphs) is what fills it.
+const IMAGES_MAX: usize = 1024;
+
+/// Codepoint, cell geometry bits, colour.
+type RasterKey = (u32, [u32; 6], u32);
+
+/// One terminal's custom glyph images: rasters by glyph, cell geometry and colour, and shade
+/// patterns. GPUI's sprite atlas keeps an image until it is dropped, and a cached view replays
+/// the sprites it last painted, so each terminal returns only its own: when it passes
+/// [`IMAGES_MAX`] at the start of a paint (which replaces everything it drew) and when it closes.
+#[derive(Default)]
+pub(crate) struct GlyphImages {
+    rasters: HashMap<RasterKey, Option<Arc<RenderImage>>>,
+    patterns: HashMap<PatternKey, Arc<RenderImage>>,
+}
+
+impl GlyphImages {
+    /// Starts over past [`IMAGES_MAX`], returning the images to the atlas. Call before painting.
+    pub(crate) fn trim(&mut self, window: &mut Window) {
+        if self.rasters.len() + self.patterns.len() < IMAGES_MAX {
+            return;
+        }
+        for image in self.drain() {
+            crate::element::count_work(|w| w.dropped += 1);
+            let _ = window.drop_image(image);
+        }
+    }
+
+    pub(crate) fn drain(&mut self) -> Vec<Arc<RenderImage>> {
+        let rasters = self.rasters.drain().filter_map(|(_, v)| v);
+        rasters
+            .chain(self.patterns.drain().map(|(_, v)| v))
+            .collect()
+    }
+}
+
+/// `cp` drawn at `pad` device pixels into a `w`×`h` canvas, in colour `c`.
+fn raster(cp: u32, d: &Dims, pad: f32, (w, h): (u32, u32), c: [u8; 4]) -> Option<Arc<RenderImage>> {
+    crate::element::count_work(|w| w.rasterized += 1);
+    let mut svg = Svg::default();
+    draw(&mut svg, cp, pad, pad, d, 0);
+    let markup = format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">{}</svg>"#,
+        svg.body
+    );
+    let mut pixels =
+        recur_ui::icon::rasterize(&markup, (w, h), (0., 0.), (w as f32, h as f32), 0.)?;
+    // Drawn in black: the alpha is the coverage, painted in the exact colour (BGRA).
+    for p in pixels.chunks_exact_mut(4) {
+        let cov = u32::from(p[3]);
+        p[0] = c[2];
+        p[1] = c[1];
+        p[2] = c[0];
+        p[3] = ((cov * u32::from(c[3]) + 127) / 255) as u8;
+    }
+    let img = image::RgbaImage::from_raw(w, h, pixels)?;
+    Some(Arc::new(RenderImage::new(vec![image::Frame::new(img)])))
+}
+
+/// The canvas as SVG markup in device pixels, filled and stroked in black.
+#[derive(Default)]
+struct Svg {
+    body: String,
+    clips: usize,
+}
+
+impl Canvas for Svg {
+    fn fill_rect(&mut self, x: f32, y: f32, w: f32, h: f32) {
+        let (x, w) = if w < 0.0 { (x + w, -w) } else { (x, w) };
+        let (y, h) = if h < 0.0 { (y + h, -h) } else { (y, h) };
+        let _ = write!(
+            self.body,
+            r#"<rect x="{x}" y="{y}" width="{w}" height="{h}"/>"#
+        );
+    }
+
+    fn draw_path(&mut self, path: &[Seg], stroke: Option<f32>) {
+        let mut d = String::new();
+        for seg in path {
+            let _ = match *seg {
+                Seg::Move(x, y) => write!(d, "M{x} {y}"),
+                Seg::Line(x, y) => write!(d, "L{x} {y}"),
+                Seg::Quad(cx, cy, x, y) => write!(d, "Q{cx} {cy} {x} {y}"),
+                Seg::Cubic(c1x, c1y, c2x, c2y, x, y) => {
+                    write!(d, "C{c1x} {c1y} {c2x} {c2y} {x} {y}")
+                }
+                Seg::Arc { rx, ry, x, y, .. } if rx == 0.0 || ry == 0.0 => write!(d, "L{x} {y}"),
+                Seg::Arc {
+                    rx,
+                    ry,
+                    phi,
+                    large,
+                    sweep,
+                    x,
+                    y,
+                } => write!(
+                    d,
+                    "A{} {} {phi} {} {} {x} {y}",
+                    rx.abs(),
+                    ry.abs(),
+                    u8::from(large),
+                    u8::from(sweep)
+                ),
+                Seg::Circle(cx, cy, r) => write!(
+                    d,
+                    "M{} {cy}A{r} {r} 0 0 1 {} {cy}A{r} {r} 0 0 1 {} {cy}Z",
+                    cx + r,
+                    cx - r,
+                    cx + r
+                ),
+                Seg::Close => write!(d, "Z"),
+            };
+        }
+        let _ = match stroke {
+            Some(sw) => write!(
+                self.body,
+                r##"<path d="{d}" fill="none" stroke="#000" stroke-width="{sw}"/>"##
+            ),
+            None => write!(self.body, r#"<path d="{d}"/>"#),
+        };
+    }
+
+    fn clipped(&mut self, clip: Clip<'_>, f: &mut dyn FnMut(&mut dyn Canvas)) {
+        let id = self.clips;
+        self.clips += 1;
+        let _ = match clip {
+            Clip::Rect(x, y, w, h) => write!(
+                self.body,
+                r#"<clipPath id="c{id}"><rect x="{x}" y="{y}" width="{w}" height="{h}"/></clipPath>"#
+            ),
+            Clip::Polygon(poly) => {
+                let points: Vec<String> = poly.iter().map(|(x, y)| format!("{x},{y}")).collect();
+                write!(
+                    self.body,
+                    r#"<clipPath id="c{id}"><polygon points="{}"/></clipPath>"#,
+                    points.join(" ")
+                )
+            }
+        };
+        let _ = write!(self.body, r#"<g clip-path="url(#c{id})">"#);
+        f(self);
+        self.body.push_str("</g>");
+    }
+
+    /// Shades never reach here: they paint through [`Gpui`].
+    fn pattern(&mut self, _: (u32, usize), _: &[&[f32]], _: f32, _: f32, _: f32, _: f32, _: u8) {}
 }
 
 /// The canvas as GPUI quads, paths and images, relative to a cell origin. GPUI clips to
@@ -438,6 +622,7 @@ struct Gpui<'a> {
     dpr: f32,
     color: Hsla,
     polygon: Option<Vec<(f32, f32)>>,
+    patterns: &'a mut HashMap<PatternKey, Arc<RenderImage>>,
 }
 
 impl Gpui<'_> {
@@ -508,6 +693,7 @@ impl Canvas for Gpui<'_> {
             None => b.with_style(PathStyle::Fill(FillOptions::non_zero())),
         };
         if let Ok(path) = b.build() {
+            crate::element::count_work(|w| w.paths += 1);
             self.window.paint_path(path, self.color);
         }
     }
@@ -518,6 +704,7 @@ impl Canvas for Gpui<'_> {
                 let bounds = self.bounds(x, y, w, h);
                 let (origin, dpr, color) = (self.origin, self.dpr, self.color);
                 let polygon = self.polygon.clone();
+                let patterns = &mut *self.patterns;
                 self.window
                     .with_content_mask(Some(ContentMask { bounds }), |window| {
                         f(&mut Gpui {
@@ -526,6 +713,7 @@ impl Canvas for Gpui<'_> {
                             dpr,
                             color,
                             polygon,
+                            patterns,
                         })
                     });
             }
@@ -556,42 +744,40 @@ impl Canvas for Gpui<'_> {
             (rgba.a * 255.0).round() as u8,
         ]);
         let polygon = self.polygon.as_deref();
-        let image = PATTERNS.with(|cache| {
-            cache
-                .borrow_mut()
-                .entry((key.0, key.1, iw, ih, variant, color))
-                .or_insert_with(|| {
-                    let (dx, dy) = (u32::from((variant >> 1) & 1), u32::from(variant & 1));
-                    let (pw, ph) = (rows[0].len() as u32, rows.len() as u32);
-                    let mut img = image::RgbaImage::new(iw, ih);
-                    for py in 0..ih {
-                        for pxl in 0..iw {
-                            let on = rows[((py + dy) % ph) as usize][((pxl + dx) % pw) as usize];
-                            let inside = polygon.is_none_or(|poly| {
-                                point_in_polygon(poly, x + pxl as f32 + 0.5, y + py as f32 + 0.5)
-                            });
-                            let a = if inside {
-                                (on * rgba.a * 255.0).round() as u8
-                            } else {
-                                0
-                            };
-                            // RenderImage frames are BGRA.
-                            img.put_pixel(
-                                pxl,
-                                py,
-                                image::Rgba([
-                                    (rgba.b * 255.0).round() as u8,
-                                    (rgba.g * 255.0).round() as u8,
-                                    (rgba.r * 255.0).round() as u8,
-                                    a,
-                                ]),
-                            );
-                        }
+        let image = self
+            .patterns
+            .entry((key.0, key.1, iw, ih, variant, color))
+            .or_insert_with(|| {
+                let (dx, dy) = (u32::from((variant >> 1) & 1), u32::from(variant & 1));
+                let (pw, ph) = (rows[0].len() as u32, rows.len() as u32);
+                let mut img = image::RgbaImage::new(iw, ih);
+                for py in 0..ih {
+                    for pxl in 0..iw {
+                        let on = rows[((py + dy) % ph) as usize][((pxl + dx) % pw) as usize];
+                        let inside = polygon.is_none_or(|poly| {
+                            point_in_polygon(poly, x + pxl as f32 + 0.5, y + py as f32 + 0.5)
+                        });
+                        let a = if inside {
+                            (on * rgba.a * 255.0).round() as u8
+                        } else {
+                            0
+                        };
+                        // RenderImage frames are BGRA.
+                        img.put_pixel(
+                            pxl,
+                            py,
+                            image::Rgba([
+                                (rgba.b * 255.0).round() as u8,
+                                (rgba.g * 255.0).round() as u8,
+                                (rgba.r * 255.0).round() as u8,
+                                a,
+                            ]),
+                        );
                     }
-                    Arc::new(RenderImage::new(vec![image::Frame::new(img)]))
-                })
-                .clone()
-        });
+                }
+                Arc::new(RenderImage::new(vec![image::Frame::new(img)]))
+            })
+            .clone();
         let bounds = self.bounds(x, y, w, h);
         let _ = self
             .window
@@ -601,10 +787,6 @@ impl Canvas for Gpui<'_> {
 
 /// Codepoint, part, cell width, cell height, variant, colour.
 type PatternKey = (u32, usize, u32, u32, u8, u32);
-
-thread_local! {
-    static PATTERNS: RefCell<HashMap<PatternKey, Arc<RenderImage>>> = RefCell::new(HashMap::new());
-}
 
 fn point_in_polygon(poly: &[(f32, f32)], x: f32, y: f32) -> bool {
     let mut inside = false;

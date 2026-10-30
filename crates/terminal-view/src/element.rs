@@ -16,6 +16,35 @@ use crate::font::{CellMetrics, mono_font_stack};
 use crate::view::{GridLayout, TerminalView};
 use recur_ui::guard;
 
+/// What painting the grid cost since the last [`take_paint_work`]: grid paints, text shaping
+/// calls, paths GPUI tessellated, custom glyphs rasterized into images, and glyph images
+/// returned to the atlas.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PaintWork {
+    pub paints: usize,
+    pub shaped: usize,
+    pub paths: usize,
+    pub rasterized: usize,
+    pub dropped: usize,
+}
+
+thread_local! {
+    static WORK: std::cell::Cell<PaintWork> = std::cell::Cell::default();
+}
+
+pub(crate) fn count_work(f: impl FnOnce(&mut PaintWork)) {
+    WORK.with(|w| {
+        let mut v = w.get();
+        f(&mut v);
+        w.set(v);
+    });
+}
+
+/// The paint work counted since the last call (the `frame_cost` style checks read it).
+pub fn take_paint_work() -> PaintWork {
+    WORK.with(|w| w.take())
+}
+
 pub(crate) struct TerminalElement {
     view: Entity<TerminalView>,
 }
@@ -218,6 +247,7 @@ impl Element for TerminalElement {
         let alt_held = window.modifiers().alt;
         let column_select = view.focused && view.should_column_select(alt_held);
         let focus = view.focus.clone();
+        let images = view.glyph_images.clone();
 
         window.with_content_mask(Some(ContentMask { bounds }), |window| {
             // `.xterm` / viewport background: the theme background across the content width.
@@ -228,19 +258,37 @@ impl Element for TerminalElement {
                 ),
                 gpui_color(p.frame.background),
             ));
-            for r in &p.frame.rects {
-                let o = cell(r.col, r.row);
-                window.paint_quad(fill(
-                    Bounds::new(
-                        o,
-                        size(dev(r.len as f32 * m.cell_width), dev(m.cell_height)),
-                    ),
-                    gpui_color(r.color),
-                ));
-            }
-            for g in &p.frame.glyphs {
-                paint_glyph(window, g, cell(g.col, g.row), &m, &p.fonts);
-            }
+            // One layer for the grid: its hundreds of primitives share one draw order.
+            count_work(|w| w.paints += 1);
+            let mut images = images.borrow_mut();
+            images.trim(window);
+            window.paint_layer(bounds, |window| {
+                for r in &p.frame.rects {
+                    let o = cell(r.col, r.row);
+                    window.paint_quad(fill(
+                        Bounds::new(
+                            o,
+                            size(dev(r.len as f32 * m.cell_width), dev(m.cell_height)),
+                        ),
+                        gpui_color(r.color),
+                    ));
+                }
+                paint_text(window, &p.frame.glyphs, &cell, &m, &p.fonts);
+                for g in &p.frame.glyphs {
+                    let origin = cell(g.col, g.row);
+                    let color = gpui_color(g.fg);
+                    custom_glyphs::paint(
+                        window,
+                        &mut images,
+                        g.codepoint,
+                        origin,
+                        g.width,
+                        &m,
+                        color,
+                    );
+                    paint_decorations(window, g, origin, &m);
+                }
+            });
             if let Some(link) = &link {
                 let (x1, y1) = (
                     link.start.column.0 as i64,
@@ -393,22 +441,46 @@ impl Element for TerminalElement {
     }
 }
 
-fn paint_glyph(
+/// The grid's text, shaped once per run of adjacent cells in one row and style, each glyph
+/// placed from its own cell so the grid stays exact whatever the font's advances.
+fn paint_text(
     window: &mut Window,
-    g: &Glyph,
-    origin: Point<Pixels>,
+    glyphs: &[Glyph],
+    cell: &dyn Fn(usize, usize) -> Point<Pixels>,
     m: &CellMetrics,
     fonts: &Fonts,
 ) {
-    let dpr = m.dpr;
-    let dev = |v: f32| px(v / dpr);
-    let color = gpui_color(g.fg);
-    if !custom_glyphs::paint(window, g.codepoint, origin, g.width, m, color) && g.text != " " {
-        let font = fonts.variant(g.bold, g.italic);
-        let text: SharedString = g.text.clone().into();
+    let is_text = |g: &Glyph| !g.text.is_empty() && !custom_glyphs::has(g.codepoint);
+    let mut i = 0;
+    while i < glyphs.len() {
+        let g = &glyphs[i];
+        if !is_text(g) {
+            i += 1;
+            continue;
+        }
+        let mut text = String::new();
+        // (byte offset in `text`, column) of each cell.
+        let mut cells: Vec<(usize, usize)> = Vec::new();
+        let mut next_col = g.col;
+        while let Some(n) = glyphs.get(i)
+            && is_text(n)
+            && n.row == g.row
+            && n.col == next_col
+            && (n.bold, n.italic, n.fg) == (g.bold, g.italic, g.fg)
+        {
+            cells.push((text.len(), n.col));
+            text.push_str(&n.text);
+            next_col = n.col + n.width.max(1);
+            i += 1;
+        }
+        if text.trim().is_empty() {
+            continue;
+        }
+        count_work(|w| w.shaped += 1);
+        let color = gpui_color(g.fg);
         let run = TextRun {
             len: text.len(),
-            font,
+            font: fonts.variant(g.bold, g.italic),
             color,
             background_color: None,
             underline: None,
@@ -416,11 +488,19 @@ fn paint_glyph(
         };
         let shaped = window
             .text_system()
-            .shape_line(text, fonts.size, &[run], None);
-        let baseline = origin.y + dev(m.baseline());
+            .shape_line(text.into(), fonts.size, &[run], None);
+        let baseline = cell(0, g.row).y + px(m.baseline() / m.dpr);
+        let (mut at, mut start_x) = (usize::MAX, px(0.));
         for r in shaped.runs.iter() {
             for glyph in &r.glyphs {
-                let o = point(origin.x + glyph.position.x, baseline);
+                let k = cells.partition_point(|(b, _)| *b <= glyph.index).max(1) - 1;
+                if k != at {
+                    (at, start_x) = (k, glyph.position.x);
+                }
+                let o = point(
+                    cell(cells[k].1, g.row).x + glyph.position.x - start_x,
+                    baseline,
+                );
                 let _ = if glyph.is_emoji {
                     window.paint_emoji(o, r.font_id, glyph.id, fonts.size)
                 } else {
@@ -429,6 +509,13 @@ fn paint_glyph(
             }
         }
     }
+}
+
+/// A cell's underline, overline and strikethrough.
+fn paint_decorations(window: &mut Window, g: &Glyph, origin: Point<Pixels>, m: &CellMetrics) {
+    let dpr = m.dpr;
+    let dev = |v: f32| px(v / dpr);
+    let color = gpui_color(g.fg);
     let box_top = origin.y + dev(m.char_top);
     let width = g.width as f32 * m.cell_width;
     if let Some(u) = g.underline {

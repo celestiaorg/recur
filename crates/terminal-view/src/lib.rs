@@ -15,7 +15,7 @@ mod theme;
 mod view;
 
 pub use backend::TerminalBackend;
-pub use element::gpui_color;
+pub use element::{PaintWork, gpui_color, take_paint_work};
 pub use find_bar::{FindBarEvent, TerminalFindBar};
 pub use font::*;
 pub use park::{Park, TERM_PARK_ENTRY_BYTES, TERM_PARK_MAX_BYTES};

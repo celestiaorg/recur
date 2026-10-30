@@ -809,3 +809,60 @@ fn replay_lands_on_the_fitted_grid(cx: &mut TestAppContext) {
     let row = text.iter().find(|r| r.ends_with('X')).unwrap();
     assert_eq!(row.chars().count(), cols);
 }
+
+/// Streaming output into a full screen of text and box drawing (a `docker build` table) costs
+/// one shaping call per styled run of a row, never one per cell, and no paths: box drawing
+/// rasterizes once per glyph and colour and paints as an image after that.
+#[gpui::test]
+fn streaming_output_shapes_rows_not_cells_and_reuses_box_drawing(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let (cols, rows) = h.view.read_with(h.cx, |v, _| v.size());
+    let line = |i: usize| {
+        // Box drawing, a rounded corner, a powerline arrow, braille dots, blocks and a shade.
+        let mut s = format!("\u{2502} step {i:03} \u{256D}\u{E0B0} ");
+        while s.chars().count() < cols - 1 {
+            s.push_str("\u{28FF}\u{2588}\u{2591}");
+        }
+        s.chars().take(cols - 1).collect::<String>()
+    };
+    let screen: String = (0..rows).map(|i| line(i) + "\r\n").collect();
+    h.output(&screen);
+    recur_terminal_view::take_paint_work();
+    for i in 0..3 {
+        h.output(&(line(rows + i) + "\r\n"));
+    }
+    let work = recur_terminal_view::take_paint_work();
+    // Two text runs a row (" step NNN " and the space before the bar); a cell each would be
+    // over a hundred.
+    assert!(work.paints > 0, "{work:?}");
+    assert!(
+        work.shaped <= work.paints * rows * 2,
+        "{work:?} for a {cols}x{rows} grid"
+    );
+    assert_eq!(work.paths, 0, "{work:?}");
+    assert_eq!(work.rasterized, 0, "{work:?}");
+}
+
+/// Truecolor box drawing in ever-new colours (a gradient graph) cannot grow the sprite atlas
+/// without bound: past its cap the terminal returns its glyph images before it paints.
+#[gpui::test]
+fn truecolor_glyphs_past_the_cap_leave_the_atlas(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let cols = h.view.read_with(h.cx, |v, _| v.size().0);
+    recur_terminal_view::take_paint_work();
+    let mut n = 0u32;
+    for _ in 0..8 {
+        let line: String = (0..cols - 1)
+            .map(|_| {
+                n += 1;
+                format!("\x1b[38;2;{};{};{}m\u{2502}", n % 256, (n / 256) % 256, 128)
+            })
+            .collect();
+        h.output(&(line + "\x1b[0m\r\n"));
+    }
+    let work = recur_terminal_view::take_paint_work();
+    assert!(work.rasterized > 1024, "{work:?}");
+    assert!(work.dropped > 0, "{work:?}");
+}

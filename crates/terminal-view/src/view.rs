@@ -5,7 +5,9 @@
 //! 32KB batches once parsed, which is what releases the session's flow control.
 
 use recur_ui::guard::Guarded;
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -317,6 +319,7 @@ pub struct TerminalView {
     pub(crate) mouse_position: Option<Point<Pixels>>,
     pub(crate) composition: Option<Composition>,
     is_mac: bool,
+    pub(crate) glyph_images: Rc<RefCell<crate::custom_glyphs::GlyphImages>>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -341,6 +344,12 @@ impl TerminalView {
             cx.on_blur(&focus, window, |v, window, cx| v.sync_focus(window, cx)),
             cx.observe_window_activation(window, |v, window, cx| v.sync_focus(window, cx)),
             cx.observe_global::<recur_ui::Theme>(|v, cx| v.push_theme(cx)),
+            // A closed terminal's glyph images leave the sprite atlas with it.
+            cx.on_release(|v: &mut Self, cx| {
+                for image in v.glyph_images.borrow_mut().drain() {
+                    cx.drop_image(image, None);
+                }
+            }),
         ];
         let (tx, mut rx) = mpsc::unbounded::<Vec<u8>>();
         let (write_backend, write_id) = (backend.clone(), opts.session_id.clone());
@@ -397,6 +406,7 @@ impl TerminalView {
             mouse_position: None,
             composition: None,
             is_mac: cfg!(target_os = "macos"),
+            glyph_images: Rc::default(),
             _subscriptions: subscriptions,
         };
         view.push_theme(cx);

@@ -16,8 +16,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Full debuginfo for every crate fills the Linux runner's disk.
+# The Linux runner's disk is tight. mbx's shared store and incremental state
+# would duplicate target/ on a one-shot runner, and full debuginfo bloats it.
 env:
+  MBX_DISABLE: "1"
+  CARGO_INCREMENTAL: "0"
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
 jobs:
@@ -55,6 +58,8 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
+      # SDKs the image ships that Recur never uses; about 20 GB.
+      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL && df -h /
       - run: >-
           sudo apt-get update && sudo apt-get install -y
           libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev

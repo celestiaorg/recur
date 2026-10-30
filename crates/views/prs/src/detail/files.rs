@@ -309,17 +309,11 @@ impl PrDetail {
             .h_full()
             .min_w_0()
             .px(px(8.))
-            .border_r_1()
-            .border_color(hsla(if open {
-                t.line
-            } else {
-                recur_ui::color::TRANSPARENT
-            }))
             .child(toggle);
         if open {
             let mode = self.file_list_mode;
             cluster = cluster.child(
-                div().ml_auto().child(seg(
+                div().ml(px(6.)).child(seg(
                     [
                         titled(
                             "pr-fl-flat-t",

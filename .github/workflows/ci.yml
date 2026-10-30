@@ -78,10 +78,18 @@ jobs:
           go-version: stable
           cache: false
       - uses: jdx/mise-action@v5
+      # Cargo judges path deps by mtime and checkout makes every file new, so a
+      # restored target rebuilt vendor/gpui-pre and everything above it. Pinned
+      # mtimes keep vendor/ fresh; its hash in the generation starts a new
+      # cache whenever it changes.
+      - run: git ls-files -z vendor | xargs -0 touch -d 2000-01-01
       - uses: jdx/mr-boxington-action@v1
         with:
+          cache-generation: v1-${{ hashFiles('vendor/**') }}
           save-on-pull-request: true
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+        env:
+          CARGO_LOG: cargo::core::compiler::fingerprint=info
       - run: xvfb-run -a cargo nextest run --workspace --all-features --locked
         env:
           WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: "1"
@@ -89,6 +97,8 @@ jobs:
       # The shipped bundles behave the same on both platforms; check them once.
       - run: mise run lint:bundles
       - run: mise run test:bundles
+      - if: always()
+        run: df -h / && du -sh target/debug/* ~/.cache/* 2>/dev/null | sort -h | tail -15
 
   # Ad-hoc signed arm64 Recur.app in a DMG, plus the updater zip.
   package-mac:

@@ -10,7 +10,7 @@ Options considered: a native child window (X11 only, and overlays end up under i
 
 ## What exists
 
-- `build/linux/wpe.Dockerfile`: WPE 2.54.2 built from source (WPEPlatform only, headless) into `/opt/recur/wpe`. Debian 13 has only 2.48 without WPEPlatform; sid's 2.54 needs a newer glibc.
+- `build/linux/wpe.Dockerfile`: WPE 2.54.2 built from source (WPEPlatform only, headless) into `/opt/recur/wpe`. Ubuntu 24.04 ships no WPE WebKit.
 - `crates/content/src/wpe/platform.c`: the custom platform (about 400 lines of C). It reports no GPU device, so frames arrive as SHM and go through the existing `RenderImage` path.
 - `crates/content/build.rs`: compiles the shim only when `pkg-config` finds WPE 2.54 and sets `cfg(recur_wpe)`. `html_wpe.rs` loads it with `RTLD_DEEPBIND` because WebKitGTK in the same process exports the same symbols.
 - `RECUR_HTML_WPE=1` picks the WPE page in `html.rs` (`LinuxPage`). The default stays WebKitGTK.

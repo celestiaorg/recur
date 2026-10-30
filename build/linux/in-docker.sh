@@ -3,7 +3,8 @@
 # or directly when already on Linux. ARCH (amd64 / arm64, default the host's)
 # picks the image platform; on a Mac anything but the host arch runs emulated.
 # The cargo registry and target dir live in Docker volumes, so target on
-# the Mac is never touched except for what the command copies there.
+# the Mac is never touched except for what the command copies there. The target
+# volume is per distro: cargo does not rebuild when only the system libraries change.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -14,9 +15,9 @@ if [ "$(uname -s)" = Linux ]; then
   cd "$ROOT" && exec "$@"
 fi
 docker info >/dev/null 2>&1 || { echo "Docker (or OrbStack) is required to build for Linux" >&2; exit 1; }
-# One job per 2 GB of VM memory: test binaries link in parallel and each ld
-# holds a few GB, which a Docker VM with a core per GB runs out of.
-JOBS=$(( $(docker info --format '{{.MemTotal}}') / 2147483648 ))
+# One job per 4 GB of VM memory: test binaries link in parallel and each ld
+# holds a few GB (Ubuntu 24.04's more than Debian 13's: 7 jobs on 16 GB ran out).
+JOBS=$(( $(docker info --format '{{.MemTotal}}') / 4000000000 ))
 IMAGE="recur-linux-build:$ARCH"
 docker build -q --platform "linux/$ARCH" -t "$IMAGE" -f "$ROOT/build/linux/Dockerfile" "$ROOT/build/linux" >/dev/null
 # WPE=1: the image plus WPE WebKit 2.54 (wpe.Dockerfile, the HTML preview spike).
@@ -31,6 +32,6 @@ REAL_TARGET=
 exec docker run --rm --init --platform "linux/$ARCH" \
   -v "$ROOT:/app" ${REAL_TARGET:+-v "$REAL_TARGET:$REAL_TARGET"} \
   -v "recur-linux-cargo-$ARCH:/usr/local/cargo/registry" \
-  -v "recur-linux-target-$ARCH:/target" \
+  -v "recur-linux-target-ubuntu24.04-$ARCH:/target" \
   -e CARGO_TARGET_DIR=/target -e CARGO_BUILD_JOBS="$JOBS" -e ARCH -e VERSION -e RECUR_UPDATE_URL -e WPE_NETWORK \
   "$IMAGE" "$@"

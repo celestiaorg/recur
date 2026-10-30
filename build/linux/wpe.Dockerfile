@@ -1,16 +1,17 @@
 # WPE WebKit 2.54 with only the WPEPlatform API (no libwpe backends, no DRM/Wayland
-# platforms) for the HTML preview spike (`recur-content`'s `html_wpe`). Debian 13 ships
-# 2.48 (libwpe API only), so it is built from source into the prefix the .deb would use:
+# platforms) for the HTML preview spike (`recur-content`'s `html_wpe`). Ubuntu 24.04 ships
+# no WPE WebKit, so it is built from source into the prefix the .deb would use:
 # WebKit compiles in the path of its helper processes.
 #
 #   docker build --platform linux/$ARCH --build-arg ARCH=$ARCH -f wpe.Dockerfile \
 #     -t recur-linux-wpe:$ARCH build/linux
 #
-# The second stage is the regular build image (build/linux/Dockerfile) plus the prefix.
+# The second stage is the regular build image (build/linux/Dockerfile) plus the prefix, so the
+# first builds on the same Ubuntu.
 ARG ARCH=arm64
-FROM debian:trixie AS wpe
+FROM ubuntu:24.04 AS wpe
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates curl xz-utils build-essential cmake ninja-build pkg-config \
     gperf ruby unifdef python3 perl \
     libglib2.0-dev libharfbuzz-dev libicu-dev libjpeg-dev libepoxy-dev libgcrypt20-dev \

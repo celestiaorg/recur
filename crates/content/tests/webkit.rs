@@ -44,7 +44,9 @@ mod mac {
     use objc2::rc::Retained;
     use objc2::runtime::{AnyObject, NSObjectProtocol as _};
     use objc2::{ClassType as _, MainThreadMarker, msg_send};
-    use objc2_app_kit::{NSApplication, NSEvent, NSEventModifierFlags, NSEventType, NSView};
+    use objc2_app_kit::{
+        NSApplication, NSEvent, NSEventModifierFlags, NSEventType, NSFloatingWindowLevel, NSView,
+    };
     use objc2_foundation::{NSPoint, NSString};
     use objc2_web_kit::WKWebView;
     use raw_window_handle::{HasWindowHandle as _, RawWindowHandle};
@@ -340,6 +342,11 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
         keys: &Rc<RefCell<Vec<String>>>,
         cx: &mut AsyncApp,
     ) -> Result<(), String> {
+        // An occluded window draws no frames (a local run under other windows): float it above
+        // them without activating the app.
+        let w = views(cx, window).gpui.window().ok_or("no NSWindow")?;
+        w.setLevel(NSFloatingWindowLevel);
+        w.orderFrontRegardless();
         let has = |k: &str| keys.borrow().iter().any(|s| s == k);
         until(cx, window, "the page to load", || has("loaded")).await?;
         frames(cx, window, 500).await;

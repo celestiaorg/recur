@@ -159,6 +159,7 @@ impl Observatory {
             .relative()
             .flex_none()
             .h(px(CHROME_H))
+            .pb(px(1.))
             .bg(hsla(t.pane))
             .child(tab_bar_rule(cx));
 
@@ -465,6 +466,7 @@ impl Observatory {
                 .track_focus(&self.tabs_focus)
                 .flex_1()
                 .min_w_0()
+                .mb(px(-1.))
                 .flex()
                 .items_stretch()
                 .child(strip),
@@ -532,22 +534,29 @@ impl Observatory {
         let mut head = side_head(tabbed, cx);
         if portal {
             let on = self.state.read(cx).pr_agent_dock_open;
-            head = head.child(titled(
-                "prd-chat-toggle-t",
-                "Hide left panel (⌥⌘B)",
-                pane_toggle("prd-chat-toggle", IconName::PanelLeft, on, None, cx)
-                    .track_focus(&self.pr_toggle_focus)
-                    .debug_selector(|| "button:Hide left panel".into())
-                    .on_mouse_down(
-                        gpui_kit::MouseButton::Left,
-                        cx.guarded_listener(|o, _, window, cx| {
-                            window.focus(&o.pr_toggle_focus, cx)
-                        }),
-                    )
-                    .on_click(
-                        cx.guarded_listener(|o, _, _, cx| o.set_pr_agent_dock_open(false, cx)),
-                    ),
-            ));
+            head = head.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .pl(px(8.))
+                    .pr(px(2.))
+                    .child(titled(
+                        "prd-chat-toggle-t",
+                        "Hide left panel (⌥⌘B)",
+                        pane_toggle("prd-chat-toggle", IconName::PanelLeft, on, None, cx)
+                            .track_focus(&self.pr_toggle_focus)
+                            .debug_selector(|| "button:Hide left panel".into())
+                            .on_mouse_down(
+                                gpui_kit::MouseButton::Left,
+                                cx.guarded_listener(|o, _, window, cx| {
+                                    window.focus(&o.pr_toggle_focus, cx)
+                                }),
+                            )
+                            .on_click(cx.guarded_listener(|o, _, _, cx| {
+                                o.set_pr_agent_dock_open(false, cx)
+                            })),
+                    )),
+            );
         }
         let slot = if agent_head {
             self.slots.left_head.clone()
@@ -558,13 +567,19 @@ impl Observatory {
         };
         if let Some(v) = slot {
             let layer = self.head_layer(v, cx);
-            head = head.child(div().flex_1().min_w_0().flex().items_stretch().child(
-                recur_ui::style::cached_view(
-                    &layer,
-                    gpui_kit::StyleRefinement::default().flex_1().min_w_0(),
-                    cx,
-                ),
-            ));
+            head = head.child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .mb(px(-1.))
+                    .flex()
+                    .items_stretch()
+                    .child(recur_ui::style::cached_view(
+                        &layer,
+                        gpui_kit::StyleRefinement::default().flex_1().min_w_0(),
+                        cx,
+                    )),
+            );
         } else {
             head = head.child(side_title(label, cx));
             head = head.children(self.render_head_extras(kind, cx));

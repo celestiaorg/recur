@@ -775,21 +775,28 @@ const MANY: [&str; 8] = [
     "theta.css",
 ];
 
+// Scrolled to the middle: both ends fade, and a divider parts the tabs from the actions.
 fn tabs_overflow(_: &mut Window, cx: &mut App) -> AnyElement {
-    let strip = MANY.iter().fold(
-        tab_strip("many", "Open files")
-            .chrome(true)
-            .active_key("theta.css"),
-        |s, f| {
-            s.tab(
-                *f,
-                tab_chip(*f, *f)
-                    .icon(ChipIcon::File((*f).into()))
-                    .active(*f == "theta.css")
-                    .on_close(|_, _, _| {}),
-            )
-        },
-    );
+    let strip = MANY
+        .iter()
+        .fold(
+            tab_strip("many", "Open files")
+                .chrome(true)
+                .active_key("delta.py")
+                .restore_scroll(200., 1),
+            |s, f| {
+                s.tab(
+                    *f,
+                    tab_chip(*f, *f)
+                        .icon(ChipIcon::File((*f).into()))
+                        .active(*f == "delta.py")
+                        .on_close(|_, _, _| {}),
+                )
+            },
+        )
+        .trailing(
+            tab_strip_action("add", false, false, cx).child(icon(IconName::Plus).size(px(15.))),
+        );
     body(cx)
         .size_full()
         .child(div().w(px(300.)).child(strip))

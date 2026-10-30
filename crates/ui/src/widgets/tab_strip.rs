@@ -164,8 +164,6 @@ struct State {
     user_pinned: bool,
     anim: Option<(f32, f32, Instant)>,
     last_write: Option<f32>,
-    /// The overlay thumb, shown by wheel scrolls.
-    scroller: crate::widgets::scrollbar::Overlay,
     /// What the last reveal saw: the active key, its chip's width and the chip count. The
     /// strip reveals on a key change, a chip resize or a chip list mutation, not every frame.
     revealed: Option<(SharedString, f32, usize)>,
@@ -188,7 +186,6 @@ impl Default for State {
             restore_left: 0.,
             user_pinned: false,
             anim: None,
-            scroller: Default::default(),
             revealed: None,
             revealed_at: (0., 0.),
             settled: false,
@@ -348,6 +345,8 @@ pub fn tab_strip_action(
 
 /// A tab bar's bottom line, drawn under the tabs so the selected one covers it and opens into
 /// the content below. Use it in place of a bottom border, before the strip in a `relative` bar.
+/// Give the bar `pb(1px)` so its other items center above the rule, and the element holding
+/// the tabs `mb(-1px)` so they reach down over it.
 pub fn tab_bar_rule(cx: &App) -> gpui_kit::Div {
     div()
         .absolute()
@@ -507,8 +506,9 @@ impl TabStrip {
             .size_full()
         };
 
-        let overflow = f32::from(scroll.max_offset().x) > 0.;
-        let mut strip = div()
+        let left = -f32::from(scroll.offset().x);
+        let max = f32::from(scroll.max_offset().x);
+        let strip = div()
             .id((self.id.clone(), "scroll"))
             .flex_1()
             .min_w(px(if self.chrome { 80. } else { 0. }))
@@ -520,29 +520,34 @@ impl TabStrip {
             .role(gpui_kit::accesskit::Role::TabList)
             .aria_label(self.label.clone())
             .children(chips);
-        {
-            let state = state.clone();
-            let moved = state.clone();
-            strip = strip
-                .on_scroll_wheel(move |_, window, cx| {
-                    let now = crate::motion::now(cx);
-                    state.update(cx, |s, _| s.scroller.scrolled(now));
-                    window.refresh();
-                })
-                .on_mouse_move(move |_, _, cx| {
-                    let now = crate::motion::now(cx);
-                    moved.update(cx, |s, _| s.scroller.pointer_moved(now));
-                });
-        }
-        // `scrollbar-width: thin` is a macOS overlay scroller in WebKit: no layout space, and
-        // only shown while the user scrolls.
-        let now = crate::motion::now(cx);
-        let scroller = state.read(cx).scroller;
-        if scroller.animating(now) {
-            window.request_animation_frame();
-        }
-        let opacity = scroller.opacity(now);
-        let thumb = (overflow && opacity > 0.).then(|| scrollbar(&scroll, t.line.fade(opacity)));
+        // Fades over the ends with more tabs scrolled out that way, above the bar's rule.
+        let fade = |at_left: bool| {
+            let (from, to) = if at_left { (1., 0.) } else { (0., 1.) };
+            div()
+                .absolute()
+                .top_0()
+                .bottom(px(1.))
+                .w(px(24.))
+                .when(at_left, |d| d.left_0())
+                .when(!at_left, |d| d.right_0())
+                .child(crate::style::gradient_fill(
+                    90.,
+                    (t.pane.with_alpha(from), 0.),
+                    (t.pane.with_alpha(to), 1.),
+                ))
+        };
+        let divider = |at_left: bool| {
+            div()
+                .absolute()
+                .top_0()
+                .bottom_0()
+                .w(px(1.))
+                .when(at_left, |d| d.left_0())
+                .when(!at_left, |d| d.right_0())
+                .bg(t.line_soft)
+        };
+        let cut_left = left > 0.5;
+        let cut_right = left < max - 0.5;
 
         let flush = self.flush;
         let mut root = div()
@@ -551,6 +556,9 @@ impl TabStrip {
             .flex()
             .items_stretch()
             .gap(px(6.))
+            // The content box ends above the rule, where the side groups center; only the tabs
+            // reach down over it.
+            .pb(px(1.))
             .when(!flush, |d| d.pr(px(4.)))
             .when(flush || self.grow, |d| d.flex_1())
             .min_w_0()
@@ -576,16 +584,21 @@ impl TabStrip {
         if !self.leading.is_empty() {
             root = root.child(side(self.leading));
         }
+        let (lead, trail) = (!self.leading.is_empty(), !self.trailing.is_empty());
         root = root.child(
             div()
                 .relative()
                 .flex_1()
                 .min_w_0()
+                .mb(px(-1.))
                 .flex()
                 .child(strip)
-                .children(thumb),
+                .when(cut_left, |d| d.child(fade(true)))
+                .when(cut_right, |d| d.child(fade(false)))
+                .when(lead, |d| d.child(divider(true)))
+                .when(trail && cut_right, |d| d.child(divider(false))),
         );
-        if !self.trailing.is_empty() {
+        if trail {
             root = root.child(side(self.trailing));
         }
         if let (Some(chip), Some(sz)) = (floating, press_size) {
@@ -619,32 +632,6 @@ impl RenderOnce for TabStrip {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         crate::guard::component(self, window, cx, Self::render_view)
     }
-}
-
-/// The thin horizontal scrollbar thumb (`scrollbar-color: var(--line)`, 4px, radius 2).
-fn scrollbar(scroll: &ScrollHandle, color: crate::color::Color) -> AnyElement {
-    let viewport = f32::from(scroll.bounds().size.width);
-    let max = f32::from(scroll.max_offset().x);
-    let content = viewport + max;
-    let left = -f32::from(scroll.offset().x);
-    if content <= 0. || viewport <= 0. {
-        return div().into_any_element();
-    }
-    let thumb_w = (viewport * viewport / content).max(16.);
-    let x = if max > 0. {
-        left / max * (viewport - thumb_w)
-    } else {
-        0.
-    };
-    div()
-        .absolute()
-        .left(px(x))
-        .bottom_0()
-        .w(px(thumb_w))
-        .h(px(4.))
-        .rounded(px(2.))
-        .bg(color)
-        .into_any_element()
 }
 
 /// Reveal the active chip (or apply a keep-alive restore), chasing it while layout settles.

@@ -190,10 +190,11 @@ pub struct ProbedModel {
 }
 
 /// [`catalog`] plus the models Claude Code reports for this account that
-/// the pinned list lacks (e.g. Mythos 5.1 on accounts with access). Aliases
-/// resolve to pinned ids, so they dedupe against existing rows.
+/// the pinned list lacks (e.g. Mythos 5.1 on accounts with access), listed
+/// first. Aliases resolve to pinned ids, so they dedupe against existing rows.
 pub fn with_probed(probed: &[ProbedModel]) -> Vec<ModelChoice> {
     let mut out = catalog();
+    let mut extra = 0;
     for p in probed {
         let id = match p.resolved_model.trim() {
             "" => p.value.trim(),
@@ -208,7 +209,11 @@ pub fn with_probed(probed: &[ProbedModel]) -> Vec<ModelChoice> {
             "" => id,
             l => l,
         };
-        out.push(row(id, label, false, context_window(id, &Flags::new())));
+        out.insert(
+            extra,
+            row(id, label, false, context_window(id, &Flags::new())),
+        );
+        extra += 1;
     }
     out
 }
@@ -247,8 +252,8 @@ mod tests {
     }
 
     /// Models Claude Code reports beyond the pinned list (Mythos on accounts
-    /// with access) join the picker; aliases, pinned ids and `[1m]` suffixes
-    /// do not duplicate rows.
+    /// with access) join the top of the picker; aliases, pinned ids and `[1m]`
+    /// suffixes do not duplicate rows.
     #[test]
     fn probed_models_add_account_only_models() {
         let p = |value: &str, resolved: &str, label: &str| ProbedModel {
@@ -265,11 +270,11 @@ mod tests {
             p("gpt-5", "", ""),
         ]);
         assert_eq!(models.len(), pinned + 1);
-        let last = models.last().unwrap();
-        assert_eq!(last.model_ref, "claude-code/claude-mythos-5-1");
-        assert_eq!(last.label, "Mythos 5.1");
-        assert_eq!(last.context_window, 1_000_000);
-        assert!(!last.flags.is_empty());
+        let first = &models[0];
+        assert_eq!(first.model_ref, "claude-code/claude-mythos-5-1");
+        assert_eq!(first.label, "Mythos 5.1");
+        assert_eq!(first.context_window, 1_000_000);
+        assert!(!first.flags.is_empty());
         assert_eq!(with_probed(&[]).len(), pinned);
     }
 

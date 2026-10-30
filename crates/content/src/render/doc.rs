@@ -3,7 +3,7 @@
 
 use markup5ever_rcdom::{Handle, NodeData};
 
-use crate::purify::dom::{self, HTML_NS, SVG_NS};
+use crate::dom::{self, HTML_NS, SVG_NS};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Node {

@@ -21,7 +21,7 @@ pub struct Heading {
     pub muted: bool,
 }
 
-/// Every value the cascade gives the elements marked emits.
+/// Every value the cascade gives the elements the markdown renderer emits.
 #[derive(Clone, Debug)]
 pub struct Sheet {
     pub class: MarkdownClass,

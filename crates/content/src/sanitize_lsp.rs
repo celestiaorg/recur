@@ -1,14 +1,14 @@
 //! Language-server hover and completion HTML, with fences tinted by
-//! `codehl` and DOMPurify (plus the app-wide hook) applied before display.
+//! `codehl` and the markdown sanitizer applied before display.
 
 use std::sync::OnceLock;
 
 use recur_textmate::highlight_html_code_blocks;
 
 use crate::js::Re;
-use crate::purify::{self, Config, Hook};
+use crate::markdown::sanitize_markdown;
 
-/// `stripDangerousHtml`: belt-and-braces regex pass after DOMPurify.
+/// `stripDangerousHtml`: belt-and-braces regex pass after the sanitizer.
 pub fn strip_dangerous_html(html: &str) -> String {
     static RES: OnceLock<[Re; 3]> = OnceLock::new();
     let [script, handler, js] = RES.get_or_init(|| {
@@ -23,13 +23,7 @@ pub fn strip_dangerous_html(html: &str) -> String {
 
 /// `sanitizeLspHTML`.
 pub fn sanitize_lsp_html(html: &str) -> String {
-    static CFG: OnceLock<Config> = OnceLock::new();
-    let tinted = highlight_html_code_blocks(html);
-    let clean = purify::sanitize(
-        &tinted,
-        CFG.get_or_init(|| Config::default_with(Hook::Recur)),
-    );
-    strip_dangerous_html(&clean)
+    strip_dangerous_html(&sanitize_markdown(&highlight_html_code_blocks(html)))
 }
 
 #[cfg(test)]

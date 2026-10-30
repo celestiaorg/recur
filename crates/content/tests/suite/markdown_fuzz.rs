@@ -1,6 +1,5 @@
-//! Seeded random markdown through the full pipeline (marked, DOMPurify, the HTML parser): the
-//! lexer and sanitizer are JavaScript ports that slice by byte offset where JS sliced by UTF-16
-//! unit, so mixed multi-byte text around markdown syntax must never panic.
+//! Seeded random markdown through the full pipeline (comrak, ammonia, the HTML parser): mixed
+//! multi-byte text around markdown syntax must never panic.
 
 use recur_content::markdown::{ParseOptions, render_markdown};
 use recur_content::render::doc::Doc;
@@ -119,9 +118,7 @@ fn random_markdown_never_panics() {
         let src = case(&mut rng);
         let out = std::panic::catch_unwind(|| {
             for demote_images in [false, true] {
-                if let Ok(html) = render_markdown(&src, ParseOptions { demote_images }) {
-                    Doc::parse(&html);
-                }
+                Doc::parse(&render_markdown(&src, ParseOptions { demote_images }));
             }
         });
         assert!(out.is_ok(), "case {i} panicked: {src:?}");

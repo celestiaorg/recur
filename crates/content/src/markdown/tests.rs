@@ -1,7 +1,7 @@
 use super::*;
 
 fn render(src: &str) -> String {
-    render_markdown(src, ParseOptions::default()).unwrap()
+    render_markdown(src, ParseOptions::default())
 }
 
 fn demoted(src: &str) -> String {
@@ -11,7 +11,6 @@ fn demoted(src: &str) -> String {
             demote_images: true,
         },
     )
-    .unwrap()
 }
 
 #[test]
@@ -45,7 +44,7 @@ fn highlights_fenced_code_and_strips_raw_script_tags() {
 
 #[test]
 fn parse_markdown_does_not_sanitize() {
-    let raw = parse_markdown("```js\nconst x = 1\n```", ParseOptions::default()).unwrap();
+    let raw = parse_markdown("```js\nconst x = 1\n```", ParseOptions::default());
     assert!(raw.contains("sh-kw"));
 }
 
@@ -168,6 +167,51 @@ fn anchors_get_target_and_rel_and_lose_foreign_classes() {
     );
     assert_eq!(
         html,
-        "<a href=\"https://x.test\" target=\"_blank\" rel=\"noopener noreferrer\">x</a><span class=\"sh-kw\">k</span>"
+        "<a href=\"https://x.test\" rel=\"noopener noreferrer\" target=\"_blank\">x</a><span class=\"sh-kw\">k</span>"
+    );
+}
+
+#[test]
+fn sanitizer_drops_scripts_handlers_frames_and_unsafe_urls() {
+    let html = sanitize_markdown(concat!(
+        "<script>alert(1)</script><img src=x onerror=alert(1)><iframe src=\"https://x.test\"></iframe>",
+        "<a href=\"javascript:alert(1)\">j</a><a href=\"data:text/html,x\">d</a>",
+        "<p onclick=\"x()\" style=\"color:red\" id=\"y\">p</p><svg><a href=\"https://x\">s</a></svg>",
+        "<img src=\"data:image/png;base64,AAAA\">"
+    ));
+    for bad in [
+        "script",
+        "alert",
+        "iframe",
+        "javascript",
+        "data:text",
+        "onclick",
+        "style",
+        "id=",
+        "svg",
+    ] {
+        assert!(!html.contains(bad), "{bad}: {html}");
+    }
+    assert!(
+        html.contains("src=\"data:image/png;base64,AAAA\""),
+        "{html}"
+    );
+}
+
+#[test]
+fn task_checkboxes_sit_inside_loose_items_paragraphs() {
+    let html = render("- [ ] a\n\n- [x] b");
+    assert!(
+        html.contains("<p><input type=\"checkbox\" disabled=\"\"> a</p>"),
+        "{html}"
+    );
+    assert!(
+        html.contains("<p><input type=\"checkbox\" checked=\"\" disabled=\"\"> b</p>"),
+        "{html}"
+    );
+    let tight = render("- [x] c");
+    assert!(
+        tight.contains("<li><input type=\"checkbox\" checked=\"\" disabled=\"\"> c</li>"),
+        "{tight}"
     );
 }

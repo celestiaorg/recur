@@ -1,6 +1,6 @@
 //! The settled-markdown cache and off-thread rendering for streaming prefixes.
 //!
-//! A worker thread runs marked and highlighting; a coordinator thread
+//! A worker thread runs comrak and highlighting; a coordinator thread
 //! owns the queue, the 2 s watchdog and sanitizing, so nothing but layout touches the UI
 //! thread. Settled renders stay synchronous ([`render_markdown_cached`]): tab-swap scroll
 //! restore needs real heights on the first frame.
@@ -185,8 +185,7 @@ fn render_sync(src: &str) -> Result<String, RenderError> {
     match catch_unwind(AssertUnwindSafe(|| {
         parse_markdown(src, ParseOptions::default())
     })) {
-        Ok(Ok(html)) => Ok(sanitize_markdown(&html)),
-        Ok(Err(e)) => Err(RenderError::Failed(e.to_string())),
+        Ok(html) => Ok(sanitize_markdown(&html)),
         Err(_) => Err(RenderError::Failed("markdown render panicked".into())),
     }
 }
@@ -241,8 +240,8 @@ impl MarkdownHost {
             return hit;
         }
         let html: Arc<str> = match catch_unwind(AssertUnwindSafe(|| parse_markdown(src, opts))) {
-            Ok(Ok(raw)) => sanitize_markdown(&raw).into(),
-            _ => super::escape_text(src).replace('\n', "<br>").into(),
+            Ok(raw) => sanitize_markdown(&raw).into(),
+            Err(_) => super::escape_text(src).replace('\n', "<br>").into(),
         };
         let mut s = lock(&self.state);
         let max = s.max_bytes;
@@ -396,7 +395,7 @@ fn finish(state: &Mutex<State>, job: Job, res: Result<String, RenderError>) {
 type WorkerReply = (u64, Result<String, String>);
 type Worker = (Sender<(u64, String)>, Receiver<WorkerReply>);
 
-/// The worker: marked and highlighting only.
+/// The worker: comrak and highlighting only.
 fn spawn_worker() -> Option<Worker> {
     let (req_tx, req_rx) = mpsc::channel::<(u64, String)>();
     let (res_tx, res_rx) = mpsc::channel::<WorkerReply>();
@@ -407,11 +406,7 @@ fn spawn_worker() -> Option<Worker> {
                 let out = catch_unwind(AssertUnwindSafe(|| {
                     parse_markdown(&src, ParseOptions::default())
                 }));
-                let msg = match out {
-                    Ok(Ok(html)) => Ok(html),
-                    Ok(Err(e)) => Err(e.to_string()),
-                    Err(_) => Err("markdown worker panicked".into()),
-                };
+                let msg = out.map_err(|_| "markdown worker panicked".to_string());
                 if res_tx.send((id, msg)).is_err() {
                     break;
                 }
@@ -575,9 +570,7 @@ mod tests {
     use futures::executor::block_on;
 
     fn rendered(src: &str) -> Arc<str> {
-        render_markdown(src, ParseOptions::default())
-            .unwrap()
-            .into()
+        render_markdown(src, ParseOptions::default()).into()
     }
 
     #[test]

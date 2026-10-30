@@ -508,6 +508,11 @@ impl Shell {
                 .h(gpui_kit::px(crate::titlebar::TITLEBAR_HEIGHT)),
             cx,
         );
+        let (dock, docking) = self.sidebar.read(cx).dock(cx);
+        if docking {
+            window.request_animation_frame();
+        }
+        let dock_width = rail_width * dock;
         let main = self.main_area(view, cx);
         let state = self.state.clone();
         let wheel_zoom = {
@@ -559,11 +564,14 @@ impl Shell {
                                 &self.sidebar,
                                 gpui_kit::StyleRefinement::default()
                                     .flex_none()
-                                    .w(gpui_kit::px(rail_width))
+                                    .w(gpui_kit::px(dock_width))
                                     .h_full()
                                     .min_h_0(),
                                 cx,
                             ))
+                        })
+                        .when(rail_collapsed && dock > 0., |d| {
+                            d.child(div().flex_none().w(gpui_kit::px(dock_width)))
                         })
                         .child(main)
                         .when(rail_collapsed, |d| d.child(self.sidebar.clone())),

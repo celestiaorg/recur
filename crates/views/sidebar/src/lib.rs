@@ -155,6 +155,9 @@ pub struct Sidebar {
     edge_hover: bool,
     edge_fade: Fade,
     slide: Fade,
+    /// The share of the rail's width the docked slot holds: it eases with the rail as it
+    /// docks or undocks, so the content moves with it.
+    dock: Fade,
     body_bounds: Option<Bounds<Pixels>>,
     rail_bounds: Option<Bounds<Pixels>>,
     epoch: Instant,
@@ -242,6 +245,7 @@ impl Sidebar {
             edge_hover: false,
             edge_fade: Fade::new(false),
             slide: Fade::new(false),
+            dock: Fade::new(!collapsed),
             body_bounds: None,
             rail_bounds: None,
             epoch: recur_ui::motion::now(cx),
@@ -374,10 +378,14 @@ impl Sidebar {
         if collapsed != self.seen_collapsed {
             self.seen_collapsed = collapsed;
             if collapsed {
-                // The docked rail slides out as an overlay.
+                // The docked rail slides out, pulling the content with it.
                 self.slide = Fade::new(true);
                 self.slide.set(false, SLIDE, cx);
+                self.dock.set(false, SLIDE, cx);
             } else {
+                // Pinning a peeked rail docks in place; a hidden one slides in.
+                self.dock = Fade::new(self.state.read(cx).rail_peek);
+                self.dock.set(true, SLIDE, cx);
                 self.body_bounds = None;
                 self.edge_hover = false;
                 self.edge_fade = Fade::new(false);
@@ -2065,6 +2073,11 @@ fn set_group_open(s: &mut AppState, id: &str, open: bool, cx: &mut Context<AppSt
 }
 
 impl Sidebar {
+    /// The docked slot's share of the rail's width, and whether it is still easing.
+    pub fn dock(&self, cx: &App) -> (f32, bool) {
+        (self.dock.value(cx), self.dock.animating(cx))
+    }
+
     fn render_view(
         &mut self,
         window: &mut Window,
@@ -2087,9 +2100,20 @@ impl Sidebar {
         .absolute()
         .size_full();
         if !collapsed {
-            return self
-                .render_rail(width, window, cx)
-                .child(rail_bounds)
+            if self.dock.animating(cx) {
+                window.request_animation_frame();
+            }
+            // Pinned to the slot's right edge, so the rail slides in as the slot widens.
+            return div()
+                .size_full()
+                .relative()
+                .child(
+                    self.render_rail(width, window, cx)
+                        .absolute()
+                        .top_0()
+                        .right_0()
+                        .child(rail_bounds),
+                )
                 .into_any_element();
         }
 
@@ -2147,7 +2171,8 @@ impl Sidebar {
         .size_full();
         let shown = peek || slide > 0.;
         let rail = shown.then(|| {
-            let shadow = rgba(0, 0, 0, 0.38 * slide);
+            // No shadow while the content still follows the rail out.
+            let shadow = rgba(0, 0, 0, 0.38 * (slide - self.dock.value(cx)).max(0.));
             self.render_rail(width, window, cx)
                 .absolute()
                 .top_0()

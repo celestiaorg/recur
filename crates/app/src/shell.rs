@@ -77,6 +77,8 @@ pub struct Shell {
     pub(crate) update_ready: Option<String>,
     picking_path: bool,
     pub(crate) last_wheel_zoom: Option<std::time::Instant>,
+    pub(crate) wheel_gesture: Option<bool>,
+    pub(crate) wheel_travel: f32,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -179,6 +181,8 @@ impl Shell {
             update_ready: None,
             picking_path: false,
             last_wheel_zoom: None,
+            wheel_gesture: None,
+            wheel_travel: 0.,
             _subscriptions: subscriptions,
         };
         let dark = matches!(

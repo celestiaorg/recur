@@ -4,7 +4,7 @@
 
 use std::time::{Duration, Instant};
 
-use gpui_kit::{AppContext, Context, Keystroke, ScrollDelta, ScrollWheelEvent, Window};
+use gpui_kit::{AppContext, Context, Keystroke, ScrollDelta, ScrollWheelEvent, TouchPhase, Window};
 use recur_ui::widgets::{ToastKind, ToastOptions, push_toast};
 
 use crate::shell::Shell;
@@ -13,6 +13,9 @@ pub const ZOOM_STEPS: [f32; 10] = [0.5, 0.67, 0.8, 0.9, 1., 1.1, 1.25, 1.5, 1.75
 const EPS: f32 = 1e-6;
 /// One trackpad gesture is a stream of wheel events: step once per this window.
 const WHEEL_THROTTLE: Duration = Duration::from_millis(120);
+/// Pixels a ⌘ gesture travels before a step, so a finger brushing a Magic Mouse while ⌘T or
+/// ⌘C is held does not zoom.
+const WHEEL_STEP_PX: f32 = 24.;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Zoom {
@@ -49,6 +52,20 @@ pub fn zoom_chord(k: &Keystroke) -> Option<Zoom> {
         "-" => Some(Zoom::Out),
         "0" => Some(Zoom::Reset),
         _ => None,
+    }
+}
+
+/// Whether a wheel event zooms. A trackpad gesture zooms only if ⌘ was down when it began,
+/// and its momentum never does, so ⌘T pressed while a flick coasts does not zoom. `gesture`
+/// holds the current gesture's answer; Linux and line-based wheels report no phases and
+/// fall back to the live modifiers.
+fn wheel_zooms(gesture: &mut Option<bool>, ev: &ScrollWheelEvent) -> bool {
+    let cmd = ev.modifiers.secondary();
+    match (ev.delta, ev.touch_phase) {
+        (ScrollDelta::Lines(_), _) => cmd,
+        (_, TouchPhase::Started) => *gesture.insert(cmd),
+        (_, TouchPhase::Ended) => gesture.replace(false).unwrap_or(cmd),
+        _ => gesture.unwrap_or(cmd),
     }
 }
 
@@ -98,10 +115,21 @@ impl Shell {
             ScrollDelta::Pixels(p) => f32::from(p.y),
             ScrollDelta::Lines(l) => l.y,
         };
-        if !ev.modifiers.secondary() || dy == 0. {
+        let off = (self.state.read(cx).settings.as_ref()).is_some_and(|s| s.disable_scroll_zoom);
+        if off || !wheel_zooms(&mut self.wheel_gesture, ev) || dy == 0. {
             return;
         }
         cx.stop_propagation();
+        if let ScrollDelta::Pixels(_) = ev.delta {
+            if ev.touch_phase == TouchPhase::Started {
+                self.wheel_travel = 0.;
+            }
+            self.wheel_travel += dy;
+            if self.wheel_travel.abs() < WHEEL_STEP_PX {
+                return;
+            }
+            self.wheel_travel = 0.;
+        }
         let now = Instant::now();
         if self
             .last_wheel_zoom
@@ -146,6 +174,29 @@ mod tests {
             z = next_zoom(z, Zoom::In);
         }
         assert_eq!(z, 2.);
+    }
+
+    #[test]
+    fn momentum_and_mid_gesture_cmd_do_not_zoom() {
+        let ev = |phase, cmd: bool| ScrollWheelEvent {
+            delta: ScrollDelta::Pixels(gpui_kit::point(gpui_kit::px(0.), gpui_kit::px(4.))),
+            touch_phase: phase,
+            modifiers: gpui_kit::Modifiers {
+                platform: cfg!(target_os = "macos") && cmd,
+                control: !cfg!(target_os = "macos") && cmd,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut g = None;
+        assert!(wheel_zooms(&mut g, &ev(TouchPhase::Moved, true)));
+        assert!(!wheel_zooms(&mut g, &ev(TouchPhase::Started, false)));
+        assert!(!wheel_zooms(&mut g, &ev(TouchPhase::Moved, true)));
+        assert!(!wheel_zooms(&mut g, &ev(TouchPhase::Ended, true)));
+        assert!(wheel_zooms(&mut g, &ev(TouchPhase::Started, true)));
+        assert!(wheel_zooms(&mut g, &ev(TouchPhase::Moved, true)));
+        assert!(wheel_zooms(&mut g, &ev(TouchPhase::Ended, true)));
+        assert!(!wheel_zooms(&mut g, &ev(TouchPhase::Moved, true)));
     }
 
     #[test]

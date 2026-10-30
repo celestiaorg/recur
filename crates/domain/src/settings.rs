@@ -162,6 +162,9 @@ pub struct Settings {
     /// Read at launch, so a change applies after a restart.
     #[serde(skip_serializing_if = "is_false")]
     pub use_native_title_bar: bool,
+    /// ⌘/Ctrl + scroll no longer zooms the UI.
+    #[serde(skip_serializing_if = "is_false")]
+    pub disable_scroll_zoom: bool,
     /// Enter queues a follow-up while an agent runs (⌘/Ctrl+Enter steers);
     /// default false is the reverse.
     #[serde(skip_serializing_if = "is_false")]

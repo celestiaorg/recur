@@ -736,16 +736,41 @@ impl SettingsView {
                     .blurb("ANSI colours in the dock. Match app follows the chrome palette.")
                     .child(term_body),
             )
-            .when(cfg!(target_os = "linux"), |d| {
-                d.child(self.window_group(window, cx))
-            })
+            .child(self.window_group(window, cx))
             .into_any_element()
     }
 
-    /// Linux: the window manager's title bar instead of Recur's window controls.
+    /// Scroll zoom, and on Linux the window manager's title bar instead of Recur's window
+    /// controls.
     fn window_group(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let native = self.settings(cx).is_some_and(|s| s.use_native_title_bar);
-        let row = Row::new()
+        let settings = self.settings(cx);
+        let native = settings.is_some_and(|s| s.use_native_title_bar);
+        let scroll_zoom = !settings.is_some_and(|s| s.disable_scroll_zoom);
+        let mod_key = if cfg!(target_os = "macos") {
+            "⌘"
+        } else {
+            "Ctrl"
+        };
+        let zoom_row = Row::new()
+            .child(copy(
+                "scroll-zoom",
+                format!("Zoom with {mod_key} + scroll"),
+                Some(vec![span(
+                    "Scrolling while holding the modifier zooms the whole UI. Keyboard zoom is unaffected.",
+                )]),
+                cx,
+            ))
+            .child(
+                ctrl().child(
+                    tog("tog-scroll-zoom", "toggle scroll zoom", scroll_zoom, false, cx).on_click(
+                        cx.guarded_listener(move |this, _, _, cx| {
+                            this.patch(false, |s| s.disable_scroll_zoom = scroll_zoom, cx)
+                                .detach();
+                        }),
+                    ),
+                ),
+            );
+        let title_bar_row = Row::new()
             .child(copy(
                 "native-title-bar",
                 "Use native title bar",
@@ -769,15 +794,23 @@ impl SettingsView {
                     })),
                 ),
             );
+        let (blurb, rows_) = if cfg!(target_os = "linux") {
+            (
+                "Scroll zoom and the title bar.",
+                vec![zoom_row, title_bar_row],
+            )
+        } else {
+            ("Scroll zoom.", vec![zoom_row])
+        };
         settings_group("grp-window", "Window")
-            .blurb("Linux title bar.")
+            .blurb(blurb)
             .child(rows(
                 RowsCtx {
                     sides: true,
                     in_group: true,
                     more: false,
                 },
-                vec![row],
+                rows_,
                 window,
                 cx,
             ))

@@ -19,9 +19,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Full debuginfo for every crate fills the Linux runner's disk.
+# Full debuginfo for every crate fills the Linux runner's disk, and so does
+# incremental state on top of a restored target (the cache drops it anyway).
 env:
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  CARGO_INCREMENTAL: "0"
 
 jobs:
   # Platform-independent checks, so they run once; the jobs below wait on them.

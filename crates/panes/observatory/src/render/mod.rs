@@ -28,7 +28,7 @@ use recur_view_review::style::hsla;
 
 pub(crate) use scm::ScmProbes;
 
-use crate::model::{FocusZone, MainSurface, is_scratch_path};
+use crate::model::{FocusZone, MainSurface, Pane, is_scratch_path};
 use crate::obs::{Observatory, OpenRequest};
 use crate::quick_open::QuickOpenMode;
 use crate::style::{CHROME_H, NARROW_MAX_W, pane_badge, pane_toggle, side_head, side_title};
@@ -228,6 +228,11 @@ impl Observatory {
                 ReviewTab::Changes => "changes".to_string(),
                 ReviewTab::Commits => "commits".to_string(),
             }
+        } else if self.show_split_layout()
+            && self.focused_pane == Pane::Split
+            && !self.split_path.is_empty()
+        {
+            self.split_path.clone()
         } else {
             self.selected_path.clone()
         };

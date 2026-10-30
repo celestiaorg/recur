@@ -18,7 +18,7 @@ use recur_ui::{IconName, Theme};
 use recur_view_core::prefs::{CodePanelKey, PanelKey};
 use recur_view_review::style::hsla;
 
-use crate::model::{FocusZone, MainSurface, Pane, format_bytes};
+use crate::model::{MainSurface, Pane, format_bytes};
 use crate::obs::{Observatory, TermMaxPhase};
 use crate::style::{
     CHROME_H, foot_sep, foot_text, icon_btn, link_text, linkish, obs_empty, seg, seg_text_btn,
@@ -97,7 +97,6 @@ impl Observatory {
                     Pane::Split => (o.split_path.clone(), o.split_dirty()),
                 };
                 let on = o.focused_pane == pane;
-                let lit = on && o.focus_zone == FocusZone::Editor;
                 let name = if path.is_empty() {
                     "Empty".to_string()
                 } else {
@@ -124,7 +123,6 @@ impl Observatory {
                     .when(!on, |d| {
                         d.hover(move |s| s.text_color(hsla(t.muted)).bg(hsla(t.pane_2)))
                     })
-                    .when(!last, |d| d.border_r_1().border_color(hsla(t.line)))
                     .child(
                         div()
                             .min_w_0()
@@ -140,17 +138,6 @@ impl Observatory {
                             .rounded(px(3.))
                             .flex_none()
                             .bg(hsla(t.amber)),
-                    );
-                }
-                if on {
-                    b = b.child(
-                        div()
-                            .absolute()
-                            .left_0()
-                            .right_0()
-                            .bottom_0()
-                            .h(px(2.))
-                            .bg(hsla(if lit { t.amber } else { t.line })),
                     );
                 }
                 titled(

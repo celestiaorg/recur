@@ -19,8 +19,6 @@ pub mod color;
 mod color_chooser_spec;
 #[cfg(test)]
 mod contained_panic_spec;
-#[cfg(target_os = "macos")]
-mod ct_text;
 #[cfg(test)]
 mod date_time_spec;
 #[cfg(test)]
@@ -32,7 +30,6 @@ pub mod font_metrics;
 pub mod fonts;
 #[cfg(feature = "gallery")]
 pub mod gallery;
-mod glyph;
 pub mod guard;
 pub mod icon;
 pub mod icon_name;

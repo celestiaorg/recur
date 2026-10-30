@@ -577,7 +577,7 @@ fn glyph_origin(
     ((boxpx - advance) / 2., (m.baseline * scale).round() / scale)
 }
 
-/// SVG markup of a `.fico` glyph outline (the non-macOS raster path, and tests).
+/// SVG markup of a `.fico` glyph outline.
 pub fn glyph_svg(glyph: &Glyph, color: Color, boxpx: f32, scale: f32) -> Option<String> {
     let bytes = font_bytes(&glyph.family)?;
     let face = ttf_parser::Face::parse(bytes, 0).ok()?;
@@ -679,35 +679,13 @@ fn draw_glyph(
     h: u32,
     scale: f32,
 ) -> Option<Vec<u8>> {
-    #[cfg(target_os = "macos")]
-    {
-        let bytes = font_bytes(&glyph.family)?;
-        let face = ttf_parser::Face::parse(bytes, 0).ok()?;
-        let gid = face.glyph_index(glyph.ch)?;
-        let (x0, baseline) = glyph_origin(&face, gid, boxpx, scale);
-        crate::cg_raster::render_glyph(
-            bytes,
-            gid.0,
-            boxpx,
-            (x0, baseline),
-            (color.r, color.g, color.b, color.a),
-            // `.icon:before { -webkit-font-smoothing: antialiased }`.
-            crate::cg_raster::TextSmoothing::Antialiased,
-            w,
-            h,
-            scale,
-        )
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        crate::icon::rasterize(
-            &glyph_svg(glyph, color, boxpx, scale)?,
-            (w, h),
-            (0., 0.),
-            (w as f32, h as f32),
-            0.,
-        )
-    }
+    crate::icon::rasterize(
+        &glyph_svg(glyph, color, boxpx, scale)?,
+        (w, h),
+        (0., 0.),
+        (w as f32, h as f32),
+        0.,
+    )
 }
 
 #[cfg(test)]

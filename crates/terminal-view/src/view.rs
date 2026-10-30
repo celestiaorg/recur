@@ -24,13 +24,15 @@ use recur_term::input::{
 use recur_term::screen::{
     InvalidRegex, Link, Output, Palette, Screen, SearchOptions, SearchResults, Side,
 };
+use recur_ui::widgets::scrollbar::{
+    OVERLAY_BOX, Overlay, classic_thumb, overlay_knob, overlay_scroll,
+};
 
 use crate::backend::TerminalBackend;
 use crate::blink::CursorBlink;
 use crate::element::TerminalElement;
-use crate::font::{CellMetrics, TERM_FIT_SCROLLBAR_WIDTH, TerminalFont, term_fit_size};
+use crate::font::{CellMetrics, TerminalFont, term_fit_size};
 use crate::park::Park;
-use crate::scrollbar::{PIXELS_PER_LINE, Scrollbar};
 use crate::theme::{ThemeContext, search_decorations};
 
 gpui_kit::actions!(terminal, [Copy, Paste]);
@@ -42,6 +44,8 @@ pub const KEY_CONTEXT: &str = "Terminal";
 pub const ACK_THRESHOLD: usize = 32 * 1024;
 /// `pushResize` debounce: every SIGWINCH makes full-screen programs repaint.
 const RESIZE_DEBOUNCE: Duration = Duration::from_millis(100);
+/// WebKit's `Scrollbar::pixelsPerLineStep`: line wheel deltas reported to apps as pixels.
+const PIXELS_PER_LINE: f32 = 40.0;
 /// The pane's `.term-pane` padding: 6px top and bottom, 8px left.
 pub const PANE_PADDING_TOP: f32 = 6.0;
 pub const PANE_PADDING_BOTTOM: f32 = 6.0;
@@ -199,6 +203,8 @@ pub(crate) struct GridLayout {
     pub metrics: CellMetrics,
     pub cols: usize,
     pub rows: usize,
+    /// "Show scroll bars: Always": the classic bar in its own column instead of the overlay.
+    pub legacy: bool,
 }
 
 impl GridLayout {
@@ -214,14 +220,16 @@ impl GridLayout {
         (self.rows as f32 * self.metrics.cell_height / self.metrics.dpr).round()
     }
 
-    /// The scrollbar column: 14px at the content box's right edge, grid height.
-    pub fn scrollbar_bounds(&self) -> Bounds<Pixels> {
+    /// The scroller's box at the content box's right edge, grid height.
+    pub fn bar_bounds(&self) -> Bounds<Pixels> {
+        let w = if self.legacy {
+            recur_ui::theme::SCROLLBAR_SIZE
+        } else {
+            px(OVERLAY_BOX)
+        };
         Bounds::new(
-            Point::new(
-                self.content.right() - px(TERM_FIT_SCROLLBAR_WIDTH),
-                self.origin.y,
-            ),
-            gpui_kit::size(px(TERM_FIT_SCROLLBAR_WIDTH), px(self.grid_height())),
+            Point::new(self.content.right() - w, self.origin.y),
+            gpui_kit::size(w, px(self.grid_height())),
         )
     }
 
@@ -294,14 +302,18 @@ pub struct TerminalView {
     tick_task: Option<(Instant, Task<()>)>,
     drag_task: Option<Task<()>>,
     pub(crate) blink: Option<CursorBlink>,
-    pub(crate) scrollbar: Scrollbar,
+    pub(crate) bar: Overlay,
+    /// Dragging the scrollbar knob: the pointer's offset into it.
+    pub(crate) knob_grab: Option<f32>,
+    pub(crate) knob_hovered: bool,
+    /// Wheel rows not yet scrolled, so precise deltas add up.
+    wheel_rows: f32,
     pub(crate) hovered_link: Option<Link>,
     mouse_down_link: Option<Link>,
     mouse_down_at: Instant,
     /// A mouse button reported to the app while held (for drag / release reports).
     reported_button: Option<TermButton>,
     reporter: MouseReporter,
-    pub(crate) slider_hovered: bool,
     pub(crate) mouse_position: Option<Point<Pixels>>,
     pub(crate) composition: Option<Composition>,
     is_mac: bool,
@@ -373,13 +385,15 @@ impl TerminalView {
             tick_task: None,
             drag_task: None,
             blink: None,
-            scrollbar: Scrollbar::default(),
+            bar: Overlay::default(),
+            knob_grab: None,
+            knob_hovered: false,
+            wheel_rows: 0.0,
             hovered_link: None,
             mouse_down_link: None,
             mouse_down_at: cx.background_executor().now(),
             reported_button: None,
             reporter: MouseReporter::default(),
-            slider_hovered: false,
             mouse_position: None,
             composition: None,
             is_mac: cfg!(target_os = "macos"),
@@ -588,6 +602,7 @@ impl TerminalView {
             f32::from(content.size.width),
             f32::from(content.size.height),
         );
+        let legacy = recur_ui::widgets::scrollbar::legacy(cx);
         // A collapsed or hidden container measures 0x0; fitting to that would shrink the PTY.
         if w > 0.0 && h > 0.0 && !self.size_held {
             let (cols, rows) = term_fit_size(
@@ -595,7 +610,7 @@ impl TerminalView {
                 h,
                 metrics.css_cell_width(),
                 metrics.css_cell_height(),
-                TERM_FIT_SCROLLBAR_WIDTH,
+                recur_ui::widgets::scrollbar::layout_size(cx),
             );
             if (cols, rows) != self.size() {
                 self.screen.resize(cols, rows);
@@ -616,48 +631,67 @@ impl TerminalView {
             metrics,
             cols,
             rows,
+            legacy,
         };
         self.layout = Some(layout);
         if let Some(replay) = self.pending_replay.take() {
             self.replayed(replay, cx);
         }
-        if self.scrollbar_in_sync(&layout) {
-            self.scrollbar.set_dimensions(
-                layout.grid_height(),
-                layout.cell_h() * self.screen.total_rows() as f32,
-            );
-        } else {
-            self.sync_scrollbar();
-        }
         layout
     }
 
-    /// Scrollbar dimensions and position from the screen.
-    fn sync_scrollbar(&mut self) {
-        let Some(l) = self.layout else { return };
-        self.scrollbar.sync(
-            l.grid_height(),
-            l.cell_h() * self.screen.total_rows() as f32,
-            self.screen.scroll_position(),
-            l.cell_h(),
-        );
+    /// The scrollbar knob as (length, offset from the grid top) in pixels, while there is
+    /// scrollback.
+    pub(crate) fn knob(&self, l: &GridLayout) -> Option<(f32, f32)> {
+        let (pos, total, visible) = self.bar_rows(l);
+        let knob = if l.legacy {
+            classic_thumb(pos, total, visible, l.grid_height())
+        } else {
+            overlay_knob(pos, total, visible, l.grid_height())
+        };
+        (total > visible && knob.0 > 0.0).then_some(knob)
     }
 
-    /// False when output, keys or find moved the viewport since the scrollbar last did. The
-    /// scrollbar keeps a fractional position from trackpad deltas, so it is only resynced then.
-    fn scrollbar_in_sync(&self, l: &GridLayout) -> bool {
-        (self.scrollbar.scroll_top() / l.cell_h()).round() as usize == self.screen.scroll_position()
+    /// The scroll position, content and viewport, in rows.
+    fn bar_rows(&self, l: &GridLayout) -> (f32, f32, f32) {
+        (
+            self.screen.scroll_position() as f32,
+            self.screen.total_rows() as f32,
+            l.rows as f32,
+        )
+    }
+
+    /// The scrollbar under `p`: whether it is on the knob. The overlay takes the pointer only
+    /// while it shows.
+    fn bar_hit(&self, l: &GridLayout, p: Point<Pixels>, now: Instant) -> Option<bool> {
+        let (len, at) = self.knob(l)?;
+        if !l.bar_bounds().contains(&p) || !(l.legacy || self.bar.visible(now)) {
+            return None;
+        }
+        let y = f32::from(p.y - l.origin.y);
+        Some(y >= at && y < at + len)
+    }
+
+    /// Scrolls so the knob starts at `at` px from the grid top.
+    fn drag_knob(&mut self, l: &GridLayout, at: f32) {
+        let (pos, total, visible) = self.bar_rows(l);
+        let row = if l.legacy {
+            let (len, _) = classic_thumb(0.0, total, visible, l.grid_height());
+            (at / (l.grid_height() - len).max(1.0)).clamp(0.0, 1.0) * (total - visible)
+        } else {
+            overlay_scroll(at, total, visible, l.grid_height())
+        };
+        self.screen.scroll_lines(row.round() as i64 - pos as i64);
     }
 
     // ---- timers ----
 
-    fn next_deadline(&self, now: Instant) -> Option<Instant> {
+    fn next_deadline(&self) -> Option<Instant> {
         [
             self.blink
                 .as_ref()
                 .and_then(CursorBlink::next_deadline)
                 .filter(|_| self.focused && self.active),
-            self.scrollbar.next_deadline(now),
             self.screen.search_refresh_due(),
             self.screen.sync_deadline(),
         ]
@@ -668,7 +702,7 @@ impl TerminalView {
 
     fn schedule_tick(&mut self, cx: &mut Context<Self>) {
         let now = cx.background_executor().now();
-        let Some(deadline) = self.next_deadline(now) else {
+        let Some(deadline) = self.next_deadline() else {
             self.tick_task = None;
             return;
         };
@@ -691,7 +725,6 @@ impl TerminalView {
         if let Some(b) = &mut self.blink {
             b.tick(now);
         }
-        self.scrollbar.tick(now);
         if self.screen.sync_deadline().is_some_and(|d| d <= now) {
             self.screen.flush_sync();
         }
@@ -821,7 +854,6 @@ impl TerminalView {
         cx.background_executor()
             .spawn(async move { backend.clear_replay(&id) })
             .detach();
-        self.sync_scrollbar();
         cx.notify();
     }
 
@@ -860,7 +892,6 @@ impl TerminalView {
         let res = self.screen.find(query, &o, forward);
         let found = matches!(res, Ok(r) if r.count > 0);
         self.emit_find_results(res, cx);
-        self.sync_scrollbar();
         self.schedule_tick(cx);
         cx.notify();
         found
@@ -954,7 +985,6 @@ impl TerminalView {
                 } else {
                     page
                 });
-                self.sync_scrollbar();
                 cx.notify();
             }
             KeyAction::Text | KeyAction::Ignore => {}
@@ -1080,15 +1110,18 @@ impl TerminalView {
     ) {
         let Some(l) = self.layout else { return };
         let now = cx.background_executor().now();
-        if l.scrollbar_bounds().contains(&pos)
-            && self.scrollbar.is_needed()
-            && button == MouseButton::Left
+        if button == MouseButton::Left
+            && let Some(on_knob) = self.bar_hit(&l, pos, now)
         {
-            let offset = f32::from(pos.y - l.origin.y);
-            if let Some(top) = self.scrollbar.pointer_down(offset, now) {
-                self.scroll_to_px(top);
+            self.bar.press(true, now);
+            let (_, at) = self.knob(&l).unwrap_or_default();
+            let y = f32::from(pos.y - l.origin.y);
+            if on_knob {
+                self.knob_grab = Some(y - at);
+            } else {
+                let page = l.rows as i64 - 1;
+                self.screen.scroll_lines(if y < at { -page } else { page });
             }
-            self.schedule_tick(cx);
             cx.notify();
             return;
         }
@@ -1145,26 +1178,18 @@ impl TerminalView {
         let Some(l) = self.layout else { return };
         let now = cx.background_executor().now();
         self.mouse_position = Some(pos);
-        if self.scrollbar.is_dragging() {
-            if let Some(top) = self
-                .scrollbar
-                .pointer_move(f32::from(pos.y - l.origin.y), now)
-            {
-                self.scroll_to_px(top);
-            }
+        if let Some(grab) = self.knob_grab {
+            self.drag_knob(&l, f32::from(pos.y - l.origin.y) - grab);
             cx.notify();
             return;
         }
-        let over = hovered && f32::from(pos.y - l.origin.y) >= 0.0;
-        self.scrollbar.set_mouse_over(over, now);
-        let slider_hover = hovered
-            && l.scrollbar_bounds().contains(&pos)
-            && self.scrollbar.slider().is_some_and(|s| {
-                let y = f32::from(pos.y - l.origin.y);
-                y >= s.position && y <= s.position + s.size
-            });
-        let mut dirty = slider_hover != self.slider_hovered;
-        self.slider_hovered = slider_hover;
+        if hovered {
+            self.bar.pointer_moved(now);
+        }
+        let bar = hovered.then(|| self.bar_hit(&l, pos, now)).flatten();
+        let knob = bar == Some(true);
+        let mut dirty = self.bar.hover(bar.is_some(), now) || knob != self.knob_hovered;
+        self.knob_hovered = knob;
         if self.screen.selection_dragging() {
             let offset = f32::from(pos.y - l.origin.y) as f64;
             self.screen.selection_mouse_move(
@@ -1189,7 +1214,7 @@ impl TerminalView {
             }
         }
         // Linkifier hover.
-        let link = if hovered && l.contains_grid(pos) && !l.scrollbar_bounds().contains(&pos) {
+        let link = if hovered && l.contains_grid(pos) && bar.is_none() {
             let (x, y) = l.cell(pos);
             let point = self.screen.viewport_point(x, y);
             self.screen.link_at(point)
@@ -1200,7 +1225,6 @@ impl TerminalView {
             self.hovered_link = link;
             dirty = true;
         }
-        self.schedule_tick(cx);
         if dirty {
             cx.notify();
         }
@@ -1215,9 +1239,8 @@ impl TerminalView {
     ) {
         let Some(l) = self.layout else { return };
         let now = cx.background_executor().now();
-        if self.scrollbar.is_dragging() {
-            self.scrollbar.pointer_up(now);
-            self.schedule_tick(cx);
+        self.bar.press(false, now);
+        if self.knob_grab.take().is_some() {
             cx.notify();
             return;
         }
@@ -1302,33 +1325,29 @@ impl TerminalView {
             cx.stop_propagation();
             return;
         }
-        if !self.scrollbar_in_sync(&l) {
-            self.sync_scrollbar();
-        }
-        if let Some(top) = self.scrollbar.wheel(dy, pixels, m.alt, now) {
-            self.scroll_to_px(top);
+        let rows = if pixels { dy / l.cell_h() } else { dy };
+        let fast = if m.alt {
+            recur_term::input::FAST_SCROLL_SENSITIVITY as f32
+        } else {
+            1.0
+        };
+        self.wheel_rows += rows * fast;
+        let lines = self.wheel_rows.trunc();
+        self.wheel_rows -= lines;
+        let before = self.screen.scroll_position();
+        self.screen.scroll_lines(lines as i64);
+        if self.screen.scroll_position() != before {
+            self.bar.scrolled(now);
             cx.stop_propagation();
+            cx.notify();
         }
-        self.schedule_tick(cx);
-        cx.notify();
-    }
-
-    /// Whole rows from a pixel scroll position.
-    fn scroll_to_px(&mut self, top: f32) {
-        let Some(l) = self.layout else { return };
-        let row = (top / l.cell_h()).round().max(0.0) as i64;
-        self.screen
-            .scroll_lines(row - self.screen.scroll_position() as i64);
     }
 
     pub(crate) fn mouse_exited(&mut self, cx: &mut Context<Self>) {
         self.mouse_position = None;
-        self.scrollbar
-            .set_mouse_over(false, cx.background_executor().now());
-        if self.hovered_link.take().is_some() || self.slider_hovered {
-            self.slider_hovered = false;
-        }
-        self.schedule_tick(cx);
+        self.bar.hover(false, cx.background_executor().now());
+        self.hovered_link = None;
+        self.knob_hovered = false;
         cx.notify();
     }
 
@@ -1352,7 +1371,6 @@ impl TerminalView {
                         let top = v.screen.scroll_position();
                         v.screen.selection_drag_tick();
                         if v.screen.scroll_position() != top {
-                            v.sync_scrollbar();
                             v.write_primary_selection(cx);
                             cx.notify();
                         }

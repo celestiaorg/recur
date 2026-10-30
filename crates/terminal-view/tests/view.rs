@@ -559,7 +559,12 @@ fn small_trackpad_deltas_accumulate(cx: &mut TestAppContext) {
     }
     let pos = h.cell(2, 2);
     h.cx.simulate_mouse_move(pos, None, Modifiers::none());
-    for _ in 0..8 {
+    let ch = h.view.read_with(h.cx, |v, _| v.cell_size().unwrap().1);
+    let steps = (ch / 2.).ceil() as usize;
+    for i in 0..steps {
+        if i == steps - 1 {
+            assert!(h.view.read_with(h.cx, |v, _| v.screen().at_bottom()));
+        }
         h.cx.simulate_event(ScrollWheelEvent {
             position: pos,
             delta: ScrollDelta::Pixels(point(px(0.), px(2.))),
@@ -572,6 +577,64 @@ fn small_trackpad_deltas_accumulate(cx: &mut TestAppContext) {
         !h.view.read_with(h.cx, |v, _| v.screen().at_bottom()),
         "sub-row deltas add up to a row"
     );
+}
+
+#[gpui::test]
+fn overlay_scrollbar_drags_pages_and_hides(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let (cols, rows) = h.view.read_with(h.cx, |v, _| v.size());
+    for i in 0..rows * 3 {
+        h.output(&format!("line {i}\r\n"));
+    }
+    let top = |h: &mut Harness| h.view.read_with(h.cx, |v, _| v.screen().scroll_position());
+    let bottom = top(&mut h);
+    let (origin, (w, ch)) = h.view.read_with(h.cx, |v, _| {
+        (v.grid_origin().unwrap(), v.cell_size().unwrap())
+    });
+    // The overlay box hugs the pane's right edge; the knob starts in the lower part.
+    let bar = |y: f32| point(origin.x + px(cols as f32 * w - 2.), origin.y + px(y * ch));
+    let low = bar(rows as f32 * 0.8);
+    let press = |h: &mut Harness, p: Point<gpui::Pixels>| {
+        h.cx.simulate_mouse_move(p, None, Modifiers::none());
+        h.cx.simulate_mouse_down(p, MouseButton::Left, Modifiers::none());
+        h.cx.simulate_mouse_up(p, MouseButton::Left, Modifiers::none());
+        h.cx.run_until_parked();
+    };
+
+    // Hidden until a scroll: the press lands on the grid.
+    press(&mut h, low);
+    assert_eq!(top(&mut h), bottom);
+
+    let pos = h.cell(2, 2);
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.simulate_event(ScrollWheelEvent {
+        position: pos,
+        delta: ScrollDelta::Lines(point(0., 1.)),
+        modifiers: Modifiers::none(),
+        touch_phase: TouchPhase::Moved,
+    });
+    h.cx.run_until_parked();
+    assert_eq!(top(&mut h), bottom - 1, "a wheel line scrolls a row");
+
+    // Drag the knob to the top.
+    h.cx.simulate_mouse_move(low, None, Modifiers::none());
+    h.cx.simulate_mouse_down(low, MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_move(bar(-(rows as f32)), MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_up(bar(0.), MouseButton::Left, Modifiers::none());
+    h.cx.run_until_parked();
+    assert_eq!(top(&mut h), 0, "dragging the knob scrolls");
+
+    // The track below the knob pages.
+    press(&mut h, low);
+    assert_eq!(top(&mut h), rows - 1);
+
+    // Leaving the bar lets it fade; a hidden bar takes no presses.
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.executor().advance_clock(Duration::from_secs(1));
+    h.cx.run_until_parked();
+    press(&mut h, low);
+    assert_eq!(top(&mut h), rows - 1);
 }
 
 #[gpui::test]

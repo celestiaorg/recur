@@ -1,6 +1,6 @@
 //! The terminal grid element: fits the grid to its box and paints it the way xterm.js's WebGL
 //! renderer does (cell backgrounds, glyphs on a device-pixel grid, underline styles,
-//! strikethrough, cursor shapes, link underlines, IME composition and the overlay scrollbar).
+//! strikethrough, cursor shapes, link underlines, IME composition and the scrollbar).
 
 use gpui_kit::{
     App, Bounds, ContentMask, CursorStyle, DispatchPhase, Element, ElementId, ElementInputHandler,
@@ -143,6 +143,7 @@ impl Element for TerminalElement {
                 metrics,
                 cols: 0,
                 rows: 0,
+                legacy: false,
             };
             let frame = Frame {
                 cols: 0,
@@ -157,7 +158,7 @@ impl Element for TerminalElement {
         let hitboxes = active.then(|| {
             (
                 window.insert_hitbox(bounds, HitboxBehavior::Normal),
-                window.insert_hitbox(layout.scrollbar_bounds(), HitboxBehavior::Normal),
+                window.insert_hitbox(layout.bar_bounds(), HitboxBehavior::Normal),
             )
         });
         Prepaint {
@@ -179,7 +180,7 @@ impl Element for TerminalElement {
         cx: &mut App,
     ) {
         let view = self.view.read(cx);
-        let Some((grid_hitbox, scrollbar_hitbox)) = p.hitboxes.clone() else {
+        let Some((grid_hitbox, bar_hitbox)) = p.hitboxes.clone() else {
             return;
         };
         let l = p.layout;
@@ -198,25 +199,22 @@ impl Element for TerminalElement {
         let offset = view.screen.display_offset() as i64;
         let composition = view.composition.clone();
         let cursor_cell = view.screen.cursor_in_viewport();
-        let now = cx.background_executor().now();
-        // xterm's slider fades are CSS transitions without a reduced-motion rule: they always
-        // run, and only a frozen motion clock settles them.
-        let opacity = view.scrollbar.opacity_with(|start, dur| {
-            if recur_ui::motion::is_frozen(cx) {
-                recur_ui::motion::progress(start, dur, cx)
-            } else {
-                (now.saturating_duration_since(start).as_secs_f32() / dur.as_secs_f32()).min(1.0)
-            }
-        });
-        let slider = view.scrollbar.slider();
-        let palette = view.screen.palette().clone();
-        let slider_color = if view.scrollbar.is_dragging() {
-            palette.scrollbar_slider_active_background
-        } else if view.slider_hovered {
-            palette.scrollbar_slider_hover_background
+        let now = recur_ui::motion::now(cx);
+        let bar = &view.bar;
+        if !l.legacy && bar.animating(now) {
+            window.request_animation_frame();
+        }
+        let opacity = if l.legacy { 1.0 } else { bar.opacity(now) };
+        let knob = view.knob(&l).filter(|_| opacity > 0.0);
+        let tokens = recur_ui::Theme::of(cx).tokens;
+        let thumb = if view.knob_hovered || view.knob_grab.is_some() {
+            tokens.scrollbar_thumb_hover
         } else {
-            palette.scrollbar_slider_background
+            tokens.scrollbar_thumb
         };
+        let knob_color = |alpha: f32| gpui_kit::Hsla::from(thumb.fade(alpha));
+        let (thickness, track_alpha, inset) =
+            (bar.thickness(now), bar.track_alpha(now), bar.edge_inset());
         let alt_held = window.modifiers().alt;
         let column_select = view.focused && view.should_column_select(alt_held);
         let focus = view.focus.clone();
@@ -289,18 +287,29 @@ impl Element for TerminalElement {
             if let (Some(comp), Some((cx_, cy))) = (&composition, cursor_cell) {
                 paint_composition(window, cx, cell(cx_, cy), &comp.text, &p.fonts, &l, cx_);
             }
-            if let Some(s) = slider
-                && opacity > 0.0
-            {
-                let sb = l.scrollbar_bounds();
-                let color = slider_color.multiply_opacity(opacity as f64);
-                window.paint_quad(fill(
-                    Bounds::new(
-                        point(sb.left(), sb.top() + px(s.position)),
-                        size(sb.size.width, px(s.size)),
-                    ),
-                    gpui_color(color),
-                ));
+            if let Some((len, at)) = knob {
+                let area = l.bar_bounds();
+                let top = area.top() + px(at);
+                let knob = if l.legacy {
+                    // WebKit's custom thumb: `border-radius: 8px`, clamped to fit.
+                    let w = area.size.width;
+                    fill(
+                        Bounds::new(point(area.left(), top), size(w, px(len))),
+                        knob_color(1.0),
+                    )
+                    .corner_radii((w / 2.0).min(px(8.0)).min(px(len / 2.0)))
+                } else {
+                    if track_alpha > 0.0 {
+                        window.paint_quad(fill(area, knob_color(track_alpha)));
+                    }
+                    let left = area.right() - px(inset + thickness);
+                    fill(
+                        Bounds::new(point(left, top), size(px(thickness), px(len))),
+                        knob_color(opacity),
+                    )
+                    .corner_radii(px(thickness / 2.0))
+                };
+                window.paint_quad(knob);
             }
         });
 
@@ -314,7 +323,9 @@ impl Element for TerminalElement {
             CursorStyle::IBeam
         };
         window.set_cursor_style(style, &grid_hitbox);
-        window.set_cursor_style(CursorStyle::Arrow, &scrollbar_hitbox);
+        if knob.is_some() {
+            window.set_cursor_style(CursorStyle::Arrow, &bar_hitbox);
+        }
         window.handle_input(
             &focus,
             ElementInputHandler::new(bounds, self.view.clone()),

@@ -25,8 +25,11 @@ if [ "${WPE:-}" = 1 ]; then
     -f "$ROOT/build/linux/wpe.Dockerfile" "$ROOT/build/linux" >/dev/null
   IMAGE="recur-linux-wpe:$ARCH"
 fi
+# mbx makes target a symlink into its cache: mount that at the same path so the link resolves.
+REAL_TARGET=
+[ -L "$ROOT/target" ] && REAL_TARGET=$(cd "$ROOT/target" && pwd -P)
 exec docker run --rm --init --platform "linux/$ARCH" \
-  -v "$ROOT:/app" \
+  -v "$ROOT:/app" ${REAL_TARGET:+-v "$REAL_TARGET:$REAL_TARGET"} \
   -v "recur-linux-cargo-$ARCH:/usr/local/cargo/registry" \
   -v "recur-linux-target-$ARCH:/target" \
   -e CARGO_TARGET_DIR=/target -e CARGO_BUILD_JOBS="$JOBS" -e ARCH -e VERSION -e RECUR_UPDATE_URL -e WPE_NETWORK \

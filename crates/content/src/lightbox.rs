@@ -20,7 +20,6 @@ use recur_ui::{IconName, Theme, icon, rgba};
 
 use crate::image_menu::{ImageContextMenu, ImageMenuEvent, copy_png};
 use crate::images::{self, Decoded};
-use crate::render::exact::{hgap, vgap};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LightboxEvent {
@@ -346,19 +345,18 @@ impl AttachmentLightbox {
                 MouseButton::Left,
                 cx.guarded_listener(|lb, _, window, cx| lb.close(window, cx)),
             )
-            // `margin: auto`, at WebKit's fractional offsets (it snaps the box's edges, not its
-            // margins).
+            // `margin: auto`.
             .child(
                 div()
                     .flex()
                     .flex_col()
                     .flex_none()
-                    .child(vgap(((vh - 64.) - h).max(0.) / 2., window))
+                    .child(div().flex_none().h(px(((vh - 64.) - h).max(0.) / 2.)))
                     .child(
                         div()
                             .flex()
                             .flex_none()
-                            .child(hgap(((vw - 64.) - w).max(0.) / 2., window))
+                            .child(div().flex_none().w(px(((vw - 64.) - w).max(0.) / 2.)))
                             .child(picture),
                     ),
             );

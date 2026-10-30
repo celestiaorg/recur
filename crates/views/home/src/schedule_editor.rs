@@ -293,7 +293,7 @@ fn sc_in(
     match width {
         // A fractional width (`24ch`) stays exact: a leaf that long, the field over it.
         Some(w) => el
-            .child(recur_ui::exact::hgap(w, window))
+            .child(div().flex_none().w(px(w)))
             .child(div().absolute().inset_0().child(field)),
         None => el.child(field),
     }

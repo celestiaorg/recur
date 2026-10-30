@@ -9,7 +9,6 @@ use gpui_kit::{
     px,
 };
 use recur_domain::PendingLineComment;
-use recur_ui::exact::vgap;
 use recur_ui::fonts::Family;
 use recur_ui::fonts::weight;
 use recur_ui::guard::Guarded;
@@ -504,9 +503,13 @@ impl PrReviewModal {
                     .flex()
                     .flex_col()
                     .items_start()
-                    .child(vgap(above - loc_m.baseline, window))
+                    .child(div().flex_none().h(px(above - loc_m.baseline)))
                     .child(loc)
-                    .child(vgap(below - (loc_m.height - loc_m.baseline), window));
+                    .child(
+                        div()
+                            .flex_none()
+                            .h(px(below - (loc_m.height - loc_m.baseline))),
+                    );
                 let main = div().flex_1().min_w_0().child(line).child(
                     div().mt(px(3.)).child(
                         text(pc.body.clone())

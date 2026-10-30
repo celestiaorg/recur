@@ -25,10 +25,11 @@ use crate::style::hsla;
 /// The commits pane's padding, above the list.
 const PANE_PAD: f32 = 18.;
 /// A `commit_row`: 11px padding around a 12.5px message and a 10px byline at 1.45 line height,
-/// and its top border. The last row adds its bottom border.
+/// and its top border, in whole pixels (each row is at least this tall). The last row adds its
+/// bottom border.
 // simplify: rows are assumed one height; a byline that wraps (a very narrow pane) makes the
 // spacers drift. Measure laid-out rows (as the review stack does) if that shows up.
-const ROW_H: f32 = 57.625;
+const ROW_H: f32 = 58.;
 
 /// The rows within a viewport of the visible ones, `scroll` px past the list's top in a
 /// viewport `h` tall: `(first, end)`. Long PRs lay out the rows on screen, not every commit.
@@ -246,7 +247,7 @@ impl PrDetail {
                     };
                     let me = cx.entity().downgrade();
                     let me2 = cx.entity().downgrade();
-                    list = list.child(commit_row(
+                    list = list.child(div().min_h(px(ROW_H)).child(commit_row(
                         c,
                         opts,
                         Some(Rc::new(move |_, cx| {
@@ -260,7 +261,7 @@ impl PrDetail {
                             });
                         }),
                         cx,
-                    ));
+                    )));
                 }
                 if end < n {
                     list = list.child(div().flex_none().h(px((n - end) as f32 * ROW_H + 1.)));

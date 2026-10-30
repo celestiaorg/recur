@@ -694,7 +694,7 @@ impl PrList {
                         .nowrap(),
                 ),
             )
-            .child(exact_w(8., window))
+            .child(exact_w(8.))
             .child(
                 div().flex_none().flex().justify_end().w(px(6. * ch)).child(
                     text(format!("−{}", p.diff.del))
@@ -760,7 +760,7 @@ impl PrList {
         );
 
         let cell = |w: f32, el: Div| div().flex_none().w(px(w)).child(el);
-        let ci_cell = exact_cell(CI_W, ci.map(IntoElement::into_any_element), window);
+        let ci_cell = exact_cell(CI_W, ci.map(IntoElement::into_any_element));
         let gap = || div().flex_none().w(px(COL_GAP));
         let mut line = div().flex().items_center().child(ico_col).child(gap());
         if wide {
@@ -1059,19 +1059,19 @@ fn mono_ch(size: f32) -> f32 {
 }
 
 /// A gap of exactly `w` px between flex items.
-fn exact_w(w: f32, window: &Window) -> Div {
-    recur_ui::exact::hgap(w, window)
+fn exact_w(w: f32) -> Div {
+    div().flex_none().w(px(w))
 }
 
 /// A `w` px track (fractional) with its content centered on it (`display: grid;
 /// place-items: center`).
-fn exact_cell(w: f32, content: Option<AnyElement>, window: &Window) -> Div {
+fn exact_cell(w: f32, content: Option<AnyElement>) -> Div {
     div()
         .relative()
         .flex_none()
         .flex()
         .items_center()
-        .child(recur_ui::exact::hgap(w, window))
+        .child(div().flex_none().w(px(w)))
         .when_some(content, |d, c| {
             d.child(
                 div()

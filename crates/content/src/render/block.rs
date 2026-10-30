@@ -1,6 +1,6 @@
 //! Block layout: the markdown tree as GPUI boxes with CSS margin collapsing, the list
 //! markers, code fences and their copy controls, blockquotes, rules, tables, images and
-//! Mermaid slots, all at WebKit's LayoutUnit positions.
+//! Mermaid slots.
 
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
@@ -20,10 +20,9 @@ use recur_ui::text::InlineBox;
 use recur_ui::{Color, IconName, Span, Text, TextStyled, Tokens, span};
 
 use super::doc::{El, Node};
-use super::exact::{hgap, vgap};
 use super::inline::{self, Context as InlineCx, Ink, Inline, Piece};
 use super::mirror::{Mirror, RunSpec, TextSpec};
-use super::style::{Sheet, copied_green, lu};
+use super::style::{Sheet, copied_green};
 
 /// A laid-out block and its outer vertical margins (they collapse with neighbors).
 pub struct Laid {
@@ -437,14 +436,9 @@ impl Build<'_, '_> {
             // The control's margin box sits 12px above to 6px below the baseline
             // (`vertical-align: -1px`), so it can deepen the line.
             let below = m.height - m.baseline;
-            el = el.child(checkbox_box(
-                checked,
-                m.baseline - 9.,
-                self.env.t,
-                self.window,
-            ));
+            el = el.child(checkbox_box(checked, m.baseline - 9., self.env.t));
             if below < 6. {
-                el = el.child(vgap(6. - below, self.window));
+                el = el.child(div().flex_none().h(px(6. - below)));
             }
         }
         let _ = links;
@@ -525,7 +519,7 @@ impl Build<'_, '_> {
                         d.child(recur_ui::style::outline(2., 2., 6., 0., self.env.t.amber))
                     }),
             )
-            .child(vgap(d.max(0.), self.window))
+            .child(div().flex_none().h(px(d.max(0.))))
             .into_any_element()
     }
 
@@ -537,7 +531,7 @@ impl Build<'_, '_> {
         for p in &inl.pieces {
             if let Piece::Image { .. } = p {
                 if !first {
-                    row = row.child(hgap(space_width(flow, self.window), self.window));
+                    row = row.child(div().flex_none().w(px(space_width(flow, self.window))));
                 }
                 first = false;
                 row = row.child(self.image(p, flow));
@@ -576,9 +570,9 @@ impl Build<'_, '_> {
         let fs = flow.size;
         Some(match e.tag.as_str() {
             "p" => {
-                let (mut mt, mut mb) = (0., lu(sh.p_margin_bottom * fs));
+                let (mut mt, mut mb) = (0., sh.p_margin_bottom * fs);
                 if pos.parent == "blockquote" {
-                    mt = lu(sh.blockquote_p_margin * fs);
+                    mt = sh.blockquote_p_margin * fs;
                     mb = mt;
                 }
                 if pos.parent == "li" && sh.li_p_margin_zero {
@@ -597,16 +591,14 @@ impl Build<'_, '_> {
             tag @ ("h1" | "h2" | "h3" | "h4" | "h5" | "h6") => {
                 let level = (tag.as_bytes()[1] - b'1') as usize;
                 let h = sh.headings[level];
-                // The text lays out at the LayoutUnit font size; `em` margins resolve against
-                // the computed (float) size, as WebKit's do.
                 let em = fs * h.scale;
-                let size = lu(em);
-                let mut mt = lu(h.margin_top * em);
+                let size = em;
+                let mut mt = h.margin_top * em;
                 if pos.first
                     && level < 3
                     && let Some(f) = sh.heading_first_top
                 {
-                    mt = lu(f * em);
+                    mt = f * em;
                 }
                 let hf = Flow {
                     size,
@@ -615,7 +607,7 @@ impl Build<'_, '_> {
                     weight: 650.,
                     lists: flow.lists,
                 };
-                let mb = lu(h.margin_bottom * em);
+                let mb = h.margin_bottom * em;
                 Laid {
                     el: self.inline_block(&e.children, hf, copy_sep(mb, size)),
                     mt,
@@ -624,13 +616,13 @@ impl Build<'_, '_> {
             }
             "ul" | "ol" => self.list(e, flow, pos),
             "blockquote" => {
-                let pad = lu(sh.blockquote_padding_v * fs);
+                let pad = sh.blockquote_padding_v * fs;
                 let inner = Flow {
                     ink: Ink::Muted,
                     ..flow
                 };
                 let kids = self.blocks(&e.children, inner, "blockquote");
-                let (body, first, last) = stack(kids, self.window);
+                let (body, first, last) = stack(kids);
                 let el = div()
                     .flex()
                     .flex_row()
@@ -643,14 +635,14 @@ impl Build<'_, '_> {
                             .min_w_0()
                             .flex()
                             .flex_col()
-                            .child(vgap(pad + first, self.window))
+                            .child(div().flex_none().h(px(pad + first)))
                             .child(body)
-                            .child(vgap(pad + last, self.window)),
+                            .child(div().flex_none().h(px(pad + last))),
                     );
                 Laid {
                     el: el.into_any_element(),
-                    mt: lu(sh.blockquote_margin.0 * fs),
-                    mb: lu(sh.blockquote_margin.1 * fs),
+                    mt: sh.blockquote_margin.0 * fs,
+                    mb: sh.blockquote_margin.1 * fs,
                 }
             }
             "hr" => Laid {
@@ -659,8 +651,8 @@ impl Build<'_, '_> {
                     .h(px(1.))
                     .bg(hsla(self.env.t.line))
                     .into_any_element(),
-                mt: lu(sh.hr_margin * fs),
-                mb: lu(sh.hr_margin * fs),
+                mt: sh.hr_margin * fs,
+                mb: sh.hr_margin * fs,
             },
             "pre" => {
                 let fence = self.n.fence;
@@ -668,8 +660,8 @@ impl Build<'_, '_> {
                 let pre = self.pre(e, flow, false);
                 Laid {
                     el: self.fence(pre, fence, 6.),
-                    mt: lu(sh.pre_margin.0 * fs),
-                    mb: lu(sh.pre_margin.1 * fs),
+                    mt: sh.pre_margin.0 * fs,
+                    mb: sh.pre_margin.1 * fs,
                 }
             }
             "table" => self.table(e, flow),
@@ -677,16 +669,16 @@ impl Build<'_, '_> {
             "div" if e.has_class("md-mermaid") => self.mermaid(e, flow)?,
             "li" => {
                 let kids = self.blocks(&e.children, flow, "li");
-                let (body, first, last) = stack(kids, self.window);
+                let (body, first, last) = stack(kids);
                 Laid {
                     el: body.into_any_element(),
-                    mt: first.max(lu(sh.li_margin * fs)),
-                    mb: last.max(lu(sh.li_margin * fs)),
+                    mt: first.max(sh.li_margin * fs),
+                    mb: last.max(sh.li_margin * fs),
                 }
             }
             _ => {
                 let kids = self.blocks(&e.children, flow, "div");
-                let (body, first, last) = stack(kids, self.window);
+                let (body, first, last) = stack(kids);
                 Laid {
                     el: body.into_any_element(),
                     mt: first,
@@ -725,7 +717,7 @@ impl Build<'_, '_> {
                 continue;
             }
             let kids = self.blocks(&li.children, inner, "li");
-            let (body, first, last) = stack(kids, self.window);
+            let (body, first, last) = stack(kids);
             let marker = match marker_kind {
                 Some(shape) => symbol_marker(
                     shape,
@@ -759,25 +751,22 @@ impl Build<'_, '_> {
                 .child(body);
             items.push(Laid {
                 el: item.into_any_element(),
-                mt: first.max(lu(sh.li_margin * fs)),
-                mb: last.max(lu(sh.li_margin * fs)),
+                mt: first.max(sh.li_margin * fs),
+                mb: last.max(sh.li_margin * fs),
             });
         }
-        let (body, first, last) = stack(items, self.window);
+        let (body, first, last) = stack(items);
         let (mt, mb) = if pos.parent == "li" {
-            (
-                lu(sh.nested_list_margin * fs),
-                lu(sh.nested_list_margin * fs),
-            )
+            (sh.nested_list_margin * fs, sh.nested_list_margin * fs)
         } else {
-            (lu(sh.list_margin.0 * fs), lu(sh.list_margin.1 * fs))
+            (sh.list_margin.0 * fs, sh.list_margin.1 * fs)
         };
         Laid {
             el: div()
                 .flex()
                 .flex_row()
                 .w_full()
-                .child(hgap(lu(sh.list_indent * fs), self.window))
+                .child(div().flex_none().w(px(sh.list_indent * fs)))
                 .child(div().flex_1().min_w_0().child(body))
                 .into_any_element(),
             mt: mt.max(first),
@@ -950,9 +939,9 @@ impl Build<'_, '_> {
             if let Some(p) = pre {
                 let pre_el = self.pre(&p, flow, false);
                 col = col
-                    .child(vgap(lu(sh.pre_margin.0 * fs), self.window))
+                    .child(div().flex_none().h(px(sh.pre_margin.0 * fs)))
                     .child(pre_el)
-                    .child(vgap(lu(sh.pre_margin.1 * fs), self.window));
+                    .child(div().flex_none().h(px(sh.pre_margin.1 * fs)));
             }
             return Laid {
                 el: col.into_any_element(),
@@ -983,8 +972,8 @@ impl Build<'_, '_> {
         let el = card(t.pane, t.line, 6.).overflow_hidden().child(body);
         Laid {
             el: self.fence(el.into_any_element(), ix, 4.),
-            mt: lu(sh.pre_margin.0 * fs),
-            mb: lu(sh.pre_margin.1 * fs),
+            mt: sh.pre_margin.0 * fs,
+            mb: sh.pre_margin.1 * fs,
         }
     }
 
@@ -1042,8 +1031,8 @@ impl Build<'_, '_> {
         );
         Some(Laid {
             el: el.into_any_element(),
-            mt: lu(sh.pre_margin.0 * fs),
-            mb: lu(sh.pre_margin.1 * fs),
+            mt: sh.pre_margin.0 * fs,
+            mb: sh.pre_margin.1 * fs,
         })
     }
 
@@ -1145,7 +1134,7 @@ impl Build<'_, '_> {
         } else {
             let k = (avail - sum_min) / (sum_max - sum_min);
             (0..cols)
-                .map(|i| lu(min_w[i] + (max_w[i] - min_w[i]) * k))
+                .map(|i| min_w[i] + (max_w[i] - min_w[i]) * k)
                 .collect()
         };
         let line = t.line;
@@ -1206,7 +1195,7 @@ impl Build<'_, '_> {
                     .flex()
                     .flex_col()
                     .when_some(bg, |d, c| d.bg(hsla(c)))
-                    .child(hgap(w, self.window).mb(px(-1. / self.window.scale_factor())))
+                    .child(div().flex_none().w(px(w)))
                     .child(
                         div()
                             .absolute()
@@ -1225,7 +1214,7 @@ impl Build<'_, '_> {
             let h = row_h[ri] + 2. * pv + 1.;
             let mut row = div().flex().flex_row();
             for c in cells {
-                row = row.child(c.child(vgap(h, self.window)));
+                row = row.child(c.child(div().flex_none().h(px(h))));
             }
             grid = grid.child(row);
         }
@@ -1237,16 +1226,16 @@ impl Build<'_, '_> {
             .flex_none()
             .flex()
             .flex_col()
-            .child(vgap(outer, self.window))
+            .child(div().flex_none().h(px(outer)))
             .child(
                 div()
                     .flex()
                     .flex_row()
-                    .child(hgap(0.5, self.window))
+                    .child(div().flex_none().w(px(0.5)))
                     .child(grid)
-                    .child(hgap(0.5, self.window)),
+                    .child(div().flex_none().w(px(0.5))),
             )
-            .child(vgap(outer, self.window));
+            .child(div().flex_none().h(px(outer)));
         self.n.table += 1;
         let el = div()
             .id(("md-table", self.n.table))
@@ -1256,8 +1245,8 @@ impl Build<'_, '_> {
             .child(table);
         Laid {
             el: el.into_any_element(),
-            mt: lu(sh.table_margin.0 * size),
-            mb: lu(sh.table_margin.1 * size),
+            mt: sh.table_margin.0 * size,
+            mb: sh.table_margin.1 * size,
         }
     }
 }
@@ -1446,7 +1435,7 @@ pub fn disc_marker(size: f32, leading: f32, color: Color, window: &Window) -> An
 
 /// Stack blocks with collapsed sibling margins. Returns the column and the outer margins of
 /// its first and last block, which collapse through a parent without padding or border.
-pub fn stack(blocks: Vec<Laid>, window: &Window) -> (Div, f32, f32) {
+pub fn stack(blocks: Vec<Laid>) -> (Div, f32, f32) {
     let mut col = div().flex().flex_col().w_full();
     let mut prev: Option<f32> = None;
     let (mut first, mut last) = (0., 0.);
@@ -1454,7 +1443,7 @@ pub fn stack(blocks: Vec<Laid>, window: &Window) -> (Div, f32, f32) {
     for (i, b) in blocks.into_iter().enumerate() {
         match prev {
             None => first = b.mt,
-            Some(p) => col = col.child(vgap(p.max(b.mt), window)),
+            Some(p) => col = col.child(div().flex_none().h(px(p.max(b.mt)))),
         }
         prev = Some(b.mb);
         if i + 1 == n {
@@ -1473,7 +1462,7 @@ const CHECKBOX_MARK: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="12
 
 /// A task checkbox: a 12px rounded box in the theme's muted ink, with a text-colored check.
 /// `top` is the border box's offset in the block.
-fn checkbox_box(checked: bool, top: f32, t: &Tokens, window: &Window) -> AnyElement {
+fn checkbox_box(checked: bool, top: f32, t: &Tokens) -> AnyElement {
     let control = div()
         .size(px(12.))
         .rounded(px(3.))
@@ -1485,14 +1474,10 @@ fn checkbox_box(checked: bool, top: f32, t: &Tokens, window: &Window) -> AnyElem
                     .size(px(10.)),
             )
         });
-    // Its top is a fractional offset from the baseline: an exact gap, as an inset would round.
     div()
         .absolute()
         .left(px(2.))
-        .top_0()
-        .flex()
-        .flex_col()
-        .child(vgap(top.max(0.), window))
+        .top(px(top.max(0.)))
         .child(control)
         .into_any_element()
 }

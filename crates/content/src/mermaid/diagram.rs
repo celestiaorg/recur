@@ -18,7 +18,6 @@ use recur_ui::{Color, TextStyled};
 use resvg::{tiny_skia, usvg};
 
 use crate::purify::{self, Config, dom};
-use crate::render::exact::{hgap, vgap};
 
 fn svg_config() -> &'static Config {
     static CFG: OnceLock<Config> = OnceLock::new();
@@ -477,36 +476,19 @@ impl Diagram {
                 .flex_none()
                 .w(px((tw / dp).ceil() * dp + dp))
                 .child(text);
-            el = el.child(placed(left, top, boxed, window));
+            el = el.child(placed(left, top, boxed));
         }
         el.into_any_element()
     }
 }
 
-/// A box at an exact fractional offset (negative offsets fall back to rounded insets).
-fn placed(left: f32, top: f32, child: impl IntoElement, window: &Window) -> AnyElement {
-    if left < 0. || top < 0. {
-        return div()
-            .absolute()
-            .left(px(left))
-            .top(px(top))
-            .child(child)
-            .into_any_element();
-    }
+/// A box at an offset.
+fn placed(left: f32, top: f32, child: impl IntoElement) -> AnyElement {
     div()
         .absolute()
-        .top_0()
-        .left_0()
-        .flex()
-        .flex_col()
-        .child(vgap(top, window))
-        .child(
-            div()
-                .flex()
-                .flex_row()
-                .child(hgap(left, window))
-                .child(child),
-        )
+        .left(px(left))
+        .top(px(top))
+        .child(child)
         .into_any_element()
 }
 

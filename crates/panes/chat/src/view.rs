@@ -291,12 +291,6 @@ impl AgentChat {
             div()
                 .flex()
                 .items_start()
-                .child(
-                    div()
-                        .flex_none()
-                        .h(px(1.))
-                        .aspect_ratio(recur_ui::style::TIE_NUDGE),
-                )
                 .child(div().flex_1().min_w_0().flex().flex_col().child(col))
                 .into_any_element()
         };
@@ -345,18 +339,6 @@ impl AgentChat {
             .when(session, |d| d.flex_initial().min_h_0())
             .flex()
             .flex_col()
-            // The cached pane lays out as its own root from a snapped origin, so the window
-            // root's tie nudge (`style::window_root`) has to apply inside it too, or half-pixel
-            // edges round the other way. A column spacer, not the root's row: a row would
-            // measure the whole transcript's intrinsic width every frame.
-            .when(!session, |d| {
-                d.child(
-                    div()
-                        .flex_none()
-                        .w(px(1.))
-                        .aspect_ratio(1. / recur_ui::style::TIE_NUDGE),
-                )
-            })
             .child(scroller)
             .child(probe)
             .children(self.fades(cx))

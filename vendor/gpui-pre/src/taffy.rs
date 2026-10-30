@@ -27,8 +27,6 @@ type NodeMeasureFn = StackSafe<Box<MeasureFn>>;
 
 struct NodeContext {
     measure: NodeMeasureFn,
-    /// Keep the measured size unrounded (`Window::request_measured_layout_exact`).
-    exact: bool,
 }
 pub struct TaffyLayoutEngine {
     taffy: TaffyTree<NodeContext>,
@@ -89,7 +87,6 @@ impl TaffyLayoutEngine {
         style: Style,
         rem_size: Pixels,
         scale_factor: f32,
-        exact: bool,
         measure: impl FnMut(
             Size<Option<Pixels>>,
             Size<AvailableSpace>,
@@ -104,10 +101,7 @@ impl TaffyLayoutEngine {
         let measure = StackSafe::new(measure);
 
         self.taffy
-            .new_leaf_with_context(
-                taffy_style,
-                NodeContext { measure, exact },
-            )
+            .new_leaf_with_context(taffy_style, NodeContext { measure })
             .expect(EXPECT_MESSAGE)
             .into()
     }
@@ -267,13 +261,7 @@ impl TaffyLayoutEngine {
 
                     let measured_size: Size<Pixels> =
                         (node_context.measure)(known_dimensions, available_space, window, cx);
-                    if node_context.exact {
-                        measured_size
-                            .map(|d| d.0.max(0.0) * scale_factor)
-                            .into()
-                    } else {
-                        snap_measured_size_to_device_pixels(measured_size, scale_factor).into()
-                    }
+                    snap_measured_size_to_device_pixels(measured_size, scale_factor).into()
                 },
             )
             .expect(EXPECT_MESSAGE);
@@ -388,17 +376,6 @@ impl TaffyLayoutEngine {
         let bounds = (snapped_bounds / scale_factor).map(Pixels);
         self.absolute_layout_bounds.insert(id, bounds);
         bounds
-    }
-
-    /// The node's border box before snapping, in the space of `layout_bounds`.
-    pub fn layout_bounds_unsnapped(&mut self, id: LayoutId, scale_factor: f32) -> Bounds<Pixels> {
-        self.layout_bounds(id, scale_factor);
-        let origin = self.absolute_outer_origins[&id];
-        let size = self.taffy.layout(id.into()).expect(EXPECT_MESSAGE).size;
-        Bounds {
-            origin: origin.map(|v| Pixels(v / scale_factor)),
-            size: Size::from(size).map(|v: f32| Pixels(v / scale_factor)),
-        }
     }
 }
 

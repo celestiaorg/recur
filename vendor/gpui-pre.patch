@@ -719,72 +719,6 @@ index be378132..5a6c7369 100644
  /// The style of a border.
  #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
  #[repr(C)]
-diff --git a/rust/vendor/gpui-pre/src/taffy.rs b/rust/vendor/gpui-pre/src/taffy.rs
-index b9e583a8..a89e7913 100644
---- a/rust/vendor/gpui-pre/src/taffy.rs
-+++ b/rust/vendor/gpui-pre/src/taffy.rs
-@@ -27,6 +27,8 @@ type NodeMeasureFn = StackSafe<Box<MeasureFn>>;
- 
- struct NodeContext {
-     measure: NodeMeasureFn,
-+    /// Keep the measured size unrounded (`Window::request_measured_layout_exact`).
-+    exact: bool,
- }
- pub struct TaffyLayoutEngine {
-     taffy: TaffyTree<NodeContext>,
-@@ -87,6 +89,7 @@ impl TaffyLayoutEngine {
-         style: Style,
-         rem_size: Pixels,
-         scale_factor: f32,
-+        exact: bool,
-         measure: impl FnMut(
-             Size<Option<Pixels>>,
-             Size<AvailableSpace>,
-@@ -101,7 +104,10 @@ impl TaffyLayoutEngine {
-         let measure = StackSafe::new(measure);
- 
-         self.taffy
--            .new_leaf_with_context(taffy_style, NodeContext { measure })
-+            .new_leaf_with_context(
-+                taffy_style,
-+                NodeContext { measure, exact },
-+            )
-             .expect(EXPECT_MESSAGE)
-             .into()
-     }
-@@ -261,7 +267,13 @@ impl TaffyLayoutEngine {
- 
-                     let measured_size: Size<Pixels> =
-                         (node_context.measure)(known_dimensions, available_space, window, cx);
--                    snap_measured_size_to_device_pixels(measured_size, scale_factor).into()
-+                    if node_context.exact {
-+                        measured_size
-+                            .map(|d| d.0.max(0.0) * scale_factor)
-+                            .into()
-+                    } else {
-+                        snap_measured_size_to_device_pixels(measured_size, scale_factor).into()
-+                    }
-                 },
-             )
-             .expect(EXPECT_MESSAGE);
-@@ -377,6 +389,17 @@ impl TaffyLayoutEngine {
-         self.absolute_layout_bounds.insert(id, bounds);
-         bounds
-     }
-+
-+    /// The node's border box before snapping, in the space of `layout_bounds`.
-+    pub fn layout_bounds_unsnapped(&mut self, id: LayoutId, scale_factor: f32) -> Bounds<Pixels> {
-+        self.layout_bounds(id, scale_factor);
-+        let origin = self.absolute_outer_origins[&id];
-+        let size = self.taffy.layout(id.into()).expect(EXPECT_MESSAGE).size;
-+        Bounds {
-+            origin: origin.map(|v| Pixels(v / scale_factor)),
-+            size: Size::from(size).map(|v: f32| Pixels(v / scale_factor)),
-+        }
-+    }
- }
- 
- /// A unique identifier for a layout node, generated when requesting a layout from Taffy
 diff --git a/rust/vendor/gpui-pre/src/test.rs b/rust/vendor/gpui-pre/src/test.rs
 index c1c8e666..3f68ea13 100644
 --- a/rust/vendor/gpui-pre/src/test.rs
@@ -1377,7 +1311,7 @@ index 081edd9a..0012ba2b 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..ba3de914 100644
+index 1214b035..99ff4631 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
 @@ -6,8 +6,8 @@ use crate::Inspector;
@@ -1547,9 +1481,9 @@ index 1214b035..ba3de914 100644
 +            island_ids: FxHashSet::default(),
 +            replayed_views: FxHashSet::default(),
 +            root: None,
-         }
-     }
- 
++        }
++    }
++
 +    pub(crate) fn push_cached_view(
 +        &mut self,
 +        global_id: GlobalElementId,
@@ -1585,9 +1519,9 @@ index 1214b035..ba3de914 100644
 +        record.opacity = opacity;
 +        if !painted.is_empty() {
 +            Rc::make_mut(&mut record.accessed).extend(painted.iter().copied());
-+        }
-+    }
-+
+         }
+     }
+ 
 +    pub(crate) fn is_island(&self, ix: usize) -> bool {
 +        self.cached_views[ix].island.is_some()
 +    }
@@ -2383,34 +2317,7 @@ index 1214b035..ba3de914 100644
      fn largest_border_interior(quad: &Quad) -> Bounds<ScaledPixels> {
          let radii = &quad.corner_radii;
          let widths = &quad.border_widths;
-@@ -5247,7 +5952,25 @@ impl Window {
-         self.layout_engine
-             .as_mut()
-             .unwrap()
--            .request_measured_layout(style, rem_size, scale_factor, measure)
-+            .request_measured_layout(style, rem_size, scale_factor, false, measure)
-+    }
-+
-+    /// [`Window::request_measured_layout`], keeping the measured size as the closure returns it
-+    /// instead of ceiling it to device pixels. Box edges are still snapped after layout, so a
-+    /// box placed after a fractional size keeps its exact offset.
-+    pub fn request_measured_layout_exact<F>(&mut self, style: Style, measure: F) -> LayoutId
-+    where
-+        F: Fn(Size<Option<Pixels>>, Size<AvailableSpace>, &mut Window, &mut App) -> Size<Pixels>
-+            + 'static,
-+    {
-+        self.invalidator.debug_assert_prepaint();
-+
-+        let rem_size = self.rem_size();
-+        let scale_factor = self.scale_factor();
-+        self.layout_engine
-+            .as_mut()
-+            .unwrap()
-+            .request_measured_layout(style, rem_size, scale_factor, true, measure)
-     }
- 
-     /// Compute the layout for the given id within the given available space.
-@@ -5268,6 +5991,32 @@ impl Window {
+@@ -5268,6 +5973,17 @@ impl Window {
          self.layout_engine = Some(layout_engine);
      }
  
@@ -2425,25 +2332,10 @@ index 1214b035..ba3de914 100644
 +        self.next_frame.replayed_views.contains(&view)
 +    }
 +
-+    /// [`Window::layout_bounds`] before GPUI snapped the edges to device pixels: where a box
-+    /// at a fractional position really is.
-+    pub fn layout_bounds_unsnapped(&mut self, layout_id: LayoutId) -> Bounds<Pixels> {
-+        self.invalidator.debug_assert_prepaint();
-+
-+        let scale_factor = self.scale_factor();
-+        let mut bounds = self
-+            .layout_engine
-+            .as_mut()
-+            .unwrap()
-+            .layout_bounds_unsnapped(layout_id, scale_factor);
-+        bounds.origin += self.pixel_snap_point(self.element_offset());
-+        bounds
-+    }
-+
      /// Obtain the bounds computed for the given LayoutId relative to the window. This method will usually be invoked by
      /// GPUI itself automatically in order to pass your element its `Bounds` automatically.
      ///
-@@ -5947,7 +6696,9 @@ impl Window {
+@@ -5947,7 +6663,9 @@ impl Window {
          // special purposes, such as detecting events outside of a given Bounds.
          for listener in &mut mouse_listeners {
              let listener = listener.as_mut().unwrap();
@@ -2454,7 +2346,7 @@ index 1214b035..ba3de914 100644
              if !cx.propagate_event {
                  break;
              }
-@@ -5957,7 +6708,9 @@ impl Window {
+@@ -5957,7 +6675,9 @@ impl Window {
          if cx.propagate_event {
              for listener in mouse_listeners.iter_mut().rev() {
                  let listener = listener.as_mut().unwrap();
@@ -2465,7 +2357,7 @@ index 1214b035..ba3de914 100644
                  if !cx.propagate_event {
                      break;
                  }
-@@ -6268,7 +7021,9 @@ impl Window {
+@@ -6268,7 +6988,9 @@ impl Window {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
  
              for key_listener in node.key_listeners.clone() {
@@ -2476,7 +2368,7 @@ index 1214b035..ba3de914 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6280,7 +7035,9 @@ impl Window {
+@@ -6280,7 +7002,9 @@ impl Window {
              // Handle low level key events
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for key_listener in node.key_listeners.clone() {
@@ -2487,7 +2379,7 @@ index 1214b035..ba3de914 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6300,7 +7057,7 @@ impl Window {
+@@ -6300,7 +7024,7 @@ impl Window {
          for node_id in dispatch_path.iter().rev() {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for listener in node.modifiers_changed_listeners.clone() {
@@ -2496,7 +2388,7 @@ index 1214b035..ba3de914 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6503,7 +7260,9 @@ impl Window {
+@@ -6503,7 +7227,9 @@ impl Window {
              for listener in &global_listeners {
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -2507,7 +2399,7 @@ index 1214b035..ba3de914 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -6537,7 +7296,9 @@ impl Window {
+@@ -6537,7 +7263,9 @@ impl Window {
                  if action_type == any_action.type_id() {
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -2518,7 +2410,7 @@ index 1214b035..ba3de914 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6561,7 +7322,9 @@ impl Window {
+@@ -6561,7 +7289,9 @@ impl Window {
                      cx.propagate_event = false; // Actions stop propagation by default during the bubble phase
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -2529,7 +2421,7 @@ index 1214b035..ba3de914 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6582,7 +7345,9 @@ impl Window {
+@@ -6582,7 +7312,9 @@ impl Window {
  
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -2540,7 +2432,7 @@ index 1214b035..ba3de914 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -7317,7 +8082,9 @@ impl Window {
+@@ -7317,7 +8049,9 @@ impl Window {
          state_type: TypeId,
      ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
          let key = (global_id.clone(), state_type);

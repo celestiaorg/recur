@@ -15,10 +15,9 @@ use std::rc::Rc;
 
 use gpui_kit::{
     AnyElement, App, AvailableSpace, Bounds, Element, ElementId, FontFeatures, GlobalElementId,
-    Hsla, InspectorElementId, IntoElement, LayoutId, Length, ParentElement, Pixels, SharedString,
-    Style, Styled, TextRun, Window, div, px,
+    Hsla, InspectorElementId, IntoElement, LayoutId, ParentElement, Pixels, SharedString, Style,
+    Styled, TextRun, Window, div, px,
 };
-use recur_ui::exact;
 use recur_ui::font_metrics::line_gap;
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, LineMetrics, TextStyled, WhiteSpace, line_metrics, text};
@@ -711,7 +710,6 @@ impl IntoElement for Flow {
 struct Placed(Rc<Cell<Option<f32>>>);
 
 pub struct FlowState {
-    node: LayoutId,
     layout: Rc<RefCell<Option<FlowLayout>>>,
     placed: Placed,
     placed_at: Option<f32>,
@@ -720,25 +718,17 @@ pub struct FlowState {
 
 impl Flow {
     /// Each text run and chip at its line-box position, as an absolutely positioned child
-    /// of the flow's box: the offsets reach layout exactly (`recur_ui::exact`), so they snap
-    /// from the box's fractional origin as WebKit's inline boxes do.
-    fn place(&mut self, layout: &FlowLayout, window: &Window) -> Vec<AnyElement> {
+    /// of the flow's box.
+    fn place(&mut self, layout: &FlowLayout) -> Vec<AnyElement> {
         let mut out = Vec::new();
         let st = &self.style;
         let at = |x: f32, y: f32, el: AnyElement| {
             div()
                 .absolute()
-                .top_0()
-                .left_0()
+                .top(px(y.max(0.)))
+                .left(px(x.max(0.)))
                 .flex()
-                .flex_col()
-                .child(exact::vgap(y.max(0.), window))
-                .child(
-                    div()
-                        .flex()
-                        .child(exact::hgap(x.max(0.), window))
-                        .child(div().flex_none().child(el)),
-                )
+                .child(div().flex_none().child(el))
                 .into_any_element()
         };
         let band = self.visible.clone();
@@ -805,27 +795,28 @@ impl Element for Flow {
             }),
             None => Placed::default(),
         };
-        let leaf = exact::measured(Length::Auto, window, move |known, avail, window| {
-            let w = known.width.map(f32::from).unwrap_or(match avail.width {
-                AvailableSpace::Definite(w) => w.into(),
-                // `overflow-wrap: anywhere`: a shrink-wrapped flow's min-content width is
-                // its widest unbreakable piece, so a flex parent's cap can narrow it.
-                AvailableSpace::MinContent if fit => 0.,
-                _ => f32::MAX / 4.,
+        let leaf =
+            window.request_measured_layout(Style::default(), move |known, avail, window, _| {
+                let w = known.width.map(f32::from).unwrap_or(match avail.width {
+                    AvailableSpace::Definite(w) => w.into(),
+                    // `overflow-wrap: anywhere`: a shrink-wrapped flow's min-content width is
+                    // its widest unbreakable piece, so a flex parent's cap can narrow it.
+                    AvailableSpace::MinContent if fit => 0.,
+                    _ => f32::MAX / 4.,
+                });
+                let l = FlowLayout::compute(&content, &sizes, &st, w, window);
+                let extra = if trailing {
+                    shape_width(" ", &st, window).0
+                } else {
+                    0.
+                };
+                let out = gpui_kit::size(
+                    px(if fit { (l.max_line + extra).min(w) } else { w }),
+                    px(l.height.max(min_h)),
+                );
+                *slot.borrow_mut() = Some(l);
+                out
             });
-            let l = FlowLayout::compute(&content, &sizes, &st, w, window);
-            let extra = if trailing {
-                shape_width(" ", &st, window).0
-            } else {
-                0.
-            };
-            let out = (
-                if fit { (l.max_line + extra).min(w) } else { w },
-                l.height.max(min_h),
-            );
-            *slot.borrow_mut() = Some(l);
-            out
-        });
         let mut nodes = vec![leaf];
         // Children are placed from the last frame's line layout; a new width lays the
         // window out again (see `prepaint`).
@@ -836,7 +827,7 @@ impl Element for Flow {
                 let sizes: Vec<(f32, f32)> =
                     self.atoms.iter().map(|a| (a.width, a.height)).collect();
                 let l = FlowLayout::compute(&content, &sizes, &self.style, w, window);
-                self.place(&l, window)
+                self.place(&l)
             }
             None => Vec::new(),
         };
@@ -851,7 +842,6 @@ impl Element for Flow {
         (
             node,
             FlowState {
-                node,
                 layout,
                 placed,
                 placed_at,
@@ -911,10 +901,9 @@ impl Element for Flow {
             // A new element (a parked shell laid out again) has nothing placed: place the
             // children now, laid out once as their own root, so its first frame is drawn.
             let l = state.layout.borrow().clone();
-            let children = l.map(|l| self.place(&l, window)).unwrap_or_default();
+            let children = l.map(|l| self.place(&l)).unwrap_or_default();
             let root = div().relative().size_full().children(children);
             state.children = vec![recur_ui::layout_root::prepaint_over(
-                state.node,
                 bounds,
                 root.into_any_element(),
                 window,

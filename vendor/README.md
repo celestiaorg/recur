@@ -15,10 +15,6 @@
 
 Anything else (a notify reaching a non-isolated view, a notify of a non-view entity, `Window::refresh`, a resize, the inspector picking, accessibility on) draws exactly as upstream.
 
-### Exact measured sizes
-
-`Window::request_measured_layout_exact` is `request_measured_layout` without ceiling the measured size to device pixels. Box edges are still snapped after layout, so a box placed after a fractional size keeps the offset WebKit gives it, in the same pass. `recur_ui::exact::measured` uses it for text and the chat's flows (`taffy.rs` `NodeContext::exact`).
-
 ### Replayed views
 
 `Window::replayed_view(id)` says whether the frame being drawn replayed a cached view instead of rendering it, and `Window::view_stack` lists the views being drawn. `recur_ui::selection` keeps the items of a replayed view in a scope that spans cached views (a PR conversation's items, a transcript's session cards), whose texts do not register again while they replay.
@@ -30,10 +26,6 @@ Anything else (a notify reaching a non-isolated view, a notify of a non-view ent
 `Window::paint_hole(bounds)` records a `Hole` primitive: fully transparent pixels over `bounds` (within the content mask) that replace what was painted under them, so a native view behind GPUI's view shows through. It takes its draw order from the bounds tree like any primitive, so ancestors' backgrounds are cleared and what is painted later (deferred draws, tooltips, their shadows) composites over it with its own alpha. `Scene::batches_with_backdrop_blurs` yields `SceneBatch::Holes` between the primitive batches and `Scene::batches` skips them, as with blurs. A replay copies a hole like any primitive.
 
 `HitboxBehavior::Native` is a hitbox that behaves as `Normal` in GPUI; `Window::native_hit_test(position)` says whether the last frame's topmost hitbox at a point is one, and `PlatformWindow::on_hit_test_native` (a default no-op) hands that answer to the platform, so mouse events there reach the native view and anything GPUI draws over it with a hitbox keeps them. The macOS HTML preview paints a hole and a native hitbox over its WKWebView, which sits behind GPUI's view. A renderer cannot sample the view behind a hole, so `Window::backdrop_blur_over_hole(bounds)` (from `after_next_draw`) gives the largest backdrop blur drawn over one and the preview blurs its WKWebView by it (a Core Image content filter). `recur-ui`'s `a_hole_and_native_hitbox_sit_under_overlays` checks the batch order and the hit test, also through a cached view's replay.
-
-### Unsnapped bounds
-
-`Window::layout_bounds_unsnapped` is `layout_bounds` before the edges snap to device pixels (`taffy.rs` keeps the unrounded origins it snaps from). `recur_ui::layout_root` reads a layout root's or block's fractional edges from it, so content laid out as its own root lands where in-place layout puts it, in one frame.
 
 ### Backdrop blur
 
@@ -64,7 +56,7 @@ An isolated view's size comes from its `style`, never from its content, and anyt
 
 ### Upgrading
 
-gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way vendor/gpui-pre.patch` and fix what moved. The patch touches `taffy.rs` (exact measured sizes, unsnapped bounds), `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`, `paint_backdrop_blur`, `paint_hole`, `backdrop_blur_over_hole`, `HitboxBehavior::Native`), `platform.rs` (`on_hit_test_native`), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`, `BackdropBlur`, `Hole`, `SceneBatch`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec`, `backdrop_blur_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
+gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way vendor/gpui-pre.patch` and fix what moved. The patch touches `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`, `paint_backdrop_blur`, `paint_hole`, `backdrop_blur_over_hole`, `HitboxBehavior::Native`), `platform.rs` (`on_hit_test_native`), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`, `BackdropBlur`, `Hole`, `SceneBatch`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec`, `backdrop_blur_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
 
 Regenerate the patch after editing the vendored source:
 

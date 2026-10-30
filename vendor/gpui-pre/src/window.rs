@@ -5952,25 +5952,7 @@ impl Window {
         self.layout_engine
             .as_mut()
             .unwrap()
-            .request_measured_layout(style, rem_size, scale_factor, false, measure)
-    }
-
-    /// [`Window::request_measured_layout`], keeping the measured size as the closure returns it
-    /// instead of ceiling it to device pixels. Box edges are still snapped after layout, so a
-    /// box placed after a fractional size keeps its exact offset.
-    pub fn request_measured_layout_exact<F>(&mut self, style: Style, measure: F) -> LayoutId
-    where
-        F: Fn(Size<Option<Pixels>>, Size<AvailableSpace>, &mut Window, &mut App) -> Size<Pixels>
-            + 'static,
-    {
-        self.invalidator.debug_assert_prepaint();
-
-        let rem_size = self.rem_size();
-        let scale_factor = self.scale_factor();
-        self.layout_engine
-            .as_mut()
-            .unwrap()
-            .request_measured_layout(style, rem_size, scale_factor, true, measure)
+            .request_measured_layout(style, rem_size, scale_factor, measure)
     }
 
     /// Compute the layout for the given id within the given available space.
@@ -6000,21 +5982,6 @@ impl Window {
     /// frame, its elements' prepaint and paint not run) rather than rendering it.
     pub fn replayed_view(&self, view: EntityId) -> bool {
         self.next_frame.replayed_views.contains(&view)
-    }
-
-    /// [`Window::layout_bounds`] before GPUI snapped the edges to device pixels: where a box
-    /// at a fractional position really is.
-    pub fn layout_bounds_unsnapped(&mut self, layout_id: LayoutId) -> Bounds<Pixels> {
-        self.invalidator.debug_assert_prepaint();
-
-        let scale_factor = self.scale_factor();
-        let mut bounds = self
-            .layout_engine
-            .as_mut()
-            .unwrap()
-            .layout_bounds_unsnapped(layout_id, scale_factor);
-        bounds.origin += self.pixel_snap_point(self.element_offset());
-        bounds
     }
 
     /// Obtain the bounds computed for the given LayoutId relative to the window. This method will usually be invoked by

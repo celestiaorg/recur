@@ -19,7 +19,6 @@ use gpui_kit::{
 use recur_code::view::changed_tree::{
     build_tree_from_paths, cap_visible_tree, flatten_visible_tree, paths_under_dir,
 };
-use recur_ui::exact::vgap;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::scroll_area;
@@ -608,12 +607,7 @@ impl Observatory {
     }
 
     /// The sticky layer: open folders scrolled past their natural row.
-    fn scm_sticky_layer(
-        &self,
-        scroll: f32,
-        cx: &mut Context<Self>,
-        window: &mut Window,
-    ) -> Vec<AnyElement> {
+    fn scm_sticky_layer(&self, scroll: f32, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let t = Theme::of(cx).tokens;
         let all = self.scm_rows();
         let cols = self.scm_probes.cols.get();
@@ -664,7 +658,7 @@ impl Observatory {
                         .right_0()
                         .flex()
                         .flex_col()
-                        .child(vgap(top - scroll, window))
+                        .child(div().flex_none().h(px(top - scroll)))
                         .child(div().relative().child(row).children(fade))
                         .into_any_element(),
                 ));
@@ -761,7 +755,7 @@ impl Observatory {
         if let Some(s) = self.scm_section(false, (scroll, vp), cx) {
             content = content.child(s);
         }
-        let layer = self.scm_sticky_layer(scroll, cx, window);
+        let layer = self.scm_sticky_layer(scroll, cx);
         let body_cell = self.scm_probes.body.clone();
         div()
             .flex_1()

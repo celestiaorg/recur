@@ -698,7 +698,7 @@ impl AgentChat {
                 .flex_1()
                 .min_w_0()
                 .when_some(meta_pad, |d, pad| {
-                    d.child(recur_ui::exact::vgap_at(pad.max(0.), self.scale))
+                    d.child(div().flex_none().h(px(pad.max(0.))))
                 })
                 .child(meta)
                 .into_any_element(),

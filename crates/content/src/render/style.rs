@@ -1,10 +1,7 @@
 //! The markdown stylesheets: chat and file preview, with the UA defaults they leave in
-//! place. Lengths are CSS px at
-//! the element's font size; [`lu`] truncates them to WebKit LayoutUnits.
+//! place. Lengths are CSS px at the element's font size.
 
 use recur_ui::{Color, Tokens};
-
-pub use recur_ui::exact::lu;
 
 /// Which host class the markdown renders under.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

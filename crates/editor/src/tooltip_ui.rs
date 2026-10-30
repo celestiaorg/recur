@@ -15,7 +15,6 @@ use gpui_kit::{
     Styled, Window, deferred, div, point, px, relative, size,
 };
 use recur_ui::shadow::{css_box_shadow, with_shadow};
-use recur_ui::style::TIE_NUDGE;
 use recur_ui::text::Align;
 use recur_ui::{Text, TextStyled, Theme, Tokens, rgba, span, text};
 
@@ -315,7 +314,7 @@ impl Element for Placed {
             };
             p = q;
         }
-        let origin = point(px(p.left + TIE_NUDGE), px(p.top + TIE_NUDGE));
+        let origin = point(px(p.left), px(p.top));
         self.child.prepaint_at(origin, window, cx);
         true
     }

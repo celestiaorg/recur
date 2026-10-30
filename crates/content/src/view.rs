@@ -689,7 +689,7 @@ impl MarkdownView {
                 (blocks, texts)
             }
         };
-        let (body, first, last) = stack(blocks, b.window);
+        let (body, first, last) = stack(blocks);
         let changed = {
             let old = self.texts.borrow();
             let content = |t: &TextBlock| {
@@ -714,8 +714,8 @@ impl MarkdownView {
         } else {
             (first, last)
         };
-        let gap_top = crate::render::exact::vgap(first, b.window);
-        let gap_bottom = crate::render::exact::vgap(last, b.window);
+        let gap_top = div().flex_none().h(px(first));
+        let gap_bottom = div().flex_none().h(px(last));
         let this = cx.entity().downgrade();
         let measure = canvas(
             move |bounds, window, cx| {

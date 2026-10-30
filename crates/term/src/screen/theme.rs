@@ -88,6 +88,43 @@ impl Rgba {
         ch(self.r()) * 0.2126 + ch(self.g()) * 0.7152 + ch(self.b()) * 0.0722
     }
 
+    /// WCAG contrast ratio of the RGB channels.
+    pub fn contrast(self, other: Rgba) -> f64 {
+        let (a, b) = (self.relative_luminance(), other.relative_luminance());
+        (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    /// xterm.js's `ensureContrastRatio`: steps the colour 10% at a time away from `bg`'s
+    /// luminance until it reaches `ratio`, trying the other direction when the first runs out.
+    pub fn ensure_contrast(self, bg: Rgba, ratio: f64) -> Rgba {
+        if self.contrast(bg) >= ratio {
+            return self;
+        }
+        let walk = |f: fn(u8) -> u8| {
+            let mut c = self;
+            loop {
+                let next = Rgba::new(f(c.r()), f(c.g()), f(c.b()), c.a());
+                if c.contrast(bg) >= ratio || next == c {
+                    return c;
+                }
+                c = next;
+            }
+        };
+        let darker = || walk(|c| c - (c as f64 * 0.1).ceil() as u8);
+        let lighter = || walk(|c| c + ((255 - c) as f64 * 0.1).ceil() as u8);
+        let dark_first = self.relative_luminance() < bg.relative_luminance();
+        let first = if dark_first { darker() } else { lighter() };
+        if first.contrast(bg) >= ratio {
+            return first;
+        }
+        let second = if dark_first { lighter() } else { darker() };
+        if second.contrast(bg) > first.contrast(bg) {
+            second
+        } else {
+            first
+        }
+    }
+
     /// `#rrggbb` or `#rrggbbaa` when translucent.
     pub fn to_hex(self) -> String {
         if self.is_opaque() {

@@ -1,6 +1,8 @@
 //! The viewport as the renderer draws it: cell colours (selection, find highlights, inverse),
 //! the cursor cell override, background rectangles and glyph colours.
 
+use std::collections::HashMap;
+
 use alacritty_terminal::index::{Column, Line, Point};
 use alacritty_terminal::term::cell::{Cell, Flags};
 use alacritty_terminal::term::search::Match;
@@ -39,9 +41,6 @@ pub struct Glyph {
     pub strikethrough: bool,
     /// SGR 53, drawn along the top of the character box in the glyph colour.
     pub overline: bool,
-    /// The resolved background (colour and background flags) differs from the previous cell's,
-    /// so the renderer clips whatever the glyph draws left of its cell (`GlyphRenderer`).
-    pub clip_left: bool,
     /// Box drawing, block and powerline glyphs (drawn procedurally to fill the cell).
     pub codepoint: u32,
 }
@@ -173,6 +172,10 @@ impl Colors {
     }
 }
 
+/// VS Code's default `minimumContrastRatio` (WCAG AA): faint palette entries and programs'
+/// hard-coded colours stay readable on any background.
+const MIN_CONTRAST: f64 = 4.5;
+
 /// Powerline and box/block glyphs take the background's role under a selection.
 fn glyph_as_background(cp: u32) -> bool {
     (0xE0A4..=0xE0D6).contains(&cp) || (0x2500..=0x259F).contains(&cp)
@@ -219,6 +222,7 @@ pub(super) fn frame(s: &Screen, matches: &[Match], focused: bool, cursor_blink_o
         false
     };
 
+    let mut contrast = HashMap::new();
     let mut frame = Frame {
         cols,
         rows,
@@ -231,7 +235,6 @@ pub(super) fn frame(s: &Screen, matches: &[Match], focused: bool, cursor_blink_o
         let line = Line(y as i32 - offset);
         let grid_row = &s.term.grid()[line];
         let mut last_cursor_x: Option<usize> = None;
-        let mut last_bg = None;
         for x in 0..cols {
             let cell = &grid_row[Column(x)];
             let mut a = attrs(cell);
@@ -351,27 +354,22 @@ pub(super) fn frame(s: &Screen, matches: &[Match], focused: bool, cursor_blink_o
                 };
             }
 
-            // The resolved background: colour mode and the background flags.
-            let bg_key = (a.bg, a.italic, a.dim, a.overline, a.extended);
-            let clip_left = x > 0 && last_bg != Some(bg_key);
-            last_bg = Some(bg_key);
-
             // A rect wherever the background is not the default, or inverse.
             let bg_nonzero = a.bg != Mode::Default || a.italic || a.dim || a.overline || a.extended;
+            let cell_bg = if a.inverse {
+                colors.of(a.fg, colors.fg)
+            } else {
+                colors.of(a.bg, colors.bg)
+            }
+            .opaque();
             if bg_nonzero || a.inverse {
-                let color = if a.inverse {
-                    colors.of(a.fg, colors.fg)
-                } else {
-                    colors.of(a.bg, colors.bg)
-                }
-                .opaque();
                 match frame.rects.last_mut() {
-                    Some(r) if r.row == y && r.col + r.len == x && r.color == color => r.len += 1,
+                    Some(r) if r.row == y && r.col + r.len == x && r.color == cell_bg => r.len += 1,
                     _ => frame.rects.push(BgRect {
                         col: x,
                         row: y,
                         len: 1,
-                        color,
+                        color: cell_bg,
                     }),
                 }
             }
@@ -398,6 +396,11 @@ pub(super) fn frame(s: &Screen, matches: &[Match], focused: bool, cursor_blink_o
                 }
             }
             .opaque();
+            if !glyph_as_background(cp) {
+                fg = *contrast
+                    .entry((fg, cell_bg))
+                    .or_insert_with(|| fg.ensure_contrast(cell_bg, MIN_CONTRAST));
+            }
             if a.dim {
                 fg = fg.multiply_opacity(0.5);
             }
@@ -439,7 +442,6 @@ pub(super) fn frame(s: &Screen, matches: &[Match], focused: bool, cursor_blink_o
                 underline,
                 strikethrough: a.strike,
                 overline: a.overline,
-                clip_left,
                 codepoint: cp,
             });
         }

@@ -310,6 +310,7 @@ fn frame_resolves_colours() {
     let theme = Theme {
         background: Some("#141414".into()),
         foreground: Some("#e6e4e1".into()),
+        bright_red: Some("#ff5555".into()),
         ..Default::default()
     };
     s.set_palette(Palette::from_theme(&theme));
@@ -455,6 +456,7 @@ fn overlined_blanks_render_and_keep_default_colours() {
     let theme = Theme {
         background: Some("#141414".into()),
         foreground: Some("#e6e4e1".into()),
+        red: Some("#ff5555".into()),
         ..Default::default()
     };
     s.set_palette(Palette::from_theme(&theme));
@@ -693,4 +695,35 @@ fn overline_handler_delegates_everything_else() {
             .collect();
         assert_eq!(screen_out, bare_out, "{name:?}");
     }
+}
+
+#[test]
+fn frame_lifts_faint_text_to_minimum_contrast() {
+    let mut s = screen(20, 3);
+    let theme = Theme {
+        background: Some("#ffffff".into()),
+        foreground: Some("#1f2328".into()),
+        bright_black: Some("#d0d0d0".into()),
+        ..Default::default()
+    };
+    s.set_palette(Palette::from_theme(&theme));
+    s.feed(b"\x1b[90mf\x1b[0mt\x1b[90;7mi");
+    let f = s.frame(true, true);
+    let white = Rgba::rgb(0xff, 0xff, 0xff);
+    assert!(
+        find_glyph(&f, 0, 0).fg.contrast(white) >= 4.5,
+        "faint grey darkens"
+    );
+    assert_eq!(
+        find_glyph(&f, 1, 0).fg,
+        Rgba::rgb(0x1f, 0x23, 0x28),
+        "readable text is untouched"
+    );
+    assert!(
+        find_glyph(&f, 2, 0)
+            .fg
+            .contrast(Rgba::rgb(0xd0, 0xd0, 0xd0))
+            >= 4.5,
+        "inverse text contrasts with its faint fill"
+    );
 }

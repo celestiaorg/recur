@@ -68,13 +68,14 @@ async fn watch_fires_on_non_git_working_copy() {
     assert_eq!(ws.worktree_path, dir.path().to_string_lossy());
     t.engine.watch_workspace(&ws.id);
     // Survive several polls: the old watcher died on the first git failure.
+    // FSEvents may still deliver the readme's creation, so count from here.
     tokio::time::sleep(Duration::from_millis(450)).await;
-    assert!(!t.events.has("workspace.fs_changed"));
+    let before = t.events.count("workspace.fs_changed");
     std::fs::write(dir.path().join("readme.txt"), "v2 agent\n").unwrap();
     wait_for(
         Duration::from_secs(3),
         "fs_changed after modify in a plain folder",
-        || t.events.has("workspace.fs_changed"),
+        || t.events.count("workspace.fs_changed") > before,
     )
     .await;
     t.engine.watch_workspace("");

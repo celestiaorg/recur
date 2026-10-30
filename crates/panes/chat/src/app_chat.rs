@@ -785,10 +785,11 @@ impl AppChat {
             .pl(px(8.))
             .pr(px(4.))
             .min_w_0()
+            .pb(px(1.))
             .bg(hsla(t.pane))
             .child(tab_bar_rule(cx))
             .child(div().flex().items_center().child(toggle))
-            .child(div().flex_1().min_w_0().flex().child(strip));
+            .child(div().flex_1().min_w_0().mb(px(-1.)).flex().child(strip));
         let focus = self.focus.clone();
         div()
             .id("app-chat")

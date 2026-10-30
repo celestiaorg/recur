@@ -109,6 +109,7 @@ pub fn side_head(tabbed: bool, cx: &App) -> Div {
         d.relative()
             .items_stretch()
             .pr(px(4.))
+            .pb(px(1.))
             .child(recur_ui::widgets::tab_bar_rule(cx))
     } else {
         d.items_center()

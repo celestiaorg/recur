@@ -386,6 +386,7 @@ impl PrDetail {
             .items_stretch()
             .h(px(recur_ui::style::CHROME_H))
             .pr(px(8.))
+            .pb(px(1.))
             .bg(hsla(t.pane))
             .child(recur_ui::widgets::tab_bar_rule(cx));
         if toggle {
@@ -526,7 +527,7 @@ impl PrDetail {
                 .flex()
                 .items_center()
                 .gap(px(6.))
-                .h_full()
+                .mb(px(-1.))
                 .px(px(10.))
                 .border_r_1()
                 .border_color(hsla(if on { t.line } else { t.line_soft }))

@@ -1,790 +1,4 @@
 {
-  "edit": [
-    {
-      "name": "replace root string keeps trailing comment",
-      "input": "# head\nsetup_cmd = 'old' # why\nenv = ''\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "setup_cmd"
-          ],
-          "str": "new value",
-          "out": "# head\nsetup_cmd = 'new value' # why\nenv = ''\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "env"
-          ],
-          "raw": "\"\"\"\nline one\nline two\n\"\"\"",
-          "out": "# head\nsetup_cmd = 'new value' # why\nenv = \"\"\"\nline one\nline two\n\"\"\"\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "insert after last root kv before tables",
-      "input": "a = 1\n\n# about t\n[t]\nx = 2\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "b"
-          ],
-          "str": "it's",
-          "out": "a = 1\nb = \"it's\"\n\n# about t\n[t]\nx = 2\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "t",
-            "y"
-          ],
-          "str": "q",
-          "out": "a = 1\nb = \"it's\"\n\n# about t\n[t]\nx = 2\ny = 'q'\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "insert root kv with only sections attached comment",
-      "input": "# keep\n[[run]]\nname = \"dev\"\ncmd = \"make dev\"\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "setup_cmd"
-          ],
-          "str": "make setup",
-          "out": "setup_cmd = 'make setup'\n# keep\n[[run]]\nname = \"dev\"\ncmd = \"make dev\"\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "insert root kv with detached header comment",
-      "input": "# header\n\n[[run]]\nname = \"dev\"\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "env"
-          ],
-          "raw": "\"\"\"\nline one\nline two\n\"\"\"",
-          "out": "# header\n\nenv = \"\"\"\nline one\nline two\n\"\"\"\n[[run]]\nname = \"dev\"\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "insert into empty doc",
-      "input": "",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "a"
-          ],
-          "str": "x",
-          "out": "a = 'x'\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "t",
-            "u",
-            "v"
-          ],
-          "str": "deep",
-          "out": "a = 'x'\n\n[t.u]\nv = 'deep'\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "no trailing newline",
-      "input": "a = 1",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "b"
-          ],
-          "str": "x",
-          "out": "a = 1\nb = 'x'\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "sec",
-            "k"
-          ],
-          "str": "y",
-          "out": "a = 1\nb = 'x'\n\n[sec]\nk = 'y'\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "delete key with attached and detached comments",
-      "input": "# team notes\n\n# about dev\ndev_cmd = \"legacy\" # old\nkeep = 1\n",
-      "ops": [
-        {
-          "op": "delete",
-          "key": [
-            "dev_cmd"
-          ],
-          "out": "# team notes\n\nkeep = 1\n",
-          "err": false,
-          "found": true
-        },
-        {
-          "op": "delete",
-          "key": [
-            "missing"
-          ],
-          "out": "# team notes\n\nkeep = 1\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "delete last key absorbs blank lines",
-      "input": "a = 1\n\n\nb = 2\n",
-      "ops": [
-        {
-          "op": "delete",
-          "key": [
-            "b"
-          ],
-          "out": "a = 1\n",
-          "err": false,
-          "found": true
-        }
-      ]
-    },
-    {
-      "name": "delete array of tables",
-      "input": "x = 1\n\n# runs\n[[run]]\nname = 'a'\n\n[[run]]\nname = 'b'\n[run.sub]\nq = 1\n\n[other]\nz = 1\n",
-      "ops": [
-        {
-          "op": "delete",
-          "key": [
-            "run"
-          ],
-          "out": "x = 1\n\n[other]\nz = 1\n",
-          "err": false,
-          "found": true
-        }
-      ]
-    },
-    {
-      "name": "delete array elements",
-      "input": "[[run]]\nname = 'a'\n\n# second\n[[run]]\nname = 'b'\n\n[[run]]\nname = 'c'\n",
-      "ops": [
-        {
-          "op": "delete",
-          "key": [
-            "run",
-            "2"
-          ],
-          "out": "[[run]]\nname = 'a'\n\n# second\n[[run]]\nname = 'b'\n",
-          "err": false,
-          "found": true
-        },
-        {
-          "op": "delete",
-          "key": [
-            "run",
-            "0"
-          ],
-          "out": "# second\n[[run]]\nname = 'b'\n",
-          "err": false,
-          "found": true
-        },
-        {
-          "op": "delete",
-          "key": [
-            "run",
-            "5"
-          ],
-          "out": "# second\n[[run]]\nname = 'b'\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "set run fields and append element",
-      "input": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"make dev\"\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "0",
-            "cmd"
-          ],
-          "raw": "\"\"\"\nline one\nline two\n\"\"\"",
-          "out": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"\"\"\nline one\nline two\n\"\"\"\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "0",
-            "extra"
-          ],
-          "str": "e",
-          "out": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"\"\"\nline one\nline two\n\"\"\"\nextra = 'e'\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "1",
-            "name"
-          ],
-          "str": "test",
-          "out": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"\"\"\nline one\nline two\n\"\"\"\nextra = 'e'\n\n[[run]]\nname = 'test'\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "1",
-            "cmd"
-          ],
-          "str": "go test",
-          "out": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"\"\"\nline one\nline two\n\"\"\"\nextra = 'e'\n\n[[run]]\nname = 'test'\ncmd = 'go test'\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "3",
-            "name"
-          ],
-          "str": "oob",
-          "out": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"\"\"\nline one\nline two\n\"\"\"\nextra = 'e'\n\n[[run]]\nname = 'test'\ncmd = 'go test'\n",
-          "err": true,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run"
-          ],
-          "str": "bad",
-          "out": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"\"\"\nline one\nline two\n\"\"\"\nextra = 'e'\n\n[[run]]\nname = 'test'\ncmd = 'go test'\n",
-          "err": true,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "x"
-          ],
-          "str": "bad",
-          "out": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"\"\"\nline one\nline two\n\"\"\"\nextra = 'e'\n\n[[run]]\nname = 'test'\ncmd = 'go test'\n",
-          "err": true,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "0"
-          ],
-          "str": "bad",
-          "out": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"\"\"\nline one\nline two\n\"\"\"\nextra = 'e'\n\n[[run]]\nname = 'test'\ncmd = 'go test'\n",
-          "err": true,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "1",
-            "sub",
-            "deep"
-          ],
-          "str": "d",
-          "out": "setup_cmd = 'x'\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"\"\"\nline one\nline two\n\"\"\"\nextra = 'e'\n\n[[run]]\nname = 'test'\ncmd = 'go test'\nsub.deep = 'd'\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "inline array of tables",
-      "input": "run = [ { name = \"a\", cmd = \"x\" }, {name='b'} , ] # tail\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "0",
-            "cmd"
-          ],
-          "str": "y",
-          "out": "run = [ { name = \"a\", cmd = 'y' }, {name='b'} , ] # tail\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "1",
-            "cmd"
-          ],
-          "raw": "'z'",
-          "out": "run = [ { name = \"a\", cmd = 'y' }, {name='b', cmd = 'z'} , ] # tail\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "2",
-            "name"
-          ],
-          "str": "c",
-          "out": "run = [ { name = \"a\", cmd = 'y' }, {name='b', cmd = 'z'} , {name = 'c'} ] # tail\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "2",
-            "cmd"
-          ],
-          "str": "w",
-          "out": "run = [ { name = \"a\", cmd = 'y' }, {name='b', cmd = 'z'} , {name = 'c', cmd = 'w'} ] # tail\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "delete",
-          "key": [
-            "run",
-            "0"
-          ],
-          "out": "run = [ {name='b', cmd = 'z'} , {name = 'c', cmd = 'w'} ] # tail\n",
-          "err": false,
-          "found": true
-        },
-        {
-          "op": "delete",
-          "key": [
-            "run",
-            "1"
-          ],
-          "out": "run = [ {name='b', cmd = 'z'} ] # tail\n",
-          "err": false,
-          "found": true
-        },
-        {
-          "op": "delete",
-          "key": [
-            "run",
-            "0",
-            "name"
-          ],
-          "out": "run = [ {cmd = 'z'} ] # tail\n",
-          "err": false,
-          "found": true
-        }
-      ]
-    },
-    {
-      "name": "inline array delete only element",
-      "input": "run = [{name = 'a'}]\nx = [1, 2, 3]\n",
-      "ops": [
-        {
-          "op": "delete",
-          "key": [
-            "run",
-            "0"
-          ],
-          "out": "run = []\nx = [1, 2, 3]\n",
-          "err": false,
-          "found": true
-        },
-        {
-          "op": "set",
-          "key": [
-            "x",
-            "3"
-          ],
-          "str": "s",
-          "out": "run = []\nx = [1, 2, 3, 's']\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "x",
-            "0"
-          ],
-          "str": "t",
-          "out": "run = []\nx = ['t', 2, 3, 's']\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "x",
-            "1",
-            "k"
-          ],
-          "str": "bad",
-          "out": "run = []\nx = ['t', 2, 3, 's']\n",
-          "err": true,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "run",
-            "0",
-            "a",
-            "b"
-          ],
-          "str": "nested",
-          "out": "run = [{a = {b = 'nested'}}]\nx = ['t', 2, 3, 's']\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "inline table dotted group",
-      "input": "t = { a.b = 1, a.c = 2, d = 3 }\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "t",
-            "a",
-            "b"
-          ],
-          "str": "one",
-          "out": "t = { a.b = 'one', a.c = 2, d = 3 }\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "t",
-            "e"
-          ],
-          "str": "five",
-          "out": "t = { a.b = 'one', a.c = 2, d = 3, e = 'five' }\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "t",
-            "a"
-          ],
-          "str": "bad",
-          "out": "t = { a.b = 'one', a.c = 2, d = 3, e = 'five' }\n",
-          "err": true,
-          "found": false
-        },
-        {
-          "op": "delete",
-          "key": [
-            "t",
-            "a"
-          ],
-          "out": "t = { d = 3, e = 'five' }\n",
-          "err": false,
-          "found": true
-        },
-        {
-          "op": "delete",
-          "key": [
-            "t",
-            "d"
-          ],
-          "out": "t = { e = 'five' }\n",
-          "err": false,
-          "found": true
-        }
-      ]
-    },
-    {
-      "name": "dotted tables extend with dotted keys",
-      "input": "a.b = 1\n\n[s]\nx.y = 1\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "a",
-            "c"
-          ],
-          "str": "c",
-          "out": "a.b = 1\na.c = 'c'\n\n[s]\nx.y = 1\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "s",
-            "x",
-            "z"
-          ],
-          "str": "z",
-          "out": "a.b = 1\na.c = 'c'\n\n[s]\nx.y = 1\nx.z = 'z'\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "s",
-            "n",
-            "m"
-          ],
-          "str": "m",
-          "out": "a.b = 1\na.c = 'c'\n\n[s]\nx.y = 1\nx.z = 'z'\n\n[s.n]\nm = 'm'\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "a"
-          ],
-          "str": "bad",
-          "out": "a.b = 1\na.c = 'c'\n\n[s]\nx.y = 1\nx.z = 'z'\n\n[s.n]\nm = 'm'\n",
-          "err": true,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "implicit table header",
-      "input": "[a.b]\nx = 1\n\n[z]\ny = 2\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "a",
-            "c"
-          ],
-          "str": "c",
-          "out": "[a.b]\nx = 1\n\n[a]\nc = 'c'\n\n[z]\ny = 2\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "a",
-            "d",
-            "e"
-          ],
-          "str": "e",
-          "out": "[a.b]\nx = 1\n\n[a]\nc = 'c'\n\n[a.d]\ne = 'e'\n\n[z]\ny = 2\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "delete",
-          "key": [
-            "a"
-          ],
-          "out": "[z]\ny = 2\n",
-          "err": false,
-          "found": true
-        }
-      ]
-    },
-    {
-      "name": "crlf document",
-      "input": "a = 1\r\n\r\n[t]\r\nx = 2\r\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "b"
-          ],
-          "str": "x",
-          "out": "a = 1\r\nb = 'x'\r\n\r\n[t]\r\nx = 2\r\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "u",
-            "k"
-          ],
-          "str": "y",
-          "out": "a = 1\r\nb = 'x'\r\n\r\n[t]\r\nx = 2\r\n\r\n[u]\r\nk = 'y'\r\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "delete",
-          "key": [
-            "t"
-          ],
-          "out": "a = 1\r\nb = 'x'\r\n\r\n[u]\r\nk = 'y'\r\n",
-          "err": false,
-          "found": true
-        }
-      ]
-    },
-    {
-      "name": "quoted keys",
-      "input": "\"a b\" = 1\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "a b"
-          ],
-          "str": "q",
-          "out": "\"a b\" = 'q'\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "c.d"
-          ],
-          "str": "dot",
-          "out": "\"a b\" = 'q'\n'c.d' = 'dot'\n",
-          "err": false,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            ""
-          ],
-          "str": "empty",
-          "out": "\"a b\" = 'q'\n'c.d' = 'dot'\n'' = 'empty'\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "invalid edits leave doc unchanged",
-      "input": "a = 1\n",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "a"
-          ],
-          "raw": "[",
-          "out": "a = 1\n",
-          "err": true,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [
-            "a"
-          ],
-          "raw": "   ",
-          "out": "a = 1\n",
-          "err": true,
-          "found": false
-        },
-        {
-          "op": "set",
-          "key": [],
-          "str": "x",
-          "out": "a = 1\n",
-          "err": true,
-          "found": false
-        },
-        {
-          "op": "delete",
-          "key": [],
-          "out": "a = 1\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    },
-    {
-      "name": "heal indexed run tables",
-      "input": "setup_cmd = 'make setup'\n\n[run.0]\nname = 'dev'\ncmd = 'old'\n",
-      "ops": [
-        {
-          "op": "delete",
-          "key": [
-            "run"
-          ],
-          "out": "setup_cmd = 'make setup'\n",
-          "err": false,
-          "found": true
-        }
-      ]
-    },
-    {
-      "name": "array table element without newline",
-      "input": "[[r]]\nn = 1",
-      "ops": [
-        {
-          "op": "set",
-          "key": [
-            "r",
-            "1",
-            "n"
-          ],
-          "str": "two",
-          "out": "[[r]]\nn = 1\n\n[[r]]\nn = 'two'\n",
-          "err": false,
-          "found": false
-        }
-      ]
-    }
-  ],
   "write": [
     {
       "name": "fresh full",
@@ -816,7 +30,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = 'pnpm install'\nteardown_cmd = 'rm -rf node_modules'\napp_url = 'http://localhost:$RECUR_PORT'\nenv = \"\"\"\nFOO=bar\n# comment\nBAZ=$HOME\"\"\"\ncopy_files = \"\"\"\n.env*\napps/**/.env.local\"\"\"\n\n[[run]]\nname = 'dev'\ncmd = 'pnpm dev --port $RECUR_PORT'\n\n[[run]]\nname = 'test'\ncmd = \"\"\"\ngo test ./...\ngo vet ./...\"\"\"\n"
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"pnpm install\"\nteardown_cmd = \"rm -rf node_modules\"\napp_url = \"http://localhost:$RECUR_PORT\"\nenv = \"\"\"\nFOO=bar\n# comment\nBAZ=$HOME\"\"\"\ncopy_files = \"\"\"\n.env*\napps/**/.env.local\"\"\"\n\n[[run]]\nname = \"dev\"\ncmd = \"pnpm dev --port $RECUR_PORT\"\n\n[[run]]\nname = \"test\"\ncmd = \"\"\"\ngo test ./...\ngo vet ./...\"\"\"\n"
     },
     {
       "name": "fresh empty",
@@ -836,7 +50,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = ''\nteardown_cmd = ''\napp_url = ''\nenv = ''\ncopy_files = ''\n"
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"\"\nteardown_cmd = \"\"\napp_url = \"\"\nenv = \"\"\ncopy_files = \"\"\n"
     },
     {
       "name": "fresh quotes",
@@ -857,7 +71,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"echo 'hi'\"\nteardown_cmd = ''\napp_url = \"x\\ty\"\nenv = \"\"\"\nA=\\\"\\\"\\\"\n\tB=1\\r\n\"\"\"\ncopy_files = ''\n"
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"echo 'hi'\"\nteardown_cmd = \"\"\napp_url = \"x\\ty\"\nenv = \"\"\"\nA=\"\"\\\"\n\\tB=1\\r\n\"\"\"\ncopy_files = \"\"\n"
     },
     {
       "name": "fresh unnamed runs",
@@ -891,7 +105,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = ''\nteardown_cmd = ''\napp_url = ''\nenv = ''\ncopy_files = ''\n\n[[run]]\nname = 'run'\ncmd = 'a'\n\n[[run]]\nname = 'dev'\ncmd = 'b'\n\n[[run]]\nname = 'dev-2'\ncmd = 'c'\n"
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"\"\nteardown_cmd = \"\"\napp_url = \"\"\nenv = \"\"\ncopy_files = \"\"\n\n[[run]]\nname = \"run\"\ncmd = \"a\"\n\n[[run]]\nname = \"dev\"\ncmd = \"b\"\n\n[[run]]\nname = \"dev-2\"\ncmd = \"c\"\n"
     },
     {
       "name": "merge keeps comments",
@@ -922,7 +136,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "# team notes\n\n# secrets stay in .env\nenv = \"\"\"\nFOO=new\nBAR=2\n\"\"\"\n\nextra = \"keep-me\"\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"make dev\"\n\n[[run]]\nname = 'test'\ncmd = 'go test'\n"
+      "output": "# team notes\n\n# secrets stay in .env\nenv = \"\"\"\nFOO=new\nBAR=2\n\"\"\"\n\nextra = \"keep-me\"\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"make dev\"\n\n[[run]]\nname = \"test\"\ncmd = \"go test\"\n"
     },
     {
       "name": "merge adds runs",
@@ -949,7 +163,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "# Recur project settings\nsetup_cmd = 'make setup'\nteardown_cmd = ''\napp_url = ''\nenv = 'A=1'\ncopy_files = ''\n\n[[run]]\nname = 'dev'\ncmd = 'make dev'\n"
+      "output": "# Recur project settings\nsetup_cmd = 'make setup'\nteardown_cmd = ''\napp_url = ''\nenv = 'A=1'\ncopy_files = ''\n\n[[run]]\nname = \"dev\"\ncmd = \"make dev\"\n"
     },
     {
       "name": "merge drops runs and dev_cmd",
@@ -995,7 +209,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "[[run]]\nname = 'z'\ncmd = \"\"\"\nmulti\nline\"\"\"\n"
+      "output": "[[run]]\nname = \"z\"\ncmd = \"\"\"\nmulti\nline\"\"\"\n"
     },
     {
       "name": "merge heals indexed tables",
@@ -1021,7 +235,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "setup_cmd = 'make setup'\n\n[[run]]\nname = 'dev'\ncmd = 'make dev'\n"
+      "output": "setup_cmd = 'make setup'\n\n[[run]]\nname = \"dev\"\ncmd = \"make dev\"\n"
     },
     {
       "name": "merge malformed rewrites",
@@ -1042,7 +256,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = ''\nteardown_cmd = ''\napp_url = ''\nenv = 'A=1'\ncopy_files = ''\n"
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"\"\nteardown_cmd = \"\"\napp_url = \"\"\nenv = \"A=1\"\ncopy_files = \"\"\n"
     },
     {
       "name": "merge table where string expected rewrites",
@@ -1063,7 +277,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = ''\nteardown_cmd = ''\napp_url = ''\nenv = 'A=1'\ncopy_files = ''\n"
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"\"\nteardown_cmd = \"\"\napp_url = \"\"\nenv = \"A=1\"\ncopy_files = \"\"\n"
     },
     {
       "name": "merge inline run array",
@@ -1093,7 +307,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "run = [{name = \"a\", cmd = 'b2'}, {name = 'c', cmd = \"\"\"\nd\ne\"\"\"}]\n"
+      "output": "[[run]]\nname = \"a\"\ncmd = \"b2\"\n\n[[run]]\nname = \"c\"\ncmd = \"\"\"\nd\ne\"\"\"\n"
     },
     {
       "name": "merge scalar run",
@@ -1119,7 +333,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "setup_cmd = 'y'\n\n[[run]]\nname = 'a'\ncmd = 'b'\n"
+      "output": "setup_cmd = 'y'\n\n[[run]]\nname = \"a\"\ncmd = \"b\"\n"
     },
     {
       "name": "merge clears values",
@@ -1139,7 +353,7 @@
         "prOnGithub": false,
         "isGit": false
       },
-      "output": "setup_cmd = '' # keep comment\ncopy_files = ''\n"
+      "output": "setup_cmd = \"\" # keep comment\ncopy_files = \"\"\n"
     }
   ]
 }

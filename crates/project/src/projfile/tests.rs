@@ -490,7 +490,7 @@ struct Golden {
 /// project.toml encoding, fresh and merged in place
 /// (`tests/fixtures/projfile_golden.json`, edited by hand).
 #[test]
-fn encode_matches_go() {
+fn encode_matches_golden() {
     let golden: Golden =
         serde_json::from_str(include_str!("../../tests/fixtures/projfile_golden.json")).unwrap();
     assert!(golden.write.len() >= 14);

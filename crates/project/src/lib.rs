@@ -9,7 +9,6 @@
 pub mod home;
 pub mod projfile;
 pub mod runconfig;
-pub mod tomledit;
 pub mod wsenv;
 
 #[cfg(test)]

@@ -4,7 +4,7 @@ use std::path::Path;
 use recur_domain::{Project, effective_runs};
 
 use super::{FILE_HEADER, File, FileRun, REL_PATH, invalidate, repo_root};
-use crate::tomledit::{Document, Value, array_tables, encode_string, key_value, multiline_field};
+use toml_edit::{ArrayOfTables, DocumentMut, Item, Table, value};
 
 /// Why [`write`] could not save project.toml.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -75,106 +75,101 @@ pub(crate) fn encode_project_file(path: &str, p: &Project) -> Result<String, Wri
     }
 }
 
-fn run_body(r: &FileRun) -> String {
-    key_value("name", &encode_string(&r.name)) + &key_value("cmd", &multiline_field(&r.cmd))
+const KEYS: [&str; 5] = ["setup_cmd", "teardown_cmd", "app_url", "env", "copy_files"];
+
+fn fields(f: &File) -> [&str; 5] {
+    [
+        &f.setup_cmd,
+        &f.teardown_cmd,
+        &f.app_url,
+        &f.env,
+        &f.copy_files,
+    ]
+}
+
+fn run_table(r: &FileRun) -> Table {
+    let mut t = Table::new();
+    t["name"] = value(r.name.as_str());
+    t["cmd"] = value(r.cmd.as_str());
+    t
 }
 
 fn marshal_new(p: &Project) -> String {
     let f = write_shape(p);
-    let mut out = String::from(FILE_HEADER);
-    out += &key_value("setup_cmd", &multiline_field(&f.setup_cmd));
-    out += &key_value("teardown_cmd", &multiline_field(&f.teardown_cmd));
-    out += &key_value("app_url", &encode_string(&f.app_url));
-    out += &key_value("env", &multiline_field(&f.env));
-    out += &key_value("copy_files", &multiline_field(&f.copy_files));
-    let bodies: Vec<String> = f.runs.iter().map(run_body).collect();
-    out += &array_tables("run", &bodies, true);
-    out
+    let mut d = DocumentMut::new();
+    for (k, v) in KEYS.into_iter().zip(fields(&f)) {
+        d[k] = value(v);
+    }
+    if !f.runs.is_empty() {
+        let mut runs = ArrayOfTables::new();
+        for r in &f.runs {
+            runs.push(run_table(r));
+        }
+        d["run"] = Item::ArrayOfTables(runs);
+    }
+    format!("{FILE_HEADER}{d}")
 }
 
 fn merge_project_file(existing: &[u8], p: &Project) -> Result<String, String> {
     let text = std::str::from_utf8(existing).map_err(|_| "toml: invalid UTF-8".to_owned())?;
-    let mut d = Document::parse(text).map_err(|e| e.to_string())?;
-    let shape = write_shape(p);
-    set_string(&mut d, "setup_cmd", &shape.setup_cmd)?;
-    set_string(&mut d, "teardown_cmd", &shape.teardown_cmd)?;
-    set_string(&mut d, "app_url", &shape.app_url)?;
-    set_string(&mut d, "env", &shape.env)?;
-    set_string(&mut d, "copy_files", &shape.copy_files)?;
-    merge_runs(&mut d, &shape.runs)?;
-    d.delete(&["dev_cmd"]);
+    let mut d: DocumentMut = text
+        .parse()
+        .map_err(|e: toml_edit::TomlError| e.to_string())?;
+    let f = write_shape(p);
+    for (k, v) in KEYS.into_iter().zip(fields(&f)) {
+        set_string(&mut d, k, v)?;
+    }
+    merge_runs(&mut d, &f.runs)?;
+    d.remove("dev_cmd");
     Ok(d.to_string())
 }
 
-fn append_section(doc: &str, extra: &str) -> String {
-    if extra.is_empty() {
-        return doc.to_owned();
-    }
-    format!("{}\n\n{extra}", doc.trim_end_matches('\n'))
-}
-
-fn set_string(d: &mut Document, key: &str, value: &str) -> Result<(), String> {
-    match d.get(&[key]) {
-        Some(toml::Value::String(cur)) if cur == value => return Ok(()),
-        None if value.is_empty() => return Ok(()),
-        _ => {}
-    }
-    d.set(&[key], &Value::Raw(multiline_field(value)))
-        .map_err(|e| e.to_string())
-}
-
-fn merge_runs(d: &mut Document, runs: &[FileRun]) -> Result<(), String> {
-    let n = existing_run_count(d);
-    if runs.is_empty() {
-        if n > 0 {
-            d.delete(&["run"]);
+/// Sets `key` to `v`, keeping its comments, unless it already holds `v` or is absent and
+/// `v` is empty. A table under `key` is an error, so the caller rewrites the file.
+fn set_string(t: &mut Table, key: &str, v: &str) -> Result<(), String> {
+    match t.get_mut(key) {
+        Some(Item::Value(cur)) if cur.as_str() == Some(v) => {}
+        Some(Item::Value(cur)) => {
+            let decor = cur.decor().clone();
+            *cur = v.into();
+            *cur.decor_mut() = decor;
         }
-        return Ok(());
-    }
-    if n == 0 {
-        // Setting run.0.… would create [run.0] tables, which overlay cannot
-        // read as [[run]]. Append real array-of-tables blocks instead.
-        let bodies: Vec<String> = runs.iter().map(run_body).collect();
-        let blocks = array_tables("run", &bodies, false);
-        *d =
-            Document::parse(&append_section(&d.to_string(), &blocks)).map_err(|e| e.to_string())?;
-        return Ok(());
-    }
-    for (i, r) in runs.iter().enumerate() {
-        let idx = i.to_string();
-        set_run_field(d, &idx, "name", &r.name)?;
-        set_run_field(d, &idx, "cmd", &r.cmd)?;
-    }
-    for i in (runs.len()..n).rev() {
-        d.delete(&["run", &i.to_string()]);
+        Some(Item::None) | None if v.is_empty() => {}
+        Some(Item::None) | None => t[key] = value(v),
+        Some(_) => return Err(format!("{key}: not a string")),
     }
     Ok(())
 }
 
-fn existing_run_count(d: &mut Document) -> usize {
-    match d.get(&["run"]) {
-        None => 0,
-        Some(toml::Value::Array(arr)) => arr.len(),
-        Some(_) => {
-            d.delete(&["run"]);
-            0
-        }
+/// Patches the `[[run]]` tables in place (their other keys and comments stay), appends new
+/// ones and drops the extra. A `run` that is not an array of tables (`[run.0]`) is replaced.
+fn merge_runs(d: &mut DocumentMut, runs: &[FileRun]) -> Result<(), String> {
+    if runs.is_empty() || !d.get("run").is_some_and(Item::is_array_of_tables) {
+        d.remove("run");
     }
-}
-
-fn set_run_field(d: &mut Document, idx: &str, field: &str, value: &str) -> Result<(), String> {
-    let path = ["run", idx, field];
-    if let Some(toml::Value::String(cur)) = d.get(&path)
-        && cur == value
-    {
+    if runs.is_empty() {
         return Ok(());
     }
-    let v = if field == "cmd" {
-        Value::Raw(multiline_field(value))
-    } else {
-        Value::Str(value.to_owned())
+    let Some(tables) = d
+        .entry("run")
+        .or_insert(Item::ArrayOfTables(ArrayOfTables::new()))
+        .as_array_of_tables_mut()
+    else {
+        return Ok(());
     };
-    d.set(&path, &v).map_err(|e| e.to_string())
+    for (i, r) in runs.iter().enumerate() {
+        match tables.get_mut(i) {
+            Some(t) => {
+                set_string(t, "name", &r.name)?;
+                set_string(t, "cmd", &r.cmd)?;
+            }
+            None => tables.push(run_table(r)),
+        }
+    }
+    while tables.len() > runs.len() {
+        tables.remove(tables.len() - 1);
+    }
+    Ok(())
 }
 
 fn write_atomic(path: &str, data: &str) -> Result<(), WriteError> {

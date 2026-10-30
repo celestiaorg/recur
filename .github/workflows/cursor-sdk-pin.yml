@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
-      - uses: Swatinem/rust-cache@v2
+      - uses: jdx/mr-boxington-action@v1
 
       - name: Compare pin to PyPI latest
         run: mise run check:cursor-sdk-pin

@@ -35,6 +35,9 @@ name: Release
 #                          key or seed) matching build/updater.key.pub (rotate both
 #                          together). Without it and RELEASES_TOKEN, builds ship
 #                          without the updater.
+#
+# No job restores a build cache: a poisoned entry could reach the signed
+# artifacts or the job holding UPDATER_SIGNING_KEY. mbx's local cache is fine.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -54,9 +57,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: release
 
       - name: Import signing certificate and notary credentials
         if: env.HAS_SIGNING == 'true'
@@ -138,9 +138,6 @@ jobs:
           libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev
           libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - uses: jdx/mise-action@v5
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: release
       - name: Write PGP signing key
         if: env.HAS_PGP == 'true'
         env:
@@ -175,10 +172,6 @@ jobs:
     steps:
       - if: env.HAS_UPDATER == 'true'
         uses: actions/checkout@v7
-      - if: env.HAS_UPDATER == 'true'
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: publish
       - uses: actions/download-artifact@v8
         with:
           pattern: release-*

@@ -135,7 +135,7 @@ fn find_panel_survives_reload_and_closes_on_file_switch(cx: &mut TestAppContext)
     let mut h = mount(cx, "a.txt", "one", EditorKind::Code);
     h.cx.simulate_keystrokes("secondary-f");
     h.settle();
-    let mut panel = |h: &mut Harness| {
+    let panel = |h: &mut Harness| {
         h.view.update_in(h.cx, |v, window, cx| {
             (v.is_search_open(), v.panel_has_focus(window, cx))
         })

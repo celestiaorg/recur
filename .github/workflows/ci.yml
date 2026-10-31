@@ -137,8 +137,11 @@ jobs:
           libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev
           libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - uses: jdx/mise-action@v5
+      # See the linux job.
+      - run: git ls-files -z vendor | xargs -0 touch -d 2000-01-01
       - uses: jdx/mr-boxington-action@v1
         with:
+          cache-generation: v1-${{ hashFiles('vendor/**') }}
           cache-key-suffix: package
           save-on-pull-request: true
       - run: mise run linux:package

@@ -42,6 +42,7 @@ trap 'rm -f "$tmp"' EXIT
     printf '\n```\n\n'
   done
 } > "$tmp"
+mkdir -p target
 mv "$tmp" "$out"
 '''
 

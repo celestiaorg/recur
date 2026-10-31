@@ -21,9 +21,12 @@ concurrency:
 
 # Full debuginfo for every crate fills the Linux runner's disk, and so does
 # incremental state on top of a restored target (the cache drops it anyway).
+# mbx moves build-script output out of target/ by default, where the target
+# cache misses it and every build script reruns after a restore.
 env:
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
   CARGO_INCREMENTAL: "0"
+  MBX_SHARE_OUT_DIR: "0"
 
 jobs:
   # Platform-independent checks, so they run once; the jobs below wait on them.
@@ -47,8 +50,11 @@ jobs:
           go-version: stable
           cache: false
       - uses: jdx/mise-action@v5
+      # See the linux job.
+      - run: git ls-files -z vendor | xargs -0 touch -t 200001010000
       - uses: jdx/mr-boxington-action@v1
         with:
+          cache-generation: v1-${{ hashFiles('vendor/**') }}
           save-on-pull-request: true
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: mise run test
@@ -81,8 +87,9 @@ jobs:
       # Cargo judges path deps by mtime and checkout makes every file new, so a
       # restored target rebuilt vendor/gpui-pre and everything above it. Pinned
       # mtimes keep vendor/ fresh; its hash in the generation starts a new
-      # cache whenever it changes.
-      - run: git ls-files -z vendor | xargs -0 touch -d 2000-01-01
+      # cache whenever it changes. The package jobs put "package" in the
+      # generation, not cache-key-suffix, which restore keys leave out.
+      - run: git ls-files -z vendor | xargs -0 touch -t 200001010000
       - uses: jdx/mr-boxington-action@v1
         with:
           cache-generation: v1-${{ hashFiles('vendor/**') }}
@@ -108,9 +115,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
+      # See the linux job.
+      - run: git ls-files -z vendor | xargs -0 touch -t 200001010000
       - uses: jdx/mr-boxington-action@v1
         with:
-          cache-key-suffix: package
+          cache-generation: v1-package-${{ hashFiles('vendor/**') }}
           save-on-pull-request: true
       - run: mise run macos:package
       - run: hdiutil verify "target/package/Recur.dmg"
@@ -138,11 +147,10 @@ jobs:
           libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - uses: jdx/mise-action@v5
       # See the linux job.
-      - run: git ls-files -z vendor | xargs -0 touch -d 2000-01-01
+      - run: git ls-files -z vendor | xargs -0 touch -t 200001010000
       - uses: jdx/mr-boxington-action@v1
         with:
-          cache-generation: v1-${{ hashFiles('vendor/**') }}
-          cache-key-suffix: package
+          cache-generation: v1-package-${{ hashFiles('vendor/**') }}
           save-on-pull-request: true
       - run: mise run linux:package
       - run: mise run linux:smoke

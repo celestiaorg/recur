@@ -646,6 +646,9 @@ impl EditorView {
         self.completion = driver;
         self.run_driver_step(step, window, cx);
         self.search_open = self.state.search.panel;
+        if !self.search_open {
+            self.search = None;
+        }
         self.restart_blink(cx);
         cx.notify();
     }

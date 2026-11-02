@@ -35,5 +35,4 @@ Opening a PR does not guarantee a merge. A maintainer may merge it as is, narrow
 
 ## Licensing
 
-By submitting a contribution you grant us a perpetual, irrevocable, worldwide, royalty-free copyright and patent license to use, modify, sublicense and distribute it under any terms, including proprietary licenses and hosted services. You also confirm you have the right to submit it.
-
+Before your first pull request can be merged, you need to sign the [Contributor License Agreement](CLA.md). A bot asks on the PR; you sign by replying with the sentence it gives you.

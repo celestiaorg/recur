@@ -320,3 +320,44 @@ async fn gitignored_entries_are_muted_and_tracked_dotfiles_are_not(cx: &mut Test
     assert!(h.has("obs-node:file:.gitignore") && !h.has("obs-ignored:.gitignore"));
     assert!(h.has("obs-node:dir:src") && !h.has("obs-ignored:src"));
 }
+
+/// A folder deleted on disk leaves the tree, and the explorer keeps tracking the disk after:
+/// the gone-confirm pass cancelled its own folder refresh, whose in-flight flag then deferred
+/// every later refresh, so the tree froze.
+#[gpui::test]
+async fn the_tree_keeps_tracking_the_disk_after_a_folder_is_deleted(cx: &mut TestAppContext) {
+    let disk: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec!["src/main.go".into()]));
+    let (d1, d2) = (disk.clone(), disk.clone());
+    let opts = Overrides::default()
+        .list_changed_files(|_, _| Ok(Vec::new()))
+        .list_tree(move |_, (_, _, path)| Ok(children_of(&d1.lock(), &path)))
+        .list_trees(move |_, (_, _, dirs)| {
+            let list = d2.lock();
+            Ok(dirs
+                .iter()
+                .filter(|d| d.is_empty() || list.iter().any(|p| p.starts_with(&format!("{d}/"))))
+                .map(|d| (d.clone(), children_of(&list, d)))
+                .collect())
+        });
+    let mut h = mount(cx, opts, |_| {}, |_| {});
+    h.wait(200);
+    h.update(|o, _, cx| {
+        o.browse_all = true;
+        o.toggle_dir("src", true, cx).detach();
+    });
+    h.wait(200);
+    assert!(h.has("obs-node:file:src/main.go"));
+
+    *disk.lock() = vec!["README.md".into()];
+    h.fs_changed();
+    h.wait(crate::obs::GONE_CONFIRM_MS * 3);
+    assert!(!h.has("obs-node:dir:src"), "the deleted folder stayed");
+
+    disk.lock().push("new.txt".into());
+    h.fs_changed();
+    h.wait(500);
+    assert!(
+        h.has("obs-node:file:new.txt"),
+        "a file created after the delete never showed"
+    );
+}

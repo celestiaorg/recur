@@ -17,8 +17,8 @@ use recur_view_core::{call, toast};
 use crate::explorer_visible::is_path_visible_in_explorer_tree;
 use crate::model::{base_name, is_under, join_path, parent_path, rewrite_under};
 use crate::obs::{
-    CtxMenu, DraftEdit, DraftMode, ExplorerReveal, FileClip, GONE_CONFIRM_MAX_MS, GONE_CONFIRM_MS,
-    LIVE_REFRESH_MS, Observatory, OpenRequest, REVIEW_REFRESH_MS, SKELETON_DELAY_MS,
+    CtxMenu, DraftEdit, DraftMode, ExplorerReveal, FileClip, GONE_CONFIRM_MS, LIVE_REFRESH_MS,
+    Observatory, OpenRequest, REVIEW_REFRESH_MS, SKELETON_DELAY_MS,
 };
 
 pub use recur_view_core::prefs::explorer_exclude;
@@ -943,37 +943,17 @@ impl Observatory {
             cx.background_executor()
                 .timer(Duration::from_millis(GONE_CONFIRM_MS))
                 .await;
-            let tasks = this
-                .update(cx, |o, cx| {
-                    o.gone_confirm_timer = None;
-                    if !o.live_refresh_alive {
-                        return None;
-                    }
-                    Some((o.refresh_open_file_if_stale(cx), o.refresh_loaded_dirs(cx)))
-                })
-                .ok()
-                .flatten();
-            let Some((a, b)) = tasks else { return };
-            a.await;
-            b.await;
+            // Detached: this task drops its own handle here, which cancels it at its next
+            // await, and a cancelled refresh would leave its in-flight flag set for good.
+            // Each refresh re-arms on a miss.
             let _ = this.update(cx, |o, cx| {
-                if o.live_refresh_alive && o.gone_confirm_still_due() {
-                    o.arm_gone_confirm(cx);
+                o.gone_confirm_timer = None;
+                if o.live_refresh_alive {
+                    o.refresh_open_file_if_stale(cx).detach();
+                    o.refresh_loaded_dirs(cx).detach();
                 }
             });
         }));
-    }
-
-    fn gone_confirm_still_due(&self) -> bool {
-        if self
-            .open_file_not_found_since
-            .is_some_and(|t| (t.elapsed().as_millis() as u64) < GONE_CONFIRM_MAX_MS)
-        {
-            return true;
-        }
-        self.dir_not_found_since
-            .values()
-            .any(|t| (t.elapsed().as_millis() as u64) < GONE_CONFIRM_MAX_MS)
     }
 
     pub(crate) fn maybe_clear_gone_confirm(&mut self) {

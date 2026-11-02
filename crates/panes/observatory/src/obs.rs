@@ -303,8 +303,6 @@ pub const LIVE_REFRESH_MS: u64 = 50;
 pub const REVIEW_REFRESH_MS: u64 = 1600;
 /// A path stays missing this long across refreshes before it counts as gone.
 pub const GONE_CONFIRM_MS: u64 = 600;
-/// Stop re-arming the confirm timer after this long from the first miss.
-pub const GONE_CONFIRM_MAX_MS: u64 = GONE_CONFIRM_MS * 3;
 /// `BASE_DOC_CACHE_MAX`.
 pub const BASE_DOC_CACHE_MAX: usize = 32;
 /// The maximize FLIP duration.

@@ -57,6 +57,22 @@ async fn watch_fires_on_disk_change() {
 }
 
 #[tokio::test]
+async fn stale_unwatch_keeps_the_next_watch() {
+    let t = TestEngine::new(None);
+    let repo = init_repo();
+    add_project(&t.store, &repo.path);
+    let a = t.engine.create_workspace("proj", "a", "").await.unwrap();
+    let b = t.engine.create_workspace("proj", "b", "").await.unwrap();
+    t.engine.watch_workspace(&a.id);
+    t.engine.watch_workspace(&b.id);
+    t.engine.unwatch_workspace(&a.id);
+    assert_eq!(t.engine.watched_workspace(), b.id);
+    t.engine.unwatch_workspace(&b.id);
+    assert_eq!(t.engine.watched_workspace(), "");
+    t.close().await;
+}
+
+#[tokio::test]
 async fn watch_fires_on_non_git_working_copy() {
     let t = TestEngine::new(None);
     t.engine

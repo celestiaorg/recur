@@ -724,6 +724,13 @@ impl WorkspacesService for AppServices {
         })
     }
 
+    async fn unwatch_workspace(&self, workspace_id: &str) -> Result<()> {
+        rt!(self, workspace_id => |s| {
+            s.engine.unwatch_workspace(&workspace_id);
+            Ok(())
+        })
+    }
+
     async fn workspace_chat_items(&self, workspace_id: &str, code: &str) -> Result<Vec<ChatItem>> {
         rt!(self, workspace_id, code => |s| Ok(s.engine.workspace_chat_items(&workspace_id, &code).await))
     }

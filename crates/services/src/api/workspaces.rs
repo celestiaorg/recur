@@ -446,6 +446,11 @@ pub trait WorkspacesService: Send + Sync {
     /// the disk live. Empty id stops watching (call on leaving the workspace).
     async fn watch_workspace(&self, workspace_id: &str) -> Result<()>;
 
+    /// UnwatchWorkspace stops watching workspaceID, unless another workspace has
+    /// taken the watch since. Leaving a workspace calls this rather than
+    /// WatchWorkspace(""), which could land after the next workspace's watch.
+    async fn unwatch_workspace(&self, workspace_id: &str) -> Result<()>;
+
     /// WorkspaceChatItems returns the FULL agent-chat transcript for one chat tab
     /// (text, reasoning, and the agent's tool calls, in order) from the session store
     /// (the single source of truth). code selects the tab (PA, PA2, …; empty → PA).

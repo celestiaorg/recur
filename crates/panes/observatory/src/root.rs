@@ -1473,6 +1473,8 @@ impl Observatory {
         .detach();
     }
 
+    /// Unwatches rather than `watch_workspace("")`: the calls race on the background pool,
+    /// and a clear landing after the next shell's watch would kill it.
     fn disarm_watcher(&mut self, cx: &mut Context<Self>) {
         if self.watch_armed_for.is_empty() {
             return;
@@ -1480,8 +1482,9 @@ impl Observatory {
         if cx.default_global::<crate::Owners>().watch == self.watch_armed_for {
             cx.default_global::<crate::Owners>().watch.clear();
             let svc = self.services.clone();
+            let id = armed_workspace(&self.watch_armed_for).to_owned();
             cx.background_spawn(async move {
-                let _ = svc.workspaces.watch_workspace("").await;
+                let _ = svc.workspaces.unwatch_workspace(&id).await;
             })
             .detach();
         }
@@ -1689,8 +1692,9 @@ impl Observatory {
         {
             cx.default_global::<crate::Owners>().watch.clear();
             let svc = self.services.clone();
+            let id = armed_workspace(&self.watch_armed_for).to_owned();
             cx.background_spawn(async move {
-                let _ = svc.workspaces.watch_workspace("").await;
+                let _ = svc.workspaces.unwatch_workspace(&id).await;
             })
             .detach();
         }
@@ -1750,4 +1754,9 @@ impl Observatory {
         crate::obs_cache::cache(cx).put(&root, snap);
         self.persist_session_for_root(&root, None, cx);
     }
+}
+
+/// The workspace id of a `watch_armed_for` key (`{id}:{path}`).
+fn armed_workspace(key: &str) -> &str {
+    key.split_once(':').map_or(key, |(id, _)| id)
 }

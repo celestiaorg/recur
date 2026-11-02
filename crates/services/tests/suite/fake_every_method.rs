@@ -1573,6 +1573,11 @@ async fn every_method_answers() {
     );
     note(
         &mut errs,
+        "UnwatchWorkspace",
+        s.workspaces.unwatch_workspace("LOOP-2231").await.err(),
+    );
+    note(
+        &mut errs,
         "WorkspaceChatItems",
         s.workspaces
             .workspace_chat_items("LOOP-2231", "PA")

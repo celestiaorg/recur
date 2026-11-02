@@ -2920,6 +2920,10 @@ fake_services! {
             Ok(())
         }
 
+        async fn unwatch_workspace(&self, workspace_id: &str) -> Result<()> {
+            Ok(())
+        }
+
         async fn workspace_chat_items(&self, workspace_id: &str, code: &str) -> Result<Vec<ChatItem>> {
             Ok(Vec::new())
         }

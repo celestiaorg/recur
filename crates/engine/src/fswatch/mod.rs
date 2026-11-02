@@ -127,7 +127,19 @@ impl Engine {
     /// Makes `id` the single watched workspace (an empty id stops
     /// watching). Re-watching the same id restarts the stream.
     pub fn watch_workspace(&self, id: &str) {
-        let mut w = self.watch.lock();
+        self.rewatch(self.watch.lock(), id);
+    }
+
+    /// Stops watching `id`, unless another workspace has taken the watch
+    /// since (a shell parking after the next one armed).
+    pub fn unwatch_workspace(&self, id: &str) {
+        let w = self.watch.lock();
+        if w.id == id {
+            self.rewatch(w, "");
+        }
+    }
+
+    fn rewatch(&self, mut w: parking_lot::MutexGuard<'_, WatchState>, id: &str) {
         if let Some(c) = w.cancel.take() {
             c.cancel();
         }

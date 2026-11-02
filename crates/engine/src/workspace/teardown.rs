@@ -225,9 +225,7 @@ impl Engine {
             return Err(EngineError(format!("loop {id:?} not found")));
         };
         // Stop painting the worktree before files start vanishing.
-        if self.watched_workspace() == id {
-            self.watch_workspace("");
-        }
+        self.unwatch_workspace(id);
         self.publish_loop_updated(id, updated.state.clone(), &updated.phase, updated.iteration);
         // Archived rows drop out of AttentionCounts: push a fresh rollup.
         self.publish_attention(id, "", false);
@@ -510,9 +508,7 @@ impl Engine {
         }
         self.mcp.drop_workspace(id);
         // After the store delete so a failed delete keeps its watch.
-        if self.watched_workspace() == id {
-            self.watch_workspace("");
-        }
+        self.unwatch_workspace(id);
         self.bus
             .publish(EngineEvent::WorkspaceDeleted(WorkspaceRef::new(id)));
         self.publish_inbox_updated();

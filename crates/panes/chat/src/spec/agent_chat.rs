@@ -408,3 +408,83 @@ async fn a_bubble_with_an_image_grows_with_its_wrapped_text(cx: &mut TestAppCont
         "bubble {me:?} vs text {text_h}"
     );
 }
+
+/// Draws one frame with the dock `w` px wide and returns where it put block `key` against the
+/// scroller's top and bottom, before anything the frame deferred runs.
+fn frame_at(h: &mut H, w: f32, key: &str) -> (f32, f32) {
+    let (host, chat) = (h.host.clone(), h.chat());
+    h.cx.update(|window, cx| {
+        host.update(cx, |h, cx| {
+            h.width = Some(w);
+            cx.notify();
+        });
+        window.draw(cx).clear(cx);
+        let c = chat.read(cx);
+        let (y, height) = c.block_ranges.borrow()[key];
+        let b = c.scroll.bounds();
+        (y - f32::from(b.top()), f32::from(b.bottom()) - y - height)
+    })
+}
+
+fn long_transcript(h: &mut H) {
+    let long = "the quick brown fox jumps over the lazy dog ".repeat(12);
+    h.set_messages(
+        (0..12)
+            .map(|i| AgentMsg {
+                body: format!("{i} {long}"),
+                ts: Some(i),
+                ..Default::default()
+            })
+            .collect(),
+    );
+}
+
+const DRAG: [f32; 7] = [520., 470., 420., 380., 430., 500., 560.];
+
+/// Dragging the dock's width keeps a transcript pinned to its last block in every frame, not
+/// a frame after each rewrap.
+#[gpui::test]
+async fn a_width_drag_keeps_the_bottom_pin_in_each_frame(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
+    long_transcript(&mut h);
+    let last = h.read(|c| {
+        let r = c.block_ranges.borrow();
+        r.iter()
+            .max_by(|a, b| a.1.0.total_cmp(&b.1.0))
+            .unwrap()
+            .0
+            .clone()
+    });
+    let settled = frame_at(&mut h, 560., &last).1;
+    for w in DRAG {
+        let now = frame_at(&mut h, w, &last).1;
+        assert!((now - settled).abs() < 0.5, "{now} vs {settled} at {w}px");
+    }
+    h.settle();
+    assert!(h.read(|c| c.near_bottom), "still pinned");
+}
+
+/// Scrolled up, a width drag keeps the block at the top of the scroller in place in every
+/// frame, as the rewrapped blocks above it change height.
+#[gpui::test]
+async fn a_width_drag_holds_the_anchor_block_in_each_frame(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
+    long_transcript(&mut h);
+    let scroll = h.read(|c| c.scroll.clone());
+    let at = scroll.bounds().center();
+    h.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
+    h.cx.simulate_event(gpui::ScrollWheelEvent {
+        position: at,
+        delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(900.))),
+        modifiers: gpui::Modifiers::none(),
+        touch_phase: gpui::TouchPhase::Moved,
+    });
+    h.settle();
+    assert!(!h.read(|c| c.near_bottom), "scrolled up");
+    let key = h.read(|c| c.anchor.clone()).expect("an anchor block").0;
+    let settled = frame_at(&mut h, 560., &key).0;
+    for w in DRAG {
+        let now = frame_at(&mut h, w, &key).0;
+        assert!((now - settled).abs() < 0.5, "{now} vs {settled} at {w}px");
+    }
+}

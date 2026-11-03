@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{Entity, Modifiers, TestAppContext, VisualTestContext, px};
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
     AppContext as _, Bounds, Context, IntoElement, ParentElement, Pixels, Render, Styled, Window,
     div,
@@ -28,11 +29,18 @@ pub fn root_path() -> String {
 pub struct Host {
     pub chat: Entity<AgentChat>,
     pub services: recur_services::Services,
+    /// A dock width, as a panel drag sets it.
+    pub width: Option<f32>,
 }
 
 impl Render for Host {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div().size_full().flex().flex_col().child(self.chat.clone())
+        div()
+            .size_full()
+            .when_some(self.width, |d, w| d.w(px(w)))
+            .flex()
+            .flex_col()
+            .child(self.chat.clone())
     }
 }
 
@@ -95,7 +103,11 @@ pub fn boot<'a>(
     let (host, vcx_cx) = cx.add_window_view(move |window, cx| {
         let chat = cx.new(|cx| AgentChat::new(&vcx, props, window, cx));
         chat.update(cx, |c, cx| c.set_hooks(hooks, cx));
-        Host { chat, services }
+        Host {
+            chat,
+            services,
+            width: None,
+        }
     });
     let mut h = H {
         fake,

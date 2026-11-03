@@ -207,17 +207,24 @@ impl AgentChat {
             )
             .absolute()
             .inset_0();
-            out.push(
-                div()
-                    .id(SharedString::from(format!("cblk-{k}")))
-                    .debug_selector(|| format!("cblk:{k}"))
-                    .relative()
-                    .flex()
-                    .flex_col()
-                    .child(body)
-                    .child(probe)
-                    .into_any_element(),
-            );
+            let el = div()
+                .id(SharedString::from(format!("cblk-{k}")))
+                .debug_selector(|| format!("cblk:{k}"))
+                .relative()
+                .flex()
+                .flex_col()
+                .child(body)
+                .child(probe)
+                .into_any_element();
+            out.push(if self.anchor.as_ref().is_some_and(|a| a.0 == k) {
+                crate::view::LayoutTap {
+                    child: el,
+                    slot: self.anchor_layout.1.clone(),
+                }
+                .into_any_element()
+            } else {
+                el
+            });
         }
         if let Some(el) = stub_spacer(stubs, &ranges) {
             out.push(el);

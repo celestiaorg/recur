@@ -4,9 +4,10 @@
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, AppContext as _, Context, DragMoveEvent, ExternalPaths, InteractiveElement,
-    IntoElement, KeystrokeEvent, ParentElement, Render, SharedString, StatefulInteractiveElement,
-    Styled, Subscription, Window, canvas, div, px,
+    AnyElement, App, AppContext as _, Bounds, Context, DragMoveEvent, Element, ElementId,
+    ExternalPaths, GlobalElementId, InspectorElementId, InteractiveElement, IntoElement,
+    KeystrokeEvent, LayoutId, ParentElement, Pixels, Render, SharedString,
+    StatefulInteractiveElement, Styled, Subscription, Window, canvas, div, px,
 };
 use recur_ui::guard::Guarded;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
@@ -259,8 +260,26 @@ impl AgentChat {
         self.scroll_for_frame();
         let session = self.props.session_body;
         let compact = self.props.compact;
+        self.anchor_layout.0.set(None);
+        self.anchor_layout.1.set(None);
         let kids = self.transcript_children(window, cx);
         let entity = cx.entity();
+        let (content, block) = self.anchor_layout.clone();
+        let hold = {
+            let entity = entity.clone();
+            canvas(
+                move |_, window, cx| {
+                    let (Some(content), Some(block)) = (content.get(), block.get()) else {
+                        return;
+                    };
+                    let at =
+                        window.layout_bounds(block).top() - window.layout_bounds(content).top();
+                    entity.update(cx, |c, cx| c.hold_anchor_in_layout(f32::from(at), cx));
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+        };
         let probe = canvas(
             move |b, _, cx| {
                 let h = f32::from(b.size.height);
@@ -315,14 +334,16 @@ impl AgentChat {
             let pad = if compact { 18. } else { 28. };
             let area = recur_ui::widgets::scrollbar::scroll_area(id)
                 .track(&self.scroll)
-                .child(
-                    div()
+                .child(LayoutTap {
+                    child: div()
                         .debug_selector(|| "chat-scroll".into())
                         .pt(px(if compact { 18. } else { 26. }))
                         .px(px(pad))
                         .pb(px(8.))
-                        .child(col),
-                );
+                        .child(col)
+                        .into_any_element(),
+                    slot: self.anchor_layout.0.clone(),
+                });
             // Text selects across messages, as the page selects across the transcript.
             let sel = recur_ui::selection::state("chat-selection", window, cx);
             div()
@@ -339,6 +360,8 @@ impl AgentChat {
             .when(session, |d| d.flex_initial().min_h_0())
             .flex()
             .flex_col()
+            // Before the scroller: its prepaint applies the offset `hold` sets.
+            .child(hold)
             .child(scroller)
             .child(probe)
             .children(self.fades(cx))
@@ -448,5 +471,70 @@ impl AgentChat {
 impl Render for AgentChat {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
+/// Records its child's layout node, so a pass between layout and paint can read where the
+/// layout put it.
+pub(crate) struct LayoutTap {
+    pub child: AnyElement,
+    pub slot: crate::chat::LayoutSlot,
+}
+
+impl IntoElement for LayoutTap {
+    type Element = Self;
+
+    fn into_element(self) -> Self {
+        self
+    }
+}
+
+impl Element for LayoutTap {
+    type RequestLayoutState = ();
+    type PrepaintState = ();
+
+    fn id(&self) -> Option<ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static std::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (LayoutId, ()) {
+        let id = self.child.request_layout(window, cx);
+        self.slot.set(Some(id));
+        (id, ())
+    }
+
+    fn prepaint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        _: Bounds<Pixels>,
+        _: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        self.child.prepaint(window, cx);
+    }
+
+    fn paint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        _: Bounds<Pixels>,
+        _: &mut (),
+        _: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        self.child.paint(window, cx);
     }
 }

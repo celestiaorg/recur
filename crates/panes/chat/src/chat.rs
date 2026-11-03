@@ -427,6 +427,8 @@ pub(crate) struct TranscriptModel {
     pub(crate) estimates: Vec<f32>,
 }
 
+pub(crate) type LayoutSlot = Rc<std::cell::Cell<Option<gpui_kit::LayoutId>>>;
+
 pub struct AgentChat {
     pub(crate) state: Entity<AppState>,
     pub(crate) services: Services,
@@ -543,6 +545,8 @@ pub struct AgentChat {
     /// held in place when the layout above it changes. Saved per chat key on a switch.
     pub(crate) anchor: Option<(String, f32)>,
     pub(crate) anchor_by_chat: HashMap<String, (String, f32)>,
+    /// This frame's layout nodes for the scroll content and the anchor block.
+    pub(crate) anchor_layout: (LayoutSlot, LayoutSlot),
     pub(crate) chat_hydrated: HashSet<String>,
     /// Blocks laid out live in the last transcript render.
     pub(crate) live_blocks: usize,
@@ -762,6 +766,7 @@ impl AgentChat {
             column_y: 0.,
             anchor: None,
             anchor_by_chat: HashMap::new(),
+            anchor_layout: Default::default(),
             chat_hydrated: HashSet::new(),
             live_blocks: 0,
             chat_in_view: Vec::new(),
@@ -1595,6 +1600,9 @@ impl AgentChat {
         if moved && viewport_h > 0. {
             if self.ignore_swap_scroll > 0 {
                 self.ignore_swap_scroll -= 1;
+            } else if self.near_bottom && (top - max).abs() <= 0.5 {
+                // The pin itself, or a layout clamp against a shorter transcript.
+                self.last_scroll_top = top;
             } else {
                 self.near_bottom = next_near_bottom(
                     self.near_bottom,
@@ -1665,6 +1673,28 @@ impl AgentChat {
         self.notify_transcript(cx);
     }
 
+    /// `overflow-anchor` between layout and paint: `at` is where this frame's layout put the
+    /// anchor block in the content. Scrolling by its move before the scroller places its
+    /// content keeps a rewrap (a width drag) from painting a frame off the anchor.
+    pub(crate) fn hold_anchor_in_layout(&mut self, at: f32, cx: &mut Context<Self>) {
+        if self.near_bottom || self.pending_scroll.is_some() {
+            return;
+        }
+        let Some(anchor) = self.anchor.as_mut() else {
+            return;
+        };
+        let shift = at - anchor.1;
+        if shift.abs() < 0.5 {
+            return;
+        }
+        anchor.1 = at;
+        let top = (-f32::from(self.scroll.offset().y) + shift).max(0.);
+        self.scroll.set_offset(point(px(0.), px(-top)));
+        self.seen_scroll_top = top;
+        self.last_scroll_top = top;
+        self.persist_scroll(cx);
+    }
+
     /// `overflow-anchor` before layout: the block the last frame laid out at `top`, this
     /// frame's scroll top.
     fn pick_anchor(&mut self, top: f32) {
@@ -1700,6 +1730,11 @@ impl AgentChat {
             }
             None => {
                 let top = -f32::from(self.scroll.offset().y);
+                // Pinned and not scrolled since: pin against this frame's layout, so a rewrap
+                // (a width drag) never paints a frame off the bottom.
+                if self.near_bottom && (top - self.seen_scroll_top).abs() <= 0.01 {
+                    self.scroll.scroll_to_bottom();
+                }
                 self.pick_anchor(top);
                 top
             }

@@ -23,7 +23,7 @@ use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerSty
 use recur_ui::{IconName, Theme, color::rgba, icon};
 pub use recur_view_core::land::{Land, LandCache};
 use recur_view_core::modes::{ws_main_blocked, ws_run_active};
-use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle};
 use recur_view_core::{AppState, ViewName, call, toast};
 
 use crate::chrome::no_drag;
@@ -207,7 +207,7 @@ impl LandChrome {
         let store_pr = if id.is_empty() {
             None
         } else {
-            pr_for_workspace(&s.prs, id).cloned()
+            pr_for_workspace(&s.prs, id).map(pr_head)
         };
         let store_github_pr = store_pr.as_ref().filter(|p| p.source == PrSource::GitHub);
         let gh_life = pr_lifecycle(store_github_pr);

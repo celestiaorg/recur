@@ -21,7 +21,7 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::{Select, SelectEvent, SelectOption, TriggerStyle};
 use recur_ui::{Color, IconName, Theme, Tokens, icon, rgba};
-use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle};
 use recur_view_core::pr_list_filter::LIST_SORTS;
 use recur_view_core::{NewTaskDraft, ViewContext, ViewName};
 use recur_view_core::{ObserveState as _, Topics};
@@ -1083,7 +1083,7 @@ impl Issues {
     fn render_menu(&mut self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let m = self.menu.clone()?;
         let t = Theme::of(cx).tokens;
-        let prs = self.vcx.state.read(cx).prs.clone();
+        let prs: Vec<_> = self.vcx.state.read(cx).prs.iter().map(pr_head).collect();
         let item = |id: String, disabled: bool| {
             div()
                 .id(SharedString::from(id))

@@ -14,7 +14,7 @@ use gpui_kit::{
 use recur_services::AppEvent;
 use recur_view_chat::heap::ChatHeapCache;
 use recur_view_chat::hoist::{HoistState, hoist_cache_bust_codes};
-use recur_view_core::pr::pr_agent_workspace_id;
+use recur_view_core::pr::{pr_agent_workspace_id, pr_head};
 use recur_view_core::{AppState, AppliedEvent, ViewContext, ViewName, call};
 use recur_view_observatory::hot_shells::{live_workspace_ids, touch_hot_shells};
 
@@ -178,7 +178,7 @@ impl WorkspaceDetail {
             self.host_attempt.clear();
             return;
         }
-        let Some(pr) = s.prs.iter().find(|p| p.id == s.selected_pr_id).cloned() else {
+        let Some(pr) = s.prs.iter().find(|p| p.id == s.selected_pr_id).map(pr_head) else {
             return;
         };
         if pr.id.is_empty()

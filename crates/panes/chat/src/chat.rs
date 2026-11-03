@@ -1161,7 +1161,7 @@ impl AgentChat {
             root_path: self.props.root_path.clone(),
             has_open_file: self.hooks.open_file,
             findings: self.props.findings.clone(),
-            prs: s.prs.clone(),
+            prs: s.prs.iter().map(recur_view_core::pr::pr_head).collect(),
             workspace_id: self.props.workspace_id.clone(),
             briefs: s.briefing.workspaces.clone().unwrap_or_default(),
         });

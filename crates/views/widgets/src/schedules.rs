@@ -26,7 +26,7 @@ use recur_view_core::modes::{
     ChatMode, parked_needs_you_by_workspace, sidebar_unread_title, workspace_can_remove,
     workspace_is_running,
 };
-use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle};
 use recur_view_core::{AppState, ScheduleEditorRequest, ViewContext};
 
 use crate::list_chrome::{
@@ -1227,7 +1227,7 @@ impl ScheduledPrompts {
             (
                 removable,
                 s.workspaces_running.clone(),
-                s.prs.clone(),
+                s.prs.iter().map(pr_head).collect::<Vec<_>>(),
                 s.attention.by_workspace.clone(),
                 parked_needs_you_by_workspace(
                     &s.workspaces,

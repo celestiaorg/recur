@@ -28,7 +28,7 @@ use recur_ui::widgets::ToastKind;
 use recur_ui::{IconName, Theme, color::rgba, icon};
 use recur_view_core::land::{Land, LandCache};
 use recur_view_core::modes::ws_has_run;
-use recur_view_core::pr::{PrLifecycle, keep_merged_pr, pr_lifecycle};
+use recur_view_core::pr::{PrLifecycle, keep_merged_pr, pr_head, pr_lifecycle};
 use recur_view_core::{AppState, AppliedEvent, PrReviewKind, ViewContext, ViewName, call, toast};
 
 use crate::detail::PrDetail;
@@ -328,7 +328,7 @@ impl PrTitlebarActions {
             let s = self.state.read(cx);
             (
                 s.selected_pr_id.clone(),
-                s.pr(&s.selected_pr_id).cloned(),
+                s.pr(&s.selected_pr_id).map(pr_head),
                 s.view == ViewName::PrDetail,
             )
         };

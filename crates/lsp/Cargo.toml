@@ -1,0 +1,33 @@
+[package]
+name = "recur-lsp"
+description = "Language server client: process lifecycle, JSON-RPC transport, and bundle-declared server resolution."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-http.workspace = true
+recur-bundles.workspace = true
+flate2.workspace = true
+hex.workspace = true
+nix.workspace = true
+parking_lot.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tar.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+recur-exec.workspace = true
+pretty_assertions.workspace = true
+
+[lints]
+workspace = true

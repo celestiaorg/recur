@@ -1,0 +1,551 @@
+//! PR detail's Conversation findings, Files changed filters, Commits and the review modal's
+//! typeaheads.
+
+use gpui::TestAppContext;
+use recur_domain::{Commit, FileDiff, Finding, Pr, PrParticipant};
+use recur_services::api::Asset;
+use recur_services::fake::{Overrides, Release, Seed, hold};
+use recur_view_widgets::suggest::SuggestKind;
+use serde_json::{Value, json};
+
+use super::harness::*;
+
+const RACE: &str = "token refresh can race across two tabs";
+const ABORT: &str = "refresh ignores abort";
+const SESSION: &str = "src/hooks/useOAuthSession.ts";
+
+fn pending_ids(s: &mut S) -> Vec<String> {
+    s.pr("482")
+        .pending_comments
+        .iter()
+        .map(|p| p.id.clone())
+        .collect()
+}
+
+fn pending_bodies(s: &mut S) -> Vec<String> {
+    s.pr("482")
+        .pending_comments
+        .iter()
+        .map(|p| p.body.clone())
+        .collect()
+}
+
+#[gpui::test]
+fn opens_a_pr_shows_the_diff_and_opens_the_review_modal_from_files(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_pr("482");
+    s.tab("Files changed");
+    assert!(s.has("cfile:live:src/auth/oauth.ts"));
+    assert!(s.has("hline:src/auth/oauth.ts:add:right:12"));
+    s.click("pr-act:pr-review=Approve");
+    assert!(s.has("pr-rev-modal=Approve pull request"));
+    assert!(s.has("sel:Review type=Approve"));
+    assert!(s.has("pr-rev-go=Approve"));
+}
+
+#[gpui::test]
+fn github_only_findings_post_as_pending_review_comments(cx: &mut TestAppContext) {
+    let abort = Finding {
+        id: "f-abort".into(),
+        line: 8,
+        message: ABORT.into(),
+        severity: "medium".into(),
+        ..race_finding("")
+    };
+    let f = Findings::new(vec![race_finding(""), abort]);
+    let mut s = boot(
+        cx,
+        |sd| patch_pr(sd, "482", json!({ "workspaceId": "" })),
+        f.options(0),
+    );
+    s.open_pr("482");
+    s.tab("Conversation");
+    assert!(s.has("card:Reviewer findings"));
+    assert!(s.has("button:Post all"));
+    assert!(!s.has("open-in-findings:f-race"));
+
+    s.click(&format!("button:Post as GitHub comment:{RACE}"));
+    assert!(s.has("pr-act:pending=1 pending"));
+    assert!(!s.has(&format!("finding-row:{RACE}")));
+    assert!(s.has(&format!("finding-row:{ABORT}")));
+
+    s.tab("Files changed");
+    assert!(s.has("fl-head:Post all"));
+    s.click(&format!("fl-row:file:{SESSION}"));
+    let id = pending_ids(&mut s).pop().expect("pending");
+    assert!(s.has(&format!("icmt-pending:{id}")));
+    s.click(&format!("pending-remove:{id}"));
+    assert!(!s.has(&format!("icmt-pending:{id}")));
+
+    s.tab("Conversation");
+    assert!(s.has(&format!("finding-row:{RACE}")));
+    s.click("button:Post all");
+    assert!(s.has("pr-act:pending=2 pending"));
+    assert!(!s.has("card:Reviewer findings"));
+
+    s.tab("Files changed");
+    s.click(&format!("fl-row:file:{SESSION}"));
+    let bodies = pending_bodies(&mut s);
+    assert!(bodies.iter().any(|b| b.contains(RACE)), "{bodies:?}");
+    assert!(bodies.iter().any(|b| b.contains(ABORT)), "{bodies:?}");
+    for id in pending_ids(&mut s) {
+        assert!(s.has(&format!("icmt-pending:{id}")), "{id}");
+    }
+}
+
+#[gpui::test]
+fn a_matching_submitted_comment_does_not_hide_or_auto_resolve_a_finding(cx: &mut TestAppContext) {
+    let f = Findings::new(vec![race_finding("WS-1")]);
+    let mut s = boot(
+        cx,
+        |sd| {
+            patch_pr(
+                sd,
+                "482",
+                json!({ "comments": comments_with_race_note("gh-inline-pre") }),
+            )
+        },
+        f.options(0),
+    );
+    s.open_pr("482");
+    assert!(s.has("card:Reviewer findings"));
+    assert!(s.has(&format!("finding-row:{RACE}")));
+    assert_eq!(f.settled(), 0);
+}
+
+fn persisted_draft() -> Value {
+    json!({
+        "pendingComments": [{
+            "id": "pend-finding-race", "file": SESSION, "line": 2, "side": "RIGHT",
+            "body": RACE, "findingId": "f-race",
+        }],
+    })
+}
+
+#[gpui::test]
+fn a_persisted_finding_draft_resolves_after_submit(cx: &mut TestAppContext) {
+    let f = Findings::new(vec![race_finding("LOOP-2231")]);
+    let mut s = boot(
+        cx,
+        |sd| patch_pr(sd, "482", persisted_draft()),
+        f.options(0),
+    );
+    s.open_pr("482");
+    assert!(s.has("pr-act:pending=1 pending"));
+    assert!(!s.has("card:Reviewer findings"));
+    s.click("pr-act:pending=1 pending");
+    assert!(s.has("pr-rev-modal=Approve pull request"));
+    s.click("pr-rev-go=Approve");
+    assert!(!s.has("v-pr-review"));
+    assert!(s.until(|_| f.settled() == 1));
+    assert!(!s.has("card:Reviewer findings"));
+}
+
+#[gpui::test]
+fn deleting_a_finding_draft_does_not_resolve_from_an_older_matching_comment(
+    cx: &mut TestAppContext,
+) {
+    let f = Findings::new(vec![race_finding("LOOP-2231")]);
+    let mut s = boot(
+        cx,
+        |sd| {
+            patch_pr(
+                sd,
+                "482",
+                json!({ "comments": comments_with_race_note("gh-inline-pre") }),
+            )
+        },
+        f.options(0),
+    );
+    s.open_pr("482");
+    s.click(&format!("button:Post as GitHub comment:{RACE}"));
+    assert!(s.has("pr-act:pending=1 pending"));
+    s.tab("Files changed");
+    s.click(&format!("fl-row:file:{SESSION}"));
+    let id = pending_ids(&mut s).pop().expect("pending");
+    s.click(&format!("pending-remove:{id}"));
+    s.tab("Conversation");
+    assert!(s.has(&format!("finding-row:{RACE}")));
+    assert!(s.has(&format!("button:Post as GitHub comment:{RACE}")));
+    assert_eq!(f.settled(), 0);
+}
+
+#[gpui::test]
+fn a_failed_settle_offers_resolve_without_posting_again(cx: &mut TestAppContext) {
+    let f = Findings::new(vec![race_finding("LOOP-2231")]);
+    let mut s = boot(
+        cx,
+        |sd| patch_pr(sd, "482", persisted_draft()),
+        f.options(1),
+    );
+    s.open_pr("482");
+    assert!(s.has("pr-act:pending=1 pending"));
+    s.click("pr-act:pending=1 pending");
+    s.click("pr-rev-go=Approve");
+    assert!(!s.has("v-pr-review"));
+    assert!(s.until(|_| f.settled() == 1));
+    assert!(s.has(&format!("finding-row:{RACE}")));
+    assert!(!s.has(&format!("button:Post as GitHub comment:{RACE}")));
+    s.click(&format!("button:Resolve finding:{RACE}"));
+    assert!(s.until(|_| f.settled() == 2));
+    assert!(!s.has("card:Reviewer findings"));
+}
+
+#[gpui::test]
+fn a_posted_finding_still_settles_after_the_pr_merges(cx: &mut TestAppContext) {
+    let f = Findings::new(vec![race_finding("LOOP-2231")]);
+    let mut s = boot(
+        cx,
+        |sd| {
+            patch_pr(
+                sd,
+                "482",
+                json!({
+                    "state": "Merged", "group": "merged",
+                    "pendingComments": [{
+                        "id": "pend-seed", "file": SESSION, "line": 8, "side": "RIGHT",
+                        "body": "seed", "findingId": "f-race",
+                    }],
+                    "comments": comments_with_race_note("gh-posted"),
+                }),
+            )
+        },
+        f.options(0),
+    );
+    s.open_pr("482");
+    assert!(s.until(|_| f.settled() == 1));
+    assert!(!s.has("card:Reviewer findings"));
+}
+
+#[gpui::test]
+fn files_changed_filters_do_not_carry_over_to_another_pr(cx: &mut TestAppContext) {
+    let mut s = plain_with(cx, |sd| {
+        let files = sd.pr("482").unwrap().files.clone();
+        if let Some(p) = sd.pr_mut("479") {
+            p.files = files;
+            p.file_count = 3;
+        }
+    });
+    let paths = [
+        "src/auth/oauth.ts",
+        SESSION,
+        "src/checkout/SignInButtons.tsx",
+    ];
+    let rows = |s: &mut S| {
+        paths
+            .iter()
+            .filter(|p| s.has(&format!("fl-row:file:{p}")))
+            .count()
+    };
+    s.open_pr("482");
+    s.tab("Files changed");
+    s.click("button:Show files with unresolved comments:false");
+    assert_eq!(rows(&mut s), 1);
+    assert!(s.has("button:Show all files:true"));
+
+    s.prs_nav();
+    s.click("prrow:479");
+    s.tab("Files changed");
+    assert!(!s.has("empty:No files match"));
+    assert_eq!(rows(&mut s), 3);
+    assert!(!s.has("button:Show all files:true"));
+}
+
+#[gpui::test]
+fn files_changed_shows_an_image_file_as_previous_and_current(cx: &mut TestAppContext) {
+    const PNG_1X1: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    let fetched = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<String>::new()));
+    let log = fetched.clone();
+    let mut s = boot(
+        cx,
+        |sd| {
+            let pr = sd.pr_mut("482").unwrap();
+            pr.files.get_or_insert_default().insert(
+                0,
+                FileDiff {
+                    path: "assets/logo.png".into(),
+                    status: "m".into(),
+                    ..Default::default()
+                },
+            );
+            pr.head_sha = "abc123".into();
+        },
+        Overrides::default().fetch_asset(move |_, url| {
+            use base64::Engine as _;
+            log.lock().push(url);
+            Ok(Asset {
+                content_type: "image/png".into(),
+                cache_control: String::new(),
+                body: base64::engine::general_purpose::STANDARD
+                    .decode(PNG_1X1)
+                    .unwrap(),
+            })
+        }),
+    );
+    s.open_pr("482");
+    s.tab("Files changed");
+    assert!(s.has("cfile:live:assets/logo.png"));
+    assert!(s.until(|s| s.has("diff-image:Previous") && s.has("diff-image:Current")));
+    let urls = fetched.lock().clone();
+    let at = |rev: &str| {
+        urls.iter().any(|u| {
+            u.starts_with("/workspace-file?project=storefront&path=assets%2Flogo.png")
+                && u.ends_with(&format!("&at={rev}"))
+        })
+    };
+    assert!(at("main...abc123") && at("abc123"), "{urls:?}");
+}
+
+const FIRST_COMMIT: &str = "Add tests for Apple + Google providers";
+const LAST_COMMIT: &str = "Add Apple & Google OAuth providers";
+
+fn opens_first_commit(s: &mut S) {
+    s.open_pr("482");
+    s.tab("Commits");
+    let first = s.bounds(&format!("commit:{FIRST_COMMIT}")).expect("first");
+    let last = s.bounds(&format!("commit:{LAST_COMMIT}")).expect("last");
+    assert!(first.origin.y < last.origin.y);
+    s.click(&format!("commit:{FIRST_COMMIT}"));
+    assert!(s.has("commit-hd"));
+}
+
+#[gpui::test]
+fn commit_detail_shows_the_per_commit_diff(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    opens_first_commit(&mut s);
+    let commit = s
+        .pr("482")
+        .commits
+        .unwrap()
+        .into_iter()
+        .find(|c| c.message == FIRST_COMMIT)
+        .unwrap();
+    let path = commit.files.unwrap()[0].path.clone();
+    assert!(s.has(&format!("cfile:live:{path}")));
+}
+
+#[gpui::test]
+fn commit_detail_loads_a_lazy_per_commit_diff(cx: &mut TestAppContext) {
+    let original: Vec<Commit> = Seed::e2e().pr("482").unwrap().commits.clone().unwrap();
+    let stripped: Vec<Commit> = original
+        .iter()
+        .map(|c| Commit {
+            files: Some(Vec::new()),
+            ..c.clone()
+        })
+        .collect();
+    let by_hash = original.clone();
+    let mut s = boot(
+        cx,
+        move |sd| sd.pr_mut("482").unwrap().commits = Some(stripped),
+        Overrides::default().get_commit_diff(move |_, (_, r)| {
+            Ok(by_hash
+                .iter()
+                .find(|c| c.hash == r || c.sha == r)
+                .cloned()
+                .unwrap_or_default())
+        }),
+    );
+    opens_first_commit(&mut s);
+    let commit = original
+        .into_iter()
+        .find(|c| c.message == FIRST_COMMIT)
+        .unwrap();
+    let path = commit.files.unwrap()[0].path.clone();
+    assert!(s.until(|s| s.has(&format!("cfile:live:{path}"))));
+}
+
+fn open_review_modal(s: &mut S) {
+    s.open_pr("482");
+    s.click("pr-act:pr-review=Approve");
+    assert!(s.has("pr-rev-modal=Approve pull request"));
+    s.click("pr-rev-body");
+}
+
+#[gpui::test]
+fn tab_inserts_the_selected_emoji_in_the_review_modal(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    open_review_modal(&mut s);
+    s.type_text(":");
+    assert!(s.has("emoji-suggest-row:0"));
+    s.keys("tab");
+    assert_eq!(s.review_draft(), "👍");
+    assert!(!s.has("emoji-suggest-row:0"));
+    assert!(s.has("pr-rev-go=Approve"));
+    assert!(s.has("v-pr-review"));
+}
+
+#[gpui::test]
+fn tab_inserts_a_github_user_mention_in_the_review_modal(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    open_review_modal(&mut s);
+    s.type_text("@");
+    assert!(s.has("user-mention-row:0"));
+    let who = s.suggestions(SuggestKind::Mention);
+    assert!(who.iter().any(|l| l == "loopbot"), "{who:?}");
+    assert!(who.iter().any(|l| l == "avery"), "{who:?}");
+    s.keys("tab");
+    assert_eq!(s.review_draft(), "@avery ");
+    assert!(!s.has("user-mention-row:0"));
+}
+
+#[gpui::test]
+fn tab_inserts_a_mentionable_github_user_from_repository_search(cx: &mut TestAppContext) {
+    let mut s = boot(
+        cx,
+        |_| {},
+        Overrides::default().search_pr_mentionable_users(|_, _| {
+            Ok(vec![PrParticipant {
+                login: "octocat".into(),
+                name: "The Octocat".into(),
+                ..Default::default()
+            }])
+        }),
+    );
+    open_review_modal(&mut s);
+    s.type_text("@octo");
+    assert!(s.until(|s| {
+        s.suggestions(SuggestKind::Mention)
+            .iter()
+            .any(|l| l == "octocat")
+    }));
+    s.keys("tab");
+    assert_eq!(s.review_draft(), "@octocat ");
+    assert!(!s.has("user-mention-row:0"));
+}
+
+#[gpui::test]
+fn request_changes_from_the_titlebar_split_on_any_tab(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_pr("482");
+    s.tab("Files changed");
+    s.click("pr-review-chev");
+    s.click("pr-review-request");
+    assert!(s.has("pr-rev-modal=Request changes"));
+    assert!(s.has("sel:Review type=Request changes"));
+    s.click("pr-rev-body");
+    let body = "Please add tests for the secrets init path.";
+    s.type_text(body);
+    s.click("pr-rev-go=Request changes");
+    assert!(!s.has("v-pr-review"));
+    s.tab("Conversation");
+    let comments = s.pr("482").comments.unwrap_or_default();
+    assert!(
+        comments.iter().any(|c| c.body_md.contains(body)),
+        "the review body joins the thread"
+    );
+    assert!(s.has("thread"));
+}
+
+#[gpui::test]
+fn files_changed_findings_open_in_findings_and_filter_the_toc(cx: &mut TestAppContext) {
+    let race = race_finding("");
+    let r2 = race.clone();
+    let mut s = boot(
+        cx,
+        |_| {},
+        Overrides::default()
+            .list_pr_findings(move |_, _| Ok(vec![race.clone()]))
+            .list_findings(move |_, _| Ok(vec![r2.clone()])),
+    );
+    s.open_pr("482");
+    s.tab("Files changed");
+    assert!(s.has(&format!("obs-finding-flag:{SESSION}")));
+    s.click(&format!("fl-row:file:{SESSION}"));
+    assert!(s.has("icmt-finding:f-race"));
+    s.click("open-in-findings:f-race");
+    assert_eq!(s.view(), recur_view_core::ViewName::Detail);
+
+    s.click("tb-view-pr");
+    assert_eq!(s.view(), recur_view_core::ViewName::PrDetail);
+    s.tab("Files changed");
+    s.click("button:Show files with open findings:false");
+    let paths = [
+        "src/auth/oauth.ts",
+        SESSION,
+        "src/checkout/SignInButtons.tsx",
+    ];
+    let rows = paths
+        .iter()
+        .filter(|p| s.has(&format!("fl-row:file:{p}")))
+        .count();
+    assert_eq!(rows, 1);
+    assert!(s.has(&format!("fl-row:file:{SESSION}")));
+    assert!(s.has("button:Show all files:true"));
+}
+
+/// How the GetPR stub answers: the PR without its diff, held, or whole.
+#[derive(Clone, Copy, PartialEq)]
+enum Diff {
+    Missing,
+    Held,
+    Loaded,
+}
+
+fn get_pr_stub(
+    phase: std::sync::Arc<std::sync::Mutex<Diff>>,
+    held: std::sync::Arc<std::sync::Mutex<Vec<Release<recur_services::Result<Pr>>>>>,
+) -> Overrides {
+    Overrides::default().get_pr(move |sd, id| {
+        let Some(mut pr) = sd.pr(&id).cloned() else {
+            return Err(recur_services::Error::new("get_pr returned null")).into();
+        };
+        match *phase.lock().unwrap() {
+            Diff::Loaded => Ok(pr).into(),
+            Diff::Missing => {
+                pr.files = None;
+                Ok(pr).into()
+            }
+            Diff::Held => {
+                let (answer, release) = hold();
+                held.lock().unwrap().push(release);
+                answer
+            }
+        }
+    })
+}
+
+/// A GitHub PR whose diff is still hydrating shows the skeleton, then the files once the
+/// engine's `pr.updated` brings them.
+#[gpui::test]
+fn files_changed_fills_in_when_the_diff_lands(cx: &mut TestAppContext) {
+    let phase = std::sync::Arc::new(std::sync::Mutex::new(Diff::Missing));
+    let mut s = boot(cx, |_| {}, get_pr_stub(phase.clone(), Default::default()));
+    s.open_pr("482");
+    s.tab("Files changed");
+    assert!(s.has("pr-skel"));
+    assert!(!s.has("cfile:live:src/auth/oauth.ts"));
+
+    *phase.lock().unwrap() = Diff::Loaded;
+    s.dispatch(recur_services::AppEvent::PrUpdated(std::sync::Arc::new(
+        recur_services::events::PrUpdated {
+            pr_id: "482".into(),
+            ..Default::default()
+        },
+    )));
+    assert!(s.until(|s| s.has("cfile:live:src/auth/oauth.ts")));
+    assert!(!s.has("pr-skel"));
+}
+
+/// The 15s poll keeps refreshing after one of its refreshes is dropped mid-flight (leaving
+/// the PR while GetPR is out), so a diff that lands later still reaches Files changed.
+#[gpui::test]
+fn the_poll_survives_a_refresh_dropped_mid_flight(cx: &mut TestAppContext) {
+    let phase = std::sync::Arc::new(std::sync::Mutex::new(Diff::Missing));
+    let held = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let mut s = boot(cx, |_| {}, get_pr_stub(phase.clone(), held.clone()));
+    s.open_pr("482");
+    *phase.lock().unwrap() = Diff::Held;
+    s.wait(15_000);
+    assert_eq!(held.lock().unwrap().len(), 1, "the poll's GetPR is out");
+
+    s.prs_nav();
+    *phase.lock().unwrap() = Diff::Missing;
+    s.open_pr("482");
+    s.tab("Files changed");
+    assert!(!s.has("cfile:live:src/auth/oauth.ts"));
+
+    *phase.lock().unwrap() = Diff::Loaded;
+    s.wait(15_000);
+    assert!(s.until(|s| s.has("cfile:live:src/auth/oauth.ts")));
+}

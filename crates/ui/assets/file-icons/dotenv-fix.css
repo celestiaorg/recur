@@ -1,0 +1,12 @@
+/*
+ * Upstream file-icons.woff2 omits U+EBB8 (dotenv): icons.tsv/CSS reference it, but
+ * the glyph was never baked into the font (same for figma, mixin, …). The explorer
+ * reserved a 14px slot and painted nothing. Fall back to Octicons key, which ships
+ * in our vendored octicons.woff2 and reads as secrets/env.
+ */
+.dotenv-icon:before {
+  font-family: "Octicons Regular" !important;
+  content: "\f049" !important;
+  font-size: 14px !important;
+  top: 0 !important;
+}

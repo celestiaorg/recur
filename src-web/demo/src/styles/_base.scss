@@ -1,0 +1,224 @@
+/* ===== reset + window chrome ===== */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+input, textarea {
+  font-family: inherit;
+}
+
+/* Scrollbars: size + thumb colors come from the active theme tokens. */
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+* {
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+/* Overlay thumb sits above sticky tree headers (native bars paint under z-index). */
+.overlay-sb-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay-sb-scroller {
+  scrollbar-width: none;
+}
+
+.overlay-sb-scroller::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.overlay-sb {
+  position: absolute;
+  top: 0;
+  right: 1px;
+  bottom: 0;
+  width: 6px;
+  z-index: 30;
+  pointer-events: none;
+  touch-action: none;
+  opacity: 0;
+  transition: opacity .45s ease;
+}
+
+.overlay-sb.live {
+  pointer-events: auto;
+}
+
+.overlay-sb.on {
+  opacity: 1;
+  transition: opacity .12s ease;
+}
+
+.overlay-sb-thumb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 99px;
+  background: var(--scrollbar-thumb);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-sb, .overlay-sb.on {
+    transition: none;
+  }
+}
+
+::selection {
+  background: rgba(242, 179, 61, .3);
+}
+
+.win {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  --chrome-foot-h: 26px;
+}
+
+/* title bar: 52px matches macOS toolbar chrome (larger corner radius + traffic
+   light placement under HiddenInset; keep in sync with InvisibleTitleBarHeight). */
+.titlebar {
+  height: 52px;
+  flex: none;
+  background: var(--titlebar);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 0 14px;
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 6;
+}
+
+.crumb {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+.crumb-base {
+  flex: none;
+  -webkit-app-region: no-drag;
+}
+
+.crumb-base .sel-btn {
+  width: auto;
+  height: auto;
+  padding: 1px 6px;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  gap: 5px;
+  color: var(--muted);
+}
+
+.crumb-base .sel-btn:hover:not(:disabled) {
+  background: var(--pane-2);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.crumb-base .sel-btn:focus-visible, .crumb-base.open .sel-btn {
+  background: var(--pane-2);
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--text);
+}
+
+.crumb-base.open .sel-ico, .crumb-base.open .sel-chev, .crumb-base .sel-btn:focus-visible .sel-ico, .crumb-base .sel-btn:focus-visible .sel-chev {
+  color: var(--muted);
+}
+
+.crumb-base .sel-ico {
+  color: var(--muted);
+}
+
+.crumb-base .sel-ico svg {
+  width: 12px;
+  height: 12px;
+}
+
+.crumb-base .sel-val {
+  flex: none;
+}
+
+.crumb-base .sel-chev {
+  width: 11px;
+  height: 11px;
+}
+
+.sel-menu-wide {
+  min-width: 220px;
+}
+
+.crumb b {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.crumb .on {
+  color: var(--text);
+}
+
+/* Keycaps: system UI so ⌘/⌥/⇧ match Latin cap height (mono draws them wrong). */
+.kbd {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 500;
+  letter-spacing: .02em;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  /* Trap .prh (20) so titlebar menus are not covered. */
+  z-index: 0;
+}

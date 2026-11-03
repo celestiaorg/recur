@@ -1,0 +1,160 @@
+/* ===== main ===== */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg);
+  position: relative;
+}
+
+.view {
+  flex: 1;
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.view.on {
+  display: flex;
+}
+
+/* Inbox/PRs must not display:none the workbench: that zeros CodeMirror/xterm
+   layout the same way it did for parked shells. Keep #v-detail in flex (sized
+   to .main) and hide it like a parked terminal tab. Playwright still keys off
+   .view.on. */
+#v-detail.view {
+  display: flex;
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+#v-detail.view.on {
+  visibility: visible;
+  pointer-events: auto;
+  position: relative;
+  inset: auto;
+  z-index: auto;
+}
+
+/* Live workspace workbench fills the detail view. Inactive hot shells sit in
+   #wsv-park (a sibling, not display:none) so CodeMirror/xterm keep their box
+   and `#v-detail .obs` stays a single Playwright match. JS copies the live
+   slot's rect onto the park. Do not use content-visibility:hidden here: that
+   skips layout and zeros tab-strip / editor scroll. */
+#v-detail .wsv-live {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#wsv-park {
+  position: fixed;
+  inset: 0;
+  flex: none;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.toolbar {
+  flex: none;
+  background: rgba(10, 12, 16, .85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  height: 46px;
+}
+
+.toolbar h2 {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.toolbar .sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.toolbar .sp {
+  flex: 1;
+}
+
+.seg {
+  display: flex;
+  background: var(--pane);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.seg button {
+  padding: 4px 11px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.seg button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.seg button.on {
+  background: var(--pane-2);
+  color: var(--text);
+}
+
+.scroll {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.content {
+  padding: 18px;
+}
+
+.center {
+  max-width: 600px;
+  margin: 30px auto 0;
+  padding: 0 18px;
+}
+
+.ring {
+  position: relative;
+  flex: none;
+}
+
+.ring .it {
+  font-family: var(--mono);
+  font-weight: 600;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion:no-preference) {
+  .pulse {
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: .5;
+    }
+
+    50% {
+      opacity: 1;
+    }
+  }
+}

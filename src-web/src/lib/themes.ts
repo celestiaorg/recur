@@ -1,4 +1,4 @@
-/** Splash theme catalogs — mirrors frontend Settings pickers (stores.ts / cm-themes.ts). */
+/** Splash theme catalogs: mirrors the demo app's Settings pickers (stores.ts / cm-themes.ts). */
 
 export type AppTheme = {
   key: string;

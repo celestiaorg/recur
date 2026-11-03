@@ -1,0 +1,359 @@
+{
+  "write": [
+    {
+      "name": "fresh full",
+      "existing": null,
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "pnpm install",
+        "teardownCmd": "rm -rf node_modules",
+        "appURL": "http://localhost:$RECUR_PORT",
+        "runCommands": [
+          {
+            "name": "dev",
+            "cmd": "pnpm dev --port $RECUR_PORT"
+          },
+          {
+            "name": "test",
+            "cmd": "go test ./...\ngo vet ./...\n"
+          }
+        ],
+        "env": "FOO=bar\n# comment\nBAZ=$HOME",
+        "copyFiles": ".env*\napps/**/.env.local",
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"pnpm install\"\nteardown_cmd = \"rm -rf node_modules\"\napp_url = \"http://localhost:$RECUR_PORT\"\nenv = \"\"\"\nFOO=bar\n# comment\nBAZ=$HOME\"\"\"\ncopy_files = \"\"\"\n.env*\napps/**/.env.local\"\"\"\n\n[[run]]\nname = \"dev\"\ncmd = \"pnpm dev --port $RECUR_PORT\"\n\n[[run]]\nname = \"test\"\ncmd = \"\"\"\ngo test ./...\ngo vet ./...\"\"\"\n"
+    },
+    {
+      "name": "fresh empty",
+      "existing": null,
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "",
+        "teardownCmd": "",
+        "appURL": "",
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"\"\nteardown_cmd = \"\"\napp_url = \"\"\nenv = \"\"\ncopy_files = \"\"\n"
+    },
+    {
+      "name": "fresh quotes",
+      "existing": null,
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "echo 'hi'",
+        "teardownCmd": "",
+        "appURL": "x\ty",
+        "env": "A=\"\"\"\n\tB=1\r\n",
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"echo 'hi'\"\nteardown_cmd = \"\"\napp_url = \"x\\ty\"\nenv = \"\"\"\nA=\"\"\\\"\n\\tB=1\\r\n\"\"\"\ncopy_files = \"\"\n"
+    },
+    {
+      "name": "fresh unnamed runs",
+      "existing": null,
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "",
+        "teardownCmd": "",
+        "appURL": "",
+        "runCommands": [
+          {
+            "name": "",
+            "cmd": "a"
+          },
+          {
+            "name": "dev",
+            "cmd": "b"
+          },
+          {
+            "name": "dev",
+            "cmd": "c"
+          }
+        ],
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"\"\nteardown_cmd = \"\"\napp_url = \"\"\nenv = \"\"\ncopy_files = \"\"\n\n[[run]]\nname = \"run\"\ncmd = \"a\"\n\n[[run]]\nname = \"dev\"\ncmd = \"b\"\n\n[[run]]\nname = \"dev-2\"\ncmd = \"c\"\n"
+    },
+    {
+      "name": "merge keeps comments",
+      "existing": "# team notes\n\n# secrets stay in .env\nenv = \"\"\"\nFOO=old\n\"\"\"\n\nextra = \"keep-me\"\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"make dev\"\n",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "",
+        "teardownCmd": "",
+        "appURL": "",
+        "runCommands": [
+          {
+            "name": "dev",
+            "cmd": "make dev"
+          },
+          {
+            "name": "test",
+            "cmd": "go test"
+          }
+        ],
+        "env": "FOO=new\nBAR=2\n",
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "# team notes\n\n# secrets stay in .env\nenv = \"\"\"\nFOO=new\nBAR=2\n\"\"\"\n\nextra = \"keep-me\"\n\n[[run]]\n# local override\nname = \"dev\"\ncmd = \"make dev\"\n\n[[run]]\nname = \"test\"\ncmd = \"go test\"\n"
+    },
+    {
+      "name": "merge adds runs",
+      "existing": "# Recur project settings\nsetup_cmd = 'make setup'\nteardown_cmd = ''\napp_url = ''\nenv = 'A=1'\ncopy_files = ''\n",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "make setup",
+        "teardownCmd": "",
+        "appURL": "",
+        "runCommands": [
+          {
+            "name": "dev",
+            "cmd": "make dev"
+          }
+        ],
+        "env": "A=1",
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "# Recur project settings\nsetup_cmd = 'make setup'\nteardown_cmd = ''\napp_url = ''\nenv = 'A=1'\ncopy_files = ''\n\n[[run]]\nname = \"dev\"\ncmd = \"make dev\"\n"
+    },
+    {
+      "name": "merge drops runs and dev_cmd",
+      "existing": "dev_cmd = \"legacy\"\nsetup_cmd = \"x\"\n\n[[run]]\nname = \"a\"\ncmd = \"b\"\n\n[[run]]\nname = \"c\"\ncmd = \"d\"\n",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "x",
+        "teardownCmd": "",
+        "appURL": "",
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "setup_cmd = \"x\"\n"
+    },
+    {
+      "name": "merge shrinks runs",
+      "existing": "[[run]]\nname = \"a\"\ncmd = \"b\"\n\n[[run]]\nname = \"c\"\ncmd = \"d\"\n\n[[run]]\nname = \"e\"\ncmd = \"f\"\n",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "",
+        "teardownCmd": "",
+        "appURL": "",
+        "runCommands": [
+          {
+            "name": "z",
+            "cmd": "multi\nline"
+          }
+        ],
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "[[run]]\nname = \"z\"\ncmd = \"\"\"\nmulti\nline\"\"\"\n"
+    },
+    {
+      "name": "merge heals indexed tables",
+      "existing": "setup_cmd = 'make setup'\n\n[run.0]\nname = 'dev'\ncmd = 'old'\n",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "make setup",
+        "teardownCmd": "",
+        "appURL": "",
+        "runCommands": [
+          {
+            "name": "dev",
+            "cmd": "make dev"
+          }
+        ],
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "setup_cmd = 'make setup'\n\n[[run]]\nname = \"dev\"\ncmd = \"make dev\"\n"
+    },
+    {
+      "name": "merge malformed rewrites",
+      "existing": "[[[not toml",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "",
+        "teardownCmd": "",
+        "appURL": "",
+        "env": "A=1",
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"\"\nteardown_cmd = \"\"\napp_url = \"\"\nenv = \"A=1\"\ncopy_files = \"\"\n"
+    },
+    {
+      "name": "merge table where string expected rewrites",
+      "existing": "[env]\nx = 1\n",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "",
+        "teardownCmd": "",
+        "appURL": "",
+        "env": "A=1",
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "# Recur project settings: setup, teardown, named runs, app URL, env, and files to copy.\n# Safe to commit and share. Keep secrets in gitignored dotenv for the app to load;\n# Recur copies them via copy_files and does not export them.\nsetup_cmd = \"\"\nteardown_cmd = \"\"\napp_url = \"\"\nenv = \"A=1\"\ncopy_files = \"\"\n"
+    },
+    {
+      "name": "merge inline run array",
+      "existing": "run = [{name = \"a\", cmd = \"b\"}]\n",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "",
+        "teardownCmd": "",
+        "appURL": "",
+        "runCommands": [
+          {
+            "name": "a",
+            "cmd": "b2"
+          },
+          {
+            "name": "c",
+            "cmd": "d\ne"
+          }
+        ],
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "[[run]]\nname = \"a\"\ncmd = \"b2\"\n\n[[run]]\nname = \"c\"\ncmd = \"\"\"\nd\ne\"\"\"\n"
+    },
+    {
+      "name": "merge scalar run",
+      "existing": "run = 'x'\nsetup_cmd = 'y'\n",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "y",
+        "teardownCmd": "",
+        "appURL": "",
+        "runCommands": [
+          {
+            "name": "a",
+            "cmd": "b"
+          }
+        ],
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "setup_cmd = 'y'\n\n[[run]]\nname = \"a\"\ncmd = \"b\"\n"
+    },
+    {
+      "name": "merge clears values",
+      "existing": "setup_cmd = 'a' # keep comment\ncopy_files = \"\"\"\nx\n\"\"\"\n",
+      "project": {
+        "id": "",
+        "name": "",
+        "pic": "",
+        "color": "",
+        "open": false,
+        "idle": false,
+        "repoPath": "",
+        "baseBranch": "",
+        "setupCmd": "",
+        "teardownCmd": "",
+        "appURL": "",
+        "prOnGithub": false,
+        "isGit": false
+      },
+      "output": "setup_cmd = \"\" # keep comment\ncopy_files = \"\"\n"
+    }
+  ]
+}

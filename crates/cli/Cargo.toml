@@ -1,0 +1,35 @@
+[package]
+name = "recur-cli"
+description = "Recur command line: open paths in the app and author Recur Bundles."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+default-run = "recur-cli"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "recur-cli"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+clap_complete.workspace = true
+include_dir.workspace = true
+recur-bundles.workspace = true
+recur-domain.workspace = true
+recur-platform.workspace = true
+regex.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+yaml-rust2.workspace = true
+
+[dev-dependencies]
+recur-exec.workspace = true
+tokio-util.workspace = true
+
+[lints]
+workspace = true

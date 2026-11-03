@@ -1,0 +1,37 @@
+[package]
+name = "recur-view-settings"
+description = "Settings: every pane of the Settings view, the compatible provider card and modal."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-agent.workspace = true
+recur-code.workspace = true
+recur-editor.workspace = true
+recur-view-core.workspace = true
+recur-view-chat.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+recur-view-review.workspace = true
+recur-view-observatory.workspace = true
+recur-view-workspace.workspace = true
+recur-view-prs.workspace = true
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["fake"] }
+recur-app.workspace = true
+parking_lot.workspace = true
+pretty_assertions.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,24 @@
+# Recur project settings — fixture for Overlay testdata.
+
+setup_cmd = """
+# install deps
+go mod download
+pnpm install
+"""
+
+teardown_cmd = 'rm -rf "$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID"'
+app_url = ""
+
+env = """
+RECUR_DATA_DIR=$HOME/Library/Application Support/Recur-$RECUR_WORKSPACE_ID
+VITE_PORT=$RECUR_PORT
+RECUR_INSTANCE_LABEL=$RECUR_BRANCH
+"""
+
+[[run]]
+name = "dev"
+cmd = "pnpm dev"
+
+[[run]]
+name = "test:go"
+cmd = "go test ./..."

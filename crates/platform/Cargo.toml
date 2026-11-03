@@ -1,0 +1,49 @@
+[package]
+name = "recur-platform"
+description = "OS integration: single-instance lock and open IPC, PATH probing and CLI install, keep-awake, system fonts, notifications, dock badge, updater."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-http.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+futures.workspace = true
+tracing.workspace = true
+parking_lot.workspace = true
+regex.workspace = true
+socket2.workspace = true
+rustix.workspace = true
+reqwest.workspace = true
+url.workspace = true
+base64.workspace = true
+sha2.workspace = true
+digest.workspace = true
+ed25519-dalek.workspace = true
+p256.workspace = true
+spki.workspace = true
+zip.workspace = true
+tar.workspace = true
+flate2.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-foundation.workspace = true
+objc2-app-kit.workspace = true
+objc2-user-notifications.workspace = true
+block2.workspace = true
+dispatch2.workspace = true
+
+[dev-dependencies]
+recur-exec.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

@@ -14,20 +14,20 @@ and flag dimensions.
 ## Architecture
 
 ```
-Recur (Go)  ──POST {baseURL}/v1/responses──▶  OpenAI / OpenRouter / Groq / …
-                │
-                │  Recur-owned tool loop
-                │  Host tools in-process (no MCP HTTP)
-                │  Coding tools: Read, Edit, Write, Glob, Grep, Bash, TodoWrite
-                ▼
-         HarnessRunner → ParsedEvent / Result → withMirroring
+Recur  ──POST {baseURL}/v1/responses──▶  OpenAI / OpenRouter / Groq / …
+          │
+          │  Recur-owned tool loop
+          │  Host tools in-process (no MCP HTTP)
+          │  Coding tools: Read, Edit, Write, Glob, Grep, Bash, TodoWrite
+          ▼
+   HarnessRunner → ParsedEvent / Result → withMirroring
 ```
 
 Why Recur owns the loop:
 
 - Compatible endpoints are a completions API, not an agent runtime
 - Coding tools stay sandboxed to the worktree
-- Recur MCP tools (`ask_user`, findings, plans, …) run in-process — the same
+- Recur MCP tools (`ask_user`, findings, plans, …) run in-process: the same
   `Execute` path MCP HTTP wraps for Claude/Cursor/Codex
 - Native turns skip MCP HTTP (`registerMCP` returns empty)
 
@@ -38,15 +38,14 @@ meters, price tables.
 
 | File | Role |
 |---|---|
-| `internal/domain/compatible_provider.go` | Types, slug validation, flag presets, enablement |
-| `internal/responses` | HTTP client, SSE parser, flag wiring onto the request body |
-| `internal/agenttools` | First-class Recur tools (`HostTools`, `CodingTools`); MCP wraps `Execute` |
-| `internal/mcp/tools.go` | MCP HTTP wrap of `agenttools.HostTools()` |
-| `internal/engine/harness.go` | `HarnessRunner` — Responses API ⇄ Recur tool loop |
-| `internal/engine/harness_prompt.go` | Recur-owned coding system prompt |
-| `internal/engine/provider.go` | Compatible slug routing through `runnerFor` |
-| `internal/app/compatible_service.go` | Settings Test / flag presets |
-| `internal/app/model_catalog.go` | One picker group per enabled+configured provider |
+| `crates/domain/src/compatible.rs` | Types, slug validation, flag presets, enablement |
+| `providers/compatible/src/client.rs`, `sse.rs`, `flags.rs` | HTTP client, SSE parser, flag wiring onto the request body |
+| `crates/agent-tools` | First-class Recur tools (host and coding tools); MCP wraps the same `execute` |
+| `crates/mcp/src/server.rs` | MCP HTTP wrap of the host tools |
+| `providers/compatible/src/harness.rs`, `tools.rs` | The harness runner: Responses API ⇄ Recur tool loop |
+| `providers/compatible/src/prompt.rs` | Recur-owned coding system prompt |
+| `providers/compatible/src/status.rs` | Settings Test / flag presets |
+| `providers/compatible/src/catalog.rs` | One picker group per enabled+configured provider |
 
 ## Selecting a provider
 
@@ -99,17 +98,17 @@ The OpenAI preset is effort + verbosity. Unknown wires are dropped at save.
 
 | AgentSpec | Compatible harness |
 |---|---|
-| Worktree | Coding-tool sandbox (`SafeJoin` + symlink check) |
+| Worktree | Coding-tool sandbox (`safe_join` + symlink check) |
 | Model | Bare id on `POST /v1/responses` |
-| Flags | `ApplyFlags` via each model's `Wire` paths |
-| Thinking | `reasoning*` SSE deltas → `KindThinking` / `KindThinkingDelta` |
-| Coding tools | Canonical Claude names so `toolview.go` cards work |
-| Host tools | In-process `agenttools.Tool` (same Execute as MCP HTTP) |
+| Flags | `apply_flags` via each model's `wire` paths |
+| Thinking | `reasoning*` SSE deltas → `AgentEvent::Thinking` / `ThinkingDelta` |
+| Coding tools | Canonical Claude names so the chat's tool cards work |
+| Host tools | In-process `recur_agent_tools::Tool` (same `execute` as MCP HTTP) |
 | Environment | Worktree path, platform, and date appended to the base prompt |
 | Repo rules | Worktree `AGENTS.md` (else `CLAUDE.md`) inlined, 32 KiB cap, regular files only |
 | Ask mode | Allowlist omits Edit/Write/Bash |
 | `ask_user` / `switch_mode` | Halt the Responses loop after a successful call |
-| Session | `ContextModeApp` — rebuild input from the Recur transcript |
+| Session | `ContextModeApp`: rebuild input from the Recur transcript |
 | `fresh_session` | Cutoff at `nativeHistoryAfter`; later turns replay only since the reset |
 | Mode remount | Hidden continue note; original user turn (and images) stay in input |
 | Chat fork | No provider-transcript inject; history is already in the store (cutoff cleared) |

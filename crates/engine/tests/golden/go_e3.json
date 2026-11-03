@@ -1,0 +1,549 @@
+{
+  "capEscalation": {
+    "context": "The reviewer keeps finding issues on the current diff (loop $ID). I won't open a PR with unresolved findings, and I won't spin forever: this decision is yours.",
+    "options": [
+      {
+        "desc": "Give me more fix iterations to converge.",
+        "tag": "more effort",
+        "text": "Keep iterating"
+      },
+      {
+        "desc": "The current direction isn't working; I'll try a different one.",
+        "tag": "rethink",
+        "text": "Change approach"
+      },
+      {
+        "desc": "Stop the loop; I'll leave the work as-is for you to inspect.",
+        "tag": "halt",
+        "text": "Stop"
+      }
+    ],
+    "question": "I've run 4 iteration(s) without converging: 2 open findings remain. How should I proceed?"
+  },
+  "capFeed": [
+    "Maestro: Stopping per your decision.",
+    "Maestro: Answer received: Stop. Resuming.",
+    "Maestro: Paused to ask: I\u0026#39;ve run 4 iteration(s) without converging: 2 open findings remain. How should I proceed?",
+    "Maestro: Iteration 4: 2 finding(s), sending back to the Coder.",
+    "Maestro: Iteration 3: 2 finding(s), sending back to the Coder.",
+    "Maestro: Iteration 2: 2 finding(s), sending back to the Coder.",
+    "Maestro: Iteration 1: 2 finding(s), sending back to the Coder.",
+    "Maestro: The planning turn produced no plan: proceeding with the bare task."
+  ],
+  "childStepPlan": {
+    "in": {
+      "parent": {
+        "id": "P1",
+        "projectId": "",
+        "group": "",
+        "goal": "  Fix flaky checkout  ",
+        "short": "",
+        "definitionOfDone": "",
+        "state": "",
+        "statusLabel": "",
+        "phase": "",
+        "iteration": 0,
+        "progress": 0,
+        "autonomy": "",
+        "branch": "",
+        "behindBase": 0,
+        "worktreePath": "",
+        "diff": {
+          "add": 0,
+          "del": 0
+        },
+        "agentCodes": null,
+        "last": "",
+        "elapsedLabel": "",
+        "convergence": null,
+        "archived": false,
+        "plan": {
+          "summary": "Two fixes",
+          "body": "Detail body"
+        }
+      },
+      "steps": [
+        {
+          "id": "S1",
+          "title": "Mutex the cart",
+          "status": "",
+          "files": [
+            "cart.go",
+            "api.go"
+          ]
+        },
+        {
+          "id": "S3",
+          "title": "Retry token",
+          "status": "",
+          "files": [
+            "api.go"
+          ]
+        }
+      ]
+    },
+    "out": {
+      "summary": "Mutex the cart (+1 more)",
+      "body": "You are working a slice of a larger plan in your own workspace, branched from the parent's branch. Do only the steps below. Sibling workspaces are working other steps at the same time, so stay inside the files listed; if a step cannot be done without touching another file, do the minimum and say so in your done notes.\n\nYour steps:\n- S1: Mutex the cart\n- S3: Retry token\nFiles you own: api.go, cart.go\n\nParent task: Fix flaky checkout\nParent plan: Two fixes\n\nParent plan detail (context only: do not work its other steps):\nDetail body",
+      "steps": [
+        {
+          "id": "S1",
+          "title": "S1: Mutex the cart",
+          "status": "pending",
+          "files": [
+            "cart.go",
+            "api.go"
+          ]
+        },
+        {
+          "id": "S2",
+          "title": "S3: Retry token",
+          "status": "pending",
+          "files": [
+            "api.go"
+          ]
+        }
+      ],
+      "source": "loop-planner",
+      "approved": true
+    }
+  },
+  "constants": {
+    "boardCapPhase": "board event cap",
+    "errAlreadyDispatched": "loop already dispatched",
+    "errLoopOwnerGone": "loop owner closed",
+    "errPhaseFailed": "phase failed",
+    "errVerifyRejected": "verify rejected",
+    "firstChatRenamePrompt": "This is the first message in this chat. Call mcp__recur__rename_session once with a 3–5 word topic title in sentence case. No confirmation.",
+    "firstWorkspaceRenamePrompt": "This is the first session in this workspace. After you understand the request, call mcp__recur__rename_workspace (short title, at most 8 words, sentence case), mcp__recur__rename_branch (kebab-case topic, e.g. add-dark-mode), and mcp__recur__rename_session (3–5 word chat title, sentence case). No confirmation.",
+    "firstWorkspaceRenamePromptNoBranch": "This is the first session in this workspace. After you understand the request, call mcp__recur__rename_workspace (short title, at most 8 words, sentence case) and mcp__recur__rename_session (3–5 word chat title, sentence case). No confirmation.",
+    "maestroReplanTools": "Read,Grep,Glob,mcp__recur__submit_plan,mcp__recur__update_plan_step,mcp__recur__edit_plan,mcp__recur__list_findings",
+    "rerunReviewInstruction": "Re-review the current diff against the base branch and file findings for any real issues.",
+    "wrapUpSystemPrompt": "You are the Maestro wrapping up ONE finished loop for the operator. You see the whole run: the task, the plan (every step / child), every implementer handoff, and recent activity. Do not describe a single Coder turn as if it were the loop. Reply with ONLY the wrap-up, plain text, 3–8 short lines: root cause if this was a bug or ticket, what landed across the whole run, and anything unfinished or notable. No greeting, no markdown fences, no tools."
+  },
+  "convergeFeed": [
+    "Maestro: Completed in $DUR· \u003ca class=\"loop-pr-link\" data-pr=\"1\"\u003eLocal PR #1\u003c/a\u003e",
+    "Maestro: Converged after 2 iteration(s): 0 open findings.",
+    "Maestro: Iteration 1: 1 finding(s), sending back to the Coder.",
+    "Maestro: The planning turn produced no plan: proceeding with the bare task."
+  ],
+  "dispatchReviewerSystemPrompt": {
+    "in": "Look at auth",
+    "out": "You are a code Reviewer dispatched into a workspace. Review READ-ONLY (Read, Grep, `git diff`/`git log`): you cannot edit files. For EACH real issue call mcp__recur__report_finding with file, line (optional end_line for a range), severity, and a clear message. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. Do not file style nits as findings. If the work is sound, report no findings.\n\nInstruction: Look at auth"
+  },
+  "formatFindingsThreshold": [
+    {
+      "in": {
+        "allZero": true
+      },
+      "out": "Phase findings threshold: every open finding blocks (all severities at 0). Do not file a ship-blocker as low."
+    },
+    {
+      "in": {},
+      "out": ""
+    },
+    {
+      "in": {
+        "levels": {
+          "high": 0,
+          "medium": 2
+        }
+      },
+      "out": "Phase findings threshold (engine-enforced; named levels only): medium ≤ 2, high ≤ 0. Do not file a ship-blocker as low to sneak it through."
+    },
+    {
+      "in": {
+        "levels": {
+          "critical": 0,
+          "high": 1,
+          "low": 5,
+          "medium": 3
+        }
+      },
+      "out": "Phase findings threshold (engine-enforced; named levels only): low ≤ 5, medium ≤ 3, high ≤ 1, critical ≤ 0. Do not file a ship-blocker as low to sneak it through."
+    }
+  ],
+  "formatLoopElapsed": [
+    {
+      "in": 0,
+      "out": "0s"
+    },
+    {
+      "in": 400,
+      "out": "0s"
+    },
+    {
+      "in": 3000,
+      "out": "3s"
+    },
+    {
+      "in": 90000,
+      "out": "1m 30s"
+    },
+    {
+      "in": 300000,
+      "out": "5m"
+    },
+    {
+      "in": 3720000,
+      "out": "1h 2m"
+    },
+    {
+      "in": 7200000,
+      "out": "2h"
+    },
+    {
+      "in": 1500,
+      "out": "2s"
+    },
+    {
+      "in": 59600,
+      "out": "1m"
+    }
+  ],
+  "formatPRThread": {
+    "in": {
+      "id": "",
+      "workspaceId": "",
+      "group": "",
+      "number": 7,
+      "source": "",
+      "branch": "",
+      "base": "",
+      "title": "Dark mode",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "fileCount": 0,
+      "checksOk": false,
+      "when": "",
+      "commits": null,
+      "files": null,
+      "comments": [
+        {
+          "id": "",
+          "code": "",
+          "author": "",
+          "avatarCss": "",
+          "time": "",
+          "bodyHtml": "",
+          "kind": "description",
+          "bodyMd": "desc"
+        },
+        {
+          "id": "",
+          "code": "",
+          "author": "Ana",
+          "avatarCss": "",
+          "time": "",
+          "bodyHtml": "",
+          "bodyMd": "Looks good overall"
+        },
+        {
+          "id": "",
+          "code": "",
+          "author": "",
+          "avatarCss": "",
+          "time": "",
+          "bodyHtml": "\u003cp\u003eRename \u003cb\u003ethis\u003c/b\u003e\u003c/p\u003e"
+        },
+        {
+          "id": "",
+          "code": "",
+          "author": "Bo",
+          "avatarCss": "",
+          "time": "",
+          "bodyHtml": "",
+          "bodyMd": "nil check",
+          "path": "main.go",
+          "line": 12,
+          "resolved": true
+        },
+        {
+          "id": "",
+          "code": "",
+          "author": "Cy",
+          "avatarCss": "",
+          "time": "",
+          "bodyHtml": "",
+          "bodyMd": "commit note",
+          "commitSha": "abc"
+        }
+      ],
+      "pendingComments": [
+        {
+          "id": "",
+          "file": "a.go",
+          "line": 3,
+          "body": "pending one"
+        },
+        {
+          "id": "",
+          "file": "",
+          "line": 0,
+          "body": "general"
+        }
+      ],
+      "verify": null,
+      "checks": null
+    },
+    "out": "PR #7 \"Dark mode\"\n- Ana: Looks good overall\n- comment: Rename this\n- Bo on main.go:12 (resolved): nil check\n- pending on a.go:3: pending one\n- pending: general\n"
+  },
+  "githubPRMarkdown": [
+    {
+      "in": {
+        "add": 40,
+        "commits": [
+          {
+            "hash": "abc1234",
+            "message": "Add the toggle\n\nbody",
+            "authorRole": "",
+            "agentCode": "",
+            "color": "",
+            "iterLabel": "",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "when": "",
+            "files": null
+          },
+          {
+            "hash": "def5678",
+            "message": "Fix lint",
+            "authorRole": "",
+            "agentCode": "",
+            "color": "",
+            "iterLabel": "",
+            "diff": {
+              "add": 0,
+              "del": 0
+            },
+            "when": "",
+            "files": null
+          }
+        ],
+        "del": 2,
+        "fileCount": 3,
+        "goal": "Ship dark mode",
+        "notes": [
+          " note one ",
+          "",
+          "note two"
+        ]
+      },
+      "out": "Ship dark mode\n\n## Changes\n\n- 2 commits across 3 files\n- Net +40 −2 versus the base branch\n\n## Commits\n\n- Add the toggle\n- Fix lint\n\nnote one\n\nnote two"
+    },
+    {
+      "in": {
+        "add": 1,
+        "commits": [],
+        "del": 0,
+        "fileCount": 1,
+        "goal": "",
+        "notes": []
+      },
+      "out": "## Changes\n\n- 0 commits across 1 file\n- Net +1 −0 versus the base branch"
+    }
+  ],
+  "handoffSection": [
+    {
+      "in": "",
+      "out": ""
+    },
+    {
+      "in": "  ",
+      "out": ""
+    },
+    {
+      "in": "Skipped S2; the API is missing.",
+      "out": "\n\nThe implementer handed off with these notes (deviations from the plan, concerns, unfinished work). Judge them: a deviation the plan did not allow, or work left undone that the definition of done requires, is a finding. A concern that is real is a finding at the severity it deserves:\n\nSkipped S2; the API is missing."
+    }
+  ],
+  "isCompletionFact": [
+    {
+      "in": "Completed in 3s.",
+      "out": true
+    },
+    {
+      "in": "Completed.",
+      "out": true
+    },
+    {
+      "in": "Converged.",
+      "out": false
+    },
+    {
+      "in": "Completed in 1m · \u003ca class=\"loop-pr-link\" data-pr=\"1\"\u003eLocal PR #1\u003c/a\u003e",
+      "out": true
+    }
+  ],
+  "loopWrapUp": [
+    {
+      "in": "Root cause: race in checkout.\nLanded retries in the parent and both children.",
+      "out": {
+        "html": "\u003cdiv class=\"loop-wrap\"\u003eRoot cause: race in checkout.\u003cbr\u003eLanded retries in the parent and both children.\u003c/div\u003e",
+        "sanitized": "Root cause: race in checkout.\nLanded retries in the parent and both children."
+      }
+    },
+    {
+      "in": "  ",
+      "out": {
+        "html": "",
+        "sanitized": ""
+      }
+    },
+    {
+      "in": "\u003cscript\u003ex\u003c/script\u003e \u0026 more",
+      "out": {
+        "html": "\u003cdiv class=\"loop-wrap\"\u003e\u0026lt;script\u0026gt;x\u0026lt;/script\u0026gt; \u0026amp; more\u003c/div\u003e",
+        "sanitized": "\u003cscript\u003ex\u003c/script\u003e \u0026 more"
+      }
+    },
+    {
+      "in": "```\nRoot cause: nil deref\n```",
+      "out": {
+        "html": "\u003cdiv class=\"loop-wrap\"\u003eRoot cause: nil deref\u003c/div\u003e",
+        "sanitized": "Root cause: nil deref"
+      }
+    },
+    {
+      "in": "long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words ",
+      "out": {
+        "html": "\u003cdiv class=\"loop-wrap\"\u003elong line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words…\u003c/div\u003e",
+        "sanitized": "long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words long line words"
+      }
+    }
+  ],
+  "maestroReplanSystemPrompt": {
+    "in": [
+      "Fix checkout",
+      "1. mutex\n2. retry",
+      "S2 split"
+    ],
+    "out": "You are the Maestro: the conductor of ONE autonomous coding loop. The implementer just finished a turn and handed off with notes. Decide whether the PLAN needs revising before the Reviewer judges the diff. Revise when a step turned out to be too big (split it), wrong (drop or rewrite it), or missing (add it). You revise HOW the work is decomposed, never WHAT counts as done: the user's task, constraints, and acceptance criteria stay as written: do not drop or soften a requirement to fit what landed. If the notes say a requirement itself is unachievable, leave the plan and say so; the Reviewer and the human decide. Use Read/Grep/Glob only to check what the notes claim. Investigate, do not edit code.\n\nTo revise: call mcp__recur__submit_plan with the FULL plan (summary, body, every step in order: finished steps keep their titles so their status survives; steps other child workspaces are working RIGHT NOW keep their titles too, they close when they land). To change one step's status, mcp__recur__update_plan_step. If the plan still holds, reply in one sentence and call no tools. Be brief.\n\nTask: Fix checkout\n\nCurrent plan:\n1. mutex\n2. retry\n\nImplementer handoff:\nS2 split"
+  },
+  "planEscalation": {
+    "context": "Wire the toggle\n\nSteps:\n1. Edit settings\n2. Add persistence",
+    "options": [
+      {
+        "desc": "Start coding to this plan as written.",
+        "tag": "recommended",
+        "text": "Approve and proceed"
+      },
+      {
+        "desc": "Add guidance in the text box: I fold it into the plan and start.",
+        "tag": "notes",
+        "text": "Proceed with my notes"
+      }
+    ],
+    "question": "Review the plan before I start coding."
+  },
+  "prFallbackIntro": [
+    {
+      "in": [
+        " goal ",
+        ""
+      ],
+      "out": "goal"
+    },
+    {
+      "in": [
+        "recipe wire",
+        "Review \u0026 fix"
+      ],
+      "out": ""
+    },
+    {
+      "in": [
+        "g",
+        "  "
+      ],
+      "out": "g"
+    }
+  ],
+  "prTitle": [
+    {
+      "in": "",
+      "out": "Loop changes"
+    },
+    {
+      "in": "Add dark mode\n\nwith details",
+      "out": "Add dark mode"
+    },
+    {
+      "in": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+      "out": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+    },
+    {
+      "in": "  spaced  goal  ",
+      "out": "spaced  goal"
+    }
+  ],
+  "standingPromptSHA": {
+    "in": "You are the Maestro.",
+    "out": "fdf972b8268d9d9c4f4cedc6e66c97112fe337cf6186403eb4e4d2d31efee59f"
+  },
+  "stripTags": [
+    {
+      "in": "\u003cp\u003eHello \u003cb\u003eworld\u003c/b\u003e\u003c/p\u003e",
+      "out": "Hello world"
+    },
+    {
+      "in": "a \u0026amp; b",
+      "out": "a \u0026amp; b"
+    },
+    {
+      "in": "no tags",
+      "out": "no tags"
+    },
+    {
+      "in": "\u003cbr/\u003eline\u003cbr\u003etwo",
+      "out": "linetwo"
+    }
+  ],
+  "titles": [
+    {
+      "in": "add a dark-mode toggle",
+      "out": {
+        "provisional": "add a dark-mode toggle",
+        "words3": "add a dark-mode"
+      }
+    },
+    {
+      "in": "  Fix   the flaky checkout test that fails on CI every other run please  ",
+      "out": {
+        "provisional": "Fix the flaky checkout test that fails on",
+        "words3": "Fix the flaky"
+      }
+    },
+    {
+      "in": "",
+      "out": {
+        "provisional": "",
+        "words3": ""
+      }
+    },
+    {
+      "in": "⟦attachment:img1⟧ look",
+      "out": {
+        "provisional": "look",
+        "words3": "⟦attachment:img1⟧ look"
+      }
+    },
+    {
+      "in": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+      "out": {
+        "provisional": "word word word word word word word word",
+        "words3": "word word word"
+      }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Work-on-Linear-issue prompt. API key from [[setting]] api_key
 # (RECUR_SETTING_API_KEY / RECUR_BUNDLE_SETTINGS). RunPromptShebang copies
-# this to a temp file — use RECUR_BUNDLE_SUPPORT, not $0.
+# this to a temp file: use RECUR_BUNDLE_SUPPORT, not $0.
 set -euo pipefail
 
 args="${RECUR_PROMPT_ARG_ISSUE:-${RECUR_PROMPT_ARGS:-}}"
@@ -13,7 +13,7 @@ fi
 
 key="${RECUR_SETTING_API_KEY:-}"
 if [ -z "$key" ]; then
-  echo 'Linear API key is missing or invalid — Settings → Integrations' >&2
+  echo 'Linear API key is missing or invalid: Settings → Integrations' >&2
   exit 1
 fi
 
@@ -153,7 +153,7 @@ if payload.get("errors"):
     msg = ((payload["errors"][0] or {}).get("message")) or "Linear GraphQL error"
     low = msg.lower()
     if "auth" in low or "unauthorized" in low:
-        fail("Linear API key is missing or invalid — Settings → Integrations")
+        fail("Linear API key is missing or invalid: Settings → Integrations")
     fail(msg)
 
 issue = ((payload.get("data") or {}).get("issue")) or None
@@ -207,7 +207,7 @@ def scrub(s: str) -> str:
 
 slug = ident.lower()
 lines = [
-    f"Work on Linear issue {ident} in this workspace. Implement what the issue asks; do not expand scope. Rename the git branch with mcp__recur__rename_branch so the topic includes {ident} (e.g. {slug}-short-slug) — Linear attaches that branch and later PRs to the issue. Mention {ident} in the PR body if you open a pull request.",
+    f"Work on Linear issue {ident} in this workspace. Implement what the issue asks; do not expand scope. Rename the git branch with mcp__recur__rename_branch so the topic includes {ident} (e.g. {slug}-short-slug): Linear attaches that branch and later PRs to the issue. Mention {ident} in the PR body if you open a pull request.",
     "",
 ]
 if notes:
@@ -230,7 +230,7 @@ lines += ["", "## Description", scrub(desc)]
 if atts:
     lines += ["", "## Attachments"]
     for title, u in atts:
-        lines.append(scrub(f"{title} — {u}" if title else u))
+        lines.append(scrub(f"{title}: {u}" if title else u))
 if comments:
     lines += ["", "## Comments"]
     for n in comments:

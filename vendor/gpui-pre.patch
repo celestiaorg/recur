@@ -1,0 +1,2610 @@
+diff --git a/rust/vendor/gpui-pre/src/app.rs b/rust/vendor/gpui-pre/src/app.rs
+index cdbd5593..bc4faba2 100644
+--- a/rust/vendor/gpui-pre/src/app.rs
++++ b/rust/vendor/gpui-pre/src/app.rs
+@@ -1312,7 +1312,12 @@ impl App {
+     #[inline(always)]
+     pub(crate) fn update<R>(&mut self, update: impl FnOnce(&mut Self) -> R) -> R {
+         self.start_update();
+-        let result = update(self);
++        // Recur: an unwind leaves the update without flushing effects mid-panic.
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| update(self)))
++            .unwrap_or_else(|panic| {
++                self.pending_updates -= 1;
++                std::panic::resume_unwind(panic)
++            });
+         self.finish_update();
+         result
+     }
+@@ -3151,7 +3156,17 @@ impl App {
+             let root_view = window.root.clone().unwrap();
+ 
+             cx.window_update_stack.push(window.handle.id);
+-            update(Some((root_view, &mut window, cx)));
++            // Recur: the window goes back into the app before an unwind leaves the update.
++            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                update(Some((root_view, &mut window, cx)))
++            }));
++            if let Err(panic) = result {
++                cx.window_update_stack.pop();
++                if let Some(slot) = cx.windows.get_mut(window_id) {
++                    *slot = Some(window);
++                }
++                std::panic::resume_unwind(panic);
++            }
+             fn trail(window_id: WindowId, window: Box<Window>, cx: &mut App) -> Option<()> {
+                 cx.window_update_stack.pop();
+ 
+@@ -3206,8 +3221,14 @@ impl App {
+     ) {
+         self.update(|cx| {
+             let mut lease = cx.entities.lease_erased(handle, entity_type);
+-            update(lease.entity.as_deref_mut().unwrap(), cx);
++            // Recur: the entity goes back into the map before an unwind leaves the update.
++            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                update(lease.entity.as_deref_mut().unwrap(), cx)
++            }));
+             cx.entities.end_lease_erased(handle.entity_id, lease);
++            if let Err(panic) = result {
++                std::panic::resume_unwind(panic);
++            }
+         });
+     }
+ 
+@@ -3562,7 +3583,12 @@ impl<'a, T> Drop for GpuiBorrow<'a, T> {
+         let lease = self.inner.take().unwrap();
+         self.app.notify(lease.id);
+         self.app.entities.end_lease(lease);
+-        self.app.finish_update();
++        // Recur: no effects flush while a panic unwinds through the borrow.
++        if std::thread::panicking() {
++            self.app.pending_updates -= 1;
++        } else {
++            self.app.finish_update();
++        }
+     }
+ }
+ 
+diff --git a/rust/vendor/gpui-pre/src/elements/canvas.rs b/rust/vendor/gpui-pre/src/elements/canvas.rs
+index d57d2f60..ed46af03 100644
+--- a/rust/vendor/gpui-pre/src/elements/canvas.rs
++++ b/rust/vendor/gpui-pre/src/elements/canvas.rs
+@@ -68,7 +68,9 @@ impl<T: 'static> Element for Canvas<T> {
+         window: &mut Window,
+         cx: &mut App,
+     ) -> Option<T> {
+-        Some(self.prepaint.take().unwrap()(bounds, window, cx))
++        // Recur: a panic paints nothing for this canvas (`Window::contain`).
++        let prepaint = self.prepaint.take().unwrap();
++        window.contain("a canvas prepaint", cx, |window, cx| prepaint(bounds, window, cx))
+     }
+ 
+     fn paint(
+@@ -81,9 +83,14 @@ impl<T: 'static> Element for Canvas<T> {
+         window: &mut Window,
+         cx: &mut App,
+     ) {
+-        let prepaint = prepaint.take().unwrap();
++        let Some(prepaint) = prepaint.take() else {
++            return;
++        };
++        let paint = self.paint.take().unwrap();
+         style.paint(bounds, window, cx, |window, cx| {
+-            (self.paint.take().unwrap())(bounds, prepaint, window, cx)
++            window.contain("a canvas paint", cx, |window, cx| {
++                paint(bounds, prepaint, window, cx)
++            });
+         });
+     }
+ }
+diff --git a/rust/vendor/gpui-pre/src/elements/div.rs b/rust/vendor/gpui-pre/src/elements/div.rs
+index fc292f2a..1fd9817e 100644
+--- a/rust/vendor/gpui-pre/src/elements/div.rs
++++ b/rust/vendor/gpui-pre/src/elements/div.rs
+@@ -2146,6 +2146,7 @@ pub struct Interactivity {
+     pub(crate) tracked_scroll_handle: Option<ScrollHandle>,
+     pub(crate) scroll_anchor: Option<ScrollAnchor>,
+     pub(crate) scroll_offset: Option<Rc<RefCell<Point<Pixels>>>>,
++    pub(crate) scroll_max: Cell<Point<Pixels>>,
+     pub(crate) ongoing_scroll: Option<Rc<RefCell<OngoingScroll>>>,
+     pub(crate) group: Option<SharedString>,
+     /// The base style of the element, before any modifications are applied
+@@ -2485,6 +2486,7 @@ impl Interactivity {
+                 scroll_offset.y = scroll_offset.y.clamp(-scroll_max.y, px(0.));
+             }
+ 
++            self.scroll_max.set(scroll_max);
+             if let Some(mut scroll_handle_state) = tracked_scroll_handle {
+                 scroll_handle_state.max_offset = scroll_max;
+                 scroll_handle_state.bounds = bounds;
+@@ -2586,13 +2588,15 @@ impl Interactivity {
+                                                 );
+                                             }
+ 
++                                            // Before the mouse listeners, so the element's own
++                                            // wheel listeners still run when it stops the event.
++                                            self.paint_scroll_listener(hitbox, &style, window, cx);
+                                             self.paint_mouse_listeners(
+                                                 hitbox,
+                                                 element_state.as_mut(),
+                                                 window,
+                                                 cx,
+                                             );
+-                                            self.paint_scroll_listener(hitbox, &style, window, cx);
+                                         }
+ 
+                                         self.paint_keyboard_listeners(window, cx);
+@@ -3333,6 +3337,7 @@ impl Interactivity {
+             let overflow = style.overflow;
+             let allow_concurrent_scroll = style.allow_concurrent_scroll;
+             let restrict_scroll_to_axis = style.restrict_scroll_to_axis;
++            let scroll_max = self.scroll_max.get();
+             let line_height = window.line_height();
+             let hitbox = hitbox.clone();
+             let current_view = window.current_view();
+@@ -3376,10 +3381,13 @@ impl Interactivity {
+                             delta_x = Pixels::ZERO;
+                         }
+                     }
+-                    scroll_offset.y += delta_y;
+-                    scroll_offset.x += delta_x;
++                    // A scroller that moves keeps the wheel from its ancestors; one at its
++                    // edge lets it through, as the browser chains scrolling.
++                    scroll_offset.y = (scroll_offset.y + delta_y).clamp(-scroll_max.y, px(0.));
++                    scroll_offset.x = (scroll_offset.x + delta_x).clamp(-scroll_max.x, px(0.));
+                     if *scroll_offset != old_scroll_offset {
+                         cx.notify(current_view);
++                        cx.stop_propagation();
+                     }
+                 }
+             });
+diff --git a/rust/vendor/gpui-pre/src/executor.rs b/rust/vendor/gpui-pre/src/executor.rs
+index 78928d0f..1606dd0e 100644
+--- a/rust/vendor/gpui-pre/src/executor.rs
++++ b/rust/vendor/gpui-pre/src/executor.rs
+@@ -120,6 +120,7 @@ impl BackgroundExecutor {
+     where
+         R: Send + 'static,
+     {
++        let future = crate::unwind::Recorded(future);
+         if priority == Priority::RealtimeAudio {
+             self.inner.spawn_realtime(future)
+         } else {
+@@ -355,7 +356,8 @@ impl ForegroundExecutor {
+     where
+         R: 'static,
+     {
+-        self.inner.spawn(future.boxed_local())
++        self.inner
++            .spawn(crate::unwind::Recorded(future.boxed_local()))
+     }
+ 
+     /// Enqueues the given Task to run on the main thread with the given priority.
+@@ -369,7 +371,7 @@ impl ForegroundExecutor {
+         R: 'static,
+     {
+         // Priority is ignored for foreground tasks - they run in order on the main thread
+-        self.inner.spawn(future)
++        self.inner.spawn(crate::unwind::Recorded(future))
+     }
+ 
+     /// On platforms with dedicated support, enqueues the given future to run
+@@ -394,7 +396,7 @@ impl ForegroundExecutor {
+         #[cfg(feature = "profiler")]
+         let foreground_runnables = self.foreground_runnables.clone();
+         self.inner
+-            .spawn_with_dispatch(future.boxed_local(), move |runnable| {
++            .spawn_with_dispatch(crate::unwind::Recorded(future.boxed_local()), move |runnable| {
+                 #[cfg(feature = "profiler")]
+                 if let Some(foreground_runnables) = &foreground_runnables {
+                     foreground_runnables.queued();
+diff --git a/rust/vendor/gpui-pre/src/gpui.rs b/rust/vendor/gpui-pre/src/gpui.rs
+index d4da5aa3..2d3cbfb2 100644
+--- a/rust/vendor/gpui-pre/src/gpui.rs
++++ b/rust/vendor/gpui-pre/src/gpui.rs
+@@ -63,6 +63,7 @@ mod taffy;
+ #[cfg(any(test, feature = "test-support"))]
+ pub mod test;
+ mod text_system;
++mod unwind;
+ mod util;
+ mod view;
+ mod window;
+@@ -100,6 +101,7 @@ pub use accesskit::{Orientation, Role, Toggled};
+ pub use action::*;
+ pub use anyhow::Result;
+ pub use app::*;
++pub use unwind::take_contained_panics;
+ pub(crate) use arena::*;
+ pub use asset_cache::*;
+ pub use assets::*;
+diff --git a/rust/vendor/gpui-pre/src/key_dispatch.rs b/rust/vendor/gpui-pre/src/key_dispatch.rs
+index 2f755b1d..98f87965 100644
+--- a/rust/vendor/gpui-pre/src/key_dispatch.rs
++++ b/rust/vendor/gpui-pre/src/key_dispatch.rs
+@@ -68,6 +68,12 @@ use std::{
+ #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+ pub(crate) struct DispatchNodeId(usize);
+ 
++impl DispatchNodeId {
++    pub(crate) fn new(index: usize) -> Self {
++        DispatchNodeId(index)
++    }
++}
++
+ pub(crate) struct DispatchTree {
+     node_stack: Vec<DispatchNodeId>,
+     pub(crate) context_stack: Vec<KeyContext>,
+@@ -90,21 +96,24 @@ pub(crate) struct DispatchNode {
+     parent: Option<DispatchNodeId>,
+ }
+ 
++/// A reuse of the previous frame's nodes, copied in runs around fresh subtrees (Recur's
++/// isolated views): the copy keeps its place in the source tree between runs.
++#[derive(Default)]
+ pub(crate) struct ReusedSubtree {
+-    old_range: Range<usize>,
+-    new_range: Range<usize>,
++    /// Each copied run: its range in the source tree and where it starts in this one.
++    runs: Vec<(Range<usize>, usize)>,
++    source_stack: Vec<DispatchNodeId>,
+     contains_focus: bool,
+ }
+ 
+ impl ReusedSubtree {
+     pub fn refresh_node_id(&self, node_id: DispatchNodeId) -> DispatchNodeId {
+-        debug_assert!(
+-            self.old_range.contains(&node_id.0),
+-            "node {} was not part of the reused subtree {:?}",
+-            node_id.0,
+-            self.old_range
+-        );
+-        DispatchNodeId((node_id.0 - self.old_range.start) + self.new_range.start)
++        let (old, new) = self
++            .runs
++            .iter()
++            .find(|(old, _)| old.contains(&node_id.0))
++            .unwrap_or_else(|| panic!("node {} was not part of the reused subtree", node_id.0));
++        DispatchNodeId(node_id.0 - old.start + new)
+     }
+ 
+     pub fn contains_focus(&self) -> bool {
+@@ -261,16 +270,15 @@ impl DispatchTree {
+         target.modifiers_changed_listeners = mem::take(&mut source.modifiers_changed_listeners);
+     }
+ 
+-    pub fn reuse_subtree(
++    /// Copies `old_range` of `source`, continuing a reuse whose earlier runs are in `reused`.
++    pub(crate) fn reuse_run(
+         &mut self,
++        reused: &mut ReusedSubtree,
+         old_range: Range<usize>,
+         source: &mut Self,
+         focus: Option<FocusId>,
+-    ) -> ReusedSubtree {
+-        let new_range = self.nodes.len()..self.nodes.len() + old_range.len();
+-
+-        let mut contains_focus = false;
+-        let mut source_stack = vec![];
++    ) {
++        reused.runs.push((old_range.clone(), self.nodes.len()));
+         for (source_node_id, source_node) in source
+             .nodes
+             .iter_mut()
+@@ -279,31 +287,39 @@ impl DispatchTree {
+             .take(old_range.len())
+         {
+             let source_node_id = DispatchNodeId(source_node_id);
+-            while let Some(source_ancestor) = source_stack.last() {
++            while let Some(source_ancestor) = reused.source_stack.last() {
+                 if source_node.parent == Some(*source_ancestor) {
+                     break;
+                 } else {
+-                    source_stack.pop();
++                    reused.source_stack.pop();
+                     self.pop_node();
+                 }
+             }
+ 
+-            source_stack.push(source_node_id);
++            reused.source_stack.push(source_node_id);
+             if source_node.focus_id.is_some() && source_node.focus_id == focus {
+-                contains_focus = true;
++                reused.contains_focus = true;
+             }
+             self.move_node(source_node);
+         }
++    }
+ 
+-        while !source_stack.is_empty() {
+-            source_stack.pop();
++    /// Makes the copy of `parent` the active node, so a fresh subtree drawn next replaces the
++    /// source's children of `parent` that the reuse skips.
++    pub(crate) fn reuse_hole(&mut self, reused: &mut ReusedSubtree, parent: DispatchNodeId) {
++        while let Some(top) = reused.source_stack.last() {
++            if *top == parent {
++                return;
++            }
++            reused.source_stack.pop();
+             self.pop_node();
+         }
++        debug_assert!(false, "the hole's parent {} was not copied", parent.0);
++    }
+ 
+-        ReusedSubtree {
+-            old_range,
+-            new_range,
+-            contains_focus,
++    pub(crate) fn finish_reuse(&mut self, reused: &mut ReusedSubtree) {
++        while reused.source_stack.pop().is_some() {
++            self.pop_node();
+         }
+     }
+ 
+diff --git a/rust/vendor/gpui-pre/src/platform.rs b/rust/vendor/gpui-pre/src/platform.rs
+index c08d9646..99b59f8a 100644
+--- a/rust/vendor/gpui-pre/src/platform.rs
++++ b/rust/vendor/gpui-pre/src/platform.rs
+@@ -1270,6 +1270,9 @@ pub trait PlatformWindow: HasWindowHandle + HasDisplayHandle {
+     fn on_display_changed(&self, callback: Box<dyn FnMut()>);
+     fn on_should_close(&self, callback: Box<dyn FnMut() -> bool>);
+     fn on_hit_test_window_control(&self, callback: Box<dyn FnMut() -> Option<WindowControlArea>>);
++    /// Recur: whether the topmost hitbox at a window position is `HitboxBehavior::Native`, for
++    /// platforms that pass those mouse events to native views behind the window's drawing.
++    fn on_hit_test_native(&self, _callback: Box<dyn FnMut(Point<Pixels>) -> bool>) {}
+     fn on_close(&self, callback: Box<dyn FnOnce()>);
+     fn on_appearance_changed(&self, callback: Box<dyn FnMut()>);
+     fn on_button_layout_changed(&self, _callback: Box<dyn FnMut()>) {}
+@@ -2077,7 +2080,10 @@ impl PlatformInputHandler {
+ 
+     pub fn bounds_for_range(&mut self, range_utf16: Range<usize>) -> Option<Bounds<Pixels>> {
+         self.cx
+-            .update(|window, cx| self.handler.bounds_for_range(range_utf16, window, cx))
++            .update(|window, cx| {
++                let b = self.handler.bounds_for_range(range_utf16, window, cx)?;
++                Some(window.zoom_to_platform(b))
++            })
+             .ok()
+             .flatten()
+     }
+@@ -2132,6 +2138,7 @@ impl PlatformInputHandler {
+         Self::compute_ime_candidate_bounds(marked_range, &selection, |range| {
+             self.handler.bounds_for_range(range, window, cx)
+         })
++        .map(|b| window.zoom_to_platform(b))
+     }
+ 
+     pub fn ime_candidate_bounds(&mut self) -> Option<Bounds<Pixels>> {
+@@ -2145,7 +2152,10 @@ impl PlatformInputHandler {
+     #[allow(unused)]
+     pub fn character_index_for_point(&mut self, point: Point<Pixels>) -> Option<usize> {
+         self.cx
+-            .update(|window, cx| self.handler.character_index_for_point(point, window, cx))
++            .update(|window, cx| {
++                let point = point.map(|v| v / window.ui_zoom());
++                self.handler.character_index_for_point(point, window, cx)
++            })
+             .ok()
+             .flatten()
+     }
+@@ -2962,6 +2972,14 @@ pub enum CursorStyle {
+     /// A cursor indicating that the operation will result in a context menu
+     /// corresponds to the CSS cursor value `context-menu`
+     ContextualMenu,
++
++    /// A magnifying glass cursor indicating that clicking zooms in
++    /// corresponds to the CSS cursor value `zoom-in`
++    ZoomIn,
++
++    /// A magnifying glass cursor indicating that clicking zooms out
++    /// corresponds to the CSS cursor value `zoom-out`
++    ZoomOut,
+ }
+ 
+ /// A clipboard item that should be copied to the clipboard
+diff --git a/rust/vendor/gpui-pre/src/scene.rs b/rust/vendor/gpui-pre/src/scene.rs
+index be378132..5a6c7369 100644
+--- a/rust/vendor/gpui-pre/src/scene.rs
++++ b/rust/vendor/gpui-pre/src/scene.rs
+@@ -50,6 +50,8 @@ pub struct Scene {
+     pub subpixel_sprites: Vec<SubpixelSprite>,
+     pub polychrome_sprites: Vec<PolychromeSprite>,
+     pub surfaces: Vec<PaintSurface>,
++    pub backdrop_blurs: Vec<BackdropBlur>,
++    pub holes: Vec<Hole>,
+ }
+ 
+ #[expect(missing_docs)]
+@@ -66,6 +68,8 @@ impl Scene {
+         self.subpixel_sprites.clear();
+         self.polychrome_sprites.clear();
+         self.surfaces.clear();
++        self.backdrop_blurs.clear();
++        self.holes.clear();
+     }
+ 
+     pub fn len(&self) -> usize {
+@@ -79,6 +83,11 @@ impl Scene {
+             .push(PaintOperation::StartLayer(bounds));
+     }
+ 
++    /// Recur: open layers, for `Window::contain`.
++    pub(crate) fn layer_depth(&self) -> usize {
++        self.layer_stack.len()
++    }
++
+     pub fn pop_layer(&mut self) {
+         self.layer_stack.pop();
+         self.paint_operations.push(PaintOperation::EndLayer);
+@@ -133,6 +142,14 @@ impl Scene {
+                 surface.order = order;
+                 self.surfaces.push(surface.clone());
+             }
++            Primitive::BackdropBlur(blur) => {
++                blur.order = order;
++                self.backdrop_blurs.push(*blur);
++            }
++            Primitive::Hole(hole) => {
++                hole.order = order;
++                self.holes.push(*hole);
++            }
+         }
+         self.paint_operations
+             .push(PaintOperation::Primitive(primitive));
+@@ -160,6 +177,8 @@ impl Scene {
+         self.polychrome_sprites
+             .sort_by_key(|sprite| (sprite.order, sprite.tile.tile_id));
+         self.surfaces.sort_by_key(|surface| surface.order);
++        self.backdrop_blurs.sort_by_key(|blur| blur.order);
++        self.holes.sort_by_key(|hole| hole.order);
+     }
+ 
+     #[cfg_attr(
+@@ -170,6 +189,17 @@ impl Scene {
+         allow(dead_code)
+     )]
+     pub fn batches(&self) -> impl Iterator<Item = PrimitiveBatch> + '_ {
++        self.batches_with_backdrop_blurs()
++            .filter_map(|batch| match batch {
++                SceneBatch::Primitives(batch) => Some(batch),
++                SceneBatch::BackdropBlurs(_) | SceneBatch::Holes(_) => None,
++            })
++    }
++
++    /// Recur: [`Scene::batches`] with the backdrop blurs and holes between them, for renderers
++    /// that draw them. A blur ends the batches before it, so it samples exactly what was painted
++    /// under it.
++    pub fn batches_with_backdrop_blurs(&self) -> impl Iterator<Item = SceneBatch> + '_ {
+         BatchIterator {
+             shadows_start: 0,
+             shadows_iter: self.shadows.iter().peekable(),
+@@ -187,6 +217,10 @@ impl Scene {
+             polychrome_sprites_iter: self.polychrome_sprites.iter().peekable(),
+             surfaces_start: 0,
+             surfaces_iter: self.surfaces.iter().peekable(),
++            backdrop_blurs_start: 0,
++            backdrop_blurs_iter: self.backdrop_blurs.iter().peekable(),
++            holes_start: 0,
++            holes_iter: self.holes.iter().peekable(),
+         }
+     }
+ }
+@@ -209,6 +243,8 @@ pub(crate) enum PrimitiveKind {
+     SubpixelSprite,
+     PolychromeSprite,
+     Surface,
++    BackdropBlur,
++    Hole,
+ }
+ 
+ pub(crate) enum PaintOperation {
+@@ -228,6 +264,8 @@ pub enum Primitive {
+     SubpixelSprite(SubpixelSprite),
+     PolychromeSprite(PolychromeSprite),
+     Surface(PaintSurface),
++    BackdropBlur(BackdropBlur),
++    Hole(Hole),
+ }
+ 
+ #[expect(missing_docs)]
+@@ -242,6 +280,8 @@ impl Primitive {
+             Primitive::SubpixelSprite(sprite) => &sprite.bounds,
+             Primitive::PolychromeSprite(sprite) => &sprite.bounds,
+             Primitive::Surface(surface) => &surface.bounds,
++            Primitive::BackdropBlur(blur) => &blur.bounds,
++            Primitive::Hole(hole) => &hole.bounds,
+         }
+     }
+ 
+@@ -255,6 +295,8 @@ impl Primitive {
+             Primitive::SubpixelSprite(sprite) => &sprite.content_mask,
+             Primitive::PolychromeSprite(sprite) => &sprite.content_mask,
+             Primitive::Surface(surface) => &surface.content_mask,
++            Primitive::BackdropBlur(blur) => &blur.content_mask,
++            Primitive::Hole(hole) => &hole.content_mask,
+         }
+     }
+ }
+@@ -283,10 +325,14 @@ struct BatchIterator<'a> {
+     polychrome_sprites_iter: Peekable<slice::Iter<'a, PolychromeSprite>>,
+     surfaces_start: usize,
+     surfaces_iter: Peekable<slice::Iter<'a, PaintSurface>>,
++    backdrop_blurs_start: usize,
++    backdrop_blurs_iter: Peekable<slice::Iter<'a, BackdropBlur>>,
++    holes_start: usize,
++    holes_iter: Peekable<slice::Iter<'a, Hole>>,
+ }
+ 
+ impl<'a> Iterator for BatchIterator<'a> {
+-    type Item = PrimitiveBatch;
++    type Item = SceneBatch;
+ 
+     fn next(&mut self) -> Option<Self::Item> {
+         let mut orders_and_kinds = [
+@@ -316,6 +362,11 @@ impl<'a> Iterator for BatchIterator<'a> {
+                 self.surfaces_iter.peek().map(|s| s.order),
+                 PrimitiveKind::Surface,
+             ),
++            (
++                self.backdrop_blurs_iter.peek().map(|b| b.order),
++                PrimitiveKind::BackdropBlur,
++            ),
++            (self.holes_iter.peek().map(|h| h.order), PrimitiveKind::Hole),
+         ];
+         orders_and_kinds.sort_by_key(|(order, kind)| (order.unwrap_or(u32::MAX), *kind));
+ 
+@@ -340,7 +391,9 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     shadows_end += 1;
+                 }
+                 self.shadows_start = shadows_end;
+-                Some(PrimitiveBatch::Shadows(shadows_start..shadows_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Shadows(
++                    shadows_start..shadows_end,
++                )))
+             }
+             PrimitiveKind::Quad => {
+                 let quads_start = self.quads_start;
+@@ -354,7 +407,9 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     quads_end += 1;
+                 }
+                 self.quads_start = quads_end;
+-                Some(PrimitiveBatch::Quads(quads_start..quads_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Quads(
++                    quads_start..quads_end,
++                )))
+             }
+             PrimitiveKind::Path => {
+                 let paths_start = self.paths_start;
+@@ -368,7 +423,9 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     paths_end += 1;
+                 }
+                 self.paths_start = paths_end;
+-                Some(PrimitiveBatch::Paths(paths_start..paths_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Paths(
++                    paths_start..paths_end,
++                )))
+             }
+             PrimitiveKind::Underline => {
+                 let underlines_start = self.underlines_start;
+@@ -382,7 +439,9 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     underlines_end += 1;
+                 }
+                 self.underlines_start = underlines_end;
+-                Some(PrimitiveBatch::Underlines(underlines_start..underlines_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Underlines(
++                    underlines_start..underlines_end,
++                )))
+             }
+             PrimitiveKind::MonochromeSprite => {
+                 let texture_id = self.monochrome_sprites_iter.peek().unwrap().tile.texture_id;
+@@ -400,10 +459,10 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     sprites_end += 1;
+                 }
+                 self.monochrome_sprites_start = sprites_end;
+-                Some(PrimitiveBatch::MonochromeSprites {
++                Some(SceneBatch::Primitives(PrimitiveBatch::MonochromeSprites {
+                     texture_id,
+                     range: sprites_start..sprites_end,
+-                })
++                }))
+             }
+             PrimitiveKind::SubpixelSprite => {
+                 let texture_id = self.subpixel_sprites_iter.peek().unwrap().tile.texture_id;
+@@ -421,10 +480,10 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     sprites_end += 1;
+                 }
+                 self.subpixel_sprites_start = sprites_end;
+-                Some(PrimitiveBatch::SubpixelSprites {
++                Some(SceneBatch::Primitives(PrimitiveBatch::SubpixelSprites {
+                     texture_id,
+                     range: sprites_start..sprites_end,
+-                })
++                }))
+             }
+             PrimitiveKind::PolychromeSprite => {
+                 let texture_id = self.polychrome_sprites_iter.peek().unwrap().tile.texture_id;
+@@ -442,10 +501,10 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     sprites_end += 1;
+                 }
+                 self.polychrome_sprites_start = sprites_end;
+-                Some(PrimitiveBatch::PolychromeSprites {
++                Some(SceneBatch::Primitives(PrimitiveBatch::PolychromeSprites {
+                     texture_id,
+                     range: sprites_start..sprites_end,
+-                })
++                }))
+             }
+             PrimitiveKind::Surface => {
+                 let surfaces_start = self.surfaces_start;
+@@ -459,12 +518,65 @@ impl<'a> Iterator for BatchIterator<'a> {
+                     surfaces_end += 1;
+                 }
+                 self.surfaces_start = surfaces_end;
+-                Some(PrimitiveBatch::Surfaces(surfaces_start..surfaces_end))
++                Some(SceneBatch::Primitives(PrimitiveBatch::Surfaces(
++                    surfaces_start..surfaces_end,
++                )))
++            }
++            PrimitiveKind::BackdropBlur => {
++                let blurs_start = self.backdrop_blurs_start;
++                let mut blurs_end = blurs_start + 1;
++                self.backdrop_blurs_iter.next();
++                while self
++                    .backdrop_blurs_iter
++                    .next_if(|blur| (blur.order, batch_kind) < max_order_and_kind)
++                    .is_some()
++                {
++                    blurs_end += 1;
++                }
++                self.backdrop_blurs_start = blurs_end;
++                Some(SceneBatch::BackdropBlurs(blurs_start..blurs_end))
++            }
++            PrimitiveKind::Hole => {
++                let holes_start = self.holes_start;
++                let mut holes_end = holes_start + 1;
++                self.holes_iter.next();
++                while self
++                    .holes_iter
++                    .next_if(|hole| (hole.order, batch_kind) < max_order_and_kind)
++                    .is_some()
++                {
++                    holes_end += 1;
++                }
++                self.holes_start = holes_end;
++                Some(SceneBatch::Holes(holes_start..holes_end))
+             }
+         }
+     }
+ }
+ 
++/// Recur: a batch of primitives, backdrop blurs or holes (see
++/// [`Scene::batches_with_backdrop_blurs`]).
++#[derive(Debug)]
++pub enum SceneBatch {
++    /// Primitives drawn as upstream.
++    Primitives(PrimitiveBatch),
++    /// Backdrop blurs, each over what the batches before it drew.
++    BackdropBlurs(Range<usize>),
++    /// Holes, each clearing what the batches before it drew.
++    Holes(Range<usize>),
++}
++
++impl SceneBatch {
++    /// The batch's label, as [`PrimitiveBatch::label`].
++    pub fn label(&self) -> String {
++        match self {
++            Self::Primitives(batch) => batch.label(),
++            Self::BackdropBlurs(range) => format!("backdrop blurs ({})", range.len()),
++            Self::Holes(range) => format!("holes ({})", range.len()),
++        }
++    }
++}
++
+ #[derive(Debug)]
+ #[cfg_attr(
+     all(
+@@ -591,6 +703,47 @@ impl From<Shadow> for Primitive {
+     }
+ }
+ 
++/// Recur: a Gaussian blur of what is painted under `bounds`, as CSS `backdrop-filter: blur()`.
++/// Renderers without it skip it (`Scene::batches`).
++#[derive(Debug, Copy, Clone)]
++pub struct BackdropBlur {
++    /// The draw order.
++    pub order: DrawOrder,
++    /// The standard deviation of the Gaussian, in device pixels.
++    pub blur_radius: ScaledPixels,
++    /// The blurred area, clipped to `corner_radii` and `content_mask`.
++    pub bounds: Bounds<ScaledPixels>,
++    /// The corner radii of the blurred area.
++    pub corner_radii: Corners<ScaledPixels>,
++    /// The content mask.
++    pub content_mask: ContentMask<ScaledPixels>,
++}
++
++impl From<BackdropBlur> for Primitive {
++    fn from(blur: BackdropBlur) -> Self {
++        Primitive::BackdropBlur(blur)
++    }
++}
++
++/// Recur: fully transparent pixels over `bounds`, replacing what is painted under it, so a
++/// native view behind the window's drawing shows through. Renderers without it skip it
++/// (`Scene::batches`).
++#[derive(Debug, Copy, Clone)]
++pub struct Hole {
++    /// The draw order.
++    pub order: DrawOrder,
++    /// The cleared area, clipped to `content_mask`.
++    pub bounds: Bounds<ScaledPixels>,
++    /// The content mask.
++    pub content_mask: ContentMask<ScaledPixels>,
++}
++
++impl From<Hole> for Primitive {
++    fn from(hole: Hole) -> Self {
++        Primitive::Hole(hole)
++    }
++}
++
+ /// The style of a border.
+ #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+ #[repr(C)]
+diff --git a/rust/vendor/gpui-pre/src/test.rs b/rust/vendor/gpui-pre/src/test.rs
+index c1c8e666..3f68ea13 100644
+--- a/rust/vendor/gpui-pre/src/test.rs
++++ b/rust/vendor/gpui-pre/src/test.rs
+@@ -78,8 +78,10 @@ pub fn run_test_once<R>(
+     let result = panic::catch_unwind(|| {
+         let dispatcher = TestDispatcher::new(seed);
+         let scheduler = dispatcher.scheduler().clone();
++        crate::unwind::take_contained_panics();
+         let res = test_fn(dispatcher);
+         scheduler.end_test();
++        fail_on_contained_panics();
+         res
+     });
+ 
+@@ -89,6 +91,13 @@ pub fn run_test_once<R>(
+     }
+ }
+ 
++/// Recur: a panic GPUI contained (a listener, a canvas, a task) fails the test unless the test
++/// took it with `take_contained_panics`.
++fn fail_on_contained_panics() {
++    let contained = crate::unwind::take_contained_panics();
++    assert!(contained.is_empty(), "contained panics: {contained:#?}");
++}
++
+ /// Run the given test function with the configured parameters.
+ /// This is intended for use with the `gpui::test` macro
+ /// and generally should not be used directly.
+@@ -110,8 +119,10 @@ pub fn run_test(
+             let result = panic::catch_unwind(|| {
+                 let dispatcher = TestDispatcher::new(seed);
+                 let scheduler = dispatcher.scheduler().clone();
++                crate::unwind::take_contained_panics();
+                 test_fn(dispatcher, seed);
+                 scheduler.end_test();
++                fail_on_contained_panics();
+             });
+ 
+             match result {
+diff --git a/rust/vendor/gpui-pre/src/text_system/line_layout.rs b/rust/vendor/gpui-pre/src/text_system/line_layout.rs
+index f0bf1211..63bc94d8 100644
+--- a/rust/vendor/gpui-pre/src/text_system/line_layout.rs
++++ b/rust/vendor/gpui-pre/src/text_system/line_layout.rs
+@@ -493,6 +493,27 @@ pub(crate) struct LineLayoutIndex {
+     wrapped_lines_by_hash_index: usize,
+ }
+ 
++impl LineLayoutIndex {
++    pub(crate) fn parts(&self) -> [usize; 4] {
++        [
++            self.lines_index,
++            self.wrapped_lines_index,
++            self.lines_by_hash_index,
++            self.wrapped_lines_by_hash_index,
++        ]
++    }
++
++    pub(crate) fn with_parts(&self, p: &[usize]) -> Self {
++        LineLayoutIndex {
++            font_generation: self.font_generation,
++            lines_index: p[0],
++            wrapped_lines_index: p[1],
++            lines_by_hash_index: p[2],
++            wrapped_lines_by_hash_index: p[3],
++        }
++    }
++}
++
+ impl LineLayoutCache {
+     pub fn new(
+         platform_text_system: Arc<dyn PlatformTextSystem>,
+@@ -530,34 +551,44 @@ impl LineLayoutCache {
+         let mut current_frame = &mut *self.current_frame.write();
+         let mut previous_frame = &mut *self.previous_frame.lock();
+ 
+-        for key in &previous_frame.used_lines[range.start.lines_index..range.end.lines_index] {
++        for key in clip(
++            &previous_frame.used_lines,
++            range.start.lines_index,
++            range.end.lines_index,
++        ) {
+             if let Some((key, line)) = previous_frame.lines.remove_entry(key) {
+                 current_frame.lines.insert(key, line);
+             }
+             current_frame.used_lines.push(key.clone());
+         }
+ 
+-        for key in &previous_frame.used_wrapped_lines
+-            [range.start.wrapped_lines_index..range.end.wrapped_lines_index]
+-        {
++        for key in clip(
++            &previous_frame.used_wrapped_lines,
++            range.start.wrapped_lines_index,
++            range.end.wrapped_lines_index,
++        ) {
+             if let Some((key, line)) = previous_frame.wrapped_lines.remove_entry(key) {
+                 current_frame.wrapped_lines.insert(key, line);
+             }
+             current_frame.used_wrapped_lines.push(key.clone());
+         }
+ 
+-        for key in &previous_frame.used_lines_by_hash
+-            [range.start.lines_by_hash_index..range.end.lines_by_hash_index]
+-        {
++        for key in clip(
++            &previous_frame.used_lines_by_hash,
++            range.start.lines_by_hash_index,
++            range.end.lines_by_hash_index,
++        ) {
+             if let Some((key, line)) = previous_frame.lines_by_hash.remove_entry(key) {
+                 current_frame.lines_by_hash.insert(key, line);
+             }
+             current_frame.used_lines_by_hash.push(key.clone());
+         }
+ 
+-        for key in &previous_frame.used_wrapped_lines_by_hash
+-            [range.start.wrapped_lines_by_hash_index..range.end.wrapped_lines_by_hash_index]
+-        {
++        for key in clip(
++            &previous_frame.used_wrapped_lines_by_hash,
++            range.start.wrapped_lines_by_hash_index,
++            range.end.wrapped_lines_by_hash_index,
++        ) {
+             if let Some((key, line)) = previous_frame.wrapped_lines_by_hash.remove_entry(key) {
+                 current_frame.wrapped_lines_by_hash.insert(key, line);
+             }
+@@ -1188,3 +1219,10 @@ mod tests {
+         assert_eq!(positions, vec![0.5, 0.5]);
+     }
+ }
++
++/// `list[start..end]` within `list`: a replay that spans a font change (Recur's isolated views)
++/// can name layouts the change dropped, and reuse only warms the cache.
++fn clip<T>(list: &[T], start: usize, end: usize) -> &[T] {
++    let end = end.min(list.len());
++    &list[start.min(end)..end]
++}
+diff --git a/rust/vendor/gpui-pre/src/unwind.rs b/rust/vendor/gpui-pre/src/unwind.rs
+new file mode 100644
+index 00000000..44678d5d
+--- /dev/null
++++ b/rust/vendor/gpui-pre/src/unwind.rs
+@@ -0,0 +1,64 @@
++//! Recur: panic containment (`rust/vendor/README.md`, "Contained panics").
++//!
++//! A panic must not unwind into a platform callback (AppKit, GCD and GLib frames cannot be
++//! unwound through, so the process aborts). Element listeners and `canvas` closures run under
++//! [`contain`]; task futures under [`Recorded`], whose panic the task system keeps and
++//! re-raises in an awaiter. Entity and window updates restore their lease and window before an
++//! unwind leaves them (`App::update_entity_erased`, `App::update_window_erased`).
++
++use std::cell::RefCell;
++use std::future::Future;
++use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
++use std::pin::Pin;
++use std::task::{Context, Poll};
++
++thread_local! {
++    static CONTAINED: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
++}
++
++/// The panics contained on this thread since the last call, as `site: message`. GPUI tests fail
++/// when a test leaves any; a test that panics on purpose takes them.
++pub fn take_contained_panics() -> Vec<String> {
++    CONTAINED.with_borrow_mut(std::mem::take)
++}
++
++fn record(site: &str, payload: &(dyn std::any::Any + Send)) {
++    let message = payload
++        .downcast_ref::<&str>()
++        .map(|s| s.to_string())
++        .or_else(|| payload.downcast_ref::<String>().cloned())
++        .unwrap_or_else(|| "non-string panic".into());
++    log::error!("gpui: contained a panic in {site}: {message}");
++    CONTAINED.with_borrow_mut(|c| c.push(format!("{site}: {message}")));
++}
++
++/// Runs `f`; a panic is recorded and dropped, so the caller carries on as if `f` returned
++/// nothing.
++pub(crate) fn contain<R>(site: &str, f: impl FnOnce() -> R) -> Option<R> {
++    match catch_unwind(AssertUnwindSafe(f)) {
++        Ok(r) => Some(r),
++        Err(payload) => {
++            record(site, &*payload);
++            None
++        }
++    }
++}
++
++/// A task's future: a panic in a poll is recorded and resumed for the task to keep.
++pub(crate) struct Recorded<F>(pub(crate) F);
++
++impl<F: Future> Future for Recorded<F> {
++    type Output = F::Output;
++
++    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<F::Output> {
++        // SAFETY: the inner future is structurally pinned and never moved out.
++        let inner = unsafe { self.map_unchecked_mut(|r| &mut r.0) };
++        match catch_unwind(AssertUnwindSafe(|| inner.poll(cx))) {
++            Ok(p) => p,
++            Err(payload) => {
++                record("a task", &*payload);
++                resume_unwind(payload)
++            }
++        }
++    }
++}
+diff --git a/rust/vendor/gpui-pre/src/view.rs b/rust/vendor/gpui-pre/src/view.rs
+index 081edd9a..0012ba2b 100644
+--- a/rust/vendor/gpui-pre/src/view.rs
++++ b/rust/vendor/gpui-pre/src/view.rs
+@@ -2,13 +2,15 @@ use crate::{
+     AnyElement, AnyEntity, AnyWeakEntity, App, AvailableSpace, Bounds, ContentMask, Context,
+     Element, ElementId, Entity, EntityId, GlobalElementId, InspectorElementId, IntoElement,
+     LayoutId, PaintIndex, Pixels, PrepaintStateIndex, Render, RenderOnce, Size, Style,
+-    StyleRefinement, TextStyle, WeakEntity,
++    StyleRefinement, TextStyle, TextStyleRefinement, WeakEntity,
+ };
++use crate::window::ElementIdStack;
+ use crate::{Empty, Window};
+ use anyhow::Result;
+ use collections::FxHashSet;
+ use refineable::Refineable;
+ use std::mem;
++use std::rc::Rc;
+ use std::{
+     any::{TypeId, type_name},
+     fmt,
+@@ -47,6 +49,16 @@ impl AnyView {
+         self.into_element().cached(style)
+     }
+ 
++    /// Embed this view as a cached [`ViewElement`] that redraws in place: a notify of this
++    /// view, or of a view inside it, renders only this view while the frame replays everything
++    /// around it, its ancestors included. Its bounds must not depend on its content; a view
++    /// that needs a new size notifies its parent.
++    pub fn isolated(self, style: StyleRefinement) -> ViewElement<AnyView> {
++        let mut element = self.clone().cached(style);
++        element.isolated = Some(self);
++        element
++    }
++
+     /// Convert this to a weak handle.
+     pub fn downgrade(&self) -> AnyWeakView {
+         AnyWeakView {
+@@ -250,6 +262,12 @@ impl<T: Render> Entity<T> {
+     pub fn cached(self, style: StyleRefinement) -> ViewElement<Entity<T>> {
+         ViewElement::with_type_name(self, type_name::<T>()).cached(style)
+     }
++
++    /// Embed this entity as an isolated view (see [`AnyView::isolated`]).
++    #[track_caller]
++    pub fn isolated(self, style: StyleRefinement) -> ViewElement<AnyView> {
++        AnyView::from(self).isolated(style)
++    }
+ }
+ 
+ /// The element type for [`View`] implementations. Wraps a `View` and hooks it
+@@ -259,6 +277,7 @@ pub struct ViewElement<V: View> {
+     view: Option<V>,
+     entity_id: Option<EntityId>,
+     cached_style: Option<StyleRefinement>,
++    isolated: Option<AnyView>,
+     #[cfg(feature = "profiler")]
+     view_type_name: &'static str,
+     #[cfg(debug_assertions)]
+@@ -281,6 +300,7 @@ impl<V: View> ViewElement<V> {
+         ViewElement {
+             entity_id,
+             cached_style: None,
++            isolated: None,
+             #[cfg(feature = "profiler")]
+             view_type_name,
+             view: Some(view),
+@@ -312,11 +332,16 @@ impl<V: View> IntoElement for ViewElement<V> {
+     }
+ }
+ 
+-struct ViewElementState {
+-    prepaint_range: Range<PrepaintStateIndex>,
+-    paint_range: Range<PaintIndex>,
++pub(crate) struct ViewElementState {
++    pub(crate) prepaint_range: Range<PrepaintStateIndex>,
++    pub(crate) paint_range: Range<PaintIndex>,
+     cache_key: ViewElementCacheKey,
+     accessed_entities: FxHashSet<EntityId>,
++    /// This frame's record of the view in `Frame::cached_views`, when it rendered.
++    record: Option<usize>,
++    /// The ranges a replay carried did not check out (`Window::rebase_cached_view_states`):
++    /// render the view again rather than replay them.
++    stale: bool,
+ }
+ 
+ struct ViewElementCacheKey {
+@@ -392,11 +417,13 @@ impl<V: View> Element for ViewElement<V> {
+             // Stateful path.
+             #[cfg(feature = "profiler")]
+             let start = window.window_profiler.begin_view();
++            let isolated = self.isolated.clone();
+             let prepainted = prepaint_view(
+                 entity_id,
+                 global_id,
+                 bounds,
+                 element,
++                isolated,
+                 window,
+                 cx,
+                 &mut |window, cx| {
+@@ -510,6 +537,7 @@ fn prepaint_view(
+     global_id: Option<&GlobalElementId>,
+     bounds: Bounds<Pixels>,
+     element: &mut Option<AnyElement>,
++    isolated: Option<AnyView>,
+     window: &mut Window,
+     cx: &mut App,
+     render: &mut dyn FnMut(&mut Window, &mut App) -> AnyElement,
+@@ -533,40 +561,62 @@ fn prepaint_view(
+                     && element_state.cache_key.text_style == text_style
+                     && !window.dirty_views.contains(&entity_id)
+                     && !window.refreshing
++                    && !element_state.stale
++                    && window.replayable(&element_state.prepaint_range, &element_state.paint_range)
+                 {
+                     let prepaint_start = window.prepaint_index();
+-                    window.reuse_prepaint(element_state.prepaint_range.clone());
++                    window.next_frame.replayed_views.insert(entity_id);
++                    window.reuse_prepaint(element_state.prepaint_range.clone(), cx);
+                     cx.entities
+                         .extend_accessed(&element_state.accessed_entities);
+                     let prepaint_end = window.prepaint_index();
+                     element_state.prepaint_range = prepaint_start..prepaint_end;
++                    element_state.record = None;
+ 
+                     return (None, element_state);
+                 }
+ 
+-                let refreshing = mem::replace(&mut window.refreshing, true);
+-                let prepaint_start = window.prepaint_index();
+-                let (element, accessed_entities) = cx.detect_accessed_entities(|cx| {
+-                    let mut element = render(window, cx);
+-                    element.layout_as_root(Size::<AvailableSpace>::from(bounds.size), window, cx);
+-                    element.prepaint_at(bounds.origin, window, cx);
+-                    element
++                let island = isolated.map(|view| {
++                    Rc::new(Island {
++                        view,
++                        global_id: global_id.unwrap().clone(),
++                        element_id_stack: window.element_id_stack.clone(),
++                        text_style_stack: window.text_style_stack.clone(),
++                        content_mask,
++                        rem_size: window.rem_size(),
++                        bounds,
++                        deferred_priority_floor: window.deferred_priority_floor,
++                    })
++                });
++                let recorded = island.is_some() || window.cached_depth == 0;
++                let (element, prepaint_range, accessed_entities) =
++                    render_cached(bounds, island.is_some(), window, cx, render);
++                let accessed = match island {
++                    Some(_) => Rc::new(accessed_entities.clone()),
++                    None => Rc::default(),
++                };
++                let record = recorded.then(|| {
++                    window.next_frame.push_cached_view(
++                        global_id.unwrap().clone(),
++                        prepaint_range.clone(),
++                        island,
++                        accessed,
++                    )
+                 });
+-
+-                let prepaint_end = window.prepaint_index();
+-                window.refreshing = refreshing;
+ 
+                 (
+                     Some(element),
+                     ViewElementState {
+                         accessed_entities,
+-                        prepaint_range: prepaint_start..prepaint_end,
++                        prepaint_range,
+                         paint_range: PaintIndex::default()..PaintIndex::default(),
+                         cache_key: ViewElementCacheKey {
+                             bounds,
+                             content_mask,
+                             text_style,
+                         },
++                        record,
++                        stale: false,
+                     },
+                 )
+             },
+@@ -606,16 +656,29 @@ fn paint_view(
+ 
+                     let paint_start = window.paint_index();
+ 
++                    let isolated = element_state
++                        .record
++                        .is_some_and(|ix| window.next_frame.is_island(ix));
++                    let mut painted = FxHashSet::default();
+                     if let Some(element) = element {
+                         let refreshing = mem::replace(&mut window.refreshing, true);
+-                        element.paint(window, cx);
++                        painted = paint_tracked(isolated, cx, |cx| element.paint(window, cx));
++                        element_state.accessed_entities.extend(painted.iter().copied());
+                         window.refreshing = refreshing;
+                     } else {
+-                        window.reuse_paint(element_state.paint_range.clone());
++                        window.reuse_paint(element_state.paint_range.clone(), cx);
+                     }
+ 
+                     let paint_end = window.paint_index();
+                     element_state.paint_range = paint_start..paint_end;
++                    if let Some(record) = element_state.record {
++                        window.next_frame.set_cached_view_paint(
++                            record,
++                            element_state.paint_range.clone(),
++                            window.element_opacity,
++                            &painted,
++                        );
++                    }
+ 
+                     ((), element_state)
+                 },
+@@ -637,3 +700,166 @@ fn paint_component(
+         element.as_mut().unwrap().paint(window, cx);
+     });
+ }
++
++/// Renders a cached view's content as its own layout root at `bounds`, nested caches off.
++/// An isolated view keeps them on (every cached view's state points at its place in the last
++/// frame, `Window::rebase_cached_view_states`) and records every entity it reads, not only
++/// those first read this frame.
++fn render_cached(
++    bounds: Bounds<Pixels>,
++    isolated: bool,
++    window: &mut Window,
++    cx: &mut App,
++    render: &mut dyn FnMut(&mut Window, &mut App) -> AnyElement,
++) -> (AnyElement, Range<PrepaintStateIndex>, FxHashSet<EntityId>) {
++    let nested_off = window.refreshing || !isolated;
++    let refreshing = mem::replace(&mut window.refreshing, nested_off);
++    let depth = window.cached_depth;
++    window.cached_depth = if isolated { 0 } else { depth + 1 };
++    let prepaint_start = window.prepaint_index();
++    let outer = isolated.then(|| mem::take(cx.entities.accessed_entities.get_mut()));
++    let (element, mut accessed_entities) = cx.detect_accessed_entities(|cx| {
++        let mut element = render(window, cx);
++        element.layout_as_root(Size::<AvailableSpace>::from(bounds.size), window, cx);
++        element.prepaint_at(bounds.origin, window, cx);
++        element
++    });
++    if let Some(outer) = outer {
++        accessed_entities = mem::replace(cx.entities.accessed_entities.get_mut(), outer);
++        cx.entities.extend_accessed(&accessed_entities);
++    }
++    let prepaint_end = window.prepaint_index();
++    window.refreshing = refreshing;
++    window.cached_depth = depth;
++    (element, prepaint_start..prepaint_end, accessed_entities)
++}
++
++/// Paints, returning what an isolated view read while painting (a caret blink's state).
++fn paint_tracked(isolated: bool, cx: &mut App, paint: impl FnOnce(&mut App)) -> FxHashSet<EntityId> {
++    if !isolated {
++        paint(cx);
++        return FxHashSet::default();
++    }
++    let outer = mem::take(cx.entities.accessed_entities.get_mut());
++    paint(cx);
++    let painted = mem::replace(cx.entities.accessed_entities.get_mut(), outer);
++    cx.entities.extend_accessed(&painted);
++    painted
++}
++
++/// What an isolated view needs to draw again in place, without its ancestors: the context
++/// its parent drew it in.
++pub(crate) struct Island {
++    view: AnyView,
++    global_id: GlobalElementId,
++    element_id_stack: ElementIdStack,
++    text_style_stack: Vec<TextStyleRefinement>,
++    content_mask: ContentMask<Pixels>,
++    rem_size: Pixels,
++    bounds: Bounds<Pixels>,
++    deferred_priority_floor: usize,
++}
++
++impl Island {
++    pub(crate) fn entity_id(&self) -> EntityId {
++        self.view.entity_id()
++    }
++
++    fn with_context<R>(&self, window: &mut Window, f: impl FnOnce(&mut Window) -> R) -> R {
++        let ids = mem::replace(&mut window.element_id_stack, self.element_id_stack.clone());
++        let styles = mem::replace(&mut window.text_style_stack, self.text_style_stack.clone());
++        let floor = mem::replace(
++            &mut window.deferred_priority_floor,
++            self.deferred_priority_floor,
++        );
++        let result = window.with_rendered_view(self.entity_id(), |window| {
++            window.with_rem_size(Some(self.rem_size), |window| {
++                window.with_content_mask(Some(self.content_mask), f)
++            })
++        });
++        window.element_id_stack = ids;
++        window.text_style_stack = styles;
++        window.deferred_priority_floor = floor;
++        result
++    }
++
++    /// Renders and prepaints the view again where it was, as the next run of a reuse that
++    /// skips its previous content. Returns the element and this frame's record of it.
++    pub(crate) fn prepaint(self: &Rc<Self>, window: &mut Window, cx: &mut App) -> (AnyElement, usize) {
++        self.with_context(window, |window| {
++            // The replay copied this state's key; recording it again would grow the frame's
++            // list by one on every replay.
++            window.state_recorded_already = true;
++            window.with_element_state::<ViewElementState, _>(&self.global_id, |state, window| {
++                let mut state = state.expect("an island keeps its view state");
++                let view = self.view.clone();
++                let (element, prepaint_range, mut accessed) =
++                    render_cached(self.bounds, true, window, cx, &mut |window, cx| {
++                        (view.render)(&view, window, cx)
++                    });
++                accessed.insert(self.entity_id());
++                accessed.extend(state.accessed_entities.iter().copied());
++                cx.entities.extend_accessed(&accessed);
++                let record = window.next_frame.push_cached_view(
++                    self.global_id.clone(),
++                    prepaint_range.clone(),
++                    Some(self.clone()),
++                    Rc::new(accessed.clone()),
++                );
++                state.prepaint_range = prepaint_range;
++                state.accessed_entities = accessed;
++                state.record = Some(record);
++                ((element, record), state)
++            })
++        })
++    }
++
++    pub(crate) fn paint(
++        &self,
++        element: &mut AnyElement,
++        record: usize,
++        opacity: f32,
++        window: &mut Window,
++        cx: &mut App,
++    ) {
++        self.with_context(window, |window| {
++            // The replay copied this state's key; recording it again would grow the frame's
++            // list by one on every replay.
++            window.state_recorded_already = true;
++            window.with_element_state::<ViewElementState, _>(&self.global_id, |state, window| {
++                let mut state = state.expect("an island keeps its view state");
++                let previous = mem::replace(&mut window.element_opacity, opacity);
++                let refreshing = mem::replace(&mut window.refreshing, true);
++                let paint_start = window.paint_index();
++                let painted = paint_tracked(true, cx, |cx| element.paint(window, cx));
++                state.accessed_entities.extend(painted.iter().copied());
++                state.paint_range = paint_start..window.paint_index();
++                window.refreshing = refreshing;
++                window.element_opacity = previous;
++                window.next_frame.set_cached_view_paint(
++                    record,
++                    state.paint_range.clone(),
++                    opacity,
++                    &painted,
++                );
++                ((), state)
++            })
++        })
++    }
++}
++
++/// Points a cached view's state at where this frame put its content, after a frame that
++/// replayed it inside an ancestor.
++pub(crate) fn rebase_view_state(
++    state: &mut dyn std::any::Any,
++    prepaint_range: Range<PrepaintStateIndex>,
++    paint_range: Range<PaintIndex>,
++    valid: bool,
++) {
++    if let Some(Some(state)) = state.downcast_mut::<Option<ViewElementState>>() {
++        state.prepaint_range = prepaint_range;
++        state.paint_range = paint_range;
++        state.record = None;
++        state.stale = !valid;
++    }
++}
+diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
+index 1214b035..03c39edd 100644
+--- a/rust/vendor/gpui-pre/src/window.rs
++++ b/rust/vendor/gpui-pre/src/window.rs
+@@ -6,8 +6,8 @@ use crate::Inspector;
+ use crate::profiler;
+ use crate::{
+     Action, AnyDrag, AnyElement, AnyImageCache, AnyTooltip, AnyView, App, AppContext, Arena, Asset,
+-    AsyncWindowContext, AtlasTile, AvailableSpace, Background, BorderStyle, Bounds, BoxShadow,
+-    Capslock, Context, Corners, CursorHideMode, CursorStyle, Decorations, DevicePixels,
++    AsyncWindowContext, AtlasTile, AvailableSpace, BackdropBlur, Background, BorderStyle, Bounds,
++    BoxShadow, Capslock, Context, Corners, CursorHideMode, CursorStyle, Decorations, DevicePixels,
+     DispatchActionListener, DispatchNodeId, DispatchTree, DisplayId, Edges, Effect, Entity,
+     EntityId, EventEmitter, FileDropEvent, FontId, Global, GlobalElementId, GlyphId, GpuSpecs,
+     Hsla, InputHandler, InputPreference, IsZero, KeyBinding, KeyContext, KeyDownEvent, KeyEvent,
+@@ -16,7 +16,8 @@ use crate::{
+     PlatformAtlas, PlatformDisplay, PlatformInput, PlatformInputHandler, PlatformWindow, Point,
+     PolychromeSprite, Priority, PromptButton, PromptLevel, Quad, Render, RenderGlyphParams,
+     RenderImage, RenderImageParams, RenderSvgParams, Replay, ResizeEdge, SMOOTH_SVG_SCALE_FACTOR,
+-    SUBPIXEL_VARIANTS_X, SUBPIXEL_VARIANTS_Y, ScaledPixels, Scene, Shadow, SharedString, Size,
++    SUBPIXEL_VARIANTS_X, SUBPIXEL_VARIANTS_Y, ScaledPixels, Scene, ScrollDelta, Shadow,
++    SharedString, Size,
+     StrikethroughStyle, Style, SubpixelSprite, SubscriberSet, Subscription, SystemWindowTab,
+     SystemWindowTabController, TabStopMap, TaffyLayoutEngine, Task, TextInputConfiguration,
+     TextInputStateChange, TextRenderingMode, TextStyle, TextStyleRefinement, ThermalState,
+@@ -942,6 +943,11 @@ pub enum HitboxBehavior {
+     /// inconsistent UI where clicks and moves interact with elements that are not considered to
+     /// be hovered.
+     BlockMouseExceptScroll,
++
++    /// Recur: a native view behind the window's drawing (see [`Window::paint_hole`]). Behaves as
++    /// `Normal` in GPUI; where it is the topmost hitbox, the platform lets mouse events through
++    /// to the native view.
++    Native,
+ }
+ 
+ /// An identifier for a tooltip.
+@@ -999,6 +1005,16 @@ impl ElementIdStack {
+         self.hashes.clear();
+     }
+ 
++    /// Recur: drops what a contained panic left pushed.
++    pub(crate) fn truncate(&mut self, len: usize) {
++        self.ids.truncate(len);
++        self.hashes.truncate(len);
++    }
++
++    pub(crate) fn len(&self) -> usize {
++        self.ids.len()
++    }
++
+     /// The hash of the whole path on the stack.
+     fn hash(&self) -> u64 {
+         self.hashes
+@@ -1057,6 +1073,118 @@ pub(crate) struct Frame {
+     #[cfg(any(feature = "inspector", debug_assertions))]
+     pub(crate) inspector_hitboxes: FxHashMap<HitboxId, crate::InspectorElementId>,
+     pub(crate) tab_stops: TabStopMap,
++    /// Where each cached view's content is in this frame, kept current when an ancestor
++    /// replays it, so an isolated view can draw again in place.
++    cached_views: Vec<CachedViewRecord>,
++    island_ids: FxHashSet<EntityId>,
++    /// Cached views this frame replayed from the last instead of rendering.
++    pub(crate) replayed_views: FxHashSet<EntityId>,
++    /// The root's content and the size it was laid out at.
++    root: Option<(Range<PrepaintStateIndex>, Range<PaintIndex>, Size<Pixels>)>,
++}
++
++struct CachedViewRecord {
++    global_id: GlobalElementId,
++    prepaint: Range<PrepaintStateIndex>,
++    paint: Range<PaintIndex>,
++    /// `paint` is still the previous frame's, until the replay that copies it maps it.
++    paint_pending: bool,
++    opacity: f32,
++    island: Option<Rc<crate::view::Island>>,
++    /// The entities an isolated view read.
++    accessed: Rc<FxHashSet<EntityId>>,
++}
++
++/// A frame index as a list of counters, so a replay can map any of them.
++trait FrameIndex: Clone {
++    fn parts(&self) -> SmallVec<[usize; 12]>;
++    fn with_parts(&self, parts: &[usize]) -> Self;
++}
++
++impl FrameIndex for PrepaintStateIndex {
++    fn parts(&self) -> SmallVec<[usize; 12]> {
++        let mut parts = SmallVec::from_slice(&[
++            self.hitboxes_index,
++            self.tooltips_index,
++            self.deferred_draws_index,
++            self.dispatch_tree_index,
++            self.accessed_element_states_index,
++        ]);
++        parts.extend(self.line_layout_index.parts());
++        parts
++    }
++
++    fn with_parts(&self, p: &[usize]) -> Self {
++        PrepaintStateIndex {
++            hitboxes_index: p[0],
++            tooltips_index: p[1],
++            deferred_draws_index: p[2],
++            dispatch_tree_index: p[3],
++            accessed_element_states_index: p[4],
++            line_layout_index: self.line_layout_index.with_parts(&p[5..]),
++        }
++    }
++}
++
++impl FrameIndex for PaintIndex {
++    fn parts(&self) -> SmallVec<[usize; 12]> {
++        let mut parts = SmallVec::from_slice(&[
++            self.scene_index,
++            self.mouse_listeners_index,
++            self.input_handlers_index,
++            self.cursor_styles_index,
++            self.accessed_element_states_index,
++            self.tab_handle_index,
++            #[cfg(any(test, feature = "test-support"))]
++            self.debug_bounds_index,
++        ]);
++        parts.extend(self.line_layout_index.parts());
++        parts
++    }
++
++    fn with_parts(&self, p: &[usize]) -> Self {
++        PaintIndex {
++            scene_index: p[0],
++            mouse_listeners_index: p[1],
++            input_handlers_index: p[2],
++            cursor_styles_index: p[3],
++            accessed_element_states_index: p[4],
++            tab_handle_index: p[5],
++            #[cfg(any(test, feature = "test-support"))]
++            debug_bounds_index: p[6],
++            line_layout_index: self.line_layout_index.with_parts(&p[p.len() - 4..]),
++        }
++    }
++}
++
++/// Whether every counter of `range` runs forward and ends by `end` (the frame's length).
++fn within_frame<I: FrameIndex>(range: &Range<I>, end: &I) -> bool {
++    let (a, b, e) = (range.start.parts(), range.end.parts(), end.parts());
++    (0..a.len()).all(|i| a[i] <= b[i] && b[i] <= e[i])
++}
++
++fn index_within<I: FrameIndex>(range: &Range<I>, inner: &Range<I>) -> bool {
++    let (a, b, c, d) = (range.start.parts(), range.end.parts(), inner.start.parts(), inner.end.parts());
++    (0..a.len()).all(|i| a[i] <= c[i] && d[i] <= b[i])
++}
++
++/// Maps an index a replay carried through: `segments` are the replay's runs in order, each the
++/// old range and where it landed, copied or drawn again (an isolated view). A carried index
++/// lies in a copied run, the `run`th, and every counter shifts with it. Callers choose the run
++/// by tree order, not by value: a view drawn again that recorded nothing in some counter leaves
++/// the runs around it touching there, and a value alone cannot say which side an index is on.
++/// A range's start and end can lie in different runs (a cached view around a view drawn again).
++fn map_in_run<I: FrameIndex>(segments: &[(Range<I>, Range<I>, bool)], run: usize, index: &I) -> I {
++    let Some((old, new, _)) = segments.iter().filter(|s| s.2).nth(run) else {
++        return index.clone();
++    };
++    let (a, na, nb, x) = (old.start.parts(), new.start.parts(), new.end.parts(), index.parts());
++    let mapped: SmallVec<[usize; 12]> = (0..x.len())
++        // A copy is the same length, except line layouts after a font change, which it skips:
++        // keep the index inside what the copy produced.
++        .map(|i| (na[i] + x[i].saturating_sub(a[i])).min(nb[i]))
++        .collect();
++    new.start.with_parts(&mapped)
+ }
+ 
+ #[derive(Clone, Default)]
+@@ -1116,9 +1244,55 @@ impl Frame {
+             #[cfg(any(feature = "inspector", debug_assertions))]
+             inspector_hitboxes: FxHashMap::default(),
+             tab_stops: TabStopMap::default(),
++            cached_views: Vec::new(),
++            island_ids: FxHashSet::default(),
++            replayed_views: FxHashSet::default(),
++            root: None,
+         }
+     }
+ 
++    pub(crate) fn push_cached_view(
++        &mut self,
++        global_id: GlobalElementId,
++        prepaint: Range<PrepaintStateIndex>,
++        island: Option<Rc<crate::view::Island>>,
++        accessed: Rc<FxHashSet<EntityId>>,
++    ) -> usize {
++        if let Some(island) = &island {
++            self.island_ids.insert(island.entity_id());
++        }
++        self.cached_views.push(CachedViewRecord {
++            global_id,
++            prepaint,
++            paint: PaintIndex::default()..PaintIndex::default(),
++            paint_pending: false,
++            opacity: 1.,
++            island,
++            accessed,
++        });
++        self.cached_views.len() - 1
++    }
++
++    pub(crate) fn set_cached_view_paint(
++        &mut self,
++        ix: usize,
++        paint: Range<PaintIndex>,
++        opacity: f32,
++        painted: &FxHashSet<EntityId>,
++    ) {
++        let record = &mut self.cached_views[ix];
++        record.paint = paint;
++        record.paint_pending = false;
++        record.opacity = opacity;
++        if !painted.is_empty() {
++            Rc::make_mut(&mut record.accessed).extend(painted.iter().copied());
++        }
++    }
++
++    pub(crate) fn is_island(&self, ix: usize) -> bool {
++        self.cached_views[ix].island.is_some()
++    }
++
+     pub(crate) fn clear(&mut self) {
+         self.element_states.clear();
+         self.accessed_element_states.clear();
+@@ -1132,6 +1306,10 @@ impl Frame {
+         self.window_control_hitboxes.clear();
+         self.deferred_draws.clear();
+         self.tab_stops.clear();
++        self.cached_views.clear();
++        self.island_ids.clear();
++        self.replayed_views.clear();
++        self.root = None;
+         self.focus = None;
+ 
+         #[cfg(any(test, feature = "test-support"))]
+@@ -1253,7 +1431,22 @@ pub struct Window {
+     pub(crate) next_tooltip_id: TooltipId,
+     pub(crate) tooltip_bounds: Option<TooltipBounds>,
+     pub(crate) next_frame_callbacks: Rc<RefCell<Vec<FrameCallback>>>,
++    after_draw_callbacks: Vec<FrameCallback>,
+     pub(crate) dirty_views: FxHashSet<EntityId>,
++    /// A notify this frame reached a view outside every isolated view (or no view at all).
++    dirty_outside_islands: bool,
++    /// How many cached views the view being drawn sits in, up to the nearest isolated one:
++    /// only views at depth 0 (and isolated ones) are drawn without an ancestor's replay, so
++    /// only those keep records.
++    pub(crate) cached_depth: usize,
++    /// The next element state taken is already in the frame's accessed list: an isolated
++    /// view drawn again inside a replay, whose state key the replay copied.
++    pub(crate) state_recorded_already: bool,
++    /// Isolated views drawn again inside a replay, waiting for the replay's paint: the
++    /// previous frame's record, the element, and this frame's record.
++    island_elements: Vec<(usize, AnyElement, usize)>,
++    /// Every entity the last frame read, for a frame that replays the whole root.
++    last_accessed: FxHashSet<EntityId>,
+     focus_listeners: SubscriberSet<(), AnyWindowFocusListener>,
+     pub(crate) focus_lost_listeners: SubscriberSet<(), AnyObserver>,
+     focus_lost_path: SmallVec<[FocusId; 8]>,
+@@ -1263,6 +1456,7 @@ pub struct Window {
+     modifiers: Modifiers,
+     capslock: Capslock,
+     scale_factor: f32,
++    ui_zoom: f32,
+     pub(crate) bounds_observers: SubscriberSet<(), AnyObserver>,
+     appearance: WindowAppearance,
+     pub(crate) appearance_observers: SubscriberSet<(), AnyObserver>,
+@@ -1284,6 +1478,10 @@ pub struct Window {
+     long_press_timer: Option<Task<()>>,
+     long_press_capture: Option<EntityId>,
+     pub(crate) refreshing: bool,
++    /// Recur: the priority of the deferred draw being prepainted. A deferred draw nested in
++    /// it never paints below it, as a CSS stacking context keeps its children above what the
++    /// context sits over.
++    pub(crate) deferred_priority_floor: usize,
+     pub(crate) activation_observers: SubscriberSet<(), AnyObserver>,
+     pub(crate) focus: Option<FocusId>,
+     focus_enabled: bool,
+@@ -2042,7 +2240,10 @@ impl Window {
+             let mut cx = cx.to_async();
+             Box::new(move |event| {
+                 handle
+-                    .update(&mut cx, |_, window, cx| window.dispatch_event(event, cx))
++                    .update(&mut cx, |_, window, cx| {
++                        let event = window.unzoom_input(event);
++                        window.dispatch_event(event, cx)
++                    })
+                     .log_err()
+                     .unwrap_or(DispatchEventResult::default())
+             })
+@@ -2063,6 +2264,16 @@ impl Window {
+                     .unwrap_or(None)
+             })
+         });
++        platform_window.on_hit_test_native({
++            let mut cx = cx.to_async();
++            Box::new(move |position| {
++                handle
++                    .update(&mut cx, |_, window, _| {
++                        window.native_hit_test(position.map(|v| v / window.ui_zoom))
++                    })
++                    .unwrap_or(false)
++            })
++        });
+         platform_window.on_move_tab_to_new_window({
+             let mut cx = cx.to_async();
+             Box::new(move || {
+@@ -2150,10 +2361,16 @@ impl Window {
+             rendered_frame: Frame::new(DispatchTree::new(cx.keymap.clone(), cx.actions.clone())),
+             next_frame: Frame::new(DispatchTree::new(cx.keymap.clone(), cx.actions.clone())),
+             next_frame_callbacks,
++            after_draw_callbacks: Vec::new(),
+             next_hitbox_id: HitboxId(0),
+             next_tooltip_id: TooltipId::default(),
+             tooltip_bounds: None,
+             dirty_views: FxHashSet::default(),
++            dirty_outside_islands: false,
++            cached_depth: 0,
++            state_recorded_already: false,
++            island_elements: Vec::new(),
++            last_accessed: FxHashSet::default(),
+             focus_listeners: SubscriberSet::new(),
+             focus_lost_listeners: SubscriberSet::new(),
+             focus_lost_path: SmallVec::new(),
+@@ -2163,6 +2380,7 @@ impl Window {
+             modifiers,
+             capslock,
+             scale_factor,
++            ui_zoom: 1.,
+             bounds_observers: SubscriberSet::new(),
+             appearance,
+             appearance_observers: SubscriberSet::new(),
+@@ -2185,6 +2403,7 @@ impl Window {
+             long_press_timer: None,
+             long_press_capture: None,
+             refreshing: false,
++            deferred_priority_floor: 0,
+             activation_observers: SubscriberSet::new(),
+             focus: None,
+             focus_enabled: true,
+@@ -2251,16 +2470,28 @@ impl ContentMask<Pixels> {
+ impl Window {
+     fn mark_view_dirty(&mut self, view_id: EntityId) {
+         // Mark ancestor views as dirty. If already in the `dirty_views` set, then all its ancestors
+-        // should already be dirty.
++        // should already be dirty. An isolated view draws again in place, so the walk stops there.
++        let isolate = !self.a11y.is_active();
++        let mut absorbed = false;
+         for view_id in self
+             .rendered_frame
+             .dispatch_tree
+             .view_path_reversed(view_id)
+         {
+-            if !self.dirty_views.insert(view_id) {
++            if !self.dirty_views.insert(view_id)
++                || (isolate && self.rendered_frame.island_ids.contains(&view_id))
++            {
++                absorbed = true;
+                 break;
+             }
+         }
++        // A model (no view path) that only isolated views read: those observe it themselves.
++        if isolate && !absorbed && self.rendered_frame.dispatch_tree.view_path_reversed(view_id).next().is_none() {
++            absorbed = self.rendered_frame.cached_views.iter().any(|record| {
++                record.island.is_some() && record.accessed.contains(&view_id)
++            });
++        }
++        self.dirty_outside_islands |= !absorbed;
+     }
+ 
+     pub(crate) fn refresh_visibility(&mut self, cx: &mut App) {
+@@ -2715,6 +2946,14 @@ impl Window {
+         self.invalidator.wake_platform();
+     }
+ 
++    /// Run `callback` at the end of the draw in progress (or of the next one, when called between
++    /// draws or from such a callback), while [`Self::replayed_view`] still answers for that
++    /// frame. Unlike [`Self::on_next_frame`] it creates no frame demand and never runs on a frame
++    /// that draws nothing.
++    pub fn after_next_draw(&mut self, callback: impl FnOnce(&mut Window, &mut App) + 'static) {
++        self.after_draw_callbacks.push(Box::new(callback));
++    }
++
+     /// Schedule a frame to be drawn on the next animation frame.
+     ///
+     /// This is useful for elements that need to animate continuously, such as a video player or an animated GIF.
+@@ -2789,9 +3028,9 @@ impl Window {
+     /// the platform window, then notifies observers. Normally called automatically
+     /// by the platform's resize callback, but exposed publicly for test infrastructure.
+     pub fn bounds_changed(&mut self, cx: &mut App) {
+-        self.scale_factor = self.platform_window.scale_factor();
+-        self.viewport_size = self.platform_window.content_size();
+-        self.mouse_position = self.platform_window.mouse_position();
++        self.scale_factor = self.platform_window.scale_factor() * self.ui_zoom;
++        self.viewport_size = self.platform_window.content_size().map(|v| v / self.ui_zoom);
++        self.mouse_position = self.platform_window.mouse_position().map(|v| v / self.ui_zoom);
+ 
+         self.refresh();
+ 
+@@ -2996,7 +3235,8 @@ impl Window {
+ 
+     /// Opens the native title bar context menu, useful when implementing client side decorations (Wayland and X11)
+     pub fn show_window_menu(&self, position: Point<Pixels>) {
+-        self.platform_window.show_window_menu(position)
++        self.platform_window
++            .show_window_menu(position.map(|v| v * self.ui_zoom))
+     }
+ 
+     /// Handle window movement for Linux and macOS.
+@@ -3099,6 +3339,66 @@ impl Window {
+         self.refresh();
+     }
+ 
++    /// Recur: the whole-UI zoom factor, as CSS `zoom` on the root element. The window lays out
++    /// in logical pixels of `zoom` platform points: [`Self::scale_factor`] is the display's
++    /// times the zoom and [`Self::viewport_size`] the content size over it, so every length
++    /// scales and rasterizes at the zoomed resolution. Platform input, native hit tests, IME
++    /// bounds and the window menu position convert at the boundary; anything else that places
++    /// a native view converts with [`Self::zoom_to_platform`].
++    pub fn ui_zoom(&self) -> f32 {
++        self.ui_zoom
++    }
++
++    /// Sets the whole-UI zoom factor (see [`Self::ui_zoom`]) and redraws the window.
++    pub fn set_ui_zoom(&mut self, zoom: f32, cx: &mut App) {
++        if zoom > 0. && zoom != self.ui_zoom {
++            self.ui_zoom = zoom;
++            self.bounds_changed(cx);
++        }
++    }
++
++    /// `bounds` in platform window points, for a native view laid over the window.
++    pub fn zoom_to_platform(&self, bounds: Bounds<Pixels>) -> Bounds<Pixels> {
++        let z = self.ui_zoom;
++        Bounds::new(bounds.origin.map(|v| v * z), bounds.size.map(|v| v * z))
++    }
++
++    /// Platform input in the window's logical pixels.
++    fn unzoom_input(&self, mut event: PlatformInput) -> PlatformInput {
++        let z = self.ui_zoom;
++        if z == 1. {
++            return event;
++        }
++        let at = |p: &mut Point<Pixels>| *p = p.map(|v| v / z);
++        match &mut event {
++            PlatformInput::MouseDown(e) => at(&mut e.position),
++            PlatformInput::MouseUp(e) => at(&mut e.position),
++            PlatformInput::MousePressure(e) => at(&mut e.position),
++            PlatformInput::MouseMove(e) => at(&mut e.position),
++            PlatformInput::MouseExited(e) => at(&mut e.position),
++            PlatformInput::ScrollWheel(e) => {
++                at(&mut e.position);
++                if let ScrollDelta::Pixels(d) = &mut e.delta {
++                    at(d);
++                }
++            }
++            PlatformInput::Pinch(e) => at(&mut e.position),
++            PlatformInput::Touch(e) => {
++                at(&mut e.position);
++                if let Some(p) = &mut e.predicted_position {
++                    at(p);
++                }
++            }
++            PlatformInput::FileDrop(
++                FileDropEvent::Entered { position, .. }
++                | FileDropEvent::Pending { position }
++                | FileDropEvent::Submit { position },
++            ) => at(position),
++            _ => {}
++        }
++        event
++    }
++
+     /// The size of an em for the base font of the application. Adjusting this value allows the
+     /// UI to scale, just like zooming a web page.
+     pub fn rem_size(&self) -> Pixels {
+@@ -3472,6 +3772,8 @@ impl Window {
+             }
+         }
+         self.dirty_views.clear();
++        self.dirty_outside_islands = false;
++        self.island_elements.clear();
+         self.next_frame.window_active = self.active.get();
+ 
+         // Register requested input handler with the platform window.
+@@ -3503,9 +3805,15 @@ impl Window {
+                 });
+         }
+ 
++        // The frame's lengths, before finishing it resets the text system's layout index.
++        let ends = (self.prepaint_index(), self.paint_index());
+         self.layout_engine.as_mut().unwrap().clear();
+         self.text_system().finish_frame();
+         self.next_frame.finish(&mut self.rendered_frame);
++        self.rebase_cached_view_states(ends);
++        for callback in mem::take(&mut self.after_draw_callbacks) {
++            callback(self, cx);
++        }
+ 
+         self.invalidator.set_phase(DrawPhase::Focus);
+         let previous_focus_path = self.rendered_frame.focus_path();
+@@ -3578,9 +3886,60 @@ impl Window {
+         arena_scope.exit(&cx.element_arena)
+     }
+ 
++    /// The sizes of the last frame's books (test support): accessed element states, dispatch
++    /// nodes, hitboxes and scene primitives.
++    #[cfg(any(test, feature = "test-support"))]
++    pub fn frame_sizes(&self) -> [usize; 4] {
++        let f = &self.rendered_frame;
++        [
++            f.accessed_element_states.len(),
++            f.dispatch_tree.len(),
++            f.hitboxes.len(),
++            f.scene.len(),
++        ]
++    }
++
++    /// The last frame's scene batches as labels (test support), backdrop blurs included.
++    #[cfg(any(test, feature = "test-support"))]
++    pub fn scene_batch_labels(&self) -> Vec<String> {
++        self.rendered_frame
++            .scene
++            .batches_with_backdrop_blurs()
++            .map(|batch| batch.label())
++            .collect()
++    }
++
++    /// Points every cached view's state at where this frame put it, so a later frame that
++    /// renders an ancestor again finds what it replays (a replayed root moves them all).
++    fn rebase_cached_view_states(&mut self, (prepaint_end, paint_end): (PrepaintStateIndex, PaintIndex)) {
++        // A record carried through replays is trusted only when every counter of its ranges
++        // is in order and inside the frame; otherwise its view renders again next frame.
++        let frame = &mut self.next_frame;
++        frame
++            .cached_views
++            .sort_by_key(|r| r.prepaint.start.dispatch_tree_index);
++        for record in &frame.cached_views {
++            if record.paint_pending {
++                continue;
++            }
++            let valid = within_frame(&record.prepaint, &prepaint_end)
++                && within_frame(&record.paint, &paint_end);
++            let key = (record.global_id.clone(), TypeId::of::<crate::view::ViewElementState>());
++            if let Some(state) = frame.element_states.get_mut(&key) {
++                crate::view::rebase_view_state(
++                    &mut *state.inner,
++                    record.prepaint.clone(),
++                    record.paint.clone(),
++                    valid,
++                );
++            }
++        }
++    }
++
+     fn record_entities_accessed(&mut self, cx: &mut App) {
+         let mut entities_ref = cx.entities.accessed_entities.get_mut();
+         let mut entities = mem::take(entities_ref.deref_mut());
++        self.last_accessed.clone_from(&entities);
+         let handle = self.handle;
+         cx.record_entities_accessed(
+             handle,
+@@ -3699,15 +4058,49 @@ impl Window {
+         let scale_factor = self.scale_factor();
+         #[cfg(feature = "profiler")]
+         let request_layout_start = Instant::now();
+-        let mut root_element = self.root.as_ref().unwrap().clone().into_any_element();
+-        let root_layout_id = root_element.request_layout(self, cx);
++        let replay_root = self
++            .rendered_frame
++            .root
++            .clone()
++            .filter(|(prepaint, paint, size)| {
++                *size == root_size
++                    && !self.refreshing
++                    && !self.dirty_outside_islands
++                    && !self.dirty_views.is_empty()
++                    && !self.a11y.is_active()
++                    && !self.is_inspector_picking(cx)
++                    && self.replayable(prepaint, paint)
++            });
++        let mut root_element = None;
++        let root_prepaint_start = self.prepaint_index();
+         #[cfg(feature = "profiler")]
+-        let prepaint_start = Instant::now();
+-        self.layout_engine
+-            .as_mut()
+-            .unwrap()
+-            .stretch_auto_size_to_fill(root_layout_id, root_size, scale_factor);
+-        root_element.prepaint_as_root(Point::default(), root_size.into(), self, cx);
++        let prepaint_start;
++        if let Some((prepaint, ..)) = &replay_root {
++            // Only isolated views are dirty: replay the root and draw them again in place.
++            #[cfg(feature = "profiler")]
++            {
++                prepaint_start = Instant::now();
++            }
++            cx.entities.extend_accessed(&self.last_accessed);
++            if let Some(root) = &self.root {
++                self.next_frame.replayed_views.insert(root.entity_id());
++            }
++            self.reuse_prepaint(prepaint.clone(), cx);
++        } else {
++            let mut element = self.root.as_ref().unwrap().clone().into_any_element();
++            let root_layout_id = element.request_layout(self, cx);
++            #[cfg(feature = "profiler")]
++            {
++                prepaint_start = Instant::now();
++            }
++            self.layout_engine
++                .as_mut()
++                .unwrap()
++                .stretch_auto_size_to_fill(root_layout_id, root_size, scale_factor);
++            element.prepaint_as_root(Point::default(), root_size.into(), self, cx);
++            root_element = Some(element);
++        }
++        let root_prepaint = root_prepaint_start..self.prepaint_index();
+ 
+         #[cfg(any(feature = "inspector", debug_assertions))]
+         let inspector_element = self.prepaint_inspector(_inspector_width, cx);
+@@ -3743,7 +4136,16 @@ impl Window {
+         #[cfg(feature = "profiler")]
+         let paint_start = Instant::now();
+         self.invalidator.set_phase(DrawPhase::Paint);
+-        root_element.paint(self, cx);
++        let root_paint_start = self.paint_index();
++        if let Some(mut element) = root_element {
++            element.paint(self, cx);
++        } else if let Some((_, paint, _)) = replay_root {
++            self.reuse_paint(paint, cx);
++            self.next_frame
++                .window_control_hitboxes
++                .clone_from(&self.rendered_frame.window_control_hitboxes);
++        }
++        self.next_frame.root = Some((root_prepaint, root_paint_start..self.paint_index(), root_size));
+ 
+         #[cfg(any(feature = "inspector", debug_assertions))]
+         self.paint_inspector(inspector_element, cx);
+@@ -3913,6 +4315,10 @@ impl Window {
+                 self.next_frame.dispatch_tree.set_active_node(parent_node);
+ 
+                 let prepaint_start = self.prepaint_index();
++                let floor = mem::replace(
++                    &mut self.deferred_priority_floor,
++                    self.next_frame.deferred_draws[deferred_draw_ix].priority,
++                );
+                 if let Some(mut element) = element {
+                     self.with_rendered_view(current_view, |window| {
+                         window.with_rem_size(Some(rem_size), |window| {
+@@ -3923,8 +4329,9 @@ impl Window {
+                     });
+                     self.next_frame.deferred_draws[deferred_draw_ix].element = Some(element);
+                 } else {
+-                    self.reuse_prepaint(prepaint_range);
++                    self.reuse_prepaint(prepaint_range, cx);
+                 }
++                self.deferred_priority_floor = floor;
+                 let prepaint_end = self.prepaint_index();
+                 self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
+                     prepaint_start..prepaint_end;
+@@ -3966,7 +4373,7 @@ impl Window {
+                     })
+                 })
+             } else {
+-                self.reuse_paint(deferred_draw.paint_range.clone());
++                self.reuse_paint(deferred_draw.paint_range.clone(), cx);
+             }
+             let paint_end = self.paint_index();
+             deferred_draw.paint_range = paint_start..paint_end;
+@@ -3982,6 +4389,99 @@ impl Window {
+         sorted_indices
+     }
+ 
++    /// Whether a cached view's recorded ranges fit the previous frame, so replaying them reads
++    /// what they recorded (each counter in order and within that frame's length). A range that
++    /// does not fit renders the view instead: a replay never reads past the frame it copies.
++    pub(crate) fn replayable(
++        &self,
++        prepaint: &Range<PrepaintStateIndex>,
++        paint: &Range<PaintIndex>,
++    ) -> bool {
++        let f = &self.rendered_frame;
++        let prepaint_end = PrepaintStateIndex {
++            hitboxes_index: f.hitboxes.len(),
++            tooltips_index: f.tooltip_requests.len(),
++            deferred_draws_index: f.deferred_draws.len(),
++            dispatch_tree_index: f.dispatch_tree.len(),
++            accessed_element_states_index: f.accessed_element_states.len(),
++            line_layout_index: prepaint.end.line_layout_index.clone(),
++        };
++        let paint_end = PaintIndex {
++            scene_index: f.scene.len(),
++            #[cfg(any(test, feature = "test-support"))]
++            debug_bounds_index: f.debug_bounds_records.len(),
++            mouse_listeners_index: f.mouse_listeners.len(),
++            input_handlers_index: f.input_handlers.len(),
++            cursor_styles_index: f.cursor_styles.len(),
++            accessed_element_states_index: f.accessed_element_states.len(),
++            tab_handle_index: f.tab_stops.paint_index(),
++            line_layout_index: paint.end.line_layout_index.clone(),
++        };
++        within_frame(prepaint, &prepaint_end)
++            && within_frame(paint, &paint_end)
++            && self.islands_in_order(prepaint, paint)
++    }
++
++    /// Whether the dirty isolated views a replay of these ranges draws again (those
++    /// [`Self::reuse_prepaint`] picks) sit in order inside them, in every counter of both
++    /// passes, so the runs copied between them never invert.
++    fn islands_in_order(
++        &self,
++        prepaint: &Range<PrepaintStateIndex>,
++        paint: &Range<PaintIndex>,
++    ) -> bool {
++        if self.dirty_views.is_empty() {
++            return true;
++        }
++        let records = &self.rendered_frame.cached_views;
++        let (a, b) = (prepaint.start.dispatch_tree_index, prepaint.end.dispatch_tree_index);
++        let mut holes: Vec<&CachedViewRecord> = records
++            .iter()
++            .filter(|r| {
++                r.island
++                    .as_ref()
++                    .is_some_and(|i| self.dirty_views.contains(&i.entity_id()))
++                    && a < r.prepaint.start.dispatch_tree_index
++                    && r.prepaint.end.dispatch_tree_index <= b
++            })
++            .collect();
++        if holes.is_empty() {
++            return true;
++        }
++        holes.sort_by_key(|r| r.prepaint.start.dispatch_tree_index);
++        let mut outer = 0;
++        holes.retain(|r| {
++            let keep = r.prepaint.start.dispatch_tree_index >= outer;
++            if keep {
++                outer = r.prepaint.end.dispatch_tree_index;
++            }
++            keep
++        });
++        let le = |x: &[usize], y: &[usize]| x.iter().zip(y).all(|(p, q)| p <= q);
++        let chain = |range: (&[usize], &[usize]), inner: Vec<(SmallVec<[usize; 12]>, SmallVec<[usize; 12]>)>| {
++            let mut at: SmallVec<[usize; 12]> = SmallVec::from_slice(range.0);
++            for (s, e) in &inner {
++                if !le(&at, s) || !le(s, e) {
++                    return false;
++                }
++                at = e.clone();
++            }
++            le(&at, range.1)
++        };
++        let pre = holes
++            .iter()
++            .map(|r| (r.prepaint.start.parts(), r.prepaint.end.parts()))
++            .collect();
++        let mut by_paint: Vec<&&CachedViewRecord> = holes.iter().collect();
++        by_paint.sort_by_key(|r| r.paint.start.scene_index);
++        let pnt = by_paint
++            .iter()
++            .map(|r| (r.paint.start.parts(), r.paint.end.parts()))
++            .collect();
++        chain((&prepaint.start.parts(), &prepaint.end.parts()), pre)
++            && chain((&paint.start.parts(), &paint.end.parts()), pnt)
++    }
++
+     pub(crate) fn prepaint_index(&self) -> PrepaintStateIndex {
+         PrepaintStateIndex {
+             hitboxes_index: self.next_frame.hitboxes.len(),
+@@ -3993,7 +4493,105 @@ impl Window {
+         }
+     }
+ 
+-    pub(crate) fn reuse_prepaint(&mut self, range: Range<PrepaintStateIndex>) {
++    /// Replays `range` of the previous frame's prepaint, drawing any dirty isolated view in it
++    /// again in place.
++    pub(crate) fn reuse_prepaint(&mut self, range: Range<PrepaintStateIndex>, cx: &mut App) {
++        // The records inside `range` (sorted by where they start, `rebase_cached_view_states`).
++        let records = &self.rendered_frame.cached_views;
++        let (a, b) = (range.start.dispatch_tree_index, range.end.dispatch_tree_index);
++        let lo = records.partition_point(|r| r.prepaint.start.dispatch_tree_index < a);
++        let hi = lo + records[lo..].partition_point(|r| r.prepaint.start.dispatch_tree_index < b);
++        let mut holes: Vec<usize> = (lo..hi)
++            .filter(|&ix| {
++                let record = &self.rendered_frame.cached_views[ix];
++                let p = &record.prepaint;
++                record
++                    .island
++                    .as_ref()
++                    .is_some_and(|island| self.dirty_views.contains(&island.entity_id()))
++                    && range.start.dispatch_tree_index < p.start.dispatch_tree_index
++                    && p.end.dispatch_tree_index <= range.end.dispatch_tree_index
++            })
++            .collect();
++        let mut outer_end = 0;
++        holes.retain(|&ix| {
++            let p = &self.rendered_frame.cached_views[ix].prepaint;
++            let outermost = p.start.dispatch_tree_index >= outer_end;
++            if outermost {
++                outer_end = p.end.dispatch_tree_index;
++            }
++            outermost
++        });
++
++        let mut reused = crate::ReusedSubtree::default();
++        let mut segments = Vec::new();
++        let mut at = range.start.clone();
++        for ix in holes {
++            let record = &self.rendered_frame.cached_views[ix];
++            let (hole, island) = (record.prepaint.clone(), record.island.clone().unwrap());
++            self.reuse_prepaint_run(at..hole.start.clone(), &mut reused, &mut segments);
++            self.next_frame
++                .dispatch_tree
++                .reuse_hole(&mut reused, DispatchNodeId::new(hole.start.dispatch_tree_index - 1));
++            let start = self.prepaint_index();
++            let (element, new_record) = island.prepaint(self, cx);
++            self.island_elements.push((ix, element, new_record));
++            segments.push((hole.clone(), start..self.prepaint_index(), false));
++            at = hole.end;
++        }
++        self.reuse_prepaint_run(at..range.end.clone(), &mut reused, &mut segments);
++        self.next_frame.dispatch_tree.finish_reuse(&mut reused);
++        if reused.contains_focus() {
++            self.next_frame.focus = self.focus;
++        }
++
++        // Carry the records of the cached views replayed, at their new place.
++        let drawn = segments
++            .iter()
++            .filter(|(.., copied)| !copied)
++            .map(|(old, ..)| old.clone())
++            .collect::<SmallVec<[_; 2]>>();
++        for ix in lo..hi {
++            let record = &self.rendered_frame.cached_views[ix];
++            let p = &record.prepaint;
++            let inside = |r: &Range<PrepaintStateIndex>| {
++                r.start.dispatch_tree_index <= p.start.dispatch_tree_index
++                    && p.end.dispatch_tree_index <= r.end.dispatch_tree_index
++            };
++            if !inside(&range) || drawn.iter().any(inside) {
++                continue;
++            }
++            // The copied run after every view drawn again that ends before the index.
++            let run = |x: usize| {
++                segments
++                    .iter()
++                    .filter(|(old, _, copied)| !copied && old.end.dispatch_tree_index <= x)
++                    .count()
++            };
++            let prepaint = map_in_run(&segments, run(p.start.dispatch_tree_index), &p.start)
++                ..map_in_run(&segments, run(p.end.dispatch_tree_index), &p.end);
++            let (global_id, paint, opacity, island, accessed) = (
++                record.global_id.clone(),
++                record.paint.clone(),
++                record.opacity,
++                record.island.clone(),
++                record.accessed.clone(),
++            );
++            let new = self.next_frame.push_cached_view(global_id, prepaint, island, accessed);
++            let new = &mut self.next_frame.cached_views[new];
++            new.paint = paint;
++            new.paint_pending = true;
++            new.opacity = opacity;
++        }
++    }
++
++    fn reuse_prepaint_run(
++        &mut self,
++        range: Range<PrepaintStateIndex>,
++        reused_subtree: &mut crate::ReusedSubtree,
++        segments: &mut Vec<(Range<PrepaintStateIndex>, Range<PrepaintStateIndex>, bool)>,
++    ) {
++        let start = self.prepaint_index();
+         self.next_frame.hitboxes.extend(
+             self.rendered_frame.hitboxes[range.start.hitboxes_index..range.end.hitboxes_index]
+                 .iter()
+@@ -4011,19 +4609,17 @@ impl Window {
+                 .iter()
+                 .map(|(id, type_id)| (id.clone(), *type_id)),
+         );
+-        self.text_system
+-            .reuse_layouts(range.start.line_layout_index..range.end.line_layout_index);
++        self.text_system.reuse_layouts(
++            range.start.line_layout_index.clone()..range.end.line_layout_index.clone(),
++        );
+ 
+-        let reused_subtree = self.next_frame.dispatch_tree.reuse_subtree(
++        self.next_frame.dispatch_tree.reuse_run(
++            reused_subtree,
+             range.start.dispatch_tree_index..range.end.dispatch_tree_index,
+             &mut self.rendered_frame.dispatch_tree,
+             self.focus,
+         );
+ 
+-        if reused_subtree.contains_focus() {
+-            self.next_frame.focus = self.focus;
+-        }
+-
+         self.next_frame.deferred_draws.extend(
+             self.rendered_frame.deferred_draws
+                 [range.start.deferred_draws_index..range.end.deferred_draws_index]
+@@ -4042,6 +4638,7 @@ impl Window {
+                     paint_range: deferred_draw.paint_range.clone(),
+                 }),
+         );
++        segments.push((range, start..self.prepaint_index(), true));
+     }
+ 
+     pub(crate) fn paint_index(&self) -> PaintIndex {
+@@ -4058,7 +4655,78 @@ impl Window {
+         }
+     }
+ 
+-    pub(crate) fn reuse_paint(&mut self, range: Range<PaintIndex>) {
++    /// Replays `range` of the previous frame's paint, painting the isolated views
++    /// [`Self::reuse_prepaint`] drew again in their place.
++    pub(crate) fn reuse_paint(&mut self, range: Range<PaintIndex>, cx: &mut App) {
++        let mut segments = Vec::new();
++        let mut at = range.start.clone();
++        let islands = mem::take(&mut self.island_elements);
++        let (mut inside, rest): (Vec<_>, Vec<_>) = islands.into_iter().partition(|(ix, ..)| {
++            index_within(&range, &self.rendered_frame.cached_views[*ix].paint)
++        });
++        // Islands were collected in prepaint order; their paint can come in another (a later
++        // sibling painted first, a deferred draw), and the runs between them must not invert.
++        inside.sort_by_key(|(ix, _, record)| {
++            (
++                self.rendered_frame.cached_views[*ix].paint.start.scene_index,
++                self.next_frame.cached_views[*record].prepaint.start.dispatch_tree_index,
++            )
++        });
++        self.island_elements = rest;
++        // Each island drawn again: its old paint range and its new place in the tree.
++        let mut drawn = Vec::new();
++        for (ix, mut element, record) in inside {
++            let old = &self.rendered_frame.cached_views[ix];
++            let (hole, opacity, island) = (old.paint.clone(), old.opacity, old.island.clone().unwrap());
++            self.reuse_paint_run(at..hole.start.clone(), &mut segments);
++            let start = self.paint_index();
++            island.paint(&mut element, record, opacity, self, cx);
++            segments.push((hole.clone(), start..self.paint_index(), false));
++            let tree = &self.next_frame.cached_views[record].prepaint;
++            drawn.push((hole.clone(), tree.end.dispatch_tree_index));
++            at = hole.end;
++        }
++        self.reuse_paint_run(at..range.end.clone(), &mut segments);
++        for ix in 0..self.next_frame.cached_views.len() {
++            let record = &self.next_frame.cached_views[ix];
++            if record.paint_pending && index_within(&range, &record.paint) {
++                // The copied run after every island painted before the index: by paint position,
++                // and by tree order where an island that painted nothing touches it.
++                let (start, end) = (&record.paint.start, &record.paint.end);
++                let (tree_start, tree_end) = (
++                    record.prepaint.start.dispatch_tree_index,
++                    record.prepaint.end.dispatch_tree_index,
++                );
++                let after = |at: usize, hole_at: usize, tree: usize, hole_tree: usize| {
++                    if at != hole_at { at > hole_at } else { tree >= hole_tree }
++                };
++                let start_run = drawn
++                    .iter()
++                    .filter(|(hole, hole_tree)| {
++                        after(start.scene_index, hole.start.scene_index, tree_start, *hole_tree)
++                    })
++                    .count();
++                let end_run = drawn
++                    .iter()
++                    .filter(|(hole, hole_tree)| {
++                        after(end.scene_index, hole.end.scene_index, tree_end, *hole_tree)
++                    })
++                    .count();
++                let paint = map_in_run(&segments, start_run, start)
++                    ..map_in_run(&segments, end_run, end);
++                let record = &mut self.next_frame.cached_views[ix];
++                record.paint = paint;
++                record.paint_pending = false;
++            }
++        }
++    }
++
++    fn reuse_paint_run(
++        &mut self,
++        range: Range<PaintIndex>,
++        segments: &mut Vec<(Range<PaintIndex>, Range<PaintIndex>, bool)>,
++    ) {
++        let start = self.paint_index();
+         // Cached elements still exist in the frame even when their paint methods don't run.
+         #[cfg(any(test, feature = "test-support"))]
+         for (selector, bounds) in &self.rendered_frame.debug_bounds_records
+@@ -4096,12 +4764,14 @@ impl Window {
+                 [range.start.tab_handle_index..range.end.tab_handle_index],
+         );
+ 
+-        self.text_system
+-            .reuse_layouts(range.start.line_layout_index..range.end.line_layout_index);
++        self.text_system.reuse_layouts(
++            range.start.line_layout_index.clone()..range.end.line_layout_index.clone(),
++        );
+         self.next_frame.scene.replay(
+             range.start.scene_index..range.end.scene_index,
+             &self.rendered_frame.scene,
+         );
++        segments.push((range, start..self.paint_index(), true));
+     }
+ 
+     /// Push a text style onto the stack, and call a function with that style active.
+@@ -4517,7 +5187,7 @@ impl Window {
+             text_style_stack: self.text_style_stack.clone(),
+             content_mask,
+             rem_size: self.rem_size(),
+-            priority,
++            priority: priority.max(self.deferred_priority_floor),
+             element: Some(element),
+             absolute_offset,
+             prepaint_range: PrepaintStateIndex::default()..PrepaintStateIndex::default(),
+@@ -4525,6 +5195,41 @@ impl Window {
+         });
+     }
+ 
++    /// Recur: runs `f` with a panic contained (`unwind::contain`). The stacks `f` may have
++    /// pushed (element ids, text styles, offsets, opacity, content masks, rem sizes, image
++    /// caches, rendered entities, scene layers) return to their depths before `f`.
++    pub(crate) fn contain<R>(
++        &mut self,
++        site: &str,
++        cx: &mut App,
++        f: impl FnOnce(&mut Self, &mut App) -> R,
++    ) -> Option<R> {
++        let ids = self.element_id_stack.len();
++        let text = self.text_style_stack.len();
++        let entities = self.rendered_entity_stack.len();
++        let offsets = self.element_offset_stack.len();
++        let opacity = self.element_opacity;
++        let masks = self.content_mask_stack.len();
++        let rems = self.rem_size_override_stack.len();
++        let images = self.image_cache_stack.len();
++        let layers = self.next_frame.scene.layer_depth();
++        let out = crate::unwind::contain(site, || f(self, cx));
++        if out.is_none() {
++            self.element_id_stack.truncate(ids);
++            self.text_style_stack.truncate(text);
++            self.rendered_entity_stack.truncate(entities);
++            self.element_offset_stack.truncate(offsets);
++            self.element_opacity = opacity;
++            self.content_mask_stack.truncate(masks);
++            self.rem_size_override_stack.truncate(rems);
++            self.image_cache_stack.truncate(images);
++            while self.next_frame.scene.layer_depth() > layers {
++                self.next_frame.scene.pop_layer();
++            }
++        }
++        out
++    }
++
+     /// Creates a new painting layer for the specified bounds. A "layer" is a batch
+     /// of geometry that are non-overlapping and have the same draw order. This is typically used
+     /// for performance reasons.
+@@ -4633,6 +5338,78 @@ impl Window {
+         }
+     }
+ 
++    /// Recur: whether the last frame's topmost hitbox at `position` is
++    /// [`HitboxBehavior::Native`], so the platform passes mouse events there to the native view.
++    pub fn native_hit_test(&self, position: Point<Pixels>) -> bool {
++        self.rendered_frame
++            .hitboxes
++            .iter()
++            .rev()
++            .find(|h| h.bounds.intersect(&h.content_mask.bounds).contains(&position))
++            .is_some_and(|h| h.behavior == HitboxBehavior::Native)
++    }
++
++    /// Recur: makes `bounds` (within the content mask) fully transparent, replacing what was
++    /// painted under it, so a native view behind the window's drawing shows through. What is
++    /// painted over it later composites as usual. Renderers without holes skip it.
++    ///
++    /// This method should only be called as part of the paint phase of element drawing.
++    pub fn paint_hole(&mut self, bounds: Bounds<Pixels>) {
++        self.invalidator.debug_assert_paint();
++
++        self.next_frame.scene.insert_primitive(crate::scene::Hole {
++            order: 0,
++            bounds: self.snap_bounds(bounds),
++            content_mask: self.snapped_content_mask(),
++        });
++    }
++
++    /// Recur: the largest radius of the backdrop blurs the draw in progress painted over a hole
++    /// at `bounds`. Renderers cannot sample the native view behind a hole, so it blurs itself.
++    /// Call it from [`Self::after_next_draw`].
++    pub fn backdrop_blur_over_hole(&self, bounds: Bounds<Pixels>) -> Option<Pixels> {
++        let scene = &self.next_frame.scene;
++        let bounds = self.snap_bounds(bounds);
++        let hole = scene
++            .holes
++            .iter()
++            .filter(|h| h.bounds.intersects(&bounds))
++            .map(|h| h.order)
++            .min()?;
++        scene
++            .backdrop_blurs
++            .iter()
++            .filter(|b| {
++                b.order > hole && b.bounds.intersect(&b.content_mask.bounds).intersects(&bounds)
++            })
++            .map(|b| b.blur_radius.0)
++            .reduce(f32::max)
++            .map(|r| px(r / self.scale_factor()))
++    }
++
++    /// Recur: blurs what is painted under `bounds` by a Gaussian of standard deviation
++    /// `blur_radius`, clipped to `corner_radii`, as CSS `backdrop-filter: blur()`. Paint it
++    /// before the element's background. Renderers without backdrop blur skip it.
++    ///
++    /// This method should only be called as part of the paint phase of element drawing.
++    pub fn paint_backdrop_blur(
++        &mut self,
++        bounds: Bounds<Pixels>,
++        corner_radii: Corners<Pixels>,
++        blur_radius: Pixels,
++    ) {
++        self.invalidator.debug_assert_paint();
++
++        let scale_factor = self.scale_factor();
++        self.next_frame.scene.insert_primitive(BackdropBlur {
++            order: 0,
++            blur_radius: blur_radius.scale(scale_factor),
++            bounds: self.snap_bounds(bounds),
++            corner_radii: corner_radii.scale(scale_factor),
++            content_mask: self.snapped_content_mask(),
++        });
++    }
++
+     fn largest_border_interior(quad: &Quad) -> Bounds<ScaledPixels> {
+         let radii = &quad.corner_radii;
+         let widths = &quad.border_widths;
+@@ -5268,6 +6045,17 @@ impl Window {
+         self.layout_engine = Some(layout_engine);
+     }
+ 
++    /// The views being drawn, outermost first, ending with [`Window::current_view`].
++    pub fn view_stack(&self) -> &[EntityId] {
++        &self.rendered_entity_stack
++    }
++
++    /// Whether the frame being drawn replayed `view` (a cached view reused from the last
++    /// frame, its elements' prepaint and paint not run) rather than rendering it.
++    pub fn replayed_view(&self, view: EntityId) -> bool {
++        self.next_frame.replayed_views.contains(&view)
++    }
++
+     /// Obtain the bounds computed for the given LayoutId relative to the window. This method will usually be invoked by
+     /// GPUI itself automatically in order to pass your element its `Bounds` automatically.
+     ///
+@@ -5947,7 +6735,9 @@ impl Window {
+         // special purposes, such as detecting events outside of a given Bounds.
+         for listener in &mut mouse_listeners {
+             let listener = listener.as_mut().unwrap();
+-            listener(event, DispatchPhase::Capture, self, cx);
++            crate::unwind::contain("a mouse listener", || {
++                listener(event, DispatchPhase::Capture, self, cx)
++            });
+             if !cx.propagate_event {
+                 break;
+             }
+@@ -5957,7 +6747,9 @@ impl Window {
+         if cx.propagate_event {
+             for listener in mouse_listeners.iter_mut().rev() {
+                 let listener = listener.as_mut().unwrap();
+-                listener(event, DispatchPhase::Bubble, self, cx);
++                crate::unwind::contain("a mouse listener", || {
++                    listener(event, DispatchPhase::Bubble, self, cx)
++                });
+                 if !cx.propagate_event {
+                     break;
+                 }
+@@ -6268,7 +7060,9 @@ impl Window {
+             let node = self.rendered_frame.dispatch_tree.node(*node_id);
+ 
+             for key_listener in node.key_listeners.clone() {
+-                key_listener(event, DispatchPhase::Capture, self, cx);
++                crate::unwind::contain("a key listener", || {
++                    key_listener(event, DispatchPhase::Capture, self, cx)
++                });
+                 if !cx.propagate_event {
+                     return;
+                 }
+@@ -6280,7 +7074,9 @@ impl Window {
+             // Handle low level key events
+             let node = self.rendered_frame.dispatch_tree.node(*node_id);
+             for key_listener in node.key_listeners.clone() {
+-                key_listener(event, DispatchPhase::Bubble, self, cx);
++                crate::unwind::contain("a key listener", || {
++                    key_listener(event, DispatchPhase::Bubble, self, cx)
++                });
+                 if !cx.propagate_event {
+                     return;
+                 }
+@@ -6300,7 +7096,7 @@ impl Window {
+         for node_id in dispatch_path.iter().rev() {
+             let node = self.rendered_frame.dispatch_tree.node(*node_id);
+             for listener in node.modifiers_changed_listeners.clone() {
+-                listener(event, self, cx);
++                crate::unwind::contain("a modifiers listener", || listener(event, self, cx));
+                 if !cx.propagate_event {
+                     return;
+                 }
+@@ -6503,7 +7299,9 @@ impl Window {
+             for listener in &global_listeners {
+                 #[cfg(feature = "profiler")]
+                 self.window_profiler.begin_action_handler(action, cx);
+-                listener(action.as_any(), DispatchPhase::Capture, cx);
++                crate::unwind::contain("an action listener", || {
++                    listener(action.as_any(), DispatchPhase::Capture, cx)
++                });
+                 #[cfg(feature = "profiler")]
+                 self.window_profiler.end_action_handler();
+                 if !cx.propagate_event {
+@@ -6537,7 +7335,9 @@ impl Window {
+                 if action_type == any_action.type_id() {
+                     #[cfg(feature = "profiler")]
+                     self.window_profiler.begin_action_handler(action, cx);
+-                    listener(any_action, DispatchPhase::Capture, self, cx);
++                    crate::unwind::contain("an action listener", || {
++                        listener(any_action, DispatchPhase::Capture, self, cx)
++                    });
+                     #[cfg(feature = "profiler")]
+                     self.window_profiler.end_action_handler();
+ 
+@@ -6561,7 +7361,9 @@ impl Window {
+                     cx.propagate_event = false; // Actions stop propagation by default during the bubble phase
+                     #[cfg(feature = "profiler")]
+                     self.window_profiler.begin_action_handler(action, cx);
+-                    listener(any_action, DispatchPhase::Bubble, self, cx);
++                    crate::unwind::contain("an action listener", || {
++                        listener(any_action, DispatchPhase::Bubble, self, cx)
++                    });
+                     #[cfg(feature = "profiler")]
+                     self.window_profiler.end_action_handler();
+ 
+@@ -6582,7 +7384,9 @@ impl Window {
+ 
+                 #[cfg(feature = "profiler")]
+                 self.window_profiler.begin_action_handler(action, cx);
+-                listener(action.as_any(), DispatchPhase::Bubble, cx);
++                crate::unwind::contain("an action listener", || {
++                    listener(action.as_any(), DispatchPhase::Bubble, cx)
++                });
+                 #[cfg(feature = "profiler")]
+                 self.window_profiler.end_action_handler();
+                 if !cx.propagate_event {
+@@ -7317,7 +8121,9 @@ impl Window {
+         state_type: TypeId,
+     ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
+         let key = (global_id.clone(), state_type);
+-        self.next_frame.accessed_element_states.push(key.clone());
++        if !mem::take(&mut self.state_recorded_already) {
++            self.next_frame.accessed_element_states.push(key.clone());
++        }
+         let state = self
+             .next_frame
+             .element_states

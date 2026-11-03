@@ -16,7 +16,7 @@ Tab trigger and/or keyEquivalent expansion. Shared ids and keys:
 | `body` | yes | VS Code placeholders |
 | `order` | | Palette order among snippets |
 
-`*` — set `tabTrigger` and/or `keyEquivalent` (at least one).
+`*`: set `tabTrigger` and/or `keyEquivalent` (at least one).
 
 If the word before the caret equals a matching `tabTrigger`, Tab expands.
 Typing a trigger prefix also lists snippets in autocomplete (above buffer

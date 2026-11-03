@@ -1,0 +1,40 @@
+[package]
+name = "recur-view-prs"
+description = "Pull requests: the PR list dashboard, PR detail, the titlebar review and merge actions, and the review modal."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-forge.workspace = true
+recur-code.workspace = true
+recur-view-core.workspace = true
+recur-view-widgets.workspace = true
+recur-view-review.workspace = true
+chrono.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+recur-view-chat.workspace = true
+recur-view-observatory.workspace = true
+recur-view-workspace.workspace = true
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["fake"] }
+recur-app.workspace = true
+pretty_assertions.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+base64.workspace = true
+
+[lints]
+workspace = true

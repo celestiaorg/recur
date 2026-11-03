@@ -1,0 +1,292 @@
+{
+  "scenes": [
+    {
+      "name": "armed-button/default",
+      "width": 420,
+      "height": 140,
+      "theme": "default"
+    },
+    {
+      "name": "buttons/default",
+      "width": 620,
+      "height": 220,
+      "theme": "default"
+    },
+    {
+      "name": "buttons/paper",
+      "width": 620,
+      "height": 220,
+      "theme": "paper"
+    },
+    {
+      "name": "icon-picker/closed",
+      "width": 260,
+      "height": 64,
+      "theme": "default"
+    },
+    {
+      "name": "icon-picker/open",
+      "width": 360,
+      "height": 420,
+      "theme": "default"
+    },
+    {
+      "name": "icons/app",
+      "width": 520,
+      "height": 220,
+      "theme": "default"
+    },
+    {
+      "name": "icons/file",
+      "width": 400,
+      "height": 64,
+      "theme": "default"
+    },
+    {
+      "name": "icons/file-light",
+      "width": 400,
+      "height": 64,
+      "theme": "paper"
+    },
+    {
+      "name": "icons/lucide",
+      "width": 400,
+      "height": 110,
+      "theme": "default"
+    },
+    {
+      "name": "icons/provider",
+      "width": 160,
+      "height": 40,
+      "theme": "default"
+    },
+    {
+      "name": "kbd/default",
+      "width": 360,
+      "height": 130,
+      "theme": "default"
+    },
+    {
+      "name": "overlays/misc",
+      "width": 620,
+      "height": 260,
+      "theme": "default"
+    },
+    {
+      "name": "overlays/misc-paper",
+      "width": 620,
+      "height": 260,
+      "theme": "paper"
+    },
+    {
+      "name": "overlays/modal",
+      "width": 720,
+      "height": 400,
+      "theme": "default"
+    },
+    {
+      "name": "overlays/palette",
+      "width": 700,
+      "height": 420,
+      "theme": "default"
+    },
+    {
+      "name": "project-pic/default",
+      "width": 200,
+      "height": 42,
+      "theme": "default"
+    },
+    {
+      "name": "resize-handle/focus",
+      "width": 360,
+      "height": 160,
+      "theme": "default"
+    },
+    {
+      "name": "resize-handle/hover",
+      "width": 360,
+      "height": 160,
+      "theme": "default"
+    },
+    {
+      "name": "ring/default",
+      "width": 300,
+      "height": 124,
+      "theme": "default"
+    },
+    {
+      "name": "scrollbar/default",
+      "width": 380,
+      "height": 192,
+      "theme": "default"
+    },
+    {
+      "name": "scrollbar/paper",
+      "width": 380,
+      "height": 192,
+      "theme": "paper"
+    },
+    {
+      "name": "select/closed",
+      "width": 620,
+      "height": 64,
+      "theme": "default"
+    },
+    {
+      "name": "select/closed-paper",
+      "width": 620,
+      "height": 64,
+      "theme": "paper"
+    },
+    {
+      "name": "select/focus",
+      "width": 320,
+      "height": 64,
+      "theme": "default"
+    },
+    {
+      "name": "select/multiple",
+      "width": 320,
+      "height": 200,
+      "theme": "default"
+    },
+    {
+      "name": "select/open",
+      "width": 320,
+      "height": 340,
+      "theme": "default"
+    },
+    {
+      "name": "select/searchable",
+      "width": 320,
+      "height": 340,
+      "theme": "default"
+    },
+    {
+      "name": "settings-group/default",
+      "width": 444,
+      "height": 540,
+      "theme": "default"
+    },
+    {
+      "name": "settings-group/paper",
+      "width": 444,
+      "height": 540,
+      "theme": "paper"
+    },
+    {
+      "name": "tab-strip/default",
+      "width": 640,
+      "height": 128,
+      "theme": "default"
+    },
+    {
+      "name": "tab-strip/hover",
+      "width": 640,
+      "height": 128,
+      "theme": "default"
+    },
+    {
+      "name": "tab-strip/overflow",
+      "width": 320,
+      "height": 48,
+      "theme": "default"
+    },
+    {
+      "name": "tab-strip/paper",
+      "width": 640,
+      "height": 128,
+      "theme": "paper"
+    },
+    {
+      "name": "text/calibration",
+      "width": 420,
+      "height": 330,
+      "theme": "default"
+    },
+    {
+      "name": "toasts/default",
+      "width": 400,
+      "height": 380,
+      "theme": "default"
+    },
+    {
+      "name": "toasts/paper",
+      "width": 400,
+      "height": 380,
+      "theme": "paper"
+    },
+    {
+      "name": "toggles/catppuccin-latte",
+      "width": 320,
+      "height": 56,
+      "theme": "catppuccin-latte"
+    },
+    {
+      "name": "toggles/default",
+      "width": 320,
+      "height": 56,
+      "theme": "default"
+    },
+    {
+      "name": "tokens/catppuccin-latte",
+      "width": 300,
+      "height": 180,
+      "theme": "catppuccin-latte"
+    },
+    {
+      "name": "tokens/catppuccin-mocha",
+      "width": 300,
+      "height": 180,
+      "theme": "catppuccin-mocha"
+    },
+    {
+      "name": "tokens/coolglow",
+      "width": 300,
+      "height": 180,
+      "theme": "coolglow"
+    },
+    {
+      "name": "tokens/default",
+      "width": 300,
+      "height": 180,
+      "theme": "default"
+    },
+    {
+      "name": "tokens/nord",
+      "width": 300,
+      "height": 180,
+      "theme": "nord"
+    },
+    {
+      "name": "tokens/paper",
+      "width": 300,
+      "height": 180,
+      "theme": "paper"
+    },
+    {
+      "name": "tokens/slate",
+      "width": 300,
+      "height": 180,
+      "theme": "slate"
+    },
+    {
+      "name": "tooltip/above",
+      "width": 360,
+      "height": 160,
+      "theme": "default"
+    },
+    {
+      "name": "tooltip/below",
+      "width": 360,
+      "height": 160,
+      "theme": "default"
+    },
+    {
+      "name": "tooltip/paper",
+      "width": 360,
+      "height": 160,
+      "theme": "paper"
+    }
+  ]
+}

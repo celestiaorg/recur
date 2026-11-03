@@ -1,0 +1,550 @@
+{
+  "agentOptionsJSON": "{\"model\":{\"id\":\"composer-2.5\",\"params\":[{\"id\":\"fast\",\"value\":\"true\"}]},\"apiKey\":\"sk\",\"name\":\"W-CO\",\"local\":{\"cwd\":[\"/tmp/wt\"],\"settingSources\":[\"SETTING_SOURCE_MDM\"],\"sandboxOptions\":{\"enabled\":false}},\"mcpServers\":{\"fs\":{\"stdio\":{\"command\":\"npx\",\"args\":[\"-y\"],\"env\":{\"A\":\"1\",\"B\":\"2\"}}},\"lin\":{\"http\":{\"type\":\"HTTP_MCP_TRANSPORT_TYPE_HTTP\",\"url\":\"https://l\",\"headers\":{\"Authorization\":\"Bearer x\"}}},\"recur\":{\"http\":{\"type\":\"HTTP_MCP_TRANSPORT_TYPE_HTTP\",\"url\":\"http://x/tok/mcp?a=\\u003cb\\u003e\\u0026c\"}}},\"mode\":\"plan\"}",
+  "anchors": [
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new JE(l):new NP(l,a);",
+      "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=(l.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===a?new JE(l):new NP(l,a));"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new GE(l):new DP(l,a);",
+      "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=(l.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===a?new GE(l):new DP(l,a));"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new OS(l):new dx(l,a);",
+      "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=(l.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===a?new OS(l):new dx(l,a));"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new MS(l):new lx(l,a);",
+      "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=(l.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===a?new MS(l):new lx(l,a));"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Pb(n):new yx(n,m)",
+      "getAgentSkills:r.workspaceServices.getAgentSkills};n.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})};return void 0===m?new Pb(n):new yx(n,m)"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Yw(n):new BE(n,m)",
+      "getAgentSkills:r.workspaceServices.getAgentSkills};n.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})};return void 0===m?new Yw(n):new BE(n,m)"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Bw(n):new ex(n,m)",
+      "getAgentSkills:r.workspaceServices.getAgentSkills};n.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})};return void 0===m?new Bw(n):new ex(n,m)"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new $y(n):new $E(n,m)",
+      "getAgentSkills:r.workspaceServices.getAgentSkills};n.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})};return void 0===m?new $y(n):new $E(n,m)"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===m?new Wv(n):new zk(n,m)",
+      "getAgentSkills:r.workspaceServices.getAgentSkills};n.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})};return void 0===m?new Wv(n):new zk(n,m)"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===b?new n.DvK(o):new l(o,b)",
+      "getAgentSkills:r.workspaceServices.getAgentSkills};o.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})};return void 0===b?new n.DvK(o):new l(o,b)"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills};return void 0===b?new n.Dv(o):new l(o,b)",
+      "getAgentSkills:r.workspaceServices.getAgentSkills};o.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})};return void 0===b?new n.Dv(o):new l(o,b)"
+    ]
+  ],
+  "attributionConfig": "{\n  \"attributeCommitsToAgent\": true,\n  \"attributePRsToAgent\": false\n}\n",
+  "attributionEntrypointRel": "dist/bin/cursor-sdk-bridge.js",
+  "attributionPreloadRel": "dist/recur-attribution-provider.mjs",
+  "attributionProviderMarker": "__recurAttributionConfigProvider",
+  "bridgeArchivePrefix": "cursor_sdk/_vendor/bridge/",
+  "connectErrors": [
+    [
+      "{\"code\":\"internal\",\"message\":\"internal error\",\"details\":[{\"x\":1}]}",
+      {
+        "code": "internal",
+        "conflict": false,
+        "details": "[{\"x\":1}]",
+        "error": "cursor bridge: [internal] internal error",
+        "message": "internal error",
+        "raw": "{\"code\":\"internal\",\"message\":\"internal error\",\"details\":[{\"x\":1}]}",
+        "transient": true,
+        "unauth": false,
+        "unimpl": false
+      }
+    ],
+    [
+      "{}",
+      null
+    ],
+    [
+      "not-json",
+      null
+    ],
+    [
+      "{\"code\":5}",
+      null
+    ],
+    [
+      "{\"message\":\"m\"}",
+      {
+        "code": "",
+        "conflict": false,
+        "details": "",
+        "error": "m",
+        "message": "m",
+        "raw": "{\"message\":\"m\"}",
+        "transient": false,
+        "unauth": false,
+        "unimpl": false
+      }
+    ],
+    [
+      "null",
+      null
+    ],
+    [
+      "[]",
+      null
+    ],
+    [
+      "  {\"code\":\"unavailable\",\"message\":\"x\"}  ",
+      {
+        "code": "unavailable",
+        "conflict": false,
+        "details": "",
+        "error": "cursor bridge: [unavailable] x",
+        "message": "x",
+        "raw": "{\"code\":\"unavailable\",\"message\":\"x\"}",
+        "transient": true,
+        "unauth": false,
+        "unimpl": false
+      }
+    ]
+  ],
+  "entrypointImport": "import \"../recur-attribution-provider.mjs\";\n",
+  "interactions": [
+    [
+      "",
+      "",
+      ""
+    ],
+    [
+      "{\"type\":\"summary-started\"}",
+      "summary-started",
+      "{\"type\":\"summary-started\"}"
+    ],
+    [
+      "{\"update\":{\"type\":\"summary-completed\"}}",
+      "summary-completed",
+      "{\"type\":\"summary-completed\"}"
+    ],
+    [
+      "{\"summaryStarted\":{}}",
+      "summary-started",
+      "{}"
+    ],
+    [
+      "{\"summaryCompleted\":{}}",
+      "summary-completed",
+      "{}"
+    ],
+    [
+      "{\"summary\":{\"summary\":\"x\"}}",
+      "summary",
+      "{\"summary\":\"x\"}"
+    ],
+    [
+      "{\"turnEnded\":{\"usage\":{\"inputTokens\":10}}}",
+      "turn-ended",
+      "{\"usage\":{\"inputTokens\":10}}"
+    ],
+    [
+      "{\"type\":\"token-delta\",\"tokens\":1}",
+      "token-delta",
+      "{\"type\":\"token-delta\",\"tokens\":1}"
+    ],
+    [
+      "{}",
+      "",
+      ""
+    ],
+    [
+      "null",
+      "",
+      ""
+    ],
+    [
+      "[1]",
+      "",
+      ""
+    ],
+    [
+      "{\"type\":\"summary\",\"update\":{\"type\":\"summary\",\"summary\":\"older\"}}",
+      "summary",
+      "{\"type\":\"summary\",\"summary\":\"older\"}"
+    ],
+    [
+      "{\"type\":\"summary\",\"update\":null}",
+      "summary",
+      "null"
+    ],
+    [
+      "{\"type\":5}",
+      "",
+      ""
+    ],
+    [
+      "{\"update\":{\"update\":{\"type\":\"x\"}}}",
+      "x",
+      "{\"type\":\"x\"}"
+    ]
+  ],
+  "limits": [
+    [
+      "",
+      200000,
+      0,
+      200000,
+      "Other"
+    ],
+    [
+      "composer-2.5",
+      200000,
+      0,
+      200000,
+      "Cursor"
+    ],
+    [
+      "Composer-2",
+      200000,
+      0,
+      200000,
+      "Cursor"
+    ],
+    [
+      "grok-4.7",
+      500000,
+      0,
+      500000,
+      "Cursor"
+    ],
+    [
+      "grok-4.6",
+      500000,
+      0,
+      500000,
+      "Cursor"
+    ],
+    [
+      "grok-4.5",
+      256000,
+      0,
+      256000,
+      "Cursor"
+    ],
+    [
+      "grok-3",
+      256000,
+      0,
+      256000,
+      "Cursor"
+    ],
+    [
+      "claude-sonnet-5",
+      200000,
+      1000000,
+      200000,
+      "Anthropic"
+    ],
+    [
+      "claude-opus-5",
+      300000,
+      1000000,
+      300000,
+      "Anthropic"
+    ],
+    [
+      "claude-opus-5-fast",
+      300000,
+      1000000,
+      300000,
+      "Anthropic"
+    ],
+    [
+      "claude-fable-5-1",
+      200000,
+      1000000,
+      200000,
+      "Anthropic"
+    ],
+    [
+      "claude-sonnet-4-6",
+      200000,
+      1000000,
+      200000,
+      "Anthropic"
+    ],
+    [
+      "claude-opus-4.8",
+      200000,
+      1000000,
+      200000,
+      "Anthropic"
+    ],
+    [
+      "claude-haiku-4-5",
+      200000,
+      0,
+      200000,
+      "Anthropic"
+    ],
+    [
+      "gpt-5.6-sol",
+      272000,
+      1000000,
+      272000,
+      "OpenAI"
+    ],
+    [
+      "GPT-5.5",
+      272000,
+      1000000,
+      272000,
+      "OpenAI"
+    ],
+    [
+      "gpt-5.4-mini",
+      272000,
+      0,
+      272000,
+      "OpenAI"
+    ],
+    [
+      "gpt-5.4-nano",
+      272000,
+      0,
+      272000,
+      "OpenAI"
+    ],
+    [
+      "gpt-5.4",
+      272000,
+      1000000,
+      272000,
+      "OpenAI"
+    ],
+    [
+      "gpt-5.3-codex",
+      272000,
+      0,
+      272000,
+      "OpenAI"
+    ],
+    [
+      "gpt-5",
+      272000,
+      0,
+      272000,
+      "OpenAI"
+    ],
+    [
+      "gpt-4o",
+      200000,
+      0,
+      200000,
+      "OpenAI"
+    ],
+    [
+      "gemini-3.6-flash",
+      1000000,
+      0,
+      1000000,
+      "Google"
+    ],
+    [
+      "gemini-3.1-pro",
+      1000000,
+      0,
+      1000000,
+      "Google"
+    ],
+    [
+      "gemini-3.5",
+      1000000,
+      0,
+      1000000,
+      "Google"
+    ],
+    [
+      "gemini-2.5-pro",
+      1000000,
+      0,
+      1000000,
+      "Google"
+    ],
+    [
+      "gemini-1",
+      1000000,
+      0,
+      1000000,
+      "Google"
+    ],
+    [
+      "kimi-k3",
+      200000,
+      1000000,
+      200000,
+      "Moonshot"
+    ],
+    [
+      "kimi-k2",
+      200000,
+      1000000,
+      200000,
+      "Moonshot"
+    ],
+    [
+      "glm-4.6",
+      200000,
+      0,
+      200000,
+      "Zhipu"
+    ],
+    [
+      "auto",
+      200000,
+      0,
+      200000,
+      "Cursor"
+    ],
+    [
+      "auto-smart",
+      200000,
+      0,
+      200000,
+      "Cursor"
+    ],
+    [
+      "default",
+      200000,
+      0,
+      200000,
+      "Other"
+    ],
+    [
+      "o3",
+      200000,
+      0,
+      200000,
+      "OpenAI"
+    ],
+    [
+      "o4-mini",
+      200000,
+      0,
+      200000,
+      "OpenAI"
+    ],
+    [
+      "mystery",
+      200000,
+      0,
+      200000,
+      "Other"
+    ],
+    [
+      "  composer-2.5  ",
+      200000,
+      0,
+      200000,
+      "Cursor"
+    ]
+  ],
+  "minimalOptionsJSON": "{\"local\":{\"sandboxOptions\":{\"enabled\":false}}}",
+  "nativeAgentSkillsAssign": "getAgentSkills:r.workspaceServices.getAgentSkills",
+  "preload": "// Recur-owned preload: supplies attributionConfigProvider for the patched SDK\n// and installs Connect SteerRun (SDK run.steer) on the bridge agent service.\nimport { readFileSync } from \"node:fs\";\nimport { MethodKind, proto3, ScalarType } from \"@bufbuild/protobuf\";\n\nfunction load() {\n  const path = process.env.RECUR_CURSOR_ATTRIBUTION_PATH;\n  const off = {\n    attribution: {\n      attributeCommitsToAgent: false,\n      attributePRsToAgent: false,\n    },\n  };\n  if (!path) return off;\n  try {\n    const j = JSON.parse(readFileSync(path, \"utf8\"));\n    return {\n      attribution: {\n        attributeCommitsToAgent: !!j.attributeCommitsToAgent,\n        attributePRsToAgent: !!j.attributePRsToAgent,\n      },\n    };\n  } catch {\n    return off;\n  }\n}\n\nglobalThis.__recurAttributionConfigProvider = { get: load };\n\nconst SteerRunRequest = proto3.makeMessageType(\"sdk.v1.SteerRunRequest\", [\n  { no: 1, name: \"run_id\", kind: \"scalar\", T: ScalarType.STRING },\n  { no: 2, name: \"text\", kind: \"scalar\", T: ScalarType.STRING },\n]);\nconst SteerRunResponse = proto3.makeMessageType(\"sdk.v1.SteerRunResponse\", [\n  { no: 1, name: \"outcome\", kind: \"scalar\", T: ScalarType.STRING },\n]);\n\nglobalThis.__recurInstallSteerRun = (SdkAgentService, impl, registry) =\u003e {\n  if (!SdkAgentService?.methods || !impl || !registry) return;\n  SdkAgentService.methods.steerRun = {\n    name: \"SteerRun\",\n    I: SteerRunRequest,\n    O: SteerRunResponse,\n    kind: MethodKind.Unary,\n  };\n  impl.steerRun = async (request) =\u003e {\n    const runId = request?.runId ?? \"\";\n    const text = request?.text ?? \"\";\n    const liveRun = runId ? registry.getRun(runId) : undefined;\n    if (!liveRun || typeof liveRun.steer !== \"function\" || !text) {\n      return new SteerRunResponse({ outcome: \"revert_to_followup\" });\n    }\n    try {\n      const outcome = await liveRun.steer(text);\n      return new SteerRunResponse({\n        outcome: outcome === \"complete_delivered\" ? \"complete_delivered\" : \"revert_to_followup\",\n      });\n    } catch {\n      return new SteerRunResponse({ outcome: \"revert_to_followup\" });\n    }\n  };\n};\n",
+  "pypiProjectJSON": "https://pypi.org/pypi/cursor-sdk/json",
+  "readyPrefix": "cursor-sdk-bridge ready ",
+  "redact": [
+    [
+      "plain line",
+      "plain line"
+    ],
+    [
+      "cursor-sdk-bridge ready {\"schemaVersion\":1,\"authToken\":\"secret\",\"url\":\"http://127.0.0.1:1\",\"port\":5,\"z\":[1,2.5,\"\u003c\u0026\u003e\"],\"a\":{\"y\":true,\"x\":null}}",
+      "cursor-sdk-bridge ready {\"a\":{\"x\":null,\"y\":true},\"authToken\":\"[redacted]\",\"port\":5,\"schemaVersion\":1,\"url\":\"http://127.0.0.1:1\",\"z\":[1,2.5,\"\\u003c\\u0026\\u003e\"]}"
+    ],
+    [
+      "cursor-sdk-bridge ready not json",
+      "cursor-sdk-bridge ready [redacted-discovery]"
+    ],
+    [
+      "cursor-sdk-bridge ready null",
+      "cursor-sdk-bridge ready null"
+    ],
+    [
+      "cursor-sdk-bridge ready [1]",
+      "cursor-sdk-bridge ready [redacted-discovery]"
+    ],
+    [
+      "prefix cursor-sdk-bridge ready {\"authTokenFile\":\"/tmp/t\",\"pid\":20136}",
+      "prefix cursor-sdk-bridge ready {\"authTokenFile\":\"/tmp/t\",\"pid\":20136}"
+    ]
+  ],
+  "settingSourcesMinimal": [
+    "SETTING_SOURCE_MDM"
+  ],
+  "slugs": [
+    [
+      "",
+      ""
+    ],
+    [
+      "  ",
+      ""
+    ],
+    [
+      "/Users/josh/.recur/worktrees/velvety-croissant",
+      "Users-josh-recur-worktrees-velvety-croissant"
+    ],
+    [
+      "/a__b/é/c",
+      "a-b-c"
+    ],
+    [
+      "relative/path",
+      "relative-path"
+    ],
+    [
+      "/x/../y",
+      "x-y"
+    ],
+    [
+      "---",
+      ""
+    ],
+    [
+      "/Users/me/Application Support/Recur/w-1",
+      "Users-me-Application-Support-Recur-w-1"
+    ]
+  ],
+  "steerRunMountNew": "function mountSdkBridgeRoutes(router, options) {\n    const impl = createSdkAgentService({\n        registry: options.registry,\n        workspaceRef: options.workspaceRef,\n    });\n    globalThis.__recurInstallSteerRun?.(SdkAgentService, impl, options.registry);\n    router.service(SdkAgentService, impl);",
+  "steerRunMountOld": "function mountSdkBridgeRoutes(router, options) {\n    router.service(SdkAgentService, createSdkAgentService({\n        registry: options.registry,\n        workspaceRef: options.workspaceRef,\n    }));",
+  "steerRunServerRel": "dist/server.js",
+  "stubAgentSkillsAssign": "getAgentSkills:async()=\u003e[]",
+  "summaryAnchors": [
+    [
+      "function(t){return\"summary\"===t.type||\"summary-started\"===t.type||\"summary-completed\"===t.type}(t)||await(this.options.onDelta?.({update:t}))",
+      "/*recurSummaryDelta*/await(this.options.onDelta?.({update:t}))"
+    ],
+    [
+      "function(e){return\"summary\"===e.type||\"summary-started\"===e.type||\"summary-completed\"===e.type}(e)||(yield null===(n=(t=this.options).onDelta)||void 0===n?void 0:n.call(t,{update:e}))",
+      "/*recurSummaryDelta*/(yield null===(n=(t=this.options).onDelta)||void 0===n?void 0:n.call(t,{update:e}))"
+    ]
+  ],
+  "summaryDeltaNeedle": "/*recurSummaryDelta*/",
+  "summaryDeltaYield": "(yield null===(n=(t=this.options).onDelta)||void 0===n?void 0:n.call(t,{update:e}))",
+  "vendorOrder": [
+    "Cursor",
+    "Anthropic",
+    "OpenAI",
+    "Google",
+    "Moonshot",
+    "Zhipu",
+    "Other"
+  ]
+}

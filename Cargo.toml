@@ -1,0 +1,238 @@
+[workspace]
+resolver = "3"
+# `crates/views` and `crates/panes` hold crates, not a manifest, so `crates/*` skips them
+# (`p[!a]*` is `platform` and `project`).
+members = [
+    "crates/[!pv]*",
+    "crates/p[!a]*",
+    "crates/views/*",
+    "crates/panes/*",
+    "providers/*",
+    "tools/*",
+]
+default-members = ["crates/desktop", "crates/cli"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.95"
+license = "Elastic-2.0"
+
+[workspace.dependencies]
+recur-domain = { path = "crates/domain" }
+recur-exec = { path = "crates/exec" }
+recur-http = { path = "crates/http" }
+recur-store = { path = "crates/store" }
+recur-project = { path = "crates/project" }
+recur-git = { path = "crates/git" }
+recur-forge = { path = "crates/forge" }
+recur-issues = { path = "crates/issues" }
+recur-agent = { path = "crates/agent" }
+recur-provider-claude = { path = "providers/claude" }
+recur-provider-codex = { path = "providers/codex" }
+recur-provider-cursor = { path = "providers/cursor" }
+recur-provider-compatible = { path = "providers/compatible" }
+recur-provider-chatgpt = { path = "providers/chatgpt" }
+recur-agent-tools = { path = "crates/agent-tools" }
+recur-mcp = { path = "crates/mcp" }
+recur-bundles = { path = "crates/bundles" }
+recur-textmate = { path = "crates/textmate" }
+recur-lsp = { path = "crates/lsp" }
+recur-term = { path = "crates/term" }
+recur-code = { path = "crates/code" }
+recur-usage = { path = "crates/usage" }
+recur-engine = { path = "crates/engine" }
+recur-platform = { path = "crates/platform" }
+recur-services = { path = "crates/services" }
+recur-ui = { path = "crates/ui" }
+recur-editor = { path = "crates/editor" }
+recur-terminal-view = { path = "crates/terminal-view" }
+recur-content = { path = "crates/content" }
+recur-app = { path = "crates/app" }
+recur-view-core = { path = "crates/views/core" }
+recur-view-widgets = { path = "crates/views/widgets" }
+recur-view-sidebar = { path = "crates/views/sidebar" }
+recur-view-chat = { path = "crates/panes/chat" }
+recur-view-review = { path = "crates/panes/review" }
+recur-view-observatory = { path = "crates/panes/observatory" }
+recur-view-workspace = { path = "crates/views/workspace" }
+recur-view-prs = { path = "crates/views/prs" }
+recur-view-settings = { path = "crates/views/settings" }
+recur-view-home = { path = "crates/views/home" }
+recur-view-projects = { path = "crates/views/projects" }
+recur-view-briefing = { path = "crates/views/briefing" }
+recur-view-palettes = { path = "crates/views/palettes" }
+
+# UI. gpui-kit pins an exact gpui-pre snapshot; bump only together with it.
+gpui-kit = "0.8.0"
+# The GPUI build gpui-kit re-exports, for `test-support` in dev-dependencies (gpui-kit's own
+# `test-support` feature pulls in gpui-fast through a target-specific weak dependency).
+gpui = { package = "gpui-pre", version = "=0.3.9" }
+# Zed's SumTree from the same snapshot (no GPUI): per-line editor and tokenizer caches.
+sum_tree = { package = "gpui-pre-sum-tree", version = "=0.3.9" }
+
+anyhow = "1"
+async-trait = "0.1"
+base64 = "0.23"
+thiserror = "2"
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+toml = "0.9"
+toml_edit = "0.23"
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+iana-time-zone = "0.1"
+getrandom = "0.4"
+rusqlite = { version = "0.37", features = ["bundled"] }
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "system-proxy"] }
+nix = { version = "0.31", features = ["signal", "process", "hostname", "poll"] }
+futures = "0.3"
+url = "2"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio", "server-graceful", "http1"] }
+http-body-util = "0.1"
+bytes = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+parking_lot = "0.12"
+regex = "1"
+onig = { version = "6.5", default-features = false }
+ropey = { version = "=2.0.0-beta.1", default-features = false, features = ["metric_lines_lf", "metric_utf16", "metric_chars", "simd"] }
+unicode-segmentation = "1.12"
+unicode-normalization = "0.1"
+pulldown-cmark = { version = "0.13", default-features = false }
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+include_dir = "0.7"
+fancy-regex = "0.16"
+wuff = "0.2"
+ttf-parser = "0.25"
+unicode-linebreak = "0.1"
+resvg = { version = "0.46", default-features = false }
+# PDF pages, rasterized by hayro (pure Rust).
+gpui-pdf = { version = "0.6", features = ["markup"] }
+# Mermaid diagrams laid out and written as SVG in pure Rust.
+mmdr = { package = "mermaid-rs-renderer", version = "0.3", default-features = false }
+smallvec = "1"
+core-graphics = "0.24"
+core-text = "21"
+core-foundation = "0.10"
+notify = "8"
+cron = "0.15"
+socket2 = "0.6"
+rustix = { version = "1", features = ["process"] }
+sha2 = "0.11"
+digest = "0.11"
+ed25519-dalek = { version = "3", features = ["digest"] }
+p256 = { version = "0.14", features = ["ecdsa"] }
+spki = "0.8"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+tar = "0.4"
+flate2 = "1"
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-app-kit = "0.3"
+objc2-web-kit = "0.3"
+objc2-av-foundation = "0.3"
+# WebM and Ogg on macOS (`recur-content` `video::webm`); licenses in its module docs.
+matroska-demuxer = "0.8"
+ogg = "0.9"
+lewton = "0.10"
+theora-rs = "0.1"
+shiguredo_libvpx = "=2026.2.0-canary.3"
+shiguredo_aom = "2026.3.0"
+shiguredo_opus = "2026.4.0"
+cpal = "0.18"
+objc2-core-media = "0.3"
+objc2-core-video = "0.3"
+raw-window-handle = "0.6"
+indexmap = "2"
+yeslogic-fontconfig-sys = "6"
+gstreamer = "0.24"
+gstreamer-app = "0.24"
+gstreamer-video = "0.24"
+objc2-user-notifications = "0.3"
+block2 = "0.6"
+dispatch2 = "0.3"
+# Linux: the hidden WebKit pages recur-content runs mermaid.js and pdf.js in (WebKitGTK 6.0, as
+# the Go app links). Re-exports gtk4, glib, gio and soup3.
+webkit6 = "0.6"
+# webkit6 0.6 names `gtk::Accessible`, which gtk4 0.11 gates behind GTK 4.10.
+gtk4 = { version = "0.11", features = ["v4_10"] }
+# Linux: the WPE WebKit HTML preview spike (`recur-content` `html_wpe`), built when
+# pkg-config finds WPE 2.54 (build/linux/wpe.Dockerfile).
+libloading = "0.8"
+libc = "0.2"
+cc = "1"
+pkg-config = "0.3"
+tempfile = "3"
+pretty_assertions = "1"
+hex = "0.4"
+aws-lc-rs = { version = "1", default-features = false, features = ["aws-lc-sys"] }
+yaml-rust2 = "0.10"
+swc_core = { version = "82", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_transforms_typescript", "ecma_transforms_module", "ecma_codegen", "ecma_visit", "ecma_utils", "ecma_helpers_inline"] }
+# The two compat passes `recur-bundles` runs, at swc_core 82's versions (bump with it). swc_core's
+# `ecma_transforms_compat` would also build every ES3 to ES2020 pass.
+swc_ecma_compat_es2021 = "51"
+swc_ecma_compat_es2022 = "54"
+
+# Terminal: PTY spawn, process groups, emulator state.
+portable-pty = "0.9"
+filedescriptor = "0.8"
+alacritty_terminal = { version = "0.25", default-features = false }
+unicode-width = "0.2"
+image = { version = "0.25", default-features = false }
+regress = "0.12"
+
+# Rich content: GFM markdown, its HTML sanitizer, and the HTML parser the native layout reads.
+comrak = { version = "0.59", default-features = false }
+ammonia = "4.2"
+html5ever = "0.27"
+markup5ever_rcdom = "0.3"
+
+# ICU root collation: the UI's `localeCompare` / `Intl.Collator` ordering.
+icu_collator = "2"
+icu_time = "2.3"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+
+# GPUI is unusably slow unoptimized; keep our own crates debuggable. Dependencies keep line
+# tables (backtraces, profiles) but not full DWARF, which roughly doubled `target/`.
+[profile.dev.package."*"]
+opt-level = 2
+debug = "line-tables-only"
+
+# `mise run dev` builds here (`target/human/`) so agents' cargo runs in `target/debug/` do not
+# hold the build lock while the user is iterating on the app.
+[profile.human]
+inherits = "dev"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# gpui-pre 0.3.9, its scheduler, macOS renderer and macOS / Linux platforms with Recur's patches (`vendor/README.md`).
+# Drop an entry when gpui-kit's pinned version carries the change, or re-apply its patch on a bump.
+[patch.crates-io]
+gpui-pre = { path = "vendor/gpui-pre" }
+gpui-pre-scheduler = { path = "vendor/gpui-pre-scheduler" }
+gpui-pre-apple = { path = "vendor/gpui-pre-apple" }
+gpui-pre-macos = { path = "vendor/gpui-pre-macos" }
+gpui-pre-linux = { path = "vendor/gpui-pre-linux" }
+# gpui-pdf without `image`'s default formats, whose AVIF encoder is rav1e (`vendor/README.md`).
+gpui-pdf = { path = "vendor/gpui-pdf" }
+# The WebM / Ogg codecs with an Intel Mac source build (`vendor/README.md`).
+shiguredo_libvpx = { path = "vendor/shiguredo_libvpx" }
+shiguredo_aom = { path = "vendor/shiguredo_aom" }
+shiguredo_opus = { path = "vendor/shiguredo_opus" }

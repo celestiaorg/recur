@@ -1,0 +1,18 @@
+[package]
+name = "recur-textmate"
+description = "TextMate grammar tokenizer and theme resolution used by the editor, diffs and chat code blocks."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+onig.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sum_tree.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

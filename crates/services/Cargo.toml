@@ -1,0 +1,64 @@
+[package]
+name = "recur-services"
+description = "Application services: the UI-facing API over the engine plus typed app events."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Typed in-memory fakes of every service over the e2e seed, for view specs.
+fake = []
+
+[dependencies]
+recur-provider-claude.workspace = true
+recur-provider-codex.workspace = true
+recur-provider-chatgpt.workspace = true
+recur-provider-cursor.workspace = true
+recur-provider-compatible.workspace = true
+recur-forge.workspace = true
+recur-issues.workspace = true
+recur-agent.workspace = true
+recur-domain.workspace = true
+recur-store.workspace = true
+recur-engine.workspace = true
+recur-bundles.workspace = true
+recur-code.workspace = true
+recur-git.workspace = true
+recur-lsp.workspace = true
+recur-term.workspace = true
+recur-usage.workspace = true
+recur-platform.workspace = true
+recur-project.workspace = true
+async-trait.workspace = true
+base64.workspace = true
+chrono.workspace = true
+flate2.workspace = true
+futures.workspace = true
+image = { workspace = true, features = ["png", "tiff"] }
+parking_lot.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+recur-exec.workspace = true
+recur-agent = { workspace = true, features = ["testing"] }
+recur-engine = { workspace = true, features = ["testing"] }
+recur-forge = { workspace = true, features = ["testing"] }
+recur-issues = { workspace = true, features = ["testing"] }
+recur-provider-claude = { workspace = true, features = ["testing"] }
+recur-provider-codex = { workspace = true, features = ["testing"] }
+recur-provider-cursor = { workspace = true, features = ["testing"] }
+pretty_assertions.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

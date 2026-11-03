@@ -1,4 +1,4 @@
-# Claude Code Headless Mode — Verified Reference (2026)
+# Claude Code Headless Mode: Verified Reference (2026)
 
 > Captured from `claude --help` (installed **v2.1.126**) cross-referenced with
 > `code.claude.com/docs/en/headless`, `/cli-reference`, `/agent-sdk/*`, `/mcp`,
@@ -6,11 +6,11 @@
 > and the Recur MCP server (PRD §8.3). Re-verify before shipping M2/M3.
 
 Two meta-facts:
-1. `claude --help` is **not exhaustive** — a flag's absence from `--help` does
+1. `claude --help` is **not exhaustive**: a flag's absence from `--help` does
    not mean it is unavailable (e.g. `--max-turns`, `--permission-prompt-tool`,
    `--system-prompt-file` are documented but not in the v2.1.126 help).
 2. `--permission-mode` choices in v2.1.126: `acceptEdits, auto, bypassPermissions,
-   default, dontAsk, plan` — **no `acceptAll`**.
+   default, dontAsk, plan`: **no `acceptAll`**.
 
 ## 1. Flags Recur relies on
 
@@ -68,7 +68,7 @@ The flag is undocumented in `--help`, so this was captured by pointing a real
 ```
 
 `updatedInput` is **required** on allow (it is what the tool actually runs with;
-echo the input back to leave it unchanged). A deny is a *successful* tool result —
+echo the input back to leave it unchanged). A deny is a *successful* tool result:
 the tool does not run and the refusal appears in the final result's
 `permission_denials[]`.
 
@@ -82,10 +82,10 @@ Verified properties Recur depends on:
   --permission-prompt-tool) not found` if it is missing (verified against the
   installed CLI on 2026-08-07 via `TestRealPermissionPromptE2E`). Exemption from
   `--allowedTools` does **not** mean the tool can be hidden from `tools/list`
-  while staying callable — do not re-attempt an advertise-vs-callable split for
+  while staying callable: do not re-attempt an advertise-vs-callable split for
   Claude bindings.
 - **The CLI blocks for as long as the tool takes.** An 8s hold in the handler
-  produced a 12s run that then proceeded normally — this is what lets a human
+  produced a 12s run that then proceeded normally: this is what lets a human
   actually decide.
 - **It only fires under a mode that asks.** With `--permission-mode default`,
   allowlisted tools are auto-approved without consulting it, and some Bash
@@ -96,13 +96,13 @@ Verified properties Recur depends on:
 
 Skips hooks, LSP, plugin sync, attribution, auto-memory, keychain reads, and
 CLAUDE.md auto-discovery. Sets `CLAUDE_CODE_SIMPLE=1`. **Anthropic auth is strictly
-`ANTHROPIC_API_KEY` or `apiKeyHelper` (via `--settings`) — OAuth, keychain, and
+`ANTHROPIC_API_KEY` or `apiKeyHelper` (via `--settings`): OAuth, keychain, and
 `CLAUDE_CODE_OAUTH_TOKEN` are NOT read in bare mode.** Has Bash/read/edit tools.
 "Recommended for scripted/SDK calls; will become the default for `-p`."
 
 **Recur impact:** if we use `--bare` we MUST provide an explicit credential. See §6.
 
-## 3. stream-json OUTPUT — NDJSON line schemas
+## 3. stream-json OUTPUT: NDJSON line schemas
 
 Invoke: `claude -p "..." --output-format stream-json --verbose [--include-partial-messages]`.
 Each line is one JSON object. Switch on `.type`; **ignore unknown types** (~30 in the union).
@@ -110,12 +110,12 @@ Each line is one JSON object. Switch on `.type`; **ignore unknown types** (~30 i
 - **`system`/`init`** (first line): `{ type:"system", subtype:"init", session_id, uuid, model, tools[], mcp_servers[]{name,status}, cwd, permissionMode, apiKeySource, slash_commands[], output_style, plugins[], plugin_errors[] }`. Read `mcp_servers[].status` (`connected|failed|pending`) to confirm the Recur MCP attached.
 - **`assistant`**: `{ type:"assistant", uuid, session_id, message:<Anthropic message>, parent_tool_use_id }`. `message.content[]` carries `tool_use` blocks: `{type:"tool_use", id:"toolu_...", name, input}`. MCP calls have `name` starting `mcp__`. Lines with `parent_tool_use_id` are Task-subagent events multiplexed onto the parent stream: Recur keeps nested `tool_use` / `tool_result` / text / thinking (rendered inside the parent Task card) and drops nested `result` / `init` so they cannot close or speak as the parent turn. Nested `stream_event` text/thinking deltas stream live inside the card.
 - **`user`**: `{ type:"user", message:<param>, parent_tool_use_id, tool_use_result? }`. `tool_result` blocks live here: `{type:"tool_result", tool_use_id, content[], is_error}`. Same `parent_tool_use_id` nesting as assistant; background-Task launch acks (`Async agent launched successfully` / agentId plumbing) are not surfaced.
-- **`result`** (LAST line). Success: `{ type:"result", subtype:"success", session_id, duration_ms, duration_api_ms, is_error, num_turns, result:<final text>, stop_reason, total_cost_usd, usage, modelUsage, permission_denials[], structured_output? }`. Error: `subtype:"error_max_turns"|"error_during_execution"|"error_max_budget_usd"|"error_max_structured_output_retries"` — **no `result` field**. Branch on `subtype` before reading `result`.
+- **`result`** (LAST line). Success: `{ type:"result", subtype:"success", session_id, duration_ms, duration_api_ms, is_error, num_turns, result:<final text>, stop_reason, total_cost_usd, usage, modelUsage, permission_denials[], structured_output? }`. Error: `subtype:"error_max_turns"|"error_during_execution"|"error_max_budget_usd"|"error_max_structured_output_retries"`: **no `result` field**. Branch on `subtype` before reading `result`.
 - Also: `stream_event` (partial deltas), `system`/`api_retry` (`attempt,max_retries,retry_delay_ms`), `system`/`plugin_install`.
 
 Capture session id for resume via `--output-format json | jq -r '.session_id'` (single object), or the final `result` line of a stream.
 
-## 4. stream-json INPUT — multi-turn over stdin
+## 4. stream-json INPUT: multi-turn over stdin
 
 With `--input-format stream-json`, write newline-delimited objects to stdin:
 ```json
@@ -131,15 +131,15 @@ Top-level key `"mcpServers"`. Variants:
 - **stdio** (default): `{ "command":"...", "args":[...], "env":{...} }`
 - **http**: `{ "type":"http", "url":"https://.../mcp", "headers":{...} }`
 - **sse**: `{ "type":"sse", "url":"...", "headers":{...} }`
-- **sdk** (`type:"sdk"`, in-process) — **only from the TS/Python SDK, NOT via `--mcp-config`.**
+- **sdk** (`type:"sdk"`, in-process): **only from the TS/Python SDK, NOT via `--mcp-config`.**
 
 `${VAR}` / `${VAR:-default}` expansion works in command/args/env/url/headers.
 
 **MCP tools name as `mcp__<server>__<tool>`** (e.g. `mcp__recur__report_finding`).
 Wildcard `mcp__recur__*` allows the whole server. `acceptEdits` does NOT auto-approve
-MCP tools — use explicit `allowedTools` wildcards.
+MCP tools: use explicit `allowedTools` wildcards.
 
-**Recur decision:** the Go engine hosts the Recur MCP as an **HTTP server on
+**Recur decision:** the engine hosts the Recur MCP as an **HTTP server on
 localhost** (the `claude` CLI is a separate subprocess, so in-process `sdk` type is
 unavailable). Pass `--mcp-config '{"mcpServers":{"recur":{"type":"http","url":"http://127.0.0.1:<port>/mcp"}}}' --strict-mcp-config`.
 Per-agent tokens in headers can scope which loop/agent a call belongs to.
@@ -148,7 +148,7 @@ Per-agent tokens in headers can scope which loop/agent a call belongs to.
 
 1. Cloud provider when `CLAUDE_CODE_USE_BEDROCK|USE_VERTEX|USE_FOUNDRY` set.
 2. `ANTHROPIC_AUTH_TOKEN` (Bearer; for gateways).
-3. `ANTHROPIC_API_KEY` (X-Api-Key) — **always used under `-p` when present**.
+3. `ANTHROPIC_API_KEY` (X-Api-Key): **always used under `-p` when present**.
 4. `apiKeyHelper` (settings script; refreshes on 401 / 5 min).
 5. `CLAUDE_CODE_OAUTH_TOKEN` (long-lived; `claude setup-token`; not read under `--bare`).
 6. Subscription OAuth from `/login` (default; not read under `--bare`).
@@ -176,12 +176,12 @@ claude -p \
   --append-system-prompt "<ROLE PROMPT>"
 # Write {"type":"user",...} lines to stdin; read NDJSON; final {"type":"result",...} carries session_id/total_cost_usd/is_error/subtype.
 # Read-only roles: narrower --allowedTools + --disallowedTools Edit,Write,NotebookEdit.
-# The permission mode is global (Settings.BypassPermissions, default off — shown above).
+# The permission mode is global (Settings.BypassPermissions, default off: shown above).
 # With it ON, swap those two flags for: --permission-mode bypassPermissions
 ```
 
 ## Spec deltas (vs PRD §8 as written)
-- `--bare` is real but **strips OAuth** — only use with an explicit API key/helper. PRD's bare example would break subscription-login users; v1 default avoids `--bare`.
+- `--bare` is real but **strips OAuth**: only use with an explicit API key/helper. PRD's bare example would break subscription-login users; v1 default avoids `--bare`.
 - No `acceptAll` permission mode. The mode is machine-global (Settings.BypassPermissions, default OFF → `default` + `--permission-prompt-tool` everywhere, see §1a; on → `bypassPermissions` everywhere). Read-only turns that omit Edit/Write also pass `--disallowedTools`.
 - `--verbose` is a hard requirement with stream-json (PRD notes this).
 - App-hosted MCP must be **http/sse/stdio**, not in-process `sdk`, because the CLI runs as a child process. → HTTP server on localhost.

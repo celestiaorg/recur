@@ -1,4 +1,4 @@
-# Editor packs — shared rules
+# Editor packs: shared rules
 
 Read this first for any editor / chat item. Then open the kind file for
 fields. Loops: [loops.md](loops.md).

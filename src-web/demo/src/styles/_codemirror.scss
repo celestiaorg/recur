@@ -1,0 +1,400 @@
+/* ===== CodeMirror find/replace: Recur panel (replaces stock CM form) ===== */
+/* CM ships z-index:300 on .cm-panels: that stacks above .palette-bg (200).
+   Keep panels above editor content only; app overlays own the higher bands. */
+.cm-panels {
+  z-index: 2!important;
+}
+
+.cm-panels.cm-panels-top {
+  border-bottom: 1px solid var(--line);
+  background: var(--pane);
+  color: var(--text);
+}
+
+.cm-panels.cm-panels-bottom {
+  border-top: 1px solid var(--line);
+  background: var(--pane);
+  color: var(--text);
+}
+
+.cm-panel.cm-recur-search {
+  padding: 0;
+  font-family: var(--ui);
+  color: var(--text);
+}
+
+.cm-recur-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cm-recur-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 5px 8px 5px 10px;
+  box-sizing: border-box;
+}
+
+.cm-recur-search-row.replace {
+  padding-top: 0;
+  padding-bottom: 8px;
+  min-height: 0;
+}
+
+.cm-recur-search-glyph {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--faint);
+  flex: none;
+}
+
+.cm-recur-search-glyph svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.cm-recur-search-input {
+  flex: 1;
+  min-width: 80px;
+  height: 28px;
+  padding: 0 9px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+}
+
+.cm-recur-search-input::placeholder {
+  color: var(--faint);
+}
+
+.cm-recur-search-input:focus {
+  border-color: color-mix(in srgb, var(--amber) 55%, var(--line));
+  box-shadow: 0 0 0 2px var(--amber-d);
+}
+
+.cm-recur-search-count {
+  flex: none;
+  min-width: 4.5em;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  padding: 0 2px;
+  white-space: nowrap;
+}
+
+.cm-recur-search-count.none {
+  color: var(--coral);
+  min-width: 0;
+}
+
+.cm-recur-search-count[data-empty="1"] {
+  min-width: 0;
+  padding: 0;
+}
+
+.cm-recur-search-count:is(:empty, [data-empty="1"]) {
+  display: none;
+}
+
+.cm-recur-search-nav, .cm-recur-search-toggles {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.cm-recur-search-close {
+  margin-left: 2px;
+}
+
+/* Toggles ride obs-icon-btn (26×26 / 15×15); .on matches crumbbar icon pressed state. */
+.cm-recur-search-toggle.on {
+  color: var(--amber);
+  background: var(--amber-d);
+}
+
+.cm-recur-search-textbtn {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--muted);
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 500;
+  flex: none;
+  white-space: nowrap;
+}
+
+.cm-recur-search-textbtn:hover {
+  color: var(--text);
+  border-color: var(--line-bright);
+  background: var(--pane-2);
+}
+
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .cm-recur-search-input {
+  background: var(--pane);
+}
+
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .cm-recur-search-textbtn {
+  background: var(--pane);
+}
+
+/* ===== CodeMirror go-to-line: Recur dialog (replaces stock CM form) ===== */
+.cm-panel.cm-dialog.cm-recur-goto {
+  padding: 0;
+  font-family: var(--ui);
+  color: var(--text);
+  position: relative;
+}
+
+.cm-recur-goto > .cm-dialog-close {
+  display: none;
+}
+
+/* use our obs-icon-btn close */
+.cm-recur-goto-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 5px 8px 5px 10px;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.cm-recur-goto-label {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+.cm-recur-goto-input {
+  flex: 0 1 140px;
+  min-width: 72px;
+  max-width: 180px;
+}
+
+.cm-recur-goto-go {
+  flex: none;
+  margin-right: auto;
+}
+
+/* ===== CodeMirror autocomplete: Recur tooltip ===== */
+.cm-tooltip {
+  background: var(--pane)!important;
+  color: var(--text)!important;
+  border: 1px solid var(--line-bright)!important;
+  border-radius: 8px!important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .45)!important;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete {
+  padding: 4px!important;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--mono)!important;
+  font-size: 12.5px!important;
+  max-height: min(16em, 40vh)!important;
+  min-width: 220px!important;
+  background: transparent!important;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  display: flex!important;
+  align-items: center!important;
+  gap: 0;
+  padding: 3px 8px!important;
+  border-radius: 5px!important;
+  line-height: 1.3!important;
+  min-height: 26px!important;
+  box-sizing: border-box!important;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > completion-section {
+  padding: 6px 8px 4px!important;
+  border-radius: 5px!important;
+  line-height: 1.3!important;
+  box-sizing: border-box!important;
+  border-bottom: 1px solid var(--line)!important;
+  color: var(--faint)!important;
+  font-size: 10px!important;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  opacity: 1!important;
+  min-height: 0!important;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected], .cm-tooltip.cm-tooltip-autocomplete > ul > li:hover {
+  background: var(--pane-2)!important;
+  color: var(--text)!important;
+}
+
+.cm-tooltip-autocomplete-disabled > ul > li[aria-selected] {
+  background: var(--pane-2)!important;
+  color: var(--muted)!important;
+}
+
+.cm-completionMatchedText {
+  color: var(--amber)!important;
+  font-weight: 600;
+  text-decoration: none!important;
+}
+
+.cm-completionDetail {
+  margin-left: auto!important;
+  padding-left: 10px;
+  font-family: var(--ui)!important;
+  font-size: 10.5px!important;
+  font-style: normal!important;
+  color: var(--faint)!important;
+}
+
+.cm-completionIcon {
+  width: 20px!important;
+  height: 20px!important;
+  margin-right: 8px!important;
+  padding: 0!important;
+  border-radius: 5px;
+  background: var(--pane-2);
+  color: var(--muted);
+  opacity: 1!important;
+  display: inline-grid!important;
+  place-items: center;
+  font-size: 9px!important;
+  font-weight: 700;
+  font-family: var(--mono)!important;
+  flex: none;
+  box-sizing: border-box!important;
+  vertical-align: middle;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionIcon {
+  color: var(--amber);
+  background: var(--amber-d);
+}
+
+/* Prefer short mono letters over CM’s unicode/emoji glyphs. */
+.cm-completionIcon-function:after, .cm-completionIcon-method:after {
+  content: "fn"!important;
+  font-size: 9px!important;
+}
+
+.cm-completionIcon-class:after {
+  content: "C"!important;
+}
+
+.cm-completionIcon-interface:after {
+  content: "I"!important;
+}
+
+.cm-completionIcon-variable:after {
+  content: "v"!important;
+}
+
+.cm-completionIcon-constant:after {
+  content: "k"!important;
+}
+
+.cm-completionIcon-type:after {
+  content: "T"!important;
+}
+
+.cm-completionIcon-enum:after {
+  content: "E"!important;
+}
+
+.cm-completionIcon-property:after {
+  content: "p"!important;
+}
+
+.cm-completionIcon-keyword:after {
+  content: "kw"!important;
+}
+
+.cm-completionIcon-namespace:after {
+  content: "ns"!important;
+}
+
+.cm-completionIcon-text:after {
+  content: "W"!important;
+  font-size: 9px!important;
+  vertical-align: unset!important;
+}
+
+.cm-tooltip.cm-completionInfo {
+  background: var(--pane)!important;
+  border: 1px solid var(--line-bright)!important;
+  border-radius: 8px!important;
+  color: var(--muted)!important;
+  font-family: var(--ui)!important;
+  font-size: 12px!important;
+  padding: 8px 10px!important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .45)!important;
+}
+
+.cm-completionListIncompleteTop:before, .cm-completionListIncompleteBottom:after {
+  color: var(--faint)!important;
+  opacity: 1!important;
+  padding: 4px 0!important;
+}
+
+:root:is([data-theme="paper"], [data-theme="catppuccin-latte"]) .cm-tooltip {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .12)!important;
+}
+
+/* ===== CodeMirror LSP hover / signature / completion docs ===== */
+.cm-tooltip.cm-tooltip-hover {
+  padding: 0 !important;
+  overflow: auto !important;
+  /* Prefer a readable card; CM shifts left within tooltipSpace when near the edge. */
+  min-width: min(22rem, calc(100vw - 48px)) !important;
+  max-width: min(40rem, calc(100vw - 48px)) !important;
+}
+
+@media (prefers-reduced-motion:no-preference) {
+
+  @keyframes ui-tip-in {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes ui-tip-in-above {
+    from {
+      opacity: 0;
+      transform: translateY(-3px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+

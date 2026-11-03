@@ -41,4 +41,4 @@ fileTypes = ["foo"]
 
 Upstream sources when vendoring: VS Code `extensions/*/syntaxes`, language
 repos, classic TextMate bundles, Shiki mirrors. First-party Recur vendors
-into `bundles/Languages/` (`wails3 task fetch:tm-grammars`).
+into `bundles/Languages/` (`mise run fetch:tm-grammars`).

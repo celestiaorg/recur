@@ -5,7 +5,7 @@ description: Author editor commands with @recur/sdk in a sandboxed Worker
 
 # TypeScript macros
 
-TypeScript commands compile with esbuild (in Go), cache under `<DataDir>/BundleCache`, and run in a classic Worker with a frozen `MacroContext`.
+TypeScript commands compile inside Recur, cache under `<DataDir>/BundleCache`, and run in a sandboxed Worker (JavaScriptCore, built into macOS and WebKitGTK) with a frozen `MacroContext`. The Worker has the standard language plus `console`, timers, `TextEncoder`/`TextDecoder`, `atob`/`btoa`, `URL`/`URLSearchParams`, `crypto.getRandomValues`/`randomUUID`, `structuredClone`, `AbortController` and `Intl`; there is no `require`, `fetch` or file access (use a shebang command for those).
 
 ## Import the SDK
 

@@ -1,0 +1,1700 @@
+{
+  "ages": [
+    {
+      "in": -1,
+      "out": "0h"
+    },
+    {
+      "in": 0,
+      "out": "0h"
+    },
+    {
+      "in": 1,
+      "out": "1h"
+    },
+    {
+      "in": 7,
+      "out": "7h"
+    },
+    {
+      "in": 47,
+      "out": "47h"
+    },
+    {
+      "in": 48,
+      "out": "2d"
+    },
+    {
+      "in": 49,
+      "out": "2d"
+    },
+    {
+      "in": 72,
+      "out": "3d"
+    },
+    {
+      "in": 500,
+      "out": "20d"
+    }
+  ],
+  "app_chat": {
+    "agentIds": {
+      "": "app-APP",
+      "AP2": "app-AP2",
+      "APP": "app-APP",
+      "ap3": "app-ap3"
+    },
+    "appendPrompt": "You are Ask Recur, Recur's app-scoped coordinator. You answer questions about what needs attention, what is running, and where the human left off. Always call mcp__recur__list_workspace_briefs before making a factual status claim: your transcript is conversational memory, not current truth. Use mcp__recur__get_workspace_context for one workspace's detail and mcp__recur__present_workspace to pin a workspace/chat/question/PR card in this transcript (workspace:\u003cid\u003e, chat:\u003cid\u003e:\u003ccode\u003e, question:\u003cid\u003e, pr:\u003cid\u003e). present_workspace does not switch the UI: the human opens the card. You cannot edit files, mutate workspaces, answer questions, approve permissions, retry runs, or message workspace agents. If the user asks you to change code, tell them to open that workspace's Agent chat.",
+    "tabNames": {
+      "": "Ask Recur",
+      "AP2": "New chat",
+      "APP": "Ask Recur",
+      "ap3": "New chat"
+    },
+    "tools": [
+      "mcp__recur__list_workspace_briefs",
+      "mcp__recur__get_workspace_context",
+      "mcp__recur__present_workspace"
+    ]
+  },
+  "briefs": {
+    "active_agent": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "working",
+      "reasons": [
+        "active_agent"
+      ],
+      "now": "Coder is editing login.go",
+      "next": "Open the chat",
+      "state": "coding",
+      "phase": "editing login.go",
+      "activeAgents": 1,
+      "activeAgentTask": "editing login.go",
+      "primary": {
+        "label": "Open",
+        "target": "chat:W1:MA",
+        "kind": "open"
+      }
+    },
+    "dirty_idle": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "pickup",
+      "reasons": [
+        "dirty_idle"
+      ],
+      "now": "Branch has unlanded changes",
+      "next": "Review the unlanded changes",
+      "diffAdd": 4,
+      "diffDel": 1,
+      "primary": {
+        "label": "Review",
+        "target": "workspace:W1:review",
+        "kind": "review"
+      }
+    },
+    "escalation": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "needs",
+      "reasons": [
+        "escalation"
+      ],
+      "now": "Run is paused on a decision",
+      "next": "Ship with caveats?",
+      "state": "escalated",
+      "primary": {
+        "label": "Answer",
+        "target": "chat:W1:PA",
+        "kind": "answer"
+      }
+    },
+    "failure": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "needs",
+      "reasons": [
+        "failure"
+      ],
+      "now": "Run failed: boom",
+      "next": "Open the loop chat",
+      "state": "failed",
+      "primary": {
+        "label": "Open",
+        "target": "chat:W1:MA",
+        "kind": "open"
+      }
+    },
+    "findings": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "needs",
+      "reasons": [
+        "findings"
+      ],
+      "now": "2 open findings",
+      "next": "Review findings",
+      "primary": {
+        "label": "Review",
+        "target": "workspace:W1:findings",
+        "kind": "review"
+      }
+    },
+    "permission": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "needs",
+      "reasons": [
+        "permission",
+        "question"
+      ],
+      "now": "An agent is waiting to use Bash",
+      "next": "Review the permission",
+      "lastSummary": "waiting",
+      "state": "paused",
+      "primary": {
+        "label": "Review",
+        "target": "chat:W1:PA",
+        "kind": "review"
+      },
+      "secondary": [
+        {
+          "label": "Answer",
+          "target": "question:q-1",
+          "kind": "answer"
+        }
+      ]
+    },
+    "plan_approval": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "needs",
+      "reasons": [
+        "plan_approval",
+        "unfinished_plan"
+      ],
+      "now": "Plan is ready but not approved",
+      "next": "Review and approve the plan",
+      "planSummary": "Add auth",
+      "planTotal": 1,
+      "primary": {
+        "label": "Review plan",
+        "target": "workspace:W1:plan",
+        "kind": "approve"
+      }
+    },
+    "pr_host": {
+      "workspaceId": "host",
+      "title": "Fix checkout",
+      "bucket": "needs",
+      "reasons": [
+        "pr_attention"
+      ],
+      "now": "PR is ready for review",
+      "next": "Review the PR",
+      "prId": "pr-1",
+      "prNumber": 12,
+      "isPrHost": true,
+      "primary": {
+        "label": "Review",
+        "target": "pr:pr-1",
+        "kind": "review"
+      }
+    },
+    "question": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "needs",
+      "reasons": [
+        "question",
+        "recent_chat"
+      ],
+      "now": "“oauth weirdness” is waiting for an answer",
+      "next": "Which auth library?",
+      "latestChatCode": "PA",
+      "latestChatTitle": "oauth weirdness",
+      "primary": {
+        "label": "Answer",
+        "target": "question:q-1",
+        "kind": "answer"
+      },
+      "secondary": [
+        {
+          "label": "Continue",
+          "target": "chat:W1:PA",
+          "kind": "continue"
+        }
+      ]
+    },
+    "quiet": {
+      "workspaceId": "W1",
+      "projectName": "Storefront",
+      "title": "Auth",
+      "bucket": "pickup",
+      "reasons": [
+        "dirty_idle"
+      ],
+      "now": "Branch has unlanded changes",
+      "next": "Review the unlanded changes",
+      "diffAdd": 1,
+      "primary": {
+        "label": "Review",
+        "target": "workspace:W1:review",
+        "kind": "review"
+      }
+    },
+    "recent_chat": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "pickup",
+      "reasons": [
+        "recent_chat"
+      ],
+      "now": "Continue the “oauth weirdness” chat",
+      "next": "Continue that chat",
+      "latestChatCode": "PA",
+      "latestChatTitle": "oauth weirdness",
+      "primary": {
+        "label": "Continue",
+        "target": "chat:W1:PA",
+        "kind": "continue"
+      }
+    },
+    "retryable": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "needs",
+      "reasons": [
+        "retryable_failure"
+      ],
+      "now": "The loop stopped at a checkpoint",
+      "next": "Continue in the loop chat",
+      "state": "failed",
+      "primary": {
+        "label": "Open",
+        "target": "chat:W1:MA",
+        "kind": "open"
+      }
+    },
+    "unfinished_plan": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "pickup",
+      "reasons": [
+        "unfinished_plan"
+      ],
+      "now": "1 of 2 plan steps are complete",
+      "next": "Add tests",
+      "planSummary": "Auth",
+      "planDone": 1,
+      "planTotal": 2,
+      "primary": {
+        "label": "Continue",
+        "target": "workspace:W1:plan",
+        "kind": "continue"
+      }
+    },
+    "unseen_chat": {
+      "workspaceId": "W1",
+      "title": "Auth",
+      "bucket": "needs",
+      "reasons": [
+        "unseen_chat",
+        "recent_chat"
+      ],
+      "now": "New reply in “oauth weirdness”",
+      "next": "Read the response",
+      "latestChatCode": "PA",
+      "latestChatTitle": "oauth weirdness",
+      "primary": {
+        "label": "Read",
+        "target": "chat:W1:PA",
+        "kind": "open"
+      }
+    }
+  },
+  "chat_nouns": [
+    {
+      "in": "",
+      "out": "chat"
+    },
+    {
+      "in": "New chat",
+      "out": "chat"
+    },
+    {
+      "in": "chat",
+      "out": "chat"
+    },
+    {
+      "in": "Agent",
+      "out": "chat"
+    },
+    {
+      "in": "Maestro",
+      "out": "Maestro"
+    },
+    {
+      "in": "loop",
+      "out": "loop"
+    },
+    {
+      "in": "PA2",
+      "out": "chat"
+    },
+    {
+      "in": "MA",
+      "out": "chat"
+    },
+    {
+      "in": "oauth weirdness",
+      "out": "“oauth weirdness”"
+    },
+    {
+      "in": "  spaced  ",
+      "out": "“spaced”"
+    }
+  ],
+  "children": [
+    {
+      "in": {
+        "id": "k1",
+        "goal": "Add helper",
+        "state": "failed",
+        "outcome": ""
+      },
+      "out": {
+        "display": "⁤Add helper finished (k1)",
+        "state": "failed"
+      }
+    },
+    {
+      "in": {
+        "id": "k2",
+        "goal": "Research",
+        "state": "stopped",
+        "outcome": "closed"
+      },
+      "out": {
+        "display": "⁤Research finished (k2)",
+        "state": "stopped"
+      }
+    },
+    {
+      "in": {
+        "id": "k3",
+        "goal": "Merge me",
+        "state": "paused",
+        "outcome": "merged"
+      },
+      "out": {
+        "display": "⁤Merge me finished (k3)",
+        "state": "been merged"
+      }
+    },
+    {
+      "in": {
+        "id": "k4",
+        "goal": "Close me",
+        "state": "paused",
+        "outcome": "closed"
+      },
+      "out": {
+        "display": "⁤Close me finished (k4)",
+        "state": "been closed"
+      }
+    },
+    {
+      "in": {
+        "id": "k5",
+        "goal": "Plain",
+        "state": "coding",
+        "outcome": ""
+      },
+      "out": {
+        "display": "⁤Plain finished (k5)",
+        "state": "finished"
+      }
+    },
+    {
+      "in": {
+        "id": "k6",
+        "goal": "Settled",
+        "state": "",
+        "outcome": "settled"
+      },
+      "out": {
+        "display": "⁤Settled finished (k6)",
+        "state": "finished"
+      }
+    }
+  ],
+  "dead_ends": [
+    {
+      "in": "",
+      "out": false
+    },
+    {
+      "in": "  ",
+      "out": false
+    },
+    {
+      "in": "I can't find that workspace.",
+      "out": true
+    },
+    {
+      "in": "I can't run right now: boom",
+      "out": true
+    },
+    {
+      "in": "I'm at capacity right now",
+      "out": true
+    },
+    {
+      "in": "Done.",
+      "out": false
+    },
+    {
+      "in": " I'm at capacity",
+      "out": true
+    }
+  ],
+  "fork_preamble": "This chat was forked from an earlier conversation. Continue from the \u003ctranscript\u003e below. Do not re-greet; pick up where it left off.\n\n\u003ctranscript\u003e\n\u003cmessage role=\"user\"\u003e\n\u003ctext\u003efirst question\u003c/text\u003e\n\u003c/message\u003e\n\u003cmessage role=\"assistant\"\u003e\n\u003ctext\u003eanswer one\u003c/text\u003e\n\u003ctool_use name=\"Bash\"\u003e\n\u003cinput\u003e\u003c![CDATA[{\"command\":\"ls\"}]]\u003e\u003c/input\u003e\n\u003cresult\u003e\u003c![CDATA[a.txt\nb.txt]]\u003e\u003c/result\u003e\n\u003c/tool_use\u003e\n\u003ctext\u003etwo files\u003c/text\u003e\n\u003c/message\u003e\n\u003c/transcript\u003e\n\n",
+  "max_remounts": 3,
+  "mode_shapes": [
+    {
+      "in": {
+        "child": false,
+        "mode": "ask"
+      },
+      "out": {
+        "appendPrompt": "This chat is in ASK mode: read-only on the git worktree. You may read files, search, and run read-only git commands (diff/log/show). Do not modify repository files or attempt edits. Answer questions and explain code. If the user asks you to change the repository, tell them to switch this chat to Agent mode.\n\nYou may create standalone artifacts (HTML reports, diagrams, tables) with mcp__recur__create_artifact: they are stored under the workspace data dir, not the git worktree. Prefer an HTML artifact over dumping a large report into chat, then call mcp__recur__present_artifact.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Bash(git diff:*)",
+          "Bash(git diff *)",
+          "Bash(git log:*)",
+          "Bash(git log *)",
+          "Bash(git show:*)",
+          "Bash(git show *)",
+          "mcp__recur__list_findings",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__ask_user",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal"
+        ]
+      }
+    },
+    {
+      "in": {
+        "child": true,
+        "mode": "ask"
+      },
+      "out": {
+        "appendPrompt": "This chat is in ASK mode: read-only on the git worktree. You may read files, search, and run read-only git commands (diff/log/show). Do not modify repository files or attempt edits. Answer questions and explain code. If the user asks you to change the repository, tell them to switch this chat to Agent mode.\n\nYou may create standalone artifacts (HTML reports, diagrams, tables) with mcp__recur__create_artifact: they are stored under the workspace data dir, not the git worktree. Prefer an HTML artifact over dumping a large report into chat, then call mcp__recur__present_artifact.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Bash(git diff:*)",
+          "Bash(git diff *)",
+          "Bash(git log:*)",
+          "Bash(git log *)",
+          "Bash(git show:*)",
+          "Bash(git show *)",
+          "mcp__recur__list_findings",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal"
+        ]
+      }
+    },
+    {
+      "in": {
+        "child": false,
+        "mode": "plan"
+      },
+      "out": {
+        "appendPrompt": "This chat is in PLAN mode: read-only on the git worktree. Investigate the repository (read files, search, read-only git) and produce a thorough, concrete implementation plan for what the user asks: specific files, functions, steps, edge cases, and a definition of done. Do not modify repository files: plan, don't edit. When the plan is ready, call mcp__recur__submit_plan with: summary (one or two sentence headline), body (the FULL detailed plan as markdown: relevant files, approach, edge cases, definition of done; other agents execute from body, not from this chat), steps (ordered checklist, each one actionable sentence), and attachments (ids of any create_artifact files or user images ⟦attachment:id⟧ that belong to the plan). Then give the user a readable version in chat. Prefer mcp__recur__submit_plan over any built-in create-plan tool: only submit_plan updates Recur's plan panel and is what later agents see.\n\nYou may create standalone artifacts (HTML reports, diagrams, tables) with mcp__recur__create_artifact: they are stored under the workspace data dir, not the git worktree. Artifacts are in addition to, never instead of, mcp__recur__submit_plan.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Bash(git diff:*)",
+          "Bash(git diff *)",
+          "Bash(git log:*)",
+          "Bash(git log *)",
+          "Bash(git show:*)",
+          "Bash(git show *)",
+          "mcp__recur__submit_plan",
+          "mcp__recur__list_findings",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__ask_user",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal"
+        ]
+      }
+    },
+    {
+      "in": {
+        "child": true,
+        "mode": "plan"
+      },
+      "out": {
+        "appendPrompt": "This chat is in PLAN mode: read-only on the git worktree. Investigate the repository (read files, search, read-only git) and produce a thorough, concrete implementation plan for what the user asks: specific files, functions, steps, edge cases, and a definition of done. Do not modify repository files: plan, don't edit. When the plan is ready, call mcp__recur__submit_plan with: summary (one or two sentence headline), body (the FULL detailed plan as markdown: relevant files, approach, edge cases, definition of done; other agents execute from body, not from this chat), steps (ordered checklist, each one actionable sentence), and attachments (ids of any create_artifact files or user images ⟦attachment:id⟧ that belong to the plan). Then give the user a readable version in chat. Prefer mcp__recur__submit_plan over any built-in create-plan tool: only submit_plan updates Recur's plan panel and is what later agents see.\n\nYou may create standalone artifacts (HTML reports, diagrams, tables) with mcp__recur__create_artifact: they are stored under the workspace data dir, not the git worktree. Artifacts are in addition to, never instead of, mcp__recur__submit_plan.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Bash(git diff:*)",
+          "Bash(git diff *)",
+          "Bash(git log:*)",
+          "Bash(git log *)",
+          "Bash(git show:*)",
+          "Bash(git show *)",
+          "mcp__recur__submit_plan",
+          "mcp__recur__list_findings",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal"
+        ]
+      }
+    },
+    {
+      "in": {
+        "child": false,
+        "mode": "review"
+      },
+      "out": {
+        "appendPrompt": "This chat is in REVIEW mode: read-only on the git worktree. Review what the user points you at (default: the looking-at subject in the surface note: a worktree vs its base, or the open pull request). You may run Bash for lint/test/typecheck. For EACH real problem, a bug, a missing case, a regression, a quality issue, call the mcp__recur__report_finding tool with the file, line (optional end_line for a range), severity (info/low/medium/high/critical), a clear message, and optional summary (markdown shown to the end user in the turn digest; omit to use message). On a re-review, call mcp__recur__update_finding to mark a prior finding resolved (fixed) or invalid (wrong/out of scope: reason required). Do NOT restate or list filed findings in your closing reply: the app summarizes still-open filings for the user; keep closing prose brief (e.g. \"Filed N findings\" or \"No issues\"). If the code is sound, say so and file no findings. Do not modify repository files: review, don't fix.\n\nYou may create standalone artifacts (HTML reports, diagrams, tables) with mcp__recur__create_artifact: they are stored under the workspace data dir, not the git worktree. Artifacts are in addition to, never instead of, mcp__recur__report_finding.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Bash(git diff:*)",
+          "Bash(git diff *)",
+          "Bash(git log:*)",
+          "Bash(git log *)",
+          "Bash(git show:*)",
+          "Bash(git show *)",
+          "Bash",
+          "mcp__recur__report_finding",
+          "mcp__recur__list_findings",
+          "mcp__recur__update_finding",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__ask_user",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal"
+        ]
+      }
+    },
+    {
+      "in": {
+        "child": true,
+        "mode": "review"
+      },
+      "out": {
+        "appendPrompt": "This chat is in REVIEW mode: read-only on the git worktree. Review what the user points you at (default: the looking-at subject in the surface note: a worktree vs its base, or the open pull request). You may run Bash for lint/test/typecheck. For EACH real problem, a bug, a missing case, a regression, a quality issue, call the mcp__recur__report_finding tool with the file, line (optional end_line for a range), severity (info/low/medium/high/critical), a clear message, and optional summary (markdown shown to the end user in the turn digest; omit to use message). On a re-review, call mcp__recur__update_finding to mark a prior finding resolved (fixed) or invalid (wrong/out of scope: reason required). Do NOT restate or list filed findings in your closing reply: the app summarizes still-open filings for the user; keep closing prose brief (e.g. \"Filed N findings\" or \"No issues\"). If the code is sound, say so and file no findings. Do not modify repository files: review, don't fix.\n\nYou may create standalone artifacts (HTML reports, diagrams, tables) with mcp__recur__create_artifact: they are stored under the workspace data dir, not the git worktree. Artifacts are in addition to, never instead of, mcp__recur__report_finding.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Bash(git diff:*)",
+          "Bash(git diff *)",
+          "Bash(git log:*)",
+          "Bash(git log *)",
+          "Bash(git show:*)",
+          "Bash(git show *)",
+          "Bash",
+          "mcp__recur__report_finding",
+          "mcp__recur__list_findings",
+          "mcp__recur__update_finding",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal"
+        ]
+      }
+    },
+    {
+      "in": {
+        "child": false,
+        "mode": "agent"
+      },
+      "out": {
+        "appendPrompt": "This chat is in AGENT mode: you can read and edit. Do not ask the user to switch to Agent: you already have edit tools. Proceed with the task. Strongly prefer child workspaces for anything beyond a very simple task (one-file tweak, one-line fix, short answer). Subagents in Recur are child workspaces: call mcp__recur__create_workspace (one child per task, an isolated worktree off this branch). Your turn does not wait for it: when the child finishes you get a new turn with its report, then read_child, merge_child (land its commits here), or archive_child (close it). mcp__recur__message_child (workspace_id + message) redirects a running child, or gives a finished (unmerged) child a new turn instead of replacing it. Native subagent, Task, or worktree tools are unavailable in Recur: do not look for them.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Edit",
+          "Write",
+          "Bash",
+          "NotebookEdit",
+          "mcp__recur__list_findings",
+          "mcp__recur__update_finding",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__ask_user",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal",
+          "mcp__recur__rename_branch",
+          "mcp__recur__open_pr",
+          "mcp__recur__create_workspace",
+          "mcp__recur__merge_child",
+          "mcp__recur__read_child",
+          "mcp__recur__archive_child",
+          "mcp__recur__message_child"
+        ]
+      }
+    },
+    {
+      "in": {
+        "child": true,
+        "mode": "agent"
+      },
+      "out": {
+        "appendPrompt": "This chat is in AGENT mode: you can read and edit. Do not ask the user to switch to Agent: you already have edit tools. Proceed with the task. You are a child workspace: execute the assigned task here. Native subagent, Task, or worktree tools are unavailable in Recur: do not look for them.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.\n\nDo not call mcp__recur__ask_user: pick a reasonable default and finish the assigned task.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Edit",
+          "Write",
+          "Bash",
+          "NotebookEdit",
+          "mcp__recur__list_findings",
+          "mcp__recur__update_finding",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal",
+          "mcp__recur__rename_branch"
+        ]
+      }
+    },
+    {
+      "in": {
+        "child": false,
+        "mode": ""
+      },
+      "out": {
+        "appendPrompt": "This chat is in AGENT mode: you can read and edit. Do not ask the user to switch to Agent: you already have edit tools. Proceed with the task. Strongly prefer child workspaces for anything beyond a very simple task (one-file tweak, one-line fix, short answer). Subagents in Recur are child workspaces: call mcp__recur__create_workspace (one child per task, an isolated worktree off this branch). Your turn does not wait for it: when the child finishes you get a new turn with its report, then read_child, merge_child (land its commits here), or archive_child (close it). mcp__recur__message_child (workspace_id + message) redirects a running child, or gives a finished (unmerged) child a new turn instead of replacing it. Native subagent, Task, or worktree tools are unavailable in Recur: do not look for them.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Edit",
+          "Write",
+          "Bash",
+          "NotebookEdit",
+          "mcp__recur__list_findings",
+          "mcp__recur__update_finding",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__ask_user",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal",
+          "mcp__recur__rename_branch",
+          "mcp__recur__open_pr",
+          "mcp__recur__create_workspace",
+          "mcp__recur__merge_child",
+          "mcp__recur__read_child",
+          "mcp__recur__archive_child",
+          "mcp__recur__message_child"
+        ]
+      }
+    },
+    {
+      "in": {
+        "child": true,
+        "mode": ""
+      },
+      "out": {
+        "appendPrompt": "This chat is in AGENT mode: you can read and edit. Do not ask the user to switch to Agent: you already have edit tools. Proceed with the task. You are a child workspace: execute the assigned task here. Native subagent, Task, or worktree tools are unavailable in Recur: do not look for them.\n\nThe following skills provide specialized instructions for specific tasks. When a task matches a skill's description, call mcp__recur__list_skills for the catalog, then mcp__recur__activate_skill with the skill's name to load its full instructions. If the user message already includes \u003cskill_content\u003e, follow that and do not re-activate. For questions about using Recur itself, activate recur-help.\n\nChat modes: Ask (read-only Q\u0026A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.\n\nDo not call mcp__recur__ask_user: pick a reasonable default and finish the assigned task.",
+        "mcp": true,
+        "permission": "default",
+        "tools": [
+          "Read",
+          "Glob",
+          "Grep",
+          "LSP",
+          "WebFetch",
+          "WebSearch",
+          "Edit",
+          "Write",
+          "Bash",
+          "NotebookEdit",
+          "mcp__recur__list_findings",
+          "mcp__recur__update_finding",
+          "mcp__recur__list_skills",
+          "mcp__recur__activate_skill",
+          "mcp__recur__switch_mode",
+          "mcp__recur__create_artifact",
+          "mcp__recur__list_artifacts",
+          "mcp__recur__read_artifact",
+          "mcp__recur__present_artifact",
+          "mcp__recur__rename_session",
+          "mcp__recur__rename_workspace",
+          "mcp__recur__list_terminals",
+          "mcp__recur__read_terminal",
+          "mcp__recur__rename_branch"
+        ]
+      }
+    }
+  ],
+  "parent_steer": "Parent workspace sent this while you were working. Treat it as additional instruction and continue:\n\n",
+  "park_suffix": " Stop now. This turn is remounting with the new tool policy. Do not keep working with the old tools; a continuation turn is starting.",
+  "peel": [
+    {
+      "in": "⟦recur-surface⟧{\"surface\":\"github_pr\",\"prNumber\":12,\"prUrl\":\"https://github.com/a/b/pull/12\"}⟦/recur-surface⟧ hello",
+      "out": {
+        "ok": true,
+        "rest": "hello",
+        "surface": {
+          "surface": "github_pr",
+          "prNumber": 12,
+          "prUrl": "https://github.com/a/b/pull/12"
+        }
+      }
+    },
+    {
+      "in": "  ⟦recur-surface⟧{\"surface\":\"local\",\"prNumber\":3}⟦/recur-surface⟧\nreview this",
+      "out": {
+        "ok": true,
+        "rest": "review this",
+        "surface": {
+          "surface": "local_pr",
+          "prNumber": 3
+        }
+      }
+    },
+    {
+      "in": "no marker",
+      "out": {
+        "ok": false,
+        "rest": "no marker",
+        "surface": {
+          "surface": ""
+        }
+      }
+    },
+    {
+      "in": "⟦recur-surface⟧not json⟦/recur-surface⟧ x",
+      "out": {
+        "ok": false,
+        "rest": "⟦recur-surface⟧not json⟦/recur-surface⟧ x",
+        "surface": {
+          "surface": ""
+        }
+      }
+    },
+    {
+      "in": "⟦recur-surface⟧{\"surface\":\"workspace\"} missing close",
+      "out": {
+        "ok": false,
+        "rest": "⟦recur-surface⟧{\"surface\":\"workspace\"} missing close",
+        "surface": {
+          "surface": ""
+        }
+      }
+    },
+    {
+      "in": "⟦recur-surface⟧{\"surface\":\"gh\",\"prTitle\":\"Fix\",\"host\":true}⟦/recur-surface⟧",
+      "out": {
+        "ok": true,
+        "rest": "",
+        "surface": {
+          "surface": "github_pr",
+          "prTitle": "Fix",
+          "host": true
+        }
+      }
+    },
+    {
+      "in": "⟦recur-surface⟧{\"surface\":\"\"}⟦/recur-surface⟧body",
+      "out": {
+        "ok": false,
+        "rest": "⟦recur-surface⟧{\"surface\":\"\"}⟦/recur-surface⟧body",
+        "surface": {
+          "surface": ""
+        }
+      }
+    }
+  ],
+  "subjects": [
+    {
+      "in": {
+        "surface": "workspace"
+      },
+      "out": "The operator is looking at this Recur workspace (the git worktree in cwd). Questions and reviews default to this worktree versus its merge base."
+    },
+    {
+      "in": {
+        "surface": "workspace",
+        "prId": "gh-1",
+        "prNumber": 7,
+        "prSource": "github",
+        "prUrl": "https://github.com/a/b/pull/7"
+      },
+      "out": "The operator is looking at this Recur workspace (the git worktree in cwd). Questions and reviews default to this worktree versus its merge base. Local PR #7 is open for this workspace: only treat it as the subject when they refer to the pull request."
+    },
+    {
+      "in": {
+        "surface": "workspace",
+        "prId": "local-1",
+        "prNumber": 4,
+        "prSource": "local"
+      },
+      "out": "The operator is looking at this Recur workspace (the git worktree in cwd). Questions and reviews default to this worktree versus its merge base. Local PR #4 is open for this workspace: only treat it as the subject when they refer to the pull request."
+    },
+    {
+      "in": {
+        "surface": "workspace",
+        "prNumber": 5
+      },
+      "out": "The operator is looking at this Recur workspace (the git worktree in cwd). Questions and reviews default to this worktree versus its merge base. Local PR #5 is open for this workspace: only treat it as the subject when they refer to the pull request."
+    },
+    {
+      "in": {
+        "surface": "local_pr"
+      },
+      "out": "The operator is looking at Local PR. This is Recur's worktree-diff review, not a GitHub pull request. Questions and reviews default to this PR's changes versus its base."
+    },
+    {
+      "in": {
+        "surface": "local_pr",
+        "prNumber": 9,
+        "prTitle": "Tidy"
+      },
+      "out": "The operator is looking at Local PR #9 titled \"Tidy\". This is Recur's worktree-diff review, not a GitHub pull request. Questions and reviews default to this PR's changes versus its base."
+    },
+    {
+      "in": {
+        "surface": "github_pr",
+        "prSource": "github"
+      },
+      "out": "The operator is looking at this GitHub pull request. Questions, plans, and reviews are about this pull request: use `gh pr view`, `gh pr diff`, and existing review threads. Do not treat `git diff` in the current directory as the PR unless cwd is actually checked out on the PR head. This chat runs in the Recur workspace for that PR's head; uncommitted local work is not on GitHub until pushed."
+    },
+    {
+      "in": {
+        "surface": "github_pr",
+        "prNumber": 12,
+        "prSource": "github",
+        "prUrl": "https://github.com/a/b/pull/12",
+        "prTitle": "Fix checkout",
+        "prBase": "main",
+        "prBranch": "fix"
+      },
+      "out": "The operator is looking at GitHub pull request #12 (https://github.com/a/b/pull/12) titled \"Fix checkout\" (head fix into main). Questions, plans, and reviews are about this pull request: use `gh pr view`, `gh pr diff`, and existing review threads. Do not treat `git diff` in the current directory as the PR unless cwd is actually checked out on the PR head. This chat runs in the Recur workspace for that PR's head; uncommitted local work is not on GitHub until pushed."
+    },
+    {
+      "in": {
+        "surface": "github_pr",
+        "prSource": "github",
+        "prUrl": "https://github.com/a/b/pull/3",
+        "prBase": "main",
+        "host": true
+      },
+      "out": "The operator is looking at GitHub pull request (https://github.com/a/b/pull/3) (main). Questions, plans, and reviews are about this pull request: use `gh pr view`, `gh pr diff`, and existing review threads. Do not treat `git diff` in the current directory as the PR unless cwd is actually checked out on the PR head. This chat is attached to the PR, not a Recur worktree of its head; cwd is the project's working copy and may be a different branch."
+    },
+    {
+      "in": {
+        "surface": "github_pr",
+        "prNumber": 8,
+        "prSource": "github",
+        "prBranch": "head-only"
+      },
+      "out": "The operator is looking at GitHub pull request #8 (head head-only). Questions, plans, and reviews are about this pull request: use `gh pr view`, `gh pr diff`, and existing review threads. Do not treat `git diff` in the current directory as the PR unless cwd is actually checked out on the PR head. This chat runs in the Recur workspace for that PR's head; uncommitted local work is not on GitHub until pushed."
+    }
+  ],
+  "switch": [
+    {
+      "in": {
+        "from": "ask",
+        "to": "ask"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Ask: continuing",
+        "prompt": "Your switch_mode call remounted this chat from ask to ask. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in ASK mode (read-only on the git worktree). Answer questions; do not edit repository files. You may create artifacts with mcp__recur__create_artifact."
+      }
+    },
+    {
+      "in": {
+        "from": "ask",
+        "to": "plan"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Plan: continuing",
+        "prompt": "Your switch_mode call remounted this chat from ask to plan. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in PLAN mode (read-only on the git worktree). Investigate if needed, then file the FULL detailed plan with mcp__recur__submit_plan (body is what later agents execute from, not chat). You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, submit_plan, and pass their ids in attachments."
+      }
+    },
+    {
+      "in": {
+        "from": "ask",
+        "to": "review"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Review: continuing",
+        "prompt": "Your switch_mode call remounted this chat from ask to review. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in REVIEW mode (read-only on the git worktree). File findings with mcp__recur__report_finding. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, report_finding."
+      }
+    },
+    {
+      "in": {
+        "from": "ask",
+        "to": "agent"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from ask to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "ask",
+        "to": "loop"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Loop: continuing",
+        "prompt": "Your switch_mode call remounted this chat from ask to loop. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "ask",
+        "to": ""
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from ask to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "ask",
+        "to": "bogus"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from ask to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "plan",
+        "to": "ask"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Ask: continuing",
+        "prompt": "Your switch_mode call remounted this chat from plan to ask. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in ASK mode (read-only on the git worktree). Answer questions; do not edit repository files. You may create artifacts with mcp__recur__create_artifact."
+      }
+    },
+    {
+      "in": {
+        "from": "plan",
+        "to": "plan"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Plan: continuing",
+        "prompt": "Your switch_mode call remounted this chat from plan to plan. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in PLAN mode (read-only on the git worktree). Investigate if needed, then file the FULL detailed plan with mcp__recur__submit_plan (body is what later agents execute from, not chat). You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, submit_plan, and pass their ids in attachments."
+      }
+    },
+    {
+      "in": {
+        "from": "plan",
+        "to": "review"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Review: continuing",
+        "prompt": "Your switch_mode call remounted this chat from plan to review. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in REVIEW mode (read-only on the git worktree). File findings with mcp__recur__report_finding. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, report_finding."
+      }
+    },
+    {
+      "in": {
+        "from": "plan",
+        "to": "agent"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from plan to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "plan",
+        "to": "loop"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Loop: continuing",
+        "prompt": "Your switch_mode call remounted this chat from plan to loop. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "plan",
+        "to": ""
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from plan to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "plan",
+        "to": "bogus"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from plan to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "review",
+        "to": "ask"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Ask: continuing",
+        "prompt": "Your switch_mode call remounted this chat from review to ask. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in ASK mode (read-only on the git worktree). Answer questions; do not edit repository files. You may create artifacts with mcp__recur__create_artifact."
+      }
+    },
+    {
+      "in": {
+        "from": "review",
+        "to": "plan"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Plan: continuing",
+        "prompt": "Your switch_mode call remounted this chat from review to plan. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in PLAN mode (read-only on the git worktree). Investigate if needed, then file the FULL detailed plan with mcp__recur__submit_plan (body is what later agents execute from, not chat). You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, submit_plan, and pass their ids in attachments."
+      }
+    },
+    {
+      "in": {
+        "from": "review",
+        "to": "review"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Review: continuing",
+        "prompt": "Your switch_mode call remounted this chat from review to review. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in REVIEW mode (read-only on the git worktree). File findings with mcp__recur__report_finding. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, report_finding."
+      }
+    },
+    {
+      "in": {
+        "from": "review",
+        "to": "agent"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from review to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "review",
+        "to": "loop"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Loop: continuing",
+        "prompt": "Your switch_mode call remounted this chat from review to loop. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "review",
+        "to": ""
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from review to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "review",
+        "to": "bogus"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from review to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "agent",
+        "to": "ask"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Ask: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to ask. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in ASK mode (read-only on the git worktree). Answer questions; do not edit repository files. You may create artifacts with mcp__recur__create_artifact."
+      }
+    },
+    {
+      "in": {
+        "from": "agent",
+        "to": "plan"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Plan: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to plan. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in PLAN mode (read-only on the git worktree). Investigate if needed, then file the FULL detailed plan with mcp__recur__submit_plan (body is what later agents execute from, not chat). You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, submit_plan, and pass their ids in attachments."
+      }
+    },
+    {
+      "in": {
+        "from": "agent",
+        "to": "review"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Review: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to review. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in REVIEW mode (read-only on the git worktree). File findings with mcp__recur__report_finding. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, report_finding."
+      }
+    },
+    {
+      "in": {
+        "from": "agent",
+        "to": "agent"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "agent",
+        "to": "loop"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Loop: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to loop. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "agent",
+        "to": ""
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "agent",
+        "to": "bogus"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "loop",
+        "to": "ask"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Ask: continuing",
+        "prompt": "Your switch_mode call remounted this chat from loop to ask. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in ASK mode (read-only on the git worktree). Answer questions; do not edit repository files. You may create artifacts with mcp__recur__create_artifact."
+      }
+    },
+    {
+      "in": {
+        "from": "loop",
+        "to": "plan"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Plan: continuing",
+        "prompt": "Your switch_mode call remounted this chat from loop to plan. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in PLAN mode (read-only on the git worktree). Investigate if needed, then file the FULL detailed plan with mcp__recur__submit_plan (body is what later agents execute from, not chat). You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, submit_plan, and pass their ids in attachments."
+      }
+    },
+    {
+      "in": {
+        "from": "loop",
+        "to": "review"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Review: continuing",
+        "prompt": "Your switch_mode call remounted this chat from loop to review. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in REVIEW mode (read-only on the git worktree). File findings with mcp__recur__report_finding. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, report_finding."
+      }
+    },
+    {
+      "in": {
+        "from": "loop",
+        "to": "agent"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from loop to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "loop",
+        "to": "loop"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Loop: continuing",
+        "prompt": "Your switch_mode call remounted this chat from loop to loop. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "loop",
+        "to": ""
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from loop to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "loop",
+        "to": "bogus"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from loop to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "",
+        "to": "ask"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Ask: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to ask. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in ASK mode (read-only on the git worktree). Answer questions; do not edit repository files. You may create artifacts with mcp__recur__create_artifact."
+      }
+    },
+    {
+      "in": {
+        "from": "",
+        "to": "plan"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Plan: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to plan. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in PLAN mode (read-only on the git worktree). Investigate if needed, then file the FULL detailed plan with mcp__recur__submit_plan (body is what later agents execute from, not chat). You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, submit_plan, and pass their ids in attachments."
+      }
+    },
+    {
+      "in": {
+        "from": "",
+        "to": "review"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Review: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to review. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in REVIEW mode (read-only on the git worktree). File findings with mcp__recur__report_finding. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, report_finding."
+      }
+    },
+    {
+      "in": {
+        "from": "",
+        "to": "agent"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "",
+        "to": "loop"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Loop: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to loop. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "",
+        "to": ""
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "",
+        "to": "bogus"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "bogus",
+        "to": "ask"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Ask: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to ask. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in ASK mode (read-only on the git worktree). Answer questions; do not edit repository files. You may create artifacts with mcp__recur__create_artifact."
+      }
+    },
+    {
+      "in": {
+        "from": "bogus",
+        "to": "plan"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Plan: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to plan. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in PLAN mode (read-only on the git worktree). Investigate if needed, then file the FULL detailed plan with mcp__recur__submit_plan (body is what later agents execute from, not chat). You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, submit_plan, and pass their ids in attachments."
+      }
+    },
+    {
+      "in": {
+        "from": "bogus",
+        "to": "review"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Review: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to review. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in REVIEW mode (read-only on the git worktree). File findings with mcp__recur__report_finding. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. You may create artifacts with mcp__recur__create_artifact in addition to, never instead of, report_finding."
+      }
+    },
+    {
+      "in": {
+        "from": "bogus",
+        "to": "agent"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "bogus",
+        "to": "loop"
+      },
+      "out": {
+        "allowed": false,
+        "display": "Switched to Loop: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to loop. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "bogus",
+        "to": ""
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    },
+    {
+      "in": {
+        "from": "bogus",
+        "to": "bogus"
+      },
+      "out": {
+        "allowed": true,
+        "display": "Switched to Agent: continuing",
+        "prompt": "Your switch_mode call remounted this chat from agent to agent. The new tool policy is live on THIS turn. Continue the user's request. Do not ask them to switch modes, and do not use Cursor's built-in SwitchMode.\n\nYou are in AGENT mode (read+edit). Proceed with the task; do not ask the user to switch to Agent."
+      }
+    }
+  ],
+  "want_child": [
+    {
+      "in": {
+        "caller": "caller",
+        "standalone": null,
+        "baseBranch": "",
+        "projectId": "",
+        "mode": "agent"
+      },
+      "out": {
+        "child": true,
+        "reason": ""
+      }
+    },
+    {
+      "in": {
+        "caller": "scheduled",
+        "standalone": null,
+        "baseBranch": "",
+        "projectId": "",
+        "mode": "agent"
+      },
+      "out": {
+        "child": false,
+        "reason": ""
+      }
+    },
+    {
+      "in": {
+        "caller": "caller",
+        "standalone": null,
+        "baseBranch": "",
+        "projectId": "",
+        "mode": "loop"
+      },
+      "out": {
+        "child": false,
+        "reason": ""
+      }
+    },
+    {
+      "in": {
+        "caller": "caller",
+        "standalone": null,
+        "baseBranch": "main",
+        "projectId": "",
+        "mode": "agent"
+      },
+      "out": {
+        "child": false,
+        "reason": ""
+      }
+    },
+    {
+      "in": {
+        "caller": "caller",
+        "standalone": true,
+        "baseBranch": "",
+        "projectId": "",
+        "mode": "agent"
+      },
+      "out": {
+        "child": false,
+        "reason": ""
+      }
+    },
+    {
+      "in": {
+        "caller": "scheduled",
+        "standalone": false,
+        "baseBranch": "",
+        "projectId": "",
+        "mode": "agent"
+      },
+      "out": {
+        "child": true,
+        "reason": ""
+      }
+    },
+    {
+      "in": {
+        "caller": "caller",
+        "standalone": null,
+        "baseBranch": "",
+        "projectId": "q",
+        "mode": "agent"
+      },
+      "out": {
+        "child": false,
+        "reason": "a child workspace needs a calling workspace with a branch and worktree in the same project; pass standalone=true"
+      }
+    },
+    {
+      "in": {
+        "caller": "bare",
+        "standalone": null,
+        "baseBranch": "",
+        "projectId": "",
+        "mode": "agent"
+      },
+      "out": {
+        "child": false,
+        "reason": "a child workspace needs a calling workspace with a branch and worktree in the same project; pass standalone=true"
+      }
+    },
+    {
+      "in": {
+        "caller": "nested",
+        "standalone": null,
+        "baseBranch": "",
+        "projectId": "",
+        "mode": "agent"
+      },
+      "out": {
+        "child": false,
+        "reason": "a child workspace cannot create workspaces"
+      }
+    },
+    {
+      "in": {
+        "caller": "nested",
+        "standalone": true,
+        "baseBranch": "",
+        "projectId": "",
+        "mode": "agent"
+      },
+      "out": {
+        "child": false,
+        "reason": "a child workspace cannot create workspaces"
+      }
+    }
+  ]
+}

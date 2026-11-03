@@ -1,0 +1,74 @@
+# Day-to-day development and generators for shipped content.
+[build]
+description = "Builds the desktop app and CLI into target/ (`-- --release` for a release build)"
+run = "cargo build"
+
+[dev]
+description = "Runs the desktop app on the engine-backed services (data dir defaults to Recur; `-- --features fake` for the typed service fakes)"
+depends = ["generate:licenses"]
+env = { RECUR_LICENSES_MD = "target/licenses.md" }
+run = "cargo run -p recur-desktop --profile human"
+
+[smoke]
+description = "Boots the desktop on a sandbox built from a Recur data dir (read only) and drives every view: `mise run smoke -- <data dir> [sandbox dir]`"
+run = "cargo run -p recur-desktop --example real_data_smoke --"
+
+["generate:help-skill"]
+description = "Copies the user docs (src-docs) into the shipped recur-help skill that the app embeds"
+run = "rsync -a --delete --include='*/' --include='*.mdx' --exclude='*' src-docs/src/pages/ recur-skills/recur-help/references/"
+
+["generate:licenses"]
+description = "Writes target/licenses.md, the third-party licenses Settings > Licenses shows: cargo-about's crate list (build/licenses), the other components, the fonts' OFL texts and the NOTICE files of ported code"
+sources = ["Cargo.lock", "build/licenses/*", "crates/ui/assets/fonts/OFL-*.txt", "crates/**/NOTICE", "bundles/*/NOTICE"]
+outputs = ["target/licenses.md"]
+run = '''
+set -eu
+out=target/licenses.md
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+{
+  printf '# Third-party licenses\n\nRecur includes the following third-party software.\n\n'
+  cargo about generate --fail -c build/licenses/about.toml --workspace build/licenses/about.hbs
+  cat build/licenses/components.md
+  for f in crates/ui/assets/fonts/OFL-*.txt; do
+    printf '### Font: %s\n\n```\n' "$(basename "$f" .txt | sed 's/^OFL-//')"
+    cat "$f"
+    printf '\n```\n\n'
+  done
+  printf '## Ported and adapted code\n\n'
+  for f in $(git ls-files --cached --others --exclude-standard '*NOTICE' | grep -v '^vendor/'); do
+    printf '### %s\n\n```\n' "$(dirname "$f")"
+    cat "$f"
+    printf '\n```\n\n'
+  done
+} > "$tmp"
+mkdir -p target
+mv "$tmp" "$out"
+'''
+
+["generate:icons"]
+description = "Compiles build/appicon.icon into build/darwin/Assets.car and icons.icns (macOS 26+ actool)"
+dir = "build"
+run = '''
+set -eu
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+/usr/bin/actool "$PWD/appicon.icon" --compile "$tmp" --notices --warnings --errors \
+  --output-partial-info-plist "$tmp/partial.plist" --app-icon appicon \
+  --enable-on-demand-resources NO --development-region en --target-device mac \
+  --minimum-deployment-target 26.0 --platform macosx >/dev/null
+mv "$tmp/Assets.car" darwin/Assets.car
+mv "$tmp"/*.icns darwin/icons.icns
+'''
+
+["fetch:tm-grammars"]
+description = "Re-fetches TextMate grammars from shikijs/textmate-grammars-themes into bundles/Languages"
+run = "node scripts/fetch-tm-grammars.mjs"
+
+["fetch:tm-themes"]
+description = "Re-fetches pack TextMate themes from shikijs/tm-themes (+ Aura) into bundles/Themes"
+run = "node scripts/fetch-tm-themes.mjs"
+
+["port:filmgirl-themes"]
+description = "Converts filmgirl TextMate plists into local theme ports (skips mods; does not fetch Shiki)"
+run = ["node scripts/port-filmgirl-themes.mjs", "node scripts/fetch-tm-themes.mjs --local-only"]

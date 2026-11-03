@@ -1,8 +1,8 @@
 # Splash page
 
-Run `npm run dev` or `npm run build` from `src-web`. Both first build the
-interactive demo using the frontend's existing locked dependencies (requires pnpm).
-Run `wails3 task test:splash` from the repository root to build and browser-test it.
+Run `pnpm run dev` or `pnpm run build` from `src-web`. Both first build the
+interactive demo from the Svelte app in `demo/` with its locked dependencies (requires pnpm).
+Run `mise run test:splash` from the repository root to build and browser-test it.
 
 The hero tour and PR section use real captures from `public/screenshots`.
 `ProductScreenshot.svelte` reads their filenames and dimensions from the capture
@@ -14,9 +14,10 @@ The bundles section keeps a compact live theme preview so app/editor swatches ca
 still be mixed independently. It composes the app views in an isolated iframe.
 The loop graph stays animated and interactive.
 
-The showcase and capture builds share the dedicated product dataset in
-`frontend/captures/dataset.json`, service resolvers, and shipped TextMate themes. Rebuild it after changing frontend components. Generated demo assets live
-in `public/demo` and are ignored by Git. The website build copies them into `dist`.
+The showcase builds from the product dataset in `demo/showcase/dataset.json`
+and shipped TextMate themes. Rebuild it after changing demo components. Generated
+demo assets live in `public/demo` and are ignored by Git. The website build copies
+them into `dist`.
 
-Generate product screenshots with `wails3 task capture:splash`. See
-[the capture guide](../frontend/captures/README.md) for datasets, presets, and outputs.
+The screenshots in `public/screenshots` are committed. The Svelte capture pipeline
+that produced them was retired with the move to the Rust desktop app.

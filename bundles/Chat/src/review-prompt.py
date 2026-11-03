@@ -56,7 +56,7 @@ if since_review:
         "## git diff --stat (since your last review pass)",
         scrub(stat_work.strip() or "(empty)"),
         "",
-        "## git diff (since your last review pass — committed or not, incl. new files)",
+        "## git diff (since your last review pass: committed or not, incl. new files)",
         "```diff",
         scrub(diff_work if diff_work.strip() else "(nothing changed since the last pass)"),
         "```",
@@ -81,14 +81,14 @@ else:
     ]
 
 # Over-engineering pass: Ponytail review/audit body (MIT), filed via Recur findings.
-# https://github.com/DietrichGebert/ponytail — skills/ponytail-review, ponytail-audit.
+# https://github.com/DietrichGebert/ponytail: skills/ponytail-review, ponytail-audit.
 SIMPLIFY_FOCUS = """
 Review diffs for unnecessary complexity. What to cut, what replaces it. The diff's best outcome is getting shorter.
 
 ## File findings
 
 Call mcp__recur__report_finding for each cut. file, line, and end_line locate
-it — do not repeat those in message. message is `tag: what to cut. what
+it: do not repeat those in message. message is `tag: what to cut. what
 replaces it.` severity: low for shrink, medium otherwise. Do not apply the fixes.
 
 Tags:
@@ -104,19 +104,19 @@ Tags:
 ❌ "This EmailValidator class might be more complex than necessary, have you
 considered whether all these validation rules are needed at this stage?"
 
-✅ mcp__recur__report_finding — file: validators.ts, line: 12, end_line: 38,
+✅ mcp__recur__report_finding: file: validators.ts, line: 12, end_line: 38,
 severity: medium, message: `stdlib: 27-line validator class. "@" in email, 1 line, real validation is the confirmation mail.`
 
-✅ mcp__recur__report_finding — file: dates.js, line: 4, severity: medium,
+✅ mcp__recur__report_finding: file: dates.js, line: 4, severity: medium,
 message: `native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
 
-✅ mcp__recur__report_finding — file: repo.py, line: 88, severity: medium,
+✅ mcp__recur__report_finding: file: repo.py, line: 88, severity: medium,
 message: `yagni: AbstractRepository with one implementation. Inline it until a second one exists.`
 
-✅ mcp__recur__report_finding — file: client.ts, line: 52, end_line: 71,
+✅ mcp__recur__report_finding: file: client.ts, line: 52, end_line: 71,
 severity: medium, message: `delete: retry wrapper around an idempotent local call. Nothing replaces it.`
 
-✅ mcp__recur__report_finding — file: util.py, line: 30, end_line: 44,
+✅ mcp__recur__report_finding: file: util.py, line: 30, end_line: 44,
 severity: low, message: `shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
 
 ## Scoring
@@ -131,7 +131,7 @@ If there is nothing to cut, file none and say `Lean already. Ship.` and stop.
 Scope: over-engineering and complexity only. Correctness bugs, security holes,
 and performance are explicitly out of scope. Route them to /review, not this
 pass. A single smoke test or `assert`-based self-check is the minimum, not
-bloat — never flag it for deletion. Does not apply the fixes, only files them.
+bloat: never flag it for deletion. Does not apply the fixes, only files them.
 """.strip()
 
 AUDIT_FOCUS = """
@@ -186,13 +186,13 @@ if surface == "github_pr":
         )
         display = f"Please review GitHub PR #{pr_num}" if pr_num and pr_num != "0" else "Please review this GitHub pull request"
     host_note = (
-        " cwd is the project's working copy, not a Recur worktree of this PR head — "
+        " cwd is the project's working copy, not a Recur worktree of this PR head: "
         "do NOT use `git diff` in cwd; use the embedded `gh pr diff` below."
         if host
         else " Prefer the embedded `gh pr diff` (the PR as on GitHub) over uncommitted worktree changes."
     )
     gather = (
-        "PR context is already gathered below — do NOT re-run git status/diff or `gh pr diff` "
+        "PR context is already gathered below: do NOT re-run git status/diff or `gh pr diff` "
         "unless something looks incomplete or you need a specific file region. Prefer "
         "reading the changed files that matter for each finding."
     )
@@ -210,14 +210,14 @@ if surface == "github_pr":
         f"PR head: {pr_branch or '(unknown)'}  base: {pr_base or base or '(unknown)'}",
         "",
         "## gh pr view --json",
-        scrub(pr_view.strip() or "(empty — gh pr view failed; use gh pr view with the number above)"),
+        scrub(pr_view.strip() or "(empty: gh pr view failed; use gh pr view with the number above)"),
         "",
         "## gh pr diff --stat",
         scrub(pr_stat.strip() or "(empty)"),
         "",
         "## gh pr diff",
         "```diff",
-        scrub(pr_diff if pr_diff.strip() else "(empty — fetch with gh pr diff)"),
+        scrub(pr_diff if pr_diff.strip() else "(empty: fetch with gh pr diff)"),
         "```",
         close_m,
     ]
@@ -228,7 +228,7 @@ elif surface == "local_pr":
     if again and since_review:
         intro = (
             f"Please re-review {who}{titled}: only what changed since your last review pass is "
-            "embedded below — the rest is already in this conversation. Re-check your earlier "
+            "embedded below: the rest is already in this conversation. Re-check your earlier "
             "findings against these changes and file anything new. Do not make code changes."
         )
         display = f"Please re-review Local PR #{n} since the last pass" if n else "Please re-review this Local PR since the last pass"
@@ -242,7 +242,7 @@ elif surface == "local_pr":
         )
         display = f"Please review Local PR #{n}" if n else "Please review this Local PR"
     gather = (
-        "Git context is already gathered below — do NOT re-run git status/diff/log "
+        "Git context is already gathered below: do NOT re-run git status/diff/log "
         "unless something looks incomplete or you need a specific file region. Prefer "
         "reading the changed files that matter for each finding."
     )
@@ -270,7 +270,7 @@ else:
     if again and since_review:
         intro = (
             "Please re-review this worktree: only what changed since your last review pass is "
-            "embedded below — the rest is already in this conversation. Re-check your earlier "
+            "embedded below: the rest is already in this conversation. Re-check your earlier "
             "findings against these changes and file anything new. Do not make code changes."
         )
         display = "Please re-review what changed in this worktree since the last pass"
@@ -284,7 +284,7 @@ else:
         )
         display = "Please review the changes in this worktree and file any real issues"
     gather = (
-        "Git context is already gathered below — do NOT re-run git status/diff/log "
+        "Git context is already gathered below: do NOT re-run git status/diff/log "
         "unless something looks incomplete or you need a specific file region. Prefer "
         "reading the changed files that matter for each finding."
     )
@@ -323,12 +323,12 @@ if kind == "simplify":
             "This pass is remaining over-engineering only. Do not make code changes.",
             1,
         )
-        display = "Simplify re-review — file remaining over-engineering findings"
+        display = "Simplify re-review: file remaining over-engineering findings"
     else:
-        display = "Simplify review — file over-engineering findings"
+        display = "Simplify review: file over-engineering findings"
     parts[1:1] = ["", SIMPLIFY_FOCUS]
 elif kind == "audit":
-    display = "Simplify audit — file over-engineering findings"
+    display = "Simplify audit: file over-engineering findings"
     if surface == "github_pr":
         host_bit = (
             " cwd is the project's working copy, not a checkout of this PR head."
@@ -342,7 +342,7 @@ elif kind == "audit":
                 + " Use /simplify-review for over-engineering in the PR diff. "
                 "Do not scan cwd and do not file findings."
             ),
-            "display": "Simplify audit isn't available on a GitHub PR — use /simplify-review",
+            "display": "Simplify audit isn't available on a GitHub PR: use /simplify-review",
         }, ensure_ascii=False))
         raise SystemExit(0)
     # Do not keep the review git-diff embed (or "prefer the embedded diff").

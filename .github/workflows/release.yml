@@ -1,12 +1,13 @@
 name: Release
 
-# Pushing a vX.Y.Z tag builds a universal Recur.app (stamping X.Y.Z into
-# Info.plist) in a styled DMG, and the Linux tarballs, .debs and .rpms, in
-# parallel. Only once every build succeeds does `publish` create the GitHub
-# release and attach them all with a SHA256SUMS, so a failed build never leaves
-# a partial release.
+# Pushing a vX.Y.Z tag builds a universal "Recur.app" (stamping X.Y.Z into
+# Info.plist) in a styled DMG plus its updater zip, and the recur Linux
+# tarballs, .debs and .rpms, in parallel. Only once every build succeeds does
+# `publish` create the GitHub release and attach them all with a
+# SHA256SUMS and the signed manifest.json the in-app updater reads
+# (RECUR_UPDATE_URL), so a failed build never leaves a partial release.
 #
-# With all the secrets below Recur.app and the DMG are Developer ID signed,
+# With all the secrets below the app and the DMG are Developer ID signed,
 # notarized, and stapled. With only the MACOS_* ones they are signed but not
 # notarized, which still keeps users' macOS folder permissions across updates.
 # With none it ships ad-hoc signed. Unless notarized, users clear quarantine per
@@ -30,9 +31,13 @@ name: Release
 #                          the public binaries-only repo every release is mirrored
 #                          to (public download page + in-app updater). It needs
 #                          one commit so release tags can be cut.
-#   UPDATER_SIGNING_KEY    `wails3 updater genkey` private key matching
-#                          build/updater.key.pub (rotate both together). Without
-#                          it and RELEASES_TOKEN, builds ship without the updater.
+#   UPDATER_SIGNING_KEY    Ed25519 private key (PKCS#8 PEM, or base64 of the raw
+#                          key or seed) matching build/updater.key.pub (rotate both
+#                          together). Without it and RELEASES_TOKEN, builds ship
+#                          without the updater.
+#
+# No job restores a build cache: a poisoned entry could reach the signed
+# artifacts or the job holding UPDATER_SIGNING_KEY. mbx's local cache is fine.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -43,6 +48,7 @@ permissions:
 jobs:
   build-mac:
     runs-on: macos-26
+    timeout-minutes: 150
     env:
       HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
       HAS_NOTARY: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
@@ -50,10 +56,7 @@ jobs:
       RECUR_UPDATE_URL: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' && 'https://github.com/celestiaorg/recur-releases/releases/latest/download/manifest.json' || '' }}
     steps:
       - uses: actions/checkout@v7
-
-      - uses: ./.github/actions/setup
-        with:
-          wails: "true"
+      - uses: jdx/mise-action@v5
 
       - name: Import signing certificate and notary credentials
         if: env.HAS_SIGNING == 'true'
@@ -81,53 +84,40 @@ jobs:
               --keychain "$KC"
           fi
 
-      # The temp keychain holds exactly one identity, so the common-name prefix
-      # is enough for codesign to select it.
+      # build/darwin/package.sh signs (and with KEYCHAIN_PROFILE notarizes and
+      # staples) the app and the DMG. The temp keychain holds exactly one
+      # identity, so the common-name prefix is enough for codesign to select it.
       - name: Build, sign, notarize
-        if: env.HAS_NOTARY == 'true'
         run: |
-          RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign:notarize UNIVERSAL=true \
-            SIGN_IDENTITY="$SIGN_IDENTITY" KEYCHAIN_PROFILE=recur-notary
-
-      - name: Build, sign
-        if: env.HAS_SIGNING == 'true' && env.HAS_NOTARY != 'true'
-        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:sign UNIVERSAL=true SIGN_IDENTITY="$SIGN_IDENTITY"
-
-      - name: Build (ad-hoc signed)
-        if: env.HAS_SIGNING != 'true'
-        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task darwin:package:universal
+          export UNIVERSAL=true VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$HAS_SIGNING" != true ]; then unset SIGN_IDENTITY; fi
+          if [ "$HAS_NOTARY" = true ]; then export KEYCHAIN_PROFILE=recur-notary; fi
+          mise run macos:package
 
       - name: Verify
         run: |
-          codesign --verify --deep --strict bin/Recur.app
-          if [ "$HAS_NOTARY" = true ]; then spctl --assess --type execute bin/Recur.app; fi
-          plutil -extract CFBundleShortVersionString raw bin/Recur.app/Contents/Info.plist
-          for bin in recur recur-cli; do lipo bin/Recur.app/Contents/MacOS/$bin -verify_arch arm64 x86_64; done
-
-      # Notarizing the DMG as well as the app lets Gatekeeper pass the
-      # download offline once the ticket is stapled.
-      - name: DMG
-        run: |
-          DMG="bin/Recur-${GITHUB_REF_NAME#v}-macos-universal.dmg"
-          wails3 task darwin:create:dmg
-          mv bin/Recur.dmg "$DMG"
-          if [ "$HAS_SIGNING" = true ]; then codesign --sign "$SIGN_IDENTITY" --timestamp "$DMG"; fi
-          if [ "$HAS_NOTARY" = true ]; then
-            xcrun notarytool submit "$DMG" --keychain-profile recur-notary --wait
-            xcrun stapler staple "$DMG"
-            spctl --assess --type open --context context:primary-signature "$DMG"
-          fi
+          APP="target/package/Recur.app"
+          codesign --verify --deep --strict "$APP"
+          if [ "$HAS_NOTARY" = true ]; then spctl --assess --type execute "$APP"; fi
+          plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist"
+          for bin in recur recur-cli; do lipo "$APP/Contents/MacOS/$bin" -verify_arch arm64 x86_64; done
+          DMG="target/package/Recur.dmg"
+          if [ "$HAS_NOTARY" = true ]; then spctl --assess --type open --context context:primary-signature "$DMG"; fi
           hdiutil verify "$DMG"
-      # The in-app updater swaps Recur.app in place, so it installs the zip, not the DMG.
-      # Without --norsrc --noextattr, xattrs land as ._* files that break the signature.
-      - run: ditto -c -k --norsrc --noextattr --keepParent bin/Recur.app "bin/Recur-${GITHUB_REF_NAME#v}-macos-universal.zip"
+
+      - name: Rename
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          mv "target/package/Recur.dmg" "dist/Recur-$V-macos-universal.dmg"
+          mv "target/package/Recur.zip" "dist/Recur-$V-macos-universal.zip"
       - uses: actions/upload-artifact@v7
         with:
           name: release-macos-universal
-          path: bin/Recur-*-macos-universal.*
+          path: dist/Recur-*-macos-universal.*
           if-no-files-found: error
 
-  # Each arch builds natively (the app is cgo + GTK), so arm64 needs an arm runner.
+  # Each arch builds natively (GPUI and WebKitGTK), so arm64 needs an arm runner.
   build-linux:
     strategy:
       matrix:
@@ -137,14 +127,20 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
     env:
       HAS_PGP: ${{ secrets.LINUX_PGP_KEY != '' }}
     steps:
       - uses: actions/checkout@v7
-      - run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
-      - uses: ./.github/actions/setup
+      - uses: jlumbroso/free-disk-space@v2.0.0
         with:
-          wails: "true"
+          tool-cache: true
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y
+          libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev
+          libfontconfig-dev libfreetype-dev libvulkan-dev libgtk-4-dev libwebkitgtk-6.0-dev
+          libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - uses: jdx/mise-action@v5
       - name: Write PGP signing key
         if: env.HAS_PGP == 'true'
         env:
@@ -154,15 +150,20 @@ jobs:
           echo "RECUR_PGP_KEY=$RUNNER_TEMP/pgp.asc" >> "$GITHUB_ENV"
       - env:
           NFPM_PASSPHRASE: ${{ secrets.LINUX_PGP_PASSPHRASE }}
-        run: RECUR_VERSION="${GITHUB_REF_NAME#v}" wails3 task linux:package
+        run: VERSION="${GITHUB_REF_NAME#v}" mise run linux:package
+      # Installs both packages in a clean Debian 13 container and launches them.
+      - if: matrix.arch == 'amd64'
+        run: mise run linux:smoke
       - run: |
+          V="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
           for ext in tar.gz deb rpm; do
-            mv "bin/recur-linux-${{ matrix.arch }}.$ext" "bin/Recur-${GITHUB_REF_NAME#v}-linux-${{ matrix.arch }}.$ext"
+            mv "target/package/recur-linux-${{ matrix.arch }}.$ext" "dist/Recur-$V-linux-${{ matrix.arch }}.$ext"
           done
       - uses: actions/upload-artifact@v7
         with:
           name: release-linux-${{ matrix.arch }}
-          path: bin/Recur-*-linux-${{ matrix.arch }}.*
+          path: dist/Recur-*-linux-${{ matrix.arch }}.*
           if-no-files-found: error
 
   publish:
@@ -174,19 +175,13 @@ jobs:
     steps:
       - if: env.HAS_UPDATER == 'true'
         uses: actions/checkout@v7
-      # go install wails3 needs these through cgo pkg-config.
-      - if: env.HAS_UPDATER == 'true'
-        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev
-      - if: env.HAS_UPDATER == 'true'
-        uses: ./.github/actions/setup
-        with:
-          node: "false"
-          wails: "true"
       - uses: actions/download-artifact@v8
         with:
           pattern: release-*
           path: dist
           merge-multiple: true
+      # The same manifest format and key recur_platform::updater verifies,
+      # over the macOS zip only.
       - name: Sign update manifest
         if: env.HAS_UPDATER == 'true'
         env:
@@ -194,11 +189,12 @@ jobs:
         run: |
           V="${GITHUB_REF_NAME#v}"
           printf '%s\n' "$UPDATER_SIGNING_KEY" > "$RUNNER_TEMP/updater.key"
-          wails3 updater manifest -version "$V" -name "Recur $V" -key "$RUNNER_TEMP/updater.key" \
-            -url-prefix "https://github.com/celestiaorg/recur-releases/releases/download/$GITHUB_REF_NAME" \
-            -output dist/manifest.json "dist/Recur-$V-macos-universal.zip"
+          cargo build -q --locked -p recur-platform --bin updater-manifest
+          target/debug/updater-manifest manifest --version "$V" --name "Recur $V" --key "$RUNNER_TEMP/updater.key" \
+            --url-prefix "https://github.com/celestiaorg/recur-releases/releases/download/$GITHUB_REF_NAME" \
+            --output dist/manifest.json "dist/Recur-$V-macos-universal.zip"
           rm "$RUNNER_TEMP/updater.key"
-          wails3 updater verify -manifest dist/manifest.json -publickey build/updater.key.pub
+          target/debug/updater-manifest verify --manifest dist/manifest.json --publickey build/updater.key.pub
       # Unversioned copies give the download page stable
       # releases/latest/download/<name> links.
       - name: Latest-download aliases
@@ -209,14 +205,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          (cd dist && sha256sum * > SHA256SUMS)
+          (cd dist && sha256sum -- * > SHA256SUMS)
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
           gh release upload "$GITHUB_REF_NAME" dist/* --clobber
 
       # This repo is private, so the download page and the updater read the
       # same files from a public, binaries-only mirror. It stays a draft until
-      # every asset is up, so latest/download/manifest.json never points at a
-      # missing zip.
+      # every asset is up, so latest/download/manifest.json never points
+      # at a missing zip.
       - name: Publish public release
         if: env.HAS_PUBLIC == 'true'
         env:

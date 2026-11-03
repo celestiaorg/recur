@@ -17,7 +17,7 @@ id = "recur.javascript.format-on-save"
 name = "Format on Save"
 category = "JavaScript"
 order = 10
-# No single scope — covers JS and TS via fileGlob brace expansion.
+# No single scope: covers JS and TS via fileGlob brace expansion.
 fileGlob = "*.{js,jsx,mjs,cjs,ts,tsx}"
 input = "document"
 output = "replaceDocument"

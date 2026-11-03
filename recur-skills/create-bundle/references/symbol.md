@@ -16,7 +16,7 @@ Shared ids: [editor.md](editor.md). Copy `bundles/Source` (functions) or
 | `scope` | yes | | Token-scope selector (`comma` / space / `>` / `-`), not a file grammar |
 | `show` | | `true` | `false` excludes a more-specific scope from a broader include |
 | `kind` | | inferred from scope | Outline label (`func`, …) |
-| `transform` | | | JavaScript `s/pattern/repl/flags` — **not** Oniguruma `(?x)` |
+| `transform` | | | JavaScript `s/pattern/repl/flags`: **not** Oniguruma `(?x)` |
 
 Symbol-only packs are valid.
 

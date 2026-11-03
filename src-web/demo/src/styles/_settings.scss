@@ -1,0 +1,250 @@
+
+
+.sel-menu-font {
+  max-height: min(320px, var(--sel-space, 100vh));
+}
+
+/* Model + flags pair (Settings chip + composer/modal). Stay on one row;
+ * long names ellipsis instead of wrapping the flags under the model. */
+.model-pickers {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: nowrap;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.model-pickers .sel {
+  min-width: 0;
+  width: auto;
+  max-width: min(320px, 52vw);
+}
+
+.model-pickers .sel:first-child {
+  flex: 1 1 auto;
+  min-width: 4.5rem;
+}
+
+.model-pickers .flags-sel {
+  flex: 0 0 auto;
+}
+
+.model-pickers .sel-btn {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.model-pickers .sel.ghost .sel-val {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sel-menu-model {
+  min-width: 240px;
+  max-width: min(360px, 80vw);
+  max-height: min(70vh, 560px, var(--sel-space, 100vh));
+}
+
+.model-pickers.chip {
+  padding: 3px;
+  background: var(--pane);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.flags-menu {
+  min-width: 240px;
+  max-height: min(65vh, 520px, var(--sel-space, 100vh));
+  overflow: auto;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.field .fl {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--faint);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+
+.field .fd {
+  font-size: 11.5px;
+  color: var(--faint);
+  margin-top: 6px;
+}
+
+.thread {
+  max-width: 720px;
+  padding: 18px;
+}
+
+.cmt {
+  display: flex;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line-soft);
+  min-width: 0;
+}
+
+.cmt .ca {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  position: relative;
+  overflow: hidden;
+}
+
+.cmt-face {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+
+.cmt-review-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--bg, var(--pane));
+  z-index: 1;
+  color: #fff;
+}
+
+.cmt-review-badge.ok {
+  background: var(--emerald);
+}
+
+.cmt-review-badge.ask {
+  background: var(--coral);
+}
+
+.cmt-review-badge :global(svg) {
+  width: 9px;
+  height: 9px;
+}
+
+.cmt .ca img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cmt .cc {
+  flex: 1;
+  min-width: 0;
+}
+
+.cmt .ch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.cmt .cn {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.cmt .ct {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--faint);
+  text-decoration: none;
+}
+
+a.ct:hover {
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+.cmt-more-menu {
+  position: fixed;
+  /* Below .nt-bg (190) / .palette-bg (200) so dialogs cover this portaled menu. */
+  z-index: 40;
+  min-width: 168px;
+  padding: 4px;
+  background: var(--rail);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .3);
+}
+
+.cmt .cm {
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.cmt .cm code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--pane-2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  overflow-wrap: anywhere;
+}
+
+.cmt .react {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--cyan);
+  background: rgba(76, 198, 214, .07);
+  border: 1px solid rgba(76, 198, 214, .2);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.diff {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-top: 9px;
+  overflow: hidden;
+}
+
+.diff .add {
+  background: rgba(93, 190, 126, .1);
+  color: #9fe3b5;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.back:hover {
+  color: var(--text);
+}
+

@@ -1,0 +1,868 @@
+//! Pane behaviour against a recording backend: attach, replay, acks, resize and find.
+
+use std::sync::Arc;
+use std::time::Duration;
+
+use gpui::{
+    AppContext, Entity, Modifiers, MouseButton, Point, ScrollDelta, ScrollWheelEvent,
+    TestAppContext, TouchPhase, VisualTestContext, point, px,
+};
+use parking_lot::Mutex;
+use recur_term::screen::{Rgba, Theme};
+use recur_terminal_view::{
+    ACK_THRESHOLD, FindOptions, TerminalBackend, TerminalEvent, TerminalFont, TerminalOptions,
+    TerminalThemeInfo, TerminalView, ThemeContext,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Call {
+    Attach,
+    Detach,
+    Ack(usize),
+    Write(String),
+    Resize(u16, u16),
+    ClearReplay,
+}
+
+#[derive(Default)]
+struct Recorder {
+    calls: Mutex<Vec<Call>>,
+    replay: Vec<u8>,
+}
+
+impl Recorder {
+    fn calls(&self) -> Vec<Call> {
+        self.calls.lock().clone()
+    }
+
+    fn writes(&self) -> String {
+        self.calls()
+            .into_iter()
+            .filter_map(|c| {
+                if let Call::Write(s) = c {
+                    Some(s)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn clear(&self) {
+        self.calls.lock().clear();
+    }
+}
+
+impl TerminalBackend for Recorder {
+    fn attach(&self, _id: &str) -> Result<Vec<u8>, String> {
+        self.calls.lock().push(Call::Attach);
+        Ok(self.replay.clone())
+    }
+
+    fn detach(&self, _id: &str) {
+        self.calls.lock().push(Call::Detach);
+    }
+
+    fn ack(&self, _id: &str, n: usize) {
+        self.calls.lock().push(Call::Ack(n));
+    }
+
+    fn write(&self, _id: &str, data: &[u8]) {
+        self.calls
+            .lock()
+            .push(Call::Write(String::from_utf8_lossy(data).into_owned()));
+    }
+
+    fn resize(&self, _id: &str, cols: u16, rows: u16) {
+        self.calls.lock().push(Call::Resize(cols, rows));
+    }
+
+    fn clear_replay(&self, _id: &str) {
+        self.calls.lock().push(Call::ClearReplay);
+    }
+}
+
+struct Harness<'a> {
+    view: Entity<TerminalView>,
+    rec: Arc<Recorder>,
+    events: Arc<Mutex<Vec<TerminalEvent>>>,
+    cx: &'a mut VisualTestContext,
+}
+
+fn mount<'a>(cx: &'a mut TestAppContext, replay: &[u8]) -> Harness<'a> {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        recur_ui::init(cx);
+        recur_terminal_view::init(cx);
+    });
+    let rec = Arc::new(Recorder {
+        replay: replay.to_vec(),
+        ..Default::default()
+    });
+    let backend = rec.clone();
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let sink = events.clone();
+    let (view, cx) = cx.add_window_view(move |window, cx| {
+        let view = TerminalView::new(
+            TerminalOptions {
+                session_id: "sess-1".into(),
+                workspace_id: "ws-1".into(),
+                active: true,
+                frosted: false,
+                font: TerminalFont::default(),
+                theme: ThemeContext::default(),
+                workspace_root: "/tmp/wt".into(),
+                dock_focus: None,
+            },
+            backend,
+            window,
+            cx,
+        );
+        let sink = sink.clone();
+        cx.subscribe_self(move |_, e: &TerminalEvent, _| sink.lock().push(e.clone()))
+            .detach();
+        view
+    });
+    cx.run_until_parked();
+    cx.update(|window, _| window.activate_window());
+    view.update_in(cx, |v, window, cx| v.focus(window, cx));
+    cx.run_until_parked();
+    Harness {
+        view,
+        rec,
+        events,
+        cx,
+    }
+}
+
+impl Harness<'_> {
+    fn settle(&mut self) {
+        self.cx.run_until_parked();
+        self.cx.executor().advance_clock(Duration::from_millis(250));
+        self.cx.run_until_parked();
+    }
+
+    fn output(&mut self, text: &str) {
+        let bytes = text.as_bytes().to_vec();
+        self.cx.update(|_, cx| {
+            recur_terminal_view::route_event(
+                &recur_term::Event::Data {
+                    id: "sess-1".into(),
+                    data: bytes,
+                },
+                cx,
+            )
+        });
+        self.settle();
+    }
+
+    fn viewport(&mut self) -> Vec<String> {
+        self.view
+            .read_with(self.cx, |v, _| v.screen().viewport_text())
+    }
+
+    /// Window position of the centre of 0-based cell (col, row).
+    fn cell(&mut self, col: usize, row: usize) -> Point<gpui::Pixels> {
+        let (origin, (w, h)) = self.view.read_with(self.cx, |v, _| {
+            (v.grid_origin().unwrap(), v.cell_size().unwrap())
+        });
+        point(
+            origin.x + px((col as f32 + 0.5) * w),
+            origin.y + px((row as f32 + 0.5) * h),
+        )
+    }
+}
+
+#[gpui::test]
+fn attaches_on_mount_and_repaints_the_replay(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"replayed-scrollback\r\n");
+    h.settle();
+    assert_eq!(h.rec.calls().first(), Some(&Call::Attach));
+    assert_eq!(h.viewport()[0], "replayed-scrollback");
+    // The replay is not acked: the session never counted it.
+    assert!(!h.rec.calls().iter().any(|c| matches!(c, Call::Ack(_))));
+}
+
+#[gpui::test]
+fn opens_the_pty_at_the_measured_size(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let (cols, rows) = h.view.read_with(h.cx, |v, _| v.size());
+    assert!(cols >= 20 && rows > 3, "fit to the window: {cols}x{rows}");
+    assert!(
+        h.rec
+            .calls()
+            .contains(&Call::Resize(cols as u16, rows as u16))
+    );
+}
+
+#[gpui::test]
+fn streams_output_and_acks_in_32kb_batches(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output(&"x".repeat(40 * 1024));
+    let acks: Vec<usize> = h
+        .rec
+        .calls()
+        .into_iter()
+        .filter_map(|c| if let Call::Ack(n) = c { Some(n) } else { None })
+        .collect();
+    assert_eq!(acks.len(), 1);
+    assert!(acks[0] >= ACK_THRESHOLD);
+}
+
+#[gpui::test]
+fn output_before_the_replay_waits_for_it(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        recur_ui::init(cx);
+        recur_terminal_view::init(cx);
+    });
+    let rec = Arc::new(Recorder {
+        replay: b"old\r\n".to_vec(),
+        ..Default::default()
+    });
+    let backend = rec.clone();
+    let (view, cx) = cx.add_window_view(move |window, cx| {
+        TerminalView::new(
+            TerminalOptions {
+                session_id: "s".into(),
+                workspace_id: "w".into(),
+                active: true,
+                frosted: false,
+                font: TerminalFont::default(),
+                theme: ThemeContext::default(),
+                workspace_root: String::new(),
+                dock_focus: None,
+            },
+            backend,
+            window,
+            cx,
+        )
+    });
+    // Data that lands before the attach resolves is queued behind the replay.
+    view.update(cx, |v, cx| v.push_output(b"new\r\n", cx));
+    cx.run_until_parked();
+    let text = view.read_with(cx, |v, _| v.screen().viewport_text());
+    assert_eq!(&text[..2], ["old", "new"]);
+}
+
+#[gpui::test]
+fn typing_writes_to_the_pty(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.rec.clear();
+    h.cx.simulate_input("ls");
+    h.cx.simulate_keystrokes("enter");
+    h.cx.simulate_keystrokes("ctrl-c up");
+    h.settle();
+    assert_eq!(h.rec.writes(), "ls\r\x03\x1b[A");
+}
+
+#[gpui::test]
+fn shell_chords_stay_with_the_shell(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.rec.clear();
+    // Ctrl+T / Ctrl+W / Ctrl+F are readline keys: the pane sends them.
+    h.cx.simulate_keystrokes("ctrl-t ctrl-w ctrl-f");
+    h.settle();
+    assert_eq!(h.rec.writes(), "\x14\x17\x06");
+    h.rec.clear();
+    // ⌘ chords and ⌃` belong to the app.
+    h.cx.simulate_keystrokes("cmd-t ctrl-`");
+    h.settle();
+    assert_eq!(h.rec.writes(), "");
+}
+
+#[gpui::test]
+fn paste_uses_bracketed_paste_when_asked(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.rec.clear();
+    h.view.update(h.cx, |v, cx| v.paste("a\nb", cx));
+    h.output("\x1b[?2004h");
+    h.view.update(h.cx, |v, cx| v.paste("c", cx));
+    h.settle();
+    assert_eq!(h.rec.writes(), "a\rb\x1b[200~c\x1b[201~");
+}
+
+#[gpui::test]
+fn find_counts_matches_and_toggles_case(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"Hello world hello\r\n");
+    h.settle();
+    let opts = FindOptions {
+        incremental: true,
+        ..Default::default()
+    };
+    h.view.update(h.cx, |v, cx| v.find_next("hello", opts, cx));
+    h.settle();
+    assert_eq!(
+        h.events.lock().last(),
+        Some(&TerminalEvent::FindResults {
+            index: 1,
+            total: 2,
+            valid: true
+        })
+    );
+    let cs = FindOptions {
+        case_sensitive: true,
+        ..opts
+    };
+    h.view.update(h.cx, |v, cx| v.find_next("hello", cs, cx));
+    h.settle();
+    assert_eq!(
+        h.events.lock().last(),
+        Some(&TerminalEvent::FindResults {
+            index: 1,
+            total: 1,
+            valid: true
+        })
+    );
+    let re = FindOptions {
+        regexp: true,
+        ..opts
+    };
+    h.view.update(h.cx, |v, cx| v.find_next("(", re, cx));
+    h.settle();
+    assert_eq!(
+        h.events.lock().last(),
+        Some(&TerminalEvent::FindResults {
+            index: 0,
+            total: 0,
+            valid: false
+        })
+    );
+    assert_eq!(recur_terminal_view::find_count_label(1, 2, false), "1 / 2");
+    assert_eq!(
+        recur_terminal_view::find_count_label(0, 0, false),
+        "No results"
+    );
+    assert_eq!(
+        recur_terminal_view::find_count_label(3, 999, true),
+        "3 / 999+"
+    );
+}
+
+#[gpui::test]
+fn exit_and_titles_reach_the_dock(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output("\x1b]0;npm run dev\x07");
+    h.cx.update(|_, cx| {
+        recur_terminal_view::route_event(
+            &recur_term::Event::Exit {
+                id: "sess-1".into(),
+                workspace_id: "ws-1".into(),
+                exit_code: 127,
+            },
+            cx,
+        )
+    });
+    h.settle();
+    let events = h.events.lock().clone();
+    assert!(events.contains(&TerminalEvent::Title("npm run dev".into())));
+    assert!(events.contains(&TerminalEvent::Exit(127)));
+}
+
+#[gpui::test]
+fn dropping_explorer_paths_types_them_quoted(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.rec.clear();
+    h.view.update_in(h.cx, |v, window, cx| {
+        v.drop_paths(
+            &["src/main.go".into(), "My File.ts".into(), "src/".into()],
+            window,
+            cx,
+        )
+    });
+    h.settle();
+    assert_eq!(
+        h.rec.writes(),
+        "/tmp/wt/src/main.go '/tmp/wt/My File.ts' /tmp/wt/src"
+    );
+    assert_eq!(
+        recur_terminal_view::quote_for_shell("it's.ts"),
+        "'it'\\''s.ts'"
+    );
+    assert_eq!(
+        recur_terminal_view::terminal_drop_text(&["src/main.go".into(), "README.md".into()], ""),
+        "src/main.go README.md"
+    );
+}
+
+#[gpui::test]
+fn clear_wipes_the_screen_and_the_replay(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output("one\r\ntwo\r\n$ ");
+    h.view.update(h.cx, |v, cx| v.clear(cx));
+    h.settle();
+    assert!(h.rec.calls().contains(&Call::ClearReplay));
+    assert_eq!(h.viewport()[0], "$");
+}
+
+#[gpui::test]
+fn dispose_detaches_and_stops_routing(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.view.update(h.cx, |v, cx| v.dispose(cx));
+    h.settle();
+    assert!(h.rec.calls().contains(&Call::Detach));
+    h.output("after\r\n");
+    assert_ne!(h.viewport()[0], "after");
+}
+
+#[gpui::test]
+fn parking_keeps_the_session_attached(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let view = h.view.clone();
+    h.cx.update(|_, cx| recur_terminal_view::park(view, cx));
+    h.output("while parked\r\n");
+    assert_eq!(
+        h.viewport()[0],
+        "while parked",
+        "a parked view keeps its screen live"
+    );
+    assert!(
+        !h.rec.calls().contains(&Call::Detach),
+        "parking does not detach"
+    );
+    let taken =
+        h.cx.update(|_, cx| recur_terminal_view::take_parked("sess-1", cx));
+    assert!(taken.is_some());
+    // A shell that exits while parked releases its view.
+    let view = h.view.clone();
+    h.cx.update(|_, cx| recur_terminal_view::park(view, cx));
+    h.cx.update(|_, cx| {
+        recur_terminal_view::route_event(
+            &recur_term::Event::Exit {
+                id: "sess-1".into(),
+                workspace_id: "ws-1".into(),
+                exit_code: 0,
+            },
+            cx,
+        )
+    });
+    h.settle();
+    assert!(h.rec.calls().contains(&Call::Detach));
+    assert!(
+        h.cx.update(|_, cx| recur_terminal_view::take_parked("sess-1", cx))
+            .is_none()
+    );
+}
+
+#[gpui::test]
+fn focus_reports_follow_decset_1004(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output("\x1b[?1004h");
+    assert!(
+        h.view.read_with(h.cx, |v, _| v.is_focused()),
+        "mounted pane has focus"
+    );
+    h.rec.clear();
+    h.cx.deactivate_window();
+    h.settle();
+    assert_eq!(h.rec.writes(), "\x1b[O");
+}
+
+#[gpui::test]
+fn device_attribute_queries_are_answered(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.rec.clear();
+    h.output("\x1b[c");
+    assert_eq!(h.rec.writes(), "\x1b[?6c");
+}
+
+#[gpui::test]
+fn queries_in_the_replay_are_not_answered_again(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"\x1b[c\x1b[6nprompt$ ");
+    h.settle();
+    assert_eq!(h.viewport()[0], "prompt$");
+    assert_eq!(h.rec.writes(), "");
+    h.output("\x1b[6n");
+    assert_eq!(h.rec.writes(), "\x1b[1;9R");
+}
+
+#[gpui::test]
+fn wheel_scrolls_the_scrollback(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let rows = h.view.read_with(h.cx, |v, _| v.size().1);
+    for i in 0..rows * 3 {
+        h.output(&format!("line {i}\r\n"));
+    }
+    assert!(h.view.read_with(h.cx, |v, _| v.screen().at_bottom()));
+    let pos = h.cell(2, 2);
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.simulate_event(ScrollWheelEvent {
+        position: pos,
+        delta: ScrollDelta::Lines(point(0., 3.)),
+        modifiers: Modifiers::none(),
+        touch_phase: TouchPhase::Moved,
+    });
+    h.settle();
+    assert!(
+        !h.view.read_with(h.cx, |v, _| v.screen().at_bottom()),
+        "wheel up scrolls into history"
+    );
+    h.rec.clear();
+    h.cx.simulate_input("x");
+    h.settle();
+    assert!(
+        h.view.read_with(h.cx, |v, _| v.screen().at_bottom()),
+        "typing returns to the prompt"
+    );
+}
+
+#[gpui::test]
+fn mouse_reports_in_sgr_mode(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output("\x1b[?1000h\x1b[?1006h");
+    h.rec.clear();
+    let pos = h.cell(4, 2);
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.simulate_mouse_down(pos, MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_up(pos, MouseButton::Left, Modifiers::none());
+    h.settle();
+    assert_eq!(h.rec.writes(), "\x1b[<0;5;3M\x1b[<0;5;3m");
+}
+
+#[gpui::test]
+fn drag_selects_and_copies(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output("hello world");
+    let (a, b) = (h.cell(0, 0), h.cell(4, 0));
+    let a = point(a.x - px(3.), a.y);
+    let b = point(b.x + px(3.), b.y);
+    h.cx.simulate_mouse_move(a, None, Modifiers::none());
+    h.cx.simulate_mouse_down(a, MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_move(b, MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_up(b, MouseButton::Left, Modifiers::none());
+    h.settle();
+    assert_eq!(h.view.read_with(h.cx, |v, _| v.selection_text()), "hello");
+}
+
+#[gpui::test]
+fn small_trackpad_deltas_accumulate(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let rows = h.view.read_with(h.cx, |v, _| v.size().1);
+    for i in 0..rows * 3 {
+        h.output(&format!("line {i}\r\n"));
+    }
+    let pos = h.cell(2, 2);
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    let ch = h.view.read_with(h.cx, |v, _| v.cell_size().unwrap().1);
+    let steps = (ch / 2.).ceil() as usize;
+    for i in 0..steps {
+        if i == steps - 1 {
+            assert!(h.view.read_with(h.cx, |v, _| v.screen().at_bottom()));
+        }
+        h.cx.simulate_event(ScrollWheelEvent {
+            position: pos,
+            delta: ScrollDelta::Pixels(point(px(0.), px(2.))),
+            modifiers: Modifiers::none(),
+            touch_phase: TouchPhase::Moved,
+        });
+        h.settle();
+    }
+    assert!(
+        !h.view.read_with(h.cx, |v, _| v.screen().at_bottom()),
+        "sub-row deltas add up to a row"
+    );
+}
+
+#[gpui::test]
+fn overlay_scrollbar_drags_pages_and_hides(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let (cols, rows) = h.view.read_with(h.cx, |v, _| v.size());
+    for i in 0..rows * 3 {
+        h.output(&format!("line {i}\r\n"));
+    }
+    let top = |h: &mut Harness| h.view.read_with(h.cx, |v, _| v.screen().scroll_position());
+    let bottom = top(&mut h);
+    let (origin, (w, ch)) = h.view.read_with(h.cx, |v, _| {
+        (v.grid_origin().unwrap(), v.cell_size().unwrap())
+    });
+    // The overlay box hugs the pane's right edge; the knob starts in the lower part.
+    let bar = |y: f32| point(origin.x + px(cols as f32 * w - 2.), origin.y + px(y * ch));
+    let low = bar(rows as f32 * 0.8);
+    let press = |h: &mut Harness, p: Point<gpui::Pixels>| {
+        h.cx.simulate_mouse_move(p, None, Modifiers::none());
+        h.cx.simulate_mouse_down(p, MouseButton::Left, Modifiers::none());
+        h.cx.simulate_mouse_up(p, MouseButton::Left, Modifiers::none());
+        h.cx.run_until_parked();
+    };
+
+    // Hidden until a scroll: the press lands on the grid.
+    press(&mut h, low);
+    assert_eq!(top(&mut h), bottom);
+
+    let pos = h.cell(2, 2);
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.simulate_event(ScrollWheelEvent {
+        position: pos,
+        delta: ScrollDelta::Lines(point(0., 1.)),
+        modifiers: Modifiers::none(),
+        touch_phase: TouchPhase::Moved,
+    });
+    h.cx.run_until_parked();
+    assert_eq!(top(&mut h), bottom - 1, "a wheel line scrolls a row");
+
+    // Drag the knob to the top.
+    h.cx.simulate_mouse_move(low, None, Modifiers::none());
+    h.cx.simulate_mouse_down(low, MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_move(bar(-(rows as f32)), MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_up(bar(0.), MouseButton::Left, Modifiers::none());
+    h.cx.run_until_parked();
+    assert_eq!(top(&mut h), 0, "dragging the knob scrolls");
+
+    // The track below the knob pages.
+    press(&mut h, low);
+    assert_eq!(top(&mut h), rows - 1);
+
+    // Leaving the bar lets it fade; a hidden bar takes no presses.
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.executor().advance_clock(Duration::from_secs(1));
+    h.cx.run_until_parked();
+    press(&mut h, low);
+    assert_eq!(top(&mut h), rows - 1);
+}
+
+#[gpui::test]
+fn hidden_panes_ignore_the_mouse(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output("\x1b[?1000h\x1b[?1006h");
+    let pos = h.cell(4, 2);
+    h.view
+        .update_in(h.cx, |v, window, cx| v.set_active(false, window, cx));
+    h.settle();
+    h.rec.clear();
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.simulate_mouse_down(pos, MouseButton::Left, Modifiers::none());
+    h.cx.simulate_mouse_up(pos, MouseButton::Left, Modifiers::none());
+    h.settle();
+    assert_eq!(h.rec.writes(), "");
+}
+
+#[gpui::test]
+fn ime_composition_commits_once(cx: &mut TestAppContext) {
+    use gpui::EntityInputHandler;
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.rec.clear();
+    h.view.update_in(h.cx, |v, window, cx| {
+        v.replace_and_mark_text_in_range(None, "に", None, window, cx);
+        assert_eq!(v.marked_text_range(window, cx), Some(0..1));
+        v.replace_and_mark_text_in_range(None, "日本", None, window, cx);
+    });
+    h.settle();
+    assert_eq!(h.rec.writes(), "", "marked text stays local");
+    h.view.update_in(h.cx, |v, window, cx| {
+        v.replace_text_in_range(None, "日本", window, cx)
+    });
+    h.settle();
+    assert_eq!(h.rec.writes(), "日本");
+}
+
+#[gpui::test]
+fn right_click_selects_the_word_on_mac(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.view.update(h.cx, |v, _| v.set_mac(true));
+    h.settle();
+    h.output("hello world");
+    let pos = h.cell(8, 0);
+    h.cx.simulate_mouse_move(pos, None, Modifiers::none());
+    h.cx.simulate_mouse_down(pos, MouseButton::Right, Modifiers::none());
+    h.cx.simulate_mouse_up(pos, MouseButton::Right, Modifiers::none());
+    h.settle();
+    assert_eq!(h.view.read_with(h.cx, |v, _| v.selection_text()), "world");
+}
+
+#[gpui::test]
+fn alt_click_moves_the_prompt_cursor(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    h.output("$ hello");
+    h.rec.clear();
+    let pos = h.cell(2, 0);
+    let alt = Modifiers {
+        alt: true,
+        ..Modifiers::none()
+    };
+    h.cx.simulate_mouse_move(pos, None, alt);
+    h.cx.simulate_mouse_down(pos, MouseButton::Left, alt);
+    h.cx.simulate_mouse_up(pos, MouseButton::Left, alt);
+    h.settle();
+    assert_eq!(h.rec.writes(), "\x1b[D".repeat(5));
+}
+
+#[gpui::test]
+fn theme_changes_repaint_the_palette(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let background = |h: &mut Harness| {
+        h.view
+            .read_with(h.cx, |v, _| v.screen().palette().background)
+    };
+    let charcoal = background(&mut h);
+    // A runtime app theme switch reaches the pane without a remount.
+    h.cx.update(|_, cx| recur_ui::Theme::set(recur_ui::ThemeId::Paper, cx));
+    h.settle();
+    let paper = background(&mut h);
+    assert_ne!(charcoal, paper);
+    // So does a terminal theme pick.
+    h.view.update(h.cx, |v, cx| {
+        v.set_theme(
+            ThemeContext {
+                terminal_theme: "x".into(),
+                catalog: vec![TerminalThemeInfo {
+                    id: "x".into(),
+                    palette: Theme {
+                        background: Some("#102030".into()),
+                        foreground: Some("#ffffff".into()),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }],
+            },
+            cx,
+        )
+    });
+    h.settle();
+    assert_eq!(background(&mut h), Rgba::rgb(0x10, 0x20, 0x30));
+}
+
+/// Shows a pane only once `shown` is set, so its attach can finish before the first layout.
+struct Host {
+    pane: Entity<TerminalView>,
+    shown: bool,
+}
+
+impl gpui::Render for Host {
+    fn render(
+        &mut self,
+        _: &mut gpui::Window,
+        _: &mut gpui::Context<Self>,
+    ) -> impl gpui::IntoElement {
+        use gpui::{ParentElement, Styled};
+        gpui::div()
+            .size_full()
+            .children(self.shown.then(|| self.pane.clone()))
+    }
+}
+
+#[gpui::test]
+fn replay_lands_on_the_fitted_grid(cx: &mut TestAppContext) {
+    // TerminalPane refits before attaching, so a cursor-addressed replay is laid out at the
+    // pane's size even when the attach answers before the first layout.
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        recur_ui::init(cx);
+        recur_terminal_view::init(cx);
+    });
+    let backend = Arc::new(Recorder {
+        replay: b"\x1b[999CX".to_vec(),
+        ..Default::default()
+    });
+    let (host, cx) = cx.add_window_view(move |window, cx| {
+        let pane = cx.new(|cx| {
+            TerminalView::new(
+                TerminalOptions {
+                    session_id: "s".into(),
+                    workspace_id: "w".into(),
+                    active: true,
+                    frosted: false,
+                    font: TerminalFont::default(),
+                    theme: ThemeContext::default(),
+                    workspace_root: String::new(),
+                    dock_focus: None,
+                },
+                backend,
+                window,
+                cx,
+            )
+        });
+        Host { pane, shown: false }
+    });
+    cx.run_until_parked();
+    let pane = host.read_with(cx, |h, _| h.pane.clone());
+    assert!(pane.read_with(cx, |v, _| {
+        v.screen().viewport_text().iter().all(|r| r.is_empty())
+    }));
+    host.update(cx, |h, cx| {
+        h.shown = true;
+        cx.notify();
+    });
+    cx.run_until_parked();
+    let (cols, text) = pane.read_with(cx, |v, _| (v.size().0, v.screen().viewport_text()));
+    assert_ne!(cols, 80);
+    let row = text.iter().find(|r| r.ends_with('X')).unwrap();
+    assert_eq!(row.chars().count(), cols);
+}
+
+/// Streaming output into a full screen of text and box drawing (a `docker build` table) costs
+/// one shaping call per styled run of a row, never one per cell, and no paths: box drawing
+/// rasterizes once per glyph and colour and paints as an image after that.
+#[gpui::test]
+fn streaming_output_shapes_rows_not_cells_and_reuses_box_drawing(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let (cols, rows) = h.view.read_with(h.cx, |v, _| v.size());
+    let line = |i: usize| {
+        // Box drawing, a rounded corner, a powerline arrow, braille dots, blocks and a shade.
+        let mut s = format!("\u{2502} step {i:03} \u{256D}\u{E0B0} ");
+        while s.chars().count() < cols - 1 {
+            s.push_str("\u{28FF}\u{2588}\u{2591}");
+        }
+        s.chars().take(cols - 1).collect::<String>()
+    };
+    let screen: String = (0..rows).map(|i| line(i) + "\r\n").collect();
+    h.output(&screen);
+    recur_terminal_view::take_paint_work();
+    for i in 0..3 {
+        h.output(&(line(rows + i) + "\r\n"));
+    }
+    let work = recur_terminal_view::take_paint_work();
+    // Two text runs a row (" step NNN " and the space before the bar); a cell each would be
+    // over a hundred.
+    assert!(work.paints > 0, "{work:?}");
+    assert!(
+        work.shaped <= work.paints * rows * 2,
+        "{work:?} for a {cols}x{rows} grid"
+    );
+    assert_eq!(work.paths, 0, "{work:?}");
+    assert_eq!(work.rasterized, 0, "{work:?}");
+}
+
+/// Truecolor box drawing in ever-new colours (a gradient graph) cannot grow the sprite atlas
+/// without bound: past its cap the terminal returns its glyph images before it paints.
+#[gpui::test]
+fn truecolor_glyphs_past_the_cap_leave_the_atlas(cx: &mut TestAppContext) {
+    let mut h = mount(cx, b"");
+    h.settle();
+    let cols = h.view.read_with(h.cx, |v, _| v.size().0);
+    recur_terminal_view::take_paint_work();
+    let mut n = 0u32;
+    for _ in 0..8 {
+        let line: String = (0..cols - 1)
+            .map(|_| {
+                n += 1;
+                format!("\x1b[38;2;{};{};{}m\u{2502}", n % 256, (n / 256) % 256, 128)
+            })
+            .collect();
+        h.output(&(line + "\x1b[0m\r\n"));
+    }
+    let work = recur_terminal_view::take_paint_work();
+    assert!(work.rasterized > 1024, "{work:?}");
+    assert!(work.dropped > 0, "{work:?}");
+}

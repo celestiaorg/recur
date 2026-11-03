@@ -1,0 +1,29 @@
+[package]
+name = "recur-project"
+description = "Per-project configuration: .recur/project.toml, workspace env and dotenv, and run-config (setup/teardown/dev-server boot)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-http.workspace = true
+recur-domain.workspace = true
+nix.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+toml.workspace = true
+toml_edit.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

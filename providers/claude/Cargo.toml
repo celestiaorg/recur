@@ -1,0 +1,33 @@
+[package]
+name = "recur-provider-claude"
+description = "Claude Code provider (headless claude -p stream-json)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# `testing::NdjsonScript`: replays stream-json lines through the real parser.
+testing = ["recur-agent/testing"]
+
+[dependencies]
+recur-domain.workspace = true
+recur-agent.workspace = true
+async-trait.workspace = true
+parking_lot.workspace = true
+rustix.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
+tempfile.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true }
+tokio-util.workspace = true
+
+[dev-dependencies]
+recur-exec.workspace = true
+recur-agent = { workspace = true, features = ["testing"] }
+pretty_assertions.workspace = true
+
+[lints]
+workspace = true

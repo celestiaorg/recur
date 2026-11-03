@@ -18,7 +18,7 @@ live in the same pack as editor items. There is no separate “loop file.”
 |------|------|
 | User (default) | `~/.recur/bundles/<Name>/` |
 | First-party (this repo only) | `bundles/<Name>/` when the worktree *is* Recur |
-| Shipped runtime | `<DataDir>/Bundles` — seeded, overwritten. Do not hand-edit. |
+| Shipped runtime | `<DataDir>/Bundles`: seeded, overwritten. Do not hand-edit. |
 
 User **id** wins over shipped. New capability → new ids. Customize a shipped
 item in place → same id in a user pack.
@@ -48,7 +48,7 @@ If both a user pack and a Recur-repo change are plausible, ask with
 
 ## Hard rules
 
-- Do not edit `~/.recur/recur-skills` — it is overwritten on app update.
+- Do not edit `~/.recur/recur-skills`: it is overwritten on app update.
 - Closed `uses` verbs only: `plan`, `implement`, `review`, `converge`,
   `verify`, `ensure_pr`, `artifact`. A pack cannot mint tools or skip the
   converge reviewer ≠ implementer split.
@@ -59,4 +59,4 @@ If both a user pack and a Recur-repo change are plausible, ask with
   a loop. For a loop, start from [references/loops.md](references/loops.md)
   or copy `bundles/Loop/` when this worktree is Recur.
 
-Skills (`SKILL.md`) are a different thing — use `/create-skill` for those.
+Skills (`SKILL.md`) are a different thing: use `/create-skill` for those.

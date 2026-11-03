@@ -1,0 +1,1136 @@
+//! Scene builders, one per `scenes.json` name prefix.
+
+use crate::file_icons::file_icon;
+use crate::fonts::{Family, weight};
+use crate::icon::{icon, lucide_icon, provider_icon};
+use crate::icon_name::IconName;
+use crate::kbd::kbd;
+use crate::style::{
+    self, Rbtn, Tbtn, TbtnSize, body, button_label, esc_key, footer_key, palette_footer,
+    palette_input_row, palette_key, primary_button, rbtn, tbtn,
+};
+use crate::text::{LineHeight, Text, TextStyled, span, text};
+use crate::theme::Theme;
+use crate::tooltip::{TitleTooltip, titled};
+use crate::widgets::{
+    Axis, ChipIcon, Edge, IconPicker, PicBox, Select, SelectOption, SelectSize, ToastAsk,
+    ToastKind, ToastOptions, ToastStore, Toasts, armed_button, blurb_code, decode_text,
+    project_pic, push_toast, resize_handle, ring, settings_group, settings_groups, tab_chip,
+    tab_strip, tab_strip_action, toast_action,
+};
+use gpui_kit::{
+    AnyElement, AnyView, App, AppContext, Context, Div, IntoElement, ParentElement, Render, Styled,
+    Window, div, px,
+};
+use serde::Deserialize;
+
+/// Scene name patterns; a trailing `*` matches any suffix.
+pub(super) const NAMES: &[&str] = &[
+    "tokens/*",
+    "text/calibration",
+    "kbd/*",
+    "buttons/*",
+    "toggles/*",
+    "icons/app",
+    "icons/lucide",
+    "icons/provider",
+    "icons/file",
+    "icons/file-light",
+    "ring/*",
+    "project-pic/*",
+    "settings-group/*",
+    "armed-button/*",
+    "toasts/*",
+    "tooltip/*",
+    "tab-strip/*",
+    "select/*",
+    "icon-picker/*",
+    "resize-handle/*",
+    "overlays/*",
+    "scrollbar/*",
+];
+
+pub(super) fn matches(pattern: &str, name: &str) -> bool {
+    match pattern.strip_suffix('*') {
+        Some(prefix) => name.starts_with(prefix),
+        None => pattern == name,
+    }
+}
+
+type Content = Box<dyn Fn(&mut Window, &mut App) -> AnyElement>;
+
+/// A scene's root: its content, then the overlays every Recur window renders last (title
+/// tooltips, and the toast stack where the scene shows it).
+struct Stage {
+    content: Content,
+    overlays: Vec<AnyView>,
+}
+
+impl Stage {
+    fn render_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
+        body(cx)
+            .relative()
+            .size_full()
+            .child((self.content)(window, cx))
+            .children(self.overlays.iter().cloned())
+    }
+}
+
+impl Render for Stage {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        crate::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
+pub(super) fn build(name: &str, window: &mut Window, cx: &mut App) -> Option<AnyView> {
+    let kind = name.split('/').next().unwrap_or_default();
+    let variant = name.split_once('/').map_or("", |(_, v)| v);
+    let mut overlays: Vec<AnyView> = vec![TitleTooltip::new(cx).into()];
+    let content: Content = match (kind, variant) {
+        ("toasts", _) => {
+            seed_toasts(window, cx);
+            overlays.push(cx.new(Toasts::new).into());
+            Box::new(|_, cx| body(cx).size_full().into_any_element())
+        }
+        ("select", v) => selects(v, window, cx),
+        ("icon-picker", _) => {
+            let picker = cx.new(|cx| IconPicker::new("rocket", window, cx));
+            Box::new(move |_, cx| {
+                body(cx)
+                    .size_full()
+                    .child(div().p(px(16.)).w(px(220.)).child(picker.clone()))
+                    .into_any_element()
+            })
+        }
+        ("overlays", v) => overlay_scenes(v, window, cx),
+        ("resize-handle", _) => {
+            let (side, dock) = (
+                cx.focus_handle().tab_stop(true),
+                cx.focus_handle().tab_stop(true),
+            );
+            Box::new(move |_, cx| resize_handles(&side, &dock, cx))
+        }
+        _ => Box::new(static_content(kind, variant)?),
+    };
+    Some(cx.new(|_| Stage { content, overlays }).into())
+}
+
+fn static_content(kind: &str, variant: &str) -> Option<fn(&mut Window, &mut App) -> AnyElement> {
+    Some(match (kind, variant) {
+        ("tokens", _) => tokens,
+        ("text", "calibration") => calibration,
+        ("kbd", _) => kbd_scene,
+        ("buttons", _) => buttons,
+        ("toggles", _) => toggles,
+        ("icons", "app") => icons_app,
+        ("icons", "lucide") => icons_lucide,
+        ("icons", "provider") => icons_provider,
+        ("icons", "file") | ("icons", "file-light") => icons_file,
+        ("ring", _) => rings,
+        ("project-pic", _) => project_pics,
+        ("settings-group", _) => settings,
+        ("armed-button", _) => armed,
+        ("tooltip", _) => tooltips,
+        ("scrollbar", _) => scrollbars,
+        ("tab-strip", "overflow") => tabs_overflow,
+        ("tab-strip", _) => tabs,
+        _ => return None,
+    })
+}
+
+fn row() -> Div {
+    div().flex().items_center()
+}
+
+fn tokens(_: &mut Window, cx: &mut App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    body(cx)
+        .size_full()
+        .child(
+            div()
+                .p(px(8.))
+                .w(px(8. * 2. + 7. * 36. + 6. * 4.))
+                .flex()
+                .flex_wrap()
+                .gap(px(4.))
+                .children(
+                    t.named()
+                        .into_iter()
+                        .map(|(_, c)| div().size(px(36.)).bg(c)),
+                ),
+        )
+        .into_any_element()
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Sample {
+    family: String,
+    size: f32,
+    weight: f32,
+    line_height: serde_json::Value,
+    #[serde(default)]
+    tracking: f32,
+    #[serde(default)]
+    uppercase: bool,
+}
+
+#[derive(Deserialize)]
+struct CalibrationSet {
+    text: String,
+    samples: Vec<Sample>,
+}
+
+fn calibration(_: &mut Window, cx: &mut App) -> AnyElement {
+    let set: CalibrationSet =
+        serde_json::from_str(super::CALIBRATION_JSON).unwrap_or(CalibrationSet {
+            text: String::new(),
+            samples: Vec::new(),
+        });
+    let lines = set.samples.into_iter().map(|s| {
+        let family = match s.family.as_str() {
+            "mono" => Family::Mono,
+            "disp" => Family::Display,
+            "system" => Family::System,
+            _ => Family::Ui,
+        };
+        let lh = match s.line_height.as_f64() {
+            Some(m) => LineHeight::Scale(m as f32),
+            None => LineHeight::Normal,
+        };
+        let mut t = text(set.text.clone())
+            .family(family)
+            .size(s.size)
+            .weight(s.weight)
+            .tracking(s.tracking)
+            .line_height(lh)
+            .nowrap();
+        if s.uppercase {
+            t = t.uppercase();
+        }
+        t
+    });
+    body(cx)
+        .size_full()
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .items_start()
+                .p(px(8.))
+                .children(lines),
+        )
+        .into_any_element()
+}
+
+const KEYS: [&str; 6] = ["⌘K", "⌘⇧P", "⌥←", "Ctrl+K", "esc", "↵"];
+
+fn kbd_scene(_: &mut Window, cx: &mut App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    let pal_row = |i: usize, k: &'static str| {
+        let sel = i == 1;
+        let mut r = div()
+            .flex()
+            .items_center()
+            .gap(px(11.))
+            .py(px(8.))
+            .px(px(10.))
+            .rounded(px(7.));
+        if sel {
+            r = r.bg(t.pane_2);
+        }
+        r.child(palette_key(k, sel, cx))
+    };
+    body(cx)
+        .size_full()
+        .child(
+            div()
+                .p(px(12.))
+                .flex()
+                .flex_col()
+                .gap(px(10.))
+                .child(
+                    row()
+                        .gap(px(10.))
+                        .text_size(px(11.))
+                        .text_color(t.faint)
+                        .children(KEYS.map(kbd)),
+                )
+                .child(
+                    row()
+                        .gap(px(10.))
+                        .children(KEYS.iter().enumerate().map(|(i, k)| pal_row(i, k))),
+                )
+                .child(
+                    row().gap(px(10.)).child(
+                        palette_footer(false, cx)
+                            .child(Text::from_spans(vec![
+                                footer_key("↑↓", cx),
+                                span("navigate"),
+                            ]))
+                            .child(Text::from_spans(vec![footer_key("↵", cx), span("open")])),
+                    ),
+                )
+                .child(
+                    row()
+                        .gap(px(10.))
+                        .child(palette_input_row(false, cx).child(esc_key(false, cx))),
+                ),
+        )
+        .into_any_element()
+}
+
+fn buttons(_: &mut Window, cx: &mut App) -> AnyElement {
+    let b = TbtnSize::BASE;
+    let tb = |id: &'static str, kind, label: &'static str, cx: &App| {
+        tbtn(id, kind, b, None, cx).child(button_label(label, b.font_size, weight::MEDIUM))
+    };
+    let tsz = TbtnSize::TITLEBAR;
+    let back = Theme::of(cx).tokens.bg;
+    let titlebar = |id: &'static str, kind, label: &'static str, disabled: bool, cx: &App| {
+        tbtn(id, kind, tsz, disabled.then_some(back), cx).child(button_label(
+            label,
+            tsz.font_size,
+            weight::MEDIUM,
+        ))
+    };
+    let rb = |id: &'static str, kind, label: &'static str, disabled: bool, cx: &App| {
+        rbtn(id, kind, disabled.then_some(back), cx).child(button_label(
+            label,
+            12.5,
+            weight::MEDIUM_PLUS,
+        ))
+    };
+    let go = |id: &'static str, disabled: bool, cx: &App| {
+        primary_button(id, disabled.then_some(back), cx).child(button_label(
+            "Create",
+            13.,
+            weight::SEMIBOLD,
+        ))
+    };
+    let link = |id: &'static str, on, label: &'static str, cx: &App| {
+        style::link_button(id, on, cx)
+            .child(icon(IconName::Plus).size(px(12.)))
+            .child(text(label).size(12.).nowrap())
+    };
+    body(cx)
+        .size_full()
+        .child(
+            div()
+                .p(px(12.))
+                .flex()
+                .flex_col()
+                .gap(px(10.))
+                .child(
+                    row()
+                        .gap(px(8.))
+                        .child(tb("t1", Tbtn::Default, "Default", cx))
+                        .child(tb("t2", Tbtn::Amber, "Amber", cx))
+                        .child(tb("t3", Tbtn::Solid, "Solid", cx))
+                        .child(tb("t4", Tbtn::On, "On", cx))
+                        .child(tb("t5", Tbtn::Danger, "Remove", cx))
+                        .child(tb("t6", Tbtn::Armed, "Confirm", cx))
+                        .child(
+                            tbtn("t7", Tbtn::Default, b, None, cx)
+                                .child(icon(IconName::Plus).size(px(13.)))
+                                .child(button_label(
+                                    "Create workspace",
+                                    b.font_size,
+                                    weight::MEDIUM,
+                                )),
+                        ),
+                )
+                .child(
+                    row().gap(px(8.)).child(
+                        row()
+                            .flex_none()
+                            .justify_end()
+                            .gap(px(6.))
+                            .child(titlebar("r1", Tbtn::Default, "Titlebar", false, cx))
+                            .child(titlebar("r2", Tbtn::Danger, "Remove", false, cx))
+                            .child(titlebar("r3", Tbtn::Danger, "Disabled", true, cx)),
+                    ),
+                )
+                .child(
+                    row()
+                        .gap(px(8.))
+                        .child(rb("b1", Rbtn::Default, "Review", false, cx))
+                        .child(rb("b2", Rbtn::Merge, "Merge", false, cx))
+                        .child(rb("b3", Rbtn::Primary, "Primary", false, cx))
+                        .child(rb("b4", Rbtn::Armed, "Armed", false, cx))
+                        .child(rb("b5", Rbtn::Primary, "Disabled", true, cx)),
+                )
+                .child(
+                    row()
+                        .gap(px(8.))
+                        .child(go("g1", false, cx))
+                        .child(go("g2", true, cx))
+                        .child(link("l1", false, "Attach", cx))
+                        .child(link("l2", true, "Linked", cx))
+                        .child(style::lnk("open log", cx)),
+                )
+                .child(
+                    row()
+                        .gap(px(8.))
+                        .child(
+                            style::titlebar_icon_button("i1", false, cx)
+                                .child(icon(IconName::Plus).size(px(14.))),
+                        )
+                        .child(
+                            style::titlebar_icon_button("i2", true, cx)
+                                .child(icon(IconName::Plus).size(px(14.))),
+                        )
+                        .child(
+                            style::rail_toggle("i3", false, cx)
+                                .child(icon(IconName::Box).size(px(16.))),
+                        )
+                        .child(
+                            style::rail_toggle("i4", true, cx)
+                                .child(icon(IconName::Box).size(px(16.))),
+                        ),
+                ),
+        )
+        .into_any_element()
+}
+
+fn toggles(_: &mut Window, cx: &mut App) -> AnyElement {
+    body(cx)
+        .size_full()
+        .child(
+            row()
+                .p(px(12.))
+                .gap(px(12.))
+                .child(style::toggle("a", false, false, cx))
+                .child(style::toggle("b", true, false, cx))
+                .child(
+                    div()
+                        .w(px(60.))
+                        .h(px(30.))
+                        .flex()
+                        .child(style::panel(cx).flex_1()),
+                )
+                .child(div().w(px(80.)).child(style::progress(0.4, cx))),
+        )
+        .into_any_element()
+}
+
+fn icon_grid(cols: usize, cells: Vec<AnyElement>, cx: &App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    body(cx)
+        .size_full()
+        .child(
+            div()
+                .p(px(8.))
+                .w(px(16. + cols as f32 * 20. + (cols - 1) as f32 * 4.))
+                .flex()
+                .flex_wrap()
+                .gap(px(4.))
+                .text_color(t.text)
+                .children(cells.into_iter().map(|c| {
+                    div()
+                        .size(px(20.))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(c)
+                })),
+        )
+        .into_any_element()
+}
+
+fn icons_app(_: &mut Window, cx: &mut App) -> AnyElement {
+    let cells = IconName::ALL
+        .iter()
+        .map(|n| icon(*n).size(px(16.)).into_any_element())
+        .collect();
+    icon_grid(21, cells, cx)
+}
+
+fn icons_lucide(_: &mut Window, cx: &mut App) -> AnyElement {
+    let cells = crate::assets::lucide_suggested()
+        .map(|e| lucide_icon(&e.name).size(px(16.)).into_any_element())
+        .collect();
+    icon_grid(16, cells, cx)
+}
+
+fn icons_provider(_: &mut Window, cx: &mut App) -> AnyElement {
+    let cells = ["cursor", "claude", "codex", "ollama", "compatible"]
+        .iter()
+        .map(|p| provider_icon(p).size(px(14.)).into_any_element())
+        .collect();
+    icon_grid(16, cells, cx)
+}
+
+const FILES: [&str; 20] = [
+    "main.rs",
+    "app.ts",
+    "index.js",
+    "package.json",
+    ".env",
+    "README.md",
+    "Cargo.toml",
+    "go.mod",
+    "style.scss",
+    "index.html",
+    "logo.png",
+    "Dockerfile",
+    "Makefile",
+    "tool.py",
+    "App.svelte",
+    "data.json",
+    "notes.txt",
+    "unknown.zzz",
+    "deploy.yml",
+    "schema.sql",
+];
+
+fn icons_file(_: &mut Window, cx: &mut App) -> AnyElement {
+    let cells = FILES
+        .iter()
+        .map(|f| file_icon(*f).into_any_element())
+        .collect();
+    icon_grid(16, cells, cx)
+}
+
+fn rings(_: &mut Window, cx: &mut App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    body(cx)
+        .size_full()
+        .child(
+            row()
+                .p(px(12.))
+                .gap(px(14.))
+                .child(ring(30., 0.4, 2))
+                .child(ring(42., 0.8, 5).color(t.emerald))
+                .child(ring(60., 0., 0))
+                .child(ring(100., 0.6, 3)),
+        )
+        .into_any_element()
+}
+
+fn project_pics(_: &mut Window, cx: &mut App) -> AnyElement {
+    let pics = [
+        ("", "var(--cyan)", "recur"),
+        ("Ab", "var(--amber)", ""),
+        ("lucide:rocket", "var(--indigo)", ""),
+        ("lucide:box", "#1e2a3a", ""),
+        ("", "#f2c94c", "zeta"),
+        ("", "", "émile"),
+    ];
+    body(cx)
+        .size_full()
+        .child(
+            row()
+                .p(px(12.))
+                .gap(px(10.))
+                .children(pics.map(|(p, c, n)| project_pic(p, c, n, PicBox::NT))),
+        )
+        .into_any_element()
+}
+
+fn settings(_: &mut Window, cx: &mut App) -> AnyElement {
+    let muted = Theme::of(cx).tokens.muted;
+    let body_text = move |s: &'static str| text(s).size(12.).color(muted);
+    body(cx)
+        .size_full()
+        .child(
+            div().p(px(12.)).w(px(420.)).child(
+                settings_groups()
+                    .child(
+                        settings_group("a", "Appearance")
+                            .blurb("Theme and density for every window.")
+                            .child(body_text("Body content")),
+                    )
+                    .child(
+                        settings_group("b", "Agent defaults")
+                            .blurb_spans(vec![
+                                span("Applied to new chats. Set "),
+                                blurb_code("model"),
+                                span(" per project."),
+                            ])
+                            .override_toggle(true, false, None, |_, _, _| {})
+                            .child(body_text("Overridden here")),
+                    )
+                    .child(
+                        settings_group("c", "Project override")
+                            .blurb("Uses the global settings.")
+                            .override_toggle(false, false, None, |_, _, _| {})
+                            .child(body_text("Hidden")),
+                    )
+                    .child(settings_group("d", "Locked").override_toggle(
+                        false,
+                        true,
+                        None,
+                        |_, _, _| {},
+                    ))
+                    .child(
+                        settings_group("e", "Editor").child(
+                            settings_group("e1", "Indent by language")
+                                .blurb("Auto uses common conventions.")
+                                .nested()
+                                .child(body_text("Go · tabs")),
+                        ),
+                    ),
+            ),
+        )
+        .into_any_element()
+}
+
+fn armed(_: &mut Window, cx: &mut App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    let label = |id: &'static str, s: &'static str, animate: bool| {
+        decode_text(id, s)
+            .animate(animate)
+            .style(move |x| x.size(12.).color(t.muted))
+    };
+    body(cx)
+        .size_full()
+        .child(
+            div()
+                .p(px(12.))
+                .flex()
+                .flex_col()
+                .gap(px(10.))
+                .child(
+                    row()
+                        .gap(px(8.))
+                        .child(armed_button("a", "Remove", "Confirm remove", |_, _| {}))
+                        .child(armed_button("b", "Delete", "Really delete?", |_, _| {}))
+                        .child(
+                            armed_button("c", "Discard", "Discard", |_, _| {}).disabled(Some(t.bg)),
+                        ),
+                )
+                .child(
+                    row().child(
+                        row().flex_none().justify_end().gap(px(6.)).child(
+                            armed_button("d", "Archive", "Confirm", |_, _| {})
+                                .size(TbtnSize::TITLEBAR)
+                                .icon(icon(IconName::Trash).size(px(13.))),
+                        ),
+                    ),
+                )
+                .child(
+                    row()
+                        .gap(px(8.))
+                        .child(label("l1", "feature/parity-scenes", true))
+                        .child(label("l2", "Reviewing changes", false)),
+                ),
+        )
+        .into_any_element()
+}
+
+/// Sticky toasts of every kind, and an ask toast whose 30s TTL bar the scene freezes halfway.
+fn seed_toasts(window: &mut Window, cx: &mut App) {
+    let store = ToastStore::global(cx);
+    let old: Vec<u64> = store.read(cx).toasts().iter().map(|t| t.id).collect();
+    for id in old {
+        ToastStore::dismiss(&store, id, false, window, cx);
+    }
+    let sticky = |action| ToastOptions {
+        action,
+        ttl: Some(std::time::Duration::ZERO),
+        ..Default::default()
+    };
+    push_toast(
+        ToastKind::Success,
+        "Saved workspace settings",
+        sticky(None),
+        cx,
+    );
+    push_toast(
+        ToastKind::Error,
+        "Push failed: the remote rejected the update",
+        sticky(None),
+        cx,
+    );
+    push_toast(
+        ToastKind::Info,
+        "Recur 0.9 is ready",
+        sticky(Some(toast_action("Restart", |_, _| {}))),
+        cx,
+    );
+    let ask = ToastAsk {
+        project: "recur".into(),
+        workspace: "honeyed-cannoli".into(),
+        question: "Should the parity task also run on Linux?".into(),
+    };
+    store.update(cx, |s, cx| {
+        s.push_ask(ask, toast_action("Answer", |_, _| {}), None, cx)
+    });
+}
+
+fn tooltips(_: &mut Window, cx: &mut App) -> AnyElement {
+    let b = TbtnSize::BASE;
+    let button = |id: &'static str, label: &'static str, cx: &App| {
+        tbtn(id, Tbtn::Default, b, None, cx).child(button_label(label, b.font_size, weight::MEDIUM))
+    };
+    body(cx)
+        .size_full()
+        .relative()
+        .child(div().absolute().left(px(16.)).top(px(16.)).child(titled(
+            "settings-tip",
+            "Open settings (⌘,)",
+            button("settings", "Settings", cx),
+        )))
+        .child(
+            div()
+                .absolute()
+                .left(px(120.))
+                .bottom(px(16.))
+                .child(titled(
+                    "check-tip",
+                    "Run the parity check against the WebKit reference",
+                    button("check", "Check", cx),
+                )),
+        )
+        .into_any_element()
+}
+
+fn tabs(_: &mut Window, cx: &mut App) -> AnyElement {
+    let action = |id: &'static str, on: bool, name: IconName, cx: &App| {
+        tab_strip_action(id, on, false, cx).child(icon(name).size(px(15.)))
+    };
+    let strip = tab_strip("files", "Open files")
+        .chrome(true)
+        .active_key("changes")
+        .tab(
+            "main",
+            tab_chip("main", "main.rs").icon(ChipIcon::File("main.rs".into())),
+        )
+        .tab(
+            "changes",
+            tab_chip("changes", "Changes")
+                .icon(ChipIcon::App(IconName::GitBranch, None))
+                .active(true)
+                .lit(true)
+                .badge(4),
+        )
+        .tab(
+            "notes",
+            tab_chip("notes", "notes.md")
+                .icon(ChipIcon::File("notes.md".into()))
+                .dirty(true)
+                .on_close(|_, _, _| {}),
+        )
+        .tab(
+            "chat",
+            tab_chip("chat", "Chat")
+                .icon(ChipIcon::App(IconName::MessageQuestion, None))
+                .unseen(true),
+        )
+        .tab(
+            "build",
+            tab_chip("build", "Build")
+                .icon(ChipIcon::App(IconName::Terminal, None))
+                .busy(true),
+        )
+        .tab(
+            "old",
+            tab_chip("old", "old shell")
+                .icon(ChipIcon::App(IconName::Terminal, None))
+                .muted(true),
+        )
+        .trailing(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(2.))
+                .child(action("add", false, IconName::Plus, cx))
+                .child(action("max", true, IconName::Maximize, cx)),
+        );
+    // An unfocused strip over a terminal: the first tab is selected and takes its black.
+    let term = crate::hex(0x000000);
+    let dock = tab_strip("term", "Terminal sessions")
+        .chrome(true)
+        .surface(term)
+        .active_key("zsh")
+        .tab(
+            "zsh",
+            tab_chip("zsh", "zsh").active(true).on_close(|_, _, _| {}),
+        )
+        .tab("logs", tab_chip("logs", "logs"));
+    body(cx)
+        .size_full()
+        .flex()
+        .flex_col()
+        .child(strip)
+        .child(div().h(px(24.)))
+        .child(dock)
+        .child(div().flex_1().bg(term))
+        .into_any_element()
+}
+
+const MANY: [&str; 8] = [
+    "alpha.ts",
+    "beta.rs",
+    "gamma.go",
+    "delta.py",
+    "epsilon.md",
+    "zeta.json",
+    "eta.toml",
+    "theta.css",
+];
+
+// Scrolled to the middle: both ends fade, and a divider parts the tabs from the actions.
+fn tabs_overflow(_: &mut Window, cx: &mut App) -> AnyElement {
+    let strip = MANY
+        .iter()
+        .fold(
+            tab_strip("many", "Open files")
+                .chrome(true)
+                .active_key("delta.py")
+                .restore_scroll(200., 1),
+            |s, f| {
+                s.tab(
+                    *f,
+                    tab_chip(*f, *f)
+                        .icon(ChipIcon::File((*f).into()))
+                        .active(*f == "delta.py")
+                        .on_close(|_, _, _| {}),
+                )
+            },
+        )
+        .trailing(
+            tab_strip_action("add", false, false, cx).child(icon(IconName::Plus).size(px(15.))),
+        );
+    body(cx)
+        .size_full()
+        .child(div().w(px(300.)).child(strip))
+        .into_any_element()
+}
+
+fn models() -> Vec<SelectOption> {
+    vec![
+        SelectOption::new("opus", "Opus 5.5")
+            .group("Anthropic")
+            .provider("claude")
+            .hint("Most capable"),
+        SelectOption::new("sonnet", "Sonnet 5.5")
+            .group("Anthropic")
+            .provider("claude")
+            .hint("Fast"),
+        SelectOption::new("gpt", "GPT-6")
+            .group("OpenAI")
+            .provider("codex"),
+        SelectOption::new("llama", "Llama 5")
+            .group("Local")
+            .provider("ollama"),
+    ]
+}
+
+fn density() -> Vec<SelectOption> {
+    vec![
+        SelectOption::new("comfortable", "Comfortable"),
+        SelectOption::new("compact", "Compact"),
+        SelectOption::new("spacious", "Spacious"),
+    ]
+}
+
+fn select(
+    options: Vec<SelectOption>,
+    window: &mut Window,
+    cx: &mut App,
+    f: impl FnOnce(Select, &mut Context<Select>) -> Select,
+) -> gpui_kit::Entity<Select> {
+    cx.new(|cx| {
+        let s = Select::new(options, window, cx);
+        f(s, cx)
+    })
+}
+
+/// Select triggers in every style, or one opened by the scene's click (or focused by Tab).
+fn selects(variant: &str, window: &mut Window, cx: &mut App) -> Content {
+    let t = Theme::of(cx).tokens;
+    let views: Vec<AnyView> = match variant {
+        "closed" | "closed-paper" => {
+            let modes = vec![
+                SelectOption::new("agent", "Agent")
+                    .icon(IconName::Box)
+                    .tint(t.amber),
+                SelectOption::new("shell", "Shell")
+                    .icon(IconName::Terminal)
+                    .tint(t.cyan),
+            ];
+            vec![
+                select(models(), window, cx, |s, _| {
+                    s.label("Model").with_value("opus")
+                })
+                .into(),
+                select(density(), window, cx, |s, _| {
+                    s.label("Density")
+                        .with_value("compact")
+                        .size(SelectSize::Sm)
+                })
+                .into(),
+                select(modes, window, cx, |s, _| {
+                    s.label("Mode").with_value("agent").ghost()
+                })
+                .into(),
+                select(density(), window, cx, |mut s, cx| {
+                    s.set_disabled(Some(t.bg), cx);
+                    s.label("Locked").with_value("comfortable")
+                })
+                .into(),
+            ]
+        }
+        "open" => vec![
+            select(models(), window, cx, |s, _| {
+                s.label("Model").with_value("sonnet")
+            })
+            .into(),
+        ],
+        "searchable" => vec![
+            select(models(), window, cx, |s, _| {
+                s.label("Model").with_value("opus").searchable()
+            })
+            .into(),
+        ],
+        "multiple" => vec![
+            select(density(), window, cx, |s, _| {
+                s.label("Density")
+                    .multiple()
+                    .placeholder("Any")
+                    .with_values(vec!["compact".into(), "spacious".into()])
+            })
+            .into(),
+        ],
+        _ => vec![
+            select(density(), window, cx, |s, _| {
+                s.label("Density").with_value("compact")
+            })
+            .into(),
+        ],
+    };
+    // In `.row` the triggers size to their content; alone, `.sel` is a block filling the width.
+    let in_row = variant.starts_with("closed");
+    Box::new(move |_, cx| {
+        let views = views.iter().cloned();
+        let content = if in_row {
+            row().gap(px(12.)).children(views)
+        } else {
+            div().children(views)
+        };
+        body(cx)
+            .size_full()
+            .child(div().p(px(16.)).child(content))
+            .into_any_element()
+    })
+}
+
+fn resize_handles(
+    side: &gpui_kit::FocusHandle,
+    dock: &gpui_kit::FocusHandle,
+    cx: &App,
+) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    body(cx)
+        .size_full()
+        .relative()
+        .child(
+            div()
+                .absolute()
+                .left_0()
+                .top_0()
+                .bottom_0()
+                .w(px(160.))
+                .bg(t.pane)
+                .border_r(px(1.))
+                .border_color(gpui_kit::Hsla::from(t.line))
+                .child(resize_handle("rail", Axis::X, Edge::End, 160., side)),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(px(161.))
+                .right_0()
+                .bottom_0()
+                .h(px(60.))
+                .bg(t.rail)
+                .border_t(px(1.))
+                .border_color(gpui_kit::Hsla::from(t.line))
+                .child(resize_handle("dock", Axis::Y, Edge::Start, 60., dock)),
+        )
+        .into_any_element()
+}
+
+/// The generic overlay styles: the command palette, the modal card, and a page of fields,
+/// skeleton rows, a progress bar, a hint and a popover.
+fn overlay_scenes(variant: &str, window: &mut Window, cx: &mut App) -> Content {
+    use crate::shadow::with_shadow;
+    use crate::style::{
+        MODAL_SHADOW, PALETTE_SHADOW, POPOVER_SHADOW, input_box, modal_panel, modal_scrim,
+        palette_dot, palette_group, palette_input, palette_label, palette_panel, palette_pic,
+        palette_row, palette_scrim, palette_sub, palette_tile, palette_width, popover, progress,
+        skeleton, skeleton_row, style_text_input,
+    };
+    let field = |p: &str, window: &mut Window, cx: &mut App| {
+        let p: gpui_kit::SharedString = p.to_string().into();
+        (crate::style::text_input(&p, window, cx), p)
+    };
+    match variant {
+        "palette" => {
+            let (input, placeholder) = field("Search workspaces, PRs, or projects…", window, cx);
+            Box::new(move |window, cx| {
+                style_text_input(&input, cx);
+                let t = Theme::of(cx).tokens;
+                let list = div()
+                    .p(px(6.))
+                    .child(palette_group("Workspaces", false, cx))
+                    .child(
+                        palette_row("r1", true, false, cx)
+                            .child(palette_pic(IconName::GitBranch, true, cx))
+                            .child(palette_label("honeyed-cannoli", cx))
+                            .child(palette_sub("recur", cx))
+                            .child(palette_key("⌘1", true, cx)),
+                    )
+                    .child(
+                        palette_row("r2", false, false, cx)
+                            .child(palette_tile(false, cx).child(palette_dot(t.emerald)))
+                            .child(palette_label("main", cx))
+                            .child(palette_sub("recur", cx)),
+                    )
+                    .child(palette_group("Projects", false, cx))
+                    .child(
+                        palette_row("r3", false, false, cx)
+                            .child(palette_tile(false, cx).child(project_pic(
+                                "",
+                                "var(--cyan)",
+                                "recur",
+                                PicBox::PALETTE,
+                            )))
+                            .child(palette_label("recur", cx))
+                            .child(palette_key("⌘⇧R", false, cx)),
+                    );
+                let panel = palette_panel(window, cx)
+                    .child(
+                        palette_input_row(false, cx)
+                            .child(icon(IconName::Search).size(px(16.)).color(t.faint))
+                            .child(palette_input(&input, &placeholder, window, cx))
+                            .child(esc_key(false, cx)),
+                    )
+                    .child(
+                        div()
+                            .flex_auto()
+                            .min_h_0()
+                            .flex()
+                            .flex_col()
+                            .child(crate::widgets::scroll_area("pal-list").child(list)),
+                    )
+                    .child(
+                        // GPUI clips rectangles: the footer rounds itself inside the panel.
+                        palette_footer(false, cx)
+                            .rounded_b(px(12.))
+                            .child(Text::from_spans(vec![
+                                footer_key("↑↓", cx),
+                                span("navigate"),
+                            ]))
+                            .child(Text::from_spans(vec![footer_key("↵", cx), span("open")]))
+                            .child(Text::from_spans(vec![footer_key("esc", cx), span("close")])),
+                    );
+                body(cx)
+                    .size_full()
+                    .relative()
+                    .child(palette_scrim(
+                        window,
+                        with_shadow(panel, &PALETTE_SHADOW, 13.).w(px(palette_width(window))),
+                    ))
+                    .into_any_element()
+            })
+        }
+        "modal" => Box::new(|window, cx| {
+            let panel =
+                modal_panel(cx).child(div().p(px(20.)).child(text("New workspace").size(14.)));
+            body(cx)
+                .size_full()
+                .relative()
+                .child(modal_scrim(
+                    window,
+                    with_shadow(panel, &MODAL_SHADOW, 16.)
+                        .w(px(640.))
+                        .max_w_full(),
+                ))
+                .into_any_element()
+        }),
+        _ => {
+            let (path, path_ph) = field("~/Development/recur", window, cx);
+            let (locked, locked_ph) = field("read only", window, cx);
+            Box::new(move |window, cx| {
+                style_text_input(&path, cx);
+                style_text_input(&locked, cx);
+                let skel_row = |w: f32, window: &mut Window, cx: &App| {
+                    skeleton_row(cx)
+                        .child(skeleton(window, cx).size(px(24.)))
+                        .child(skeleton(window, cx).w(px(w)))
+                };
+                let col = div()
+                    .w(px(260.))
+                    .flex()
+                    .flex_col()
+                    .gap(px(10.))
+                    .child(input_box(&path, &path_ph, false, window, cx))
+                    .child(input_box(&locked, &locked_ph, true, window, cx))
+                    .child(skel_row(140., window, cx))
+                    .child(skel_row(90., window, cx))
+                    .child(progress(0.4, cx))
+                    .child(crate::style::hint("Nothing here yet", cx));
+                let pop = with_shadow(
+                    popover(cx).child(text(
+                        "Workspaces get their own branch and worktree, so agents never collide.",
+                    )),
+                    &POPOVER_SHADOW,
+                    9.,
+                )
+                .absolute()
+                .left_0()
+                .bottom(gpui_kit::relative(1.))
+                .mb(px(8.));
+                body(cx)
+                    .size_full()
+                    .child(
+                        div()
+                            .p(px(16.))
+                            .flex()
+                            .items_start()
+                            .gap(px(16.))
+                            .child(col)
+                            .child(div().relative().mt(px(140.)).child(pop)),
+                    )
+                    .into_any_element()
+            })
+        }
+    }
+}
+
+/// The themed 11px scrollbar and the overlay thumb (hovered), on the same overflowing list.
+fn scrollbars(_: &mut Window, cx: &mut App) -> AnyElement {
+    let t = Theme::of(cx).tokens;
+    let list = |area: crate::widgets::ScrollArea| {
+        div()
+            .w(px(160.))
+            .h(px(160.))
+            .flex()
+            .flex_col()
+            .bg(t.pane)
+            .child(area.children((1..=24).map(|i| {
+                div()
+                    .py(px(4.))
+                    .px(px(10.))
+                    .child(text(format!("Row {i}")).size(12.))
+            })))
+    };
+    body(cx)
+        .size_full()
+        .child(
+            row()
+                .items_start()
+                .p(px(16.))
+                .gap(px(16.))
+                .child(list(crate::widgets::scroll_area("classic")))
+                .child(list(crate::widgets::scroll_area("overlay").overlay())),
+        )
+        .into_any_element()
+}

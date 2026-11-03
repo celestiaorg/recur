@@ -15,7 +15,7 @@ PRs) stay in Recur's DB. Do not invent keys for those.
 
 ## Where to write
 
-The git checkout of the project whose workspaces should pick this up — usually
+The git checkout of the project whose workspaces should pick this up: usually
 the current workspace root. Not `~/.recur/`, not Recur's data dir.
 
 If the file already exists, **read it first** and patch in place (keep comments).
@@ -26,7 +26,7 @@ fix the TOML rather than relying on the settings page to rewrite it.
 
 1. Open `.recur/project.toml` (create `.recur/` if needed).
 2. Change only the field the user asked for. Copy shape from an existing
-   `[[run]]` or the skeleton below — do not invent keys.
+   `[[run]]` or the skeleton below: do not invent keys.
 3. Dev servers must bind `$RECUR_PORT`. Loops that verify-in-browser look for a
    run named `dev`, else the first `[[run]]`. No bootable run → no verify → no PR.
 4. Secrets go in gitignored dotenv, not `env`. Confirm `.gitignore` has
@@ -49,7 +49,7 @@ does not support `!` negation. A pattern with no slash matches at any depth
 (`node_modules`, `dist`, `build`, …) are skipped unless the pattern names them.
 Cap: 10 000 files, 32 MiB each.
 
-Do not write `pinned_run` — that default stays on this machine, not in the file.
+Do not write `pinned_run`: that default stays on this machine, not in the file.
 
 ## Env merge (later wins)
 
@@ -95,7 +95,7 @@ name = "test"
 cmd = "pnpm test"
 ```
 
-Multiline strings use `"""…"""`. `[[run]]` is an array of tables — never `[run.0]`.
+Multiline strings use `"""…"""`. `[[run]]` is an array of tables: never `[run.0]`.
 
-Skills (`SKILL.md`) and Bundles (`bundle.toml`) are different — `/create-skill`
+Skills (`SKILL.md`) and Bundles (`bundle.toml`) are different: `/create-skill`
 and `create-bundle`.

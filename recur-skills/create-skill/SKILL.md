@@ -15,9 +15,9 @@ Skills are markdown folders that teach the agent specialized workflows.
 |------|------|
 | Project | `.agents/skills/<name>/` (in the repo; prefer this for shared team skills) |
 | User | `~/.agents/skills/<name>/` |
-| Shipped Recur | `~/.recur/recur-skills/` (seeded from the app; do not hand-edit — it is overwritten on update) |
+| Shipped Recur | `~/.recur/recur-skills/` (seeded from the app; do not hand-edit: it is overwritten on update) |
 
-Do not expect edits under `~/.recur/recur-skills/` to survive an app upgrade — customize via project or user skill dirs instead.
+Do not expect edits under `~/.recur/recur-skills/` to survive an app upgrade: customize via project or user skill dirs instead.
 
 ## SKILL.md
 

@@ -1,0 +1,36 @@
+[package]
+name = "recur-view-briefing"
+description = "The list views of the briefing family: the Inbox (Briefing with Ask Recur), Issues and Schedules."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-view-core.workspace = true
+recur-view-widgets.workspace = true
+recur-view-chat.workspace = true
+recur-forge.workspace = true
+recur-editor.workspace = true
+chrono.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+recur-view-review.workspace = true
+recur-view-workspace.workspace = true
+recur-view-settings.workspace = true
+recur-view-home.workspace = true
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["fake"] }
+recur-app.workspace = true
+parking_lot.workspace = true
+
+[lints]
+workspace = true

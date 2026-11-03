@@ -1,0 +1,46 @@
+[package]
+name = "recur-view-projects"
+description = "Projects and schedules: project settings, the Schedules list and the schedule editor."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-editor.workspace = true
+recur-code.workspace = true
+recur-agent.workspace = true
+chrono.workspace = true
+base64.workspace = true
+recur-view-core.workspace = true
+recur-view-widgets.workspace = true
+recur-view-chat.workspace = true
+serde_json.workspace = true
+image = { workspace = true, features = ["png"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-foundation.workspace = true
+objc2-app-kit = { workspace = true, features = ["NSColorPanel", "NSColor", "NSColorSpace", "NSPanel", "NSWindow", "NSResponder", "NSView"] }
+
+[dev-dependencies]
+recur-view-briefing.workspace = true
+recur-view-review.workspace = true
+recur-view-observatory.workspace = true
+recur-view-workspace.workspace = true
+recur-view-prs.workspace = true
+recur-view-settings.workspace = true
+recur-view-home.workspace = true
+gpui = { workspace = true, features = ["test-support"] }
+recur-view-palettes.workspace = true
+recur-services = { workspace = true, features = ["fake"] }
+recur-app.workspace = true
+parking_lot.workspace = true
+
+[lints]
+workspace = true

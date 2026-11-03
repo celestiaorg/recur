@@ -24,6 +24,7 @@ export default defineConfig({
     { text: "Product", link: "https://recur.build" },
     { text: "Download", link: "https://recur.build/#download" },
   ],
+  socials: [{ icon: "github", link: "https://github.com/celestiaorg/recur" }],
   sidebar: [
     {
       text: "Start",

@@ -1,0 +1,2276 @@
+{
+ "args": [
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "hi",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "hi",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "hi \u003cb\u003e \u0026 \u2028",
+    "model": "sonnet",
+    "flags": {
+     "effort": "high"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "hi \u003cb\u003e \u0026 \u2028",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--effort",
+    "high",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "claude-sonnet-4-6",
+    "flags": {
+     "context": "1m",
+     "effort": "xhigh"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "x",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--model",
+    "claude-sonnet-4-6[1m]",
+    "--effort",
+    "xhigh",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "claude-opus-4-6",
+    "flags": {
+     "context": "200k"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "x",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--model",
+    "claude-opus-4-6",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "claude-fable-5-1",
+    "flags": {
+     "context": "300k"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "x",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--model",
+    "claude-fable-5-1[1m]",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "claude-code/claude-opus-5-5",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "x",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--model",
+    "claude-code/claude-opus-5-5[1m]",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "x",
+    "model": "haiku",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "x",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--model",
+    "haiku",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "go",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "You are the Maestro.",
+    "appendSystemPrompt": "  Name the chat.  ",
+    "turnAppendPrompt": "The operator is looking at PR #3.",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "go",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--append-system-prompt",
+    "You are the Maestro.\n\nName the chat.\n\nThe operator is looking at PR #3.",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "go",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "only append",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "go",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--append-system-prompt",
+    "only append",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "go",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "plan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\n",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "go",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--append-system-prompt",
+    "plan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "ro",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": [
+     "Read",
+     "Bash(git diff:*)",
+     "mcp__recur__report_finding",
+     "mcp__recur__*"
+    ],
+    "tools": null,
+    "permissionMode": "bypassPermissions",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "ro",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--allowedTools",
+    "Read,Bash(git diff:*),mcp__recur__report_finding,mcp__recur__*",
+    "--disallowedTools",
+    "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "bypassPermissions"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "coder",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": [
+     "Read",
+     "Edit",
+     "Write",
+     "Bash",
+     "NotebookEdit"
+    ],
+    "tools": null,
+    "permissionMode": "default",
+    "mcpUrl": "http://127.0.0.1:41234/abc/mcp",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "coder",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--allowedTools",
+    "Read,Edit,Write,Bash,NotebookEdit",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--mcp-config",
+    "{\"mcpServers\":{\"recur\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:41234/abc/mcp\"}}}",
+    "--strict-mcp-config",
+    "--permission-mode",
+    "default",
+    "--permission-prompt-tool",
+    "mcp__recur__permission_request"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "empty allow",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": [],
+    "tools": null,
+    "permissionMode": "default",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "empty allow",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "title",
+    "model": "claude-haiku-4-5-20251001",
+    "flags": {
+     "effort": "low"
+    },
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": "",
+    "permissionMode": "dontAsk",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": true,
+    "maxTurns": 1,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "title",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--model",
+    "claude-haiku-4-5-20251001",
+    "--effort",
+    "low",
+    "--tools",
+    "",
+    "--max-turns",
+    "1",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "tools",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": "Read,Glob,Grep",
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "tools",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--tools",
+    "Read,Glob,Grep",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "resume",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "sess-1",
+    "forkSession": true,
+    "promptOnStdin": false,
+    "includePartials": true,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "resume",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--include-partial-messages",
+    "--resume",
+    "sess-1",
+    "--fork-session",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "resume",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "sess-1",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "resume",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--resume",
+    "sess-1",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "fork without resume",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": true,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "fork without resume",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "stdin",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": true,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "--output-format",
+    "stream-json",
+    "--input-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "steer me",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "default",
+    "mcpUrl": "http://127.0.0.1:1/t/mcp",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": true
+   },
+   "args": [
+    "-p",
+    "--output-format",
+    "stream-json",
+    "--input-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--mcp-config",
+    "{\"mcpServers\":{\"recur\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:1/t/mcp\"}}}",
+    "--strict-mcp-config",
+    "--permission-mode",
+    "default",
+    "--permission-prompt-tool",
+    "mcp__recur__permission_request"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "look ⟦attachment:img1⟧ here",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": [
+     {
+      "id": "img1",
+      "name": "img1.png",
+      "mime": "image/png",
+      "data": "iVBORw0KGgo=",
+      "path": "workspaces/W1/attachments/img1.png"
+     }
+    ],
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "--output-format",
+    "stream-json",
+    "--input-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "qa",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "bypassPermissions",
+    "mcpUrl": "http://127.0.0.1:2/q/mcp",
+    "playwright": true,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "qa",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--mcp-config",
+    "{\"mcpServers\":{\"playwright\":{\"args\":[\"-y\",\"@playwright/mcp@latest\"],\"command\":\"npx\"},\"recur\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:2/q/mcp\"}}}",
+    "--strict-mcp-config",
+    "--permission-mode",
+    "bypassPermissions"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "mcp",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "http://127.0.0.1:9/tok/mcp",
+    "playwright": false,
+    "userMcp": [
+     {
+      "name": "linear",
+      "url": "https://mcp.linear.app/mcp",
+      "headers": {
+       "Authorization": "Bearer lin_api_x"
+      },
+      "command": "",
+      "args": null,
+      "env": null
+     },
+     {
+      "name": " fs ",
+      "url": "",
+      "headers": null,
+      "command": "npx",
+      "args": [
+       "-y",
+       "@modelcontextprotocol/server-filesystem"
+      ],
+      "env": {
+       "FOO": "bar"
+      }
+     },
+     {
+      "name": "",
+      "url": "http://skip",
+      "headers": null,
+      "command": "",
+      "args": null,
+      "env": null
+     },
+     {
+      "name": "nothing",
+      "url": "",
+      "headers": null,
+      "command": "",
+      "args": null,
+      "env": null
+     }
+    ],
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "mcp",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--mcp-config",
+    "{\"mcpServers\":{\"fs\":{\"args\":[\"-y\",\"@modelcontextprotocol/server-filesystem\"],\"command\":\"npx\",\"env\":{\"FOO\":\"bar\"}},\"linear\":{\"headers\":{\"Authorization\":\"Bearer lin_api_x\"},\"type\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"recur\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/tok/mcp\"}}}",
+    "--strict-mcp-config",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "only blank mcp",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": [
+     {
+      "name": "x",
+      "url": "",
+      "headers": null,
+      "command": "",
+      "args": null,
+      "env": null
+     }
+    ],
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 0,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "only blank mcp",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--mcp-config",
+    "",
+    "--strict-mcp-config",
+    "--permission-mode",
+    "dontAsk"
+   ],
+   "spilled": false
+  },
+  {
+   "spec": {
+    "workspaceId": "",
+    "agentId": "",
+    "role": "",
+    "prompt": "maxturns",
+    "model": "",
+    "flags": null,
+    "systemPrompt": "",
+    "appendSystemPrompt": "",
+    "turnAppendPrompt": "",
+    "refreshStanding": false,
+    "allowedTools": null,
+    "tools": null,
+    "permissionMode": "acceptEdits",
+    "mcpUrl": "",
+    "playwright": false,
+    "userMcp": null,
+    "resumeSession": "",
+    "forkSession": false,
+    "promptOnStdin": false,
+    "includePartials": false,
+    "skipThinking": false,
+    "maxTurns": 7,
+    "images": null,
+    "inject": false
+   },
+   "args": [
+    "-p",
+    "maxturns",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--disable-slash-commands",
+    "--thinking",
+    "adaptive",
+    "--thinking-display",
+    "summarized",
+    "--disallowedTools",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree",
+    "--max-turns",
+    "7",
+    "--permission-mode",
+    "acceptEdits"
+   ],
+   "spilled": false
+  }
+ ],
+ "background": [
+  {
+   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":[{\"task_id\":\"b1\"},{\"task_id\":\"w\",\"ambient\":true},{\"ambient\":false}]}",
+   "count": 2,
+   "ok": true
+  },
+  {
+   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":null}",
+   "count": 0,
+   "ok": true
+  },
+  {
+   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\"}",
+   "count": 0,
+   "ok": true
+  },
+  {
+   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":[null]}",
+   "count": 1,
+   "ok": true
+  },
+  {
+   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":[{\"ambient\":1}]}",
+   "count": 0,
+   "ok": false
+  },
+  {
+   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":{}}",
+   "count": 0,
+   "ok": false
+  },
+  {
+   "line": "{\"type\":null,\"subtype\":\"background_tasks_changed\",\"tasks\":[]}",
+   "count": 0,
+   "ok": false
+  },
+  {
+   "line": "{\"type\":\"assistant\",\"text\":\"background_tasks_changed\"}",
+   "count": 0,
+   "ok": false
+  },
+  {
+   "line": "{\"type\":\"system\",\"subtype\":\"init\"}",
+   "count": 0,
+   "ok": false
+  },
+  {
+   "line": "not json \"background_tasks_changed\"",
+   "count": 0,
+   "ok": false
+  },
+  {
+   "line": "[1,\"background_tasks_changed\"]",
+   "count": 0,
+   "ok": false
+  }
+ ],
+ "flags": [
+  {
+   "model": "",
+   "flags": null,
+   "resolve": "",
+   "window": 200000,
+   "label": ""
+  },
+  {
+   "model": "",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "",
+   "window": 1000000,
+   "label": ""
+  },
+  {
+   "model": "",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "",
+   "window": 200000,
+   "label": ""
+  },
+  {
+   "model": "",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "",
+   "window": 200000,
+   "label": ""
+  },
+  {
+   "model": "sonnet",
+   "flags": null,
+   "resolve": "sonnet",
+   "window": 1000000,
+   "label": "Sonnet"
+  },
+  {
+   "model": "sonnet",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "sonnet",
+   "window": 1000000,
+   "label": "Sonnet"
+  },
+  {
+   "model": "sonnet",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "sonnet",
+   "window": 1000000,
+   "label": "Sonnet"
+  },
+  {
+   "model": "sonnet",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "sonnet",
+   "window": 1000000,
+   "label": "Sonnet"
+  },
+  {
+   "model": "opus",
+   "flags": null,
+   "resolve": "opus",
+   "window": 1000000,
+   "label": "Opus"
+  },
+  {
+   "model": "opus",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "opus",
+   "window": 1000000,
+   "label": "Opus"
+  },
+  {
+   "model": "opus",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "opus",
+   "window": 1000000,
+   "label": "Opus"
+  },
+  {
+   "model": "opus",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "opus",
+   "window": 1000000,
+   "label": "Opus"
+  },
+  {
+   "model": "fable",
+   "flags": null,
+   "resolve": "fable",
+   "window": 1000000,
+   "label": "Fable"
+  },
+  {
+   "model": "fable",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "fable",
+   "window": 1000000,
+   "label": "Fable"
+  },
+  {
+   "model": "fable",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "fable",
+   "window": 1000000,
+   "label": "Fable"
+  },
+  {
+   "model": "fable",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "fable",
+   "window": 1000000,
+   "label": "Fable"
+  },
+  {
+   "model": "haiku",
+   "flags": null,
+   "resolve": "haiku",
+   "window": 200000,
+   "label": "Haiku"
+  },
+  {
+   "model": "haiku",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "haiku",
+   "window": 1000000,
+   "label": "Haiku"
+  },
+  {
+   "model": "haiku",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "haiku",
+   "window": 200000,
+   "label": "Haiku"
+  },
+  {
+   "model": "haiku",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "haiku",
+   "window": 200000,
+   "label": "Haiku"
+  },
+  {
+   "model": "claude-sonnet-4-6",
+   "flags": null,
+   "resolve": "claude-sonnet-4-6",
+   "window": 200000,
+   "label": "Sonnet 4.6"
+  },
+  {
+   "model": "claude-sonnet-4-6",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-sonnet-4-6[1m]",
+   "window": 1000000,
+   "label": "Sonnet 4.6"
+  },
+  {
+   "model": "claude-sonnet-4-6",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-sonnet-4-6",
+   "window": 200000,
+   "label": "Sonnet 4.6"
+  },
+  {
+   "model": "claude-sonnet-4-6",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-sonnet-4-6",
+   "window": 200000,
+   "label": "Sonnet 4.6"
+  },
+  {
+   "model": "claude-opus-4-6",
+   "flags": null,
+   "resolve": "claude-opus-4-6",
+   "window": 200000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": "claude-opus-4-6",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-opus-4-6[1m]",
+   "window": 1000000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": "claude-opus-4-6",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-opus-4-6",
+   "window": 200000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": "claude-opus-4-6",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-opus-4-6",
+   "window": 200000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": "claude-sonnet-5",
+   "flags": null,
+   "resolve": "claude-sonnet-5[1m]",
+   "window": 1000000,
+   "label": "Sonnet 5"
+  },
+  {
+   "model": "claude-sonnet-5",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-sonnet-5[1m]",
+   "window": 1000000,
+   "label": "Sonnet 5"
+  },
+  {
+   "model": "claude-sonnet-5",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-sonnet-5[1m]",
+   "window": 1000000,
+   "label": "Sonnet 5"
+  },
+  {
+   "model": "claude-sonnet-5",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-sonnet-5[1m]",
+   "window": 1000000,
+   "label": "Sonnet 5"
+  },
+  {
+   "model": "claude-sonnet-5-5",
+   "flags": null,
+   "resolve": "claude-sonnet-5-5[1m]",
+   "window": 1000000,
+   "label": "Sonnet 5.5"
+  },
+  {
+   "model": "claude-sonnet-5-5",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-sonnet-5-5[1m]",
+   "window": 1000000,
+   "label": "Sonnet 5.5"
+  },
+  {
+   "model": "claude-sonnet-5-5",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-sonnet-5-5[1m]",
+   "window": 1000000,
+   "label": "Sonnet 5.5"
+  },
+  {
+   "model": "claude-sonnet-5-5",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-sonnet-5-5[1m]",
+   "window": 1000000,
+   "label": "Sonnet 5.5"
+  },
+  {
+   "model": "claude-fable-5-1",
+   "flags": null,
+   "resolve": "claude-fable-5-1[1m]",
+   "window": 1000000,
+   "label": "Fable 5.1"
+  },
+  {
+   "model": "claude-fable-5-1",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-fable-5-1[1m]",
+   "window": 1000000,
+   "label": "Fable 5.1"
+  },
+  {
+   "model": "claude-fable-5-1",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-fable-5-1[1m]",
+   "window": 1000000,
+   "label": "Fable 5.1"
+  },
+  {
+   "model": "claude-fable-5-1",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-fable-5-1[1m]",
+   "window": 1000000,
+   "label": "Fable 5.1"
+  },
+  {
+   "model": "claude-fable-5",
+   "flags": null,
+   "resolve": "claude-fable-5[1m]",
+   "window": 1000000,
+   "label": "Fable 5"
+  },
+  {
+   "model": "claude-fable-5",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-fable-5[1m]",
+   "window": 1000000,
+   "label": "Fable 5"
+  },
+  {
+   "model": "claude-fable-5",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-fable-5[1m]",
+   "window": 1000000,
+   "label": "Fable 5"
+  },
+  {
+   "model": "claude-fable-5",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-fable-5[1m]",
+   "window": 1000000,
+   "label": "Fable 5"
+  },
+  {
+   "model": "claude-opus-5",
+   "flags": null,
+   "resolve": "claude-opus-5[1m]",
+   "window": 1000000,
+   "label": "Opus 5"
+  },
+  {
+   "model": "claude-opus-5",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-opus-5[1m]",
+   "window": 1000000,
+   "label": "Opus 5"
+  },
+  {
+   "model": "claude-opus-5",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-opus-5[1m]",
+   "window": 1000000,
+   "label": "Opus 5"
+  },
+  {
+   "model": "claude-opus-5",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-opus-5[1m]",
+   "window": 1000000,
+   "label": "Opus 5"
+  },
+  {
+   "model": "claude-opus-5-5",
+   "flags": null,
+   "resolve": "claude-opus-5-5[1m]",
+   "window": 1000000,
+   "label": "Opus 5.5"
+  },
+  {
+   "model": "claude-opus-5-5",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-opus-5-5[1m]",
+   "window": 1000000,
+   "label": "Opus 5.5"
+  },
+  {
+   "model": "claude-opus-5-5",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-opus-5-5[1m]",
+   "window": 1000000,
+   "label": "Opus 5.5"
+  },
+  {
+   "model": "claude-opus-5-5",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-opus-5-5[1m]",
+   "window": 1000000,
+   "label": "Opus 5.5"
+  },
+  {
+   "model": "claude-opus-4-8",
+   "flags": null,
+   "resolve": "claude-opus-4-8[1m]",
+   "window": 1000000,
+   "label": "Opus 4.8"
+  },
+  {
+   "model": "claude-opus-4-8",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-opus-4-8[1m]",
+   "window": 1000000,
+   "label": "Opus 4.8"
+  },
+  {
+   "model": "claude-opus-4-8",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-opus-4-8[1m]",
+   "window": 1000000,
+   "label": "Opus 4.8"
+  },
+  {
+   "model": "claude-opus-4-8",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-opus-4-8[1m]",
+   "window": 1000000,
+   "label": "Opus 4.8"
+  },
+  {
+   "model": "claude-opus-4-7",
+   "flags": null,
+   "resolve": "claude-opus-4-7[1m]",
+   "window": 1000000,
+   "label": "Opus 4.7"
+  },
+  {
+   "model": "claude-opus-4-7",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-opus-4-7[1m]",
+   "window": 1000000,
+   "label": "Opus 4.7"
+  },
+  {
+   "model": "claude-opus-4-7",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-opus-4-7[1m]",
+   "window": 1000000,
+   "label": "Opus 4.7"
+  },
+  {
+   "model": "claude-opus-4-7",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-opus-4-7[1m]",
+   "window": 1000000,
+   "label": "Opus 4.7"
+  },
+  {
+   "model": "claude-haiku-4-5-20251001",
+   "flags": null,
+   "resolve": "claude-haiku-4-5-20251001",
+   "window": 200000,
+   "label": "Haiku 4.5.20251001"
+  },
+  {
+   "model": "claude-haiku-4-5-20251001",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-haiku-4-5-20251001",
+   "window": 1000000,
+   "label": "Haiku 4.5.20251001"
+  },
+  {
+   "model": "claude-haiku-4-5-20251001",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-haiku-4-5-20251001",
+   "window": 200000,
+   "label": "Haiku 4.5.20251001"
+  },
+  {
+   "model": "claude-haiku-4-5-20251001",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-haiku-4-5-20251001",
+   "window": 200000,
+   "label": "Haiku 4.5.20251001"
+  },
+  {
+   "model": "claude-code/claude-opus-4-6",
+   "flags": null,
+   "resolve": "claude-code/claude-opus-4-6",
+   "window": 200000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": "claude-code/claude-opus-4-6",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-code/claude-opus-4-6[1m]",
+   "window": 1000000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": "claude-code/claude-opus-4-6",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-code/claude-opus-4-6",
+   "window": 200000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": "claude-code/claude-opus-4-6",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-code/claude-opus-4-6",
+   "window": 200000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": "claude-code/sonnet",
+   "flags": null,
+   "resolve": "claude-code/sonnet",
+   "window": 1000000,
+   "label": "Sonnet"
+  },
+  {
+   "model": "claude-code/sonnet",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-code/sonnet",
+   "window": 1000000,
+   "label": "Sonnet"
+  },
+  {
+   "model": "claude-code/sonnet",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-code/sonnet",
+   "window": 1000000,
+   "label": "Sonnet"
+  },
+  {
+   "model": "claude-code/sonnet",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-code/sonnet",
+   "window": 1000000,
+   "label": "Sonnet"
+  },
+  {
+   "model": "claude-fable-5-1[1m]",
+   "flags": null,
+   "resolve": "claude-fable-5-1[1m]",
+   "window": 1000000,
+   "label": "Fable 5.1"
+  },
+  {
+   "model": "claude-fable-5-1[1m]",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-fable-5-1[1m]",
+   "window": 1000000,
+   "label": "Fable 5.1"
+  },
+  {
+   "model": "claude-fable-5-1[1m]",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-fable-5-1[1m]",
+   "window": 1000000,
+   "label": "Fable 5.1"
+  },
+  {
+   "model": "claude-fable-5-1[1m]",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-fable-5-1[1m]",
+   "window": 1000000,
+   "label": "Fable 5.1"
+  },
+  {
+   "model": "claude-sonnet-4-6[1m]",
+   "flags": null,
+   "resolve": "claude-sonnet-4-6[1m]",
+   "window": 200000,
+   "label": "Sonnet 4.6"
+  },
+  {
+   "model": "claude-sonnet-4-6[1m]",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-sonnet-4-6[1m][1m]",
+   "window": 1000000,
+   "label": "Sonnet 4.6"
+  },
+  {
+   "model": "claude-sonnet-4-6[1m]",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-sonnet-4-6[1m]",
+   "window": 200000,
+   "label": "Sonnet 4.6"
+  },
+  {
+   "model": "claude-sonnet-4-6[1m]",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-sonnet-4-6[1m]",
+   "window": 200000,
+   "label": "Sonnet 4.6"
+  },
+  {
+   "model": " claude-opus-4-6 ",
+   "flags": null,
+   "resolve": " claude-opus-4-6 ",
+   "window": 200000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": " claude-opus-4-6 ",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": " claude-opus-4-6 [1m]",
+   "window": 1000000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": " claude-opus-4-6 ",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": " claude-opus-4-6 ",
+   "window": 200000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": " claude-opus-4-6 ",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": " claude-opus-4-6 ",
+   "window": 200000,
+   "label": "Opus 4.6"
+  },
+  {
+   "model": "claude-",
+   "flags": null,
+   "resolve": "claude-",
+   "window": 200000,
+   "label": ""
+  },
+  {
+   "model": "claude-",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "claude-",
+   "window": 1000000,
+   "label": ""
+  },
+  {
+   "model": "claude-",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "claude-",
+   "window": 200000,
+   "label": ""
+  },
+  {
+   "model": "claude-",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "claude-",
+   "window": 200000,
+   "label": ""
+  },
+  {
+   "model": "gpt-5.6-sol",
+   "flags": null,
+   "resolve": "gpt-5.6-sol",
+   "window": 200000,
+   "label": "Gpt 5.6.sol"
+  },
+  {
+   "model": "gpt-5.6-sol",
+   "flags": {
+    "context": "1m"
+   },
+   "resolve": "gpt-5.6-sol",
+   "window": 1000000,
+   "label": "Gpt 5.6.sol"
+  },
+  {
+   "model": "gpt-5.6-sol",
+   "flags": {
+    "context": "200k"
+   },
+   "resolve": "gpt-5.6-sol",
+   "window": 200000,
+   "label": "Gpt 5.6.sol"
+  },
+  {
+   "model": "gpt-5.6-sol",
+   "flags": {
+    "context": "300k",
+    "effort": "max"
+   },
+   "resolve": "gpt-5.6-sol",
+   "window": 200000,
+   "label": "Gpt 5.6.sol"
+  }
+ ],
+ "userLines": [
+  {
+   "text": "plain \u003chtml\u003e \u0026 \u2028 text",
+   "images": null,
+   "line": "{\"type\":\"user\",\"message\":{\"content\":\"plain \\u003chtml\\u003e \\u0026 \\u2028 text\",\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+  },
+  {
+   "text": "",
+   "images": null,
+   "line": "{\"type\":\"user\",\"message\":{\"content\":\"\",\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+  },
+  {
+   "text": "look at this\n⟦attachment:img1⟧\nespecially the header",
+   "images": [
+    {
+     "id": "img1",
+     "name": "img1",
+     "mime": "image/png",
+     "data": "AAAAimg1",
+     "path": "workspaces/W/attachments/img1"
+    }
+   ],
+   "line": "{\"type\":\"user\",\"message\":{\"content\":[{\"text\":\"\\u003csystem_instruction\\u003e\\nThe user attached image(s). Markers like ⟦attachment:id⟧ identify each image for tools such as submit_plan.attachments; they are NOT files to open or search for.\\n- ⟦attachment:img1⟧ is image 1 (first attached image)\\n\\u003c/system_instruction\\u003e\\n\",\"type\":\"text\"},{\"text\":\"look at this\\n\",\"type\":\"text\"},{\"source\":{\"data\":\"AAAAimg1\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"},{\"text\":\"\\nespecially the header\",\"type\":\"text\"}],\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+  },
+  {
+   "text": "no markers here",
+   "images": [
+    {
+     "id": "a",
+     "name": "a",
+     "mime": "image/png",
+     "data": "AAAAa",
+     "path": "workspaces/W/attachments/a"
+    },
+    {
+     "id": "b",
+     "name": "b",
+     "mime": "image/jpeg",
+     "data": "AAAAb",
+     "path": "workspaces/W/attachments/b"
+    }
+   ],
+   "line": "{\"type\":\"user\",\"message\":{\"content\":[{\"text\":\"\\u003csystem_instruction\\u003e\\nThe user attached image(s). Markers like ⟦attachment:id⟧ identify each image for tools such as submit_plan.attachments; they are NOT files to open or search for.\\n- ⟦attachment:a⟧ is image 1 (first attached image)\\n- ⟦attachment:b⟧ is image 2 (second attached image)\\n\\u003c/system_instruction\\u003e\\n\",\"type\":\"text\"},{\"text\":\"no markers here\",\"type\":\"text\"},{\"source\":{\"data\":\"AAAAa\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"},{\"source\":{\"data\":\"AAAAb\",\"media_type\":\"image/jpeg\",\"type\":\"base64\"},\"type\":\"image\"}],\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+  },
+  {
+   "text": "   ",
+   "images": [
+    {
+     "id": "a",
+     "name": "a",
+     "mime": "image/png",
+     "data": "AAAAa",
+     "path": "workspaces/W/attachments/a"
+    }
+   ],
+   "line": "{\"type\":\"user\",\"message\":{\"content\":[{\"text\":\"\\u003csystem_instruction\\u003e\\nThe user attached image(s). Markers like ⟦attachment:id⟧ identify each image for tools such as submit_plan.attachments; they are NOT files to open or search for.\\n- ⟦attachment:a⟧ is image 1 (first attached image)\\n\\u003c/system_instruction\\u003e\\n\",\"type\":\"text\"},{\"source\":{\"data\":\"AAAAa\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"}],\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+  },
+  {
+   "text": "⟦attachment:other⟧⟦attachment:a⟧tail",
+   "images": [
+    {
+     "id": "b",
+     "name": "b",
+     "mime": "image/gif",
+     "data": "AAAAb",
+     "path": "workspaces/W/attachments/b"
+    },
+    {
+     "id": "a",
+     "name": "a",
+     "mime": "image/png",
+     "data": "AAAAa",
+     "path": "workspaces/W/attachments/a"
+    }
+   ],
+   "line": "{\"type\":\"user\",\"message\":{\"content\":[{\"text\":\"\\u003csystem_instruction\\u003e\\nThe user attached image(s). Markers like ⟦attachment:id⟧ identify each image for tools such as submit_plan.attachments; they are NOT files to open or search for.\\n- ⟦attachment:a⟧ is image 1 (first attached image)\\n- ⟦attachment:b⟧ is image 2 (second attached image)\\n\\u003c/system_instruction\\u003e\\n\",\"type\":\"text\"},{\"text\":\"⟦attachment:other⟧\",\"type\":\"text\"},{\"source\":{\"data\":\"AAAAa\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"},{\"text\":\"tail\",\"type\":\"text\"},{\"source\":{\"data\":\"AAAAb\",\"media_type\":\"image/gif\",\"type\":\"base64\"},\"type\":\"image\"}],\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+  },
+  {
+   "text": "⟦attachment:a⟧⟦attachment:a⟧",
+   "images": [
+    {
+     "id": "a",
+     "name": "a",
+     "mime": "image/webp",
+     "data": "AAAAa",
+     "path": "workspaces/W/attachments/a"
+    }
+   ],
+   "line": "{\"type\":\"user\",\"message\":{\"content\":[{\"text\":\"\\u003csystem_instruction\\u003e\\nThe user attached image(s). Markers like ⟦attachment:id⟧ identify each image for tools such as submit_plan.attachments; they are NOT files to open or search for.\\n- ⟦attachment:a⟧ is image 1 (first attached image)\\n\\u003c/system_instruction\\u003e\\n\",\"type\":\"text\"},{\"source\":{\"data\":\"AAAAa\",\"media_type\":\"image/webp\",\"type\":\"base64\"},\"type\":\"image\"},{\"source\":{\"data\":\"AAAAa\",\"media_type\":\"image/webp\",\"type\":\"base64\"},\"type\":\"image\"}],\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+  },
+  {
+   "text": "one ⟦attachment:1⟧ two ⟦attachment:2⟧ three ⟦attachment:3⟧ four ⟦attachment:4⟧ five ⟦attachment:5⟧ six ⟦attachment:6⟧",
+   "images": [
+    {
+     "id": "6",
+     "name": "6",
+     "mime": "image/png",
+     "data": "AAAA6",
+     "path": "workspaces/W/attachments/6"
+    },
+    {
+     "id": "5",
+     "name": "5",
+     "mime": "image/png",
+     "data": "AAAA5",
+     "path": "workspaces/W/attachments/5"
+    },
+    {
+     "id": "4",
+     "name": "4",
+     "mime": "image/png",
+     "data": "AAAA4",
+     "path": "workspaces/W/attachments/4"
+    },
+    {
+     "id": "3",
+     "name": "3",
+     "mime": "image/png",
+     "data": "AAAA3",
+     "path": "workspaces/W/attachments/3"
+    },
+    {
+     "id": "2",
+     "name": "2",
+     "mime": "image/png",
+     "data": "AAAA2",
+     "path": "workspaces/W/attachments/2"
+    },
+    {
+     "id": "1",
+     "name": "1",
+     "mime": "image/png",
+     "data": "AAAA1",
+     "path": "workspaces/W/attachments/1"
+    }
+   ],
+   "line": "{\"type\":\"user\",\"message\":{\"content\":[{\"text\":\"\\u003csystem_instruction\\u003e\\nThe user attached image(s). Markers like ⟦attachment:id⟧ identify each image for tools such as submit_plan.attachments; they are NOT files to open or search for.\\n- ⟦attachment:1⟧ is image 1 (first attached image)\\n- ⟦attachment:2⟧ is image 2 (second attached image)\\n- ⟦attachment:3⟧ is image 3 (third attached image)\\n- ⟦attachment:4⟧ is image 4 (fourth attached image)\\n- ⟦attachment:5⟧ is image 5 (fifth attached image)\\n- ⟦attachment:6⟧ is image 6 (6th attached image)\\n\\u003c/system_instruction\\u003e\\n\",\"type\":\"text\"},{\"text\":\"one \",\"type\":\"text\"},{\"source\":{\"data\":\"AAAA1\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"},{\"text\":\" two \",\"type\":\"text\"},{\"source\":{\"data\":\"AAAA2\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"},{\"text\":\" three \",\"type\":\"text\"},{\"source\":{\"data\":\"AAAA3\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"},{\"text\":\" four \",\"type\":\"text\"},{\"source\":{\"data\":\"AAAA4\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"},{\"text\":\" five \",\"type\":\"text\"},{\"source\":{\"data\":\"AAAA5\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"},{\"text\":\" six \",\"type\":\"text\"},{\"source\":{\"data\":\"AAAA6\",\"media_type\":\"image/png\",\"type\":\"base64\"},\"type\":\"image\"}],\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+  },
+  {
+   "text": "Maestro steer (follow this; it supersedes earlier plan guidance):\ntighten",
+   "images": null,
+   "line": "{\"type\":\"user\",\"message\":{\"content\":\"Maestro steer (follow this; it supersedes earlier plan guidance):\\ntighten\",\"role\":\"user\"},\"parent_tool_use_id\":null}\n"
+  }
+ ]
+}

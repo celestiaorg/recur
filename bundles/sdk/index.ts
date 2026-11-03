@@ -1,5 +1,5 @@
 // Recur Bundle macro SDK: import from `@recur/sdk` in command scripts.
-// Compile resolves this module via esbuild (embedded twin: internal/bundles/macro_sdk.ts).
+// Compile resolves this module via esbuild (embedded twin: crates/bundles/src/macro_sdk.ts).
 
 export type OutputRouting =
   | "discard"
@@ -66,7 +66,7 @@ export type PromptContext = {
 }
 
 /**
- * Result of a [[prompt]] action. `prompt` is sent as the user turn text —
+ * Result of a [[prompt]] action. `prompt` is sent as the user turn text:
  * `@path` and `/skill` tokens inside it are real composer dialect; the host
  * wraps them on send (no pre-wrapping in the script).
  */

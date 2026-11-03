@@ -1,0 +1,36 @@
+[package]
+name = "recur-forge"
+description = "Remote git hosting platforms behind one Forge trait (pull requests, reviews, checks, reactions)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# FakeForge for engine and services tests.
+testing = []
+
+[dependencies]
+recur-http.workspace = true
+recur-domain.workspace = true
+async-trait.workspace = true
+base64.workspace = true
+chrono.workspace = true
+futures.workspace = true
+parking_lot.workspace = true
+regex.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+recur-exec.workspace = true
+pretty_assertions.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,919 @@
+//! The Source Control panel (`.obs-scm-panel`): staged and unstaged changes, flat or as a
+//! tree with sticky folders, stage / unstage / discard per row or folder, and the commit
+//! composer (generate message, ⌘↵ to commit).
+//!
+//! Each section's rows are flattened once per status (`scm_rows`) and only those near the
+//! viewport lay out, the rest as spacers: every row is `ROW_H` tall, so a folder's offset and
+//! its branch's end are row indices from its section's top (probed last frame), and folders
+//! scrolled past paint again in a sticky layer.
+
+use recur_ui::guard::Guarded;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
+
+use gpui_kit::prelude::FluentBuilder;
+use gpui_kit::{
+    AnyElement, Bounds, Context, InteractiveElement, IntoElement, ParentElement, Pixels,
+    SharedString, StatefulInteractiveElement, Styled, Window, canvas, div, px,
+};
+use recur_code::view::changed_tree::{
+    build_tree_from_paths, cap_visible_tree, flatten_visible_tree, paths_under_dir,
+};
+use recur_ui::text::{LineHeight, TextStyled, text};
+use recur_ui::tooltip::titled;
+use recur_ui::widgets::scroll_area;
+use recur_ui::{IconName, Theme, icon};
+use recur_view_review::review_diff::FileListMode;
+use recur_view_review::style::hsla;
+
+use crate::obs::{LIST_CAP, Observatory};
+use crate::style::obs_empty;
+
+const ROW_H: f32 = 24.;
+const FADE: f32 = 20.;
+
+/// The changes list's rows and where its sections sit.
+#[derive(Clone, Default)]
+pub(crate) struct ScmProbes {
+    /// Each section's rows-column top (staged, unstaged), in content coordinates.
+    pub cols: Rc<Cell<[Option<f32>; 2]>>,
+    /// The rows each section laid out last frame: `(first, end)`.
+    pub built: Rc<Cell<[(usize, usize); 2]>>,
+    pub body: Rc<Cell<Bounds<Pixels>>>,
+    rows: Rc<RefCell<Option<ScmRowsMemo>>>,
+}
+
+type ScmRowsMemo = (ScmRowsKey, Rc<ScmRows>);
+
+/// One row of a changes section.
+#[derive(Clone)]
+enum ScmRow {
+    File {
+        path: String,
+        depth: usize,
+    },
+    /// An open folder's branch ends before row `end`.
+    Dir {
+        path: String,
+        name: String,
+        depth: usize,
+        end: usize,
+    },
+}
+
+/// Both sections' rows (capped unless expanded) and how many a full list has.
+struct ScmRows {
+    flat: bool,
+    sections: [(Vec<ScmRow>, usize); 2],
+}
+
+/// What `ScmRows` is derived from.
+struct ScmRowsKey {
+    paths: Rc<crate::obs::WorkingPaths>,
+    collapsed: std::collections::BTreeSet<String>,
+    flat: bool,
+    expanded: [bool; 2],
+}
+
+impl PartialEq for ScmRowsKey {
+    fn eq(&self, o: &Self) -> bool {
+        Rc::ptr_eq(&self.paths, &o.paths)
+            && self.collapsed == o.collapsed
+            && self.flat == o.flat
+            && self.expanded == o.expanded
+    }
+}
+
+fn flatten(
+    nodes: &[recur_domain::TreeEntry],
+    depth: usize,
+    collapsed: &std::collections::BTreeSet<String>,
+    out: &mut Vec<ScmRow>,
+) {
+    for e in nodes {
+        if !e.dir {
+            out.push(ScmRow::File {
+                path: e.path.clone(),
+                depth,
+            });
+            continue;
+        }
+        let at = out.len();
+        out.push(ScmRow::Dir {
+            path: e.path.clone(),
+            name: e.name.clone(),
+            depth,
+            end: at + 1,
+        });
+        if !collapsed.contains(&e.path) {
+            flatten(&e.children, depth + 1, collapsed, out);
+            let end = out.len();
+            if let ScmRow::Dir { end: e, .. } = &mut out[at] {
+                *e = end;
+            }
+        }
+    }
+}
+
+fn st_color(st: &str, t: &recur_ui::Tokens) -> recur_ui::Color {
+    match st {
+        "m" => t.git_m,
+        "a" | "u" => t.git_u,
+        "d" => t.git_d,
+        _ => t.text,
+    }
+}
+
+impl Observatory {
+    fn scm_stage_btn(
+        &self,
+        id: String,
+        staged: bool,
+        title: String,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
+        let t = Theme::of(cx).tokens;
+        let _ = title;
+        div()
+            .id(SharedString::from(id))
+            .flex()
+            .flex_none()
+            .items_center()
+            .justify_center()
+            .size(px(18.))
+            .rounded(px(4.))
+            .cursor_pointer()
+            .text_color(hsla(if staged { t.git_a } else { t.faint }))
+            .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane)))
+            .child(
+                icon(if staged {
+                    IconName::Minus
+                } else {
+                    IconName::Plus
+                })
+                .size(px(12.))
+                .stroke_width(2.),
+            )
+    }
+
+    fn scm_discard_btn(
+        &self,
+        id: String,
+        show: bool,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
+        let t = Theme::of(cx).tokens;
+        div()
+            .id(SharedString::from(id))
+            .flex()
+            .flex_none()
+            .items_center()
+            .justify_center()
+            .size(px(18.))
+            .rounded(px(4.))
+            .cursor_pointer()
+            .text_color(hsla(t.coral))
+            .when(!show, |d| d.opacity(0.))
+            .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane)))
+            .child(icon(IconName::Undo).size(px(12.)))
+    }
+
+    /// A file row (`scmRow`): stage, status letter, name, folder, discard.
+    fn scm_file_row(
+        &self,
+        path: &str,
+        staged: bool,
+        depth: usize,
+        show_dir: bool,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let st = self
+            .working_status
+            .get(path)
+            .cloned()
+            .unwrap_or_else(|| "?".into());
+        let key = format!("{}:{path}", if staged { "s" } else { "u" });
+        let hovered = self.scm_hovered.as_deref() == Some(key.as_str());
+        let name = path.rsplit('/').next().unwrap_or(path).to_string();
+        let dir = path.rfind('/').map(|i| path[..i].to_string());
+        let (p1, p2, p3) = (path.to_string(), path.to_string(), path.to_string());
+        let stage = titled(
+            SharedString::from(format!("scm-stage-t-{key}")),
+            if staged { "Unstage" } else { "Stage" },
+            self.scm_stage_btn(format!("scm-stage-{key}"), staged, String::new(), cx)
+                .debug_selector({
+                    let k = key.clone();
+                    move || format!("scm-stage:{k}")
+                })
+                .on_click(cx.guarded_listener(move |o, _, _, cx| {
+                    o.stage_paths(vec![p1.clone()], !staged, cx)
+                })),
+        );
+        let mut file = div()
+            .id(SharedString::from(format!("scm-file-{key}")))
+            .flex_1()
+            .min_w_0()
+            .flex()
+            .items_center()
+            .gap(px(4.))
+            .cursor_pointer()
+            .child(
+                div().w(px(12.)).flex_none().flex().justify_center().child(
+                    text(st.to_uppercase())
+                        .size(10.)
+                        .weight(700.)
+                        .tracking(0.02)
+                        .line_height(LineHeight::Scale(1.35))
+                        .color(st_color(&st, &t))
+                        .nowrap(),
+                ),
+            );
+        let wide_name = !(show_dir && dir.is_some());
+        let name_el = text(name)
+            .size(12.5)
+            .line_height(LineHeight::Scale(1.35))
+            .color(
+                if hovered && self.scm_name_hover.as_deref() == Some(key.as_str()) {
+                    t.amber
+                } else {
+                    t.text
+                },
+            )
+            .truncate();
+        file = if wide_name {
+            file.child(div().flex_1().min_w_0().child(name_el))
+        } else {
+            file.child(
+                div()
+                    .flex_none()
+                    .max_w(gpui_kit::relative(0.55))
+                    .min_w_0()
+                    .child(name_el),
+            )
+        };
+        if show_dir && let Some(d) = dir {
+            file = file.child(
+                div().flex_1().min_w_0().flex().justify_end().child(
+                    text(d)
+                        .size(11.)
+                        .line_height(LineHeight::Scale(1.35))
+                        .color(t.faint)
+                        .truncate(),
+                ),
+            );
+        }
+        let hk = key.clone();
+        let file = titled(
+            SharedString::from(format!("scm-file-t-{key}")),
+            path.to_string(),
+            file.on_hover(cx.guarded_listener(move |o, on: &bool, _, cx| {
+                o.scm_name_hover = on.then(|| hk.clone());
+                cx.notify();
+            }))
+            .on_click(cx.guarded_listener(move |o, _, window, cx| {
+                o.open_path(
+                    crate::obs::OpenRequest::new(p2.clone()).prefer_diff(true),
+                    window,
+                    cx,
+                )
+                .detach()
+            })),
+        );
+        let discard = titled(
+            SharedString::from(format!("scm-discard-t-{key}")),
+            "Discard changes",
+            self.scm_discard_btn(format!("scm-discard-{key}"), hovered, cx)
+                .debug_selector({
+                    let k = key.clone();
+                    move || format!("scm-discard:{k}")
+                })
+                .on_click(cx.guarded_listener(move |o, _, window, cx| {
+                    let p = p3.clone();
+                    o.discard_paths(vec![p.clone()], &p, window, cx)
+                })),
+        );
+        let hk = key.clone();
+        div()
+            .id(SharedString::from(format!("scm-row-{key}")))
+            .flex()
+            .items_center()
+            .gap(px(2.))
+            .h(px(ROW_H))
+            .pl(px(10. + depth as f32 * 12.))
+            .pr(px(10.))
+            .py(px(3.))
+            .when(hovered, |d| d.bg(hsla(t.pane_2)))
+            .on_hover(cx.guarded_listener(move |o, on: &bool, _, cx| {
+                if *on {
+                    o.scm_hovered = Some(hk.clone());
+                } else if o.scm_hovered.as_deref() == Some(hk.as_str()) {
+                    o.scm_hovered = None;
+                }
+                cx.notify();
+            }))
+            .child(stage)
+            .child(file)
+            .child(discard)
+            .into_any_element()
+    }
+
+    /// A folder row (`scmTreeRow` dir): stage all under it, chevron + name, discard all.
+    fn scm_dir_row(
+        &self,
+        dir: &str,
+        name: &str,
+        staged: bool,
+        depth: usize,
+        cx: &mut Context<Self>,
+    ) -> gpui_kit::Stateful<gpui_kit::Div> {
+        let t = Theme::of(cx).tokens;
+        let open = !self.scm_collapsed.contains(dir);
+        let wp = self.working_paths();
+        let files = paths_under_dir(dir, if staged { &wp.0 } else { &wp.1 });
+        let n = files.len();
+        let key = format!("{}:{}/", if staged { "s" } else { "u" }, dir);
+        let hovered = self.scm_hovered.as_deref() == Some(key.as_str());
+        let (f1, f2, path) = (files.clone(), files, dir.to_string());
+        let label = if staged {
+            format!("Unstage {n} file{}", if n == 1 { "" } else { "s" })
+        } else {
+            format!("Stage {n} file{}", if n == 1 { "" } else { "s" })
+        };
+        let stage = titled(
+            SharedString::from(format!("scm-dstage-t-{key}")),
+            label,
+            self.scm_stage_btn(format!("scm-dstage-{key}"), staged, String::new(), cx)
+                .on_click(
+                    cx.guarded_listener(move |o, _, _, cx| o.stage_paths(f1.clone(), !staged, cx)),
+                ),
+        );
+        let p2 = path.clone();
+        let toggle = titled(
+            SharedString::from(format!("scm-dir-t-{key}")),
+            dir.to_string(),
+            div()
+                .id(SharedString::from(format!("scm-dir-{key}")))
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .items_center()
+                .gap(px(4.))
+                .cursor_pointer()
+                .child(
+                    icon(IconName::ChevronDown)
+                        .size(px(12.))
+                        .stroke_width(2.4)
+                        .color(hsla(t.faint))
+                        .rotate(if open { 0. } else { -90. }),
+                )
+                .child(
+                    div().flex_1().min_w_0().child(
+                        text(name.to_string())
+                            .size(12.5)
+                            .line_height(LineHeight::Scale(1.35))
+                            .truncate(),
+                    ),
+                )
+                .on_click(cx.guarded_listener(move |o, _, _, cx| o.toggle_scm_dir(&p2, cx))),
+        );
+        let p3 = path.clone();
+        let discard = titled(
+            SharedString::from(format!("scm-ddiscard-t-{key}")),
+            "Discard changes",
+            self.scm_discard_btn(format!("scm-ddiscard-{key}"), hovered, cx)
+                .on_click(cx.guarded_listener(move |o, _, window, cx| {
+                    o.discard_paths(f2.clone(), &p3, window, cx)
+                })),
+        );
+        let hk = key.clone();
+        div()
+            .id(SharedString::from(format!("scm-drow-{key}")))
+            .flex()
+            .items_center()
+            .gap(px(2.))
+            .h(px(ROW_H))
+            .pl(px(10. + depth as f32 * 12.))
+            .pr(px(10.))
+            .bg(hsla(if hovered { t.pane_2 } else { t.bg }))
+            .on_hover(cx.guarded_listener(move |o, on: &bool, _, cx| {
+                if *on {
+                    o.scm_hovered = Some(hk.clone());
+                } else if o.scm_hovered.as_deref() == Some(hk.as_str()) {
+                    o.scm_hovered = None;
+                }
+                cx.notify();
+            }))
+            .child(stage)
+            .child(toggle)
+            .child(discard)
+    }
+
+    /// Both sections' rows, flattened once per status, folder state and list mode.
+    fn scm_rows(&self) -> Rc<ScmRows> {
+        let key = ScmRowsKey {
+            paths: self.working_paths(),
+            collapsed: self.scm_collapsed.clone(),
+            flat: self.scm_file_list_mode != FileListMode::Tree,
+            expanded: [
+                self.expanded_lists.contains("staged"),
+                self.expanded_lists.contains("unstaged"),
+            ],
+        };
+        if let Some((k, rows)) = self.scm_probes.rows.borrow().as_ref()
+            && *k == key
+        {
+            return rows.clone();
+        }
+        let section = |paths: &[String], expanded: bool| -> (Vec<ScmRow>, usize) {
+            let cap = if expanded { usize::MAX } else { LIST_CAP };
+            if key.flat {
+                let rows = paths
+                    .iter()
+                    .take(cap)
+                    .map(|p| ScmRow::File {
+                        path: p.clone(),
+                        depth: 0,
+                    })
+                    .collect();
+                return (rows, paths.len());
+            }
+            let tree = build_tree_from_paths(paths);
+            let collapsed: std::collections::HashSet<String> =
+                key.collapsed.iter().cloned().collect();
+            let total = flatten_visible_tree(&tree, &collapsed).len();
+            let capped = cap_visible_tree(&tree, &collapsed, Some(cap));
+            let mut rows = Vec::new();
+            flatten(&capped, 0, &key.collapsed, &mut rows);
+            (rows, total)
+        };
+        let rows = Rc::new(ScmRows {
+            flat: key.flat,
+            sections: [
+                section(&key.paths.0, key.expanded[0]),
+                section(&key.paths.1, key.expanded[1]),
+            ],
+        });
+        *self.scm_probes.rows.borrow_mut() = Some((key, rows.clone()));
+        rows
+    }
+
+    fn scm_row(
+        &self,
+        row: &ScmRow,
+        staged: bool,
+        flat: bool,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        match row {
+            ScmRow::File { path, depth } => self.scm_file_row(path, staged, *depth, flat, cx),
+            ScmRow::Dir {
+                path, name, depth, ..
+            } => self
+                .scm_dir_row(path, name, staged, *depth, cx)
+                .into_any_element(),
+        }
+    }
+
+    fn scm_more(
+        &self,
+        key: &'static str,
+        total: usize,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        if total <= LIST_CAP || self.expanded_lists.contains(key) {
+            return None;
+        }
+        Some(crate::render::panels::more_row(key, total, cx))
+    }
+
+    fn scm_section(
+        &self,
+        staged: bool,
+        visible: (f32, f32),
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        let t = Theme::of(cx).tokens;
+        let wp = self.working_paths();
+        let paths = if staged { &wp.0 } else { &wp.1 };
+        if paths.is_empty() {
+            return None;
+        }
+        let key: &'static str = if staged { "staged" } else { "unstaged" };
+        let head = div()
+            .flex()
+            .items_center()
+            .gap(px(8.))
+            .px(px(10.))
+            .py(px(2.))
+            .child(
+                text(if staged { "Staged" } else { "Changes" })
+                    .size(11.)
+                    .weight(600.)
+                    .tracking(0.02)
+                    .line_height(LineHeight::Scale(1.45))
+                    .color(t.muted)
+                    .nowrap(),
+            )
+            .child(
+                text(paths.len().to_string())
+                    .size(11.)
+                    .weight(500.)
+                    .tracking(0.02)
+                    .line_height(LineHeight::Scale(1.45))
+                    .color(t.faint)
+                    .nowrap(),
+            )
+            .child(
+                div()
+                    .id(SharedString::from(format!("scm-all-{key}")))
+                    .debug_selector(move || format!("scm-all:{key}"))
+                    .ml_auto()
+                    .cursor_pointer()
+                    .text_color(hsla(t.muted))
+                    .hover(move |s| s.text_color(hsla(t.text)))
+                    .child(
+                        text(if staged { "Unstage all" } else { "Stage all" })
+                            .size(11.)
+                            .weight(500.)
+                            .tracking(0.02)
+                            .line_height(LineHeight::Scale(1.45))
+                            .nowrap(),
+                    )
+                    .on_click(cx.guarded_listener(move |o, _, _, cx| {
+                        if staged {
+                            o.unstage_all(cx)
+                        } else {
+                            o.stage_all(cx)
+                        }
+                    })),
+            );
+        let all = self.scm_rows();
+        let si = usize::from(!staged);
+        let (rows, total) = &all.sections[si];
+        // Only the rows within a viewport of the visible ones lay out.
+        let (first, end) = scm_window(self.scm_probes.cols.get()[si], rows.len(), visible);
+        let mut built = self.scm_probes.built.get();
+        built[si] = (first, end);
+        self.scm_probes.built.set(built);
+        let mut col = div().relative().flex().flex_col();
+        if first > 0 {
+            col = col.child(div().flex_none().h(px(first as f32 * ROW_H)));
+        }
+        for row in &rows[first..end] {
+            col = col.child(self.scm_row(row, staged, all.flat, cx));
+        }
+        if end < rows.len() {
+            col = col.child(div().flex_none().h(px((rows.len() - end) as f32 * ROW_H)));
+        }
+        let probe = {
+            let (cols, built, body) = (
+                self.scm_probes.cols.clone(),
+                self.scm_probes.built.clone(),
+                self.scm_probes.body.clone(),
+            );
+            let (scroll, n) = (self.scm_scroll.clone(), rows.len());
+            canvas(
+                move |b, window, cx| {
+                    let top = f32::from(b.origin.y - body.get().origin.y - scroll.offset().y);
+                    let mut c = cols.get();
+                    c[si] = Some(top);
+                    cols.set(c);
+                    let vp = body.get().size.height;
+                    let visible = (-f32::from(scroll.offset().y), f32::from(vp));
+                    let (a, z) = built.get()[si];
+                    let (want_a, want_z) = scm_window(Some(top), n, visible);
+                    // The section moved (a status change above it) past what was laid out.
+                    if want_a < a || want_z > z {
+                        cx.notify(window.current_view());
+                    }
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_0()
+        };
+        Some(
+            div()
+                .mb(px(6.))
+                .debug_selector(move || format!("scm-sec:{key}"))
+                .child(head)
+                .child(col.child(probe))
+                .children(self.scm_more(key, *total, cx))
+                .into_any_element(),
+        )
+    }
+
+    /// The sticky layer: open folders scrolled past their natural row.
+    fn scm_sticky_layer(&self, scroll: f32, cx: &mut Context<Self>) -> Vec<AnyElement> {
+        let t = Theme::of(cx).tokens;
+        let all = self.scm_rows();
+        let cols = self.scm_probes.cols.get();
+        let mut out: Vec<(usize, AnyElement)> = Vec::new();
+        for (si, (rows, _)) in all.sections.iter().enumerate() {
+            let Some(col) = cols[si] else { continue };
+            for (i, row) in rows.iter().enumerate() {
+                let ScmRow::Dir {
+                    path,
+                    name,
+                    depth,
+                    end,
+                } = row
+                else {
+                    continue;
+                };
+                if self.scm_collapsed.contains(path) {
+                    continue;
+                }
+                let content_top = col + i as f32 * ROW_H;
+                let end = col + *end as f32 * ROW_H;
+                let want = scroll + 4. + *depth as f32 * ROW_H;
+                let top = want.min(end - ROW_H).max(content_top);
+                if top <= content_top + 0.01 {
+                    continue;
+                }
+                let fade_under = end - (top + ROW_H) > 0.5;
+                let row = self.scm_dir_row(path, name, si == 0, *depth, cx);
+                let fade = fade_under.then(|| {
+                    div()
+                        .absolute()
+                        .left_0()
+                        .right_0()
+                        .top(px(ROW_H))
+                        .h(px(FADE))
+                        .child(recur_ui::style::gradient_fill(
+                            180.,
+                            (t.bg, 0.),
+                            (t.bg.with_alpha(0.), 1.),
+                        ))
+                });
+                out.push((
+                    *depth,
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .right_0()
+                        .flex()
+                        .flex_col()
+                        .child(div().flex_none().h(px(top - scroll)))
+                        .child(div().relative().child(row).children(fade))
+                        .into_any_element(),
+                ));
+            }
+        }
+        out.sort_by_key(|e| std::cmp::Reverse(e.0));
+        out.into_iter().map(|(_, e)| e).collect()
+    }
+
+    /// `.obs-scm-panel`.
+    pub(crate) fn render_scm_panel(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        // Tracks the zone for its fields; the panel itself is not focusable in the page.
+        let root = div()
+            .id("obs-scm-panel")
+            .debug_selector(|| "obs-scm-panel".into())
+            .track_focus(&self.scm_focus)
+            .on_mouse_down(gpui_kit::MouseButton::Left, |_, window, _| {
+                window.prevent_default()
+            })
+            .flex()
+            .flex_col()
+            .flex_1()
+            .min_h_0()
+            .h_full();
+        if self.worktree_missing {
+            return root
+                .child(obs_empty(
+                    "This workspace's folder no longer exists.",
+                    true,
+                    cx,
+                ))
+                .into_any_element();
+        }
+        if !self.is_git(cx) {
+            return root
+                .child(obs_empty("Not a git repository.", true, cx))
+                .into_any_element();
+        }
+        if !self.tree_writable() {
+            return root
+                .child(obs_empty(
+                    "Open a loop worktree to stage and commit changes.",
+                    true,
+                    cx,
+                ))
+                .into_any_element();
+        }
+        if self.working_dirty_count() == 0 {
+            return root
+                .child(obs_empty("No uncommitted changes.", true, cx))
+                .into_any_element();
+        }
+        // The changes list as its own cached view: a key typed in the commit message below it
+        // redraws the panel's foot, not every row.
+        let pane = self
+            .scm_body_pane
+            .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::render_scm_body))
+            .clone();
+        let body = recur_ui::style::cached_view(
+            &pane,
+            gpui_kit::StyleRefinement::default()
+                .flex_1()
+                .min_h_0()
+                .w_full(),
+            cx,
+        );
+        let foot = self
+            .commit_foot
+            .get_or_insert_with(|| recur_ui::isolated::Part::of(cx, Self::render_commit_foot))
+            .clone();
+        self.inputs.commit_view.redraws(foot.entity_id());
+        let _ = (t, window);
+        root.child(body).child(foot).into_any_element()
+    }
+
+    /// The staged and unstaged sections with their sticky headers.
+    fn render_scm_body(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let scroll = -f32::from(self.scm_scroll.offset().y);
+        let vp = self.scm_probes.body.get().size.height;
+        let vp = if vp > px(0.) {
+            f32::from(vp)
+        } else {
+            f32::from(window.viewport_size().height)
+        };
+        let mut content = div().relative().flex().flex_col().pt(px(4.)).pb(px(6.));
+        if let Some(s) = self.scm_section(true, (scroll, vp), cx) {
+            content = content.child(s);
+        }
+        if let Some(s) = self.scm_section(false, (scroll, vp), cx) {
+            content = content.child(s);
+        }
+        let layer = self.scm_sticky_layer(scroll, cx);
+        let body_cell = self.scm_probes.body.clone();
+        div()
+            .flex_1()
+            .min_h_0()
+            .relative()
+            .child(
+                canvas(move |b, _, _| body_cell.set(b), |_, _, _, _| {})
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size_full(),
+            )
+            .child(
+                scroll_area("obs-scm-body")
+                    .overlay()
+                    .track(&self.scm_scroll)
+                    .child(content),
+            )
+            .child(div().absolute().inset_0().children(layer))
+            .into_any_element()
+    }
+
+    /// `.obs-scm-foot`: the commit message composer.
+    fn render_commit_foot(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let staged = self.staged_files.len();
+        let busy = self.commit_busy;
+        let msg_busy = self.commit_msg_busy;
+        let msg = self.inputs.commit_msg(cx);
+        recur_ui::style::style_textarea(&self.inputs.commit, t.faint, cx);
+        let gen_disabled = msg_busy || staged == 0;
+        let gen_title = if msg_busy {
+            "Generating…".to_string()
+        } else if staged > 0 {
+            "Generate commit message with AI".to_string()
+        } else {
+            "Stage changes to generate a message".to_string()
+        };
+        let pulse = (msg_busy && !recur_ui::motion::reduced(cx))
+            .then(|| crate::render::pulse_opacity(self.anim_epoch, window, cx));
+        let gen_color = if msg_busy { t.amber } else { t.faint };
+        let gen_btn =
+            titled(
+                "scm-gen-t",
+                gen_title,
+                div()
+                    .id("scm-gen")
+                    .debug_selector(|| "scm-gen".into())
+                    .flex()
+                    .flex_none()
+                    .items_center()
+                    .justify_center()
+                    .size(px(24.))
+                    .rounded(px(5.))
+                    .text_color(hsla(gen_color))
+                    .when(gen_disabled && !msg_busy, |d| d.opacity(0.35))
+                    .when_some(pulse, |d, k| d.opacity(k))
+                    .when(!gen_disabled, |d| {
+                        d.cursor_pointer()
+                            .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane_2)))
+                            .on_click(cx.guarded_listener(|o, _, window, cx| {
+                                o.generate_commit_msg(window, cx)
+                            }))
+                    })
+                    .child(icon(IconName::Sparkle).size(px(13.))),
+            );
+        let can_commit = !busy && staged > 0 && !msg.trim().is_empty();
+        let title = if staged > 0 {
+            format!("Commit {staged} file{}", if staged == 1 { "" } else { "s" })
+        } else {
+            "Stage changes to commit".into()
+        };
+        let label = if busy { "Committing…" } else { "Commit" };
+        let go_bg = if can_commit {
+            t.text
+        } else {
+            recur_ui::style::faded(t.text, t.text, 0.35, t.bg)
+        };
+        let go_fg = if can_commit {
+            t.bg
+        } else {
+            recur_ui::style::faded(t.bg, t.text, 0.35, t.bg)
+        };
+        let go = titled(
+            "scm-commit-t",
+            title,
+            div()
+                .id("scm-commit")
+                .debug_selector(|| "scm-commit".into())
+                .ml_auto()
+                .flex()
+                .flex_none()
+                .items_center()
+                .gap(px(5.))
+                .h(px(24.))
+                .px(px(8.))
+                .rounded(px(6.))
+                .bg(hsla(go_bg))
+                .text_color(hsla(go_fg))
+                .child(text(label).size(11.).weight(600.).nowrap())
+                .child(
+                    recur_ui::kbd::kbd("⌘↵")
+                        .size(11.)
+                        .weight(500.)
+                        .opacity(0.55),
+                )
+                .when(can_commit, |d| {
+                    d.cursor_pointer().on_click(
+                        cx.guarded_listener(|o, _, window, cx| o.human_commit(window, cx)),
+                    )
+                }),
+        );
+        let field = div()
+            .min_h(px(56.))
+            .max_h(px(120.))
+            .pt(px(8.))
+            .px(px(10.))
+            .pb(px(4.))
+            .text_size(px(12.5))
+            .line_height(gpui_kit::relative(1.5))
+            .when(busy, |d| d.opacity(0.55))
+            .child(self.inputs.commit_view.element(18.75, cx));
+        let compose = recur_ui::style::card(t.bg, t.line, 10.)
+            .flex()
+            .flex_col()
+            .overflow_hidden()
+            .child(field)
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.))
+                    .pt(px(2.))
+                    .px(px(8.))
+                    .pb(px(8.))
+                    .child(gen_btn)
+                    .child(go),
+            );
+        div()
+            .debug_selector(|| "obs-scm-foot".into())
+            .flex_none()
+            .pt(px(8.))
+            .px(px(10.))
+            .pb(px(10.))
+            .border_t_1()
+            .border_color(hsla(t.line))
+            .bg(hsla(t.pane))
+            .child(compose)
+            .into_any_element()
+    }
+}
+
+/// The rows of a section whose column starts at `col` (content coordinates; unknown before its
+/// first frame) within a viewport of `visible` (`(scroll top, viewport height)`): `(first, end)`.
+fn scm_window(col: Option<f32>, n: usize, visible: (f32, f32)) -> (usize, usize) {
+    let col = col.unwrap_or(0.);
+    let (scroll, h) = visible;
+    let from = ((scroll - h - col) / ROW_H).floor().max(0.) as usize;
+    let to = ((scroll + 2. * h - col) / ROW_H).ceil().max(0.) as usize;
+    (from.min(n), to.min(n).max(from.min(n)))
+}

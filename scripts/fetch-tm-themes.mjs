@@ -48,7 +48,7 @@ function writeCompactNotice(path, themes) {
     const name = t.id || t.key
     const spdx = t.license || (t.source === 'local' ? 'see theme file' : 'see upstream')
     const src = t.url || (t.source?.startsWith('http') ? t.source : '') || ''
-    lines.push(`${name} — ${spdx}${src ? ` — ${src}` : ''}`)
+    lines.push(`${name}: ${spdx}${src ? `: ${src}` : ''}`)
   }
   lines.push('')
   writeFileSync(path, lines.join('\n'))
@@ -166,7 +166,7 @@ author = "Recur"
 # Editor colour themes. Charcoal/Paper live in bundles/Recur (order 10–20).
 # Featured local ports: Cool Glow / Made of Code / Aura / classic TM (30–…).
 # Full Shiki tm-themes catalog starts at order 1000 (alpha by fetch index).
-# Refresh: wails3 task fetch:tm-themes
+# Refresh: mise run fetch:tm-themes
 # Local filmgirl ports: node scripts/port-filmgirl-themes.mjs
 # Theme id is the Settings preference value.
 `,
@@ -261,7 +261,7 @@ function rebuildLocalOnly() {
     const id = name.replace(/\.tmTheme\.json$/, '')
     if (!prevT.license) {
       throw new Error(
-        `missing license for ${name} in provenance.json — re-run a full fetch or add it by hand`,
+        `missing license for ${name} in provenance.json: re-run a full fetch or add it by hand`,
       )
     }
     entries.push({

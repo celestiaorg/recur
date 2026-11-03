@@ -1,0 +1,38 @@
+[package]
+name = "recur-view-palettes"
+description = "The palettes: Go to, Run Command, Open in, Run, the language-mode picker and the keyboard shortcuts list."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-editor.workspace = true
+recur-textmate.workspace = true
+recur-code.workspace = true
+recur-view-core.workspace = true
+base64.workspace = true
+futures.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+recur-view-observatory.workspace = true
+recur-view-chat.workspace = true
+recur-view-review.workspace = true
+recur-view-workspace.workspace = true
+recur-view-prs.workspace = true
+recur-view-settings.workspace = true
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["fake"] }
+recur-app.workspace = true
+recur-view-home.workspace = true
+recur-view-briefing.workspace = true
+parking_lot.workspace = true
+
+[lints]
+workspace = true

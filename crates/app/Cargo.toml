@@ -1,0 +1,39 @@
+[package]
+name = "recur-app"
+description = "The GPUI application shell: window, titlebar, native menu, routing, overlays host and global keys."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# Open Developer Tools (the GPUI inspector) in release builds.
+devtools = ["gpui-kit/inspector"]
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-platform.workspace = true
+recur-view-core.workspace = true
+recur-view-sidebar.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2.workspace = true
+objc2-foundation.workspace = true
+objc2-app-kit.workspace = true
+
+[dev-dependencies]
+parking_lot.workspace = true
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["fake"] }
+tempfile.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

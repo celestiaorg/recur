@@ -1,0 +1,6 @@
+flowchart TD
+  A[Write markdown] --> B{Has fences?}
+  B -->|mermaid| C[Render diagram]
+  B -->|code| D[Highlight]
+  C --> E[Show in chat]
+  D --> E

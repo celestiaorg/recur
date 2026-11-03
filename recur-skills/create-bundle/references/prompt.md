@@ -16,7 +16,7 @@ may shadow a slash after id dedupe.
 | `name` | yes | | Menu label |
 | `description` | | | Menu subtitle |
 | `slash` | | kebab of `name` | `^[a-z][a-z0-9-]*$` (no leading `/` in the field) |
-| `mode` | | (stay on current chat) | `ask` \| `plan` \| `agent` \| `review` \| `loop` — find idle tab / create |
+| `mode` | | (stay on current chat) | `ask` \| `plan` \| `agent` \| `review` \| `loop`: find idle tab / create |
 | `loop` | | | `[[loop]]` id. Implies `mode = "loop"`. Pins that loop on the routed tab before send |
 | `timeoutMs` | | 5000 | `0` or `1..30000` |
 | `tab_group` | | | Shared chat-tab slot (`^[a-z][a-z0-9-]*$`). Requires `mode`. Nearest idle tab in the group, else create. Omit: nearest idle tab in `mode`, else create |
@@ -25,7 +25,7 @@ may shadow a slash after id dedupe.
 | `script` | * | | Pack-relative path. XOR `body` |
 | `body` | * | | Inline. XOR `script` |
 
-`*` — `body` **or** `script` is required, not both.
+`*`: `body` **or** `script` is required, not both.
 
 ## Script contract
 
@@ -34,7 +34,7 @@ Export `(ctx: PromptContext) => PromptResult` with `{ prompt, display? }`.
 - `prompt` is the user-turn text. Empty = no-send success (toast `display`
   only; used by `/update` when git is clean).
 - `display` is a one-line UI label ≤120 chars (default = prompt name).
-- `@path` and `/skill` tokens inside `prompt` are real composer dialect —
+- `@path` and `/skill` tokens inside `prompt` are real composer dialect:
   the host wraps them. Do **not** pre-wrap.
 - Embed blobs that must not be scanned (git diffs) in nonce-paired
   `⟦raw:ID⟧`…`⟦/raw:ID⟧` (bare `⟦raw⟧`…`⟦/raw⟧` only when the body cannot
@@ -79,6 +79,6 @@ printf '%s\n' '{"prompt":"Review the current worktree and fix until the bar pass
 ```
 
 The slash `prompt` is the first user-turn wire. `[[loop]] prompt` is the
-conductor’s standing charter on later Maestro turns — see
+conductor’s standing charter on later Maestro turns: see
 [loops.md](loops.md). Do not confuse with `[[command.prompts]]` (pre-run
-fields on a command) or with `SKILL.md` (Agent Skills — `/create-skill`).
+fields on a command) or with `SKILL.md` (Agent Skills: `/create-skill`).

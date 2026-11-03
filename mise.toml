@@ -1,0 +1,21 @@
+# Tools for Recur; tasks live in tasks/*.toml. `mise install` once, then
+# `mise run <task>` (`mise tasks` lists them). The rust pin overrides
+# rust-toolchain.toml (CI's toolchain); keep the two in step.
+
+[tools]
+# mr-boxington (mbx) shares cargo build output across worktrees.
+rust = { version = "1.95", components = "rustfmt,clippy,llvm-tools", mr_boxington = true }
+mr-boxington = "1.28.0"
+# Prebuilt cargo-nextest: `mise run test` runs the workspace tests with it.
+"aqua:nextest-rs/nextest/cargo-nextest" = "0.9.150"
+# Prebuilt cargo-about: `mise run generate:licenses` lists the crates' licenses for the app.
+"github:EmbarkStudios/cargo-about" = "0.9.3"
+node = "24.22.2"
+pnpm = "10.34.3"
+nfpm = "2.48.0"
+# uv lets mise install dmgbuild (macOS DMG layout) without a system Python.
+uv = "0.13.6"
+"pipx:dmgbuild" = { version = "1.6.7", os = ["macos"] }
+
+[task_config]
+includes = ["tasks/*.toml"]

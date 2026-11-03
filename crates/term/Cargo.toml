@@ -1,0 +1,28 @@
+[package]
+name = "recur-term"
+description = "PTY sessions and terminal emulation state."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+alacritty_terminal.workspace = true
+chrono.workspace = true
+filedescriptor.workspace = true
+nix.workspace = true
+parking_lot.workspace = true
+portable-pty.workspace = true
+regex.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

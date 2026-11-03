@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fix failing GitHub checks. Optional RECUR_PROMPT_ARG_CHECK / RECUR_PROMPT_ARGS
 # is a check name to focus; empty or "all" means every failing check.
-# RunPromptShebang copies this to a temp file — do not source $0.
+# RunPromptShebang copies this to a temp file: do not source $0.
 #
 # Fast-fail (empty prompt, toast display) when there is no GitHub PR, this
 # cwd is a PR chat host (Ask/Plan/Review only), or gh reports nothing failing.
@@ -113,7 +113,7 @@ raw_lines = []
 if title:
     raw_lines.append(f"PR title: {scrub(title)}")
 if focus:
-    raw_lines.append(f'Focus on the check named "{scrub(focus)}". Other failures are omitted — run `gh pr checks` if you need them.')
+    raw_lines.append(f'Focus on the check named "{scrub(focus)}". Other failures are omitted: run `gh pr checks` if you need them.')
 else:
     raw_lines.append("Fix every failing check below.")
 raw_lines += ["", "## failing gh pr checks", scrub(embed)]

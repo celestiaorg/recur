@@ -1,0 +1,42 @@
+[package]
+name = "recur-view-workspace"
+description = "The workspace view: chat tabs and the agent dock beside the Observatory, the plan panel, and the workspace detail route."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-content.workspace = true
+recur-editor.workspace = true
+recur-services.workspace = true
+recur-domain.workspace = true
+recur-engine.workspace = true
+recur-agent.workspace = true
+recur-view-core.workspace = true
+recur-view-chat.workspace = true
+recur-view-observatory.workspace = true
+recur-bundles.workspace = true
+futures.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["fake"] }
+recur-view-chat = { workspace = true, features = ["test-support"] }
+recur-app.workspace = true
+recur-view-review.workspace = true
+recur-terminal-view.workspace = true
+pretty_assertions.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+base64.workspace = true
+smallvec.workspace = true
+
+[lints]
+workspace = true

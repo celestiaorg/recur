@@ -1,0 +1,1306 @@
+/* ===== activity feed + chat ===== */
+/* activity feed */
+.ev {
+  display: flex;
+  gap: 11px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.ev .eb {
+  flex: 1;
+  min-width: 0;
+}
+
+.ev .en {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ev .et {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.ev .et:first-child {
+  margin-top: 2px;
+}
+
+.ev .et.outcome {
+  color: var(--text);
+}
+
+.ev .et code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  background: var(--pane-2);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ev.click {
+  cursor: pointer;
+}
+
+.ev.click:hover {
+  background: var(--pane-2);
+}
+
+/* retained for any remaining step lists */
+.step {
+  display: flex;
+  gap: 11px;
+  padding: 7px 16px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  align-items: baseline;
+}
+
+.step .k {
+  flex: none;
+  width: 42px;
+  color: var(--faint);
+  text-transform: uppercase;
+  font-size: 9.5px;
+  letter-spacing: .05em;
+  padding-top: 1px;
+}
+
+.step .v {
+  flex: 1;
+  color: var(--muted);
+}
+
+.step .v b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.step.run .k {
+  color: var(--cyan);
+}
+
+.step.edit .k {
+  color: var(--amber);
+}
+
+.step.read .k {
+  color: var(--indigo);
+}
+
+.step.ok .k {
+  color: var(--emerald);
+}
+
+.step .df {
+  color: var(--faint);
+}
+
+.step .df .a {
+  color: var(--emerald);
+}
+
+.step .df .r {
+  color: var(--coral);
+}
+
+.step.cur {
+  background: rgba(242, 179, 61, .05);
+}
+
+.step.cur .v::after {
+  content: "▍";
+  color: var(--amber);
+  animation: blink 1s steps(2) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* chat: transcript + composer stacked. Top edge fade is on by default so a
+   workspace switch does not flash a hard clip; JS drops it only once the
+   scroller is known to be flush with the first row. */
+.chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg);
+  --chat-fade: 40px;
+}
+
+.chat-main {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 26px 28px 8px;
+  min-height: 0;
+  /* Top fade is the default. `{@attach}` runs after first paint, so waiting
+     on `.fade-top` flashed a hard edge on workspace switch. JS adds
+     `.fade-ready` once it has measured; only then can the leading fade drop. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--chat-fade), #000);
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--chat-fade), #000);
+}
+
+.chat-scroll.fade-top {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--chat-fade), #000);
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--chat-fade), #000);
+}
+
+.chat-scroll.fade-bot {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--chat-fade)), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--chat-fade)), transparent);
+}
+
+.chat-scroll.fade-top.fade-bot {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--chat-fade), #000 calc(100% - var(--chat-fade)), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--chat-fade), #000 calc(100% - var(--chat-fade)), transparent);
+}
+
+.chat-scroll.fade-ready:not(.fade-top) {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.chat-scroll.fade-ready:not(.fade-top).fade-bot {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--chat-fade)), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--chat-fade)), transparent);
+}
+
+/* The transcript centers on the same axis as the input box, slightly narrower
+   (input .chat-in is 780px) so the composer frames the text. */
+.chat-col {
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.cblk {
+  overflow-anchor: none;
+  display: flow-root; /* contain .chat-row / .turn-end margins so stub min-height matches live layout */
+}
+
+.chat-empty {
+  max-width: 36em;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+  padding: 8px 2px 20px;
+}
+
+.chat-row {
+  margin-bottom: 18px;
+  max-width: 100%;
+}
+
+.chat-row.me {
+  display: flex;
+  justify-content: flex-end;
+  margin: 22px 0;
+}
+
+.chat-bubble {
+  position: relative;
+  max-width: min(520px, 85%);
+  background: var(--pane);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-bubble-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: inline-flex;
+  visibility: hidden;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--pane-2);
+  color: var(--muted);
+}
+
+.chat-bubble-copy svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+.chat-bubble:hover > .chat-bubble-copy, .chat-bubble-copy:focus-visible, .chat-bubble-copy.copied {
+  visibility: visible;
+}
+
+.chat-bubble-copy:hover {
+  color: var(--text);
+  background: var(--pane);
+  border-color: var(--line-bright);
+}
+
+.chat-bubble-copy.copied {
+  visibility: visible;
+  color: #3fb950;
+}
+
+.chat-row.me .chat-bubble {
+  background: var(--amber-d);
+  border-color: color-mix(in srgb, var(--amber) 16%, transparent);
+}
+
+/* Opaque fill so message text cannot show through (matches .md-copy). */
+.chat-row.me .chat-bubble-copy {
+  background: color-mix(in srgb, var(--pane) 88%, var(--amber));
+  border-color: color-mix(in srgb, var(--amber) 35%, transparent);
+}
+
+.chat-row.me .chat-bubble-copy:hover {
+  background: color-mix(in srgb, var(--pane) 78%, var(--amber));
+  border-color: color-mix(in srgb, var(--amber) 50%, transparent);
+  color: var(--text);
+}
+
+/* ---- agent-chat steps: grouped tool-call / thinking cards ---- */
+.steps {
+  margin: 4px 0 16px;
+}
+
+.steps-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.steps-head:hover {
+  color: var(--text);
+}
+
+.steps-rows {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tc-chev {
+  flex: none;
+  display: inline-flex;
+  width: 12px;
+  height: 12px;
+  color: var(--faint);
+  transition: transform .12s ease;
+}
+
+.tc-chev svg {
+  width: 12px;
+  height: 12px;
+}
+
+.tc-chev.open {
+  transform: rotate(90deg);
+}
+
+.tc {
+  border-radius: 7px;
+}
+
+.tc-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 3px 6px 3px 2px;
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tc-head:hover {
+  background: var(--pane);
+}
+
+.tc-head.static {
+  cursor: default;
+}
+
+.tc-head.static:hover {
+  background: none;
+}
+
+/* No +/− swap on flat rows: keep the tool icon visible on hover. */
+.tc-head.static:hover .tc-ico .ico {
+  display: inline-flex;
+}
+
+/* Icon slot: tool icon by default; swaps to +/− on row hover */
+.tc-ico {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  top: 1px;
+}
+
+.tc-ico .ico, .tc-ico .ex {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tc-ico svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tc-ico .ex {
+  display: none;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.tc-head:hover .tc-ico .ico {
+  display: none;
+}
+
+.tc-head:hover .tc-ico .ex {
+  display: inline-flex;
+}
+
+.tc-label {
+  flex: none;
+  font-weight: 600;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tc.notice .tc-ico,
+.tc.notice .tc-label {
+  color: var(--muted);
+}
+
+.tc.notice .tc-meta {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  font-family: inherit;
+  color: var(--muted);
+}
+
+.tc-meta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.turn-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  margin: 2px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.turn-end-sep {
+  opacity: .55;
+}
+
+.turn-end-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  color: var(--cyan);
+  cursor: pointer;
+  opacity: 1;
+}
+
+.turn-end-link:hover {
+  color: var(--text);
+}
+
+.turn-end-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  margin-left: 2px;
+}
+
+.turn-end-fork-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.turn-end-act {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  padding: 0;
+  color: var(--faint);
+  cursor: pointer;
+}
+
+.turn-end-act:hover, .turn-end-act:focus-visible, .turn-end-act.on {
+  background: var(--pane-2);
+  color: var(--text);
+  outline: none;
+}
+
+.turn-end-act.copied {
+  color: #3fb950;
+}
+
+.turn-end-act svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.turn-end-fork-menu {
+  position: fixed;
+  z-index: 80;
+  min-width: 220px;
+  padding: 4px;
+  background: var(--pane-2);
+  border: 1px solid var(--line-bright);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
+}
+
+.turn-end-fork-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.turn-end-fork-item:hover, .turn-end-fork-item:focus-visible {
+  background: var(--pane);
+  outline: none;
+}
+
+.turn-end-fork-item svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--muted);
+}
+
+.turn-end-wrap {
+  margin: 2px 0 12px;
+}
+
+.turn-end-wrap .turn-end {
+  margin-bottom: 0;
+}
+
+.turn-end-wrap .tc-card {
+  margin-top: 8px;
+}
+
+.turn-finding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 0 10px 10px;
+}
+
+.turn-finding-compose {
+  display: flex;
+  flex-direction: column;
+  margin: 0 10px 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.turn-finding-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none;
+  resize: none;
+  min-height: 40px;
+  max-height: 120px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 8px 10px 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.turn-finding-input:focus, .turn-finding-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
+.turn-finding-input::placeholder {
+  color: var(--faint);
+}
+
+.turn-finding-input:disabled {
+  opacity: .55;
+}
+
+.turn-finding-compose-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px 8px;
+}
+
+.turn-finding-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.turn-finding-hint .kbd {
+  font-size: 11px;
+  color: var(--faint);
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.turn-finding-compose-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.turn-finding-btn {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--pane-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.turn-finding-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--line-bright);
+}
+
+.turn-finding-btn.primary {
+  color: var(--text);
+  background: var(--pane);
+  border-color: var(--line-bright);
+}
+
+.turn-finding-btn.primary:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.turn-finding-btn:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+.tc-errbadge {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #e0655f;
+  background: rgba(224, 101, 95, .1);
+  border: 1px solid rgba(224, 101, 95, .3);
+  border-radius: 5px;
+  padding: 0 5px;
+  line-height: 15px;
+  align-self: center;
+}
+
+.tc-body {
+  margin: 3px 0 6px;
+  min-width: 0;
+}
+
+.tc-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--pane);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* present_workspace already paints .wbrief; don't nest a second card. */
+.tc-card:has(.wbrief) {
+  background: none;
+  border: none;
+  overflow: visible;
+}
+
+.tc-pre {
+  margin: 0;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.tc-pre + .tc-pre {
+  border-top: 1px solid var(--line);
+}
+
+.tc-out {
+  color: var(--muted);
+}
+
+.tc-outerr {
+  color: #e0655f;
+}
+
+.tc.err .tc-card {
+  border-color: rgba(224, 101, 95, .35);
+}
+
+/* report_finding: severity chip on the row; message body in the card */
+.tc-sev {
+  flex: none;
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background: var(--pane-2);
+  color: var(--muted);
+}
+
+.tc-sev.critical, .tc-sev.high {
+  color: var(--coral);
+  border-color: rgba(224, 101, 95, .35);
+  background: rgba(224, 101, 95, .08);
+}
+
+.tc-sev.medium {
+  color: var(--amber);
+  border-color: rgba(242, 179, 61, .35);
+  background: rgba(242, 179, 61, .08);
+}
+
+.tc-sev.low, .tc-sev.info {
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion:no-preference) {
+
+  @keyframes tc-finding-detail-in {
+    from {
+      opacity: .35;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+/* Tool-row severity icon (report_finding / update_finding collapsed head). */
+.tc-head .finding-sev {
+  flex: none;
+  align-self: center;
+}
+
+/* Copy-command button (Bash rows): always occupies its slot; visible on row hover */
+.tc-copy {
+  flex: none;
+  display: inline-flex;
+  visibility: hidden;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  align-self: center;
+}
+
+.tc-copy svg {
+  width: 13px;
+  height: 13px;
+}
+
+.tc:hover .tc-copy {
+  visibility: visible;
+}
+
+.tc-copy:hover {
+  color: var(--text);
+  background: var(--pane-2);
+}
+
+.tc-copy.copied {
+  visibility: visible;
+  color: #3fb950;
+}
+
+.tc-outtext {
+  color: var(--muted);
+}
+
+/* bash syntax tokens (highlightBash in lib/shhl.ts) */
+.sh-prompt {
+  color: var(--faint);
+  user-select: none;
+}
+
+.sh-kw {
+  color: #6cb6ff;
+}
+
+.sh-str {
+  color: #7ee08a;
+}
+
+.sh-com {
+  color: #7fa9ad;
+}
+
+.sh-flag {
+  color: #e0837d;
+}
+
+.sh-var {
+  color: #e5c07b;
+}
+
+.sh-op {
+  color: #e5c07b;
+}
+
+.chat-canvas {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* GFM output (marked): plain tags, scoped */
+.chat-canvas h1, .chat-canvas h2, .chat-canvas h3, .chat-canvas h4, .chat-canvas h5, .chat-canvas h6 {
+  margin: 1.15em 0 .45em;
+  line-height: 1.3;
+  color: var(--text);
+  font-weight: 650;
+}
+
+.chat-canvas h1:first-child, .chat-canvas h2:first-child, .chat-canvas h3:first-child {
+  margin-top: .1em;
+}
+
+.chat-canvas h1 {
+  font-size: 1.25em;
+}
+
+.chat-canvas h2 {
+  font-size: 1.15em;
+}
+
+.chat-canvas h3, .chat-canvas h4, .chat-canvas h5, .chat-canvas h6 {
+  font-size: 1.05em;
+}
+
+.chat-canvas p {
+  margin: 0 0 .7em;
+}
+
+.chat-canvas p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-canvas ul, .chat-canvas ol {
+  margin: .2em 0 .7em;
+  padding-left: 1.35em;
+}
+
+.chat-canvas li {
+  margin: .2em 0;
+}
+
+.chat-canvas li > ul, .chat-canvas li > ol {
+  margin: .2em 0;
+}
+
+.chat-canvas li > p {
+  margin: 0;
+}
+
+.chat-canvas code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: var(--pane-2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.chat-canvas pre {
+  margin: .55em 0 .85em;
+  padding: 10px 12px;
+  background: var(--pane);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.chat-canvas pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.chat-canvas blockquote {
+  margin: .5em 0 .8em;
+  padding: .1em 0 .1em 12px;
+  border-left: 3px solid var(--line-bright);
+  color: var(--muted);
+}
+
+.chat-canvas blockquote p {
+  margin: .2em 0;
+}
+
+.chat-canvas hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1.1em 0;
+}
+
+.chat-canvas a {
+  color: var(--cyan);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chat-canvas a:hover {
+  color: var(--text);
+}
+
+.chat-canvas del {
+  color: var(--muted);
+}
+
+.chat-canvas table {
+  border-collapse: collapse;
+  margin: .55em 0 .85em;
+  font-size: 12px;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.chat-canvas th, .chat-canvas td {
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.chat-canvas th {
+  background: var(--pane);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chat-canvas tr:nth-child(2n) td {
+  background: color-mix(in srgb, var(--pane) 45%, transparent);
+}
+
+.chat-canvas input[type=checkbox] {
+  margin-right: 6px;
+  vertical-align: -1px;
+  pointer-events: none;
+}
+
+.chat-canvas img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.chat-canvas strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chat-canvas em {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.chat-think-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.chat-think-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+  opacity: .35;
+  animation: chat-think-pulse 1.05s ease-in-out infinite;
+}
+
+.chat-think-dots i:nth-child(2) {
+  animation-delay: .18s;
+}
+
+.chat-think-dots i:nth-child(3) {
+  animation-delay: .36s;
+}
+
+@keyframes chat-think-pulse {
+  0%, 100% {
+    opacity: .25;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+.chat-dock {
+  flex: none;
+  padding: 0 16px 12px;
+  background: var(--bg);
+}
+
+.chat-turn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 10px;
+  padding: 2px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.chat-turn-status {
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+
+.chat-in {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 8px 10px 8px 14px;
+  background: var(--pane);
+  border: 1px solid var(--line-bright);
+  border-radius: 12px;
+  box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .55);
+  container-type: inline-size;
+  container-name: chat-in;
+}
+
+.chat-in-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-in-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.chat-in-tools > .sel {
+  flex-shrink: 0;
+}
+
+.wsv-simplify {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  flex: none;
+  transition: color .15s ease, background .15s ease;
+}
+
+.wsv-simplify svg {
+  width: 12px;
+  height: 12px;
+}
+
+.wsv-simplify:hover:not(:disabled) {
+  background: var(--pane-2);
+  color: var(--text);
+}
+
+.wsv-simplify.on {
+  background: var(--pane-2);
+  color: var(--text);
+}
+
+.wsv-simplify:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.wsv-simplify:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.chat-in-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+/* Drop Simplify to an icon before the model name has to ellipsis. */
+@container chat-in (max-width: 640px) {
+  .wsv-simplify-label {
+    display: none;
+  }
+
+  .wsv-simplify {
+    padding: 0 4px;
+  }
+}
+
+/* Narrow composer: icon-only mode so the footer doesn't wrap. */
+@container chat-in (max-width: 460px) {
+  .wsv-mode.sel.ghost .sel-val {
+    display: none;
+  }
+
+  .wsv-mode.sel.ghost .sel-btn {
+    padding: 0 4px;
+    gap: 2px;
+  }
+}
+
+/* ~2 lines min, grows to ~6 lines, then scrolls (height set in JS). */
+.chat-in .chat-composer {
+  display: block;
+  flex: 1 0 auto;
+  width: 100%;
+  min-height: 51px;
+  height: 51px;
+  max-height: 121px;
+  background: transparent;
+  border: none;
+  padding: 8px 2px;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.4;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  outline: none;
+  text-align: left;
+  position: relative;
+}
+
+/* One <p> per line: no default paragraph margins. */
+.chat-in .chat-composer p {
+  margin: 0;
+  min-height: 1.4em;
+}
+
+.chat-in .chat-composer.empty:before {
+  content: attr(data-placeholder);
+  color: var(--faint);
+  pointer-events: none;
+  /* Match composer padding + first-line metrics so the ghost text lines up
+     with the caret inside the empty <p> (not floating below it). */
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  right: 2px;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.chat-in .chat-composer:focus {
+  outline: none;
+}
+
+.chat-in .send {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--text);
+  color: var(--bg);
+  transition: background .12s ease, color .12s ease, opacity .12s ease;
+}
+
+.chat-in .send:hover:not(:disabled) {
+  background: var(--amber);
+  color: var(--on-amber);
+}
+
+.chat-in .send:disabled {
+  background: var(--pane-2);
+  color: var(--faint);
+  border: 1px solid var(--line);
+  cursor: default;
+}
+
+.chat-in .send.stop {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.chat-in .send.stop:hover {
+  background: var(--coral);
+  color: #0A0C10;
+}
+
+.chat-in .send svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.chat-row.me.queued {
+  margin: 0;
+  max-width: 100%;
+}
+
+/* width:max-content: overflow-wrap:anywhere on .chat-bubble lets flex shrink
+   the bubble to a few characters; size to the text instead, cap like sent bubbles. */
+.chat-row.me .chat-bubble.queued {
+  width: max-content;
+  max-width: min(520px, 100%);
+  padding: 8px 10px 9px;
+  overflow-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--pane-2);
+  border-color: var(--line-bright);
+  color: var(--muted);
+}
+

@@ -1,15 +1,15 @@
 ---
 name: repin-cursor-sdk
-description: Re-pin Recur's cursor-sdk wheel and refresh attribution minify anchors when PyPI drifts ahead of pinnedSDKVersion. Use when check:cursor-sdk-pin fails, Cursor SDK pin CI fails, or the user asks to bump cursor-sdk / attribution anchors.
+description: Re-pin Recur's cursor-sdk wheel and refresh attribution minify anchors when PyPI drifts ahead of PINNED_SDK_VERSION. Use when check:cursor-sdk-pin fails, Cursor SDK pin CI fails, or the user asks to bump cursor-sdk / attribution anchors.
 ---
 
 # Re-pin cursor-sdk
 
-Recur installs a **pinned** `cursor-sdk` wheel (`pinnedSDKVersion` in `internal/cursor/install.go`) and patches minified `@cursor/sdk` bundles so `attributionConfigProvider` honors Recur settings. Bump the pin and anchors together — never fetch "latest" in Install.
+Recur installs a **pinned** `cursor-sdk` wheel (`PINNED_SDK_VERSION` in `providers/cursor/src/install.rs`) and patches minified `@cursor/sdk` bundles so `attributionConfigProvider` honors Recur settings. Bump the pin and anchors together; never fetch "latest" in install.
 
 ## When this applies
 
-- `wails3 task check:cursor-sdk-pin` fails with pin drift
+- `mise run check:cursor-sdk-pin` fails with pin drift
 - GitHub Action **Cursor SDK pin** fails
 - User asks to bump `cursor-sdk` or fix attribution patch after a Cursor publish
 
@@ -17,10 +17,10 @@ Recur installs a **pinned** `cursor-sdk` wheel (`pinnedSDKVersion` in `internal/
 
 ```
 Re-pin progress:
-- [ ] Note PyPI latest vs pinnedSDKVersion
+- [ ] Note PyPI latest vs PINNED_SDK_VERSION
 - [ ] Download new wheel; find createLocalExecutor sites
-- [ ] Update sdkAttributionAnchors (cjs + esm)
-- [ ] Bump pinnedSDKVersion + install_test hardcode
+- [ ] Update sdk_attribution_anchors (cjs + esm)
+- [ ] Bump PINNED_SDK_VERSION + the tests' hardcode
 - [ ] Validate patch against new wheel
 - [ ] Confirm pin check is green
 ```
@@ -29,7 +29,7 @@ Re-pin progress:
 
 1. **See drift**
    ```bash
-   wails3 task check:cursor-sdk-pin
+   mise run check:cursor-sdk-pin
    ```
    Failure message includes `pinned=` and `pypi_latest=`.
 
@@ -44,17 +44,17 @@ Re-pin progress:
    Search for `getAgentSkills:r.workspaceServices.getAgentSkills`.
    Capture the options-object close through the `void 0===…?new …(…):new …(…)` executor construction for **cjs** and **esm** (minifier names change between releases). Up to 1.0.31 it is `…};return void 0===…`; from 1.0.37 it is `…,...i},u=void 0===…;` inside a `const` chain.
 
-4. **Update code**
-   - `sdkAttributionAnchors` in `internal/cursor/attribution.go`: both `old` needles and `neu` replacements (assign `attributionConfigProvider` on the options object before the executor is constructed: a statement before `return`, or a comma expression when the site is inside a `const` chain; copy the closest existing entry). Also check `sdkSummaryDeltaAnchors` and `steerRunMountOld`.
-   - `pinnedSDKVersion` in `internal/cursor/install.go`.
-   - The deliberate hardcode in `TestPinnedSDKVersionInPyPIURL` (`internal/cursor/install_test.go`).
+4. **Update code** (all in `providers/cursor`)
+   - `sdk_attribution_anchors` in `src/attribution.rs`: both needles and replacements (assign `attributionConfigProvider` on the options object before the executor is constructed: a statement before `return`, or a comma expression when the site is inside a `const` chain; copy the closest existing entry). Also check `sdk_summary_delta_anchors` and `STEER_RUN_MOUNT_OLD`.
+   - `PINNED_SDK_VERSION` in `src/install.rs`.
+   - The deliberate hardcode in `pinned_sdk_version_in_pypi_url` (`src/install/tests.rs`).
    - Comments that name the old version (anchors, docs).
 
 5. **Validate**
    ```bash
-   RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 go test ./internal/cursor -run AgainstPinnedWheel -v
-   wails3 task check:cursor-sdk-pin
-   go test ./internal/cursor ./internal/engine -count=1
+   RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 cargo test -p recur-provider-cursor --lib attribution_patch_against_pinned_wheel -- --nocapture
+   mise run check:cursor-sdk-pin
+   cargo test -p recur-provider-cursor -p recur-engine
    ```
 
 6. **Ship** a focused PR: pin bump + anchor refresh + test hardcode. Mention the new version in the summary.
@@ -67,6 +67,6 @@ Re-pin progress:
 
 ## Related
 
-- `docs/cursor-provider.md` — bridge install + attribution
-- `internal/cursor/attribution.go` — patch implementation
+- `docs/cursor-provider.md`: bridge install + attribution
+- `providers/cursor/src/attribution.rs`: patch implementation
 - Env: `RECUR_CURSOR_SDK_PIN_CHECK`, `RECUR_CURSOR_ATTRIBUTION_PATCH_TEST`

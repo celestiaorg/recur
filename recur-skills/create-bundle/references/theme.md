@@ -45,5 +45,5 @@ preview = { bg = "#06071D", fg = "#E0E0E0", fn = "#B683CA", name = "#2BF1DC", st
 ```
 
 Theme-only packs are valid. Recur vendors the Shiki tm-themes catalog into
-`bundles/Themes/` (`wails3 task fetch:tm-themes`). Terminal dock palettes are
-`[[terminalTheme]]` — see [terminal-theme.md](terminal-theme.md).
+`bundles/Themes/` (`mise run fetch:tm-themes`). Terminal dock palettes are
+`[[terminalTheme]]`: see [terminal-theme.md](terminal-theme.md).

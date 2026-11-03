@@ -1,0 +1,70 @@
+[package]
+name = "recur-engine"
+description = "Orchestration: chats, loops, walker, governor, maestro, schedules, workspace lifecycle, event bus, recovery."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+# `recur_engine::testing` (temp store + repo + scripted provider + bus
+# recorder) for services tests. Engine unit tests get it via cfg(test).
+testing = ["dep:tempfile", "recur-agent/testing", "recur-forge/testing", "recur-issues/testing"]
+
+[dependencies]
+recur-domain.workspace = true
+recur-store.workspace = true
+recur-project.workspace = true
+recur-git.workspace = true
+recur-forge.workspace = true
+recur-issues.workspace = true
+recur-agent.workspace = true
+recur-agent-tools.workspace = true
+recur-mcp.workspace = true
+recur-bundles.workspace = true
+recur-code.workspace = true
+recur-term.workspace = true
+recur-platform.workspace = true
+async-trait.workspace = true
+base64.workspace = true
+chrono.workspace = true
+getrandom.workspace = true
+hex.workspace = true
+notify.workspace = true
+parking_lot.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tempfile = { workspace = true, optional = true }
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util = { workspace = true, features = ["rt"] }
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+recur-exec.workspace = true
+recur-agent = { workspace = true, features = ["testing"] }
+recur-forge = { workspace = true, features = ["testing"] }
+recur-issues = { workspace = true, features = ["testing"] }
+recur-provider-claude = { workspace = true, features = ["testing"] }
+recur-provider-codex.workspace = true
+recur-provider-compatible.workspace = true
+recur-provider-cursor.workspace = true
+pretty_assertions.workspace = true
+reqwest = { workspace = true, features = ["json"] }
+tempfile.workspace = true
+
+[lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+# A parking_lot / std guard must never be held across an await.
+await_holding_lock = "deny"

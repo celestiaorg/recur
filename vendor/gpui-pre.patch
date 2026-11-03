@@ -1343,7 +1343,7 @@ index 081edd9a..0012ba2b 100644
 +    }
 +}
 diff --git a/rust/vendor/gpui-pre/src/window.rs b/rust/vendor/gpui-pre/src/window.rs
-index 1214b035..650f3e5e 100644
+index 1214b035..03c39edd 100644
 --- a/rust/vendor/gpui-pre/src/window.rs
 +++ b/rust/vendor/gpui-pre/src/window.rs
 @@ -6,8 +6,8 @@ use crate::Inspector;
@@ -1908,7 +1908,7 @@ index 1214b035..650f3e5e 100644
          let handle = self.handle;
          cx.record_entities_accessed(
              handle,
-@@ -3699,15 +4058,46 @@ impl Window {
+@@ -3699,15 +4058,49 @@ impl Window {
          let scale_factor = self.scale_factor();
          #[cfg(feature = "profiler")]
          let request_layout_start = Instant::now();
@@ -1944,6 +1944,9 @@ index 1214b035..650f3e5e 100644
 +                prepaint_start = Instant::now();
 +            }
 +            cx.entities.extend_accessed(&self.last_accessed);
++            if let Some(root) = &self.root {
++                self.next_frame.replayed_views.insert(root.entity_id());
++            }
 +            self.reuse_prepaint(prepaint.clone(), cx);
 +        } else {
 +            let mut element = self.root.as_ref().unwrap().clone().into_any_element();
@@ -1963,7 +1966,7 @@ index 1214b035..650f3e5e 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          let inspector_element = self.prepaint_inspector(_inspector_width, cx);
-@@ -3743,7 +4133,16 @@ impl Window {
+@@ -3743,7 +4136,16 @@ impl Window {
          #[cfg(feature = "profiler")]
          let paint_start = Instant::now();
          self.invalidator.set_phase(DrawPhase::Paint);
@@ -1981,7 +1984,7 @@ index 1214b035..650f3e5e 100644
  
          #[cfg(any(feature = "inspector", debug_assertions))]
          self.paint_inspector(inspector_element, cx);
-@@ -3913,6 +4312,10 @@ impl Window {
+@@ -3913,6 +4315,10 @@ impl Window {
                  self.next_frame.dispatch_tree.set_active_node(parent_node);
  
                  let prepaint_start = self.prepaint_index();
@@ -1992,7 +1995,7 @@ index 1214b035..650f3e5e 100644
                  if let Some(mut element) = element {
                      self.with_rendered_view(current_view, |window| {
                          window.with_rem_size(Some(rem_size), |window| {
-@@ -3923,8 +4326,9 @@ impl Window {
+@@ -3923,8 +4329,9 @@ impl Window {
                      });
                      self.next_frame.deferred_draws[deferred_draw_ix].element = Some(element);
                  } else {
@@ -2003,7 +2006,7 @@ index 1214b035..650f3e5e 100644
                  let prepaint_end = self.prepaint_index();
                  self.next_frame.deferred_draws[deferred_draw_ix].prepaint_range =
                      prepaint_start..prepaint_end;
-@@ -3966,7 +4370,7 @@ impl Window {
+@@ -3966,7 +4373,7 @@ impl Window {
                      })
                  })
              } else {
@@ -2012,7 +2015,7 @@ index 1214b035..650f3e5e 100644
              }
              let paint_end = self.paint_index();
              deferred_draw.paint_range = paint_start..paint_end;
-@@ -3982,6 +4386,99 @@ impl Window {
+@@ -3982,6 +4389,99 @@ impl Window {
          sorted_indices
      }
  
@@ -2112,7 +2115,7 @@ index 1214b035..650f3e5e 100644
      pub(crate) fn prepaint_index(&self) -> PrepaintStateIndex {
          PrepaintStateIndex {
              hitboxes_index: self.next_frame.hitboxes.len(),
-@@ -3993,7 +4490,105 @@ impl Window {
+@@ -3993,7 +4493,105 @@ impl Window {
          }
      }
  
@@ -2219,7 +2222,7 @@ index 1214b035..650f3e5e 100644
          self.next_frame.hitboxes.extend(
              self.rendered_frame.hitboxes[range.start.hitboxes_index..range.end.hitboxes_index]
                  .iter()
-@@ -4011,19 +4606,17 @@ impl Window {
+@@ -4011,19 +4609,17 @@ impl Window {
                  .iter()
                  .map(|(id, type_id)| (id.clone(), *type_id)),
          );
@@ -2244,7 +2247,7 @@ index 1214b035..650f3e5e 100644
          self.next_frame.deferred_draws.extend(
              self.rendered_frame.deferred_draws
                  [range.start.deferred_draws_index..range.end.deferred_draws_index]
-@@ -4042,6 +4635,7 @@ impl Window {
+@@ -4042,6 +4638,7 @@ impl Window {
                      paint_range: deferred_draw.paint_range.clone(),
                  }),
          );
@@ -2252,7 +2255,7 @@ index 1214b035..650f3e5e 100644
      }
  
      pub(crate) fn paint_index(&self) -> PaintIndex {
-@@ -4058,7 +4652,78 @@ impl Window {
+@@ -4058,7 +4655,78 @@ impl Window {
          }
      }
  
@@ -2332,7 +2335,7 @@ index 1214b035..650f3e5e 100644
          // Cached elements still exist in the frame even when their paint methods don't run.
          #[cfg(any(test, feature = "test-support"))]
          for (selector, bounds) in &self.rendered_frame.debug_bounds_records
-@@ -4096,12 +4761,14 @@ impl Window {
+@@ -4096,12 +4764,14 @@ impl Window {
                  [range.start.tab_handle_index..range.end.tab_handle_index],
          );
  
@@ -2349,7 +2352,7 @@ index 1214b035..650f3e5e 100644
      }
  
      /// Push a text style onto the stack, and call a function with that style active.
-@@ -4517,7 +5184,7 @@ impl Window {
+@@ -4517,7 +5187,7 @@ impl Window {
              text_style_stack: self.text_style_stack.clone(),
              content_mask,
              rem_size: self.rem_size(),
@@ -2358,7 +2361,7 @@ index 1214b035..650f3e5e 100644
              element: Some(element),
              absolute_offset,
              prepaint_range: PrepaintStateIndex::default()..PrepaintStateIndex::default(),
-@@ -4525,6 +5192,41 @@ impl Window {
+@@ -4525,6 +5195,41 @@ impl Window {
          });
      }
  
@@ -2400,7 +2403,7 @@ index 1214b035..650f3e5e 100644
      /// Creates a new painting layer for the specified bounds. A "layer" is a batch
      /// of geometry that are non-overlapping and have the same draw order. This is typically used
      /// for performance reasons.
-@@ -4633,6 +5335,78 @@ impl Window {
+@@ -4633,6 +5338,78 @@ impl Window {
          }
      }
  
@@ -2479,7 +2482,7 @@ index 1214b035..650f3e5e 100644
      fn largest_border_interior(quad: &Quad) -> Bounds<ScaledPixels> {
          let radii = &quad.corner_radii;
          let widths = &quad.border_widths;
-@@ -5268,6 +6042,17 @@ impl Window {
+@@ -5268,6 +6045,17 @@ impl Window {
          self.layout_engine = Some(layout_engine);
      }
  
@@ -2497,7 +2500,7 @@ index 1214b035..650f3e5e 100644
      /// Obtain the bounds computed for the given LayoutId relative to the window. This method will usually be invoked by
      /// GPUI itself automatically in order to pass your element its `Bounds` automatically.
      ///
-@@ -5947,7 +6732,9 @@ impl Window {
+@@ -5947,7 +6735,9 @@ impl Window {
          // special purposes, such as detecting events outside of a given Bounds.
          for listener in &mut mouse_listeners {
              let listener = listener.as_mut().unwrap();
@@ -2508,7 +2511,7 @@ index 1214b035..650f3e5e 100644
              if !cx.propagate_event {
                  break;
              }
-@@ -5957,7 +6744,9 @@ impl Window {
+@@ -5957,7 +6747,9 @@ impl Window {
          if cx.propagate_event {
              for listener in mouse_listeners.iter_mut().rev() {
                  let listener = listener.as_mut().unwrap();
@@ -2519,7 +2522,7 @@ index 1214b035..650f3e5e 100644
                  if !cx.propagate_event {
                      break;
                  }
-@@ -6268,7 +7057,9 @@ impl Window {
+@@ -6268,7 +7060,9 @@ impl Window {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
  
              for key_listener in node.key_listeners.clone() {
@@ -2530,7 +2533,7 @@ index 1214b035..650f3e5e 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6280,7 +7071,9 @@ impl Window {
+@@ -6280,7 +7074,9 @@ impl Window {
              // Handle low level key events
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for key_listener in node.key_listeners.clone() {
@@ -2541,7 +2544,7 @@ index 1214b035..650f3e5e 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6300,7 +7093,7 @@ impl Window {
+@@ -6300,7 +7096,7 @@ impl Window {
          for node_id in dispatch_path.iter().rev() {
              let node = self.rendered_frame.dispatch_tree.node(*node_id);
              for listener in node.modifiers_changed_listeners.clone() {
@@ -2550,7 +2553,7 @@ index 1214b035..650f3e5e 100644
                  if !cx.propagate_event {
                      return;
                  }
-@@ -6503,7 +7296,9 @@ impl Window {
+@@ -6503,7 +7299,9 @@ impl Window {
              for listener in &global_listeners {
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -2561,7 +2564,7 @@ index 1214b035..650f3e5e 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -6537,7 +7332,9 @@ impl Window {
+@@ -6537,7 +7335,9 @@ impl Window {
                  if action_type == any_action.type_id() {
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -2572,7 +2575,7 @@ index 1214b035..650f3e5e 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6561,7 +7358,9 @@ impl Window {
+@@ -6561,7 +7361,9 @@ impl Window {
                      cx.propagate_event = false; // Actions stop propagation by default during the bubble phase
                      #[cfg(feature = "profiler")]
                      self.window_profiler.begin_action_handler(action, cx);
@@ -2583,7 +2586,7 @@ index 1214b035..650f3e5e 100644
                      #[cfg(feature = "profiler")]
                      self.window_profiler.end_action_handler();
  
-@@ -6582,7 +7381,9 @@ impl Window {
+@@ -6582,7 +7384,9 @@ impl Window {
  
                  #[cfg(feature = "profiler")]
                  self.window_profiler.begin_action_handler(action, cx);
@@ -2594,7 +2597,7 @@ index 1214b035..650f3e5e 100644
                  #[cfg(feature = "profiler")]
                  self.window_profiler.end_action_handler();
                  if !cx.propagate_event {
-@@ -7317,7 +8118,9 @@ impl Window {
+@@ -7317,7 +8121,9 @@ impl Window {
          state_type: TypeId,
      ) -> ((GlobalElementId, TypeId), Option<ElementStateBox>) {
          let key = (global_id.clone(), state_type);

@@ -4082,6 +4082,9 @@ impl Window {
                 prepaint_start = Instant::now();
             }
             cx.entities.extend_accessed(&self.last_accessed);
+            if let Some(root) = &self.root {
+                self.next_frame.replayed_views.insert(root.entity_id());
+            }
             self.reuse_prepaint(prepaint.clone(), cx);
         } else {
             let mut element = self.root.as_ref().unwrap().clone().into_any_element();

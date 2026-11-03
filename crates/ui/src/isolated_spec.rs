@@ -425,3 +425,22 @@ fn an_isolated_view_that_paints_nothing_keeps_the_replay_in_order(cx: &mut TestA
         cx.run_until_parked();
     }
 }
+
+/// A draw that replays the root around an island counts the root as replayed, so what a
+/// view painted last frame (a native page under a hole, a selection) knows it is still up.
+#[gpui_kit::test]
+fn a_root_replay_counts_the_root_as_replayed(cx: &mut TestAppContext) {
+    let mut f = fixture(cx);
+    let field2 = f.field2.clone();
+    f.key_into(&field2);
+    let replayed = std::rc::Rc::new(std::cell::Cell::new(false));
+    let seen = replayed.clone();
+    f.cx.update(|window, _| {
+        let root = window.root::<Root>().flatten().unwrap().entity_id();
+        window.after_next_draw(move |window, _| seen.set(window.replayed_view(root)));
+    });
+    f.cx.simulate_keystrokes("a");
+    f.cx.run_until_parked();
+    assert_eq!(take_renders(), BTreeMap::from([("field2", 1)]));
+    assert!(replayed.get());
+}

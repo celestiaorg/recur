@@ -831,14 +831,20 @@ impl Build<'_, '_> {
         let content = div()
             .flex_none()
             .w(px((w / dp).ceil() * dp + dp))
+            .debug_selector(|| "md-pre-content".into())
             .child(text);
         let (pv, ph) = sh.pre_padding;
         self.n.block += 1;
         let scroller = div()
             .id(("md-pre", self.n.block))
-            .overflow_x_scroll()
+            .restrict_scroll_to_axis()
+            .map(|d| match sh.pre_max_height {
+                Some(h) => d.max_h(px(h)).overflow_scroll(),
+                None => d.overflow_x_scroll(),
+            })
             .flex()
             .flex_row()
+            .items_start()
             .child(div().flex_none().w(px(ph)))
             .child(content)
             .child(div().flex_none().w(px(ph)));
@@ -1016,6 +1022,7 @@ impl Build<'_, '_> {
             div()
                 .id(("md-mermaid", self.n.block))
                 .overflow_x_scroll()
+                .restrict_scroll_to_axis()
                 .flex()
                 .flex_col()
                 .child(div().h(px(pv)))
@@ -1240,6 +1247,7 @@ impl Build<'_, '_> {
         let el = div()
             .id(("md-table", self.n.table))
             .overflow_x_scroll()
+            .restrict_scroll_to_axis()
             .flex()
             .flex_row()
             .child(table);

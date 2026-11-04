@@ -34,6 +34,7 @@ use crate::style::{hsla, label};
 pub struct FanOutChild {
     pub id: String,
     pub title: String,
+    #[serde(deserialize_with = "null_as_empty")]
     pub steps: Vec<String>,
     pub mode: String,
     pub state: String,
@@ -48,6 +49,11 @@ pub struct FanOutWave {
     pub after: Vec<String>,
     pub children: Vec<FanOutChild>,
     pub done: bool,
+}
+
+/// The engine writes empty `steps` as `null`.
+fn null_as_empty<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<String>, D::Error> {
+    Ok(Option::deserialize(d)?.unwrap_or_default())
 }
 
 /// `JSON.parse(data)` with a `children` array.
@@ -745,5 +751,8 @@ mod tests {
         let merged = rs(RowKey::Merged, "merged", false);
         assert_eq!(wave_summary(&[merged.clone(), merged]), "2 merged");
         assert!(parse_wave("{\"wave\":1}").is_none());
+        let chat = parse_wave(r#"{"wave":1,"children":[{"id":"c1","title":"A","steps":null}]}"#)
+            .expect("null steps parse");
+        assert!(chat.children[0].steps.is_empty());
     }
 }

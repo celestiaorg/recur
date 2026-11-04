@@ -26,7 +26,8 @@ if command -v sqlite3 >/dev/null 2>&1; then
     sleep 2
   done
   test -n "$copied"
-  rsync -a --exclude 'recur.db*' --exclude 'open.sock' "$SRC/" "$DEST/"
+  # Recur rewrites files while we copy; 23/24 mean some vanished mid-copy.
+  rsync -a --exclude 'recur.db*' --exclude 'open.sock' "$SRC/" "$DEST/" || case $? in 23|24) ;; *) exit 1 ;; esac
 
   # Remove running agents so they don't auto-resume in the copied instance.
   sqlite3 "$DEST/recur.db" <<'SQL'

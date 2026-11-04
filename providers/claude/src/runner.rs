@@ -1,8 +1,9 @@
 //! One `claude -p` turn.
 //!
-//! The CLI runs in the worktree in its own process group. A single reaper
-//! task owns `wait()`; on cancel the whole group gets SIGTERM, then SIGKILL
-//! after [`crate::proc::KILL_GRACE`].
+//! The CLI runs in the worktree as the leader of its own session. A single
+//! reaper task owns `wait()`; on cancel the whole session gets SIGTERM, then
+//! SIGKILL after [`crate::proc::KILL_GRACE`], including tool processes that
+//! detached into their own groups.
 //!
 //! With stream-json input (steerable turns, images, prompts too large for
 //! argv) the prompt is the first stdin user message and steers follow as more
@@ -31,7 +32,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::args;
 use crate::input::user_message_line;
-use crate::proc::{self, kill_group, look_path, wait_reaped};
+use crate::proc::{self, kill_session, look_path, new_session, wait_reaped};
 use crate::stream::parse_line;
 
 /// Keeps the last 8 KiB of stderr: usage refusals, auth failures and outages
@@ -64,8 +65,8 @@ pub(crate) async fn run(
         look_path(bin).map_err(|e| ProviderError::failed(format!("start claude: {e}")))?
     };
     let mut cmd = Command::new(&path);
+    new_session(&mut cmd);
     cmd.args(&argv)
-        .process_group(0)
         .stdin(if use_stream {
             std::process::Stdio::piped()
         } else {
@@ -123,7 +124,7 @@ pub(crate) async fn run(
         tokio::spawn(async move {
             tokio::select! {
                 _ = wait_reaped(&mut reaped) => {}
-                _ = cancel.cancelled() => kill_group(pid, &mut reaped).await,
+                _ = cancel.cancelled() => kill_session(pid, &mut reaped).await,
             }
         })
     };

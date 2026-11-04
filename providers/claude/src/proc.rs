@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 use std::time::Duration;
 
-use rustix::process::{Pid, Signal, kill_process_group};
-use tokio::process::Child;
+use rustix::process::{Pid, Signal, kill_process, kill_process_group};
+use tokio::process::{Child, Command};
 use tokio::sync::watch;
 
 /// How long a SIGTERMed process group gets before SIGKILL.
@@ -41,22 +41,77 @@ pub async fn wait_reaped(reaped: &mut Reaped) {
     let _ = reaped.wait_for(Option::is_some).await;
 }
 
-/// SIGTERM to the whole group, then SIGKILL after [`KILL_GRACE`]; returns once
-/// the reaper has seen the exit. SIGKILL is only sent while the child is
+/// Starts the child as the leader of a new session (and so of a new group, pgid == pid).
+/// Every process its tools start stays in that session, even one that moves to its own group
+/// or is orphaned to launchd (`nohup … &`), which a group kill misses.
+pub fn new_session(cmd: &mut Command) {
+    #[allow(unsafe_code)]
+    // SAFETY: setsid is async-signal-safe and touches no parent state.
+    unsafe {
+        cmd.pre_exec(|| {
+            rustix::process::setsid()?;
+            Ok(())
+        });
+    }
+}
+
+/// SIGTERM to the session led by `pid` (see [`new_session`]), then SIGKILL after
+/// [`KILL_GRACE`] to the leader's group and whatever is left in the session; returns once
+/// the reaper has seen the leader exit. The group SIGKILL is only sent while the leader is
 /// unreaped, so a recycled pid is never signalled.
-pub async fn kill_group(pid: u32, reaped: &mut Reaped) {
+pub async fn kill_session(pid: u32, reaped: &mut Reaped) {
+    let deadline = tokio::time::Instant::now() + KILL_GRACE;
     signal_group(pid, Signal::TERM);
-    if tokio::time::timeout(KILL_GRACE, wait_reaped(reaped))
+    let mut left = signal_session(pid, Some(Signal::TERM)).await;
+    if tokio::time::timeout_at(deadline, wait_reaped(reaped))
         .await
         .is_err()
     {
         signal_group(pid, Signal::KILL);
         wait_reaped(reaped).await;
     }
+    while left > 0 && tokio::time::Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        left = signal_session(pid, None).await;
+    }
+    // A member forking while it dies can leave a new one behind.
+    for _ in 0..3 {
+        if signal_session(pid, Some(Signal::KILL)).await == 0 {
+            break;
+        }
+    }
+}
+
+/// Signals every process in session `sid` (`None` only counts); returns how many it found
+/// besides the leader.
+async fn signal_session(sid: u32, sig: Option<Signal>) -> usize {
+    let Some(sid) = i32::try_from(sid).ok().and_then(Pid::from_raw) else {
+        return 0;
+    };
+    let Ok(out) = tokio::process::Command::new("ps")
+        .args(["-axo", "pid="])
+        .output()
+        .await
+    else {
+        return 0;
+    };
+    let mut n = 0;
+    for pid in String::from_utf8_lossy(&out.stdout)
+        .split_whitespace()
+        .filter_map(|p| p.parse().ok().and_then(Pid::from_raw))
+    {
+        if rustix::process::getsid(Some(pid)) == Ok(sid) {
+            if let Some(sig) = sig {
+                let _ = kill_process(pid, sig);
+            }
+            n += usize::from(pid != sid);
+        }
+    }
+    n
 }
 
 pub fn signal_group(pid: u32, sig: Signal) {
-    // process_group(0) makes pgid == pid.
+    // new_session and process_group(0) both make pgid == pid.
     if let Some(pgid) = i32::try_from(pid).ok().and_then(Pid::from_raw) {
         let _ = kill_process_group(pgid, sig);
     }
@@ -177,6 +232,48 @@ mod tests {
             exit_error(ExitStatus::from_raw(15)).as_deref(),
             Some("signal: terminated")
         );
+    }
+
+    /// A tool job that moved to its own group and was orphaned to launchd (`nohup … &` from a
+    /// shell that exited) still dies with the session.
+    #[tokio::test]
+    async fn kill_session_reaches_orphaned_groups() {
+        use tokio::io::AsyncBufReadExt;
+        let mut cmd = Command::new("sh");
+        new_session(&mut cmd);
+        let mut child = cmd
+            // perl, not `set -m`: dash turns job control off without a tty.
+            .args([
+                "-c",
+                r#"(perl -e '$|=1; setpgrp; print "$$\n"; exec @ARGV' sleep 30 &); exec sleep 30"#,
+            ])
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let leader = child.id().unwrap();
+        let mut line = String::new();
+        tokio::io::BufReader::new(child.stdout.take().unwrap())
+            .read_line(&mut line)
+            .await
+            .unwrap();
+        let orphan = Pid::from_raw(line.trim().parse().unwrap()).unwrap();
+        assert_ne!(
+            rustix::process::getpgid(Some(orphan)).unwrap(),
+            Pid::from_raw(leader as i32).unwrap(),
+            "the job must sit outside the leader's group"
+        );
+        assert_eq!(
+            rustix::process::getsid(Some(orphan)).unwrap(),
+            Pid::from_raw(leader as i32).unwrap()
+        );
+
+        let mut reaped = reap(child, async {});
+        kill_session(leader, &mut reaped).await;
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while rustix::process::test_kill_process(orphan).is_ok() {
+            assert!(std::time::Instant::now() < deadline, "orphan survived");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
     }
 
     #[test]

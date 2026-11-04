@@ -2210,9 +2210,7 @@ fn running_dot(epoch: Instant, window: &mut Window, cx: &mut App) -> AnyElement 
     let opacity = if motion::reduced(cx) {
         1.
     } else {
-        if !motion::is_frozen(cx) {
-            window.request_animation_frame();
-        }
+        motion::loop_frame(window, cx);
         let p = (motion::elapsed(epoch, cx).as_secs_f32() % 2.4) / 2.4;
         if p < 0.5 {
             0.5 + 0.5 * Easing::EASE_IN_OUT.apply(p * 2.)

@@ -1414,9 +1414,7 @@ pub fn skeleton(window: &mut Window, cx: &App) -> Div {
     if crate::motion::reduced(cx) {
         return skel;
     }
-    if !crate::motion::is_frozen(cx) {
-        window.request_animation_frame();
-    }
+    crate::motion::loop_frame(window, cx);
     let period = 1.4;
     let elapsed = crate::motion::elapsed(*START.get_or_init(std::time::Instant::now), cx);
     let p = (elapsed.as_secs_f32() % period) / period;

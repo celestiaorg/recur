@@ -252,9 +252,7 @@ impl TabChip {
             let start = window.use_keyed_state((self.id.clone(), "wash"), cx, move |_, _| now);
             let started = *start.read(cx);
             let elapsed = motion::elapsed(started, cx);
-            if !motion::is_frozen(cx) {
-                window.request_animation_frame();
-            }
+            motion::loop_frame(window, cx);
             let phase = (elapsed.as_secs_f32() / BUSY_WASH.as_secs_f32()).fract();
             let b = body_bounds.clone();
             Rc::new(move |x: f32| {

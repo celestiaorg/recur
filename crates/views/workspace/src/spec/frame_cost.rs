@@ -801,11 +801,12 @@ async fn a_frame_of_the_sidebar_running_dot_renders_only_the_dot(cx: &mut TestAp
     s.cx.update(|window, _| window.refresh());
     s.cx.run_until_parked();
     s.cx.update(|window, cx| window.simulate_next_frame(cx));
+    s.cx.executor()
+        .advance_clock(std::time::Duration::from_secs(1));
     s.cx.run_until_parked();
     recur_ui::guard::count_renders(true);
     for _ in 0..3 {
-        s.cx.executor()
-            .advance_clock(std::time::Duration::from_millis(16));
+        s.cx.executor().advance_clock(recur_ui::motion::LOOP_FRAME);
         s.cx.update(|window, cx| window.simulate_next_frame(cx));
         s.cx.run_until_parked();
     }

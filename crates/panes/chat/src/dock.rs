@@ -302,8 +302,8 @@ impl AgentChat {
             let e = self.caret_blink_epoch.elapsed().as_millis();
             (e / 500).is_multiple_of(2)
         };
-        if focused && !motion::is_frozen(cx) {
-            window.request_animation_frame();
+        if focused {
+            motion::loop_frame(window, cx);
         }
         let focus = self.focus.clone();
         // Laid out, before the scroller places its content: this frame shows the caret where

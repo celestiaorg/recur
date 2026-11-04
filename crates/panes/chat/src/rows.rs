@@ -194,9 +194,7 @@ fn wait_dot(epoch: std::time::Instant, window: &mut Window, cx: &gpui_kit::App) 
         // ease-in-out between the 0/100% (.35, .85) and 50% (1, 1) keyframes.
         let half = if ph < 0.5 { ph * 2. } else { (1. - ph) * 2. };
         let k = recur_ui::motion::Easing::EASE_IN_OUT.apply(half);
-        if !motion::is_frozen(cx) {
-            window.request_animation_frame();
-        }
+        motion::loop_frame(window, cx);
         (0.35 + 0.65 * k, 0.85 + 0.15 * k)
     };
     let d = 7. * scale;

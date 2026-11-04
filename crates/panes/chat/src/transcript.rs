@@ -85,8 +85,8 @@ pub(crate) fn think_dots(
     let t = Theme::of(cx).tokens;
     let e = motion::elapsed(epoch, cx).as_secs_f32();
     let animate = !motion::reduced(cx);
-    if animate && !motion::is_frozen(cx) {
-        window.request_animation_frame();
+    if animate {
+        motion::loop_frame(window, cx);
     }
     div()
         .flex()

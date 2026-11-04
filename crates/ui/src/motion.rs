@@ -58,6 +58,34 @@ pub fn progress(start: Instant, duration: Duration, cx: &App) -> f32 {
     (since(start, cx).as_secs_f32() / duration.as_secs_f32()).min(1.)
 }
 
+/// How often an animation that never settles redraws.
+pub const LOOP_FRAME: Duration = Duration::from_millis(50);
+
+thread_local! {
+    static LOOP_PENDING: std::cell::RefCell<std::collections::HashSet<gpui_kit::EntityId>> =
+        Default::default();
+}
+
+/// Redraws the view being drawn after [`LOOP_FRAME`], for animations that never settle (pulses,
+/// spinners, washes, caret blinks). `request_animation_frame` would redraw at the display rate
+/// for as long as one is on screen, and every frame blocks the main thread on a Metal drawable,
+/// which under heavy system load takes seconds. No-op while frozen.
+pub fn loop_frame(window: &Window, cx: &App) {
+    if is_frozen(cx) {
+        return;
+    }
+    let view = window.current_view();
+    if !LOOP_PENDING.with_borrow_mut(|p| p.insert(view)) {
+        return;
+    }
+    cx.spawn(async move |cx| {
+        cx.background_executor().timer(LOOP_FRAME).await;
+        LOOP_PENDING.with_borrow_mut(|p| p.remove(&view));
+        cx.update(|cx| cx.notify(view));
+    })
+    .detach();
+}
+
 /// `prefers-reduced-motion: reduce`, read from the platform by gpui-base at init.
 pub fn reduced(cx: &App) -> bool {
     cx.reduce_motion()
@@ -240,5 +268,37 @@ mod tests {
             };
             assert_eq!(k(&settled), 1.);
         });
+    }
+
+    thread_local! {
+        static PULSE_RENDERS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    }
+
+    struct Pulse;
+
+    impl gpui_kit::Render for Pulse {
+        fn render(
+            &mut self,
+            window: &mut Window,
+            cx: &mut gpui_kit::Context<Self>,
+        ) -> impl gpui_kit::IntoElement {
+            PULSE_RENDERS.set(PULSE_RENDERS.get() + 1);
+            loop_frame(window, cx);
+            loop_frame(window, cx);
+            gpui_kit::div()
+        }
+    }
+
+    #[gpui_kit::test]
+    fn a_loop_redraws_once_per_loop_frame(cx: &mut gpui_kit::TestAppContext) {
+        let (_, cx) = cx.add_window_view(|_, _| Pulse);
+        cx.run_until_parked();
+        let drawn = PULSE_RENDERS.get();
+        cx.executor().advance_clock(LOOP_FRAME / 2);
+        cx.run_until_parked();
+        assert_eq!(PULSE_RENDERS.get(), drawn, "redrew before LOOP_FRAME");
+        cx.executor().advance_clock(LOOP_FRAME / 2);
+        cx.run_until_parked();
+        assert_eq!(PULSE_RENDERS.get(), drawn + 1, "one redraw per LOOP_FRAME");
     }
 }

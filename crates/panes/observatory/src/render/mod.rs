@@ -42,9 +42,7 @@ pub(crate) fn pulse_opacity(epoch: Instant, window: &mut Window, cx: &App) -> f3
     let e = motion::elapsed(epoch, cx).as_secs_f32();
     let ph = (e % PERIOD.as_secs_f32()) / PERIOD.as_secs_f32();
     let half = if ph < 0.5 { ph * 2. } else { (1. - ph) * 2. };
-    if !motion::is_frozen(cx) {
-        window.request_animation_frame();
-    }
+    motion::loop_frame(window, cx);
     0.5 + 0.5 * motion::Easing::EASE_IN_OUT.apply(half)
 }
 

@@ -57,9 +57,7 @@ fn tile(
     let alpha = if row && live && !motion::reduced(cx) {
         let p = (motion::elapsed(epoch, cx).as_secs_f32() % 2.4) / 2.4;
         let half = if p < 0.5 { p * 2. } else { (1. - p) * 2. };
-        if !motion::is_frozen(cx) {
-            window.request_animation_frame();
-        }
+        motion::loop_frame(window, cx);
         1. - 0.6 * motion::Easing::EASE_IN_OUT.apply(half)
     } else {
         1.

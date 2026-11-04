@@ -149,9 +149,7 @@ impl ContextMeter {
         let fill_opacity = if v.compacting && !motion::reduced(cx) {
             let p = (motion::elapsed(self.epoch, cx).as_secs_f32() % 1.1) / 1.1;
             let half = if p < 0.5 { p * 2. } else { (1. - p) * 2. };
-            if !motion::is_frozen(cx) {
-                window.request_animation_frame();
-            }
+            motion::loop_frame(window, cx);
             1. - 0.55 * motion::Easing::EASE_IN_OUT.apply(half)
         } else {
             1.

@@ -30,9 +30,7 @@ fn spinner(started: Instant, window: &mut Window, cx: &mut gpui_kit::App) -> imp
         0.
     } else {
         let e = motion::elapsed(started, cx).as_secs_f32();
-        if !motion::is_frozen(cx) {
-            window.request_animation_frame();
-        }
+        motion::loop_frame(window, cx);
         (e / 1.5).fract() * 360.
     };
     icon(IconName::Loader)

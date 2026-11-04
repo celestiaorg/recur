@@ -333,8 +333,7 @@ async fn a_frame_of_the_turn_and_tool_dots_renders_only_the_dots(cx: &mut TestAp
     recur_ui::guard::count_renders(true);
     recur_ui::guard::count_layouts(true);
     for _ in 0..3 {
-        h.cx.executor()
-            .advance_clock(std::time::Duration::from_millis(16));
+        h.cx.executor().advance_clock(recur_ui::motion::LOOP_FRAME);
         h.cx.update(|window, cx| window.simulate_next_frame(cx));
         h.cx.run_until_parked();
     }

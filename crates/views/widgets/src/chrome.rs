@@ -28,9 +28,7 @@ pub fn spin_deg(window: &mut Window, cx: &App) -> f32 {
     if motion::reduced(cx) {
         return 0.;
     }
-    if !motion::is_frozen(cx) {
-        window.request_animation_frame();
-    }
+    motion::loop_frame(window, cx);
     (motion::elapsed(epoch(), cx).as_secs_f32() / 1.5).fract() * 360.
 }
 
@@ -39,9 +37,7 @@ pub fn pulse_opacity(period: f32, window: &mut Window, cx: &App) -> f32 {
     if motion::reduced(cx) {
         return 1.;
     }
-    if !motion::is_frozen(cx) {
-        window.request_animation_frame();
-    }
+    motion::loop_frame(window, cx);
     let p = (motion::elapsed(epoch(), cx).as_secs_f32() % period) / period;
     if p < 0.5 {
         0.5 + 0.5 * Easing::EASE_IN_OUT.apply(p * 2.)

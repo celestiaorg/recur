@@ -37,8 +37,8 @@ struct ConductorSession {
     agent_type: String,
     model: String,
     title: String,
-    /// (role, content) in send order.
-    rows: Vec<(String, String)>,
+    /// (role, content, created_at ms) in send order.
+    rows: Vec<(String, String, i64)>,
 }
 
 fn open(db: &Path) -> rusqlite::Result<Connection> {
@@ -128,7 +128,8 @@ fn read_sessions(db: &Path, workspace_id: &str) -> rusqlite::Result<Vec<Conducto
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
     let mut rows = c.prepare(
-        "SELECT COALESCE(role, ''), COALESCE(content, '') FROM session_messages
+        "SELECT COALESCE(role, ''), COALESCE(content, ''), COALESCE(created_at, sent_at, '')
+         FROM session_messages
          WHERE session_id = ?1 AND sent_at IS NOT NULL AND cancelled_at IS NULL
          ORDER BY created_at, rowid",
     )?;
@@ -136,17 +137,34 @@ fn read_sessions(db: &Path, workspace_id: &str) -> rusqlite::Result<Vec<Conducto
         .into_iter()
         .map(|(id, mut s)| {
             s.rows = rows
-                .query_map([&id], |r| Ok((r.get(0)?, r.get(1)?)))?
+                .query_map([&id], |r| {
+                    Ok((r.get(0)?, r.get(1)?, conductor_ms(&r.get::<_, String>(2)?)))
+                })?
                 .collect::<rusqlite::Result<_>>()?;
             Ok(s)
         })
         .collect()
 }
 
-/// The session's provider and model ref. Claude ids are Conductor aliases
-/// (`opus-4-8-1m`, `fable-5`, `sonnet`): `-1m` goes (those models run 1M
-/// already), versioned ones get `claude-`, bare families stay CLI aliases.
-fn model_ref(agent_type: &str, model: &str) -> (&'static str, String) {
+/// Conductor's SQLite datetime text (UTC, `2026-09-10 22:12:03` or ISO) in
+/// ms; 0 (the write time) when it does not parse.
+fn conductor_ms(s: &str) -> i64 {
+    let s = s.trim().replace(' ', "T");
+    chrono::DateTime::parse_from_rfc3339(&s)
+        .map(|t| t.timestamp_millis())
+        .or_else(|_| {
+            s.parse::<chrono::NaiveDateTime>()
+                .map(|t| t.and_utc().timestamp_millis())
+        })
+        .unwrap_or(0)
+}
+
+/// The session's provider, model ref and whether it picks 1M context. Claude
+/// ids are Conductor aliases (`opus-4-8-1m`, `fable-5`, `sonnet`): `-1m`
+/// becomes the context flag on models with a 200K/1M toggle and goes
+/// elsewhere (those run 1M already), versioned ones get `claude-`, bare
+/// families stay CLI aliases.
+fn model_ref(agent_type: &str, model: &str) -> (&'static str, String, bool) {
     let model = model.trim();
     let provider = match agent_type {
         "codex" => PROVIDER_CODEX,
@@ -154,16 +172,21 @@ fn model_ref(agent_type: &str, model: &str) -> (&'static str, String) {
         _ => PROVIDER_CLAUDE_CODE,
     };
     if model.is_empty() {
-        return (provider, String::new());
+        return (provider, String::new(), false);
     }
     if provider != PROVIDER_CLAUDE_CODE {
-        return (provider, format!("{provider}/{model}"));
+        return (provider, format!("{provider}/{model}"), false);
     }
-    let id = model.strip_suffix("-1m").unwrap_or(model);
-    if id.contains(|c: char| c.is_ascii_digit()) && !id.starts_with("claude-") {
-        return (provider, format!("{provider}/claude-{id}"));
-    }
-    (provider, format!("{provider}/{id}"))
+    let (id, one_m) = model
+        .strip_suffix("-1m")
+        .map_or((model, false), |id| (id, true));
+    let model = if id.contains(|c: char| c.is_ascii_digit()) && !id.starts_with("claude-") {
+        format!("{provider}/claude-{id}")
+    } else {
+        format!("{provider}/{id}")
+    };
+    let one_m = one_m && recur_provider_claude::flags::selectable_context(&model);
+    (provider, model, one_m)
 }
 
 /// Projects Conductor's rows through the live turn path: user rows are the
@@ -175,10 +198,11 @@ fn replay(
     session_id: &str,
     model: &str,
     provider: &str,
-    rows: &[(String, String)],
+    rows: &[(String, String, i64)],
 ) {
     let mut m = SessionMirror::new(store, session_id, model, provider);
-    for (role, content) in rows {
+    for (role, content, at) in rows {
+        m.created_at = *at;
         if role == "user" {
             m.finish();
             m.record_user("", content, "", &[]);
@@ -275,6 +299,11 @@ impl AppServices {
                             out.chats_imported += 1;
                         }
                     }
+                    let newest = sessions.iter().flat_map(|s| &s.rows).map(|r| r.2).max();
+                    if let Some(at) = newest.filter(|&at| at > 0) {
+                        self.store()
+                            .update_workspace(&ws.id, |w| w.last_activity_at = at);
+                    }
                 }
                 Err(e) => out.skipped.push(format!("{} chats: {e}", cw.title)),
             }
@@ -320,7 +349,7 @@ impl AppServices {
     /// A new pair tab holding the session's transcript, marked so its first
     /// send injects it.
     async fn import_chat(&self, workspace_id: &str, s: &ConductorSession) -> bool {
-        let (provider, model) = model_ref(&s.agent_type, &s.model);
+        let (provider, model, one_m) = model_ref(&s.agent_type, &s.model);
         let eng = &self.engine;
         let code = eng.next_pair_chat_code(workspace_id);
         eng.ensure_pair_agent(workspace_id, &code, &model);
@@ -339,6 +368,11 @@ impl AppServices {
             title: s.title.clone(),
             model: model.clone(),
             fork_inject: true,
+            flags: if one_m {
+                [("context".to_owned(), "1m".to_owned())].into()
+            } else {
+                Default::default()
+            },
             ..AgentConfig::default()
         };
         let Ok(json) = serde_json::to_string(&cfg) else {
@@ -367,16 +401,35 @@ mod tests {
 
     #[test]
     fn maps_conductor_models() {
-        for (agent, model, want) in [
-            ("claude", "opus-4-8-1m", "claude-code/claude-opus-4-8"),
-            ("claude", "opus-1m", "claude-code/opus"),
-            ("claude", "fable-5", "claude-code/claude-fable-5"),
-            ("claude", "sonnet", "claude-code/sonnet"),
-            ("codex", "gpt-5.5", "codex/gpt-5.5"),
-            ("cursor", "composer-2.5", "cursor/composer-2.5"),
-            ("claude", "", ""),
+        for (agent, model, want, one_m) in [
+            (
+                "claude",
+                "opus-4-8-1m",
+                "claude-code/claude-opus-4-8",
+                false,
+            ),
+            ("claude", "opus-4-6-1m", "claude-code/claude-opus-4-6", true),
+            (
+                "claude",
+                "sonnet-4-6-1m",
+                "claude-code/claude-sonnet-4-6",
+                true,
+            ),
+            (
+                "claude",
+                "sonnet-4-6",
+                "claude-code/claude-sonnet-4-6",
+                false,
+            ),
+            ("claude", "opus-1m", "claude-code/opus", false),
+            ("claude", "fable-5", "claude-code/claude-fable-5", false),
+            ("claude", "sonnet", "claude-code/sonnet", false),
+            ("codex", "gpt-5.5", "codex/gpt-5.5", false),
+            ("cursor", "composer-2.5", "cursor/composer-2.5", false),
+            ("claude", "", "", false),
         ] {
-            assert_eq!(model_ref(agent, model).1, want, "{agent} {model}");
+            let (_, got, got_1m) = model_ref(agent, model);
+            assert_eq!((got.as_str(), got_1m), (want, one_m), "{agent} {model}");
         }
     }
 }

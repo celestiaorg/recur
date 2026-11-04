@@ -89,8 +89,14 @@ fn conductor_db(path: &Path, repo: &Path) {
     ];
     for (i, (role, content, cancelled)) in rows.iter().enumerate() {
         c.execute(
-            "INSERT INTO session_messages VALUES (?1, 's1', ?2, ?3, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', ?4)",
-            rusqlite::params![format!("m{i}"), role, content, cancelled],
+            "INSERT INTO session_messages VALUES (?1, 's1', ?2, ?3, ?4, ?4, ?5)",
+            rusqlite::params![
+                format!("m{i}"),
+                role,
+                content,
+                format!("2026-01-01 00:00:0{i}"),
+                cancelled
+            ],
         )
         .unwrap();
     }
@@ -195,6 +201,13 @@ async fn imports_live_conductor_workspaces_once() {
         msgs.iter().map(|m| m.role.as_str()).collect::<Vec<_>>(),
         ["user", "assistant", "user", "assistant"]
     );
+    let jan1 = 1_767_225_600_000;
+    assert_eq!(
+        (msgs[0].created_at, msgs[1].created_at),
+        (jan1, jan1 + 3_000)
+    );
+    let ws = store.workspace(&ws.id).unwrap();
+    assert_eq!(ws.last_activity_at, jan1 + 6_000);
     let preamble = fork_history_preamble(&msgs, None, "");
     for want in ["hello there", "Reading it", "file body", "All done"] {
         assert!(preamble.contains(want), "{want} missing from {preamble}");

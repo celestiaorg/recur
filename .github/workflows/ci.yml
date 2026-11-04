@@ -1,7 +1,8 @@
 name: CI
 
-# Branch protection requires only the "CI success" job. To add a check, add a
-# job here and list it under ci-success.needs; no GitHub settings change.
+# Branch protection requires the "CI success" job (and cla.yml's "cla"). To add
+# a check, add a job here and list it under ci-success.needs; no GitHub
+# settings change. merge_group runs it again on the merge queue's commit.
 #
 # Tools (node, pnpm, nfpm, dmgbuild) come from mise.toml through mise-action;
 # Rust from rust-toolchain.toml. mise routes cargo through mbx;
@@ -13,6 +14,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 concurrency:

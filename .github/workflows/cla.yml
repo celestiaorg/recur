@@ -4,11 +4,15 @@ name: CLA
 # records signatures on the cla-signatures branch (kept off main so branch
 # protection does not block the bot's commits). pull_request_target gives the
 # action a write token; it never checks out PR code.
+#
+# Branch protection requires "cla". On merge_group the job is skipped, which
+# passes the required check in the merge queue: the PR already passed it.
 on:
   issue_comment:
     types: [created]
   pull_request_target:
     types: [opened, closed, synchronize]
+  merge_group:
 
 permissions:
   actions: write

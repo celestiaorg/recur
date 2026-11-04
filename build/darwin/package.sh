@@ -48,7 +48,7 @@ cp "$ROOT/build/darwin/icons.icns" "$APP/Contents/Resources/"
 if [ -f "$ROOT/build/darwin/Assets.car" ]; then cp "$ROOT/build/darwin/Assets.car" "$APP/Contents/Resources/"; fi
 cp "$ROOT/build/darwin/Info.plist" "$APP/Contents/"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
-plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
+plutil -replace CFBundleVersion -string "${VERSION%%+*}" "$APP/Contents/Info.plist"
 
 # Signed inside-out: the CLI, then the bundle (which seals the app binary).
 if [ -n "${SIGN_IDENTITY:-}" ]; then

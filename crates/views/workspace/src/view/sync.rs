@@ -40,6 +40,7 @@ pub(crate) struct Marks {
     flush_for: Option<(bool, Vec<(String, usize)>)>,
     obs_props: Option<ObservatoryProps>,
     reset_hook: Option<bool>,
+    pr_dock_for: Option<String>,
 }
 
 /// `.obs-left, .obs-side { font-size: 12px }`: the dock's inherited font size.
@@ -389,15 +390,22 @@ impl WorkspaceView {
             }
         }
 
-        // PR detail's dock is this chat: a loop workspace talks on its conductor.
+        // PR detail's dock is this chat: a loop workspace opens on its conductor, once per PR
+        // entry so the user (or a prompt action) can still pick another tab.
         {
             let s = self.state.read(cx);
-            let pr_dock =
-                s.view == recur_view_core::ViewName::PrDetail && !s.selected_pr_id.is_empty();
-            if pr_dock && self.has_run(cx) {
+            let pr = (s.view == recur_view_core::ViewName::PrDetail)
+                .then(|| s.selected_pr_id.clone())
+                .filter(|p| !p.is_empty() && self.shell_active);
+            if pr.is_none() {
+                self.sync_marks.pr_dock_for = None;
+            } else if self.sync_marks.pr_dock_for != pr && self.has_run(cx) {
                 let owner = self.conductor_chat_code(cx);
-                if !owner.is_empty() && owner != code {
-                    self.select_chat_tab(&owner, cx);
+                if !owner.is_empty() {
+                    self.sync_marks.pr_dock_for = pr;
+                    if owner != code {
+                        self.select_chat_tab(&owner, cx);
+                    }
                 }
             }
         }

@@ -8570,6 +8570,7 @@ name = "recur-provider-claude"
 version = "0.0.0"
 dependencies = [
  "async-trait",
+ "libc",
  "parking_lot",
  "pretty_assertions",
  "recur-agent",

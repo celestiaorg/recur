@@ -100,7 +100,7 @@ async fn signal_session(sid: u32, sig: Option<Signal>) -> usize {
         .split_whitespace()
         .filter_map(|p| p.parse().ok().and_then(Pid::from_raw))
     {
-        if rustix::process::getsid(Some(pid)) == Ok(sid) {
+        if session_of(pid) == Some(sid) {
             if let Some(sig) = sig {
                 let _ = kill_process(pid, sig);
             }
@@ -108,6 +108,14 @@ async fn signal_session(sid: u32, sig: Option<Signal>) -> usize {
         }
     }
     n
+}
+
+/// rustix's getsid assumes a nonzero sid, but Linux kernel threads (listed by `ps`) report 0.
+fn session_of(pid: Pid) -> Option<Pid> {
+    #[allow(unsafe_code)]
+    // SAFETY: getsid only reads the process table.
+    let sid = unsafe { libc::getsid(pid.as_raw_nonzero().get()) };
+    Pid::from_raw(sid.max(0))
 }
 
 pub fn signal_group(pid: u32, sig: Signal) {

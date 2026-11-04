@@ -28,6 +28,13 @@ pub trait ProjectsService: Send + Sync {
 
     async fn get_project(&self, id: &str) -> Result<Project>;
 
+    /// ImportConductor adopts every live Conductor workspace whose worktree
+    /// still exists (in place, no setup), adding projects for unknown repos,
+    /// and copies each visible session into a chat tab whose first send
+    /// carries the transcript. Worktrees already in Recur are skipped, so a
+    /// rerun imports nothing twice. No Conductor database: an empty report.
+    async fn import_conductor(&self) -> Result<crate::api::ConductorImport>;
+
     /// ListBranches returns base-branch picker choices for a project repo: remote-
     /// tracking refs first (one group per remote name), then local heads under
     /// "Local". Within each group tips are newest-first; the project's configured

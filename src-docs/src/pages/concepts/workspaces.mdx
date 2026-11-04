@@ -33,6 +33,16 @@ A **workspace** is the unit of work in Recur: a checkout plus the UI around it (
 - **Open In…** (`⌘O`) opens the worktree in Finder, Terminal, and other apps
 - To keep a project out of the sidebar, turn on **Hide from sidebar** in its project settings. The eye button in the Projects header shows hidden projects again
 
+## Import from Conductor
+
+On a Mac with [Conductor](https://conductor.build) data, **File → Import Conductor Workspaces…** brings its workspaces into Recur:
+
+- Every workspace Conductor has not archived, whose worktree is still on disk, becomes a Recur workspace. Archived ones are skipped
+- Worktrees stay where they are, on the same branch. Recur does not move them, re-create them, or run the project's setup command
+- A repository Recur does not know yet is added as a project
+- Each visible Conductor chat becomes a chat tab with its transcript. The first message you send starts a new agent session that receives the earlier conversation, because Conductor's own agent sessions cannot be resumed
+- Running the import again skips worktrees already in Recur
+
 ## Editor
 
 - **Quick Open** (`⌘P`) finds files; **Go to Symbol** (`⌘⇧O`) jumps to a symbol

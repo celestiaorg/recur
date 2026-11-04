@@ -1797,6 +1797,10 @@ fake_services! {
                 .map_or_else(unanswered, Ok)
         }
 
+        async fn import_conductor(&self) -> Result<ConductorImport> {
+            Ok(ConductorImport::default())
+        }
+
         async fn list_branches(&self, project_id: &str) -> Result<Vec<BranchChoice>> {
             Ok(self.with(|s| {
                 let base = s

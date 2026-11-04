@@ -46,6 +46,7 @@ impl Shell {
             OpenPath,
             NewWorkspace,
             NewBlankWorkspace,
+            ImportConductor,
             PrevEditorTheme,
             NextEditorTheme,
             ToggleSidebar,
@@ -189,6 +190,7 @@ impl Shell {
             "open-path" => self.pick_and_open_path(cx),
             "new-loop" => state.update(cx, |s, cx| s.open_new_task("", None, cx)),
             "new-blank-workspace" => crate::new_workspace::create_blank_workspace(&state, cx),
+            "import-conductor" => import_conductor(&state, cx),
             "palette" => state.update(cx, |s, cx| s.toggle_go_palette(cx)),
             "run-command" => state.update(cx, |s, cx| s.toggle_commands_palette(cx)),
             "open-in" => state.update(cx, |s, cx| {
@@ -364,3 +366,48 @@ fn show_about_panel() {
 
 #[cfg(not(target_os = "macos"))]
 fn show_about_panel() {}
+
+/// File > Import Conductor Workspaces…: runs the import, then reloads the sidebar's projects and
+/// workspaces and toasts the counts.
+fn import_conductor(state: &gpui_kit::Entity<recur_view_core::AppState>, cx: &mut gpui_kit::App) {
+    let services = state.read(cx).services().clone();
+    let state = state.clone();
+    cx.spawn(async move |cx| {
+        let Some(r) = recur_view_core::call(
+            cx,
+            services.projects.import_conductor(),
+            "Could not import from Conductor",
+        )
+        .await
+        else {
+            return;
+        };
+        let list = services.workspaces.list_workspaces().await;
+        state.update(cx, |s, cx| {
+            s.refresh_projects(cx).detach();
+            if let Ok(list) = list {
+                s.set_workspaces_from_list(list, cx);
+            }
+        });
+        let mut text = format!(
+            "Imported {} workspace{} and {} chat{} from Conductor",
+            r.workspaces_imported,
+            if r.workspaces_imported == 1 { "" } else { "s" },
+            r.chats_imported,
+            if r.chats_imported == 1 { "" } else { "s" },
+        );
+        if r.projects_added > 0 {
+            text.push_str(&format!(", added {} project(s)", r.projects_added));
+        }
+        if !r.skipped.is_empty() {
+            text.push_str(&format!(", skipped {}", r.skipped.len()));
+        }
+        let kind = if r.workspaces_imported > 0 {
+            ToastKind::Success
+        } else {
+            ToastKind::Info
+        };
+        cx.update(|cx| recur_view_core::toast(kind, text, cx));
+    })
+    .detach();
+}

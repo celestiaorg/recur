@@ -111,7 +111,9 @@ sudo apt install ./Recur-<version>-linux-amd64.deb
 sudo dnf install ./Recur-<version>-linux-amd64.rpm
 ```
 
-Elsewhere, install GTK 4, WebKitGTK 6.0 and GStreamer, then run `recur` from `Recur-<version>-linux-amd64.tar.gz`. Each release lists `SHA256SUMS` for its downloads, and the packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
+On other distributions (Arch, openSUSE, and so on), install GTK 4, WebKitGTK 6.0 and GStreamer, then run `recur` from `Recur-<version>-linux-amd64.tar.gz`. It links `recur` into `~/.local/bin` and adds an app-menu entry on first launch. To tune a build for your own CPU, see [Building from source](#building-from-source).
+
+Each release lists `SHA256SUMS` for its downloads, and the packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc) (fingerprint `1643 D8F4 CED9 E15A 8779 8A9F 3CDB 8273 A037 2B19`).
 
 ## Command line
 
@@ -127,13 +129,14 @@ recur bundles test ./bundles/JSON
 
 ## Building from source
 
-Prerequisites:
+You do not need this to use Recur: [Installing](#installing) covers the prebuilt packages. Build from source to develop Recur or to compile for your own machine.
 
-- [rustup](https://rustup.rs) (the toolchain is pinned in `rust-toolchain.toml`)
-- [mise](https://mise.jdx.dev), then `mise install` for node, pnpm, nfpm and dmgbuild
-- macOS: Xcode 26+ (for `actool`); Linux: the GTK 4, WebKitGTK 6.0, GStreamer, xkbcommon and Vulkan development packages (see `.github/workflows/ci.yml`)
+Builds go through [mise](https://mise.jdx.dev), which installs the pinned Rust toolchain and the tools the tasks use (node, pnpm, nfpm, cargo-about), so release builds and local builds run the same steps. Run `mise install` once, then everything is `mise run <task>` from the repository root (`mise tasks` lists them).
 
-All tasks run through `mise run` from the repository root (`mise tasks` lists them).
+Also needed:
+
+- macOS: Xcode 26+ (for `actool`)
+- Linux: the GTK 4, WebKitGTK 6.0, GStreamer, xkbcommon and Vulkan development packages. `build/linux/deps.sh` installs them on Debian/Ubuntu, Fedora/RHEL and Arch.
 
 ```bash
 mise run dev             # run the desktop app (cargo run -p recur-desktop)
@@ -141,6 +144,14 @@ mise run build           # build the app and CLI into target/
 mise run macos:package   # target/package/Recur.app, its DMG and updater zip (macOS)
 mise run linux:package   # target/package/recur-linux-<arch>.tar.gz, .deb and .rpm
 ```
+
+### Install a native build on Linux
+
+```bash
+mise run linux:install   # or build/linux/install.sh
+```
+
+This installs the development packages (skip with `build/linux/install.sh --no-deps`), runs `linux:build` with `-C target-cpu=native` (`RECUR_NATIVE=0` turns that off) and installs `recur` into `~/.local` (`RECUR_PREFIX` changes it). A native build may not run on other CPUs.
 
 On a Mac, the `linux:*` tasks build in Docker (or OrbStack), and `mise run linux:run` opens the Linux app in a browser-based desktop.
 

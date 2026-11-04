@@ -31,6 +31,7 @@ gpui_kit::actions!(
         OpenPath,
         NewWorkspace,
         NewBlankWorkspace,
+        ImportConductor,
         NewTab,
         Save,
         OpenIn,
@@ -107,6 +108,7 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
         OpenPath => "open-path",
         NewWorkspace => "new-loop",
         NewBlankWorkspace => "new-blank-workspace",
+        ImportConductor => "import-conductor",
         NewTab => "new-tab",
         Save => "save",
         OpenIn => "open-in",
@@ -419,6 +421,7 @@ pub fn app_menus(
     themes: Option<&MenuThemes>,
     workspaces: &[MenuGroup],
     updates: bool,
+    conductor: bool,
     cx: &App,
 ) -> Vec<Menu> {
     let mac = cfg!(target_os = "macos");
@@ -453,12 +456,20 @@ pub fn app_menus(
         contextual("New Tab", NewTab, state.new_tab),
         contextual("Save", Save, state.save),
         MenuItem::separator(),
+    ];
+    if conductor {
+        file.extend([
+            item("Import Conductor Workspaces…", ImportConductor),
+            MenuItem::separator(),
+        ]);
+    }
+    file.extend([
         contextual("Open In…", OpenIn, state.open_in),
         contextual("Copy Path", CopyPath, state.copy_path),
         MenuItem::separator(),
         // Contextual close: terminal / agent / file tab. ⌘W is the tab-close chord.
         contextual("Close Tab", CloseTab, state.close_tab),
-    ];
+    ]);
     if !mac {
         // Not the Quit role: it binds Ctrl+Q, the shell's XON. Close the window to quit.
         file.extend([MenuItem::separator(), item("Quit", QuitApp)]);

@@ -13,6 +13,7 @@ mod assets;
 mod bridge;
 pub(crate) mod bundle;
 mod code;
+mod conductor;
 mod editor_session;
 mod issues;
 mod lsp;

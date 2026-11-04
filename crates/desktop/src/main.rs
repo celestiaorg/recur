@@ -299,6 +299,7 @@ fn main() {
             registry,
             shell: recur_app::ShellOptions {
                 updates: updater.is_some(),
+                conductor_import: real.as_ref().is_some_and(|s| s.conductor_db().is_some()),
                 native_title_bar,
                 on_window_active: real.clone().map(|svc| {
                     Rc::new(move |active: bool| svc.set_app_focused(active)) as Rc<dyn Fn(bool)>

@@ -1624,6 +1624,22 @@ async fn branch_rules_classic_protection() {
 }
 
 #[tokio::test]
+async fn branch_rules_bypassable_pr_rule() {
+    let (_d, repo) = repo_with_remote("origin", "acme/app");
+    let fake = FakeGh::new(
+        "#!/bin/sh\npath=''\nfor a in \"$@\"; do case \"$a\" in repos/*) path=\"$a\" ;; esac; done\ncase \"$path\" in\n  repos/acme/*/rules/branches/main) echo '[[{\"type\":\"deletion\",\"ruleset_id\":5},{\"type\":\"pull_request\",\"ruleset_id\":5}]]'; exit 0 ;;\n  repos/acme/app/rulesets/5) echo '{\"current_user_can_bypass\":\"always\"}'; exit 0 ;;\n  repos/acme/lib/rulesets/5) echo '{\"current_user_can_bypass\":\"pull_requests_only\"}'; exit 0 ;;\n  repos/acme/*/branches/main/protection) echo 'gh: Not Found (HTTP 404)' >&2; exit 1 ;;\nesac\necho \"unexpected gh $*\" >&2\nexit 1\n",
+    );
+    assert_eq!(
+        fake.gh.branch_requires_pr(&repo, "acme/app", "main").await,
+        Some(false)
+    );
+    assert_eq!(
+        fake.gh.branch_requires_pr(&repo, "acme/lib", "main").await,
+        Some(true)
+    );
+}
+
+#[tokio::test]
 async fn mention_search_passes_string_fields() {
     let fake = FakeGh::new(
         "#!/bin/sh\nprintf '%s\\0' \"$@\" >> \"$0.args\"\necho '{\"data\":{\"repository\":{\"mentionableUsers\":{\"nodes\":[]}}}}'\n",

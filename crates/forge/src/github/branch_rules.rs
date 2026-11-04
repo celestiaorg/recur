@@ -29,9 +29,9 @@ pub(crate) fn path_escape(s: &str) -> String {
     out
 }
 
-/// A `pull_request` rule in the branch's rulesets. `None` when the answer
-/// does not parse.
-pub(crate) fn rules_require_pr(raw: &str) -> Option<bool> {
+/// The rulesets behind the branch's `pull_request` rules (`None` for a rule
+/// without an id). `None` when the answer does not parse.
+pub(crate) fn pr_rulesets(raw: &str) -> Option<Vec<Option<u64>>> {
     let mut raw = raw.trim();
     if let Some(i) = raw.find('[')
         && let Some(j) = raw.rfind(']')
@@ -47,13 +47,27 @@ pub(crate) fn rules_require_pr(raw: &str) -> Option<bool> {
     struct Rule {
         #[serde(rename = "type")]
         kind: String,
+        ruleset_id: Option<u64>,
     }
     let rules: Vec<Rule> = decode(raw).ok()?;
     Some(
         rules
-            .iter()
-            .any(|r| r.kind.trim().eq_ignore_ascii_case("pull_request")),
+            .into_iter()
+            .filter(|r| r.kind.trim().eq_ignore_ascii_case("pull_request"))
+            .map(|r| r.ruleset_id)
+            .collect(),
     )
+}
+
+/// The viewer can push past the ruleset at any time, not only through a PR.
+pub(crate) fn ruleset_bypass_always(raw: &str) -> bool {
+    #[derive(Default, Deserialize)]
+    #[serde(default)]
+    struct Ruleset {
+        current_user_can_bypass: String,
+    }
+    decode::<Ruleset>(raw.trim())
+        .is_ok_and(|r| matches!(r.current_user_can_bypass.as_str(), "always" | "exempt"))
 }
 
 /// Classic protection with required reviews. A 404 means unprotected.
@@ -81,16 +95,10 @@ pub(crate) fn http_not_found(err: &str) -> bool {
 
 /// Required when either source says so; not required only when both answered.
 pub(crate) fn requires_pr_from_apis(
-    rules_raw: &str,
-    rules_err: Option<&CmdError>,
+    rules: Option<bool>,
     prot_raw: &str,
     prot_err: Option<&CmdError>,
 ) -> Option<bool> {
-    let rules = if rules_err.is_none() {
-        rules_require_pr(&flatten_json_array_pages(rules_raw))
-    } else {
-        None
-    };
     if rules == Some(true) {
         return Some(true);
     }
@@ -112,17 +120,18 @@ impl GitHub {
         let (owner, name) = split_owner_repo(owner_repo)?;
         let escaped = path_escape(branch);
         let rules_path = format!("repos/{owner}/{name}/rules/branches/{escaped}");
-        let rules = self
+        let rules = match self
             .gh
             .run(repo, &["api", "--paginate", "--slurp", &rules_path])
-            .await;
-        let (rules_out, rules_err) = match rules {
-            Ok(out) => (out, None),
-            Err(e) => (e.out.clone(), Some(e)),
-        };
-        if rules_err.is_none()
-            && rules_require_pr(&flatten_json_array_pages(&rules_out)) == Some(true)
+            .await
         {
+            Ok(out) => match pr_rulesets(&flatten_json_array_pages(&out)) {
+                Some(ids) => Some(!self.bypasses_all(repo, &owner, &name, &ids).await),
+                None => None,
+            },
+            Err(_) => None,
+        };
+        if rules == Some(true) {
             return Some(true);
         }
         let prot_path = format!("repos/{owner}/{name}/branches/{escaped}/protection");
@@ -130,7 +139,27 @@ impl GitHub {
             Ok(out) => (out, None),
             Err(e) => (e.out.clone(), Some(e)),
         };
-        requires_pr_from_apis(&rules_out, rules_err.as_ref(), &prot_out, prot_err.as_ref())
+        requires_pr_from_apis(rules, &prot_out, prot_err.as_ref())
+    }
+
+    /// Every ruleset lets the viewer bypass it; an id-less rule or a failed
+    /// lookup counts as binding.
+    async fn bypasses_all(
+        &self,
+        repo: &Path,
+        owner: &str,
+        name: &str,
+        ids: &[Option<u64>],
+    ) -> bool {
+        for id in ids {
+            let Some(id) = id else { return false };
+            let path = format!("repos/{owner}/{name}/rulesets/{id}");
+            match self.gh.run(repo, &["api", &path]).await {
+                Ok(out) if ruleset_bypass_always(&out) => {}
+                _ => return false,
+            }
+        }
+        true
     }
 }
 
@@ -148,23 +177,22 @@ mod tests {
 
     #[test]
     fn rules_require_pr_cases() {
+        let ids = |raw: &str| pr_rulesets(raw).map(|v| v.len());
         assert_eq!(
-            rules_require_pr(
-                r#"[{"type":"pull_request","parameters":{"required_approving_review_count":1}}]"#
-            ),
-            Some(true)
+            ids(r#"[{"type":"pull_request","parameters":{"required_approving_review_count":1}}]"#),
+            Some(1)
         );
         assert_eq!(
-            rules_require_pr(r#"[{"type":"deletion"},{"type":"non_fast_forward"}]"#),
-            Some(false)
+            ids(r#"[{"type":"deletion"},{"type":"non_fast_forward"}]"#),
+            Some(0)
         );
-        assert_eq!(rules_require_pr("[]"), Some(false));
-        assert_eq!(rules_require_pr("not json"), None);
+        assert_eq!(ids("[]"), Some(0));
+        assert_eq!(ids("not json"), None);
         assert_eq!(
-            rules_require_pr(&flatten_json_array_pages(
+            ids(&flatten_json_array_pages(
                 r#"[[{"type":"deletion"}],[{"type":"pull_request"}]]"#
             )),
-            Some(true)
+            Some(1)
         );
     }
 
@@ -199,26 +227,45 @@ mod tests {
     fn from_apis_cases() {
         let not_found = err("gh: Not Found (HTTP 404)");
         assert_eq!(
-            requires_pr_from_apis("[]", None, "", Some(&not_found)),
+            requires_pr_from_apis(Some(false), "", Some(&not_found)),
             Some(false)
         );
         assert_eq!(
-            requires_pr_from_apis("[]", None, r#"{"required_pull_request_reviews":{}}"#, None),
+            requires_pr_from_apis(Some(false), r#"{"required_pull_request_reviews":{}}"#, None),
             Some(true)
         );
         assert_eq!(
-            requires_pr_from_apis(
-                r#"[[{"type":"deletion"}],[{"type":"pull_request"}]]"#,
-                None,
-                "",
-                Some(&not_found)
-            ),
+            requires_pr_from_apis(Some(true), "", Some(&not_found)),
             Some(true)
         );
         assert_eq!(
-            requires_pr_from_apis("[]", None, "", Some(&err("timeout"))),
+            requires_pr_from_apis(Some(false), "", Some(&err("timeout"))),
             None
         );
+        assert_eq!(requires_pr_from_apis(None, "", Some(&not_found)), None);
+    }
+
+    #[test]
+    fn pr_rulesets_and_bypass() {
+        assert_eq!(
+            pr_rulesets(
+                r#"[{"type":"deletion","ruleset_id":1},{"type":"pull_request","ruleset_id":7},{"type":"pull_request"}]"#
+            ),
+            Some(vec![Some(7), None])
+        );
+        assert!(ruleset_bypass_always(
+            r#"{"name":"main","current_user_can_bypass":"always"}"#
+        ));
+        assert!(ruleset_bypass_always(
+            r#"{"current_user_can_bypass":"exempt"}"#
+        ));
+        assert!(!ruleset_bypass_always(
+            r#"{"current_user_can_bypass":"pull_requests_only"}"#
+        ));
+        assert!(!ruleset_bypass_always(
+            r#"{"current_user_can_bypass":"never"}"#
+        ));
+        assert!(!ruleset_bypass_always("gh: Not Found (HTTP 404)"));
     }
 
     #[test]

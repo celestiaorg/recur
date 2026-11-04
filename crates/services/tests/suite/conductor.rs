@@ -71,6 +71,11 @@ fn conductor_db(path: &Path, repo: &Path, kept: &Path) {
         ("user", "never mind", Some("2026-01-01T00:00:01Z")),
         (
             "assistant",
+            r#"{"type":"system","subtype":"session_state_changed","session_id":"old-claude"}"#,
+            None,
+        ),
+        (
+            "assistant",
             r#"{"type":"system","subtype":"init","session_id":"old-claude","model":"opus","mcp_servers":[]}"#,
             None,
         ),
@@ -256,15 +261,16 @@ async fn imports_live_conductor_workspaces_once() {
     let jan1 = 1_767_225_600_000;
     assert_eq!(
         (msgs[0].created_at, msgs[1].created_at),
-        (jan1, jan1 + 3_000)
+        (jan1, jan1 + 4_000)
     );
     let ws = store.workspace(&ws.id).unwrap();
-    assert_eq!(ws.last_activity_at, jan1 + 6_000);
+    assert_eq!(ws.last_activity_at, jan1 + 7_000);
     let preamble = fork_history_preamble(&msgs, None, "");
     for want in ["hello there", "Reading it", "file body", "All done"] {
         assert!(preamble.contains(want), "{want} missing from {preamble}");
     }
     assert!(!preamble.contains("never mind"));
+    assert!(!preamble.contains("session_state_changed"));
 
     let again = s.projects.import_conductor().await.unwrap();
     assert_eq!((again.projects_added, again.workspaces_imported), (0, 0));

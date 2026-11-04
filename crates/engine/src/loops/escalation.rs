@@ -196,23 +196,28 @@ impl Walk {
                 false
             }
             _ => {
-                // Agent MCP: consume so a later escalate cannot steal it;
-                // Applied stays false until the steer lands in a prompt.
+                // Agent MCP: consume so a later escalate cannot steal it.
                 let ans = self.take_answer();
-                let mut guidance = ans.free_text.trim();
-                if guidance.is_empty() {
-                    guidance = ans.resolved.trim();
-                }
-                if guidance.is_empty() {
-                    guidance = ans.choice.trim();
-                }
-                if guidance.is_empty() {
-                    self.eng.store.mark_escalation_applied(&self.id);
-                } else {
-                    self.h.queue_steer(guidance);
-                }
+                self.steer_agent_answer(&ans);
                 false
             }
+        }
+    }
+
+    /// Hands an agent escalation's answer to the next specialist prompt.
+    /// Applied stays false until the steer lands in a prompt.
+    pub(crate) fn steer_agent_answer(&self, ans: &EscalationAnswer) {
+        let mut guidance = ans.free_text.trim();
+        if guidance.is_empty() {
+            guidance = ans.resolved.trim();
+        }
+        if guidance.is_empty() {
+            guidance = ans.choice.trim();
+        }
+        if guidance.is_empty() {
+            self.eng.store.mark_escalation_applied(&self.id);
+        } else {
+            self.h.queue_steer(guidance);
         }
     }
 

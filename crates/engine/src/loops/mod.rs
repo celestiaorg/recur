@@ -537,11 +537,11 @@ impl Walk {
     pub(crate) async fn checkpoint(&mut self, cancel: &CancellationToken) -> bool {
         self.h.drain_commands();
         if let Some(req) = self.h.take_pending_escalation() {
-            let (_, keep_going) = self.escalate(cancel, req, escalation::ESC_KIND_AGENT).await;
+            let (ans, keep_going) = self.escalate(cancel, req, escalation::ESC_KIND_AGENT).await;
             if !keep_going {
                 return false;
             }
-            self.eng.store.mark_escalation_applied(&self.id);
+            self.steer_agent_answer(&ans);
         }
         if !self.h.is_paused() {
             return !self.h.is_stopped() && !cancel.is_cancelled();

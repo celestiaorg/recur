@@ -2,7 +2,7 @@
 //! markers, code fences and their copy controls, blockquotes, rules, tables, images and
 //! Mermaid slots.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::rc::Rc;
@@ -11,8 +11,8 @@ use std::sync::Arc;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, Bounds, Corners, Div, ElementId, Hsla, InteractiveElement, IntoElement,
-    ParentElement, Pixels, RenderImage, StatefulInteractiveElement, Styled, Window, canvas, div,
-    point, px, relative,
+    ParentElement, Pixels, RenderImage, ScrollHandle, StatefulInteractiveElement, Styled, Window,
+    canvas, div, point, px, relative,
 };
 use recur_ui::fonts::Family;
 use recur_ui::style::card;
@@ -71,6 +71,8 @@ pub struct Env<'a> {
     pub enhance: bool,
     pub hover_fence: Option<usize>,
     pub copied: &'a HashSet<usize>,
+    /// Each scroller's offset, by its element id, kept while it is off screen.
+    pub scrolls: &'a RefCell<HashMap<(&'static str, usize), ScrollHandle>>,
     pub hover_link: Option<(usize, usize)>,
     /// Find highlights per text block: content byte ranges, the current one flagged.
     pub highlights: &'a HashMap<usize, Vec<(Range<usize>, bool)>>,
@@ -179,6 +181,11 @@ fn is_block(e: &El) -> bool {
 }
 
 impl Build<'_, '_> {
+    fn scroll(&self, kind: &'static str, ix: usize) -> ScrollHandle {
+        let mut scrolls = self.env.scrolls.borrow_mut();
+        scrolls.entry((kind, ix)).or_default().clone()
+    }
+
     fn text_id(&mut self) -> ElementId {
         self.n.text += 1;
         ElementId::from(("md-t", self.n.text))
@@ -837,6 +844,7 @@ impl Build<'_, '_> {
         self.n.block += 1;
         let scroller = div()
             .id(("md-pre", self.n.block))
+            .track_scroll(&self.scroll("md-pre", self.n.block))
             .restrict_scroll_to_axis()
             .map(|d| match sh.pre_max_height {
                 Some(h) => d.max_h(px(h)).overflow_scroll(),
@@ -1021,6 +1029,7 @@ impl Build<'_, '_> {
         let el = card(t.pane, border, 6.).child(
             div()
                 .id(("md-mermaid", self.n.block))
+                .track_scroll(&self.scroll("md-mermaid", self.n.block))
                 .overflow_x_scroll()
                 .restrict_scroll_to_axis()
                 .flex()
@@ -1229,6 +1238,7 @@ impl Build<'_, '_> {
         // a whole device pixel to survive snapping.
         let outer = 0.5f32.max(1. / self.window.scale_factor());
         let table = div()
+            .debug_selector(|| "md-table-content".into())
             .relative()
             .flex_none()
             .flex()
@@ -1246,6 +1256,7 @@ impl Build<'_, '_> {
         self.n.table += 1;
         let el = div()
             .id(("md-table", self.n.table))
+            .track_scroll(&self.scroll("md-table", self.n.table))
             .overflow_x_scroll()
             .restrict_scroll_to_axis()
             .flex()

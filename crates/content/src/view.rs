@@ -50,6 +50,7 @@ pub struct MarkdownView {
     fences: Vec<String>,
     hover_fence: Option<usize>,
     copied: HashSet<usize>,
+    scrolls: RefCell<HashMap<(&'static str, usize), ScrollHandle>>,
     copy_timers: HashMap<usize, Task<()>>,
     images: HashMap<String, ImageSlot>,
     loading: HashMap<String, Task<()>>,
@@ -214,6 +215,7 @@ impl MarkdownView {
             fences: Vec::new(),
             hover_fence: None,
             copied: HashSet::new(),
+            scrolls: RefCell::default(),
             copy_timers: HashMap::new(),
             images: HashMap::new(),
             loading: HashMap::new(),
@@ -633,6 +635,7 @@ impl MarkdownView {
             enhance: self.enhance,
             hover_fence: self.hover_fence,
             copied: &self.copied,
+            scrolls: &self.scrolls,
             hover_link: self.hover_link,
             highlights: &self.highlights,
             focused_image: None,
@@ -988,6 +991,47 @@ mod tests {
         );
         let held = root.read_with(cx, |r, _| r.1.clone()).expect("scope");
         assert!(cx.update(|_, cx| held.read(cx).has_selection()));
+    }
+
+    /// A press on the text after a capped, scrollable fence selects that text, not the
+    /// fence's lines clipped beneath it.
+    #[gpui::test]
+    fn text_after_a_capped_fence_selects(cx: &mut gpui::TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            recur_ui::init(cx);
+        });
+        let lines: Vec<String> = (0..60).map(|i| format!("line {i}")).collect();
+        let md = format!("```\n{}\n```\n\nafter the fence", lines.join("\n"));
+        let (root, cx) = cx.add_window_view(|_, cx| {
+            Selecting(
+                cx.new(|cx| MarkdownView::new(md, MarkdownClass::ChatCanvas, false, cx)),
+                None,
+            )
+        });
+        cx.run_until_parked();
+        let after = cx.update(|_, cx| {
+            let v = root.read(cx).0.read(cx);
+            let texts = v.texts.borrow();
+            texts.last().and_then(|t| t.bounds.get()).expect("painted")
+        });
+        let p = after.origin + gpui_kit::point(px(20.), px(4.));
+        cx.simulate_event(gpui_kit::MouseDownEvent {
+            position: p,
+            button: gpui_kit::MouseButton::Left,
+            modifiers: gpui::Modifiers::none(),
+            click_count: 2,
+            first_mouse: false,
+        });
+        cx.simulate_event(gpui_kit::MouseUpEvent {
+            position: p,
+            button: gpui_kit::MouseButton::Left,
+            modifiers: gpui::Modifiers::none(),
+            click_count: 2,
+        });
+        let held = root.read_with(cx, |r, _| r.1.clone()).expect("scope");
+        let text = cx.update(|_, cx| recur_ui::selection::selected_text(&held, cx));
+        assert_eq!(text, "after");
     }
 
     /// Hit-testing and find rects come from the mirror, so its lines must be the ones the

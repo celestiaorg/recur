@@ -98,6 +98,10 @@ pub fn register(
         return;
     };
     let hitbox = window.insert_hitbox(bounds, HitboxBehavior::Normal);
+    // Hit-test and order by the visible part, so text clipped by a scroller (a capped code
+    // fence) does not claim presses over what follows it.
+    let visible = bounds.intersect(&window.content_mask().bounds);
+    let bounds = if visible.is_empty() { bounds } else { visible };
     let view = window.current_view();
     let stack = window.view_stack().to_vec();
     scope.update(cx, |s, _| {

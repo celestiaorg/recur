@@ -71,10 +71,41 @@ fn worktree_checkout(wt: &Path) -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
-/// Every workspace Conductor has not archived. A NULL path is Conductor's
-/// default layout under `~/conductor/workspaces`.
+/// Where Conductor put a workspace whose `workspace_path` is NULL, by the
+/// repo's `storage_version` (Conductor's own rule): 1 beside the checkout,
+/// 2 under its `.conductor`, else `<conductor_root_path>/workspaces/<repo>`.
+fn default_path(
+    version: i64,
+    checkout: &Path,
+    workspaces: &Path,
+    repo: &str,
+    dir: &str,
+) -> PathBuf {
+    match (version, dir) {
+        (1, ".") => checkout.join(".main"),
+        (1, _) => checkout.join(dir),
+        (2, ".") => checkout.to_path_buf(),
+        (2, _) => checkout.join(".conductor").join(dir),
+        _ => workspaces.join(repo).join(dir),
+    }
+}
+
+/// Every workspace Conductor has not archived.
 fn read_workspaces(db: &Path, home: &Path) -> rusqlite::Result<Vec<ConductorWorkspace>> {
     let c = open(db)?;
+    let root: String = c
+        .query_row(
+            "SELECT TRIM(value) FROM settings WHERE key = 'conductor_root_path'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or_default();
+    let workspaces = if root.is_empty() {
+        home.join("conductor")
+    } else {
+        PathBuf::from(root)
+    }
+    .join("workspaces");
     let mut st = c.prepare(
         "SELECT w.local_id, COALESCE(r.name, ''), COALESCE(r.root_path, ''),
                 COALESCE(r.default_branch, ''), COALESCE(w.directory_name, ''),
@@ -84,7 +115,8 @@ fn read_workspaces(db: &Path, home: &Path) -> rusqlite::Result<Vec<ConductorWork
                 COALESCE(NULLIF(w.intended_target_branch, ''),
                          NULLIF(w.initialization_parent_branch, ''), r.default_branch, ''),
                 COALESCE(r.conductor_config, ''), COALESCE(r.setup_script, ''),
-                COALESCE(r.run_script, ''), COALESCE(r.archive_script, '')
+                COALESCE(r.run_script, ''), COALESCE(r.archive_script, ''),
+                COALESCE(r.storage_version, 0)
          FROM workspaces w JOIN repos r ON r.id = w.repository_id
          WHERE COALESCE(w.state, '') != 'archived'
          ORDER BY w.created_at",
@@ -93,10 +125,13 @@ fn read_workspaces(db: &Path, home: &Path) -> rusqlite::Result<Vec<ConductorWork
         let (repo_name, dir, path): (String, String, String) = (r.get(1)?, r.get(4)?, r.get(6)?);
         let path = match (path.is_empty(), dir.is_empty()) {
             (false, _) => PathBuf::from(path),
-            (true, false) => home
-                .join("conductor/workspaces")
-                .join(&repo_name)
-                .join(&dir),
+            (true, false) => default_path(
+                r.get(13)?,
+                Path::new(&r.get::<_, String>(2)?),
+                &workspaces,
+                &repo_name,
+                &dir,
+            ),
             (true, true) => PathBuf::new(),
         };
         // Newer repos keep scripts in `conductor_config`, older ones in columns.
@@ -282,6 +317,12 @@ impl AppServices {
                 out.skipped.push(format!("{}: worktree is gone", cw.title));
                 continue;
             }
+            // Removing a workspace deletes its worktree, so never adopt a checkout itself.
+            if cw.path.join(".git").is_dir() {
+                out.skipped
+                    .push(format!("{}: is a main checkout, not a worktree", cw.title));
+                continue;
+            }
             let path = canonical(&cw.path);
             if !taken.insert(path.clone()) {
                 out.skipped.push(format!("{}: already in Recur", cw.title));
@@ -463,7 +504,24 @@ impl AppServices {
 
 #[cfg(test)]
 mod tests {
-    use super::model_ref;
+    use std::path::Path;
+
+    use super::{default_path, model_ref};
+
+    #[test]
+    fn places_workspaces_by_storage_version() {
+        let (repo, ws) = (Path::new("/r"), Path::new("/c/workspaces"));
+        for (version, dir, want) in [
+            (1, ".", "/r/.main"),
+            (1, "oslo", "/r/oslo"),
+            (2, ".", "/r"),
+            (2, "oslo", "/r/.conductor/oslo"),
+            (3, "oslo", "/c/workspaces/app/oslo"),
+            (0, "oslo", "/c/workspaces/app/oslo"),
+        ] {
+            assert_eq!(default_path(version, repo, ws, "app", dir), Path::new(want));
+        }
+    }
 
     #[test]
     fn maps_conductor_models() {

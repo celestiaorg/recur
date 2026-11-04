@@ -35,7 +35,8 @@ fn conductor_db(path: &Path, repo: &Path, kept: &Path) {
     let c = rusqlite::Connection::open(path).unwrap();
     c.execute_batch(
         "CREATE TABLE repos (id TEXT PRIMARY KEY, name TEXT, root_path TEXT, default_branch TEXT,
-             conductor_config TEXT, setup_script TEXT, run_script TEXT, archive_script TEXT);
+             conductor_config TEXT, setup_script TEXT, run_script TEXT, archive_script TEXT,
+             storage_version INTEGER);
          CREATE TABLE workspaces (local_id TEXT PRIMARY KEY, repository_id TEXT, directory_name TEXT,
              branch TEXT, state TEXT, workspace_path TEXT, workspace_name TEXT, pr_title TEXT,
              intended_target_branch TEXT, initialization_parent_branch TEXT, created_at TEXT);
@@ -49,8 +50,8 @@ fn conductor_db(path: &Path, repo: &Path, kept: &Path) {
         r#"INSERT INTO repos VALUES
            ('r1', 'app', ?1, 'main',
             '{"scripts":{"setup":"cp $CONDUCTOR_ROOT_PATH/.env.local .env.local && npm i","run":"npm run dev -- --port ${CONDUCTOR_PORT}"}}',
-            'ignored', NULL, 'rm -rf $CONDUCTOR_WORKSPACE_PATH/tmp'),
-           ('r2', 'kept', ?2, 'main', '{"scripts":{"setup":"pnpm i"}}', NULL, NULL, NULL)"#,
+            'ignored', NULL, 'rm -rf $CONDUCTOR_WORKSPACE_PATH/tmp', 3),
+           ('r2', 'kept', ?2, 'main', '{"scripts":{"setup":"pnpm i"}}', NULL, NULL, NULL, 3)"#,
         [repo.to_string_lossy(), kept.to_string_lossy()],
     )
     .unwrap();

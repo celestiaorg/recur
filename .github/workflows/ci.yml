@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - run: build/set-version.sh --check
       - run: cargo fmt --all --check
       - run: cargo test -p recur-layering
 

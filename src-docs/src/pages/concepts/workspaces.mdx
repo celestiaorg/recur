@@ -39,7 +39,8 @@ On a Mac with [Conductor](https://conductor.build) data, **File → Import Condu
 
 - Every workspace Conductor has not archived, whose worktree is still on disk, becomes a Recur workspace. Archived ones are skipped
 - Worktrees stay where they are, on the same branch. Recur does not move them, re-create them, or run the project's setup command
-- A repository Recur does not know yet is added as a project
+- A repository Recur does not know yet is added as a project in the **Imported** sidebar group
+- A project the import adds gets Conductor's setup, run, and archive scripts as its `.recur/project.toml` (setup command, a `dev` run, and teardown command), unless the repository already has one. `$CONDUCTOR_ROOT_PATH`, `$CONDUCTOR_WORKSPACE_PATH`, and `$CONDUCTOR_PORT` become `$RECUR_ROOT`, `$RECUR_WORKTREE`, and `$RECUR_PORT`; a script using another Conductor variable is skipped
 - Each visible Conductor chat becomes a chat tab with its transcript. The first message you send starts a new agent session that receives the earlier conversation, because Conductor's own agent sessions cannot be resumed
 - Running the import again skips worktrees already in Recur
 

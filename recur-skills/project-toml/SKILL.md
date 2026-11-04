@@ -61,7 +61,8 @@ They may still be referenced when expanding `project.toml` `env` values
 `DYLD_*`. Unknown `$FOO` stays as literal text.
 
 Recur injects: `$RECUR_PORT` / `$PORT`, `$RECUR_WORKSPACE_ID`, `$RECUR_WORKTREE`,
-`$RECUR_PROJECT_ID`, `$RECUR_BRANCH` (empty string if unset). `$HOME` works.
+`$RECUR_ROOT` (the project's main checkout), `$RECUR_PROJECT_ID`,
+`$RECUR_BRANCH` (empty string if unset). `$HOME` works.
 
 ## Skeleton
 

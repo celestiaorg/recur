@@ -814,6 +814,8 @@ impl ProjectView {
             span(", "),
             code("$RECUR_WORKTREE", cx),
             span(", "),
+            code("$RECUR_ROOT", cx),
+            span(", "),
             code("$RECUR_PROJECT_ID", cx),
             span(", "),
             code("$RECUR_BRANCH", cx),
@@ -857,7 +859,7 @@ impl ProjectView {
             )
             .child(
                 settings_group("grp-setup", "Setup script")
-                    .blurb("Bash script, once per worktree create. Gets $RECUR_PORT, $RECUR_WORKSPACE_ID, $RECUR_WORKTREE, $RECUR_PROJECT_ID, $RECUR_BRANCH, and project env.")
+                    .blurb("Bash script, once per worktree create. Gets $RECUR_PORT, $RECUR_WORKSPACE_ID, $RECUR_WORKTREE, $RECUR_ROOT, $RECUR_PROJECT_ID, $RECUR_BRANCH, and project env.")
                     .child(rows(IN_GROUP, vec![Row::stack().child(setup)], window, cx)),
             )
             .child(

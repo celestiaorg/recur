@@ -40,6 +40,10 @@ if [ "$(uname -s)" = Linux ]; then exec "target/package/recur-linux-$ARCH/recur"
 exec build/linux/run-desktop.sh
 '''
 
+["linux:install"]
+description = "Builds for this machine (-C target-cpu=native) and installs into ~/.local: system packages, then linux:build. `-- --no-deps` skips the packages; RECUR_NATIVE=0, RECUR_PREFIX"
+run = "build/linux/install.sh"
+
 ["linux:smoke"]
 description = "Installs the linux:package .deb and tarball in a clean Debian 13 container and checks paths, the recur link, the menu entry, `recur .` and a notification"
 run = "ARCH=\"$(build/linux/arch.sh)\" build/linux/smoke.sh"

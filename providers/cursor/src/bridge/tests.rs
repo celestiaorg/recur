@@ -181,8 +181,10 @@ os._exit(0)
         .trim()
         .parse()
         .unwrap();
+    // A concurrent test's orphan scan (nextest runs them in parallel
+    // processes) may reap an owned-path orphan before we see it reparented.
     wait_for(Duration::from_secs(3), "orphan reparented", || {
-        reap::process_ppid(pid) == 1
+        reap::process_ppid(pid) == 1 || !reap::process_alive(pid)
     })
     .await;
     pid

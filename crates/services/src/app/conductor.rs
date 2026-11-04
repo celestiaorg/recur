@@ -9,7 +9,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use recur_agent::AgentEvent;
-use recur_domain::{AgentRole, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Project};
+use recur_domain::{
+    AgentRole, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Project, ProjectGroup,
+    RunCommand,
+};
 use recur_engine::session_config::AgentConfig;
 use recur_engine::turn::mirror::SessionMirror;
 use recur_store::Store;
@@ -21,6 +24,7 @@ use crate::api::ConductorImport;
 use crate::{Error, Result};
 
 const CONDUCTOR_DB: &str = "Library/Application Support/com.conductor.app/conductor.db";
+const SCRIPTS: [&str; 3] = ["setup", "run", "archive"];
 
 struct ConductorWorkspace {
     id: String,
@@ -31,6 +35,8 @@ struct ConductorWorkspace {
     branch: String,
     title: String,
     base_branch: String,
+    /// The repo's scripts, in [`SCRIPTS`] order.
+    scripts: [String; 3],
 }
 
 struct ConductorSession {
@@ -76,7 +82,9 @@ fn read_workspaces(db: &Path, home: &Path) -> rusqlite::Result<Vec<ConductorWork
                 COALESCE(NULLIF(TRIM(w.pr_title), ''), NULLIF(TRIM(w.workspace_name), ''),
                          w.directory_name, ''),
                 COALESCE(NULLIF(w.intended_target_branch, ''),
-                         NULLIF(w.initialization_parent_branch, ''), r.default_branch, '')
+                         NULLIF(w.initialization_parent_branch, ''), r.default_branch, ''),
+                COALESCE(r.conductor_config, ''), COALESCE(r.setup_script, ''),
+                COALESCE(r.run_script, ''), COALESCE(r.archive_script, '')
          FROM workspaces w JOIN repos r ON r.id = w.repository_id
          WHERE COALESCE(w.state, '') != 'archived'
          ORDER BY w.created_at",
@@ -91,6 +99,18 @@ fn read_workspaces(db: &Path, home: &Path) -> rusqlite::Result<Vec<ConductorWork
                 .join(&dir),
             (true, true) => PathBuf::new(),
         };
+        // Newer repos keep scripts in `conductor_config`, older ones in columns.
+        let config: serde_json::Value =
+            serde_json::from_str(&r.get::<_, String>(9)?).unwrap_or_default();
+        let mut scripts = [r.get(10)?, r.get(11)?, r.get(12)?];
+        for (key, s) in SCRIPTS.iter().zip(&mut scripts) {
+            if let Some(v) = config["scripts"][key]
+                .as_str()
+                .filter(|v| !v.trim().is_empty())
+            {
+                *s = v.to_owned();
+            }
+        }
         Ok(ConductorWorkspace {
             id: r.get(0)?,
             repo_name,
@@ -100,6 +120,7 @@ fn read_workspaces(db: &Path, home: &Path) -> rusqlite::Result<Vec<ConductorWork
             branch: r.get(5)?,
             title: r.get(7)?,
             base_branch: r.get(8)?,
+            scripts,
         })
     })?
     .collect()
@@ -285,7 +306,9 @@ impl AppServices {
         Ok(out)
     }
 
-    /// The Recur project on the same checkout, else a new one.
+    /// The Recur project on the same checkout, else a new one. A new one gets
+    /// the "Imported" sidebar group, and Conductor's scripts as its
+    /// project.toml unless the repo has one.
     async fn conductor_project(
         &self,
         cw: &ConductorWorkspace,
@@ -305,14 +328,57 @@ impl AppServices {
         if !root.is_absolute() || !root.is_dir() {
             return Err(Error::new("repository checkout is gone"));
         }
-        let p = self
-            .add_project_at(Project {
-                name: cw.repo_name.clone(),
-                repo_path: root.to_string_lossy().into_owned(),
-                base_branch: cw.default_branch.clone(),
-                ..Project::default()
-            })
-            .await?;
+        let group = self
+            .store()
+            .project_groups()
+            .unwrap_or_default()
+            .into_iter()
+            .find(|g| g.name == "Imported");
+        let group = match group {
+            Some(g) => g,
+            None => self
+                .store()
+                .add_project_group(ProjectGroup {
+                    id: uuid::Uuid::now_v7().to_string(),
+                    name: "Imported".into(),
+                    open: true,
+                    ..ProjectGroup::default()
+                })
+                .map_err(err)?,
+        };
+        let mut p = Project {
+            name: cw.repo_name.clone(),
+            repo_path: root.to_string_lossy().into_owned(),
+            base_branch: cw.default_branch.clone(),
+            group_id: group.id,
+            ..Project::default()
+        };
+        if !root.join(recur_project::projfile::REL_PATH).exists() {
+            let [setup, run, archive] = std::array::from_fn(|i| {
+                let s = cw.scripts[i]
+                    .trim()
+                    .replace("CONDUCTOR_WORKSPACE_PATH", "RECUR_WORKTREE")
+                    .replace("CONDUCTOR_PORT", "RECUR_PORT")
+                    .replace("CONDUCTOR_ROOT_PATH", "RECUR_ROOT");
+                if s.contains("CONDUCTOR_") {
+                    out.skipped.push(format!(
+                        "{} {} script: uses a Conductor variable Recur lacks",
+                        cw.repo_name, SCRIPTS[i]
+                    ));
+                    return String::new();
+                }
+                s
+            });
+            p.write_project_file = [&setup, &run, &archive].iter().any(|s| !s.is_empty());
+            if !run.is_empty() {
+                p.run_commands = vec![RunCommand {
+                    name: "dev".into(),
+                    cmd: run,
+                }];
+            }
+            (p.setup_cmd, p.teardown_cmd) = (setup, archive);
+        }
+        let p = self.add_project_at(p).await?;
         out.projects_added += 1;
         Ok(p)
     }

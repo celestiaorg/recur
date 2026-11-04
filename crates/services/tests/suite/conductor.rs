@@ -1,6 +1,7 @@
 //! Import from Conductor over a Conductor-shaped database: a live workspace
 //! is adopted in place with its chat, an archived one is skipped, and a rerun
-//! imports nothing.
+//! imports nothing. A new project gets Conductor's scripts as its
+//! project.toml; an existing project.toml is left alone.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -29,11 +30,12 @@ fn git(dir: &Path, args: &[&str]) {
     );
 }
 
-fn conductor_db(path: &Path, repo: &Path) {
+fn conductor_db(path: &Path, repo: &Path, kept: &Path) {
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     let c = rusqlite::Connection::open(path).unwrap();
     c.execute_batch(
-        "CREATE TABLE repos (id TEXT PRIMARY KEY, name TEXT, root_path TEXT, default_branch TEXT);
+        "CREATE TABLE repos (id TEXT PRIMARY KEY, name TEXT, root_path TEXT, default_branch TEXT,
+             conductor_config TEXT, setup_script TEXT, run_script TEXT, archive_script TEXT);
          CREATE TABLE workspaces (local_id TEXT PRIMARY KEY, repository_id TEXT, directory_name TEXT,
              branch TEXT, state TEXT, workspace_path TEXT, workspace_name TEXT, pr_title TEXT,
              intended_target_branch TEXT, initialization_parent_branch TEXT, created_at TEXT);
@@ -44,14 +46,19 @@ fn conductor_db(path: &Path, repo: &Path) {
     )
     .unwrap();
     c.execute(
-        "INSERT INTO repos VALUES ('r1', 'app', ?1, 'main')",
-        [repo.to_string_lossy()],
+        r#"INSERT INTO repos VALUES
+           ('r1', 'app', ?1, 'main',
+            '{"scripts":{"setup":"cp $CONDUCTOR_ROOT_PATH/.env.local .env.local && npm i","run":"npm run dev -- --port ${CONDUCTOR_PORT}"}}',
+            'ignored', NULL, 'rm -rf $CONDUCTOR_WORKSPACE_PATH/tmp'),
+           ('r2', 'kept', ?2, 'main', '{"scripts":{"setup":"pnpm i"}}', NULL, NULL, NULL)"#,
+        [repo.to_string_lossy(), kept.to_string_lossy()],
     )
     .unwrap();
     c.execute_batch(
         "INSERT INTO workspaces VALUES
            ('w1', 'r1', 'asuncion', 'feat/x', 'ready', NULL, 'asuncion', 'Fix the thing', NULL, 'main', '2026-01-01'),
-           ('w2', 'r1', 'tacoma', 'feat/old', 'archived', NULL, NULL, NULL, NULL, NULL, '2026-01-02');
+           ('w2', 'r1', 'tacoma', 'feat/old', 'archived', NULL, NULL, NULL, NULL, NULL, '2026-01-02'),
+           ('w3', 'r2', 'oslo', 'feat/k', 'ready', NULL, 'oslo', NULL, NULL, 'main', '2026-01-03');
          INSERT INTO sessions VALUES
            ('s1', 'w1', 'claude', 'opus-4-8-1m', 'Conductor chat', 0, '2026-01-01'),
            ('s2', 'w1', 'claude', 'opus', 'Hidden', 1, '2026-01-01'),
@@ -115,11 +122,31 @@ async fn imports_live_conductor_workspaces_once() {
         &repo,
         &["worktree", "add", "-b", "feat/x", &wt.to_string_lossy()],
     );
+    let kept = root.join("kept");
+    std::fs::create_dir_all(kept.join(".recur")).unwrap();
+    git(&kept, &["init", "-b", "main"]);
+    let kept_toml = "# mine\nsetup_cmd = \"make\"\n";
+    std::fs::write(kept.join(".recur/project.toml"), kept_toml).unwrap();
+    git(&kept, &["add", "."]);
+    git(&kept, &["commit", "-m", "init"]);
+    git(
+        &kept,
+        &[
+            "worktree",
+            "add",
+            "-b",
+            "feat/k",
+            &home
+                .join("conductor/workspaces/kept/oslo")
+                .to_string_lossy(),
+        ],
+    );
     // Conductor's root_path is stale once a repo moves; the worktree still
     // points at the real checkout.
     conductor_db(
         &home.join("Library/Application Support/com.conductor.app/conductor.db"),
         &root.join("moved-away"),
+        &kept,
     );
 
     let store = Arc::new(Store::open(&root.join("recur.db")).unwrap());
@@ -147,23 +174,47 @@ async fn imports_live_conductor_workspaces_once() {
             report.workspaces_imported,
             report.chats_imported
         ),
-        (1, 1, 1),
+        (2, 2, 1),
         "{report:?}"
     );
     assert!(report.skipped.is_empty(), "{report:?}");
+    assert!(repo.join(".recur/project.toml").is_file());
+    assert_eq!(
+        std::fs::read_to_string(kept.join(".recur/project.toml")).unwrap(),
+        kept_toml
+    );
 
     let projects = s.projects.list_projects().await.unwrap();
     let project = projects
         .iter()
         .find(|p| p.repo_path == repo.to_string_lossy())
         .expect("project for the repo");
+    assert_eq!(
+        project.setup_cmd,
+        "cp $RECUR_ROOT/.env.local .env.local && npm i"
+    );
+    assert_eq!(project.teardown_cmd, "rm -rf $RECUR_WORKTREE/tmp");
+    let groups = s.projects.list_project_groups().await.unwrap();
+    assert_eq!(
+        groups.iter().map(|g| g.name.as_str()).collect::<Vec<_>>(),
+        ["Imported"]
+    );
+    assert!(projects.iter().all(|p| p.group_id == groups[0].id));
+    assert_eq!(
+        project
+            .run_commands
+            .iter()
+            .map(|r| (r.name.as_str(), r.cmd.as_str()))
+            .collect::<Vec<_>>(),
+        [("dev", "npm run dev -- --port ${RECUR_PORT}")]
+    );
     let imported: Vec<_> = s
         .workspaces
         .list_workspaces()
         .await
         .unwrap()
         .into_iter()
-        .filter(|w| !w.is_main)
+        .filter(|w| !w.is_main && w.project_id == project.id)
         .collect();
     assert_eq!(imported.len(), 1);
     let ws = &imported[0];
@@ -203,5 +254,8 @@ async fn imports_live_conductor_workspaces_once() {
 
     let again = s.projects.import_conductor().await.unwrap();
     assert_eq!((again.projects_added, again.workspaces_imported), (0, 0));
-    assert_eq!(again.skipped, ["Fix the thing: already in Recur"]);
+    assert_eq!(
+        again.skipped,
+        ["Fix the thing: already in Recur", "oslo: already in Recur"]
+    );
 }

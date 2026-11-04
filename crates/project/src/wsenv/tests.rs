@@ -232,20 +232,23 @@ fn environ_injects_recur_and_project_env() {
         port: 9246,
         workspace_id: "LOOP-1".into(),
         worktree_path: "/tmp/wt".into(),
+        repo_path: "/tmp/repo".into(),
         project_id: "recur".into(),
         branch: "mycodecrafting/smoky-shortcake".into(),
         project_env: map(&[
             ("VITE_PORT", "$RECUR_PORT"),
+            ("SHARED_ENV", "$RECUR_ROOT/.env.local"),
             ("RECUR_DATA_DIR", "/tmp/data-$RECUR_WORKSPACE_ID"),
             ("RECUR_INSTANCE_LABEL", "$RECUR_BRANCH"),
         ]),
-        ..Default::default()
     };
     let got = env_map(&v.environ(base(&["PATH=/bin", "RECUR_PORT=1"])));
     assert_eq!(got["RECUR_PORT"], "9246");
     assert_eq!(got["PORT"], "9246");
     assert_eq!(got["RECUR_WORKSPACE_ID"], "LOOP-1");
     assert_eq!(got["RECUR_WORKTREE"], "/tmp/wt");
+    assert_eq!(got["RECUR_ROOT"], "/tmp/repo");
+    assert_eq!(got["SHARED_ENV"], "/tmp/repo/.env.local");
     assert_eq!(got["RECUR_BRANCH"], "mycodecrafting/smoky-shortcake");
     assert_eq!(
         got["RECUR_INSTANCE_LABEL"],

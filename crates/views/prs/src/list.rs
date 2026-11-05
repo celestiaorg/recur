@@ -26,7 +26,7 @@ use recur_forge::view::{RollupKind, pr_attention_labels, pr_checks_rollup, pr_ha
 use recur_services::Services;
 use recur_ui::fonts::{Family, weight};
 use recur_ui::shadow::{css_box_shadow, with_shadow};
-use recur_ui::style::{Tbtn, TbtnSize, button_label, tbtn};
+use recur_ui::style::{Rbtn, Tbtn, TbtnSize, button_label, rbtn, tbtn};
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerStyle};
@@ -696,16 +696,26 @@ impl PrList {
                 a.label().to_string()
             };
             let sel = format!("pr-bulk-act:{label}{}", if off { ":off" } else { "" });
-            let kind = if armed { Tbtn::Armed } else { Tbtn::Default };
-            let mut b = tbtn(
-                SharedString::from(format!("pr-bulk-{}", a.label())),
-                kind,
-                TbtnSize::TITLEBAR,
-                off.then_some(t.pane),
-                cx,
-            )
-            .debug_selector(move || sel)
-            .child(button_label(label, 11.5, weight::MEDIUM));
+            let bid = SharedString::from(format!("pr-bulk-{}", a.label()));
+            let over = off.then_some(t.pane);
+            let mut b =
+                match a {
+                    Bulk::Merge => rbtn(bid, Rbtn::Merge, over, cx)
+                        .h(px(26.))
+                        .px(px(9.))
+                        .rounded(px(7.))
+                        .child(icon(IconName::GitPullRequest).size(px(13.)))
+                        .child(button_label(label, 11.5, weight::MEDIUM_PLUS)),
+                    Bulk::Close => {
+                        let kind = if armed { Tbtn::Armed } else { Tbtn::Danger };
+                        tbtn(bid, kind, TbtnSize::TITLEBAR, over, cx)
+                            .child(icon(IconName::GitPullRequestClosed).size(px(13.)))
+                            .child(button_label(label, 11.5, weight::MEDIUM))
+                    }
+                    _ => tbtn(bid, Tbtn::Default, TbtnSize::TITLEBAR, over, cx)
+                        .child(button_label(label, 11.5, weight::MEDIUM)),
+                }
+                .debug_selector(move || sel);
             if !off {
                 b = b.on_click(cx.guarded_listener(move |this, _, _, cx| this.run_bulk(a, cx)));
             }
@@ -1118,10 +1128,10 @@ impl PrList {
             .px(px(16.))
             .when(!last, |d| d.border_b_1().border_color(hsla(t.line_soft)))
             .map(|d| {
-                if hovered {
+                if picked {
+                    d.bg(hsla(t.amber.fade(if hovered { 0.16 } else { 0.11 })))
+                } else if hovered {
                     d.bg(hsla(t.pane_2))
-                } else if picked {
-                    d.bg(hsla(t.text.mix(0.05, recur_ui::color::TRANSPARENT)))
                 } else {
                     d
                 }
@@ -1148,7 +1158,7 @@ impl PrList {
                     this.open(&key_id, cx);
                 }
             }))
-            .when(needs, |d| {
+            .when(needs || picked, |d| {
                 d.child(
                     div()
                         .absolute()
@@ -1156,7 +1166,7 @@ impl PrList {
                         .top_0()
                         .bottom_0()
                         .w(px(2.))
-                        .bg(hsla(t.coral)),
+                        .bg(hsla(if picked { t.amber } else { t.coral })),
                 )
             })
             .child(body)

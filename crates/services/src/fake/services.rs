@@ -1918,6 +1918,16 @@ fake_services! {
             self.with(|s| add_pr_comment(s, pr_id, file, line, body, start_line, finding_id))
         }
 
+        async fn close_pr(&self, pr_id: &str) -> Result<Pr> {
+            self.with(|s| {
+                let pr = s.pr_mut(pr_id)?;
+                pr.state = "Closed".into();
+                pr.group = "merged".into();
+                Some(pr.clone())
+            })
+            .map_or_else(unanswered, Ok)
+        }
+
         async fn create_workspace_from_pr(&self, pr_id: &str) -> Result<Workspace> {
             Ok(self.with(|s| {
                 let Some(pr) = s.pr(pr_id).cloned() else {

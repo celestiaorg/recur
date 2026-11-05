@@ -661,7 +661,7 @@ async fn set_workspace_base_branch_leaves_merged_pr() {
         px.eng()
             .merge_pr(&id, &recur_domain::MergeMethod::default())
             .await
-            .1
+            .is_ok()
     );
     px.eng()
         .set_workspace_base_branch(&ws.id, "develop")

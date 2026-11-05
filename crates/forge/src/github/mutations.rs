@@ -361,6 +361,20 @@ impl GitHub {
         })
     }
 
+    /// `gh pr close`.
+    pub(crate) async fn close(&self, repo: &Path, number: i64) -> Result<(), ForgeError> {
+        if number <= 0 {
+            return Err(ForgeError::invalid(format!(
+                "invalid GitHub PR number {number}"
+            )));
+        }
+        self.gh
+            .run(repo, &["pr".into(), "close".into(), number.to_string()])
+            .await
+            .map(drop)
+            .map_err(|e| ForgeError::wrap(format!("gh pr close {number}"), e))
+    }
+
     /// Title, and the body unless `None`.
     pub(crate) async fn edit(
         &self,

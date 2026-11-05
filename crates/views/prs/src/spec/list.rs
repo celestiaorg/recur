@@ -487,3 +487,73 @@ fn project_filter_uses_the_app_select(cx: &mut TestAppContext) {
             || s.has("sel:Filter by project=storefront, payments-api")
     );
 }
+
+fn click_with(s: &mut S, sel: &str, m: Modifiers) {
+    s.reveal(sel);
+    let p = s
+        .bounds(sel)
+        .unwrap_or_else(|| panic!("no element {sel}"))
+        .center();
+    s.cx.simulate_mouse_move(p, None, m);
+    s.cx.simulate_click(p, m);
+    s.settle();
+}
+
+#[gpui::test]
+fn pr_list_selects_rows_and_runs_bulk_actions(cx: &mut TestAppContext) {
+    let mut s = boot(
+        cx,
+        |sd| {
+            lifecycle_seed(sd);
+            sd.prs.push(pr_row(json!({
+                "id": "gh-storefront-93", "number": 93, "title": "Another draft",
+                "branch": "feat/draft-2", "draft": true, "when": "6h",
+            })));
+        },
+        Overrides::default(),
+    );
+    s.prs_nav();
+    s.seg("All");
+    let cmd = Modifiers::secondary_key();
+    let shift = Modifiers {
+        shift: true,
+        ..Default::default()
+    };
+
+    click_with(&mut s, "prrow:482", cmd);
+    assert_eq!(s.view(), recur_view_core::ViewName::Pr);
+    assert!(s.has("pr-bulk:1"));
+    assert!(!s.has("seg:All:true"), "the bulk bar replaces the filters");
+    assert!(s.has("pr-bulk-act:Mark ready:off"));
+    s.keys("escape");
+    assert!(!s.has("pr-bulk:1"));
+    assert!(s.has("seg:All:true"));
+
+    let mut order: Vec<String> = s
+        .state
+        .read_with(s.cx, |st, _| st.prs.iter().map(|p| p.id.clone()).collect());
+    order.sort_by(|a, b| row_y(&mut s, a).total_cmp(&row_y(&mut s, b)));
+    click_with(&mut s, &format!("prrow:{}", order[0]), cmd);
+    click_with(&mut s, &format!("prrow:{}", order[3]), shift);
+    assert!(s.has("pr-bulk:4"));
+    s.click("pr-bulk-clear");
+    assert!(!s.has("pr-bulk:4"));
+
+    for id in ["gh-storefront-90", "gh-storefront-93", "482"] {
+        click_with(&mut s, &format!("prrow:{id}"), cmd);
+    }
+    assert!(s.has("pr-bulk:3"));
+    s.click("pr-bulk-act:Mark ready");
+    assert!(!s.pr("gh-storefront-90").draft);
+    assert!(!s.pr("gh-storefront-93").draft);
+    assert!(s.toasted(recur_ui::widgets::ToastKind::Success, "2 PRs marked ready"));
+    assert!(!s.has("pr-bulk:3"));
+
+    click_with(&mut s, "prrow:479", cmd);
+    s.click("pr-bulk-act:Close");
+    assert!(s.has("pr-bulk-act:Confirm close 1"));
+    assert_ne!(s.pr("479").state, "Closed");
+    s.click("pr-bulk-act:Confirm close 1");
+    assert_eq!(s.pr("479").state, "Closed");
+    assert!(s.toasted(recur_ui::widgets::ToastKind::Success, "1 PR closed"));
+}

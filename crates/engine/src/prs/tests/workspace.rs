@@ -72,8 +72,7 @@ async fn open_pr_and_merge() {
     let inbox = px.te.store.inbox().unwrap_or_default();
     assert!(inbox.iter().any(|i| i.id == format!("ib-pr-{id}")));
 
-    let (merged, ok) = eng.merge_pr(&id, &MergeMethod::default()).await;
-    assert!(ok);
+    let merged = eng.merge_pr(&id, &MergeMethod::default()).await.unwrap();
     assert_eq!(
         (merged.state.as_str(), merged.group.as_str()),
         ("Merged", "merged")

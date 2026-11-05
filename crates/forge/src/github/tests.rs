@@ -1640,6 +1640,15 @@ async fn branch_rules_bypassable_pr_rule() {
 }
 
 #[tokio::test]
+async fn close_runs_gh_pr_close() {
+    let fake = FakeGh::new("#!/bin/sh\nprintf '%s\\0' \"$@\" >> \"$0.args\"\n");
+    fake.gh.close(Path::new(""), 12).await.unwrap();
+    assert_eq!(fake.argv(), ["pr", "close", "12"]);
+    assert!(fake.gh.close(Path::new(""), 0).await.is_err());
+    assert_eq!(fake.argv().len(), 3, "no gh call without a PR number");
+}
+
+#[tokio::test]
 async fn mention_search_passes_string_fields() {
     let fake = FakeGh::new(
         "#!/bin/sh\nprintf '%s\\0' \"$@\" >> \"$0.args\"\necho '{\"data\":{\"repository\":{\"mentionableUsers\":{\"nodes\":[]}}}}'\n",

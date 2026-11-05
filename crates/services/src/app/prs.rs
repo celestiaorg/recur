@@ -112,6 +112,19 @@ impl PrsService for AppServices {
         })
     }
 
+    async fn close_pr(&self, pr_id: &str) -> Result<Pr> {
+        rt!(self, pr_id => |s| {
+            let (p, ok) = s.engine.close_pr(&pr_id).await;
+            if !ok {
+                if p.id.is_empty() {
+                    return Err(pr_not_found(&pr_id));
+                }
+                return Err(Error::new("could not close the PR"));
+            }
+            Ok(p)
+        })
+    }
+
     async fn create_workspace_from_pr(&self, pr_id: &str) -> Result<Workspace> {
         rt!(self, pr_id => |s| s.engine.create_workspace_from_pr(&pr_id).await.map_err(err))
     }
@@ -168,13 +181,10 @@ impl PrsService for AppServices {
             if s.store().pr(&pr_id).is_none() {
                 return Err(pr_not_found(&pr_id));
             }
-            let (merged, ok) = s.engine.merge_pr(&pr_id, &MergeMethod::from(method)).await;
-            if !ok {
-                return Err(Error::new(
-                    "merge did not complete: see the loop activity feed for the reason",
-                ));
-            }
-            Ok(merged)
+            s.engine
+                .merge_pr(&pr_id, &MergeMethod::from(method))
+                .await
+                .map_err(|note| Error::new(note_text(&note)))
         })
     }
 
@@ -314,5 +324,21 @@ impl PrsService for AppServices {
 
     async fn update_with_base(&self, pr_id: &str, method: &str) -> Result<UpdateWorkspaceResult> {
         rt!(self, pr_id, method => |s| s.engine.update_pr_with_base(&pr_id, &method).await.map_err(err))
+    }
+}
+
+/// A feed note's HTML as toast text: tags dropped, entities decoded.
+fn note_text(html: &str) -> String {
+    recur_engine::text::html_unescape(&recur_engine::loops::maestro::strip_tags(html))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn note_text_drops_tags_and_decodes_entities() {
+        assert_eq!(
+            super::note_text("GitHub merge failed: <code>a &lt;b&gt; &#34;c&#34; &amp;amp;</code>"),
+            "GitHub merge failed: a <b> \"c\" &amp;"
+        );
     }
 }

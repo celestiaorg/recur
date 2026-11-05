@@ -13,6 +13,7 @@ use crate::shell_state::{ShellLive, ShellRestore, resolve_shell_restore, snapsho
 use crate::state::{AppState, ChatRef, ObsJump, ScanKind, ShellEvent, WorkspaceScanEvent};
 use crate::workspace_nav::{
     SCAN_COMMIT_MS, neighbor_workspace_id, project_id_from_main_scan, sidebar_workspace_ids,
+    status_workspace_ids,
 };
 
 impl AppState {
@@ -299,7 +300,11 @@ impl AppState {
             .iter()
             .filter(|p| show_hidden || !p.hidden)
             .collect();
-        let ids = sidebar_workspace_ids(&self.workspaces, &projects, &self.project_groups);
+        let ids = if self.sidebar_by_status() {
+            status_workspace_ids(&self.workspaces, &projects, &self.project_groups, &self.prs)
+        } else {
+            sidebar_workspace_ids(&self.workspaces, &projects, &self.project_groups)
+        };
         let current = if self.scan_cursor.is_empty() {
             self.selected_workspace_id.clone()
         } else {

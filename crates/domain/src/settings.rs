@@ -158,6 +158,9 @@ pub struct Settings {
     /// Reveal hidden projects in the sidebar tree.
     #[serde(skip_serializing_if = "is_false")]
     pub show_hidden_projects: bool,
+    /// Group the sidebar's workspaces by PR status instead of by project.
+    #[serde(skip_serializing_if = "is_false")]
+    pub sidebar_by_status: bool,
     /// Linux: keep the window manager's title bar instead of Recur's own window controls.
     /// Read at launch, so a change applies after a restart.
     #[serde(skip_serializing_if = "is_false")]

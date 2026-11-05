@@ -42,6 +42,7 @@ pub enum IconName {
     ALargeSmall,
     Columns3,
     LayoutList,
+    CircleFadingCheck,
     Terminal,
     SquareTerminal,
     ChevronsRight,
@@ -175,7 +176,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 169] = [
+    pub const ALL: [IconName; 170] = [
         IconName::Plus,
         IconName::Box,
         IconName::Github,
@@ -215,6 +216,7 @@ impl IconName {
         IconName::ALargeSmall,
         IconName::Columns3,
         IconName::LayoutList,
+        IconName::CircleFadingCheck,
         IconName::Terminal,
         IconName::SquareTerminal,
         IconName::ChevronsRight,
@@ -389,6 +391,7 @@ impl IconName {
             IconName::ALargeSmall => "a-large-small",
             IconName::Columns3 => "columns-3",
             IconName::LayoutList => "layout-list",
+            IconName::CircleFadingCheck => "circle-fading-check",
             IconName::Terminal => "terminal",
             IconName::SquareTerminal => "square-terminal",
             IconName::ChevronsRight => "chevrons-right",

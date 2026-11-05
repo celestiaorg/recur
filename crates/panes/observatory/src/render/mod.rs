@@ -368,7 +368,7 @@ impl Observatory {
                             o.close_mru(&p2, window, cx)
                         }))
                         .on_context_menu(cx.guarded_listener(
-                            move |o, e: &gpui_kit::MouseDownEvent, window, cx| {
+                            move |o, e: &gpui_kit::MouseDownEvent, _, cx| {
                                 o.open_ctx(
                                     f32::from(e.position.x),
                                     f32::from(e.position.y),
@@ -376,7 +376,6 @@ impl Observatory {
                                     false,
                                     &ctx_name,
                                     true,
-                                    window,
                                     cx,
                                 );
                             },

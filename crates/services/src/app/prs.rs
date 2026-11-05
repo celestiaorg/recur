@@ -112,6 +112,19 @@ impl PrsService for AppServices {
         })
     }
 
+    async fn close_pr(&self, pr_id: &str) -> Result<Pr> {
+        rt!(self, pr_id => |s| {
+            let (p, ok) = s.engine.close_pr(&pr_id).await;
+            if !ok {
+                if p.id.is_empty() {
+                    return Err(pr_not_found(&pr_id));
+                }
+                return Err(Error::new("could not close the PR"));
+            }
+            Ok(p)
+        })
+    }
+
     async fn create_workspace_from_pr(&self, pr_id: &str) -> Result<Workspace> {
         rt!(self, pr_id => |s| s.engine.create_workspace_from_pr(&pr_id).await.map_err(err))
     }

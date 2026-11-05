@@ -805,6 +805,7 @@ async fn every_method_answers() {
         "AddPRComment",
         s.prs.add_pr_comment("482", "x", 1, "x", 1, "x").await.err(),
     );
+    note(&mut errs, "ClosePR", s.prs.close_pr("482").await.err());
     note(
         &mut errs,
         "CreateWorkspaceFromPR",

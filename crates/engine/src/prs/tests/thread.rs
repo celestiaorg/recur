@@ -398,6 +398,52 @@ async fn set_draft_refuses_settled_and_reports_failures() {
     assert!(!ok);
 }
 
+#[tokio::test]
+async fn close_pr_closes_on_forge() {
+    let (px, _repo) = conv(open_pr("gh-close", 47));
+    let (got, ok) = px.eng().close_pr("gh-close").await;
+    assert!(ok);
+    assert_eq!(px.forge.calls_to("close_pr")[0][1], "47");
+    assert_eq!(
+        (got.state.as_str(), got.group.as_str()),
+        ("Closed", "merged")
+    );
+    assert!(
+        px.te
+            .events
+            .all()
+            .iter()
+            .any(|e| matches!(e, EngineEvent::PrUpdated(u) if u.pr_id == "gh-close"))
+    );
+}
+
+#[tokio::test]
+async fn close_pr_local_persists_state() {
+    let (px, _repo) = conv(Pr {
+        source: PrSource::Local,
+        ..open_pr("local-close", 0)
+    });
+    let (got, ok) = px.eng().close_pr("local-close").await;
+    assert!(ok);
+    assert_eq!(got.state, "Closed");
+    assert_eq!(px.pr("local-close").state, "Closed");
+    assert!(px.forge.calls_to("close_pr").is_empty());
+}
+
+#[tokio::test]
+async fn close_pr_refuses_merged_and_reports_failures() {
+    let (px, _repo) = conv(open_pr("gh-c", 48));
+    px.forge
+        .on_close_pr(|_| async { Err(ForgeError::failed("gh: boom")) });
+    let (_, ok) = px.eng().close_pr("gh-c").await;
+    assert!(!ok);
+    assert!(feed_text(&px).iter().any(|t| t == "Close failed: gh: boom"));
+    assert_eq!(px.pr("gh-c").state, "In review");
+    px.te.store.update_pr("gh-c", |p| p.state = "Merged".into());
+    let (_, ok) = px.eng().close_pr("gh-c").await;
+    assert!(!ok);
+}
+
 /// Every workspace feed line published.
 fn feed_text(px: &Px) -> Vec<String> {
     px.te

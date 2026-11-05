@@ -17,7 +17,7 @@ use recur_forge::{Forge, ForgeError};
 use crate::Engine;
 use crate::bus::{EngineEvent, WorkspaceRef};
 use crate::loops::open_pr::upsert_description_comment;
-use crate::prs::{comments, now_comment, touch_pr_updated};
+use crate::prs::{GROUP_MERGED, comments, now_comment, touch_pr_updated};
 use crate::text::{html_escape, unix_nanos};
 
 /// Bounds one forge conversation mutation.
@@ -1088,6 +1088,59 @@ impl Engine {
         // The conversation snapshot is not awaited: pr.updated already makes
         // the UI refetch.
         self.publish_pr_updated(pr_id);
+        match self.store.pr(pr_id) {
+            Some(updated) => (updated, true),
+            None => (pr, true),
+        }
+    }
+
+    /// Closes a PR without merging. A forge PR closes on the forge; a Local
+    /// PR only records the state.
+    pub async fn close_pr(&self, pr_id: &str) -> (Pr, bool) {
+        let Some(pr) = self.store.pr(pr_id) else {
+            return (Pr::default(), false);
+        };
+        if pr.state == "Closed" {
+            return (pr, true);
+        }
+        if pr.state == "Merged" || pr.group == GROUP_MERGED {
+            self.emit_workspace_event(
+                &pr.workspace_id,
+                "MA",
+                "Maestro",
+                "Can't close a merged PR.",
+            );
+            return (pr, false);
+        }
+        if let Some(forge) = self.pr_forge(&pr) {
+            if pr.number <= 0 {
+                self.emit_workspace_event(
+                    &pr.workspace_id,
+                    "MA",
+                    "Maestro",
+                    &format!("Only {} PRs can be closed.", forge.label()),
+                );
+                return (pr, false);
+            }
+            let repo = self.pr_repo_path(&pr);
+            let res = bounded(
+                FORGE_WRITE_TIMEOUT,
+                forge.close_pr(Path::new(&repo), pr.number),
+            )
+            .await;
+            if let Err(e) = res {
+                let msg = could_not("Close failed: ", &e);
+                self.emit_workspace_event(&pr.workspace_id, "MA", "Maestro", &msg);
+                return (pr, false);
+            }
+        }
+        self.store.update_pr(pr_id, |p| {
+            p.state = "Closed".into();
+            p.group = GROUP_MERGED.into();
+            touch_pr_updated(p);
+        });
+        self.publish_pr_updated(pr_id);
+        self.archive_pr_chat_hosts(pr_id, "").await;
         match self.store.pr(pr_id) {
             Some(updated) => (updated, true),
             None => (pr, true),

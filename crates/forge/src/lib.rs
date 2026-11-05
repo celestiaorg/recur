@@ -118,6 +118,8 @@ pub trait Forge: Send + Sync + 'static {
         body: Option<&str>,
     ) -> Result<(), ForgeError>;
     async fn set_draft(&self, repo: &Path, number: i64, draft: bool) -> Result<(), ForgeError>;
+    /// Closes an open PR without merging.
+    async fn close_pr(&self, repo: &Path, number: i64) -> Result<(), ForgeError>;
     /// Whether `branch` of `owner_repo` requires a PR. `None` is unknown.
     async fn branch_requires_pr(&self, repo: &Path, owner_repo: &str, branch: &str)
     -> Option<bool>;

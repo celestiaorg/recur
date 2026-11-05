@@ -654,6 +654,9 @@ impl Forge for ReadOnlyForge {
     async fn set_draft(&self, _: &Path, _: i64, _: bool) -> Result<(), ForgeError> {
         Err(refused())
     }
+    async fn close_pr(&self, _: &Path, _: i64) -> Result<(), ForgeError> {
+        Err(refused())
+    }
     async fn branch_requires_pr(
         &self,
         repo: &Path,

@@ -1147,7 +1147,11 @@ impl PlanPanel {
                         let sel = recur_ui::selection::state("plan-body-selection", window, cx);
                         recur_ui::selection::scope(&sel, false, scroll, cx)
                     })
-                    .children(edge_fades(&self.body_scroll, backdrop)),
+                    .children(recur_ui::style::edge_fades(
+                        &self.body_scroll,
+                        backdrop,
+                        FADE,
+                    )),
             );
         }
         let foot = if self.editing {
@@ -1740,47 +1744,6 @@ fn mono_ch(size: f32, window: &mut Window) -> f32 {
         .line_height(LineHeight::Normal)
         .measure(None, window);
     w
-}
-
-/// `.plan-body-scroll.fade-top` / `.fade-bot`: the mask as a backdrop gradient over the edges
-/// that have more content past them.
-fn edge_fades(scroll: &ScrollHandle, backdrop: recur_ui::Color) -> Vec<AnyElement> {
-    let top = -f32::from(scroll.offset().y);
-    let max = f32::from(scroll.max_offset().y).max(0.);
-    let slack = 1.;
-    let grad = |from: f32, to: f32| {
-        recur_ui::style::gradient_fill(
-            180.,
-            (backdrop.with_alpha(from), 0.),
-            (backdrop.with_alpha(to), 1.),
-        )
-    };
-    let mut out = Vec::new();
-    if top > slack {
-        out.push(
-            div()
-                .absolute()
-                .top_0()
-                .left_0()
-                .right_0()
-                .h(px(FADE))
-                .child(grad(1., 0.))
-                .into_any_element(),
-        );
-    }
-    if max > slack && top < max - slack {
-        out.push(
-            div()
-                .absolute()
-                .bottom_0()
-                .left_0()
-                .right_0()
-                .h(px(FADE))
-                .child(grad(0., 1.))
-                .into_any_element(),
-        );
-    }
-    out
 }
 
 #[cfg(test)]

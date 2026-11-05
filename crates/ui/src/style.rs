@@ -68,6 +68,51 @@ pub fn css_gradient(
     .size_full()
 }
 
+/// `.fade-top` / `.fade-bot`: `h`px backdrop gradients over the edges of `scroll` that have
+/// more content past them. Put them after the scroller in a `relative` parent.
+pub fn edge_fades(
+    scroll: &gpui_kit::ScrollHandle,
+    backdrop: Color,
+    h: f32,
+) -> Vec<gpui_kit::AnyElement> {
+    let top = -f32::from(scroll.offset().y);
+    let max = f32::from(scroll.max_offset().y).max(0.);
+    let slack = 1.;
+    let grad = |from: f32, to: f32| {
+        gradient_fill(
+            180.,
+            (backdrop.with_alpha(from), 0.),
+            (backdrop.with_alpha(to), 1.),
+        )
+    };
+    let mut out = Vec::new();
+    if top > slack {
+        out.push(
+            div()
+                .absolute()
+                .top_0()
+                .left_0()
+                .right_0()
+                .h(px(h))
+                .child(grad(1., 0.))
+                .into_any_element(),
+        );
+    }
+    if max > slack && top < max - slack {
+        out.push(
+            div()
+                .absolute()
+                .bottom_0()
+                .left_0()
+                .right_0()
+                .h(px(h))
+                .child(grad(0., 1.))
+                .into_any_element(),
+        );
+    }
+    out
+}
+
 /// A CSS `linear-gradient(<angle>, from, to)` filling its parent with square corners, in place
 /// of `.bg(linear_gradient(..))` (see [`css_gradient`]). Put it first.
 pub fn gradient_fill(angle: f32, from: (Color, f32), to: (Color, f32)) -> impl IntoElement {
@@ -939,6 +984,48 @@ pub fn input_box(
             input,
             placeholder,
             UA_PLACEHOLDER,
+            Family::Mono,
+            12.,
+            window,
+            cx,
+        ))
+}
+
+/// `.cm-recur-search-input`: the find bar's 26px mono field, an amber ring while focused.
+pub fn find_field(
+    input: &Entity<InputState>,
+    placeholder: &str,
+    window: &Window,
+    cx: &mut App,
+) -> Div {
+    style_text_input(input, cx);
+    let theme = Theme::of(cx);
+    let t = theme.tokens;
+    let focused = gpui_kit::Focusable::focus_handle(input.read(cx), cx).is_focused(window);
+    let border = if focused {
+        t.amber.mix(0.55, t.line)
+    } else {
+        t.line
+    };
+    let bg = if theme.is_light() { t.pane } else { t.bg };
+    card(bg, border, 6.)
+        .h(px(26.))
+        .px(px(9.))
+        .flex()
+        .items_center()
+        .when(focused, |d| {
+            d.shadow(vec![BoxShadow {
+                color: t.amber_d.into(),
+                offset: point(px(0.), px(0.)),
+                blur_radius: px(0.),
+                spread_radius: px(2.),
+                inset: false,
+            }])
+        })
+        .child(text_field(
+            input,
+            &SharedString::from(placeholder.to_string()),
+            t.faint,
             Family::Mono,
             12.,
             window,

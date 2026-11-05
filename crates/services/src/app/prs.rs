@@ -181,13 +181,10 @@ impl PrsService for AppServices {
             if s.store().pr(&pr_id).is_none() {
                 return Err(pr_not_found(&pr_id));
             }
-            let (merged, ok) = s.engine.merge_pr(&pr_id, &MergeMethod::from(method)).await;
-            if !ok {
-                return Err(Error::new(
-                    "merge did not complete: see the loop activity feed for the reason",
-                ));
-            }
-            Ok(merged)
+            s.engine
+                .merge_pr(&pr_id, &MergeMethod::from(method))
+                .await
+                .map_err(|note| Error::new(note_text(&note)))
         })
     }
 
@@ -327,5 +324,39 @@ impl PrsService for AppServices {
 
     async fn update_with_base(&self, pr_id: &str, method: &str) -> Result<UpdateWorkspaceResult> {
         rt!(self, pr_id, method => |s| s.engine.update_pr_with_base(&pr_id, &method).await.map_err(err))
+    }
+}
+
+/// A feed note's HTML as toast text: tags dropped, `html_escape`'s entities decoded.
+fn note_text(html: &str) -> String {
+    let mut out = String::new();
+    let mut in_tag = false;
+    for c in html.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' if in_tag => in_tag = false,
+            c if !in_tag => out.push(c),
+            _ => {}
+        }
+    }
+    [
+        ("&lt;", "<"),
+        ("&gt;", ">"),
+        ("&#34;", "\""),
+        ("&#39;", "'"),
+    ]
+    .iter()
+    .fold(out, |s, (e, c)| s.replace(e, c))
+    .replace("&amp;", "&")
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn note_text_drops_tags_and_decodes_entities() {
+        assert_eq!(
+            super::note_text("GitHub merge failed: <code>a &lt;b&gt; &#34;c&#34; &amp;amp;</code>"),
+            "GitHub merge failed: a <b> \"c\" &amp;"
+        );
     }
 }

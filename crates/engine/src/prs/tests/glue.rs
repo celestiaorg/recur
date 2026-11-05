@@ -79,11 +79,11 @@ async fn forge_merge_marks_merged() {
             })
         }
     });
-    let (merged, ok) = px
+    let merged = px
         .eng()
         .merge_pr("gh-merge-fast", &MergeMethod::Squash)
-        .await;
-    assert!(ok);
+        .await
+        .unwrap();
     let calls = px.forge.calls_to("merge");
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0][1..], ["gh-merge-fast", "squash"]);
@@ -120,11 +120,12 @@ async fn forge_merge_queued_leaves_pr_open() {
         }
     });
     px.forge.on_merge(|_| async { Ok(MergeOutcome::Queued) });
-    let (got, ok) = px
+    let got = px
         .eng()
         .merge_pr("gh-merge-queue", &MergeMethod::Squash)
-        .await;
-    assert!(ok && got.merge_queue_enabled && got.merge_queued);
+        .await
+        .unwrap();
+    assert!(got.merge_queue_enabled && got.merge_queued);
     assert!(got.state != "Merged" && got.group != "merged");
     tokio::time::timeout(Duration::from_secs(2), snapped.cancelled())
         .await
@@ -142,8 +143,11 @@ async fn forge_merge_refuses_disallowed_method_and_reports_failure() {
     px.te
         .store
         .update_pr("gh-m", |p| p.allowed_merge_methods = vec!["merge".into()]);
-    let (_, ok) = px.eng().merge_pr("gh-m", &MergeMethod::Squash).await;
-    assert!(!ok);
+    let err = px.eng().merge_pr("gh-m", &MergeMethod::Squash).await;
+    assert_eq!(
+        err.unwrap_err(),
+        "GitHub doesn't allow Squash and merge on this repository."
+    );
     assert!(px.forge.calls_to("merge").is_empty());
     assert!(
         feed(&px)
@@ -153,8 +157,11 @@ async fn forge_merge_refuses_disallowed_method_and_reports_failure() {
 
     px.forge
         .on_merge(|_| async { Err(ForgeError::failed("HTTP 401: Bad credentials")) });
-    let (_, ok) = px.eng().merge_pr("gh-m", &MergeMethod::Merge).await;
-    assert!(!ok);
+    let err = px.eng().merge_pr("gh-m", &MergeMethod::Merge).await;
+    assert!(
+        err.unwrap_err()
+            .starts_with("Can't merge on GitHub: the gh CLI is not authenticated")
+    );
     assert!(
         feed(&px)
             .iter()
@@ -163,17 +170,37 @@ async fn forge_merge_refuses_disallowed_method_and_reports_failure() {
 }
 
 #[tokio::test]
+async fn forge_merge_without_a_method_picks_one_the_repo_allows() {
+    let (px, _repo, _w) = merge_fx("gh-sq", 23).await;
+    px.te
+        .store
+        .update_pr("gh-sq", |p| p.allowed_merge_methods = vec!["squash".into()]);
+    assert!(
+        px.eng()
+            .merge_pr("gh-sq", &MergeMethod::from(""))
+            .await
+            .is_ok()
+    );
+    assert_eq!(px.forge.calls_to("merge")[0][2], "squash");
+}
+
+#[tokio::test]
 async fn merge_refuses_closed_and_is_idempotent_when_merged() {
     let (px, _repo, _w) = merge_fx("gh-c", 22).await;
     px.te.store.update_pr("gh-c", |p| p.state = "Closed".into());
-    assert!(!px.eng().merge_pr("gh-c", &MergeMethod::Merge).await.1);
+    assert!(
+        px.eng()
+            .merge_pr("gh-c", &MergeMethod::Merge)
+            .await
+            .is_err()
+    );
     assert!(
         feed(&px)
             .iter()
             .any(|t| t == "Merge refused: this GitHub PR is closed.")
     );
     px.te.store.update_pr("gh-c", |p| p.state = "Merged".into());
-    assert!(px.eng().merge_pr("gh-c", &MergeMethod::Merge).await.1);
+    assert!(px.eng().merge_pr("gh-c", &MergeMethod::Merge).await.is_ok());
     assert!(px.forge.calls_to("merge").is_empty());
 }
 
@@ -589,7 +616,11 @@ async fn github_merge_round_trip() {
         .to_owned()
     };
     assert_eq!(state(pr.number), "OPEN");
-    let (merged, ok) = te.engine.merge_pr(&pr.id, &MergeMethod::default()).await;
-    assert!(ok && merged.state == "Merged");
+    let merged = te
+        .engine
+        .merge_pr(&pr.id, &MergeMethod::default())
+        .await
+        .unwrap();
+    assert!(merged.state == "Merged");
     assert_eq!(state(pr.number), "MERGED");
 }

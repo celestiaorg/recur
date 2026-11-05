@@ -249,7 +249,12 @@ async fn walked_pr(task: &str) -> (TestEngine, crate::testing::TempRepo, String,
 async fn squash_merge_commit_message_on_disk() {
     let goal = "Informative squash history";
     let (t, repo, _id, pr) = walked_pr(goal).await;
-    assert!(t.engine.merge_pr(&pr.id, &MergeMethod::Squash).await.1);
+    assert!(
+        t.engine
+            .merge_pr(&pr.id, &MergeMethod::Squash)
+            .await
+            .is_ok()
+    );
     let subj = git_out(&repo.path, &["log", "-1", "--pretty=%s", "main"]).unwrap();
     let subj = subj.trim();
     assert_eq!(subj, goal);
@@ -263,8 +268,11 @@ async fn squash_merge_commit_message_on_disk() {
 async fn local_merge_advances_base() {
     let (t, repo, id, pr) = walked_pr("Mergeable feature").await;
     let before = git_out(&repo.path, &["rev-parse", "main"]).unwrap();
-    let (merged, ok) = t.engine.merge_pr(&pr.id, &MergeMethod::default()).await;
-    assert!(ok);
+    let merged = t
+        .engine
+        .merge_pr(&pr.id, &MergeMethod::default())
+        .await
+        .unwrap();
     assert_eq!(
         (merged.state.as_str(), merged.group.as_str()),
         ("Merged", "merged")
@@ -275,7 +283,10 @@ async fn local_merge_advances_base() {
         WorkspaceState::Merged
     );
     assert!(
-        t.engine.merge_pr(&pr.id, &MergeMethod::default()).await.1,
+        t.engine
+            .merge_pr(&pr.id, &MergeMethod::default())
+            .await
+            .is_ok(),
         "idempotent"
     );
     let notes: Vec<String> = t

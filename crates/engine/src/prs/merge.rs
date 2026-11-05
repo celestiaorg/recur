@@ -17,6 +17,7 @@ use recur_forge::{Forge, MergeCommitText, MergeOutcome};
 use crate::Engine;
 use crate::prs::{GROUP_MERGED, touch_pr_updated};
 use crate::text::html_escape;
+use crate::view::pr_merge_action::{allowed_merge_methods, pick_allowed_merge_method};
 
 const MERGE_TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -131,32 +132,33 @@ pub(crate) fn stamp_reconcile_updated_at(p: &mut Pr, updated_at: &str) {
 }
 
 impl Engine {
-    /// Merges a PR. `method` empty resolves project, then settings. A
-    /// merged PR is idempotent; a closed one is refused.
-    pub async fn merge_pr(&self, pr_id: &str, method: &MergeMethod) -> (Pr, bool) {
+    /// Merges a PR. `method` empty resolves project, then settings, then the
+    /// first method the repo allows. A merged PR is idempotent; a closed one is
+    /// refused. A failure is also a feed note; the error is that note's HTML.
+    pub async fn merge_pr(&self, pr_id: &str, method: &MergeMethod) -> Result<Pr, String> {
         let Some(pr) = self.store.pr(pr_id) else {
-            return (Pr::default(), false);
+            return Err(format!("PR {} not found.", html_escape(pr_id)));
         };
         if pr.state == "Merged" {
-            return (pr, true);
+            return Ok(pr);
         }
         let forge = self.pr_forge(&pr);
         if pr.state == "Closed" {
             let label = forge.as_ref().map_or("Local", |f| f.label());
-            self.emit_workspace_event(
-                &pr.workspace_id,
-                "MA",
-                "Maestro",
-                &format!("Merge refused: this {label} PR is closed."),
-            );
-            return (pr, false);
+            let note = format!("Merge refused: this {label} PR is closed.");
+            self.emit_workspace_event(&pr.workspace_id, "MA", "Maestro", &note);
+            return Err(note);
         }
         let method = if method.is_empty() {
             let proj = self
                 .store
                 .project(&self.pr_project_id(&pr))
                 .unwrap_or_default();
-            effective_merge_method(&proj, &self.settings())
+            let preferred = effective_merge_method(&proj, &self.settings());
+            MergeMethod::from(pick_allowed_merge_method(
+                preferred.as_str(),
+                &allowed_merge_methods(Some(&pr)),
+            ))
         } else {
             normalize_merge_method(method.as_str())
         };
@@ -184,13 +186,13 @@ impl Engine {
 
     /// Merges the branch into its base in the project repo and pushes a
     /// remote-tracking base. A failure is a feed note and `false`.
-    async fn merge_local(&self, mut pr: Pr, method: &MergeMethod) -> (Pr, bool) {
+    async fn merge_local(&self, mut pr: Pr, method: &MergeMethod) -> Result<Pr, String> {
         let Some(proj) = self
             .store
             .project(&self.pr_project_id(&pr))
             .filter(|p| !p.repo_path.is_empty())
         else {
-            return (self.mark_merged(&pr.id, "").await, true);
+            return Ok(self.mark_merged(&pr.id, "").await);
         };
         // A mid-session rename wins over the cached branch name.
         self.sync_workspace_branch(&pr.workspace_id).await;
@@ -241,7 +243,7 @@ impl Engine {
             Ok(r) => r,
             Err(note) => {
                 self.emit_workspace_event(&pr.workspace_id, "MA", "Maestro", &note);
-                return (pr, false);
+                return Err(note);
             }
         };
         let label = method.label();
@@ -262,42 +264,39 @@ impl Engine {
             ),
         };
         self.emit_workspace_event(&pr.workspace_id, "MA", "Maestro", &note);
-        (merged, true)
+        Ok(merged)
     }
 
     /// Merges on the forge, or enqueues when the base uses a merge queue
     /// (the PR then stays open and queued).
-    async fn merge_forge(&self, forge: &dyn Forge, pr: Pr, method: &MergeMethod) -> (Pr, bool) {
+    async fn merge_forge(
+        &self,
+        forge: &dyn Forge,
+        pr: Pr,
+        method: &MergeMethod,
+    ) -> Result<Pr, String> {
         let repo = self
             .store
             .project(&self.pr_project_id(&pr))
             .map(|p| p.repo_path)
             .unwrap_or_default();
         if !merge_method_permitted(&pr.allowed_merge_methods, method) {
-            self.emit_workspace_event(
-                &pr.workspace_id,
-                "MA",
-                "Maestro",
-                &format!(
-                    "{} doesn't allow {} on this repository.",
-                    forge.label(),
-                    html_escape(method.label())
-                ),
+            let note = format!(
+                "{} doesn't allow {} on this repository.",
+                forge.label(),
+                html_escape(method.label())
             );
-            return (pr, false);
+            self.emit_workspace_event(&pr.workspace_id, "MA", "Maestro", &note);
+            return Err(note);
         }
         let outcome =
             crate::prs::ops::bounded(MERGE_TIMEOUT, forge.merge(Path::new(&repo), &pr, method))
                 .await;
         match outcome {
             Err(e) => {
-                self.emit_workspace_event(
-                    &pr.workspace_id,
-                    "MA",
-                    "Maestro",
-                    &forge.merge_failure_note(&e),
-                );
-                (pr, false)
+                let note = forge.merge_failure_note(&e);
+                self.emit_workspace_event(&pr.workspace_id, "MA", "Maestro", &note);
+                Err(note)
             }
             Ok(MergeOutcome::Queued) => {
                 let pr = self
@@ -319,7 +318,7 @@ impl Engine {
                         pr.number
                     ),
                 );
-                (pr, true)
+                Ok(pr)
             }
             Ok(MergeOutcome::Merged) => {
                 let merged = self.mark_merged(&pr.id, "").await;
@@ -337,7 +336,7 @@ impl Engine {
                         pr.source.as_str()
                     ),
                 );
-                (merged, true)
+                Ok(merged)
             }
         }
     }

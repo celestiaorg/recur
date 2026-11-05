@@ -197,11 +197,11 @@ async fn headline_e2e() {
 
     // 6. Merge: PR and loop merged, the base advances on disk.
     let base_before = git_out(&repo.path, &["rev-parse", "main"]).unwrap();
-    let (merged, ok) = t
+    let merged = t
         .engine
         .merge_pr(&pr.id, &recur_domain::MergeMethod::default())
-        .await;
-    assert!(ok, "merge after send-back");
+        .await
+        .unwrap();
     assert_eq!(
         (merged.state.as_str(), merged.group.as_str()),
         ("Merged", "merged")
@@ -339,11 +339,12 @@ async fn real_headline_e2e() {
 
     // Merge: the base advances on disk.
     let before = git_out(&repo.path, &["rev-parse", "main"]).unwrap();
-    let (merged, ok) = t
+    let merged = t
         .engine
         .merge_pr(&pr.id, &recur_domain::MergeMethod::default())
-        .await;
-    assert!(ok && merged.state == "Merged");
+        .await
+        .unwrap();
+    assert!(merged.state == "Merged");
     assert_ne!(git_out(&repo.path, &["rev-parse", "main"]).unwrap(), before);
     assert!(
         git_out(&repo.path, &["show", "main:index.html"]).is_ok_and(|o| o.contains("Hello Recur"))

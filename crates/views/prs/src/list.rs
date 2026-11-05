@@ -19,7 +19,7 @@ use gpui_kit::{
 };
 use recur_domain::{Pr, PrSource};
 use recur_engine::view::pr_merge_action::{
-    can_approve_pr_review, can_set_pr_draft, pr_merge_action, show_pr_update,
+    MergeActionKind, can_approve_pr_review, can_set_pr_draft, pr_merge_action, show_pr_update,
 };
 use recur_engine::view::pr_workspace::{pr_agent_is_running, pr_agent_workspace_id};
 use recur_forge::view::{RollupKind, pr_attention_labels, pr_checks_rollup, pr_has_check_status};
@@ -123,7 +123,7 @@ impl Bulk {
             Bulk::Draft => life == Some(PrLifecycle::Open) && can_set_pr_draft(Some(p)),
             Bulk::Ready => life == Some(PrLifecycle::Draft) && can_set_pr_draft(Some(p)),
             Bulk::Close => matches!(life, Some(PrLifecycle::Open | PrLifecycle::Draft)),
-            Bulk::Merge => life == Some(PrLifecycle::Open),
+            Bulk::Merge => pr_merge_action(Some(p), false).kind == MergeActionKind::Merge,
         }
     }
 
@@ -463,7 +463,12 @@ impl PrList {
                 n += usize::from(act.run(p, &services, &state, cx).await);
             }
             if n > 0 {
-                let msg = format!("{n} PR{} {}", if n == 1 { "" } else { "s" }, act.done());
+                let done = if act == Bulk::Merge && prs.iter().all(|p| p.merge_queue_enabled) {
+                    "added to the merge queue"
+                } else {
+                    act.done()
+                };
+                let msg = format!("{n} PR{} {done}", if n == 1 { "" } else { "s" });
                 cx.update(|cx| toast(ToastKind::Success, msg, cx));
             }
             let _ = this.update(cx, |this, cx| {

@@ -26,15 +26,14 @@ name: Release
 #   LINUX_PGP_KEY          armored private key, `gpg --armor --export-secret-keys <id>`
 #   LINUX_PGP_PASSPHRASE   its passphrase, if any
 #
-# Public release secrets:
-#   RELEASES_TOKEN         token with contents:write on celestiaorg/recur-releases,
-#                          the public binaries-only repo every release is mirrored
-#                          to (public download page + in-app updater). It needs
-#                          one commit so release tags can be cut.
+# Updater secrets:
 #   UPDATER_SIGNING_KEY    Ed25519 private key (PKCS#8 PEM, or base64 of the raw
 #                          key or seed) matching build/updater.key.pub (rotate both
-#                          together). Without it and RELEASES_TOKEN, builds ship
-#                          without the updater.
+#                          together). Without it, builds ship without the updater.
+#   RELEASES_TOKEN         token with contents:write on celestiaorg/recur-releases,
+#                          the deprecated mirror every release is still copied to
+#                          for installs from v0.5.0 and earlier, whose updater
+#                          reads the manifest from there, and old download links.
 #
 # No job restores a build cache: a poisoned entry could reach the signed
 # artifacts or the job holding UPDATER_SIGNING_KEY. mbx's local cache is fine.
@@ -53,7 +52,7 @@ jobs:
       HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
       HAS_NOTARY: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
       SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || 'Developer ID Application' }}
-      RECUR_UPDATE_URL: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' && 'https://github.com/celestiaorg/recur-releases/releases/latest/download/manifest.json' || '' }}
+      RECUR_UPDATE_URL: ${{ secrets.UPDATER_SIGNING_KEY != '' && 'https://github.com/celestiaorg/recur/releases/latest/download/manifest.json' || '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
@@ -170,8 +169,8 @@ jobs:
     needs: [build-mac, build-linux]
     runs-on: ubuntu-24.04
     env:
-      HAS_PUBLIC: ${{ secrets.RELEASES_TOKEN != '' }}
-      HAS_UPDATER: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' }}
+      HAS_UPDATER: ${{ secrets.UPDATER_SIGNING_KEY != '' }}
+      HAS_MIRROR: ${{ secrets.UPDATER_SIGNING_KEY != '' && secrets.RELEASES_TOKEN != '' }}
     steps:
       - if: env.HAS_UPDATER == 'true'
         uses: actions/checkout@v7
@@ -191,7 +190,7 @@ jobs:
           printf '%s\n' "$UPDATER_SIGNING_KEY" > "$RUNNER_TEMP/updater.key"
           cargo build -q --locked -p recur-platform --bin updater-manifest
           target/debug/updater-manifest manifest --version "$V" --name "Recur $V" --key "$RUNNER_TEMP/updater.key" \
-            --url-prefix "https://github.com/celestiaorg/recur-releases/releases/download/$GITHUB_REF_NAME" \
+            --url-prefix "https://github.com/celestiaorg/recur/releases/download/$GITHUB_REF_NAME" \
             --output dist/manifest.json "dist/Recur-$V-macos-universal.zip"
           rm "$RUNNER_TEMP/updater.key"
           target/debug/updater-manifest verify --manifest dist/manifest.json --publickey build/updater.key.pub
@@ -201,24 +200,26 @@ jobs:
         run: |
           V="${GITHUB_REF_NAME#v}"
           cd dist && for f in Recur-"$V"-*.{dmg,deb,rpm,tar.gz}; do cp "$f" "${f/-$V/}"; done
+      # The release stays a draft until every asset is up, so
+      # latest/download/manifest.json never points at a missing zip.
       - env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           (cd dist && sha256sum -- * > SHA256SUMS)
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --generate-notes --verify-tag
           gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
 
-      # This repo is private, so the download page and the updater read the
-      # same files from a public, binaries-only mirror. It stays a draft until
-      # every asset is up, so latest/download/manifest.json never points
-      # at a missing zip.
-      - name: Publish public release
-        if: env.HAS_PUBLIC == 'true'
+      # Deprecated mirror: installs from v0.5.0 and earlier read the manifest
+      # from recur-releases, and old download links point there. Drop this
+      # step (and RELEASES_TOKEN) once those installs have updated.
+      - name: Mirror to recur-releases
+        if: env.HAS_MIRROR == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
           GH_REPO: celestiaorg/recur-releases
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --target main --title "Recur ${GITHUB_REF_NAME#v}" --notes ""
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --target main --title "Recur ${GITHUB_REF_NAME#v}" --notes "Deprecated mirror. Releases moved to https://github.com/celestiaorg/recur/releases"
           gh release upload "$GITHUB_REF_NAME" dist/* --clobber
           gh release edit "$GITHUB_REF_NAME" --draft=false --latest

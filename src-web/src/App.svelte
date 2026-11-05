@@ -12,7 +12,7 @@
   const icon = "/images/recur-icon.png";
   const downloads =
     import.meta.env.VITE_DOWNLOADS_URL ||
-    "https://github.com/celestiaorg/recur-releases/releases/latest/download";
+    "https://github.com/celestiaorg/recur/releases/latest/download";
   const github = "https://github.com/celestiaorg/recur";
   const x = "https://x.com/recur_build";
   const telegram = "https://t.me/recur_build";

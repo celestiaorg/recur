@@ -440,3 +440,37 @@ fn licenses_section_shows_the_third_party_licenses(cx: &mut TestAppContext) {
     s.section("Licenses");
     assert!(s.has("set-head=Licenses"));
 }
+
+/// Off by default; turning it on adds the sidebar row and the ⌥⌘5 route, a dock without the
+/// workspace's chrome; turning it off leaves the page.
+#[gpui::test]
+fn terminals_page_toggle_shows_the_sidebar_row_and_route(cx: &mut TestAppContext) {
+    use recur_view_core::ViewName;
+    let mut s = plain(cx);
+    assert!(!s.has("nav-terminals"));
+    s.dispatch(AppEvent::MenuAction("view:terminals".into()));
+    assert_ne!(s.view(), ViewName::Terminals);
+
+    s.open_settings();
+    s.section("Code editor");
+    s.click("seg:Terminals page:On");
+    assert!(
+        s.storage("recur.terminalPrefs")
+            .unwrap()
+            .contains("\"page\":true")
+    );
+    s.click("nav-terminals");
+    assert_eq!(s.view(), ViewName::Terminals);
+    assert!(s.has("term-dock"));
+    assert!(s.has("term-act:new"));
+    assert!(!s.has("term-act:maximize"));
+    assert!(!s.has("term-act:hide"));
+
+    s.open_settings();
+    s.dispatch(AppEvent::MenuAction("view:terminals".into()));
+    assert_eq!(s.view(), ViewName::Terminals);
+    s.state
+        .update(s.cx, |st, cx| st.set_terminal_prefs(|p| p.page = false, cx));
+    assert_eq!(s.view(), ViewName::Briefing);
+    assert!(!s.has("nav-terminals"));
+}

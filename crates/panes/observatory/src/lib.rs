@@ -70,12 +70,13 @@ pub mod session_tabs;
 mod spec;
 pub mod style;
 mod tabs;
+pub mod terminals_page;
 pub mod workspace_file;
 
 use std::collections::BTreeMap;
 
 use gpui_kit::{App, AppContext as _, Global};
-use recur_view_core::{OverlaySlot, ViewContext, ViewRegistry};
+use recur_view_core::{OverlaySlot, ViewContext, ViewName, ViewRegistry};
 
 pub use model::FocusZone;
 pub use obs::{
@@ -118,8 +119,13 @@ pub fn init_globals(cx: &mut App) {
     dock::init(cx);
 }
 
-/// Registers the Observatory's actions and key bindings and the keybinding menu overlay.
+/// Registers the Observatory's actions and key bindings, the keybinding menu overlay and the
+/// Terminals route.
 pub fn register(r: &mut ViewRegistry) {
+    r.view(&[ViewName::Terminals], |vcx: &ViewContext, window, cx| {
+        cx.new(|cx| terminals_page::TerminalsPage::new(vcx, window, cx))
+            .into()
+    });
     r.init(|cx| {
         recur_terminal_view::init(cx);
         recur_view_widgets::keybinding_menu::bind(cx);

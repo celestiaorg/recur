@@ -1292,6 +1292,7 @@ impl Observatory {
             s.set_value(name, window, cx);
             s
         });
+        recur_ui::style::style_text_input(&input, cx);
         let sub = cx.guarded_subscribe_in(
             &input,
             window,

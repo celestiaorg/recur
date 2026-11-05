@@ -7,8 +7,9 @@ use gpui_kit::{
     AnyElement, App, Context, InteractiveElement, IntoElement, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, Window, div, px,
 };
+use recur_ui::file_icons::file_icon;
 use recur_ui::guard::Guarded;
-use recur_ui::text::{LineHeight, TextStyled, text};
+use recur_ui::text::{LineHeight, TextStyled, span, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, icon};
 use recur_view_core::prefs::CodePanelKey;
@@ -50,6 +51,53 @@ pub(crate) fn more_row(
             cx.notify();
         }))
         .into_any_element()
+}
+
+/// The Search panel's file header and hit rows, and how far past the viewport they are built.
+const SEARCH_HEAD_H: f32 = 24.;
+const SEARCH_HIT_H: f32 = 22.;
+const SEARCH_OVERSCAN: f32 = 240.;
+
+/// A hit's line as (before, match, after) around its first match, the head cut to keep a match
+/// far along the line in view.
+fn split_hit<'a>(preview: &'a str, re: &regex::Regex) -> Option<(String, &'a str, &'a str)> {
+    let m = re.find(preview).filter(|m| !m.is_empty())?;
+    let cut = if m.start() > 32 {
+        (0..=m.start() - 24)
+            .rev()
+            .find(|&i| preview.is_char_boundary(i))
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    let head = &preview[cut..m.start()];
+    let head = if cut > 0 {
+        format!("…{head}")
+    } else {
+        head.to_string()
+    };
+    Some((head, m.as_str(), &preview[m.end()..]))
+}
+
+fn hit_preview(
+    preview: &str,
+    re: Option<&regex::Regex>,
+    t: recur_ui::Tokens,
+) -> recur_ui::text::Text {
+    let Some((head, hit, tail)) = re.and_then(|re| split_hit(preview, re)) else {
+        return text(preview.to_string());
+    };
+    recur_ui::text::Text::from_spans(vec![
+        span(head),
+        span(hit.to_string())
+            .color(t.text)
+            .boxed(recur_ui::text::InlineBox {
+                background: Some(hsla(t.amber_d)),
+                radius: 2.,
+                ..Default::default()
+            }),
+        span(tail.to_string()),
+    ])
 }
 
 /// A `.obs-sym` / `.obs-hit` row shell.
@@ -737,130 +785,114 @@ impl Observatory {
 
     fn render_search(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let field = |input: &gpui_kit::Entity<gpui_kit::base::input::InputState>,
-                     ph: &'static str,
-                     disabled: bool,
-                     window: &Window,
-                     cx: &App| {
-            let focused = gpui_kit::Focusable::focus_handle(input.read(cx), cx).is_focused(window);
-            recur_ui::style::card(t.bg, if focused { t.line_bright } else { t.line }, 6.)
-                .w_full()
-                .flex()
-                .py(px(6.))
-                .px(px(10.))
-                .when(disabled, |d| d.opacity(0.5))
-                .child(recur_ui::style::text_field(
-                    input,
-                    &SharedString::from(ph),
-                    recur_ui::style::UA_PLACEHOLDER,
-                    recur_ui::fonts::Family::Mono,
-                    12.,
-                    window,
-                    cx,
-                ))
-        };
         let writable = self.tree_writable();
         let q = self.inputs.query(cx);
-        let checkbox =
-            |id: &'static str, label: &'static str, on: bool, _cx: &mut Context<Self>| {
+        let field_bg = if Theme::of(cx).is_light() {
+            t.pane
+        } else {
+            t.bg
+        };
+        let inline_btn = |id: &'static str, name: IconName, on: bool, disabled: bool, cx: &App| {
+            let b = if disabled {
+                recur_view_review::style::icon_btn_disabled(id, name, 20., 13., field_bg, cx)
+            } else if on {
                 div()
                     .id(id)
-                    .debug_selector(move || format!("search-opt:{label}"))
                     .flex()
+                    .flex_none()
                     .items_center()
-                    .gap(px(4.))
+                    .justify_center()
+                    .size(px(20.))
+                    .rounded(px(5.))
                     .cursor_pointer()
-                    .child(crate::style::native_checkbox(on))
-                    .child(text(label).mono().size(11.).color(t.muted).nowrap())
+                    .bg(hsla(t.amber_d))
+                    .text_color(hsla(t.amber))
+                    .child(icon(name).size(px(13.)))
+            } else {
+                recur_view_review::style::icon_btn(id, name, 20., 13., None, cx)
             };
-        let opts = div()
-            .flex()
-            .flex_wrap()
-            .items_center()
-            .gap(px(8.))
-            .child(
-                checkbox("search-regex", "Regex", self.search_regex, cx).on_click(
-                    cx.guarded_listener(|o, _, _, cx| {
-                        o.search_regex = !o.search_regex;
-                        cx.notify();
-                    }),
-                ),
+            b.debug_selector(move || format!("search-opt:{id}"))
+        };
+        let query_row = recur_ui::style::find_field(
+            &self.inputs.query,
+            crate::inputs::SEARCH_PLACEHOLDER,
+            window,
+            cx,
+        )
+        .pr(px(3.))
+        .gap(px(2.))
+        .child(titled(
+            "search-case-t",
+            "Match case",
+            inline_btn(
+                "search-case",
+                IconName::CaseSensitive,
+                self.search_case,
+                false,
+                cx,
             )
-            .child(
-                checkbox("search-case", "Case", self.search_case, cx).on_click(
-                    cx.guarded_listener(|o, _, _, cx| {
-                        o.search_case = !o.search_case;
-                        cx.notify();
-                    }),
-                ),
+            .on_click(cx.guarded_listener(|o, _, window, cx| {
+                o.search_case = !o.search_case;
+                o.run_search(true, window, cx);
+                cx.notify();
+            })),
+        ))
+        .child(titled(
+            "search-regex-t",
+            "Regular expression",
+            inline_btn(
+                "search-regex",
+                IconName::Regex,
+                self.search_regex,
+                false,
+                cx,
             )
-            .child(
-                recur_ui::style::rbtn("search-find", recur_ui::style::Rbtn::Default, None, cx)
-                    .child(
-                        text("Find")
-                            .size(12.5)
-                            .weight(550.)
-                            .line_height(LineHeight::Normal)
-                            .nowrap(),
-                    )
-                    .on_click(
-                        cx.guarded_listener(|o, _, window, cx| o.run_search(true, window, cx)),
-                    ),
+            .on_click(cx.guarded_listener(|o, _, window, cx| {
+                o.search_regex = !o.search_regex;
+                o.run_search(true, window, cx);
+                cx.notify();
+            })),
+        ));
+        let replace_row = writable.then(|| {
+            let disabled = q.trim().is_empty();
+            recur_ui::style::find_field(
+                &self.inputs.replace,
+                crate::inputs::REPLACE_PLACEHOLDER,
+                window,
+                cx,
             )
-            .when(writable, |d| {
-                let disabled = q.trim().is_empty();
-                d.child(
-                    recur_ui::style::rbtn(
-                        "search-replace",
-                        recur_ui::style::Rbtn::Default,
-                        disabled.then_some(t.bg),
-                        cx,
-                    )
-                    .child(
-                        text("Replace all")
-                            .size(12.5)
-                            .weight(550.)
-                            .line_height(LineHeight::Normal)
-                            .nowrap(),
-                    )
-                    .when(!disabled, |b| {
+            .pr(px(3.))
+            .child(titled(
+                "search-replace-t",
+                "Replace all",
+                inline_btn("search-replace", IconName::Replace, false, disabled, cx).when(
+                    !disabled,
+                    |b| {
                         b.on_click(
                             cx.guarded_listener(|o, _, window, cx| o.run_replace(window, cx)),
                         )
-                    }),
-                )
-            });
+                    },
+                ),
+            ))
+        });
         let boxed = div()
             .flex()
             .flex_col()
             .gap(px(6.))
-            .pt(px(10.))
-            .px(px(10.))
-            .pb(px(6.))
+            .p(px(10.))
             .bg(hsla(t.bg))
-            .child(field(
-                &self.inputs.query,
-                crate::inputs::SEARCH_PLACEHOLDER,
-                false,
-                window,
-                cx,
-            ))
-            .child(field(
-                &self.inputs.replace,
-                crate::inputs::REPLACE_PLACEHOLDER,
-                !writable,
-                window,
-                cx,
-            ))
-            .child(field(
+            .border_b_1()
+            .border_color(hsla(t.line_soft))
+            .child(query_row)
+            .children(replace_row)
+            .child(recur_ui::style::find_field(
                 &self.inputs.glob,
                 crate::inputs::GLOB_PLACEHOLDER,
-                false,
                 window,
                 cx,
-            ))
-            .child(opts);
+            ));
         let mut list = div().flex().flex_col();
+        let mut summary = None;
         if self.hits.is_empty() {
             list = list.child(obs_empty(
                 if q.trim().is_empty() {
@@ -871,29 +903,138 @@ impl Observatory {
                 false,
                 cx,
             ));
-        }
-        for (i, h) in self.hits.clone().into_iter().enumerate() {
-            let (path, line) = (h.path.clone(), h.line);
-            list = list.child(
-                hit_row(SharedString::from(format!("hit-{i}")), cx)
-                    .debug_selector(move || format!("obs-hit:{i}"))
-                    .child(
-                        text(format!("{}:{}", h.path, h.line))
-                            .mono()
-                            .size(10.5)
-                            .color(t.amber)
-                            .nowrap(),
-                    )
-                    .child(text(h.preview.clone()).size(11.).color(t.muted).truncate())
-                    .on_click(cx.guarded_listener(move |o, _, window, cx| {
-                        o.open_path(
-                            OpenRequest::new(path.clone()).line(line.max(0) as usize),
-                            window,
-                            cx,
-                        )
-                        .detach()
-                    })),
+        } else {
+            let files = self.hits.chunk_by(|a, b| a.path == b.path).count();
+            let n = self.hits.len();
+            summary = Some(
+                div().px(px(10.)).pt(px(8.)).pb(px(4.)).child(
+                    text(format!(
+                        "{n}{} result{} in {files} file{}",
+                        if self.search_truncated { "+" } else { "" },
+                        if n == 1 { "" } else { "s" },
+                        if files == 1 { "" } else { "s" },
+                    ))
+                    .size(11.)
+                    .color(t.faint)
+                    .nowrap(),
+                ),
             );
+        }
+        // Rows have fixed heights, so only those near the viewport are built.
+        let view_h = f32::from(self.search_scroll.bounds().size.height);
+        let scroll = (-f32::from(self.search_scroll.offset().y)).max(0.);
+        let (lo, hi) = (
+            scroll - SEARCH_OVERSCAN,
+            scroll + view_h.max(600.) + SEARCH_OVERSCAN,
+        );
+        let (mut y, mut gap, mut i) = (0., 0., 0);
+        for group in self.hits.chunk_by(|a, b| a.path == b.path) {
+            if y + SEARCH_HEAD_H < lo || y > hi {
+                gap += SEARCH_HEAD_H;
+            } else {
+                if gap > 0. {
+                    list = list.child(div().flex_none().h(px(gap)));
+                    gap = 0.;
+                }
+                let (dir, name) = match group[0].path.rsplit_once('/') {
+                    Some((d, n)) => (d.to_string(), n.to_string()),
+                    None => (String::new(), group[0].path.clone()),
+                };
+                list = list.child(
+                    div()
+                        .flex()
+                        .flex_none()
+                        .items_center()
+                        .gap(px(6.))
+                        .w_full()
+                        .h(px(SEARCH_HEAD_H))
+                        .px(px(10.))
+                        .pt(px(4.))
+                        .child(
+                            div()
+                                .size(px(14.))
+                                .flex_none()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(file_icon(SharedString::from(name.clone()))),
+                        )
+                        .child(text(name).size(12.).color(t.text).nowrap())
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .child(text(dir).size(11.).color(t.faint).truncate()),
+                        )
+                        .child(
+                            text(group.len().to_string())
+                                .mono()
+                                .size(10.5)
+                                .color(t.faint)
+                                .nowrap(),
+                        ),
+                );
+            }
+            y += SEARCH_HEAD_H;
+            for h in group {
+                let idx = i;
+                i += 1;
+                if y + SEARCH_HIT_H < lo || y > hi {
+                    gap += SEARCH_HIT_H;
+                    y += SEARCH_HIT_H;
+                    continue;
+                }
+                y += SEARCH_HIT_H;
+                if gap > 0. {
+                    list = list.child(div().flex_none().h(px(gap)));
+                    gap = 0.;
+                }
+                let (path, line) = (h.path.clone(), h.line);
+                list = list.child(
+                    div()
+                        .id(SharedString::from(format!("hit-{idx}")))
+                        .debug_selector(move || format!("obs-hit:{idx}"))
+                        .flex()
+                        .flex_none()
+                        .items_center()
+                        .gap(px(8.))
+                        .w_full()
+                        .h(px(SEARCH_HIT_H))
+                        .pl(px(30.))
+                        .pr(px(10.))
+                        .cursor_pointer()
+                        .hover(move |s| s.bg(hsla(t.pane_2)))
+                        .child(
+                            div().flex_none().min_w(px(24.)).flex().justify_end().child(
+                                text(h.line.to_string())
+                                    .mono()
+                                    .size(10.5)
+                                    .color(t.faint)
+                                    .nowrap(),
+                            ),
+                        )
+                        .child(
+                            div().flex_1().min_w_0().child(
+                                hit_preview(&h.preview, self.search_match.as_ref(), t)
+                                    .mono()
+                                    .size(11.)
+                                    .color(t.muted)
+                                    .truncate(),
+                            ),
+                        )
+                        .on_click(cx.guarded_listener(move |o, _, window, cx| {
+                            o.open_path(
+                                OpenRequest::new(path.clone()).line(line.max(0) as usize),
+                                window,
+                                cx,
+                            )
+                            .detach()
+                        })),
+                );
+            }
+        }
+        if gap > 0. {
+            list = list.child(div().flex_none().h(px(gap)));
         }
         if self.search_skipped_large > 0 {
             let n = self.search_skipped_large;
@@ -921,8 +1062,22 @@ impl Observatory {
         div()
             .flex()
             .flex_col()
+            .flex_1()
+            .min_h_0()
             .child(boxed)
-            .child(list)
+            .children(summary)
+            .child(
+                div()
+                    .relative()
+                    .flex_1()
+                    .min_h_0()
+                    .child(
+                        recur_ui::widgets::scroll_area("obs-search-list")
+                            .track(&self.search_scroll)
+                            .child(list),
+                    )
+                    .children(recur_ui::style::edge_fades(&self.search_scroll, t.bg, 24.)),
+            )
             .into_any_element()
     }
 
@@ -969,5 +1124,24 @@ impl Observatory {
             .child(list)
             .children(more)
             .into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_hit;
+
+    #[test]
+    fn split_hit_marks_the_first_match_and_cuts_a_long_head() {
+        let re = regex::Regex::new("(?i)println").unwrap();
+        assert_eq!(
+            split_hit("fmt.Println(x)", &re),
+            Some(("fmt.".into(), "Println", "(x)"))
+        );
+        let long = format!("{}Println()", "é".repeat(40));
+        let (head, hit, tail) = split_hit(&long, &re).unwrap();
+        assert!(head.starts_with('…') && head.chars().count() <= 26);
+        assert_eq!((hit, tail), ("Println", "()"));
+        assert_eq!(split_hit("nothing here", &re), None);
     }
 }

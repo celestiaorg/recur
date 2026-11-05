@@ -273,28 +273,6 @@ pub fn git_color(st: &str, t: &Tokens) -> Option<Color> {
     }
 }
 
-/// WebKit's native `<input type=checkbox>` (macOS, light control): a 12px rounded box with a
-/// 3px 3px 3px 4px margin; checked fills with the system accent and a white check.
-pub fn native_checkbox(on: bool) -> AnyElement {
-    const MARK: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.1 5 8.6 9.7 2.7"/></svg>"##;
-    let accent = recur_ui::hex(0x007aff);
-    let edge = recur_ui::rgba(0, 0, 0, 0.25);
-    div()
-        .mt(px(3.))
-        .mb(px(3.))
-        .mr(px(3.))
-        .ml(px(4.))
-        .size(px(12.))
-        .rounded(px(3.))
-        .border(px(0.5))
-        .border_color(hsla(if on { accent } else { edge }))
-        .bg(hsla(if on { accent } else { recur_ui::hex(0xffffff) }))
-        .when(on, |d| {
-            d.child(recur_ui::svg_markup(MARK.to_string()).size(px(12.)))
-        })
-        .into_any_element()
-}
-
 #[cfg(test)]
 mod tests {
     use super::StatusWrap;

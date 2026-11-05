@@ -83,6 +83,7 @@ export default defineConfig({
         { text: "Themes", link: "/reference/themes" },
         { text: "Keyboard shortcuts", link: "/reference/shortcuts" },
         { text: "Troubleshooting", link: "/reference/troubleshooting" },
+        { text: "Changelog", link: "/changelog" },
       ],
     },
   ],

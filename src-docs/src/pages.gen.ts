@@ -14,6 +14,7 @@ type Page =
   | { path: '/bundles/shebang'; render: 'static' }
   | { path: '/bundles/testing'; render: 'static' }
   | { path: '/bundles/typescript'; render: 'static' }
+  | { path: '/changelog'; render: 'static' }
   | { path: '/concepts/chat-context'; render: 'static' }
   | { path: '/concepts/inbox'; render: 'static' }
   | { path: '/concepts/issues'; render: 'static' }

@@ -95,4 +95,5 @@ Expectations:
 - Prefer small, focused PRs; match existing commit tone (why over noise).
 - Run `mise run check` before pushing.
 - Update `docs/bundles.md` for author-facing bundle behavior.
+- Add user-facing changes to the `Unreleased` section of `src-docs/src/pages/changelog.mdx` (Keep a Changelog: Added, Changed, Fixed, Removed, Security). Write for users, not commit messages. On release, rename `Unreleased` to the version and date.
 - Do not commit secrets, `target/`, `src-web/public/demo/`, or the gitignored `TODO.md`.

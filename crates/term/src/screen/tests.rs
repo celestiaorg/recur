@@ -63,6 +63,19 @@ fn mouse_and_focus_modes_come_from_the_terminal() {
 }
 
 #[test]
+fn restore_trailer_resets_input_modes() {
+    let mut s = screen(80, 24);
+    s.feed(b"\x1b[?1049h\x1b[?1003h\x1b[?1006h\x1b[?1004h\x1b[?2004h\x1b[?1h\x1b=");
+    s.feed(crate::RESTORE_TRAILER);
+    assert!(!s.alt_screen());
+    assert!(!s.mouse_events_active());
+    assert_eq!(s.mouse_encoding(), MouseEncoding::Default);
+    assert_eq!(s.focus_report(true), None);
+    assert!(!s.bracketed_paste());
+    assert!(!s.app_cursor());
+}
+
+#[test]
 fn emits_titles_and_bells() {
     let mut s = screen(80, 24);
     let out = s.feed(b"\x1b]0;zsh: ~/recur\x07\x1b]2;npm run dev\x1b\\\x07");

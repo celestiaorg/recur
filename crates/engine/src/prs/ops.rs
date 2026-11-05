@@ -1140,6 +1140,7 @@ impl Engine {
             touch_pr_updated(p);
         });
         self.publish_pr_updated(pr_id);
+        self.clear_pr_inbox(pr_id);
         self.archive_pr_chat_hosts(pr_id, "").await;
         match self.store.pr(pr_id) {
             Some(updated) => (updated, true),

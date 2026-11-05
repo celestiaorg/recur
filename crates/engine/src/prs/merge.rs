@@ -185,7 +185,7 @@ impl Engine {
     }
 
     /// Merges the branch into its base in the project repo and pushes a
-    /// remote-tracking base. A failure is a feed note and `false`.
+    /// remote-tracking base. A failure is `Err` with the feed note.
     async fn merge_local(&self, mut pr: Pr, method: &MergeMethod) -> Result<Pr, String> {
         let Some(proj) = self
             .store

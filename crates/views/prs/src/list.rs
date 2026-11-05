@@ -18,6 +18,7 @@ use gpui_kit::{
     Window, canvas, div, px,
 };
 use recur_domain::{Pr, PrSource};
+use recur_engine::prs::is_forge_source;
 use recur_engine::view::pr_merge_action::{
     MergeActionKind, can_approve_pr_review, can_set_pr_draft, pr_merge_action, show_pr_update,
 };
@@ -118,11 +119,19 @@ impl Bulk {
         let life = pr_lifecycle(Some(p));
         match self {
             Bulk::Open => !github_href(p).is_empty(),
-            Bulk::Update => show_pr_update(Some(p), &pr_merge_action(Some(p), false)),
-            Bulk::Approve => !p.draft && can_approve_pr_review(Some(p)),
+            Bulk::Update => {
+                let a = pr_merge_action(Some(p), false);
+                a.kind != MergeActionKind::Resolve && show_pr_update(Some(p), &a)
+            }
+            Bulk::Approve => {
+                !p.draft && p.pending_comments.is_empty() && can_approve_pr_review(Some(p))
+            }
             Bulk::Draft => life == Some(PrLifecycle::Open) && can_set_pr_draft(Some(p)),
             Bulk::Ready => life == Some(PrLifecycle::Draft) && can_set_pr_draft(Some(p)),
-            Bulk::Close => matches!(life, Some(PrLifecycle::Open | PrLifecycle::Draft)),
+            Bulk::Close => {
+                matches!(life, Some(PrLifecycle::Open | PrLifecycle::Draft))
+                    && (!is_forge_source(&p.source) || can_set_pr_draft(Some(p)))
+            }
             Bulk::Merge => pr_merge_action(Some(p), false).kind == MergeActionKind::Merge,
         }
     }
@@ -144,9 +153,14 @@ impl Bulk {
                 return true;
             }
             Bulk::Update => {
-                return call(cx, prs.update_with_base(id, ""), &fail)
-                    .await
-                    .is_some_and(|r| r.status == "updated");
+                let Some(r) = call(cx, prs.update_with_base(id, ""), &fail).await else {
+                    return false;
+                };
+                if r.status == "conflict" {
+                    let msg = format!("#{} hit conflicts. Open it to resolve them.", p.number);
+                    cx.update(|cx| toast(ToastKind::Error, msg, cx));
+                }
+                return r.status == "updated";
             }
             Bulk::Merge => {
                 let Some(m) = call(cx, prs.merge_pr(id, ""), &fail).await else {

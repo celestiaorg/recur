@@ -57,8 +57,11 @@ const INTERRUPT_GRACE: Duration = Duration::from_secs(2);
 const INTERRUPT_POLL: Duration = Duration::from_millis(20);
 
 /// Appended after a persisted replay when seeding a new PTY so a snapshot taken inside an
-/// alt-screen program (vim, htop) does not leave the restored tab stuck in that screen.
-pub const RESTORE_TRAILER: &[u8] = b"\x1b[?1049l\x1b[0m\x1b[?25h\r\n";
+/// alt-screen program (vim, htop) does not leave the restored tab stuck in that screen, or
+/// leave its input modes (mouse reports, focus events, bracketed paste, application
+/// cursor/keypad) aimed at the fresh shell.
+pub const RESTORE_TRAILER: &[u8] =
+    b"\x1b[?1049l\x1b[?1000;1002;1003;1004;1005;1006;1015;2004;1l\x1b>\x1b[0m\x1b[?25h\r\n";
 
 /// Session lifecycle and output, published to the services layer (the former `term.*` events).
 #[derive(Debug, Clone, PartialEq, Eq)]

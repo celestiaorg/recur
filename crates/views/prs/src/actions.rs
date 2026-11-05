@@ -8,9 +8,9 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use gpui_kit::{
-    AnyElement, App, Bounds, Context, Entity, Hsla, InteractiveElement, IntoElement, MouseButton,
-    ParentElement, Pixels, Render, SharedString, StatefulInteractiveElement, Styled, Subscription,
-    Task, Window, deferred, div, px,
+    AnyElement, App, AsyncApp, Bounds, Context, Entity, Hsla, InteractiveElement, IntoElement,
+    MouseButton, ParentElement, Pixels, Render, SharedString, StatefulInteractiveElement, Styled,
+    Subscription, Task, Window, deferred, div, px,
 };
 use recur_domain::{Pr, PrSource, WorkspaceLandState};
 use recur_engine::view::pr_merge_action::{
@@ -86,6 +86,25 @@ pub fn github_href(pr: &Pr) -> String {
 
 fn is_merged(pr: &Pr) -> bool {
     pr.state == "Merged" || pr.group == "merged"
+}
+
+/// Folds a `merge_pr` result into the store; true when the PR joined the merge queue.
+pub(crate) fn apply_merged(state: &Entity<AppState>, m: Pr, cx: &mut AsyncApp) -> bool {
+    let queued = pr_lifecycle(Some(&m)) == Some(PrLifecycle::Queued);
+    state.update(cx, |s, cx| {
+        s.update_pr(
+            &m.id.clone(),
+            |p| {
+                *p = if queued {
+                    m
+                } else {
+                    keep_merged_pr(Some(p), m)
+                };
+            },
+            cx,
+        )
+    });
+    queued
 }
 
 fn github_open(pr: &Pr) -> bool {
@@ -714,20 +733,7 @@ impl PrTitlebarActions {
                 cx.notify();
             });
             if let Some(m) = merged {
-                let queued = pr_lifecycle(Some(&m)) == Some(PrLifecycle::Queued);
-                state.update(cx, |s, cx| {
-                    s.update_pr(
-                        &m.id.clone(),
-                        |p| {
-                            *p = if queued {
-                                m
-                            } else {
-                                keep_merged_pr(Some(p), m)
-                            };
-                        },
-                        cx,
-                    )
-                });
+                let queued = apply_merged(&state, m, cx);
                 let msg = if queued {
                     "Added to merge queue"
                 } else {

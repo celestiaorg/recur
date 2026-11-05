@@ -4,8 +4,9 @@ description = "Quality gate before merging: lint, the workspace tests and the sh
 run = [{ task = "lint" }, { task = "test" }, { task = "lint:bundles" }, { task = "test:bundles" }]
 
 [lint]
-description = "rustfmt check, clippy and the crate layering check"
+description = "Version agreement, rustfmt check, clippy and the crate layering check"
 run = [
+  "build/set-version.sh --check",
   "cargo fmt --all --check",
   "cargo clippy --workspace --all-targets -- -D warnings",
   "cargo test -p recur-layering",
@@ -35,3 +36,8 @@ run = [
   "pnpm --dir src-web run build",
   "node scripts/check-splash.mjs",
 ]
+
+["version:set"]
+description = "Sets the release version everywhere (Cargo.toml, Cargo.lock, package.json files): `mise run version:set X.Y.Z`"
+usage = 'arg "<version>" help="X.Y.Z, matching the vX.Y.Z tag to cut"'
+run = 'build/set-version.sh "$usage_version"'

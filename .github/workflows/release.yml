@@ -89,7 +89,7 @@ jobs:
       # identity, so the common-name prefix is enough for codesign to select it.
       - name: Build, sign, notarize
         run: |
-          export UNIVERSAL=true VERSION="${GITHUB_REF_NAME#v}"
+          export UNIVERSAL=true VERSION="$(build/version.sh)"
           if [ "$HAS_SIGNING" != true ]; then unset SIGN_IDENTITY; fi
           if [ "$HAS_NOTARY" = true ]; then export KEYCHAIN_PROFILE=recur-notary; fi
           mise run macos:package
@@ -107,7 +107,7 @@ jobs:
 
       - name: Rename
         run: |
-          V="${GITHUB_REF_NAME#v}"
+          V="$(build/version.sh)"
           mkdir -p dist
           mv "target/package/Recur.dmg" "dist/Recur-$V-macos-universal.dmg"
           mv "target/package/Recur.zip" "dist/Recur-$V-macos-universal.zip"
@@ -150,12 +150,12 @@ jobs:
           echo "RECUR_PGP_KEY=$RUNNER_TEMP/pgp.asc" >> "$GITHUB_ENV"
       - env:
           NFPM_PASSPHRASE: ${{ secrets.LINUX_PGP_PASSPHRASE }}
-        run: VERSION="${GITHUB_REF_NAME#v}" mise run linux:package
+        run: VERSION="$(build/version.sh)" mise run linux:package
       # Installs both packages in a clean Debian 13 container and launches them.
       - if: matrix.arch == 'amd64'
         run: mise run linux:smoke
       - run: |
-          V="${GITHUB_REF_NAME#v}"
+          V="$(build/version.sh)"
           mkdir -p dist
           for ext in tar.gz deb rpm; do
             mv "target/package/recur-linux-${{ matrix.arch }}.$ext" "dist/Recur-$V-linux-${{ matrix.arch }}.$ext"
@@ -187,7 +187,7 @@ jobs:
         env:
           UPDATER_SIGNING_KEY: ${{ secrets.UPDATER_SIGNING_KEY }}
         run: |
-          V="${GITHUB_REF_NAME#v}"
+          V="$(build/version.sh)"
           printf '%s\n' "$UPDATER_SIGNING_KEY" > "$RUNNER_TEMP/updater.key"
           cargo build -q --locked -p recur-platform --bin updater-manifest
           target/debug/updater-manifest manifest --version "$V" --name "Recur $V" --key "$RUNNER_TEMP/updater.key" \

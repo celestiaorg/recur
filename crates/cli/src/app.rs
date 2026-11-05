@@ -11,10 +11,10 @@ use crate::color::{Stream, want_color};
 use crate::{CliError, Io};
 use crate::{config, create, open, paths, resolve};
 
-/// Stamped at build time from `RECUR_VERSION`.
+/// Stamped at build time from `RECUR_VERSION`; plain cargo builds report `X.Y.Z+dev`.
 pub const VERSION: &str = match option_env!("RECUR_VERSION") {
     Some(v) => v,
-    None => "dev",
+    None => concat!(env!("CARGO_PKG_VERSION"), "+dev"),
 };
 
 #[derive(Parser)]

@@ -26,6 +26,10 @@ pub(crate) const PR_DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(45);
 
 pub const PR_DESCRIPTION_SYSTEM_PROMPT: &str = "You write pull request titles and descriptions from a branch diff. Describe ALL changes versus the base branch, not one commit or chat turn. Reply with ONLY a title line (at most 80 characters), a blank line, and a markdown body. Keep the body under five sentences unless the change is large. No quotes, no markdown fences around the whole reply, no greeting, no tools.";
 
+/// Appended to the commit and PR one-shots when project.toml sets
+/// `conventional_commits = true`.
+pub const CONVENTIONAL_COMMITS_PROMPT: &str = " Write the subject or title line as a Conventional Commit: `type(scope): summary`, scope optional, even when recent commit subjects use another style.";
+
 /// GitHub's PR body limit.
 pub const GITHUB_PR_BODY_MAX: usize = 60000;
 
@@ -109,6 +113,21 @@ impl Engine {
         }
     }
 
+    /// `base` plus the Conventional Commits rule when the workspace's
+    /// project opts in.
+    fn commit_style_prompt(&self, workspace_id: &str, base: &str) -> String {
+        let on = self
+            .store
+            .workspace(workspace_id)
+            .and_then(|ws| self.store.project(&ws.project_id))
+            .is_some_and(|p| p.conventional_commits);
+        if on {
+            format!("{base}{CONVENTIONAL_COMMITS_PROMPT}")
+        } else {
+            base.to_owned()
+        }
+    }
+
     /// A sanitized commit message for a staged diff, from a cheap one-shot
     /// turn. `recent_subjects` (newest first) are style hints.
     pub async fn generate_commit_message(
@@ -130,7 +149,7 @@ impl Engine {
                 cancel,
                 workspace_id,
                 worktree,
-                COMMIT_MESSAGE_SYSTEM_PROMPT,
+                &self.commit_style_prompt(workspace_id, COMMIT_MESSAGE_SYSTEM_PROMPT),
                 build_commit_message_prompt(diff, recent_subjects),
                 COMMIT_MESSAGE_TIMEOUT,
             )
@@ -167,7 +186,7 @@ impl Engine {
                 cancel,
                 workspace_id,
                 worktree,
-                PR_DESCRIPTION_SYSTEM_PROMPT,
+                &self.commit_style_prompt(workspace_id, PR_DESCRIPTION_SYSTEM_PROMPT),
                 build_pr_description_prompt(diff, commits),
                 PR_DESCRIPTION_TIMEOUT,
             )

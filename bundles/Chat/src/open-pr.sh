@@ -38,6 +38,7 @@ diff_commits = os.environ.get("_RECUR_DIFF_COMMITS", "")
 diff_work = os.environ.get("_RECUR_DIFF_WORK", "")
 untracked = os.environ.get("_RECUR_UNTRACKED", "")
 draft = os.environ.get("RECUR_PR_DRAFT") == "1" or os.environ.get("RECUR_PROMPT_SLASH") == "open-draft-pr"
+conventional = os.environ.get("RECUR_CONVENTIONAL_COMMITS") == "1"
 
 nonce = secrets.token_hex(4)
 open_m, close_m = f"⟦raw:{nonce}⟧", f"⟦/raw:{nonce}⟧"
@@ -62,6 +63,7 @@ parts = [
     "",
     "- If you have any skills related to creating PRs, invoke them now. Instructions there should take precedence over these instructions.",
     "- If git status shows uncommitted changes, review them and commit them. Write a clear message from the diff. Do not amend unless the user asked. Uncommitted work is not included in the PR.",
+    *(["- Use Conventional Commits (`type(scope): summary`, scope optional) for commit messages and the PR title."] if conventional else []),
     "- Git context is already gathered below: do NOT re-run git status/diff/log unless something looks incomplete. Describe not just this chat turn but ALL changes versus the base.",
     open_step,
     "- If any of these steps fail, call mcp__recur__ask_user for help.",

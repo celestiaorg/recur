@@ -235,6 +235,7 @@ impl Engine {
                     recur_domain::effective_update_base_method(&proj, &self.settings())
                         .as_str()
                         .to_owned();
+                rc.conventional_commits = proj.conventional_commits;
             }
         }
         rc

@@ -586,6 +586,33 @@ async fn run_prompt_type_script() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn shipped_commit_prompts_honor_conventional_commits() {
+    let (_g, cache) = temp_dir();
+    let prompts = chat_prompts();
+    for slash in ["commit", "commit-push"] {
+        let p = find_prompt_by_slash(&prompts, slash).unwrap();
+        for on in [false, true] {
+            let res = run_prompt(
+                &shebang_ctx(),
+                &cache,
+                p,
+                PromptRunContext {
+                    conventional_commits: on,
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(
+                res.prompt.contains("Use Conventional Commits"),
+                on,
+                "/{slash}"
+            );
+        }
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn run_prompt_complete_shebang_hits() {
     let prompt = PromptAction {
         id: "prompt-complete".into(),
@@ -1219,6 +1246,7 @@ async fn open_pr_prompt_shebang_cases() {
     .unwrap();
     assert!(!res.prompt.is_empty());
     assert!(!res.display.contains("already open"));
+    assert!(!res.prompt.contains("Conventional Commits"));
 
     let draft = chat_script_prompt(
         "open-pr.sh",
@@ -1234,6 +1262,7 @@ async fn open_pr_prompt_shebang_cases() {
             work_dir: local,
             bundle_support: chat_dir(),
             base_branch: "main".into(),
+            conventional_commits: true,
             ..Default::default()
         },
     )
@@ -1244,6 +1273,7 @@ async fn open_pr_prompt_shebang_cases() {
         "draft pull request",
         "draft set to true",
         "mcp__recur__open_pr",
+        "Conventional Commits",
     ] {
         assert!(res.prompt.contains(want), "missing {want:?}");
     }

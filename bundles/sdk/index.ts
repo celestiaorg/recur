@@ -59,6 +59,8 @@ export type PromptContext = {
   softTabs: boolean
   /** Operator looking-at view: workspace, local_pr, github_pr. */
   surface?: string
+  /** The project's `.recur/project.toml` sets `conventional_commits = true`. */
+  conventionalCommits?: boolean
   /** Trailing composer remainder after `/slash` (empty when none). */
   args?: string
   /** Named [[prompt.arg]] values. */

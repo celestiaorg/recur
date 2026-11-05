@@ -172,11 +172,10 @@ mod tests {
         assert!(!got.contains("secret-token"), "{got}");
         assert!(got.contains("[redacted]"), "{got}");
         assert!(got.contains("http://127.0.0.1:1"), "{got}");
+        let json: Value = serde_json::from_str(got.strip_prefix(READY_PREFIX).unwrap()).unwrap();
         assert_eq!(
-            got,
-            format!(
-                r#"{READY_PREFIX}{{"schemaVersion":1,"authToken":"[redacted]","url":"http://127.0.0.1:1"}}"#
-            )
+            json,
+            serde_json::json!({"schemaVersion":1,"authToken":"[redacted]","url":"http://127.0.0.1:1"})
         );
         assert_eq!(
             redact_bridge_line(&format!("{READY_PREFIX}not json")),

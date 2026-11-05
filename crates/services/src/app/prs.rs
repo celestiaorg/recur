@@ -327,27 +327,9 @@ impl PrsService for AppServices {
     }
 }
 
-/// A feed note's HTML as toast text: tags dropped, `html_escape`'s entities decoded.
+/// A feed note's HTML as toast text: tags dropped, entities decoded.
 fn note_text(html: &str) -> String {
-    let mut out = String::new();
-    let mut in_tag = false;
-    for c in html.chars() {
-        match c {
-            '<' => in_tag = true,
-            '>' if in_tag => in_tag = false,
-            c if !in_tag => out.push(c),
-            _ => {}
-        }
-    }
-    [
-        ("&lt;", "<"),
-        ("&gt;", ">"),
-        ("&#34;", "\""),
-        ("&#39;", "'"),
-    ]
-    .iter()
-    .fold(out, |s, (e, c)| s.replace(e, c))
-    .replace("&amp;", "&")
+    recur_engine::text::html_unescape(&recur_engine::loops::maestro::strip_tags(html))
 }
 
 #[cfg(test)]

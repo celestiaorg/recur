@@ -30,6 +30,7 @@ fn e5_futures(e: &Engine, p: &Project, w: &Workspace) {
     send(e.set_pr_thread_resolved("pr", "t", true));
     send(e.ready_pr("pr"));
     send(e.set_pr_draft("pr", true));
+    send(e.close_pr("pr"));
     send(e.search_pr_mentionable_users("pr", "jo"));
     send(e.merge_pr("pr", &m));
     send(e.merge_workspace("ws", &m));

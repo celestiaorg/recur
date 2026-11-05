@@ -22,6 +22,9 @@ pub trait PrsService: Send + Sync {
         finding_id: &str,
     ) -> Result<PrComment>;
 
+    /// ClosePR closes the PR without merging. GitHub: `gh pr close`. Local: persist state Closed.
+    async fn close_pr(&self, pr_id: &str) -> Result<Pr>;
+
     /// CreateWorkspaceFromPR creates a Recur workspace on this PR's head. Import
     /// already attaches a workspace that is already on the PR's GitHub head branch.
     async fn create_workspace_from_pr(&self, pr_id: &str) -> Result<Workspace>;

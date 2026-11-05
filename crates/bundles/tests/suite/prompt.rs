@@ -586,6 +586,33 @@ async fn run_prompt_type_script() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn shipped_commit_prompts_honor_conventional_commits() {
+    let (_g, cache) = temp_dir();
+    let prompts = chat_prompts();
+    for slash in ["commit", "commit-push"] {
+        let p = find_prompt_by_slash(&prompts, slash).unwrap();
+        for on in [false, true] {
+            let res = run_prompt(
+                &shebang_ctx(),
+                &cache,
+                p,
+                PromptRunContext {
+                    conventional_commits: on,
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(
+                res.prompt.contains("Use Conventional Commits"),
+                on,
+                "/{slash}"
+            );
+        }
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn run_prompt_complete_shebang_hits() {
     let prompt = PromptAction {
         id: "prompt-complete".into(),

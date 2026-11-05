@@ -99,5 +99,6 @@ fn prompt_ctx(rc: &PromptRunContext) -> BTreeMap<&'static str, Value> {
             json!(if rc.tab_size == 0 { 4 } else { rc.tab_size }),
         ),
         ("softTabs", json!(rc.soft_tabs)),
+        ("conventionalCommits", json!(rc.conventional_commits)),
     ])
 }

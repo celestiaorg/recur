@@ -452,8 +452,8 @@ fn terminals_page_toggle_shows_the_sidebar_row_and_route(cx: &mut TestAppContext
     assert_ne!(s.view(), ViewName::Terminals);
 
     s.open_settings();
-    s.section("Code editor");
-    s.click("seg:Terminals page:On");
+    s.section("General");
+    s.click("tog:toggle terminals page:false");
     assert!(
         s.storage("recur.terminalPrefs")
             .unwrap()
@@ -465,8 +465,11 @@ fn terminals_page_toggle_shows_the_sidebar_row_and_route(cx: &mut TestAppContext
     assert!(s.has("term-act:new"));
     assert!(!s.has("term-act:maximize"));
     assert!(!s.has("term-act:hide"));
+    let new_tab = |s: &S| s.state.read_with(&*s.cx, |st, _| st.menu_state.new_tab);
+    assert_eq!(new_tab(&s), Some(true), "⌘T reaches the page's dock");
 
     s.open_settings();
+    assert_eq!(new_tab(&s), Some(false), "leaving the page idles the menu");
     s.dispatch(AppEvent::MenuAction("view:terminals".into()));
     assert_eq!(s.view(), ViewName::Terminals);
     s.state

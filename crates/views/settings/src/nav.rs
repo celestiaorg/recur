@@ -137,7 +137,7 @@ pub fn nav() -> Vec<NavGroup> {
                     Section::General,
                     "General",
                     IconName::SlidersHorizontal,
-                    "general simplify default yagni stdlib sleep caffeinate awake power prevent idle mac agent turn timeout minutes limit deadline concurrent loops agents slots cap governor branch prefix git workspace name github schedule keep last",
+                    "general simplify default yagni stdlib sleep caffeinate awake power prevent idle mac agent turn timeout minutes limit deadline concurrent loops agents slots cap governor branch prefix git workspace name github schedule keep last sidebar terminals page shell",
                 ),
                 item(
                     Section::Appearance,

@@ -330,7 +330,9 @@ impl Observatory {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.props.shell_active {
+        if !self.props.shell_active
+            || self.state.read(cx).view == recur_view_core::ViewName::Terminals
+        {
             return;
         }
         let blocked = self.props.main_blocked;

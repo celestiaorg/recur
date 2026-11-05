@@ -559,21 +559,6 @@ impl SettingsView {
                 c
             })
             .collect();
-        let term_page: Vec<Choice> = [("On", true), ("Off", false)]
-            .into_iter()
-            .map(|(l, v)| {
-                let c: Choice = (
-                    l.into(),
-                    tp.page == v,
-                    Box::new(move |this, cx| {
-                        this.vcx
-                            .state
-                            .update(cx, |s, cx| s.set_terminal_prefs(|p| p.page = v, cx))
-                    }),
-                );
-                c
-            })
-            .collect();
         let term_rows = vec![
             Row::new()
                 .child(copy(
@@ -596,16 +581,6 @@ impl SettingsView {
                     cx,
                 ))
                 .child(self.seg_group("Terminal line height", term_lh, 11., cx)),
-            Row::new()
-                .child(copy(
-                    "term-page",
-                    "Terminals page",
-                    Some(vec![span(
-                        "A sidebar page of shells outside any workspace (⌥⌘5).",
-                    )]),
-                    cx,
-                ))
-                .child(self.seg_group("Terminals page", term_page, 11., cx)),
         ];
 
         // Code panels.

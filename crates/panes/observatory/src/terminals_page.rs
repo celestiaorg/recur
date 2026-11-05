@@ -8,7 +8,9 @@ use gpui_kit::{
     Styled, Subscription, Window, div,
 };
 use recur_services::api::GLOBAL_TERMINALS;
+use recur_services::events::MenuState;
 use recur_ui::guard::Guarded;
+use recur_view_core::menu::menu_state_idle;
 use recur_view_core::state::ShellEvent;
 use recur_view_core::{ObserveState as _, Topics, ViewContext, ViewName};
 
@@ -32,9 +34,14 @@ impl TerminalsPage {
                 &vcx.state,
                 window,
                 |this, _, ev: &ShellEvent, window, cx| {
-                    if matches!(ev, ShellEvent::MenuAction(a) if a.as_ref() == "view:terminals") {
+                    let ShellEvent::MenuAction(a) = ev else {
+                        return;
+                    };
+                    if a.as_ref() == "view:terminals" {
                         this.sync(window, cx);
                         this.focus(window, cx);
+                    } else if this.on {
+                        this.on_menu_action(a, window, cx);
                     }
                 },
             ),
@@ -69,12 +76,15 @@ impl TerminalsPage {
             let state = self.vcx.state.clone();
             let d = cx.new(|cx| TerminalDock::new(state, GLOBAL_TERMINALS, props, window, cx));
             // The first shell mounts after the page took focus: hand it to the shell.
-            let sub = cx.guarded_subscribe_in(&d, window, |_, d, _: &DockEvent, window, cx| {
+            let sub = cx.guarded_subscribe_in(&d, window, |this, d, _: &DockEvent, window, cx| {
                 d.update(cx, |d, cx| {
                     if d.focus.is_focused(window) {
                         d.focus_active(window, cx);
                     }
                 });
+                if this.on {
+                    this.push_menu_state(cx);
+                }
             });
             self.dock = Some((d, sub));
             cx.notify();
@@ -82,7 +92,47 @@ impl TerminalsPage {
         if on && !self.on {
             self.focus(window, cx);
         }
+        if on {
+            self.push_menu_state(cx);
+        } else if self.on && cx.default_global::<crate::Owners>().menu == GLOBAL_TERMINALS {
+            cx.default_global::<crate::Owners>().menu.clear();
+            self.vcx
+                .state
+                .update(cx, |s, cx| s.set_menu_state(menu_state_idle(), cx));
+        }
         self.on = on;
+    }
+
+    /// The menubar's tab items drive this page's dock, as they do the Observatory's.
+    fn push_menu_state(&mut self, cx: &mut Context<Self>) {
+        let (tabs, active) = self.dock().map_or((0, false), |d| {
+            let d = d.read(cx);
+            (d.tabs().len(), !d.active_id().is_empty())
+        });
+        cx.default_global::<crate::Owners>().menu = GLOBAL_TERMINALS.into();
+        let patch = MenuState {
+            new_tab: Some(true),
+            close_tab: Some(active),
+            prev_tab: Some(tabs > 1),
+            next_tab: Some(tabs > 1),
+            ..menu_state_idle()
+        };
+        self.vcx
+            .state
+            .update(cx, |s, cx| s.set_menu_state(patch, cx));
+    }
+
+    fn on_menu_action(&mut self, action: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(d) = self.dock().cloned() else {
+            return;
+        };
+        d.update(cx, |d, cx| match action {
+            "new-tab" => d.new_tab(window, cx),
+            "close-tab" => d.close_active_tab(window, cx),
+            "prev-tab" => d.rotate_tab(-1, window, cx),
+            "next-tab" => d.rotate_tab(1, window, cx),
+            _ => {}
+        });
     }
 
     fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {

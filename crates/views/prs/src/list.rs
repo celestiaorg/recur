@@ -64,8 +64,8 @@ const MAIN_MIN_WIDE: f32 = 192.;
 const PEOPLE_W: f32 = 92.;
 const WHY_W: f32 = 168.;
 const COL_GAP: f32 = 16.;
-/// How long an armed bulk merge waits for its confirming click.
-const MERGE_ARM: Duration = Duration::from_secs(3);
+/// How long an armed bulk merge or close waits for its confirming click.
+const ARM: Duration = Duration::from_secs(3);
 
 /// An action on the selected rows; each runs only on the PRs it applies to.
 #[derive(Clone, Copy, PartialEq)]
@@ -75,16 +75,18 @@ enum Bulk {
     Approve,
     Draft,
     Ready,
+    Close,
     Merge,
 }
 
 impl Bulk {
-    const ALL: [Bulk; 6] = [
+    const ALL: [Bulk; 7] = [
         Bulk::Open,
         Bulk::Update,
         Bulk::Approve,
         Bulk::Draft,
         Bulk::Ready,
+        Bulk::Close,
         Bulk::Merge,
     ];
 
@@ -95,6 +97,7 @@ impl Bulk {
             Bulk::Approve => "Approve",
             Bulk::Draft => "Convert to draft",
             Bulk::Ready => "Mark ready",
+            Bulk::Close => "Close",
             Bulk::Merge => "Merge",
         }
     }
@@ -106,6 +109,7 @@ impl Bulk {
             Bulk::Approve => "approved",
             Bulk::Draft => "converted to draft",
             Bulk::Ready => "marked ready",
+            Bulk::Close => "closed",
             Bulk::Merge => "merged",
         }
     }
@@ -118,6 +122,7 @@ impl Bulk {
             Bulk::Approve => !p.draft && can_approve_pr_review(Some(p)),
             Bulk::Draft => life == Some(PrLifecycle::Open) && can_set_pr_draft(Some(p)),
             Bulk::Ready => life == Some(PrLifecycle::Draft) && can_set_pr_draft(Some(p)),
+            Bulk::Close => matches!(life, Some(PrLifecycle::Open | PrLifecycle::Draft)),
             Bulk::Merge => life == Some(PrLifecycle::Open),
         }
     }
@@ -151,6 +156,7 @@ impl Bulk {
                 return true;
             }
             Bulk::Approve => call(cx, prs.submit_review(id, "approve", ""), &fail).await,
+            Bulk::Close => call(cx, prs.close_pr(id), &fail).await,
             Bulk::Draft | Bulk::Ready => {
                 let draft = self == Bulk::Draft;
                 call(cx, prs.set_pr_draft(id, draft), &fail)
@@ -186,7 +192,7 @@ pub struct PrList {
     row_focus: HashMap<String, FocusHandle>,
     selected: BTreeSet<String>,
     anchor: Option<String>,
-    merge_armed: Option<Task<()>>,
+    armed: Option<(Bulk, Task<()>)>,
     bulk_busy: bool,
     on_route: bool,
     sync: Option<Task<()>>,
@@ -315,7 +321,7 @@ impl PrList {
             row_focus: HashMap::new(),
             selected: BTreeSet::new(),
             anchor: None,
-            merge_armed: None,
+            armed: None,
             bulk_busy: false,
             on_route: false,
             sync: None,
@@ -404,18 +410,18 @@ impl PrList {
             }
             self.anchor = Some(id.to_string());
         }
-        self.merge_armed = None;
+        self.armed = None;
         cx.notify();
     }
 
     fn clear_selection(&mut self, cx: &mut Context<Self>) {
         self.selected.clear();
         self.anchor = None;
-        self.merge_armed = None;
+        self.armed = None;
         cx.notify();
     }
 
-    /// The first Merge click arms it for `MERGE_ARM`, the next runs it.
+    /// The first Merge or Close click arms it for `ARM`, the next runs it.
     fn run_bulk(&mut self, act: Bulk, cx: &mut Context<Self>) {
         if self.bulk_busy {
             return;
@@ -431,18 +437,22 @@ impl PrList {
         if prs.is_empty() {
             return;
         }
-        if act == Bulk::Merge && self.merge_armed.is_none() {
-            self.merge_armed = Some(cx.spawn(async move |this, cx| {
-                cx.background_executor().timer(MERGE_ARM).await;
-                let _ = this.update(cx, |this, cx| {
-                    this.merge_armed = None;
-                    cx.notify();
-                });
-            }));
+        if matches!(act, Bulk::Merge | Bulk::Close) && self.armed.as_ref().map(|a| a.0) != Some(act)
+        {
+            self.armed = Some((
+                act,
+                cx.spawn(async move |this, cx| {
+                    cx.background_executor().timer(ARM).await;
+                    let _ = this.update(cx, |this, cx| {
+                        this.armed = None;
+                        cx.notify();
+                    });
+                }),
+            ));
             cx.notify();
             return;
         }
-        self.merge_armed = None;
+        self.armed = None;
         self.bulk_busy = true;
         cx.notify();
         let services = self.vcx.services.clone();
@@ -673,15 +683,15 @@ impl PrList {
             .items_center()
             .gap(px(6.))
             .on_hover(cx.guarded_listener(|this, on: &bool, _, cx| {
-                if !*on && this.merge_armed.take().is_some() {
+                if !*on && this.armed.take().is_some() {
                     cx.notify();
                 }
             }));
         for (a, k) in counts {
             let off = busy || k == 0;
-            let armed = a == Bulk::Merge && self.merge_armed.is_some();
+            let armed = self.armed.as_ref().is_some_and(|x| x.0 == a);
             let label = if armed {
-                format!("Confirm merge {k}")
+                format!("Confirm {} {k}", a.label().to_lowercase())
             } else {
                 a.label().to_string()
             };

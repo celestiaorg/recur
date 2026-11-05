@@ -548,4 +548,12 @@ fn pr_list_selects_rows_and_runs_bulk_actions(cx: &mut TestAppContext) {
     assert!(!s.pr("gh-storefront-93").draft);
     assert!(s.toasted(recur_ui::widgets::ToastKind::Success, "2 PRs marked ready"));
     assert!(!s.has("pr-bulk:3"));
+
+    click_with(&mut s, "prrow:479", cmd);
+    s.click("pr-bulk-act:Close");
+    assert!(s.has("pr-bulk-act:Confirm close 1"));
+    assert_ne!(s.pr("479").state, "Closed");
+    s.click("pr-bulk-act:Confirm close 1");
+    assert_eq!(s.pr("479").state, "Closed");
+    assert!(s.toasted(recur_ui::widgets::ToastKind::Success, "1 PR closed"));
 }

@@ -9,14 +9,24 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 
 ## Unreleased
 
+## [0.6.0](https://github.com/celestiaorg/recur/releases/tag/v0.6.0) - 2026-11-05
+
 ### Added
 
 - **File → Import Conductor Workspaces…** adopts Conductor's worktrees in place and brings their chats over as Recur chat tabs.
 - The PR dashboard supports bulk selection: Cmd-click a row, Shift-click a range, then Merge, Mark ready, Convert to draft, Approve, Update with base, Close, or Open in GitHub across the selection.
+- An optional **Terminals** page in the sidebar for shells that don't belong to a workspace. Turn it on under **Settings → Code editor → Terminal**.
+- A **Conventional Commits** project setting: `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and PR titles use `type(scope): summary`. It is saved in `.recur/project.toml`, so it applies to everyone on the repo.
 - Install script for building and installing Recur from source on Linux.
+
+### Changed
+
+- Search results highlight the match in each line's preview.
 
 ### Fixed
 
+- Pressing Enter in the search panel's file glob field runs the search.
+- The workspace context menu opens at the pointer near the window edges.
 - Answers given at a Loop checkpoint now reach the agent that asked.
 - The PR dock no longer jumps back to the Loop conductor tab after you pick another chat.
 - Restored terminal tabs no longer inherit mouse tracking, bracketed paste, or cursor modes from the program that was running before.

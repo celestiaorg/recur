@@ -38,6 +38,8 @@ pub struct SessionMirror {
     /// Provider frame uuid → Recur messages written under it (refusal
     /// fallback retraction).
     uuid_msgs: HashMap<String, Vec<String>>,
+    /// The `created_at` (ms) stamped on new messages; 0 is the write time.
+    pub created_at: i64,
 }
 
 impl SessionMirror {
@@ -56,6 +58,7 @@ impl SessionMirror {
             last_fallback_to: String::new(),
             last_fallback_msg: String::new(),
             uuid_msgs: HashMap::new(),
+            created_at: 0,
         }
     }
 
@@ -78,6 +81,7 @@ impl SessionMirror {
                 id: id.to_owned(),
                 role: "user".into(),
                 content: Some(blocks),
+                created_at: self.created_at,
                 ..Message::default()
             },
         ) {
@@ -293,6 +297,7 @@ impl SessionMirror {
                 model_id: model,
                 provider: self.provider.clone(),
                 stream_status: STREAM_STREAMING.into(),
+                created_at: self.created_at,
                 ..Message::default()
             },
         ) {

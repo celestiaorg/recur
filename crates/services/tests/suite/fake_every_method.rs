@@ -676,6 +676,11 @@ async fn every_method_answers() {
     );
     note(
         &mut errs,
+        "ImportConductor",
+        s.projects.import_conductor().await.err(),
+    );
+    note(
+        &mut errs,
         "AddProjectGroup",
         s.projects
             .add_project_group(&Default::default())

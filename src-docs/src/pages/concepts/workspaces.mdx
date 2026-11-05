@@ -33,6 +33,19 @@ A **workspace** is the unit of work in Recur: a checkout plus the UI around it (
 - **Open In…** (`⌘O`) opens the worktree in Finder, Terminal, and other apps
 - To keep a project out of the sidebar, turn on **Hide from sidebar** in its project settings. The eye button in the Projects header shows hidden projects again
 
+## Import from Conductor
+
+On a Mac with [Conductor](https://conductor.build) data, **File → Import Conductor Workspaces…** brings its workspaces into Recur:
+
+- Every workspace Conductor has not archived, whose worktree is still on disk, becomes a Recur workspace. Archived ones are skipped
+- Worktrees stay where they are, on the same branch. Recur does not move them, re-create them, or run the project's setup command
+- A repository Recur does not know yet is added as a project in the **Imported** sidebar group
+- A project the import adds gets Conductor's setup, run, and archive scripts as its `.recur/project.toml` (setup command, a `dev` run, and teardown command), unless the repository already has one. `$CONDUCTOR_ROOT_PATH`, `$CONDUCTOR_WORKSPACE_PATH`, and `$CONDUCTOR_PORT` become `$RECUR_ROOT`, `$RECUR_WORKTREE`, and `$RECUR_PORT`; a script using another Conductor variable is skipped
+- Each visible Conductor chat becomes a chat tab with its transcript. The first message you send starts a new agent session that receives the earlier conversation, because Conductor's own agent sessions cannot be resumed
+- Running the import again skips worktrees already in Recur
+
+Conductor Cloud workspaces run on Conductor's servers, so the import cannot see them. Move each one to your Mac first: in Conductor, right-click it and choose **Transfer to local**, then run the import. Do this before Conductor Cloud turns read-only on November 13, 2026.
+
 ## Editor
 
 - **Quick Open** (`⌘P`) finds files; **Go to Symbol** (`⌘⇧O`) jumps to a symbol

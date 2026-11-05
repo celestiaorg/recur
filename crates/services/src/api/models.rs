@@ -167,6 +167,17 @@ pub struct CommandPromptDto {
     pub choices: Vec<String>,
 }
 
+/// ConductorImport is what an Import from Conductor run did. Skipped rows
+/// read "<title>: <reason>".
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ConductorImport {
+    pub projects_added: usize,
+    pub workspaces_imported: usize,
+    pub chats_imported: usize,
+    pub skipped: Vec<String>,
+}
+
 /// EditorBuffer is one unsaved disk buffer: the user's draft plus a hash of the
 /// on-disk text it diverged from. The UI computes and compares the hash;
 /// this service just stores it. Keeping a hash instead of the full saved copy

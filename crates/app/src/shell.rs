@@ -27,6 +27,8 @@ use crate::titlebar::TitlebarState;
 pub struct ShellOptions {
     /// The updater is installed: show Check for Updates… (release app bundles).
     pub updates: bool,
+    /// Conductor's database exists: show Import Conductor Workspaces….
+    pub conductor_import: bool,
     /// Settings → Appearance "Use native title bar": the window manager's title bar instead of
     /// Recur's window controls (Linux; read at launch).
     pub native_title_bar: bool,
@@ -370,7 +372,14 @@ impl Shell {
             return;
         }
         let t = std::time::Instant::now();
-        let menus = crate::menu::app_menus(&key.0, Some(&key.1), &key.2, self.opts.updates, cx);
+        let menus = crate::menu::app_menus(
+            &key.0,
+            Some(&key.1),
+            &key.2,
+            self.opts.updates,
+            self.opts.conductor_import,
+            cx,
+        );
         cx.set_menus(menus);
         crate::menu::count_rebuild(t.elapsed());
         self.menu_built = Some(key);

@@ -201,6 +201,49 @@ impl Engine {
         Ok(rec)
     }
 
+    /// Registers an existing worktree as a hand-driven workspace in place:
+    /// no `git worktree add`, copied files or setup command.
+    pub async fn adopt_workspace(
+        &self,
+        project_id: &str,
+        name: &str,
+        base_branch: &str,
+        worktree_path: &str,
+        branch: &str,
+    ) -> Result<Workspace> {
+        let rec = self
+            .persist_creating_workspace(project_id, name, base_branch)
+            .await?;
+        let port = match recur_project::runconfig::free_port() {
+            Ok(p) => i64::from(p),
+            Err(e) => {
+                let _ = self.store.delete_workspace(&rec.id);
+                return Err(EngineError(format!("allocate port: {e}")));
+            }
+        };
+        let ready = self
+            .store
+            .update_workspace(&rec.id, |w| {
+                w.worktree_path = worktree_path.to_owned();
+                if !branch.is_empty() {
+                    w.branch = branch.to_owned();
+                }
+                w.port = port;
+                w.status_label = "Idle".into();
+                w.phase = "editing".into();
+                w.last = "created".into();
+            })
+            .ok_or_else(|| EngineError(format!("workspace {:?} gone after adopt", rec.id)))?;
+        self.publish_loop_updated(
+            &ready.id,
+            ready.state.clone(),
+            &ready.phase,
+            ready.iteration,
+        );
+        self.link_workspace_to_matching_prs(&ready).await;
+        Ok(ready)
+    }
+
     pub(crate) async fn persist_creating_workspace(
         &self,
         project_id: &str,

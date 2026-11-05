@@ -8688,6 +8688,7 @@ dependencies = [
  "recur-term",
  "recur-usage",
  "regex",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",

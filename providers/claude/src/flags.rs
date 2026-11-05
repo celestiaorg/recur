@@ -70,7 +70,7 @@ fn always_1m(model: &str) -> bool {
 }
 
 /// Models that still expose a 200K↔1M toggle through the `[1m]` suffix.
-fn selectable_context(model: &str) -> bool {
+pub fn selectable_context(model: &str) -> bool {
     matches!(
         bare_model_id(model),
         "claude-sonnet-4-6" | "claude-opus-4-6"

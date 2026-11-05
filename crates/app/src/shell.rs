@@ -332,6 +332,7 @@ impl Shell {
                 && !recur_view_core::modes::ws_main_blocked(s.selected_workspace());
             menu_state.open_in = Some(on);
             menu_state.copy_path = Some(on);
+            menu_state.go_terminals = Some(s.terminal_prefs.page);
             // This runs on every store change: sort the theme lists only when they change.
             let mark = {
                 use std::hash::{Hash, Hasher};

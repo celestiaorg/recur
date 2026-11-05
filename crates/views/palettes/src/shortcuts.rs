@@ -79,6 +79,12 @@ pub const SHORTCUTS: &[(&str, &str, &str, &[&str])] = &[
         "⌥⌘1–4",
         &["sidebar", "go to"],
     ),
+    (
+        "Navigation",
+        "Terminals (when on in Settings)",
+        "⌥⌘5",
+        &["shell", "global"],
+    ),
     ("Navigation", "Quick Open", "⌘P", &[]),
     ("Navigation", "Go to symbol", "⌘⇧O", &[]),
     ("Navigation", "Focus agent panel", "⌘1", &[]),

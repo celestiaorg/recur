@@ -114,6 +114,7 @@ impl SettingsView {
         );
 
         let queue = s.queue_follow_ups;
+        let term_page = self.vcx.state.read(cx).terminal_prefs.page;
         let sleep = s.prevent_sleep_while_agents_run;
 
         // Branch name prefix.
@@ -352,6 +353,38 @@ impl SettingsView {
                                 ))
                                 .child(keep),
                         ],
+                        window,
+                        cx,
+                    )),
+            )
+            .child(
+                settings_group("grp-sidebar", "Sidebar")
+                    .blurb("Optional pages in the sidebar.")
+                    .child(rows(
+                        GROUP_ROWS,
+                        vec![Row::new()
+                            .child(copy(
+                                "term-page",
+                                "Terminals page",
+                                Some(vec![span(
+                                    "Tabbed shells outside any workspace, under Schedules (⌥⌘5).",
+                                )]),
+                                cx,
+                            ))
+                            .child(ctrl().child(
+                                tog(
+                                    "tog-terminals-page",
+                                    "toggle terminals page",
+                                    term_page,
+                                    false,
+                                    cx,
+                                )
+                                .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                                    this.vcx.state.update(cx, |s, cx| {
+                                        s.set_terminal_prefs(|p| p.page = !term_page, cx)
+                                    })
+                                })),
+                            ))],
                         window,
                         cx,
                     )),

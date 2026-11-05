@@ -37,7 +37,7 @@ fn clamp_shell_state_keeps_view_ids() {
         project_id: "p1".into(),
     });
     assert_eq!(got, st("detail", "WS-1"), "detail keeps only the workspace");
-    for view in ["inbox", "schedules", "issues", "briefing"] {
+    for view in ["inbox", "schedules", "issues", "briefing", "terminals"] {
         assert_eq!(
             clamp_shell_state(st(view, "WS-1")),
             st(view, ""),

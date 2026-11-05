@@ -63,7 +63,7 @@ pub use recur_term::Info as TermInfo;
 pub use recur_usage::{CursorUsageConnect, ModelRow, ProviderQuota, Snapshot, Window};
 pub use settings::SettingsService;
 pub use shell::ShellService;
-pub use terminal::TerminalService;
+pub use terminal::{GLOBAL_TERMINALS, TerminalService};
 pub use workspaces::WorkspacesService;
 
 use crate::events::{AppEvent, EventHub};

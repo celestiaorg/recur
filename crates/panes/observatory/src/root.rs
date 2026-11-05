@@ -328,7 +328,10 @@ impl Observatory {
             cx.default_global::<crate::Owners>().occluder = id.clone();
             self.state
                 .update(cx, |s, cx| s.set_chat_occluder("agent-pane", occlude, cx));
-            self.push_menu_state(cx);
+            // The Terminals page drives the menubar's tab items while it is up.
+            if self.state.read(cx).view != recur_view_core::ViewName::Terminals {
+                self.push_menu_state(cx);
+            }
             if self.artifacts_panel_focused(cx) && !id.is_empty() {
                 let cleared = recur_engine::view::artifacts::clear_unseen_artifact_ids(
                     &cx.default_global::<crate::UnseenArtifacts>().0,

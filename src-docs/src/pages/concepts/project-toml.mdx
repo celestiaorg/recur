@@ -50,4 +50,8 @@ The `env` text is injected into setup, teardown, runs, and terminals. Values can
 
 Recur does not export the contents of `.env` files. Keep secrets in gitignored dotenv files, copy them into each worktree with `copy_files`, and let your app load them the way it normally does.
 
+## Commit style
+
+Turn on **Conventional Commits** in the Project page's pull request settings, or set `conventional_commits = true`, to have agents write [Conventional Commits](https://www.conventionalcommits.org) subjects and PR titles (`type(scope): summary`). It applies to `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and loop PR titles.
+
 Repository paths, sidebar preferences, enabled project skills, and merge/GitHub PR preferences are app settings rather than fields in this file.

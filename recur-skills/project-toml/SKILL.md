@@ -42,6 +42,7 @@ fix the TOML rather than relying on the settings page to rewrite it.
 | `app_url` | URL | Verify-in-browser probe. `$RECUR_PORT` / `$PORT` substituted. Empty → `http://localhost:$RECUR_PORT`. |
 | `env` | dotenv text | Injected into setup, teardown, runs, Observatory. `KEY=value`, `#` comments, optional `export `. |
 | `copy_files` | globs, one per line | Copied from the project checkout into each **new** worktree, **before** setup. Existing dest files skipped. Gitignored files are included (that is the point). |
+| `conventional_commits` | bool | `true`: `/commit`, `/open-pr`, generated commit messages and loop PR titles use Conventional Commits (`type(scope): summary`). |
 
 `#` comments and blank lines in `copy_files` / `env` are ignored. `copy_files`
 does not support `!` negation. A pattern with no slash matches at any depth

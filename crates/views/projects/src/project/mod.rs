@@ -868,6 +868,7 @@ impl ProjectView {
             "teardownCmd": f.teardown_cmd, "appURL": f.app_url, "env": f.env,
             "copyFiles": f.copy_files, "prOnGithub": f.pr_on_github,
             "deleteBranchOnRemove": f.delete_branch_on_remove,
+            "conventionalCommits": f.conventional_commits,
             "linearProjects": f.linear_projects, "mergeMethod": f.merge_method.as_str(),
             "updateBaseMethod": f.update_base_method.as_str(),
             "squashCommitMessage": f.squash_commit_message.as_str(),
@@ -909,6 +910,7 @@ impl ProjectView {
             || f.app_url != sel.app_url
             || f.env != sel.env
             || f.copy_files != sel.copy_files
+            || f.conventional_commits != sel.conventional_commits
         {
             return true;
         }

@@ -66,6 +66,8 @@ pub struct PromptRunContext {
     pub base_branch: String,
     /// "merge" or "rebase".
     pub update_base_method: String,
+    /// project.toml `conventional_commits`.
+    pub conventional_commits: bool,
     /// Open (non-merged) PR for this workspace, if any. `/open-pr`
     /// fast-fails when set so a second invoke does not start an agent turn.
     pub pr_id: String,
@@ -285,6 +287,10 @@ pub fn prompt_environ(rc: &PromptRunContext) -> Vec<EnvVar> {
         (
             "RECUR_UPDATE_BASE_METHOD".into(),
             rc.update_base_method.clone().into(),
+        ),
+        (
+            "RECUR_CONVENTIONAL_COMMITS".into(),
+            if rc.conventional_commits { "1" } else { "0" }.into(),
         ),
         ("RECUR_PR_ID".into(), rc.pr_id.clone().into()),
         ("RECUR_PR_NUMBER".into(), rc.pr_number.to_string().into()),

@@ -1219,6 +1219,7 @@ async fn open_pr_prompt_shebang_cases() {
     .unwrap();
     assert!(!res.prompt.is_empty());
     assert!(!res.display.contains("already open"));
+    assert!(!res.prompt.contains("Conventional Commits"));
 
     let draft = chat_script_prompt(
         "open-pr.sh",
@@ -1234,6 +1235,7 @@ async fn open_pr_prompt_shebang_cases() {
             work_dir: local,
             bundle_support: chat_dir(),
             base_branch: "main".into(),
+            conventional_commits: true,
             ..Default::default()
         },
     )
@@ -1244,6 +1246,7 @@ async fn open_pr_prompt_shebang_cases() {
         "draft pull request",
         "draft set to true",
         "mcp__recur__open_pr",
+        "Conventional Commits",
     ] {
         assert!(res.prompt.contains(want), "missing {want:?}");
     }

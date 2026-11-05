@@ -916,6 +916,7 @@ impl ProjectView {
         let f = self.form.clone();
         let gh = f.pr_on_github;
         let del = f.delete_branch_on_remove;
+        let cc = f.conventional_commits;
         type Get = fn(&recur_domain::Project) -> String;
         type Set = fn(&mut recur_domain::Project, &str);
         /// Title, the global default's label, description, options, getter and setter.
@@ -1016,6 +1017,22 @@ impl ProjectView {
                 tog("pr-del-tog", "toggle delete branch on remove", del, false, cx)
                     .on_click(cx.guarded_listener(move |v, _, window, cx| {
                         v.form.delete_branch_on_remove = !del;
+                        v.changed(window, cx);
+                    }))
+                    .into_any_element(),
+                false,
+            ),
+            (
+                copy(
+                    "pr-cc",
+                    "Conventional Commits",
+                    Some(vec![span("/commit, /commit-push, /open-pr, generated commit messages and PR titles use type(scope): summary. Saved in .recur/project.toml, so it applies to everyone on this repo.")]),
+                    cx,
+                )
+                .into_any_element(),
+                tog("pr-cc-tog", "toggle Conventional Commits", cc, false, cx)
+                    .on_click(cx.guarded_listener(move |v, _, window, cx| {
+                        v.form.conventional_commits = !cc;
                         v.changed(window, cx);
                     }))
                     .into_any_element(),

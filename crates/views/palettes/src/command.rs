@@ -111,6 +111,8 @@ pub struct Inputs<'a> {
     pub any_run_running: bool,
     /// The focused editor has a file (`currentEditorFocus().path`).
     pub editor_file_open: bool,
+    /// Settings turned the Terminals page on.
+    pub terminals_page: bool,
     pub needs: Color,
     pub active: Color,
     pub ready: Color,
@@ -222,9 +224,13 @@ pub fn all_commands(i: &Inputs) -> Vec<Cmd> {
         (IconName::CircleDot, "Issues", ViewName::Issues),
         (IconName::GitPullRequest, "Pull requests", ViewName::Pr),
         (IconName::Clock, "Schedules", ViewName::Schedules),
+        (IconName::Terminal, "Terminals", ViewName::Terminals),
         (IconName::Settings, "Settings · policy", ViewName::Settings),
         (IconName::Help, "Get started", ViewName::Welcome),
     ] {
+        if view == ViewName::Terminals && !i.terminals_page {
+            continue;
+        }
         out.push(Cmd::icon(g, name, label, "", Action::Go(view)));
     }
     for l in i
@@ -444,6 +450,7 @@ impl CommandPalette {
             projects: &s.projects,
             any_run_running: s.run.is_any_run_running(id),
             editor_file_open: !s.current_editor_focus(cx).1.is_empty(),
+            terminals_page: s.terminal_prefs.page,
             needs: t.coral,
             active: t.amber,
             ready: t.emerald,
@@ -798,6 +805,7 @@ mod tests {
             projects,
             any_run_running: false,
             editor_file_open: false,
+            terminals_page: false,
             needs: recur_ui::hex(0),
             active: recur_ui::hex(0),
             ready: recur_ui::hex(0),

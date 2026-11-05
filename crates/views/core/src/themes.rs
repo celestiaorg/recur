@@ -13,6 +13,7 @@ use recur_services::api::ThemeInfo;
 use recur_ui::theme::{Theme, ThemeId};
 use recur_ui::widgets::ToastStore;
 
+use crate::nav::ViewName;
 use crate::prefs::{self, SyncName, TerminalPrefs};
 use crate::state::AppState;
 
@@ -298,6 +299,9 @@ impl AppState {
         let raw = serde_json::to_value(&next).ok();
         self.terminal_prefs = TerminalPrefs::normalize(raw.as_ref());
         self.terminal_prefs.save(&mut self.storage);
+        if !self.terminal_prefs.page && self.view == ViewName::Terminals {
+            self.go(ViewName::Briefing, None, cx);
+        }
         cx.notify();
     }
 

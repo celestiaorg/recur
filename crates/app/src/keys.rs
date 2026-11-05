@@ -114,6 +114,10 @@ impl Shell {
             let view = recur_view_core::menu::MENU_VIEWS[usize::from(k.key.as_bytes()[0] - b'1')];
             state.update(cx, |s, cx| s.go(view, None, cx));
             true
+        } else if cmd_or_ctrl(k) && m.alt && !m.shift && k.key == "5" {
+            // ⌥⌘5: Terminals, through `menu.action` so the page also focuses its shell.
+            self.emit_menu_action("view:terminals", window, cx);
+            true
         } else if cmd_or_ctrl(k) && m.alt && !m.shift && (k.key == "[" || k.key == "]") {
             // ⌥⌘[ / ⌥⌘]: previous / next code editor theme.
             let delta = if k.key == "]" { 1 } else { -1 };

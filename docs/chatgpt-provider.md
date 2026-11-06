@@ -49,6 +49,8 @@ Codex subscription endpoint.
 
 Recur does not read or modify OpenCode's credentials or `~/.codex` for this provider.
 
+Usage: a signed-in, enabled account adds a **ChatGPT** row (5-hour and 7-day bars) to the sidebar usage meter.
+
 ## Inference
 
 ```

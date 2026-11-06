@@ -8,8 +8,10 @@ use std::collections::{BTreeMap, HashMap};
 use recur_domain::{Project, ProjectGroup, Workspace};
 use recur_view_core::AppState;
 use recur_view_core::modes::parked_needs_you_by_workspace;
+pub use recur_view_core::workspace_nav::Status;
 use recur_view_core::workspace_nav::{
-    is_nested_child, main_scan_id, nest_workspaces, split_scheduled, unique_refs,
+    is_nested_child, main_scan_id, nest_workspaces, split_scheduled, status_sections, unique_refs,
+    working_copies,
 };
 
 /// The rail's inset from its edges to the rows.
@@ -122,11 +124,24 @@ pub struct GroupNode {
     pub parked: usize,
 }
 
+#[derive(Clone, Debug)]
+pub struct StatusNode {
+    pub status: Status,
+    pub rows: Vec<Row>,
+    /// Working copies: each project and its main workspace, if it has one yet.
+    pub copies: Vec<(Project, Option<Workspace>)>,
+    pub collapsed: bool,
+    pub unseen: i64,
+    pub parked: usize,
+}
+
 /// What the tree shows, in paint order.
 #[derive(Clone, Debug, Default)]
 pub struct Tree {
     pub groups: Vec<GroupNode>,
     pub ungrouped: Vec<ProjectNode>,
+    /// Set instead of groups and projects when the sidebar groups by status.
+    pub statuses: Vec<StatusNode>,
 }
 
 /// Collapse state the sidebar keeps per project, group and scheduled section.
@@ -136,6 +151,17 @@ pub struct Collapse {
     pub groups: HashMap<String, bool>,
     /// Scheduled sections default to collapsed.
     pub scheduled: HashMap<String, bool>,
+    /// Done, Closed and Working copies default to collapsed.
+    pub statuses: HashMap<Status, bool>,
+}
+
+impl Collapse {
+    pub fn status(&self, status: Status) -> bool {
+        self.statuses
+            .get(&status)
+            .copied()
+            .unwrap_or(status != Status::InProgress && status != Status::InReview)
+    }
 }
 
 impl Tree {
@@ -151,6 +177,48 @@ impl Tree {
             .into_iter()
             .filter(|w| !w.archived && !w.is_main && w.host_pr_id.trim().is_empty())
             .collect();
+        if s.sidebar_by_status() {
+            let shown: Vec<&Project> = projects.iter().copied().filter(|p| shown(p)).collect();
+            let collapsed = |status: Status| collapse.status(status);
+            let mut statuses: Vec<StatusNode> = status_sections(&s.workspaces, &shown, &s.prs)
+                .into_iter()
+                .map(|(status, mine)| StatusNode {
+                    status,
+                    unseen: mine.iter().map(|w| s.attention.workspace(&w.id)).sum(),
+                    parked: mine.iter().map(|w| parked_of(&w.id)).sum(),
+                    collapsed: collapsed(status),
+                    rows: mine
+                        .into_iter()
+                        .map(|w| Row {
+                            ws: w.clone(),
+                            nested: false,
+                            nested_last: false,
+                            has_child_below: false,
+                        })
+                        .collect(),
+                    copies: Vec::new(),
+                })
+                .collect();
+            let copies = working_copies(&s.workspaces, &shown, &s.project_groups);
+            if !copies.is_empty() {
+                let mains = || copies.iter().filter_map(|(_, m)| *m);
+                statuses.push(StatusNode {
+                    status: Status::WorkingCopies,
+                    unseen: mains().map(|m| s.attention.workspace(&m.id)).sum(),
+                    parked: mains().map(|m| parked_of(&m.id)).sum(),
+                    collapsed: collapsed(Status::WorkingCopies),
+                    rows: Vec::new(),
+                    copies: copies
+                        .iter()
+                        .map(|(p, m)| ((*p).clone(), m.cloned()))
+                        .collect(),
+                });
+            }
+            return Tree {
+                statuses,
+                ..Tree::default()
+            };
+        }
         let mut main_by_project: BTreeMap<&str, &Workspace> = BTreeMap::new();
         for w in &s.workspaces {
             if w.is_main {
@@ -226,6 +294,7 @@ impl Tree {
         Tree {
             groups: tree_groups,
             ungrouped,
+            statuses: Vec::new(),
         }
     }
 }
@@ -342,6 +411,31 @@ impl Layout {
         for p in &tree.ungrouped {
             y += place(p, y, &mut l);
         }
+        for st in &tree.statuses {
+            let start = y;
+            y += GROUP_H;
+            if !st.collapsed {
+                for r in &st.rows {
+                    l.rows.insert(r.ws.id.clone(), y);
+                    y += ROW_H;
+                }
+                for (p, main) in &st.copies {
+                    l.rows.insert(main_scan_id(&p.id), y);
+                    if let Some(m) = main {
+                        l.rows.insert(m.id.clone(), y);
+                    }
+                    y += ROW_H;
+                }
+            }
+            y += GROUP_PB;
+            l.groups.push((
+                status_key(st.status),
+                Span {
+                    top: start,
+                    height: y - start,
+                },
+            ));
+        }
         l.content_h = y + TREE_PB;
         l
     }
@@ -356,6 +450,11 @@ impl Layout {
             .find(|(p, _, _)| p == id)
             .map(|(_, s, g)| (*s, *g))
     }
+}
+
+/// A status section's key in [`Layout::groups`], apart from real group ids.
+pub fn status_key(s: Status) -> String {
+    format!("status:{}", s.id())
 }
 
 /// Where a sticky header sits for `scroll`: pinned at `inset` below the viewport top while
@@ -387,6 +486,7 @@ pub fn thumb(scroll: f32, content: f32, track: f32) -> (f32, f32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use recur_domain::Pr;
 
     #[test]
     fn sticky_math() {
@@ -410,6 +510,59 @@ mod tests {
         assert_eq!(h, 100.);
         assert_eq!(top, 50.);
         assert_eq!(thumb(0., 10_000., 200.).0, 24.);
+    }
+
+    #[test]
+    fn status_from_pr_and_layout() {
+        let ws = |id: &str| Workspace {
+            id: id.into(),
+            ..Workspace::default()
+        };
+        let pr = |id: &str, state: &str| Pr {
+            workspace_id: id.into(),
+            state: state.into(),
+            ..Pr::default()
+        };
+        let mut draft = pr("e", "OPEN");
+        draft.draft = true;
+        let prs = [pr("b", "OPEN"), pr("c", "MERGED"), pr("d", "CLOSED"), draft];
+        assert_eq!(Status::of(&ws("a"), &prs), Status::InProgress);
+        assert_eq!(Status::of(&ws("b"), &prs), Status::InReview);
+        assert_eq!(Status::of(&ws("c"), &prs), Status::Done);
+        assert_eq!(Status::of(&ws("d"), &prs), Status::Closed);
+        assert_eq!(Status::of(&ws("e"), &prs), Status::InProgress);
+        let mut merged = ws("a");
+        merged.state = recur_domain::WorkspaceState::Merged;
+        assert_eq!(Status::of(&merged, &prs), Status::Done);
+
+        let row = |id: &str| Row {
+            ws: ws(id),
+            nested: false,
+            nested_last: false,
+            has_child_below: false,
+        };
+        let node = |status, ids: &[&str], collapsed| StatusNode {
+            status,
+            rows: ids.iter().map(|id| row(id)).collect(),
+            copies: Vec::new(),
+            collapsed,
+            unseen: 0,
+            parked: 0,
+        };
+        let tree = Tree {
+            statuses: vec![
+                node(Status::InProgress, &["a", "b"], false),
+                node(Status::Done, &["c"], true),
+            ],
+            ..Tree::default()
+        };
+        let l = Layout::of(&tree, None);
+        assert_eq!(l.rows["a"], GROUP_H);
+        assert_eq!(l.rows["b"], GROUP_H + ROW_H);
+        assert!(!l.rows.contains_key("c"));
+        let done = l.group(&status_key(Status::Done)).unwrap();
+        assert_eq!(done.top, GROUP_H + 2. * ROW_H + GROUP_PB);
+        assert_eq!(done.height, GROUP_H + GROUP_PB);
     }
 
     #[test]

@@ -24,6 +24,7 @@ impl Shell {
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let menu = self.state.read(cx).menu_state.clone();
+        let terminals_on = Some(self.state.read(cx).terminal_prefs.page);
         let detail_on = {
             let s = self.state.read(cx);
             s.view == ViewName::Detail
@@ -102,7 +103,8 @@ impl Shell {
             FocusEditor => menu.focus_editor,
             FocusTerminal => menu.focus_terminal,
             PrevTab => menu.prev_tab,
-            NextTab => menu.next_tab
+            NextTab => menu.next_tab,
+            GoTerminals => terminals_on
         );
         root.on_action(cx.guarded_listener(|this, a: &MenuPick, window, cx| {
             if !a.action.is_empty() {
@@ -175,7 +177,7 @@ impl Shell {
             return;
         }
         if let Some(view) = action.strip_prefix("view:").and_then(ViewName::parse) {
-            if MENU_VIEWS.contains(&view) {
+            if MENU_VIEWS.contains(&view) || view == ViewName::Terminals {
                 state.update(cx, |s, cx| s.go(view, None, cx));
             }
             return;

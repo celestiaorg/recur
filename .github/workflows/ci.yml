@@ -132,7 +132,7 @@ jobs:
           path: target/package/Recur.dmg
           retention-days: 14
 
-  # target/package/recur-linux-amd64.{tar.gz,deb,rpm}, installed and
+  # target/package/recur-linux-amd64.{tar.gz,deb,rpm,pkg.tar.zst}, installed and
   # launched in a clean Debian 13 container by linux:smoke.
   package-linux:
     needs: linux
@@ -164,6 +164,7 @@ jobs:
             target/package/recur-linux-amd64.tar.gz
             target/package/recur-linux-amd64.deb
             target/package/recur-linux-amd64.rpm
+            target/package/recur-linux-amd64.pkg.tar.zst
           retention-days: 14
 
   ci-success:

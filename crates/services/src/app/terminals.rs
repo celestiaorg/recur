@@ -9,7 +9,7 @@ use recur_term::{Info as TermInfo, OpenOptions};
 use super::rt::rt;
 use super::terminal_persist::Chrome;
 use super::{AppServices, err};
-use crate::api::{TerminalDockChrome, TerminalService};
+use crate::api::{GLOBAL_TERMINALS, TerminalDockChrome, TerminalService};
 use crate::{Error, Result};
 
 fn dir_exists(p: &str) -> bool {
@@ -21,6 +21,9 @@ impl AppServices {
     /// worktree-then-repo precedence as the code browser. A recorded
     /// worktree that is gone is an error, never the project checkout.
     pub(crate) fn terminal_cwd(&self, workspace_id: &str) -> Result<String> {
+        if workspace_id == GLOBAL_TERMINALS {
+            return std::env::var("HOME").map_err(|_| Error::new("terminal: HOME is not set"));
+        }
         let Some(ws) = self.store().workspace(workspace_id) else {
             return Err(Error::new(format!(
                 "workspace {:?} not found",
@@ -46,7 +49,7 @@ impl AppServices {
 
     /// The workspace's `RECUR_*` vars plus the project's env, over the host
     /// environment.
-    fn terminal_env(&self, workspace_id: &str) -> Vec<String> {
+    pub(crate) fn terminal_env(&self, workspace_id: &str) -> Vec<String> {
         let Some(mut ws) = self.store().workspace(workspace_id) else {
             return Vec::new();
         };

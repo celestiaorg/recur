@@ -212,6 +212,7 @@ fn prompt_ctx(c: &PromptRunContext, chat_code: &str) -> Value {
         "tabSize": c.tab_size,
         "softTabs": c.soft_tabs,
         "surface": c.surface,
+        "conventionalCommits": c.conventional_commits,
         "args": c.args,
         "params": c.params,
         "chatCode": chat_code,

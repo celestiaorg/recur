@@ -1359,3 +1359,29 @@ async fn pdf_find_opens_from_the_crumb_bar_and_takes_typing(cx: &mut TestAppCont
     assert!(h.cx.update(|_, cx| !pdf.read(cx).is_search_open()));
     assert!(!h.read(|o, _| o.find_panel_open));
 }
+
+#[gpui::test]
+async fn a_tree_menu_opened_near_the_window_bottom_stays_at_the_pointer(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    let vh = h.update(|_, w, _| f32::from(w.viewport_size().height));
+    let y = vh - 40.;
+    h.update(|o, _, cx| o.open_ctx(40., y, "src/main.go", false, "main.go", false, cx));
+    let b = h.bounds("obs-ctx").expect("menu open");
+    assert!(f32::from(b.bottom()) <= vh, "{b:?} overflows {vh}");
+    assert!(
+        (f32::from(b.bottom()) - y).abs() < 2.,
+        "{b:?} not at the pointer {y}"
+    );
+}
+
+#[gpui::test]
+async fn the_blank_space_menu_ends_without_a_separator(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    h.update(|o, _, cx| o.open_ctx(40., 40., "", true, "", false, cx));
+    let menu = h.bounds("obs-ctx").expect("menu open");
+    let last = h.bounds("ctx:new-folder").expect("new folder row");
+    assert!(
+        f32::from(menu.bottom() - last.bottom()) < 6.,
+        "{menu:?} {last:?}"
+    );
+}

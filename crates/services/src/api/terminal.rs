@@ -4,6 +4,10 @@ use recur_term::Info as TermInfo;
 use super::TerminalDockChrome;
 use crate::Result;
 
+/// The workspace id of the Terminals page's shells: not a store workspace, so they start in
+/// the home directory with the plain host environment and never show in a workspace's lists.
+pub const GLOBAL_TERMINALS: &str = "_global-terminals";
+
 /// TerminalService backs the Observatory's terminal dock: real shells running in
 /// the workspace's worktree, one PTY per tab.
 ///

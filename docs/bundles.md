@@ -357,7 +357,9 @@ After installing, creating, or editing a bundle, choose **Navigate → Reload Bu
 `RECUR_COLUMN_NUMBER`, `RECUR_CURRENT_WORD`, `RECUR_FILEPATH`, `RECUR_FILENAME`,
 `RECUR_DIRECTORY`, `RECUR_PROJECT_DIRECTORY`, `RECUR_SCOPE`, `RECUR_TAB_SIZE`,
 `RECUR_SOFT_TABS`, `RECUR_CLIPBOARD`, `RECUR_BUNDLE_SUPPORT`, `RECUR_INPUT_<NAME>`.
-Prompt shebang also gets workspace vars (`RECUR_WORKSPACE_ID`, …) plus
+Prompt shebang also gets workspace vars (`RECUR_WORKSPACE_ID`, …,
+`RECUR_CONVENTIONAL_COMMITS` = `1` when project.toml sets
+`conventional_commits = true`; TypeScript gets `ctx.conventionalCommits`) plus
 `RECUR_SETTING_<NAME>` / `RECUR_BUNDLE_SETTINGS` for that pack’s `[[setting]]`
 values (never TypeScript Workers). `[[search]]` also sets `RECUR_SEARCH_QUERY`
 (and the complete-script args env so a pack can reuse its `complete` script).

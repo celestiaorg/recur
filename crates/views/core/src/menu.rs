@@ -54,6 +54,7 @@ pub fn menu_state_idle() -> MenuState {
         stop_run: Some(false),
         find: Some(false),
         goto_line: Some(false),
+        go_terminals: None,
     }
 }
 

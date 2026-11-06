@@ -26,13 +26,14 @@ pub struct ShellLive {
     pub project_ids: HashSet<String>,
 }
 
-const TOP_VIEWS: [ViewName; 6] = [
+const TOP_VIEWS: [ViewName; 7] = [
     ViewName::Inbox,
     ViewName::Briefing,
     ViewName::Settings,
     ViewName::Pr,
     ViewName::Schedules,
     ViewName::Issues,
+    ViewName::Terminals,
 ];
 
 /// `snapshotShell`: the snapshot written on each navigation.
@@ -165,6 +166,7 @@ mod tests {
         assert_eq!(s(ViewName::Detail), st("detail", "WS-1", "", ""));
         assert_eq!(s(ViewName::Inbox), st("inbox", "", "", ""));
         assert_eq!(s(ViewName::Schedules), st("schedules", "", "", ""));
+        assert_eq!(s(ViewName::Terminals), st("terminals", "", "", ""));
         assert_eq!(s(ViewName::Briefing), st("briefing", "", "", ""));
         assert_eq!(s(ViewName::PrDetail), st("prdetail", "", "pr-9", ""));
         assert_eq!(s(ViewName::Project), st("project", "", "", "storefront"));
@@ -202,6 +204,7 @@ mod tests {
             ("pr", ViewName::Pr),
             ("schedules", ViewName::Schedules),
             ("issues", ViewName::Issues),
+            ("terminals", ViewName::Terminals),
         ] {
             assert_eq!(r(Some(st(v, "", "", ""))), ShellRestore::View(name));
         }

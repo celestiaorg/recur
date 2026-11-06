@@ -194,6 +194,28 @@ export const appThemes: AppTheme[] = [
     coral: "#bf616a",
     indigo: "#b48ead",
   },
+  {
+    key: "gruvbox",
+    name: "Gruvbox",
+    bg: "#1d2021",
+    pane: "#282828",
+    pane2: "#3c3836",
+    rail: "#1d2021",
+    titlebar: "#1d2021",
+    statusbar: "#171a1b",
+    line: "#3c3836",
+    lineSoft: "#32302f",
+    lineBright: "#504945",
+    text: "#ebdbb2",
+    muted: "#a89984",
+    faint: "#7c6f64",
+    accent: "#fe8019",
+    accentDim: "rgba(254,128,25,.14)",
+    cyan: "#8ec07c",
+    emerald: "#b8bb26",
+    coral: "#fb4934",
+    indigo: "#d3869b",
+  },
 ];
 
 export const editorThemes: EditorTheme[] = [

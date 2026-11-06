@@ -314,6 +314,13 @@ impl Observatory {
         if reset {
             self.search_offset = 0;
         }
+        let pat = if self.search_regex {
+            q.clone()
+        } else {
+            regex::escape(&q)
+        };
+        let flags = if self.search_case { "" } else { "(?i)" };
+        let search_match = regex::Regex::new(&format!("{flags}{pat}")).ok();
         let opts = self.search_opts(self.search_offset, cx);
         let svc = self.services.clone();
         let (pid, wid) = (
@@ -332,6 +339,9 @@ impl Observatory {
                 let page = res.hits.unwrap_or_default();
                 if reset {
                     o.hits = page.clone();
+                    o.search_match = search_match;
+                    o.search_scroll
+                        .set_offset(gpui_kit::point(gpui_kit::px(0.), gpui_kit::px(0.)));
                 } else {
                     o.hits.extend(page.iter().cloned());
                 }

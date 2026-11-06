@@ -18,6 +18,7 @@ fn write_shape(p: &Project) -> File {
         app_url: p.app_url.clone(),
         env: p.env.clone(),
         copy_files: p.copy_files.clone(),
+        conventional_commits: p.conventional_commits,
         runs: effective_runs(p)
             .into_iter()
             .map(|r| FileRun {
@@ -100,6 +101,9 @@ fn marshal_new(p: &Project) -> String {
     for (k, v) in KEYS.into_iter().zip(fields(&f)) {
         d[k] = value(v);
     }
+    if f.conventional_commits {
+        d["conventional_commits"] = value(true);
+    }
     if !f.runs.is_empty() {
         let mut runs = ArrayOfTables::new();
         for r in &f.runs {
@@ -119,6 +123,7 @@ fn merge_project_file(existing: &[u8], p: &Project) -> Result<String, String> {
     for (k, v) in KEYS.into_iter().zip(fields(&f)) {
         set_string(&mut d, k, v)?;
     }
+    set_bool(&mut d, "conventional_commits", f.conventional_commits)?;
     merge_runs(&mut d, &f.runs)?;
     d.remove("dev_cmd");
     Ok(d.to_string())
@@ -137,6 +142,22 @@ fn set_string(t: &mut Table, key: &str, v: &str) -> Result<(), String> {
         Some(Item::None) | None if v.is_empty() => {}
         Some(Item::None) | None => t[key] = value(v),
         Some(_) => return Err(format!("{key}: not a string")),
+    }
+    Ok(())
+}
+
+/// [`set_string`] for a bool.
+fn set_bool(t: &mut Table, key: &str, v: bool) -> Result<(), String> {
+    match t.get_mut(key) {
+        Some(Item::Value(cur)) if cur.as_bool() == Some(v) => {}
+        Some(Item::Value(cur)) => {
+            let decor = cur.decor().clone();
+            *cur = v.into();
+            *cur.decor_mut() = decor;
+        }
+        Some(Item::None) | None if !v => {}
+        Some(Item::None) | None => t[key] = value(v),
+        Some(_) => return Err(format!("{key}: not a bool")),
     }
     Ok(())
 }

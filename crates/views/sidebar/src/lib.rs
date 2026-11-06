@@ -1478,7 +1478,7 @@ impl Sidebar {
 
     fn render_top(&mut self, window: &Window, cx: &mut Context<Self>) -> Div {
         let t = Theme::of(cx).tokens;
-        let (active, unread, pr_count, pr_running, pr_unseen) = {
+        let (active, unread, pr_count, pr_running, pr_unseen, terminals_page) = {
             let s = self.state.read(cx);
             (
                 s.view.nav_key(),
@@ -1486,6 +1486,7 @@ impl Sidebar {
                 s.prs.len(),
                 pr_chat_host_running_count(&s.workspaces, &s.workspaces_running),
                 pr_chat_host_unseen_count(&s.workspaces, &s.attention.by_workspace),
+                s.terminal_prefs.page,
             )
         };
         let on = |v: ViewName| active == Some(v);
@@ -1584,7 +1585,7 @@ impl Sidebar {
                 .on_hover(cx.guarded_listener(|this, h: &bool, _, cx| {
                     this.set_hover("nav-schedules", *h, cx)
                 }))
-                .on_click(go(ViewName::Schedules, st))
+                .on_click(go(ViewName::Schedules, st.clone()))
                 .child(Self::nav_icon(IconName::Clock, on(ViewName::Schedules), cx))
                 .child(style::button_label("Schedules", 12.5, weight::REGULAR))
                 .child(
@@ -1596,6 +1597,16 @@ impl Sidebar {
                         .flex_none()
                         .child(titled("nav-schedules-add-tip", "New schedule", add)),
                 );
+        let terminals = terminals_page.then(|| {
+            self.nav_row("nav-terminals", on(ViewName::Terminals), window, cx)
+                .on_click(go(ViewName::Terminals, st))
+                .child(Self::nav_icon(
+                    IconName::Terminal,
+                    on(ViewName::Terminals),
+                    cx,
+                ))
+                .child(style::button_label("Terminals", 12.5, weight::REGULAR))
+        });
         div()
             .flex_none()
             .pt(px(6.))
@@ -1605,6 +1616,7 @@ impl Sidebar {
             .child(issues)
             .child(prs)
             .child(schedules)
+            .children(terminals)
     }
 
     fn sec_button(

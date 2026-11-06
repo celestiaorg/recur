@@ -5,14 +5,13 @@
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, BoxShadow, Context, Entity, Focusable, Hsla, InteractiveElement, IntoElement,
+    AnyElement, App, Context, Entity, Focusable, Hsla, InteractiveElement, IntoElement,
     KeyDownEvent, ParentElement, SharedString, StatefulInteractiveElement, Styled, Subscription,
-    Window, div, point, px,
+    Window, div, px,
 };
-use recur_ui::fonts::Family;
 use recur_ui::guard::Guarded;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
-use recur_ui::style::{button_label, card, text_field};
+use recur_ui::style::{button_label, card, find_field};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, TextStyled, Theme, icon, rgba, text};
 
@@ -470,49 +469,6 @@ impl EditorView {
         titled(id, title, self.hover_tracked(id, b, cx)).into_any_element()
     }
 
-    /// `.cm-recur-search-input`.
-    fn input_field(
-        &self,
-        input: &Entity<InputState>,
-        placeholder: &'static str,
-        window: &Window,
-        cx: &mut Context<Self>,
-    ) -> gpui_kit::Div {
-        recur_ui::style::style_text_input(input, cx);
-        let theme = Theme::of(cx);
-        let t = theme.tokens;
-        let focused = input.read(cx).focus_handle(cx).is_focused(window);
-        let border = if focused {
-            t.amber.mix(0.55, t.line)
-        } else {
-            t.line
-        };
-        let bg = if theme.is_light() { t.pane } else { t.bg };
-        card(bg, border, 6.)
-            .h(px(26.))
-            .px(px(9.))
-            .flex()
-            .items_center()
-            .when(focused, |d| {
-                d.shadow(vec![BoxShadow {
-                    color: h(t.amber_d),
-                    offset: point(px(0.), px(0.)),
-                    blur_radius: px(0.),
-                    spread_radius: px(2.),
-                    inset: false,
-                }])
-            })
-            .child(text_field(
-                input,
-                &SharedString::from(placeholder),
-                t.faint,
-                Family::Mono,
-                12.,
-                window,
-                cx,
-            ))
-    }
-
     /// `.cm-recur-search-glyph`.
     fn glyph(&self, name: IconName, cx: &App) -> gpui_kit::Div {
         let faint = Theme::of(cx).tokens.faint;
@@ -539,7 +495,7 @@ impl EditorView {
             .pb(px(4.))
             .child(self.glyph(IconName::Search, cx))
             .child(
-                self.input_field(&find, "Find", window, cx)
+                find_field(&find, "Find", window, cx)
                     .flex_1()
                     .min_w(px(80.)),
             );
@@ -652,7 +608,7 @@ impl EditorView {
                     .pb(px(4.))
                     .child(self.glyph(IconName::Replace, cx))
                     .child(
-                        self.input_field(&replace, "Replace", window, cx)
+                        find_field(&replace, "Replace", window, cx)
                             .flex_1()
                             .min_w(px(80.)),
                     )
@@ -720,7 +676,7 @@ impl EditorView {
                 ),
             )
             .child(
-                self.input_field(input, "Line", window, cx)
+                find_field(input, "Line", window, cx)
                     .flex_shrink_1()
                     .w(px(140.))
                     .min_w(px(72.))
@@ -802,7 +758,7 @@ impl EditorView {
                 }
             }))
             .child(text("New name").ui().size(13.).leading(BODY_LEADING))
-            .child(self.input_field(&input, "", window, cx))
+            .child(find_field(&input, "", window, cx))
             .child(
                 div()
                     .flex()

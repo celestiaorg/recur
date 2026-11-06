@@ -454,6 +454,8 @@ pub struct TerminalPrefs {
     pub line_height: f64,
     /// Bundle `[[terminalTheme]]` id, or '' to follow the app chrome.
     pub theme: String,
+    /// The sidebar's Terminals page (shells outside any workspace).
+    pub page: bool,
 }
 
 impl Default for TerminalPrefs {
@@ -463,6 +465,7 @@ impl Default for TerminalPrefs {
             font_size: 0,
             line_height: 1.15,
             theme: TERMINAL_MATCH_EDITOR.into(),
+            page: false,
         }
     }
 }
@@ -492,6 +495,7 @@ impl TerminalPrefs {
             font_size,
             line_height,
             theme: string("theme", d.theme),
+            page: get("page").and_then(Value::as_bool).unwrap_or(d.page),
         }
     }
 
@@ -777,8 +781,9 @@ mod tests {
     #[test]
     fn terminal_prefs_normalize() {
         let p = TerminalPrefs::normalize(Some(
-            &serde_json::json!({"fontSize": 15, "lineHeight": 1.35, "theme": "dracula", "fontFace": 3}),
+            &serde_json::json!({"fontSize": 15, "lineHeight": 1.35, "theme": "dracula", "fontFace": 3, "page": true}),
         ));
+        assert!(p.page);
         assert_eq!(p.font_size, 0);
         assert_eq!(p.line_height, 1.35);
         assert_eq!(p.theme, "dracula");

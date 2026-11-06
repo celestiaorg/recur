@@ -45,6 +45,7 @@ impl AppState {
                 c
             }
             ViewName::Schedules => vec![seg("Schedules", CrumbStyle::BoldOn)],
+            ViewName::Terminals => vec![seg("Terminals", CrumbStyle::BoldOn)],
             ViewName::Issues => vec![seg("Issues", CrumbStyle::BoldOn)],
             ViewName::Pr => vec![seg("Pull requests", CrumbStyle::BoldOn)],
             ViewName::PrDetail => {
@@ -79,6 +80,9 @@ impl AppState {
             ViewName::Inbox => ViewName::Briefing,
             v => v,
         };
+        if v == ViewName::Terminals && !self.terminal_prefs.page {
+            return;
+        }
         if v == ViewName::Briefing
             && let Some(f) = focus
         {

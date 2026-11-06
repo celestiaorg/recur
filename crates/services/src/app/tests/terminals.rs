@@ -8,7 +8,7 @@ use recur_domain::Workspace;
 
 use super::Fx;
 use crate::Services;
-use crate::api::TerminalDockChrome;
+use crate::api::{GLOBAL_TERMINALS, TerminalDockChrome};
 use crate::app::terminal_persist::{
     PersistedTab, PersistedTerminals, TERMINAL_PERSIST_MODE, persist_delay, snapshot_path,
 };
@@ -110,6 +110,42 @@ async fn terminal_cwd_rejects_unknown_workspace() {
     let fx = Fx::new().await;
     let e = fx.svc.terminal_cwd("nope").unwrap_err();
     assert!(e.message.contains("nope"), "{e}");
+    fx.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn global_terminals_start_at_home_with_the_host_env() {
+    let fx = Fx::new().await;
+    let home = std::env::var("HOME").unwrap();
+    assert_eq!(fx.svc.terminal_cwd(GLOBAL_TERMINALS).unwrap(), home);
+    assert!(fx.svc.terminal_env(GLOBAL_TERMINALS).is_empty());
+    fx.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn global_terminals_persist_across_shutdown() {
+    let fx = Fx::new().await;
+    ws1(&fx);
+    let t = &fx.s.terminal;
+    let info = t.open_terminal(GLOBAL_TERMINALS, 80, 24).await.unwrap();
+    assert!(same_dir(&info.cwd, &std::env::var("HOME").unwrap()));
+    assert!(t.list_terminals("ws-1").await.unwrap().is_empty());
+    t.set_terminal_title(&info.id, "scratch").await.unwrap();
+    t.set_terminal_dock_chrome(GLOBAL_TERMINALS, &chrome(true, false, 0))
+        .await
+        .unwrap();
+    fx.svc.terminal_shutdown().await;
+
+    let svc2 = fx.reopen().await;
+    let t2 = svc2.services().terminal;
+    let restored = t2
+        .restore_workspace_terminals(GLOBAL_TERMINALS, 80, 24)
+        .await
+        .unwrap();
+    assert_eq!(restored.len(), 1);
+    assert_eq!(restored[0].title, "scratch");
+    assert!(t2.list_terminal_dock_chrome().await.unwrap().is_empty());
+    svc2.terminal_shutdown().await;
     fx.close().await;
 }
 

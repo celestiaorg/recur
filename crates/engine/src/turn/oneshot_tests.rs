@@ -1,12 +1,13 @@
 //! Commit message tests, plus the one-shot request shape.
 
+use std::path::Path;
 use std::time::Duration;
 
 use recur_agent::TurnResult;
 use tokio_util::sync::CancellationToken;
 
 use super::*;
-use crate::testing::TestEngine;
+use crate::testing::{TestEngine, add_project, init_repo};
 use crate::turn::test_support::{Capture, FnProvider};
 
 fn text_result(text: &'static str) -> std::sync::Arc<dyn recur_agent::Provider> {
@@ -89,6 +90,41 @@ async fn commit_message_turn_shape() {
             .unwrap_err()
             .0,
         "stage changes to generate a commit message"
+    );
+    te.close().await;
+}
+
+#[tokio::test]
+async fn conventional_commits_suffixes_oneshot_prompts() {
+    let cap = Capture::empty();
+    let te = TestEngine::new(Some(cap.clone()));
+    let repo = init_repo();
+    std::fs::create_dir(Path::new(&repo.path).join(".recur")).unwrap();
+    std::fs::write(
+        Path::new(&repo.path).join(".recur/project.toml"),
+        "conventional_commits = true\n",
+    )
+    .unwrap();
+    let proj = add_project(&te.store, &repo.path);
+    let ws = te.engine.create_workspace(&proj, "cc", "").await.unwrap();
+    let tok = CancellationToken::new();
+    let wt = &ws.worktree_path;
+    let _ = te
+        .engine
+        .generate_commit_message(&tok, &ws.id, wt, "diff --git a/x b/x\n+y", &[])
+        .await;
+    let _ = te
+        .engine
+        .generate_pr_description(&tok, &ws.id, wt, "diff --git a/x b/x", &[])
+        .await;
+    let reqs = cap.requests();
+    assert_eq!(
+        reqs[0].system_prompt,
+        format!("{COMMIT_MESSAGE_SYSTEM_PROMPT}{CONVENTIONAL_COMMITS_PROMPT}")
+    );
+    assert_eq!(
+        reqs[1].system_prompt,
+        format!("{PR_DESCRIPTION_SYSTEM_PROMPT}{CONVENTIONAL_COMMITS_PROMPT}")
     );
     te.close().await;
 }

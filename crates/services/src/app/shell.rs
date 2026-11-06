@@ -62,6 +62,7 @@ pub fn known_shell_view(v: &str) -> bool {
             | "pr"
             | "schedules"
             | "issues"
+            | "terminals"
     )
 }
 
@@ -80,7 +81,7 @@ pub fn clamp_shell_state(mut st: ShellState) -> ShellState {
             st.workspace_id.clear();
             st.pr_id.clear();
         }
-        "inbox" | "briefing" | "settings" | "pr" | "schedules" | "issues" => {
+        "inbox" | "briefing" | "settings" | "pr" | "schedules" | "issues" | "terminals" => {
             st.workspace_id.clear();
             st.pr_id.clear();
             st.project_id.clear();

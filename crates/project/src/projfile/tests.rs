@@ -146,6 +146,26 @@ fn overlay_omitted_keys_are_empty() {
 }
 
 #[test]
+fn conventional_commits_round_trip() {
+    let dir = tempfile::tempdir().unwrap();
+    write_raw(dir.path(), "# keep\nconventional_commits = false # why\n");
+    assert!(!overlay(proj(dir.path())).conventional_commits);
+    let on = Project {
+        conventional_commits: true,
+        ..proj(dir.path())
+    };
+    write(&on).unwrap();
+    let text = read_project_toml(dir.path());
+    assert!(
+        text.contains("# keep") && text.contains("conventional_commits = true # why"),
+        "{text}"
+    );
+    assert!(overlay(proj(dir.path())).conventional_commits);
+    write(&proj(dir.path())).unwrap();
+    assert!(!overlay(proj(dir.path())).conventional_commits);
+}
+
+#[test]
 fn overlay_ignores_legacy_dev_cmd() {
     let dir = tempfile::tempdir().unwrap();
     write_raw(dir.path(), "dev_cmd = \"legacy\"\n");

@@ -370,6 +370,11 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
         }
         println!("html preview: the page is behind GPUI and hit-tests through it");
 
+        // WebKit paints out of process, so "loaded" can land before the page reaches the window.
+        let _ = until(cx, window, "the page to paint", || {
+            capture(&v).is_none_or(|px| px(on_page.0, on_page.1)[3] > 0)
+        })
+        .await;
         match capture(&v) {
             None => println!("html preview: pixels skipped (the window cannot be captured)"),
             Some(px) => {

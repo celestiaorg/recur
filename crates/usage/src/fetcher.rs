@@ -23,6 +23,15 @@ pub const CLAUDE_COLLECT_BUDGET: Duration = Duration::from_secs(12);
 
 pub type Hook<T> = Option<Arc<dyn Fn() -> T + Send + Sync>>;
 
+/// Which providers one collect fetches.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Wants {
+    pub claude: bool,
+    pub codex: bool,
+    pub chatgpt: bool,
+    pub cursor: bool,
+}
+
 /// `(previous key, next key)`.
 pub type MintedKeyHook = Option<Arc<dyn Fn(&str, &str) + Send + Sync>>;
 
@@ -69,10 +78,9 @@ pub struct Fetcher {
     pub want_codex: bool,
     pub want_chatgpt: bool,
     pub want_cursor: bool,
-    /// `(claude, codex, chatgpt, cursor)`, consulted on every collect so
-    /// Settings flips apply without restarting the poller; the bools above
-    /// are the fallback.
-    pub want: Hook<(bool, bool, bool, bool)>,
+    /// Consulted on every collect so Settings flips apply without
+    /// restarting the poller; the bools above are the fallback.
+    pub want: Hook<Wants>,
     /// When Cursor is not fetched, a local-only row (Disconnect tokens, or a
     /// no-session Connect hint) with no network call.
     pub cursor_stub: Hook<Option<ProviderQuota>>,
@@ -152,15 +160,15 @@ impl Fetcher {
         or(set, default)
     }
 
-    fn wants(&self) -> (bool, bool, bool, bool) {
+    fn wants(&self) -> Wants {
         match &self.want {
             Some(f) => f(),
-            None => (
-                self.want_claude,
-                self.want_codex,
-                self.want_chatgpt,
-                self.want_cursor,
-            ),
+            None => Wants {
+                claude: self.want_claude,
+                codex: self.want_codex,
+                chatgpt: self.want_chatgpt,
+                cursor: self.want_cursor,
+            },
         }
     }
 
@@ -173,18 +181,18 @@ impl Fetcher {
     pub async fn collect(&self, ctx: &Ctx) -> Snapshot {
         let fetched_at = self.now_ms();
         let mut providers = Vec::new();
-        let (claude, codex, chatgpt, cursor) = self.wants();
-        if claude {
-            let cctx = claude_fetch_ctx(ctx, codex || chatgpt || cursor);
+        let w = self.wants();
+        if w.claude {
+            let cctx = claude_fetch_ctx(ctx, w.codex || w.chatgpt || w.cursor);
             providers.push(fetch_claude(&cctx, self).await);
         }
-        if codex {
+        if w.codex {
             providers.push(fetch_codex(ctx, self).await);
         }
-        if chatgpt {
+        if w.chatgpt {
             providers.push(fetch_chatgpt(ctx, self).await);
         }
-        if cursor {
+        if w.cursor {
             providers.push(fetch_cursor(ctx, self).await);
         } else if self.cursor_connecting() {
             providers.push(cursor_connecting_quota());

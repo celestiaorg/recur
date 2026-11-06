@@ -26,7 +26,7 @@ pub use ctx::{Ctx, CtxError};
 pub use cursor::{
     CursorTok, delete_recur_cursor_auth, has_recur_cursor_auth_file, recur_cursor_api_key,
 };
-pub use fetcher::{Fetcher, Hook, hook};
+pub use fetcher::{Fetcher, Hook, Wants, hook};
 pub use http::default_client;
 pub use poller::{Poller, Publisher, merge_stale};
 pub use probe::{ChatGptProbe, ClaudeProbe, CodexProbe, CursorProbe};

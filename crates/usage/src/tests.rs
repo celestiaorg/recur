@@ -690,7 +690,7 @@ async fn fetch_chatgpt_signed_out_and_auth_file() {
     assert!(q.hint.contains("OpenAI"), "{}", q.hint);
 
     let dir = tempfile::tempdir().unwrap();
-    assert!(chatgpt::default_chatgpt_auth(Some(dir.path())).is_err());
+    assert!(chatgpt::default_chatgpt_auth(Some(dir.path()), 0).is_err());
     std::fs::write(
         dir.path().join("chatgpt-auth.json"),
         r#"{"active":"b","accounts":[
@@ -698,7 +698,8 @@ async fn fetch_chatgpt_signed_out_and_auth_file() {
             {"id":"b","email":"b@example.com","chatgptAccountId":"ws","accessToken":"tb"}]}"#,
     )
     .unwrap();
-    let a = chatgpt::default_chatgpt_auth(Some(dir.path())).unwrap();
+    assert!(chatgpt::has_chatgpt_account(dir.path()));
+    let a = chatgpt::default_chatgpt_auth(Some(dir.path()), 0).unwrap();
     assert_eq!(
         (
             a.access_token.as_str(),
@@ -1246,7 +1247,7 @@ async fn collect_honors_want_callback() {
         want_claude: true,
         want_codex: true,
         want_cursor: true,
-        want: hook(|| (false, false, false, false)),
+        want: hook(Wants::default),
         claude_token: hook(move || {
             c1.fetch_add(1, Ordering::SeqCst);
             Err("no".into())
@@ -1269,7 +1270,7 @@ async fn collect_honors_want_callback() {
 #[tokio::test]
 async fn collect_keeps_connecting_over_stub() {
     let f = Fetcher {
-        want: hook(|| (false, false, false, false)),
+        want: hook(Wants::default),
         cursor_stub: hook(|| Some(cursor_no_session_quota())),
         ..Fetcher::default()
     };
@@ -1288,7 +1289,7 @@ async fn collect_cursor_stub_without_fetch() {
     let c = calls.clone();
     let f = Fetcher {
         want_cursor: true,
-        want: hook(|| (false, false, false, false)),
+        want: hook(Wants::default),
         cursor_stub: hook(|| Some(cursor_connect_tokens_quota())),
         cursor_token: hook(move || {
             c.fetch_add(1, Ordering::SeqCst);
@@ -1522,7 +1523,7 @@ async fn disconnect_revokes_and_removes_tokens() {
     let f = Fetcher {
         cursor_revoke_key_url: format!("{base}/revoke"),
         data_dir: hook(move || Some(path.clone())),
-        want: hook(|| (false, false, false, false)),
+        want: hook(Wants::default),
         ..Fetcher::default()
     };
     let p = Poller::new(Arc::new(f), None);
@@ -1618,7 +1619,13 @@ fn service_wants_and_stub() {
     let settings = Arc::new(Mutex::new(recur_domain::Settings::default()));
     let dir = tempfile::tempdir().unwrap();
     let s = service(settings.clone(), Some(dir.path().to_path_buf()));
-    assert_eq!(s.wants(), (true, false, false, false));
+    assert_eq!(
+        s.wants(),
+        Wants {
+            claude: true,
+            ..Wants::default()
+        }
+    );
     assert_eq!(s.cursor_stub(), Some(cursor_no_session_quota()));
     settings.lock().codex_chat_gpt_auth = true;
     write_cursor_auth_file(
@@ -1629,13 +1636,38 @@ fn service_wants_and_stub() {
         },
     )
     .unwrap();
-    settings.lock().chat_gpt_account_id = "acc".into();
-    assert_eq!(s.wants(), (true, true, true, true));
+    std::fs::write(
+        dir.path().join("chatgpt-auth.json"),
+        r#"{"active":"a","accounts":[{"id":"a","accessToken":"t"}]}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        s.wants(),
+        Wants {
+            claude: true,
+            codex: true,
+            chatgpt: true,
+            cursor: true
+        }
+    );
     assert_eq!(s.cursor_stub(), Some(cursor_connect_tokens_quota()));
     settings.lock().disabled_providers = vec!["cursor".into(), "claude-code".into()];
-    assert_eq!(s.wants(), (false, true, true, false));
+    assert_eq!(
+        s.wants(),
+        Wants {
+            codex: true,
+            chatgpt: true,
+            ..Wants::default()
+        }
+    );
     settings.lock().disabled_providers.push("chatgpt".into());
-    assert_eq!(s.wants(), (false, true, false, false));
+    assert_eq!(
+        s.wants(),
+        Wants {
+            codex: true,
+            ..Wants::default()
+        }
+    );
 }
 
 #[tokio::test]
@@ -1661,3 +1693,22 @@ async fn probes_report_their_provider() {
 }
 
 mod golden;
+
+#[tokio::test]
+async fn fetch_chatgpt_stale_token_is_not_requested() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("chatgpt-auth.json"),
+        r#"{"active":"a","accounts":[{"id":"a","accessToken":"t","chatgptAccountId":"ws","expiresAt":"2020-01-01T00:00:00Z"}]}"#,
+    )
+    .unwrap();
+    let path = dir.path().to_path_buf();
+    let f = Fetcher {
+        data_dir: hook(move || Some(path.clone())),
+        now: hook(|| 1_700_000_000_000),
+        ..Fetcher::default()
+    };
+    let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
+    assert_eq!(q.error, "ChatGPT session needs a refresh");
+    assert!(q.hint.contains("chat"), "{}", q.hint);
+}

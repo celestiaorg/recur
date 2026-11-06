@@ -123,8 +123,10 @@ fn direct_chatgpt_sign_in_works_with_every_cli_provider_disabled(cx: &mut TestAp
     assert!(s.until(|s| s.has(
         "chatgpt-status=Use your ChatGPT plan directly. Recur runs the coding tools. No Codex installation or API key is needed."
     )));
+    assert!(s.has("status-head:Bad:Not connected"));
     s.click("btn:Continue with ChatGPT");
     assert!(s.until(|s| s.has("chatgpt-status=direct@example.com · 1 model available")));
+    assert!(s.has("status-head:Ok:Connected"));
     assert_eq!(
         *start_args.lock(),
         Some((String::new(), "browser".to_owned()))
@@ -135,6 +137,7 @@ fn direct_chatgpt_sign_in_works_with_every_cli_provider_disabled(cx: &mut TestAp
     assert!(s.until(|_| refreshes.load(Ordering::SeqCst) == 1));
     s.click("btn:Sign out of ChatGPT");
     assert!(s.until(|s| s.has("btn:Continue with ChatGPT") && !s.has("btn:Sign out of ChatGPT")));
+    assert!(s.has("status-head:Bad:Not connected"));
     assert!(s.has("sel:ChatGPT sign-in account=direct@example.com (recur-registration)"));
 }
 

@@ -7,7 +7,9 @@ use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
 use parking_lot::Mutex;
-use recur_domain::{PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Settings};
+use recur_domain::{
+    PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Settings,
+};
 
 use crate::connect::{cursor_connect_tokens_quota, cursor_no_session_quota};
 use crate::cursor::has_recur_cursor_auth_file;
@@ -59,7 +61,8 @@ impl UsageService {
         let fetch = Fetcher {
             data_dir: Some(Arc::new(move || data_dir())),
             want: Some(Arc::new(move || {
-                w1.upgrade().map_or((false, false, false), |s| s.wants())
+                w1.upgrade()
+                    .map_or((false, false, false, false), |s| s.wants())
             })),
             cursor_stub: Some(Arc::new(move || w2.upgrade().and_then(|s| s.cursor_stub()))),
             // The hook is sync inside a fetch; the save runs beside it.
@@ -91,12 +94,13 @@ impl UsageService {
 
     /// Which providers to fetch. Cursor needs a Recur Connect session: the
     /// `crsr_` API key cannot read dashboard usage.
-    pub fn wants(&self) -> (bool, bool, bool) {
+    pub fn wants(&self) -> (bool, bool, bool, bool) {
         let set = (self.settings)();
         let dir = self.dir();
         (
             set.provider_enabled(PROVIDER_CLAUDE_CODE),
             set.provider_enabled(PROVIDER_CODEX) && set.codex_chat_gpt_auth,
+            set.provider_enabled(PROVIDER_CHATGPT) && !set.chat_gpt_account_id.is_empty(),
             set.provider_enabled(PROVIDER_CURSOR) && has_recur_cursor_auth_file(&dir),
         )
     }

@@ -641,6 +641,74 @@ async fn fetch_codex_ok() {
     assert_eq!(seen[0].header("chatgpt-account-id"), "acc");
 }
 
+fn chatgpt_auth() -> CodexAuth {
+    CodexAuth {
+        access_token: "gpt-tok".into(),
+        account_id: "acc".into(),
+        email: "me@example.com".into(),
+        has_chatgpt: true,
+        ..Default::default()
+    }
+}
+
+#[tokio::test]
+async fn fetch_chatgpt_rows() {
+    let usage = r#"{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":5}}}"#;
+    for (status, body, error) in [
+        (200, usage, ""),
+        (401, "", "ChatGPT login expired"),
+        (429, "", "rate_limited"),
+    ] {
+        let (base, seen) = serve(move |_| (status, body.into())).await;
+        let f = Fetcher {
+            codex_usage_url: base,
+            chatgpt_auth: hook(|| Ok(chatgpt_auth())),
+            ..Fetcher::default()
+        };
+        let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
+        assert_eq!((q.id.as_str(), q.name.as_str()), ("chatgpt", "ChatGPT"));
+        assert_eq!(q.error, error, "{status}");
+        if status == 200 {
+            assert_eq!(
+                (q.plan.as_str(), q.email.as_str()),
+                ("Plus", "me@example.com")
+            );
+            assert_eq!(q.windows.len(), 1);
+            assert_eq!(seen.lock()[0].header("authorization"), "Bearer gpt-tok");
+        }
+    }
+}
+
+#[tokio::test]
+async fn fetch_chatgpt_signed_out_and_auth_file() {
+    let f = Fetcher {
+        chatgpt_auth: hook(|| Err("none".into())),
+        ..Fetcher::default()
+    };
+    let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
+    assert_eq!(q.error, "Not signed in to ChatGPT");
+    assert!(q.hint.contains("OpenAI"), "{}", q.hint);
+
+    let dir = tempfile::tempdir().unwrap();
+    assert!(chatgpt::default_chatgpt_auth(Some(dir.path())).is_err());
+    std::fs::write(
+        dir.path().join("chatgpt-auth.json"),
+        r#"{"active":"b","accounts":[
+            {"id":"a","accessToken":"ta"},
+            {"id":"b","email":"b@example.com","chatgptAccountId":"ws","accessToken":"tb"}]}"#,
+    )
+    .unwrap();
+    let a = chatgpt::default_chatgpt_auth(Some(dir.path())).unwrap();
+    assert_eq!(
+        (
+            a.access_token.as_str(),
+            a.account_id.as_str(),
+            a.email.as_str()
+        ),
+        ("tb", "ws", "b@example.com")
+    );
+}
+
 async fn codex_monthly(usage: &'static str, auth: CodexAuth) -> (ProviderQuota, Log) {
     let (base, seen) = serve(move |r| match r.path.as_str() {
         "/wham/usage" => ok(usage),
@@ -1178,7 +1246,7 @@ async fn collect_honors_want_callback() {
         want_claude: true,
         want_codex: true,
         want_cursor: true,
-        want: hook(|| (false, false, false)),
+        want: hook(|| (false, false, false, false)),
         claude_token: hook(move || {
             c1.fetch_add(1, Ordering::SeqCst);
             Err("no".into())
@@ -1201,7 +1269,7 @@ async fn collect_honors_want_callback() {
 #[tokio::test]
 async fn collect_keeps_connecting_over_stub() {
     let f = Fetcher {
-        want: hook(|| (false, false, false)),
+        want: hook(|| (false, false, false, false)),
         cursor_stub: hook(|| Some(cursor_no_session_quota())),
         ..Fetcher::default()
     };
@@ -1220,7 +1288,7 @@ async fn collect_cursor_stub_without_fetch() {
     let c = calls.clone();
     let f = Fetcher {
         want_cursor: true,
-        want: hook(|| (false, false, false)),
+        want: hook(|| (false, false, false, false)),
         cursor_stub: hook(|| Some(cursor_connect_tokens_quota())),
         cursor_token: hook(move || {
             c.fetch_add(1, Ordering::SeqCst);
@@ -1454,7 +1522,7 @@ async fn disconnect_revokes_and_removes_tokens() {
     let f = Fetcher {
         cursor_revoke_key_url: format!("{base}/revoke"),
         data_dir: hook(move || Some(path.clone())),
-        want: hook(|| (false, false, false)),
+        want: hook(|| (false, false, false, false)),
         ..Fetcher::default()
     };
     let p = Poller::new(Arc::new(f), None);
@@ -1550,7 +1618,7 @@ fn service_wants_and_stub() {
     let settings = Arc::new(Mutex::new(recur_domain::Settings::default()));
     let dir = tempfile::tempdir().unwrap();
     let s = service(settings.clone(), Some(dir.path().to_path_buf()));
-    assert_eq!(s.wants(), (true, false, false));
+    assert_eq!(s.wants(), (true, false, false, false));
     assert_eq!(s.cursor_stub(), Some(cursor_no_session_quota()));
     settings.lock().codex_chat_gpt_auth = true;
     write_cursor_auth_file(
@@ -1561,10 +1629,13 @@ fn service_wants_and_stub() {
         },
     )
     .unwrap();
-    assert_eq!(s.wants(), (true, true, true));
+    settings.lock().chat_gpt_account_id = "acc".into();
+    assert_eq!(s.wants(), (true, true, true, true));
     assert_eq!(s.cursor_stub(), Some(cursor_connect_tokens_quota()));
     settings.lock().disabled_providers = vec!["cursor".into(), "claude-code".into()];
-    assert_eq!(s.wants(), (false, true, false));
+    assert_eq!(s.wants(), (false, true, true, false));
+    settings.lock().disabled_providers.push("chatgpt".into());
+    assert_eq!(s.wants(), (false, true, false, false));
 }
 
 #[tokio::test]
@@ -1573,11 +1644,13 @@ async fn probes_report_their_provider() {
         claude_token: hook(|| Err("x".into())),
         cursor_token: hook(|| Err("x".into())),
         codex_auth: hook(|| Err("x".into())),
+        chatgpt_auth: hook(|| Err("x".into())),
         ..Fetcher::default()
     });
     let probes: Vec<Box<dyn recur_agent::UsageProbe>> = vec![
         Box::new(ClaudeProbe(f.clone())),
         Box::new(CodexProbe(f.clone())),
+        Box::new(ChatGptProbe(f.clone())),
         Box::new(CursorProbe(f)),
     ];
     for p in probes {

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub const PROVIDER_CLAUDE: &str = "claude-code";
 pub const PROVIDER_CURSOR: &str = "cursor";
 pub const PROVIDER_CODEX: &str = "codex";
+pub const PROVIDER_CHATGPT: &str = "chatgpt";
 
 pub const SOURCE_CLAUDE_LOGIN: &str = "Claude Code login";
 pub const SOURCE_CODEX_CHATGPT: &str = "ChatGPT login";

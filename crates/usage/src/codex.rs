@@ -151,6 +151,19 @@ pub(crate) async fn fetch_codex(ctx: &Ctx, f: &Fetcher) -> ProviderQuota {
         out.hint = "Codex API keys are pay-as-you-go. Sign in with ChatGPT to see 5-hour and 7-day limits.".into();
         return out;
     }
+    fetch_wham_usage(ctx, f, auth, out, "Codex", "Settings → Providers → Codex").await
+}
+
+/// The ChatGPT `wham/usage` request and parse behind both the Codex row and
+/// the direct ChatGPT account row; `out` carries the row's id and name.
+pub(crate) async fn fetch_wham_usage(
+    ctx: &Ctx,
+    f: &Fetcher,
+    auth: CodexAuth,
+    mut out: ProviderQuota,
+    name: &str,
+    settings_path: &str,
+) -> ProviderQuota {
     set_source(&mut out, SOURCE_CODEX_CHATGPT);
     let mut account = auth.account_id.clone();
     let headers = |account: &str| {
@@ -173,22 +186,23 @@ pub(crate) async fn fetch_codex(ctx: &Ctx, f: &Fetcher) -> ProviderQuota {
             }
         };
     if is_rate_limited(status) {
-        let mut q = quota();
-        q.error = "rate_limited".into();
-        return q;
+        out.source = String::new();
+        out.source_id = String::new();
+        out.error = "rate_limited".into();
+        return out;
     }
     if is_auth_err(status) {
-        out.error = "Codex login expired".into();
-        out.hint = "Sign in with ChatGPT again in Settings → Providers → Codex.".into();
+        out.error = format!("{name} login expired");
+        out.hint = format!("Sign in with ChatGPT again in {settings_path}.");
         return out;
     }
     if status >= 300 {
-        out.error = "Codex usage unavailable".into();
+        out.error = format!("{name} usage unavailable");
         out.hint = http_err(status, &raw);
         return out;
     }
     let Ok(mut q) = parse_codex_usage(&raw) else {
-        out.error = "Codex usage response was unreadable".into();
+        out.error = format!("{name} usage response was unreadable");
         return out;
     };
     let resolved = resolve_codex_account_id(&auth, &raw);
@@ -202,6 +216,8 @@ pub(crate) async fn fetch_codex(ctx: &Ctx, f: &Fetcher) -> ProviderQuota {
         q.windows.push(monthly);
     }
     set_source(&mut q, SOURCE_CODEX_CHATGPT);
+    q.id = out.id;
+    q.name = out.name;
     if q.email.is_empty() {
         q.email = auth.email;
     }

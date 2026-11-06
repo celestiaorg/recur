@@ -1,10 +1,11 @@
-//! Subscription-quota snapshots for Claude, Codex and Cursor.
+//! Subscription-quota snapshots for Claude, Codex, ChatGPT and Cursor.
 //!
 //! [`Poller`] caches one [`Snapshot`] over a [`Fetcher`] and publishes
 //! `provider.usage`; [`UsageService`] is the Settings-facing API services wrap;
-//! [`ClaudeProbe`], [`CodexProbe`] and [`CursorProbe`] serve
+//! [`ClaudeProbe`], [`CodexProbe`], [`ChatGptProbe`] and [`CursorProbe`] serve
 //! `Provider::usage_probe`.
 
+mod chatgpt;
 pub mod claude;
 pub mod codex;
 pub mod connect;
@@ -25,10 +26,10 @@ pub use ctx::{Ctx, CtxError};
 pub use cursor::{
     CursorTok, delete_recur_cursor_auth, has_recur_cursor_auth_file, recur_cursor_api_key,
 };
-pub use fetcher::{Fetcher, Hook, hook};
+pub use fetcher::{Fetcher, Hook, Wants, hook};
 pub use http::default_client;
 pub use poller::{Poller, Publisher, merge_stale};
-pub use probe::{ClaudeProbe, CodexProbe, CursorProbe};
+pub use probe::{ChatGptProbe, ClaudeProbe, CodexProbe, CursorProbe};
 pub use service::UsageService;
 pub use types::*;
 

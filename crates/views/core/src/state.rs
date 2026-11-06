@@ -591,6 +591,10 @@ impl AppState {
             .is_some_and(|s| s.show_hidden_projects)
     }
 
+    pub fn sidebar_by_status(&self) -> bool {
+        self.settings.as_ref().is_some_and(|s| s.sidebar_by_status)
+    }
+
     /// `appOverlayOpen`: a full-screen dialog is up, so in-page menus close.
     pub fn app_overlay_open(&self) -> bool {
         let o = &self.overlays;

@@ -49,9 +49,7 @@ Codex subscription endpoint.
 
 Recur does not read or modify OpenCode's credentials or `~/.codex` for this provider.
 
-Usage: with the provider enabled and an account signed in, the sidebar usage meter
-and popover show a **ChatGPT** row with 5-hour and 7-day bars. The row is removed
-when ChatGPT is disabled or signed out, and shows an error when the login has expired.
+Usage: a signed-in, enabled account adds a **ChatGPT** row (5-hour and 7-day bars) to the sidebar usage meter.
 
 ## Inference
 

@@ -11,7 +11,7 @@ use recur_domain::{
     PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Settings,
 };
 
-use crate::chatgpt::has_chatgpt_account;
+use crate::chatgpt::{active_chatgpt_account_id, default_chatgpt_auth, has_chatgpt_account};
 use crate::connect::{cursor_connect_tokens_quota, cursor_no_session_quota};
 use crate::cursor::has_recur_cursor_auth_file;
 use crate::fetcher::{Fetcher, Wants};
@@ -23,6 +23,11 @@ pub type SettingsSource = Arc<dyn Fn() -> Settings + Send + Sync>;
 /// (provider remap, governor caps) are async.
 pub type SettingsSink =
     Arc<dyn Fn(Settings) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send>> + Send + Sync>;
+/// Refreshes the ChatGPT access token for an account id (the ChatGPT
+/// provider's `Auth::access_token`), rewriting `chatgpt-auth.json`.
+pub type ChatGptRefresh = Arc<
+    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> + Send + Sync,
+>;
 pub type DataDirSource = Arc<dyn Fn() -> Option<PathBuf> + Send + Sync>;
 
 pub struct UsageService {
@@ -31,6 +36,7 @@ pub struct UsageService {
     data_dir: DataDirSource,
     publish: Option<Publisher>,
     poller: Mutex<Option<Arc<Poller>>>,
+    chatgpt_refresh: Mutex<Option<ChatGptRefresh>>,
 }
 
 impl UsageService {
@@ -46,7 +52,13 @@ impl UsageService {
             data_dir,
             publish,
             poller: Mutex::new(None),
+            chatgpt_refresh: Mutex::new(None),
         })
+    }
+
+    /// Lets usage fetches refresh an expired ChatGPT token. Set before `start`.
+    pub fn set_chatgpt_refresh(&self, refresh: ChatGptRefresh) {
+        *self.chatgpt_refresh.lock() = Some(refresh);
     }
 
     /// Starts the background poller once. Call from the app entry point;
@@ -59,7 +71,21 @@ impl UsageService {
         let me: Weak<Self> = Arc::downgrade(self);
         let (w1, w2, w3) = (me.clone(), me.clone(), me);
         let data_dir = Arc::clone(&self.data_dir);
+        let refresh = self.chatgpt_refresh.lock().clone();
+        let chatgpt_dir = Arc::clone(&self.data_dir);
         let fetch = Fetcher {
+            // The fetch runs on the multi-thread runtime; the hook is sync, so
+            // the refresh blocks one worker for the length of a token request.
+            chatgpt_auth: refresh.map(|refresh| {
+                Arc::new(move || {
+                    let dir = chatgpt_dir().ok_or("no data dir")?;
+                    let id = active_chatgpt_account_id(&dir).ok_or("no ChatGPT account")?;
+                    tokio::task::block_in_place(|| {
+                        tokio::runtime::Handle::current().block_on(refresh(id))
+                    })?;
+                    default_chatgpt_auth(Some(&dir), chrono::Utc::now().timestamp_millis())
+                }) as _
+            }),
             data_dir: Some(Arc::new(move || data_dir())),
             want: Some(Arc::new(move || {
                 w1.upgrade().map_or_else(Wants::default, |s| s.wants())

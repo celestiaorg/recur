@@ -49,6 +49,11 @@ pub(crate) fn has_chatgpt_account(dir: &Path) -> bool {
     active_account(dir).is_ok()
 }
 
+/// The active account's id, as the ChatGPT provider keys its tokens.
+pub(crate) fn active_chatgpt_account_id(dir: &Path) -> Option<String> {
+    active_account(dir).ok().map(|a| a.id)
+}
+
 /// The active account's saved access token. Only the ChatGPT provider
 /// refreshes it, so an expired one is reported as stale instead of requested.
 pub(crate) fn default_chatgpt_auth(

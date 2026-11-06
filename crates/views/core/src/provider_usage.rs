@@ -27,7 +27,7 @@ pub struct ProviderChip {
     pub headline: f64,
 }
 
-const CHIP_ORDER: [&str; 3] = ["claude-code", "cursor", "codex"];
+const CHIP_ORDER: [&str; 4] = ["claude-code", "cursor", "codex", "chatgpt"];
 
 fn ring_rank(id: &str) -> u8 {
     match id {
@@ -267,6 +267,23 @@ mod tests {
         assert_eq!(chips[0].rings[2].id, "billing");
         let off = provider_chips(Some(&s), &["cursor".into()]);
         assert_eq!(off.len(), 1);
+    }
+
+    #[test]
+    fn chatgpt_chip_sorts_after_codex_and_respects_disabled() {
+        let s = snap(
+            ["chatgpt", "codex", "claude-code"]
+                .map(|id| p(id, |q| q.windows = vec![w("five_hour", "5-hour", 10.)]))
+                .into(),
+        );
+        let ids = |d: &[String]| {
+            provider_chips(Some(&s), d)
+                .into_iter()
+                .map(|c| c.id)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(ids(&[]), ["claude-code", "codex", "chatgpt"]);
+        assert_eq!(ids(&["chatgpt".into()]), ["claude-code", "codex"]);
     }
 
     #[test]

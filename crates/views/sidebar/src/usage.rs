@@ -210,7 +210,7 @@ impl UsageMeter {
             body = body.child(small("Loading usage…", t.muted));
         } else if !has {
             body = body.child(small(
-                "No plan quotas yet. Sign in to Claude Code, Codex (ChatGPT), or Connect Cursor.",
+                "No plan quotas yet. Sign in to Claude Code, Codex, ChatGPT, or Connect Cursor.",
                 t.muted,
             ));
         } else {

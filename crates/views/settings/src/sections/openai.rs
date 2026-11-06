@@ -16,7 +16,9 @@ use recur_view_core::{call, toast};
 
 use crate::field::FieldOpts;
 use crate::rules::{PROVIDER_CHATGPT, can_disable_provider};
-use crate::style::{InpStyle, Row, code, copy, ctrl, desc, field_msg, inp, rows, tbtn_label};
+use crate::style::{
+    Head, InpStyle, Row, code, copy, ctrl, desc, field_msg, inp, rows, status_head, tbtn_label,
+};
 use crate::view::SettingsView;
 
 /// `ChatGPTProviderCard`'s state.
@@ -180,6 +182,7 @@ impl SettingsView {
             this.vcx.state.update(cx, |s, cx| {
                 s.set_settings(saved, cx);
                 s.invalidate_model_catalog(cx);
+                s.refresh_provider_usage(cx).detach();
             });
             this.chatgpt_set_status(next);
         });
@@ -388,17 +391,21 @@ impl SettingsView {
             c.error.clone()
         };
         let sel = format!("chatgpt-status={desc_text}");
-        let mut account_copy = copy(
-            "chatgpt-account",
-            if authed {
-                "Connected"
-            } else {
-                "ChatGPT account"
-            },
-            Some(vec![span(desc_text)]),
-            cx,
-        )
-        .debug_selector(move || sel.clone());
+        let head = if signing_in {
+            status_head(Head::Muted, "Waiting for browser sign-in…", cx)
+        } else if loading {
+            status_head(Head::Muted, "Checking…", cx)
+        } else if authed {
+            status_head(Head::Ok, "Connected", cx)
+        } else {
+            status_head(Head::Bad, "Not connected", cx)
+        };
+        let mut account_copy = div()
+            .flex_1()
+            .min_w_0()
+            .child(head)
+            .child(desc("chatgpt-account:desc", vec![span(desc_text)], cx))
+            .debug_selector(move || sel.clone());
         if !err.is_empty() {
             let sel = format!("chatgpt-err={err}");
             account_copy = account_copy.child(

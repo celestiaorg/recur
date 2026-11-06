@@ -17,7 +17,7 @@ VERSION="${VERSION:-$(build/version.sh)}" build/linux/in-docker.sh build/linux/b
 '''
 
 ["linux:package"]
-description = "Packages target/package/recur-linux-<arch>.tar.gz, .deb and .rpm (install to /opt/recur with /usr/bin/recur)"
+description = "Packages target/package/recur-linux-<arch>.tar.gz, .deb, .rpm and .pkg.tar.zst (Arch) (install to /opt/recur with /usr/bin/recur)"
 run = '''
 set -eu
 export VERSION="${VERSION:-$(build/version.sh)}"
@@ -28,6 +28,7 @@ tar --no-xattrs -C target/package -czf "target/package/$PKG.tar.gz" "$PKG"
 for fmt in deb rpm; do
   PKG_DIR="target/package/$PKG" nfpm pkg --packager "$fmt" --config build/linux/nfpm.yaml --target "target/package/$PKG.$fmt"
 done
+PKG_DIR="target/package/$PKG" nfpm pkg --packager archlinux --config build/linux/nfpm.yaml --target "target/package/$PKG.pkg.tar.zst"
 '''
 
 ["linux:run"]

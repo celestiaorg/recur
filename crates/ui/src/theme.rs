@@ -19,10 +19,11 @@ pub enum ThemeId {
     CatppuccinMocha,
     CatppuccinLatte,
     Nord,
+    Gruvbox,
 }
 
 impl ThemeId {
-    pub const ALL: [ThemeId; 7] = [
+    pub const ALL: [ThemeId; 8] = [
         ThemeId::Charcoal,
         ThemeId::Paper,
         ThemeId::Slate,
@@ -30,6 +31,7 @@ impl ThemeId {
         ThemeId::CatppuccinMocha,
         ThemeId::CatppuccinLatte,
         ThemeId::Nord,
+        ThemeId::Gruvbox,
     ];
 
     /// Persisted key. Charcoal is `default`: no `data-theme` attribute.
@@ -42,6 +44,7 @@ impl ThemeId {
             ThemeId::CatppuccinMocha => "catppuccin-mocha",
             ThemeId::CatppuccinLatte => "catppuccin-latte",
             ThemeId::Nord => "nord",
+            ThemeId::Gruvbox => "gruvbox",
         }
     }
 
@@ -54,6 +57,7 @@ impl ThemeId {
             ThemeId::CatppuccinMocha => "Catppuccin Mocha",
             ThemeId::CatppuccinLatte => "Catppuccin Latte",
             ThemeId::Nord => "Nord",
+            ThemeId::Gruvbox => "Gruvbox",
         }
     }
 
@@ -67,6 +71,7 @@ impl ThemeId {
             ThemeId::CatppuccinMocha => "mocha",
             ThemeId::CatppuccinLatte => "latte",
             ThemeId::Nord => "frost",
+            ThemeId::Gruvbox => "retro",
         }
     }
 
@@ -79,7 +84,7 @@ impl ThemeId {
     /// Charcoal.
     pub fn from_key(key: &str) -> ThemeId {
         let resolved = match key {
-            "gruvbox" | "conductor" | "charcoal" => "default",
+            "conductor" | "charcoal" => "default",
             "tokyonight" => "coolglow",
             "catppuccin" => "catppuccin-mocha",
             other => other,
@@ -104,6 +109,7 @@ impl ThemeId {
                 (0xe6e9ef, 0xeff1f5, 0x4c4f69, 0x8839ef, 0x40a02b, 0xd20f39)
             }
             ThemeId::Nord => (0x181c24, 0x222730, 0xeceff4, 0x88c0d0, 0xa3be8c, 0xbf616a),
+            ThemeId::Gruvbox => (0x1d2021, 0x282828, 0xebdbb2, 0xfe8019, 0xb8bb26, 0xfb4934),
         };
         Swatches {
             bg: hex(bg),
@@ -270,6 +276,30 @@ impl ThemeId {
                 t.warn = hex(0xebcb8b);
                 t.scrollbar_thumb = hex(0x4c566a);
                 t.scrollbar_thumb_hover = hex(0x5e6a80);
+            }
+            ThemeId::Gruvbox => {
+                t.bg = hex(0x1d2021);
+                t.pane = hex(0x282828);
+                t.pane_2 = hex(0x3c3836);
+                t.rail = hex(0x1d2021);
+                t.titlebar = hex(0x1d2021);
+                t.statusbar = hex(0x171a1b);
+                t.line = hex(0x3c3836);
+                t.line_soft = hex(0x32302f);
+                t.line_bright = hex(0x504945);
+                t.text = hex(0xebdbb2);
+                t.muted = hex(0xa89984);
+                t.faint = hex(0x7c6f64);
+                t.amber = hex(0xfe8019);
+                t.amber_d = rgba(254, 128, 25, 0.14);
+                t.cyan = hex(0x8ec07c);
+                t.emerald = hex(0xb8bb26);
+                t.coral = hex(0xfb4934);
+                t.coral_d = rgba(251, 73, 52, 0.18);
+                t.indigo = hex(0xd3869b);
+                t.warn = hex(0xfabd2f);
+                t.scrollbar_thumb = hex(0x504945);
+                t.scrollbar_thumb_hover = hex(0x665c54);
             }
         }
         // --coral-line is declared once on :root as a color-mix of var()s, so every palette
@@ -612,13 +642,14 @@ mod tests {
         for id in ThemeId::ALL {
             assert_eq!(ThemeId::from_key(id.key()), id);
         }
-        assert_eq!(ThemeId::from_key("gruvbox"), ThemeId::Charcoal);
+        assert_eq!(ThemeId::from_key("gruvbox"), ThemeId::Gruvbox);
+        assert_eq!(ThemeId::from_key("conductor"), ThemeId::Charcoal);
         assert_eq!(ThemeId::from_key("charcoal"), ThemeId::Charcoal);
         assert_eq!(ThemeId::from_key("tokyonight"), ThemeId::CoolGlow);
         assert_eq!(ThemeId::from_key("catppuccin"), ThemeId::CatppuccinMocha);
         assert_eq!(ThemeId::from_key("everforest"), ThemeId::Charcoal);
         assert!(ThemeId::Paper.is_light() && ThemeId::CatppuccinLatte.is_light());
-        assert!(!ThemeId::Nord.is_light());
+        assert!(!ThemeId::Nord.is_light() && !ThemeId::Gruvbox.is_light());
     }
 
     #[test]

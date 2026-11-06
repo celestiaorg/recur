@@ -2,7 +2,7 @@ name: Release
 
 # Pushing a vX.Y.Z tag builds a universal "Recur.app" (stamping X.Y.Z into
 # Info.plist) in a styled DMG plus its updater zip, and the recur Linux
-# tarballs, .debs and .rpms, in parallel. Only once every build succeeds does
+# tarballs, .debs, .rpms and Arch packages, in parallel. Only once every build succeeds does
 # `publish` create the GitHub release and attach them all with a
 # SHA256SUMS and the signed manifest.json the in-app updater reads
 # (RECUR_UPDATE_URL), so a failed build never leaves a partial release.
@@ -156,7 +156,7 @@ jobs:
       - run: |
           V="$(build/version.sh)"
           mkdir -p dist
-          for ext in tar.gz deb rpm; do
+          for ext in tar.gz deb rpm pkg.tar.zst; do
             mv "target/package/recur-linux-${{ matrix.arch }}.$ext" "dist/Recur-$V-linux-${{ matrix.arch }}.$ext"
           done
       - uses: actions/upload-artifact@v7
@@ -199,7 +199,7 @@ jobs:
       - name: Latest-download aliases
         run: |
           V="${GITHUB_REF_NAME#v}"
-          cd dist && for f in Recur-"$V"-*.{dmg,deb,rpm,tar.gz}; do cp "$f" "${f/-$V/}"; done
+          cd dist && for f in Recur-"$V"-*.{dmg,deb,rpm,pkg.tar.zst,tar.gz}; do cp "$f" "${f/-$V/}"; done
       # The release stays a draft until every asset is up, so
       # latest/download/manifest.json never points at a missing zip.
       - env:

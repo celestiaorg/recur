@@ -580,6 +580,7 @@ pub mod catalog {
             "catppuccin-mocha" => "catppuccin-mocha",
             "catppuccin-latte" => "catppuccin-latte",
             "nord" => "nord",
+            "gruvbox" => "gruvbox-dark-medium",
             _ => "recur",
         }
     }

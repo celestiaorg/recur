@@ -13,7 +13,7 @@ export type ViewName = 'detail' | 'pr' | 'prdetail' | 'briefing'
 // ---- appearance / theme ----
 // Themes are color-only (identity & layout stay constant). 'default' means
 // "no data-theme attr".
-const THEME_KEYS = ['default', 'paper', 'slate', 'coolglow', 'catppuccin-mocha', 'catppuccin-latte', 'nord']
+const THEME_KEYS = ['default', 'paper', 'slate', 'coolglow', 'catppuccin-mocha', 'catppuccin-latte', 'nord', 'gruvbox']
 export const theme = writable<string>('default')
 
 /** True for light app-chrome palettes (affects file-icons). */

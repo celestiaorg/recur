@@ -33,6 +33,25 @@ fn in_app_bundle(exe: &Path) -> bool {
     exe.to_string_lossy().contains(".app/Contents/MacOS/")
 }
 
+/// Raises the open-file soft limit toward the hard limit, capped at macOS's
+/// `OPEN_MAX` (10240). A Dock-launched app inherits launchd's soft limit of
+/// 256, which terminals, agents, language servers and git spawns exhaust.
+pub fn raise_fd_limit() {
+    use rustix::process::{Resource, Rlimit, getrlimit, setrlimit};
+    const OPEN_MAX: u64 = 10240;
+    let lim = getrlimit(Resource::Nofile);
+    let want = lim.maximum.map_or(OPEN_MAX, |max| max.min(OPEN_MAX));
+    if lim.current.is_some_and(|cur| cur < want) {
+        let _ = setrlimit(
+            Resource::Nofile,
+            Rlimit {
+                current: Some(want),
+                maximum: lim.maximum,
+            },
+        );
+    }
+}
+
 /// `os.UserHomeDir` on Unix: `$HOME`, or `None` when unset or empty.
 pub(crate) fn home_dir() -> Option<PathBuf> {
     std::env::var_os("HOME")
@@ -139,6 +158,23 @@ mod tests {
             !running_in_app_bundle(),
             "the test binary is not in a .app bundle"
         );
+    }
+
+    #[test]
+    fn raises_fd_limit() {
+        use rustix::process::{Resource, getrlimit};
+        let lim = getrlimit(Resource::Nofile);
+        rustix::process::setrlimit(
+            Resource::Nofile,
+            rustix::process::Rlimit {
+                current: Some(256),
+                maximum: lim.maximum,
+            },
+        )
+        .expect("lower soft limit");
+        raise_fd_limit();
+        let want = lim.maximum.map_or(10240, |max| max.min(10240));
+        assert_eq!(getrlimit(Resource::Nofile).current, Some(want));
     }
 
     #[test]

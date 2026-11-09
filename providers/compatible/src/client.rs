@@ -1,14 +1,17 @@
 //! The `POST {base}/v1/responses` client: streamed turns with a
-//! JSON fallback, and the Settings ping.
+//! JSON fallback, the Chat Completions route for endpoints without
+//! Responses, and the Settings pings.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use recur_domain::CompatibleProvider;
+use recur_domain::{CompatibleApi, CompatibleProvider};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use tokio_util::sync::CancellationToken;
 
+use crate::chat::{ChatStream, chat_body, decode_chat_completion};
 use crate::chatgpt::chatgpt_body;
 use crate::sse::{SseParser, decode_response, parse_sse};
 use crate::types::{Event, Request, user_text};
@@ -50,6 +53,11 @@ pub struct Client {
     /// stateless streaming body, and OAuth from `authorize` on every request.
     pub chatgpt: bool,
     authorize: Option<Arc<dyn Authorize>>,
+    /// The wire APIs Settings → Test recorded for the endpoint.
+    pub api: CompatibleApi,
+    /// Set once an untested endpoint answered Chat Completions after
+    /// refusing Responses, so later rounds skip the failing route.
+    chat_learned: Arc<AtomicBool>,
 }
 
 impl Client {
@@ -61,7 +69,34 @@ impl Client {
             http: recur_http::default_client(),
             chatgpt: false,
             authorize: None,
+            api: p.api,
+            chat_learned: Arc::default(),
         }
+    }
+
+    /// Shares what an untested endpoint taught about its route with other
+    /// clients for the same endpoint (one per turn).
+    pub fn with_chat_learned(mut self, learned: Arc<AtomicBool>) -> Self {
+        self.chat_learned = learned;
+        self
+    }
+
+    /// Whether turns go to `/v1/chat/completions` instead of Responses.
+    pub fn uses_chat_completions(&self) -> bool {
+        if self.chatgpt {
+            return false;
+        }
+        match self.api {
+            CompatibleApi::ChatCompletions => true,
+            CompatibleApi::Responses | CompatibleApi::Both => false,
+            CompatibleApi::Unknown => self.chat_learned.load(Ordering::Relaxed),
+        }
+    }
+
+    /// The Chat Completions URL for this client.
+    pub fn chat_endpoint(&self) -> String {
+        let base = self.base_url.trim().trim_end_matches('/');
+        format!("{base}/v1/chat/completions")
     }
 
     /// Speaks the ChatGPT Codex route, authorizing each request with `auth`.
@@ -121,10 +156,13 @@ impl Client {
         body: String,
         emit: &mut (dyn FnMut(Event) + Send),
     ) -> Result<(), String> {
-        let body = if self.chatgpt {
+        if self.uses_chat_completions() {
+            return self.post_chat_stream(&body, emit).await;
+        }
+        let responses_body = if self.chatgpt {
             chatgpt_body(&body)?
         } else {
-            body
+            body.clone()
         };
         let url = self.endpoint();
         let mut headers = self.headers().await?;
@@ -136,7 +174,7 @@ impl Client {
             .http
             .post(&url)
             .headers(headers)
-            .body(body)
+            .body(responses_body)
             .send()
             .await
             .map_err(|e| format!("responses POST: {}", url_error("Post", &url, &e)))?;
@@ -151,11 +189,19 @@ impl Client {
             } else {
                 msg
             };
-            return Err(format!(
-                "responses {}: {}",
-                status_text(status),
-                clip(&msg, 800)
-            ));
+            let err = format!("responses {}: {}", status_text(status), clip(&msg, 800));
+            // An untested endpoint without the Responses route: try Chat
+            // Completions before failing the turn.
+            if !self.chatgpt && self.api.is_unknown() && route_missing(status) {
+                return match self.post_chat_stream(&body, emit).await {
+                    Ok(()) => {
+                        self.chat_learned.store(true, Ordering::Relaxed);
+                        Ok(())
+                    }
+                    Err(chat) => Err(format!("{err}; {chat}")),
+                };
+            }
+            return Err(err);
         }
         let ct = resp
             .headers()
@@ -187,6 +233,130 @@ impl Client {
             emit(ev);
         }
         Ok(())
+    }
+
+    /// Sends a Responses body over Chat Completions and emits the chunks as
+    /// Responses events.
+    async fn post_chat_stream(
+        &self,
+        responses_body: &str,
+        emit: &mut (dyn FnMut(Event) + Send),
+    ) -> Result<(), String> {
+        let body = chat_body(responses_body)?;
+        let url = self.chat_endpoint();
+        let mut headers = self.headers().await?;
+        headers.insert(
+            reqwest::header::ACCEPT,
+            HeaderValue::from_static("text/event-stream"),
+        );
+        let mut resp = self
+            .http
+            .post(&url)
+            .headers(headers)
+            .body(body)
+            .send()
+            .await
+            .map_err(|e| format!("chat completions POST: {}", url_error("Post", &url, &e)))?;
+        let status = resp.status();
+        if !status.is_success() {
+            let raw = read_limited(&mut resp, MAX_ERROR_BODY)
+                .await
+                .unwrap_or_default();
+            let msg = String::from_utf8_lossy(&raw).trim().to_owned();
+            let msg = if msg.is_empty() {
+                status_text(status)
+            } else {
+                msg
+            };
+            return Err(format!(
+                "chat completions {}: {}",
+                status_text(status),
+                clip(&msg, 800)
+            ));
+        }
+        let ct = resp
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+            .to_owned();
+        let mut chat = ChatStream::default();
+        if ct.contains("text/event-stream") {
+            let mut parser = SseParser::default();
+            loop {
+                match resp.chunk().await {
+                    Ok(Some(chunk)) => {
+                        parser.push_payloads(&chunk, &mut |p| chat.on_payload(p, emit));
+                    }
+                    Ok(None) => break,
+                    Err(e) => return Err(err_chain(&e)),
+                }
+            }
+            parser.finish_payloads(&mut |p| chat.on_payload(p, emit));
+            chat.finish(emit);
+            return Ok(());
+        }
+        let raw = read_limited(&mut resp, MAX_JSON_BODY)
+            .await
+            .map_err(|e| format!("chat completions read: {e}"))?;
+        if looks_like_sse(&raw) {
+            let mut parser = SseParser::default();
+            parser.push_payloads(&raw, &mut |p| chat.on_payload(p, emit));
+            parser.finish_payloads(&mut |p| chat.on_payload(p, emit));
+            chat.finish(emit);
+            return Ok(());
+        }
+        for ev in
+            decode_chat_completion(&raw).map_err(|e| format!("chat completions decode: {e}"))?
+        {
+            emit(ev);
+        }
+        Ok(())
+    }
+
+    /// Sends a tiny non-tool request to verify the endpoint speaks Chat
+    /// Completions. A token-capped answer still passes.
+    pub async fn ping_chat(&self, model: &str) -> Result<(), String> {
+        let model = model.trim();
+        if model.is_empty() {
+            return Err("model is required".into());
+        }
+        let body = serde_json::json!({
+            "model": model,
+            "messages": [{"role": "user", "content": "ping"}],
+            "max_tokens": 16,
+        })
+        .to_string();
+        let url = self.chat_endpoint();
+        let mut resp = self
+            .http
+            .post(&url)
+            .headers(self.headers().await?)
+            .timeout(PING_TIMEOUT)
+            .body(body)
+            .send()
+            .await
+            .map_err(|e| url_error("Post", &url, &e))?;
+        let status = resp.status();
+        let raw = read_limited(&mut resp, MAX_ERROR_BODY)
+            .await
+            .unwrap_or_default();
+        let text = String::from_utf8_lossy(&raw).into_owned();
+        if !status.is_success() {
+            let msg = text.trim();
+            let msg = if msg.is_empty() {
+                status_text(status)
+            } else {
+                msg.to_owned()
+            };
+            return Err(format!("{}: {}", status_text(status), clip(&msg, 800)));
+        }
+        let evs = decode_chat_completion(&raw)
+            .map_err(|_| format!("not a Chat Completions body: {}", clip(&text, 800)))?;
+        match evs.iter().find(|e| !e.error_message.is_empty()) {
+            Some(e) => Err(e.error_message.clone()),
+            None => Ok(()),
+        }
     }
 
     /// Sends a tiny non-tool request to verify the endpoint speaks Responses.
@@ -283,6 +453,11 @@ impl Client {
         }
         Ok(h)
     }
+}
+
+/// The statuses a server answers for a route it does not have.
+fn route_missing(status: reqwest::StatusCode) -> bool {
+    matches!(status.as_u16(), 404 | 405)
 }
 
 fn looks_like_sse(raw: &[u8]) -> bool {

@@ -1294,16 +1294,14 @@ impl SettingsView {
         let services = self.vcx.services.clone();
         cx.spawn(async move |this, cx| {
             let res = services.settings.test_compatible_provider(&p).await;
+            // A passing Test records the endpoint's API on the saved card:
+            // reload so later edits keep it and the pickers list its harnesses.
+            let recorded = match &res {
+                Ok(r) if r.ok && r.api != p.api => services.settings.get_settings().await.ok(),
+                _ => None,
+            };
             let msg = match res {
-                Ok(r) if r.ok => (true, "Connected".to_string()),
-                Ok(r) => (
-                    false,
-                    if r.error.is_empty() {
-                        "Could not reach endpoint".into()
-                    } else {
-                        r.error
-                    },
-                ),
+                Ok(r) => (r.ok, r.summary()),
                 Err(e) => {
                     let m = e.message.clone();
                     (
@@ -1317,6 +1315,12 @@ impl SettingsView {
                 }
             };
             let _ = this.update(cx, |this, cx| {
+                if let Some(s) = recorded {
+                    this.vcx.state.update(cx, |st, cx| {
+                        st.set_settings(s, cx);
+                        st.invalidate_model_catalog(cx);
+                    });
+                }
                 this.compat_test.insert(id.clone(), Some(msg));
                 this.compat_testing.insert(id, false);
                 cx.notify();

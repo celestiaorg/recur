@@ -302,6 +302,16 @@ impl Provider for OpenCodeProvider {
                 ),
             ));
         };
+        if let Some(why) = recur_domain::compatible_harness_blocker(provider.api, PROVIDER_OPENCODE)
+        {
+            return Err(ProviderError::new(
+                ErrorKind::Unavailable,
+                format!(
+                    "OpenCode cannot run {}: {why} Pick the Recur harness for this model.",
+                    provider.name
+                ),
+            ));
+        }
         let bin = locate(&settings).map_err(|e| ProviderError::new(ErrorKind::Unavailable, e))?;
         let resumed = !req.resume_session.trim().is_empty();
         let cfg = config::opencode_config(&req, &provider, &model_id, &req.system_prompt, resumed);

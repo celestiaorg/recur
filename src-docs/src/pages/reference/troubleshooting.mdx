@@ -47,8 +47,8 @@ A mode or loop role is set to a model from a provider that is off or not signed 
 
 ## Compatible endpoints
 
-- Click **Test** on the provider card. It sends a small request to `{base URL}/v1/responses` with the first model ID.
-- The server must support the Responses API with tool calls. Servers that only offer Chat Completions do not work.
+- Click **Test** on the provider card. It sends a small request to `{base URL}/v1/responses` and `{base URL}/v1/chat/completions` with the first model ID and reports which API answered.
+- The server must support the Responses API or Chat Completions, with tool calls. OpenCode needs Chat Completions.
 - Enter the base URL without a trailing slash and without `/v1`.
 - Model IDs must match what the server serves. For Ollama, use a model you have pulled.
 - The slugs `claude-code`, `cursor`, `codex`, `anthropic`, `gemini`, and `ollama` are reserved; use something like `local-ollama`.

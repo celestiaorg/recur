@@ -1,10 +1,14 @@
-//! OpenAI-compatible `/v1/responses` provider: Recur owns the agent loop, the
-//! coding tools and the host tools. See `docs/openai-compatible-provider.md`.
+//! OpenAI-compatible provider: Recur owns the agent loop, the coding tools and
+//! the host tools. Turns go to `/v1/responses`, or to `/v1/chat/completions`
+//! when the endpoint only speaks Chat Completions (recorded by Settings →
+//! Test, or learned when an untested endpoint has no Responses route). See
+//! `docs/openai-compatible-provider.md`.
 //!
 //! The engine passes the turn's tools as `TurnContext::tools` (build one with
 //! [`HarnessTools::new`]) and the Recur transcript as `TurnContext::history`.
 
 pub mod catalog;
+mod chat;
 mod chatgpt;
 pub mod client;
 pub mod flags;
@@ -17,6 +21,8 @@ pub mod tools;
 pub mod types;
 
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use parking_lot::RwLock;
 use recur_agent::{
@@ -62,6 +68,8 @@ pub struct CompatibleProvider {
     config: RwLock<Config>,
     http: reqwest::Client,
     data_dir: Option<PathBuf>,
+    /// An untested endpoint answered Chat Completions instead of Responses.
+    chat_learned: Arc<AtomicBool>,
 }
 
 impl CompatibleProvider {
@@ -76,6 +84,7 @@ impl CompatibleProvider {
             config: RwLock::new(config),
             http: recur_http::default_client(),
             data_dir: None,
+            chat_learned: Arc::default(),
         }
     }
 
@@ -98,7 +107,9 @@ impl CompatibleProvider {
     }
 
     fn client(&self, config: &Config) -> Client {
-        Client::new(config).with_http(self.http.clone())
+        Client::new(config)
+            .with_http(self.http.clone())
+            .with_chat_learned(Arc::clone(&self.chat_learned))
     }
 
     /// The saved config when Settings has this slug, else the constructed one.
@@ -232,7 +243,11 @@ impl Provider for CompatibleProvider {
 
     async fn settings_changed(&self, _old: &Settings, new: &Settings) {
         if let Some(p) = new.compatible_by_id(&self.id) {
-            *self.config.write() = p.clone();
+            let mut config = self.config.write();
+            if config.base_url != p.base_url {
+                self.chat_learned.store(false, Ordering::Relaxed);
+            }
+            *config = p.clone();
         }
     }
 }

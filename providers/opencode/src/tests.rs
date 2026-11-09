@@ -102,6 +102,44 @@ async fn runs_a_fake_opencode_and_parses_its_stream() {
     assert!(seen.iter().any(|ev| matches!(ev, AgentEvent::TurnEnd(_))));
 }
 
+#[tokio::test]
+async fn refuses_a_responses_only_endpoint() {
+    use std::sync::Arc;
+
+    use recur_agent::EventSink;
+    use recur_agent::turn::{TurnContext, TurnRequest};
+    use tokio_util::sync::CancellationToken;
+
+    let settings = Settings {
+        compatible_providers: vec![recur_domain::CompatibleProvider {
+            id: "resp".into(),
+            name: "Responses Only".into(),
+            base_url: "https://example.com".into(),
+            api: recur_domain::CompatibleApi::Responses,
+            models: vec![recur_domain::CompatibleModel {
+                id: "m".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    let sink: Arc<dyn EventSink> = Arc::new(|_| {});
+    let err = OpenCodeProvider::new(settings)
+        .run_turn(
+            TurnRequest {
+                model: "resp/m".into(),
+                prompt: "hi".into(),
+                ..Default::default()
+            },
+            TurnContext::new(CancellationToken::new(), sink),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, ErrorKind::Unavailable);
+    assert!(err.message.contains("Chat Completions"), "{err}");
+}
+
 #[cfg(unix)]
 #[tokio::test]
 async fn runs_opencode_in_the_worktree() {

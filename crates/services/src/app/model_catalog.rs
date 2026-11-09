@@ -5,8 +5,8 @@
 use recur_agent::Provider as _;
 use recur_agent::catalog::{HarnessChoice, ModelChoice, ModelGroup, default_flags_from_dims};
 use recur_domain::{
-    Flags, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR,
-    PROVIDER_OPENCODE, Settings, provider_label,
+    CompatibleApi, Flags, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR,
+    PROVIDER_OPENCODE, Settings, compatible_harness_blocker, provider_label,
 };
 
 use super::AppServices;
@@ -24,8 +24,11 @@ pub fn build_model_catalog(
 
 /// The execution harnesses a compatible endpoint's models can run in. The
 /// built-in harness is always first and unchanged for existing selections.
-/// OpenCode is listed even when it is not installed, with the reason.
-pub fn compatible_harnesses(opencode_ready: bool) -> Vec<HarnessChoice> {
+/// OpenCode is listed even when it cannot run them, with the reason, so the
+/// picker can explain why: it is not installed, or the endpoint only answers
+/// the Responses API (OpenCode needs Chat Completions). Recur's own harness
+/// speaks both APIs.
+pub fn compatible_harnesses(opencode_ready: bool, api: CompatibleApi) -> Vec<HarnessChoice> {
     let choice = |id: &str, label: &str, blocked: Option<&str>| HarnessChoice {
         id: id.into(),
         label: label.into(),
@@ -33,19 +36,26 @@ pub fn compatible_harnesses(opencode_ready: bool) -> Vec<HarnessChoice> {
         reason: blocked.unwrap_or_default().into(),
         not_installed: false,
     };
-    let opencode = if opencode_ready {
-        choice(PROVIDER_OPENCODE, provider_label(PROVIDER_OPENCODE), None)
-    } else {
-        HarnessChoice {
+    let opencode = match compatible_harness_blocker(api, PROVIDER_OPENCODE) {
+        Some(why) => choice(
+            PROVIDER_OPENCODE,
+            provider_label(PROVIDER_OPENCODE),
+            Some(why),
+        ),
+        None if !opencode_ready => HarnessChoice {
             not_installed: true,
             ..choice(
                 PROVIDER_OPENCODE,
                 provider_label(PROVIDER_OPENCODE),
                 Some("Install OpenCode and put `opencode` on PATH"),
             )
-        }
+        },
+        None => choice(PROVIDER_OPENCODE, provider_label(PROVIDER_OPENCODE), None),
     };
-    vec![choice("", "Recur", None), opencode]
+    vec![
+        choice("", "Recur", compatible_harness_blocker(api, "")),
+        opencode,
+    ]
 }
 
 /// [`build_model_catalog`] with harness availability for compatible
@@ -89,7 +99,7 @@ pub fn build_model_catalog_with_harnesses(
             provider: p.id.clone(),
             label: set.display_label(&p.id).to_owned(),
             models: recur_provider_compatible::compatible_catalog_models(p),
-            harnesses: compatible_harnesses(opencode_ready),
+            harnesses: compatible_harnesses(opencode_ready, p.api),
         });
     }
     if set.provider_offers_models(PROVIDER_CHATGPT) {

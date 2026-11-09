@@ -80,8 +80,9 @@ cannot answer. Safety comes from the generated `permission` object instead:
 
 - Only compatible endpoints are offered as sources. Account-backed providers
   (Claude Code, Cursor, Codex, ChatGPT) keep their own runtime.
-- OpenCode uses Chat Completions, so it cannot run an endpoint that only
-  implements the Responses API.
+- OpenCode uses Chat Completions. An endpoint whose Settings Test found only
+  the Responses API lists OpenCode as unavailable, with that reason, and a
+  turn refuses to start. Recur's built-in harness speaks both APIs.
 - Images are not forwarded.
 - Live steering and partial text deltas are not supported; OpenCode emits
   completed parts.

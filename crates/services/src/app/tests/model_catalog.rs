@@ -4,14 +4,14 @@
 
 use recur_agent::catalog::ModelGroup;
 use recur_domain::{
-    CompatibleModel, CompatibleProvider, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX,
-    PROVIDER_CURSOR, Settings, compatible_flag_preset,
+    CompatibleApi, CompatibleModel, CompatibleProvider, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE,
+    PROVIDER_CODEX, PROVIDER_CURSOR, Settings, compatible_flag_preset,
 };
 
 use super::Fx;
 use crate::app::model_catalog::{
     apply_catalog_fallbacks, build_model_catalog, build_model_catalog_with_harnesses,
-    first_catalog_choice, provider_enablement_changed,
+    compatible_harnesses, first_catalog_choice, provider_enablement_changed,
 };
 
 fn cursor_models(ids: &[(&str, &str)]) -> Vec<recur_provider_cursor::Model> {
@@ -372,6 +372,20 @@ async fn chatgpt_catalogue_and_fallback_without_codex() {
     fx.close().await;
 }
 
+fn endpoint(id: &str, base_url: &str, api: CompatibleApi) -> CompatibleProvider {
+    CompatibleProvider {
+        id: id.into(),
+        name: id.into(),
+        base_url: base_url.into(),
+        api,
+        models: vec![CompatibleModel {
+            id: "m".into(),
+            ..Default::default()
+        }],
+        ..Default::default()
+    }
+}
+
 #[test]
 fn compatible_groups_offer_the_harness_menu() {
     let set = Settings {
@@ -404,4 +418,139 @@ fn compatible_groups_offer_the_harness_menu() {
         .find(|g| g.provider == PROVIDER_CLAUDE_CODE)
         .unwrap();
     assert!(claude.harnesses.is_empty());
+}
+
+#[test]
+fn harnesses_follow_the_endpoint_api() {
+    let set = Settings {
+        compatible_providers: vec![
+            endpoint(
+                "deepseek",
+                "https://api.deepseek.com",
+                CompatibleApi::ChatCompletions,
+            ),
+            endpoint("resp", "https://r.example", CompatibleApi::Responses),
+            endpoint("both", "https://b.example", CompatibleApi::Both),
+        ],
+        ..Default::default()
+    };
+    let groups = build_model_catalog_with_harnesses(&set, vec![], vec![], true);
+    let menu = |id: &str| {
+        groups
+            .iter()
+            .find(|g| g.provider == id)
+            .unwrap()
+            .harnesses
+            .iter()
+            .map(|h| (h.id.clone(), h.unavailable))
+            .collect::<Vec<_>>()
+    };
+    let open = vec![(String::new(), false), ("opencode".to_owned(), false)];
+    assert_eq!(
+        menu("deepseek"),
+        open,
+        "Recur runs it over Chat Completions"
+    );
+    assert_eq!(menu("both"), open);
+    assert_eq!(
+        menu("resp"),
+        vec![(String::new(), false), ("opencode".to_owned(), true)]
+    );
+    let resp = groups.iter().find(|g| g.provider == "resp").unwrap();
+    assert!(
+        resp.harnesses[1].reason.contains("Chat Completions"),
+        "{:?}",
+        resp.harnesses[1]
+    );
+    // The endpoint reason wins over a missing binary: installing OpenCode
+    // would not help.
+    let missing = compatible_harnesses(false, CompatibleApi::Responses);
+    assert!(missing[1].reason.contains("Chat Completions"));
+}
+
+/// One canned answer per path, like api.deepseek.com: no Responses route.
+async fn chat_only_endpoint() -> String {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        while let Ok((mut sock, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                let mut buf = vec![0u8; 16384];
+                let n = sock.read(&mut buf).await.unwrap_or(0);
+                let head = String::from_utf8_lossy(&buf[..n]).into_owned();
+                let (status, body) = if head.starts_with("POST /v1/chat/completions") {
+                    (
+                        "200 OK",
+                        r#"{"id":"c","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"pong"},"finish_reason":"stop"}]}"#,
+                    )
+                } else {
+                    ("404 Not Found", r#"{"error":{"message":"Not Found"}}"#)
+                };
+                let resp = format!(
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = sock.write_all(resp.as_bytes()).await;
+            });
+        }
+    });
+    base
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_reports_the_api_and_records_it() {
+    let fx = Fx::new().await;
+    let base = chat_only_endpoint().await;
+    let mut set = fx.s.settings.get_settings().await.unwrap();
+    set.compatible_providers = vec![endpoint("deepseek", &base, CompatibleApi::Unknown)];
+    let set = fx.s.settings.set_settings(&set).await.unwrap();
+    let saved = set.compatible_by_id("deepseek").unwrap().clone();
+
+    let got =
+        fx.s.settings
+            .test_compatible_provider(&saved)
+            .await
+            .unwrap();
+    assert!(got.ok, "{got:?}");
+    assert_eq!(got.api, CompatibleApi::ChatCompletions);
+    let ids: Vec<&str> = got.harnesses.iter().map(|h| h.id.as_str()).collect();
+    assert_eq!(ids, ["", "opencode"]);
+    assert!(!got.harnesses[0].unavailable, "Recur runs Chat Completions");
+    assert!(
+        got.summary()
+            .starts_with("Connected with the Chat Completions API. Runs in Recur"),
+        "{}",
+        got.summary()
+    );
+
+    let after = fx.s.settings.get_settings().await.unwrap();
+    assert_eq!(
+        after.compatible_by_id("deepseek").unwrap().api,
+        CompatibleApi::ChatCompletions,
+        "the Test result is recorded on the saved endpoint"
+    );
+    let catalog = fx.s.settings.list_model_catalog().await.unwrap();
+    let group = catalog.iter().find(|g| g.provider == "deepseek").unwrap();
+    assert!(!group.harnesses[0].unavailable);
+
+    // A draft whose URL differs from the saved card does not overwrite it.
+    let mut draft = saved.clone();
+    draft.base_url = format!("{base}/other");
+    let _ =
+        fx.s.settings
+            .test_compatible_provider(&draft)
+            .await
+            .unwrap();
+    assert_eq!(
+        fx.s.settings
+            .get_settings()
+            .await
+            .unwrap()
+            .compatible_by_id("deepseek")
+            .unwrap()
+            .api,
+        CompatibleApi::ChatCompletions
+    );
+    fx.close().await;
 }

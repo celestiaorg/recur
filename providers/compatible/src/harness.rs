@@ -24,7 +24,7 @@ use crate::sse::valid;
 use crate::tools::{tool_allowed_on_turn, tools_disabled};
 use crate::types::{
     Event, FunctionCall, InputItem, Request, Tool, Usage, assistant_text, function_call_item,
-    function_output_item, function_tool, user_text,
+    function_output_item, function_tool, reasoning_item, user_text,
 };
 
 /// Read-only calls in one round run concurrently, at most this many at once.
@@ -160,8 +160,15 @@ impl Harness<'_> {
             let preserve = self.client.chatgpt && !round.output.is_empty();
             if preserve {
                 input.extend(round.output.into_iter().filter_map(raw_item));
-            } else if !round.text.is_empty() {
-                input.push(assistant_text(&round.text));
+            } else {
+                // Thinking-mode endpoints (DeepSeek) reject the next round
+                // unless its raw reasoning comes back ahead of its output.
+                if !round.reasoning.is_empty() {
+                    input.push(reasoning_item(&round.reasoning));
+                }
+                if !round.text.is_empty() {
+                    input.push(assistant_text(&round.text));
+                }
             }
 
             let mut halt = false;
@@ -171,14 +178,20 @@ impl Harness<'_> {
                 if cx.cancel.is_cancelled() {
                     return Err(self.canceled(&req, start, &text, usage, &last_id));
                 }
-                for (call, res) in round.calls.iter().zip(&results) {
-                    if !preserve {
+                // Every call, then every result, as the model returned them:
+                // thinking-mode endpoints (DeepSeek) merge adjacent calls into
+                // one assistant message, and a call after a result would start
+                // another that has no reasoning.
+                if !preserve {
+                    for call in &round.calls {
                         input.push(function_call_item(
                             &call.call_id,
                             &call.name,
                             &call.arguments,
                         ));
                     }
+                }
+                for (call, res) in round.calls.iter().zip(&results) {
                     input.push(function_output_item(&call.call_id, &res.text));
                     halt |= res.halt;
                 }
@@ -301,7 +314,7 @@ impl Harness<'_> {
         }
         if !think.is_empty() {
             emitter.emit(AgentEvent::Thinking {
-                text: think,
+                text: think.clone(),
                 signature: String::new(),
                 uuid: String::new(),
                 parent: String::new(),
@@ -316,6 +329,11 @@ impl Harness<'_> {
             .collect();
         Ok(Round {
             calls,
+            reasoning: if st.raw_reasoning {
+                think.clone()
+            } else {
+                String::new()
+            },
             text,
             usage: st.usage,
             resp_id: st.resp_id,
@@ -395,6 +413,8 @@ enum RoundError {
 
 struct Round {
     calls: Vec<FunctionCall>,
+    /// The raw chain-of-thought (`reasoning_text`), empty for summaries.
+    reasoning: String,
     text: String,
     usage: Usage,
     resp_id: String,
@@ -435,6 +455,8 @@ struct RoundState {
     resp_id: String,
     keep_output: bool,
     output: Vec<Value>,
+    /// The reasoning came as raw `reasoning_text`, not a summary.
+    raw_reasoning: bool,
 }
 
 impl RoundState {
@@ -501,6 +523,7 @@ impl RoundState {
             if ev.delta.is_empty() {
                 return;
             }
+            self.raw_reasoning |= t == "response.reasoning_text.delta";
             self.item(&ev).think_stream.push_str(&ev.delta);
             if partials {
                 emitter.emit(AgentEvent::ThinkingDelta {
@@ -510,6 +533,7 @@ impl RoundState {
             }
         } else if t == "response.reasoning_summary_text.done" || t == "response.reasoning_text.done"
         {
+            self.raw_reasoning |= t == "response.reasoning_text.done" && !ev.delta.is_empty();
             let b = self.item(&ev);
             if b.think_stream.is_empty() {
                 b.think_final = ev.delta.clone();

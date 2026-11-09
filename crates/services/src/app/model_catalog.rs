@@ -3,10 +3,10 @@
 //! remap that repoints slots naming a turned-off provider.
 
 use recur_agent::Provider as _;
-use recur_agent::catalog::{ModelChoice, ModelGroup, default_flags_from_dims};
+use recur_agent::catalog::{HarnessChoice, ModelChoice, ModelGroup, default_flags_from_dims};
 use recur_domain::{
-    Flags, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Settings,
-    provider_label,
+    Flags, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR,
+    PROVIDER_OPENCODE, Settings, provider_label,
 };
 
 use super::AppServices;
@@ -18,6 +18,43 @@ pub fn build_model_catalog(
     set: &Settings,
     cursor_models: Vec<ModelChoice>,
     codex_models: Vec<ModelChoice>,
+) -> Vec<ModelGroup> {
+    build_model_catalog_with_harnesses(set, cursor_models, codex_models, false)
+}
+
+/// The execution harnesses a compatible endpoint's models can run in. The
+/// built-in harness is always first and unchanged for existing selections.
+/// OpenCode is listed even when it is not installed, with the reason.
+pub fn compatible_harnesses(opencode_ready: bool) -> Vec<HarnessChoice> {
+    let choice = |id: &str, label: &str, blocked: Option<&str>| HarnessChoice {
+        id: id.into(),
+        label: label.into(),
+        unavailable: blocked.is_some(),
+        reason: blocked.unwrap_or_default().into(),
+        not_installed: false,
+    };
+    let opencode = if opencode_ready {
+        choice(PROVIDER_OPENCODE, provider_label(PROVIDER_OPENCODE), None)
+    } else {
+        HarnessChoice {
+            not_installed: true,
+            ..choice(
+                PROVIDER_OPENCODE,
+                provider_label(PROVIDER_OPENCODE),
+                Some("Install OpenCode and put `opencode` on PATH"),
+            )
+        }
+    };
+    vec![choice("", "Recur", None), opencode]
+}
+
+/// [`build_model_catalog`] with harness availability for compatible
+/// endpoints. Other model sources supply their own runtime only.
+pub fn build_model_catalog_with_harnesses(
+    set: &Settings,
+    cursor_models: Vec<ModelChoice>,
+    codex_models: Vec<ModelChoice>,
+    opencode_ready: bool,
 ) -> Vec<ModelGroup> {
     let mut groups = Vec::new();
     if set.provider_enabled(PROVIDER_CLAUDE_CODE) {
@@ -52,7 +89,7 @@ pub fn build_model_catalog(
             provider: p.id.clone(),
             label: set.display_label(&p.id).to_owned(),
             models: recur_provider_compatible::compatible_catalog_models(p),
-            harnesses: Vec::new(),
+            harnesses: compatible_harnesses(opencode_ready),
         });
     }
     if set.provider_offers_models(PROVIDER_CHATGPT) {
@@ -170,10 +207,11 @@ impl AppServices {
                 self.providers.claude.known_models(&set).await
             }
         };
+        let opencode_ready = recur_provider_opencode::locate(&set).is_ok();
         let rest = async {
             let cursor = self.providers.cursor.models(&set).await.unwrap_or_default();
             let codex = self.providers.codex.models(&set).await.unwrap_or_default();
-            build_model_catalog(&set, cursor, codex)
+            build_model_catalog_with_harnesses(&set, cursor, codex, opencode_ready)
         };
         let (claude, mut groups) = tokio::join!(claude, rest);
         if let Some(g) = groups

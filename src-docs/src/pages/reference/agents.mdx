@@ -22,6 +22,14 @@ Choose **Add provider**, then a preset (**OpenAI**, **OpenRouter**, **Groq**) or
 
 For a local server such as Ollama, use Custom with your own provider slug such as `local-ollama` (the slug `ollama` is reserved), the server address (for example `http://localhost:11434`), and an installed model ID. The server version and model must support the Responses API and tools. Leave the API key empty when the endpoint does not require one.
 
+## Run API models in OpenCode
+
+Recur can hand an API-key model to [OpenCode](https://opencode.ai) instead of running it in Recur's built-in harness. Install OpenCode so `opencode` is on your `PATH` (or set `RECUR_OPENCODE`), add the endpoint under **Settings → Providers**, then pick one of its models in **Settings → Models** or the composer. A second popup asks **Run in**: choose **Recur** for the built-in harness or **OpenCode** to run the same model inside OpenCode.
+
+OpenCode is offered for compatible endpoints, not for Claude Code, Cursor, Codex, or ChatGPT accounts. It calls the endpoint's **`{base URL}/v1/chat/completions`**, so it cannot run an endpoint that only implements the Responses API. Recur passes its host tools to OpenCode over MCP and translates the chat mode's tool allowlist into OpenCode permissions. OpenCode keeps the conversation history for its own sessions.
+
+If OpenCode is not installed, Recur skips the popup and runs the model in its built-in harness; when the popup does open, OpenCode appears disabled with an install hint. Existing model selections keep running in the built-in harness until you choose OpenCode.
+
 ## Where work runs
 
 Repositories, worktrees, file edits, and tool processes run on your machine. Cloud providers receive the prompts and code context sent to them. A local inference server can keep model requests local too. Recur does not require a hosted checkout.

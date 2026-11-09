@@ -10,7 +10,8 @@ use recur_domain::{
 
 use super::Fx;
 use crate::app::model_catalog::{
-    apply_catalog_fallbacks, build_model_catalog, first_catalog_choice, provider_enablement_changed,
+    apply_catalog_fallbacks, build_model_catalog, build_model_catalog_with_harnesses,
+    first_catalog_choice, provider_enablement_changed,
 };
 
 fn cursor_models(ids: &[(&str, &str)]) -> Vec<recur_provider_cursor::Model> {
@@ -369,4 +370,38 @@ async fn chatgpt_catalogue_and_fallback_without_codex() {
         "ChatGPT required a binary"
     );
     fx.close().await;
+}
+
+#[test]
+fn compatible_groups_offer_the_harness_menu() {
+    let set = Settings {
+        compatible_providers: vec![CompatibleProvider {
+            id: "openrouter".into(),
+            name: "OpenRouter".into(),
+            base_url: "https://openrouter.ai/api".into(),
+            models: vec![CompatibleModel {
+                id: "openai/gpt-5".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    let missing = build_model_catalog_with_harnesses(&set, vec![], vec![], false);
+    let group = missing.iter().find(|g| g.provider == "openrouter").unwrap();
+    assert_eq!(group.harnesses.len(), 2);
+    assert_eq!(group.harnesses[0].id, "");
+    assert!(!group.harnesses[0].unavailable);
+    assert_eq!(group.harnesses[1].id, "opencode");
+    assert!(group.harnesses[1].unavailable);
+    assert!(group.harnesses[1].reason.contains("Install OpenCode"));
+
+    let ready = build_model_catalog_with_harnesses(&set, vec![], vec![], true);
+    let group = ready.iter().find(|g| g.provider == "openrouter").unwrap();
+    assert!(!group.harnesses[1].unavailable);
+    let claude = ready
+        .iter()
+        .find(|g| g.provider == PROVIDER_CLAUDE_CODE)
+        .unwrap();
+    assert!(claude.harnesses.is_empty());
 }

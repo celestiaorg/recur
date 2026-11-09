@@ -5,4 +5,5 @@ mod composer;
 mod dock;
 mod frame_cost;
 mod harness;
+mod pickers;
 mod shell;

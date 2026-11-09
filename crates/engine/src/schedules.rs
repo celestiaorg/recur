@@ -130,7 +130,7 @@ impl Engine {
         let r = parse_model_ref(&p.model);
         if r.id.is_empty()
             || !p.model.contains('/')
-            || !self.store.settings().provider_offers_models(&r.provider)
+            || !self.store.settings().model_ref_offers_models(&p.model)
         {
             return Err(EngineError::new("choose an available model"));
         }

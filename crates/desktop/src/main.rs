@@ -169,7 +169,16 @@ fn main() {
     // re-recover in-flight loops.
     let mut inst = match claim_or_handoff(&data_dir, &cold_opens) {
         Ok(Claimed::Owner(inst)) => inst,
-        Ok(Claimed::HandedOff) => return,
+        Ok(Claimed::HandedOff) => {
+            // Otherwise a dev launch next to a running Recur exits 0 with no window and
+            // no output, which reads as a crash.
+            eprintln!(
+                "recur: another Recur already owns {} and took this launch. Quit it, or set \
+                 RECUR_DATA_DIR to run a separate instance.",
+                data_dir.display()
+            );
+            return;
+        }
         Err(err) => fatal(err),
     };
     let gate = Arc::new(IpcGate::default());

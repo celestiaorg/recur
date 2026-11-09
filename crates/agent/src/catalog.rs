@@ -41,6 +41,24 @@ pub struct ModelChoice {
     pub context_window: i64,
 }
 
+/// One execution harness a model source can run in. The empty id is the
+/// source's built-in harness, which keeps existing selections unchanged.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HarnessChoice {
+    pub id: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub unavailable: bool,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub reason: String,
+    /// Unavailable only because the harness is not installed here. The
+    /// picker does not stop to explain that on every pick; a reason about
+    /// the model source (its API) it does show.
+    #[serde(skip_serializing_if = "is_false")]
+    pub not_installed: bool,
+}
+
 /// One provider's section of the picker.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -50,6 +68,10 @@ pub struct ModelGroup {
     pub label: String,
     /// In display order.
     pub models: Vec<ModelChoice>,
+    /// Execution harnesses these models can run in. Empty means only the
+    /// built-in harness.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub harnesses: Vec<HarnessChoice>,
 }
 
 fn is_false(b: &bool) -> bool {
@@ -107,6 +129,7 @@ mod tests {
                 }],
                 context_window: 0,
             }],
+            harnesses: Vec::new(),
         };
         assert_eq!(
             serde_json::to_string(&g).unwrap(),

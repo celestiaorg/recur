@@ -51,6 +51,14 @@ impl LocalExecutor {
         }
     }
 
+    /// Creates a thread-safe handle that submits `Send` futures to this executor's dispatch destination.
+    pub fn to_send(&self) -> SendLocalExecutor {
+        SendLocalExecutor {
+            _scheduler: self.scheduler.clone(),
+            dispatch: self.dispatch.clone(),
+        }
+    }
+
     pub fn session_id(&self) -> SessionId {
         self.session_id
     }
@@ -193,6 +201,36 @@ impl LocalExecutor {
     }
 }
 
+/// Submits `Send` futures from any thread to a [`LocalExecutor`]'s dispatch destination.
+///
+/// Retains the scheduler and dispatch destination independently of the original executor.
+#[derive(Clone)]
+pub struct SendLocalExecutor {
+    _scheduler: Arc<dyn Scheduler>,
+    dispatch: Arc<dyn Fn(Runnable<RunnableMeta>) + Send + Sync>,
+}
+
+impl SendLocalExecutor {
+    /// Spawns a future whose polls run on the original executor's dispatch thread.
+    #[track_caller]
+    pub fn spawn<F>(&self, future: F) -> Task<F::Output>
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        let dispatch = self.dispatch.clone();
+        let location = Location::caller();
+        let (runnable, task) = async_task::Builder::new()
+            .metadata(RunnableMeta {
+                location,
+                spawned: crate::SpawnTime(Instant::now()),
+            })
+            .spawn(move |_| future, move |runnable| dispatch(runnable));
+        runnable.schedule();
+        Task(TaskState::Spawned(task))
+    }
+}
+
 /// Boxes the user-supplied dedicated closure into the type-erased shape
 /// expected by [`Scheduler::spawn_dedicated`]. The user's `Fut::Output` is
 /// boxed as `Box<dyn Any + Send + Sync>` on the dedicated side and downcast
@@ -242,7 +280,6 @@ impl BackgroundExecutor {
         let schedule = self.schedule_with_priority(priority);
         let location = Location::caller();
         let (runnable, task) = async_task::Builder::new()
-            .propagate_panic(true)
             .metadata(RunnableMeta {
                 location,
                 spawned: crate::SpawnTime(Instant::now()),
@@ -269,7 +306,6 @@ impl BackgroundExecutor {
         }));
 
         let (runnable, task) = async_task::Builder::new()
-            .propagate_panic(true)
             .metadata(RunnableMeta {
                 location,
                 spawned: crate::SpawnTime(Instant::now()),
@@ -382,7 +418,6 @@ impl DedicatedExecutor {
     {
         let sender = self.sender.clone();
         let (runnable, task) = async_task::Builder::new()
-            .propagate_panic(true)
             .metadata(RunnableMeta::new_with_callers_location())
             .spawn(
                 move |_| future,
@@ -816,11 +851,7 @@ where
         location,
     };
 
-    // Recur: every task keeps a panic of its future (re-raised in an awaiter) rather than
-    // unwinding into the platform dispatcher (`rust/vendor/README.md`).
-    let builder = async_task::Builder::new()
-        .propagate_panic(true)
-        .metadata(metadata);
+    let builder = async_task::Builder::new().metadata(metadata);
     // SAFETY: `Checked` enforces the invariants required by `spawn_unchecked`:
     // the non-`Send` future is only polled and dropped on the thread that
     // spawned it.

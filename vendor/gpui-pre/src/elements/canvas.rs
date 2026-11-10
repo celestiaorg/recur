@@ -68,9 +68,7 @@ impl<T: 'static> Element for Canvas<T> {
         window: &mut Window,
         cx: &mut App,
     ) -> Option<T> {
-        // Recur: a panic paints nothing for this canvas (`Window::contain`).
-        let prepaint = self.prepaint.take().unwrap();
-        window.contain("a canvas prepaint", cx, |window, cx| prepaint(bounds, window, cx))
+        Some(self.prepaint.take().unwrap()(bounds, window, cx))
     }
 
     fn paint(
@@ -83,14 +81,9 @@ impl<T: 'static> Element for Canvas<T> {
         window: &mut Window,
         cx: &mut App,
     ) {
-        let Some(prepaint) = prepaint.take() else {
-            return;
-        };
-        let paint = self.paint.take().unwrap();
+        let prepaint = prepaint.take().unwrap();
         style.paint(bounds, window, cx, |window, cx| {
-            window.contain("a canvas paint", cx, |window, cx| {
-                paint(bounds, prepaint, window, cx)
-            });
+            (self.paint.take().unwrap())(bounds, prepaint, window, cx)
         });
     }
 }

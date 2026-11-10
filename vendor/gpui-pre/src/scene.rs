@@ -50,8 +50,6 @@ pub struct Scene {
     pub subpixel_sprites: Vec<SubpixelSprite>,
     pub polychrome_sprites: Vec<PolychromeSprite>,
     pub surfaces: Vec<PaintSurface>,
-    pub backdrop_blurs: Vec<BackdropBlur>,
-    pub holes: Vec<Hole>,
 }
 
 #[expect(missing_docs)]
@@ -68,8 +66,6 @@ impl Scene {
         self.subpixel_sprites.clear();
         self.polychrome_sprites.clear();
         self.surfaces.clear();
-        self.backdrop_blurs.clear();
-        self.holes.clear();
     }
 
     pub fn len(&self) -> usize {
@@ -81,11 +77,6 @@ impl Scene {
         self.layer_stack.push(order);
         self.paint_operations
             .push(PaintOperation::StartLayer(bounds));
-    }
-
-    /// Recur: open layers, for `Window::contain`.
-    pub(crate) fn layer_depth(&self) -> usize {
-        self.layer_stack.len()
     }
 
     pub fn pop_layer(&mut self) {
@@ -142,14 +133,6 @@ impl Scene {
                 surface.order = order;
                 self.surfaces.push(surface.clone());
             }
-            Primitive::BackdropBlur(blur) => {
-                blur.order = order;
-                self.backdrop_blurs.push(*blur);
-            }
-            Primitive::Hole(hole) => {
-                hole.order = order;
-                self.holes.push(*hole);
-            }
         }
         self.paint_operations
             .push(PaintOperation::Primitive(primitive));
@@ -171,14 +154,12 @@ impl Scene {
         self.paths.sort_by_key(|path| path.order);
         self.underlines.sort_by_key(|underline| underline.order);
         self.monochrome_sprites
-            .sort_by_key(|sprite| (sprite.order, sprite.tile.tile_id));
+            .sort_by_key(|sprite| (sprite.order, sprite.tile.texture_id.index));
         self.subpixel_sprites
-            .sort_by_key(|sprite| (sprite.order, sprite.tile.tile_id));
+            .sort_by_key(|sprite| (sprite.order, sprite.tile.texture_id.index));
         self.polychrome_sprites
-            .sort_by_key(|sprite| (sprite.order, sprite.tile.tile_id));
+            .sort_by_key(|sprite| (sprite.order, sprite.tile.texture_id.index));
         self.surfaces.sort_by_key(|surface| surface.order);
-        self.backdrop_blurs.sort_by_key(|blur| blur.order);
-        self.holes.sort_by_key(|hole| hole.order);
     }
 
     #[cfg_attr(
@@ -189,17 +170,6 @@ impl Scene {
         allow(dead_code)
     )]
     pub fn batches(&self) -> impl Iterator<Item = PrimitiveBatch> + '_ {
-        self.batches_with_backdrop_blurs()
-            .filter_map(|batch| match batch {
-                SceneBatch::Primitives(batch) => Some(batch),
-                SceneBatch::BackdropBlurs(_) | SceneBatch::Holes(_) => None,
-            })
-    }
-
-    /// Recur: [`Scene::batches`] with the backdrop blurs and holes between them, for renderers
-    /// that draw them. A blur ends the batches before it, so it samples exactly what was painted
-    /// under it.
-    pub fn batches_with_backdrop_blurs(&self) -> impl Iterator<Item = SceneBatch> + '_ {
         BatchIterator {
             shadows_start: 0,
             shadows_iter: self.shadows.iter().peekable(),
@@ -217,10 +187,6 @@ impl Scene {
             polychrome_sprites_iter: self.polychrome_sprites.iter().peekable(),
             surfaces_start: 0,
             surfaces_iter: self.surfaces.iter().peekable(),
-            backdrop_blurs_start: 0,
-            backdrop_blurs_iter: self.backdrop_blurs.iter().peekable(),
-            holes_start: 0,
-            holes_iter: self.holes.iter().peekable(),
         }
     }
 }
@@ -243,8 +209,6 @@ pub(crate) enum PrimitiveKind {
     SubpixelSprite,
     PolychromeSprite,
     Surface,
-    BackdropBlur,
-    Hole,
 }
 
 pub(crate) enum PaintOperation {
@@ -264,8 +228,6 @@ pub enum Primitive {
     SubpixelSprite(SubpixelSprite),
     PolychromeSprite(PolychromeSprite),
     Surface(PaintSurface),
-    BackdropBlur(BackdropBlur),
-    Hole(Hole),
 }
 
 #[expect(missing_docs)]
@@ -280,8 +242,6 @@ impl Primitive {
             Primitive::SubpixelSprite(sprite) => &sprite.bounds,
             Primitive::PolychromeSprite(sprite) => &sprite.bounds,
             Primitive::Surface(surface) => &surface.bounds,
-            Primitive::BackdropBlur(blur) => &blur.bounds,
-            Primitive::Hole(hole) => &hole.bounds,
         }
     }
 
@@ -295,8 +255,6 @@ impl Primitive {
             Primitive::SubpixelSprite(sprite) => &sprite.content_mask,
             Primitive::PolychromeSprite(sprite) => &sprite.content_mask,
             Primitive::Surface(surface) => &surface.content_mask,
-            Primitive::BackdropBlur(blur) => &blur.content_mask,
-            Primitive::Hole(hole) => &hole.content_mask,
         }
     }
 }
@@ -325,14 +283,10 @@ struct BatchIterator<'a> {
     polychrome_sprites_iter: Peekable<slice::Iter<'a, PolychromeSprite>>,
     surfaces_start: usize,
     surfaces_iter: Peekable<slice::Iter<'a, PaintSurface>>,
-    backdrop_blurs_start: usize,
-    backdrop_blurs_iter: Peekable<slice::Iter<'a, BackdropBlur>>,
-    holes_start: usize,
-    holes_iter: Peekable<slice::Iter<'a, Hole>>,
 }
 
 impl<'a> Iterator for BatchIterator<'a> {
-    type Item = SceneBatch;
+    type Item = PrimitiveBatch;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut orders_and_kinds = [
@@ -362,11 +316,6 @@ impl<'a> Iterator for BatchIterator<'a> {
                 self.surfaces_iter.peek().map(|s| s.order),
                 PrimitiveKind::Surface,
             ),
-            (
-                self.backdrop_blurs_iter.peek().map(|b| b.order),
-                PrimitiveKind::BackdropBlur,
-            ),
-            (self.holes_iter.peek().map(|h| h.order), PrimitiveKind::Hole),
         ];
         orders_and_kinds.sort_by_key(|(order, kind)| (order.unwrap_or(u32::MAX), *kind));
 
@@ -391,9 +340,7 @@ impl<'a> Iterator for BatchIterator<'a> {
                     shadows_end += 1;
                 }
                 self.shadows_start = shadows_end;
-                Some(SceneBatch::Primitives(PrimitiveBatch::Shadows(
-                    shadows_start..shadows_end,
-                )))
+                Some(PrimitiveBatch::Shadows(shadows_start..shadows_end))
             }
             PrimitiveKind::Quad => {
                 let quads_start = self.quads_start;
@@ -407,9 +354,7 @@ impl<'a> Iterator for BatchIterator<'a> {
                     quads_end += 1;
                 }
                 self.quads_start = quads_end;
-                Some(SceneBatch::Primitives(PrimitiveBatch::Quads(
-                    quads_start..quads_end,
-                )))
+                Some(PrimitiveBatch::Quads(quads_start..quads_end))
             }
             PrimitiveKind::Path => {
                 let paths_start = self.paths_start;
@@ -423,9 +368,7 @@ impl<'a> Iterator for BatchIterator<'a> {
                     paths_end += 1;
                 }
                 self.paths_start = paths_end;
-                Some(SceneBatch::Primitives(PrimitiveBatch::Paths(
-                    paths_start..paths_end,
-                )))
+                Some(PrimitiveBatch::Paths(paths_start..paths_end))
             }
             PrimitiveKind::Underline => {
                 let underlines_start = self.underlines_start;
@@ -439,9 +382,7 @@ impl<'a> Iterator for BatchIterator<'a> {
                     underlines_end += 1;
                 }
                 self.underlines_start = underlines_end;
-                Some(SceneBatch::Primitives(PrimitiveBatch::Underlines(
-                    underlines_start..underlines_end,
-                )))
+                Some(PrimitiveBatch::Underlines(underlines_start..underlines_end))
             }
             PrimitiveKind::MonochromeSprite => {
                 let texture_id = self.monochrome_sprites_iter.peek().unwrap().tile.texture_id;
@@ -459,10 +400,10 @@ impl<'a> Iterator for BatchIterator<'a> {
                     sprites_end += 1;
                 }
                 self.monochrome_sprites_start = sprites_end;
-                Some(SceneBatch::Primitives(PrimitiveBatch::MonochromeSprites {
+                Some(PrimitiveBatch::MonochromeSprites {
                     texture_id,
                     range: sprites_start..sprites_end,
-                }))
+                })
             }
             PrimitiveKind::SubpixelSprite => {
                 let texture_id = self.subpixel_sprites_iter.peek().unwrap().tile.texture_id;
@@ -480,10 +421,10 @@ impl<'a> Iterator for BatchIterator<'a> {
                     sprites_end += 1;
                 }
                 self.subpixel_sprites_start = sprites_end;
-                Some(SceneBatch::Primitives(PrimitiveBatch::SubpixelSprites {
+                Some(PrimitiveBatch::SubpixelSprites {
                     texture_id,
                     range: sprites_start..sprites_end,
-                }))
+                })
             }
             PrimitiveKind::PolychromeSprite => {
                 let texture_id = self.polychrome_sprites_iter.peek().unwrap().tile.texture_id;
@@ -501,10 +442,10 @@ impl<'a> Iterator for BatchIterator<'a> {
                     sprites_end += 1;
                 }
                 self.polychrome_sprites_start = sprites_end;
-                Some(SceneBatch::Primitives(PrimitiveBatch::PolychromeSprites {
+                Some(PrimitiveBatch::PolychromeSprites {
                     texture_id,
                     range: sprites_start..sprites_end,
-                }))
+                })
             }
             PrimitiveKind::Surface => {
                 let surfaces_start = self.surfaces_start;
@@ -518,61 +459,8 @@ impl<'a> Iterator for BatchIterator<'a> {
                     surfaces_end += 1;
                 }
                 self.surfaces_start = surfaces_end;
-                Some(SceneBatch::Primitives(PrimitiveBatch::Surfaces(
-                    surfaces_start..surfaces_end,
-                )))
+                Some(PrimitiveBatch::Surfaces(surfaces_start..surfaces_end))
             }
-            PrimitiveKind::BackdropBlur => {
-                let blurs_start = self.backdrop_blurs_start;
-                let mut blurs_end = blurs_start + 1;
-                self.backdrop_blurs_iter.next();
-                while self
-                    .backdrop_blurs_iter
-                    .next_if(|blur| (blur.order, batch_kind) < max_order_and_kind)
-                    .is_some()
-                {
-                    blurs_end += 1;
-                }
-                self.backdrop_blurs_start = blurs_end;
-                Some(SceneBatch::BackdropBlurs(blurs_start..blurs_end))
-            }
-            PrimitiveKind::Hole => {
-                let holes_start = self.holes_start;
-                let mut holes_end = holes_start + 1;
-                self.holes_iter.next();
-                while self
-                    .holes_iter
-                    .next_if(|hole| (hole.order, batch_kind) < max_order_and_kind)
-                    .is_some()
-                {
-                    holes_end += 1;
-                }
-                self.holes_start = holes_end;
-                Some(SceneBatch::Holes(holes_start..holes_end))
-            }
-        }
-    }
-}
-
-/// Recur: a batch of primitives, backdrop blurs or holes (see
-/// [`Scene::batches_with_backdrop_blurs`]).
-#[derive(Debug)]
-pub enum SceneBatch {
-    /// Primitives drawn as upstream.
-    Primitives(PrimitiveBatch),
-    /// Backdrop blurs, each over what the batches before it drew.
-    BackdropBlurs(Range<usize>),
-    /// Holes, each clearing what the batches before it drew.
-    Holes(Range<usize>),
-}
-
-impl SceneBatch {
-    /// The batch's label, as [`PrimitiveBatch::label`].
-    pub fn label(&self) -> String {
-        match self {
-            Self::Primitives(batch) => batch.label(),
-            Self::BackdropBlurs(range) => format!("backdrop blurs ({})", range.len()),
-            Self::Holes(range) => format!("holes ({})", range.len()),
         }
     }
 }
@@ -703,47 +591,6 @@ impl From<Shadow> for Primitive {
     }
 }
 
-/// Recur: a Gaussian blur of what is painted under `bounds`, as CSS `backdrop-filter: blur()`.
-/// Renderers without it skip it (`Scene::batches`).
-#[derive(Debug, Copy, Clone)]
-pub struct BackdropBlur {
-    /// The draw order.
-    pub order: DrawOrder,
-    /// The standard deviation of the Gaussian, in device pixels.
-    pub blur_radius: ScaledPixels,
-    /// The blurred area, clipped to `corner_radii` and `content_mask`.
-    pub bounds: Bounds<ScaledPixels>,
-    /// The corner radii of the blurred area.
-    pub corner_radii: Corners<ScaledPixels>,
-    /// The content mask.
-    pub content_mask: ContentMask<ScaledPixels>,
-}
-
-impl From<BackdropBlur> for Primitive {
-    fn from(blur: BackdropBlur) -> Self {
-        Primitive::BackdropBlur(blur)
-    }
-}
-
-/// Recur: fully transparent pixels over `bounds`, replacing what is painted under it, so a
-/// native view behind the window's drawing shows through. Renderers without it skip it
-/// (`Scene::batches`).
-#[derive(Debug, Copy, Clone)]
-pub struct Hole {
-    /// The draw order.
-    pub order: DrawOrder,
-    /// The cleared area, clipped to `content_mask`.
-    pub bounds: Bounds<ScaledPixels>,
-    /// The content mask.
-    pub content_mask: ContentMask<ScaledPixels>,
-}
-
-impl From<Hole> for Primitive {
-    fn from(hole: Hole) -> Self {
-        Primitive::Hole(hole)
-    }
-}
-
 /// The style of a border.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[repr(C)]
@@ -778,7 +625,7 @@ impl TransformationMatrix {
     }
 
     /// Move the origin by a given point
-    pub fn translate(mut self, point: Point<ScaledPixels>) -> Self {
+    pub fn translate(self, point: Point<ScaledPixels>) -> Self {
         self.compose(Self {
             rotation_scale: [[1.0, 0.0], [0.0, 1.0]],
             translation: [point.x.0, point.y.0],
@@ -864,10 +711,10 @@ impl Default for TransformationMatrix {
 pub struct MonochromeSprite {
     pub order: DrawOrder,
     pub pad: u32,
+    pub tile: AtlasTile,
     pub bounds: Bounds<ScaledPixels>,
     pub content_mask: ContentMask<ScaledPixels>,
     pub color: Hsla,
-    pub tile: AtlasTile,
     pub transformation: TransformationMatrix,
 }
 
@@ -883,10 +730,10 @@ impl From<MonochromeSprite> for Primitive {
 pub struct SubpixelSprite {
     pub order: DrawOrder,
     pub pad: u32, // align to 8 bytes
+    pub tile: AtlasTile,
     pub bounds: Bounds<ScaledPixels>,
     pub content_mask: ContentMask<ScaledPixels>,
     pub color: Hsla,
-    pub tile: AtlasTile,
     pub transformation: TransformationMatrix,
 }
 
@@ -902,12 +749,12 @@ impl From<SubpixelSprite> for Primitive {
 pub struct PolychromeSprite {
     pub order: DrawOrder,
     pub pad: u32,
+    pub tile: AtlasTile,
     pub grayscale: PaddedBool32,
     pub opacity: f32,
     pub bounds: Bounds<ScaledPixels>,
     pub content_mask: ContentMask<ScaledPixels>,
     pub corner_radii: Corners<ScaledPixels>,
-    pub tile: AtlasTile,
 }
 
 impl From<PolychromeSprite> for Primitive {

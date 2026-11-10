@@ -2,15 +2,13 @@ use crate::{
     AnyElement, AnyEntity, AnyWeakEntity, App, AvailableSpace, Bounds, ContentMask, Context,
     Element, ElementId, Entity, EntityId, GlobalElementId, InspectorElementId, IntoElement,
     LayoutId, PaintIndex, Pixels, PrepaintStateIndex, Render, RenderOnce, Size, Style,
-    StyleRefinement, TextStyle, TextStyleRefinement, WeakEntity,
+    StyleRefinement, TextStyle, WeakEntity,
 };
-use crate::window::ElementIdStack;
 use crate::{Empty, Window};
 use anyhow::Result;
 use collections::FxHashSet;
 use refineable::Refineable;
 use std::mem;
-use std::rc::Rc;
 use std::{
     any::{TypeId, type_name},
     fmt,
@@ -47,16 +45,6 @@ impl AnyView {
     /// (or [Window::refresh] is called, which ignores caching).
     pub fn cached(self, style: StyleRefinement) -> ViewElement<AnyView> {
         self.into_element().cached(style)
-    }
-
-    /// Embed this view as a cached [`ViewElement`] that redraws in place: a notify of this
-    /// view, or of a view inside it, renders only this view while the frame replays everything
-    /// around it, its ancestors included. Its bounds must not depend on its content; a view
-    /// that needs a new size notifies its parent.
-    pub fn isolated(self, style: StyleRefinement) -> ViewElement<AnyView> {
-        let mut element = self.clone().cached(style);
-        element.isolated = Some(self);
-        element
     }
 
     /// Convert this to a weak handle.
@@ -108,8 +96,16 @@ impl View for AnyView {
         Some(self.entity.entity_id())
     }
 
+    #[cfg(not(gpui_hot_reload))]
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         (self.render)(&self, window, cx)
+    }
+
+    // The stored function pointer was captured from the original binary, so it must be looked up
+    // in the jump table to reach the patched render.
+    #[cfg(gpui_hot_reload)]
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        subsecond::HotFn::current(self.render).call((&self, window, cx))
     }
 }
 
@@ -262,12 +258,6 @@ impl<T: Render> Entity<T> {
     pub fn cached(self, style: StyleRefinement) -> ViewElement<Entity<T>> {
         ViewElement::with_type_name(self, type_name::<T>()).cached(style)
     }
-
-    /// Embed this entity as an isolated view (see [`AnyView::isolated`]).
-    #[track_caller]
-    pub fn isolated(self, style: StyleRefinement) -> ViewElement<AnyView> {
-        AnyView::from(self).isolated(style)
-    }
 }
 
 /// The element type for [`View`] implementations. Wraps a `View` and hooks it
@@ -277,7 +267,6 @@ pub struct ViewElement<V: View> {
     view: Option<V>,
     entity_id: Option<EntityId>,
     cached_style: Option<StyleRefinement>,
-    isolated: Option<AnyView>,
     #[cfg(feature = "profiler")]
     view_type_name: &'static str,
     #[cfg(debug_assertions)]
@@ -300,7 +289,6 @@ impl<V: View> ViewElement<V> {
         ViewElement {
             entity_id,
             cached_style: None,
-            isolated: None,
             #[cfg(feature = "profiler")]
             view_type_name,
             view: Some(view),
@@ -332,22 +320,38 @@ impl<V: View> IntoElement for ViewElement<V> {
     }
 }
 
-pub(crate) struct ViewElementState {
-    pub(crate) prepaint_range: Range<PrepaintStateIndex>,
-    pub(crate) paint_range: Range<PaintIndex>,
+struct ViewElementState {
+    prepaint_range: Range<PrepaintStateIndex>,
+    paint_range: Range<PaintIndex>,
     cache_key: ViewElementCacheKey,
+    /// The entities the view accessed while it was last drawn, in any phase,
+    /// restored when its prepaint is reused so the window stays subscribed.
     accessed_entities: FxHashSet<EntityId>,
-    /// This frame's record of the view in `Frame::cached_views`, when it rendered.
-    record: Option<usize>,
-    /// The ranges a replay carried did not check out (`Window::rebase_cached_view_states`):
-    /// render the view again rather than replay them.
-    stale: bool,
 }
 
 struct ViewElementCacheKey {
     bounds: Bounds<Pixels>,
     content_mask: ContentMask<Pixels>,
     text_style: TextStyle,
+    opacity: f32,
+}
+
+#[cfg(not(gpui_hot_reload))]
+#[inline]
+fn render_view<V: View>(view: V, window: &mut Window, cx: &mut App) -> AnyElement {
+    view.render(window, cx).into_any_element()
+}
+
+/// Every view and component render passes through this hot-patchable boundary, so the
+/// patched code for that render and everything it calls runs on the next frame.
+#[cfg(gpui_hot_reload)]
+fn render_view<V: View>(view: V, window: &mut Window, cx: &mut App) -> AnyElement {
+    #[inline(never)]
+    fn render_view_impl<V: View>(view: V, window: &mut Window, cx: &mut App) -> AnyElement {
+        view.render(window, cx).into_any_element()
+    }
+
+    subsecond::HotFn::current(render_view_impl::<V>).call((view, window, cx))
 }
 
 impl<V: View> Element for ViewElement<V> {
@@ -383,7 +387,7 @@ impl<V: View> Element for ViewElement<V> {
                 self.cached_style.as_ref(),
                 window,
                 cx,
-                &mut |window, cx| view.take().unwrap().render(window, cx).into_any_element(),
+                &mut |window, cx| render_view(view.take().unwrap(), window, cx),
             );
             #[cfg(feature = "profiler")]
             window.window_profiler.end_view(
@@ -395,11 +399,7 @@ impl<V: View> Element for ViewElement<V> {
         } else {
             // Stateless path: isolate subtree via type name (no entity identity).
             request_layout_component(type_name::<V>(), window, cx, &mut |window, cx| {
-                self.view
-                    .take()
-                    .unwrap()
-                    .render(window, cx)
-                    .into_any_element()
+                render_view(self.view.take().unwrap(), window, cx)
             })
         }
     }
@@ -417,22 +417,14 @@ impl<V: View> Element for ViewElement<V> {
             // Stateful path.
             #[cfg(feature = "profiler")]
             let start = window.window_profiler.begin_view();
-            let isolated = self.isolated.clone();
             let prepainted = prepaint_view(
                 entity_id,
                 global_id,
                 bounds,
                 element,
-                isolated,
                 window,
                 cx,
-                &mut |window, cx| {
-                    self.view
-                        .take()
-                        .unwrap()
-                        .render(window, cx)
-                        .into_any_element()
-                },
+                &mut |window, cx| render_view(self.view.take().unwrap(), window, cx),
             );
             #[cfg(feature = "profiler")]
             window.window_profiler.end_view(
@@ -537,7 +529,6 @@ fn prepaint_view(
     global_id: Option<&GlobalElementId>,
     bounds: Bounds<Pixels>,
     element: &mut Option<AnyElement>,
-    isolated: Option<AnyView>,
     window: &mut Window,
     cx: &mut App,
     render: &mut dyn FnMut(&mut Window, &mut App) -> AnyElement,
@@ -554,69 +545,52 @@ fn prepaint_view(
             |element_state, window| {
                 let content_mask = window.content_mask();
                 let text_style = window.text_style();
+                let opacity = window.element_opacity();
 
+                // Opacity is compared by bits so that a NaN opacity still matches itself
+                // and the view keeps using its cache.
                 if let Some(mut element_state) = element_state
                     && element_state.cache_key.bounds == bounds
                     && element_state.cache_key.content_mask == content_mask
                     && element_state.cache_key.text_style == text_style
+                    && element_state.cache_key.opacity.to_bits() == opacity.to_bits()
                     && !window.dirty_views.contains(&entity_id)
                     && !window.refreshing
-                    && !element_state.stale
-                    && window.replayable(&element_state.prepaint_range, &element_state.paint_range)
                 {
                     let prepaint_start = window.prepaint_index();
-                    window.next_frame.replayed_views.insert(entity_id);
-                    window.reuse_prepaint(element_state.prepaint_range.clone(), cx);
+                    window.reuse_prepaint(element_state.prepaint_range.clone());
                     cx.entities
-                        .extend_accessed(&element_state.accessed_entities);
+                        .extend_accessed(element_state.accessed_entities.iter().copied());
                     let prepaint_end = window.prepaint_index();
                     element_state.prepaint_range = prepaint_start..prepaint_end;
-                    element_state.record = None;
 
                     return (None, element_state);
                 }
 
-                let island = isolated.map(|view| {
-                    Rc::new(Island {
-                        view,
-                        global_id: global_id.unwrap().clone(),
-                        element_id_stack: window.element_id_stack.clone(),
-                        text_style_stack: window.text_style_stack.clone(),
-                        content_mask,
-                        rem_size: window.rem_size(),
-                        bounds,
-                        deferred_priority_floor: window.deferred_priority_floor,
-                    })
+                let refreshing = mem::replace(&mut window.refreshing, true);
+                let prepaint_start = window.prepaint_index();
+                let (element, accessed_entities) = cx.detect_accessed_entities(|cx| {
+                    let mut element = render(window, cx);
+                    element.layout_as_root(Size::<AvailableSpace>::from(bounds.size), window, cx);
+                    element.prepaint_at(bounds.origin, window, cx);
+                    element
                 });
-                let recorded = island.is_some() || window.cached_depth == 0;
-                let (element, prepaint_range, accessed_entities) =
-                    render_cached(bounds, island.is_some(), window, cx, render);
-                let accessed = match island {
-                    Some(_) => Rc::new(accessed_entities.clone()),
-                    None => Rc::default(),
-                };
-                let record = recorded.then(|| {
-                    window.next_frame.push_cached_view(
-                        global_id.unwrap().clone(),
-                        prepaint_range.clone(),
-                        island,
-                        accessed,
-                    )
-                });
+
+                let prepaint_end = window.prepaint_index();
+                window.refreshing = refreshing;
 
                 (
                     Some(element),
                     ViewElementState {
                         accessed_entities,
-                        prepaint_range,
+                        prepaint_range: prepaint_start..prepaint_end,
                         paint_range: PaintIndex::default()..PaintIndex::default(),
                         cache_key: ViewElementCacheKey {
                             bounds,
                             content_mask,
                             text_style,
+                            opacity,
                         },
-                        record,
-                        stale: false,
                     },
                 )
             },
@@ -655,30 +629,29 @@ fn paint_view(
                     let mut element_state = element_state.unwrap();
 
                     let paint_start = window.paint_index();
+                    let opacity = window.element_opacity();
 
-                    let isolated = element_state
-                        .record
-                        .is_some_and(|ix| window.next_frame.is_island(ix));
-                    let mut painted = FxHashSet::default();
+                    // Prepaint can only predict the opacity paint applies: an ancestor's
+                    // hover or drag-over style depends on this frame's hit test, which
+                    // isn't known until prepaint finishes. The key records what was
+                    // actually painted, and output replayed under a different opacity is
+                    // redrawn on the next frame.
                     if let Some(element) = element {
                         let refreshing = mem::replace(&mut window.refreshing, true);
-                        painted = paint_tracked(isolated, cx, |cx| element.paint(window, cx));
-                        element_state.accessed_entities.extend(painted.iter().copied());
+                        let ((), accessed_entities) =
+                            cx.detect_accessed_entities(|cx| element.paint(window, cx));
+                        element_state.accessed_entities.extend(accessed_entities);
                         window.refreshing = refreshing;
+                        element_state.cache_key.opacity = opacity;
                     } else {
-                        window.reuse_paint(element_state.paint_range.clone(), cx);
+                        window.reuse_paint(element_state.paint_range.clone());
+                        if element_state.cache_key.opacity.to_bits() != opacity.to_bits() {
+                            window.request_animation_frame();
+                        }
                     }
 
                     let paint_end = window.paint_index();
                     element_state.paint_range = paint_start..paint_end;
-                    if let Some(record) = element_state.record {
-                        window.next_frame.set_cached_view_paint(
-                            record,
-                            element_state.paint_range.clone(),
-                            window.element_opacity,
-                            &painted,
-                        );
-                    }
 
                     ((), element_state)
                 },
@@ -699,167 +672,4 @@ fn paint_component(
     window.with_id(ElementId::Name(name.into()), |window| {
         element.as_mut().unwrap().paint(window, cx);
     });
-}
-
-/// Renders a cached view's content as its own layout root at `bounds`, nested caches off.
-/// An isolated view keeps them on (every cached view's state points at its place in the last
-/// frame, `Window::rebase_cached_view_states`) and records every entity it reads, not only
-/// those first read this frame.
-fn render_cached(
-    bounds: Bounds<Pixels>,
-    isolated: bool,
-    window: &mut Window,
-    cx: &mut App,
-    render: &mut dyn FnMut(&mut Window, &mut App) -> AnyElement,
-) -> (AnyElement, Range<PrepaintStateIndex>, FxHashSet<EntityId>) {
-    let nested_off = window.refreshing || !isolated;
-    let refreshing = mem::replace(&mut window.refreshing, nested_off);
-    let depth = window.cached_depth;
-    window.cached_depth = if isolated { 0 } else { depth + 1 };
-    let prepaint_start = window.prepaint_index();
-    let outer = isolated.then(|| mem::take(cx.entities.accessed_entities.get_mut()));
-    let (element, mut accessed_entities) = cx.detect_accessed_entities(|cx| {
-        let mut element = render(window, cx);
-        element.layout_as_root(Size::<AvailableSpace>::from(bounds.size), window, cx);
-        element.prepaint_at(bounds.origin, window, cx);
-        element
-    });
-    if let Some(outer) = outer {
-        accessed_entities = mem::replace(cx.entities.accessed_entities.get_mut(), outer);
-        cx.entities.extend_accessed(&accessed_entities);
-    }
-    let prepaint_end = window.prepaint_index();
-    window.refreshing = refreshing;
-    window.cached_depth = depth;
-    (element, prepaint_start..prepaint_end, accessed_entities)
-}
-
-/// Paints, returning what an isolated view read while painting (a caret blink's state).
-fn paint_tracked(isolated: bool, cx: &mut App, paint: impl FnOnce(&mut App)) -> FxHashSet<EntityId> {
-    if !isolated {
-        paint(cx);
-        return FxHashSet::default();
-    }
-    let outer = mem::take(cx.entities.accessed_entities.get_mut());
-    paint(cx);
-    let painted = mem::replace(cx.entities.accessed_entities.get_mut(), outer);
-    cx.entities.extend_accessed(&painted);
-    painted
-}
-
-/// What an isolated view needs to draw again in place, without its ancestors: the context
-/// its parent drew it in.
-pub(crate) struct Island {
-    view: AnyView,
-    global_id: GlobalElementId,
-    element_id_stack: ElementIdStack,
-    text_style_stack: Vec<TextStyleRefinement>,
-    content_mask: ContentMask<Pixels>,
-    rem_size: Pixels,
-    bounds: Bounds<Pixels>,
-    deferred_priority_floor: usize,
-}
-
-impl Island {
-    pub(crate) fn entity_id(&self) -> EntityId {
-        self.view.entity_id()
-    }
-
-    fn with_context<R>(&self, window: &mut Window, f: impl FnOnce(&mut Window) -> R) -> R {
-        let ids = mem::replace(&mut window.element_id_stack, self.element_id_stack.clone());
-        let styles = mem::replace(&mut window.text_style_stack, self.text_style_stack.clone());
-        let floor = mem::replace(
-            &mut window.deferred_priority_floor,
-            self.deferred_priority_floor,
-        );
-        let result = window.with_rendered_view(self.entity_id(), |window| {
-            window.with_rem_size(Some(self.rem_size), |window| {
-                window.with_content_mask(Some(self.content_mask), f)
-            })
-        });
-        window.element_id_stack = ids;
-        window.text_style_stack = styles;
-        window.deferred_priority_floor = floor;
-        result
-    }
-
-    /// Renders and prepaints the view again where it was, as the next run of a reuse that
-    /// skips its previous content. Returns the element and this frame's record of it.
-    pub(crate) fn prepaint(self: &Rc<Self>, window: &mut Window, cx: &mut App) -> (AnyElement, usize) {
-        self.with_context(window, |window| {
-            // The replay copied this state's key; recording it again would grow the frame's
-            // list by one on every replay.
-            window.state_recorded_already = true;
-            window.with_element_state::<ViewElementState, _>(&self.global_id, |state, window| {
-                let mut state = state.expect("an island keeps its view state");
-                let view = self.view.clone();
-                let (element, prepaint_range, mut accessed) =
-                    render_cached(self.bounds, true, window, cx, &mut |window, cx| {
-                        (view.render)(&view, window, cx)
-                    });
-                accessed.insert(self.entity_id());
-                accessed.extend(state.accessed_entities.iter().copied());
-                cx.entities.extend_accessed(&accessed);
-                let record = window.next_frame.push_cached_view(
-                    self.global_id.clone(),
-                    prepaint_range.clone(),
-                    Some(self.clone()),
-                    Rc::new(accessed.clone()),
-                );
-                state.prepaint_range = prepaint_range;
-                state.accessed_entities = accessed;
-                state.record = Some(record);
-                ((element, record), state)
-            })
-        })
-    }
-
-    pub(crate) fn paint(
-        &self,
-        element: &mut AnyElement,
-        record: usize,
-        opacity: f32,
-        window: &mut Window,
-        cx: &mut App,
-    ) {
-        self.with_context(window, |window| {
-            // The replay copied this state's key; recording it again would grow the frame's
-            // list by one on every replay.
-            window.state_recorded_already = true;
-            window.with_element_state::<ViewElementState, _>(&self.global_id, |state, window| {
-                let mut state = state.expect("an island keeps its view state");
-                let previous = mem::replace(&mut window.element_opacity, opacity);
-                let refreshing = mem::replace(&mut window.refreshing, true);
-                let paint_start = window.paint_index();
-                let painted = paint_tracked(true, cx, |cx| element.paint(window, cx));
-                state.accessed_entities.extend(painted.iter().copied());
-                state.paint_range = paint_start..window.paint_index();
-                window.refreshing = refreshing;
-                window.element_opacity = previous;
-                window.next_frame.set_cached_view_paint(
-                    record,
-                    state.paint_range.clone(),
-                    opacity,
-                    &painted,
-                );
-                ((), state)
-            })
-        })
-    }
-}
-
-/// Points a cached view's state at where this frame put its content, after a frame that
-/// replayed it inside an ancestor.
-pub(crate) fn rebase_view_state(
-    state: &mut dyn std::any::Any,
-    prepaint_range: Range<PrepaintStateIndex>,
-    paint_range: Range<PaintIndex>,
-    valid: bool,
-) {
-    if let Some(Some(state)) = state.downcast_mut::<Option<ViewElementState>>() {
-        state.prepaint_range = prepaint_range;
-        state.paint_range = paint_range;
-        state.record = None;
-        state.stale = !valid;
-    }
 }

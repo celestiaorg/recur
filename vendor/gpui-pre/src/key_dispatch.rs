@@ -68,12 +68,6 @@ use std::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub(crate) struct DispatchNodeId(usize);
 
-impl DispatchNodeId {
-    pub(crate) fn new(index: usize) -> Self {
-        DispatchNodeId(index)
-    }
-}
-
 pub(crate) struct DispatchTree {
     node_stack: Vec<DispatchNodeId>,
     pub(crate) context_stack: Vec<KeyContext>,
@@ -96,24 +90,21 @@ pub(crate) struct DispatchNode {
     parent: Option<DispatchNodeId>,
 }
 
-/// A reuse of the previous frame's nodes, copied in runs around fresh subtrees (Recur's
-/// isolated views): the copy keeps its place in the source tree between runs.
-#[derive(Default)]
 pub(crate) struct ReusedSubtree {
-    /// Each copied run: its range in the source tree and where it starts in this one.
-    runs: Vec<(Range<usize>, usize)>,
-    source_stack: Vec<DispatchNodeId>,
+    old_range: Range<usize>,
+    new_range: Range<usize>,
     contains_focus: bool,
 }
 
 impl ReusedSubtree {
     pub fn refresh_node_id(&self, node_id: DispatchNodeId) -> DispatchNodeId {
-        let (old, new) = self
-            .runs
-            .iter()
-            .find(|(old, _)| old.contains(&node_id.0))
-            .unwrap_or_else(|| panic!("node {} was not part of the reused subtree", node_id.0));
-        DispatchNodeId(node_id.0 - old.start + new)
+        debug_assert!(
+            self.old_range.contains(&node_id.0),
+            "node {} was not part of the reused subtree {:?}",
+            node_id.0,
+            self.old_range
+        );
+        DispatchNodeId((node_id.0 - self.old_range.start) + self.new_range.start)
     }
 
     pub fn contains_focus(&self) -> bool {
@@ -270,15 +261,16 @@ impl DispatchTree {
         target.modifiers_changed_listeners = mem::take(&mut source.modifiers_changed_listeners);
     }
 
-    /// Copies `old_range` of `source`, continuing a reuse whose earlier runs are in `reused`.
-    pub(crate) fn reuse_run(
+    pub fn reuse_subtree(
         &mut self,
-        reused: &mut ReusedSubtree,
         old_range: Range<usize>,
         source: &mut Self,
         focus: Option<FocusId>,
-    ) {
-        reused.runs.push((old_range.clone(), self.nodes.len()));
+    ) -> ReusedSubtree {
+        let new_range = self.nodes.len()..self.nodes.len() + old_range.len();
+
+        let mut contains_focus = false;
+        let mut source_stack = vec![];
         for (source_node_id, source_node) in source
             .nodes
             .iter_mut()
@@ -287,39 +279,31 @@ impl DispatchTree {
             .take(old_range.len())
         {
             let source_node_id = DispatchNodeId(source_node_id);
-            while let Some(source_ancestor) = reused.source_stack.last() {
+            while let Some(source_ancestor) = source_stack.last() {
                 if source_node.parent == Some(*source_ancestor) {
                     break;
                 } else {
-                    reused.source_stack.pop();
+                    source_stack.pop();
                     self.pop_node();
                 }
             }
 
-            reused.source_stack.push(source_node_id);
+            source_stack.push(source_node_id);
             if source_node.focus_id.is_some() && source_node.focus_id == focus {
-                reused.contains_focus = true;
+                contains_focus = true;
             }
             self.move_node(source_node);
         }
-    }
 
-    /// Makes the copy of `parent` the active node, so a fresh subtree drawn next replaces the
-    /// source's children of `parent` that the reuse skips.
-    pub(crate) fn reuse_hole(&mut self, reused: &mut ReusedSubtree, parent: DispatchNodeId) {
-        while let Some(top) = reused.source_stack.last() {
-            if *top == parent {
-                return;
-            }
-            reused.source_stack.pop();
+        while !source_stack.is_empty() {
+            source_stack.pop();
             self.pop_node();
         }
-        debug_assert!(false, "the hole's parent {} was not copied", parent.0);
-    }
 
-    pub(crate) fn finish_reuse(&mut self, reused: &mut ReusedSubtree) {
-        while reused.source_stack.pop().is_some() {
-            self.pop_node();
+        ReusedSubtree {
+            old_range,
+            new_range,
+            contains_focus,
         }
     }
 
@@ -602,7 +586,7 @@ impl DispatchTree {
     }
 
     pub fn view_path_reversed(&self, view_id: EntityId) -> impl Iterator<Item = EntityId> {
-        let mut current_node_id = self.view_node_ids.get(&view_id).copied();
+        let current_node_id = self.view_node_ids.get(&view_id).copied();
 
         std::iter::successors(
             current_node_id.map(|node_id| self.node(node_id)),
@@ -1133,7 +1117,7 @@ mod tests {
         fn dispatch(
             tree: &mut DispatchTree,
             pending: SmallVec<[Keystroke; 1]>,
-            key: &str,
+            key: &'static str,
             path: &DispatchPath,
         ) -> DispatchResult {
             tree.dispatch_key(pending, Keystroke::parse(key).unwrap(), path)
@@ -1367,6 +1351,14 @@ mod tests {
             let count_after_focus_change = *pending_input_changed_count.borrow();
             assert!(count_after_focus_change > *count_after_pending_for_assertion.borrow());
         });
+        assert_eq!(
+            cx.test_window(cx.window_handle())
+                .text_input_state_changes(),
+            [
+                crate::TextInputStateChange::FocusGained,
+                crate::TextInputStateChange::FocusLost,
+            ]
+        );
 
         cx.update(|window, cx| window.focus(&focus_handle, cx));
         cx.simulate_keystrokes("ctrl-b");
@@ -1382,6 +1374,18 @@ mod tests {
         cx.update(|_, _| {
             assert!(*pending_input_changed_count.borrow() > count_before_blur);
         });
+
+        let temporary_focus = cx.update(|window, cx| {
+            let handle = cx.focus_handle();
+            window.focus(&handle, cx);
+            handle
+        });
+        cx.simulate_keystrokes("ctrl-d");
+        cx.update(|window, _| assert!(window.has_pending_keystrokes()));
+        let count_before_drop = *pending_input_changed_count.borrow();
+        cx.update(|_, _| drop(temporary_focus));
+        cx.update(|window, _| assert!(window.pending_input_is_none()));
+        assert_eq!(*pending_input_changed_count.borrow(), count_before_drop + 1);
 
         cx.update(|window, cx| window.disable_focus(cx));
         cx.simulate_keystrokes("ctrl-d");

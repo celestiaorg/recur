@@ -50,7 +50,7 @@ use std::{borrow::Cow, char, convert::TryFrom, sync::Arc};
 #[cfg(target_os = "macos")]
 use {
     core_foundation::base::CFType,
-    gpui::Hsla,
+    gpui::{Hsla, Rgba},
     std::sync::OnceLock,
 };
 
@@ -222,11 +222,17 @@ impl PlatformTextSystem for AppleTextSystem {
     }
 
     #[cfg(target_os = "macos")]
-    fn glyph_dilation_for_color(&self, _color: Hsla) -> u8 {
-        // CoreGraphics thickens strokes more the lighter the text, which leaves dark text on a
-        // light theme visibly thinner than the same text on a dark one. Every color gets the
-        // light-text level, so weight does not depend on the theme.
-        if font_smoothing_allowed_by_user() { 4 } else { 0 }
+    fn glyph_dilation_for_color(&self, color: Hsla) -> u8 {
+        // When font smoothing is enabled, CoreGraphics thickens glyph strokes by an amount that
+        // depends on the foreground color's luminance. We replicate the logic used by CoreGraphics
+        // to select between the different levels of dilation.
+        if !font_smoothing_allowed_by_user() {
+            return 0;
+        }
+        let rgba: Rgba = color.into();
+        let luminance = 0.2126 * rgba.r + 0.7152 * rgba.g + 0.0722 * rgba.b;
+        let level = ((4.0 * luminance) + 0.5).floor() as i32;
+        level.clamp(0, 4) as u8
     }
 }
 
@@ -539,7 +545,12 @@ impl AppleTextSystemState {
 
         {
             let mut text = text;
-            let mut break_ligature = true;
+            // CoreText merges adjacent runs that end up in equal fonts, including runs of
+            // different fonts that fall back to the same one, so every other run that inserts
+            // text is set a hair larger to keep ligatures from forming across them. The first
+            // run keeps its exact size: SF tracks by its exact point size, and a nudged size
+            // draws wider or narrower than AppKit sets the same text.
+            let mut break_ligature = false;
             for run in font_runs {
                 let text_run;
                 (text_run, text) = text.split_at(run.len);
@@ -570,7 +581,9 @@ impl AppleTextSystemState {
                         &font.native_font().clone_with_font_size(font_size.into()),
                     );
                 }
-                break_ligature = !break_ligature;
+                if length > 0 {
+                    break_ligature = !break_ligature;
+                }
             }
         }
         // Retrieve the glyphs from the shaped line, converting UTF16 offsets to UTF8 offsets.
@@ -769,7 +782,9 @@ mod lenient_font_attributes {
 #[cfg(test)]
 mod tests {
     use crate::AppleTextSystem;
-    use gpui::{FontFallbacks, FontFeatures, FontRun, GlyphId, PlatformTextSystem, font, px};
+    use gpui::{
+        FontFallbacks, FontFeatures, FontId, FontRun, GlyphId, PlatformTextSystem, font, px,
+    };
     use std::sync::Arc;
 
     #[test]
@@ -793,6 +808,126 @@ mod tests {
         );
         assert_eq!(layout.len, 6);
         assert!(!layout.runs.is_empty());
+    }
+
+    #[test]
+    fn test_layout_line_sets_a_lone_run_at_its_exact_size() {
+        use core_foundation::attributed_string::CFMutableAttributedString;
+        use core_foundation::base::{CFRange, TCFType};
+        use core_foundation::string::CFString;
+        use core_text::line::CTLine;
+        use core_text::string_attributes::kCTFontAttributeName;
+
+        let fonts = AppleTextSystem::new();
+        let font_id = fonts.font_id(&font(".SystemUIFont")).unwrap();
+        let text = "Hamburgefonstiv 0123 Wafer";
+        let bom = "\u{feff}";
+        let with_bom = format!("{bom}{text}");
+        for size in [11., 17., 22.] {
+            let exact = fonts.0.read().fonts[font_id.0]
+                .native_font()
+                .clone_with_font_size(size as f64);
+            let mut string = CFMutableAttributedString::new();
+            string.replace_str(&CFString::new(text), CFRange::init(0, 0));
+            let range = CFRange::init(0, string.char_len());
+            unsafe { string.set_attribute(range, kCTFontAttributeName, &exact) };
+            let line = CTLine::new_with_attributed_string(string.as_concrete_TypeRef());
+            let width = line.get_typographic_bounds().width as f32;
+
+            let layout = fonts.layout_line(
+                text,
+                px(size),
+                &[FontRun {
+                    font_id,
+                    len: text.len(),
+                }],
+            );
+            assert_eq!(f32::from(layout.width), width, "{size} px");
+
+            // replace_str drops a leading BOM, so its run must not count as the previous run.
+            let layout = fonts.layout_line(
+                &with_bom,
+                px(size),
+                &[
+                    FontRun {
+                        font_id,
+                        len: bom.len(),
+                    },
+                    FontRun {
+                        font_id,
+                        len: text.len(),
+                    },
+                ],
+            );
+            assert_eq!(f32::from(layout.width), width, "{size} px after a BOM run");
+        }
+    }
+
+    #[test]
+    fn test_layout_line_breaks_ligatures_between_runs() {
+        let fonts = AppleTextSystem::new();
+        fonts
+            .add_fonts(vec![
+                include_bytes!("../../../assets/fonts/lilex/Lilex-Regular.ttf")
+                    .as_slice()
+                    .into(),
+            ])
+            .unwrap();
+        let glyphs = |text: &str, runs: &[(FontId, usize)]| -> Vec<GlyphId> {
+            let runs = runs
+                .iter()
+                .map(|&(font_id, len)| FontRun { font_id, len })
+                .collect::<Vec<_>>();
+            fonts
+                .layout_line(text, px(16.), &runs)
+                .runs
+                .iter()
+                .flat_map(|run| run.glyphs.iter().map(|glyph| glyph.id))
+                .collect()
+        };
+
+        let lilex = fonts.font_id(&font("Lilex")).unwrap();
+        let gt = glyphs(">", &[(lilex, 1)])[0];
+        assert_ne!(glyphs(">>>", &[(lilex, 3)]), vec![gt; 3], ">>> as one run");
+        assert_eq!(
+            glyphs(">>>", &[(lilex, 1), (lilex, 1), (lilex, 1)]),
+            vec![gt; 3]
+        );
+        let mut split = glyphs(">>", &[(lilex, 2)]);
+        split.push(gt);
+        assert_eq!(glyphs(">>>", &[(lilex, 2), (lilex, 1)]), split);
+        let mut split = vec![gt];
+        split.extend(glyphs(">>", &[(lilex, 2)]));
+        assert_eq!(glyphs(">>>", &[(lilex, 1), (lilex, 2)]), split);
+
+        // Distinct font ids that resolve to the same font.
+        let zed_mono = fonts.font_id(&font(".ZedMono")).unwrap();
+        let mut no_fallbacks = font("Lilex");
+        no_fallbacks.fallbacks = Some(FontFallbacks(Arc::new(Vec::new())));
+        let no_fallbacks = fonts.font_id(&no_fallbacks).unwrap();
+        for other in [zed_mono, no_fallbacks] {
+            assert_ne!(lilex, other);
+            assert_eq!(
+                glyphs(">>>", &[(lilex, 1), (other, 1), (lilex, 1)]),
+                vec![gt; 3]
+            );
+        }
+
+        // Empty runs between two runs of one font.
+        let times = fonts.font_id(&font("Times")).unwrap();
+        let helvetica = fonts.font_id(&font("Helvetica")).unwrap();
+        let system = fonts.font_id(&font(".SystemUIFont")).unwrap();
+        let mut split = glyphs("f", &[(times, 1)]);
+        split.extend(glyphs("i", &[(times, 1)]));
+        assert_ne!(glyphs("fi", &[(times, 2)]), split, "fi as one run");
+        assert_eq!(
+            glyphs("fi", &[(times, 1), (helvetica, 0), (system, 0), (times, 1)]),
+            split
+        );
+
+        // Runs of different fonts that both fall back to Geeza Pro for Arabic.
+        assert_eq!(glyphs("لا", &[(helvetica, 4)]).len(), 1, "لا as one run");
+        assert_eq!(glyphs("لا", &[(helvetica, 2), (times, 2)]).len(), 2);
     }
 
     #[test]

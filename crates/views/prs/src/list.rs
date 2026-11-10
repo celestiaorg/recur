@@ -32,10 +32,10 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerStyle};
 use recur_ui::{IconName, Theme, icon};
-use recur_view_core::pr::{PrLifecycle, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr::{PrLifecycle, github_href, pr_icon_name, pr_lifecycle};
 use recur_view_core::{AppState, ViewContext, ViewName, call, toast};
 
-use crate::actions::{apply_merged, github_href};
+use crate::actions::apply_merged;
 use crate::chrome::{chrome_color, group_color, group_label, status_label};
 use crate::style::{dot, hsla, running_dot, seg, seg_text_btn, spin_deg};
 use crate::ui::{PrUi, ui};

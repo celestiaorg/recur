@@ -25,6 +25,7 @@ futures.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
 indexmap.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 parking_lot.workspace = true

@@ -15,8 +15,9 @@
 //! - `AskUserQuestion` (headless `-p` cannot collect answers; Recur's
 //!   `mcp__recur__ask_user` does), `Skill` (Recur owns skill loading) and the
 //!   subagent builtins `Agent`, `EnterWorktree`, `ExitWorktree` (delegation
-//!   goes through `mcp__recur__create_workspace`) whenever builtins are
-//!   visible, even with no allowlist.
+//!   goes through `mcp__recur__create_workspace`) and `ReportFindings` (it
+//!   reports to Claude Code's UI; Recur stores `mcp__recur__report_finding`)
+//!   whenever builtins are visible, even with no allowlist.
 //!
 //! `tools = Some("")` disables the whole toolbox, so no deny list is passed.
 //! The permission prompt tool is exempt from `--allowedTools`; Claude calls it
@@ -39,6 +40,8 @@ pub const ASK_USER_BUILTIN: &str = "AskUserQuestion";
 pub const SKILL_BUILTIN: &str = "Skill";
 /// In-process subagent and worktree tools; always denied when builtins show.
 pub const SUBAGENT_BUILTINS: [&str; 3] = ["Agent", "EnterWorktree", "ExitWorktree"];
+/// Claude Code's host-UI findings tool; always denied when builtins show.
+pub const REPORT_FINDINGS_BUILTIN: &str = "ReportFindings";
 
 /// Keeps `--append-system-prompt` well under Linux's 128 KiB single-argument
 /// exec limit (MAX_ARG_STRLEN). Larger prompts go through
@@ -59,11 +62,12 @@ pub fn disallowed_edit_tools(allowed: Option<&[String]>) -> Vec<&'static str> {
 }
 
 /// `--disallowedTools`: omitted edit builtins, then AskUserQuestion, Skill
-/// and the subagent builtins.
+/// the subagent builtins and ReportFindings.
 pub fn disallowed_tools(allowed: Option<&[String]>) -> Vec<&'static str> {
     let mut out = disallowed_edit_tools(allowed);
     out.extend([ASK_USER_BUILTIN, SKILL_BUILTIN]);
     out.extend(SUBAGENT_BUILTINS);
+    out.push(REPORT_FINDINGS_BUILTIN);
     out
 }
 
@@ -340,12 +344,12 @@ mod tests {
     fn disallowed_tools_cases() {
         assert_eq!(
             disallowed_tools(None).join(","),
-            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree"
+            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
         );
         let ro = strs(&["Read", "Bash", "mcp__recur__ask_user"]).unwrap();
         assert_eq!(
             disallowed_tools(Some(&ro)).join(","),
-            "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree"
+            "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
         );
     }
 
@@ -459,20 +463,20 @@ mod tests {
         assert!(has_pair(
             &build(&ro, false),
             "--disallowedTools",
-            "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree"
+            "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
         ));
         let mut coder = req("hi");
         coder.allowed_tools = strs(&["Read", "Edit", "Write", "Bash", "NotebookEdit"]);
         assert!(has_pair(
             &build(&coder, false),
             "--disallowedTools",
-            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree"
+            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
         ));
         let bare = build(&req("hi"), false);
         assert!(has_pair(
             &bare,
             "--disallowedTools",
-            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree"
+            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
         ));
         assert!(has_flag(&bare, "--disable-slash-commands"));
     }

@@ -171,12 +171,16 @@ pub fn chat_mode_shape(mode: &str, set: &Settings, child: bool) -> ChatTurnShape
                 mcp: true,
             }
         }
-        // Agent: coding chat + the findings checklist (list/update). No done
+        // Agent: coding chat + the findings checklist (report/list/update). No done
         // (a loop-specialist signal) and no findings note (models then call
         // list_findings every turn). The identity note must lead.
         _ => {
             let mut tools = pair_tools();
-            tools.extend(own(&[mcp::LIST_FINDINGS, mcp::UPDATE_FINDING]));
+            tools.extend(own(&[
+                mcp::REPORT_FINDING,
+                mcp::LIST_FINDINGS,
+                mcp::UPDATE_FINDING,
+            ]));
             tools.extend(skills);
             tools.extend(interactive);
             tools.push(mcp::RENAME_BRANCH.into());

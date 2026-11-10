@@ -1,6 +1,6 @@
 [package]
 name = "recur-provider-compatible"
-description = "OpenAI-compatible /v1/responses provider."
+description = "OpenAI-compatible provider over /v1/responses or /v1/chat/completions."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

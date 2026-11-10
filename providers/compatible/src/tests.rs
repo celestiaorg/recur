@@ -922,9 +922,400 @@ fn test_result_json() {
     assert_eq!(
         serde_json::to_string(&CompatibleTestResult {
             ok: true,
-            error: String::new()
+            ..Default::default()
         })
         .unwrap(),
         r#"{"ok":true}"#
     );
+    assert_eq!(
+        serde_json::to_string(&CompatibleTestResult {
+            ok: true,
+            api: recur_domain::CompatibleApi::ChatCompletions,
+            ..Default::default()
+        })
+        .unwrap(),
+        r#"{"ok":true,"api":"chat-completions"}"#
+    );
+}
+
+// ---- Chat Completions endpoints (DeepSeek and local servers)
+
+fn chat_sse(frames: &[serde_json::Value]) -> String {
+    let mut out: String = frames.iter().map(|f| format!("data: {f}\n\n")).collect();
+    out.push_str("data: [DONE]\n\n");
+    out
+}
+
+/// A server with only `/v1/chat/completions`, like api.deepseek.com:
+/// Responses is a 404. A non-streamed request (the Test ping) gets a JSON
+/// completion; the first streamed one asks for Write, the next ones answer
+/// with text.
+async fn chat_only_server() -> (String, Arc<Mutex<Vec<Seen>>>) {
+    let chats = Arc::new(AtomicUsize::new(0));
+    serve(move |_, req| {
+        if req.path != "/v1/chat/completions" {
+            return (404, JSON, r#"{"error":{"message":"Not Found"}}"#.into());
+        }
+        if !req.body.contains(r#""stream":true"#) {
+            return (200, JSON, json!({"id": "p", "object": "chat.completion",
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": "pong"},
+                "finish_reason": "stop"}]}).to_string());
+        }
+        if chats.fetch_add(1, Ordering::SeqCst) == 0 {
+            return (200, SSE, chat_sse(&[
+                json!({"id": "c1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Listing."}}]}),
+                json!({"id": "c1", "choices": [{"index": 0, "delta": {"tool_calls": [{"index": 0, "id": "call_1", "type": "function", "function": {"name": "Write", "arguments": r#"{"file_path":"hi.txt","content":"hi"}"#}}]}}]}),
+                json!({"id": "c1", "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]}),
+            ]));
+        }
+        (200, SSE, chat_sse(&[
+            json!({"id": "c2", "choices": [{"index": 0, "delta": {"content": "Done."}}]}),
+            json!({"id": "c2", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}),
+            json!({"id": "c2", "choices": [], "usage": {"prompt_tokens": 20, "completion_tokens": 3, "total_tokens": 23}}),
+        ]))
+    })
+    .await
+}
+
+async fn chat_only_turn(
+    p: &CompatibleProvider,
+    wt: &tempfile::TempDir,
+) -> (TurnResult, Vec<AgentEvent>) {
+    let req = TurnRequest {
+        model: "gpt-5".into(),
+        prompt: "say hi".into(),
+        worktree: wt.path().into(),
+        allowed_tools: Some(["Write"].map(String::from).into()),
+        ..Default::default()
+    };
+    let (cx, events, _) = context(Some(harness_tools_for(&req, None)));
+    let res = p.run_turn(req, cx).await.unwrap();
+    let evs = events.lock().clone();
+    (res, evs)
+}
+
+#[tokio::test]
+async fn untested_chat_only_endpoint_falls_back_and_remembers() {
+    let (base, seen) = chat_only_server().await;
+    let p = CompatibleProvider::new(test_config(&base));
+    let wt = tempfile::tempdir().unwrap();
+    let (res, evs) = chat_only_turn(&p, &wt).await;
+    assert_eq!(res.text, "Listing.Done.");
+    assert_eq!(res.usage.input_tokens, 20);
+    let write = evs.iter().find_map(|e| match e {
+        AgentEvent::ToolResult(r) if r.name == "Write" => Some(r.clone()),
+        _ => None,
+    });
+    assert!(!write.expect("Write ran").is_error);
+    assert_eq!(
+        std::fs::read_to_string(wt.path().join("hi.txt")).unwrap(),
+        "hi"
+    );
+    let paths: Vec<String> = seen.lock().iter().map(|s| s.path.clone()).collect();
+    assert_eq!(
+        paths,
+        [
+            "/v1/responses",
+            "/v1/chat/completions",
+            "/v1/chat/completions"
+        ],
+        "only the first round probes Responses"
+    );
+    let second: serde_json::Value = serde_json::from_str(&seen.lock()[2].body).unwrap();
+    let msgs = second["messages"].as_array().unwrap();
+    let roles: Vec<&str> = msgs.iter().map(|m| m["role"].as_str().unwrap()).collect();
+    assert_eq!(roles, ["system", "user", "assistant", "tool"]);
+    assert_eq!(msgs[2]["tool_calls"][0]["id"], "call_1");
+    assert_eq!(msgs[3]["tool_call_id"], "call_1");
+
+    // A later turn on the same provider goes straight to Chat Completions.
+    let wt2 = tempfile::tempdir().unwrap();
+    chat_only_turn(&p, &wt2).await;
+    assert_eq!(seen.lock()[3].path, "/v1/chat/completions");
+}
+
+#[tokio::test]
+async fn tested_chat_only_endpoint_never_calls_responses() {
+    let (base, seen) = chat_only_server().await;
+    let p = CompatibleProvider::new(Config {
+        api: recur_domain::CompatibleApi::ChatCompletions,
+        ..test_config(&base)
+    });
+    let wt = tempfile::tempdir().unwrap();
+    let (res, _) = chat_only_turn(&p, &wt).await;
+    assert_eq!(res.text, "Listing.Done.");
+    assert!(
+        seen.lock().iter().all(|s| s.path == "/v1/chat/completions"),
+        "{:?}",
+        seen.lock()
+    );
+}
+
+#[tokio::test]
+async fn tested_responses_endpoint_does_not_fall_back() {
+    let (base, seen) = chat_only_server().await;
+    let p = CompatibleProvider::new(Config {
+        api: recur_domain::CompatibleApi::Responses,
+        ..test_config(&base)
+    });
+    let (res, _) = run_one_on(&p).await;
+    let err = res.unwrap_err();
+    assert!(err.message.starts_with("responses 404"), "{err}");
+    assert_eq!(seen.lock().len(), 1);
+}
+
+async fn run_one_on(p: &CompatibleProvider) -> (Result<TurnResult, ProviderError>, ()) {
+    let (cx, _, _) = context(None);
+    let res = p
+        .run_turn(
+            TurnRequest {
+                model: "gpt-5".into(),
+                prompt: "go".into(),
+                ..Default::default()
+            },
+            cx,
+        )
+        .await;
+    (res, ())
+}
+
+#[tokio::test]
+async fn fallback_reports_both_errors() {
+    let (base, _) = serve(|_, req| {
+        if req.path == "/v1/responses" {
+            return (404, "text/plain", "no route".into());
+        }
+        (
+            401,
+            JSON,
+            r#"{"error":{"message":"Authentication Fails"}}"#.into(),
+        )
+    })
+    .await;
+    let p = CompatibleProvider::new(test_config(&base));
+    let err = run_one_on(&p).await.0.unwrap_err();
+    assert!(
+        err.message.contains("responses 404") && err.message.contains("chat completions 401"),
+        "{err}"
+    );
+    assert!(err.message.contains("Authentication Fails"), "{err}");
+}
+
+#[tokio::test]
+async fn test_detects_chat_completions_only() {
+    let (base, seen) = chat_only_server().await;
+    let got = test_compatible_provider(test_config(&base)).await;
+    assert!(got.ok, "{got:?}");
+    assert_eq!(got.api, recur_domain::CompatibleApi::ChatCompletions);
+    let mut paths: Vec<String> = seen.lock().iter().map(|s| s.path.clone()).collect();
+    paths.sort();
+    assert_eq!(paths, ["/v1/chat/completions", "/v1/responses"]);
+    let ping = seen
+        .lock()
+        .iter()
+        .find(|s| s.path == "/v1/chat/completions")
+        .map(|s| s.body.clone())
+        .unwrap();
+    let ping: serde_json::Value = serde_json::from_str(&ping).unwrap();
+    assert_eq!(ping["model"], "gpt-5");
+    assert_eq!(ping["max_tokens"], 16);
+}
+
+#[tokio::test]
+async fn test_detects_both_apis_and_responses_only() {
+    let completion = json!({"id": "c", "object": "chat.completion",
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": "pong"}, "finish_reason": "stop"}]});
+    let both = completion.to_string();
+    let (base, _) = serve(move |_, req| {
+        if req.path == "/v1/responses" {
+            return (
+                200,
+                JSON,
+                json!({"id": "r", "status": "completed", "output": []}).to_string(),
+            );
+        }
+        (200, JSON, both.clone())
+    })
+    .await;
+    let got = test_compatible_provider(test_config(&base)).await;
+    assert_eq!(got.api, recur_domain::CompatibleApi::Both, "{got:?}");
+
+    let (base, _) = serve(|_, req| {
+        if req.path == "/v1/responses" {
+            return (
+                200,
+                JSON,
+                json!({"id": "r", "status": "completed", "output": []}).to_string(),
+            );
+        }
+        (404, "text/plain", "404 page not found".into())
+    })
+    .await;
+    let got = test_compatible_provider(test_config(&base)).await;
+    assert_eq!(got.api, recur_domain::CompatibleApi::Responses, "{got:?}");
+}
+
+#[tokio::test]
+async fn test_reports_both_failures() {
+    let (base, _) = serve(|_, req| {
+        let what = if req.path == "/v1/responses" {
+            "a"
+        } else {
+            "b"
+        };
+        (500, "text/plain", what.into())
+    })
+    .await;
+    let got = test_compatible_provider(test_config(&base)).await;
+    assert!(!got.ok);
+    assert_eq!(got.api, recur_domain::CompatibleApi::Unknown);
+    assert!(
+        got.error.starts_with("Responses: 500") && got.error.contains("Chat Completions: 500"),
+        "{}",
+        got.error
+    );
+    let (base, _) = serve(|_, _| (401, "text/plain", "bad key".into())).await;
+    let got = test_compatible_provider(test_config(&base)).await;
+    assert_eq!(got.error, "401 Unauthorized: bad key");
+}
+
+#[test]
+fn test_summary_names_the_api_and_harnesses() {
+    use recur_agent::catalog::HarnessChoice;
+    let r = CompatibleTestResult {
+        ok: true,
+        api: recur_domain::CompatibleApi::Responses,
+        harnesses: vec![
+            HarnessChoice {
+                label: "Recur".into(),
+                ..Default::default()
+            },
+            HarnessChoice {
+                id: "opencode".into(),
+                label: "OpenCode".into(),
+                unavailable: true,
+                reason: "Needs Chat Completions".into(),
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    };
+    assert_eq!(
+        r.summary(),
+        "Connected with the Responses API. Runs in Recur. OpenCode unavailable: Needs Chat Completions."
+    );
+    let failed = CompatibleTestResult {
+        error: "401 Unauthorized".into(),
+        ..Default::default()
+    };
+    assert_eq!(failed.summary(), "401 Unauthorized");
+}
+
+// ---- Thinking-mode endpoints (DeepSeek): a tool round's reasoning goes back
+
+/// A Responses server whose first round thinks (raw `reasoning_text`, or a
+/// summary when `summary`) and calls Read twice in parallel, then answers
+/// with text.
+async fn thinking_responses_server(summary: bool) -> (String, Arc<Mutex<Vec<Seen>>>) {
+    let kind = if summary {
+        "response.reasoning_summary_text.delta"
+    } else {
+        "response.reasoning_text.delta"
+    };
+    serve(move |n, _| {
+        if n == 0 {
+            let think = json!({"type": kind, "item_id": "rs_1", "delta": "Look first."}).to_string();
+            return (200, SSE, sse(&[
+                &think,
+                r#"{"type":"response.output_item.done","item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"Read","arguments":"{\"file_path\":\"x\"}"}}"#,
+                r#"{"type":"response.output_item.done","item":{"type":"function_call","id":"fc_2","call_id":"call_2","name":"Read","arguments":"{\"file_path\":\"y\"}"}}"#,
+                r#"{"type":"response.completed","response":{"id":"resp_1"}}"#,
+            ]));
+        }
+        (200, JSON, text_body("resp-2", "ok"))
+    })
+    .await
+}
+
+async fn read_turn(p: &CompatibleProvider) {
+    let wt = tempfile::tempdir().unwrap();
+    let req = TurnRequest {
+        model: "gpt-5".into(),
+        prompt: "hello".into(),
+        worktree: wt.path().into(),
+        allowed_tools: Some(vec!["Read".into()]),
+        ..Default::default()
+    };
+    let (cx, _, _) = context(Some(harness_tools_for(&req, None)));
+    p.run_turn(req, cx).await.unwrap();
+}
+
+#[tokio::test]
+async fn responses_tool_round_passes_reasoning_back() {
+    let (base, seen) = thinking_responses_server(false).await;
+    read_turn(&CompatibleProvider::new(test_config(&base))).await;
+    let second: serde_json::Value = serde_json::from_str(&seen.lock()[1].body).unwrap();
+    let kinds: Vec<&str> = second["input"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| {
+            i["type"]
+                .as_str()
+                .unwrap_or(i["role"].as_str().unwrap_or_default())
+        })
+        .collect();
+    // One reasoning item, then the round's calls together, then their
+    // results: DeepSeek rejects a call that follows a result.
+    assert_eq!(
+        kinds,
+        [
+            "user",
+            "reasoning",
+            "function_call",
+            "function_call",
+            "function_call_output",
+            "function_call_output"
+        ]
+    );
+    assert_eq!(
+        second["input"][1]["content"],
+        json!([{"type": "reasoning_text", "text": "Look first."}])
+    );
+}
+
+#[tokio::test]
+async fn reasoning_summaries_are_not_replayed() {
+    let (base, seen) = thinking_responses_server(true).await;
+    read_turn(&CompatibleProvider::new(test_config(&base))).await;
+    let second = &seen.lock()[1].body;
+    assert!(!second.contains(r#""reasoning""#), "{second}");
+}
+
+#[tokio::test]
+async fn chat_completions_tool_round_passes_reasoning_content_back() {
+    let (base, seen) = serve(|n, _| {
+        if n == 0 {
+            return (200, SSE, chat_sse(&[
+                json!({"id": "c1", "choices": [{"index": 0, "delta": {"role": "assistant", "reasoning_content": "Look first."}}]}),
+                json!({"id": "c1", "choices": [{"index": 0, "delta": {"tool_calls": [{"index": 0, "id": "call_1", "type": "function", "function": {"name": "Read", "arguments": r#"{"file_path":"x"}"#}}]}}]}),
+                json!({"id": "c1", "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]}),
+            ]));
+        }
+        (200, SSE, chat_sse(&[
+            json!({"id": "c2", "choices": [{"index": 0, "delta": {"content": "ok"}}]}),
+            json!({"id": "c2", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}),
+        ]))
+    })
+    .await;
+    read_turn(&CompatibleProvider::new(Config {
+        api: recur_domain::CompatibleApi::ChatCompletions,
+        ..test_config(&base)
+    }))
+    .await;
+    let second: serde_json::Value = serde_json::from_str(&seen.lock()[1].body).unwrap();
+    let asst = &second["messages"][2];
+    assert_eq!(asst["role"], "assistant");
+    assert_eq!(asst["reasoning_content"], "Look first.");
+    assert_eq!(asst["tool_calls"][0]["id"], "call_1");
 }

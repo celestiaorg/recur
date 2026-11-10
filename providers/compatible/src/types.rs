@@ -179,6 +179,22 @@ pub fn function_call_item(call_id: &str, name: &str, arguments: &str) -> InputIt
     }
 }
 
+/// A round's raw chain-of-thought to replay in input. Thinking-mode
+/// endpoints (DeepSeek) reject a tool round in the current turn without it.
+pub fn reasoning_item(text: &str) -> InputItem {
+    let mut m = Map::new();
+    m.insert("type".into(), "reasoning".into());
+    m.insert("summary".into(), Value::Array(Vec::new()));
+    m.insert(
+        "content".into(),
+        serde_json::json!([{"type": "reasoning_text", "text": text}]),
+    );
+    InputItem {
+        raw: Some(m),
+        ..Default::default()
+    }
+}
+
 /// The tool result for a prior function_call.
 pub fn function_output_item(call_id: &str, output: &str) -> InputItem {
     InputItem {

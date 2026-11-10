@@ -16,11 +16,19 @@ Open **Settings → Providers** to turn providers on or off, check their status,
 
 ## Compatible endpoints and local models
 
-The compatible provider sends requests to **`{base URL}/v1/responses`**. The endpoint must support the Responses API and the tool calls needed for coding. A server that only implements Chat Completions is not enough. Recur runs the coding tools itself, inside the workspace's worktree.
+The compatible provider sends requests to **`{base URL}/v1/responses`** (the Responses API) or, for endpoints that only implement it, **`{base URL}/v1/chat/completions`** (Chat Completions, used by DeepSeek and many local servers). The endpoint and model must support tool calls. Recur runs the coding tools itself, inside the workspace's worktree.
 
-Choose **Add provider**, then a preset (**OpenAI**, **OpenRouter**, **Groq**) or **Custom**. Enter the base URL without a trailing slash and add at least one model ID supported by that server. Extra headers are available for endpoints that require them. **Test** sends a small request to check the connection.
+Choose **Add provider**, then a preset (**OpenAI**, **OpenRouter**, **Groq**) or **Custom**. Enter the base URL without a trailing slash and add at least one model ID supported by that server. Extra headers are available for endpoints that require them. **Test** sends a small request to both APIs and reports which one answered and where the endpoint's models can run, for example "Connected with the Chat Completions API. Runs in Recur and OpenCode." Recur remembers the result and uses it for later turns. An endpoint you have not tested still works: when it has no Responses route, Recur switches to Chat Completions on its own.
 
-For a local server such as Ollama, use Custom with your own provider slug such as `local-ollama` (the slug `ollama` is reserved), the server address (for example `http://localhost:11434`), and an installed model ID. The server version and model must support the Responses API and tools. Leave the API key empty when the endpoint does not require one.
+For a local server such as Ollama, use Custom with your own provider slug such as `local-ollama` (the slug `ollama` is reserved), the server address (for example `http://localhost:11434`), and an installed model ID. The server version and model must support tools. Leave the API key empty when the endpoint does not require one.
+
+## Run API models in OpenCode
+
+Recur can hand an API-key model to [OpenCode](https://opencode.ai) instead of running it in Recur's built-in harness. Install OpenCode so `opencode` is on your `PATH` (or set `RECUR_OPENCODE`), add the endpoint under **Settings → Providers**, then pick one of its models in **Settings → Models** or the composer. A second popup asks **Run in**: choose **Recur** for the built-in harness or **OpenCode** to run the same model inside OpenCode.
+
+OpenCode is offered for compatible endpoints, not for Claude Code, Cursor, Codex, or ChatGPT accounts. It calls the endpoint's **`{base URL}/v1/chat/completions`**, so it cannot run an endpoint that only implements the Responses API: once **Test** has found that, the popup shows OpenCode disabled with that reason. Recur passes its host tools to OpenCode over MCP and translates the chat mode's tool allowlist into OpenCode permissions. OpenCode keeps the conversation history for its own sessions.
+
+If OpenCode is not installed, Recur skips the popup and runs the model in its built-in harness; when the popup does open, OpenCode appears disabled with an install hint. Existing model selections keep running in the built-in harness until you choose OpenCode.
 
 ## Where work runs
 

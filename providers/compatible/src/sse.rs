@@ -21,51 +21,68 @@ pub struct SseParser {
 impl SseParser {
     /// Feeds one chunk of the body.
     pub fn push(&mut self, chunk: &[u8], emit: &mut dyn FnMut(Event)) {
-        let mut rest = chunk;
-        while let Some(i) = rest.iter().position(|&b| b == b'\n') {
-            self.line.extend_from_slice(&rest[..i]);
-            let line = std::mem::take(&mut self.line);
-            self.line_done(&line, emit);
-            rest = &rest[i + 1..];
-        }
-        self.line.extend_from_slice(rest);
+        self.push_payloads(chunk, &mut |p| {
+            if let Some(ev) = decode_event(p) {
+                emit(ev);
+            }
+        });
     }
 
     /// The body ended: a trailing unterminated line and pending data are
     /// dispatched.
     pub fn finish(&mut self, emit: &mut dyn FnMut(Event)) {
-        let line = std::mem::take(&mut self.line);
-        if !line.is_empty() {
-            self.line_done(&line, emit);
-        }
-        self.flush(emit);
+        self.finish_payloads(&mut |p| {
+            if let Some(ev) = decode_event(p) {
+                emit(ev);
+            }
+        });
     }
 
-    fn line_done(&mut self, raw: &[u8], emit: &mut dyn FnMut(Event)) {
+    /// [`Self::push`] for any SSE dialect: hands each data payload (without
+    /// `[DONE]`) to `on_payload` undecoded.
+    pub(crate) fn push_payloads(&mut self, chunk: &[u8], on_payload: &mut dyn FnMut(&str)) {
+        let mut rest = chunk;
+        while let Some(i) = rest.iter().position(|&b| b == b'\n') {
+            self.line.extend_from_slice(&rest[..i]);
+            let line = std::mem::take(&mut self.line);
+            self.line_done(&line, on_payload);
+            rest = &rest[i + 1..];
+        }
+        self.line.extend_from_slice(rest);
+    }
+
+    /// [`Self::finish`] for [`Self::push_payloads`].
+    pub(crate) fn finish_payloads(&mut self, on_payload: &mut dyn FnMut(&str)) {
+        let line = std::mem::take(&mut self.line);
+        if !line.is_empty() {
+            self.line_done(&line, on_payload);
+        }
+        self.flush(on_payload);
+    }
+
+    fn line_done(&mut self, raw: &[u8], on_payload: &mut dyn FnMut(&str)) {
         let line = String::from_utf8_lossy(raw);
         let line = line.trim_end_matches(['\r', '\n']);
         if line.is_empty() {
-            self.flush(emit);
+            self.flush(on_payload);
         } else if let Some(rest) = line.strip_prefix("data:") {
             if !self.data.is_empty() {
                 self.data.push('\n');
             }
             self.data.push_str(rest.trim());
             if valid(self.data.trim()) {
-                self.flush(emit);
+                self.flush(on_payload);
             }
         }
     }
 
-    fn flush(&mut self, emit: &mut dyn FnMut(Event)) {
+    fn flush(&mut self, on_payload: &mut dyn FnMut(&str)) {
         let data = std::mem::take(&mut self.data);
         let payload = data.trim();
         if payload.is_empty() || payload == "[DONE]" {
             return;
         }
-        if let Some(ev) = decode_event(payload) {
-            emit(ev);
-        }
+        on_payload(payload);
     }
 }
 

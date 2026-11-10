@@ -33,6 +33,7 @@ recur-provider-codex = { path = "providers/codex" }
 recur-provider-cursor = { path = "providers/cursor" }
 recur-provider-compatible = { path = "providers/compatible" }
 recur-provider-chatgpt = { path = "providers/chatgpt" }
+recur-provider-opencode = { path = "providers/opencode" }
 recur-agent-tools = { path = "crates/agent-tools" }
 recur-mcp = { path = "crates/mcp" }
 recur-bundles = { path = "crates/bundles" }

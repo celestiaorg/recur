@@ -13,6 +13,8 @@ pub const PROVIDER_CLAUDE_CODE: &str = "claude-code";
 pub const PROVIDER_CURSOR: &str = "cursor";
 pub const PROVIDER_CODEX: &str = "codex";
 pub const PROVIDER_CHATGPT: &str = "chatgpt";
+/// A third-party execution harness Recur drives with a model-source ref.
+pub const PROVIDER_OPENCODE: &str = "opencode";
 pub const PROVIDER_ANTHROPIC: &str = "anthropic";
 pub const PROVIDER_OPENAI: &str = "openai";
 pub const PROVIDER_GEMINI: &str = "gemini";
@@ -25,16 +27,53 @@ pub fn provider_label(provider: &str) -> &str {
         PROVIDER_CODEX => "Codex",
         PROVIDER_CHATGPT => "ChatGPT",
         PROVIDER_CLAUDE_CODE => "Claude Code",
+        PROVIDER_OPENCODE => "OpenCode",
         _ => provider,
     }
 }
 
+/// Reports whether slug is an execution harness rather than a model source.
+/// Harness ids share the provider namespace and are reserved for it.
+pub fn is_harness_id(slug: &str) -> bool {
+    matches!(slug, PROVIDER_OPENCODE)
+}
+
+/// The harness prefix of a stored selection, or "" when it names the model
+/// source's own harness. `opencode/openrouter/gpt-5` has harness `opencode`.
+pub fn harness_of(model_ref: &str) -> &str {
+    match model_ref.split_once('/') {
+        Some((first, _)) if is_harness_id(first) => first,
+        _ => "",
+    }
+}
+
+/// The model-source ref with any harness prefix stripped.
+/// `opencode/openrouter/gpt-5` becomes `openrouter/gpt-5`.
+pub fn base_model_ref(model_ref: &str) -> &str {
+    let harness = harness_of(model_ref);
+    if harness.is_empty() {
+        model_ref
+    } else {
+        &model_ref[harness.len() + 1..]
+    }
+}
+
+/// Prefixes a model-source ref with a harness id. An empty harness keeps the
+/// ref as is, which preserves the built-in behavior for existing selections.
+pub fn compose_harness_ref(harness: &str, model_ref: &str) -> String {
+    if harness.trim().is_empty() {
+        model_ref.to_owned()
+    } else {
+        format!("{}/{}", harness.trim(), model_ref.trim())
+    }
+}
+
 /// Reports whether slug is a Recur-hosted CLI/SDK harness (Claude Code,
-/// Cursor, Codex) rather than a user-defined compatible endpoint.
+/// Cursor, Codex, OpenCode) rather than a user-defined compatible endpoint.
 pub fn builtin_provider(provider: &str) -> bool {
     matches!(
         provider,
-        PROVIDER_CLAUDE_CODE | PROVIDER_CURSOR | PROVIDER_CODEX | ""
+        PROVIDER_CLAUDE_CODE | PROVIDER_CURSOR | PROVIDER_CODEX | PROVIDER_OPENCODE | ""
     )
 }
 
@@ -140,8 +179,30 @@ mod tests {
         assert_eq!(provider_label(PROVIDER_CODEX), "Codex");
         assert_eq!(provider_label(PROVIDER_CLAUDE_CODE), "Claude Code");
         assert_eq!(provider_label("openai"), "openai");
+        assert_eq!(provider_label(PROVIDER_OPENCODE), "OpenCode");
         assert!(builtin_provider("") && builtin_provider(PROVIDER_CODEX));
+        assert!(builtin_provider(PROVIDER_OPENCODE));
         assert!(!builtin_provider(PROVIDER_OPENAI));
+    }
+
+    #[test]
+    fn harness_refs() {
+        assert_eq!(harness_of("claude-code/opus"), "");
+        assert_eq!(harness_of("openrouter/openai/gpt-4o"), "");
+        assert_eq!(harness_of("opencode/openrouter/openai/gpt-4o"), "opencode");
+        assert_eq!(
+            base_model_ref("opencode/openrouter/openai/gpt-4o"),
+            "openrouter/openai/gpt-4o"
+        );
+        assert_eq!(base_model_ref("cursor/composer-2.5"), "cursor/composer-2.5");
+        assert_eq!(
+            compose_harness_ref("opencode", "openrouter/gpt-4o"),
+            "opencode/openrouter/gpt-4o"
+        );
+        assert_eq!(
+            compose_harness_ref("", "openrouter/gpt-4o"),
+            "openrouter/gpt-4o"
+        );
     }
 
     #[test]

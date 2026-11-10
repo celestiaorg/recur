@@ -190,6 +190,9 @@ pub struct Settings {
     /// A `codex` binary. Empty → $RECUR_CODEX, PATH, then Homebrew paths.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub codex_bin_path: String,
+    /// An `opencode` binary for the OpenCode harness. Empty → PATH.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub opencode_bin_path: String,
     /// Lets Codex Agent shell commands use the network inside the
     /// workspace-write sandbox. Ignored when bypass is on.
     #[serde(skip_serializing_if = "is_false")]
@@ -349,7 +352,14 @@ impl Settings {
             self.workspace_title_model(),
         ]
         .iter()
-        .any(|m| m.provider == provider)
+        .any(|m| {
+            let source = if crate::is_harness_id(&m.provider) {
+                parse_model_ref(&m.id).provider
+            } else {
+                m.provider.clone()
+            };
+            source == provider
+        })
     }
 
     /// The Claude Code --permission-mode for every agent turn. Off maps to

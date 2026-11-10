@@ -11,7 +11,9 @@ use recur_domain::{
 };
 use tokio_util::sync::CancellationToken;
 
-use super::model_catalog::{apply_catalog_fallbacks, provider_enablement_changed};
+use super::model_catalog::{
+    apply_catalog_fallbacks, compatible_harnesses, provider_enablement_changed,
+};
 use super::rt::{blocking, rt};
 use super::{AppServices, err};
 use crate::api::{
@@ -278,6 +280,37 @@ impl AppServices {
         Ok(codex_status(st))
     }
 
+    /// Tests an endpoint, lists the harnesses its API set enables, and
+    /// records the API on the saved endpoint (same id and base URL) so the
+    /// model pickers and turns use it.
+    async fn test_compatible_at(&self, p: CompatibleProvider) -> CompatibleTestResult {
+        let id = p.id.trim().to_lowercase();
+        let base_url = p.base_url.trim().trim_end_matches('/').to_owned();
+        let mut r = recur_provider_compatible::test_compatible_provider(p).await;
+        if !r.ok {
+            return r;
+        }
+        let set = self.store().settings();
+        let opencode_ready = recur_provider_opencode::locate(&set).is_ok();
+        r.harnesses = compatible_harnesses(opencode_ready, r.api);
+        let mut next = set.clone();
+        let Some(saved) = next
+            .compatible_providers
+            .iter_mut()
+            .find(|c| c.id == id && c.base_url == base_url)
+        else {
+            return r;
+        };
+        if saved.api == r.api {
+            return r;
+        }
+        saved.api = r.api;
+        if let Err(e) = self.save_settings(next).await {
+            tracing::warn!("recur: warning: record {id} API: {}", e.message);
+        }
+        r
+    }
+
     async fn github_login_at(&self) -> String {
         match self.engine.forges().get("github") {
             Some(f) => f.login().await,
@@ -490,7 +523,7 @@ impl SettingsService for AppServices {
         &self,
         p: &CompatibleProvider,
     ) -> Result<CompatibleTestResult> {
-        rt!(self, p => |_s| Ok(recur_provider_compatible::test_compatible_provider(p).await))
+        rt!(self, p => |s| Ok(s.test_compatible_at(p).await))
     }
 
     async fn test_cursor_key(&self, api_key: &str) -> Result<CursorStatus> {

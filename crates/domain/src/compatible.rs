@@ -1,6 +1,8 @@
 //! User-defined OpenAI-compatible endpoints Recur drives via
-//! POST {baseURL}/v1/responses. Each has its own slug (the ModelRef provider
-//! prefix), models, and flag dimensions.
+//! POST {baseURL}/v1/responses, or POST {baseURL}/v1/chat/completions when
+//! the endpoint only speaks Chat Completions. Each has its own slug (the
+//! ModelRef provider prefix), models, flag dimensions and the wire APIs the
+//! last Settings Test found.
 
 use std::collections::{BTreeMap, HashSet};
 
@@ -9,18 +11,19 @@ use serde::{Deserialize, Serialize};
 use crate::Settings;
 use crate::model::{
     PROVIDER_ANTHROPIC, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR,
-    PROVIDER_GEMINI, PROVIDER_OLLAMA, provider_label,
+    PROVIDER_GEMINI, PROVIDER_OLLAMA, PROVIDER_OPENCODE, provider_label,
 };
 use crate::serde_util::{is_false, is_zero};
 use crate::text::kebab_slug;
 
 /// Slugs that collide with Recur's built-in harnesses or reserved session
 /// identifiers. "openai" is allowed: users add it as a compatible endpoint.
-const RESERVED_PROVIDER_SLUGS: [&str; 7] = [
+const RESERVED_PROVIDER_SLUGS: [&str; 8] = [
     PROVIDER_CLAUDE_CODE,
     PROVIDER_CURSOR,
     PROVIDER_CODEX,
     PROVIDER_CHATGPT,
+    PROVIDER_OPENCODE,
     PROVIDER_ANTHROPIC,
     PROVIDER_GEMINI,
     PROVIDER_OLLAMA,
@@ -49,6 +52,75 @@ pub struct CompatibleProvider {
     pub extra_headers: BTreeMap<String, String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub models: Vec<CompatibleModel>,
+    /// The wire APIs Settings → Providers → Test found. Unknown until tested.
+    #[serde(skip_serializing_if = "CompatibleApi::is_unknown")]
+    pub api: CompatibleApi,
+}
+
+/// Which OpenAI wire APIs an endpoint answers. Recur's own harness speaks
+/// either one; OpenCode drives endpoints through Chat Completions only.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CompatibleApi {
+    /// `POST /v1/responses` only.
+    Responses,
+    /// `POST /v1/chat/completions` only (DeepSeek, many local servers).
+    ChatCompletions,
+    /// Both routes answered.
+    Both,
+    /// Not tested yet (or a value this build does not know).
+    #[default]
+    #[serde(other)]
+    Unknown,
+}
+
+impl CompatibleApi {
+    /// The API set from two probe outcomes.
+    pub fn from_probes(responses: bool, chat_completions: bool) -> Self {
+        match (responses, chat_completions) {
+            (true, true) => Self::Both,
+            (true, false) => Self::Responses,
+            (false, true) => Self::ChatCompletions,
+            (false, false) => Self::Unknown,
+        }
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        *self == Self::Unknown
+    }
+
+    /// Whether the endpoint is known to answer `/v1/responses`.
+    pub fn responses(self) -> bool {
+        matches!(self, Self::Responses | Self::Both)
+    }
+
+    /// Whether the endpoint is known to answer `/v1/chat/completions`.
+    pub fn chat_completions(self) -> bool {
+        matches!(self, Self::ChatCompletions | Self::Both)
+    }
+
+    /// How Settings names the set.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Unknown => "an unknown API",
+            Self::Responses => "the Responses API",
+            Self::ChatCompletions => "the Chat Completions API",
+            Self::Both => "the Responses and Chat Completions APIs",
+        }
+    }
+}
+
+/// Why `harness` (a harness id, "" for Recur's own) cannot run models from
+/// an endpoint that answers `api`, or `None` when it can. Untested endpoints
+/// are not blocked: Recur's harness falls back to Chat Completions on its
+/// own, and OpenCode reports its own error.
+pub fn compatible_harness_blocker(api: CompatibleApi, harness: &str) -> Option<&'static str> {
+    match harness {
+        PROVIDER_OPENCODE if api == CompatibleApi::Responses => {
+            Some("Needs Chat Completions. This endpoint only answered the Responses API.")
+        }
+        _ => None,
+    }
 }
 
 /// One model the user declared this endpoint supports.
@@ -638,6 +710,63 @@ mod tests {
         );
         assert_eq!(compatible_flag_preset(" Effort ").len(), 1);
         assert!(compatible_flag_preset("none").is_empty());
+    }
+
+    #[test]
+    fn api_from_probes_and_serde() {
+        assert_eq!(CompatibleApi::from_probes(true, true), CompatibleApi::Both);
+        assert_eq!(
+            CompatibleApi::from_probes(false, true),
+            CompatibleApi::ChatCompletions
+        );
+        assert_eq!(
+            CompatibleApi::from_probes(true, false),
+            CompatibleApi::Responses
+        );
+        assert_eq!(
+            CompatibleApi::from_probes(false, false),
+            CompatibleApi::Unknown
+        );
+        assert!(CompatibleApi::Both.responses() && CompatibleApi::Both.chat_completions());
+        assert!(!CompatibleApi::ChatCompletions.responses());
+
+        let p = CompatibleProvider {
+            api: CompatibleApi::ChatCompletions,
+            ..provider("deep", "https://api.example.com", vec![model("m")])
+        };
+        let raw = serde_json::to_string(&p).unwrap();
+        assert!(raw.contains(r#""api":"chat-completions""#), "{raw}");
+        let back: CompatibleProvider = serde_json::from_str(&raw).unwrap();
+        assert_eq!(back.api, CompatibleApi::ChatCompletions);
+        let untested = serde_json::to_string(&provider("a", "https://a", vec![])).unwrap();
+        assert!(!untested.contains("api"), "{untested}");
+        let future: CompatibleProvider =
+            serde_json::from_str(r#"{"id":"a","api":"websocket"}"#).unwrap();
+        assert_eq!(future.api, CompatibleApi::Unknown);
+    }
+
+    #[test]
+    fn harness_blockers_follow_the_api() {
+        for api in [
+            CompatibleApi::Unknown,
+            CompatibleApi::Responses,
+            CompatibleApi::ChatCompletions,
+            CompatibleApi::Both,
+        ] {
+            assert_eq!(compatible_harness_blocker(api, ""), None, "{api:?}");
+        }
+        assert!(compatible_harness_blocker(CompatibleApi::Responses, PROVIDER_OPENCODE).is_some());
+        for api in [
+            CompatibleApi::Unknown,
+            CompatibleApi::ChatCompletions,
+            CompatibleApi::Both,
+        ] {
+            assert_eq!(
+                compatible_harness_blocker(api, PROVIDER_OPENCODE),
+                None,
+                "{api:?}"
+            );
+        }
     }
 
     #[test]

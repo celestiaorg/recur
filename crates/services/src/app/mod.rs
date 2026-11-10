@@ -49,6 +49,7 @@ use recur_provider_claude::{ClaudeConfig, ClaudeProvider};
 use recur_provider_codex::{CodexConfig, CodexProvider};
 use recur_provider_compatible::CompatibleProvider;
 use recur_provider_cursor::{CursorConfig, CursorProvider};
+use recur_provider_opencode::OpenCodeProvider;
 use recur_store::Store;
 use recur_usage::UsageService;
 
@@ -130,6 +131,7 @@ struct Providers {
     cursor: Arc<CursorProvider>,
     codex: Arc<CodexProvider>,
     chatgpt: Arc<ChatGPTProvider>,
+    opencode: Arc<OpenCodeProvider>,
     /// One per Settings compatible endpoint, by id, with the name its picker
     /// label was built from.
     compatible: Mutex<Vec<(String, String, Arc<CompatibleProvider>)>>,
@@ -194,6 +196,7 @@ impl AppServices {
                 config.data_dir.clone(),
                 settings.clone(),
             )),
+            opencode: Arc::new(OpenCodeProvider::new(settings.clone())),
             compatible: Mutex::new(Vec::new()),
         };
         providers.sync_compatible(&settings, &config.data_dir);
@@ -416,6 +419,7 @@ impl Providers {
             self.cursor.clone(),
             self.codex.clone(),
             self.chatgpt.clone(),
+            self.opencode.clone(),
         ];
         for (_, _, p) in self.compatible.lock().iter() {
             out.push(p.clone());

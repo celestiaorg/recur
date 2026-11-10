@@ -27,6 +27,7 @@ pub fn flatten_model_catalog(groups: &[ModelGroup]) -> Vec<CatalogModel> {
                 group: group.clone(),
                 provider: g.provider.clone(),
                 flags: m.flags.clone(),
+                harnesses: g.harnesses.clone(),
             })
         })
         .collect();
@@ -83,6 +84,7 @@ pub struct ModelSelectOption {
     pub label: String,
     pub group: String,
     pub provider: String,
+    pub harnesses: Vec<recur_agent::catalog::HarnessChoice>,
 }
 
 pub fn catalog_select_options(models: &[CatalogModel]) -> Vec<ModelSelectOption> {
@@ -93,12 +95,14 @@ pub fn catalog_select_options(models: &[CatalogModel]) -> Vec<ModelSelectOption>
             label: m.label.clone(),
             group: m.group.clone(),
             provider: m.provider.clone(),
+            harnesses: m.harnesses.clone(),
         })
         .collect()
 }
 
 /// `shortModelLabel`: a qualified ref's label when the catalog row is not available yet.
 pub fn short_model_label(model_ref: &str) -> String {
+    let model_ref = recur_domain::base_model_ref(model_ref);
     if model_ref.is_empty() {
         return String::new();
     }
@@ -143,15 +147,17 @@ fn friendly_codex_slug(id: &str) -> String {
 /// longer offers that id).
 pub fn model_options_for(models: &[CatalogModel], current: &str) -> Vec<ModelSelectOption> {
     let opts = catalog_select_options(models);
-    if current.is_empty() || opts.iter().any(|o| o.value == current) {
+    let base = recur_domain::base_model_ref(current);
+    if base.is_empty() || opts.iter().any(|o| o.value == base) {
         return opts;
     }
-    let provider = current.find('/').map_or("", |i| &current[..i]);
+    let provider = base.find('/').map_or("", |i| &base[..i]);
     let mut out = vec![ModelSelectOption {
-        value: current.to_string(),
-        label: short_model_label(current),
+        value: base.to_string(),
+        label: short_model_label(base),
         group: "Current".into(),
         provider: provider.to_string(),
+        harnesses: Vec::new(),
     }];
     out.extend(opts);
     out
@@ -159,15 +165,17 @@ pub fn model_options_for(models: &[CatalogModel], current: &str) -> Vec<ModelSel
 
 /// `flagsForModel`.
 pub fn flags_for_model(models: &[CatalogModel], model_ref: &str) -> Vec<FlagDimension> {
+    let base = recur_domain::base_model_ref(model_ref);
     models
         .iter()
-        .find(|m| m.r#ref == model_ref)
+        .find(|m| m.r#ref == base)
         .map(|m| m.flags.clone())
         .unwrap_or_default()
 }
 
 /// `modelProvider`: the provider slug of a ref, Claude Code when unqualified.
 pub fn model_provider(model_ref: &str) -> &str {
+    let model_ref = recur_domain::base_model_ref(model_ref);
     match model_ref.find('/') {
         Some(i) if i > 0 => &model_ref[..i],
         _ => "claude-code",
@@ -202,6 +210,7 @@ mod tests {
                     ..Default::default()
                 })
                 .collect(),
+            harnesses: Vec::new(),
         }
     }
 
@@ -258,6 +267,7 @@ mod tests {
                 label: "A".into(),
                 ..Default::default()
             }],
+            harnesses: Vec::new(),
         }];
         let flat = flatten_model_catalog(&groups);
         assert_eq!(flat[0].r#ref, "claude-code/a");
@@ -305,6 +315,33 @@ mod tests {
     }
 
     #[test]
+    fn harness_refs_use_the_base_model() {
+        let model = CatalogModel {
+            r#ref: "openrouter/gpt-5".into(),
+            label: "GPT-5".into(),
+            group: "OpenRouter".into(),
+            provider: "openrouter".into(),
+            flags: vec![FlagDimension {
+                id: "effort".into(),
+                label: "Effort".into(),
+                options: vec![FlagOption {
+                    value: "high".into(),
+                    label: "High".into(),
+                    default: true,
+                }],
+            }],
+            harnesses: Vec::new(),
+        };
+        let models = vec![model];
+        assert_eq!(
+            flags_for_model(&models, "opencode/openrouter/gpt-5").len(),
+            1
+        );
+        let opts = model_options_for(&models, "opencode/openrouter/gpt-5");
+        assert_eq!(opts[0].value, "openrouter/gpt-5");
+    }
+
+    #[test]
     fn options_keep_an_unlisted_current_ref() {
         let opts = model_options_for(&[], "codex/gpt-5-codex");
         assert_eq!(opts[0].label, "GPT-5 Codex");
@@ -323,6 +360,7 @@ mod tests {
         assert_eq!(model_provider("cursor/composer-2.5"), "cursor");
         assert_eq!(model_provider("sonnet"), "claude-code");
         assert_eq!(model_provider(""), "claude-code");
+        assert_eq!(model_provider("opencode/openrouter/gpt-5"), "openrouter");
         assert!(chat_steer_follow_up(true, "agent", false, "PA"));
         assert!(chat_steer_follow_up(true, "ask", false, "PA"));
         assert!(chat_steer_follow_up(true, "plan", false, "PA2"));

@@ -15,6 +15,7 @@ const IDS: &[&str] = &[
     "codex",
     "chatgpt",
     "cursor",
+    "opencode",
     "github",
     "gh",
     "linear",

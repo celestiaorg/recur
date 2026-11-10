@@ -43,7 +43,7 @@ crates/
   desktop/            bin `recur`        desktop entry point
   cli/                bin `recur-cli`    command line
 providers/
-  claude/ codex/ cursor/ compatible/ chatgpt/  one crate per agent provider
+  claude/ codex/ cursor/ compatible/ chatgpt/ opencode/  one crate per agent provider
 tools/
   layering/           recur-layering     the layering check below (`mise run lint`)
 vendor/               patched crates.io sources (`vendor/README.md`)
@@ -83,7 +83,7 @@ Rules:
 - Views take pure UI rules from the crate that owns their data (`recur_engine::view`, `recur_code::view`, `recur_forge::view`, `recur_ui::logic`), not from each other.
 - `recur-engine` depends on the `recur-agent::Provider`, `recur-forge::Forge` and `recur-issues::IssueTracker` traits, never on a concrete implementation. `recur-services` is the composition root that registers the shipped providers, forges and trackers.
 
-`recur-layering`'s tests (run by `mise run lint` and `cargo test --workspace`) fail when a view crate or pane depends on another outside these rules or on `recur-app`, when anything from `recur-services` down depends on GPUI, when the engine reaches a provider crate, or when the engine's non-test sources spell a provider, forge or tracker id (`"claude-code"`, `"codex"`, `"chatgpt"`, `"cursor"`, `"github"`, `"gh"`, `"linear"`, or `"<id>/…"`) or name a concrete forge or tracker module (`recur_forge::github`, `recur_issues::{github,linear}`). Ids the engine needs come from `recur-domain` (`PROVIDER_CLAUDE_CODE`, `PrSource::is_github_alias`).
+`recur-layering`'s tests (run by `mise run lint` and `cargo test --workspace`) fail when a view crate or pane depends on another outside these rules or on `recur-app`, when anything from `recur-services` down depends on GPUI, when the engine reaches a provider crate, or when the engine's non-test sources spell a provider, forge or tracker id (`"claude-code"`, `"codex"`, `"chatgpt"`, `"cursor"`, `"opencode"`, `"github"`, `"gh"`, `"linear"`, or `"<id>/…"`) or name a concrete forge or tracker module (`recur_forge::github`, `recur_issues::{github,linear}`). Ids the engine needs come from `recur-domain` (`PROVIDER_CLAUDE_CODE`, `PrSource::is_github_alias`).
 
 **Licenses.** The workspace is Elastic-2.0 (`LICENSE`). A genuinely reusable library with no hosted-product value can be Apache-2.0: set `license = "Apache-2.0"` in its manifest and symlink `LICENSE-APACHE` to the root copy. Today that is `recur-exec`, `recur-http`, `recur-term` and `recur-textmate`, plus `bundles/`, `recur-skills/`, `src-web/`, `src-docs/` and `scripts/` (not crates). A crate that ports third-party code keeps its upstream license notice in a `NOTICE` file. Settings > Licenses lists the third-party software the app includes: `mise run generate:licenses` (a dependency of `dev`, `macos:package` and `linux:build`, skipped while its sources are unchanged) writes `target/licenses.md` from cargo-about's crate list (`build/licenses/about.toml`, which fails on a license it does not accept), `build/licenses/components.md` (native codecs, icons and data cargo does not see; update it when embedding another), the fonts' OFL texts and every `NOTICE`; those tasks point `RECUR_LICENSES_MD` at it and `recur-view-settings`' `build.rs` embeds it. `recur-layering` fails when an Apache-2.0 crate lacks the file or reaches an Elastic-2.0 crate outside dev-dependencies.
 
@@ -100,7 +100,7 @@ Registries are keyed by persisted string ids, so stored data stays valid. The en
 
 | Registry | Persisted ids |
 |----------|---------------|
-| Providers | `claude-code`, `codex`, `cursor`, `chatgpt`, and each compatible provider's own id. A model ref is `provider/id`, split on the first slash; an unqualified ref is `claude-code`. |
+| Providers and harnesses | `claude-code`, `codex`, `cursor`, `chatgpt`, `opencode`, and each compatible provider's own id. A model ref is `harness/source/id` when a harness is chosen, else `provider/id`; split on the first slash. An unqualified ref is `claude-code`. |
 | Forges | Registry key `github`. PR rows keep `source = "gh"`; local PRs are `"local"` and are not a forge. Imported PR rows have the stable id `gh-<projectID>-<number>`. |
 | Trackers | `IssueRef.source`: `github`, `linear`. |
 

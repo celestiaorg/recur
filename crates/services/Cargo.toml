@@ -17,6 +17,7 @@ recur-provider-codex.workspace = true
 recur-provider-chatgpt.workspace = true
 recur-provider-cursor.workspace = true
 recur-provider-compatible.workspace = true
+recur-provider-opencode.workspace = true
 recur-forge.workspace = true
 recur-issues.workspace = true
 recur-agent.workspace = true

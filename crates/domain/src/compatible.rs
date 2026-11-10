@@ -9,18 +9,19 @@ use serde::{Deserialize, Serialize};
 use crate::Settings;
 use crate::model::{
     PROVIDER_ANTHROPIC, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR,
-    PROVIDER_GEMINI, PROVIDER_OLLAMA, provider_label,
+    PROVIDER_GEMINI, PROVIDER_OLLAMA, PROVIDER_OPENCODE, provider_label,
 };
 use crate::serde_util::{is_false, is_zero};
 use crate::text::kebab_slug;
 
 /// Slugs that collide with Recur's built-in harnesses or reserved session
 /// identifiers. "openai" is allowed: users add it as a compatible endpoint.
-const RESERVED_PROVIDER_SLUGS: [&str; 7] = [
+const RESERVED_PROVIDER_SLUGS: [&str; 8] = [
     PROVIDER_CLAUDE_CODE,
     PROVIDER_CURSOR,
     PROVIDER_CODEX,
     PROVIDER_CHATGPT,
+    PROVIDER_OPENCODE,
     PROVIDER_ANTHROPIC,
     PROVIDER_GEMINI,
     PROVIDER_OLLAMA,

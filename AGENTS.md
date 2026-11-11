@@ -10,7 +10,7 @@ Read before inventing architecture:
 
 - `docs/ARCHITECTURE.md`: crates, layering, view crates, services contract, packaging
 - `docs/bundles.md`: bundle authoring, keybindings, CLI
-- `docs/`: provider docs, `ui-rendering.md` (how recur-ui draws), `FOLLOWUPS.md` (open items)
+- `docs/`: provider docs, `ui-rendering.md` (how recur-ui draws), `backend-design.md` (proposal: headless backend, remote and bot control), `FOLLOWUPS.md` (open items)
 
 ## Layout
 

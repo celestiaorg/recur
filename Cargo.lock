@@ -8091,6 +8091,7 @@ dependencies = [
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
  "parking_lot",
+ "recur-content",
  "recur-domain",
  "recur-platform",
  "recur-services",
@@ -8902,6 +8903,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tracing",
+ "url",
 ]
 
 [[package]]
@@ -9054,7 +9056,6 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "url",
 ]
 
 [[package]]

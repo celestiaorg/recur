@@ -906,7 +906,7 @@ impl Element for Flow {
                 copies: self.atoms.iter().map(|a| a.copy.clone()).collect(),
                 bounds,
             });
-            recur_ui::selection::register(key, "\n", bounds, geom, window, cx);
+            recur_ui::selection::register(key, "\n", bounds, geom, None, window, cx);
         }
         if state.placed_at.is_none() {
             // A new element (a parked shell laid out again) has nothing placed: place the

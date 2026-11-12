@@ -54,6 +54,7 @@ pub mod composer;
 pub mod composer_doc;
 pub mod composer_undo;
 pub mod dock;
+mod find;
 pub mod flow;
 pub mod glance;
 pub mod heap;

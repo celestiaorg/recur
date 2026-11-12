@@ -552,6 +552,7 @@ pub struct AgentChat {
     pub(crate) live_blocks: usize,
     pub(crate) chat_in_view: Vec<String>,
     pub(crate) reveal_key: String,
+    pub(crate) find: Option<crate::find::ChatFind>,
     pub(crate) copied_row: Option<String>,
     pub(crate) copied_bubble: Option<String>,
     pub(crate) copy_timer: Option<Task<()>>,
@@ -771,6 +772,7 @@ impl AgentChat {
             live_blocks: 0,
             chat_in_view: Vec::new(),
             reveal_key: String::new(),
+            find: None,
             copied_row: None,
             copied_bubble: None,
             copy_timer: None,
@@ -905,6 +907,7 @@ impl AgentChat {
             self.chat_hydrated.clear();
             self.chat_in_view.clear();
             self.block_ranges.borrow_mut().clear();
+            self.close_find(cx);
         }
         if was_windowed != self.window_chat() && !self.window_chat() {
             self.chat_hydrated.clear();
@@ -1525,6 +1528,11 @@ impl AgentChat {
             &self.props.reset_key,
             &format!("fact:{fact_id}"),
         );
+        self.reveal_block(key, cx)
+    }
+
+    /// Brings a transcript block to the top of the scrollport, hydrating it.
+    pub(crate) fn reveal_block(&mut self, key: String, cx: &mut Context<Self>) -> Task<bool> {
         self.reveal_key = key.clone();
         cx.spawn(async move |this, cx| {
             let frame = Duration::from_millis(16);

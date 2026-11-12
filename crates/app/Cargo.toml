@@ -18,6 +18,7 @@ recur-services.workspace = true
 recur-domain.workspace = true
 recur-platform.workspace = true
 recur-view-core.workspace = true
+recur-content.workspace = true
 recur-view-sidebar.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true

@@ -728,7 +728,6 @@ impl Observatory {
                 .flex_1()
                 .min_h_0()
                 .w_full(),
-            cx,
         );
         let foot = self
             .commit_foot

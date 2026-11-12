@@ -60,7 +60,7 @@ impl Observatory {
     fn on_window_key(&mut self, ev: &KeystrokeEvent, window: &mut Window, cx: &mut Context<Self>) {
         let k = &ev.keystroke;
         let m = k.modifiers;
-        let mod_ = m.secondary();
+        let mod_ = m.secondary(cx);
         let lower = k.key.to_lowercase();
         let typing = in_context(ev, &TYPING_CONTEXTS);
         let in_term = self.in_dock(window, cx);

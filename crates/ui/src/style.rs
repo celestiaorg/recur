@@ -326,29 +326,22 @@ pub fn window_root(content: impl IntoElement) -> Div {
 }
 
 /// `entity` as a cached view laid out at `style` (see `docs/ARCHITECTURE.md`, "Frame
-/// cost"). It reads the entity first: GPUI only invalidates a view the window saw accessed in a
-/// draw, and a cached view's own render does not count when the entity was already touched
-/// earlier in that frame (as on the frame its parent created it). Without the read, a view
-/// reused from then on drops its own notifies until something refreshes the whole window.
+/// cost").
 pub fn cached_view<V: gpui_kit::Render>(
     entity: &gpui_kit::Entity<V>,
     style: gpui_kit::StyleRefinement,
-    cx: &App,
 ) -> gpui_kit::AnyElement {
-    let _ = entity.read(cx);
     entity.clone().cached(style).into_any_element()
 }
 
 /// `entity` as an isolated view laid out at `style`: a notify of it, or of a view inside it,
 /// renders only it, in place, while the frame replays its ancestors (Recur's gpui-pre patch,
 /// `vendor/README.md`). Its size comes from `style`, never its content: a view that needs
-/// another size notifies its host. Reads the entity first, as [`cached_view`] does.
+/// another size notifies its host.
 pub fn isolated_view<V: gpui_kit::Render>(
     entity: &gpui_kit::Entity<V>,
     style: gpui_kit::StyleRefinement,
-    cx: &App,
 ) -> gpui_kit::AnyElement {
-    let _ = entity.read(cx);
     entity.clone().isolated(style).into_any_element()
 }
 

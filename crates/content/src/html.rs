@@ -465,7 +465,7 @@ impl HtmlPreview {
     fn render_page(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
         use gpui_kit::{
             InteractiveElement as _, KeyDownEvent, MouseButton, MouseDownEvent, MouseMoveEvent,
-            MouseUpEvent, ScrollWheelEvent, StatefulInteractiveElement as _,
+            MouseUpEvent, ScrollEvent, StatefulInteractiveElement as _,
         };
         use recur_ui::guard::Guarded as _;
         for img in self.stale.drain(..) {
@@ -555,7 +555,7 @@ impl HtmlPreview {
                     &e.modifiers,
                 );
             }))
-            .on_scroll_wheel(cx.guarded_listener(|p, e: &ScrollWheelEvent, window, _| {
+            .on_scroll(cx.guarded_listener(|p, e: &ScrollEvent, window, _| {
                 let d = e.delta.pixel_delta(window.line_height());
                 p.send(
                     json!({"type": "wheel", "dx": -f32::from(d.x), "dy": -f32::from(d.y)}),
@@ -572,7 +572,7 @@ impl HtmlPreview {
                     cx.stop_propagation();
                     return;
                 }
-                let cmd = k.modifiers.secondary();
+                let cmd = k.modifiers.secondary(cx);
                 let key = match k.key.as_str() {
                     "space" => " ".to_string(),
                     "enter" => "Enter".into(),

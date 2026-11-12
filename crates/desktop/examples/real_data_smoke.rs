@@ -1403,9 +1403,11 @@ async fn until(
 
 fn keys(cx: &mut AsyncApp, window: AnyWindowHandle, keys: &str) {
     for k in keys.split(' ') {
-        if let Ok(ks) = Keystroke::parse(k) {
-            let _ = cx.update_window(window, |_, window, cx| window.dispatch_keystroke(ks, cx));
-        }
+        let _ = cx.update_window(window, |_, window, cx| {
+            if let Ok(ks) = Keystroke::parse_with_os(k, cx.platform_info().os) {
+                window.dispatch_keystroke(ks, cx);
+            }
+        });
     }
 }
 
@@ -1871,14 +1873,15 @@ fn wheel_at(
     at: gpui_kit::Point<gpui_kit::Pixels>,
     dy: f32,
 ) {
-    let ev = gpui_kit::ScrollWheelEvent {
+    let ev = gpui_kit::ScrollEvent {
         position: at,
         delta: gpui_kit::ScrollDelta::Pixels(point(px(0.), px(dy))),
         modifiers: Default::default(),
         touch_phase: gpui_kit::TouchPhase::Moved,
+        ..Default::default()
     };
     let _ = cx.update_window(window, |_, window, cx| {
-        window.dispatch_event(gpui_kit::PlatformInput::ScrollWheel(ev), cx);
+        window.dispatch_event(gpui_kit::PlatformInput::Scroll(ev), cx);
     });
 }
 

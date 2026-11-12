@@ -1657,11 +1657,11 @@ impl crate::obs::Observatory {
 mod tests {
     use super::{DockKey, dock_key};
 
-    fn k(s: &str) -> gpui_kit::Keystroke {
+    fn k(s: &'static str) -> gpui_kit::Keystroke {
         gpui_kit::Keystroke::parse(s).expect("keystroke")
     }
 
-    fn on(s: &str, mac: bool) -> Option<DockKey> {
+    fn on(s: &'static str, mac: bool) -> Option<DockKey> {
         dock_key(&k(s), mac, false, false, true)
     }
 

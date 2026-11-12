@@ -167,9 +167,11 @@ async fn frames(cx: &mut AsyncApp, window: AnyWindowHandle, n: usize) {
 }
 
 fn key(cx: &mut AsyncApp, window: AnyWindowHandle, k: &str) -> bool {
-    let ks = Keystroke::parse(k).expect("keystroke");
-    cx.update_window(window, |_, window, cx| window.dispatch_keystroke(ks, cx))
-        .unwrap_or(false)
+    cx.update_window(window, |_, window, cx| {
+        let ks = Keystroke::parse_with_os(k, cx.platform_info().os).expect("keystroke");
+        window.dispatch_keystroke(ks, cx)
+    })
+    .unwrap_or(false)
 }
 
 /// Frames until `f` holds, for up to `secs`.

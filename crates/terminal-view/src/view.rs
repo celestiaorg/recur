@@ -16,7 +16,7 @@ use futures::channel::mpsc;
 use gpui_kit::{
     App, Bounds, ClipboardItem, Context, Entity, EventEmitter, FocusHandle, Focusable, Global,
     InteractiveElement, IntoElement, KeyBinding, KeyDownEvent, MouseButton, ParentElement, Pixels,
-    Point, Render, ScrollDelta, ScrollWheelEvent, Styled, Subscription, Task, UTF16Selection,
+    Point, Render, ScrollDelta, ScrollEvent, Styled, Subscription, Task, UTF16Selection,
     WeakEntity, Window, div, px,
 };
 use recur_term::input::{
@@ -1284,7 +1284,7 @@ impl TerminalView {
         cx.notify();
     }
 
-    pub(crate) fn scroll_wheel(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
+    pub(crate) fn scroll_wheel(&mut self, event: &ScrollEvent, cx: &mut Context<Self>) {
         let Some(l) = self.layout else { return };
         let now = cx.background_executor().now();
         let (dy, pixels) = match event.delta {

@@ -170,7 +170,6 @@ impl AgentChat {
             gpui_kit::StyleRefinement::default()
                 .flex_none()
                 .size(px(crate::meter::METER_PX)),
-            cx,
         );
         let mut actions = div()
             .ml_auto()
@@ -257,7 +256,7 @@ impl AgentChat {
             Some(l) => {
                 let mut style = gpui_kit::StyleRefinement::default().flex_1().min_w_0();
                 style.align_self = Some(gpui_kit::AlignSelf::Stretch);
-                recur_ui::style::cached_view(l, style, cx)
+                recur_ui::style::cached_view(l, style)
             }
             None => div().min_w_0().into_any_element(),
         };

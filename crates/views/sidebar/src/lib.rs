@@ -1389,7 +1389,6 @@ impl Sidebar {
             .child(recur_ui::isolated::FieldView::element(
                 &dot,
                 div().size(px(14.)).style().clone(),
-                cx,
             ))
     }
 

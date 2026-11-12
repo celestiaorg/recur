@@ -255,7 +255,7 @@ fn sticky_group_headers_stay_above_hovered_pr_row_chrome(cx: &mut TestAppContext
     s.seg("All");
     let h = s.bounds("briefing-h:you").expect("header");
     let scroll = s.bounds("briefing-scroll").expect("scroll");
-    s.cx.simulate_event(gpui::ScrollWheelEvent {
+    s.cx.simulate_event(gpui::ScrollEvent {
         position: scroll.center(),
         delta: gpui::ScrollDelta::Pixels(point(px(0.), px(-20.))),
         ..Default::default()
@@ -305,7 +305,7 @@ fn pr_list_prefixes_titles_with_a_source_icon_and_number_instead_of_a_chip(
     assert!(s.has("pr-people-pop:prh"));
     // Scrolled, the pane fades at the top; the popout stays above the fade.
     let pane = s.bounds("prpane:conv").expect("pane");
-    s.cx.simulate_event(gpui::ScrollWheelEvent {
+    s.cx.simulate_event(gpui::ScrollEvent {
         position: pane.center(),
         delta: gpui::ScrollDelta::Pixels(point(px(0.), px(-80.))),
         ..Default::default()
@@ -514,7 +514,7 @@ fn pr_list_selects_rows_and_runs_bulk_actions(cx: &mut TestAppContext) {
     );
     s.prs_nav();
     s.seg("All");
-    let cmd = Modifiers::secondary_key();
+    let cmd = s.cx.update(|_, cx| Modifiers::secondary_key(cx));
     let shift = Modifiers {
         shift: true,
         ..Default::default()

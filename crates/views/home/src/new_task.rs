@@ -1349,7 +1349,9 @@ impl NewTaskModal {
         let repo = self.repo(cx);
         let repo_opts: Vec<SelectOption> = git
             .iter()
-            .map(|p| SelectOption::new(p.id.clone(), p.name.clone()))
+            .map(|p| {
+                SelectOption::new(p.id.clone(), p.name.clone()).pic(p.pic.clone(), p.color.clone())
+            })
             .collect();
         let repo_val = self.repo_id.clone();
         let slot: recur_ui::widgets::select::IconSlot = match repo {

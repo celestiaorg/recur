@@ -26,7 +26,7 @@ use gpui_kit::{
     AnyElement, App, Bounds, ClipboardItem, CursorStyle, Element, ElementId, Entity, EntityId,
     FocusHandle, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId, InteractiveElement,
     IntoElement, KeyDownEvent, LayoutId, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    ParentElement, Pixels, Point, Styled, Window, div,
+    ParentElement, Pixels, Point, ScrollHandle, Styled, Window, div, px,
 };
 
 /// What a text element gives the scope: its geometry and text, from its current layout.
@@ -49,6 +49,8 @@ struct Item {
     pass: u64,
     geom: Rc<dyn Geometry>,
     hitbox: Hitbox,
+    /// The scroller clipping the item, which a drag from it scrolls toward the pointer.
+    scroller: Option<ScrollHandle>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,6 +77,11 @@ pub struct State {
     /// The anchor's span for word and item granularity (the drag extends from it).
     anchor_span: Option<(Pos, Pos)>,
     drag: Option<Granularity>,
+    /// Where the drag's pointer last moved to; `None` until it moves, so a click never scrolls.
+    pointer: Option<Point<Pixels>>,
+    /// Whether the press landed inside the anchor's scroller; a drag from beside it never
+    /// scrolls it, as in browsers.
+    pressed_in_scroller: bool,
     disabled: bool,
     handle: Option<FocusHandle>,
     /// Each selected item's range, computed once per change of items or selection.
@@ -91,6 +98,7 @@ pub fn register(
     sep: &'static str,
     bounds: Bounds<Pixels>,
     geom: Rc<dyn Geometry>,
+    scroller: Option<ScrollHandle>,
     window: &mut Window,
     cx: &mut App,
 ) {
@@ -117,6 +125,7 @@ pub fn register(
                 pass,
                 geom,
                 hitbox,
+                scroller,
             },
         );
     });
@@ -343,7 +352,7 @@ pub fn scope(
     })
     .on_key_down(move |e: &KeyDownEvent, window, cx| {
         let k = &e.keystroke;
-        if !k.modifiers.secondary() || k.modifiers.shift || k.modifiers.alt {
+        if !k.modifiers.secondary(cx) || k.modifiers.shift || k.modifiers.alt {
             return;
         }
         match k.key.as_str() {
@@ -417,6 +426,11 @@ fn press(state: &Entity<State>, e: &MouseDownEvent, window: &mut Window, cx: &mu
             s.anchor_span = Some((a, f));
         }
         s.drag = Some(g);
+        s.pointer = None;
+        s.pressed_in_scroller = s
+            .anchor
+            .and_then(|a| s.items.get(&a.key)?.scroller.as_ref())
+            .is_some_and(|h| h.bounds().contains(&e.position));
         before
     });
     if let Some(f) = state.read(cx).handle.clone() {
@@ -433,6 +447,7 @@ fn press(state: &Entity<State>, e: &MouseDownEvent, window: &mut Window, cx: &mu
 fn drag_to(state: &Entity<State>, p: Point<Pixels>, cx: &mut App) {
     let views = state.update(cx, |s, _| {
         s.ranges.take();
+        s.pointer = Some(p);
         let (Some(g), Some((a0, a1))) = (s.drag, s.anchor_span) else {
             return Vec::new();
         };
@@ -455,6 +470,36 @@ fn drag_to(state: &Entity<State>, p: Point<Pixels>, cx: &mut App) {
         s.views()
     });
     notify_views(&views, cx);
+}
+
+/// Where a drag scrolls the anchor's scroller this frame: toward the pointer, faster the
+/// further past the scroller's edge it is. `None` when the pointer is inside or the scroller
+/// is already at its end on that side.
+fn autoscroll_delta(state: &State) -> Option<(ScrollHandle, Point<Pixels>, Option<EntityId>)> {
+    state.drag?;
+    if !state.pressed_in_scroller {
+        return None;
+    }
+    let p = state.pointer?;
+    let item = state.items.get(&state.anchor?.key)?;
+    let handle = item.scroller.clone()?;
+    let (b, offset, max) = (handle.bounds(), handle.offset(), handle.max_offset());
+    let axis = |v: Pixels, lo: Pixels, hi: Pixels, offset: Pixels, max: Pixels| {
+        let past = if v < lo {
+            f32::from(v - lo)
+        } else if v > hi {
+            f32::from(v - hi)
+        } else {
+            return offset;
+        };
+        let step = past.signum() * (past.abs() * 0.25 + 2.);
+        (offset - px(step)).clamp(-max.abs(), px(0.))
+    };
+    let next = Point {
+        x: axis(p.x, b.left(), b.right(), offset.x, max.x),
+        y: axis(p.y, b.top(), b.bottom(), offset.y, max.y),
+    };
+    (next != offset).then_some((handle, next, item.view))
 }
 
 /// Clears the selection (a press outside the scope).
@@ -586,6 +631,22 @@ impl Element for Host {
                     st.update(cx, |s, _| s.drag = None);
                 }
             });
+            if autoscroll_delta(state.read(cx)).is_some() {
+                let st = state.clone();
+                window.on_next_frame(move |window, cx| {
+                    let Some((handle, next, view)) = autoscroll_delta(st.read(cx)) else {
+                        return;
+                    };
+                    handle.set_offset(next);
+                    if let Some(v) = view {
+                        cx.notify(v);
+                    }
+                    if let Some(p) = st.read(cx).pointer {
+                        drag_to(&st, p, cx);
+                    }
+                    window.refresh();
+                });
+            }
         }
         if state.read(cx).anchor.is_some() {
             window.on_mouse_event(move |e: &MouseDownEvent, phase, window, cx| {

@@ -605,6 +605,8 @@ impl ProjectView {
                 "copy-files-pat",
                 recur_ui::style::card(t.pane, copy_border, 6.)
                     .debug_selector(|| "inp:Files to copy".into())
+                    .flex()
+                    .flex_col()
                     .w_full()
                     .min_h(px(88.))
                     .max_h(px(220.))

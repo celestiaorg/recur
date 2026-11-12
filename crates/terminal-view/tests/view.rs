@@ -4,8 +4,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
-    AppContext, Entity, Modifiers, MouseButton, Point, ScrollDelta, ScrollWheelEvent,
-    TestAppContext, TouchPhase, VisualTestContext, point, px,
+    AppContext, Entity, Modifiers, MouseButton, Point, ScrollDelta, ScrollEvent, TestAppContext,
+    TouchPhase, VisualTestContext, point, px,
 };
 use parking_lot::Mutex;
 use recur_term::screen::{Rgba, Theme};
@@ -499,11 +499,12 @@ fn wheel_scrolls_the_scrollback(cx: &mut TestAppContext) {
     assert!(h.view.read_with(h.cx, |v, _| v.screen().at_bottom()));
     let pos = h.cell(2, 2);
     h.cx.simulate_mouse_move(pos, None, Modifiers::none());
-    h.cx.simulate_event(ScrollWheelEvent {
+    h.cx.simulate_event(ScrollEvent {
         position: pos,
         delta: ScrollDelta::Lines(point(0., 3.)),
         modifiers: Modifiers::none(),
         touch_phase: TouchPhase::Moved,
+        ..Default::default()
     });
     h.settle();
     assert!(
@@ -565,11 +566,12 @@ fn small_trackpad_deltas_accumulate(cx: &mut TestAppContext) {
         if i == steps - 1 {
             assert!(h.view.read_with(h.cx, |v, _| v.screen().at_bottom()));
         }
-        h.cx.simulate_event(ScrollWheelEvent {
+        h.cx.simulate_event(ScrollEvent {
             position: pos,
             delta: ScrollDelta::Pixels(point(px(0.), px(2.))),
             modifiers: Modifiers::none(),
             touch_phase: TouchPhase::Moved,
+            ..Default::default()
         });
         h.settle();
     }
@@ -608,11 +610,12 @@ fn overlay_scrollbar_drags_pages_and_hides(cx: &mut TestAppContext) {
 
     let pos = h.cell(2, 2);
     h.cx.simulate_mouse_move(pos, None, Modifiers::none());
-    h.cx.simulate_event(ScrollWheelEvent {
+    h.cx.simulate_event(ScrollEvent {
         position: pos,
         delta: ScrollDelta::Lines(point(0., 1.)),
         modifiers: Modifiers::none(),
         touch_phase: TouchPhase::Moved,
+        ..Default::default()
     });
     h.cx.run_until_parked();
     assert_eq!(top(&mut h), bottom - 1, "a wheel line scrolls a row");

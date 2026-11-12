@@ -81,11 +81,12 @@ async fn the_wheel_redraws_the_cached_transcript(cx: &mut TestAppContext) {
     h.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
     h.cx.run_until_parked();
     recur_ui::guard::count_renders(true);
-    h.cx.simulate_event(gpui::ScrollWheelEvent {
+    h.cx.simulate_event(gpui::ScrollEvent {
         position: at,
         delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(200.))),
         modifiers: gpui::Modifiers::none(),
         touch_phase: gpui::TouchPhase::Moved,
+        ..Default::default()
     });
     h.cx.run_until_parked();
     let counts = recur_ui::guard::take_render_counts();
@@ -100,7 +101,6 @@ async fn the_wheel_redraws_the_cached_transcript(cx: &mut TestAppContext) {
 /// A cached child its parent builds while rendering.
 struct Lazy {
     child: Option<gpui::Entity<Leaf>>,
-    plain: bool,
 }
 
 struct Leaf;
@@ -121,22 +121,19 @@ impl gpui_kit::Render for Lazy {
         _: &mut gpui_kit::Window,
         cx: &mut gpui_kit::Context<Self>,
     ) -> impl gpui_kit::IntoElement {
-        use gpui_kit::{AppContext as _, IntoElement as _, ParentElement as _, Styled as _};
+        use gpui_kit::{AppContext as _, ParentElement as _, Styled as _};
         let child = self.child.get_or_insert_with(|| cx.new(|_| Leaf)).clone();
         let style = gpui_kit::StyleRefinement::default().size_full();
-        gpui_kit::div().size_full().child(if self.plain {
-            child.cached(style).into_any_element()
-        } else {
-            recur_ui::style::cached_view(&child, style, cx)
-        })
+        gpui_kit::div()
+            .size_full()
+            .child(recur_ui::style::cached_view(&child, style))
     }
 }
 
-/// How often the leaf renders after its first frames when it notifies, built `plain` (GPUI's
-/// `cached`) or through `cached_view`.
-fn leaf_renders_on_notify(cx: &mut TestAppContext, plain: bool) -> u32 {
+/// How often the leaf renders after its first frames when it notifies.
+fn leaf_renders_on_notify(cx: &mut TestAppContext) -> u32 {
     init(cx);
-    let (host, cx) = cx.add_window_view(move |_, _| Lazy { child: None, plain });
+    let (host, cx) = cx.add_window_view(move |_, _| Lazy { child: None });
     cx.run_until_parked();
     for _ in 0..3 {
         cx.update(|window, cx| {
@@ -157,14 +154,7 @@ fn leaf_renders_on_notify(cx: &mut TestAppContext, plain: bool) -> u32 {
 
 #[gpui::test]
 async fn a_cached_view_built_in_its_parents_render_redraws_on_notify(cx: &mut TestAppContext) {
-    assert!(leaf_renders_on_notify(cx, false) >= 1);
-}
-
-/// Why `cached_view` reads the entity: GPUI drops the notify of a cached view built in its
-/// parent's render. If this starts failing, GPUI fixed it and the read can go.
-#[gpui::test]
-async fn gpui_drops_notifies_of_a_lazily_built_cached_view(cx: &mut TestAppContext) {
-    assert_eq!(leaf_renders_on_notify(cx, true), 0);
+    assert!(leaf_renders_on_notify(cx) >= 1);
 }
 
 #[gpui::test]

@@ -959,7 +959,7 @@ impl Observatory {
                     let k = &e.keystroke;
                     let m = k.modifiers;
                     let typing = o.draft_edit.is_some();
-                    if o.on_files_key(&k.key, m.secondary(), m.alt, m.shift, typing, window, cx) {
+                    if o.on_files_key(&k.key, m.secondary(cx), m.alt, m.shift, typing, window, cx) {
                         cx.stop_propagation();
                     }
                 }),

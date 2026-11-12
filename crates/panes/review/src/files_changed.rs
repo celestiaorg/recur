@@ -1157,7 +1157,6 @@ impl FilesChangedView {
                     .child(recur_ui::style::cached_view(
                         &self.list,
                         gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
-                        cx,
                     )),
             )
             .into_any_element()
@@ -1370,7 +1369,6 @@ impl FilesChangedView {
                         .flex_1()
                         .min_h_0()
                         .min_w_0(),
-                    cx,
                 ))
                 .child(pane_probe)
                 .children(if self.note_portals_here {

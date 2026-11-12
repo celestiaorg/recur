@@ -327,7 +327,6 @@ impl AgentChat {
                     .child(recur_ui::isolated::FieldView::element(
                         &self.think_dots,
                         div().flex_none().w(px(23.)).h(px(5.)).style().clone(),
-                        cx,
                     ))
                     .child(label_el),
             )

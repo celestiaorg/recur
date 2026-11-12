@@ -1,8 +1,8 @@
-diff --git a/rust/vendor/gpui-pre-linux/src/linux/platform.rs b/rust/vendor/gpui-pre-linux/src/linux/platform.rs
-index 1fd41390..a59a7a84 100644
---- a/rust/vendor/gpui-pre-linux/src/linux/platform.rs
-+++ b/rust/vendor/gpui-pre-linux/src/linux/platform.rs
-@@ -1332,6 +1332,8 @@ pub(super) fn cursor_style_to_icon_names(style: CursorStyle) -> &'static [&'stat
+diff --git a/vendor/gpui-pre-linux/src/linux/platform.rs b/vendor/gpui-pre-linux/src/linux/platform.rs
+index b24300bbc..e0fe2707c 100644
+--- a/vendor/gpui-pre-linux/src/linux/platform.rs
++++ b/vendor/gpui-pre-linux/src/linux/platform.rs
+@@ -1386,6 +1386,8 @@ pub(super) fn cursor_style_to_icon_names(style: CursorStyle) -> &'static [&'stat
          CursorStyle::DragLink => &["alias"],
          CursorStyle::DragCopy => &["copy"],
          CursorStyle::ContextualMenu => &["context-menu"],
@@ -11,10 +11,10 @@ index 1fd41390..a59a7a84 100644
      }
  }
  
-diff --git a/rust/vendor/gpui-pre-linux/src/linux/wayland.rs b/rust/vendor/gpui-pre-linux/src/linux/wayland.rs
-index cbc962bc..746faa93 100644
---- a/rust/vendor/gpui-pre-linux/src/linux/wayland.rs
-+++ b/rust/vendor/gpui-pre-linux/src/linux/wayland.rs
+diff --git a/vendor/gpui-pre-linux/src/linux/wayland.rs b/vendor/gpui-pre-linux/src/linux/wayland.rs
+index cbc962bcf..746faa93c 100644
+--- a/vendor/gpui-pre-linux/src/linux/wayland.rs
++++ b/vendor/gpui-pre-linux/src/linux/wayland.rs
 @@ -38,5 +38,7 @@ pub(super) fn to_shape(style: CursorStyle) -> Shape {
          CursorStyle::DragLink => Shape::Alias,
          CursorStyle::DragCopy => Shape::Copy,

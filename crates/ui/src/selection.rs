@@ -352,7 +352,7 @@ pub fn scope(
     })
     .on_key_down(move |e: &KeyDownEvent, window, cx| {
         let k = &e.keystroke;
-        if !k.modifiers.secondary() || k.modifiers.shift || k.modifiers.alt {
+        if !k.modifiers.secondary(cx) || k.modifiers.shift || k.modifiers.alt {
             return;
         }
         match k.key.as_str() {

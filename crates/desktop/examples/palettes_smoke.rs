@@ -198,8 +198,10 @@ async fn frames(cx: &mut AsyncApp, window: AnyWindowHandle, n: usize) {
 
 fn keys(cx: &mut AsyncApp, window: AnyWindowHandle, keys: &str) {
     for k in keys.split(' ') {
-        let ks = Keystroke::parse(k).expect("keystroke");
-        let _ = cx.update_window(window, |_, window, cx| window.dispatch_keystroke(ks, cx));
+        let _ = cx.update_window(window, |_, window, cx| {
+            let ks = Keystroke::parse_with_os(k, cx.platform_info().os).expect("keystroke");
+            window.dispatch_keystroke(ks, cx)
+        });
     }
 }
 

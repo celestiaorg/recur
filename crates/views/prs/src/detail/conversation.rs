@@ -1753,7 +1753,6 @@ impl PrDetail {
                     .w_full()
                     .flex_none()
                     .h(px(h)),
-                cx,
             );
         }
         let el = self.timeline_item(c, items, pr, window, cx);
@@ -1816,7 +1815,6 @@ impl PrDetail {
                                     .w_full()
                                     .flex_none()
                                     .h(px(h)),
-                                cx,
                             )
                         }
                         None if windowed => {

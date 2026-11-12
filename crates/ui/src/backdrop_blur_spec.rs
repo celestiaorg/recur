@@ -42,19 +42,19 @@ struct Host {
 }
 
 impl Render for Host {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
             .relative()
             .bg(gpui_kit::white())
-            .child(isolated_view(&self.field, page_style(), cx))
+            .child(isolated_view(&self.field, page_style()))
             .child(
                 div()
                     .absolute()
                     .top_0()
                     .left_0()
                     .size_full()
-                    .child(cached_view(&self.overlay, page_style(), cx)),
+                    .child(cached_view(&self.overlay, page_style())),
             )
     }
 }

@@ -6,8 +6,8 @@ use gpui_kit::{
     App, Bounds, ContentMask, CursorStyle, DispatchPhase, Element, ElementId, ElementInputHandler,
     Entity, Font, FontFallbacks, FontFeatures, FontStyle, FontWeight, GlobalElementId, Hitbox,
     HitboxBehavior, InspectorElementId, IntoElement, LayoutId, MouseDownEvent, MouseExitEvent,
-    MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent, SharedString, Style, TextRun,
-    Window, fill, point, px, relative, rgba, size,
+    MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollEvent, SharedString, Style, TextRun, Window,
+    fill, point, px, relative, rgba, size,
 };
 use recur_term::screen::{CursorShape, Frame, Glyph, Rgba, UnderlineStyle};
 
@@ -430,7 +430,7 @@ impl Element for TerminalElement {
             }
         });
         let (v, hitbox) = (self.view.clone(), grid_hitbox.clone());
-        window.on_mouse_event(move |e: &ScrollWheelEvent, phase, window, cx| {
+        window.on_mouse_event(move |e: &ScrollEvent, phase, window, cx| {
             if phase != DispatchPhase::Bubble || !hitbox.should_handle_scroll(window) {
                 return;
             }

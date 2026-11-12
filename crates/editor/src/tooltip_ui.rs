@@ -11,7 +11,7 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, AvailableSpace, Bounds, Context, Div, Element, ElementId, GlobalElementId,
     Hsla, InspectorElementId, InteractiveElement, IntoElement, LayoutId, MouseButton,
-    ParentElement, Pixels, ScrollWheelEvent, SharedString, Size, StatefulInteractiveElement, Style,
+    ParentElement, Pixels, ScrollEvent, SharedString, Size, StatefulInteractiveElement, Style,
     Styled, Window, deferred, div, point, px, relative, size,
 };
 use recur_ui::shadow::{css_box_shadow, with_shadow};
@@ -562,7 +562,7 @@ impl EditorView {
             ))
             .h(px(list_h))
             .overflow_hidden()
-            .on_scroll_wheel(move |e: &ScrollWheelEvent, _, cx| {
+            .on_scroll(move |e: &ScrollEvent, _, cx| {
                 cx.stop_propagation();
                 let d = f32::from(e.delta.pixel_delta(px(OPTION_HEIGHT)).y);
                 ent2.update(cx, |v, cx| {
@@ -905,7 +905,7 @@ impl EditorView {
             .flex_col()
             .min_h_0()
             .on_any_mouse_down(|_, _, cx| cx.stop_propagation())
-            .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
+            .on_scroll(|_, _, cx| cx.stop_propagation())
             .on_hover(move |hovered: &bool, _, cx| {
                 let hovered = *hovered;
                 ent.update(cx, |v, cx| {

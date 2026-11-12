@@ -396,7 +396,7 @@ impl PrList {
     /// ⌘-click toggles a row, shift-click selects from the anchor to it in drawn order, and a
     /// plain click opens it.
     fn click_row(&mut self, id: &str, m: Modifiers, cx: &mut Context<Self>) {
-        if !m.shift && !m.secondary() {
+        if !m.shift && !m.secondary(cx) {
             self.open(id, cx);
             return;
         }

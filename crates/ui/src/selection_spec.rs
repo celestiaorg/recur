@@ -267,7 +267,7 @@ fn a_drag_past_a_scrollers_edge_scrolls_it_and_extends_the_selection(cx: &mut Te
 }
 
 #[gpui_kit::test]
-fn a_click_beside_a_scroller_does_not_scroll_it(cx: &mut TestAppContext) {
+fn a_press_beside_a_scroller_does_not_scroll_it(cx: &mut TestAppContext) {
     cx.update(|cx| {
         gpui_kit::init(cx);
         crate::init(cx);
@@ -284,11 +284,20 @@ fn a_click_beside_a_scroller_does_not_scroll_it(cx: &mut TestAppContext) {
         gpui_kit::MouseButton::Left,
         gpui_kit::Modifiers::none(),
     );
+    cx.simulate_mouse_move(
+        point(px(301.), px(46.)),
+        Some(gpui_kit::MouseButton::Left),
+        gpui_kit::Modifiers::none(),
+    );
     cx.run_until_parked();
     for _ in 0..10 {
         cx.update(|window, cx| window.simulate_next_frame(cx));
         cx.run_until_parked();
     }
     let scroll = root.read_with(cx, |r, _| r.scroll.clone());
-    assert_eq!(scroll.offset().x, px(0.), "a click alone never scrolls");
+    assert_eq!(
+        scroll.offset().x,
+        px(0.),
+        "a press beside the scroller never scrolls it"
+    );
 }

@@ -79,6 +79,9 @@ pub struct State {
     drag: Option<Granularity>,
     /// Where the drag's pointer last moved to; `None` until it moves, so a click never scrolls.
     pointer: Option<Point<Pixels>>,
+    /// Whether the press landed inside the anchor's scroller; a drag from beside it never
+    /// scrolls it, as in browsers.
+    pressed_in_scroller: bool,
     disabled: bool,
     handle: Option<FocusHandle>,
     /// Each selected item's range, computed once per change of items or selection.
@@ -424,6 +427,10 @@ fn press(state: &Entity<State>, e: &MouseDownEvent, window: &mut Window, cx: &mu
         }
         s.drag = Some(g);
         s.pointer = None;
+        s.pressed_in_scroller = s
+            .anchor
+            .and_then(|a| s.items.get(&a.key)?.scroller.as_ref())
+            .is_some_and(|h| h.bounds().contains(&e.position));
         before
     });
     if let Some(f) = state.read(cx).handle.clone() {
@@ -470,6 +477,9 @@ fn drag_to(state: &Entity<State>, p: Point<Pixels>, cx: &mut App) {
 /// is already at its end on that side.
 fn autoscroll_delta(state: &State) -> Option<(ScrollHandle, Point<Pixels>, Option<EntityId>)> {
     state.drag?;
+    if !state.pressed_in_scroller {
+        return None;
+    }
     let p = state.pointer?;
     let item = state.items.get(&state.anchor?.key)?;
     let handle = item.scroller.clone()?;

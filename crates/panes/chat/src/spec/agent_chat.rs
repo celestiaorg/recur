@@ -488,3 +488,62 @@ async fn a_width_drag_holds_the_anchor_block_in_each_frame(cx: &mut TestAppConte
         assert!((now - settled).abs() < 0.5, "{now} vs {settled} at {w}px");
     }
 }
+
+#[gpui::test]
+async fn find_counts_message_text_and_steps_the_current_match(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
+    h.set_messages(vec![
+        AgentMsg {
+            me: true,
+            body: "Where is the cache?".into(),
+            ts: Some(1),
+            ..Default::default()
+        },
+        tool("Read", "{}", "cache cache", 2),
+        AgentMsg {
+            body: "The cache lives in the store. Clear the cache with care.".into(),
+            ts: Some(3),
+            ..Default::default()
+        },
+    ]);
+    let chat = h.chat();
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| c.find(0, window, cx)));
+    h.settle();
+    h.type_text("cache");
+    let label = |h: &mut H| {
+        let chat = h.chat();
+        h.cx.update(|_, cx| {
+            let bar = chat.read(cx).find.as_ref().expect("find").bar.clone();
+            bar.read(cx).count_label(cx)
+        })
+    };
+    let current = |h: &mut H| {
+        let chat = h.chat();
+        h.cx.update(|_, cx| {
+            let c = chat.read(cx);
+            let v = &c.markdown[&format!("{}:m2-md", c.props().reset_key)];
+            let mut hl: Vec<_> = v
+                .read(cx)
+                .highlights()
+                .values()
+                .flatten()
+                .cloned()
+                .collect();
+            hl.sort_by_key(|(r, _)| r.start);
+            hl.iter().map(|(_, cur)| *cur).collect::<Vec<_>>()
+        })
+    };
+    assert_eq!(label(&mut h), "1 / 3");
+    assert_eq!(current(&mut h), vec![false, false]);
+    h.keys("enter");
+    assert_eq!(label(&mut h), "2 / 3");
+    assert_eq!(current(&mut h), vec![true, false]);
+    h.keys("enter");
+    assert_eq!(current(&mut h), vec![false, true]);
+    h.keys("shift-enter");
+    assert_eq!(label(&mut h), "2 / 3");
+    assert_eq!(current(&mut h), vec![true, false]);
+    h.keys("escape");
+    assert!(h.read(|c| !c.find.as_ref().expect("find").open));
+    assert_eq!(current(&mut h), Vec::<bool>::new());
+}

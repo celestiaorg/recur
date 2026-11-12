@@ -11,8 +11,8 @@
 //! first and the shell's key handler covers the chords (`nativeMenuAccelerators`).
 
 use gpui_kit::{
-    Action, App, DummyKeyboardMapper, KeyBinding, KeyBindingContextPredicate, Menu, MenuItem,
-    OsAction, SharedString, SystemMenuType,
+    Action, App, KeyBinding, KeyBindingContextPredicate, Menu, MenuItem, OsAction, SharedString,
+    SystemMenuType,
 };
 use recur_platform::identity::APP_NAME;
 use recur_services::events::{MenuState, MenuThemes};
@@ -234,9 +234,7 @@ pub fn bind_menu_keys(cx: &mut App) {
         } else {
             key.replace("cmd-", "ctrl-")
         };
-        if let Ok(binding) =
-            KeyBinding::load(&key, action, context, false, None, &DummyKeyboardMapper)
-        {
+        if let Ok(binding) = KeyBinding::load(&key, action, context, false, None, cx) {
             cx.bind_keys([binding]);
         }
     }
@@ -251,14 +249,7 @@ pub fn bind_menu_keys(cx: &mut App) {
         ("backspace", "input::Delete"),
     ] {
         if let Ok(action) = cx.build_action(name, None)
-            && let Ok(binding) = KeyBinding::load(
-                key,
-                action,
-                label_only.clone(),
-                false,
-                None,
-                &DummyKeyboardMapper,
-            )
+            && let Ok(binding) = KeyBinding::load(key, action, label_only.clone(), false, None, cx)
         {
             cx.bind_keys([binding]);
         }

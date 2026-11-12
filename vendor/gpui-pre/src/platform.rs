@@ -1323,6 +1323,9 @@ pub trait PlatformWindow: HasWindowHandle + HasDisplayHandle {
     fn on_display_changed(&self, callback: Box<dyn FnMut()>);
     fn on_should_close(&self, callback: Box<dyn FnMut() -> bool>);
     fn on_hit_test_window_control(&self, callback: Box<dyn FnMut() -> Option<WindowControlArea>>);
+    /// Recur: whether the topmost hitbox at a window position is `HitboxBehavior::Native`, for
+    /// platforms that pass those mouse events to native views behind the window's drawing.
+    fn on_hit_test_native(&self, _callback: Box<dyn FnMut(Point<Pixels>) -> bool>) {}
     fn on_close(&self, callback: Box<dyn FnOnce()>);
     fn on_appearance_changed(&self, callback: Box<dyn FnMut()>);
     fn on_button_layout_changed(&self, _callback: Box<dyn FnMut()>) {}
@@ -2149,7 +2152,10 @@ impl PlatformInputHandler {
 
     pub fn bounds_for_range(&mut self, range_utf16: Range<usize>) -> Option<Bounds<Pixels>> {
         self.cx
-            .update(|window, cx| self.handler.bounds_for_range(range_utf16, window, cx))
+            .update(|window, cx| {
+                let b = self.handler.bounds_for_range(range_utf16, window, cx)?;
+                Some(window.zoom_to_platform(b))
+            })
             .ok()
             .flatten()
     }
@@ -2213,6 +2219,7 @@ impl PlatformInputHandler {
         Self::compute_ime_candidate_bounds(marked_range, &selection, |range| {
             self.handler.bounds_for_range(range, window, cx)
         })
+        .map(|b| window.zoom_to_platform(b))
     }
 
     pub fn ime_candidate_bounds(&mut self) -> Option<Bounds<Pixels>> {
@@ -2226,7 +2233,10 @@ impl PlatformInputHandler {
     #[allow(unused)]
     pub fn character_index_for_point(&mut self, point: Point<Pixels>) -> Option<usize> {
         self.cx
-            .update(|window, cx| self.handler.character_index_for_point(point, window, cx))
+            .update(|window, cx| {
+                let point = point.map(|v| v / window.ui_zoom());
+                self.handler.character_index_for_point(point, window, cx)
+            })
             .ok()
             .flatten()
     }
@@ -3095,6 +3105,14 @@ pub enum CursorStyle {
     /// A cursor indicating that the operation will result in a context menu
     /// corresponds to the CSS cursor value `context-menu`
     ContextualMenu,
+
+    /// A magnifying glass cursor indicating that clicking zooms in
+    /// corresponds to the CSS cursor value `zoom-in`
+    ZoomIn,
+
+    /// A magnifying glass cursor indicating that clicking zooms out
+    /// corresponds to the CSS cursor value `zoom-out`
+    ZoomOut,
 }
 
 /// A clipboard item that should be copied to the clipboard

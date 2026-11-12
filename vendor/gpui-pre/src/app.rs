@@ -1424,7 +1424,12 @@ impl App {
     #[inline(always)]
     pub(crate) fn update<R>(&mut self, update: impl FnOnce(&mut Self) -> R) -> R {
         self.start_update();
-        let result = update(self);
+        // Recur: an unwind leaves the update without flushing effects mid-panic.
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| update(self)))
+            .unwrap_or_else(|panic| {
+                self.pending_updates -= 1;
+                std::panic::resume_unwind(panic)
+            });
         self.finish_update();
         result
     }
@@ -3265,7 +3270,17 @@ impl App {
             let root_view = window.root.clone().unwrap();
 
             cx.window_update_stack.push(window.handle.id);
-            update(Some((root_view, &mut window, cx)));
+            // Recur: the window goes back into the app before an unwind leaves the update.
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                update(Some((root_view, &mut window, cx)))
+            }));
+            if let Err(panic) = result {
+                cx.window_update_stack.pop();
+                if let Some(slot) = cx.windows.get_mut(window_id) {
+                    *slot = Some(window);
+                }
+                std::panic::resume_unwind(panic);
+            }
             fn trail(window_id: WindowId, window: Box<Window>, cx: &mut App) -> Option<()> {
                 cx.window_update_stack.pop();
 
@@ -3320,8 +3335,14 @@ impl App {
     ) {
         self.update(|cx| {
             let mut lease = cx.entities.lease_erased(handle, entity_type);
-            update(lease.entity.as_deref_mut().unwrap(), cx);
+            // Recur: the entity goes back into the map before an unwind leaves the update.
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                update(lease.entity.as_deref_mut().unwrap(), cx)
+            }));
             cx.entities.end_lease_erased(handle.entity_id, lease);
+            if let Err(panic) = result {
+                std::panic::resume_unwind(panic);
+            }
         });
     }
 
@@ -3676,7 +3697,12 @@ impl<'a, T> Drop for GpuiBorrow<'a, T> {
         let lease = self.inner.take().unwrap();
         self.app.notify(lease.id);
         self.app.entities.end_lease(lease);
-        self.app.finish_update();
+        // Recur: no effects flush while a panic unwinds through the borrow.
+        if std::thread::panicking() {
+            self.app.pending_updates -= 1;
+        } else {
+            self.app.finish_update();
+        }
     }
 }
 

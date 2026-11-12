@@ -4,7 +4,7 @@
 
 use std::time::{Duration, Instant};
 
-use gpui_kit::{AppContext, Context, Keystroke, ScrollDelta, ScrollWheelEvent, TouchPhase, Window};
+use gpui_kit::{AppContext, Context, Keystroke, ScrollDelta, ScrollEvent, TouchPhase, Window};
 use recur_ui::widgets::{ToastKind, ToastOptions, push_toast};
 
 use crate::shell::Shell;
@@ -44,7 +44,12 @@ pub fn next_zoom(cur: f32, step: Zoom) -> f32 {
 /// The zoom a keystroke asks for: ⌘ on macOS, Ctrl elsewhere, on `=` / `+` / `-` / `0` (GPUI
 /// reports the numpad keys and ⇧= as the same characters).
 pub fn zoom_chord(k: &Keystroke) -> Option<Zoom> {
-    if !k.modifiers.secondary() || k.modifiers.alt {
+    let secondary = if cfg!(target_os = "macos") {
+        k.modifiers.platform
+    } else {
+        k.modifiers.control
+    };
+    if !secondary || k.modifiers.alt {
         return None;
     }
     match k.key.as_str() {
@@ -59,8 +64,12 @@ pub fn zoom_chord(k: &Keystroke) -> Option<Zoom> {
 /// and its momentum never does, so ⌘T pressed while a flick coasts does not zoom. `gesture`
 /// holds the current gesture's answer; Linux and line-based wheels report no phases and
 /// fall back to the live modifiers.
-fn wheel_zooms(gesture: &mut Option<bool>, ev: &ScrollWheelEvent) -> bool {
-    let cmd = ev.modifiers.secondary();
+fn wheel_zooms(gesture: &mut Option<bool>, ev: &ScrollEvent) -> bool {
+    let cmd = if cfg!(target_os = "macos") {
+        ev.modifiers.platform
+    } else {
+        ev.modifiers.control
+    };
     match (ev.delta, ev.touch_phase) {
         (ScrollDelta::Lines(_), _) => cmd,
         (_, TouchPhase::Started) => *gesture.insert(cmd),
@@ -107,7 +116,7 @@ impl Shell {
     /// ⌘ + wheel, seen in the capture phase so no scroller under the pointer takes it.
     pub(crate) fn zoom_wheel(
         &mut self,
-        ev: &ScrollWheelEvent,
+        ev: &ScrollEvent,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -178,7 +187,7 @@ mod tests {
 
     #[test]
     fn momentum_and_mid_gesture_cmd_do_not_zoom() {
-        let ev = |phase, cmd: bool| ScrollWheelEvent {
+        let ev = |phase, cmd: bool| ScrollEvent {
             delta: ScrollDelta::Pixels(gpui_kit::point(gpui_kit::px(0.), gpui_kit::px(4.))),
             touch_phase: phase,
             modifiers: gpui_kit::Modifiers {
@@ -201,7 +210,7 @@ mod tests {
 
     #[test]
     fn chords() {
-        let k = |s: &str| Keystroke::parse(s).unwrap();
+        let k = |s: &str| Keystroke::parse_with_os(s, gpui_kit::OperatingSystem::Mac).unwrap();
         let cmd = if cfg!(target_os = "macos") {
             "cmd"
         } else {

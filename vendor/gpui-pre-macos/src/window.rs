@@ -153,6 +153,10 @@ unsafe fn build_classes() {
                 reset_cursor_rects as extern "C" fn(_, Sel),
             );
             decl.add_method(
+                sel!(hitTest:),
+                hit_test as extern "C" fn(_, Sel, NSPoint) -> *mut AnyObject,
+            );
+            decl.add_method(
                 sel!(pressureChangeWithEvent:),
                 handle_view_event as extern "C" fn(_, Sel, *mut AnyObject),
             );
@@ -422,6 +426,12 @@ unsafe fn build_window_class(name: &CStr, superclass: &AnyClass) -> *const AnyCl
             sel!(canBecomeKeyWindow),
             yes as extern "C" fn(_, Sel) -> Bool,
         );
+        if superclass == class!(NSWindow) {
+            decl.add_method(
+                sel!(_cornerRadius),
+                corner_radius as extern "C" fn(_, Sel) -> f64,
+            );
+        }
         decl.add_method(
             sel!(windowDidResize:),
             window_did_resize as extern "C" fn(_, Sel, *mut AnyObject),
@@ -653,6 +663,10 @@ struct MacWindowState {
     background_executor: BackgroundExecutor,
     native_window: *mut AnyObject,
     native_view: NonNull<AnyObject>,
+    /// Recur: `PlatformWindow::on_hit_test_native`.
+    hit_test_native_callback: Option<Box<dyn FnMut(Point<Pixels>) -> bool>>,
+    /// Recur: the mouse is over a native hitbox, so the view holds no cursor rect.
+    over_native: bool,
     blurred_view: Option<*mut AnyObject>,
     background_appearance: WindowBackgroundAppearance,
     cursor_style: CursorStyle,
@@ -893,7 +907,8 @@ impl MacWindowState {
         let screen_frame = self
             .native_window()
             .screen()
-            .map_or_default(|screen| screen.visibleFrame());
+            .map(|screen| screen.visibleFrame())
+            .unwrap_or_default();
         bounds.size == rect_to_size(screen_frame)
     }
 
@@ -954,7 +969,8 @@ impl MacWindowState {
         let NSSize { width, height } = self
             .native_window()
             .contentView()
-            .map_or_default(|view| view.frame().size);
+            .map(|view| view.frame().size)
+            .unwrap_or_default();
         size(px(width as f32), px(height as f32))
     }
 
@@ -1065,7 +1081,8 @@ impl MacWindow {
             let target_screen = target_screen.or_else(|| NSScreen::mainScreen(marker));
             let screen_frame = target_screen
                 .as_ref()
-                .map_or_default(|screen| screen.frame());
+                .map(|screen| screen.frame())
+            .unwrap_or_default();
 
             let window_rect = NSRect::new(
                 NSPoint::new(
@@ -1115,6 +1132,8 @@ impl MacWindow {
                 background_executor,
                 native_window,
                 native_view: NonNull::new_unchecked(native_view),
+                hit_test_native_callback: None,
+                over_native: false,
                 blurred_view: None,
                 background_appearance: WindowBackgroundAppearance::Opaque,
                 cursor_style: CursorStyle::Arrow,
@@ -2083,6 +2102,10 @@ impl PlatformWindow for MacWindow {
     fn on_hit_test_window_control(&self, _callback: Box<dyn FnMut() -> Option<WindowControlArea>>) {
     }
 
+    fn on_hit_test_native(&self, callback: Box<dyn FnMut(Point<Pixels>) -> bool>) {
+        self.0.as_ref().lock().hit_test_native_callback = Some(callback);
+    }
+
     fn on_appearance_changed(&self, callback: Box<dyn FnMut()>) {
         self.0.lock().appearance_changed_callback = Some(callback);
     }
@@ -2529,6 +2552,19 @@ extern "C" fn yes(_: &AnyObject, _: Sel) -> Bool {
     Bool::YES
 }
 
+/// AppKit's private `-[NSWindow _cornerRadius]`: macOS 26 rounds a window without a toolbar
+/// at 16pt; this keeps the 10pt of earlier releases. Full screen keeps AppKit's own answer.
+extern "C" fn corner_radius(this: &AnyObject, _: Sel) -> f64 {
+    unsafe {
+        let style_mask: NSWindowStyleMask = msg_send![this, styleMask];
+        if style_mask.contains(NSWindowStyleMask::FullScreen) {
+            msg_send![super(this, class!(NSWindow)), _cornerRadius]
+        } else {
+            10.
+        }
+    }
+}
+
 extern "C" fn dealloc_window(this: &AnyObject, _: Sel) {
     unsafe {
         drop_window_state(this);
@@ -2573,7 +2609,13 @@ extern "C" fn reset_cursor_rects(this: &AnyObject, _: Sel) {
         let _: () = msg_send![super(this, class!(NSView)), resetCursorRects];
 
         let window_state = get_window_state(this);
-        let cursor_style = window_state.lock().cursor_style;
+        let (cursor_style, over_native) = {
+            let lock = window_state.lock();
+            (lock.cursor_style, lock.over_native)
+        };
+        if over_native {
+            return;
+        }
 
         let cursor: *mut AnyObject = match cursor_style {
             CursorStyle::Arrow => msg_send![class!(NSCursor), arrowCursor],
@@ -2609,10 +2651,78 @@ extern "C" fn reset_cursor_rects(this: &AnyObject, _: Sel) {
             CursorStyle::DragLink => msg_send![class!(NSCursor), dragLinkCursor],
             CursorStyle::DragCopy => msg_send![class!(NSCursor), dragCopyCursor],
             CursorStyle::ContextualMenu => msg_send![class!(NSCursor), contextualMenuCursor],
+            // macOS 15+; earlier releases fall back to the pointing hand and the arrow.
+            CursorStyle::ZoomIn => {
+                let has_zoom: Bool =
+                    msg_send![class!(NSCursor), respondsToSelector: sel!(zoomInCursor)];
+                if has_zoom.as_bool() {
+                    msg_send![class!(NSCursor), zoomInCursor]
+                } else {
+                    msg_send![class!(NSCursor), pointingHandCursor]
+                }
+            }
+            CursorStyle::ZoomOut => {
+                let has_zoom: Bool =
+                    msg_send![class!(NSCursor), respondsToSelector: sel!(zoomOutCursor)];
+                if has_zoom.as_bool() {
+                    msg_send![class!(NSCursor), zoomOutCursor]
+                } else {
+                    msg_send![class!(NSCursor), arrowCursor]
+                }
+            }
         };
 
         let bounds: NSRect = msg_send![this, bounds];
         let _: () = msg_send![this, addCursorRect: bounds, cursor: cursor];
+    }
+}
+
+/// Recur: GPUI's topmost hitbox at `position` (window coordinates) is a native view's, so
+/// mouse events there go to the native view behind this one.
+fn native_at(window_state: &Rc<Mutex<MacWindowState>>, position: Point<Pixels>) -> bool {
+    // AppKit may hit-test while the state is locked or the callback runs; GPUI keeps the event.
+    let Some(mut callback) = window_state
+        .try_lock()
+        .and_then(|mut lock| lock.hit_test_native_callback.take())
+    else {
+        return false;
+    };
+    let native = callback(position);
+    window_state.lock().hit_test_native_callback = Some(callback);
+    native
+}
+
+extern "C" fn hit_test(this: &AnyObject, _: Sel, point: NSPoint) -> *mut AnyObject {
+    // SAFETY: AppKit hit-tests GPUIView instances on the main thread with a point in the
+    // superview's coordinates; the window state ivar is set when the view is created.
+    unsafe {
+        let window_state = get_window_state(this);
+        let superview: *mut AnyObject = msg_send![this, superview];
+        let in_window: NSPoint =
+            msg_send![superview, convertPoint: point, toView: ptr::null_mut::<AnyObject>()];
+        let height = window_state.try_lock().map(|lock| lock.content_size().height);
+        if let Some(height) = height
+            && native_at(&window_state, convert_mouse_position(in_window, height))
+        {
+            return ptr::null_mut();
+        }
+        msg_send![super(this, class!(NSView)), hitTest: point]
+    }
+}
+
+/// Recur: a native view sets the cursor only outside every cursor rect (WebKit checks
+/// `-[NSApplication _cursorRectCursor]`), so the view drops its own over a native hitbox.
+fn yield_cursor_over_native(this: &AnyObject, position: Point<Pixels>) {
+    // SAFETY: called from a GPUIView's mouse handler on the main thread.
+    let window_state = unsafe { get_window_state(this) };
+    let native = native_at(&window_state, position);
+    let mut lock = window_state.lock();
+    if lock.over_native != native {
+        lock.over_native = native;
+        // SAFETY: the view belongs to this window.
+        unsafe {
+            let _: () = msg_send![lock.native_window, invalidateCursorRectsForView: this];
+        }
     }
 }
 
@@ -2945,6 +3055,14 @@ extern "C" fn handle_view_event(this: &AnyObject, _: Sel, native_event: *mut Any
             PlatformInput::MouseDown(_) => {
                 drop(lock);
                 unsafe {
+                    // Recur: a click on GPUI's view takes the keyboard back from a native view
+                    // (the HTML preview's WKWebView), since the view never accepts first
+                    // responder from AppKit's own click handling.
+                    let window: *mut AnyObject = msg_send![this, window];
+                    let responder: *mut AnyObject = msg_send![window, firstResponder];
+                    if !ptr::eq(responder, this) {
+                        let _: Bool = msg_send![window, makeFirstResponder: this];
+                    }
                     let input_context: *mut AnyObject = msg_send![this, inputContext];
                     if !input_context.is_null() {
                         let _: Bool = msg_send![input_context, handleEvent: native_event];
@@ -3000,10 +3118,17 @@ extern "C" fn handle_view_event(this: &AnyObject, _: Sel, native_event: *mut Any
             _ => {}
         }
 
+        let moved_to = match &event {
+            PlatformInput::MouseMove(e) => Some(e.position),
+            _ => None,
+        };
         if let Some(mut callback) = lock.event_callback.take() {
             drop(lock);
             callback(event);
             window_state.lock().event_callback = Some(callback);
+        }
+        if let Some(position) = moved_to {
+            yield_cursor_over_native(this, position);
         }
     }
 }

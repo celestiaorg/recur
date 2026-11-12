@@ -68,6 +68,12 @@ use std::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub(crate) struct DispatchNodeId(usize);
 
+impl DispatchNodeId {
+    pub(crate) fn new(index: usize) -> Self {
+        DispatchNodeId(index)
+    }
+}
+
 pub(crate) struct DispatchTree {
     node_stack: Vec<DispatchNodeId>,
     pub(crate) context_stack: Vec<KeyContext>,
@@ -90,21 +96,24 @@ pub(crate) struct DispatchNode {
     parent: Option<DispatchNodeId>,
 }
 
+/// A reuse of the previous frame's nodes, copied in runs around fresh subtrees (Recur's
+/// isolated views): the copy keeps its place in the source tree between runs.
+#[derive(Default)]
 pub(crate) struct ReusedSubtree {
-    old_range: Range<usize>,
-    new_range: Range<usize>,
+    /// Each copied run: its range in the source tree and where it starts in this one.
+    runs: Vec<(Range<usize>, usize)>,
+    source_stack: Vec<DispatchNodeId>,
     contains_focus: bool,
 }
 
 impl ReusedSubtree {
     pub fn refresh_node_id(&self, node_id: DispatchNodeId) -> DispatchNodeId {
-        debug_assert!(
-            self.old_range.contains(&node_id.0),
-            "node {} was not part of the reused subtree {:?}",
-            node_id.0,
-            self.old_range
-        );
-        DispatchNodeId((node_id.0 - self.old_range.start) + self.new_range.start)
+        let (old, new) = self
+            .runs
+            .iter()
+            .find(|(old, _)| old.contains(&node_id.0))
+            .unwrap_or_else(|| panic!("node {} was not part of the reused subtree", node_id.0));
+        DispatchNodeId(node_id.0 - old.start + new)
     }
 
     pub fn contains_focus(&self) -> bool {
@@ -261,16 +270,15 @@ impl DispatchTree {
         target.modifiers_changed_listeners = mem::take(&mut source.modifiers_changed_listeners);
     }
 
-    pub fn reuse_subtree(
+    /// Copies `old_range` of `source`, continuing a reuse whose earlier runs are in `reused`.
+    pub(crate) fn reuse_run(
         &mut self,
+        reused: &mut ReusedSubtree,
         old_range: Range<usize>,
         source: &mut Self,
         focus: Option<FocusId>,
-    ) -> ReusedSubtree {
-        let new_range = self.nodes.len()..self.nodes.len() + old_range.len();
-
-        let mut contains_focus = false;
-        let mut source_stack = vec![];
+    ) {
+        reused.runs.push((old_range.clone(), self.nodes.len()));
         for (source_node_id, source_node) in source
             .nodes
             .iter_mut()
@@ -279,31 +287,39 @@ impl DispatchTree {
             .take(old_range.len())
         {
             let source_node_id = DispatchNodeId(source_node_id);
-            while let Some(source_ancestor) = source_stack.last() {
+            while let Some(source_ancestor) = reused.source_stack.last() {
                 if source_node.parent == Some(*source_ancestor) {
                     break;
                 } else {
-                    source_stack.pop();
+                    reused.source_stack.pop();
                     self.pop_node();
                 }
             }
 
-            source_stack.push(source_node_id);
+            reused.source_stack.push(source_node_id);
             if source_node.focus_id.is_some() && source_node.focus_id == focus {
-                contains_focus = true;
+                reused.contains_focus = true;
             }
             self.move_node(source_node);
         }
+    }
 
-        while !source_stack.is_empty() {
-            source_stack.pop();
+    /// Makes the copy of `parent` the active node, so a fresh subtree drawn next replaces the
+    /// source's children of `parent` that the reuse skips.
+    pub(crate) fn reuse_hole(&mut self, reused: &mut ReusedSubtree, parent: DispatchNodeId) {
+        while let Some(top) = reused.source_stack.last() {
+            if *top == parent {
+                return;
+            }
+            reused.source_stack.pop();
             self.pop_node();
         }
+        debug_assert!(false, "the hole's parent {} was not copied", parent.0);
+    }
 
-        ReusedSubtree {
-            old_range,
-            new_range,
-            contains_focus,
+    pub(crate) fn finish_reuse(&mut self, reused: &mut ReusedSubtree) {
+        while reused.source_stack.pop().is_some() {
+            self.pop_node();
         }
     }
 

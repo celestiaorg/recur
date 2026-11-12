@@ -6,7 +6,7 @@ use gpui_kit::{
     App, BorderStyle, Bounds, Corners, CursorStyle, DispatchPhase, Edges, Element, ElementId,
     ElementInputHandler, Entity, FontStyle, FontWeight, GlobalElementId, Hitbox, HitboxBehavior,
     Hsla, InspectorElementId, IntoElement, LayoutId, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    PaintQuad, Path, PathBuilder, Pixels, Point, Rgba, ScrollWheelEvent, ShapedLine, SharedString,
+    PaintQuad, Path, PathBuilder, Pixels, Point, Rgba, ScrollEvent, ShapedLine, SharedString,
     StrikethroughStyle, Style, TextAlign, TextRun, UnderlineStyle, Window, fill, point, px, quad,
     relative, size,
 };
@@ -558,7 +558,7 @@ impl Element for EditorElement {
                 }
             }
         });
-        window.on_mouse_event(move |e: &ScrollWheelEvent, phase, window, cx| {
+        window.on_mouse_event(move |e: &ScrollEvent, phase, window, cx| {
             if phase == DispatchPhase::Bubble && bounds.contains(&e.position) {
                 view.update(cx, |v, cx| {
                     recur_ui::guard::catch("editor scroll_wheel", || v.scroll_wheel(e, window, cx));

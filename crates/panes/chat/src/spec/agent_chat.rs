@@ -473,11 +473,12 @@ async fn a_width_drag_holds_the_anchor_block_in_each_frame(cx: &mut TestAppConte
     let scroll = h.read(|c| c.scroll.clone());
     let at = scroll.bounds().center();
     h.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
-    h.cx.simulate_event(gpui::ScrollWheelEvent {
+    h.cx.simulate_event(gpui::ScrollEvent {
         position: at,
         delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(900.))),
         modifiers: gpui::Modifiers::none(),
         touch_phase: gpui::TouchPhase::Moved,
+        ..Default::default()
     });
     h.settle();
     assert!(!h.read(|c| c.near_bottom), "scrolled up");

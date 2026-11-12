@@ -415,7 +415,7 @@ impl KeyEvent {
 mod tests {
     use super::*;
 
-    fn ev(s: &str) -> KeyEvent {
+    fn ev(s: &'static str) -> KeyEvent {
         KeyEvent::from_keystroke(&Keystroke::parse(s).unwrap(), Platform::Mac)
     }
 
@@ -444,7 +444,7 @@ mod tests {
         )
     }
 
-    fn hit(km: &Keymap<Cmd>, key: &str, scope: &str) -> Option<Cmd> {
+    fn hit(km: &Keymap<Cmd>, key: &'static str, scope: &str) -> Option<Cmd> {
         let mut got = None;
         km.run(&ev(key), scope, Platform::Mac, |c| {
             got = Some(*c);

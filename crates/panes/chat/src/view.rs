@@ -419,9 +419,8 @@ impl AgentChat {
                 .child(recur_ui::style::isolated_view(
                     &transcript,
                     gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
-                    cx,
                 ))
-                .child(fit.view(&dock, window, cx));
+                .child(fit.view(&dock, window));
         }
         if let Some(lb) = &self.lightbox {
             root = root.child(lb.clone());

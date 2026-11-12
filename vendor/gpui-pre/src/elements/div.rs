@@ -2196,6 +2196,7 @@ pub struct Interactivity {
     pub(crate) tracked_scroll_handle: Option<ScrollHandle>,
     pub(crate) scroll_anchor: Option<ScrollAnchor>,
     pub(crate) scroll_offset: Option<Rc<RefCell<Point<Pixels>>>>,
+    pub(crate) scroll_max: Cell<Point<Pixels>>,
     pub(crate) ongoing_scroll: Option<Rc<RefCell<OngoingScroll>>>,
     pub(crate) group: Option<SharedString>,
     /// The base style of the element, before any modifications are applied
@@ -2539,6 +2540,7 @@ impl Interactivity {
                 scroll_offset.y = scroll_offset.y.clamp(-scroll_max.y, px(0.));
             }
 
+            self.scroll_max.set(scroll_max);
             if let Some(mut scroll_handle_state) = tracked_scroll_handle {
                 scroll_handle_state.max_offset = scroll_max;
                 scroll_handle_state.bounds = bounds;
@@ -2640,13 +2642,15 @@ impl Interactivity {
                                                 );
                                             }
 
+                                            // Before the mouse listeners, so the element's own
+                                            // wheel listeners still run when it stops the event.
+                                            self.paint_scroll_listener(hitbox, &style, window, cx);
                                             self.paint_mouse_listeners(
                                                 hitbox,
                                                 element_state.as_mut(),
                                                 window,
                                                 cx,
                                             );
-                                            self.paint_scroll_listener(hitbox, &style, window, cx);
                                         }
 
                                         self.paint_keyboard_listeners(window, cx);
@@ -3394,6 +3398,7 @@ impl Interactivity {
             let overflow = style.overflow;
             let allow_concurrent_scroll = style.allow_concurrent_scroll;
             let restrict_scroll_to_axis = style.restrict_scroll_to_axis;
+            let scroll_max = self.scroll_max.get();
             let line_height = window.line_height();
             let hitbox = hitbox.clone();
             let current_view = window.current_view();
@@ -3437,10 +3442,13 @@ impl Interactivity {
                             delta_x = Pixels::ZERO;
                         }
                     }
-                    scroll_offset.y += delta_y;
-                    scroll_offset.x += delta_x;
+                    // A scroller that moves keeps the wheel from its ancestors; one at its
+                    // edge lets it through, as the browser chains scrolling.
+                    scroll_offset.y = (scroll_offset.y + delta_y).clamp(-scroll_max.y, px(0.));
+                    scroll_offset.x = (scroll_offset.x + delta_x).clamp(-scroll_max.x, px(0.));
                     if *scroll_offset != old_scroll_offset {
                         cx.notify(current_view);
+                        cx.stop_propagation();
                     }
                 }
             });

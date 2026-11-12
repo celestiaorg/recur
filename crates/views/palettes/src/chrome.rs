@@ -291,7 +291,11 @@ pub fn plain(k: &Keystroke) -> bool {
 
 /// `isCmdOrCtrl`.
 pub fn cmd_or_ctrl(k: &Keystroke) -> bool {
-    k.modifiers.secondary()
+    if cfg!(target_os = "macos") {
+        k.modifiers.platform
+    } else {
+        k.modifiers.control
+    }
 }
 
 /// `paletteRowDigit(e)`: 1–9 without modifiers (Shift turns the key into a symbol).
@@ -325,7 +329,7 @@ mod tests {
 
     #[test]
     fn digits_skip_chords_and_shift() {
-        let k = |s: &str| Keystroke::parse(s).unwrap();
+        let k = |s: &'static str| Keystroke::parse(s).unwrap();
         assert_eq!(row_digit(&k("1")), Some(1));
         assert_eq!(row_digit(&k("9")), Some(9));
         assert_eq!(row_digit(&k("0")), None);

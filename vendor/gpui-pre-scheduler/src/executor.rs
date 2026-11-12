@@ -280,6 +280,7 @@ impl BackgroundExecutor {
         let schedule = self.schedule_with_priority(priority);
         let location = Location::caller();
         let (runnable, task) = async_task::Builder::new()
+            .propagate_panic(true)
             .metadata(RunnableMeta {
                 location,
                 spawned: crate::SpawnTime(Instant::now()),
@@ -306,6 +307,7 @@ impl BackgroundExecutor {
         }));
 
         let (runnable, task) = async_task::Builder::new()
+            .propagate_panic(true)
             .metadata(RunnableMeta {
                 location,
                 spawned: crate::SpawnTime(Instant::now()),
@@ -418,6 +420,7 @@ impl DedicatedExecutor {
     {
         let sender = self.sender.clone();
         let (runnable, task) = async_task::Builder::new()
+            .propagate_panic(true)
             .metadata(RunnableMeta::new_with_callers_location())
             .spawn(
                 move |_| future,
@@ -851,7 +854,11 @@ where
         location,
     };
 
-    let builder = async_task::Builder::new().metadata(metadata);
+    // Recur: every task keeps a panic of its future (re-raised in an awaiter) rather than
+    // unwinding into the platform dispatcher (`rust/vendor/README.md`).
+    let builder = async_task::Builder::new()
+        .propagate_panic(true)
+        .metadata(metadata);
     // SAFETY: `Checked` enforces the invariants required by `spawn_unchecked`:
     // the non-`Send` future is only polled and dropped on the thread that
     // spawned it.

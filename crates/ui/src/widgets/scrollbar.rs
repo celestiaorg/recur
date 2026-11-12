@@ -545,7 +545,7 @@ impl ScrollArea {
             let state = state.clone();
             let moved = state.clone();
             content = content
-                .on_scroll_wheel(move |_, _, cx| {
+                .on_scroll(move |_, _, cx| {
                     state.update(cx, |s, _| s.wheeled = true);
                 })
                 .on_mouse_move(move |_, _, cx| {

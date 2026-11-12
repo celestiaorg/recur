@@ -137,6 +137,7 @@ impl BackgroundExecutor {
     where
         R: Send + 'static,
     {
+        let future = crate::unwind::Recorded(future);
         if priority == Priority::RealtimeAudio {
             self.inner.spawn_realtime(future)
         } else {
@@ -379,7 +380,8 @@ impl ForegroundExecutor {
     where
         R: 'static,
     {
-        self.inner.spawn(future.boxed_local())
+        self.inner
+            .spawn(crate::unwind::Recorded(future.boxed_local()))
     }
 
     /// Enqueues the given Task to run on the main thread with the given priority.
@@ -393,7 +395,7 @@ impl ForegroundExecutor {
         R: 'static,
     {
         // Priority is ignored for foreground tasks - they run in order on the main thread
-        self.inner.spawn(future)
+        self.inner.spawn(crate::unwind::Recorded(future))
     }
 
     /// On platforms with dedicated support, enqueues the given future to run
@@ -418,7 +420,7 @@ impl ForegroundExecutor {
         #[cfg(feature = "profiler")]
         let foreground_runnables = self.foreground_runnables.clone();
         self.inner
-            .spawn_with_dispatch(future.boxed_local(), move |runnable| {
+            .spawn_with_dispatch(crate::unwind::Recorded(future.boxed_local()), move |runnable| {
                 #[cfg(feature = "profiler")]
                 if let Some(foreground_runnables) = &foreground_runnables {
                     foreground_runnables.queued();

@@ -241,7 +241,6 @@ impl AgentChat {
             .child(recur_ui::isolated::FieldView::element(
                 &self.wait_dots[i],
                 div().flex_none().size(px(7.)).style().clone(),
-                cx,
             ))
             .child(text(s))
     }

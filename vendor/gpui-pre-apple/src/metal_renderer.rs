@@ -2,8 +2,8 @@ use crate::metal_atlas::MetalAtlas;
 use anyhow::{Context as _, Result};
 use block2::RcBlock;
 use gpui::{
-    AtlasTextureId, Background, Bounds, ContentMask, DevicePixels, PaintSurface, Path, Point,
-    PrimitiveBatch, ScaledPixels, Scene, Size, point, size,
+    AtlasTextureId, BackdropBlur, Background, Bounds, ContentMask, Corners, DevicePixels, Hole,
+    PaintSurface, Path, Point, PrimitiveBatch, ScaledPixels, Scene, SceneBatch, Size, point, size,
 };
 #[cfg(any(test, feature = "bench-support", feature = "test-support"))]
 use image::RgbaImage;
@@ -143,6 +143,14 @@ pub struct MetalRenderer {
     monochrome_sprites_pipeline_state: Retained<ProtocolObject<dyn MTLRenderPipelineState>>,
     polychrome_sprites_pipeline_state: Retained<ProtocolObject<dyn MTLRenderPipelineState>>,
     surfaces_pipeline_state: Retained<ProtocolObject<dyn MTLRenderPipelineState>>,
+    backdrop_blur_pass_pipeline_state: Retained<ProtocolObject<dyn MTLRenderPipelineState>>,
+    backdrop_blur_composite_pipeline_state: Retained<ProtocolObject<dyn MTLRenderPipelineState>>,
+    holes_pipeline_state: Retained<ProtocolObject<dyn MTLRenderPipelineState>>,
+    /// Two scratch textures for backdrop blurs, grown to the largest blurred region.
+    backdrop_blur_textures: Option<[Retained<ProtocolObject<dyn MTLTexture>>; 2]>,
+    /// The frame, when it has a backdrop blur but its drawable cannot be read (a display
+    /// link handed it out before the layer allowed reads); copied to the drawable after.
+    readable_frame: Option<Retained<ProtocolObject<dyn MTLTexture>>>,
     unit_vertices: Retained<ProtocolObject<dyn MTLBuffer>>,
     instance_buffer_pool: Arc<Mutex<InstanceBufferPool>>,
     sprite_atlas: Arc<MetalAtlas>,
@@ -393,6 +401,32 @@ impl MetalRenderer {
             "surface_fragment",
             MTLPixelFormat::BGRA8Unorm,
         )?;
+        let backdrop_blur_pass_pipeline_state = build_unblended_pipeline_state(
+            &device,
+            &library,
+            "backdrop_blur_pass",
+            "backdrop_blur_pass_vertex",
+            "backdrop_blur_pass_fragment",
+            MTLPixelFormat::BGRA8Unorm,
+        )?;
+        // Premultiplied, so a blur over a hole keeps it transparent.
+        let backdrop_blur_composite_pipeline_state = build_path_rasterization_pipeline_state(
+            &device,
+            &library,
+            "backdrop_blur_composite",
+            "backdrop_blur_composite_vertex",
+            "backdrop_blur_composite_fragment",
+            MTLPixelFormat::BGRA8Unorm,
+            1,
+        )?;
+        let holes_pipeline_state = build_unblended_pipeline_state(
+            &device,
+            &library,
+            "holes",
+            "hole_vertex",
+            "hole_fragment",
+            MTLPixelFormat::BGRA8Unorm,
+        )?;
 
         let command_queue = device.newCommandQueue().context("creating command queue")?;
         let supports_shared_storage = cfg!(target_os = "ios") || is_apple_gpu;
@@ -431,6 +465,11 @@ impl MetalRenderer {
             monochrome_sprites_pipeline_state,
             polychrome_sprites_pipeline_state,
             surfaces_pipeline_state,
+            backdrop_blur_pass_pipeline_state,
+            backdrop_blur_composite_pipeline_state,
+            holes_pipeline_state,
+            backdrop_blur_textures: None,
+            readable_frame: None,
             unit_vertices,
             instance_buffer_pool,
             sprite_atlas,
@@ -601,6 +640,17 @@ impl MetalRenderer {
                 return;
             }
         };
+        // A backdrop blur reads the drawable back.
+        let framebuffer_only = !cfg!(all(feature = "test-support", debug_assertions))
+            && scene.backdrop_blurs.is_empty();
+        if layer.framebufferOnly() != framebuffer_only {
+            layer.setFramebufferOnly(framebuffer_only);
+        }
+        // A hole shows what is behind the layer.
+        let opaque = self.opaque && scene.holes.is_empty();
+        if layer.isOpaque() != opaque {
+            layer.setOpaque(opaque);
+        }
         let drawable = match &mut self.display_link_mode {
             DisplayLinkMode::Attached { drawable } => {
                 let Some(drawable) = drawable.take() else {
@@ -628,7 +678,12 @@ impl MetalRenderer {
             (texture.height() as i32).into(),
         );
 
-        let command_buffer = match self.render_frame(scene, &drawable.texture(), viewport_size) {
+        let rendered = if !scene.backdrop_blurs.is_empty() && texture.isFramebufferOnly() {
+            self.render_frame_through_readable(scene, &texture, viewport_size)
+        } else {
+            self.render_frame(scene, &texture, viewport_size)
+        };
+        let command_buffer = match rendered {
             Ok(command_buffer) => command_buffer,
             Err(error) => {
                 log::error!("failed to render: {error:#}");
@@ -644,6 +699,59 @@ impl MetalRenderer {
             command_buffer.presentDrawable(ProtocolObject::from_ref(&*drawable));
             command_buffer.commit();
         }
+    }
+
+    /// Renders into a readable texture of the frame's size, then copies it to `texture`.
+    fn render_frame_through_readable(
+        &mut self,
+        scene: &Scene,
+        texture: &ProtocolObject<dyn MTLTexture>,
+        viewport_size: Size<DevicePixels>,
+    ) -> Result<Retained<ProtocolObject<dyn MTLCommandBuffer>>> {
+        let (width, height) = (texture.width(), texture.height());
+        if !self
+            .readable_frame
+            .as_ref()
+            .is_some_and(|frame| frame.width() == width && frame.height() == height)
+        {
+            self.readable_frame = Some(self.new_scratch_texture(width, height)?);
+        }
+        let frame = self.readable_frame.clone().unwrap();
+        let command_buffer = self.render_frame(scene, &frame, viewport_size)?;
+        let (w, h) = (width as f32, height as f32);
+        self.backdrop_blur_pass(
+            &command_buffer,
+            &frame,
+            texture,
+            (w, h),
+            BackdropBlurPass {
+                source_origin: point(0., 0.),
+                source_size: size(w, h),
+                step: point(1., 0.),
+                scale: 1.,
+                sigma: 0.,
+            },
+        )?;
+        Ok(command_buffer)
+    }
+
+    fn new_scratch_texture(
+        &self,
+        width: usize,
+        height: usize,
+    ) -> Result<Retained<ProtocolObject<dyn MTLTexture>>> {
+        let descriptor = MTLTextureDescriptor::new();
+        // SAFETY: The dimensions are positive and this descriptor creates a 2D texture.
+        unsafe {
+            descriptor.setWidth(width);
+            descriptor.setHeight(height);
+        }
+        descriptor.setPixelFormat(MTLPixelFormat::BGRA8Unorm);
+        descriptor.setStorageMode(MTLStorageMode::Private);
+        descriptor.setUsage(MTLTextureUsage::RenderTarget | MTLTextureUsage::ShaderRead);
+        self.device
+            .newTextureWithDescriptor(&descriptor)
+            .context("allocating backdrop blur texture")
     }
 
     fn render_frame(
@@ -868,7 +976,27 @@ impl MetalRenderer {
             }),
         )?;
 
-        for batch in scene.batches() {
+        for batch in scene.batches_with_backdrop_blurs() {
+            let batch = match batch {
+                SceneBatch::Primitives(batch) => batch,
+                SceneBatch::BackdropBlurs(range) => {
+                    command_encoder.endEncoding();
+                    for blur in &scene.backdrop_blurs[range] {
+                        self.draw_backdrop_blur(blur, texture, viewport_size, &command_buffer)?;
+                    }
+                    command_encoder = new_command_encoder_for_texture(
+                        &command_buffer,
+                        texture,
+                        viewport_size,
+                        None,
+                    )?;
+                    continue;
+                }
+                SceneBatch::Holes(range) => {
+                    self.draw_holes(&scene.holes[range], viewport_size, &command_encoder);
+                    continue;
+                }
+            };
             match batch {
                 PrimitiveBatch::Shadows(range) => {
                     self.draw_shadows(range, instance_bindings, viewport_size, &command_encoder)
@@ -945,6 +1073,202 @@ impl MetalRenderer {
         command_encoder.endEncoding();
 
         Ok(command_buffer)
+    }
+
+    /// Blurs the frame under `blur`: horizontal and vertical passes between two scratch
+    /// textures, at half resolution once the blur is wide enough to hide it (a first pass
+    /// averages each 2x2 block), and a composite back into `texture` through the rounded rect.
+    fn draw_backdrop_blur(
+        &mut self,
+        blur: &BackdropBlur,
+        texture: &ProtocolObject<dyn MTLTexture>,
+        viewport_size: Size<DevicePixels>,
+        command_buffer: &ProtocolObject<dyn MTLCommandBuffer>,
+    ) -> Result<()> {
+        let clip = blur.bounds.intersect(&blur.content_mask.bounds);
+        let (vw, vh) = (viewport_size.width.0 as f32, viewport_size.height.0 as f32);
+        let (x0, y0) = (
+            clip.origin.x.0.max(0.).floor(),
+            clip.origin.y.0.max(0.).floor(),
+        );
+        let (x1, y1) = (
+            clip.right().0.min(vw).ceil(),
+            clip.bottom().0.min(vh).ceil(),
+        );
+        if x1 <= x0 || y1 <= y0 {
+            return Ok(());
+        }
+        let sigma = blur.blur_radius.0;
+        let scale = if sigma >= 4. { 2. } else { 1. };
+        let (w, h) = (x1 - x0, y1 - y0);
+        let (bw, bh) = ((w / scale).ceil(), (h / scale).ceil());
+
+        let fits = |t: &[Retained<ProtocolObject<dyn MTLTexture>>; 2]| {
+            t[0].width() >= bw as usize && t[0].height() >= bh as usize
+        };
+        if !self.backdrop_blur_textures.as_ref().is_some_and(fits) {
+            let (cw, ch) = self
+                .backdrop_blur_textures
+                .as_ref()
+                .map_or((0, 0), |t| (t[0].width(), t[0].height()));
+            let (cw, ch) = (cw.max(bw as usize), ch.max(bh as usize));
+            self.backdrop_blur_textures = Some([
+                self.new_scratch_texture(cw, ch)?,
+                self.new_scratch_texture(cw, ch)?,
+            ]);
+        }
+        let [a, b] = self.backdrop_blur_textures.as_ref().unwrap();
+        let pass = |source, target, uniforms| {
+            self.backdrop_blur_pass(command_buffer, source, target, (bw, bh), uniforms)
+        };
+
+        let region = BackdropBlurPass {
+            source_origin: point(x0, y0),
+            source_size: size(w, h),
+            step: point(1., 0.),
+            scale,
+            sigma,
+        };
+        let blurred = |step| BackdropBlurPass {
+            source_origin: point(0., 0.),
+            source_size: size(bw, bh),
+            step,
+            scale: 1.,
+            sigma: sigma / scale,
+        };
+        let result = if scale > 1. {
+            pass(
+                texture,
+                a,
+                BackdropBlurPass {
+                    sigma: 0.,
+                    ..region
+                },
+            )?;
+            pass(a, b, blurred(point(1., 0.)))?;
+            pass(b, a, blurred(point(0., 1.)))?;
+            a
+        } else {
+            pass(texture, a, region)?;
+            pass(a, b, blurred(point(0., 1.)))?;
+            b
+        };
+
+        let encoder =
+            new_command_encoder_for_texture(command_buffer, texture, viewport_size, None)?;
+        let composite = BackdropBlurComposite {
+            bounds: blur.bounds,
+            corner_radii: blur.corner_radii,
+            clip,
+            region: Bounds {
+                origin: point(ScaledPixels(x0), ScaledPixels(y0)),
+                size: size(ScaledPixels(w), ScaledPixels(h)),
+            },
+            blurred_size: size(bw, bh),
+            scale,
+            pad: 0.,
+        };
+        encoder.setRenderPipelineState(&self.backdrop_blur_composite_pipeline_state);
+        // SAFETY: Six unit vertices and the composite's uniforms match the shader's slots;
+        // Metal copies the bytes and retains the buffer and texture.
+        unsafe {
+            encoder.setVertexBuffer_offset_atIndex(Some(&self.unit_vertices), 0, 0);
+            encoder.setVertexBytes_length_atIndex(
+                ptr::NonNull::from(&composite).cast(),
+                mem::size_of_val(&composite),
+                1,
+            );
+            encoder.setFragmentBytes_length_atIndex(
+                ptr::NonNull::from(&composite).cast(),
+                mem::size_of_val(&composite),
+                1,
+            );
+            encoder.setVertexBytes_length_atIndex(
+                ptr::NonNull::from(&viewport_size).cast(),
+                mem::size_of_val(&viewport_size),
+                2,
+            );
+            encoder.setFragmentTexture_atIndex(Some(result), 0);
+            encoder.drawPrimitives_vertexStart_vertexCount(MTLPrimitiveType::Triangle, 0, 6);
+        }
+        encoder.endEncoding();
+        Ok(())
+    }
+
+    /// One pass of `backdrop_blur_pass_fragment` from `source` over all of `target_size`
+    /// (in pixels) of `target`: a blur along `uniforms.step`, or with a sigma of 0 a copy.
+    fn backdrop_blur_pass(
+        &self,
+        command_buffer: &ProtocolObject<dyn MTLCommandBuffer>,
+        source: &ProtocolObject<dyn MTLTexture>,
+        target: &ProtocolObject<dyn MTLTexture>,
+        (width, height): (f32, f32),
+        uniforms: BackdropBlurPass,
+    ) -> Result<()> {
+        let descriptor = MTLRenderPassDescriptor::new();
+        // SAFETY: Index zero is within the render pass's color attachment array.
+        let attachment = unsafe { descriptor.colorAttachments().objectAtIndexedSubscript(0) };
+        attachment.setTexture(Some(target));
+        attachment.setLoadAction(MTLLoadAction::DontCare);
+        attachment.setStoreAction(MTLStoreAction::Store);
+        let encoder = command_buffer
+            .renderCommandEncoderWithDescriptor(&descriptor)
+            .context("creating backdrop blur encoder")?;
+        encoder.setViewport(MTLViewport {
+            originX: 0.,
+            originY: 0.,
+            width: width as f64,
+            height: height as f64,
+            znear: 0.,
+            zfar: 1.,
+        });
+        encoder.setRenderPipelineState(&self.backdrop_blur_pass_pipeline_state);
+        // SAFETY: Six unit vertices and the pass's uniforms match the shader's slots; Metal
+        // copies the bytes and retains the buffer and texture.
+        unsafe {
+            encoder.setVertexBuffer_offset_atIndex(Some(&self.unit_vertices), 0, 0);
+            encoder.setFragmentBytes_length_atIndex(
+                ptr::NonNull::from(&uniforms).cast(),
+                mem::size_of_val(&uniforms),
+                0,
+            );
+            encoder.setFragmentTexture_atIndex(Some(source), 0);
+            encoder.drawPrimitives_vertexStart_vertexCount(MTLPrimitiveType::Triangle, 0, 6);
+        }
+        encoder.endEncoding();
+        Ok(())
+    }
+
+    fn draw_holes(
+        &self,
+        holes: &[Hole],
+        viewport_size: Size<DevicePixels>,
+        command_encoder: &ProtocolObject<dyn MTLRenderCommandEncoder>,
+    ) {
+        command_encoder.setRenderPipelineState(&self.holes_pipeline_state);
+        // SAFETY: Six unit vertices and each hole's bounds match the shader's slots; Metal
+        // copies the bytes and retains the buffer.
+        unsafe {
+            command_encoder.setVertexBuffer_offset_atIndex(Some(&self.unit_vertices), 0, 0);
+            command_encoder.setVertexBytes_length_atIndex(
+                ptr::NonNull::from(&viewport_size).cast(),
+                mem::size_of_val(&viewport_size),
+                2,
+            );
+            for hole in holes {
+                let clip = hole.bounds.intersect(&hole.content_mask.bounds);
+                command_encoder.setVertexBytes_length_atIndex(
+                    ptr::NonNull::from(&clip).cast(),
+                    mem::size_of_val(&clip),
+                    1,
+                );
+                command_encoder.drawPrimitives_vertexStart_vertexCount(
+                    MTLPrimitiveType::Triangle,
+                    0,
+                    6,
+                );
+            }
+        }
     }
 
     fn draw_paths_to_intermediate(
@@ -1585,6 +1909,34 @@ fn build_pipeline_state(
         .with_context(|| format!("creating {label} render pipeline"))
 }
 
+fn build_unblended_pipeline_state(
+    device: &ProtocolObject<dyn MTLDevice>,
+    library: &ProtocolObject<dyn MTLLibrary>,
+    label: &str,
+    vertex_fn_name: &str,
+    fragment_fn_name: &str,
+    pixel_format: MTLPixelFormat,
+) -> Result<Retained<ProtocolObject<dyn MTLRenderPipelineState>>> {
+    let vertex_fn = library
+        .newFunctionWithName(&NSString::from_str(vertex_fn_name))
+        .with_context(|| format!("locating vertex function {vertex_fn_name}"))?;
+    let fragment_fn = library
+        .newFunctionWithName(&NSString::from_str(fragment_fn_name))
+        .with_context(|| format!("locating fragment function {fragment_fn_name}"))?;
+
+    let descriptor = MTLRenderPipelineDescriptor::new();
+    descriptor.setLabel(Some(&NSString::from_str(label)));
+    descriptor.setVertexFunction(Some(vertex_fn.as_ref()));
+    descriptor.setFragmentFunction(Some(fragment_fn.as_ref()));
+    // SAFETY: Index zero is within the pipeline's color attachment array.
+    let color_attachment = unsafe { descriptor.colorAttachments().objectAtIndexedSubscript(0) };
+    color_attachment.setPixelFormat(pixel_format);
+
+    device
+        .newRenderPipelineStateWithDescriptor_error(&descriptor)
+        .with_context(|| format!("creating {label} render pipeline"))
+}
+
 fn build_path_sprite_pipeline_state(
     device: &ProtocolObject<dyn MTLDevice>,
     library: &ProtocolObject<dyn MTLLibrary>,
@@ -1878,6 +2230,27 @@ pub struct PathSprite {
     pub bounds: Bounds<ScaledPixels>,
 }
 
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct BackdropBlurPass {
+    source_origin: Point<f32>,
+    source_size: Size<f32>,
+    step: Point<f32>,
+    scale: f32,
+    sigma: f32,
+}
+
+#[repr(C)]
+struct BackdropBlurComposite {
+    bounds: Bounds<ScaledPixels>,
+    corner_radii: Corners<ScaledPixels>,
+    clip: Bounds<ScaledPixels>,
+    region: Bounds<ScaledPixels>,
+    blurred_size: Size<f32>,
+    scale: f32,
+    pad: f32, // Metal pads the struct to its float2 alignment
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct SurfaceBounds {
@@ -2140,5 +2513,51 @@ mod tests {
         command_buffer.waitUntilCompleted();
         assert_eq!(command_buffer.status(), MTLCommandBufferStatus::Completed);
         assert_eq!(read_texture_to_image(&target_texture).unwrap(), image);
+    }
+
+    /// A hole clears what was painted under it, a backdrop blur over it keeps it clear, and
+    /// what is painted later composites over it with its own alpha.
+    #[test]
+    fn a_hole_is_transparent_under_later_paint() {
+        let rect = |x: f32, y: f32, w: f32, h: f32| Bounds {
+            origin: point(ScaledPixels(x), ScaledPixels(y)),
+            size: size(ScaledPixels(w), ScaledPixels(h)),
+        };
+        let all = rect(0., 0., 32., 32.);
+        let quad = |bounds, color| gpui::Quad {
+            bounds,
+            content_mask: ContentMask { bounds: all },
+            background: gpui::solid_background(color),
+            ..Default::default()
+        };
+        let mut scene = Scene::default();
+        scene.insert_primitive(quad(all, gpui::hsla(0., 1., 0.5, 1.)));
+        scene.insert_primitive(Hole {
+            order: 0,
+            bounds: rect(4., 4., 20., 20.),
+            content_mask: ContentMask { bounds: all },
+        });
+        scene.insert_primitive(BackdropBlur {
+            order: 0,
+            blur_radius: ScaledPixels(1.),
+            bounds: all,
+            corner_radii: Corners::default(),
+            content_mask: ContentMask { bounds: all },
+        });
+        scene.insert_primitive(quad(rect(16., 16., 16., 16.), gpui::hsla(0., 0., 0., 0.5)));
+        scene.finish();
+
+        let mut renderer = MetalRenderer::new_headless(Arc::new(Mutex::new(Default::default()))).unwrap();
+        let image = renderer
+            .render_scene_to_image(&scene, size(DevicePixels(32), DevicePixels(32)))
+            .unwrap();
+        let at = |x, y| image.get_pixel(x, y).0;
+        let [r, g, _, a] = at(1, 1);
+        assert!(r > 250 && g < 5 && a == 255, "background: {:?}", at(1, 1));
+        assert!(at(10, 10)[3] <= 2, "hole: {:?}", at(10, 10));
+        let [r, _, _, a] = at(20, 20);
+        assert!(r <= 2 && a.abs_diff(128) <= 2, "overlay over the hole: {:?}", at(20, 20));
+        let [r, _, _, a] = at(28, 28);
+        assert!(r.abs_diff(128) <= 2 && a == 255, "overlay elsewhere: {:?}", at(28, 28));
     }
 }

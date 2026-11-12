@@ -512,6 +512,20 @@ pub(crate) struct LineLayoutIndex {
     wrapped_lines_index: usize,
 }
 
+impl LineLayoutIndex {
+    pub(crate) fn parts(&self) -> [usize; 2] {
+        [self.lines_index, self.wrapped_lines_index]
+    }
+
+    pub(crate) fn with_parts(&self, p: &[usize]) -> Self {
+        LineLayoutIndex {
+            font_generation: self.font_generation,
+            lines_index: p[0],
+            wrapped_lines_index: p[1],
+        }
+    }
+}
+
 impl LineLayoutCache {
     pub fn new(
         platform_text_system: Arc<dyn PlatformTextSystem>,
@@ -551,16 +565,22 @@ impl LineLayoutCache {
             current_frame,
         } = &mut *state;
 
-        for key in &previous_frame.used_lines[range.start.lines_index..range.end.lines_index] {
+        for key in clip(
+            &previous_frame.used_lines,
+            range.start.lines_index,
+            range.end.lines_index,
+        ) {
             if let Some((key, line)) = previous_frame.lines.remove_entry(key) {
                 current_frame.lines.insert(key, line);
             }
             current_frame.used_lines.push(key.clone());
         }
 
-        for key in &previous_frame.used_wrapped_lines
-            [range.start.wrapped_lines_index..range.end.wrapped_lines_index]
-        {
+        for key in clip(
+            &previous_frame.used_wrapped_lines,
+            range.start.wrapped_lines_index,
+            range.end.wrapped_lines_index,
+        ) {
             if let Some((key, line)) = previous_frame.wrapped_lines.remove_entry(key) {
                 current_frame.wrapped_lines.insert(key, line);
             }
@@ -1054,4 +1074,11 @@ mod tests {
         let positions = glyph_x_positions(&layout);
         assert_eq!(positions, vec![0.5, 0.5]);
     }
+}
+
+/// `list[start..end]` within `list`: a replay that spans a font change (Recur's isolated views)
+/// can name layouts the change dropped, and reuse only warms the cache.
+fn clip<T>(list: &[T], start: usize, end: usize) -> &[T] {
+    let end = end.min(list.len());
+    &list[start.min(end)..end]
 }

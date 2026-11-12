@@ -368,11 +368,12 @@ async fn wheeling_up_a_long_chat_and_switching_back_keeps_what_is_on_screen(
     let stop = max_scroll(&mut h) * 0.55;
     while scroll_top(&mut h) > stop {
         let (key, y) = first_shown(&mut h, &keys);
-        h.cx.simulate_event(gpui::ScrollWheelEvent {
+        h.cx.simulate_event(gpui::ScrollEvent {
             position: at,
             delta: gpui::ScrollDelta::Pixels(point(px(0.), px(200.))),
             modifiers: Modifiers::none(),
             touch_phase: gpui::TouchPhase::Moved,
+            ..Default::default()
         });
         h.cx.run_until_parked();
         let moved =

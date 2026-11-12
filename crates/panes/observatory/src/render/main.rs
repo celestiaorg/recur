@@ -664,7 +664,7 @@ impl Observatory {
                         .min_h_0()
                         .flex()
                         .flex_col()
-                        .child(cached_view(p, fill(), cx)),
+                        .child(cached_view(p, fill())),
                 );
             }
             pdf = pdf.child(
@@ -709,10 +709,10 @@ impl Observatory {
             && let Some(ed) = self.main_editor.clone()
         {
             let off = show_preview || show_diff || self.view_mode == EditorViewMode::Diff;
-            pane = pane.child(surface(isolated_view(&ed, fill(), cx), off));
+            pane = pane.child(surface(isolated_view(&ed, fill()), off));
         }
         if let Some((_, fp)) = &self.file_preview {
-            pane = pane.child(surface(cached_view(fp, fill(), cx), !show_preview));
+            pane = pane.child(surface(cached_view(fp, fill()), !show_preview));
         }
         if show_diff {
             if let Some((_, m)) = &self.merge_editor {
@@ -723,7 +723,7 @@ impl Observatory {
                         .flex()
                         .flex_col()
                         .overflow_hidden()
-                        .child(isolated_view(m, fill(), cx)),
+                        .child(isolated_view(m, fill())),
                 );
             }
         } else if self.editor_path.is_empty() && !show_preview {
@@ -739,7 +739,6 @@ impl Observatory {
                     .flex_1()
                     .min_h_0()
                     .w_full(),
-                cx,
             ));
         }
         if (self.show_file_loading || self.diff_pending()) && !self.editor_path.is_empty() {
@@ -837,7 +836,7 @@ impl Observatory {
         if !self.split_path.is_empty()
             && let Some(ed) = self.split_editor.clone()
         {
-            side = side.child(surface(isolated_view(&ed, fill(), cx), false));
+            side = side.child(surface(isolated_view(&ed, fill()), false));
         } else {
             side = side.child(obs_empty(
                 "Open a file: it will land in this pane while focused.",
@@ -949,7 +948,7 @@ impl Observatory {
                 // Cached, so a redraw passing through the Observatory (a key typed in the chat)
                 // does not render it. Its own scrolling dirties it and rebuilds what is inside;
                 // the card stack and the file list are memoized for that.
-                .child(cached_view(&r, fill(), cx))
+                .child(cached_view(&r, fill()))
                 .into_any_element(),
         )
     }
@@ -1174,7 +1173,6 @@ impl Observatory {
             .child(recur_ui::isolated::FieldView::element(
                 &view,
                 gpui_kit::StyleRefinement::default().absolute().inset_0(),
-                cx,
             ))
             .into_any_element()
     }
@@ -1285,7 +1283,6 @@ impl Observatory {
                     .flex_none()
                     .w_full()
                     .h(px(crate::style::CHROME_H)),
-                cx,
             )
         });
         let editors = (!hidden).then(|| self.render_editors(window, cx)).flatten();
@@ -1313,7 +1310,6 @@ impl Observatory {
                     .flex_none()
                     .w_full()
                     .h(px(crate::style::FOOT_H)),
-                cx,
             ))
         } else {
             None
@@ -1326,7 +1322,7 @@ impl Observatory {
             .children(review)
             .children(status.filter(|_| !fs));
         // Cached: a key in the chat beside it redraws the Observatory, not the terminal.
-        let dock_el = self.dock.as_ref().map(|(_, d)| cached_view(d, fill(), cx));
+        let dock_el = self.dock.as_ref().map(|(_, d)| cached_view(d, fill()));
         let mut main = div()
             .id("obs-main")
             .debug_selector(|| "obs-main".into())
@@ -1521,7 +1517,7 @@ impl Observatory {
 
     /// The maximized dock (`.obs.term-max .term-dock`): fixed over the Observatory at the
     /// animated rectangle, with the scrim under it.
-    pub(crate) fn render_term_overlay(&mut self, cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub(crate) fn render_term_overlay(&mut self) -> Option<AnyElement> {
         if !self.term_overlaying() {
             return None;
         }
@@ -1539,7 +1535,7 @@ impl Observatory {
                         .w(px(r.width))
                         .h(px(r.height))
                         .child(crate::geometry::probe(&self.bounds.dock))
-                        .child(cached_view(&d, fill(), cx)),
+                        .child(cached_view(&d, fill())),
                 ),
             )
             .with_priority(21)

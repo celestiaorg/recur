@@ -38,6 +38,8 @@ pub struct SelectOption {
     pub provider: Option<SharedString>,
     /// App icon on the row and the closed trigger (chat modes).
     pub icon: Option<IconName>,
+    /// Project avatar `(pic, color)` on the row, named by the label.
+    pub pic: Option<(SharedString, SharedString)>,
     /// Accent for icon and label (chat modes).
     pub tint: Option<Color>,
     /// One-line description after the label.
@@ -64,6 +66,10 @@ impl SelectOption {
     }
     pub fn icon(mut self, i: IconName) -> Self {
         self.icon = Some(i);
+        self
+    }
+    pub fn pic(mut self, pic: impl Into<SharedString>, color: impl Into<SharedString>) -> Self {
+        self.pic = Some((pic.into(), color.into()));
         self
     }
     pub fn tint(mut self, c: Color) -> Self {
@@ -1028,6 +1034,7 @@ impl Select {
         );
         let filtered = self.filtered();
         let hinted = self.options.iter().any(|o| o.hint.is_some());
+        let pics = self.options.iter().any(|o| o.pic.is_some());
         let up = self.up || menu_prefer_up(rect.0, rect.1, vh);
         let mbox = menu_fixed_box(rect, up, self.variant.min_width(hinted), (vw, vh));
         let width = mbox.width;
@@ -1107,6 +1114,20 @@ impl Select {
                 } else {
                     div().flex_none().size(px(14.)).into_any_element()
                 });
+            if let Some((pic, color)) = &o.pic {
+                opt = opt.child(crate::widgets::project_pic::project_pic(
+                    pic.clone(),
+                    color.clone(),
+                    o.label.clone(),
+                    crate::widgets::project_pic::PicBox::NT,
+                ));
+            } else if pics {
+                opt = opt.child(
+                    div()
+                        .flex_none()
+                        .size(px(crate::widgets::project_pic::PicBox::NT.size)),
+                );
+            }
             if let Some(i) = o.icon {
                 let c = o.tint.unwrap_or(t.text);
                 opt = opt.child(

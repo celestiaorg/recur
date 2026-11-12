@@ -602,7 +602,7 @@ impl PrList {
             .filter(|p| p.is_git && p.id != "files")
             .map(|p| {
                 let label = if p.name.is_empty() { &p.id } else { &p.name };
-                SelectOption::new(p.id.clone(), label.clone())
+                SelectOption::new(p.id.clone(), label.clone()).pic(p.pic.clone(), p.color.clone())
             })
             .collect();
         let show_projects = projects.len() > 1;

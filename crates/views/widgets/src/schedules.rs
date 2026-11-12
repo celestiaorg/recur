@@ -1786,7 +1786,9 @@ impl ScheduledPrompts {
             .read(cx)
             .projects
             .iter()
-            .map(|p| SelectOption::new(p.id.clone(), p.name.clone()))
+            .map(|p| {
+                SelectOption::new(p.id.clone(), p.name.clone()).pic(p.pic.clone(), p.color.clone())
+            })
             .collect();
         let none = projects.is_empty();
         let disabled = self.busy || none;

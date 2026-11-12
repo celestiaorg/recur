@@ -181,3 +181,114 @@ fn disabled_scopes_do_not_start_a_selection_and_outside_presses_clear(cx: &mut T
         "`.diff-file.selecting`"
     );
 }
+
+const LONG: &str =
+    "fn main() { let total = items.iter().map(|i| i.price * i.quantity).sum::<f64>(); }";
+
+struct Fence {
+    state: Option<Entity<State>>,
+    scroll: gpui_kit::ScrollHandle,
+}
+
+impl Render for Fence {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        use gpui_kit::{InteractiveElement as _, StatefulInteractiveElement as _};
+        let state = selection::state("sel", window, cx);
+        self.state = Some(state.clone());
+        let code = text(LONG)
+            .family(Family::Mono)
+            .size(12.)
+            .nowrap()
+            .selectable(1, "\n")
+            .scroller(self.scroll.clone());
+        let fence = div()
+            .id("fence")
+            .track_scroll(&self.scroll)
+            .overflow_x_scroll()
+            .w(px(120.))
+            .child(div().flex_none().w(px(800.)).child(code));
+        let content = div().p(px(40.)).w(px(400.)).child(fence);
+        div()
+            .size_full()
+            .child(selection::scope(&state, false, content, cx))
+    }
+}
+
+#[gpui_kit::test]
+fn a_drag_past_a_scrollers_edge_scrolls_it_and_extends_the_selection(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        crate::init(cx);
+    });
+    let (root, cx) = cx.add_window_view(|_, _| Fence {
+        state: None,
+        scroll: gpui_kit::ScrollHandle::new(),
+    });
+    cx.run_until_parked();
+    let (from, past) = (point(px(45.), px(46.)), point(px(260.), px(46.)));
+    cx.simulate_mouse_move(from, None, gpui_kit::Modifiers::none());
+    cx.simulate_mouse_down(
+        from,
+        gpui_kit::MouseButton::Left,
+        gpui_kit::Modifiers::none(),
+    );
+    cx.simulate_mouse_move(
+        past,
+        Some(gpui_kit::MouseButton::Left),
+        gpui_kit::Modifiers::none(),
+    );
+    cx.run_until_parked();
+    let state = root.read_with(cx, |r, _| r.state.clone()).expect("scope");
+    let shown = cx.update(|_, cx| selection::selected_text(&state, cx).len());
+    for _ in 0..40 {
+        cx.update(|window, cx| window.simulate_next_frame(cx));
+        cx.run_until_parked();
+    }
+    let scroll = root.read_with(cx, |r, _| r.scroll.clone());
+    assert!(
+        scroll.offset().x < px(0.),
+        "the fence scrolled toward the pointer"
+    );
+    let held = cx.update(|_, cx| selection::selected_text(&state, cx));
+    assert!(
+        held.len() > shown,
+        "the selection followed the scroll: {held:?}"
+    );
+    cx.simulate_mouse_up(
+        past,
+        gpui_kit::MouseButton::Left,
+        gpui_kit::Modifiers::none(),
+    );
+    cx.run_until_parked();
+    let stopped = scroll.offset();
+    cx.update(|window, cx| window.simulate_next_frame(cx));
+    cx.run_until_parked();
+    assert_eq!(scroll.offset(), stopped, "releasing stops the scroll");
+}
+
+#[gpui_kit::test]
+fn a_click_beside_a_scroller_does_not_scroll_it(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        crate::init(cx);
+    });
+    let (root, cx) = cx.add_window_view(|_, _| Fence {
+        state: None,
+        scroll: gpui_kit::ScrollHandle::new(),
+    });
+    cx.run_until_parked();
+    let beside = point(px(300.), px(46.));
+    cx.simulate_mouse_move(beside, None, gpui_kit::Modifiers::none());
+    cx.simulate_mouse_down(
+        beside,
+        gpui_kit::MouseButton::Left,
+        gpui_kit::Modifiers::none(),
+    );
+    cx.run_until_parked();
+    for _ in 0..10 {
+        cx.update(|window, cx| window.simulate_next_frame(cx));
+        cx.run_until_parked();
+    }
+    let scroll = root.read_with(cx, |r, _| r.scroll.clone());
+    assert_eq!(scroll.offset().x, px(0.), "a click alone never scrolls");
+}

@@ -822,9 +822,11 @@ impl Build<'_, '_> {
             spans.push(span(""));
         }
         let id = self.text_id();
+        let handle = self.scroll("md-pre", self.n.block + 1);
         let text = Text::from_spans(spans)
             .id(id)
             .selectable(self.select_key(), "\n")
+            .scroller(handle.clone())
             .family(Family::Stack("Menlo".into(), Vec::new()))
             .size(flow.size)
             .leading(flow.leading)
@@ -844,7 +846,7 @@ impl Build<'_, '_> {
         self.n.block += 1;
         let scroller = div()
             .id(("md-pre", self.n.block))
-            .track_scroll(&self.scroll("md-pre", self.n.block))
+            .track_scroll(&handle)
             .restrict_scroll_to_axis()
             .map(|d| match sh.pre_max_height {
                 Some(h) => d.max_h(px(h)).overflow_scroll(),

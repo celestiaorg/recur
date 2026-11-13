@@ -562,7 +562,7 @@ pub fn app_menus(
         MenuItem::separator(),
         contextual("Previous Tab", PrevTab, state.prev_tab),
         contextual("Next Tab", NextTab, state.next_tab),
-        contextual("Last Tab", LastTab, state.next_tab),
+        contextual("Last Tab", LastTab, state.last_tab),
         MenuItem::separator(),
         item("Previous Workspace", PrevWorkspace),
         item("Next Workspace", NextWorkspace),

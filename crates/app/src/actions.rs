@@ -104,7 +104,7 @@ impl Shell {
             FocusTerminal => menu.focus_terminal,
             PrevTab => menu.prev_tab,
             NextTab => menu.next_tab,
-            LastTab => menu.next_tab,
+            LastTab => menu.last_tab,
             GoTerminals => terminals_on
         );
         root.on_action(cx.guarded_listener(|this, a: &MenuPick, window, cx| {

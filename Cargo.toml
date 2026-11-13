@@ -15,7 +15,7 @@ default-members = ["crates/desktop", "crates/cli"]
 [workspace.package]
 version = "0.6.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.100"
 license = "Elastic-2.0"
 
 [workspace.dependencies]

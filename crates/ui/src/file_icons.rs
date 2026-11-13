@@ -546,6 +546,12 @@ fn font_bytes(family: &str) -> Option<&'static [u8]> {
         .map(Vec::as_slice)
 }
 
+/// Compiles the icon DB's regexes and loads the glyph tables, so the first icon a frame draws
+/// does not stall the UI thread on them.
+pub fn prewarm() {
+    resolve(&file_icon_class("prewarm.rs", false));
+}
+
 /// The glyph and color the `.fico` span shows for a class pair.
 pub fn resolve(class: &FileIconClass) -> Option<(Glyph, Option<Color>)> {
     let g = glyphs().get(&class.icon)?.clone();

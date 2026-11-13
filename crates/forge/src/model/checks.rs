@@ -122,7 +122,6 @@ pub fn format_check_seconds(sec: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
 
     fn check(name: &str, status: &str, passed: bool, detail: &str) -> Check {
         Check {

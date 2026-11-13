@@ -7,7 +7,6 @@ use std::process::Command;
 
 use base64::Engine as _;
 use chrono::{DateTime, Utc};
-use pretty_assertions::assert_eq;
 use recur_domain::{Check, Pr, PrComment, PrParticipant, PrReaction};
 
 use super::checks::{

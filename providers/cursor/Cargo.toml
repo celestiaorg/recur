@@ -12,6 +12,7 @@ publish = false
 testing = []
 
 [dependencies]
+recur-base.workspace = true
 recur-http.workspace = true
 recur-domain.workspace = true
 recur-agent.workspace = true
@@ -28,12 +29,10 @@ thiserror.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
-zip.workspace = true
 
 [dev-dependencies]
 recur-exec.workspace = true
 recur-agent = { workspace = true, features = ["testing"] }
-pretty_assertions.workspace = true
 
 [lints]
 workspace = true

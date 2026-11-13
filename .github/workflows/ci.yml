@@ -20,9 +20,11 @@ on:
   merge_group:
   workflow_dispatch:
 
+# A new push to a branch or pull request cancels its running CI, so main tests only its
+# latest commit instead of queueing every push behind the one before it.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 # Full debuginfo for every crate fills the Linux runner's disk, and so does
 # incremental state on top of a restored target (the cache drops it anyway).

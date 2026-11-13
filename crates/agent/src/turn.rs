@@ -1,7 +1,9 @@
 //! One agent turn: what the engine asks for and the channels a provider talks
 //! back through.
 
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use recur_domain::{AgentRole, Message, PermissionDecision, PermissionRequest};
@@ -142,7 +144,14 @@ pub struct TurnContext {
     /// Host and coding tools, for [`crate::ToolTransport::InProcess`]
     /// providers.
     pub tools: Option<Arc<dyn ToolHost>>,
+    /// Resolves when the model may see the prompt (the turn's start
+    /// checkpoint has landed). Only set for providers whose
+    /// [`crate::Provider::defers_prompt`] is true.
+    pub ready: Option<Ready>,
 }
+
+/// See [`TurnContext::ready`].
+pub type Ready = Pin<Box<dyn Future<Output = ()> + Send>>;
 
 impl TurnContext {
     pub fn new(cancel: CancellationToken, sink: Arc<dyn EventSink>) -> Self {
@@ -153,6 +162,7 @@ impl TurnContext {
             permissions: None,
             history: None,
             tools: None,
+            ready: None,
         }
     }
 }

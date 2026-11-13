@@ -1,7 +1,7 @@
 //! Scheduled prompts: saved local times that start an independent workspace.
 
 use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc, Weekday};
-use chrono_tz::Tz;
+use recur_base::tz::Tz;
 use serde::{Deserialize, Serialize};
 
 use crate::cron;
@@ -481,7 +481,7 @@ mod tests {
         let got = next_scheduled_time(&p, rfc("2026-09-08T12:00:00Z"))
             .unwrap()
             .unwrap();
-        assert_eq!(got.timezone(), Tz::America__New_York);
+        assert_eq!(got.timezone(), "America/New_York".parse::<Tz>().unwrap());
         assert_eq!(got.to_rfc3339(), "2026-09-08T09:00:00-04:00");
     }
 }

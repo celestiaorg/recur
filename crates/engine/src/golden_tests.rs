@@ -5,7 +5,6 @@
 
 use std::collections::BTreeMap;
 
-use pretty_assertions::assert_eq;
 use recur_domain::{
     AgentStep, Artifact, AttentionCounts, DiffStat, Escalation, FeedItem, Finding,
     PermissionRequest, Pr, PrComment, Resource, UserQuestion, UserQuestionAnswer, Workspace,

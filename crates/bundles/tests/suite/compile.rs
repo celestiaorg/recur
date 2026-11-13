@@ -205,6 +205,6 @@ fn compile_hash_matches_go() {
     let key = format!("8\0typescript\0{MACRO_SDK_SOURCE}\0export default () => 'x'\n");
     assert_eq!(
         r.hash,
-        hex::encode(&sha2::Sha256::digest(key.as_bytes())[..16])
+        recur_base::hex(&sha2::Sha256::digest(key.as_bytes())[..16])
     );
 }

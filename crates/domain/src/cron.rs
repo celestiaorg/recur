@@ -4,7 +4,7 @@
 //! and gives up after five years.
 
 use chrono::{DateTime, Datelike, Months, NaiveDate, NaiveDateTime, TimeDelta, TimeZone, Timelike};
-use chrono_tz::Tz;
+use recur_base::tz::Tz;
 
 const SECOND: i64 = 1_000_000_000;
 
@@ -427,7 +427,7 @@ mod tests {
         assert_eq!(spec("0 0 1 * *").location, None);
         assert_eq!(
             spec("CRON_TZ=Asia/Tokyo 0 0 1 * *").location,
-            Some(Tz::Asia__Tokyo)
+            Some("Asia/Tokyo".parse().unwrap())
         );
         assert_eq!(spec("TZ=Local 0 0 1 * *").location, None);
         assert_eq!(spec("TZ= 0 0 1 * *").location, Some(Tz::UTC));

@@ -33,7 +33,6 @@ objc2-app-kit.workspace = true
 parking_lot.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["fake"] }
-tempfile.workspace = true
 serde.workspace = true
 
 [lints]

@@ -4,7 +4,6 @@
 
 use std::collections::BTreeMap;
 
-use pretty_assertions::assert_eq;
 use recur_domain::{Pr, Project, ProjectGroup, TreeEntry};
 use recur_services::Error;
 use recur_services::api::{EditorBuffer, EditorSessionMeta, EditorSessionPatch, ShellState};

@@ -341,7 +341,7 @@ fn rust_rewrite_of_go_db_changes_nothing() {
         st.close().unwrap();
         let after = table_dump(&path);
         for (t, rows) in &before {
-            pretty_assertions::assert_eq!(rows, &after[t], "table {t}");
+            assert_eq!(rows, &after[t], "table {t}");
         }
     });
 }

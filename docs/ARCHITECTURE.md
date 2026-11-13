@@ -7,6 +7,7 @@ Recur is a native Rust app on GPUI (through gpui-kit). It replaced an earlier Go
 ```
 Cargo.toml              workspace, shared dependency versions, lints
 crates/
+  base/               recur-base         in-tree replacements for small external crates
   domain/             recur-domain       pure model + rules
   store/              recur-store        SQLite, migrations, paths
   git/                recur-git          local git
@@ -71,12 +72,12 @@ services ─────────► engine, providers/*, forge, issues, usag
 engine ───────────► agent, agent-tools, mcp, bundles, code, git, store, term, forge, issues, project, platform
 agent, forge, issues, bundles, git, code, store, project ─► domain (and each other, downward)
 code ─────────────► textmate (a file's language id)
-textmate, term, ui, http ─ standalone
+textmate, term, ui, http, base ─ standalone
 ```
 
 Rules:
 
-- `recur-domain` has no I/O and no async.
+- `recur-domain` has no I/O and no async, apart from reading the system time zone database (`recur_base::tz`, loaded once per zone).
 - Nothing from `recur-services` down knows about GPUI. Only `recur-app`, the view crates, the panes and the widget crates (`recur-ui`, `recur-editor`, `recur-terminal-view`, `recur-content`) render.
 - A view crate (`crates/views/<area>`: a route, the palettes, the sidebar) depends on no other view crate except `recur-view-core` and `recur-view-widgets`, and never on `recur-app`. What two views share (state, navigation, pure rules) lives in `recur-view-core`; what they show in common lives in `recur-ui` when it is a generic control, or `recur-view-widgets` when it is a piece of Recur's UI (the typeaheads, finding rows, the Schedules list).
 - A pane (`crates/panes/<pane>`) is a large component several routes embed: the chat (workspace, Inbox, home, project settings), the review surface (Observatory, PR detail) and the Observatory (workspace, PR detail's agent dock). Panes register overlays and globals but no routes. A pane depends on `recur-view-core`, `recur-view-widgets` and only the panes it embeds (the Observatory's Review tab is the review surface). When one route needs another's live view, it goes through a hook in `recur-view-core` that the owner installs (`pr_dock::PrDockHost`: PR detail renders the bound workspace's dock).
@@ -85,7 +86,7 @@ Rules:
 
 `recur-layering`'s tests (run by `mise run lint` and `cargo test --workspace`) fail when a view crate or pane depends on another outside these rules or on `recur-app`, when anything from `recur-services` down depends on GPUI, when the engine reaches a provider crate, or when the engine's non-test sources spell a provider, forge or tracker id (`"claude-code"`, `"codex"`, `"chatgpt"`, `"cursor"`, `"github"`, `"gh"`, `"linear"`, or `"<id>/…"`) or name a concrete forge or tracker module (`recur_forge::github`, `recur_issues::{github,linear}`). Ids the engine needs come from `recur-domain` (`PROVIDER_CLAUDE_CODE`, `PrSource::is_github_alias`).
 
-**Licenses.** The workspace is Elastic-2.0 (`LICENSE`). A genuinely reusable library with no hosted-product value can be Apache-2.0: set `license = "Apache-2.0"` in its manifest and symlink `LICENSE-APACHE` to the root copy. Today that is `recur-exec`, `recur-http`, `recur-term` and `recur-textmate`, plus `bundles/`, `recur-skills/`, `src-web/`, `src-docs/` and `scripts/` (not crates). A crate that ports third-party code keeps its upstream license notice in a `NOTICE` file. Settings > Licenses lists the third-party software the app includes: `mise run generate:licenses` (a dependency of `dev`, `macos:package` and `linux:build`, skipped while its sources are unchanged) writes `target/licenses.md` from cargo-about's crate list (`build/licenses/about.toml`, which fails on a license it does not accept), `build/licenses/components.md` (native codecs, icons and data cargo does not see; update it when embedding another), the fonts' OFL texts and every `NOTICE`; those tasks point `RECUR_LICENSES_MD` at it and `recur-view-settings`' `build.rs` embeds it. `recur-layering` fails when an Apache-2.0 crate lacks the file or reaches an Elastic-2.0 crate outside dev-dependencies.
+**Licenses.** The workspace is Elastic-2.0 (`LICENSE`). A genuinely reusable library with no hosted-product value can be Apache-2.0: set `license = "Apache-2.0"` in its manifest and symlink `LICENSE-APACHE` to the root copy. Today that is `recur-base`, `recur-exec`, `recur-http`, `recur-term` and `recur-textmate`, plus `bundles/`, `recur-skills/`, `src-web/`, `src-docs/` and `scripts/` (not crates). A crate that ports third-party code keeps its upstream license notice in a `NOTICE` file. Settings > Licenses lists the third-party software the app includes: `mise run generate:licenses` (a dependency of `dev`, `macos:package` and `linux:build`, skipped while its sources are unchanged) writes `target/licenses.md` from cargo-about's crate list (`build/licenses/about.toml`, which fails on a license it does not accept), `build/licenses/components.md` (native codecs, icons and data cargo does not see; update it when embedding another), the fonts' OFL texts and every `NOTICE`; those tasks point `RECUR_LICENSES_MD` at it and `recur-view-settings`' `build.rs` embeds it. `recur-layering` fails when an Apache-2.0 crate lacks the file or reaches an Elastic-2.0 crate outside dev-dependencies.
 
 ## Extension points
 
@@ -269,7 +270,7 @@ cx.spawn(async move |this, cx| {
 - `serde` names keep the existing JSON and TOML field names, so `recur.db` JSON columns, `*.json` view-state files, `window.json` and `bundle.toml` written by the Go app still read.
 - No `unwrap()` on fallible I/O outside tests. No `todo!()`, `unimplemented!()` or placeholder behavior.
 - Keep modules small and named after what they do.
-- Shipped content is not copied. `bundles/` and `recur-skills/` are embedded from their repo paths (`include_dir!`); migrations, file icons, the emoji table and other assets live in the crate that embeds them.
+- Shipped content is not copied. `bundles/` and `recur-skills/` are embedded from their repo paths (`recur_base::embed`); migrations, file icons, the emoji table and other assets live in the crate that embeds them.
 
 ## Identity and data
 

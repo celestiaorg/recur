@@ -2,13 +2,13 @@
 //! GPUI under `recur/…` and falls back to the gpui-kit defaults for everything else.
 
 use gpui_kit::{AssetSource, Result, SharedString};
-use include_dir::{Dir, include_dir};
+use recur_base::embed::Dir;
 use serde::Deserialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-static ICONS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets/icons");
+static ICONS: Dir = include!(concat!(env!("OUT_DIR"), "/icons.rs"));
 
 /// Asset prefix for app icons.
 pub const APP_ICONS: &str = "recur/icons/app";
@@ -22,7 +22,7 @@ pub struct Assets;
 
 fn embedded(path: &str) -> Option<&'static [u8]> {
     let rel = path.strip_prefix("recur/icons/")?;
-    ICONS.get_file(rel).map(|f| f.contents())
+    ICONS.get_file(rel).map(|f| f.contents)
 }
 
 impl AssetSource for Assets {
@@ -41,7 +41,7 @@ impl AssetSource for Assets {
             };
             return Ok(dir
                 .files()
-                .map(|f| format!("recur/icons/{}", f.path().display()).into())
+                .map(|f| format!("recur/icons/{}", f.path).into())
                 .collect());
         }
         gpui_kit::assets::Assets.list(path)
@@ -77,7 +77,7 @@ fn lucide() -> &'static Lucide {
     L.get_or_init(|| {
         let raw = ICONS
             .get_file("lucide.json")
-            .map(|f| f.contents())
+            .map(|f| f.contents)
             .unwrap_or(b"{\"icons\":[],\"suggested\":[]}");
         let index: LucideIndex = serde_json::from_slice(raw).unwrap_or(LucideIndex {
             icons: Vec::new(),

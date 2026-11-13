@@ -297,12 +297,11 @@ impl AgentChat {
         let layout = self.composer_layout.clone();
         let doc = self.doc.clone();
         let marked = self.composer_marked.clone();
-        let blink_on = focused && !motion::is_frozen(cx) && {
-            let e = self.caret_blink_epoch.elapsed().as_millis();
-            (e / 500).is_multiple_of(2)
-        };
+        let blink_ms = self.caret_blink_epoch.elapsed().as_millis();
+        let blink_on = focused && !motion::is_frozen(cx) && (blink_ms / 500).is_multiple_of(2);
         if focused {
-            motion::loop_frame(window, cx);
+            let next = 500 - (blink_ms % 500) as u64;
+            motion::frame_after(std::time::Duration::from_millis(next), window, cx);
         }
         let focus = self.focus.clone();
         // Laid out, before the scroller places its content: this frame shows the caret where

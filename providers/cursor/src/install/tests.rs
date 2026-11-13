@@ -111,14 +111,9 @@ fn pick_wheel_requires_pin_and_platform() {
 }
 
 fn write_test_wheel(path: &Path, members: &[(&str, &str, u32)]) {
-    let f = std::fs::File::create(path).unwrap();
-    let mut zw = zip::ZipWriter::new(f);
+    let mut zw = recur_base::zip::Builder::new(std::fs::File::create(path).unwrap());
     for (name, body, mode) in members {
-        let opts = zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated)
-            .unix_permissions(*mode);
-        zw.start_file(*name, opts).unwrap();
-        zw.write_all(body.as_bytes()).unwrap();
+        zw.file(name, *mode, body.as_bytes()).unwrap();
     }
     zw.finish().unwrap();
 }

@@ -27,6 +27,8 @@ In Autopilot mode the composer swaps its model picker for a **Workflow** picker 
 
 An Agent chat can hand a subtask to a **child workspace**: its own worktree and branch, started from the parent's branch, with its own chat. The parent keeps working and gets a report when the child finishes. It can then merge the child's commits into its own branch or archive the child.
 
+To split a task across parallel agents, start the message with: **Use child workspaces: one per work item, then merge each into this branch.**
+
 - The parent can message a child. A running child is steered mid-turn; a finished child that is not yet merged or archived starts a new turn and reports back again.
 - Children appear nested under their parent in the sidebar. Open one to watch or chat with it directly.
 - Children do not create children of their own.

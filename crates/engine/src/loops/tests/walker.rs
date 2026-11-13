@@ -3,7 +3,6 @@
 
 use std::time::Duration;
 
-use pretty_assertions::assert_eq;
 use recur_bundles::{FindingsThreshold, LoopDef, LoopPhase, Policy, VERB_CONVERGE, VERB_ENSURE_PR};
 use recur_domain::{
     AutonomyLevel, Finding, Plan, PlanStep, STEP_PENDING, Severity, Workspace, WorkspaceState,

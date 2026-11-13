@@ -1,7 +1,6 @@
 //! Every app event reads the payload its emitter sent, and writes it back
 //! unchanged.
 
-use pretty_assertions::assert_eq;
 use recur_services::events::{AppEvent, EventHub, WorkspaceRef};
 use serde_json::{Value, json};
 

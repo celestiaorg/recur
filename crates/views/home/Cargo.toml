@@ -19,7 +19,6 @@ recur-view-core.workspace = true
 recur-view-chat.workspace = true
 serde_json.workspace = true
 futures.workspace = true
-icu_time.workspace = true
 iana-time-zone.workspace = true
 image = { workspace = true, features = ["png"] }
 smallvec.workspace = true
@@ -36,7 +35,6 @@ recur-view-settings.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["fake"] }
 recur-app.workspace = true
-parking_lot.workspace = true
 
 [lints]
 workspace = true

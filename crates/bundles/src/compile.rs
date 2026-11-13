@@ -157,7 +157,7 @@ fn compile_cached(
     what: &str,
 ) -> Result<CompileResult, Error> {
     let sum = Sha256::digest(key.as_bytes());
-    let hash = hex::encode(&sum[..16]);
+    let hash = recur_base::hex(&sum[..16]);
     let cache_path = path::join(&[cache_dir, &format!("{id}.{hash}.js")]);
     if let Ok(data) = std::fs::read(&cache_path)
         && !data.is_empty()

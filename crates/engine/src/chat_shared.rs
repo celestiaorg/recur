@@ -89,7 +89,7 @@ pub fn provisional_workspace_title(text: &str) -> String {
 
 /// sha256 hex of a standing system prompt.
 pub fn standing_prompt_sha(prompt: &str) -> String {
-    hex::encode(Sha256::digest(prompt.as_bytes()))
+    recur_base::hex(Sha256::digest(prompt.as_bytes()))
 }
 
 fn early_chat_key(workspace_id: &str, code: &str) -> String {

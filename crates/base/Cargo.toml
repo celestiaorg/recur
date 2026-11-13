@@ -1,0 +1,15 @@
+[package]
+name = "recur-base"
+description = "In-tree replacements for small external crates, cut down to what Recur uses."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+chrono.workspace = true
+flate2.workspace = true
+
+[lints]
+workspace = true

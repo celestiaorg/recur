@@ -58,7 +58,7 @@ pub(super) fn run_verification(
         return Ok(());
     }
     let algo = v.signature_algo.as_str();
-    if !matches!(algo, "ed25519" | "ed25519ph" | "ecdsa-p256") {
+    if !matches!(algo, "ed25519" | "ed25519ph") {
         return Err(fail(format!("unsupported signature algorithm {algo:?}")));
     }
     if config_key.is_empty() {
@@ -73,7 +73,7 @@ pub(super) fn run_verification(
             ed25519_dalek::Verifier::verify(&key, computed, &sig)
                 .map_err(|_| fail("ed25519 signature did not verify"))
         }
-        "ed25519ph" => {
+        _ => {
             let key = parse_ed25519_public(config_key)?;
             let prehash: [u8; 64] = computed.try_into().map_err(|_| {
                 fail(format!(
@@ -85,12 +85,6 @@ pub(super) fn run_verification(
                 .map_err(|e| fail(format!("ed25519ph signature did not verify: {e}")))?;
             key.verify_prehashed(Prehashed(prehash), None, &sig)
                 .map_err(|e| fail(format!("ed25519ph signature did not verify: {e}")))
-        }
-        _ => {
-            let key = parse_ecdsa_p256_public(config_key)?;
-            let sig = split_ecdsa_sig(&v.signature)?;
-            p256::ecdsa::signature::hazmat::PrehashVerifier::verify_prehash(&key, computed, &sig)
-                .map_err(|_| fail("ecdsa-p256 signature did not verify"))
         }
     }
 }
@@ -126,119 +120,22 @@ impl digest::FixedOutput for Prehashed {
     }
 }
 
-const OID_ED25519: &str = "1.3.101.112";
-const OID_EC_PUBLIC_KEY: &str = "1.2.840.10045.2.1";
-const OID_RSA: &str = "1.2.840.113549.1.1.1";
-const OID_P256: &str = "1.2.840.10045.3.1.7";
+/// The DER `SubjectPublicKeyInfo` header of an Ed25519 key; the raw 32-byte key follows.
+const ED25519_SPKI_PREFIX: [u8; 12] = [
+    0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+];
 
-/// The key type for an OID, used in wrong-type errors.
-fn key_type(oid: &str) -> &'static str {
-    match oid {
-        OID_ED25519 => "Ed25519",
-        OID_EC_PUBLIC_KEY => "ECDSA",
-        OID_RSA => "RSA",
-        _ => "unknown",
-    }
-}
-
-/// The subject public key info from DER, or from the first PEM block.
-fn parse_spki(raw: &[u8]) -> Result<(String, Option<String>, Vec<u8>), String> {
-    let der = pem_decode(raw).unwrap_or_else(|| raw.to_vec());
-    let spki =
-        spki::SubjectPublicKeyInfoRef::try_from(der.as_slice()).map_err(|e| e.to_string())?;
-    let oid = spki.algorithm.oid.to_string();
-    let params = spki.algorithm.parameters_oid().ok().map(|o| o.to_string());
-    let key = spki
-        .subject_public_key
-        .as_bytes()
-        .ok_or("public key bit string is not byte aligned")?
-        .to_vec();
-    Ok((oid, params, key))
-}
-
+/// A raw 32-byte key, or an Ed25519 `SubjectPublicKeyInfo` as DER or PEM.
 fn parse_ed25519_public(raw: &[u8]) -> Result<ed25519_dalek::VerifyingKey, UpdaterError> {
-    let key: [u8; 32] = if let Ok(bytes) = <[u8; 32]>::try_from(raw) {
-        bytes
-    } else {
-        let (oid, _, key) =
-            parse_spki(raw).map_err(|e| fail(format!("ed25519 public key parse: {e}")))?;
-        if oid != OID_ED25519 {
-            return Err(fail(format!(
-                "ed25519 public key has wrong type {}",
-                key_type(&oid)
-            )));
-        }
-        key.as_slice()
-            .try_into()
-            .map_err(|_| fail("ed25519 public key parse: bad key length"))?
-    };
+    let der = pem_decode(raw);
+    let der = der.as_deref().unwrap_or(raw);
+    let key: [u8; 32] = der
+        .strip_prefix(&ED25519_SPKI_PREFIX[..])
+        .unwrap_or(der)
+        .try_into()
+        .map_err(|_| fail("ed25519 public key parse: not an Ed25519 key"))?;
     ed25519_dalek::VerifyingKey::from_bytes(&key)
         .map_err(|e| fail(format!("ed25519 public key parse: {e}")))
-}
-
-fn parse_ecdsa_p256_public(raw: &[u8]) -> Result<p256::ecdsa::VerifyingKey, UpdaterError> {
-    let (oid, params, key) =
-        parse_spki(raw).map_err(|e| fail(format!("ecdsa public key parse: {e}")))?;
-    if oid != OID_EC_PUBLIC_KEY {
-        return Err(fail(format!(
-            "ecdsa public key has wrong type {}",
-            key_type(&oid)
-        )));
-    }
-    let curve = match params.as_deref() {
-        Some(OID_P256) => None,
-        Some("1.3.132.0.33") => Some("P-224"),
-        Some("1.3.132.0.34") => Some("P-384"),
-        Some("1.3.132.0.35") => Some("P-521"),
-        _ => {
-            return Err(fail(
-                "ecdsa public key parse: x509: unsupported elliptic curve",
-            ));
-        }
-    };
-    if let Some(name) = curve {
-        return Err(fail(format!("ecdsa-p256 requires P-256 key, got {name}")));
-    }
-    p256::ecdsa::VerifyingKey::from_sec1_bytes(&key)
-        .map_err(|e| fail(format!("ecdsa public key parse: {e}")))
-}
-
-/// Raw `r||s` (64 bytes) or an ASN.1 DER SEQUENCE with nothing after it.
-fn split_ecdsa_sig(sig: &[u8]) -> Result<p256::ecdsa::Signature, UpdaterError> {
-    if sig.len() == 64 {
-        return p256::ecdsa::Signature::from_slice(sig)
-            .map_err(|_| fail("ecdsa-p256 signature did not verify"));
-    }
-    let total = der_sequence_len(sig)
-        .ok_or_else(|| fail("ecdsa signature format unrecognised: asn1: syntax error"))?;
-    if total < sig.len() {
-        return Err(fail("ecdsa signature has trailing data"));
-    }
-    p256::ecdsa::Signature::from_der(sig)
-        .map_err(|e| fail(format!("ecdsa signature format unrecognised: {e}")))
-}
-
-/// The encoded length of a leading DER SEQUENCE, or `None` when `b` does not
-/// start with a complete one.
-fn der_sequence_len(b: &[u8]) -> Option<usize> {
-    if b.first() != Some(&0x30) {
-        return None;
-    }
-    let first = *b.get(1)? as usize;
-    let (len, header) = if first < 0x80 {
-        (first, 2)
-    } else {
-        let n = first & 0x7f;
-        if n == 0 || n > 2 || b.len() < 2 + n {
-            return None;
-        }
-        let len = b[2..2 + n]
-            .iter()
-            .fold(0usize, |acc, &x| acc << 8 | x as usize);
-        (len, 2 + n)
-    };
-    let total = header + len;
-    (total <= b.len()).then_some(total)
 }
 
 /// The first PEM block's bytes (leading text and `Key: value` headers are
@@ -279,8 +176,10 @@ mod tests {
     fn shipped_public_key_parses() {
         let pem = include_bytes!("../../../../build/updater.key.pub");
         parse_ed25519_public(pem).expect("shipped updater key is an ed25519 PKIX PEM");
-        let err = parse_ecdsa_p256_public(pem).expect_err("not ecdsa");
-        assert!(err.to_string().contains("wrong type Ed25519"), "{err}");
+        // A P-256 SubjectPublicKeyInfo header is not an Ed25519 key.
+        let p256 = [&[0x30, 0x59, 0x30, 0x13, 0x06, 0x07][..], &[0; 85]].concat();
+        let err = parse_ed25519_public(&p256).expect_err("not ed25519");
+        assert!(err.to_string().contains("not an Ed25519 key"), "{err}");
     }
 
     #[test]
@@ -302,14 +201,5 @@ mod tests {
         let err = run_verification(&digest, &bad_algo, b"k").expect_err("unsupported");
         assert!(err.to_string().contains("unsupported signature algorithm"));
         assert!(Hasher::for_algo("md5").is_err());
-    }
-
-    #[test]
-    fn der_lengths() {
-        assert_eq!(der_sequence_len(&[0x30, 0x02, 0x01, 0x00]), Some(4));
-        assert_eq!(der_sequence_len(&[0x30, 0x02, 0x01, 0x00, 0xde]), Some(4));
-        assert_eq!(der_sequence_len(&[0x30, 0x05, 0x01]), None);
-        assert_eq!(der_sequence_len(&[0x02, 0x01]), None);
-        assert_eq!(der_sequence_len(&[0x30, 0x81, 0x01, 0x00]), Some(4));
     }
 }

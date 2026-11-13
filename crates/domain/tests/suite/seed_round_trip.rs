@@ -14,7 +14,7 @@ fn round_trip<T: DeserializeOwned + Serialize>(seed: &Value, key: &str) {
     let typed: T =
         serde_json::from_value(original.clone()).unwrap_or_else(|e| panic!("{key}: {e}"));
     let back = json::canonical(serde_json::to_value(&typed).unwrap());
-    pretty_assertions::assert_eq!(back, json::canonical(original.clone()), "{key}");
+    assert_eq!(back, json::canonical(original.clone()), "{key}");
 }
 
 #[test]

@@ -6,7 +6,6 @@
 
 use std::collections::BTreeMap;
 
-use pretty_assertions::assert_eq;
 use recur_agent::{AgentEvent, McpAttach, Provider, TurnRequest};
 use recur_domain::PermissionDecision;
 use recur_provider_codex::approvals::{

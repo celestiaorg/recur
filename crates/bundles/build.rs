@@ -1,4 +1,4 @@
 fn main() {
-    println!("cargo:rerun-if-changed=../../bundles");
-    println!("cargo:rerun-if-changed=../../recur-skills");
+    recur_base::embed::generate("../../bundles", "bundles.rs");
+    recur_base::embed::generate("../../recur-skills", "skills.rs");
 }

@@ -6,11 +6,12 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use comrak::nodes::{ListType, NodeValue};
+use comrak::{Arena, Node, Options};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, App, Div, Hsla, IntoElement, ParentElement, SharedString, Styled, div, px,
 };
-use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use recur_textmate::{highlight_line_spans, lang_from_code_class};
 use recur_ui::text::{Align, InlineBox};
 use recur_ui::{Color, Span, Text, TextStyled, Theme, span, style::card};
@@ -106,147 +107,94 @@ enum Block {
     Table(Vec<Vec<Para>>),
 }
 
-struct Builder<'a> {
-    events: std::iter::Peekable<Parser<'a>>,
-    /// What a soft line break becomes (`" "`, or `"\n"` under pre-line).
-    soft_break: &'static str,
+/// Blocks from GFM markdown (tables, strikethrough, autolinks). `soft_break` is what a soft
+/// line break becomes (`" "`, or `"\n"` under pre-line).
+fn parse(src: &str, soft_break: &'static str) -> Vec<Block> {
+    let mut o = Options::default();
+    o.extension.strikethrough = true;
+    o.extension.table = true;
+    o.extension.autolink = true;
+    let arena = Arena::new();
+    blocks(comrak::parse_document(&arena, src, &o), soft_break)
 }
 
-impl Builder<'_> {
-    /// Blocks until `end` (or the end of input).
-    fn blocks(&mut self, end: Option<TagEnd>) -> Vec<Block> {
-        let mut out = Vec::new();
-        let mut loose = Para::default();
-        let mut st = Inline::default();
-        while let Some(ev) = self.events.next() {
-            match ev {
-                Event::End(e) if Some(e) == end => break,
-                Event::Start(Tag::Paragraph) => {
-                    out.push(Block::Para(self.inline(TagEnd::Paragraph)))
-                }
-                Event::Start(Tag::Heading { level, .. }) => {
-                    let n = match level {
-                        HeadingLevel::H1 => 1,
-                        HeadingLevel::H2 => 2,
-                        HeadingLevel::H3 => 3,
-                        HeadingLevel::H4 => 4,
-                        HeadingLevel::H5 => 5,
-                        HeadingLevel::H6 => 6,
-                    };
-                    out.push(Block::Heading(n, self.inline(TagEnd::Heading(level))));
-                }
-                Event::Start(Tag::CodeBlock(kind)) => {
-                    let lang = match kind {
-                        CodeBlockKind::Fenced(info) => {
-                            format!("language-{}", info.split_whitespace().next().unwrap_or(""))
-                        }
-                        CodeBlockKind::Indented => String::new(),
-                    };
-                    let mut text = String::new();
-                    for ev in self.events.by_ref() {
-                        match ev {
-                            Event::Text(t) => text.push_str(&t),
-                            Event::End(TagEnd::CodeBlock) => break,
-                            _ => {}
-                        }
-                    }
-                    if text.ends_with('\n') {
-                        text.pop();
-                    }
-                    out.push(Block::Code { lang, text });
-                }
-                Event::Rule => out.push(Block::Rule),
-                Event::Start(Tag::List(start)) => {
-                    let mut items = Vec::new();
-                    while let Some(ev) = self.events.next() {
-                        match ev {
-                            Event::Start(Tag::Item) => items.push(self.blocks(Some(TagEnd::Item))),
-                            Event::End(TagEnd::List(_)) => break,
-                            _ => {}
-                        }
-                    }
-                    out.push(Block::List { start, items });
-                }
-                Event::Start(Tag::BlockQuote(_)) => {
-                    out.push(Block::Quote(self.blocks(Some(TagEnd::BlockQuote(None)))))
-                }
-                Event::Start(Tag::Table(_)) => {
-                    let mut rows: Vec<Vec<Para>> = Vec::new();
-                    while let Some(ev) = self.events.next() {
-                        match ev {
-                            Event::Start(Tag::TableHead) | Event::Start(Tag::TableRow) => {
-                                rows.push(Vec::new())
-                            }
-                            Event::Start(Tag::TableCell) => {
-                                let cell = self.inline(TagEnd::TableCell);
-                                if let Some(r) = rows.last_mut() {
-                                    r.push(cell);
-                                }
-                            }
-                            Event::End(TagEnd::Table) => break,
-                            _ => {}
-                        }
-                    }
-                    out.push(Block::Table(rows));
-                }
-                Event::Text(t) | Event::Code(t) | Event::Html(t) | Event::InlineHtml(t) => {
-                    loose.push(&t, st.clone())
-                }
-                Event::SoftBreak | Event::HardBreak => loose.push("\n", st.clone()),
-                Event::Start(Tag::Strong) => st.strong = true,
-                Event::End(TagEnd::Strong) => st.strong = false,
-                _ => {}
-            }
-            if !loose.text.is_empty()
-                && !matches!(
-                    self.events.peek(),
-                    Some(Event::Text(_)) | Some(Event::Code(_))
-                )
-            {
-                out.push(Block::Para(std::mem::take(&mut loose)));
-            }
-        }
-        if !loose.text.is_empty() {
-            out.push(Block::Para(loose));
-        }
-        out
-    }
+fn blocks(parent: Node<'_>, sb: &'static str) -> Vec<Block> {
+    parent.children().filter_map(|n| block(n, sb)).collect()
+}
 
-    fn inline(&mut self, end: TagEnd) -> Para {
-        let mut p = Para::default();
-        let mut st = Inline::default();
-        for ev in self.events.by_ref() {
-            match ev {
-                Event::End(e) if e == end => break,
-                Event::Text(t) => p.push(&t, st.clone()),
-                Event::Code(t) => p.push(
-                    &t,
-                    Inline {
-                        code: true,
-                        ..st.clone()
-                    },
-                ),
-                Event::Html(t) | Event::InlineHtml(t)
-                    if t.trim_start().to_ascii_lowercase().starts_with("<br") =>
-                {
-                    p.push("\n", st.clone())
-                }
-                Event::SoftBreak => p.push(self.soft_break, st.clone()),
-                Event::HardBreak => p.push("\n", st.clone()),
-                Event::Start(Tag::Strong) => st.strong = true,
-                Event::End(TagEnd::Strong) => st.strong = false,
-                Event::Start(Tag::Emphasis) => st.em = true,
-                Event::End(TagEnd::Emphasis) => st.em = false,
-                Event::Start(Tag::Strikethrough) => st.strike = true,
-                Event::End(TagEnd::Strikethrough) => st.strike = false,
-                Event::Start(Tag::Link { dest_url, .. }) => {
-                    st.link = Some(dest_url.to_string().into())
-                }
-                Event::End(TagEnd::Link) => st.link = None,
-                _ => {}
-            }
+fn block(n: Node<'_>, sb: &'static str) -> Option<Block> {
+    Some(match &n.data().value {
+        NodeValue::Paragraph => Block::Para(inline(n, sb)),
+        NodeValue::Heading(h) => Block::Heading(h.level, inline(n, sb)),
+        NodeValue::CodeBlock(c) => Block::Code {
+            lang: if c.fenced {
+                format!(
+                    "language-{}",
+                    c.info.split_whitespace().next().unwrap_or("")
+                )
+            } else {
+                String::new()
+            },
+            text: c
+                .literal
+                .strip_suffix('\n')
+                .unwrap_or(&c.literal)
+                .to_string(),
+        },
+        NodeValue::ThematicBreak => Block::Rule,
+        NodeValue::List(l) => Block::List {
+            start: (l.list_type == ListType::Ordered).then_some(l.start as u64),
+            items: n.children().map(|item| blocks(item, sb)).collect(),
+        },
+        NodeValue::BlockQuote => Block::Quote(blocks(n, sb)),
+        NodeValue::Table(_) => Block::Table(
+            n.children()
+                .map(|row| row.children().map(|cell| inline(cell, sb)).collect())
+                .collect(),
+        ),
+        NodeValue::HtmlBlock(h) => {
+            let mut p = Para::default();
+            p.push(h.literal.trim_end_matches('\n'), Inline::default());
+            Block::Para(p)
         }
-        p
+        _ => return None,
+    })
+}
+
+fn inline(n: Node<'_>, sb: &'static str) -> Para {
+    let mut p = Para::default();
+    runs(n, &Inline::default(), sb, &mut p);
+    p
+}
+
+fn runs(n: Node<'_>, st: &Inline, sb: &'static str, p: &mut Para) {
+    for c in n.children() {
+        let with = |f: fn(&mut Inline)| {
+            let mut st = st.clone();
+            f(&mut st);
+            st
+        };
+        match &c.data().value {
+            NodeValue::Text(t) => p.push(t, st.clone()),
+            NodeValue::Code(code) => p.push(&code.literal, with(|s| s.code = true)),
+            NodeValue::HtmlInline(h) if h.trim_start().to_ascii_lowercase().starts_with("<br") => {
+                p.push("\n", st.clone())
+            }
+            NodeValue::SoftBreak => p.push(sb, st.clone()),
+            NodeValue::LineBreak => p.push("\n", st.clone()),
+            NodeValue::Strong => runs(c, &with(|s| s.strong = true), sb, p),
+            NodeValue::Emph => runs(c, &with(|s| s.em = true), sb, p),
+            NodeValue::Strikethrough => runs(c, &with(|s| s.strike = true), sb, p),
+            NodeValue::Link(l) => {
+                let st = Inline {
+                    link: Some(l.url.clone().into()),
+                    ..st.clone()
+                };
+                runs(c, &st, sb, p)
+            }
+            NodeValue::Image(_) => runs(c, st, sb, p),
+            _ => {}
+        }
     }
 }
 
@@ -540,16 +488,7 @@ pub fn render_doc(doc: &Doc, s: &DocStyle) -> AnyElement {
 }
 
 pub fn render_markdown(src: &str, s: &DocStyle) -> Div {
-    let mut opts = Options::empty();
-    opts.insert(Options::ENABLE_TABLES);
-    opts.insert(Options::ENABLE_STRIKETHROUGH);
-    opts.insert(Options::ENABLE_GFM);
-    let mut b = Builder {
-        events: Parser::new_ext(src, opts).peekable(),
-        soft_break: if s.pre_line { "\n" } else { " " },
-    };
-    let blocks = b.blocks(None);
-    root(blocks, s)
+    root(parse(src, if s.pre_line { "\n" } else { " " }), s)
 }
 
 /// Code in a language (`renderCode` for `MarkedString {language}`): a
@@ -569,20 +508,12 @@ pub fn render_code(language: &str, value: &str, s: &DocStyle) -> AnyElement {
 mod tests {
     use super::*;
 
-    fn blocks(src: &str) -> Vec<Block> {
-        let mut opts = Options::empty();
-        opts.insert(Options::ENABLE_TABLES);
-        opts.insert(Options::ENABLE_STRIKETHROUGH);
-        Builder {
-            events: Parser::new_ext(src, opts).peekable(),
-            soft_break: " ",
-        }
-        .blocks(None)
-    }
-
     #[test]
     fn parses_blocks_and_inline_runs() {
-        let b = blocks("Some `code` and **bold**\n\n```go\nx := 1\n```\n\n- a\n- b");
+        let b = parse(
+            "Some `code` and **bold**\n\n```go\nx := 1\n```\n\n- a\n- b",
+            " ",
+        );
         assert_eq!(b.len(), 3);
         let Block::Para(p) = &b[0] else { panic!() };
         assert_eq!(p.text, "Some code and bold");
@@ -593,5 +524,48 @@ mod tests {
         );
         assert!(matches!(&b[2], Block::List { start: None, items } if items.len() == 2));
         assert_eq!(heading_metrics(2), (1.5, 0.83));
+    }
+
+    #[test]
+    fn nests_inline_styles_links_and_tables() {
+        let b = parse(
+            "*em **both** ~~gone~~* [doc](https://x.dev) see https://y.dev\nnext<br>line\n\n\
+             1. one\n   - inner\n\n| h | i |\n|---|---|\n| c | d |",
+            "\n",
+        );
+        assert_eq!(b.len(), 3);
+        let Block::Para(p) = &b[0] else { panic!() };
+        assert_eq!(p.text, "em both gone doc see https://y.dev\nnext\nline");
+        let run = |needle: &str| {
+            let at = p.text.find(needle).unwrap();
+            let mut off = 0;
+            p.runs
+                .iter()
+                .find(|(len, _)| {
+                    off += len;
+                    off > at
+                })
+                .unwrap()
+                .1
+                .clone()
+        };
+        assert!(run("both").em && run("both").strong);
+        assert!(run("gone").em && run("gone").strike && !run("gone").strong);
+        assert_eq!(run("doc").link.as_deref(), Some("https://x.dev"));
+        assert_eq!(run("https://y.dev").link.as_deref(), Some("https://y.dev"));
+        let Block::List { start, items } = &b[1] else {
+            panic!()
+        };
+        assert_eq!(*start, Some(1));
+        assert!(matches!(
+            &items[0][..],
+            [Block::Para(_), Block::List { start: None, .. }]
+        ));
+        let Block::Table(rows) = &b[2] else { panic!() };
+        let cells: Vec<Vec<&str>> = rows
+            .iter()
+            .map(|r| r.iter().map(|c| c.text.as_str()).collect())
+            .collect();
+        assert_eq!(cells, [["h", "i"], ["c", "d"]]);
     }
 }

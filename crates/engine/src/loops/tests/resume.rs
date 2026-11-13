@@ -12,6 +12,7 @@ use recur_agent::{AgentEvent, Provider, ProviderError, TurnResult};
 use recur_domain::{Agent, AgentRole, AutonomyLevel, Checkpoint, Group, Workspace, WorkspaceState};
 use recur_store::Store;
 
+use crate::codes::loop_owner_code;
 use crate::lifecycle::PHASE_INTERRUPTED;
 use crate::loops::lifecycle::resumable;
 use crate::loops::resume::resume_point_for;
@@ -169,17 +170,52 @@ async fn resume_restores_coder_session() {
     let t = TestEngine::new(Some(runner.provider()));
     let proj = add_project(&t.store, &repo.path);
     let id = interrupted_loop(&t.store, &proj, WorkspaceState::Coding, 2);
-    t.store
-        .upsert_agent(&id, coder_agent(&id, "sess-killed-mid-edit"));
+    t.store.upsert_agent(
+        &id,
+        Agent {
+            model: "gpt-5".into(),
+            ..coder_agent(&id, "sess-killed-mid-edit")
+        },
+    );
     t.engine.recover();
     t.engine.auto_resume().await;
     wait_for_state(&t.store, &id, "resumed loop to settle", SETTLED).await;
     let got = runner.coder_resumes.lock().clone();
     assert!(!got.is_empty(), "the Coder never ran");
-    assert_eq!(got[0], "sess-killed-mid-edit");
+    assert_eq!(
+        got[0], "sess-killed-mid-edit",
+        "a bare legacy id still resumes"
+    );
     for (i, s) in got[1..].iter().enumerate() {
         assert_eq!(s, "", "coder turn {} starts fresh", i + 2);
     }
+    assert_eq!(
+        t.store.agent(&id, "CO").unwrap().model,
+        t.engine.settings().coder_model().to_string(),
+        "loop agents record the provider their session ran on"
+    );
+    t.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn resume_drops_a_session_from_another_provider() {
+    let repo = init_repo();
+    let runner = Arc::new(SessionSpy::default());
+    let t = TestEngine::new(Some(runner.provider()));
+    let proj = add_project(&t.store, &repo.path);
+    let id = interrupted_loop(&t.store, &proj, WorkspaceState::Coding, 2);
+    t.store.upsert_agent(
+        &id,
+        Agent {
+            model: "codex/gpt-5".into(),
+            ..coder_agent(&id, "codex-thread-before-switch")
+        },
+    );
+    t.engine.recover();
+    t.engine.auto_resume().await;
+    wait_for_state(&t.store, &id, "resumed loop to settle", SETTLED).await;
+    let got = runner.coder_resumes.lock().clone();
+    assert_eq!(got.first().map(String::as_str), Some(""));
     t.close().await;
 }
 
@@ -346,8 +382,20 @@ async fn transient_llm_failure_is_retryable() {
     );
     assert_eq!(failed.group, Group::Needs);
     assert!(resumable(&failed));
+    let retry_row = |t: &TestEngine| {
+        t.store
+            .inbox()
+            .unwrap_or_default()
+            .into_iter()
+            .find(|i| i.id == format!("ib-retry-{id}"))
+    };
+    assert_eq!(
+        retry_row(&t).map(|i| i.target),
+        Some(format!("chat:{id}:{}", loop_owner_code(&failed)))
+    );
 
     t.engine.retry(&id).await;
+    assert!(retry_row(&t).is_none());
     let fin = wait_for_state(
         &t.store,
         &id,

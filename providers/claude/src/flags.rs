@@ -70,7 +70,7 @@ fn always_1m(model: &str) -> bool {
 }
 
 /// Models that still expose a 200K↔1M toggle through the `[1m]` suffix.
-fn selectable_context(model: &str) -> bool {
+pub fn selectable_context(model: &str) -> bool {
     matches!(
         bare_model_id(model),
         "claude-sonnet-4-6" | "claude-opus-4-6"
@@ -149,9 +149,10 @@ fn context_dim() -> FlagDimension {
 /// The Claude Code picker list. Every row is a pinned id, never an alias, so
 /// a saved choice keeps meaning the same model. Extended context is a flag
 /// only where Claude Code still distinguishes it ([`resolve_model`] applies
-/// `[1m]` at run time); Sonnet 5, Fable 5.1, Opus 4.7+ and Haiku 5.5 always run at 1M.
+/// `[1m]` at run time); Sonnet 5, Fable 5+, Opus 4.7+ and Haiku 5.5 always run at 1M.
 pub fn catalog() -> Vec<ModelChoice> {
     vec![
+        row("claude-fable-5-2", "Fable 5.2", false, 1_000_000),
         row("claude-fable-5-1", "Fable 5.1", false, 1_000_000),
         row("claude-fable-5", "Fable 5", false, 1_000_000),
         row("claude-opus-5-5", "Opus 5.5", false, 1_000_000),
@@ -241,6 +242,8 @@ mod tests {
             ("claude-code/claude-opus-5", none.clone(), 1_000_000),
             ("claude-fable-5-1", none.clone(), 1_000_000),
             ("claude-mythos-5-1", none.clone(), 1_000_000),
+            ("claude-fable-5-2", none.clone(), 1_000_000),
+            ("claude-mythos-5-2", none.clone(), 1_000_000),
             ("claude-haiku-5-5", none.clone(), 1_000_000),
             ("claude-sonnet-4-6", flags(&[("context", "200k")]), 200_000),
             ("claude-opus-4-6", none.clone(), 200_000),
@@ -370,7 +373,7 @@ mod tests {
     }
 
     #[test]
-    fn catalog_tracks_fable_51() {
+    fn catalog_tracks_fable_52() {
         let rows = |pred: &dyn Fn(&str) -> bool| {
             catalog()
                 .into_iter()
@@ -381,7 +384,7 @@ mod tests {
         };
         assert_eq!(
             rows(&|r| r.contains("fable")),
-            "claude-code/claude-fable-5-1 Fable 5.1,claude-code/claude-fable-5 Fable 5"
+            "claude-code/claude-fable-5-2 Fable 5.2,claude-code/claude-fable-5-1 Fable 5.1,claude-code/claude-fable-5 Fable 5"
         );
         assert_eq!(
             rows(&|r| r.contains("opus") && !r.contains("opus-4")),

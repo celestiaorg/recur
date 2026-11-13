@@ -11,8 +11,8 @@
 //! first and the shell's key handler covers the chords (`nativeMenuAccelerators`).
 
 use gpui_kit::{
-    Action, App, DummyKeyboardMapper, KeyBinding, KeyBindingContextPredicate, Menu, MenuItem,
-    OsAction, SharedString, SystemMenuType,
+    Action, App, KeyBinding, KeyBindingContextPredicate, Menu, MenuItem, OsAction, SharedString,
+    SystemMenuType,
 };
 use recur_platform::identity::APP_NAME;
 use recur_services::events::{MenuState, MenuThemes};
@@ -31,6 +31,7 @@ gpui_kit::actions!(
         OpenPath,
         NewWorkspace,
         NewBlankWorkspace,
+        ImportConductor,
         NewTab,
         Save,
         OpenIn,
@@ -61,6 +62,7 @@ gpui_kit::actions!(
         GoIssues,
         GoPullRequests,
         GoSchedules,
+        GoTerminals,
         GoWelcome,
         FocusAgent,
         FocusEditor,
@@ -107,6 +109,7 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
         OpenPath => "open-path",
         NewWorkspace => "new-loop",
         NewBlankWorkspace => "new-blank-workspace",
+        ImportConductor => "import-conductor",
         NewTab => "new-tab",
         Save => "save",
         OpenIn => "open-in",
@@ -136,6 +139,7 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
         GoIssues => "view:issues",
         GoPullRequests => "view:pr",
         GoSchedules => "view:schedules",
+        GoTerminals => "view:terminals",
         GoWelcome => "view:welcome",
         FocusAgent => "focus-agent",
         FocusEditor => "focus-editor",
@@ -188,6 +192,7 @@ pub fn bind_menu_keys(cx: &mut App) {
         ("cmd-alt-2", Box::new(GoIssues)),
         ("cmd-alt-3", Box::new(GoPullRequests)),
         ("cmd-alt-4", Box::new(GoSchedules)),
+        ("cmd-alt-5", Box::new(GoTerminals)),
         ("cmd-1", Box::new(FocusAgent)),
         ("cmd-2", Box::new(FocusEditor)),
         ("cmd-3", Box::new(FocusTerminal)),
@@ -229,9 +234,7 @@ pub fn bind_menu_keys(cx: &mut App) {
         } else {
             key.replace("cmd-", "ctrl-")
         };
-        if let Ok(binding) =
-            KeyBinding::load(&key, action, context, false, None, &DummyKeyboardMapper)
-        {
+        if let Ok(binding) = KeyBinding::load(&key, action, context, false, None, cx) {
             cx.bind_keys([binding]);
         }
     }
@@ -246,14 +249,7 @@ pub fn bind_menu_keys(cx: &mut App) {
         ("backspace", "input::Delete"),
     ] {
         if let Ok(action) = cx.build_action(name, None)
-            && let Ok(binding) = KeyBinding::load(
-                key,
-                action,
-                label_only.clone(),
-                false,
-                None,
-                &DummyKeyboardMapper,
-            )
+            && let Ok(binding) = KeyBinding::load(key, action, label_only.clone(), false, None, cx)
         {
             cx.bind_keys([binding]);
         }
@@ -419,6 +415,7 @@ pub fn app_menus(
     themes: Option<&MenuThemes>,
     workspaces: &[MenuGroup],
     updates: bool,
+    conductor: bool,
     cx: &App,
 ) -> Vec<Menu> {
     let mac = cfg!(target_os = "macos");
@@ -453,12 +450,20 @@ pub fn app_menus(
         contextual("New Tab", NewTab, state.new_tab),
         contextual("Save", Save, state.save),
         MenuItem::separator(),
+    ];
+    if conductor {
+        file.extend([
+            item("Import Conductor Workspaces…", ImportConductor),
+            MenuItem::separator(),
+        ]);
+    }
+    file.extend([
         contextual("Open In…", OpenIn, state.open_in),
         contextual("Copy Path", CopyPath, state.copy_path),
         MenuItem::separator(),
         // Contextual close: terminal / agent / file tab. ⌘W is the tab-close chord.
         contextual("Close Tab", CloseTab, state.close_tab),
-    ];
+    ]);
     if !mac {
         // Not the Quit role: it binds Ctrl+Q, the shell's XON. Close the window to quit.
         file.extend([MenuItem::separator(), item("Quit", QuitApp)]);
@@ -545,6 +550,7 @@ pub fn app_menus(
         item("Issues", GoIssues),
         item("Pull Requests", GoPullRequests),
         item("Schedules", GoSchedules),
+        contextual("Terminals", GoTerminals, state.go_terminals),
         item("Get Started", GoWelcome),
         MenuItem::separator(),
         contextual("Focus Agent Panel", FocusAgent, state.focus_agent),

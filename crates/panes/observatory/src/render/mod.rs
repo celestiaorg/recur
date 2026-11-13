@@ -368,7 +368,7 @@ impl Observatory {
                             o.close_mru(&p2, window, cx)
                         }))
                         .on_context_menu(cx.guarded_listener(
-                            move |o, e: &gpui_kit::MouseDownEvent, window, cx| {
+                            move |o, e: &gpui_kit::MouseDownEvent, _, cx| {
                                 o.open_ctx(
                                     f32::from(e.position.x),
                                     f32::from(e.position.y),
@@ -376,7 +376,6 @@ impl Observatory {
                                     false,
                                     &ctx_name,
                                     true,
-                                    window,
                                     cx,
                                 );
                             },
@@ -583,7 +582,6 @@ impl Observatory {
                     .child(recur_ui::style::cached_view(
                         &layer,
                         gpui_kit::StyleRefinement::default().flex_1().min_w_0(),
-                        cx,
                     )),
             );
         } else {
@@ -844,7 +842,6 @@ impl Observatory {
                         .flex_none()
                         .w(px(width))
                         .h_full(),
-                    cx,
                 ));
             } else {
                 body = body.child(self.render_left_aside(kind, false, window, cx));
@@ -898,7 +895,6 @@ impl Observatory {
                         .flex_none()
                         .w(px(width))
                         .h_full(),
-                    cx,
                 ));
             } else {
                 work = work.child(self.render_side_aside(kind, window, cx));
@@ -952,11 +948,10 @@ impl Observatory {
                 .flex_none()
                 .w_full()
                 .h(px(CHROME_H)),
-            cx,
         );
         let body = self.render_body(window, cx);
         self.step_term_anim(window, cx);
-        let overlay = self.render_term_overlay(cx);
+        let overlay = self.render_term_overlay();
         let ctx = self.render_ctx_menu(cx);
         let mut root = div()
             .id("obs")
@@ -984,7 +979,6 @@ impl Observatory {
                 gpui_kit::deferred(recur_ui::style::cached_view(
                     l,
                     gpui_kit::StyleRefinement::default().absolute().inset_0(),
-                    cx,
                 ))
                 .with_priority(recur_ui::style::OVERLAY_PRIORITY)
             }));

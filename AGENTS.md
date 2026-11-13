@@ -41,11 +41,12 @@ Read before inventing architecture:
 - Linux: `mise run linux:test`, `linux:build`, `linux:package` (tarball, `.deb`, `.rpm` to `/opt/recur`) and `linux:smoke`, all in `build/linux/Dockerfile` on a Mac (Docker or OrbStack) for the host arch (`ARCH=amd64|arm64` overrides). `mise run linux:run` opens the Linux app on a throwaway desktop at `http://127.0.0.1:6081` (noVNC). `linux:test:wpe` runs the WPE WebKit spike's checks.
 - UI view state that should survive view switches or restarts (filters, sort, layout, expanded rows) is persisted on disk as a JSON file in the data dir, through the shell service in `crates/services/src/app/shell.rs` (see `shell.json`, `schedule-view.json`, `issues-view.json`).
 - TypeScript bundle code runs on JavaScriptCore (`crates/bundles/src/js.rs`), not node: the system framework on macOS, WebKitGTK's library on Linux.
+- Versions: the workspace `version` in `Cargo.toml` is the last release and the only place to set it. `mise run version:set X.Y.Z` updates it plus `Cargo.lock` and the `package.json` files (`lint` fails if they drift), then tag `vX.Y.Z`; the release build fails if the tag disagrees. Untagged builds report `X.Y.Z+commit.<sha>`.
 - Multi-agent coordination (optional): gitignored `TODO.md`: claim work there so sessions do not collide.
 
 ## Testing instructions
 
-CI: `.github/workflows/ci.yml` runs `sanity` first (fmt and the layering check, once), then clippy and the workspace tests on macOS (`mac`) and Linux (`linux`, all features under Xvfb, plus bundle lint and tests), and packages each platform only after its tests pass (`package-mac`, `package-linux` with the Debian smoke test). Branch protection requires its `CI success` job (and `cla` from `cla.yml`), so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are mise tasks.
+CI: `.github/workflows/ci.yml` runs `sanity` first (fmt and the layering check, once), then clippy and the workspace tests on macOS (`mac`) and Linux (`linux`, all features under Xvfb, plus bundle lint and tests), and packages each platform beside them (`package-mac`, `package-linux` with the Debian smoke test) on the merge queue and on `main`, not on pull requests. Branch protection requires its `CI success` job (and `cla` from `cla.yml`), so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are mise tasks.
 
 | Task | What |
 |------|------|
@@ -94,4 +95,5 @@ Expectations:
 - Prefer small, focused PRs; match existing commit tone (why over noise).
 - Run `mise run check` before pushing.
 - Update `docs/bundles.md` for author-facing bundle behavior.
+- Add user-facing changes to the `Unreleased` section of `src-docs/src/pages/changelog.mdx` (Keep a Changelog: Added, Changed, Fixed, Removed, Security). Write for users, not commit messages. On release, rename `Unreleased` to the version and date.
 - Do not commit secrets, `target/`, `src-web/public/demo/`, or the gitignored `TODO.md`.

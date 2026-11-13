@@ -315,7 +315,7 @@ pub fn effective_key_equivalent(raw: Option<&str>) -> String {
 mod tests {
     use super::*;
 
-    fn ks(key: &str, key_char: Option<&str>, ctrl: bool, shift: bool) -> Keystroke {
+    fn ks(key: &'static str, key_char: Option<&str>, ctrl: bool, shift: bool) -> Keystroke {
         let mut k = Keystroke::parse(key).unwrap();
         k.key_char = key_char.map(Into::into);
         k.modifiers.control = ctrl;

@@ -42,12 +42,16 @@ Adapt the commands to your repository. `env` and `copy_files` are multiline stri
 
 Each `[[run]]` defines a named command for the titlebar Run menu and for agents. Bind development servers to **`$RECUR_PORT`** so parallel workspaces can use separate ports. Set `app_url` to the matching address (default `http://localhost:$RECUR_PORT`) for loops that open your app in a browser. Browser verification boots the run named `dev` (any case), otherwise the default run.
 
-Workspace processes also receive `PORT`, `RECUR_WORKSPACE_ID`, `RECUR_WORKTREE`, `RECUR_PROJECT_ID`, and `RECUR_BRANCH`.
+Workspace processes also receive `PORT`, `RECUR_WORKSPACE_ID`, `RECUR_WORKTREE`, `RECUR_ROOT` (the project's main checkout), `RECUR_PROJECT_ID`, and `RECUR_BRANCH`.
 
 ## Environment and secrets
 
 The `env` text is injected into setup, teardown, runs, and terminals. Values can reference the Recur variables above, `$HOME`, and keys from gitignored `.env` files. It cannot override protected variables such as `PATH`, `HOME`, `SHELL`, `LD_*`, or `DYLD_*`.
 
 Recur does not export the contents of `.env` files. Keep secrets in gitignored dotenv files, copy them into each worktree with `copy_files`, and let your app load them the way it normally does.
+
+## Commit style
+
+Turn on **Conventional Commits** in the Project page's pull request settings, or set `conventional_commits = true`, to have agents write [Conventional Commits](https://www.conventionalcommits.org) subjects and PR titles (`type(scope): summary`). It applies to `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and loop PR titles.
 
 Repository paths, sidebar preferences, enabled project skills, and merge/GitHub PR preferences are app settings rather than fields in this file.

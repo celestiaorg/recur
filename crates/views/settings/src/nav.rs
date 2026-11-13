@@ -137,13 +137,13 @@ pub fn nav() -> Vec<NavGroup> {
                     Section::General,
                     "General",
                     IconName::SlidersHorizontal,
-                    "general simplify default yagni stdlib sleep caffeinate awake power prevent idle mac agent turn timeout minutes limit deadline concurrent loops agents slots cap governor branch prefix git workspace name github schedule keep last",
+                    "general simplify default yagni stdlib sleep caffeinate awake power prevent idle mac agent turn timeout minutes limit deadline concurrent loops agents slots cap governor branch prefix git workspace name github schedule keep last sidebar terminals page shell",
                 ),
                 item(
                     Section::Appearance,
                     "Appearance",
                     IconName::Monitor,
-                    "theme color palette chrome app editor theme dark light charcoal slate cool glow catppuccin mocha latte paper nord terminal xterm ansi solarized vga tango campbell homebrew snazzy ubuntu native title bar window linux zoom scroll wheel mouse",
+                    "theme color palette chrome app editor theme dark light charcoal slate cool glow catppuccin mocha latte paper nord gruvbox terminal xterm ansi solarized vga tango campbell homebrew snazzy ubuntu native title bar window linux zoom scroll wheel mouse",
                 ),
                 item(
                     Section::Editor,

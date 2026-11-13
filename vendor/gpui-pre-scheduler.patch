@@ -1,8 +1,8 @@
-diff --git a/rust/vendor/gpui-pre-scheduler/src/executor.rs b/rust/vendor/gpui-pre-scheduler/src/executor.rs
-index 7e684d0b..975db3e7 100644
---- a/rust/vendor/gpui-pre-scheduler/src/executor.rs
-+++ b/rust/vendor/gpui-pre-scheduler/src/executor.rs
-@@ -242,6 +242,7 @@ impl BackgroundExecutor {
+diff --git a/vendor/gpui-pre-scheduler/src/executor.rs b/vendor/gpui-pre-scheduler/src/executor.rs
+index f655a5a19..86b50cb05 100644
+--- a/vendor/gpui-pre-scheduler/src/executor.rs
++++ b/vendor/gpui-pre-scheduler/src/executor.rs
+@@ -280,6 +280,7 @@ impl BackgroundExecutor {
          let schedule = self.schedule_with_priority(priority);
          let location = Location::caller();
          let (runnable, task) = async_task::Builder::new()
@@ -10,7 +10,7 @@ index 7e684d0b..975db3e7 100644
              .metadata(RunnableMeta {
                  location,
                  spawned: crate::SpawnTime(Instant::now()),
-@@ -268,6 +269,7 @@ impl BackgroundExecutor {
+@@ -306,6 +307,7 @@ impl BackgroundExecutor {
          }));
  
          let (runnable, task) = async_task::Builder::new()
@@ -18,7 +18,7 @@ index 7e684d0b..975db3e7 100644
              .metadata(RunnableMeta {
                  location,
                  spawned: crate::SpawnTime(Instant::now()),
-@@ -380,6 +382,7 @@ impl DedicatedExecutor {
+@@ -418,6 +420,7 @@ impl DedicatedExecutor {
      {
          let sender = self.sender.clone();
          let (runnable, task) = async_task::Builder::new()
@@ -26,7 +26,7 @@ index 7e684d0b..975db3e7 100644
              .metadata(RunnableMeta::new_with_callers_location())
              .spawn(
                  move |_| future,
-@@ -813,7 +816,11 @@ where
+@@ -851,7 +854,11 @@ where
          location,
      };
  

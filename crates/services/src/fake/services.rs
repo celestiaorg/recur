@@ -1797,6 +1797,10 @@ fake_services! {
                 .map_or_else(unanswered, Ok)
         }
 
+        async fn import_conductor(&self) -> Result<ConductorImport> {
+            Ok(ConductorImport::default())
+        }
+
         async fn list_branches(&self, project_id: &str) -> Result<Vec<BranchChoice>> {
             Ok(self.with(|s| {
                 let base = s
@@ -1912,6 +1916,16 @@ fake_services! {
     PrsService {
         async fn add_pr_comment(&self, pr_id: &str, file: &str, line: i64, body: &str, start_line: i64, finding_id: &str) -> Result<PrComment> {
             self.with(|s| add_pr_comment(s, pr_id, file, line, body, start_line, finding_id))
+        }
+
+        async fn close_pr(&self, pr_id: &str) -> Result<Pr> {
+            self.with(|s| {
+                let pr = s.pr_mut(pr_id)?;
+                pr.state = "Closed".into();
+                pr.group = "merged".into();
+                Some(pr.clone())
+            })
+            .map_or_else(unanswered, Ok)
         }
 
         async fn create_workspace_from_pr(&self, pr_id: &str) -> Result<Workspace> {

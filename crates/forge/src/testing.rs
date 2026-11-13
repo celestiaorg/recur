@@ -70,6 +70,7 @@ handlers! {
     on_retarget_base: (PathBuf, i64, String) -> Result<(), ForgeError>;
     on_edit_pr: (PathBuf, i64, String, Option<String>) -> Result<(), ForgeError>;
     on_set_draft: (PathBuf, i64, bool) -> Result<(), ForgeError>;
+    on_close_pr: (PathBuf, i64) -> Result<(), ForgeError>;
     on_branch_requires_pr: (PathBuf, String, String) -> Option<bool>;
     on_post_comment: (PathBuf, i64, String, i64, String) -> Result<(), ForgeError>;
     on_submit_review: (PathBuf, i64, String, String, Vec<PendingLineComment>) -> Result<(), ForgeError>;
@@ -386,6 +387,11 @@ impl Forge for FakeForge {
             vec![p(repo), number.to_string(), draft.to_string()],
         );
         dispatch!(self, on_set_draft, (repo.into(), number, draft), Ok(()))
+    }
+
+    async fn close_pr(&self, repo: &Path, number: i64) -> Result<(), ForgeError> {
+        self.record("close_pr", vec![p(repo), number.to_string()]);
+        dispatch!(self, on_close_pr, (repo.into(), number), Ok(()))
     }
 
     async fn branch_requires_pr(

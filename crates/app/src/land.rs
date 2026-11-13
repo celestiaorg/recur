@@ -23,7 +23,9 @@ use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerSty
 use recur_ui::{IconName, Theme, color::rgba, icon};
 pub use recur_view_core::land::{Land, LandCache};
 use recur_view_core::modes::{ws_main_blocked, ws_run_active};
-use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr::{
+    PrLifecycle, github_href, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle,
+};
 use recur_view_core::{AppState, ViewName, call, toast};
 
 use crate::chrome::no_drag;
@@ -64,6 +66,7 @@ pub struct LandChrome {
     merge_menu_open: bool,
     update_menu_open: bool,
     open_pr_menu_open: bool,
+    view_pr_menu_open: bool,
     menus_for: String,
     /// `landBusy` as last seen: its menus close when it turns on.
     was_busy: bool,
@@ -483,6 +486,7 @@ impl Shell {
             l.merge_method_override = None;
             l.update_menu_open = false;
             l.open_pr_menu_open = false;
+            l.view_pr_menu_open = false;
             l.update_method_override = None;
             self.state.update(cx, |s, cx| {
                 if s.overlays.run_menu || s.overlays.stop_menu {
@@ -546,6 +550,7 @@ impl Shell {
             l.merge_menu_open = false;
             l.update_menu_open = false;
             l.open_pr_menu_open = false;
+            l.view_pr_menu_open = false;
             self.state.update(cx, |s, cx| {
                 if s.overlays.run_menu || s.overlays.stop_menu {
                     s.overlays.run_menu = false;
@@ -1344,44 +1349,7 @@ impl Shell {
             out.push(issue);
         }
         if v.show_view_pr {
-            let label = match (v.view_pr_number != 0, v.view_pr_draft) {
-                (true, true) => format!("View draft #{}", v.view_pr_number),
-                (true, false) => format!("View PR #{}", v.view_pr_number),
-                (false, true) => "View draft".into(),
-                (false, false) => "View PR".into(),
-            };
-            let mut shown = v.store_pr.clone().unwrap_or_default();
-            shown.draft = v.view_pr_draft;
-            let ico = pr_icon_name(Some(&shown));
-            let state = self.state.clone();
-            let pr_id = v.view_pr_id.clone();
-            out.push(
-                spec_wrap(
-                    "tb-view-pr",
-                    titled(
-                        "tb-view-pr-tip",
-                        "View this workspace's pull request",
-                        no_drag(
-                            spec_tag(
-                                tbtn("tb-view-pr", Tbtn::Default, TbtnSize::TITLEBAR, None, cx),
-                                "tb-view-pr",
-                                &label,
-                                None,
-                            )
-                            .on_click(move |_, _, cx| {
-                                state.update(cx, |s, cx| s.open_pr(&pr_id, cx))
-                            })
-                            .child(icon(ico).size(px(13.)))
-                            .child(style::button_label(
-                                label,
-                                11.5,
-                                weight::MEDIUM,
-                            )),
-                        ),
-                    ),
-                )
-                .into_any_element(),
-            );
+            out.push(self.view_pr_split(&v, cx));
         }
         out
     }
@@ -1436,6 +1404,7 @@ impl Shell {
             chev = chev.on_click(cx.guarded_listener(|this, _, _, cx| {
                 this.land.update_menu_open = !this.land.update_menu_open;
                 this.land.merge_menu_open = false;
+                this.land.view_pr_menu_open = false;
                 this.land.open_pr_menu_open = false;
                 this.close_split_menus(cx);
                 cx.notify();
@@ -1525,6 +1494,7 @@ impl Shell {
             main = main.on_click(cx.guarded_listener(|this, _, _, cx| this.merge_workspace(cx)));
             chev = chev.on_click(cx.guarded_listener(|this, _, _, cx| {
                 this.land.merge_menu_open = !this.land.merge_menu_open;
+                this.land.view_pr_menu_open = false;
                 this.land.open_pr_menu_open = false;
                 this.land.confirming_merge = false;
                 this.close_split_menus(cx);
@@ -1611,6 +1581,7 @@ impl Shell {
                 this.land.open_pr_menu_open = !this.land.open_pr_menu_open;
                 this.land.merge_menu_open = false;
                 this.land.update_menu_open = false;
+                this.land.view_pr_menu_open = false;
                 this.close_split_menus(cx);
                 cx.notify();
             }));
@@ -1639,6 +1610,83 @@ impl Shell {
                     .into_any_element(),
             ];
             split = split.child(split_menu(items, cx));
+        }
+        split.into_any_element()
+    }
+
+    fn view_pr_split(&mut self, v: &LandView, cx: &mut Context<Self>) -> AnyElement {
+        let label = match (v.view_pr_number != 0, v.view_pr_draft) {
+            (true, true) => format!("View draft #{}", v.view_pr_number),
+            (true, false) => format!("View PR #{}", v.view_pr_number),
+            (false, true) => "View draft".into(),
+            (false, false) => "View PR".into(),
+        };
+        let mut shown = v.store_pr.clone().unwrap_or_default();
+        shown.draft = v.view_pr_draft;
+        let ico = pr_icon_name(Some(&shown));
+        let href = v.store_pr.as_ref().map(github_href).unwrap_or_default();
+        let state = self.state.clone();
+        let pr_id = v.view_pr_id.clone();
+        let mut main = spec_tag(
+            tbtn("tb-view-pr", Tbtn::Default, TbtnSize::TITLEBAR, None, cx),
+            "tb-view-pr",
+            &label,
+            None,
+        )
+        .on_click(cx.guarded_listener(move |this, _, _, cx| {
+            this.land.view_pr_menu_open = false;
+            state.update(cx, |s, cx| s.open_pr(&pr_id, cx))
+        }));
+        if !href.is_empty() {
+            main = main.rounded_r(px(0.));
+        }
+        let mut split = div()
+            .id("view-pr-split")
+            .debug_selector(|| "tb-view-pr".into())
+            .relative()
+            .flex()
+            .items_center()
+            .child(titled(
+                "tb-view-pr-tip",
+                "View this workspace's pull request",
+                no_drag(
+                    main.child(icon(ico).size(px(13.)))
+                        .child(style::button_label(label, 11.5, weight::MEDIUM)),
+                ),
+            ));
+        if href.is_empty() {
+            return split.into_any_element();
+        }
+        let chev = tbtn(
+            "tb-view-pr-chev",
+            Tbtn::Default,
+            TbtnSize::TITLEBAR,
+            None,
+            cx,
+        )
+        .debug_selector(|| "tb-view-pr-chev".into())
+        .rounded_l(px(0.))
+        .px(px(5.))
+        .on_click(cx.guarded_listener(|this, _, _, cx| {
+            this.land.view_pr_menu_open = !this.land.view_pr_menu_open;
+            this.land.merge_menu_open = false;
+            this.land.update_menu_open = false;
+            this.land.open_pr_menu_open = false;
+            this.close_split_menus(cx);
+            cx.notify();
+        }));
+        split = split.child(no_drag(
+            chev.child(icon(IconName::ChevronDown).size(px(13.))),
+        ));
+        if self.land.view_pr_menu_open {
+            let item = menu_item("view-pr-github-item", false, None, "Open in GitHub", cx)
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                    this.land.view_pr_menu_open = false;
+                    recur_content::links::open_external_url(&href, cx);
+                    cx.notify();
+                }))
+                .into_any_element();
+            split = split.child(split_menu(vec![item], cx));
         }
         split.into_any_element()
     }

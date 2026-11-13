@@ -81,6 +81,16 @@ fn shows_the_linked_workspace_chat_with_the_same_tabs(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn a_loop_dock_opens_on_its_conductor_and_lets_another_tab_be_picked(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, no_agents());
+    s.open_pr("482");
+    assert_eq!(s.dock_ws(), LINKED);
+    assert_eq!(s.dock_active(), "MA");
+    s.click_chip("PA");
+    assert_eq!(s.dock_active(), "PA");
+}
+
+#[gpui::test]
 fn selected_agent_chat_tab_stays_in_view_when_opening_a_pr(cx: &mut TestAppContext) {
     let mut s = boot(
         cx,

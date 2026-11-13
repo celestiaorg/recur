@@ -65,11 +65,15 @@ impl Inputs {
                     cx.notify();
                 }
             }),
-            cx.guarded_subscribe(&glob, |_, _, ev: &InputEvent, cx| {
-                if matches!(ev, InputEvent::Change) {
-                    cx.notify();
-                }
-            }),
+            cx.guarded_subscribe_in(
+                &glob,
+                window,
+                |o, _, ev: &InputEvent, window, cx| match ev {
+                    InputEvent::PressEnter { .. } => o.run_search(true, window, cx),
+                    InputEvent::Change => cx.notify(),
+                    _ => {}
+                },
+            ),
             // No notify on a change: the source control panel reads the message as it
             // renders, so its view redraws on its own, and a notify would redraw every
             // region of the Observatory on every key.

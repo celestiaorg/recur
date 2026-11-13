@@ -3,7 +3,10 @@
 # (mise run macos:package).
 #
 # Env: VERSION (Info.plist and `recur-cli --version`; defaults to
-# build/version.sh), UNIVERSAL=true (arm64 + x86_64), RECUR_UPDATE_URL
+# build/version.sh), UNIVERSAL=true (arm64 + x86_64), BUILD_ONLY=<target
+# triple> (build that slice and stop) and PREBUILT=true (package the slices
+# already in target/<triple>/release; the release workflow builds the two in
+# parallel jobs), RECUR_UPDATE_URL
 # (the signed update manifest), SIGN_IDENTITY [+ ENTITLEMENTS] for Developer ID
 # with KEYCHAIN_PROFILE (an `xcrun notarytool store-credentials` profile) to
 # notarize, else RECUR_SIGN_IDENTITY or ad-hoc.
@@ -28,16 +31,29 @@ build() {
   cargo build --release --locked -p recur-desktop -p recur-cli "$@"
 }
 
+build_slice() {
+  rustup target add "$1" >/dev/null
+  # The Intel slice builds libvpx and libaom from source with their x86 assembly.
+  case "$1" in x86_64-*) command -v nasm >/dev/null || brew install nasm ;; esac
+  build --target "$1"
+}
+
+if [ -n "${BUILD_ONLY:-}" ]; then
+  build_slice "$BUILD_ONLY"
+  exit
+fi
+
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 if [ "${UNIVERSAL:-}" = true ]; then
-  rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
-  # The Intel slice builds libvpx and libaom from source with their x86 assembly.
-  command -v nasm >/dev/null || brew install nasm
-  for t in aarch64-apple-darwin x86_64-apple-darwin; do build --target "$t"; done
+  if [ "${PREBUILT:-}" != true ]; then
+    for t in aarch64-apple-darwin x86_64-apple-darwin; do build_slice "$t"; done
+  fi
   for bin in recur recur-cli; do
     lipo -create -output "$APP/Contents/MacOS/$bin" \
       "$ROOT/target/aarch64-apple-darwin/release/$bin" "$ROOT/target/x86_64-apple-darwin/release/$bin"
+    # Slices downloaded from a workflow artifact lost their executable bit.
+    chmod 755 "$APP/Contents/MacOS/$bin"
   done
 else
   build
@@ -48,7 +64,7 @@ cp "$ROOT/build/darwin/icons.icns" "$APP/Contents/Resources/"
 if [ -f "$ROOT/build/darwin/Assets.car" ]; then cp "$ROOT/build/darwin/Assets.car" "$APP/Contents/Resources/"; fi
 cp "$ROOT/build/darwin/Info.plist" "$APP/Contents/"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
-plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
+plutil -replace CFBundleVersion -string "${VERSION%%+*}" "$APP/Contents/Info.plist"
 
 # Signed inside-out: the CLI, then the bundle (which seals the app binary).
 if [ -n "${SIGN_IDENTITY:-}" ]; then

@@ -15,7 +15,7 @@ use gpui_kit::{
     AnyElement, App, AppContext, Bounds, Context, DispatchPhase, Element, ElementId, Entity,
     FocusHandle, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId, InteractiveElement,
     IntoElement, KeyDownEvent, LayoutId, MouseDownEvent, MouseExitEvent, MouseMoveEvent,
-    ParentElement, Pixels, Render, ScrollWheelEvent, SharedString, Styled, Task, Window, WindowId,
+    ParentElement, Pixels, Render, ScrollEvent, SharedString, Styled, Task, Window, WindowId,
     canvas, deferred, div, px, relative,
 };
 use std::cell::RefCell;
@@ -538,7 +538,7 @@ impl TitleTooltip {
                         }
                     });
                     let e = entity.clone();
-                    window.on_mouse_event(move |_: &ScrollWheelEvent, phase, _, cx| {
+                    window.on_mouse_event(move |_: &ScrollEvent, phase, _, cx| {
                         if phase == DispatchPhase::Capture
                             && e.read(cx).core.target.or(e.read(cx).core.pending).is_some()
                         {
@@ -738,7 +738,7 @@ mod tests {
     }
 
     impl Render for Root {
-        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
             let style = div().size(px(40.)).style().clone();
             div()
                 .size_full()
@@ -747,7 +747,7 @@ mod tests {
                 .children(
                     self.buttons
                         .iter()
-                        .map(|b| crate::style::cached_view(b, style.clone(), cx)),
+                        .map(|b| crate::style::cached_view(b, style.clone())),
                 )
                 .child(self.tip.clone())
         }

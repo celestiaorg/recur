@@ -1,5 +1,6 @@
 //! Services integration tests, one module per area.
 
+mod conductor;
 mod contract;
 mod dto_roundtrip;
 mod events;

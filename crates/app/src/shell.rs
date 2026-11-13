@@ -8,7 +8,7 @@ use std::rc::Rc;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyView, App, AppContext, Context, Entity, ExternalPaths, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, ParentElement, Render, ScrollWheelEvent, Styled, Subscription,
+    InteractiveElement, IntoElement, ParentElement, Render, ScrollEvent, Styled, Subscription,
     Window, WindowAppearance, div,
 };
 use recur_services::AppEvent;
@@ -27,6 +27,8 @@ use crate::titlebar::TitlebarState;
 pub struct ShellOptions {
     /// The updater is installed: show Check for Updates… (release app bundles).
     pub updates: bool,
+    /// Conductor's database exists: show Import Conductor Workspaces….
+    pub conductor_import: bool,
     /// Settings → Appearance "Use native title bar": the window manager's title bar instead of
     /// Recur's window controls (Linux; read at launch).
     pub native_title_bar: bool,
@@ -330,6 +332,7 @@ impl Shell {
                 && !recur_view_core::modes::ws_main_blocked(s.selected_workspace());
             menu_state.open_in = Some(on);
             menu_state.copy_path = Some(on);
+            menu_state.go_terminals = Some(s.terminal_prefs.page);
             // This runs on every store change: sort the theme lists only when they change.
             let mark = {
                 use std::hash::{Hash, Hasher};
@@ -370,7 +373,14 @@ impl Shell {
             return;
         }
         let t = std::time::Instant::now();
-        let menus = crate::menu::app_menus(&key.0, Some(&key.1), &key.2, self.opts.updates, cx);
+        let menus = crate::menu::app_menus(
+            &key.0,
+            Some(&key.1),
+            &key.2,
+            self.opts.updates,
+            self.opts.conductor_import,
+            cx,
+        );
         cx.set_menus(menus);
         crate::menu::count_rebuild(t.elapsed());
         self.menu_built = Some(key);
@@ -510,7 +520,6 @@ impl Shell {
                 .flex_none()
                 .w_full()
                 .h(gpui_kit::px(crate::titlebar::TITLEBAR_HEIGHT)),
-            cx,
         );
         let (dock, docking) = self.sidebar.read(cx).dock(cx);
         if docking {
@@ -524,7 +533,7 @@ impl Shell {
             gpui_kit::canvas(
                 |_, _, _| {},
                 move |_, _, window, _| {
-                    window.on_mouse_event(move |ev: &ScrollWheelEvent, phase, window, cx| {
+                    window.on_mouse_event(move |ev: &ScrollEvent, phase, window, cx| {
                         if phase == gpui_kit::DispatchPhase::Capture {
                             let _ = this.update(cx, |this, cx| this.zoom_wheel(ev, window, cx));
                         }
@@ -571,7 +580,6 @@ impl Shell {
                                     .w(gpui_kit::px(dock_width))
                                     .h_full()
                                     .min_h_0(),
-                                cx,
                             ))
                         })
                         .when(rail_collapsed && dock > 0., |d| {
@@ -587,7 +595,6 @@ impl Shell {
                 gpui_kit::deferred(recur_ui::style::cached_view(
                     l,
                     gpui_kit::StyleRefinement::default().absolute().inset_0(),
-                    cx,
                 ))
                 .with_priority(recur_ui::style::OVERLAY_PRIORITY)
             }));

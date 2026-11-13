@@ -158,6 +158,9 @@ pub struct Settings {
     /// Reveal hidden projects in the sidebar tree.
     #[serde(skip_serializing_if = "is_false")]
     pub show_hidden_projects: bool,
+    /// Group the sidebar's workspaces by PR status instead of by project.
+    #[serde(skip_serializing_if = "is_false")]
+    pub sidebar_by_status: bool,
     /// Linux: keep the window manager's title bar instead of Recur's own window controls.
     /// Read at launch, so a change applies after a restart.
     #[serde(skip_serializing_if = "is_false")]
@@ -246,6 +249,101 @@ pub struct Settings {
     /// User-defined OpenAI-compatible endpoints.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub compatible_providers: Vec<CompatibleProvider>,
+}
+
+/// The credential values [`Settings`] keeps out of recur.db: the provider
+/// keys, every bundle `[[setting]]` value, and the free-form header and env
+/// maps (which often carry tokens), keyed by provider or server id.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Secrets {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub cursor_api_key: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub codex_api_key: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub linear_api_key: String,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub bundle_values: BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub compatible_api_keys: BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub compatible_headers: BTreeMap<String, BTreeMap<String, String>>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub mcp_headers: BTreeMap<String, BTreeMap<String, String>>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub mcp_env: BTreeMap<String, BTreeMap<String, String>>,
+}
+
+impl Secrets {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+
+    /// Overlays `newer`'s non-empty values, keeping entries it lacks.
+    pub fn merge(&mut self, newer: Secrets) {
+        for (old, new) in [
+            (&mut self.cursor_api_key, newer.cursor_api_key),
+            (&mut self.codex_api_key, newer.codex_api_key),
+            (&mut self.linear_api_key, newer.linear_api_key),
+        ] {
+            if !new.is_empty() {
+                *old = new;
+            }
+        }
+        self.bundle_values.extend(newer.bundle_values);
+        self.compatible_api_keys.extend(newer.compatible_api_keys);
+        self.compatible_headers.extend(newer.compatible_headers);
+        self.mcp_headers.extend(newer.mcp_headers);
+        self.mcp_env.extend(newer.mcp_env);
+    }
+}
+
+/// Moves non-empty values into `out` under `id`.
+fn take_into<V: Default + PartialEq>(out: &mut BTreeMap<String, V>, id: &str, v: &mut V) {
+    let v = std::mem::take(v);
+    if v != V::default() {
+        out.insert(id.to_owned(), v);
+    }
+}
+
+impl Settings {
+    /// Moves every [`Secrets`] value out, leaving the rest safe to persist.
+    pub fn take_secrets(&mut self) -> Secrets {
+        let mut s = Secrets {
+            cursor_api_key: std::mem::take(&mut self.cursor_api_key),
+            codex_api_key: std::mem::take(&mut self.codex_api_key),
+            linear_api_key: std::mem::take(&mut self.linear_api_key),
+            bundle_values: std::mem::take(&mut self.bundle_values),
+            ..Secrets::default()
+        };
+        for p in &mut self.compatible_providers {
+            take_into(&mut s.compatible_api_keys, &p.id, &mut p.api_key);
+            take_into(&mut s.compatible_headers, &p.id, &mut p.extra_headers);
+        }
+        for m in &mut self.mcp_servers {
+            take_into(&mut s.mcp_headers, &m.id, &mut m.headers);
+            take_into(&mut s.mcp_env, &m.id, &mut m.env);
+        }
+        s
+    }
+
+    /// Restores values taken by [`Settings::take_secrets`]. Entries for ids
+    /// no longer in the catalogs are dropped.
+    pub fn put_secrets(&mut self, mut s: Secrets) {
+        self.cursor_api_key = s.cursor_api_key;
+        self.codex_api_key = s.codex_api_key;
+        self.linear_api_key = s.linear_api_key;
+        self.bundle_values = s.bundle_values;
+        for p in &mut self.compatible_providers {
+            p.api_key = s.compatible_api_keys.remove(&p.id).unwrap_or_default();
+            p.extra_headers = s.compatible_headers.remove(&p.id).unwrap_or_default();
+        }
+        for m in &mut self.mcp_servers {
+            m.headers = s.mcp_headers.remove(&m.id).unwrap_or_default();
+            m.env = s.mcp_env.remove(&m.id).unwrap_or_default();
+        }
+    }
 }
 
 /// Normalizes a turn deadline in minutes: non-positive → default, otherwise
@@ -848,5 +946,40 @@ mod tests {
         assert_eq!(effective_max_agents(-3), DEFAULT_MAX_AGENTS);
         assert_eq!(effective_max_loops(2), 2);
         assert_eq!(effective_max_agents(128), 128, "no upper clamp");
+    }
+
+    #[test]
+    fn take_and_put_secrets_round_trip() {
+        let kv = |k: &str, v: &str| BTreeMap::from([(k.to_owned(), v.to_owned())]);
+        let full = Settings {
+            cursor_api_key: "cur".into(),
+            codex_api_key: "cdx".into(),
+            linear_api_key: "lin".into(),
+            bundle_values: kv(SETTING_LINEAR_API_KEY, "lin2"),
+            compatible_providers: vec![CompatibleProvider {
+                id: "groq".into(),
+                api_key: "gk".into(),
+                extra_headers: kv("Authorization", "Bearer x"),
+                ..Default::default()
+            }],
+            mcp_servers: vec![McpServer {
+                id: "acme".into(),
+                headers: kv("X-Token", "t"),
+                env: kv("API_KEY", "e"),
+                ..Default::default()
+            }],
+            model_ask: "claude-code/opus".into(),
+            ..Default::default()
+        };
+        let mut row = full.clone();
+        let secrets = row.take_secrets();
+        assert!(!secrets.is_empty());
+        let json = serde_json::to_string(&row).unwrap();
+        for leaked in ["cur", "cdx", "lin", "gk", "Bearer", "X-Token", "API_KEY"] {
+            assert!(!json.contains(&format!("\"{leaked}")), "{leaked} in {json}");
+        }
+        assert_eq!(row.model_ask, "claude-code/opus");
+        row.put_secrets(secrets);
+        assert_eq!(row, full);
     }
 }

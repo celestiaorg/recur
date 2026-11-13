@@ -35,6 +35,7 @@ enum Stop {
     Browse,
     Name,
     Branch,
+    Group,
     Go,
 }
 
@@ -54,12 +55,14 @@ pub struct NewProjectModal {
     path: Field,
     name: Field,
     base_branch: String,
+    group_id: String,
     suggested_for: String,
     choices: Vec<BranchChoice>,
     picking: bool,
     saving: bool,
     auto_name: String,
     branch: Entity<Select>,
+    group: Entity<Select>,
     browse_focus: FocusHandle,
     go_focus: FocusHandle,
     /// The control Tab last moved to (`.kb-focus`), cleared by a pointer press.
@@ -86,6 +89,11 @@ impl NewProjectModal {
                 .searchable()
                 .trigger_icon(IconName::GitBranch)
         });
+        let group = cx.new(|cx| {
+            Select::new(Vec::new(), window, cx)
+                .label("Project group")
+                .trigger_icon(IconName::Folder)
+        });
         let subs = vec![
             window_keys(cx, Self::on_key),
             cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
@@ -94,6 +102,12 @@ impl NewProjectModal {
             cx.guarded_subscribe(&branch, |this, _, ev: &SelectEvent, cx| {
                 if let SelectEvent::Change(v) = ev {
                     this.base_branch = v.to_string();
+                    cx.notify();
+                }
+            }),
+            cx.guarded_subscribe(&group, |this, _, ev: &SelectEvent, cx| {
+                if let SelectEvent::Change(v) = ev {
+                    this.group_id = v.to_string();
                     cx.notify();
                 }
             }),
@@ -119,12 +133,14 @@ impl NewProjectModal {
             path,
             name,
             base_branch: String::new(),
+            group_id: String::new(),
             suggested_for: String::new(),
             choices: Vec::new(),
             picking: false,
             saving: false,
             auto_name: String::new(),
             branch,
+            group,
             browse_focus: cx.focus_handle().tab_stop(true),
             go_focus: cx.focus_handle().tab_stop(true),
             kb: None,
@@ -165,6 +181,7 @@ impl NewProjectModal {
         self.path.set("", window, cx);
         self.name.set("", window, cx);
         self.base_branch.clear();
+        self.group_id.clear();
         self.suggested_for.clear();
         self.choices.clear();
         self.picking = false;
@@ -337,6 +354,7 @@ impl NewProjectModal {
             name: label.clone(),
             repo_path: path,
             base_branch: self.base_branch.trim().to_string(),
+            group_id: self.group_id.clone(),
             pic: project_pic_from_name(&label),
             ..Default::default()
         };
@@ -374,6 +392,9 @@ impl NewProjectModal {
         if !self.choices.is_empty() {
             v.push(Stop::Branch);
         }
+        if !self.vcx.state.read(cx).project_groups.is_empty() {
+            v.push(Stop::Group);
+        }
         if self.can_save(cx) {
             v.push(Stop::Go);
         }
@@ -386,6 +407,7 @@ impl NewProjectModal {
             Stop::Name => gpui_kit::Focusable::focus_handle(self.name.input.read(cx), cx),
             Stop::Browse => self.browse_focus.clone(),
             Stop::Branch => self.branch.focus_handle(cx),
+            Stop::Group => self.group.focus_handle(cx),
             Stop::Go => self.go_focus.clone(),
         }
     }
@@ -407,7 +429,7 @@ impl NewProjectModal {
             if let Some(i) = cycle(stops.len(), at, m.shift) {
                 let s = stops[i];
                 // `.kb-focus` rings only pickers and the submit button.
-                self.kb = matches!(s, Stop::Branch | Stop::Go).then_some(s);
+                self.kb = matches!(s, Stop::Branch | Stop::Group | Stop::Go).then_some(s);
                 let h = self.handle(s, cx);
                 window.focus(&h, cx);
                 cx.notify();
@@ -420,7 +442,7 @@ impl NewProjectModal {
             return;
         }
         if key == "escape" {
-            if self.branch.read(cx).is_open() {
+            if self.branch.read(cx).is_open() || self.group.read(cx).is_open() {
                 return;
             }
             cx.stop_propagation();
@@ -468,6 +490,31 @@ impl NewProjectModal {
                 s.set_trigger_style(ts, cx);
             }
             s.set_options(options.clone(), cx);
+        });
+        let groups = &self.vcx.state.read(cx).project_groups;
+        let has_groups = !groups.is_empty();
+        let mut group_opts = vec![SelectOption::new("", "Ungrouped")];
+        group_opts.extend(
+            groups
+                .iter()
+                .map(|g| SelectOption::new(g.id.clone(), g.name.clone())),
+        );
+        if !groups.iter().any(|g| g.id == self.group_id) {
+            self.group_id.clear();
+        }
+        let gid = self.group_id.clone();
+        let group_ring =
+            self.kb == Some(Stop::Group) && self.group.focus_handle(cx).is_focused(window);
+        self.group.update(cx, |s, cx| {
+            s.set_options(group_opts, cx);
+            if s.value() != &gid {
+                s.set_value(gid, cx);
+            }
+            let mut ts = s.trigger().clone();
+            ts.no_outline = true;
+            if s.trigger() != &ts {
+                s.set_trigger_style(ts, cx);
+            }
         });
 
         let lbl = |s: &str| {
@@ -560,6 +607,22 @@ impl NewProjectModal {
                             .relative()
                             .child(self.branch.clone())
                             .when(branch_ring, |d| d.child(outline(2., 2., 6., 0., t.amber))),
+                    ),
+            );
+        }
+        if has_groups {
+            body = body.child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(6.))
+                    .min_w_0()
+                    .child(lbl("Group"))
+                    .child(
+                        div()
+                            .relative()
+                            .child(self.group.clone())
+                            .when(group_ring, |d| d.child(outline(2., 2., 6., 0., t.amber))),
                     ),
             );
         }

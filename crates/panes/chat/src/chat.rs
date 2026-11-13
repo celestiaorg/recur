@@ -552,6 +552,7 @@ pub struct AgentChat {
     pub(crate) live_blocks: usize,
     pub(crate) chat_in_view: Vec<String>,
     pub(crate) reveal_key: String,
+    pub(crate) find: Option<crate::find::ChatFind>,
     pub(crate) copied_row: Option<String>,
     pub(crate) copied_bubble: Option<String>,
     pub(crate) copy_timer: Option<Task<()>>,
@@ -771,6 +772,7 @@ impl AgentChat {
             live_blocks: 0,
             chat_in_view: Vec::new(),
             reveal_key: String::new(),
+            find: None,
             copied_row: None,
             copied_bubble: None,
             copy_timer: None,
@@ -905,6 +907,7 @@ impl AgentChat {
             self.chat_hydrated.clear();
             self.chat_in_view.clear();
             self.block_ranges.borrow_mut().clear();
+            self.close_find(cx);
         }
         if was_windowed != self.window_chat() && !self.window_chat() {
             self.chat_hydrated.clear();

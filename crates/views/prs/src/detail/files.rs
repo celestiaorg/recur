@@ -480,7 +480,6 @@ impl PrDetail {
                     .flex_1()
                     .min_h_0()
                     .min_w_0(),
-                cx,
             )
         } else {
             let el = self.stack_element(window, cx);

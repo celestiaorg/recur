@@ -71,9 +71,10 @@ pub struct Project {
     pub hidden: bool,
     /// Dotenv-format text injected into setup/teardown/named runs and
     /// Observatory terminals. Values may reference workspace vars
-    /// ($RECUR_PORT, $RECUR_WORKSPACE_ID, $RECUR_WORKTREE, $RECUR_PROJECT_ID,
-    /// $RECUR_BRANCH, $PORT), host vars, and keys from .env / .env.local /
-    /// .recur/.env / .recur/.env.local (later files win).
+    /// ($RECUR_PORT, $RECUR_WORKSPACE_ID, $RECUR_WORKTREE, $RECUR_ROOT (the
+    /// project checkout), $RECUR_PROJECT_ID, $RECUR_BRANCH, $PORT), host vars,
+    /// and keys from .env / .env.local / .recur/.env / .recur/.env.local
+    /// (later files win).
     #[serde(skip_serializing_if = "String::is_empty")]
     pub env: String,
     /// Newline-separated globs copied from the checkout into each new
@@ -81,6 +82,10 @@ pub struct Project {
     /// depth. Gitignored files are included. Portable via project.toml.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub copy_files: String,
+    /// Agents write Conventional Commits subjects and PR titles. From
+    /// project.toml `conventional_commits`; computed on read.
+    #[serde(skip_serializing_if = "is_false")]
+    pub conventional_commits: bool,
     /// True when `<repo>/.recur/project.toml` exists. Computed on read.
     #[serde(skip_serializing_if = "is_false")]
     pub has_project_file: bool,

@@ -7,9 +7,12 @@ name: CI
 # Tools (node, pnpm, nfpm, dmgbuild) come from mise.toml through mise-action;
 # Rust from rust-toolchain.toml. mise routes cargo through mbx;
 # mr-boxington-action caches target/ and Cargo's downloads, and turns off mbx's
-# managed target dirs so the runner holds one copy of the build. Mac jobs run
-# on macos-26: `generate:icons` compiles build/appicon.icon with actool, which
-# needs Xcode 26+.
+# managed target dirs so the runner holds one copy of the build. Only pushes to
+# main save that cache: one set of the four is about 10 GB, the repository's
+# whole cache limit, and a pull request's entries are readable by that pull
+# request alone, so saving them evicts the baseline every run restores. Mac
+# jobs run on macos-26: `generate:icons` compiles build/appicon.icon with
+# actool, which needs Xcode 26+.
 on:
   push:
     branches: [main]
@@ -36,6 +39,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - run: build/set-version.sh --check
       - run: cargo fmt --all --check
       - run: cargo test -p recur-layering
 
@@ -57,7 +61,6 @@ jobs:
       - uses: jdx/mr-boxington-action@v1
         with:
           cache-generation: v1-${{ hashFiles('vendor/**') }}
-          save-on-pull-request: true
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: mise run test
 
@@ -70,8 +73,13 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
-      # The all-features debug test build outgrows the image's free space.
-      - uses: jlumbroso/free-disk-space@v2.0.0
+      # The all-features debug target is about 34 GB. Runners with the 72 GB
+      # disk start with 13 GB free and ran out, so they need the cleanup (2 to 5
+      # minutes); the 145 GB ones start with 86 GB and skip it.
+      - id: disk
+        run: echo "free_gb=$(df --output=avail -BG / | tail -1 | tr -dc 0-9)" >> "$GITHUB_OUTPUT"
+      - if: fromJSON(steps.disk.outputs.free_gb) < 60
+        uses: jlumbroso/free-disk-space@v2.0.0
         with:
           tool-cache: true
       - run: >-
@@ -92,10 +100,16 @@ jobs:
       # cache whenever it changes. The package jobs put "package" in the
       # generation, not cache-key-suffix, which restore keys leave out.
       - run: git ls-files -z vendor | xargs -0 touch -t 200001010000
+      # Trial: the content-addressed `objects` payload. Checkout gives every
+      # source file a new mtime, so with the `target` payload (the other jobs)
+      # Cargo rebuilds every workspace crate on every run; mbx's store replays
+      # the unchanged ones. Compare this job's clippy and nextest build times
+      # and `mbx[cache]` hit counts with mac's before moving the others over.
       - uses: jdx/mr-boxington-action@v1
         with:
           cache-generation: v1-${{ hashFiles('vendor/**') }}
-          save-on-pull-request: true
+          github-cache-mode: objects
+          isolate-objects-cache: true
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
         env:
           CARGO_LOG: cargo::core::compiler::fingerprint=info
@@ -109,9 +123,13 @@ jobs:
       - if: always()
         run: df -h / && du -sh target/debug/* ~/.cache/* 2>/dev/null | sort -h | tail -15
 
+  # The release builds take 20 to 30 minutes, so pull requests skip them and the
+  # merge queue runs them beside the tests, not after.
+  #
   # Ad-hoc signed arm64 Recur.app in a DMG, plus the updater zip.
   package-mac:
-    needs: mac
+    if: github.event_name != 'pull_request'
+    needs: sanity
     runs-on: macos-26
     timeout-minutes: 90
     steps:
@@ -122,7 +140,6 @@ jobs:
       - uses: jdx/mr-boxington-action@v1
         with:
           cache-generation: v1-package-${{ hashFiles('vendor/**') }}
-          save-on-pull-request: true
       - run: mise run macos:package
       - run: hdiutil verify "target/package/Recur.dmg"
       - uses: actions/upload-artifact@v7
@@ -131,15 +148,20 @@ jobs:
           path: target/package/Recur.dmg
           retention-days: 14
 
-  # target/package/recur-linux-amd64.{tar.gz,deb,rpm}, installed and
+  # target/package/recur-linux-amd64.{tar.gz,deb,rpm,pkg.tar.zst}, installed and
   # launched in a clean Debian 13 container by linux:smoke.
   package-linux:
-    needs: linux
+    if: github.event_name != 'pull_request'
+    needs: sanity
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
-      - uses: jlumbroso/free-disk-space@v2.0.0
+      # See the linux job.
+      - id: disk
+        run: echo "free_gb=$(df --output=avail -BG / | tail -1 | tr -dc 0-9)" >> "$GITHUB_OUTPUT"
+      - if: fromJSON(steps.disk.outputs.free_gb) < 60
+        uses: jlumbroso/free-disk-space@v2.0.0
         with:
           tool-cache: true
       - run: >-
@@ -153,7 +175,6 @@ jobs:
       - uses: jdx/mr-boxington-action@v1
         with:
           cache-generation: v1-package-${{ hashFiles('vendor/**') }}
-          save-on-pull-request: true
       - run: mise run linux:package
       - run: mise run linux:smoke
       - uses: actions/upload-artifact@v7
@@ -163,6 +184,7 @@ jobs:
             target/package/recur-linux-amd64.tar.gz
             target/package/recur-linux-amd64.deb
             target/package/recur-linux-amd64.rpm
+            target/package/recur-linux-amd64.pkg.tar.zst
           retention-days: 14
 
   ci-success:

@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 recur-domain.workspace = true
 recur-project.workspace = true
+base64.workspace = true
 chrono.workspace = true
 include_dir.workspace = true
 parking_lot.workspace = true

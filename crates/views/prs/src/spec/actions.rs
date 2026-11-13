@@ -333,7 +333,7 @@ fn failing_merge<'a>(cx: &'a mut TestAppContext, msg: &'static str) -> S<'a> {
 
 #[gpui::test]
 fn a_failed_merge_shows_an_error_toast_that_auto_dismisses(cx: &mut TestAppContext) {
-    let msg = "merge did not complete: see the loop activity feed for the reason";
+    let msg = "GitHub merge failed: Pull request is not mergeable";
     let mut s = failing_merge(cx, msg);
     assert!(s.until(|s| s.toasted(ToastKind::Error, msg)));
     s.wait(4_500);

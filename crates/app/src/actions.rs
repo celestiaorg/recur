@@ -24,6 +24,7 @@ impl Shell {
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let menu = self.state.read(cx).menu_state.clone();
+        let terminals_on = Some(self.state.read(cx).terminal_prefs.page);
         let detail_on = {
             let s = self.state.read(cx);
             s.view == ViewName::Detail
@@ -46,6 +47,7 @@ impl Shell {
             OpenPath,
             NewWorkspace,
             NewBlankWorkspace,
+            ImportConductor,
             PrevEditorTheme,
             NextEditorTheme,
             ToggleSidebar,
@@ -101,7 +103,8 @@ impl Shell {
             FocusEditor => menu.focus_editor,
             FocusTerminal => menu.focus_terminal,
             PrevTab => menu.prev_tab,
-            NextTab => menu.next_tab
+            NextTab => menu.next_tab,
+            GoTerminals => terminals_on
         );
         root.on_action(cx.guarded_listener(|this, a: &MenuPick, window, cx| {
             if !a.action.is_empty() {
@@ -174,7 +177,7 @@ impl Shell {
             return;
         }
         if let Some(view) = action.strip_prefix("view:").and_then(ViewName::parse) {
-            if MENU_VIEWS.contains(&view) {
+            if MENU_VIEWS.contains(&view) || view == ViewName::Terminals {
                 state.update(cx, |s, cx| s.go(view, None, cx));
             }
             return;
@@ -189,6 +192,7 @@ impl Shell {
             "open-path" => self.pick_and_open_path(cx),
             "new-loop" => state.update(cx, |s, cx| s.open_new_task("", None, cx)),
             "new-blank-workspace" => crate::new_workspace::create_blank_workspace(&state, cx),
+            "import-conductor" => import_conductor(&state, cx),
             "palette" => state.update(cx, |s, cx| s.toggle_go_palette(cx)),
             "run-command" => state.update(cx, |s, cx| s.toggle_commands_palette(cx)),
             "open-in" => state.update(cx, |s, cx| {
@@ -364,3 +368,70 @@ fn show_about_panel() {
 
 #[cfg(not(target_os = "macos"))]
 fn show_about_panel() {}
+
+/// File > Import Conductor Workspaces…: shows a sticky progress toast, runs the import, then
+/// reloads the sidebar's projects, groups and workspaces and replaces the toast with the counts.
+/// A second pick while one runs is ignored, so two runs never adopt the same worktree.
+fn import_conductor(state: &gpui_kit::Entity<recur_view_core::AppState>, cx: &mut gpui_kit::App) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static RUNNING: AtomicBool = AtomicBool::new(false);
+    if RUNNING.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let opts = |ttl: Option<std::time::Duration>| ToastOptions {
+        replace: Some("conductor-import".into()),
+        ttl,
+        ..Default::default()
+    };
+    push_toast(
+        ToastKind::Info,
+        "Importing workspaces from Conductor…",
+        opts(Some(std::time::Duration::ZERO)),
+        cx,
+    );
+    let services = state.read(cx).services().clone();
+    let state = state.clone();
+    cx.spawn(async move |cx| {
+        let res = services.projects.import_conductor().await;
+        RUNNING.store(false, Ordering::SeqCst);
+        let r = match res {
+            Ok(r) => r,
+            Err(e) => {
+                let text = format!("Could not import from Conductor: {}", e.message);
+                cx.update(|cx| push_toast(ToastKind::Error, text, opts(None), cx));
+                return;
+            }
+        };
+        let list = services.workspaces.list_workspaces().await;
+        let groups = services.projects.list_project_groups().await;
+        state.update(cx, |s, cx| {
+            s.refresh_projects(cx).detach();
+            if let Ok(groups) = groups {
+                s.set_project_groups(groups, cx);
+            }
+            if let Ok(list) = list {
+                s.set_workspaces_from_list(list, cx);
+            }
+        });
+        let mut text = format!(
+            "Imported {} workspace{} and {} chat{} from Conductor",
+            r.workspaces_imported,
+            if r.workspaces_imported == 1 { "" } else { "s" },
+            r.chats_imported,
+            if r.chats_imported == 1 { "" } else { "s" },
+        );
+        if r.projects_added > 0 {
+            text.push_str(&format!(", added {} project(s)", r.projects_added));
+        }
+        if !r.skipped.is_empty() {
+            text.push_str(&format!(", skipped {}", r.skipped.len()));
+        }
+        let kind = if r.workspaces_imported > 0 {
+            ToastKind::Success
+        } else {
+            ToastKind::Info
+        };
+        cx.update(|cx| push_toast(kind, text, opts(None), cx));
+    })
+    .detach();
+}

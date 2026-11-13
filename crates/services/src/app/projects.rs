@@ -353,6 +353,10 @@ impl ProjectsService for AppServices {
         rt!(self, id => |s| s.get_project_at(&id).await)
     }
 
+    async fn import_conductor(&self) -> Result<crate::api::ConductorImport> {
+        rt!(self, => |s| s.import_conductor_at().await)
+    }
+
     async fn list_branches(&self, project_id: &str) -> Result<Vec<BranchChoice>> {
         rt!(self, project_id => |s| {
             let p = s.store().project(&project_id).ok_or_else(|| {

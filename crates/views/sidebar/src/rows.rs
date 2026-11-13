@@ -30,7 +30,7 @@ use recur_view_core::{ScanKind, ScheduleEditorRequest, ViewName};
 
 use crate::tree::{
     FADE, GROUP_H, GROUP_PB, GUTTER, GroupNode, PROJ_H, ProjectNode, ROW_H, Row, SCHED_H, SCHED_MT,
-    Tree, empty_h, is_stuck, sticky_top, thumb,
+    Status, StatusNode, Tree, empty_h, is_stuck, status_key, sticky_top, thumb,
 };
 use crate::{FADE_IN, Fade, SCROLLBAR_LINGER, Sidebar, fade_gradient};
 
@@ -50,6 +50,8 @@ const ROW_BAND_PAD_PX: f32 = 150.;
 pub(crate) struct RowCtx {
     /// Each workspace's chrome PR (`pr_for_workspace`), without its files and comments.
     prs: HashMap<String, Pr>,
+    /// Project id → (pic, color, name), filled when rows show their project (by status).
+    pics: HashMap<String, (String, String, String)>,
     running: HashSet<String>,
     attention: BTreeMap<String, i64>,
     parked: BTreeMap<String, usize>,
@@ -180,6 +182,17 @@ impl Sidebar {
                     })
                     .collect()
             },
+            pics: if s.sidebar_by_status() {
+                s.projects
+                    .iter()
+                    .map(|p| {
+                        let pic = (p.pic.clone(), p.color.clone(), p.name.clone());
+                        (p.id.clone(), pic)
+                    })
+                    .collect()
+            } else {
+                HashMap::new()
+            },
             running: s.workspaces_running.clone(),
             attention: s.attention.by_workspace.clone(),
             parked: parked_needs_you_by_workspace(
@@ -251,6 +264,19 @@ impl Sidebar {
         }
     }
 
+    /// An 18px project pic's slot, with the gap 7 and inset 12 its row takes, keeps the 14px
+    /// icon's center and the name's start.
+    fn wide_slot(slot: AnyElement) -> AnyElement {
+        div()
+            .flex_none()
+            .size(px(PIC.size))
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(slot)
+            .into_any_element()
+    }
+
     /// `.tloop`: one task workspace row.
     fn task_row(
         &mut self,
@@ -279,6 +305,14 @@ impl Sidebar {
         let acts = live && !rc.dragging && (hovered || focus_within || armed);
 
         let br = match life {
+            _ if let Some((pic, color, name)) = rc.pics.get(&l.project_id) => titled(
+                SharedString::from(format!("{key}-proj-tip")),
+                name.clone(),
+                div()
+                    .id(SharedString::from(format!("{key}-proj")))
+                    .child(project_pic(pic.clone(), color.clone(), name.clone(), PIC)),
+            )
+            .into_any_element(),
             Some(life) => {
                 let name = pr
                     .as_ref()
@@ -294,6 +328,8 @@ impl Sidebar {
                 .into_any_element(),
         };
         let slot = self.icon_slot(workspace_is_running(l, &rc.running), &key, br, cx);
+        let wide = rc.pics.contains_key(&l.project_id);
+        let slot = if wide { Self::wide_slot(slot) } else { slot };
         let name_color = if on { t.text } else { t.muted };
         let tn = div().min_w_0().child(
             decode_text(SharedString::from(format!("{key}-tn")), l.short.clone())
@@ -348,11 +384,11 @@ impl Sidebar {
         let hit_inner = |d: Div| {
             d.flex()
                 .items_center()
-                .gap(px(9.))
+                .gap(px(if wide { 7. } else { 9. }))
                 .flex_1()
                 .min_w_0()
                 .h_full()
-                .pl(px(14.))
+                .pl(px(if wide { 12. } else { 14. }))
                 .rounded(px(6.))
                 .relative()
                 .when(row.nested, |d| {
@@ -517,27 +553,37 @@ impl Sidebar {
             .into_any_element()
     }
 
-    /// `.tloop.tmain`: the project's working copy.
+    /// `.tloop.tmain`: the project's working copy; by status, labelled with the project.
     fn main_row(
         &mut self,
-        p: &ProjectNode,
+        project: &Project,
+        main: Option<&Workspace>,
         rc: &RowCtx,
         live: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let pid = p.project.id.clone();
+        let pid = project.id.clone();
         let key = format!("main:{pid}");
-        let main = p.main.as_ref();
         let on = rc.main_on(&pid, main);
         let hovered = live && self.hover_key(&key);
         let running = main.is_some_and(|m| workspace_is_running(m, &rc.running));
-        let house = icon(IconName::House)
-            .size(px(14.))
-            .color(t.faint)
-            .into_any_element();
+        let wide = rc.pics.contains_key(&pid);
+        let (house, label): (AnyElement, SharedString) = if wide {
+            let pic = project_pic(
+                project.pic.clone(),
+                project.color.clone(),
+                project.name.clone(),
+                PIC,
+            );
+            (pic.into_any_element(), project.name.clone().into())
+        } else {
+            let house = icon(IconName::House).size(px(14.)).color(t.faint);
+            (house.into_any_element(), "Working copy".into())
+        };
         let slot = self.icon_slot(running, &key, house, cx);
+        let slot = if wide { Self::wide_slot(slot) } else { slot };
         let branch = main.map(|m| m.branch.clone()).unwrap_or_default();
         let (add, del) = main.map_or((0, 0), |m| (m.diff.add, m.diff.del));
         let has_df = add != 0 || del != 0;
@@ -546,10 +592,10 @@ impl Sidebar {
             .relative()
             .flex()
             .items_center()
-            .gap(px(9.))
+            .gap(px(if wide { 7. } else { 9. }))
             .h(px(ROW_H))
             .w_full()
-            .pl(px(14.))
+            .pl(px(if wide { 12. } else { 14. }))
             .pr(px(8.))
             .rounded(px(6.))
             .when(on, |d| d.bg(t.pane_2))
@@ -568,13 +614,15 @@ impl Sidebar {
                 )
             })
             .child(slot)
-            .child(div().flex_none().child(
-                style::button_label("Working copy", 12., weight::REGULAR).color(if on {
-                    t.text
-                } else {
-                    t.muted
-                }),
-            ))
+            .child(
+                div()
+                    .map(|d| if wide { d.min_w_0() } else { d.flex_none() })
+                    .child(
+                        style::button_label(label, 12., weight::REGULAR)
+                            .color(if on { t.text } else { t.muted })
+                            .truncate(),
+                    ),
+            )
             .when(!branch.is_empty(), |d| {
                 d.child(
                     div()
@@ -604,7 +652,7 @@ impl Sidebar {
         }
         let f = self.fh(key.clone(), cx);
         let ring = is_focus_visible(&f, window);
-        let title = format!("Working copy: {}'s real checkout", p.project.name);
+        let title = format!("Working copy: {}'s real checkout", project.name);
         let hover_key = key.clone();
         let el =
             el.debug_selector(|| key.clone())
@@ -725,36 +773,135 @@ impl Sidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Div {
-        let mut loops = div()
-            .overflow_hidden()
-            .child(self.main_row(p, rc, live, window, cx));
+        let mut loops = div().overflow_hidden().child(self.main_row(
+            &p.project,
+            p.main.as_ref(),
+            rc,
+            live,
+            window,
+            cx,
+        ));
         if !p.scheduled.is_empty() {
             loops = loops.child(self.sched_section(p, rc, live, window, cx));
         }
-        // Rows outside the visible band (plus overscan) are one spacer per run: a long project
-        // lays out the rows on screen, not all of them.
+        loops = self.banded_rows(loops, &p.regular, rc, live, band, window, cx);
+        if p.regular.is_empty() && p.scheduled.is_empty() && p.project.is_git {
+            loops = loops.child(Self::empty_line("no active workspaces", cx));
+        }
+        loops
+    }
+
+    /// Rows outside the visible band (plus overscan) are one spacer per run: a long list lays
+    /// out the rows on screen, not all of them.
+    #[allow(clippy::too_many_arguments)]
+    fn banded_rows(
+        &mut self,
+        mut el: Div,
+        rows: &[Row],
+        rc: &RowCtx,
+        live: bool,
+        band: Option<(f32, f32, &crate::tree::Layout)>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Div {
         let mut skipped = 0usize;
-        for r in &p.regular {
+        for r in rows {
             if let Some((lo, hi, layout)) = band
                 && let Some(&top) = layout.rows.get(&r.ws.id)
-                && (top + crate::tree::ROW_H < lo || top > hi)
+                && (top + ROW_H < lo || top > hi)
             {
                 skipped += 1;
                 continue;
             }
             if skipped > 0 {
-                loops = loops.child(div().h(px(skipped as f32 * crate::tree::ROW_H)));
+                el = el.child(div().h(px(skipped as f32 * ROW_H)));
                 skipped = 0;
             }
-            loops = loops.child(self.task_row(r, rc, live, window, cx));
+            el = el.child(self.task_row(r, rc, live, window, cx));
         }
         if skipped > 0 {
-            loops = loops.child(div().h(px(skipped as f32 * crate::tree::ROW_H)));
+            el = el.child(div().h(px(skipped as f32 * ROW_H)));
         }
-        if p.regular.is_empty() && p.scheduled.is_empty() && p.project.is_git {
-            loops = loops.child(Self::empty_line("no active workspaces", cx));
-        }
-        loops
+        el
+    }
+
+    /// A by-status section header: caret, status icon, label, count; click toggles.
+    fn status_header(
+        &mut self,
+        st: &StatusNode,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let status = st.status;
+        let key = format!("sh:{}", status.id());
+        let hovered = self.hover_key(&key);
+        let caret = self.caret(&key, st.collapsed, cx);
+        let (name, color) = match status {
+            Status::InProgress => (IconName::GitBranch, t.faint),
+            Status::InReview => (IconName::GitPullRequest, t.emerald),
+            Status::Done => (IconName::GitMerge, t.indigo),
+            Status::Closed => (IconName::GitPullRequestClosed, t.coral),
+            Status::WorkingCopies => (IconName::House, t.faint),
+        };
+        let chip = if st.collapsed {
+            self.unread_chip(&key, st.unseen, st.parked, cx)
+        } else {
+            None
+        };
+        let f = self.fh(key.clone(), cx);
+        let ring = is_focus_visible(&f, window);
+        let (hover_key, collapsed) = (key.clone(), st.collapsed);
+        div()
+            .debug_selector(|| key.clone())
+            .id(SharedString::from(key.clone()))
+            .track_focus(&f)
+            .role(gpui_kit::Role::Button)
+            .aria_label(status.label())
+            .relative()
+            .size_full()
+            .rounded(px(6.))
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .gap(px(6.))
+            .px(px(8.))
+            .text_color(if hovered { t.text } else { t.muted })
+            .when(ring, |d| d.child(style::focus_ring(4., 0., cx)))
+            .on_hover(
+                cx.guarded_listener(move |this, h: &bool, _, cx| {
+                    this.set_hover(&hover_key, *h, cx)
+                }),
+            )
+            .on_click(
+                cx.guarded_listener(move |this, _, _, cx| {
+                    this.toggle_status(status, collapsed, cx)
+                }),
+            )
+            .child(
+                icon(IconName::ChevronDown)
+                    .size(px(12.))
+                    .stroke_width(2.4)
+                    .color(t.faint)
+                    .rotate(caret),
+            )
+            .child(icon(name).size(px(13.)).color(color))
+            .child(
+                style::button_label(status.label(), 10.5, weight::SEMIBOLD)
+                    .mono()
+                    .tracking(0.04)
+                    .uppercase()
+                    .nowrap(),
+            )
+            .child(
+                text((st.rows.len() + st.copies.len()).to_string())
+                    .mono()
+                    .size(10.)
+                    .color(t.faint)
+                    .nowrap(),
+            )
+            .when_some(chip, |d, ct| d.child(div().ml_auto().child(ct)))
+            .into_any_element()
     }
 
     /// `.tproj-h` content: icon slot, name, unread chip, hover actions.
@@ -1383,6 +1530,16 @@ impl Sidebar {
             top_level_stuck |= stuck;
             proj_heads.push((None, pi, Header { top, stuck }, off));
         }
+        let mut status_heads: Vec<(usize, Header)> = Vec::new();
+        for (si, st) in tree.statuses.iter().enumerate() {
+            let Some(span) = layout.group(&status_key(st.status)) else {
+                continue;
+            };
+            let top = sticky_top(span.top, span.bottom() - GROUP_PB, GROUP_H, scroll, 0.);
+            let stuck = is_stuck(top, scroll, 0., fade_top);
+            top_level_stuck |= stuck;
+            status_heads.push((si, Header { top, stuck }));
+        }
         self.sec_fade.set(fade_top && !top_level_stuck, FADE_IN, cx);
 
         let drop_group = self
@@ -1492,6 +1649,30 @@ impl Sidebar {
             );
         }
 
+        for st in &tree.statuses {
+            let mut block = div()
+                .relative()
+                .px(px(GUTTER))
+                .pb(px(GROUP_PB))
+                .child(div().h(px(GROUP_H)));
+            if !st.collapsed {
+                let mut body = self.banded_rows(
+                    div().overflow_hidden().pl(px(6.)),
+                    &st.rows,
+                    &rc,
+                    true,
+                    band,
+                    window,
+                    cx,
+                );
+                for (p, main) in &st.copies {
+                    body = body.child(self.main_row(p, main.as_ref(), &rc, true, window, cx));
+                }
+                block = block.child(body);
+            }
+            content = content.child(block);
+        }
+
         // Header layer: project headers under group headers, fades under the stuck ones.
         let mut layer: Vec<AnyElement> = Vec::new();
         let mut fades: Vec<AnyElement> = Vec::new();
@@ -1567,6 +1748,18 @@ impl Sidebar {
                         .into_any_element(),
                 );
             }
+        }
+        for (si, h) in &status_heads {
+            let st = &tree.statuses[*si];
+            let key = format!("sh:{}", st.status.id());
+            let bg = if self.hover_key(&key) { t.pane } else { t.rail };
+            let header = self.status_header(st, window, cx);
+            group_layer.push(
+                Self::header_band(h.top, GROUP_H, GUTTER, true, bg, 1., header, width)
+                    .into_any_element(),
+            );
+            seen_under.insert(key.clone());
+            fades.extend(self.under_fade(&key, h.top + GROUP_H, h.stuck, None, cx));
         }
         self.under.retain(|k, _| seen_under.contains(k));
         // `.tproj-h` (z 2) and its fade, then `.tgroup-h` (z 3) and its fade, then the ring.

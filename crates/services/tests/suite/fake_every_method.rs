@@ -676,6 +676,11 @@ async fn every_method_answers() {
     );
     note(
         &mut errs,
+        "ImportConductor",
+        s.projects.import_conductor().await.err(),
+    );
+    note(
+        &mut errs,
         "AddProjectGroup",
         s.projects
             .add_project_group(&Default::default())
@@ -805,6 +810,7 @@ async fn every_method_answers() {
         "AddPRComment",
         s.prs.add_pr_comment("482", "x", 1, "x", 1, "x").await.err(),
     );
+    note(&mut errs, "ClosePR", s.prs.close_pr("482").await.err());
     note(
         &mut errs,
         "CreateWorkspaceFromPR",

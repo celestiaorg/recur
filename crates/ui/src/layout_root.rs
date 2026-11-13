@@ -724,13 +724,13 @@ mod block_tests {
     struct PageHost(gpui_kit::Entity<Page>);
 
     impl Render for PageHost {
-        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
             let mut style = div().size_full();
             let style = style.style().clone();
             div()
                 .size_full()
                 .bg(gpui_kit::white())
-                .child(crate::style::cached_view(&self.0, style, cx))
+                .child(crate::style::cached_view(&self.0, style))
                 .child(
                     gpui_kit::deferred(
                         div()

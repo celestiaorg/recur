@@ -13,6 +13,7 @@ use crate::shell_state::{ShellLive, ShellRestore, resolve_shell_restore, snapsho
 use crate::state::{AppState, ChatRef, ObsJump, ScanKind, ShellEvent, WorkspaceScanEvent};
 use crate::workspace_nav::{
     SCAN_COMMIT_MS, neighbor_workspace_id, project_id_from_main_scan, sidebar_workspace_ids,
+    status_workspace_ids,
 };
 
 impl AppState {
@@ -44,6 +45,7 @@ impl AppState {
                 c
             }
             ViewName::Schedules => vec![seg("Schedules", CrumbStyle::BoldOn)],
+            ViewName::Terminals => vec![seg("Terminals", CrumbStyle::BoldOn)],
             ViewName::Issues => vec![seg("Issues", CrumbStyle::BoldOn)],
             ViewName::Pr => vec![seg("Pull requests", CrumbStyle::BoldOn)],
             ViewName::PrDetail => {
@@ -78,6 +80,9 @@ impl AppState {
             ViewName::Inbox => ViewName::Briefing,
             v => v,
         };
+        if v == ViewName::Terminals && !self.terminal_prefs.page {
+            return;
+        }
         if v == ViewName::Briefing
             && let Some(f) = focus
         {
@@ -299,7 +304,11 @@ impl AppState {
             .iter()
             .filter(|p| show_hidden || !p.hidden)
             .collect();
-        let ids = sidebar_workspace_ids(&self.workspaces, &projects, &self.project_groups);
+        let ids = if self.sidebar_by_status() {
+            status_workspace_ids(&self.workspaces, &projects, &self.project_groups, &self.prs)
+        } else {
+            sidebar_workspace_ids(&self.workspaces, &projects, &self.project_groups)
+        };
         let current = if self.scan_cursor.is_empty() {
             self.selected_workspace_id.clone()
         } else {

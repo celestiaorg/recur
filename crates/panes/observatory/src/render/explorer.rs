@@ -653,7 +653,7 @@ impl Observatory {
             }))
             .on_mouse_down(
                 MouseButton::Right,
-                cx.guarded_listener(move |o, ev: &MouseDownEvent, window, cx| {
+                cx.guarded_listener(move |o, ev: &MouseDownEvent, _, cx| {
                     cx.stop_propagation();
                     o.open_ctx(
                         f32::from(ev.position.x),
@@ -662,7 +662,6 @@ impl Observatory {
                         entry2.dir,
                         &entry2.name,
                         false,
-                        window,
                         cx,
                     );
                 }),
@@ -960,14 +959,14 @@ impl Observatory {
                     let k = &e.keystroke;
                     let m = k.modifiers;
                     let typing = o.draft_edit.is_some();
-                    if o.on_files_key(&k.key, m.secondary(), m.alt, m.shift, typing, window, cx) {
+                    if o.on_files_key(&k.key, m.secondary(cx), m.alt, m.shift, typing, window, cx) {
                         cx.stop_propagation();
                     }
                 }),
             )
             .on_mouse_down(
                 MouseButton::Right,
-                cx.guarded_listener(|o, ev: &MouseDownEvent, window, cx| {
+                cx.guarded_listener(|o, ev: &MouseDownEvent, _, cx| {
                     o.open_ctx(
                         f32::from(ev.position.x),
                         f32::from(ev.position.y),
@@ -975,7 +974,6 @@ impl Observatory {
                         true,
                         "",
                         false,
-                        window,
                         cx,
                     );
                 }),

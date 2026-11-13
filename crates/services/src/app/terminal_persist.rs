@@ -13,7 +13,7 @@ use tokio::task::JoinHandle;
 
 use super::AppServices;
 use super::editor_session::{read_gz_json, write_gz_json};
-use crate::api::TerminalDockChrome;
+use crate::api::{GLOBAL_TERMINALS, TerminalDockChrome};
 
 pub(crate) const TERMINAL_PERSIST_FILE: &str = "terminals.json.gz";
 const TERMINAL_PERSIST_DEBOUNCE: Duration = Duration::from_secs(1);
@@ -334,7 +334,7 @@ impl AppServices {
     }
 
     fn persist_workspace_terminals(&self, workspace_id: &str) -> std::io::Result<()> {
-        if self.store().workspace(workspace_id).is_none() {
+        if workspace_id != GLOBAL_TERMINALS && self.store().workspace(workspace_id).is_none() {
             return self.remove_terminal_snapshot(workspace_id);
         }
         let chrome = self.terminal_chrome(workspace_id).clamped();

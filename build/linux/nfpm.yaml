@@ -1,4 +1,4 @@
-# .deb / .rpm for `mise run linux:package`, which sets ARCH (amd64 / arm64),
+# .deb / .rpm / .pkg.tar.zst (Arch) for `mise run linux:package`, which sets ARCH (amd64 / arm64),
 # VERSION and PKG_DIR: /opt/recur, /usr/bin/recur and the
 # build.recur.app menu entry.
 # PGP-signed when RECUR_PGP_KEY names an armored private key file (passphrase
@@ -50,8 +50,13 @@ depends:
   - libxcb1
   - libwayland-client0
   - libvulkan1
+# secret-tool keeps API keys in the Secret Service keyring (else a 0600 file).
+recommends:
+  - libsecret-tools
 overrides:
   rpm:
+    recommends:
+      - libsecret
     depends:
       - ca-certificates
       - gtk4
@@ -66,6 +71,23 @@ overrides:
       - libxcb
       - libwayland-client
       - vulkan-loader
+  archlinux:
+    recommends:
+      - libsecret
+    depends:
+      - ca-certificates
+      - gtk4
+      - webkitgtk-6.0
+      - gstreamer
+      - gst-plugins-base
+      - gst-plugins-good
+      - gst-plugins-bad
+      - gst-libav
+      - libxkbcommon
+      - libxkbcommon-x11
+      - libxcb
+      - wayland
+      - vulkan-icd-loader
 
 deb:
   signature:

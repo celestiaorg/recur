@@ -1,7 +1,7 @@
 {
   "name": "recur-docs",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vocs dev --port 5175",
@@ -11,7 +11,7 @@
   "dependencies": {
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-server-dom-webpack": "^19.3.0",
+    "react-server-dom-webpack": "^19.3.1",
     "vocs": "^2.10.0"
   },
   "devDependencies": {

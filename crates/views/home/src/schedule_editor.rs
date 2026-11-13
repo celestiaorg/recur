@@ -918,7 +918,9 @@ impl ScheduleEditor {
         };
         let repo_opts: Vec<SelectOption> = projects
             .iter()
-            .map(|p| SelectOption::new(p.id.clone(), p.name.clone()))
+            .map(|p| {
+                SelectOption::new(p.id.clone(), p.name.clone()).pic(p.pic.clone(), p.color.clone())
+            })
             .collect();
         let project = projects.iter().find(|p| p.id == d.project_id).cloned();
         let slot: recur_ui::widgets::select::IconSlot = match project {

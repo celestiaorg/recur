@@ -230,6 +230,9 @@ impl Observatory {
                 }
             }
         }
+        if matches!(v.last(), Some(Item::Sep)) {
+            v.pop();
+        }
         let _ = cx;
         v
     }

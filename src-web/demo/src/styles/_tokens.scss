@@ -200,3 +200,28 @@
   --scrollbar-thumb: #4c566a;
   --scrollbar-thumb-hover: #5e6a80;
 }
+
+/* Gruvbox: dark hard background, orange accent. */
+:root[data-theme="gruvbox"] {
+  --bg: #1d2021;
+  --pane: #282828;
+  --pane-2: #3c3836;
+  --rail: #1d2021;
+  --titlebar: #1d2021;
+  --statusbar: #171a1b;
+  --line: #3c3836;
+  --line-soft: #32302f;
+  --line-bright: #504945;
+  --text: #ebdbb2;
+  --muted: #a89984;
+  --faint: #7c6f64;
+  --amber: #fe8019;
+  --amber-d: rgba(254, 128, 25, .14);
+  --cyan: #8ec07c;
+  --emerald: #b8bb26;
+  --coral: #fb4934;
+  --indigo: #d3869b;
+  --warn: #fabd2f;
+  --scrollbar-thumb: #504945;
+  --scrollbar-thumb-hover: #665c54;
+}

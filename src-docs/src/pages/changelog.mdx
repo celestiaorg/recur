@@ -1,0 +1,171 @@
+---
+title: Changelog
+description: What changed in each Recur release
+---
+
+# Changelog
+
+Notable changes in each Recur release. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). Downloads for every version are on [GitHub releases](https://github.com/celestiaorg/recur/releases).
+
+## Unreleased
+
+### Added
+
+- The sidebar can group workspaces by status (In progress, including draft PRs; In review; Done; Closed) instead of by project, with each project's working copy in a Working copies section: use the new button next to **Add project**. Scheduled runs stay in the project view.
+- Fable 5.2 in the Claude Code model picker. Mythos 5.2 appears automatically on accounts with access.
+- The New project dialog has a **Group** picker, so a project can go straight into a sidebar group when you add it.
+- The workspace header's **View PR** button has a dropdown with **Open in GitHub**, so you can jump straight to the pull request on GitHub.
+- Find in the agent chat: press ⌘F (Ctrl+F on Linux) in the chat to search your messages and the agent's replies. Enter and Shift+Enter (or ⌘G and ⇧⌘G) step through matches, Escape closes.
+
+### Fixed
+
+- Agents, terminals and git no longer fail with "Too many open files" after Recur has been open a while with many workspaces.
+- Follow-ups sent to a Claude agent that is waiting on a long background task (a training run, a build) keep reaching it right away while you keep talking to it, instead of waiting for the task to finish once the agent had been waiting 10 minutes.
+- Dragging a text selection past the edge of a code block scrolls the block, so long lines and tall blocks can be selected in full.
+
+### Changed
+
+- Agent mode chats can file findings, so a review asked for in Agent mode lands in the Findings panel.
+- Project dropdowns (new workspace, schedules, Inbox, Issues, Pull requests) show each project's icon next to its name.
+- Cursor agents run on Cursor SDK 1.3.1 (was 1.0.38). Existing installs show an **Update** button in Settings > Providers > Cursor.
+
+### Security
+
+- API keys and other credentials (Cursor, Codex, Linear, bundle settings, compatible provider keys and headers, MCP server headers and env) are kept in the macOS Keychain or the Linux Secret Service keyring instead of in `recur.db`. Existing keys move there the first time Recur opens, and are wiped from the database. On Linux without `secret-tool`, they go to a `secrets.json` file only you can read.
+
+### Fixed
+
+- Claude agents can no longer report findings through Claude Code's own findings tool, which never reached Recur's Findings panel.
+- An agent's closing message stands on its own instead of reading as a continuation of text hidden between tool calls.
+
+## [0.6.0](https://github.com/celestiaorg/recur/releases/tag/v0.6.0) - 2026-11-05
+
+### Added
+
+- Gruvbox app theme (dark), paired with the Gruvbox Dark Medium editor theme.
+- **File → Import Conductor Workspaces…** adopts Conductor's worktrees in place and brings their chats over as Recur chat tabs.
+- The PR dashboard supports bulk selection: Cmd-click a row, Shift-click a range, then Merge, Mark ready, Convert to draft, Approve, Update with base, Close, or Open in GitHub across the selection.
+- An optional **Terminals** page in the sidebar for shells that don't belong to a workspace. Turn it on under **Settings → Code editor → Terminal**.
+- A **Conventional Commits** project setting: `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and PR titles use `type(scope): summary`. It is saved in `.recur/project.toml`, so it applies to everyone on the repo.
+- Install script for building and installing Recur from source on Linux.
+- Arch Linux package (`.pkg.tar.zst`) built alongside the `.deb` and `.rpm`; install with `pacman -U`.
+
+### Changed
+
+- Downloads and in-app updates come from [celestiaorg/recur releases](https://github.com/celestiaorg/recur/releases) instead of `recur-releases`.
+- Search results highlight the match in each line's preview.
+
+### Fixed
+
+- Pressing Enter in the search panel's file glob field runs the search.
+- The workspace context menu opens at the pointer near the window edges.
+- Answers given at a Loop checkpoint now reach the agent that asked.
+- The PR dock no longer jumps back to the Loop conductor tab after you pick another chat.
+- Restored terminal tabs no longer inherit mouse tracking, bracketed paste, or cursor modes from the program that was running before.
+- The file explorer's rename field is styled like other text inputs.
+
+## [0.5.0](https://github.com/celestiaorg/recur/releases/tag/v0.5.0) - 2026-11-04
+
+### Changed
+
+- Recur is now a native app built in Rust on GPUI, replacing the web view.
+- **Update with base** reports conflicts and stops instead of starting an automatic resolve.
+- Long-running animations redraw at a lower frame rate to save CPU.
+
+### Added
+
+- Sign in with your ChatGPT account under **Settings → Providers → OpenAI**. No Codex install or API key needed.
+- `/fix-problem` sends language server diagnostics to the agent.
+- Claude models available only to your account (such as Mythos 5.1) appear in the model picker, along with Haiku 5.5.
+- Link a workspace to a tracker issue from the titlebar.
+
+### Fixed
+
+- **Merge** on repos that use a merge queue but disallow auto-merge now enqueues the PR.
+- The local **Merge** button appears when a repository ruleset lists you as exempt.
+- Stopping a Claude turn stops all of its processes.
+- Files such as `.txt` show their icon in the file explorer.
+- Syntax highlighting stays correct after a file is edited outside Recur.
+- Saving a schedule no longer waits on the Claude model check.
+
+## [0.4.1](https://github.com/celestiaorg/recur/releases/tag/v0.4.1) - 2026-10-16
+
+### Changed
+
+- Recur for macOS is signed with an Apple Developer ID and notarized by Apple.
+
+## [0.4.0](https://github.com/celestiaorg/recur/releases/tag/v0.4.0) - 2026-10-16
+
+### Added
+
+- **Sync with system** theme mode for the app, editor, and terminal: pick a light and a dark theme and follow the OS appearance.
+- Catppuccin Latte app theme. The existing Catppuccin theme is now Catppuccin Mocha.
+- Right-click a file tab to **Close**, **Close others**, or **Close all**.
+- GitHub merge queue support: **Merge** enqueues the PR and the PR shows a Queued state.
+- PRs with merge conflicts show a **Merge conflicts** label, and the titlebar offers **Resolve conflicts**.
+- Video previews in the Observatory, and a lightbox to zoom into images and videos.
+
+### Changed
+
+- PRs opened outside Recur appear within a few minutes without reopening the PR list, and a workspace links to its open PR over a closed one.
+- Faster GitHub PR sync.
+- Running checks in the PR list show a spinner.
+- OpenAI-compatible providers get tools and a system prompt closer to Claude Code's, including ripgrep search and your project's `AGENTS.md`.
+- Compatible-provider turns no longer stop after 40 rounds unless you set a turn limit.
+- Clicking an OS notification opens the chat or item it is about.
+- Open model pickers refresh when you change providers.
+
+### Fixed
+
+- Updating a PR from a fork pushes to the fork instead of creating a branch on origin.
+- The UI no longer stalls while checks are polling on PRs with large commits.
+- LM Studio accepts requests from the compatible provider.
+- In Agent mode, the Loop lock applies only to the tab driving the Loop.
+- PRs from different projects with the same number no longer share merge state.
+
+## [0.3.0](https://github.com/celestiaorg/recur/releases/tag/v0.3.0) - 2026-10-14
+
+### Added
+
+- **Issues** view for your GitHub and Linear issues, with filters and sorting. Start a linked workspace from any issue.
+- `/github` command and a GitHub bundle for pulling an issue into a task.
+- In-app updater.
+- TIFF files open as images.
+- HTML Preview can load scripts from https CDNs and make `fetch` requests.
+
+### Changed
+
+- macOS releases ship as a universal (Apple silicon and Intel) DMG.
+- Linux releases ship as `.deb` and `.rpm` packages, signed with the Recur release key.
+
+### Fixed
+
+- `.recur/project.toml` works the same on Linux and macOS.
+- Long plans no longer fail to hand off on Linux.
+
+## [0.2.0](https://github.com/celestiaorg/recur/releases/tag/v0.2.0) - 2026-10-08
+
+### Added
+
+- Linux desktop app.
+
+### Fixed
+
+- macOS remembers folder access permissions across updates instead of asking again.
+
+## [0.1.0](https://github.com/celestiaorg/recur/releases/tag/v0.1.0) - 2026-10-07
+
+First release, for macOS.
+
+### Added
+
+- Workspaces that give each task its own branch and worktree, or work in your main checkout.
+- Chats with five modes: Ask, Plan, Agent, Review, and Loop.
+- Loop mode: specialist agents plan, build, and review until the work clears your bar.
+- Review with findings, and checkpoints to inspect, rewind, or fork any turn.
+- Pull requests: review, comment, fix checks, and merge.
+- Inbox and Schedules.
+- Providers: Claude Code, Cursor, Codex, and OpenAI-compatible endpoints.
+- Integrations with Linear and custom MCP servers.
+- Recur Bundles for commands, prompts, languages, themes, and Loop recipes, plus the `recur-cli` authoring tool.
+- Agent skills, including `recur-help` so agents can answer questions about Recur.

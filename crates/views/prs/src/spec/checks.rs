@@ -285,7 +285,7 @@ fn scroll(s: &mut S, pane: &str, dy: f32) {
         .bounds(&format!("prpane:{pane}"))
         .or_else(|| s.bounds(&format!("prpane:{pane}:fade-top")))
         .unwrap();
-    s.cx.simulate_event(gpui::ScrollWheelEvent {
+    s.cx.simulate_event(gpui::ScrollEvent {
         position: b.center(),
         delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(dy))),
         ..Default::default()

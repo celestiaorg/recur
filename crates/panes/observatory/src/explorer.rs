@@ -1221,25 +1221,11 @@ impl Observatory {
         dir: bool,
         name: &str,
         tab: bool,
-        window: &Window,
         cx: &mut Context<Self>,
     ) {
-        let pad = 8.;
-        let mw = 220.;
-        let mh = if tab { 110. } else { 360. };
-        let vw = f32::from(window.viewport_size().width);
-        let vh = f32::from(window.viewport_size().height);
-        let mut x = x;
-        let mut y = y;
-        if x + mw > vw - pad {
-            x = vw - mw - pad;
-        }
-        if y + mh > vh - pad {
-            y = vh - mh - pad;
-        }
         self.ctx_menu = Some(CtxMenu {
-            x: x.max(pad),
-            y: y.max(pad),
+            x,
+            y,
             path: path.to_string(),
             dir,
             name: name.to_string(),
@@ -1292,6 +1278,7 @@ impl Observatory {
             s.set_value(name, window, cx);
             s
         });
+        recur_ui::style::style_text_input(&input, cx);
         let sub = cx.guarded_subscribe_in(
             &input,
             window,

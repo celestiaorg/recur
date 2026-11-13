@@ -68,6 +68,51 @@ pub fn css_gradient(
     .size_full()
 }
 
+/// `.fade-top` / `.fade-bot`: `h`px backdrop gradients over the edges of `scroll` that have
+/// more content past them. Put them after the scroller in a `relative` parent.
+pub fn edge_fades(
+    scroll: &gpui_kit::ScrollHandle,
+    backdrop: Color,
+    h: f32,
+) -> Vec<gpui_kit::AnyElement> {
+    let top = -f32::from(scroll.offset().y);
+    let max = f32::from(scroll.max_offset().y).max(0.);
+    let slack = 1.;
+    let grad = |from: f32, to: f32| {
+        gradient_fill(
+            180.,
+            (backdrop.with_alpha(from), 0.),
+            (backdrop.with_alpha(to), 1.),
+        )
+    };
+    let mut out = Vec::new();
+    if top > slack {
+        out.push(
+            div()
+                .absolute()
+                .top_0()
+                .left_0()
+                .right_0()
+                .h(px(h))
+                .child(grad(1., 0.))
+                .into_any_element(),
+        );
+    }
+    if max > slack && top < max - slack {
+        out.push(
+            div()
+                .absolute()
+                .bottom_0()
+                .left_0()
+                .right_0()
+                .h(px(h))
+                .child(grad(0., 1.))
+                .into_any_element(),
+        );
+    }
+    out
+}
+
 /// A CSS `linear-gradient(<angle>, from, to)` filling its parent with square corners, in place
 /// of `.bg(linear_gradient(..))` (see [`css_gradient`]). Put it first.
 pub fn gradient_fill(angle: f32, from: (Color, f32), to: (Color, f32)) -> impl IntoElement {
@@ -281,29 +326,22 @@ pub fn window_root(content: impl IntoElement) -> Div {
 }
 
 /// `entity` as a cached view laid out at `style` (see `docs/ARCHITECTURE.md`, "Frame
-/// cost"). It reads the entity first: GPUI only invalidates a view the window saw accessed in a
-/// draw, and a cached view's own render does not count when the entity was already touched
-/// earlier in that frame (as on the frame its parent created it). Without the read, a view
-/// reused from then on drops its own notifies until something refreshes the whole window.
+/// cost").
 pub fn cached_view<V: gpui_kit::Render>(
     entity: &gpui_kit::Entity<V>,
     style: gpui_kit::StyleRefinement,
-    cx: &App,
 ) -> gpui_kit::AnyElement {
-    let _ = entity.read(cx);
     entity.clone().cached(style).into_any_element()
 }
 
 /// `entity` as an isolated view laid out at `style`: a notify of it, or of a view inside it,
 /// renders only it, in place, while the frame replays its ancestors (Recur's gpui-pre patch,
 /// `vendor/README.md`). Its size comes from `style`, never its content: a view that needs
-/// another size notifies its host. Reads the entity first, as [`cached_view`] does.
+/// another size notifies its host.
 pub fn isolated_view<V: gpui_kit::Render>(
     entity: &gpui_kit::Entity<V>,
     style: gpui_kit::StyleRefinement,
-    cx: &App,
 ) -> gpui_kit::AnyElement {
-    let _ = entity.read(cx);
     entity.clone().isolated(style).into_any_element()
 }
 
@@ -939,6 +977,48 @@ pub fn input_box(
             input,
             placeholder,
             UA_PLACEHOLDER,
+            Family::Mono,
+            12.,
+            window,
+            cx,
+        ))
+}
+
+/// `.cm-recur-search-input`: the find bar's 26px mono field, an amber ring while focused.
+pub fn find_field(
+    input: &Entity<InputState>,
+    placeholder: &str,
+    window: &Window,
+    cx: &mut App,
+) -> Div {
+    style_text_input(input, cx);
+    let theme = Theme::of(cx);
+    let t = theme.tokens;
+    let focused = gpui_kit::Focusable::focus_handle(input.read(cx), cx).is_focused(window);
+    let border = if focused {
+        t.amber.mix(0.55, t.line)
+    } else {
+        t.line
+    };
+    let bg = if theme.is_light() { t.pane } else { t.bg };
+    card(bg, border, 6.)
+        .h(px(26.))
+        .px(px(9.))
+        .flex()
+        .items_center()
+        .when(focused, |d| {
+            d.shadow(vec![BoxShadow {
+                color: t.amber_d.into(),
+                offset: point(px(0.), px(0.)),
+                blur_radius: px(0.),
+                spread_radius: px(2.),
+                inset: false,
+            }])
+        })
+        .child(text_field(
+            input,
+            &SharedString::from(placeholder.to_string()),
+            t.faint,
             Family::Mono,
             12.,
             window,

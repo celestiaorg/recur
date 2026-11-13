@@ -17,7 +17,8 @@ pub struct Vars {
     pub port: i64,
     pub workspace_id: String,
     pub worktree_path: String,
-    /// The project checkout; .env files are loaded from here too.
+    /// The project checkout, injected as `$RECUR_ROOT`; .env files are
+    /// loaded from here too.
     pub repo_path: String,
     pub project_id: String,
     /// The workspace git branch; injected as `$RECUR_BRANCH`.
@@ -48,6 +49,7 @@ impl Vars {
             ("RECUR_WORKSPACE_ID".to_owned(), self.workspace_id.clone()),
             ("RECUR_PROJECT_ID".to_owned(), self.project_id.clone()),
             ("RECUR_WORKTREE".to_owned(), self.worktree_path.clone()),
+            ("RECUR_ROOT".to_owned(), self.repo_path.clone()),
             ("RECUR_BRANCH".to_owned(), self.branch.trim().to_owned()),
         ]);
         if self.port > 0 {

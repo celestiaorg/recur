@@ -17,7 +17,7 @@ VERSION="${VERSION:-$(build/version.sh)}" build/linux/in-docker.sh build/linux/b
 '''
 
 ["linux:package"]
-description = "Packages target/package/recur-linux-<arch>.tar.gz, .deb and .rpm (install to /opt/recur with /usr/bin/recur)"
+description = "Packages target/package/recur-linux-<arch>.tar.gz, .deb, .rpm and .pkg.tar.zst (Arch) (install to /opt/recur with /usr/bin/recur)"
 run = '''
 set -eu
 export VERSION="${VERSION:-$(build/version.sh)}"
@@ -28,6 +28,7 @@ tar --no-xattrs -C target/package -czf "target/package/$PKG.tar.gz" "$PKG"
 for fmt in deb rpm; do
   PKG_DIR="target/package/$PKG" nfpm pkg --packager "$fmt" --config build/linux/nfpm.yaml --target "target/package/$PKG.$fmt"
 done
+PKG_DIR="target/package/$PKG" nfpm pkg --packager archlinux --config build/linux/nfpm.yaml --target "target/package/$PKG.pkg.tar.zst"
 '''
 
 ["linux:run"]
@@ -39,6 +40,10 @@ mise run linux:build
 if [ "$(uname -s)" = Linux ]; then exec "target/package/recur-linux-$ARCH/recur"; fi
 exec build/linux/run-desktop.sh
 '''
+
+["linux:install"]
+description = "Builds for this machine (-C target-cpu=native) and installs into ~/.local: system packages, then linux:build. `-- --no-deps` skips the packages; RECUR_NATIVE=0, RECUR_PREFIX"
+run = "build/linux/install.sh"
 
 ["linux:smoke"]
 description = "Installs the linux:package .deb and tarball in a clean Debian 13 container and checks paths, the recur link, the menu entry, `recur .` and a notification"

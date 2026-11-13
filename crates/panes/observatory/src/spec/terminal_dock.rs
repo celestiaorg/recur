@@ -394,6 +394,27 @@ async fn dragging_a_terminal_tab_reorders_the_strip_and_survives_remount(cx: &mu
     assert_eq!(ids, vec!["sess-2", "sess-1"]);
 }
 
+/// The selected workspace stays active behind the Terminals page: its dock leaves the page's
+/// ⌘T / ⌘W alone.
+#[gpui::test]
+async fn tab_menu_actions_skip_the_dock_behind_the_terminals_page(cx: &mut TestAppContext) {
+    let t = Term::default();
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
+    open_dock(&mut h);
+    h.click("term-pane:sess-1");
+    assert!(term_lit(&mut h));
+    h.state_update(|s, cx| {
+        s.set_terminal_prefs(|p| p.page = true, cx);
+        s.go(recur_view_core::ViewName::Terminals, None, cx);
+    });
+    h.event(AppEvent::MenuAction("close-tab".into()));
+    h.event(AppEvent::MenuAction("new-tab".into()));
+    h.wait(100);
+    assert_eq!(dock_tabs(&mut h).len(), 1);
+    assert!(t.calls("CloseTerminal").is_empty());
+    assert_eq!(t.calls("OpenTerminal").len(), 1);
+}
+
 #[gpui::test]
 async fn cmd_t_and_cmd_w_open_and_close_tabs_while_the_dock_is_focused(cx: &mut TestAppContext) {
     let t = Term::default();

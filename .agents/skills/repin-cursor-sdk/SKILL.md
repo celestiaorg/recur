@@ -21,6 +21,7 @@ Re-pin progress:
 - [ ] Download new wheel; find createLocalExecutor sites
 - [ ] Update sdk_attribution_anchors (cjs + esm)
 - [ ] Bump PINNED_SDK_VERSION + the tests' hardcode
+- [ ] Add the new anchor pairs to the golden fixture
 - [ ] Validate patch against new wheel
 - [ ] Confirm pin check is green
 ```
@@ -42,12 +43,13 @@ Re-pin progress:
 
 3. **Find minify anchors** in `$BRIDGE/node_modules/@cursor/sdk/dist/{cjs,esm}/*.js`.
    Search for `getAgentSkills:r.workspaceServices.getAgentSkills`.
-   Capture the options-object close through the `void 0===…?new …(…):new …(…)` executor construction for **cjs** and **esm** (minifier names change between releases). Up to 1.0.31 it is `…};return void 0===…`; from 1.0.37 it is `…,...i},u=void 0===…;` inside a `const` chain.
+   Capture the options-object close through the `void 0===…?new …(…):new …(…)` executor construction for **cjs** and **esm** (minifier names change between releases). Up to 1.0.31 it is `…};return void 0===…`; from 1.0.37 it is `…,...i},u=void 0===…;` inside a `const` chain. From 1.3.1 more fields (`powershellUtf8*`) sit between `getAgentSkills` and `...i}`, so capture from `getAgentSkills` through the executor's `;`.
 
 4. **Update code** (all in `providers/cursor`)
    - `sdk_attribution_anchors` in `src/attribution.rs`: both needles and replacements (assign `attributionConfigProvider` on the options object before the executor is constructed: a statement before `return`, or a comma expression when the site is inside a `const` chain; copy the closest existing entry). Also check `sdk_summary_delta_anchors` and `STEER_RUN_MOUNT_OLD`.
    - `PINNED_SDK_VERSION` in `src/install.rs`.
    - The deliberate hardcode in `pinned_sdk_version_in_pypi_url` (`src/install/tests.rs`).
+   - The golden fixture `tests/golden/go_cursor_pkg.json`: the `anchors` and `summaryAnchors` arrays must equal the code's `(old, neu)` pairs in order (`golden_tests::anchors_and_constants`). `<`/`>` are escaped as `\u003c`/`\u003e`.
    - Comments that name the old version (anchors, docs).
 
 5. **Validate**
@@ -57,7 +59,7 @@ Re-pin progress:
    cargo test -p recur-provider-cursor -p recur-engine
    ```
 
-6. **Ship** a focused PR: pin bump + anchor refresh + test hardcode. Mention the new version in the summary.
+6. **Ship** a focused PR: pin bump + anchor refresh + golden fixture + test hardcode. Mention the new version in the summary.
 
 ## Do not
 

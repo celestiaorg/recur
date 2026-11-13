@@ -285,6 +285,7 @@ fn pr_record(id: &str, number: i64, source: &str, state: &str, group: &str) -> P
         group: group.into(),
         number,
         source: source.into(),
+        url: format!("https://github.com/acme/storefront/pull/{number}"),
         branch: "recur/pg16".into(),
         base: "main".into(),
         title: "Migrate analytics to Postgres 16".into(),
@@ -817,6 +818,19 @@ async fn shows_view_pr_after_a_pull_request_is_open(cx: &mut TestAppContext) {
     assert_eq!(s.view(), ViewName::Detail);
     assert!(s.has("v-detail"));
     assert!(s.has("tb-view-pr=View PR #91"));
+}
+
+#[gpui::test]
+async fn view_pr_split_opens_the_pr_on_github(cx: &mut TestAppContext) {
+    let mut s = gh_boot(cx, Some(gh("gh-91", 91, "gh")), land(gh_land(0, 0)));
+    s.click("tb-view-pr-chev");
+    s.click("view-pr-github-item");
+    assert!(!s.has("view-pr-github-item"));
+    assert_eq!(
+        s.cx.opened_url().as_deref(),
+        Some("https://github.com/acme/storefront/pull/91")
+    );
+    assert_eq!(s.view(), ViewName::Detail);
 }
 
 #[gpui::test]

@@ -396,6 +396,10 @@ impl Forge for GitHub {
         self.draft(repo, number, draft).await
     }
 
+    async fn close_pr(&self, repo: &Path, number: i64) -> Result<(), ForgeError> {
+        self.close(repo, number).await
+    }
+
     async fn branch_requires_pr(
         &self,
         repo: &Path,

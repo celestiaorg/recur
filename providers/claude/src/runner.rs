@@ -15,6 +15,8 @@
 //! is flushed instead (claude answers it with another result), and live
 //! background tasks hold the result, because claude kills them on stdin EOF;
 //! it runs a follow-up turn on their completion and emits another result.
+//! The hold lasts until the ceiling, restarted by each steer so a user still
+//! talking to the agent keeps reaching it.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -302,6 +304,9 @@ impl Injecting<'_> {
         if self.stdin.is_none() {
             s.ack(false);
             return;
+        }
+        if self.hold_deadline.is_some() {
+            self.hold_deadline = Some(Instant::now() + self.hold_ceiling);
         }
         let text = s.stdin_text();
         let user = s.user_event(true);

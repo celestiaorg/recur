@@ -292,6 +292,10 @@ pub fn run_prompt_action(
             .try_global::<PromptCatalog>()
             .and_then(|g| g.prompt_runner.clone());
         return cx.spawn(async move |_| {
+            let mut ctx = ctx;
+            if let Ok(p) = services.projects.get_project(&ctx.project_id).await {
+                ctx.conventional_commits = p.conventional_commits;
+            }
             let code = services
                 .bundle
                 .compiled_prompt_module(&id)

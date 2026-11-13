@@ -554,6 +554,37 @@ async fn quick_open_covers_the_window_and_blocks_the_page(cx: &mut TestAppContex
 }
 
 #[gpui::test]
+async fn search_toggles_turn_on_and_the_panel_keeps_rendering(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    h.click("panel-toggle:search");
+    h.click("search-opt:search-case");
+    h.click("search-opt:search-regex");
+    assert!(h.read(|o, _| o.search_case && o.search_regex));
+    assert!(h.has("search-opt:search-case"));
+    assert!(h.has("search-opt:search-regex"));
+}
+
+#[gpui::test]
+async fn search_builds_only_the_hits_near_the_viewport(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    h.click("panel-toggle:search");
+    h.update(|o, _, cx| {
+        o.hits = (0..400)
+            .map(|i| recur_domain::SearchHit {
+                path: format!("src/f{}.go", i / 10),
+                line: i % 10 + 1,
+                preview: "fmt.Println()".into(),
+                ..Default::default()
+            })
+            .collect();
+        cx.notify();
+    });
+    h.wait(50);
+    assert!(h.has("obs-hit:0"));
+    assert!(!h.has("obs-hit:399"));
+}
+
+#[gpui::test]
 async fn quick_open_hydrates_the_picked_file_without_a_read_failed_toast(cx: &mut TestAppContext) {
     let f = two();
     let f2 = f.clone();

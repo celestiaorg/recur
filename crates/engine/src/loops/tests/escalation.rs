@@ -1445,6 +1445,45 @@ async fn apply_answered_cap_agent_steer_stays_pending_until_prompt() {
     assert!(t.store.escalation(id).unwrap().applied);
 }
 
+#[tokio::test]
+async fn checkpoint_agent_answer_reaches_next_prompt() {
+    let t = TestEngine::new(None);
+    let id = "WS-live-agent-answer";
+    t.store
+        .add_workspace(Workspace {
+            id: id.into(),
+            goal: "live answer".into(),
+            state: WorkspaceState::Coding,
+            autonomy: AutonomyLevel::Balanced,
+            ..Workspace::default()
+        })
+        .unwrap();
+    let mut l = Walk::new(&t.engine, &t.store.workspace(id).unwrap());
+    l.h.request_escalation(esc_req());
+    let h = l.h.clone();
+    let store = t.store.clone();
+    let answer = async move {
+        wait_for(Duration::from_secs(5), "agent escalation", || {
+            h.lock().escalated
+        })
+        .await;
+        store.answer_escalation_for(id, "", "", "Use approach B");
+        h.send(crate::loop_handle::Command::AnswerEscalation(
+            crate::loop_handle::EscalationAnswer {
+                free_text: "Use approach B".into(),
+                ..Default::default()
+            },
+        ));
+    };
+    let cancel = CancellationToken::new();
+    let (keep_going, ()) = tokio::join!(l.checkpoint(&cancel), answer);
+    assert!(keep_going);
+    assert!(!t.store.escalation(id).unwrap().applied);
+    let got = l.apply_pending_steer("do the work");
+    assert!(got.contains("Use approach B"), "{got}");
+    assert!(t.store.escalation(id).unwrap().applied);
+}
+
 fn seed_cap_order(t: &TestEngine, id: &str, choice: &str) -> Walk {
     t.store
         .add_workspace(Workspace {

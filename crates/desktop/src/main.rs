@@ -180,6 +180,7 @@ fn main() {
     // A Dock-launched app inherits launchd's PATH: probe the login shell before anything
     // looks up claude, gh, git… and before any thread exists (it sets the environment).
     cliinstall::ensure_path();
+    recur_platform::raise_fd_limit();
 
     let store = recur_store::Store::new().unwrap_or_else(|err| fatal(format!("open store: {err}")));
 
@@ -299,6 +300,7 @@ fn main() {
             registry,
             shell: recur_app::ShellOptions {
                 updates: updater.is_some(),
+                conductor_import: real.as_ref().is_some_and(|s| s.conductor_db().is_some()),
                 native_title_bar,
                 on_window_active: real.clone().map(|svc| {
                     Rc::new(move |active: bool| svc.set_app_focused(active)) as Rc<dyn Fn(bool)>

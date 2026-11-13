@@ -2,7 +2,8 @@
 //! workspace (adopted from `ListTerminals`, else restored, else spawned), every pane mounted so
 //! background shells keep streaming, the find bar, run / stop of the workspace's dev command,
 //! tab drag reorder, and the dock's own chords. Shells outlive the dock: unmounting parks the
-//! panes (`term-park`) and the next dock adopts them.
+//! panes (`term-park`) and the next dock adopts them. The Terminals page mounts one for
+//! [`GLOBAL_TERMINALS`], without the workspace's run, resize, maximize and hide chrome.
 
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};
@@ -17,6 +18,7 @@ use gpui_kit::{
     Global, InteractiveElement, IntoElement, ParentElement, Render, SharedString,
     StatefulInteractiveElement, Styled, Subscription, Task, Window, div, px,
 };
+use recur_services::api::GLOBAL_TERMINALS;
 use recur_services::{AppEvent, Services};
 use recur_terminal_view::{
     FindBarEvent, TerminalBackend, TerminalEvent, TerminalFindBar, TerminalOptions,
@@ -267,6 +269,10 @@ impl TerminalDock {
 
     pub fn workspace_id(&self) -> &str {
         &self.workspace_id
+    }
+
+    fn global(&self) -> bool {
+        self.workspace_id == GLOBAL_TERMINALS
     }
 
     /// The Observatory's `.obs-main` bounds cell (the resize ceiling).
@@ -700,6 +706,9 @@ impl TerminalDock {
             .await;
             if empty {
                 let _ = this.update(cx, |d, cx| {
+                    if d.global() {
+                        return;
+                    }
                     let ws = d.workspace_id.clone();
                     d.state
                         .update(cx, |s, cx| s.set_terminal_dock_open(&ws, false, cx));
@@ -1315,43 +1324,46 @@ impl TerminalDock {
                             }
                         }))
                     }),
-            ))
-            .trailing(titled(
-                "term-max-t",
-                if maximized {
-                    "Restore terminal size (⌃⇧`)"
-                } else {
-                    "Maximize terminal (⌃⇧`)"
-                },
-                tab_strip_action("term-max", maximized, false, cx)
-                    .debug_selector(|| "term-act:maximize".into())
-                    .child(
-                        icon(if maximized {
-                            IconName::Minimize
-                        } else {
-                            IconName::Maximize
-                        })
-                        .size(px(15.)),
-                    )
-                    .on_click(cx.guarded_listener(move |d, _, _, cx| {
-                        let ws = d.workspace_id.clone();
-                        d.state.update(cx, |s, cx| {
-                            s.set_terminal_dock_maximized(&ws, !maximized, cx)
-                        });
-                    })),
-            ))
-            .trailing(titled(
-                "term-hide-t",
-                "Hide terminal (⌃`)",
-                tab_strip_action("term-hide", false, false, cx)
-                    .debug_selector(|| "term-act:hide".into())
-                    .child(icon(IconName::PanelBottom).size(px(15.)))
-                    .on_click(cx.guarded_listener(|d, _, _, cx| {
-                        let ws = d.workspace_id.clone();
-                        d.state
-                            .update(cx, |s, cx| s.set_terminal_dock_open(&ws, false, cx));
-                    })),
             ));
+        if !self.global() {
+            strip = strip
+                .trailing(titled(
+                    "term-max-t",
+                    if maximized {
+                        "Restore terminal size (⌃⇧`)"
+                    } else {
+                        "Maximize terminal (⌃⇧`)"
+                    },
+                    tab_strip_action("term-max", maximized, false, cx)
+                        .debug_selector(|| "term-act:maximize".into())
+                        .child(
+                            icon(if maximized {
+                                IconName::Minimize
+                            } else {
+                                IconName::Maximize
+                            })
+                            .size(px(15.)),
+                        )
+                        .on_click(cx.guarded_listener(move |d, _, _, cx| {
+                            let ws = d.workspace_id.clone();
+                            d.state.update(cx, |s, cx| {
+                                s.set_terminal_dock_maximized(&ws, !maximized, cx)
+                            });
+                        })),
+                ))
+                .trailing(titled(
+                    "term-hide-t",
+                    "Hide terminal (⌃`)",
+                    tab_strip_action("term-hide", false, false, cx)
+                        .debug_selector(|| "term-act:hide".into())
+                        .child(icon(IconName::PanelBottom).size(px(15.)))
+                        .on_click(cx.guarded_listener(|d, _, _, cx| {
+                            let ws = d.workspace_id.clone();
+                            d.state
+                                .update(cx, |s, cx| s.set_terminal_dock_open(&ws, false, cx));
+                        })),
+                ));
+        }
         let strip_el: AnyElement = if self.props.overlay {
             div().bg(hsla(t.pane)).child(strip).into_any_element()
         } else {
@@ -1442,7 +1454,7 @@ impl TerminalDock {
         } else if !overlay {
             root = root.border_t_1().border_color(hsla(t.line));
         }
-        if !beside && !overlay {
+        if !beside && !overlay && !self.global() {
             let (state, state2, state3) =
                 (self.state.clone(), self.state.clone(), self.state.clone());
             let h = self.state.read(cx).panels.size(PanelKey::TerminalDock);
@@ -1645,11 +1657,11 @@ impl crate::obs::Observatory {
 mod tests {
     use super::{DockKey, dock_key};
 
-    fn k(s: &str) -> gpui_kit::Keystroke {
+    fn k(s: &'static str) -> gpui_kit::Keystroke {
         gpui_kit::Keystroke::parse(s).expect("keystroke")
     }
 
-    fn on(s: &str, mac: bool) -> Option<DockKey> {
+    fn on(s: &'static str, mac: bool) -> Option<DockKey> {
         dock_key(&k(s), mac, false, false, true)
     }
 

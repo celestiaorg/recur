@@ -6,27 +6,36 @@
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::rc::Rc;
+use std::time::Duration;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Bounds, Context, Div, Entity, FocusHandle,
-    InteractiveElement, IntoElement, KeyDownEvent, ParentElement, Pixels, Render, ScrollHandle,
-    SharedString, StatefulInteractiveElement, Styled, Subscription, Task, Window, canvas, div, px,
+    AnyElement, App, AppContext as _, AsyncApp, Bounds, ClickEvent, Context, Div, Entity,
+    FocusHandle, InteractiveElement, IntoElement, KeyDownEvent, Modifiers, ParentElement, Pixels,
+    Render, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Subscription, Task,
+    Window, canvas, div, px,
 };
 use recur_domain::{Pr, PrSource};
+use recur_engine::prs::is_forge_source;
+use recur_engine::view::pr_merge_action::{
+    MergeActionKind, can_approve_pr_review, can_set_pr_draft, pr_merge_action, show_pr_update,
+};
 use recur_engine::view::pr_workspace::{pr_agent_is_running, pr_agent_workspace_id};
 use recur_forge::view::{RollupKind, pr_attention_labels, pr_checks_rollup, pr_has_check_status};
-use recur_ui::fonts::Family;
+use recur_services::Services;
+use recur_ui::fonts::{Family, weight};
 use recur_ui::shadow::{css_box_shadow, with_shadow};
+use recur_ui::style::{Rbtn, Tbtn, TbtnSize, button_label, rbtn, tbtn};
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
-use recur_ui::widgets::{Select, SelectEvent, SelectOption, TriggerStyle};
+use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerStyle};
 use recur_ui::{IconName, Theme, icon};
-use recur_view_core::pr::pr_icon_name;
-use recur_view_core::{AppState, ViewContext, ViewName};
+use recur_view_core::pr::{PrLifecycle, github_href, pr_icon_name, pr_lifecycle};
+use recur_view_core::{AppState, ViewContext, ViewName, call, toast};
 
+use crate::actions::apply_merged;
 use crate::chrome::{chrome_color, group_color, group_label, status_label};
 use crate::style::{dot, hsla, running_dot, seg, seg_text_btn, spin_deg};
 use crate::ui::{PrUi, ui};
@@ -56,6 +65,124 @@ const MAIN_MIN_WIDE: f32 = 192.;
 const PEOPLE_W: f32 = 92.;
 const WHY_W: f32 = 168.;
 const COL_GAP: f32 = 16.;
+/// How long an armed bulk merge or close waits for its confirming click.
+const ARM: Duration = Duration::from_secs(3);
+
+/// An action on the selected rows; each runs only on the PRs it applies to.
+#[derive(Clone, Copy, PartialEq)]
+enum Bulk {
+    Open,
+    Update,
+    Approve,
+    Draft,
+    Ready,
+    Close,
+    Merge,
+}
+
+impl Bulk {
+    const ALL: [Bulk; 7] = [
+        Bulk::Open,
+        Bulk::Update,
+        Bulk::Approve,
+        Bulk::Draft,
+        Bulk::Ready,
+        Bulk::Close,
+        Bulk::Merge,
+    ];
+
+    fn label(self) -> &'static str {
+        match self {
+            Bulk::Open => "Open in GitHub",
+            Bulk::Update => "Update with base",
+            Bulk::Approve => "Approve",
+            Bulk::Draft => "Convert to draft",
+            Bulk::Ready => "Mark ready",
+            Bulk::Close => "Close",
+            Bulk::Merge => "Merge",
+        }
+    }
+
+    fn done(self) -> &'static str {
+        match self {
+            Bulk::Open => "opened",
+            Bulk::Update => "updated with base",
+            Bulk::Approve => "approved",
+            Bulk::Draft => "converted to draft",
+            Bulk::Ready => "marked ready",
+            Bulk::Close => "closed",
+            Bulk::Merge => "merged",
+        }
+    }
+
+    fn applies(self, p: &Pr) -> bool {
+        let life = pr_lifecycle(Some(p));
+        match self {
+            Bulk::Open => !github_href(p).is_empty(),
+            Bulk::Update => {
+                let a = pr_merge_action(Some(p), false);
+                a.kind != MergeActionKind::Resolve && show_pr_update(Some(p), &a)
+            }
+            Bulk::Approve => {
+                !p.draft && p.pending_comments.is_empty() && can_approve_pr_review(Some(p))
+            }
+            Bulk::Draft => life == Some(PrLifecycle::Open) && can_set_pr_draft(Some(p)),
+            Bulk::Ready => life == Some(PrLifecycle::Draft) && can_set_pr_draft(Some(p)),
+            Bulk::Close => {
+                matches!(life, Some(PrLifecycle::Open | PrLifecycle::Draft))
+                    && (!is_forge_source(&p.source) || can_set_pr_draft(Some(p)))
+            }
+            Bulk::Merge => pr_merge_action(Some(p), false).kind == MergeActionKind::Merge,
+        }
+    }
+
+    /// Runs on one PR and folds the result into the store; false when it failed (and toasted).
+    async fn run(
+        self,
+        p: &Pr,
+        services: &Services,
+        state: &Entity<AppState>,
+        cx: &mut AsyncApp,
+    ) -> bool {
+        let (id, prs) = (p.id.as_str(), &services.prs);
+        let fail = format!("{} failed", self.label());
+        let updated = match self {
+            Bulk::Open => {
+                let href = github_href(p);
+                cx.update(|cx| recur_content::links::open_external_url(&href, cx));
+                return true;
+            }
+            Bulk::Update => {
+                let Some(r) = call(cx, prs.update_with_base(id, ""), &fail).await else {
+                    return false;
+                };
+                if r.status == "conflict" {
+                    let msg = format!("#{} hit conflicts. Open it to resolve them.", p.number);
+                    cx.update(|cx| toast(ToastKind::Error, msg, cx));
+                }
+                return r.status == "updated";
+            }
+            Bulk::Merge => {
+                let Some(m) = call(cx, prs.merge_pr(id, ""), &fail).await else {
+                    return false;
+                };
+                apply_merged(state, m, cx);
+                return true;
+            }
+            Bulk::Approve => call(cx, prs.submit_review(id, "approve", ""), &fail).await,
+            Bulk::Close => call(cx, prs.close_pr(id), &fail).await,
+            Bulk::Draft | Bulk::Ready => {
+                let draft = self == Bulk::Draft;
+                call(cx, prs.set_pr_draft(id, draft), &fail)
+                    .await
+                    .map(|u| Pr { draft, ..u })
+            }
+        };
+        let Some(u) = updated else { return false };
+        state.update(cx, |s, cx| s.update_pr(id, |p| *p = u, cx));
+        true
+    }
+}
 
 /// Last frame's geometry, in window coordinates.
 #[derive(Default)]
@@ -77,6 +204,10 @@ pub struct PrList {
     hovered_row: Option<String>,
     hovered_people: Option<String>,
     row_focus: HashMap<String, FocusHandle>,
+    selected: BTreeSet<String>,
+    anchor: Option<String>,
+    armed: Option<(Bulk, Task<()>)>,
+    bulk_busy: bool,
     on_route: bool,
     sync: Option<Task<()>>,
     _subs: Vec<Subscription>,
@@ -202,6 +333,10 @@ impl PrList {
             hovered_row: None,
             hovered_people: None,
             row_focus: HashMap::new(),
+            selected: BTreeSet::new(),
+            anchor: None,
+            armed: None,
+            bulk_busy: false,
             on_route: false,
             sync: None,
             _subs: subs,
@@ -256,6 +391,106 @@ impl PrList {
     fn open(&self, id: &str, cx: &mut App) {
         let id = id.to_string();
         self.state().update(cx, |s, cx| s.open_pr(&id, cx));
+    }
+
+    /// ⌘-click toggles a row, shift-click selects from the anchor to it in drawn order, and a
+    /// plain click opens it.
+    fn click_row(&mut self, id: &str, m: Modifiers, cx: &mut Context<Self>) {
+        if !m.shift && !m.secondary(cx) {
+            self.open(id, cx);
+            return;
+        }
+        if self.bulk_busy {
+            return;
+        }
+        let order: Vec<String> = self
+            .grouped(cx)
+            .into_iter()
+            .flat_map(|(_, v)| v.into_iter().map(|p| p.id))
+            .collect();
+        let at = |x: &str| order.iter().position(|o| o == x);
+        let range = self
+            .anchor
+            .as_deref()
+            .filter(|_| m.shift)
+            .and_then(at)
+            .zip(at(id));
+        if let Some((a, b)) = range {
+            self.selected
+                .extend(order[a.min(b)..=a.max(b)].iter().cloned());
+        } else {
+            if !self.selected.remove(id) {
+                self.selected.insert(id.to_string());
+            }
+            self.anchor = Some(id.to_string());
+        }
+        self.armed = None;
+        cx.notify();
+    }
+
+    fn clear_selection(&mut self, cx: &mut Context<Self>) {
+        self.selected.clear();
+        self.anchor = None;
+        self.armed = None;
+        cx.notify();
+    }
+
+    /// The first Merge or Close click arms it for `ARM`, the next runs it.
+    fn run_bulk(&mut self, act: Bulk, cx: &mut Context<Self>) {
+        if self.bulk_busy {
+            return;
+        }
+        let prs: Vec<Pr> = self
+            .state()
+            .read(cx)
+            .prs
+            .iter()
+            .filter(|p| self.selected.contains(&p.id) && act.applies(p))
+            .cloned()
+            .collect();
+        if prs.is_empty() {
+            return;
+        }
+        if matches!(act, Bulk::Merge | Bulk::Close) && self.armed.as_ref().map(|a| a.0) != Some(act)
+        {
+            self.armed = Some((
+                act,
+                cx.spawn(async move |this, cx| {
+                    cx.background_executor().timer(ARM).await;
+                    let _ = this.update(cx, |this, cx| {
+                        this.armed = None;
+                        cx.notify();
+                    });
+                }),
+            ));
+            cx.notify();
+            return;
+        }
+        self.armed = None;
+        self.bulk_busy = true;
+        cx.notify();
+        let services = self.vcx.services.clone();
+        let state = self.state().clone();
+        cx.spawn(async move |this, cx| {
+            let mut n = 0;
+            for p in &prs {
+                n += usize::from(act.run(p, &services, &state, cx).await);
+            }
+            if n > 0 {
+                let done = if act == Bulk::Merge && prs.iter().all(|p| p.merge_queue_enabled) {
+                    "added to the merge queue"
+                } else {
+                    act.done()
+                };
+                let msg = format!("{n} PR{} {done}", if n == 1 { "" } else { "s" });
+                cx.update(|cx| toast(ToastKind::Success, msg, cx));
+            }
+            let _ = this.update(cx, |this, cx| {
+                this.bulk_busy = false;
+                this.clear_selection(cx);
+            });
+        })
+        .detach();
     }
 
     /// `prListScoped`.
@@ -367,7 +602,7 @@ impl PrList {
             .filter(|p| p.is_git && p.id != "files")
             .map(|p| {
                 let label = if p.name.is_empty() { &p.id } else { &p.name };
-                SelectOption::new(p.id.clone(), label.clone())
+                SelectOption::new(p.id.clone(), label.clone()).pic(p.pic.clone(), p.color.clone())
             })
             .collect();
         let show_projects = projects.len() > 1;
@@ -394,6 +629,9 @@ impl PrList {
             .bg(hsla(t.pane))
             .border_b_1()
             .border_color(hsla(t.line));
+        if !self.selected.is_empty() {
+            return self.bulk_bar(bar, cx);
+        }
         if syncing {
             let deg = spin_deg(window, cx);
             bar = bar.child(
@@ -432,6 +670,86 @@ impl PrList {
         bar.child(segs)
     }
 
+    /// The filters bar's contents while rows are selected: the count, Clear, and the actions.
+    fn bulk_bar(&self, bar: Div, cx: &mut Context<Self>) -> Div {
+        let t = Theme::of(cx).tokens;
+        let (n, busy) = (self.selected.len(), self.bulk_busy);
+        let counts: Vec<(Bulk, usize)> = {
+            let s = self.state().read(cx);
+            let picked: Vec<&Pr> = s
+                .prs
+                .iter()
+                .filter(|p| self.selected.contains(&p.id))
+                .collect();
+            Bulk::ALL
+                .iter()
+                .map(|&a| (a, picked.iter().filter(|p| a.applies(p)).count()))
+                .collect()
+        };
+        let clear = div()
+            .id("pr-bulk-clear")
+            .debug_selector(|| "pr-bulk-clear".into())
+            .text_color(hsla(t.muted))
+            .when(!busy, |d| {
+                d.cursor_pointer()
+                    .hover(move |s| s.text_color(hsla(t.text)))
+                    .on_click(cx.guarded_listener(|this, _, _, cx| this.clear_selection(cx)))
+            })
+            .child(button_label("Clear", 11.5, weight::MEDIUM));
+        let mut acts = div()
+            .id("pr-bulk-acts")
+            .flex()
+            .items_center()
+            .gap(px(6.))
+            .on_hover(cx.guarded_listener(|this, on: &bool, _, cx| {
+                if !*on && this.armed.take().is_some() {
+                    cx.notify();
+                }
+            }));
+        for (a, k) in counts {
+            let off = busy || k == 0;
+            let armed = self.armed.as_ref().is_some_and(|x| x.0 == a);
+            let label = if armed {
+                format!("Confirm {} {k}", a.label().to_lowercase())
+            } else {
+                a.label().to_string()
+            };
+            let sel = format!("pr-bulk-act:{label}{}", if off { ":off" } else { "" });
+            let bid = SharedString::from(format!("pr-bulk-{}", a.label()));
+            let over = off.then_some(t.pane);
+            let mut b =
+                match a {
+                    Bulk::Merge => rbtn(bid, Rbtn::Merge, over, cx)
+                        .h(px(26.))
+                        .px(px(9.))
+                        .rounded(px(7.))
+                        .child(icon(IconName::GitPullRequest).size(px(13.)))
+                        .child(button_label(label, 11.5, weight::MEDIUM_PLUS)),
+                    Bulk::Close => {
+                        let kind = if armed { Tbtn::Armed } else { Tbtn::Danger };
+                        tbtn(bid, kind, TbtnSize::TITLEBAR, over, cx)
+                            .child(icon(IconName::GitPullRequestClosed).size(px(13.)))
+                            .child(button_label(label, 11.5, weight::MEDIUM))
+                    }
+                    _ => tbtn(bid, Tbtn::Default, TbtnSize::TITLEBAR, over, cx)
+                        .child(button_label(label, 11.5, weight::MEDIUM)),
+                }
+                .debug_selector(move || sel);
+            if !off {
+                b = b.on_click(cx.guarded_listener(move |this, _, _, cx| this.run_bulk(a, cx)));
+            }
+            acts = acts.child(b);
+        }
+        bar.child(
+            div()
+                .debug_selector(move || format!("pr-bulk:{n}"))
+                .child(text(format!("{n} selected")).size(12.).nowrap()),
+        )
+        .child(clear)
+        .child(div().flex_1())
+        .child(acts)
+    }
+
     /// One `.prrow`.
     fn row(
         &mut self,
@@ -454,6 +772,7 @@ impl PrList {
         let unseen = self.unseen(p, cx);
         let id = p.id.clone();
         let hovered = self.hovered_row.as_deref() == Some(id.as_str());
+        let picked = self.selected.contains(&id);
         let focus = self.focus_for(&id, cx);
         let ring = if hovered { t.pane_2 } else { t.pane };
 
@@ -827,7 +1146,15 @@ impl PrList {
             .py(px(12.))
             .px(px(16.))
             .when(!last, |d| d.border_b_1().border_color(hsla(t.line_soft)))
-            .when(hovered, |d| d.bg(hsla(t.pane_2)))
+            .map(|d| {
+                if picked {
+                    d.bg(hsla(t.amber.fade(if hovered { 0.16 } else { 0.11 })))
+                } else if hovered {
+                    d.bg(hsla(t.pane_2))
+                } else {
+                    d
+                }
+            })
             .cursor_pointer()
             .on_hover(move |on, _, cx| {
                 let rid = rid.clone();
@@ -841,14 +1168,16 @@ impl PrList {
                     }
                 });
             })
-            .on_click(cx.guarded_listener(move |this, _, _, cx| this.open(&open_id, cx)))
+            .on_click(cx.guarded_listener(move |this, ev: &ClickEvent, _, cx| {
+                this.click_row(&open_id, ev.modifiers(), cx)
+            }))
             .on_key_down(cx.guarded_listener(move |this, ev: &KeyDownEvent, _, cx| {
                 if ev.keystroke.key == "enter" {
                     cx.stop_propagation();
                     this.open(&key_id, cx);
                 }
             }))
-            .when(needs, |d| {
+            .when(needs || picked, |d| {
                 d.child(
                     div()
                         .absolute()
@@ -856,7 +1185,7 @@ impl PrList {
                         .top_0()
                         .bottom_0()
                         .w(px(2.))
-                        .bg(hsla(t.coral)),
+                        .bg(hsla(if picked { t.amber } else { t.coral })),
                 )
             })
             .child(body)
@@ -1095,6 +1424,9 @@ impl PrList {
         let booted = self.state().read(cx).booted;
         let total = self.state().read(cx).prs.len();
         let wide = self.list_width >= WIDE_LIST;
+        let grouped = if booted { self.grouped(cx) } else { Vec::new() };
+        self.selected
+            .retain(|id| grouped.iter().any(|(_, v)| v.iter().any(|p| p.id == *id)));
         let filters = self.filters(window, cx);
         let mut overview = div()
             .debug_selector(|| "prlist".into())
@@ -1119,7 +1451,6 @@ impl PrList {
         } else if total == 0 {
             overview = overview.child(self.empty(cx));
         } else {
-            let grouped = self.grouped(cx);
             if grouped.is_empty() {
                 overview = overview.child(empty_state(
                     None,
@@ -1248,6 +1579,12 @@ impl PrList {
                     });
                 }
             })
+            .on_key_down(cx.guarded_listener(|this, ev: &KeyDownEvent, _, cx| {
+                if ev.keystroke.key == "escape" && !this.selected.is_empty() && !this.bulk_busy {
+                    cx.stop_propagation();
+                    this.clear_selection(cx);
+                }
+            }))
             .child(filters)
             .child(
                 div()

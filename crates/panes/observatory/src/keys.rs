@@ -60,7 +60,7 @@ impl Observatory {
     fn on_window_key(&mut self, ev: &KeystrokeEvent, window: &mut Window, cx: &mut Context<Self>) {
         let k = &ev.keystroke;
         let m = k.modifiers;
-        let mod_ = m.secondary();
+        let mod_ = m.secondary(cx);
         let lower = k.key.to_lowercase();
         let typing = in_context(ev, &TYPING_CONTEXTS);
         let in_term = self.in_dock(window, cx);
@@ -69,6 +69,21 @@ impl Observatory {
         if self.ctx_menu.is_some() && k.key == "escape" {
             self.close_ctx(cx);
             cx.notify();
+        }
+        // Off macOS the menu's find chords only label it.
+        if !cfg!(target_os = "macos")
+            && mod_
+            && !m.alt
+            && self.focus_zone == FocusZone::Agent
+            && (lower == "g" || (lower == "f" && !m.shift))
+        {
+            let dir = match (lower.as_str(), m.shift) {
+                ("f", _) => 0,
+                (_, true) => -1,
+                _ => 1,
+            };
+            cx.emit(ObservatoryEvent::AgentFind(dir));
+            return;
         }
         if mod_ && !m.shift && lower == "s" && self.show_preview() && self.writable() {
             self.save_edit(window, cx);
@@ -330,7 +345,9 @@ impl Observatory {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.props.shell_active {
+        if !self.props.shell_active
+            || self.state.read(cx).view == recur_view_core::ViewName::Terminals
+        {
             return;
         }
         let blocked = self.props.main_blocked;
@@ -380,6 +397,13 @@ impl Observatory {
                 } else if self.focus_zone == FocusZone::Agent && self.props.agent_tabs {
                     cx.emit(ObservatoryEvent::AgentCloseTab);
                 }
+            }
+            "find" | "find-next" | "find-previous" if self.focus_zone == FocusZone::Agent => {
+                cx.emit(ObservatoryEvent::AgentFind(match action {
+                    "find" => 0,
+                    "find-next" => 1,
+                    _ => -1,
+                }));
             }
             "find" | "find-next" | "find-previous" | "goto-line" => {
                 use recur_editor::bindings::Cmd;

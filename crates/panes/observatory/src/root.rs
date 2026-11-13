@@ -1551,7 +1551,7 @@ impl Observatory {
             next_tab: Some(tab_count > 1),
             run_dev: Some(dev),
             stop_run: Some(running),
-            find: Some(text_editor),
+            find: Some(text_editor || in_agent),
             goto_line: Some(text_editor),
             ..Default::default()
         };

@@ -94,6 +94,8 @@ pub enum ObservatoryEvent {
     AgentNewTab,
     /// `onAgentCloseTab`.
     AgentCloseTab,
+    /// Find in the agent transcript: 0 opens the bar, 1 / -1 step.
+    AgentFind(i32),
     /// `onAgentRotateTab(dir)`.
     AgentRotateTab(i32),
     /// `onFixFindings`.

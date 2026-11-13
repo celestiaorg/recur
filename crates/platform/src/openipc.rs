@@ -395,10 +395,11 @@ pub(crate) mod tests {
 
     pub(crate) async fn wait_for_sock(sock: &Path) {
         let deadline = Instant::now() + Duration::from_secs(2);
-        while !sock.exists() {
+        // The file appears at bind(), before listen(); dial until it accepts.
+        while !socket_live(sock) {
             assert!(
                 Instant::now() < deadline,
-                "socket was not created: {}",
+                "socket is not listening: {}",
                 sock.display()
             );
             tokio::time::sleep(Duration::from_millis(10)).await;

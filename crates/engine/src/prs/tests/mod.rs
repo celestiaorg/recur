@@ -2,6 +2,7 @@
 //! open-PR results, rework, merge base and workspace landing. Forge calls are
 //! [`recur_forge::testing::FakeForge`] handlers.
 
+mod auto;
 mod futures;
 mod glue;
 mod hoist;

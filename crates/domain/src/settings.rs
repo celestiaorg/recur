@@ -172,6 +172,16 @@ pub struct Settings {
     /// default false is the reverse.
     #[serde(skip_serializing_if = "is_false")]
     pub queue_follow_ups: bool,
+    /// PR automations: on an open PR with a Recur workspace whose chat is
+    /// idle, the sweep runs Update with base (then /update) on merge
+    /// conflicts, /fix-checks on failing checks, and /address-review on new
+    /// review activity. Off by default.
+    #[serde(skip_serializing_if = "is_false")]
+    pub auto_update_conflicts: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub auto_fix_checks: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub auto_address_review: bool,
     /// The wall-clock ceiling for one interactive agent chat turn; see
     /// [`effective_agent_turn_timeout_minutes`].
     #[serde(skip_serializing_if = "is_zero")]

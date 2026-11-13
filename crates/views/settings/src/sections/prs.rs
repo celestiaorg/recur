@@ -1,4 +1,5 @@
-//! Pull requests: the default merge and update methods and the commit message formats.
+//! Pull requests: the default merge and update methods, the commit message
+//! formats and the automatic fixes.
 
 use gpui_kit::{
     AnyElement, Context, InteractiveElement, IntoElement, ParentElement, SharedString,
@@ -7,12 +8,46 @@ use gpui_kit::{
 use recur_domain::Settings;
 use recur_ui::guard::Guarded;
 use recur_ui::text::span;
+use recur_ui::widgets::{settings_group, settings_groups};
 
-use crate::style::{copy, mm_radio, radio_rows, radios_width};
+use crate::style::{Row, RowsCtx, copy, ctrl, mm_radio, radio_rows, radios_width, rows, tog};
 use crate::view::SettingsView;
 
 type Read = fn(&Settings) -> String;
 type Write = fn(&mut Settings, &str);
+type Get = fn(&Settings) -> bool;
+type Set = fn(&mut Settings, bool);
+
+/// The PR automations (`recur_engine` `prs::auto`): id, title, description, read, write.
+const AUTO: [(&str, &str, &str, Get, Set); 3] = [
+    (
+        "auto-conflicts",
+        "Fix merge conflicts automatically",
+        "Runs Update with base, then /update when git leaves conflicts.",
+        |s| s.auto_update_conflicts,
+        |s, v| s.auto_update_conflicts = v,
+    ),
+    (
+        "auto-checks",
+        "Fix failing checks automatically",
+        "Runs /fix-checks when a PR's checks fail.",
+        |s| s.auto_fix_checks,
+        |s, v| s.auto_fix_checks = v,
+    ),
+    (
+        "auto-review",
+        "Address review comments automatically",
+        "Runs /address-review on new review activity. Only comments from people with write access and review bots count, and replies post from your GitHub account.",
+        |s| s.auto_address_review,
+        |s, v| s.auto_address_review = v,
+    ),
+];
+
+const GROUP_ROWS: RowsCtx = RowsCtx {
+    sides: true,
+    in_group: true,
+    more: false,
+};
 
 /// One radio row: id, title, description, options, the default when unset, read and write.
 pub(crate) struct Choice {
@@ -122,6 +157,37 @@ impl SettingsView {
                 true,
             ));
         }
-        radio_rows(list, w, window, cx).into_any_element()
+        let mut autos = Vec::new();
+        for (id, title, desc, get, set) in AUTO {
+            let on = s.as_ref().is_some_and(get);
+            autos.push(
+                Row::new()
+                    .child(copy(id, title, Some(vec![span(desc)]), cx))
+                    .child(
+                        ctrl().child(
+                            tog(
+                                SharedString::from(format!("tog-{id}")),
+                                title,
+                                on,
+                                false,
+                                cx,
+                            )
+                            .on_click(cx.guarded_listener(
+                                move |this, _, _, cx| {
+                                    this.patch(false, |s| set(s, !on), cx).detach()
+                                },
+                            )),
+                        ),
+                    ),
+            );
+        }
+        settings_groups()
+            .child(radio_rows(list, w, window, cx))
+            .child(
+                settings_group("grp-auto", "Automatic fixes")
+                    .blurb("For your PR with a Recur workspace: runs in that workspace while Recur is open and its chat is idle, up to 3 tries until the PR is clean again.")
+                    .child(rows(GROUP_ROWS, autos, window, cx)),
+            )
+            .into_any_element()
     }
 }

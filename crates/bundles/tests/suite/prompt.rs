@@ -1092,6 +1092,9 @@ async fn update_prompt_shebang_clean_and_conflict() {
         bundle_support: chat_dir(),
         base_branch: "main".into(),
         update_base_method: "merge".into(),
+        pr_number: 7,
+        pr_source: "gh".into(),
+        pr_branch: "feat".into(),
         ..Default::default()
     };
     let bad = PromptRunContext {
@@ -1126,11 +1129,66 @@ async fn update_prompt_shebang_clean_and_conflict() {
         .await
         .unwrap();
     assert!(res.prompt.contains("conflict"), "{}", res.prompt);
+    assert!(
+        res.prompt.contains(
+            "push to update GitHub PR #7: git push origin HEAD:refs/heads/feat (do not force-push)"
+        ),
+        "{}",
+        res.prompt
+    );
     let merge_head = Proc::new("git")
         .args(["-C", &repo, "rev-parse", "-q", "--verify", "MERGE_HEAD"])
         .output()
         .unwrap();
     assert!(merge_head.status.success(), "should leave MERGE_HEAD");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn update_prompt_push_line_rebase_and_no_pr() {
+    let prompt = chat_script_prompt("update.sh", "recur.chat.update", "Update", "");
+    let (_g, repo) = git_repo();
+    commit_file(&repo, "README.md", "hi\n", "init");
+    git(&repo, &["checkout", "-b", "feature"]);
+    commit_file(&repo, "README.md", "feature edit\n", "feature readme");
+    git(&repo, &["checkout", "main"]);
+    commit_file(&repo, "README.md", "main edit\n", "main readme");
+    commit_file(&repo, "extra.txt", "base\n", "main extra");
+    git(&repo, &["checkout", "feature"]);
+    let rc = PromptRunContext {
+        worktree: repo.clone(),
+        work_dir: repo.clone(),
+        bundle_support: chat_dir(),
+        base_branch: "main".into(),
+        update_base_method: "rebase".into(),
+        pr_number: 7,
+        pr_source: "gh".into(),
+        pr_branch: "feat".into(),
+        ..Default::default()
+    };
+    let res = run_prompt_shebang(&shebang_ctx(), &prompt, rc.clone())
+        .await
+        .unwrap();
+    assert!(
+        res.prompt
+            .contains("git push --force-with-lease=refs/heads/feat origin HEAD:refs/heads/feat"),
+        "{}",
+        res.prompt
+    );
+    git(&repo, &["rebase", "--abort"]);
+
+    std::fs::write(format!("{repo}/extra.txt"), "dirty\n").unwrap();
+    let no_pr = PromptRunContext {
+        update_base_method: "merge".into(),
+        pr_number: 0,
+        pr_source: String::new(),
+        ..rc
+    };
+    let res = run_prompt_shebang(&shebang_ctx(), &prompt, no_pr)
+        .await
+        .unwrap();
+    assert!(res.prompt.contains("Do not push."), "{}", res.prompt);
+    assert!(res.prompt.contains("never commit it"), "{}", res.prompt);
+    assert!(!res.prompt.contains("git push"), "{}", res.prompt);
 }
 
 #[tokio::test(flavor = "multi_thread")]

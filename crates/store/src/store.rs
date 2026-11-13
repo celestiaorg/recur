@@ -371,7 +371,7 @@ impl Store {
             source,
         })?;
         let path = db_path(&root);
-        Self::open_with(&path, SecretVault::new(&path, true))
+        Self::open_with(&path, Some(SecretVault::new(&path, true)))
     }
 
     /// Opens (creating and migrating if needed) the database at path. A
@@ -379,10 +379,17 @@ impl Store {
     /// resource (never the demo data); an existing one is loaded. Secrets go
     /// to a `secrets.json` beside it, never the OS credential store.
     pub fn open(path: &Path) -> Result<Self> {
-        Self::open_with(path, SecretVault::new(path, false))
+        Self::open_with(path, Some(SecretVault::new(path, false)))
     }
 
-    fn open_with(path: &Path, vault: SecretVault) -> Result<Self> {
+    /// Opens like [`Store::open`] but never reads or writes the secret vault,
+    /// for `recur config` while the app is closed. Its settings carry no
+    /// secrets, and saving them leaves the stored secrets alone.
+    pub fn open_without_secrets(path: &Path) -> Result<Self> {
+        Self::open_with(path, None)
+    }
+
+    fn open_with(path: &Path, vault: Option<SecretVault>) -> Result<Self> {
         let db = Db::open(path)?;
         let fresh = db.needs_seed()?;
         let mut state = State::default();
@@ -393,10 +400,12 @@ impl Store {
         } else {
             db.load_all(&mut state)
                 .map_err(|e| Error::msg(format!("load db: {e}")))?;
-            load_secrets(&db, &vault, &mut state.settings);
+            if let Some(vault) = &vault {
+                load_secrets(&db, vault, &mut state.settings);
+            }
         }
         let mut store = Self::with_state(state, Some(db));
-        store.secrets = Some(vault);
+        store.secrets = vault;
         Ok(store)
     }
 

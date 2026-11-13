@@ -12,7 +12,7 @@ use gpui_kit::{
 use recur_app::{Shell, ShellOptions};
 use recur_domain::Workspace;
 use recur_services::api::{BundleSkipInfo, Snapshot};
-use recur_services::fake::{Fake, Overrides, Seed};
+use recur_services::fake::{Fake, Overrides, Seed, hold};
 use recur_ui::widgets::ToastStore;
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
 use serde::Serialize;
@@ -398,6 +398,41 @@ fn hover_remove_archives_a_settled_workspace_after_confirm(cx: &mut TestAppConte
         .bridge
         .with_seed(|s| s.workspace(PR_OPEN).is_some_and(|w| w.archived));
     assert!(archived);
+}
+
+/// A confirm click while the arm's inspect is still running is queued, not dropped: it
+/// removes a clean workspace once the inspect returns, and leaves a risky one armed.
+fn confirm_during_inspect(cx: &mut TestAppContext, risk: &str) -> bool {
+    let held = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let h2 = held.clone();
+    let opts = Overrides::default().workspace_discard_risk(move |_, _| {
+        let (answer, release) = hold();
+        h2.lock().unwrap().push(release);
+        answer
+    });
+    let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
+    h.hover(&format!("row:{PR_OPEN}"));
+    h.click(&format!("rm:{PR_OPEN}"));
+    h.click(&format!("rm:{PR_OPEN}"));
+    assert!(
+        h.has(&format!("row:{PR_OPEN}")),
+        "nothing removed mid-inspect"
+    );
+    for r in held.lock().unwrap().drain(..) {
+        r.send(Ok(risk.to_string()));
+    }
+    h.settle();
+    !h.has(&format!("row:{PR_OPEN}"))
+}
+
+#[gpui_kit::test]
+fn hover_remove_confirm_during_inspect_removes_a_clean_workspace(cx: &mut TestAppContext) {
+    assert!(confirm_during_inspect(cx, ""));
+}
+
+#[gpui_kit::test]
+fn hover_remove_confirm_during_inspect_keeps_a_risky_workspace_armed(cx: &mut TestAppContext) {
+    assert!(!confirm_during_inspect(cx, "2 uncommitted files"));
 }
 
 #[gpui_kit::test]

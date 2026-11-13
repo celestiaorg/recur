@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use gpui::TestAppContext;
-use recur_domain::{BranchChoice, Project, Workspace};
+use recur_domain::{BranchChoice, Project, ProjectGroup, Workspace};
 use recur_services::Result;
 use recur_services::api::{FlagDimension, FlagOption, ModelChoice, ModelGroup};
 use recur_services::fake::{Overrides, Release, hold};
@@ -296,6 +296,36 @@ fn add_project_is_a_create_modal(cx: &mut TestAppContext) {
         st.projects.iter().any(|p| p.name == "quick-app")
     });
     assert!(added);
+}
+
+#[gpui::test]
+fn add_project_assigns_the_picked_group(cx: &mut TestAppContext) {
+    let mut s = with(
+        cx,
+        |sd| {
+            sd.project_groups.push(ProjectGroup {
+                id: "g1".into(),
+                name: "Work".into(),
+                open: true,
+                ..Default::default()
+            })
+        },
+        Overrides::default(),
+    );
+    s.state.update(s.cx, |st, cx| st.open_project("", cx));
+    s.settle();
+    s.fill("inp:Repository path", "/tmp/grouped-app");
+    s.click("sel:Project group=Ungrouped");
+    s.click("sel-opt:Work");
+    s.click("np-go:on");
+    assert!(s.until(|s| !s.has("v-newproject")));
+    let group = s.state.read_with(s.cx, |st, _| {
+        st.projects
+            .iter()
+            .find(|p| p.name == "grouped-app")
+            .map(|p| p.group_id.clone())
+    });
+    assert_eq!(group.as_deref(), Some("g1"));
 }
 
 #[gpui::test]

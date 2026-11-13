@@ -246,15 +246,21 @@ pub(crate) struct Anchor {
     pub neu: String,
 }
 
-/// The minified createLocalExecutor sites in @cursor/sdk 1.0.x (cjs + esm
+/// The minified createLocalExecutor sites in @cursor/sdk 1.x (cjs + esm
 /// chunk layouts), newest first.
 pub(crate) fn sdk_attribution_anchors() -> Vec<Anchor> {
     let m = ATTRIBUTION_PROVIDER_MARKER;
-    let chain = |old: &'static str, opt: &str, exec: &str| Anchor {
-        old,
-        neu: format!(
-            "getAgentSkills:r.workspaceServices.getAgentSkills,...i}},u=({opt}.attributionConfigProvider=globalThis.{m}{ATTRIB_FALLBACK},{exec});"
-        ),
+    // `{fields}...i},{var}={exec};` becomes `{fields}...i},{var}=(inject,{exec});`.
+    let chain = |old: &'static str, opt: &str| {
+        let (head, tail) = old.split_once("...i},").expect("chain anchor shape");
+        let (var, exec) = tail.split_once('=').expect("chain anchor shape");
+        let exec = exec.strip_suffix(';').expect("chain anchor shape");
+        Anchor {
+            old,
+            neu: format!(
+                "{head}...i}},{var}=({opt}.attributionConfigProvider=globalThis.{m}{ATTRIB_FALLBACK},{exec});"
+            ),
+        }
     };
     let stmt = |old: &'static str, opt: &str, ret: &str| Anchor {
         old,
@@ -263,30 +269,37 @@ pub(crate) fn sdk_attribution_anchors() -> Vec<Anchor> {
         ),
     };
     vec![
+        // cjs 305.js (@cursor/sdk 1.3.1): two powershell fields follow
+        // getAgentSkills, and the executor is `d` over options `u`.
+        chain(
+            "getAgentSkills:r.workspaceServices.getAgentSkills,powershellUtf8Console:a.powershellUtf8Console,powershellUtf8ChildEnv:a.powershellUtf8ChildEnv,...i},d=void 0===c?new CA(u):new PO(u,c);",
+            "u",
+        ),
+        // esm 305.js (1.3.1).
+        chain(
+            "getAgentSkills:r.workspaceServices.getAgentSkills,powershellUtf8Console:a.powershellUtf8Console,powershellUtf8ChildEnv:a.powershellUtf8ChildEnv,...i},d=void 0===c?new SA(u):new CO(u,c);",
+            "u",
+        ),
         // cjs 748.js (@cursor/sdk 1.0.38): same const-chain shape as 1.0.37.
         chain(
             "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new JE(l):new NP(l,a);",
             "l",
-            "void 0===a?new JE(l):new NP(l,a)",
         ),
         // esm 748.js (1.0.38).
         chain(
             "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new GE(l):new DP(l,a);",
             "l",
-            "void 0===a?new GE(l):new DP(l,a)",
         ),
         // cjs 464.js (1.0.37): the options object sits in a const chain, so
         // the inject is a comma expression on the executor assignment.
         chain(
             "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new OS(l):new dx(l,a);",
             "l",
-            "void 0===a?new OS(l):new dx(l,a)",
         ),
         // esm 464.js (1.0.37).
         chain(
             "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new MS(l):new lx(l,a);",
             "l",
-            "void 0===a?new MS(l):new lx(l,a)",
         ),
         // cjs (1.0.31).
         stmt(
@@ -400,7 +413,7 @@ pub(crate) fn summary_delta_patch_needle() -> String {
     format!("/*{SUMMARY_DELTA_MARKER}*/")
 }
 
-/// Restores the documented onDelta contract: cursor-sdk 1.0.28–1.0.38's
+/// Restores the documented onDelta contract: cursor-sdk 1.0.28–1.3.1's
 /// RunInteractionAccumulator.apply skips summary, summary-started and
 /// summary-completed.
 pub(crate) fn sdk_summary_delta_anchors() -> Vec<Anchor> {

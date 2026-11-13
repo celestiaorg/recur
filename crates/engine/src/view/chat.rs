@@ -1057,6 +1057,13 @@ fn stream_row(kind: StreamKind, body: &str, streaming: bool, uuid: &str) -> Agen
 /// legacy non-snapshot path; live deltas use [`apply_stream`]).
 pub fn append_stream(list: &[AgentMsg], kind: StreamKind, chunk: &str) -> Vec<AgentMsg> {
     let mut out = list.to_vec();
+    append_stream_mut(&mut out, kind, chunk);
+    out
+}
+
+/// [`append_stream`] in place: a live tab applies every delta, so copying its list per event
+/// is quadratic over a long turn.
+pub fn append_stream_mut(out: &mut Vec<AgentMsg>, kind: StreamKind, chunk: &str) {
     if let Some(last) = out.last_mut()
         && last.streaming
         && !has(&last.tool)
@@ -1066,12 +1073,11 @@ pub fn append_stream(list: &[AgentMsg], kind: StreamKind, chunk: &str) -> Vec<Ag
         && last.thinking == (kind == StreamKind::Thinking)
     {
         last.body.push_str(chunk);
-        return out;
+        return;
     }
-    close_open_streams(&mut out, Some(kind));
-    close_tail(&mut out);
+    close_open_streams(out, Some(kind));
+    close_tail(out);
     out.push(stream_row(kind, chunk, true, ""));
-    out
 }
 
 /// Options of one [`apply_stream`] snapshot.
@@ -1102,13 +1108,13 @@ fn find_tool_path(list: &[AgentMsg], id: &str) -> Option<Vec<usize>> {
     None
 }
 
-fn row_at<'a>(list: &'a [AgentMsg], path: &[usize]) -> Option<&'a AgentMsg> {
+fn row_at_mut<'a>(list: &'a mut [AgentMsg], path: &[usize]) -> Option<&'a mut AgentMsg> {
     let (first, rest) = path.split_first()?;
-    let row = list.get(*first)?;
+    let row = list.get_mut(*first)?;
     if rest.is_empty() {
         Some(row)
     } else {
-        row_at(&row.children, rest)
+        row_at_mut(&mut row.children, rest)
     }
 }
 
@@ -1150,24 +1156,30 @@ pub fn apply_stream(
     text: &str,
     opts: &StreamOpts,
 ) -> Vec<AgentMsg> {
+    let mut out = list.to_vec();
+    apply_stream_mut(&mut out, kind, text, opts);
+    out
+}
+
+/// [`apply_stream`] in place.
+pub fn apply_stream_mut(out: &mut Vec<AgentMsg>, kind: StreamKind, text: &str, opts: &StreamOpts) {
     if has(&opts.parent_id) {
-        let Some(path) = find_tool_path(list, &opts.parent_id) else {
-            return list.to_vec();
+        let Some(path) = find_tool_path(out, &opts.parent_id) else {
+            return;
         };
         let inner = StreamOpts {
             done: opts.done,
             uuid: opts.uuid.clone(),
             parent_id: String::new(),
         };
-        return update_at_path(list, &path, &|parent| AgentMsg {
-            children: apply_stream(&parent.children, kind, text, &inner),
-            ..parent.clone()
-        });
+        if let Some(parent) = row_at_mut(out, &path) {
+            apply_stream_mut(&mut parent.children, kind, text, &inner);
+        }
+        return;
     }
     if text.is_empty() && !opts.done {
-        return list.to_vec();
+        return;
     }
-    let mut out = list.to_vec();
     let streaming = !opts.done;
     let uuid = js::trim(&opts.uuid).to_owned();
     if let Some(last) = out.last_mut()
@@ -1187,7 +1199,7 @@ pub fn apply_stream(
             if kind == StreamKind::Thinking {
                 last.thinking = true;
             }
-            return out;
+            return;
         }
     }
     // Warm remount: widen only a row mapChatItems marked, and only for a
@@ -1209,7 +1221,7 @@ pub fn apply_stream(
             if kind == StreamKind::Thinking {
                 last.thinking = true;
             }
-            return out;
+            return;
         }
         last.widen_stream = false;
     }
@@ -1226,17 +1238,16 @@ pub fn apply_stream(
                     m.body = text.to_owned();
                 }
                 m.streaming = false;
-                return out;
+                return;
             }
             if has(&m.tool) || m.compact || m.note || m.fallback || m.thinking || has(&m.body) {
                 break;
             }
         }
     }
-    close_open_streams(&mut out, Some(kind));
-    close_tail(&mut out);
+    close_open_streams(out, Some(kind));
+    close_tail(out);
     out.push(stream_row(kind, text, streaming, &uuid));
-    out
 }
 
 /// The provider's complete thinking block, closing the live row.
@@ -1388,30 +1399,36 @@ fn richer_json(next: &str, prev: &str) -> String {
 /// blank id reuses only the last in-flight row of that tool in this turn.
 /// Nested subagent calls land under their parent Task card.
 pub fn add_tool(list: &[AgentMsg], step: &WorkspaceStep) -> Vec<AgentMsg> {
+    let mut out = list.to_vec();
+    add_tool_mut(&mut out, step);
+    out
+}
+
+/// [`add_tool`] in place.
+pub fn add_tool_mut(out: &mut Vec<AgentMsg>, step: &WorkspaceStep) {
     if has(&step.parent_id) {
-        let Some(path) = find_tool_path(list, &step.parent_id) else {
-            return list.to_vec();
+        let Some(path) = find_tool_path(out, &step.parent_id) else {
+            return;
         };
         let child = WorkspaceStep {
             parent_id: String::new(),
             ..step.clone()
         };
-        return update_at_path(list, &path, &|parent| AgentMsg {
-            children: add_tool(&parent.children, &child),
-            ..parent.clone()
-        });
+        if let Some(parent) = row_at_mut(out, &path) {
+            add_tool_mut(&mut parent.children, &child);
+        }
+        return;
     }
-    let patch = |m: &AgentMsg| AgentMsg {
-        tool: or_str(&step.tool, &m.tool),
-        tool_input: or_str(&step.tool_input, &m.tool_input),
-        tool_id: or_str(&step.id, &m.tool_id),
-        description: or_str(&step.description, &m.description),
+    let patch = |m: &mut AgentMsg| {
+        m.tool = or_str(&step.tool, &m.tool);
+        m.tool_input = or_str(&step.tool_input, &m.tool_input);
+        m.tool_id = or_str(&step.id, &m.tool_id);
+        m.description = or_str(&step.description, &m.description);
         // A later stub must not freeze over a richer body already shown.
-        input: richer_json(&step.input, &m.input),
-        result_pending: true,
-        ..m.clone()
+        m.input = richer_json(&step.input, &m.input);
+        m.result_pending = true;
     };
-    let adopt = |check_input: bool| {
+    let adopt = |list: &[AgentMsg], check_input: bool| {
         for (i, m) in list.iter().enumerate().rev() {
             if (m.me && !m.queued) || m.turn_end {
                 break;
@@ -1424,34 +1441,31 @@ pub fn add_tool(list: &[AgentMsg], step: &WorkspaceStep) -> Vec<AgentMsg> {
                 {
                     continue;
                 }
-                let mut out = list.to_vec();
-                out[i] = patch(m);
-                return Some(out);
+                return Some(i);
             }
         }
         None
     };
     if has(&step.id) {
-        if let Some(path) = find_tool_path(list, &step.id)
-            && row_at(list, &path).is_some_and(|r| r.result_pending)
+        if let Some(path) = find_tool_path(out, &step.id)
+            && let Some(row) = row_at_mut(out, &path).filter(|r| r.result_pending)
         {
-            return update_at_path(list, &path, &patch);
+            patch(row);
+            return;
         }
         // mapChatItems omits provider ids: after a remount the next step
         // adopts that row instead of appending a second card.
-        if let Some(out) = adopt(true) {
-            return out;
+        if let Some(i) = adopt(out, true) {
+            patch(&mut out[i]);
+            return;
         }
-    } else if let Some(out) = adopt(false) {
-        return out;
+    } else if let Some(i) = adopt(out, false) {
+        patch(&mut out[i]);
+        return;
     }
-    let mut out: Vec<AgentMsg> = list
-        .iter()
-        .map(|m| AgentMsg {
-            streaming: false,
-            ..m.clone()
-        })
-        .collect();
+    for m in out.iter_mut() {
+        m.streaming = false;
+    }
     out.push(AgentMsg {
         tool: step.tool.clone(),
         tool_input: step.tool_input.clone(),
@@ -1463,7 +1477,6 @@ pub fn add_tool(list: &[AgentMsg], step: &WorkspaceStep) -> Vec<AgentMsg> {
         result_pending: true,
         ..AgentMsg::default()
     });
-    out
 }
 
 /// The steps list key: tool ids repeat once a settled id gets a second row,
@@ -1492,57 +1505,43 @@ pub fn attach_tool_result(
     is_error: bool,
     extras: &ToolExtras,
 ) -> Vec<AgentMsg> {
-    attach_tool_result_in(list, id, result, is_error, extras).unwrap_or_else(|| list.to_vec())
+    let mut out = list.to_vec();
+    attach_tool_result_mut(&mut out, id, result, is_error, extras);
+    out
 }
 
-fn attach_tool_result_in(
-    list: &[AgentMsg],
+/// [`attach_tool_result`] in place; false when no row has that id.
+pub fn attach_tool_result_mut(
+    out: &mut Vec<AgentMsg>,
     id: &str,
     result: &str,
     is_error: bool,
     extras: &ToolExtras,
-) -> Option<Vec<AgentMsg>> {
-    let Some(hit) = list.iter().rposition(|m| has(&m.tool) && m.tool_id == id) else {
-        for (i, m) in list.iter().enumerate() {
-            if m.children.is_empty() {
-                continue;
-            }
-            if let Some(nested) = attach_tool_result_in(&m.children, id, result, is_error, extras) {
-                let mut out = list.to_vec();
-                out[i].children = nested;
-                return Some(out);
-            }
-        }
-        return None;
+) -> bool {
+    let Some(hit) = out.iter().rposition(|m| has(&m.tool) && m.tool_id == id) else {
+        return out.iter_mut().any(|m| {
+            !m.children.is_empty()
+                && attach_tool_result_mut(&mut m.children, id, result, is_error, extras)
+        });
     };
-    let cur = &list[hit];
-    let settled = AgentMsg {
-        result: result.to_owned(),
-        result_error: is_error,
-        result_pending: false,
-        input: if has(&extras.input) && extras.input != "{}" {
-            extras.input.clone()
-        } else {
-            cur.input.clone()
-        },
-        tool_input: or_str(&extras.tool_input, &cur.tool_input),
-        ..cur.clone()
-    };
+    let cur = &mut out[hit];
+    cur.result = result.to_owned();
+    cur.result_error = is_error;
+    cur.result_pending = false;
+    if has(&extras.input) && extras.input != "{}" {
+        cur.input = extras.input.clone();
+    }
+    cur.tool_input = or_str(&extras.tool_input, &cur.tool_input);
     // Blank ids are not unique, so they are never a drop key.
-    Some(
-        list.iter()
-            .enumerate()
-            .filter_map(|(i, m)| {
-                if i == hit {
-                    Some(settled.clone())
-                } else if has(id) && has(&m.tool) && m.tool_id == id && m.result_pending {
-                    None
-                } else {
-                    Some(m.clone())
-                }
-            })
-            .collect(),
-    )
+    if has(id) {
+        let mut i = 0;
+        out.retain(|m| {
+            let keep = i == hit || !(has(&m.tool) && m.tool_id == id && m.result_pending);
+            i += 1;
+            keep
+        });
+    }
+    true
 }
 
 /// Refreshes a tool row's args only (ask_user park backfill).

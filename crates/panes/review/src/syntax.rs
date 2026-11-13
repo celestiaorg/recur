@@ -84,7 +84,7 @@ pub fn highlight_lines(
                 old = new.clone();
             }
             let mut runs: Vec<Run> = Vec::new();
-            for (k, pair) in r.tokens.chunks_exact(2).enumerate() {
+            for (k, pair) in r.tokens.as_chunks::<2>().0.iter().enumerate() {
                 let start = (pair[0] as usize).min(text.len());
                 let end = r.tokens.get(2 * k + 2).map_or(text.len(), |&e| e as usize);
                 let piece = text.get(start..end.clamp(start, text.len()))?;

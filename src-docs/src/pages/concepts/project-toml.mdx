@@ -16,6 +16,7 @@ setup_cmd = "pnpm install"
 app_url = "http://localhost:$RECUR_PORT"
 copy_files = """
 .env.local
+node_modules/
 """
 env = """
 NODE_ENV=development
@@ -35,6 +36,8 @@ Adapt the commands to your repository. `env` and `copy_files` are multiline stri
 ## Workspace setup
 
 `copy_files` contains newline-separated paths or globs to copy from the project checkout into a new task worktree. It can include ignored files, such as `.env.local`. Existing destination files are skipped. Copying happens before `setup_cmd`; negated patterns beginning with `!` are not supported.
+
+A path ending in `/`, such as `node_modules/` or `target/`, copies that whole directory, so a new workspace starts with your installed dependencies or build output and `setup_cmd` only has to catch up. On macOS (APFS) each file is cloned: fast, and it takes no extra disk space until files change. On Linux, btrfs and XFS share data the same way; other filesystems make a full copy within the setup timeout. Symlinks are copied as-is, so an absolute link still points into the main checkout. For Rust, a copied `target/` reuses dependency builds, but Cargo rebuilds the workspace's own crates.
 
 `setup_cmd` runs for a new workspace, with a ten-minute timeout. Optional `teardown_cmd` is a best-effort cleanup hook when the task worktree is removed, also with a ten-minute timeout.
 

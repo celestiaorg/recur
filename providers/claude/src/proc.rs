@@ -82,6 +82,64 @@ pub async fn kill_session(pid: u32, reaped: &mut Reaped) {
     }
 }
 
+/// A running turn's leader pid as an empty file named for it, removed on drop. One that
+/// outlives its Recur names an orphan for [`reap_stale_turns`].
+pub struct PidFile(Option<PathBuf>);
+
+impl PidFile {
+    pub fn create(dir: &Path, pid: u32) -> Self {
+        if dir.as_os_str().is_empty() || pid == 0 {
+            return Self(None);
+        }
+        let path = dir.join(pid.to_string());
+        let ok = std::fs::create_dir_all(dir)
+            .and_then(|()| std::fs::write(&path, ""))
+            .is_ok();
+        Self(ok.then_some(path))
+    }
+}
+
+impl Drop for PidFile {
+    fn drop(&mut self) {
+        if let Some(p) = &self.0 {
+            let _ = std::fs::remove_file(p);
+        }
+    }
+}
+
+/// SIGKILLs every session in `dir` that is still a `claude -p` turn, and clears `dir`. A
+/// recycled pid is skipped: it must still lead its own session with Recur's turn flag on argv.
+pub async fn reap_stale_turns(dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in entries.flatten() {
+        let _ = std::fs::remove_file(e.path());
+        let Some(pid) = e.file_name().to_str().and_then(|s| s.parse::<u32>().ok()) else {
+            continue;
+        };
+        let Some(p) = i32::try_from(pid).ok().and_then(Pid::from_raw) else {
+            continue;
+        };
+        if session_of(p) != Some(p) || !is_turn(pid).await {
+            continue;
+        }
+        for _ in 0..3 {
+            if signal_session(pid, Some(Signal::KILL)).await == 0 {
+                break;
+            }
+        }
+    }
+}
+
+async fn is_turn(pid: u32) -> bool {
+    tokio::process::Command::new("ps")
+        .args(["-o", "args=", "-p", &pid.to_string()])
+        .output()
+        .await
+        .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).contains("--disable-slash-commands"))
+}
+
 /// Signals every process in session `sid` (`None` only counts); returns how many it found
 /// besides the leader.
 async fn signal_session(sid: u32, sig: Option<Signal>) -> usize {
@@ -282,6 +340,52 @@ mod tests {
             assert!(std::time::Instant::now() < deadline, "orphan survived");
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
+    }
+
+    /// A crashed Recur's turn dies with its tool jobs; a live session without the turn flag
+    /// (a recycled pid) is left alone.
+    #[tokio::test]
+    async fn reap_stale_turns_kills_orphans_only() {
+        use tokio::io::AsyncBufReadExt;
+        let spawn = |flag: &str| {
+            let mut cmd = Command::new("sh");
+            new_session(&mut cmd);
+            cmd.args(["-c", "sleep 30 & echo $!; wait", "sh", flag])
+                .stdout(std::process::Stdio::piped())
+                .spawn()
+                .unwrap()
+        };
+        let mut turn = spawn("--disable-slash-commands");
+        let mut other = spawn("--other");
+        let mut line = String::new();
+        tokio::io::BufReader::new(turn.stdout.take().unwrap())
+            .read_line(&mut line)
+            .await
+            .unwrap();
+        let job = Pid::from_raw(line.trim().parse().unwrap()).unwrap();
+
+        let dir = tempfile::tempdir().unwrap();
+        for c in [&turn, &other] {
+            std::mem::forget(PidFile::create(dir.path(), c.id().unwrap()));
+        }
+        reap_stale_turns(dir.path()).await;
+
+        assert!(std::fs::read_dir(dir.path()).unwrap().next().is_none());
+        let st = tokio::time::timeout(Duration::from_secs(5), turn.wait())
+            .await
+            .expect("turn survived")
+            .unwrap();
+        assert_eq!(st.signal(), Some(9));
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while rustix::process::test_kill_process(job).is_ok() {
+            assert!(std::time::Instant::now() < deadline, "tool job survived");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert!(
+            other.try_wait().unwrap().is_none(),
+            "non-turn session killed"
+        );
+        signal_group(other.id().unwrap(), Signal::KILL);
     }
 
     #[test]

@@ -27,6 +27,10 @@ impl Entry {
         self.ft.is_some_and(|t| t.is_dir())
     }
 
+    pub(crate) fn is_file(&self) -> bool {
+        self.ft.is_some_and(|t| t.is_file())
+    }
+
     pub(crate) fn is_symlink(&self) -> bool {
         self.ft.is_some_and(|t| t.is_symlink())
     }

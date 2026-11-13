@@ -211,7 +211,7 @@ impl<T: Send + 'static> Gate<T> {
         let held: Vec<_> = {
             let mut g = self.0.lock();
             g.0 = false;
-            g.1.drain(..).collect()
+            std::mem::take(&mut g.1)
         };
         for (r, v) in held {
             r.send(Ok(v));

@@ -331,6 +331,7 @@ fn shipped_chat_fresh_session_and_tab_groups() {
         ("open-draft-pr", true, "ops"),
         ("fix-checks", true, "ops"),
         ("fix-problem", true, "ops"),
+        ("fix-merge", true, "ops"),
         ("update", true, "ops"),
         ("review", true, "review"),
         ("re-review", true, ""),
@@ -1130,6 +1131,53 @@ async fn update_prompt_shebang_clean_and_conflict() {
         .output()
         .unwrap();
     assert!(merge_head.status.success(), "should leave MERGE_HEAD");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn re_review_local_pr_embeds_only_the_delta_since_the_last_pass() {
+    let prompt = chat_script_prompt(
+        "re-review.sh",
+        "recur.chat.re-review",
+        "Re-review",
+        "re-review",
+    );
+    let (_g, repo) = git_repo();
+    commit_file(&repo, "README.md", "hi\n", "init");
+    let out = Proc::new("git")
+        .args(["-C", &repo, "rev-parse", "HEAD"])
+        .output()
+        .unwrap();
+    let since = String::from_utf8_lossy(&out.stdout).trim().to_owned();
+    commit_file(&repo, "fix.txt", "fixed\n", "fix");
+    let rc = PromptRunContext {
+        worktree: repo.clone(),
+        work_dir: repo.clone(),
+        bundle_support: chat_dir(),
+        base_branch: "main".into(),
+        surface: "local_pr".into(),
+        pr_number: 7,
+        review_since: since,
+        review_now: "HEAD".into(),
+        ..Default::default()
+    };
+    let res = run_prompt_shebang(&shebang_ctx(), &prompt, rc)
+        .await
+        .unwrap();
+    assert!(
+        res.prompt
+            .contains("only what changed since your last review pass"),
+        "{}",
+        res.prompt
+    );
+    assert!(
+        res.prompt.contains("+fixed") && !res.prompt.contains("+hi"),
+        "{}",
+        res.prompt
+    );
+    assert_eq!(
+        res.display,
+        "Please re-review Local PR #7 since the last pass"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

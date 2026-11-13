@@ -153,6 +153,8 @@ pub enum AppEvent {
     SessionTurnEnd(SessionTurnEnd),
     /// `session.user`
     SessionUser(SessionText),
+    /// `settings.updated`: settings changed outside the UI (`recur config set`).
+    SettingsUpdated,
     /// `system.theme`: the OS appearance changed (true = dark).
     SystemTheme(bool),
     /// `term.data`, `term.exit`, `term.busy`, `term.idle`.
@@ -246,6 +248,7 @@ impl AppEvent {
             Self::SessionToolResult(_) => "session.tool_result",
             Self::SessionTurnEnd(_) => "session.turn_end",
             Self::SessionUser(_) => "session.user",
+            Self::SettingsUpdated => "settings.updated",
             Self::SystemTheme(_) => "system.theme",
             Self::Term(e) => e.name(),
             Self::UpdaterCheck => "updater.check",
@@ -273,6 +276,7 @@ impl AppEvent {
             Self::AppFocused(p) => json(p),
             Self::AppOpen(p) => json(p),
             Self::AppReady
+            | Self::SettingsUpdated
             | Self::UpdaterCheck
             | Self::UpdaterUserRestart
             | Self::WindowTitlebarDblclick => Value::Null,
@@ -384,6 +388,7 @@ impl AppEvent {
             "session.tool_result" => Self::SessionToolResult(de(name, d)?),
             "session.turn_end" => Self::SessionTurnEnd(de(name, d)?),
             "session.user" => Self::SessionUser(de(name, d)?),
+            "settings.updated" => Self::SettingsUpdated,
             "system.theme" => Self::SystemTheme(de(name, d)?),
             "term.data" | "term.exit" | "term.busy" | "term.idle" => {
                 Self::Term(term_from_wire(name, d)?)

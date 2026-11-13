@@ -13,7 +13,7 @@ Recur is a native desktop app for macOS and Linux.
 2. Open the `.dmg` and drag **Recur** into Applications.
 3. Launch Recur and complete first-run setup.
 
-At launch the app installs a `recur` command on your `PATH` (a symlink in `/usr/local/bin` when writable, and in `~/.local/bin`). Use `recur .` or `recur <path>` to open a folder or file in Recur, `recur` alone to bring Recur forward, and `recur bundles …` to [author bundles](/bundles/testing).
+At launch the app installs a `recur` command on your `PATH` (a symlink in `/usr/local/bin` when writable, and in `~/.local/bin`). Use `recur .` or `recur <path>` to open a folder or file in Recur, `recur` alone to bring Recur forward, `recur config …` to [change settings from a script](#settings-from-the-terminal), and `recur bundles …` to [author bundles](/bundles/testing).
 
 ## Linux
 
@@ -59,3 +59,19 @@ rpm --checksig Recur-<version>-linux-amd64.rpm
 Use first-run setup, then **Settings → Providers** to configure authentication and available models. Existing coding-agent logins can be reused where supported. See [Providers](/reference/agents) for Codex authentication and compatible endpoint requirements.
 
 Your code stays on this machine except for calls to your chosen agent provider and GitHub when you use them.
+
+## Settings from the terminal
+
+`recur config` reads and writes the same settings as the Settings window, so scripts and benchmarks can pin Recur's model, effort and permissions without the GUI:
+
+```bash
+recur config list                                   # every setting as key=value
+recur config get modelAgent
+recur config set modelAgent claude-code/claude-opus-5-5
+recur config set flagsAgent '{"effort":"high"}'
+recur config set bypassPermissions true
+```
+
+Keys are the stored setting names that `recur config list` prints. A value is read as JSON when it parses as JSON, and as a plain string otherwise. Unknown keys and values of the wrong type are rejected and nothing is saved. API keys and other credentials cannot be read or set this way.
+
+It works whether or not Recur is running. When it is, the running app applies the change and the Settings window shows it right away.

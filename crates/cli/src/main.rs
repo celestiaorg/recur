@@ -3,6 +3,7 @@
 //! ```text
 //! recur .
 //! recur ./path/to/folder-or-file
+//! recur config set maxAgents 4
 //! recur bundles test Text
 //! recur bundles lint ./bundles
 //! recur bundles create MyPack

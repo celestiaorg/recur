@@ -132,6 +132,39 @@ fn history_keeps_original_on_hidden_continue() {
 }
 
 #[test]
+fn history_keeps_empty_tool_result() {
+    let wire = serde_json::to_string(&function_output_item("call_1", "")).unwrap();
+    assert!(
+        wire.contains("\"type\":\"function_call_output\"") && wire.contains("\"output\":\"\""),
+        "{wire}"
+    );
+    let msgs = vec![
+        msg(
+            "a1",
+            "assistant",
+            vec![ContentBlock::tool_use("internal-1", "call_1", "Read", "{}")],
+        ),
+        msg(
+            "r1",
+            "user",
+            vec![ContentBlock::tool_result("internal-1", "", false)],
+        ),
+    ];
+    let s = encoded(&harness_history(
+        &msgs,
+        &TurnRequest {
+            prompt: "next".into(),
+            ..Default::default()
+        },
+        None,
+    ));
+    assert!(
+        s.contains("\"type\":\"function_call_output\"") && s.contains("\"output\":\"\""),
+        "{s}"
+    );
+}
+
+#[test]
 fn history_respects_fresh_session_cutoff() {
     let msgs = vec![
         msg(

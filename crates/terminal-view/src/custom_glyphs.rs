@@ -514,7 +514,7 @@ fn raster(cp: u32, d: &Dims, pad: f32, (w, h): (u32, u32), c: [u8; 4]) -> Option
     let mut pixels =
         recur_ui::icon::rasterize(&markup, (w, h), (0., 0.), (w as f32, h as f32), 0.)?;
     // Drawn in black: the alpha is the coverage, painted in the exact colour (BGRA).
-    for p in pixels.chunks_exact_mut(4) {
+    for p in pixels.as_chunks_mut::<4>().0 {
         let cov = u32::from(p[3]);
         p[0] = c[2];
         p[1] = c[1];

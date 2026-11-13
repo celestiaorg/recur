@@ -177,7 +177,10 @@ impl AppServices {
         }));
         let env_scrub = trackers.secret_env();
         let providers = Providers {
-            claude: Arc::new(ClaudeProvider::new(ClaudeConfig::default())),
+            claude: Arc::new(ClaudeProvider::new(ClaudeConfig {
+                turn_pid_dir: config.data_dir.join("claude-turns"),
+                ..Default::default()
+            })),
             cursor: Arc::new(CursorProvider::new(CursorConfig {
                 data_dir: config.data_dir.clone(),
                 settings: settings.clone(),
@@ -196,6 +199,7 @@ impl AppServices {
             )),
             compatible: Mutex::new(Vec::new()),
         };
+        providers.claude.reap_stale_turns().await;
         providers.sync_compatible(&settings, &config.data_dir);
         let registry = ProviderRegistry::new(providers.all());
         if let Some(pin) = opts.pin {

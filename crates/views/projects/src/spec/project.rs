@@ -66,7 +66,7 @@ fn project_settings_files_to_copy_previews_matching_paths(cx: &mut TestAppContex
     s.type_text(".env*");
     s.wait(300);
     assert!(s.until(|s| {
-        s.has("copy-files-meta=3 files will be copied from /Users/josh/code/storefront")
+        s.has("copy-files-meta=3 paths will be copied from /Users/josh/code/storefront")
     }));
     assert!(s.has("copy-file:apps/web/.env"));
     assert!(s.has("copy-file:deploy/.env.mainnet"));

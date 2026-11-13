@@ -144,7 +144,9 @@ for t in nodes(pr.get("reviewThreads")):
 
 latest = {}
 for r in nodes(pr.get("reviews")):
-    if login(r):
+    # An empty COMMENTED review only carries inline thread replies.
+    empty_reply = (r.get("state") or "").upper() == "COMMENTED" and not (r.get("body") or "").strip()
+    if login(r) and not empty_reply:
         latest[login(r).lower()] = r
 reviews = []
 for r in latest.values():

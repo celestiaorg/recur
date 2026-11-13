@@ -185,7 +185,7 @@ impl SettingsView {
             .child(radio_rows(list, w, window, cx))
             .child(
                 settings_group("grp-auto", "Automatic fixes")
-                    .blurb("For your PR with a Recur workspace: runs in that workspace while Recur is open and its chat is idle, up to 3 tries until the PR is clean again.")
+                    .blurb("For your PR with a Recur workspace: runs in that workspace while Recur is open and its chat is idle, up to 3 tries per PR (conflicts and checks reset once the PR is clean again).")
                     .child(rows(GROUP_ROWS, autos, window, cx)),
             )
             .into_any_element()

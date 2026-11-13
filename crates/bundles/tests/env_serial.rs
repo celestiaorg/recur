@@ -366,11 +366,13 @@ fn fix_checks_complete_cases() {
 /// One `gh api graphql` answer for `address-review.sh`: an open member
 /// thread, a resolved one, one the author answered, an outdated bot thread,
 /// an outsider's thread, a review summary before and after the author's last
-/// PR comment, and a member and a bot conversation comment.
+/// PR comment (the later one followed by an empty inline-reply review), and a
+/// member and a bot conversation comment.
 const REVIEW_GRAPHQL: &str = r##"{"data":{"viewer":{"login":"josh"},"repository":{"pullRequest":{
 "author":{"login":"josh"},
 "reviews":{"nodes":[
  {"author":{"login":"alice","__typename":"User"},"authorAssociation":"MEMBER","state":"CHANGES_REQUESTED","body":"Please rename the helper.","submittedAt":"2026-11-11T00:00:00Z","url":"https://github.com/acme/r/pull/12#r1"},
+ {"author":{"login":"alice","__typename":"User"},"authorAssociation":"MEMBER","state":"COMMENTED","body":"","submittedAt":"2026-11-11T03:00:00Z","url":"u"},
  {"author":{"login":"bob","__typename":"User"},"authorAssociation":"MEMBER","state":"COMMENTED","body":"Old note.","submittedAt":"2026-11-09T00:00:00Z","url":"u"}
 ]},
 "reviewThreads":{"nodes":[
@@ -471,6 +473,16 @@ fn address_review_prompt_shebang_cases() {
         assert_eq!(res.display, "Address @carol's review");
         assert!(res.prompt.contains("Also update the docs."));
         assert!(!res.prompt.contains("Off by one here."));
+    }
+    {
+        let approved = REVIEW_GRAPHQL.replace(
+            r#""state":"COMMENTED","body":"","#,
+            r#""state":"APPROVED","body":"","#,
+        );
+        let _p = install_fake_gh_review(&bin, &approved);
+        let res = run(rc.clone());
+        assert_eq!(res.display, "Address 3 review comments");
+        assert!(!res.prompt.contains("Please rename the helper."));
     }
     {
         // Everything answered: no turn.

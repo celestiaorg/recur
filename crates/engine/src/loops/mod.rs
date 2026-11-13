@@ -606,7 +606,8 @@ impl Walk {
         }
         let (reason, transient) = transient_failure(err);
         if transient {
-            self.eng.fail_retryable(&self.id, &reason);
+            self.eng
+                .fail_retryable(&self.id, &self.chat_code(), &reason);
             return;
         }
         self.eng.record_failure(&self.id, &err.to_string(), false);

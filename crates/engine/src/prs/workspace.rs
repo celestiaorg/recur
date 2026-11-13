@@ -28,6 +28,9 @@ use crate::turn::oneshot::cap_github_pr_body;
 use crate::workspace::create::DEFAULT_WORKSPACE_TITLE;
 
 const LAND_TIMEOUT: Duration = Duration::from_secs(60);
+/// Time past a land's deadline for [`recur_git::Manager::push_land`] to undo
+/// a timed-out push, so the deadline never strands an unpushed land.
+pub(crate) const PUSH_UNDO_GRACE: Duration = Duration::from_secs(10);
 const LAND_STATE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// While the autopilot owns the worktree. Once a loop idles the human may
@@ -192,9 +195,10 @@ impl Engine {
             branch = ws.branch.clone();
         }
         let ws = self.store.workspace(workspace_id).unwrap_or(ws);
-        tokio::time::timeout(
-            LAND_TIMEOUT,
-            self.merge_workspace_inner(&ws, &proj, &branch, &base, &method),
+        let deadline = tokio::time::Instant::now() + LAND_TIMEOUT;
+        tokio::time::timeout_at(
+            deadline + PUSH_UNDO_GRACE,
+            self.merge_workspace_inner(&ws, &proj, &branch, &base, &method, deadline),
         )
         .await
         .unwrap_or_else(|_| Err(deadline_err()))
@@ -207,6 +211,7 @@ impl Engine {
         branch: &str,
         base: &str,
         method: &MergeMethod,
+        deadline: tokio::time::Instant,
     ) -> Result<Workspace> {
         let workspace_id = ws.id.as_str();
         let mgr = recur_git::Manager::new(&proj.repo_path, &self.worktree_root);
@@ -255,41 +260,42 @@ impl Engine {
         }
         let sq = effective_squash_commit_message(proj, &self.settings());
         let msg = workspace_merge_commit_message(ws, base, method, &commits, &sq);
-        if let Err(e) = mgr.merge(branch, base, &msg, method.as_str()).await {
-            self.emit_workspace_event(
-                workspace_id,
-                "AR",
-                "You",
-                &format!("Local merge failed: {}", html_escape(&e.to_string())),
-            );
-            if e.dirty_base().is_some() {
-                return Err(EngineError(e.to_string()));
+        let res = match mgr.merge(branch, base, &msg, method.as_str()).await {
+            Ok(r) => r,
+            Err(e) => {
+                self.emit_workspace_event(
+                    workspace_id,
+                    "AR",
+                    "You",
+                    &format!("Local merge failed: {}", html_escape(&e.to_string())),
+                );
+                if e.dirty_base().is_some() {
+                    return Err(EngineError(e.to_string()));
+                }
+                return Err(EngineError(format!("merge into {base}: {e}")));
             }
-            return Err(EngineError(format!("merge into {base}: {e}")));
-        }
-        // Persist merged before pushing: a failed push must not leave the
-        // workspace looking unmerged while the base holds the land.
-        match self.store.pr_by_workspace(workspace_id) {
-            Some(existing) if existing.state != "Merged" => {
-                self.mark_merged(&existing.id, "").await;
-            }
-            _ => self.set_workspace_state(workspace_id, WorkspaceState::Merged, "merged"),
-        }
+        };
         if let Some((remote, short)) = &tracking
-            && let Err(e) = mgr.push_branch(remote, short).await
+            && let Err(e) = mgr.push_land(remote, short, &res, deadline).await
         {
             self.emit_workspace_event(
                 workspace_id,
                 "AR",
                 "You",
                 &format!(
-                    "Landed on local <code>{}</code> but could not push to <code>{}</code>: {}",
+                    "Could not push <code>{}</code> to <code>{}</code>: {}",
                     html_escape(short),
                     html_escape(remote),
                     html_escape(&e.to_string())
                 ),
             );
             return Err(EngineError(format!("push {short} to {remote}: {e}")));
+        }
+        match self.store.pr_by_workspace(workspace_id) {
+            Some(existing) if existing.state != "Merged" => {
+                self.mark_merged(&existing.id, "").await;
+            }
+            _ => self.set_workspace_state(workspace_id, WorkspaceState::Merged, "merged"),
         }
         let mut landed = mgr.short_branch_name(base).await;
         if landed.is_empty() {

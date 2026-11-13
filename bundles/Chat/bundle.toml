@@ -30,6 +30,19 @@ script = "src/fix-problem.ts"
 complete = "src/complete-problem.ts"
 
 [[prompt]]
+id = "recur.chat.fix-merge"
+name = "Fix merge"
+description = "Fix what blocked a failed workspace merge"
+slash = "fix-merge"
+mode = "agent"
+takesArgs = true
+argPlaceholder = "the merge error"
+tab_group = "ops"
+fresh_session = true
+interpreter = "typescript"
+script = "src/fix-merge.ts"
+
+[[prompt]]
 id = "recur.chat.commit"
 name = "Commit"
 description = "Stage and commit all worktree changes"

@@ -15,6 +15,7 @@ use recur_forge::model::{format_commit_bullet_list, pr_description, single_line}
 use recur_forge::{Forge, MergeCommitText, MergeOutcome};
 
 use crate::Engine;
+use crate::prs::workspace::PUSH_UNDO_GRACE;
 use crate::prs::{GROUP_MERGED, touch_pr_updated};
 use crate::text::html_escape;
 
@@ -205,22 +206,26 @@ impl Engine {
         };
         let (sq, mg) = self.merge_message_styles(&pr.workspace_id);
         let msg = local_merge_commit_message(&pr, method, &sq, &mg);
-        let landed = tokio::time::timeout(MERGE_TIMEOUT, async {
-            if let Err(e) = mgr.merge(&pr.branch, &base, &msg, method.as_str()).await {
-                let mut note = format!("Local merge failed: {}", html_escape(&e.to_string()));
-                if e.dirty_base().is_none() {
-                    note.push_str(". Resolve the conflict and try again.");
+        let deadline = tokio::time::Instant::now() + MERGE_TIMEOUT;
+        let landed = tokio::time::timeout_at(deadline + PUSH_UNDO_GRACE, async {
+            let landed = match mgr.merge(&pr.branch, &base, &msg, method.as_str()).await {
+                Ok(r) => r,
+                Err(e) => {
+                    let mut note = format!("Local merge failed: {}", html_escape(&e.to_string()));
+                    if e.dirty_base().is_none() {
+                        note.push_str(". Resolve the conflict and try again.");
+                    }
+                    return Err(note);
                 }
-                return Err(note);
-            }
+            };
             let tracking = mgr.parse_remote_tracking(&base).await;
             if let Some((remote, mut short)) = tracking.clone() {
                 if short.is_empty() {
                     short = mgr.short_branch_name(&base).await;
                 }
-                if let Err(e) = mgr.push_branch(&remote, &short).await {
+                if let Err(e) = mgr.push_land(&remote, &short, &landed, deadline).await {
                     return Err(format!(
-                        "Landed on local <code>{}</code> but could not push to <code>{}</code>: {}",
+                        "Could not push <code>{}</code> to <code>{}</code>: {}",
                         html_escape(&short),
                         html_escape(&remote),
                         html_escape(&e.to_string())

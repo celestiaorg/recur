@@ -649,7 +649,7 @@ Shipped flagships live in `bundles/Chat`: `/fix-findings` (`mode=agent`,
 jumps to the ops tab),
 `/commit` + `/commit-push` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; message from the
 diff), `/fix-checks` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; GitHub failing checks), `/fix-problem`
-(`mode=agent`, `tab_group = "ops"`, `fresh_session`; one LSP diagnostic, sent by the Problems panel's AI button; `complete` lists the workspace's current diagnostics from `ctx.diagnostics`), `/open-pr` + `/open-draft-pr`
+(`mode=agent`, `tab_group = "ops"`, `fresh_session`; one LSP diagnostic, sent by the Problems panel's AI button; `complete` lists the workspace's current diagnostics from `ctx.diagnostics`), `/fix-merge` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; sent with the error when the titlebar Merge fails, so the agent clears the blocker and the human retries), `/open-pr` + `/open-draft-pr`
 (`mode=agent`, `tab_group = "ops"`, `fresh_session`, shebang: same `open-pr.sh`; `/open-draft-pr` sets
 `RECUR_PR_DRAFT=1` so the agent calls `mcp__recur__open_pr` with `draft: true`.
 Embeds git status/diff so the agent writes the GitHub title/body from the

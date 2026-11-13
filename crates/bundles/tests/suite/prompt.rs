@@ -331,6 +331,7 @@ fn shipped_chat_fresh_session_and_tab_groups() {
         ("open-draft-pr", true, "ops"),
         ("fix-checks", true, "ops"),
         ("fix-problem", true, "ops"),
+        ("fix-merge", true, "ops"),
         ("update", true, "ops"),
         ("review", true, "review"),
         ("re-review", true, ""),

@@ -229,6 +229,7 @@ cat >/dev/null
     let p = ClaudeProvider::new(ClaudeConfig {
         bin: bin.to_string_lossy().into_owned(),
         background_hold_ceiling: Duration::from_secs(2),
+        ..Default::default()
     });
     let (turn, cx) = Turn::new(true);
     let r = req("go", dir.path());

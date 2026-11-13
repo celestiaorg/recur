@@ -15,6 +15,7 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - Fable 5.2 in the Claude Code model picker. Mythos 5.2 appears automatically on accounts with access.
 - The New project dialog has a **Group** picker, so a project can go straight into a sidebar group when you add it.
 - The workspace header's **View PR** button has a dropdown with **Open in GitHub**, so you can jump straight to the pull request on GitHub.
+- `copy_files` entries ending in `/`, such as `node_modules/` or `target/`, copy the whole directory, so new workspaces start with dependencies already installed. On macOS the files are APFS clones: fast, with no extra disk space until files change.
 - Find in the agent chat: press ⌘F (Ctrl+F on Linux) in the chat to search your messages and the agent's replies. Enter and Shift+Enter (or ⌘G and ⇧⌘G) step through matches, Escape closes.
 - `recur config get`, `set` and `list` read and change Recur's settings (model, effort, permissions and more) from the terminal, whether or not Recur is running, so scripts and benchmarks no longer need the Settings window. See [Settings from the terminal](/getting-started/install#settings-from-the-terminal).
 

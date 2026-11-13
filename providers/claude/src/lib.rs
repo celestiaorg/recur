@@ -14,6 +14,7 @@ pub mod stream;
 #[cfg(feature = "testing")]
 pub mod testing;
 
+use std::path::PathBuf;
 use std::time::Duration;
 
 use recur_agent::display::canonical_claude_tool;
@@ -32,6 +33,9 @@ pub struct ClaudeConfig {
     /// How long a result is held while background tasks still run (a dev
     /// server never finishes). Matches claude's own print-mode ceiling.
     pub background_hold_ceiling: Duration,
+    /// Where each running turn records its pid, so the next launch can kill
+    /// what a crashed Recur left running; empty = untracked.
+    pub turn_pid_dir: PathBuf,
 }
 
 impl Default for ClaudeConfig {
@@ -39,6 +43,7 @@ impl Default for ClaudeConfig {
         Self {
             bin: String::new(),
             background_hold_ceiling: Duration::from_secs(10 * 60),
+            turn_pid_dir: PathBuf::new(),
         }
     }
 }
@@ -82,6 +87,13 @@ impl ClaudeProvider {
             return last;
         }
         self.models(settings).await.unwrap_or_default()
+    }
+
+    /// Kills the turns a crashed Recur left running. Run before any turn: an
+    /// orphan keeps appending to the session transcript, and the next
+    /// `--resume` follows its stale branch.
+    pub async fn reap_stale_turns(&self) {
+        proc::reap_stale_turns(&self.cfg.turn_pid_dir).await;
     }
 
     fn bin(&self) -> &str {
@@ -156,7 +168,7 @@ impl Provider for ClaudeProvider {
         req: TurnRequest,
         cx: TurnContext,
     ) -> Result<TurnResult, ProviderError> {
-        runner::run(&self.cfg.bin, self.cfg.background_hold_ceiling, req, cx).await
+        runner::run(&self.cfg, req, cx).await
     }
 
     /// Claude and Codex both persist UUIDs; only Cursor's `agent-` ids are

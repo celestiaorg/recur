@@ -147,7 +147,7 @@ fn maestro_system_prompt_conductor_not_specialist() {
         ..MaestroContext::default()
     });
     for want in [
-        "do not do the loop's phase work yourself",
+        "do not do the workflow's phase work yourself",
         "Read/Grep/Glob only to answer the human",
         "the engine walks the graph",
         "pick by whether the walk is live",

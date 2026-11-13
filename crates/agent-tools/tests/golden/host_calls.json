@@ -1869,7 +1869,7 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "{\"question\":\"Q?\",\"context\":\"ctx\",\"options\":[{\"text\":\"A\",\"tag\":\"simplest\",\"desc\":\"d\"},{\"text\":\"B\"}]}",
-    "result": "Escalation raised: the loop is paused until the human answers.",
+    "result": "Escalation raised: the workflow is paused until the human answers.",
     "error": "",
     "isError": false,
     "calls": [
@@ -1977,7 +1977,7 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "{\"question\":\"q\",\"options\":[{\"text\":\"a\",\"tag\":\"t\"}],\"options\":[{\"text\":\"b\"}]}",
-    "result": "Escalation raised: the loop is paused until the human answers.",
+    "result": "Escalation raised: the workflow is paused until the human answers.",
     "error": "",
     "isError": false,
     "calls": [
@@ -2003,7 +2003,7 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "{\"question\":\"q\",\"options\":null}",
-    "result": "Escalation raised: the loop is paused until the human answers.",
+    "result": "Escalation raised: the workflow is paused until the human answers.",
     "error": "",
     "isError": false,
     "calls": [
@@ -2023,7 +2023,7 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "{\"question\":\"q\",\"options\":[]}",
-    "result": "Escalation raised: the loop is paused until the human answers.",
+    "result": "Escalation raised: the workflow is paused until the human answers.",
     "error": "",
     "isError": false,
     "calls": [

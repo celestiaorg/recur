@@ -2380,7 +2380,7 @@ mod tests {
             m.input = json!({"mode": "loop"}).to_string();
             m.result_pending = true;
         });
-        assert_eq!(view(&m).pending_label(), "Switching to Loop…");
+        assert_eq!(view(&m).pending_label(), "Switching to Autopilot…");
         let m = tool("mcp__recur__rename_branch", |m| {
             m.result = "Renamed branch to feat/x.".into();
         });

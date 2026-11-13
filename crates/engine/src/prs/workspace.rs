@@ -159,7 +159,7 @@ impl Engine {
             );
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running: pause it before merging from the workspace".into());
+            return Err("a workflow is running: pause it before merging from the workspace".into());
         }
         if ws.state == WorkspaceState::Merged {
             return Ok(ws);
@@ -476,7 +476,9 @@ impl Engine {
             return Err("the main working copy is already the project checkout".into());
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running: pause it before updating from the workspace".into());
+            return Err(
+                "a workflow is running: pause it before updating from the workspace".into(),
+            );
         }
         if ws.state == WorkspaceState::Merged {
             return Ok(UpdateWorkspaceResult {
@@ -621,7 +623,7 @@ impl Engine {
             return Err("the main working copy has no workspace PR".into());
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running: pause it before pulling".into());
+            return Err("a workflow is running: pause it before pulling".into());
         }
         let pr = self
             .store
@@ -754,7 +756,7 @@ impl Engine {
             return Err("the main working copy can't open a PR: create a workspace for changes you want to review".into());
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running: wait until it pauses, then open a PR from the titlebar or /open-pr".into());
+            return Err("a workflow is running: wait until it pauses, then open a PR from the titlebar or /open-pr".into());
         }
         let proj = self
             .store

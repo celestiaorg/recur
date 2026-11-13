@@ -62,6 +62,23 @@ _upd_cap() {
   rm -f "$tmp"
 }
 
+# An open GitHub PR gets the finished update pushed, matching the titlebar's
+# clean Update with base (force-with-lease only after a rebase). The refspec is
+# explicit: workspace branches track the base, so a bare push targets it.
+push_line() {
+  local num="${RECUR_PR_NUMBER:-0}" head="${RECUR_PR_BRANCH:-}"
+  if [ "${RECUR_PR_SOURCE:-}" != "gh" ] || [ "$num" = "0" ] || [ -z "$num" ] || [ -z "$head" ]; then
+    echo "Do not push."
+    return
+  fi
+  local fork="If the PR comes from a fork, push to the fork's repository instead of origin."
+  if [ "$method" = "rebase" ]; then
+    echo "Then push to update GitHub PR #${num}: git push --force-with-lease=refs/heads/${head} origin HEAD:refs/heads/${head}. ${fork}"
+  else
+    echo "Then push to update GitHub PR #${num}: git push origin HEAD:refs/heads/${head} (do not force-push). ${fork}"
+  fi
+}
+
 git_out=""
 if [ "$in_progress" -eq 0 ]; then
   behind="$(git rev-list --count "HEAD..${base}")"
@@ -93,6 +110,7 @@ if [ "$in_progress" -eq 0 ]; then
     export _UPD_METHOD="$method"
     export _UPD_GIT_ERR="$(printf '%s' "$git_out" | _upd_cap || true)"
     export _UPD_STATUS="$(git status --short 2>/dev/null | _upd_cap || true)"
+    export _UPD_PUSH="$(push_line)"
     python3 - <<'PY'
 import json, os
 
@@ -105,8 +123,8 @@ prompt = "\n".join([
     "Git did not leave an in-progress merge/rebase: typically uncommitted local "
     "changes would be overwritten, or another git error aborted the operation.",
     "Bring the worktree up to date with "
-    f"{base}. Preserve local uncommitted work (commit, stash, or otherwise keep it). "
-    f"Then complete the {method}. Do not push.",
+    f"{base}. Preserve local uncommitted work: git stash it and restore it afterwards, never commit it. "
+    f"Then complete the {method}. {os.environ.get('_UPD_PUSH', 'Do not push.')}",
     "",
     "## git output",
     git_err or "(empty)",
@@ -151,6 +169,7 @@ export _UPD_BASE="$conflict_base"
 export _UPD_METHOD="$method"
 export _UPD_STATUS="$(git status --short 2>/dev/null | _upd_cap || true)"
 export _UPD_UNMERGED="$(git diff --name-only --diff-filter=U 2>/dev/null | _upd_cap || true)"
+export _UPD_PUSH="$(push_line)"
 
 python3 - <<'PY'
 import json, os
@@ -173,8 +192,9 @@ else:
 prompt = "\n".join([
     f"This worktree has an in-progress {method} with {base} that produced conflict markers.",
     "Resolve every conflicted file: edit out the conflict markers and keep the correct combined result.",
-    "Do not change feature code beyond what is needed to resolve conflicts. Do not push.",
+    "Do not change feature code beyond what is needed to resolve conflicts.",
     finish,
+    os.environ.get("_UPD_PUSH", "Do not push."),
     "",
     "## git status --short",
     status.strip() or "(clean)",

@@ -26,7 +26,7 @@ Each chat turn records start and end checkpoints of the worktree, including trac
 
 ## Reset to here
 
-**Reset to here** rewinds the chat to the **end** of any earlier turn and removes the turns after it. When those later turns changed files, the worktree is restored to that turn's end checkpoint too; otherwise files are left alone. Later file changes are replaced, so inspect the checkpoint and preserve any work you want to keep before resetting. Reset is not available on a Loop's Maestro chat.
+**Reset to here** rewinds the chat to the **end** of any earlier turn and removes the turns after it. When those later turns changed files, the worktree is restored to that turn's end checkpoint too; otherwise files are left alone. Later file changes are replaced, so inspect the checkpoint and preserve any work you want to keep before resetting. Reset is not available on a workflow's Maestro chat.
 
 The next send starts a fresh provider session using the retained chat context. Checkpoints do not move your branch's HEAD or create ordinary commits. They also do not snapshot staging state, so resetting a turn does not restore the previous index.
 

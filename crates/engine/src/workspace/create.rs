@@ -362,7 +362,9 @@ impl Engine {
             return Err("retry setup only applies to a hand workspace".into());
         }
         if ws.has_run() {
-            return Err("retry setup only applies to a workspace that never started a loop".into());
+            return Err(
+                "retry setup only applies to a workspace that never started a workflow".into(),
+            );
         }
         if ws.phase != "failed" && ws.status_label != "Couldn't create" {
             return Err("this workspace did not fail setup".into());

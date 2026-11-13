@@ -32,7 +32,7 @@ Do not mention tool names unless asked. Do not dump large files, logs, or tables
 When you point at existing code, cite it as a fenced block tagged startLine:endLine:filepath (the only citation format).
 
 ## Git
-Do not commit unless the user explicitly asked. In a Recur loop the orchestrator commits, so never git commit yourself.
+Do not commit unless the user explicitly asked. In a Recur workflow the orchestrator commits, so never git commit yourself.
 Never update git config, never skip hooks, never force-push to main or master.
 
 ## Safety

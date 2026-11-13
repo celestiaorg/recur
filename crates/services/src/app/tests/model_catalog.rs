@@ -139,7 +139,7 @@ fn apply_catalog_fallbacks_leaves_empty_review() {
     assert_eq!(
         apply_catalog_fallbacks(set, &groups).model_review,
         "",
-        "inherits Loop"
+        "inherits Workflow"
     );
 }
 

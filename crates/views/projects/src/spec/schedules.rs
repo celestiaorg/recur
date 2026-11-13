@@ -181,7 +181,7 @@ fn schedules_save_run_pause_edit_and_delete(cx: &mut TestAppContext) {
     s.keys("secondary-.");
     assert!(s.has("sel:Mode=Plan"));
     s.click("sel:Mode=Plan");
-    for m in ["Ask", "Plan", "Agent", "Review", "Loop"] {
+    for m in ["Ask", "Plan", "Agent", "Review", "Autopilot"] {
         assert!(s.has(&format!("sel-opt:{m}")), "{m}");
     }
     s.click("sel-opt:Plan");
@@ -247,8 +247,8 @@ fn schedules_save_run_pause_edit_and_delete(cx: &mut TestAppContext) {
     s.keys("secondary-a backspace");
     s.type_text("Find missing integration tests");
     s.click("sel:Mode=Plan");
-    s.click("sel-opt:Loop");
-    assert!(s.until(|s| s.has("sel:Loop=PR loop") || has_prefix(s, "sel:Loop=")));
+    s.click("sel-opt:Autopilot");
+    assert!(s.until(|s| s.has("sel:Workflow=PR loop") || has_prefix(s, "sel:Workflow=")));
     s.fill("inp:Cron expression", "0 9 1,15 * *");
     s.wait(300);
     assert!(s.until(|s| s.has("sc-go:on")));

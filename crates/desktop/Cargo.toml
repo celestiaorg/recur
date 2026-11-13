@@ -15,6 +15,11 @@ path = "src/main.rs"
 # Runs the UI on the typed service fakes instead of the engine-backed services.
 fake = ["recur-services/fake"]
 
+[[example]]
+name = "capture"
+path = "examples/capture/main.rs"
+required-features = ["fake"]
+
 [dependencies]
 recur-app.workspace = true
 recur-bundles.workspace = true
@@ -56,9 +61,15 @@ recur-forge.workspace = true
 recur-provider-claude.workspace = true
 recur-view-chat = { workspace = true, features = ["test-support"] }
 rusqlite.workspace = true
+serde.workspace = true
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]
+core-graphics.workspace = true
+image = { workspace = true, features = ["png"] }
+objc2.workspace = true
+objc2-app-kit.workspace = true
 objc2-foundation.workspace = true
+raw-window-handle.workspace = true
 
 [lints]
 workspace = true

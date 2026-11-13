@@ -135,7 +135,7 @@ impl Tool for AskUserTool {
 you need a decision without pausing the whole workspace. Provide a clear question and \
 optional 2-4 options. This ends your current turn: the chat goes idle and their answer \
 arrives later as a user message. An inbox notification is raised. Do NOT use escalate \
-from interactive chats: that is for non-interactive loop agents only."
+from interactive chats: that is for non-interactive workflow agents only."
     }
 
     fn schema(&self) -> String {
@@ -267,7 +267,7 @@ impl Tool for RenameWorkspaceTool {
 
     fn description(&self) -> &'static str {
         "Rename this workspace (sidebar title) to a short topic title (at most 8 words, sentence \
-case). Allowed during loops. No confirmation."
+case). Allowed during workflows. No confirmation."
     }
 
     fn schema(&self) -> String {
@@ -308,7 +308,7 @@ impl Tool for RenameBranchTool {
     fn description(&self) -> &'static str {
         "Rename this workspace's git branch to a kebab-case topic (e.g. add-dark-mode). The \
 configured branch prefix (default recur/) is applied if omitted. Allowed during planning; \
-refused while a loop is coding, reviewing, or verifying. No confirmation."
+refused while a workflow is coding, reviewing, or verifying. No confirmation."
     }
 
     fn schema(&self) -> String {
@@ -360,7 +360,7 @@ versus the base branch: not only this chat turn. Set draft to true for a GitHub 
 PR. Commit uncommitted work first. If a GitHub PR is already open, this pushes new \
 commits and does not rewrite the description. If only a Local PR is open, title and \
 body update that Local PR and retry GitHub create when the project opts in. Refused \
-on the main working copy and while a loop is running. After a loop idles (including \
+on the main working copy and while a workflow is running. After a workflow idles (including \
 Review & fix, Docs, and Security review & fix), open a PR from here or the titlebar. \
 The run does not self-open one."
     }

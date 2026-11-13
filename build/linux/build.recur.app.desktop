@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Recur
-Comment=Run autonomous AI coding loops locally.
+Comment=Run autonomous AI coding workflows locally.
 Exec=/opt/recur/recur
 Icon=/opt/recur/recur.png
 Categories=Development;

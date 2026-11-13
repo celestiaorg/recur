@@ -104,7 +104,7 @@ impl Engine {
                 .start_run_on_workspace_with(&ws.id, &goal, &loop_id, &policy_id)
                 .await
             {
-                return format!("I couldn't engage the loop: {e}");
+                return format!("I couldn't engage the workflow: {e}");
             }
             let (_life2, held) = self.lock_chat_life(&ws.id, code).await;
             if !held || self.store.agent(&ws.id, code).is_none() {

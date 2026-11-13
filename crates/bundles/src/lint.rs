@@ -342,7 +342,7 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 E,
                 &lp.id,
                 dir,
-                format!("conductor {:?} must have mode = \"loop\"", cond_id),
+                format!("conductor {:?} must have mode = \"autopilot\"", cond_id),
             );
         }
         for ph in &lp.phases {
@@ -477,11 +477,16 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                     E,
                     &p.name,
                     dir,
-                    format!("loop {:?} is not a safe id", p.loop_id),
+                    format!("workflow {:?} is not a safe id", p.loop_id),
                 );
             }
             if !p.mode.is_empty() && p.mode != PROMPT_MODE_LOOP {
-                add(E, &p.name, dir, "loop requires mode \"loop\"".to_string());
+                add(
+                    E,
+                    &p.name,
+                    dir,
+                    "workflow requires mode \"autopilot\"".to_string(),
+                );
             }
         }
         if !p.mode.is_empty() && !valid_prompt_mode(&p.mode) {
@@ -490,7 +495,7 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 &p.name,
                 dir,
                 format!(
-                    "unknown mode {:?} (use ask|plan|agent|review|loop, or omit)",
+                    "unknown mode {:?} (use ask|plan|agent|review|autopilot, or omit)",
                     p.mode
                 ),
             );
@@ -500,7 +505,7 @@ fn lint_one_bundle(dir: &str, cache_dir: &str) -> Result<LintedBundle, Error> {
                 E,
                 &p.name,
                 dir,
-                "fresh_session is not valid with mode \"loop\"".to_string(),
+                "fresh_session is not valid with mode \"autopilot\"".to_string(),
             );
         }
         if !p.tab_group.is_empty() && p.mode.is_empty() {

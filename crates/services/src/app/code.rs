@@ -22,7 +22,7 @@ use crate::api::CodeService;
 use crate::{Error, Result};
 
 const NOT_WRITABLE: &str =
-    "editing is only allowed in a loop worktree: open a loop or use an external editor";
+    "editing is only allowed in a workflow worktree: open a workflow or use an external editor";
 
 /// The absolute paths the user opened that sit outside every project worktree.
 /// Observatory reads and writes may touch them; agent tools still go through
@@ -158,7 +158,7 @@ impl AppServices {
             && run_active(&ws.state)
         {
             return Err(Error::new(
-                "a loop is running in this workspace: the run owns the worktree; pause or stop it before editing",
+                "a workflow is running in this workspace: the run owns the worktree; pause or stop it before editing",
             ));
         }
         Ok(())
@@ -494,7 +494,7 @@ impl AppServices {
         let root = self.writable_root(
             project_id,
             workspace_id,
-            "commits are only allowed in a loop worktree",
+            "commits are only allowed in a workflow worktree",
         )?;
         let root = root.to_string_lossy().into_owned();
         if !recur_git::is_repo(&root).await {
@@ -546,7 +546,7 @@ impl AppServices {
         let root = self.writable_root(
             project_id,
             workspace_id,
-            "commit messages can only be generated in a loop worktree",
+            "commit messages can only be generated in a workflow worktree",
         )?;
         let root = root.to_string_lossy().into_owned();
         if !recur_git::is_repo(&root).await {
@@ -572,7 +572,7 @@ impl AppServices {
         let root = self.writable_root(
             project_id,
             workspace_id,
-            "discard is only allowed in a loop worktree",
+            "discard is only allowed in a workflow worktree",
         )?;
         self.run_lock(workspace_id)?;
         let root = root.to_string_lossy().into_owned();
@@ -603,9 +603,9 @@ impl AppServices {
         stage: bool,
     ) -> Result<()> {
         let refusal = if stage {
-            "staging is only allowed in a loop worktree"
+            "staging is only allowed in a workflow worktree"
         } else {
-            "unstaging is only allowed in a loop worktree"
+            "unstaging is only allowed in a workflow worktree"
         };
         let root = self.writable_root(project_id, workspace_id, refusal)?;
         self.run_lock(workspace_id)?;

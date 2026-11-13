@@ -278,7 +278,7 @@ fn literal_payloads_match_go() {
         &EngineEvent::Notify(Notify {
             body: "Which <db>?".into(),
             target: Some(format!("workspace:{w}")),
-            title: "A loop needs you".into(),
+            title: "A workflow needs you".into(),
         }),
     );
     check(

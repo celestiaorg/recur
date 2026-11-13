@@ -140,7 +140,7 @@ async fn resolve_guard_defaults_and_refusals() {
     assert_eq!(
         e.resolve_guard("test.loops.does-not-exist", "", &AutonomyLevel::Balanced)
             .unwrap_err(),
-        "loop test.loops.does-not-exist not found"
+        "workflow test.loops.does-not-exist not found"
     );
     assert_eq!(
         e.guard_reason("", "test.policies.fail", &AutonomyLevel::Balanced),
@@ -170,7 +170,7 @@ async fn resolve_guard_defaults_and_refusals() {
     t.store.set_settings(set.clone());
     assert_eq!(
         e.guard_reason("test.loops.docs", "", &AutonomyLevel::Balanced),
-        "loop test.loops.docs is disabled"
+        "workflow test.loops.docs is disabled"
     );
     assert_eq!(
         e.guard_reason("", "test.policies.fail", &AutonomyLevel::Balanced),

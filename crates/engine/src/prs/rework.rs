@@ -16,7 +16,8 @@ use crate::prs::{none_if_empty, now_comment};
 use crate::text::html_escape;
 
 /// The update-with-base failure for a PR with no usable loop.
-pub const ERR_PR_UNAVAILABLE: &str = "update-with-base failed: the PR or its loop is unavailable";
+pub const ERR_PR_UNAVAILABLE: &str =
+    "update-with-base failed: the PR or its workflow is unavailable";
 
 const UPDATE_TIMEOUT: Duration = Duration::from_secs(60);
 const FINISH_TIMEOUT: Duration = Duration::from_secs(30);
@@ -134,7 +135,7 @@ impl Engine {
             text.push_str("\n\n");
             text.push_str(&instruction);
         }
-        text.push_str("\n\nThe conversation and line notes are in your loop context. Answer if this is a question. If it is work, call reenter_phase on an allowed phase (usually converge).");
+        text.push_str("\n\nThe conversation and line notes are in your workflow context. Answer if this is a question. If it is work, call reenter_phase on an allowed phase (usually converge).");
         let e = self.arc();
         let ws_id = pr.workspace_id.clone();
         self.tasks.chat_turns.spawn(async move {
@@ -154,7 +155,7 @@ impl Engine {
             return "send_back refused: instruction is empty.".into();
         }
         let Some(pr) = self.store.open_pr_by_workspace(workspace_id) else {
-            return "send_back refused: this loop has no open PR; use plan to steer while it's still running.".into();
+            return "send_back refused: this workflow has no open PR; use plan to steer while it's still running.".into();
         };
         if pr.state == "Merged" || pr.group == "merged" {
             return "send_back refused: the PR is already merged.".into();
@@ -164,7 +165,7 @@ impl Engine {
             .await
             .1
         {
-            return "send_back failed: the PR or its loop is unavailable.".into();
+            return "send_back failed: the PR or its workflow is unavailable.".into();
         }
         "Sent review back: Maestro will answer or call reenter_phase.".into()
     }

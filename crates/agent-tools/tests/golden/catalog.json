@@ -64,7 +64,7 @@
     },
     {
       "name": "done",
-      "description": "Signal that this loop-specialist turn is complete and hand back to the Maestro. Provide a short summary of what you did. Use notes for the handoff the Reviewer and Maestro cannot see from the diff: deviations from the plan, concerns, work you could not finish, or a step that should be split. Leave notes empty when nothing deviated. Fails if any findings are still open: close each with update_finding first. Not for interactive human chat turns.",
+      "description": "Signal that this workflow-specialist turn is complete and hand back to the Maestro. Provide a short summary of what you did. Use notes for the handoff the Reviewer and Maestro cannot see from the diff: deviations from the plan, concerns, work you could not finish, or a step that should be split. Leave notes empty when nothing deviated. Fails if any findings are still open: close each with update_finding first. Not for interactive human chat turns.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"summary\": {\"type\": \"string\", \"description\": \"One line: what this turn did\"},\n    \"notes\": {\"type\": \"string\", \"description\": \"Optional handoff: deviations from the plan, concerns, unfinished work, steps to split. Empty when nothing deviated.\"}\n  },\n  \"required\": [\"summary\"]\n}",
       "halts": false
     },
@@ -82,7 +82,7 @@
     },
     {
       "name": "escalate",
-      "description": "Pause the loop and ask the human a scoped decision you should NOT guess on (genuine ambiguity, not laziness). Provide a clear question, 2-4 reasoned options each with a short trade-off, and one-read context: what you built, what's ambiguous, what you considered. The loop blocks until the human answers, then resumes with their guidance.",
+      "description": "Pause the workflow and ask the human a scoped decision you should NOT guess on (genuine ambiguity, not laziness). Provide a clear question, 2-4 reasoned options each with a short trade-off, and one-read context: what you built, what's ambiguous, what you considered. The workflow blocks until the human answers, then resumes with their guidance.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"question\": {\"type\": \"string\", \"description\": \"The scoped decision you need from the human\"},\n    \"context\": {\"type\": \"string\", \"description\": \"One-read context: what you built, what's ambiguous, what you considered\"},\n    \"options\": {\n      \"type\": \"array\",\n      \"description\": \"2-4 reasoned options, each with a short trade-off\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"text\": {\"type\": \"string\", \"description\": \"The option, e.g. 'Reject with 429'\"},\n          \"tag\": {\"type\": \"string\", \"description\": \"Short label, e.g. simplest / smoothest / recommended\"},\n          \"desc\": {\"type\": \"string\", \"description\": \"The trade-off of this option\"}\n        },\n        \"required\": [\"text\"]\n      }\n    }\n  },\n  \"required\": [\"question\"]\n}",
       "halts": false
     },
@@ -94,49 +94,49 @@
     },
     {
       "name": "edit_plan",
-      "description": "Rewrite the loop's plan (its definition of done). The engine persists it, logs a plan-change deviation, and steers subsequent specialist turns with the new plan. Provide the complete new plan text, not a diff.",
+      "description": "Rewrite the workflow's plan (its definition of done). The engine persists it, logs a plan-change deviation, and steers subsequent specialist turns with the new plan. Provide the complete new plan text, not a diff.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\"plan\": {\"type\": \"string\", \"description\": \"A short summary\"}},\n  \"required\": [\"plan\"]\n}",
       "halts": false
     },
     {
       "name": "rerun_review",
-      "description": "Dispatch a fresh Reviewer pass over the loop's current worktree. Findings are recorded like any review and gate the PR as usual.",
+      "description": "Dispatch a fresh Reviewer pass over the workflow's current worktree. Findings are recorded like any review and gate the PR as usual.",
       "schema": "{\"type\":\"object\",\"properties\":{}}",
       "halts": false
     },
     {
       "name": "dispatch_specialist",
-      "description": "Run one bounded specialist turn over the loop's worktree with a concrete instruction. role is 'reviewer' (code review, findings) or 'security' (security-focused review). The turn is governed like any agent turn; findings are recorded.",
+      "description": "Run one bounded specialist turn over the workflow's worktree with a concrete instruction. role is 'reviewer' (code review, findings) or 'security' (security-focused review). The turn is governed like any agent turn; findings are recorded.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"role\": {\"type\": \"string\", \"enum\": [\"reviewer\",\"security\"], \"description\": \"Which specialist to run\"},\n    \"instruction\": {\"type\": \"string\", \"description\": \"Concrete instruction for the specialist\"}\n  },\n  \"required\": [\"role\",\"instruction\"]\n}",
       "halts": false
     },
     {
       "name": "extend_iterations",
-      "description": "Grant the RUNNING loop extra fix iterations toward convergence. The engine clamps the grant to the autonomy level's extension allowance (rail #4 arithmetic is the engine's).",
+      "description": "Grant the RUNNING workflow extra fix iterations toward convergence. The engine clamps the grant to the autonomy level's extension allowance (rail #4 arithmetic is the engine's).",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"iterations\": {\"type\": \"integer\", \"minimum\": 1, \"description\": \"How many extra fix iterations to request\"}\n  },\n  \"required\": [\"iterations\"]\n}",
       "halts": false
     },
     {
       "name": "extend_rounds",
-      "description": "Grant extra converge rounds. Legal only while the live converge is still escalated at the round cap: not agent questions, walk-step waits, or a stopped loop. After the loop has stopped, use reenter_phase instead. Optional n defaults to the policy value.",
+      "description": "Grant extra converge rounds. Legal only while the live converge is still escalated at the round cap: not agent questions, walk-step waits, or a stopped workflow. After the workflow has stopped, use reenter_phase instead. Optional n defaults to the policy value.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"n\": {\"type\": \"integer\", \"minimum\": 1, \"description\": \"Extra rounds; default and clamp are the policy extend_rounds\"}\n  }\n}",
       "halts": false
     },
     {
       "name": "reenter_phase",
-      "description": "Idle only (no live walk: stopped/failed/settled, or paused with no goroutine). Start a new walk from a graph phase on the loop's reenter list (usually converge). Not for a live walk, including a checkpoint pause (Resume continues that) or a round-cap escalation (extend_rounds).",
-      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"phase_id\": {\"type\": \"string\", \"description\": \"Phase id on the engaged loop\"}\n  },\n  \"required\": [\"phase_id\"]\n}",
+      "description": "Idle only (no live walk: stopped/failed/settled, or paused with no goroutine). Start a new walk from a graph phase on the workflow's reenter list (usually converge). Not for a live walk, including a checkpoint pause (Resume continues that) or a round-cap escalation (extend_rounds).",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"phase_id\": {\"type\": \"string\", \"description\": \"Phase id on the engaged workflow\"}\n  },\n  \"required\": [\"phase_id\"]\n}",
       "halts": false
     },
     {
       "name": "run_phase",
       "description": "Run an on-demand phase (e.g. security), then resume the parked graph walk.",
-      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"phase_id\": {\"type\": \"string\", \"description\": \"Phase id on the engaged loop\"}\n  },\n  \"required\": [\"phase_id\"]\n}",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"phase_id\": {\"type\": \"string\", \"description\": \"Phase id on the engaged workflow\"}\n  },\n  \"required\": [\"phase_id\"]\n}",
       "halts": false
     },
     {
       "name": "resume_loop",
-      "description": "RESTART a STOPPED or FAILED loop over its existing worktree. The run continues from the worktree's current state, steered by the recorded plan. A running loop does not need this; a loop settled at pr_open wants send_back instead.",
+      "description": "RESTART a STOPPED or FAILED workflow over its existing worktree. The run continues from the worktree's current state, steered by the recorded plan. A running workflow does not need this; a workflow settled at pr_open wants send_back instead.",
       "schema": "{\"type\":\"object\",\"properties\":{}}",
       "halts": false
     },
@@ -154,7 +154,7 @@
     },
     {
       "name": "send_back",
-      "description": "Send an open PR back into the loop for rework. Use this when the loop has already opened a PR (state pr_open) and the human wants corrections, more work, or an update with the latest base branch: plan alone cannot restart a finished loop. Provide a concrete instruction for the Coder.",
+      "description": "Send an open PR back into the workflow for rework. Use this when the workflow has already opened a PR (state pr_open) and the human wants corrections, more work, or an update with the latest base branch: plan alone cannot restart a finished workflow. Provide a concrete instruction for the Coder.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\"instruction\": {\"type\": \"string\", \"description\": \"A short summary\"}},\n  \"required\": [\"instruction\"]\n}",
       "halts": false
     },
@@ -178,7 +178,7 @@
     },
     {
       "name": "ask_user",
-      "description": "Ask the human a clarifying question. Use for interactive chats (including Maestro) when you need a decision without pausing the whole workspace. Provide a clear question and optional 2-4 options. This ends your current turn: the chat goes idle and their answer arrives later as a user message. An inbox notification is raised. Do NOT use escalate from interactive chats: that is for non-interactive loop agents only.",
+      "description": "Ask the human a clarifying question. Use for interactive chats (including Maestro) when you need a decision without pausing the whole workspace. Provide a clear question and optional 2-4 options. This ends your current turn: the chat goes idle and their answer arrives later as a user message. An inbox notification is raised. Do NOT use escalate from interactive chats: that is for non-interactive workflow agents only.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"question\": {\"type\": \"string\", \"description\": \"The question for the human\"},\n    \"context\": {\"type\": \"string\", \"description\": \"Short one-read context\"},\n    \"options\": {\n      \"type\": \"array\",\n      \"description\": \"Optional 2-4 choices (shortcuts; free-text is always available)\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"text\": {\"type\": \"string\"},\n          \"tag\": {\"type\": \"string\"},\n          \"desc\": {\"type\": \"string\"}\n        },\n        \"required\": [\"text\"]\n      }\n    }\n  },\n  \"required\": [\"question\"]\n}",
       "halts": true
     },
@@ -238,26 +238,26 @@
     },
     {
       "name": "rename_workspace",
-      "description": "Rename this workspace (sidebar title) to a short topic title (at most 8 words, sentence case). Allowed during loops. No confirmation.",
+      "description": "Rename this workspace (sidebar title) to a short topic title (at most 8 words, sentence case). Allowed during workflows. No confirmation.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"title\": {\"type\": \"string\", \"description\": \"Short workspace title (at most 8 words, sentence case)\"}\n  },\n  \"required\": [\"title\"]\n}",
       "halts": false
     },
     {
       "name": "rename_branch",
-      "description": "Rename this workspace's git branch to a kebab-case topic (e.g. add-dark-mode). The configured branch prefix (default recur/) is applied if omitted. Allowed during planning; refused while a loop is coding, reviewing, or verifying. No confirmation.",
+      "description": "Rename this workspace's git branch to a kebab-case topic (e.g. add-dark-mode). The configured branch prefix (default recur/) is applied if omitted. Allowed during planning; refused while a workflow is coding, reviewing, or verifying. No confirmation.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"name\": {\"type\": \"string\", \"description\": \"Kebab-case branch topic; the configured prefix is applied if omitted\"}\n  },\n  \"required\": [\"name\"]\n}",
       "halts": false
     },
     {
       "name": "open_pr",
-      "description": "Open a pull request from this workspace. Recur pushes the branch and creates the GitHub PR when the project opts in (otherwise a Local PR). Do not run `gh pr create` yourself. Provide a title under 80 characters and a markdown body describing ALL workspace changes versus the base branch: not only this chat turn. Set draft to true for a GitHub draft PR. Commit uncommitted work first. If a GitHub PR is already open, this pushes new commits and does not rewrite the description. If only a Local PR is open, title and body update that Local PR and retry GitHub create when the project opts in. Refused on the main working copy and while a loop is running. After a loop idles (including Review \u0026 fix, Docs, and Security review \u0026 fix), open a PR from here or the titlebar. The run does not self-open one.",
+      "description": "Open a pull request from this workspace. Recur pushes the branch and creates the GitHub PR when the project opts in (otherwise a Local PR). Do not run `gh pr create` yourself. Provide a title under 80 characters and a markdown body describing ALL workspace changes versus the base branch: not only this chat turn. Set draft to true for a GitHub draft PR. Commit uncommitted work first. If a GitHub PR is already open, this pushes new commits and does not rewrite the description. If only a Local PR is open, title and body update that Local PR and retry GitHub create when the project opts in. Refused on the main working copy and while a workflow is running. After a workflow idles (including Review \u0026 fix, Docs, and Security review \u0026 fix), open a PR from here or the titlebar. The run does not self-open one.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"title\": {\"type\": \"string\", \"description\": \"PR title, under 80 characters\"},\n    \"body\": {\"type\": \"string\", \"description\": \"Markdown description of ALL workspace changes versus the base branch\"},\n    \"draft\": {\"type\": \"boolean\", \"description\": \"Open as a GitHub draft PR (gh pr create --draft). Ignored if a PR is already open on GitHub.\"}\n  },\n  \"required\": [\"title\", \"body\"]\n}",
       "halts": false
     },
     {
       "name": "create_workspace",
-      "description": "Run a SUBAGENT: this is how subagents work in Recur. Creates a NEW workspace (fresh git worktree from the base branch) and runs prompt on its first chat tab, or as a loop when mode is loop. Use to fan work out into independent workspaces, one per task. Give each a stable, descriptive title: a live workspace in the project with the same title is returned instead of a duplicate, so repeating the call is safe. Model and flags follow Settings (this chat vs that mode's default); Simplify follows this chat. The new workspace runs on its own; this chat does not wait for it. Each call starts an agent run: one child per distinct task, not extras. Prefer a child for anything beyond a very simple change. By default the workspace is a subagent (child) of this one: it starts from this branch. When it finishes you get a report; call merge_child to land its commits here, or archive_child to close it without merging. Pass standalone=true for independent work that should ship on its own.",
-      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"title\": {\"type\": \"string\", \"description\": \"Short workspace title. Reuse the same title for the same task so repeat calls dedupe\"},\n    \"prompt\": {\"type\": \"string\", \"description\": \"First message for the new workspace's chat: the task plus the context it needs to work alone\"},\n    \"project_id\": {\"type\": \"string\", \"description\": \"Project id; defaults to this workspace's project\"},\n    \"base_branch\": {\"type\": \"string\", \"description\": \"Standalone only: branch to start from (defaults to the project's base branch). Setting it implies standalone\"},\n    \"mode\": {\"type\": \"string\", \"enum\": [\"ask\", \"plan\", \"agent\", \"review\", \"loop\"], \"description\": \"Chat mode for the first tab (default agent). loop engages the autopilot with prompt as its goal\"},\n    \"loop_id\": {\"type\": \"string\", \"description\": \"Bundle [[loop]] id for mode=loop; defaults to Settings\"},\n    \"policy_id\": {\"type\": \"string\", \"description\": \"Bundle [[policy]] id for mode=loop; defaults to Settings\"},\n    \"standalone\": {\"type\": \"boolean\", \"description\": \"true: an independent workspace that is never merged back here (its own branch off base_branch, its own PR). Default false: the workspace is a subagent of this one, branched off this branch; when it finishes you get a report and must call merge_child to land its work (or archive_child to close it). Scheduled runs and mode=loop default to standalone\"}\n  },\n  \"required\": [\"title\", \"prompt\"]\n}",
+      "description": "Run a SUBAGENT: this is how subagents work in Recur. Creates a NEW workspace (fresh git worktree from the base branch) and runs prompt on its first chat tab, or as a workflow when mode is loop. Use to fan work out into independent workspaces, one per task. Give each a stable, descriptive title: a live workspace in the project with the same title is returned instead of a duplicate, so repeating the call is safe. Model and flags follow Settings (this chat vs that mode's default); Simplify follows this chat. The new workspace runs on its own; this chat does not wait for it. Each call starts an agent run: one child per distinct task, not extras. Prefer a child for anything beyond a very simple change. By default the workspace is a subagent (child) of this one: it starts from this branch. When it finishes you get a report; call merge_child to land its commits here, or archive_child to close it without merging. Pass standalone=true for independent work that should ship on its own.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"title\": {\"type\": \"string\", \"description\": \"Short workspace title. Reuse the same title for the same task so repeat calls dedupe\"},\n    \"prompt\": {\"type\": \"string\", \"description\": \"First message for the new workspace's chat: the task plus the context it needs to work alone\"},\n    \"project_id\": {\"type\": \"string\", \"description\": \"Project id; defaults to this workspace's project\"},\n    \"base_branch\": {\"type\": \"string\", \"description\": \"Standalone only: branch to start from (defaults to the project's base branch). Setting it implies standalone\"},\n    \"mode\": {\"type\": \"string\", \"enum\": [\"ask\", \"plan\", \"agent\", \"review\", \"loop\"], \"description\": \"Chat mode for the first tab (default agent). loop engages a workflow (the autopilot) with prompt as its goal\"},\n    \"loop_id\": {\"type\": \"string\", \"description\": \"Bundle [[workflow]] id for mode=loop; defaults to Settings\"},\n    \"policy_id\": {\"type\": \"string\", \"description\": \"Bundle [[policy]] id for mode=loop; defaults to Settings\"},\n    \"standalone\": {\"type\": \"boolean\", \"description\": \"true: an independent workspace that is never merged back here (its own branch off base_branch, its own PR). Default false: the workspace is a subagent of this one, branched off this branch; when it finishes you get a report and must call merge_child to land its work (or archive_child to close it). Scheduled runs and mode=loop default to standalone\"}\n  },\n  \"required\": [\"title\", \"prompt\"]\n}",
       "halts": false
     },
     {

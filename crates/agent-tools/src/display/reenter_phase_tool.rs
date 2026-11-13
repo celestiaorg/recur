@@ -97,14 +97,14 @@ mod tests {
         assert!(
             !label.contains('{')
                 && !label.contains("phase_id")
-                && !label.contains("Loop restarting")
+                && !label.contains("Workflow restarting")
         );
     }
 
     #[test]
     fn refusals_fail_restart_ack_does_not() {
         assert!(!reenter_phase_failed(
-            "Loop restarting: it continues from the current worktree, steered by the recorded plan.",
+            "Workflow restarting: it continues from the current worktree, steered by the recorded plan.",
             false
         ));
         assert!(reenter_phase_failed(
@@ -112,7 +112,7 @@ mod tests {
             false
         ));
         assert!(reenter_phase_failed(
-            "Refused: converge is not on this loop's reenter list.",
+            "Refused: converge is not on this workflow's reenter list.",
             false
         ));
         assert!(reenter_phase_failed(

@@ -1,11 +1,11 @@
-// Uses the demo app's (src-web/demo) Playwright dependency. Start the src-web dev or
+// Uses src-web's Playwright dependency. Start the src-web dev or
 // preview server, then run: node scripts/check-splash.mjs http://localhost:5174
 // With no URL, serves the production build itself. Task: mise run test:splash.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 const require = createRequire(
-  new URL("../src-web/demo/package.json", import.meta.url),
+  new URL("../src-web/package.json", import.meta.url),
 );
 const { chromium, expect } = require("@playwright/test");
 const server = process.argv[2]
@@ -17,6 +17,22 @@ const server = process.argv[2]
       root: new URL("../src-web", import.meta.url).pathname,
       preview: { host: "127.0.0.1", port: 5183, strictPort: true },
     });
+// Every theme the pickers offer has its capture (crates/desktop/examples/capture).
+{
+  const { readFileSync, existsSync } = await import("node:fs");
+  const web = new URL("../src-web/", import.meta.url);
+  const src = readFileSync(new URL("src/lib/themes.ts", web), "utf8");
+  const keys = (list) =>
+    [...src.slice(src.indexOf(`export const ${list}`)).split("];")[0].matchAll(/key: "([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+  const missing = [
+    ...keys("appThemes").map((k) => `app-${k}.png`),
+    ...keys("editorThemes").map((k) => `editor-${k}.png`),
+  ].filter((f) => !existsSync(new URL(`public/screenshots/themes/${f}`, web)));
+  assert.deepEqual(missing, [], "Run mise run capture:splash for these theme captures");
+}
+
 let browser;
 try {
   browser = await chromium.launch({
@@ -28,11 +44,6 @@ try {
     reducedMotion: "reduce",
   });
   const errors = [];
-  const nativeRequests = [];
-  page.on("request", (request) => {
-    if (/\/wails\/runtime|\/workspace-file/.test(request.url()))
-      nativeRequests.push(request.url());
-  });
   page.on("pageerror", (error) => errors.push(error.message));
   const url = new URL(process.argv[2] ?? "http://127.0.0.1:5183");
 
@@ -87,7 +98,7 @@ try {
     for (const name of [
       "Workspace",
       "Diff",
-      "Loop",
+      "Autopilot",
       "Pull request",
       "Inbox",
       "Issues",
@@ -102,7 +113,7 @@ try {
       const screen = {
         Workspace: "workspace",
         Diff: "changes",
-        Loop: "loop",
+        Autopilot: "loop",
         "Pull request": "pull-request",
         Inbox: "inbox",
         Issues: "issues",
@@ -182,7 +193,7 @@ try {
       .click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    for (const name of ["Ask", "Plan", "Agent", "Review", "Loop"]) {
+    for (const name of ["Ask", "Plan", "Agent", "Review", "Autopilot"]) {
       await page
         .locator(".b-mode-tabs")
         .getByRole("button", { name: new RegExp(name) })
@@ -205,12 +216,18 @@ try {
     await editorPicker
       .getByRole("button", { name: "GitHub Light", exact: true })
       .click();
-    const preview = page.frameLocator(".b-custom-window iframe");
-    await expect(preview.locator("html")).toHaveAttribute("data-theme", "nord");
-    await expect(preview.locator(".cm-editor").first()).toHaveCSS(
-      "background-color",
-      "rgb(255, 255, 255)",
-    );
+    const previewApp = page.locator(".b-custom-window .theme-shot img").first();
+    const previewEditor = page.locator(".b-custom-window .theme-shot img.editor");
+    const shows = async (app, editor) => {
+      await expect(previewApp).toHaveAttribute("src", `/screenshots/themes/app-${app}.png`);
+      await expect(previewEditor).toHaveAttribute(
+        "src",
+        `/screenshots/themes/editor-${editor}.png`,
+      );
+      for (const img of [previewApp, previewEditor])
+        await expect.poll(() => img.evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
+    };
+    await shows("nord", "github-light");
     assert.equal(await appPicker.locator('[aria-pressed="true"]').count(), 1);
     assert.equal(
       await editorPicker.locator('[aria-pressed="true"]').count(),
@@ -230,11 +247,7 @@ try {
       "src",
       `/screenshots/pull-request-${switchedTheme}.png`,
     );
-    await expect(preview.locator("html")).toHaveAttribute("data-theme", "nord");
-    await expect(preview.locator(".cm-editor").first()).toHaveCSS(
-      "background-color",
-      "rgb(255, 255, 255)",
-    );
+    await shows("nord", "github-light");
 
     // Keyboard focus must reach swatches outside the visible scroll strip.
     const aura = editorPicker.getByRole("button", {
@@ -245,10 +258,7 @@ try {
     await page.keyboard.press("Enter");
     assert.equal(await aura.getAttribute("aria-pressed"), "true");
     assert.ok(await editorPicker.evaluate((el) => el.scrollLeft > 0));
-    await expect(preview.locator(".cm-editor").first()).toHaveCSS(
-      "background-color",
-      "rgb(21, 20, 27)",
-    );
+    await shows("nord", "aura");
   }
 
   for (const width of [1440, 1024, 768, 390, 320]) {
@@ -263,7 +273,7 @@ try {
     for (const name of [
       "Workspace",
       "Diff",
-      "Loop",
+      "Autopilot",
       "Pull request",
       "Inbox",
       "Issues",
@@ -321,11 +331,6 @@ try {
     { timeout: 7000 },
   );
   assert.deepEqual(errors, []);
-  assert.deepEqual(
-    nativeRequests,
-    [],
-    "Demo must not contact a native backend",
-  );
 
   // Without reduced motion the hero tour advances itself until clicked.
   const tour = await browser.newPage({
@@ -348,7 +353,7 @@ try {
   await tour.close();
 
   console.log(
-    "Splash checks passed: captured screenshots, full-size links, themes, visual pickers, modes, responsive layout, and loop animation.",
+    "Splash checks passed: captured screenshots, full-size links, themes, visual pickers, modes, responsive layout, and workflow animation.",
   );
 } finally {
   await browser?.close();

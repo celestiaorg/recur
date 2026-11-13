@@ -1320,7 +1320,7 @@ impl Observatory {
     ) {
         self.ctx_menu = None;
         if !self.tree_writable() {
-            toast(ToastKind::Info, "Create files in a loop worktree", cx);
+            toast(ToastKind::Info, "Create files in a workflow worktree", cx);
             return;
         }
         let parent = parent.to_string();

@@ -267,7 +267,7 @@ impl Engine {
         };
         let mut mode = self.resolve_chat_mode(workspace_id, code, mode);
         if ws.is_pr_chat_host() && (mode == CHAT_MODE_AGENT || mode == CHAT_MODE_LOOP) {
-            return "Create a workspace from this pull request to edit files in Agent or Loop. Ask, Plan, and Review still work from the project checkout.".into();
+            return "Create a workspace from this pull request to edit files in Agent or Autopilot. Ask, Plan, and Review still work from the project checkout.".into();
         }
         if retry && mode == CHAT_MODE_LOOP {
             // Loop on a tab means "engage the autopilot", which Retry must
@@ -358,7 +358,7 @@ impl Engine {
         {
             // Only the tab driving the loop is locked; siblings share the
             // worktree as sibling Loop tabs already do.
-            return "A loop is running in this tab, so Agent-mode edits here wait until it pauses or settles. Other tabs keep working.".into();
+            return "A workflow is running in this tab, so Agent-mode edits here wait until it pauses or settles. Other tabs keep working.".into();
         }
         let set = self.settings();
         let (def_model, def_flags) = set.model_for_chat_mode(&mode);

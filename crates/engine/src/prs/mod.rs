@@ -6,6 +6,7 @@
 //! forge's `label()`, refspecs come from `head_ref`, and comment ids, merge
 //! plans and API calls stay inside the forge.
 
+pub mod auto;
 pub mod base_branch;
 pub mod forge_glue;
 pub mod from_pr;
@@ -90,6 +91,7 @@ pub(crate) struct PrState {
     pub comment_reactions: Mutex<HashMap<String, (Vec<recur_domain::PrReaction>, Instant)>>,
     pub branch_rules_inflight: Mutex<HashSet<String>>,
     pub timing: Mutex<PrTiming>,
+    pub auto: Mutex<auto::AutoState>,
 }
 
 /// Records last-activity time for a genuine mutation (review, comment,

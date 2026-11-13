@@ -126,6 +126,7 @@ pub fn seed_defaults(dest_dir: &str, src: &dyn SeedSource, root: &str) -> Result
     let entries = src
         .read_dir(root)
         .map_err(|e| err!("seed defaults: read {root}: {e}"))?;
+    let mut shipped = Vec::new();
     for (name, is_dir) in entries {
         if name == SEED_STAMP_NAME || name.starts_with('.') {
             continue;
@@ -133,8 +134,25 @@ pub fn seed_defaults(dest_dir: &str, src: &dyn SeedSource, root: &str) -> Result
         let src_path = path_join(root, &name);
         if is_dir {
             seed_bundle_dir(dest_dir, src, &src_path, &name)?;
+            shipped.push(name);
         } else {
             seed_root_file(dest_dir, src, &src_path, &name)?;
+        }
+    }
+    prune_unshipped(dest_dir, &shipped)
+}
+
+/// Removes previously seeded directories (those with a stamp) that are no
+/// longer shipped, so renamed or retired bundles don't linger beside their successor.
+fn prune_unshipped(dest_dir: &str, shipped: &[String]) -> Result<(), Error> {
+    let Ok(entries) = fs::read_dir(dest_dir) else {
+        return Ok(());
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let dir = path::join(&[dest_dir, &name]);
+        if !shipped.contains(&name) && fs::metadata(path::join(&[&dir, SEED_STAMP_NAME])).is_ok() {
+            remove_all(&dir).map_err(|e| err!("seed prune {name}: {e}"))?;
         }
     }
     Ok(())

@@ -18,24 +18,29 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - `copy_files` entries ending in `/`, such as `node_modules/` or `target/`, copy the whole directory, so new workspaces start with dependencies already installed. On macOS the files are APFS clones: fast, with no extra disk space until files change.
 - Find in the agent chat: press ⌘F (Ctrl+F on Linux) in the chat to search your messages and the agent's replies. Enter and Shift+Enter (or ⌘G and ⇧⌘G) step through matches, Escape closes.
 - `recur config get`, `set` and `list` read and change Recur's settings (model, effort, permissions and more) from the terminal, whether or not Recur is running, so scripts and benchmarks no longer need the Settings window. See [Settings from the terminal](/getting-started/install#settings-from-the-terminal).
+- `/address-review` fixes or answers a pull request's unresolved review comments, replies on each thread, and resolves the ones it fixed. Only comments from people with write access and review bots count.
+- **Automatic fixes** under **Settings → Pull requests**: Recur resolves merge conflicts, fixes failing checks and addresses new review comments on your PRs by itself, in each PR's workspace, while its chat is idle. Each can be turned off.
 
 ### Fixed
 
 - Recur no longer uses CPU while idle with a chat's message box focused: its blinking caret redraws only when it blinks, not 20 times a second.
+- **Resolve conflicts** on a GitHub pull request now pushes the resolved branch to the PR, the way **Fix checks** does, so GitHub sees the conflicts are gone. After a rebase the agent force-pushes with lease.
+- Clicking a sidebar workspace's remove button a second time no longer gets ignored when you click quickly. If removing would lose work, the button stays armed and shows what would be lost before you confirm again.
 - Agents, terminals and git no longer fail with "Too many open files" after Recur has been open a while with many workspaces.
 - Follow-ups sent to a Claude agent that is waiting on a long background task (a training run, a build) keep reaching it right away while you keep talking to it, instead of waiting for the task to finish once the agent had been waiting 10 minutes.
 - Dragging a text selection past the edge of a code block scrolls the block, so long lines and tall blocks can be selected in full.
+- A workspace linked to a GitHub issue no longer shows an empty box beside **View #…** in the header that squeezed the workspace title.
+- When a workflow asks you a question or stops on a usage limit or another temporary error, its notification and Inbox row open that workflow's chat (with several workflows in one workspace, each question gets its own row), and **Retry** on the error card resumes the workflow from where it stopped instead of re-sending your last message as a plain chat turn. If you switched the workflow's models to another provider in Settings first, the retried workflow starts fresh sessions on the new provider instead of failing to resume the old ones.
 - After a relaunch, the restored workspace's chat composer has focus, so you can start typing without clicking it first.
 - Recur no longer pauses for a moment right after launch when the restored chat shows tool calls with file icons.
 - Recur stays responsive while a very long agent turn (thousands of steps) streams into a chat and right after it ends. Before, the app slowed down as the turn grew and could freeze for seconds, delaying new tabs and sends in other chats.
-- Clicking a sidebar workspace's remove button a second time no longer gets ignored when you click quickly. If removing would lose work, the button stays armed and shows what would be lost before you confirm again.
-- When a loop asks you a question or stops on a usage limit or another temporary error, its notification and Inbox row open that loop's chat (with several loops in one workspace, each question gets its own row), and **Retry** on the error card resumes the loop from where it stopped instead of re-sending your last message as a plain chat turn. If you switched the loop's models to another provider in Settings first, the retried loop starts fresh sessions on the new provider instead of failing to resume the old ones.
 - `/re-review` on a Local PR, in the same tab as the earlier review, reviews only what changed since that pass.
 - Typing past the right edge of a text field (Settings, path fields and others) scrolls smoothly instead of showing doubled, jumping text, and pasting a long value scrolls to its end right away.
 - Files with spaces in their names can be dropped into chat as file mentions, including files outside the workspace such as Downloads.
 
 ### Changed
 
+- Loops are now called Workflows: the fifth chat mode is **Autopilot** and runs a workflow, and **Settings → Loops** is now **Settings → Workflows**. Bundle authors write `[[workflow]]` and `mode = "autopilot"`; existing bundles with `[[loop]]` and `mode = "loop"` keep working.
 - Agent mode chats can file findings, so a review asked for in Agent mode lands in the Findings panel.
 - Project dropdowns (new workspace, schedules, Inbox, Issues, Pull requests) show each project's icon next to its name.
 - Claude Code chats start answering sooner: Recur snapshots the worktree for the turn's diff while Claude Code starts up instead of before launching it.

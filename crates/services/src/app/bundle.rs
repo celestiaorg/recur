@@ -13,9 +13,7 @@ use recur_bundles::{
     PromptCompleteHit, PromptRunContext, RunContext, RunCtx, SearchAction, Snippet, Symbol,
     TerminalTheme, Theme,
 };
-use recur_domain::{
-    PrSource, SETTING_LINEAR_API_KEY, SETTING_LINEAR_TEAM_KEY, effective_update_base_method,
-};
+use recur_domain::{SETTING_LINEAR_API_KEY, SETTING_LINEAR_TEAM_KEY, effective_update_base_method};
 
 use super::rt::rt;
 use super::{AppServices, err};
@@ -433,28 +431,10 @@ impl AppServices {
             _ => "",
         }
         .into();
-        let pr = if ws.is_pr_chat_host() {
-            rc.pr_host = true;
+        if ws.is_pr_chat_host() {
             rc.surface = "github_pr".into();
-            self.store().pr(ws.host_pr_id.trim())
-        } else {
-            self.store()
-                .pr_by_workspace(workspace_id)
-                .filter(|p| p.state != "Merged" && p.group != "merged")
-        };
-        if let Some(pr) = pr {
-            rc.pr_source = pr.source.as_str().to_owned();
-            rc.pr_url = pr.url.clone();
-            rc.pr_title = pr.title.clone();
-            rc.pr_base = pr.base.trim().to_owned();
-            rc.pr_branch = pr.branch.trim().to_owned();
-            // Shebang fast-fail is GitHub only: a Local fallback (gh create
-            // failed) leaves /open-pr runnable so the agent can retry.
-            if pr.source == PrSource::GitHub {
-                rc.pr_id = pr.id.clone();
-            }
-            rc.pr_number = pr.number;
         }
+        self.engine.fill_prompt_pr(rc, &ws);
         if rc.surface.is_empty() {
             rc.surface = "workspace".into();
         }

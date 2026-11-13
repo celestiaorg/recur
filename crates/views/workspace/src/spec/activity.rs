@@ -804,7 +804,7 @@ async fn closes_the_loop_tab_like_other_chats(cx: &mut TestAppContext) {
 
     h.click("wsv-recents");
     assert!(h.has("wsv-recents-item:MA"));
-    assert_eq!(closed_title(&mut h, "MA"), "Loop");
+    assert_eq!(closed_title(&mut h, "MA"), "Workflow");
     h.click("wsv-recents-item:MA");
     assert!(h.chip("MA").is_some());
 }

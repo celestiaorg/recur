@@ -711,11 +711,11 @@ async fn a_settled_loop_tab_is_not_locked_by_a_sibling_loop() {
     let lock = fx
         .send_mode(&ws.id, &owner.code, "edit something", "", CHAT_MODE_AGENT)
         .await;
-    assert!(lock.contains("loop is running"), "{lock}");
+    assert!(lock.contains("workflow is running"), "{lock}");
     let free = fx
         .send_mode(&ws.id, "PA", "edit something", "", CHAT_MODE_AGENT)
         .await;
-    assert!(!free.contains("loop is running"), "{free}");
+    assert!(!free.contains("workflow is running"), "{free}");
     fx.te.close().await;
 }
 
@@ -769,7 +769,7 @@ async fn a_loop_mode_retry_neither_engages_nor_bypasses_the_run_lock() {
         "{reply}"
     );
     let lock = retry(&fx, ws.id.clone()).await;
-    assert!(lock.contains("loop is running"), "{lock}");
+    assert!(lock.contains("workflow is running"), "{lock}");
     release_loop_slots(&fx, slots);
     fx.te.close().await;
 }

@@ -123,7 +123,7 @@ impl Engine {
             }
             _ => {
                 return Err(EngineError::new(
-                    "choose Ask, Plan, Agent, Review, or Loop mode",
+                    "choose Ask, Plan, Agent, Review, or Autopilot mode",
                 ));
             }
         }
@@ -598,8 +598,11 @@ impl Engine {
         {
             return match ws.state {
                 WorkspaceState::Failed => pair("failed", &ws.last_error),
-                WorkspaceState::Stopped => pair("stopped", "Loop stopped."),
-                _ => pair("finished", "Open the workspace to inspect the loop result."),
+                WorkspaceState::Stopped => pair("stopped", "Workflow stopped."),
+                _ => pair(
+                    "finished",
+                    "Open the workspace to inspect the workflow result.",
+                ),
             };
         }
         if reply == CHAT_STOPPED_REPLY {

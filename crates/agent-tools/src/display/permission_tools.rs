@@ -34,7 +34,7 @@ fn recur_tool_label(name: &str) -> Option<&'static str> {
         "rerun_review" => "Re-run review",
         "dispatch_specialist" => "Dispatch specialist",
         "extend_iterations" => "Extend iterations",
-        "resume_loop" => "Resume loop",
+        "resume_loop" => "Resume workflow",
         "submit_plan" => "Submit plan",
         "update_plan_step" => "Update plan step",
         "list_skills" => "List skills",

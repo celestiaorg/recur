@@ -273,7 +273,7 @@ impl Engine {
             || (ws.has_run() && loop_owner_code(&ws) == code)
         {
             return Err(EngineError::new(
-                "reset is not available on a running loop's chat",
+                "reset is not available on a running workflow's chat",
             ));
         }
         let msgs = self

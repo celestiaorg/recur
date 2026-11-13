@@ -18,7 +18,7 @@ pub const CLI_LINK_NAME: &str = "recur";
 pub const LINUX_PACKAGED_DIR: &str = "/opt/recur";
 
 /// Short description shown by the desktop entry.
-pub const APP_DESCRIPTION: &str = "Run autonomous AI coding loops locally.";
+pub const APP_DESCRIPTION: &str = "Run autonomous AI coding workflows locally.";
 
 /// About panel copyright. Matches `NSHumanReadableCopyright` in `build/darwin/Info.plist`.
 pub const APP_COPYRIGHT: &str = "© 2026, recur.build";

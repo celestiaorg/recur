@@ -500,7 +500,7 @@ fn toolbar_chips(s: &mut super::shell::S) -> Vec<String> {
                 .iter()
                 .map(|p| (&*p.id, &*p.name))
                 .collect();
-            out.push(format!("sel:Loop={}", name(v.dock_loop_id(cx), loops)));
+            out.push(format!("sel:Workflow={}", name(v.dock_loop_id(cx), loops)));
             out.push(format!(
                 "sel:Policy={}",
                 name(v.dock_policy_id(cx), policies)

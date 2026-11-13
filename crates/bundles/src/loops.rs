@@ -279,15 +279,15 @@ pub(crate) fn parse_roles(
         if r.name.trim().is_empty() {
             return Err(err!("role {qid}: name is required"));
         }
-        r.mode = r.mode.trim().to_string();
+        r.mode = crate::manifest::normalize_mode(&r.mode);
         if r.mode.is_empty() {
             return Err(err!(
-                "role {qid}: mode is required (ask|plan|agent|review|loop)"
+                "role {qid}: mode is required (ask|plan|agent|review|autopilot)"
             ));
         }
         if !valid_role_mode(&r.mode) {
             return Err(err!(
-                "role {qid}: unknown mode {:?} (use ask|plan|agent|review|loop)",
+                "role {qid}: unknown mode {:?} (use ask|plan|agent|review|autopilot)",
                 r.mode
             ));
         }
@@ -383,32 +383,32 @@ pub(crate) fn parse_loops(
     for (i, mut lp) in raw.into_iter().enumerate() {
         lp.id = lp.id.trim().to_string();
         if lp.id.is_empty() {
-            return Err(err!("loop[{i}]: id is required"));
+            return Err(err!("workflow[{i}]: id is required"));
         }
         if !valid_bundle_id(&lp.id) {
-            return Err(err!("loop[{i}]: id is not a safe id"));
+            return Err(err!("workflow[{i}]: id is not a safe id"));
         }
         let qid = format!("{:?}", lp.id);
         if lp.name.trim().is_empty() {
-            return Err(err!("loop {qid}: name is required"));
+            return Err(err!("workflow {qid}: name is required"));
         }
-        normalize_loop_slots(&mut lp).map_err(|e| err!("loop {qid}: {e}"))?;
+        normalize_loop_slots(&mut lp).map_err(|e| err!("workflow {qid}: {e}"))?;
         let id = lp.id.clone();
         for (slot, val) in lp.prompts.iter_mut() {
             resolve_prompt_field(bundle_dir, &id, &format!("prompts.{slot}"), val)
-                .map_err(|e| err!("loop {qid}: {e}"))?;
+                .map_err(|e| err!("workflow {qid}: {e}"))?;
         }
         if lp.entry.trim().is_empty() {
-            return Err(err!("loop {qid}: entry is required"));
+            return Err(err!("workflow {qid}: entry is required"));
         }
         let mut seen_phase = HashSet::new();
         for (j, ph) in lp.phases.iter_mut().enumerate() {
-            normalize_phase(ph, bundle_dir).map_err(|e| err!("loop {qid} phase[{j}]: {e}"))?;
+            normalize_phase(ph, bundle_dir).map_err(|e| err!("workflow {qid} phase[{j}]: {e}"))?;
             if !seen_phase.insert(ph.id.clone()) {
-                return Err(err!("loop {qid}: duplicate phase id {:?}", ph.id));
+                return Err(err!("workflow {qid}: duplicate phase id {:?}", ph.id));
             }
         }
-        lint_loop_graph(&lp).map_err(|e| err!("loop {qid}: {e}"))?;
+        lint_loop_graph(&lp).map_err(|e| err!("workflow {qid}: {e}"))?;
         lp.bundle_name = meta.name.clone();
         lp.bundle_id = meta.id.clone();
         lp.bundle_dir = bundle_dir.to_string();

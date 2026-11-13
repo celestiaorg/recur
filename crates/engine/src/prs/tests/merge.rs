@@ -90,7 +90,7 @@ fn local_merge_commit_messages() {
     };
     let got = local_merge_commit_message(&empty, &MergeMethod::Squash, &sq, &mg);
     assert!(
-        got.starts_with("Loop changes") && !got.contains("mystery"),
+        got.starts_with("Workflow changes") && !got.contains("mystery"),
         "{got}"
     );
     let multi = Pr {

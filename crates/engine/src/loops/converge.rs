@@ -332,7 +332,7 @@ impl Walk {
         opts.push(opt(
             "Stop",
             "halt",
-            "Stop the loop; I'll leave the work as-is for you to inspect.",
+            "Stop the workflow; I'll leave the work as-is for you to inspect.",
         ));
         let question = if question.trim().is_empty() {
             format!(
@@ -345,7 +345,7 @@ impl Walk {
         let req = EscalationRequest {
             question,
             context: format!(
-                "The reviewer keeps finding issues on the current diff (loop {}). I won't open a PR with unresolved findings, and I won't spin forever: this decision is yours.",
+                "The reviewer keeps finding issues on the current diff (workflow {}). I won't open a PR with unresolved findings, and I won't spin forever: this decision is yours.",
                 self.id
             ),
             options: opts,

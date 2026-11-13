@@ -7,12 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json",
-    "build:demo": "pnpm --dir demo install --frozen-lockfile && pnpm --dir demo run build",
-    "predev": "pnpm run build:demo",
-    "prebuild": "pnpm run build:demo"
+    "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tsconfig/svelte": "^5.0.8",
     "svelte": "^5.46.4",

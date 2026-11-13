@@ -578,7 +578,7 @@ impl Walk {
             return;
         }
         self.set_state(WorkspaceState::Stopped, "stopped");
-        self.emit_feed("MA", "Maestro", "Loop stopped.");
+        self.emit_feed("MA", "Maestro", "Workflow stopped.");
     }
 
     /// Parks idle when composer Stop asked for it; otherwise Stop.
@@ -615,7 +615,7 @@ impl Walk {
         self.emit_feed(
             "MA",
             "Maestro",
-            &format!("Loop failed: {}", html_escape(&err.to_string())),
+            &format!("Workflow failed: {}", html_escape(&err.to_string())),
         );
     }
 }

@@ -262,8 +262,8 @@ fn collect_brief_reasons(inp: &BriefInputs) -> Vec<BriefReason> {
             out.push(BriefReason {
                 code: BRIEF_REASON_RETRYABLE_FAILURE,
                 rank: 3,
-                now: "The loop stopped at a checkpoint".into(),
-                next: "Continue in the loop chat".into(),
+                now: "The workflow stopped at a checkpoint".into(),
+                next: "Continue in the workflow chat".into(),
                 action: action("Open", loop_chat_target(ws), BRIEF_ACTION_OPEN),
             });
         } else {
@@ -275,7 +275,7 @@ fn collect_brief_reasons(inp: &BriefInputs) -> Vec<BriefReason> {
                 code: BRIEF_REASON_FAILURE,
                 rank: 4,
                 now: format!("Run failed: {}", truncate(reason, 120)),
-                next: "Open the loop chat".into(),
+                next: "Open the workflow chat".into(),
                 action: action("Open", loop_chat_target(ws), BRIEF_ACTION_OPEN),
             });
         }
@@ -365,7 +365,7 @@ fn collect_brief_reasons(inp: &BriefInputs) -> Vec<BriefReason> {
     } else if is_active_run(&ws.state) {
         let mut next = next_plan_step(ws.plan.as_ref());
         if next.is_empty() {
-            next = "Open the loop chat".into();
+            next = "Open the workflow chat".into();
         }
         out.push(BriefReason {
             code: BRIEF_REASON_ACTIVE_AGENT,

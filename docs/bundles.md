@@ -528,11 +528,11 @@ id = "recur.chat.fix-findings"
 name = "Fix Findings"
 description = "Fix or dispute open reviewer findings"
 slash = "fix-findings"          # default: kebab of name
-mode = "agent"                  # optional: ask|plan|agent|review|loop → find idle tab / create
+mode = "agent"                  # optional: ask|plan|agent|review|autopilot → find idle tab / create
 takesArgs = false              # optional: true → Discord-style labeled slots instead of invoking
 timeoutMs = 5000                # optional; default 5s, ceiling 30s
 # tab_group = "ops"           # optional: share a tab slot (nearest in group / create); requires mode
-# fresh_session = true        # optional: new provider session on the landed tab; not with mode=loop
+# fresh_session = true        # optional: new provider session on the landed tab; not with mode=autopilot
 interpreter = "typescript"      # or shebang
 script = "src/fix-findings.ts"
 ```
@@ -587,9 +587,10 @@ placeholder = "TEAM-123 or paste a Linear URL"
 optional host URI (`settings:integrations` opens Settings). Action-only hits
 need no `insert` (e.g. “Connect Linear…”).
 
-`mode = "loop"` plus `loop = "recur.loops.converge"` (or another `[[loop]]` id)
-routes like the other modes (idle tab already in Loop, else a new chat) and
+`mode = "autopilot"` plus `workflow = "recur.loops.converge"` (or another `[[workflow]]` id)
+routes like the other modes (idle tab already in Autopilot, else a new chat) and
 sends a canned engage: `/review-and-fix` from Agent does not need a typed goal.
+The older `mode = "loop"` / `loop =` spelling still works.
 
 TypeScript / shebang export `(ctx: PromptContext) => PromptResult` with
 `{ prompt, display? }`. `PromptContext` includes workspace vars (`workspaceId`,
@@ -650,7 +651,8 @@ Shipped flagships live in `bundles/Chat`: `/fix-findings` (`mode=agent`,
 `tab_group = "ops"`, `fresh_session`; invoke from the review chat and it
 jumps to the ops tab),
 `/commit` + `/commit-push` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; message from the
-diff), `/fix-checks` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; GitHub failing checks), `/fix-problem`
+diff), `/fix-checks` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; GitHub failing checks), `/address-review`
+(`mode=agent`, `tab_group = "ops"`, `fresh_session`, optional `reviewer` arg; unresolved trusted review feedback on the GitHub PR; an empty prompt when nothing needs a response, which keeps automatic runs silent), `/fix-problem`
 (`mode=agent`, `tab_group = "ops"`, `fresh_session`; one LSP diagnostic, sent by the Problems panel's AI button; `complete` lists the workspace's current diagnostics from `ctx.diagnostics`), `/fix-merge` (`mode=agent`, `tab_group = "ops"`, `fresh_session`; sent with the error when the titlebar Merge fails, so the agent clears the blocker and the human retries), `/open-pr` + `/open-draft-pr`
 (`mode=agent`, `tab_group = "ops"`, `fresh_session`, shebang: same `open-pr.sh`; `/open-draft-pr` sets
 `RECUR_PR_DRAFT=1` so the agent calls `mcp__recur__open_pr` with `draft: true`.

@@ -273,7 +273,7 @@ impl Engine {
     ) -> String {
         let code = agent_code.trim();
         if code.is_empty() || code == MAESTRO_AGENT_CODE || !code.starts_with("PA") {
-            return "switch_mode is only available on interactive pair chats (not Maestro or loop specialists).".into();
+            return "switch_mode is only available on interactive pair chats (not Maestro or workflow specialists).".into();
         }
         let to = normalize_chat_mode(mode);
         if !matches!(

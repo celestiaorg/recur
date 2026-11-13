@@ -99,7 +99,11 @@ async fn loop_mode_engages_run_on_workspace() {
     t.engine.ensure_pair_agent(&ws, "PA", "");
 
     let reply = send(&t, &ws, "PA", "ship dark mode", "").await;
-    for bad in ["Follow along", "already has a loop", "I couldn't engage"] {
+    for bad in [
+        "Follow along",
+        "already has a workflow",
+        "I couldn't engage",
+    ] {
         assert!(!reply.contains(bad), "{reply}");
     }
     let got = t.store.workspace(&ws).unwrap();
@@ -143,7 +147,7 @@ async fn second_loop_chat_starts_fresh_walk_from_entry() {
         .await;
     let reply = send(&t, &ws, "PA2", "fix the open findings", "").await;
     assert!(
-        !reply.contains("already has a loop") && !reply.contains("I couldn't engage"),
+        !reply.contains("already has a workflow") && !reply.contains("I couldn't engage"),
         "{reply}"
     );
     wait_for(
@@ -291,7 +295,7 @@ async fn loop_engage_skips_conductor_turn() {
     assert!(
         specs[0]
             .system_prompt
-            .contains("do not do the loop's phase work yourself"),
+            .contains("do not do the workflow's phase work yourself"),
         "{}",
         specs[0].system_prompt
     );

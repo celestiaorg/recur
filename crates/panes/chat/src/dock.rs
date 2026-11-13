@@ -863,7 +863,7 @@ impl AgentChat {
                                 false,
                                 &t,
                             ));
-                            kids.push(Self::badge(if lp { "Loop" } else { "Prompt" }, &t));
+                            kids.push(Self::badge(if lp { "Workflow" } else { "Prompt" }, &t));
                             let s = slash.clone();
                             self.menu_row(i, i == self.mention_sel, busy, kids, cx)
                                 .when(!busy, |d| {

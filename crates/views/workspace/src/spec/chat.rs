@@ -655,7 +655,7 @@ async fn slash_review_and_fix_opens_a_loop_tab_instead_of_converting_the_agent_c
     h.focus_composer();
     h.type_text("/review-and-fix");
     assert!(h.has("mention:/review-and-fix"));
-    assert!(h.has("badge:Loop"));
+    assert!(h.has("badge:Workflow"));
     h.keys("enter");
     assert!(h.me("Review & fix"));
     assert_eq!(texts(&sent).len(), 1);

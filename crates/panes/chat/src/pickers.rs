@@ -455,7 +455,7 @@ impl LoopPolicyPickers {
                 s.menu_variant(recur_ui::logic::menu_space::MenuVariant::Compact)
             })
         };
-        let loop_select = mk("Loop", false, window, cx);
+        let loop_select = mk("Workflow", false, window, cx);
         let policy_select = mk("Policy", true, window, cx);
         let subs = vec![
             cx.guarded_subscribe(&loop_select, |_, _, ev: &SelectEvent, cx| {
@@ -587,7 +587,7 @@ impl LoopPolicyPickers {
                 };
                 let intro: Vec<Span> = vec![
                     b("Policy"),
-                    span(" is how hard this loop pushes before it asks you."),
+                    span(" is how hard this workflow pushes before it asks you."),
                 ];
                 let gap = |h: f32| div().flex_none().h(px(h));
                 let pop = recur_ui::style::popover(cx)

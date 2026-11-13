@@ -166,8 +166,8 @@ impl MainOverlay {
                 );
         } else if ws.phase == "waiting for a slot" {
             root = root.child(spinner(self.started, window, cx)).child(copy(
-                "Waiting for a loop slot…",
-                "Every loop slot is busy; this starts when one frees.".into(),
+                "Waiting for a workflow slot…",
+                "Every workflow slot is busy; this starts when one frees.".into(),
             ));
         } else {
             root = root.child(spinner(self.started, window, cx)).child(copy(

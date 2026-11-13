@@ -98,6 +98,26 @@ placeholder = "all or a failing check"
 optional = true
 
 [[prompt]]
+id = "recur.chat.address-review"
+name = "Address review"
+description = "Fix or answer unresolved review comments on this pull request"
+slash = "address-review"
+mode = "agent"
+takesArgs = true
+argPlaceholder = "all or a reviewer"
+timeoutMs = 20000
+tab_group = "ops"
+fresh_session = true
+interpreter = "shebang"
+script = "src/address-review.sh"
+icon = "icon-github.svg"
+
+[[prompt.arg]]
+name = "reviewer"
+placeholder = "all or a reviewer"
+optional = true
+
+[[prompt]]
 id = "recur.chat.open-draft-pr"
 name = "Open draft PR"
 description = "Open a GitHub draft pull request with an agent-written description"
@@ -173,8 +193,8 @@ id = "recur.chat.review-and-fix"
 name = "Review & fix"
 description = "Review the current worktree and fix until the bar passes"
 slash = "review-and-fix"
-mode = "loop"
-loop = "recur.loops.converge"
+mode = "autopilot"
+workflow = "recur.loops.converge"
 interpreter = "shebang"
 body = '''
 #!/bin/sh
@@ -186,8 +206,8 @@ id = "recur.chat.review-to-pr"
 name = "Review & fix to a PR"
 description = "Review and fix the current diff, then open a PR"
 slash = "review-to-pr"
-mode = "loop"
-loop = "recur.loops.converge-pr"
+mode = "autopilot"
+workflow = "recur.loops.converge-pr"
 interpreter = "shebang"
 body = '''
 #!/bin/sh
@@ -199,8 +219,8 @@ id = "recur.chat.to-a-pr"
 name = "To a PR"
 description = "Plan, implement, review, and open a pull request"
 slash = "to-a-pr"
-mode = "loop"
-loop = "recur.loops.pr"
+mode = "autopilot"
+workflow = "recur.loops.pr"
 interpreter = "shebang"
 body = '''
 #!/bin/sh
@@ -212,8 +232,8 @@ id = "recur.chat.write-docs"
 name = "Write docs"
 description = "Plan, write, and edit documentation: no PR"
 slash = "write-docs"
-mode = "loop"
-loop = "recur.loops.docs"
+mode = "autopilot"
+workflow = "recur.loops.docs"
 interpreter = "shebang"
 body = '''
 #!/bin/sh
@@ -225,8 +245,8 @@ id = "recur.chat.security-review"
 name = "Security review & fix"
 description = "Review and fix auth, secrets, and permissions until the bar passes"
 slash = "security-review"
-mode = "loop"
-loop = "recur.loops.security"
+mode = "autopilot"
+workflow = "recur.loops.security"
 interpreter = "shebang"
 body = '''
 #!/bin/sh

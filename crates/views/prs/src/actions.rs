@@ -1294,7 +1294,9 @@ impl PrTitlebarActions {
                 IconName::Undo,
                 0.,
                 label,
-                Some("Talk to the loop conductor with this PR's comments and line notes".into()),
+                Some(
+                    "Talk to the workflow conductor with this PR's comments and line notes".into(),
+                ),
                 Some(|a, cx| a.send_back(cx)),
                 cx,
             ));

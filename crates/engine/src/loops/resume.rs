@@ -124,7 +124,7 @@ impl Engine {
             "MA",
             "Maestro",
             &format!(
-                "Loop stopped on a transient error. Retry when it clears: {}",
+                "Workflow stopped on a transient error. Retry when it clears: {}",
                 html_escape(reason)
             ),
         );
@@ -156,7 +156,7 @@ impl Engine {
         });
         self.publish_inbox_updated();
         self.publish_notify(
-            "A loop stopped: retry available",
+            "A workflow stopped: retry available",
             &truncate(reason, 120),
             &target,
         );
@@ -167,25 +167,25 @@ impl Engine {
     /// plan. Anything else is refused with the reason named.
     pub async fn restart(&self, id: &str) -> String {
         if self.running_loop_by_id(id).is_some() {
-            return "Refused: the loop is already running.".into();
+            return "Refused: the workflow is already running.".into();
         }
         let Some(rec) = self.store.workspace(id) else {
             return "Refused: that workspace no longer exists.".into();
         };
         if !rec.has_run() {
-            return "Refused: this workspace has no loop to restart; engage Loop mode in the chat first.".into();
+            return "Refused: this workspace has no workflow to restart; switch the chat to Autopilot first.".into();
         }
         match rec.state {
             WorkspaceState::Stopped | WorkspaceState::Failed => {}
             WorkspaceState::PrOpen => {
-                return "Refused: the loop settled with an open PR; Send Back on the PR (talks to Maestro), or reenter_phase.".into();
+                return "Refused: the workflow settled with an open PR; Send Back on the PR (talks to Maestro), or reenter_phase.".into();
             }
             WorkspaceState::Merged => {
-                return "Refused: this loop's PR is merged; start new work instead.".into();
+                return "Refused: this workflow's PR is merged; start new work instead.".into();
             }
             other => {
                 return format!(
-                    "Refused: the loop is {}; Resume covers that state.",
+                    "Refused: the workflow is {}; Resume covers that state.",
                     other.as_str()
                 );
             }
@@ -197,13 +197,13 @@ impl Engine {
     /// reenter_phase / run_phase are legal at idle.
     pub fn idle_walk_refuse(&self, id: &str) -> String {
         if self.running_loop_by_id(id).is_some() {
-            return "Refused: the loop is already running.".into();
+            return "Refused: the workflow is already running.".into();
         }
         let Some(rec) = self.store.workspace(id) else {
             return "Refused: that workspace no longer exists.".into();
         };
         if !rec.has_run() {
-            return "Refused: this workspace has no loop to restart; engage Loop mode in the chat first.".into();
+            return "Refused: this workspace has no workflow to restart; switch the chat to Autopilot first.".into();
         }
         match rec.state {
             WorkspaceState::Stopped
@@ -211,10 +211,10 @@ impl Engine {
             | WorkspaceState::Paused
             | WorkspaceState::PrOpen => String::new(),
             WorkspaceState::Merged => {
-                "Refused: this loop's PR is merged; start new work instead.".into()
+                "Refused: this workflow's PR is merged; start new work instead.".into()
             }
             other => format!(
-                "Refused: the loop is {}; wait until it settles.",
+                "Refused: the workflow is {}; wait until it settles.",
                 other.as_str()
             ),
         }
@@ -249,11 +249,11 @@ impl Engine {
             id,
             "MA",
             "Maestro",
-            "Restarting the loop over the current worktree.",
+            "Restarting the workflow over the current worktree.",
         );
         self.resume_not_running_locked(held, id, "").await;
         self.publish_inbox_updated();
-        "Loop restarting: it continues from the current worktree, steered by the recorded plan."
+        "Workflow restarting: it continues from the current worktree, steered by the recorded plan."
             .into()
     }
 

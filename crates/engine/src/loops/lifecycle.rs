@@ -117,7 +117,7 @@ impl Engine {
             FeedItem {
                 agent_code: "MA".into(),
                 name: "Maestro".into(),
-                text: format!("Loop failed (internal error): {}", html_escape(msg)),
+                text: format!("Workflow failed (internal error): {}", html_escape(msg)),
                 chat_code: h.chat_code(),
                 ..FeedItem::default()
             },
@@ -402,7 +402,7 @@ impl Engine {
     ) -> Result<bool> {
         let goal = goal.trim();
         if goal.is_empty() {
-            return Err("the loop needs a goal: describe the task".into());
+            return Err("the workflow needs a goal: describe the task".into());
         }
         let Some(rec) = self.store.workspace(workspace_id) else {
             return Err(EngineError(format!(
@@ -419,7 +419,9 @@ impl Engine {
             return Err("create a workspace from this pull request to run the autopilot".into());
         }
         if rec.has_run() {
-            return Err("this workspace already has a loop: resume or restart it instead".into());
+            return Err(
+                "this workspace already has a workflow: resume or restart it instead".into(),
+            );
         }
         if rec.phase == "failed" || rec.status_label == "Couldn't create" {
             return Err("this workspace never finished creating: discard it and try again".into());
@@ -774,7 +776,7 @@ impl Engine {
             return self.dispatch_idle_walk(&rec.id).await;
         }
         if !self.gov.try_acquire_loop() {
-            return "Refused: every loop slot is busy.".into();
+            return "Refused: every workflow slot is busy.".into();
         }
         let id = rec.id.clone();
         if let Err(e) = self.dispatch_additional_chat_run(rec).await {
@@ -786,9 +788,9 @@ impl Engine {
             &id,
             "MA",
             "Maestro",
-            "Restarting the loop over the current worktree.",
+            "Restarting the workflow over the current worktree.",
         );
-        "Loop restarting: it continues from the current worktree, steered by the recorded plan."
+        "Workflow restarting: it continues from the current worktree, steered by the recorded plan."
             .into()
     }
 

@@ -7775,7 +7775,7 @@ checksum = "03251193000f4bd3b042892be858ee50e8b3719f2b08e5833ac4353724632430"
 
 [[package]]
 name = "recur-agent"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "recur-domain",
@@ -7790,7 +7790,7 @@ dependencies = [
 
 [[package]]
 name = "recur-agent-tools"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "nix 0.31.3",
@@ -7808,7 +7808,7 @@ dependencies = [
 
 [[package]]
 name = "recur-app"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -7831,7 +7831,7 @@ dependencies = [
 
 [[package]]
 name = "recur-base"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "chrono",
  "flate2",
@@ -7839,7 +7839,7 @@ dependencies = [
 
 [[package]]
 name = "recur-bundles"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "futures",
  "getrandom 0.4.3",
@@ -7864,7 +7864,7 @@ dependencies = [
 
 [[package]]
 name = "recur-cli"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "clap",
  "clap_complete",
@@ -7883,7 +7883,7 @@ dependencies = [
 
 [[package]]
 name = "recur-code"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "flate2",
@@ -7913,7 +7913,7 @@ dependencies = [
 
 [[package]]
 name = "recur-content"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "ammonia",
  "base64 0.23.1",
@@ -7967,7 +7967,7 @@ dependencies = [
 
 [[package]]
 name = "recur-desktop"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -8017,7 +8017,7 @@ dependencies = [
 
 [[package]]
 name = "recur-domain"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "chrono",
  "getrandom 0.4.3",
@@ -8030,7 +8030,7 @@ dependencies = [
 
 [[package]]
 name = "recur-editor"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "chrono",
  "comrak",
@@ -8052,7 +8052,7 @@ dependencies = [
 
 [[package]]
 name = "recur-engine"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -8094,14 +8094,14 @@ dependencies = [
 
 [[package]]
 name = "recur-exec"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "tempfile",
 ]
 
 [[package]]
 name = "recur-forge"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -8123,7 +8123,7 @@ dependencies = [
 
 [[package]]
 name = "recur-git"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "chrono",
  "nix 0.31.3",
@@ -8136,7 +8136,7 @@ dependencies = [
 
 [[package]]
 name = "recur-http"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "reqwest",
  "tokio",
@@ -8145,7 +8145,7 @@ dependencies = [
 
 [[package]]
 name = "recur-issues"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -8165,14 +8165,14 @@ dependencies = [
 
 [[package]]
 name = "recur-layering"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "toml 1.1.8+spec-1.1.0",
 ]
 
 [[package]]
 name = "recur-lsp"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "flate2",
  "nix 0.31.3",
@@ -8194,7 +8194,7 @@ dependencies = [
 
 [[package]]
 name = "recur-mcp"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "bytes",
@@ -8214,7 +8214,7 @@ dependencies = [
 
 [[package]]
 name = "recur-platform"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "block2 0.6.2",
@@ -8249,7 +8249,7 @@ dependencies = [
 
 [[package]]
 name = "recur-project"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "nix 0.31.3",
  "recur-domain",
@@ -8268,7 +8268,7 @@ dependencies = [
 
 [[package]]
 name = "recur-provider-chatgpt"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "aws-lc-rs",
@@ -8291,7 +8291,7 @@ dependencies = [
 
 [[package]]
 name = "recur-provider-claude"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "libc",
@@ -8310,7 +8310,7 @@ dependencies = [
 
 [[package]]
 name = "recur-provider-codex"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "parking_lot",
@@ -8331,7 +8331,7 @@ dependencies = [
 
 [[package]]
 name = "recur-provider-compatible"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -8353,7 +8353,7 @@ dependencies = [
 
 [[package]]
 name = "recur-provider-cursor"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -8377,7 +8377,7 @@ dependencies = [
 
 [[package]]
 name = "recur-services"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -8421,7 +8421,7 @@ dependencies = [
 
 [[package]]
 name = "recur-store"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -8441,7 +8441,7 @@ dependencies = [
 
 [[package]]
 name = "recur-term"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "alacritty_terminal",
  "chrono",
@@ -8460,7 +8460,7 @@ dependencies = [
 
 [[package]]
 name = "recur-terminal-view"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "futures",
  "gpui-kit",
@@ -8475,7 +8475,7 @@ dependencies = [
 
 [[package]]
 name = "recur-textmate"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "gpui-pre-sum-tree",
  "onig",
@@ -8486,7 +8486,7 @@ dependencies = [
 
 [[package]]
 name = "recur-ui"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "block2 0.6.2",
@@ -8515,7 +8515,7 @@ dependencies = [
 
 [[package]]
 name = "recur-usage"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -8540,7 +8540,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-briefing"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "chrono",
  "gpui-kit",
@@ -8559,7 +8559,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-chat"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -8587,7 +8587,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-core"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "chrono",
  "futures",
@@ -8614,7 +8614,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-home"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "core-graphics 0.24.0",
  "futures",
@@ -8642,7 +8642,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-observatory"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -8672,7 +8672,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-palettes"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "futures",
@@ -8700,7 +8700,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-projects"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -8734,7 +8734,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-prs"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -8762,7 +8762,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-review"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "gpui-kit",
  "gpui-pre",
@@ -8786,7 +8786,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-settings"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "gpui-kit",
  "gpui-pre",
@@ -8812,7 +8812,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-sidebar"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "gpui-kit",
  "recur-domain",
@@ -8823,7 +8823,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-widgets"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "chrono",
  "gpui-kit",
@@ -8841,7 +8841,7 @@ dependencies = [
 
 [[package]]
 name = "recur-view-workspace"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",

@@ -23,12 +23,14 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - Agents, terminals and git no longer fail with "Too many open files" after Recur has been open a while with many workspaces.
 - Follow-ups sent to a Claude agent that is waiting on a long background task (a training run, a build) keep reaching it right away while you keep talking to it, instead of waiting for the task to finish once the agent had been waiting 10 minutes.
 - Dragging a text selection past the edge of a code block scrolls the block, so long lines and tall blocks can be selected in full.
+- `/re-review` on a Local PR, in the same tab as the earlier review, reviews only what changed since that pass.
 - Typing past the right edge of a text field (Settings, path fields and others) scrolls smoothly instead of showing doubled, jumping text, and pasting a long value scrolls to its end right away.
 
 ### Changed
 
 - Agent mode chats can file findings, so a review asked for in Agent mode lands in the Findings panel.
 - Project dropdowns (new workspace, schedules, Inbox, Issues, Pull requests) show each project's icon next to its name.
+- Reviewers no longer re-raise findings you ignored or marked invalid, and a re-review resolves open findings it verifies are fixed. Add a `## Reviews` section to a repository's `AGENTS.md` to tell reviewers what not to flag.
 - Cursor agents run on Cursor SDK 1.3.1 (was 1.0.38). Existing installs show an **Update** button in Settings > Providers > Cursor.
 
 ### Security

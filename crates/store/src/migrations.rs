@@ -7,12 +7,12 @@
 
 use std::collections::BTreeSet;
 
-use include_dir::{Dir, include_dir};
+use recur_base::embed::Dir;
 use rusqlite::Connection;
 
 use crate::error::{Error, Result, SqlContext as _};
 
-static MIGRATION_FILES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/migrations");
+static MIGRATION_FILES: Dir = include!(concat!(env!("OUT_DIR"), "/migrations.rs"));
 
 /// One parsed migration file.
 #[derive(Debug, Clone)]
@@ -26,22 +26,15 @@ pub(crate) struct Migration {
 /// programming error (the files are ours), so it fails loudly rather than
 /// silently skipping a schema change.
 pub(crate) fn load_migrations() -> Result<Vec<Migration>> {
-    let mut files: Vec<_> = MIGRATION_FILES.files().collect();
-    files.sort_by_key(|f| f.path().to_path_buf());
     let mut out = Vec::new();
-    for f in files {
-        let file = f
-            .path()
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
+    for f in MIGRATION_FILES.files() {
+        let file = f.path;
         if !file.ends_with(".sql") {
             continue;
         }
-        let (version, name) = parse_migration_name(&file)?;
-        let stmts = f
-            .contents_utf8()
-            .ok_or_else(|| Error::msg(format!("read migration {file}: not UTF-8")))?;
+        let (version, name) = parse_migration_name(file)?;
+        let stmts = std::str::from_utf8(f.contents)
+            .map_err(|_| Error::msg(format!("read migration {file}: not UTF-8")))?;
         out.push(Migration {
             version,
             name,

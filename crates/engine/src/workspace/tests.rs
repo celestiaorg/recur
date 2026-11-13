@@ -8,7 +8,6 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-use pretty_assertions::assert_eq;
 use recur_domain::{
     Group, Pr, PrSource, Project, Session, WORKSPACE_SOLO, Workspace, WorkspaceState,
 };
@@ -767,7 +766,7 @@ async fn retry_workspace_setup_rejections() {
             .await
             .unwrap_err()
             .0,
-        "retry setup only applies to a workspace that never started a loop"
+        "retry setup only applies to a workspace that never started a workflow"
     );
     assert_eq!(
         t.engine

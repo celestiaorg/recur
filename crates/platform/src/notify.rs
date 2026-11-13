@@ -53,15 +53,8 @@ pub struct NotificationResponse {
     pub id: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub action_identifier: String,
-    #[serde(
-        rename = "categoryIdentifier",
-        skip_serializing_if = "String::is_empty"
-    )]
-    pub category_id: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub title: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub subtitle: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub body: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -305,9 +298,7 @@ mod imp {
         Ok(NotificationResponse {
             id: request.identifier().to_string(),
             action_identifier: action,
-            category_id: content.categoryIdentifier().to_string(),
             title: content.title().to_string(),
-            subtitle: content.subtitle().to_string(),
             body: content.body().to_string(),
             user_text: response
                 .downcast_ref::<UNTextInputNotificationResponse>()
@@ -545,12 +536,11 @@ mod tests {
     #[test]
     fn response_wire_format_and_target() {
         let res: NotificationResponse = serde_json::from_str(
-            r#"{"id":"recur-1","actionIdentifier":"DEFAULT_ACTION","categoryIdentifier":"c",
+            r#"{"id":"recur-1","actionIdentifier":"DEFAULT_ACTION",
                 "title":"T","userInfo":{"target":"inbox:42"}}"#,
         )
         .expect("parse");
         assert_eq!(res.target(), "inbox:42");
-        assert_eq!(res.category_id, "c");
         assert_eq!(NotificationResponse::default().target(), "");
         assert_eq!(
             serde_json::to_string(&NotificationResponse {

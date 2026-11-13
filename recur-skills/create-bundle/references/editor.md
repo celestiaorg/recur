@@ -1,7 +1,7 @@
 # Editor packs: shared rules
 
 Read this first for any editor / chat item. Then open the kind file for
-fields. Loops: [loops.md](loops.md).
+fields. Workflows: [workflows.md](workflows.md).
 
 | Kind | File |
 |------|------|
@@ -36,7 +36,7 @@ recur bundles create MyPack
 ```
 
 Writes `~/.recur/bundles/MyPack` (or `--dir`) with a TypeScript command, a
-shebang command, and tests. Then edit. Do **not** use this as a loop start.
+shebang command, and tests. Then edit. Do **not** use this as a workflow start.
 
 When this worktree is Recur, copy `bundles/Text`, `bundles/Go`, `bundles/Chat`.
 Elsewhere, copy a pack under `~/.recur/bundles` or start from the scaffold.

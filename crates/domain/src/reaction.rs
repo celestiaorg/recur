@@ -125,7 +125,6 @@ pub fn reactions_equal(a: &[PrReaction], b: &[PrReaction]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
 
     fn r(content: &str, count: i64, mine: bool) -> PrReaction {
         PrReaction {

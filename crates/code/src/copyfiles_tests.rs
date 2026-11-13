@@ -263,3 +263,122 @@ fn preview_truncates_long_lists() {
     assert!(prev.truncated);
     assert_eq!(prev.files.unwrap().len(), MAX_PREVIEW_FILES);
 }
+
+/// `node_modules/` with three files (one executable), a nested dir and a
+/// relative symlink.
+fn node_modules(root: &Path) {
+    use std::os::unix::fs::PermissionsExt as _;
+    write(root, "node_modules/a/index.js", "a\n");
+    write(root, "node_modules/b/index.js", "b\n");
+    write(root, "node_modules/.bin/tool", "#!/bin/sh\n");
+    let tool = root.join("node_modules/.bin/tool");
+    fs::set_permissions(&tool, fs::Permissions::from_mode(0o755)).unwrap();
+    std::os::unix::fs::symlink("../a", root.join("node_modules/b/link")).unwrap();
+}
+
+fn assert_node_modules(src: &Path, dest: &Path) {
+    use std::os::unix::fs::PermissionsExt as _;
+    for rel in [
+        "node_modules/a/index.js",
+        "node_modules/b/index.js",
+        "node_modules/.bin/tool",
+    ] {
+        assert_eq!(
+            fs::read(dest.join(rel)).unwrap(),
+            fs::read(src.join(rel)).unwrap(),
+            "{rel}"
+        );
+    }
+    let mode = fs::metadata(dest.join("node_modules/.bin/tool"))
+        .unwrap()
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o755);
+    assert_eq!(
+        fs::read_link(dest.join("node_modules/b/link")).unwrap(),
+        Path::new("../a"),
+        "symlinks are copied as symlinks"
+    );
+}
+
+#[test]
+fn copy_dir_pattern_copies_whole_tree_past_cap() {
+    let (src, dest) = (tmp(), tmp());
+    node_modules(src.path());
+    let n = copy_capped(
+        &never(),
+        None,
+        s(src.path()),
+        s(dest.path()),
+        "node_modules/",
+        2,
+    )
+    .unwrap();
+    assert_eq!(n, 1, "the directory is one entry");
+    assert_node_modules(src.path(), dest.path());
+}
+
+#[test]
+fn copy_dir_pattern_merges_into_existing_dest() {
+    let (src, dest) = (tmp(), tmp());
+    node_modules(src.path());
+    write(dest.path(), "node_modules/a/index.js", "kept\n");
+    copy(
+        &never(),
+        None,
+        s(src.path()),
+        s(dest.path()),
+        "node_modules/",
+    )
+    .unwrap();
+    assert_eq!(
+        fs::read_to_string(dest.path().join("node_modules/a/index.js")).unwrap(),
+        "kept\n"
+    );
+    assert_eq!(
+        fs::read_to_string(dest.path().join("node_modules/b/index.js")).unwrap(),
+        "b\n"
+    );
+}
+
+#[test]
+fn copy_tree_merges_and_stops_on_cancel() {
+    let (src, dest) = (tmp(), tmp());
+    node_modules(src.path());
+    let ctx = Ctx {
+        cancel: &never(),
+        deadline: None,
+    };
+    let to = dest.path().join("node_modules");
+    copy_tree(&ctx, s(&src.path().join("node_modules")), s(&to)).unwrap();
+    assert_node_modules(src.path(), dest.path());
+
+    let cancel = CancellationToken::new();
+    cancel.cancel();
+    let ctx = Ctx {
+        cancel: &cancel,
+        deadline: None,
+    };
+    assert!(matches!(
+        copy_tree(&ctx, s(src.path()), s(tmp().path())),
+        Err(Error::Canceled)
+    ));
+}
+
+#[test]
+fn preview_lists_dir_once_at_any_depth() {
+    let src = tmp();
+    node_modules(src.path());
+    write(src.path(), "apps/web/node_modules/x/index.js", "x\n");
+    write(src.path(), ".env", "A=1\n");
+    let prev = preview(&never(), None, s(src.path()), "node_modules/\n.env\n");
+    assert_eq!(prev.error, "");
+    assert_eq!(
+        prev.files.unwrap(),
+        [".env", "apps/web/node_modules/", "node_modules/"]
+    );
+    assert_eq!(prev.count, 3);
+
+    let anchored = preview(&never(), None, s(src.path()), "apps/*/node_modules/\n");
+    assert_eq!(anchored.files.unwrap(), ["apps/web/node_modules/"]);
+}

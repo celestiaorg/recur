@@ -44,8 +44,9 @@ use regex::Regex;
 use serde_json::Value;
 
 use recur_engine::view::subagent::{
-    SubagentArgs, is_send_message_tool, is_subagent_launch_ack, is_subagent_tool,
-    parse_send_message_args, parse_subagent_args, send_message_label, send_message_meta,
+    ListAgentsView, SubagentArgs, is_send_message_tool, is_subagent_launch_ack, is_subagent_tool,
+    parse_list_agents, parse_send_message_args, parse_subagent_args, send_message_label,
+    send_message_meta,
 };
 use recur_view_widgets::findings_ui::{
     ListedFinding, ListedFindings, finding_loc_suffix, finding_matches_ref, listed_from_store,
@@ -782,6 +783,13 @@ impl<'a> ToolView<'a> {
         resolve_list_findings(&self.m.result, self.m.result_error, self.cx.findings)
     }
 
+    pub fn list_agents_result(&self) -> Option<ListAgentsView> {
+        if self.m.result_pending || self.m.result_error {
+            return None;
+        }
+        parse_list_agents(&self.m.result)
+    }
+
     pub fn list_artifacts_result(&self) -> Option<ListedArtifacts> {
         resolve_list_artifacts(&self.m.result, self.m.result_error)
     }
@@ -1421,8 +1429,8 @@ impl<'a> ToolView<'a> {
             "CreatePlan" | "createPlan" => StepIcon::Plan,
             "Grep" | "Glob" | "LSP" | "readLints" | "ReadLints" => StepIcon::Search,
             "WebFetch" | "WebSearch" => StepIcon::Globe,
-            "Task" | "task" | "Agent" | "SendMessage" | "TaskCreate" | "TaskUpdate" | "TaskGet"
-            | "TaskList" => StepIcon::Bot,
+            "Task" | "task" | "Agent" | "SendMessage" | "ListAgents" | "TaskCreate"
+            | "TaskUpdate" | "TaskGet" | "TaskList" => StepIcon::Bot,
             "ToolSearch" => StepIcon::Tools,
             _ => StepIcon::Plug,
         }
@@ -1470,6 +1478,7 @@ impl<'a> ToolView<'a> {
             "TaskGet" => return "Reading task…".into(),
             "TaskList" => return "Listing tasks…".into(),
             "SendMessage" => return "Sending message…".into(),
+            "ListAgents" => return "Listing agents…".into(),
             "Task" | "task" | "Agent" => {
                 let bg = self.task_background();
                 return match self.subagent().subagent_type.to_lowercase().as_str() {
@@ -1675,6 +1684,7 @@ impl<'a> ToolView<'a> {
                 .into();
             }
             "NotebookEdit" => return "Edited notebook".into(),
+            "ListAgents" => return "Listed agents".into(),
             "ToolSearch" => {
                 return if SELECT_PREFIX.is_match(&self.tool_search_query()) {
                     "Selected tools"
@@ -2040,6 +2050,14 @@ impl<'a> ToolView<'a> {
                 n => format!("{n} files"),
             };
         }
+        if self.tool() == "ListAgents" {
+            return match self.list_agents_result().map(|v| v.agent_count()) {
+                Some(0) => "none".into(),
+                Some(1) => "1 agent".into(),
+                Some(n) => format!("{n} agents"),
+                None => String::new(),
+            };
+        }
         if self.tool() == "ToolSearch" {
             if let Some(sel) = self.tool_search_selects().filter(|s| !s.is_empty()) {
                 return sel
@@ -2277,6 +2295,25 @@ mod tests {
     }
 
     #[test]
+    fn list_agents_counts_peers_not_json() {
+        let m = tool("ListAgents", |m| {
+            m.input = "{}".into();
+            m.tool_input = "{}".into();
+            m.result = "This session is a [1]\n\nPeer sessions (2):\n  b [2]  ·  interactive\n  c [3]  ·  interactive\n".into();
+        });
+        let v = view(&m);
+        assert_eq!(v.label(), "Listed agents");
+        assert_eq!(v.meta(), "2 agents");
+        assert_eq!(v.icon(), StepIcon::Bot);
+        let m = tool("ListAgents", |m| {
+            m.tool_input = "{}".into();
+            m.result_pending = true;
+        });
+        assert_eq!(view(&m).label(), "Listing agents");
+        assert_eq!(view(&m).meta(), "");
+    }
+
+    #[test]
     fn finding_rows() {
         let m = tool("mcp__recur__report_finding", |m| {
             m.input = json!({"file": "store.go", "line": 1276, "end_line": 1286, "severity": "high", "message": "activity hook\ncan miss"}).to_string();
@@ -2343,7 +2380,7 @@ mod tests {
             m.input = json!({"mode": "loop"}).to_string();
             m.result_pending = true;
         });
-        assert_eq!(view(&m).pending_label(), "Switching to Loop…");
+        assert_eq!(view(&m).pending_label(), "Switching to Autopilot…");
         let m = tool("mcp__recur__rename_branch", |m| {
             m.result = "Renamed branch to feat/x.".into();
         });

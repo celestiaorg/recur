@@ -28,6 +28,7 @@ type TurnFn = Arc<dyn Fn(TurnRequest, TurnContext) -> TurnFuture + Send + Sync>;
 pub struct AsyncProvider {
     inner: Arc<dyn Provider>,
     run: TurnFn,
+    defers: bool,
 }
 
 impl AsyncProvider {
@@ -39,6 +40,20 @@ impl AsyncProvider {
         Arc::new(Self {
             inner: claude(),
             run: Arc::new(move |req, cx| Box::pin(run(req, cx))),
+            defers: false,
+        })
+    }
+
+    /// [`Self::wrap`] for a provider that awaits `cx.ready` itself.
+    pub fn deferring<F, Fut>(run: F) -> Arc<dyn Provider>
+    where
+        F: Fn(TurnRequest, TurnContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<TurnResult, ProviderError>> + Send + 'static,
+    {
+        Arc::new(Self {
+            inner: claude(),
+            run: Arc::new(move |req, cx| Box::pin(run(req, cx))),
+            defers: true,
         })
     }
 }
@@ -84,6 +99,9 @@ impl Provider for AsyncProvider {
         cx: TurnContext,
     ) -> Result<TurnResult, ProviderError> {
         (self.run)(req, cx).await
+    }
+    fn defers_prompt(&self) -> bool {
+        self.defers
     }
     fn resume_handle_fits(&self, h: &str) -> bool {
         self.inner.resume_handle_fits(h)

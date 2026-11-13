@@ -205,7 +205,7 @@ pub fn copy_files_meta(p: &CopyPreview, patterns: &str, repo: &str, is_new: bool
             format!("No matching files in {root}")
         };
     }
-    let noun = if p.count == 1 { "file" } else { "files" };
+    let noun = if p.count == 1 { "path" } else { "paths" };
     if root.is_empty() {
         format!("{} {noun} will be copied", p.count)
     } else {
@@ -1309,7 +1309,7 @@ mod tests {
         };
         assert_eq!(
             copy_files_meta(&p, ".env*", "", false),
-            "3 files will be copied from /r"
+            "3 paths will be copied from /r"
         );
         assert_eq!(copy_files_meta(&p, "", "", false), "Nothing will be copied");
         assert_eq!(

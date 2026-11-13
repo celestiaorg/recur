@@ -705,7 +705,7 @@ impl Observatory {
         if !self.tree_writable() {
             return root
                 .child(obs_empty(
-                    "Open a loop worktree to stage and commit changes.",
+                    "Open a workflow worktree to stage and commit changes.",
                     true,
                     cx,
                 ))
@@ -728,7 +728,6 @@ impl Observatory {
                 .flex_1()
                 .min_h_0()
                 .w_full(),
-            cx,
         );
         let foot = self
             .commit_foot

@@ -158,6 +158,9 @@ pub struct Settings {
     /// Reveal hidden projects in the sidebar tree.
     #[serde(skip_serializing_if = "is_false")]
     pub show_hidden_projects: bool,
+    /// Group the sidebar's workspaces by PR status instead of by project.
+    #[serde(skip_serializing_if = "is_false")]
+    pub sidebar_by_status: bool,
     /// Linux: keep the window manager's title bar instead of Recur's own window controls.
     /// Read at launch, so a change applies after a restart.
     #[serde(skip_serializing_if = "is_false")]
@@ -169,6 +172,16 @@ pub struct Settings {
     /// default false is the reverse.
     #[serde(skip_serializing_if = "is_false")]
     pub queue_follow_ups: bool,
+    /// PR automations: on an open PR with a Recur workspace whose chat is
+    /// idle, the sweep runs Update with base (then /update) on merge
+    /// conflicts, /fix-checks on failing checks, and /address-review on new
+    /// review activity. `None` → on.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_update_conflicts: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_fix_checks: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_address_review: Option<bool>,
     /// The wall-clock ceiling for one interactive agent chat turn; see
     /// [`effective_agent_turn_timeout_minutes`].
     #[serde(skip_serializing_if = "is_zero")]
@@ -248,6 +261,217 @@ pub struct Settings {
     pub compatible_providers: Vec<CompatibleProvider>,
 }
 
+/// The credential values [`Settings`] keeps out of recur.db: the provider
+/// keys, every bundle `[[setting]]` value, and the free-form header and env
+/// maps (which often carry tokens), keyed by provider or server id.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Secrets {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub cursor_api_key: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub codex_api_key: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub linear_api_key: String,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub bundle_values: BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub compatible_api_keys: BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub compatible_headers: BTreeMap<String, BTreeMap<String, String>>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub mcp_headers: BTreeMap<String, BTreeMap<String, String>>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub mcp_env: BTreeMap<String, BTreeMap<String, String>>,
+}
+
+impl Secrets {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+
+    /// Overlays `newer`'s non-empty values, keeping entries it lacks.
+    pub fn merge(&mut self, newer: Secrets) {
+        for (old, new) in [
+            (&mut self.cursor_api_key, newer.cursor_api_key),
+            (&mut self.codex_api_key, newer.codex_api_key),
+            (&mut self.linear_api_key, newer.linear_api_key),
+        ] {
+            if !new.is_empty() {
+                *old = new;
+            }
+        }
+        self.bundle_values.extend(newer.bundle_values);
+        self.compatible_api_keys.extend(newer.compatible_api_keys);
+        self.compatible_headers.extend(newer.compatible_headers);
+        self.mcp_headers.extend(newer.mcp_headers);
+        self.mcp_env.extend(newer.mcp_env);
+    }
+}
+
+/// Moves non-empty values into `out` under `id`.
+fn take_into<V: Default + PartialEq>(out: &mut BTreeMap<String, V>, id: &str, v: &mut V) {
+    let v = std::mem::take(v);
+    if v != V::default() {
+        out.insert(id.to_owned(), v);
+    }
+}
+
+impl Settings {
+    /// Moves every [`Secrets`] value out, leaving the rest safe to persist.
+    pub fn take_secrets(&mut self) -> Secrets {
+        let mut s = Secrets {
+            cursor_api_key: std::mem::take(&mut self.cursor_api_key),
+            codex_api_key: std::mem::take(&mut self.codex_api_key),
+            linear_api_key: std::mem::take(&mut self.linear_api_key),
+            bundle_values: std::mem::take(&mut self.bundle_values),
+            ..Secrets::default()
+        };
+        for p in &mut self.compatible_providers {
+            take_into(&mut s.compatible_api_keys, &p.id, &mut p.api_key);
+            take_into(&mut s.compatible_headers, &p.id, &mut p.extra_headers);
+        }
+        for m in &mut self.mcp_servers {
+            take_into(&mut s.mcp_headers, &m.id, &mut m.headers);
+            take_into(&mut s.mcp_env, &m.id, &mut m.env);
+        }
+        s
+    }
+
+    /// Restores values taken by [`Settings::take_secrets`]. Entries for ids
+    /// no longer in the catalogs are dropped.
+    pub fn put_secrets(&mut self, mut s: Secrets) {
+        self.cursor_api_key = s.cursor_api_key;
+        self.codex_api_key = s.codex_api_key;
+        self.linear_api_key = s.linear_api_key;
+        self.bundle_values = s.bundle_values;
+        for p in &mut self.compatible_providers {
+            p.api_key = s.compatible_api_keys.remove(&p.id).unwrap_or_default();
+            p.extra_headers = s.compatible_headers.remove(&p.id).unwrap_or_default();
+        }
+        for m in &mut self.mcp_servers {
+            m.headers = s.mcp_headers.remove(&m.id).unwrap_or_default();
+            m.env = s.mcp_env.remove(&m.id).unwrap_or_default();
+        }
+    }
+
+    /// Every [`config_keys`] key with its value (`recur config list`).
+    /// Secrets are left out; keys the stored document omits read as their
+    /// empty value.
+    pub fn config_values(&self) -> Vec<(&'static str, serde_json::Value)> {
+        let mut public = self.clone();
+        public.take_secrets();
+        let doc = settings_doc(&public);
+        config_keys()
+            .into_iter()
+            .map(|k| {
+                let v = doc.get(k).cloned().unwrap_or_else(|| empty_value(&doc, k));
+                (k, v)
+            })
+            .collect()
+    }
+
+    /// A copy with config `key` set to `value`, or why that does not fit.
+    /// Secrets carry over and cannot be set this way.
+    pub fn with_config_value(&self, key: &str, value: serde_json::Value) -> Result<Self, String> {
+        if !config_keys().contains(&key) {
+            if struct_fields::<Secrets>().contains(&key) {
+                return Err(format!("{key} is a secret: set it in Recur's Settings"));
+            }
+            return Err(format!("unknown setting {key:?}"));
+        }
+        let mut cur = self.clone();
+        let secrets = cur.take_secrets();
+        let mut doc = settings_doc(&cur);
+        doc.insert(key.to_owned(), value);
+        let mut next: Self = serde_json::from_value(serde_json::Value::Object(doc))
+            .map_err(|e| format!("invalid value for {key}: {e}"))?;
+        crate::validate_mcp_servers(&next.mcp_servers)
+            .map_err(|e| format!("invalid value for {key}: {e}"))?;
+        crate::validate_compatible_providers(&next.compatible_providers)
+            .map_err(|e| format!("invalid value for {key}: {e}"))?;
+        next.take_secrets();
+        next.put_secrets(secrets);
+        Ok(next)
+    }
+}
+
+/// The stored settings keys `recur config` reads and writes: every
+/// [`Settings`] key except the [`Secrets`].
+pub fn config_keys() -> Vec<&'static str> {
+    let secret = struct_fields::<Secrets>();
+    struct_fields::<Settings>()
+        .iter()
+        .copied()
+        .filter(|k| !secret.contains(k))
+        .collect()
+}
+
+fn settings_doc(s: &Settings) -> serde_json::Map<String, serde_json::Value> {
+    match serde_json::to_value(s) {
+        Ok(serde_json::Value::Object(m)) => m,
+        _ => serde_json::Map::new(),
+    }
+}
+
+/// The value of a key the document skips as empty: the first candidate that
+/// deserializes and is skipped again on the way out.
+fn empty_value(doc: &serde_json::Map<String, serde_json::Value>, key: &str) -> serde_json::Value {
+    use serde_json::{Value, json};
+    [
+        Value::Null,
+        json!(false),
+        json!(0),
+        json!(""),
+        json!([]),
+        json!({}),
+    ]
+    .into_iter()
+    .find(|v| {
+        let mut d = doc.clone();
+        d.insert(key.to_owned(), v.clone());
+        serde_json::from_value::<Settings>(Value::Object(d))
+            .is_ok_and(|s| !settings_doc(&s).contains_key(key))
+    })
+    .unwrap_or(Value::Null)
+}
+
+/// The field names a derived `Deserialize` asks for, recorded by a
+/// deserializer that stops at `deserialize_struct`.
+fn struct_fields<T: serde::de::DeserializeOwned>() -> &'static [&'static str] {
+    use serde::de::{Error, Visitor, value};
+
+    struct Probe<'a>(&'a mut &'static [&'static str]);
+
+    impl<'de> serde::Deserializer<'de> for Probe<'_> {
+        type Error = value::Error;
+
+        fn deserialize_any<V: Visitor<'de>>(self, _: V) -> Result<V::Value, value::Error> {
+            Err(value::Error::custom("not a struct"))
+        }
+
+        fn deserialize_struct<V: Visitor<'de>>(
+            self,
+            _: &'static str,
+            fields: &'static [&'static str],
+            _: V,
+        ) -> Result<V::Value, value::Error> {
+            *self.0 = fields;
+            Err(value::Error::custom("probed"))
+        }
+
+        serde::forward_to_deserialize_any! {
+            bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string bytes
+            byte_buf option unit unit_struct newtype_struct seq tuple tuple_struct map enum
+            identifier ignored_any
+        }
+    }
+
+    let mut fields: &'static [&'static str] = &[];
+    let _ = T::deserialize(Probe(&mut fields));
+    fields
+}
+
 /// Normalizes a turn deadline in minutes: non-positive → default, otherwise
 /// clamped to [min, max].
 pub fn effective_agent_turn_timeout_minutes(minutes: i64) -> i64 {
@@ -322,6 +546,21 @@ impl Settings {
     /// Whether Simplify mode is on. Unset → on.
     pub fn simplify_enabled(&self) -> bool {
         self.simplify.unwrap_or(true)
+    }
+
+    /// Whether the sweep resolves a PR's merge conflicts. Unset → on.
+    pub fn auto_update_conflicts_on(&self) -> bool {
+        self.auto_update_conflicts.unwrap_or(true)
+    }
+
+    /// Whether the sweep runs /fix-checks on a PR's failing checks. Unset → on.
+    pub fn auto_fix_checks_on(&self) -> bool {
+        self.auto_fix_checks.unwrap_or(true)
+    }
+
+    /// Whether the sweep runs /address-review on new review activity. Unset → on.
+    pub fn auto_address_review_on(&self) -> bool {
+        self.auto_address_review.unwrap_or(true)
     }
 
     /// Whether Cursor credentials are present.
@@ -495,6 +734,54 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn config_keys_values_and_set() {
+        let keys = config_keys();
+        assert!(keys.contains(&"modelAgent") && keys.contains(&"cursorAttributePRs"));
+        assert!(!keys.contains(&"cursorApiKey") && !keys.contains(&"bundleValues"));
+
+        let mut set = Settings {
+            cursor_api_key: "sk".into(),
+            ..Settings::default()
+        };
+        set.bundle_values.insert("a".into(), "b".into());
+        let values: BTreeMap<_, _> = set.config_values().into_iter().collect();
+        assert_eq!(values.len(), keys.len());
+        assert_eq!(values["simplify"], serde_json::Value::Null);
+        assert_eq!(values["maxAgents"], serde_json::json!(0));
+        assert_eq!(values["queueFollowUps"], serde_json::json!(false));
+        assert_eq!(values["disabledSkills"], serde_json::json!([]));
+        assert_eq!(values["flagsAgent"], serde_json::json!({}));
+
+        let next = set
+            .with_config_value("flagsAgent", serde_json::json!({"effort": "high"}))
+            .unwrap();
+        assert_eq!(next.flags_agent, flags(&[("effort", "high")]));
+        assert_eq!(
+            (next.cursor_api_key.as_str(), &next.bundle_values),
+            ("sk", &set.bundle_values)
+        );
+        assert!(set.with_config_value("maxAgents", "x".into()).is_err());
+        assert!(
+            set.with_config_value(
+                "mcpServers",
+                serde_json::json!([{"id": "playwright", "command": "npx"}])
+            )
+            .unwrap_err()
+            .contains("reserved")
+        );
+        assert!(
+            set.with_config_value("nope", 1.into())
+                .unwrap_err()
+                .contains("unknown")
+        );
+        assert!(
+            set.with_config_value("cursorApiKey", "x".into())
+                .unwrap_err()
+                .contains("secret")
+        );
+    }
 
     fn flags(pairs: &[(&str, &str)]) -> Flags {
         pairs
@@ -848,5 +1135,40 @@ mod tests {
         assert_eq!(effective_max_agents(-3), DEFAULT_MAX_AGENTS);
         assert_eq!(effective_max_loops(2), 2);
         assert_eq!(effective_max_agents(128), 128, "no upper clamp");
+    }
+
+    #[test]
+    fn take_and_put_secrets_round_trip() {
+        let kv = |k: &str, v: &str| BTreeMap::from([(k.to_owned(), v.to_owned())]);
+        let full = Settings {
+            cursor_api_key: "cur".into(),
+            codex_api_key: "cdx".into(),
+            linear_api_key: "lin".into(),
+            bundle_values: kv(SETTING_LINEAR_API_KEY, "lin2"),
+            compatible_providers: vec![CompatibleProvider {
+                id: "groq".into(),
+                api_key: "gk".into(),
+                extra_headers: kv("Authorization", "Bearer x"),
+                ..Default::default()
+            }],
+            mcp_servers: vec![McpServer {
+                id: "acme".into(),
+                headers: kv("X-Token", "t"),
+                env: kv("API_KEY", "e"),
+                ..Default::default()
+            }],
+            model_ask: "claude-code/opus".into(),
+            ..Default::default()
+        };
+        let mut row = full.clone();
+        let secrets = row.take_secrets();
+        assert!(!secrets.is_empty());
+        let json = serde_json::to_string(&row).unwrap();
+        for leaked in ["cur", "cdx", "lin", "gk", "Bearer", "X-Token", "API_KEY"] {
+            assert!(!json.contains(&format!("\"{leaked}")), "{leaked} in {json}");
+        }
+        assert_eq!(row.model_ask, "claude-code/opus");
+        row.put_secrets(secrets);
+        assert_eq!(row, full);
     }
 }

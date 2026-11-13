@@ -36,8 +36,8 @@ impl FieldView {
     }
 
     /// The field, isolated, laid out at `style`.
-    pub fn element(this: &Entity<Self>, style: StyleRefinement, cx: &App) -> AnyElement {
-        crate::style::isolated_view(this, style, cx)
+    pub fn element(this: &Entity<Self>, style: StyleRefinement) -> AnyElement {
+        crate::style::isolated_view(this, style)
     }
 
     fn render_view(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
@@ -131,7 +131,7 @@ impl IsolatedArea {
     /// The textarea, in a box whose text has `line_height`.
     pub fn element(&self, line_height: f32, cx: &App) -> AnyElement {
         let rows = textarea_rows(&self.area, self.rows, cx);
-        FieldView::element(&self.view, textarea_style(rows, line_height), cx)
+        FieldView::element(&self.view, textarea_style(rows, line_height))
     }
 }
 
@@ -177,12 +177,7 @@ impl Fit {
     /// The host's side: `entity` isolated, full width, at its content's measured height. Until
     /// it has measured (a new view) it is laid out in place at its content's height, so its
     /// first frame is not drawn at a guess.
-    pub fn view<V: Render>(
-        self: &Rc<Self>,
-        entity: &Entity<V>,
-        window: &Window,
-        cx: &App,
-    ) -> AnyElement {
+    pub fn view<V: Render>(self: &Rc<Self>, entity: &Entity<V>, window: &Window) -> AnyElement {
         self.host.set(Some(window.current_view()));
         let Some(h) = self.height.get() else {
             return div()
@@ -192,7 +187,7 @@ impl Fit {
                 .into_any_element();
         };
         let mut style = div().w_full().flex_none().h(px(h));
-        crate::style::isolated_view(entity, style.style().clone(), cx)
+        crate::style::isolated_view(entity, style.style().clone())
     }
 }
 

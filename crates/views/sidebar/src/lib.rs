@@ -120,6 +120,8 @@ pub struct Sidebar {
     tree_memo: std::cell::RefCell<Option<(u64, Collapse, Rc<Tree>)>>,
     pub(crate) row_ctx_memo: std::cell::RefCell<Option<(u64, bool, Rc<rows::RowCtx>)>>,
     scan: ScanPeek,
+    /// The by-status section a scan Land opened; it re-collapses unless the scan commits there.
+    status_peek: Option<tree::Status>,
     seen_scan_seq: u64,
     seen_selection: (ViewName, String),
     seen_collapsed: bool,
@@ -143,6 +145,8 @@ pub struct Sidebar {
     armed: Option<String>,
     arm_seq: u64,
     arm_ready: u64,
+    /// A confirm click landed while the arm's inspect was still running.
+    arm_queued: bool,
     arm_timer: Option<Task<()>>,
     arm_task: Option<Task<()>>,
     remove_echo: bool,
@@ -210,6 +214,7 @@ impl Sidebar {
             tree_memo: Default::default(),
             row_ctx_memo: Default::default(),
             scan: ScanPeek::default(),
+            status_peek: None,
             seen_scan_seq: 0,
             seen_selection: (ViewName::Briefing, String::new()),
             seen_collapsed: collapsed,
@@ -233,6 +238,7 @@ impl Sidebar {
             armed: None,
             arm_seq: 0,
             arm_ready: 0,
+            arm_queued: false,
             arm_timer: None,
             arm_task: None,
             remove_echo: false,
@@ -451,6 +457,27 @@ impl Sidebar {
 
     fn on_scan_event(&mut self, cx: &mut Context<Self>) {
         let ev = self.state.read(cx).scan_event.clone();
+        let by_status = self.state.read(cx).sidebar_by_status();
+        if by_status {
+            let s = self.state.read(cx);
+            let status = match s.workspace(&ev.workspace_id) {
+                Some(w) if !w.is_main => tree::Status::of(w, &s.prs),
+                _ => tree::Status::WorkingCopies,
+            };
+            if let Some(peek) = self.status_peek.take_if(|p| *p != status) {
+                self.collapse.statuses.insert(peek, true);
+            }
+            if ev.kind == ScanKind::Commit {
+                self.status_peek = None;
+            } else {
+                if self.collapse.status(status) {
+                    self.collapse.statuses.insert(status, false);
+                    self.status_peek = Some(status);
+                }
+                self.scroll_row_into_view(&ev.workspace_id, cx);
+                return;
+            }
+        }
         if ev.kind == ScanKind::Commit {
             let (pid, gid) = self.landing_for(&ev.workspace_id, cx);
             let c = scan_commit(&self.scan, Some((&pid, &gid)));
@@ -621,7 +648,11 @@ impl Sidebar {
             })
             .unwrap_or_default();
         let in_group = layout.project(&pid).is_some_and(|(_, g)| g);
-        let top_inset = PROJ_H + if in_group { GROUP_H } else { 0. };
+        let top_inset = if !tree.statuses.is_empty() {
+            GROUP_H
+        } else {
+            PROJ_H + if in_group { GROUP_H } else { 0. }
+        };
         let scroll = self.scroll_top();
         let delta = scroll_delta_to_reveal(
             row_top - scroll,
@@ -736,14 +767,33 @@ impl Sidebar {
         cx.notify();
     }
 
+    pub(crate) fn toggle_status(
+        &mut self,
+        status: tree::Status,
+        collapsed: bool,
+        cx: &mut Context<Self>,
+    ) {
+        self.collapse.statuses.insert(status, !collapsed);
+        cx.notify();
+    }
+
     fn toggle_show_hidden(&mut self, cx: &mut Context<Self>) {
-        let Some(cur) = self.state.read(cx).settings.clone() else {
+        self.update_settings(|s| s.show_hidden_projects = !s.show_hidden_projects, cx);
+    }
+
+    fn toggle_by_status(&mut self, cx: &mut Context<Self>) {
+        self.update_settings(|s| s.sidebar_by_status = !s.sidebar_by_status, cx);
+    }
+
+    fn update_settings(
+        &mut self,
+        f: impl FnOnce(&mut recur_domain::Settings),
+        cx: &mut Context<Self>,
+    ) {
+        let Some(mut next) = self.state.read(cx).settings.clone() else {
             return;
         };
-        let next = recur_domain::Settings {
-            show_hidden_projects: !cur.show_hidden_projects,
-            ..cur
-        };
+        f(&mut next);
         let services = self.services.clone();
         let state = self.state.clone();
         cx.spawn(async move |_, cx| {
@@ -1051,6 +1101,7 @@ impl Sidebar {
         let token = self.arm_seq;
         self.armed = Some(id.to_string());
         self.arm_ready = 0;
+        self.arm_queued = false;
         self.sync_peek_lock(cx);
         let fetch = self.fetch_risk(id, cx);
         let id = id.to_string();
@@ -1065,6 +1116,14 @@ impl Sidebar {
                     return;
                 }
                 this.arm_ready = token;
+                // A queued confirm goes through only when there is nothing to lose; otherwise
+                // the button stays armed so the risk shows before the next click.
+                if std::mem::take(&mut this.arm_queued)
+                    && this.risk.get(&id).is_none_or(|r| r.is_empty())
+                {
+                    this.commit_remove(&id, cx);
+                    return;
+                }
                 this.restart_arm_timer(&id, cx);
                 cx.notify();
             });
@@ -1078,6 +1137,7 @@ impl Sidebar {
             cx.notify();
         }
         self.arm_ready = 0;
+        self.arm_queued = false;
         self.sync_peek_lock(cx);
     }
 
@@ -1140,6 +1200,11 @@ impl Sidebar {
             return;
         }
         self.remove_echo = true;
+        // A release dragged onto the button fires no click, so drop the echo after this event.
+        let this = cx.entity().downgrade();
+        cx.defer(move |cx| {
+            let _ = this.update(cx, |this, _| this.remove_echo = false);
+        });
         self.commit_remove(id, cx);
     }
 
@@ -1155,6 +1220,7 @@ impl Sidebar {
             return;
         }
         if self.arm_ready != self.arm_seq {
+            self.arm_queued = true;
             return;
         }
         self.commit_remove(id, cx);
@@ -1342,7 +1408,6 @@ impl Sidebar {
             .child(recur_ui::isolated::FieldView::element(
                 &dot,
                 div().size(px(14.)).style().clone(),
-                cx,
             ))
     }
 
@@ -1595,11 +1660,12 @@ impl Sidebar {
 
     fn render_sec(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Div {
         let t = Theme::of(cx).tokens;
-        let (show_hidden, hidden_count) = {
+        let (show_hidden, hidden_count, by_status) = {
             let s = self.state.read(cx);
             (
                 s.show_hidden_projects(),
                 unique_refs(&s.projects).iter().filter(|p| p.hidden).count(),
+                s.sidebar_by_status(),
             )
         };
         let mut sa = div().ml_auto().flex().gap(px(2.));
@@ -1628,11 +1694,27 @@ impl Sidebar {
                 .on_click(cx.guarded_listener(|this, _, _, cx| this.toggle_show_hidden(cx)));
             sa = sa.child(titled("sec-hidden-tip", label, b));
         }
-        let label: SharedString = "Add group".into();
-        let add_group = self
-            .sec_button("sec-add-group", &label, IconName::FolderPlus, window, cx)
-            .on_click(cx.guarded_listener(|this, _, window, cx| this.add_group(window, cx)));
-        sa = sa.child(titled("sec-add-group-tip", label, add_group));
+        let label: SharedString = if by_status {
+            "Group by project".into()
+        } else {
+            "Group by status".into()
+        };
+        let name = if by_status {
+            IconName::Folder
+        } else {
+            IconName::CircleFadingCheck
+        };
+        let b = self
+            .sec_button("sec-by-status", &label, name, window, cx)
+            .on_click(cx.guarded_listener(|this, _, _, cx| this.toggle_by_status(cx)));
+        sa = sa.child(titled("sec-by-status-tip", label, b));
+        if !by_status {
+            let label: SharedString = "Add group".into();
+            let add_group = self
+                .sec_button("sec-add-group", &label, IconName::FolderPlus, window, cx)
+                .on_click(cx.guarded_listener(|this, _, window, cx| this.add_group(window, cx)));
+            sa = sa.child(titled("sec-add-group-tip", label, add_group));
+        }
         let label: SharedString = "Add project".into();
         let state = self.state.clone();
         let add_project = self
@@ -1650,7 +1732,7 @@ impl Sidebar {
             .pb(px(6.))
             .bg(t.rail)
             .child(
-                text("Projects")
+                text(if by_status { "Status" } else { "Projects" })
                     .mono()
                     .size(9.)
                     .color(t.faint)

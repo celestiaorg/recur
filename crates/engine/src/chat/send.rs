@@ -267,7 +267,7 @@ impl Engine {
         };
         let mut mode = self.resolve_chat_mode(workspace_id, code, mode);
         if ws.is_pr_chat_host() && (mode == CHAT_MODE_AGENT || mode == CHAT_MODE_LOOP) {
-            return "Create a workspace from this pull request to edit files in Agent or Loop. Ask, Plan, and Review still work from the project checkout.".into();
+            return "Create a workspace from this pull request to edit files in Agent or Autopilot. Ask, Plan, and Review still work from the project checkout.".into();
         }
         if retry && mode == CHAT_MODE_LOOP {
             // Loop on a tab means "engage the autopilot", which Retry must
@@ -358,7 +358,7 @@ impl Engine {
         {
             // Only the tab driving the loop is locked; siblings share the
             // worktree as sibling Loop tabs already do.
-            return "A loop is running in this tab, so Agent-mode edits here wait until it pauses or settles. Other tabs keep working.".into();
+            return "A workflow is running in this tab, so Agent-mode edits here wait until it pauses or settles. Other tabs keep working.".into();
         }
         let set = self.settings();
         let (def_model, def_flags) = set.model_for_chat_mode(&mode);
@@ -675,6 +675,10 @@ impl Engine {
                 req.skip_record_user = true;
             }
         }
+        // The start checkpoint runs while the provider boots; the prompt
+        // waits for it so the snapshot predates every agent edit.
+        let mut start_checkpoint = None;
+        let mut ready: Option<recur_agent::Ready> = None;
         if req.skip_record_user {
             user_msg_id = if resume_open_id.is_empty() {
                 last_chat_prompt_id(&self.store, workspace_id, code)
@@ -682,7 +686,15 @@ impl Engine {
                 resume_open_id
             };
         } else {
-            self.take_checkpoint(&ws, &user_msg_id, "start").await;
+            let (eng, ws, id) = (self.arc(), ws.clone(), user_msg_id.clone());
+            let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+            start_checkpoint = Some(tokio::spawn(async move {
+                eng.take_checkpoint(&ws, &id, "start").await;
+                let _ = tx.send(());
+            }));
+            ready = Some(Box::pin(async move {
+                let _ = rx.await;
+            }));
         }
         let skip_user = req.skip_record_user;
         let spec_user_msg_id = req.user_message_id.clone();
@@ -702,6 +714,7 @@ impl Engine {
                     req,
                     steer,
                     emit: Some(emit),
+                    ready,
                 },
             )
             .await;
@@ -712,6 +725,9 @@ impl Engine {
         cleanup.canceled = is_canceled(err.map(|e| e as &(dyn std::error::Error + 'static)));
         if out.is_ok() {
             self.remember_standing_mode(workspace_id, code, &mode);
+        }
+        if let Some(h) = start_checkpoint {
+            let _ = h.await;
         }
         self.take_checkpoint(&ws, &user_msg_id, "end").await;
         let err_dyn = err.map(|e| e as &(dyn std::error::Error + 'static));

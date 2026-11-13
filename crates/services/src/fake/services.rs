@@ -226,7 +226,7 @@ fn tab(code: &str, title: &str, updated_at: i64) -> WorkspaceChatTab {
 fn loop_tab(updated_at: i64) -> WorkspaceChatTab {
     WorkspaceChatTab {
         mode: "loop".into(),
-        ..tab("MA", "Loop", updated_at)
+        ..tab("MA", "Workflow", updated_at)
     }
 }
 
@@ -2559,7 +2559,7 @@ fake_services! {
         }
 
         async fn engage_loop_with(&self, workspace_id: &str, goal: &str, loop_id: &str, policy_id: &str) -> Result<String> {
-            Ok("Loop engaged: planning has started.".into())
+            Ok("Workflow engaged: planning has started.".into())
         }
 
         async fn fetch_working_copy_upstream(&self, id: &str) -> Result<WorkspaceLandState> {

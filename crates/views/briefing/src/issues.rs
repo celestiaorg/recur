@@ -1293,9 +1293,16 @@ impl Issues {
                 .filter(|id| opts.iter().any(|(v, _)| v == *id))
                 .map(|s| s.clone().into())
                 .collect();
+            let state = self.vcx.state.read(cx);
             let options = opts
                 .into_iter()
-                .map(|(v, l)| SelectOption::new(v, l))
+                .map(|(v, l)| {
+                    let o = SelectOption::new(v.clone(), l);
+                    match state.project(&v) {
+                        Some(p) => o.pic(p.pic.clone(), p.color.clone()),
+                        None => o,
+                    }
+                })
                 .collect();
             self.project_select.update(cx, |s, cx| {
                 s.set_options(options, cx);

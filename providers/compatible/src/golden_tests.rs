@@ -48,7 +48,7 @@ fn items(v: &Value) -> Vec<InputItem> {
                     call_id: s(&i["call_id"]),
                     name: s(&i["name"]),
                     arguments: s(&i["arguments"]),
-                    output: s(&i["output"]),
+                    output: i["output"].as_str().map(str::to_owned),
                     id: s(&i["id"]),
                     raw: None,
                 })
@@ -403,7 +403,7 @@ async fn run_matches_go_wire_and_events() {
     for (got, want) in bodies.iter().zip(&want) {
         let got: Value = serde_json::from_str(got).unwrap();
         let want: Value = serde_json::from_str(want).unwrap();
-        pretty_assertions::assert_eq!(got, want, "request body");
+        assert_eq!(got, want, "request body");
     }
     for (r, h) in seen.iter().zip(run["headers"].as_array().unwrap()) {
         assert_eq!(r.path, s(&h["path"]));
@@ -420,7 +420,7 @@ async fn run_matches_go_wire_and_events() {
         if let Some(r) = w.get_mut("result") {
             r.as_object_mut().unwrap().retain(|_, v| !v.is_null());
         }
-        pretty_assertions::assert_eq!(g, &w);
+        assert_eq!(g, &w);
     }
     assert_eq!(serde_json::to_value(&res).unwrap(), run["result"]);
 }

@@ -16,5 +16,5 @@ fn seeddump_matches_committed_fixture() {
     let got: Value = serde_json::from_slice(&out.stdout).unwrap();
     let want: Value =
         serde_json::from_str(include_str!("../../services/src/fake/seed.json")).unwrap();
-    pretty_assertions::assert_eq!(canonical(got), canonical(want));
+    assert_eq!(canonical(got), canonical(want));
 }

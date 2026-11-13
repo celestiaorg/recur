@@ -473,11 +473,12 @@ async fn a_width_drag_holds_the_anchor_block_in_each_frame(cx: &mut TestAppConte
     let scroll = h.read(|c| c.scroll.clone());
     let at = scroll.bounds().center();
     h.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
-    h.cx.simulate_event(gpui::ScrollWheelEvent {
+    h.cx.simulate_event(gpui::ScrollEvent {
         position: at,
         delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(900.))),
         modifiers: gpui::Modifiers::none(),
         touch_phase: gpui::TouchPhase::Moved,
+        ..Default::default()
     });
     h.settle();
     assert!(!h.read(|c| c.near_bottom), "scrolled up");
@@ -487,4 +488,275 @@ async fn a_width_drag_holds_the_anchor_block_in_each_frame(cx: &mut TestAppConte
         let now = frame_at(&mut h, w, &key).0;
         assert!((now - settled).abs() < 0.5, "{now} vs {settled} at {w}px");
     }
+}
+
+#[gpui::test]
+async fn find_counts_message_text_and_steps_the_current_match(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
+    h.set_messages(vec![
+        AgentMsg {
+            me: true,
+            body: "Where is the cache?".into(),
+            ts: Some(1),
+            ..Default::default()
+        },
+        tool("Read", "{}", "cache cache", 2),
+        AgentMsg {
+            body: "The cache lives in the store. Clear the cache with care.".into(),
+            ts: Some(3),
+            ..Default::default()
+        },
+    ]);
+    let chat = h.chat();
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| c.find(0, window, cx)));
+    h.settle();
+    h.type_text("cache");
+    let label = |h: &mut H| {
+        let chat = h.chat();
+        h.cx.update(|_, cx| {
+            let bar = chat.read(cx).find.as_ref().expect("find").bar.clone();
+            bar.read(cx).count_label(cx)
+        })
+    };
+    let current = |h: &mut H| {
+        let chat = h.chat();
+        h.cx.update(|_, cx| {
+            let c = chat.read(cx);
+            let v = &c.markdown[&format!("{}:m2-md", c.props().reset_key)];
+            let mut hl: Vec<_> = v
+                .read(cx)
+                .highlights()
+                .values()
+                .flatten()
+                .cloned()
+                .collect();
+            hl.sort_by_key(|(r, _)| r.start);
+            hl.iter().map(|(_, cur)| *cur).collect::<Vec<_>>()
+        })
+    };
+    assert_eq!(label(&mut h), "1 / 3");
+    assert_eq!(current(&mut h), vec![false, false]);
+    let bubble = |h: &mut H| {
+        let chat = h.chat();
+        h.cx.update(|_, cx| {
+            let c = chat.read(cx);
+            let (marks, n) = c.bubble_find_marks("Where is the cache?", 0, 0, cx);
+            (
+                n,
+                marks
+                    .iter()
+                    .map(|(r, fill)| (r.clone(), fill.a))
+                    .collect::<Vec<_>>(),
+            )
+        })
+    };
+    let (n, marks) = bubble(&mut h);
+    assert_eq!((n, marks[0].0.clone()), (1, 13..18));
+    let current_fill = marks[0].1;
+    h.keys("enter");
+    assert!(
+        bubble(&mut h).1[0].1 < current_fill,
+        "the bubble's mark stayed current"
+    );
+    assert_eq!(label(&mut h), "2 / 3");
+    assert_eq!(current(&mut h), vec![true, false]);
+    h.keys("enter");
+    assert_eq!(current(&mut h), vec![false, true]);
+    h.keys("shift-enter");
+    assert_eq!(label(&mut h), "2 / 3");
+    assert_eq!(current(&mut h), vec![true, false]);
+    h.keys("escape");
+    assert!(h.read(|c| !c.find.as_ref().expect("find").open));
+    assert_eq!(current(&mut h), Vec::<bool>::new());
+}
+
+#[gpui::test]
+async fn find_scrolls_a_far_match_in_without_bouncing(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    let msgs = (0..200)
+        .map(|i| AgentMsg {
+            me: i % 2 == 0,
+            body: if i == 1 || i == 199 {
+                "Answer 10.\n\nThe zanzibar flag lives here.".into()
+            } else {
+                format!(
+                    "Message {i}.\n\n{}",
+                    "- reads `a`, then writes `b` to the store\n".repeat(60)
+                )
+            },
+            ts: Some(i),
+            ..Default::default()
+        })
+        .collect();
+    h.set_messages(msgs);
+    h.settle();
+    recur_content::markdown::set_markdown_render_inline(false);
+    assert!(h.read(|c| c.test_window_chat()));
+    let chat = h.chat();
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| c.find(0, window, cx)));
+    h.settle();
+    let top = |h: &mut H| h.read(|c| -f32::from(c.test_scroll().offset().y));
+    let at_bottom = top(&mut h);
+    h.type_text("zanzibar");
+    let label = |h: &mut H| {
+        let chat = h.chat();
+        h.cx.update(|_, cx| {
+            let bar = chat.read(cx).find.as_ref().expect("find").bar.clone();
+            bar.read(cx).count_label(cx)
+        })
+    };
+    assert_eq!(label(&mut h), "2 / 2", "typing picks the match in view");
+    assert_eq!(top(&mut h), at_bottom, "typing scrolled to a match in view");
+    h.keys("enter");
+    assert_eq!(label(&mut h), "1 / 2");
+    recur_ui::guard::count_renders(true);
+    for _ in 0..150 {
+        h.cx.executor()
+            .advance_clock(std::time::Duration::from_millis(16));
+        h.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    let renders: u32 = counts
+        .iter()
+        .filter(|(k, _)| k.ends_with("::TranscriptPane"))
+        .map(|(_, n)| *n)
+        .sum();
+    assert!(
+        renders <= 10,
+        "the scroll kept moving: {renders} transcript renders"
+    );
+    h.settle();
+    let chat = h.chat();
+    let (needle, view) = h.cx.update(|window, cx| {
+        let c = chat.read(cx);
+        let v = c.markdown[&format!("{}:m1-md", c.props().reset_key)].read(cx);
+        let needle = v.text_blocks().into_iter().find_map(|(id, text)| {
+            let start = text.find("zanzibar")?;
+            v.range_bounds(id, start..start + 8, window)
+        });
+        (needle, c.test_scroll().bounds())
+    });
+    let needle = needle.expect("the match painted");
+    assert!(
+        needle.top() >= view.top() && needle.bottom() <= view.bottom(),
+        "{needle:?} outside {view:?}"
+    );
+}
+
+#[gpui::test]
+async fn find_scrolls_into_a_tall_user_bubble_without_bouncing(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    let msgs = (0..200)
+        .map(|i| AgentMsg {
+            me: i % 2 == 0,
+            body: match i {
+                0 => format!(
+                    "{}Add a Lithe mock beacon.\n\n{}",
+                    "- a plan line with enough words in it to wrap\n".repeat(60),
+                    "- more plan lines after it\n".repeat(60)
+                ),
+                199 => "Done with lithe.".into(),
+                _ => format!("Message {i}.\n\n{}", "- reads `a`, writes `b`\n".repeat(20)),
+            },
+            ts: Some(i),
+            ..Default::default()
+        })
+        .collect();
+    h.set_messages(msgs);
+    h.settle();
+    let chat = h.chat();
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| c.find(0, window, cx)));
+    h.settle();
+    h.type_text("lithe");
+    recur_ui::guard::count_renders(true);
+    h.keys("enter");
+    for _ in 0..150 {
+        h.cx.executor()
+            .advance_clock(std::time::Duration::from_millis(16));
+        h.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    let renders: u32 = counts
+        .iter()
+        .filter(|(k, _)| k.ends_with("::TranscriptPane"))
+        .map(|(_, n)| *n)
+        .sum();
+    assert!(
+        renders <= 10,
+        "the scroll kept moving: {renders} transcript renders"
+    );
+    let top = h.read(|c| -f32::from(c.test_scroll().offset().y));
+    assert!(
+        top > 300.,
+        "stopped at the bubble's top ({top}), not its match"
+    );
+}
+
+#[gpui::test]
+async fn find_highlights_a_reply_scrolled_back_into_a_windowed_chat(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    let msgs = (0..200)
+        .map(|i| AgentMsg {
+            me: i % 2 == 0,
+            body: if i == 1 || i == 199 {
+                "The zanzibar flag lives here.".into()
+            } else {
+                format!("Message {i}.\n\n{}", "- reads `a`, writes `b`\n".repeat(20))
+            },
+            ts: Some(i),
+            ..Default::default()
+        })
+        .collect();
+    h.set_messages(msgs);
+    h.settle();
+    assert!(h.read(|c| c.test_window_chat()));
+    let chat = h.chat();
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| c.find(0, window, cx)));
+    h.settle();
+    h.type_text("zanzibar");
+    h.settle();
+    let key = h.read(|c| format!("{}:m1-md", c.props().reset_key));
+    assert!(
+        h.read(|c| !c.markdown.contains_key(&key)),
+        "the far reply hydrated before scrolling"
+    );
+    let handle = h.read(|c| c.test_scroll().clone());
+    h.cx.update(|window, cx| {
+        handle.set_offset(gpui::point(gpui::px(0.), gpui::px(0.)));
+        chat.update(cx, |c, cx| c.notify_transcript(cx));
+        window.draw(cx).clear(cx);
+    });
+    h.settle();
+    let marks = h.cx.update(|_, cx| {
+        let c = chat.read(cx);
+        c.markdown[&key]
+            .read(cx)
+            .highlights()
+            .values()
+            .flatten()
+            .count()
+    });
+    assert_eq!(marks, 1, "the scrolled-in reply lost its highlight");
+}
+
+#[gpui::test]
+async fn find_skips_matches_inside_bubble_chips(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
+    h.set_messages(vec![AgentMsg {
+        me: true,
+        body: "fix @src/cache.rs so the cache clears".into(),
+        ts: Some(1),
+        ..Default::default()
+    }]);
+    let chat = h.chat();
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| c.find(0, window, cx)));
+    h.settle();
+    h.type_text("cache");
+    let label = h.cx.update(|_, cx| {
+        let bar = chat.read(cx).find.as_ref().expect("find").bar.clone();
+        bar.read(cx).count_label(cx)
+    });
+    assert_eq!(label, "1 / 1");
 }

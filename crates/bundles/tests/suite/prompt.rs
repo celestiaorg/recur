@@ -224,6 +224,18 @@ fn shipped_fix_checks_prompt_args() {
 }
 
 #[test]
+fn shipped_address_review_prompt_args() {
+    let prompts = chat_prompts();
+    let p = find_prompt_by_slash(&prompts, "address-review").expect("missing /address-review");
+    assert_eq!(p.mode, "agent");
+    assert!(p.takes_args);
+    assert_eq!(p.args.len(), 1);
+    assert_eq!(p.args[0].name, "reviewer");
+    assert!(p.args[0].optional);
+    assert!(p.fresh_session);
+}
+
+#[test]
 fn parse_manifest_prompt_loop_mode() {
     let (_, _, prompts) = parse(
         "[bundle]\nname = \"Chat\"\nid = \"bundle-chat\"\n[[prompt]]\nid = \"prompt-converge\"\nname = \"Review & fix\"\nslash = \"review-and-fix\"\nmode = \"loop\"\nloop = \"recur.loops.converge\"\ninterpreter = \"shebang\"\nbody = \"#!/bin/sh\\ntrue\\n\"\n[[prompt]]\nid = \"prompt-implied\"\nname = \"Implied Loop\"\nloop = \"recur.loops.docs\"\ninterpreter = \"shebang\"\nbody = \"#!/bin/sh\\ntrue\\n\"\n",
@@ -330,7 +342,9 @@ fn shipped_chat_fresh_session_and_tab_groups() {
         ("open-pr", true, "ops"),
         ("open-draft-pr", true, "ops"),
         ("fix-checks", true, "ops"),
+        ("address-review", true, "ops"),
         ("fix-problem", true, "ops"),
+        ("fix-merge", true, "ops"),
         ("update", true, "ops"),
         ("review", true, "review"),
         ("re-review", true, ""),
@@ -354,12 +368,12 @@ fn parse_manifest_prompt_validation() {
     let body = "body = \"#!/bin/sh\\ntrue\\n\"\n";
     for (name, rest, want) in [
         ("bad slash", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nslash = \"Bad_Slash\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": slash \"Bad_Slash\" must match ^[a-z][a-z0-9-]*$"),
-        ("bad mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"workflow\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": unknown mode \"workflow\" (use ask|plan|agent|review|loop, or omit)"),
-        ("loop requires loop mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"agent\"\nloop = \"recur.loops.converge\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": loop requires mode \"loop\""),
-        ("fresh session with loop mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"loop\"\nfresh_session = true\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": fresh_session is not valid with mode \"loop\""),
+        ("bad mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"flow\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": unknown mode \"flow\" (use ask|plan|agent|review|autopilot, or omit)"),
+        ("loop requires loop mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"agent\"\nloop = \"recur.loops.converge\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": workflow requires mode \"autopilot\""),
+        ("fresh session with loop mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"loop\"\nfresh_session = true\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": fresh_session is not valid with mode \"autopilot\""),
         ("tab group without mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\ntab_group = \"ops\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": tab_group requires mode"),
         ("bad tab group", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"agent\"\ntab_group = \"Ops\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": tab_group \"Ops\" must match ^[a-z][a-z0-9-]*$"),
-        ("bad loop id", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"loop\"\nloop = \"../evil\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": loop \"../evil\" is not a safe id"),
+        ("bad loop id", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"loop\"\nloop = \"../evil\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": workflow \"../evil\" is not a safe id"),
         ("timeout ceiling", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\ntimeoutMs = 30001\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": timeoutMs must be 0 or 1..30000"),
         ("body and script", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\ninterpreter = \"shebang\"\n{body}script = \"nope.sh\"\n"), "prompt \"p1\": set body or script, not both"),
         ("missing name", format!("[[prompt]]\nid = \"p1\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": name is required"),
@@ -1091,6 +1105,9 @@ async fn update_prompt_shebang_clean_and_conflict() {
         bundle_support: chat_dir(),
         base_branch: "main".into(),
         update_base_method: "merge".into(),
+        pr_number: 7,
+        pr_source: "gh".into(),
+        pr_branch: "feat".into(),
         ..Default::default()
     };
     let bad = PromptRunContext {
@@ -1125,11 +1142,113 @@ async fn update_prompt_shebang_clean_and_conflict() {
         .await
         .unwrap();
     assert!(res.prompt.contains("conflict"), "{}", res.prompt);
+    assert!(
+        res.prompt.contains(
+            "push to update GitHub PR #7: git push origin HEAD:refs/heads/feat (do not force-push)"
+        ),
+        "{}",
+        res.prompt
+    );
     let merge_head = Proc::new("git")
         .args(["-C", &repo, "rev-parse", "-q", "--verify", "MERGE_HEAD"])
         .output()
         .unwrap();
     assert!(merge_head.status.success(), "should leave MERGE_HEAD");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn update_prompt_push_line_rebase_and_no_pr() {
+    let prompt = chat_script_prompt("update.sh", "recur.chat.update", "Update", "");
+    let (_g, repo) = git_repo();
+    commit_file(&repo, "README.md", "hi\n", "init");
+    git(&repo, &["checkout", "-b", "feature"]);
+    commit_file(&repo, "README.md", "feature edit\n", "feature readme");
+    git(&repo, &["checkout", "main"]);
+    commit_file(&repo, "README.md", "main edit\n", "main readme");
+    commit_file(&repo, "extra.txt", "base\n", "main extra");
+    git(&repo, &["checkout", "feature"]);
+    let rc = PromptRunContext {
+        worktree: repo.clone(),
+        work_dir: repo.clone(),
+        bundle_support: chat_dir(),
+        base_branch: "main".into(),
+        update_base_method: "rebase".into(),
+        pr_number: 7,
+        pr_source: "gh".into(),
+        pr_branch: "feat".into(),
+        ..Default::default()
+    };
+    let res = run_prompt_shebang(&shebang_ctx(), &prompt, rc.clone())
+        .await
+        .unwrap();
+    assert!(
+        res.prompt
+            .contains("git push --force-with-lease=refs/heads/feat origin HEAD:refs/heads/feat"),
+        "{}",
+        res.prompt
+    );
+    git(&repo, &["rebase", "--abort"]);
+
+    std::fs::write(format!("{repo}/extra.txt"), "dirty\n").unwrap();
+    let no_pr = PromptRunContext {
+        update_base_method: "merge".into(),
+        pr_number: 0,
+        pr_source: String::new(),
+        ..rc
+    };
+    let res = run_prompt_shebang(&shebang_ctx(), &prompt, no_pr)
+        .await
+        .unwrap();
+    assert!(res.prompt.contains("Do not push."), "{}", res.prompt);
+    assert!(res.prompt.contains("never commit it"), "{}", res.prompt);
+    assert!(!res.prompt.contains("git push"), "{}", res.prompt);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn re_review_local_pr_embeds_only_the_delta_since_the_last_pass() {
+    let prompt = chat_script_prompt(
+        "re-review.sh",
+        "recur.chat.re-review",
+        "Re-review",
+        "re-review",
+    );
+    let (_g, repo) = git_repo();
+    commit_file(&repo, "README.md", "hi\n", "init");
+    let out = Proc::new("git")
+        .args(["-C", &repo, "rev-parse", "HEAD"])
+        .output()
+        .unwrap();
+    let since = String::from_utf8_lossy(&out.stdout).trim().to_owned();
+    commit_file(&repo, "fix.txt", "fixed\n", "fix");
+    let rc = PromptRunContext {
+        worktree: repo.clone(),
+        work_dir: repo.clone(),
+        bundle_support: chat_dir(),
+        base_branch: "main".into(),
+        surface: "local_pr".into(),
+        pr_number: 7,
+        review_since: since,
+        review_now: "HEAD".into(),
+        ..Default::default()
+    };
+    let res = run_prompt_shebang(&shebang_ctx(), &prompt, rc)
+        .await
+        .unwrap();
+    assert!(
+        res.prompt
+            .contains("only what changed since your last review pass"),
+        "{}",
+        res.prompt
+    );
+    assert!(
+        res.prompt.contains("+fixed") && !res.prompt.contains("+hi"),
+        "{}",
+        res.prompt
+    );
+    assert_eq!(
+        res.display,
+        "Please re-review Local PR #7 since the last pass"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1327,6 +1446,49 @@ async fn fix_checks_without_pr_or_on_host() {
             "Create a workspace from this pull request to edit files"
         )
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn address_review_without_pr_or_on_host() {
+    let prompt = chat_script_prompt(
+        "address-review.sh",
+        "recur.chat.address-review",
+        "Address review",
+        "address-review",
+    );
+    let (_g1, a) = temp_dir();
+    let (_g2, b) = temp_dir();
+    let rc = PromptRunContext {
+        worktree: a,
+        work_dir: b,
+        bundle_support: chat_dir(),
+        ..Default::default()
+    };
+    for (rc, want) in [
+        (rc.clone(), "No GitHub pull request on this workspace"),
+        (
+            PromptRunContext {
+                pr_number: 12,
+                pr_source: "gh".into(),
+                pr_host: true,
+                ..rc.clone()
+            },
+            "Create a workspace from this pull request to edit files",
+        ),
+        (
+            PromptRunContext {
+                pr_number: 12,
+                pr_source: "gh".into(),
+                ..rc
+            },
+            "No GitHub pull request URL on this workspace",
+        ),
+    ] {
+        let res = run_prompt_shebang(&shebang_ctx(), &prompt, rc)
+            .await
+            .unwrap();
+        assert_eq!((res.prompt.as_str(), res.display.as_str()), ("", want));
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

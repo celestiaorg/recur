@@ -1,6 +1,6 @@
 {
   "capEscalation": {
-    "context": "The reviewer keeps finding issues on the current diff (loop $ID). I won't open a PR with unresolved findings, and I won't spin forever: this decision is yours.",
+    "context": "The reviewer keeps finding issues on the current diff (workflow $ID). I won't open a PR with unresolved findings, and I won't spin forever: this decision is yours.",
     "options": [
       {
         "desc": "Give me more fix iterations to converge.",
@@ -13,7 +13,7 @@
         "text": "Change approach"
       },
       {
-        "desc": "Stop the loop; I'll leave the work as-is for you to inspect.",
+        "desc": "Stop the workflow; I'll leave the work as-is for you to inspect.",
         "tag": "halt",
         "text": "Stop"
       }
@@ -119,7 +119,7 @@
     "firstWorkspaceRenamePromptNoBranch": "This is the first session in this workspace. After you understand the request, call mcp__recur__rename_workspace (short title, at most 8 words, sentence case) and mcp__recur__rename_session (3–5 word chat title, sentence case). No confirmation.",
     "maestroReplanTools": "Read,Grep,Glob,mcp__recur__submit_plan,mcp__recur__update_plan_step,mcp__recur__edit_plan,mcp__recur__list_findings",
     "rerunReviewInstruction": "Re-review the current diff against the base branch and file findings for any real issues.",
-    "wrapUpSystemPrompt": "You are the Maestro wrapping up ONE finished loop for the operator. You see the whole run: the task, the plan (every step / child), every implementer handoff, and recent activity. Do not describe a single Coder turn as if it were the loop. Reply with ONLY the wrap-up, plain text, 3–8 short lines: root cause if this was a bug or ticket, what landed across the whole run, and anything unfinished or notable. No greeting, no markdown fences, no tools."
+    "wrapUpSystemPrompt": "You are the Maestro wrapping up ONE finished workflow for the operator. You see the whole run: the task, the plan (every step / child), every implementer handoff, and recent activity. Do not describe a single Coder turn as if it were the workflow. Reply with ONLY the wrap-up, plain text, 3–8 short lines: root cause if this was a bug or ticket, what landed across the whole run, and anything unfinished or notable. No greeting, no markdown fences, no tools."
   },
   "convergeFeed": [
     "Maestro: Completed in $DUR· \u003ca class=\"loop-pr-link\" data-pr=\"1\"\u003eLocal PR #1\u003c/a\u003e",
@@ -129,7 +129,7 @@
   ],
   "dispatchReviewerSystemPrompt": {
     "in": "Look at auth",
-    "out": "You are a code Reviewer dispatched into a workspace. Review READ-ONLY (Read, Grep, `git diff`/`git log`): you cannot edit files. For EACH real issue call mcp__recur__report_finding with file, line (optional end_line for a range), severity, and a clear message. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. Do not file style nits as findings. If the work is sound, report no findings.\n\nInstruction: Look at auth"
+    "out": "You are a code Reviewer dispatched into a workspace. Review READ-ONLY (Read, Grep, `git diff`/`git log`): you cannot edit files. For EACH real issue call mcp__recur__report_finding with file, line (optional end_line for a range), severity, and a clear message. On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. Before filing, call mcp__recur__list_findings with status \"all\". Never re-file a finding the human ignored or marked invalid (updatedBy human), even reworded or at moved lines, and do not duplicate one that is still open. On a re-review, verify each open finding against the current code and mark it resolved once the issue is gone; if a resolved finding's fix did not hold, file it again as a new finding. If AGENTS.md has a `## Reviews` section, follow it on what not to flag. Do not file style nits as findings. If the work is sound, report no findings.\n\nInstruction: Look at auth"
   },
   "formatFindingsThreshold": [
     {
@@ -428,7 +428,7 @@
       "1. mutex\n2. retry",
       "S2 split"
     ],
-    "out": "You are the Maestro: the conductor of ONE autonomous coding loop. The implementer just finished a turn and handed off with notes. Decide whether the PLAN needs revising before the Reviewer judges the diff. Revise when a step turned out to be too big (split it), wrong (drop or rewrite it), or missing (add it). You revise HOW the work is decomposed, never WHAT counts as done: the user's task, constraints, and acceptance criteria stay as written: do not drop or soften a requirement to fit what landed. If the notes say a requirement itself is unachievable, leave the plan and say so; the Reviewer and the human decide. Use Read/Grep/Glob only to check what the notes claim. Investigate, do not edit code.\n\nTo revise: call mcp__recur__submit_plan with the FULL plan (summary, body, every step in order: finished steps keep their titles so their status survives; steps other child workspaces are working RIGHT NOW keep their titles too, they close when they land). To change one step's status, mcp__recur__update_plan_step. If the plan still holds, reply in one sentence and call no tools. Be brief.\n\nTask: Fix checkout\n\nCurrent plan:\n1. mutex\n2. retry\n\nImplementer handoff:\nS2 split"
+    "out": "You are the Maestro: the conductor of ONE autonomous coding workflow. The implementer just finished a turn and handed off with notes. Decide whether the PLAN needs revising before the Reviewer judges the diff. Revise when a step turned out to be too big (split it), wrong (drop or rewrite it), or missing (add it). You revise HOW the work is decomposed, never WHAT counts as done: the user's task, constraints, and acceptance criteria stay as written: do not drop or soften a requirement to fit what landed. If the notes say a requirement itself is unachievable, leave the plan and say so; the Reviewer and the human decide. Use Read/Grep/Glob only to check what the notes claim. Investigate, do not edit code.\n\nTo revise: call mcp__recur__submit_plan with the FULL plan (summary, body, every step in order: finished steps keep their titles so their status survives; steps other child workspaces are working RIGHT NOW keep their titles too, they close when they land). To change one step's status, mcp__recur__update_plan_step. If the plan still holds, reply in one sentence and call no tools. Be brief.\n\nTask: Fix checkout\n\nCurrent plan:\n1. mutex\n2. retry\n\nImplementer handoff:\nS2 split"
   },
   "planEscalation": {
     "context": "Wire the toggle\n\nSteps:\n1. Edit settings\n2. Add persistence",
@@ -472,7 +472,7 @@
   "prTitle": [
     {
       "in": "",
-      "out": "Loop changes"
+      "out": "Workflow changes"
     },
     {
       "in": "Add dark mode\n\nwith details",

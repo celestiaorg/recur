@@ -40,7 +40,7 @@ use recur_view_core::{ScheduleEditorRequest, ViewContext};
 use crate::dialog::{cycle, window_keys};
 use crate::new_task::{picker_trigger, simplify_chip};
 
-const LOOP_PLACEHOLDER: &str = "What should the loop work on each run?";
+const LOOP_PLACEHOLDER: &str = "What should the workflow work on each run?";
 const AGENT_PLACEHOLDER: &str =
     "What should the agent do each run? e.g. review yesterday's commits for missing tests";
 /// The preview's debounce.
@@ -63,23 +63,37 @@ pub fn local_time_zone() -> String {
     iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".into())
 }
 
-/// `Intl.supportedValuesOf('timeZone')` as WebKit lists it: the canonical IANA zones with a
-/// region, plus `UTC` (ECMA-402 folds `Etc/UTC` and `Etc/GMT` into it; `CST6CDT` and the
-/// other region-less zones are links since tzdata 2024b), sorted.
+/// `Intl.supportedValuesOf('timeZone')` as WebKit lists it, from the OS tz database.
 pub fn supported_time_zones() -> &'static [String] {
     static ZONES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
     ZONES.get_or_init(|| {
-        let mut zones: Vec<String> = icu_time::zone::iana::IanaParserExtended::new()
-            .iter_all()
-            .map(|z| z.canonical)
-            .filter(|z| z.contains('/') && !matches!(*z, "Etc/UTC" | "Etc/GMT"))
-            .map(str::to_string)
-            .chain(["UTC".to_string()])
-            .collect();
-        zones.sort();
-        zones.dedup();
-        zones
+        let dir = std::env::var("TZDIR").unwrap_or_else(|_| "/usr/share/zoneinfo".into());
+        let read = |f: &str| std::fs::read_to_string(format!("{dir}/{f}")).unwrap_or_default();
+        parse_time_zones(&read("zone.tab"), &read("tzdata.zi"))
     })
+}
+
+/// Every `zone.tab` zone (CLDR keeps one per country even where tzdata made it a link) and
+/// every other `tzdata.zi` zone with a region, plus `UTC` (ECMA-402 folds `Etc/UTC` and
+/// `Etc/GMT` into it; `CST6CDT` and the other region-less zones are links since tzdata 2024b),
+/// sorted.
+fn parse_time_zones(zone_tab: &str, tzdata_zi: &str) -> Vec<String> {
+    let tab = zone_tab
+        .lines()
+        .filter(|l| !l.starts_with('#'))
+        .filter_map(|l| l.split('\t').nth(2));
+    let zi = tzdata_zi
+        .lines()
+        .filter_map(|l| l.strip_prefix("Z ")?.split(' ').next());
+    let mut zones: Vec<String> = tab
+        .chain(zi)
+        .filter(|z| z.contains('/') && !matches!(*z, "Etc/UTC" | "Etc/GMT"))
+        .map(str::to_string)
+        .chain(["UTC".to_string()])
+        .collect();
+    zones.sort();
+    zones.dedup();
+    zones
 }
 
 /// `timeZoneOptions`: the runtime's zones plus UTC, the local zone and the draft's (so an edit
@@ -918,7 +932,9 @@ impl ScheduleEditor {
         };
         let repo_opts: Vec<SelectOption> = projects
             .iter()
-            .map(|p| SelectOption::new(p.id.clone(), p.name.clone()))
+            .map(|p| {
+                SelectOption::new(p.id.clone(), p.name.clone()).pic(p.pic.clone(), p.color.clone())
+            })
             .collect();
         let project = projects.iter().find(|p| p.id == d.project_id).cloned();
         let slot: recur_ui::widgets::select::IconSlot = match project {
@@ -1441,12 +1457,21 @@ mod tests {
         assert_eq!(z, sorted);
     }
 
-    /// The golden is WebKit's `Intl` output.
     #[test]
-    fn zones_match_webkit_intl() {
-        let golden: Vec<String> =
-            serde_json::from_str(include_str!("../tests/golden/time-zones.json")).unwrap();
-        assert_eq!(supported_time_zones(), golden.as_slice());
+    fn zones_come_from_zone_tab_and_tzdata() {
+        let tab = "# comment\nGH\t+0533-00013\tAfrica/Accra\nUS\t+404251-0740023\tAmerica/New_York\tEastern (most areas)\n";
+        let zi = "# version 2026f\nZ Africa/Abidjan -0:16:8 - LMT 1912\nZ America/New_York -4:56:2 - LMT 1883 N 18 17u\nZ EST5EDT -5 u E%sT\nZ Etc/GMT 0 - GMT\nZ Etc/UTC 0 - UTC\nZ Etc/GMT+5 -5 - -05\nL Africa/Abidjan Africa/Bamako\n";
+        assert_eq!(
+            parse_time_zones(tab, zi),
+            [
+                "Africa/Abidjan",
+                "Africa/Accra",
+                "America/New_York",
+                "Etc/GMT+5",
+                "UTC"
+            ]
+        );
+        assert_eq!(parse_time_zones("", ""), ["UTC"]);
     }
 
     #[test]

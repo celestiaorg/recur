@@ -339,7 +339,7 @@ impl WorkspaceView {
         {
             toast(
                 ToastKind::Error,
-                "This tab is running the loop: pause or stop it before leaving Loop mode.",
+                "This tab is running the workflow: pause or stop it before leaving Autopilot mode.",
                 cx,
             );
             return Task::ready(());

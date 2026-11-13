@@ -9,6 +9,7 @@ use gpui::{Modifiers, TestAppContext, point, px};
 use parking_lot::Mutex;
 use recur_domain::{AgentSkill, Artifact, ChatItem, Finding, WorkspaceChatTab};
 use recur_services::api::PromptResultDto;
+use recur_services::api::ShellState;
 use recur_services::api::TermInfo;
 use recur_services::events::{
     AgentUpdated, FilesDropped, SessionDelta, SessionTag, SessionTurnEnd,
@@ -368,11 +369,12 @@ async fn wheeling_up_a_long_chat_and_switching_back_keeps_what_is_on_screen(
     let stop = max_scroll(&mut h) * 0.55;
     while scroll_top(&mut h) > stop {
         let (key, y) = first_shown(&mut h, &keys);
-        h.cx.simulate_event(gpui::ScrollWheelEvent {
+        h.cx.simulate_event(gpui::ScrollEvent {
             position: at,
             delta: gpui::ScrollDelta::Pixels(point(px(0.), px(200.))),
             modifiers: Modifiers::none(),
             touch_phase: gpui::TouchPhase::Moved,
+            ..Default::default()
         });
         h.cx.run_until_parked();
         let moved =
@@ -619,6 +621,28 @@ async fn slash_fix_findings_shows_a_short_label_while_sending_the_full_checklist
 }
 
 #[gpui::test]
+async fn a_workspace_restored_at_launch_focuses_its_chat_composer(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default());
+    let chat = h.chat();
+    let focused = |h: &mut H| {
+        let chat = chat.clone();
+        h.cx.update(|window, cx| chat.read(cx).test_composer_focused(window))
+    };
+    assert!(!focused(&mut h), "opening a workspace leaves focus alone");
+    let saved = ShellState {
+        view: "detail".into(),
+        workspace_id: WS.into(),
+        ..ShellState::default()
+    };
+    h.state
+        .update(h.cx, |s, cx| s.apply_boot_route(Some(&saved), cx));
+    h.settle();
+    assert!(focused(&mut h));
+    h.type_text("hi");
+    assert_eq!(h.input(), "hi");
+}
+
+#[gpui::test]
 async fn slash_review_and_fix_opens_a_loop_tab_instead_of_converting_the_agent_chat(
     cx: &mut TestAppContext,
 ) {
@@ -631,7 +655,7 @@ async fn slash_review_and_fix_opens_a_loop_tab_instead_of_converting_the_agent_c
     h.focus_composer();
     h.type_text("/review-and-fix");
     assert!(h.has("mention:/review-and-fix"));
-    assert!(h.has("badge:Loop"));
+    assert!(h.has("badge:Workflow"));
     h.keys("enter");
     assert!(h.me("Review & fix"));
     assert_eq!(texts(&sent).len(), 1);
@@ -1299,6 +1323,38 @@ async fn spend_limit_error_renders_a_card_with_retry_that_re_sends_the_last_prom
     assert_eq!(displays, ["", "\u{2060}"]);
     assert_eq!(texts(&sent)[1], "\u{2060}");
     assert_eq!(me_rows(&mut h), 1);
+}
+
+#[gpui::test]
+async fn retry_on_a_retryable_failed_loop_resumes_the_loop(cx: &mut TestAppContext) {
+    let (sent, retried) = (calls(), Arc::new(Mutex::new(Vec::<String>::new())));
+    let r2 = retried.clone();
+    let opts = bridge_opts(
+        Store::default(),
+        sent.clone(),
+        Pending::default(),
+        |_, _| Some(SPEND.into()),
+    )
+    .retry_loop(move |_, id| {
+        r2.lock().push(id);
+        Ok(())
+    });
+    let mut h = boot_with(
+        cx,
+        |s| {
+            let w = s.workspaces.iter_mut().find(|w| w.id == WS).unwrap();
+            w.state = recur_domain::WorkspaceState::Failed;
+            w.retryable = true;
+        },
+        opts,
+        |_| {},
+        WS,
+    );
+    h.fill("ship the dark mode polish");
+    send_click(&mut h);
+    h.click("chat-error-retry");
+    assert_eq!(*retried.lock(), [WS]);
+    assert_eq!(texts(&sent).len(), 1);
 }
 
 #[gpui::test]

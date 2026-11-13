@@ -12,7 +12,7 @@ use gpui_kit::{
 use recur_app::{Shell, ShellOptions};
 use recur_domain::Workspace;
 use recur_services::api::{BundleSkipInfo, Snapshot};
-use recur_services::fake::{Fake, Overrides, Seed};
+use recur_services::fake::{Fake, Overrides, Seed, hold};
 use recur_ui::widgets::ToastStore;
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
 use serde::Serialize;
@@ -400,6 +400,41 @@ fn hover_remove_archives_a_settled_workspace_after_confirm(cx: &mut TestAppConte
     assert!(archived);
 }
 
+/// A confirm click while the arm's inspect is still running is queued, not dropped: it
+/// removes a clean workspace once the inspect returns, and leaves a risky one armed.
+fn confirm_during_inspect(cx: &mut TestAppContext, risk: &str) -> bool {
+    let held = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let h2 = held.clone();
+    let opts = Overrides::default().workspace_discard_risk(move |_, _| {
+        let (answer, release) = hold();
+        h2.lock().unwrap().push(release);
+        answer
+    });
+    let mut h = boot(cx, bridge(json!({}), opts), LocalStorage::in_memory());
+    h.hover(&format!("row:{PR_OPEN}"));
+    h.click(&format!("rm:{PR_OPEN}"));
+    h.click(&format!("rm:{PR_OPEN}"));
+    assert!(
+        h.has(&format!("row:{PR_OPEN}")),
+        "nothing removed mid-inspect"
+    );
+    for r in held.lock().unwrap().drain(..) {
+        r.send(Ok(risk.to_string()));
+    }
+    h.settle();
+    !h.has(&format!("row:{PR_OPEN}"))
+}
+
+#[gpui_kit::test]
+fn hover_remove_confirm_during_inspect_removes_a_clean_workspace(cx: &mut TestAppContext) {
+    assert!(confirm_during_inspect(cx, ""));
+}
+
+#[gpui_kit::test]
+fn hover_remove_confirm_during_inspect_keeps_a_risky_workspace_armed(cx: &mut TestAppContext) {
+    assert!(!confirm_during_inspect(cx, "2 uncommitted files"));
+}
+
 #[gpui_kit::test]
 fn hover_remove_stays_disabled_on_a_running_workspace(cx: &mut TestAppContext) {
     let mut h = boot(
@@ -545,6 +580,99 @@ fn alt_cmd_arrows_cycle_workspaces_in_sidebar_order(cx: &mut TestAppContext) {
     assert!(!h.has(&format!("on:{first}")));
     h.keys("alt-secondary-up");
     assert!(h.has(&format!("on:{first}")));
+}
+
+#[gpui_kit::test]
+fn alt_cmd_arrows_follow_the_status_order(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    h.click("sec-by-status");
+    h.wait(50);
+    let mut rows: Vec<(String, f32)> = SEED_LOOPS
+        .iter()
+        .filter_map(|id| {
+            h.bounds(&format!("row:{id}"))
+                .map(|b| (id.to_string(), f32::from(b.top())))
+        })
+        .collect();
+    rows.sort_by(|a, b| a.1.total_cmp(&b.1));
+    assert!(rows.len() > 2);
+    h.click(&format!("hit:{}", rows[0].0));
+    for (id, _) in &rows[1..] {
+        h.keys("alt-secondary-down");
+        assert!(h.has(&format!("on:{id}")), "down lands on {id}");
+    }
+}
+
+#[gpui_kit::test]
+fn status_view_lists_working_copies_last(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    h.click("sec-by-status");
+    h.wait(50);
+    assert!(!h.has("main:payments"), "Working copies starts collapsed");
+    h.click("sh:copies");
+    let mains: Vec<(String, f32)> = ["main:payments", "main:storefront"]
+        .iter()
+        .filter_map(|k| h.bounds(k).map(|b| (k.to_string(), f32::from(b.top()))))
+        .collect();
+    assert_eq!(mains.len(), 2);
+    let below_tasks = SEED_LOOPS
+        .iter()
+        .filter_map(|id| h.bounds(&format!("row:{id}")))
+        .all(|b| mains.iter().all(|(_, top)| f32::from(b.top()) < *top));
+    assert!(below_tasks);
+    h.click("main:payments");
+    h.wait(50);
+    assert!(h.has("on:main:payments"));
+    h.keys("alt-secondary-up");
+    assert!(!h.has("on:main:payments"));
+    h.keys("alt-secondary-down");
+    assert!(h.has("on:main:payments"));
+}
+
+#[gpui_kit::test]
+fn status_view_peeks_a_collapsed_section_and_recollapses_unless_you_dwell(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    h.click("sec-by-status");
+    h.wait(50);
+    let last = SEED_LOOPS
+        .iter()
+        .filter_map(|id| {
+            h.bounds(&format!("row:{id}"))
+                .map(|b| (*id, f32::from(b.top())))
+        })
+        .max_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(id, _)| id)
+        .unwrap();
+    h.click(&format!("hit:{last}"));
+    h.wait(50);
+
+    h.keys("alt-secondary-down");
+    let peeked = SEED_LOOPS
+        .iter()
+        .find(|id| h.has(&format!("on:{id}")))
+        .map(|id| format!("row:{id}"))
+        .unwrap_or_else(|| "main:payments".into());
+    assert!(h.has(&peeked), "landing peeks the section open");
+    h.keys("alt-secondary-up");
+    assert!(h.has(&format!("on:{last}")));
+    assert!(!h.has(&peeked), "a pass-through peek re-collapses");
+
+    h.keys("alt-secondary-down");
+    h.wait(1200);
+    h.keys("alt-secondary-up");
+    assert!(h.has(&peeked), "a dwell keeps it open");
 }
 
 #[gpui_kit::test]

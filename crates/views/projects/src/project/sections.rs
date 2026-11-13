@@ -605,6 +605,8 @@ impl ProjectView {
                 "copy-files-pat",
                 recur_ui::style::card(t.pane, copy_border, 6.)
                     .debug_selector(|| "inp:Files to copy".into())
+                    .flex()
+                    .flex_col()
                     .w_full()
                     .min_h(px(88.))
                     .max_h(px(220.))
@@ -869,7 +871,7 @@ impl ProjectView {
             )
             .child(
                 settings_group("grp-runs", "Run commands")
-                    .blurb("Named scripts for the titlebar Run button. A command named dev is what verify-in-browser boots: without one a loop can't verify and won't open a PR. Pin the default from that dropdown: it stays on this machine.")
+                    .blurb("Named scripts for the titlebar Run button. A command named dev is what verify-in-browser boots: without one a workflow can't verify and won't open a PR. Pin the default from that dropdown: it stays on this machine.")
                     .child(run_list),
             )
             .child(
@@ -932,7 +934,7 @@ impl ProjectView {
             (
                 "Merge method",
                 format!("Use global default ({global_merge})"),
-                "Override the global default for this project. Applies when merging PRs from any loop.",
+                "Override the global default for this project. Applies when merging PRs from any workflow.",
                 vec![
                     ("merge", "Create a merge commit"),
                     ("squash", "Squash and merge"),
@@ -994,7 +996,7 @@ impl ProjectView {
                 copy(
                     "pr-gh",
                     "Open PRs on GitHub",
-                    Some(vec![span("Push the loop branch and open a real GitHub PR (needs the gh CLI signed in and an origin remote). Off = Local PRs reviewed in-app. Falls back to Local if GitHub isn't reachable.")]),
+                    Some(vec![span("Push the workflow branch and open a real GitHub PR (needs the gh CLI signed in and an origin remote). Off = Local PRs reviewed in-app. Falls back to Local if GitHub isn't reachable.")]),
                     cx,
                 )
                 .into_any_element(),

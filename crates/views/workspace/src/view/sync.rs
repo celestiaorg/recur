@@ -23,7 +23,7 @@ use recur_view_observatory::ObservatoryProps;
 
 use super::{WorkspaceView, now_ms, tabs::save_active_code};
 
-const EMPTY_MA: &str = "Ask where this loop stands, or steer it: the Maestro can read the worktree, edit the plan, re-run review, and dispatch specialists; rails hold at execution.";
+const EMPTY_MA: &str = "Ask where this workflow stands, or steer it: the Maestro can read the worktree, edit the plan, re-run review, and dispatch specialists; rails hold at execution.";
 const EMPTY_PA: &str = "Ask the agent, or tell it what to change: the mode selector below decides whether it may edit.";
 
 /// What the effects saw last time they ran.
@@ -249,7 +249,7 @@ impl WorkspaceView {
             return "Message the agent… (@ files, / skills, ⏎ queues until setup finishes)".into();
         }
         if self.active_code() == "MA" {
-            return "Ask where things stand, or steer the loop… (@ files, / skills)".into();
+            return "Ask where things stand, or steer the workflow… (@ files, / skills)".into();
         }
         "Message the agent… (@ files, / skills, ⏎ to send)".into()
     }
@@ -485,9 +485,14 @@ impl WorkspaceView {
             }
         }
 
+        let on_screen = self.shell_active && self.presentation_active(cx);
+        if on_screen && self.tabs.is_some() && self.state.read(cx).boot_composer_focus {
+            self.state.update(cx, |s, _| s.boot_composer_focus = false);
+            self.focus_composer_pending = true;
+        }
         if self.focus_composer_pending {
             self.focus_composer_pending = false;
-            if self.shell_active && self.presentation_active(cx) {
+            if on_screen {
                 self.chat.update(cx, |c, cx| c.focus_composer(window, cx));
             }
         }

@@ -5,7 +5,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 use crate::error::{Error, Result};
-use crate::worktree::{Manager, exec, is_repo};
+use crate::worktree::{Manager, MergeResult, exec, is_repo};
 
 /// The Select group heading for local heads in the base-branch picker.
 pub const LOCAL_BRANCH_GROUP: &str = "Local";
@@ -329,6 +329,43 @@ impl Manager {
         .await
         .map_err(|e| e.wrap(format!("git push {remote} {spec}")))?;
         Ok(())
+    }
+
+    /// [`push_branch`](Self::push_branch) after a [`merge`](Self::merge),
+    /// bounded by `deadline`. A failed or timed-out push resets `branch` to
+    /// the pre-land commit (keeping uncommitted edits) so Merge can be
+    /// retried, but only while `branch` is still checked out at the landed
+    /// commit. The error says whether the local merge was undone.
+    pub async fn push_land(
+        &self,
+        remote: &str,
+        branch: &str,
+        landed: &MergeResult,
+        deadline: Instant,
+    ) -> Result<()> {
+        let err = match tokio::time::timeout_at(deadline, self.push_branch(remote, branch)).await {
+            Ok(Ok(())) => return Ok(()),
+            Ok(Err(e)) => e.to_string(),
+            Err(_) => format!("git push {remote} {branch}: timed out"),
+        };
+        let on_land = self
+            .run(["symbolic-ref", "--quiet", "HEAD"])
+            .await
+            .is_ok_and(|r| r.trim() == format!("refs/heads/{branch}"))
+            && !landed.new_head.is_empty()
+            && self.ref_hash("HEAD").await == landed.new_head;
+        let outcome = if !on_land {
+            format!("the local merge was kept: {branch} moved since the land")
+        } else {
+            match self
+                .run(["reset", "--keep", landed.orig_head.as_str()])
+                .await
+            {
+                Ok(_) => "the local merge was undone".to_string(),
+                Err(e) => format!("the local merge was kept: undo failed: {e}"),
+            }
+        };
+        Err(Error::msg(format!("{err}; {outcome}")))
     }
 
     /// A sensible default base for a new project: origin/main → main →

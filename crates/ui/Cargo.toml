@@ -12,9 +12,9 @@ publish = false
 gallery = []
 
 [dependencies]
+recur-base.workspace = true
 gpui-kit.workspace = true
-fancy-regex.workspace = true
-include_dir.workspace = true
+regress.workspace = true
 wuff.workspace = true
 ttf-parser.workspace = true
 unicode-linebreak.workspace = true
@@ -43,6 +43,9 @@ yeslogic-fontconfig-sys.workspace = true
 [dev-dependencies]
 gpui-kit = { workspace = true, features = ["test-support"] }
 recur-ui = { path = ".", features = ["gallery"] }
+
+[build-dependencies]
+recur-base.workspace = true
 
 [lints]
 workspace = true

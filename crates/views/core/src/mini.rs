@@ -348,7 +348,6 @@ impl MiniScriptEditor {
                 .child(recur_ui::style::isolated_view(
                     &self.editor,
                     gpui_kit::StyleRefinement::default().size_full(),
-                    cx,
                 ))
                 .into_any_element();
         }

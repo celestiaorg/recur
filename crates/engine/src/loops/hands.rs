@@ -34,6 +34,11 @@ pub fn dispatch_reviewer_system_prompt(task: &str) -> String {
 (Read, Grep, `git diff`/`git log`): you cannot edit files. For EACH real issue \
 call mcp__recur__report_finding with file, line (optional end_line for a range), severity, and a clear message. \
 On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. \
+Before filing, call mcp__recur__list_findings with status \"all\". Never re-file a finding the human \
+ignored or marked invalid (updatedBy human), even reworded or at moved lines, and do not duplicate one \
+that is still open. On a re-review, verify each open finding against the current code and mark it resolved once the issue \
+is gone; if a resolved finding's fix did not hold, file it again as a new finding. If AGENTS.md has a \
+`## Reviews` section, follow it on what not to flag. \
 Do not file style nits as findings. If the work is sound, report no findings.\n\n\
 Instruction: {task}"
     )
@@ -56,7 +61,7 @@ impl Engine {
             return "Refused: that workspace no longer exists.".into();
         };
         if !ws.has_run() {
-            return "Refused: only a workspace with a loop has a plan to edit.".into();
+            return "Refused: only a workspace with a workflow has a plan to edit.".into();
         }
         self.store.update_workspace(workspace_id, |l| {
             if let Some(p) = l.plan.as_mut() {
@@ -120,7 +125,7 @@ impl Engine {
             return "Refused: the workspace has no worktree to inspect.".into();
         }
         if self.running_loop_by_id(workspace_id).is_some() {
-            return "Refused: the loop is running; it already reviews every iteration; wait for it to settle.".into();
+            return "Refused: the workflow is running; it already reviews every iteration; wait for it to settle.".into();
         }
         let mut rs = role_spec(&AgentRole::Reviewer);
         rs.mode = ROLE_MODE_REVIEW.into();
@@ -309,7 +314,7 @@ impl Engine {
     /// allowance (the same arithmetic a cap escalation grants).
     pub fn extend_loop_iterations(&self, workspace_id: &str, agent_code: &str, n: i64) -> String {
         let Some(lp) = self.running_loop_for_hand(workspace_id, agent_code) else {
-            return "Refused: the loop is not running; there is no iteration budget to extend."
+            return "Refused: the workflow is not running; there is no iteration budget to extend."
                 .into();
         };
         let autonomy = lp.lock().autonomy.clone();
@@ -339,7 +344,8 @@ impl Engine {
     /// at its round cap.
     pub async fn extend_loop_rounds(&self, workspace_id: &str, agent_code: &str, n: i64) -> String {
         let Some(lp) = self.running_loop_for_hand(workspace_id, agent_code) else {
-            return "Refused: the loop is not running; there is no round budget to extend.".into();
+            return "Refused: the workflow is not running; there is no round budget to extend."
+                .into();
         };
         let (at_cap, guard, autonomy) = {
             let s = lp.lock();
@@ -409,7 +415,7 @@ impl Engine {
         };
         let phase_id = phase_id.trim();
         if !g.loop_def.reenter_ids().iter().any(|id| id == phase_id) {
-            return format!("Refused: {phase_id} is not on this loop's reenter list.");
+            return format!("Refused: {phase_id} is not on this workflow's reenter list.");
         }
         rec.checkpoint = Some(Checkpoint {
             phase_id: phase_id.to_owned(),
@@ -595,7 +601,7 @@ impl Engine {
             .running_loop_by_chat(workspace_id, agent_code)
             .is_some()
         {
-            return "Refused: the loop is already running.".into();
+            return "Refused: the workflow is already running.".into();
         }
         if !agent_code.trim().is_empty() && self.running_loop_by_id(workspace_id).is_some() {
             let Some(ws) = self.store.workspace(workspace_id) else {

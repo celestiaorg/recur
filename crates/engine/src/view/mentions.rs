@@ -13,6 +13,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use super::js;
+use crate::composer::files::{FILE_AT_QUOTED_RE, is_quoted_file_chip};
 
 /// `⟦attachment:<id>⟧`, embedded in wire and transcript text where an image
 /// was pasted.
@@ -98,9 +99,17 @@ fn hits<'a>(re: &Regex, text: &'a str, trailing: impl Fn(&str, usize) -> bool) -
         .collect()
 }
 
-/// `FILE_AT_RE` matches: an `@path[:loc]` at the start or after whitespace.
+/// `FILE_AT_RE` matches: an `@path[:loc]` or `@"path[:loc]"` at the start or
+/// after whitespace.
 pub fn file_at_hits(text: &str) -> Vec<Hit<'_>> {
-    hits(&FILE_AT_CORE, text, |_, _| true)
+    let mut out = hits(&FILE_AT_CORE, text, |_, _| true);
+    out.extend(
+        hits(&FILE_AT_QUOTED_RE, text, |_, _| true)
+            .into_iter()
+            .filter(|h| h.body.is_some_and(is_quoted_file_chip)),
+    );
+    out.sort_by_key(|h| h.start);
+    out
 }
 
 /// `TERMINAL_AT_RE` matches (`@terminal` / `@terminal:<qual>`).
@@ -560,7 +569,12 @@ pub fn same_user_chat_body(a: &str, b: &str) -> bool {
 
 /// The token inserted when the user picks a file from the `@` menu.
 pub fn file_mention_token(chip: &str) -> String {
-    format!("@{}", js::trim(chip))
+    let chip = js::trim(chip);
+    if chip.chars().any(js::is_space) {
+        format!("@\"{chip}\"")
+    } else {
+        format!("@{chip}")
+    }
 }
 
 /// Removes the first `@path` mention, eating one adjacent space so "how does

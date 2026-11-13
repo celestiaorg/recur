@@ -11,10 +11,14 @@ Use **Review** mode to inspect a worktree diff and file findings. Local and GitH
 
 - `/review` starts a review pass.
 - `/fix-findings` routes fixes into Agent mode.
-- `/re-review` reviews workspace changes since the previous review checkpoint when it can resume the same review session. Without a usable checkpoint or resumed session, it falls back to a fresh review.
+- `/re-review` reviews workspace or Local PR changes since the previous review checkpoint when it can resume the same review session. Without a usable checkpoint or resumed session, it falls back to a fresh review.
 - `/simplify-review` and `/simplify-audit` focus on unnecessary complexity and overengineering.
 
 These are [bundle prompt actions](/bundles/prompts). Available actions depend on which contributions are enabled.
+
+Reviewers carry findings forward between passes. A re-review checks each open finding against the current code and resolves the ones that are fixed; when a fix did not hold, the issue comes back as a new finding. Findings you ignore or mark invalid are not raised again.
+
+To tell reviewers what not to flag in a repository, add a `## Reviews` section to its `AGENTS.md`.
 
 ## See what changed in one turn
 
@@ -22,7 +26,7 @@ Each chat turn records start and end checkpoints of the worktree, including trac
 
 ## Reset to here
 
-**Reset to here** rewinds the chat to the **end** of any earlier turn and removes the turns after it. When those later turns changed files, the worktree is restored to that turn's end checkpoint too; otherwise files are left alone. Later file changes are replaced, so inspect the checkpoint and preserve any work you want to keep before resetting. Reset is not available on a Loop's Maestro chat.
+**Reset to here** rewinds the chat to the **end** of any earlier turn and removes the turns after it. When those later turns changed files, the worktree is restored to that turn's end checkpoint too; otherwise files are left alone. Later file changes are replaced, so inspect the checkpoint and preserve any work you want to keep before resetting. Reset is not available on a workflow's Maestro chat.
 
 The next send starts a fresh provider session using the retained chat context. Checkpoints do not move your branch's HEAD or create ordinary commits. They also do not snapshot staging state, so resetting a turn does not restore the previous index.
 

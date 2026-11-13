@@ -51,7 +51,7 @@ pub const CHAT_MODES: [ChatModeOption; 5] = [
         label: "Agent",
         hint: "Read and edit files",
         settings_title: "Agent / Coder",
-        settings_desc: "Writes and edits code in Agent chats and loop coding turns",
+        settings_desc: "Writes and edits code in Agent chats and workflow coding turns",
         icon: "message-code",
         tint: "var(--cyan)",
     },
@@ -66,8 +66,8 @@ pub const CHAT_MODES: [ChatModeOption; 5] = [
     },
     ChatModeOption {
         value: CHAT_MODE_LOOP,
-        label: "Loop",
-        hint: "Autopilot to a PR",
+        label: "Autopilot",
+        hint: "Run a workflow",
         settings_title: "",
         settings_desc: "",
         icon: "refresh-cw",
@@ -303,7 +303,7 @@ pub fn ws_setup_status(w: Option<&Workspace>) -> &'static str {
     };
     match w.phase.as_str() {
         "creating" => "Setting up the worktree…",
-        "waiting for a slot" => "Waiting for a loop slot…",
+        "waiting for a slot" => "Waiting for a workflow slot…",
         _ => "",
     }
 }

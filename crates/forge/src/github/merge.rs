@@ -437,7 +437,6 @@ pub(crate) fn merge_message(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn merge_args_use_number() {

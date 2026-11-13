@@ -788,7 +788,7 @@ impl Engine {
         }
         if let Some(lp) = self.running_loop_by_id(child_id) {
             lp.queue_steer(message);
-            return "Steered the child's running loop; this call does not wait.".into();
+            return "Steered the child's running workflow; this call does not wait.".into();
         }
         if !is_chat_child(&child)
             || child.worktree_path.is_empty()

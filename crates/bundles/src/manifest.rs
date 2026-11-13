@@ -40,6 +40,14 @@ pub const PROMPT_MODE_AGENT: &str = "agent";
 pub const PROMPT_MODE_REVIEW: &str = "review";
 pub const PROMPT_MODE_LOOP: &str = "loop";
 
+/// Maps the author-facing `"autopilot"` mode spelling to the internal `"loop"`.
+pub(crate) fn normalize_mode(mode: &str) -> String {
+    match mode.trim() {
+        "autopilot" => PROMPT_MODE_LOOP.to_string(),
+        m => m.to_string(),
+    }
+}
+
 pub(crate) const PROMPT_SLASH_PATTERN: &str = "^[a-z][a-z0-9-]*$";
 pub(crate) const PROMPT_ARG_NAME_PATTERN: &str = "^[a-z][a-z0-9_]{0,39}$";
 pub(crate) static PROMPT_SLASH_RE: LazyLock<Regex> =
@@ -177,7 +185,11 @@ pub struct PromptAction {
     pub slash: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub mode: String,
-    #[serde(rename = "loop", skip_serializing_if = "String::is_empty")]
+    #[serde(
+        rename = "loop",
+        alias = "workflow",
+        skip_serializing_if = "String::is_empty"
+    )]
     pub loop_id: String,
     #[serde(rename = "timeoutMs", skip_serializing_if = "is_zero")]
     pub timeout_ms: i64,
@@ -426,7 +438,7 @@ struct FileManifest {
     search: Vec<SearchAction>,
     expand: Vec<ExpandAction>,
     role: Vec<Role>,
-    #[serde(rename = "loop")]
+    #[serde(rename = "loop", alias = "workflow")]
     loops: Vec<LoopDef>,
     policy: Vec<Policy>,
 }
@@ -651,24 +663,21 @@ fn parse_prompt_actions(
             ));
         }
         p.slash = slash;
-        let mut mode = p.mode.trim().to_string();
+        let mut mode = normalize_mode(&p.mode);
         let loop_id = p.loop_id.trim().to_string();
         if !loop_id.is_empty() {
             if !valid_bundle_id(&loop_id) {
-                return Err(err!("prompt {id}: loop {:?} is not a safe id", loop_id));
+                return Err(err!("prompt {id}: workflow {:?} is not a safe id", loop_id));
             }
             if mode.is_empty() {
                 mode = PROMPT_MODE_LOOP.to_string();
             } else if mode != PROMPT_MODE_LOOP {
-                return Err(err!(
-                    "prompt {id}: loop requires mode {:?}",
-                    PROMPT_MODE_LOOP
-                ));
+                return Err(err!("prompt {id}: workflow requires mode \"autopilot\""));
             }
         }
         if !mode.is_empty() && !valid_prompt_mode(&mode) {
             return Err(err!(
-                "prompt {id}: unknown mode {:?} (use ask|plan|agent|review|loop, or omit)",
+                "prompt {id}: unknown mode {:?} (use ask|plan|agent|review|autopilot, or omit)",
                 mode
             ));
         }
@@ -676,8 +685,7 @@ fn parse_prompt_actions(
         p.loop_id = loop_id;
         if p.fresh_session && p.mode == PROMPT_MODE_LOOP {
             return Err(err!(
-                "prompt {id}: fresh_session is not valid with mode {:?}",
-                PROMPT_MODE_LOOP
+                "prompt {id}: fresh_session is not valid with mode \"autopilot\""
             ));
         }
         let tab_group = p.tab_group.trim().to_string();

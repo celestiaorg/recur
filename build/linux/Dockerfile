@@ -6,7 +6,7 @@ FROM node:24.22.2-bookworm-slim AS node
 FROM ubuntu:24.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    ca-certificates curl git build-essential pkg-config cmake clang \
+    ca-certificates tzdata curl git build-essential pkg-config cmake clang \
     libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev \
     libfontconfig-dev libfreetype-dev libvulkan-dev libzstd-dev libssl-dev \
     libgtk-4-dev libwebkitgtk-6.0-dev \
@@ -19,7 +19,7 @@ COPY --from=node /usr/local/bin/node /usr/local/bin/node
 ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo PATH=/usr/local/cargo/bin:$PATH
 # Matches rust-toolchain.toml; bump together.
 RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal \
-      --default-toolchain 1.95 --component rustfmt,clippy \
+      --default-toolchain 1.100 --component rustfmt,clippy,llvm-tools \
     && chmod -R a+w $RUSTUP_HOME $CARGO_HOME
 
 # Docker blocks the user namespaces WebKit's bubblewrap sandbox needs; tests that open

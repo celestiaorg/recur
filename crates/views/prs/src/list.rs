@@ -32,10 +32,10 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerStyle};
 use recur_ui::{IconName, Theme, icon};
-use recur_view_core::pr::{PrLifecycle, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr::{PrLifecycle, github_href, pr_icon_name, pr_lifecycle};
 use recur_view_core::{AppState, ViewContext, ViewName, call, toast};
 
-use crate::actions::{apply_merged, github_href};
+use crate::actions::apply_merged;
 use crate::chrome::{chrome_color, group_color, group_label, status_label};
 use crate::style::{dot, hsla, running_dot, seg, seg_text_btn, spin_deg};
 use crate::ui::{PrUi, ui};
@@ -396,7 +396,7 @@ impl PrList {
     /// ⌘-click toggles a row, shift-click selects from the anchor to it in drawn order, and a
     /// plain click opens it.
     fn click_row(&mut self, id: &str, m: Modifiers, cx: &mut Context<Self>) {
-        if !m.shift && !m.secondary() {
+        if !m.shift && !m.secondary(cx) {
             self.open(id, cx);
             return;
         }
@@ -602,7 +602,7 @@ impl PrList {
             .filter(|p| p.is_git && p.id != "files")
             .map(|p| {
                 let label = if p.name.is_empty() { &p.id } else { &p.name };
-                SelectOption::new(p.id.clone(), label.clone())
+                SelectOption::new(p.id.clone(), label.clone()).pic(p.pic.clone(), p.color.clone())
             })
             .collect();
         let show_projects = projects.len() > 1;
@@ -1244,7 +1244,7 @@ impl PrList {
         let any_git = self.state().read(cx).projects.iter().any(|p| p.is_git);
         let state = self.state().clone();
         let label = if any_git {
-            "Start a loop"
+            "Start a workflow"
         } else {
             "Get started"
         };
@@ -1275,7 +1275,7 @@ impl PrList {
             ),
             "No pull requests yet",
             Some(
-                "GitHub PRs from projects you’ve added to Recur show up here, including ones you didn’t open. Loops still land here when they converge.",
+                "GitHub PRs from projects you’ve added to Recur show up here, including ones you didn’t open. Workflows still land here when they converge.",
             ),
             Some(btn.into_any_element()),
             cx,

@@ -6,9 +6,8 @@ use std::rc::Rc;
 
 use gpui_kit::{
     Context, InteractiveElement as _, IntoElement, Modifiers, MouseButton, ParentElement as _,
-    Pixels, Point, Render, ScrollDelta, ScrollHandle, ScrollWheelEvent,
-    StatefulInteractiveElement as _, Styled as _, TestAppContext, TouchPhase, Window, div, point,
-    px,
+    Pixels, Point, Render, ScrollDelta, ScrollEvent, ScrollHandle, StatefulInteractiveElement as _,
+    Styled as _, TestAppContext, TouchPhase, Window, div, point, px,
 };
 
 struct Page {
@@ -88,11 +87,12 @@ fn zoom_scales_the_layout_and_maps_input(cx: &mut TestAppContext) {
     );
     assert_eq!(hit.get(), Some(point(px(75.), px(75.))));
 
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: point(px(100.), px(300.)),
         delta: ScrollDelta::Pixels(point(px(0.), px(-50.))),
         modifiers: Modifiers::none(),
         touch_phase: TouchPhase::Moved,
+        ..Default::default()
     });
     cx.run_until_parked();
     assert_eq!(

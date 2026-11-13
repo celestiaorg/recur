@@ -223,7 +223,7 @@ impl PrsService for AppServices {
             let (p, ok) = s.engine.send_back_to_loop(&pr_id, &comments).await;
             if !ok {
                 return Err(Error::new(
-                    "send-back failed: the PR or its loop is unavailable",
+                    "send-back failed: the PR or its workflow is unavailable",
                 ));
             }
             Ok(p)

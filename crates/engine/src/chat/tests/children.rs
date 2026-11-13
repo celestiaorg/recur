@@ -877,18 +877,23 @@ async fn message_child_on_a_finished_child_starts_a_new_turn() {
     let engine: Arc<parking_lot::Mutex<std::sync::Weak<crate::Engine>>> = Arc::default();
     let inner = child_runner("Done.").provider();
     let replies = Arc::new(parking_lot::Mutex::new(Vec::<String>::new()));
-    let (pid, runs, weng, rep) = (
+    // spawn_child asserts the child settled; the report turn must not
+    // message it into a new turn before that.
+    let armed = Arc::new(tokio::sync::Notify::new());
+    let (pid, runs, weng, rep, arm) = (
         Arc::clone(&parent_id),
         Arc::clone(&parent_runs),
         Arc::clone(&engine),
         Arc::clone(&replies),
+        Arc::clone(&armed),
     );
     let provider = before_turn(inner, move |req| {
-        let (pid, runs, weng, rep) = (
+        let (pid, runs, weng, rep, arm) = (
             Arc::clone(&pid),
             Arc::clone(&runs),
             Arc::clone(&weng),
             Arc::clone(&rep),
+            Arc::clone(&arm),
         );
         async move {
             let parent = pid.lock().clone();
@@ -897,6 +902,7 @@ async fn message_child_on_a_finished_child_starts_a_new_turn() {
                 && runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0
                 && let Some(eng) = eng
             {
+                arm.notified().await;
                 for w in eng.store.workspaces() {
                     if w.parent_id == parent {
                         let got = eng
@@ -915,6 +921,7 @@ async fn message_child_on_a_finished_child_starts_a_new_turn() {
     *parent_id.lock() = caller.id.clone();
     fx.eng().ensure_pair_agent(&caller.id, PAIR_AGENT_CODE, "");
     let child = spawn_child(&fx, &caller, "Resume me").await;
+    armed.notify_one();
     wait_report(
         &fx,
         &caller,
@@ -1127,7 +1134,7 @@ async fn message_child_steers_a_running_loop() {
         .eng()
         .message_child_from_chat(&parent.id, &child.id, steer)
         .await;
-    assert!(got.contains("loop"), "{got}");
+    assert!(got.contains("workflow"), "{got}");
     assert_eq!(h.lock().pending_steer, steer);
     fx.eng().remove_loop(&h);
     fx.te.close().await;

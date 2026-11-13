@@ -362,7 +362,9 @@ impl Engine {
             return Err("retry setup only applies to a hand workspace".into());
         }
         if ws.has_run() {
-            return Err("retry setup only applies to a workspace that never started a loop".into());
+            return Err(
+                "retry setup only applies to a workspace that never started a workflow".into(),
+            );
         }
         if ws.phase != "failed" && ws.status_label != "Couldn't create" {
             return Err("this workspace did not fail setup".into());
@@ -856,7 +858,7 @@ impl Engine {
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
         if n > 0 {
-            tracing::info!("recur: copied {n} file(s) into {dest}");
+            tracing::info!("recur: copied {n} path(s) into {dest}");
         }
         Ok(())
     }

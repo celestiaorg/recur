@@ -9,7 +9,7 @@ A **workspace** is the unit of work in Recur: a checkout plus the UI around it (
 
 ## Working copy vs task workspaces
 
-- **Working copy**: your project's real git checkout. Titlebar actions are **Commit**, **Update**, and **Push**. It cannot Merge or open a PR (it *is* the project tree), and it does not offer Loop mode.
+- **Working copy**: your project's real git checkout. Titlebar actions are **Commit**, **Update**, and **Push**. It cannot Merge or open a PR (it *is* the project tree), and it does not offer Autopilot mode.
 - **Task workspaces**: isolated git worktrees on their own branches. Run any [chat mode](/concepts/modes) here without colliding with other tasks.
 
 ## Isolation & parallelism
@@ -18,12 +18,12 @@ A **workspace** is the unit of work in Recur: a checkout plus the UI around it (
 - Setup, teardown, named Runs, and env live in committed [`.recur/project.toml`](/concepts/project-toml)
 - Inside a workspace, open multiple agent chats, each with its own mode
 
-[Child workspaces](/concepts/modes#child-workspaces) started from an Agent chat or a [Loop](/concepts/loop) nest under their parent in the sidebar. Use [Inbox](/concepts/inbox) to find work across projects, or [Schedules](/concepts/schedules) to start tasks automatically while Recur is open.
+[Child workspaces](/concepts/modes#child-workspaces) started from an Agent chat or a [workflow](/concepts/workflows) nest under their parent in the sidebar. Use [Inbox](/concepts/inbox) to find work across projects, or [Schedules](/concepts/schedules) to start tasks automatically while Recur is open.
 
 ## Landing the work
 
-- **Hand-driven** workspaces (no Loop engaged) can **Merge** straight onto the local base. Merge is hidden when GitHub branch protection requires a pull request.
-- Loops that end in a PR open a GitHub PR, or a Local PR when the project's **Open PRs on GitHub** setting is off. Other loops stop after review and fixes. See [Pull requests](/concepts/pull-requests).
+- **Hand-driven** workspaces (no workflow engaged) can **Merge** straight onto the local base. Merge is hidden when GitHub branch protection requires a pull request.
+- Workflows that end in a PR open a GitHub PR, or a Local PR when the project's **Open PRs on GitHub** setting is off. Other workflows stop after review and fixes. See [Pull requests](/concepts/pull-requests).
 - Merge and PR creation refuse to run while there are uncommitted changes.
 
 ## Open a project or file

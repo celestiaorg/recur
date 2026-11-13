@@ -184,8 +184,8 @@ fn find_clones(root: &str, seqs: &[FileSeq]) -> (Vec<DupClone>, usize) {
                 text: previews.at(&s.path, start_line),
             });
             sig_parts.push(format!("{}:{start_line}", s.path));
-            for i in s.start..=end_idx {
-                covered.insert(format!("{}:{}", s.path, seq.line_nos[i]));
+            for line in &seq.line_nos[s.start..=end_idx] {
+                covered.insert(format!("{}:{line}", s.path));
             }
             if occs.len() >= DUP_MAX_OCCS {
                 break;

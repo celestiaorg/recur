@@ -9,7 +9,6 @@
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
-use pretty_assertions::assert_eq;
 use recur_agent_tools::{Host, PlanSubmission};
 use recur_bundles::FindingsThreshold;
 use recur_domain::{

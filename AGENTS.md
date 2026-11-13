@@ -26,7 +26,7 @@ Read before inventing architecture:
 | `recur-skills/` | Shipped agent skills, embedded by `recur-bundles` |
 | `build/` | Packaging: macOS app/DMG (`build/darwin`), Linux Docker images and packages (`build/linux`) |
 | `mise.toml`, `tasks/` | Tools (node, pnpm, nfpm, dmgbuild) in `mise.toml`; tasks in `tasks/check.toml`, `dev.toml`, `macos.toml`, `linux.toml`, `release.toml` |
-| `src-web/` | The website; `src-web/demo` is the Svelte app its interactive demo builds |
+| `src-web/` | The website; its screenshots come from the desktop app (`mise run capture:splash`) |
 | `src-docs/` | User docs (also copied into the `recur-help` skill) |
 
 ## Dev environment tips
@@ -37,16 +37,16 @@ Read before inventing architecture:
 - Dogfood: `.recur/project.toml` sets `RECUR_INSTANCE_LABEL=$RECUR_BRANCH`. When that env is present, Recur paints a `dev` chip with the branch in the titlebar gap (packaged Recur omits it).
 - Dev builds give dependencies (gpui-pre and the other vendored crates included) line tables only, not full debuginfo (`[profile.dev.package."*"]` in `Cargo.toml`): backtraces, profiles and file:line breakpoints work, but lldb shows no locals inside dependency code. To debug inside one, rebuild just that crate with full debuginfo: `cargo run -p recur-desktop --config 'profile.dev.package.gpui-pre.debug=true'`.
 - Everything builds into `target/`: `target/debug/recur` (desktop) and `target/debug/recur-cli` (CLI). Packages go to `target/package/`.
-- macOS package: `mise run macos:package` (`Recur.app`, DMG and updater zip; `UNIVERSAL=true`, signing and notarization env in `build/darwin/package.sh`). `mise run macos:smoke` installs and launches the DMG in a sandbox.
+- macOS package: `mise run macos:package` (`Recur.app`, DMG and updater zip; `UNIVERSAL=true`, signing and notarization env in `build/darwin/package.sh`). `mise run macos:smoke` installs and launches the DMG in a sandbox. `mise run macos:ademark` runs the ADEMark benchmark on the branch in the bench VM (`.agents/skills/ademark-bench`).
 - Linux: `mise run linux:test`, `linux:build`, `linux:package` (tarball, `.deb`, `.rpm` to `/opt/recur`) and `linux:smoke`, all in `build/linux/Dockerfile` on a Mac (Docker or OrbStack) for the host arch (`ARCH=amd64|arm64` overrides). `mise run linux:run` opens the Linux app on a throwaway desktop at `http://127.0.0.1:6081` (noVNC). `linux:test:wpe` runs the WPE WebKit spike's checks.
 - UI view state that should survive view switches or restarts (filters, sort, layout, expanded rows) is persisted on disk as a JSON file in the data dir, through the shell service in `crates/services/src/app/shell.rs` (see `shell.json`, `schedule-view.json`, `issues-view.json`).
 - TypeScript bundle code runs on JavaScriptCore (`crates/bundles/src/js.rs`), not node: the system framework on macOS, WebKitGTK's library on Linux.
-- Versions: the workspace `version` in `Cargo.toml` is the last release and the only place to set it. `mise run version:set X.Y.Z` updates it plus `Cargo.lock` and the `package.json` files (`lint` fails if they drift), then tag `vX.Y.Z`; the release build fails if the tag disagrees. Untagged builds report `X.Y.Z+commit.<sha>`.
+- Versions: the workspace `version` in `Cargo.toml` is the last release and the only place to set it. `mise run version:set X.Y.Z` updates it plus `Cargo.lock` and the `package.json` files (`lint` fails if they drift), then tag `vX.Y.Z`; the release build fails if the tag disagrees. Untagged builds report `X.Y.Z+commit.<sha>`. To cut a release, follow `.agents/skills/cut-release/SKILL.md`.
 - Multi-agent coordination (optional): gitignored `TODO.md`: claim work there so sessions do not collide.
 
 ## Testing instructions
 
-CI: `.github/workflows/ci.yml` runs `sanity` first (fmt and the layering check, once), then clippy and the workspace tests on macOS (`mac`) and Linux (`linux`, all features under Xvfb, plus bundle lint and tests), and packages each platform only after its tests pass (`package-mac`, `package-linux` with the Debian smoke test). Branch protection requires its `CI success` job (and `cla` from `cla.yml`), so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are mise tasks.
+CI: `.github/workflows/ci.yml` runs `sanity` first (fmt and the layering check, once), then clippy and the workspace tests on macOS (`mac`) and Linux (`linux`, all features under Xvfb, plus bundle lint and tests), and packages each platform beside them (`package-mac`, `package-linux` with the Debian smoke test) on the merge queue and on `main`, not on pull requests. Branch protection requires its `CI success` job (and `cla` from `cla.yml`), so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are mise tasks.
 
 | Task | What |
 |------|------|
@@ -57,7 +57,7 @@ CI: `.github/workflows/ci.yml` runs `sanity` first (fmt and the layering check, 
 | `mise run test:bundles` | Shipped bundle engine tests under `./bundles` |
 | `mise run check:cursor-sdk-pin` | Network: fail if PyPI `cursor-sdk` is ahead of `PINNED_SDK_VERSION` |
 | `mise run linux:test` | fmt, clippy and tests on Linux (Docker on a Mac) |
-| `mise run test:splash` | Builds the website and browser-checks the demo |
+| `mise run test:splash` | Builds the website and browser-checks it |
 
 ### Cursor SDK pin
 
@@ -96,4 +96,4 @@ Expectations:
 - Run `mise run check` before pushing.
 - Update `docs/bundles.md` for author-facing bundle behavior.
 - Add user-facing changes to the `Unreleased` section of `src-docs/src/pages/changelog.mdx` (Keep a Changelog: Added, Changed, Fixed, Removed, Security). Write for users, not commit messages. On release, rename `Unreleased` to the version and date.
-- Do not commit secrets, `target/`, `src-web/public/demo/`, or the gitignored `TODO.md`.
+- Do not commit secrets, `target/`, or the gitignored `TODO.md`.

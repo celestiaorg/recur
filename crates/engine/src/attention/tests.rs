@@ -246,7 +246,7 @@ async fn loop_finished_raises_unseen() {
     let it = inbox(&t, &chat_inbox_id(ws, PAIR_AGENT_CODE)).expect("loop-finished row");
     assert!(it.unread && it.kind == "chat");
     assert!(
-        it.title.contains("Loop") && it.title.contains("finished"),
+        it.title.contains("Workflow") && it.title.contains("finished"),
         "{}",
         it.title
     );
@@ -340,7 +340,7 @@ async fn loop_finished_uses_walk_exit_not_workspace() {
         "settled walk badges even if a sibling overwrote state"
     );
     let it = inbox(&t, &chat_inbox_id(ws, PAIR_AGENT_CODE)).unwrap();
-    assert!(it.title.contains("Loop") && !it.title.contains("reply"));
+    assert!(it.title.contains("Workflow") && !it.title.contains("reply"));
 
     t.engine.set_workspace_chat_focus(ws, PAIR_AGENT_CODE);
     t.store.update_workspace(ws, |w| {
@@ -392,7 +392,7 @@ async fn loop_finished_legacy_empty_chat_code_badges_ma() {
         .await;
     assert!(unseen(&t, ws, MAESTRO_AGENT_CODE));
     let it = inbox(&t, &chat_inbox_id(ws, MAESTRO_AGENT_CODE)).unwrap();
-    assert!(it.title.contains("Loop") && !it.title.contains("reply"));
+    assert!(it.title.contains("Workflow") && !it.title.contains("reply"));
 }
 
 #[tokio::test]

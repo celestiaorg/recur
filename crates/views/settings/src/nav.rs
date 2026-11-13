@@ -82,7 +82,7 @@ impl Section {
         match self {
             Section::Agent => "Providers",
             Section::Models => "Models",
-            Section::Loops => "Loops",
+            Section::Loops => "Workflows",
             Section::Prs => "Pull requests",
             Section::Integrations => "Integrations",
             Section::Mcp => "MCP",
@@ -137,7 +137,7 @@ pub fn nav() -> Vec<NavGroup> {
                     Section::General,
                     "General",
                     IconName::SlidersHorizontal,
-                    "general simplify default yagni stdlib sleep caffeinate awake power prevent idle mac agent turn timeout minutes limit deadline concurrent loops agents slots cap governor branch prefix git workspace name github schedule keep last sidebar terminals page shell",
+                    "general simplify default yagni stdlib sleep caffeinate awake power prevent idle mac agent turn timeout minutes limit deadline concurrent loops workflows agents slots cap governor branch prefix git workspace name github schedule keep last sidebar terminals page shell",
                 ),
                 item(
                     Section::Appearance,
@@ -189,16 +189,16 @@ pub fn nav() -> Vec<NavGroup> {
             ],
         },
         NavGroup {
-            group: "Loops",
+            group: "Workflows",
             items: vec![item(
                 Section::Loops,
-                "Loops",
+                "Workflows",
                 IconName::RefreshCcw,
-                "loop policy cautious balanced aggressive default rails autonomy guardrails",
+                "workflow loop policy cautious balanced aggressive default rails autonomy guardrails",
             )],
         },
         NavGroup {
-            group: "Workflow",
+            group: "Connections",
             items: vec![
                 item(
                     Section::Prs,

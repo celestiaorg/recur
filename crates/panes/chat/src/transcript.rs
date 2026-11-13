@@ -327,7 +327,6 @@ impl AgentChat {
                     .child(recur_ui::isolated::FieldView::element(
                         &self.think_dots,
                         div().flex_none().w(px(23.)).h(px(5.)).style().clone(),
-                        cx,
                     ))
                     .child(label_el),
             )
@@ -1525,6 +1524,7 @@ impl AgentChat {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn bubble_content(
         &mut self,
+        find_msg: Option<usize>,
         parts: &[BubblePart],
         id: &str,
         has_att: bool,
@@ -1542,6 +1542,18 @@ impl AgentChat {
             color: color.into(),
         };
         if has_att {
+            let mut found = 0;
+            let marks: Vec<_> = parts
+                .iter()
+                .map(|p| match (p, find_msg) {
+                    (BubblePart::Text(s), Some(msg)) => {
+                        let (m, n) = self.bubble_find_marks(s, msg, found, cx);
+                        found += n;
+                        m
+                    }
+                    _ => Vec::new(),
+                })
+                .collect();
             let kids: Vec<AnyElement> = parts
                 .iter()
                 .enumerate()
@@ -1554,6 +1566,7 @@ impl AgentChat {
                             Vec::new(),
                             style.clone(),
                         )
+                        .marks(marks[pi].clone())
                         .selectable(select_key(&fid))
                         .fit_content()
                         .into_any_element()
@@ -1617,7 +1630,11 @@ impl AgentChat {
             }
         }
         let fid = format!("{id}-flow");
+        let marks = find_msg
+            .map(|msg| self.bubble_find_marks(&content, msg, 0, cx).0)
+            .unwrap_or_default();
         flow(SharedString::from(fid.clone()), content, atoms, style)
+            .marks(marks)
             .selectable(select_key(&fid))
             .fit_content()
             .trailing_space(trailing_space)
@@ -1646,6 +1663,7 @@ impl AgentChat {
         let has_att = !m.attachments.is_empty();
         let bg = t.amber_d;
         let content = self.bubble_content(
+            Some(i),
             &parts,
             &id,
             has_att,
@@ -1744,7 +1762,9 @@ impl AgentChat {
                 arts.iter().map(|a| (a.id.as_str(), a.title.as_str())),
             )
         });
-        let content = self.bubble_content(&parts, &id, false, false, t.muted, t.pane_2, window, cx);
+        let content = self.bubble_content(
+            None, &parts, &id, false, false, t.muted, t.pane_2, window, cx,
+        );
         let mut head = div()
             .flex()
             .items_center()

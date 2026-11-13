@@ -24,10 +24,13 @@ use crate::prs::merge::format_squash_commit_message;
 use crate::prs::refresh::behind_base;
 use crate::prs::{is_forge_source, none_if_empty, touch_pr_updated};
 use crate::text::{hard_truncate_runes, html_escape, plural, truncate};
-use crate::turn::oneshot::cap_github_pr_body;
+use crate::turn::oneshot::{PR_DESCRIPTION_TIMEOUT, cap_github_pr_body};
 use crate::workspace::create::DEFAULT_WORKSPACE_TITLE;
 
 const LAND_TIMEOUT: Duration = Duration::from_secs(60);
+/// Time past a land's deadline for [`recur_git::Manager::push_land`] to undo
+/// a timed-out push, so the deadline never strands an unpushed land.
+pub(crate) const PUSH_UNDO_GRACE: Duration = Duration::from_secs(10);
 const LAND_STATE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// While the autopilot owns the worktree. Once a loop idles the human may
@@ -36,8 +39,9 @@ pub fn land_locked_by_run(ws: &Workspace) -> bool {
     ws.has_run() && run_active(&ws.state)
 }
 
-/// The on-disk commit message for a no-PR land: the workspace name as the
-/// squash subject (plus commit details by the squash setting), else
+/// The on-disk commit message for a no-PR land: the generated title (else
+/// the workspace name) as the squash subject, plus commit details or the
+/// generated description by the squash setting; else
 /// `Merge <name> into <base>`.
 pub fn workspace_merge_commit_message(
     ws: &Workspace,
@@ -45,15 +49,21 @@ pub fn workspace_merge_commit_message(
     method: &MergeMethod,
     commits: &[Commit],
     squash: &SquashCommitMessage,
+    generated: (&str, &str),
 ) -> String {
-    let mut title = single_line(&ws.goal);
-    if title.is_empty() || title == DEFAULT_WORKSPACE_TITLE {
-        title = "Workspace changes".into();
+    let mut name = single_line(ws.goal_label());
+    if name.is_empty() || name == DEFAULT_WORKSPACE_TITLE {
+        name = "Workspace changes".into();
     }
     if *method == MergeMethod::Squash {
-        return format_squash_commit_message(&title, 0, false, commits, "", squash).combined();
+        let (title, desc) = generated;
+        let title = match single_line(title).trim() {
+            "" => name,
+            t => t.to_owned(),
+        };
+        return format_squash_commit_message(&title, 0, false, commits, desc, squash).combined();
     }
-    format!("Merge {title} into {base}")
+    format!("Merge {name} into {base}")
 }
 
 /// A hand-driven workspace PR's summary: what changed, no convergence
@@ -156,7 +166,7 @@ impl Engine {
             );
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running: pause it before merging from the workspace".into());
+            return Err("a workflow is running: pause it before merging from the workspace".into());
         }
         if ws.state == WorkspaceState::Merged {
             return Ok(ws);
@@ -192,9 +202,13 @@ impl Engine {
             branch = ws.branch.clone();
         }
         let ws = self.store.workspace(workspace_id).unwrap_or(ws);
-        tokio::time::timeout(
-            LAND_TIMEOUT,
-            self.merge_workspace_inner(&ws, &proj, &branch, &base, &method),
+        let mut deadline = tokio::time::Instant::now() + LAND_TIMEOUT;
+        if method == MergeMethod::Squash {
+            deadline += PR_DESCRIPTION_TIMEOUT;
+        }
+        tokio::time::timeout_at(
+            deadline + PUSH_UNDO_GRACE,
+            self.merge_workspace_inner(&ws, &proj, &branch, &base, &method, deadline),
         )
         .await
         .unwrap_or_else(|_| Err(deadline_err()))
@@ -207,6 +221,7 @@ impl Engine {
         branch: &str,
         base: &str,
         method: &MergeMethod,
+        deadline: tokio::time::Instant,
     ) -> Result<Workspace> {
         let workspace_id = ws.id.as_str();
         let mgr = recur_git::Manager::new(&proj.repo_path, &self.worktree_root);
@@ -253,43 +268,67 @@ impl Engine {
         if diff.files.is_empty() && commits.is_empty() {
             return Err("nothing to merge: commit changes in this workspace first".into());
         }
+        let mut generated = (String::new(), String::new());
+        if *method == MergeMethod::Squash {
+            let (_, diff_body) = mgr.changed_diff(&ws.worktree_path, base).await;
+            if let Ok(g) = self
+                .generate_pr_description(
+                    &tokio_util::sync::CancellationToken::new(),
+                    workspace_id,
+                    &ws.worktree_path,
+                    &diff_body,
+                    &commit_subjects(&commits),
+                )
+                .await
+            {
+                generated = g;
+            }
+        }
         let sq = effective_squash_commit_message(proj, &self.settings());
-        let msg = workspace_merge_commit_message(ws, base, method, &commits, &sq);
-        if let Err(e) = mgr.merge(branch, base, &msg, method.as_str()).await {
-            self.emit_workspace_event(
-                workspace_id,
-                "AR",
-                "You",
-                &format!("Local merge failed: {}", html_escape(&e.to_string())),
-            );
-            if e.dirty_base().is_some() {
-                return Err(EngineError(e.to_string()));
+        let msg = workspace_merge_commit_message(
+            ws,
+            base,
+            method,
+            &commits,
+            &sq,
+            (&generated.0, &generated.1),
+        );
+        let res = match mgr.merge(branch, base, &msg, method.as_str()).await {
+            Ok(r) => r,
+            Err(e) => {
+                self.emit_workspace_event(
+                    workspace_id,
+                    "AR",
+                    "You",
+                    &format!("Local merge failed: {}", html_escape(&e.to_string())),
+                );
+                if e.dirty_base().is_some() {
+                    return Err(EngineError(e.to_string()));
+                }
+                return Err(EngineError(format!("merge into {base}: {e}")));
             }
-            return Err(EngineError(format!("merge into {base}: {e}")));
-        }
-        // Persist merged before pushing: a failed push must not leave the
-        // workspace looking unmerged while the base holds the land.
-        match self.store.pr_by_workspace(workspace_id) {
-            Some(existing) if existing.state != "Merged" => {
-                self.mark_merged(&existing.id, "").await;
-            }
-            _ => self.set_workspace_state(workspace_id, WorkspaceState::Merged, "merged"),
-        }
+        };
         if let Some((remote, short)) = &tracking
-            && let Err(e) = mgr.push_branch(remote, short).await
+            && let Err(e) = mgr.push_land(remote, short, &res, deadline).await
         {
             self.emit_workspace_event(
                 workspace_id,
                 "AR",
                 "You",
                 &format!(
-                    "Landed on local <code>{}</code> but could not push to <code>{}</code>: {}",
+                    "Could not push <code>{}</code> to <code>{}</code>: {}",
                     html_escape(short),
                     html_escape(remote),
                     html_escape(&e.to_string())
                 ),
             );
             return Err(EngineError(format!("push {short} to {remote}: {e}")));
+        }
+        match self.store.pr_by_workspace(workspace_id) {
+            Some(existing) if existing.state != "Merged" => {
+                self.mark_merged(&existing.id, "").await;
+            }
+            _ => self.set_workspace_state(workspace_id, WorkspaceState::Merged, "merged"),
         }
         let mut landed = mgr.short_branch_name(base).await;
         if landed.is_empty() {
@@ -470,7 +509,9 @@ impl Engine {
             return Err("the main working copy is already the project checkout".into());
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running: pause it before updating from the workspace".into());
+            return Err(
+                "a workflow is running: pause it before updating from the workspace".into(),
+            );
         }
         if ws.state == WorkspaceState::Merged {
             return Ok(UpdateWorkspaceResult {
@@ -615,7 +656,7 @@ impl Engine {
             return Err("the main working copy has no workspace PR".into());
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running: pause it before pulling".into());
+            return Err("a workflow is running: pause it before pulling".into());
         }
         let pr = self
             .store
@@ -748,7 +789,7 @@ impl Engine {
             return Err("the main working copy can't open a PR: create a workspace for changes you want to review".into());
         }
         if land_locked_by_run(&ws) {
-            return Err("a loop is running: wait until it pauses, then open a PR from the titlebar or /open-pr".into());
+            return Err("a workflow is running: wait until it pauses, then open a PR from the titlebar or /open-pr".into());
         }
         let proj = self
             .store

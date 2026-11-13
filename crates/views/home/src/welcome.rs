@@ -70,8 +70,8 @@ const EXPLORE: [(IconName, &str, &str); 4] = [
     ),
     (
         IconName::RefreshCw,
-        "Loops",
-        "Pick the default loop and how cautious it should be.",
+        "Workflows",
+        "Pick the default workflow and how cautious it should be.",
     ),
     (
         IconName::Braces,
@@ -1240,7 +1240,7 @@ impl WelcomeView {
                 v.vcx.state.update(cx, |s, cx| match name {
                     "Inbox" => s.go(ViewName::Briefing, None, cx),
                     "Pull requests" => s.go(ViewName::Pr, None, cx),
-                    "Loops" => s.open_settings(Some("loops"), cx),
+                    "Workflows" => s.open_settings(Some("loops"), cx),
                     _ => s.open_settings(Some("bundle-commands"), cx),
                 })
             }))

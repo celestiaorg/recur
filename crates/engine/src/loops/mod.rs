@@ -578,7 +578,7 @@ impl Walk {
             return;
         }
         self.set_state(WorkspaceState::Stopped, "stopped");
-        self.emit_feed("MA", "Maestro", "Loop stopped.");
+        self.emit_feed("MA", "Maestro", "Workflow stopped.");
     }
 
     /// Parks idle when composer Stop asked for it; otherwise Stop.
@@ -606,7 +606,8 @@ impl Walk {
         }
         let (reason, transient) = transient_failure(err);
         if transient {
-            self.eng.fail_retryable(&self.id, &reason);
+            self.eng
+                .fail_retryable(&self.id, &self.chat_code(), &reason);
             return;
         }
         self.eng.record_failure(&self.id, &err.to_string(), false);
@@ -614,7 +615,7 @@ impl Walk {
         self.emit_feed(
             "MA",
             "Maestro",
-            &format!("Loop failed: {}", html_escape(&err.to_string())),
+            &format!("Workflow failed: {}", html_escape(&err.to_string())),
         );
     }
 }

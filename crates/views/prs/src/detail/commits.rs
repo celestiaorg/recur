@@ -269,7 +269,7 @@ impl PrDetail {
                 let hint = if pr.source == PrSource::GitHub {
                     "Commits on this pull request. Click any to see its diff."
                 } else {
-                    "Every commit is the loop's work: agent-authored, one per iteration. Click any to see its diff. The messages trace how it converged: build → fix on review → fix on review → tests."
+                    "Every commit is the workflow's work: agent-authored, one per iteration. Click any to see its diff. The messages trace how it converged: build → fix on review → fix on review → tests."
                 };
                 wrap = wrap.child(
                     div().child(list).child(

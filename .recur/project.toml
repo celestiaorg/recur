@@ -70,10 +70,19 @@ RECUR_DATA_DIR=$HOME/.recur/data/$RECUR_WORKSPACE_ID
 RECUR_INSTANCE_LABEL=$RECUR_BRANCH
 """
 copy_files = ''
+conventional_commits = true
 
 [[run]]
 name = "dev"
 cmd = "mise run dev"
+
+[[run]]
+name = "web"
+cmd = "mise run dev:web"
+
+[[run]]
+name = "docs"
+cmd = "mise run dev:docs"
 
 [[run]]
 name = "lint"

@@ -3,7 +3,7 @@
 
 use gpui_kit::{
     Context, InteractiveElement as _, IntoElement, Modifiers, ParentElement as _, Render,
-    ScrollDelta, ScrollHandle, ScrollWheelEvent, StatefulInteractiveElement as _, Styled as _,
+    ScrollDelta, ScrollEvent, ScrollHandle, StatefulInteractiveElement as _, Styled as _,
     TestAppContext, TouchPhase, VisualTestContext, Window, div, point, px,
 };
 
@@ -35,11 +35,12 @@ impl Render for Page {
 }
 
 fn wheel(dy: f32, cx: &mut VisualTestContext) {
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: point(px(10.), px(150.)),
         delta: ScrollDelta::Pixels(point(px(0.), px(dy))),
         modifiers: Modifiers::none(),
         touch_phase: TouchPhase::Moved,
+        ..Default::default()
     });
     cx.run_until_parked();
 }

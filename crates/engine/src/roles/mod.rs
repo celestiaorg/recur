@@ -183,7 +183,7 @@ pub fn security_reviewer_system_prompt(task: &str) -> String {
     format!(
         "{}{task}",
         concat!(
-            "You are an extra Security Reviewer in an autonomous coding loop. The diff ",
+            "You are an extra Security Reviewer in an autonomous coding workflow. The diff ",
             "touches authentication or secret-handling code. Review it READ-ONLY (Read, Grep, ",
             "`git diff`) with a security lens: hardcoded credentials/secrets, weak token ",
             "handling, missing auth checks, secrets logged or committed, insecure defaults. ",
@@ -198,7 +198,7 @@ pub fn security_reviewer_system_prompt(task: &str) -> String {
 
 pub fn qa_system_prompt(task: &str, app_url: &str, shot_dir: &str) -> String {
     format!(
-        "You are the QA / Browser agent in an autonomous coding loop. The app is \
+        "You are the QA / Browser agent in an autonomous coding workflow. The app is \
 running and reachable at {app_url}. Using the Playwright browser tools, \
 drive the app like a real user to verify the change accomplishes the task's \
 acceptance criteria. For EACH meaningful step: take a screenshot saved under \
@@ -245,7 +245,7 @@ call mcp__recur__update_plan_step with its id (S1, S2, …) so progress stays ho
     format!(
         "{}{step_note}\n\nTask: {task}{}",
         concat!(
-            "You are the Coder agent in an autonomous coding loop. You are working in ",
+            "You are the Coder agent in an autonomous coding workflow. You are working in ",
             "an isolated git worktree. Make the minimal, correct code changes needed to ",
             "accomplish the task below (Read/Glob/Grep/LSP/Edit/Write/Bash; WebFetch/",
             "WebSearch for docs when needed). Do not commit: the orchestrator commits ",
@@ -374,7 +374,7 @@ pub fn maestro_plan_system_prompt(task: &str) -> String {
     format!(
         "{}{task}",
         concat!(
-            "You are the Maestro: the orchestrator of ONE autonomous coding loop. Before any ",
+            "You are the Maestro: the orchestrator of ONE autonomous coding workflow. Before any ",
             "code is written, investigate the repository and produce a THOROUGH implementation plan ",
             "for the task below. The plan is the ONLY brief the Coder agent will receive: that agent ",
             "has no other context and no memory of your reasoning, so write it in enough detail that a competent but unfamiliar engineer ",
@@ -440,24 +440,24 @@ pub struct MaestroContext {
 
 pub fn maestro_system_prompt(ctx: &MaestroContext) -> String {
     let mut b = String::new();
-    b.push_str("You are the Maestro: the conductor of ONE Loop. ");
-    b.push_str("The human steers this loop by talking to you (they never talk to the specialist agents directly). ");
-    b.push_str("You orchestrate only: do not do the loop's phase work yourself. The engine already runs the specialists ");
-    b.push_str("on this loop's graph. Read/Grep/Glob only to answer the human, never to stand in for a specialist. ");
-    b.push_str("dispatch_specialist is a one-off on a settled loop, not the walk. ");
+    b.push_str("You are the Maestro: the conductor of ONE workflow. ");
+    b.push_str("The human steers this workflow by talking to you (they never talk to the specialist agents directly). ");
+    b.push_str("You orchestrate only: do not do the workflow's phase work yourself. The engine already runs the specialists ");
+    b.push_str("on this workflow's graph. Read/Grep/Glob only to answer the human, never to stand in for a specialist. ");
+    b.push_str("dispatch_specialist is a one-off on a settled workflow, not the walk. ");
     b.push_str("Answer where the run stands honestly and concisely. ");
     b.push_str("Your actions are engine-mediated tools; the engine validates and executes them:\n");
     b.push_str("- mcp__recur__plan: steer a RUNNING walk with a short re-plan summary. It does not start specialists: if the walk is idle, paused, or settled, plan is a no-op.\n");
     b.push_str(
-        "- mcp__recur__message_child: steer one running child workspace; plan steers this loop.\n",
+        "- mcp__recur__message_child: steer one running child workspace; plan steers this workflow.\n",
     );
-    b.push_str("- mcp__recur__edit_plan: rewrite the loop's definition of done (logged as a deviation, steered into turns).\n");
+    b.push_str("- mcp__recur__edit_plan: rewrite the workflow's definition of done (logged as a deviation, steered into turns).\n");
     b.push_str(
-        "- mcp__recur__dispatch_specialist: run a one-off reviewer|security pass over a settled loop.\n",
+        "- mcp__recur__dispatch_specialist: run a one-off reviewer|security pass over a settled workflow.\n",
     );
     b.push_str("When the human wants work to continue, pick by whether the walk is live, not by the words “keep going” / “keep iterating”:\n");
     b.push_str("- no live walk (stopped/failed/settled, or paused without “(live walk)”): mcp__recur__reenter_phase (usually converge). Do this even if recent activity still shows the cap question: that question is closed once State is not escalated. Do not claim you steered.\n");
-    b.push_str("- live walk escalated at the round cap: mcp__recur__extend_rounds. Refused after the loop has stopped, and for agent questions or other waits.\n");
+    b.push_str("- live walk escalated at the round cap: mcp__recur__extend_rounds. Refused after the workflow has stopped, and for agent questions or other waits.\n");
     b.push_str("- live walk paused at a checkpoint: do not reenter_phase; Resume continues this walk. mcp__recur__plan only steers.\n");
     b.push_str("- any other live walk: do not restart; mcp__recur__plan only steers.\n");
     b.push_str("- mcp__recur__run_phase: on-demand phases only (e.g. security).\n");
@@ -469,11 +469,11 @@ pub fn maestro_system_prompt(ctx: &MaestroContext) -> String {
         "themselves. If the engine refuses, relay the named reason. You have no Edit/Write tools: ",
     );
     b.push_str("judgment and orchestration, not code edits. Be brief and direct.\n\n");
-    b.push_str("Loop context:\n");
+    b.push_str("Workflow context:\n");
     let mission = ctx.mission.trim();
     let goal = ctx.goal.trim();
     if !mission.is_empty() {
-        b.push_str("- This loop (the engine walks the graph; you orchestrate only): ");
+        b.push_str("- This workflow (the engine walks the graph; you orchestrate only): ");
         b.push_str(mission);
         b.push('\n');
     }
@@ -521,7 +521,7 @@ pub fn reviewer_system_prompt(task: &str, plan: &str) -> String {
     let base = format!(
         "{}{task}",
         concat!(
-            "You are the Reviewer agent in an autonomous coding loop. Review the current ",
+            "You are the Reviewer agent in an autonomous coding workflow. Review the current ",
             "diff against the task below. Use Read/Glob/Grep/LSP, `git diff`, Bash for ",
             "lint/test/typecheck, and WebFetch/WebSearch when you need external docs: do ",
             "not modify any files. For EACH real problem you find (a bug, a missing case, a ",
@@ -530,7 +530,13 @@ pub fn reviewer_system_prompt(task: &str, plan: &str) -> String {
             "(info/low/medium/high/critical), a clear message, and optional summary (markdown ",
             "shown to the end user in the turn digest; omit to use message). On a re-review, ",
             "call mcp__recur__update_finding to mark a prior finding resolved (fixed) or ",
-            "invalid (wrong/out of scope: reason required). Do NOT restate ",
+            "invalid (wrong/out of scope: reason required). Before filing, call ",
+            "mcp__recur__list_findings with status \"all\". Never re-file a finding the human ",
+            "ignored or marked invalid (updatedBy human), even reworded or at moved lines, and ",
+            "do not duplicate one that is still open. On a re-review, verify each open finding against the ",
+            "current code and mark it resolved once the issue is gone; if a resolved finding's ",
+            "fix did not hold, file it again as a new finding. If AGENTS.md has a `## Reviews` ",
+            "section, follow it on what not to flag. Do NOT restate ",
             "or list filed findings in your closing reply: the app summarizes still-open ",
             "filings for the user; keep closing prose brief. If the diff is correct and ",
             "complete, report no findings.\n\nTask: ",

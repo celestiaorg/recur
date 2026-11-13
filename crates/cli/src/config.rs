@@ -2,11 +2,10 @@
 //!
 //! `bundles-dir` precedence: the `--bundles-dir` flag when set, then a
 //! non-empty `$RECUR_BUNDLES_DIR`, then `bundles-dir` in the first config
-//! file found in `~/.recur` (parsed as YAML), then
+//! file found in `~/.recur` (a top-level YAML `key: value` line), then
 //! `~/.recur/bundles`.
 
 use recur_domain::path;
-use yaml_rust2::{Yaml, YamlLoader};
 
 use crate::paths;
 
@@ -69,39 +68,44 @@ fn find_config_file(dir: &str) -> Option<String> {
 }
 
 fn config_file_value(dir: &str, key: &str) -> Option<String> {
-    let file = find_config_file(dir)?;
-    let text = std::fs::read_to_string(&file).ok()?;
-    let docs = YamlLoader::load_from_str(&text).ok()?;
-    let Some(Yaml::Hash(map)) = docs.into_iter().next() else {
-        return None;
-    };
-    // Keys match case-insensitively; the last case-variant wins.
+    let text = std::fs::read_to_string(find_config_file(dir)?).ok()?;
+    // simplify: top-level `key: scalar` lines only; nested, flow and multi-line YAML read as
+    // unset. Swap in a YAML parser if the config grows beyond flat keys.
     let mut found = None;
-    for (k, v) in map {
-        if let Yaml::String(k) = k
-            && k.to_lowercase() == key
-        {
-            found = Some(v);
+    for line in text.lines() {
+        if line.starts_with([' ', '\t', '#']) {
+            continue;
+        }
+        let Some((k, v)) = line.split_once(':') else {
+            continue;
+        };
+        // Keys match case-insensitively; the last case-variant wins.
+        if unquote(k.trim()).to_lowercase() == key {
+            found = Some(scalar(v.trim()));
         }
     }
-    yaml_to_string(&found?)
+    found
 }
 
-/// YAML scalars as strings; other kinds read as unset.
-fn yaml_to_string(v: &Yaml) -> Option<String> {
-    Some(match v {
-        Yaml::String(s) => s.clone(),
-        Yaml::Integer(i) => i.to_string(),
-        Yaml::Boolean(b) => b.to_string(),
-        Yaml::Real(r) => match r.parse::<f64>() {
-            Ok(f) if f.is_nan() => "NaN".to_string(),
-            Ok(f) if f.is_infinite() => if f > 0.0 { "+Inf" } else { "-Inf" }.to_string(),
-            Ok(f) => f.to_string(),
-            Err(_) => r.clone(),
-        },
-        Yaml::Null => String::new(),
-        _ => return None,
-    })
+fn unquote(s: &str) -> &str {
+    for q in ['"', '\''] {
+        if let Some(rest) = s.strip_prefix(q) {
+            return rest.split(q).next().unwrap_or(rest);
+        }
+    }
+    s
+}
+
+/// A YAML scalar as a string: quotes and trailing comments stripped, null as empty.
+fn scalar(v: &str) -> String {
+    if v.starts_with(['"', '\'']) {
+        return unquote(v).to_string();
+    }
+    let v = v.split(" #").next().unwrap_or(v).trim();
+    match v {
+        "~" | "null" | "Null" | "NULL" => String::new(),
+        _ => v.to_string(),
+    }
 }
 
 #[cfg(test)]
@@ -118,9 +122,20 @@ mod tests {
             config_file_value(&d, "bundles-dir").as_deref(),
             Some("/from/yml")
         );
-        // config.json is found first and parsed as YAML.
-        std::fs::write(format!("{d}/config.json"), "{\"bundles-dir\": 42}").unwrap();
+        std::fs::write(
+            format!("{d}/config.yml"),
+            "# c\nbundles-dir: /a\nnested:\n  bundles-dir: /no\nBUNDLES-DIR: '/b c' # x\n",
+        )
+        .unwrap();
+        assert_eq!(
+            config_file_value(&d, "bundles-dir").as_deref(),
+            Some("/b c")
+        );
+        std::fs::write(format!("{d}/config.yml"), "bundles-dir: 42 # n\n").unwrap();
         assert_eq!(config_file_value(&d, "bundles-dir").as_deref(), Some("42"));
+        std::fs::write(format!("{d}/config.yml"), "bundles-dir: ~\n").unwrap();
+        assert_eq!(config_file_value(&d, "bundles-dir").as_deref(), Some(""));
+        // config.json is found first and read the same way.
         std::fs::write(format!("{d}/config.json"), "{not yaml").unwrap();
         assert_eq!(config_file_value(&d, "bundles-dir"), None);
     }

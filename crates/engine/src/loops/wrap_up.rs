@@ -25,7 +25,7 @@ pub const WRAP_UP_ACTIVITY_N: usize = 24;
 pub const WRAP_UP_BODY_MAX: usize = 1200;
 pub const WRAP_UP_LINE_MAX: usize = 160;
 
-pub const WRAP_UP_SYSTEM_PROMPT: &str = "You are the Maestro wrapping up ONE finished loop for the operator. You see the whole run: the task, the plan (every step / child), every implementer handoff, and recent activity. Do not describe a single Coder turn as if it were the loop. Reply with ONLY the wrap-up, plain text, 3–8 short lines: root cause if this was a bug or ticket, what landed across the whole run, and anything unfinished or notable. No greeting, no markdown fences, no tools.";
+pub const WRAP_UP_SYSTEM_PROMPT: &str = "You are the Maestro wrapping up ONE finished workflow for the operator. You see the whole run: the task, the plan (every step / child), every implementer handoff, and recent activity. Do not describe a single Coder turn as if it were the workflow. Reply with ONLY the wrap-up, plain text, 3–8 short lines: root cause if this was a bug or ticket, what landed across the whole run, and anything unfinished or notable. No greeting, no markdown fences, no tools.";
 
 /// The compact wall-clock label for a finished loop.
 pub fn format_loop_elapsed(d: Duration) -> String {

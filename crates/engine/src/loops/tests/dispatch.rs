@@ -131,7 +131,7 @@ async fn docs_loop_finished_raises_unseen() {
             .agent(&id, MAESTRO_AGENT_CODE)
             .is_some_and(|a| a.unseen)
             && inbox_row(&t, &row_id).is_some_and(|it| {
-                it.unread && it.title.contains("Loop") && it.title.contains("finished")
+                it.unread && it.title.contains("Workflow") && it.title.contains("finished")
             })
     })
     .await;

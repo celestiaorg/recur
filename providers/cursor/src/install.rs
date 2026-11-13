@@ -19,7 +19,7 @@ use crate::wire::null_default;
 /// minified anchors from this build; fetching "latest" would break them on
 /// the next Cursor publish. Bump only together with refreshed anchors
 /// (`.agents/skills/repin-cursor-sdk/SKILL.md`).
-pub const PINNED_SDK_VERSION: &str = "1.0.38";
+pub const PINNED_SDK_VERSION: &str = "1.3.1";
 
 /// The pinned release's PyPI metadata.
 pub(crate) fn pypi_pinned_project() -> String {
@@ -465,18 +465,16 @@ pub(crate) fn extract_bridge(
     use std::os::unix::fs::OpenOptionsExt;
     let file = std::fs::File::open(archive)
         .map_err(|e| format!("cursor bridge install: open wheel: {e}"))?;
-    let mut zip = zip::ZipArchive::new(file)
+    let mut zip = recur_base::zip::Archive::new(file)
         .map_err(|e| format!("cursor bridge install: open wheel: {e}"))?;
 
     let mut members = Vec::new();
     let mut total: i64 = 0;
-    for i in 0..zip.len() {
-        let f = zip.by_index_raw(i).map_err(|e| e.to_string())?;
-        let name = String::from_utf8_lossy(f.name_raw()).into_owned();
-        if !name.starts_with(BRIDGE_ARCHIVE_PREFIX) || name.ends_with('/') {
+    for (i, f) in zip.entries().iter().enumerate() {
+        if !f.name.starts_with(BRIDGE_ARCHIVE_PREFIX) || f.is_dir() {
             continue;
         }
-        total += f.size() as i64;
+        total += f.size as i64;
         members.push(i);
     }
     if members.is_empty() {
@@ -488,8 +486,9 @@ pub(crate) fn extract_bridge(
     let dst_clean = clean(dst);
     let mut done: i64 = 0;
     for i in members {
-        let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
-        let name = String::from_utf8_lossy(f.name_raw()).into_owned();
+        let e = &zip.entries()[i];
+        let (name, size) = (e.name.clone(), e.size);
+        let mut mode = e.mode & 0o777;
         let rel = &name[BRIDGE_ARCHIVE_PREFIX.len()..];
         // Zip-slip: a crafted member must not write outside dst.
         let target = clean(&dst.join(go_path_clean(rel)));
@@ -501,7 +500,6 @@ pub(crate) fn extract_bridge(
         if let Some(dir) = target.parent() {
             std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
         }
-        let mut mode = f.unix_mode().unwrap_or(0) & 0o777;
         if mode == 0 {
             mode = 0o644;
         }
@@ -512,9 +510,10 @@ pub(crate) fn extract_bridge(
             .mode(mode)
             .open(&target)
             .map_err(|e| e.to_string())?;
-        std::io::copy(&mut std::io::Read::take(&mut f, MEMBER_LIMIT), &mut out)
+        let f = zip.open(i).map_err(|e| e.to_string())?;
+        std::io::copy(&mut std::io::Read::take(f, MEMBER_LIMIT), &mut out)
             .map_err(|e| e.to_string())?;
-        done += f.size() as i64;
+        done += size as i64;
         on_progress(done, total);
     }
     Ok(())

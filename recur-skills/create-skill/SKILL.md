@@ -41,5 +41,5 @@ Instructions…
 
 Gather purpose, location, triggers, and domain knowledge with `ask_user` before writing files. Create the skill directory and `SKILL.md` directly once requirements are clear.
 
-For Recur Bundles (`bundle.toml`, loops, commands, grammars), use `create-bundle` instead.
+For Recur Bundles (`bundle.toml`, workflows, commands, grammars), use `create-bundle` instead.
 For project run settings (`.recur/project.toml`), use `project-toml` instead.

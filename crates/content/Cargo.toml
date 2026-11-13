@@ -70,7 +70,6 @@ cc.workspace = true
 pkg-config.workspace = true
 
 [dev-dependencies]
-pretty_assertions.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]

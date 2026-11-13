@@ -32,7 +32,6 @@ recur-view-chat = { workspace = true, features = ["test-support"] }
 recur-app.workspace = true
 recur-view-review.workspace = true
 recur-terminal-view.workspace = true
-pretty_assertions.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 base64.workspace = true

@@ -231,7 +231,7 @@ fn with_a_project_but_no_workspace_a_mode_row_opens_an_empty_new_workspace_dialo
     let mut s = boot(cx, |_| {}, no_workspaces(), storage);
     s.get_started();
     assert_eq!(s.current_step(), 3);
-    for m in ["Ask", "Plan", "Agent", "Review", "Loop"] {
+    for m in ["Ask", "Plan", "Agent", "Review", "Autopilot"] {
         assert!(s.has(&format!("wmode:{m}")), "{m}");
     }
     s.click("wmode:Review");
@@ -382,7 +382,7 @@ fn fits_a_narrow_pane_in_the_light_theme(cx: &mut TestAppContext) {
     s.get_started();
     assert_eq!(s.current_step(), 3);
     let page = s.bounds("v-welcome:on").expect("page");
-    for sel in ["ws-step:3:current", "wmode:Loop", "ws-num:1:done"] {
+    for sel in ["ws-step:3:current", "wmode:Autopilot", "ws-num:1:done"] {
         let b = s.bounds(sel).unwrap_or_else(|| panic!("{sel}"));
         assert!(b.right() <= page.right(), "{sel} {b:?} overflows {page:?}");
     }

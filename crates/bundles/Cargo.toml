@@ -8,12 +8,11 @@ license.workspace = true
 publish = false
 
 [dependencies]
+recur-base.workspace = true
 recur-domain.workspace = true
 recur-exec.workspace = true
 futures.workspace = true
 getrandom.workspace = true
-hex.workspace = true
-include_dir.workspace = true
 nix.workspace = true
 regex.workspace = true
 serde.workspace = true
@@ -30,9 +29,11 @@ toml.workspace = true
 url.workspace = true
 
 [dev-dependencies]
-pretty_assertions.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
+
+[build-dependencies]
+recur-base.workspace = true
 
 [lints]
 workspace = true

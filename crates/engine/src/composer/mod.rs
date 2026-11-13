@@ -12,6 +12,7 @@ use std::path::Path;
 use std::sync::LazyLock;
 
 use recur_bundles::{Catalog, PromptAction, PromptResult, PromptRunContext, RunCtx};
+use recur_domain::Workspace;
 use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
@@ -188,7 +189,7 @@ impl Engine {
         Some(p.clone())
     }
 
-    async fn run_prompt_action(
+    pub(crate) async fn run_prompt_action(
         &self,
         cancel: &CancellationToken,
         p: &PromptAction,
@@ -237,8 +238,36 @@ impl Engine {
                         .to_owned();
                 rc.conventional_commits = proj.conventional_commits;
             }
+            self.fill_prompt_pr(&mut rc, &ws);
         }
         rc
+    }
+
+    /// Stamps the workspace's open PR (a PR chat host's PR) on a prompt run,
+    /// so `/fix-checks`, `/address-review` and `/open-pr` need not guess.
+    pub fn fill_prompt_pr(&self, rc: &mut PromptRunContext, ws: &Workspace) {
+        let pr = if ws.is_pr_chat_host() {
+            rc.pr_host = true;
+            self.store.pr(ws.host_pr_id.trim())
+        } else {
+            self.store
+                .pr_by_workspace(&ws.id)
+                .filter(|p| p.state != "Merged" && p.group != "merged")
+        };
+        let Some(pr) = pr else {
+            return;
+        };
+        rc.pr_source = pr.source.as_str().to_owned();
+        rc.pr_url = pr.url;
+        rc.pr_title = pr.title;
+        rc.pr_base = pr.base.trim().to_owned();
+        rc.pr_branch = pr.branch.trim().to_owned();
+        // A Local fallback (the forge create failed) leaves /open-pr
+        // runnable so the agent can retry.
+        if crate::prs::is_forge_source(&pr.source) {
+            rc.pr_id = pr.id;
+        }
+        rc.pr_number = pr.number;
     }
 }
 

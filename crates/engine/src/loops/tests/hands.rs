@@ -223,7 +223,7 @@ async fn maestro_hands_scope_to_calling_chat() {
     );
     let slots = take_slots(&t);
     let s = t.engine.reenter_phase(&ws.id, "PA", &phase).await;
-    assert!(s.contains("loop slot"), "{s}");
+    assert!(s.contains("workflow slot"), "{s}");
     release_slots(&t, slots);
     t.engine
         .apply_maestro_steer(&ws.id, "PA", "steer only this chat");
@@ -343,8 +343,8 @@ async fn reenter_phase_uses_calling_chat_graph() {
         .await;
     let slots = take_slots(&t);
     let s = t.engine.reenter_phase(&ws.id, "PA2", "verify").await;
-    assert!(!s.contains("not on this loop"), "{s}");
-    assert!(s.contains("Loop restarting"), "{s}");
+    assert!(!s.contains("not on this workflow"), "{s}");
+    assert!(s.contains("Workflow restarting"), "{s}");
     let got = t.store.workspace(&ws.id).unwrap();
     assert_eq!(got.loop_id, "test.loops.verify");
     assert_eq!(got.loop_chat_code, "PA2");
@@ -455,7 +455,7 @@ async fn chat_scoped_workspace_restores_goal() {
     assert!(rec.checkpoint.is_none_or(|c| c.phase_id != "planning"));
     let slots = take_slots(&t);
     let s = t.engine.reenter_phase(&ws.id, "PA2", "verify").await;
-    assert!(s.contains("Loop restarting"), "{s}");
+    assert!(s.contains("Workflow restarting"), "{s}");
     let got = t.store.workspace(&ws.id).unwrap();
     assert_eq!(got.goal, "chat goal");
     assert_eq!(got.goal_display, "");
@@ -708,7 +708,7 @@ async fn idle_run_phase_does_not_adopt_sibling_checkpoint() {
         .engine
         .run_on_demand_phase(&ws.id, "PA2", "ondemand")
         .await;
-    assert!(s.contains("Loop restarting"), "{s}");
+    assert!(s.contains("Workflow restarting"), "{s}");
     let cp = t
         .store
         .workspace(&ws.id)
@@ -750,14 +750,14 @@ async fn reenter_phase_serializes_idle_owner() {
     );
     let restarting = [&a, &b]
         .iter()
-        .filter(|s| s.contains("Loop restarting"))
+        .filter(|s| s.contains("Workflow restarting"))
         .count();
     assert_eq!(restarting, 1, "a={a} b={b}");
     let got = t.store.workspace(&ws.id).unwrap();
-    if a.contains("Loop restarting") {
+    if a.contains("Workflow restarting") {
         assert_eq!(got.loop_chat_code, "PA");
     }
-    if b.contains("Loop restarting") {
+    if b.contains("Workflow restarting") {
         assert_eq!(got.loop_chat_code, "PA2");
     }
     release_slots(&t, slots);
@@ -812,7 +812,7 @@ async fn reenter_phase_same_chat_does_not_double_dispatch() {
     let a = a.await.unwrap();
     let restarting = [&a, &b]
         .iter()
-        .filter(|s| s.contains("Loop restarting"))
+        .filter(|s| s.contains("Workflow restarting"))
         .count();
     assert_eq!(restarting, 1, "a={a} b={b}");
     let n = usize::from(t.engine.running_loop_by_id(&ws.id).is_some())

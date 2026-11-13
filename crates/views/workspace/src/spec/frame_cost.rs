@@ -229,11 +229,12 @@ async fn the_wheel_scrolls_the_live_chat_over_a_parked_one(cx: &mut TestAppConte
     let before = f32::from(handle.offset().y);
     let at = handle.bounds().center();
     s.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
-    s.cx.simulate_event(gpui::ScrollWheelEvent {
+    s.cx.simulate_event(gpui::ScrollEvent {
         position: at,
         delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(300.))),
         modifiers: gpui::Modifiers::none(),
         touch_phase: gpui::TouchPhase::Moved,
+        ..Default::default()
     });
     s.settle();
     let after = f32::from(handle.offset().y);
@@ -266,11 +267,12 @@ async fn a_wheel_step_renders_only_the_transcript(cx: &mut TestAppContext) {
     s.settle();
     recur_ui::guard::count_renders(true);
     for _ in 0..3 {
-        s.cx.simulate_event(gpui::ScrollWheelEvent {
+        s.cx.simulate_event(gpui::ScrollEvent {
             position: at,
             delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(120.))),
             modifiers: gpui::Modifiers::none(),
             touch_phase: gpui::TouchPhase::Moved,
+            ..Default::default()
         });
         s.cx.run_until_parked();
     }
@@ -315,18 +317,20 @@ async fn a_parked_chat_comes_back_where_it_was_scrolled(cx: &mut TestAppContext)
     let handle = chat.read_with(s.cx, |c, _| c.test_scroll().clone());
     let at = handle.bounds().center();
     s.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
-    s.cx.simulate_event(gpui::ScrollWheelEvent {
+    s.cx.simulate_event(gpui::ScrollEvent {
         position: at,
         delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(1e6))),
         modifiers: gpui::Modifiers::none(),
         touch_phase: gpui::TouchPhase::Moved,
+        ..Default::default()
     });
     s.settle();
-    s.cx.simulate_event(gpui::ScrollWheelEvent {
+    s.cx.simulate_event(gpui::ScrollEvent {
         position: at,
         delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(-900.))),
         modifiers: gpui::Modifiers::none(),
         touch_phase: gpui::TouchPhase::Moved,
+        ..Default::default()
     });
     s.settle();
     let before = -f32::from(handle.offset().y);
@@ -496,7 +500,7 @@ fn toolbar_chips(s: &mut super::shell::S) -> Vec<String> {
                 .iter()
                 .map(|p| (&*p.id, &*p.name))
                 .collect();
-            out.push(format!("sel:Loop={}", name(v.dock_loop_id(cx), loops)));
+            out.push(format!("sel:Workflow={}", name(v.dock_loop_id(cx), loops)));
             out.push(format!(
                 "sel:Policy={}",
                 name(v.dock_policy_id(cx), policies)

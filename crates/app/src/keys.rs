@@ -22,7 +22,11 @@ pub const TEXT_ENTRY_CONTEXTS: [&str; 5] = [
 
 /// `isCmdOrCtrl`: ⌘ on macOS, Ctrl elsewhere.
 fn cmd_or_ctrl(k: &Keystroke) -> bool {
-    k.modifiers.secondary()
+    if cfg!(target_os = "macos") {
+        k.modifiers.platform
+    } else {
+        k.modifiers.control
+    }
 }
 
 fn key_is(k: &Keystroke, key: &str) -> bool {

@@ -5,7 +5,6 @@
 
 use std::collections::BTreeMap;
 
-use pretty_assertions::assert_eq;
 use recur_domain::{
     AgentStep, Artifact, AttentionCounts, DiffStat, Escalation, FeedItem, Finding,
     PermissionRequest, Pr, PrComment, Resource, UserQuestion, UserQuestionAnswer, Workspace,
@@ -278,7 +277,7 @@ fn literal_payloads_match_go() {
         &EngineEvent::Notify(Notify {
             body: "Which <db>?".into(),
             target: Some(format!("workspace:{w}")),
-            title: "A loop needs you".into(),
+            title: "A workflow needs you".into(),
         }),
     );
     check(

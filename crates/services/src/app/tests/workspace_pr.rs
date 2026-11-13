@@ -448,7 +448,7 @@ async fn merge_workspace_github_remote_when_pr_not_required() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn merge_workspace_marks_merged_when_push_fails() {
+async fn merge_workspace_undone_when_push_fails() {
     let fx = Fx::new().await;
     let (clone, _) = fx.init_git_repo_with_remote();
     let missing = format!("{}/missing.git", fx.temp());
@@ -468,12 +468,14 @@ async fn merge_workspace_marks_merged_when_push_fails() {
         w.merge_workspace(&ws.id, "squash").await.is_err(),
         "push fails"
     );
-    assert_eq!(
+    assert_ne!(
         fx.store().workspace(&ws.id).unwrap().state,
         WorkspaceState::Merged
     );
-    let again = w.merge_workspace(&ws.id, "squash").await.unwrap();
-    assert_eq!(again.state, WorkspaceState::Merged);
+    assert!(
+        w.merge_workspace(&ws.id, "squash").await.is_err(),
+        "retry lands again and fails the push again"
+    );
     fx.close().await;
 }
 

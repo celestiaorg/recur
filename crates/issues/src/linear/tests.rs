@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use pretty_assertions::assert_eq;
 use recur_domain::{
     CHAT_MODE_AGENT, CHAT_MODE_ASK, CHAT_MODE_LOOP, CHAT_MODE_PLAN, CHAT_MODE_REVIEW, IssueRef,
     LINEAR_MCP_READ_ONLY_URL, LINEAR_MCP_WRITE_URL, Project, SETTING_LINEAR_API_KEY,

@@ -4,8 +4,8 @@
 
 use gpui_kit::{App, Context, Entity, Window};
 use recur_engine::view::chat::{
-    AgentMsg, StreamKind, StreamOpts, add_tool, add_user, append_stream, apply_compact,
-    apply_fallback, apply_notice, apply_stream, attach_tool_result, current_turn_has_ended,
+    AgentMsg, StreamKind, StreamOpts, add_tool_mut, add_user, append_stream_mut, apply_compact,
+    apply_fallback, apply_notice, apply_stream_mut, attach_tool_result_mut, current_turn_has_ended,
     drop_live_after_footer, drop_open_compact, end_turn, format_ask_user_display_text,
     map_chat_items, merge_persisted_with_live, note_thinking_tokens, patch_tool_input,
     retain_optimistic_users, should_refresh_turn_stamp, should_skip_idle_transcript_reset,
@@ -71,10 +71,14 @@ impl WorkspaceView {
         if kind == StreamKind::Text && !evt.text.is_empty() && evt.parent_id.is_empty() {
             self.turn_got_text_by_key.insert(key.to_string(), true);
         }
-        let rows = self.rows(key);
-        let next = if !evt.parent_id.is_empty() || evt.replace || evt.done {
-            apply_stream(
-                &rows,
+        let snapshot = !evt.parent_id.is_empty() || evt.replace || evt.done;
+        if !snapshot && evt.text.is_empty() {
+            return;
+        }
+        let rows = self.chat_by_key.entry(key.to_string()).or_default();
+        if snapshot {
+            apply_stream_mut(
+                rows,
                 kind,
                 &evt.text,
                 &StreamOpts {
@@ -82,13 +86,10 @@ impl WorkspaceView {
                     parent_id: evt.parent_id.clone(),
                     uuid: evt.uuid.clone(),
                 },
-            )
-        } else if !evt.text.is_empty() {
-            append_stream(&rows, kind, &evt.text)
+            );
         } else {
-            return;
-        };
-        self.chat_by_key.insert(key.to_string(), next);
+            append_stream_mut(rows, kind, &evt.text);
+        }
     }
 
     /// `applyTranscript`: the store's transcript, merged with the live tail only while the
@@ -262,8 +263,7 @@ impl WorkspaceView {
                 if self.live_turn_closed(&key, cx) {
                     return;
                 }
-                let rows = self.rows(&key);
-                self.chat_by_key.insert(key, add_tool(&rows, &step));
+                add_tool_mut(self.chat_by_key.entry(key).or_default(), &step);
             }
             SessionSignal::ToolResult {
                 id: tool_id,
@@ -271,16 +271,12 @@ impl WorkspaceView {
                 is_error,
                 extras,
             } => {
-                let rows = self.rows(&key);
-                self.chat_by_key.insert(
-                    key,
-                    attach_tool_result(
-                        &rows,
-                        &tool_id,
-                        &result,
-                        is_error,
-                        &extras.unwrap_or_default(),
-                    ),
+                attach_tool_result_mut(
+                    self.chat_by_key.entry(key).or_default(),
+                    &tool_id,
+                    &result,
+                    is_error,
+                    &extras.unwrap_or_default(),
                 );
             }
             SessionSignal::ToolInput {
@@ -933,6 +929,10 @@ impl WorkspaceView {
                 self.new_chat_tab(cx).detach();
             }
             ObservatoryEvent::AgentCloseTab => self.close_active_chat_tab(cx),
+            ObservatoryEvent::AgentFind(dir) => {
+                let dir = *dir;
+                self.chat.update(cx, |c, cx| c.find(dir, window, cx));
+            }
             ObservatoryEvent::AgentRotateTab(dir) => self.rotate_chat_tab(*dir, cx),
             ObservatoryEvent::FixFindings => self.fix_findings(window, cx),
             ObservatoryEvent::AddEditorMention {

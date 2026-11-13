@@ -114,6 +114,83 @@ pub fn send_message_meta(description: &str, message: &str) -> String {
     collapse(message)
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ListedAgent {
+    pub name: String,
+    pub r#ref: String,
+    pub details: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ListedAgentGroup {
+    pub title: String,
+    pub agents: Vec<ListedAgent>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ListAgentsView {
+    pub this: Option<ListedAgent>,
+    pub groups: Vec<ListedAgentGroup>,
+}
+
+impl ListAgentsView {
+    pub fn agent_count(&self) -> usize {
+        self.groups.iter().map(|g| g.agents.len()).sum()
+    }
+}
+
+fn name_ref(s: &str) -> ListedAgent {
+    let s = s.trim();
+    if let Some(body) = s.strip_suffix(']')
+        && let Some((name, r)) = body.rsplit_once('[')
+    {
+        return ListedAgent {
+            name: name.trim_end().to_owned(),
+            r#ref: r.to_owned(),
+            details: Vec::new(),
+        };
+    }
+    ListedAgent {
+        name: s.to_owned(),
+        ..Default::default()
+    }
+}
+
+/// ListAgents result text: a "This session is NAME [ref]" line, then groups
+/// like "Peer sessions (1):" whose indented rows are "name [ref] · kind · …".
+/// None when nothing parses, so the card falls back to the raw text.
+pub fn parse_list_agents(result: &str) -> Option<ListAgentsView> {
+    let mut v = ListAgentsView::default();
+    for line in result.lines() {
+        let indented = line.starts_with(char::is_whitespace);
+        if let Some(rest) = line.strip_prefix("This session is ")
+            && let Some(end) = rest.find(']')
+        {
+            v.this = Some(name_ref(&rest[..=end]));
+        } else if !indented
+            && let Some((title, n)) = line
+                .trim_end()
+                .strip_suffix("):")
+                .and_then(|h| h.rsplit_once(" ("))
+            && !n.is_empty()
+            && n.bytes().all(|b| b.is_ascii_digit())
+        {
+            v.groups.push(ListedAgentGroup {
+                title: title.trim().to_owned(),
+                agents: Vec::new(),
+            });
+        } else if indented && let Some(g) = v.groups.last_mut() {
+            let mut parts = line.split(" · ").map(str::trim).filter(|p| !p.is_empty());
+            let Some(head) = parts.next() else { continue };
+            g.agents.push(ListedAgent {
+                details: parts.map(str::to_owned).collect(),
+                ..name_ref(head)
+            });
+        }
+    }
+    (v.this.is_some() || !v.groups.is_empty()).then_some(v)
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -180,5 +257,30 @@ mod tests {
         let meta = send_message_meta("", &a.message);
         assert_eq!(meta, "Where is forceTokenization called?");
         assert!(!meta.contains("ad643cf"));
+    }
+
+    #[test]
+    fn parses_list_agents_self_and_peers() {
+        let v = parse_list_agents("This session is velvety-biryani-d6 [5caa52] \u{2014} the name other sessions use to message it.\n\nPeer sessions (1):\n  9ec5ff95-5a21 [6c9da5]  \u{b7}  interactive  \u{b7}  idle  \u{b7}  started 12d ago\n").unwrap();
+        assert_eq!(
+            v.this.as_ref().map(|a| (a.name.as_str(), a.r#ref.as_str())),
+            Some(("velvety-biryani-d6", "5caa52"))
+        );
+        assert_eq!(v.groups.len(), 1);
+        assert_eq!(v.groups[0].title, "Peer sessions");
+        assert_eq!(
+            v.groups[0].agents,
+            vec![ListedAgent {
+                name: "9ec5ff95-5a21".into(),
+                r#ref: "6c9da5".into(),
+                details: vec![
+                    "interactive".into(),
+                    "idle".into(),
+                    "started 12d ago".into()
+                ],
+            }]
+        );
+        assert_eq!(v.agent_count(), 1);
+        assert_eq!(parse_list_agents("No agents."), None);
     }
 }

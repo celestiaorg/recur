@@ -170,7 +170,6 @@ impl AgentChat {
             gpui_kit::StyleRefinement::default()
                 .flex_none()
                 .size(px(crate::meter::METER_PX)),
-            cx,
         );
         let mut actions = div()
             .ml_auto()
@@ -257,7 +256,7 @@ impl AgentChat {
             Some(l) => {
                 let mut style = gpui_kit::StyleRefinement::default().flex_1().min_w_0();
                 style.align_self = Some(gpui_kit::AlignSelf::Stretch);
-                recur_ui::style::cached_view(l, style, cx)
+                recur_ui::style::cached_view(l, style)
             }
             None => div().min_w_0().into_any_element(),
         };
@@ -298,12 +297,11 @@ impl AgentChat {
         let layout = self.composer_layout.clone();
         let doc = self.doc.clone();
         let marked = self.composer_marked.clone();
-        let blink_on = focused && !motion::is_frozen(cx) && {
-            let e = self.caret_blink_epoch.elapsed().as_millis();
-            (e / 500).is_multiple_of(2)
-        };
+        let blink_ms = self.caret_blink_epoch.elapsed().as_millis();
+        let blink_on = focused && !motion::is_frozen(cx) && (blink_ms / 500).is_multiple_of(2);
         if focused {
-            motion::loop_frame(window, cx);
+            let next = 500 - (blink_ms % 500) as u64;
+            motion::frame_after(std::time::Duration::from_millis(next), window, cx);
         }
         let focus = self.focus.clone();
         // Laid out, before the scroller places its content: this frame shows the caret where
@@ -788,7 +786,8 @@ impl AgentChat {
                     }
                 })
                 .collect()
-        } else if let Some(sm) = self.skill_mention.clone() {
+        } else {
+            let sm = self.skill_mention.clone()?;
             let loading = self.skill_index_loading || self.prompt_index_loading;
             let any = !self.props.project_id.is_empty()
                 || !self.skill_index.is_empty()
@@ -864,7 +863,7 @@ impl AgentChat {
                                 false,
                                 &t,
                             ));
-                            kids.push(Self::badge(if lp { "Loop" } else { "Prompt" }, &t));
+                            kids.push(Self::badge(if lp { "Workflow" } else { "Prompt" }, &t));
                             let s = slash.clone();
                             self.menu_row(i, i == self.mention_sel, busy, kids, cx)
                                 .when(!busy, |d| {
@@ -900,8 +899,6 @@ impl AgentChat {
                     })
                     .collect()
             }
-        } else {
-            return None;
         };
         if self.mention_sel < rows.len() {
             self.menu_scroll.scroll_to_item(self.mention_sel);

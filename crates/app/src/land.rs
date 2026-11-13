@@ -23,7 +23,9 @@ use recur_ui::widgets::{Select, SelectEvent, SelectOption, ToastKind, TriggerSty
 use recur_ui::{IconName, Theme, color::rgba, icon};
 pub use recur_view_core::land::{Land, LandCache};
 use recur_view_core::modes::{ws_main_blocked, ws_run_active};
-use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr::{
+    PrLifecycle, github_href, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle,
+};
 use recur_view_core::{AppState, ViewName, call, toast};
 
 use crate::chrome::no_drag;
@@ -53,6 +55,7 @@ pub struct LandChrome {
     updating_base: bool,
     pulling_pr: bool,
     pushing_remote: bool,
+    merging: bool,
     rules_evt: Option<RulesEvt>,
     fs_timer: Option<Task<()>>,
     fetch: Option<Task<()>>,
@@ -64,6 +67,7 @@ pub struct LandChrome {
     merge_menu_open: bool,
     update_menu_open: bool,
     open_pr_menu_open: bool,
+    view_pr_menu_open: bool,
     menus_for: String,
     /// `landBusy` as last seen: its menus close when it turns on.
     was_busy: bool,
@@ -190,8 +194,11 @@ impl LandChrome {
             && !workspace_github_pr
             && !(github_prs && !land.remote.is_empty() && land.require_pr != Some(false));
         let agent_busy = s.workspaces_running.contains(id);
-        let land_locked =
-            agent_busy || self.updating_base || self.pulling_pr || self.pushing_remote;
+        let land_locked = agent_busy
+            || self.updating_base
+            || self.pulling_pr
+            || self.pushing_remote
+            || self.merging;
         let land_pending = land_on && !self.known;
         let land_busy = land_locked || land_pending;
         let land_locked_title = if agent_busy {
@@ -483,6 +490,7 @@ impl Shell {
             l.merge_method_override = None;
             l.update_menu_open = false;
             l.open_pr_menu_open = false;
+            l.view_pr_menu_open = false;
             l.update_method_override = None;
             self.state.update(cx, |s, cx| {
                 if s.overlays.run_menu || s.overlays.stop_menu {
@@ -546,6 +554,7 @@ impl Shell {
             l.merge_menu_open = false;
             l.update_menu_open = false;
             l.open_pr_menu_open = false;
+            l.view_pr_menu_open = false;
             self.state.update(cx, |s, cx| {
                 if s.overlays.run_menu || s.overlays.stop_menu {
                     s.overlays.run_menu = false;
@@ -726,6 +735,7 @@ impl Shell {
         }
         self.land.confirming_merge = false;
         self.land.merge_menu_open = false;
+        self.land.merging = true;
         let (id, services) = {
             let s = self.state.read(cx);
             (s.selected_workspace_id.clone(), s.services().clone())
@@ -733,15 +743,27 @@ impl Shell {
         let (method, label, base_label) = (v.merge_method, v.merge_label, v.merge_base_label);
         let (remote, base) = (self.land.land.remote.clone(), self.land.land.base.clone());
         let state = self.state.clone();
-        cx.spawn(async move |_, cx| {
-            let Some(merged) = call(
-                cx,
-                services.workspaces.merge_workspace(&id, &method),
-                "Could not merge",
-            )
-            .await
-            else {
-                return;
+        cx.spawn(async move |this, cx| {
+            let res = services.workspaces.merge_workspace(&id, &method).await;
+            let _ = this.update(cx, |shell, cx| {
+                shell.land.merging = false;
+                cx.notify();
+            });
+            let merged = match res {
+                Ok(m) => m,
+                Err(e) => {
+                    cx.update(|cx| {
+                        toast(
+                            ToastKind::Error,
+                            format!("Could not merge: {}", e.message),
+                            cx,
+                        )
+                    });
+                    state.update(cx, |s, cx| {
+                        s.request_prompt_action(&id, "fix-merge", &e.message, cx)
+                    });
+                    return;
+                }
             };
             state.update(cx, |s, cx| s.replace_workspace(merged, cx));
             let msg = if !remote.is_empty() && !base.is_empty() {
@@ -1344,44 +1366,7 @@ impl Shell {
             out.push(issue);
         }
         if v.show_view_pr {
-            let label = match (v.view_pr_number != 0, v.view_pr_draft) {
-                (true, true) => format!("View draft #{}", v.view_pr_number),
-                (true, false) => format!("View PR #{}", v.view_pr_number),
-                (false, true) => "View draft".into(),
-                (false, false) => "View PR".into(),
-            };
-            let mut shown = v.store_pr.clone().unwrap_or_default();
-            shown.draft = v.view_pr_draft;
-            let ico = pr_icon_name(Some(&shown));
-            let state = self.state.clone();
-            let pr_id = v.view_pr_id.clone();
-            out.push(
-                spec_wrap(
-                    "tb-view-pr",
-                    titled(
-                        "tb-view-pr-tip",
-                        "View this workspace's pull request",
-                        no_drag(
-                            spec_tag(
-                                tbtn("tb-view-pr", Tbtn::Default, TbtnSize::TITLEBAR, None, cx),
-                                "tb-view-pr",
-                                &label,
-                                None,
-                            )
-                            .on_click(move |_, _, cx| {
-                                state.update(cx, |s, cx| s.open_pr(&pr_id, cx))
-                            })
-                            .child(icon(ico).size(px(13.)))
-                            .child(style::button_label(
-                                label,
-                                11.5,
-                                weight::MEDIUM,
-                            )),
-                        ),
-                    ),
-                )
-                .into_any_element(),
-            );
+            out.push(self.view_pr_split(&v, cx));
         }
         out
     }
@@ -1436,6 +1421,7 @@ impl Shell {
             chev = chev.on_click(cx.guarded_listener(|this, _, _, cx| {
                 this.land.update_menu_open = !this.land.update_menu_open;
                 this.land.merge_menu_open = false;
+                this.land.view_pr_menu_open = false;
                 this.land.open_pr_menu_open = false;
                 this.close_split_menus(cx);
                 cx.notify();
@@ -1497,7 +1483,9 @@ impl Shell {
         } else {
             v.land_busy_title.clone()
         };
-        let label = if self.land.confirming_merge {
+        let label = if self.land.merging {
+            "Merging…".to_string()
+        } else if self.land.confirming_merge {
             format!("Confirm {}", v.merge_label.to_lowercase())
         } else {
             v.merge_label.clone()
@@ -1525,6 +1513,7 @@ impl Shell {
             main = main.on_click(cx.guarded_listener(|this, _, _, cx| this.merge_workspace(cx)));
             chev = chev.on_click(cx.guarded_listener(|this, _, _, cx| {
                 this.land.merge_menu_open = !this.land.merge_menu_open;
+                this.land.view_pr_menu_open = false;
                 this.land.open_pr_menu_open = false;
                 this.land.confirming_merge = false;
                 this.close_split_menus(cx);
@@ -1611,6 +1600,7 @@ impl Shell {
                 this.land.open_pr_menu_open = !this.land.open_pr_menu_open;
                 this.land.merge_menu_open = false;
                 this.land.update_menu_open = false;
+                this.land.view_pr_menu_open = false;
                 this.close_split_menus(cx);
                 cx.notify();
             }));
@@ -1639,6 +1629,83 @@ impl Shell {
                     .into_any_element(),
             ];
             split = split.child(split_menu(items, cx));
+        }
+        split.into_any_element()
+    }
+
+    fn view_pr_split(&mut self, v: &LandView, cx: &mut Context<Self>) -> AnyElement {
+        let label = match (v.view_pr_number != 0, v.view_pr_draft) {
+            (true, true) => format!("View draft #{}", v.view_pr_number),
+            (true, false) => format!("View PR #{}", v.view_pr_number),
+            (false, true) => "View draft".into(),
+            (false, false) => "View PR".into(),
+        };
+        let mut shown = v.store_pr.clone().unwrap_or_default();
+        shown.draft = v.view_pr_draft;
+        let ico = pr_icon_name(Some(&shown));
+        let href = v.store_pr.as_ref().map(github_href).unwrap_or_default();
+        let state = self.state.clone();
+        let pr_id = v.view_pr_id.clone();
+        let mut main = spec_tag(
+            tbtn("tb-view-pr", Tbtn::Default, TbtnSize::TITLEBAR, None, cx),
+            "tb-view-pr",
+            &label,
+            None,
+        )
+        .on_click(cx.guarded_listener(move |this, _, _, cx| {
+            this.land.view_pr_menu_open = false;
+            state.update(cx, |s, cx| s.open_pr(&pr_id, cx))
+        }));
+        if !href.is_empty() {
+            main = main.rounded_r(px(0.));
+        }
+        let mut split = div()
+            .id("view-pr-split")
+            .debug_selector(|| "tb-view-pr".into())
+            .relative()
+            .flex()
+            .items_center()
+            .child(titled(
+                "tb-view-pr-tip",
+                "View this workspace's pull request",
+                no_drag(
+                    main.child(icon(ico).size(px(13.)))
+                        .child(style::button_label(label, 11.5, weight::MEDIUM)),
+                ),
+            ));
+        if href.is_empty() {
+            return split.into_any_element();
+        }
+        let chev = tbtn(
+            "tb-view-pr-chev",
+            Tbtn::Default,
+            TbtnSize::TITLEBAR,
+            None,
+            cx,
+        )
+        .debug_selector(|| "tb-view-pr-chev".into())
+        .rounded_l(px(0.))
+        .px(px(5.))
+        .on_click(cx.guarded_listener(|this, _, _, cx| {
+            this.land.view_pr_menu_open = !this.land.view_pr_menu_open;
+            this.land.merge_menu_open = false;
+            this.land.update_menu_open = false;
+            this.land.open_pr_menu_open = false;
+            this.close_split_menus(cx);
+            cx.notify();
+        }));
+        split = split.child(no_drag(
+            chev.child(icon(IconName::ChevronDown).size(px(13.))),
+        ));
+        if self.land.view_pr_menu_open {
+            let item = menu_item("view-pr-github-item", false, None, "Open in GitHub", cx)
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                    this.land.view_pr_menu_open = false;
+                    recur_content::links::open_external_url(&href, cx);
+                    cx.notify();
+                }))
+                .into_any_element();
+            split = split.child(split_menu(vec![item], cx));
         }
         split.into_any_element()
     }
@@ -1887,6 +1954,7 @@ impl Shell {
                 icon_size: Some(if split { 0. } else { 13. }),
                 chevron_size: Some(13.),
                 auto_width: true,
+                hide_value: split,
                 ..Default::default()
             };
             let sel = cx.new(|cx| {

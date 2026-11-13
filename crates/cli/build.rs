@@ -1,3 +1,3 @@
 fn main() {
-    println!("cargo:rerun-if-changed=scaffold");
+    recur_base::embed::generate("scaffold", "scaffold.rs");
 }

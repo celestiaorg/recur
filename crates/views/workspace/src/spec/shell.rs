@@ -211,7 +211,7 @@ impl<T: Send + 'static> Gate<T> {
         let held: Vec<_> = {
             let mut g = self.0.lock();
             g.0 = false;
-            g.1.drain(..).collect()
+            std::mem::take(&mut g.1)
         };
         for (r, v) in held {
             r.send(Ok(v));
@@ -285,6 +285,7 @@ fn pr_record(id: &str, number: i64, source: &str, state: &str, group: &str) -> P
         group: group.into(),
         number,
         source: source.into(),
+        url: format!("https://github.com/acme/storefront/pull/{number}"),
         branch: "recur/pg16".into(),
         base: "main".into(),
         title: "Migrate analytics to Postgres 16".into(),
@@ -678,6 +679,37 @@ async fn shows_open_pr_before_a_pull_request_exists(cx: &mut TestAppContext) {
     assert!(s.has("tb-merge"));
 }
 
+#[gpui::test]
+async fn shows_merging_and_ignores_repeat_clicks_while_a_merge_is_in_flight(
+    cx: &mut TestAppContext,
+) {
+    let held: Arc<Mutex<Vec<Release<recur_services::Result<Workspace>>>>> = Default::default();
+    let h = held.clone();
+    let opts = land(ws_land(json!({}))).merge_workspace(move |_, _| {
+        let (r, release) = hold();
+        h.lock().push(release);
+        r
+    });
+    let busy = "tb-merge=Merging…:off:Merge into main on disk: you are the only gate";
+    let mut s = gh_boot(cx, None, opts);
+    s.click("tb-merge");
+    s.click("tb-merge");
+    assert_eq!(held.lock().len(), 1);
+    assert!(s.has(busy));
+    s.click("tb-merge");
+    s.click("tb-merge");
+    assert_eq!(
+        held.lock().len(),
+        1,
+        "a repeat confirm must not merge twice"
+    );
+    for r in held.lock().drain(..) {
+        r.send(Ok(seed_ws(CODING)));
+    }
+    s.settle();
+    assert!(!s.has(busy));
+}
+
 fn remote_land(base: &str, require_pr: bool) -> WorkspaceLandState {
     ws_land(json!({"base": base, "remote": "origin", "requirePR": require_pr}))
 }
@@ -817,6 +849,19 @@ async fn shows_view_pr_after_a_pull_request_is_open(cx: &mut TestAppContext) {
     assert_eq!(s.view(), ViewName::Detail);
     assert!(s.has("v-detail"));
     assert!(s.has("tb-view-pr=View PR #91"));
+}
+
+#[gpui::test]
+async fn view_pr_split_opens_the_pr_on_github(cx: &mut TestAppContext) {
+    let mut s = gh_boot(cx, Some(gh("gh-91", 91, "gh")), land(gh_land(0, 0)));
+    s.click("tb-view-pr-chev");
+    s.click("view-pr-github-item");
+    assert!(!s.has("view-pr-github-item"));
+    assert_eq!(
+        s.cx.opened_url().as_deref(),
+        Some("https://github.com/acme/storefront/pull/91")
+    );
+    assert_eq!(s.view(), ViewName::Detail);
 }
 
 #[gpui::test]

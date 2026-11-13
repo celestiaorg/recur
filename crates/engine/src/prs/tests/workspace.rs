@@ -421,7 +421,7 @@ async fn merge_forge_remote_when_pr_not_required() {
 }
 
 #[tokio::test]
-async fn merge_marks_merged_when_push_fails() {
+async fn merge_undone_when_push_fails() {
     let px = Px::new();
     let (keep, clone, _bare) = repo_with_remote();
     git(
@@ -441,24 +441,17 @@ async fn merge_marks_merged_when_push_fails() {
         .unwrap();
     write(&ws, "feature.txt", "from workspace\n");
     commit(&ws, "solo: add feature");
-    assert!(
-        px.eng()
+    let before = git_out(&clone, &["rev-parse", "main"]).unwrap();
+    for _ in 0..2 {
+        let err = px
+            .eng()
             .merge_workspace(&ws.id, &MergeMethod::Squash)
             .await
-            .is_err(),
-        "push failure"
-    );
-    assert_eq!(
-        px.ws(&ws.id).state,
-        WorkspaceState::Merged,
-        "merged before the push"
-    );
-    let again = px
-        .eng()
-        .merge_workspace(&ws.id, &MergeMethod::Squash)
-        .await
-        .unwrap();
-    assert_eq!(again.state, WorkspaceState::Merged);
+            .unwrap_err();
+        assert!(err.0.starts_with("push main to origin"), "{}", err.0);
+        assert_ne!(px.ws(&ws.id).state, WorkspaceState::Merged);
+        assert_eq!(git_out(&clone, &["rev-parse", "main"]).unwrap(), before);
+    }
 }
 
 #[tokio::test]

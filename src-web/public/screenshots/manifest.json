@@ -51,16 +51,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "87e63e65844ef5c05f46bf8905f59da0c3386db51c0c19e17da529c1a601fed9",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -113,16 +103,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "08360e5db125152f5a27c8fdc4ba42c3f564dc780e8c3c5d955558c55b2af758",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -175,16 +155,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "f749128e1f65cc12ea6529d489a403224a36c61b3af236e2716cc04c0e20a6d0",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -237,28 +207,18 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "d6bad049b2d3b9373a7b286efedad14a050e427a913f79083130303d24ede2ed",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
       "id": "loop-paper",
       "file": "loop-paper.png",
       "title": "Parallel work, reviewed together",
-      "placement": "Loop mode tour stop",
+      "placement": "Workflow mode tour stop",
       "theme": "paper",
       "settings": {
         "id": "loop",
         "title": "Parallel work, reviewed together",
-        "placement": "Loop mode tour stop",
+        "placement": "Workflow mode tour stop",
         "viewport": {
           "width": 1440,
           "height": 800
@@ -299,28 +259,18 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "99ac13f6e4c35e790e0c6827733ee5431f548aff1a6ac3569cfc5cbb613fef5f",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
       "id": "loop-charcoal",
       "file": "loop-charcoal.png",
       "title": "Parallel work, reviewed together",
-      "placement": "Loop mode tour stop",
+      "placement": "Workflow mode tour stop",
       "theme": "charcoal",
       "settings": {
         "id": "loop",
         "title": "Parallel work, reviewed together",
-        "placement": "Loop mode tour stop",
+        "placement": "Workflow mode tour stop",
         "viewport": {
           "width": 1440,
           "height": 800
@@ -361,16 +311,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "bd58641427882c3c395e74b825fc57f94c1bb0e0b105529ce9fbdc052182401f",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -424,16 +364,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "ac52e0ecda9f60c4750ee0f074dbd9ade94c8f85eea2bae9397c9f57dae7a6ea",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -487,16 +417,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "f77cdc0dbd7fb7d96bbfcde990b887578f24e087d9b8db2e6e2047d3ccf64661",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -549,16 +469,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "0c4358f3bc0407f3d140e98e1c9880672b700b44a02b5d428e1614e1e7b3adf2",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -611,16 +521,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "fbe9eaed830d773da693570859e372766abba220ca121af5e94685482f7ffb65",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -673,16 +573,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "84cd7c7fecb557f032e13230252afd4497ef5099c0e558b84f4fac486da9257d",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -735,16 +625,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "874a060be64d780496d15b3f37cff847cf6d1260494bf4478e3947e9f2a18a79",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -797,16 +677,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "1c8c8fa08cb64a2a0a55e7ef023936bb73c644839cbcaad7d6327b7084406485",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     },
     {
@@ -859,16 +729,6 @@
       "dimensions": {
         "width": 2880,
         "height": 1600
-      },
-      "sha256": "ed3b738eda1a756dc568e302e6489d8e1bb76247fe4293ace591bc0bc54bf3d3",
-      "source": {
-        "commit": "ef045dfb9c9c9c4c498d95fbf78e47b9ac0f981c",
-        "appDirty": false,
-        "datasetSha256": "c6890cb463247eaa0825af0f98ba254c1a4aaa39b3726e1e9a79565c023d6f66",
-        "presetsSha256": "9d689600c7aae33cd135a8150cdd0818adee494de162dfd7a9be867a2069f0aa",
-        "browser": "149.0.7827.55",
-        "platform": "darwin",
-        "clock": "2026-09-10T09:00:00Z"
       }
     }
   ]

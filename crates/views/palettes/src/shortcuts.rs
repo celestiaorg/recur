@@ -136,7 +136,15 @@ pub const SHORTCUTS: &[(&str, &str, &str, &[&str])] = &[
         "Workbench",
         "Cycle agent mode",
         "⌘.",
-        &["chat mode", "ask", "plan", "review", "loop"],
+        &[
+            "chat mode",
+            "ask",
+            "plan",
+            "review",
+            "autopilot",
+            "workflow",
+            "loop",
+        ],
     ),
     ("Workbench", "Split editor", "⌘\\", &[]),
     (

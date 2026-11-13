@@ -1,4 +1,3 @@
-use pretty_assertions::assert_eq;
 use recur_domain::{FeedItem, PrSource};
 
 use super::*;

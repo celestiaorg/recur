@@ -274,7 +274,7 @@ async fn reset_refusals() {
             .await
             .unwrap_err()
             .0,
-        "reset is not available on a running loop's chat"
+        "reset is not available on a running workflow's chat"
     );
     te.close().await;
 }

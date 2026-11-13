@@ -11,7 +11,7 @@ maintainer: recur.build
 vendor: recur.build
 homepage: https://recur.build
 license: Elastic-2.0
-description: Run autonomous AI coding loops locally (Rust/GPUI app).
+description: Run autonomous AI coding workflows locally (Rust/GPUI app).
 section: devel
 
 # The app links nothing onto PATH or into the menu when run from
@@ -38,6 +38,7 @@ contents:
 # the system CA store at startup.
 depends:
   - ca-certificates
+  - tzdata
   - libgtk-4-1
   - libwebkitgtk-6.0-4
   - libgstreamer1.0-0
@@ -50,10 +51,16 @@ depends:
   - libxcb1
   - libwayland-client0
   - libvulkan1
+# secret-tool keeps API keys in the Secret Service keyring (else a 0600 file).
+recommends:
+  - libsecret-tools
 overrides:
   rpm:
+    recommends:
+      - libsecret
     depends:
       - ca-certificates
+      - tzdata
       - gtk4
       - webkitgtk6.0
       - gstreamer1
@@ -67,6 +74,8 @@ overrides:
       - libwayland-client
       - vulkan-loader
   archlinux:
+    recommends:
+      - libsecret
     depends:
       - ca-certificates
       - gtk4

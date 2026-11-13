@@ -1,8 +1,8 @@
 # Vendored crates
 
-## gpui-pre 0.3.9 (isolated views, contained panics)
+## gpui-pre 0.3.12 (isolated views, contained panics)
 
-`gpui-pre/` is gpui-pre 0.3.9 from crates.io (the exact snapshot gpui-kit 0.8 pins, zed@93d7456) with one patch, `gpui-pre.patch`, wired in by `[patch.crates-io]` in `Cargo.toml`. Only `src/`, `build.rs`, `resources/`, the README and license are kept; `Cargo.toml` drops the `[[example]]` / `[[test]]` / `[[bench]]` tables whose files are not vendored. Commit `dddd0fe0` ("rust: vendor gpui-pre 0.3.9 unchanged") is the pristine import, so `git diff dddd0fe0 -- vendor/gpui-pre` is the patch.
+`gpui-pre/` is gpui-pre 0.3.12 from crates.io (the exact snapshot gpui-kit 0.9.1 pins) with one patch, `gpui-pre.patch`, wired in by `[patch.crates-io]` in `Cargo.toml`. Only `src/`, `build.rs`, `resources/`, the README and license are kept; `Cargo.toml` drops the `[[example]]` / `[[test]]` / `[[bench]]` tables whose files are not vendored. Tag `vendor/gpui-pre-0.3.12` is the pristine import of all five gpui-pre crates (a tag, so squash-merging the PR keeps it), so `git diff vendor/gpui-pre-0.3.12 -- vendor/gpui-pre` is the patch.
 
 ### What it adds
 
@@ -60,55 +60,56 @@ An isolated view's size comes from its `style`, never from its content, and anyt
 
 ### Upgrading
 
-gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone, then `git apply --3way vendor/gpui-pre.patch` and fix what moved. The patch touches `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`, `paint_backdrop_blur`, `paint_hole`, `backdrop_blur_over_hole`, `HitboxBehavior::Native`, the UI zoom), `platform.rs` (`on_hit_test_native`, zoomed IME bounds), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`, `BackdropBlur`, `Hole`, `SceneBatch`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec`, `backdrop_blur_spec`, `ui_zoom_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
+gpui-kit pins gpui-pre exactly. On a gpui-kit bump: replace `gpui-pre/` with the new crates.io source (same file selection, same `Cargo.toml` edit), commit that alone and tag it `vendor/gpui-pre-<version>` (push the tag), then `git apply --3way vendor/gpui-pre.patch` and fix what moved. The patch touches `window.rs` (frame records, the split replay, the root replay, the dirty walk, contained listeners, `Window::contain`, `paint_backdrop_blur`, `paint_hole`, `backdrop_blur_over_hole`, `HitboxBehavior::Native`, the UI zoom), `platform.rs` (`on_hit_test_native`, zoomed IME bounds), `view.rs` (`isolated`, `Island`), `key_dispatch.rs` (`reuse_run` / `reuse_hole` / `finish_reuse` in place of `reuse_subtree`), `text_system/line_layout.rs` (index parts), `app.rs` (restores on unwind), `executor.rs` (`Recorded` futures), `elements/canvas.rs`, `scene.rs` (`layer_depth`, `BackdropBlur`, `Hole`, `SceneBatch`), `test.rs` (failing on contained panics) and the new `unwind.rs`. `recur-ui`'s `isolated_spec`, `contained_panic_spec`, `backdrop_blur_spec`, `ui_zoom_spec` and the `frame_cost` specs are its tests. Drop the vendored copy if upstream gains an equivalent.
 
-Regenerate the patch after editing the vendored source (the pristine import predates the move from `rust/`, so the diff maps that path):
-
-```sh
-export GIT_INDEX_FILE=$(mktemp) && git read-tree HEAD && git add vendor/gpui-pre && tree=$(git write-tree) && unset GIT_INDEX_FILE
-git diff --abbrev=8 dddd0fe0:rust/vendor/gpui-pre $tree:vendor/gpui-pre --src-prefix=a/rust/vendor/gpui-pre/ --dst-prefix=b/rust/vendor/gpui-pre/ > vendor/gpui-pre.patch
-```
-
-## gpui-pre-scheduler 0.3.9 (task panics)
-
-`gpui-pre-scheduler/` is the crates.io source of gpui-pre's executor crate (Zed's `scheduler`, same snapshot), wired in by `[patch.crates-io]`. Commit `9386fc71` ("rust: vendor gpui-pre-scheduler 0.3.9 unchanged") is the pristine import (`src/`, `Cargo.toml`, the license), and `gpui-pre-scheduler.patch` is the change: every `async_task::Builder` sets `propagate_panic(true)`, so a panicking task completes with its panic instead of unwinding into the platform dispatcher (see "Contained panics" above). Upgrade it together with gpui-pre: replace the source, commit it alone, `git apply --3way vendor/gpui-pre-scheduler.patch`, and regenerate:
+Regenerate the patch after editing the vendored source:
 
 ```sh
-git diff 9386fc71 -- vendor/gpui-pre-scheduler > vendor/gpui-pre-scheduler.patch
+git diff vendor/gpui-pre-0.3.12 -- vendor/gpui-pre > vendor/gpui-pre.patch
 ```
 
-## gpui-pre-apple 0.3.9 (border coverage, backdrop blur, holes, glyph weight)
+## gpui-pre-scheduler 0.3.12 (task panics)
 
-`gpui-pre-apple/` is the crates.io source of GPUI's macOS renderer and text system (same snapshot), wired in by `[patch.crates-io]`. Commit `cb8279c1` ("rust: vendor gpui-pre-apple 0.3.9 unchanged") is the pristine import (`src/`, `build.rs`, `vendor/`, `Cargo.toml`, the license), and `gpui-pre-apple.patch` is the change.
+`gpui-pre-scheduler/` is the crates.io source of gpui-pre's executor crate (Zed's `scheduler`, same snapshot), wired in by `[patch.crates-io]`. Tag `vendor/gpui-pre-0.3.12` is the pristine import (`src/`, `Cargo.toml`, the license), and `gpui-pre-scheduler.patch` is the change: every `async_task::Builder` sets `propagate_panic(true)`, so a panicking task completes with its panic instead of unwinding into the platform dispatcher (see "Contained panics" above). Upgrade it together with gpui-pre: replace the source, commit it alone, `git apply --3way vendor/gpui-pre-scheduler.patch`, and regenerate:
+
+```sh
+git diff vendor/gpui-pre-0.3.12 -- vendor/gpui-pre-scheduler > vendor/gpui-pre-scheduler.patch
+```
+
+## gpui-pre-apple 0.3.12 (border coverage, backdrop blur, holes, glyph weight)
+
+`gpui-pre-apple/` is the crates.io source of GPUI's macOS renderer and text system (same snapshot), wired in by `[patch.crates-io]`. Tag `vendor/gpui-pre-0.3.12` is the pristine import (`src/`, `build.rs`, `vendor/`, `Cargo.toml`, the license), and `gpui-pre-apple.patch` is the change.
 
 **Border coverage.** The quad shader (`src/shaders.metal`, `quad_fragment`) interpolates between a quad's background and its border in premultiplied space. Upstream mixes straight colors, so toward a transparent background (a card frame, an outline) the border's inner anti-aliased edge carried its coverage twice once blended and came out darker than CoreGraphics paints it: every rounded header inside a bordered card showed the card's background through that edge.
 
-**Backdrop blur.** `MetalRenderer` draws gpui-pre's `BackdropBlur` (above). At a blur batch it ends the frame's render pass and, per blur, renders the covered region (bounds and content mask, whole device pixels) into a scratch texture, blurs it there with two separable Gaussian passes (`backdrop_blur_pass_fragment`, paired taps through one linear sample each), composites the result back through the rounded rect (`backdrop_blur_composite_fragment`), and resumes the frame with `loadAction = Load`. From a 4 device pixel sigma up (CSS `blur(2px)` at scale 2) the first pass averages each 2x2 block and the Gaussian runs at half resolution, within 1.5 levels of an exact blur. The two scratch textures grow to the largest region seen and are reused. A scene with a blur sets the layer's `framebufferOnly` to false for its drawable, which the passes read; frames without one keep it true. Measured on Apple silicon at 2880 by 1800 under load: a full-window `blur(2px)` adds about 0.55ms of GPU time, `blur(8px)` about 1ms. The composite blends premultiplied (the blurred pixels, alpha included, scaled by coverage), so a blur over a hole stays transparent there instead of painting it opaque black; over opaque pixels it is the same blend as before.
+**Backdrop blur.** `MetalRenderer` draws gpui-pre's `BackdropBlur` (above). At a blur batch it ends the frame's render pass and, per blur, renders the covered region (bounds and content mask, whole device pixels) into a scratch texture, blurs it there with two separable Gaussian passes (`backdrop_blur_pass_fragment`, paired taps through one linear sample each), composites the result back through the rounded rect (`backdrop_blur_composite_fragment`), and resumes the frame with `loadAction = Load`. From a 4 device pixel sigma up (CSS `blur(2px)` at scale 2) the first pass averages each 2x2 block and the Gaussian runs at half resolution, within 1.5 levels of an exact blur. The two scratch textures grow to the largest region seen and are reused. A scene with a blur sets the layer's `framebufferOnly` to false for its drawable, which the passes read; frames without one keep it true. A `CAMetalDisplayLink` hands out the drawable before the frame is drawn, so the first blurred frame after a plain one can get a framebuffer-only drawable: that frame renders into a readable scratch texture of its size and copies it to the drawable with the blur pass at sigma 0 (`render_frame_through_readable`). Measured on Apple silicon at 2880 by 1800 under load: a full-window `blur(2px)` adds about 0.55ms of GPU time, `blur(8px)` about 1ms. The composite blends premultiplied (the blurred pixels, alpha included, scaled by coverage), so a blur over a hole stays transparent there instead of painting it opaque black; over opaque pixels it is the same blend as before.
 
 **Holes.** `MetalRenderer` draws gpui-pre's `Hole` (above) inside the frame's render pass, an unblended quad over the clipped bounds that writes transparent pixels (`hole_vertex` / `hole_fragment`). A scene with a hole makes the layer non-opaque for its drawable, so the window composites what is behind it; frames without one keep an opaque window's layer opaque. `a_hole_is_transparent_under_later_paint` renders a background, a hole, a blur and a translucent overlay offscreen and reads the pixels back.
+
+**Tests.** Upstream's `test_layout_line_breaks_ligatures_between_runs` is dropped: it reads a font from Zed's repo (`assets/fonts/lilex`) that is not vendored, and would keep the crate's tests from compiling. `cargo test -p gpui-pre-apple --lib` runs the rest.
 
 **Glyph weight.** `glyph_dilation_for_color` copies CoreGraphics' font smoothing, which thickens strokes by the text color's luminance, so dark text on a light theme drew thinner than light text on a dark one. It returns the light-text level for every color (still 0 when the user turns smoothing off), so text weighs the same on every theme.
 
 Upgrade it with gpui-pre: replace the source, commit it alone, `git apply --3way vendor/gpui-pre-apple.patch`, and regenerate:
 
 ```sh
-git diff cb8279c1 -- vendor/gpui-pre-apple > vendor/gpui-pre-apple.patch
+git diff vendor/gpui-pre-0.3.12 -- vendor/gpui-pre-apple > vendor/gpui-pre-apple.patch
 ```
 
-## gpui-pre-macos, gpui-pre-linux 0.3.9 (zoom cursors, native hit testing)
+## gpui-pre-macos, gpui-pre-linux 0.3.12 (zoom cursors, native hit testing)
 
-`gpui-pre-macos/` and `gpui-pre-linux/` are the crates.io sources of GPUI's macOS and Linux platforms (same snapshot), wired in by `[patch.crates-io]` (`src/`, `Cargo.toml`, the license). They map gpui-pre's `CursorStyle::ZoomIn` and `ZoomOut` (CSS `zoom-in` / `zoom-out`: an image that opens a lightbox, the lightbox's actual size): `NSCursor zoomInCursor` / `zoomOutCursor` on macOS 15+ (the pointing hand and the arrow before it), the cursor theme's `zoom-in` / `zoom-out` or Wayland's cursor shapes on Linux. gpui-pre-macos also allows the `deprecated` lint, which crates.io sources had capped, and overrides AppKit's private `-[NSWindow _cornerRadius]` at 10pt, since macOS 26 rounds a window without a toolbar at 16pt.
+`gpui-pre-macos/` and `gpui-pre-linux/` are the crates.io sources of GPUI's macOS and Linux platforms (same snapshot), wired in by `[patch.crates-io]` (`src/`, `Cargo.toml`, the license). They map gpui-pre's `CursorStyle::ZoomIn` and `ZoomOut` (CSS `zoom-in` / `zoom-out`: an image that opens a lightbox, the lightbox's actual size): `NSCursor zoomInCursor` / `zoomOutCursor` on macOS 15+ (the pointing hand and the arrow before it), the cursor theme's `zoom-in` / `zoom-out` or Wayland's cursor shapes on Linux. gpui-pre-macos also overrides AppKit's private `-[NSWindow _cornerRadius]` at 10pt, since macOS 26 rounds a window without a toolbar at 16pt.
 
-gpui-pre-macos implements `on_hit_test_native` (above): GPUI's NSView answers `hitTest:` with nil where the topmost hitbox is native, so AppKit hands the click, scroll or drag to the sibling view behind it, and drops its cursor rect while the mouse is over one (`yield_cursor_over_native`, on GPUI's own mouse moves), since WebKit sets its cursor only outside every cursor rect. A mouse-down on GPUI's view makes it first responder again, so a click anywhere outside the page takes the keyboard back from WebKit. The answer comes from the window through `try_lock` / `try_borrow_mut`, so a hit test during a GPUI update keeps the event in GPUI. `recur-content`'s `tests/webkit.rs` checks it with a real WKWebView. Commit `f7e929f2` ("rust: vendor gpui-pre-macos and gpui-pre-linux 0.3.9 unchanged") is the pristine import, and `gpui-pre-macos.patch` / `gpui-pre-linux.patch` are the change. Upgrade them with gpui-pre: replace the sources, commit them alone, `git apply --3way` each patch, and regenerate:
+gpui-pre-macos implements `on_hit_test_native` (above): GPUI's NSView answers `hitTest:` with nil where the topmost hitbox is native, so AppKit hands the click, scroll or drag to the sibling view behind it, and drops its cursor rect while the mouse is over one (`yield_cursor_over_native`, on GPUI's own mouse moves), since WebKit sets its cursor only outside every cursor rect. A mouse-down on GPUI's view makes it first responder again, so a click anywhere outside the page takes the keyboard back from WebKit. The answer comes from the window through `try_lock` / `try_borrow_mut`, so a hit test during a GPUI update keeps the event in GPUI. `recur-content`'s `tests/webkit.rs` checks it with a real WKWebView. Tag `vendor/gpui-pre-0.3.12` is the pristine import, and `gpui-pre-macos.patch` / `gpui-pre-linux.patch` are the change. Upgrade them with gpui-pre: replace the sources, commit them alone, `git apply --3way` each patch, and regenerate:
 
 ```sh
-git diff f7e929f2 -- vendor/gpui-pre-macos > vendor/gpui-pre-macos.patch
-git diff f7e929f2 -- vendor/gpui-pre-linux > vendor/gpui-pre-linux.patch
+git diff vendor/gpui-pre-0.3.12 -- vendor/gpui-pre-macos > vendor/gpui-pre-macos.patch
+git diff vendor/gpui-pre-0.3.12 -- vendor/gpui-pre-linux > vendor/gpui-pre-linux.patch
 ```
 
 ## gpui-pdf 0.6.1 (no default image formats)
 
-`gpui-pdf/` is gpui-pdf 0.6.1 from crates.io, wired in by `[patch.crates-io]`. Only `src/`, the README and license are kept, and `Cargo.toml` drops the `[[example]]` tables. The patch is one line: its `image` dependency sets `default-features = false`. gpui-pdf only builds an `RgbaImage`, and `image`'s default formats add an AVIF *encoder* (ravif, rav1e and some 25 more crates, about 75 CPU-seconds of a clean build) that nothing in Recur calls; the formats Recur decodes are enabled by gpui-pre and `recur-content`. Drop the copy when gpui-pdf stops enabling `image`'s defaults (0.7.0 still does).
+`gpui-pdf/` is gpui-pdf 0.6.1 from crates.io, wired in by `[patch.crates-io]`. Only `src/`, the README and license are kept, and `Cargo.toml` drops the `[[example]]` tables. The patch sets its `image` dependency's `default-features = false`, and follows gpui-pre 0.3.12's renames (`Modifiers::secondary(cx)`, `on_scroll`). gpui-pdf only builds an `RgbaImage`, and `image`'s default formats add an AVIF *encoder* (ravif, rav1e and some 25 more crates, about 75 CPU-seconds of a clean build) that nothing in Recur calls; the formats Recur decodes are enabled by gpui-pre and `recur-content`. Drop the copy when gpui-pdf stops enabling `image`'s defaults (0.7.0 still does).
 
 ## shiguredo_libvpx, shiguredo_aom, shiguredo_opus (Intel Mac source build)
 

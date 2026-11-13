@@ -45,6 +45,16 @@ fn seed_defaults_preserves_local_edits_until_ship_changes() {
 }
 
 #[test]
+fn seed_defaults_prunes_renamed_bundles_but_keeps_user_dirs() {
+    let (_g, dest) = temp_dir();
+    seed_defaults(&dest, &map(&[("Loop/bundle.toml", DEMO_V1)]), ".").unwrap();
+    std::fs::create_dir_all(format!("{dest}/Mine")).unwrap();
+    seed_defaults(&dest, &map(&[("Workflows/bundle.toml", DEMO_V1)]), ".").unwrap();
+    let exists = |n: &str| std::path::Path::new(&format!("{dest}/{n}")).exists();
+    assert!(!exists("Loop") && exists("Workflows/bundle.toml") && exists("Mine"));
+}
+
+#[test]
 fn seed_defaults_refreshes_when_shipped_hash_changes() {
     let src = map(&[("Demo/bundle.toml", DEMO_V1), ("Demo/extra.txt", "old")]);
     let (_g, dest) = temp_dir();

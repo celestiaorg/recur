@@ -103,6 +103,39 @@ async fn closes_stdin_on_result() {
     );
 }
 
+/// claude is spawned before `ready` resolves; the stdin prompt waits for it.
+#[tokio::test]
+async fn ready_holds_the_prompt_not_the_spawn() {
+    let dir = tempfile::tempdir().unwrap();
+    let (booted, got) = (dir.path().join("booted"), dir.path().join("got"));
+    let body = format!(
+        "touch '{}'\nread line\necho \"$line\" > '{}'\n{RESULT_DONE}\ncat >/dev/null\n",
+        booted.display(),
+        got.display()
+    );
+    let bin = fake(dir.path(), &body);
+    let (_turn, mut cx) = Turn::new(true);
+    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+    cx.ready = Some(Box::pin(async move {
+        let _ = rx.await;
+    }));
+    let p = provider(&bin);
+    let r = req("hello", dir.path());
+    let task = tokio::spawn(async move { run(&p, r, cx, Duration::from_secs(5)).await });
+    for _ in 0..200 {
+        if booted.exists() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(booted.exists(), "claude spawned before ready");
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(!got.exists(), "prompt held until ready");
+    tx.send(()).unwrap();
+    task.await.unwrap().unwrap();
+    assert!(std::fs::read_to_string(&got).unwrap().contains("hello"));
+}
+
 const BG_LIVE: &str = r#"echo '{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"b1","task_type":"local_bash"}]}'"#;
 const BG_EMPTY: &str =
     r#"echo '{"type":"system","subtype":"background_tasks_changed","tasks":[]}'"#;
@@ -127,6 +160,7 @@ async fn run_bg(body: &str, ceiling: Duration) -> (TurnResult, Vec<String>) {
     let p = ClaudeProvider::new(ClaudeConfig {
         bin: bin.to_string_lossy().into_owned(),
         background_hold_ceiling: ceiling,
+        ..Default::default()
     });
     let (turn, cx) = Turn::new(true);
     let res = run(&p, req("bench", dir.path()), cx, Duration::from_secs(5))
@@ -196,6 +230,62 @@ async fn background_hold_ceiling() {
     let (res, results) = run_bg(&body, Duration::from_millis(100)).await;
     assert_eq!(res.text, "server up");
     assert_eq!(results, ["server up"]);
+}
+
+/// Each steer during a hold restarts the ceiling, so a later steer still
+/// lands after the first ceiling would have closed stdin.
+#[tokio::test]
+async fn steer_restarts_background_hold_ceiling() {
+    let dir = tempfile::tempdir().unwrap();
+    let held = dir.path().join("held");
+    let out = dir.path().join("steer.ndjson");
+    let body = format!(
+        r#"read -r seed
+echo '{{"type":"assistant","message":{{"content":[{{"type":"tool_use","id":"t1","name":"Bash","input":{{"command":"sleep 600"}}}}]}}}}'
+echo '{{"type":"user","message":{{"content":[{{"type":"tool_result","tool_use_id":"t1","content":"running"}}]}}}}'
+{BG_LIVE}
+{}
+touch '{held}'
+read -r a
+read -r b
+printf '%s\n%s\n' "$a" "$b" > '{out}'
+{}
+{BG_EMPTY}
+cat >/dev/null
+"#,
+        bg_result("waiting"),
+        bg_result("answered"),
+        held = held.display(),
+        out = out.display()
+    );
+    let bin = fake(dir.path(), &body);
+    let p = ClaudeProvider::new(ClaudeConfig {
+        bin: bin.to_string_lossy().into_owned(),
+        background_hold_ceiling: Duration::from_secs(2),
+        ..Default::default()
+    });
+    let (turn, cx) = Turn::new(true);
+    let r = req("go", dir.path());
+    let task = tokio::spawn(async move { p.run_turn(r, cx).await });
+    while !held.exists() {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    for (wait, text) in [(1000, "first"), (1500, "second")] {
+        tokio::time::sleep(Duration::from_millis(wait)).await;
+        let (s, ack) = Steer::new(text, Some(text.into()));
+        turn.steer.as_ref().unwrap().send(s).await.unwrap();
+        assert!(ack.await.unwrap(), "{text} steer not delivered");
+    }
+    let res = tokio::time::timeout(Duration::from_secs(5), task)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert_eq!(res.text, "answered");
+    assert_eq!(
+        std::fs::read_to_string(&out).unwrap(),
+        user_message_line("first", &[]) + &user_message_line("second", &[])
+    );
 }
 
 /// A plain steer is acked only after a stdin write; one still pending when

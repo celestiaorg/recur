@@ -165,7 +165,7 @@
         {
           "text": "Token bucket with refill",
           "tag": "recommended",
-          "desc": "Fair, industry-standard, predictable. Slightly more to implement: I can do it in this loop."
+          "desc": "Fair, industry-standard, predictable. Slightly more to implement: I can do it in this workflow."
         }
       ],
       "answer": "",

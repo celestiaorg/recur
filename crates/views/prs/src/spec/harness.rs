@@ -202,7 +202,7 @@ impl S<'_> {
                 return;
             }
             let dy = vh / 2. - f32::from(b.center().y);
-            self.cx.simulate_event(gpui::ScrollWheelEvent {
+            self.cx.simulate_event(gpui::ScrollEvent {
                 position: point(b.center().x, px(vh / 2.)),
                 delta: gpui::ScrollDelta::Pixels(point(px(0.), px(dy))),
                 ..Default::default()
@@ -233,7 +233,7 @@ impl S<'_> {
             } else {
                 return;
             };
-            self.cx.simulate_event(gpui::ScrollWheelEvent {
+            self.cx.simulate_event(gpui::ScrollEvent {
                 position: at,
                 delta: gpui::ScrollDelta::Pixels(point(px(dx), px(dy))),
                 ..Default::default()

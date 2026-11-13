@@ -2,15 +2,15 @@
 name: create-bundle
 description: >-
   Create or edit a Recur Bundle (bundle.toml). Use when the user wants a
-  custom Loop, role, or policy; a To a PR / Converge / Converge-to-PR / Docs / Security
+  custom workflow, role, or policy; a To a PR / Converge / Converge-to-PR / Docs / Security
   variant; or a command, snippet, grammar, theme, terminal theme, symbol, language-data,
   or chat prompt action. Use when they ask to author, scaffold, or
   customize a Recur pack.
 ---
 # Create a Recur Bundle
 
-A bundle is a directory with one `bundle.toml`. Loops, roles, and policies
-live in the same pack as editor items. There is no separate “loop file.”
+A bundle is a directory with one `bundle.toml`. Workflows, roles, and policies
+live in the same pack as editor items. There is no separate “workflow file.”
 
 ## Where to write
 
@@ -26,11 +26,11 @@ item in place → same id in a user pack.
 If both a user pack and a Recur-repo change are plausible, ask with
 `ask_user` before writing.
 
-## Workflow
+## Steps
 
 1. Classify the ask.
 2. Read the matching reference **before** writing TOML. Load only what you need.
-   - Loops / roles / policies → [references/loops.md](references/loops.md)
+   - Workflows / roles / policies → [references/workflows.md](references/workflows.md)
    - Shared editor rules (ids, scaffold, keys, lint) → [references/editor.md](references/editor.md)
    - Then the item kind:
      - `[[command]]` → [references/command.md](references/command.md)
@@ -52,11 +52,11 @@ If both a user pack and a Recur-repo change are plausible, ask with
 - Closed `uses` verbs only: `plan`, `implement`, `review`, `converge`,
   `verify`, `ensure_pr`, `artifact`. A pack cannot mint tools or skip the
   converge reviewer ≠ implementer split.
-- A loop opens a PR only if it has an `ensure_pr` phase. Converge / Docs /
-  Security-style loops idle without one; the human uses `open_pr` or the
+- A workflow opens a PR only if it has an `ensure_pr` phase. Converge / Docs /
+  Security-style workflows idle without one; the human uses `open_pr` or the
   titlebar.
 - `recur bundles create Name` scaffolds an **editor** pack (commands), not
-  a loop. For a loop, start from [references/loops.md](references/loops.md)
-  or copy `bundles/Loop/` when this worktree is Recur.
+  a workflow. For a workflow, start from [references/workflows.md](references/workflows.md)
+  or copy `bundles/Workflows/` when this worktree is Recur.
 
 Skills (`SKILL.md`) are a different thing: use `/create-skill` for those.

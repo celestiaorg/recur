@@ -23,14 +23,14 @@ tracing.workspace = true
 serde_json.workspace = true
 futures.workspace = true
 chrono.workspace = true
-chrono-tz.workspace = true
+recur-base.workspace = true
 indexmap.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 parking_lot.workspace = true
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["fake"] }
-pretty_assertions.workspace = true
 tempfile.workspace = true
 
 [lints]

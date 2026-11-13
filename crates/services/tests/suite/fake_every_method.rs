@@ -5,7 +5,6 @@
 
 use std::collections::BTreeMap;
 
-use pretty_assertions::assert_eq;
 use recur_services::fake::{Fake, Overrides};
 
 fn note(errs: &mut Vec<String>, name: &str, err: Option<recur_services::Error>) {

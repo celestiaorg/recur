@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 
-use include_dir::{Dir, DirEntry};
+use recur_base::embed::{Dir, Entry};
 use recur_domain::path;
 use sha2::{Digest, Sha256};
 
@@ -22,13 +22,11 @@ use crate::{Error, err};
 pub const SEED_STAMP_NAME: &str = ".recur-seed";
 
 /// Shipped Recur Bundles (repo-root `bundles/`), seeded into `<DataDir>/Bundles`.
-pub static SHIPPED_BUNDLES: Dir<'static> =
-    include_dir::include_dir!("$CARGO_MANIFEST_DIR/../../bundles");
+pub static SHIPPED_BUNDLES: Dir = include!(concat!(env!("OUT_DIR"), "/bundles.rs"));
 
 /// Shipped Recur-owned Agent Skills (repo-root `recur-skills/`), seeded
 /// into `~/.recur/recur-skills`.
-pub static SHIPPED_SKILLS: Dir<'static> =
-    include_dir::include_dir!("$CARGO_MANIFEST_DIR/../../recur-skills");
+pub static SHIPPED_SKILLS: Dir = include!(concat!(env!("OUT_DIR"), "/skills.rs"));
 
 /// A read-only tree to seed from. Paths are slash-separated
 /// and relative to the source root; `"."` is the root.
@@ -38,7 +36,7 @@ pub trait SeedSource {
     fn read_file(&self, path: &str) -> Result<Vec<u8>, String>;
 }
 
-impl SeedSource for Dir<'static> {
+impl SeedSource for Dir {
     fn read_dir(&self, dir: &str) -> Result<Vec<(String, bool)>, String> {
         let d = if dir == "." {
             self
@@ -46,21 +44,15 @@ impl SeedSource for Dir<'static> {
             self.get_dir(dir)
                 .ok_or_else(|| format!("{dir}: file does not exist"))?
         };
-        let mut out: Vec<(String, bool)> = d
-            .entries()
+        Ok(d.entries
             .iter()
-            .map(|e| {
-                let name = path::base(&e.path().to_string_lossy());
-                (name, matches!(e, DirEntry::Dir(_)))
-            })
-            .collect();
-        out.sort();
-        Ok(out)
+            .map(|e| (e.name().to_owned(), matches!(e, Entry::Dir(_))))
+            .collect())
     }
 
     fn read_file(&self, path: &str) -> Result<Vec<u8>, String> {
         self.get_file(path)
-            .map(|f| f.contents().to_vec())
+            .map(|f| f.contents.to_vec())
             .ok_or_else(|| format!("{path}: file does not exist"))
     }
 }
@@ -126,6 +118,7 @@ pub fn seed_defaults(dest_dir: &str, src: &dyn SeedSource, root: &str) -> Result
     let entries = src
         .read_dir(root)
         .map_err(|e| err!("seed defaults: read {root}: {e}"))?;
+    let mut shipped = Vec::new();
     for (name, is_dir) in entries {
         if name == SEED_STAMP_NAME || name.starts_with('.') {
             continue;
@@ -133,8 +126,25 @@ pub fn seed_defaults(dest_dir: &str, src: &dyn SeedSource, root: &str) -> Result
         let src_path = path_join(root, &name);
         if is_dir {
             seed_bundle_dir(dest_dir, src, &src_path, &name)?;
+            shipped.push(name);
         } else {
             seed_root_file(dest_dir, src, &src_path, &name)?;
+        }
+    }
+    prune_unshipped(dest_dir, &shipped)
+}
+
+/// Removes previously seeded directories (those with a stamp) that are no
+/// longer shipped, so renamed or retired bundles don't linger beside their successor.
+fn prune_unshipped(dest_dir: &str, shipped: &[String]) -> Result<(), Error> {
+    let Ok(entries) = fs::read_dir(dest_dir) else {
+        return Ok(());
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let dir = path::join(&[dest_dir, &name]);
+        if !shipped.contains(&name) && fs::metadata(path::join(&[&dir, SEED_STAMP_NAME])).is_ok() {
+            remove_all(&dir).map_err(|e| err!("seed prune {name}: {e}"))?;
         }
     }
     Ok(())
@@ -214,7 +224,7 @@ fn hash_tree(src: &dyn SeedSource, dir: &str) -> Result<String, String> {
         h.update([0u8]);
         Ok(())
     })?;
-    Ok(hex::encode(h.finalize()))
+    Ok(recur_base::hex(h.finalize()))
 }
 
 fn copy_tree(src: &dyn SeedSource, src_dir: &str, dest_dir: &str) -> Result<(), String> {

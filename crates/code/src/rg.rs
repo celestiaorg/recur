@@ -305,7 +305,7 @@ async fn install(data_dir: &str) -> Result<()> {
             body.extend_from_slice(&chunk);
         }
         fs::write(&archive, &body).map_err(|e| Error::path(&archive, e))?;
-        let got = hex::encode(hasher.finalize());
+        let got = recur_base::hex(hasher.finalize());
         if got != want {
             return Err(Error::msg(format!(
                 "rg download: SHA-256 mismatch for {asset}: got {got} want {want}"
@@ -380,17 +380,11 @@ pub(crate) fn extract_rg(r: impl Read, dest: &str) -> Result<()> {
     if gz.header().is_none() {
         return Err(Error::msg("rg download: gzip: gzip: invalid header"));
     }
-    let mut tr = tar::Archive::new(gz);
-    let entries = tr.entries().map_err(|e| Error::msg(e.to_string()))?;
-    for entry in entries {
-        let mut entry = entry.map_err(|e| Error::msg(e.to_string()))?;
-        let name = entry
-            .path()
-            .map(|p| p.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        if path::base(&name) != BIN_NAME
-            || entry.header().entry_type() != tar::EntryType::Regular
-            || name.contains("..")
+    let mut tr = recur_base::tar::Archive::new(gz);
+    while let Some(mut entry) = tr.next_entry().map_err(|e| Error::msg(e.to_string()))? {
+        if path::base(&entry.path) != BIN_NAME
+            || entry.kind != recur_base::tar::Kind::File
+            || entry.path.contains("..")
         {
             continue;
         }
@@ -548,18 +542,10 @@ mod tests {
         let mut tarball = Vec::new();
         {
             let gz = flate2::write::GzEncoder::new(&mut tarball, flate2::Compression::fast());
-            let mut b = tar::Builder::new(gz);
-            for (name, body) in [
-                ("ripgrep-15.2.0/doc/rg.1", &b"man"[..]),
-                ("ripgrep-15.2.0/rg", &b"binary"[..]),
-            ] {
-                let mut h = tar::Header::new_gnu();
-                h.set_size(body.len() as u64);
-                h.set_mode(0o755);
-                h.set_cksum();
-                b.append_data(&mut h, name, body).unwrap();
-            }
-            b.into_inner().unwrap().finish().unwrap();
+            let mut b = recur_base::tar::Builder::new(gz);
+            b.file("ripgrep-15.2.0/doc/rg.1", 0o755, b"man").unwrap();
+            b.file("ripgrep-15.2.0/rg", 0o755, b"binary").unwrap();
+            b.finish().unwrap().finish().unwrap();
         }
         let dir = tempfile::tempdir().unwrap();
         let dest = dir.path().join("rg");

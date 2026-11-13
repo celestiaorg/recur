@@ -177,15 +177,10 @@ fn archives_extract_named_binary() {
         std::fs::File::create(&tgz).unwrap(),
         flate2::Compression::default(),
     );
-    let mut b = tar::Builder::new(enc);
-    for (name, body) in [("ruff-x/README", "doc"), ("ruff-x/ruff", "exe")] {
-        let mut h = tar::Header::new_gnu();
-        h.set_size(body.len() as u64);
-        h.set_mode(0o644);
-        h.set_cksum();
-        b.append_data(&mut h, name, body.as_bytes()).unwrap();
-    }
-    b.into_inner().unwrap().finish().unwrap();
+    let mut b = recur_base::tar::Builder::new(enc);
+    b.file("ruff-x/README", 0o644, b"doc").unwrap();
+    b.file("ruff-x/ruff", 0o644, b"exe").unwrap();
+    b.finish().unwrap().finish().unwrap();
     let dest = dir.path().join("ruff");
     extract_tar_gz_named(&tgz, &dest, "ruff").unwrap();
     assert_eq!(std::fs::read(&dest).unwrap(), b"exe");

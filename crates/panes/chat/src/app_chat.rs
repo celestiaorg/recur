@@ -14,9 +14,9 @@ use gpui_kit::{
 use recur_agent::context_usage::{self, ContextUsage};
 use recur_domain::WorkspaceChatTab;
 use recur_engine::view::chat::{
-    AgentMsg, StreamKind, StreamOpts, add_tool, append_stream, apply_compact, apply_fallback,
-    apply_notice, apply_stream, attach_tool_result, drop_live_after_footer, end_turn,
-    map_chat_items, merge_persisted_with_live, note_thinking_tokens, patch_tool_input,
+    AgentMsg, StreamKind, StreamOpts, add_tool_mut, append_stream_mut, apply_compact,
+    apply_fallback, apply_notice, apply_stream_mut, attach_tool_result_mut, drop_live_after_footer,
+    end_turn, map_chat_items, merge_persisted_with_live, note_thinking_tokens, patch_tool_input,
 };
 use recur_services::Services;
 use recur_ui::fonts::Family;
@@ -433,9 +433,9 @@ impl AppChat {
             uuid: evt.uuid.clone(),
         };
         if !evt.parent_id.is_empty() || evt.replace || evt.done {
-            self.messages = apply_stream(&self.messages, kind, &evt.text, &opts);
+            apply_stream_mut(&mut self.messages, kind, &evt.text, &opts);
         } else if !evt.text.is_empty() {
-            self.messages = append_stream(&self.messages, kind, &evt.text);
+            append_stream_mut(&mut self.messages, kind, &evt.text);
         }
     }
 
@@ -510,7 +510,7 @@ impl AppChat {
                 if self.live_turn_closed(cx) {
                     return;
                 }
-                self.messages = add_tool(&self.messages, &step);
+                add_tool_mut(&mut self.messages, &step);
             }
             SessionSignal::ToolResult {
                 id,
@@ -518,8 +518,8 @@ impl AppChat {
                 is_error,
                 extras,
             } => {
-                self.messages = attach_tool_result(
-                    &self.messages,
+                attach_tool_result_mut(
+                    &mut self.messages,
                     &id,
                     &result,
                     is_error,

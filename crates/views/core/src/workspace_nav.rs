@@ -2,7 +2,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use recur_domain::{Project, ProjectGroup, Workspace};
+use recur_domain::{Pr, Project, ProjectGroup, Workspace};
+
+use crate::pr::{PrLifecycle, pr_for_workspace, pr_lifecycle};
 
 /// Sentinel cycle id for a project's Working copy row before `OpenMainWorkspace`.
 pub const MAIN_SCAN_PREFIX: &str = "main:";
@@ -161,6 +163,128 @@ pub fn unique_by_id<T: HasId + Clone>(items: &[T], warn: bool) -> Vec<T> {
 pub fn unique_refs<T: HasId>(items: &[T]) -> Vec<&T> {
     let mut seen = HashSet::new();
     items.iter().filter(|i| seen.insert(i.key())).collect()
+}
+
+/// A section of the by-status sidebar, from the workspace's PR.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Status {
+    InProgress,
+    InReview,
+    Done,
+    Closed,
+    /// The projects' working copies, after the PR statuses.
+    WorkingCopies,
+}
+
+impl Status {
+    pub const ALL: [Status; 4] = [
+        Status::InProgress,
+        Status::InReview,
+        Status::Done,
+        Status::Closed,
+    ];
+
+    pub fn id(self) -> &'static str {
+        match self {
+            Status::InProgress => "progress",
+            Status::InReview => "review",
+            Status::Done => "done",
+            Status::Closed => "closed",
+            Status::WorkingCopies => "copies",
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Status::InProgress => "In progress",
+            Status::InReview => "In review",
+            Status::Done => "Done",
+            Status::Closed => "Closed",
+            Status::WorkingCopies => "Working copies",
+        }
+    }
+
+    pub fn of(ws: &Workspace, prs: &[Pr]) -> Status {
+        if ws.state.as_str() == "merged" {
+            return Status::Done;
+        }
+        match pr_lifecycle(pr_for_workspace(prs, &ws.id)) {
+            None | Some(PrLifecycle::Draft) => Status::InProgress,
+            Some(PrLifecycle::Merged) => Status::Done,
+            Some(PrLifecycle::Closed) => Status::Closed,
+            Some(_) => Status::InReview,
+        }
+    }
+}
+
+/// The by-status sidebar's non-empty sections in paint order: the shown projects' task
+/// workspaces (no working copies, PR hosts or scheduled runs), each in store order.
+pub fn status_sections<'a>(
+    workspaces: &'a [Workspace],
+    projects: &[&Project],
+    prs: &[Pr],
+) -> Vec<(Status, Vec<&'a Workspace>)> {
+    let shown: HashSet<&str> = projects.iter().map(|p| p.id.as_str()).collect();
+    let tasks: Vec<&Workspace> = unique_refs(workspaces)
+        .into_iter()
+        .filter(|w| {
+            !w.archived
+                && !w.is_main
+                && w.host_pr_id.trim().is_empty()
+                && shown.contains(w.project_id.as_str())
+        })
+        .collect();
+    let (regular, _) = split_scheduled(&tasks);
+    Status::ALL
+        .into_iter()
+        .map(|status| {
+            let mine: Vec<&Workspace> = regular
+                .iter()
+                .copied()
+                .filter(|w| Status::of(w, prs) == status)
+                .collect();
+            (status, mine)
+        })
+        .filter(|(_, mine)| !mine.is_empty())
+        .collect()
+}
+
+/// Each shown project with its live working copy (None before one exists), in sidebar
+/// project order.
+pub fn working_copies<'a>(
+    workspaces: &'a [Workspace],
+    projects: &[&'a Project],
+    groups: &[ProjectGroup],
+) -> Vec<(&'a Project, Option<&'a Workspace>)> {
+    sidebar_project_ids(projects, groups)
+        .iter()
+        .filter_map(|pid| {
+            let p = projects.iter().copied().find(|p| &p.id == pid)?;
+            let main = workspaces
+                .iter()
+                .find(|w| w.is_main && !w.archived && &w.project_id == pid);
+            Some((p, main))
+        })
+        .collect()
+}
+
+/// The by-status sidebar's cycle order: the status sections, then the working copies.
+pub fn status_workspace_ids(
+    workspaces: &[Workspace],
+    projects: &[&Project],
+    groups: &[ProjectGroup],
+    prs: &[Pr],
+) -> Vec<String> {
+    let mut ids: Vec<String> = status_sections(workspaces, projects, prs)
+        .into_iter()
+        .flat_map(|(_, ws)| ws.into_iter().map(|w| w.id.clone()))
+        .collect();
+    ids.extend(
+        working_copies(workspaces, projects, groups)
+            .into_iter()
+            .map(|(p, main)| main.map_or_else(|| main_scan_id(&p.id), |m| m.id.clone())),
+    );
+    ids
 }
 
 /// Project ids in the order the sidebar tree paints them.

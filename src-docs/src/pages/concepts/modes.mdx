@@ -1,6 +1,6 @@
 ---
 title: Chat modes
-description: Ask, Plan, Agent, Review, and Loop chat modes
+description: Ask, Plan, Agent, Review, and Autopilot chat modes
 ---
 
 # Chat modes
@@ -13,30 +13,32 @@ A mode belongs to the chat, not the workspace. Pick it from the mode menu in the
 | **Plan** | Yellow | Investigate and produce a plan. Read-only |
 | **Agent** | Cyan | Read and edit files, with you in the loop |
 | **Review** | Indigo | Review the diff and file findings. Read-only |
-| **Loop** | Amber | Run a [Loop](/concepts/loop): a team of specialist agents under a policy |
+| **Autopilot** | Amber | Run a [workflow](/concepts/workflows): a team of specialist agents under a policy |
 
-You don't need to use the modes in order. Start in Agent, or run an Ask chat beside a Loop chat.
+You don't need to use the modes in order. Start in Agent, or run an Ask chat beside an Autopilot chat.
 
-In Loop mode the composer swaps its model picker for a **Loop** picker and a **Policy** picker. Both are pinned once the loop starts. The [Working copy](/concepts/workspaces) offers every mode except Loop. Pull request chats offer Ask, Plan, and Review.
+In Autopilot mode the composer swaps its model picker for a **Workflow** picker and a **Policy** picker. Both are pinned once the workflow starts. The [Working copy](/concepts/workspaces) offers every mode except Autopilot. Pull request chats offer Ask, Plan, and Review.
 
 ## Models per mode
 
-**Settings → Models** sets the default model for each mode. A new chat starts on its mode's default; pick any model in the composer to override it. Loop roles use the default for their role's mode, so the Coder uses the Agent model and the Reviewer uses the Review model.
+**Settings → Models** sets the default model for each mode. A new chat starts on its mode's default; pick any model in the composer to override it. Workflow roles use the default for their role's mode, so the Coder uses the Agent model and the Reviewer uses the Review model.
 
 ## Child workspaces
 
 An Agent chat can hand a subtask to a **child workspace**: its own worktree and branch, started from the parent's branch, with its own chat. The parent keeps working and gets a report when the child finishes. It can then merge the child's commits into its own branch or archive the child.
+
+To split a task across parallel agents, start the message with: **Use child workspaces: one per work item, then merge each into this branch.**
 
 - The parent can message a child. A running child is steered mid-turn; a finished child that is not yet merged or archived starts a new turn and reports back again.
 - Children appear nested under their parent in the sidebar. Open one to watch or chat with it directly.
 - Children do not create children of their own.
 - **Settings → Models → Child workspace model** chooses whether a child copies the calling chat's model or uses its mode's default.
 
-Loops use child workspaces for [parallel plan steps](/concepts/loop#parallel-child-workspaces).
+Workflows use child workspaces for [parallel plan steps](/concepts/workflows#parallel-child-workspaces).
 
 ## Simplify
 
-**Simplify** is on by default for new chats. It asks the agent to reuse existing code, make smaller changes, and avoid unnecessary abstractions. It applies to Agent and Plan chats and to Loop coding roles, not to Ask or Review.
+**Simplify** is on by default for new chats. It asks the agent to reuse existing code, make smaller changes, and avoid unnecessary abstractions. It applies to Agent and Plan chats and to workflow coding roles, not to Ask or Review.
 
 Toggle it per chat in the composer. **Settings → General** sets the default for new chats. Use `/simplify-review` or `/simplify-audit` when you want a review of unnecessary complexity.
 

@@ -16,6 +16,7 @@ setup_cmd = "pnpm install"
 app_url = "http://localhost:$RECUR_PORT"
 copy_files = """
 .env.local
+node_modules/
 """
 env = """
 NODE_ENV=development
@@ -36,11 +37,13 @@ Adapt the commands to your repository. `env` and `copy_files` are multiline stri
 
 `copy_files` contains newline-separated paths or globs to copy from the project checkout into a new task worktree. It can include ignored files, such as `.env.local`. Existing destination files are skipped. Copying happens before `setup_cmd`; negated patterns beginning with `!` are not supported.
 
+A path ending in `/`, such as `node_modules/` or `target/`, copies that whole directory, so a new workspace starts with your installed dependencies or build output and `setup_cmd` only has to catch up. On macOS (APFS) each file is cloned: fast, and it takes no extra disk space until files change. On Linux, btrfs and XFS share data the same way; other filesystems make a full copy within the setup timeout. Symlinks are copied as-is, so an absolute link still points into the main checkout. For Rust, a copied `target/` reuses dependency builds, but Cargo rebuilds the workspace's own crates.
+
 `setup_cmd` runs for a new workspace, with a ten-minute timeout. Optional `teardown_cmd` is a best-effort cleanup hook when the task worktree is removed, also with a ten-minute timeout.
 
 ## Runs and ports
 
-Each `[[run]]` defines a named command for the titlebar Run menu and for agents. Bind development servers to **`$RECUR_PORT`** so parallel workspaces can use separate ports. Set `app_url` to the matching address (default `http://localhost:$RECUR_PORT`) for loops that open your app in a browser. Browser verification boots the run named `dev` (any case), otherwise the default run.
+Each `[[run]]` defines a named command for the titlebar Run menu and for agents. Bind development servers to **`$RECUR_PORT`** so parallel workspaces can use separate ports. Set `app_url` to the matching address (default `http://localhost:$RECUR_PORT`) for workflows that open your app in a browser. Browser verification boots the run named `dev` (any case), otherwise the default run.
 
 Workspace processes also receive `PORT`, `RECUR_WORKSPACE_ID`, `RECUR_WORKTREE`, `RECUR_ROOT` (the project's main checkout), `RECUR_PROJECT_ID`, and `RECUR_BRANCH`.
 
@@ -52,6 +55,6 @@ Recur does not export the contents of `.env` files. Keep secrets in gitignored d
 
 ## Commit style
 
-Turn on **Conventional Commits** in the Project page's pull request settings, or set `conventional_commits = true`, to have agents write [Conventional Commits](https://www.conventionalcommits.org) subjects and PR titles (`type(scope): summary`). It applies to `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and loop PR titles.
+Turn on **Conventional Commits** in the Project page's pull request settings, or set `conventional_commits = true`, to have agents write [Conventional Commits](https://www.conventionalcommits.org) subjects and PR titles (`type(scope): summary`). It applies to `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and workflow PR titles.
 
 Repository paths, sidebar preferences, enabled project skills, and merge/GitHub PR preferences are app settings rather than fields in this file.

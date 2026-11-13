@@ -472,7 +472,7 @@ fn credential_id(subject: &str, workspace: &str) -> String {
         &aws_lc_rs::digest::SHA256,
         format!("{subject}\0{workspace}").as_bytes(),
     );
-    hex::encode(&sum.as_ref()[..16])
+    recur_base::hex(&sum.as_ref()[..16])
 }
 
 /// Answers callback requests one at a time; a matching state is answered,

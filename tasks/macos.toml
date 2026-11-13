@@ -7,3 +7,7 @@ run = "build/darwin/package.sh"
 ["macos:smoke"]
 description = "Installs target/package/Recur.dmg into a sandbox, launches it and checks the recur link, `recur .` and a native notification (macOS)"
 run = "build/darwin/smoke.sh"
+
+["macos:ademark"]
+description = "Packages this branch and runs ADEMark Track A on it in the benchmark VM (ADEMARK_FULL=1 for a full run; setup in .agents/skills/ademark-bench)"
+run = "build/darwin/ademark-vm.sh"

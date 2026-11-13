@@ -2,8 +2,6 @@
 //! checks (`RECUR_CURSOR_SDK_PIN_CHECK`, `RECUR_CURSOR_ATTRIBUTION_PATCH_TEST`,
 //! `RECUR_CURSOR_INSTALL_TEST`).
 
-use std::io::Write as _;
-
 use super::*;
 use crate::locate::locate;
 
@@ -14,7 +12,7 @@ fn pinned_sdk_version_in_pypi_url() {
     // The attribution anchors were validated against this release: bump the
     // pin, the anchors and this hardcode together.
     assert_eq!(
-        PINNED_SDK_VERSION, "1.0.38",
+        PINNED_SDK_VERSION, "1.3.1",
         "update this test (and the attribution anchors) deliberately when bumping"
     );
 }
@@ -113,14 +111,9 @@ fn pick_wheel_requires_pin_and_platform() {
 }
 
 fn write_test_wheel(path: &Path, members: &[(&str, &str, u32)]) {
-    let f = std::fs::File::create(path).unwrap();
-    let mut zw = zip::ZipWriter::new(f);
+    let mut zw = recur_base::zip::Builder::new(std::fs::File::create(path).unwrap());
     for (name, body, mode) in members {
-        let opts = zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated)
-            .unix_permissions(*mode);
-        zw.start_file(*name, opts).unwrap();
-        zw.write_all(body.as_bytes()).unwrap();
+        zw.file(name, *mode, body.as_bytes()).unwrap();
     }
     zw.finish().unwrap();
 }

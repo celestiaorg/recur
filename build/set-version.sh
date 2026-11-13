@@ -5,7 +5,7 @@
 #   build/set-version.sh X.Y.Z   bump everything
 #   build/set-version.sh --check fail if anything disagrees with Cargo.toml
 set -eu
-PKGS="src-web/package.json src-web/demo/package.json src-docs/package.json bundles/sdk/package.json"
+PKGS="src-web/package.json src-docs/package.json bundles/sdk/package.json"
 want=$(build/version.sh --base)
 case "${1:-}" in
   --check)

@@ -114,7 +114,7 @@ impl Walk {
             // Pending steps but nothing more can fan out: one plain Coder
             // turn over the whole plan finishes what is left.
             let why = if res.no_slot {
-                "no free loop slot for a child workspace"
+                "no free workflow slot for a child workspace"
             } else if !exclude.is_empty() {
                 "a child workspace failed on them"
             } else {

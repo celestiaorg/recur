@@ -4,7 +4,6 @@
 
 use std::collections::BTreeMap;
 
-use pretty_assertions::assert_eq;
 use recur_domain::{Pr, Project, ProjectGroup, TreeEntry};
 use recur_services::Error;
 use recur_services::api::{EditorBuffer, EditorSessionMeta, EditorSessionPatch, ShellState};
@@ -294,7 +293,7 @@ async fn chat_attention_follows_focus_and_occlusion() {
     assert_eq!(att.counts.by_project.as_ref().unwrap()["storefront"], 1);
     let inbox = s.inbox.get_inbox().await.unwrap();
     assert_eq!(inbox[0].id, "ib-chat-LOOP-2231-MA");
-    assert_eq!(inbox[0].title, "<b>Loop</b> finished a reply");
+    assert_eq!(inbox[0].title, "<b>Workflow</b> finished a reply");
     assert_eq!(inbox[0].target, "chat:LOOP-2231:MA");
     let counts = s.workspaces.attention_counts().await.unwrap();
     assert_eq!((counts.unseen, counts.inbox_unread, counts.dock), (1, 5, 5));

@@ -530,8 +530,8 @@ impl EditorState {
         let mut changes = self.changes(&first.changes);
         let mut ranges = vec![first.range];
         let mut effects = first.effects;
-        for i in 1..sel.ranges.len() {
-            let result = f(sel.ranges[i]);
+        for (i, &range) in sel.ranges.iter().enumerate().skip(1) {
+            let result = f(range);
             let new_changes = self.changes(&result.changes);
             let new_mapped = new_changes.map(&changes, false);
             for r in ranges.iter_mut().take(i) {

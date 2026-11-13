@@ -13,7 +13,9 @@ use recur_domain::{Escalation, EscalationOption, Group, InboxItem, Workspace, Wo
 use tokio_util::sync::CancellationToken;
 
 use crate::Engine;
+use crate::attention::chat_inbox::chat_inbox_target;
 use crate::bus::{EngineEvent, EscalationRaised, EscalationResolved};
+use crate::codes::MAESTRO_AGENT_CODE;
 use crate::lifecycle::PHASE_ANSWERED_WAITING;
 use crate::loop_handle::{Command, EscalationAnswer, LoopHandle};
 use crate::loops::Walk;
@@ -320,8 +322,10 @@ impl Engine {
             .map(|l| l.short)
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| workspace_id.to_owned());
+        let code = esc_chat_code(agent_code);
+        let target = chat_inbox_target(workspace_id, code);
         self.store.add_inbox_item(InboxItem {
-            id: format!("ib-esc-{workspace_id}"),
+            id: esc_inbox_id(workspace_id, code),
             group: "needs".into(),
             unread: true,
             kind: "pause".into(),
@@ -338,14 +342,14 @@ impl Engine {
             time: "now".into(),
             action: "Answer".into(),
             action_class: "urgent".into(),
-            target: format!("workspace:{workspace_id}"),
+            target: target.clone(),
             workspace_id: workspace_id.to_owned(),
         });
         self.publish_inbox_updated();
         self.publish_notify(
-            "A loop needs you",
+            "A workflow needs you",
             &truncate(&req.question, 120),
-            &format!("workspace:{workspace_id}"),
+            &target,
         );
         esc
     }
@@ -427,13 +431,15 @@ impl Engine {
         let resolved = esc.answer.clone();
         self.esc_precision.answered();
 
+        self.store
+            .remove_inbox_item(&esc_inbox_id(workspace_id, &esc.agent_code));
         let still_open = self.store.has_open_escalation(workspace_id);
         if !still_open {
             self.store
                 .remove_inbox_by_target(&format!("workspace:{workspace_id}"));
-            self.publish_inbox_updated();
             self.mark_group(workspace_id, Group::Active);
         }
+        self.publish_inbox_updated();
         let cmd = Command::AnswerEscalation(ans);
         let lp = match lp {
             Some(lp) => Some(lp),
@@ -500,13 +506,15 @@ impl Engine {
             Some(e) if answered => e,
             _ => return false,
         };
+        self.store
+            .remove_inbox_item(&esc_inbox_id(workspace_id, &esc.agent_code));
         let still_open = self.store.has_open_escalation(workspace_id);
         if !still_open {
             self.store
                 .remove_inbox_by_target(&format!("workspace:{workspace_id}"));
-            self.publish_inbox_updated();
             self.mark_group(workspace_id, Group::Active);
         }
+        self.publish_inbox_updated();
         self.bus
             .publish(EngineEvent::EscalationResolved(EscalationResolved {
                 agent_code: Some(esc.agent_code),
@@ -577,6 +585,19 @@ impl Engine {
     pub fn escalation_stats(&self) -> (i64, i64) {
         *self.esc_precision.0.lock()
     }
+}
+
+/// The chat a loop question opens: the asking walk's chat, Maestro when empty.
+fn esc_chat_code(agent_code: &str) -> &str {
+    match agent_code.trim() {
+        "" => MAESTRO_AGENT_CODE,
+        c => c,
+    }
+}
+
+/// The Needs-you row for one chat's open loop question.
+pub(crate) fn esc_inbox_id(workspace_id: &str, agent_code: &str) -> String {
+    format!("ib-esc-{workspace_id}-{}", esc_chat_code(agent_code))
 }
 
 /// The engine-stamped kind, falling back to option-text heuristics only for

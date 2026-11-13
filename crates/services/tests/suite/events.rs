@@ -1,7 +1,6 @@
 //! Every app event reads the payload its emitter sent, and writes it back
 //! unchanged.
 
-use pretty_assertions::assert_eq;
 use recur_services::events::{AppEvent, EventHub, WorkspaceRef};
 use serde_json::{Value, json};
 
@@ -200,6 +199,7 @@ fn wire() -> Vec<(&'static str, Value)> {
             ),
         ),
         ("session.user", s(json!({ "text": "steer" }))),
+        ("settings.updated", Value::Null),
         ("system.theme", json!(true)),
         ("term.busy", json!({ "id": "t", "workspaceId": "W" })),
         ("term.data", json!({ "id": "t", "data": "aGk=" })),

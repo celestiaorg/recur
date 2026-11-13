@@ -25,6 +25,7 @@ pub fn build_model_catalog(
             provider: PROVIDER_CLAUDE_CODE.into(),
             label: provider_label(PROVIDER_CLAUDE_CODE).into(),
             models: recur_provider_claude::flags::catalog(),
+            harnesses: Vec::new(),
         });
     }
     if set.provider_enabled(PROVIDER_CURSOR) && !cursor_models.is_empty() {
@@ -32,6 +33,7 @@ pub fn build_model_catalog(
             provider: PROVIDER_CURSOR.into(),
             label: provider_label(PROVIDER_CURSOR).into(),
             models: cursor_models,
+            harnesses: Vec::new(),
         });
     }
     if set.provider_enabled(PROVIDER_CODEX) && !codex_models.is_empty() {
@@ -39,6 +41,7 @@ pub fn build_model_catalog(
             provider: PROVIDER_CODEX.into(),
             label: provider_label(PROVIDER_CODEX).into(),
             models: codex_models,
+            harnesses: Vec::new(),
         });
     }
     for p in &set.compatible_providers {
@@ -49,6 +52,7 @@ pub fn build_model_catalog(
             provider: p.id.clone(),
             label: set.display_label(&p.id).to_owned(),
             models: recur_provider_compatible::compatible_catalog_models(p),
+            harnesses: Vec::new(),
         });
     }
     if set.provider_offers_models(PROVIDER_CHATGPT) {
@@ -57,6 +61,7 @@ pub fn build_model_catalog(
             provider: p.id.clone(),
             label: p.name.clone(),
             models: recur_provider_compatible::compatible_catalog_models(&p),
+            harnesses: Vec::new(),
         });
     }
     groups

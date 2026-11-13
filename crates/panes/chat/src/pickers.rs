@@ -4,23 +4,29 @@
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    App, AppContext as _, Context, Entity, EventEmitter, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, Subscription, Window, div, px,
+    AnyElement, App, AppContext as _, Bounds, Context, Entity, EventEmitter, FocusHandle,
+    Focusable, InteractiveElement, IntoElement, ParentElement, Pixels, Render, SharedString,
+    StatefulInteractiveElement, Styled, Subscription, Window, canvas, deferred, div, px,
 };
+use recur_agent::catalog::HarnessChoice;
+use recur_domain::{base_model_ref, compose_harness_ref, harness_of};
 use recur_engine::view::loops::{LoopInfo, PolicyInfo, loop_select_options, policy_select_options};
 use recur_services::api::FlagDimension;
 use recur_ui::guard::Guarded;
+use recur_ui::logic::menu_space::{MENU_GAP_PX, clamp_menu_left, menu_fixed_box, menu_prefer_up};
+use recur_ui::style;
 use recur_ui::text::{Span, Text, TextStyled, span};
 use recur_ui::widgets::select::{Select, SelectEvent, SelectOption, TriggerStyle};
 use recur_ui::{IconName, Theme, icon};
 use recur_view_core::models::{
-    CatalogModel, FlagMap, flags_for_model, model_options_for, normalize_flags,
+    CatalogModel, FlagMap, flags_for_model, model_options_for, normalize_flags, short_model_label,
 };
 
 use crate::style::hsla;
 
 const SEP: char = '\u{1f}';
+/// The Run in popup's width.
+const HARNESS_POPUP_W: f32 = 248.;
 
 /// `isBoolDim`: two options, `true` and `false`.
 pub fn is_bool_dim(d: &FlagDimension) -> bool {
@@ -185,11 +191,77 @@ impl Render for ModelFlagsSelect {
     }
 }
 
+/// A model was picked and Recur is asking which harness should run it.
+#[derive(Clone, Debug)]
+struct PendingHarness {
+    base: String,
+    label: String,
+    harnesses: Vec<HarnessChoice>,
+}
+
+fn harnesses_for(models: &[CatalogModel], base: &str) -> Vec<HarnessChoice> {
+    models
+        .iter()
+        .find(|m| m.r#ref == base)
+        .map(|m| m.harnesses.clone())
+        .unwrap_or_default()
+}
+
+/// What picking a model does next.
+#[derive(Debug, PartialEq, Eq)]
+enum HarnessStep {
+    /// Open the Run in popup: more than one harness can run the model, or one
+    /// cannot because of the model source and the user should see why.
+    Ask,
+    /// Select the model in this harness ("" is the source's own) directly.
+    Pick(String),
+}
+
+fn harness_step(harnesses: &[HarnessChoice]) -> HarnessStep {
+    let eligible: Vec<&HarnessChoice> = harnesses.iter().filter(|h| !h.unavailable).collect();
+    let explains = harnesses
+        .iter()
+        .any(|h| h.unavailable && !h.not_installed && !h.reason.is_empty());
+    if eligible.len() > 1 || (explains && !eligible.is_empty()) {
+        return HarnessStep::Ask;
+    }
+    HarnessStep::Pick(eligible.first().map(|h| h.id.clone()).unwrap_or_default())
+}
+
+fn harness_label(harnesses: &[HarnessChoice], id: &str) -> String {
+    harnesses
+        .iter()
+        .find(|h| h.id == id)
+        .map(|h| h.label.clone())
+        .unwrap_or_else(|| id.to_owned())
+}
+
+/// The closed trigger: `Model · Harness` once a non-default harness is chosen.
+fn display_label(models: &[CatalogModel], model: &str) -> Option<SharedString> {
+    let base = base_model_ref(model);
+    let harness = harness_of(model);
+    if harness.is_empty() {
+        return None;
+    }
+    let label = models
+        .iter()
+        .find(|m| m.r#ref == base)
+        .map(|m| m.label.clone())
+        .unwrap_or_else(|| short_model_label(base));
+    let harnesses = harnesses_for(models, base);
+    Some(format!("{} · {}", label, harness_label(&harnesses, harness)).into())
+}
+
 /// `ModelPickers`.
 pub struct ModelPickers {
     models: Vec<CatalogModel>,
     model: String,
     flags: FlagMap,
+    pending_harness: Option<PendingHarness>,
+    /// Open the Run in popup upward, like the model Select's `up`.
+    up: bool,
+    /// The model trigger's box, recorded at paint like `Select`'s, to fit the popup to the window.
+    trigger_bounds: Option<Bounds<Pixels>>,
     model_select: Entity<Select>,
     flags_select: Entity<ModelFlagsSelect>,
     _subs: Vec<Subscription>,
@@ -234,8 +306,30 @@ impl ModelPickers {
         let subs = vec![
             cx.guarded_subscribe(&model_select, |this: &mut Self, _, ev: &SelectEvent, cx| {
                 let SelectEvent::Change(r) = ev else { return };
-                let next = normalize_flags(&flags_for_model(&this.models, r), None);
-                cx.emit(PickerEvent::Model(r.to_string(), next));
+                let base = r.to_string();
+                let harnesses = harnesses_for(&this.models, &base);
+                let harness = match harness_step(&harnesses) {
+                    HarnessStep::Pick(h) => h,
+                    HarnessStep::Ask => {
+                        let label = this
+                            .models
+                            .iter()
+                            .find(|m| m.r#ref == base)
+                            .map(|m| m.label.clone())
+                            .unwrap_or_else(|| short_model_label(&base));
+                        this.pending_harness = Some(PendingHarness {
+                            base,
+                            label,
+                            harnesses,
+                        });
+                        cx.notify();
+                        return;
+                    }
+                };
+                let model = compose_harness_ref(&harness, &base);
+                let next = normalize_flags(&flags_for_model(&this.models, &model), None);
+                this.pending_harness = None;
+                cx.emit(PickerEvent::Model(model, next));
             }),
             cx.guarded_subscribe(&flags_select, |_, _, f: &FlagMap, cx| {
                 cx.emit(PickerEvent::Flags(f.clone()))
@@ -245,10 +339,147 @@ impl ModelPickers {
             models: Vec::new(),
             model: String::new(),
             flags: FlagMap::new(),
+            pending_harness: None,
+            up,
+            trigger_bounds: None,
             model_select,
             flags_select,
             _subs: subs,
         }
+    }
+
+    fn pick_harness(&mut self, harness: &str, cx: &mut Context<Self>) {
+        let Some(pending) = self.pending_harness.take() else {
+            return;
+        };
+        let model = compose_harness_ref(harness, &pending.base);
+        let next = normalize_flags(&flags_for_model(&self.models, &model), None);
+        let display = display_label(&self.models, &model);
+        let base = base_model_ref(&model).to_owned();
+        self.model_select.update(cx, |s, cx| {
+            s.set_value(base, cx);
+            s.set_display(display, cx);
+        });
+        self.model = model.clone();
+        self.flags = next.clone();
+        cx.emit(PickerEvent::Model(model, next));
+        cx.notify();
+    }
+
+    fn cancel_harness(&mut self, cx: &mut Context<Self>) {
+        self.pending_harness = None;
+        let model = self.model.clone();
+        let display = display_label(&self.models, &model);
+        self.model_select.update(cx, |s, cx| {
+            s.set_value(base_model_ref(&model).to_owned(), cx);
+            s.set_display(display, cx);
+        });
+        cx.notify();
+    }
+
+    fn harness_popup(
+        &self,
+        pending: &PendingHarness,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        let t = Theme::of(cx).tokens;
+        // Placed like `Select::menu`: the roomier side of the trigger, kept inside the window.
+        let trigger = self.trigger_bounds?;
+        let vp = window.viewport_size();
+        let (vw, vh) = (f32::from(vp.width), f32::from(vp.height));
+        let rect = (
+            f32::from(trigger.top()),
+            f32::from(trigger.bottom()),
+            f32::from(trigger.left()),
+            HARNESS_POPUP_W,
+        );
+        let up = self.up || menu_prefer_up(rect.0, rect.1, vh);
+        let mbox = menu_fixed_box(rect, up, HARNESS_POPUP_W, (vw, vh));
+        let left = clamp_menu_left(mbox.left, HARNESS_POPUP_W, vw);
+        let mut panel = style::menu_panel(cx)
+            .debug_selector(|| "harness-menu".into())
+            .w(px(HARNESS_POPUP_W));
+        panel = panel.child(
+            div()
+                .px(px(10.))
+                .pt(px(6.))
+                .pb(px(4.))
+                .text_size(px(11.))
+                .text_color(t.muted)
+                .child(format!("Run {} in", pending.label)),
+        );
+        for h in &pending.harnesses {
+            if h.unavailable {
+                panel = panel.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(1.))
+                        .px(px(10.))
+                        .py(px(7.))
+                        .rounded(px(5.))
+                        .text_size(px(12.))
+                        .text_color(t.muted)
+                        .child(h.label.clone())
+                        .child(
+                            div()
+                                .text_size(px(10.5))
+                                .text_color(t.faint)
+                                .child(h.reason.clone()),
+                        ),
+                );
+                continue;
+            }
+            let id = h.id.clone();
+            panel = panel.child(
+                div()
+                    .id(SharedString::from(format!("harness-{id}")))
+                    .px(px(10.))
+                    .py(px(7.))
+                    .rounded(px(5.))
+                    .text_size(px(12.5))
+                    .text_color(t.text)
+                    .cursor_pointer()
+                    .hover(|s| s.bg(hsla(t.pane)))
+                    .child(h.label.clone())
+                    .on_click(cx.guarded_listener(
+                        move |this: &mut Self, _: &gpui_kit::ClickEvent, _, cx| {
+                            this.pick_harness(&id, cx);
+                        },
+                    )),
+            );
+        }
+        panel = panel.child(
+            div()
+                .id("harness-cancel")
+                .mt(px(4.))
+                .border_t(px(1.))
+                .border_color(hsla(t.line))
+                .pt(px(4.))
+                .px(px(10.))
+                .py(px(6.))
+                .rounded(px(5.))
+                .text_size(px(12.))
+                .text_color(t.muted)
+                .cursor_pointer()
+                .hover(|s| s.bg(hsla(t.pane)))
+                .child("Cancel")
+                .on_click(cx.guarded_listener(
+                    |this: &mut Self, _: &gpui_kit::ClickEvent, _, cx| this.cancel_harness(cx),
+                )),
+        );
+        let below = mbox.top.is_some();
+        Some(
+            deferred(style::attached(
+                below,
+                MENU_GAP_PX,
+                left - rect.2,
+                recur_ui::shadow::with_shadow(panel, &style::MENU_SHADOW, 8.),
+            ))
+            .with_priority(210)
+            .into_any_element(),
+        )
     }
 
     /// Restyle both triggers for the context they sit in (Settings' `.model-pickers.chip`
@@ -295,10 +526,12 @@ impl ModelPickers {
                 s
             })
             .collect();
-        let m = model.to_string();
+        let base = base_model_ref(model).to_owned();
+        let display = display_label(&models, model);
         self.model_select.update(cx, |s, cx| {
             s.set_options(options, cx);
-            s.set_value(m, cx);
+            s.set_value(base, cx);
+            s.set_display(display, cx);
             s.set_disabled(disabled_over, cx);
         });
         let dims = flags_for_model(&models, model);
@@ -318,9 +551,14 @@ impl ModelPickers {
     fn render_view(
         &mut self,
         window: &mut Window,
-        _: &mut Context<Self>,
+        cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let has_dims = !flags_for_model(&self.models, &self.model).is_empty();
+        let popup = self
+            .pending_harness
+            .clone()
+            .and_then(|p| self.harness_popup(&p, window, cx));
+        let entity = cx.entity();
         let vw = f32::from(window.viewport_size().width);
         let max = 320f32.min(0.52 * vw);
         div()
@@ -331,10 +569,25 @@ impl ModelPickers {
             .flex_initial()
             .child(
                 div()
+                    .relative()
                     .flex_auto()
                     .min_w(px(4.5 * 16.))
                     .max_w(px(max))
-                    .child(self.model_select.clone()),
+                    .child(self.model_select.clone())
+                    .child(
+                        canvas(
+                            // The popup places itself from the model trigger's box.
+                            move |bounds, _, cx| {
+                                entity.update(cx, |this, _| this.trigger_bounds = Some(bounds))
+                            },
+                            |_, _, _, _| {},
+                        )
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .size_full(),
+                    )
+                    .when_some(popup, |d, p| d.child(p)),
             )
             .when(has_dims, |d| {
                 d.child(
@@ -672,6 +925,45 @@ mod tests {
                 })
                 .collect(),
         }
+    }
+
+    fn harness(id: &str, unavailable: bool, not_installed: bool) -> HarnessChoice {
+        HarnessChoice {
+            id: id.into(),
+            label: id.into(),
+            unavailable,
+            reason: if unavailable {
+                "why".into()
+            } else {
+                String::new()
+            },
+            not_installed,
+        }
+    }
+
+    #[test]
+    fn harness_step_cases() {
+        assert_eq!(harness_step(&[]), HarnessStep::Pick(String::new()));
+        // Both run the model: ask.
+        assert_eq!(
+            harness_step(&[harness("", false, false), harness("opencode", false, false)]),
+            HarnessStep::Ask
+        );
+        // OpenCode is only missing here: pick Recur without a popup.
+        assert_eq!(
+            harness_step(&[harness("", false, false), harness("opencode", true, true)]),
+            HarnessStep::Pick(String::new())
+        );
+        // The endpoint cannot run in OpenCode: ask, so the reason shows.
+        assert_eq!(
+            harness_step(&[harness("", false, false), harness("opencode", true, false)]),
+            HarnessStep::Ask
+        );
+        // Only OpenCode can run it: pick it directly.
+        assert_eq!(
+            harness_step(&[harness("", true, true), harness("opencode", false, false)]),
+            HarnessStep::Pick("opencode".into())
+        );
     }
 
     // ModelFlagsSelect summary tokens.

@@ -165,12 +165,20 @@ impl Settings {
         self.model_slot_disabled(model_ref, empty_means_claude)
     }
 
+    /// Whether a stored selection names a model source that still offers
+    /// models. Harness-prefixed refs check the source inside the ref.
+    pub fn model_ref_offers_models(&self, model_ref: &str) -> bool {
+        let base = crate::base_model_ref(model_ref.trim());
+        self.provider_offers_models(&parse_model_ref(base).provider)
+    }
+
     fn model_slot_disabled(&self, model_ref: &str, empty_means_claude: bool) -> bool {
         let trimmed = model_ref.trim();
         if trimmed.is_empty() && !empty_means_claude {
             return false;
         }
-        let p = parse_model_ref(trimmed).provider;
+        let base = crate::base_model_ref(trimmed);
+        let p = parse_model_ref(base).provider;
         if !self.provider_enabled(&p) {
             return true;
         }
@@ -398,6 +406,23 @@ mod tests {
         assert!(!s.model_ref_unavailable("beta/m2", false));
         assert!(!s.model_ref_unavailable("", false));
         assert!(s.model_ref_unavailable("", true));
+        assert!(s.needs_catalog_fallback());
+    }
+
+    #[test]
+    fn harness_refs_check_the_source() {
+        let mut s = Settings {
+            compatible_providers: vec![compatible("beta", "https://b.example", "m2")],
+            model_agent: "opencode/beta/m2".into(),
+            ..Default::default()
+        };
+        assert!(!s.model_ref_unavailable("opencode/beta/m2", false));
+        assert!(s.model_ref_offers_models("opencode/beta/m2"));
+        assert!(s.model_ref_unavailable("opencode/alpha/m1", false));
+        assert!(!s.model_ref_offers_models("opencode/alpha/m1"));
+        assert!(s.uses_provider("beta"));
+        s.disabled_providers = disabled(&["beta"]);
+        assert!(s.model_ref_unavailable("opencode/beta/m2", false));
         assert!(s.needs_catalog_fallback());
     }
 

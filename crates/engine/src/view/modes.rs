@@ -4,7 +4,7 @@
 //! composer reads. The workspace run and Remove predicates live in
 //! `recur_view_core::modes`.
 
-use recur_agent::catalog::FlagDimension;
+use recur_agent::catalog::{FlagDimension, HarnessChoice};
 use recur_domain::{
     CHAT_MODE_AGENT, CHAT_MODE_ASK, CHAT_MODE_LOOP, CHAT_MODE_PLAN, CHAT_MODE_REVIEW, Flags,
     Settings, Workspace,
@@ -130,6 +130,7 @@ pub struct CatalogModel {
     pub group: String,
     pub provider: String,
     pub flags: Vec<FlagDimension>,
+    pub harnesses: Vec<HarnessChoice>,
 }
 
 /// A selected model and flags.
@@ -140,8 +141,9 @@ pub struct ModelPick {
 }
 
 fn model_provider(r#ref: &str) -> &str {
-    match r#ref.find('/') {
-        Some(i) if i > 0 => &r#ref[..i],
+    let base = recur_domain::base_model_ref(r#ref.trim());
+    match base.find('/') {
+        Some(i) if i > 0 => &base[..i],
         _ => recur_domain::PROVIDER_CLAUDE_CODE,
     }
 }
@@ -170,9 +172,10 @@ fn normalize_flags(dims: &[FlagDimension], cur: &Flags) -> Flags {
 }
 
 fn flags_for_model<'a>(catalog: &'a [CatalogModel], r#ref: &str) -> &'a [FlagDimension] {
+    let base = recur_domain::base_model_ref(r#ref.trim());
     catalog
         .iter()
-        .find(|m| m.r#ref == r#ref)
+        .find(|m| m.r#ref == base)
         .map_or(&[], |m| &m.flags)
 }
 
@@ -223,7 +226,9 @@ pub fn resolved_default_for_mode(
     let d = default_model_for_mode(mode, set);
     let (mut model, mut flags) = (d.model, d.flags);
     let enabled = provider_enabled(set, model_provider(&model));
-    let listed = catalog.iter().any(|m| m.r#ref == model);
+    let listed = catalog
+        .iter()
+        .any(|m| m.r#ref == recur_domain::base_model_ref(model.trim()));
     if !catalog.is_empty()
         && (!enabled || !listed)
         && let Some(first) = catalog.iter().find(|m| {

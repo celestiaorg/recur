@@ -15,6 +15,7 @@ recur-textmate.workspace = true
 recur-services.workspace = true
 recur-domain.workspace = true
 recur-engine.workspace = true
+recur-agent.workspace = true
 recur-forge.workspace = true
 recur-term.workspace = true
 regex.workspace = true

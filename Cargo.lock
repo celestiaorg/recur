@@ -8983,6 +8983,7 @@ dependencies = [
  "indexmap",
  "parking_lot",
  "pretty_assertions",
+ "recur-agent",
  "recur-domain",
  "recur-editor",
  "recur-engine",

@@ -62,6 +62,7 @@ fn claude(r#ref: &str, label: &str, default: &str) -> CatalogModel {
         group: "Claude".into(),
         provider: "claude-code".into(),
         flags: effort(default),
+        harnesses: Vec::new(),
     }
 }
 
@@ -85,6 +86,7 @@ fn cursor_catalog() -> Vec<CatalogModel> {
             label: "Fast".into(),
             options: vec![opt("true", "On", true), opt("false", "Off", false)],
         }],
+        harnesses: Vec::new(),
     }]
 }
 
@@ -370,4 +372,21 @@ fn cycle_and_options_follow_selector_order() {
     assert_eq!(values, ["ask", "plan", "review"]);
     assert_eq!(chat_mode_meta("").label, "Agent");
     assert_eq!(chat_mode_meta("plan").tint, "#facc15");
+}
+
+#[test]
+fn resolved_default_keeps_a_harness_ref() {
+    let mut s = set();
+    s.model_agent = "opencode/openrouter/gpt-5".into();
+    let mut c = catalog();
+    c.push(CatalogModel {
+        r#ref: "openrouter/gpt-5".into(),
+        label: "GPT-5".into(),
+        group: "OpenRouter".into(),
+        provider: "openrouter".into(),
+        flags: Vec::new(),
+        harnesses: Vec::new(),
+    });
+    let got = resolved_default_for_mode("agent", Some(&s), &c);
+    assert_eq!(got.model, "opencode/openrouter/gpt-5");
 }

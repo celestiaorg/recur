@@ -175,6 +175,7 @@ fn create_workspace_model_menu_stays_inside_the_window(cx: &mut TestAppContext) 
             provider: "claude-code".into(),
             label: "Claude Code".into(),
             models: models.clone(),
+            harnesses: Vec::new(),
         }])
     });
     let mut s = with(cx, |_| {}, opts);
@@ -223,6 +224,7 @@ fn model_and_flags_stay_on_one_row_in_create_workspace_and_chat_composer(cx: &mu
                 flags: flags.clone(),
                 context_window: 272_000,
             }],
+            harnesses: Vec::new(),
         }])
     });
     let mut s = with(cx, |_| {}, opts);
@@ -342,6 +344,7 @@ fn adding_a_compatible_provider_shows_its_models_in_an_already_loaded_picker(
             provider: "claude-code".into(),
             label: "Claude Code".into(),
             models: vec![choice("claude-code/claude-opus-5-5".into(), "Opus 5.5")],
+            harnesses: Vec::new(),
         }];
         for p in &sd.settings.compatible_providers {
             out.push(ModelGroup {
@@ -352,6 +355,7 @@ fn adding_a_compatible_provider_shows_its_models_in_an_already_loaded_picker(
                     .iter()
                     .map(|m| choice(format!("{}/{}", p.id, m.id), &m.label))
                     .collect(),
+                harnesses: Vec::new(),
             });
         }
         Ok(out)

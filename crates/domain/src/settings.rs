@@ -349,7 +349,14 @@ impl Settings {
             self.workspace_title_model(),
         ]
         .iter()
-        .any(|m| m.provider == provider)
+        .any(|m| {
+            let source = if crate::is_harness_id(&m.provider) {
+                parse_model_ref(&m.id).provider
+            } else {
+                m.provider.clone()
+            };
+            source == provider
+        })
     }
 
     /// The Claude Code --permission-mode for every agent turn. Off maps to

@@ -27,6 +27,10 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - Agent mode chats can file findings, so a review asked for in Agent mode lands in the Findings panel.
 - Project dropdowns (new workspace, schedules, Inbox, Issues, Pull requests) show each project's icon next to its name.
 
+### Security
+
+- API keys and other credentials (Cursor, Codex, Linear, bundle settings, compatible provider keys and headers, MCP server headers and env) are kept in the macOS Keychain or the Linux Secret Service keyring instead of in `recur.db`. Existing keys move there the first time Recur opens, and are wiped from the database. On Linux without `secret-tool`, they go to a `secrets.json` file only you can read.
+
 ### Fixed
 
 - Claude agents can no longer report findings through Claude Code's own findings tool, which never reached Recur's Findings panel.

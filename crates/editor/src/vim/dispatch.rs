@@ -253,8 +253,7 @@ pub(crate) fn eval_input(cm: &mut Cm) {
         });
     }
     let linewise;
-    let cm_sel;
-    if cm.vim().visual_mode {
+    let cm_sel = if cm.vim().visual_mode {
         let sel = cm.vim().sel;
         let cur_start = pmin(sel.head, sel.anchor);
         let cur_end = pmax(sel.head, sel.anchor);
@@ -284,7 +283,7 @@ pub(crate) fn eval_input(cm: &mut Cm) {
                 s.ranges[0].head = Pos::new(s.ranges[0].head.line + 1, 0);
             }
         }
-        cm_sel = s;
+        s
     } else {
         let mut cur_start = new_anchor.unwrap_or(old_anchor);
         let mut cur_end = new_head.unwrap_or(old_head);
@@ -300,7 +299,7 @@ pub(crate) fn eval_input(cm: &mut Cm) {
             clip_to_line(cm, cur_start, &mut cur_end);
         }
         let exclusive = !motion_args.inclusive || linewise;
-        cm_sel = make_cm_selection(
+        make_cm_selection(
             cm,
             Range {
                 anchor: cur_start,
@@ -308,8 +307,8 @@ pub(crate) fn eval_input(cm: &mut Cm) {
             },
             SelMode::Char,
             exclusive,
-        );
-    }
+        )
+    };
     cm.set_selections(&cm_sel.ranges, cm_sel.primary);
     cm.vim().last_motion = None;
     operator_args.repeat = repeat;

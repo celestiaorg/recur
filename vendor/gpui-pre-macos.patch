@@ -1,17 +1,5 @@
-diff --git a/vendor/gpui-pre-macos/Cargo.toml b/vendor/gpui-pre-macos/Cargo.toml
-index 3705dee8f..aab0b8a49 100644
---- a/vendor/gpui-pre-macos/Cargo.toml
-+++ b/vendor/gpui-pre-macos/Cargo.toml
-@@ -335,3 +335,7 @@ priority = -1
- [lints.rust.unexpected_cfgs]
- level = "allow"
- priority = 0
-+
-+[lints.rust.deprecated]
-+level = "allow"
-+priority = 0
 diff --git a/vendor/gpui-pre-macos/src/window.rs b/vendor/gpui-pre-macos/src/window.rs
-index 32a6a5400..0d5d31955 100644
+index 32a6a5400..4aa7b11b9 100644
 --- a/vendor/gpui-pre-macos/src/window.rs
 +++ b/vendor/gpui-pre-macos/src/window.rs
 @@ -152,6 +152,10 @@ unsafe fn build_classes() {
@@ -49,37 +37,7 @@ index 32a6a5400..0d5d31955 100644
      blurred_view: Option<*mut AnyObject>,
      background_appearance: WindowBackgroundAppearance,
      cursor_style: CursorStyle,
-@@ -893,7 +907,8 @@ impl MacWindowState {
-         let screen_frame = self
-             .native_window()
-             .screen()
--            .map_or_default(|screen| screen.visibleFrame());
-+            .map(|screen| screen.visibleFrame())
-+            .unwrap_or_default();
-         bounds.size == rect_to_size(screen_frame)
-     }
- 
-@@ -954,7 +969,8 @@ impl MacWindowState {
-         let NSSize { width, height } = self
-             .native_window()
-             .contentView()
--            .map_or_default(|view| view.frame().size);
-+            .map(|view| view.frame().size)
-+            .unwrap_or_default();
-         size(px(width as f32), px(height as f32))
-     }
- 
-@@ -1065,7 +1081,8 @@ impl MacWindow {
-             let target_screen = target_screen.or_else(|| NSScreen::mainScreen(marker));
-             let screen_frame = target_screen
-                 .as_ref()
--                .map_or_default(|screen| screen.frame());
-+                .map(|screen| screen.frame())
-+            .unwrap_or_default();
- 
-             let window_rect = NSRect::new(
-                 NSPoint::new(
-@@ -1115,6 +1132,8 @@ impl MacWindow {
+@@ -1115,6 +1129,8 @@ impl MacWindow {
                  background_executor,
                  native_window,
                  native_view: NonNull::new_unchecked(native_view),
@@ -88,7 +46,7 @@ index 32a6a5400..0d5d31955 100644
                  blurred_view: None,
                  background_appearance: WindowBackgroundAppearance::Opaque,
                  cursor_style: CursorStyle::Arrow,
-@@ -2083,6 +2102,10 @@ impl PlatformWindow for MacWindow {
+@@ -2083,6 +2099,10 @@ impl PlatformWindow for MacWindow {
      fn on_hit_test_window_control(&self, _callback: Box<dyn FnMut() -> Option<WindowControlArea>>) {
      }
  
@@ -99,7 +57,7 @@ index 32a6a5400..0d5d31955 100644
      fn on_appearance_changed(&self, callback: Box<dyn FnMut()>) {
          self.0.lock().appearance_changed_callback = Some(callback);
      }
-@@ -2529,6 +2552,19 @@ extern "C" fn yes(_: &AnyObject, _: Sel) -> Bool {
+@@ -2529,6 +2549,19 @@ extern "C" fn yes(_: &AnyObject, _: Sel) -> Bool {
      Bool::YES
  }
  
@@ -119,7 +77,7 @@ index 32a6a5400..0d5d31955 100644
  extern "C" fn dealloc_window(this: &AnyObject, _: Sel) {
      unsafe {
          drop_window_state(this);
-@@ -2573,7 +2609,13 @@ extern "C" fn reset_cursor_rects(this: &AnyObject, _: Sel) {
+@@ -2573,7 +2606,13 @@ extern "C" fn reset_cursor_rects(this: &AnyObject, _: Sel) {
          let _: () = msg_send![super(this, class!(NSView)), resetCursorRects];
  
          let window_state = get_window_state(this);
@@ -134,7 +92,7 @@ index 32a6a5400..0d5d31955 100644
  
          let cursor: *mut AnyObject = match cursor_style {
              CursorStyle::Arrow => msg_send![class!(NSCursor), arrowCursor],
-@@ -2609,6 +2651,25 @@ extern "C" fn reset_cursor_rects(this: &AnyObject, _: Sel) {
+@@ -2609,6 +2648,25 @@ extern "C" fn reset_cursor_rects(this: &AnyObject, _: Sel) {
              CursorStyle::DragLink => msg_send![class!(NSCursor), dragLinkCursor],
              CursorStyle::DragCopy => msg_send![class!(NSCursor), dragCopyCursor],
              CursorStyle::ContextualMenu => msg_send![class!(NSCursor), contextualMenuCursor],
@@ -160,7 +118,7 @@ index 32a6a5400..0d5d31955 100644
          };
  
          let bounds: NSRect = msg_send![this, bounds];
-@@ -2616,6 +2677,55 @@ extern "C" fn reset_cursor_rects(this: &AnyObject, _: Sel) {
+@@ -2616,6 +2674,55 @@ extern "C" fn reset_cursor_rects(this: &AnyObject, _: Sel) {
      }
  }
  
@@ -216,7 +174,7 @@ index 32a6a5400..0d5d31955 100644
  extern "C" fn handle_key_equivalent(
      this: &AnyObject,
      _: Sel,
-@@ -2945,6 +3055,14 @@ extern "C" fn handle_view_event(this: &AnyObject, _: Sel, native_event: *mut Any
+@@ -2945,6 +3052,14 @@ extern "C" fn handle_view_event(this: &AnyObject, _: Sel, native_event: *mut Any
              PlatformInput::MouseDown(_) => {
                  drop(lock);
                  unsafe {
@@ -231,7 +189,7 @@ index 32a6a5400..0d5d31955 100644
                      let input_context: *mut AnyObject = msg_send![this, inputContext];
                      if !input_context.is_null() {
                          let _: Bool = msg_send![input_context, handleEvent: native_event];
-@@ -3000,11 +3118,18 @@ extern "C" fn handle_view_event(this: &AnyObject, _: Sel, native_event: *mut Any
+@@ -3000,11 +3115,18 @@ extern "C" fn handle_view_event(this: &AnyObject, _: Sel, native_event: *mut Any
              _ => {}
          }
  

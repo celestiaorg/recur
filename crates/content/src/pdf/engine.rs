@@ -107,7 +107,10 @@ mod tests {
         assert_eq!((size.width.0, size.height.0), (840, 600));
         let px = img.as_bytes(0).expect("frame");
         assert!(
-            px.chunks_exact(4).any(|p| p[..3] != [255, 255, 255]),
+            px.as_chunks::<4>()
+                .0
+                .iter()
+                .any(|p| p[..3] != [255, 255, 255]),
             "blank page"
         );
         assert!(render(&o.doc, 2, 1., 1.).is_err());

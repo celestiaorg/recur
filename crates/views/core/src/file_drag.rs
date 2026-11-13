@@ -63,10 +63,10 @@ pub fn is_chat_image_path(path: &str) -> bool {
     CHAT_IMAGE_EXT.is_match(base_name(path))
 }
 
-/// Whether `@path` survives `FILE_AT_RE` (no whitespace or `@`).
+/// Whether `@path` (or quoted `@"path"`) survives `FILE_AT_RE` (no `@`, `"` or line break).
 pub fn is_chipable_file_path(path: &str) -> bool {
     let p = path.trim();
-    !p.is_empty() && !p.chars().any(|c| c.is_whitespace() || c == '@')
+    !p.is_empty() && !p.contains(['@', '"', '\r', '\n'])
 }
 
 /// POSIX single-quoting so zsh/bash see one argv (`quoteForShell`).
@@ -208,7 +208,7 @@ pub struct OsDrop {
     pub images: Vec<String>,
     /// Outside image paths to read and attach.
     pub image_paths: Vec<String>,
-    /// Paths that cannot be chips (spaces).
+    /// Paths that cannot be chips (`@`, `"` or a line break).
     pub skipped: Vec<String>,
 }
 
@@ -336,12 +336,12 @@ mod tests {
         assert_eq!(got.image_paths, v(&["/Users/me/Desktop/shot.png"]));
 
         let got = classify_os_drop(
-            &v(&["/Users/me/Documents/My Report.csv", "/Users/me/notes.txt"]),
+            &v(&["/Users/me/Documents/My Report.csv", "/Users/me/a@b.txt"]),
             &[],
             "/mock/wt",
         );
-        assert_eq!(got.mentions, v(&["/Users/me/notes.txt"]));
-        assert_eq!(got.skipped, v(&["/Users/me/Documents/My Report.csv"]));
+        assert_eq!(got.mentions, v(&["/Users/me/Documents/My Report.csv"]));
+        assert_eq!(got.skipped, v(&["/Users/me/a@b.txt"]));
 
         let got = classify_os_drop(&v(&["/mock/wt/assets/icon.png"]), &[], "/mock/wt");
         assert_eq!(got.mentions, v(&["assets/icon.png"]));
@@ -366,7 +366,8 @@ mod tests {
         assert!(is_abs_filesystem_path("C:/Users/me/a.csv"));
         assert!(is_chipable_file_path("src/main.go"));
         assert!(is_chipable_file_path("/Users/me/notes.txt"));
-        assert!(!is_chipable_file_path("/Users/me/My Report.csv"));
+        assert!(is_chipable_file_path("/Users/me/My Report.csv"));
+        assert!(!is_chipable_file_path("/Users/me/say \"hi\".md"));
         assert!(!is_chipable_file_path("foo@bar.ts"));
     }
 

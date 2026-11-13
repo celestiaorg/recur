@@ -256,7 +256,8 @@ impl AgentChat {
     ) -> AnyElement {
         let key = key.into();
         self.markdown_seen.insert(key.clone());
-        let entry = self.markdown.entry(key).or_insert_with(|| {
+        let created = !self.markdown.contains_key(&key);
+        let entry = self.markdown.entry(key.clone()).or_insert_with(|| {
             cx.new(|cx| {
                 let mut v = recur_content::MarkdownView::new(
                     body.to_string(),
@@ -276,6 +277,9 @@ impl AgentChat {
                 v.set_text(body.to_string(), cx);
             }
         });
+        if created {
+            self.paint_find_into(&key, cx);
+        }
         v.into_any_element()
     }
 
@@ -1512,6 +1516,11 @@ impl AgentChat {
             || v.is_present_workspace()
         {
             self.briefing_body(&v, &rk, &mut p, window, cx);
+        } else if let Some(listed) = (m.tool == "ListAgents")
+            .then(|| v.list_agents_result())
+            .flatten()
+        {
+            p.push(Part::Other, listed_agents(&listed, &rk, &t));
         } else if m.tool == "ToolSearch" {
             let query = v.tool_search_query();
             let max = v.tool_search_max();
@@ -3394,6 +3403,106 @@ fn finding_msg(md: AnyElement, max_h: f32) -> AnyElement {
         .overflow_y_scroll()
         .child(md)
         .into_any_element()
+}
+
+/// ListAgents: this session, then one findings-style list per group.
+fn listed_agents(
+    v: &recur_engine::view::subagent::ListAgentsView,
+    rk: &str,
+    t: &Tokens,
+) -> AnyElement {
+    let mut col = div().flex().flex_col();
+    if let Some(me) = &v.this {
+        col = col.child(
+            findings_head(t)
+                .child(findings_count("This session", t))
+                .child(
+                    label(me.name.clone(), Family::Mono, 10.5, 600.)
+                        .tracking(0.02)
+                        .color(t.muted),
+                )
+                .child(label(me.r#ref.clone(), Family::Ui, 11., 400.).color(t.faint)),
+        );
+    }
+    for (gi, g) in v.groups.iter().enumerate() {
+        col = col.child(
+            findings_head(t)
+                .child(findings_count(g.title.clone(), t))
+                .child(
+                    label(g.agents.len().to_string(), Family::Ui, 11., 400.)
+                        .tabular()
+                        .color(t.faint),
+                ),
+        );
+        if g.agents.is_empty() {
+            col = col.child(finding_empty("None.", t));
+            continue;
+        }
+        let n = g.agents.len();
+        let rows: Vec<AnyElement> = g
+            .agents
+            .iter()
+            .enumerate()
+            .map(|(ai, a)| {
+                let mut main = div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(2.))
+                    .child(
+                        div().min_w_0().overflow_hidden().child(
+                            text(a.name.clone())
+                                .size(12.5)
+                                .line_height(LineHeight::Scale(1.35))
+                                .color(t.text)
+                                .truncate(),
+                        ),
+                    );
+                let rest = a.details.get(1..).unwrap_or_default().join(" · ");
+                if !a.r#ref.is_empty() || !rest.is_empty() {
+                    let mut sub = div().flex().items_center().gap(px(6.)).min_w_0();
+                    if !a.r#ref.is_empty() {
+                        sub = sub.child(
+                            label(a.r#ref.clone(), Family::Mono, 10.5, 600.)
+                                .tracking(0.02)
+                                .color(t.muted),
+                        );
+                    }
+                    if !rest.is_empty() {
+                        sub = sub.child(label(rest, Family::Ui, 11., 400.).color(t.faint));
+                    }
+                    main = main.child(sub);
+                }
+                let mut row = div()
+                    .flex()
+                    .items_center()
+                    .gap_x(px(8.))
+                    .w_full()
+                    .px(px(10.))
+                    .py(px(8.))
+                    .child(ico(IconName::Bot, 14., t.muted))
+                    .child(main);
+                if let Some(kind) = a.details.first() {
+                    row = row.child(
+                        Pill {
+                            fg: t.faint,
+                            ..Pill::status(t, 0.06)
+                        }
+                        .render(kind.clone())
+                        .self_center(),
+                    );
+                }
+                finding_row_wrap(row.into_any_element(), ai + 1 == n, t)
+            })
+            .collect();
+        col = col.child(findings_list(
+            SharedString::from(format!("{rk}-la-{gi}")),
+            rows,
+            360.,
+        ));
+    }
+    col.into_any_element()
 }
 
 /// `.tc-finding-empty`.

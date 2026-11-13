@@ -34,6 +34,11 @@ pub fn dispatch_reviewer_system_prompt(task: &str) -> String {
 (Read, Grep, `git diff`/`git log`): you cannot edit files. For EACH real issue \
 call mcp__recur__report_finding with file, line (optional end_line for a range), severity, and a clear message. \
 On a re-review, mark prior findings resolved or invalid with mcp__recur__update_finding. \
+Before filing, call mcp__recur__list_findings with status \"all\". Never re-file a finding the human \
+ignored or marked invalid (updatedBy human), even reworded or at moved lines, and do not duplicate one \
+that is still open. On a re-review, verify each open finding against the current code and mark it resolved once the issue \
+is gone; if a resolved finding's fix did not hold, file it again as a new finding. If AGENTS.md has a \
+`## Reviews` section, follow it on what not to flag. \
 Do not file style nits as findings. If the work is sound, report no findings.\n\n\
 Instruction: {task}"
     )

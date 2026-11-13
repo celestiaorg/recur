@@ -213,14 +213,14 @@ fn unavailable(e: PoolError) -> ProviderError {
 
 fn failure(cancel: &CancellationToken, f: RunFailure) -> ProviderError {
     if f.err.is_canceled() || cancel.is_cancelled() {
-        return ProviderError::canceled().with_partial(f.partial);
+        return ProviderError::canceled().with_partial(*f.partial);
     }
     let kind = match f.err.connect() {
         Some(c) if c.transient() => ErrorKind::Transient,
         Some(c) if c.unauthenticated() => ErrorKind::Auth,
         _ => ErrorKind::Failed,
     };
-    ProviderError::new(kind, f.err.to_string()).with_partial(f.partial)
+    ProviderError::new(kind, f.err.to_string()).with_partial(*f.partial)
 }
 
 /// A failure before any run-stream event could be emitted (CreateAgent or
@@ -343,7 +343,7 @@ impl Provider for CursorProvider {
                 ErrorKind::Unavailable,
                 format!("Cursor is turned off in Settings → Providers: {}", fail.err),
             )
-            .with_partial(fail.partial));
+            .with_partial(*fail.partial));
         }
         if !fail.err.bridge_unreachable() {
             return Err(failure(&cx.cancel, fail));

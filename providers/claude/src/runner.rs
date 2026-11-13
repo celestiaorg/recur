@@ -15,6 +15,8 @@
 //! is flushed instead (claude answers it with another result), and live
 //! background tasks hold the result, because claude kills them on stdin EOF;
 //! it runs a follow-up turn on their completion and emits another result.
+//! The hold lasts until the ceiling, restarted by each steer so a user still
+//! talking to the agent keeps reaching it.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -30,9 +32,10 @@ use tokio::sync::mpsc;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
+use crate::ClaudeConfig;
 use crate::args;
 use crate::input::user_message_line;
-use crate::proc::{self, kill_session, look_path, new_session, wait_reaped};
+use crate::proc::{self, PidFile, kill_session, look_path, new_session, wait_reaped};
 use crate::stream::parse_line;
 
 /// Keeps the last 8 KiB of stderr: usage refusals, auth failures and outages
@@ -43,12 +46,15 @@ const STDERR_TAIL_MAX: usize = 8 * 1024;
 const MAX_LINE: usize = 8 * 1024 * 1024;
 
 pub(crate) async fn run(
-    bin: &str,
-    hold_ceiling: Duration,
+    cfg: &ClaudeConfig,
     req: TurnRequest,
     cx: TurnContext,
 ) -> Result<TurnResult, ProviderError> {
-    let bin = if bin.is_empty() { "claude" } else { bin };
+    let bin = if cfg.bin.is_empty() {
+        "claude"
+    } else {
+        &cfg.bin
+    };
     let TurnContext {
         cancel,
         sink,
@@ -66,7 +72,9 @@ pub(crate) async fn run(
     };
     let mut cmd = Command::new(&path);
     new_session(&mut cmd);
+    // Node claude's `process.title` overwrites argv, hiding the turn flag `reap_stale_turns` checks.
     cmd.args(&argv)
+        .env("CLAUDE_CODE_DISABLE_TERMINAL_TITLE", "1")
         .stdin(if use_stream {
             std::process::Stdio::piped()
         } else {
@@ -91,6 +99,7 @@ pub(crate) async fn run(
         .spawn()
         .map_err(|e| ProviderError::failed(format!("start claude: {}: {e}", path.display())))?;
     let pid = child.id().unwrap_or_default();
+    let _pid_file = PidFile::create(&cfg.turn_pid_dir, pid);
     let mut stdin = child.stdin.take();
     let Some(stdout) = child.stdout.take() else {
         return Err(ProviderError::failed("claude stdout pipe: missing"));
@@ -150,7 +159,7 @@ pub(crate) async fn run(
             held: None,
             hold_deadline: None,
             hold_armed: false,
-            hold_ceiling,
+            hold_ceiling: cfg.background_hold_ceiling,
             tracker: ContextUsageTracker::default(),
             result: TurnResult::default(),
             have_result: false,
@@ -295,6 +304,9 @@ impl Injecting<'_> {
         if self.stdin.is_none() {
             s.ack(false);
             return;
+        }
+        if self.hold_deadline.is_some() {
+            self.hold_deadline = Some(Instant::now() + self.hold_ceiling);
         }
         let text = s.stdin_text();
         let user = s.user_event(true);

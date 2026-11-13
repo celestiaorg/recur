@@ -8,9 +8,7 @@ use parking_lot::Mutex;
 use recur_agent::display::{FEED_INPUT_LIMIT, PLAN_MAX_PERSIST_CHARS};
 use recur_agent::{AgentEvent, Provider, ToolStep, TurnRequest, TurnResult};
 use recur_agent_tools::names::mcp;
-use recur_domain::{
-    Agent, AgentRole, AgentStep, FEED_KIND_NOTE, FeedItem, Finding, parse_model_ref,
-};
+use recur_domain::{Agent, AgentRole, AgentStep, FEED_KIND_NOTE, FeedItem, Finding};
 use tokio_util::sync::CancellationToken;
 
 use crate::Engine;
@@ -207,7 +205,7 @@ impl Walk {
             code: rs.code.clone(),
             name: rs.name.clone(),
             role: role.into(),
-            model: parse_model_ref(model).id,
+            model: model.to_owned(),
             status: status.into(),
             color: color.into(),
             task: task.to_owned(),
@@ -489,7 +487,7 @@ impl Walk {
         );
 
         // The first post-resume turn continues the killed session (D55).
-        let (mut resume_session, resumed) = self.resumed_role(&rs.code);
+        let (mut resume_session, resumed) = self.resumed_role(&rs.code, &model);
         let goal = self.goal.clone();
         let mut prompt = goal.clone();
         let mut coder_display = String::new();

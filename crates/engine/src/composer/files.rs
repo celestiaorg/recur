@@ -14,6 +14,23 @@ pub const FILE_AT_PATTERN: &str = r"@((?:/(?:[^\s@:]+(?:/[^\s@:]+)*)|(?:[\w.-]+/
 pub(crate) static FILE_AT_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(FILE_AT_PATTERN).expect("file mention pattern"));
 
+/// `@"path with spaces[:loc]"`, the form `file_mention_token` writes for
+/// paths an unquoted token can't hold. Gate bodies with [`is_quoted_file_chip`].
+pub(crate) static FILE_AT_QUOTED_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"@"([^"\r\n@]+)""#).expect("quoted file mention pattern"));
+
+/// Whether a quoted `@"..."` body is a file chip: it has the whitespace that
+/// forced the quotes and a path shape (a `/` or a `.ext`), so string literals
+/// like `@"hello"` stay text.
+pub fn is_quoted_file_chip(body: &str) -> bool {
+    body.chars().any(char::is_whitespace)
+        && (body.contains('/')
+            || body
+                .split('.')
+                .skip(1)
+                .any(|s| s.starts_with(|c: char| c.is_ascii_alphabetic())))
+}
+
 /// The loc suffix: `[:line[:col][-line[:col]]]`.
 static FILE_LOC_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r":(\d+)(?::(\d+))?(?:-(\d+)(?::(\d+))?)?$").expect("file loc pattern")
@@ -229,12 +246,17 @@ pub fn collect_file_mentions(text: &str, worktree: &str) -> Vec<FileMention> {
     let worktree = canonical_worktree(worktree);
     let mut seen = HashSet::new();
     let mut out = Vec::new();
-    for (re, dirs_only) in [(&*FILE_AT_RE, false), (&*LOOSE_AT_RE, true)] {
+    let any: fn(&str) -> bool = |_| true;
+    for (re, dirs_only, accept) in [
+        (&*FILE_AT_RE, false, any),
+        (&*FILE_AT_QUOTED_RE, false, is_quoted_file_chip),
+        (&*LOOSE_AT_RE, true, any),
+    ] {
         for c in re.captures_iter(text) {
             let (Some(m), Some(chip)) = (c.get(0), c.get(1)) else {
                 continue;
             };
-            if !at_mention_boundary(text, m.start()) {
+            if !at_mention_boundary(text, m.start()) || !accept(chip.as_str()) {
                 continue;
             }
             append_mention(&mut out, &mut seen, chip.as_str(), &worktree, dirs_only);

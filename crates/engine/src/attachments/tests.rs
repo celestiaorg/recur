@@ -1,6 +1,5 @@
 //! Attachment disk tests.
 
-use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use recur_agent::attach::{ensure_markers, marker};
 use recur_domain::{ChatAttachment, ImagePayload};

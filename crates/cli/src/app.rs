@@ -6,10 +6,11 @@ use recur_bundles::{
     Report, RunCtx, format_lint_report, format_report, lint_bundles, run_bundle_tests,
 };
 use recur_domain::path;
+use recur_platform::openipc::SettingsRequest;
 
 use crate::color::{Stream, want_color};
 use crate::{CliError, Io};
-use crate::{config, create, open, paths, resolve};
+use crate::{config, create, open, paths, resolve, settings};
 
 /// Stamped at build time from `RECUR_VERSION`; plain cargo builds report `X.Y.Z+dev`.
 pub const VERSION: &str = match option_env!("RECUR_VERSION") {
@@ -22,7 +23,7 @@ pub const VERSION: &str = match option_env!("RECUR_VERSION") {
     name = "recur",
     version = VERSION,
     about = "Open a path in Recur, or run authoring tools",
-    long_about = "Recur command-line tools.\n\n  recur .                      open the current folder\n  recur ./path/to/file         open a file or folder\n  recur                        focus Recur (launch if needed)\n  recur bundles test …         author Recur Bundles",
+    long_about = "Recur command-line tools.\n\n  recur .                      open the current folder\n  recur ./path/to/file         open a file or folder\n  recur                        focus Recur (launch if needed)\n  recur config set KEY VALUE   change a setting\n  recur bundles test …         author Recur Bundles",
     disable_version_flag = true
 )]
 pub struct Cli {
@@ -59,8 +60,34 @@ enum Command {
         /// file or folder to open
         path: Option<String>,
     },
+    #[command(
+        about = "Read and write Recur's settings",
+        long_about = "Read and write Recur's app settings (model, effort, permissions, …) without the GUI.\n\nKeys are the stored setting names. A value is parsed as JSON when it parses, else taken as a string.\nIf Recur is running, the change goes to that instance; otherwise recur.db is updated directly.",
+        after_help = "Examples:\n  recur config list\n  recur config get modelAgent\n  recur config set modelAgent claude-code/claude-opus-5-5\n  recur config set flagsAgent '{\"effort\":\"high\"}'\n  recur config set bypassPermissions true",
+        subcommand_required = true,
+        arg_required_else_help = true
+    )]
+    Config {
+        #[command(subcommand)]
+        command: Config,
+    },
     #[command(about = "Print a shell completion script")]
     Completion { shell: Shell },
+}
+
+#[derive(Subcommand)]
+enum Config {
+    /// Print one setting's value
+    Get { key: String },
+    /// Set a setting
+    Set {
+        key: String,
+        /// JSON, or a plain string
+        #[arg(allow_hyphen_values = true)]
+        value: String,
+    },
+    /// Print every setting as key=value
+    List,
 }
 
 #[derive(Subcommand)]
@@ -128,6 +155,7 @@ pub fn run(cli: Cli, io: &mut Io) -> Result<(), CliError> {
             Bundles::Lint { targets: args } => bundles_lint(flag, &args, io),
             Bundles::Create { name, dir, force } => bundles_create(flag, &name, dir, force, io),
         },
+        Some(Command::Config { command }) => config_cmd(command, io),
         Some(Command::Completion { shell }) => {
             clap_complete::generate(shell, &mut Cli::command(), "recur", io.out);
             Ok(())
@@ -146,6 +174,36 @@ pub fn looks_like_open_path(s: &str) -> bool {
         return true;
     }
     std::fs::metadata(s).is_ok() || std::fs::metadata(path::clean(s)).is_ok()
+}
+
+fn config_cmd(command: Config, io: &mut Io) -> Result<(), CliError> {
+    let req = match &command {
+        Config::Get { key } => SettingsRequest {
+            key: key.clone(),
+            value: None,
+        },
+        Config::Set { key, value } => SettingsRequest {
+            key: key.clone(),
+            value: Some(settings::parse_value(value)),
+        },
+        Config::List => SettingsRequest::default(),
+    };
+    let values = settings::apply(req).map_err(CliError::Msg)?;
+    match command {
+        Config::Get { key } => {
+            let v = values
+                .get(&key)
+                .ok_or_else(|| CliError::Msg(format!("unknown setting {key:?}")))?;
+            let _ = writeln!(io.out, "{}", settings::format_value(v));
+        }
+        Config::Set { .. } => {}
+        Config::List => {
+            for (k, v) in &values {
+                let _ = writeln!(io.out, "{k}={}", settings::format_value(v));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn targets(flag: Option<&str>, args: &[String]) -> Result<Vec<String>, CliError> {

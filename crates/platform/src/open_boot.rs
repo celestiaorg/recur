@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use parking_lot::{Condvar, Mutex};
 use tokio_util::sync::CancellationToken;
 
-use crate::openipc::{self, Handler, Instance, IpcError, Request, Response};
+use crate::openipc::{self, Handler, Instance, IpcError, Request, Response, SettingsRequest};
 
 /// Pulls `--open PATH` / `--open=PATH` out of argv. Returns the paths and the
 /// remaining args. A trailing `--open` without a value is dropped.
@@ -46,7 +46,13 @@ pub fn handoff_to_running_instance(data_dir: &Path, paths: &[String]) -> bool {
         paths
     };
     for p in paths {
-        let res = match openipc::call(&sock, &Request { path: p.clone() }) {
+        let res = match openipc::call(
+            &sock,
+            &Request {
+                path: p.clone(),
+                ..Request::default()
+            },
+        ) {
             Ok(res) => res,
             Err(err) => {
                 // Dial error: no listener. EOF/timeout: the owner may be
@@ -363,15 +369,30 @@ pub fn start_open_ipc<T: Clone + Send + 'static>(
     }
 }
 
+/// The config keys and values a settings request answers with.
+pub type SettingsMap = serde_json::Map<String, serde_json::Value>;
+
 /// Installs the real IPC handler once services exist. `open_path` is
 /// `WorkspacesService::open_path`; its result is noted on the hub (replayed
-/// to the UI) and converted into the wire response.
-pub fn attach_open_ipc<T, F>(gate: &IpcGate, hub: Arc<OpenHub<T>>, open_path: F)
+/// to the UI) and converted into the wire response. `settings` answers
+/// `recur config`.
+pub fn attach_open_ipc<T, F, S>(gate: &IpcGate, hub: Arc<OpenHub<T>>, open_path: F, settings: S)
 where
     T: Clone + Send + Into<Response> + 'static,
     F: Fn(&str) -> Result<T, String> + Send + Sync + 'static,
+    S: Fn(SettingsRequest) -> Result<SettingsMap, String> + Send + Sync + 'static,
 {
     gate.set(Arc::new(move |req: Request| {
+        if let Some(sreq) = req.settings {
+            return match settings(sreq) {
+                Ok(map) => Response {
+                    ok: true,
+                    settings: Some(map),
+                    ..Response::default()
+                },
+                Err(err) => Response::failure(err),
+            };
+        }
         if req.path.trim().is_empty() {
             if !hub.bring_forward() {
                 return Response::shutting_down();
@@ -857,13 +878,22 @@ mod tests {
         }
     }
 
+    fn no_settings(_: SettingsRequest) -> Result<SettingsMap, String> {
+        panic!("settings called for an open request")
+    }
+
     #[test]
     fn attach_empty_path_after_drop_ui() {
         let g = IpcGate::new();
         let h = OpenHub::<Opened>::new();
-        attach_open_ipc(&g, Arc::clone(&h), |_: &str| -> Result<Opened, String> {
-            panic!("open_path called for a focus-only request")
-        });
+        attach_open_ipc(
+            &g,
+            Arc::clone(&h),
+            |_: &str| -> Result<Opened, String> {
+                panic!("open_path called for a focus-only request")
+            },
+            no_settings,
+        );
         h.set_hooks(
             None::<fn(Opened)>,
             Some(|_: Box<dyn FnOnce() + Send>| panic!("focus called after drop_ui")),
@@ -877,15 +907,40 @@ mod tests {
     fn attach_opens_notes_and_converts() {
         let g = IpcGate::new();
         let h = OpenHub::<Opened>::new();
-        attach_open_ipc(&g, Arc::clone(&h), |p: &str| {
-            if p == "/bad" {
-                Err("not a git repo".to_string())
-            } else {
-                Ok(Opened(p.to_string()))
-            }
-        });
+        attach_open_ipc(
+            &g,
+            Arc::clone(&h),
+            |p: &str| {
+                if p == "/bad" {
+                    Err("not a git repo".to_string())
+                } else {
+                    Ok(Opened(p.to_string()))
+                }
+            },
+            |r: SettingsRequest| {
+                if r.key == "bad" {
+                    return Err("unknown setting".to_string());
+                }
+                let mut m = SettingsMap::new();
+                m.insert(r.key, r.value.unwrap_or_default());
+                Ok(m)
+            },
+        );
+        let settings = |key: &str| {
+            g.handle(Request {
+                settings: Some(SettingsRequest {
+                    key: key.into(),
+                    value: Some(true.into()),
+                }),
+                ..Request::default()
+            })
+        };
+        let res = settings("simplify");
+        assert!(res.ok && res.settings.unwrap()["simplify"] == true);
+        assert_eq!(settings("bad"), Response::failure("unknown setting"));
         let res = g.handle(Request {
             path: "/tmp/a".into(),
+            ..Request::default()
         });
         assert_eq!(
             res,
@@ -898,7 +953,8 @@ mod tests {
         );
         assert_eq!(
             g.handle(Request {
-                path: "/bad".into()
+                path: "/bad".into(),
+                ..Request::default()
             }),
             Response::failure("not a git repo")
         );
@@ -1043,7 +1099,12 @@ mod tests {
             rx.recv_timeout(Duration::from_millis(100)).is_err(),
             "request parks until the gate has a handler"
         );
-        attach_open_ipc(&gate, Arc::clone(&hub), |p: &str| Ok(p.to_string()));
+        attach_open_ipc(
+            &gate,
+            Arc::clone(&hub),
+            |p: &str| Ok(p.to_string()),
+            no_settings,
+        );
         let res = rx
             .recv_timeout(Duration::from_secs(2))
             .expect("answered")

@@ -335,7 +335,3 @@ priority = -1
 [lints.rust.unexpected_cfgs]
 level = "allow"
 priority = 0
-
-[lints.rust.deprecated]
-level = "allow"
-priority = 0

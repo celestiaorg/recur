@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use gpui_kit::{App, Context, Task};
-use recur_domain::ChatAttachment;
+use recur_domain::{ChatAttachment, WorkspaceState};
 use recur_engine::view::chat::{
     AgentMsg, CHAT_RETRY_DISPLAY, ChatAttachmentDraft, ChatAttachmentView, display_user_chat_text,
     drop_optimistic_user, finish_turn, format_ask_user_display_text, is_chat_injected_reply,
@@ -20,7 +20,7 @@ use recur_view_chat::hoist::HoistState;
 use recur_view_core::chat::AskUserAnswer;
 use recur_view_core::models::{FlagMap, chat_steer_follow_up};
 use recur_view_core::modes::ChatMode;
-use recur_view_core::toast;
+use recur_view_core::{call, toast};
 
 use super::{WorkspaceView, now_ms};
 use crate::uuid::uuidv7;
@@ -499,12 +499,32 @@ impl WorkspaceView {
     }
 
     /// Retry: the engine replays the last stored wire prompt. A Loop-mode PA tab sends agent so
-    /// Retry never engages a run.
+    /// Retry never engages a run. On the conductor tab of a loop parked on a transient failure,
+    /// Retry resumes the loop from its checkpoint instead.
     pub(crate) fn retry_chat(&mut self, cx: &mut Context<Self>) {
-        if self.ws(cx).is_none() || self.setup_hold(cx) {
+        let Some(ws) = self.ws(cx) else {
+            return;
+        };
+        if self.setup_hold(cx) {
             return;
         }
         let code = self.active_code();
+        if ws.state == WorkspaceState::Failed
+            && ws.retryable
+            && code == self.conductor_chat_code(cx)
+        {
+            let (svc, id) = (self.services.clone(), self.ws_id.clone());
+            cx.spawn(async move |_, cx| {
+                call(
+                    cx,
+                    svc.workspaces.retry_loop(&id),
+                    "Could not retry the loop",
+                )
+                .await;
+            })
+            .detach();
+            return;
+        }
         if code != "MA" && !self.pickers_ready() {
             return;
         }

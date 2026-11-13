@@ -467,7 +467,8 @@ impl AppServices {
         self.fill_prompt_git_env(&mut run_ctx, &rc.workspace_id);
         run_ctx.bundle_settings = self.bundle_setting_env(&cat, &prompt.bundle_id);
         let mut out = PromptResultDto::default();
-        if !rc.chat_code.is_empty() && run_ctx.surface == "workspace" {
+        if !rc.chat_code.is_empty() && matches!(run_ctx.surface.as_str(), "workspace" | "local_pr")
+        {
             let (since, now) = self
                 .engine
                 .review_checkpoint(&rc.workspace_id, &rc.chat_code, &prompt.slash)

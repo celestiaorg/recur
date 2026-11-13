@@ -1204,6 +1204,15 @@ impl AppState {
             AppEvent::FindingsUpdated(_) | AppEvent::BriefingUpdated(_) => {
                 self.schedule_briefing_refresh(cx)
             }
+            AppEvent::SettingsUpdated => {
+                let services = self.services.clone();
+                cx.spawn(async move |this, cx| {
+                    if let Ok(s) = services.settings.get_settings().await {
+                        let _ = this.update(cx, |st, cx| st.set_settings(s, cx));
+                    }
+                })
+                .detach();
+            }
             AppEvent::SystemTheme(dark) => self.set_native_dark(dark, cx),
             AppEvent::AppOpen(res) => self.apply_open_path_result(res, cx),
             AppEvent::MenuAction(action) => self.dispatch_menu_action(action, cx),

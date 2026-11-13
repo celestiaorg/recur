@@ -326,8 +326,10 @@ fn to_bgra(p: &Planes) -> Frame {
 /// 16-bit little-endian samples (a 10- or 12-bit image) as 8-bit.
 fn narrow(plane: &[u8], bits: u32) -> Vec<u8> {
     plane
-        .chunks_exact(2)
-        .map(|b| (u16::from_le_bytes([b[0], b[1]]) >> (bits - 8)).min(255) as u8)
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&b| (u16::from_le_bytes(b) >> (bits - 8)).min(255) as u8)
         .collect()
 }
 

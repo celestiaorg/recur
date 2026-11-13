@@ -694,6 +694,30 @@ async fn raise_escalation_publishes_notify() {
     assert_eq!(t.store.escalation("LOOP-X").unwrap().kind, ESC_KIND_AGENT);
 }
 
+#[tokio::test]
+async fn each_loop_chat_question_has_its_own_inbox_row() {
+    let t = TestEngine::new(None);
+    t.engine
+        .raise_escalation("LOOP-X", "PA", &esc_req(), ESC_KIND_AGENT);
+    t.engine
+        .raise_escalation("LOOP-X", "PA2", &esc_req(), ESC_KIND_AGENT);
+    let targets = |t: &TestEngine| {
+        let mut v: Vec<String> = t
+            .store
+            .inbox()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|i| i.id.starts_with("ib-esc-"))
+            .map(|i| i.target)
+            .collect();
+        v.sort();
+        v
+    };
+    assert_eq!(targets(&t), ["chat:LOOP-X:PA", "chat:LOOP-X:PA2"]);
+    assert!(t.engine.retire_walk_escalation("LOOP-X", "PA"));
+    assert_eq!(targets(&t), ["chat:LOOP-X:PA2"]);
+}
+
 fn opts(texts: &[&str]) -> Option<Vec<EscalationOption>> {
     Some(
         texts

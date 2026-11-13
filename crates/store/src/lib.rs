@@ -33,6 +33,7 @@ mod error;
 mod migrations;
 pub mod paths;
 mod schedules;
+mod secrets;
 mod seed;
 mod seed_prs;
 pub mod seeddump;

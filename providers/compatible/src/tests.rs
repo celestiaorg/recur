@@ -648,6 +648,68 @@ async fn parallel_tools_cap() {
     assert!(max_seen.load(Ordering::SeqCst) <= HARNESS_PARALLEL_LIMIT);
 }
 
+struct EmptyTool;
+
+#[async_trait::async_trait]
+impl Tool for EmptyTool {
+    fn name(&self) -> &'static str {
+        "Empty"
+    }
+    fn description(&self) -> &'static str {
+        "Empty"
+    }
+    fn schema(&self) -> String {
+        r#"{"type":"object"}"#.into()
+    }
+    async fn execute(&self, _: Call) -> Result<String, ToolError> {
+        Ok(String::new())
+    }
+}
+
+#[tokio::test]
+async fn empty_tool_result_posts_output_field() {
+    let (base, seen) = serve(|n, _| {
+        if n == 0 {
+            return (
+                200,
+                JSON,
+                call_body(json!([{
+                    "type": "function_call",
+                    "call_id": "call_1",
+                    "name": "Empty",
+                    "arguments": "{}"
+                }])),
+            );
+        }
+        (200, JSON, text_body("resp-2", "continued"))
+    })
+    .await;
+    let p = CompatibleProvider::new(test_config(&base));
+    let req = TurnRequest {
+        model: "gpt-5".into(),
+        prompt: "go".into(),
+        allowed_tools: Some(vec!["Empty".into()]),
+        ..Default::default()
+    };
+    let host: Arc<dyn ToolHost> = Arc::new(HarnessTools::with_tools(
+        vec![Arc::new(EmptyTool)],
+        None,
+        Arc::new(TodoStore::default()),
+        &req,
+    ));
+    let (cx, _, _) = context(Some(host));
+    let res = p.run_turn(req, cx).await.unwrap();
+    assert_eq!(res.text, "continued");
+    let body: serde_json::Value = serde_json::from_str(&seen.lock()[1].body).unwrap();
+    let item = body["input"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["type"] == "function_call_output")
+        .expect("function_call_output");
+    assert_eq!(item["output"], "");
+}
+
 #[tokio::test]
 async fn without_a_tool_host_calls_fail_cleanly() {
     let body = call_body(

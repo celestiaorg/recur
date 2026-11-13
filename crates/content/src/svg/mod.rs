@@ -49,7 +49,7 @@ pub fn rasterize(tree: &usvg::Tree, ts: tiny_skia::Transform, w: u32, h: u32) ->
 
 /// Premultiplied RGBA → a GPUI image (BGRA, straight alpha).
 pub fn to_render_image(mut rgba: Vec<u8>, w: u32, h: u32) -> Option<Arc<RenderImage>> {
-    for p in rgba.chunks_exact_mut(4) {
+    for p in rgba.as_chunks_mut::<4>().0 {
         let a = p[3];
         let un = |c: u8| {
             if a == 0 {

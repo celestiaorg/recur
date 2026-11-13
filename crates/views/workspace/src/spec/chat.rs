@@ -1303,6 +1303,38 @@ async fn spend_limit_error_renders_a_card_with_retry_that_re_sends_the_last_prom
 }
 
 #[gpui::test]
+async fn retry_on_a_retryable_failed_loop_resumes_the_loop(cx: &mut TestAppContext) {
+    let (sent, retried) = (calls(), Arc::new(Mutex::new(Vec::<String>::new())));
+    let r2 = retried.clone();
+    let opts = bridge_opts(
+        Store::default(),
+        sent.clone(),
+        Pending::default(),
+        |_, _| Some(SPEND.into()),
+    )
+    .retry_loop(move |_, id| {
+        r2.lock().push(id);
+        Ok(())
+    });
+    let mut h = boot_with(
+        cx,
+        |s| {
+            let w = s.workspaces.iter_mut().find(|w| w.id == WS).unwrap();
+            w.state = recur_domain::WorkspaceState::Failed;
+            w.retryable = true;
+        },
+        opts,
+        |_| {},
+        WS,
+    );
+    h.fill("ship the dark mode polish");
+    send_click(&mut h);
+    h.click("chat-error-retry");
+    assert_eq!(*retried.lock(), [WS]);
+    assert_eq!(texts(&sent).len(), 1);
+}
+
+#[gpui::test]
 async fn retry_shows_the_elapsed_clock_before_the_first_stream_row(cx: &mut TestAppContext) {
     let opts = bridge_opts(Store::default(), calls(), Pending::default(), |n, _| {
         (n == 1).then(|| SPEND.to_string())

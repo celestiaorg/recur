@@ -840,14 +840,7 @@ pub fn text_field(
         .try_global::<FieldLooks>()
         .and_then(|c| c.0.get(&input.entity_id()).copied())
         .filter(|l| !state.value().is_empty() && !l.masked)
-        .and_then(|l| {
-            Some((
-                state.value().clone(),
-                l.fg?,
-                l.align,
-                state.scroll_offset().x,
-            ))
-        });
+        .and_then(|l| Some((state.value().clone(), l.fg?, l.align)));
     div()
         .relative()
         .flex_1()
@@ -861,6 +854,27 @@ pub fn text_field(
         .text_size(px(size))
         .line_height(px(line.height))
         .text_color(t.text)
+        .capture_action({
+            let input = input.clone();
+            move |_: &gpui_kit::base::input::Paste, window, cx| {
+                let input = input.clone();
+                let before = input.read(cx).value().clone();
+                // simplify: gpui-base's paste reveals the caret against the layout from before
+                // the paste, which pins the old scroll; reveal it again once the pasted text is
+                // laid out, a frame late. Drop this once longbridge/gpui-kit#3967 ships.
+                window.after_next_draw(move |window, cx| {
+                    window.defer(cx, move |window, cx| {
+                        input.update(cx, |s, cx| {
+                            if s.value() == before {
+                                return;
+                            }
+                            let at = s.cursor_position();
+                            s.set_cursor_position(at, window, cx);
+                        })
+                    })
+                });
+            }
+        })
         .child(Input::new(input))
         .when_some(placeholder, |d, p| {
             d.child(
@@ -875,27 +889,98 @@ pub fn text_field(
                 ),
             )
         })
-        .when_some(value, |d, (v, fg, align, scroll_x)| {
+        .when_some(value, |d, (v, fg, align)| {
             let at = div().absolute().top_0();
             let at = match align {
-                gpui_kit::TextAlign::Left => at.left(scroll_x),
-                gpui_kit::TextAlign::Right => at.right(-scroll_x),
+                gpui_kit::TextAlign::Left => at.left_0(),
+                gpui_kit::TextAlign::Right => at.right_0(),
                 gpui_kit::TextAlign::Center => at.left_0().right_0().flex().justify_center(),
             };
-            d.child(
-                div().absolute().inset_0().overflow_hidden().child(
-                    at.child(
-                        text(v)
-                            .family(family)
-                            .size(size)
-                            .line_height(LineHeight::Normal)
-                            .color(fg)
-                            .nowrap()
-                            .field(),
-                    ),
-                ),
-            )
+            let at = at.child(
+                text(v)
+                    .family(family)
+                    .size(size)
+                    .line_height(LineHeight::Normal)
+                    .color(fg)
+                    .nowrap()
+                    .field(),
+            );
+            let overlay = div().absolute().inset_0().overflow_hidden();
+            d.child(match align {
+                gpui_kit::TextAlign::Center => overlay.child(at),
+                _ => overlay.child(scroll_follow(input, at)),
+            })
         })
+}
+
+/// `child` shifted by `input`'s horizontal scroll. The offset is read in prepaint, after the
+/// sibling `Input` has revealed its caret there, so text and caret move in the same frame.
+pub(crate) fn scroll_follow(input: &Entity<InputState>, child: impl IntoElement) -> ScrollFollow {
+    ScrollFollow {
+        input: input.clone(),
+        child: child.into_any_element(),
+    }
+}
+
+pub(crate) struct ScrollFollow {
+    input: Entity<InputState>,
+    child: gpui_kit::AnyElement,
+}
+
+impl IntoElement for ScrollFollow {
+    type Element = Self;
+    fn into_element(self) -> Self {
+        self
+    }
+}
+
+impl gpui_kit::Element for ScrollFollow {
+    type RequestLayoutState = ();
+    type PrepaintState = ();
+
+    fn id(&self) -> Option<ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static core::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _: Option<&gpui_kit::GlobalElementId>,
+        _: Option<&gpui_kit::InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (gpui_kit::LayoutId, ()) {
+        (self.child.request_layout(window, cx), ())
+    }
+
+    fn prepaint(
+        &mut self,
+        _: Option<&gpui_kit::GlobalElementId>,
+        _: Option<&gpui_kit::InspectorElementId>,
+        _: gpui_kit::Bounds<Pixels>,
+        _: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        let x = self.input.read(cx).scroll_offset().x;
+        window.with_element_offset(point(x, px(0.)), |window| self.child.prepaint(window, cx));
+    }
+
+    fn paint(
+        &mut self,
+        _: Option<&gpui_kit::GlobalElementId>,
+        _: Option<&gpui_kit::InspectorElementId>,
+        _: gpui_kit::Bounds<Pixels>,
+        _: &mut (),
+        _: &mut (),
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        self.child.paint(window, cx);
+    }
 }
 
 /// How [`text_field`] draws each input's value: the color [`style_text_input_fg`] gave it, and

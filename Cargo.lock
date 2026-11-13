@@ -8234,7 +8234,9 @@ dependencies = [
  "recur-domain",
  "recur-exec",
  "recur-platform",
+ "recur-store",
  "regex",
+ "serde_json",
  "tempfile",
  "tokio",
  "tokio-util",
@@ -8798,6 +8800,7 @@ dependencies = [
 name = "recur-store"
 version = "0.6.0"
 dependencies = [
+ "base64 0.23.1",
  "chrono",
  "include_dir",
  "parking_lot",

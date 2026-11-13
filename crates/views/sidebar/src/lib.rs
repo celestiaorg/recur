@@ -145,6 +145,8 @@ pub struct Sidebar {
     armed: Option<String>,
     arm_seq: u64,
     arm_ready: u64,
+    /// A confirm click landed while the arm's inspect was still running.
+    arm_queued: bool,
     arm_timer: Option<Task<()>>,
     arm_task: Option<Task<()>>,
     remove_echo: bool,
@@ -236,6 +238,7 @@ impl Sidebar {
             armed: None,
             arm_seq: 0,
             arm_ready: 0,
+            arm_queued: false,
             arm_timer: None,
             arm_task: None,
             remove_echo: false,
@@ -1098,6 +1101,7 @@ impl Sidebar {
         let token = self.arm_seq;
         self.armed = Some(id.to_string());
         self.arm_ready = 0;
+        self.arm_queued = false;
         self.sync_peek_lock(cx);
         let fetch = self.fetch_risk(id, cx);
         let id = id.to_string();
@@ -1112,6 +1116,14 @@ impl Sidebar {
                     return;
                 }
                 this.arm_ready = token;
+                // A queued confirm goes through only when there is nothing to lose; otherwise
+                // the button stays armed so the risk shows before the next click.
+                if std::mem::take(&mut this.arm_queued)
+                    && this.risk.get(&id).is_none_or(|r| r.is_empty())
+                {
+                    this.commit_remove(&id, cx);
+                    return;
+                }
                 this.restart_arm_timer(&id, cx);
                 cx.notify();
             });
@@ -1125,6 +1137,7 @@ impl Sidebar {
             cx.notify();
         }
         self.arm_ready = 0;
+        self.arm_queued = false;
         self.sync_peek_lock(cx);
     }
 
@@ -1187,6 +1200,11 @@ impl Sidebar {
             return;
         }
         self.remove_echo = true;
+        // A release dragged onto the button fires no click, so drop the echo after this event.
+        let this = cx.entity().downgrade();
+        cx.defer(move |cx| {
+            let _ = this.update(cx, |this, _| this.remove_echo = false);
+        });
         self.commit_remove(id, cx);
     }
 
@@ -1202,6 +1220,7 @@ impl Sidebar {
             return;
         }
         if self.arm_ready != self.arm_seq {
+            self.arm_queued = true;
             return;
         }
         self.commit_remove(id, cx);

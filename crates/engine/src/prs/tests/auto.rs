@@ -155,15 +155,34 @@ async fn a_check_failure_runs_fix_checks_in_the_pr_workspace_once() {
             p.checks_ok = ok;
         })
     };
+    let (model, flags, _) = ax.te.engine.workspace_chat_selection(&ax.ws.id, "PA");
+    ax.te
+        .engine
+        .send_workspace_message(
+            &ax.ws.id,
+            "PA",
+            "my own work",
+            &model,
+            Some(&flags),
+            &[],
+            "agent",
+            "",
+        )
+        .await;
     fail(false);
     ax.sweep().await;
-    let got = ax.prompts();
-    assert_eq!(sent(&got, "FIX-CHECKS-WIRE"), 1, "{got:?}");
-    assert_eq!(
-        ax.cap.with_role(AgentRole::Coder)[0].workspace_id,
-        ax.ws.id,
-        "the PR's own workspace"
-    );
+    let fix_tabs = || {
+        ax.cap
+            .with_role(AgentRole::Coder)
+            .into_iter()
+            .filter(|r| r.prompt.contains("FIX-CHECKS-WIRE"))
+            .map(|r| (r.workspace_id, r.chat_code))
+            .collect::<Vec<_>>()
+    };
+    let got = fix_tabs();
+    assert_eq!(got.len(), 1, "{:?}", ax.prompts());
+    assert_eq!(got[0].0, ax.ws.id, "the PR's own workspace");
+    assert_ne!(got[0].1, "PA", "not the user's working tab");
     assert!(
         ax.feed().contains("Checks failed on PR #7"),
         "{}",
@@ -177,7 +196,9 @@ async fn a_check_failure_runs_fix_checks_in_the_pr_workspace_once() {
     ax.sweep().await;
     fail(false);
     ax.sweep().await;
-    assert_eq!(sent(&ax.prompts(), "FIX-CHECKS-WIRE"), 2, "a new failure");
+    let again = fix_tabs();
+    assert_eq!(again.len(), 2, "a new failure");
+    assert_eq!(again[1].1, again[0].1, "the ops tab is reused");
 
     ax.settings(true, false, true);
     fail(true);
@@ -229,13 +250,33 @@ async fn only_the_viewers_open_pr_with_a_live_workspace_runs() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn review_activity_runs_address_review_only_when_it_has_a_prompt() {
     let ax = Ax::new().await;
+    let (model, flags, _) = ax.te.engine.workspace_chat_selection(&ax.ws.id, "PA");
+    ax.te
+        .engine
+        .send_workspace_message(
+            &ax.ws.id,
+            "PA",
+            "my own work",
+            &model,
+            Some(&flags),
+            &[],
+            "agent",
+            "",
+        )
+        .await;
+    let tabs = ax.te.engine.list_workspace_chats(&ax.ws.id).len();
     ax.sweep().await;
-    assert!(ax.prompts().is_empty(), "nothing to answer: no turn");
+    assert_eq!(sent(&ax.prompts(), "WIRE"), 0, "nothing to answer: no turn");
+    assert_eq!(
+        ax.te.engine.list_workspace_chats(&ax.ws.id).len(),
+        tabs,
+        "no empty tab left behind"
+    );
     assert!(!ax.feed().contains("Address review"));
 
     std::fs::write(ax.marker.path().join("review"), "").unwrap();
     ax.sweep().await;
-    assert!(ax.prompts().is_empty(), "updated_at unchanged");
+    assert_eq!(sent(&ax.prompts(), "WIRE"), 0, "updated_at unchanged");
 
     ax.pr(|p| p.updated_at = "2026-11-13T10:10:00Z".into());
     ax.sweep().await;

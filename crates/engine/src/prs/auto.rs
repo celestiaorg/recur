@@ -7,13 +7,17 @@
 
 use std::collections::{HashMap, HashSet};
 
-use recur_domain::{CHAT_MODE_AGENT, Pr, UPDATE_WORKSPACE_CONFLICT};
+use recur_domain::{CHAT_MODE_AGENT, Pr, UPDATE_WORKSPACE_CONFLICT, normalize_chat_mode};
 use recur_forge::model::BUCKET_PENDING;
 
 use crate::Engine;
 use crate::codes::PAIR_AGENT_CODE;
 use crate::prs::{is_forge_source, pr_settled};
 use crate::text::html_escape;
+use crate::view::prompts::{PromptTabPick, PromptTabQuery, pick_prompt_tab};
+
+/// The shipped `/update`, `/fix-checks` and `/address-review` `tab_group`.
+const AUTO_TAB_GROUP: &str = "ops";
 
 /// Automatic turns per PR and kind before Recur stops and leaves it to you.
 pub(crate) const MAX_AUTO_ATTEMPTS: u32 = 3;
@@ -274,22 +278,56 @@ impl Engine {
         e.attempts == MAX_AUTO_ATTEMPTS
     }
 
-    /// Sends a prompt action to the workspace's first coding tab with its
-    /// last model selection, as the dock would. Empty when the action had
-    /// nothing to send (no turn ran).
+    /// Sends a prompt action to the tab the dock would pick for an "ops"
+    /// action (an idle ops tab, else an unused agent tab, else a new one),
+    /// so the user's working conversation keeps its session. Empty when the
+    /// action had nothing to send (no turn ran).
     async fn send_auto_prompt(&self, ws_id: &str, slash: &str) -> String {
-        let (model, flags, _) = self.workspace_chat_selection(ws_id, PAIR_AGENT_CODE);
-        self.send_workspace_message(
-            ws_id,
-            PAIR_AGENT_CODE,
-            slash,
-            &model,
-            Some(&flags),
-            &[],
-            CHAT_MODE_AGENT,
-            "",
-        )
-        .await
+        let tabs = self.list_workspace_chats(ws_id);
+        let pick = pick_prompt_tab(&PromptTabQuery {
+            tabs: &tabs,
+            active_code: "",
+            mode: CHAT_MODE_AGENT,
+            group: AUTO_TAB_GROUP,
+            is_busy: &|code| self.live_chat_turn(ws_id, code).is_some(),
+            tab_mode: &|t| normalize_chat_mode(&t.mode).to_owned(),
+            started: Some(&|t| self.chat_has_user_message(ws_id, &t.code)),
+            drafted: None,
+            conductor_locked: None,
+        });
+        let (code, created) = match pick {
+            PromptTabPick::Select(code) => (code, false),
+            PromptTabPick::Current | PromptTabPick::Create => {
+                let code = self.create_workspace_chat(ws_id).await.code;
+                if code.is_empty() {
+                    return String::new();
+                }
+                (code, true)
+            }
+        };
+        let (mut model, mut flags, _) = self.workspace_chat_selection(ws_id, &code);
+        if model.trim().is_empty() {
+            (model, flags, _) = self.workspace_chat_selection(ws_id, PAIR_AGENT_CODE);
+        }
+        let reply = self
+            .send_workspace_message(
+                ws_id,
+                &code,
+                slash,
+                &model,
+                Some(&flags),
+                &[],
+                CHAT_MODE_AGENT,
+                "",
+            )
+            .await;
+        if !reply.is_empty() {
+            self.remember_workspace_chat_prompt_group(ws_id, &code, AUTO_TAB_GROUP)
+                .await;
+        } else if created {
+            self.close_workspace_chat(ws_id, &code).await;
+        }
+        reply
     }
 }
 

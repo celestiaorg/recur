@@ -25,7 +25,7 @@ use recur_platform::open_boot::{
     Claimed, IpcGate, OpenHub, apply_cold_opens, attach_open_ipc, claim_or_handoff, peel_open_args,
     revoke_open_ui, start_open_ipc,
 };
-use recur_platform::openipc::Response;
+use recur_platform::openipc::{Response, SettingsRequest};
 use recur_platform::updater::{Host, RecurUpdater, UpdaterEvent, UserAction};
 use recur_platform::{cliinstall, dock, notify, running_in_app_bundle};
 use recur_services::{AppEvent, AppServices, Services};
@@ -205,7 +205,33 @@ fn main() {
                 .map_err(|err| err.to_string())
         }
     };
-    attach_open_ipc(&gate, hub.clone(), open_path.clone());
+    let settings_ipc = {
+        let (services, handle) = (services.clone(), rt.handle().clone());
+        move |req: SettingsRequest| {
+            handle.block_on(async {
+                let mut set = services
+                    .settings
+                    .get_settings()
+                    .await
+                    .map_err(|e| e.to_string())?;
+                if let Some(value) = req.value {
+                    let next = set.with_config_value(&req.key, value)?;
+                    set = services
+                        .settings
+                        .set_settings(&next)
+                        .await
+                        .map_err(|e| e.to_string())?;
+                    services.emit(AppEvent::SettingsUpdated);
+                }
+                Ok(set
+                    .config_values()
+                    .into_iter()
+                    .map(|(k, v)| (k.to_owned(), v))
+                    .collect())
+            })
+        }
+    };
+    attach_open_ipc(&gate, hub.clone(), open_path.clone(), settings_ipc);
     apply_cold_opens(&hub, &cold_opens, open_path);
 
     let (main_tx, mut main_rx) = unbounded::<MainJob>();

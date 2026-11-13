@@ -1,6 +1,6 @@
 //! The CLI tests that change the process environment
-//! (`RECUR_DATA_DIR`, `RECUR_BUNDLES_DIR`, `PATH`), serialized by a lock in
-//! their own test binary.
+//! (`RECUR_DATA_DIR`, `RECUR_BUNDLES_DIR`, `PATH`), `recur config` among them,
+//! serialized by a lock in their own test binary.
 
 use std::sync::Mutex;
 use std::time::Duration;
@@ -269,5 +269,134 @@ fn launch_failure_reports_hint() {
     assert_eq!(
         err,
         "Recur isn't running and could not be launched: /definitely/missing/recur: No such file or directory (os error 2)\nStart Recur (or `mise run dev`) and retry"
+    );
+}
+
+fn run(args: &[&str]) -> (i32, String, String) {
+    let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let code = execute(
+        &args,
+        &mut Io {
+            out: &mut out,
+            err: &mut err,
+        },
+    );
+    (
+        code,
+        String::from_utf8_lossy(&out).into_owned(),
+        String::from_utf8_lossy(&err).into_owned(),
+    )
+}
+
+#[test]
+fn config_without_app_edits_store() {
+    let _l = lock();
+    let (_d, _g) = short_data_dir();
+    let (code, out, err) = run(&["config", "list"]);
+    assert_eq!(code, 0, "{err}");
+    for want in [
+        "modelAgent=",
+        "maxAgents=",
+        "simplify=null",
+        "queueFollowUps=false",
+    ] {
+        assert!(out.lines().any(|l| l.starts_with(want)), "{want} in {out}");
+    }
+    assert!(!out.contains("cursorApiKey"), "{out}");
+
+    for (key, value, want) in [
+        (
+            "modelAgent",
+            "claude-code/claude-opus-5-5",
+            "claude-code/claude-opus-5-5",
+        ),
+        ("flagsAgent", r#"{"effort":"high"}"#, r#"{"effort":"high"}"#),
+        ("bypassPermissions", "true", "true"),
+        ("maxAgents", "3", "3"),
+    ] {
+        let (code, out, err) = run(&["config", "set", key, value]);
+        assert_eq!((code, out.as_str()), (0, ""), "set {key}: {err}");
+        let (code, out, err) = run(&["config", "get", key]);
+        assert_eq!((code, out), (0, format!("{want}\n")), "get {key}: {err}");
+    }
+    // A fresh process sees the write.
+    let st = recur_store::Store::open_without_secrets(&recur_store::paths::db_path(
+        std::path::Path::new(&std::env::var("RECUR_DATA_DIR").unwrap()),
+    ))
+    .unwrap()
+    .settings();
+    assert_eq!(
+        st.flags_agent.get("effort").map(String::as_str),
+        Some("high")
+    );
+    assert!(st.bypass_permissions);
+}
+
+#[test]
+fn config_rejects_unknown_keys_and_bad_values() {
+    let _l = lock();
+    let (_d, _g) = short_data_dir();
+    let (code, _, err) = run(&["config", "set", "noSuchKey", "1"]);
+    assert_eq!((code, err.as_str()), (1, "unknown setting \"noSuchKey\"\n"));
+    let (code, _, err) = run(&["config", "get", "noSuchKey"]);
+    assert_eq!((code, err.as_str()), (1, "unknown setting \"noSuchKey\"\n"));
+    let (code, _, err) = run(&["config", "set", "cursorApiKey", "sk"]);
+    assert_eq!(code, 1);
+    assert!(err.contains("is a secret"), "{err}");
+
+    let (_, before, _) = run(&["config", "list"]);
+    for (key, value) in [("maxAgents", "lots"), ("bypassPermissions", "[1]")] {
+        let (code, _, err) = run(&["config", "set", key, value]);
+        assert_eq!(code, 1);
+        assert!(
+            err.starts_with(&format!("invalid value for {key}")),
+            "{err}"
+        );
+    }
+    assert_eq!(run(&["config", "list"]).1, before);
+}
+
+#[test]
+fn config_with_app_running_goes_through_app() {
+    let _l = lock();
+    let (d, _g) = short_data_dir();
+    let _held = openipc::try_lock_data_dir(d.path()).unwrap();
+    let (tx, rx) = std::sync::mpsc::channel::<Request>();
+    let tx = Mutex::new(tx);
+    let _server = Server::start(
+        sock(),
+        std::sync::Arc::new(move |req: Request| {
+            let _ = tx.lock().unwrap().send(req.clone());
+            let mut settings = serde_json::Map::new();
+            settings.insert("maxAgents".into(), 5.into());
+            Response {
+                ok: true,
+                settings: Some(settings),
+                ..Default::default()
+            }
+        }),
+    );
+    let (code, out, err) = run(&["config", "set", "maxAgents", "5"]);
+    assert_eq!((code, out.as_str()), (0, ""), "{err}");
+    let req = rx
+        .recv_timeout(Duration::from_secs(2))
+        .unwrap()
+        .settings
+        .unwrap();
+    assert_eq!((req.key.as_str(), req.value), ("maxAgents", Some(5.into())));
+    assert_eq!(run(&["config", "get", "maxAgents"]).1, "5\n");
+    assert_eq!(
+        rx.recv_timeout(Duration::from_secs(2))
+            .unwrap()
+            .settings
+            .unwrap()
+            .value,
+        None
+    );
+    assert!(
+        !d.path().join("recur.db").exists(),
+        "the CLI opened the store"
     );
 }

@@ -344,6 +344,122 @@ impl Settings {
             m.env = s.mcp_env.remove(&m.id).unwrap_or_default();
         }
     }
+
+    /// Every [`config_keys`] key with its value (`recur config list`).
+    /// Secrets are left out; keys the stored document omits read as their
+    /// empty value.
+    pub fn config_values(&self) -> Vec<(&'static str, serde_json::Value)> {
+        let mut public = self.clone();
+        public.take_secrets();
+        let doc = settings_doc(&public);
+        config_keys()
+            .into_iter()
+            .map(|k| {
+                let v = doc.get(k).cloned().unwrap_or_else(|| empty_value(&doc, k));
+                (k, v)
+            })
+            .collect()
+    }
+
+    /// A copy with config `key` set to `value`, or why that does not fit.
+    /// Secrets carry over and cannot be set this way.
+    pub fn with_config_value(&self, key: &str, value: serde_json::Value) -> Result<Self, String> {
+        if !config_keys().contains(&key) {
+            if struct_fields::<Secrets>().contains(&key) {
+                return Err(format!("{key} is a secret: set it in Recur's Settings"));
+            }
+            return Err(format!("unknown setting {key:?}"));
+        }
+        let mut cur = self.clone();
+        let secrets = cur.take_secrets();
+        let mut doc = settings_doc(&cur);
+        doc.insert(key.to_owned(), value);
+        let mut next: Self = serde_json::from_value(serde_json::Value::Object(doc))
+            .map_err(|e| format!("invalid value for {key}: {e}"))?;
+        crate::validate_mcp_servers(&next.mcp_servers)
+            .map_err(|e| format!("invalid value for {key}: {e}"))?;
+        crate::validate_compatible_providers(&next.compatible_providers)
+            .map_err(|e| format!("invalid value for {key}: {e}"))?;
+        next.take_secrets();
+        next.put_secrets(secrets);
+        Ok(next)
+    }
+}
+
+/// The stored settings keys `recur config` reads and writes: every
+/// [`Settings`] key except the [`Secrets`].
+pub fn config_keys() -> Vec<&'static str> {
+    let secret = struct_fields::<Secrets>();
+    struct_fields::<Settings>()
+        .iter()
+        .copied()
+        .filter(|k| !secret.contains(k))
+        .collect()
+}
+
+fn settings_doc(s: &Settings) -> serde_json::Map<String, serde_json::Value> {
+    match serde_json::to_value(s) {
+        Ok(serde_json::Value::Object(m)) => m,
+        _ => serde_json::Map::new(),
+    }
+}
+
+/// The value of a key the document skips as empty: the first candidate that
+/// deserializes and is skipped again on the way out.
+fn empty_value(doc: &serde_json::Map<String, serde_json::Value>, key: &str) -> serde_json::Value {
+    use serde_json::{Value, json};
+    [
+        Value::Null,
+        json!(false),
+        json!(0),
+        json!(""),
+        json!([]),
+        json!({}),
+    ]
+    .into_iter()
+    .find(|v| {
+        let mut d = doc.clone();
+        d.insert(key.to_owned(), v.clone());
+        serde_json::from_value::<Settings>(Value::Object(d))
+            .is_ok_and(|s| !settings_doc(&s).contains_key(key))
+    })
+    .unwrap_or(Value::Null)
+}
+
+/// The field names a derived `Deserialize` asks for, recorded by a
+/// deserializer that stops at `deserialize_struct`.
+fn struct_fields<T: serde::de::DeserializeOwned>() -> &'static [&'static str] {
+    use serde::de::{Error, Visitor, value};
+
+    struct Probe<'a>(&'a mut &'static [&'static str]);
+
+    impl<'de> serde::Deserializer<'de> for Probe<'_> {
+        type Error = value::Error;
+
+        fn deserialize_any<V: Visitor<'de>>(self, _: V) -> Result<V::Value, value::Error> {
+            Err(value::Error::custom("not a struct"))
+        }
+
+        fn deserialize_struct<V: Visitor<'de>>(
+            self,
+            _: &'static str,
+            fields: &'static [&'static str],
+            _: V,
+        ) -> Result<V::Value, value::Error> {
+            *self.0 = fields;
+            Err(value::Error::custom("probed"))
+        }
+
+        serde::forward_to_deserialize_any! {
+            bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string bytes
+            byte_buf option unit unit_struct newtype_struct seq tuple tuple_struct map enum
+            identifier ignored_any
+        }
+    }
+
+    let mut fields: &'static [&'static str] = &[];
+    let _ = T::deserialize(Probe(&mut fields));
+    fields
 }
 
 /// Normalizes a turn deadline in minutes: non-positive → default, otherwise
@@ -593,6 +709,54 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn config_keys_values_and_set() {
+        let keys = config_keys();
+        assert!(keys.contains(&"modelAgent") && keys.contains(&"cursorAttributePRs"));
+        assert!(!keys.contains(&"cursorApiKey") && !keys.contains(&"bundleValues"));
+
+        let mut set = Settings {
+            cursor_api_key: "sk".into(),
+            ..Settings::default()
+        };
+        set.bundle_values.insert("a".into(), "b".into());
+        let values: BTreeMap<_, _> = set.config_values().into_iter().collect();
+        assert_eq!(values.len(), keys.len());
+        assert_eq!(values["simplify"], serde_json::Value::Null);
+        assert_eq!(values["maxAgents"], serde_json::json!(0));
+        assert_eq!(values["queueFollowUps"], serde_json::json!(false));
+        assert_eq!(values["disabledSkills"], serde_json::json!([]));
+        assert_eq!(values["flagsAgent"], serde_json::json!({}));
+
+        let next = set
+            .with_config_value("flagsAgent", serde_json::json!({"effort": "high"}))
+            .unwrap();
+        assert_eq!(next.flags_agent, flags(&[("effort", "high")]));
+        assert_eq!(
+            (next.cursor_api_key.as_str(), &next.bundle_values),
+            ("sk", &set.bundle_values)
+        );
+        assert!(set.with_config_value("maxAgents", "x".into()).is_err());
+        assert!(
+            set.with_config_value(
+                "mcpServers",
+                serde_json::json!([{"id": "playwright", "command": "npx"}])
+            )
+            .unwrap_err()
+            .contains("reserved")
+        );
+        assert!(
+            set.with_config_value("nope", 1.into())
+                .unwrap_err()
+                .contains("unknown")
+        );
+        assert!(
+            set.with_config_value("cursorApiKey", "x".into())
+                .unwrap_err()
+                .contains("secret")
+        );
+    }
 
     fn flags(pairs: &[(&str, &str)]) -> Flags {
         pairs

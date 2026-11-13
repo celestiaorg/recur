@@ -1,6 +1,7 @@
-//! Unix-socket protocol between the CLI (`recur .`) and the running
-//! desktop app. The CLI never touches SQLite; it only hands an absolute path
-//! to the app, which runs OpenPath.
+//! Unix-socket protocol between the CLI (`recur .`, `recur config`) and the
+//! running desktop app. While the app runs the CLI never touches SQLite: it
+//! hands an absolute path to the app, which runs OpenPath, or a settings
+//! read or write, which the app applies to its own copy.
 
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -20,6 +21,18 @@ pub struct Request {
     /// Empty means focus the app only.
     #[serde(default)]
     pub path: String,
+    /// A settings read (or write, with a value) instead of an open.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<SettingsRequest>,
+}
+
+/// `recur config`: `value` set means set `key` to it; none means read only.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SettingsRequest {
+    pub key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<serde_json::Value>,
 }
 
 /// One JSON value the app writes back.
@@ -41,6 +54,9 @@ pub struct Response {
     pub created: bool,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub loose: bool,
+    /// A settings request's result: every config key with its value.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub settings: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 impl Response {
@@ -175,6 +191,12 @@ impl Drop for Instance {
     fn drop(&mut self) {
         self.close();
     }
+}
+
+/// The data dir's flock without the socket: [`IpcError::Held`] while an app
+/// owns it. A launch waits until the returned file drops.
+pub fn try_lock_data_dir(data_dir: &Path) -> Result<File, IpcError> {
+    try_lock(&lock_path(data_dir))
 }
 
 fn try_lock(path: &Path) -> Result<File, IpcError> {
@@ -434,6 +456,7 @@ pub(crate) mod tests {
             sock.clone(),
             Request {
                 path: "/tmp/x".into(),
+                ..Request::default()
             },
         )
         .await
@@ -572,6 +595,7 @@ pub(crate) mod tests {
             inst.sock().to_path_buf(),
             Request {
                 path: "/tmp/x".into(),
+                ..Request::default()
             },
         )
         .await

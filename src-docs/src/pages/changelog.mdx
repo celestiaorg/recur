@@ -16,6 +16,7 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - The New project dialog has a **Group** picker, so a project can go straight into a sidebar group when you add it.
 - The workspace header's **View PR** button has a dropdown with **Open in GitHub**, so you can jump straight to the pull request on GitHub.
 - Find in the agent chat: press ⌘F (Ctrl+F on Linux) in the chat to search your messages and the agent's replies. Enter and Shift+Enter (or ⌘G and ⇧⌘G) step through matches, Escape closes.
+- `recur config get`, `set` and `list` read and change Recur's settings (model, effort, permissions and more) from the terminal, whether or not Recur is running, so scripts and benchmarks no longer need the Settings window. See [Settings from the terminal](/getting-started/install#settings-from-the-terminal).
 
 ### Fixed
 
@@ -27,13 +28,16 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - Recur no longer pauses for a moment right after launch when the restored chat shows tool calls with file icons.
 - Recur stays responsive while a very long agent turn (thousands of steps) streams into a chat and right after it ends. Before, the app slowed down as the turn grew and could freeze for seconds, delaying new tabs and sends in other chats.
 - Clicking a sidebar workspace's remove button a second time no longer gets ignored when you click quickly. If removing would lose work, the button stays armed and shows what would be lost before you confirm again.
+- `/re-review` on a Local PR, in the same tab as the earlier review, reviews only what changed since that pass.
 - Typing past the right edge of a text field (Settings, path fields and others) scrolls smoothly instead of showing doubled, jumping text, and pasting a long value scrolls to its end right away.
+- Files with spaces in their names can be dropped into chat as file mentions, including files outside the workspace such as Downloads.
 
 ### Changed
 
 - Agent mode chats can file findings, so a review asked for in Agent mode lands in the Findings panel.
 - Project dropdowns (new workspace, schedules, Inbox, Issues, Pull requests) show each project's icon next to its name.
 - Claude Code chats start answering sooner: Recur snapshots the worktree for the turn's diff while Claude Code starts up instead of before launching it.
+- Reviewers no longer re-raise findings you ignored or marked invalid, and a re-review resolves open findings it verifies are fixed. Add a `## Reviews` section to a repository's `AGENTS.md` to tell reviewers what not to flag.
 - Cursor agents run on Cursor SDK 1.3.1 (was 1.0.38). Existing installs show an **Update** button in Settings > Providers > Cursor.
 
 ### Security

@@ -196,8 +196,6 @@ if surface == "github_pr":
         "unless something looks incomplete or you need a specific file region. Prefer "
         "reading the changed files that matter for each finding."
     )
-    if again:
-        gather += " Call mcp__recur__list_findings when you need prior finding state."
     parts = [
         intro + host_note,
         "",
@@ -246,8 +244,6 @@ elif surface == "local_pr":
         "unless something looks incomplete or you need a specific file region. Prefer "
         "reading the changed files that matter for each finding."
     )
-    if again:
-        gather += " Call mcp__recur__list_findings when you need prior finding state."
     parts = [
         intro,
         "",
@@ -288,8 +284,6 @@ else:
         "unless something looks incomplete or you need a specific file region. Prefer "
         "reading the changed files that matter for each finding."
     )
-    if again:
-        gather += " Call mcp__recur__list_findings when you need prior finding state."
     parts = [
         intro,
         "",

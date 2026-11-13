@@ -356,6 +356,19 @@ impl Db {
         self.with(|c| upsert_singleton_tx(c, table, v))
     }
 
+    /// Upserts with `secure_delete` on, then checkpoints, so the replaced
+    /// row's bytes are zeroed rather than left in free space or the WAL.
+    pub fn scrub_singleton<T: Serialize>(&self, table: &str, v: &T) -> Result<()> {
+        self.with(|c| {
+            c.pragma_update(None, "secure_delete", true).bare()?;
+            let r = upsert_singleton_tx(c, table, v);
+            let _ = c.pragma_update(None, "secure_delete", false);
+            r
+        })?;
+        self.checkpoint();
+        Ok(())
+    }
+
     pub fn set_pr_number_seq(&self, n: i64) -> Result<()> {
         self.with(|c| set_pr_number_seq_tx(c, n))
     }

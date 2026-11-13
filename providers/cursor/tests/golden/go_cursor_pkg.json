@@ -2,6 +2,14 @@
   "agentOptionsJSON": "{\"model\":{\"id\":\"composer-2.5\",\"params\":[{\"id\":\"fast\",\"value\":\"true\"}]},\"apiKey\":\"sk\",\"name\":\"W-CO\",\"local\":{\"cwd\":[\"/tmp/wt\"],\"settingSources\":[\"SETTING_SOURCE_MDM\"],\"sandboxOptions\":{\"enabled\":false}},\"mcpServers\":{\"fs\":{\"stdio\":{\"command\":\"npx\",\"args\":[\"-y\"],\"env\":{\"A\":\"1\",\"B\":\"2\"}}},\"lin\":{\"http\":{\"type\":\"HTTP_MCP_TRANSPORT_TYPE_HTTP\",\"url\":\"https://l\",\"headers\":{\"Authorization\":\"Bearer x\"}}},\"recur\":{\"http\":{\"type\":\"HTTP_MCP_TRANSPORT_TYPE_HTTP\",\"url\":\"http://x/tok/mcp?a=\\u003cb\\u003e\\u0026c\"}}},\"mode\":\"plan\"}",
   "anchors": [
     [
+      "getAgentSkills:r.workspaceServices.getAgentSkills,powershellUtf8Console:a.powershellUtf8Console,powershellUtf8ChildEnv:a.powershellUtf8ChildEnv,...i},d=void 0===c?new CA(u):new PO(u,c);",
+      "getAgentSkills:r.workspaceServices.getAgentSkills,powershellUtf8Console:a.powershellUtf8Console,powershellUtf8ChildEnv:a.powershellUtf8ChildEnv,...i},d=(u.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===c?new CA(u):new PO(u,c));"
+    ],
+    [
+      "getAgentSkills:r.workspaceServices.getAgentSkills,powershellUtf8Console:a.powershellUtf8Console,powershellUtf8ChildEnv:a.powershellUtf8ChildEnv,...i},d=void 0===c?new SA(u):new CO(u,c);",
+      "getAgentSkills:r.workspaceServices.getAgentSkills,powershellUtf8Console:a.powershellUtf8Console,powershellUtf8ChildEnv:a.powershellUtf8ChildEnv,...i},d=(u.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===c?new SA(u):new CO(u,c));"
+    ],
+    [
       "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=void 0===a?new JE(l):new NP(l,a);",
       "getAgentSkills:r.workspaceServices.getAgentSkills,...i},u=(l.attributionConfigProvider=globalThis.__recurAttributionConfigProvider||{get:()=\u003e({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})},void 0===a?new JE(l):new NP(l,a));"
     ],

@@ -636,6 +636,8 @@ pub struct Flow {
     /// The band of the block (its y range) that can show; only lines in it are placed.
     visible: Option<Range<f32>>,
     selectable: Option<u64>,
+    /// Find highlights: content byte ranges and their fills, painted under the glyphs.
+    marks: Vec<(Range<usize>, Hsla)>,
 }
 
 pub fn flow(
@@ -655,6 +657,7 @@ pub fn flow(
         out: None,
         visible: None,
         selectable: None,
+        marks: Vec::new(),
     }
 }
 
@@ -688,6 +691,11 @@ impl Flow {
     /// selection across a chip copies the chip's [`Atom::copy`].
     pub fn selectable(mut self, key: u64) -> Self {
         self.selectable = Some(key);
+        self
+    }
+
+    pub fn marks(mut self, marks: Vec<(Range<usize>, Hsla)>) -> Self {
+        self.marks = marks;
         self
     }
 
@@ -937,6 +945,17 @@ impl Element for Flow {
         window: &mut Window,
         cx: &mut App,
     ) {
+        if let Some(l) = state.layout.borrow().as_ref() {
+            for (r, color) in &self.marks {
+                for (x, y, w, h) in l.rects(r.clone()) {
+                    let b = Bounds {
+                        origin: gpui_kit::point(bounds.origin.x + px(x), bounds.origin.y + px(y)),
+                        size: gpui_kit::size(px(w), px(h)),
+                    };
+                    window.paint_quad(gpui_kit::fill(b, *color));
+                }
+            }
+        }
         for c in &mut state.children {
             c.paint(window, cx);
         }

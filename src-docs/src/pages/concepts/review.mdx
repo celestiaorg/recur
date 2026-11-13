@@ -11,10 +11,14 @@ Use **Review** mode to inspect a worktree diff and file findings. Local and GitH
 
 - `/review` starts a review pass.
 - `/fix-findings` routes fixes into Agent mode.
-- `/re-review` reviews workspace changes since the previous review checkpoint when it can resume the same review session. Without a usable checkpoint or resumed session, it falls back to a fresh review.
+- `/re-review` reviews workspace or Local PR changes since the previous review checkpoint when it can resume the same review session. Without a usable checkpoint or resumed session, it falls back to a fresh review.
 - `/simplify-review` and `/simplify-audit` focus on unnecessary complexity and overengineering.
 
 These are [bundle prompt actions](/bundles/prompts). Available actions depend on which contributions are enabled.
+
+Reviewers carry findings forward between passes. A re-review checks each open finding against the current code and resolves the ones that are fixed; when a fix did not hold, the issue comes back as a new finding. Findings you ignore or mark invalid are not raised again.
+
+To tell reviewers what not to flag in a repository, add a `## Reviews` section to its `AGENTS.md`.
 
 ## See what changed in one turn
 

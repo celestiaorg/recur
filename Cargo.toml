@@ -118,10 +118,8 @@ gpui-pdf = { version = "0.6", features = ["markup"] }
 mmdr = { package = "mermaid-rs-renderer", version = "0.3", default-features = false }
 smallvec = "1"
 core-graphics = "0.24"
-core-text = "21"
 core-foundation = "0.10"
 notify = "8"
-cron = "0.15"
 socket2 = "0.6"
 rustix = { version = "1", features = ["process"] }
 sha2 = "0.11"
@@ -183,7 +181,6 @@ swc_ecma_compat_es2022 = "54"
 portable-pty = "0.9"
 filedescriptor = "0.8"
 alacritty_terminal = { version = "0.25", default-features = false }
-unicode-width = "0.2"
 image = { version = "0.25", default-features = false }
 regress = "0.12"
 

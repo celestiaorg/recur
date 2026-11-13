@@ -376,6 +376,10 @@ impl Settings {
         doc.insert(key.to_owned(), value);
         let mut next: Self = serde_json::from_value(serde_json::Value::Object(doc))
             .map_err(|e| format!("invalid value for {key}: {e}"))?;
+        crate::validate_mcp_servers(&next.mcp_servers)
+            .map_err(|e| format!("invalid value for {key}: {e}"))?;
+        crate::validate_compatible_providers(&next.compatible_providers)
+            .map_err(|e| format!("invalid value for {key}: {e}"))?;
         next.take_secrets();
         next.put_secrets(secrets);
         Ok(next)
@@ -734,6 +738,14 @@ mod tests {
             ("sk", &set.bundle_values)
         );
         assert!(set.with_config_value("maxAgents", "x".into()).is_err());
+        assert!(
+            set.with_config_value(
+                "mcpServers",
+                serde_json::json!([{"id": "playwright", "command": "npx"}])
+            )
+            .unwrap_err()
+            .contains("reserved")
+        );
         assert!(
             set.with_config_value("nope", 1.into())
                 .unwrap_err()

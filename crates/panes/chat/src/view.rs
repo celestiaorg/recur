@@ -415,13 +415,15 @@ impl AgentChat {
         } else {
             let (transcript, dock) = self.panes(cx);
             let fit = dock.read(cx).fit.clone();
+            if let Some(f) = self.find.as_ref().filter(|f| f.open) {
+                root = root.child(f.bar.clone());
+            }
             root = root
                 .child(recur_ui::style::isolated_view(
                     &transcript,
                     gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
-                    cx,
                 ))
-                .child(fit.view(&dock, window, cx));
+                .child(fit.view(&dock, window));
         }
         if let Some(lb) = &self.lightbox {
             root = root.child(lb.clone());

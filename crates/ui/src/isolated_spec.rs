@@ -81,15 +81,15 @@ struct Group {
 }
 
 impl Render for Group {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         rendered("group");
         div()
             .size_full()
             .flex()
             .flex_col()
             .child(div().h(px(10.5)).flex_none())
-            .child(isolated_view(&self.field, sized(30.), cx))
-            .child(cached_view(&self.sib, sized(30.), cx))
+            .child(isolated_view(&self.field, sized(30.)))
+            .child(cached_view(&self.sib, sized(30.)))
     }
 }
 
@@ -114,9 +114,9 @@ impl Render for Host {
             .flex()
             .flex_col()
             .child(div().h(px(20.)).debug_selector(move || host.clone()))
-            .child(cached_view(&self.group, sized(80.), cx))
+            .child(cached_view(&self.group, sized(80.)))
             .child(div().h(px(7.25)).flex_none())
-            .child(isolated_view(&self.field2, sized(30.), cx))
+            .child(isolated_view(&self.field2, sized(30.)))
             .child(
                 div().relative().child(deferred(
                     div()
@@ -369,13 +369,13 @@ struct Pair {
 }
 
 impl Render for Pair {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
             .flex()
             .flex_col()
-            .child(isolated_view(&self.blank, sized(40.), cx))
-            .child(isolated_view(&self.painted, sized(40.), cx))
+            .child(isolated_view(&self.blank, sized(40.)))
+            .child(isolated_view(&self.painted, sized(40.)))
     }
 }
 

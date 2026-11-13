@@ -256,6 +256,8 @@ pub struct Text {
     /// Selectable inside a [`crate::selection`] scope: its key, and the separator copied after
     /// its text.
     selectable: Option<(u64, &'static str)>,
+    /// The scroller clipping this text, which a selection drag from it scrolls.
+    scroller: Option<gpui_kit::ScrollHandle>,
 }
 
 /// What clicking an inline link span does.
@@ -289,6 +291,7 @@ impl Text {
             layout: Rc::default(),
             owner: crate::guard::layout_owner(),
             selectable: None,
+            scroller: None,
         }
     }
 
@@ -329,6 +332,12 @@ impl Text {
     /// stable and unique in the scope; `sep` follows this text when a copy joins it to more.
     pub fn selectable(mut self, key: u64, sep: &'static str) -> Self {
         self.selectable = Some((key, sep));
+        self
+    }
+    /// The scroller clipping this selectable text: a selection drag from it past the
+    /// scroller's edge scrolls it, as a page autoscrolls a scrollable box.
+    pub fn scroller(mut self, handle: gpui_kit::ScrollHandle) -> Self {
+        self.scroller = Some(handle);
         self
     }
     /// `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`.
@@ -1737,6 +1746,7 @@ impl Element for Text {
                     bounds,
                     align: self.align,
                 }),
+                self.scroller.clone(),
                 window,
                 cx,
             );

@@ -14,7 +14,7 @@ fn pinned_sdk_version_in_pypi_url() {
     // The attribution anchors were validated against this release: bump the
     // pin, the anchors and this hardcode together.
     assert_eq!(
-        PINNED_SDK_VERSION, "1.0.38",
+        PINNED_SDK_VERSION, "1.3.1",
         "update this test (and the attribution anchors) deliberately when bumping"
     );
 }

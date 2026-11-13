@@ -10,7 +10,7 @@ use std::rc::Rc;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, Bounds, Context, CursorStyle, InteractiveElement, IntoElement, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Render, ScrollWheelEvent,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Render, ScrollEvent,
     SharedString, StatefulInteractiveElement, Styled, Task, Window, canvas, div, point, px,
 };
 use recur_ui::shadow::{css_box_shadow, with_shadow};
@@ -484,7 +484,7 @@ impl MermaidPreview {
             })
             .child(measure)
             .when(!hidden, |d| d.children(stage))
-            .on_scroll_wheel(cx.guarded_listener(|p, e: &ScrollWheelEvent, window, cx| {
+            .on_scroll(cx.guarded_listener(|p, e: &ScrollEvent, window, cx| {
                 if !p.interactive() {
                     return;
                 }

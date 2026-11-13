@@ -3,7 +3,7 @@
 
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    AppContext as _, Modifiers, Pixels, Point, ScrollDelta, ScrollWheelEvent, TestAppContext,
+    AppContext as _, Modifiers, Pixels, Point, ScrollDelta, ScrollEvent, TestAppContext,
     TouchPhase, point, px,
 };
 use recur_content::{MarkdownClass, MarkdownView};
@@ -24,11 +24,12 @@ fn a_vertical_wheel_scrolls_a_wide_fence_down(cx: &mut TestAppContext) {
     let before = cx
         .debug_bounds("md-pre-content")
         .expect("the fence is drawn");
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: before.origin + point(px(40.), px(40.)),
         delta: ScrollDelta::Pixels(point(px(0.), px(-50.))),
         modifiers: Modifiers::none(),
         touch_phase: TouchPhase::Moved,
+        ..Default::default()
     });
     cx.run_until_parked();
     let after = cx.debug_bounds("md-pre-content").unwrap();
@@ -72,11 +73,12 @@ fn scroll_after_hiding(
     });
     cx.run_until_parked();
     let before = cx.debug_bounds(selector).expect("drawn");
-    cx.simulate_event(ScrollWheelEvent {
+    cx.simulate_event(ScrollEvent {
         position: before.origin + point(px(20.), px(20.)),
         delta: ScrollDelta::Pixels(delta),
         modifiers: Modifiers::none(),
         touch_phase: TouchPhase::Moved,
+        ..Default::default()
     });
     cx.run_until_parked();
     for show in [false, true] {

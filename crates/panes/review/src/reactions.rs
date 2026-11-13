@@ -3,7 +3,7 @@
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, Bounds, Context, DispatchPhase, Entity, InteractiveElement, IntoElement,
-    KeyDownEvent, MouseButton, MouseDownEvent, ParentElement, Pixels, Render, ScrollWheelEvent,
+    KeyDownEvent, MouseButton, MouseDownEvent, ParentElement, Pixels, Render, ScrollEvent,
     SharedString, StatefulInteractiveElement, Styled, Window, canvas, deferred, div, px,
 };
 use recur_domain::{PrComment, PrReaction, reaction_mine};
@@ -327,7 +327,7 @@ impl CommentReactions {
                     }
                 });
                 let m2 = me.clone();
-                window.on_mouse_event(move |_: &ScrollWheelEvent, phase, _, cx| {
+                window.on_mouse_event(move |_: &ScrollEvent, phase, _, cx| {
                     if phase != DispatchPhase::Capture {
                         return;
                     }

@@ -204,9 +204,11 @@ fn frame(cx: &mut AsyncApp, window: AnyWindowHandle) {
 }
 
 fn key(cx: &mut AsyncApp, window: AnyWindowHandle, k: &str) -> bool {
-    let ks = Keystroke::parse(k).expect("keystroke");
-    cx.update_window(window, |_, window, cx| window.dispatch_keystroke(ks, cx))
-        .unwrap_or(false)
+    cx.update_window(window, |_, window, cx| {
+        let ks = Keystroke::parse_with_os(k, cx.platform_info().os).expect("keystroke");
+        window.dispatch_keystroke(ks, cx)
+    })
+    .unwrap_or(false)
 }
 
 fn bound_view(cx: &mut AsyncApp, shell: &Entity<Shell>) -> Option<Entity<WorkspaceView>> {

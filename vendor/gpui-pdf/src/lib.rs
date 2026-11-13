@@ -2291,7 +2291,7 @@ impl Render for PdfView {
                     }
                     return;
                 }
-                let secondary = ev.keystroke.modifiers.secondary();
+                let secondary = ev.keystroke.modifiers.secondary(cx);
                 // ⌘⌥G: jump to a page (focus the page-number field to type into).
                 if secondary && ev.keystroke.modifiers.alt && key == "g" {
                     this.page_input.get_or_insert_with(String::new);
@@ -2690,7 +2690,7 @@ impl Render for PdfView {
                                     .py(px(PAGE_PAD_Y))
                                     // Scrolling doesn't re-run render on its own; notify so
                                     // the next frame re-runs `ensure_window` + page counter.
-                                    .on_scroll_wheel(cx.listener(|_this, _ev, _window, cx| {
+                                    .on_scroll(cx.listener(|_this, _ev, _window, cx| {
                                         cx.notify();
                                     }))
                                     .children(slots),

@@ -37,6 +37,7 @@ async fn send_workspace_message_runs_a_coding_turn() {
         mcp::ACTIVATE_SKILL,
         mcp::LIST_TERMINALS,
         mcp::READ_TERMINAL,
+        mcp::REPORT_FINDING,
         mcp::OPEN_PR,
         mcp::CREATE_WORKSPACE,
         mcp::MESSAGE_CHILD,
@@ -48,7 +49,7 @@ async fn send_workspace_message_runs_a_coding_turn() {
         );
     }
     assert!(!s0.mcp_url.is_empty(), "agent chat wires the Recur MCP");
-    for t in [mcp::ESCALATE, mcp::REPORT_FINDING, mcp::DONE] {
+    for t in [mcp::ESCALATE, mcp::DONE] {
         assert!(!has_tool(&s0, t), "agent chat must not carry {t}");
     }
     let chat = fx.items(&ws.id, "").await;

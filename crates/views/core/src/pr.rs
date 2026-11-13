@@ -188,6 +188,40 @@ pub fn pr_id_for_chat_workspace(workspace_id: &str, workspaces: &[Workspace]) ->
         .unwrap_or_default()
 }
 
+/// `githubPRHrefFromCheck`: the PR page from a check run URL on the same repo.
+fn github_pr_href_from_check(url: &str, n: i64) -> String {
+    let Ok(u) = url::Url::parse(url) else {
+        return String::new();
+    };
+    let parts: Vec<&str> = u.path().split('/').filter(|p| !p.is_empty()).collect();
+    if parts.len() < 2 {
+        return String::new();
+    }
+    format!(
+        "{}/{}/{}/pull/{n}",
+        u.origin().ascii_serialization(),
+        parts[0],
+        parts[1]
+    )
+}
+
+/// `githubHref`: the stored URL, else one derived from a check run.
+pub fn github_href(pr: &Pr) -> String {
+    if pr.source != PrSource::GitHub || pr.number == 0 {
+        return String::new();
+    }
+    let stored = pr.url.trim();
+    if !stored.is_empty() {
+        return stored.to_string();
+    }
+    pr.checks
+        .iter()
+        .flatten()
+        .map(|c| github_pr_href_from_check(&c.url, pr.number))
+        .find(|h| !h.is_empty())
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -460,5 +494,28 @@ mod tests {
         let list = [ws("ws-host", "pr-1", false), ws("ws-linked", "", false)];
         assert_eq!(pr_id_for_chat_workspace("ws-host", &list), "pr-1");
         assert_eq!(pr_id_for_chat_workspace("ws-linked", &list), "");
+    }
+
+    #[test]
+    fn github_href_from_check_runs() {
+        assert_eq!(
+            github_pr_href_from_check("https://github.com/acme/web/actions/runs/1/job/2", 42),
+            "https://github.com/acme/web/pull/42"
+        );
+        assert_eq!(github_pr_href_from_check("https://github.com/acme", 42), "");
+        assert_eq!(github_pr_href_from_check("not a url", 42), "");
+        let mut pr = Pr {
+            source: PrSource::GitHub,
+            number: 7,
+            ..Default::default()
+        };
+        assert_eq!(github_href(&pr), "");
+        pr.checks = Some(vec![recur_domain::Check {
+            url: "https://github.com/acme/web/runs/9".into(),
+            ..Default::default()
+        }]);
+        assert_eq!(github_href(&pr), "https://github.com/acme/web/pull/7");
+        pr.url = "https://github.com/acme/web/pull/7".into();
+        assert_eq!(github_href(&pr), "https://github.com/acme/web/pull/7");
     }
 }

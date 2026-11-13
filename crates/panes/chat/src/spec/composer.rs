@@ -148,11 +148,12 @@ async fn a_draft_past_six_lines_follows_the_caret_and_scrolls(cx: &mut TestAppCo
     let bottom = scroll.offset().y;
     let at = scroll.bounds().center();
     h.cx.simulate_mouse_move(at, None, gpui::Modifiers::none());
-    h.cx.simulate_event(gpui::ScrollWheelEvent {
+    h.cx.simulate_event(gpui::ScrollEvent {
         position: at,
         delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(200.))),
         modifiers: gpui::Modifiers::none(),
         touch_phase: gpui::TouchPhase::Moved,
+        ..Default::default()
     });
     h.settle();
     assert_eq!(
@@ -211,7 +212,7 @@ impl gpui::Render for StaleHost {
     fn render(
         &mut self,
         _: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
+        _: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         let mut stale = gpui::div().w_full().flex_none().h(gpui::px(50.));
         gpui::div()
@@ -222,7 +223,6 @@ impl gpui::Render for StaleHost {
             .child(recur_ui::style::isolated_view(
                 &self.dock,
                 stale.style().clone(),
-                cx,
             ))
     }
 }

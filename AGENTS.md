@@ -46,7 +46,7 @@ Read before inventing architecture:
 
 ## Testing instructions
 
-CI: `.github/workflows/ci.yml` runs `sanity` first (fmt and the layering check, once), then clippy and the workspace tests on macOS (`mac`) and Linux (`linux`, all features under Xvfb, plus bundle lint and tests), and packages each platform only after its tests pass (`package-mac`, `package-linux` with the Debian smoke test). Branch protection requires its `CI success` job (and `cla` from `cla.yml`), so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are mise tasks.
+CI: `.github/workflows/ci.yml` runs `sanity` first (fmt and the layering check, once), then clippy and the workspace tests on macOS (`mac`) and Linux (`linux`, all features under Xvfb, plus bundle lint and tests), and packages each platform beside them (`package-mac`, `package-linux` with the Debian smoke test) on the merge queue and on `main`, not on pull requests. Branch protection requires its `CI success` job (and `cla` from `cla.yml`), so add new checks as jobs there and list them in `ci-success.needs`. Local quality gates are mise tasks.
 
 | Task | What |
 |------|------|

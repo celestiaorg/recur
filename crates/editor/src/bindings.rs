@@ -387,7 +387,7 @@ mod tests {
     use crate::keymap::{KeyEvent, Keymap, Platform};
     use gpui_kit::Keystroke;
 
-    fn first(km: &Keymap<Cmd>, key: &str, scope: &str) -> Vec<Cmd> {
+    fn first(km: &Keymap<Cmd>, key: &'static str, scope: &str) -> Vec<Cmd> {
         let mut ran = Vec::new();
         km.run(
             &KeyEvent::from_keystroke(&Keystroke::parse(key).unwrap(), Platform::Mac),

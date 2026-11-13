@@ -18,6 +18,7 @@ use serde::Deserialize;
 use crate::db::{Db, ESCALATION_KEY_SEP, GithubBranchRule, github_branch_rule_key};
 use crate::error::{Error, Result};
 use crate::paths::{data_dir, db_path};
+use crate::secrets::SecretVault;
 
 /// The persisted working set. Guarded by `Store::state`.
 #[derive(Debug, Default)]
@@ -53,18 +54,49 @@ pub(crate) struct State {
 /// every getter takes; `feed_mu` orders feed writes so their SQLite writes
 /// land in the same order as their in-memory edits without holding `state`
 /// across the write (lock order `feed_mu` → `state`); `session_mu` serializes
-/// session idx/seq allocation (lock order `session_mu` → `state`). The
+/// session idx/seq allocation (lock order `session_mu` → `state`);
+/// `settings_mu` orders settings saves so the credential store I/O runs
+/// outside `state` (lock order `settings_mu` → `state`). The
 /// connection itself is a mutex-guarded single connection.
 pub struct Store {
     pub(crate) state: RwLock<State>,
     feed_mu: Mutex<()>,
     pub(crate) session_mu: Mutex<()>,
+    settings_mu: Mutex<()>,
     /// `None` only for [`Store::new_in_memory`].
     pub(crate) db: Option<Db>,
+    /// Holds the settings' [`recur_domain::Secrets`] beside `db`.
+    secrets: Option<SecretVault>,
 }
 
 pub(crate) fn now_rfc3339() -> String {
     Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
+}
+
+/// Fills settings from the vault. Secrets still in the row (written before
+/// the vault existed, by an older build sharing the data dir, or when saving
+/// to the vault failed) are newer: they are merged over the vault's values,
+/// moved there, and wiped from recur.db.
+fn load_secrets(db: &Db, vault: &SecretVault, settings: &mut Settings) {
+    let legacy = settings.take_secrets();
+    let mut secrets = vault.load().unwrap_or_else(|e| {
+        tracing::error!("load secrets: {e}");
+        Default::default()
+    });
+    if legacy.is_empty() {
+        settings.put_secrets(secrets);
+        return;
+    }
+    secrets.merge(legacy);
+    match vault.save(&secrets) {
+        Ok(()) => {
+            if let Err(e) = db.scrub_singleton("settings", &*settings) {
+                tracing::error!("clear secrets from recur.db: {e}");
+            }
+        }
+        Err(e) => tracing::error!("move secrets out of recur.db: {e}"),
+    }
+    settings.put_secrets(secrets);
 }
 
 fn nil_if_empty<T>(v: Vec<T>) -> Option<Vec<T>> {
@@ -325,7 +357,9 @@ impl Store {
             state: RwLock::new(state),
             feed_mu: Mutex::new(()),
             session_mu: Mutex::new(()),
+            settings_mu: Mutex::new(()),
             db,
+            secrets: None,
         }
     }
 
@@ -336,13 +370,19 @@ impl Store {
             context: "resolve data dir".into(),
             source,
         })?;
-        Self::open(&db_path(&root))
+        let path = db_path(&root);
+        Self::open_with(&path, SecretVault::new(&path, true))
     }
 
     /// Opens (creating and migrating if needed) the database at path. A
     /// brand-new database gets the default policy, settings and a zeroed
-    /// resource (never the demo data); an existing one is loaded.
+    /// resource (never the demo data); an existing one is loaded. Secrets go
+    /// to a `secrets.json` beside it, never the OS credential store.
     pub fn open(path: &Path) -> Result<Self> {
+        Self::open_with(path, SecretVault::new(path, false))
+    }
+
+    fn open_with(path: &Path, vault: SecretVault) -> Result<Self> {
         let db = Db::open(path)?;
         let fresh = db.needs_seed()?;
         let mut state = State::default();
@@ -353,8 +393,11 @@ impl Store {
         } else {
             db.load_all(&mut state)
                 .map_err(|e| Error::msg(format!("load db: {e}")))?;
+            load_secrets(&db, &vault, &mut state.settings);
         }
-        Ok(Self::with_state(state, Some(db)))
+        let mut store = Self::with_state(state, Some(db));
+        store.secrets = Some(vault);
+        Ok(store)
     }
 
     /// A seeded store (defaults plus the demo dataset) with no persistence,
@@ -1764,9 +1807,17 @@ impl Store {
     }
 
     pub fn set_settings(&self, set: Settings) {
+        let _order = self.settings_mu.lock();
+        let mut row = set.clone();
+        if let Some(vault) = &self.secrets
+            && let Err(e) = vault.save(&row.take_secrets())
+        {
+            tracing::error!("save secrets: {e}; keeping them in recur.db");
+            row = set.clone();
+        }
         let mut s = self.state.write();
         if let Some(db) = &self.db {
-            let _ = db.upsert_singleton("settings", &set);
+            let _ = db.upsert_singleton("settings", &row);
         }
         s.settings = set;
     }

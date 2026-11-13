@@ -8,7 +8,7 @@ use std::rc::Rc;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyView, App, AppContext, Context, Entity, ExternalPaths, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, ParentElement, Render, ScrollWheelEvent, Styled, Subscription,
+    InteractiveElement, IntoElement, ParentElement, Render, ScrollEvent, Styled, Subscription,
     Window, WindowAppearance, div,
 };
 use recur_services::AppEvent;
@@ -520,7 +520,6 @@ impl Shell {
                 .flex_none()
                 .w_full()
                 .h(gpui_kit::px(crate::titlebar::TITLEBAR_HEIGHT)),
-            cx,
         );
         let (dock, docking) = self.sidebar.read(cx).dock(cx);
         if docking {
@@ -534,7 +533,7 @@ impl Shell {
             gpui_kit::canvas(
                 |_, _, _| {},
                 move |_, _, window, _| {
-                    window.on_mouse_event(move |ev: &ScrollWheelEvent, phase, window, cx| {
+                    window.on_mouse_event(move |ev: &ScrollEvent, phase, window, cx| {
                         if phase == gpui_kit::DispatchPhase::Capture {
                             let _ = this.update(cx, |this, cx| this.zoom_wheel(ev, window, cx));
                         }
@@ -581,7 +580,6 @@ impl Shell {
                                     .w(gpui_kit::px(dock_width))
                                     .h_full()
                                     .min_h_0(),
-                                cx,
                             ))
                         })
                         .when(rail_collapsed && dock > 0., |d| {
@@ -597,7 +595,6 @@ impl Shell {
                 gpui_kit::deferred(recur_ui::style::cached_view(
                     l,
                     gpui_kit::StyleRefinement::default().absolute().inset_0(),
-                    cx,
                 ))
                 .with_priority(recur_ui::style::OVERLAY_PRIORITY)
             }));

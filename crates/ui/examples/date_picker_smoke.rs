@@ -88,7 +88,7 @@ fn main() {
                         .await;
                     let _ = cx.update_window(window, |_, window, cx| window.draw(cx).clear(cx));
                 };
-                let key = |cx: &mut AsyncApp, k: &str| {
+                let key = |cx: &mut AsyncApp, k: &'static str| {
                     let ks = Keystroke::parse(k).expect("keystroke");
                     let _ =
                         cx.update_window(window, |_, window, cx| window.dispatch_keystroke(ks, cx));

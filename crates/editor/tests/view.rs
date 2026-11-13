@@ -232,7 +232,7 @@ fn wheel_scrolls(cx: &mut TestAppContext) {
     let doc: String = (0..400).map(|i| format!("line {i}\n")).collect();
     let mut h = mount(cx, "a.txt", &doc, EditorKind::Code);
     let p = h.point_at(0);
-    h.cx.simulate_event(gpui::ScrollWheelEvent {
+    h.cx.simulate_event(gpui::ScrollEvent {
         position: p,
         delta: gpui::ScrollDelta::Pixels(point(px(0.), px(-300.))),
         ..Default::default()
@@ -656,7 +656,7 @@ fn wheel_over_hover_scrolls_it(cx: &mut TestAppContext) {
     let mut h = hover_doc(cx);
     let hover = h.hover(7);
     let top = h.cx.debug_bounds("cm-tooltip-hover-body").unwrap().top();
-    h.cx.simulate_event(gpui::ScrollWheelEvent {
+    h.cx.simulate_event(gpui::ScrollEvent {
         position: hover.center(),
         delta: gpui::ScrollDelta::Pixels(point(px(0.), px(-100.))),
         ..Default::default()

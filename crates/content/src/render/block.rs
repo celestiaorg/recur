@@ -375,6 +375,43 @@ impl Build<'_, '_> {
         let spec = tb.spec.clone();
         let t = self.env.t;
         let (hl, cur) = (t.amber.fade(0.4), t.amber);
+        // Code boxes paint their background over the marks behind the text, so a match's part
+        // inside one is laid over the box, translucent so the glyphs still read.
+        let mut code_marks = Vec::new();
+        let mut at = 0;
+        for run in &spec.runs {
+            let range = at..at + run.text.len();
+            at = range.end;
+            if run.inline_box.is_none_or(|b| b.background.is_none()) {
+                continue;
+            }
+            for (r, current) in &marks {
+                let (s, e) = (r.start.max(range.start), r.end.min(range.end));
+                if s < e {
+                    code_marks.push((s..e, if *current { cur.fade(0.55) } else { hl }));
+                }
+            }
+        }
+        let front = (!code_marks.is_empty()).then(|| {
+            let front_spec = spec.clone();
+            canvas(
+                |_, _, _| {},
+                move |b: Bounds<Pixels>, _, window, _| {
+                    let m = Mirror::layout(&front_spec, f32::from(b.size.width), window);
+                    for (r, color) in &code_marks {
+                        for (x, y, w, h) in m.rects(r.clone()) {
+                            let rect = Bounds {
+                                origin: point(b.origin.x + px(x), b.origin.y + px(y)),
+                                size: gpui_kit::size(px(w), px(h)),
+                            };
+                            window.paint_quad(gpui_kit::fill(rect, hsla(*color)));
+                        }
+                    }
+                },
+            )
+            .absolute()
+            .inset_0()
+        });
         let back = canvas(
             move |b, _, _| cell.set(Some(b)),
             move |b: Bounds<Pixels>, _, window, _| {
@@ -398,7 +435,7 @@ impl Build<'_, '_> {
         )
         .absolute()
         .inset_0();
-        div().relative().child(back).child(text)
+        div().relative().child(back).child(text).children(front)
     }
 
     /// An inline formatting context (a paragraph or an anonymous block).
@@ -822,9 +859,11 @@ impl Build<'_, '_> {
             spans.push(span(""));
         }
         let id = self.text_id();
+        let handle = self.scroll("md-pre", self.n.block + 1);
         let text = Text::from_spans(spans)
             .id(id)
             .selectable(self.select_key(), "\n")
+            .scroller(handle.clone())
             .family(Family::Stack("Menlo".into(), Vec::new()))
             .size(flow.size)
             .leading(flow.leading)
@@ -844,7 +883,7 @@ impl Build<'_, '_> {
         self.n.block += 1;
         let scroller = div()
             .id(("md-pre", self.n.block))
-            .track_scroll(&self.scroll("md-pre", self.n.block))
+            .track_scroll(&handle)
             .restrict_scroll_to_axis()
             .map(|d| match sh.pre_max_height {
                 Some(h) => d.max_h(px(h)).overflow_scroll(),

@@ -84,7 +84,7 @@ async fn run(p: &Entity<VideoPlayer>, window: AnyWindowHandle, cx: &mut AsyncApp
     }
     let focus = p.read_with(cx, |p, cx| p.focus_handle(cx));
     let _ = cx.update_window(window, |_, window, cx| window.focus(&focus, cx));
-    let key = |k: &str, cx: &mut AsyncApp| {
+    let key = |k: &'static str, cx: &mut AsyncApp| {
         let ks = Keystroke::parse(k).expect("keystroke");
         let _ = cx.update_window(window, |_, window, cx| window.dispatch_keystroke(ks, cx));
     };

@@ -10,8 +10,8 @@ use std::time::Duration;
 
 use gpui_kit::{
     Bounds, ClipboardItem, Context, EntityInputHandler, KeyDownEvent, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollWheelEvent, UTF16Selection, Window, point,
-    px, size,
+    MouseMoveEvent, MouseUpEvent, Pixels, Point, ScrollEvent, UTF16Selection, Window, point, px,
+    size,
 };
 
 use crate::bindings::Cmd;
@@ -1686,7 +1686,7 @@ impl EditorView {
 
     pub(crate) fn scroll_wheel(
         &mut self,
-        e: &ScrollWheelEvent,
+        e: &ScrollEvent,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {

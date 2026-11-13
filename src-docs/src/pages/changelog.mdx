@@ -12,6 +12,31 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 ### Added
 
 - The sidebar can group workspaces by status (In progress, including draft PRs; In review; Done; Closed) instead of by project, with each project's working copy in a Working copies section: use the new button next to **Add project**. Scheduled runs stay in the project view.
+- Fable 5.2 in the Claude Code model picker. Mythos 5.2 appears automatically on accounts with access.
+- The New project dialog has a **Group** picker, so a project can go straight into a sidebar group when you add it.
+- The workspace header's **View PR** button has a dropdown with **Open in GitHub**, so you can jump straight to the pull request on GitHub.
+- Find in the agent chat: press ⌘F (Ctrl+F on Linux) in the chat to search your messages and the agent's replies. Enter and Shift+Enter (or ⌘G and ⇧⌘G) step through matches, Escape closes.
+
+### Fixed
+
+- Agents, terminals and git no longer fail with "Too many open files" after Recur has been open a while with many workspaces.
+- Follow-ups sent to a Claude agent that is waiting on a long background task (a training run, a build) keep reaching it right away while you keep talking to it, instead of waiting for the task to finish once the agent had been waiting 10 minutes.
+- Dragging a text selection past the edge of a code block scrolls the block, so long lines and tall blocks can be selected in full.
+
+### Changed
+
+- Agent mode chats can file findings, so a review asked for in Agent mode lands in the Findings panel.
+- Project dropdowns (new workspace, schedules, Inbox, Issues, Pull requests) show each project's icon next to its name.
+- Cursor agents run on Cursor SDK 1.3.1 (was 1.0.38). Existing installs show an **Update** button in Settings > Providers > Cursor.
+
+### Security
+
+- API keys and other credentials (Cursor, Codex, Linear, bundle settings, compatible provider keys and headers, MCP server headers and env) are kept in the macOS Keychain or the Linux Secret Service keyring instead of in `recur.db`. Existing keys move there the first time Recur opens, and are wiped from the database. On Linux without `secret-tool`, they go to a `secrets.json` file only you can read.
+
+### Fixed
+
+- Claude agents can no longer report findings through Claude Code's own findings tool, which never reached Recur's Findings panel.
+- An agent's closing message stands on its own instead of reading as a continuation of text hidden between tool calls.
 
 ### Fixed
 

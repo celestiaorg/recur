@@ -42,7 +42,7 @@ pub const AGENT_CHILD_NO_ASK_PROMPT: &str =
 
 /// Chat modes and switch_mode's privilege rules, plus ask_user restraint
 /// (PA* chats only).
-pub const MODE_LITERACY_APPEND_PROMPT: &str = "Chat modes: Ask (read-only Q&A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user.";
+pub const MODE_LITERACY_APPEND_PROMPT: &str = "Chat modes: Ask (read-only Q&A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user. The user sees only your final message of each turn, not the text between tool calls: make it self-contained (outcome, what changed, anything they must do), never a continuation of earlier text.";
 
 /// Review-mode turns: a read-only review that files structured findings.
 pub const REVIEW_APPEND_PROMPT: &str = "This chat is in REVIEW mode: read-only on the git worktree. Review what the user points you at (default: the looking-at subject in the surface note: a worktree vs its base, or the open pull request). You may run Bash for lint/test/typecheck. For EACH real problem, a bug, a missing case, a regression, a quality issue, call the mcp__recur__report_finding tool with the file, line (optional end_line for a range), severity (info/low/medium/high/critical), a clear message, and optional summary (markdown shown to the end user in the turn digest; omit to use message). On a re-review, call mcp__recur__update_finding to mark a prior finding resolved (fixed) or invalid (wrong/out of scope: reason required). Do NOT restate or list filed findings in your closing reply: the app summarizes still-open filings for the user; keep closing prose brief (e.g. \"Filed N findings\" or \"No issues\"). If the code is sound, say so and file no findings. Do not modify repository files: review, don't fix.";
@@ -171,12 +171,16 @@ pub fn chat_mode_shape(mode: &str, set: &Settings, child: bool) -> ChatTurnShape
                 mcp: true,
             }
         }
-        // Agent: coding chat + the findings checklist (list/update). No done
+        // Agent: coding chat + the findings checklist (report/list/update). No done
         // (a loop-specialist signal) and no findings note (models then call
         // list_findings every turn). The identity note must lead.
         _ => {
             let mut tools = pair_tools();
-            tools.extend(own(&[mcp::LIST_FINDINGS, mcp::UPDATE_FINDING]));
+            tools.extend(own(&[
+                mcp::REPORT_FINDING,
+                mcp::LIST_FINDINGS,
+                mcp::UPDATE_FINDING,
+            ]));
             tools.extend(skills);
             tools.extend(interactive);
             tools.push(mcp::RENAME_BRANCH.into());

@@ -108,8 +108,16 @@ impl View for AnyView {
         Some(self.entity.entity_id())
     }
 
+    #[cfg(not(gpui_hot_reload))]
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         (self.render)(&self, window, cx)
+    }
+
+    // The stored function pointer was captured from the original binary, so it must be looked up
+    // in the jump table to reach the patched render.
+    #[cfg(gpui_hot_reload)]
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        subsecond::HotFn::current(self.render).call((&self, window, cx))
     }
 }
 
@@ -336,6 +344,8 @@ pub(crate) struct ViewElementState {
     pub(crate) prepaint_range: Range<PrepaintStateIndex>,
     pub(crate) paint_range: Range<PaintIndex>,
     cache_key: ViewElementCacheKey,
+    /// The entities the view accessed while it was last drawn, in any phase,
+    /// restored when its prepaint is reused so the window stays subscribed.
     accessed_entities: FxHashSet<EntityId>,
     /// This frame's record of the view in `Frame::cached_views`, when it rendered.
     record: Option<usize>,
@@ -348,6 +358,25 @@ struct ViewElementCacheKey {
     bounds: Bounds<Pixels>,
     content_mask: ContentMask<Pixels>,
     text_style: TextStyle,
+    opacity: f32,
+}
+
+#[cfg(not(gpui_hot_reload))]
+#[inline]
+fn render_view<V: View>(view: V, window: &mut Window, cx: &mut App) -> AnyElement {
+    view.render(window, cx).into_any_element()
+}
+
+/// Every view and component render passes through this hot-patchable boundary, so the
+/// patched code for that render and everything it calls runs on the next frame.
+#[cfg(gpui_hot_reload)]
+fn render_view<V: View>(view: V, window: &mut Window, cx: &mut App) -> AnyElement {
+    #[inline(never)]
+    fn render_view_impl<V: View>(view: V, window: &mut Window, cx: &mut App) -> AnyElement {
+        view.render(window, cx).into_any_element()
+    }
+
+    subsecond::HotFn::current(render_view_impl::<V>).call((view, window, cx))
 }
 
 impl<V: View> Element for ViewElement<V> {
@@ -383,7 +412,7 @@ impl<V: View> Element for ViewElement<V> {
                 self.cached_style.as_ref(),
                 window,
                 cx,
-                &mut |window, cx| view.take().unwrap().render(window, cx).into_any_element(),
+                &mut |window, cx| render_view(view.take().unwrap(), window, cx),
             );
             #[cfg(feature = "profiler")]
             window.window_profiler.end_view(
@@ -395,11 +424,7 @@ impl<V: View> Element for ViewElement<V> {
         } else {
             // Stateless path: isolate subtree via type name (no entity identity).
             request_layout_component(type_name::<V>(), window, cx, &mut |window, cx| {
-                self.view
-                    .take()
-                    .unwrap()
-                    .render(window, cx)
-                    .into_any_element()
+                render_view(self.view.take().unwrap(), window, cx)
             })
         }
     }
@@ -426,13 +451,7 @@ impl<V: View> Element for ViewElement<V> {
                 isolated,
                 window,
                 cx,
-                &mut |window, cx| {
-                    self.view
-                        .take()
-                        .unwrap()
-                        .render(window, cx)
-                        .into_any_element()
-                },
+                &mut |window, cx| render_view(self.view.take().unwrap(), window, cx),
             );
             #[cfg(feature = "profiler")]
             window.window_profiler.end_view(
@@ -554,11 +573,15 @@ fn prepaint_view(
             |element_state, window| {
                 let content_mask = window.content_mask();
                 let text_style = window.text_style();
+                let opacity = window.element_opacity();
 
+                // Opacity is compared by bits so that a NaN opacity still matches itself
+                // and the view keeps using its cache.
                 if let Some(mut element_state) = element_state
                     && element_state.cache_key.bounds == bounds
                     && element_state.cache_key.content_mask == content_mask
                     && element_state.cache_key.text_style == text_style
+                    && element_state.cache_key.opacity.to_bits() == opacity.to_bits()
                     && !window.dirty_views.contains(&entity_id)
                     && !window.refreshing
                     && !element_state.stale
@@ -568,7 +591,7 @@ fn prepaint_view(
                     window.next_frame.replayed_views.insert(entity_id);
                     window.reuse_prepaint(element_state.prepaint_range.clone(), cx);
                     cx.entities
-                        .extend_accessed(&element_state.accessed_entities);
+                        .extend_accessed(element_state.accessed_entities.iter().copied());
                     let prepaint_end = window.prepaint_index();
                     element_state.prepaint_range = prepaint_start..prepaint_end;
                     element_state.record = None;
@@ -614,6 +637,7 @@ fn prepaint_view(
                             bounds,
                             content_mask,
                             text_style,
+                            opacity,
                         },
                         record,
                         stale: false,
@@ -655,18 +679,34 @@ fn paint_view(
                     let mut element_state = element_state.unwrap();
 
                     let paint_start = window.paint_index();
+                    let opacity = window.element_opacity();
 
+                    // Prepaint can only predict the opacity paint applies: an ancestor's
+                    // hover or drag-over style depends on this frame's hit test, which
+                    // isn't known until prepaint finishes. The key records what was
+                    // actually painted, and output replayed under a different opacity is
+                    // redrawn on the next frame.
                     let isolated = element_state
                         .record
                         .is_some_and(|ix| window.next_frame.is_island(ix));
                     let mut painted = FxHashSet::default();
                     if let Some(element) = element {
                         let refreshing = mem::replace(&mut window.refreshing, true);
-                        painted = paint_tracked(isolated, cx, |cx| element.paint(window, cx));
-                        element_state.accessed_entities.extend(painted.iter().copied());
+                        let ((), accessed_entities) =
+                            cx.detect_accessed_entities(|cx| element.paint(window, cx));
+                        element_state
+                            .accessed_entities
+                            .extend(accessed_entities.iter().copied());
+                        if isolated {
+                            painted = accessed_entities;
+                        }
                         window.refreshing = refreshing;
+                        element_state.cache_key.opacity = opacity;
                     } else {
                         window.reuse_paint(element_state.paint_range.clone(), cx);
+                        if element_state.cache_key.opacity.to_bits() != opacity.to_bits() {
+                            window.request_animation_frame();
+                        }
                     }
 
                     let paint_end = window.paint_index();
@@ -717,34 +757,16 @@ fn render_cached(
     let depth = window.cached_depth;
     window.cached_depth = if isolated { 0 } else { depth + 1 };
     let prepaint_start = window.prepaint_index();
-    let outer = isolated.then(|| mem::take(cx.entities.accessed_entities.get_mut()));
-    let (element, mut accessed_entities) = cx.detect_accessed_entities(|cx| {
+    let (element, accessed_entities) = cx.detect_accessed_entities(|cx| {
         let mut element = render(window, cx);
         element.layout_as_root(Size::<AvailableSpace>::from(bounds.size), window, cx);
         element.prepaint_at(bounds.origin, window, cx);
         element
     });
-    if let Some(outer) = outer {
-        accessed_entities = mem::replace(cx.entities.accessed_entities.get_mut(), outer);
-        cx.entities.extend_accessed(&accessed_entities);
-    }
     let prepaint_end = window.prepaint_index();
     window.refreshing = refreshing;
     window.cached_depth = depth;
     (element, prepaint_start..prepaint_end, accessed_entities)
-}
-
-/// Paints, returning what an isolated view read while painting (a caret blink's state).
-fn paint_tracked(isolated: bool, cx: &mut App, paint: impl FnOnce(&mut App)) -> FxHashSet<EntityId> {
-    if !isolated {
-        paint(cx);
-        return FxHashSet::default();
-    }
-    let outer = mem::take(cx.entities.accessed_entities.get_mut());
-    paint(cx);
-    let painted = mem::replace(cx.entities.accessed_entities.get_mut(), outer);
-    cx.entities.extend_accessed(&painted);
-    painted
 }
 
 /// What an isolated view needs to draw again in place, without its ancestors: the context
@@ -799,7 +821,7 @@ impl Island {
                     });
                 accessed.insert(self.entity_id());
                 accessed.extend(state.accessed_entities.iter().copied());
-                cx.entities.extend_accessed(&accessed);
+                cx.entities.extend_accessed(accessed.iter().copied());
                 let record = window.next_frame.push_cached_view(
                     self.global_id.clone(),
                     prepaint_range.clone(),
@@ -831,7 +853,7 @@ impl Island {
                 let previous = mem::replace(&mut window.element_opacity, opacity);
                 let refreshing = mem::replace(&mut window.refreshing, true);
                 let paint_start = window.paint_index();
-                let painted = paint_tracked(true, cx, |cx| element.paint(window, cx));
+                let ((), painted) = cx.detect_accessed_entities(|cx| element.paint(window, cx));
                 state.accessed_entities.extend(painted.iter().copied());
                 state.paint_range = paint_start..window.paint_index();
                 window.refreshing = refreshing;

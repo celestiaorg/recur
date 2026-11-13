@@ -1,9 +1,9 @@
 //! Copies glob-matched files from a project's checkout into a new workspace
-//! worktree (untracked dotenv, secrets, local config).
+//! worktree (untracked dotenv, secrets, local config). A pattern ending in
+//! `/` copies matching directories whole (`node_modules/`, `target/`).
 
-use std::fs::{self, File};
+use std::fs;
 use std::io;
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::time::{Duration, Instant};
 
 use recur_domain::CopyFilesPreview;
@@ -135,11 +135,12 @@ fn preview_capped(
 
 /// Writes matching files from `src` into `dest`, keeping relative paths and
 /// modes and creating directories. Existing dest files stay (a restored
-/// worktree keeps its own copies). Per-file failures (unreadable, oversized,
-/// unjoinable) are logged and skipped, never failing workspace create. Errors
-/// when the walk fails, the match cap is exceeded, `cancel` fires or
-/// `deadline` passes, or the patterns use unsupported negation. Returns the
-/// number of files handled.
+/// worktree keeps its own copies). A directory pattern (`node_modules/`)
+/// copies each matching directory whole, symlinks included, past the caps.
+/// Per-file failures (unreadable, oversized, unjoinable) are logged and
+/// skipped, never failing workspace create. Errors when the walk fails, the
+/// match cap is exceeded, `cancel` fires or `deadline` passes, or the patterns
+/// use unsupported negation. Returns the number of new files and directories.
 pub fn copy(
     cancel: &CancellationToken,
     deadline: Option<Instant>,
@@ -182,6 +183,14 @@ fn copy_capped(
         if let Some(e) = ctx.err() {
             return Err(e);
         }
+        if let Some(dir) = rel.strip_suffix('/') {
+            match copy_dir(&ctx, &src_abs, &dest_abs, dir) {
+                Ok(new) => n += usize::from(new),
+                Err(e @ (Error::Canceled | Error::DeadlineExceeded)) => return Err(e),
+                Err(e) => tracing::warn!("recur: copy files: skip {rel}: {e}"),
+            }
+            continue;
+        }
         match copy_one(&src_abs, &dest_abs, rel) {
             Ok(()) => n += 1,
             Err(CopyErr::Exists) => {}
@@ -221,17 +230,65 @@ fn copy_one(src_root: &str, dest_root: &str, rel: &str) -> std::result::Result<(
             "file larger than {MAX_COPY_FILE_BYTES} bytes"
         )));
     }
-    let mut input = File::open(&from).map_err(|e| Error::path(&from, e))?;
     Error::mkdir_all(&path::dir(&to))?;
-    let mut out = fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(info.permissions().mode() & 0o777)
-        .open(&to)
-        .map_err(|e| Error::path(&to, e))?;
-    io::copy(&mut input, &mut out).map_err(|e| Error::path(&to, e))?;
+    // std clones on APFS and uses copy_file_range (a reflink on btrfs/XFS).
+    fs::copy(&from, &to).map_err(|e| Error::path(&to, e))?;
     Ok(())
+}
+
+/// Copies the directory `rel` whole via [`copy_tree`]. Returns whether the
+/// destination was new (an existing one is merged into and not counted).
+fn copy_dir(ctx: &Ctx<'_>, src_root: &str, dest_root: &str, rel: &str) -> Result<bool> {
+    let from = join_under_root(src_root, rel)?;
+    let to = join_under_root(dest_root, rel)?;
+    let new = match fs::symlink_metadata(&to) {
+        Ok(_) => false,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => true,
+        Err(e) => return Err(Error::path(&to, e)),
+    };
+    copy_tree(ctx, &from, &to)?;
+    Ok(new)
+}
+
+/// Merges the tree at `from` into `to`: missing directories, symlinks and
+/// regular files are created, existing entries stay. Per-entry failures are
+/// logged and skipped; only `ctx` stops it.
+fn copy_tree(ctx: &Ctx<'_>, from: &str, to: &str) -> Result<()> {
+    walk_dir(from, |p, d, err| {
+        if let Some(e) = ctx.err() {
+            return Err(e);
+        }
+        let rel = rel_slash_str(from, p);
+        let dst = if rel == "." {
+            to.to_string()
+        } else {
+            format!("{to}/{rel}")
+        };
+        let res = match (d, err) {
+            (_, Some(e)) => Err(e),
+            (None, None) => Ok(()),
+            (Some(d), None) if d.is_dir() => fs::create_dir_all(&dst),
+            (Some(_), None) if fs::symlink_metadata(&dst).is_ok() => Ok(()),
+            (Some(d), None) if d.is_symlink() => {
+                fs::read_link(p).and_then(|t| std::os::unix::fs::symlink(t, &dst))
+            }
+            (Some(d), None) if d.is_file() => fs::copy(p, &dst).map(|_| ()),
+            // Sockets, FIFOs, devices.
+            (Some(_), None) => Ok(()),
+        };
+        Ok(match res {
+            Ok(()) => Flow::Continue,
+            Err(e) => {
+                tracing::warn!("recur: copy files: skip {dst}: {e}");
+                // SkipDir on a file would skip its siblings too.
+                if d.is_some_and(|d| d.is_dir()) {
+                    Flow::SkipDir
+                } else {
+                    Flow::Continue
+                }
+            }
+        })
+    })
 }
 
 /// Joins `root` and `rel` under `root`. Unlike the editor's sandbox it allows
@@ -262,6 +319,14 @@ fn list(ctx: &Ctx<'_>, root: &str, patterns: &[String], limit: usize) -> Result<
         return Err(Error::msg(format!("{root_abs} is not a directory")));
     }
     let m = Matcher::new(patterns);
+    // `node_modules/` also matches the directory itself, listed as `rel/`.
+    let dir_pats: Vec<String> = patterns
+        .iter()
+        .filter_map(|p| p.strip_suffix('/'))
+        .filter(|p| !p.is_empty())
+        .map(str::to_string)
+        .collect();
+    let dirs = Matcher::new(&dir_pats);
     let mut out = Vec::new();
     walk_dir(&root_abs, |path, d, err| {
         if let Some(e) = ctx.err() {
@@ -270,16 +335,28 @@ fn list(ctx: &Ctx<'_>, root: &str, patterns: &[String], limit: usize) -> Result<
         let (Some(d), None) = (d, err) else {
             return Ok(Flow::Continue);
         };
-        if d.is_dir() {
-            if path != root_abs && skip_walk_dir(&d.name, patterns) {
-                return Ok(Flow::SkipDir);
-            }
+        if d.is_dir() && path == root_abs {
             return Ok(Flow::Continue);
+        }
+        let rel = rel_slash_str(&root_abs, path);
+        if d.is_dir() {
+            if d.name == ".git" || !dirs.matches(&rel) {
+                return Ok(if skip_walk_dir(&d.name, patterns) {
+                    Flow::SkipDir
+                } else {
+                    Flow::Continue
+                });
+            }
+            out.push(format!("{rel}/"));
+            return Ok(if out.len() >= limit {
+                Flow::SkipAll
+            } else {
+                Flow::SkipDir
+            });
         }
         if d.is_symlink() {
             return Ok(Flow::Continue);
         }
-        let rel = rel_slash_str(&root_abs, path);
         if rel.is_empty() || rel == "." || rel.starts_with("../") || !m.matches(&rel) {
             return Ok(Flow::Continue);
         }

@@ -15,6 +15,7 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - Fable 5.2 in the Claude Code model picker. Mythos 5.2 appears automatically on accounts with access.
 - The New project dialog has a **Group** picker, so a project can go straight into a sidebar group when you add it.
 - The workspace header's **View PR** button has a dropdown with **Open in GitHub**, so you can jump straight to the pull request on GitHub.
+- `copy_files` entries ending in `/`, such as `node_modules/` or `target/`, copy the whole directory, so new workspaces start with dependencies already installed. On macOS the files are APFS clones: fast, with no extra disk space until files change.
 - Find in the agent chat: press ⌘F (Ctrl+F on Linux) in the chat to search your messages and the agent's replies. Enter and Shift+Enter (or ⌘G and ⇧⌘G) step through matches, Escape closes.
 - `recur config get`, `set` and `list` read and change Recur's settings (model, effort, permissions and more) from the terminal, whether or not Recur is running, so scripts and benchmarks no longer need the Settings window. See [Settings from the terminal](/getting-started/install#settings-from-the-terminal).
 
@@ -28,6 +29,7 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - Recur no longer pauses for a moment right after launch when the restored chat shows tool calls with file icons.
 - Recur stays responsive while a very long agent turn (thousands of steps) streams into a chat and right after it ends. Before, the app slowed down as the turn grew and could freeze for seconds, delaying new tabs and sends in other chats.
 - Clicking a sidebar workspace's remove button a second time no longer gets ignored when you click quickly. If removing would lose work, the button stays armed and shows what would be lost before you confirm again.
+- When a loop asks you a question or stops on a usage limit or another temporary error, its notification and Inbox row open that loop's chat (with several loops in one workspace, each question gets its own row), and **Retry** on the error card resumes the loop from where it stopped instead of re-sending your last message as a plain chat turn. If you switched the loop's models to another provider in Settings first, the retried loop starts fresh sessions on the new provider instead of failing to resume the old ones.
 - `/re-review` on a Local PR, in the same tab as the earlier review, reviews only what changed since that pass.
 - Typing past the right edge of a text field (Settings, path fields and others) scrolls smoothly instead of showing doubled, jumping text, and pasting a long value scrolls to its end right away.
 - Files with spaces in their names can be dropped into chat as file mentions, including files outside the workspace such as Downloads.
@@ -48,6 +50,10 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 
 - Claude agents can no longer report findings through Claude Code's own findings tool, which never reached Recur's Findings panel.
 - An agent's closing message stands on its own instead of reading as a continuation of text hidden between tool calls.
+
+### Fixed
+
+- Chats on OpenAI-compatible and ChatGPT providers no longer fail when a tool returns no output, such as reading an empty file.
 
 ## [0.6.0](https://github.com/celestiaorg/recur/releases/tag/v0.6.0) - 2026-11-05
 

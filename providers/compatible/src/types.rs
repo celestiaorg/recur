@@ -72,8 +72,10 @@ pub struct InputItem {
     pub name: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub arguments: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub output: String,
+    /// `None` omits the key. `Some("")` stays: `function_call_output` requires
+    /// `output` even when the tool returned nothing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<String>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub id: String,
     /// A provider output item replayed verbatim (encrypted reasoning
@@ -184,7 +186,7 @@ pub fn function_output_item(call_id: &str, output: &str) -> InputItem {
     InputItem {
         r#type: "function_call_output".into(),
         call_id: call_id.into(),
-        output: output.into(),
+        output: Some(output.to_owned()),
         ..Default::default()
     }
 }

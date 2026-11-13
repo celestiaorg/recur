@@ -9,12 +9,19 @@
 
 use std::collections::{HashMap, HashSet};
 
-use recur_domain::{InboxItem, Workspace, WorkspaceState};
+use recur_domain::{InboxItem, Workspace, WorkspaceState, parse_model_ref};
 
 use crate::Engine;
+use crate::attention::chat_inbox::chat_inbox_target;
+use crate::codes::MAESTRO_AGENT_CODE;
 use crate::lifecycle::PHASE_INTERRUPTED;
 use crate::loops::Walk;
 use crate::text::{html_escape, truncate};
+
+/// The Needs-you row a transient loop failure leaves.
+pub(crate) fn retry_inbox_id(workspace_id: &str) -> String {
+    format!("ib-retry-{workspace_id}")
+}
 
 /// A decoded checkpoint: the state a re-dispatched walk re-enters, the
 /// convergence iteration, and whether that iteration's coding turn already
@@ -24,9 +31,9 @@ pub struct ResumePoint {
     pub state: WorkspaceState,
     pub iteration: i64,
     pub skip_coder: bool,
-    /// Role code → the session it ran when interrupted; its FIRST
-    /// post-resume turn continues it.
-    pub sessions: HashMap<String, String>,
+    /// Role code → the session it ran when interrupted and that session's
+    /// model; its FIRST post-resume turn continues it on the same provider.
+    pub sessions: HashMap<String, (String, String)>,
     /// Roles whose first post-resume turn already happened.
     pub consumed: HashSet<String>,
     /// Set once the first converge read iteration / skip_coder, so a later
@@ -37,7 +44,10 @@ pub struct ResumePoint {
 /// Where a re-dispatched walk starts, or `None` for a fresh start (no
 /// checkpoint, or one outside the re-enterable states). Reviewing and
 /// verifying collapse onto converge with the coder skipped.
-pub fn resume_point_for(rec: &Workspace, sessions: HashMap<String, String>) -> Option<ResumePoint> {
+pub fn resume_point_for(
+    rec: &Workspace,
+    sessions: HashMap<String, (String, String)>,
+) -> Option<ResumePoint> {
     let cp = rec.checkpoint.as_ref()?;
     let iteration = cp.iteration.max(1);
     let (state, skip_coder) = match cp.state {
@@ -57,26 +67,39 @@ pub fn resume_point_for(rec: &Workspace, sessions: HashMap<String, String>) -> O
 
 impl Walk {
     /// Whether this is the FIRST turn `code` takes after a resume, and the
-    /// session to continue ("" when none was captured). One-shot per role.
-    pub(crate) fn resumed_role(&mut self, code: &str) -> (String, bool) {
+    /// session to continue ("" when none was captured, or when Settings moved
+    /// the role to another provider since). One-shot per role.
+    pub(crate) fn resumed_role(&mut self, code: &str, model: &str) -> (String, bool) {
         let Some(r) = self.resume.as_mut() else {
             return (String::new(), false);
         };
         if !r.consumed.insert(code.to_owned()) {
             return (String::new(), false);
         }
-        (r.sessions.get(code).cloned().unwrap_or_default(), true)
+        let Some((session, prev)) = r.sessions.get(code) else {
+            return (String::new(), true);
+        };
+        let provider = parse_model_ref(model).provider;
+        // A bare id (rows written before loop agents kept the provider) says
+        // nothing about the provider; only the handle check applies then.
+        let same = !prev.contains('/') || parse_model_ref(prev).provider == provider;
+        if same && self.eng.resume_fits_provider(session, &provider) {
+            (session.clone(), true)
+        } else {
+            (String::new(), true)
+        }
     }
 }
 
 impl Engine {
-    /// Each role code's most recent provider session for a loop.
-    pub fn agent_sessions(&self, workspace_id: &str) -> HashMap<String, String> {
+    /// Each role code's most recent provider session for a loop, with the
+    /// model it ran on.
+    pub fn agent_sessions(&self, workspace_id: &str) -> HashMap<String, (String, String)> {
         self.store
             .agents(workspace_id)
             .into_iter()
             .filter(|a| !a.session_id.is_empty())
-            .map(|a| (a.code, a.session_id))
+            .map(|a| (a.code, (a.session_id, a.model)))
             .collect()
     }
 
@@ -91,8 +114,9 @@ impl Engine {
 
     /// Parks a loop that hit a transient provider failure: failed, but
     /// keeping its checkpoint, in Needs you with an inbox row and a
-    /// notification so the human can clear it and Retry.
-    pub fn fail_retryable(&self, id: &str, reason: &str) {
+    /// notification that open the loop's chat (`chat_code`, Maestro when
+    /// empty), where its error card offers Retry.
+    pub fn fail_retryable(&self, id: &str, chat_code: &str, reason: &str) {
         self.record_failure(id, reason, true);
         self.set_workspace_state(id, WorkspaceState::Failed, &format!("stopped: {reason}"));
         self.emit_workspace_event(
@@ -107,8 +131,13 @@ impl Engine {
         let Some(rec) = self.store.workspace(id) else {
             return;
         };
+        let code = match chat_code.trim() {
+            "" => MAESTRO_AGENT_CODE,
+            c => c,
+        };
+        let target = chat_inbox_target(id, code);
         self.store.add_inbox_item(InboxItem {
-            id: format!("ib-retry-{id}"),
+            id: retry_inbox_id(id),
             group: "needs".into(),
             unread: true,
             kind: "pause".into(),
@@ -122,14 +151,14 @@ impl Engine {
             time: "now".into(),
             action: "Retry".into(),
             action_class: "urgent".into(),
-            target: format!("workspace:{id}"),
+            target: target.clone(),
             workspace_id: id.to_owned(),
         });
         self.publish_inbox_updated();
         self.publish_notify(
             "A loop stopped: retry available",
             &truncate(reason, 120),
-            &format!("workspace:{id}"),
+            &target,
         );
     }
 
@@ -215,6 +244,7 @@ impl Engine {
         self.set_workspace_state(id, WorkspaceState::Paused, "restarting");
         self.store
             .remove_inbox_by_target(&format!("workspace:{id}"));
+        self.store.remove_inbox_item(&retry_inbox_id(id));
         self.emit_workspace_event(
             id,
             "MA",
@@ -249,6 +279,7 @@ impl Engine {
         );
         self.store
             .remove_inbox_by_target(&format!("workspace:{id}"));
+        self.store.remove_inbox_item(&retry_inbox_id(id));
         self.emit_workspace_event(id, "MA", "Maestro", "Retrying from the last checkpoint.");
         self.resume(id).await;
         self.publish_inbox_updated();

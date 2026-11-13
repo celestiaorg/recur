@@ -48,7 +48,7 @@ fn items(v: &Value) -> Vec<InputItem> {
                     call_id: s(&i["call_id"]),
                     name: s(&i["name"]),
                     arguments: s(&i["arguments"]),
-                    output: s(&i["output"]),
+                    output: i["output"].as_str().map(str::to_owned),
                     id: s(&i["id"]),
                     raw: None,
                 })

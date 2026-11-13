@@ -8,6 +8,8 @@ use recur_domain::{Checkpoint, Group, WorkspaceState};
 use crate::Engine;
 use crate::loop_handle::Command;
 use crate::loop_registry::RunningLoop;
+use crate::loops::escalation::esc_inbox_id;
+use crate::loops::resume::retry_inbox_id;
 use crate::publish::{interrupted, status_label, terminal};
 use crate::text::rfc3339;
 
@@ -194,6 +196,7 @@ impl Engine {
                 {
                     self.store
                         .remove_inbox_by_target(&format!("workspace:{}", l.id));
+                    self.store.remove_inbox_item(&retry_inbox_id(&l.id));
                     self.publish_loop_updated(
                         &updated.id,
                         updated.state.clone(),
@@ -223,6 +226,10 @@ impl Engine {
             };
             self.store
                 .remove_inbox_by_target(&format!("workspace:{}", l.id));
+            if let Some(esc) = self.store.escalation(&l.id) {
+                self.store
+                    .remove_inbox_item(&esc_inbox_id(&l.id, &esc.agent_code));
+            }
             self.publish_loop_updated(
                 &updated.id,
                 updated.state.clone(),

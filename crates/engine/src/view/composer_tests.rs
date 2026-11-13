@@ -35,6 +35,24 @@ fn arg(name: &str) -> PromptArgSpec {
 }
 
 #[test]
+fn spaced_file_chips_round_trip_quoted() {
+    let wire = r#"read @"/Users/me/Downloads/My Notes.md" and @src/a.ts"#;
+    let lines = round_trip(wire, &files());
+    assert_eq!(
+        file_paths(&lines),
+        [
+            ("/Users/me/Downloads/My Notes.md".into(), false),
+            ("src/a.ts".into(), false)
+        ]
+    );
+    let lines = round_trip(
+        r#"var p = @"hello"; s = @"hello world"; q = @"C:\Program Files""#,
+        &files(),
+    );
+    assert!(file_paths(&lines).is_empty(), "string literals stay text");
+}
+
+#[test]
 fn file_chips_round_trip() {
     let lines = round_trip("see @src/a.ts:12-40 please", &files());
     assert_eq!(file_paths(&lines), [("src/a.ts:12-40".into(), false)]);

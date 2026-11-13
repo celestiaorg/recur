@@ -224,6 +224,18 @@ fn shipped_fix_checks_prompt_args() {
 }
 
 #[test]
+fn shipped_address_review_prompt_args() {
+    let prompts = chat_prompts();
+    let p = find_prompt_by_slash(&prompts, "address-review").expect("missing /address-review");
+    assert_eq!(p.mode, "agent");
+    assert!(p.takes_args);
+    assert_eq!(p.args.len(), 1);
+    assert_eq!(p.args[0].name, "reviewer");
+    assert!(p.args[0].optional);
+    assert!(p.fresh_session);
+}
+
+#[test]
 fn parse_manifest_prompt_loop_mode() {
     let (_, _, prompts) = parse(
         "[bundle]\nname = \"Chat\"\nid = \"bundle-chat\"\n[[prompt]]\nid = \"prompt-converge\"\nname = \"Review & fix\"\nslash = \"review-and-fix\"\nmode = \"loop\"\nloop = \"recur.loops.converge\"\ninterpreter = \"shebang\"\nbody = \"#!/bin/sh\\ntrue\\n\"\n[[prompt]]\nid = \"prompt-implied\"\nname = \"Implied Loop\"\nloop = \"recur.loops.docs\"\ninterpreter = \"shebang\"\nbody = \"#!/bin/sh\\ntrue\\n\"\n",
@@ -330,6 +342,7 @@ fn shipped_chat_fresh_session_and_tab_groups() {
         ("open-pr", true, "ops"),
         ("open-draft-pr", true, "ops"),
         ("fix-checks", true, "ops"),
+        ("address-review", true, "ops"),
         ("fix-problem", true, "ops"),
         ("fix-merge", true, "ops"),
         ("update", true, "ops"),
@@ -1433,6 +1446,49 @@ async fn fix_checks_without_pr_or_on_host() {
             "Create a workspace from this pull request to edit files"
         )
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn address_review_without_pr_or_on_host() {
+    let prompt = chat_script_prompt(
+        "address-review.sh",
+        "recur.chat.address-review",
+        "Address review",
+        "address-review",
+    );
+    let (_g1, a) = temp_dir();
+    let (_g2, b) = temp_dir();
+    let rc = PromptRunContext {
+        worktree: a,
+        work_dir: b,
+        bundle_support: chat_dir(),
+        ..Default::default()
+    };
+    for (rc, want) in [
+        (rc.clone(), "No GitHub pull request on this workspace"),
+        (
+            PromptRunContext {
+                pr_number: 12,
+                pr_source: "gh".into(),
+                pr_host: true,
+                ..rc.clone()
+            },
+            "Create a workspace from this pull request to edit files",
+        ),
+        (
+            PromptRunContext {
+                pr_number: 12,
+                pr_source: "gh".into(),
+                ..rc
+            },
+            "No GitHub pull request URL on this workspace",
+        ),
+    ] {
+        let res = run_prompt_shebang(&shebang_ctx(), &prompt, rc)
+            .await
+            .unwrap();
+        assert_eq!((res.prompt.as_str(), res.display.as_str()), ("", want));
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -172,6 +172,16 @@ pub struct Settings {
     /// default false is the reverse.
     #[serde(skip_serializing_if = "is_false")]
     pub queue_follow_ups: bool,
+    /// PR automations: on an open PR with a Recur workspace whose chat is
+    /// idle, the sweep runs Update with base (then /update) on merge
+    /// conflicts, /fix-checks on failing checks, and /address-review on new
+    /// review activity. `None` → on.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_update_conflicts: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_fix_checks: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_address_review: Option<bool>,
     /// The wall-clock ceiling for one interactive agent chat turn; see
     /// [`effective_agent_turn_timeout_minutes`].
     #[serde(skip_serializing_if = "is_zero")]
@@ -536,6 +546,21 @@ impl Settings {
     /// Whether Simplify mode is on. Unset → on.
     pub fn simplify_enabled(&self) -> bool {
         self.simplify.unwrap_or(true)
+    }
+
+    /// Whether the sweep resolves a PR's merge conflicts. Unset → on.
+    pub fn auto_update_conflicts_on(&self) -> bool {
+        self.auto_update_conflicts.unwrap_or(true)
+    }
+
+    /// Whether the sweep runs /fix-checks on a PR's failing checks. Unset → on.
+    pub fn auto_fix_checks_on(&self) -> bool {
+        self.auto_fix_checks.unwrap_or(true)
+    }
+
+    /// Whether the sweep runs /address-review on new review activity. Unset → on.
+    pub fn auto_address_review_on(&self) -> bool {
+        self.auto_address_review.unwrap_or(true)
     }
 
     /// Whether Cursor credentials are present.

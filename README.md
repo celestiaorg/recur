@@ -85,7 +85,7 @@ Schedules can be paused and resumed, or run immediately with Run now. If Recur w
 
 Recur Bundles are TextMate-inspired packs that extend the app. Each bundle is a directory with a single `bundle.toml` and can ship any mix of:
 
-- **Prompt actions.** Slash commands in the chat composer. The shipped `Chat` bundle provides `/commit`, `/commit-push`, `/open-pr`, `/open-draft-pr`, `/fix-checks`, `/review`, `/re-review`, `/fix-findings`, `/simplify-review`, `/simplify-audit`, and `/update`, plus `/to-a-pr`, `/review-and-fix`, `/review-to-pr`, `/security-review`, and `/write-docs`, which start the matching loop. Actions can take arguments with their own autocomplete.
+- **Prompt actions.** Slash commands in the chat composer. The shipped `Chat` bundle provides `/commit`, `/commit-push`, `/open-pr`, `/open-draft-pr`, `/fix-checks`, `/address-review`, `/review`, `/re-review`, `/fix-findings`, `/simplify-review`, `/simplify-audit`, and `/update`, plus `/to-a-pr`, `/review-and-fix`, `/review-to-pr`, `/security-review`, and `/write-docs`, which start the matching loop. Actions can take arguments with their own autocomplete.
 - **Loops, roles, and policies.** Everything described under [Loops](#loops) comes from the shipped `Loop` bundle: the roles and their prompts, the phase graphs, and the three policies.
 - **Palette search and task expansion.** The `Linear` bundle adds Linear issue search to the command palette and expands an issue reference into a full task prompt when you start a new workspace.
 - **Editor commands.** Macros in the Run Command palette, bound to keys, or run on save.

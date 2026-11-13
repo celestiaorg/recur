@@ -20,6 +20,15 @@ pub trait PromptTab {
     fn prompt_group(&self) -> &str;
 }
 
+impl PromptTab for recur_domain::WorkspaceChatTab {
+    fn code(&self) -> &str {
+        &self.code
+    }
+    fn prompt_group(&self) -> &str {
+        &self.prompt_group
+    }
+}
+
 /// Where a mode-routed prompt lands.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PromptTabPick {

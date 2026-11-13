@@ -98,6 +98,26 @@ placeholder = "all or a failing check"
 optional = true
 
 [[prompt]]
+id = "recur.chat.address-review"
+name = "Address review"
+description = "Fix or answer unresolved review comments on this pull request"
+slash = "address-review"
+mode = "agent"
+takesArgs = true
+argPlaceholder = "all or a reviewer"
+timeoutMs = 20000
+tab_group = "ops"
+fresh_session = true
+interpreter = "shebang"
+script = "src/address-review.sh"
+icon = "icon-github.svg"
+
+[[prompt.arg]]
+name = "reviewer"
+placeholder = "all or a reviewer"
+optional = true
+
+[[prompt]]
 id = "recur.chat.open-draft-pr"
 name = "Open draft PR"
 description = "Open a GitHub draft pull request with an agent-written description"

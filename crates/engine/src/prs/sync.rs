@@ -238,6 +238,7 @@ impl Engine {
             }
             if available {
                 self.sweep_prs().await;
+                self.run_pr_automations().await;
             }
         }
     }

@@ -69,6 +69,7 @@ gpui_kit::actions!(
         FocusTerminal,
         PrevTab,
         NextTab,
+        LastTab,
         PrevWorkspace,
         NextWorkspace,
         Minimize,
@@ -146,6 +147,7 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
         FocusTerminal => "focus-terminal",
         PrevTab => "prev-tab",
         NextTab => "next-tab",
+        LastTab => "last-tab",
         PrevWorkspace => "prev-workspace",
         NextWorkspace => "next-workspace",
         ZoomIn => "zoom-in",
@@ -198,6 +200,7 @@ pub fn bind_menu_keys(cx: &mut App) {
         ("cmd-3", Box::new(FocusTerminal)),
         ("cmd-alt-left", Box::new(PrevTab)),
         ("cmd-alt-right", Box::new(NextTab)),
+        ("cmd-9", Box::new(LastTab)),
         ("cmd-alt-up", Box::new(PrevWorkspace)),
         ("cmd-alt-down", Box::new(NextWorkspace)),
     ];
@@ -559,6 +562,7 @@ pub fn app_menus(
         MenuItem::separator(),
         contextual("Previous Tab", PrevTab, state.prev_tab),
         contextual("Next Tab", NextTab, state.next_tab),
+        contextual("Last Tab", LastTab, state.next_tab),
         MenuItem::separator(),
         item("Previous Workspace", PrevWorkspace),
         item("Next Workspace", NextWorkspace),
@@ -606,6 +610,7 @@ mod tests {
         assert_eq!(menu_action_name(&ToggleSidebar), Some("toggle-sidebar"));
         assert_eq!(menu_action_name(&GoPullRequests), Some("view:pr"));
         assert_eq!(menu_action_name(&GoToLine), Some("goto-line"));
+        assert_eq!(menu_action_name(&LastTab), Some("last-tab"));
         assert_eq!(menu_action_name(&About), None);
     }
 

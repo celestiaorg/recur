@@ -48,7 +48,10 @@ fix the TOML rather than relying on the settings page to rewrite it.
 does not support `!` negation. A pattern with no slash matches at any depth
 (`.env*` → `apps/web/.env.local`). Trailing slash = that directory. Heavy dirs
 (`node_modules`, `dist`, `build`, …) are skipped unless the pattern names them.
-Cap: 10 000 files, 32 MiB each.
+Cap: 10 000 files, 32 MiB each. A pattern ending in `/` (`node_modules/`,
+`target/`) copies each matching directory whole, symlinks included and past the
+caps: APFS clones on macOS (fast, no extra disk), a reflink on
+btrfs/XFS, else a full copy. Good for warm dependencies before `setup_cmd`.
 
 Do not write `pinned_run`: that default stays on this machine, not in the file.
 

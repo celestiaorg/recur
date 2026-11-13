@@ -856,7 +856,7 @@ impl Engine {
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
         if n > 0 {
-            tracing::info!("recur: copied {n} file(s) into {dest}");
+            tracing::info!("recur: copied {n} path(s) into {dest}");
         }
         Ok(())
     }

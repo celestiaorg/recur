@@ -154,12 +154,12 @@ pub(crate) async fn run(
     if use_stream
         && !cancel.is_cancelled()
         && let Some(w) = stdin.as_mut()
-        && let Err(e) = write_line(w, &user_message_line(&req.prompt, &req.images)).await
+        && write_line(w, &user_message_line(&req.prompt, &req.images))
+            .await
+            .is_err()
     {
-        drop(stdin);
-        wait_reaped(&mut reaped).await;
-        let _ = killer.await;
-        return Err(ProviderError::failed(format!("claude seed prompt: {}", e)));
+        // claude died while booting: the no-result path below reports its stderr.
+        stdin = None;
     }
 
     let (mut result, have_result) = if use_stream {

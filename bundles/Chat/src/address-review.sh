@@ -138,7 +138,8 @@ for t in nodes(pr.get("reviewThreads")):
     # Outsider replies are dropped even inside a reviewer's thread.
     cs = [c for c in all_cs if mine(c) or trusted(c, True)]
     left_out += len(all_cs) - len(cs)
-    if not cs or mine(cs[-1]) or not focused(cs[0]):
+    # A thread an outsider started stays out even once a member or bot replies.
+    if not cs or cs[0] is not all_cs[0] or mine(cs[-1]) or not focused(cs[0]):
         continue
     threads.append((t, cs))
 

@@ -189,7 +189,7 @@ impl Engine {
         Some(p.clone())
     }
 
-    async fn run_prompt_action(
+    pub(crate) async fn run_prompt_action(
         &self,
         cancel: &CancellationToken,
         p: &PromptAction,

@@ -7,6 +7,7 @@ use std::sync::Arc;
 use recur_domain::{AgentRole, Pr, Workspace};
 
 use super::support::gh_pr;
+use crate::bus::EngineEvent;
 use crate::loops::test_support::CaptureScript;
 use crate::testing::{TempRepo, TestEngine, add_project, git, init_repo};
 use crate::turn::test_support::maestro_fixture;
@@ -183,6 +184,13 @@ async fn a_check_failure_runs_fix_checks_in_the_pr_workspace_once() {
     assert_eq!(got.len(), 1, "{:?}", ax.prompts());
     assert_eq!(got[0].0, ax.ws.id, "the PR's own workspace");
     assert_ne!(got[0].1, "PA", "not the user's working tab");
+    assert!(
+        ax.te.events.all().iter().any(|e| matches!(
+            e,
+            EngineEvent::WorkspaceHoisted(h) if h.workspace_id == ax.ws.id && h.chats_changed
+        )),
+        "the open view re-lists its tabs"
+    );
     assert!(
         ax.feed().contains("Checks failed on PR #7"),
         "{}",

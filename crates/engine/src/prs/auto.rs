@@ -10,8 +10,12 @@ use std::collections::{HashMap, HashSet};
 use recur_domain::{CHAT_MODE_AGENT, Pr, UPDATE_WORKSPACE_CONFLICT, normalize_chat_mode};
 use recur_forge::model::BUCKET_PENDING;
 
+use tokio_util::sync::CancellationToken;
+
 use crate::Engine;
+use crate::bus::{EngineEvent, WorkspaceHoisted};
 use crate::codes::PAIR_AGENT_CODE;
+use crate::composer::ExpandOpts;
 use crate::prs::{is_forge_source, pr_settled};
 use crate::text::html_escape;
 use crate::view::prompts::{PromptTabPick, PromptTabQuery, pick_prompt_tab};
@@ -278,11 +282,35 @@ impl Engine {
         e.attempts == MAX_AUTO_ATTEMPTS
     }
 
-    /// Sends a prompt action to the tab the dock would pick for an "ops"
-    /// action (an idle ops tab, else an unused agent tab, else a new one),
-    /// so the user's working conversation keeps its session. Empty when the
-    /// action had nothing to send (no turn ran).
+    /// Runs a prompt action once and, when it has something to send, sends
+    /// it to the tab the dock would pick for an "ops" action (an idle ops
+    /// tab, else an unused agent tab, else a new one), so the user's working
+    /// conversation keeps its session. Empty when the action had nothing to
+    /// send: no tab is picked or created and no turn runs.
     async fn send_auto_prompt(&self, ws_id: &str, slash: &str) -> String {
+        let Some(ws) = self.store.workspace(ws_id) else {
+            return String::new();
+        };
+        let Some(p) = self.lookup_prompt_action(slash.trim_start_matches('/'), false, None) else {
+            return String::new();
+        };
+        let opts = ExpandOpts {
+            worktree: ws.worktree_path.clone(),
+            workspace_id: ws_id.to_owned(),
+            ..ExpandOpts::default()
+        };
+        let out = match self
+            .run_prompt_action(&CancellationToken::new(), &p, &opts)
+            .await
+        {
+            Ok(out) if !out.prompt.trim().is_empty() => out,
+            Ok(_) => return String::new(),
+            Err(e) => {
+                let msg = format!("Automatic {slash} couldn't run: {e}");
+                self.emit_workspace_event(ws_id, "MA", "Maestro", &html_escape(&msg));
+                return String::new();
+            }
+        };
         let tabs = self.list_workspace_chats(ws_id);
         let pick = pick_prompt_tab(&PromptTabQuery {
             tabs: &tabs,
@@ -295,38 +323,47 @@ impl Engine {
             drafted: None,
             conductor_locked: None,
         });
-        let (code, created) = match pick {
-            PromptTabPick::Select(code) => (code, false),
+        let code = match pick {
+            PromptTabPick::Select(code) => code,
             PromptTabPick::Current | PromptTabPick::Create => {
                 let code = self.create_workspace_chat(ws_id).await.code;
                 if code.is_empty() {
                     return String::new();
                 }
-                (code, true)
+                // The open workspace view re-lists its tab strip.
+                self.bus
+                    .publish(EngineEvent::WorkspaceHoisted(WorkspaceHoisted {
+                        chats_changed: true,
+                        workspace_id: ws_id.to_owned(),
+                        ..WorkspaceHoisted::default()
+                    }));
+                code
             }
         };
         let (mut model, mut flags, _) = self.workspace_chat_selection(ws_id, &code);
         if model.trim().is_empty() {
             (model, flags, _) = self.workspace_chat_selection(ws_id, PAIR_AGENT_CODE);
         }
+        let display = if out.display.is_empty() {
+            slash
+        } else {
+            &out.display
+        };
         let reply = self
-            .send_workspace_message(
+            .send_workspace_turn(
                 ws_id,
                 &code,
-                slash,
+                &out.prompt,
                 &model,
                 Some(&flags),
                 &[],
                 CHAT_MODE_AGENT,
-                "",
+                display,
+                p.fresh_session,
             )
             .await;
-        if !reply.is_empty() {
-            self.remember_workspace_chat_prompt_group(ws_id, &code, AUTO_TAB_GROUP)
-                .await;
-        } else if created {
-            self.close_workspace_chat(ws_id, &code).await;
-        }
+        self.remember_workspace_chat_prompt_group(ws_id, &code, AUTO_TAB_GROUP)
+            .await;
         reply
     }
 }

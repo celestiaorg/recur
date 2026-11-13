@@ -2,7 +2,9 @@
 //! `fixtures/schedules.json`: `[cadence, cron, date, time, zone, after, next]`, `next` empty
 //! for none and `!` for an error. Zones come from the system time zone database, so a rule
 //! change there (a country dropping or moving DST) changes `next` for that zone; update the
-//! fixture by hand when that or the behavior changes on purpose.
+//! fixture by hand when that or the behavior changes on purpose. Keep only rows that agree
+//! across the tzdata versions CI sees: Havana rows that land after Cuba's 2026 rule change
+//! are left out because macOS (2026f) and Ubuntu's tzdata disagree there.
 //!
 //! At a DST transition a wall time a gap skips runs when the gap ends, a repeated wall time
 //! runs once, and Lord Howe's half-hour fall-back skips no day or week.

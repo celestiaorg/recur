@@ -1833,3 +1833,51 @@ fn send_attachments_and_ids() {
     assert_eq!(parts[2].len(), 6);
     assert_ne!(new_attachment_id(NOW), id);
 }
+
+#[test]
+fn a_long_turn_applies_in_place() {
+    let mut rows = vec![m! {me: true, body: "go"}];
+    let tool = |id: &str, parent: &str| WorkspaceStep {
+        id: id.into(),
+        tool: "Read".into(),
+        parent_id: parent.into(),
+        ..WorkspaceStep::default()
+    };
+    for i in 0..1000 {
+        append_stream_mut(&mut rows, StreamKind::Text, "Step ");
+        append_stream_mut(&mut rows, StreamKind::Text, &i.to_string());
+        let id = format!("t{i}");
+        add_tool_mut(&mut rows, &tool(&id, ""));
+        assert!(attach_tool_result_mut(
+            &mut rows,
+            &id,
+            "ok",
+            false,
+            &ToolExtras::default()
+        ));
+    }
+    add_tool_mut(&mut rows, &tool("child", "t999"));
+    let opts = StreamOpts {
+        parent_id: "t999".into(),
+        ..StreamOpts::default()
+    };
+    apply_stream_mut(&mut rows, StreamKind::Text, "nested", &opts);
+
+    assert_eq!(rows.len(), 2001);
+    assert_eq!(rows[1].body, "Step 0");
+    assert!(rows.iter().all(|m| !m.streaming && !m.result_pending));
+    let last = &rows[2000];
+    assert_eq!(
+        (last.tool_id.as_str(), last.result.as_str()),
+        ("t999", "ok")
+    );
+    assert_eq!(last.children.len(), 2);
+    assert_eq!(last.children[1].body, "nested");
+    assert!(!attach_tool_result_mut(
+        &mut rows,
+        "missing",
+        "x",
+        false,
+        &ToolExtras::default()
+    ));
+}

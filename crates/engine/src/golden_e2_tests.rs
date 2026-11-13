@@ -6,7 +6,6 @@
 
 use std::path::Path;
 
-use pretty_assertions::assert_eq;
 use recur_agent::{ProviderError, TurnResult};
 use recur_agent_tools::PlanStepMeta;
 use recur_domain::{Artifact, FeedItem, Plan, PlanStep, UserQuestion, UserQuestionAnswer};
@@ -55,7 +54,7 @@ fn strs(v: &Value) -> Vec<String> {
 }
 
 fn digest(s: &str) -> Value {
-    json!({"len": s.len(), "sha256": hex::encode(Sha256::digest(s.as_bytes()))})
+    json!({"len": s.len(), "sha256": recur_base::hex(Sha256::digest(s.as_bytes()))})
 }
 
 /// The generator's fixture worktree, recreated under a temp dir.

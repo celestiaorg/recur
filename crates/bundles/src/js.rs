@@ -657,7 +657,7 @@ native!(native_random, |ctx, args, exc| {
     if getrandom::fill(&mut buf).is_err() {
         return throw(ctx, exc, "no randomness available");
     }
-    make_string(ctx, &hex::encode(buf))
+    make_string(ctx, &recur_base::hex(buf))
 });
 
 native!(native_now, |ctx, _args, _exc| {

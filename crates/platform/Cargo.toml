@@ -8,6 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+recur-base.workspace = true
 recur-http.workspace = true
 thiserror.workspace = true
 serde.workspace = true
@@ -27,10 +28,6 @@ base64.workspace = true
 sha2.workspace = true
 digest.workspace = true
 ed25519-dalek.workspace = true
-p256.workspace = true
-spki.workspace = true
-zip.workspace = true
-tar.workspace = true
 flate2.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]

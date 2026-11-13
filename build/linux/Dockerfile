@@ -6,7 +6,7 @@ FROM node:24.22.2-bookworm-slim AS node
 FROM ubuntu:24.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    ca-certificates curl git build-essential pkg-config cmake clang \
+    ca-certificates tzdata curl git build-essential pkg-config cmake clang \
     libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev \
     libfontconfig-dev libfreetype-dev libvulkan-dev libzstd-dev libssl-dev \
     libgtk-4-dev libwebkitgtk-6.0-dev \

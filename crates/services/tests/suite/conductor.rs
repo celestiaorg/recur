@@ -6,7 +6,6 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use pretty_assertions::assert_eq;
 use recur_engine::GitSetup;
 use recur_engine::chat::fork::fork_history_preamble;
 use recur_engine::session_config::AgentConfig;

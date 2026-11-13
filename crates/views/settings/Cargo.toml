@@ -31,7 +31,6 @@ gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["fake"] }
 recur-app.workspace = true
 parking_lot.workspace = true
-pretty_assertions.workspace = true
 
 [lints]
 workspace = true

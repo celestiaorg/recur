@@ -16,9 +16,9 @@ name = "recur-cli"
 path = "src/main.rs"
 
 [dependencies]
+recur-base.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
-include_dir.workspace = true
 recur-bundles.workspace = true
 recur-domain.workspace = true
 recur-platform.workspace = true
@@ -27,11 +27,13 @@ regex.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
-yaml-rust2.workspace = true
 
 [dev-dependencies]
 recur-exec.workspace = true
 tokio-util.workspace = true
+
+[build-dependencies]
+recur-base.workspace = true
 
 [lints]
 workspace = true

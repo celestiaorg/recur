@@ -35,7 +35,6 @@ chrono.workspace = true
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
 recur-services = { workspace = true, features = ["fake"] }
-pretty_assertions.workspace = true
 recur-app.workspace = true
 parking_lot.workspace = true
 

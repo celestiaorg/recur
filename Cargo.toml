@@ -19,6 +19,7 @@ rust-version = "1.100"
 license = "Elastic-2.0"
 
 [workspace.dependencies]
+recur-base = { path = "crates/base" }
 recur-domain = { path = "crates/domain" }
 recur-exec = { path = "crates/exec" }
 recur-http = { path = "crates/http" }
@@ -77,11 +78,10 @@ base64 = "0.23"
 thiserror = "2"
 serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
-toml = "0.9"
-toml_edit = "0.23"
+toml = "1"
+toml_edit = "0.25"
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-chrono-tz = "0.10"
 iana-time-zone = "0.1"
 getrandom = "0.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
@@ -103,11 +103,8 @@ onig = { version = "6.5", default-features = false }
 ropey = { version = "=2.0.0-beta.1", default-features = false, features = ["metric_lines_lf", "metric_utf16", "metric_chars", "simd"] }
 unicode-segmentation = "1.12"
 unicode-normalization = "0.1"
-pulldown-cmark = { version = "0.13", default-features = false }
 clap = { version = "4", features = ["derive"] }
 clap_complete = "4"
-include_dir = "0.7"
-fancy-regex = "0.16"
 wuff = "0.2"
 ttf-parser = "0.25"
 unicode-linebreak = "0.1"
@@ -125,10 +122,6 @@ rustix = { version = "1", features = ["process"] }
 sha2 = "0.11"
 digest = "0.11"
 ed25519-dalek = { version = "3", features = ["digest"] }
-p256 = { version = "0.14", features = ["ecdsa"] }
-spki = "0.8"
-zip = { version = "9", default-features = false, features = ["deflate"] }
-tar = "0.4"
 flate2 = "1"
 objc2 = "0.6"
 objc2-foundation = "0.3"
@@ -167,10 +160,7 @@ libc = "0.2"
 cc = "1"
 pkg-config = "0.3"
 tempfile = "3"
-pretty_assertions = "1"
-hex = "0.4"
 aws-lc-rs = { version = "1", default-features = false, features = ["aws-lc-sys"] }
-yaml-rust2 = "0.10"
 swc_core = { version = "82", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_transforms_typescript", "ecma_transforms_module", "ecma_codegen", "ecma_visit", "ecma_utils", "ecma_helpers_inline"] }
 # The two compat passes `recur-bundles` runs, at swc_core 82's versions (bump with it). swc_core's
 # `ecma_transforms_compat` would also build every ES3 to ES2020 pass.
@@ -192,7 +182,6 @@ markup5ever_rcdom = "0.3"
 
 # ICU root collation: the UI's `localeCompare` / `Intl.Collator` ordering.
 icu_collator = "2"
-icu_time = "2.3"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

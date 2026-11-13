@@ -58,7 +58,6 @@ recur-issues = { workspace = true, features = ["testing"] }
 recur-provider-claude = { workspace = true, features = ["testing"] }
 recur-provider-codex = { workspace = true, features = ["testing"] }
 recur-provider-cursor = { workspace = true, features = ["testing"] }
-pretty_assertions.workspace = true
 rusqlite.workspace = true
 tempfile.workspace = true
 

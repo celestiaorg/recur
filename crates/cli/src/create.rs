@@ -4,12 +4,12 @@ use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
 use std::sync::LazyLock;
 
-use include_dir::{Dir, DirEntry, include_dir};
+use recur_base::embed::{Dir, Entry};
 use recur_domain::path;
 use regex::Regex;
 
 /// The `recur bundles create` template tree.
-static SCAFFOLD: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/scaffold");
+static SCAFFOLD: Dir = include!(concat!(env!("OUT_DIR"), "/scaffold.rs"));
 
 static SAFE_BUNDLE_NAME: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("^[A-Za-z][A-Za-z0-9_-]*$").expect("name pattern"));
@@ -68,19 +68,17 @@ pub fn create_bundle(name: &str, dest_parent: &str, force: bool) -> Result<Strin
 }
 
 /// Walks the embedded tree in lexical order.
-fn write_tree(dir: &Dir<'static>, dest: &str, pairs: &[(&str, String)]) -> Result<(), String> {
-    let mut entries: Vec<&DirEntry<'static>> = dir.entries().iter().collect();
-    entries.sort_by_key(|e| e.path().file_name().map(|n| n.to_os_string()));
-    for e in entries {
-        let rel = e.path().to_string_lossy().into_owned();
-        let target = path::join(&[dest, &rel]);
+fn write_tree(dir: &Dir, dest: &str, pairs: &[(&str, String)]) -> Result<(), String> {
+    for e in dir.entries {
+        let rel = e.path();
+        let target = path::join(&[dest, rel]);
         match e {
-            DirEntry::Dir(d) => {
+            Entry::Dir(d) => {
                 mkdir_all(&target)?;
                 write_tree(d, dest, pairs)?;
             }
-            DirEntry::File(f) => {
-                let body = replace_all(&String::from_utf8_lossy(f.contents()), pairs);
+            Entry::File(f) => {
+                let body = replace_all(&String::from_utf8_lossy(f.contents), pairs);
                 let mode = if rel.starts_with("bin/") || rel.ends_with(".sh") {
                     0o755
                 } else {

@@ -166,24 +166,20 @@ fn write_entry(
 /// be redirected through a planted link (zip-slip via symlink).
 fn extract_zip(src: &Path, dst: &Path) -> Result<(), UpdaterError> {
     let f = File::open(src).map_err(|e| fail(format!("zip open: {e}")))?;
-    let mut zr = zip::ZipArchive::new(f).map_err(|e| fail(format!("zip open: {e}")))?;
-    if zr.len() > MAX_ARCHIVE_ENTRIES {
+    let mut zr = recur_base::zip::Archive::new(f).map_err(|e| fail(format!("zip open: {e}")))?;
+    let count = zr.entries().len();
+    if count > MAX_ARCHIVE_ENTRIES {
         return Err(fail(format!(
-            "zip has {} entries (cap {MAX_ARCHIVE_ENTRIES})",
-            zr.len()
+            "zip has {count} entries (cap {MAX_ARCHIVE_ENTRIES})"
         )));
     }
     let root = PathBuf::from(pathutil::clean(&dst.to_string_lossy()));
     let mut symlinks: Vec<(String, PathBuf)> = Vec::new();
     let mut written = 0u64;
-    for i in 0..zr.len() {
-        let mut f = zr.by_index(i).map_err(|e| fail(format!("zip read: {e}")))?;
-        let name = f
-            .name()
-            .map_err(|e| fail(format!("zip read: {e}")))?
-            .into_owned();
-        let target = safe_join(&root, &name)?;
-        let mode = f.unix_mode().unwrap_or(0);
+    for i in 0..count {
+        let e = &zr.entries()[i];
+        let (target, mode, is_dir) = (safe_join(&root, &e.name)?, e.mode, e.is_dir());
+        let mut f = zr.open(i).map_err(|e| fail(format!("zip read: {e}")))?;
         if mode & 0o170000 == 0o120000 {
             let mut link = String::new();
             f.by_ref()
@@ -193,7 +189,7 @@ fn extract_zip(src: &Path, dst: &Path) -> Result<(), UpdaterError> {
             // Reject escapes up front, before any file is written.
             validate_symlink(&link, &target, &root)?;
             symlinks.push((link, target));
-        } else if f.is_dir() || mode & 0o170000 == 0o040000 {
+        } else if is_dir || mode & 0o170000 == 0o040000 {
             mkdir_all(&target, dir_mode(mode)).map_err(|e| fail(format!("zip mkdir: {e}")))?;
         } else {
             if let Some(p) = target.parent() {
@@ -210,43 +206,36 @@ fn extract_zip(src: &Path, dst: &Path) -> Result<(), UpdaterError> {
 
 fn extract_tar_gz(src: &Path, dst: &Path) -> Result<(), UpdaterError> {
     let f = File::open(src).map_err(|e| fail(format!("tar.gz open: {e}")))?;
-    let mut ar = tar::Archive::new(flate2::read::GzDecoder::new(f));
+    let mut ar = recur_base::tar::Archive::new(flate2::read::GzDecoder::new(f));
     let root = PathBuf::from(pathutil::clean(&dst.to_string_lossy()));
     let mut symlinks: Vec<(String, PathBuf)> = Vec::new();
     let mut count = 0usize;
     let mut written = 0u64;
-    let entries = ar.entries().map_err(|e| fail(format!("gzip: {e}")))?;
-    for entry in entries {
-        let mut entry = entry.map_err(|e| fail(format!("tar: {e}")))?;
+    while let Some(mut entry) = ar.next_entry().map_err(|e| fail(format!("tar: {e}")))? {
         count += 1;
         if count > MAX_ARCHIVE_ENTRIES {
             return Err(fail(format!(
                 "tar has more than {MAX_ARCHIVE_ENTRIES} entries"
             )));
         }
-        let name = String::from_utf8_lossy(&entry.path_bytes()).into_owned();
-        let target = safe_join(&root, &name)?;
-        let mode = entry.header().mode().unwrap_or(0);
-        match entry.header().entry_type() {
-            tar::EntryType::Directory => {
+        let target = safe_join(&root, &entry.path)?;
+        let mode = entry.mode;
+        match entry.kind {
+            recur_base::tar::Kind::Dir => {
                 mkdir_all(&target, dir_mode(mode)).map_err(|e| fail(format!("tar mkdir: {e}")))?;
             }
-            tar::EntryType::Symlink => {
-                let link = entry
-                    .link_name_bytes()
-                    .map(|l| String::from_utf8_lossy(&l).into_owned())
-                    .unwrap_or_default();
-                validate_symlink(&link, &target, &root)?;
-                symlinks.push((link, target));
+            recur_base::tar::Kind::Symlink => {
+                validate_symlink(&entry.link, &target, &root)?;
+                symlinks.push((entry.link.clone(), target));
             }
-            tar::EntryType::Regular => {
+            recur_base::tar::Kind::File => {
                 if let Some(p) = target.parent() {
                     mkdir_all(p, 0o755).map_err(|e| fail(format!("tar mkdir: {e}")))?;
                 }
                 write_entry(&mut entry, &target, mode, &mut written, "tar")?;
             }
             // Devices, FIFOs, hard links: app bundles never contain them.
-            _ => {}
+            recur_base::tar::Kind::Other => {}
         }
     }
     for (link, target) in symlinks {
@@ -303,7 +292,6 @@ fn safe_join(root: &Path, name: &str) -> Result<PathBuf, UpdaterError> {
 #[cfg(test)]
 pub(super) mod tests {
     use super::*;
-    use std::io::Write;
     use std::os::unix::fs::PermissionsExt;
 
     pub(crate) enum Entry<'a> {
@@ -313,23 +301,15 @@ pub(super) mod tests {
     }
 
     pub(crate) fn zip_bytes(entries: &[Entry]) -> Vec<u8> {
-        let mut zw = zip::ZipWriter::new(io::Cursor::new(Vec::new()));
-        let opts = zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated);
+        let mut zw = recur_base::zip::Builder::new(Vec::new());
         for e in entries {
             match e {
-                Entry::Dir(name) => zw
-                    .add_directory(*name, opts.unix_permissions(0o755))
-                    .expect("dir"),
-                Entry::File(name, body, mode) => {
-                    zw.start_file(*name, opts.unix_permissions(*mode))
-                        .expect("file");
-                    zw.write_all(body).expect("write");
-                }
-                Entry::Symlink(name, target) => zw.add_symlink(*name, *target, opts).expect("link"),
+                Entry::Dir(name) => zw.dir(name, 0o755).expect("dir"),
+                Entry::File(name, body, mode) => zw.file(name, *mode, body).expect("file"),
+                Entry::Symlink(name, target) => zw.symlink(name, target).expect("link"),
             }
         }
-        zw.finish().expect("finish").into_inner()
+        zw.finish().expect("finish")
     }
 
     fn write_zip(path: &Path, entries: &[Entry]) {
@@ -338,47 +318,22 @@ pub(super) mod tests {
 
     fn write_tar_gz(path: &Path, entries: &[Entry]) {
         let gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
-        let mut tw = tar::Builder::new(gz);
+        let mut tw = recur_base::tar::Builder::new(gz);
         for e in entries {
-            let mut hdr = tar::Header::new_gnu();
             match e {
-                Entry::Dir(name) => {
-                    hdr.set_entry_type(tar::EntryType::Directory);
-                    hdr.set_mode(0o755);
-                    hdr.set_size(0);
-                    tw.append_data(&mut hdr, name, io::empty()).expect("dir");
-                }
-                Entry::File(name, body, mode) => {
-                    hdr.set_entry_type(tar::EntryType::Regular);
-                    hdr.set_mode(*mode);
-                    hdr.set_size(body.len() as u64);
-                    tw.append_data(&mut hdr, name, *body).expect("file");
-                }
-                Entry::Symlink(name, target) => {
-                    hdr.set_entry_type(tar::EntryType::Symlink);
-                    hdr.set_size(0);
-                    tw.append_link(&mut hdr, name, target).expect("link");
-                }
+                Entry::Dir(name) => tw.dir(name, 0o755).expect("dir"),
+                Entry::File(name, body, mode) => tw.file(name, *mode, body).expect("file"),
+                Entry::Symlink(name, target) => tw.symlink(name, target).expect("link"),
             }
         }
-        let gz = tw.into_inner().expect("tar");
+        let gz = tw.finish().expect("tar");
         std::fs::write(path, gz.finish().expect("gz")).expect("write tar.gz");
     }
 
     /// Writes a tar.gz with a raw (unchecked) entry name, so `../` names can
     /// be built for the slip tests.
     fn write_raw_tar_gz(path: &Path, name: &str, body: &[u8]) {
-        let mut hdr = tar::Header::new_gnu();
-        hdr.as_gnu_mut().expect("gnu").name[..name.len()].copy_from_slice(name.as_bytes());
-        hdr.set_entry_type(tar::EntryType::Regular);
-        hdr.set_mode(0o644);
-        hdr.set_size(body.len() as u64);
-        hdr.set_cksum();
-        let gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
-        let mut tw = tar::Builder::new(gz);
-        tw.append(&hdr, body).expect("append");
-        let gz = tw.into_inner().expect("tar");
-        std::fs::write(path, gz.finish().expect("gz")).expect("write");
+        write_tar_gz(path, &[Entry::File(name, body, 0o644)]);
     }
 
     #[test]

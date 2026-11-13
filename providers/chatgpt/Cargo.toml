@@ -8,6 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+recur-base.workspace = true
 recur-http.workspace = true
 recur-domain.workspace = true
 recur-agent.workspace = true
@@ -16,7 +17,6 @@ async-trait.workspace = true
 aws-lc-rs.workspace = true
 base64.workspace = true
 chrono.workspace = true
-hex.workspace = true
 parking_lot.workspace = true
 reqwest.workspace = true
 serde.workspace = true
@@ -27,7 +27,6 @@ url.workspace = true
 
 [dev-dependencies]
 recur-domain.workspace = true
-recur-agent-tools.workspace = true
 tempfile.workspace = true
 
 [lints]

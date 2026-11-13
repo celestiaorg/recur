@@ -108,7 +108,7 @@ pub struct Verification {
     pub digest_algo: String,
     #[serde(with = "go_bytes", skip_serializing_if = "Vec::is_empty")]
     pub digest: Vec<u8>,
-    /// `ed25519`, `ed25519ph` or `ecdsa-p256`.
+    /// `ed25519` or `ed25519ph`.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub signature_algo: String,
     #[serde(with = "go_bytes", skip_serializing_if = "Vec::is_empty")]

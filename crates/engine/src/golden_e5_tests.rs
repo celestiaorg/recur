@@ -6,7 +6,6 @@
 //! (`tests/golden/go_e5.json`). Edit the fixture by hand when the behavior
 //! changes on purpose.
 
-use pretty_assertions::assert_eq;
 use recur_domain::{
     Commit, FileDiff, MergeCommitMessage, MergeMethod, PendingLineComment, Pr, PrComment, PrSource,
     SquashCommitMessage, Workspace,

@@ -13,6 +13,7 @@ publish = false
 testing = ["dep:tempfile", "recur-agent/testing", "recur-forge/testing", "recur-issues/testing"]
 
 [dependencies]
+recur-base.workspace = true
 recur-domain.workspace = true
 recur-store.workspace = true
 recur-project.workspace = true
@@ -30,7 +31,6 @@ async-trait.workspace = true
 base64.workspace = true
 chrono.workspace = true
 getrandom.workspace = true
-hex.workspace = true
 notify.workspace = true
 parking_lot.workspace = true
 regex.workspace = true
@@ -53,7 +53,6 @@ recur-provider-claude = { workspace = true, features = ["testing"] }
 recur-provider-codex.workspace = true
 recur-provider-compatible.workspace = true
 recur-provider-cursor.workspace = true
-pretty_assertions.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 tempfile.workspace = true
 

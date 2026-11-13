@@ -419,7 +419,6 @@ fn clean_path(path: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
 
     fn msg(role: &str, content: Vec<ContentBlock>) -> Message {
         Message {

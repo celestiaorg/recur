@@ -8,8 +8,8 @@
 use crate::color::Color;
 use crate::icon::raster_icon;
 use crate::theme::Theme;
-use fancy_regex::Regex;
 use gpui_kit::{App, IntoElement, RenderOnce, SharedString, Styled, Window, px};
+use regress::Regex;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -127,7 +127,7 @@ fn match_name(name: &str, directory: bool) -> Option<&'static DbIcon> {
     let found = table.iter().position(|icon| {
         icon.matcher
             .as_ref()
-            .is_some_and(|re| re.is_match(name).unwrap_or(false))
+            .is_some_and(|re| re.find(name).is_some())
     });
     // Misses are cheap to cache and change nothing.
     if let Ok(mut c) = cache.lock() {
@@ -195,7 +195,7 @@ fn db_icon(v: Value) -> Option<DbIcon> {
         _ => [None, None],
     };
     let matcher = match f.next() {
-        Some(Value::Regex(src, flags)) => js_regex(&src, &flags),
+        Some(Value::Regex(src, flags)) => Regex::with_flags(&src, flags.as_str()).ok(),
         _ => None,
     };
     Some(DbIcon {
@@ -203,49 +203,6 @@ fn db_icon(v: Value) -> Option<DbIcon> {
         colors,
         matcher,
     })
-}
-
-/// Translate a JavaScript regex literal into `fancy-regex` syntax.
-fn js_regex(src: &str, flags: &str) -> Option<Regex> {
-    let mut out = String::with_capacity(src.len() + 8);
-    if flags.contains('i') {
-        out.push_str("(?i)");
-    }
-    let mut chars = src.chars().peekable();
-    let mut in_class = false;
-    while let Some(c) = chars.next() {
-        match c {
-            '\\' => {
-                let Some(n) = chars.next() else { break };
-                match n {
-                    // `\/` is only an escape for the literal delimiter.
-                    '/' => out.push('/'),
-                    'd' if in_class => out.push_str("0-9"),
-                    _ => {
-                        out.push('\\');
-                        out.push(n);
-                    }
-                }
-            }
-            '[' if !in_class => {
-                in_class = true;
-                out.push('[');
-                // JS allows `[]` / `[^]`; neither appears in the DB, but a literal `]` first
-                // in a class must stay escaped for Rust.
-                if chars.peek() == Some(&']') {
-                    chars.next();
-                    out.push_str("\\]");
-                }
-            }
-            ']' if in_class => {
-                in_class = false;
-                out.push(']');
-            }
-            '[' if in_class => out.push_str("\\["),
-            _ => out.push(c),
-        }
-    }
-    Regex::new(&out).ok()
 }
 
 #[derive(Debug)]
@@ -718,6 +675,8 @@ mod tests {
         assert_eq!(file_icon_class("main.rs", false).icon, "rust-icon");
         assert_eq!(file_icon_class("src/app.ts", false).icon, "ts-icon");
         assert_eq!(file_icon_class("package.json", false).icon, "npm-icon");
+        assert_eq!(file_icon_class(".renovaterc", false).icon, "renovate-icon");
+        assert_ne!(file_icon_class("renovate", false).icon, "renovate-icon");
         assert_eq!(
             file_icon_class(".env.local", true).class_string(),
             "icon dotenv-icon medium-yellow"

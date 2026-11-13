@@ -1,3 +1,3 @@
 fn main() {
-    println!("cargo:rerun-if-changed=assets/icons");
+    recur_base::embed::generate("assets/icons", "icons.rs");
 }

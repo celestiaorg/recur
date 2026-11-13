@@ -38,6 +38,7 @@ contents:
 # the system CA store at startup.
 depends:
   - ca-certificates
+  - tzdata
   - libgtk-4-1
   - libwebkitgtk-6.0-4
   - libgstreamer1.0-0
@@ -59,6 +60,7 @@ overrides:
       - libsecret
     depends:
       - ca-certificates
+      - tzdata
       - gtk4
       - webkitgtk6.0
       - gstreamer1

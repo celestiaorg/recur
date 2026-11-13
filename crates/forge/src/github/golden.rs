@@ -4,7 +4,6 @@
 
 use std::collections::HashMap;
 
-use pretty_assertions::assert_eq;
 use recur_domain::{
     Commit, MergeCommitMessage, MergeMethod, Pr, PrComment, PrSource, SquashCommitMessage,
 };

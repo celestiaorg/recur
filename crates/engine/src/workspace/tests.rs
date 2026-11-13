@@ -8,7 +8,6 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-use pretty_assertions::assert_eq;
 use recur_domain::{
     Group, Pr, PrSource, Project, Session, WORKSPACE_SOLO, Workspace, WorkspaceState,
 };

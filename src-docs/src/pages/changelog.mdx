@@ -46,6 +46,10 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - Claude Code chats start answering sooner: Recur snapshots the worktree for the turn's diff while Claude Code starts up instead of before launching it.
 - Reviewers no longer re-raise findings you ignored or marked invalid, and a re-review resolves open findings it verifies are fixed. Add a `## Reviews` section to a repository's `AGENTS.md` to tell reviewers what not to flag.
 - Cursor agents run on Cursor SDK 1.3.1 (was 1.0.38). Existing installs show an **Update** button in Settings > Providers > Cursor.
+- The schedule editor's time zone list comes from the system's time zone database. Linux packages now depend on `tzdata`.
+- Schedules and times shown in a chosen time zone follow the system's time zone database, so daylight-saving rule changes arrive with OS updates.
+- `recur-cli` reads `bundles-dir` from `~/.recur/config.*` as a plain `key: value` line. JSON-style config files are no longer read.
+- Bare URLs in hover and completion docs are clickable links, and bold, italic, code and links keep their styling inside list items.
 
 ### Security
 

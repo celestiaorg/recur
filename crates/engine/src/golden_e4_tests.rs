@@ -8,7 +8,6 @@
 use std::sync::Arc;
 
 use chrono::{TimeZone, Utc};
-use pretty_assertions::assert_eq;
 use recur_agent_tools::CreateWorkspaceRequest;
 use recur_domain::*;
 use serde_json::{Value, json};

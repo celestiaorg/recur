@@ -213,7 +213,7 @@ pub(crate) async fn download_verified(
         let _ = std::fs::remove_file(&staging);
         return Err(format!("lsp managed: download: {e}"));
     }
-    let got = hex::encode(hasher.finalize());
+    let got = recur_base::hex(hasher.finalize());
     if !want_sha256.is_empty() && got != want_sha256 {
         let _ = std::fs::remove_file(&staging);
         return Err(format!(
@@ -255,14 +255,11 @@ pub(crate) fn extract_tar_gz_named(
     want_base: &str,
 ) -> Result<(), String> {
     let input = std::fs::File::open(archive).map_err(|e| e.to_string())?;
-    let mut tr = tar::Archive::new(flate2::read::GzDecoder::new(input));
-    for entry in tr.entries().map_err(|e| e.to_string())? {
-        let mut entry = entry.map_err(|e| e.to_string())?;
-        if entry.header().entry_type() != tar::EntryType::Regular {
-            continue;
-        }
-        let name = entry.path().map_err(|e| e.to_string())?.into_owned();
-        if name.file_name().and_then(|n| n.to_str()) != Some(want_base) {
+    let mut tr = recur_base::tar::Archive::new(flate2::read::GzDecoder::new(input));
+    while let Some(mut entry) = tr.next_entry().map_err(|e| e.to_string())? {
+        if entry.kind != recur_base::tar::Kind::File
+            || Path::new(&entry.path).file_name().and_then(|n| n.to_str()) != Some(want_base)
+        {
             continue;
         }
         let mut out = create_exec(dest).map_err(|e| e.to_string())?;

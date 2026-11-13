@@ -33,7 +33,7 @@ pub fn format_elapsed(sec: i64) -> String {
 /// in en-US ("Oct 21, 2026 at 3:04 PM"), or "" when `zone` is not an IANA zone (Intl throws).
 pub fn format_medium_short_in(ms: i64, zone: &str) -> String {
     use chrono::TimeZone as _;
-    let Ok(tz) = zone.parse::<chrono_tz::Tz>() else {
+    let Ok(tz) = zone.parse::<recur_base::tz::Tz>() else {
         return String::new();
     };
     match tz.timestamp_millis_opt(ms).single() {

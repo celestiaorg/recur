@@ -1,3 +1,3 @@
 fn main() {
-    println!("cargo:rerun-if-changed=migrations");
+    recur_base::embed::generate("migrations", "migrations.rs");
 }

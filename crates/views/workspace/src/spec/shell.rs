@@ -679,6 +679,37 @@ async fn shows_open_pr_before_a_pull_request_exists(cx: &mut TestAppContext) {
     assert!(s.has("tb-merge"));
 }
 
+#[gpui::test]
+async fn shows_merging_and_ignores_repeat_clicks_while_a_merge_is_in_flight(
+    cx: &mut TestAppContext,
+) {
+    let held: Arc<Mutex<Vec<Release<recur_services::Result<Workspace>>>>> = Default::default();
+    let h = held.clone();
+    let opts = land(ws_land(json!({}))).merge_workspace(move |_, _| {
+        let (r, release) = hold();
+        h.lock().push(release);
+        r
+    });
+    let busy = "tb-merge=Merging…:off:Merge into main on disk: you are the only gate";
+    let mut s = gh_boot(cx, None, opts);
+    s.click("tb-merge");
+    s.click("tb-merge");
+    assert_eq!(held.lock().len(), 1);
+    assert!(s.has(busy));
+    s.click("tb-merge");
+    s.click("tb-merge");
+    assert_eq!(
+        held.lock().len(),
+        1,
+        "a repeat confirm must not merge twice"
+    );
+    for r in held.lock().drain(..) {
+        r.send(Ok(seed_ws(CODING)));
+    }
+    s.settle();
+    assert!(!s.has(busy));
+}
+
 fn remote_land(base: &str, require_pr: bool) -> WorkspaceLandState {
     ws_land(json!({"base": base, "remote": "origin", "requirePR": require_pr}))
 }

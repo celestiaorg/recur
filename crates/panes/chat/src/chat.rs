@@ -1528,11 +1528,6 @@ impl AgentChat {
             &self.props.reset_key,
             &format!("fact:{fact_id}"),
         );
-        self.reveal_block(key, cx)
-    }
-
-    /// Brings a transcript block to the top of the scrollport, hydrating it.
-    pub(crate) fn reveal_block(&mut self, key: String, cx: &mut Context<Self>) -> Task<bool> {
         self.reveal_key = key.clone();
         cx.spawn(async move |this, cx| {
             let frame = Duration::from_millis(16);

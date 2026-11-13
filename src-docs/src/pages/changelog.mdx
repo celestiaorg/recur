@@ -13,12 +13,14 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 
 - The sidebar can group workspaces by status (In progress, including draft PRs; In review; Done; Closed) instead of by project, with each project's working copy in a Working copies section: use the new button next to **Add project**. Scheduled runs stay in the project view.
 - Fable 5.2 in the Claude Code model picker. Mythos 5.2 appears automatically on accounts with access.
+- The New project dialog has a **Group** picker, so a project can go straight into a sidebar group when you add it.
 - The workspace header's **View PR** button has a dropdown with **Open in GitHub**, so you can jump straight to the pull request on GitHub.
 - `copy_files` entries ending in `/`, such as `node_modules/` or `target/`, copy the whole directory, so new workspaces start with dependencies already installed. On macOS the files are APFS clones: fast, with no extra disk space until files change.
 
 ### Fixed
 
 - Agents, terminals and git no longer fail with "Too many open files" after Recur has been open a while with many workspaces.
+- Follow-ups sent to a Claude agent that is waiting on a long background task (a training run, a build) keep reaching it right away while you keep talking to it, instead of waiting for the task to finish once the agent had been waiting 10 minutes.
 - Dragging a text selection past the edge of a code block scrolls the block, so long lines and tall blocks can be selected in full.
 
 ### Changed

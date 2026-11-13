@@ -485,9 +485,14 @@ impl WorkspaceView {
             }
         }
 
+        let on_screen = self.shell_active && self.presentation_active(cx);
+        if on_screen && self.tabs.is_some() && self.state.read(cx).boot_composer_focus {
+            self.state.update(cx, |s, _| s.boot_composer_focus = false);
+            self.focus_composer_pending = true;
+        }
         if self.focus_composer_pending {
             self.focus_composer_pending = false;
-            if self.shell_active && self.presentation_active(cx) {
+            if on_screen {
                 self.chat.update(cx, |c, cx| c.focus_composer(window, cx));
             }
         }

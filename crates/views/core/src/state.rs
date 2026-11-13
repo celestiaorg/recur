@@ -334,6 +334,8 @@ pub struct AppState {
     pub pr_diff_jump: Option<PrDiffJump>,
     /// One-shot: WorkspaceView selects this agent tab when the workspace lands.
     pub pending_chat_focus: Option<ChatRef>,
+    /// One-shot: the restored workspace's chat composer takes focus once it shows.
+    pub boot_composer_focus: bool,
     /// The chat tab on screen.
     pub focused_chat: Option<ChatRef>,
     /// The PR-detail agent dock is shown (session only).
@@ -468,6 +470,7 @@ impl AppState {
             observatory_jump: None,
             pr_diff_jump: None,
             pending_chat_focus: None,
+            boot_composer_focus: false,
             focused_chat: None,
             pr_agent_dock_open: true,
             scan_event: WorkspaceScanEvent {

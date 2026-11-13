@@ -9,6 +9,8 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 
 ## Unreleased
 
+## [0.7.0](https://github.com/celestiaorg/recur/releases/tag/v0.7.0) - 2026-11-13
+
 ### Added
 
 - The sidebar can group workspaces by status (In progress, including draft PRs; In review; Done; Closed) instead of by project, with each project's working copy in a Working copies section: use the new button next to **Add project**. Scheduled runs stay in the project view.
@@ -21,6 +23,22 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - ⌘9 (Ctrl+9 on Linux) selects the last chat tab in the workspace, as in web browsers. It is also under **Navigate → Last Tab**.
 - `/address-review` fixes or answers a pull request's unresolved review comments, replies on each thread, and resolves the ones it fixed. Only comments from people with write access and review bots count.
 - **Automatic fixes** under **Settings → Pull requests**: Recur resolves merge conflicts, fixes failing checks and addresses new review comments on your PRs by itself, in each PR's workspace, while its chat is idle. Each can be turned off.
+- Gruvbox app theme (dark), paired with the Gruvbox Dark Medium editor theme.
+- Arch Linux package (`.pkg.tar.zst`) built alongside the `.deb` and `.rpm`; install with `pacman -U`.
+
+### Changed
+
+- Loops are now called Workflows: the fifth chat mode is **Autopilot** and runs a workflow, and **Settings → Loops** is now **Settings → Workflows**. Bundle authors write `[[workflow]]` and `mode = "autopilot"`; existing bundles with `[[loop]]` and `mode = "loop"` keep working.
+- Agent mode chats can file findings, so a review asked for in Agent mode lands in the Findings panel.
+- Project dropdowns (new workspace, schedules, Inbox, Issues, Pull requests) show each project's icon next to its name.
+- Claude Code chats start answering sooner: Recur snapshots the worktree for the turn's diff while Claude Code starts up instead of before launching it.
+- Reviewers no longer re-raise findings you ignored or marked invalid, and a re-review resolves open findings it verifies are fixed. Add a `## Reviews` section to a repository's `AGENTS.md` to tell reviewers what not to flag.
+- Cursor agents run on Cursor SDK 1.3.1 (was 1.0.38). Existing installs show an **Update** button in Settings > Providers > Cursor.
+- The schedule editor's time zone list comes from the system's time zone database. Linux packages now depend on `tzdata`.
+- Schedules and times shown in a chosen time zone follow the system's time zone database, so daylight-saving rule changes arrive with OS updates.
+- `recur-cli` reads `bundles-dir` from `~/.recur/config.*` as a plain `key: value` line. JSON-style config files are no longer read.
+- Bare URLs in hover and completion docs are clickable links, and bold, italic, code and links keep their styling inside list items.
+- Downloads and in-app updates come from [celestiaorg/recur releases](https://github.com/celestiaorg/recur/releases) instead of `recur-releases`.
 
 ### Fixed
 
@@ -39,48 +57,26 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - `/re-review` on a Local PR, in the same tab as the earlier review, reviews only what changed since that pass.
 - Typing past the right edge of a text field (Settings, path fields and others) scrolls smoothly instead of showing doubled, jumping text, and pasting a long value scrolls to its end right away.
 - Files with spaces in their names can be dropped into chat as file mentions, including files outside the workspace such as Downloads.
-
-### Changed
-
-- Loops are now called Workflows: the fifth chat mode is **Autopilot** and runs a workflow, and **Settings → Loops** is now **Settings → Workflows**. Bundle authors write `[[workflow]]` and `mode = "autopilot"`; existing bundles with `[[loop]]` and `mode = "loop"` keep working.
-- Agent mode chats can file findings, so a review asked for in Agent mode lands in the Findings panel.
-- Project dropdowns (new workspace, schedules, Inbox, Issues, Pull requests) show each project's icon next to its name.
-- Claude Code chats start answering sooner: Recur snapshots the worktree for the turn's diff while Claude Code starts up instead of before launching it.
-- Reviewers no longer re-raise findings you ignored or marked invalid, and a re-review resolves open findings it verifies are fixed. Add a `## Reviews` section to a repository's `AGENTS.md` to tell reviewers what not to flag.
-- Cursor agents run on Cursor SDK 1.3.1 (was 1.0.38). Existing installs show an **Update** button in Settings > Providers > Cursor.
-- The schedule editor's time zone list comes from the system's time zone database. Linux packages now depend on `tzdata`.
-- Schedules and times shown in a chosen time zone follow the system's time zone database, so daylight-saving rule changes arrive with OS updates.
-- `recur-cli` reads `bundles-dir` from `~/.recur/config.*` as a plain `key: value` line. JSON-style config files are no longer read.
-- Bare URLs in hover and completion docs are clickable links, and bold, italic, code and links keep their styling inside list items.
+- Claude agents can no longer report findings through Claude Code's own findings tool, which never reached Recur's Findings panel.
+- An agent's closing message stands on its own instead of reading as a continuation of text hidden between tool calls.
+- Chats on OpenAI-compatible and ChatGPT providers no longer fail when a tool returns no output, such as reading an empty file.
 
 ### Security
 
 - API keys and other credentials (Cursor, Codex, Linear, bundle settings, compatible provider keys and headers, MCP server headers and env) are kept in the macOS Keychain or the Linux Secret Service keyring instead of in `recur.db`. Existing keys move there the first time Recur opens, and are wiped from the database. On Linux without `secret-tool`, they go to a `secrets.json` file only you can read.
 
-### Fixed
-
-- Claude agents can no longer report findings through Claude Code's own findings tool, which never reached Recur's Findings panel.
-- An agent's closing message stands on its own instead of reading as a continuation of text hidden between tool calls.
-
-### Fixed
-
-- Chats on OpenAI-compatible and ChatGPT providers no longer fail when a tool returns no output, such as reading an empty file.
-
 ## [0.6.0](https://github.com/celestiaorg/recur/releases/tag/v0.6.0) - 2026-11-05
 
 ### Added
 
-- Gruvbox app theme (dark), paired with the Gruvbox Dark Medium editor theme.
 - **File → Import Conductor Workspaces…** adopts Conductor's worktrees in place and brings their chats over as Recur chat tabs.
 - The PR dashboard supports bulk selection: Cmd-click a row, Shift-click a range, then Merge, Mark ready, Convert to draft, Approve, Update with base, Close, or Open in GitHub across the selection.
 - An optional **Terminals** page in the sidebar for shells that don't belong to a workspace. Turn it on under **Settings → Code editor → Terminal**.
 - A **Conventional Commits** project setting: `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and PR titles use `type(scope): summary`. It is saved in `.recur/project.toml`, so it applies to everyone on the repo.
 - Install script for building and installing Recur from source on Linux.
-- Arch Linux package (`.pkg.tar.zst`) built alongside the `.deb` and `.rpm`; install with `pacman -U`.
 
 ### Changed
 
-- Downloads and in-app updates come from [celestiaorg/recur releases](https://github.com/celestiaorg/recur/releases) instead of `recur-releases`.
 - Search results highlight the match in each line's preview.
 
 ### Fixed

@@ -337,3 +337,30 @@ async fn a_frame_of_the_turn_and_tool_dots_renders_only_the_dots(cx: &mut TestAp
     assert!(renders("::FieldView", &counts) >= 6, "{counts:?}");
     assert!(layouts.is_empty(), "{layouts:?}");
 }
+
+/// An idle focused composer redraws for its caret blink alone: twice a second, the dock only.
+#[gpui::test]
+async fn an_idle_focused_composer_redraws_only_when_its_caret_blinks(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    h.set_messages(long_chat(20));
+    h.focus_composer();
+    h.cx.update(|_, cx| recur_ui::motion::thaw(cx));
+    let step = |h: &mut H<'_>, n: u32| {
+        for _ in 0..n {
+            h.cx.executor()
+                .advance_clock(std::time::Duration::from_millis(50));
+            h.cx.run_until_parked();
+        }
+    };
+    step(&mut h, 20);
+    recur_ui::guard::count_renders(true);
+    step(&mut h, 40);
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    h.cx.update(|_, cx| recur_ui::motion::freeze(cx));
+    assert!(
+        (3..=5).contains(&renders("::DockPane", &counts)),
+        "{counts:?}"
+    );
+    assert_eq!(counts.len(), 1, "{counts:?}");
+}

@@ -62,25 +62,44 @@ pub fn progress(start: Instant, duration: Duration, cx: &App) -> f32 {
 pub const LOOP_FRAME: Duration = Duration::from_millis(50);
 
 thread_local! {
-    static LOOP_PENDING: std::cell::RefCell<std::collections::HashSet<gpui_kit::EntityId>> =
+    /// The soonest redraw already scheduled for each view.
+    static LOOP_PENDING: std::cell::RefCell<std::collections::HashMap<gpui_kit::EntityId, Instant>> =
         Default::default();
 }
 
 /// Redraws the view being drawn after [`LOOP_FRAME`], for animations that never settle (pulses,
-/// spinners, washes, caret blinks). `request_animation_frame` would redraw at the display rate
+/// spinners, washes). `request_animation_frame` would redraw at the display rate
 /// for as long as one is on screen, and every frame blocks the main thread on a Metal drawable,
 /// which under heavy system load takes seconds. No-op while frozen.
 pub fn loop_frame(window: &Window, cx: &App) {
+    frame_after(LOOP_FRAME, window, cx);
+}
+
+/// Redraws the view being drawn after `delay`, for an animation that next changes then (a caret
+/// blink): a redraw already due sooner covers it. No-op while frozen.
+pub fn frame_after(delay: Duration, window: &Window, cx: &App) {
     if is_frozen(cx) {
         return;
     }
     let view = window.current_view();
-    if !LOOP_PENDING.with_borrow_mut(|p| p.insert(view)) {
+    let due = now(cx) + delay;
+    let scheduled = LOOP_PENDING.with_borrow_mut(|p| match p.get(&view) {
+        Some(&at) if at <= due => false,
+        _ => {
+            p.insert(view, due);
+            true
+        }
+    });
+    if !scheduled {
         return;
     }
     cx.spawn(async move |cx| {
-        cx.background_executor().timer(LOOP_FRAME).await;
-        LOOP_PENDING.with_borrow_mut(|p| p.remove(&view));
+        cx.background_executor().timer(delay).await;
+        LOOP_PENDING.with_borrow_mut(|p| {
+            if p.get(&view) == Some(&due) {
+                p.remove(&view);
+            }
+        });
         cx.update(|cx| cx.notify(view));
     })
     .detach();
@@ -300,5 +319,54 @@ mod tests {
         cx.executor().advance_clock(LOOP_FRAME / 2);
         cx.run_until_parked();
         assert_eq!(PULSE_RENDERS.get(), drawn + 1, "one redraw per LOOP_FRAME");
+    }
+
+    struct Blink {
+        renders: u32,
+        pulse_too: bool,
+    }
+
+    impl gpui_kit::Render for Blink {
+        fn render(
+            &mut self,
+            window: &mut Window,
+            cx: &mut gpui_kit::Context<Self>,
+        ) -> impl gpui_kit::IntoElement {
+            self.renders += 1;
+            frame_after(Duration::from_millis(500), window, cx);
+            if self.pulse_too {
+                loop_frame(window, cx);
+            }
+            gpui_kit::div()
+        }
+    }
+
+    #[gpui_kit::test]
+    fn a_frame_after_redraws_once_when_due_unless_a_sooner_one_is(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        let ms = Duration::from_millis;
+        for pulse_too in [false, true] {
+            let (view, cx) = cx.add_window_view(|_, _| Blink {
+                renders: 0,
+                pulse_too,
+            });
+            cx.run_until_parked();
+            let renders =
+                |cx: &mut gpui_kit::VisualTestContext| view.read_with(cx, |b, _| b.renders);
+            let drawn = renders(cx);
+            cx.executor().advance_clock(LOOP_FRAME);
+            cx.run_until_parked();
+            let expect = if pulse_too { drawn + 1 } else { drawn };
+            assert_eq!(renders(cx), expect, "pulse_too={pulse_too}");
+            if !pulse_too {
+                cx.executor().advance_clock(ms(500) - LOOP_FRAME - ms(1));
+                cx.run_until_parked();
+                assert_eq!(renders(cx), drawn, "redrew before the blink was due");
+                cx.executor().advance_clock(ms(1));
+                cx.run_until_parked();
+                assert_eq!(renders(cx), drawn + 1, "one redraw when due");
+            }
+        }
     }
 }

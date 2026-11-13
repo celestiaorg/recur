@@ -675,6 +675,10 @@ impl Engine {
                 req.skip_record_user = true;
             }
         }
+        // The start checkpoint runs while the provider boots; the prompt
+        // waits for it so the snapshot predates every agent edit.
+        let mut start_checkpoint = None;
+        let mut ready: Option<recur_agent::Ready> = None;
         if req.skip_record_user {
             user_msg_id = if resume_open_id.is_empty() {
                 last_chat_prompt_id(&self.store, workspace_id, code)
@@ -682,7 +686,15 @@ impl Engine {
                 resume_open_id
             };
         } else {
-            self.take_checkpoint(&ws, &user_msg_id, "start").await;
+            let (eng, ws, id) = (self.arc(), ws.clone(), user_msg_id.clone());
+            let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+            start_checkpoint = Some(tokio::spawn(async move {
+                eng.take_checkpoint(&ws, &id, "start").await;
+                let _ = tx.send(());
+            }));
+            ready = Some(Box::pin(async move {
+                let _ = rx.await;
+            }));
         }
         let skip_user = req.skip_record_user;
         let spec_user_msg_id = req.user_message_id.clone();
@@ -702,6 +714,7 @@ impl Engine {
                     req,
                     steer,
                     emit: Some(emit),
+                    ready,
                 },
             )
             .await;
@@ -712,6 +725,9 @@ impl Engine {
         cleanup.canceled = is_canceled(err.map(|e| e as &(dyn std::error::Error + 'static)));
         if out.is_ok() {
             self.remember_standing_mode(workspace_id, code, &mode);
+        }
+        if let Some(h) = start_checkpoint {
+            let _ = h.await;
         }
         self.take_checkpoint(&ws, &user_msg_id, "end").await;
         let err_dyn = err.map(|e| e as &(dyn std::error::Error + 'static));

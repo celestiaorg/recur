@@ -111,6 +111,31 @@ async fn send_turns_checkpoint_diff_and_reset() {
     fx.te.close().await;
 }
 
+/// A provider that boots before the start checkpoint gets `ready` and edits
+/// only after it: the edit lands in the turn's diff, not its start snapshot.
+#[tokio::test]
+async fn deferring_provider_edits_after_the_start_checkpoint() {
+    let c = capture_same("sess-defer", "ok");
+    let inner = c.provider();
+    let fx = Fx::new(Some(crate::loops::test_support::AsyncProvider::deferring(
+        move |req, mut cx| {
+            let inner = Arc::clone(&inner);
+            async move {
+                let ready = cx.ready.take().expect("ready gate");
+                ready.await;
+                std::fs::write(req.worktree.join("turn1.txt"), "agent\n").unwrap();
+                inner.run_turn(req, cx).await
+            }
+        },
+    )));
+    let ws = fx.workspace("defer").await;
+    fx.send(&ws.id, "PA", "first", "sonnet").await;
+    let footers = footer_ids(&fx, &ws.id).await;
+    assert_eq!(footers.len(), 1);
+    assert_eq!(diff_paths(&fx, &ws.id, &footers[0]).await, ["turn1.txt"]);
+    fx.te.close().await;
+}
+
 /// A session with an unanswered user row and its start snapshot, then
 /// `mid.txt` written as the crashed turn's work.
 async fn interrupted_turn(fx: &Fx, ws: &Workspace) -> String {

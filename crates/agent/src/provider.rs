@@ -71,6 +71,13 @@ pub trait Provider: Send + Sync + 'static {
         cx: TurnContext,
     ) -> Result<TurnResult, ProviderError>;
 
+    /// Starts up before [`TurnContext::ready`] resolves and holds the prompt
+    /// until it does, so turn setup overlaps the CLI's boot. Otherwise the
+    /// engine awaits `ready` before [`Provider::run_turn`].
+    fn defers_prompt(&self) -> bool {
+        false
+    }
+
     /// Whether a stored resume handle belongs to this provider. False makes
     /// the engine drop the handle and fork-inject the transcript instead.
     fn resume_handle_fits(&self, handle: &str) -> bool;

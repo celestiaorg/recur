@@ -418,7 +418,7 @@ fn pr_settings_radio_dots_share_a_column(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
-fn pr_automatic_fixes_are_off_until_turned_on(cx: &mut TestAppContext) {
+fn pr_automatic_fixes_are_on_until_turned_off(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     s.open_settings();
     s.section("Pull requests");
@@ -427,13 +427,13 @@ fn pr_automatic_fixes_are_off_until_turned_on(cx: &mut TestAppContext) {
         "Fix failing checks automatically",
         "Address review comments automatically",
     ] {
-        assert!(s.has(&format!("tog:{title}:false")), "{title}");
+        assert!(s.has(&format!("tog:{title}:true")), "{title}");
     }
-    s.click("tog:Fix failing checks automatically:false");
-    assert!(s.has("tog:Fix failing checks automatically:true"));
+    s.click("tog:Fix failing checks automatically:true");
+    assert!(s.has("tog:Fix failing checks automatically:false"));
     let saved = s.saved();
-    assert!(saved.auto_fix_checks);
-    assert!(!saved.auto_update_conflicts && !saved.auto_address_review);
+    assert_eq!(saved.auto_fix_checks, Some(false));
+    assert!(saved.auto_update_conflicts_on() && saved.auto_address_review_on());
 }
 
 /// The menu item (`menu.action` `settings`) and ⌘, open

@@ -41,13 +41,13 @@ In a workspace chat, `/fix-checks` investigates failing checks, `/address-review
 
 ## Automatic fixes
 
-**Settings → Pull requests → Automatic fixes** has Recur run those actions for you. Each one is off until you turn it on:
+**Settings → Pull requests → Automatic fixes** has Recur run those actions for you. Each one is on until you turn it off:
 
 - **Fix merge conflicts automatically** runs Update with base when a PR conflicts with its base. A clean merge or rebase just pushes; when git leaves conflicts, `/update` asks the agent to resolve them.
 - **Fix failing checks automatically** runs `/fix-checks` when a PR's checks fail.
 - **Address review comments automatically** runs `/address-review` when a PR has new review activity. It runs a turn only when a comment still needs a response.
 
-They apply to your own open PRs that have a Recur workspace (not a workspace made from someone else's PR), and run in that workspace's chat, the same way you would. Recur checks after each PR sync (every few minutes, while it is open), acts on what is already there, and waits while the chat is busy. A re-run that fails again counts as a new failure. Conflicts and checks stop after 3 tries in a row until the PR is clean again (checks pass, or the branch merges cleanly). Address review stops after 3 runs on a PR, until Recur restarts. The workspace's activity feed says what started each run.
+They apply to your own open PRs that have a Recur workspace (not a workspace made from someone else's PR), and run in that workspace's chat, the same way you would. Recur checks after each PR sync (every few minutes, while it is open), and waits while the chat is busy. Only new problems count: a conflict, failing check or comment that was already there when Recur started, or when you turned the setting on, is left for you. A re-run that fails again counts as a new failure. Conflicts and checks stop after 3 tries in a row until the PR is clean again (checks pass, or the branch merges cleanly). Address review stops after 3 runs on a PR, until Recur restarts. The workspace's activity feed says what started each run.
 
 `/address-review` reads only comments from people with write access to the repository and from review bots such as Copilot. It fixes what it agrees with, pushes, replies on each thread from your GitHub account, and resolves the threads it fixed. Disputed threads stay open for the reviewer.
 

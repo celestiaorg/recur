@@ -98,15 +98,17 @@ impl Ax {
             pr,
             marker,
         };
-        ax.settings(true, true, true);
+        // On by default: this first sweep only records the clean PR.
+        ax.sweep().await;
+        assert!(ax.prompts().is_empty());
         ax
     }
 
     fn settings(&self, conflicts: bool, checks: bool, review: bool) {
         let mut s = self.te.store.settings();
-        s.auto_update_conflicts = conflicts;
-        s.auto_fix_checks = checks;
-        s.auto_address_review = review;
+        s.auto_update_conflicts = Some(conflicts);
+        s.auto_fix_checks = Some(checks);
+        s.auto_address_review = Some(review);
         self.te.store.set_settings(s);
     }
 
@@ -226,8 +228,13 @@ async fn only_the_viewers_open_pr_with_a_live_workspace_runs() {
         p.checks_ok = false;
     });
     ax.sweep().await;
-    assert!(ax.prompts().is_empty(), "off by default");
+    assert!(ax.prompts().is_empty(), "turned off");
     ax.settings(false, true, false);
+    ax.sweep().await;
+    assert!(
+        ax.prompts().is_empty(),
+        "turned on: an existing failure is left alone"
+    );
     type Skip = (&'static str, fn(&mut Pr));
     let skip: [Skip; 4] = [
         ("someone else's PR", |p| p.author_login = "sam".into()),
@@ -250,8 +257,11 @@ async fn only_the_viewers_open_pr_with_a_live_workspace_runs() {
     ax.te
         .store
         .update_workspace(&ax.ws.id, |w| w.run_started = false);
+    ax.pr(|p| p.checks_ok = true);
     ax.sweep().await;
-    assert_eq!(sent(&ax.prompts(), "FIX-CHECKS-WIRE"), 1);
+    ax.pr(|p| p.checks_ok = false);
+    ax.sweep().await;
+    assert_eq!(sent(&ax.prompts(), "FIX-CHECKS-WIRE"), 1, "a new failure");
     ax.te.close().await;
 }
 
@@ -273,6 +283,7 @@ async fn review_activity_runs_address_review_only_when_it_has_a_prompt() {
         )
         .await;
     let tabs = ax.te.engine.list_workspace_chats(&ax.ws.id).len();
+    ax.pr(|p| p.updated_at = "2026-11-13T10:05:00Z".into());
     ax.sweep().await;
     assert_eq!(sent(&ax.prompts(), "WIRE"), 0, "nothing to answer: no turn");
     assert_eq!(

@@ -24,22 +24,22 @@ const AUTO: [(&str, &str, &str, Get, Set); 3] = [
         "auto-conflicts",
         "Fix merge conflicts automatically",
         "Runs Update with base, then /update when git leaves conflicts.",
-        |s| s.auto_update_conflicts,
-        |s, v| s.auto_update_conflicts = v,
+        |s| s.auto_update_conflicts_on(),
+        |s, v| s.auto_update_conflicts = Some(v),
     ),
     (
         "auto-checks",
         "Fix failing checks automatically",
         "Runs /fix-checks when a PR's checks fail.",
-        |s| s.auto_fix_checks,
-        |s, v| s.auto_fix_checks = v,
+        |s| s.auto_fix_checks_on(),
+        |s, v| s.auto_fix_checks = Some(v),
     ),
     (
         "auto-review",
         "Address review comments automatically",
         "Runs /address-review on new review activity. Only comments from people with write access and review bots count, and replies post from your GitHub account.",
-        |s| s.auto_address_review,
-        |s, v| s.auto_address_review = v,
+        |s| s.auto_address_review_on(),
+        |s, v| s.auto_address_review = Some(v),
     ),
 ];
 
@@ -159,7 +159,7 @@ impl SettingsView {
         }
         let mut autos = Vec::new();
         for (id, title, desc, get, set) in AUTO {
-            let on = s.as_ref().is_some_and(get);
+            let on = s.as_ref().is_none_or(get);
             autos.push(
                 Row::new()
                     .child(copy(id, title, Some(vec![span(desc)]), cx))
@@ -185,7 +185,7 @@ impl SettingsView {
             .child(radio_rows(list, w, window, cx))
             .child(
                 settings_group("grp-auto", "Automatic fixes")
-                    .blurb("For your PR with a Recur workspace: runs in that workspace while Recur is open and its chat is idle, up to 3 tries per PR (conflicts and checks reset once the PR is clean again).")
+                    .blurb("For your PR with a Recur workspace: runs in that workspace while Recur is open and its chat is idle. Only new problems count, up to 3 tries per PR (conflicts and checks reset once the PR is clean again).")
                     .child(rows(GROUP_ROWS, autos, window, cx)),
             )
             .into_any_element()

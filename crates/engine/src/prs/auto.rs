@@ -3,8 +3,11 @@
 //! Merge conflicts run Update with base, then `/update` when git leaves
 //! markers; failing checks run `/fix-checks`; new review activity runs
 //! `/address-review`, whose script sends nothing when no comment needs a
-//! response. The first sweep acts on what a PR already shows.
+//! response. What a PR already shows when Recur first sees it (at launch, or
+//! when a toggle turns on) is only recorded, never acted on: everything is on
+//! by default, so a launch must not start a turn on every red PR.
 
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 
 use recur_domain::{CHAT_MODE_AGENT, Pr, UPDATE_WORKSPACE_CONFLICT, normalize_chat_mode};
@@ -101,15 +104,18 @@ pub(crate) struct AutoState {
 
 /// One sweep's decisions: at most one action per workspace, conflicts
 /// first (a conflicting branch often fails checks too), then checks, then
-/// review. A busy workspace leaves its condition unconsumed for the next sweep;
-/// entries of PRs that are no longer candidates are dropped.
+/// review. The first sight of a PR (per kind) only records its state. A
+/// busy workspace leaves its condition unconsumed for the next sweep;
+/// entries of PRs that are no longer candidates, and of kinds turned off,
+/// are dropped, so turning a toggle back on starts from what it sees.
 pub(crate) fn auto_actions(
     cands: &[AutoCandidate],
     on: AutoToggles,
     st: &mut AutoState,
 ) -> Vec<AutoAction> {
     let live: HashSet<&str> = cands.iter().map(|c| c.pr_id.as_str()).collect();
-    st.prs.retain(|(id, _), _| live.contains(id.as_str()));
+    st.prs
+        .retain(|(id, kind), _| live.contains(id.as_str()) && on.on(*kind));
     let mut out = Vec::new();
     for c in cands {
         for kind in [AutoKind::Conflict, AutoKind::Checks, AutoKind::Review] {
@@ -121,7 +127,17 @@ pub(crate) fn auto_actions(
                 AutoKind::Checks => (c.checks_failing, c.checks_green),
                 AutoKind::Review => (false, false),
             };
-            let e = st.prs.entry((c.pr_id.clone(), kind)).or_default();
+            let e = match st.prs.entry((c.pr_id.clone(), kind)) {
+                Entry::Occupied(o) => o.into_mut(),
+                Entry::Vacant(v) => {
+                    v.insert(AutoPr {
+                        active: cond,
+                        seen: c.updated_at.clone(),
+                        ..AutoPr::default()
+                    });
+                    continue;
+                }
+            };
             if clean {
                 e.attempts = 0;
             }
@@ -163,11 +179,16 @@ impl Engine {
     pub async fn run_pr_automations(&self) {
         let s = self.settings();
         let on = AutoToggles {
-            conflicts: s.auto_update_conflicts,
-            checks: s.auto_fix_checks,
-            review: s.auto_address_review,
+            conflicts: s.auto_update_conflicts_on(),
+            checks: s.auto_fix_checks_on(),
+            review: s.auto_address_review_on(),
         };
-        if !(on.conflicts || on.checks || on.review) || self.is_shutting_down() {
+        if !(on.conflicts || on.checks || on.review) {
+            // Turning a toggle back on starts from what it sees.
+            self.prs.auto.lock().prs.clear();
+            return;
+        }
+        if self.is_shutting_down() {
             return;
         }
         let cands: Vec<AutoCandidate> = self
@@ -407,45 +428,62 @@ mod tests {
         out
     }
 
-    /// State after Recur has swept a clean `c` once (its review consumed).
+    /// State after Recur has seen a clean `c` once.
     fn seen(c: &AutoCandidate, on: AutoToggles) -> AutoState {
         let mut st = AutoState::default();
-        sweep(c, on, &mut st);
         assert!(sweep(c, on, &mut st).is_empty());
         st
     }
 
     #[test]
-    fn the_first_sweep_acts_on_what_a_pr_already_shows() {
+    fn what_a_pr_already_shows_is_recorded_not_acted_on() {
         let mut c = cand("a");
         c.conflicting = true;
         c.checks_failing = true;
         let mut st = AutoState::default();
-        assert_eq!(sweep(&c, ALL, &mut st), [AutoKind::Conflict]);
-        assert_eq!(sweep(&c, ALL, &mut st), [AutoKind::Checks]);
-        assert_eq!(sweep(&c, ALL, &mut st), [AutoKind::Review]);
+        assert!(sweep(&c, ALL, &mut st).is_empty(), "first sight");
         assert!(
             sweep(&c, ALL, &mut st).is_empty(),
             "still the same occurrence"
         );
+        c.checks_failing = false;
+        sweep(&c, ALL, &mut st);
+        c.checks_failing = true;
+        assert_eq!(sweep(&c, ALL, &mut st), [AutoKind::Checks], "a new failure");
+        c.updated_at = "t1".into();
+        assert_eq!(sweep(&c, ALL, &mut st), [AutoKind::Review]);
     }
 
     #[test]
     fn toggles_gate_their_kind() {
         let mut c = cand("a");
-        let mut st = seen(&c, ALL);
+        let mut st = seen(&c, CHECKS);
         c.conflicting = true;
         c.checks_failing = true;
-        assert!(sweep(&c, AutoToggles::default(), &mut st).is_empty());
         assert_eq!(sweep(&c, CHECKS, &mut st), [AutoKind::Checks]);
+        assert!(
+            sweep(
+                &cand("b"),
+                AutoToggles::default(),
+                &mut AutoState::default()
+            )
+            .is_empty()
+        );
     }
 
     #[test]
-    fn a_toggle_turned_on_acts_on_what_it_sees() {
+    fn a_toggle_turned_on_starts_from_what_it_sees() {
         let mut c = cand("a");
         let mut st = seen(&c, AutoToggles::default());
         c.checks_failing = true;
-        assert_eq!(sweep(&c, CHECKS, &mut st), [AutoKind::Checks]);
+        assert!(sweep(&c, CHECKS, &mut st).is_empty());
+
+        // Off and on again also starts over.
+        let mut c = cand("b");
+        let mut st = seen(&c, CHECKS);
+        sweep(&c, AutoToggles::default(), &mut st);
+        c.checks_failing = true;
+        assert!(sweep(&c, CHECKS, &mut st).is_empty());
     }
 
     #[test]
@@ -578,13 +616,12 @@ mod tests {
     }
 
     #[test]
-    fn a_pr_that_drops_out_is_forgotten() {
+    fn a_pr_seen_again_after_dropping_out_starts_over() {
         let mut c = cand("a");
-        c.checks_failing = true;
-        let mut st = AutoState::default();
-        assert_eq!(sweep(&c, CHECKS, &mut st), [AutoKind::Checks]);
+        let mut st = seen(&c, CHECKS);
         assert!(auto_actions(&[], CHECKS, &mut st).is_empty());
         assert!(st.prs.is_empty());
-        assert_eq!(sweep(&c, CHECKS, &mut st), [AutoKind::Checks]);
+        c.checks_failing = true;
+        assert!(sweep(&c, CHECKS, &mut st).is_empty(), "first sight again");
     }
 }

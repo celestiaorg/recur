@@ -2256,3 +2256,78 @@ fn in_memory_store_has_demo_and_skips_db() {
     assert!(st.save_scheduled_prompt(&Default::default()).is_err());
     let _ = FindingStatus::Open;
 }
+
+fn settings_row(st: &Store) -> String {
+    db(st)
+        .with(|c| {
+            c.query_row("SELECT doc_json FROM settings", [], |r| r.get(0))
+                .map_err(|source| crate::Error::Sql {
+                    context: String::new(),
+                    source,
+                })
+        })
+        .unwrap()
+}
+
+#[test]
+fn secrets_stay_out_of_recur_db() {
+    let dir = tempfile::tempdir().unwrap();
+    let st = open_temp(dir.path());
+    let mut set = st.settings();
+    set.cursor_api_key = "sk-cursor-secret".into();
+    st.set_settings(set.clone());
+    assert!(!settings_row(&st).contains("sk-cursor-secret"));
+    let file = dir.path().join("secrets.json");
+    assert!(
+        fs::read_to_string(&file)
+            .unwrap()
+            .contains("sk-cursor-secret")
+    );
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let mode = fs::metadata(&file).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600);
+    }
+    st.close().unwrap();
+    assert_eq!(Store::open(&db_file(dir.path())).unwrap().settings(), set);
+}
+
+#[test]
+fn plaintext_secrets_migrate_out_of_recur_db() {
+    let dir = tempfile::tempdir().unwrap();
+    let st = open_temp(dir.path());
+    let mut set = st.settings();
+    set.codex_api_key = format!("sk-legacy-codex{}", "x".repeat(9000));
+    set.bundle_values
+        .insert("recur.linear.api-key".into(), "lin_legacy".into());
+    db(&st).upsert_singleton("settings", &set).unwrap();
+    st.close().unwrap();
+
+    let st = Store::open(&db_file(dir.path())).unwrap();
+    assert_eq!(st.settings(), set);
+    let row = settings_row(&st);
+    assert!(!row.contains("sk-legacy-codex") && !row.contains("lin_legacy"));
+    st.close().unwrap();
+    let raw = fs::read(db_file(dir.path())).unwrap();
+    assert!(!raw.windows(15).any(|w| w == b"sk-legacy-codex"));
+    assert_eq!(Store::open(&db_file(dir.path())).unwrap().settings(), set);
+}
+
+#[test]
+fn partial_secrets_row_merges_over_the_vault() {
+    let dir = tempfile::tempdir().unwrap();
+    let st = open_temp(dir.path());
+    let mut set = st.settings();
+    set.cursor_api_key = "sk-cursor".into();
+    set.linear_api_key = "lin".into();
+    st.set_settings(set.clone());
+    let mut older = st.settings();
+    older.take_secrets();
+    older.codex_api_key = "sk-codex".into();
+    db(&st).upsert_singleton("settings", &older).unwrap();
+    st.close().unwrap();
+
+    set.codex_api_key = "sk-codex".into();
+    assert_eq!(Store::open(&db_file(dir.path())).unwrap().settings(), set);
+    assert!(!settings_row(&Store::open(&db_file(dir.path())).unwrap()).contains("sk-codex"));
+}

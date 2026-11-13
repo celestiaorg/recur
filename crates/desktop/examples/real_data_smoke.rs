@@ -248,7 +248,7 @@ fn prepare(src: &Path, root: &Path) -> Res<()> {
     {
         let name = entry.file_name().to_string_lossy().into_owned();
         let path = entry.path();
-        if path.is_file() && name.ends_with(".json") {
+        if path.is_file() && name.ends_with(".json") && name != "secrets.json" {
             std::fs::copy(&path, data.join(&name)).map_err(|e| format!("copy {name}: {e}"))?;
         } else if path.is_dir()
             && [

@@ -50,8 +50,13 @@ depends:
   - libxcb1
   - libwayland-client0
   - libvulkan1
+# secret-tool keeps API keys in the Secret Service keyring (else a 0600 file).
+recommends:
+  - libsecret-tools
 overrides:
   rpm:
+    recommends:
+      - libsecret
     depends:
       - ca-certificates
       - gtk4
@@ -67,6 +72,8 @@ overrides:
       - libwayland-client
       - vulkan-loader
   archlinux:
+    recommends:
+      - libsecret
     depends:
       - ca-certificates
       - gtk4

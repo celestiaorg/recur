@@ -415,6 +415,9 @@ impl AgentChat {
         } else {
             let (transcript, dock) = self.panes(cx);
             let fit = dock.read(cx).fit.clone();
+            if let Some(f) = self.find.as_ref().filter(|f| f.open) {
+                root = root.child(f.bar.clone());
+            }
             root = root
                 .child(recur_ui::style::isolated_view(
                     &transcript,

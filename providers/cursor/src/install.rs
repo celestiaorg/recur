@@ -19,7 +19,7 @@ use crate::wire::null_default;
 /// minified anchors from this build; fetching "latest" would break them on
 /// the next Cursor publish. Bump only together with refreshed anchors
 /// (`.agents/skills/repin-cursor-sdk/SKILL.md`).
-pub const PINNED_SDK_VERSION: &str = "1.0.38";
+pub const PINNED_SDK_VERSION: &str = "1.3.1";
 
 /// The pinned release's PyPI metadata.
 pub(crate) fn pypi_pinned_project() -> String {

@@ -2,7 +2,9 @@ name: Release
 
 # Pushing a vX.Y.Z tag builds a universal "Recur.app" (stamping X.Y.Z into
 # Info.plist) in a styled DMG plus its updater zip, and the recur Linux
-# tarballs, .debs, .rpms and Arch packages, in parallel. Only once every build succeeds does
+# tarballs, .debs, .rpms and Arch packages, in parallel. The app's arm64 and
+# x86_64 slices build in their own jobs (`build-mac-slice`, half the wall time
+# of one after the other); `build-mac` joins, signs and packages them. Only once every build succeeds does
 # `publish` create the GitHub release and attach them all with a
 # SHA256SUMS and the signed manifest.json the in-app updater reads
 # (RECUR_UPDATE_URL), so a failed build never leaves a partial release.
@@ -45,17 +47,48 @@ permissions:
   contents: write
 
 jobs:
-  build-mac:
+  # Unsigned release binaries for one architecture; no signing secrets here.
+  build-mac-slice:
+    strategy:
+      matrix:
+        target: [aarch64-apple-darwin, x86_64-apple-darwin]
     runs-on: macos-26
-    timeout-minutes: 150
+    timeout-minutes: 120
     env:
-      HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
-      HAS_NOTARY: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
-      SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || 'Developer ID Application' }}
+      # Compiled in, so it is set here and not in build-mac.
       RECUR_UPDATE_URL: ${{ secrets.UPDATER_SIGNING_KEY != '' && 'https://github.com/celestiaorg/recur/releases/latest/download/manifest.json' || '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
+      - run: VERSION="$(build/version.sh)" BUILD_ONLY=${{ matrix.target }} mise run macos:package
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mac-slice-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release/recur
+            target/${{ matrix.target }}/release/recur-cli
+          if-no-files-found: error
+          retention-days: 1
+
+  build-mac:
+    needs: build-mac-slice
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
+      HAS_NOTARY: ${{ secrets.MACOS_CERT_P12_BASE64 != '' && secrets.APPLE_ID != '' }}
+      SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || 'Developer ID Application' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+      - uses: actions/download-artifact@v8
+        with:
+          name: mac-slice-aarch64-apple-darwin
+          path: target/aarch64-apple-darwin/release
+      - uses: actions/download-artifact@v8
+        with:
+          name: mac-slice-x86_64-apple-darwin
+          path: target/x86_64-apple-darwin/release
 
       - name: Import signing certificate and notary credentials
         if: env.HAS_SIGNING == 'true'
@@ -86,9 +119,9 @@ jobs:
       # build/darwin/package.sh signs (and with KEYCHAIN_PROFILE notarizes and
       # staples) the app and the DMG. The temp keychain holds exactly one
       # identity, so the common-name prefix is enough for codesign to select it.
-      - name: Build, sign, notarize
+      - name: Join, sign, notarize
         run: |
-          export UNIVERSAL=true VERSION="$(build/version.sh)"
+          export UNIVERSAL=true PREBUILT=true VERSION="$(build/version.sh)"
           if [ "$HAS_SIGNING" != true ]; then unset SIGN_IDENTITY; fi
           if [ "$HAS_NOTARY" = true ]; then export KEYCHAIN_PROFILE=recur-notary; fi
           mise run macos:package

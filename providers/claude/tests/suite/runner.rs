@@ -198,6 +198,61 @@ async fn background_hold_ceiling() {
     assert_eq!(results, ["server up"]);
 }
 
+/// Each steer during a hold restarts the ceiling, so a later steer still
+/// lands after the first ceiling would have closed stdin.
+#[tokio::test]
+async fn steer_restarts_background_hold_ceiling() {
+    let dir = tempfile::tempdir().unwrap();
+    let held = dir.path().join("held");
+    let out = dir.path().join("steer.ndjson");
+    let body = format!(
+        r#"read -r seed
+echo '{{"type":"assistant","message":{{"content":[{{"type":"tool_use","id":"t1","name":"Bash","input":{{"command":"sleep 600"}}}}]}}}}'
+echo '{{"type":"user","message":{{"content":[{{"type":"tool_result","tool_use_id":"t1","content":"running"}}]}}}}'
+{BG_LIVE}
+{}
+touch '{held}'
+read -r a
+read -r b
+printf '%s\n%s\n' "$a" "$b" > '{out}'
+{}
+{BG_EMPTY}
+cat >/dev/null
+"#,
+        bg_result("waiting"),
+        bg_result("answered"),
+        held = held.display(),
+        out = out.display()
+    );
+    let bin = fake(dir.path(), &body);
+    let p = ClaudeProvider::new(ClaudeConfig {
+        bin: bin.to_string_lossy().into_owned(),
+        background_hold_ceiling: Duration::from_secs(2),
+    });
+    let (turn, cx) = Turn::new(true);
+    let r = req("go", dir.path());
+    let task = tokio::spawn(async move { p.run_turn(r, cx).await });
+    while !held.exists() {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    for (wait, text) in [(1000, "first"), (1500, "second")] {
+        tokio::time::sleep(Duration::from_millis(wait)).await;
+        let (s, ack) = Steer::new(text, Some(text.into()));
+        turn.steer.as_ref().unwrap().send(s).await.unwrap();
+        assert!(ack.await.unwrap(), "{text} steer not delivered");
+    }
+    let res = tokio::time::timeout(Duration::from_secs(5), task)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert_eq!(res.text, "answered");
+    assert_eq!(
+        std::fs::read_to_string(&out).unwrap(),
+        user_message_line("first", &[]) + &user_message_line("second", &[])
+    );
+}
+
 /// A plain steer is acked only after a stdin write; one still pending when
 /// the turn unwinds nacks so the engine falls back to a new turn.
 #[tokio::test]

@@ -1727,7 +1727,7 @@ impl AgentChat {
             let name = first.rsplit(['/', '\\']).next().unwrap_or(first);
             toast(
                 ToastKind::Info,
-                format!("Can't mention “{name}”: paths with spaces aren't supported yet"),
+                format!("Can't mention “{name}”: paths with @ or quotes aren't supported"),
                 cx,
             );
         }
@@ -1786,7 +1786,7 @@ impl AgentChat {
                 let name = p.rsplit(['/', '\\']).next().unwrap_or(p);
                 toast(
                     ToastKind::Info,
-                    format!("Can't mention “{name}”: paths with spaces aren't supported yet"),
+                    format!("Can't mention “{name}”: paths with @ or quotes aren't supported"),
                     cx,
                 );
                 continue;

@@ -265,3 +265,22 @@ fn attach_sizes() {
     assert_eq!(format_attach_size(3 * 1024 * 1024 + 300_000), "3.3 MB");
     assert_eq!(format_attach_size(12 * 1024 * 1024), "12 MB");
 }
+
+#[test]
+fn quoted_spaced_mentions() {
+    let (d, r) = root();
+    touch(d.path(), "docs/My File.md");
+    let outside = tempfile::tempdir().unwrap();
+    touch(outside.path(), "My Notes.md");
+    let abs = outside.path().join("My Notes.md");
+    let text = format!(
+        r#"read @"docs/My File.md:2" and @"{}" but not @"hello world""#,
+        abs.display()
+    );
+    let got = collect_file_mentions(&text, &r);
+    assert_eq!(got.len(), 2);
+    assert_eq!(got[0].chip, "docs/My File.md:2");
+    assert_eq!(got[0].start_line, 2);
+    assert!(got[1].abs.ends_with("My Notes.md"));
+    assert!(wrap_attached_file_mentions(&text, &r).contains("The user has attached these files"));
+}

@@ -954,7 +954,7 @@ impl NewTaskModal {
                             Some(simplify),
                             &wire_attachments(&drafts),
                         ),
-                        "Could not start the loop",
+                        "Could not start the workflow",
                     )
                     .await
                 } else {
@@ -1006,7 +1006,7 @@ impl NewTaskModal {
                 toast(
                     ToastKind::Success,
                     if mode == ChatMode::Loop {
-                        "Loop started"
+                        "Workflow started"
                     } else {
                         "Workspace created"
                     },
@@ -1279,7 +1279,7 @@ impl NewTaskModal {
         let models = self.models.read(cx).focus_handles(cx);
         named.extend(["Model", "Model flags"].into_iter().zip(models));
         let loops = self.loops.read(cx).focus_handles(cx);
-        named.extend(["Loop", "Policy"].into_iter().zip(loops));
+        named.extend(["Workflow", "Policy"].into_iter().zip(loops));
         named
             .into_iter()
             .find(|(_, h)| h.contains_focused(window, cx))

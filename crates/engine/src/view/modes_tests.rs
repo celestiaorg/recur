@@ -283,14 +283,14 @@ fn setup_status_shows_setup_and_slot_waits() {
     );
     assert_eq!(
         s(|w| w.phase = "waiting for a slot".into()),
-        "Waiting for a loop slot…"
+        "Waiting for a workflow slot…"
     );
     assert_eq!(
         s(|w| {
             w.phase = "waiting for a slot".into();
             w.worktree_path = "/tmp/wt".into();
         }),
-        "Waiting for a loop slot…"
+        "Waiting for a workflow slot…"
     );
     assert_eq!(
         s(|w| {

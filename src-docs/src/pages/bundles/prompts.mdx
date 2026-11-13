@@ -28,9 +28,9 @@ Type `/` at the start of the composer to see available actions. Actions without 
 | `/github` | Work on a GitHub issue (GitHub bundle) |
 | `/linear` | Work on a Linear issue (Linear bundle) |
 
-These start a [Loop](/concepts/loop) in a Loop chat:
+These start a [workflow](/concepts/workflows) in an Autopilot chat:
 
-| Prompt | Loop |
+| Prompt | Workflow |
 | --- | --- |
 | `/to-a-pr` | To a PR |
 | `/review-and-fix` | Review & fix |
@@ -55,7 +55,7 @@ script = "src/explain.ts"
 
 The script returns `{ prompt, display? }`. Its context includes workspace environment and an editor snapshot. Start from a script in the shipped Chat bundle when you need context fields or SDK helpers.
 
-Optional `mode` (`ask`, `plan`, `agent`, `review`, or `loop`) routes the action to that mode. With `mode = "loop"`, set `loop` to a `[[loop]]` id to start that loop. `tab_group` routes actions into the nearest idle chat in the same group; without a group, mode routing reuses the nearest idle chat in that mode. `fresh_session = true` starts fresh provider context while keeping the chat UI. It cannot be used with Loop mode.
+Optional `mode` (`ask`, `plan`, `agent`, `review`, or `autopilot`) routes the action to that mode. With `mode = "autopilot"`, set `workflow` to a `[[workflow]]` id to start that workflow. The older `mode = "loop"` and `loop` keys still work. `tab_group` routes actions into the nearest idle chat in the same group; without a group, mode routing reuses the nearest idle chat in that mode. `fresh_session = true` starts fresh provider context while keeping the chat UI. It cannot be used with Autopilot mode.
 
 For arguments, use `takesArgs = true`, or declare named `[[prompt.arg]]` tables. Named arguments imply `takesArgs` and are available in `ctx.params`; the combined argument text is in `ctx.args`. Keep the prompt's scalar fields before its nested argument tables in TOML.
 

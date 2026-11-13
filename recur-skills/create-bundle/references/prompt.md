@@ -16,11 +16,11 @@ may shadow a slash after id dedupe.
 | `name` | yes | | Menu label |
 | `description` | | | Menu subtitle |
 | `slash` | | kebab of `name` | `^[a-z][a-z0-9-]*$` (no leading `/` in the field) |
-| `mode` | | (stay on current chat) | `ask` \| `plan` \| `agent` \| `review` \| `loop`: find idle tab / create |
-| `loop` | | | `[[loop]]` id. Implies `mode = "loop"`. Pins that loop on the routed tab before send |
+| `mode` | | (stay on current chat) | `ask` \| `plan` \| `agent` \| `review` \| `autopilot`: find idle tab / create |
+| `workflow` | | | `[[workflow]]` id. Implies `mode = "autopilot"`. Pins that workflow on the routed tab before send. `loop` / `mode = "loop"` still work |
 | `timeoutMs` | | 5000 | `0` or `1..30000` |
 | `tab_group` | | | Shared chat-tab slot (`^[a-z][a-z0-9-]*$`). Requires `mode`. Nearest idle tab in the group, else create. Omit: nearest idle tab in `mode`, else create |
-| `fresh_session` | | false | New provider session on the landed tab, independent of `tab_group`. Not valid with `mode = "loop"` |
+| `fresh_session` | | false | New provider session on the landed tab, independent of `tab_group`. Not valid with `mode = "autopilot"` |
 | `interpreter` | | `shebang` | `typescript` \| `shebang` |
 | `script` | * | | Pack-relative path. XOR `body` |
 | `body` | * | | Inline. XOR `script` |
@@ -62,15 +62,15 @@ interpreter = "typescript"
 script = "src/fix-findings.ts"
 ```
 
-A loop kickoff from any chat (idle Loop tab or a new one; no typed goal):
+A workflow kickoff from any chat (idle Autopilot tab or a new one; no typed goal):
 
 ```toml
 [[prompt]]
 id = "acme.chat.review-and-fix"
 name = "Review & fix"
 slash = "review-and-fix"
-mode = "loop"
-loop = "recur.loops.converge"
+mode = "autopilot"
+workflow = "recur.loops.converge"
 interpreter = "shebang"
 body = '''
 #!/bin/sh
@@ -78,7 +78,7 @@ printf '%s\n' '{"prompt":"Review the current worktree and fix until the bar pass
 '''
 ```
 
-The slash `prompt` is the first user-turn wire. `[[loop]] prompt` is the
+The slash `prompt` is the first user-turn wire. `[[workflow]] prompt` is the
 conductor’s standing charter on later Maestro turns: see
-[loops.md](loops.md). Do not confuse with `[[command.prompts]]` (pre-run
+[workflows.md](workflows.md). Do not confuse with `[[command.prompts]]` (pre-run
 fields on a command) or with `SKILL.md` (Agent Skills: `/create-skill`).

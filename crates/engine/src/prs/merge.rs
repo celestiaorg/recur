@@ -104,7 +104,7 @@ pub fn local_merge_commit_message(
 ) -> String {
     let mut title = single_line(&pr.title);
     if title.is_empty() {
-        title = "Loop changes".into();
+        title = "Workflow changes".into();
     }
     let commits = pr.commits.as_deref().unwrap_or_default();
     let text = match method {

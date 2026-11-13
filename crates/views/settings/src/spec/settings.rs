@@ -15,15 +15,15 @@ fn models_and_loops(s: &mut S) {
     s.open_settings();
     assert!(s.has("set-head=General"));
     s.section("Models");
-    for label in ["Ask", "Plan", "Agent / Coder", "Review", "Loop"] {
+    for label in ["Ask", "Plan", "Agent / Coder", "Review", "Autopilot"] {
         assert!(
             s.has(&format!("sel:{label} model=Sonnet 5.5")),
             "{label} model"
         );
     }
     assert!(s.has("sel:Review flags=High"));
-    s.section("Loops");
-    assert!(s.has("sel:Loop=recur.loops.pr"));
+    s.section("Workflows");
+    assert!(s.has("sel:Workflow=recur.loops.pr"));
     assert!(s.has("sel:Policy=Balanced"));
 }
 
@@ -335,8 +335,8 @@ fn code_editor_layout_prefs_persist(cx: &mut TestAppContext) {
 fn loops_section_shows_loop_and_policy_pickers(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     s.open_settings();
-    s.section("Loops");
-    assert!(s.has("sel:Loop=recur.loops.pr"));
+    s.section("Workflows");
+    assert!(s.has("sel:Workflow=recur.loops.pr"));
     s.pick("Policy", "Balanced", "Aggressive");
     assert!(s.has("sel:Policy=Aggressive"));
 }
@@ -346,7 +346,7 @@ fn a_failed_policy_save_shows_an_error_toast(cx: &mut TestAppContext) {
     let opts = Overrides::default().set_settings(|_, _| Err(Error::new("settings save failed")));
     let mut s = with(cx, |_| {}, opts);
     s.open_settings();
-    s.section("Loops");
+    s.section("Workflows");
     s.pick("Policy", "Balanced", "Aggressive");
     assert!(s.until(|s| s.toasted(ToastKind::Error, "")));
 }
@@ -381,7 +381,7 @@ fn general_settings_include_live_concurrency_caps(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     s.open_settings();
     s.section("General");
-    assert!(s.has("inp:Max concurrent loops"));
+    assert!(s.has("inp:Max concurrent workflows"));
     assert!(s.has("inp:Max concurrent agents"));
     let v =
         s.cx.update(|_, cx| crate::view::SettingsView::current(cx))

@@ -97,8 +97,8 @@ fn new_loop_modal_has_repository_and_base_branch_pickers(cx: &mut TestAppContext
     let mut s = plain(cx);
     s.open_new_task();
     s.click("sel:Mode=Agent");
-    s.click("sel-opt:Loop");
-    assert!(s.has("sel:Mode=Loop"));
+    s.click("sel-opt:Autopilot");
+    assert!(s.has("sel:Mode=Autopilot"));
     s.click("sel:Repository=storefront");
     for p in ["storefront", "payments-api", "marketing-site"] {
         assert!(s.has(&format!("sel-opt:{p}")), "{p}");
@@ -111,7 +111,7 @@ fn new_loop_modal_has_repository_and_base_branch_pickers(cx: &mut TestAppContext
     assert!(!s.has("sel-opt:main"));
     s.click("sel-opt:feature/auth");
     assert!(s.has("sel:Base branch=feature/auth"));
-    assert!(s.has("sel:Loop=recur.loops.pr") || s.has("sel:Loop=PR"));
+    assert!(s.has("sel:Workflow=recur.loops.pr") || s.has("sel:Workflow=PR"));
     s.click("sel:Policy=Balanced");
     for p in ["Cautious", "Balanced", "Aggressive"] {
         assert!(s.has(&format!("sel-opt:{p}")), "{p}");
@@ -585,12 +585,12 @@ fn tab_reaches_every_field_and_enter_and_arrows_change_them(cx: &mut TestAppCont
     s.keys("tab tab");
     assert_eq!(s.focused(), Some("Mode"));
     s.keys("enter");
-    assert!(s.has("sel-opt:Loop"));
+    assert!(s.has("sel-opt:Autopilot"));
     s.keys("down down enter");
-    assert!(s.has("sel:Mode=Loop"));
+    assert!(s.has("sel:Mode=Autopilot"));
     assert_eq!(s.focused(), Some("Mode"));
     s.keys("tab");
-    assert_eq!(s.focused(), Some("Loop"));
+    assert_eq!(s.focused(), Some("Workflow"));
     s.keys("tab");
     assert_eq!(s.focused(), Some("Policy"));
     s.keys("enter");

@@ -245,7 +245,7 @@ pub fn all_commands(i: &Inputs) -> Vec<Cmd> {
             _ => Pic::None,
         };
         out.push(Cmd {
-            g: "Loops".into(),
+            g: "Workflows".into(),
             label: l.goal.clone(),
             psub: l.id.clone(),
             kb: String::new(),
@@ -341,7 +341,7 @@ pub fn search_rows(res: &PaletteSearchDto) -> (Vec<Cmd>, Vec<String>) {
 pub fn pal_order(search_groups: &[String]) -> Vec<String> {
     let mut o = vec!["Actions".to_string(), "Go to".to_string()];
     o.extend(search_groups.iter().cloned());
-    o.extend(["Loops", "Pull requests", "Projects"].map(String::from));
+    o.extend(["Workflows", "Pull requests", "Projects"].map(String::from));
     o
 }
 
@@ -860,7 +860,7 @@ mod tests {
         i.needs = recur_ui::hex(0xff0000);
         let loops: Vec<Cmd> = all_commands(&i)
             .into_iter()
-            .filter(|c| c.g == "Loops")
+            .filter(|c| c.g == "Workflows")
             .collect();
         assert_eq!(labels(&loops), ["Needs", "Odd"]);
         assert_eq!(loops[0].pic, Pic::Dot(recur_ui::hex(0xff0000)));
@@ -919,7 +919,7 @@ mod tests {
                 "Actions",
                 "Go to",
                 "Linear",
-                "Loops",
+                "Workflows",
                 "Pull requests",
                 "Projects"
             ]

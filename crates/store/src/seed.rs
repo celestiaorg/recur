@@ -498,7 +498,7 @@ fn seed_escalation(s: &mut State) {
             options: Some(vec![
                 opt("Reject with <code style=\"font-family:var(--mono)\">429</code>", "simplest", "Clear to clients and easy to reason about. Can feel harsh during legitimate spikes."),
                 opt("Queue & delay", "smoothest", "Absorbs short bursts without errors. Adds latency and some memory pressure under load."),
-                opt("Token bucket with refill", "recommended", "Fair, industry-standard, predictable. Slightly more to implement: I can do it in this loop."),
+                opt("Token bucket with refill", "recommended", "Fair, industry-standard, predictable. Slightly more to implement: I can do it in this workflow."),
             ]),
             ..Default::default()
         },

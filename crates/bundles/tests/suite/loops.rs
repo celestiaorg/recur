@@ -141,6 +141,32 @@ fn parse_manifest_loop() {
 }
 
 #[test]
+fn workflow_spelling_matches_loop() {
+    let prompts = "[[prompt]]\nid = \"x.prompts.ship\"\nname = \"Ship\"\nloop = \"recur.loops.pr\"\nbody = \"echo\"\n[[prompt]]\nid = \"x.prompts.go\"\nname = \"Go\"\nmode = \"loop\"\nbody = \"echo\"\n";
+    let old = format!("{LOOP_FIXTURE}{prompts}");
+    let new = old
+        .replace("[[loop", "[[workflow")
+        .replace("[loop.", "[workflow.")
+        .replace("mode = \"loop\"", "mode = \"autopilot\"")
+        .replace("loop = \"recur.loops.pr\"", "workflow = \"recur.loops.pr\"");
+    assert!(!new.contains("[[loop") && !new.contains("\"loop\""));
+    let (_g, dir) = temp_dir();
+    let parse = |toml: &str| parse_manifest_full(&dir, toml.as_bytes()).unwrap();
+    let (a, b) = (parse(&old), parse(&new));
+    assert_eq!(a.loops, b.loops);
+    assert_eq!(a.roles, b.roles);
+    assert_eq!(a.prompts, b.prompts);
+    assert_eq!(b.roles[0].mode, "loop");
+    assert_eq!(
+        b.prompts
+            .iter()
+            .map(|p| (p.mode.as_str(), p.loop_id.as_str()))
+            .collect::<Vec<_>>(),
+        [("loop", "recur.loops.pr"), ("loop", "")]
+    );
+}
+
+#[test]
 fn parse_loop_rejects_next_cycle() {
     let toml = format!(
         "{THREE_ROLES}[[loop]]\nid = \"x.loops.cycle\"\nname = \"Cycle\"\nconductor = \"recur.roles.maestro\"\nentry = \"a\"\n[[loop.phase]]\nid = \"a\"\nuses = \"converge\"\nnext = \"b\"\n[loop.phase.roles]\nimplementer = \"recur.roles.coder\"\nreviewer = \"recur.roles.reviewer\"\n[[loop.phase]]\nid = \"b\"\nuses = \"converge\"\nnext = \"a\"\n[loop.phase.roles]\nimplementer = \"recur.roles.coder\"\nreviewer = \"recur.roles.reviewer\"\n"
@@ -148,7 +174,7 @@ fn parse_loop_rejects_next_cycle() {
     let err = parse_in_temp(&toml).unwrap_err();
     assert_eq!(
         err.0,
-        "loop \"x.loops.cycle\": next graph contains a cycle (b → a)"
+        "workflow \"x.loops.cycle\": next graph contains a cycle (b → a)"
     );
 }
 
@@ -160,7 +186,7 @@ fn parse_loop_rejects_on_demand_reenter() {
     let err = parse_in_temp(&toml).unwrap_err();
     assert_eq!(
         err.0,
-        "loop \"x.loops.x\": reenter cannot list on-demand id \"sec\""
+        "workflow \"x.loops.x\": reenter cannot list on-demand id \"sec\""
     );
 }
 
@@ -170,7 +196,7 @@ fn parse_loop_prompt_path_missing() {
     let err = parse_in_temp(toml).unwrap_err();
     assert_eq!(
         err.0,
-        "loop \"x.loops.x\" phase[0]: planning prompts.plan: missing path \"prompts/planing.md\""
+        "workflow \"x.loops.x\" phase[0]: planning prompts.plan: missing path \"prompts/planing.md\""
     );
 }
 
@@ -260,7 +286,7 @@ fn discover_loop_user_wins() {
 
 #[test]
 fn parse_shipped_loop_pack() {
-    let dir = repo_path("bundles/Loop");
+    let dir = repo_path("bundles/Workflows");
     let data = std::fs::read(format!("{dir}/bundle.toml")).unwrap();
     let parsed = parse_manifest_full(&dir, &data).unwrap();
     let lp = find_loop(&parsed.loops, DEFAULT_LOOP_ID).expect("missing recur.loops.pr");
@@ -324,7 +350,7 @@ fn phase_findings_integer_n_lints() {
     let err = parse_in_temp(&toml).unwrap_err();
     assert_eq!(
         err.0,
-        "loop \"x.loops.x\" phase[0]: phase findings_threshold integer must be 0 (got 3)"
+        "workflow \"x.loops.x\" phase[0]: phase findings_threshold integer must be 0 (got 3)"
     );
 }
 

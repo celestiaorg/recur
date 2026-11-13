@@ -5755,7 +5755,7 @@
         "out": "'q' \"r\"  x A"
       }
     ],
-    "err_pr_unavailable": "update-with-base failed: the PR or its loop is unavailable",
+    "err_pr_unavailable": "update-with-base failed: the PR or its workflow is unavailable",
     "hoist_codes": [
       {
         "in": null,

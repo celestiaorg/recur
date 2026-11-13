@@ -2,7 +2,7 @@
 name: recur-help
 description: >-
   Answer questions about using the Recur app itself: workspaces, chat modes,
-  Loops, review, pull requests, inbox, schedules, providers, integrations,
+  workflows, review, pull requests, inbox, schedules, providers, integrations,
   skills, bundles, themes, keymaps, project.toml, or the recur CLI. Use when
   the user asks how to do something in Recur, what a Recur feature is, or
   where a setting lives.
@@ -22,8 +22,8 @@ training data on it.
 | Working copy, task worktrees, how work lands | `references/concepts/workspaces.mdx` |
 | `.recur/project.toml`: setup, run commands, env | `references/concepts/project-toml.mdx` |
 | Attaching files, diff lines, terminal output to chat | `references/concepts/chat-context.mdx` |
-| Ask, Plan, Agent, Review, Loop modes | `references/concepts/modes.mdx` |
-| Loops, roles, policies | `references/concepts/loop.mdx` |
+| Ask, Plan, Agent, Review, Autopilot modes | `references/concepts/modes.mdx` |
+| Workflows, roles, policies | `references/concepts/workflows.mdx` |
 | Diffs, findings, restoring a chat turn | `references/concepts/review.mdx` |
 | Pull requests dashboard, reviewing, merging | `references/concepts/pull-requests.mdx` |
 | Inbox | `references/concepts/inbox.mdx` |
@@ -37,7 +37,7 @@ training data on it.
 | Bundles overview | `references/bundles/index.mdx` |
 | Bundle authoring details | `references/bundles/*.mdx` |
 
-Links inside the pages like `/concepts/loop` map to `references/concepts/loop.mdx`.
+Links inside the pages like `/concepts/workflows` map to `references/concepts/workflows.mdx`.
 
 If the pages do not cover the question, say so instead of guessing. To build or
 edit a bundle, use the `create-bundle` skill. To edit project run settings, use

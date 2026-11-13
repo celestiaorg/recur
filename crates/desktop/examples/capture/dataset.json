@@ -1,0 +1,4190 @@
+{
+  "version": 1,
+  "workspaceId": "LOOP-2231",
+  "prId": "482",
+  "clock": "2026-09-10T09:00:00Z",
+  "projects": [
+    {
+      "id": "storefront",
+      "name": "storefront",
+      "pic": "S",
+      "color": "var(--cyan)",
+      "open": true,
+      "idle": false,
+      "repoPath": "/example/storefront",
+      "baseBranch": "main",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "prOnGithub": false,
+      "isGit": true
+    },
+    {
+      "id": "payments-api",
+      "name": "payments-api",
+      "pic": "P",
+      "color": "var(--cyan)",
+      "open": true,
+      "idle": false,
+      "repoPath": "/example/payments-api",
+      "baseBranch": "main",
+      "setupCmd": "",
+      "teardownCmd": "",
+      "appURL": "",
+      "prOnGithub": false,
+      "isGit": true
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "MAIN-storefront",
+      "projectId": "storefront",
+      "group": "ready",
+      "goal": "Working copy",
+      "short": "Working copy",
+      "definitionOfDone": "",
+      "state": "paused",
+      "statusLabel": "Ready",
+      "phase": "idle",
+      "iteration": 3,
+      "progress": 100,
+      "autonomy": "balanced",
+      "branch": "main",
+      "behindBase": 0,
+      "worktreePath": "/example/storefront/LOOP-2231",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "agentCodes": [],
+      "last": "Ready for review",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": false,
+      "type": "main",
+      "isMain": true
+    },
+    {
+      "id": "LOOP-2231",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Keep sign-in from hanging when the session provider stalls.",
+      "short": "Session refresh",
+      "definitionOfDone": "",
+      "state": "coding",
+      "statusLabel": "Working",
+      "phase": "coding",
+      "iteration": 3,
+      "progress": 75,
+      "autonomy": "balanced",
+      "branch": "recur/session-refresh",
+      "behindBase": 0,
+      "worktreePath": "/example/storefront/LOOP-2231",
+      "diff": {
+        "add": 41,
+        "del": 7
+      },
+      "agentCodes": [],
+      "last": "Two branches merged; failure-path tests running",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": true,
+      "issue": {
+        "source": "github",
+        "id": "I_storefront_471",
+        "key": "#471"
+      }
+    },
+    {
+      "id": "LOOP-2235",
+      "projectId": "storefront",
+      "group": "needs",
+      "goal": "Dark mode for the dashboard",
+      "short": "Team invites",
+      "definitionOfDone": "",
+      "state": "escalated",
+      "statusLabel": "Needs you",
+      "phase": "idle",
+      "iteration": 1,
+      "progress": 100,
+      "autonomy": "balanced",
+      "branch": "recur/team-invites",
+      "behindBase": 0,
+      "worktreePath": "/example/storefront/LOOP-2235",
+      "diff": {
+        "add": 96,
+        "del": 8
+      },
+      "agentCodes": [],
+      "last": "Choose how long invitation links stay valid",
+      "elapsedLabel": "42s",
+      "convergence": null,
+      "archived": false,
+      "issue": {
+        "source": "linear",
+        "id": "lin-sto-212",
+        "key": "STO-212"
+      }
+    },
+    {
+      "id": "LOOP-2224",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Fix flaky checkout E2E tests",
+      "short": "Checkout tests",
+      "definitionOfDone": "",
+      "state": "coding",
+      "statusLabel": "Working",
+      "phase": "idle",
+      "iteration": 5,
+      "progress": 100,
+      "autonomy": "balanced",
+      "branch": "recur/checkout-tests",
+      "behindBase": 0,
+      "worktreePath": "/example/storefront/LOOP-2224",
+      "diff": {
+        "add": 34,
+        "del": 60
+      },
+      "agentCodes": [],
+      "last": "Checking the checkout failure paths",
+      "elapsedLabel": "42s",
+      "convergence": null,
+      "archived": false
+    },
+    {
+      "id": "demo-api",
+      "projectId": "storefront",
+      "group": "done",
+      "goal": "Bound provider requests",
+      "short": "Session refresh",
+      "definitionOfDone": "",
+      "state": "merged",
+      "statusLabel": "Ready",
+      "phase": "merged",
+      "iteration": 3,
+      "progress": 100,
+      "autonomy": "balanced",
+      "branch": "recur/demo-api",
+      "behindBase": 0,
+      "worktreePath": "/example/storefront/demo-api",
+      "diff": {
+        "add": 12,
+        "del": 2
+      },
+      "agentCodes": [],
+      "last": "Timeout and error handling reviewed.",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": true,
+      "parentId": "LOOP-2231"
+    },
+    {
+      "id": "demo-flow",
+      "projectId": "storefront",
+      "group": "done",
+      "goal": "Handle expired sessions",
+      "short": "Sign-in flow",
+      "definitionOfDone": "",
+      "state": "merged",
+      "statusLabel": "Ready",
+      "phase": "merged",
+      "iteration": 3,
+      "progress": 100,
+      "autonomy": "balanced",
+      "branch": "recur/demo-flow",
+      "behindBase": 0,
+      "worktreePath": "/example/storefront/demo-flow",
+      "diff": {
+        "add": 16,
+        "del": 2
+      },
+      "agentCodes": [],
+      "last": "Redirect and retry flow reviewed.",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": true,
+      "parentId": "LOOP-2231"
+    },
+    {
+      "id": "demo-tests",
+      "projectId": "storefront",
+      "group": "active",
+      "goal": "Cover stalled providers",
+      "short": "Failure-path tests",
+      "definitionOfDone": "",
+      "state": "coding",
+      "statusLabel": "Working",
+      "phase": "coding",
+      "iteration": 3,
+      "progress": 60,
+      "autonomy": "balanced",
+      "branch": "recur/demo-tests",
+      "behindBase": 0,
+      "worktreePath": "/example/storefront/demo-tests",
+      "diff": {
+        "add": 20,
+        "del": 2
+      },
+      "agentCodes": [
+        "CO"
+      ],
+      "last": "Adding timeout and cancellation coverage",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": true,
+      "parentId": "LOOP-2231"
+    },
+    {
+      "id": "MAIN-payments-api",
+      "projectId": "payments-api",
+      "group": "ready",
+      "goal": "Working copy",
+      "short": "Working copy",
+      "definitionOfDone": "",
+      "state": "paused",
+      "statusLabel": "Ready",
+      "phase": "idle",
+      "iteration": 3,
+      "progress": 100,
+      "autonomy": "balanced",
+      "branch": "main",
+      "behindBase": 0,
+      "worktreePath": "/example/payments-api",
+      "diff": {
+        "add": 0,
+        "del": 0
+      },
+      "agentCodes": [],
+      "last": "Ready for review",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": false,
+      "type": "main",
+      "isMain": true
+    },
+    {
+      "id": "payments-webhooks",
+      "projectId": "payments-api",
+      "group": "active",
+      "goal": "Webhook retries",
+      "short": "Webhook retries",
+      "definitionOfDone": "",
+      "state": "coding",
+      "statusLabel": "Working",
+      "phase": "coding",
+      "iteration": 3,
+      "progress": 75,
+      "autonomy": "balanced",
+      "branch": "recur/payments-webhooks",
+      "behindBase": 0,
+      "worktreePath": "/example/payments-api/payments-webhooks",
+      "diff": {
+        "add": 38,
+        "del": 9
+      },
+      "agentCodes": [],
+      "last": "Adding retry backoff",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": true,
+      "issue": {
+        "source": "linear",
+        "id": "lin-pay-88",
+        "key": "PAY-88"
+      }
+    },
+    {
+      "id": "payments-idempotency",
+      "projectId": "payments-api",
+      "group": "ready",
+      "goal": "Idempotency keys",
+      "short": "Idempotency keys",
+      "definitionOfDone": "",
+      "state": "paused",
+      "statusLabel": "Ready",
+      "phase": "idle",
+      "iteration": 3,
+      "progress": 75,
+      "autonomy": "balanced",
+      "branch": "recur/payments-idempotency",
+      "behindBase": 0,
+      "worktreePath": "/example/payments-api/payments-idempotency",
+      "diff": {
+        "add": 38,
+        "del": 9
+      },
+      "agentCodes": [],
+      "last": "Ready for review",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": true
+    },
+    {
+      "id": "WS-HOST-486",
+      "projectId": "storefront",
+      "group": "",
+      "goal": "Review #486",
+      "short": "Review #486",
+      "definitionOfDone": "",
+      "state": "paused",
+      "statusLabel": "Review",
+      "phase": "idle",
+      "iteration": 3,
+      "progress": 75,
+      "autonomy": "balanced",
+      "branch": "dana/login-rate-limit",
+      "behindBase": 0,
+      "worktreePath": "/example/storefront-pr-486",
+      "diff": {
+        "add": 60,
+        "del": 0
+      },
+      "agentCodes": [],
+      "last": "Ready for review",
+      "elapsedLabel": "42s",
+      "convergence": [
+        {
+          "iteration": 1,
+          "findings": 12,
+          "color": "var(--coral)"
+        },
+        {
+          "iteration": 2,
+          "findings": 4,
+          "color": "var(--amber)"
+        },
+        {
+          "iteration": 3,
+          "findings": 0,
+          "color": "var(--emerald)"
+        }
+      ],
+      "archived": false,
+      "runStarted": true,
+      "hostPrId": "486"
+    }
+  ],
+  "pullRequests": [
+    {
+      "id": "482",
+      "workspaceId": "LOOP-2231",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 482,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/482",
+      "branch": "recur/session-refresh",
+      "base": "main",
+      "title": "Bound session refresh with a timeout",
+      "summary": [
+        {
+          "kind": "text",
+          "html": "Bounds session refresh to eight seconds and covers stalled providers."
+        }
+      ],
+      "state": "In review",
+      "diff": {
+        "add": 41,
+        "del": 7
+      },
+      "fileCount": 3,
+      "checksOk": true,
+      "when": "2m",
+      "createdAt": "2026-09-10T08:30:00Z",
+      "updatedAt": "2026-09-10T08:58:00Z",
+      "commits": [
+        {
+          "hash": "9a0e6c1",
+          "sha": "9a0e6c1",
+          "message": "Bound session refresh and cover provider failures",
+          "author": "Coder",
+          "agentCode": "CO",
+          "diff": {
+            "add": 38,
+            "del": 7
+          },
+          "when": "29m",
+          "files": [
+            {
+              "path": "src/main.go",
+              "status": "m",
+              "diff": {
+                "add": 14,
+                "del": 3
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -2,12 +2,23 @@"
+                },
+                {
+                  "old": "2",
+                  "new": "2",
+                  "type": "ctx",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "3",
+                  "new": "3",
+                  "type": "ctx",
+                  "codeHtml": "import ("
+                },
+                {
+                  "old": "4",
+                  "new": "4",
+                  "type": "ctx",
+                  "codeHtml": "    \"context\""
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "    \"fmt\""
+                },
+                {
+                  "old": "5",
+                  "new": "6",
+                  "type": "ctx",
+                  "codeHtml": "    \"net/http\""
+                },
+                {
+                  "old": "6",
+                  "new": "7",
+                  "type": "ctx",
+                  "codeHtml": ")"
+                },
+                {
+                  "old": "7",
+                  "new": "8",
+                  "type": "ctx",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "8",
+                  "new": "9",
+                  "type": "ctx",
+                  "codeHtml": "func refreshSession(ctx context.Context, token string) error {"
+                },
+                {
+                  "old": "9",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "    req, _ := http.NewRequest(\"POST\", sessionURL, nil)"
+                },
+                {
+                  "old": "",
+                  "new": "10",
+                  "type": "add",
+                  "codeHtml": "    ctx, cancel := context.WithTimeout(ctx, refreshTimeout)"
+                },
+                {
+                  "old": "",
+                  "new": "11",
+                  "type": "add",
+                  "codeHtml": "    defer cancel()"
+                },
+                {
+                  "old": "",
+                  "new": "12",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "13",
+                  "type": "add",
+                  "codeHtml": "    req, err := http.NewRequestWithContext(ctx, \"POST\", sessionURL, nil)"
+                },
+                {
+                  "old": "",
+                  "new": "14",
+                  "type": "add",
+                  "codeHtml": "    if err != nil {"
+                },
+                {
+                  "old": "",
+                  "new": "15",
+                  "type": "add",
+                  "codeHtml": "        return fmt.Errorf(\"build refresh request: %w\", err)"
+                },
+                {
+                  "old": "",
+                  "new": "16",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "10",
+                  "new": "17",
+                  "type": "ctx",
+                  "codeHtml": "    req.Header.Set(\"Authorization\", \"Bearer \" + token)"
+                },
+                {
+                  "old": "11",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "    _, err := http.DefaultClient.Do(req)"
+                },
+                {
+                  "old": "12",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "    return err"
+                },
+                {
+                  "old": "",
+                  "new": "18",
+                  "type": "add",
+                  "codeHtml": "    res, err := http.DefaultClient.Do(req)"
+                },
+                {
+                  "old": "",
+                  "new": "19",
+                  "type": "add",
+                  "codeHtml": "    if err != nil {"
+                },
+                {
+                  "old": "",
+                  "new": "20",
+                  "type": "add",
+                  "codeHtml": "        return fmt.Errorf(\"refresh session: %w\", err)"
+                },
+                {
+                  "old": "",
+                  "new": "21",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "22",
+                  "type": "add",
+                  "codeHtml": "    defer res.Body.Close()"
+                },
+                {
+                  "old": "",
+                  "new": "23",
+                  "type": "add",
+                  "codeHtml": "    return nil"
+                },
+                {
+                  "old": "13",
+                  "new": "24",
+                  "type": "ctx",
+                  "codeHtml": "}"
+                }
+              ]
+            },
+            {
+              "path": "src/config.go",
+              "status": "m",
+              "diff": {
+                "add": 6,
+                "del": 1
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -1,3 +1,8 @@"
+                },
+                {
+                  "old": "1",
+                  "new": "1",
+                  "type": "ctx",
+                  "codeHtml": "package main"
+                },
+                {
+                  "old": "2",
+                  "new": "2",
+                  "type": "ctx",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "3",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "const sessionURL = \"https://api.example.com/session\""
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "import \"time\""
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "const ("
+                },
+                {
+                  "old": "",
+                  "new": "6",
+                  "type": "add",
+                  "codeHtml": "    sessionURL = \"https://api.example.com/session\""
+                },
+                {
+                  "old": "",
+                  "new": "7",
+                  "type": "add",
+                  "codeHtml": "    refreshTimeout = 8 * time.Second"
+                },
+                {
+                  "old": "",
+                  "new": "8",
+                  "type": "add",
+                  "codeHtml": ")"
+                }
+              ]
+            },
+            {
+              "path": "src/session_test.go",
+              "status": "m",
+              "diff": {
+                "add": 18,
+                "del": 3
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -2,12 +2,27 @@"
+                },
+                {
+                  "old": "2",
+                  "new": "2",
+                  "type": "ctx",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "3",
+                  "new": "3",
+                  "type": "ctx",
+                  "codeHtml": "import ("
+                },
+                {
+                  "old": "4",
+                  "new": "4",
+                  "type": "ctx",
+                  "codeHtml": "    \"context\""
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "    \"errors\""
+                },
+                {
+                  "old": "5",
+                  "new": "6",
+                  "type": "ctx",
+                  "codeHtml": "    \"testing\""
+                },
+                {
+                  "old": "6",
+                  "new": "7",
+                  "type": "ctx",
+                  "codeHtml": ")"
+                },
+                {
+                  "old": "7",
+                  "new": "8",
+                  "type": "ctx",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "8",
+                  "new": "9",
+                  "type": "ctx",
+                  "codeHtml": "func TestRefreshSession(t *testing.T) {"
+                },
+                {
+                  "old": "9",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "    withProvider(t, 200)"
+                },
+                {
+                  "old": "10",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "    if err := refreshSession(context.Background(), \"valid-token\"); err != nil {"
+                },
+                {
+                  "old": "11",
+                  "new": "",
+                  "type": "del",
+                  "codeHtml": "        t.Fatal(err)"
+                },
+                {
+                  "old": "",
+                  "new": "10",
+                  "type": "add",
+                  "codeHtml": "    for _, status := range []int{200, 401, 503} {"
+                },
+                {
+                  "old": "",
+                  "new": "11",
+                  "type": "add",
+                  "codeHtml": "        t.Run(httpStatus(status), func(t *testing.T) {"
+                },
+                {
+                  "old": "",
+                  "new": "12",
+                  "type": "add",
+                  "codeHtml": "            withProvider(t, status)"
+                },
+                {
+                  "old": "",
+                  "new": "13",
+                  "type": "add",
+                  "codeHtml": "            err := refreshSession(context.Background(), \"valid-token\")"
+                },
+                {
+                  "old": "",
+                  "new": "14",
+                  "type": "add",
+                  "codeHtml": "            if (err != nil) != (status != 200) {"
+                },
+                {
+                  "old": "",
+                  "new": "15",
+                  "type": "add",
+                  "codeHtml": "                t.Fatalf(\"status %d: unexpected error %v\", status, err)"
+                },
+                {
+                  "old": "",
+                  "new": "16",
+                  "type": "add",
+                  "codeHtml": "            }"
+                },
+                {
+                  "old": "",
+                  "new": "17",
+                  "type": "add",
+                  "codeHtml": "        })"
+                },
+                {
+                  "old": "12",
+                  "new": "18",
+                  "type": "ctx",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "13",
+                  "new": "19",
+                  "type": "ctx",
+                  "codeHtml": "}"
+                },
+                {
+                  "old": "",
+                  "new": "20",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "21",
+                  "type": "add",
+                  "codeHtml": "func TestRefreshSessionCanceled(t *testing.T) {"
+                },
+                {
+                  "old": "",
+                  "new": "22",
+                  "type": "add",
+                  "codeHtml": "    ctx, cancel := context.WithCancel(context.Background())"
+                },
+                {
+                  "old": "",
+                  "new": "23",
+                  "type": "add",
+                  "codeHtml": "    cancel()"
+                },
+                {
+                  "old": "",
+                  "new": "24",
+                  "type": "add",
+                  "codeHtml": "    err := refreshSession(ctx, \"valid-token\")"
+                },
+                {
+                  "old": "",
+                  "new": "25",
+                  "type": "add",
+                  "codeHtml": "    if !errors.Is(err, context.Canceled) {"
+                },
+                {
+                  "old": "",
+                  "new": "26",
+                  "type": "add",
+                  "codeHtml": "        t.Fatalf(\"want cancellation, got %v\", err)"
+                },
+                {
+                  "old": "",
+                  "new": "27",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "28",
+                  "type": "add",
+                  "codeHtml": "}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "c47d2e8",
+          "sha": "c47d2e8",
+          "message": "Fail session refresh on non-200 responses",
+          "author": "mycodecrafting",
+          "diff": {
+            "add": 3,
+            "del": 0
+          },
+          "when": "8m",
+          "files": [
+            {
+              "path": "src/main.go",
+              "status": "m",
+              "diff": {
+                "add": 3,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -21,4 +21,7 @@"
+                },
+                {
+                  "old": "21",
+                  "new": "21",
+                  "type": "ctx",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "22",
+                  "new": "22",
+                  "type": "ctx",
+                  "codeHtml": "    defer res.Body.Close()"
+                },
+                {
+                  "old": "",
+                  "new": "23",
+                  "type": "add",
+                  "codeHtml": "    if res.StatusCode != http.StatusOK {"
+                },
+                {
+                  "old": "",
+                  "new": "24",
+                  "type": "add",
+                  "codeHtml": "        return fmt.Errorf(\"refresh failed: %s\", res.Status)"
+                },
+                {
+                  "old": "",
+                  "new": "25",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "23",
+                  "new": "26",
+                  "type": "ctx",
+                  "codeHtml": "    return nil"
+                },
+                {
+                  "old": "24",
+                  "new": "27",
+                  "type": "ctx",
+                  "codeHtml": "}"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "path": "src/main.go",
+          "status": "m",
+          "diff": {
+            "add": 17,
+            "del": 3
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -2,12 +2,26 @@"
+            },
+            {
+              "old": "2",
+              "new": "2",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "3",
+              "new": "3",
+              "type": "ctx",
+              "codeHtml": "import ("
+            },
+            {
+              "old": "4",
+              "new": "4",
+              "type": "ctx",
+              "codeHtml": "    \"context\""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "    \"fmt\""
+            },
+            {
+              "old": "5",
+              "new": "6",
+              "type": "ctx",
+              "codeHtml": "    \"net/http\""
+            },
+            {
+              "old": "6",
+              "new": "7",
+              "type": "ctx",
+              "codeHtml": ")"
+            },
+            {
+              "old": "7",
+              "new": "8",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "8",
+              "new": "9",
+              "type": "ctx",
+              "codeHtml": "func refreshSession(ctx context.Context, token string) error {"
+            },
+            {
+              "old": "9",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    req, _ := http.NewRequest(\"POST\", sessionURL, nil)"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "    ctx, cancel := context.WithTimeout(ctx, refreshTimeout)"
+            },
+            {
+              "old": "",
+              "new": "11",
+              "type": "add",
+              "codeHtml": "    defer cancel()"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "13",
+              "type": "add",
+              "codeHtml": "    req, err := http.NewRequestWithContext(ctx, \"POST\", sessionURL, nil)"
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "    if err != nil {"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "        return fmt.Errorf(\"build refresh request: %w\", err)"
+            },
+            {
+              "old": "",
+              "new": "16",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "10",
+              "new": "17",
+              "type": "ctx",
+              "codeHtml": "    req.Header.Set(\"Authorization\", \"Bearer \" + token)"
+            },
+            {
+              "old": "11",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    _, err := http.DefaultClient.Do(req)"
+            },
+            {
+              "old": "12",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    return err"
+            },
+            {
+              "old": "",
+              "new": "18",
+              "type": "add",
+              "codeHtml": "    res, err := http.DefaultClient.Do(req)"
+            },
+            {
+              "old": "",
+              "new": "19",
+              "type": "add",
+              "codeHtml": "    if err != nil {"
+            },
+            {
+              "old": "",
+              "new": "20",
+              "type": "add",
+              "codeHtml": "        return fmt.Errorf(\"refresh session: %w\", err)"
+            },
+            {
+              "old": "",
+              "new": "21",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "22",
+              "type": "add",
+              "codeHtml": "    defer res.Body.Close()"
+            },
+            {
+              "old": "",
+              "new": "23",
+              "type": "add",
+              "codeHtml": "    if res.StatusCode != http.StatusOK {"
+            },
+            {
+              "old": "",
+              "new": "24",
+              "type": "add",
+              "codeHtml": "        return fmt.Errorf(\"refresh failed: %s\", res.Status)"
+            },
+            {
+              "old": "",
+              "new": "25",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "26",
+              "type": "add",
+              "codeHtml": "    return nil"
+            },
+            {
+              "old": "13",
+              "new": "27",
+              "type": "ctx",
+              "codeHtml": "}"
+            }
+          ]
+        },
+        {
+          "path": "src/config.go",
+          "status": "m",
+          "diff": {
+            "add": 6,
+            "del": 1
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -1,3 +1,8 @@"
+            },
+            {
+              "old": "1",
+              "new": "1",
+              "type": "ctx",
+              "codeHtml": "package main"
+            },
+            {
+              "old": "2",
+              "new": "2",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "3",
+              "new": "",
+              "type": "del",
+              "codeHtml": "const sessionURL = \"https://api.example.com/session\""
+            },
+            {
+              "old": "",
+              "new": "3",
+              "type": "add",
+              "codeHtml": "import \"time\""
+            },
+            {
+              "old": "",
+              "new": "4",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "const ("
+            },
+            {
+              "old": "",
+              "new": "6",
+              "type": "add",
+              "codeHtml": "    sessionURL = \"https://api.example.com/session\""
+            },
+            {
+              "old": "",
+              "new": "7",
+              "type": "add",
+              "codeHtml": "    refreshTimeout = 8 * time.Second"
+            },
+            {
+              "old": "",
+              "new": "8",
+              "type": "add",
+              "codeHtml": ")"
+            }
+          ]
+        },
+        {
+          "path": "src/session_test.go",
+          "status": "m",
+          "diff": {
+            "add": 18,
+            "del": 3
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -2,12 +2,27 @@"
+            },
+            {
+              "old": "2",
+              "new": "2",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "3",
+              "new": "3",
+              "type": "ctx",
+              "codeHtml": "import ("
+            },
+            {
+              "old": "4",
+              "new": "4",
+              "type": "ctx",
+              "codeHtml": "    \"context\""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "    \"errors\""
+            },
+            {
+              "old": "5",
+              "new": "6",
+              "type": "ctx",
+              "codeHtml": "    \"testing\""
+            },
+            {
+              "old": "6",
+              "new": "7",
+              "type": "ctx",
+              "codeHtml": ")"
+            },
+            {
+              "old": "7",
+              "new": "8",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "8",
+              "new": "9",
+              "type": "ctx",
+              "codeHtml": "func TestRefreshSession(t *testing.T) {"
+            },
+            {
+              "old": "9",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    withProvider(t, 200)"
+            },
+            {
+              "old": "10",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    if err := refreshSession(context.Background(), \"valid-token\"); err != nil {"
+            },
+            {
+              "old": "11",
+              "new": "",
+              "type": "del",
+              "codeHtml": "        t.Fatal(err)"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "    for _, status := range []int{200, 401, 503} {"
+            },
+            {
+              "old": "",
+              "new": "11",
+              "type": "add",
+              "codeHtml": "        t.Run(httpStatus(status), func(t *testing.T) {"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": "            withProvider(t, status)"
+            },
+            {
+              "old": "",
+              "new": "13",
+              "type": "add",
+              "codeHtml": "            err := refreshSession(context.Background(), \"valid-token\")"
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "            if (err != nil) != (status != 200) {"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "                t.Fatalf(\"status %d: unexpected error %v\", status, err)"
+            },
+            {
+              "old": "",
+              "new": "16",
+              "type": "add",
+              "codeHtml": "            }"
+            },
+            {
+              "old": "",
+              "new": "17",
+              "type": "add",
+              "codeHtml": "        })"
+            },
+            {
+              "old": "12",
+              "new": "18",
+              "type": "ctx",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "13",
+              "new": "19",
+              "type": "ctx",
+              "codeHtml": "}"
+            },
+            {
+              "old": "",
+              "new": "20",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "21",
+              "type": "add",
+              "codeHtml": "func TestRefreshSessionCanceled(t *testing.T) {"
+            },
+            {
+              "old": "",
+              "new": "22",
+              "type": "add",
+              "codeHtml": "    ctx, cancel := context.WithCancel(context.Background())"
+            },
+            {
+              "old": "",
+              "new": "23",
+              "type": "add",
+              "codeHtml": "    cancel()"
+            },
+            {
+              "old": "",
+              "new": "24",
+              "type": "add",
+              "codeHtml": "    err := refreshSession(ctx, \"valid-token\")"
+            },
+            {
+              "old": "",
+              "new": "25",
+              "type": "add",
+              "codeHtml": "    if !errors.Is(err, context.Canceled) {"
+            },
+            {
+              "old": "",
+              "new": "26",
+              "type": "add",
+              "codeHtml": "        t.Fatalf(\"want cancellation, got %v\", err)"
+            },
+            {
+              "old": "",
+              "new": "27",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "28",
+              "type": "add",
+              "codeHtml": "}"
+            }
+          ]
+        }
+      ],
+      "comments": [
+        {
+          "id": "gh-description",
+          "kind": "description",
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "30m",
+          "at": "2026-09-10T08:30:00Z",
+          "bodyMd": "## Summary\n\nSign-in could hang indefinitely when the session provider stalled. This bounds the refresh request with an eight-second deadline and surfaces provider errors instead of dropping them.\n\n- Add `refreshTimeout` and pass a deadline-bound context to the request\n- Return wrapped errors for request, transport, and non-200 failures\n- Cover successful refreshes, expired sessions, and stalled providers in tests\n\n## Testing\n\n- `go test ./...`",
+          "reactions": [
+            {
+              "content": "rocket",
+              "count": 1
+            }
+          ],
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-commit-9a0e6c1",
+          "kind": "action",
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "29m",
+          "at": "2026-09-10T08:31:00Z",
+          "bodyMd": "Bound session refresh and cover provider failures",
+          "commitSha": "9a0e6c1",
+          "verified": true,
+          "checkStatus": "pass",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-review-1",
+          "verb": "requested changes",
+          "author": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff",
+          "time": "19m",
+          "at": "2026-09-10T08:41:00Z",
+          "bodyMd": "Nice catch on the hang. One thing before this goes in.",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-inline-1",
+          "parentId": "gh-review-1",
+          "reviewId": "gh-review-1",
+          "threadId": "gh-thread-1",
+          "author": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff",
+          "time": "19m",
+          "at": "2026-09-10T08:41:01Z",
+          "path": "src/main.go",
+          "line": 22,
+          "side": "RIGHT",
+          "diffHunk": "@@ -10,3 +17,6 @@ func refreshSession(ctx context.Context, token string) error {\n     req.Header.Set(\"Authorization\", \"Bearer \" + token)\n-    _, err := http.DefaultClient.Do(req)\n-    return err\n+    res, err := http.DefaultClient.Do(req)\n+    if err != nil {\n+        return fmt.Errorf(\"refresh session: %w\", err)\n+    }\n+    defer res.Body.Close()",
+          "bodyMd": "If the provider answers with a 500 we still treat the refresh as a success. Can we fail on any non-200 here?",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-inline-2",
+          "parentId": "gh-review-1",
+          "inReplyToId": "gh-inline-1",
+          "threadId": "gh-thread-1",
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "13m",
+          "at": "2026-09-10T08:47:00Z",
+          "path": "src/main.go",
+          "line": 22,
+          "side": "RIGHT",
+          "bodyMd": "Good call. Any non-200 now fails the refresh, and the tests cover a 503.",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-commit-c47d2e8",
+          "kind": "action",
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "8m",
+          "at": "2026-09-10T08:52:00Z",
+          "bodyMd": "Fail session refresh on non-200 responses",
+          "commitSha": "c47d2e8",
+          "verified": true,
+          "checkStatus": "pass",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-comment-1",
+          "author": "mycodecrafting",
+          "authorLogin": "mycodecrafting",
+          "code": "MC",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "time": "5m",
+          "at": "2026-09-10T08:55:00Z",
+          "bodyMd": "Pushed the non-200 fix. Ready for another look.",
+          "reactions": [
+            {
+              "content": "+1",
+              "count": 1
+            }
+          ],
+          "bodyHtml": ""
+        }
+      ],
+      "checks": [
+        {
+          "name": "Go tests",
+          "status": "pass",
+          "detail": "3 tests passed",
+          "duration": "1.2s",
+          "passed": true
+        },
+        {
+          "name": "Lint",
+          "status": "pass",
+          "detail": "No issues found",
+          "duration": "0.8s",
+          "passed": true
+        }
+      ],
+      "authorLogin": "mycodecrafting",
+      "participants": [
+        {
+          "login": "mycodecrafting",
+          "avatarUrl": "avatars/mycodecrafting.jpg"
+        },
+        {
+          "name": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff"
+        }
+      ],
+      "reviewers": [
+        {
+          "name": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff",
+          "state": "changes_requested"
+        }
+      ],
+      "viewerLogin": "mycodecrafting",
+      "viewerCanWrite": true,
+      "reviewRequested": false,
+      "attentionReasons": [
+        "changes_requested"
+      ]
+    },
+    {
+      "id": "479",
+      "workspaceId": "LOOP-2224",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 479,
+      "source": "local",
+      "branch": "recur/fix-e2e",
+      "base": "main",
+      "title": "Stabilize flaky checkout E2E tests",
+      "summary": null,
+      "focus": {
+        "title": "",
+        "body": ""
+      },
+      "state": "In review",
+      "diff": {
+        "add": 34,
+        "del": 60
+      },
+      "fileCount": 5,
+      "checksOk": true,
+      "when": "18m",
+      "createdAt": "2026-08-28T09:34:00Z",
+      "updatedAt": "2026-08-28T09:34:00Z",
+      "commits": null,
+      "files": null,
+      "comments": [],
+      "verify": null,
+      "checks": null,
+      "participants": [],
+      "authorLogin": "",
+      "reviewers": []
+    },
+    {
+      "id": "486",
+      "workspaceId": "",
+      "projectId": "storefront",
+      "group": "you",
+      "number": 486,
+      "source": "gh",
+      "url": "https://github.com/acme/app/pull/486",
+      "branch": "dana/login-rate-limit",
+      "base": "main",
+      "title": "Rate limit failed sign-in attempts",
+      "summary": [
+        {
+          "kind": "text",
+          "html": "Limits failed sign-ins to five per client per minute."
+        }
+      ],
+      "state": "In review",
+      "diff": {
+        "add": 60,
+        "del": 0
+      },
+      "fileCount": 2,
+      "checksOk": true,
+      "when": "12m",
+      "createdAt": "2026-09-10T08:40:00Z",
+      "updatedAt": "2026-09-10T08:48:00Z",
+      "commits": [
+        {
+          "hash": "5e1b7a2",
+          "sha": "5e1b7a2",
+          "message": "Add a sliding-window login limiter",
+          "author": "dana",
+          "diff": {
+            "add": 41,
+            "del": 0
+          },
+          "when": "20m",
+          "files": [
+            {
+              "path": "src/ratelimit.go",
+              "status": "a",
+              "diff": {
+                "add": 41,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,41 @@"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "package main"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "import ("
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "    \"net/http\""
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "    \"sync\""
+                },
+                {
+                  "old": "",
+                  "new": "6",
+                  "type": "add",
+                  "codeHtml": "    \"time\""
+                },
+                {
+                  "old": "",
+                  "new": "7",
+                  "type": "add",
+                  "codeHtml": ")"
+                },
+                {
+                  "old": "",
+                  "new": "8",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "9",
+                  "type": "add",
+                  "codeHtml": "const ("
+                },
+                {
+                  "old": "",
+                  "new": "10",
+                  "type": "add",
+                  "codeHtml": "    loginLimit  = 5"
+                },
+                {
+                  "old": "",
+                  "new": "11",
+                  "type": "add",
+                  "codeHtml": "    loginWindow = time.Minute"
+                },
+                {
+                  "old": "",
+                  "new": "12",
+                  "type": "add",
+                  "codeHtml": ")"
+                },
+                {
+                  "old": "",
+                  "new": "13",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "14",
+                  "type": "add",
+                  "codeHtml": "type limiter struct {"
+                },
+                {
+                  "old": "",
+                  "new": "15",
+                  "type": "add",
+                  "codeHtml": "    mu       sync.Mutex"
+                },
+                {
+                  "old": "",
+                  "new": "16",
+                  "type": "add",
+                  "codeHtml": "    attempts map[string][]time.Time"
+                },
+                {
+                  "old": "",
+                  "new": "17",
+                  "type": "add",
+                  "codeHtml": "}"
+                },
+                {
+                  "old": "",
+                  "new": "18",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "19",
+                  "type": "add",
+                  "codeHtml": "func (l *limiter) allow(key string, now time.Time) bool {"
+                },
+                {
+                  "old": "",
+                  "new": "20",
+                  "type": "add",
+                  "codeHtml": "    l.mu.Lock()"
+                },
+                {
+                  "old": "",
+                  "new": "21",
+                  "type": "add",
+                  "codeHtml": "    defer l.mu.Unlock()"
+                },
+                {
+                  "old": "",
+                  "new": "22",
+                  "type": "add",
+                  "codeHtml": "    recent := l.attempts[key][:0]"
+                },
+                {
+                  "old": "",
+                  "new": "23",
+                  "type": "add",
+                  "codeHtml": "    for _, t := range l.attempts[key] {"
+                },
+                {
+                  "old": "",
+                  "new": "24",
+                  "type": "add",
+                  "codeHtml": "        if now.Sub(t) &lt; loginWindow {"
+                },
+                {
+                  "old": "",
+                  "new": "25",
+                  "type": "add",
+                  "codeHtml": "            recent = append(recent, t)"
+                },
+                {
+                  "old": "",
+                  "new": "26",
+                  "type": "add",
+                  "codeHtml": "        }"
+                },
+                {
+                  "old": "",
+                  "new": "27",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "28",
+                  "type": "add",
+                  "codeHtml": "    if len(recent) &gt;= loginLimit {"
+                },
+                {
+                  "old": "",
+                  "new": "29",
+                  "type": "add",
+                  "codeHtml": "        l.attempts[key] = recent"
+                },
+                {
+                  "old": "",
+                  "new": "30",
+                  "type": "add",
+                  "codeHtml": "        return false"
+                },
+                {
+                  "old": "",
+                  "new": "31",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "32",
+                  "type": "add",
+                  "codeHtml": "    l.attempts[key] = append(recent, now)"
+                },
+                {
+                  "old": "",
+                  "new": "33",
+                  "type": "add",
+                  "codeHtml": "    return true"
+                },
+                {
+                  "old": "",
+                  "new": "34",
+                  "type": "add",
+                  "codeHtml": "}"
+                },
+                {
+                  "old": "",
+                  "new": "35",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "36",
+                  "type": "add",
+                  "codeHtml": "func clientKey(r *http.Request) string {"
+                },
+                {
+                  "old": "",
+                  "new": "37",
+                  "type": "add",
+                  "codeHtml": "    if ip := r.Header.Get(\"X-Forwarded-For\"); ip != \"\" {"
+                },
+                {
+                  "old": "",
+                  "new": "38",
+                  "type": "add",
+                  "codeHtml": "        return ip"
+                },
+                {
+                  "old": "",
+                  "new": "39",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "40",
+                  "type": "add",
+                  "codeHtml": "    return r.RemoteAddr"
+                },
+                {
+                  "old": "",
+                  "new": "41",
+                  "type": "add",
+                  "codeHtml": "}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "hash": "b08c3f4",
+          "sha": "b08c3f4",
+          "message": "Test the limiter blocks the sixth attempt",
+          "author": "dana",
+          "diff": {
+            "add": 19,
+            "del": 0
+          },
+          "when": "14m",
+          "files": [
+            {
+              "path": "src/ratelimit_test.go",
+              "status": "a",
+              "diff": {
+                "add": 19,
+                "del": 0
+              },
+              "lines": [
+                {
+                  "old": "",
+                  "new": "",
+                  "type": "hunk",
+                  "codeHtml": "@@ -0,0 +1,19 @@"
+                },
+                {
+                  "old": "",
+                  "new": "1",
+                  "type": "add",
+                  "codeHtml": "package main"
+                },
+                {
+                  "old": "",
+                  "new": "2",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "3",
+                  "type": "add",
+                  "codeHtml": "import ("
+                },
+                {
+                  "old": "",
+                  "new": "4",
+                  "type": "add",
+                  "codeHtml": "    \"testing\""
+                },
+                {
+                  "old": "",
+                  "new": "5",
+                  "type": "add",
+                  "codeHtml": "    \"time\""
+                },
+                {
+                  "old": "",
+                  "new": "6",
+                  "type": "add",
+                  "codeHtml": ")"
+                },
+                {
+                  "old": "",
+                  "new": "7",
+                  "type": "add",
+                  "codeHtml": ""
+                },
+                {
+                  "old": "",
+                  "new": "8",
+                  "type": "add",
+                  "codeHtml": "func TestLimiterBlocksAfterFiveAttempts(t *testing.T) {"
+                },
+                {
+                  "old": "",
+                  "new": "9",
+                  "type": "add",
+                  "codeHtml": "    l := &amp;limiter{attempts: map[string][]time.Time{}}"
+                },
+                {
+                  "old": "",
+                  "new": "10",
+                  "type": "add",
+                  "codeHtml": "    now := time.Now()"
+                },
+                {
+                  "old": "",
+                  "new": "11",
+                  "type": "add",
+                  "codeHtml": "    for i := 0; i &lt; loginLimit; i++ {"
+                },
+                {
+                  "old": "",
+                  "new": "12",
+                  "type": "add",
+                  "codeHtml": "        if !l.allow(\"1.2.3.4\", now) {"
+                },
+                {
+                  "old": "",
+                  "new": "13",
+                  "type": "add",
+                  "codeHtml": "            t.Fatalf(\"attempt %d was blocked\", i+1)"
+                },
+                {
+                  "old": "",
+                  "new": "14",
+                  "type": "add",
+                  "codeHtml": "        }"
+                },
+                {
+                  "old": "",
+                  "new": "15",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "16",
+                  "type": "add",
+                  "codeHtml": "    if l.allow(\"1.2.3.4\", now) {"
+                },
+                {
+                  "old": "",
+                  "new": "17",
+                  "type": "add",
+                  "codeHtml": "        t.Fatal(\"sixth attempt was allowed\")"
+                },
+                {
+                  "old": "",
+                  "new": "18",
+                  "type": "add",
+                  "codeHtml": "    }"
+                },
+                {
+                  "old": "",
+                  "new": "19",
+                  "type": "add",
+                  "codeHtml": "}"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "path": "src/ratelimit.go",
+          "status": "a",
+          "diff": {
+            "add": 41,
+            "del": 0
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -0,0 +1,41 @@"
+            },
+            {
+              "old": "",
+              "new": "1",
+              "type": "add",
+              "codeHtml": "package main"
+            },
+            {
+              "old": "",
+              "new": "2",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "3",
+              "type": "add",
+              "codeHtml": "import ("
+            },
+            {
+              "old": "",
+              "new": "4",
+              "type": "add",
+              "codeHtml": "    \"net/http\""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "    \"sync\""
+            },
+            {
+              "old": "",
+              "new": "6",
+              "type": "add",
+              "codeHtml": "    \"time\""
+            },
+            {
+              "old": "",
+              "new": "7",
+              "type": "add",
+              "codeHtml": ")"
+            },
+            {
+              "old": "",
+              "new": "8",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "const ("
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "    loginLimit  = 5"
+            },
+            {
+              "old": "",
+              "new": "11",
+              "type": "add",
+              "codeHtml": "    loginWindow = time.Minute"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": ")"
+            },
+            {
+              "old": "",
+              "new": "13",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "type limiter struct {"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "    mu       sync.Mutex"
+            },
+            {
+              "old": "",
+              "new": "16",
+              "type": "add",
+              "codeHtml": "    attempts map[string][]time.Time"
+            },
+            {
+              "old": "",
+              "new": "17",
+              "type": "add",
+              "codeHtml": "}"
+            },
+            {
+              "old": "",
+              "new": "18",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "19",
+              "type": "add",
+              "codeHtml": "func (l *limiter) allow(key string, now time.Time) bool {"
+            },
+            {
+              "old": "",
+              "new": "20",
+              "type": "add",
+              "codeHtml": "    l.mu.Lock()"
+            },
+            {
+              "old": "",
+              "new": "21",
+              "type": "add",
+              "codeHtml": "    defer l.mu.Unlock()"
+            },
+            {
+              "old": "",
+              "new": "22",
+              "type": "add",
+              "codeHtml": "    recent := l.attempts[key][:0]"
+            },
+            {
+              "old": "",
+              "new": "23",
+              "type": "add",
+              "codeHtml": "    for _, t := range l.attempts[key] {"
+            },
+            {
+              "old": "",
+              "new": "24",
+              "type": "add",
+              "codeHtml": "        if now.Sub(t) &lt; loginWindow {"
+            },
+            {
+              "old": "",
+              "new": "25",
+              "type": "add",
+              "codeHtml": "            recent = append(recent, t)"
+            },
+            {
+              "old": "",
+              "new": "26",
+              "type": "add",
+              "codeHtml": "        }"
+            },
+            {
+              "old": "",
+              "new": "27",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "28",
+              "type": "add",
+              "codeHtml": "    if len(recent) &gt;= loginLimit {"
+            },
+            {
+              "old": "",
+              "new": "29",
+              "type": "add",
+              "codeHtml": "        l.attempts[key] = recent"
+            },
+            {
+              "old": "",
+              "new": "30",
+              "type": "add",
+              "codeHtml": "        return false"
+            },
+            {
+              "old": "",
+              "new": "31",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "32",
+              "type": "add",
+              "codeHtml": "    l.attempts[key] = append(recent, now)"
+            },
+            {
+              "old": "",
+              "new": "33",
+              "type": "add",
+              "codeHtml": "    return true"
+            },
+            {
+              "old": "",
+              "new": "34",
+              "type": "add",
+              "codeHtml": "}"
+            },
+            {
+              "old": "",
+              "new": "35",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "36",
+              "type": "add",
+              "codeHtml": "func clientKey(r *http.Request) string {"
+            },
+            {
+              "old": "",
+              "new": "37",
+              "type": "add",
+              "codeHtml": "    if ip := r.Header.Get(\"X-Forwarded-For\"); ip != \"\" {"
+            },
+            {
+              "old": "",
+              "new": "38",
+              "type": "add",
+              "codeHtml": "        return ip"
+            },
+            {
+              "old": "",
+              "new": "39",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "40",
+              "type": "add",
+              "codeHtml": "    return r.RemoteAddr"
+            },
+            {
+              "old": "",
+              "new": "41",
+              "type": "add",
+              "codeHtml": "}"
+            }
+          ]
+        },
+        {
+          "path": "src/ratelimit_test.go",
+          "status": "a",
+          "diff": {
+            "add": 19,
+            "del": 0
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -0,0 +1,19 @@"
+            },
+            {
+              "old": "",
+              "new": "1",
+              "type": "add",
+              "codeHtml": "package main"
+            },
+            {
+              "old": "",
+              "new": "2",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "3",
+              "type": "add",
+              "codeHtml": "import ("
+            },
+            {
+              "old": "",
+              "new": "4",
+              "type": "add",
+              "codeHtml": "    \"testing\""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "    \"time\""
+            },
+            {
+              "old": "",
+              "new": "6",
+              "type": "add",
+              "codeHtml": ")"
+            },
+            {
+              "old": "",
+              "new": "7",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "8",
+              "type": "add",
+              "codeHtml": "func TestLimiterBlocksAfterFiveAttempts(t *testing.T) {"
+            },
+            {
+              "old": "",
+              "new": "9",
+              "type": "add",
+              "codeHtml": "    l := &amp;limiter{attempts: map[string][]time.Time{}}"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "    now := time.Now()"
+            },
+            {
+              "old": "",
+              "new": "11",
+              "type": "add",
+              "codeHtml": "    for i := 0; i &lt; loginLimit; i++ {"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": "        if !l.allow(\"1.2.3.4\", now) {"
+            },
+            {
+              "old": "",
+              "new": "13",
+              "type": "add",
+              "codeHtml": "            t.Fatalf(\"attempt %d was blocked\", i+1)"
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "        }"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "16",
+              "type": "add",
+              "codeHtml": "    if l.allow(\"1.2.3.4\", now) {"
+            },
+            {
+              "old": "",
+              "new": "17",
+              "type": "add",
+              "codeHtml": "        t.Fatal(\"sixth attempt was allowed\")"
+            },
+            {
+              "old": "",
+              "new": "18",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "19",
+              "type": "add",
+              "codeHtml": "}"
+            }
+          ]
+        }
+      ],
+      "comments": [
+        {
+          "id": "gh-description",
+          "kind": "description",
+          "author": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff",
+          "time": "20m",
+          "at": "2026-09-10T08:40:00Z",
+          "bodyMd": "## Summary\n\nCredential stuffing against `/login` showed up in last week's logs. This adds a small in-memory limiter: five failed sign-in attempts per client per minute, then `429 Too Many Requests` until the window clears.\n\n- `limiter.allow` keeps a sliding one-minute window per client key\n- `clientKey` identifies the client for the limit\n- Wired into the sign-in handler for failed attempts only\n\n## Testing\n\n- `go test ./...`\n- Tried six bad passwords locally; the sixth returns 429",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-commit-5e1b7a2",
+          "kind": "action",
+          "author": "dana",
+          "code": "DA",
+          "time": "20m",
+          "at": "2026-09-10T08:40:30Z",
+          "bodyMd": "Add a sliding-window login limiter",
+          "commitSha": "5e1b7a2",
+          "verified": true,
+          "checkStatus": "pass",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-commit-b08c3f4",
+          "kind": "action",
+          "author": "dana",
+          "code": "DA",
+          "time": "14m",
+          "at": "2026-09-10T08:46:00Z",
+          "bodyMd": "Test the limiter blocks the sixth attempt",
+          "commitSha": "b08c3f4",
+          "verified": true,
+          "checkStatus": "pass",
+          "bodyHtml": ""
+        },
+        {
+          "id": "gh-review-request",
+          "kind": "action",
+          "author": "dana",
+          "code": "DA",
+          "time": "12m",
+          "at": "2026-09-10T08:48:00Z",
+          "bodyMd": "requested a review from mycodecrafting",
+          "bodyHtml": ""
+        }
+      ],
+      "checks": [
+        {
+          "name": "Go tests",
+          "status": "pass",
+          "detail": "4 tests passed",
+          "duration": "1.4s",
+          "passed": true
+        },
+        {
+          "name": "Lint",
+          "status": "pass",
+          "detail": "No issues found",
+          "duration": "0.7s",
+          "passed": true
+        }
+      ],
+      "authorLogin": "dana",
+      "participants": [
+        {
+          "name": "dana",
+          "code": "DA",
+          "avatarCss": "background:#7c5cbf;color:#fff"
+        },
+        {
+          "login": "mycodecrafting",
+          "avatarUrl": "avatars/mycodecrafting.jpg"
+        }
+      ],
+      "reviewers": [
+        {
+          "login": "mycodecrafting",
+          "avatarUrl": "avatars/mycodecrafting.jpg",
+          "state": "pending"
+        }
+      ],
+      "viewerLogin": "mycodecrafting",
+      "viewerCanWrite": true,
+      "reviewRequested": true,
+      "attentionReasons": [
+        "review_requested"
+      ]
+    }
+  ],
+  "inbox": [
+    {
+      "id": "invite-question",
+      "workspaceId": "LOOP-2235",
+      "group": "needs",
+      "unread": true,
+      "kind": "question",
+      "color": "var(--coral)",
+      "title": "Invitation expiry needs a decision",
+      "sub": "Should links expire after 24 or 48 hours?",
+      "time": "2m",
+      "action": "Answer",
+      "actionClass": "go",
+      "target": "workspace:LOOP-2235"
+    },
+    {
+      "id": "refresh-ready",
+      "workspaceId": "LOOP-2231",
+      "group": "ready",
+      "unread": true,
+      "kind": "pr",
+      "color": "var(--emerald)",
+      "title": "Session refresh is ready for review",
+      "sub": "Two checks passed. Review the pull request.",
+      "time": "1m",
+      "action": "Review",
+      "actionClass": "go",
+      "target": "pr:482"
+    }
+  ],
+  "settings": {
+    "modelAsk": "claude-code/sonnet",
+    "modelPlan": "claude-code/sonnet",
+    "modelAgent": "claude-code/sonnet",
+    "modelReview": "claude-code/sonnet",
+    "modelLoop": "claude-code/sonnet",
+    "modelWorkspaceTitle": "claude-code/haiku",
+    "flagsAsk": {
+      "effort": "high"
+    },
+    "flagsPlan": {
+      "effort": "high"
+    },
+    "flagsAgent": {
+      "effort": "high"
+    },
+    "flagsReview": {
+      "effort": "high"
+    },
+    "flagsLoop": {
+      "effort": "high"
+    },
+    "flagsWorkspaceTitle": {
+      "effort": "low"
+    },
+    "bypassPermissions": false,
+    "maxLoops": 4,
+    "maxAgents": 8,
+    "defaultMergeMethod": "merge",
+    "defaultUpdateBaseMethod": "merge",
+    "defaultSquashCommitMessage": "title-and-commits",
+    "defaultMergeCommitMessage": "title"
+  },
+  "policy": {
+    "autonomy": "balanced",
+    "rails": null
+  },
+  "resource": {
+    "loopsRunning": 4,
+    "needsYou": 1,
+    "itersToday": 0
+  },
+  "files": {
+    "src/main.go": "package main\n\nimport (\n    \"context\"\n    \"fmt\"\n    \"net/http\"\n)\n\nfunc refreshSession(ctx context.Context, token string) error {\n    ctx, cancel := context.WithTimeout(ctx, refreshTimeout)\n    defer cancel()\n\n    req, err := http.NewRequestWithContext(ctx, \"POST\", sessionURL, nil)\n    if err != nil {\n        return fmt.Errorf(\"build refresh request: %w\", err)\n    }\n    req.Header.Set(\"Authorization\", \"Bearer \" + token)\n    res, err := http.DefaultClient.Do(req)\n    if err != nil {\n        return fmt.Errorf(\"refresh session: %w\", err)\n    }\n    defer res.Body.Close()\n    if res.StatusCode != http.StatusOK {\n        return fmt.Errorf(\"refresh failed: %s\", res.Status)\n    }\n    return nil\n}\n",
+    "README.md": "# Storefront\n\nA local example project.\n\n## Authentication\n\nSession refresh requests time out after eight seconds.\n",
+    "src/config.go": "package main\n\nimport \"time\"\n\nconst (\n    sessionURL = \"https://api.example.com/session\"\n    refreshTimeout = 8 * time.Second\n)\n",
+    "src/session_test.go": "package main\n\nimport (\n    \"context\"\n    \"errors\"\n    \"testing\"\n)\n\nfunc TestRefreshSession(t *testing.T) {\n    for _, status := range []int{200, 401, 503} {\n        t.Run(httpStatus(status), func(t *testing.T) {\n            withProvider(t, status)\n            err := refreshSession(context.Background(), \"valid-token\")\n            if (err != nil) != (status != 200) {\n                t.Fatalf(\"status %d: unexpected error %v\", status, err)\n            }\n        })\n    }\n}\n\nfunc TestRefreshSessionCanceled(t *testing.T) {\n    ctx, cancel := context.WithCancel(context.Background())\n    cancel()\n    err := refreshSession(ctx, \"valid-token\")\n    if !errors.Is(err, context.Canceled) {\n        t.Fatalf(\"want cancellation, got %v\", err)\n    }\n}\n"
+  },
+  "transcript": [
+    {
+      "role": "user",
+      "kind": "text",
+      "text": "Keep sign-in from hanging when the session provider stalls.",
+      "ts": 1000
+    },
+    {
+      "role": "assistant",
+      "kind": "text",
+      "text": "Session refresh now has an eight-second timeout and explicit error handling.",
+      "ts": 2000
+    },
+    {
+      "kind": "tool",
+      "tool": "Read",
+      "input": "src/main.go",
+      "result": "package main\n\nimport (\n    \"context\"\n    \"fmt\"\n    \"net/http\"\n)\n\nfunc refreshSession(ctx context.Context, token string) error {\n    ctx, cancel := context.WithTimeout(ctx, refreshTimeout)\n    defer cancel()\n\n    req, err := http.NewRequestWithContext(ctx, \"POST\", sessionURL, nil)\n    if err != nil {\n        return fmt.Errorf(\"build refresh request: %w\", err)\n    }\n    req.Header.Set(\"Authorization\", \"Bearer \" + token)\n    res, err := http.DefaultClient.Do(req)\n    if err != nil {\n        return fmt.Errorf(\"refresh session: %w\", err)\n    }\n    defer res.Body.Close()\n    if res.StatusCode != http.StatusOK {\n        return fmt.Errorf(\"refresh failed: %s\", res.Status)\n    }\n    return nil\n}\n",
+      "ts": 3000
+    },
+    {
+      "kind": "tool",
+      "tool": "Bash",
+      "input": "go test ./...",
+      "result": "ok   storefront/auth   0.142s\nok   storefront/session   0.218s",
+      "ts": 4000
+    },
+    {
+      "role": "assistant",
+      "kind": "text",
+      "text": "The client changes are ready to inspect. The diff spans request handling, timeout configuration, and regression tests.",
+      "ts": 5000
+    },
+    {
+      "kind": "turn",
+      "durationMs": 42000,
+      "messageId": "demo-turn",
+      "checkpoint": true,
+      "ts": 6000
+    }
+  ],
+  "loopTranscript": [
+    {
+      "role": "user",
+      "kind": "text",
+      "text": "Add sign-in with bounded session refresh and cover the failure paths.",
+      "ts": 1000
+    },
+    {
+      "role": "assistant",
+      "kind": "text",
+      "text": "The client and sign-in branches have merged. The test workspace is still covering cancellation and provider failures.",
+      "ts": 2000
+    }
+  ],
+  "facts": [
+    {
+      "id": "demo-wave",
+      "kind": "outcome",
+      "chatCode": "MA",
+      "agentCode": "MA",
+      "name": "Maestro",
+      "ts": 3000,
+      "text": "Three child workspaces",
+      "card": "fanout",
+      "data": {
+        "wave": 1,
+        "done": false,
+        "children": [
+          {
+            "id": "demo-api",
+            "title": "Session refresh",
+            "steps": [
+              "Bound provider requests"
+            ],
+            "state": "merged",
+            "note": "Timeout and error handling reviewed."
+          },
+          {
+            "id": "demo-flow",
+            "title": "Sign-in flow",
+            "steps": [
+              "Handle expired sessions"
+            ],
+            "state": "merged",
+            "note": "Redirect and retry flow reviewed."
+          },
+          {
+            "id": "demo-tests",
+            "title": "Failure-path tests",
+            "steps": [
+              "Cover stalled providers"
+            ],
+            "state": "coding",
+            "note": "Adding timeout and cancellation coverage"
+          }
+        ]
+      }
+    }
+  ],
+  "sessions": [
+    {
+      "id": "demo-review",
+      "code": "RV",
+      "ownerCode": "MA",
+      "name": "Reviewer",
+      "kind": "review",
+      "createdAt": 4000,
+      "items": [
+        {
+          "role": "assistant",
+          "kind": "text",
+          "text": "Client and configuration changes are reviewed. The failure-path test workspace is still running.",
+          "ts": 4000
+        }
+      ]
+    }
+  ],
+  "tabs": [
+    {
+      "code": "MA",
+      "title": "Workflow",
+      "mode": "loop"
+    },
+    {
+      "code": "PA",
+      "title": "Session refresh",
+      "mode": "agent"
+    },
+    {
+      "code": "PA2",
+      "title": "Review",
+      "mode": "review"
+    }
+  ],
+  "findings": [
+    {
+      "id": "demo-finding",
+      "workspaceId": "LOOP-2231",
+      "severity": "medium",
+      "status": "resolved",
+      "source": "agent",
+      "file": "src/main.go",
+      "line": 10,
+      "message": "Bound the provider request so a stalled refresh does not hang sign-in.",
+      "iteration": 1
+    }
+  ],
+  "commits": [
+    {
+      "hash": "9a0e6c1",
+      "sha": "9a0e6c1",
+      "message": "Bound session refresh and cover provider failures",
+      "author": "Coder",
+      "agentCode": "CO",
+      "diff": {
+        "add": 41,
+        "del": 7
+      },
+      "when": "2m",
+      "files": [
+        {
+          "path": "src/main.go",
+          "status": "m",
+          "diff": {
+            "add": 17,
+            "del": 3
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -2,12 +2,26 @@"
+            },
+            {
+              "old": "2",
+              "new": "2",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "3",
+              "new": "3",
+              "type": "ctx",
+              "codeHtml": "import ("
+            },
+            {
+              "old": "4",
+              "new": "4",
+              "type": "ctx",
+              "codeHtml": "    \"context\""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "    \"fmt\""
+            },
+            {
+              "old": "5",
+              "new": "6",
+              "type": "ctx",
+              "codeHtml": "    \"net/http\""
+            },
+            {
+              "old": "6",
+              "new": "7",
+              "type": "ctx",
+              "codeHtml": ")"
+            },
+            {
+              "old": "7",
+              "new": "8",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "8",
+              "new": "9",
+              "type": "ctx",
+              "codeHtml": "func refreshSession(ctx context.Context, token string) error {"
+            },
+            {
+              "old": "9",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    req, _ := http.NewRequest(\"POST\", sessionURL, nil)"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "    ctx, cancel := context.WithTimeout(ctx, refreshTimeout)"
+            },
+            {
+              "old": "",
+              "new": "11",
+              "type": "add",
+              "codeHtml": "    defer cancel()"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "13",
+              "type": "add",
+              "codeHtml": "    req, err := http.NewRequestWithContext(ctx, \"POST\", sessionURL, nil)"
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "    if err != nil {"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "        return fmt.Errorf(\"build refresh request: %w\", err)"
+            },
+            {
+              "old": "",
+              "new": "16",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "10",
+              "new": "17",
+              "type": "ctx",
+              "codeHtml": "    req.Header.Set(\"Authorization\", \"Bearer \" + token)"
+            },
+            {
+              "old": "11",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    _, err := http.DefaultClient.Do(req)"
+            },
+            {
+              "old": "12",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    return err"
+            },
+            {
+              "old": "",
+              "new": "18",
+              "type": "add",
+              "codeHtml": "    res, err := http.DefaultClient.Do(req)"
+            },
+            {
+              "old": "",
+              "new": "19",
+              "type": "add",
+              "codeHtml": "    if err != nil {"
+            },
+            {
+              "old": "",
+              "new": "20",
+              "type": "add",
+              "codeHtml": "        return fmt.Errorf(\"refresh session: %w\", err)"
+            },
+            {
+              "old": "",
+              "new": "21",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "22",
+              "type": "add",
+              "codeHtml": "    defer res.Body.Close()"
+            },
+            {
+              "old": "",
+              "new": "23",
+              "type": "add",
+              "codeHtml": "    if res.StatusCode != http.StatusOK {"
+            },
+            {
+              "old": "",
+              "new": "24",
+              "type": "add",
+              "codeHtml": "        return fmt.Errorf(\"refresh failed: %s\", res.Status)"
+            },
+            {
+              "old": "",
+              "new": "25",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "26",
+              "type": "add",
+              "codeHtml": "    return nil"
+            },
+            {
+              "old": "13",
+              "new": "27",
+              "type": "ctx",
+              "codeHtml": "}"
+            }
+          ]
+        },
+        {
+          "path": "src/config.go",
+          "status": "m",
+          "diff": {
+            "add": 6,
+            "del": 1
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -1,3 +1,8 @@"
+            },
+            {
+              "old": "1",
+              "new": "1",
+              "type": "ctx",
+              "codeHtml": "package main"
+            },
+            {
+              "old": "2",
+              "new": "2",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "3",
+              "new": "",
+              "type": "del",
+              "codeHtml": "const sessionURL = \"https://api.example.com/session\""
+            },
+            {
+              "old": "",
+              "new": "3",
+              "type": "add",
+              "codeHtml": "import \"time\""
+            },
+            {
+              "old": "",
+              "new": "4",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "const ("
+            },
+            {
+              "old": "",
+              "new": "6",
+              "type": "add",
+              "codeHtml": "    sessionURL = \"https://api.example.com/session\""
+            },
+            {
+              "old": "",
+              "new": "7",
+              "type": "add",
+              "codeHtml": "    refreshTimeout = 8 * time.Second"
+            },
+            {
+              "old": "",
+              "new": "8",
+              "type": "add",
+              "codeHtml": ")"
+            }
+          ]
+        },
+        {
+          "path": "src/session_test.go",
+          "status": "m",
+          "diff": {
+            "add": 18,
+            "del": 3
+          },
+          "lines": [
+            {
+              "old": "",
+              "new": "",
+              "type": "hunk",
+              "codeHtml": "@@ -2,12 +2,27 @@"
+            },
+            {
+              "old": "2",
+              "new": "2",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "3",
+              "new": "3",
+              "type": "ctx",
+              "codeHtml": "import ("
+            },
+            {
+              "old": "4",
+              "new": "4",
+              "type": "ctx",
+              "codeHtml": "    \"context\""
+            },
+            {
+              "old": "",
+              "new": "5",
+              "type": "add",
+              "codeHtml": "    \"errors\""
+            },
+            {
+              "old": "5",
+              "new": "6",
+              "type": "ctx",
+              "codeHtml": "    \"testing\""
+            },
+            {
+              "old": "6",
+              "new": "7",
+              "type": "ctx",
+              "codeHtml": ")"
+            },
+            {
+              "old": "7",
+              "new": "8",
+              "type": "ctx",
+              "codeHtml": ""
+            },
+            {
+              "old": "8",
+              "new": "9",
+              "type": "ctx",
+              "codeHtml": "func TestRefreshSession(t *testing.T) {"
+            },
+            {
+              "old": "9",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    withProvider(t, 200)"
+            },
+            {
+              "old": "10",
+              "new": "",
+              "type": "del",
+              "codeHtml": "    if err := refreshSession(context.Background(), \"valid-token\"); err != nil {"
+            },
+            {
+              "old": "11",
+              "new": "",
+              "type": "del",
+              "codeHtml": "        t.Fatal(err)"
+            },
+            {
+              "old": "",
+              "new": "10",
+              "type": "add",
+              "codeHtml": "    for _, status := range []int{200, 401, 503} {"
+            },
+            {
+              "old": "",
+              "new": "11",
+              "type": "add",
+              "codeHtml": "        t.Run(httpStatus(status), func(t *testing.T) {"
+            },
+            {
+              "old": "",
+              "new": "12",
+              "type": "add",
+              "codeHtml": "            withProvider(t, status)"
+            },
+            {
+              "old": "",
+              "new": "13",
+              "type": "add",
+              "codeHtml": "            err := refreshSession(context.Background(), \"valid-token\")"
+            },
+            {
+              "old": "",
+              "new": "14",
+              "type": "add",
+              "codeHtml": "            if (err != nil) != (status != 200) {"
+            },
+            {
+              "old": "",
+              "new": "15",
+              "type": "add",
+              "codeHtml": "                t.Fatalf(\"status %d: unexpected error %v\", status, err)"
+            },
+            {
+              "old": "",
+              "new": "16",
+              "type": "add",
+              "codeHtml": "            }"
+            },
+            {
+              "old": "",
+              "new": "17",
+              "type": "add",
+              "codeHtml": "        })"
+            },
+            {
+              "old": "12",
+              "new": "18",
+              "type": "ctx",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "13",
+              "new": "19",
+              "type": "ctx",
+              "codeHtml": "}"
+            },
+            {
+              "old": "",
+              "new": "20",
+              "type": "add",
+              "codeHtml": ""
+            },
+            {
+              "old": "",
+              "new": "21",
+              "type": "add",
+              "codeHtml": "func TestRefreshSessionCanceled(t *testing.T) {"
+            },
+            {
+              "old": "",
+              "new": "22",
+              "type": "add",
+              "codeHtml": "    ctx, cancel := context.WithCancel(context.Background())"
+            },
+            {
+              "old": "",
+              "new": "23",
+              "type": "add",
+              "codeHtml": "    cancel()"
+            },
+            {
+              "old": "",
+              "new": "24",
+              "type": "add",
+              "codeHtml": "    err := refreshSession(ctx, \"valid-token\")"
+            },
+            {
+              "old": "",
+              "new": "25",
+              "type": "add",
+              "codeHtml": "    if !errors.Is(err, context.Canceled) {"
+            },
+            {
+              "old": "",
+              "new": "26",
+              "type": "add",
+              "codeHtml": "        t.Fatalf(\"want cancellation, got %v\", err)"
+            },
+            {
+              "old": "",
+              "new": "27",
+              "type": "add",
+              "codeHtml": "    }"
+            },
+            {
+              "old": "",
+              "new": "28",
+              "type": "add",
+              "codeHtml": "}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "schedules": [
+    {
+      "id": "morning-review",
+      "projectId": "storefront",
+      "name": "Morning code review",
+      "prompt": "Morning code review for the latest changes in this repository.",
+      "baseBranch": "main",
+      "mode": "review",
+      "model": "claude-code/claude-sonnet-4-6",
+      "cadence": "weekdays",
+      "cron": "",
+      "date": "",
+      "time": "09:00",
+      "timeZone": "America/New_York",
+      "paused": false,
+      "nextRunAt": 1789045200000,
+      "loopId": "",
+      "policyId": "recur.policies.balanced",
+      "simplify": true,
+      "lastRun": {
+        "id": "morning-review-last",
+        "scheduleId": "morning-review",
+        "workspaceId": "LOOP-2224",
+        "dueAt": 1788958800000,
+        "status": "finished",
+        "detail": "Checks completed. Ready for review."
+      }
+    },
+    {
+      "id": "dependency-audit",
+      "projectId": "storefront",
+      "name": "Dependency audit",
+      "prompt": "Dependency audit for the latest changes in this repository.",
+      "baseBranch": "main",
+      "mode": "loop",
+      "model": "claude-code/claude-sonnet-4-6",
+      "cadence": "cron",
+      "cron": "0 10 * * 1",
+      "date": "",
+      "time": "10:00",
+      "timeZone": "America/New_York",
+      "paused": false,
+      "nextRunAt": 1789394400000,
+      "loopId": "recur.loops.pr",
+      "policyId": "recur.policies.balanced",
+      "simplify": true,
+      "lastRun": {
+        "id": "dependency-audit-last",
+        "scheduleId": "dependency-audit",
+        "workspaceId": "LOOP-2224",
+        "dueAt": 1788958800000,
+        "status": "finished",
+        "detail": "Checks completed. Ready for review."
+      }
+    },
+    {
+      "id": "release-notes",
+      "projectId": "storefront",
+      "name": "Draft release notes",
+      "prompt": "Draft release notes for the latest changes in this repository.",
+      "baseBranch": "main",
+      "mode": "agent",
+      "model": "claude-code/claude-sonnet-4-6",
+      "cadence": "daily",
+      "cron": "",
+      "date": "",
+      "time": "16:00",
+      "timeZone": "America/New_York",
+      "paused": true,
+      "nextRunAt": 1789045200000,
+      "loopId": "",
+      "policyId": "recur.policies.balanced",
+      "simplify": true,
+      "lastRun": {
+        "id": "release-notes-last",
+        "scheduleId": "release-notes",
+        "workspaceId": "LOOP-2224",
+        "dueAt": 1788958800000,
+        "status": "finished",
+        "detail": "Checks completed. Ready for review."
+      }
+    }
+  ],
+  "baseFiles": {
+    "src/main.go": "package main\n\nimport (\n    \"context\"\n    \"net/http\"\n)\n\nfunc refreshSession(ctx context.Context, token string) error {\n    req, _ := http.NewRequest(\"POST\", sessionURL, nil)\n    req.Header.Set(\"Authorization\", \"Bearer \" + token)\n    _, err := http.DefaultClient.Do(req)\n    return err\n}\n",
+    "src/config.go": "package main\n\nconst sessionURL = \"https://api.example.com/session\"\n",
+    "src/session_test.go": "package main\n\nimport (\n    \"context\"\n    \"testing\"\n)\n\nfunc TestRefreshSession(t *testing.T) {\n    withProvider(t, 200)\n    if err := refreshSession(context.Background(), \"valid-token\"); err != nil {\n        t.Fatal(err)\n    }\n}\n"
+  },
+  "diffs": [
+    {
+      "path": "src/main.go",
+      "status": "m",
+      "diff": {
+        "add": 17,
+        "del": 3
+      },
+      "lines": [
+        {
+          "old": "",
+          "new": "",
+          "type": "hunk",
+          "codeHtml": "@@ -2,12 +2,26 @@"
+        },
+        {
+          "old": "2",
+          "new": "2",
+          "type": "ctx",
+          "codeHtml": ""
+        },
+        {
+          "old": "3",
+          "new": "3",
+          "type": "ctx",
+          "codeHtml": "import ("
+        },
+        {
+          "old": "4",
+          "new": "4",
+          "type": "ctx",
+          "codeHtml": "    \"context\""
+        },
+        {
+          "old": "",
+          "new": "5",
+          "type": "add",
+          "codeHtml": "    \"fmt\""
+        },
+        {
+          "old": "5",
+          "new": "6",
+          "type": "ctx",
+          "codeHtml": "    \"net/http\""
+        },
+        {
+          "old": "6",
+          "new": "7",
+          "type": "ctx",
+          "codeHtml": ")"
+        },
+        {
+          "old": "7",
+          "new": "8",
+          "type": "ctx",
+          "codeHtml": ""
+        },
+        {
+          "old": "8",
+          "new": "9",
+          "type": "ctx",
+          "codeHtml": "func refreshSession(ctx context.Context, token string) error {"
+        },
+        {
+          "old": "9",
+          "new": "",
+          "type": "del",
+          "codeHtml": "    req, _ := http.NewRequest(\"POST\", sessionURL, nil)"
+        },
+        {
+          "old": "",
+          "new": "10",
+          "type": "add",
+          "codeHtml": "    ctx, cancel := context.WithTimeout(ctx, refreshTimeout)"
+        },
+        {
+          "old": "",
+          "new": "11",
+          "type": "add",
+          "codeHtml": "    defer cancel()"
+        },
+        {
+          "old": "",
+          "new": "12",
+          "type": "add",
+          "codeHtml": ""
+        },
+        {
+          "old": "",
+          "new": "13",
+          "type": "add",
+          "codeHtml": "    req, err := http.NewRequestWithContext(ctx, \"POST\", sessionURL, nil)"
+        },
+        {
+          "old": "",
+          "new": "14",
+          "type": "add",
+          "codeHtml": "    if err != nil {"
+        },
+        {
+          "old": "",
+          "new": "15",
+          "type": "add",
+          "codeHtml": "        return fmt.Errorf(\"build refresh request: %w\", err)"
+        },
+        {
+          "old": "",
+          "new": "16",
+          "type": "add",
+          "codeHtml": "    }"
+        },
+        {
+          "old": "10",
+          "new": "17",
+          "type": "ctx",
+          "codeHtml": "    req.Header.Set(\"Authorization\", \"Bearer \" + token)"
+        },
+        {
+          "old": "11",
+          "new": "",
+          "type": "del",
+          "codeHtml": "    _, err := http.DefaultClient.Do(req)"
+        },
+        {
+          "old": "12",
+          "new": "",
+          "type": "del",
+          "codeHtml": "    return err"
+        },
+        {
+          "old": "",
+          "new": "18",
+          "type": "add",
+          "codeHtml": "    res, err := http.DefaultClient.Do(req)"
+        },
+        {
+          "old": "",
+          "new": "19",
+          "type": "add",
+          "codeHtml": "    if err != nil {"
+        },
+        {
+          "old": "",
+          "new": "20",
+          "type": "add",
+          "codeHtml": "        return fmt.Errorf(\"refresh session: %w\", err)"
+        },
+        {
+          "old": "",
+          "new": "21",
+          "type": "add",
+          "codeHtml": "    }"
+        },
+        {
+          "old": "",
+          "new": "22",
+          "type": "add",
+          "codeHtml": "    defer res.Body.Close()"
+        },
+        {
+          "old": "",
+          "new": "23",
+          "type": "add",
+          "codeHtml": "    if res.StatusCode != http.StatusOK {"
+        },
+        {
+          "old": "",
+          "new": "24",
+          "type": "add",
+          "codeHtml": "        return fmt.Errorf(\"refresh failed: %s\", res.Status)"
+        },
+        {
+          "old": "",
+          "new": "25",
+          "type": "add",
+          "codeHtml": "    }"
+        },
+        {
+          "old": "",
+          "new": "26",
+          "type": "add",
+          "codeHtml": "    return nil"
+        },
+        {
+          "old": "13",
+          "new": "27",
+          "type": "ctx",
+          "codeHtml": "}"
+        }
+      ]
+    },
+    {
+      "path": "src/config.go",
+      "status": "m",
+      "diff": {
+        "add": 6,
+        "del": 1
+      },
+      "lines": [
+        {
+          "old": "",
+          "new": "",
+          "type": "hunk",
+          "codeHtml": "@@ -1,3 +1,8 @@"
+        },
+        {
+          "old": "1",
+          "new": "1",
+          "type": "ctx",
+          "codeHtml": "package main"
+        },
+        {
+          "old": "2",
+          "new": "2",
+          "type": "ctx",
+          "codeHtml": ""
+        },
+        {
+          "old": "3",
+          "new": "",
+          "type": "del",
+          "codeHtml": "const sessionURL = \"https://api.example.com/session\""
+        },
+        {
+          "old": "",
+          "new": "3",
+          "type": "add",
+          "codeHtml": "import \"time\""
+        },
+        {
+          "old": "",
+          "new": "4",
+          "type": "add",
+          "codeHtml": ""
+        },
+        {
+          "old": "",
+          "new": "5",
+          "type": "add",
+          "codeHtml": "const ("
+        },
+        {
+          "old": "",
+          "new": "6",
+          "type": "add",
+          "codeHtml": "    sessionURL = \"https://api.example.com/session\""
+        },
+        {
+          "old": "",
+          "new": "7",
+          "type": "add",
+          "codeHtml": "    refreshTimeout = 8 * time.Second"
+        },
+        {
+          "old": "",
+          "new": "8",
+          "type": "add",
+          "codeHtml": ")"
+        }
+      ]
+    },
+    {
+      "path": "src/session_test.go",
+      "status": "m",
+      "diff": {
+        "add": 18,
+        "del": 3
+      },
+      "lines": [
+        {
+          "old": "",
+          "new": "",
+          "type": "hunk",
+          "codeHtml": "@@ -2,12 +2,27 @@"
+        },
+        {
+          "old": "2",
+          "new": "2",
+          "type": "ctx",
+          "codeHtml": ""
+        },
+        {
+          "old": "3",
+          "new": "3",
+          "type": "ctx",
+          "codeHtml": "import ("
+        },
+        {
+          "old": "4",
+          "new": "4",
+          "type": "ctx",
+          "codeHtml": "    \"context\""
+        },
+        {
+          "old": "",
+          "new": "5",
+          "type": "add",
+          "codeHtml": "    \"errors\""
+        },
+        {
+          "old": "5",
+          "new": "6",
+          "type": "ctx",
+          "codeHtml": "    \"testing\""
+        },
+        {
+          "old": "6",
+          "new": "7",
+          "type": "ctx",
+          "codeHtml": ")"
+        },
+        {
+          "old": "7",
+          "new": "8",
+          "type": "ctx",
+          "codeHtml": ""
+        },
+        {
+          "old": "8",
+          "new": "9",
+          "type": "ctx",
+          "codeHtml": "func TestRefreshSession(t *testing.T) {"
+        },
+        {
+          "old": "9",
+          "new": "",
+          "type": "del",
+          "codeHtml": "    withProvider(t, 200)"
+        },
+        {
+          "old": "10",
+          "new": "",
+          "type": "del",
+          "codeHtml": "    if err := refreshSession(context.Background(), \"valid-token\"); err != nil {"
+        },
+        {
+          "old": "11",
+          "new": "",
+          "type": "del",
+          "codeHtml": "        t.Fatal(err)"
+        },
+        {
+          "old": "",
+          "new": "10",
+          "type": "add",
+          "codeHtml": "    for _, status := range []int{200, 401, 503} {"
+        },
+        {
+          "old": "",
+          "new": "11",
+          "type": "add",
+          "codeHtml": "        t.Run(httpStatus(status), func(t *testing.T) {"
+        },
+        {
+          "old": "",
+          "new": "12",
+          "type": "add",
+          "codeHtml": "            withProvider(t, status)"
+        },
+        {
+          "old": "",
+          "new": "13",
+          "type": "add",
+          "codeHtml": "            err := refreshSession(context.Background(), \"valid-token\")"
+        },
+        {
+          "old": "",
+          "new": "14",
+          "type": "add",
+          "codeHtml": "            if (err != nil) != (status != 200) {"
+        },
+        {
+          "old": "",
+          "new": "15",
+          "type": "add",
+          "codeHtml": "                t.Fatalf(\"status %d: unexpected error %v\", status, err)"
+        },
+        {
+          "old": "",
+          "new": "16",
+          "type": "add",
+          "codeHtml": "            }"
+        },
+        {
+          "old": "",
+          "new": "17",
+          "type": "add",
+          "codeHtml": "        })"
+        },
+        {
+          "old": "12",
+          "new": "18",
+          "type": "ctx",
+          "codeHtml": "    }"
+        },
+        {
+          "old": "13",
+          "new": "19",
+          "type": "ctx",
+          "codeHtml": "}"
+        },
+        {
+          "old": "",
+          "new": "20",
+          "type": "add",
+          "codeHtml": ""
+        },
+        {
+          "old": "",
+          "new": "21",
+          "type": "add",
+          "codeHtml": "func TestRefreshSessionCanceled(t *testing.T) {"
+        },
+        {
+          "old": "",
+          "new": "22",
+          "type": "add",
+          "codeHtml": "    ctx, cancel := context.WithCancel(context.Background())"
+        },
+        {
+          "old": "",
+          "new": "23",
+          "type": "add",
+          "codeHtml": "    cancel()"
+        },
+        {
+          "old": "",
+          "new": "24",
+          "type": "add",
+          "codeHtml": "    err := refreshSession(ctx, \"valid-token\")"
+        },
+        {
+          "old": "",
+          "new": "25",
+          "type": "add",
+          "codeHtml": "    if !errors.Is(err, context.Canceled) {"
+        },
+        {
+          "old": "",
+          "new": "26",
+          "type": "add",
+          "codeHtml": "        t.Fatalf(\"want cancellation, got %v\", err)"
+        },
+        {
+          "old": "",
+          "new": "27",
+          "type": "add",
+          "codeHtml": "    }"
+        },
+        {
+          "old": "",
+          "new": "28",
+          "type": "add",
+          "codeHtml": "}"
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "source": "github",
+      "id": "I_storefront_471",
+      "ref": "acme/storefront#471",
+      "title": "Sign-in hangs when the session provider stalls",
+      "url": "https://github.com/acme/storefront/issues/471",
+      "createdAt": "2026-09-08T14:10:00Z",
+      "updatedAt": "2026-09-10T08:40:00Z",
+      "group": "todo",
+      "state": "Open",
+      "stateColor": "",
+      "statePosition": 0,
+      "priority": 0,
+      "priorityLabel": "",
+      "project": "acme/storefront",
+      "labels": [
+        {
+          "name": "bug",
+          "color": "d73a4a"
+        }
+      ],
+      "comments": 4,
+      "assignees": [
+        {
+          "name": "Sam Rivera"
+        }
+      ],
+      "projectId": "storefront",
+      "linearProject": "",
+      "linearTeam": ""
+    },
+    {
+      "source": "linear",
+      "id": "lin-sto-212",
+      "ref": "STO-212",
+      "title": "Team invites with expiring links",
+      "url": "https://linear.app/acme/issue/STO-212",
+      "createdAt": "2026-09-03T10:00:00Z",
+      "updatedAt": "2026-09-10T08:55:00Z",
+      "group": "progress",
+      "state": "In Progress",
+      "stateColor": "f2c94c",
+      "statePosition": 2,
+      "priority": 2,
+      "priorityLabel": "High",
+      "project": "Storefront",
+      "labels": [
+        {
+          "name": "Feature",
+          "color": "5e6ad2"
+        }
+      ],
+      "comments": 6,
+      "assignees": [
+        {
+          "name": "Sam Rivera"
+        }
+      ],
+      "projectId": "storefront",
+      "linearProject": "Storefront",
+      "linearTeam": "STO"
+    },
+    {
+      "source": "linear",
+      "id": "lin-pay-88",
+      "ref": "PAY-88",
+      "title": "Retry failed webhook deliveries with backoff",
+      "url": "https://linear.app/acme/issue/PAY-88",
+      "createdAt": "2026-09-01T09:00:00Z",
+      "updatedAt": "2026-09-10T07:20:00Z",
+      "group": "progress",
+      "state": "In Review",
+      "stateColor": "0f783c",
+      "statePosition": 3,
+      "priority": 1,
+      "priorityLabel": "Urgent",
+      "project": "Payments",
+      "labels": [
+        {
+          "name": "Bug",
+          "color": "eb5757"
+        }
+      ],
+      "comments": 3,
+      "assignees": [
+        {
+          "name": "Sam Rivera"
+        }
+      ],
+      "projectId": "payments-api",
+      "linearProject": "Payments",
+      "linearTeam": "PAY"
+    },
+    {
+      "source": "github",
+      "id": "I_storefront_463",
+      "ref": "acme/storefront#463",
+      "title": "Checkout E2E flakes on slow card authorization",
+      "url": "https://github.com/acme/storefront/issues/463",
+      "createdAt": "2026-09-05T16:00:00Z",
+      "updatedAt": "2026-09-09T18:30:00Z",
+      "group": "todo",
+      "state": "Open",
+      "stateColor": "",
+      "statePosition": 0,
+      "priority": 0,
+      "priorityLabel": "",
+      "project": "acme/storefront",
+      "labels": [
+        {
+          "name": "bug",
+          "color": "d73a4a"
+        },
+        {
+          "name": "tests",
+          "color": "0e8a16"
+        }
+      ],
+      "comments": 2,
+      "assignees": [],
+      "projectId": "storefront",
+      "linearProject": "",
+      "linearTeam": ""
+    },
+    {
+      "source": "linear",
+      "id": "lin-sto-219",
+      "ref": "STO-219",
+      "title": "Dark mode for the dashboard",
+      "url": "https://linear.app/acme/issue/STO-219",
+      "createdAt": "2026-09-06T11:00:00Z",
+      "updatedAt": "2026-09-09T15:00:00Z",
+      "group": "todo",
+      "state": "Todo",
+      "stateColor": "8a8f98",
+      "statePosition": 1,
+      "priority": 3,
+      "priorityLabel": "Medium",
+      "project": "Storefront",
+      "labels": [
+        {
+          "name": "Feature",
+          "color": "5e6ad2"
+        }
+      ],
+      "comments": 1,
+      "assignees": [
+        {
+          "name": "Sam Rivera"
+        }
+      ],
+      "projectId": "storefront",
+      "linearProject": "Storefront",
+      "linearTeam": "STO"
+    },
+    {
+      "source": "linear",
+      "id": "lin-pay-91",
+      "ref": "PAY-91",
+      "title": "Idempotency keys for refunds",
+      "url": "https://linear.app/acme/issue/PAY-91",
+      "createdAt": "2026-09-07T13:00:00Z",
+      "updatedAt": "2026-09-09T12:00:00Z",
+      "group": "todo",
+      "state": "Todo",
+      "stateColor": "8a8f98",
+      "statePosition": 1,
+      "priority": 2,
+      "priorityLabel": "High",
+      "project": "Payments",
+      "labels": [
+        {
+          "name": "Feature",
+          "color": "5e6ad2"
+        }
+      ],
+      "comments": 2,
+      "assignees": [],
+      "projectId": "payments-api",
+      "linearProject": "Payments",
+      "linearTeam": "PAY"
+    },
+    {
+      "source": "github",
+      "id": "I_payments-api_29",
+      "ref": "acme/payments-api#29",
+      "title": "Document the refund API",
+      "url": "https://github.com/acme/payments-api/issues/29",
+      "createdAt": "2026-08-30T10:00:00Z",
+      "updatedAt": "2026-09-08T09:00:00Z",
+      "group": "todo",
+      "state": "Open",
+      "stateColor": "",
+      "statePosition": 0,
+      "priority": 0,
+      "priorityLabel": "",
+      "project": "acme/payments-api",
+      "labels": [
+        {
+          "name": "docs",
+          "color": "0075ca"
+        }
+      ],
+      "comments": 0,
+      "assignees": [],
+      "projectId": "payments-api",
+      "linearProject": "",
+      "linearTeam": ""
+    },
+    {
+      "source": "linear",
+      "id": "lin-sto-198",
+      "ref": "STO-198",
+      "title": "Cache product images at the edge",
+      "url": "https://linear.app/acme/issue/STO-198",
+      "createdAt": "2026-08-20T10:00:00Z",
+      "updatedAt": "2026-09-04T10:00:00Z",
+      "group": "backlog",
+      "state": "Backlog",
+      "stateColor": "8a8f98",
+      "statePosition": 0,
+      "priority": 4,
+      "priorityLabel": "Low",
+      "project": "Storefront",
+      "labels": [
+        {
+          "name": "Performance",
+          "color": "f2994a"
+        }
+      ],
+      "comments": 0,
+      "assignees": [],
+      "projectId": "storefront",
+      "linearProject": "Storefront",
+      "linearTeam": "STO"
+    }
+  ],
+  "appChat": [
+    {
+      "role": "user",
+      "kind": "text",
+      "text": "What needs me before lunch?",
+      "ts": 1000
+    },
+    {
+      "role": "assistant",
+      "kind": "text",
+      "text": "Two things:\n\n1. **Team invites** is waiting on you. It needs to know how long invitation links stay valid before it can finish.\n2. **Idempotency keys** in payments-api is ready for review (+38 −9).\n\nEverything else is still working. Session refresh merged two branches and is running its failure-path tests.",
+      "ts": 2000
+    }
+  ],
+  "prReview": {
+    "workspaceId": "WS-HOST-486",
+    "tabs": [
+      {
+        "code": "PA",
+        "title": "Review",
+        "mode": "review"
+      }
+    ],
+    "transcript": [
+      {
+        "role": "user",
+        "kind": "text",
+        "text": "Review this PR. Is the limiter safe to ship?",
+        "ts": 1000
+      },
+      {
+        "kind": "tool",
+        "tool": "Bash",
+        "input": "gh pr diff 486 --name-only",
+        "result": "src/ratelimit.go\nsrc/ratelimit_test.go",
+        "ts": 2000
+      },
+      {
+        "kind": "tool",
+        "tool": "Read",
+        "input": "src/ratelimit.go",
+        "result": "package main\n\nimport (\n    \"net/http\"\n    \"sync\"\n    \"time\"\n)\n\nconst (\n    loginLimit  = 5\n    loginWindow = time.Minute\n)\n\ntype limiter struct {\n    mu       sync.Mutex\n    attempts map[string][]time.Time\n}\n\nfunc (l *limiter) allow(key string, now time.Time) bool {\n    l.mu.Lock()\n    defer l.mu.Unlock()\n    recent := l.attempts[key][:0]\n    for _, t := range l.attempts[key] {\n        if now.Sub(t) < loginWindow {\n            recent = append(recent, t)\n        }\n    }\n    if len(recent) >= loginLimit {\n        l.attempts[key] = recent\n        return false\n    }\n    l.attempts[key] = append(recent, now)\n    return true\n}\n\nfunc clientKey(r *http.Request) string {\n    if ip := r.Header.Get(\"X-Forwarded-For\"); ip != \"\" {\n        return ip\n    }\n    return r.RemoteAddr\n}\n",
+        "ts": 3000
+      },
+      {
+        "kind": "tool",
+        "tool": "mcp__recur__report_finding",
+        "input": "{\"severity\": \"medium\", \"file\": \"src/ratelimit.go\", \"line\": 37, \"message\": \"clientKey trusts X-Forwarded-For, so a client can send a new value on every attempt and never hit the limit.\"}",
+        "result": "{\"id\": \"F-12\", \"severity\": \"medium\", \"file\": \"src/ratelimit.go\", \"line\": 37, \"message\": \"clientKey trusts X-Forwarded-For, so a client can send a new value on every attempt and never hit the limit.\"}",
+        "ts": 4000
+      },
+      {
+        "kind": "tool",
+        "tool": "mcp__recur__report_finding",
+        "input": "{\"severity\": \"low\", \"file\": \"src/ratelimit.go\", \"line\": 21, \"message\": \"attempts keeps an entry for every key it has seen. Drop keys whose window is empty.\"}",
+        "result": "{\"id\": \"F-13\", \"severity\": \"low\", \"file\": \"src/ratelimit.go\", \"line\": 21, \"message\": \"attempts keeps an entry for every key it has seen. Drop keys whose window is empty.\"}",
+        "ts": 5000
+      },
+      {
+        "role": "assistant",
+        "kind": "text",
+        "text": "The window logic is sound and the test covers the sixth attempt. Two findings:\n\n- **medium**: `clientKey` trusts `X-Forwarded-For`, so a client can rotate the header and skip the limit. Use the proxy's trusted client IP instead.\n- **low**: `attempts` keeps an entry for every key it has seen. Drop keys whose window is empty.\n\nWant me to post these to the PR as a review?",
+        "ts": 6000
+      },
+      {
+        "kind": "turn",
+        "durationMs": 38000,
+        "ts": 6100
+      }
+    ]
+  }
+}

@@ -1134,7 +1134,7 @@ async fn message_child_steers_a_running_loop() {
         .eng()
         .message_child_from_chat(&parent.id, &child.id, steer)
         .await;
-    assert!(got.contains("loop"), "{got}");
+    assert!(got.contains("workflow"), "{got}");
     assert_eq!(h.lock().pending_steer, steer);
     fx.eng().remove_loop(&h);
     fx.te.close().await;

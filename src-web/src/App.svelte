@@ -104,10 +104,10 @@
         "Read the worktree diff against its base and leave inline comments before anything is pushed.",
     },
     {
-      label: "Loop",
+      label: "Autopilot",
       screen: "loop",
       caption:
-        "A To a PR loop fanned out into three child workspaces. Each one merges back as soon as it converges.",
+        "A To a PR workflow fanned out into three child workspaces. Each one merges back as soon as it converges.",
     },
     {
       label: "Pull request",
@@ -131,7 +131,7 @@
       label: "Schedules",
       screen: "schedules",
       caption:
-        "Prompts and loops on a cron, once, or at every launch. Each run gets a fresh workspace.",
+        "Prompts and workflows on a cron, once, or at every launch. Each run gets a fresh workspace.",
     },
   ];
   let screen = $state<Screen>("workspace");
@@ -216,7 +216,7 @@
       name: "Plan",
       access: "read",
       title: "Investigate before anyone edits.",
-      body: "The agent traces the code and writes a plan: the files, the steps, the risks. Hand it to an Agent chat or a loop.",
+      body: "The agent traces the code and writes a plan: the files, the steps, the risks. Hand it to an Agent chat or a workflow.",
       example: "Plan expiring team invitations for this app.",
       outcome: "read-only · a structured plan",
     },
@@ -237,20 +237,20 @@
       outcome: "read-only · findings",
     },
     {
-      name: "Loop",
+      name: "Autopilot",
       access: "team",
       title: "Hand the task to a team.",
-      body: "Pick a loop and a policy in the composer. The Maestro runs specialist roles through the loop’s phases and reports back in this chat. Talk to it to steer the run.",
+      body: "Pick a workflow and a policy in the composer. The Maestro runs specialist roles through the workflow’s phases and reports back in this chat. Talk to it to steer the run.",
       example: "Add team invites with links that expire after 48 hours.",
-      outcome: "Loop · To a PR · Balanced",
+      outcome: "Autopilot · To a PR · Balanced",
     },
   ];
   const activeMode = $derived(modes.find((item) => item.name === mode)!);
 
   const phases = [
     ["plan", "Planner writes a plan; the policy decides if you approve it."],
-    ["converge", "Coder implements, Reviewer files findings, repeat."],
-    ["verify", "Optional. QA checks the result in a real browser, with evidence."],
+    ["converge", "The review loop: Coder implements, Reviewer files findings, repeat."],
+    ["verify", "Optional. QA checks the result in a real browser; a reject sends it back."],
     ["ensure_pr", "Commit, push, open or update the pull request."],
     ["artifact", "Publish a document instead of a PR."],
   ];
@@ -271,13 +271,13 @@ report_finding for each breaking change, missing
 version bump, or undocumented error. Breaking is high.
 """
 
-[[loop]]
-id = "team.loops.api-change"
+[[workflow]]
+id = "team.workflows.api-change"
 name = "API change"
 conductor = "recur.roles.maestro"
 entry = "plan"
 
-[[loop.phase]]
+[[workflow.phase]]
 id = "plan"
 uses = "plan"
 role = "recur.roles.planner"
@@ -285,27 +285,28 @@ prompt = "Plan from the OpenAPI spec. List every endpoint that changes."
 gate = "plan_approval"
 next = "build"
 
-[[loop.phase]]
+[[workflow.phase]]
 id = "build"
 uses = "converge"
 next = "check"
 
-[loop.phase.roles]
+[workflow.phase.roles]
 implementer = "recur.roles.coder"
 reviewer = "team.roles.api-reviewer"
 
-[loop.phase.prompts]
+[workflow.phase.prompts]
 implement = "Update the OpenAPI spec first, then the handlers."
 fix = "/fix-findings"
 
-[[loop.phase]]
+[[workflow.phase]]
 id = "check"
 uses = "verify"
 role = "recur.roles.qa"
 prompt = "Call each changed endpoint and attach the responses."
+on_reject = "build"
 next = "pr"
 
-[[loop.phase]]
+[[workflow.phase]]
 id = "pr"
 uses = "ensure_pr"`);
   // Lucide paths for modifier glyphs: fonts draw ⌘ ⇧ ⌥ at uneven sizes.
@@ -498,7 +499,7 @@ uses = "ensure_pr"`);
       <nav aria-label="Main navigation">
         <a class="b-nav-secondary" href="#modes">Modes</a><a
           class="b-nav-secondary"
-          href="#loops">Loops</a
+          href="#workflows">Workflows</a
         ><a class="b-nav-secondary" href="#review">Pull requests</a><a
           class="b-nav-secondary"
           href="#inbox">Inbox</a
@@ -674,18 +675,18 @@ uses = "ensure_pr"`);
         </p>
       </section>
 
-      <section class="b-section" id="loops">
+      <section class="b-section" id="workflows">
         <div class="b-heading">
-          <h2>Set the bar.<br /><em>The loop keeps going.</em></h2>
+          <h2>Set the bar.<br /><em>Work comes back until it clears.</em></h2>
           <p>
-            Hand a task to a team instead of one agent. A planner scopes it, a
-            coder builds it, a reviewer tears into it, and they go round until
+            Hand a task to a workflow: a team of agents instead of one. A
+            planner scopes it, a coder builds it, a reviewer tears into it, and they go round until
             it’s right or they need you. A Maestro keeps it moving, and you can
             reshape any of it.
             <span class="b-doc-links"
-              >{@render docLink("concepts/loop", "Loop mode docs")}{@render docLink(
-                "bundles/loops",
-                "Write your own loop",
+              >{@render docLink("concepts/workflows", "Workflows docs")}{@render docLink(
+                "bundles/workflows",
+                "Write your own workflow",
               )}</span
             >
           </p>
@@ -705,7 +706,7 @@ uses = "ensure_pr"`);
           class="b-graph-scroll"
           tabindex="0"
           role="region"
-          aria-label="Animated loop graph. Scroll horizontally on small screens."
+          aria-label="Animated workflow graph. Scroll horizontally on small screens."
         >
           <div class="b-graph" class:paused={!playing}>
             <LoopFlow {playing} />
@@ -752,7 +753,7 @@ uses = "ensure_pr"`);
           </article>
         </div>
         <p class="b-loops-list">
-          <span class="b-eyebrow">Shipped loops</span>
+          <span class="b-eyebrow">Shipped workflows</span>
           {#each loops as command (command)}<code>{command}</code>{/each}
         </p>
       </section>
@@ -824,7 +825,7 @@ uses = "ensure_pr"`);
           <h2>Put the chores<br /><em>on a schedule.</em></h2>
           <p>
             Nightly review passes, weekly security sweeps, a morning report. Any
-            prompt or loop can run on its own clock, each time in a fresh
+            prompt or workflow can run on its own clock, each time in a fresh
             workspace, so the results are ready when you sit down.
             <span class="b-doc-links"
               >{@render docLink("concepts/schedules", "Schedule docs")}</span
@@ -836,8 +837,8 @@ uses = "ensure_pr"`);
           class="b-code"
           tabindex="0"
           aria-label="Example schedules"><span class="b-dim">NAME                   CADENCE           MODE</span>
-Nightly review &amp; fix   0 2 * * 1-5       Loop · Review &amp; fix · Balanced
-Weekly security pass   0 9 * * 1         Loop · Security review &amp; fix
+Nightly review &amp; fix   0 2 * * 1-5       Autopilot · Review &amp; fix · Balanced
+Weekly security pass   0 9 * * 1         Autopilot · Security review &amp; fix
 Morning code review    @daily            Review
 Refresh dev fixtures   @reboot           Agent
 Release notes draft    once Oct 1 09:00  Agent</pre>
@@ -849,13 +850,13 @@ Release notes draft    once Oct 1 09:00  Agent</pre>
             <h2>Extend it<br /><em>with bundles.</em></h2>
             <p>
               Recur is built from TextMate-inspired bundles, and so is almost
-              everything in it: slash commands, loops, roles, issue lookup,
+              everything in it: slash commands, workflows, roles, issue lookup,
               languages, themes. Copy one, change it, and reload without
               restarting.
               <span class="b-doc-links"
                 >{@render docLink("bundles", "Bundle docs")}{@render docLink(
-                  "bundles/loops",
-                  "Write your own loop",
+                  "bundles/workflows",
+                  "Write your own workflow",
                 )}</span
               >
             </p>
@@ -872,7 +873,7 @@ recur bundles test ./bundles/JSON</pre>
           <pre
             class="b-code b-toml"
             tabindex="0"
-            aria-label="Example custom loop in a user bundle">{#each loopExample as token, i (i)}<span
+            aria-label="Example custom workflow in a user bundle">{#each loopExample as token, i (i)}<span
                 class="t-{token.kind}">{token.text}</span
               >{/each}</pre>
         </div>
@@ -1722,7 +1723,6 @@ recur bundles test ./bundles/JSON</pre>
     margin-bottom: 18px;
   }
   .b-custom-window {
-    height: 400px;
     min-width: 1000px;
   }
   .b-doc-links {
@@ -2079,9 +2079,6 @@ recur bundles test ./bundles/JSON</pre>
     .b-code {
       font-size: 11px;
       padding: 16px;
-    }
-    .b-custom-window {
-      height: 380px;
     }
     .b-keys {
       grid-template-columns: 1fr;

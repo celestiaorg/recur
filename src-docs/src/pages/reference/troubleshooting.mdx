@@ -22,7 +22,7 @@ Turning a provider off keeps its credentials, so turning it back on restores its
 
 ## A turn fails with "turned off" or "not configured"
 
-A mode or loop role is set to a model from a provider that is off or not signed in. Recur fails the turn instead of silently running a different provider you did not choose. Either fix the provider in **Settings → Providers**, or pick another model in the composer or in **Settings → Models**.
+A mode or workflow role is set to a model from a provider that is off or not signed in. Recur fails the turn instead of silently running a different provider you did not choose. Either fix the provider in **Settings → Providers**, or pick another model in the composer or in **Settings → Models**.
 
 ## Claude Code
 
@@ -57,7 +57,7 @@ A mode or loop role is set to a model from a provider that is off or not signed 
 
 - **Turn hit the time limit**: raise **Settings → General → Turn time limit**.
 - **Mac went to sleep**: turn on **Settings → General → Prevent sleep while agents run**.
-- **Turns wait before starting**: they are queued behind **Max concurrent agents** or **Max concurrent loops** in **Settings → General**.
+- **Turns wait before starting**: they are queued behind **Max concurrent agents** or **Max concurrent workflows** in **Settings → General**.
 - **Agent keeps asking for permission**: answer in the chat, or turn on **Settings → Providers → Bypass tool permissions** for Claude Code and Codex. [Inbox](/concepts/inbox) lists every task waiting on you.
 
 ## Pull requests and GitHub

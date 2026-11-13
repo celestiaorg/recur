@@ -390,15 +390,15 @@ impl TestEngine {
         self.install_test_pack("TestLoops", TEST_LOOPS_TOML);
     }
 
-    /// Copies the shipped `bundles/Loop` pack under the default bundles
+    /// Copies the shipped `bundles/Workflows` pack under the default bundles
     /// root.
     pub fn install_shipped_loop_pack(&self) {
-        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bundles/Loop");
+        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bundles/Workflows");
         assert!(
             src.join("bundle.toml").exists(),
-            "shipped Loop pack missing at {src:?}"
+            "shipped Workflows pack missing at {src:?}"
         );
-        let dst = Path::new(&self.engine.bundle_roots().default_dir).join("Loop");
+        let dst = Path::new(&self.engine.bundle_roots().default_dir).join("Workflows");
         copy_dir(&src, &dst);
     }
 

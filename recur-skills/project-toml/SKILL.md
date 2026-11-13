@@ -27,7 +27,7 @@ fix the TOML rather than relying on the settings page to rewrite it.
 1. Open `.recur/project.toml` (create `.recur/` if needed).
 2. Change only the field the user asked for. Copy shape from an existing
    `[[run]]` or the skeleton below: do not invent keys.
-3. Dev servers must bind `$RECUR_PORT`. Loops that verify-in-browser look for a
+3. Dev servers must bind `$RECUR_PORT`. Workflows that verify-in-browser look for a
    run named `dev`, else the first `[[run]]`. No bootable run → no verify → no PR.
 4. Secrets go in gitignored dotenv, not `env`. Confirm `.gitignore` has
    `.env`, `.env.local`, `.recur/.env`, `.recur/.env.local`.
@@ -42,7 +42,7 @@ fix the TOML rather than relying on the settings page to rewrite it.
 | `app_url` | URL | Verify-in-browser probe. `$RECUR_PORT` / `$PORT` substituted. Empty → `http://localhost:$RECUR_PORT`. |
 | `env` | dotenv text | Injected into setup, teardown, runs, Observatory. `KEY=value`, `#` comments, optional `export `. |
 | `copy_files` | globs, one per line | Copied from the project checkout into each **new** worktree, **before** setup. Existing dest files skipped. Gitignored files are included (that is the point). |
-| `conventional_commits` | bool | `true`: `/commit`, `/open-pr`, generated commit messages and loop PR titles use Conventional Commits (`type(scope): summary`). |
+| `conventional_commits` | bool | `true`: `/commit`, `/open-pr`, generated commit messages and workflow PR titles use Conventional Commits (`type(scope): summary`). |
 
 `#` comments and blank lines in `copy_files` / `env` are ignored. `copy_files`
 does not support `!` negation. A pattern with no slash matches at any depth

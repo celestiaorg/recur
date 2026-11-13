@@ -1942,6 +1942,7 @@ impl Shell {
                 icon_size: Some(if split { 0. } else { 13. }),
                 chevron_size: Some(13.),
                 auto_width: true,
+                hide_value: split,
                 ..Default::default()
             };
             let sel = cx.new(|cx| {

@@ -1,0 +1,272 @@
+---
+title: Workflows, roles & policies
+description: Write your own workflows with custom roles, phase prompts, and policies
+---
+
+# Workflows, roles & policies
+
+A [workflow](/concepts/workflows) is written down in a bundle: which agents take part, what each one is told, what order the work happens in, and how high the bar is. Every shipped workflow is defined this way in the `Workflows` bundle, and you can write your own in the same format.
+
+A bundle can contribute three things for workflows:
+
+| Table | What it defines |
+| --- | --- |
+| `[[role]]` | A specialist agent: its chat mode, tools, and standing instructions |
+| `[[workflow]]` | A graph of phases, each run by one or more roles |
+| `[[policy]]` | A bar: round limits, which findings block, and plan approval |
+
+Put your bundles in `~/.recur/bundles/<Name>/bundle.toml`. Your workflows can reuse the shipped roles and policies by id, so most custom workflows only need a `[[workflow]]` and maybe one new role.
+
+Bundles written before the rename still load: Recur accepts `[[loop]]`, `[[loop.phase]]`, `mode = "loop"`, and `loop = "<id>"` as older spellings of `[[workflow]]`, `[[workflow.phase]]`, `mode = "autopilot"`, and `workflow = "<id>"`.
+
+## A complete example
+
+This bundle adds an "API change" workflow. It plans from the API spec, builds and reviews with a custom API reviewer, checks the endpoints in a browser, and opens a pull request. It also adds `/api-change` to the composer.
+
+```toml
+[bundle]
+name = "Team"
+id = "team.workflows"
+version = "1.0.0"
+
+[[role]]
+id = "team.roles.api-reviewer"
+name = "API reviewer"
+code = "AR"
+mode = "review"
+prompt = """
+Review public API changes only. File a finding with
+report_finding for each breaking change, missing
+version bump, or undocumented error. Breaking is high.
+"""
+
+[[workflow]]
+id = "team.workflows.api-change"
+name = "API change"
+hint = "Plan from the spec, build, review, verify, open a PR"
+conductor = "recur.roles.maestro"
+entry = "plan"
+reenter = ["plan", "build"]
+
+[[workflow.phase]]
+id = "plan"
+uses = "plan"
+role = "recur.roles.planner"
+prompt = "Plan from the OpenAPI spec. List every endpoint that changes."
+gate = "plan_approval"
+next = "build"
+
+[[workflow.phase]]
+id = "build"
+uses = "converge"
+next = "check"
+
+[workflow.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "team.roles.api-reviewer"
+
+[workflow.phase.prompts]
+implement = "Update the OpenAPI spec first, then the handlers."
+fix = "/fix-findings"
+
+[[workflow.phase]]
+id = "check"
+uses = "verify"
+role = "recur.roles.qa"
+prompt = "Call each changed endpoint and attach the responses."
+on_reject = "build"
+next = "pr"
+
+[[workflow.phase]]
+id = "pr"
+uses = "ensure_pr"
+
+[[prompt]]
+id = "team.chat.api-change"
+name = "API change"
+description = "Run the API change workflow"
+slash = "api-change"
+mode = "autopilot"
+workflow = "team.workflows.api-change"
+interpreter = "shebang"
+body = '''
+#!/bin/sh
+printf '%s\n' '{"prompt":"Ship this API change: plan from the spec, build and review until the bar passes, verify, then open the PR.","display":"API change"}'
+'''
+```
+
+What it does, phase by phase:
+
+1. **plan**: the shipped Planner writes a structured plan, told to start from the spec. `gate = "plan_approval"` pauses for your approval when the policy asks for it.
+2. **build**: the shipped Coder implements the plan, then the custom API reviewer files findings. The Coder fixes or disputes them, and the rounds repeat until the open findings clear the policy's bar.
+3. **check**: the shipped QA role calls the changed endpoints in a browser and reports pass or fail with evidence. On a fail, `on_reject = "build"` sends the work back to the build phase, and QA checks again after it.
+4. **pr**: commits, pushes, and opens or updates the pull request.
+
+## Roles
+
+A role is one specialist. Its prompt is the agent's standing instructions for every phase it runs.
+
+```toml
+[[role]]
+id = "team.roles.changelog"
+name = "Changelog"
+code = "CL"
+mode = "agent"
+tools = ["update_plan_step"]
+prompt = "prompts/changelog.md"
+```
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Stable id, such as `you.roles.name`. Letters, digits, `_`, `-`, and `.`, up to 80 characters |
+| `name` | Shown in the workflow chat |
+| `code` | Two-letter short label, unique across all installed roles |
+| `mode` | Required. `ask`, `plan`, `agent`, `review`, or `autopilot`. Sets what the role can do: only `agent` can edit |
+| `prompt` | Standing instructions: inline text or a file in the bundle |
+| `tools` | Extra Recur tools by short name, such as `update_plan_step`, `playwright`, `attach_evidence`, or `report_result` |
+| `disabled_tools` | Tools to remove. You cannot add editing to a read-only mode |
+| `hint` | Optional one-line description |
+
+Each mode already includes the tools its job needs. Write the role prompt as who the agent is and how it reports: the Planner files a plan with `submit_plan`, a reviewer files findings with `report_finding`, and a verifier finishes with `report_result`. A verifier role must list `report_result` in `tools`.
+
+Reviewer prompts should calibrate severity, because the engine uses the reviewer's severities as given:
+
+- **critical / high**: ship-blockers
+- **medium**: should be fixed before a PR
+- **low / info**: nits
+
+### Shipped roles
+
+| Role | Id | Mode |
+| --- | --- | --- |
+| Maestro | `recur.roles.maestro` | `autopilot` |
+| Planner | `recur.roles.planner` | `plan` |
+| Coder | `recur.roles.coder` | `agent` |
+| Reviewer | `recur.roles.reviewer` | `review` |
+| Security reviewer | `recur.roles.security-reviewer` | `review` |
+| QA | `recur.roles.qa` | `ask` |
+| Writer | `recur.roles.writer` | `agent` |
+| Editor | `recur.roles.editor` | `review` |
+
+Reuse these when they fit. Add a role when the persona or its tools really differ, like the Docs workflow's Writer and Editor.
+
+## Workflows
+
+```toml
+[[workflow]]
+id = "team.workflows.review"
+name = "Review this"
+hint = "Review and fix the current diff, no PR"
+conductor = "recur.roles.maestro"
+entry = "converge"
+reenter = ["converge"]
+```
+
+| Field | Meaning |
+| --- | --- |
+| `id`, `name` | Stable id and the name in the workflow picker |
+| `hint` | One line under the name in the picker |
+| `conductor` | Required. The role you talk to during the run. It must have `mode = "autopilot"`; use `recur.roles.maestro` |
+| `entry` | The first phase |
+| `reenter` | Phases the conductor may send work back to after a stop |
+| `prompt` | Optional mission: standing instructions for the conductor, such as whether to open a PR or reopen scope. Specialists never see it |
+
+## Phases
+
+Each `[[workflow.phase]]` uses one built-in kind, called a verb. The verb decides which roles the phase needs and which prompts you can set.
+
+| `uses` | Roles | Prompt slots |
+| --- | --- | --- |
+| `plan` | `planner` (mode `plan`) | `plan` |
+| `implement` | `implementer` (mode `agent`) | `implement` |
+| `review` | `reviewer` (mode `review`) | `review` |
+| `converge` | `implementer` and `reviewer` | `implement`, `review`, `fix`, `rereview` |
+| `verify` | `verifier` (mode `ask`, `review`, or `agent`) | `verify` |
+| `ensure_pr` | None | None |
+| `artifact` | None | None |
+
+All listed roles are required. When a verb has a single role or prompt slot, use the short form `role = "…"` and `prompt = "…"`. For `converge`, use `[workflow.phase.roles]` and `[workflow.phase.prompts]`.
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Phase id, unique in the workflow. `fail`, `escalate`, `skip`, and `next` are reserved |
+| `uses` | The verb |
+| `next` | The phase after this one. Leave it out on the last phase |
+| `on_reject` | `verify` only: the phase to go back to when QA rejects the result, usually the `converge` phase. Without it, a rejection fails the run |
+| `gate` | `plan_approval` on a `plan` phase waits for your approval when the policy asks for it |
+| `start` | `converge` only: `review` skips the first implement turn, for work on a diff that already exists |
+| `dispatch` | `on_demand` makes the phase run only when the conductor dispatches it |
+| `when` | For on-demand phases: guidance to the conductor about when to run it |
+| `max_rounds`, `on_max_rounds`, `findings_threshold`, `timeout`, `retries`, `on_fail` | Override the policy for this phase only |
+
+Rules the linter enforces:
+
+- `entry` must be a phase, and `next` edges cannot form a cycle.
+- `next` and `on_reject` must name phases in the same workflow.
+- On-demand phases cannot be the entry, cannot be in `reenter`, and cannot be the target of a `next` or `on_reject`.
+- `ensure_pr` and `artifact` end the run. `artifact` publishes the result as a document instead of a PR.
+- A `verify` phase needs [project Runs and an app URL](/concepts/project-toml) so QA can start and open your app.
+
+## Where work comes back
+
+`next` edges only move forward and cannot form a cycle. Work comes back to an earlier step in four places instead:
+
+- **Review loop**: inside a `converge` phase, the reviewer files findings and the implementer fixes them, round after round, until the open findings clear the bar or `max_rounds` is hit. The policy's `on_max_rounds` decides what happens at the limit, and the Maestro can add `extend_rounds` more.
+- **Conductor re-entry**: after a stop, the Maestro can restart any phase listed in the workflow's `reenter`, such as going back to `plan` when the scope changes.
+- **Rejected verification**: a `verify` phase with `on_reject` sends the work back to that phase when QA rejects it, then verifies again, as in the example above. The run's `timeout` still applies.
+- **Retries**: a phase that fails is run again up to `retries` times before `on_fail` decides whether to fail, escalate, or skip.
+
+## Phase prompts
+
+A phase prompt is the message sent to the role for that turn. Recur adds the task to each role's instructions, so a phase prompt only has to say what is special about this step. Each value can be:
+
+- **Inline text**: `prompt = "Plan from the OpenAPI spec."`
+- **A file in the bundle**: `prompt = "prompts/security-review.md"`. Paths are relative to `bundle.toml` and must exist.
+- **A composer action**: `prompt = "/review"`. Any [chat prompt](/bundles/prompts), including your own, expands the same way it does in the composer.
+
+A phase prompt replaces Recur's built-in message for that slot. That matters for `fix`: the built-in fix message lists the open findings. If you write your own, tell the implementer to load them with `list_findings` and close each one with `update_finding`, or keep `fix = "/fix-findings"`, which does both.
+
+## Policies
+
+A policy sets how hard the run pushes without changing the workflow. You pick the policy in the composer, so the same workflow can run cautiously or aggressively.
+
+```toml
+[[policy]]
+id = "team.policies.strict"
+name = "Strict"
+hint = "Close everything; pause on every plan"
+max_rounds = 3
+on_max_rounds = "escalate"
+findings_threshold = { info = 0, low = 0, medium = 0, high = 0, critical = 0 }
+plan_approval = "always"
+timeout = "4h"
+extend_rounds = 1
+```
+
+| Field | Meaning |
+| --- | --- |
+| `max_rounds` | Review and fix rounds before the limit. Default 4 |
+| `on_max_rounds` | At the limit: `escalate` (ask you), `proceed`, or `fail` |
+| `findings_threshold` | Open findings allowed per severity before the work passes. `0` alone means none at any severity |
+| `plan_approval` | `always`, `if_structured`, or `never` |
+| `timeout` | Wall-clock limit for the run |
+| `retries`, `on_fail` | How many times to retry a failed phase, then `fail`, `escalate`, or `skip` |
+| `extend_rounds` | Rounds the Maestro can add when a review loop escalates |
+
+The shipped policies are `recur.policies.cautious`, `recur.policies.balanced`, and `recur.policies.aggressive`. See [Workflows](/concepts/workflows#policies) for what each one does. A phase's own `findings_threshold` must be the same as the policy's or stricter.
+
+## Start your workflow
+
+After a reload, your workflow appears in the workflow picker of any task workspace's Autopilot chat, sorted by name. **Settings → Workflows** can make it the default workflow for new work.
+
+To start it from the composer, add a `[[prompt]]` with `mode = "autopilot"` and `workflow` set to your workflow's id, as in the example above. Its `prompt` becomes the run's opening message. The shipped `/to-a-pr` in the `Chat` bundle works the same way. See [Chat prompts](/bundles/prompts).
+
+## Validate and reload
+
+```bash
+recur bundles lint ~/.recur/bundles/Team
+```
+
+Then choose **Navigate → Reload Bundles**. A bundle that fails to load is skipped, and **Settings → Bundles** shows why. Lint checks each bundle on its own, so it does not catch a typo in the id of a role from another bundle. Check those against the tables above.
+
+For more complete examples, copy from the shipped `Workflows` bundle: its `bundle.toml` defines every shipped workflow, role, and policy, and its `prompts/` folder holds their instructions.

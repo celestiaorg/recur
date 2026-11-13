@@ -101,7 +101,7 @@ impl AppServices {
             .ok_or_else(|| not_found(workspace_id))?;
         if ws.has_run() {
             return Err(Error::new(
-                "loop and policy are pinned after the run starts: restart to switch",
+                "workflow and policy are pinned after the run starts: restart to switch",
             ));
         }
         let (loop_id, policy_id) = (loop_id.trim().to_owned(), policy_id.trim().to_owned());
@@ -148,8 +148,8 @@ impl AppServices {
             .await
         {
             Err(e) => format!("Refused: {e}"),
-            Ok(true) => "Loop queued: it starts when a slot frees.".into(),
-            Ok(false) => "Loop engaged: planning has started.".into(),
+            Ok(true) => "Workflow queued: it starts when a slot frees.".into(),
+            Ok(false) => "Workflow engaged: planning has started.".into(),
         }
     }
 

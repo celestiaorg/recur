@@ -33,7 +33,7 @@ impl SettingsView {
                 Row::stack()
                     .child(copy(
                         "default-loop",
-                        "Default loop and policy",
+                        "Default workflow and policy",
                         Some(vec![span(
                             "Used on New Task and when a workspace has not picked its own. A run pins both after it starts.",
                         )]),

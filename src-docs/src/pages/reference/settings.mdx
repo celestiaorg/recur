@@ -12,7 +12,7 @@ Open Settings with **⌘,** (or **Recur → Settings…**). Type in the search f
 ### General
 
 - **Simplify**: **Default Simplify** turns Simplify on for new chats. Simplify keeps agents from over-building: they reuse what is already in the repo and ship the smallest change that works. You can still toggle it per chat in the composer.
-- **Concurrency**: **Max concurrent loops** (default 4) and **Max concurrent agents** (default 8). Extra loops and agent turns wait in a queue until a slot frees. 0 is unlimited.
+- **Concurrency**: **Max concurrent workflows** (default 4) and **Max concurrent agents** (default 8). Extra workflows and agent turns wait in a queue until a slot frees. 0 is unlimited.
 - **Agents**: **Turn time limit** stops an agent turn after this many minutes (default 240, max 10080). **Queue follow-ups while an agent runs** decides what ⏎ does while a turn is running: off, ⏎ steers the running turn and ⌘⏎ queues; on, ⏎ queues and ⌘⏎ steers.
 - **Power**: **Prevent sleep while agents run** keeps your Mac awake (via `caffeinate`, macOS only) so idle sleep cannot interrupt a turn.
 - **Workspaces**: **Branch name prefix** is prepended to new workspace branches. Presets are **Recur** (`recur/`), **GitHub** (your `gh` login), or **None**. **Keep scheduled workspaces** keeps the last N workspaces per schedule and removes older finished runs. 0 keeps all.
@@ -52,15 +52,15 @@ Turn each provider on or off, see its connection status, and sign in. Turning a 
 
 ### Models
 
-Set the default model and flags (such as effort) for each chat mode: Ask, Plan, Agent / Coder, Review, and Loop. **Workspace titles** sets the model that names new workspaces. **Child workspace model** decides whether a child workspace an agent opens uses the calling chat's model or the default for its mode.
+Set the default model and flags (such as effort) for each chat mode: Ask, Plan, Agent / Coder, Review, and Autopilot. **Workspace titles** sets the model that names new workspaces. **Child workspace model** decides whether a child workspace an agent opens uses the calling chat's model or the default for its mode.
 
 You can always pick a different model per chat in the composer.
 
-## Loops
+## Workflows
 
-**Default loop and policy** is used on New Task and for workspaces that have not picked their own. A run keeps the loop and policy it started with. See [Loop mode](/concepts/loop).
+**Default workflow and policy** is used on New Task and for workspaces that have not picked their own. A run keeps the workflow and policy it started with. See [Workflows](/concepts/workflows).
 
-## Workflow
+## Connections
 
 ### Pull requests
 

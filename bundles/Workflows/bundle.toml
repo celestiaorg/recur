@@ -1,0 +1,269 @@
+[bundle]
+name = "Workflows"
+id = "recur.loop"
+version = "1.0.0"
+author = "Recur"
+
+[[role]]
+id = "recur.roles.maestro"
+name = "Maestro"
+code = "MA"
+mode = "autopilot"
+prompt = "prompts/maestro.md"
+
+[[role]]
+id = "recur.roles.planner"
+name = "Planner"
+code = "PL"
+mode = "plan"
+prompt = "prompts/planner.md"
+
+[[role]]
+id = "recur.roles.coder"
+name = "Coder"
+code = "CO"
+mode = "agent"
+tools = ["update_plan_step"]
+prompt = "prompts/coder.md"
+
+[[role]]
+id = "recur.roles.reviewer"
+name = "Reviewer"
+code = "RV"
+mode = "review"
+prompt = "prompts/reviewer.md"
+
+[[role]]
+id = "recur.roles.security-reviewer"
+name = "Security reviewer"
+code = "SR"
+mode = "review"
+prompt = "prompts/security-reviewer.md"
+
+[[role]]
+id = "recur.roles.qa"
+name = "QA"
+code = "QA"
+mode = "ask"
+tools = ["attach_evidence", "playwright", "report_result"]
+prompt = "prompts/qa.md"
+
+[[role]]
+id = "recur.roles.writer"
+name = "Writer"
+code = "WR"
+mode = "agent"
+tools = ["update_plan_step"]
+prompt = "prompts/writer.md"
+
+[[role]]
+id = "recur.roles.editor"
+name = "Editor"
+code = "ED"
+mode = "review"
+prompt = "prompts/editor.md"
+
+[[policy]]
+id = "recur.policies.cautious"
+name = "Cautious"
+hint = "Close every finding; pause on every plan; escalate after 2 rounds"
+max_rounds = 2
+on_max_rounds = "escalate"
+findings_threshold = { info = 0, low = 0, medium = 0, high = 0, critical = 0 }
+plan_approval = "always"
+timeout = "4h"
+retries = 0
+on_fail = "fail"
+extend_rounds = 1
+
+[[policy]]
+id = "recur.policies.balanced"
+name = "Balanced"
+hint = "Fix medium and up; escalate after 4 rounds"
+max_rounds = 4
+on_max_rounds = "escalate"
+findings_threshold = { critical = 0, high = 0, medium = 0 }
+plan_approval = "if_structured"
+timeout = "4h"
+retries = 0
+on_fail = "fail"
+extend_rounds = 2
+
+[[policy]]
+id = "recur.policies.aggressive"
+name = "Aggressive"
+hint = "Ship-blockers only; skip plan approval; proceed after 6 rounds"
+max_rounds = 6
+on_max_rounds = "proceed"
+findings_threshold = { critical = 0, high = 0 }
+plan_approval = "never"
+timeout = "4h"
+retries = 0
+on_fail = "fail"
+extend_rounds = 3
+
+[[workflow]]
+id = "recur.loops.pr"
+name = "To a PR"
+hint = "Plan, implement, review, open a PR"
+conductor = "recur.roles.maestro"
+prompt = "prompts/pr.md"
+entry = "planning"
+reenter = ["planning", "converge"]
+
+[[workflow.phase]]
+id = "planning"
+uses = "plan"
+role = "recur.roles.planner"
+prompt = "prompts/planning.md"
+gate = "plan_approval"
+next = "converge"
+
+[[workflow.phase]]
+id = "converge"
+uses = "converge"
+next = "pr"
+
+[workflow.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "recur.roles.reviewer"
+
+[workflow.phase.prompts]
+review = "/review"
+fix = "/fix-findings"
+rereview = "/re-review"
+
+[[workflow.phase]]
+id = "pr"
+uses = "ensure_pr"
+
+[[workflow.phase]]
+id = "security"
+uses = "converge"
+dispatch = "on_demand"
+when = "The committed diff touches auth, secrets, tokens, or permission checks: or the human asks for a security pass."
+max_rounds = 2
+on_max_rounds = "proceed"
+on_fail = "skip"
+
+[workflow.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "recur.roles.security-reviewer"
+
+[workflow.phase.prompts]
+review = "prompts/security-review.md"
+fix = "/fix-findings"
+rereview = "/re-review"
+
+[[workflow]]
+id = "recur.loops.converge"
+name = "Review & fix"
+hint = "Review and fix the current diff until the bar passes"
+conductor = "recur.roles.maestro"
+prompt = "prompts/converge.md"
+entry = "converge"
+reenter = ["converge"]
+
+[[workflow.phase]]
+id = "converge"
+uses = "converge"
+start = "review"
+on_max_rounds = "escalate"
+
+[workflow.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "recur.roles.reviewer"
+
+[workflow.phase.prompts]
+review = "/review"
+fix = "/fix-findings"
+rereview = "/re-review"
+
+[[workflow]]
+id = "recur.loops.converge-pr"
+name = "Review & fix to a PR"
+hint = "Review and fix the current diff, then open a PR"
+conductor = "recur.roles.maestro"
+prompt = "prompts/converge-pr.md"
+entry = "converge"
+reenter = ["converge"]
+
+[[workflow.phase]]
+id = "converge"
+uses = "converge"
+start = "review"
+on_max_rounds = "escalate"
+next = "pr"
+
+[workflow.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "recur.roles.reviewer"
+
+[workflow.phase.prompts]
+review = "/review"
+fix = "/fix-findings"
+rereview = "/re-review"
+
+[[workflow.phase]]
+id = "pr"
+uses = "ensure_pr"
+
+[[workflow]]
+id = "recur.loops.docs"
+name = "Docs"
+hint = "Plan, write, and edit documentation: no PR"
+conductor = "recur.roles.maestro"
+prompt = "prompts/docs.md"
+entry = "planning"
+reenter = ["planning", "converge"]
+
+[[workflow.phase]]
+id = "planning"
+uses = "plan"
+role = "recur.roles.planner"
+prompt = "prompts/docs-plan.md"
+gate = "plan_approval"
+next = "converge"
+
+[[workflow.phase]]
+id = "converge"
+uses = "converge"
+findings_threshold = 0
+next = "done"
+
+[workflow.phase.roles]
+implementer = "recur.roles.writer"
+reviewer = "recur.roles.editor"
+
+[workflow.phase.prompts]
+review = "/review"
+fix = "/fix-findings"
+rereview = "/re-review"
+
+[[workflow.phase]]
+id = "done"
+uses = "artifact"
+
+[[workflow]]
+id = "recur.loops.security"
+name = "Security review & fix"
+hint = "Review and fix auth, secrets, and permissions until the bar passes"
+conductor = "recur.roles.maestro"
+prompt = "prompts/security.md"
+entry = "converge"
+reenter = ["converge"]
+
+[[workflow.phase]]
+id = "converge"
+uses = "converge"
+start = "review"
+on_max_rounds = "proceed"
+
+[workflow.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "recur.roles.security-reviewer"
+
+[workflow.phase.prompts]
+review = "prompts/security-review.md"
+fix = "/fix-findings"
+rereview = "/re-review"

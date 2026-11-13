@@ -30,7 +30,7 @@ env = { RECUR_CURSOR_SDK_PIN_CHECK = "1" }
 run = "cargo test -p recur-provider-cursor --lib check_cursor_sdk_pin_drift -- --nocapture"
 
 ["test:splash"]
-description = "Builds the splash page and checks the real interactive app demo"
+description = "Builds the splash page and browser-checks it"
 run = [
   "pnpm --dir src-web install --frozen-lockfile",
   "pnpm --dir src-web run build",

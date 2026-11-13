@@ -26,7 +26,7 @@ Read before inventing architecture:
 | `recur-skills/` | Shipped agent skills, embedded by `recur-bundles` |
 | `build/` | Packaging: macOS app/DMG (`build/darwin`), Linux Docker images and packages (`build/linux`) |
 | `mise.toml`, `tasks/` | Tools (node, pnpm, nfpm, dmgbuild) in `mise.toml`; tasks in `tasks/check.toml`, `dev.toml`, `macos.toml`, `linux.toml`, `release.toml` |
-| `src-web/` | The website; `src-web/demo` is the Svelte app its interactive demo builds |
+| `src-web/` | The website; its screenshots come from the desktop app (`mise run capture:splash`) |
 | `src-docs/` | User docs (also copied into the `recur-help` skill) |
 
 ## Dev environment tips
@@ -57,7 +57,7 @@ CI: `.github/workflows/ci.yml` runs `sanity` first (fmt and the layering check, 
 | `mise run test:bundles` | Shipped bundle engine tests under `./bundles` |
 | `mise run check:cursor-sdk-pin` | Network: fail if PyPI `cursor-sdk` is ahead of `PINNED_SDK_VERSION` |
 | `mise run linux:test` | fmt, clippy and tests on Linux (Docker on a Mac) |
-| `mise run test:splash` | Builds the website and browser-checks the demo |
+| `mise run test:splash` | Builds the website and browser-checks it |
 
 ### Cursor SDK pin
 
@@ -96,4 +96,4 @@ Expectations:
 - Run `mise run check` before pushing.
 - Update `docs/bundles.md` for author-facing bundle behavior.
 - Add user-facing changes to the `Unreleased` section of `src-docs/src/pages/changelog.mdx` (Keep a Changelog: Added, Changed, Fixed, Removed, Security). Write for users, not commit messages. On release, rename `Unreleased` to the version and date.
-- Do not commit secrets, `target/`, `src-web/public/demo/`, or the gitignored `TODO.md`.
+- Do not commit secrets, `target/`, or the gitignored `TODO.md`.

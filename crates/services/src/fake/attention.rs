@@ -71,7 +71,7 @@ fn upsert_chat_inbox(seed: &mut Seed, workspace_id: &str, code: &str) {
         color: "var(--cyan)".into(),
         title: format!(
             "<b>{}</b> finished a reply",
-            if code == "MA" { "Loop" } else { "Chat" }
+            if code == "MA" { "Workflow" } else { "Chat" }
         ),
         sub,
         time: "now".into(),

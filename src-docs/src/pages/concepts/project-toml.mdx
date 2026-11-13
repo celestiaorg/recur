@@ -43,7 +43,7 @@ A path ending in `/`, such as `node_modules/` or `target/`, copies that whole di
 
 ## Runs and ports
 
-Each `[[run]]` defines a named command for the titlebar Run menu and for agents. Bind development servers to **`$RECUR_PORT`** so parallel workspaces can use separate ports. Set `app_url` to the matching address (default `http://localhost:$RECUR_PORT`) for loops that open your app in a browser. Browser verification boots the run named `dev` (any case), otherwise the default run.
+Each `[[run]]` defines a named command for the titlebar Run menu and for agents. Bind development servers to **`$RECUR_PORT`** so parallel workspaces can use separate ports. Set `app_url` to the matching address (default `http://localhost:$RECUR_PORT`) for workflows that open your app in a browser. Browser verification boots the run named `dev` (any case), otherwise the default run.
 
 Workspace processes also receive `PORT`, `RECUR_WORKSPACE_ID`, `RECUR_WORKTREE`, `RECUR_ROOT` (the project's main checkout), `RECUR_PROJECT_ID`, and `RECUR_BRANCH`.
 
@@ -55,6 +55,6 @@ Recur does not export the contents of `.env` files. Keep secrets in gitignored d
 
 ## Commit style
 
-Turn on **Conventional Commits** in the Project page's pull request settings, or set `conventional_commits = true`, to have agents write [Conventional Commits](https://www.conventionalcommits.org) subjects and PR titles (`type(scope): summary`). It applies to `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and loop PR titles.
+Turn on **Conventional Commits** in the Project page's pull request settings, or set `conventional_commits = true`, to have agents write [Conventional Commits](https://www.conventionalcommits.org) subjects and PR titles (`type(scope): summary`). It applies to `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and workflow PR titles.
 
 Repository paths, sidebar preferences, enabled project skills, and merge/GitHub PR preferences are app settings rather than fields in this file.

@@ -28,7 +28,7 @@ pub const PR_THREAD_CONTEXT_MAX: usize = 8000;
 pub fn pr_title(goal: &str) -> String {
     let g = recur_agent::display::hard_truncate_runes(&single_line(goal), 80).to_owned();
     if g.is_empty() {
-        "Loop changes".into()
+        "Workflow changes".into()
     } else {
         g
     }
@@ -98,7 +98,7 @@ pub fn engine_summary(
     vec![
         SummaryPara {
             kind: "p".into(),
-            html: format!("This loop implemented: <b>{g}</b>."),
+            html: format!("This workflow implemented: <b>{g}</b>."),
             ..SummaryPara::default()
         },
         SummaryPara {
@@ -114,7 +114,7 @@ pub fn engine_summary(
                     plural(commit_count, "commit", "commits"),
                     plural(file_count, "file", "files")
                 ),
-                format!("Net diff <code>+{add} −{del}</code> on the loop branch vs its base."),
+                format!("Net diff <code>+{add} −{del}</code> on the workflow branch vs its base."),
                 "The change converged to 0 independent-review findings before this PR opened."
                     .into(),
             ],
@@ -492,7 +492,7 @@ impl Walk {
         } else {
             None
         };
-        let mut notes = vec!["Loop policy bar passed: ready for review.".to_owned()];
+        let mut notes = vec!["Workflow policy bar passed: ready for review.".to_owned()];
         if lp.verify_state == VERIFY_STATE_PASSED {
             notes.push("Verified in a browser.".into());
         }

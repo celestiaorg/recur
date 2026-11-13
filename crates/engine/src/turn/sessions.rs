@@ -414,7 +414,7 @@ impl Engine {
                 workspace_id: workspace_id.to_owned(),
                 code: MAESTRO_AGENT_CODE.into(),
                 name: "Maestro".into(),
-                role: "orchestrates the loop".into(),
+                role: "orchestrates the workflow".into(),
                 model: self.settings().maestro_model().id,
                 status: status.to_owned(),
                 color: "var(--amber)".into(),

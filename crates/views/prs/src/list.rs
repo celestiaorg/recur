@@ -1244,7 +1244,7 @@ impl PrList {
         let any_git = self.state().read(cx).projects.iter().any(|p| p.is_git);
         let state = self.state().clone();
         let label = if any_git {
-            "Start a loop"
+            "Start a workflow"
         } else {
             "Get started"
         };
@@ -1275,7 +1275,7 @@ impl PrList {
             ),
             "No pull requests yet",
             Some(
-                "GitHub PRs from projects you’ve added to Recur show up here, including ones you didn’t open. Loops still land here when they converge.",
+                "GitHub PRs from projects you’ve added to Recur show up here, including ones you didn’t open. Workflows still land here when they converge.",
             ),
             Some(btn.into_any_element()),
             cx,

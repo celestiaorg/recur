@@ -36,7 +36,7 @@ pub fn maestro_replan_tools() -> Vec<String> {
 
 pub fn maestro_replan_system_prompt(task: &str, plan: &str, handoff: &str) -> String {
     format!(
-        "You are the Maestro: the conductor of ONE autonomous coding loop. The implementer \
+        "You are the Maestro: the conductor of ONE autonomous coding workflow. The implementer \
 just finished a turn and handed off with notes. Decide whether the PLAN needs revising \
 before the Reviewer judges the diff. Revise when a step turned out to be too big (split it), \
 wrong (drop or rewrite it), or missing (add it). You revise HOW the work is decomposed, never \

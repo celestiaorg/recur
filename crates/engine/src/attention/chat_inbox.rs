@@ -125,11 +125,11 @@ impl Engine {
         }
         let mut title = self.chat_tab_title(workspace_id, code);
         if code == MAESTRO_AGENT_CODE {
-            title = "Loop".into();
+            title = "Workflow".into();
         }
         let mut done = "finished a reply";
         if loop_finished {
-            title = "Loop".into();
+            title = "Workflow".into();
             done = "finished";
         }
         let mut ws_label = workspace_id.to_owned();

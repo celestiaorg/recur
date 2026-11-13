@@ -24,7 +24,7 @@ impl Tool for DoneTool {
     }
 
     fn description(&self) -> &'static str {
-        "Signal that this loop-specialist turn is complete and hand back to the Maestro. \
+        "Signal that this workflow-specialist turn is complete and hand back to the Maestro. \
 Provide a short summary of what you did. Use notes for the handoff the Reviewer and \
 Maestro cannot see from the diff: deviations from the plan, concerns, work you could \
 not finish, or a step that should be split. Leave notes empty when nothing deviated. \
@@ -188,10 +188,10 @@ impl Tool for EscalateTool {
     }
 
     fn description(&self) -> &'static str {
-        "Pause the loop and ask the human a scoped decision you should NOT guess on (genuine \
+        "Pause the workflow and ask the human a scoped decision you should NOT guess on (genuine \
 ambiguity, not laziness). Provide a clear question, 2-4 reasoned options each with a \
 short trade-off, and one-read context: what you built, what's ambiguous, what you \
-considered. The loop blocks until the human answers, then resumes with their guidance."
+considered. The workflow blocks until the human answers, then resumes with their guidance."
     }
 
     fn schema(&self) -> String {
@@ -214,7 +214,7 @@ considered. The loop blocks until the human answers, then resumes with their gui
                 context: a.str("context").into(),
             },
         );
-        Ok("Escalation raised: the loop is paused until the human answers.".into())
+        Ok("Escalation raised: the workflow is paused until the human answers.".into())
     }
 }
 
@@ -289,9 +289,9 @@ impl Tool for SendBackTool {
     }
 
     fn description(&self) -> &'static str {
-        "Send an open PR back into the loop for rework. Use this when the loop has already opened \
+        "Send an open PR back into the workflow for rework. Use this when the workflow has already opened \
 a PR (state pr_open) and the human wants corrections, more work, or an update with the \
-latest base branch: plan alone cannot restart a finished loop. Provide a concrete \
+latest base branch: plan alone cannot restart a finished workflow. Provide a concrete \
 instruction for the Coder."
     }
 

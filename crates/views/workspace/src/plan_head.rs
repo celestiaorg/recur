@@ -115,7 +115,7 @@ impl PlanHead {
                 if !has_run {
                     strip = strip.trailing(self.approve(
                         "wsv-plan-run",
-                        "Run as loop",
+                        "Run as workflow",
                         "Engage the autopilot with this plan",
                         window,
                         cx,

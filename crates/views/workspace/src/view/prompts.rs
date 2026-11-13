@@ -25,7 +25,7 @@ use crate::uuid::uuidv7;
 
 const OPEN_PR_IDS: [&str; 2] = ["recur.chat.open-pr", "recur.chat.open-draft-pr"];
 const LOOP_OPEN_PR: &str =
-    "A loop is running: wait until it pauses, then open a PR from the titlebar or /open-pr.";
+    "A workflow is running: wait until it pauses, then open a PR from the titlebar or /open-pr.";
 const MODELS_LOADING: &str = "Models are still loading: try again in a moment";
 
 struct TabRef<'a>(&'a recur_domain::WorkspaceChatTab);
@@ -130,13 +130,13 @@ impl WorkspaceView {
         if mode == ChatMode::Loop && self.is_main(cx) {
             toast(
                 ToastKind::Error,
-                "The main working copy cannot run a loop",
+                "The main working copy cannot run a workflow",
                 cx,
             );
             return Task::ready(false);
         }
         if mode == ChatMode::Loop && self.is_pr_host(cx) {
-            toast(ToastKind::Error, "PR chat cannot run a loop", cx);
+            toast(ToastKind::Error, "PR chat cannot run a workflow", cx);
             return Task::ready(false);
         }
         let id = self.ws_id.clone();
@@ -471,7 +471,11 @@ impl WorkspaceView {
         if mode == Some(ChatMode::Loop) && !loop_id.is_empty() {
             let pin = this.update(cx, |v, cx| {
                 if v.loop_pickers_pinned(cx) {
-                    toast(ToastKind::Error, "This tab is already running a loop", cx);
+                    toast(
+                        ToastKind::Error,
+                        "This tab is already running a workflow",
+                        cx,
+                    );
                     return None;
                 }
                 let policy = v.dock_policy_id(cx);
@@ -655,13 +659,13 @@ impl WorkspaceView {
                 if mode == Some(ChatMode::Loop) && v.is_main(cx) {
                     toast(
                         ToastKind::Error,
-                        "The main working copy cannot run a loop",
+                        "The main working copy cannot run a workflow",
                         cx,
                     );
                     return None;
                 }
                 if mode == Some(ChatMode::Loop) && v.is_pr_host(cx) {
-                    toast(ToastKind::Error, "PR chat cannot run a loop", cx);
+                    toast(ToastKind::Error, "PR chat cannot run a workflow", cx);
                     return None;
                 }
                 Some(v.prompt_models_ready(cx))

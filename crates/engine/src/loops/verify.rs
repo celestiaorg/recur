@@ -48,7 +48,7 @@ impl Walk {
         let dev_cmd = verify_dev_cmd(&proj);
         if dev_cmd.is_empty() {
             self.record_verify_absent(
-                "no dev server command configured: set the project run config so loops can verify",
+                "no dev server command configured: set the project run config so workflows can verify",
             );
             return Ok(false);
         }

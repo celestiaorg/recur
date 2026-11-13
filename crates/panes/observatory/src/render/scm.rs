@@ -705,7 +705,7 @@ impl Observatory {
         if !self.tree_writable() {
             return root
                 .child(obs_empty(
-                    "Open a loop worktree to stage and commit changes.",
+                    "Open a workflow worktree to stage and commit changes.",
                     true,
                     cx,
                 ))

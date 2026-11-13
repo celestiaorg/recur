@@ -17,7 +17,7 @@ impl Tool for EditPlanTool {
     }
 
     fn description(&self) -> &'static str {
-        "Rewrite the loop's plan (its definition of done). The engine persists it, logs a \
+        "Rewrite the workflow's plan (its definition of done). The engine persists it, logs a \
 plan-change deviation, and steers subsequent specialist turns with the new plan. Provide \
 the complete new plan text, not a diff."
     }
@@ -48,7 +48,7 @@ impl Tool for RerunReviewTool {
     }
 
     fn description(&self) -> &'static str {
-        "Dispatch a fresh Reviewer pass over the loop's current worktree. Findings are recorded \
+        "Dispatch a fresh Reviewer pass over the workflow's current worktree. Findings are recorded \
 like any review and gate the PR as usual."
     }
 
@@ -84,7 +84,7 @@ impl Tool for DispatchSpecialistTool {
     }
 
     fn description(&self) -> &'static str {
-        "Run one bounded specialist turn over the loop's worktree with a concrete instruction. \
+        "Run one bounded specialist turn over the workflow's worktree with a concrete instruction. \
 role is 'reviewer' (code review, findings) or 'security' (security-focused review). The \
 turn is governed like any agent turn; findings are recorded."
     }
@@ -133,7 +133,7 @@ impl Tool for ExtendIterationsTool {
     }
 
     fn description(&self) -> &'static str {
-        "Grant the RUNNING loop extra fix iterations toward convergence. The engine clamps the \
+        "Grant the RUNNING workflow extra fix iterations toward convergence. The engine clamps the \
 grant to the autonomy level's extension allowance (rail #4 arithmetic is the engine's)."
     }
 
@@ -171,8 +171,8 @@ impl Tool for ExtendRoundsTool {
 
     fn description(&self) -> &'static str {
         "Grant extra converge rounds. Legal only while the live converge is still \
-escalated at the round cap: not agent questions, walk-step waits, or a stopped loop. \
-After the loop has stopped, use reenter_phase instead. Optional n defaults to the policy value."
+escalated at the round cap: not agent questions, walk-step waits, or a stopped workflow. \
+After the workflow has stopped, use reenter_phase instead. Optional n defaults to the policy value."
     }
 
     fn schema(&self) -> String {
@@ -190,7 +190,7 @@ After the loop has stopped, use reenter_phase instead. Optional n defaults to th
 const PHASE_ID_SCHEMA: &str = r#"{
   "type": "object",
   "properties": {
-    "phase_id": {"type": "string", "description": "Phase id on the engaged loop"}
+    "phase_id": {"type": "string", "description": "Phase id on the engaged workflow"}
   },
   "required": ["phase_id"]
 }"#;
@@ -207,7 +207,7 @@ impl Tool for ReenterPhaseTool {
 
     fn description(&self) -> &'static str {
         "Idle only (no live walk: stopped/failed/settled, or paused with no goroutine). \
-Start a new walk from a graph phase on the loop's reenter list (usually converge). \
+Start a new walk from a graph phase on the workflow's reenter list (usually converge). \
 Not for a live walk, including a checkpoint pause (Resume continues that) or a \
 round-cap escalation (extend_rounds)."
     }
@@ -267,9 +267,9 @@ impl Tool for ResumeLoopTool {
     }
 
     fn description(&self) -> &'static str {
-        "RESTART a STOPPED or FAILED loop over its existing worktree. The run continues from the \
-worktree's current state, steered by the recorded plan. A running loop does not need \
-this; a loop settled at pr_open wants send_back instead."
+        "RESTART a STOPPED or FAILED workflow over its existing worktree. The run continues from the \
+worktree's current state, steered by the recorded plan. A running workflow does not need \
+this; a workflow settled at pr_open wants send_back instead."
     }
 
     fn schema(&self) -> String {

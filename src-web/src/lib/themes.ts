@@ -1,4 +1,4 @@
-/** Splash theme catalogs: mirrors the demo app's Settings pickers (stores.ts / cm-themes.ts). */
+/** Splash theme catalogs: the app themes and the editor themes the theme section captures (crates/desktop/examples/capture). */
 
 export type AppTheme = {
   key: string;
@@ -321,7 +321,7 @@ export const editorThemes: EditorTheme[] = [
     line: "#3b4252",
   },
   {
-    key: "gruvbox",
+    key: "gruvbox-dark-medium",
     name: "Gruvbox",
     bg: "#282828",
     fg: "#ebdbb2",
@@ -343,7 +343,7 @@ export const editorThemes: EditorTheme[] = [
     line: "#3e3d32",
   },
   {
-    key: "material",
+    key: "material-theme",
     name: "Material",
     bg: "#263238",
     fg: "#eeffff",
@@ -354,7 +354,7 @@ export const editorThemes: EditorTheme[] = [
     line: "#2e3c43",
   },
   {
-    key: "vscode",
+    key: "dark-plus",
     name: "VS Code Dark",
     bg: "#1e1e1e",
     fg: "#d4d4d4",

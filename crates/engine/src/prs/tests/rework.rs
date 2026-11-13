@@ -100,7 +100,7 @@ async fn maestro_send_back_refusals() {
     );
     assert_eq!(
         eng.maestro_send_back("L-x", "fix it").await,
-        "send_back refused: this loop has no open PR; use plan to steer while it's still running."
+        "send_back refused: this workflow has no open PR; use plan to steer while it's still running."
     );
     t.store
         .add_workspace(Workspace {
@@ -256,7 +256,7 @@ async fn update_pr_with_base_refusals() {
         .unwrap_err();
     assert_eq!(
         err.0,
-        "update-with-base failed: the PR or its loop is unavailable"
+        "update-with-base failed: the PR or its workflow is unavailable"
     );
     t.store
         .add_pr(Pr {

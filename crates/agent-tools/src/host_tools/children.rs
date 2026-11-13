@@ -14,8 +14,8 @@ const CREATE_WORKSPACE_SCHEMA: &str = r#"{
     "prompt": {"type": "string", "description": "First message for the new workspace's chat: the task plus the context it needs to work alone"},
     "project_id": {"type": "string", "description": "Project id; defaults to this workspace's project"},
     "base_branch": {"type": "string", "description": "Standalone only: branch to start from (defaults to the project's base branch). Setting it implies standalone"},
-    "mode": {"type": "string", "enum": ["ask", "plan", "agent", "review", "loop"], "description": "Chat mode for the first tab (default agent). loop engages the autopilot with prompt as its goal"},
-    "loop_id": {"type": "string", "description": "Bundle [[loop]] id for mode=loop; defaults to Settings"},
+    "mode": {"type": "string", "enum": ["ask", "plan", "agent", "review", "loop"], "description": "Chat mode for the first tab (default agent). loop engages a workflow (the autopilot) with prompt as its goal"},
+    "loop_id": {"type": "string", "description": "Bundle [[workflow]] id for mode=loop; defaults to Settings"},
     "policy_id": {"type": "string", "description": "Bundle [[policy]] id for mode=loop; defaults to Settings"},
     "standalone": {"type": "boolean", "description": "true: an independent workspace that is never merged back here (its own branch off base_branch, its own PR). Default false: the workspace is a subagent of this one, branched off this branch; when it finishes you get a report and must call merge_child to land its work (or archive_child to close it). Scheduled runs and mode=loop default to standalone"}
   },
@@ -43,7 +43,7 @@ impl Tool for CreateWorkspaceTool {
 
     fn description(&self) -> &'static str {
         "Run a SUBAGENT: this is how subagents work in Recur. Creates a NEW workspace (fresh git \
-worktree from the base branch) and runs prompt on its first chat tab, or as a loop when mode \
+worktree from the base branch) and runs prompt on its first chat tab, or as a workflow when mode \
 is loop. Use to fan work out into \
 independent workspaces, one per task. Give each a stable, descriptive title: a live \
 workspace in the project with the same title is returned instead of a duplicate, so \

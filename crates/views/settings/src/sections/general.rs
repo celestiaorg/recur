@@ -85,7 +85,13 @@ impl SettingsView {
                 ),
             );
 
-        let loops = self.num_field("max-loops", "Max concurrent loops", s.max_loops, window, cx);
+        let loops = self.num_field(
+            "max-loops",
+            "Max concurrent workflows",
+            s.max_loops,
+            window,
+            cx,
+        );
         let agents = self.num_field(
             "max-agents",
             "Max concurrent agents",
@@ -230,16 +236,16 @@ impl SettingsView {
             )
             .child(
                 settings_group("grp-concurrency", "Concurrency")
-                    .blurb("How many loops and agent turns can run at once.")
+                    .blurb("How many workflows and agent turns can run at once.")
                     .child(rows(
                         GROUP_ROWS,
                         vec![
                             Row::new()
                                 .child(copy(
                                     "max-loops",
-                                    "Max concurrent loops",
+                                    "Max concurrent workflows",
                                     Some(vec![span(
-                                        "Further loops wait in queue until a slot frees. Default 4. 0 is unlimited.",
+                                        "Further workflows wait in queue until a slot frees. Default 4. 0 is unlimited.",
                                     )]),
                                     cx,
                                 ))

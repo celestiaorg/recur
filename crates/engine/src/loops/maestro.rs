@@ -27,7 +27,7 @@ use crate::turn::stream::ChatStream;
 /// Bounds one Maestro chat turn so a wedged provider never blocks the call.
 pub const MAESTRO_CHAT_TIMEOUT: Duration = Duration::from_secs(120);
 
-const LOOP_GONE: &str = "I can't find that loop anymore: it may have been removed.";
+const LOOP_GONE: &str = "I can't find that workflow anymore: it may have been removed.";
 
 /// Removes simple HTML tags from a feed line for a plain-text prompt.
 pub fn strip_tags(s: &str) -> String {
@@ -310,7 +310,7 @@ impl Engine {
                 html_escape(&truncate(summary, 200))
             ),
             "default = the original plan",
-            "you steered the loop via the Maestro chat (rails still hold at execution).",
+            "you steered the workflow via the Maestro chat (rails still hold at execution).",
         );
         if let Some(lp) = self.running_loop_for_hand(workspace_id, agent_code) {
             lp.queue_steer(summary);

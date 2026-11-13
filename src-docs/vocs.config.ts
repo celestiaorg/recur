@@ -6,7 +6,7 @@ const basePath = new URL(baseUrl).pathname;
 export default defineConfig({
   title: "Recur Docs",
   description:
-    "User docs for Recur: AI coding workspaces, providers, reviews, Loops, and schedules.",
+    "User docs for Recur: AI coding workspaces, providers, reviews, workflows, and schedules.",
   baseUrl,
   basePath,
   renderStrategy: "full-static",
@@ -36,7 +36,7 @@ export default defineConfig({
         { text: "Introduction", link: "/" },
         { text: "Install", link: "/getting-started/install" },
         { text: "Your first workspace", link: "/getting-started/first-workspace" },
-        { text: "Workflows", link: "/getting-started/workflows" },
+        { text: "How we work", link: "/getting-started/how-we-work" },
       ],
     },
     {
@@ -46,7 +46,7 @@ export default defineConfig({
         { text: "Project config", link: "/concepts/project-toml" },
         { text: "Chat context", link: "/concepts/chat-context" },
         { text: "Chat modes", link: "/concepts/modes" },
-        { text: "Loop mode", link: "/concepts/loop" },
+        { text: "Workflows", link: "/concepts/workflows" },
         { text: "Review & checkpoints", link: "/concepts/review" },
         { text: "Pull requests", link: "/concepts/pull-requests" },
         { text: "Issues", link: "/concepts/issues" },
@@ -63,7 +63,7 @@ export default defineConfig({
         { text: "TypeScript macros", link: "/bundles/typescript" },
         { text: "Shebang commands", link: "/bundles/shebang" },
         { text: "Chat prompts", link: "/bundles/prompts" },
-        { text: "Loops, roles & policies", link: "/bundles/loops" },
+        { text: "Workflows, roles & policies", link: "/bundles/workflows" },
         { text: "Output & save hooks", link: "/bundles/output" },
         { text: "Testing & CLI", link: "/bundles/testing" },
       ],

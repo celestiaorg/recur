@@ -160,12 +160,12 @@ pub fn is_parked_opening_failure(text: &str) -> bool {
     [
         "I couldn't save that image attachment.",
         "I couldn't run that prompt action:",
-        "I couldn't engage the loop:",
+        "I couldn't engage the workflow:",
         "I can't find that workspace",
         "I can't run right now:",
         "I'm at capacity",
         "There's nothing to retry",
-        "A loop is running in this workspace",
+        "A workflow is running in this workspace",
         "Create a workspace from this pull request",
     ]
     .iter()

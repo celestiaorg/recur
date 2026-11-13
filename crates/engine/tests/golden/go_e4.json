@@ -118,7 +118,7 @@
         "failure"
       ],
       "now": "Run failed: boom",
-      "next": "Open the loop chat",
+      "next": "Open the workflow chat",
       "state": "failed",
       "primary": {
         "label": "Open",
@@ -268,8 +268,8 @@
       "reasons": [
         "retryable_failure"
       ],
-      "now": "The loop stopped at a checkpoint",
-      "next": "Continue in the loop chat",
+      "now": "The workflow stopped at a checkpoint",
+      "next": "Continue in the workflow chat",
       "state": "failed",
       "primary": {
         "label": "Open",

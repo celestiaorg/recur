@@ -20,5 +20,3 @@ TODO.md
 # Copied from src-docs by `generate:help-skill` before go:embed.
 recur-skills/recur-help/references/
 
-# The Svelte demo app (src-web/demo), rebuilt with src-web.
-src-web/public/demo/

@@ -827,7 +827,7 @@ impl PlanPanel {
                     let _ = this.update(cx, |_, cx| {
                         toast(
                             ToastKind::Error,
-                            format!("Could not engage the loop: {}", err.message.clone()),
+                            format!("Could not engage the workflow: {}", err.message.clone()),
                             cx,
                         )
                     });
@@ -1129,7 +1129,7 @@ impl PlanPanel {
             } else if plan.is_none() {
                 scroll = scroll.child(
                     div().px(px(GUTTER)).pt(px(14.)).child(
-                        text("No plan yet: plan it in a Plan-mode chat, or let the loop’s planning turn write one.")
+                        text("No plan yet: plan it in a Plan-mode chat, or let the workflow’s planning turn write one.")
                             .id("plan-empty")
                             .size(12.)
                             .line_height(LineHeight::Scale(1.45))
@@ -1468,7 +1468,7 @@ impl PlanPanel {
                         "Child workspace"
                     };
                     let tip = if gone {
-                        "Show the child workspace transcript in the loop chat"
+                        "Show the child workspace transcript in the workflow chat"
                     } else {
                         "Open the child workspace working this step"
                     };

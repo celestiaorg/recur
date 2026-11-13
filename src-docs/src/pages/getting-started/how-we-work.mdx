@@ -1,0 +1,85 @@
+---
+title: How we work
+description: The patterns the Recur team uses every day, and a few we recommend
+---
+
+# How we work
+
+Recur gives you modes, workflows, slash commands, and schedules. This page shows how they fit together in practice. The first sections cover the patterns the Recur team uses most, taken from our own sessions. The last section suggests a few more.
+
+## One task, one workspace
+
+Start every task in a fresh [task workspace](/concepts/workspaces), even small ones. Each one is its own worktree and branch, so you can run several at once without them stepping on each other, and throw one away without cleaning anything up. Starting from an [issue](/concepts/issues) links the workspace to it and fills in the task for you.
+
+## Build, then let a workflow review and fix
+
+1. **Build in an Agent chat.** Describe the task and let the agent work. Steer it mid-turn with `⏎` when it drifts, or queue a follow-up with `⌘⏎`.
+2. **Run `/review-and-fix`.** A Reviewer files findings on the diff, a Coder fixes or disputes each one, and the Reviewer re-checks, round after round, until the [policy](/concepts/workflows) bar passes. It works the same on changes you wrote yourself. We run it almost always on **Cautious**, which blocks on any open finding and asks you before going past two rounds.
+3. **Ship it.** `/commit` writes a commit message from the diff, and `/open-pr` pushes and opens a pull request. Or run `/review-to-pr` in step 2 so the workflow opens or updates the PR when it finishes.
+
+Tips:
+
+- **Review with a different model than the one that wrote the code.** A second model catches mistakes the first one is blind to. The workflow's Reviewer uses your default Review model, so set it to something other than your Agent model in **Settings → Models**. See [Models per mode](/concepts/modes#models-per-mode).
+- **Skip what you disagree with.** Not every finding is worth fixing. Mark it **Ignored** or **Invalid** in the findings list so it stops blocking the workflow.
+- **Keep Simplify on.** It keeps fixes small, so each round has less to check. Run `/simplify-review` when a diff feels bigger than the task.
+
+## Automate what you repeat
+
+`/review-and-fix` started as something we did by hand. While building Recur in Recur, we ran the same cycle hundreds of times: `/review` in one chat, `/fix-findings` in another, `/re-review`, and again until the findings ran out. Once the pattern was clear, we wrote it down as a workflow so nobody has to drive it.
+
+Look for the same thing in your own sessions. If you keep typing the same prompt, or keep walking the same few chats through the same steps, Recur can take it over:
+
+- **A prompt you retype** becomes a slash command. See [Chat prompts](/bundles/prompts).
+- **A sequence of chats you drive by hand** becomes a workflow of roles and phases with a policy for when it stops. See [Workflows, roles & policies](/bundles/workflows).
+- **Work you start at the same time every day** becomes a [schedule](/concepts/schedules).
+
+The single-step commands are still there when you want one pass: `/review` for findings without fixes, `/fix-findings` to work through what a reviewer filed.
+
+## Stay current with the base branch
+
+Run `/update` before starting a workflow and before opening a PR. It updates the workspace with the base branch (merge or rebase, per **Settings → Pull requests**) and only brings in an agent if git can't finish on its own, such as on conflicts. The agent resolves the conflict markers without touching unrelated code and completes the merge or rebase. It does not push.
+
+Updating often keeps conflicts small. When several workspaces touch the same area, update each one right after another lands.
+
+## Keep pull requests green
+
+Once a PR is open, work on it from the [Pull requests](/concepts/pull-requests) view:
+
+- `/fix-checks` investigates failing GitHub checks and fixes them in the workspace.
+- `/address-review` fixes or answers unresolved review comments, replies on each thread, and resolves the ones it fixed.
+- `/update` brings the branch up to date when GitHub says it is behind.
+- **Settings → Pull requests → Automatic fixes** runs these for you when a PR conflicts, fails checks or gets review comments.
+- **Create workspace** on a PR someone else opened checks it out so an agent can work on it. Run `/review` in a PR chat to get a review without checking anything out.
+
+## Point at the exact context
+
+Most follow-up messages we send are short: "yes", "do it", "why did you skip this one?". They work because the agent already has the right context. When it doesn't, give it precisely instead of describing it:
+
+- Select lines in the Diff or editor and press `⌘L` to tag them into the composer.
+- Mention a terminal tab so the agent reads the failing test or build output itself.
+- Paste or drop screenshots for UI work.
+
+See [Chat context](/concepts/chat-context) for everything you can attach.
+
+## Split, fork, and parallelize
+
+- **Child workspaces.** For a task with independent parts, ask the Agent chat to hand subtasks to [child workspaces](/concepts/modes#child-workspaces). Each child works in its own worktree and reports back, and the parent merges or archives the result.
+- **Fork a chat** from any turn to try a different direction without losing the original. Use **Fork to new workspace** when the alternative needs its own files. See [Review & checkpoints](/concepts/review).
+- **Reset to here** when a turn went the wrong way. It rewinds the chat and the files to the end of an earlier turn.
+
+## Run housekeeping on a schedule
+
+We use [Schedules](/concepts/schedules) for work that does not need anyone at the keyboard. Our busiest schedule is an Agent prompt that drains our Linear triage inbox every hour: for each new issue it decides whether it is real, adds context from the code so the next person can start, sets a priority and project, and moves it to the backlog. The prompt says plainly that it must not write code or open PRs.
+
+Good scheduled prompts are specific about what to do, what not to do, and what done looks like. Each run gets a fresh workspace, so it never collides with your own work.
+
+## Recommended patterns
+
+These are less common in our own sessions but fit well when the task calls for them.
+
+- **Plan before big or fuzzy changes.** Start in Plan mode when you are not sure how a change should be shaped. Edit the plan, then implement it in an Agent chat. Planning first is cheaper than reviewing a diff that went the wrong way.
+- **To a PR for well-specified tasks.** When the task is clear, `/to-a-pr` runs the whole thing: plan, implement, review and fix, then open the PR. **Balanced** suits it well: it blocks on medium findings and above, and asks for plan approval when the plan is structured.
+- **Security review when it matters.** Run `/security-review` on any diff that touches authentication, secrets, tokens, or permission checks.
+- **Ask beside a running chat.** Open an Ask chat to explore the code or answer a question while an Agent chat or workflow keeps working in the same workspace.
+- **Recurring chores.** Schedule routine work, such as a weekly dependency upgrade on the To a PR workflow, so it shows up as a ready-to-review pull request.
+- **Write docs with the Docs workflow.** `/write-docs` plans, writes, and edits documentation and publishes it as an artifact for you to read before it lands anywhere.

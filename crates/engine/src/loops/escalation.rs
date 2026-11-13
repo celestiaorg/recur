@@ -346,7 +346,11 @@ impl Engine {
             workspace_id: workspace_id.to_owned(),
         });
         self.publish_inbox_updated();
-        self.publish_notify("A loop needs you", &truncate(&req.question, 120), &target);
+        self.publish_notify(
+            "A workflow needs you",
+            &truncate(&req.question, 120),
+            &target,
+        );
         esc
     }
 

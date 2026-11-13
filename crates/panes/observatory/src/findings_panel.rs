@@ -77,7 +77,7 @@ pub fn status_by_line(status: &str, updated_by: &str) -> String {
     let by = match updated_by {
         "coder" => " by coder",
         "reviewer" => " by reviewer",
-        "engine" => " by the loop",
+        "engine" => " by the workflow",
         "human" => " by you",
         _ => "",
     };
@@ -94,7 +94,7 @@ pub fn note_author(author: &str) -> String {
     match author {
         "human" => "You".into(),
         "coder" => "Coder".into(),
-        "engine" => "Loop".into(),
+        "engine" => "Workflow".into(),
         "" => "Note".into(),
         a => a.into(),
     }
@@ -1272,7 +1272,10 @@ mod tests {
 
     #[test]
     fn status_lines_and_authors() {
-        assert_eq!(status_by_line("resolved", "engine"), "Resolved by the loop");
+        assert_eq!(
+            status_by_line("resolved", "engine"),
+            "Resolved by the workflow"
+        );
         assert_eq!(status_by_line("invalid", "human"), "Marked invalid by you");
         assert_eq!(status_by_line("ignored", ""), "Ignored");
         assert_eq!(status_by_line("open", "human"), "");

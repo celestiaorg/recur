@@ -368,12 +368,12 @@ fn parse_manifest_prompt_validation() {
     let body = "body = \"#!/bin/sh\\ntrue\\n\"\n";
     for (name, rest, want) in [
         ("bad slash", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nslash = \"Bad_Slash\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": slash \"Bad_Slash\" must match ^[a-z][a-z0-9-]*$"),
-        ("bad mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"workflow\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": unknown mode \"workflow\" (use ask|plan|agent|review|loop, or omit)"),
-        ("loop requires loop mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"agent\"\nloop = \"recur.loops.converge\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": loop requires mode \"loop\""),
-        ("fresh session with loop mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"loop\"\nfresh_session = true\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": fresh_session is not valid with mode \"loop\""),
+        ("bad mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"flow\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": unknown mode \"flow\" (use ask|plan|agent|review|autopilot, or omit)"),
+        ("loop requires loop mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"agent\"\nloop = \"recur.loops.converge\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": workflow requires mode \"autopilot\""),
+        ("fresh session with loop mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"loop\"\nfresh_session = true\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": fresh_session is not valid with mode \"autopilot\""),
         ("tab group without mode", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\ntab_group = \"ops\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": tab_group requires mode"),
         ("bad tab group", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"agent\"\ntab_group = \"Ops\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": tab_group \"Ops\" must match ^[a-z][a-z0-9-]*$"),
-        ("bad loop id", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"loop\"\nloop = \"../evil\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": loop \"../evil\" is not a safe id"),
+        ("bad loop id", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\nmode = \"loop\"\nloop = \"../evil\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": workflow \"../evil\" is not a safe id"),
         ("timeout ceiling", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\ntimeoutMs = 30001\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": timeoutMs must be 0 or 1..30000"),
         ("body and script", format!("[[prompt]]\nid = \"p1\"\nname = \"X\"\ninterpreter = \"shebang\"\n{body}script = \"nope.sh\"\n"), "prompt \"p1\": set body or script, not both"),
         ("missing name", format!("[[prompt]]\nid = \"p1\"\ninterpreter = \"shebang\"\n{body}"), "prompt \"p1\": name is required"),

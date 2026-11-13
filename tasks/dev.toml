@@ -21,6 +21,10 @@ run = ["pnpm --dir src-web install --frozen-lockfile", "pnpm --dir src-web run d
 description = "Runs the user docs (src-docs) with Vocs on http://localhost:5175/docs/"
 run = ["pnpm --dir src-docs install --frozen-lockfile", "pnpm --dir src-docs run dev"]
 
+["capture:splash"]
+description = "Recaptures the website screenshots and theme previews (src-web/public/screenshots) from the desktop app on the demo dataset (macOS with a Retina display; `-- <dir> [themes]` writes elsewhere or only the theme set)"
+run = "cargo run -p recur-desktop --features fake --example capture --"
+
 ["generate:help-skill"]
 description = "Copies the user docs (src-docs) into the shipped recur-help skill that the app embeds"
 run = "rsync -a --delete --include='*/' --include='*.mdx' --exclude='*' src-docs/src/pages/ recur-skills/recur-help/references/"

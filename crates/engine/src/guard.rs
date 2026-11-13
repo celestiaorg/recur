@@ -77,7 +77,7 @@ impl Engine {
             policy_id = recur_bundles::policy_from_autonomy(autonomy.as_str()).to_owned();
         }
         if contains_id(&settings.disabled_bundle_loops, &loop_id) {
-            return Err(format!("loop {loop_id} is disabled"));
+            return Err(format!("workflow {loop_id} is disabled"));
         }
         if contains_id(&settings.disabled_bundle_policies, &policy_id) {
             return Err(format!("policy {policy_id} is disabled"));
@@ -110,7 +110,7 @@ impl Engine {
                 ..LoopPhase::default()
             });
         } else if loop_id != DEFAULT_LOOP_ID {
-            return Err(format!("loop {loop_id} not found"));
+            return Err(format!("workflow {loop_id} not found"));
         }
         if policy_id != DEFAULT_POLICY_ID
             && policy_id != "recur.policies.cautious"

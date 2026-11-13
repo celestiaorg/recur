@@ -70,6 +70,21 @@ impl Observatory {
             self.close_ctx(cx);
             cx.notify();
         }
+        // Off macOS the menu's find chords only label it.
+        if !cfg!(target_os = "macos")
+            && mod_
+            && !m.alt
+            && self.focus_zone == FocusZone::Agent
+            && (lower == "g" || (lower == "f" && !m.shift))
+        {
+            let dir = match (lower.as_str(), m.shift) {
+                ("f", _) => 0,
+                (_, true) => -1,
+                _ => 1,
+            };
+            cx.emit(ObservatoryEvent::AgentFind(dir));
+            return;
+        }
         if mod_ && !m.shift && lower == "s" && self.show_preview() && self.writable() {
             self.save_edit(window, cx);
             return;
@@ -382,6 +397,13 @@ impl Observatory {
                 } else if self.focus_zone == FocusZone::Agent && self.props.agent_tabs {
                     cx.emit(ObservatoryEvent::AgentCloseTab);
                 }
+            }
+            "find" | "find-next" | "find-previous" if self.focus_zone == FocusZone::Agent => {
+                cx.emit(ObservatoryEvent::AgentFind(match action {
+                    "find" => 0,
+                    "find-next" => 1,
+                    _ => -1,
+                }));
             }
             "find" | "find-next" | "find-previous" | "goto-line" => {
                 use recur_editor::bindings::Cmd;

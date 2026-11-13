@@ -256,7 +256,8 @@ impl AgentChat {
     ) -> AnyElement {
         let key = key.into();
         self.markdown_seen.insert(key.clone());
-        let entry = self.markdown.entry(key).or_insert_with(|| {
+        let created = !self.markdown.contains_key(&key);
+        let entry = self.markdown.entry(key.clone()).or_insert_with(|| {
             cx.new(|cx| {
                 let mut v = recur_content::MarkdownView::new(
                     body.to_string(),
@@ -276,6 +277,9 @@ impl AgentChat {
                 v.set_text(body.to_string(), cx);
             }
         });
+        if created {
+            self.paint_find_into(&key, cx);
+        }
         v.into_any_element()
     }
 

@@ -160,6 +160,7 @@ async fn run_bg(body: &str, ceiling: Duration) -> (TurnResult, Vec<String>) {
     let p = ClaudeProvider::new(ClaudeConfig {
         bin: bin.to_string_lossy().into_owned(),
         background_hold_ceiling: ceiling,
+        ..Default::default()
     });
     let (turn, cx) = Turn::new(true);
     let res = run(&p, req("bench", dir.path()), cx, Duration::from_secs(5))
@@ -261,6 +262,7 @@ cat >/dev/null
     let p = ClaudeProvider::new(ClaudeConfig {
         bin: bin.to_string_lossy().into_owned(),
         background_hold_ceiling: Duration::from_secs(2),
+        ..Default::default()
     });
     let (turn, cx) = Turn::new(true);
     let r = req("go", dir.path());

@@ -786,7 +786,8 @@ impl AgentChat {
                     }
                 })
                 .collect()
-        } else if let Some(sm) = self.skill_mention.clone() {
+        } else {
+            let sm = self.skill_mention.clone()?;
             let loading = self.skill_index_loading || self.prompt_index_loading;
             let any = !self.props.project_id.is_empty()
                 || !self.skill_index.is_empty()
@@ -898,8 +899,6 @@ impl AgentChat {
                     })
                     .collect()
             }
-        } else {
-            return None;
         };
         if self.mention_sel < rows.len() {
             self.menu_scroll.scroll_to_item(self.mention_sel);

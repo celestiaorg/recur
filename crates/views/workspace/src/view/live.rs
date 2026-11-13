@@ -929,6 +929,10 @@ impl WorkspaceView {
                 self.new_chat_tab(cx).detach();
             }
             ObservatoryEvent::AgentCloseTab => self.close_active_chat_tab(cx),
+            ObservatoryEvent::AgentFind(dir) => {
+                let dir = *dir;
+                self.chat.update(cx, |c, cx| c.find(dir, window, cx));
+            }
             ObservatoryEvent::AgentRotateTab(dir) => self.rotate_chat_tab(*dir, cx),
             ObservatoryEvent::FixFindings => self.fix_findings(window, cx),
             ObservatoryEvent::AddEditorMention {

@@ -347,10 +347,11 @@ fn decode_utf16be(b: &[u8]) -> String {
     if !b.len().is_multiple_of(2) {
         return String::new();
     }
-    b.chunks_exact(2)
-        .map(|c| {
-            char::from_u32(u32::from(u16::from_be_bytes([c[0], c[1]])))
-                .unwrap_or(char::REPLACEMENT_CHARACTER)
+    b.as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&c| {
+            char::from_u32(u32::from(u16::from_be_bytes(c))).unwrap_or(char::REPLACEMENT_CHARACTER)
         })
         .collect()
 }

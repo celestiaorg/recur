@@ -2,8 +2,6 @@
 //! checks (`RECUR_CURSOR_SDK_PIN_CHECK`, `RECUR_CURSOR_ATTRIBUTION_PATCH_TEST`,
 //! `RECUR_CURSOR_INSTALL_TEST`).
 
-use std::io::Write as _;
-
 use super::*;
 use crate::locate::locate;
 

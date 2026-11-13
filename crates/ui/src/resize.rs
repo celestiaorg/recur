@@ -148,7 +148,7 @@ fn corner(w: u32, h: u32, scale: f32) -> Option<Vec<u8>> {
         image::imageops::resize(&img, w, h, image::imageops::FilterType::Triangle)
     };
     let mut px = img.into_raw();
-    for p in px.chunks_exact_mut(4) {
+    for p in px.as_chunks_mut::<4>().0 {
         let a = u32::from(p[3]);
         for c in &mut p[..3] {
             *c = ((u32::from(*c) * a + 127) / 255) as u8;

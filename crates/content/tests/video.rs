@@ -97,9 +97,7 @@ fn check(clip: &std::path::Path) {
 
     d.seek(0.);
     d.play();
-    until("playback", || {
-        Some(()).filter(|_| d.status().position > 0.3)
-    });
+    until("playback", || (d.status().position > 0.3).then_some(()));
     d.pause();
     pump(200);
     let held = d.status().position;

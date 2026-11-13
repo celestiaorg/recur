@@ -77,6 +77,14 @@ name = "dev"
 cmd = "mise run dev"
 
 [[run]]
+name = "web"
+cmd = "mise run dev:web"
+
+[[run]]
+name = "docs"
+cmd = "mise run dev:docs"
+
+[[run]]
 name = "lint"
 cmd = "mise run lint"
 

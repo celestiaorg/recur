@@ -112,14 +112,14 @@ pub struct RunResult {
 #[error("{message}")]
 pub struct RunError {
     pub message: String,
-    pub partial: RunResult,
+    pub partial: Box<RunResult>,
 }
 
 impl From<Error> for RunError {
     fn from(e: Error) -> Self {
         RunError {
             message: e.0,
-            partial: RunResult::default(),
+            partial: Box::default(),
         }
     }
 }
@@ -159,7 +159,7 @@ pub async fn run(ctx: &RunCtx, cmd: &Command, mut rc: RunContext) -> Result<RunR
     match out.end {
         End::Cancelled(why) => Err(RunError {
             message: format!("command cancelled or timed out: {why}"),
-            partial: res,
+            partial: Box::new(res),
         }),
         End::Exited(status) => {
             res.exit_code = exit_code(status);

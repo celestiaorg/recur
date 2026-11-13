@@ -24,6 +24,8 @@ mod date_time_spec;
 #[cfg(test)]
 mod deferred_floor_spec;
 pub mod field;
+#[cfg(test)]
+mod field_scroll_spec;
 pub mod file_icons;
 pub mod font_metrics;
 pub mod fonts;

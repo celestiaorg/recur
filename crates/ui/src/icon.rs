@@ -272,7 +272,7 @@ impl Element for Icon {
         {
             let mut bgra = bytes.to_vec();
             let left = f32::from(bounds.left());
-            for (i, p) in bgra.chunks_exact_mut(4).enumerate() {
+            for (i, p) in bgra.as_chunks_mut::<4>().0.iter_mut().enumerate() {
                 let x = left + ((i as u32 % w) as f32 + 0.5) / scale;
                 p[3] = (p[3] as f32 * mask(x)).round() as u8;
             }
@@ -339,7 +339,7 @@ impl Icon {
             unpremultiply_bgra(&mut bgra);
         } else {
             // Monochrome: coverage is the alpha, the color is exact.
-            for p in bgra.chunks_exact_mut(4) {
+            for p in bgra.as_chunks_mut::<4>().0 {
                 let cov = p[3] as u32;
                 p[0] = color[2];
                 p[1] = color[1];
@@ -357,7 +357,7 @@ impl Icon {
 
 /// Premultiplied RGBA from a rasterizer → the straight BGRA `RenderImage` holds.
 fn unpremultiply_bgra(bgra: &mut [u8]) {
-    for p in bgra.chunks_exact_mut(4) {
+    for p in bgra.as_chunks_mut::<4>().0 {
         let a = p[3];
         let un = |c: u8| {
             if a == 0 {
@@ -470,7 +470,7 @@ mod tests {
         let svg = std::str::from_utf8(svg_bytes(&format!("{APP_ICONS}/chevron-down.svg")).unwrap())
             .unwrap();
         let px = rasterize(svg, (28, 28), (0., 0.), (28., 28.), 0.).unwrap();
-        let covered = px.chunks_exact(4).filter(|p| p[3] > 0).count();
+        let covered = px.as_chunks::<4>().0.iter().filter(|p| p[3] > 0).count();
         assert!(covered > 40 && covered < 300, "{covered}");
         // Rotating 180° flips the chevron to point up: the top row empties, the bottom fills.
         let up = rasterize(svg, (28, 28), (0., 0.), (28., 28.), 180.).unwrap();

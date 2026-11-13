@@ -65,14 +65,14 @@ pub(crate) type Hook =
 #[derive(Debug)]
 pub(crate) struct RunFailure {
     pub err: Error,
-    pub partial: TurnResult,
+    pub partial: Box<TurnResult>,
 }
 
 impl RunFailure {
     fn new(err: Error) -> Self {
         Self {
             err,
-            partial: TurnResult::default(),
+            partial: Box::default(),
         }
     }
 }
@@ -301,7 +301,7 @@ impl CursorRunner {
                 st.finish();
                 return Err(RunFailure {
                     err: Error::canceled(),
-                    partial: st.result(),
+                    partial: Box::new(st.result()),
                 });
             }
 
@@ -344,7 +344,7 @@ impl CursorRunner {
                 };
                 return Err(RunFailure {
                     err,
-                    partial: st.result(),
+                    partial: Box::new(st.result()),
                 });
             }
             if !st.have_result() {
@@ -354,7 +354,7 @@ impl CursorRunner {
                 }
                 return Err(RunFailure {
                     err: Error::msg(cursor_no_result_message(&tail, &self.bridge_log_hint())),
-                    partial: st.result(),
+                    partial: Box::new(st.result()),
                 });
             }
             return Ok(st.result());

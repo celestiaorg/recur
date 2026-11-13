@@ -58,7 +58,7 @@ pub fn coverage(scale: f32) -> Option<(u32, u32, Vec<f32>)> {
         .to_rgba8();
     let (sw, sh) = img.dimensions();
     let mut pm = img.into_raw();
-    for p in pm.chunks_exact_mut(4) {
+    for p in pm.as_chunks_mut::<4>().0 {
         let a = p[3] as u32;
         for c in &mut p[..3] {
             *c = ((*c as u32 * a + 127) / 255) as u8;

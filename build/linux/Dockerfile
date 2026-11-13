@@ -19,7 +19,7 @@ COPY --from=node /usr/local/bin/node /usr/local/bin/node
 ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo PATH=/usr/local/cargo/bin:$PATH
 # Matches rust-toolchain.toml; bump together.
 RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal \
-      --default-toolchain 1.95 --component rustfmt,clippy \
+      --default-toolchain 1.100 --component rustfmt,clippy,llvm-tools \
     && chmod -R a+w $RUSTUP_HOME $CARGO_HOME
 
 # Docker blocks the user namespaces WebKit's bubblewrap sandbox needs; tests that open

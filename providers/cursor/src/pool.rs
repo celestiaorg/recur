@@ -309,7 +309,7 @@ impl Drop for Reservation {
 /// Drops one handout; true when it was the last.
 pub(crate) fn release(r: &CursorRunner) -> bool {
     r.in_use
-        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
+        .try_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
             (n > 0).then(|| n - 1)
         })
         .is_ok_and(|prev| prev == 1)

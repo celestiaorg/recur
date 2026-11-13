@@ -130,7 +130,7 @@ impl Engine {
             if lp.is_main {
                 return;
             }
-            lp.goal = title.clone();
+            lp.replace_goal(&title, "");
             lp.short = truncate(&title, 48);
         }) else {
             return "rename_workspace: unknown workspace".into();

@@ -55,6 +55,7 @@ pub struct LandChrome {
     updating_base: bool,
     pulling_pr: bool,
     pushing_remote: bool,
+    merging: bool,
     rules_evt: Option<RulesEvt>,
     fs_timer: Option<Task<()>>,
     fetch: Option<Task<()>>,
@@ -193,8 +194,11 @@ impl LandChrome {
             && !workspace_github_pr
             && !(github_prs && !land.remote.is_empty() && land.require_pr != Some(false));
         let agent_busy = s.workspaces_running.contains(id);
-        let land_locked =
-            agent_busy || self.updating_base || self.pulling_pr || self.pushing_remote;
+        let land_locked = agent_busy
+            || self.updating_base
+            || self.pulling_pr
+            || self.pushing_remote
+            || self.merging;
         let land_pending = land_on && !self.known;
         let land_busy = land_locked || land_pending;
         let land_locked_title = if agent_busy {
@@ -731,6 +735,7 @@ impl Shell {
         }
         self.land.confirming_merge = false;
         self.land.merge_menu_open = false;
+        self.land.merging = true;
         let (id, services) = {
             let s = self.state.read(cx);
             (s.selected_workspace_id.clone(), s.services().clone())
@@ -738,8 +743,13 @@ impl Shell {
         let (method, label, base_label) = (v.merge_method, v.merge_label, v.merge_base_label);
         let (remote, base) = (self.land.land.remote.clone(), self.land.land.base.clone());
         let state = self.state.clone();
-        cx.spawn(async move |_, cx| {
-            let merged = match services.workspaces.merge_workspace(&id, &method).await {
+        cx.spawn(async move |this, cx| {
+            let res = services.workspaces.merge_workspace(&id, &method).await;
+            let _ = this.update(cx, |shell, cx| {
+                shell.land.merging = false;
+                cx.notify();
+            });
+            let merged = match res {
                 Ok(m) => m,
                 Err(e) => {
                     cx.update(|cx| {
@@ -1473,7 +1483,9 @@ impl Shell {
         } else {
             v.land_busy_title.clone()
         };
-        let label = if self.land.confirming_merge {
+        let label = if self.land.merging {
+            "Merging…".to_string()
+        } else if self.land.confirming_merge {
             format!("Confirm {}", v.merge_label.to_lowercase())
         } else {
             v.merge_label.clone()

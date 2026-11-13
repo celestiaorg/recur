@@ -103,6 +103,39 @@ async fn closes_stdin_on_result() {
     );
 }
 
+/// claude is spawned before `ready` resolves; the stdin prompt waits for it.
+#[tokio::test]
+async fn ready_holds_the_prompt_not_the_spawn() {
+    let dir = tempfile::tempdir().unwrap();
+    let (booted, got) = (dir.path().join("booted"), dir.path().join("got"));
+    let body = format!(
+        "touch '{}'\nread line\necho \"$line\" > '{}'\n{RESULT_DONE}\ncat >/dev/null\n",
+        booted.display(),
+        got.display()
+    );
+    let bin = fake(dir.path(), &body);
+    let (_turn, mut cx) = Turn::new(true);
+    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+    cx.ready = Some(Box::pin(async move {
+        let _ = rx.await;
+    }));
+    let p = provider(&bin);
+    let r = req("hello", dir.path());
+    let task = tokio::spawn(async move { run(&p, r, cx, Duration::from_secs(5)).await });
+    for _ in 0..200 {
+        if booted.exists() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(booted.exists(), "claude spawned before ready");
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(!got.exists(), "prompt held until ready");
+    tx.send(()).unwrap();
+    task.await.unwrap().unwrap();
+    assert!(std::fs::read_to_string(&got).unwrap().contains("hello"));
+}
+
 const BG_LIVE: &str = r#"echo '{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"b1","task_type":"local_bash"}]}'"#;
 const BG_EMPTY: &str =
     r#"echo '{"type":"system","subtype":"background_tasks_changed","tasks":[]}'"#;

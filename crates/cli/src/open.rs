@@ -109,6 +109,7 @@ pub fn send_or_launch(abs: &str) -> Result<(), String> {
 pub fn call_open(sock: &str, abs: &str) -> Result<(), OpenError> {
     let req = Request {
         path: abs.to_string(),
+        ..Request::default()
     };
     let res = openipc::call(Path::new(sock), &req).map_err(|e| ipc_error(sock, e))?;
     if openipc::retryable(&res) {

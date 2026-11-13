@@ -1,4 +1,5 @@
-//! The Recur CLI: open paths in the desktop app and author Recur Bundles.
+//! The Recur CLI: open paths in the desktop app, read and write its settings, and author
+//! Recur Bundles.
 
 mod app;
 mod color;
@@ -7,6 +8,7 @@ mod create;
 pub mod open;
 mod paths;
 mod resolve;
+mod settings;
 
 use std::io::Write;
 

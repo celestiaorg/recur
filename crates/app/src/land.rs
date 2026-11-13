@@ -739,14 +739,21 @@ impl Shell {
         let (remote, base) = (self.land.land.remote.clone(), self.land.land.base.clone());
         let state = self.state.clone();
         cx.spawn(async move |_, cx| {
-            let Some(merged) = call(
-                cx,
-                services.workspaces.merge_workspace(&id, &method),
-                "Could not merge",
-            )
-            .await
-            else {
-                return;
+            let merged = match services.workspaces.merge_workspace(&id, &method).await {
+                Ok(m) => m,
+                Err(e) => {
+                    cx.update(|cx| {
+                        toast(
+                            ToastKind::Error,
+                            format!("Could not merge: {}", e.message),
+                            cx,
+                        )
+                    });
+                    state.update(cx, |s, cx| {
+                        s.request_prompt_action(&id, "fix-merge", &e.message, cx)
+                    });
+                    return;
+                }
             };
             state.update(cx, |s, cx| s.replace_workspace(merged, cx));
             let msg = if !remote.is_empty() && !base.is_empty() {

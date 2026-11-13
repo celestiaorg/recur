@@ -181,6 +181,7 @@ fn main() {
     // looks up claude, gh, git… and before any thread exists (it sets the environment).
     cliinstall::ensure_path();
     recur_platform::raise_fd_limit();
+    std::thread::spawn(recur_ui::file_icons::prewarm);
 
     let store = recur_store::Store::new().unwrap_or_else(|err| fatal(format!("open store: {err}")));
 

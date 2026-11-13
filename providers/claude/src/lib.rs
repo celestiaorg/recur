@@ -171,6 +171,10 @@ impl Provider for ClaudeProvider {
         runner::run(&self.cfg, req, cx).await
     }
 
+    fn defers_prompt(&self) -> bool {
+        true
+    }
+
     /// Claude and Codex both persist UUIDs; only Cursor's `agent-` ids are
     /// foreign. A Claude↔Codex switch is caught upstream by the dock-switch
     /// rule (old provider ≠ new provider drops the handle).

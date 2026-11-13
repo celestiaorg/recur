@@ -398,7 +398,10 @@ impl AppState {
         };
         match resolve_shell_restore(saved, &live) {
             ShellRestore::None => {}
-            ShellRestore::Workspace(id) => self.open_workspace(&id, false, cx),
+            ShellRestore::Workspace(id) => {
+                self.boot_composer_focus = true;
+                self.open_workspace(&id, false, cx);
+            }
             ShellRestore::Pr(id) => self.open_pr(&id, cx),
             ShellRestore::Project(id) => self.open_project(&id, cx),
             ShellRestore::View(v) => self.go(v, None, cx),

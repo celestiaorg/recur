@@ -23,6 +23,7 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 
 ### Fixed
 
+- Recur no longer uses CPU while idle with a chat's message box focused: its blinking caret redraws only when it blinks, not 20 times a second.
 - **Resolve conflicts** on a GitHub pull request now pushes the resolved branch to the PR, the way **Fix checks** does, so GitHub sees the conflicts are gone. After a rebase the agent force-pushes with lease.
 - Clicking a sidebar workspace's remove button a second time no longer gets ignored when you click quickly. If removing would lose work, the button stays armed and shows what would be lost before you confirm again.
 - Agents, terminals and git no longer fail with "Too many open files" after Recur has been open a while with many workspaces.
@@ -30,6 +31,9 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - Dragging a text selection past the edge of a code block scrolls the block, so long lines and tall blocks can be selected in full.
 - A workspace linked to a GitHub issue no longer shows an empty box beside **View #…** in the header that squeezed the workspace title.
 - When a workflow asks you a question or stops on a usage limit or another temporary error, its notification and Inbox row open that workflow's chat (with several workflows in one workspace, each question gets its own row), and **Retry** on the error card resumes the workflow from where it stopped instead of re-sending your last message as a plain chat turn. If you switched the workflow's models to another provider in Settings first, the retried workflow starts fresh sessions on the new provider instead of failing to resume the old ones.
+- After a relaunch, the restored workspace's chat composer has focus, so you can start typing without clicking it first.
+- Recur no longer pauses for a moment right after launch when the restored chat shows tool calls with file icons.
+- Recur stays responsive while a very long agent turn (thousands of steps) streams into a chat and right after it ends. Before, the app slowed down as the turn grew and could freeze for seconds, delaying new tabs and sends in other chats.
 - `/re-review` on a Local PR, in the same tab as the earlier review, reviews only what changed since that pass.
 - Typing past the right edge of a text field (Settings, path fields and others) scrolls smoothly instead of showing doubled, jumping text, and pasting a long value scrolls to its end right away.
 - Files with spaces in their names can be dropped into chat as file mentions, including files outside the workspace such as Downloads.
@@ -39,6 +43,7 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - Loops are now called Workflows: the fifth chat mode is **Autopilot** and runs a workflow, and **Settings → Loops** is now **Settings → Workflows**. Bundle authors write `[[workflow]]` and `mode = "autopilot"`; existing bundles with `[[loop]]` and `mode = "loop"` keep working.
 - Agent mode chats can file findings, so a review asked for in Agent mode lands in the Findings panel.
 - Project dropdowns (new workspace, schedules, Inbox, Issues, Pull requests) show each project's icon next to its name.
+- Claude Code chats start answering sooner: Recur snapshots the worktree for the turn's diff while Claude Code starts up instead of before launching it.
 - Reviewers no longer re-raise findings you ignored or marked invalid, and a re-review resolves open findings it verifies are fixed. Add a `## Reviews` section to a repository's `AGENTS.md` to tell reviewers what not to flag.
 - Cursor agents run on Cursor SDK 1.3.1 (was 1.0.38). Existing installs show an **Update** button in Settings > Providers > Cursor.
 

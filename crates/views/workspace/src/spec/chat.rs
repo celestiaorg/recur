@@ -9,6 +9,7 @@ use gpui::{Modifiers, TestAppContext, point, px};
 use parking_lot::Mutex;
 use recur_domain::{AgentSkill, Artifact, ChatItem, Finding, WorkspaceChatTab};
 use recur_services::api::PromptResultDto;
+use recur_services::api::ShellState;
 use recur_services::api::TermInfo;
 use recur_services::events::{
     AgentUpdated, FilesDropped, SessionDelta, SessionTag, SessionTurnEnd,
@@ -617,6 +618,28 @@ async fn slash_fix_findings_shows_a_short_label_while_sending_the_full_checklist
     let focused =
         h.cx.update(|window, cx| chat.read(cx).test_composer_focused(window));
     assert!(focused);
+}
+
+#[gpui::test]
+async fn a_workspace_restored_at_launch_focuses_its_chat_composer(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default());
+    let chat = h.chat();
+    let focused = |h: &mut H| {
+        let chat = chat.clone();
+        h.cx.update(|window, cx| chat.read(cx).test_composer_focused(window))
+    };
+    assert!(!focused(&mut h), "opening a workspace leaves focus alone");
+    let saved = ShellState {
+        view: "detail".into(),
+        workspace_id: WS.into(),
+        ..ShellState::default()
+    };
+    h.state
+        .update(h.cx, |s, cx| s.apply_boot_route(Some(&saved), cx));
+    h.settle();
+    assert!(focused(&mut h));
+    h.type_text("hi");
+    assert_eq!(h.input(), "hi");
 }
 
 #[gpui::test]

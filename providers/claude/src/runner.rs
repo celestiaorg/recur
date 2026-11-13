@@ -59,6 +59,7 @@ pub(crate) async fn run(
         cancel,
         sink,
         steer,
+        mut ready,
         ..
     } = cx;
     let use_stream = args::stream_input(&req, steer.is_some());
@@ -94,6 +95,10 @@ pub(crate) async fn run(
     }
     for key in &req.env_scrub {
         cmd.env_remove(key);
+    }
+    // A `-p` prompt reaches the model as soon as claude boots.
+    if !use_stream && let Some(r) = ready.take() {
+        r.await;
     }
     let mut child = cmd
         .spawn()
@@ -138,14 +143,23 @@ pub(crate) async fn run(
         })
     };
 
+    // claude boots (MCP connect included) while the engine finishes the turn
+    // setup; the stdin prompt waits for it.
+    if let Some(r) = ready {
+        tokio::select! {
+            () = r => {}
+            () = cancel.cancelled() => {}
+        }
+    }
     if use_stream
+        && !cancel.is_cancelled()
         && let Some(w) = stdin.as_mut()
-        && let Err(e) = write_line(w, &user_message_line(&req.prompt, &req.images)).await
+        && write_line(w, &user_message_line(&req.prompt, &req.images))
+            .await
+            .is_err()
     {
-        drop(stdin);
-        wait_reaped(&mut reaped).await;
-        let _ = killer.await;
-        return Err(ProviderError::failed(format!("claude seed prompt: {}", e)));
+        // claude died while booting: the no-result path below reports its stderr.
+        stdin = None;
     }
 
     let (mut result, have_result) = if use_stream {

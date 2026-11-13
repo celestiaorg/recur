@@ -27,7 +27,7 @@ use parking_lot::Mutex;
 use recur_agent::error::ErrorKind;
 use recur_agent::{
     AgentEvent, Availability, EventSink, Flags, HistoryMode, HistorySource, PermissionAbandoned,
-    PermissionAsker, PermissionRoute, Provider, ProviderError, SteerInbox, ToolTransport,
+    PermissionAsker, PermissionRoute, Provider, ProviderError, Ready, SteerInbox, ToolTransport,
     TurnContext, TurnRequest, TurnResult,
 };
 use recur_domain::{Message, PermissionDecision, PermissionRequest, parse_model_ref};
@@ -53,6 +53,8 @@ pub struct AgentSpec {
     /// The armed mid-turn steer channel.
     pub steer: Option<SteerInbox>,
     pub emit: Option<Emit>,
+    /// Holds the prompt back until it resolves (the start checkpoint).
+    pub ready: Option<Ready>,
 }
 
 impl AgentSpec {
@@ -242,6 +244,7 @@ impl Engine {
             mut req,
             steer,
             emit,
+            ready,
         } = spec;
         apply_skill_guidance(&mut req);
         apply_comment_hygiene(&mut req);
@@ -257,11 +260,12 @@ impl Engine {
             req.include_partials = true;
         }
         req.env_scrub = self.trackers.secret_env();
-        self.run_mirrored(cancel, provider, &r.provider, req, steer, emit)
+        self.run_mirrored(cancel, provider, &r.provider, req, steer, emit, ready)
             .await
     }
 
     /// One turn under the session mirror and the live broadcast.
+    #[allow(clippy::too_many_arguments)]
     async fn run_mirrored(
         &self,
         cancel: &CancellationToken,
@@ -270,6 +274,7 @@ impl Engine {
         mut req: TurnRequest,
         steer: Option<SteerInbox>,
         emit: Option<Emit>,
+        ready: Option<Ready>,
     ) -> Result<TurnResult, ProviderError> {
         let mirror = self.attach_mirror(&mut req, provider_id);
         let broadcast = self.new_session_broadcast(&req, Arc::clone(&provider));
@@ -312,6 +317,13 @@ impl Engine {
                 Arc::clone(&self.todos),
                 &req,
             )));
+        }
+        if let Some(r) = ready {
+            if provider.defers_prompt() {
+                cx.ready = Some(r);
+            } else {
+                r.await;
+            }
         }
         let out = provider.run_turn(req, cx).await;
         if let Some(m) = sink.mirror.lock().as_mut() {

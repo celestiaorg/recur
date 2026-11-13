@@ -47,13 +47,15 @@ fn walk(te: &TestEngine, ws: &str, chat: &str, key: &str) -> std::sync::Arc<Loop
 #[tokio::test]
 async fn rename_workspace_branch_and_chat() {
     let (te, ws, _repo) = fixture("").await;
+    te.store
+        .update_workspace(&ws.id, |w| w.goal_display = "Review & fix".into());
     assert_eq!(
         te.engine.rename_workspace(&ws.id, "Dark mode toggle"),
         "Renamed workspace to Dark mode toggle."
     );
     let named = te.store.workspace(&ws.id).unwrap();
     assert_eq!(
-        (named.goal.as_str(), named.short.as_str()),
+        (named.goal_label(), named.short.as_str()),
         ("Dark mode toggle", "Dark mode toggle")
     );
     assert!(te.events.by_name("workspace.updated").iter().any(

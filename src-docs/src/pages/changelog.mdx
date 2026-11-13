@@ -23,6 +23,7 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 
 ### Fixed
 
+- Squash-merging a workspace without a PR now gets a summary written by the agent, the same way a PR title is written, and follows the project's Conventional Commits setting. Before, the subject was the workspace's name, and for a workspace started from a prompt action such as **Review & fix** it was the full prompt. If generation fails, the workspace's name is used, including a name you gave it later.
 - Recur no longer uses CPU while idle with a chat's message box focused: its blinking caret redraws only when it blinks, not 20 times a second.
 - **Resolve conflicts** on a GitHub pull request now pushes the resolved branch to the PR, the way **Fix checks** does, so GitHub sees the conflicts are gone. After a rebase the agent force-pushes with lease.
 - Clicking a sidebar workspace's remove button a second time no longer gets ignored when you click quickly. If removing would lose work, the button stays armed and shows what would be lost before you confirm again.

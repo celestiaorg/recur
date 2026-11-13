@@ -132,6 +132,7 @@ fn local_and_workspace_land_messages() {
             &MergeMethod::from(s(&n["method"])),
             &commits[i(&n["commits"]) as usize],
             &SquashCommitMessage::from(s(&n["squash"])),
+            ("", ""),
         );
         assert_eq!(got, s(&c["out"]), "workspace merge {n}");
     }

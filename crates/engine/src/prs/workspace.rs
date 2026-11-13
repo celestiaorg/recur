@@ -24,7 +24,7 @@ use crate::prs::merge::format_squash_commit_message;
 use crate::prs::refresh::behind_base;
 use crate::prs::{is_forge_source, none_if_empty, touch_pr_updated};
 use crate::text::{hard_truncate_runes, html_escape, plural, truncate};
-use crate::turn::oneshot::cap_github_pr_body;
+use crate::turn::oneshot::{PR_DESCRIPTION_TIMEOUT, cap_github_pr_body};
 use crate::workspace::create::DEFAULT_WORKSPACE_TITLE;
 
 const LAND_TIMEOUT: Duration = Duration::from_secs(60);
@@ -39,8 +39,9 @@ pub fn land_locked_by_run(ws: &Workspace) -> bool {
     ws.has_run() && run_active(&ws.state)
 }
 
-/// The on-disk commit message for a no-PR land: the workspace name as the
-/// squash subject (plus commit details by the squash setting), else
+/// The on-disk commit message for a no-PR land: the generated title (else
+/// the workspace name) as the squash subject, plus commit details or the
+/// generated description by the squash setting; else
 /// `Merge <name> into <base>`.
 pub fn workspace_merge_commit_message(
     ws: &Workspace,
@@ -48,15 +49,21 @@ pub fn workspace_merge_commit_message(
     method: &MergeMethod,
     commits: &[Commit],
     squash: &SquashCommitMessage,
+    generated: (&str, &str),
 ) -> String {
-    let mut title = single_line(&ws.goal);
-    if title.is_empty() || title == DEFAULT_WORKSPACE_TITLE {
-        title = "Workspace changes".into();
+    let mut name = single_line(ws.goal_label());
+    if name.is_empty() || name == DEFAULT_WORKSPACE_TITLE {
+        name = "Workspace changes".into();
     }
     if *method == MergeMethod::Squash {
-        return format_squash_commit_message(&title, 0, false, commits, "", squash).combined();
+        let (title, desc) = generated;
+        let title = match single_line(title).trim() {
+            "" => name,
+            t => t.to_owned(),
+        };
+        return format_squash_commit_message(&title, 0, false, commits, desc, squash).combined();
     }
-    format!("Merge {title} into {base}")
+    format!("Merge {name} into {base}")
 }
 
 /// A hand-driven workspace PR's summary: what changed, no convergence
@@ -195,7 +202,10 @@ impl Engine {
             branch = ws.branch.clone();
         }
         let ws = self.store.workspace(workspace_id).unwrap_or(ws);
-        let deadline = tokio::time::Instant::now() + LAND_TIMEOUT;
+        let mut deadline = tokio::time::Instant::now() + LAND_TIMEOUT;
+        if method == MergeMethod::Squash {
+            deadline += PR_DESCRIPTION_TIMEOUT;
+        }
         tokio::time::timeout_at(
             deadline + PUSH_UNDO_GRACE,
             self.merge_workspace_inner(&ws, &proj, &branch, &base, &method, deadline),
@@ -258,8 +268,31 @@ impl Engine {
         if diff.files.is_empty() && commits.is_empty() {
             return Err("nothing to merge: commit changes in this workspace first".into());
         }
+        let mut generated = (String::new(), String::new());
+        if *method == MergeMethod::Squash {
+            let (_, diff_body) = mgr.changed_diff(&ws.worktree_path, base).await;
+            if let Ok(g) = self
+                .generate_pr_description(
+                    &tokio_util::sync::CancellationToken::new(),
+                    workspace_id,
+                    &ws.worktree_path,
+                    &diff_body,
+                    &commit_subjects(&commits),
+                )
+                .await
+            {
+                generated = g;
+            }
+        }
         let sq = effective_squash_commit_message(proj, &self.settings());
-        let msg = workspace_merge_commit_message(ws, base, method, &commits, &sq);
+        let msg = workspace_merge_commit_message(
+            ws,
+            base,
+            method,
+            &commits,
+            &sq,
+            (&generated.0, &generated.1),
+        );
         let res = match mgr.merge(branch, base, &msg, method.as_str()).await {
             Ok(r) => r,
             Err(e) => {

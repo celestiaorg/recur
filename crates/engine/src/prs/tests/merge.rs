@@ -180,7 +180,8 @@ fn workspace_merge_commit_messages() {
             "main",
             &MergeMethod::Squash,
             &commits,
-            &SquashCommitMessage::TitleAndCommits
+            &SquashCommitMessage::TitleAndCommits,
+            ("", "")
         ),
         "Ship dark mode\n\n* add theme tokens\n* wire settings toggle"
     );
@@ -190,7 +191,8 @@ fn workspace_merge_commit_messages() {
             "main",
             &MergeMethod::Squash,
             &commits,
-            &SquashCommitMessage::Title
+            &SquashCommitMessage::Title,
+            ("", "")
         ),
         "Ship dark mode"
     );
@@ -200,7 +202,8 @@ fn workspace_merge_commit_messages() {
             "main",
             &MergeMethod::Merge,
             &commits,
-            &SquashCommitMessage::TitleAndCommits
+            &SquashCommitMessage::TitleAndCommits,
+            ("", "")
         ),
         "Merge Ship dark mode into main"
     );
@@ -214,9 +217,37 @@ fn workspace_merge_commit_messages() {
             "main",
             &MergeMethod::Merge,
             &[],
-            &SquashCommitMessage::Title
+            &SquashCommitMessage::Title,
+            ("", "")
         ),
         "Merge Workspace changes into main"
+    );
+    let prompt_action = Workspace {
+        goal: "The human already wrote this change. Review the current worktree.".into(),
+        goal_display: "Review & fix".into(),
+        ..Workspace::default()
+    };
+    assert_eq!(
+        workspace_merge_commit_message(
+            &prompt_action,
+            "main",
+            &MergeMethod::Squash,
+            &[],
+            &SquashCommitMessage::Title,
+            ("", "")
+        ),
+        "Review & fix"
+    );
+    assert_eq!(
+        workspace_merge_commit_message(
+            &prompt_action,
+            "main",
+            &MergeMethod::Squash,
+            &commits,
+            &SquashCommitMessage::TitleAndDescription,
+            ("feat: ship dark mode", "Adds theme tokens.")
+        ),
+        "feat: ship dark mode\n\nAdds theme tokens."
     );
 }
 
@@ -261,6 +292,27 @@ async fn squash_merge_commit_message_on_disk() {
     assert!(!subj.contains("recur/") && !subj.contains("Merge "));
     let body = git_out(&repo.path, &["log", "-1", "--pretty=%b", "main"]).unwrap();
     assert!(body.contains("Recur Local PR #"), "{body}");
+    t.close().await;
+}
+
+#[tokio::test]
+async fn no_pr_squash_uses_generated_title() {
+    let repo = init_repo();
+    let t = TestEngine::new(Some(describe_pr_converge()));
+    let proj = add_project(&t.store, &repo.path);
+    let ws = t.engine.create_workspace(&proj, "", "").await.unwrap();
+    t.store.update_workspace(&ws.id, |w| {
+        w.replace_goal(WIRE, LABEL);
+    });
+    std::fs::write(std::path::Path::new(&ws.worktree_path).join("f.txt"), "x\n").unwrap();
+    crate::testing::git(&ws.worktree_path, &["add", "-A"]);
+    crate::testing::git(&ws.worktree_path, &["commit", "-m", "add f"]);
+    t.engine
+        .merge_workspace(&ws.id, &MergeMethod::Squash)
+        .await
+        .unwrap();
+    let subj = git_out(&repo.path, &["log", "-1", "--pretty=%s", "main"]).unwrap();
+    assert_eq!(subj.trim(), "Cover the checkout flake");
     t.close().await;
 }
 

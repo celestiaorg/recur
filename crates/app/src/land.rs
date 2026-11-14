@@ -1592,6 +1592,7 @@ impl Shell {
         )
         .debug_selector(|| "tb-open-pr-chev".into())
         .rounded_l(px(0.))
+        .border_l(px(0.))
         .px(px(5.));
         if !off {
             main = main
@@ -1685,6 +1686,7 @@ impl Shell {
         )
         .debug_selector(|| "tb-view-pr-chev".into())
         .rounded_l(px(0.))
+        .border_l(px(0.))
         .px(px(5.))
         .on_click(cx.guarded_listener(|this, _, _, cx| {
             this.land.view_pr_menu_open = !this.land.view_pr_menu_open;

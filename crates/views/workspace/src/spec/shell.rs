@@ -16,7 +16,8 @@ use recur_domain::{
 };
 use recur_services::AppEvent;
 use recur_services::events::{
-    AgentUpdated, GithubBranchRules, WorkspaceEvent, WorkspaceFsChanged, WorkspaceUpdated,
+    AgentUpdated, GithubBranchRules, SessionDelta, SessionTag, SessionTurnEnd, WorkspaceEvent,
+    WorkspaceFsChanged, WorkspaceUpdated,
 };
 use recur_services::fake::{Answer, Fake, Overrides, Release, Seed, hold};
 use recur_ui::widgets::{ToastKind, ToastStore};
@@ -1167,5 +1168,83 @@ async fn opens_a_working_loop_into_the_unified_workspace_view(cx: &mut TestAppCo
     assert!(
         s.has("tab-chip:chat-tab-MA:on") || s.has("tab-chip:chat-tab-MA"),
         "the dock leads with the Loop tab"
+    );
+}
+
+#[gpui::test]
+async fn a_late_chrome_restore_and_background_turns_leave_the_focused_composer_focused(
+    cx: &mut TestAppContext,
+) {
+    let mut s = plain(cx, Overrides::default());
+    s.open(ACTIVE);
+    let view = s.cx.update(|_, cx| {
+        crate::detail::WorkspaceDetail::current(cx)
+            .and_then(|d| d.read(cx).bound_view(cx))
+            .expect("a bound workspace view")
+    });
+    let (chat, other) = s.cx.update(|_, cx| {
+        let v = view.read(cx);
+        let active = v.active_code();
+        let other = v
+            .tabs()
+            .iter()
+            .map(|t| t.code.clone())
+            .find(|c| *c != active);
+        (v.chat().clone(), other.expect("a second chat tab"))
+    });
+    s.open(CODING);
+    // Back on the workspace, the Observatory restores its focus zone frames later: a composer
+    // focused before then (a click, launch focusing the restored chat) keeps the keys.
+    let state = s.state.clone();
+    s.cx.update(|_, cx| state.update(cx, |st, cx| st.open_workspace(ACTIVE, false, cx)));
+    s.cx.run_until_parked();
+    s.cx.update(|window, cx| chat.update(cx, |c, cx| c.focus_composer(window, cx)));
+    s.settle();
+    let focused = |s: &mut S| {
+        let chat = chat.clone();
+        s.cx.update(|window, cx| chat.read(cx).test_composer_focused(window))
+    };
+    assert!(focused(&mut s));
+
+    let tag = SessionTag {
+        workspace_id: ACTIVE.into(),
+        code: other.clone(),
+        ..Default::default()
+    };
+    let agent = |status: &str| {
+        AppEvent::AgentUpdated(AgentUpdated {
+            workspace_id: ACTIVE.into(),
+            agent_id: format!("{ACTIVE}-{other}"),
+            status: status.into(),
+            ..Default::default()
+        })
+    };
+    let type_text = |s: &mut S, text: &str| {
+        for ch in text.chars() {
+            s.cx.simulate_input(&ch.to_string());
+        }
+        s.settle();
+    };
+    type_text(&mut s, "ade");
+    s.dispatch(agent("working"));
+    s.dispatch(AppEvent::SessionDelta(SessionDelta {
+        tag: tag.clone(),
+        text: "streaming".into(),
+        seq: Some(1),
+        replace: true,
+        ..Default::default()
+    }));
+    type_text(&mut s, "m");
+    s.dispatch(AppEvent::SessionTurnEnd(SessionTurnEnd {
+        tag,
+        duration_ms: 5,
+        ..Default::default()
+    }));
+    s.dispatch(agent("idle"));
+    type_text(&mut s, "ark");
+    assert!(focused(&mut s));
+    assert_eq!(
+        chat.read_with(s.cx, |c, _| c.input().to_string()),
+        "ademark"
     );
 }

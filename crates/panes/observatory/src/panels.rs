@@ -954,15 +954,18 @@ impl Observatory {
         .detach();
     }
 
-    /// `restoreChromeFocus`: keys back where this workspace last had them (A→B→A).
+    /// `restoreChromeFocus`: keys back where this workspace last had them (A→B→A). It runs
+    /// frames after it was queued: focus moved since (`queued` is what had it then), such as a
+    /// composer click or launch focusing the restored chat, wins.
     pub(crate) fn restore_chrome_focus(
         &mut self,
         zone: FocusZone,
         token: u64,
+        queued: Option<FocusHandle>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.props.main_blocked || self.root_token != token {
+        if self.props.main_blocked || self.root_token != token || window.focused(cx) != queued {
             return;
         }
         // Behind another route the shell is not laid out: focus there would leave keys no

@@ -432,6 +432,7 @@ impl Observatory {
             self.skip_view_restore = false;
             let token = self.root_token;
             let zone = self.focus_zone;
+            let queued = window.focused(cx);
             cx.on_next_frame(window, move |o, window, cx| {
                 if o.root_token != token {
                     return;
@@ -439,7 +440,7 @@ impl Observatory {
                 o.sync_editors(window, cx);
                 cx.on_next_frame(window, move |o, window, cx| {
                     if o.root_token == token {
-                        o.restore_chrome_focus(zone, token, window, cx);
+                        o.restore_chrome_focus(zone, token, queued, window, cx);
                     }
                 });
             });
@@ -502,11 +503,12 @@ impl Observatory {
         self.restore_session_from_backend(root, self.root_token, window, cx);
         if self.editor_hidden(cx) && self.term_open(cx) && !ws.is_empty() {
             let token = self.root_token;
+            let queued = window.focused(cx);
             cx.on_next_frame(window, move |o, window, cx| {
                 cx.on_next_frame(window, move |o2, window, cx| {
                     let _ = o;
                     if o2.root_token == token {
-                        o2.restore_chrome_focus(FocusZone::Terminal, token, window, cx);
+                        o2.restore_chrome_focus(FocusZone::Terminal, token, queued, window, cx);
                     }
                 });
             });
@@ -1672,11 +1674,12 @@ impl Observatory {
             let token = self.root_token;
             self.sync_editors(window, cx);
             self.schedule_live_refresh(cx);
+            let queued = window.focused(cx);
             cx.on_next_frame(window, move |o, window, cx| {
                 cx.on_next_frame(window, move |o2, window, cx| {
                     let _ = o;
                     if o2.root_token == token {
-                        o2.restore_chrome_focus(zone, token, window, cx);
+                        o2.restore_chrome_focus(zone, token, queued, window, cx);
                     }
                 });
             });

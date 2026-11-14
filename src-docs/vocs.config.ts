@@ -42,11 +42,11 @@ export default defineConfig({
     {
       text: "Concepts",
       items: [
+        { text: "Workflows", link: "/concepts/workflows" },
         { text: "Workspaces", link: "/concepts/workspaces" },
         { text: "Project config", link: "/concepts/project-toml" },
         { text: "Chat context", link: "/concepts/chat-context" },
         { text: "Chat modes", link: "/concepts/modes" },
-        { text: "Workflows", link: "/concepts/workflows" },
         { text: "Review & checkpoints", link: "/concepts/review" },
         { text: "Pull requests", link: "/concepts/pull-requests" },
         { text: "Issues", link: "/concepts/issues" },

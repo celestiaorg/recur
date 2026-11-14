@@ -1,14 +1,10 @@
 //! Captures the website screenshots from the desktop app on the typed fakes over the demo story
-//! in `dataset.json`: each screen in `src-web/public/screenshots/manifest.json`, in Paper and
-//! Charcoal, as a 1440×800 window saved at 2x (2880×1600) under the manifest's file names. It
-//! needs a Retina display and moves the window there when another screen is the main one.
-//!
-//! The theme section gets `themes/app-{key}.png` per app theme and `themes/editor-{id}.png` per
-//! editor theme, cropped to the code area, which the page lays over the app shot at the place
-//! `themes/manifest.json` gives.
+//! in `dataset.json`: each screen in `src-web/public/screenshots/manifest.json`, in Charcoal, as
+//! a 1440×800 window saved at 2x (2880×1600) under the manifest's file names. It needs a Retina
+//! display and moves the window there when another screen is the main one.
 //!
 //! `mise run capture:splash` (`cargo run -p recur-desktop --features fake --example capture --
-//! [out dir] [themes]`; `themes` captures only the theme set)
+//! [out dir]`)
 //!
 //! Each capture runs in a fresh process, as each had a fresh page in the web capture, so pane
 //! layout comes from that screen's editor session and nothing carries over. The window floats
@@ -53,33 +49,8 @@ mod mac {
     const HEIGHT: f32 = 800.;
     const WORKSPACE: &str = "LOOP-2231";
     const PR: &str = "486";
-
-    /// (file suffix, app theme, editor theme).
-    const THEMES: [(&str, &str, &str); 2] = [
-        ("paper", "paper", "paper"),
-        ("charcoal", "default", "recur"),
-    ];
-
-    /// The editor themes the website's theme section offers (bundle theme ids; keep in sync
-    /// with `src-web/src/lib/themes.ts`).
-    const EDITOR_THEMES: [&str; 16] = [
-        "recur",
-        "paper",
-        "cool-glow",
-        "made-of-code",
-        "dracula",
-        "github-dark",
-        "github-light",
-        "tokyo-night",
-        "nord",
-        "gruvbox-dark-medium",
-        "monokai",
-        "material-theme",
-        "dark-plus",
-        "solarized-dark",
-        "solarized-light",
-        "aura",
-    ];
+    const APP_THEME: &str = "default";
+    const EDITOR_THEME: &str = "recur";
 
     #[derive(Clone, Copy)]
     enum View {
@@ -113,7 +84,7 @@ mod mac {
         }
     }
 
-    const SCREENS: [Screen; 8] = [
+    const SCREENS: [Screen; 7] = [
         Screen {
             chat_open: true,
             files_open: true,
@@ -139,12 +110,6 @@ mod mac {
         },
         screen("issues", View::Other(ViewName::Issues)),
         screen("schedules", View::Other(ViewName::Schedules)),
-        // The website's theme section: an app theme shot with each editor theme's code area
-        // laid over it.
-        Screen {
-            chat_open: true,
-            ..screen("theme", View::Workspace)
-        },
     ];
 
     fn registry() -> ViewRegistry {
@@ -172,161 +137,32 @@ mod mac {
         std::fs::create_dir_all(&out).expect("create out dir");
         match std::env::var("RECUR_CAPTURE").ok() {
             Some(spec) => capture_one(&spec),
-            None if std::env::args().nth(2).as_deref() == Some("themes") => {
-                std::process::exit(i32::from(capture_themes(&out.join("themes")) > 0))
-            }
             None => capture_all(&out),
         }
     }
 
-    /// One capture: a screen with an app and an editor theme, written to `file`.
-    struct Job {
-        screen: &'static str,
-        app: String,
-        editor: String,
-        file: PathBuf,
-    }
-
-    fn job(screen: &'static str, app: &str, editor: &str, file: PathBuf) -> Job {
-        Job {
-            screen,
-            app: app.into(),
-            editor: editor.into(),
-            file,
-        }
-    }
-
-    fn run_jobs(jobs: &[Job]) -> usize {
+    /// Each screen in its own process, so nothing carries over from one to the next.
+    fn capture_all(out: &Path) {
         let exe = std::env::current_exe().expect("current exe");
-        let mut failed = 0;
-        for j in jobs {
-            let spec = format!("{}|{}|{}|{}", j.screen, j.app, j.editor, j.file.display());
+        let mut failed = false;
+        for s in &SCREENS {
+            let file = out.join(format!("{}.png", s.id));
             let ok = Command::new(&exe)
-                .env("RECUR_CAPTURE", spec)
+                .env("RECUR_CAPTURE", format!("{}|{}", s.id, file.display()))
                 .status()
                 .is_ok_and(|st| st.success());
             if !ok {
-                eprintln!("capture: {} failed", j.file.display());
-                failed += 1;
+                eprintln!("capture: {} failed", file.display());
+                failed = true;
             }
         }
-        failed
-    }
-
-    fn capture_all(out: &Path) {
-        let mut jobs = Vec::new();
-        for (suffix, app, editor) in THEMES {
-            for s in SCREENS.iter().filter(|s| s.id != "theme") {
-                jobs.push(job(
-                    s.id,
-                    app,
-                    editor,
-                    out.join(format!("{}-{suffix}.png", s.id)),
-                ));
-            }
-        }
-        let failed = run_jobs(&jobs) + capture_themes(&out.join("themes"));
-        std::process::exit(i32::from(failed > 0));
-    }
-
-    /// `themes/app-{key}.png` per app theme, `themes/editor-{id}.png` per editor theme cropped
-    /// to the code area (where editor themes differ), and `themes/manifest.json` placing it.
-    fn capture_themes(dir: &Path) -> usize {
-        std::fs::create_dir_all(dir).expect("create themes dir");
-        let raw = std::env::temp_dir().join(format!("recur-capture-themes-{}", std::process::id()));
-        std::fs::create_dir_all(&raw).expect("create raw dir");
-        let mut jobs: Vec<Job> = recur_ui::theme::ThemeId::ALL
-            .into_iter()
-            .map(|t| {
-                let editor = if t.is_light() { "paper" } else { "recur" };
-                job(
-                    "theme",
-                    t.key(),
-                    editor,
-                    dir.join(format!("app-{}.png", t.key())),
-                )
-            })
-            .collect();
-        for e in EDITOR_THEMES {
-            jobs.push(job("theme", "default", e, raw.join(format!("{e}.png"))));
-        }
-        // The first editor theme again over a light app theme: the code area must not change.
-        let check = raw.join("check.png");
-        jobs.push(job("theme", "paper", EDITOR_THEMES[0], check.clone()));
-        let failed = run_jobs(&jobs);
-        if failed > 0 {
-            return failed;
-        }
-        let load = |p: &Path| image::open(p).expect("read capture").to_rgb8();
-        let shots: Vec<_> = EDITOR_THEMES
-            .iter()
-            .map(|e| load(&raw.join(format!("{e}.png"))))
-            .collect();
-        let (w, h) = shots[0].dimensions();
-        // Columns and rows where editor themes disagree across a tenth of the window: the code
-        // area. Animated dots (a running workspace, a waiting chat) differ in a few pixels only.
-        let (mut cols, mut rows) = (vec![0u32; w as usize], vec![0u32; h as usize]);
-        for shot in &shots[1..] {
-            for (x, y, px) in shot.enumerate_pixels() {
-                if differs(px, shots[0].get_pixel(x, y)) {
-                    cols[x as usize] += 1;
-                    rows[y as usize] += 1;
-                }
-            }
-        }
-        let span = |counts: &[u32], min: u32| {
-            let first = counts
-                .iter()
-                .position(|&n| n > min)
-                .expect("editor themes differ");
-            let last = counts
-                .iter()
-                .rposition(|&n| n > min)
-                .expect("editor themes differ");
-            (first as u32, last as u32 + 1)
-        };
-        let ((x0, x1), (y0, y1)) = (span(&cols, h / 10), span(&rows, w / 10));
-        // Pixels that follow the app theme (the active line's edge, the gutter's change bars)
-        // stay transparent, so the app shot underneath shows them in its own colours.
-        let check = load(&check);
-        let app_owned = |x: u32, y: u32| differs(check.get_pixel(x, y), shots[0].get_pixel(x, y));
-        for (e, shot) in EDITOR_THEMES.iter().zip(&shots) {
-            let crop = image::RgbaImage::from_fn(x1 - x0, y1 - y0, |x, y| {
-                let [r, g, b] = shot.get_pixel(x0 + x, y0 + y).0;
-                let a = if app_owned(x0 + x, y0 + y) { 0 } else { 255 };
-                image::Rgba([r, g, b, a])
-            });
-            crop.save(dir.join(format!("editor-{e}.png")))
-                .expect("write editor crop");
-        }
-        let manifest = serde_json::json!({
-            "width": w,
-            "height": h,
-            "editor": { "x": x0, "y": y0, "width": x1 - x0, "height": y1 - y0 },
-        });
-        std::fs::write(
-            dir.join("manifest.json"),
-            serde_json::to_string_pretty(&manifest).expect("manifest JSON") + "\n",
-        )
-        .expect("write themes manifest");
-        let _ = std::fs::remove_dir_all(&raw);
-        0
-    }
-
-    fn differs(a: &image::Rgb<u8>, b: &image::Rgb<u8>) -> bool {
-        a.0.iter().zip(b.0).any(|(p, q)| p.abs_diff(q) > 8)
+        std::process::exit(i32::from(failed));
     }
 
     fn capture_one(spec: &str) {
-        let mut parts = spec.splitn(4, '|');
-        let mut next = || {
-            parts
-                .next()
-                .expect("RECUR_CAPTURE is screen|app|editor|file")
-        };
-        let (id, app_theme, editor_theme, file) = (next(), next(), next(), PathBuf::from(next()));
+        let (id, file) = spec.split_once('|').expect("RECUR_CAPTURE is screen|file");
+        let file = PathBuf::from(file);
         let screen = SCREENS.iter().find(|s| s.id == id).expect("known screen");
-        let (app_theme, editor_theme) = (app_theme.to_string(), editor_theme.to_string());
         let scratch = std::env::temp_dir().join(format!("recur-capture-{}", std::process::id()));
         std::fs::create_dir_all(&scratch).expect("create scratch dir");
 
@@ -361,8 +197,7 @@ mod mac {
                 let (window, state) = recur_app::open_main_window(main, cx).expect("open window");
                 let window: AnyWindowHandle = window.into();
                 cx.spawn(async move |cx: &mut AsyncApp| {
-                    let themes = (app_theme.as_str(), editor_theme.as_str());
-                    let code = match run(cx, window, &state, screen, themes, &file).await {
+                    let code = match run(cx, window, &state, screen, &file).await {
                         Ok(()) => {
                             println!("{}", file.display());
                             0
@@ -415,7 +250,6 @@ mod mac {
         window: AnyWindowHandle,
         state: &Entity<AppState>,
         screen: &Screen,
-        (app_theme, editor_theme): (&str, &str),
         file: &Path,
     ) -> Result<(), String> {
         let _ = cx.update_window(window, |_, window, _| {
@@ -432,8 +266,8 @@ mod mac {
         ns_window.orderFrontRegardless();
 
         state.update(cx, |s, cx| {
-            s.set_theme(app_theme, cx);
-            s.set_editor_theme(editor_theme, cx);
+            s.set_theme(APP_THEME, cx);
+            s.set_editor_theme(EDITOR_THEME, cx);
             for (key, size) in [
                 (PanelKey::Rail, 280.),
                 (PanelKey::MaestroDock, screen.maestro_dock),
@@ -559,7 +393,7 @@ mod mac {
         let bytes = data.bytes();
         let mut rgb = Vec::with_capacity(w * h * 3);
         for y in 0..h {
-            for px in bytes[y * row..y * row + w * 4].chunks_exact(4) {
+            for px in bytes[y * row..y * row + w * 4].as_chunks::<4>().0 {
                 // BGRA over an opaque window.
                 rgb.extend_from_slice(&[px[2], px[1], px[0]]);
             }

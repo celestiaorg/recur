@@ -1,9 +1,9 @@
 /* Paper (light) and Charcoal (dark), aligned with the Recur app themes */
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap");
 
 :root {
   --vocs-font-family: "Inter", system-ui, sans-serif;
-  --vocs-font-family-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo,
+  --vocs-font-family-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo,
     monospace;
 
   --vocs-background-color-primary: light-dark(#ebecef, #141414);
@@ -26,6 +26,5 @@
 h1,
 h2,
 h3 {
-  font-family: "Space Grotesk", var(--vocs-font-family);
   letter-spacing: -0.02em;
 }

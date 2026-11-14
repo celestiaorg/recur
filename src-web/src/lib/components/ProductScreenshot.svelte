@@ -3,7 +3,6 @@
 
   let {
     screen,
-    theme,
     eager = false,
     caption,
     position,
@@ -18,7 +17,6 @@
       | "inbox"
       | "issues"
       | "schedules";
-    theme: "paper" | "charcoal";
     eager?: boolean;
     /** Shown in the enlarged view; defaults to the capture title. */
     caption?: string;
@@ -41,7 +39,7 @@
   }
 
   const capture = $derived(
-    manifest.captures.find((item) => item.id === `${screen}-${theme}`)!,
+    manifest.captures.find((item) => item.id === screen)!,
   );
   let dialog: HTMLDialogElement;
   const displayWidth = $derived(
@@ -57,13 +55,11 @@
   class="capture-trigger"
   type="button"
   onclick={() => dialog.showModal()}
-  aria-label="Enlarge {capture.title} in {theme}"
+  aria-label="Enlarge {capture.title}"
 >
   <img
     {src}
-    alt="{capture.title} in Recur’s {theme === 'paper'
-      ? 'Paper'
-      : 'Charcoal'} theme"
+    alt={capture.title}
     width={displayWidth}
     height={displayHeight}
     loading={eager ? "eager" : "lazy"}

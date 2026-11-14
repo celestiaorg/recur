@@ -2,60 +2,8 @@
   "version": 1,
   "captures": [
     {
-      "id": "workspace-paper",
-      "file": "workspace-paper.png",
-      "title": "Build beside your agent",
-      "placement": "Hero product image",
-      "theme": "paper",
-      "settings": {
-        "id": "workspace",
-        "title": "Build beside your agent",
-        "placement": "Hero product image",
-        "viewport": {
-          "width": 1440,
-          "height": 800
-        },
-        "target": ".win",
-        "view": "workspace",
-        "chat": "PA",
-        "file": "src/main.go",
-        "surface": "editor",
-        "prTab": "conv",
-        "panes": {
-          "sidebar": true,
-          "chat": true,
-          "files": true,
-          "prChat": false
-        },
-        "widths": {
-          "rail": 280,
-          "maestroDock": 440,
-          "obsSide": 180,
-          "prFileList": 220
-        },
-        "editorPrefs": {
-          "fontSize": 13,
-          "lineWrapping": true,
-          "cursorBlink": false
-        },
-        "ready": {
-          "selector": "#v-detail .cm-content",
-          "text": "refreshSession"
-        },
-        "theme": {
-          "app": "paper",
-          "editor": "paper"
-        },
-        "deviceScaleFactor": 2
-      },
-      "dimensions": {
-        "width": 2880,
-        "height": 1600
-      }
-    },
-    {
-      "id": "workspace-charcoal",
-      "file": "workspace-charcoal.png",
+      "id": "workspace",
+      "file": "workspace.png",
       "title": "Build beside your agent",
       "placement": "Hero product image",
       "theme": "charcoal",
@@ -106,60 +54,8 @@
       }
     },
     {
-      "id": "changes-paper",
-      "file": "changes-paper.png",
-      "title": "Review the change",
-      "placement": "Review changes tour stop",
-      "theme": "paper",
-      "settings": {
-        "id": "changes",
-        "title": "Review the change",
-        "placement": "Review changes tour stop",
-        "viewport": {
-          "width": 1440,
-          "height": 800
-        },
-        "target": ".win",
-        "view": "workspace",
-        "chat": "PA2",
-        "file": "src/main.go",
-        "surface": "review",
-        "prTab": "conv",
-        "panes": {
-          "sidebar": true,
-          "chat": false,
-          "files": false,
-          "prChat": false
-        },
-        "widths": {
-          "rail": 280,
-          "maestroDock": 400,
-          "obsSide": 180,
-          "prFileList": 220
-        },
-        "editorPrefs": {
-          "fontSize": 13,
-          "lineWrapping": true,
-          "cursorBlink": false
-        },
-        "ready": {
-          "selector": "#v-detail .obs-review-surface",
-          "text": "context.WithTimeout"
-        },
-        "theme": {
-          "app": "paper",
-          "editor": "paper"
-        },
-        "deviceScaleFactor": 2
-      },
-      "dimensions": {
-        "width": 2880,
-        "height": 1600
-      }
-    },
-    {
-      "id": "changes-charcoal",
-      "file": "changes-charcoal.png",
+      "id": "changes",
+      "file": "changes.png",
       "title": "Review the change",
       "placement": "Review changes tour stop",
       "theme": "charcoal",
@@ -210,60 +106,8 @@
       }
     },
     {
-      "id": "loop-paper",
-      "file": "loop-paper.png",
-      "title": "Parallel work, reviewed together",
-      "placement": "Workflow mode tour stop",
-      "theme": "paper",
-      "settings": {
-        "id": "loop",
-        "title": "Parallel work, reviewed together",
-        "placement": "Workflow mode tour stop",
-        "viewport": {
-          "width": 1440,
-          "height": 800
-        },
-        "target": ".win",
-        "view": "workspace",
-        "chat": "MA",
-        "file": "src/main.go",
-        "surface": "editor",
-        "prTab": "conv",
-        "panes": {
-          "sidebar": true,
-          "chat": true,
-          "files": false,
-          "prChat": false
-        },
-        "widths": {
-          "rail": 280,
-          "maestroDock": 650,
-          "obsSide": 180,
-          "prFileList": 220
-        },
-        "editorPrefs": {
-          "fontSize": 13,
-          "lineWrapping": true,
-          "cursorBlink": false
-        },
-        "ready": {
-          "selector": "#v-detail .fanout-card",
-          "text": "2 of 3 merged"
-        },
-        "theme": {
-          "app": "paper",
-          "editor": "paper"
-        },
-        "deviceScaleFactor": 2
-      },
-      "dimensions": {
-        "width": 2880,
-        "height": 1600
-      }
-    },
-    {
-      "id": "loop-charcoal",
-      "file": "loop-charcoal.png",
+      "id": "loop",
+      "file": "loop.png",
       "title": "Parallel work, reviewed together",
       "placement": "Workflow mode tour stop",
       "theme": "charcoal",
@@ -314,61 +158,8 @@
       }
     },
     {
-      "id": "pull-request-paper",
-      "file": "pull-request-paper.png",
-      "title": "A pull request ready for you",
-      "placement": "Dedicated PR section",
-      "theme": "paper",
-      "settings": {
-        "id": "pull-request",
-        "title": "A pull request ready for you",
-        "placement": "Dedicated PR section",
-        "viewport": {
-          "width": 1440,
-          "height": 800
-        },
-        "target": ".win",
-        "view": "pr",
-        "chat": "PA",
-        "file": "src/main.go",
-        "surface": "editor",
-        "prTab": "conv",
-        "panes": {
-          "sidebar": true,
-          "chat": false,
-          "files": false,
-          "prChat": true
-        },
-        "widths": {
-          "rail": 280,
-          "maestroDock": 390,
-          "obsSide": 180,
-          "prFileList": 220
-        },
-        "editorPrefs": {
-          "fontSize": 13,
-          "lineWrapping": true,
-          "cursorBlink": false
-        },
-        "ready": {
-          "selector": "#v-prdetail",
-          "text": "post these to the PR"
-        },
-        "pr": "486",
-        "theme": {
-          "app": "paper",
-          "editor": "paper"
-        },
-        "deviceScaleFactor": 2
-      },
-      "dimensions": {
-        "width": 2880,
-        "height": 1600
-      }
-    },
-    {
-      "id": "pull-request-charcoal",
-      "file": "pull-request-charcoal.png",
+      "id": "pull-request",
+      "file": "pull-request.png",
       "title": "A pull request ready for you",
       "placement": "Dedicated PR section",
       "theme": "charcoal",
@@ -420,60 +211,8 @@
       }
     },
     {
-      "id": "inbox-paper",
-      "file": "inbox-paper.png",
-      "title": "Everything that needs you",
-      "placement": "Inbox tour stop",
-      "theme": "paper",
-      "settings": {
-        "id": "inbox",
-        "title": "Everything that needs you",
-        "placement": "Inbox tour stop",
-        "viewport": {
-          "width": 1440,
-          "height": 800
-        },
-        "target": ".win",
-        "view": "inbox",
-        "chat": "PA",
-        "file": "src/main.go",
-        "surface": "editor",
-        "prTab": "conv",
-        "panes": {
-          "sidebar": true,
-          "chat": true,
-          "files": false,
-          "prChat": false
-        },
-        "widths": {
-          "rail": 280,
-          "maestroDock": 390,
-          "obsSide": 180,
-          "prFileList": 220
-        },
-        "editorPrefs": {
-          "fontSize": 13,
-          "lineWrapping": true,
-          "cursorBlink": false
-        },
-        "ready": {
-          "selector": "#v-briefing",
-          "text": "What needs me before lunch?"
-        },
-        "theme": {
-          "app": "paper",
-          "editor": "paper"
-        },
-        "deviceScaleFactor": 2
-      },
-      "dimensions": {
-        "width": 2880,
-        "height": 1600
-      }
-    },
-    {
-      "id": "inbox-charcoal",
-      "file": "inbox-charcoal.png",
+      "id": "inbox",
+      "file": "inbox.png",
       "title": "Everything that needs you",
       "placement": "Inbox tour stop",
       "theme": "charcoal",
@@ -524,60 +263,8 @@
       }
     },
     {
-      "id": "issues-paper",
-      "file": "issues-paper.png",
-      "title": "Issues across GitHub and Linear",
-      "placement": "Issues tour stop",
-      "theme": "paper",
-      "settings": {
-        "id": "issues",
-        "title": "Issues across GitHub and Linear",
-        "placement": "Issues tour stop",
-        "viewport": {
-          "width": 1440,
-          "height": 800
-        },
-        "target": ".win",
-        "view": "issues",
-        "chat": "PA",
-        "file": "src/main.go",
-        "surface": "editor",
-        "prTab": "conv",
-        "panes": {
-          "sidebar": true,
-          "chat": false,
-          "files": false,
-          "prChat": false
-        },
-        "widths": {
-          "rail": 280,
-          "maestroDock": 390,
-          "obsSide": 180,
-          "prFileList": 220
-        },
-        "editorPrefs": {
-          "fontSize": 13,
-          "lineWrapping": true,
-          "cursorBlink": false
-        },
-        "ready": {
-          "selector": "#v-issues .prlist",
-          "text": "Team invites with expiring links"
-        },
-        "theme": {
-          "app": "paper",
-          "editor": "paper"
-        },
-        "deviceScaleFactor": 2
-      },
-      "dimensions": {
-        "width": 2880,
-        "height": 1600
-      }
-    },
-    {
-      "id": "issues-charcoal",
-      "file": "issues-charcoal.png",
+      "id": "issues",
+      "file": "issues.png",
       "title": "Issues across GitHub and Linear",
       "placement": "Issues tour stop",
       "theme": "charcoal",
@@ -628,60 +315,8 @@
       }
     },
     {
-      "id": "schedules-paper",
-      "file": "schedules-paper.png",
-      "title": "Put recurring work on a schedule",
-      "placement": "Schedules tour stop",
-      "theme": "paper",
-      "settings": {
-        "id": "schedules",
-        "title": "Put recurring work on a schedule",
-        "placement": "Schedules tour stop",
-        "viewport": {
-          "width": 1440,
-          "height": 800
-        },
-        "target": ".win",
-        "view": "schedules",
-        "chat": "PA",
-        "file": "src/main.go",
-        "surface": "editor",
-        "prTab": "conv",
-        "panes": {
-          "sidebar": true,
-          "chat": false,
-          "files": false,
-          "prChat": false
-        },
-        "widths": {
-          "rail": 280,
-          "maestroDock": 390,
-          "obsSide": 180,
-          "prFileList": 220
-        },
-        "editorPrefs": {
-          "fontSize": 13,
-          "lineWrapping": true,
-          "cursorBlink": false
-        },
-        "ready": {
-          "selector": "#v-schedules",
-          "text": "Morning code review"
-        },
-        "theme": {
-          "app": "paper",
-          "editor": "paper"
-        },
-        "deviceScaleFactor": 2
-      },
-      "dimensions": {
-        "width": 2880,
-        "height": 1600
-      }
-    },
-    {
-      "id": "schedules-charcoal",
-      "file": "schedules-charcoal.png",
+      "id": "schedules",
+      "file": "schedules.png",
       "title": "Put recurring work on a schedule",
       "placement": "Schedules tour stop",
       "theme": "charcoal",

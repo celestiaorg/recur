@@ -306,7 +306,7 @@ pub fn services(session: EditorSession) -> Services {
     };
     let o = o.list_changed_files(move |_, _| Ok(changed.clone()));
 
-    // Every shipped editor theme (the fakes carry three), for the theme captures.
+    // The shipped editor themes, so the capture reads the real one.
     let themes = shipped_themes();
     let o = {
         let themes = themes.clone();

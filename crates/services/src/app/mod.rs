@@ -291,6 +291,13 @@ impl AppServices {
                     })),
                 )
             };
+            {
+                let auth = Arc::clone(providers.chatgpt.auth());
+                usage.set_chatgpt_refresh(Arc::new(move |id: String| {
+                    let auth = Arc::clone(&auth);
+                    Box::pin(async move { auth.access_token(&id).await })
+                }));
+            }
             AppServices {
                 me: weak.clone(),
                 handle: tokio::runtime::Handle::current(),

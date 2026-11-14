@@ -641,6 +641,113 @@ async fn fetch_codex_ok() {
     assert_eq!(seen[0].header("chatgpt-account-id"), "acc");
 }
 
+fn chatgpt_fetcher(base: String) -> (Fetcher, tempfile::TempDir) {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("chatgpt-auth.json"),
+        r#"{"active":"b","accounts":[
+            {"id":"a","accessToken":"ta"},
+            {"id":"b","email":"me@example.com","chatgptAccountId":"ws","accessToken":"tb"}]}"#,
+    )
+    .unwrap();
+    let path = dir.path().to_path_buf();
+    let f = Fetcher {
+        codex_usage_url: base,
+        data_dir: hook(move || Some(path.clone())),
+        ..Fetcher::default()
+    };
+    (f, dir)
+}
+
+#[tokio::test]
+async fn fetch_chatgpt_rows() {
+    let usage = r#"{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":5}}}"#;
+    for (status, body, error) in [
+        (200, usage, ""),
+        (401, "", "ChatGPT login expired"),
+        (429, "", "rate_limited"),
+    ] {
+        let (base, seen) = serve(move |_| (status, body.into())).await;
+        let (f, _dir) = chatgpt_fetcher(base);
+        let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
+        assert_eq!((q.id.as_str(), q.name.as_str()), ("chatgpt", "ChatGPT"));
+        assert_eq!(q.error, error, "{status}");
+        if status == 200 {
+            assert_eq!(
+                (q.plan.as_str(), q.email.as_str()),
+                ("Plus", "me@example.com")
+            );
+            assert_eq!(q.windows.len(), 1);
+            let seen = seen.lock();
+            assert_eq!(seen[0].header("authorization"), "Bearer tb");
+            assert_eq!(seen[0].header("chatgpt-account-id"), "ws");
+        }
+    }
+}
+
+#[tokio::test]
+async fn fetch_chatgpt_signed_out_replaces_last_row() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().to_path_buf();
+    let f = Fetcher {
+        data_dir: hook(move || Some(path.clone())),
+        ..Fetcher::default()
+    };
+    let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
+    assert_eq!(q.id, "chatgpt");
+    assert!(q.error.is_empty() && q.hint.is_empty() && q.windows.is_empty());
+
+    let mut old = q.clone();
+    old.windows = vec![Default::default()];
+    let prev = Snapshot {
+        providers: Some(vec![old]),
+        ..Default::default()
+    };
+    let next = Snapshot {
+        providers: Some(vec![q.clone()]),
+        ..Default::default()
+    };
+    assert_eq!(merge_stale(&prev, next).providers, Some(vec![q]));
+}
+
+#[tokio::test]
+async fn fetch_chatgpt_refreshes_token_and_classifies_failures() {
+    let usage = r#"{"rate_limit":{"primary_window":{"used_percent":5}}}"#;
+    for (refreshed, error) in [
+        (Ok("fresh"), ""),
+        (
+            Err("could not reach OpenAI: offline"),
+            "Could not reach ChatGPT",
+        ),
+        (
+            Err("OpenAI rejected the session (HTTP 401). Continue with ChatGPT"),
+            "ChatGPT login expired",
+        ),
+        (
+            Err("OpenAI request failed (HTTP 503)"),
+            "ChatGPT usage unavailable",
+        ),
+    ] {
+        let (base, seen) = serve(move |_| (200, usage.into())).await;
+        let (mut f, _dir) = chatgpt_fetcher(base);
+        let ids = Arc::new(Mutex::new(Vec::new()));
+        let ids2 = ids.clone();
+        f.chatgpt_refresh = Some(Arc::new(move |id: String| {
+            ids2.lock().push(id);
+            let r = refreshed.map(String::from).map_err(String::from);
+            Box::pin(async move { r })
+        }));
+        let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
+        assert_eq!(q.error, error);
+        assert_eq!(*ids.lock(), ["b"]);
+        if error.is_empty() {
+            assert_eq!(seen.lock()[0].header("authorization"), "Bearer fresh");
+        } else {
+            assert!(seen.lock().is_empty());
+        }
+    }
+}
+
 async fn codex_monthly(usage: &'static str, auth: CodexAuth) -> (ProviderQuota, Log) {
     let (base, seen) = serve(move |r| match r.path.as_str() {
         "/wham/usage" => ok(usage),
@@ -1178,7 +1285,7 @@ async fn collect_honors_want_callback() {
         want_claude: true,
         want_codex: true,
         want_cursor: true,
-        want: hook(|| (false, false, false)),
+        want: hook(Wants::default),
         claude_token: hook(move || {
             c1.fetch_add(1, Ordering::SeqCst);
             Err("no".into())
@@ -1201,7 +1308,7 @@ async fn collect_honors_want_callback() {
 #[tokio::test]
 async fn collect_keeps_connecting_over_stub() {
     let f = Fetcher {
-        want: hook(|| (false, false, false)),
+        want: hook(Wants::default),
         cursor_stub: hook(|| Some(cursor_no_session_quota())),
         ..Fetcher::default()
     };
@@ -1220,7 +1327,7 @@ async fn collect_cursor_stub_without_fetch() {
     let c = calls.clone();
     let f = Fetcher {
         want_cursor: true,
-        want: hook(|| (false, false, false)),
+        want: hook(Wants::default),
         cursor_stub: hook(|| Some(cursor_connect_tokens_quota())),
         cursor_token: hook(move || {
             c.fetch_add(1, Ordering::SeqCst);
@@ -1454,7 +1561,7 @@ async fn disconnect_revokes_and_removes_tokens() {
     let f = Fetcher {
         cursor_revoke_key_url: format!("{base}/revoke"),
         data_dir: hook(move || Some(path.clone())),
-        want: hook(|| (false, false, false)),
+        want: hook(Wants::default),
         ..Fetcher::default()
     };
     let p = Poller::new(Arc::new(f), None);
@@ -1550,7 +1657,14 @@ fn service_wants_and_stub() {
     let settings = Arc::new(Mutex::new(recur_domain::Settings::default()));
     let dir = tempfile::tempdir().unwrap();
     let s = service(settings.clone(), Some(dir.path().to_path_buf()));
-    assert_eq!(s.wants(), (true, false, false));
+    assert_eq!(
+        s.wants(),
+        Wants {
+            claude: true,
+            chatgpt: true,
+            ..Wants::default()
+        }
+    );
     assert_eq!(s.cursor_stub(), Some(cursor_no_session_quota()));
     settings.lock().codex_chat_gpt_auth = true;
     write_cursor_auth_file(
@@ -1561,10 +1675,33 @@ fn service_wants_and_stub() {
         },
     )
     .unwrap();
-    assert_eq!(s.wants(), (true, true, true));
+    assert_eq!(
+        s.wants(),
+        Wants {
+            claude: true,
+            codex: true,
+            chatgpt: true,
+            cursor: true
+        }
+    );
     assert_eq!(s.cursor_stub(), Some(cursor_connect_tokens_quota()));
     settings.lock().disabled_providers = vec!["cursor".into(), "claude-code".into()];
-    assert_eq!(s.wants(), (false, true, false));
+    assert_eq!(
+        s.wants(),
+        Wants {
+            codex: true,
+            chatgpt: true,
+            ..Wants::default()
+        }
+    );
+    settings.lock().disabled_providers.push("chatgpt".into());
+    assert_eq!(
+        s.wants(),
+        Wants {
+            codex: true,
+            ..Wants::default()
+        }
+    );
 }
 
 #[tokio::test]

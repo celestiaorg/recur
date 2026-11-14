@@ -27,7 +27,7 @@ pub struct ProviderChip {
     pub headline: f64,
 }
 
-const CHIP_ORDER: [&str; 3] = ["claude-code", "cursor", "codex"];
+const CHIP_ORDER: [&str; 4] = ["claude-code", "cursor", "codex", "chatgpt"];
 
 fn ring_rank(id: &str) -> u8 {
     match id {
@@ -90,15 +90,19 @@ pub fn provider_chips(s: Option<&Snapshot>, disabled: &[String]) -> Vec<Provider
     out
 }
 
+/// A row with nothing to show, like a signed-out ChatGPT account, is hidden.
+pub fn usage_row_has_data(p: &ProviderQuota) -> bool {
+    !p.windows.is_empty()
+        || !p.error.is_empty()
+        || p.connecting
+        || !p.hint.is_empty()
+        || !p.source_id.is_empty()
+}
+
 pub fn snapshot_has_data(s: Option<&Snapshot>, disabled: &[String]) -> bool {
-    providers(s).iter().any(|p| {
-        usage_provider_on(&p.id, disabled)
-            && (!p.windows.is_empty()
-                || !p.error.is_empty()
-                || p.connecting
-                || !p.hint.is_empty()
-                || !p.source_id.is_empty())
-    })
+    providers(s)
+        .iter()
+        .any(|p| usage_provider_on(&p.id, disabled) && usage_row_has_data(p))
 }
 
 /// True when an enabled Claude row can recover through `claude auth status`.
@@ -270,6 +274,23 @@ mod tests {
     }
 
     #[test]
+    fn chatgpt_chip_sorts_after_codex_and_respects_disabled() {
+        let s = snap(
+            ["chatgpt", "codex", "claude-code"]
+                .map(|id| p(id, |q| q.windows = vec![w("five_hour", "5-hour", 10.)]))
+                .into(),
+        );
+        let ids = |d: &[String]| {
+            provider_chips(Some(&s), d)
+                .into_iter()
+                .map(|c| c.id)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(ids(&[]), ["claude-code", "codex", "chatgpt"]);
+        assert_eq!(ids(&["chatgpt".into()]), ["claude-code", "codex"]);
+    }
+
+    #[test]
     fn cursor_visibility_and_data() {
         assert!(!cursor_usage_visible(&p("cursor", |_| {})));
         assert!(cursor_usage_visible(
@@ -290,6 +311,7 @@ mod tests {
         assert!(snapshot_has_data(Some(&hinted), &[]));
         assert!(!snapshot_has_data(Some(&snap(vec![])), &[]));
         assert!(!snapshot_has_data(Some(&hinted), &["cursor".into()]));
+        assert!(!usage_row_has_data(&p("chatgpt", |_| {})));
     }
 
     #[test]

@@ -130,7 +130,7 @@ impl RecurUpdater {
     }
 
     /// The `updater.check` event (menu "Check for Updates…"): checks unless
-    /// a flow is already under way or an update is staged.
+    /// a flow is already under way.
     pub fn check_now(&self) {
         let updater = Arc::clone(&self.updater);
         self.updater.spawn(async move { check(&updater).await });
@@ -152,12 +152,12 @@ impl Drop for RecurUpdater {
     }
 }
 
-/// Not the library's periodic check: that loop re-checks from Ready and
-/// re-downloads, discarding the staged update, every tick.
+/// From Ready the check compares against the staged version, so only a
+/// newer release replaces it.
 async fn check(updater: &Updater) {
     if matches!(
         updater.state(),
-        State::Idle | State::UpToDate | State::Error
+        State::Idle | State::UpToDate | State::Error | State::Ready
     ) {
         let _ = updater.check_and_install().await;
     }

@@ -345,7 +345,12 @@ struct Inner {
     state: Option<State>,
     pending: Option<Release>,
     resolved: Option<PathBuf>,
+    /// The version `resolved` holds; checks compare against it instead of
+    /// the running version so a staged update can be superseded.
+    staged_version: String,
     staging_dir: Option<PathBuf>,
+    /// Set while [`Updater::restart`] hands the staged path to the helper.
+    restarting: bool,
     last_digest: Option<Vec<u8>>,
     skipped: String,
 }
@@ -490,8 +495,13 @@ impl Updater {
         let cfg = self.cfg()?;
         self.transition(State::Checking);
         self.emit(UpdaterEvent::CheckStarted);
+        let staged = self.inner.lock().staged_version.clone();
         let req = CheckRequest {
-            current_version: cfg.current_version.clone(),
+            current_version: if staged.is_empty() {
+                cfg.current_version.clone()
+            } else {
+                staged
+            },
             platform: cfg.platform.clone(),
             arch: cfg.arch.clone(),
         };
@@ -532,7 +542,14 @@ impl Updater {
     }
 
     fn up_to_date(&self) -> Option<Release> {
-        self.transition(State::UpToDate);
+        {
+            let mut inner = self.inner.lock();
+            inner.state = Some(if inner.resolved.is_some() {
+                State::Ready
+            } else {
+                State::UpToDate
+            });
+        }
         self.emit(UpdaterEvent::NoUpdate);
         None
     }
@@ -572,9 +589,6 @@ impl Updater {
             })?;
         let name = provider.name().to_string();
 
-        // Drop a staging dir a previous install left without a restart.
-        self.discard_staging();
-
         let (tmp_path, tmp_dir) = match self.download(provider.as_ref(), &pending).await {
             Ok(v) => v,
             Err(e) => return Err(self.fail_stage(Stage::Download, &name, e)),
@@ -609,25 +623,23 @@ impl Updater {
             }
         };
 
-        {
+        // Replace any update a previous install staged without a restart.
+        let old = {
             let mut inner = self.inner.lock();
             inner.resolved = Some(final_path);
-            inner.staging_dir = Some(tmp_dir);
+            inner.staged_version = pending.version.clone();
             inner.state = Some(State::Ready);
+            inner
+                .staging_dir
+                .replace(tmp_dir)
+                .filter(|_| !inner.restarting)
+        };
+        // simplify: a restart that fails after this leaves the old dir in the temp dir.
+        if let Some(old) = old {
+            let _ = std::fs::remove_dir_all(old);
         }
         self.emit(UpdaterEvent::UpdateReady(pending));
         Ok(())
-    }
-
-    fn discard_staging(&self) {
-        let dir = {
-            let mut inner = self.inner.lock();
-            inner.resolved = None;
-            inner.staging_dir.take()
-        };
-        if let Some(dir) = dir {
-            let _ = std::fs::remove_dir_all(dir);
-        }
     }
 
     /// Streams the artifact into a fresh `recur-update-*` temp dir, hashing
@@ -793,6 +805,15 @@ impl Updater {
     /// and relaunches it. If the helper never gets ready it is killed and
     /// this process keeps running the old version.
     pub async fn restart(&self) -> Result<(), UpdaterError> {
+        self.inner.lock().restarting = true;
+        let res = self.spawn_helper_and_quit().await;
+        if res.is_err() {
+            self.inner.lock().restarting = false;
+        }
+        res
+    }
+
+    async fn spawn_helper_and_quit(&self) -> Result<(), UpdaterError> {
         let (staged, timeout) = {
             let inner = self.inner.lock();
             let timeout = inner

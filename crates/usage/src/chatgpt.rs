@@ -3,7 +3,6 @@
 
 use std::path::Path;
 
-use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
 use crate::codex::{CodexAuth, fetch_wham_usage};
@@ -29,52 +28,15 @@ struct Account {
     workspace_id: String,
     access_token: String,
     id_token: String,
-    expires_at: Option<DateTime<Utc>>,
 }
 
-const STALE: &str = "ChatGPT token stale";
-
-fn active_account(dir: &Path) -> Result<Account, String> {
-    let raw = std::fs::read(dir.join("chatgpt-auth.json")).map_err(|e| e.to_string())?;
-    let file: AuthFile = serde_json::from_slice(&raw).map_err(|e| e.to_string())?;
+fn active_account(dir: &Path) -> Option<Account> {
+    let raw = std::fs::read(dir.join("chatgpt-auth.json")).ok()?;
+    let file: AuthFile = serde_json::from_slice(&raw).ok()?;
     file.accounts
         .into_iter()
         .find(|a| a.id == file.active)
         .filter(|a| !a.access_token.is_empty())
-        .ok_or_else(|| "no ChatGPT account".into())
-}
-
-/// Whether the ChatGPT provider has a signed-in active account.
-pub(crate) fn has_chatgpt_account(dir: &Path) -> bool {
-    active_account(dir).is_ok()
-}
-
-/// The active account's id, as the ChatGPT provider keys its tokens.
-pub(crate) fn active_chatgpt_account_id(dir: &Path) -> Option<String> {
-    active_account(dir).ok().map(|a| a.id)
-}
-
-/// The active account's saved access token. Only the ChatGPT provider
-/// refreshes it, so an expired one is reported as stale instead of requested.
-pub(crate) fn default_chatgpt_auth(
-    data_dir: Option<&Path>,
-    now_ms: i64,
-) -> Result<CodexAuth, String> {
-    let acct = active_account(data_dir.ok_or("no data dir")?)?;
-    if acct
-        .expires_at
-        .is_some_and(|t| t.timestamp_millis() <= now_ms)
-    {
-        return Err(STALE.into());
-    }
-    Ok(CodexAuth {
-        access_token: acct.access_token,
-        id_token: acct.id_token,
-        account_id: acct.workspace_id,
-        email: acct.email,
-        has_api_key: false,
-        has_chatgpt: true,
-    })
 }
 
 pub(crate) async fn fetch_chatgpt(ctx: &Ctx, f: &Fetcher) -> ProviderQuota {
@@ -83,21 +45,43 @@ pub(crate) async fn fetch_chatgpt(ctx: &Ctx, f: &Fetcher) -> ProviderQuota {
         name: "ChatGPT".into(),
         ..Default::default()
     };
-    let auth = match &f.chatgpt_auth {
-        Some(h) => h(),
-        None => default_chatgpt_auth(f.data_dir().as_deref(), f.now_ms()),
+    let fail = |error: &str, hint: String| ProviderQuota {
+        error: error.into(),
+        hint,
+        ..out.clone()
     };
-    match auth {
-        Ok(a) if a.has_chatgpt => fetch_wham_usage(ctx, f, a, out, "ChatGPT", SETTINGS_PATH).await,
-        Err(e) if e == STALE => ProviderQuota {
-            error: "ChatGPT session needs a refresh".into(),
-            hint: "Start a ChatGPT chat in Recur to refresh it.".into(),
-            ..out
-        },
-        _ => ProviderQuota {
-            error: "Not signed in to ChatGPT".into(),
-            hint: format!("Sign in with ChatGPT in {SETTINGS_PATH}."),
-            ..out
-        },
+    // An empty row still replaces the last windows after sign-out; the
+    // popover hides it.
+    let Some(acct) = f.data_dir().as_deref().and_then(active_account) else {
+        return out;
+    };
+    let mut auth = CodexAuth {
+        access_token: acct.access_token,
+        id_token: acct.id_token,
+        account_id: acct.workspace_id,
+        email: acct.email,
+        has_api_key: false,
+        has_chatgpt: true,
+    };
+    if let Some(refresh) = &f.chatgpt_refresh {
+        // Detached so the collect deadline cannot drop a refresh between
+        // OpenAI rotating the refresh token and the provider saving it.
+        let task = tokio::spawn(refresh(acct.id));
+        match ctx.run(task).await {
+            Ok(Ok(Ok(token))) => auth.access_token = token,
+            Err(e) => return fail("Could not reach ChatGPT", e.to_string()),
+            Ok(Err(e)) => return fail("ChatGPT usage unavailable", e.to_string()),
+            Ok(Ok(Err(e))) if e.starts_with("could not reach") => {
+                return fail("Could not reach ChatGPT", e);
+            }
+            Ok(Ok(Err(e))) if e.starts_with("OpenAI rejected") => {
+                return fail(
+                    "ChatGPT login expired",
+                    format!("Sign in with ChatGPT again in {SETTINGS_PATH}."),
+                );
+            }
+            Ok(Ok(Err(e))) => return fail("ChatGPT usage unavailable", e),
+        }
     }
+    fetch_wham_usage(ctx, f, auth, out, "ChatGPT", SETTINGS_PATH).await
 }

@@ -8,9 +8,7 @@ use recur_agent::UsageProbe;
 use crate::ctx::Ctx;
 use crate::fetcher::Fetcher;
 use crate::poller::COLLECT_TIMEOUT;
-use crate::types::{
-    PROVIDER_CHATGPT, PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, ProviderQuota,
-};
+use crate::types::{PROVIDER_CLAUDE, PROVIDER_CODEX, PROVIDER_CURSOR, ProviderQuota};
 
 fn ctx() -> Ctx {
     Ctx::background().with_timeout(COLLECT_TIMEOUT)
@@ -21,9 +19,6 @@ pub struct ClaudeProbe(pub Arc<Fetcher>);
 
 /// ChatGPT rate limits with the Codex login.
 pub struct CodexProbe(pub Arc<Fetcher>);
-
-/// ChatGPT rate limits with the direct ChatGPT account login.
-pub struct ChatGptProbe(pub Arc<Fetcher>);
 
 /// Cursor included usage with the Recur Connect session.
 pub struct CursorProbe(pub Arc<Fetcher>);
@@ -45,16 +40,6 @@ impl UsageProbe for CodexProbe {
     }
     async fn fetch(&self) -> ProviderQuota {
         crate::codex::fetch_codex(&ctx(), &self.0).await
-    }
-}
-
-#[async_trait::async_trait]
-impl UsageProbe for ChatGptProbe {
-    fn provider_id(&self) -> &str {
-        PROVIDER_CHATGPT
-    }
-    async fn fetch(&self) -> ProviderQuota {
-        crate::chatgpt::fetch_chatgpt(&ctx(), &self.0).await
     }
 }
 

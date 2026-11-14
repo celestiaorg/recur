@@ -1,7 +1,9 @@
 //! One snapshot collection across Claude, Codex, ChatGPT and Cursor.
 //! Tests and services replace the hook fields.
 
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -22,6 +24,12 @@ use crate::types::{ProviderQuota, Snapshot};
 pub const CLAUDE_COLLECT_BUDGET: Duration = Duration::from_secs(12);
 
 pub type Hook<T> = Option<Arc<dyn Fn() -> T + Send + Sync>>;
+
+/// Refreshes the ChatGPT access token for an account id (the ChatGPT
+/// provider's `Auth::access_token`), rewriting `chatgpt-auth.json`.
+pub type ChatGptRefresh = Arc<
+    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> + Send + Sync,
+>;
 
 /// Which providers one collect fetches.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -51,8 +59,8 @@ pub struct Fetcher {
     /// the way Settings → Providers already does.
     pub nudge_claude: Hook<()>,
     pub codex_auth: Hook<Result<CodexAuth, String>>,
-    /// The direct ChatGPT account's login.
-    pub chatgpt_auth: Hook<Result<CodexAuth, String>>,
+    /// Refreshes the direct ChatGPT account's token before a fetch.
+    pub chatgpt_refresh: Option<ChatGptRefresh>,
     pub cursor_token: Hook<Result<CursorTok, String>>,
 
     pub claude_usage_url: String,
@@ -105,7 +113,7 @@ impl Default for Fetcher {
             claude_creds: None,
             nudge_claude: None,
             codex_auth: None,
-            chatgpt_auth: None,
+            chatgpt_refresh: None,
             cursor_token: None,
             claude_usage_url: String::new(),
             codex_usage_url: String::new(),

@@ -2,7 +2,7 @@
 //!
 //! [`Poller`] caches one [`Snapshot`] over a [`Fetcher`] and publishes
 //! `provider.usage`; [`UsageService`] is the Settings-facing API services wrap;
-//! [`ClaudeProbe`], [`CodexProbe`], [`ChatGptProbe`] and [`CursorProbe`] serve
+//! [`ClaudeProbe`], [`CodexProbe`] and [`CursorProbe`] serve
 //! `Provider::usage_probe`.
 
 mod chatgpt;
@@ -29,7 +29,7 @@ pub use cursor::{
 pub use fetcher::{Fetcher, Hook, Wants, hook};
 pub use http::default_client;
 pub use poller::{Poller, Publisher, merge_stale};
-pub use probe::{ChatGptProbe, ClaudeProbe, CodexProbe, CursorProbe};
+pub use probe::{ClaudeProbe, CodexProbe, CursorProbe};
 pub use service::UsageService;
 pub use types::*;
 

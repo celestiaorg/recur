@@ -11,10 +11,9 @@ use recur_domain::{
     PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Settings,
 };
 
-use crate::chatgpt::{active_chatgpt_account_id, default_chatgpt_auth, has_chatgpt_account};
 use crate::connect::{cursor_connect_tokens_quota, cursor_no_session_quota};
 use crate::cursor::has_recur_cursor_auth_file;
-use crate::fetcher::{Fetcher, Wants};
+use crate::fetcher::{ChatGptRefresh, Fetcher, Wants};
 use crate::poller::{Poller, Publisher};
 use crate::types::{CursorUsageConnect, ProviderQuota, Snapshot, empty_snapshot};
 
@@ -23,11 +22,6 @@ pub type SettingsSource = Arc<dyn Fn() -> Settings + Send + Sync>;
 /// (provider remap, governor caps) are async.
 pub type SettingsSink =
     Arc<dyn Fn(Settings) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send>> + Send + Sync>;
-/// Refreshes the ChatGPT access token for an account id (the ChatGPT
-/// provider's `Auth::access_token`), rewriting `chatgpt-auth.json`.
-pub type ChatGptRefresh = Arc<
-    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> + Send + Sync,
->;
 pub type DataDirSource = Arc<dyn Fn() -> Option<PathBuf> + Send + Sync>;
 
 pub struct UsageService {
@@ -71,21 +65,8 @@ impl UsageService {
         let me: Weak<Self> = Arc::downgrade(self);
         let (w1, w2, w3) = (me.clone(), me.clone(), me);
         let data_dir = Arc::clone(&self.data_dir);
-        let refresh = self.chatgpt_refresh.lock().clone();
-        let chatgpt_dir = Arc::clone(&self.data_dir);
         let fetch = Fetcher {
-            // The fetch runs on the multi-thread runtime; the hook is sync, so
-            // the refresh blocks one worker for the length of a token request.
-            chatgpt_auth: refresh.map(|refresh| {
-                Arc::new(move || {
-                    let dir = chatgpt_dir().ok_or("no data dir")?;
-                    let id = active_chatgpt_account_id(&dir).ok_or("no ChatGPT account")?;
-                    tokio::task::block_in_place(|| {
-                        tokio::runtime::Handle::current().block_on(refresh(id))
-                    })?;
-                    default_chatgpt_auth(Some(&dir), chrono::Utc::now().timestamp_millis())
-                }) as _
-            }),
+            chatgpt_refresh: self.chatgpt_refresh.lock().clone(),
             data_dir: Some(Arc::new(move || data_dir())),
             want: Some(Arc::new(move || {
                 w1.upgrade().map_or_else(Wants::default, |s| s.wants())
@@ -126,7 +107,7 @@ impl UsageService {
         Wants {
             claude: set.provider_enabled(PROVIDER_CLAUDE_CODE),
             codex: set.provider_enabled(PROVIDER_CODEX) && set.codex_chat_gpt_auth,
-            chatgpt: set.provider_enabled(PROVIDER_CHATGPT) && has_chatgpt_account(&dir),
+            chatgpt: set.provider_enabled(PROVIDER_CHATGPT),
             cursor: set.provider_enabled(PROVIDER_CURSOR) && has_recur_cursor_auth_file(&dir),
         }
     }

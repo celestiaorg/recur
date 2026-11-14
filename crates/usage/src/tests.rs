@@ -641,14 +641,22 @@ async fn fetch_codex_ok() {
     assert_eq!(seen[0].header("chatgpt-account-id"), "acc");
 }
 
-fn chatgpt_auth() -> CodexAuth {
-    CodexAuth {
-        access_token: "gpt-tok".into(),
-        account_id: "acc".into(),
-        email: "me@example.com".into(),
-        has_chatgpt: true,
-        ..Default::default()
-    }
+fn chatgpt_fetcher(base: String) -> (Fetcher, tempfile::TempDir) {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("chatgpt-auth.json"),
+        r#"{"active":"b","accounts":[
+            {"id":"a","accessToken":"ta"},
+            {"id":"b","email":"me@example.com","chatgptAccountId":"ws","accessToken":"tb"}]}"#,
+    )
+    .unwrap();
+    let path = dir.path().to_path_buf();
+    let f = Fetcher {
+        codex_usage_url: base,
+        data_dir: hook(move || Some(path.clone())),
+        ..Fetcher::default()
+    };
+    (f, dir)
 }
 
 #[tokio::test]
@@ -660,11 +668,7 @@ async fn fetch_chatgpt_rows() {
         (429, "", "rate_limited"),
     ] {
         let (base, seen) = serve(move |_| (status, body.into())).await;
-        let f = Fetcher {
-            codex_usage_url: base,
-            chatgpt_auth: hook(|| Ok(chatgpt_auth())),
-            ..Fetcher::default()
-        };
+        let (f, _dir) = chatgpt_fetcher(base);
         let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
         assert_eq!((q.id.as_str(), q.name.as_str()), ("chatgpt", "ChatGPT"));
         assert_eq!(q.error, error, "{status}");
@@ -674,40 +678,74 @@ async fn fetch_chatgpt_rows() {
                 ("Plus", "me@example.com")
             );
             assert_eq!(q.windows.len(), 1);
-            assert_eq!(seen.lock()[0].header("authorization"), "Bearer gpt-tok");
+            let seen = seen.lock();
+            assert_eq!(seen[0].header("authorization"), "Bearer tb");
+            assert_eq!(seen[0].header("chatgpt-account-id"), "ws");
         }
     }
 }
 
 #[tokio::test]
-async fn fetch_chatgpt_signed_out_and_auth_file() {
+async fn fetch_chatgpt_signed_out_replaces_last_row() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().to_path_buf();
     let f = Fetcher {
-        chatgpt_auth: hook(|| Err("none".into())),
+        data_dir: hook(move || Some(path.clone())),
         ..Fetcher::default()
     };
     let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
-    assert_eq!(q.error, "Not signed in to ChatGPT");
-    assert!(q.hint.contains("OpenAI"), "{}", q.hint);
+    assert_eq!(q.id, "chatgpt");
+    assert!(q.error.is_empty() && q.hint.is_empty() && q.windows.is_empty());
 
-    let dir = tempfile::tempdir().unwrap();
-    assert!(chatgpt::default_chatgpt_auth(Some(dir.path()), 0).is_err());
-    std::fs::write(
-        dir.path().join("chatgpt-auth.json"),
-        r#"{"active":"b","accounts":[
-            {"id":"a","accessToken":"ta"},
-            {"id":"b","email":"b@example.com","chatgptAccountId":"ws","accessToken":"tb"}]}"#,
-    )
-    .unwrap();
-    assert!(chatgpt::has_chatgpt_account(dir.path()));
-    let a = chatgpt::default_chatgpt_auth(Some(dir.path()), 0).unwrap();
-    assert_eq!(
+    let mut old = q.clone();
+    old.windows = vec![Default::default()];
+    let prev = Snapshot {
+        providers: Some(vec![old]),
+        ..Default::default()
+    };
+    let next = Snapshot {
+        providers: Some(vec![q.clone()]),
+        ..Default::default()
+    };
+    assert_eq!(merge_stale(&prev, next).providers, Some(vec![q]));
+}
+
+#[tokio::test]
+async fn fetch_chatgpt_refreshes_token_and_classifies_failures() {
+    let usage = r#"{"rate_limit":{"primary_window":{"used_percent":5}}}"#;
+    for (refreshed, error) in [
+        (Ok("fresh"), ""),
         (
-            a.access_token.as_str(),
-            a.account_id.as_str(),
-            a.email.as_str()
+            Err("could not reach OpenAI: offline"),
+            "Could not reach ChatGPT",
         ),
-        ("tb", "ws", "b@example.com")
-    );
+        (
+            Err("OpenAI rejected the session (HTTP 401). Continue with ChatGPT"),
+            "ChatGPT login expired",
+        ),
+        (
+            Err("OpenAI request failed (HTTP 503)"),
+            "ChatGPT usage unavailable",
+        ),
+    ] {
+        let (base, seen) = serve(move |_| (200, usage.into())).await;
+        let (mut f, _dir) = chatgpt_fetcher(base);
+        let ids = Arc::new(Mutex::new(Vec::new()));
+        let ids2 = ids.clone();
+        f.chatgpt_refresh = Some(Arc::new(move |id: String| {
+            ids2.lock().push(id);
+            let r = refreshed.map(String::from).map_err(String::from);
+            Box::pin(async move { r })
+        }));
+        let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
+        assert_eq!(q.error, error);
+        assert_eq!(*ids.lock(), ["b"]);
+        if error.is_empty() {
+            assert_eq!(seen.lock()[0].header("authorization"), "Bearer fresh");
+        } else {
+            assert!(seen.lock().is_empty());
+        }
+    }
 }
 
 async fn codex_monthly(usage: &'static str, auth: CodexAuth) -> (ProviderQuota, Log) {
@@ -1623,6 +1661,7 @@ fn service_wants_and_stub() {
         s.wants(),
         Wants {
             claude: true,
+            chatgpt: true,
             ..Wants::default()
         }
     );
@@ -1634,11 +1673,6 @@ fn service_wants_and_stub() {
             access: "a".into(),
             ..Default::default()
         },
-    )
-    .unwrap();
-    std::fs::write(
-        dir.path().join("chatgpt-auth.json"),
-        r#"{"active":"a","accounts":[{"id":"a","accessToken":"t"}]}"#,
     )
     .unwrap();
     assert_eq!(
@@ -1676,13 +1710,11 @@ async fn probes_report_their_provider() {
         claude_token: hook(|| Err("x".into())),
         cursor_token: hook(|| Err("x".into())),
         codex_auth: hook(|| Err("x".into())),
-        chatgpt_auth: hook(|| Err("x".into())),
         ..Fetcher::default()
     });
     let probes: Vec<Box<dyn recur_agent::UsageProbe>> = vec![
         Box::new(ClaudeProbe(f.clone())),
         Box::new(CodexProbe(f.clone())),
-        Box::new(ChatGptProbe(f.clone())),
         Box::new(CursorProbe(f)),
     ];
     for p in probes {
@@ -1693,22 +1725,3 @@ async fn probes_report_their_provider() {
 }
 
 mod golden;
-
-#[tokio::test]
-async fn fetch_chatgpt_stale_token_is_not_requested() {
-    let dir = tempfile::tempdir().unwrap();
-    std::fs::write(
-        dir.path().join("chatgpt-auth.json"),
-        r#"{"active":"a","accounts":[{"id":"a","accessToken":"t","chatgptAccountId":"ws","expiresAt":"2020-01-01T00:00:00Z"}]}"#,
-    )
-    .unwrap();
-    let path = dir.path().to_path_buf();
-    let f = Fetcher {
-        data_dir: hook(move || Some(path.clone())),
-        now: hook(|| 1_700_000_000_000),
-        ..Fetcher::default()
-    };
-    let q = chatgpt::fetch_chatgpt(&bg(), &f).await;
-    assert_eq!(q.error, "ChatGPT session needs a refresh");
-    assert!(q.hint.contains("chat"), "{}", q.hint);
-}

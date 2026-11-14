@@ -465,7 +465,7 @@ impl UsageMeter {
         let chips = provider_chips(snap.as_ref(), &disabled);
         let rows: Vec<ProviderQuota> = providers(snap.as_ref())
             .iter()
-            .filter(|p| usage_provider_on(&p.id, &disabled))
+            .filter(|p| usage_provider_on(&p.id, &disabled) && usage_row_has_data(p))
             .cloned()
             .collect();
         let label: SharedString = if !chips.is_empty() {

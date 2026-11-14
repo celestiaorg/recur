@@ -17,11 +17,12 @@ At launch the app installs a `recur` command on your `PATH` (a symlink in `/usr/
 
 ## Linux
 
-Download the `.deb` or `.rpm` for your architecture (`linux-amd64` or `linux-arm64`) from [GitHub Releases](https://github.com/celestiaorg/recur/releases/latest) and install it. The package pulls in GTK 4 and WebKitGTK 6.0, installs Recur to `/opt/recur`, and adds `recur` to your `PATH` and Recur to your app menu.
+Download the `.deb`, `.rpm` or `.pkg.tar.zst` for your architecture (`linux-amd64` or `linux-arm64`) from [GitHub Releases](https://github.com/celestiaorg/recur/releases/latest) and install it. The package pulls in GTK 4 and WebKitGTK 6.0, installs Recur to `/opt/recur`, and adds `recur` to your `PATH` and Recur to your app menu.
 
 ```bash
 sudo apt install ./Recur-<version>-linux-amd64.deb   # Ubuntu 24.04+, Debian 13
 sudo dnf install ./Recur-<version>-linux-amd64.rpm   # Fedora 40+
+sudo pacman -U ./Recur-<version>-linux-amd64.pkg.tar.zst   # Arch Linux
 ```
 
 On other distributions, install GTK 4 and WebKitGTK 6.0, extract `Recur-<version>-linux-amd64.tar.gz`, and run `recur` from it. At launch it links `recur` into `~/.local/bin` and adds an app-menu entry.
@@ -34,7 +35,7 @@ Each release lists a `SHA256SUMS` file covering every download:
 sha256sum --check --ignore-missing SHA256SUMS
 ```
 
-Packages are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc):
+The `.deb` and `.rpm` are signed with the [Recur release key](https://recur.build/docs/recur-signing-key.asc):
 
 ```
 1643 D8F4 CED9 E15A 8779  8A9F 3CDB 8273 A037 2B19

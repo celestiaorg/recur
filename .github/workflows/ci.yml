@@ -75,13 +75,11 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
-      # The all-features debug target is about 34 GB. Runners with the 72 GB
-      # disk start with 13 GB free and ran out, so they need the cleanup (2 to 5
-      # minutes); the 145 GB ones start with 86 GB and skip it.
-      - id: disk
-        run: echo "free_gb=$(df --output=avail -BG / | tail -1 | tr -dc 0-9)" >> "$GITHUB_OUTPUT"
-      - if: fromJSON(steps.disk.outputs.free_gb) < 60
-        uses: jlumbroso/free-disk-space@v2.0.0
+      # The all-features debug target is about 34 GB, and the post-job mbx
+      # cache export copies the store again (38 GB unique), so even the 145 GB
+      # runners (86 to 92 GB free) ran out after the build. Always clean up
+      # (2 to 5 minutes).
+      - uses: jlumbroso/free-disk-space@v2.0.0
         with:
           tool-cache: true
       - run: >-

@@ -56,8 +56,9 @@ impl Engine {
                 if self.loop_key_running(&ws.id) && !is_chat_attention_code(&a.code) {
                     continue;
                 }
-                let resume = self.should_auto_resume_chat(&ws, &a);
-                let note = if is_chat_attention_code(&a.code) {
+                let done = self.chat_reply_completed(&ws.id, &a.code);
+                let resume = !done && self.should_auto_resume_chat(&ws, &a);
+                let note = if is_chat_attention_code(&a.code) && !done {
                     CHAT_INTERRUPTED_REPLY
                 } else {
                     ""
@@ -101,6 +102,24 @@ impl Engine {
         } else {
             a.status == "working"
         }
+    }
+
+    /// The tab's last stored row is the reply its turn end closed (footer
+    /// duration stamped): the turn finished and only its teardown (end
+    /// checkpoint, idle status) was cut short by the quit.
+    fn chat_reply_completed(&self, workspace_id: &str, code: &str) -> bool {
+        let Some(sess) = self.store.session_for_loop_agent(workspace_id, code) else {
+            return false;
+        };
+        let msgs = self
+            .store
+            .session_transcript(&sess.id)
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        msgs.last().is_some_and(|m| {
+            m.role == "assistant" && m.stream_status == STREAM_COMPLETE && m.duration_ms > 0
+        })
     }
 
     /// Returns a zombie live agent to idle: streaming rows closed, error

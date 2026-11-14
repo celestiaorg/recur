@@ -1559,13 +1559,13 @@ impl AgentChat {
         }
         self.sync_input_from_doc(record, cx);
         self.sync_mention_from_caret(cx);
-        self.caret_blink_epoch = std::time::Instant::now();
+        self.caret_blink_epoch = recur_ui::motion::now(cx);
         self.reveal_caret();
     }
 
     fn after_caret_move(&mut self, cx: &mut Context<Self>) {
         self.sync_mention_from_caret(cx);
-        self.caret_blink_epoch = std::time::Instant::now();
+        self.caret_blink_epoch = recur_ui::motion::now(cx);
         self.reveal_caret();
         self.notify_dock(cx);
     }
@@ -1578,7 +1578,7 @@ impl AgentChat {
     pub fn focus_composer(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.prompt_slot_focus = None;
         window.focus(&self.focus, cx);
-        self.caret_blink_epoch = std::time::Instant::now();
+        self.caret_blink_epoch = recur_ui::motion::now(cx);
         self.notify_dock(cx);
     }
 

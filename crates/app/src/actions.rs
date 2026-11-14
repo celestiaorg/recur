@@ -245,10 +245,6 @@ impl Shell {
 
     /// `checkForUpdates`: a menu check reports every outcome; a staged update offers Restart.
     pub(crate) fn check_for_updates(&mut self, cx: &mut Context<Self>) {
-        if let Some(version) = self.update_ready.clone().filter(|v| !v.is_empty()) {
-            self.show_update_ready(&version, cx);
-            return;
-        }
         self.update_manual = true;
         push_toast(
             ToastKind::Info,
@@ -299,7 +295,9 @@ impl Shell {
                 cx,
             ),
             UpdaterEvent::NoUpdate => {
-                if self.update_manual {
+                if let Some(version) = self.update_ready.clone().filter(|_| self.update_manual) {
+                    self.show_update_ready(&version, cx);
+                } else if self.update_manual {
                     push_toast(
                         ToastKind::Success,
                         format!("{app} is up to date"),
@@ -316,12 +314,20 @@ impl Shell {
                     } else {
                         e.message
                     };
+                    let ready = self.update_ready.clone();
                     push_toast(
                         ToastKind::Error,
                         format!("Update failed: {msg}"),
-                        opts(None),
+                        if ready.is_some() {
+                            ToastOptions::default()
+                        } else {
+                            opts(None)
+                        },
                         cx,
                     );
+                    if let Some(version) = ready {
+                        self.show_update_ready(&version, cx);
+                    }
                 }
                 self.update_manual = false;
             }

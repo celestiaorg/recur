@@ -679,7 +679,7 @@ impl AgentChat {
             prompt_slots: Vec::new(),
             prompt_slot_subs: Vec::new(),
             prompt_slot_focus: None,
-            caret_blink_epoch: std::time::Instant::now(),
+            caret_blink_epoch: cx.background_executor().now(),
             anim_epoch,
             think_dots: recur_ui::isolated::FieldView::new(
                 move |window, cx| crate::transcript::think_dots(anim_epoch, window, cx),

@@ -297,7 +297,9 @@ impl AgentChat {
         let layout = self.composer_layout.clone();
         let doc = self.doc.clone();
         let marked = self.composer_marked.clone();
-        let blink_ms = self.caret_blink_epoch.elapsed().as_millis();
+        let blink_ms = motion::now(cx)
+            .saturating_duration_since(self.caret_blink_epoch)
+            .as_millis();
         let blink_on = focused && !motion::is_frozen(cx) && (blink_ms / 500).is_multiple_of(2);
         if focused {
             let next = 500 - (blink_ms % 500) as u64;

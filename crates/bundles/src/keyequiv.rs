@@ -118,6 +118,7 @@ pub static RESERVED_APP_CHORDS: LazyLock<BTreeMap<&'static str, &'static str>> =
             ("cmd+1", "Focus agent panel"),
             ("cmd+2", "Focus editor"),
             ("cmd+3", "Focus terminal"),
+            ("cmd+9", "Last tab"),
             ("cmd+l", "Add file / selection to chat"),
             ("opt+cmd+left", "Previous tab"),
             ("opt+cmd+right", "Next tab"),
@@ -309,6 +310,6 @@ mod tests {
         let mut want = got.clone();
         want.sort();
         assert_eq!(got, want);
-        assert_eq!(got.len(), 58);
+        assert_eq!(got.len(), 59);
     }
 }

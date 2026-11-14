@@ -112,6 +112,7 @@ pub const RESERVED_APP_CHORDS: &[&str] = &[
     "cmd+1",
     "cmd+2",
     "cmd+3",
+    "cmd+9",
     "cmd+l",
     "opt+cmd+left",
     "opt+cmd+right",

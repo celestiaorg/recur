@@ -1810,6 +1810,20 @@ async fn a_newly_opened_chat_tab_stays_selected_after_reload(cx: &mut TestAppCon
 }
 
 #[gpui::test]
+async fn last_tab_selects_the_last_chat_tab_from_any_tab(cx: &mut TestAppContext) {
+    let mut h = boot(cx, items_opts(Store::default()));
+    h.click("wsv-chat-new");
+    h.click("wsv-chat-new");
+    let last = h.codes().last().cloned().unwrap();
+    for start in ["MA", "PA", last.as_str()] {
+        h.select_tab(start);
+        h.with(|v, cx| v.select_last_chat_tab(cx));
+        h.wait(400);
+        assert_eq!(h.active(), last);
+    }
+}
+
+#[gpui::test]
 async fn dragging_a_chat_tab_reorders_the_strip_and_survives_reload(cx: &mut TestAppContext) {
     let saved = calls();
     let s2 = saved.clone();

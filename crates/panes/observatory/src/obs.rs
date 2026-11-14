@@ -36,7 +36,7 @@ pub struct ObservatoryProps {
     pub left_open: Option<bool>,
     /// Solo/pair agent chat tabs: ⌘T / ⌘W / ⌥⌘←→ while the agent dock is focused.
     pub agent_tab_count: usize,
-    /// The host handles `AgentNewTab` / `AgentCloseTab` / `AgentRotateTab`.
+    /// The host handles `AgentNewTab` / `AgentCloseTab` / `AgentRotateTab` / `AgentLastTab`.
     pub agent_tabs: bool,
     /// The host handles `FixFindings` (`onFixFindings`).
     pub can_fix_findings: bool,
@@ -98,6 +98,8 @@ pub enum ObservatoryEvent {
     AgentFind(i32),
     /// `onAgentRotateTab(dir)`.
     AgentRotateTab(i32),
+    /// Select the last agent tab (⌘9).
+    AgentLastTab,
     /// `onFixFindings`.
     FixFindings,
     /// `onAddEditorMention(path, startLine?, endLine?, startCol?, endCol?)` (0 = absent).

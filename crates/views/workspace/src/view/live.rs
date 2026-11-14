@@ -934,6 +934,7 @@ impl WorkspaceView {
                 self.chat.update(cx, |c, cx| c.find(dir, window, cx));
             }
             ObservatoryEvent::AgentRotateTab(dir) => self.rotate_chat_tab(*dir, cx),
+            ObservatoryEvent::AgentLastTab => self.select_last_chat_tab(cx),
             ObservatoryEvent::FixFindings => self.fix_findings(window, cx),
             ObservatoryEvent::AddEditorMention {
                 path,

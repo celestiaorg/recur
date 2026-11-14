@@ -20,6 +20,7 @@ Notable changes in each Recur release. The format follows [Keep a Changelog](htt
 - `copy_files` entries ending in `/`, such as `node_modules/` or `target/`, copy the whole directory, so new workspaces start with dependencies already installed. On macOS the files are APFS clones: fast, with no extra disk space until files change.
 - Find in the agent chat: press ⌘F (Ctrl+F on Linux) in the chat to search your messages and the agent's replies. Enter and Shift+Enter (or ⌘G and ⇧⌘G) step through matches, Escape closes.
 - `recur config get`, `set` and `list` read and change Recur's settings (model, effort, permissions and more) from the terminal, whether or not Recur is running, so scripts and benchmarks no longer need the Settings window. See [Settings from the terminal](/getting-started/install#settings-from-the-terminal).
+- ⌘9 (Ctrl+9 on Linux) selects the last chat tab in the workspace, as in web browsers. It is also under **Navigate → Last Tab**.
 - `/address-review` fixes or answers a pull request's unresolved review comments, replies on each thread, and resolves the ones it fixed. Only comments from people with write access and review bots count.
 - **Automatic fixes** under **Settings → Pull requests**: Recur resolves merge conflicts, fixes failing checks and addresses new review comments on your PRs by itself, in each PR's workspace, while its chat is idle. Each can be turned off.
 - Gruvbox app theme (dark), paired with the Gruvbox Dark Medium editor theme.

@@ -98,6 +98,7 @@ pub const SHORTCUTS: &[(&str, &str, &str, &[&str])] = &[
     ),
     ("Navigation", "Previous tab", "⌥⌘←", &[]),
     ("Navigation", "Next tab", "⌥⌘→", &[]),
+    ("Navigation", "Last tab", "⌘9", &[]),
     ("Navigation", "Previous workspace", "⌥⌘↑", &["cycle"]),
     ("Navigation", "Next workspace", "⌥⌘↓", &["cycle"]),
     ("Workbench", "Toggle left panel", "⌥⌘B", &[]),

@@ -22,7 +22,7 @@ description = "Runs the user docs (src-docs) with Vocs on http://localhost:5175/
 run = ["pnpm --dir src-docs install --frozen-lockfile", "pnpm --dir src-docs run dev"]
 
 ["capture:splash"]
-description = "Recaptures the website screenshots and theme previews (src-web/public/screenshots) from the desktop app on the demo dataset (macOS with a Retina display; `-- <dir> [themes]` writes elsewhere or only the theme set)"
+description = "Recaptures the website screenshots (src-web/public/screenshots) from the desktop app on the demo dataset (macOS with a Retina display; `-- <dir>` writes elsewhere)"
 run = "cargo run -p recur-desktop --features fake --example capture --"
 
 ["generate:help-skill"]

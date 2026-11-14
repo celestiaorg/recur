@@ -5,9 +5,17 @@ description: Hand a task to a team of specialist agents, where work comes back u
 
 # Workflows
 
-**Autopilot** is the fifth [chat mode](/concepts/modes). An Autopilot chat hands the task to a workflow: a team of specialist agents instead of one. A workflow is a graph of phases where work comes back until it clears your bar. Pick a **workflow** and a **policy** in the composer, describe the task, and send. The workflow walks its phases while you watch the chat, the diff, and the findings.
+A workflow hands a task to a team of specialist agents instead of one. It is a graph of phases where work comes back until it clears your bar: a Reviewer files findings, a Coder fixes or disputes them, and they go round until the bar passes or they need you.
 
-You can also start a shipped workflow from any task workspace chat with its slash command.
+A workflow is your process, written down. The shipped ones started as cycles the Recur team drove by hand: `/review` in one chat, `/fix-findings` in another, `/re-review`, and again until the findings ran out. A **policy** sets the bar the work has to clear, and you can copy any workflow or [write your own](#customize). See [How we work](/getting-started/how-we-work).
+
+Start a workflow wherever the work is:
+
+- **From any chat.** Type a workflow's slash command in any task workspace chat, whether Ask, Plan, Agent, or Review. Recur opens an Autopilot chat beside it and starts the run. `/review-and-fix` needs no description: it reviews whatever is in the workspace, including changes you wrote yourself.
+- **As a new task.** Pick Autopilot in New Task, including when you start from an [issue](/concepts/issues).
+- **On a schedule.** A [schedule](/concepts/schedules) starts a workflow with nobody at the keyboard.
+
+**Autopilot** is the [chat mode](/concepts/modes) that runs workflows. To start one directly, pick a **workflow** and a **policy** in the composer, describe the task, and send. The workflow walks its phases while you watch the chat, the diff, and the findings.
 
 ## Shipped workflows
 

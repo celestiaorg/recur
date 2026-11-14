@@ -9,8 +9,8 @@ use std::time::Duration;
 use recur_agent::TurnResult;
 use recur_domain::{
     Agent, AgentRole, CHAT_MODE_AGENT, CHAT_MODE_PLAN, Checkpoint, Escalation, Flags, Message,
-    PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, STREAM_STREAMING, Session, UserQuestion,
-    UserQuestionAnswer, Workspace, WorkspaceState,
+    PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, STREAM_COMPLETE, STREAM_STREAMING, Session,
+    UserQuestion, UserQuestionAnswer, Workspace, WorkspaceState,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -140,6 +140,64 @@ async fn recover_idles_an_interrupted_chat_and_closes_its_stream() {
             .any(|it| it.kind == "tool" && it.result_pending)
     );
     assert_eq!(queued(&fx), ["PA"]);
+    fx.te.close().await;
+}
+
+#[tokio::test]
+async fn recover_does_not_resume_a_chat_whose_reply_completed() {
+    let fx = Fx::new(Some(capture("done", "OK.").provider()));
+    let ws = fx.workspace("done-chat").await;
+    let eng = fx.eng();
+    eng.ensure_pair_agent(&ws.id, "PA", "sonnet");
+    fx.te
+        .store
+        .update_agent(&ws.id, "PA", |a| a.status = "working".into());
+    let sess = eng
+        .ensure_agent_session(
+            &ws.id,
+            AgentRole::Coder.as_str(),
+            "PA",
+            "Agent",
+            PROVIDER_CLAUDE_CODE,
+        )
+        .unwrap();
+    let msg = fx
+        .te
+        .store
+        .create_message(
+            &sess.id,
+            Message {
+                role: "assistant".into(),
+                stream_status: STREAM_STREAMING.into(),
+                ..Message::default()
+            },
+        )
+        .unwrap();
+    fx.te
+        .store
+        .append_content_block(&msg, recur_domain::ContentBlock::text("Hi!"))
+        .unwrap();
+    fx.te
+        .store
+        .complete_message(
+            &msg,
+            STREAM_COMPLETE,
+            &Message {
+                duration_ms: 200,
+                ..Message::default()
+            },
+        )
+        .unwrap();
+    eng.recover();
+    assert_eq!(fx.te.store.agent(&ws.id, "PA").unwrap().status, "idle");
+    assert!(queued(&fx).is_empty());
+    let items = eng.workspace_chat_items(&ws.id, "PA").await;
+    assert!(
+        !items
+            .iter()
+            .any(|it| it.kind == "text" && it.text == CHAT_INTERRUPTED_REPLY),
+        "{items:?}"
+    );
     fx.te.close().await;
 }
 

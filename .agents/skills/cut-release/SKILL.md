@@ -105,4 +105,5 @@ The release notes are GitHub's generated ones. If the user wants the changelog s
 - Flaky job (runner, network, notarization timeout): `gh run rerun <run-id> --failed`. `publish` is safe to rerun: it reuses an existing draft and re-uploads with `--clobber`.
 - Needs a code fix, and nothing was published: land the fix on `main`, then, with the user's OK, move the tag (`git push --delete origin vX.Y.Z`, `git tag -f vX.Y.Z <new commit>`, push again).
 - Already published: never move the tag. Fix on `main` and cut the next patch release.
+- `build-mac-slice (x86_64-apple-darwin)` fails while main's CI was green: CI never builds x86_64 macOS, the only target that builds the codec crates from source (`vendor/README.md`). Reproduce with `rustup target add x86_64-apple-darwin` and `cargo check --locked --target x86_64-apple-darwin -p recur-content`.
 - Something shipped unsigned or without the updater: a secret is missing. `release.yml`'s header lists them and what each one gates.

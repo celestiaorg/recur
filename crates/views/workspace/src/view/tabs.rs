@@ -582,6 +582,13 @@ impl WorkspaceView {
         self.select_chat_tab(&code, cx);
     }
 
+    /// ⌘9 while the agent dock is focused.
+    pub(crate) fn select_last_chat_tab(&mut self, cx: &mut Context<Self>) {
+        if let Some(code) = self.tabs().last().map(|t| t.code.clone()) {
+            self.select_chat_tab(&code, cx);
+        }
+    }
+
     /// A strip drop: show the new order at once, persist it, roll back on failure.
     pub(crate) fn reorder_tabs(&mut self, order: Vec<SharedString>, cx: &mut Context<Self>) {
         let snapshot = self.tabs().to_vec();

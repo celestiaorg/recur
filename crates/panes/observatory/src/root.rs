@@ -1549,6 +1549,7 @@ impl Observatory {
             focus_terminal: Some(has_ws && !blocked),
             prev_tab: Some(tab_count > 1),
             next_tab: Some(tab_count > 1),
+            last_tab: Some(in_agent && self.props.agent_tabs && self.props.agent_tab_count > 1),
             run_dev: Some(dev),
             stop_run: Some(running),
             find: Some(text_editor || in_agent),

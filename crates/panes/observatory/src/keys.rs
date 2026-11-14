@@ -216,6 +216,12 @@ impl Observatory {
             self.cycle_tab_in_zone(dir, window, cx);
             return;
         }
+        if mod_ && !m.alt && !m.shift && lower == "9" {
+            if !in_term {
+                self.last_tab_in_zone(cx);
+            }
+            return;
+        }
         if mod_ && k.key == "\\" {
             if blocked {
                 return;
@@ -278,6 +284,16 @@ impl Observatory {
             && self.props.agent_tabs
         {
             cx.emit(ObservatoryEvent::AgentRotateTab(dir));
+        }
+    }
+
+    /// ⌘9 and the menu's last tab: agent tabs only.
+    fn last_tab_in_zone(&mut self, cx: &mut Context<Self>) {
+        if self.focus_zone == FocusZone::Agent
+            && self.props.agent_tab_count > 1
+            && self.props.agent_tabs
+        {
+            cx.emit(ObservatoryEvent::AgentLastTab);
         }
     }
 
@@ -427,6 +443,7 @@ impl Observatory {
                     self.cycle_tab_in_zone(dir, window, cx);
                 }
             }
+            "last-tab" => self.last_tab_in_zone(cx),
             _ => {}
         }
     }

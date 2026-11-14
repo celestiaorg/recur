@@ -760,6 +760,8 @@ pub struct MenuState {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_tab: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_tab: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub run_dev: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_run: Option<bool>,

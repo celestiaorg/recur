@@ -20,7 +20,7 @@
     { arch: "amd64", label: "x64" },
     { arch: "arm64", label: "arm64" },
   ];
-  const linuxFormats = ["deb", "rpm", "tar.gz"];
+  const linuxFormats = ["deb", "rpm", "pkg.tar.zst", "tar.gz"];
   const ua = navigator.userAgent;
   const onLinux = /Linux/.test(ua) && !/Android/.test(ua);
   const linuxFormat = /Fedora|Red Hat|CentOS|SUSE|Mageia/i.test(ua)

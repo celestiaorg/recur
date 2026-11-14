@@ -7,7 +7,7 @@ description: Run the ADEMark benchmark (github.com/zqkra/ademark) on a Recur bra
 
 ADEMark measures ADEs on a Mac: Track A (speed, memory, CPU; a fake model server answers, no plan usage), Track B (tokens), Track C (orchestration, real Claude). It refuses to measure outside a macOS user named `ademark`, posts real keystrokes and clicks, and moves app data aside, so we run it in a UTM macOS VM whose user is `ademark`.
 
-The harness we run is our fork: `mycodecrafting/ademark`, branch `recur` (upstream plus the Recur adapter and profile, a VM display fallback, and the scroll fix from upstream PR #17). In the VM it lives in `~/ADEMark`.
+The harness we run is our fork: `mycodecrafting/ademark`, branch `recur` (upstream plus the Recur adapter, profile and gate, a VM display fallback, and the scroll fix from upstream PR #17). In the VM it lives in `~/ADEMark`.
 
 ## Bench a branch
 
@@ -51,6 +51,18 @@ Recur lays a thread out from the top, so `threadRect` must cover the whole messa
 
 `~/nat.sh` writes a plist with `ProgramArguments` = `~/ADEMark/bench/native/bin/ademark-native` plus its arguments, `RunAtLoad`, and stdout to a temp file, `launchctl bootstrap gui/$(id -u)`s it, waits, boots it out and prints the output. `~/gui.sh` does the same for a `zsh -c` command (for example `claude auth status`, which reads the login keychain only in the GUI session).
 
+## Re-gate a release for ADEMark
+
+Recur is submitted upstream as zqkra/ademark PR #20, pinned to one version and binary SHA-256 with a passing calibration gate. The site measures only that build, so after a release that should be measured:
+
+1. Install the release's notarized DMG in the VM (`gh release download vX.Y.Z -R celestiaorg/recur -p 'Recur-X.Y.Z-macos-universal.dmg'`, then copy, mount and `ditto` it to `/Applications/Recur.app`).
+2. In `~/ADEMark`, re-pin `app.version` and `app.bundleSha256` in `bench/adapters/profiles/recur.json` from `recur.installCheck()` (the `macos:ademark` script shows how), fix the first note's version, and commit. Delete any untracked `bench/adapters/gates/recur.json` left by a failed gate: the gate refuses a dirty tree.
+3. From Ghostty in the VM (it holds the grants), with the host quiet: `ADEMARK_AGENT=off bun bench/cli.ts calibrate gate --ade recur`. Five Track A smoke runs, about 2 hours; it stops at the first invalid row and names it.
+4. Commit the new `gates/recur.json`, move the branch to the host (`git bundle` over scp; the VM has no GitHub credentials) and push it to the fork's `recur` branch.
+5. Update the upstream PR (or open a follow-up) with only Recur's files: `bench/adapters/recur.ts`, `profiles/recur.json`, `gates/recur.json`, and `ADES.md` §3.18 (Version row). Never the VM display fallback or another ADE's files. Keep the title conventional and the body short.
+
+A gate failure is usually a real Recur bug the bench found (focus lost while chats auto-resume, a turn resumed after it had finished): look at the row's `notes.md`, `timeout-window.png` and `video.mov` before touching the profile.
+
 ## Set up a VM from scratch
 
 1. UTM, Virtualize, macOS (Apple backend): 10 CPUs, 16 GB, 120 GB disk, display 1920 x 1200 non-Retina (80 ppi; Retina quadruples pixels on the paravirtualized GPU and lags). Then, with UTM quit, set `Virtualization:Balloon` and `Display:0:DynamicResolution` to false in `~/Library/Containers/com.utmapp.UTM/Data/Documents/<vm>.utm/config.plist`; saving in UTM's editor can turn the balloon back on.
@@ -59,7 +71,7 @@ Recur lays a thread out from the top, so `threadRect` must cover the whole messa
 4. Tools (temporary passwordless sudo makes this scriptable; remove it afterwards): Command Line Tools via `softwareupdate -i`, Homebrew, `brew install oven-sh/bun/bun mitmproxy node displayplacer codex jq`, `brew install --cask ghostty`, `curl -fsSL https://claude.ai/install.sh | bash`, and `~/.local/bin` on PATH in `~/.zprofile` and `~/.zshrc` (GUI apps find `claude` through a login shell).
 5. `git clone -b recur https://github.com/mycodecrafting/ademark ~/ADEMark`, then `bash bench/native/build.sh`, `bun bench/cli.ts account setup --apply`, `sudo zsh bench/ops/install-machine.zsh`, `bun bench/cli.ts machine on --apply`, `bun bench/cli.ts snapshot save --dir snapshots/clean --apply`, `defaults write com.apple.dock autohide -bool true` (else the window stops at 966 pt).
 6. Owner: Privacy & Security, give Accessibility and Screen & System Audio Recording to Ghostty and `~/ADEMark/bench/native/bin/ademark-native`. Rebuilding the helper drops its grants: remove and re-add it. In Ghostty: `claude`, `/login`. For Tracks B and C: run `mitmdump --mode local`, allow its network extension, trust `~/.mitmproxy/mitmproxy-ca-cert.pem`.
-7. Seed Recur: install the build, open it once, Settings: Bypass tool permissions on, Agent model Opus 5.5 effort High, Simplify left at its default; open no project; quit. Copy `recur.db`, `local-storage.json` and `cursor-attribution.json` from `~/Library/Application Support/Recur/` to `~/ademark-private/seeds/recur/home/Library/Application Support/Recur/`.
+7. Recur needs no seed: the profile sets model, effort and bypass with `recur-cli config set` after launch (Recur 0.7.0+).
 
 ## Other ADEs
 

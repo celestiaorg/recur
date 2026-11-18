@@ -1,8 +1,8 @@
-//! Streaming markdown: live assistant text revealed a unit
-//! at a time. A block with no newline paints whole; after the first newline the unfinished tail
-//! waits for the next newline or `complete`. Nothing renders while hidden, and returning shows
-//! the latest text at once. Parsing runs off the UI thread with streaming prefixes coalesced
-//! per view; Mermaid stays source until the host swaps in a settled [`MarkdownView`].
+//! Streaming markdown: live assistant text revealed a completed line at a time. The unfinished
+//! tail (all of a block with no newline yet) waits for the next newline or `complete`. Nothing
+//! renders while hidden, and returning shows every completed line at once. Parsing runs off the
+//! UI thread with streaming prefixes coalesced per view; Mermaid stays source until the host
+//! swaps in a settled [`MarkdownView`].
 
 use std::rc::Rc;
 use std::sync::Arc;
@@ -14,20 +14,17 @@ use crate::markdown::{RenderError, escape_text, render_markdown_async};
 use crate::render::style::MarkdownClass;
 use crate::view::MarkdownView;
 
-/// `completeStreamPrefix`: paint through the last newline; no newline or `complete` paints the
-/// whole block. Offsets are bytes.
+/// `completeStreamPrefix`: paint through the last newline; `complete` paints the whole block.
+/// Offsets are bytes.
 pub fn complete_stream_prefix(text: &str, revealed: usize, complete: bool) -> usize {
     if revealed >= text.len() || complete {
         return text.len();
     }
-    let Some(nl) = text.rfind('\n') else {
-        return text.len();
-    };
-    if nl < revealed {
+    match text.rfind('\n') {
+        Some(nl) if nl >= revealed => nl + 1,
         // The text is append-only by contract, but a replaced one must not cut a char.
-        return text.floor_char_boundary(revealed);
+        _ => text.floor_char_boundary(revealed),
     }
-    nl + 1
 }
 
 type Renderer = Rc<dyn Fn(&str, &str) -> oneshot::Receiver<Result<Arc<str>, RenderError>>>;
@@ -125,14 +122,11 @@ impl StreamingMarkdown {
             self.pending = None;
             return;
         }
-        let len = self.text.len();
-        if !self.was_showing || len < self.revealed {
-            self.revealed = len;
-            self.was_showing = true;
-        } else {
-            self.was_showing = true;
-            self.revealed = complete_stream_prefix(&self.text, self.revealed, self.complete);
+        if !self.was_showing || self.text.len() < self.revealed {
+            self.revealed = 0;
         }
+        self.was_showing = true;
+        self.revealed = complete_stream_prefix(&self.text, self.revealed, self.complete);
         let shown = self.text[..self.revealed].to_string();
         if shown == self.shown && (self.pending.is_some() || shown == self.painted) {
             return;
@@ -189,7 +183,7 @@ mod tests {
 
     #[test]
     fn reveals_through_the_last_newline() {
-        assert_eq!(complete_stream_prefix("abc", 0, false), 3);
+        assert_eq!(complete_stream_prefix("abc", 0, false), 0);
         assert_eq!(complete_stream_prefix("a\nb", 0, false), 2);
         assert_eq!(complete_stream_prefix("a\nb\nc", 2, false), 4);
         assert_eq!(complete_stream_prefix("a\nbc", 3, false), 3);
@@ -200,8 +194,13 @@ mod tests {
     fn stream_reveal_cases() {
         assert_eq!(
             complete_stream_prefix("Hello world", 0, false),
-            11,
+            0,
             "no newline yet"
+        );
+        assert_eq!(
+            complete_stream_prefix("Hello world", 0, true),
+            11,
+            "a one-line block flushes at block end"
         );
         assert_eq!(
             complete_stream_prefix("one\ntwo\npartial", 0, false),

@@ -348,6 +348,9 @@ impl AgentChat {
         if v.is_child_tool() {
             return self.child_tool_row(&v, cx);
         }
+        if v.is_create_workspace() {
+            return self.create_workspace_row(&v, key, cx);
+        }
         if v.is_open_pr() {
             return self.open_pr_row(&v, key, cx);
         }
@@ -698,6 +701,55 @@ impl AgentChat {
         self.skillrow(
             icon,
             self.skill_name(vec![span(v.child_tool_label())], true, cx),
+            true,
+            tail,
+            m.result.clone(),
+            cx,
+        )
+    }
+
+    fn create_workspace_row(
+        &self,
+        v: &ToolView<'_>,
+        key: &str,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let m = v.m;
+        let ws_id = v.create_workspace_id();
+        let failed = v.create_workspace_failed();
+        let title = v.create_workspace_title();
+        let mut spans = vec![span(v.create_workspace_label())];
+        let mut tail = Vec::new();
+        if failed {
+            let note = m.result.trim_start_matches("create_workspace:").trim();
+            if !note.is_empty() {
+                tail.push(self.skill_args(note.to_string(), cx));
+            }
+            tail.push(self.skill_tag("refused", cx));
+        } else if !title.is_empty() {
+            spans.push(span(" "));
+            spans.push(span(title).weight(700.));
+        }
+        if !ws_id.is_empty() {
+            tail.push(
+                div()
+                    .id(SharedString::from(format!("open-ws-{key}")))
+                    .flex_none()
+                    .cursor_pointer()
+                    .text_color(hsla(t.cyan))
+                    .hover(|s| s.text_color(hsla(t.text)))
+                    .child(recur_ui::style::button_label("Open", 13.333, 400.))
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                        this.state
+                            .update(cx, |s, cx| s.open_workspace(&ws_id, false, cx));
+                    }))
+                    .into_any_element(),
+            );
+        }
+        self.skillrow(
+            IconName::Plus,
+            self.skill_name(spans, true, cx),
             true,
             tail,
             m.result.clone(),

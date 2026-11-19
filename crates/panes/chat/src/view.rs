@@ -13,7 +13,7 @@ use recur_ui::guard::Guarded;
 use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::text::{LineHeight, text};
 use recur_ui::{IconName, Theme, icon, rgba};
-use recur_view_core::file_drag::WorkspaceFileDrag;
+use recur_view_core::file_drag::{ArtifactDrag, WorkspaceFileDrag};
 
 use crate::chat::{AgentChat, ChatEvent};
 use crate::style::hsla;
@@ -461,12 +461,24 @@ impl AgentChat {
                 .collect();
             c.apply_os_drop(list, window, cx);
         }))
+        .on_drag_move::<ArtifactDrag>(cx.guarded_listener(
+            |c, ev: &DragMoveEvent<ArtifactDrag>, _, cx| {
+                let over = ev.bounds.contains(&ev.event.position);
+                if over != c.file_drop_over {
+                    c.file_drop_over = over;
+                    cx.notify();
+                }
+            },
+        ))
         .on_drop(
             cx.guarded_listener(|c, drag: &WorkspaceFileDrag, window, cx| {
                 let paths = drag.paths.clone();
                 c.drop_explorer_paths(&paths, window, cx);
             }),
         )
+        .on_drop(cx.guarded_listener(|c, drag: &ArtifactDrag, window, cx| {
+            c.drop_artifact(drag, window, cx)
+        }))
     }
 }
 

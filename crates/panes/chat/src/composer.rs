@@ -27,6 +27,7 @@ use recur_services::api::{PromptActionInfo, PromptCompleteHitDto, PromptComplete
 use recur_ui::logic::fuzzy::{fuzzy_filter_prepared, prepare_fuzzy};
 use recur_ui::widgets::toasts::ToastKind;
 use recur_view_core::chat::{WorkspaceArtifact, WorkspaceTerminalTab};
+use recur_view_core::file_drag::ArtifactDrag;
 use recur_view_core::file_drag::{classify_os_drop, encode_chat_drop_id, is_chipable_file_path};
 use recur_view_core::toast;
 
@@ -1605,7 +1606,15 @@ impl AgentChat {
             start_col.unwrap_or(0),
             end_col.unwrap_or(0),
         );
-        if chip.is_empty() || self.props.readonly {
+        if chip.is_empty() {
+            return;
+        }
+        let dir = recur_engine::view::composer::is_dir_chip_path(&chip);
+        self.insert_chip_at_caret(Segment::File { path: chip, dir }, window, cx);
+    }
+
+    fn insert_chip_at_caret(&mut self, chip: Segment, window: &mut Window, cx: &mut Context<Self>) {
+        if self.props.readonly {
             return;
         }
         self.doc.ensure_chip_boundaries();
@@ -1636,9 +1645,7 @@ impl AgentChat {
         let wire = self.doc.wire();
         let after_caret = &wire[self.doc.wire_caret().min(wire.len())..];
         let needs_space = !after_caret.starts_with(' ') && !after_caret.starts_with('\n');
-        let dir = recur_engine::view::composer::is_dir_chip_path(&chip);
-        self.doc
-            .insert_chip(Segment::File { path: chip, dir }, needs_space);
+        self.doc.insert_chip(chip, needs_space);
         self.mention = None;
         self.skill_mention = None;
         self.mention_escaped = None;
@@ -1793,6 +1800,24 @@ impl AgentChat {
             }
             self.insert_file_mention(p, None, None, None, None, window, cx);
         }
+    }
+
+    pub(crate) fn drop_artifact(
+        &mut self,
+        drag: &ArtifactDrag,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.file_drop_over = false;
+        if self.app_surface() {
+            return;
+        }
+        let chip = Segment::Artifact {
+            id: drag.id.clone(),
+            title: drag.title.clone(),
+        };
+        self.insert_chip_at_caret(chip, window, cx);
+        self.prefetch_artifacts(cx);
     }
 
     /// `files.dropped` routed to this tab by its `data-chat-drop` id.

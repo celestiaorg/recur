@@ -64,8 +64,8 @@ struct Row {
 
 /// Drag ghost: the row's icon and name.
 pub struct FileDragGhost {
-    name: SharedString,
-    dir: bool,
+    pub(crate) name: SharedString,
+    pub(crate) dir: bool,
 }
 
 impl FileDragGhost {

@@ -14,7 +14,7 @@ Release progress:
 - [ ] main is current and green
 - [ ] Version picked and confirmed with the user
 - [ ] mise run version:set X.Y.Z
-- [ ] Changelog dated, fresh Unreleased added
+- [ ] Changelog fragments folded into a dated section and deleted
 - [ ] Release commit on main
 - [ ] User OK to push the tag
 - [ ] Tag pushed, release run green, release marked latest
@@ -33,7 +33,7 @@ Do not release over a red `main`. CI cancels superseded runs on `main`, so pushi
 
 ## 2. Pick the version
 
-Read `## Unreleased` in `src-docs/src/pages/changelog.mdx` and the commits since the last tag (`git log --oneline vLAST..main`). Semver, pre-1.0:
+Read the fragments in `src-docs/changelog.d/` and the commits since the last tag (`git log --oneline vLAST..main`). Semver, pre-1.0:
 
 - New features or behavior changes (any `Added`, `Changed`, `Removed`): bump the minor, `0.6.0` -> `0.7.0`.
 - Only `Fixed` / `Security`: bump the patch, `0.6.0` -> `0.6.1`.
@@ -50,19 +50,17 @@ This rewrites the workspace `version` in `Cargo.toml`, the `package.json` files 
 
 ## 4. Date the changelog
 
-In `src-docs/src/pages/changelog.mdx`, turn `## Unreleased` into the release heading and put an empty `## Unreleased` above it:
+Each PR adds a fragment file under `src-docs/changelog.d/` instead of editing the changelog. In `src-docs/src/pages/changelog.mdx`, add the release section above the previous one, fold every fragment's entries into it, then `git rm src-docs/changelog.d/*.md`:
 
 ```md
-## Unreleased
-
 ## [X.Y.Z](https://github.com/celestiaorg/recur/releases/tag/vX.Y.Z) - YYYY-MM-DD
 ```
 
 Use today's date. While there, read the section as a user would:
 
 - Entries say what changed for the user, not what the commit did. Rewrite ones that read like commit subjects.
-- Each type appears once, in the order Added, Changed, Removed, Fixed, Security, with no empty headings. Parallel PRs often leave a second `### Fixed` at the bottom of `Unreleased`; merge it up.
-- PRs branched before the last release sometimes add their entry to that release's dated section. `git diff vLAST main -- src-docs/src/pages/changelog.mdx` shows any lines added below `## [LAST]`; move them into this release.
+- Each type appears once, in the order Added, Changed, Removed, Fixed, Security, with no empty headings: merge the same type from different fragments under one heading.
+- Older PRs sometimes still edit `changelog.mdx` directly. `git diff vLAST main -- src-docs/src/pages/changelog.mdx` shows any such lines; move them into this release.
 - Compare against `git log --oneline vLAST..main` for user-facing changes that never got an entry, and ask the user about any you find rather than inventing wording silently.
 - No em dashes (`AGENTS.md`, "Voice").
 

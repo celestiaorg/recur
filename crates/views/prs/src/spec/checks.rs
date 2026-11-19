@@ -158,6 +158,29 @@ fn checks_tab_and_card_header_show_pending(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn conversation_merge_box_lists_conflicting_files(cx: &mut TestAppContext) {
+    let mut s = plain_with(cx, |sd| {
+        patch_pr(
+            sd,
+            "482",
+            json!({ "mergeable": "CONFLICTING", "conflictFiles": ["src/a.rs", "docs/b.md"] }),
+        );
+    });
+    s.open_pr("482");
+    assert!(s.has("checks-conflicts"));
+    assert!(s.has("conflict-file:src/a.rs"));
+    assert!(s.has("conflict-file:docs/b.md"));
+}
+
+#[gpui::test]
+fn a_mergeable_pr_has_no_conflicts_row(cx: &mut TestAppContext) {
+    let mut s = plain_with(cx, |_| {});
+    s.open_pr("482");
+    assert!(s.has("checks-card:conv"));
+    assert!(!s.has("checks-conflicts"));
+}
+
+#[gpui::test]
 fn conversation_collapses_successful_checks_the_checks_tab_leaves_them_open(
     cx: &mut TestAppContext,
 ) {

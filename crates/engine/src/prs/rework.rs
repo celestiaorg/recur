@@ -345,6 +345,7 @@ impl Engine {
             p.diff = DiffStat { add, del };
             p.commits = none_if_empty(commits);
             p.behind_base = 0;
+            p.conflict_files.clear();
             p.updating_base.clear();
             if let Some(n) = &note {
                 p.comments.get_or_insert_with(Vec::new).push(n.clone());

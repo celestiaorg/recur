@@ -177,6 +177,38 @@ impl Manager {
             .await
     }
 
+    /// Paths that would conflict merging `base_branch` into HEAD, without
+    /// touching the worktree (`git merge-tree`, git 2.38+). Empty when clean.
+    pub async fn conflict_files(&self, worktree: &str, base_branch: &str) -> Result<Vec<String>> {
+        let ran = self
+            .git_in(
+                worktree,
+                [
+                    "merge-tree",
+                    "--write-tree",
+                    "--name-only",
+                    "--no-messages",
+                    "-z",
+                    "HEAD",
+                    base_branch,
+                ],
+            )
+            .capture()
+            .await;
+        let out = String::from_utf8_lossy(&ran.stdout);
+        if let Err(e) = ran.result
+            && out.trim().is_empty()
+        {
+            return Err(e.wrap(format!("git merge-tree {base_branch}")));
+        }
+        Ok(out
+            .split('\0')
+            .skip(1)
+            .take_while(|l| !l.is_empty())
+            .map(str::to_owned)
+            .collect())
+    }
+
     /// How many commits HEAD is ahead of `base_branch`. 0 means nothing to land.
     pub async fn commits_ahead(&self, worktree: &str, base_branch: &str) -> Result<i64> {
         if worktree.is_empty() || base_branch.is_empty() {

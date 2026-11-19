@@ -2780,6 +2780,34 @@ mod tests {
         assert_eq!(m.commits_ahead(&wt.path, "main").await.expect("ahead"), 1);
     }
 
+    #[tokio::test]
+    async fn conflict_files_lists_paths_both_sides_changed() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) = m.add("LOOP-CF", "feature-cf", "main").await.expect("add");
+        write(&repo.path, "café.txt", "base\n");
+        write(&repo.path, "b.txt", "base\n");
+        git(&repo.path, &["add", "café.txt", "b.txt"]);
+        git(&repo.path, &["commit", "-m", "base side"]);
+        assert!(
+            m.conflict_files(&wt.path, "main")
+                .await
+                .expect("clean")
+                .is_empty()
+        );
+        write(&wt.path, "café.txt", "feature\n");
+        write(&wt.path, "c.txt", "feature\n");
+        m.commit(&wt.path, "feature side", "Coder", "coder@recur.local")
+            .await
+            .expect("commit");
+        assert_eq!(
+            m.conflict_files(&wt.path, "main").await.expect("conflict"),
+            ["café.txt"]
+        );
+        assert!(m.conflict_files(&wt.path, "no-such-ref").await.is_err());
+    }
+
     // --- merge ---
 
     async fn add_branch_commit(

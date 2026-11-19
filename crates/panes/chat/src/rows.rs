@@ -20,7 +20,6 @@ use recur_agent_tools::display::briefing_tools::{
     list_workspace_briefs_summary, workspace_context_summary,
 };
 use recur_agent_tools::display::open_pr_tool::open_pr_label;
-use recur_agent_tools::display::plan_tools::prose_preview;
 use recur_content::Sheet;
 use recur_content::links::external_http_url;
 use recur_content::render::style::sh_color;
@@ -3412,29 +3411,18 @@ impl AgentChat {
         key: &str,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let t = Theme::of(cx).tokens;
-        let expandable = !m.body.is_empty();
-        let open = expandable && self.row_is_open(key, false);
-        let id = SharedString::from(format!("nr-{}-{key}", self.props.reset_key));
-        let kids = vec![self.tc_label(key, prose_preview(&m.body), t.text)];
-        let k = key.to_string();
-        let head = self.tc_head(
-            id,
-            expandable,
-            kids,
-            Some(std::rc::Rc::new(
-                move |this: &mut Self, cx: &mut Context<Self>| this.toggle_row(&k, open, cx),
-            )),
-            cx,
-        );
-        let mut card = div().rounded(px(7.)).child(head);
-        if open {
-            let rk = format!("{}:{key}", self.props.reset_key);
-            let md = self.md(format!("{rk}-narr"), &m.body, None, false, cx);
-            card = card.child(div().mt(px(3.)).mb(px(6.)).min_w_0().child(md));
-            self.body_tail = true;
+        if m.body.is_empty() {
+            return div().into_any_element();
         }
-        card.into_any_element()
+        let rk = format!("{}:{key}", self.props.reset_key);
+        let md = self.md(format!("{rk}-narr"), &m.body, None, false, cx);
+        self.body_tail = true;
+        div()
+            .mt(px(3.))
+            .mb(px(6.))
+            .min_w_0()
+            .child(md)
+            .into_any_element()
     }
 }
 

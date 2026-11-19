@@ -120,7 +120,7 @@ pub trait CodeService: Send + Sync {
     async fn generate_commit_message(&self, project_id: &str, workspace_id: &str)
     -> Result<String>;
 
-    /// GitStatus returns path → m/a/d/u for the resolved root. For a loop worktree
+    /// GitStatus returns path → m/a/d/u/! for the resolved root. For a loop worktree
     /// this is versus the merge-base with the base branch (spin-off point), including
     /// committed loop work and the working tree. For a bare project checkout with no
     /// base, porcelain versus HEAD.
@@ -319,7 +319,7 @@ pub trait CodeService: Send + Sync {
     /// Unstage removes paths from the git index (worktree only).
     async fn unstage(&self, project_id: &str, workspace_id: &str, paths: &[String]) -> Result<()>;
 
-    /// WorkingStatus returns uncommitted porcelain status (path → m/a/d/u) versus HEAD.
+    /// WorkingStatus returns uncommitted porcelain status (path → m/a/d/u/!) versus HEAD.
     async fn working_status(
         &self,
         project_id: &str,

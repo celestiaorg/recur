@@ -582,12 +582,13 @@ impl Observatory {
                 "a" => "Added",
                 "d" => "Deleted",
                 "u" => "Untracked",
+                "!" => "Merge conflict",
                 other => other,
             };
             let c = match st.as_str() {
                 "m" => t.git_m,
                 "a" | "u" => t.git_u,
-                "d" => t.git_d,
+                "d" | "!" => t.git_d,
                 _ => t.text,
             };
             d = d.child(titled(

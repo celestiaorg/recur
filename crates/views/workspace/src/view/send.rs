@@ -61,24 +61,6 @@ pub(crate) fn bubble_attachments(drafts: &[ChatAttachmentDraft]) -> Vec<ChatAtta
         .collect()
 }
 
-/// `takeFlushBatch`: prompt-action items flush alone; consecutive normal sends merge.
-pub(crate) fn take_flush_batch(
-    queue: &[PendingChatSend],
-) -> (Vec<PendingChatSend>, Vec<PendingChatSend>) {
-    if queue.is_empty() {
-        return (Vec::new(), Vec::new());
-    }
-    if queue[0].prompt_action {
-        return (vec![queue[0].clone()], queue[1..].to_vec());
-    }
-    let n = queue
-        .iter()
-        .skip(1)
-        .position(|p| p.prompt_action)
-        .map_or(queue.len(), |i| i + 1);
-    (queue[..n].to_vec(), queue[n..].to_vec())
-}
-
 /// `mergePendingSends`: the latest mode / model / flags win; text and attachments concatenate
 /// in queue order. Display text is only synthesized when an entry has one (prompt actions).
 pub(crate) fn merge_pending_sends(queue: &[PendingChatSend]) -> PendingChatSend {
@@ -358,7 +340,7 @@ impl WorkspaceView {
         self.write_draft(&key, String::new(), Vec::new(), cx);
         self.rejected_steers_by_key.remove(&key);
         let bubble = pending_send_bubble_body(&opening, &marked);
-        if busy || setup_hold {
+        if busy || setup_hold || !held.is_empty() {
             if !setup_hold
                 && self.chat_key_busy(&key, cx)
                 && self.steer_by_default(cx) != alt
@@ -430,21 +412,16 @@ impl WorkspaceView {
                 .entry(key.clone())
                 .or_default()
                 .push(pending);
+            // Idle with held follow-ups: queue behind them and send the oldest.
+            if !busy && !setup_hold {
+                self.clear_hold_pending(&key);
+                self.flush_pending_now(&key, cx);
+            }
             self.touch(cx);
             return;
         }
 
-        // Idle: enqueue behind held follow-ups, then flush one batch.
         self.clear_hold_pending(&key);
-        if !held.is_empty() {
-            self.pending_by_key
-                .entry(key.clone())
-                .or_default()
-                .push(pending);
-            self.flush_pending_now(&key, cx);
-            self.touch(cx);
-            return;
-        }
         let live = self.chat_by_key.get(&key).cloned().unwrap_or_default();
         if !live
             .iter()
@@ -572,8 +549,8 @@ impl WorkspaceView {
         self.touch(cx);
     }
 
-    /// Fold every queued follow-up into one next turn once idle; not after Stop until the user
-    /// sends again.
+    /// Send the oldest queued follow-up as the next turn once idle; not after Stop until the
+    /// user sends again.
     pub(crate) fn try_flush_pending(&mut self, key: &str, cx: &mut Context<Self>) {
         if !self.queue_owner || self.hold_pending_by_key.get(key).copied().unwrap_or(false) {
             return;
@@ -590,32 +567,25 @@ impl WorkspaceView {
         {
             return;
         }
-        let q = self.pending_by_key.get(key).cloned().unwrap_or_default();
-        if q.is_empty() {
+        let Some(q) = self.pending_by_key.get_mut(key).filter(|q| !q.is_empty()) else {
             return;
-        }
-        let (batch, rest) = take_flush_batch(&q);
-        if batch.is_empty() {
-            return;
-        }
-        self.pending_by_key.insert(key.to_string(), rest);
-        let ids: Vec<String> = batch.iter().map(|p| p.id.clone()).collect();
-        let merged = merge_pending_sends(&batch);
-        let body = pending_send_bubble_body(&merged.display_text, &merged.marked);
+        };
+        let next = q.remove(0);
+        let body = pending_send_bubble_body(&next.display_text, &next.marked);
         let list = self.chat_by_key.entry(key.to_string()).or_default();
-        list.retain(|m| m.pending_id.is_empty() || !ids.contains(&m.pending_id));
+        list.retain(|m| m.pending_id.is_empty() || m.pending_id != next.id);
         list.push(AgentMsg {
             me: true,
             body,
             optimistic: true,
-            attachments: bubble_attachments(&merged.drafts),
+            attachments: bubble_attachments(&next.drafts),
             ..Default::default()
         });
         let Some((id, code)) = key.split_once('\t') else {
             return;
         };
         let (id, code) = (id.to_string(), code.to_string());
-        self.dispatch_send(&id, &code, key, merged, cx);
+        self.dispatch_send(&id, &code, key, next, cx);
         self.touch(cx);
     }
 
@@ -1142,22 +1112,6 @@ mod tests {
             prompt_action: prompt,
             ..Default::default()
         }
-    }
-
-    #[test]
-    fn a_prompt_action_flushes_alone_and_normal_sends_merge() {
-        let q = vec![
-            p("1", "a", "", false),
-            p("2", "b", "", false),
-            p("3", "c", "Commit", true),
-            p("4", "d", "", false),
-        ];
-        let (batch, rest) = take_flush_batch(&q);
-        assert_eq!(batch.len(), 2);
-        assert_eq!(rest.len(), 2);
-        let (batch, rest) = take_flush_batch(&rest);
-        assert_eq!(batch[0].id, "3");
-        assert_eq!(rest[0].id, "4");
     }
 
     #[test]

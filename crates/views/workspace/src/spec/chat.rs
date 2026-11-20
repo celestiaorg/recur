@@ -428,37 +428,66 @@ async fn a_first_switch_draws_the_transcript_once_it_loads(cx: &mut TestAppConte
 // ---- Chat follow-up queue ----
 
 #[gpui::test]
-async fn all_follow_ups_queued_while_a_turn_is_running_fold_into_the_next_user_turn(
-    cx: &mut TestAppContext,
-) {
+async fn follow_ups_queued_while_a_turn_is_running_send_one_turn_each(cx: &mut TestAppContext) {
     let (store, sent, hold) = (Store::default(), calls(), Pending::default());
     let opts = bridge_opts(store.clone(), sent.clone(), hold.clone(), |n, t| {
-        (n > 1).then(|| format!("reply to: {t}"))
+        (n > 2).then(|| format!("reply to: {t}"))
     });
     let mut h = boot(cx, opts);
     h.fill("first turn");
     send_click(&mut h);
     assert!(h.has("chat-stop"));
-    h.fill("fix the tests");
-    send_click(&mut h);
-    h.fill("and update the docs");
-    send_click(&mut h);
-    assert!(h.has("queued:fix the tests"));
-    assert!(h.has("queued:and update the docs"));
+    for text in ["fix the tests", "drop this one", "and update the docs"] {
+        h.fill(text);
+        send_click(&mut h);
+        assert!(h.has(&format!("queued:{text}")));
+    }
     assert_eq!(texts(&sent).len(), 1);
 
-    h.click("queued-x:fix the tests");
-    assert!(!h.has("queued:fix the tests"));
-    assert!(h.has("queued:and update the docs"));
+    h.click("queued-x:drop this one");
+    assert!(!h.has("queued:drop this one"));
 
     release(&hold, &store, "MA", "done with first");
     h.settle();
     let t = texts(&sent);
-    assert_eq!(t.len(), 2);
-    assert!(t[1].ends_with("and update the docs"), "{t:?}");
+    assert_eq!(t.len(), 2, "{t:?}");
+    assert!(t[1].ends_with("fix the tests"), "{t:?}");
+    assert!(h.me("fix the tests"));
+    assert!(h.has("queued:and update the docs"));
+
+    release(&hold, &store, "MA", "done with tests");
+    h.settle();
+    let t = texts(&sent);
+    assert_eq!(t.len(), 3, "{t:?}");
+    assert!(t[2].ends_with("and update the docs"), "{t:?}");
     assert!(!h.has("queued:and update the docs"));
-    assert!(h.me("and update the docs"));
-    assert!(!h.me("fix the tests"));
+    assert!(!h.me("drop this one"));
+}
+
+#[gpui::test]
+async fn sending_while_idle_behind_held_follow_ups_shows_the_new_message_queued(
+    cx: &mut TestAppContext,
+) {
+    let (store, sent, hold) = (Store::default(), calls(), Pending::default());
+    let opts = bridge_opts(store.clone(), sent.clone(), hold.clone(), |n, t| {
+        (n > 2).then(|| format!("reply to: {t}"))
+    });
+    let mut h = boot(cx, opts);
+    h.fill("first turn");
+    send_click(&mut h);
+    h.fill("fix the tests");
+    send_click(&mut h);
+    release(&hold, &store, "MA", "Stopped by user");
+    h.settle();
+    assert_eq!(texts(&sent).len(), 1);
+    assert!(h.has("queued:fix the tests"));
+
+    h.fill("and update the docs");
+    send_click(&mut h);
+    let t = texts(&sent);
+    assert_eq!(t.len(), 2, "{t:?}");
+    assert!(t[1].ends_with("fix the tests"), "{t:?}");
+    assert!(h.has("queued:and update the docs"));
 }
 
 async fn busy_follow_ups(cx: &mut TestAppContext, queue_follow_ups: bool) {

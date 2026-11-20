@@ -6,6 +6,8 @@ use gpui::{
 };
 use recur_engine::view::composer::Segment;
 use recur_services::fake::Overrides;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::harness::*;
 
@@ -130,6 +132,52 @@ async fn an_artifact_chip_counts_in_the_caret_wire_length(cx: &mut TestAppContex
         h.read(|c| c.doc.wire_caret()),
         "see @artifact:abc-def x".len()
     );
+}
+
+#[gpui::test]
+async fn dropping_an_artifact_inserts_its_chip_at_the_caret(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    h.fill("see");
+    let chat = h.chat();
+    let drag = recur_view_core::file_drag::ArtifactDrag {
+        id: "abc-def".into(),
+        title: "Plan".into(),
+    };
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| c.drop_artifact(&drag, window, cx)));
+    h.settle();
+    assert_eq!(h.input(), "see @artifact:abc-def ");
+}
+
+#[gpui::test]
+async fn dropping_an_artifact_the_chat_has_not_listed_refreshes_its_artifacts(
+    cx: &mut TestAppContext,
+) {
+    let created = Arc::new(AtomicBool::new(false));
+    let listed = created.clone();
+    let opts = Overrides::default().list_artifacts(move |_, _| {
+        Ok(if listed.load(Ordering::SeqCst) {
+            vec![recur_domain::Artifact {
+                id: "abc-def".into(),
+                title: "Plan".into(),
+                ..Default::default()
+            }]
+        } else {
+            Vec::new()
+        })
+    });
+    let mut h = boot(cx, opts, ws_props(), ws_hooks());
+    let chat = h.chat();
+    assert!(h.cx.update(|_, cx| chat.read(cx).live_artifacts(cx).is_empty()));
+    created.store(true, Ordering::SeqCst);
+    let drag = recur_view_core::file_drag::ArtifactDrag {
+        id: "abc-def".into(),
+        title: "Plan".into(),
+    };
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| c.drop_artifact(&drag, window, cx)));
+    h.settle();
+    let arts = h.cx.update(|_, cx| chat.read(cx).live_artifacts(cx));
+    assert_eq!(arts.len(), 1);
+    assert_eq!(arts[0].title, "Plan");
 }
 
 #[gpui::test]

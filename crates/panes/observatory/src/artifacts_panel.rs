@@ -20,7 +20,10 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, hex, icon, rgba};
 use recur_view_core::call;
+use recur_view_core::file_drag::ArtifactDrag;
 use recur_view_review::style::hsla;
+
+use crate::render::FileDragGhost;
 
 /// What the panel asks its host to do (`onOpen`, `onRenamed`, `onDeleted`).
 #[derive(Clone, Debug, PartialEq)]
@@ -432,6 +435,18 @@ impl ArtifactsPanel {
                 .on_click(cx.guarded_listener(move |_, _, _, cx| {
                     cx.emit(ArtifactsPanelEvent::Open(open.clone()))
                 }))
+                .on_drag(
+                    ArtifactDrag {
+                        id: a.id.clone(),
+                        title: title.clone(),
+                    },
+                    |drag, _, _, cx| {
+                        cx.new(|_| FileDragGhost {
+                            name: drag.title.clone().into(),
+                            dir: false,
+                        })
+                    },
+                )
                 .on_mouse_down(
                     gpui_kit::MouseButton::Right,
                     cx.guarded_listener(move |p, e: &gpui_kit::MouseDownEvent, window, cx| {

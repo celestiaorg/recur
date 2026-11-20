@@ -22,7 +22,7 @@ A **workspace** is the unit of work in Recur: a checkout plus the UI around it (
 
 ## Landing the work
 
-- **Hand-driven** workspaces (no workflow engaged) can **Merge** straight onto the local base. Merge is hidden when GitHub branch protection requires a pull request.
+- **Hand-driven** workspaces (no workflow engaged) can **Merge** onto the base: pushed to `origin/<base>` when the project has a remote (local `<base>` fast-forwards when it can), otherwise merged into the local branch. Merge is hidden when GitHub branch protection requires a pull request.
 - Workflows that end in a PR open a GitHub PR, or a Local PR when the project's **Open PRs on GitHub** setting is off. Other workflows stop after review and fixes. See [Pull requests](/concepts/pull-requests).
 - Merge and PR creation refuse to run while there are uncommitted changes.
 

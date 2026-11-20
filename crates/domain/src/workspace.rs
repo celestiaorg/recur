@@ -394,7 +394,7 @@ pub struct Resource {
     pub loops_running: i64,
     pub needs_you: i64,
     pub iters_today: i64,
-    /// Set at boot when git is missing or older than 2.31. Not persisted.
+    /// Set at boot when git is missing or older than the minimum Recur supports. Not persisted.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub git_warning: String,
 }

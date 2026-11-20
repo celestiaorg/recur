@@ -1107,7 +1107,7 @@ impl Manager {
         ha.trim() == hb.trim()
     }
 
-    async fn is_ancestor(&self, ancestor: &str, desc: &str) -> bool {
+    pub(crate) async fn is_ancestor(&self, ancestor: &str, desc: &str) -> bool {
         if ancestor.is_empty() || desc.is_empty() {
             return false;
         }
@@ -2867,42 +2867,6 @@ mod tests {
         m.run(id.iter().copied().chain(["commit", "-m", "base moved"]))
             .await
             .expect("commit");
-    }
-
-    #[tokio::test]
-    async fn push_land_undoes_only_an_untouched_land() {
-        let repo = crate::testutil::init_repo();
-        let root = temp_dir();
-        let m = mgr(&repo.path, &root.path);
-        let missing = format!("{}/missing.git", root.path);
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
-        let before = m.ref_hash("main").await;
-        let (wt, _) = add_branch_commit(&m, "LOOP-pl", "push-land", "pl.txt", "pl\n").await;
-        let landed = m.merge(&wt.branch, "main", "land", "squash").await.unwrap();
-        let err = m
-            .push_land(&missing, "main", &landed, deadline)
-            .await
-            .unwrap_err();
-        assert!(
-            err.to_string().ends_with("the local merge was undone"),
-            "{err}"
-        );
-        assert_eq!(m.ref_hash("main").await, before);
-
-        let landed = m.merge(&wt.branch, "main", "land", "squash").await.unwrap();
-        write(&repo.path, "later.txt", "later\n");
-        git(&repo.path, &["add", "later.txt"]);
-        git(&repo.path, &["commit", "-m", "later"]);
-        let moved = m.ref_hash("main").await;
-        let err = m
-            .push_land(&missing, "main", &landed, deadline)
-            .await
-            .unwrap_err();
-        assert!(
-            err.to_string().contains("the local merge was kept"),
-            "{err}"
-        );
-        assert_eq!(m.ref_hash("main").await, moved);
     }
 
     #[tokio::test]

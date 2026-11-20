@@ -421,7 +421,7 @@ async fn merge_forge_remote_when_pr_not_required() {
 }
 
 #[tokio::test]
-async fn merge_undone_when_push_fails() {
+async fn merge_leaves_local_main_when_remote_unreachable() {
     let px = Px::new();
     let (keep, clone, _bare) = repo_with_remote();
     git(
@@ -448,7 +448,7 @@ async fn merge_undone_when_push_fails() {
             .merge_workspace(&ws.id, &MergeMethod::Squash)
             .await
             .unwrap_err();
-        assert!(err.0.starts_with("push main to origin"), "{}", err.0);
+        assert!(err.0.starts_with("merge into origin/main"), "{}", err.0);
         assert_ne!(px.ws(&ws.id).state, WorkspaceState::Merged);
         assert_eq!(git_out(&clone, &["rev-parse", "main"]).unwrap(), before);
     }
@@ -898,6 +898,7 @@ async fn update_with_base_pushes_forge_pr() {
     std::fs::write(Path::new(&clone).join("from-main.txt"), "base moved\n").unwrap();
     git(&clone, &["add", "from-main.txt"]);
     git(&clone, &["commit", "-m", "advance main"]);
+    git(&clone, &["push", "-q", "origin", "main"]);
     let res = px
         .eng()
         .update_workspace_with_base(&ws.id, "rebase")
@@ -947,6 +948,7 @@ async fn update_with_base_merge_does_not_force_forge_pr() {
     std::fs::write(Path::new(&clone).join("from-main.txt"), "base moved\n").unwrap();
     git(&clone, &["add", "from-main.txt"]);
     git(&clone, &["commit", "-m", "advance main"]);
+    git(&clone, &["push", "-q", "origin", "main"]);
     let res = px
         .eng()
         .update_workspace_with_base(&ws.id, "merge")

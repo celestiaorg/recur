@@ -30,6 +30,8 @@ pub enum ErrorKind {
     Unparsed,
     /// A local merge would overwrite uncommitted changes in the base checkout.
     DirtyBase(DirtyBaseError),
+    /// A merge-tree land hit conflicting paths.
+    Conflict,
 }
 
 impl Error {
@@ -76,6 +78,10 @@ impl Error {
             ErrorKind::DirtyBase(d) => Some(d),
             _ => None,
         }
+    }
+
+    pub fn is_conflict(&self) -> bool {
+        matches!(self.kind, ErrorKind::Conflict)
     }
 
     pub fn is_unparsed(&self) -> bool {

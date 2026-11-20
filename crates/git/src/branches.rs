@@ -4,7 +4,8 @@ use std::time::Duration;
 
 use tokio::time::Instant;
 
-use crate::error::{Error, Result};
+use crate::error::{Error, ErrorKind, Result};
+use crate::version::MERGE_BASE_VERSION;
 use crate::worktree::{Manager, MergeResult, exec, is_repo};
 
 /// The Select group heading for local heads in the base-branch picker.
@@ -161,11 +162,11 @@ impl Manager {
         self.compare_ref(base).await
     }
 
-    /// How far the worktree HEAD is behind the newest tip of `base`. For a
-    /// local name that also has `origin/<name>`, both tips are counted and the
-    /// farther wins, so a GitHub merge-base advance and a local-main commit
-    /// both show. `fetch` updates the tracking tip first. Returns the ref
-    /// update-with-base should merge.
+    /// How far the worktree HEAD is behind [`compare_ref`](Self::compare_ref)
+    /// of `base`, the ref Merge lands on: a local name that also has
+    /// `origin/<name>` counts the remote tip only, so unpushed local commits
+    /// never get pulled into the workspace. `fetch` updates the tracking tip
+    /// first. Returns the ref update-with-base should merge.
     pub async fn behind_base(
         &self,
         worktree: &str,
@@ -181,17 +182,8 @@ impl Manager {
         } else {
             self.compare_ref(base).await
         };
-        let stored = self.commits_behind(worktree, base).await;
-        if compare.is_empty() || compare == base {
-            return stored.map(|n| (base.to_string(), n));
-        }
-        let Ok(n_remote) = self.commits_behind(worktree, &compare).await else {
-            return stored.map(|n| (base.to_string(), n));
-        };
-        match stored {
-            Ok(n_stored) if n_remote <= n_stored => Ok((base.to_string(), n_stored)),
-            _ => Ok((compare, n_remote)),
-        }
+        let n = self.commits_behind(worktree, &compare).await?;
+        Ok((compare, n))
     }
 
     /// Updates the tracking tip for `remote/branch` (`git fetch <remote>
@@ -313,59 +305,201 @@ impl Manager {
         Ok(())
     }
 
-    /// Pushes the local branch to `remote` (`refs/heads/<branch>`), after a
-    /// land onto a remote-tracking base.
-    pub async fn push_branch(&self, remote: &str, branch: &str) -> Result<()> {
-        let remote = remote.trim();
-        let branch = branch.trim();
-        if remote.is_empty() || branch.is_empty() {
-            return Err(Error::msg("push: remote and branch are required"));
+    /// Lands `branch` on `remote/short` without touching the project folder:
+    /// fetches the remote tip, builds the merge, squash or rebased commits
+    /// with `git merge-tree`, and pushes them. A local `short` then
+    /// fast-forwards when it can; local commits, or edits the fast-forward
+    /// would overwrite, leave it as is. A rejected push (the remote moved)
+    /// changes nothing locally. Squash and rebase refuse a branch carrying
+    /// unpushed commits from local `short`, which they would fold in or rewrite.
+    pub async fn land_remote(
+        &self,
+        branch: &str,
+        remote: &str,
+        short: &str,
+        message: &str,
+        method: &str,
+        deadline: Instant,
+    ) -> Result<MergeResult> {
+        self.fetch_remote_branch_by(remote, short, Some(deadline))
+            .await?;
+        let tracking = format!("refs/remotes/{remote}/{short}");
+        let base = self.rev(&tracking).await?;
+        let tip = self.rev(branch).await?;
+        if method != "merge" && self.branch_exists(short).await {
+            let fork = self.run(["merge-base", short, tip.as_str()]).await?;
+            let not_base = format!("^{base}");
+            let unpushed = self
+                .run(["rev-list", "--count", fork.trim(), not_base.as_str()])
+                .await?;
+            let n = unpushed.trim();
+            if n != "0" {
+                return Err(Error::msg(format!(
+                    "this branch includes {n} unpushed commit(s) from local {short}: push {short} first"
+                )));
+            }
         }
-        let spec = format!("refs/heads/{branch}:refs/heads/{branch}");
+        let sign = self
+            .run(["config", "--type=bool", "commit.gpgsign"])
+            .await
+            .is_ok_and(|v| v.trim() == "true");
+        let new_head = match method {
+            "squash" | "merge" => {
+                let tree = self.merge_tree(&base, &tip, None).await?;
+                let mut args = vec!["commit-tree", tree.as_str(), "-p", base.as_str()];
+                if method == "merge" {
+                    args.extend(["-p", tip.as_str()]);
+                }
+                if sign {
+                    args.push("-S");
+                }
+                let msg = if message.is_empty() {
+                    format!("Merge {branch} into {short}")
+                } else {
+                    message.to_string()
+                };
+                exec(self.git(&args).arg("-F").arg("-").stdin(msg))
+                    .await?
+                    .trim()
+                    .to_string()
+            }
+            _ => self.replay(&base, &tip, sign).await?,
+        };
+        let spec = format!("{new_head}:refs/heads/{short}");
         exec(
             self.git(["push", "--end-of-options", remote, spec.as_str()])
-                .env("GIT_TERMINAL_PROMPT", "0"),
+                .env("GIT_TERMINAL_PROMPT", "0")
+                .deadline(deadline),
         )
         .await
-        .map_err(|e| e.wrap(format!("git push {remote} {spec}")))?;
-        Ok(())
+        .map_err(|e| e.wrap(format!("git push {remote} {short}")))?;
+        self.fast_forward_local(short, &new_head).await;
+        Ok(MergeResult {
+            new_head,
+            fast_forward: method == "rebase",
+            orig_head: base,
+        })
     }
 
-    /// [`push_branch`](Self::push_branch) after a [`merge`](Self::merge),
-    /// bounded by `deadline`. A failed or timed-out push resets `branch` to
-    /// the pre-land commit (keeping uncommitted edits) so Merge can be
-    /// retried, but only while `branch` is still checked out at the landed
-    /// commit. The error says whether the local merge was undone.
-    pub async fn push_land(
+    async fn rev(&self, r: &str) -> Result<String> {
+        Ok(self
+            .run([
+                "rev-parse",
+                "--verify",
+                "--end-of-options",
+                &format!("{r}^{{commit}}"),
+            ])
+            .await
+            .map_err(|e| e.wrap(format!("git rev-parse {r}")))?
+            .trim()
+            .to_string())
+    }
+
+    /// The tree merging `theirs` into `ours`, or an error naming the
+    /// conflicted paths.
+    async fn merge_tree(
         &self,
-        remote: &str,
-        branch: &str,
-        landed: &MergeResult,
-        deadline: Instant,
-    ) -> Result<()> {
-        let err = match tokio::time::timeout_at(deadline, self.push_branch(remote, branch)).await {
-            Ok(Ok(())) => return Ok(()),
-            Ok(Err(e)) => e.to_string(),
-            Err(_) => format!("git push {remote} {branch}: timed out"),
-        };
-        let on_land = self
+        ours: &str,
+        theirs: &str,
+        merge_base: Option<&str>,
+    ) -> Result<String> {
+        let mut args = vec![
+            "merge-tree",
+            "--write-tree",
+            "--name-only",
+            "--no-messages",
+            "-z",
+        ];
+        if let Some(mb) = merge_base {
+            args.extend(["--merge-base", mb]);
+        }
+        args.extend([ours, theirs]);
+        let ran = self.git(&args).capture().await;
+        let out = String::from_utf8_lossy(&ran.stdout);
+        let mut fields = out.split('\0');
+        let tree = fields.next().unwrap_or_default().trim().to_string();
+        match ran.result {
+            Ok(()) => Ok(tree),
+            Err(e) if tree.is_empty() => {
+                let stderr = String::from_utf8_lossy(&ran.stderr);
+                let stderr = stderr.trim();
+                let e = if stderr.is_empty() { e } else { e.wrap(stderr) };
+                Err(e.wrap("git merge-tree"))
+            }
+            Err(_) => {
+                let files: Vec<&str> = fields.take_while(|f| !f.is_empty()).collect();
+                Err(Error::with_kind(
+                    format!("conflict in {}", files.join(", ")),
+                    ErrorKind::Conflict,
+                ))
+            }
+        }
+    }
+
+    /// Replays the non-merge commits of `base..tip` onto `base`, keeping each
+    /// commit's author and message, signing each when `sign`. Returns the new tip.
+    async fn replay(&self, base: &str, tip: &str, sign: bool) -> Result<String> {
+        if let Ok(v) = crate::version::probe().await
+            && v.less(&MERGE_BASE_VERSION)
+        {
+            return Err(Error::msg(format!(
+                "rebasing onto a remote branch needs Git {MERGE_BASE_VERSION} or newer (found {v}): use squash or merge"
+            )));
+        }
+        let range = format!("{base}..{tip}");
+        let list = self
+            .run(["rev-list", "--reverse", "--no-merges", range.as_str()])
+            .await?;
+        let mut head = base.to_string();
+        for c in list.split_whitespace() {
+            let parent = format!("{c}^");
+            let tree = self.merge_tree(&head, c, Some(&parent)).await?;
+            let meta = self
+                .run(["log", "-1", "--format=%an%x00%ae%x00%aI%x00%B", c])
+                .await?;
+            let mut f = meta.splitn(4, '\0');
+            let (name, email, date, body) = (
+                f.next().unwrap_or_default(),
+                f.next().unwrap_or_default(),
+                f.next().unwrap_or_default(),
+                f.next().unwrap_or_default(),
+            );
+            let mut args = vec!["commit-tree", tree.as_str(), "-p", head.as_str(), "-F", "-"];
+            if sign {
+                args.push("-S");
+            }
+            head = exec(
+                self.git(&args)
+                    .env("GIT_AUTHOR_NAME", name)
+                    .env("GIT_AUTHOR_EMAIL", email)
+                    .env("GIT_AUTHOR_DATE", date)
+                    .stdin(body.trim_end().to_string()),
+            )
+            .await?
+            .trim()
+            .to_string();
+        }
+        Ok(head)
+    }
+
+    /// Moves local `short` to `new_head` when that is a fast-forward: by
+    /// `merge --ff-only` when the project folder has it checked out (git
+    /// refuses if local edits would be overwritten), otherwise `branch -f`
+    /// (git refuses if another worktree has it checked out).
+    async fn fast_forward_local(&self, short: &str, new_head: &str) {
+        if !self.branch_exists(short).await || !self.is_ancestor(short, new_head).await {
+            return;
+        }
+        let checked_out = self
             .run(["symbolic-ref", "--quiet", "HEAD"])
             .await
-            .is_ok_and(|r| r.trim() == format!("refs/heads/{branch}"))
-            && !landed.new_head.is_empty()
-            && self.ref_hash("HEAD").await == landed.new_head;
-        let outcome = if !on_land {
-            format!("the local merge was kept: {branch} moved since the land")
+            .is_ok_and(|r| r.trim() == format!("refs/heads/{short}"));
+        let _ = if checked_out {
+            self.run(["merge", "--ff-only", "--quiet", new_head]).await
         } else {
-            match self
-                .run(["reset", "--keep", landed.orig_head.as_str()])
+            self.run(["branch", "-f", "--end-of-options", short, new_head])
                 .await
-            {
-                Ok(_) => "the local merge was undone".to_string(),
-                Err(e) => format!("the local merge was kept: undo failed: {e}"),
-            }
         };
-        Err(Error::msg(format!("{err}; {outcome}")))
     }
 
     /// A sensible default base for a new project: origin/main → main →
@@ -448,7 +582,8 @@ pub async fn suggest_base_branch_for_repo(repo_path: &str) -> String {
 mod tests {
     use super::*;
     use crate::testutil::{
-        config_identity, git, init_repo, init_repo_with_remote, rev_parse, temp_dir, write,
+        WithRemote, commit_as_coder, config_identity, git, init_repo, init_repo_with_remote,
+        rev_parse, temp_dir, write,
     };
 
     fn show_file(repo: &str, spec: &str) -> String {
@@ -631,12 +766,6 @@ mod tests {
             0
         );
         assert_eq!(show_file(&r.bare, "HEAD:local.txt"), "mine");
-
-        write(&r.clone, "pushed.txt", "branch\n");
-        git(&r.clone, &["add", "pushed.txt"]);
-        git(&r.clone, &["commit", "-m", "via PushBranch"]);
-        m.push_branch("origin", "main").await.expect("push_branch");
-        assert_eq!(show_file(&r.bare, "HEAD:pushed.txt"), "branch");
 
         // Advance the remote from another clone; tracking stays stale until fetch.
         let pusher_dir = temp_dir();
@@ -853,5 +982,144 @@ mod tests {
 
         let r2 = m.fetch_pr_head(7).await.expect("fetch after force-push");
         assert_eq!(rev_parse(&r.clone, &r2), sha2);
+    }
+
+    /// The project folder sits on `feature` (two Coder commits) with a dirty
+    /// README; local `main` and `origin/main` both trail the remote, which
+    /// gained `base.txt`.
+    fn stale_dirty_project(feature_base_txt: &str) -> WithRemote {
+        let r = init_repo_with_remote();
+        config_identity(&r.clone);
+        git(&r.clone, &["checkout", "-q", "-b", "moved"]);
+        write(&r.clone, "base.txt", "remote\n");
+        git(&r.clone, &["add", "base.txt"]);
+        git(&r.clone, &["commit", "-q", "-m", "remote moved"]);
+        git(&r.clone, &["push", "-q", "origin", "moved:main"]);
+        git(
+            &r.clone,
+            &["update-ref", "refs/remotes/origin/main", "main"],
+        );
+        git(&r.clone, &["checkout", "-q", "-b", "feature", "main"]);
+        write(&r.clone, "a.txt", "a\n");
+        commit_as_coder(&r.clone, "a");
+        write(&r.clone, "b.txt", "b\n");
+        if !feature_base_txt.is_empty() {
+            write(&r.clone, "base.txt", feature_base_txt);
+        }
+        commit_as_coder(&r.clone, "b");
+        write(&r.clone, "README.md", "dirty\n");
+        r
+    }
+
+    #[tokio::test]
+    async fn land_remote_leaves_a_stale_dirty_project_folder_alone() {
+        let deadline = Instant::now() + Duration::from_secs(30);
+        for method in ["squash", "merge", "rebase"] {
+            let r = stale_dirty_project("");
+            let root = temp_dir();
+            let m = Manager::new(&r.clone, &root.path);
+            let feature = rev_parse(&r.clone, "feature");
+            let res = m
+                .land_remote("feature", "origin", "main", "land it", method, deadline)
+                .await
+                .unwrap_or_else(|e| panic!("{method}: {e}"));
+            let tip = rev_parse(&r.bare, "main");
+            assert_eq!(res.new_head, tip, "{method}");
+            for f in ["a.txt", "b.txt", "base.txt"] {
+                show_file(&r.bare, &format!("main:{f}"));
+            }
+            assert_eq!(rev_parse(&r.clone, "main"), tip, "{method}: local main");
+            assert_eq!(rev_parse(&r.clone, "origin/main"), tip, "{method}");
+            assert_eq!(rev_parse(&r.clone, "HEAD"), feature, "{method}: HEAD moved");
+            let readme = std::fs::read_to_string(format!("{}/README.md", r.clone)).unwrap();
+            assert_eq!(readme, "dirty\n", "{method}");
+            let log = |f: &str| git(&r.bare, &["log", "-1", &format!("--format={f}"), "main"]);
+            match method {
+                "squash" => assert_eq!(log("%P").split_whitespace().count(), 1),
+                "merge" => assert_eq!(rev_parse(&r.bare, "main^2"), feature),
+                _ => {
+                    assert_eq!(log("%an %s").trim(), "Coder b");
+                    assert_eq!(rev_parse(&r.bare, "main~2"), res.orig_head);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn land_remote_conflict_changes_nothing() {
+        let r = stale_dirty_project("feature\n");
+        let root = temp_dir();
+        let m = Manager::new(&r.clone, &root.path);
+        let before = rev_parse(&r.bare, "main");
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let err = m
+            .land_remote("feature", "origin", "main", "land it", "squash", deadline)
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("conflict in base.txt"), "{err}");
+        assert_eq!(rev_parse(&r.bare, "main"), before);
+        assert_ne!(rev_parse(&r.clone, "main"), before);
+    }
+
+    #[tokio::test]
+    async fn land_remote_refuses_unpushed_local_base_commits() {
+        let r = init_repo_with_remote();
+        config_identity(&r.clone);
+        write(&r.clone, "local.txt", "unpushed\n");
+        git(&r.clone, &["add", "local.txt"]);
+        git(&r.clone, &["commit", "-q", "-m", "unpushed local"]);
+        git(&r.clone, &["checkout", "-q", "-b", "feature"]);
+        write(&r.clone, "a.txt", "a\n");
+        commit_as_coder(&r.clone, "a");
+        let root = temp_dir();
+        let m = Manager::new(&r.clone, &root.path);
+        let before = rev_parse(&r.bare, "main");
+        let deadline = Instant::now() + Duration::from_secs(30);
+        for method in ["squash", "rebase"] {
+            let err = m
+                .land_remote("feature", "origin", "main", "land it", method, deadline)
+                .await
+                .unwrap_err();
+            assert!(
+                err.to_string()
+                    .contains("1 unpushed commit(s) from local main"),
+                "{method}: {err}"
+            );
+            assert_eq!(rev_parse(&r.bare, "main"), before, "{method}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn land_remote_signs_when_commit_gpgsign_is_set() {
+        use std::os::unix::fs::PermissionsExt;
+        let tools = temp_dir();
+        let signer = format!("{}/fake-gpg", tools.path);
+        std::fs::write(
+            &signer,
+            "#!/bin/sh\ncat >/dev/null\nprintf '\\n[GNUPG:] SIG_CREATED \\n' >&2\nprintf -- '-----BEGIN PGP SIGNATURE-----\\nstub\\n-----END PGP SIGNATURE-----\\n'\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&signer, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(30);
+        for method in ["squash", "merge", "rebase"] {
+            let r = stale_dirty_project("");
+            for (k, v) in [
+                ("commit.gpgsign", "true"),
+                ("gpg.format", "openpgp"),
+                ("gpg.program", signer.as_str()),
+                ("user.signingkey", "stub"),
+            ] {
+                git(&r.clone, &["config", k, v]);
+            }
+            let root = temp_dir();
+            let m = Manager::new(&r.clone, &root.path);
+            let res = m
+                .land_remote("feature", "origin", "main", "land it", method, deadline)
+                .await
+                .unwrap_or_else(|e| panic!("{method}: {e}"));
+            let raw = git(&r.bare, &["cat-file", "commit", &res.new_head]);
+            assert!(raw.contains("\ngpgsig "), "{method}: unsigned\n{raw}");
+        }
     }
 }

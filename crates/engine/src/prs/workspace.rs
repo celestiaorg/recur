@@ -28,9 +28,6 @@ use crate::turn::oneshot::{PR_DESCRIPTION_TIMEOUT, cap_github_pr_body};
 use crate::workspace::create::DEFAULT_WORKSPACE_TITLE;
 
 const LAND_TIMEOUT: Duration = Duration::from_secs(60);
-/// Time past a land's deadline for [`recur_git::Manager::push_land`] to undo
-/// a timed-out push, so the deadline never strands an unpushed land.
-pub(crate) const PUSH_UNDO_GRACE: Duration = Duration::from_secs(10);
 const LAND_STATE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// While the autopilot owns the worktree. Once a loop idles the human may
@@ -207,7 +204,7 @@ impl Engine {
             deadline += PR_DESCRIPTION_TIMEOUT;
         }
         tokio::time::timeout_at(
-            deadline + PUSH_UNDO_GRACE,
+            deadline,
             self.merge_workspace_inner(&ws, &proj, &branch, &base, &method, deadline),
         )
         .await
@@ -229,16 +226,17 @@ impl Engine {
         if risk.dirty_count > 0 || risk.unmerged {
             return Err("commit or discard uncommitted changes first: they would not be included in the merge".into());
         }
-        if let Ok(behind) = mgr.commits_behind(&ws.worktree_path, base).await
+        // As in land state: `main` upgrades to `origin/main` when that
+        // tracking ref exists, so the Merge tooltip's "(push)" is real and a
+        // stale or busy local `main` plays no part in the land.
+        let compare = mgr.compare_ref(base).await;
+        if let Ok(behind) = mgr.commits_behind(&ws.worktree_path, &compare).await
             && behind > 0
         {
             return Err(EngineError(format!(
-                "this branch is {behind} commits behind {base}: update with base first"
+                "this branch is {behind} commits behind {compare}: update with base first"
             )));
         }
-        // As in land state: `main` upgrades to `origin/main` when that
-        // tracking ref exists, so the Merge tooltip's "(push)" is real.
-        let compare = mgr.compare_ref(base).await;
         let tracking = mgr.parse_remote_tracking(&compare).await;
         let tracking = match tracking {
             Some((remote, short)) => {
@@ -258,11 +256,11 @@ impl Engine {
             None => None,
         };
         let diff = mgr
-            .diff_pr(&ws.worktree_path, base)
+            .diff_pr(&ws.worktree_path, &compare)
             .await
             .map_err(|e| EngineError(format!("compute diff: {e}")))?;
         let commits = mgr
-            .log_commits(&ws.worktree_path, base)
+            .log_commits(&ws.worktree_path, &compare)
             .await
             .unwrap_or_default();
         if diff.files.is_empty() && commits.is_empty() {
@@ -270,7 +268,7 @@ impl Engine {
         }
         let mut generated = (String::new(), String::new());
         if *method == MergeMethod::Squash {
-            let (_, diff_body) = mgr.changed_diff(&ws.worktree_path, base).await;
+            let (_, diff_body) = mgr.changed_diff(&ws.worktree_path, &compare).await;
             if let Ok(g) = self
                 .generate_pr_description(
                     &tokio_util::sync::CancellationToken::new(),
@@ -293,36 +291,24 @@ impl Engine {
             &sq,
             (&generated.0, &generated.1),
         );
-        let res = match mgr.merge(branch, base, &msg, method.as_str()).await {
-            Ok(r) => r,
-            Err(e) => {
-                self.emit_workspace_event(
-                    workspace_id,
-                    "AR",
-                    "You",
-                    &format!("Local merge failed: {}", html_escape(&e.to_string())),
-                );
-                if e.dirty_base().is_some() {
-                    return Err(EngineError(e.to_string()));
-                }
-                return Err(EngineError(format!("merge into {base}: {e}")));
+        let landed = match &tracking {
+            Some((remote, short)) => {
+                mgr.land_remote(branch, remote, short, &msg, method.as_str(), deadline)
+                    .await
             }
+            None => mgr.merge(branch, base, &msg, method.as_str()).await,
         };
-        if let Some((remote, short)) = &tracking
-            && let Err(e) = mgr.push_land(remote, short, &res, deadline).await
-        {
+        if let Err(e) = landed {
             self.emit_workspace_event(
                 workspace_id,
                 "AR",
                 "You",
-                &format!(
-                    "Could not push <code>{}</code> to <code>{}</code>: {}",
-                    html_escape(short),
-                    html_escape(remote),
-                    html_escape(&e.to_string())
-                ),
+                &format!("Merge failed: {}", html_escape(&e.to_string())),
             );
-            return Err(EngineError(format!("push {short} to {remote}: {e}")));
+            if e.dirty_base().is_some() {
+                return Err(EngineError(e.to_string()));
+            }
+            return Err(EngineError(format!("merge into {compare}: {e}")));
         }
         match self.store.pr_by_workspace(workspace_id) {
             Some(existing) if existing.state != "Merged" => {

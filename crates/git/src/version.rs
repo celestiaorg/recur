@@ -8,10 +8,25 @@ use tokio::sync::OnceCell;
 use crate::command::command;
 use crate::error::{Error, ErrorKind, Result};
 
-/// The oldest supported git. `--diff-merges=first-parent` (commit list
-/// numstat) landed in 2.31; older git fails on that flag and left the Commits
-/// tab empty.
+/// The oldest supported git. `merge-tree --write-tree`, which lands merges
+/// onto a remote base without a checkout, landed in 2.38.
 pub const MIN_VERSION: Version = Version {
+    major: 2,
+    minor: 38,
+    patch: 0,
+};
+
+/// `merge-tree --merge-base`, which rebases onto a remote base without a
+/// checkout, landed in 2.40. Apple Git 2.39 lacks it, so only rebase needs it.
+pub(crate) const MERGE_BASE_VERSION: Version = Version {
+    major: 2,
+    minor: 40,
+    patch: 0,
+};
+
+/// `--diff-merges=first-parent` (commit list numstat) landed in 2.31; older
+/// git fails on that flag and left the Commits tab empty.
+const DIFF_MERGES_VERSION: Version = Version {
     major: 2,
     minor: 31,
     patch: 0,
@@ -102,11 +117,11 @@ pub async fn probe() -> Result<Version> {
 pub fn message_if_unsupported(probed: &Result<Version>) -> String {
     match probed {
         Err(e) if e.is_unparsed() => format!(
-            "Recur needs Git {MIN_VERSION} or newer but could not read this Git's version. Update Git so pull-request commits load correctly."
+            "Recur needs Git {MIN_VERSION} or newer but could not read this Git's version. Update Git so commits and merges work correctly."
         ),
         Err(_) => format!("Recur needs Git {MIN_VERSION} or newer on PATH. Git was not found."),
         Ok(v) if v.less(&MIN_VERSION) => format!(
-            "Recur needs Git {MIN_VERSION} or newer (found {v}). Update Git so pull-request commits load correctly."
+            "Recur needs Git {MIN_VERSION} or newer (found {v}). Update Git so commits and merges work correctly."
         ),
         Ok(_) => String::new(),
     }
@@ -131,7 +146,7 @@ pub fn unsupported_alert(probed: &Result<Version>) -> (String, String) {
 /// so `git log` does not fail and empty the Commits tab.
 pub(crate) fn log_numstat_flags(probed: &Result<Version>) -> &'static [&'static str] {
     match probed {
-        Ok(v) if !v.less(&MIN_VERSION) => &["--diff-merges=first-parent"],
+        Ok(v) if !v.less(&DIFF_MERGES_VERSION) => &["--diff-merges=first-parent"],
         _ => &[],
     }
 }
@@ -183,8 +198,8 @@ mod tests {
 
     #[test]
     fn version_less() {
-        assert!(v(2, 30, 2).less(&MIN_VERSION));
-        assert!(!v(2, 31, 0).less(&MIN_VERSION));
+        assert!(v(2, 37, 9).less(&MIN_VERSION));
+        assert!(!v(2, 38, 0).less(&MIN_VERSION));
         assert!(!v(2, 50, 1).less(&MIN_VERSION));
     }
 
@@ -192,9 +207,9 @@ mod tests {
     fn message_if_unsupported_cases() {
         assert_eq!(message_if_unsupported(&Ok(v(2, 50, 1))), "");
         let got = message_if_unsupported(&Ok(v(2, 24, 3)));
-        assert!(got.contains("2.31") && got.contains("2.24.3"), "{got}");
+        assert!(got.contains("2.38") && got.contains("2.24.3"), "{got}");
         let got = message_if_unsupported(&not_found());
-        assert!(got.contains("2.31") && got.contains("not found"), "{got}");
+        assert!(got.contains("2.38") && got.contains("not found"), "{got}");
         let got = message_if_unsupported(&unparsed("bogus"));
         assert!(
             !got.contains("not found") && got.contains("could not read"),

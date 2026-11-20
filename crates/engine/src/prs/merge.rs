@@ -15,7 +15,6 @@ use recur_forge::model::{format_commit_bullet_list, pr_description, single_line}
 use recur_forge::{Forge, MergeCommitText, MergeOutcome};
 
 use crate::Engine;
-use crate::prs::workspace::PUSH_UNDO_GRACE;
 use crate::prs::{GROUP_MERGED, touch_pr_updated};
 use crate::text::html_escape;
 use crate::view::pr_merge_action::{allowed_merge_methods, pick_allowed_merge_method};
@@ -209,38 +208,28 @@ impl Engine {
         let (sq, mg) = self.merge_message_styles(&pr.workspace_id);
         let msg = local_merge_commit_message(&pr, method, &sq, &mg);
         let deadline = tokio::time::Instant::now() + MERGE_TIMEOUT;
-        let landed = tokio::time::timeout_at(deadline + PUSH_UNDO_GRACE, async {
-            let landed = match mgr.merge(&pr.branch, &base, &msg, method.as_str()).await {
-                Ok(r) => r,
-                Err(e) => {
-                    let mut note = format!("Local merge failed: {}", html_escape(&e.to_string()));
-                    if e.dirty_base().is_none() {
-                        note.push_str(". Resolve the conflict and try again.");
-                    }
-                    return Err(note);
-                }
-            };
+        let landed = tokio::time::timeout_at(deadline, async {
             let tracking = mgr.parse_remote_tracking(&base).await;
-            if let Some((remote, mut short)) = tracking.clone() {
-                if short.is_empty() {
-                    short = mgr.short_branch_name(&base).await;
+            let landed = match &tracking {
+                Some((remote, short)) => {
+                    mgr.land_remote(&pr.branch, remote, short, &msg, method.as_str(), deadline)
+                        .await
                 }
-                if let Err(e) = mgr.push_land(&remote, &short, &landed, deadline).await {
-                    return Err(format!(
-                        "Could not push <code>{}</code> to <code>{}</code>: {}",
-                        html_escape(&short),
-                        html_escape(&remote),
-                        html_escape(&e.to_string())
-                    ));
+                None => mgr.merge(&pr.branch, &base, &msg, method.as_str()).await,
+            };
+            if let Err(e) = landed {
+                let mut note = format!("Merge failed: {}", html_escape(&e.to_string()));
+                if e.is_conflict() || (tracking.is_none() && e.dirty_base().is_none()) {
+                    note.push_str(". Resolve the conflict and try again.");
                 }
-                return Ok(Some((remote, short)));
+                return Err(note);
             }
-            Ok(None)
+            Ok(tracking)
         })
         .await
         .unwrap_or_else(|_| {
             Err(format!(
-                "Local merge failed: {}. Resolve the conflict and try again.",
+                "Merge failed: {}",
                 html_escape("context deadline exceeded")
             ))
         });

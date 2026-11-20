@@ -448,7 +448,7 @@ async fn merge_workspace_github_remote_when_pr_not_required() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn merge_workspace_undone_when_push_fails() {
+async fn merge_workspace_fails_cleanly_when_remote_unreachable() {
     let fx = Fx::new().await;
     let (clone, _) = fx.init_git_repo_with_remote();
     let missing = format!("{}/missing.git", fx.temp());
@@ -474,7 +474,7 @@ async fn merge_workspace_undone_when_push_fails() {
     );
     assert!(
         w.merge_workspace(&ws.id, "squash").await.is_err(),
-        "retry lands again and fails the push again"
+        "retry fails the same way"
     );
     fx.close().await;
 }
@@ -504,6 +504,80 @@ async fn merge_workspace_pushes_local_base_when_origin_exists() {
         shows(&bare, "HEAD:feature.txt").as_deref(),
         Some("from workspace")
     );
+    fx.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn merge_workspace_lands_on_remote_past_stale_dirty_local_main() {
+    let fx = Fx::new().await;
+    let (clone, bare) = fx.init_git_repo_with_remote();
+    let pid = project(&fx, "pstale", &clone, "main", false);
+    let ws = fx.solo(&pid, "land past stale main", "main").await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "from workspace\n",
+        "solo: feature",
+    )
+    .await;
+    let other = fx.clone_other(&bare);
+    write(format!("{other}/base-moved.txt"), "ahead\n");
+    git(&other, &["add", "base-moved.txt"]);
+    git(&other, &["commit", "-m", "base moved"]);
+    git(&other, &["push", "-q", "origin", "main"]);
+    write(format!("{clone}/README.md"), "local edit\n");
+    let merged =
+        fx.s.workspaces
+            .merge_workspace(&ws.id, "squash")
+            .await
+            .unwrap();
+    assert_eq!(merged.state, WorkspaceState::Merged);
+    assert_eq!(
+        shows(&bare, "main:feature.txt").as_deref(),
+        Some("from workspace")
+    );
+    assert_eq!(
+        shows(&bare, "main:base-moved.txt").as_deref(),
+        Some("ahead")
+    );
+    assert_eq!(read(format!("{clone}/README.md")), "local edit\n");
+    assert_eq!(
+        git_out(&clone, &["rev-parse", "main"]).unwrap(),
+        git_out(&bare, &["rev-parse", "main"]).unwrap()
+    );
+    fx.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn merge_workspace_ignores_unpushed_local_main_commits() {
+    let fx = Fx::new().await;
+    let (clone, bare) = fx.init_git_repo_with_remote();
+    let pid = project(&fx, "pahead", &clone, "main", false);
+    let ws = fx.solo(&pid, "land past local main", "main").await;
+    fx.commit_file(
+        &pid,
+        &ws.id,
+        "feature.txt",
+        "from workspace\n",
+        "solo: feature",
+    )
+    .await;
+    write(format!("{clone}/local-only.txt"), "unpushed\n");
+    git(&clone, &["add", "local-only.txt"]);
+    git(&clone, &["commit", "-q", "-m", "unpushed local"]);
+    let local = git_out(&clone, &["rev-parse", "main"]).unwrap();
+    let w = &fx.s.workspaces;
+    let land = w.workspace_land_state(&ws.id).await.unwrap();
+    assert_eq!(land.behind_base, 0, "{land:?}");
+    let merged = w.merge_workspace(&ws.id, "squash").await.unwrap();
+    assert_eq!(merged.state, WorkspaceState::Merged);
+    assert_eq!(
+        shows(&bare, "main:feature.txt").as_deref(),
+        Some("from workspace")
+    );
+    assert_eq!(shows(&bare, "main:local-only.txt"), None);
+    assert_eq!(git_out(&clone, &["rev-parse", "main"]).unwrap(), local);
     fx.close().await;
 }
 
@@ -1019,6 +1093,7 @@ async fn workspace_update_with_base_pushes_github_pr() {
     write(format!("{clone}/from-main.txt"), "base moved\n");
     git(&clone, &["add", "from-main.txt"]);
     git(&clone, &["commit", "-m", "advance main"]);
+    git(&clone, &["push", "-q", "origin", "main"]);
 
     let w = &fx.s.workspaces;
     let res = w
@@ -1058,6 +1133,7 @@ async fn workspace_update_with_base_merge_does_not_force_github_pr() {
     write(format!("{clone}/from-main.txt"), "base moved\n");
     git(&clone, &["add", "from-main.txt"]);
     git(&clone, &["commit", "-m", "advance main"]);
+    git(&clone, &["push", "-q", "origin", "main"]);
 
     let res =
         fx.s.workspaces

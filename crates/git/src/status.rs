@@ -17,7 +17,8 @@ use tokio::time::Instant;
 
 use crate::command::command;
 
-/// Path → status letter: `m` modified, `a` added, `d` deleted, `u` untracked.
+/// Path → status letter: `m` modified, `a` added, `d` deleted, `u` untracked,
+/// `!` unmerged (merge conflict).
 pub type StatusLetters = HashMap<String, String>;
 
 /// Budget for one coalesced status computation. The work is detached from
@@ -102,7 +103,7 @@ async fn status_map_work(dir: String, deadline: Option<Instant>) -> Option<Statu
     parse_status_porcelain(&String::from_utf8_lossy(&out))
 }
 
-/// Parses `git status --porcelain` into path → `m|a|d|u`. Renames and copies
+/// Parses `git status --porcelain` into path → `m|a|d|u|!`. Renames and copies
 /// mark the destination added and the source deleted. Ignored (`!!`) entries
 /// are skipped.
 pub fn parse_status_porcelain(out: &str) -> Option<StatusLetters> {
@@ -171,16 +172,19 @@ fn unquote_path(p: &str) -> String {
     path::clean(&p)
 }
 
-/// Collapses the XY pair into one letter. Priority: deleted > added >
-/// modified > untracked.
+/// Collapses the XY pair into one letter. Priority: unmerged > deleted >
+/// added > modified > untracked.
 fn status_letter(xy: &[u8]) -> &'static str {
-    if xy == b"??" {
-        return "u";
+    match xy {
+        b"??" => return "u",
+        b"DD" | b"AA" => return "!",
+        _ if xy.contains(&b'U') => return "!",
+        _ => {}
     }
     let rank = |c: u8| match c {
         b'D' => 4,
         b'A' | b'C' => 3,
-        b'M' | b'R' | b'T' | b'U' => 2,
+        b'M' | b'R' | b'T' => 2,
         b'?' => 1,
         _ => 0,
     };
@@ -189,7 +193,7 @@ fn status_letter(xy: &[u8]) -> &'static str {
     match pick {
         b'D' => "d",
         b'A' | b'C' => "a",
-        b'M' | b'R' | b'T' | b'U' => "m",
+        b'M' | b'R' | b'T' => "m",
         b'?' => "u",
         _ => "",
     }
@@ -418,6 +422,10 @@ mod tests {
             "!! ignored.bin",
             "MM both.go",
             "AD staged-del.go",
+            "UU both-edited.go",
+            "DU they-kept.go",
+            "AA both-added.go",
+            "DD both-deleted.go",
         ]
         .join("\n");
         let got = parse_status_porcelain(&input).unwrap_or_default();
@@ -430,6 +438,10 @@ mod tests {
             ("renamed.go", "a"),
             ("both.go", "m"),
             ("staged-del.go", "d"), // D beats A
+            ("both-edited.go", "!"),
+            ("they-kept.go", "!"),
+            ("both-added.go", "!"),
+            ("both-deleted.go", "!"),
         ]
         .into_iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))

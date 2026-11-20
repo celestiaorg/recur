@@ -121,7 +121,7 @@ fn st_color(st: &str, t: &recur_ui::Tokens) -> recur_ui::Color {
     match st {
         "m" => t.git_m,
         "a" | "u" => t.git_u,
-        "d" => t.git_d,
+        "d" | "!" => t.git_d,
         _ => t.text,
     }
 }

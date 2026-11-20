@@ -155,9 +155,10 @@ pub fn remap_set(set: &BTreeSet<String>, from: &str, to: &str) -> BTreeSet<Strin
         .collect()
 }
 
-/// Directory → worst status among its descendants (d > a > u > m).
+/// Directory → worst status among its descendants (! > d > a > u > m).
 pub fn dir_status_index(git_status: &BTreeMap<String, String>) -> BTreeMap<String, String> {
     let rank = |s: &str| match s {
+        "!" => 5,
         "d" => 4,
         "a" => 3,
         "u" => 2,

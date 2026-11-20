@@ -64,8 +64,8 @@ struct Row {
 
 /// Drag ghost: the row's icon and name.
 pub struct FileDragGhost {
-    name: SharedString,
-    dir: bool,
+    pub(crate) name: SharedString,
+    pub(crate) dir: bool,
 }
 
 impl FileDragGhost {
@@ -582,12 +582,13 @@ impl Observatory {
                 "a" => "Added",
                 "d" => "Deleted",
                 "u" => "Untracked",
+                "!" => "Merge conflict",
                 other => other,
             };
             let c = match st.as_str() {
                 "m" => t.git_m,
                 "a" | "u" => t.git_u,
-                "d" => t.git_d,
+                "d" | "!" => t.git_d,
                 _ => t.text,
             };
             d = d.child(titled(

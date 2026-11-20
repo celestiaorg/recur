@@ -298,6 +298,26 @@ async fn dropping_an_explorer_file_or_folder_onto_the_terminal_inserts_the_path(
 }
 
 #[gpui::test]
+async fn dropping_a_source_control_row_onto_the_terminal_inserts_the_path(cx: &mut TestAppContext) {
+    let t = Term::default();
+    let opts = Overrides::default()
+        .working_status(|_, _| Ok([("src/main.go".to_owned(), "m".to_owned())].into()));
+    let mut h = mount(cx, t.opts(opts), |_| {}, |_| {});
+    open_dock(&mut h);
+    h.click("panel-toggle:scm");
+    h.update(|o, _, cx| o.refresh_working_status(cx).detach());
+    h.settle();
+    h.drag("scm-stage:u:src/main.go", "term-pane:sess-1");
+    let abs = format!("/mock/worktrees/{WS}/src/main.go");
+    let hits = t
+        .calls("WriteTerminal")
+        .iter()
+        .filter(|a| a.get(1).is_some_and(|s| s.trim() == abs))
+        .count();
+    assert_eq!(hits, 1);
+}
+
+#[gpui::test]
 async fn reopening_adopts_the_running_shell_instead_of_spawning_another(cx: &mut TestAppContext) {
     let t = Term::default();
     let live = TermInfo {

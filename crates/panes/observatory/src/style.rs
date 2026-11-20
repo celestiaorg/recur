@@ -268,7 +268,7 @@ pub fn git_color(st: &str, t: &Tokens) -> Option<Color> {
     match st {
         "m" => Some(t.git_m),
         "a" | "u" => Some(t.git_a),
-        "d" => Some(t.git_d),
+        "d" | "!" => Some(t.git_d),
         _ => None,
     }
 }

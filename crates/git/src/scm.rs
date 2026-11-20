@@ -176,7 +176,12 @@ pub async fn staged_paths(dir: &str) -> Result<Vec<String>> {
     if dir.is_empty() || !is_repo(dir).await {
         return Ok(Vec::new());
     }
-    let out = run_git(dir, ["diff", "--cached", "--name-only", "-z"]).await?;
+    // Unmerged paths are not staged: staging one marks its conflict resolved.
+    let out = run_git(
+        dir,
+        ["diff", "--cached", "--name-only", "-z", "--diff-filter=u"],
+    )
+    .await?;
     if out.trim().is_empty() {
         return Ok(Vec::new());
     }
@@ -229,7 +234,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testutil::{init_repo, temp_dir, write};
+    use crate::testutil::{git, init_repo, temp_dir, write};
 
     fn strings(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| s.to_string()).collect()
@@ -248,6 +253,33 @@ mod tests {
             .await
             .expect_err("stage outside a repo");
         assert!(err.message().contains("not a git repository"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn merge_conflict_status() {
+        let root = temp_dir();
+        let d = root.path.as_str();
+        git(d, &["init", "-b", "main"]);
+        write(d, "f.txt", "base\n");
+        git(d, &["add", "."]);
+        git(d, &["commit", "-m", "base"]);
+        git(d, &["checkout", "-b", "side"]);
+        write(d, "f.txt", "side\n");
+        git(d, &["commit", "-am", "side"]);
+        git(d, &["checkout", "main"]);
+        write(d, "f.txt", "main\n");
+        git(d, &["commit", "-am", "main"]);
+        let _ = std::process::Command::new("git")
+            .args(["-C", d, "merge", "side"])
+            .output();
+
+        let st = working_status(d).await.unwrap_or_default();
+        assert_eq!(st.get("f.txt").map(String::as_str), Some("!"), "{st:?}");
+        let st = crate::working_diff::change_status(d, "side")
+            .await
+            .unwrap_or_default();
+        assert_eq!(st.get("f.txt").map(String::as_str), Some("!"), "{st:?}");
+        assert!(staged_paths(d).await.expect("staged_paths").is_empty());
     }
 
     #[tokio::test]

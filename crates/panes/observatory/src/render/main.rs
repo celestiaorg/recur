@@ -1004,7 +1004,7 @@ impl Observatory {
             let c = match st.as_str() {
                 "m" => t.amber,
                 "a" | "u" => t.emerald,
-                "d" => t.coral,
+                "d" | "!" => t.coral,
                 _ => t.faint,
             };
             bar = bar

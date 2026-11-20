@@ -681,6 +681,10 @@ pub struct TerminalDockChrome {
     pub beside: bool,
     #[serde(skip_serializing_if = "is_zero")]
     pub beside_pct: i64,
+    /// Where this workspace shows the terminal ("below", "full", "center", "beside"); empty
+    /// follows the app-wide default.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub placement: String,
 }
 
 /// TerminalPaletteInfo is an xterm.js ITheme from [[terminalTheme]].

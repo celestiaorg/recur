@@ -15,6 +15,8 @@ pub struct Inputs {
     pub query: Entity<InputState>,
     pub replace: Entity<InputState>,
     pub glob: Entity<InputState>,
+    /// The file explorer's filter box.
+    pub files_filter: Entity<InputState>,
     pub commit: Entity<TextareaState>,
     /// The commit box as an isolated field: a key renders the box, not the Observatory.
     pub commit_view: IsolatedArea,
@@ -42,6 +44,7 @@ impl Inputs {
         let query = field(SEARCH_PLACEHOLDER, window, cx);
         let replace = field(REPLACE_PLACEHOLDER, window, cx);
         let glob = field(GLOB_PLACEHOLDER, window, cx);
+        let files_filter = field("Filter files", window, cx);
         let commit = cx.new(|cx| {
             TextareaState::new(window, cx)
                 .auto_grow(2, 5)
@@ -74,6 +77,11 @@ impl Inputs {
                     _ => {}
                 },
             ),
+            cx.guarded_subscribe(&files_filter, |o, _, ev: &InputEvent, cx| {
+                if matches!(ev, InputEvent::Change) {
+                    o.files_filter_changed(cx);
+                }
+            }),
             // No notify on a change: the source control panel reads the message as it
             // renders, so its view redraws on its own, and a notify would redraw every
             // region of the Observatory on every key.
@@ -90,6 +98,7 @@ impl Inputs {
             query,
             replace,
             glob,
+            files_filter,
             commit,
             commit_view,
             _attach: (emoji, mentions),

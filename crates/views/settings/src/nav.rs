@@ -149,7 +149,7 @@ pub fn nav() -> Vec<NavGroup> {
                     Section::Editor,
                     "Code editor",
                     IconName::Code,
-                    "editor code font size face wrap tab indent spaces go python typescript keymap vim emacs whitespace caret ruler panel left right files scm source control outline problems search refs explorer exclude glob hidden max open tabs gutter diff hints terminal",
+                    "editor code font size face wrap tab indent spaces go python typescript keymap vim emacs whitespace caret ruler panel left right files outline problems search refs explorer exclude glob hidden max open tabs gutter diff hints terminal",
                 ),
                 item(
                     Section::Skills,

@@ -431,7 +431,7 @@ impl WorkspaceView {
             }
         }
 
-        self.plan_filed_transition(window, cx);
+        self.plan_filed_transition(cx);
         self.child_transcript(window, cx);
 
         let feed_mark = (id.clone(), code.clone());
@@ -464,6 +464,7 @@ impl WorkspaceView {
 
         self.apply_seed(cx);
         self.take_prompt_request(window, cx);
+        self.take_review_commit(window, cx);
 
         // Queued sends flush once setup releases them.
         let setup_hold = self.setup_hold(cx);
@@ -688,8 +689,8 @@ impl WorkspaceView {
         });
     }
 
-    /// Point at the Plan panel when a plan lands on the open workspace (not on open).
-    fn plan_filed_transition(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    /// Show the Plan view when a plan lands on the open workspace (not on open).
+    fn plan_filed_transition(&mut self, cx: &mut Context<Self>) {
         let Some(ws) = self.ws(cx) else { return };
         let marker = format!("{}\t{}", ws.id, if ws.plan.is_some() { "1" } else { "0" });
         if self.had_plan_for == marker {
@@ -698,9 +699,6 @@ impl WorkspaceView {
         let before = std::mem::replace(&mut self.had_plan_for, marker);
         if before == format!("{}\t0", ws.id) && ws.plan.is_some() {
             let id = ws.id.clone();
-            self.observatory.update(cx, |o, cx| {
-                o.select_code_panel(recur_view_core::prefs::CodePanelKey::Plan, window, cx)
-            });
             self.state.update(cx, |s, cx| {
                 s.observatory_jump = Some(recur_view_core::state::ObsJump {
                     workspace_id: id,
@@ -711,7 +709,7 @@ impl WorkspaceView {
             });
             recur_view_core::toast(
                 recur_ui::widgets::ToastKind::Success,
-                "Plan filed: review and approve it in the Plan panel",
+                "Plan filed: review and approve it in the Plan view",
                 cx,
             );
         }

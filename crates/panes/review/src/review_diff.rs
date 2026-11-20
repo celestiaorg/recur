@@ -15,6 +15,8 @@ pub enum DiffLayout {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ReviewTab {
+    /// The working tree vs HEAD, shown while there is uncommitted work.
+    Uncommitted,
     #[default]
     Changes,
     Commits,
@@ -68,6 +70,7 @@ pub fn write_review_sidebar(s: &mut LocalStorage, open: bool) {
 
 pub fn read_review_tab(s: &LocalStorage) -> ReviewTab {
     match s.get(REVIEW_TAB_KEY) {
+        Some("uncommitted") => ReviewTab::Uncommitted,
         Some("commits") => ReviewTab::Commits,
         _ => ReviewTab::Changes,
     }
@@ -75,6 +78,7 @@ pub fn read_review_tab(s: &LocalStorage) -> ReviewTab {
 
 pub fn write_review_tab(s: &mut LocalStorage, next: ReviewTab) {
     let v = match next {
+        ReviewTab::Uncommitted => "uncommitted",
         ReviewTab::Changes => "changes",
         ReviewTab::Commits => "commits",
     };
@@ -205,6 +209,8 @@ mod tests {
         assert_eq!(read_review_tab(&s), ReviewTab::Commits);
         assert_eq!(read_file_list_mode(&s), FileListMode::Flat);
         assert!(!read_review_sidebar(&s));
+        write_review_tab(&mut s, ReviewTab::Uncommitted);
+        assert_eq!(read_review_tab(&s), ReviewTab::Uncommitted);
         write_review_sidebar(&mut s, true);
         assert!(read_review_sidebar(&s));
     }

@@ -200,7 +200,9 @@ pub fn session_from_object(v: &Value) -> Option<LoadedSession> {
             file_views: (!views.is_empty()).then_some(views),
             syntax_by_path: non_empty(string_map(o.get("syntaxByPath"))),
             syntax_by_file_type: non_empty(string_map(o.get("syntaxByFileType"))),
-            main_surface_review: str_field("mainSurface").as_deref() == Some("review"),
+            main_surface: recur_editor::session::main_surface_key(
+                str_field("mainSurface").as_deref(),
+            ),
             left_kind: str_field("leftKind"),
             right_kind: str_field("rightKind"),
             left_open: o.get("leftOpen").and_then(Value::as_bool),
@@ -251,8 +253,8 @@ pub fn session_to_object(s: &Session, syntax_maps_known: Option<bool>) -> Value 
     if let Some(m) = &s.syntax_by_file_type {
         o.insert("syntaxByFileType".into(), json!(m));
     }
-    if s.main_surface_review {
-        o.insert("mainSurface".into(), json!("review"));
+    if !s.main_surface.is_empty() {
+        o.insert("mainSurface".into(), json!(s.main_surface));
     }
     for (k, v) in [("leftKind", &s.left_kind), ("rightKind", &s.right_kind)] {
         if let Some(v) = v {

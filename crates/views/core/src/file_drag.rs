@@ -6,6 +6,14 @@
 
 use std::sync::LazyLock;
 
+use gpui_kit::prelude::FluentBuilder;
+use gpui_kit::{
+    Context, IntoElement, ParentElement, Render, SharedString, Styled, Window, div, px,
+};
+use recur_ui::Theme;
+use recur_ui::file_icons::file_icon;
+use recur_ui::set::hsla;
+use recur_ui::text::{LineHeight, TextStyled, text};
 use regex::Regex;
 
 /// The intra-app drag payload of explorer rows: workspace-relative paths (a trailing `/` marks a
@@ -20,6 +28,49 @@ impl WorkspaceFileDrag {
         WorkspaceFileDrag {
             paths: normalize_file_drag_paths(paths),
         }
+    }
+}
+
+/// Drag ghost: the row's icon and name.
+pub struct FileDragGhost {
+    pub name: SharedString,
+    pub dir: bool,
+}
+
+impl FileDragGhost {
+    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
+        let t = Theme::of(cx).tokens;
+        div()
+            .flex()
+            .items_center()
+            .gap(px(4.))
+            .px(px(10.))
+            .py(px(3.))
+            .opacity(0.75)
+            .bg(hsla(t.pane_2))
+            .text_color(hsla(t.text))
+            .when(!self.dir, |d| {
+                d.child(
+                    div()
+                        .size(px(14.))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(file_icon(self.name.clone())),
+                )
+            })
+            .child(
+                text(self.name.clone())
+                    .size(12.5)
+                    .line_height(LineHeight::Scale(1.35))
+                    .nowrap(),
+            )
+    }
+}
+
+impl Render for FileDragGhost {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        recur_ui::guard::view(self, window, cx, Self::render_view)
     }
 }
 

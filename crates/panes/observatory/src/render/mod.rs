@@ -5,7 +5,7 @@
 
 mod ctx;
 mod explorer;
-pub(crate) use explorer::FileDragGhost;
+mod float;
 mod main;
 mod panels;
 mod scm;
@@ -15,19 +15,20 @@ use std::time::{Duration, Instant};
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, Context, Div, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    Render, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
+    AnyElement, App, AppContext as _, Context, Div, InteractiveElement, IntoElement, MouseButton,
+    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_ui::text::{TextStyled, text};
 use recur_ui::tooltip::titled;
-use recur_ui::widgets::{Axis, ChipIcon, Edge, resize_handle, tab_bar_rule, tab_chip, tab_strip};
+use recur_ui::widgets::{
+    Axis, ChipIcon, Edge, Select, SelectEvent, SelectOption, TriggerStyle, resize_handle,
+    tab_bar_rule, tab_chip, tab_strip,
+};
 use recur_ui::{IconName, Theme, motion};
-use recur_view_core::prefs::{CodePanelKey, PanelKey, PanelSide};
+use recur_view_core::prefs::{CodePanelKey, PanelKey, PanelSide, TerminalPlacement};
 use recur_view_review::review_diff::ReviewTab;
 pub(crate) use recur_view_review::style::checkerboard;
 use recur_view_review::style::hsla;
-
-pub(crate) use scm::ScmProbes;
 
 use crate::model::{FocusZone, MainSurface, Pane, is_scratch_path};
 use crate::obs::{Observatory, OpenRequest};
@@ -50,10 +51,8 @@ pub(crate) fn pulse_opacity(epoch: Instant, window: &mut Window, cx: &App) -> f3
 fn panel_icon(k: CodePanelKey) -> IconName {
     match k {
         CodePanelKey::Maestro => IconName::Message,
-        CodePanelKey::Plan => IconName::ListTodo,
         CodePanelKey::Findings => IconName::HatGlasses,
         CodePanelKey::Files => IconName::FolderSimple,
-        CodePanelKey::Scm => IconName::GitPullRequest,
         CodePanelKey::Outline => IconName::List,
         CodePanelKey::Problems => IconName::CircleAlert,
         CodePanelKey::Search => IconName::Search,
@@ -124,15 +123,110 @@ impl Observatory {
         let t = Theme::of(cx).tokens;
         let keys = self.panels_on(side, cx);
         let mut g = div().flex().items_center().gap(px(1.));
-        g = match side {
-            PanelSide::Left => g.ml(px(2.)).pl(px(4.)).border_l_1(),
-            PanelSide::Right => g.mr(px(2.)).pr(px(4.)).border_r_1(),
+        // The right group's rule is after its pin, so it shows with no panel icons too.
+        if side == PanelSide::Left {
+            g = g
+                .ml(px(2.))
+                .pl(px(4.))
+                .border_l_1()
+                .border_color(hsla(t.line));
         }
-        .border_color(hsla(t.line));
         for k in keys {
             g = g.child(self.panel_toggle(k, side, cx));
         }
         g
+    }
+
+    /// The Terminal split button: the toggle, and the chevron that opens the placement menu.
+    fn term_button(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let blocked = self.props.main_blocked;
+        let ws = self.props.workspace_id.clone();
+        let placement = self.term_placement(cx);
+        let open = self.term_open(cx);
+        // In place of the editor it is a view button: it switches to the terminal and stays.
+        let stays = open && placement == TerminalPlacement::Center;
+        let tip = if blocked {
+            WAITING.to_string()
+        } else if stays {
+            "Terminal (⌃` goes back)".to_string()
+        } else if open {
+            "Hide terminal (⌃`)".to_string()
+        } else {
+            format!("Show terminal {} (⌃`)", placement.label().to_lowercase())
+        };
+        let toggle = pane_toggle(
+            "term-toggle",
+            IconName::Terminal,
+            open,
+            blocked.then_some(t.pane),
+            cx,
+        )
+        .debug_selector(|| "obs-term-toggle".into())
+        .when(!blocked && !stays, |d| {
+            d.on_click(cx.guarded_listener(move |o, _, _, cx| {
+                o.state
+                    .update(cx, |s, cx| s.set_terminal_dock_open(&ws, !open, cx));
+            }))
+        });
+
+        let menu = match &self.term_place_menu {
+            Some((m, _)) => m.clone(),
+            None => {
+                let style = TriggerStyle {
+                    height: Some(28.),
+                    pad_x: Some(1.),
+                    radius: Some(5.),
+                    gap: Some(0.),
+                    chevron_size: Some(10.),
+                    hide_value: true,
+                    ..Default::default()
+                };
+                let m = cx.new(|cx| {
+                    Select::new(Vec::new(), window, cx)
+                        .label("Terminal placement")
+                        .ghost()
+                        .menu_variant(recur_ui::logic::menu_space::MenuVariant::Ghost)
+                        .trigger_style(style)
+                });
+                let sub = cx.guarded_subscribe(&m, |o, _, ev: &SelectEvent, cx| {
+                    if let SelectEvent::Change(key) = ev {
+                        o.pick_term_placement(key, cx);
+                    }
+                });
+                self.term_place_menu = Some((m.clone(), sub));
+                m
+            }
+        };
+        let overridden = self
+            .state
+            .read(cx)
+            .dock
+            .placement(&self.props.workspace_id)
+            .is_some();
+        let mut options: Vec<SelectOption> = TerminalPlacement::ALL
+            .into_iter()
+            .map(|p| SelectOption::new(p.key(), p.label()))
+            .collect();
+        if overridden {
+            options.push(SelectOption::new("", "Use default"));
+        }
+        let disabled = blocked || self.term_overlaying();
+        menu.update(cx, |m, cx| {
+            m.set_options(options, cx);
+            m.set_value(placement.key(), cx);
+            m.set_display(
+                Some(format!("Terminal placement: {}", placement.label()).into()),
+                cx,
+            );
+            m.set_disabled(disabled.then_some(t.pane), cx);
+        });
+        div()
+            .flex()
+            .items_center()
+            .child(titled("term-toggle-t", tip, toggle))
+            .child(menu)
+            .into_any_element()
     }
 
     /// `.obs-toolbar`.
@@ -143,10 +237,14 @@ impl Observatory {
         let has_right = self.has_right(cx);
         let left_open = self.left_gutter_open();
         let no_left = !has_left || !left_open;
-        let no_side = !has_right || !self.show_side;
+        // Floating, the right panel has no column, and the left group takes what the center
+        // column leaves, as the left dock under it does.
+        let floating = self.floating(cx);
+        let flex_left = floating && !no_left;
+        let no_side = !has_right || !self.show_side || floating;
         let blocked = self.props.main_blocked;
-        let review = self.main_surface(cx) == MainSurface::Review;
-        let lit = self.focus_zone == FocusZone::Editor;
+        let surface = self.main_surface(cx);
+        let review = surface == MainSurface::Review;
 
         // The root tracks the Observatory's focus, which a click would take; the chrome
         // outside the focusable regions is not focusable in the page.
@@ -164,7 +262,9 @@ impl Observatory {
 
         let dock_w = self.maestro_dock_width(cx);
         let left_col = |d: Div| {
-            if has_left && !no_left && !narrow {
+            if flex_left {
+                d.flex_1()
+            } else if has_left && !no_left && !narrow {
                 d.flex_none().w(px(dock_w))
             } else {
                 d.flex_none()
@@ -180,6 +280,14 @@ impl Observatory {
                 .min_w_0()
         };
         if has_left {
+            // The chat alone needs no icon to pick it: the toggle stands for it, unread count
+            // and all.
+            let solo = self.panels_on(PanelSide::Left, cx) == [CodePanelKey::Maestro];
+            let unread = if solo {
+                self.pane_badge_count(CodePanelKey::Maestro, cx)
+            } else {
+                0
+            };
             let tog = titled(
                 "left-gutter-t",
                 if left_open {
@@ -189,11 +297,12 @@ impl Observatory {
                 },
                 pane_toggle("left-gutter", IconName::PanelLeft, left_open, None, cx)
                     .debug_selector(|| "obs-left-toggle".into())
+                    .when(unread > 0, |d| d.child(pane_badge(unread, cx)))
                     .on_click(cx.guarded_listener(move |o, _, _, cx| {
                         o.set_left_gutter_open(!left_open, cx)
                     })),
             );
-            let icons = self.panel_icons(PanelSide::Left, cx);
+            let icons = (!solo).then(|| self.panel_icons(PanelSide::Left, cx));
             bar = bar.child(left_col(
                 group()
                     .when(!narrow, |d| {
@@ -204,7 +313,7 @@ impl Observatory {
                         }))
                     })
                     .child(tog)
-                    .child(icons),
+                    .children(icons),
             ));
         } else if !self.props.loop_scoped {
             bar = bar.child(left_col(
@@ -222,8 +331,261 @@ impl Observatory {
             ));
         }
 
+        let mut tools = group().justify_end();
+        if !self.props.workspace_id.is_empty() {
+            let dis = blocked.then_some(t.pane);
+            let editor_on = surface == MainSurface::Editor && !self.editor_hidden(cx);
+            let covered = self.term_is_center(cx);
+            if self.surface_available(MainSurface::Plan, cx) {
+                let n = self.plan_open_count(cx);
+                tools =
+                    tools.child(titled(
+                        "plan-toggle-t",
+                        if blocked {
+                            WAITING.to_string()
+                        } else {
+                            self.plan_badge_title(cx)
+                        },
+                        pane_toggle(
+                            "plan-toggle",
+                            IconName::ListTodo,
+                            surface == MainSurface::Plan && !covered,
+                            dis,
+                            cx,
+                        )
+                        .debug_selector(|| "obs-plan-toggle".into())
+                        .when(n > 0, |d| d.child(pane_badge(n, cx)))
+                        .when(!blocked, |d| {
+                            d.on_click(cx.guarded_listener(|o, _, _, cx| {
+                                o.show_surface(MainSurface::Plan, cx)
+                            }))
+                        }),
+                    ));
+            }
+            tools = tools.child(titled(
+                "editor-toggle-t",
+                if blocked { WAITING } else { "Editor (⌥⌘E)" },
+                pane_toggle("editor-toggle", IconName::Code, editor_on, dis, cx)
+                    .debug_selector(|| "obs-editor-toggle".into())
+                    .when(!blocked, |d| {
+                        d.on_click(cx.guarded_listener(|o, _, _, cx| o.show_editor_surface(cx)))
+                    }),
+            ));
+            if self.is_git(cx) {
+                let dirty = self.working_dirty_count();
+                tools = tools.child(titled(
+                    "review-toggle-t",
+                    if blocked {
+                        WAITING.to_string()
+                    } else if dirty > 0 {
+                        format!("Review changes ({dirty} uncommitted) (⌥⌘R)")
+                    } else {
+                        "Review changes (⌥⌘R)".to_string()
+                    },
+                    pane_toggle(
+                        "review-toggle",
+                        IconName::FileDiff,
+                        review && !covered,
+                        dis,
+                        cx,
+                    )
+                    .debug_selector(|| "obs-review-toggle".into())
+                    .when(dirty > 0, |d| d.child(pane_badge(dirty, cx)))
+                    .when(!blocked, |d| {
+                        d.on_click(cx.guarded_listener(|o, _, _, cx| o.show_review_surface(cx)))
+                    }),
+                ));
+            }
+            if let Some(pr) = self.workspace_pr(cx) {
+                let failing =
+                    recur_view_core::pr::group_checks(pr.checks.as_deref().unwrap_or_default())
+                        .fail
+                        .len();
+                tools = tools.child(titled(
+                    "pr-toggle-t",
+                    if blocked {
+                        WAITING.to_string()
+                    } else if failing > 0 {
+                        format!("Pull request ({failing} failing)")
+                    } else {
+                        "Pull request".to_string()
+                    },
+                    pane_toggle(
+                        "pr-toggle",
+                        IconName::GitPullRequest,
+                        surface == MainSurface::Pr && !covered,
+                        dis,
+                        cx,
+                    )
+                    .debug_selector(|| "obs-pr-toggle".into())
+                    .when(failing > 0, |d| d.child(pane_badge(failing, cx)))
+                    .when(!blocked, |d| {
+                        d.on_click(cx.guarded_listener(|o, _, _, cx| o.show_pr_surface(cx)))
+                    }),
+                ));
+            }
+            tools = tools.child(self.term_button(window, cx));
+        }
+        // Floating beside the left dock, the center's toggles and the right group span the center
+        // column.
+        let (mut bar, left) = if flex_left {
+            let w = self.center_width(cx);
+            (div().flex().flex_none().w(px(w)).min_w_0(), Some(bar))
+        } else {
+            (bar, None)
+        };
+        bar = bar.child(
+            div()
+                .debug_selector(|| "obs-tb-tools".into())
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .justify_end()
+                .child(tools),
+        );
+
+        if has_right {
+            let show = self.show_side;
+            // Floating, the panel's icons show only while it is out, over it as when docked: the
+            // group widens with the slide, which moves the center's toggles clear of the flyout.
+            let out = if floating { self.side_shown(cx) } else { 1. };
+            let icons = (out > 0.).then(|| self.panel_icons(PanelSide::Right, cx));
+            let float = self.state.read(cx).panels.side_float();
+            let pin = titled(
+                "side-float-t",
+                if float {
+                    "Dock right panel (⌥⌘J)"
+                } else {
+                    "Float right panel (⌥⌘J)"
+                },
+                pane_toggle("side-float", IconName::Pin, !float, None, cx)
+                    .debug_selector(|| "obs-float-toggle".into())
+                    .on_click(cx.guarded_listener(|o, _, _, cx| {
+                        o.state.update(cx, |s, cx| s.toggle_side_float(cx))
+                    })),
+            );
+            let tog = titled(
+                "side-toggle-t",
+                if blocked {
+                    WAITING
+                } else if show {
+                    "Hide right panel (⌥⌘⇧B)"
+                } else {
+                    "Show right panel (⌥⌘⇧B)"
+                },
+                pane_toggle(
+                    "side-toggle",
+                    IconName::PanelRight,
+                    show,
+                    blocked.then_some(t.pane),
+                    cx,
+                )
+                .debug_selector(|| "obs-side-toggle".into())
+                .when(!blocked, |d| {
+                    d.on_click(cx.guarded_listener(move |o, _, _, cx| o.set_show_side(!show, cx)))
+                }),
+            );
+            let side_w = self.obs_side_width(cx);
+            let width = if narrow {
+                None
+            } else if floating {
+                (out > 0.).then(|| (out * side_w).max(recur_view_core::prefs::OBS_TB_SIDE_REST))
+            } else {
+                (!no_side).then_some(side_w)
+            };
+            let right = group()
+                .relative()
+                .justify_end()
+                .flex_none()
+                .when(!narrow, |d| {
+                    d.border_l_1().border_color(hsla(if width.is_some() {
+                        t.line
+                    } else {
+                        recur_ui::color::TRANSPARENT
+                    }))
+                });
+            let right = match width {
+                // The icons keep to what the width leaves, cut off at its left edge mid-slide.
+                Some(w) => right.w(px(w)).child(
+                    div()
+                        .flex()
+                        .flex_1()
+                        .min_w_0()
+                        .h_full()
+                        .items_center()
+                        .justify_end()
+                        .overflow_hidden()
+                        .children(icons),
+                ),
+                None => right.children(icons),
+            }
+            // The rule that sets the panel's own controls (the pin and the hide toggle) apart from
+            // its icons, there whether or not the icons are.
+            .child(
+                div()
+                    .debug_selector(|| "obs-side-rule".into())
+                    .flex_none()
+                    .w(px(1.))
+                    .h(px(14.))
+                    .mx(px(4.))
+                    .bg(hsla(t.line)),
+            )
+            .child(pin)
+            .child(tog);
+            bar = bar.child(right);
+        } else if !narrow && !floating {
+            bar = bar.child(div().flex_none().w(px(self.obs_side_width(cx))));
+        }
+        match left {
+            Some(left) => left.child(bar),
+            None => bar,
+        }
+        .into_any_element()
+    }
+
+    /// The center column's tabs (the open files, or the review's and the pull request's chips),
+    /// level with the chat tabs, so the toolbar over them holds only icons.
+    pub(super) fn center_tabs_body(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let blocked = self.props.main_blocked;
+        let surface = self.main_surface(cx);
+        // The pull request's own tab row (Conversation, Commits, Files changed, Checks).
+        if surface == MainSurface::Pr
+            && let Some(v) = self.pr_view(window, cx)
+        {
+            let layer = self.head_layer(v.head, cx);
+            return div()
+                .debug_selector(|| "obs-center-tabs".into())
+                .flex_none()
+                .w_full()
+                .h(px(CHROME_H))
+                .child(recur_ui::style::cached_view(
+                    &layer,
+                    gpui_kit::StyleRefinement::default().size_full(),
+                ))
+                .into_any_element();
+        }
+        // The plan keeps the head its dock had, in the tab row's place: its own tabs, or its
+        // name.
+        if surface == MainSurface::Plan {
+            let head = match self.slots.plan_head.clone() {
+                Some(v) => side_head(true, cx).child(self.head_slot(v, cx)),
+                None => side_head(false, cx).child(side_title(surface.label(), cx)),
+            };
+            return head
+                .debug_selector(|| "obs-center-tabs".into())
+                .w_full()
+                .into_any_element();
+        }
+        let review = surface == MainSurface::Review;
+        let lit = self.focus_zone == FocusZone::Editor;
         let active_key = if review {
             match self.review_strip_tab(cx) {
+                ReviewTab::Uncommitted => "uncommitted".to_string(),
                 ReviewTab::Changes => "changes".to_string(),
                 ReviewTab::Commits => "commits".to_string(),
             }
@@ -237,7 +599,10 @@ impl Observatory {
         };
         let mut strip = tab_strip(
             "obs-file-tabs",
-            if review { "Review" } else { "Open files" },
+            match surface {
+                MainSurface::Editor => "Open files",
+                s => s.label(),
+            },
         )
         .grow(true)
         .active_key(SharedString::from(active_key.clone()))
@@ -248,8 +613,25 @@ impl Observatory {
         }
         if review {
             let b = self.review_bound.clone();
-            let count = b.file_count as u32;
+            let count = self.review_paths(cx).len() as u32;
             let tab = self.review_strip_tab(cx);
+            let dirty = self.working_dirty_count();
+            if dirty > 0 {
+                strip = strip.tab(
+                    "uncommitted",
+                    tab_chip("review-uncommitted", "Uncommitted")
+                        .title(format!("Uncommitted ({dirty})"))
+                        .icon(ChipIcon::App(IconName::GitGraph, None))
+                        .badge(dirty as u32)
+                        .active(tab == ReviewTab::Uncommitted)
+                        .lit(lit)
+                        .on_click(cx.guarded_listener(move |o, _, _, cx| {
+                            if !o.props.main_blocked {
+                                o.set_review_tab(ReviewTab::Uncommitted, cx);
+                            }
+                        })),
+                );
+            }
             strip = strip.tab(
                 "changes",
                 tab_chip("review-changes", "Changes")
@@ -270,12 +652,10 @@ impl Observatory {
             );
             if self.review_has_commits(cx) {
                 let n = b.commit_count as u32;
-                let dirty = self.working_dirty_count();
-                let title = match (n > 0, dirty > 0) {
-                    (true, true) => format!("Commits ({n}) · {dirty} uncommitted files"),
-                    (true, false) => format!("Commits ({n})"),
-                    (false, true) => format!("Commits · {dirty} uncommitted files"),
-                    (false, false) => "Commits".into(),
+                let title = if n > 0 {
+                    format!("Commits ({n})")
+                } else {
+                    "Commits".into()
                 };
                 strip = strip.tab(
                     "commits",
@@ -283,7 +663,6 @@ impl Observatory {
                         .title(title)
                         .icon(ChipIcon::App(IconName::GitCommit, None))
                         .badge(n)
-                        .dirty(dirty > 0)
                         .active(tab == ReviewTab::Commits)
                         .lit(lit)
                         .on_click(cx.guarded_listener(move |o, _, _, cx| {
@@ -385,141 +764,31 @@ impl Observatory {
                 strip = strip.tab(SharedString::from(p), chip);
             }
         }
-        if !self.props.workspace_id.is_empty() {
-            let dis = blocked.then_some(t.pane);
-            let editor_on = !review && !self.editor_hidden(cx);
-            strip = strip.trailing(titled(
-                "editor-toggle-t",
-                if blocked {
-                    WAITING
-                } else if !editor_on {
-                    "Show editor (⌥⌘E)"
-                } else {
-                    "Hide editor (⌥⌘E)"
-                },
-                pane_toggle("editor-toggle", IconName::Code, editor_on, dis, cx)
-                    .debug_selector(|| "obs-editor-toggle".into())
-                    .when(!blocked, |d| {
-                        d.on_click(cx.guarded_listener(|o, _, _, cx| o.toggle_editor_surface(cx)))
-                    }),
-            ));
-            if self.is_git(cx) {
-                strip = strip.trailing(titled(
-                    "review-toggle-t",
-                    if blocked {
-                        WAITING
-                    } else {
-                        "Review changes (⌥⌘R)"
-                    },
-                    pane_toggle("review-toggle", IconName::FileDiff, review, dis, cx)
-                        .debug_selector(|| "obs-review-toggle".into())
-                        .when(!blocked, |d| {
-                            d.on_click(cx.guarded_listener(|o, _, _, cx| o.toggle_review(cx)))
-                        }),
-                ));
-            }
-            let term_open = self.term_open(cx);
-            let ws = self.props.workspace_id.clone();
-            strip = strip.trailing(titled(
-                "term-toggle-t",
-                if blocked {
-                    WAITING
-                } else if term_open {
-                    "Hide terminal (⌃`)"
-                } else {
-                    "Show terminal (⌃`)"
-                },
-                pane_toggle("term-toggle", IconName::Terminal, term_open, dis, cx)
-                    .debug_selector(|| "obs-term-toggle".into())
-                    .when(!blocked, |d| {
-                        d.on_click(cx.guarded_listener(move |o, _, _, cx| {
-                            o.state
-                                .update(cx, |s, cx| s.set_terminal_dock_open(&ws, !term_open, cx));
-                        }))
-                    }),
-            ));
-            let beside = self.term_beside(cx);
-            let beside_dis = blocked || self.term_overlaying();
-            strip = strip.trailing(titled(
-                "term-beside-t",
-                if blocked {
-                    WAITING
-                } else if beside {
-                    "Terminal below editor"
-                } else {
-                    "Terminal beside editor"
-                },
-                pane_toggle(
-                    "term-beside",
-                    IconName::SquareSplitHorizontal,
-                    beside,
-                    beside_dis.then_some(t.pane),
-                    cx,
-                )
-                .debug_selector(|| "obs-term-beside-toggle".into())
-                .when(!beside_dis, |d| {
-                    d.on_click(cx.guarded_listener(|o, _, _, cx| o.toggle_term_beside(cx)))
-                }),
-            ));
-        }
-        bar = bar.child(
-            div()
-                .id("obs-tb-center")
-                .debug_selector(|| "obs-tb-center".into())
-                .track_focus(&self.tabs_focus)
-                .flex_1()
-                .min_w_0()
-                .mb(px(-1.))
-                .flex()
-                .items_stretch()
-                .child(strip),
-        );
-
-        if has_right {
-            let show = self.show_side;
-            let icons = self.panel_icons(PanelSide::Right, cx);
-            let tog = titled(
-                "side-toggle-t",
-                if blocked {
-                    WAITING
-                } else if show {
-                    "Hide right panel (⌥⌘⇧B)"
-                } else {
-                    "Show right panel (⌥⌘⇧B)"
-                },
-                pane_toggle(
-                    "side-toggle",
-                    IconName::PanelRight,
-                    show,
-                    blocked.then_some(t.pane),
-                    cx,
-                )
-                .debug_selector(|| "obs-side-toggle".into())
-                .when(!blocked, |d| {
-                    d.on_click(cx.guarded_listener(move |o, _, _, cx| o.set_show_side(!show, cx)))
-                }),
-            );
-            let mut right = group()
-                .justify_end()
-                .when(!narrow, |d| {
-                    d.border_l_1().border_color(hsla(if no_side {
-                        recur_ui::color::TRANSPARENT
-                    } else {
-                        t.line
-                    }))
-                })
-                .child(icons)
-                .child(tog);
-            right = if !no_side && !narrow {
-                right.flex_none().w(px(self.obs_side_width(cx)))
-            } else {
-                right.flex_none()
-            };
-            bar = bar.child(right);
-        } else if !narrow {
-            bar = bar.child(div().flex_none().w(px(self.obs_side_width(cx))));
-        }
-        bar.into_any_element()
+        div()
+            .debug_selector(|| "obs-center-tabs".into())
+            .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
+            .relative()
+            .flex()
+            .items_stretch()
+            .flex_none()
+            .w_full()
+            .h(px(CHROME_H))
+            .pb(px(1.))
+            .bg(hsla(t.pane))
+            .child(tab_bar_rule(cx))
+            .child(
+                div()
+                    .id("obs-tb-center")
+                    .debug_selector(|| "obs-tb-center".into())
+                    .track_focus(&self.tabs_focus)
+                    .flex_1()
+                    .min_w_0()
+                    .mb(px(-1.))
+                    .flex()
+                    .items_stretch()
+                    .child(strip),
+            )
+            .into_any_element()
     }
 
     /// `.obs-side-head` for a dock showing `kind`.
@@ -532,8 +801,7 @@ impl Observatory {
     ) -> AnyElement {
         let label = self.panel_label(kind).0;
         let agent_head = left && kind == CodePanelKey::Maestro && self.slots.left_head.is_some();
-        let plan_head = kind == CodePanelKey::Plan && self.slots.plan_head.is_some();
-        let tabbed = (agent_head && self.props.left_title == "Agent") || plan_head;
+        let tabbed = agent_head && self.props.left_title == "Agent";
         let mut head = side_head(tabbed, cx);
         if portal {
             let on = self.state.read(cx).pr_agent_dock_open;
@@ -564,27 +832,8 @@ impl Observatory {
                     )),
             );
         }
-        let slot = if agent_head {
-            self.slots.left_head.clone()
-        } else if plan_head {
-            self.slots.plan_head.clone()
-        } else {
-            None
-        };
-        if let Some(v) = slot {
-            let layer = self.head_layer(v, cx);
-            head = head.child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .mb(px(-1.))
-                    .flex()
-                    .items_stretch()
-                    .child(recur_ui::style::cached_view(
-                        &layer,
-                        gpui_kit::StyleRefinement::default().flex_1().min_w_0(),
-                    )),
-            );
+        if let Some(v) = self.slots.left_head.clone().filter(|_| agent_head) {
+            head = head.child(self.head_slot(v, cx));
         } else {
             head = head.child(side_title(label, cx));
             head = head.children(self.render_head_extras(kind, cx));
@@ -660,7 +909,15 @@ impl Observatory {
                     .bg(hsla(t.bg))
                     .child(body),
             );
-        aside = if narrow {
+        aside = if !portal && self.floating(cx) {
+            // The right panel floating: the center column keeps its width and this takes
+            // the rest.
+            aside
+                .flex_1()
+                .h_full()
+                .border_r_1()
+                .border_color(hsla(t.line))
+        } else if narrow {
             // `max-height: 200px`. The chat's transcript is a virtualized list that adds no
             // content height here, but in WebKit its messages always overflow the cap.
             let aside = if kind == CodePanelKey::Maestro {
@@ -692,6 +949,21 @@ impl Observatory {
             return None;
         }
         Some(self.render_left_aside(CodePanelKey::Maestro, true, window, cx))
+    }
+
+    /// A host's head view (the chat's tabs, the plan's) filling a tabbed [`side_head`].
+    pub(super) fn head_slot(&mut self, v: gpui_kit::AnyView, cx: &mut Context<Self>) -> Div {
+        let layer = self.head_layer(v, cx);
+        div()
+            .flex_1()
+            .min_w_0()
+            .mb(px(-1.))
+            .flex()
+            .items_stretch()
+            .child(recur_ui::style::cached_view(
+                &layer,
+                gpui_kit::StyleRefinement::default().flex_1().min_w_0(),
+            ))
     }
 
     fn head_layer(
@@ -778,6 +1050,7 @@ impl Observatory {
                 .border_color(hsla(t.line));
             if !self.props.main_blocked && !self.term_overlaying() {
                 let state = self.state.clone();
+                let key = self.side_width_key(cx);
                 aside = aside.child(
                     resize_handle(
                         "obs-side-resize",
@@ -788,17 +1061,13 @@ impl Observatory {
                     )
                     .on_live({
                         let state = state.clone();
-                        move |w, _, cx| {
-                            state.update(cx, |s, cx| s.set_panel_live(PanelKey::ObsSide, w, cx))
-                        }
+                        move |w, _, cx| state.update(cx, |s, cx| s.set_panel_live(key, w, cx))
                     })
                     .on_commit({
                         let state = state.clone();
                         move |_, cx| state.update(cx, |s, _| s.persist_panels())
                     })
-                    .on_step(move |w, _, cx| {
-                        state.update(cx, |s, cx| s.set_panel(PanelKey::ObsSide, w, cx))
-                    }),
+                    .on_step(move |w, _, cx| state.update(cx, |s, cx| s.set_panel(key, w, cx))),
                 );
             }
         }
@@ -813,12 +1082,13 @@ impl Observatory {
         let t = Theme::of(cx).tokens;
         let narrow = Self::narrow(window);
         let portal = self.portal_agent_to_pr(cx);
-        let mut body = div()
-            .debug_selector(|| "obs-body".into())
-            .flex()
-            .flex_1()
-            .min_h_0()
-            .min_w_0();
+        let mut flex_left = false;
+        let floating = self.floating(cx);
+        // The full-width terminal runs under the chat and the center only: the right panel
+        // keeps the whole height, beside it when docked and over it when floating.
+        let under = !narrow && self.term_full_layout(cx);
+        let mut docked = None;
+        let mut body = div().relative().flex().flex_1().min_h_0().min_w_0();
         body = if narrow {
             body.flex_col()
         } else {
@@ -830,32 +1100,60 @@ impl Observatory {
             && let Some(kind) = self.left_meta(cx)
         {
             // Cached like the right dock (a key in a line note or the chat beside it would
-            // redraw the findings and their markdown), unless it holds a text field itself.
-            if !matches!(kind, CodePanelKey::Maestro | CodePanelKey::Scm) && !narrow {
+            // redraw the findings and their markdown), unless it holds the chat.
+            if kind != CodePanelKey::Maestro && !narrow {
                 let pane = self
                     .left_pane
                     .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::left_pane_body))
                     .clone();
                 let width = self.state.read(cx).panels.size(PanelKey::MaestroDock);
+                let style = gpui_kit::StyleRefinement::default().h_full();
                 body = body.child(recur_ui::style::cached_view(
                     &pane,
-                    gpui_kit::StyleRefinement::default()
-                        .flex_none()
-                        .w(px(width))
-                        .h_full(),
+                    if floating {
+                        style.flex_1().min_w_0()
+                    } else {
+                        style.flex_none().w(px(width))
+                    },
                 ));
             } else {
                 body = body.child(self.render_left_aside(kind, false, window, cx));
             }
+            flex_left = floating;
         }
         let main = self.render_main(window, cx);
         let mut work = div()
             .debug_selector(|| "obs-work".into())
             .relative()
             .flex()
-            .flex_1()
             .min_w_0()
-            .min_h_0();
+            .min_h_0()
+            .child(crate::geometry::probe(&self.bounds.work));
+        work = if flex_left {
+            let (key, width) = (PanelKey::ObsCenter, self.center_width(cx));
+            let state = self.state.clone();
+            let handle = resize_handle(
+                "obs-center-resize",
+                Axis::X,
+                Edge::Start,
+                width,
+                &self.resize_focus[0],
+            )
+            .on_live({
+                let state = state.clone();
+                move |w, _, cx| state.update(cx, |s, cx| s.set_panel_live(key, w, cx))
+            })
+            .on_commit({
+                let state = state.clone();
+                move |_, cx| state.update(cx, |s, _| s.persist_panels())
+            })
+            .on_step(move |w, _, cx| state.update(cx, |s, cx| s.set_panel(key, w, cx)));
+            work.flex_none()
+                .w(px(width))
+                .when(!self.term_overlaying(), |d| d.child(handle))
+        } else {
+            work.flex_1()
+        };
         work = if narrow {
             work.flex_col()
         } else {
@@ -874,31 +1172,67 @@ impl Observatory {
                 .with_priority(150),
             )
         } else {
-            work.child(div().flex().flex_1().min_w_0().min_h_0().child(main))
+            let tabs = self
+                .tabs_pane
+                .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::center_tabs_body))
+                .clone();
+            // In place of the editor, the terminal's own tabs are the center's.
+            let tabs = (!self.term_is_center(cx)).then(|| {
+                recur_ui::style::cached_view(
+                    &tabs,
+                    gpui_kit::StyleRefinement::default()
+                        .flex_none()
+                        .w_full()
+                        .h(px(CHROME_H)),
+                )
+            });
+            work.child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_w_0()
+                    .min_h_0()
+                    .children(tabs)
+                    .child(main),
+            )
         };
+        let shown = if floating {
+            self.step_side_slide(window, cx)
+        } else {
+            self.side_slide = None;
+            self.show_side.then_some(1.)
+        };
+        let mut flyout = None;
         if self.has_right(cx)
-            && self.show_side
+            && let Some(shown) = shown
             && let Some(kind) = self.right_meta(cx)
             && !(portal && kind == CodePanelKey::Maestro)
         {
-            // Its own cached view unless it holds the chat or the commit message (whose keys
-            // would dirty it, redrawing all of it) or stacks under the main area at its content's
-            // height. Source control caches its changes list inside instead.
-            if !matches!(kind, CodePanelKey::Maestro | CodePanelKey::Scm) && !narrow {
+            // Its own cached view unless it holds the chat (whose keys would dirty it, redrawing
+            // all of it) or stacks under the main area at its content's height.
+            let side = if kind != CodePanelKey::Maestro && !narrow {
                 let pane = self
                     .side_pane
                     .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::side_pane_body))
                     .clone();
                 let width = self.obs_side_width(cx);
-                work = work.child(recur_ui::style::cached_view(
+                recur_ui::style::cached_view(
                     &pane,
                     gpui_kit::StyleRefinement::default()
                         .flex_none()
                         .w(px(width))
                         .h_full(),
-                ));
+                )
             } else {
-                work = work.child(self.render_side_aside(kind, window, cx));
+                self.render_side_aside(kind, window, cx)
+            };
+            if floating {
+                flyout = Some(self.render_side_flyout(side, shown, cx));
+            } else if under {
+                docked = Some(side);
+            } else {
+                work = work.child(side);
             }
         }
         if self.props.main_blocked
@@ -922,7 +1256,34 @@ impl Observatory {
                 .with_priority(10),
             );
         }
-        body.child(work).into_any_element()
+        let body = body.child(work);
+        if !under {
+            return body
+                .debug_selector(|| "obs-body".into())
+                .children(flyout)
+                .into_any_element();
+        }
+        div()
+            .debug_selector(|| "obs-body".into())
+            .relative()
+            .flex()
+            .flex_row()
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_w_0()
+                    .min_h_0()
+                    .child(body)
+                    .children(self.render_dock_row(false, cx)),
+            )
+            .children(docked)
+            .children(flyout)
+            .into_any_element()
     }
 }
 
@@ -950,7 +1311,13 @@ impl Observatory {
                 .w_full()
                 .h(px(CHROME_H)),
         );
+        self.narrow = Self::narrow(window);
         let body = self.render_body(window, cx);
+        // Stacked, the full-width terminal is under the whole stack; otherwise the body lays it
+        // out under the chat and the center.
+        let full_dock = (self.narrow && self.term_full_layout(cx))
+            .then(|| self.render_dock_row(false, cx))
+            .flatten();
         self.step_term_anim(window, cx);
         let overlay = self.render_term_overlay();
         let ctx = self.render_ctx_menu(cx);
@@ -973,6 +1340,7 @@ impl Observatory {
                 toolbar
             })
             .child(body)
+            .children(full_dock)
             .children(overlay)
             .children(ctx)
             .children(self.review_note_portals(cx))

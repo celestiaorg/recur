@@ -50,12 +50,12 @@ fn land_opts() -> Overrides {
         .fetch_working_copy_upstream(|_, _| Ok(land()))
 }
 
+/// The PR as a page beside its workspace: what an older PR of a workspace opens as.
 fn open_pr_view(s: &mut S) {
     s.state
         .update(s.cx, |st, cx| st.open_workspace(CODING, false, cx));
     s.settle();
-    s.click("tb-view-pr");
-    assert_eq!(s.view(), ViewName::PrDetail);
+    s.pr_page("gh-91");
 }
 
 #[gpui::test]
@@ -138,7 +138,7 @@ fn pr_view_recalls_push_disabled_until_git_status_lands(cx: &mut TestAppContext)
     assert!(s.has("tb-view-pr"));
 
     gate.store(true, Ordering::SeqCst);
-    s.click("tb-view-pr");
+    s.pr_page("gh-91");
     // The recalled snapshot shows Push, disabled while git answers ("Checking git status…").
     assert!(s.has("pr-act:pr-push=Push updates:off"));
     for r in held.lock().drain(..) {

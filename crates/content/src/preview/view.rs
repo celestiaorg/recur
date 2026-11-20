@@ -31,6 +31,9 @@ pub type SharedScroll = Rc<RefCell<PreviewScrollStore>>;
 pub enum FilePreviewEvent {
     /// `onSearchOpenChange`.
     SearchOpenChanged(bool),
+    /// A mouse press in an HTML page, which the window's own mouse handlers do not see on
+    /// macOS.
+    Pressed,
 }
 
 enum Surface {
@@ -549,6 +552,7 @@ impl FilePreview {
                     _ => {}
                 }
             }
+            HtmlPreviewEvent::Pressed => cx.emit(FilePreviewEvent::Pressed),
             HtmlPreviewEvent::Loaded => {
                 if self.find_open && self.active {
                     self.refresh(window, cx);

@@ -13,7 +13,6 @@ use recur_ui::text::{LineHeight, TextStyled, span, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{IconName, Theme, icon};
 use recur_view_core::prefs::CodePanelKey;
-use recur_view_review::review_diff::FileListMode;
 use recur_view_review::style::hsla;
 
 use crate::lsp::problems::ProblemSeverity;
@@ -101,7 +100,7 @@ fn hit_preview(
 }
 
 /// A `.obs-sym` / `.obs-hit` row shell.
-fn hit_row(id: SharedString, cx: &App) -> gpui_kit::Stateful<gpui_kit::Div> {
+pub(super) fn hit_row(id: SharedString, cx: &App) -> gpui_kit::Stateful<gpui_kit::Div> {
     let t = Theme::of(cx).tokens;
     div()
         .id(id)
@@ -139,6 +138,7 @@ impl Observatory {
     ) -> Option<AnyElement> {
         let t = Theme::of(cx).tokens;
         match kind {
+            CodePanelKey::Findings => Some(self.render_findings_tools(cx)),
             CodePanelKey::Files => {
                 if self.scope_paths().is_empty() {
                     return None;
@@ -215,133 +215,77 @@ impl Observatory {
                         .into_any_element(),
                 )
             }
-            CodePanelKey::Scm => {
-                if !self.is_git(cx) || !self.tree_writable() {
-                    return None;
-                }
-                let mode = self.scm_file_list_mode;
-                let mut tools = div().ml_auto().flex().items_center().gap(px(6.)).child(
-                    seg(cx)
-                        .child(titled(
-                            "scm-flat-t",
-                            "Flat list",
-                            recur_view_review::style::seg_btn(
-                                "scm-flat",
-                                IconName::List,
-                                mode == FileListMode::Flat,
-                                None,
-                                cx,
-                            )
-                            .on_click(cx.guarded_listener(
-                                |o, _, _, cx| o.set_scm_file_list_mode(FileListMode::Flat, cx),
-                            )),
-                        ))
-                        .child(titled(
-                            "scm-tree-t",
-                            "Tree",
-                            recur_view_review::style::seg_btn(
-                                "scm-tree",
-                                IconName::Workflow,
-                                mode == FileListMode::Tree,
-                                None,
-                                cx,
-                            )
-                            .on_click(cx.guarded_listener(
-                                |o, _, _, cx| o.set_scm_file_list_mode(FileListMode::Tree, cx),
-                            )),
-                        )),
-                );
-                if self.working_dirty_count() > 0 {
-                    tools =
-                        tools
-                            .child(titled(
-                                "scm-review-t",
-                                "Review uncommitted changes",
-                                icon_btn("scm-review", IconName::FileDiff, false, None, cx)
-                                    .on_click(cx.guarded_listener(|o, _, window, cx| {
-                                        o.open_working_review(window, cx)
-                                    })),
-                            ))
-                            .child(titled(
-                                "scm-discard-all-t",
-                                "Discard all uncommitted changes",
-                                icon_btn("scm-discard-all", IconName::Undo, false, None, cx)
-                                    .on_click(cx.guarded_listener(|o, _, window, cx| {
-                                        o.discard_all_working(window, cx)
-                                    })),
-                            ));
-                }
-                Some(tools.into_any_element())
-            }
-            CodePanelKey::Findings => {
-                let counts = |f: FindingsFilter| -> usize {
-                    match f {
-                        FindingsFilter::Open => self.open_findings_count(),
-                        FindingsFilter::All => self.findings.len(),
-                        other => self
-                            .findings
-                            .iter()
-                            .filter(|x| x.status == other.key())
-                            .count(),
-                    }
-                };
-                let mut chips = seg(cx).flex_wrap().min_h(px(24.)).max_w(px(340.));
-                for f in FindingsFilter::ALL {
-                    let on = self.findings_filter == f;
-                    let n = counts(f);
-                    let mut b =
-                        seg_text_btn(SharedString::from(format!("ff-{}", f.key())), on, None, cx)
-                            .debug_selector(move || format!("findings-filter:{}", f.key()))
-                            .gap(px(4.))
-                            .h(px(22.))
-                            .px(px(7.))
-                            .child(
-                                text(f.label())
-                                    .size(11.)
-                                    .weight(500.)
-                                    .line_height(LineHeight::Normal)
-                                    .nowrap(),
-                            );
-                    if n > 0 {
-                        b = b.child(
-                            div().ml(px(1.)).child(
-                                text(n.to_string())
-                                    .mono()
-                                    .size(10.)
-                                    .line_height(LineHeight::Normal)
-                                    .color(if on { t.muted } else { t.faint })
-                                    .nowrap(),
-                            ),
-                        );
-                    }
-                    chips = chips.child(b.on_click(cx.guarded_listener(move |o, _, _, cx| {
-                        o.findings_filter = f;
-                        cx.notify();
-                    })));
-                }
-                let mut tools = div()
-                    .ml_auto()
-                    .flex()
-                    .items_center()
-                    .gap(px(6.))
-                    .child(chips);
-                let open = self.open_findings_count();
-                if open > 0 && self.props.can_fix_findings {
-                    tools = tools.child(titled(
-                        "fix-findings-t",
-                        format!("Fix open findings ({open})"),
-                        icon_btn("fix-findings", IconName::Wrench, false, None, cx)
-                            .debug_selector(|| "fix-findings".into())
-                            .on_click(cx.guarded_listener(|o, _, window, cx| {
-                                o.select_code_panel(CodePanelKey::Maestro, window, cx);
-                                cx.emit(crate::obs::ObservatoryEvent::FixFindings);
-                            })),
-                    ));
-                }
-                Some(tools.into_any_element())
-            }
             _ => None,
         }
+    }
+
+    /// The Findings view's status chips and its Fix button.
+    pub(crate) fn render_findings_tools(&mut self, cx: &mut Context<Self>) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let counts = |f: FindingsFilter| -> usize {
+            match f {
+                FindingsFilter::Open => self.open_findings_count(),
+                FindingsFilter::All => self.findings.len(),
+                other => self
+                    .findings
+                    .iter()
+                    .filter(|x| x.status == other.key())
+                    .count(),
+            }
+        };
+        let mut chips = seg(cx).flex_wrap().min_h(px(24.)).max_w(px(340.));
+        for f in FindingsFilter::ALL {
+            let on = self.findings_filter == f;
+            let n = counts(f);
+            let mut b = seg_text_btn(SharedString::from(format!("ff-{}", f.key())), on, None, cx)
+                .debug_selector(move || format!("findings-filter:{}", f.key()))
+                .gap(px(4.))
+                .h(px(22.))
+                .px(px(7.))
+                .child(
+                    text(f.label())
+                        .size(11.)
+                        .weight(500.)
+                        .line_height(LineHeight::Normal)
+                        .nowrap(),
+                );
+            if n > 0 {
+                b = b.child(
+                    div().ml(px(1.)).child(
+                        text(n.to_string())
+                            .mono()
+                            .size(10.)
+                            .line_height(LineHeight::Normal)
+                            .color(if on { t.muted } else { t.faint })
+                            .nowrap(),
+                    ),
+                );
+            }
+            chips = chips.child(b.on_click(cx.guarded_listener(move |o, _, _, cx| {
+                o.findings_filter = f;
+                cx.notify();
+            })));
+        }
+        let mut tools = div()
+            .ml_auto()
+            .flex()
+            .items_center()
+            .gap(px(6.))
+            .child(chips);
+        let open = self.open_findings_count();
+        if open > 0 && self.props.can_fix_findings {
+            tools = tools.child(titled(
+                "fix-findings-t",
+                format!("Fix open findings ({open})"),
+                icon_btn("fix-findings", IconName::Wrench, false, None, cx)
+                    .debug_selector(|| "fix-findings".into())
+                    .on_click(cx.guarded_listener(|o, _, window, cx| {
+                        o.select_code_panel(CodePanelKey::Maestro, window, cx);
+                        cx.emit(crate::obs::ObservatoryEvent::FixFindings);
+                    })),
+            ));
+        }
+        tools.into_any_element()
     }
 
     /// `panelBody(kind)`.
@@ -358,11 +302,6 @@ impl Observatory {
                 .left_panel
                 .clone()
                 .map_or_else(|| div().into_any_element(), |v| v.into_any_element()),
-            CodePanelKey::Plan => self
-                .slots
-                .plan_panel
-                .clone()
-                .map_or_else(|| div().into_any_element(), |v| v.into_any_element()),
             CodePanelKey::Findings => {
                 let findings = self.findings.clone();
                 let (filter, busy) = (self.findings_filter, self.finding_busy_id.clone());
@@ -370,14 +309,53 @@ impl Observatory {
                     .update(cx, |p, cx| p.set_props(&findings, filter, &busy, cx));
                 self.findings_panel.clone().into_any_element()
             }
-            CodePanelKey::Artifacts => self.ensure_artifacts_panel(window, cx).into_any_element(),
             CodePanelKey::Files => self.render_files_panel(in_side, window, cx),
-            CodePanelKey::Scm => self.render_scm_panel(window, cx),
             CodePanelKey::Outline => self.render_outline(cx),
             CodePanelKey::Problems => self.render_problems(cx),
             CodePanelKey::Search => self.render_search(window, cx),
             CodePanelKey::Refs => self.render_refs(cx),
+            CodePanelKey::Artifacts => self.ensure_artifacts_panel(window, cx).into_any_element(),
         }
+    }
+
+    /// The plan view of the center column. Its head is the center's tab row
+    /// (`center_tabs_body`).
+    pub(super) fn list_pane_body(
+        &mut self,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let body = self
+            .slots
+            .plan_panel
+            .clone()
+            .map(IntoElement::into_any_element);
+        div()
+            .debug_selector(|| "obs-plan".into())
+            .size_full()
+            .flex()
+            .flex_col()
+            .bg(hsla(t.bg))
+            .child(
+                div()
+                    .debug_selector(|| "obs-list-column".into())
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_h_0()
+                    .w_full()
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .flex_1()
+                            .min_h_0()
+                            .overflow_hidden()
+                            .children(body),
+                    ),
+            )
+            .into_any_element()
     }
 
     fn ensure_artifacts_panel(

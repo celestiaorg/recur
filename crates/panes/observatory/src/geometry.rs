@@ -34,6 +34,8 @@ pub struct Geometry {
     pub review_status_sp: BoundsCell,
     pub files_status: BoundsCell,
     pub files_status_sp: BoundsCell,
+    /// The center column (a press on it closes the floating right panel).
+    pub work: BoundsCell,
 }
 
 /// An absolutely positioned probe that records its parent's bounds at prepaint.

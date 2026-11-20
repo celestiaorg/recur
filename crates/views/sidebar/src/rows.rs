@@ -24,7 +24,10 @@ use recur_view_core::format::format_compact_count;
 use recur_view_core::modes::{
     parked_needs_you_by_workspace, workspace_can_remove, workspace_is_running,
 };
-use recur_view_core::pr::{PrLifecycle, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle};
+use recur_view_core::pr::{
+    PrLifecycle, RollupKind, checks_look, checks_title, pr_for_workspace, pr_head, pr_icon_name,
+    pr_lifecycle, pr_live_checks,
+};
 use recur_view_core::workspace_nav::project_id_from_main_scan;
 use recur_view_core::{ScanKind, ScheduleEditorRequest, ViewName};
 
@@ -50,6 +53,8 @@ const ROW_BAND_PAD_PX: f32 = 150.;
 pub(crate) struct RowCtx {
     /// Each workspace's chrome PR (`pr_for_workspace`), without its files and comments.
     prs: HashMap<String, Pr>,
+    /// Each workspace's open PR checks, when it has any.
+    checks: HashMap<String, RollupKind>,
     /// Project id → (pic, color, name), filled when rows show their project (by status).
     pics: HashMap<String, (String, String, String)>,
     running: HashSet<String>,
@@ -100,16 +105,7 @@ struct Header {
 
 fn lifecycle_color(life: PrLifecycle, merged_row: bool, cx: &App) -> Color {
     let t = Theme::of(cx).tokens;
-    if merged_row {
-        return t.indigo;
-    }
-    match life {
-        PrLifecycle::Open => t.emerald,
-        PrLifecycle::Draft => t.cyan,
-        PrLifecycle::Merged => t.indigo,
-        PrLifecycle::Closed => t.coral,
-        PrLifecycle::Queued => t.warn,
-    }
+    if merged_row { t.indigo } else { life.color(&t) }
 }
 
 /// `.df`: `+add −del` in mono 9.5px.
@@ -172,16 +168,21 @@ impl Sidebar {
         let scan_highlight = ((ev.seq > 0 && ev.kind == ScanKind::Land)
             || (s.scan_pending && project_id_from_main_scan(&ev.workspace_id).is_some()))
         .then(|| ev.workspace_id.clone());
+        let ids: HashSet<&str> = s.prs.iter().map(|p| p.workspace_id.as_str()).collect();
+        let prs: Vec<(&str, &Pr)> = ids
+            .into_iter()
+            .filter_map(|id| Some((id, pr_for_workspace(&s.prs, id)?)))
+            .collect();
         RowCtx {
-            prs: {
-                let ids: HashSet<&str> = s.prs.iter().map(|p| p.workspace_id.as_str()).collect();
-                ids.into_iter()
-                    .filter_map(|id| {
-                        let pr = pr_for_workspace(&s.prs, id)?;
-                        Some((id.to_string(), pr_head(pr)))
-                    })
-                    .collect()
-            },
+            checks: prs
+                .iter()
+                .map(|(id, pr)| (id.to_string(), pr_live_checks(pr)))
+                .filter(|(_, r)| *r != RollupKind::None)
+                .collect(),
+            prs: prs
+                .into_iter()
+                .map(|(id, pr)| (id.to_string(), pr_head(pr)))
+                .collect(),
             pics: if s.sidebar_by_status() {
                 s.projects
                     .iter()
@@ -376,6 +377,17 @@ impl Sidebar {
             .flex_none()
             .min_w_0();
         if !acts {
+            if let Some(&r) = rc.checks.get(&id) {
+                let (color, name) = checks_look(r, &t);
+                tail = tail.child(titled(
+                    SharedString::from(format!("{key}-ck-tip")),
+                    checks_title(r),
+                    div()
+                        .id(SharedString::from(format!("{key}-ck")))
+                        .debug_selector(move || format!("checks:{}", checks_title(r)))
+                        .child(icon(name).size(px(11.)).color(color)),
+                ));
+            }
             if l.diff.add != 0 || l.diff.del != 0 {
                 tail = tail.child(diff_stat(&key, l.diff.add, l.diff.del, cx));
             }

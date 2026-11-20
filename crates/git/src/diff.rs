@@ -1,7 +1,7 @@
 //! Diff statistics, PR-wide and working-tree diffs, the commit log, and the
 //! unified-diff parser behind the review UI.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
@@ -69,11 +69,59 @@ pub async fn diff_stat_vs_base(worktree: &str, base_branch: &str) -> Result<(i64
     Ok((add + untracked_add_lines(worktree).await, del))
 }
 
+/// Per-file additions/deletions of the worktree versus `base_branch`: the
+/// counts the review's file list shows ([`Manager::diff_working_vs_base`]),
+/// from `--numstat` instead of the patches. Binary files count 0.
+pub async fn diff_stats_vs_base(
+    worktree: &str,
+    base_branch: &str,
+) -> Result<HashMap<String, DiffStat>> {
+    let worktree = worktree.trim();
+    if worktree.is_empty() {
+        return Err(Error::msg("diffstat: empty worktree"));
+    }
+    let against = working_diff_against(worktree, base_branch).await?;
+    let out = command([
+        "-C",
+        worktree,
+        "diff",
+        "--numstat",
+        "--no-renames",
+        "-z",
+        "--end-of-options",
+        against.as_str(),
+    ])
+    .output()
+    .await
+    .map_err(|e| e.wrap("git diff --numstat"))?;
+    let mut stats = HashMap::new();
+    for rec in String::from_utf8_lossy(&out).split('\0') {
+        let mut fields = rec.splitn(3, '\t');
+        if let (Some(add), Some(del), Some(path)) = (fields.next(), fields.next(), fields.next()) {
+            let (add, del) = (atoi(add).unwrap_or(0), atoi(del).unwrap_or(0));
+            stats.insert(path.to_string(), DiffStat { add, del });
+        }
+    }
+    for (path, add) in untracked_line_counts(worktree).await {
+        stats.entry(path).or_insert(DiffStat { add, del: 0 });
+    }
+    Ok(stats)
+}
+
 /// Newline counts of untracked, non-ignored text files, so new agent files
 /// show in the sidebar before they are staged. Bounded by file count and
 /// bytes; each file read is an await point, so dropping the future stops the
 /// scan.
 pub(crate) async fn untracked_add_lines(worktree: &str) -> i64 {
+    untracked_line_counts(worktree)
+        .await
+        .into_iter()
+        .map(|(_, n)| n)
+        .sum()
+}
+
+/// [`untracked_add_lines`] per file.
+async fn untracked_line_counts(worktree: &str) -> Vec<(String, i64)> {
     let Ok(out) = command([
         "-C",
         worktree,
@@ -85,25 +133,24 @@ pub(crate) async fn untracked_add_lines(worktree: &str) -> i64 {
     .output()
     .await
     else {
-        return 0;
+        return Vec::new();
     };
-    let (mut total, mut files, mut bytes_read) = (0, 0, 0);
+    let (mut counts, mut bytes_read) = (Vec::new(), 0);
     for rel in out.split(|&b| b == 0) {
         if rel.is_empty() {
             continue;
         }
-        if files >= UNTRACKED_MAX_FILES || bytes_read >= UNTRACKED_MAX_BYTES {
+        if counts.len() >= UNTRACKED_MAX_FILES || bytes_read >= UNTRACKED_MAX_BYTES {
             break;
         }
         let path = Path::new(worktree).join(OsStr::from_bytes(rel));
         let (n, read, ok) = count_text_file_lines(&path, UNTRACKED_FILE_CAP).await;
         bytes_read += read;
         if ok {
-            total += n;
-            files += 1;
+            counts.push((String::from_utf8_lossy(rel).into_owned(), n));
         }
     }
-    total
+    counts
 }
 
 /// Lines in `path` (a non-empty file without a trailing newline counts its
@@ -1003,6 +1050,26 @@ mod tests {
             add3 >= add2 + 3,
             "untracked file should add ≥3 lines: {add2} → {add3}"
         );
+    }
+
+    #[tokio::test]
+    async fn diff_stats_vs_base_match_the_review_diff_per_file() {
+        let repo = init_repo();
+        let r = repo.path.as_str();
+        git(r, &["checkout", "-b", "recur/feature"]);
+        write(r, "dir/feat.txt", "one\ntwo\n");
+        commit_as_coder(r, "add feat");
+        write(r, "dir/feat.txt", "one\nthree\n");
+        write(r, "brand new.txt", "alpha\nbeta\n");
+        let stats = diff_stats_vs_base(r, "main").await.expect("stats");
+        let (m, _root) = mgr(r);
+        let review = m.diff_working_vs_base(r, "main").await.expect("review");
+        assert_eq!(stats.len(), review.files.len(), "{stats:?}");
+        for f in &review.files {
+            assert_eq!(stats.get(&f.path), Some(&f.diff), "{}", f.path);
+        }
+        assert_eq!(stats["dir/feat.txt"], DiffStat { add: 2, del: 0 });
+        assert_eq!(stats["brand new.txt"], DiffStat { add: 2, del: 0 });
     }
 
     /// Dropping the scan stops it promptly.

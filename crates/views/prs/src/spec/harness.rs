@@ -370,12 +370,35 @@ impl S<'_> {
         self.click(&sel);
     }
 
-    /// Pull requests → All → the row.
+    /// Pull requests → All, then the PR as a page (the row itself opens a PR that is its
+    /// workspace's current one in that workspace).
     pub fn open_pr(&mut self, id: &str) {
         self.prs_nav();
         self.seg("All");
-        self.click(&format!("prrow:{id}"));
+        let hosted = self
+            .state
+            .read_with(self.cx, |s, _| s.pr_host_workspace(id).is_some());
+        if hosted {
+            assert!(self.has(&format!("prrow:{id}")), "{id} is listed");
+            self.pr_page(id);
+        } else {
+            self.click(&format!("prrow:{id}"));
+            assert_eq!(self.view(), ViewName::PrDetail);
+        }
+    }
+
+    /// The PR as a page with focus in it, as a click on the row of a PR without a workspace
+    /// leaves it.
+    pub fn pr_page(&mut self, id: &str) {
+        self.state.update(self.cx, |s, cx| s.open_pr_page(id, cx));
+        self.settle();
         assert_eq!(self.view(), ViewName::PrDetail);
+        self.cx.update(|window, cx| {
+            if let Some(d) = crate::detail::spec_handle::current(cx) {
+                window.focus(&d.focus_handle(cx), cx);
+            }
+        });
+        self.settle();
     }
 }
 

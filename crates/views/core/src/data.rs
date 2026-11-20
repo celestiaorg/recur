@@ -589,6 +589,39 @@ impl AppState {
         self.changed(Topics::PRS, cx);
     }
 
+    /// Convert a PR to a draft or mark it ready: shown at once, and put back when the forge
+    /// refuses.
+    pub fn set_pr_draft(&mut self, id: &str, draft: bool, cx: &mut Context<Self>) -> Task<()> {
+        let Some(prev) = self.pr(id).map(|p| p.draft) else {
+            return Task::ready(());
+        };
+        self.update_pr(id, |p| p.draft = draft, cx);
+        let services = self.services.clone();
+        let id = id.to_string();
+        cx.spawn(async move |state, cx| {
+            let fail = if draft {
+                "Convert to draft failed"
+            } else {
+                "Mark ready failed"
+            };
+            let updated = crate::call(cx, services.prs.set_pr_draft(&id, draft), fail).await;
+            let _ = state.update(cx, |s, cx| match updated {
+                Some(mut u) => {
+                    u.draft = draft;
+                    let uid = u.id.clone();
+                    s.update_pr(&uid, |p| *p = u, cx);
+                    let msg = if draft {
+                        "Converted to draft"
+                    } else {
+                        "Ready for review"
+                    };
+                    crate::toast(recur_ui::widgets::ToastKind::Success, msg, cx);
+                }
+                None => s.update_pr(&id, |p| p.draft = prev, cx),
+            });
+        })
+    }
+
     pub fn update_pr(&mut self, id: &str, f: impl FnOnce(&mut Pr), cx: &mut Context<Self>) {
         if let Some(p) = self.prs.iter_mut().find(|p| p.id == id) {
             f(p);

@@ -51,6 +51,7 @@ impl Shell {
             PrevEditorTheme,
             NextEditorTheme,
             ToggleSidebar,
+            FloatRightPanel,
             GoTo,
             RunCommand,
             KeyboardShortcuts,
@@ -213,6 +214,7 @@ impl Shell {
                 recur_view_core::AppState::toast_editor_theme(&name, cx);
             }
             "toggle-sidebar" => state.update(cx, |s, cx| s.toggle_rail(cx)),
+            "float-right-panel" => state.update(cx, |s, cx| s.toggle_side_float(cx)),
             "settings" => state.update(cx, |s, cx| s.go(ViewName::Settings, None, cx)),
             "check-updates" => self.check_for_updates(cx),
             "reload-bundles" => crate::bundles::reload_bundles(&state, cx),

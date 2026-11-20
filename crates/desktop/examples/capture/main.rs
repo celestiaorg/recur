@@ -195,6 +195,8 @@ mod mac {
                     shell: Default::default(),
                 };
                 let (window, state) = recur_app::open_main_window(main, cx).expect("open window");
+                // The website shows the right panel docked.
+                state.update(cx, |s, _| s.panels.side_float_by_default = false);
                 let window: AnyWindowHandle = window.into();
                 cx.spawn(async move |cx: &mut AsyncApp| {
                     let code = match run(cx, window, &state, screen, &file).await {

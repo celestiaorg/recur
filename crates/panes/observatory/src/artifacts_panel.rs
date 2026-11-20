@@ -23,7 +23,7 @@ use recur_view_core::call;
 use recur_view_core::file_drag::ArtifactDrag;
 use recur_view_review::style::hsla;
 
-use crate::render::FileDragGhost;
+use recur_view_core::file_drag::FileDragGhost;
 
 /// What the panel asks its host to do (`onOpen`, `onRenamed`, `onDeleted`).
 #[derive(Clone, Debug, PartialEq)]

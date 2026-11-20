@@ -36,8 +36,10 @@
 //!   [`Observatory::open_artifact`], [`Observatory::open_turn_review`],
 //!   [`Observatory::select_code_panel`], [`Observatory::show_agent_panel`],
 //!   [`Observatory::focused_editor_context`].
-//! - **PR detail**: while the PR's agent workspace is this one, the left dock moves into PR
-//!   detail; render it there with [`Observatory::render_pr_agent_dock`].
+//! - **PR detail**: the pull request view of the center column is PR detail bound to the
+//!   workspace's current PR, which the PR crate mounts through `recur_view_core::pr_view`.
+//!   The PR page (a PR whose workspace does not show it, or a hidden PR chat host's) borrows
+//!   the left dock instead; render it there with [`Observatory::render_pr_agent_dock`].
 //!
 //! The editor's language servers run through [`lsp::client`], an `LspClient` over
 //! `LspService` and the `lsp.message` / `lsp.exit` events; diagnostics land in
@@ -78,7 +80,7 @@ use std::collections::BTreeMap;
 use gpui_kit::{App, AppContext as _, Global};
 use recur_view_core::{OverlaySlot, ViewContext, ViewName, ViewRegistry};
 
-pub use model::FocusZone;
+pub use model::{FocusZone, MainSurface};
 pub use obs::{
     ExplorerReveal, Observatory, ObservatoryEvent, ObservatoryProps, ObservatorySlots, OpenRequest,
 };

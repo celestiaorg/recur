@@ -8,9 +8,9 @@ use async_trait::async_trait;
 use parking_lot::Mutex;
 use recur_domain::path;
 use recur_domain::{
-    AgentSkill, Commit, FeedItem, FileContent, FileDiff, FileDiffResult, FileSearchResult,
-    OutlineSymbol, ReplaceResult, SearchHit, SearchOpts, SearchResult, SymbolDef, SymbolRef,
-    TreeEntry, WorktreeCommitResult, effective_skill_enabled, run_active,
+    AgentSkill, Commit, DiffStat, FeedItem, FileContent, FileDiff, FileDiffResult,
+    FileSearchResult, OutlineSymbol, ReplaceResult, SearchHit, SearchOpts, SearchResult, SymbolDef,
+    SymbolRef, TreeEntry, WorktreeCommitResult, effective_skill_enabled, run_active,
 };
 use recur_engine::bus::{EngineEvent, WorkspaceEvent};
 use recur_engine::text::html_escape;
@@ -292,6 +292,23 @@ impl AppServices {
         }
         let (root, _, base) = self.resolve_scope(project_id, workspace_id).map_err(err)?;
         recur_code::file_diff(&root, &base, path).await.map_err(err)
+    }
+
+    async fn diff_stats_at(
+        &self,
+        project_id: &str,
+        workspace_id: &str,
+    ) -> Result<BTreeMap<String, DiffStat>> {
+        let (root, _, base) = match self.resolve_scope(project_id, workspace_id) {
+            Err(e) if worktree_missing(&e) => return Ok(BTreeMap::new()),
+            r => r.map_err(err)?,
+        };
+        let root = root.to_string_lossy().into_owned();
+        if !recur_git::is_repo(&root).await {
+            return Ok(BTreeMap::new());
+        }
+        let stats = recur_git::diff_stats_vs_base(&root, &base).await;
+        Ok(stats.map_err(err)?.into_iter().collect())
     }
 
     async fn diff_vs_base_at(
@@ -618,7 +635,12 @@ impl AppServices {
         .map_err(err)
     }
 
-    async fn staged_files_at(&self, project_id: &str, workspace_id: &str) -> Result<Vec<String>> {
+    async fn staged_files_at(
+        &self,
+        project_id: &str,
+        workspace_id: &str,
+        staged: bool,
+    ) -> Result<Vec<String>> {
         let (root, writable) = match self.resolve_root(project_id, workspace_id) {
             Err(e) if worktree_missing(&e) => return Ok(Vec::new()),
             r => r.map_err(err)?,
@@ -626,9 +648,13 @@ impl AppServices {
         if !writable {
             return Ok(Vec::new());
         }
-        recur_git::staged_paths(&root.to_string_lossy())
-            .await
-            .map_err(err)
+        let root = root.to_string_lossy();
+        if staged {
+            recur_git::staged_paths(&root).await
+        } else {
+            recur_git::unstaged_paths(&root).await
+        }
+        .map_err(err)
     }
 
     async fn mutate_worktree(
@@ -816,6 +842,16 @@ impl CodeService for AppServices {
         })
     }
 
+    async fn diff_stats(
+        &self,
+        project_id: &str,
+        workspace_id: &str,
+    ) -> Result<BTreeMap<String, DiffStat>> {
+        rt_ctx!(self, project_id, workspace_id => |s, _c| {
+            s.diff_stats_at(&project_id, &workspace_id).await
+        })
+    }
+
     async fn diff_vs_base(&self, project_id: &str, workspace_id: &str) -> Result<FileDiffResult> {
         rt_ctx!(self, project_id, workspace_id => |s, _c| {
             s.diff_vs_base_at(&project_id, &workspace_id).await
@@ -849,6 +885,18 @@ impl CodeService for AppServices {
         rt_ctx!(self, project_id, workspace_id, path => |s, _c| {
             let (root, _, base) = s.resolve_scope(&project_id, &workspace_id).map_err(err)?;
             recur_code::file_at_base(&root, &base, &path).await.map_err(err)
+        })
+    }
+
+    async fn file_at_head(
+        &self,
+        project_id: &str,
+        workspace_id: &str,
+        path: &str,
+    ) -> Result<String> {
+        rt_ctx!(self, project_id, workspace_id, path => |s, _c| {
+            let (root, _) = s.resolve_root(&project_id, &workspace_id).map_err(err)?;
+            recur_code::file_at_base(&root, "", &path).await.map_err(err)
         })
     }
 
@@ -1112,7 +1160,13 @@ impl CodeService for AppServices {
 
     async fn staged_files(&self, project_id: &str, workspace_id: &str) -> Result<Vec<String>> {
         rt_ctx!(self, project_id, workspace_id => |s, _c| {
-            s.staged_files_at(&project_id, &workspace_id).await
+            s.staged_files_at(&project_id, &workspace_id, true).await
+        })
+    }
+
+    async fn unstaged_files(&self, project_id: &str, workspace_id: &str) -> Result<Vec<String>> {
+        rt_ctx!(self, project_id, workspace_id => |s, _c| {
+            s.staged_files_at(&project_id, &workspace_id, false).await
         })
     }
 

@@ -70,7 +70,7 @@ async fn branch_review_shows_files_changed_and_commits_without_a_pr(cx: &mut Tes
     assert!(h.has("cfile:live:src/main.go"));
     h.click("button:Show file list");
     assert!(h.has("filelist"));
-    // Commits: the uncommitted row, then the branch's commits newest first.
+    // Commits: the branch's commits newest first; uncommitted work has its own tab.
     h.cx.update(|window, cx| {
         host.update(cx, |hst, cx| {
             hst.set(|p| p.tab = ReviewTab::Commits, window, cx)
@@ -78,7 +78,7 @@ async fn branch_review_shows_files_changed_and_commits_without_a_pr(cx: &mut Tes
     });
     h.settle();
     assert!(h.has("review:commits"));
-    assert!(h.has("commit:working"));
+    assert!(!h.has("commit:working"));
     assert!(h.has("commit:Add feature"));
     assert!(h.has("commit:Older work"));
     // Opening a commit switches to its files under Commits.
@@ -111,7 +111,7 @@ async fn branch_review_shows_files_changed_and_commits_without_a_pr(cx: &mut Tes
 }
 
 #[gpui::test]
-async fn commits_tab_uncommitted_row_is_vs_head_not_vs_base(cx: &mut TestAppContext) {
+async fn uncommitted_tab_is_vs_head_not_vs_base(cx: &mut TestAppContext) {
     let opts = Overrides::default()
         .diff_vs_base(|_, _| {
             Ok(main_go_lines(json!([
@@ -134,12 +134,11 @@ async fn commits_tab_uncommitted_row_is_vs_head_not_vs_base(cx: &mut TestAppCont
     assert!(!h.has("cfile:live:src/scratch.ts"));
     h.cx.update(|window, cx| {
         host.update(cx, |hst, cx| {
-            hst.set(|p| p.tab = ReviewTab::Commits, window, cx)
+            hst.set(|p| p.tab = ReviewTab::Uncommitted, window, cx)
         })
     });
-    h.click("commit:working");
-    assert!(h.has("working-hd"));
     assert!(h.has("obs-review-vs"));
+    assert!(!h.has("cback"), "the tab is not a scope of the commit list");
     let vs = host.read_with(h.cx, |hst, cx| {
         hst.surface
             .read(cx)
@@ -154,25 +153,189 @@ async fn commits_tab_uncommitted_row_is_vs_head_not_vs_base(cx: &mut TestAppCont
     assert!(!h.has("cfile:live:src/main.go"));
     h.hover("hline:src/scratch.ts:add:right:1");
     assert!(h.has("addc:src/scratch.ts:right:1"));
-    h.click("cback");
-    assert!(h.has("review:commits"));
     h.cx.update(|window, cx| {
         host.update(cx, |hst, cx| {
             hst.set(|p| p.tab = ReviewTab::Changes, window, cx)
         })
     });
     assert!(h.has("cfile:live:src/main.go"));
-    assert!(!h.has("working-hd"));
+    assert!(!h.has("cfile:live:src/scratch.ts"));
+}
+
+/// The working tree with `src/a.go` staged, `src/b.go` staged with more edits and `src/c.go`
+/// unstaged, on the Uncommitted tab.
+fn uncommitted<'a>(
+    cx: &'a mut TestAppContext,
+    props: impl FnOnce(&mut crate::surface::SurfaceProps),
+) -> (H<'a>, gpui::Entity<SurfaceHost>) {
+    let opts = Overrides::default().diff_working(|_, _| {
+        let file = |p: &str| {
+            json!({"path": p, "status": "m", "diff": {"add": 1, "del": 0}, "lines": [
+                {"old": "", "new": "", "type": "hunk", "codeHtml": "@@ -1,0 +1,1 @@"},
+                {"old": "", "new": "1", "type": "add", "codeHtml": "x"},
+            ]})
+        };
+        Ok(de(
+            json!({ "files": [file("src/a.go"), file("src/b.go"), file("src/c.go")] }),
+        ))
+    });
+    surface(cx, opts, |p| {
+        p.tab = ReviewTab::Uncommitted;
+        p.working_index = Some(std::rc::Rc::new(crate::file_list::WorkingIndex {
+            staged: ["src/a.go", "src/b.go"].map(String::from).into(),
+            mixed: ["src/b.go".to_string()].into(),
+            ..Default::default()
+        }));
+        props(p);
+    })
+}
+
+fn events(h: &mut H, host: &gpui::Entity<SurfaceHost>) -> Vec<SurfaceEvent> {
+    host.read_with(h.cx, |hst, _| std::mem::take(&mut *hst.events.borrow_mut()))
+        .into_iter()
+        .filter(|e| !matches!(e, SurfaceEvent::Bound(_)))
+        .collect()
+}
+
+fn paths(v: &[&str]) -> Vec<String> {
+    v.iter().map(|s| s.to_string()).collect()
 }
 
 #[gpui::test]
-async fn clean_worktree_hides_the_uncommitted_commits_row(cx: &mut TestAppContext) {
-    let (mut h, _host) = surface(cx, Overrides::default(), |p| {
-        p.working_dirty_count = 0;
-        p.tab = ReviewTab::Commits;
+async fn uncommitted_files_check_into_the_commit_per_file_and_per_folder(cx: &mut TestAppContext) {
+    let (mut h, host) = uncommitted(cx, |_| {});
+    assert!(h.has("fl-check:src/a.go:On"));
+    assert!(h.has("fl-check:src/b.go:Mixed"), "partly staged");
+    assert!(h.has("fl-check:src/c.go:Off"));
+    assert!(h.has("fl-check:src:Mixed"), "a folder with some files in");
+    events(&mut h, &host);
+    h.click("fl-check:src/c.go:Off");
+    h.click("fl-check:src/a.go:On");
+    h.click("fl-check:src/b.go:Mixed");
+    h.click("fl-check:src:Mixed");
+    assert_eq!(
+        events(&mut h, &host),
+        [
+            SurfaceEvent::Stage(paths(&["src/c.go"]), true),
+            SurfaceEvent::Stage(paths(&["src/a.go"]), false),
+            SurfaceEvent::Stage(paths(&["src/b.go"]), true),
+            SurfaceEvent::Stage(paths(&["src/a.go", "src/b.go", "src/c.go"]), true),
+        ]
+    );
+    // The header checks everything, or unchecks it once all is in.
+    h.click("button:Check all");
+    assert_eq!(
+        events(&mut h, &host),
+        [SurfaceEvent::Stage(
+            paths(&["src/a.go", "src/b.go", "src/c.go"]),
+            true
+        )]
+    );
+    h.cx.update(|window, cx| {
+        host.update(cx, |hst, cx| {
+            hst.set(
+                |p| {
+                    p.working_index = Some(std::rc::Rc::new(crate::file_list::WorkingIndex {
+                        staged: ["src/a.go", "src/b.go", "src/c.go"]
+                            .map(String::from)
+                            .into(),
+                        ..Default::default()
+                    }))
+                },
+                window,
+                cx,
+            )
+        })
     });
-    assert!(!h.has("commit:working"));
-    assert!(h.has("commit:Add feature"));
+    assert!(h.has("fl-check:src:On"));
+    h.click("button:Uncheck all");
+    assert_eq!(
+        events(&mut h, &host),
+        [SurfaceEvent::Stage(
+            paths(&["src/a.go", "src/b.go", "src/c.go"]),
+            false
+        )]
+    );
+    // Not on the other tabs.
+    h.cx.update(|window, cx| {
+        host.update(cx, |hst, cx| {
+            hst.set(|p| p.tab = ReviewTab::Changes, window, cx)
+        })
+    });
+    assert!(h.has("fl-row:file:src/main.go"));
+    assert!(!h.has("fl-check:src/main.go:Off"));
+    assert!(!h.has("button:Check all"));
+}
+
+#[gpui::test]
+async fn uncommitted_files_discard_per_file_per_folder_and_all(cx: &mut TestAppContext) {
+    let (mut h, host) = uncommitted(cx, |_| {});
+    events(&mut h, &host);
+    h.hover("fl-row:file:src/c.go");
+    h.click("fl-discard:src/c.go");
+    h.hover("fl-row:dir:src");
+    h.click("fl-discard:src");
+    h.click("df-discard:src/a.go");
+    h.click("button:Discard all");
+    assert_eq!(
+        events(&mut h, &host),
+        [
+            SurfaceEvent::Discard(paths(&["src/c.go"]), "src/c.go".into()),
+            SurfaceEvent::Discard(paths(&["src/a.go", "src/b.go", "src/c.go"]), "src".into()),
+            SurfaceEvent::Discard(paths(&["src/a.go"]), "src/a.go".into()),
+            SurfaceEvent::DiscardAll,
+        ]
+    );
+    h.cx.update(|window, cx| {
+        host.update(cx, |hst, cx| {
+            hst.set(|p| p.tab = ReviewTab::Changes, window, cx)
+        })
+    });
+    assert!(h.has("df-head:src/main.go:open"));
+    assert!(!h.has("df-discard:src/main.go"));
+}
+
+struct Foot;
+
+impl gpui_kit::Render for Foot {
+    fn render(
+        &mut self,
+        _: &mut gpui_kit::Window,
+        _: &mut gpui_kit::Context<Self>,
+    ) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{InteractiveElement as _, Styled as _};
+        gpui_kit::div()
+            .debug_selector(|| "test-foot".into())
+            .h(gpui::px(40.))
+    }
+}
+
+#[gpui::test]
+async fn the_commit_composer_sits_under_the_uncommitted_file_list(cx: &mut TestAppContext) {
+    let foot = cx.update(|cx| gpui_kit::AppContext::new(cx, |_| Foot));
+    let focus = cx.update(|cx| cx.focus_handle());
+    let slot = crate::files_changed::CommitFoot {
+        view: foot.into(),
+        fit: Default::default(),
+        focus,
+    };
+    let (mut h, host) = uncommitted(cx, move |p| p.commit_foot = Some(slot));
+    let list = h.bounds("filelist").expect("file list");
+    let foot = h.bounds("test-foot").expect("composer");
+    assert!((f32::from(foot.bottom()) - f32::from(list.bottom())).abs() < 1.5);
+    assert!(f32::from(foot.left()) >= f32::from(list.left()));
+    assert!(f32::from(foot.right()) <= f32::from(list.right()));
+    // It goes with the file list, and is only on this tab.
+    h.click("button:Hide file list");
+    assert!(!h.has("test-foot"));
+    h.click("button:Show file list");
+    assert!(h.has("test-foot"));
+    h.cx.update(|window, cx| {
+        host.update(cx, |hst, cx| {
+            hst.set(|p| p.tab = ReviewTab::Changes, window, cx)
+        })
+    });
+    assert!(!h.has("test-foot"));
 }
 
 #[gpui::test]
@@ -181,7 +344,6 @@ async fn working_copy_review_includes_the_commits_tab(cx: &mut TestAppContext) {
         p.base_label = String::new();
         p.tab = ReviewTab::Commits;
     });
-    assert!(h.has("commit:working"));
     assert!(h.has("commit:Add feature"));
     assert!(h.has("commit:Older work"));
     let hint = host.read_with(h.cx, |hst, cx| {

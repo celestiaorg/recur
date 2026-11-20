@@ -18,7 +18,8 @@ use recur_services::{AppEvent, Error};
 
 use super::harness::*;
 use crate::model::FocusZone;
-use recur_view_core::prefs::PanelKey;
+use crate::model::MainSurface;
+use recur_view_core::prefs::{PanelKey, TerminalPlacement};
 
 type CallLog = Arc<Mutex<Vec<(&'static str, Vec<String>)>>>;
 
@@ -98,7 +99,7 @@ impl Term {
             t4.log("SetTerminalDockChrome", &[&ws]);
             t4.chrome_sets.lock().push(c.clone());
             let mut chrome = t4.chrome.lock();
-            if !c.open && !c.beside && c.beside_pct <= 0 {
+            if !c.open && !c.beside && c.beside_pct <= 0 && c.placement.is_empty() {
                 chrome.remove(&ws);
             } else {
                 chrome.insert(
@@ -251,6 +252,24 @@ fn open_dock(h: &mut H) {
     assert!(dock_open(h));
 }
 
+/// Picks `option` in the Terminal button's placement menu.
+fn pick_placement(h: &mut H, option: &str) {
+    open_placement_menu(h);
+    h.click(&format!("sel-opt:{option}"));
+    h.wait(100);
+}
+
+fn open_placement_menu(h: &mut H) {
+    let shown = h.read(|o, cx| o.term_placement(cx).label());
+    h.click(&format!(
+        "sel:Terminal placement=Terminal placement: {shown}"
+    ));
+}
+
+fn placement(h: &mut H) -> TerminalPlacement {
+    h.read(|o, cx| o.term_placement(cx))
+}
+
 #[gpui::test]
 async fn toggle_opens_a_shell_streams_output_and_acks_it(cx: &mut TestAppContext) {
     let t = Term::default();
@@ -298,16 +317,23 @@ async fn dropping_an_explorer_file_or_folder_onto_the_terminal_inserts_the_path(
 }
 
 #[gpui::test]
-async fn dropping_a_source_control_row_onto_the_terminal_inserts_the_path(cx: &mut TestAppContext) {
+async fn dropping_a_review_file_row_onto_the_terminal_inserts_the_path(cx: &mut TestAppContext) {
     let t = Term::default();
     let opts = Overrides::default()
-        .working_status(|_, _| Ok([("src/main.go".to_owned(), "m".to_owned())].into()));
+        .working_status(|_, _| Ok([("src/main.go".to_owned(), "m".to_owned())].into()))
+        .diff_working(|_, _| {
+            Ok(serde_json::from_value(serde_json::json!({"files": [
+                {"path": "src/main.go", "status": "m", "diff": {"add": 1, "del": 0}}
+            ]}))
+            .unwrap())
+        });
     let mut h = mount(cx, t.opts(opts), |_| {}, |_| {});
     open_dock(&mut h);
-    h.click("panel-toggle:scm");
+    h.click("obs-left-toggle");
     h.update(|o, _, cx| o.refresh_working_status(cx).detach());
     h.settle();
-    h.drag("scm-stage:u:src/main.go", "term-pane:sess-1");
+    h.click("obs-review-toggle");
+    h.drag("fl-row:file:src/main.go", "term-pane:sess-1");
     let abs = format!("/mock/worktrees/{WS}/src/main.go");
     let hits = t
         .calls("WriteTerminal")
@@ -544,7 +570,11 @@ async fn cmd_1_2_3_focus_agent_editor_and_terminal(cx: &mut TestAppContext) {
     );
     assert!(!term_lit(&mut h));
     // From another left panel, ⌘1 switches back to the agent.
-    h.click("panel-toggle:findings");
+    h.state_update(|s, cx| {
+        use recur_view_core::prefs::{CodePanelKey, PanelSide};
+        s.set_code_panel_side(CodePanelKey::Outline, PanelSide::Left, cx)
+    });
+    h.click("panel-toggle:outline");
     h.events.borrow_mut().clear();
     h.keys("secondary-1");
     h.wait(100);
@@ -654,8 +684,7 @@ async fn the_grid_keeps_its_size_while_maximize_animates(cx: &mut TestAppContext
 async fn maximize_and_restore_while_the_dock_is_beside_the_editor(cx: &mut TestAppContext) {
     let t = Term::default();
     let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
-    h.click("obs-term-beside-toggle");
-    h.wait(100);
+    pick_placement(&mut h, "Beside the editor");
     assert!(h.read(|o, cx| o.term_beside_layout(cx)));
     let beside = h.bounds("term-dock").expect("dock");
     h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, true, cx));
@@ -676,6 +705,11 @@ async fn hide_editor_expands_the_terminal_in_the_middle_panel(cx: &mut TestAppCo
     open_dock(&mut h);
     let with_editor = h.bounds("term-dock").expect("dock").size.height;
     h.click("obs-editor-toggle");
+    assert!(
+        !h.read(|o, cx| o.editor_tucked(cx)),
+        "the editor button does not hide what it shows"
+    );
+    h.keys("secondary-alt-e");
     assert!(h.read(|o, cx| o.editor_tucked(cx)));
     assert!(!h.has("obs-editors"));
     assert!(h.has("obs-toolbar") && h.has("obs-side") && h.has("obs-editor-toggle"));
@@ -694,7 +728,7 @@ async fn hiding_the_editor_opens_the_terminal_when_it_was_closed(cx: &mut TestAp
     let t = Term::default();
     let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
     assert!(!dock_open(&mut h));
-    h.click("obs-editor-toggle");
+    h.keys("secondary-alt-e");
     h.wait(100);
     assert!(dock_open(&mut h));
     assert!(h.read(|o, cx| o.editor_tucked(cx)));
@@ -718,7 +752,7 @@ async fn opt_cmd_e_toggles_editor_visibility(cx: &mut TestAppContext) {
 async fn hiding_the_terminal_clears_editor_hidden(cx: &mut TestAppContext) {
     let t = Term::default();
     let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
-    h.click("obs-editor-toggle");
+    h.keys("secondary-alt-e");
     h.wait(100);
     assert!(h.read(|o, cx| o.editor_tucked(cx)));
     h.click("obs-term-toggle");
@@ -848,15 +882,333 @@ async fn beside_survives_a_reload_via_dock_chrome(
 ) {
     let t = Term::default();
     let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
-    h.click("obs-term-beside-toggle");
-    h.wait(100);
+    pick_placement(&mut h, "Beside the editor");
     assert!(h.read(|o, cx| o.term_beside_layout(cx)));
-    assert!(t.chrome_sets.lock().iter().any(|c| c.beside));
+    assert!(
+        t.chrome_sets
+            .lock()
+            .iter()
+            .any(|c| c.beside && c.placement == "beside")
+    );
     h.quit();
     let mut h = restart_mount(restarted, &t);
     h.wait(100);
     assert!(h.read(|o, cx| o.term_beside_layout(cx)));
     assert!(dock_open(&mut h));
+}
+
+#[gpui::test]
+async fn a_beside_flag_from_before_the_placement_menu_still_puts_the_terminal_beside(
+    cx: &mut TestAppContext,
+) {
+    let t = Term::default();
+    t.chrome.lock().insert(
+        WS.into(),
+        TerminalDockChrome {
+            workspace_id: WS.into(),
+            open: true,
+            beside: true,
+            ..Default::default()
+        },
+    );
+    let mut h = restart_mount(cx, &t);
+    h.wait(100);
+    assert_eq!(placement(&mut h), TerminalPlacement::Beside);
+    assert!(h.read(|o, cx| o.term_beside_layout(cx)));
+    assert!(dock_open(&mut h));
+}
+
+fn dock_height(h: &mut H) -> f32 {
+    h.read(|o, cx| o.state.read(cx).panels.size(PanelKey::TerminalDock))
+}
+
+/// Drags the dock's top edge 100px up.
+fn drag_top_edge(h: &mut H, dock: gpui::Bounds<gpui::Pixels>) {
+    let edge = gpui::point(dock.center().x, dock.top() + gpui::px(1.));
+    h.drag_points(edge, gpui::point(edge.x, edge.y - gpui::px(100.)));
+}
+
+#[gpui::test]
+async fn each_placement_lays_the_dock_out_against_the_chat_the_center_and_the_right_panel(
+    cx: &mut TestAppContext,
+) {
+    let t = Term::default();
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
+    open_dock(&mut h);
+    let boxes = |h: &mut H| {
+        ["term-dock", "obs-left", "obs-main", "obs-side"].map(|sel| h.bounds(sel).expect(sel))
+    };
+
+    let [dock, chat, main, side] = boxes(&mut h);
+    assert_eq!(
+        (dock.left(), dock.right(), dock.bottom()),
+        (main.left(), main.right(), main.bottom()),
+        "below the editor: the center column's own bottom"
+    );
+    assert_eq!(chat.bottom(), dock.bottom());
+    assert_eq!(side.bottom(), dock.bottom());
+
+    pick_placement(&mut h, "Below the chat and editor");
+    assert!(h.read(|o, cx| o.term_full_layout(cx)));
+    let [dock, chat, main, side] = boxes(&mut h);
+    let obs = h.bounds("obs").expect("obs");
+    assert_eq!(
+        (dock.left(), dock.right(), dock.bottom()),
+        (chat.left(), main.right(), obs.bottom()),
+        "under the chat and the center"
+    );
+    assert_eq!(dock.top(), chat.bottom());
+    assert_eq!(dock.top(), main.bottom());
+    assert_eq!(
+        (side.left(), side.bottom()),
+        (dock.right(), obs.bottom()),
+        "the right panel keeps the whole height beside it"
+    );
+    let saved = dock_height(&mut h);
+    drag_top_edge(&mut h, dock);
+    let tall = dock_height(&mut h);
+    assert_eq!(tall, saved + 100., "its top edge resizes it");
+    assert_eq!(
+        h.bounds("term-dock").expect("dock").size.height,
+        gpui::px(tall)
+    );
+
+    pick_placement(&mut h, "In place of the editor");
+    assert!(h.read(|o, cx| o.term_is_center(cx)));
+    let [dock, chat, main, side] = boxes(&mut h);
+    assert_eq!(dock, main, "the center column is the terminal");
+    assert_eq!((dock.left(), dock.right()), (chat.right(), side.left()));
+    assert_eq!((dock.top(), dock.bottom()), (chat.top(), chat.bottom()));
+    assert!(!h.has("obs-editors") && !h.has("obs-center-tabs"));
+    drag_top_edge(&mut h, dock);
+    assert_eq!(dock_height(&mut h), tall, "it has no height to drag");
+
+    pick_placement(&mut h, "Beside the editor");
+    assert!(h.read(|o, cx| o.term_beside_layout(cx)));
+    let [dock, _, main, _] = boxes(&mut h);
+    let editors = h.bounds("obs-editors").expect("editors");
+    assert_eq!(
+        (dock.top(), dock.bottom(), dock.right()),
+        (main.top(), main.bottom(), main.right())
+    );
+    assert!(editors.right() <= dock.left() && editors.left() == main.left());
+}
+
+#[gpui::test]
+async fn the_terminal_button_shows_and_hides_except_in_place_of_the_editor_where_it_switches(
+    cx: &mut TestAppContext,
+) {
+    let t = Term::default();
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
+    for option in [
+        "Below the editor",
+        "Below the chat and editor",
+        "Beside the editor",
+    ] {
+        pick_placement(&mut h, option);
+        assert!(
+            dock_open(&mut h),
+            "{option}: choosing it shows the terminal"
+        );
+        h.click("obs-term-toggle");
+        assert!(!dock_open(&mut h), "{option}: the button hides");
+        h.click("obs-term-toggle");
+        h.wait(100);
+        assert!(dock_open(&mut h), "{option}: and shows");
+    }
+
+    pick_placement(&mut h, "In place of the editor");
+    assert!(h.read(|o, cx| o.term_is_center(cx)));
+    h.click("obs-term-toggle");
+    assert!(dock_open(&mut h), "it is showing: the button does nothing");
+    h.click("obs-editor-toggle");
+    assert!(!dock_open(&mut h) && h.has("obs-editors"));
+    h.click("obs-term-toggle");
+    h.wait(100);
+    assert!(dock_open(&mut h) && !h.has("obs-editors"));
+    h.click("obs-review-toggle");
+    assert!(!dock_open(&mut h), "the review takes the center");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    // Over the review, the review's own button switches back to it.
+    h.click("obs-term-toggle");
+    h.wait(100);
+    assert!(h.read(|o, cx| o.term_is_center(cx)));
+    h.click("obs-review-toggle");
+    assert!(!dock_open(&mut h));
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    // The plan's view takes the center from it the same way.
+    super::observatory::set_plan(&mut h, true);
+    {
+        let view = MainSurface::Plan;
+        let toggle = format!("obs-{}-toggle", view.key());
+        h.click("obs-term-toggle");
+        h.wait(100);
+        assert!(h.read(|o, cx| o.term_is_center(cx)) && !h.has("obs-list-column"));
+        h.click(&toggle);
+        assert!(!dock_open(&mut h), "{view:?} takes the center");
+        assert_eq!(h.read(|o, cx| o.main_surface(cx)), view);
+        assert!(h.has("obs-list-column"));
+        // Over the view, its own button switches back to it.
+        h.click("obs-term-toggle");
+        h.wait(100);
+        assert!(h.read(|o, cx| o.term_is_center(cx)));
+        h.click(&toggle);
+        assert!(!dock_open(&mut h) && h.has("obs-list-column"));
+    }
+}
+
+#[gpui::test]
+async fn ctrl_backtick_in_place_of_the_editor_switches_to_the_terminal_and_back(
+    cx: &mut TestAppContext,
+) {
+    let t = Term::default();
+    let mut h = mount(
+        cx,
+        t.opts(Overrides::default()),
+        |st| st.set("recur.terminalPlacement", "center"),
+        |_| {},
+    );
+    h.click("obs-review-toggle");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    // What ⌃` does (the shell's binding).
+    h.state_update(|s, cx| s.toggle_terminal_dock(WS, cx));
+    h.wait(100);
+    assert!(h.read(|o, cx| o.term_is_center(cx)));
+    assert!(dock_open(&mut h) && term_lit(&mut h));
+    assert_eq!(h.bounds("term-dock"), h.bounds("obs-main"));
+    h.state_update(|s, cx| s.toggle_terminal_dock(WS, cx));
+    h.wait(100);
+    assert!(!dock_open(&mut h), "back to the view it covered");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    // ⌥⌘E is the same switch there, to and from the editor.
+    h.keys("secondary-alt-e");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert!(!dock_open(&mut h));
+    h.keys("secondary-alt-e");
+    h.wait(100);
+    assert!(h.read(|o, cx| o.term_is_center(cx)));
+}
+
+#[gpui::test]
+async fn the_placement_menu_checks_the_choice_and_remembers_it_per_workspace(
+    cx: &mut TestAppContext,
+    restarted: &mut TestAppContext,
+) {
+    let t = Term::default();
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
+    open_placement_menu(&mut h);
+    for p in TerminalPlacement::ALL {
+        assert!(h.has(&format!("sel-opt:{}", p.label())));
+    }
+    assert!(
+        !h.has("sel-opt:Use default"),
+        "nothing to clear while it follows the default"
+    );
+    h.keys("escape");
+    assert!(!h.has("sel-opt:Beside the editor"), "Esc dismisses it");
+    open_placement_menu(&mut h);
+    h.click("obs-main");
+    assert!(
+        !h.has("sel-opt:Beside the editor"),
+        "and so does a press outside"
+    );
+    assert_eq!(placement(&mut h), TerminalPlacement::Below);
+    assert!(!dock_open(&mut h));
+
+    pick_placement(&mut h, "Below the chat and editor");
+    assert!(dock_open(&mut h) && h.read(|o, cx| o.term_full_layout(cx)));
+    assert!(h.has("sel:Terminal placement=Terminal placement: Below the chat and editor"));
+    let checked = h.read(|o, cx| {
+        let (menu, _) = o.term_place_menu.as_ref().expect("menu");
+        menu.read(cx).value().to_string()
+    });
+    assert_eq!(checked, "full");
+    assert_eq!(
+        t.chrome_sets.lock().last().map(|c| c.placement.clone()),
+        Some("full".into())
+    );
+
+    h.switch_to(PROJECT, "LOOP-2229");
+    assert_eq!(placement(&mut h), TerminalPlacement::Below);
+    assert!(h.has("sel:Terminal placement=Terminal placement: Below the editor"));
+    h.switch_to(PROJECT, WS);
+    assert_eq!(placement(&mut h), TerminalPlacement::Full);
+    h.quit();
+    let mut h = restart_mount(restarted, &t);
+    h.wait(100);
+    assert!(h.read(|o, cx| o.term_full_layout(cx)));
+}
+
+#[gpui::test]
+async fn use_default_clears_the_workspace_placement_and_the_default_reaches_the_rest(
+    cx: &mut TestAppContext,
+) {
+    let t = Term::default();
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
+    pick_placement(&mut h, "Beside the editor");
+    // The Settings row: only workspaces without their own placement follow it.
+    h.state_update(|s, cx| s.set_terminal_placement_default(TerminalPlacement::Full, cx));
+    assert_eq!(placement(&mut h), TerminalPlacement::Beside);
+    h.switch_to(PROJECT, "LOOP-2229");
+    assert_eq!(placement(&mut h), TerminalPlacement::Full);
+    h.state_update(|s, cx| s.set_terminal_dock_open("LOOP-2229", true, cx));
+    h.wait(100);
+    assert!(h.read(|o, cx| o.term_full_layout(cx)));
+
+    h.switch_to(PROJECT, WS);
+    h.wait(100);
+    pick_placement(&mut h, "Use default");
+    assert_eq!(placement(&mut h), TerminalPlacement::Full);
+    assert!(h.read(|o, cx| o.term_full_layout(cx)), "it stays showing");
+    let saved = t.chrome_sets.lock().last().cloned().expect("saved");
+    assert!(saved.placement.is_empty() && !saved.beside);
+    open_placement_menu(&mut h);
+    assert!(!h.has("sel-opt:Use default"));
+}
+
+#[gpui::test]
+async fn maximize_and_restore_under_every_column_and_in_place_of_the_editor(
+    cx: &mut TestAppContext,
+) {
+    let t = Term::default();
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
+    for option in ["Below the chat and editor", "In place of the editor"] {
+        pick_placement(&mut h, option);
+        let rest = h.bounds("term-dock").expect("dock");
+        h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, true, cx));
+        h.wait(400);
+        let (obs, max) = obs_dock_boxes(&mut h);
+        assert!(near(obs, max) < 8., "{option}: {obs:?} {max:?}");
+        h.state_update(|s, cx| s.set_terminal_dock_maximized(WS, false, cx));
+        h.wait(400);
+        assert!(!h.read(|o, _| o.term_overlaying()));
+        let back = h.bounds("term-dock").expect("dock");
+        assert!(near(back, rest) < 8., "{option}: {rest:?} {back:?}");
+    }
+}
+
+#[gpui::test]
+async fn the_stacked_layout_keeps_the_full_width_dock_under_the_stack(cx: &mut TestAppContext) {
+    let t = Term::default();
+    let mut h = mount(
+        cx,
+        t.opts(Overrides::default()),
+        |st| st.set("recur.terminalPlacement", "full"),
+        |_| {},
+    );
+    h.cx.simulate_resize(gpui::size(gpui::px(900.), gpui::px(800.)));
+    h.settle();
+    open_dock(&mut h);
+    let (obs, dock) = obs_dock_boxes(&mut h);
+    let (chat, main) = (
+        h.bounds("obs-left").expect("chat"),
+        h.bounds("obs-main").expect("main"),
+    );
+    assert_eq!(
+        (dock.left(), dock.right(), dock.bottom()),
+        (obs.left(), obs.right(), obs.bottom())
+    );
+    assert!(chat.bottom() <= main.top() && main.bottom() <= dock.top());
 }
 
 fn runs_mount<'a>(cx: &'a mut TestAppContext, t: &Term, runs: &[(&str, &str)]) -> H<'a> {

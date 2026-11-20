@@ -348,8 +348,8 @@ impl Observatory {
                 format!("All diffs: review changes since {base} (⌥⌘R)"),
                 icon_btn("all-diffs", IconName::Rows3, false, None, cx).on_click(
                     cx.guarded_listener(|o, _, _, cx| {
-                        o.set_review_tab(recur_view_review::review_diff::ReviewTab::Changes, cx);
                         o.toggle_review(cx);
+                        o.set_review_tab(recur_view_review::review_diff::ReviewTab::Changes, cx);
                     }),
                 ),
             ));
@@ -931,7 +931,7 @@ impl Observatory {
         let r = self.review_surface.clone()?;
         // `.obs-review-host.off` is `display: none`: the surface keeps its state but leaves the
         // layout (laid out hidden, a large diff costs seconds a frame).
-        if self.main_surface(cx) == MainSurface::Editor {
+        if self.main_surface(cx) != MainSurface::Review {
             return None;
         }
         Some(
@@ -949,6 +949,44 @@ impl Observatory {
                 // does not render it. Its own scrolling dirties it and rebuilds what is inside;
                 // the card stack and the file list are memoized for that.
                 .child(cached_view(&r, fill()))
+                .into_any_element(),
+        )
+    }
+
+    /// PR detail for the workspace's pull request (`recur_view_core::pr_view`), mounted the
+    /// first time the view shows.
+    pub(crate) fn pr_view(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<recur_view_core::pr_view::PrViewParts> {
+        if self.pr_view.is_none() {
+            let (state, ws) = (self.state.clone(), self.props.workspace_id.clone());
+            self.pr_view = recur_view_core::pr_view::mount(&state, &ws, window, cx);
+        }
+        self.pr_view.clone()
+    }
+
+    /// The pull request view: the active tab's pane. Its tabs are the center's tab row
+    /// (`center_tabs_body`).
+    fn render_pr_host(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        let body = self.pr_view(window, cx)?.body;
+        Some(
+            div()
+                .id("obs-pr")
+                .debug_selector(|| "obs-pr".into())
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_h_0()
+                .min_w_0()
+                .overflow_hidden()
+                // Cached, as the review host is: a key typed in the chat does not render it.
+                .child(body.cached(fill()))
                 .into_any_element(),
         )
     }
@@ -1184,7 +1222,9 @@ impl Observatory {
         let base = self.review_base(cx);
         let scope = if !b.commit_scope_hash.is_empty() {
             "this commit".to_string()
-        } else if b.working_open {
+        } else if self.review_strip_tab(cx)
+            == recur_view_review::review_diff::ReviewTab::Uncommitted
+        {
             "vs HEAD".to_string()
         } else {
             format!("vs {}", if base.is_empty() { "HEAD" } else { &base })
@@ -1260,15 +1300,16 @@ impl Observatory {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
-        let hidden = self.editor_tucked(cx) && self.main_surface(cx) == MainSurface::Editor;
+        let hidden = self.center_hidden(cx);
         let beside = self.term_beside_layout(cx);
         let term_open = self.term_open(cx);
         let overlaying = self.term_overlaying();
         self.ensure_dock(window, cx);
-        let no_dock = !term_open;
+        // The full-width dock is under the whole body (`render_view`), not in this column.
+        let no_dock = !term_open || self.term_full_layout(cx);
         let rail_collapsed = self.state.read(cx).rail_collapsed;
         let no_left = !self.has_left(cx) || !self.left_gutter_open();
-        let no_side = !self.has_right(cx) || !self.show_side;
+        let no_side = !self.has_right(cx) || !self.show_side || self.floating(cx);
         let corner = (rail_collapsed && no_left && no_dock, no_side && no_dock);
         // The crumb and status bars are their own cached views at their fixed heights, so a key
         // typed in the chat does not lay them out (a wrapping status bar stays inline).
@@ -1289,6 +1330,18 @@ impl Observatory {
         let review = (!hidden)
             .then(|| self.render_review_host(window, cx))
             .flatten();
+        let pr = (!hidden && self.main_surface(cx) == MainSurface::Pr)
+            .then(|| self.render_pr_host(window, cx))
+            .flatten();
+        // Its own cached view: a key in the chat beside it redraws the Observatory, not the
+        // findings and their markdown.
+        let list = (!hidden && self.main_surface(cx) == MainSurface::Plan).then(|| {
+            let pane = self
+                .list_pane
+                .get_or_insert_with(|| recur_ui::pane::Pane::of(cx, Self::list_pane_body))
+                .clone();
+            div().flex_1().min_h_0().child(cached_view(&pane, fill()))
+        });
         let editor_status =
             !self.active_path().is_empty() && self.main_surface(cx) == MainSurface::Editor;
         let review_status = self.main_surface(cx) == MainSurface::Review;
@@ -1320,9 +1373,9 @@ impl Observatory {
             .children(crumb.filter(|_| !fs))
             .children(editors)
             .children(review)
+            .children(pr)
+            .children(list)
             .children(status.filter(|_| !fs));
-        // Cached: a key in the chat beside it redraws the Observatory, not the terminal.
-        let dock_el = self.dock.as_ref().map(|(_, d)| cached_view(d, fill()));
         let mut main = div()
             .id("obs-main")
             .debug_selector(|| "obs-main".into())
@@ -1357,6 +1410,8 @@ impl Observatory {
                     .min_h_0()
                     .child(col),
             );
+            // Cached: a key in the chat beside it redraws the Observatory, not the terminal.
+            let dock_el = self.dock.as_ref().map(|(_, d)| cached_view(d, fill()));
             if let Some(d) = dock_el.filter(|_| !overlaying) {
                 main = main.child(
                     div()
@@ -1381,28 +1436,8 @@ impl Observatory {
             if !hidden {
                 main = main.child(col);
             }
-            if term_open {
-                if overlaying && !self.overlay_keep_editor_hidden {
-                    main = main.child(
-                        div()
-                            .flex_none()
-                            .h(px(self.term_slot_h))
-                            .relative()
-                            .child(crate::geometry::probe(&self.bounds.slot)),
-                    );
-                } else if !overlaying && let Some(d) = dock_el {
-                    let h = self.state.read(cx).panels.size(PanelKey::TerminalDock);
-                    let holder = div()
-                        .relative()
-                        .min_h_0()
-                        .child(crate::geometry::probe(&self.bounds.dock))
-                        .child(d);
-                    main = main.child(if hidden {
-                        holder.flex_1()
-                    } else {
-                        holder.flex_none().h(px(h))
-                    });
-                }
+            if !no_dock {
+                main = main.children(self.render_dock_row(hidden, cx));
             }
         }
         if fs {
@@ -1437,6 +1472,34 @@ impl Observatory {
             main = main.child(lb.clone());
         }
         main.into_any_element()
+    }
+
+    /// The dock as a row at its saved height (or filling, with the editor hidden), or the slot
+    /// it left while it is maximized.
+    pub(crate) fn render_dock_row(&self, grow: bool, cx: &App) -> Option<AnyElement> {
+        if self.term_overlaying() {
+            return (!self.overlay_keep_editor_hidden).then(|| {
+                div()
+                    .flex_none()
+                    .h(px(self.term_slot_h))
+                    .relative()
+                    .child(crate::geometry::probe(&self.bounds.slot))
+                    .into_any_element()
+            });
+        }
+        let (_, d) = self.dock.as_ref()?;
+        let h = self.state.read(cx).panels.size(PanelKey::TerminalDock);
+        // Cached: a key in the chat redraws the Observatory, not the terminal.
+        let holder = div()
+            .relative()
+            .min_h_0()
+            .child(crate::geometry::probe(&self.bounds.dock))
+            .child(cached_view(d, fill()));
+        Some(if grow {
+            holder.flex_1().into_any_element()
+        } else {
+            holder.flex_none().h(px(h)).into_any_element()
+        })
     }
 
     /// `.vsplit.obs-tsplit`: drag the editor / terminal split when they sit side by side.

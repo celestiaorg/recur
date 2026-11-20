@@ -272,6 +272,12 @@ async fn editor_session_review_only_is_kept() {
         fx.session_from_disk(WS).await.unwrap().main_surface,
         "review"
     );
+    for view in ["pr", "plan"] {
+        let mut p = meta_patch(&[], "");
+        p.meta.as_mut().unwrap().main_surface = view.into();
+        fx.update(WS, p).await;
+        assert_eq!(fx.session(WS).await.unwrap().main_surface, view);
+    }
     fx.update(WS, meta_patch(&[], "")).await;
     assert_eq!(
         fx.session(WS).await,
@@ -293,11 +299,11 @@ async fn editor_session_pane_chrome_only_is_kept() {
         m.right_open = open;
         p
     };
-    fx.update(WS, pane("findings", "scm", Some(false))).await;
+    fx.update(WS, pane("outline", "search", Some(false))).await;
     let sess = fx.session(WS).await.unwrap();
     assert_eq!(
         (sess.left_kind.as_str(), sess.right_kind.as_str()),
-        ("findings", "scm")
+        ("outline", "search")
     );
     assert_eq!(
         (sess.left_open, sess.right_open),
@@ -307,7 +313,7 @@ async fn editor_session_pane_chrome_only_is_kept() {
     let fresh = fx.session_from_disk(WS).await.unwrap();
     assert_eq!(
         (fresh.left_kind.as_str(), fresh.right_kind.as_str()),
-        ("findings", "scm")
+        ("outline", "search")
     );
 
     fx.update(WS, pane("maestro", "files", Some(true))).await;
@@ -317,6 +323,18 @@ async fn editor_session_pane_chrome_only_is_kept() {
         fx.session(WS).await,
         None,
         "an unknown kind must not pin a session"
+    );
+    fx.update(WS, pane("scm", "scm", None)).await;
+    assert_eq!(
+        fx.session(WS).await,
+        None,
+        "nor source control, which is the review's Uncommitted tab"
+    );
+    fx.update(WS, pane("plan", "", None)).await;
+    assert_eq!(
+        fx.session(WS).await,
+        None,
+        "nor a kind that became a center view"
     );
     fx.close().await;
 }

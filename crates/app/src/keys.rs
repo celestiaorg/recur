@@ -101,6 +101,9 @@ impl Shell {
         } else if cmd_or_ctrl(k) && key_is(k, "b") {
             state.update(cx, |s, cx| s.toggle_rail(cx));
             true
+        } else if cmd_or_ctrl(k) && m.alt && !m.shift && key_is(k, "j") {
+            state.update(cx, |s, cx| s.toggle_side_float(cx));
+            true
         } else if cmd_or_ctrl(k) && !m.shift && !m.alt && k.key == "," {
             state.update(cx, |s, cx| s.go(ViewName::Settings, None, cx));
             true
@@ -210,6 +213,7 @@ impl Shell {
                 return true;
             }
             match s.view {
+                ViewName::Detail if s.side_float_open => return false,
                 ViewName::Detail | ViewName::Settings | ViewName::Welcome => {
                     s.go(ViewName::Briefing, None, cx)
                 }

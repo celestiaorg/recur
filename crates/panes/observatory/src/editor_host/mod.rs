@@ -4,6 +4,7 @@
 //! baseline), per-workspace tab parking across root switches, the file preview and PDF pane,
 //! and the editor's events.
 
+pub(crate) mod cards;
 pub(crate) mod commands;
 mod open;
 mod save;
@@ -871,8 +872,10 @@ impl Observatory {
                 });
                 let sub =
                     cx.guarded_subscribe_in(&fp, window, |obs, _, ev: &FilePreviewEvent, _, cx| {
-                        let FilePreviewEvent::SearchOpenChanged(_) = ev;
-                        obs.sync_find_panel_open(cx);
+                        match ev {
+                            FilePreviewEvent::SearchOpenChanged(_) => obs.sync_find_panel_open(cx),
+                            FilePreviewEvent::Pressed => obs.close_side_float(cx),
+                        }
                     });
                 self.editor_subs.push(sub);
                 self.file_preview = Some((kind, fp.clone()));
@@ -900,9 +903,17 @@ impl Observatory {
             EditorEvent::DocChanged(v) => {
                 self.sync_for(pane).last_emitted = Some(v.clone());
                 self.sync_for(pane).doc = v.clone();
+                let path = match pane {
+                    Pane::Main => self.main_editor.as_ref(),
+                    Pane::Split => self.split_editor.as_ref(),
+                }
+                .map(|e| e.read(cx).path().to_string());
                 match pane {
                     Pane::Main => self.on_main_doc_change(v.clone(), cx),
                     Pane::Split => self.on_split_doc_change(v.clone(), cx),
+                }
+                if let Some(p) = path {
+                    self.card_follow(&p, v, window, cx);
                 }
                 self.notify_secondary_lsp(pane, v, cx);
             }
@@ -971,6 +982,8 @@ impl Observatory {
                 self.merge_sync.last_emitted = Some(v.clone());
                 self.merge_sync.doc = v.clone();
                 self.on_main_doc_change(v.clone(), cx);
+                let p = self.selected_path.clone();
+                self.card_follow(&p, v, window, cx);
             }
             EditorEvent::Save => self.save_edit(window, cx),
             EditorEvent::CopyLine(line) => self.copy_line(*line, cx),

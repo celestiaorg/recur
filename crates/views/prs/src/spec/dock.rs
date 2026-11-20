@@ -250,7 +250,16 @@ fn shows_the_agent_dock_when_the_pr_has_no_workspace(cx: &mut TestAppContext) {
     assert!(!s.has("tb-view-workspace"));
     assert!(s.has("tb-create-workspace"));
     s.click("tb-create-workspace");
-    assert!(s.until(|s| s.has("tb-view-workspace")));
+    // The PR has a workspace now: it shows there, on the pull request view.
+    assert!(s.until(|s| s.view() == ViewName::Detail));
+    let ws = s.pr("482").workspace_id;
+    assert_eq!(
+        s.state
+            .read_with(s.cx, |st, _| st.selected_workspace_id.clone()),
+        ws
+    );
+    assert!(s.until(|s| s.has("obs-pr")));
+    assert!(s.has("prtab:Overview:on:lit"));
     assert!(s.has("chat-composer"));
 }
 
@@ -265,10 +274,7 @@ fn pr_chat_survives_creating_a_workspace(cx: &mut TestAppContext) {
     s.dock_send("from the imported PR");
     assert!(s.until(|s| s.me("from the imported PR")));
     s.click("tb-create-workspace");
-    assert!(s.until(|s| s.has("tb-view-workspace")));
-    assert!(s.until(|s| s.me("from the imported PR")));
-    s.click("tb-view-workspace");
-    assert_eq!(s.view(), ViewName::Detail);
+    assert!(s.until(|s| s.view() == ViewName::Detail));
     assert!(s.until(|s| s.me("from the imported PR")));
 }
 
@@ -311,8 +317,7 @@ fn the_chat_panel_can_be_hidden_and_shown_like_the_observatory(cx: &mut TestAppC
     s.click("tb-view-workspace");
     assert_eq!(s.view(), ViewName::Detail);
     assert!(s.has("obs-left"));
-    s.click("tb-view-pr");
-    assert_eq!(s.view(), ViewName::PrDetail);
+    s.pr_page("482");
     assert!(!s.has("obs-left"));
 
     s.click("button:Show left panel");
@@ -518,6 +523,7 @@ fn pr_opened_fact_shows_completed_time_and_opens_the_pr(cx: &mut TestAppContext)
     s.wait(300);
     assert!(s.has("loop-fact:f-pr"));
     s.click("loop-pr-link:482");
-    assert_eq!(s.view(), ViewName::PrDetail);
+    assert_eq!(s.view(), ViewName::Detail, "the PR opens in its workspace");
+    assert!(s.has("obs-pr"));
     assert!(s.has("prh-title=Add OAuth provider config + secrets handling"));
 }

@@ -66,6 +66,9 @@ impl Observatory {
         let in_term = self.in_dock(window, cx);
         let blocked = self.props.main_blocked;
 
+        if k.key == "escape" {
+            self.close_side_float(cx);
+        }
         if self.ctx_menu.is_some() && k.key == "escape" {
             self.close_ctx(cx);
             cx.notify();

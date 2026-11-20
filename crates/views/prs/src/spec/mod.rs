@@ -5,5 +5,6 @@ mod detail;
 mod dock;
 mod frame_cost;
 mod harness;
+mod hosted;
 mod list;
 mod workspace_pr;

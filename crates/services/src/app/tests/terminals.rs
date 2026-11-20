@@ -322,6 +322,7 @@ async fn terminal_dock_chrome_round_trip_across_shutdown() {
         editor_hidden: true,
         beside: true,
         beside_pct: 40,
+        placement: "beside".into(),
     };
     t.set_terminal_dock_chrome("ws-1", &want).await.unwrap();
     fx.svc.terminal_shutdown().await;
@@ -367,6 +368,22 @@ async fn set_terminal_dock_chrome_closed_keeps_beside() {
         !got[0].open && got[0].beside && got[0].beside_pct == 40,
         "{got:?}"
     );
+    fx.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_closed_dock_keeps_its_placement() {
+    let fx = Fx::new().await;
+    add_ws(&fx, "ws-1", "p", "");
+    let t = &fx.s.terminal;
+    let c = TerminalDockChrome {
+        placement: "full".into(),
+        ..Default::default()
+    };
+    t.set_terminal_dock_chrome("ws-1", &c).await.unwrap();
+    let got = t.list_terminal_dock_chrome().await.unwrap();
+    assert_eq!(got.len(), 1);
+    assert!(!got[0].open && got[0].placement == "full", "{got:?}");
     fx.close().await;
 }
 

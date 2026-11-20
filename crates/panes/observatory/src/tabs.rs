@@ -467,6 +467,14 @@ impl Observatory {
             return Task::ready(false);
         }
         self.show_editor_surface(cx);
+        // Opened is seen: it no longer counts on the Artifacts icon.
+        if let Some(ids) = cx
+            .default_global::<crate::UnseenArtifacts>()
+            .0
+            .get_mut(&self.props.workspace_id)
+        {
+            ids.retain(|i| *i != id);
+        }
         let url = format!("/{rel}");
         let kind = kind.to_lowercase();
         let lang = artifact_scratch_lang(&kind, &rel);

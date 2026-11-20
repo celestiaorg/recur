@@ -23,7 +23,7 @@ use crate::preview::find::FindOptions;
 use crate::preview::scroll::PageAttachment;
 use crate::preview::view::SharedScroll;
 use crate::preview::{
-    PREVIEW_IFRAME_FIND, PREVIEW_IFRAME_FIND_KEY, PREVIEW_IFRAME_FIND_RESULT,
+    PREVIEW_IFRAME_FIND, PREVIEW_IFRAME_FIND_KEY, PREVIEW_IFRAME_FIND_RESULT, PREVIEW_IFRAME_PRESS,
     PREVIEW_IFRAME_RESTORE, PREVIEW_IFRAME_SCROLL, html_preview_srcdoc,
 };
 
@@ -37,6 +37,8 @@ pub enum HtmlPreviewEvent {
     },
     FindKey(String),
     Loaded,
+    /// A mouse press in the page.
+    Pressed,
 }
 
 /// `window.parent` for the page: its `postMessage` goes to the host.
@@ -405,6 +407,7 @@ impl HtmlPreview {
                 index: num("index") as usize,
                 valid: d.get("valid").and_then(Value::as_bool) != Some(false),
             }),
+            Some(t) if t == PREVIEW_IFRAME_PRESS => cx.emit(HtmlPreviewEvent::Pressed),
             Some(t) if t == PREVIEW_IFRAME_FIND_KEY => {
                 if let Some(k) = d.get("key").and_then(Value::as_str) {
                     cx.emit(HtmlPreviewEvent::FindKey(k.to_string()));

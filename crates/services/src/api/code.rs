@@ -2,9 +2,9 @@ use std::collections::BTreeMap;
 
 use async_trait::async_trait;
 use recur_domain::{
-    AgentSkill, Commit, FileContent, FileDiff, FileDiffResult, FileSearchResult, OutlineSymbol,
-    ReplaceResult, SearchHit, SearchOpts, SearchResult, SymbolDef, SymbolRef, TreeEntry,
-    WorktreeCommitResult,
+    AgentSkill, Commit, DiffStat, FileContent, FileDiff, FileDiffResult, FileSearchResult,
+    OutlineSymbol, ReplaceResult, SearchHit, SearchOpts, SearchResult, SymbolDef, SymbolRef,
+    TreeEntry, WorktreeCommitResult,
 };
 
 use crate::Result;
@@ -66,6 +66,15 @@ pub trait CodeService: Send + Sync {
     /// Delete removes a file or directory tree from a loop worktree.
     async fn delete(&self, project_id: &str, workspace_id: &str, path: &str) -> Result<()>;
 
+    /// DiffStats returns path → additions/deletions for what DiffVsBase lists, without
+    /// the patches (the file explorer's `+N −M`). Non-git roots and a missing worktree
+    /// return an empty map, not an error.
+    async fn diff_stats(
+        &self,
+        project_id: &str,
+        workspace_id: &str,
+    ) -> Result<BTreeMap<String, DiffStat>>;
+
     /// DiffVsBase returns the Observatory files-changed diff: working tree versus
     /// the workspace's base branch (merge-base with HEAD, uncommitted included).
     /// An empty base (main working copy) diffs versus HEAD. Non-git roots return
@@ -88,6 +97,15 @@ pub trait CodeService: Send + Sync {
     /// Empty string when the file did not exist then (added/untracked). Used by the
     /// observatory CodeMirror unified merge view.
     async fn file_at_base(
+        &self,
+        project_id: &str,
+        workspace_id: &str,
+        path: &str,
+    ) -> Result<String>;
+
+    /// FileAtHead returns the contents of path at HEAD: empty when HEAD does not have it
+    /// (added or untracked). The base side of the review's editable Uncommitted cards.
+    async fn file_at_head(
         &self,
         project_id: &str,
         workspace_id: &str,
@@ -315,6 +333,10 @@ pub trait CodeService: Send + Sync {
     /// after every save and on workspace switch; a 422 here used to toast
     /// "staging is only allowed in a loop worktree".
     async fn staged_files(&self, project_id: &str, workspace_id: &str) -> Result<Vec<String>>;
+
+    /// UnstagedFiles lists tracked paths with working-tree edits not in the index
+    /// (best-effort like StagedFiles). One in both lists is partly staged.
+    async fn unstaged_files(&self, project_id: &str, workspace_id: &str) -> Result<Vec<String>>;
 
     /// Unstage removes paths from the git index (worktree only).
     async fn unstage(&self, project_id: &str, workspace_id: &str, paths: &[String]) -> Result<()>;

@@ -123,7 +123,7 @@ pub fn rank_user_mentions(people: &[PrPerson], query: &str, limit: usize) -> Vec
 
 /// `ghPRMentionPeople`: the selected GitHub PR's people with a login.
 pub fn gh_pr_mention_people(state: &AppState) -> Vec<PrPerson> {
-    match state.pr(&state.selected_pr_id) {
+    match state.pr(state.shown_pr_id()) {
         Some(pr) if pr.source == PrSource::GitHub => mention_people(pr),
         _ => Vec::new(),
     }
@@ -449,7 +449,7 @@ impl<M: InputModeKind> SuggestAttach<M> {
                 );
                 self.seq += 1;
                 let seq = self.seq;
-                let pr_id = state.read(cx).selected_pr_id.clone();
+                let pr_id = state.read(cx).shown_pr_id().to_string();
                 if pr_id.is_empty() {
                     self.search = None;
                     return;

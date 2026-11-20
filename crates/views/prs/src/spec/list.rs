@@ -297,8 +297,7 @@ fn pr_list_prefixes_titles_with_a_source_icon_and_number_instead_of_a_chip(
     );
     assert_eq!(s.view(), recur_view_core::ViewName::Pr);
 
-    s.click("prrow:482");
-    assert_eq!(s.view(), recur_view_core::ViewName::PrDetail);
+    s.pr_page("482");
     assert!(s.has("prh-src=GitHub PR"));
     assert!(s.has("pr-people:prh"));
     s.hover("pr-people:prh");
@@ -343,8 +342,7 @@ fn github_pr_detail_skeletons_the_thread_until_get_pr_hydrates_it(cx: &mut TestA
         }),
     );
     s.prs_nav();
-    s.click("prrow:482");
-    assert_eq!(s.view(), recur_view_core::ViewName::PrDetail);
+    s.pr_page("482");
     let title = full.title.clone();
     assert!(s.has(&format!("prh-title={title}")));
     assert!(s.has("pr-skel"));

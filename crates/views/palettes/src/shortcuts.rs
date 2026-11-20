@@ -111,6 +111,12 @@ pub const SHORTCUTS: &[(&str, &str, &str, &[&str])] = &[
     ),
     (
         "Workbench",
+        "Float right panel",
+        "⌥⌘J",
+        &["dock", "flyout", "docked", "floating"],
+    ),
+    (
+        "Workbench",
         "Toggle review",
         "⌥⌘R",
         &["files changed", "commits", "diff"],

@@ -283,6 +283,31 @@ fn code_editor_theme_is_independent_and_persists(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn the_right_panel_docks_or_floats_from_settings(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Code editor");
+    assert!(s.has("seg:Right panel:Docked:on"), "specs start docked");
+    s.click("seg:Right panel:Floating");
+    assert!(s.has("seg:Right panel:Floating:on"));
+    assert_eq!(s.storage("recur.sidePanelFloat").as_deref(), Some("true"));
+}
+
+#[gpui::test]
+fn the_terminal_placement_default_is_set_from_settings(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("Code editor");
+    assert!(s.has("seg:Terminal placement:Below editor:on"));
+    s.click("seg:Terminal placement:Below chat and editor");
+    assert!(s.has("seg:Terminal placement:Below chat and editor:on"));
+    assert_eq!(
+        s.storage("recur.terminalPlacement").as_deref(),
+        Some("full")
+    );
+}
+
+#[gpui::test]
 fn code_editor_layout_prefs_persist(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     s.open_settings();

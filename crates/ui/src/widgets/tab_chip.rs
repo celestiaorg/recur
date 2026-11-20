@@ -309,8 +309,10 @@ impl TabChip {
                 }),
         );
         if self.badge > 0 {
+            let badge_sel = format!("tab-chip-badge:{}:{}", self.id, self.badge);
             body = body.child(
                 div()
+                    .debug_selector(move || badge_sel)
                     .flex_none()
                     .bg(t.pane_2)
                     .rounded(px(10.))

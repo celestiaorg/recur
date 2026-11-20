@@ -155,6 +155,7 @@ impl AppServices {
                     editor_hidden: c.editor_hidden,
                     beside: c.beside,
                     beside_pct: c.beside_pct,
+                    placement: c.placement,
                 })
             })
             .collect()

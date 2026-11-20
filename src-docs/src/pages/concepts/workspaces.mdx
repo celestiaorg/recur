@@ -12,6 +12,34 @@ A **workspace** is the unit of work in Recur: a checkout plus the UI around it (
 - **Working copy**: your project's real git checkout. Titlebar actions are **Commit**, **Update**, and **Push**. It cannot Merge or open a PR (it *is* the project tree), and it does not offer Autopilot mode.
 - **Task workspaces**: isolated git worktrees on their own branches. Run any [chat mode](/concepts/modes) here without colliding with other tasks.
 
+## Layout
+
+A workspace shows the agent chat on the left, one view at a time with the terminal in the center (or wherever you [place it](#layout)), and a right panel for the lists you open files from: files, search, artifacts and so on. The last icon in the toolbar (`⌥⌘⇧B`) shows and hides the right panel, and the pin beside it switches it between floating and docked.
+
+The buttons at the front of the toolbar's center group pick the center's view: **Plan**, **Editor**, **Review** and, once the workspace has one, **Pull request**. A button switches to its view and does nothing when it is already showing. The Plan button counts the plan's remaining steps. A link to the plan in the chat switches the center to it.
+
+The **Artifacts** panel is on the right by default, beside the chat: opening an artifact from it opens the artifact as an editor tab while the list stays in view, and you can drag a row into the chat to @-mention it. Its icon counts the artifacts that arrived since you last looked at the list.
+
+The left column holds the chat and the **Findings** panel, one at a time, switched by their icons at the left of the toolbar; the first icon (`⌥⌘B`) hides and shows the column. Findings are on the left so you can read one beside the code it is about: a link to a finding in the chat opens the panel and the finding's file. The Findings icon counts the open ones. Other panels you place on the left in Settings show their icons there too.
+
+The right panel is either floating or docked. This is one setting for every workspace:
+
+- **Floating** (the default): the panel takes no column, and the toolbar does not show its icons. The show button slides it out from the right edge, over the editor. Its icons come out with it, in the toolbar over it where they are when docked, to switch between files, search and the rest; the editor's toolbar buttons move over so they stay in view. It stays open while you work in it or in the chat, so you can open one file after another from it. It closes when you click in the editor column, click the show button again or press `Esc`. Drag its left edge to resize it; it remembers that width apart from the docked one. Project search, find references and the problems list open in it too. The editor keeps its width and the chat takes the rest of the window; drag the editor's left edge to resize it.
+- **Docked**: the panel is a column beside the editor that stays until you hide it (docking it shows it), and its icons sit in the toolbar over it. The chat has its own width and the editor takes the rest.
+
+Switch in **Settings → Code editor → Code panels → Right panel**, with `⌥⌘J`, the pin button in the toolbar, or **View → Float Right Panel**. In a narrow window the panels stack either way.
+
+The Terminal button in the toolbar (``⌃` ``) shows and hides the terminal, and the chevron beside it opens a menu of where the terminal shows:
+
+- **Below the editor** (the default): under the center column.
+- **Below the chat and editor**: one dock under the chat and the editor. The right panel keeps its full height, beside the dock when docked and over it when floating. A floating right panel stops at its top edge.
+- **In place of the editor**: the terminal is a view of the center column, like the editor or the review. The Terminal button switches to it, and the other views' buttons switch away; the shells keep running. ``⌃` `` switches to the terminal and back to the view it covered, and `⌥⌘E` switches between the terminal and the editor.
+- **Beside the editor**: the editor and the terminal side by side, with a split you can drag.
+
+Picking a placement shows the terminal there and is remembered for that workspace. Workspaces you have not picked one for follow **Settings → Code editor → Code panels → Terminal**; **Use default** in the menu puts a workspace back on it. Below the editor or the chat, drag the terminal's top edge to resize it (the two share one height). In a narrow window the full-width terminal sits under the stacked panels. ``⌃⇧` `` maximizes the terminal in every placement.
+
+Once a workspace has a pull request, a pull request button appears beside the review button in the toolbar, with a badge for failing checks. It shows the pull request where the editor is, with its own tabs in the row under the toolbar: **Overview** (the conversation, led by the pull request's state, title, people and attention labels), **Commits**, **Files changed** and **Checks**. Everything you can do to the pull request is in the workspace, so there is no separate page to switch to. See [Pull requests](/concepts/pull-requests).
+
 ## Isolation & parallelism
 
 - Separate worktrees, so parallel workspaces never share a dirty tree
@@ -52,7 +80,9 @@ Conductor Cloud workspaces run on Conductor's servers, so the import cannot see 
 - **Find** (`⌘F`, then `⌘G` / `⌘⇧G` for next and previous) is under Edit → Find; **Go to Line** (`⌘⌥G`) is under Navigate
 - Language servers supply completions and diagnostics. Recur installs most shipped servers on first use; others, such as Solidity's, must be on your `PATH`
 - Preview Markdown, HTML, SVG, Mermaid, and PDF files. `⌘F` searches inside Markdown, HTML, SVG, and Mermaid previews
-- The source control panel shows changes as a collapsible tree or a flat list
+- Uncommitted work is the review's **Uncommitted** tab, where you check files into a commit and write its message. See [Commit from the review](/concepts/review#commit-from-the-review)
+- The file explorer shows the files changed since the base branch, or all files. Each changed file carries its `+N −M`, the same counts as the review, and each folder the total under it
+- **Filter files** at the top of the explorer keeps the files whose name or path contains what you type, in the scope showing. In all files it also finds files in folders you have not opened. `Esc` clears it, and the tree comes back as you left it
 - Drag files in the explorer to move them
 - `⌘F` in a terminal tab opens a find panel
 

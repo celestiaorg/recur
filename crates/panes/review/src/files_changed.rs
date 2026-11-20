@@ -1,7 +1,9 @@
 //! Review → Changes. The toolbar (file list toggle and mode, file
 //! count against the base, findings link, totals, unified / split, fold all), the file list
 //! panel with its filter and findings-only toggle, and the stacked diffs for the branch vs its
-//! base, the working tree vs HEAD, or one commit, loaded with its queue and scope rules.
+//! base, the working tree vs HEAD, or one commit, loaded with its queue and scope rules. Over
+//! the working tree the list checks files into the commit, the toolbar checks or discards all,
+//! and the host's commit composer sits under the list.
 
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};
@@ -12,9 +14,9 @@ use std::time::Instant;
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, EventEmitter, Focusable, InteractiveElement,
-    IntoElement, KeyDownEvent, ParentElement, Render, SharedString, StatefulInteractiveElement,
-    Styled, Subscription, Task, Window, canvas, div, px,
+    AnyElement, AnyView, App, AppContext as _, Context, Entity, EventEmitter, Focusable,
+    InteractiveElement, IntoElement, KeyDownEvent, ParentElement, Render, SharedString,
+    StatefulInteractiveElement, Styled, Subscription, Task, Window, canvas, div, px,
 };
 use recur_code::glob::{CompiledGlob, is_excluded_by};
 use recur_code::view::changed_tree::sort_files_by_changed_tree;
@@ -31,7 +33,7 @@ use recur_view_core::prefs::PanelKey;
 
 use crate::commit_meta::commit_sha;
 use crate::diff_file::{AddFindingFn, DiffFileHooks, NoteMode};
-use crate::file_list::{FileListProps, ReviewFileList};
+use crate::file_list::{Check, FileListProps, ListEvent, ReviewFileList, WorkingIndex};
 use crate::findings::FindingsByPath;
 use crate::review_diff::{
     DiffLayout, FileListMode, read_diff_layout, read_file_list_mode, read_review_sidebar,
@@ -79,6 +81,22 @@ pub struct FilesProps {
     pub step_newer_label: String,
     /// The view state to restore once (`restore`).
     pub restore: Option<(String, f32)>,
+    /// The index the working tree's checkboxes show.
+    pub working_index: Option<Rc<WorkingIndex>>,
+    /// The host's commit composer, under the file list over the working tree.
+    pub commit_foot: Option<CommitFoot>,
+    /// The host's editable diffs for the working tree's cards.
+    pub working_editors: Option<Rc<dyn crate::card_editor::WorkingEditors>>,
+}
+
+/// A view the host draws and notifies on its own, laid out isolated at its measured height:
+/// a key in it renders it alone, never the diffs beside it.
+#[derive(Clone)]
+pub struct CommitFoot {
+    pub view: AnyView,
+    pub fit: Rc<recur_ui::isolated::Fit>,
+    /// Its message box: opening the review leaves keys there.
+    pub focus: gpui_kit::FocusHandle,
 }
 
 /// What the view reports.
@@ -98,6 +116,12 @@ pub enum FilesEvent {
     StepScope(i8),
     /// `bind:diffTotals` / `bind:fileCount` changed.
     Totals { add: i64, del: i64, files: usize },
+    /// Stage (`true`) or unstage these working tree paths.
+    Stage(Vec<String>, bool),
+    /// Discard these paths' uncommitted changes (confirmed by the host); the label names them.
+    Discard(Vec<String>, String),
+    /// Discard every uncommitted change (confirmed by the host).
+    DiscardAll,
 }
 
 impl EventEmitter<FilesEvent> for FilesChangedView {}
@@ -181,6 +205,12 @@ impl FilesChangedView {
             )
         });
         let subs = vec![
+            cx.guarded_subscribe(&list, |_: &mut Self, _, ev: &ListEvent, cx| match ev {
+                ListEvent::Check(paths, on) => cx.emit(FilesEvent::Stage(paths.clone(), *on)),
+                ListEvent::Discard(paths, label) => {
+                    cx.emit(FilesEvent::Discard(paths.clone(), label.clone()))
+                }
+            }),
             cx.guarded_subscribe(&filter, |v: &mut Self, _, ev: &InputEvent, cx| {
                 if matches!(ev, InputEvent::Change) {
                     v.sync_stack(cx);
@@ -333,6 +363,17 @@ impl FilesChangedView {
         self.props.scope != FilesScope::Base
     }
 
+    fn working(&self) -> bool {
+        self.props.scope == FilesScope::Working
+    }
+
+    /// The working tree's checkboxes, over its files.
+    fn checks(&self) -> Option<Rc<WorkingIndex>> {
+        self.working()
+            .then(|| self.props.working_index.clone())
+            .flatten()
+    }
+
     /// `visibleFiles`: explorer excludes apply only to the branch-vs-base list.
     pub fn visible_files(&self) -> Vec<Rc<FileDiff>> {
         let key = self.visible_key();
@@ -483,6 +524,14 @@ impl FilesChangedView {
         let me = cx.entity().downgrade();
         let me2 = me.clone();
         let me3 = me.clone();
+        let discard: Option<crate::diff_file::PathFn> = self.working().then(|| {
+            let me = me.clone();
+            Rc::new(move |path: String, _: &mut Window, cx: &mut App| {
+                let _ = me.update(cx, |_, cx| {
+                    cx.emit(FilesEvent::Discard(vec![path.clone()], path))
+                });
+            }) as crate::diff_file::PathFn
+        });
         let hooks = DiffFileHooks {
             toggle_collapse: None,
             open_file: Some(Rc::new(move |path, line, _, cx| {
@@ -493,6 +542,7 @@ impl FilesChangedView {
                 let _ = me2.update(cx, |_, cx| cx.emit(FilesEvent::OpenFinding(f)));
             })),
             post_finding: None,
+            discard,
         };
         let _ = me3;
         self.stack.set_props(CardProps {
@@ -507,6 +557,10 @@ impl FilesChangedView {
             postable_finding_ids: HashSet::new(),
             hooks,
             image_revs: Some(self.image_revs()),
+            editors: self
+                .working()
+                .then(|| self.props.working_editors.clone())
+                .flatten(),
         });
         let list_props = FileListProps {
             files: matched.clone(),
@@ -516,6 +570,7 @@ impl FilesChangedView {
             comments_by_path: None,
             dirty_paths: self.props.dirty_paths.clone(),
             reveal: self.stack.toc_reveal,
+            checks: self.checks(),
         };
         self.list.update(cx, |l, cx| l.set_props(list_props, cx));
         let add: i64 = matched.iter().map(|f| f.diff.add).sum();
@@ -928,6 +983,9 @@ impl FilesChangedView {
                     .on_click(cx.guarded_listener(|_, _, _, cx| cx.emit(FilesEvent::ShowFindings))),
             );
         }
+        if let Some(checks) = self.checks() {
+            main = main.child(self.working_actions(&checks, cx));
+        }
         let matched = self.matched_files(cx);
         let add: i64 = matched.iter().map(|f| f.diff.add).sum();
         let del: i64 = matched.iter().map(|f| f.diff.del).sum();
@@ -1036,6 +1094,47 @@ impl FilesChangedView {
             .into_any_element()
     }
 
+    /// "Check all" (or "Uncheck all" once every file is in) and "Discard all".
+    fn working_actions(&self, checks: &WorkingIndex, cx: &mut Context<Self>) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let files = self.visible_files();
+        let all_on = !files.is_empty()
+            && checks.check_all(files.iter().map(|f| f.path.as_str())) == Check::On;
+        let paths: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
+        let label = if all_on { "Uncheck all" } else { "Check all" };
+        let check = div()
+            .id("fl-check-all")
+            .debug_selector(move || format!("button:{label}"))
+            .ml(px(10.))
+            .cursor_pointer()
+            .text_color(hsla(t.muted))
+            .hover(|s| s.text_color(hsla(t.text)))
+            .child(recur_ui::style::button_label(label, 11., 400.))
+            .on_click(cx.guarded_listener(move |_, _, _, cx| {
+                cx.emit(FilesEvent::Stage(paths.clone(), !all_on))
+            }));
+        let discard = titled(
+            "fl-discard-all-t",
+            "Discard all uncommitted changes",
+            div()
+                .id("fl-discard-all")
+                .debug_selector(|| "button:Discard all".into())
+                .ml(px(10.))
+                .cursor_pointer()
+                .text_color(hsla(t.coral))
+                .hover(|s| s.text_color(hsla(t.text)))
+                .child(recur_ui::style::button_label("Discard all", 11., 400.))
+                .on_click(cx.guarded_listener(|_, _, _, cx| cx.emit(FilesEvent::DiscardAll))),
+        );
+        div()
+            .flex()
+            .items_center()
+            .flex_none()
+            .child(check)
+            .child(discard)
+            .into_any_element()
+    }
+
     fn file_list_panel(
         &self,
         width: f32,
@@ -1060,52 +1159,19 @@ impl FilesChangedView {
             .on_step(move |w, _, cx| {
                 state.update(cx, |s, cx| s.set_panel(PanelKey::PrFileList, w, cx))
             });
-        let mut filter = div()
-            .flex()
-            .items_center()
-            .gap(px(6.))
-            .flex_none()
-            .h(px(recur_ui::style::CHROME_H))
-            .px(px(8.))
-            .border_b_1()
-            .border_color(hsla(t.line_soft))
-            .text_color(hsla(t.faint))
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(6.))
-                    .flex_1()
-                    .min_w_0()
-                    .key_context("TextEntry")
-                    .on_key_down(cx.guarded_listener(|v, ev: &KeyDownEvent, window, cx| {
-                        if ev.keystroke.key == "escape" {
-                            cx.stop_propagation();
-                            v.filter.update(cx, |f, cx| f.set_value("", window, cx));
-                            v.sync_stack(cx);
-                            cx.notify();
-                        }
-                    }))
-                    .child(icon(IconName::Search).size(px(12.)))
-                    // WebKit's `type=search` field is 19px tall at 12px, text centered.
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .h(px(19.))
-                            .flex()
-                            .items_center()
-                            .child(recur_ui::style::text_field(
-                                &self.filter,
-                                &SharedString::from("Filter files"),
-                                t.faint,
-                                Family::Ui,
-                                12.,
-                                window,
-                                cx,
-                            )),
-                    ),
-            );
+        let mut filter = crate::file_list::filter_files_row(
+            &self.filter,
+            cx.guarded_listener(|v, ev: &KeyDownEvent, window, cx| {
+                if ev.keystroke.key == "escape" {
+                    cx.stop_propagation();
+                    v.filter.update(cx, |f, cx| f.set_value("", window, cx));
+                    v.sync_stack(cx);
+                    cx.notify();
+                }
+            }),
+            window,
+            cx,
+        );
         if self.has_open_findings() {
             let on = self.findings_only;
             let label = if on {
@@ -1150,6 +1216,9 @@ impl FilesChangedView {
                     .relative()
                     .flex_1()
                     .min_h_0()
+                    // Stacked, the list's column takes its content's height: rows need room
+                    // beside the composer.
+                    .when(stacked, |d| d.min_h(px(72.)))
                     .flex()
                     .flex_col()
                     // Cached: scrolling the cards (or anything above) leaves the list's
@@ -1158,6 +1227,10 @@ impl FilesChangedView {
                         &self.list,
                         gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
                     )),
+            )
+            .when_some(
+                self.props.commit_foot.clone().filter(|_| self.working()),
+                |d, foot| d.child(foot.fit.view(foot.view, window)),
             )
             .into_any_element()
     }
@@ -1231,50 +1304,6 @@ impl FilesChangedView {
         format!("· {n} file{}", if n == 1 { "" } else { "s" })
     }
 
-    fn working_header(&self, cx: &mut Context<Self>) -> AnyElement {
-        let t = Theme::of(cx).tokens;
-        recur_ui::style::card(t.amber.mix(0.08, t.pane), t.line, 9.)
-            .debug_selector(|| "working-hd".into())
-            .flex()
-            .flex_col()
-            .gap(px(12.))
-            .py(px(14.))
-            .px(px(15.))
-            .mb(px(14.))
-            .child(
-                div()
-                    .flex()
-                    .items_start()
-                    .gap(px(12.))
-                    .child(crate::commits::cav_wip(30., 8., cx))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(
-                                text("Uncommitted changes")
-                                    .size(14.)
-                                    .weight(600.)
-                                    .break_anywhere()
-                                    .id("working-hd-t"),
-                            )
-                            .child(
-                                div().mt(px(4.)).child(
-                                    text(format!(
-                                        "Working tree vs HEAD{}",
-                                        self.file_count_suffix()
-                                    ))
-                                    .family(Family::Mono)
-                                    .size(10.5)
-                                    .color(t.faint)
-                                    .id("working-hd-by"),
-                                ),
-                            ),
-                    ),
-            )
-            .into_any_element()
-    }
-
     fn commit_header(&self, c: &Commit, cx: &mut Context<Self>) -> Option<AnyElement> {
         if c.message.is_empty() {
             return None;
@@ -1309,7 +1338,12 @@ impl FilesChangedView {
             self.focus_pending = false;
             let typing = window
                 .focused(cx)
-                .is_some_and(|f| f == self.filter.read(cx).focus_handle(cx));
+                .is_some_and(|f| f == self.filter.read(cx).focus_handle(cx))
+                || self
+                    .props
+                    .commit_foot
+                    .as_ref()
+                    .is_some_and(|f| f.focus.is_focused(window));
             if !typing {
                 window.focus(&self.stack.focus, cx);
             }
@@ -1469,11 +1503,7 @@ impl FilesChangedView {
                     header.push(h);
                 }
             }
-            FilesScope::Working => {
-                header.push(self.scope_nav(cx));
-                header.push(self.working_header(cx));
-            }
-            FilesScope::Base => {}
+            FilesScope::Working | FilesScope::Base => {}
         }
         if self.files_truncated {
             header.push(self.empty(

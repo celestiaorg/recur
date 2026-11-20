@@ -11,10 +11,10 @@ use recur_ui::fonts::{Family, weight};
 use recur_ui::style::{self, Tbtn, TbtnSize, tbtn};
 use recur_ui::text::{InlineBox, Span, Text, TextStyled, span, text};
 use recur_ui::tooltip::titled;
+use recur_ui::widgets::ToastKind;
 use recur_ui::widgets::decode_text::decode_frame;
-use recur_ui::widgets::{ToastKind, armed_button};
 use recur_ui::{IconName, Theme, icon};
-use recur_view_core::modes::{workspace_can_remove, workspace_shows_remove, ws_main_blocked};
+use recur_view_core::modes::ws_main_blocked;
 use recur_view_core::run::{run_label, workspace_dev_cmd, workspace_run};
 use recur_view_core::{AppState, CrumbStyle, ViewName, toast};
 
@@ -45,56 +45,12 @@ pub(crate) struct CrumbName {
 pub(crate) struct TitlebarState {
     pub name: CrumbName,
     pub menu: crate::app_menu::AppMenu,
-    /// The dirty / unmerged work Remove would discard (`WorkspaceDiscardRisk`).
-    discard_risk: String,
-    discard_seq: u64,
-    discard_for: (String, bool),
 }
 
 impl Shell {
-    /// Store changes the titlebar follows: the discard risk and the land chrome.
+    /// Store changes the titlebar follows: the land chrome.
     pub(crate) fn titlebar_state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let key = {
-            let s = self.state.read(cx);
-            let id = s.selected_workspace_id.clone();
-            let can = s.view == ViewName::Detail
-                && workspace_can_remove(s.workspace(&id), s.workspaces_running.contains(&id));
-            (id, can)
-        };
-        if self.titlebar.discard_for != key {
-            self.titlebar.discard_for = key;
-            self.refresh_discard_risk(cx);
-        }
         self.land_state_changed(window, cx);
-    }
-
-    /// `refreshDiscardRisk`: the confirm copy for Remove when the worktree has uncommitted or
-    /// unmerged work.
-    pub(crate) fn refresh_discard_risk(&mut self, cx: &mut Context<Self>) {
-        let (id, can) = {
-            let s = self.state.read(cx);
-            let id = s.selected_workspace_id.clone();
-            let can = s.view == ViewName::Detail
-                && workspace_can_remove(s.workspace(&id), s.workspaces_running.contains(&id));
-            (id, can)
-        };
-        self.titlebar.discard_seq += 1;
-        if id.is_empty() || !can {
-            self.titlebar.discard_risk.clear();
-            return;
-        }
-        let seq = self.titlebar.discard_seq;
-        let services = self.state.read(cx).services().clone();
-        cx.spawn(async move |this, cx| {
-            let risk = services.workspaces.workspace_discard_risk(&id).await;
-            let _ = this.update(cx, |shell, cx| {
-                if shell.titlebar.discard_seq == seq {
-                    shell.titlebar.discard_risk = risk.unwrap_or_default();
-                    cx.notify();
-                }
-            });
-        })
-        .detach();
     }
 }
 
@@ -549,56 +505,6 @@ impl Shell {
         if let (_, Some(part)) = self.titlebar_parts(view) {
             right = right.child(part);
         }
-        let s = state.read(cx);
-        if view == ViewName::Detail
-            && let Some(ws) = s.selected_workspace()
-            && workspace_shows_remove(Some(ws))
-        {
-            let can = workspace_can_remove(Some(ws), s.workspaces_running.contains(&ws.id));
-            let risk = &self.titlebar.discard_risk;
-            let confirm = if risk.is_empty() {
-                "Confirm remove".to_string()
-            } else {
-                format!("Confirm remove: {risk}")
-            };
-            let id = ws.id.clone();
-            let backdrop = Theme::of(cx).tokens.titlebar;
-            let mut btn = armed_button(
-                SharedString::from(format!("tb-remove-{id}")),
-                "Remove",
-                confirm,
-                {
-                    let state = state.clone();
-                    move |_, cx| {
-                        let id = id.clone();
-                        state.update(cx, |s, cx| {
-                            if workspace_can_remove(
-                                s.workspace(&id),
-                                s.workspaces_running.contains(&id),
-                            ) {
-                                s.remove_workspace(&id, cx).detach();
-                            }
-                        });
-                    }
-                },
-            )
-            .size(TbtnSize::TITLEBAR)
-            .on_arm({
-                let shell = cx.entity();
-                move |_, cx| shell.update(cx, |this, cx| this.refresh_discard_risk(cx))
-            });
-            if !can {
-                btn = btn
-                    .disabled(Some(backdrop))
-                    .title("Stop the workspace first");
-            }
-            right = right.child(no_drag(
-                div()
-                    .id("tb-remove-wrap")
-                    .debug_selector(|| "tb-remove".into())
-                    .child(btn),
-            ));
-        }
         right.into_any_element()
     }
 
@@ -622,101 +528,76 @@ impl Shell {
                 .unwrap_or("dev"),
         );
         let running = s.run.running_runs(&ws.id);
-        let stop_label = if running.len() == 1 {
-            run_label("Stop", &running[0].0)
-        } else {
-            "Stop".to_string()
-        };
         let run_open = s.overlays.run_menu;
-        let stop_open = s.overlays.stop_menu;
         let id = ws.id.clone();
-        let mut out = Vec::new();
-        let chev_on = if run_open { Tbtn::On } else { Tbtn::Default };
-        let run = div()
+        // One split: its main half runs the default, or stops what runs (running it again would
+        // do nothing); the chevron always picks another run to start.
+        let stopping = !running.is_empty();
+        let single = running.len() == 1;
+        let main_label = match running.as_slice() {
+            [] => run_label_text.clone(),
+            [(name, _)] => run_label("Stop", name),
+            _ => "Stop".to_string(),
+        };
+        let tip = if stopping {
+            format!("{main_label} (⌘⇧R) · picker (⌘R)")
+        } else {
+            format!("{run_label_text} (click) · picker (⌘R)")
+        };
+        let first = running.first().map(|r| r.0.clone()).unwrap_or_default();
+        let main = if stopping {
+            tbtn("tb-stop", Tbtn::On, TbtnSize::TITLEBAR, None, cx)
+                .debug_selector(|| "tb-stop".into())
+                .on_click({
+                    let (state, id) = (state.clone(), id.clone());
+                    move |_, _, cx| {
+                        state.update(cx, |s, cx| {
+                            if single {
+                                s.request_stop_run(&id, &first, cx);
+                            } else {
+                                s.open_stop_menu(&id, cx);
+                            }
+                        })
+                    }
+                })
+        } else {
+            tbtn("tb-run", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
+                .debug_selector(|| "tb-run".into())
+                .on_click({
+                    let (state, id) = (state.clone(), id.clone());
+                    move |_, _, cx| {
+                        state.update(cx, |s, cx| {
+                            s.overlays.run_menu = false;
+                            s.request_run_dev(&id, None, cx);
+                        })
+                    }
+                })
+        };
+        let chev_on = if run_open || stopping {
+            Tbtn::On
+        } else {
+            Tbtn::Default
+        };
+        let split = div()
             .id("run-split")
             .relative()
             .flex()
             .items_center()
             .child(titled(
                 "tb-run-tip",
-                format!("{run_label_text} (click) · picker (⌘R)"),
-                no_drag(
-                    tbtn("tb-run", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
-                        .rounded_r(px(0.))
-                        .on_click({
-                            let (state, id) = (state.clone(), id.clone());
-                            move |_, _, cx| {
-                                state.update(cx, |s, cx| {
-                                    s.overlays.run_menu = false;
-                                    s.request_run_dev(&id, None, cx);
-                                })
-                            }
-                        })
-                        .child(style::button_label(
-                            run_label_text.clone(),
-                            11.5,
-                            weight::MEDIUM,
-                        )),
-                ),
+                tip,
+                no_drag(main.rounded_r(px(0.)).child(style::button_label(
+                    main_label,
+                    11.5,
+                    weight::MEDIUM,
+                ))),
             ))
-            .child(no_drag(
-                tbtn("tb-run-chev", chev_on, TbtnSize::TITLEBAR, None, cx)
-                    .rounded_l(px(0.))
-                    .border_l(px(0.))
-                    .px(px(5.))
-                    .on_click({
-                        let (state, id) = (state.clone(), id.clone());
-                        move |_, _, cx| {
-                            state.update(cx, |s, cx| {
-                                s.open_run_menu(&id, cx);
-                            });
-                        }
-                    })
-                    .child(icon(IconName::ChevronDown).size(px(13.))),
-            ));
-        out.push(run.into_any_element());
-        let _ = t;
-        if !running.is_empty() {
-            let single = running.len() == 1;
-            let stop_title = if single {
-                format!("{stop_label} (⌘⇧R)")
-            } else {
-                "Stop (⌘⇧R)".to_string()
-            };
-            let first = running[0].0.clone();
-            let mut stop = div()
-                .id("stop-split")
-                .relative()
-                .flex()
-                .items_center()
-                .child(titled(
-                    "tb-stop-tip",
-                    stop_title,
-                    no_drag(
-                        tbtn("tb-stop", Tbtn::On, TbtnSize::TITLEBAR, None, cx)
-                            .when(!single, |b| b.rounded_r(px(0.)))
-                            .on_click({
-                                let (state, id) = (state.clone(), id.clone());
-                                move |_, _, cx| {
-                                    state.update(cx, |s, cx| {
-                                        if single {
-                                            s.request_stop_run(&id, &first, cx);
-                                        } else {
-                                            s.open_stop_menu(&id, cx);
-                                        }
-                                    })
-                                }
-                            })
-                            .child(style::button_label(
-                                stop_label.clone(),
-                                11.5,
-                                weight::MEDIUM,
-                            )),
-                    ),
-                ));
-            if !single {
-                stop = stop.child(no_drag(
-                    tbtn("tb-stop-chev", Tbtn::On, TbtnSize::TITLEBAR, None, cx)
+            .child(titled(
+                "tb-run-chev-tip",
+                "Run another (⌘R)",
+                no_drag(
+                    tbtn("tb-run-chev", chev_on, TbtnSize::TITLEBAR, None, cx)
+                        .debug_selector(|| "tb-run-chev".into())
                         .rounded_l(px(0.))
                         .border_l(px(0.))
                         .px(px(5.))
@@ -724,17 +605,15 @@ impl Shell {
                             let (state, id) = (state.clone(), id.clone());
                             move |_, _, cx| {
                                 state.update(cx, |s, cx| {
-                                    s.open_stop_menu(&id, cx);
-                                })
+                                    s.open_run_menu(&id, cx);
+                                });
                             }
                         })
                         .child(icon(IconName::ChevronDown).size(px(13.))),
-                ));
-            }
-            let _ = stop_open;
-            out.push(stop.into_any_element());
-        }
-        out
+                ),
+            ));
+        let _ = t;
+        vec![split.into_any_element()]
     }
 }
 

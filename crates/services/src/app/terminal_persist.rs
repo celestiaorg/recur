@@ -43,6 +43,8 @@ pub(crate) struct PersistedTerminals {
     pub beside: bool,
     #[serde(skip_serializing_if = "is_zero")]
     pub beside_pct: i64,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub placement: String,
     pub active: i64,
     /// `None` is `null`.
     pub tabs: Option<Vec<PersistedTab>>,
@@ -76,7 +78,7 @@ mod b64 {
 
 /// The dock-layout prefix of the snapshot; decoding it skips the tabs so
 /// listing layouts does not allocate scrollback.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct PersistedChrome {
     open: bool,
@@ -84,20 +86,27 @@ struct PersistedChrome {
     editor_hidden: bool,
     beside: bool,
     beside_pct: i64,
+    placement: String,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct Chrome {
     pub open: bool,
     pub maximized: bool,
     pub editor_hidden: bool,
     pub beside: bool,
     pub beside_pct: i64,
+    pub placement: String,
 }
 
 impl Chrome {
     pub fn idle(&self) -> bool {
-        !self.open && !self.maximized && !self.editor_hidden && !self.beside && self.beside_pct == 0
+        !self.open
+            && !self.maximized
+            && !self.editor_hidden
+            && !self.beside
+            && self.beside_pct == 0
+            && self.placement.is_empty()
     }
 
     /// A closed dock is never maximized or covering the editor; the split is
@@ -121,6 +130,7 @@ impl Chrome {
             editor_hidden: c.editor_hidden,
             beside: c.beside,
             beside_pct: c.beside_pct,
+            placement: c.placement.clone(),
         }
     }
 }
@@ -133,6 +143,7 @@ impl From<&TerminalDockChrome> for Chrome {
             editor_hidden: c.editor_hidden,
             beside: c.beside,
             beside_pct: c.beside_pct,
+            placement: c.placement.clone(),
         }
     }
 }
@@ -145,6 +156,7 @@ fn snapshot_idle(s: &PersistedTerminals) -> bool {
             editor_hidden: s.editor_hidden,
             beside: s.beside,
             beside_pct: s.beside_pct,
+            placement: s.placement.clone(),
         }
         .idle()
 }
@@ -269,15 +281,15 @@ impl Persist {
     }
 
     fn cached_chrome(&self, workspace_id: &str) -> Option<Chrome> {
-        self.inner.lock().chrome.get(workspace_id).copied()
+        self.inner.lock().chrome.get(workspace_id).cloned()
     }
 
     fn cache_chrome(&self, workspace_id: &str, c: Chrome, overwrite: bool) -> Chrome {
         let mut st = self.inner.lock();
         if !overwrite && let Some(cached) = st.chrome.get(workspace_id) {
-            return *cached;
+            return cached.clone();
         }
-        st.chrome.insert(workspace_id.to_owned(), c);
+        st.chrome.insert(workspace_id.to_owned(), c.clone());
         c
     }
 }
@@ -367,6 +379,7 @@ impl AppServices {
                 editor_hidden: chrome.editor_hidden,
                 beside: chrome.beside,
                 beside_pct: chrome.beside_pct,
+                placement: chrome.placement,
                 active,
                 tabs: Some(tabs),
             },

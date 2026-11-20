@@ -459,7 +459,16 @@ async fn pr_opened_fact_shows_completed_time_and_opens_the_pr(cx: &mut TestAppCo
     assert!(wrap.contains("Retry the payment token once"));
     assert!(!wrap.contains("ready for your review"));
     h.click("loop-pr-link:482");
-    assert_eq!(h.state.read_with(h.cx, |s, _| s.view), ViewName::PrDetail);
+    // The PR is its workspace's: the link opens that workspace on the pull request view.
+    let (view, ws) = h
+        .state
+        .read_with(h.cx, |s, _| (s.view, s.selected_workspace_id.clone()));
+    assert_eq!((view, ws.as_str()), (ViewName::Detail, "LOOP-2231"));
+    let obs = h.view().read_with(h.cx, |v, _| v.observatory().clone());
+    assert_eq!(
+        obs.read_with(h.cx, |o, cx| o.main_surface(cx)),
+        recur_view_observatory::MainSurface::Pr
+    );
 }
 
 #[gpui::test]
@@ -651,7 +660,7 @@ async fn plan_panel_shows_the_workspace_checklist_and_agent_todos(cx: &mut TestA
         |_| {},
         WS,
     );
-    h.click("panel-toggle:plan");
+    h.click("obs-plan-toggle");
     assert!(h.has("plan-pane"));
     let summary = h.state.read_with(h.cx, |s, _| {
         s.workspace(WS)

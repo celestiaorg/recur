@@ -118,6 +118,10 @@ pub struct DockProps {
     pub lit: bool,
     pub overlay: bool,
     pub beside: bool,
+    /// Under every column instead of in the main one.
+    pub full: bool,
+    /// The center view, in place of the editor: under the toolbar, with no edge to drag.
+    pub center: bool,
     pub gpu: bool,
 }
 
@@ -1428,6 +1432,7 @@ impl TerminalDock {
             term_bg
         };
         let beside = self.props.beside;
+        let center = self.props.center;
         let mut root =
             div()
                 .id(SharedString::from(format!("term-dock-{ws}")))
@@ -1451,14 +1456,15 @@ impl TerminalDock {
                 ));
         if beside {
             root = root.min_w_0().border_l_1().border_color(hsla(t.line));
-        } else if !overlay {
+        } else if !overlay && !center {
             root = root.border_t_1().border_color(hsla(t.line));
         }
-        if !beside && !overlay && !self.global() {
+        if !beside && !overlay && !center && !self.global() {
             let (state, state2, state3) =
                 (self.state.clone(), self.state.clone(), self.state.clone());
             let h = self.state.read(cx).panels.size(PanelKey::TerminalDock);
             let main = self.main_bounds.clone();
+            let full = self.props.full;
             root = root.child(
                 resize_handle(
                     "term-dock-resize",
@@ -1468,9 +1474,13 @@ impl TerminalDock {
                     &self.resize_focus,
                 )
                 .max(move |_, _| {
-                    let mh = f32::from(main.get().size.height);
+                    let mut mh = f32::from(main.get().size.height);
                     if mh <= 0. {
                         return f32::INFINITY;
+                    }
+                    // Full width, the dock is under the main column, not part of its height.
+                    if full {
+                        mh += h;
                     }
                     let floor = (mh * 0.25).round().min(160.);
                     h.max(mh - floor)
@@ -1600,6 +1610,8 @@ impl crate::obs::Observatory {
             lit: self.focus_zone == crate::model::FocusZone::Terminal,
             overlay: self.term_overlaying(),
             beside: self.term_beside_layout(cx),
+            full: self.term_full_layout(cx),
+            center: self.term_is_center(cx),
             gpu: self.props.shell_active,
         };
         match &self.dock {

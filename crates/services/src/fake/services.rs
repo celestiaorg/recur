@@ -1498,6 +1498,12 @@ fake_services! {
             Ok(())
         }
 
+        // Counted from whatever `diff_vs_base` answers, so its override drives the counts.
+        async fn diff_stats(&self, project_id: &str, workspace_id: &str) -> Result<BTreeMap<String, DiffStat>> {
+            let diff = CodeService::diff_vs_base(self, project_id, workspace_id).await?;
+            Ok(diff.files.into_iter().flatten().map(|f| (f.path, f.diff)).collect())
+        }
+
         async fn diff_vs_base(&self, project_id: &str, workspace_id: &str) -> Result<FileDiffResult> {
             let files = vec![CodeService::file_diff(self, project_id, workspace_id, "").await?];
             Ok(FileDiffResult { files: Some(files), truncated: false })
@@ -1517,6 +1523,10 @@ fake_services! {
         }
 
         async fn file_at_base(&self, project_id: &str, workspace_id: &str, path: &str) -> Result<String> {
+            Ok("package main\n\nfunc main() {}\n".into())
+        }
+
+        async fn file_at_head(&self, project_id: &str, workspace_id: &str, path: &str) -> Result<String> {
             Ok("package main\n\nfunc main() {}\n".into())
         }
 
@@ -1666,6 +1676,10 @@ fake_services! {
 
         async fn unstage(&self, project_id: &str, workspace_id: &str, paths: &[String]) -> Result<()> {
             Ok(())
+        }
+
+        async fn unstaged_files(&self, project_id: &str, workspace_id: &str) -> Result<Vec<String>> {
+            Ok(Vec::new())
         }
 
         async fn working_status(&self, project_id: &str, workspace_id: &str) -> Result<BTreeMap<String, String>> {

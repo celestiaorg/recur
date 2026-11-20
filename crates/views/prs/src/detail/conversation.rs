@@ -1791,6 +1791,11 @@ impl PrDetail {
             .min_w_0()
             .flex()
             .flex_col();
+        // In a workspace the PR's title line is the conversation's first row, not a band over
+        // it: the page's header is the titlebar's there.
+        if self.host_ws.is_some() {
+            wrap = wrap.child(self.header(pr, window, cx));
+        }
         if let Some(pr) = pr {
             if !pr.updating_base.is_empty() {
                 wrap = wrap.child(rework(pr, window, cx));

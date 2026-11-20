@@ -35,7 +35,9 @@ pub fn pane_badge(n: usize, cx: &App) -> AnyElement {
     } else {
         n.to_string()
     };
+    let sel = format!("obs-pane-badge:{label}");
     div()
+        .debug_selector(move || sel)
         .absolute()
         .top(px(1.))
         .right(px(1.))

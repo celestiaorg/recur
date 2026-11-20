@@ -1,6 +1,6 @@
-//! Review changes in the workspace Observatory. Changes (Files changed
-//! vs the base) and Commits (uncommitted work and the branch's commits), with a commit or the
-//! working tree opened as a Files changed scope and stepped through newest-first.
+//! Review changes in the workspace Observatory. Uncommitted (the working tree vs HEAD, checked
+//! into a commit), Changes (Files changed vs the base) and Commits (the branch's commits), with
+//! a commit opened as a Files changed scope and stepped through newest-first.
 
 use recur_ui::guard::Guarded;
 use std::collections::HashMap;
@@ -18,7 +18,8 @@ use recur_view_core::AppState;
 use crate::commit_meta::commit_sha;
 use crate::commits::{CommitsEvent, CommitsView};
 use crate::diff_file::{AddFindingFn, NoteMode};
-use crate::files_changed::{FilesChangedView, FilesEvent, FilesProps, FilesScope};
+use crate::file_list::WorkingIndex;
+use crate::files_changed::{CommitFoot, FilesChangedView, FilesEvent, FilesProps, FilesScope};
 use crate::findings::FindingsByPath;
 use crate::review_diff::ReviewTab;
 use crate::review_scope::{
@@ -39,9 +40,14 @@ pub struct SurfaceProps {
     pub exclude_matchers: Option<Rc<Vec<CompiledGlob>>>,
     pub findings_by_path: Option<Rc<FindingsByPath>>,
     pub dirty_paths: Option<Rc<std::collections::HashSet<String>>>,
-    pub working_dirty_count: usize,
     /// `restore`: (selected path, scrollTop).
     pub restore: Option<(String, f32)>,
+    /// What the Uncommitted tab's checkboxes show.
+    pub working_index: Option<Rc<WorkingIndex>>,
+    /// The commit composer under the Uncommitted tab's file list.
+    pub commit_foot: Option<CommitFoot>,
+    /// The Uncommitted tab's editable diffs.
+    pub working_editors: Option<Rc<dyn crate::card_editor::WorkingEditors>>,
 }
 
 /// The `bind:` values the Observatory reads back.
@@ -49,7 +55,6 @@ pub struct SurfaceProps {
 pub struct SurfaceBound {
     pub commit_count: usize,
     pub commit_scope_hash: String,
-    pub working_open: bool,
     pub add: i64,
     pub del: i64,
     pub file_count: usize,
@@ -67,6 +72,12 @@ pub enum SurfaceEvent {
     ShowFindings,
     /// A bound value changed.
     Bound(SurfaceBound),
+    /// Stage (`true`) or unstage these working tree paths.
+    Stage(Vec<String>, bool),
+    /// Discard these paths' uncommitted changes, after a confirm naming the label.
+    Discard(Vec<String>, String),
+    /// Discard every uncommitted change, after a confirm.
+    DiscardAll,
 }
 
 /// `ReviewViewState`.
@@ -87,7 +98,6 @@ pub struct ReviewSurface {
     commits: Vec<Commit>,
     commits_loading: bool,
     commits_error: bool,
-    working_open: bool,
     scope_for_ws: String,
     bound: SurfaceBound,
     files: Entity<FilesChangedView>,
@@ -118,7 +128,6 @@ impl ReviewSurface {
                 window,
                 |s: &mut Self, _, ev: &CommitsEvent, window, cx| match ev {
                     CommitsEvent::Open(c) => s.open_commit((**c).clone(), window, cx),
-                    CommitsEvent::OpenWorking => s.open_working(window, cx),
                 },
             ),
         ];
@@ -130,7 +139,6 @@ impl ReviewSurface {
             commits: Vec::new(),
             commits_loading: false,
             commits_error: false,
-            working_open: false,
             scope_for_ws: String::new(),
             bound: SurfaceBound::default(),
             files,
@@ -185,10 +193,6 @@ impl ReviewSurface {
             .any(|d| d.read(cx).composer_open())
     }
 
-    pub fn working_open(&self) -> bool {
-        self.working_open
-    }
-
     pub fn set_props(&mut self, props: SurfaceProps, window: &mut Window, cx: &mut Context<Self>) {
         let prev = std::mem::replace(&mut self.props, props);
         // workspaceId is re-passed (same string) when the workspaces store refreshes; only a
@@ -197,14 +201,10 @@ impl ReviewSurface {
             self.scope_for_ws = self.props.workspace_id.clone();
             self.commit_scope = None;
             self.commit_files_by_hash.clear();
-            self.working_open = false;
             self.commits.clear();
             self.bound.commit_count = 0;
             self.bound.commit_scope_hash.clear();
             self.bound.file_count = 0;
-        }
-        if self.working_open && self.props.working_dirty_count == 0 {
-            self.clear_scope_inner();
         }
         let p = &self.props;
         if p.active
@@ -226,15 +226,15 @@ impl ReviewSurface {
     }
 
     fn files_open(&self) -> bool {
-        self.props.tab == ReviewTab::Changes || self.showing_commit() || self.working_open
+        self.props.tab != ReviewTab::Commits || self.showing_commit()
     }
 
     fn commits_list_open(&self) -> bool {
-        self.props.tab == ReviewTab::Commits && !self.showing_commit() && !self.working_open
+        self.props.tab == ReviewTab::Commits && !self.showing_commit()
     }
 
     fn tape(&self) -> Vec<TapeItem> {
-        review_tape(self.props.working_dirty_count > 0, &self.commits)
+        review_tape(false, &self.commits)
     }
 
     fn scope_idx(&self, tape: &[TapeItem]) -> isize {
@@ -243,19 +243,17 @@ impl ReviewSurface {
             .as_ref()
             .map(commit_sha)
             .unwrap_or_default();
-        review_tape_index(tape, self.working_open, &sha)
+        review_tape_index(tape, false, &sha)
     }
 
     fn push_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let tape = self.tape();
         let idx = self.scope_idx(&tape);
         let (older, newer) = can_step_on_tape(idx, tape.len());
-        let scope = if self.working_open {
-            FilesScope::Working
-        } else if let Some(c) = &self.commit_scope {
-            FilesScope::Commit(Box::new(c.clone()))
-        } else {
-            FilesScope::Base
+        let scope = match (&self.props.tab, &self.commit_scope) {
+            (ReviewTab::Uncommitted, _) => FilesScope::Working,
+            (ReviewTab::Commits, Some(c)) => FilesScope::Commit(Box::new(c.clone())),
+            _ => FilesScope::Base,
         };
         let p = &self.props;
         let props = FilesProps {
@@ -275,6 +273,9 @@ impl ReviewSurface {
             step_older_label: tape_step_label(step_tape(&tape, idx, -1), -1).into(),
             step_newer_label: tape_step_label(step_tape(&tape, idx, 1), 1).into(),
             restore: p.restore.clone(),
+            working_index: p.working_index.clone(),
+            commit_foot: p.commit_foot.clone(),
+            working_editors: p.working_editors.clone(),
         };
         self.files
             .update(cx, |v, cx| v.set_props(props, window, cx));
@@ -286,23 +287,13 @@ impl ReviewSurface {
             self.commits_loading,
             self.commits_error,
         );
-        let (base, dirty) = (
-            self.props.base_label.clone(),
-            self.props.working_dirty_count,
-        );
+        let base = self.props.base_label.clone();
         self.commits_view
-            .update(cx, |v, cx| v.set(commits, loading, error, base, dirty, cx));
+            .update(cx, |v, cx| v.set(commits, loading, error, base, cx));
     }
 
     fn emit_bound(&mut self, cx: &mut Context<Self>) {
-        let next = SurfaceBound {
-            commit_count: self.bound.commit_count,
-            commit_scope_hash: self.bound.commit_scope_hash.clone(),
-            working_open: self.working_open,
-            ..self.bound.clone()
-        };
-        self.bound = next.clone();
-        cx.emit(SurfaceEvent::Bound(next));
+        cx.emit(SurfaceEvent::Bound(self.bound.clone()));
     }
 
     fn on_files(&mut self, ev: &FilesEvent, window: &mut Window, cx: &mut Context<Self>) {
@@ -315,6 +306,11 @@ impl ReviewSurface {
             FilesEvent::OpenFinding(f) => cx.emit(SurfaceEvent::OpenFinding(Box::new(f.clone()))),
             FilesEvent::ShowFindings => cx.emit(SurfaceEvent::ShowFindings),
             FilesEvent::StepScope(dir) => self.step_scope(*dir, window, cx),
+            FilesEvent::Stage(paths, on) => cx.emit(SurfaceEvent::Stage(paths.clone(), *on)),
+            FilesEvent::Discard(paths, label) => {
+                cx.emit(SurfaceEvent::Discard(paths.clone(), label.clone()))
+            }
+            FilesEvent::DiscardAll => cx.emit(SurfaceEvent::DiscardAll),
             FilesEvent::Totals { add, del, files } => {
                 self.bound.add = *add;
                 self.bound.del = *del;
@@ -331,7 +327,6 @@ impl ReviewSurface {
         let cached = (!hash.is_empty())
             .then(|| self.commit_files_by_hash.get(&hash))
             .flatten();
-        self.working_open = false;
         self.commit_scope = Some(match cached {
             Some(files) if !files.is_empty() => Commit {
                 files: Some(files.clone()),
@@ -346,26 +341,10 @@ impl ReviewSurface {
         cx.notify();
     }
 
-    /// `openWorkingScope`.
-    pub fn open_working(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.commit_scope = None;
-        self.bound.commit_scope_hash.clear();
-        self.working_open = true;
-        cx.emit(SurfaceEvent::TabChange(ReviewTab::Commits));
-        self.push_files(window, cx);
-        self.emit_bound(cx);
-        cx.notify();
-    }
-
-    fn clear_scope_inner(&mut self) {
-        self.commit_scope = None;
-        self.bound.commit_scope_hash.clear();
-        self.working_open = false;
-    }
-
     /// `clearCommitScope`.
     pub fn clear_commit_scope(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.clear_scope_inner();
+        self.commit_scope = None;
+        self.bound.commit_scope_hash.clear();
         self.push_files(window, cx);
         self.emit_bound(cx);
         cx.notify();
@@ -395,10 +374,8 @@ impl ReviewSurface {
     fn step_scope(&mut self, dir: i8, window: &mut Window, cx: &mut Context<Self>) {
         let tape = self.tape();
         let idx = self.scope_idx(&tape);
-        match step_tape(&tape, idx, dir).cloned() {
-            Some(TapeItem::Working) => self.open_working(window, cx),
-            Some(TapeItem::Commit(c)) => self.open_commit(*c, window, cx),
-            None => {}
+        if let Some(TapeItem::Commit(c)) = step_tape(&tape, idx, dir).cloned() {
+            self.open_commit(*c, window, cx);
         }
     }
 

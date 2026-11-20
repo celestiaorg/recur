@@ -55,7 +55,7 @@ fn converts_a_github_pr_to_a_draft_and_back(cx: &mut TestAppContext) {
     s.prs_nav();
     s.seg("All");
     assert!(s.has("pr-checks:482=Draft"));
-    s.click("prrow:482");
+    s.pr_page("482");
     assert!(s.has("pr-act:pr-ready=Ready for review"));
     assert!(!s.has("pr-act:pr-review=Approve"));
     assert!(!s.has("pr-act:pr-merge=Merge"));

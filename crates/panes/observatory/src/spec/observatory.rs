@@ -2,14 +2,14 @@
 //! views that host them; their Observatory halves (occluder, badges) are here. The review
 //! surface's own scenarios live in `recur_view_review::spec::observatory`.
 
-use gpui::TestAppContext;
+use gpui::{TestAppContext, px};
 use recur_domain::{Artifact, FileContent, TreeEntry};
 use recur_editor::view_state::EditorViewMode;
 use recur_services::AppEvent;
 use recur_services::api::{Asset, AssetError};
 use recur_services::events::{ArtifactEvent, WorkspaceUpdated};
 use recur_services::fake::{Overrides, Seed};
-use recur_view_core::prefs::CodePanelKey;
+use recur_view_core::prefs::{CodePanelKey, PanelSide};
 
 use super::harness::*;
 use crate::model::MainSurface;
@@ -35,6 +35,27 @@ fn open_main_go(h: &mut H) {
 }
 
 #[gpui::test]
+async fn the_center_tabs_are_a_row_over_the_center_column(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    open_main_go(&mut h);
+    let (bar, tabs, main) = (
+        h.bounds("obs-toolbar").unwrap(),
+        h.bounds("obs-center-tabs").unwrap(),
+        h.bounds("obs-main").unwrap(),
+    );
+    assert_eq!(tabs.top(), bar.bottom(), "under the toolbar");
+    assert_eq!(tabs.bottom(), main.top());
+    assert_eq!((tabs.left(), tabs.right()), (main.left(), main.right()));
+    let chip = h.bounds("tab-chip:file-tab:src/main.go:on").unwrap();
+    assert!(chip.top() >= tabs.top() && chip.bottom() <= tabs.bottom());
+    let toggle = h.bounds("obs-review-toggle").unwrap();
+    assert!(
+        toggle.bottom() <= bar.bottom(),
+        "the toggles stay in the toolbar"
+    );
+}
+
+#[gpui::test]
 async fn loop_detail_mounts_the_observatory(cx: &mut TestAppContext) {
     let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     assert!(h.has("obs"));
@@ -54,7 +75,8 @@ async fn agent_chat_icon_shows_an_unread_badge_from_workspace_attention(cx: &mut
     });
     assert!(!occluded);
     // Another left panel: the agent pane is occluded so unread can land.
-    h.click("panel-toggle:findings");
+    h.state_update(|s, cx| s.set_code_panel_side(CodePanelKey::Outline, PanelSide::Left, cx));
+    h.click("panel-toggle:outline");
     let occluded = h.state.read_with(h.cx, |s, _| {
         s.overlays.chat_occluders.contains("agent-pane")
     });
@@ -489,10 +511,17 @@ async fn cmd_shift_v_cycles_code_diff_and_preview(cx: &mut TestAppContext) {
 async fn review_toggle_switches_the_main_column(cx: &mut TestAppContext) {
     let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.click("obs-review-toggle");
-    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    h.click("obs-review-toggle");
+    assert_eq!(
+        h.read(|o, cx| o.main_surface(cx)),
+        MainSurface::Review,
+        "a second click leaves the review showing"
+    );
     assert!(h.has("obs-review-host"));
     h.click("obs-editor-toggle");
+    h.click("obs-editor-toggle");
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert!(h.has("obs-editors"), "nor does the editor's hide it");
 }
 
 fn many_files() -> Vec<String> {
@@ -503,7 +532,7 @@ fn many_files() -> Vec<String> {
     files
 }
 
-fn many_files_opts(files: Vec<String>, main: String) -> Overrides {
+pub(super) fn many_files_opts(files: Vec<String>, main: String) -> Overrides {
     let (f1, f2, f3) = (files.clone(), files.clone(), files);
     Overrides::default()
         .list_tree(move |_, (_, _, path)| {
@@ -755,11 +784,11 @@ async fn artifacts_pane_badges_unseen_creates_and_present_artifact_opens_it(
         h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
         1
     );
+    // Presented, it opens as a tab: the center is the editor, and what is open is seen.
     h.event(presented(WS, artifact));
     h.wait(100);
-    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Artifacts);
-    assert!(h.read(|o, _| o.show_side));
-    assert!(h.has("art-panel"));
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert!(!h.has("art-panel"));
     assert_eq!(
         h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
         0
@@ -838,7 +867,9 @@ fn scratch_text(h: &mut H, path: &str) -> String {
 }
 
 #[gpui::test]
-async fn clicking_an_artifact_leaves_review_and_opens_it_in_the_editor(cx: &mut TestAppContext) {
+async fn clicking_an_artifact_opens_it_in_the_editor_beside_the_right_panels_list(
+    cx: &mut TestAppContext,
+) {
     let art = artifact("art-from-review-1", "From review");
     let body = std::sync::Arc::new(parking_lot::Mutex::new("# From review\n".to_string()));
     let a2 = art.clone();
@@ -846,16 +877,28 @@ async fn clicking_an_artifact_leaves_review_and_opens_it_in_the_editor(cx: &mut 
         .list_artifacts(move |_, _| Ok(vec![a2.clone()]))
         .fetch_asset(artifact_body(body));
     let mut h = mount(cx, opts, |_| {}, |_| {});
+    h.event(created(WS, art));
+    assert_eq!(
+        h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
+        1
+    );
     h.click("panel-toggle:artifacts");
+    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Artifacts);
     assert!(h.has("art-row:art-from-review-1"));
-    h.click("obs-review-toggle");
-    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
-    assert!(!h.has("obs-editors"));
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert_eq!(
+        h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
+        0,
+        "the list showing clears what was new"
+    );
     h.click("art-row:art-from-review-1");
     h.wait(100);
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
-    assert!(h.has("obs-editors"));
     assert!(h.active_tab("scratch://artifact-art-from-review-1.md"));
+    assert!(
+        h.has("obs-editors") && h.has("art-row:art-from-review-1"),
+        "the list stays beside what it opened"
+    );
 }
 
 #[gpui::test]
@@ -942,6 +985,7 @@ async fn artifact_rename_via_context_menu_and_hover_trash_delete(cx: &mut TestAp
     h.wait(100);
     let path = "scratch://artifact-art-rename-1.md";
     assert_eq!(h.read(|o, _| o.scratch_tab_label(path)), "Old name");
+    h.click("panel-toggle:artifacts");
     h.right_click("art-row:art-rename-1");
     assert!(h.has("art-ctx-rename") && h.has("art-ctx-reveal") && h.has("art-ctx-delete"));
     h.click("art-ctx-rename");
@@ -962,7 +1006,7 @@ async fn artifact_rename_via_context_menu_and_hover_trash_delete(cx: &mut TestAp
 async fn artifacts_badge_increments_while_the_observatory_is_off_screen(cx: &mut TestAppContext) {
     let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
     h.click("panel-toggle:artifacts");
-    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Artifacts);
+    assert!(h.read(|o, cx| o.artifacts_list_showing(cx)));
     assert_eq!(
         h.read(|o, cx| o.pane_badge_count(CodePanelKey::Artifacts, cx)),
         0
@@ -1187,11 +1231,19 @@ async fn pane_kinds_and_visibility_are_remembered_on_hold_warm_remount_and_cold_
 ) {
     let (a, b, c) = (WS, "LOOP-2229", "LOOP-2235");
     let store = SessionStore::default();
-    let mut h = mount(cx, store.install(Overrides::default()), |_| {}, |_| {});
-    h.click("panel-toggle:findings");
-    h.click("panel-toggle:scm");
-    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
-    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Scm);
+    let outline_left = |st: &mut recur_view_core::LocalStorage| {
+        st.set("recur.codePanelSides", r#"{"outline":"left"}"#)
+    };
+    let mut h = mount(
+        cx,
+        store.install(Overrides::default()),
+        outline_left,
+        |_| {},
+    );
+    h.click("panel-toggle:outline");
+    h.click("panel-toggle:search");
+    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Outline);
+    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Search);
     h.click("obs-left-toggle");
     h.click("obs-side-toggle");
     assert!(!h.has("obs-left") && !h.has("obs-side"));
@@ -1209,8 +1261,8 @@ async fn pane_kinds_and_visibility_are_remembered_on_hold_warm_remount_and_cold_
     assert!(!h.has("obs-left") && !h.has("obs-side"));
     h.click("obs-left-toggle");
     h.click("obs-side-toggle");
-    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
-    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Scm);
+    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Outline);
+    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Search);
     h.click("obs-left-toggle");
     h.click("obs-side-toggle");
     h.wait(1000);
@@ -1219,14 +1271,14 @@ async fn pane_kinds_and_visibility_are_remembered_on_hold_warm_remount_and_cold_
     let mut h = mount(
         restarted,
         store.install(Overrides::default()),
-        |_| {},
+        outline_left,
         |_| {},
     );
     assert!(!h.has("obs-left") && !h.has("obs-side"));
     h.click("obs-left-toggle");
     h.click("obs-side-toggle");
-    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
-    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Scm);
+    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Outline);
+    assert_eq!(h.read(|o, _| o.right_kind), CodePanelKey::Search);
 }
 
 #[gpui::test]
@@ -1244,12 +1296,12 @@ async fn a_hidden_review_leaves_the_layout(cx: &mut TestAppContext) {
 }
 
 /// A watcher event refreshes the working status; one that finds it unchanged must not notify
-/// the Observatory, whose source control changes list (beside the commit message) re-renders on
-/// every notify: on a large change set that turned keys in the commit box into 700ms frames.
+/// the Observatory, which would push the review its props again: on a large change set that
+/// turned keys in the commit box into 700ms frames.
 #[gpui::test]
 async fn a_working_status_refresh_that_changes_nothing_does_not_notify(cx: &mut TestAppContext) {
     let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
-    h.click("panel-toggle:scm");
+    h.click("obs-review-toggle");
     h.update(|o, _, cx| o.refresh_working_status(cx).detach());
     let n = std::rc::Rc::new(std::cell::Cell::new(0));
     let seen = n.clone();
@@ -1305,34 +1357,6 @@ async fn a_file_event_under_the_review_does_not_notify_the_observatory(cx: &mut 
     assert_eq!(notifies.get(), 0, "a file event notified the Observatory");
 }
 
-/// A long changes list lays out the rows near its viewport: a status change on a large change
-/// set redrew every row, and that frame landed on keys typed in the commit box beside it.
-#[gpui::test]
-async fn a_long_changes_list_lays_out_the_rows_near_its_viewport(cx: &mut TestAppContext) {
-    let opts = Overrides::default().working_status(|_, _| {
-        Ok((0..250)
-            .map(|i| (format!("f{i:03}.txt"), "m".to_owned()))
-            .collect())
-    });
-    let mut h = mount(cx, opts, |_| {}, |_| {});
-    h.click("panel-toggle:scm");
-    h.update(|o, _, cx| o.refresh_working_status(cx).detach());
-    h.settle();
-    assert!(h.has("scm-stage:u:f000.txt"));
-    assert!(!h.has("scm-stage:u:f249.txt"));
-    let scroll = h.read(|o, _| o.scm_scroll.clone());
-    let max = scroll.max_offset().y;
-    assert!(
-        max > gpui::px(4000.),
-        "spacers keep the list's height: {max:?}"
-    );
-    scroll.set_offset(gpui::point(gpui::px(0.), -max));
-    h.update(|_, _, cx| cx.notify());
-    h.settle();
-    assert!(h.has("scm-stage:u:f249.txt"));
-    assert!(!h.has("scm-stage:u:f000.txt"));
-}
-
 #[gpui::test]
 async fn pdf_find_opens_from_the_crumb_bar_and_takes_typing(cx: &mut TestAppContext) {
     const PDF: &[u8] = include_bytes!("../../../../ui/gallery/content/page.pdf");
@@ -1384,4 +1408,452 @@ async fn the_blank_space_menu_ends_without_a_separator(cx: &mut TestAppContext) 
         f32::from(menu.bottom() - last.bottom()) < 6.,
         "{menu:?} {last:?}"
     );
+}
+
+#[gpui::test]
+async fn the_pull_request_opens_in_the_center(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    host_pr(&mut h);
+    assert_eq!(
+        pr_mounts(&mut h),
+        0,
+        "PR detail is not mounted before its view shows"
+    );
+    h.click("obs-term-toggle");
+    h.click("obs-pr-toggle");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Pr);
+    assert_eq!(pr_mounts(&mut h), 1);
+    assert!(!h.has("obs-editors") && !h.has("obs-review-host"));
+    let (pr, main, dock) = (
+        h.bounds("obs-pr").unwrap(),
+        h.bounds("obs-main").unwrap(),
+        h.read(|o, _| o.bounds.dock.get()),
+    );
+    assert_eq!(h.bounds("pr-body-stub"), Some(pr));
+    assert_eq!((pr.left(), pr.right()), (main.left(), main.right()));
+    assert_eq!(pr.bottom(), dock.top(), "the terminal is under it");
+    let (head, tabs) = (
+        h.bounds("pr-head-stub").unwrap(),
+        h.bounds("obs-center-tabs").unwrap(),
+    );
+    assert_eq!(head, tabs, "its tabs are the row under the toolbar");
+    assert_eq!(tabs.bottom(), main.top());
+
+    h.click("obs-review-toggle");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    h.click("obs-pr-toggle");
+    h.click("obs-pr-toggle");
+    assert_eq!(
+        h.read(|o, cx| o.main_surface(cx)),
+        MainSurface::Pr,
+        "its button switches to it, and does nothing once there"
+    );
+    h.click("obs-editor-toggle");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert!(!h.has("pr-body-stub") && !h.has("pr-head-stub"));
+    h.click("obs-pr-toggle");
+    assert!(h.has("pr-body-stub"));
+    assert_eq!(
+        pr_mounts(&mut h),
+        1,
+        "coming back shows the view it mounted"
+    );
+}
+
+#[gpui::test]
+async fn a_workspace_without_a_pull_request_has_no_toggle_and_shows_the_editor(
+    cx: &mut TestAppContext,
+) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    h.click("obs-pr-toggle");
+    h.state_update(|s, cx| {
+        s.prs.retain(|p| p.workspace_id != WS);
+        cx.notify();
+    });
+    assert!(!h.has("obs-pr-toggle"));
+    assert!(!h.has("obs-pr"));
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+}
+
+#[gpui::test]
+async fn the_pull_request_surface_is_remembered_across_a_restart(
+    cx: &mut TestAppContext,
+    restarted: &mut TestAppContext,
+) {
+    let store = SessionStore::default();
+    let mut h = mount(cx, store.install(Overrides::default()), |_| {}, |_| {});
+    host_pr(&mut h);
+    h.click("obs-pr-toggle");
+    h.switch_to(PROJECT, "LOOP-2229");
+    h.switch_to(PROJECT, WS);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Pr);
+    h.wait(1000);
+    h.quit();
+    let mut h = mount(
+        restarted,
+        store.install(Overrides::default()),
+        |_| {},
+        |_| {},
+    );
+    host_pr(&mut h);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Pr);
+    assert!(h.has("obs-pr"));
+}
+
+/// PR detail's tab row or pane, as the PR crate mounts them (`recur_view_core::pr_view`).
+struct PrStub(&'static str);
+
+impl gpui_kit::Render for PrStub {
+    fn render(
+        &mut self,
+        _: &mut gpui_kit::Window,
+        _: &mut gpui_kit::Context<Self>,
+    ) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{InteractiveElement, Styled};
+        let name = self.0;
+        gpui_kit::div()
+            .debug_selector(move || name.into())
+            .size_full()
+    }
+}
+
+#[derive(Default)]
+struct PrMounts(usize);
+
+impl gpui_kit::Global for PrMounts {}
+
+fn pr_stub(
+    _: &gpui_kit::Entity<recur_view_core::AppState>,
+    _: &str,
+    _: &mut gpui_kit::Window,
+    cx: &mut gpui_kit::App,
+) -> recur_view_core::pr_view::PrViewParts {
+    cx.default_global::<PrMounts>().0 += 1;
+    let stub = |name, cx: &mut gpui_kit::App| {
+        gpui_kit::AnyView::from(gpui_kit::AppContext::new(cx, |_| PrStub(name)))
+    };
+    recur_view_core::pr_view::PrViewParts {
+        head: stub("pr-head-stub", cx),
+        body: stub("pr-body-stub", cx),
+    }
+}
+
+fn host_pr(h: &mut H) {
+    h.update(|_, _, cx| cx.set_global(recur_view_core::pr_view::PrViewHost { mount: pr_stub }));
+}
+
+fn pr_mounts(h: &mut H) -> usize {
+    h.update(|_, _, cx| cx.default_global::<PrMounts>().0)
+}
+
+/// The plan pane the workspace view supplies.
+struct PlanStub;
+
+impl gpui_kit::Render for PlanStub {
+    fn render(
+        &mut self,
+        _: &mut gpui_kit::Window,
+        _: &mut gpui_kit::Context<Self>,
+    ) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{InteractiveElement, Styled};
+        gpui_kit::div()
+            .debug_selector(|| "plan-stub".into())
+            .size_full()
+    }
+}
+
+pub(super) fn set_plan(h: &mut H, on: bool) {
+    h.update(|o, _, cx| {
+        let mut slots = o.slots.clone();
+        slots.plan_panel =
+            on.then(|| gpui_kit::AnyView::from(gpui_kit::AppContext::new(cx, |_| PlanStub)));
+        o.set_slots(slots, cx);
+    });
+}
+
+fn open_finding(id: &str) -> recur_domain::Finding {
+    recur_domain::Finding {
+        id: id.into(),
+        workspace_id: WS.into(),
+        file: "src/main.go".into(),
+        line: 3,
+        message: "handle the error".into(),
+        status: "open".into(),
+        ..Default::default()
+    }
+}
+
+fn jump(h: &mut H, f: impl FnOnce(&mut recur_view_core::state::ObsJump)) {
+    let mut j = recur_view_core::state::ObsJump {
+        workspace_id: WS.into(),
+        ..Default::default()
+    };
+    f(&mut j);
+    h.state_update(|s, cx| {
+        s.observatory_jump = Some(j);
+        cx.notify();
+    });
+    h.wait(100);
+}
+
+#[gpui::test]
+async fn the_plan_is_a_view_of_the_center_and_artifacts_a_right_panel(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    set_plan(&mut h, true);
+    let lefts: Vec<f32> = ["plan", "editor", "review", "pr", "term"]
+        .iter()
+        .map(|k| f32::from(h.bounds(&format!("obs-{k}-toggle")).unwrap().left()))
+        .collect();
+    assert!(lefts.is_sorted(), "the center group's order: {lefts:?}");
+    assert!(!h.has("panel-toggle:plan"));
+    for panel in ["findings", "artifacts"] {
+        assert!(
+            h.has(&format!("panel-toggle:{panel}")) && !h.has(&format!("obs-{panel}-toggle")),
+            "{panel} stay a side panel, to read beside the code or the chat"
+        );
+    }
+    assert!(
+        h.read(|o, cx| o.panels_on(PanelSide::Right, cx))
+            .contains(&CodePanelKey::Artifacts),
+        "the artifacts are on the right by default"
+    );
+    h.click("panel-toggle:artifacts");
+    assert!(h.has("art-panel") && h.has("obs-editors"));
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+
+    h.click("obs-term-toggle");
+    {
+        let (view, body) = (MainSurface::Plan, "plan-stub");
+        let key = view.key();
+        let toggle = format!("obs-{key}-toggle");
+        h.click(&toggle);
+        assert_eq!(h.read(|o, cx| o.main_surface(cx)), view);
+        h.click(&toggle);
+        assert_eq!(
+            h.read(|o, cx| o.main_surface(cx)),
+            view,
+            "{key}: its button does nothing once it shows"
+        );
+        assert!(h.has(body));
+        assert!(
+            !h.has(&format!("tab-chip:{key}-tab:on")),
+            "{key}: its head is the row under the toolbar, with no tab of its own"
+        );
+        let (head, bar) = (
+            h.bounds("obs-center-tabs").unwrap(),
+            h.bounds("obs-toolbar").unwrap(),
+        );
+        assert_eq!(head.top(), bar.bottom());
+        assert!(!h.has("obs-editors") && !h.has("obs-review-host") && !h.has("obs-pr"));
+        let (col, main, dock) = (
+            h.bounds("obs-list-column").unwrap(),
+            h.bounds("obs-main").unwrap(),
+            h.read(|o, _| o.bounds.dock.get()),
+        );
+        assert_eq!(col.bottom(), dock.top(), "{key}: the terminal is under it");
+        assert!(col.left() >= main.left() && col.right() <= main.right());
+    }
+    h.click("obs-editor-toggle");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert!(h.has("obs-editors") && !h.has("obs-list-column"));
+}
+
+#[gpui::test]
+async fn the_lists_take_the_centers_whole_width(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    h.cx.simulate_resize(gpui::size(px(2200.), px(900.)));
+    set_plan(&mut h, true);
+    h.click("obs-plan-toggle");
+    let (col, main) = (
+        h.bounds("obs-list-column").unwrap(),
+        h.bounds("obs-main").unwrap(),
+    );
+    assert!(main.size.width > px(800.), "{main:?}");
+    assert_eq!((col.left(), col.right()), (main.left(), main.right()));
+}
+
+#[gpui::test]
+async fn a_view_button_is_there_while_its_view_has_something_to_show(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    assert!(!h.has("obs-plan-toggle"), "no plan pane from the host");
+    set_plan(&mut h, true);
+    h.click("obs-plan-toggle");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Plan);
+    set_plan(&mut h, false);
+    assert!(!h.has("obs-plan-toggle") && !h.has("plan-stub"));
+    assert_eq!(
+        h.read(|o, cx| o.main_surface(cx)),
+        MainSurface::Editor,
+        "nothing to show: the editor"
+    );
+    assert!(h.has("obs-editors"));
+}
+
+#[gpui::test]
+async fn the_view_buttons_carry_the_badges_the_panels_had(cx: &mut TestAppContext) {
+    let opts = Overrides::default()
+        .list_findings(|_, _| Ok(vec![open_finding("f-1"), open_finding("f-2")]));
+    let mut h = mount(cx, opts, |_| {}, |_| {});
+    set_plan(&mut h, true);
+    h.state_update(|s, cx| {
+        let plan = serde_json::json!({"summary": "Ship it", "steps": [
+            {"id": "s1", "title": "One", "status": "done"},
+            {"id": "s2", "title": "Two", "status": "doing"},
+            {"id": "s3", "title": "Three", "status": "pending"},
+        ]});
+        let ws = s.workspaces.iter_mut().find(|w| w.id == WS).unwrap();
+        ws.plan = Some(serde_json::from_value(plan).unwrap());
+        cx.notify();
+    });
+    h.event(created(WS, artifact("art-badge-1", "New")));
+    assert_eq!(h.read(|o, cx| o.plan_badge_title(cx)), "Plan (2 remaining)");
+    assert_eq!(
+        h.read(|o, cx| o.pane_badge_title(CodePanelKey::Artifacts, cx)),
+        "Artifacts (1 new)",
+        "the artifacts' count is on their side panel icon"
+    );
+    assert_eq!(
+        h.read(|o, cx| o.pane_badge_title(CodePanelKey::Findings, cx)),
+        "Findings (2 open)",
+        "the findings' count stays on its side panel icon"
+    );
+}
+
+#[gpui::test]
+async fn a_jump_opens_a_finding_beside_its_code_and_the_plan_in_the_center(
+    cx: &mut TestAppContext,
+) {
+    let opts = Overrides::default().list_findings(|_, _| Ok(vec![open_finding("f-1")]));
+    let mut h = mount(cx, opts, |_| {}, |_| {});
+    set_plan(&mut h, true);
+    open_main_go(&mut h);
+    jump(&mut h, |j| j.finding_id = "f-1".into());
+    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
+    assert!(h.has("finding-row:f-1") && h.has("finding-inspector"));
+    assert_eq!(
+        h.read(|o, cx| o.main_surface(cx)),
+        MainSurface::Editor,
+        "the code stays beside it"
+    );
+    assert!(h.has("obs-editors"));
+    assert!(h.state.read_with(h.cx, |s, _| s.observatory_jump.is_none()));
+
+    jump(&mut h, |j| {
+        j.panel = "plan".into();
+        j.plan_tab = "todos".into();
+    });
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Plan);
+    assert!(h.has("plan-stub"));
+    assert!(
+        h.events
+            .borrow()
+            .contains(&crate::ObservatoryEvent::PlanTab("todos".into()))
+    );
+
+    h.update(|o, window, cx| o.select_code_panel(CodePanelKey::Maestro, window, cx));
+    jump(&mut h, |j| j.panel = "findings".into());
+    assert_eq!(h.read(|o, _| o.left_kind), CodePanelKey::Findings);
+    assert_eq!(
+        h.read(|o, cx| o.main_surface(cx)),
+        MainSurface::Plan,
+        "the center keeps its view"
+    );
+}
+
+#[gpui::test]
+async fn the_plan_view_is_remembered_across_a_restart(
+    cx: &mut TestAppContext,
+    restarted: &mut TestAppContext,
+) {
+    let store = SessionStore::default();
+    let mut h = mount(cx, store.install(Overrides::default()), |_| {}, |_| {});
+    set_plan(&mut h, true);
+    h.click("obs-plan-toggle");
+    h.switch_to(PROJECT, "LOOP-2229");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    h.switch_to(PROJECT, WS);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Plan);
+    h.wait(1000);
+    assert_eq!(store.0.lock()[WS].main_surface, "plan");
+    h.quit();
+    let mut h = mount(
+        restarted,
+        store.install(Overrides::default()),
+        |_| {},
+        |_| {},
+    );
+    set_plan(&mut h, true);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Plan);
+    assert!(h.has("plan-stub"));
+}
+
+#[gpui::test]
+async fn saved_sides_and_dock_kinds_naming_the_plan_are_ignored(cx: &mut TestAppContext) {
+    let store = SessionStore::default();
+    store.0.lock().insert(
+        WS.into(),
+        recur_services::api::EditorSession {
+            left_kind: "plan".into(),
+            right_kind: "plan".into(),
+            main_surface: "artifacts".into(),
+            ..Default::default()
+        },
+    );
+    let mut h = mount(
+        cx,
+        store.install(Overrides::default()),
+        |st| st.set("recur.codePanelSides", r#"{"plan":"right"}"#),
+        |_| {},
+    );
+    h.wait(100);
+    assert_eq!(
+        h.read(|o, _| (o.left_kind, o.right_kind)),
+        (CodePanelKey::Maestro, CodePanelKey::Files)
+    );
+    assert!(h.has("agent-chat") && h.has("obs-files-panel"));
+    assert_eq!(
+        h.read(|o, cx| o.panels_on(PanelSide::Left, cx)),
+        [CodePanelKey::Maestro, CodePanelKey::Findings]
+    );
+    assert_eq!(
+        h.read(|o, cx| o.main_surface(cx)),
+        MainSurface::Editor,
+        "a saved artifacts view is the editor now"
+    );
+}
+
+#[gpui::test]
+async fn the_left_group_is_the_toggle_alone_while_only_the_chat_is_on_the_left(
+    cx: &mut TestAppContext,
+) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    assert!(
+        h.has("panel-toggle:maestro") && h.has("panel-toggle:findings"),
+        "the chat and the findings share the left by default"
+    );
+    h.state_update(|s, cx| s.set_code_panel_side(CodePanelKey::Findings, PanelSide::Right, cx));
+    assert!(h.has("obs-left-toggle") && !h.has("panel-toggle:maestro"));
+    assert!(
+        h.has("panel-toggle:files"),
+        "the right group keeps its icons"
+    );
+    // Hidden, the chat's unread count has the toggle to land on.
+    h.click("obs-left-toggle");
+    h.fake.simulate_chat_turn_idle(WS, "MA");
+    h.settle();
+    assert_eq!(
+        h.read(|o, cx| o.pane_badge_count(CodePanelKey::Maestro, cx)),
+        1
+    );
+    assert!(!h.has("panel-toggle:maestro"));
+    h.click("obs-left-toggle");
+    assert!(h.has("agent-chat"));
+
+    h.state_update(|s, cx| s.set_code_panel_side(CodePanelKey::Outline, PanelSide::Left, cx));
+    assert!(h.has("panel-toggle:maestro") && h.has("panel-toggle:outline"));
+    let (tog, chat) = (
+        h.bounds("obs-left-toggle").unwrap(),
+        h.bounds("panel-toggle:maestro").unwrap(),
+    );
+    assert!(tog.right() <= chat.left());
 }

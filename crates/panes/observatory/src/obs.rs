@@ -10,13 +10,15 @@ use gpui_kit::{
     Focusable, ScrollHandle, Subscription, Task, WeakEntity, Window,
 };
 use recur_code::glob::{CompiledGlob, compile_excludes, is_excluded_by};
-use recur_domain::{FileContent, Finding, OutlineSymbol, SearchHit, SymbolRef, TreeEntry};
+use recur_domain::{
+    DiffStat, FileContent, Finding, OutlineSymbol, SearchHit, SymbolRef, TreeEntry,
+};
 use recur_editor::session::{ScratchDoc, StashedBuffer};
 use recur_editor::view::EditorView;
 use recur_editor::view_state::{EditorViewMode, FileViewState};
 use recur_services::Services;
 use recur_view_core::AppState;
-use recur_view_core::prefs::{CodePanelKey, PanelKey, PanelSide};
+use recur_view_core::prefs::{CodePanelKey, PanelKey, PanelSide, TerminalPlacement};
 use recur_view_review::review_diff::ReviewTab;
 use recur_view_review::surface::ReviewSurface;
 
@@ -54,8 +56,17 @@ pub struct ObservatoryProps {
 type ReviewMemo = (Rc<Vec<String>>, Rc<Vec<CompiledGlob>>, Rc<Vec<String>>);
 type ExcludedMemo = (Rc<Vec<CompiledGlob>>, HashMap<String, bool>);
 type ChangedTreeMemo = (Rc<Vec<String>>, Rc<Vec<TreeEntry>>);
+/// The files matching the explorer's filter as a tree, and whether the matches were capped.
+pub(crate) type FilterTree = (Rc<Vec<TreeEntry>>, bool);
+type FilterTreeKey = (String, Rc<Vec<String>>, Option<Rc<Vec<String>>>);
+/// The most files the filter lists from the file index.
+// simplify: the explorer lays out every row of its tree on each render, so a short query in a
+// huge repo is capped (and says so) instead of windowing the matches; it also scans the whole
+// index on the UI thread per key, fine to roughly 100k paths. Past that, match off the UI thread.
+pub(crate) const FILES_FILTER_CAP: usize = 2000;
+type DiffCounts = Rc<BTreeMap<String, DiffStat>>;
+type DiffCountsMemo = (DiffCounts, Rc<Vec<CompiledGlob>>, DiffCounts);
 /// The staged and unstaged paths of the working status, sorted.
-pub(crate) type WorkingPaths = (Vec<String>, Vec<String>);
 
 #[derive(Default)]
 pub(crate) struct PathsMemo {
@@ -68,6 +79,10 @@ pub(crate) struct PathsMemo {
     excluded: Option<ExcludedMemo>,
     /// The changed-files tree of the review paths it was built from.
     changed_tree: Option<ChangedTreeMemo>,
+    /// The diff stats and excludes it was totaled from, and the counts by file and folder.
+    diff_counts: Option<DiffCountsMemo>,
+    /// The filter's query, the changed paths and the file index it matched, and the tree.
+    filter_tree: Option<(FilterTreeKey, FilterTree)>,
 }
 
 /// The host-owned content slots.
@@ -323,7 +338,6 @@ pub struct Observatory {
     pub(crate) left_focus: FocusHandle,
     pub(crate) main_focus: FocusHandle,
     pub(crate) files_focus: FocusHandle,
-    pub(crate) scm_focus: FocusHandle,
     pub(crate) tabs_focus: FocusHandle,
     pub(crate) review_focus: FocusHandle,
     /// The left and side docks' resize handles.
@@ -356,14 +370,23 @@ pub struct Observatory {
     /// Bumped whenever `changed_paths` or `git_status` changes (keys `paths_memo`).
     pub(crate) paths_gen: u64,
     pub(crate) paths_memo: std::cell::RefCell<PathsMemo>,
+    /// `+N −M` per changed file, as the review counts them.
+    pub(crate) diff_stats: Rc<BTreeMap<String, DiffStat>>,
+    pub(crate) diff_stats_gen: u64,
     /// Uncommitted porcelain versus HEAD.
     pub(crate) working_status: BTreeMap<String, String>,
     pub(crate) staged_files: Vec<String>,
-    /// `working_paths`, until `working_status` or `staged_files` next change.
-    pub(crate) working_paths_memo: std::cell::RefCell<Option<Rc<WorkingPaths>>>,
+    /// Tracked files with edits not in the index; a staged one is partly staged.
+    pub(crate) unstaged_files: Vec<String>,
     pub(crate) browse_all: bool,
     pub(crate) scope_chosen: bool,
     pub(crate) changed_collapsed: BTreeSet<String>,
+    /// Folders folded among the filter's matches (the tree's own folds stay as they are).
+    pub(crate) files_filter_collapsed: BTreeSet<String>,
+    /// The explorer's scroll offset from before the filter took text, put back when it clears.
+    pub(crate) files_filter_scroll: Option<gpui_kit::Point<gpui_kit::Pixels>>,
+    /// Every indexed file of the root, read while the filter has text in the All files scope.
+    pub(crate) files_filter_index: Option<Rc<Vec<String>>>,
     pub(crate) tree_path: String,
     pub(crate) ctx_menu: Option<CtxMenu>,
     pub(crate) draft_edit: Option<DraftEdit>,
@@ -376,7 +399,6 @@ pub struct Observatory {
     pub(crate) worktree_missing: bool,
     pub(crate) dir_not_found_since: HashMap<String, Instant>,
     pub(crate) files_scroll: ScrollHandle,
-    pub(crate) scm_scroll: ScrollHandle,
     pub(crate) search_scroll: ScrollHandle,
     pub(crate) hovered_row: Option<String>,
     pub(crate) skip_node_click: bool,
@@ -505,6 +527,10 @@ pub struct Observatory {
     pub(crate) review_bound: recur_view_review::surface::SurfaceBound,
     pub(crate) review_restore: Option<(String, f32)>,
     pub(crate) review_surface: Option<Entity<ReviewSurface>>,
+    /// The Uncommitted tab's editable cards.
+    pub(crate) cards: crate::editor_host::cards::Cards,
+    /// PR detail bound to the workspace's pull request, mounted the first time its view shows.
+    pub(crate) pr_view: Option<recur_view_core::pr_view::PrViewParts>,
     pub(crate) review_sig: Option<crate::panels::ReviewSig>,
     pub(crate) review_subs: Vec<Subscription>,
 
@@ -526,15 +552,10 @@ pub struct Observatory {
     pub(crate) search_case: bool,
     pub(crate) refs: Vec<SymbolRef>,
     pub(crate) expanded_lists: BTreeSet<String>,
-    pub(crate) scm_collapsed: BTreeSet<String>,
-    pub(crate) scm_file_list_mode: recur_view_review::review_diff::FileListMode,
     pub(crate) commit_busy: bool,
     pub(crate) commit_msg_busy: bool,
     pub(crate) problem_fix_busy: String,
     pub(crate) problem_hovered: Option<usize>,
-    pub(crate) scm_hovered: Option<String>,
-    pub(crate) scm_name_hover: Option<String>,
-    pub(crate) scm_probes: crate::render::ScmProbes,
     pub(crate) inputs: crate::inputs::Inputs,
     pub(crate) findings_panel: Entity<crate::findings_panel::FindingsPanel>,
     pub(crate) artifacts_panel: Option<Entity<crate::artifacts_panel::ArtifactsPanel>>,
@@ -545,13 +566,16 @@ pub struct Observatory {
     /// The side panel as its own cached view, when it holds no chat.
     pub(crate) side_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) left_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    /// The plan view of the center column.
+    pub(crate) list_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     /// The main pane's empty state as its own cached view.
     pub(crate) empty_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) toolbar_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
-    pub(crate) scm_body_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
-    /// The commit box's foot (the box and its Commit button), redrawn alone when the message
-    /// turns empty or not.
+    pub(crate) tabs_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
+    /// The commit composer under the review's uncommitted file list (the box and its Commit
+    /// button), an isolated view redrawn alone when the message turns empty or not.
     pub(crate) commit_foot: Option<Entity<recur_ui::isolated::Part<Observatory>>>,
+    pub(crate) commit_fit: Rc<recur_ui::isolated::Fit>,
     pub(crate) crumb_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     pub(crate) status_pane: Option<Entity<recur_ui::pane::Pane<Observatory>>>,
     /// The window-corner padding the status bar needs, as of the last render.
@@ -580,10 +604,19 @@ pub struct Observatory {
     pub(crate) term_max_for_ws: String,
     pub(crate) term_slot_h: f32,
     pub(crate) overlay_keep_editor_hidden: bool,
+    /// The floating right panel's slide: sliding out (or back in), from how much of it was
+    /// out, since when.
+    pub(crate) side_slide: Option<(bool, f32, Instant)>,
+    /// The docked or floating preference as last seen, to show the panel when it docks.
+    pub(crate) side_float_seen: Option<bool>,
+    /// The window is at the stacked width, where the right panel never floats.
+    pub(crate) narrow: bool,
     pub(crate) overlay_rect: OverlayRect,
     pub(crate) term_open_for_ws: String,
     pub(crate) term_was_open: bool,
     pub(crate) term_beside_resizing: bool,
+    /// The toolbar's placement menu, the chevron half of the Terminal button.
+    pub(crate) term_place_menu: Option<(Entity<recur_ui::widgets::Select>, Subscription)>,
     pub(crate) bounds: crate::geometry::Geometry,
 
     // ---- shell activation ----
@@ -627,8 +660,6 @@ impl Observatory {
             .map(|n| n.round() as i64)
             .unwrap_or(50);
         let review_tab = recur_view_review::review_diff::read_review_tab(state.read(cx).storage());
-        let file_list_mode =
-            recur_view_review::review_diff::read_file_list_mode(state.read(cx).storage());
         let inputs = crate::inputs::Inputs::new(state.clone(), window, cx);
         let findings_panel =
             cx.new(|cx| crate::findings_panel::FindingsPanel::new(state.clone(), window, cx));
@@ -642,7 +673,6 @@ impl Observatory {
             left_focus: cx.focus_handle(),
             main_focus: cx.focus_handle(),
             files_focus: cx.focus_handle().tab_stop(true),
-            scm_focus: cx.focus_handle(),
             tabs_focus: cx.focus_handle(),
             review_focus: cx.focus_handle(),
             resize_focus: [cx.focus_handle(), cx.focus_handle()],
@@ -667,12 +697,17 @@ impl Observatory {
             git_status_ready: false,
             paths_gen: 0,
             paths_memo: Default::default(),
+            diff_stats: Rc::default(),
+            diff_stats_gen: 0,
             working_status: BTreeMap::new(),
             staged_files: Vec::new(),
-            working_paths_memo: Default::default(),
+            unstaged_files: Vec::new(),
             browse_all: false,
             scope_chosen: false,
             changed_collapsed: BTreeSet::new(),
+            files_filter_collapsed: BTreeSet::new(),
+            files_filter_scroll: None,
+            files_filter_index: None,
             tree_path: String::new(),
             ctx_menu: None,
             draft_edit: None,
@@ -685,7 +720,6 @@ impl Observatory {
             worktree_missing: false,
             dir_not_found_since: HashMap::new(),
             files_scroll: ScrollHandle::new(),
-            scm_scroll: ScrollHandle::new(),
             search_scroll: ScrollHandle::new(),
             hovered_row: None,
             skip_node_click: false,
@@ -790,6 +824,8 @@ impl Observatory {
             review_bound: Default::default(),
             review_restore: None,
             review_surface: None,
+            cards: Default::default(),
+            pr_view: None,
             review_sig: None,
             review_subs: Vec::new(),
             left_kind: CodePanelKey::Maestro,
@@ -808,15 +844,10 @@ impl Observatory {
             search_case: false,
             refs: Vec::new(),
             expanded_lists: BTreeSet::new(),
-            scm_collapsed: BTreeSet::new(),
-            scm_file_list_mode: file_list_mode,
             commit_busy: false,
             commit_msg_busy: false,
             problem_fix_busy: String::new(),
             problem_hovered: None,
-            scm_hovered: None,
-            scm_name_hover: None,
-            scm_probes: Default::default(),
             inputs,
             findings_panel,
             artifacts_panel: None,
@@ -826,10 +857,12 @@ impl Observatory {
             ],
             side_pane: None,
             left_pane: None,
+            list_pane: None,
             empty_pane: None,
             toolbar_pane: None,
-            scm_body_pane: None,
+            tabs_pane: None,
             commit_foot: None,
+            commit_fit: Default::default(),
             crumb_pane: None,
             status_pane: None,
             status_corner: (false, false),
@@ -853,10 +886,14 @@ impl Observatory {
             term_max_for_ws: String::new(),
             term_slot_h: 0.,
             overlay_keep_editor_hidden: false,
+            side_slide: None,
+            side_float_seen: None,
+            narrow: false,
             overlay_rect: OverlayRect::default(),
             term_open_for_ws: String::new(),
             term_was_open: false,
             term_beside_resizing: false,
+            term_place_menu: None,
             bounds: Default::default(),
             was_shell_active: true,
             watch_armed_for: String::new(),
@@ -939,11 +976,23 @@ impl Observatory {
         self.toggle_review(cx);
     }
 
-    pub(crate) fn main_surface(&self, cx: &App) -> MainSurface {
-        if self.is_git(cx) && self.main_surface_pref == MainSurface::Review {
-            MainSurface::Review
+    /// The view the center column shows.
+    pub fn main_surface(&self, cx: &App) -> MainSurface {
+        if self.surface_available(self.main_surface_pref, cx) {
+            self.main_surface_pref
         } else {
             MainSurface::Editor
+        }
+    }
+
+    /// The view has something to show: the review for git roots, the pull request while there
+    /// is one, the plan where the host has one.
+    pub(crate) fn surface_available(&self, s: MainSurface, cx: &App) -> bool {
+        match s {
+            MainSurface::Editor => true,
+            MainSurface::Review => self.is_git(cx),
+            MainSurface::Pr => self.has_pr(cx),
+            MainSurface::Plan => self.slots.plan_panel.is_some(),
         }
     }
 
@@ -970,11 +1019,12 @@ impl Observatory {
         self.is_git(cx)
     }
 
+    /// The review tab that shows: Uncommitted only while there is uncommitted work.
     pub(crate) fn review_strip_tab(&self, cx: &App) -> ReviewTab {
-        if !self.review_has_commits(cx) && self.review_tab == ReviewTab::Commits {
-            ReviewTab::Changes
-        } else {
-            self.review_tab
+        match self.review_tab {
+            ReviewTab::Commits if !self.review_has_commits(cx) => ReviewTab::Changes,
+            ReviewTab::Uncommitted if self.working_dirty_count() == 0 => ReviewTab::Changes,
+            t => t,
         }
     }
 
@@ -994,14 +1044,43 @@ impl Observatory {
     }
 
     pub(crate) fn editor_hidden(&self, cx: &App) -> bool {
+        self.state.read(cx).editor_hidden(&self.props.workspace_id)
+    }
+
+    pub(crate) fn term_placement(&self, cx: &App) -> TerminalPlacement {
         self.state
             .read(cx)
-            .dock
-            .is_editor_hidden(&self.props.workspace_id)
+            .terminal_placement(&self.props.workspace_id)
+    }
+
+    /// The terminal is the center view, where its placement is in place of the editor: it
+    /// covers the editor, the review and the pull request alike.
+    pub(crate) fn term_is_center(&self, cx: &App) -> bool {
+        self.term_placement(cx) == TerminalPlacement::Center && self.editor_tucked(cx)
+    }
+
+    /// The terminal has the center column: [`Self::term_is_center`], or ⌥⌘E over the editor.
+    pub(crate) fn center_hidden(&self, cx: &App) -> bool {
+        self.editor_tucked(cx)
+            && (self.main_surface(cx) == MainSurface::Editor
+                || self.term_placement(cx) == TerminalPlacement::Center)
+    }
+
+    /// The right panel floats over the workspace as a flyout instead of taking a column (the
+    /// app-wide preference). Not at the stacked width, nor while the agent is in PR detail.
+    pub(crate) fn floating(&self, cx: &App) -> bool {
+        self.state.read(cx).panels.side_float() && !self.narrow && !self.portal_agent_to_pr(cx)
+    }
+
+    /// Closes the right panel while it floats (Esc, a press on the center column).
+    pub(crate) fn close_side_float(&mut self, cx: &mut Context<Self>) {
+        if self.show_side && self.floating(cx) {
+            self.set_show_side(false, cx);
+        }
     }
 
     pub(crate) fn term_beside(&self, cx: &App) -> bool {
-        self.state.read(cx).dock.is_beside(&self.props.workspace_id)
+        self.term_placement(cx) == TerminalPlacement::Beside
     }
 
     pub(crate) fn term_beside_pct(&self, cx: &App) -> i64 {
@@ -1027,16 +1106,33 @@ impl Observatory {
         self.term_open(cx) && self.term_beside(cx) && !self.editor_tucked(cx)
     }
 
+    /// The dock under every column, the full width of the Observatory.
+    pub(crate) fn term_full_layout(&self, cx: &App) -> bool {
+        self.term_open(cx)
+            && self.term_placement(cx) == TerminalPlacement::Full
+            && !self.editor_tucked(cx)
+    }
+
     // ---- derived: panels ----
 
     pub(crate) fn left_gutter_open(&self) -> bool {
         self.props.left_open.unwrap_or(self.local_left_open)
     }
 
+    /// The workspace's PR (`pr_for_workspace`), when it has one.
+    pub(crate) fn workspace_pr(&self, cx: &App) -> Option<recur_domain::Pr> {
+        let s = self.state.read(cx);
+        recur_view_core::pr::pr_for_workspace(&s.prs, &self.props.workspace_id).cloned()
+    }
+
+    pub(crate) fn has_pr(&self, cx: &App) -> bool {
+        let s = self.state.read(cx);
+        recur_view_core::pr::pr_for_workspace(&s.prs, &self.props.workspace_id).is_some()
+    }
+
     fn panel_available(&self, k: CodePanelKey) -> bool {
         match k {
             CodePanelKey::Maestro => self.slots.left_panel.is_some(),
-            CodePanelKey::Plan => self.slots.plan_panel.is_some(),
             CodePanelKey::Findings | CodePanelKey::Artifacts => !self.props.workspace_id.is_empty(),
             _ => true,
         }
@@ -1107,10 +1203,6 @@ impl Observatory {
         self.state.read(cx).panels.size(PanelKey::MaestroDock)
     }
 
-    pub(crate) fn obs_side_width(&self, cx: &App) -> f32 {
-        self.state.read(cx).panels.size(PanelKey::ObsSide)
-    }
-
     /// This Observatory's agent dock occupies the PR-detail slot.
     pub(crate) fn portal_agent_to_pr(&self, cx: &App) -> bool {
         let s = self.state.read(cx);
@@ -1126,23 +1218,11 @@ impl Observatory {
     }
 
     /// The Artifacts list is actually on screen.
-    pub(crate) fn artifacts_panel_focused(&self, cx: &App) -> bool {
-        let s = self.state.read(cx);
+    pub(crate) fn artifacts_list_showing(&self, cx: &App) -> bool {
         self.props.shell_active
-            && s.view == recur_view_core::ViewName::Detail
+            && self.state.read(cx).view == recur_view_core::ViewName::Detail
             && !self.term_overlaying()
-            && match self.panel_side(CodePanelKey::Artifacts, cx) {
-                PanelSide::Left => {
-                    self.has_left(cx)
-                        && self.left_gutter_open()
-                        && self.left_kind == CodePanelKey::Artifacts
-                }
-                PanelSide::Right => {
-                    self.has_right(cx)
-                        && self.show_side
-                        && self.right_kind == CodePanelKey::Artifacts
-                }
-            }
+            && self.panel_showing(CodePanelKey::Artifacts, cx)
     }
 
     /// The agent transcript is on screen (`maestroPanelVisible`).
@@ -1173,15 +1253,14 @@ impl Observatory {
 
     /// The Files explorer is the active panel and its dock is showing.
     pub(crate) fn files_explorer_is_showing(&self, cx: &App) -> bool {
-        match self.panel_side(CodePanelKey::Files, cx) {
-            PanelSide::Left => {
-                self.has_left(cx)
-                    && self.left_gutter_open()
-                    && self.left_kind == CodePanelKey::Files
-            }
-            PanelSide::Right => {
-                self.has_right(cx) && self.show_side && self.right_kind == CodePanelKey::Files
-            }
+        self.panel_showing(CodePanelKey::Files, cx)
+    }
+
+    /// The panel is its dock's active one and that dock is showing.
+    pub(crate) fn panel_showing(&self, k: CodePanelKey, cx: &App) -> bool {
+        match self.panel_side(k, cx) {
+            PanelSide::Left => self.has_left(cx) && self.left_gutter_open() && self.left_kind == k,
+            PanelSide::Right => self.has_right(cx) && self.show_side && self.right_kind == k,
         }
     }
 
@@ -1290,6 +1369,84 @@ impl Observatory {
         );
         memo.review = Some((scope, m, Rc::clone(&v)));
         v
+    }
+
+    /// `+N −M` by changed file and by each folder over them, the excluded files left out as
+    /// the review leaves them out (memoized).
+    pub(crate) fn diff_counts(&self, cx: &App) -> Rc<BTreeMap<String, DiffStat>> {
+        let m = self.exclude_matchers(cx);
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some((stats, ex, v)) = &memo.diff_counts
+            && Rc::ptr_eq(stats, &self.diff_stats)
+            && Rc::ptr_eq(ex, &m)
+        {
+            return v.clone();
+        }
+        let mut counts: BTreeMap<String, DiffStat> = BTreeMap::new();
+        for (path, stat) in self.diff_stats.iter() {
+            if is_excluded_by(path, &m) {
+                continue;
+            }
+            let dirs = path.match_indices('/').map(|(i, _)| &path[..i]);
+            for p in dirs.chain([path.as_str()]) {
+                let c = counts.entry(p.to_string()).or_default();
+                c.add += stat.add;
+                c.del += stat.del;
+            }
+        }
+        let v = Rc::new(counts);
+        memo.diff_counts = Some((self.diff_stats.clone(), m, v.clone()));
+        v
+    }
+
+    /// The filter box's query, read as the review's file list reads its own.
+    pub(crate) fn files_filter_q(&self, cx: &App) -> String {
+        recur_engine::view::js::trim(&self.inputs.files_filter.read(cx).value()).to_lowercase()
+    }
+
+    /// The files of the scope whose path holds the filter's query, as a tree with their folders
+    /// (memoized); `None` while the box is empty. All files come from the file index, which
+    /// knows the folders the tree has not listed.
+    pub(crate) fn files_filter_tree(&self, cx: &App) -> Option<FilterTree> {
+        let q = self.files_filter_q(cx);
+        if q.is_empty() {
+            return None;
+        }
+        let changed = self.review_paths(cx);
+        let index = self
+            .files_filter_index
+            .clone()
+            .filter(|_| !self.filter_changed());
+        let mut memo = self.paths_memo.borrow_mut();
+        if let Some(((mq, mc, mi), tree)) = &memo.filter_tree
+            && *mq == q
+            && Rc::ptr_eq(mc, &changed)
+            && mi.as_ref().map(Rc::as_ptr) == index.as_ref().map(Rc::as_ptr)
+        {
+            return Some(tree.clone());
+        }
+        // The index lists what is on disk; the changed paths add the deleted files.
+        let mut matched: Vec<&String> = index
+            .iter()
+            .flat_map(|i| i.iter())
+            .chain(changed.iter())
+            .filter(|p| p.to_lowercase().contains(&q))
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        let capped = index.is_some() && matched.len() > FILES_FILTER_CAP;
+        if capped {
+            matched.truncate(FILES_FILTER_CAP);
+        }
+        let matched: Vec<String> = matched.into_iter().cloned().collect();
+        let tree = (
+            Rc::new(recur_code::view::changed_tree::build_tree_from_paths(
+                &matched,
+            )),
+            capped,
+        );
+        memo.filter_tree = Some(((q, changed, index), tree.clone()));
+        Some(tree)
     }
 
     pub(crate) fn filter_changed(&self) -> bool {

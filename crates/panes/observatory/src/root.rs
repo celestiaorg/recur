@@ -176,7 +176,6 @@ impl Observatory {
             self.main_focus.clone(),
             self.tabs_focus.clone(),
             self.files_focus.clone(),
-            self.scm_focus.clone(),
             self.left_focus.clone(),
         ] {
             let subs = self.watch_zone(&h, window, cx);
@@ -281,6 +280,12 @@ impl Observatory {
     }
 
     pub(crate) fn after_state_change(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // Docking the right panel shows it: a column that appears closed would look like
+        // nothing happened.
+        let float = self.state.read(cx).panels.side_float();
+        if self.side_float_seen.replace(float) == Some(true) && !float && !self.show_side {
+            self.set_show_side(true, cx);
+        }
         self.track_base(cx);
         self.keep_panel_kinds_valid(cx);
         self.dock_state_changed(window, cx);
@@ -326,13 +331,16 @@ impl Observatory {
             let id = self.props.workspace_id.clone();
             let occlude = self.slots.left_panel.is_some() && !self.maestro_panel_visible(cx);
             cx.default_global::<crate::Owners>().occluder = id.clone();
-            self.state
-                .update(cx, |s, cx| s.set_chat_occluder("agent-pane", occlude, cx));
+            let float_open = self.show_side && self.floating(cx);
+            self.state.update(cx, |s, cx| {
+                s.side_float_open = float_open;
+                s.set_chat_occluder("agent-pane", occlude, cx);
+            });
             // The Terminals page drives the menubar's tab items while it is up.
             if self.state.read(cx).view != recur_view_core::ViewName::Terminals {
                 self.push_menu_state(cx);
             }
-            if self.artifacts_panel_focused(cx) && !id.is_empty() {
+            if self.artifacts_list_showing(cx) && !id.is_empty() {
                 let cleared = recur_engine::view::artifacts::clear_unseen_artifact_ids(
                     &cx.default_global::<crate::UnseenArtifacts>().0,
                     &id,
@@ -369,6 +377,7 @@ impl Observatory {
     /// Snapshot and persist the outgoing root while its props (the host's chat dock flag)
     /// still describe it.
     fn leave_root(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.release_cards(cx);
         let outgoing = std::mem::take(&mut self.loaded_root);
         if !outgoing.is_empty() && outgoing != "\0" {
             let snap = self.capture_snapshot(Some(window), cx);
@@ -391,8 +400,13 @@ impl Observatory {
     fn on_root_change(&mut self, root: String, window: &mut Window, cx: &mut Context<Self>) {
         self.leave_root(window, cx);
         self.loaded_root = root.clone();
+        self.pr_view = None;
         self.root_token += 1;
         self.git_status_gen += 1;
+        self.diff_stats_gen += 1;
+        self.diff_stats = Default::default();
+        self.files_filter_scroll = None;
+        self.files_filter_index = None;
         self.working_status_gen += 1;
         self.worktree_missing = false;
         self.base_doc_cache.clear();
@@ -448,6 +462,7 @@ impl Observatory {
         }
         // Cold open: drop the previous worktree's data now so scopes never mix.
         self.reset_explorer_data(cx);
+        self.set_files_filter("", window, cx);
         let saved_scope = crate::session_host::load_explorer_scope(
             self.state.read(cx).storage(),
             &self.props.project_id,
@@ -469,7 +484,8 @@ impl Observatory {
         self.closed_tabs.clear();
         self.right_kind = CodePanelKey::Files;
         self.left_kind = CodePanelKey::Maestro;
-        self.show_side = true;
+        self.show_side = !self.floating(cx);
+        self.side_slide = None;
         self.main_editor_dirty = false;
         self.split_editor_dirty = false;
         self.focus_zone = FocusZone::Editor;
@@ -699,11 +715,13 @@ impl Observatory {
             expanded: self.expanded.clone(),
             loaded_dirs: self.loaded_dirs.clone(),
             changed_collapsed: self.changed_collapsed.clone(),
+            files_filter: self.inputs.files_filter.read(cx).value().to_string(),
             changed_paths: self.changed_paths.clone(),
             git_status: self.git_status.clone(),
             git_status_ready: self.git_status_ready,
             working_status: self.working_status.clone(),
             staged_files: self.staged_files.clone(),
+            unstaged_files: self.unstaged_files.clone(),
             open_files: self.open_files.clone(),
             closed_tabs: self.closed_tabs.clone(),
             selected_path: self.selected_path.clone(),
@@ -775,13 +793,14 @@ impl Observatory {
         self.dir_not_found_since.clear();
         self.maybe_clear_gone_confirm();
         self.changed_collapsed = snap.changed_collapsed;
+        self.set_files_filter(&snap.files_filter, window, cx);
         self.changed_paths = snap.changed_paths;
         self.git_status = snap.git_status;
         self.paths_gen += 1;
         self.git_status_ready = snap.git_status_ready;
         self.working_status = snap.working_status;
         self.staged_files = snap.staged_files;
-        self.working_changed();
+        self.unstaged_files = snap.unstaged_files;
         self.open_files = unique_open_files(&snap.open_files);
         self.closed_tabs = snap.closed_tabs;
         self.selected_path = snap.selected_path.clone();
@@ -805,7 +824,7 @@ impl Observatory {
         self.left_kind = snap.left_kind;
         self.right_kind = snap.right_kind;
         if let Some(side) = snap.show_side {
-            self.show_side = side;
+            self.show_side = side && !self.floating(cx);
         }
         self.split_open = snap.split_open;
         self.split_path = snap.split_path.clone();
@@ -974,15 +993,12 @@ impl Observatory {
                     true,
                     cx,
                 );
-                if o.main_surface_pref != MainSurface::Review
+                if o.main_surface_pref == MainSurface::Editor
                     && o.open_files.is_empty()
                     && o.selected_path.is_empty()
                 {
-                    o.main_surface_pref = if sess.as_ref().is_some_and(|s| s.main_surface_review) {
-                        MainSurface::Review
-                    } else {
-                        MainSurface::Editor
-                    };
+                    o.main_surface_pref =
+                        MainSurface::parse(sess.as_ref().map_or("", |s| &s.main_surface));
                 }
                 o.apply_session_pane_chrome(sess.as_ref(), cx);
                 if !o.props.initial_path.is_empty() {
@@ -1074,21 +1090,21 @@ impl Observatory {
 
     // ---- persisting the editor session ----
 
-    pub(crate) fn pane_chrome_non_default(&self) -> bool {
+    pub(crate) fn pane_chrome_non_default(&self, cx: &App) -> bool {
         self.left_kind != CodePanelKey::Maestro
             || self.right_kind != CodePanelKey::Files
-            || !self.show_side
+            || self.show_side == self.floating(cx)
             || !self.left_gutter_open()
     }
 
-    fn panes_at_defaults(&self) -> bool {
-        !self.pane_chrome_non_default()
+    fn panes_at_defaults(&self, cx: &App) -> bool {
+        !self.pane_chrome_non_default(cx)
     }
 
     /// `applySessionPaneChrome`: cold restore of dock kinds unless the user moved them.
     fn apply_session_pane_chrome(&mut self, sess: Option<&Session>, cx: &mut Context<Self>) {
         let Some(s) = sess else { return };
-        if !self.panes_at_defaults() {
+        if !self.panes_at_defaults(cx) {
             return;
         }
         if let Some(k) = s
@@ -1106,7 +1122,7 @@ impl Observatory {
             self.right_kind = k;
         }
         if let Some(open) = s.right_open {
-            self.show_side = open;
+            self.show_side = open && !self.floating(cx);
         }
         if let Some(open) = s.left_open {
             self.set_left_gutter_open(open, cx);
@@ -1137,8 +1153,8 @@ impl Observatory {
         let (syn_path, syn_type, syn_non_empty) = self.syntax_snapshot(cx);
         if self.open_files.is_empty()
             && !syn_non_empty
-            && self.main_surface_pref != MainSurface::Review
-            && !self.pane_chrome_non_default()
+            && self.main_surface_pref == MainSurface::Editor
+            && !self.pane_chrome_non_default(cx)
         {
             return;
         }
@@ -1179,7 +1195,10 @@ impl Observatory {
             file_views: Some(views.into_iter().collect()),
             syntax_by_path: Some(syn_path),
             syntax_by_file_type: Some(syn_type),
-            main_surface_review: self.main_surface_pref == MainSurface::Review,
+            main_surface: match self.main_surface_pref {
+                MainSurface::Editor => String::new(),
+                s => s.key().into(),
+            },
             left_kind: Some(self.left_kind.key().to_string()),
             right_kind: Some(self.right_kind.key().to_string()),
             left_open: Some(self.left_gutter_open()),
@@ -1198,8 +1217,8 @@ impl Observatory {
             return;
         }
         if self.open_files.is_empty()
-            && !self.pane_chrome_non_default()
-            && self.main_surface_pref != MainSurface::Review
+            && !self.pane_chrome_non_default(cx)
+            && self.main_surface_pref == MainSurface::Editor
         {
             self.persist_or_clear_editor_session(cx);
             return;
@@ -1226,8 +1245,8 @@ impl Observatory {
         let (_, _, syn_non_empty) = self.syntax_snapshot(cx);
         if self.open_files.is_empty()
             && !syn_non_empty
-            && self.main_surface_pref != MainSurface::Review
-            && !self.pane_chrome_non_default()
+            && self.main_surface_pref == MainSurface::Editor
+            && !self.pane_chrome_non_default(cx)
         {
             if self.session_load_settled && self.syntax_maps_ready {
                 crate::session_host::clear_editor_session(wid, cx);
@@ -1271,6 +1290,9 @@ impl Observatory {
                 }
                 self.schedule_live_refresh(cx);
             }
+            AppEvent::WorkspaceFileIndex(f) if f.workspace_id == self.props.workspace_id => {
+                self.load_files_filter_index(cx);
+            }
             AppEvent::FindingsUpdated(r)
                 if !self.props.workspace_id.is_empty()
                     && r.workspace_id == self.props.workspace_id =>
@@ -1281,7 +1303,7 @@ impl Observatory {
                 if e.workspace_id.is_empty() {
                     return;
                 }
-                if e.workspace_id == self.props.workspace_id && self.artifacts_panel_focused(cx) {
+                if e.workspace_id == self.props.workspace_id && self.artifacts_list_showing(cx) {
                     return;
                 }
                 let raw = serde_json::to_value(&e.artifact).unwrap_or_default();
@@ -1302,7 +1324,6 @@ impl Observatory {
                     self.bump_unseen_artifact(&e.workspace_id, &a.id, cx);
                     return;
                 }
-                self.select_code_panel(CodePanelKey::Artifacts, window, cx);
                 self.open_artifact(&a.id, &a.title, &a.kind, &a.path, window, cx)
                     .detach();
             }
@@ -1386,7 +1407,7 @@ impl Observatory {
                 if !jump.plan_tab.is_empty() {
                     cx.emit(crate::ObservatoryEvent::PlanTab(jump.plan_tab.clone()));
                 }
-                self.select_code_panel(CodePanelKey::Plan, window, cx);
+                self.show_surface(MainSurface::Plan, cx);
                 return;
             }
             "review" => {
@@ -1396,6 +1417,14 @@ impl Observatory {
                 clear(self, cx);
                 self.show_review_surface(cx);
                 self.set_review_tab(recur_view_review::review_diff::ReviewTab::Changes, cx);
+                return;
+            }
+            "pr" => {
+                if self.props.main_blocked || !self.has_pr(cx) {
+                    return;
+                }
+                clear(self, cx);
+                self.show_surface(MainSurface::Pr, cx);
                 return;
             }
             _ => {}

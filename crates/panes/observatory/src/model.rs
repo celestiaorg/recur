@@ -31,12 +31,15 @@ impl Pane {
     }
 }
 
-/// Editor vs branch review in the main column.
+/// What the main column shows: the editor, the branch review, the workspace's pull request,
+/// or its plan.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MainSurface {
     #[default]
     Editor,
     Review,
+    Pr,
+    Plan,
 }
 
 impl MainSurface {
@@ -44,7 +47,27 @@ impl MainSurface {
         match self {
             MainSurface::Editor => "editor",
             MainSurface::Review => "review",
+            MainSurface::Pr => "pr",
+            MainSurface::Plan => "plan",
         }
+    }
+
+    /// The name on the view's button and its chip.
+    pub fn label(self) -> &'static str {
+        match self {
+            MainSurface::Editor => "Editor",
+            MainSurface::Review => "Review",
+            MainSurface::Pr => "Pull request",
+            MainSurface::Plan => "Plan",
+        }
+    }
+
+    /// The surface a session's `mainSurface` names; the editor for anything else.
+    pub fn parse(key: &str) -> Self {
+        [MainSurface::Review, MainSurface::Pr, MainSurface::Plan]
+            .into_iter()
+            .find(|s| s.key() == key)
+            .unwrap_or_default()
     }
 }
 

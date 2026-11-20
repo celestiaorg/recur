@@ -14,7 +14,7 @@ use recur_forge::Forge;
 use recur_forge::github::GitHub;
 use recur_forge::view::{
     RollupKind, check_group_collapsed, checks_box_byline, checks_heading, checks_rollup,
-    group_checks, is_pending_check, is_skipped_check, live_check_detail,
+    group_checks, live_check_detail,
 };
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
@@ -23,23 +23,10 @@ use recur_view_core::pr::{PrLifecycle, pr_lifecycle};
 use recur_view_review::style::note_btn;
 
 use super::PrDetail;
-use super::render::{rollup_kind, rollup_look};
+use super::render::rollup_kind;
 use crate::style::{hsla, spin_deg};
 
 static GITHUB: LazyLock<GitHub> = LazyLock::new(GitHub::default);
-
-/// `checkIcon`: skipped, passed, pending (spinning) or failed.
-pub(crate) fn check_icon(c: &Check, t: &recur_ui::Tokens) -> (IconName, recur_ui::Color, bool) {
-    if is_skipped_check(&c.status, &c.detail) {
-        (IconName::CircleSlash, t.muted, false)
-    } else if c.passed {
-        (IconName::Check, t.emerald, false)
-    } else if is_pending_check(&c.status) {
-        (IconName::Loader, t.amber, true)
-    } else {
-        (IconName::X, t.coral, false)
-    }
-}
 
 /// The merge box's "has conflicts" row, listing the conflicting paths when the
 /// worktree could compute them.
@@ -122,7 +109,7 @@ impl PrDetail {
         let checks = pr.checks.clone().unwrap_or_default();
         let g = group_checks(&checks);
         let roll = checks_rollup(&checks, Some(pr.checks_ok), Some(pr.has_checks));
-        let (color, name) = rollup_look(roll, &t);
+        let (color, name) = recur_view_core::pr::checks_look(roll, &t);
         let gh = pr.source == PrSource::GitHub;
         let can_fix = Self::can_fix_checks(pr);
         let lh = recur_ui::style::button_label("x", 11., 400.)
@@ -270,7 +257,7 @@ impl PrDetail {
                 continue;
             }
             for (i, c) in items.iter().enumerate() {
-                let (ic, ic_color, spin) = check_icon(c, &t);
+                let (ic, ic_color, spin) = recur_view_core::pr::check_icon(c, &t);
                 let deg = if spin { spin_deg(window, cx) } else { 0. };
                 let run = GITHUB.check_run_url(&c.url, &pr.url, pr.number, &c.status);
                 let detail = live_check_detail(c, now, &mut self.clocks.borrow_mut());

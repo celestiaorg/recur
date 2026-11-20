@@ -169,6 +169,10 @@ impl Observatory {
 
     /// `saveEdit`: the focused pane, scratch buffers in memory, files through `WriteFile`.
     pub(crate) fn save_edit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(path) = self.focused_card(window, cx) {
+            self.save_card(&path, window, cx);
+            return;
+        }
         self.sync_editors(window, cx);
         if self.focused_pane == Pane::Split && self.split_open && !self.split_path.is_empty() {
             if !self.split_writable {
@@ -206,6 +210,7 @@ impl Observatory {
                 let refresh = this
                     .update(cx, |o, cx| {
                         o.split_saved_now(&path, &body, cx);
+                        o.card_saved(&path, &body, cx);
                         o.drop_stash(&path);
                         crate::lsp::client::LspHub::global(cx).notify_did_save(&wid, &path, &body);
                         o.refresh_git_status(cx)
@@ -303,6 +308,7 @@ impl Observatory {
                             e.update(cx, |e, cx| e.mark_saved(cx));
                         }
                     }
+                    o.card_saved(&file.path, &body, cx);
                     o.drop_stash(&file.path);
                     crate::lsp::client::LspHub::global(cx).notify_did_save(&wid, &file.path, &body);
                     o.persist_editor_session(cx);

@@ -24,7 +24,8 @@ use recur_ui::{IconName, Theme, color::rgba, icon};
 pub use recur_view_core::land::{Land, LandCache};
 use recur_view_core::modes::{ws_main_blocked, ws_run_active};
 use recur_view_core::pr::{
-    PrLifecycle, github_href, pr_for_workspace, pr_head, pr_icon_name, pr_lifecycle,
+    PrLifecycle, can_convert_to_draft, github_href, pr_for_workspace, pr_head, pr_icon_name,
+    pr_lifecycle,
 };
 use recur_view_core::{AppState, ViewName, call, toast};
 
@@ -66,6 +67,7 @@ pub struct LandChrome {
     confirming_merge: bool,
     merge_menu_open: bool,
     update_menu_open: bool,
+    commit_menu_open: bool,
     open_pr_menu_open: bool,
     view_pr_menu_open: bool,
     menus_for: String,
@@ -140,6 +142,13 @@ pub struct LandView {
     pub view_pr_draft: bool,
     pub show_view_pr: bool,
     pub store_pr: Option<Pr>,
+}
+
+/// A PR whose page shows moves into the workspace it just got, on its pull request view.
+fn open_lifted_pr(s: &mut AppState, pr_id: &str, cx: &mut Context<AppState>) {
+    if s.view == ViewName::PrDetail && s.selected_pr_id == pr_id {
+        s.open_pr(pr_id, cx);
+    }
 }
 
 fn is_workspace_mode(s: &AppState, ws: Option<&Workspace>) -> bool {
@@ -489,6 +498,7 @@ impl Shell {
             l.merge_menu_open = false;
             l.merge_method_override = None;
             l.update_menu_open = false;
+            l.commit_menu_open = false;
             l.open_pr_menu_open = false;
             l.view_pr_menu_open = false;
             l.update_method_override = None;
@@ -553,6 +563,7 @@ impl Shell {
             l.confirming_merge = false;
             l.merge_menu_open = false;
             l.update_menu_open = false;
+            l.commit_menu_open = false;
             l.open_pr_menu_open = false;
             l.view_pr_menu_open = false;
             self.state.update(cx, |s, cx| {
@@ -1036,6 +1047,7 @@ impl Shell {
                         },
                         cx,
                     );
+                    open_lifted_pr(s, &id, cx);
                 }
             });
             let _ = this.update(cx, |shell, cx| {
@@ -1070,6 +1082,7 @@ impl Shell {
             .is_some_and(|p| !p.workspace_id.trim().is_empty())
         {
             self.land.pending_pr_create = None;
+            self.state.update(cx, |s, cx| open_lifted_pr(s, &pr_id, cx));
             return;
         }
         if ws_id.is_empty() {
@@ -1202,35 +1215,7 @@ impl Shell {
         };
         if (v.workspace_mode || v.main_mode) && v.land_on {
             if v.show_commit {
-                let tip = title("Commit uncommitted changes");
-                let mut b = spec_tag(
-                    tbtn("tb-commit", Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx),
-                    "tb-commit",
-                    "Commit",
-                    v.land_busy.then_some(tip.as_str()),
-                );
-                if !v.land_busy {
-                    b = b.on_click(cx.guarded_listener(|this, _, _, cx| {
-                        let v = this.land.view(this.state.read(cx));
-                        if !v.land_busy {
-                            this.request_prompt_action("commit", cx);
-                        }
-                    }));
-                }
-                out.push(
-                    spec_wrap(
-                        "tb-commit",
-                        titled(
-                            "tb-commit-tip",
-                            tip,
-                            no_drag(
-                                b.child(icon(IconName::GitCommit).size(px(13.)))
-                                    .child(style::button_label("Commit", 11.5, weight::MEDIUM)),
-                            ),
-                        ),
-                    )
-                    .into_any_element(),
-                );
+                out.push(self.commit_split(&v, cx));
             }
             if v.show_update {
                 out.push(self.update_split(&v, cx));
@@ -1371,6 +1356,85 @@ impl Shell {
         out
     }
 
+    /// Commit (the agent commits everything) and its menu: Review and commit… opens the
+    /// review's uncommitted work with the commit message focused.
+    fn commit_split(&mut self, v: &LandView, cx: &mut Context<Self>) -> AnyElement {
+        let backdrop = Theme::of(cx).tokens.titlebar;
+        let busy_over = v.land_busy.then_some(backdrop);
+        let tip = if v.land_busy_title.is_empty() {
+            "Commit uncommitted changes".to_string()
+        } else {
+            v.land_busy_title.clone()
+        };
+        let mut main = spec_tag(
+            tbtn("tb-commit", Tbtn::Solid, TbtnSize::TITLEBAR, busy_over, cx),
+            "tb-commit",
+            "Commit",
+            v.land_busy.then_some(tip.as_str()),
+        )
+        .rounded_r(px(0.))
+        .relative()
+        .child(style::split_divider());
+        let mut chev = tbtn(
+            "tb-commit-chev",
+            Tbtn::Solid,
+            TbtnSize::TITLEBAR,
+            busy_over,
+            cx,
+        )
+        .debug_selector(|| "tb-commit-chev".into())
+        .rounded_l(px(0.))
+        .px(px(5.));
+        if !v.land_busy {
+            main = main.on_click(cx.guarded_listener(|this, _, _, cx| {
+                let v = this.land.view(this.state.read(cx));
+                if !v.land_busy {
+                    this.request_prompt_action("commit", cx);
+                }
+            }));
+            chev = chev.on_click(cx.guarded_listener(|this, _, _, cx| {
+                this.land.commit_menu_open = !this.land.commit_menu_open;
+                this.land.update_menu_open = false;
+                this.land.merge_menu_open = false;
+                this.land.view_pr_menu_open = false;
+                this.land.open_pr_menu_open = false;
+                this.close_split_menus(cx);
+                cx.notify();
+            }));
+        }
+        let mut split = div()
+            .id("commit-split")
+            .debug_selector(|| "tb-commit".into())
+            .relative()
+            .flex()
+            .items_center()
+            .child(titled(
+                "tb-commit-tip",
+                tip,
+                no_drag(
+                    main.child(icon(IconName::GitCommit).size(px(13.)))
+                        .child(style::button_label("Commit", 11.5, weight::MEDIUM)),
+                ),
+            ))
+            .child(no_drag(
+                chev.child(icon(IconName::ChevronDown).size(px(13.))),
+            ));
+        if self.land.commit_menu_open {
+            let item = menu_item("commit-review", false, None, "Review and commit…", cx)
+                .on_click(cx.guarded_listener(|this, _, _, cx| {
+                    this.land.commit_menu_open = false;
+                    this.state.update(cx, |s, cx| {
+                        let id = s.selected_workspace_id.clone();
+                        s.request_review_commit(&id, cx);
+                    });
+                    cx.notify();
+                }))
+                .into_any_element();
+            split = split.child(split_menu(vec![item], cx));
+        }
+        split.into_any_element()
+    }
+
     fn update_split(&mut self, v: &LandView, cx: &mut Context<Self>) -> AnyElement {
         let backdrop = Theme::of(cx).tokens.titlebar;
         let busy_over = v.land_busy.then_some(backdrop);
@@ -1420,6 +1484,7 @@ impl Shell {
             main = main.on_click(cx.guarded_listener(|this, _, _, cx| this.update_workspace(cx)));
             chev = chev.on_click(cx.guarded_listener(|this, _, _, cx| {
                 this.land.update_menu_open = !this.land.update_menu_open;
+                this.land.commit_menu_open = false;
                 this.land.merge_menu_open = false;
                 this.land.view_pr_menu_open = false;
                 this.land.open_pr_menu_open = false;
@@ -1643,7 +1708,10 @@ impl Shell {
         };
         let mut shown = v.store_pr.clone().unwrap_or_default();
         shown.draft = v.view_pr_draft;
+        // The icon and its tint say the PR's state, as on the workspace's sidebar row.
         let ico = pr_icon_name(Some(&shown));
+        let tint = pr_lifecycle(Some(&shown)).map(|l| l.color(&Theme::of(cx).tokens));
+        let state_name = pr_lifecycle(Some(&shown)).map_or("open", |l| l.as_str());
         let href = v.store_pr.as_ref().map(github_href).unwrap_or_default();
         let state = self.state.clone();
         let pr_id = v.view_pr_id.clone();
@@ -1670,8 +1738,12 @@ impl Shell {
                 "tb-view-pr-tip",
                 "View this workspace's pull request",
                 no_drag(
-                    main.child(icon(ico).size(px(13.)))
-                        .child(style::button_label(label, 11.5, weight::MEDIUM)),
+                    main.child(
+                        div()
+                            .debug_selector(move || format!("tb-view-pr-icon:{state_name}"))
+                            .child(icon(ico).size(px(13.)).when_some(tint, |i, c| i.color(c))),
+                    )
+                    .child(style::button_label(label, 11.5, weight::MEDIUM)),
                 ),
             ));
         if href.is_empty() {
@@ -1700,14 +1772,30 @@ impl Shell {
             chev.child(icon(IconName::ChevronDown).size(px(13.))),
         ));
         if self.land.view_pr_menu_open {
-            let item = menu_item("view-pr-github-item", false, None, "Open in GitHub", cx)
-                .on_click(cx.guarded_listener(move |this, _, _, cx| {
-                    this.land.view_pr_menu_open = false;
-                    recur_content::links::open_external_url(&href, cx);
-                    cx.notify();
-                }))
-                .into_any_element();
-            split = split.child(split_menu(vec![item], cx));
+            let mut items = vec![
+                menu_item("view-pr-github-item", false, None, "Open in GitHub", cx)
+                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                        this.land.view_pr_menu_open = false;
+                        recur_content::links::open_external_url(&href, cx);
+                        cx.notify();
+                    }))
+                    .into_any_element(),
+            ];
+            if v.store_pr.as_ref().is_some_and(can_convert_to_draft) {
+                let pr_id = v.view_pr_id.clone();
+                items.push(
+                    menu_item("view-pr-draft-item", false, None, "Convert to draft", cx)
+                        .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                            this.land.view_pr_menu_open = false;
+                            this.state
+                                .update(cx, |s, cx| s.set_pr_draft(&pr_id, true, cx))
+                                .detach();
+                            cx.notify();
+                        }))
+                        .into_any_element(),
+                );
+            }
+            split = split.child(split_menu(items, cx));
         }
         split.into_any_element()
     }

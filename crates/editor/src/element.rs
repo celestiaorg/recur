@@ -526,10 +526,13 @@ impl Element for EditorElement {
             paint_ops(&mut plan.scrollbars, window, cx);
         });
         let view = self.view.clone();
+        // The hitbox, not the bounds: something drawn over the editor (a flyout, a menu) keeps
+        // the pointer and the wheel to itself.
+        let hit = plan.hitbox.as_ref().map(|h| h.id);
         window.on_mouse_event({
             let view = view.clone();
             move |e: &MouseDownEvent, phase, window, cx| {
-                if phase == DispatchPhase::Bubble && bounds.contains(&e.position) {
+                if phase == DispatchPhase::Bubble && hit.is_some_and(|h| h.is_hovered(window)) {
                     view.update(cx, |v, cx| {
                         recur_ui::guard::catch("editor mouse_down", || v.mouse_down(e, window, cx));
                     });
@@ -541,8 +544,9 @@ impl Element for EditorElement {
             move |e: &MouseMoveEvent, phase, window, cx| {
                 if phase == DispatchPhase::Bubble {
                     view.update(cx, |v, cx| {
+                        let over = hit.is_some_and(|h| h.is_hovered(window));
                         recur_ui::guard::catch("editor mouse_move", || {
-                            v.mouse_move(e, bounds, window, cx)
+                            v.mouse_move(e, bounds, over, window, cx)
                         });
                     });
                 }
@@ -559,7 +563,8 @@ impl Element for EditorElement {
             }
         });
         window.on_mouse_event(move |e: &ScrollEvent, phase, window, cx| {
-            if phase == DispatchPhase::Bubble && bounds.contains(&e.position) {
+            if phase == DispatchPhase::Bubble && hit.is_some_and(|h| h.should_handle_scroll(window))
+            {
                 view.update(cx, |v, cx| {
                     recur_ui::guard::catch("editor scroll_wheel", || v.scroll_wheel(e, window, cx));
                 });

@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use gpui::TestAppContext;
 use parking_lot::Mutex;
-use recur_domain::TreeEntry;
+use recur_domain::{DiffStat, FileDiff, FileDiffResult, TreeEntry};
 use recur_services::fake::{Overrides, hold};
 use recur_services::{Error, Result};
 use recur_ui::widgets::ToastKind;
@@ -360,4 +360,231 @@ async fn the_tree_keeps_tracking_the_disk_after_a_folder_is_deleted(cx: &mut Tes
         h.has("obs-node:file:new.txt"),
         "a file created after the delete never showed"
     );
+}
+
+fn diff(path: &str, add: i64, del: i64) -> FileDiff {
+    FileDiff {
+        path: path.into(),
+        status: "m".into(),
+        diff: DiffStat { add, del },
+        ..Default::default()
+    }
+}
+
+const LONG: &str = "src/a_file_name_far_too_long_to_fit_in_the_files_panel_at_its_width.go";
+
+#[gpui::test]
+async fn changed_files_show_their_diff_counts_and_folders_the_total(cx: &mut TestAppContext) {
+    let list = strings(&["src/a.go", "src/lib/b.go", LONG]);
+    let mut all = list.clone();
+    all.push("README.md".into());
+    let a_adds = Arc::new(Mutex::new(3));
+    let adds = a_adds.clone();
+    let opts = changed_opts(list)
+        .list_tree(move |_, (_, _, path)| Ok(children_of(&all, &path)))
+        .diff_vs_base(move |_, _| {
+            let files = vec![
+                diff("src/a.go", *adds.lock(), 1),
+                diff("src/lib/b.go", 10, 0),
+                diff(LONG, 120, 45),
+            ];
+            Ok(FileDiffResult {
+                files: Some(files),
+                truncated: false,
+            })
+        });
+    let mut h = mount(cx, opts, |_| {}, |_| {});
+    h.wait(200);
+    for scope in ["obs-scope:changed", "obs-scope:all"] {
+        h.click(scope);
+        h.wait(200);
+        assert!(h.has("obs-diff:src/a.go:+3-1"), "{scope}");
+        assert!(h.has("obs-diff:src/lib/b.go:+10-0"), "{scope}");
+        assert!(h.has("obs-diff:src/lib:+10-0"), "{scope}");
+        assert!(h.has("obs-diff:src:+133-46"), "{scope}");
+        // The name gives way, the counts and the status letter stay whole.
+        let pane = h.bounds("obs-files").expect("files");
+        let counts = h
+            .bounds(&format!("obs-diff:{LONG}:+120-45"))
+            .expect("counts");
+        let letter = h.bounds(&format!("obs-fst:m:{LONG}")).expect("letter");
+        assert!(counts.right() <= letter.left() && letter.right() <= pane.right());
+        assert!(f32::from(counts.size.width) > 30.);
+    }
+    assert!(h.has("obs-node:file:README.md"));
+    assert!(h.read(|o, cx| !o.diff_counts(cx).contains_key("README.md")));
+    // A file event re-reads them.
+    *a_adds.lock() = 7;
+    h.fs_changed();
+    h.wait(1500);
+    assert!(h.has("obs-diff:src/a.go:+7-1"));
+    assert!(h.has("obs-diff:src:+137-46"));
+    // Filtered, a folder totals the matches under it.
+    filter(&mut h, "lib");
+    assert!(h.has("obs-diff:src:+10-0") && h.has("obs-diff:src/lib/b.go:+10-0"));
+}
+
+/// Types into the explorer's filter box.
+fn filter(h: &mut H, text: &str) {
+    h.click("obs-files-filter");
+    h.type_text(text);
+}
+
+fn filter_text(h: &mut H) -> String {
+    h.read(|o, cx| o.inputs.files_filter.read(cx).value().to_string())
+}
+
+fn file_row(h: &mut H, path: &str) -> bool {
+    h.has(&format!("obs-node:file:{path}"))
+}
+
+fn dir_row(h: &mut H, path: &str) -> bool {
+    h.has(&format!("obs-node:dir:{path}"))
+}
+
+#[gpui::test]
+async fn the_filter_narrows_the_changed_files_and_keeps_their_folders(cx: &mut TestAppContext) {
+    let list = strings(&["docs/guide.md", "src/app/main.go", "src/app/util.go"]);
+    let mut h = mount(cx, changed_opts(list), |_| {}, |_| {});
+    h.wait(200);
+    // A folder the user folded stays folded once the filter clears.
+    h.click("obs-node:dir:docs");
+    assert!(!file_row(&mut h, "docs/guide.md"));
+    let rows = h.read(|o, cx| o.explorer_row_count(cx));
+
+    filter(&mut h, "MAIN");
+    assert!(file_row(&mut h, "src/app/main.go"));
+    assert!(dir_row(&mut h, "src") && dir_row(&mut h, "src/app"));
+    assert!(!file_row(&mut h, "src/app/util.go") && !dir_row(&mut h, "docs"));
+
+    // The path matches too, and a folded folder opens for its match.
+    h.keys("escape");
+    assert_eq!(filter_text(&mut h), "");
+    filter(&mut h, "docs/gu");
+    assert!(file_row(&mut h, "docs/guide.md") && !dir_row(&mut h, "src"));
+    // Folding among the matches is the filter's own.
+    h.click("obs-node:dir:docs");
+    assert!(!file_row(&mut h, "docs/guide.md"));
+
+    // The click took the focus to the tree; Esc clears from the box.
+    h.click("obs-files-filter");
+    h.keys("escape");
+    assert_eq!(filter_text(&mut h), "");
+    assert!(dir_row(&mut h, "docs") && !file_row(&mut h, "docs/guide.md"));
+    assert!(file_row(&mut h, "src/app/util.go"));
+    assert_eq!(h.read(|o, cx| o.explorer_row_count(cx)), rows);
+    assert_eq!(
+        h.read(|o, _| o.changed_collapsed.clone()),
+        ["docs".to_string()].into()
+    );
+
+    filter(&mut h, "zzz");
+    assert_eq!(h.read(|o, cx| o.explorer_row_count(cx)), 0);
+
+    // The text is the workspace's own, kept while the app runs.
+    h.switch_to(PROJECT, "LOOP-2229");
+    assert_eq!(filter_text(&mut h), "");
+    h.switch_to(PROJECT, WS);
+    assert_eq!(filter_text(&mut h), "zzz");
+}
+
+#[gpui::test]
+async fn the_filter_finds_a_file_in_a_folder_the_tree_has_not_loaded(cx: &mut TestAppContext) {
+    let mut all: Vec<String> = (0..60).map(|i| format!("f{i:02}.txt")).collect();
+    all.extend(strings(&[
+        "deep/nested/dir/target.rs",
+        "deep/other.rs",
+        "src/main.go",
+    ]));
+    let (a1, a2, a3) = (all.clone(), all.clone(), all.clone());
+    let indexed = Arc::new(Mutex::new(0));
+    let reads = indexed.clone();
+    let opts = changed_opts(strings(&["src/main.go"]))
+        .list_tree(move |_, (_, _, path)| Ok(children_of(&a1, &path)))
+        .list_trees(move |_, (_, _, dirs)| {
+            Ok(dirs
+                .iter()
+                .map(|d| (d.clone(), children_of(&a2, d)))
+                .collect())
+        })
+        .list_files(move |_, _| {
+            *reads.lock() += 1;
+            Ok(a3.clone())
+        });
+    let mut h = mount(cx, opts, |_| {}, |_| {});
+    h.click("obs-scope:all");
+    h.wait(200);
+    h.update(|o, _, _| {
+        o.files_scroll
+            .set_offset(gpui::point(gpui::px(0.), gpui::px(-300.)))
+    });
+    let before = h.read(|o, cx| {
+        (
+            o.expanded.clone(),
+            o.loaded_dirs.clone(),
+            o.files_scroll.offset(),
+            o.explorer_row_count(cx),
+        )
+    });
+    assert!(before.0.contains("src") && !before.1.contains("deep"));
+    assert_eq!(*indexed.lock(), 0, "an empty box reads no index");
+
+    filter(&mut h, "target");
+    h.wait(50);
+    assert!(file_row(&mut h, "deep/nested/dir/target.rs"));
+    assert!(
+        dir_row(&mut h, "deep")
+            && dir_row(&mut h, "deep/nested")
+            && dir_row(&mut h, "deep/nested/dir")
+    );
+    assert!(
+        !file_row(&mut h, "deep/other.rs")
+            && !dir_row(&mut h, "src")
+            && !file_row(&mut h, "f00.txt")
+    );
+    assert_eq!(h.read(|o, cx| o.explorer_row_count(cx)), 4);
+    assert_eq!(
+        h.read(|o, _| o.loaded_dirs.clone()),
+        before.1,
+        "found in the index, not by listing folders"
+    );
+
+    // Clearing puts the tree back as it was: its open folders and where it was scrolled.
+    h.keys("escape");
+    let after = h.read(|o, cx| {
+        (
+            o.expanded.clone(),
+            o.loaded_dirs.clone(),
+            o.files_scroll.offset(),
+            o.explorer_row_count(cx),
+        )
+    });
+    assert_eq!(after, before);
+    assert!(file_row(&mut h, "f20.txt") && !dir_row(&mut h, "deep/nested"));
+}
+
+#[gpui::test]
+async fn a_filter_matching_more_files_than_it_lists_says_so(cx: &mut TestAppContext) {
+    let cap = crate::obs::FILES_FILTER_CAP;
+    let all: Vec<String> = (0..cap + 100).map(|i| format!("gen/f{i:04}.txt")).collect();
+    let opts = changed_opts(strings(&["gen/f0000.txt"]))
+        .list_tree(|_, (_, _, path)| {
+            Ok(if path.is_empty() {
+                tree(&[("gen", "gen", true)])
+            } else {
+                Vec::new()
+            })
+        })
+        .list_files(move |_, _| Ok(all.clone()));
+    let mut h = mount(cx, opts, |_| {}, |_| {});
+    h.click("obs-scope:all");
+    h.wait(200);
+    filter(&mut h, "gen/");
+    h.wait(50);
+    assert!(h.has("obs-files-capped"));
+    assert_eq!(h.read(|o, cx| o.explorer_row_count(cx)), cap + 1);
+    // The changed files are a short list, shown whole.
+    h.click("obs-scope:changed");
+    assert!(!h.has("obs-files-capped"));
+    assert_eq!(h.read(|o, cx| o.explorer_row_count(cx)), 2);
 }

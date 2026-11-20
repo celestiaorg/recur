@@ -7,8 +7,9 @@ use std::rc::Rc;
 
 use gpui_kit::base::input::{InputBaseState, InputEvent, InputModeKind, Textarea, TextareaState};
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, EntityId, IntoElement, ParentElement as _,
-    Render, StyleRefinement, Styled as _, Subscription, Window, canvas, div, px,
+    AnyElement, AnyView, App, AppContext as _, Context, Entity, EntityId, IntoElement,
+    ParentElement as _, Render, StyleRefinement, Styled as _, Subscription, Window, canvas, div,
+    px,
 };
 
 use crate::guard::Guarded as _;
@@ -177,17 +178,14 @@ impl Fit {
     /// The host's side: `entity` isolated, full width, at its content's measured height. Until
     /// it has measured (a new view) it is laid out in place at its content's height, so its
     /// first frame is not drawn at a guess.
-    pub fn view<V: Render>(self: &Rc<Self>, entity: &Entity<V>, window: &Window) -> AnyElement {
+    pub fn view(self: &Rc<Self>, view: impl Into<AnyView>, window: &Window) -> AnyElement {
         self.host.set(Some(window.current_view()));
+        let view = view.into();
         let Some(h) = self.height.get() else {
-            return div()
-                .w_full()
-                .flex_none()
-                .child(entity.clone())
-                .into_any_element();
+            return div().w_full().flex_none().child(view).into_any_element();
         };
         let mut style = div().w_full().flex_none().h(px(h));
-        crate::style::isolated_view(entity, style.style().clone())
+        view.isolated(style.style().clone()).into_any_element()
     }
 }
 

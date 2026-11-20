@@ -1,6 +1,7 @@
-//! PR detail: one pull request. The header (state, number, title editing, people,
-//! attention, branch), the agent dock beside the tabs, and the Conversation, Commits, Files
-//! changed and Checks panes with every flow the view runs: GetPR hydration and polling,
+//! PR detail: one pull request, as a page (the selected PR) or in a workspace's center (that
+//! workspace's current PR, [`PrDetail::hosted`]). The header (state, number, title editing,
+//! people, attention, branch), the agent dock beside the tabs on the page, and the
+//! Conversation, Commits, Files changed and Checks panes with every flow the view runs: GetPR hydration and polling,
 //! live comments, replies, edits, deletes, resolves, reactions, findings posted as review
 //! comments and settled once submitted, commit diffs, and fix-checks.
 
@@ -13,7 +14,7 @@ use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};
 mod files;
 mod html;
-mod render;
+pub(crate) mod render;
 mod skeleton;
 mod timeline;
 
@@ -45,7 +46,7 @@ use recur_engine::view::pr_workspace::{pr_agent_is_running, pr_agent_workspace_i
 use recur_forge::view::PendingClock;
 use recur_services::AppEvent;
 use recur_ui::widgets::ToastKind;
-use recur_view_core::pr::keep_merged_pr;
+use recur_view_core::pr::{keep_merged_pr, pr_for_workspace};
 use recur_view_core::pr_commits::keep_commit_files;
 use recur_view_core::{
     AppState, AppliedEvent, ObsJump, ShellEvent, ViewContext, ViewName, call, toast,
@@ -82,9 +83,26 @@ pub(crate) struct More {
     pub triggers: HashMap<String, Bounds<Pixels>>,
 }
 
+/// The store topics a PR view keys further: a change under them redraws it only when what it
+/// shows of them changed.
+pub(crate) fn keyed_topics() -> Topics {
+    Topics::PRS
+        | Topics::WORKSPACES
+        | Topics::AGENTS
+        | Topics::ATTENTION
+        | Topics::INBOX
+        | Topics::BRIEFING
+        | Topics::USAGE
+        | Topics::RESOURCE
+        | Topics::RUN
+}
+
 pub struct PrDetail {
     pub(crate) vcx: ViewContext,
     pub(crate) ui: Entity<PrUi>,
+    /// The workspace whose center hosts this view, bound to that workspace's current PR; `None`
+    /// is the PR route, on the selected PR.
+    pub(crate) host_ws: Option<String>,
     /// `commitCachePR`: the PR the files filters, findings and commit cache belong to.
     cache_pr: String,
     /// The PR the per-PR resets last ran for (the `$selectedPRId` effect).
@@ -169,10 +187,13 @@ pub struct PrDetail {
     pub(crate) toggle_focus: FocusHandle,
     pub(crate) hovered_people: bool,
     pub(crate) people_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
-    pub(crate) head_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     pub(crate) watched: Option<gpui_kit::EntityId>,
     /// The tab the last frame showed (Files focuses its stack when entered).
     pub(crate) shown_tab: Option<PrTab>,
+    /// A workspace's tab row scrolls when the center is narrower than the tabs: the active one
+    /// is brought into view when it changes.
+    pub(crate) tabs_scroll: ScrollHandle,
+    pub(crate) revealed_tab: Option<PrTab>,
     /// The dock's open state, and where focus sat, as of the last frame (`setPRAgentDockOpen`
     /// moves focus between the two toggles when the focused one goes away).
     pub(crate) dock_was_open: bool,
@@ -184,6 +205,26 @@ pub struct PrDetail {
 
 impl PrDetail {
     pub fn new(vcx: &ViewContext, window: &mut Window, cx: &mut Context<Self>) -> Self {
+        Self::build(vcx, None, window, cx)
+    }
+
+    /// PR detail in `workspace_id`'s center: no page header (the conversation leads with it) and
+    /// no agent dock.
+    pub fn hosted(
+        vcx: &ViewContext,
+        workspace_id: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        Self::build(vcx, Some(workspace_id.to_string()), window, cx)
+    }
+
+    fn build(
+        vcx: &ViewContext,
+        host_ws: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let ui = ui(cx);
         let state = vcx.state.clone();
         let (layout, mode, sidebar) = {
@@ -266,8 +307,10 @@ impl PrDetail {
                 d.on_event(&ev.0, window, cx)
             }),
             cx.guarded_subscribe(&state, |d, _, ev: &ShellEvent, cx| {
-                if let ShellEvent::PrOpened(_) = ev {
-                    d.ui.update(cx, |u, cx| u.reset_for_open(cx));
+                if let ShellEvent::PrOpened(id) = ev
+                    && d.host_ws.is_none()
+                {
+                    d.ui.update(cx, |u, cx| u.reset_for_open(id, cx));
                 }
             }),
             cx.on_release(|d: &mut Self, cx| {
@@ -278,6 +321,7 @@ impl PrDetail {
         let mut d = PrDetail {
             vcx: vcx.clone(),
             ui,
+            host_ws,
             cache_pr: String::new(),
             reset_pr: String::new(),
             on_route: false,
@@ -347,9 +391,10 @@ impl PrDetail {
             toggle_focus: cx.focus_handle().tab_stop(true),
             hovered_people: false,
             people_bounds: Rc::default(),
-            head_bounds: Rc::default(),
             watched: None,
             shown_tab: None,
+            tabs_scroll: ScrollHandle::new(),
+            revealed_tab: None,
             dock_was_open: false,
             focus_in_dock: false,
             focus_on_toggle: false,
@@ -365,7 +410,7 @@ impl PrDetail {
             });
         d.state_changed(window, cx);
         #[cfg(test)]
-        {
+        if d.host_ws.is_none() {
             let me = cx.entity().downgrade();
             cx.set_global(spec_handle::Live(me));
         }
@@ -377,7 +422,24 @@ impl PrDetail {
     }
 
     pub(crate) fn pr_id(&self, cx: &App) -> String {
-        self.state().read(cx).selected_pr_id.clone()
+        self.pr_id_ref(cx).to_string()
+    }
+
+    fn pr_id_ref<'a>(&self, cx: &'a App) -> &'a str {
+        let s = self.state().read(cx);
+        match &self.host_ws {
+            Some(ws) => pr_for_workspace(&s.prs, ws).map_or("", |p| &p.id),
+            None => &s.selected_pr_id,
+        }
+    }
+
+    /// This view is the one on screen: its route shows, on its workspace when hosted.
+    fn on_screen(&self, cx: &App) -> bool {
+        let s = self.state().read(cx);
+        match &self.host_ws {
+            Some(ws) => s.view == ViewName::Detail && s.selected_workspace_id == *ws,
+            None => s.view == ViewName::PrDetail,
+        }
     }
 
     /// `pr`: the selected PR from the store.
@@ -395,18 +457,28 @@ impl PrDetail {
 
     /// The selected PR in the store, borrowed: a PR with its patches can be tens of MB.
     pub(crate) fn pr_ref<'a>(&self, cx: &'a App) -> Option<&'a Pr> {
-        let s = self.state().read(cx);
-        s.pr(&s.selected_pr_id)
+        self.state().read(cx).pr(self.pr_id_ref(cx))
     }
 
     pub(crate) fn tab(&self, cx: &App) -> PrTab {
-        self.ui.read(cx).tab
+        self.ui.read(cx).tab(self.pr_id_ref(cx))
     }
 
-    /// `prAgentWsId`.
+    /// `prAgentWsId`: the host workspace, or the one whose chat docks beside the page.
     pub(crate) fn agent_ws(&self, cx: &App) -> String {
-        let s = self.state().read(cx);
-        pr_agent_workspace_id(s.pr(&s.selected_pr_id), &s.workspaces)
+        match &self.host_ws {
+            Some(ws) => ws.clone(),
+            None => pr_agent_workspace_id(self.pr_ref(cx), &self.state().read(cx).workspaces),
+        }
+    }
+
+    /// The workspace whose chat docks beside the page: none when hosted (the workspace's chat is
+    /// already beside it).
+    pub(crate) fn dock_ws(&self, cx: &App) -> String {
+        if self.host_ws.is_some() {
+            return String::new();
+        }
+        self.agent_ws(cx)
     }
 
     /// [`thread_items`](Self::thread_items) for a render: the PR's comments are copied once per
@@ -465,16 +537,7 @@ impl PrDetail {
     /// observes PR detail.
     fn store_changed(&mut self, topics: Topics, window: &mut Window, cx: &mut Context<Self>) {
         let key = self.read_store_key(cx);
-        let keyed = Topics::PRS
-            | Topics::WORKSPACES
-            | Topics::AGENTS
-            | Topics::ATTENTION
-            | Topics::INBOX
-            | Topics::BRIEFING
-            | Topics::USAGE
-            | Topics::RESOURCE
-            | Topics::RUN;
-        if topics.without(keyed).is_empty() && self.store_key.as_ref() == Some(&key) {
+        if topics.without(keyed_topics()).is_empty() && self.store_key.as_ref() == Some(&key) {
             self.flush_fix_checks(cx);
             return;
         }
@@ -484,11 +547,12 @@ impl PrDetail {
 
     fn read_store_key(&self, cx: &App) -> StoreKey {
         let s = self.state().read(cx);
-        let pr = s.pr(&s.selected_pr_id);
+        let id = self.pr_id_ref(cx);
+        let pr = s.pr(id);
         let agent_ws = pr_agent_workspace_id(pr, &s.workspaces);
         StoreKey {
-            pr_rev: s.pr_rev(&s.selected_pr_id),
-            selected: s.selected_pr_id.clone(),
+            pr_rev: s.pr_rev(id),
+            selected: id.to_string(),
             agent_running: pr_agent_is_running(pr, &s.workspaces, &s.workspaces_running),
             agent_root: s
                 .workspace(&agent_ws)
@@ -501,10 +565,7 @@ impl PrDetail {
     fn state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.render_pr = None;
         self.render_comments = None;
-        let (view, id) = {
-            let s = self.state().read(cx);
-            (s.view, s.selected_pr_id.clone())
-        };
+        let id = self.pr_id(cx);
         // `commitCachePR`: a new PR drops the commit cache, the files filters and findings.
         if id != self.cache_pr {
             self.cache_pr = id.clone();
@@ -538,10 +599,15 @@ impl PrDetail {
             self.close_more(cx);
             self.commit_idx = None;
             self.discard_commit_diff();
-            self.ui.update(cx, |u, cx| {
-                u.set_tab(PrTab::Conv, cx);
-                u.set_composer_draft("", cx);
-            });
+            // Hosted, the tab is the one this PR was left on and the draft is this view's own.
+            if self.host_ws.is_some() {
+                self.composer.set("", window, cx);
+            } else {
+                self.ui.update(cx, |u, cx| {
+                    u.set_tab(&id, PrTab::Conv, cx);
+                    u.set_composer_draft("", cx);
+                });
+            }
         }
         // `markPostedFinding` for every pending draft that carries a finding.
         let ids: Vec<String> = self
@@ -555,7 +621,7 @@ impl PrDetail {
             })
             .unwrap_or_default();
         ReviewStore::global_mut(cx).posted_finding_ids.extend(ids);
-        let on = view == ViewName::PrDetail;
+        let on = self.on_screen(cx);
         if on && (!self.on_route || switched) {
             self.route_opened(&id, window, cx);
         }
@@ -570,7 +636,7 @@ impl PrDetail {
         }
         // `prDiffJump`: a jump into Files changed (the review modal's pending list).
         let jump = self.state().read(cx).pr_diff_jump.clone();
-        if let Some(j) = jump {
+        if let Some(j) = jump.filter(|_| on) {
             self.state().update(cx, |s, _| s.pr_diff_jump = None);
             self.jump_to_impact(&j.file, i64::from(j.line), cx);
         }
@@ -584,8 +650,10 @@ impl PrDetail {
     /// hydration give-up.
     fn route_opened(&mut self, id: &str, _window: &mut Window, cx: &mut Context<Self>) {
         if id.is_empty() {
-            self.state()
-                .update(cx, |s, cx| s.go(ViewName::Pr, None, cx));
+            if self.host_ws.is_none() {
+                self.state()
+                    .update(cx, |s, cx| s.go(ViewName::Pr, None, cx));
+            }
             return;
         }
         self.refresh(id, false, false, cx).detach();
@@ -630,7 +698,8 @@ impl PrDetail {
         };
         if rev != self.composer_rev {
             self.composer_rev = rev;
-            if self.composer.value(cx) != draft {
+            // The draft store is one for the app: only the view on screen follows a rewrite.
+            if self.on_screen(cx) && self.composer.value(cx) != draft {
                 self.composer.set(draft, window, cx);
             }
         }
@@ -680,7 +749,7 @@ impl PrDetail {
             }
             // `onFindingsUpdated`: review-mode findings land on the dock workspace.
             AppEvent::FindingsUpdated(d) => {
-                if self.state().read(cx).view != ViewName::PrDetail
+                if !self.on_screen(cx)
                     || d.workspace_id.is_empty()
                     || d.workspace_id != self.agent_ws(cx)
                     || selected.is_empty()
@@ -720,8 +789,7 @@ impl PrDetail {
                 }
                 let Some(full) = full.filter(|p| !p.id.is_empty()) else {
                     // Unknown / deleted PR: back to the list. Poll failures stay put.
-                    let s = d.state().read(cx);
-                    if !silent && s.view == ViewName::PrDetail && s.selected_pr_id == id {
+                    if !silent && d.host_ws.is_none() && d.on_screen(cx) && d.pr_id_ref(cx) == id {
                         d.state().update(cx, |s, cx| s.go(ViewName::Pr, None, cx));
                     }
                     cx.notify();
@@ -798,8 +866,8 @@ impl PrDetail {
 
     /// `setTab`: Commits starts from the list and refreshes; Checks refreshes GitHub PRs.
     pub fn set_tab(&mut self, t: PrTab, cx: &mut Context<Self>) {
-        self.ui.update(cx, |u, cx| u.set_tab(t, cx));
         let id = self.pr_id(cx);
+        self.ui.update(cx, |u, cx| u.set_tab(&id, t, cx));
         if t == PrTab::Commits {
             self.commit_idx = None;
             self.discard_commit_diff();
@@ -836,8 +904,8 @@ impl PrDetail {
     /// and then reusing every row whose file is unchanged.
     pub(crate) fn review_rcs(&mut self, cx: &App) -> FileRows {
         let key = {
-            let s = self.state().read(cx);
-            (s.selected_pr_id.clone(), s.pr_rev(&s.selected_pr_id))
+            let id = self.pr_id_ref(cx);
+            (id.to_string(), self.state().read(cx).pr_rev(id))
         };
         let old = match self.review_rcs.take() {
             Some((k, v)) if k == key => {
@@ -1136,7 +1204,7 @@ impl PrDetail {
             return;
         }
         let ui = ui(cx);
-        ui.update(cx, |u, cx| u.set_tab(PrTab::Checks, cx));
+        ui.update(cx, |u, cx| u.set_tab(&id, PrTab::Checks, cx));
         state.update(cx, |s, cx| {
             s.pr_agent_dock_open = true;
             cx.notify();
@@ -1832,7 +1900,9 @@ impl PrDetail {
 
     /// `openLocalCommit`.
     pub(crate) fn open_local_commit(&mut self, i: usize, cx: &mut Context<Self>) {
-        self.ui.update(cx, |u, cx| u.set_tab(PrTab::Commits, cx));
+        let id = self.pr_id(cx);
+        self.ui
+            .update(cx, |u, cx| u.set_tab(&id, PrTab::Commits, cx));
         self.open_commit(i, cx);
     }
 
@@ -2018,7 +2088,7 @@ impl PrDetail {
     ) {
         let ws = {
             let s = state.read(cx);
-            s.pr(&s.selected_pr_id)
+            s.pr(s.shown_pr_id())
                 .map(|p| p.workspace_id.clone())
                 .unwrap_or_default()
         };

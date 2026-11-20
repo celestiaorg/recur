@@ -44,6 +44,7 @@ gpui_kit::actions!(
         PrevEditorTheme,
         NextEditorTheme,
         ToggleSidebar,
+        FloatRightPanel,
         ToggleLeftPanel,
         ToggleRightPanel,
         ToggleEditor,
@@ -123,6 +124,7 @@ pub fn menu_action_name(action: &dyn Action) -> Option<&'static str> {
         PrevEditorTheme => "prev-editor-theme",
         NextEditorTheme => "next-editor-theme",
         ToggleSidebar => "toggle-sidebar",
+        FloatRightPanel => "float-right-panel",
         ToggleLeftPanel => "toggle-left-panel",
         ToggleRightPanel => "toggle-right-panel",
         ToggleEditor => "toggle-editor",
@@ -180,6 +182,7 @@ pub fn bind_menu_keys(cx: &mut App) {
         ("cmd-alt-b", Box::new(ToggleLeftPanel)),
         ("cmd-alt-shift-b", Box::new(ToggleRightPanel)),
         ("cmd-alt-e", Box::new(ToggleEditor)),
+        ("cmd-alt-j", Box::new(FloatRightPanel)),
         ("ctrl-`", Box::new(ToggleTerminal)),
         // The menu shows the first binding (⌃⇧`).
         ("ctrl-shift-`", Box::new(MaximizeTerminal)),
@@ -514,6 +517,7 @@ pub fn app_menus(
             ToggleRightPanel,
             state.toggle_right_panel,
         ),
+        item("Float Right Panel", FloatRightPanel),
         contextual("Toggle Editor", ToggleEditor, state.toggle_editor),
         contextual("Toggle Terminal", ToggleTerminal, state.toggle_terminal),
         contextual(

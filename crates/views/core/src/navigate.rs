@@ -8,7 +8,7 @@ use recur_domain::Project;
 
 use crate::chat_route::{parse_chat_route_target, parse_workspace_route_target};
 use crate::nav::{Crumb, CrumbStyle, ViewName, seg};
-use crate::pr::pr_id_for_chat_workspace;
+use crate::pr::{pr_for_workspace, pr_id_for_chat_workspace};
 use crate::shell_state::{ShellLive, ShellRestore, resolve_shell_restore, snapshot_shell};
 use crate::state::{AppState, ChatRef, ObsJump, ScanKind, ShellEvent, WorkspaceScanEvent};
 use crate::workspace_nav::{
@@ -161,15 +161,55 @@ impl AppState {
             if self.selected_pr_id == host_pr {
                 self.go(ViewName::PrDetail, None, cx);
             } else {
-                self.open_pr(&host_pr, cx);
+                self.open_pr_page(&host_pr, cx);
             }
             return;
         }
         self.open_workspace(workspace_id, false, cx);
     }
 
-    /// `openPR`: PR detail on the conversation tab with fresh drafts.
+    /// The PR the PR views act on: the selected workspace's current one on the workspace route
+    /// (its center hosts PR detail), else the selected PR.
+    pub fn shown_pr_id(&self) -> &str {
+        if self.view != ViewName::Detail {
+            return &self.selected_pr_id;
+        }
+        let ws = self.selected_workspace_id.as_str();
+        if ws.is_empty() {
+            return "";
+        }
+        pr_for_workspace(&self.prs, ws).map_or("", |p| &p.id)
+    }
+
+    /// The workspace whose pull request view shows `pr_id`: a live worktree whose current PR
+    /// (`pr_for_workspace`) it is. An older or closed PR of a workspace has none.
+    pub fn pr_host_workspace(&self, pr_id: &str) -> Option<&str> {
+        let pr = self.pr(pr_id)?;
+        let ws = self.workspace(pr.workspace_id.trim())?;
+        let hosts = !ws.archived
+            && ws.host_pr_id.trim().is_empty()
+            && pr_for_workspace(&self.prs, &ws.id).is_some_and(|p| p.id == pr.id);
+        hosts.then_some(ws.id.as_str())
+    }
+
+    /// `openPR`: the PR in its workspace, the center on the pull request view; a PR no
+    /// workspace shows opens as a page.
     pub fn open_pr(&mut self, id: &str, cx: &mut Context<Self>) {
+        let Some(ws) = self.pr_host_workspace(id).map(str::to_string) else {
+            self.open_pr_page(id, cx);
+            return;
+        };
+        self.open_workspace(&ws, false, cx);
+        self.observatory_jump = Some(ObsJump {
+            workspace_id: ws,
+            panel: "pr".into(),
+            ..Default::default()
+        });
+        cx.notify();
+    }
+
+    /// PR detail as a page, on the conversation tab with fresh drafts.
+    pub fn open_pr_page(&mut self, id: &str, cx: &mut Context<Self>) {
         self.selected_pr_id = id.to_string();
         self.overlays.pr_review = None;
         cx.emit(ShellEvent::PrOpened(id.to_string()));

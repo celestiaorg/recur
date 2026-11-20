@@ -145,7 +145,7 @@ pub fn toggle_pr_comment_reaction(
     let Some(n) = normalize_reaction_content(content) else {
         return Task::ready(false);
     };
-    let pr_id = state.read(cx).selected_pr_id.clone();
+    let pr_id = state.read(cx).shown_pr_id().to_string();
     if id.is_empty() || pr_id.is_empty() {
         return Task::ready(false);
     }
@@ -210,7 +210,7 @@ pub fn set_pr_thread_resolved(
     resolved: bool,
     cx: &mut App,
 ) -> Task<bool> {
-    let pr_id = state.read(cx).selected_pr_id.clone();
+    let pr_id = state.read(cx).shown_pr_id().to_string();
     if pr_id.is_empty() {
         return Task::ready(false);
     }

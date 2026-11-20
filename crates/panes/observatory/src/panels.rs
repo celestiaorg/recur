@@ -11,8 +11,10 @@ use std::time::Duration;
 use gpui_kit::{App, AppContext as _, Context, Task, Window};
 use recur_domain::Finding;
 use recur_ui::widgets::ToastKind;
-use recur_view_core::prefs::{CodePanelKey, PanelSide};
+use recur_view_core::prefs::{CodePanelKey, PanelSide, TerminalPlacement};
 use recur_view_core::{call, toast};
+use recur_view_review::file_list::WorkingIndex;
+use recur_view_review::files_changed::CommitFoot;
 use recur_view_review::review_diff::{ReviewTab, write_review_tab};
 use recur_view_review::surface::{ReviewSurface, SurfaceEvent, SurfaceProps};
 
@@ -86,11 +88,30 @@ impl Observatory {
         self.review_surface.as_ref()
     }
 
-    /// Show the source control panel with its commit message box focused; whether it took
-    /// focus.
+    /// Show the review's uncommitted work with its file list and the commit message box
+    /// focused under it; whether it took focus (nothing to commit leaves it unfocused).
     pub fn focus_commit_msg(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        self.select_code_panel(CodePanelKey::Scm, window, cx);
+        self.open_working_review(window, cx);
+        if self.review_strip_tab(cx) != ReviewTab::Uncommitted {
+            return false;
+        }
+        if let Some(r) = &self.review_surface {
+            let files = r.read(cx).files_view().clone();
+            if !files.read(cx).sidebar_open() {
+                files.update(cx, |f, cx| f.set_sidebar_open(true, cx));
+            }
+        }
         self.inputs.focus_commit_msg(window, cx)
+    }
+
+    /// Whether the commit message box has the keys.
+    pub fn commit_msg_focused(&self, window: &Window, cx: &App) -> bool {
+        gpui_kit::Focusable::focus_handle(self.inputs.commit.read(cx), cx).is_focused(window)
+    }
+
+    /// The review tab that shows.
+    pub fn shown_review_tab(&self, cx: &App) -> ReviewTab {
+        self.review_strip_tab(cx)
     }
 
     /// `selectCodePanel`: show a panel on its side (and load / focus what it needs).
@@ -130,12 +151,18 @@ impl Observatory {
     pub(crate) fn pane_badge_count(&self, key: CodePanelKey, cx: &App) -> usize {
         match key {
             CodePanelKey::Maestro => self.unseen_chat_count(cx),
-            CodePanelKey::Scm => self.working_dirty_count(),
             CodePanelKey::Findings => self.open_findings_count(),
-            CodePanelKey::Plan => self.plan_open_count(cx),
             CodePanelKey::Artifacts => self.unseen_artifact_count(cx),
             CodePanelKey::Problems => self.problem_counts(cx).total,
             _ => 0,
+        }
+    }
+
+    /// The Plan button's title, with the plan's remaining steps.
+    pub(crate) fn plan_badge_title(&self, cx: &App) -> String {
+        match self.plan_open_count(cx) {
+            0 => "Plan".into(),
+            n => format!("Plan ({n} remaining)"),
         }
     }
 
@@ -148,9 +175,7 @@ impl Observatory {
         }
         match key {
             CodePanelKey::Maestro => format!("{title} ({n} unread)"),
-            CodePanelKey::Scm => format!("{title} ({n})"),
             CodePanelKey::Findings => format!("{title} ({n} open)"),
-            CodePanelKey::Plan => format!("{title} ({n} remaining)"),
             CodePanelKey::Artifacts => format!("{title} ({n} new)"),
             CodePanelKey::Problems => {
                 let c = self.problem_counts(cx);
@@ -172,12 +197,13 @@ impl Observatory {
 
     // ---- branch review ----
 
-    /// `setMainSurface`: review only for git roots; persisted with the session.
+    /// `setMainSurface`: a view only while it has something to show
+    /// ([`Self::surface_available`]); persisted with the session.
     pub(crate) fn set_main_surface(&mut self, next: MainSurface, cx: &mut Context<Self>) {
-        let pref = if !self.is_git(cx) && next == MainSurface::Review {
-            MainSurface::Editor
-        } else {
+        let pref = if self.surface_available(next, cx) {
             next
+        } else {
+            MainSurface::Editor
         };
         if pref == self.main_surface_pref {
             return;
@@ -210,39 +236,64 @@ impl Observatory {
 
     /// `toggleReview` (⌥⌘R, the toolbar button).
     pub(crate) fn toggle_review(&mut self, cx: &mut Context<Self>) {
+        self.toggle_surface(MainSurface::Review, cx);
+    }
+
+    fn toggle_surface(&mut self, surface: MainSurface, cx: &mut Context<Self>) {
         if self.props.main_blocked {
             return;
         }
-        if self.main_surface(cx) == MainSurface::Review {
+        if self.main_surface(cx) == surface && !self.term_is_center(cx) {
             self.close_review_surface(cx);
+        } else {
+            self.show_surface(surface, cx);
+        }
+    }
+
+    /// Switches the main column to a view other than the editor (the review, the pull
+    /// request, the plan); nothing when it shows. The terminal in place
+    /// of the editor covers them too, so it gives way.
+    pub fn show_surface(&mut self, surface: MainSurface, cx: &mut Context<Self>) {
+        let covered = self.term_is_center(cx);
+        if self.props.main_blocked {
             return;
         }
-        self.set_main_surface(MainSurface::Review, cx);
-        self.unhide_for_review(cx);
+        if self.main_surface(cx) == surface && !covered {
+            return;
+        }
+        let from_editor = self.main_surface(cx) == MainSurface::Editor;
+        let opening_review = surface == MainSurface::Review && self.main_surface(cx) != surface;
+        self.set_main_surface(surface, cx);
+        if from_editor || covered {
+            self.unhide_for_review(cx);
+        }
+        if opening_review && self.working_dirty_count() > 0 {
+            self.set_review_tab(ReviewTab::Uncommitted, cx);
+        }
     }
 
     /// `showReviewSurface`.
     pub(crate) fn show_review_surface(&mut self, cx: &mut Context<Self>) {
-        if self.props.main_blocked || !self.is_git(cx) {
-            return;
-        }
-        if self.main_surface(cx) != MainSurface::Review {
-            self.set_main_surface(MainSurface::Review, cx);
-            self.unhide_for_review(cx);
+        if self.is_git(cx) {
+            self.show_surface(MainSurface::Review, cx);
         }
     }
 
-    /// `openWorkingReview`: the Commits tab's uncommitted scope.
+    /// The toolbar's pull request button.
+    pub(crate) fn show_pr_surface(&mut self, cx: &mut Context<Self>) {
+        self.show_surface(MainSurface::Pr, cx);
+    }
+
+    /// `openWorkingReview`: the review on its Uncommitted tab (Changes with a clean tree).
     pub(crate) fn open_working_review(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.props.main_blocked || !self.is_git(cx) {
             return;
         }
         self.show_review_surface(cx);
-        self.set_review_tab(ReviewTab::Commits, cx);
-        self.sync_review_surface(window, cx);
-        if let Some(r) = self.review_surface.clone() {
-            r.update(cx, |r, cx| r.open_working(window, cx));
+        if self.working_dirty_count() > 0 {
+            self.set_review_tab(ReviewTab::Uncommitted, cx);
         }
+        self.sync_review_surface(window, cx);
     }
 
     /// `openTurnReview`: a chat turn's checkpoint diff as a commit scope.
@@ -301,8 +352,9 @@ impl Observatory {
         });
     }
 
-    pub(crate) fn set_review_tab(&mut self, next: ReviewTab, cx: &mut Context<Self>) {
-        if next == ReviewTab::Changes
+    /// Show the review's `next` tab.
+    pub fn set_review_tab(&mut self, next: ReviewTab, cx: &mut Context<Self>) {
+        if next != ReviewTab::Commits
             && let Some(r) = self.review_surface.clone()
             && let Some(w) = self.window
         {
@@ -316,16 +368,30 @@ impl Observatory {
         cx.notify();
     }
 
+    /// The last uncommitted change went (committed, discarded): the review leaves its
+    /// Uncommitted tab for Changes, and stays there when new edits come in.
+    pub(crate) fn leave_uncommitted_when_clean(&mut self, cx: &mut Context<Self>) {
+        if self.working_status.is_empty() && self.review_tab == ReviewTab::Uncommitted {
+            self.set_review_tab(ReviewTab::Changes, cx);
+        }
+    }
+
     pub(crate) fn cycle_review_tab(&mut self, dir: i32, cx: &mut Context<Self>) {
         if !self.review_has_commits(cx) {
             return;
         }
-        let tabs = [ReviewTab::Changes, ReviewTab::Commits];
+        let all = [
+            ReviewTab::Uncommitted,
+            ReviewTab::Changes,
+            ReviewTab::Commits,
+        ];
+        let skip = usize::from(self.working_dirty_count() == 0);
+        let tabs = &all[skip..];
         let i = tabs
             .iter()
             .position(|t| *t == self.review_strip_tab(cx))
             .unwrap_or(0) as i32;
-        let next = tabs[((i + dir).rem_euclid(2)) as usize];
+        let next = tabs[((i + dir).rem_euclid(tabs.len() as i32)) as usize];
         self.set_review_tab(next, cx);
     }
 
@@ -355,19 +421,16 @@ impl Observatory {
             .update(cx, |s, cx| s.set_editor_hidden(&id, true, cx));
     }
 
-    /// Terminal beside the editor instead of under it.
-    pub(crate) fn toggle_term_beside(&mut self, cx: &mut Context<Self>) {
+    /// The toolbar's placement menu: this workspace's own placement, or back to the default.
+    pub(crate) fn pick_term_placement(&mut self, key: &str, cx: &mut Context<Self>) {
         let id = self.props.workspace_id.clone();
         if id.is_empty() || self.props.main_blocked || self.term_overlaying() {
             return;
         }
-        let next = !self.term_beside(cx);
-        self.state.update(cx, |s, cx| {
-            s.set_terminal_beside(&id, next, cx);
-            if next && s.dock.is_editor_hidden(&id) {
-                s.set_editor_hidden(&id, false, cx);
-            }
-        });
+        self.review_unhid_for.clear();
+        let p = TerminalPlacement::parse(key);
+        self.state
+            .update(cx, |s, cx| s.set_terminal_placement(&id, p, cx));
     }
 
     /// The `ReviewSurface` props (`<ReviewSurface …>`), mounted for git roots.
@@ -381,23 +444,57 @@ impl Observatory {
         let findings = self.review_findings_by_path(cx);
         let mut dirty: Vec<String> = self.working_status.keys().cloned().collect();
         dirty.sort();
+        let mut conflicted: Vec<String> = self
+            .working_status
+            .iter()
+            .filter(|(_, st)| st.as_str() == "!")
+            .map(|(p, _)| p.clone())
+            .collect();
+        conflicted.sort();
+        let mut staged = self.staged_files.clone();
+        staged.sort();
+        let mut unstaged = self.unstaged_files.clone();
+        unstaged.sort();
+        let tab = self.review_strip_tab(cx);
+        let active = self.main_surface(cx) == MainSurface::Review;
+        if !(active && tab == ReviewTab::Uncommitted) && !self.cards.is_empty() {
+            cx.defer_in(window, |o, _, cx| o.release_cards(cx));
+        }
         let sig = ReviewSig {
             project_id: self.props.project_id.clone(),
             workspace_id: self.props.workspace_id.clone(),
             base_label: self.review_base(cx),
             refresh: self.review_refresh,
-            active: self.main_surface(cx) == MainSurface::Review,
-            tab: self.review_tab,
+            active,
+            tab,
             count: self.review_paths(cx).len(),
             excludes,
             findings,
             dirty,
+            conflicted,
+            staged,
+            unstaged,
             restore: self.review_restore.clone(),
         };
         if self.review_surface.is_some() && self.review_sig.as_ref() == Some(&sig) {
             return;
         }
         self.review_sig = Some(sig.clone());
+        let foot = match self.commit_foot.clone() {
+            Some(f) => f,
+            None => {
+                let f = recur_ui::isolated::Part::of(cx, Self::render_commit_foot);
+                self.inputs.commit_view.redraws(f.entity_id());
+                self.commit_foot = Some(f.clone());
+                f
+            }
+        };
+        let staged: std::collections::HashSet<String> = sig.staged.into_iter().collect();
+        let mixed = sig
+            .unstaged
+            .into_iter()
+            .filter(|p| staged.contains(p))
+            .collect();
         let props = SurfaceProps {
             project_id: sig.project_id,
             workspace_id: sig.workspace_id,
@@ -408,9 +505,19 @@ impl Observatory {
             count: sig.count,
             exclude_matchers: Some(Rc::new(recur_code::glob::compile_excludes(&sig.excludes))),
             findings_by_path: Some(Rc::new(sig.findings)),
-            working_dirty_count: sig.dirty.len(),
             dirty_paths: Some(Rc::new(sig.dirty.into_iter().collect())),
             restore: sig.restore,
+            working_index: Some(Rc::new(WorkingIndex {
+                staged,
+                mixed,
+                conflicted: sig.conflicted.into_iter().collect(),
+            })),
+            commit_foot: Some(CommitFoot {
+                view: foot.into(),
+                fit: self.commit_fit.clone(),
+                focus: gpui_kit::Focusable::focus_handle(self.inputs.commit.read(cx), cx),
+            }),
+            working_editors: Some(self.card_host()),
         };
         match self.review_surface.clone() {
             Some(r) => r.update(cx, |r, cx| r.set_props(props, window, cx)),
@@ -457,6 +564,11 @@ impl Observatory {
                                     cx.notify();
                                 }
                             }
+                            SurfaceEvent::Stage(paths, on) => o.stage_paths(paths.clone(), *on, cx),
+                            SurfaceEvent::Discard(paths, label) => {
+                                o.discard_paths(paths.clone(), label, window, cx)
+                            }
+                            SurfaceEvent::DiscardAll => o.discard_all_working(window, cx),
                         }
                     });
                 self.review_subs = vec![sub];
@@ -807,9 +919,7 @@ impl Observatory {
             .is_some_and(|(_, d)| d.read(cx).contains_focus(window, cx))
         {
             FocusZone::Terminal
-        } else if self.files_focus.contains_focused(window, cx)
-            || self.scm_focus.contains_focused(window, cx)
-        {
+        } else if self.files_focus.contains_focused(window, cx) {
             FocusZone::Editor
         } else if self.left_focus.contains_focused(window, cx) {
             FocusZone::Agent
@@ -1254,5 +1364,8 @@ pub(crate) struct ReviewSig {
     excludes: Vec<String>,
     findings: recur_view_review::findings::FindingsByPath,
     dirty: Vec<String>,
+    conflicted: Vec<String>,
+    staged: Vec<String>,
+    unstaged: Vec<String>,
     restore: Option<(String, f32)>,
 }

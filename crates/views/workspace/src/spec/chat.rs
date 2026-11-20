@@ -909,6 +909,18 @@ async fn findings_panel_fix_open_findings_switches_to_the_agent_dock_and_tab(
     assert!(t[0].contains("mcp__recur__list_findings"));
 }
 
+#[gpui::test]
+async fn the_artifacts_panel_opens_on_the_right_beside_the_chat(cx: &mut TestAppContext) {
+    let (store, sent) = (Store::default(), calls());
+    let mut h = boot(cx, on_it_opts(store, sent));
+    h.select_tab("PA");
+    h.click("panel-toggle:artifacts");
+    assert!(
+        h.has("art-panel") && h.has("chat-composer"),
+        "an artifact row drags into the composer beside it"
+    );
+}
+
 // ---- Chat stop ----
 
 /// Sends hang per code; Cancel records `ws:code` and answers that code's turn.
@@ -1616,18 +1628,18 @@ async fn transcript_file_chip_opens_the_editor_without_stealing_the_files_panel(
 }
 
 #[gpui::test]
-async fn transcript_file_chip_keeps_source_control_open_instead_of_flipping_to_outline(
+async fn transcript_file_chip_keeps_problems_open_instead_of_flipping_to_outline(
     cx: &mut TestAppContext,
 ) {
     let mut h = boot(cx, chip_opts("src/main.go"));
-    h.click("panel-toggle:scm");
-    assert_eq!(right_panel(&mut h), Some(CodePanelKey::Scm));
+    h.click("panel-toggle:problems");
+    assert_eq!(right_panel(&mut h), Some(CodePanelKey::Problems));
     h.click("file-inline:main.go");
     assert_eq!(
         obs_read(&mut h, |o, _| o.selected_path().to_string()),
         "src/main.go"
     );
-    assert_eq!(right_panel(&mut h), Some(CodePanelKey::Scm));
+    assert_eq!(right_panel(&mut h), Some(CodePanelKey::Problems));
 }
 
 #[gpui::test]

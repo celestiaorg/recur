@@ -832,4 +832,16 @@ impl WorkspaceView {
             self.invoke_prompt_action(&slash, &args, false, window, cx);
         }
     }
+
+    /// The titlebar's "Review and commit…", for this workspace.
+    pub(crate) fn take_review_commit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let id = self.ws_id.clone();
+        if self.state.read(cx).review_commit.as_deref() != Some(id.as_str()) {
+            return;
+        }
+        if self.state.update(cx, |s, _| s.take_review_commit(&id)) {
+            self.observatory
+                .update(cx, |o, cx| o.focus_commit_msg(window, cx));
+        }
+    }
 }

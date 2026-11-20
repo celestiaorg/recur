@@ -1,7 +1,6 @@
 //! The commit list (uncommitted work first), and the commit header Files changed shows for a
 //! commit scope.
 
-use recur_ui::guard::Guarded;
 use std::collections::HashSet;
 use std::rc::Rc;
 use std::time::Duration;
@@ -119,29 +118,6 @@ pub fn cav(c: &Commit, size: f32, radius: f32, font: f32, cx: &App) -> Div {
         );
     }
     d
-}
-
-/// `.cav.wip`: amber with "WIP" in `--on-amber`, 8px.
-pub fn cav_wip(size: f32, radius: f32, cx: &App) -> Div {
-    let t = Theme::of(cx).tokens;
-    div()
-        .flex_none()
-        .size(px(size))
-        .rounded(px(radius))
-        .bg(hsla(t.amber))
-        .flex()
-        .items_center()
-        .justify_center()
-        .child(
-            text("WIP")
-                .family(Family::Mono)
-                .size(8.)
-                .weight(700.)
-                .tracking(0.02)
-                .line_height(LineHeight::Scale(1.45))
-                .color(t.on_amber)
-                .nowrap(),
-        )
 }
 
 /// The `.cm-by` byline: the role with its amber iteration, or the author. No whitespace
@@ -485,8 +461,6 @@ fn row_frame(
 pub enum CommitsEvent {
     /// `onOpenCommit`.
     Open(Box<Commit>),
-    /// `onOpenWorking`.
-    OpenWorking,
 }
 
 /// The commit list.
@@ -495,7 +469,6 @@ pub struct CommitsView {
     pub loading: bool,
     pub error: bool,
     pub base_label: String,
-    pub working_dirty_count: usize,
     copied: CopiedShas,
     scroll: gpui_kit::ScrollHandle,
 }
@@ -515,7 +488,6 @@ impl CommitsView {
             loading: false,
             error: false,
             base_label: String::new(),
-            working_dirty_count: 0,
             copied: CopiedShas::default(),
             scroll: gpui_kit::ScrollHandle::new(),
         }
@@ -527,14 +499,12 @@ impl CommitsView {
         loading: bool,
         error: bool,
         base_label: String,
-        working_dirty_count: usize,
         cx: &mut Context<Self>,
     ) {
         self.commits = commits;
         self.loading = loading;
         self.error = error;
         self.base_label = base_label;
-        self.working_dirty_count = working_dirty_count;
         cx.notify();
     }
 
@@ -548,8 +518,7 @@ impl CommitsView {
     fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let vs = js::trim(&self.base_label).to_string();
-        let show_working = self.working_dirty_count > 0;
-        let list_empty = self.commits.is_empty() && !show_working;
+        let list_empty = self.commits.is_empty();
         let mut wrap = recur_ui::widgets::scroll_area("commits-wrap")
             .track(&self.scroll)
             .scroller(|d| {
@@ -575,54 +544,9 @@ impl CommitsView {
                 .debug_selector(|| "commits-list".into())
                 .flex()
                 .flex_col();
-            let n = self.commits.len() + usize::from(show_working);
-            if show_working {
-                let group = SharedString::from("commit-wip-g");
-                let wip_bg = t.amber.mix(0.08, t.pane);
-                let wip_hover = t.amber.mix(0.14, t.pane_2);
-                list = list.child(
-                    row_frame(
-                        "commit-wip".into(),
-                        group.clone(),
-                        true,
-                        n == 1,
-                        wip_bg,
-                        wip_hover,
-                        &t,
-                    )
-                    .debug_selector(|| "commit:working".into())
-                    .cursor_pointer()
-                    .child(cav_wip(26., 7., cx))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(
-                                text("Uncommitted changes")
-                                    .size(12.5)
-                                    .line_height(LineHeight::Scale(1.45))
-                                    .truncate(),
-                            )
-                            .child(
-                                div().mt(px(2.)).child(
-                                    text("Working tree vs HEAD")
-                                        .family(Family::Mono)
-                                        .size(10.)
-                                        .line_height(LineHeight::Scale(1.45))
-                                        .color(t.faint)
-                                        .nowrap(),
-                                ),
-                            ),
-                    )
-                    .child(chash("-", &t))
-                    .child(chevron(group, &t))
-                    .on_click(
-                        cx.guarded_listener(|_, _, _, cx| cx.emit(CommitsEvent::OpenWorking)),
-                    ),
-                );
-            }
+            let n = self.commits.len();
             for (i, c) in self.commits.clone().iter().enumerate() {
-                let k = i + usize::from(show_working);
+                let k = i;
                 let sha = commit_sha(c);
                 let me = cx.entity().downgrade();
                 let me2 = me.clone();

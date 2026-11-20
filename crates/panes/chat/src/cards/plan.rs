@@ -179,7 +179,7 @@ impl AgentChat {
             let w = ws_id.clone();
             head = head.child(recur_ui::tooltip::titled(
                 SharedString::from(format!("{id}-open-tip")),
-                "Open the Plan panel",
+                "Open the plan",
                 div()
                     .id(SharedString::from(format!("{id}-open")))
                     .px(px(4.))

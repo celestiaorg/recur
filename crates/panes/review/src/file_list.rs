@@ -1,6 +1,7 @@
 //! The Files changed TOC in its overlay-scrollbar scroller, flat or as a tree with sticky
 //! open folders, finding and
-//! unresolved-comment flags, uncommitted-edit dots, and reveal-on-spy.
+//! unresolved-comment flags, uncommitted-edit dots, and reveal-on-spy. Over uncommitted work
+//! each row has a checkbox (in the commit or not) and a discard button.
 //!
 //! Rows have fixed heights (a file row is `3px + 12.5 × 1.35 + 3px`, a folder 24px), so the
 //! list lays itself out and paints open folder headers in a layer at their sticky positions
@@ -10,11 +11,12 @@ use recur_ui::guard::Guarded;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
+use gpui_kit::base::input::InputState;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, Context, Div, InteractiveElement, IntoElement, ParentElement, Render,
-    ScrollHandle, SharedString, Stateful, StatefulInteractiveElement, Styled, Window, canvas, div,
-    point, px,
+    AnyElement, App, AppContext, Context, Div, Entity, EventEmitter, InteractiveElement,
+    IntoElement, KeyDownEvent, ParentElement, Render, ScrollHandle, SharedString, Stateful,
+    StatefulInteractiveElement, Styled, Window, canvas, div, point, px,
 };
 use recur_code::view::changed_tree::build_tree_from_paths;
 use recur_code::view::finding_paths::findings_for_path;
@@ -26,6 +28,7 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::scroll_area;
 use recur_ui::{Color, IconName, Theme, Tokens, icon};
+use recur_view_core::file_drag::{FileDragGhost, WorkspaceFileDrag};
 use recur_view_core::workspace_nav::scroll_delta_to_reveal;
 
 use crate::findings::{FindingFlag, FindingsByPath, finding_flag_for_path, flag_of};
@@ -59,7 +62,64 @@ pub struct FileListProps {
     pub dirty_paths: Option<Rc<HashSet<String>>>,
     /// Bumped by the scroll spy: reveal `selected_path`.
     pub reveal: u64,
+    /// The index over uncommitted work: rows get a checkbox and a discard button.
+    pub checks: Option<Rc<WorkingIndex>>,
 }
+
+/// What the Uncommitted tab's checkboxes show: the staged files, and those staged with more
+/// edits on top. Conflicted files show `!` in place of their status letter.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct WorkingIndex {
+    pub staged: HashSet<String>,
+    pub mixed: HashSet<String>,
+    pub conflicted: HashSet<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Check {
+    Off,
+    On,
+    Mixed,
+}
+
+impl WorkingIndex {
+    pub fn check(&self, path: &str) -> Check {
+        if self.mixed.contains(path) {
+            Check::Mixed
+        } else if self.staged.contains(path) {
+            Check::On
+        } else {
+            Check::Off
+        }
+    }
+
+    /// Several files as one checkbox: on when all are fully staged, off when none is staged.
+    pub fn check_all<'a>(&self, paths: impl IntoIterator<Item = &'a str>) -> Check {
+        let (mut on, mut off) = (false, false);
+        for p in paths {
+            match self.check(p) {
+                Check::On => on = true,
+                Check::Off => off = true,
+                Check::Mixed => return Check::Mixed,
+            }
+            if on && off {
+                return Check::Mixed;
+            }
+        }
+        if on { Check::On } else { Check::Off }
+    }
+}
+
+/// What the checkboxes and discard buttons ask the host for.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ListEvent {
+    /// Stage (`true`) or unstage these paths.
+    Check(Vec<String>, bool),
+    /// Discard these paths' uncommitted changes; the label names them in the confirm.
+    Discard(Vec<String>, String),
+}
+
+impl EventEmitter<ListEvent> for ReviewFileList {}
 
 /// What [`ReviewFileList::model`] derives from the props and folds.
 struct ListModel {
@@ -77,6 +137,7 @@ struct Row {
     height: f32,
     /// An open folder: the bottom of its `.fl-branch`.
     branch_bottom: Option<f32>,
+    check: Option<Check>,
 }
 
 pub struct ReviewFileList {
@@ -228,9 +289,24 @@ impl ReviewFileList {
         self.select(path, Some(first), window, cx);
     }
 
+    /// A row's files: the file, or every listed file under the folder.
+    fn row_paths(&self, path: &str, is_dir: bool) -> Vec<String> {
+        if !is_dir {
+            return vec![path.to_string()];
+        }
+        let prefix = format!("{path}/");
+        self.props
+            .files
+            .iter()
+            .filter(|f| f.path.starts_with(&prefix))
+            .map(|f| f.path.clone())
+            .collect()
+    }
+
     fn layout(&self) -> (Vec<Row>, f32) {
         let mut rows = Vec::new();
         let mut y = 0.;
+        let checks = self.props.checks.as_deref();
         if self.props.mode == FileListMode::Flat {
             for f in &self.props.files {
                 rows.push(Row {
@@ -243,6 +319,7 @@ impl ReviewFileList {
                     top: y,
                     height: FILE_ROW_H,
                     branch_bottom: None,
+                    check: checks.map(|c| c.check(&f.path)),
                 });
                 y += FILE_ROW_H;
             }
@@ -250,26 +327,41 @@ impl ReviewFileList {
         }
         let paths: Vec<String> = self.props.files.iter().map(|f| f.path.clone()).collect();
         let tree = build_tree_from_paths(&paths);
+        fn leaves<'a>(e: &'a TreeEntry, out: &mut Vec<&'a str>) {
+            if !e.dir {
+                out.push(&e.path);
+            }
+            for c in &e.children {
+                leaves(c, out);
+            }
+        }
         fn walk(
             nodes: &[TreeEntry],
             depth: usize,
             collapsed: &HashSet<String>,
+            checks: Option<&WorkingIndex>,
             rows: &mut Vec<Row>,
             y: &mut f32,
         ) {
             for e in nodes {
                 if e.dir {
                     let at = rows.len();
+                    let check = checks.map(|c| {
+                        let mut paths = Vec::new();
+                        leaves(e, &mut paths);
+                        c.check_all(paths)
+                    });
                     rows.push(Row {
                         entry: e.clone(),
                         depth,
                         top: *y,
                         height: TREE_ROW_H,
                         branch_bottom: None,
+                        check,
                     });
                     *y += TREE_ROW_H;
                     if !collapsed.contains(&e.path) {
-                        walk(&e.children, depth + 1, collapsed, rows, y);
+                        walk(&e.children, depth + 1, collapsed, checks, rows, y);
                         rows[at].branch_bottom = Some(*y);
                     }
                 } else {
@@ -279,12 +371,13 @@ impl ReviewFileList {
                         top: *y,
                         height: FILE_ROW_H,
                         branch_bottom: None,
+                        check: checks.map(|c| c.check(&e.path)),
                     });
                     *y += FILE_ROW_H;
                 }
             }
         }
-        walk(&tree, 0, &self.collapsed, &mut rows, &mut y);
+        walk(&tree, 0, &self.collapsed, checks, &mut rows, &mut y);
         (rows, y)
     }
 
@@ -330,7 +423,19 @@ impl ReviewFileList {
         let on = !is_dir && e.path == self.props.selected_path;
         let f = (!is_dir).then(|| by.get(&e.path).cloned()).flatten();
         let f = f.as_deref();
-        let st = f.map_or(String::new(), |f| f.status.clone());
+        let st = match f {
+            Some(_)
+                if self
+                    .props
+                    .checks
+                    .as_ref()
+                    .is_some_and(|c| c.conflicted.contains(&e.path)) =>
+            {
+                "!".to_string()
+            }
+            Some(f) => f.status.clone(),
+            None => String::new(),
+        };
         let (add, del) = self.stats(row, rows, by);
         let flag = self.flag_for(&e.path, is_dir, flags);
         let notes = self.notes_for(&e.path, is_dir);
@@ -381,6 +486,22 @@ impl ReviewFileList {
             .cursor_pointer()
             .text_color(hsla(t.text))
             .when_some(bg, |d, c| d.bg(hsla(c)))
+            .on_drag(
+                WorkspaceFileDrag::new(&[if is_dir {
+                    format!("{}/", e.path)
+                } else {
+                    e.path.clone()
+                }]),
+                {
+                    let name = SharedString::from(e.name.clone());
+                    move |_, _, _, cx| {
+                        cx.new(|_| FileDragGhost {
+                            name: name.clone(),
+                            dir: is_dir,
+                        })
+                    }
+                },
+            )
             .on_hover(cx.guarded_listener({
                 let path = path.clone();
                 move |l, on: &bool, _, cx| {
@@ -406,6 +527,33 @@ impl ReviewFileList {
         } else {
             d.h(px(FILE_ROW_H))
         };
+        if let Some(check) = row.check {
+            let paths = self.row_paths(&e.path, is_dir);
+            let label = if check == Check::On {
+                "Leave out of the commit"
+            } else {
+                "Include in the commit"
+            };
+            let sel = format!("fl-check:{}:{check:?}", e.path);
+            d = d.child(titled(
+                SharedString::from(format!("flk-t-{}", e.path)),
+                label,
+                div()
+                    .id(SharedString::from(format!("flk-{}", e.path)))
+                    .debug_selector(move || sel.clone())
+                    .flex_none()
+                    .size(px(16.))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .cursor_pointer()
+                    .child(checkbox(check, &t))
+                    .on_click(cx.guarded_listener(move |_, _, _, cx| {
+                        cx.stop_propagation();
+                        cx.emit(ListEvent::Check(paths.clone(), check != Check::On));
+                    })),
+            ));
+        }
         let fp = text(label_s)
             .size(12.5)
             .line_height(LineHeight::Scale(1.35))
@@ -505,6 +653,33 @@ impl ReviewFileList {
                     ),
             ));
         }
+        if row.check.is_some() {
+            let paths = self.row_paths(&e.path, is_dir);
+            let what = e.path.clone();
+            let sel = format!("fl-discard:{}", e.path);
+            d = d.child(titled(
+                SharedString::from(format!("fld-t-{}", e.path)),
+                "Discard changes",
+                div()
+                    .id(SharedString::from(format!("fld-{}", e.path)))
+                    .debug_selector(move || sel.clone())
+                    .flex()
+                    .flex_none()
+                    .items_center()
+                    .justify_center()
+                    .size(px(18.))
+                    .rounded(px(4.))
+                    .cursor_pointer()
+                    .text_color(hsla(t.coral))
+                    .when(!hovered, |d| d.opacity(0.))
+                    .hover(move |s| s.text_color(hsla(t.text)).bg(hsla(t.pane)))
+                    .child(icon(IconName::Undo).size(px(12.)))
+                    .on_click(cx.guarded_listener(move |_, _, _, cx| {
+                        cx.stop_propagation();
+                        cx.emit(ListEvent::Discard(paths.clone(), what.clone()));
+                    })),
+            ));
+        }
         d = d.child(crate::style::add_del(
             add,
             del,
@@ -514,10 +689,81 @@ impl ReviewFileList {
             LineHeight::Scale(1.35),
             cx,
         ));
-        d = d.child(fst(&st, dirty, &t));
+        d = d.child(fst(&e.path, &st, dirty, &t));
         let _ = (window, stuck);
         titled(SharedString::from(format!("{id}-t")), title, d).into_any_element()
     }
+}
+
+/// The "Filter files" row over a file list: the search icon and the field, whose keys `on_key`
+/// sees before the views around it.
+pub fn filter_files_row(
+    input: &Entity<InputState>,
+    on_key: impl Fn(&KeyDownEvent, &mut Window, &mut App) + 'static,
+    window: &Window,
+    cx: &App,
+) -> Div {
+    let t = Theme::of(cx).tokens;
+    div()
+        .flex()
+        .items_center()
+        .gap(px(6.))
+        .flex_none()
+        .h(px(recur_ui::style::CHROME_H))
+        .px(px(8.))
+        .border_b_1()
+        .border_color(hsla(t.line_soft))
+        .text_color(hsla(t.faint))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(6.))
+                .flex_1()
+                .min_w_0()
+                .key_context("TextEntry")
+                .on_key_down(on_key)
+                .child(icon(IconName::Search).size(px(12.)))
+                // WebKit's `type=search` field is 19px tall at 12px, text centered.
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .h(px(19.))
+                        .flex()
+                        .items_center()
+                        .child(recur_ui::style::text_field(
+                            input,
+                            &SharedString::from("Filter files"),
+                            t.faint,
+                            Family::Ui,
+                            12.,
+                            window,
+                            cx,
+                        )),
+                ),
+        )
+}
+
+/// A 13px checkbox: filled with a check when on, a dash when mixed.
+fn checkbox(check: Check, t: &Tokens) -> Div {
+    let mark = match check {
+        Check::Off => None,
+        Check::On => Some(IconName::Check),
+        Check::Mixed => Some(IconName::Minus),
+    };
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .size(px(13.))
+        .rounded(px(3.))
+        .border_1()
+        .border_color(hsla(if mark.is_some() { t.text } else { t.faint }))
+        .when(mark.is_some(), |d| d.bg(hsla(t.text)))
+        .when_some(mark, |d, m| {
+            d.child(icon(m).size(px(10.)).stroke_width(3.).color(hsla(t.bg)))
+        })
 }
 
 fn finding_flag_color(sev: &str, t: &Tokens) -> Color {
@@ -529,11 +775,11 @@ fn finding_flag_color(sev: &str, t: &Tokens) -> Color {
 }
 
 /// `.fst`: the status letter (12px, centered), with the amber dot under it for uncommitted edits.
-fn fst(st: &str, dirty: bool, t: &Tokens) -> AnyElement {
+fn fst(path: &str, st: &str, dirty: bool, t: &Tokens) -> AnyElement {
     let color = match st {
         "m" => Some(t.git_m),
         "a" => Some(t.git_a),
-        "d" => Some(t.git_d),
+        "d" | "!" => Some(t.git_d),
         _ => None,
     };
     let letter = if st.is_empty() {
@@ -550,7 +796,9 @@ fn fst(st: &str, dirty: bool, t: &Tokens) -> AnyElement {
     if let Some(c) = color {
         label = label.color(c);
     }
+    let sel = format!("fl-st:{path}:{st}");
     div()
+        .debug_selector(move || sel.clone())
         .relative()
         .flex_none()
         .w(px(12.))
@@ -774,7 +1022,7 @@ impl Render for ReviewFileList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui::{AppContext as _, Entity, TestAppContext};
+    use gpui::{Entity, TestAppContext};
 
     struct Host(Entity<ReviewFileList>);
 

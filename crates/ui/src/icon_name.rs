@@ -57,6 +57,7 @@ pub enum IconName {
     GitMergeQueued,
     GitBranch,
     GitCommit,
+    GitGraph,
     GitFork,
     Split,
     GitLine,
@@ -176,7 +177,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 170] = [
+    pub const ALL: [IconName; 171] = [
         IconName::Plus,
         IconName::Box,
         IconName::Github,
@@ -231,6 +232,7 @@ impl IconName {
         IconName::GitMergeQueued,
         IconName::GitBranch,
         IconName::GitCommit,
+        IconName::GitGraph,
         IconName::GitFork,
         IconName::Split,
         IconName::GitLine,
@@ -406,6 +408,7 @@ impl IconName {
             IconName::GitMergeQueued => "git-merge-queued",
             IconName::GitBranch => "git-branch",
             IconName::GitCommit => "git-commit",
+            IconName::GitGraph => "git-graph",
             IconName::GitFork => "git-fork",
             IconName::Split => "split",
             IconName::GitLine => "git-line",

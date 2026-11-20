@@ -173,15 +173,25 @@ impl Manager {
 /// Paths in the index (staged for commit). A plain (non-git) folder returns
 /// none rather than git's `--no-index` "unknown option cached" failure.
 pub async fn staged_paths(dir: &str) -> Result<Vec<String>> {
+    // Unmerged paths are not staged: staging one marks its conflict resolved.
+    diff_names(
+        dir,
+        &["diff", "--cached", "--name-only", "-z", "--diff-filter=u"],
+    )
+    .await
+}
+
+/// Tracked paths whose working tree differs from the index (untracked files
+/// are not listed). A path here and in [`staged_paths`] is partly staged.
+pub async fn unstaged_paths(dir: &str) -> Result<Vec<String>> {
+    diff_names(dir, &["diff", "--name-only", "-z"]).await
+}
+
+async fn diff_names(dir: &str, args: &[&str]) -> Result<Vec<String>> {
     if dir.is_empty() || !is_repo(dir).await {
         return Ok(Vec::new());
     }
-    // Unmerged paths are not staged: staging one marks its conflict resolved.
-    let out = run_git(
-        dir,
-        ["diff", "--cached", "--name-only", "-z", "--diff-filter=u"],
-    )
-    .await?;
+    let out = run_git(dir, args).await?;
     if out.trim().is_empty() {
         return Ok(Vec::new());
     }
@@ -326,6 +336,9 @@ mod tests {
         write(w, "b.txt", "b\n");
         stage(w, &strings(&["a.txt"])).await.expect("stage");
         assert_eq!(staged_paths(w).await.expect("staged"), vec!["a.txt"]);
+        assert!(unstaged_paths(w).await.expect("unstaged").is_empty());
+        write(w, "a.txt", "a2\n");
+        assert_eq!(unstaged_paths(w).await.expect("unstaged"), vec!["a.txt"]);
         assert!(
             m.commit_staged(w, "only a", &name, &email)
                 .await

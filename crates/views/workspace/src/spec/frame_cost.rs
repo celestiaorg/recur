@@ -346,10 +346,11 @@ async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestA
     s.open(ACTIVE);
     let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
     s.cx.update(|_, cx| obs.update(cx, |o, cx| o.click_review_toggle(cx)));
-    // The findings beside the review, in the left dock.
-    s.cx.update(|window, cx| {
+    s.settle();
+    // Line notes are on Changes' rows; Uncommitted's cards are editors.
+    s.cx.update(|_, cx| {
         obs.update(cx, |o, cx| {
-            o.select_code_panel(recur_view_core::prefs::CodePanelKey::Findings, window, cx)
+            o.set_review_tab(recur_view_review::review_diff::ReviewTab::Changes, cx)
         })
     });
     s.settle();
@@ -397,7 +398,6 @@ async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestA
         "::FilesChangedView",
         "::ReviewFileList",
         "::TranscriptPane",
-        "::FindingsPanel",
     ] {
         assert_eq!(renders(quiet, &counts), 0, "{quiet} rendered: {counts:?}");
     }
@@ -407,19 +407,13 @@ async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestA
     assert_eq!(typed.as_deref(), Some("abcd"));
 }
 
-/// A key in the commit message renders the box alone, not the source control panel, the
-/// Observatory or the chat beside it.
+/// A key in the commit message renders the box alone, not the review's file list and diffs
+/// around it, the Observatory or the chat beside it.
 #[gpui::test]
 async fn a_key_in_the_commit_message_renders_the_box_only(cx: &mut TestAppContext) {
     let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
-    s.cx.update(|window, cx| {
-        obs.update(cx, |o, cx| {
-            o.select_code_panel(recur_view_core::prefs::CodePanelKey::Scm, window, cx)
-        })
-    });
-    s.settle();
     let focused =
         s.cx.update(|window, cx| obs.update(cx, |o, cx| o.focus_commit_msg(window, cx)));
     assert!(focused, "no commit box");
@@ -445,7 +439,7 @@ async fn a_key_in_the_commit_message_renders_the_box_only(cx: &mut TestAppContex
 }
 
 /// The keys that empty the commit message and type into it again redraw its foot (the Commit
-/// button), never the Observatory's cached panes (the changes list).
+/// button), never the review's diffs or file list above it.
 #[gpui::test]
 async fn a_key_that_empties_the_commit_message_leaves_the_panes_alone(cx: &mut TestAppContext) {
     let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
@@ -468,11 +462,9 @@ async fn a_key_that_empties_the_commit_message_leaves_the_panes_alone(cx: &mut T
         renders("::Part<recur_view_observatory::obs::Observatory>", &counts) >= 4,
         "{counts:?}"
     );
-    assert_eq!(
-        renders("::Pane<recur_view_observatory::obs::Observatory>", &counts),
-        0,
-        "{counts:?}"
-    );
+    for quiet in ["::StackPane", "::ReviewFileList", "::FilesChangedView"] {
+        assert_eq!(renders(quiet, &counts), 0, "{quiet}: {counts:?}");
+    }
 }
 
 /// The toolbar's chip handles as the settled dock draws them (`sel:{label}={value}`, `:off`
@@ -736,18 +728,82 @@ async fn a_key_in_the_code_editor_renders_the_editor_only(cx: &mut TestAppContex
     );
 }
 
+/// A key in an Uncommitted card's editable diff renders that editor alone (`CardEditor`, an
+/// isolated view, and the uncounted `EditorView` in it): not the other cards, the review's
+/// file list, the commit composer or the Observatory. So does its debounced doc change, which
+/// moves the file's draft without a redraw. A key that changes the card's height (a new line)
+/// lays the stack out again once.
+#[gpui::test]
+async fn a_key_in_an_uncommitted_card_renders_its_editor_only(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
+    s.open(ACTIVE);
+    let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
+    s.cx.update(|window, cx| obs.update(cx, |o, cx| o.focus_commit_msg(window, cx)));
+    s.settle();
+    let path = obs.read_with(s.cx, |o, cx| {
+        let r = o.review_surface().expect("review");
+        r.read(cx).files_view().read(cx).files()[0].path.clone()
+    });
+    let ed = obs
+        .read_with(s.cx, |o, _| o.card_editor_for(&path).cloned())
+        .expect("card editor");
+    s.cx.update(|window, cx| ed.update(cx, |e, cx| e.focus(window, cx)));
+    s.settle();
+    let past_debounce = std::time::Duration::from_millis(recur_editor::view::EMIT_DEBOUNCE_MS + 1);
+    // The first key flips the card unsaved, which its header and the tabs show.
+    s.cx.simulate_input("a");
+    s.cx.executor().advance_clock(past_debounce);
+    s.cx.run_until_parked();
+    recur_ui::guard::count_renders(true);
+    for ch in ["b", "c", "d"] {
+        s.cx.simulate_input(ch);
+        s.cx.run_until_parked();
+        s.cx.executor().advance_clock(past_debounce);
+        s.cx.run_until_parked();
+    }
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    assert!(
+        ed.read_with(s.cx, |e, _| e.peek_doc().starts_with("abcd")),
+        "the keys did not reach the card"
+    );
+    assert!(renders("::CardEditor", &counts) >= 3, "{counts:?}");
+    let beside: Vec<_> = counts
+        .keys()
+        .filter(|k| !k.ends_with("::CardEditor"))
+        .collect();
+    assert!(
+        beside.is_empty(),
+        "a card key rendered beside its editor: {counts:?}"
+    );
+    recur_ui::guard::count_renders(true);
+    s.cx.simulate_input("\n");
+    s.cx.run_until_parked();
+    let counts = recur_ui::guard::take_render_counts();
+    recur_ui::guard::count_renders(false);
+    assert_eq!(renders("::StackPane", &counts), 1, "{counts:?}");
+    assert_eq!(renders("::TranscriptPane", &counts), 0, "{counts:?}");
+    assert!(
+        counts
+            .iter()
+            .all(|(k, n)| *n <= 1 || k.ends_with("::CardEditor")),
+        "a new line laid the path out more than once: {counts:?}"
+    );
+}
+
 #[gpui::test]
 async fn a_key_in_the_plan_body_editor_renders_the_editor_only(cx: &mut TestAppContext) {
     let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let view = bound(&mut s);
     let (obs, panel) = view.read_with(s.cx, |v, _| (v.observatory().clone(), v.plan_panel.clone()));
-    s.cx.update(|window, cx| {
+    s.cx.update(|_, cx| {
         obs.update(cx, |o, cx| {
-            o.select_code_panel(recur_view_core::prefs::CodePanelKey::Plan, window, cx)
+            o.show_surface(recur_view_observatory::MainSurface::Plan, cx)
         })
     });
     s.settle();
+    assert!(s.has("obs-plan"), "the plan is not in the center");
     s.cx.update(|window, cx| panel.update(cx, |p, cx| p.start_edit(window, cx)));
     s.settle();
     let ed = panel

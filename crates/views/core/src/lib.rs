@@ -33,6 +33,7 @@ pub mod pr;
 pub mod pr_commits;
 pub mod pr_dock;
 pub mod pr_list_filter;
+pub mod pr_view;
 pub mod prefs;
 pub mod provider_usage;
 pub mod run;

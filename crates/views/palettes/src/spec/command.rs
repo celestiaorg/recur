@@ -54,17 +54,19 @@ fn routes_and_actions_run_from_the_palette(cx: &mut TestAppContext) {
 #[gpui::test]
 fn workspace_project_and_pr_rows_open_them(cx: &mut TestAppContext) {
     let mut s = plain(cx);
-    let (goal, pr_title, pr_id) = s.read(|st| {
+    let (goal, pr_title, pr_ws) = s.read(|st| {
         let w = st.workspaces.iter().find(|w| w.id == WS).expect("seed");
         let p = st.prs.iter().find(|p| p.id == "479").expect("seed pr");
-        (w.goal.clone(), p.title.clone(), p.id.clone())
+        (w.goal.clone(), p.title.clone(), p.workspace_id.clone())
     });
     pick(&mut s, &goal);
     assert_eq!(s.view(), ViewName::Detail);
     assert_eq!(s.read(|s| s.selected_workspace_id.clone()), WS);
+    // A PR that is its workspace's current one opens in that workspace.
     pick(&mut s, &pr_title);
-    assert_eq!(s.view(), ViewName::PrDetail);
-    assert_eq!(s.read(|s| s.selected_pr_id.clone()), pr_id);
+    assert_eq!(s.view(), ViewName::Detail);
+    assert_eq!(s.read(|s| s.selected_workspace_id.clone()), pr_ws);
+    assert_ne!(pr_ws, WS);
     pick(&mut s, "marketing-site");
     assert_eq!(s.view(), ViewName::Project);
 }

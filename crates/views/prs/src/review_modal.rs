@@ -157,7 +157,7 @@ impl PrReviewModal {
 
     fn pending(&self, cx: &App) -> Vec<PendingLineComment> {
         let s = self.state.read(cx);
-        s.pr(&s.selected_pr_id)
+        s.pr(s.shown_pr_id())
             .map(|p| p.pending_comments.clone())
             .unwrap_or_default()
     }
@@ -169,12 +169,14 @@ impl PrReviewModal {
     }
 
     fn state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let (kind, view) = {
+        let (kind, on_pr) = {
             let s = self.state.read(cx);
-            (s.overlays.pr_review, s.view)
+            let on_pr = matches!(s.view, ViewName::PrDetail | ViewName::Detail)
+                && !s.shown_pr_id().is_empty();
+            (s.overlays.pr_review, on_pr)
         };
-        // Leaving PR detail closes the modal.
-        if kind.is_some() && view != ViewName::PrDetail {
+        // Leaving the PR (its page, or its workspace) closes the modal.
+        if kind.is_some() && !on_pr {
             self.state.update(cx, |s, cx| s.close_pr_review(cx));
             return;
         }
@@ -231,7 +233,9 @@ impl PrReviewModal {
 
     fn jump_to_pending(&mut self, pc: &PendingLineComment, cx: &mut Context<Self>) {
         self.close(cx);
-        self.ui.update(cx, |u, cx| u.set_tab(PrTab::Files, cx));
+        let pr_id = self.state.read(cx).shown_pr_id().to_string();
+        self.ui
+            .update(cx, |u, cx| u.set_tab(&pr_id, PrTab::Files, cx));
         let jump = PrDiffJump {
             file: pc.file.clone(),
             line: pc.line.max(0) as u32,
@@ -244,7 +248,7 @@ impl PrReviewModal {
 
     fn submit(&mut self, cx: &mut Context<Self>) {
         let Some(kind) = self.kind(cx) else { return };
-        let pr_id = self.state.read(cx).selected_pr_id.clone();
+        let pr_id = self.state.read(cx).shown_pr_id().to_string();
         if self.submitting || !self.can_submit(cx) || pr_id.is_empty() {
             return;
         }

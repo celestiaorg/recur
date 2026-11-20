@@ -423,7 +423,7 @@ impl AgentChat {
                     &transcript,
                     gpui_kit::StyleRefinement::default().flex_1().min_h_0(),
                 ))
-                .child(fit.view(&dock, window));
+                .child(fit.view(dock.clone(), window));
         }
         if let Some(lb) = &self.lightbox {
             root = root.child(lb.clone());

@@ -44,12 +44,10 @@ pub struct StashedBuffer {
     pub base_hash: Option<String>,
 }
 
-const PANEL_KEYS: [&str; 9] = [
+const PANEL_KEYS: [&str; 7] = [
     "maestro",
-    "plan",
     "findings",
     "files",
-    "scm",
     "outline",
     "search",
     "refs",
@@ -58,6 +56,13 @@ const PANEL_KEYS: [&str; 9] = [
 
 fn panel_key(v: Option<&str>) -> Option<String> {
     v.filter(|k| PANEL_KEYS.contains(k)).map(str::to_string)
+}
+
+/// A stored `mainSurface`: a center view's key, or empty for the editor.
+pub fn main_surface_key(v: Option<&str>) -> String {
+    v.filter(|k| matches!(*k, "review" | "pr" | "plan"))
+        .unwrap_or_default()
+        .to_string()
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -71,8 +76,8 @@ pub struct Session {
     pub file_views: Option<BTreeMap<String, FileViewState>>,
     pub syntax_by_path: Option<BTreeMap<String, String>>,
     pub syntax_by_file_type: Option<BTreeMap<String, String>>,
-    /// `true` for the Review column; otherwise Editor.
-    pub main_surface_review: bool,
+    /// `review` or `pr` for those columns; empty for the editor.
+    pub main_surface: String,
     pub left_kind: Option<String>,
     pub right_kind: Option<String>,
     pub left_open: Option<bool>,
@@ -304,7 +309,7 @@ pub fn normalize_session(s: &Session) -> Session {
             .unwrap_or_default(),
         ),
         syntax_maps_known: s.syntax_maps_known,
-        main_surface_review: s.main_surface_review,
+        main_surface: s.main_surface.clone(),
         left_kind: panel_key(s.left_kind.as_deref()),
         right_kind: panel_key(s.right_kind.as_deref()),
         left_open: s.left_open,
@@ -373,7 +378,7 @@ pub fn meta_for(s: &Session) -> WireMeta {
         syntax_by_file_type: s
             .syntax_maps_known
             .then(|| s.syntax_by_file_type.clone().unwrap_or_default()),
-        main_surface: s.main_surface_review.then(|| "review".to_string()),
+        main_surface: Some(s.main_surface.clone()).filter(|k| !k.is_empty()),
         left_kind: panel_key(s.left_kind.as_deref()).unwrap_or_else(|| "maestro".into()),
         right_kind: panel_key(s.right_kind.as_deref()).unwrap_or_else(|| "files".into()),
         left_open: s.left_open != Some(false),
@@ -571,7 +576,7 @@ pub fn session_from_wire(w: &Value) -> Option<Session> {
         file_views: (!views.is_empty()).then_some(views),
         syntax_by_path: string_map(w.get("syntaxByPath")),
         syntax_by_file_type: string_map(w.get("syntaxByFileType")),
-        main_surface_review: w.get("mainSurface").and_then(Value::as_str) == Some("review"),
+        main_surface: main_surface_key(w.get("mainSurface").and_then(Value::as_str)),
         left_kind: panel_key(w.get("leftKind").and_then(Value::as_str)),
         right_kind: panel_key(w.get("rightKind").and_then(Value::as_str)),
         left_open: w.get("leftOpen").and_then(Value::as_bool),
@@ -589,14 +594,14 @@ pub fn restorable_session(mut s: Session) -> Option<Session> {
             .as_ref()
             .is_some_and(|m| !m.is_empty());
     if s.open_files.is_empty() {
-        if !has_syntax && !s.main_surface_review && !session_has_pane_chrome(&s) {
+        if !has_syntax && s.main_surface.is_empty() && !session_has_pane_chrome(&s) {
             return None;
         }
         return Some(Session {
             syntax_by_path: s.syntax_by_path,
             syntax_by_file_type: s.syntax_by_file_type,
             syntax_maps_known: s.syntax_maps_known,
-            main_surface_review: s.main_surface_review,
+            main_surface: s.main_surface,
             left_kind: s.left_kind,
             right_kind: s.right_kind,
             left_open: s.left_open,
@@ -691,7 +696,7 @@ mod tests {
             "openFiles": ["a", "a", "b"], "selectedPath": "b",
             "buffers": {"b": {"draft": "d", "baseHash": "h"}},
             "fileViews": {"b": {"line": 1, "col": 1}, "zzz": {"line": 1, "col": 1}},
-            "leftKind": "scm", "rightOpen": false
+            "leftKind": "outline", "rightOpen": false
         });
         let s = restorable_session(session_from_wire(&w).unwrap()).unwrap();
         assert_eq!(s.open_files, paths(&["a", "b"]));
@@ -700,5 +705,33 @@ mod tests {
         assert!(s.left_kind.is_some());
         let empty = serde_json::json!({"openFiles": []});
         assert!(restorable_session(session_from_wire(&empty).unwrap()).is_none());
+    }
+
+    #[test]
+    fn source_control_is_no_dock_kind() {
+        let w = serde_json::json!({"openFiles": ["a"], "leftKind": "scm", "rightKind": "scm"});
+        let s = session_from_wire(&w).unwrap();
+        assert_eq!((s.left_kind, s.right_kind), (None, None));
+    }
+
+    #[test]
+    fn the_plan_is_a_center_view_and_artifacts_a_dock_kind() {
+        let w = serde_json::json!({
+            "openFiles": ["a"], "leftKind": "plan", "rightKind": "artifacts",
+            "mainSurface": "artifacts"
+        });
+        let s = session_from_wire(&w).unwrap();
+        assert_eq!(
+            (s.left_kind, s.right_kind.as_deref()),
+            (None, Some("artifacts"))
+        );
+        assert_eq!(
+            s.main_surface, "",
+            "a saved artifacts view falls back to the editor"
+        );
+        assert_eq!(main_surface_key(Some("plan")), "plan");
+        for k in ["files", "findings", "artifacts"] {
+            assert_eq!(main_surface_key(Some(k)), "", "{k} is a dock panel");
+        }
     }
 }

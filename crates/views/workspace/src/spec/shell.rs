@@ -22,9 +22,19 @@ use recur_services::events::{
 use recur_services::fake::{Answer, Fake, Overrides, Release, Seed, hold};
 use recur_ui::widgets::{ToastKind, ToastStore};
 use recur_view_core::{AppState, LocalStorage, ViewContext, ViewName, ViewRegistry};
+use recur_view_observatory::MainSurface;
 use serde_json::{Value, json};
 
 use super::harness::{de, install_prompt_runner};
+
+/// The view the bound workspace's center shows.
+fn center(s: &mut S) -> MainSurface {
+    s.cx.update(|_, cx| {
+        let detail = crate::WorkspaceDetail::current(cx).expect("the detail route");
+        let view = detail.read(cx).bound_view(cx).expect("a bound workspace");
+        view.read(cx).observatory().read(cx).main_surface(cx)
+    })
+}
 
 const SETTLED: &str = "LOOP-2224";
 const CODING: &str = "LOOP-2229";
@@ -157,12 +167,6 @@ impl S<'_> {
     pub fn dispatch(&mut self, event: AppEvent) {
         self.fake.dispatch(event);
         self.settle();
-    }
-
-    /// Still listed (not archived) on the backend.
-    pub fn present(&mut self, id: &str) -> bool {
-        self.fake
-            .with_seed(|s| s.workspace(id).is_some_and(|w| !w.archived))
     }
 
     pub fn toasted(&mut self, kind: ToastKind, text: &str) -> bool {
@@ -498,6 +502,30 @@ async fn shows_commit_when_the_checkout_is_dirty(cx: &mut TestAppContext) {
     s.open_main("storefront");
     assert!(s.has("tb-commit=Commit"));
     assert!(!s.has("tb-remove"));
+}
+
+/// The Commit menu's "Review and commit…" opens the review on the uncommitted work with the
+/// message box focused, where Source Control's commit box was.
+#[gpui::test]
+async fn review_and_commit_opens_the_uncommitted_review_with_the_message_focused(
+    cx: &mut TestAppContext,
+) {
+    let mut s = plain(cx, land(main_land(0, 0, true)));
+    s.open_main("storefront");
+    assert!(s.has("tb-commit=Commit"));
+    assert_eq!(center(&mut s), MainSurface::Editor);
+    s.click("tb-commit-chev");
+    s.click("commit-review");
+    assert!(!s.has("commit-review"), "the menu closes");
+    assert_eq!(center(&mut s), MainSurface::Review);
+    let (tab, focused) = s.cx.update(|window, cx| {
+        let detail = crate::WorkspaceDetail::current(cx).expect("the detail route");
+        let view = detail.read(cx).bound_view(cx).expect("a bound workspace");
+        let obs = view.read(cx).observatory().read(cx);
+        (obs.shown_review_tab(cx), obs.commit_msg_focused(window, cx))
+    });
+    assert_eq!(tab, recur_view_review::review_diff::ReviewTab::Uncommitted);
+    assert!(focused);
 }
 
 #[gpui::test]
@@ -844,10 +872,10 @@ async fn open_pr_split_offers_open_draft_pr(cx: &mut TestAppContext) {
 async fn shows_view_pr_after_a_pull_request_is_open(cx: &mut TestAppContext) {
     let mut s = gh_boot(cx, Some(gh("gh-91", 91, "gh")), land(gh_land(0, 0)));
     assert!(!s.has("tb-open-pr"));
+    assert_ne!(center(&mut s), MainSurface::Pr);
     s.click("tb-view-pr=View PR #91");
-    assert_eq!(s.view(), ViewName::PrDetail);
-    s.click("tb-view-workspace=View workspace");
-    assert_eq!(s.view(), ViewName::Detail);
+    assert_eq!(s.view(), ViewName::Detail, "the PR shows in the workspace");
+    assert_eq!(center(&mut s), MainSurface::Pr);
     assert!(s.has("v-detail"));
     assert!(s.has("tb-view-pr=View PR #91"));
 }
@@ -994,73 +1022,11 @@ fn pulled() -> UpdateWorkspaceResult {
     }
 }
 
-fn agent(s: &mut S, ws: &str, status: &str) {
-    s.dispatch(AppEvent::AgentUpdated(AgentUpdated {
-        workspace_id: ws.into(),
-        agent_id: format!("{ws}-MA"),
-        status: status.into(),
-        ..Default::default()
-    }));
-}
-
 #[gpui::test]
-async fn a_settled_loop_offers_remove_a_running_loop_shows_it_disabled(cx: &mut TestAppContext) {
+async fn the_titlebar_has_no_remove_the_sidebar_does(cx: &mut TestAppContext) {
     let mut s = plain(cx, Overrides::default());
     s.open(SETTLED);
-    assert!(s.has("tb-remove"));
-    s.click("tb-back");
-    s.open(CODING);
-    assert!(s.has("tb-remove"));
-    s.click("tb-remove");
-    s.click("tb-remove");
-    assert!(s.present(CODING), "a disabled Remove never confirms");
-    assert_eq!(s.view(), ViewName::Detail);
-}
-
-#[gpui::test]
-async fn an_armed_remove_disarms_when_an_agent_turn_starts(cx: &mut TestAppContext) {
-    let mut s = plain(cx, Overrides::default());
-    s.open(SETTLED);
-    s.click("tb-remove");
-    agent(&mut s, SETTLED, "working");
-    s.click("tb-remove");
-    assert!(s.present(SETTLED), "disabled while the turn runs");
-    agent(&mut s, SETTLED, "idle");
-    s.click("tb-remove");
-    assert!(
-        s.present(SETTLED),
-        "the turn disarmed it: this click only arms again"
-    );
-}
-
-#[gpui::test]
-async fn remove_requires_a_second_click_then_hides_the_loop_and_returns_to_inbox(
-    cx: &mut TestAppContext,
-) {
-    let mut s = plain(cx, Overrides::default());
-    s.open(SETTLED);
-    s.click("tb-remove");
-    assert!(s.present(SETTLED));
-    s.click("tb-remove");
-    assert!(s.success("Workspace removed"));
-    assert_eq!(s.view(), ViewName::Briefing);
-    assert!(!s.present(SETTLED));
-    assert!(!s.has(&format!("hit:{SETTLED}")));
-}
-
-#[gpui::test]
-async fn remove_confirms_on_a_double_click(cx: &mut TestAppContext) {
-    let mut s = plain(cx, Overrides::default());
-    s.open(SETTLED);
-    let p = s.bounds("tb-remove").expect("remove").center();
-    s.cx.simulate_mouse_move(p, None, Modifiers::none());
-    s.cx.simulate_click(p, Modifiers::none());
-    s.cx.simulate_click(p, Modifiers::none());
-    s.settle();
-    assert!(s.success("Workspace removed"));
-    assert_eq!(s.view(), ViewName::Briefing);
-    assert!(!s.present(SETTLED));
-    assert!(!s.has(&format!("hit:{SETTLED}")));
+    assert!(!s.has("tb-remove"), "Remove is the sidebar row's");
 }
 
 // ---- chat dock ----
@@ -1072,9 +1038,8 @@ async fn hiding_the_left_panel_still_works_after_visiting_the_linked_pr(cx: &mut
     s.open(ACTIVE);
     assert!(s.has("obs-left"));
     s.click("tb-view-pr=View PR #482");
-    assert_eq!(s.view(), ViewName::PrDetail);
-    s.click("tb-view-workspace=View workspace");
     assert_eq!(s.view(), ViewName::Detail);
+    assert_eq!(center(&mut s), MainSurface::Pr);
     assert!(s.has("obs-left"));
     s.click("obs-left-toggle");
     assert!(!s.has("obs-left"));

@@ -13,16 +13,16 @@ use std::rc::Rc;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
     AnyElement, AppContext as _, ClickEvent, Context, InteractiveElement, IntoElement, MouseButton,
-    MouseDownEvent, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
-    Window, div, point, px,
+    MouseDownEvent, ParentElement, SharedString, StatefulInteractiveElement, Styled, Window, div,
+    point, px,
 };
-use recur_domain::TreeEntry;
+use recur_domain::{DiffStat, TreeEntry};
 use recur_ui::file_icons::file_icon;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::scroll_area;
 use recur_ui::{IconName, Theme, icon};
-use recur_view_core::file_drag::WorkspaceFileDrag;
+use recur_view_core::file_drag::{FileDragGhost, WorkspaceFileDrag};
 use recur_view_core::workspace_nav::scroll_delta_to_reveal;
 use recur_view_review::style::hsla;
 use recur_view_review::tree_sticky::{StickyHeader, fade_hits_rows, sync_tree_sticky_fades};
@@ -62,49 +62,6 @@ struct Row {
     branch_bottom: Option<f32>,
 }
 
-/// Drag ghost: the row's icon and name.
-pub struct FileDragGhost {
-    pub(crate) name: SharedString,
-    pub(crate) dir: bool,
-}
-
-impl FileDragGhost {
-    fn render_view(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement + use<> {
-        let t = Theme::of(cx).tokens;
-        div()
-            .flex()
-            .items_center()
-            .gap(px(4.))
-            .px(px(10.))
-            .py(px(3.))
-            .opacity(0.75)
-            .bg(hsla(t.pane_2))
-            .text_color(hsla(t.text))
-            .when(!self.dir, |d| {
-                d.child(
-                    div()
-                        .size(px(14.))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(file_icon(self.name.clone())),
-                )
-            })
-            .child(
-                text(self.name.clone())
-                    .size(12.5)
-                    .line_height(LineHeight::Scale(1.35))
-                    .nowrap(),
-            )
-    }
-}
-
-impl Render for FileDragGhost {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        recur_ui::guard::view(self, window, cx, Self::render_view)
-    }
-}
-
 /// The aggregate problem flag of a folder (`problemFlagFor` with `isDir`).
 fn dir_problem_flag(path: &str, by: &BTreeMap<String, PathProblemFlag>) -> Option<PathProblemFlag> {
     let prefix = format!("{path}/");
@@ -131,6 +88,20 @@ fn dir_problem_flag(path: &str, by: &BTreeMap<String, PathProblemFlag>) -> Optio
     })
 }
 
+/// The `+N −M` of the changed files under `e` in the tree it came from.
+fn shown_total(e: &TreeEntry, counts: &BTreeMap<String, DiffStat>) -> Option<DiffStat> {
+    if !e.dir {
+        return counts.get(&e.path).copied();
+    }
+    e.children
+        .iter()
+        .filter_map(|c| shown_total(c, counts))
+        .reduce(|a, b| DiffStat {
+            add: a.add + b.add,
+            del: a.del + b.del,
+        })
+}
+
 impl Observatory {
     /// `visibleTree` and each folder's visible children, laid out with fixed heights.
     /// Rows the explorer lays out (on screen or culled).
@@ -141,16 +112,22 @@ impl Observatory {
 
     fn explorer_rows(&self, cx: &gpui_kit::App) -> (Vec<Row>, f32) {
         let matchers = self.exclude_matchers(cx);
-        let changed = self.filter_changed();
-        let changed_tree = if changed {
-            self.changed_tree(cx)
+        let filtered = self.files_filter_tree(cx);
+        let changed_tree = if filtered.is_none() && self.filter_changed() {
+            Some(self.changed_tree(cx))
         } else {
-            Rc::default()
+            None
         };
-        let roots: Vec<&TreeEntry> = if changed {
-            changed_tree.iter().collect()
-        } else {
-            visible_entries_by(&self.tree, |p| self.excluded(p, &matchers), None)
+        // A tree derived from paths, with its folds; the listing has its expanded folders.
+        let derived = match (&filtered, &changed_tree) {
+            (Some((tree, _)), _) => Some((tree, &self.files_filter_collapsed)),
+            (None, Some(tree)) => Some((tree, &self.changed_collapsed)),
+            (None, None) => None,
+        };
+        let folds = derived.map(|(_, folds)| folds);
+        let roots: Vec<&TreeEntry> = match derived {
+            Some((tree, _)) => tree.iter().collect(),
+            None => visible_entries_by(&self.tree, |p| self.excluded(p, &matchers), None),
         };
         let mut rows = Vec::new();
         let mut y = 0.;
@@ -169,7 +146,7 @@ impl Observatory {
             o: &Observatory,
             nodes: &[&TreeEntry],
             depth: usize,
-            changed: bool,
+            folds: Option<&BTreeSet<String>>,
             matchers: &Rc<Vec<recur_code::glob::CompiledGlob>>,
             draft_new: &Option<String>,
             renaming: &Option<String>,
@@ -179,12 +156,11 @@ impl Observatory {
             for e in nodes {
                 let is_rename = renaming.as_deref() == Some(e.path.as_str());
                 if e.dir {
-                    let open = if changed {
-                        !o.changed_collapsed.contains(&e.path)
-                    } else {
-                        o.expanded.contains(&e.path)
+                    let open = match folds {
+                        Some(folds) => !folds.contains(&e.path),
+                        None => o.expanded.contains(&e.path),
                     };
-                    let loading = !changed && o.loading_dirs.contains(&e.path);
+                    let loading = folds.is_none() && o.loading_dirs.contains(&e.path);
                     let at = rows.len();
                     let h = if is_rename { DRAFT_ROW_H } else { TREE_ROW_H };
                     rows.push(Row {
@@ -201,7 +177,7 @@ impl Observatory {
                     });
                     *y += h;
                     if open {
-                        let kids: Vec<&TreeEntry> = if changed {
+                        let kids: Vec<&TreeEntry> = if folds.is_some() {
                             e.children.iter().collect()
                         } else {
                             visible_entries_by(&e.children, |p| o.excluded(p, matchers), None)
@@ -224,7 +200,7 @@ impl Observatory {
                                 o,
                                 &kids,
                                 depth + 1,
-                                changed,
+                                folds,
                                 matchers,
                                 draft_new,
                                 renaming,
@@ -272,7 +248,7 @@ impl Observatory {
             }
         }
         walk(
-            self, &roots, 0, changed, &matchers, &draft_new, &renaming, &mut rows, &mut y,
+            self, &roots, 0, folds, &matchers, &draft_new, &renaming, &mut rows, &mut y,
         );
         if draft_new.as_deref() == Some("") {
             rows.push(Row {
@@ -574,6 +550,30 @@ impl Observatory {
                             .nowrap(),
                     ),
             ));
+        }
+        let counts = self.diff_counts(cx);
+        // Among the filter's matches a folder totals the files shown, as the review's list does.
+        let stat = if e.dir && !self.files_filter_q(cx).is_empty() {
+            shown_total(e, &counts)
+        } else {
+            counts.get(&e.path).copied()
+        };
+        if let Some(stat) = stat {
+            let sel = format!("obs-diff:{}:+{}-{}", e.path, stat.add, stat.del);
+            d = d.child(
+                recur_view_review::style::add_del(
+                    stat.add,
+                    stat.del,
+                    recur_ui::fonts::Family::Ui,
+                    10.,
+                    5.,
+                    LineHeight::Scale(1.35),
+                    cx,
+                )
+                .debug_selector(move || sel.clone())
+                // A folder has no status letter: its counts line up with its files'.
+                .when(e.dir, |d| d.mr(px(16.))),
+            );
         }
         if !st.is_empty() && !e.dir {
             let wip = self.working_status.contains_key(&e.path);
@@ -915,6 +915,8 @@ impl Observatory {
         if !self.tree_loading && rows.is_empty() && self.draft_edit.is_none() {
             let msg = if self.worktree_missing {
                 "This workspace's folder no longer exists."
+            } else if !self.files_filter_q(cx).is_empty() {
+                "No files match."
             } else if self.filter_changed() {
                 "No changes since base."
             } else {
@@ -997,6 +999,35 @@ impl Observatory {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
+        let filter = recur_view_review::file_list::filter_files_row(
+            &self.inputs.files_filter,
+            cx.guarded_listener(|o, ev: &gpui_kit::KeyDownEvent, window, cx| {
+                // Esc clears the text first; with none it goes on to close a floating panel.
+                if ev.keystroke.key == "escape"
+                    && !o.inputs.files_filter.read(cx).value().is_empty()
+                {
+                    cx.stop_propagation();
+                    o.set_files_filter("", window, cx);
+                }
+            }),
+            window,
+            cx,
+        )
+        .debug_selector(|| "obs-files-filter".into());
+        let capped = self.files_filter_tree(cx).is_some_and(|(_, capped)| capped);
+        let capped = capped.then(|| {
+            obs_empty(
+                format!(
+                    "Showing the first {} matches. Type more to narrow them.",
+                    crate::obs::FILES_FILTER_CAP
+                ),
+                false,
+                cx,
+            )
+            .flex_none()
+            .py(px(6.))
+            .debug_selector(|| "obs-files-capped".into())
+        });
         let tree = self.render_files_tree(window, cx);
         let (bar_w, sp_w) = (
             f32::from(self.bounds.files_status.get().size.width),
@@ -1077,9 +1108,9 @@ impl Observatory {
                     .child(
                         wrap.text(crate::style::link_text(format!("{dirty} dirty")).weight(600.)),
                     )
-                    .on_click(cx.guarded_listener(|o, _, window, cx| {
-                        o.select_code_panel(recur_view_core::prefs::CodePanelKey::Scm, window, cx)
-                    })),
+                    .on_click(
+                        cx.guarded_listener(|o, _, window, cx| o.open_working_review(window, cx)),
+                    ),
             );
         }
         if dirty > 0 && findings > 0 {
@@ -1113,7 +1144,9 @@ impl Observatory {
             .flex_1()
             .min_h_0()
             .h_full()
+            .child(filter)
             .child(tree)
+            .children(capped)
             .child(bar)
             .into_any_element()
     }

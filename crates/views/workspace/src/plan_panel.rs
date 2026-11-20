@@ -1227,22 +1227,9 @@ impl PlanPanel {
         pane.child(foot).into_any_element()
     }
 
-    /// The panel's backdrop (what the scroll fades blend into): the side the plan pane sits on.
+    /// The panel's backdrop (what the scroll fades blend into): the center column's.
     fn backdrop(&self, cx: &gpui_kit::App) -> recur_ui::Color {
-        let t = Theme::of(cx).tokens;
-        let side = self
-            .state
-            .read(cx)
-            .panels
-            .sides
-            .get(&recur_view_core::prefs::CodePanelKey::Plan)
-            .copied()
-            .unwrap_or_else(|| recur_view_core::prefs::CodePanelKey::Plan.default_side());
-        if side == recur_view_core::prefs::PanelSide::Left {
-            t.bg
-        } else {
-            t.pane
-        }
+        Theme::of(cx).tokens.bg
     }
 
     fn step_check(&self, d: &StepDraft, cx: &mut Context<Self>) -> AnyElement {

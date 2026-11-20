@@ -519,6 +519,11 @@ async fn every_method_answers() {
     );
     note(
         &mut errs,
+        "UnstagedFiles",
+        s.code.unstaged_files("storefront", "LOOP-2231").await.err(),
+    );
+    note(
+        &mut errs,
         "WorkingStatus",
         s.code.working_status("storefront", "LOOP-2231").await.err(),
     );

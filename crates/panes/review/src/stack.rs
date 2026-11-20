@@ -26,6 +26,7 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{IconName, Theme, icon};
 use recur_view_core::AppState;
 
+use crate::card_editor::WorkingEditors;
 use crate::diff_file::{DiffFile, DiffFileHooks, DiffFileProps, NoteMode};
 use crate::findings::FindingsByPath;
 use crate::pane::Pane;
@@ -84,6 +85,8 @@ pub struct CardProps {
     pub hooks: DiffFileHooks,
     /// Where image files' previous and current revisions come from.
     pub image_revs: Option<ImageRevs>,
+    /// The host's editable diffs, for the cards that mount one (the Uncommitted tab).
+    pub editors: Option<Rc<dyn WorkingEditors>>,
 }
 
 /// The `/workspace-file` revisions an image card compares: `before` and `after` are `at`
@@ -172,6 +175,8 @@ pub struct FileStack {
     /// A TOC selection to scroll to once its card lays out (two passes, as the two ticks).
     pending_select: Option<(String, u8)>,
     diff_files: HashMap<String, Entity<DiffFile>>,
+    /// The cards the host last kept editors for.
+    editing: HashSet<String>,
     props: CardProps,
     /// Bumped when the spy picks a file (`tocReveal`).
     pub toc_reveal: u64,
@@ -206,6 +211,7 @@ impl FileStack {
             pending_pin: None,
             pending_select: None,
             diff_files: HashMap::new(),
+            editing: HashSet::new(),
             props: CardProps::default(),
             toc_reveal: 0,
             seen_top: -1.,
@@ -265,6 +271,9 @@ impl FileStack {
     }
 
     pub fn set_props(&mut self, props: CardProps) {
+        if props.editors.is_none() {
+            self.editing.clear();
+        }
         self.props = props;
     }
 
@@ -497,8 +506,13 @@ impl FileStack {
             }
         }
         drop(cards);
-        if resized && self.last_pin.as_ref().is_some_and(|p| p.at_end) && !self.spy_suppressed() {
-            self.pane.set_scroll_top(self.pane.max_scroll());
+        let end = self.pane.max_scroll();
+        if resized
+            && self.last_pin.as_ref().is_some_and(|p| p.at_end)
+            && !self.spy_suppressed()
+            && (self.pane.scroll_top() - end).abs() > 0.01
+        {
+            self.pane.set_scroll_top(end);
             return true;
         }
         false
@@ -632,7 +646,10 @@ impl FileStack {
                     first = false;
                 }
                 let body = if live {
-                    let props = self.card_props(f);
+                    let mut props = self.card_props(f);
+                    if let Some(e) = &self.props.editors {
+                        props.editor = e.editor(f, window, cx);
+                    }
                     let entity = match self.diff_files.get(&f.path) {
                         Some(e) => {
                             e.update(cx, |d, cx| d.set_props(props, window, cx));
@@ -747,6 +764,18 @@ impl FileStack {
             if !skipped.is_empty() {
                 col = col.child(self.skipped_cards(skipped, first));
             }
+            if let Some(e) = self.props.editors.clone() {
+                let live: HashSet<String> = self
+                    .files
+                    .iter()
+                    .filter(|f| self.hydrated.contains(&f.path))
+                    .map(|f| f.path.clone())
+                    .collect();
+                if live != self.editing {
+                    self.editing = live.clone();
+                    e.retain(live, cx);
+                }
+            }
         }
         let paths: HashSet<&str> = self.files.iter().map(|f| f.path.as_str()).collect();
         self.cards
@@ -793,7 +822,15 @@ impl FileStack {
                     .flex_1()
                     .min_h_0()
                     .flex()
-                    .on_key_down(move |ev: &KeyDownEvent, _, cx| {
+                    .on_key_down(move |ev: &KeyDownEvent, window, cx| {
+                        // A card's editor takes its own keys.
+                        if window
+                            .context_stack()
+                            .iter()
+                            .any(|c| c.contains("RecurEditor"))
+                        {
+                            return;
+                        }
                         let k = &ev.keystroke;
                         let m = &k.modifiers;
                         let plain = !m.platform && !m.control && !m.alt;

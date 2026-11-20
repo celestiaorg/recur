@@ -20,22 +20,30 @@ PRs are grouped into **Needs your attention**, **Workspace is responding**, **Op
 
 Filter by project, by status (Open, Draft, Merged, Closed, All), or by review and check state. Sort by recently updated, newest, oldest, or title.
 
+## Where a PR opens
+
+A PR that has a workspace opens in that workspace: Recur selects the workspace and switches its center to the pull request view, with the chat on the left and the terminal below as usual. This is the same from the dashboard, the Inbox, a notification, the sidebar, the titlebar's **View PR**, the command palette and a link in the chat.
+
+A PR without a workspace opens as a page of its own. So does an older or closed PR of a workspace that has a newer one. **Create workspace** in the page's titlebar checks the PR out into a task workspace and takes you there, on its pull request view.
+
 ## Reviewing
 
-Open a PR to get its files, the full diff, commits, and the conversation. Leave line comments, then submit them together as a comment, an approval, or a request for changes. Reply to threads, resolve them, react, and mention people with autocomplete. Findings from reviewer agents show up alongside human comments.
+Open a PR to get its **Conversation**, **Commits**, **Files changed** (the full diff) and **Checks**. Leave line comments, then submit them together as a comment, an approval, or a request for changes. Reply to threads, resolve them, react, and mention people with autocomplete. Findings from reviewer agents show up alongside human comments.
+
+The PR's title, state, people, attention labels and branch lead the page. In a workspace the Conversation tab is called **Overview** and leads with the state, the number, the title (hover it when it is cut short), the people and the attention labels. The branch is in the workspace's titlebar.
 
 A PR without a workspace gets its own chat for Ask, Plan, and Review against the project checkout. New chats on a PR start in Review. Run `/review` there to have an agent review it.
 
 ## Acting on a PR
 
-From the PR titlebar you can:
+In a workspace, the PR's actions are where you work:
 
-- **Create workspace** to check out the PR into a task workspace so an agent can work on it, or **View workspace** when one exists.
-- Mark a draft **Ready for review**, or **Convert to draft**.
-- Merge with a merge commit, squash, or rebase, limited to the methods the repository allows.
-- See how far the branch is behind its base and update it by merge or rebase.
-- **Fix checks** starts an agent on the failing checks.
-- Pull or push updates between the workspace and GitHub.
+- The workspace titlebar has the PR's next step, whatever the center shows: **Ready for review** on a draft, **Fix checks** (starts an agent on the failing checks), **Queued**, **Conflicts** or **Blocked**, or **Merge** with a merge commit, squash, or rebase, limited to the methods the repository allows.
+- **View PR #N** in the titlebar switches the center to the pull request. Its menu has **Open in GitHub** and **Convert to draft**.
+- The workspace's own **Update with base**, **Pull updates**, **Push updates** and **Force push** bring the branch up to date and move commits between the workspace and GitHub.
+- The right end of the pull request's tab row has **Send back** (hand the review to the workflow's conductor), the pending comments chip and **Approve** / **Request changes**, while the pull request view shows.
+
+On the page of a PR without a workspace, the titlebar has all of them: **Create workspace**, **Open in GitHub**, the draft state, merge, update with base, and the review actions.
 
 In a workspace chat, `/fix-checks` investigates failing checks, `/address-review` fixes or answers unresolved review comments, and `/update` brings the branch up to date with its base. `/open-pr` and `/open-draft-pr` open a PR with an agent-written title and summary.
 

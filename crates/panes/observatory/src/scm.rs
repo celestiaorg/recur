@@ -1,50 +1,25 @@
-//! Source Control (commit staged with a generated or typed message, stage / unstage,
-//! discard) and the Search panel (search and replace across the worktree).
+//! Committing from the review's Uncommitted tab (the checked files, or everything when none
+//! is checked, with a generated or typed message), stage / unstage, discard, and the Search
+//! panel (search and replace across the worktree).
 
 use gpui_kit::{Context, Task, Window};
 use recur_domain::SearchOpts;
 use recur_ui::widgets::ToastKind;
 use recur_view_core::{call, toast};
-use recur_view_review::review_diff::{FileListMode, write_file_list_mode};
 
 use crate::obs::{Observatory, OpenRequest};
 
 impl Observatory {
-    /// `stagedPaths` / `unstagedPaths` of the working status, sorted. Every folder row of the
-    /// changes list reads them, so they are sorted once per status change, not once per row.
-    pub(crate) fn working_paths(&self) -> std::rc::Rc<crate::obs::WorkingPaths> {
-        if let Some(m) = self.working_paths_memo.borrow().as_ref() {
-            return m.clone();
+    /// Redraw the commit composer: it is an isolated view inside the review, so the
+    /// Observatory's own redraws do not reach it.
+    pub(crate) fn notify_commit_foot(&self, cx: &mut gpui_kit::App) {
+        if let Some(f) = &self.commit_foot {
+            cx.notify(f.entity_id());
         }
-        let staged: std::collections::HashSet<&str> =
-            self.staged_files.iter().map(String::as_str).collect();
-        let mut all: Vec<String> = self.working_status.keys().cloned().collect();
-        all.sort_by(|a, b| recur_code::collate::locale_compare(a, b));
-        let m = std::rc::Rc::new(all.into_iter().partition(|p| staged.contains(p.as_str())));
-        *self.working_paths_memo.borrow_mut() = Some(m.clone());
-        m
     }
 
-    /// Drops `working_paths` after `working_status` or `staged_files` changed.
-    pub(crate) fn working_changed(&self) {
-        self.working_paths_memo.borrow_mut().take();
-    }
-
-    pub(crate) fn set_scm_file_list_mode(&mut self, next: FileListMode, cx: &mut Context<Self>) {
-        self.scm_file_list_mode = next;
-        self.state
-            .update(cx, |s, _| write_file_list_mode(s.storage_mut(), next));
-        cx.notify();
-    }
-
-    pub(crate) fn toggle_scm_dir(&mut self, path: &str, cx: &mut Context<Self>) {
-        if !self.scm_collapsed.remove(path) {
-            self.scm_collapsed.insert(path.to_string());
-        }
-        cx.notify();
-    }
-
-    /// `humanCommit` (⌘↵ in the message, the Commit button).
+    /// `humanCommit` (⌘↵ in the message, the Commit button): the checked (staged) files, or
+    /// every uncommitted change when none is checked, as the titlebar's Commit does.
     pub(crate) fn human_commit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.is_git(cx) || !self.tree_writable() || self.commit_busy {
             return;
@@ -54,24 +29,29 @@ impl Observatory {
             toast(ToastKind::Info, "Enter a commit message", cx);
             return;
         }
-        if self.staged_files.is_empty() {
-            toast(ToastKind::Info, "Stage changes to commit", cx);
+        if self.staged_files.is_empty() && self.working_dirty_count() == 0 {
+            toast(ToastKind::Info, "Nothing to commit", cx);
             return;
         }
+        let all = self.staged_files.is_empty();
         self.commit_busy = true;
-        cx.notify();
+        self.notify_commit_foot(cx);
         let svc = self.services.clone();
         let (pid, wid) = (
             self.props.project_id.clone(),
             self.props.workspace_id.clone(),
         );
         cx.spawn_in(window, async move |this, cx| {
-            let res = call(
-                cx,
-                svc.code.commit_staged(&pid, &wid, &msg),
-                "Commit failed",
-            )
-            .await;
+            let res = if all {
+                call(cx, svc.code.commit(&pid, &wid, &msg), "Commit failed").await
+            } else {
+                call(
+                    cx,
+                    svc.code.commit_staged(&pid, &wid, &msg),
+                    "Commit failed",
+                )
+                .await
+            };
             let refresh = this
                 .update_in(cx, |o, window, cx| {
                     let res = res?;
@@ -97,7 +77,7 @@ impl Observatory {
             }
             let _ = this.update(cx, |o, cx| {
                 o.commit_busy = false;
-                cx.notify();
+                o.notify_commit_foot(cx);
             });
         })
         .detach();
@@ -111,13 +91,13 @@ impl Observatory {
         if self.staged_files.is_empty() {
             toast(
                 ToastKind::Info,
-                "Stage changes to generate a commit message",
+                "Check files to generate a commit message",
                 cx,
             );
             return;
         }
         self.commit_msg_busy = true;
-        cx.notify();
+        self.notify_commit_foot(cx);
         let svc = self.services.clone();
         let (pid, wid) = (
             self.props.project_id.clone(),
@@ -140,7 +120,7 @@ impl Observatory {
                         o.inputs.set_commit_msg(t, window, cx);
                     }
                 }
-                cx.notify();
+                o.notify_commit_foot(cx);
             });
         })
         .detach();
@@ -280,16 +260,6 @@ impl Observatory {
             }
         })
         .detach();
-    }
-
-    pub(crate) fn stage_all(&mut self, cx: &mut Context<Self>) {
-        let unstaged = self.working_paths().1.clone();
-        self.stage_paths(unstaged, true, cx);
-    }
-
-    pub(crate) fn unstage_all(&mut self, cx: &mut Context<Self>) {
-        let staged = self.working_paths().0.clone();
-        self.stage_paths(staged, false, cx);
     }
 
     // ---- search ----

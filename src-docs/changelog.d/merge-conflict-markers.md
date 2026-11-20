@@ -1,3 +1,3 @@
 ### Fixed
 
-- Files with merge conflicts are marked `!` in red in the file explorer, the Source Control panel and the status bar, and their folders turn red too. Conflicted files sit under Changes instead of Staged, so staging one marks it resolved.
+- Files with merge conflicts are marked `!` in red in the file explorer, the review's Uncommitted tab and the status bar, and their folders turn red too. In the Uncommitted tab a conflicted file starts unchecked, so checking it marks it resolved.

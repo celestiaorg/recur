@@ -5,6 +5,7 @@
 
 use recur_ui::guard::Guarded;
 use std::collections::{BTreeMap, BTreeSet};
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::{AppContext as _, Context, PromptLevel, Task, Window};
@@ -328,7 +329,7 @@ impl Observatory {
         self.git_status_ready = false;
         self.working_status.clear();
         self.staged_files.clear();
-        self.working_changed();
+        self.unstaged_files.clear();
         self.worktree_missing = false;
         self.outline.clear();
         self.hits.clear();
@@ -367,6 +368,7 @@ impl Observatory {
         if !soft {
             self.begin_tree_load(cx);
         }
+        self.refresh_diff_stats(cx).detach();
         let is_git = self.is_git(cx);
         let writable = self.tree_writable();
         let svc = self.services.clone();
@@ -384,6 +386,11 @@ impl Observatory {
             };
             let staged = if writable && is_git {
                 svc.code.staged_files(&pid, &wid).await.ok()
+            } else {
+                None
+            };
+            let unstaged = if writable && is_git {
+                svc.code.unstaged_files(&pid, &wid).await.ok()
             } else {
                 None
             };
@@ -417,11 +424,14 @@ impl Observatory {
                 }
                 if let Some(ws) = ws {
                     o.working_status = compact_status(ws);
+                    o.leave_uncommitted_when_clean(cx);
                 }
                 if let Some(staged) = staged {
                     o.staged_files = staged;
                 }
-                o.working_changed();
+                if let Some(unstaged) = unstaged {
+                    o.unstaged_files = unstaged;
+                }
                 o.git_status_ready = true;
                 if !soft {
                     o.end_tree_load();
@@ -479,11 +489,11 @@ impl Observatory {
         force_open: bool,
         cx: &mut Context<Self>,
     ) -> Task<()> {
-        if self.filter_changed() {
-            if force_open || self.changed_collapsed.contains(path) {
-                self.changed_collapsed.remove(path);
+        if let Some(folds) = self.derived_folds(cx) {
+            if force_open || folds.contains(path) {
+                folds.remove(path);
             } else {
-                self.changed_collapsed.insert(path.to_string());
+                folds.insert(path.to_string());
             }
             cx.notify();
             return Task::ready(());
@@ -519,9 +529,9 @@ impl Observatory {
             acc.push_str(p);
             dirs.push(acc.clone());
         }
-        if self.filter_changed() {
+        if let Some(folds) = self.derived_folds(cx) {
             for d in &dirs {
-                self.changed_collapsed.remove(d);
+                folds.remove(d);
             }
             cx.notify();
             return Task::ready(());
@@ -618,10 +628,88 @@ impl Observatory {
         })
     }
 
+    // ---- the filter box ----
+
+    /// The folds of a tree derived from paths (the filter's matches, else the Changed scope):
+    /// its folders are all open until folded. `None` for the listing, which loads and expands.
+    fn derived_folds(&mut self, cx: &gpui_kit::App) -> Option<&mut BTreeSet<String>> {
+        if !self.files_filter_q(cx).is_empty() {
+            Some(&mut self.files_filter_collapsed)
+        } else if self.filter_changed() {
+            Some(&mut self.changed_collapsed)
+        } else {
+            None
+        }
+    }
+
+    /// The filter's text changed: the tree's scroll offset is kept while the matches show and
+    /// put back when the box clears, with the tree's own folds untouched in between.
+    pub(crate) fn files_filter_changed(&mut self, cx: &mut Context<Self>) {
+        if self.files_filter_q(cx).is_empty() {
+            if let Some(at) = self.files_filter_scroll.take() {
+                self.files_scroll.set_offset(at);
+            }
+            self.files_filter_collapsed.clear();
+            self.files_filter_index = None;
+        } else {
+            if self.files_filter_scroll.is_none() {
+                self.files_filter_scroll = Some(self.files_scroll.offset());
+                self.files_scroll.set_offset(Default::default());
+            }
+            if self.files_filter_index.is_none() {
+                self.load_files_filter_index(cx);
+            }
+        }
+        cx.notify();
+    }
+
+    pub(crate) fn set_files_filter(
+        &mut self,
+        text: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let text = text.to_string();
+        self.inputs
+            .files_filter
+            .update(cx, |f, cx| f.set_value(text, window, cx));
+        self.files_filter_changed(cx);
+    }
+
+    /// Reads the file index for the filter in the All files scope.
+    pub(crate) fn load_files_filter_index(&mut self, cx: &mut Context<Self>) {
+        let (pid, wid) = (
+            self.props.project_id.clone(),
+            self.props.workspace_id.clone(),
+        );
+        if self.files_filter_q(cx).is_empty()
+            || self.filter_changed()
+            || (pid.is_empty() && wid.is_empty())
+        {
+            return;
+        }
+        let token = self.root_token;
+        let svc = self.services.clone();
+        cx.spawn(async move |this, cx| {
+            let Ok(paths) = svc.code.list_files(&pid, &wid).await else {
+                return;
+            };
+            let _ = this.update(cx, |o, cx| {
+                if token != o.root_token || o.files_filter_index.as_deref() == Some(&paths) {
+                    return;
+                }
+                o.files_filter_index = Some(Rc::new(paths));
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     /// `setBrowse`: Changed vs All files, remembered per root.
     pub(crate) fn set_browse(&mut self, all: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.browse_all = all;
         self.scope_chosen = true;
+        self.load_files_filter_index(cx);
         let (pid, wid) = (
             self.props.project_id.clone(),
             self.props.workspace_id.clone(),
@@ -655,6 +743,7 @@ impl Observatory {
         if pid.is_empty() && wid.is_empty() {
             return Task::ready(());
         }
+        self.refresh_diff_stats(cx).detach();
         self.git_status_gen += 1;
         let token = self.git_status_gen;
         if (!wid.is_empty() && self.worktree_path(cx).is_empty()) || !self.is_git(cx) {
@@ -663,7 +752,7 @@ impl Observatory {
             self.paths_gen += 1;
             self.working_status.clear();
             self.staged_files.clear();
-            self.working_changed();
+            self.unstaged_files.clear();
             cx.notify();
             return Task::ready(());
         }
@@ -694,12 +783,46 @@ impl Observatory {
         })
     }
 
+    /// The `+N −M` counts, re-read with the git status (a file event changes them without
+    /// changing a status letter).
+    pub(crate) fn refresh_diff_stats(&mut self, cx: &mut Context<Self>) -> Task<()> {
+        let (pid, wid) = (
+            self.props.project_id.clone(),
+            self.props.workspace_id.clone(),
+        );
+        self.diff_stats_gen += 1;
+        let token = self.diff_stats_gen;
+        if (pid.is_empty() && wid.is_empty())
+            || (!wid.is_empty() && self.worktree_path(cx).is_empty())
+            || !self.is_git(cx)
+        {
+            if !self.diff_stats.is_empty() {
+                self.diff_stats = Rc::default();
+                cx.notify();
+            }
+            return Task::ready(());
+        }
+        let svc = self.services.clone();
+        cx.spawn(async move |this, cx| {
+            let Ok(stats) = svc.code.diff_stats(&pid, &wid).await else {
+                return;
+            };
+            let _ = this.update(cx, |o, cx| {
+                if token != o.diff_stats_gen || stats == *o.diff_stats {
+                    return;
+                }
+                o.diff_stats = Rc::new(stats);
+                cx.notify();
+            });
+        })
+    }
+
     pub(crate) fn refresh_working_status(&mut self, cx: &mut Context<Self>) -> Task<()> {
         if !self.tree_writable() || !self.is_git(cx) || self.worktree_path(cx).is_empty() {
             self.working_status_gen += 1;
             self.working_status.clear();
             self.staged_files.clear();
-            self.working_changed();
+            self.unstaged_files.clear();
             cx.notify();
             return Task::ready(());
         }
@@ -718,6 +841,7 @@ impl Observatory {
             )
             .await;
             let staged = svc.code.staged_files(&pid, &wid).await.ok();
+            let unstaged = svc.code.unstaged_files(&pid, &wid).await.ok();
             let _ = this.update(cx, |o, cx| {
                 if token != o.working_status_gen {
                     return;
@@ -730,6 +854,7 @@ impl Observatory {
                     && st != o.working_status
                 {
                     o.working_status = st;
+                    o.leave_uncommitted_when_clean(cx);
                     changed = true;
                 }
                 if let Some(s) = staged
@@ -738,10 +863,15 @@ impl Observatory {
                     o.staged_files = s;
                     changed = true;
                 }
+                if let Some(s) = unstaged
+                    && s != o.unstaged_files
+                {
+                    o.unstaged_files = s;
+                    changed = true;
+                }
                 if !changed {
                     return;
                 }
-                o.working_changed();
                 o.sync_review_props_later(cx);
                 cx.notify();
             });
@@ -1204,7 +1334,9 @@ impl Observatory {
 
     /// `activeTree`: the derived Changed tree, else the listing.
     pub(crate) fn active_tree(&self, cx: &gpui_kit::App) -> Vec<TreeEntry> {
-        if self.filter_changed() {
+        if let Some((tree, _)) = self.files_filter_tree(cx) {
+            (*tree).clone()
+        } else if self.filter_changed() {
             recur_code::view::changed_tree::build_tree_from_paths(&self.review_paths(cx))
         } else {
             self.tree.clone()
@@ -1324,6 +1456,8 @@ impl Observatory {
             toast(ToastKind::Info, "Create files in a workflow worktree", cx);
             return;
         }
+        // The new entry's row is in the tree, not among the filter's matches.
+        self.set_files_filter("", window, cx);
         let parent = parent.to_string();
         let open = if parent.is_empty() {
             Task::ready(())

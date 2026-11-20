@@ -3,7 +3,9 @@
 use std::collections::{BTreeMap, HashSet};
 
 use recur_domain::{Pr, PrSource, Workspace};
-use recur_ui::IconName;
+pub use recur_forge::view::{RollupKind, checks_heading, group_checks};
+use recur_forge::view::{is_pending_check, is_skipped_check};
+use recur_ui::{Color, IconName, Tokens};
 
 /// GitHub-style PR lifecycle for chrome (sidebar icon tint).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -26,6 +28,17 @@ impl PrLifecycle {
             PrLifecycle::Closed => "closed",
         }
     }
+
+    /// The tint of the PR icon for this state (the sidebar row, the titlebar's View PR).
+    pub fn color(self, t: &Tokens) -> Color {
+        match self {
+            PrLifecycle::Open => t.emerald,
+            PrLifecycle::Draft => t.cyan,
+            PrLifecycle::Merged => t.indigo,
+            PrLifecycle::Closed => t.coral,
+            PrLifecycle::Queued => t.warn,
+        }
+    }
 }
 
 pub fn pr_lifecycle(pr: Option<&Pr>) -> Option<PrLifecycle> {
@@ -44,6 +57,46 @@ pub fn pr_lifecycle(pr: Option<&Pr>) -> Option<PrLifecycle> {
     } else {
         PrLifecycle::Open
     })
+}
+
+/// The checks rollup chrome shows for `pr`: `None` once it is merged or closed.
+pub fn pr_live_checks(pr: &Pr) -> RollupKind {
+    match pr_lifecycle(Some(pr)) {
+        Some(PrLifecycle::Merged | PrLifecycle::Closed) | None => RollupKind::None,
+        _ => recur_forge::view::pr_checks_rollup(pr),
+    }
+}
+
+/// A checks rollup's color and icon.
+pub fn checks_look(r: RollupKind, t: &Tokens) -> (Color, IconName) {
+    match r {
+        RollupKind::Fail => (t.coral, IconName::X),
+        RollupKind::Pending => (t.amber, IconName::Loader),
+        RollupKind::Pass => (t.emerald, IconName::Check),
+        RollupKind::None => (t.faint, IconName::Check),
+    }
+}
+
+/// One check's icon and color: skipped, passed, pending (the caller may spin it) or failed.
+pub fn check_icon(c: &recur_domain::Check, t: &Tokens) -> (IconName, Color, bool) {
+    if is_skipped_check(&c.status, &c.detail) {
+        (IconName::CircleSlash, t.muted, false)
+    } else if c.passed {
+        (IconName::Check, t.emerald, false)
+    } else if is_pending_check(&c.status) {
+        (IconName::Loader, t.amber, true)
+    } else {
+        (IconName::X, t.coral, false)
+    }
+}
+
+pub fn checks_title(r: RollupKind) -> &'static str {
+    match r {
+        RollupKind::Fail => "Checks failing",
+        RollupKind::Pending => "Checks running",
+        RollupKind::Pass => "Checks passed",
+        RollupKind::None => "No checks",
+    }
 }
 
 /// Keep a local Merged lifecycle when a stale GetPR or event still looks open.
@@ -84,6 +137,15 @@ pub fn pr_head(pr: &Pr) -> Pr {
         merge_state_status: pr.merge_state_status.clone(),
         ..Pr::default()
     }
+}
+
+/// Convert to draft applies: an open forge PR that is not a draft yet, which the viewer may
+/// change.
+pub fn can_convert_to_draft(pr: &Pr) -> bool {
+    use recur_engine::view::pr_merge_action::{MergeActionKind, can_set_pr_draft, pr_merge_action};
+    can_set_pr_draft(Some(pr))
+        && !pr.draft
+        && pr_merge_action(Some(pr), false).kind != MergeActionKind::Ready
 }
 
 /// Chrome glyph for a PR: draft dotted, closed crossed, merged git-merge, queued dashed.

@@ -2,6 +2,8 @@
 //! detail's tab, drafts and focus zone) and the fix-checks queue.
 //! They live for the session only.
 
+use std::collections::HashMap;
+
 use gpui_kit::{App, AppContext as _, Context, Entity, Global};
 
 use recur_engine::view::pr_fix_checks::PendingFixChecks;
@@ -30,8 +32,8 @@ pub struct PrUi {
     pub project_ids: Vec<String>,
     /// `prListSyncing`.
     pub syncing: bool,
-    /// `prDetailTab`.
-    pub tab: PrTab,
+    /// `prDetailTab`, per PR (absent is the conversation).
+    tabs: HashMap<String, PrTab>,
     /// `prComposerDraft`.
     pub composer_draft: String,
     /// Bumped when something other than the composer itself rewrote the draft.
@@ -58,16 +60,20 @@ impl PrUi {
         cx.notify();
     }
 
-    pub fn set_tab(&mut self, tab: PrTab, cx: &mut Context<Self>) {
-        if self.tab != tab {
-            self.tab = tab;
+    pub fn tab(&self, pr_id: &str) -> PrTab {
+        self.tabs.get(pr_id).copied().unwrap_or_default()
+    }
+
+    pub fn set_tab(&mut self, pr_id: &str, tab: PrTab, cx: &mut Context<Self>) {
+        if self.tab(pr_id) != tab {
+            self.tabs.insert(pr_id.to_string(), tab);
             cx.notify();
         }
     }
 
     /// `openPR`'s resets: the conversation tab and empty drafts.
-    pub fn reset_for_open(&mut self, cx: &mut Context<Self>) {
-        self.tab = PrTab::Conv;
+    pub fn reset_for_open(&mut self, pr_id: &str, cx: &mut Context<Self>) {
+        self.tabs.remove(pr_id);
         self.set_composer_draft("", cx);
         self.set_review_draft("", cx);
     }

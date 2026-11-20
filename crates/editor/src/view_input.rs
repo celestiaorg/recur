@@ -1346,10 +1346,11 @@ impl EditorView {
         &mut self,
         e: &MouseMoveEvent,
         bounds: Bounds<Pixels>,
+        over: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if bounds.contains(&e.position) {
+        if over {
             let now = recur_ui::motion::now(cx);
             for o in &mut self.bars {
                 o.pointer_moved(now);
@@ -1460,7 +1461,7 @@ impl EditorView {
             Some(_) => return,
             None => {}
         }
-        if !bounds.contains(&e.position) {
+        if !over {
             if self.chip_hover {
                 self.chip_hover = false;
                 cx.notify();

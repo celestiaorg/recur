@@ -81,9 +81,34 @@ fn github_open(pr: &Pr) -> bool {
         )
 }
 
+/// Where the actions show, and so which of them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ActionsHost {
+    /// The PR page's titlebar: all of them.
+    Page,
+    /// A workspace's titlebar: the PR's merge-state button. The workspace's own land chrome has
+    /// Update with base, Pull, Push and Force push, and its View PR menu the rest.
+    Workspace,
+    /// The tab row of a workspace's pull request view: Send back, the pending chip and the
+    /// review split.
+    TabRow,
+}
+
+impl ActionsHost {
+    fn route(self) -> ViewName {
+        match self {
+            ActionsHost::Page => ViewName::PrDetail,
+            ActionsHost::Workspace | ActionsHost::TabRow => ViewName::Detail,
+        }
+    }
+}
+
 pub struct PrTitlebarActions {
     state: Entity<AppState>,
     ui: Entity<PrUi>,
+    host: ActionsHost,
+    /// What a workspace host shows of the store, as of its last store change.
+    store_key: Option<(String, u64, bool)>,
     confirming_merge: bool,
     merge_menu_open: bool,
     review_menu_open: bool,
@@ -115,7 +140,6 @@ pub struct PrTitlebarActions {
 struct PrBrief {
     id: String,
     number: i64,
-    draft: bool,
     behind_base: i64,
     pending_comments: usize,
     merge_queue_enabled: bool,
@@ -128,7 +152,6 @@ impl PrBrief {
         PrBrief {
             id: pr.id.clone(),
             number: pr.number,
-            draft: pr.draft,
             behind_base: pr.behind_base,
             pending_comments: pr.pending_comments.len(),
             merge_queue_enabled: pr.merge_queue_enabled,
@@ -166,20 +189,34 @@ struct Derived {
 }
 
 impl PrTitlebarActions {
-    pub fn new(vcx: &ViewContext, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        vcx: &ViewContext,
+        host: ActionsHost,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let state = vcx.state.clone();
         let ui = ui(cx);
-        let subs = vec![
-            cx.observe_state_in(&state, Topics::ALL, window, |a, _, window, cx| {
-                a.state_changed(window, cx)
-            }),
-            cx.guarded_observe(&ui, |_, _, cx| cx.notify()),
-            cx.guarded_subscribe(&state, |a, _, ev: &AppliedEvent, cx| a.on_event(&ev.0, cx)),
-        ];
-        let review_pr_id = state.read(cx).selected_pr_id.clone();
+        let mut subs = vec![cx.observe_state_changes_in(
+            &state,
+            Topics::ALL,
+            window,
+            |a, topics, window, cx| a.store_changed(topics, window, cx),
+        )];
+        // The page's bar follows the PR stores and the linked workspace's git state; a
+        // workspace has its own land chrome for that.
+        if host == ActionsHost::Page {
+            subs.push(cx.guarded_observe(&ui, |_, _, cx| cx.notify()));
+            subs.push(
+                cx.guarded_subscribe(&state, |a, _, ev: &AppliedEvent, cx| a.on_event(&ev.0, cx)),
+            );
+        }
+        let review_pr_id = state.read(cx).shown_pr_id().to_string();
         let mut a = PrTitlebarActions {
             state,
             ui,
+            host,
+            store_key: None,
             confirming_merge: false,
             merge_menu_open: false,
             review_menu_open: false,
@@ -210,14 +247,47 @@ impl PrTitlebarActions {
         a
     }
 
-    fn pr(&self, cx: &App) -> Option<Pr> {
+    /// The PR on screen while this host's route shows.
+    fn pr_ref<'a>(&self, cx: &'a App) -> Option<&'a Pr> {
         let s = self.state.read(cx);
-        s.pr(&s.selected_pr_id).cloned()
+        (s.view == self.host.route())
+            .then(|| s.pr(s.shown_pr_id()))
+            .flatten()
+    }
+
+    fn pr(&self, cx: &App) -> Option<Pr> {
+        self.pr_ref(cx).cloned()
+    }
+
+    fn backdrop(&self, cx: &App) -> recur_ui::Color {
+        let t = Theme::of(cx).tokens;
+        if self.host == ActionsHost::TabRow {
+            t.pane
+        } else {
+            t.titlebar
+        }
+    }
+
+    /// A workspace host renders on the path of every notify (the titlebar, the Observatory): a
+    /// store change that leaves what it shows as it was redraws nothing.
+    fn store_changed(&mut self, topics: Topics, window: &mut Window, cx: &mut Context<Self>) {
+        if self.host != ActionsHost::Page {
+            let key = self.pr_ref(cx).map(|pr| {
+                let s = self.state.read(cx);
+                let has_run = s.workspace(pr.workspace_id.trim()).is_some_and(ws_has_run);
+                (pr.id.clone(), s.pr_rev(&pr.id), has_run)
+            });
+            if topics.without(crate::detail::keyed_topics()).is_empty() && self.store_key == key {
+                return;
+            }
+            self.store_key = key;
+        }
+        self.state_changed(window, cx);
     }
 
     fn derive(&self, cx: &App) -> Option<Derived> {
         let s = self.state.read(cx);
-        let pr = s.pr(&s.selected_pr_id)?;
+        let pr = self.pr_ref(cx)?;
         let merged = is_merged(pr);
         let pr_ws = s.workspaces.iter().find(|w| w.id == pr.workspace_id);
         let can_send_back = !merged && pr_ws.is_some_and(ws_has_run);
@@ -312,9 +382,9 @@ impl PrTitlebarActions {
         let (selected, pr, on) = {
             let s = self.state.read(cx);
             (
-                s.selected_pr_id.clone(),
-                s.pr(&s.selected_pr_id).map(pr_head),
-                s.view == ViewName::PrDetail,
+                s.shown_pr_id().to_string(),
+                s.pr(s.shown_pr_id()).map(pr_head),
+                s.view == self.host.route(),
             )
         };
         // Entering the route starts the bar fresh.
@@ -328,6 +398,10 @@ impl PrTitlebarActions {
         if selected != self.review_pr_id {
             self.review_pr_id = selected;
             self.reset_for_pr(cx);
+        }
+        if self.host != ActionsHost::Page {
+            cx.notify();
+            return;
         }
         let land_ws = pr
             .as_ref()
@@ -624,7 +698,8 @@ impl PrTitlebarActions {
         }
         self.awaiting_update = true;
         self.update_menu_open = false;
-        self.ui.update(cx, |u, cx| u.set_tab(PrTab::Conv, cx));
+        self.ui
+            .update(cx, |u, cx| u.set_tab(&d.pr.id, PrTab::Conv, cx));
         cx.notify();
         let services = self.state.read(cx).services().clone();
         let state = self.state.clone();
@@ -733,37 +808,18 @@ impl PrTitlebarActions {
         if d.busy || !d.can_draft || self.draft_busy {
             return;
         }
-        let (id, prev) = (d.pr.id, d.pr.draft);
+        let id = d.pr.id;
         self.draft_busy = true;
-        self.state
-            .update(cx, |s, cx| s.update_pr(&id, |p| p.draft = draft, cx));
         cx.notify();
-        let services = self.state.read(cx).services().clone();
-        let state = self.state.clone();
+        let done = self
+            .state
+            .update(cx, |s, cx| s.set_pr_draft(&id, draft, cx));
         cx.spawn(async move |me, cx| {
-            let fail = if draft {
-                "Convert to draft failed"
-            } else {
-                "Mark ready failed"
-            };
-            let updated = call(cx, services.prs.set_pr_draft(&id, draft), fail).await;
+            done.await;
             let _ = me.update(cx, |a, cx| {
                 a.draft_busy = false;
                 cx.notify();
             });
-            match updated {
-                Some(mut u) => {
-                    u.draft = draft;
-                    state.update(cx, |s, cx| s.update_pr(&u.id.clone(), |p| *p = u, cx));
-                    let msg = if draft {
-                        "Converted to draft"
-                    } else {
-                        "Ready for review"
-                    };
-                    cx.update(|cx| toast(ToastKind::Success, msg, cx));
-                }
-                None => state.update(cx, |s, cx| s.update_pr(&id, |p| p.draft = prev, cx)),
-            }
         })
         .detach();
     }
@@ -871,7 +927,7 @@ impl PrTitlebarActions {
         on_click: Option<fn(&mut Self, &mut Context<Self>)>,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let backdrop = Theme::of(cx).tokens.titlebar;
+        let backdrop = self.backdrop(cx);
         let label: SharedString = label.into();
         let mut b = tag(
             tbtn(id, kind, TbtnSize::TITLEBAR, off.then_some(backdrop), cx),
@@ -892,7 +948,7 @@ impl PrTitlebarActions {
     }
 
     fn update_split(&mut self, d: &Derived, cx: &mut Context<Self>) -> AnyElement {
-        let backdrop = Theme::of(cx).tokens.titlebar;
+        let backdrop = self.backdrop(cx);
         let over = d.busy.then_some(backdrop);
         let tip = match d.action.kind {
             MergeActionKind::UpdateBase | MergeActionKind::Resolve => d.action.title.clone(),
@@ -976,7 +1032,7 @@ impl PrTitlebarActions {
     }
 
     fn review_split(&mut self, d: &Derived, cx: &mut Context<Self>) -> AnyElement {
-        let backdrop = Theme::of(cx).tokens.titlebar;
+        let backdrop = self.backdrop(cx);
         let over = d.busy.then_some(backdrop);
         let approve = self.review_kind == PrReviewKind::Approve;
         let (label, tip, ico) = if approve {
@@ -1059,7 +1115,7 @@ impl PrTitlebarActions {
     }
 
     fn merge_split(&mut self, d: &Derived, cx: &mut Context<Self>) -> AnyElement {
-        let backdrop = Theme::of(cx).tokens.titlebar;
+        let backdrop = self.backdrop(cx);
         let over = d.busy.then_some(backdrop);
         let label = if self.confirming_merge {
             format!("Confirm {}", d.merge_label.to_lowercase())
@@ -1259,14 +1315,28 @@ impl PrTitlebarActions {
             .flex()
             .items_center()
             .gap(px(6.));
+        // With nothing to show, a workspace's bar gives back the gap its place in the row takes.
+        let empty = |root: gpui_kit::Stateful<gpui_kit::Div>, host| {
+            if host == ActionsHost::Page {
+                root
+            } else {
+                root.ml(px(-6.))
+            }
+        };
+        let host = self.host;
+        let (page, bar, row) = (
+            host == ActionsHost::Page,
+            host != ActionsHost::TabRow,
+            host != ActionsHost::Workspace,
+        );
         let Some(d) = self.derive(cx) else {
-            return root;
+            return empty(root, host);
         };
         if d.github_href.is_empty() && d.merged {
-            return root;
+            return empty(root, host);
         }
         let mut out: Vec<AnyElement> = Vec::new();
-        if !d.github_href.is_empty() {
+        if page && !d.github_href.is_empty() {
             let href = d.github_href.clone();
             let b = no_drag(
                 tag(
@@ -1281,7 +1351,7 @@ impl PrTitlebarActions {
             );
             out.push(titled("pr-gh-tip", "Open in GitHub", b).into_any_element());
         }
-        if d.can_send_back {
+        if row && d.can_send_back {
             let label = if self.sending_back {
                 "Sending…"
             } else {
@@ -1302,7 +1372,7 @@ impl PrTitlebarActions {
             ));
         }
         if !d.merged {
-            if d.action.kind == MergeActionKind::Updating {
+            if page && d.action.kind == MergeActionKind::Updating {
                 let deg = spin_deg(window, cx);
                 out.push(self.button(
                     "pr-updating",
@@ -1315,7 +1385,7 @@ impl PrTitlebarActions {
                     None,
                     cx,
                 ));
-            } else if d.show_update {
+            } else if page && d.show_update {
                 out.push(self.update_split(&d, cx));
             }
             let tip = |t: &str| {
@@ -1325,7 +1395,7 @@ impl PrTitlebarActions {
                     d.land_pending_title.to_string()
                 })
             };
-            if d.can_pull {
+            if page && d.can_pull {
                 let label = if self.pulling {
                     "Pulling…"
                 } else {
@@ -1343,7 +1413,7 @@ impl PrTitlebarActions {
                     cx,
                 ));
             }
-            if d.can_push {
+            if page && d.can_push {
                 let label = if self.pushing {
                     "Pushing…"
                 } else {
@@ -1361,7 +1431,7 @@ impl PrTitlebarActions {
                     cx,
                 ));
             }
-            if d.can_force_push {
+            if page && d.can_force_push {
                 let label = if self.pushing {
                     "Force-pushing…"
                 } else {
@@ -1380,13 +1450,13 @@ impl PrTitlebarActions {
                 ));
             }
             let pending = d.pr.pending_comments;
-            if pending > 0 {
+            if row && pending > 0 {
                 out.push(self.pending_chip(pending, &d, cx));
             }
-            if d.can_approve {
+            if row && d.can_approve {
                 out.push(self.review_split(&d, cx));
             }
-            if d.can_draft && !d.is_draft {
+            if page && d.can_draft && !d.is_draft {
                 out.push(self.button(
                     "pr-to-draft",
                     Tbtn::Default,
@@ -1401,6 +1471,7 @@ impl PrTitlebarActions {
             }
             let title = Some(d.action.title.clone());
             match d.action.kind {
+                _ if !bar => {}
                 MergeActionKind::Ready => out.push(self.button(
                     "pr-ready",
                     Tbtn::Solid,
@@ -1448,6 +1519,9 @@ impl PrTitlebarActions {
                 MergeActionKind::Merge => out.push(self.merge_split(&d, cx)),
                 _ => {}
             }
+        }
+        if out.is_empty() {
+            return empty(root, host);
         }
         root.children(out)
     }

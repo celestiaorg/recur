@@ -363,6 +363,98 @@ fn inbox_and_pr_dashboard_do_not_keep_the_row_selected(cx: &mut TestAppContext) 
 }
 
 #[gpui_kit::test]
+fn rows_show_an_open_prs_checks(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    assert!(
+        h.has("checks:Checks passed"),
+        "{ACTIVE}'s PR has passing checks"
+    );
+    assert!(!h.has("checks:Checks failing"));
+    h.state.update(h.cx, |s, cx| {
+        let pr = s.prs.iter_mut().find(|p| p.workspace_id == ACTIVE).unwrap();
+        pr.checks.as_mut().unwrap()[0].passed = false;
+        pr.checks.as_mut().unwrap()[0].status = "fail".into();
+        cx.notify();
+    });
+    assert!(h.has("checks:Checks failing"));
+    assert!(
+        !h.has("checks:Checks passed"),
+        "the other PRs have no checks"
+    );
+}
+
+#[gpui_kit::test]
+fn run_and_stop_are_one_split_button(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    h.state.update(h.cx, |s, cx| {
+        let pid = s.workspace(ACTIVE).unwrap().project_id.clone();
+        let p = s.projects.iter_mut().find(|p| p.id == pid).unwrap();
+        p.run_commands = vec![
+            recur_domain::RunCommand {
+                name: "dev".into(),
+                cmd: "pnpm dev".into(),
+            },
+            recur_domain::RunCommand {
+                name: "test".into(),
+                cmd: "pnpm test".into(),
+            },
+        ];
+        s.open_workspace(ACTIVE, false, cx);
+    });
+    h.settle();
+    assert!(h.has("tb-run") && h.has("tb-run-chev") && !h.has("tb-stop"));
+    h.state.update(h.cx, |s, cx| {
+        s.run.set_run_session(ACTIVE, "dev", "sess-dev");
+        cx.notify();
+    });
+    h.settle();
+    assert!(
+        h.has("tb-stop") && !h.has("tb-run"),
+        "running, the main half stops it instead of running it again"
+    );
+    assert!(h.has("tb-run-chev"), "the chevron still starts another run");
+    assert!(!h.has("tb-stop-chev"), "one split, not two");
+
+    // Two running: Stop opens the Stop palette to ask which.
+    h.state.update(h.cx, |s, cx| {
+        s.run.set_run_session(ACTIVE, "test", "sess-test");
+        cx.notify();
+    });
+    h.settle();
+    h.click("tb-stop");
+    assert!(h.read(|s| s.overlays.stop_menu));
+    assert_eq!(h.view(), ViewName::Detail);
+}
+
+#[gpui_kit::test]
+fn the_titlebars_view_pr_icon_says_the_prs_state(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    h.state
+        .update(h.cx, |s, cx| s.open_workspace(ACTIVE, false, cx));
+    h.settle();
+    assert!(h.has("tb-view-pr-icon:open"), "{ACTIVE}'s PR is open");
+    h.state.update(h.cx, |s, cx| {
+        let pr = s.prs.iter_mut().find(|p| p.workspace_id == ACTIVE).unwrap();
+        pr.draft = true;
+        cx.notify();
+    });
+    h.settle();
+    assert!(h.has("tb-view-pr-icon:draft"));
+}
+
+#[gpui_kit::test]
 fn hover_shows_view_pr_and_remove(cx: &mut TestAppContext) {
     let mut h = boot(
         cx,
@@ -503,6 +595,40 @@ fn boots_with_saved_hidden_projects_and_show_hidden(cx: &mut TestAppContext) {
     assert!(h.has("sec-hidden"));
     h.click("sec-hidden");
     assert!(!h.has("ph:marketing"));
+}
+
+#[gpui_kit::test]
+fn the_chord_floats_and_docks_the_right_panel(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    assert!(!h.read(|s| s.panels.side_float()), "specs start docked");
+    h.keys("secondary-alt-j");
+    assert!(h.read(|s| s.panels.side_float()));
+    h.keys("secondary-alt-j");
+    assert!(!h.read(|s| s.panels.side_float()));
+}
+
+/// Esc while the right panel floats closes the flyout (the workspace view's own key), not
+/// the workspace.
+#[gpui_kit::test]
+fn esc_with_the_right_panel_floating_stays_in_the_workspace(cx: &mut TestAppContext) {
+    let mut h = boot(
+        cx,
+        bridge(json!({}), Overrides::default()),
+        LocalStorage::in_memory(),
+    );
+    h.state
+        .update(h.cx, |s, cx| s.open_workspace(ACTIVE, false, cx));
+    h.settle();
+    h.state.update(h.cx, |s, _| s.side_float_open = true);
+    h.keys("escape");
+    assert_eq!(h.view(), ViewName::Detail);
+    h.state.update(h.cx, |s, _| s.side_float_open = false);
+    h.keys("escape");
+    assert_eq!(h.view(), ViewName::Briefing);
 }
 
 #[gpui_kit::test]
@@ -727,7 +853,7 @@ fn esc_from_pr_detail_returns_to_the_pr_list(cx: &mut TestAppContext) {
         LocalStorage::in_memory(),
     );
     let state = h.state.clone();
-    state.update(h.cx, |s, cx| s.open_pr("482", cx));
+    state.update(h.cx, |s, cx| s.open_pr_page("482", cx));
     h.settle();
     assert_eq!(h.view(), ViewName::PrDetail);
     h.keys("escape");

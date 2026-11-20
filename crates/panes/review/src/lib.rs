@@ -27,6 +27,7 @@
 //! and [`commits::commit_row`].
 
 pub mod autosize;
+pub mod card_editor;
 pub mod comment_header;
 pub mod comment_hunk;
 pub mod commit_meta;

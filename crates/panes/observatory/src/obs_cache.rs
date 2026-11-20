@@ -25,12 +25,15 @@ pub struct ObservatorySnapshot {
     pub expanded: BTreeSet<String>,
     pub loaded_dirs: BTreeSet<String>,
     pub changed_collapsed: BTreeSet<String>,
+    /// The explorer's filter text (kept here in memory, never written to disk).
+    pub files_filter: String,
     pub changed_paths: Vec<String>,
     pub git_status: BTreeMap<String, String>,
     /// GitStatus had settled when taken (an empty map is also a clean tree).
     pub git_status_ready: bool,
     pub working_status: BTreeMap<String, String>,
     pub staged_files: Vec<String>,
+    pub unstaged_files: Vec<String>,
     pub open_files: Vec<String>,
     pub closed_tabs: Vec<String>,
     pub selected_path: String,
@@ -84,11 +87,13 @@ impl Default for ObservatorySnapshot {
             expanded: BTreeSet::new(),
             loaded_dirs: BTreeSet::new(),
             changed_collapsed: BTreeSet::new(),
+            files_filter: String::new(),
             changed_paths: Vec::new(),
             git_status: BTreeMap::new(),
             git_status_ready: false,
             working_status: BTreeMap::new(),
             staged_files: Vec::new(),
+            unstaged_files: Vec::new(),
             open_files: Vec::new(),
             closed_tabs: Vec::new(),
             selected_path: String::new(),
@@ -177,10 +182,12 @@ pub fn snapshot_bytes(s: &ObservatorySnapshot) -> usize {
     n += tree_bytes(&s.tree);
     n += strs(&s.expanded) + strs(&s.loaded_dirs) + strs(&s.changed_collapsed);
     n += strs(&s.changed_paths) + strs(&s.staged_files) + strs(&s.open_files);
+    n += strs(&s.unstaged_files);
     n += strs(&s.closed_tabs);
     n += map_bytes(&s.git_status, |v| string_bytes(v));
     n += map_bytes(&s.working_status, |v| string_bytes(v));
     n += string_bytes(&s.selected_path) + string_bytes(&s.tree_path);
+    n += string_bytes(&s.files_filter);
     n += s.file.as_ref().map_or(0, file_bytes);
     n += string_bytes(&s.draft) + string_bytes(&s.saved_content);
     n += OBJ

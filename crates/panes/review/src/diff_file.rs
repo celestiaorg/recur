@@ -1,7 +1,8 @@
 //! One file's diff: the header and the line-numbered, syntax-highlighted
 //! rows (unified or split) with folding hunks, inline threads, pending notes, findings and the
 //! line-note composer (click or drag the `+` to pick a range). Long files window their rows
-//! against the scrolling pane ([`crate::review_window`]).
+//! against the scrolling pane ([`crate::review_window`]). Given an editor (the Uncommitted tab),
+//! the body is that editable diff instead of rows ([`crate::card_editor`]).
 
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};
@@ -38,6 +39,7 @@ use recur_view_core::{AppState, call, toast};
 use recur_view_widgets::findings_ui::finding_sev_icon;
 use recur_view_widgets::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 
+use crate::card_editor::CardEditor;
 use crate::diff_rows::{
     OpenLine, Selecting, api_line, compose_placeholder, composer_on, draft_covers, draft_ends,
     draft_sel, draft_tip, find_line, hunk_of, line_no, line_nums, open_line_no, pending_covering,
@@ -62,6 +64,7 @@ use crate::store::patch_pr_pending_comments;
 use crate::style::{BLANK_BG, HUNK_BG, HUNK_HOVER_BG, PENDING_BG, hsla, icon_btn, label, note_btn};
 use crate::syntax::{self, Highlighted};
 use recur_editor::theme::EditorTheme;
+use recur_editor::view::{EditorEvent, EditorView};
 
 /// Who the line-note composer writes for.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -80,6 +83,7 @@ type OpenFileFn = Rc<dyn Fn(String, Option<i64>, &mut Window, &mut App)>;
 /// `onAddFinding(path, line, body, endLine)`, resolving to whether it was saved.
 pub type AddFindingFn = Rc<dyn Fn(String, i64, String, i64, &mut Window, &mut App) -> Task<bool>>;
 type FindingFn = Rc<dyn Fn(Finding, &mut Window, &mut App)>;
+pub type PathFn = Rc<dyn Fn(String, &mut Window, &mut App)>;
 
 /// The callback props. `None` is "not passed".
 #[derive(Clone, Default)]
@@ -91,6 +95,8 @@ pub struct DiffFileHooks {
     pub add_finding: Option<AddFindingFn>,
     pub open_finding: Option<FindingFn>,
     pub post_finding: Option<FindingFn>,
+    /// `onDiscard(path)`: the header discards the file's uncommitted changes.
+    pub discard: Option<PathFn>,
 }
 
 /// `DiffFile`'s props.
@@ -112,6 +118,8 @@ pub struct DiffFileProps {
     /// An image's previous and current revision srcs ("" for a side that does not exist),
     /// shown side by side in place of rows.
     pub image: Option<(String, String)>,
+    /// The host's editable diff of the file, shown in place of rows.
+    pub editor: Option<Entity<EditorView>>,
 }
 
 impl DiffFileProps {
@@ -129,6 +137,7 @@ impl DiffFileProps {
             posting_finding_ids: HashSet::new(),
             postable_finding_ids: HashSet::new(),
             image: None,
+            editor: None,
         }
     }
 }
@@ -224,6 +233,9 @@ pub struct DiffFile {
     ed_for: Option<(u64, ThemeId)>,
     /// The previous and current rasters of [`DiffFileProps::image`].
     rasters: [Raster; 2],
+    /// [`DiffFileProps::editor`] as the card lays it out; the subscription redraws the header's
+    /// unsaved dot.
+    card_ed: Option<(Entity<CardEditor>, Subscription)>,
     /// `.diff-file.selecting` hovered row for `draft-tip` hover state.
     _subs: Vec<Subscription>,
 }
@@ -327,8 +339,10 @@ impl DiffFile {
             ed: EditorTheme::resolve(None, true, Theme::of(cx).id),
             ed_for: None,
             rasters: Default::default(),
+            card_ed: None,
             _subs: subs,
         };
+        me.sync_card_editor(cx);
         me.facts = Rc::new(me.read_facts(cx));
         me.highlight(cx);
         me.load_images(cx);
@@ -367,6 +381,7 @@ impl DiffFile {
         }
         let jump = props.highlight_line != self.props.highlight_line;
         self.props = props;
+        self.sync_card_editor(cx);
         self.facts = Rc::new(self.read_facts(cx));
         self.highlight(cx);
         self.load_images(cx);
@@ -434,6 +449,29 @@ impl DiffFile {
                 cx.notify();
             });
         }));
+    }
+
+    fn sync_card_editor(&mut self, cx: &mut Context<Self>) {
+        let want = self.props.editor.clone();
+        if self.card_ed.as_ref().map(|(c, _)| c.read(cx).editor()) == want.as_ref() {
+            return;
+        }
+        let card = cx.entity_id();
+        self.card_ed = want.map(|ed| {
+            let sub = cx.guarded_subscribe(&ed, |_: &mut Self, _, ev: &EditorEvent, cx| {
+                if matches!(ev, EditorEvent::DirtyChanged(_)) {
+                    cx.notify();
+                }
+            });
+            (CardEditor::new(ed, card, cx), sub)
+        });
+    }
+
+    /// The card's editor, when its body is the editable diff.
+    pub fn editor(&self, cx: &App) -> Option<Entity<EditorView>> {
+        self.card_ed
+            .as_ref()
+            .map(|(c, _)| c.read(cx).editor().clone())
     }
 
     /// Resolves the editor theme the code area paints with when it or the app theme changed.
@@ -612,7 +650,7 @@ impl DiffFile {
             return PrFacts::default();
         }
         let s = self.state.read(cx);
-        let Some(pr) = s.pr(&s.selected_pr_id) else {
+        let Some(pr) = s.pr(s.shown_pr_id()) else {
             return PrFacts::default();
         };
         let path = &self.props.file.path;
@@ -964,7 +1002,7 @@ impl DiffFile {
             body: body.clone(),
             ..Default::default()
         };
-        let pr_id = self.state.read(cx).selected_pr_id.clone();
+        let pr_id = self.state.read(cx).shown_pr_id().to_string();
         let pc_id = pc.id.clone();
         self.posting = true;
         patch_pr_pending_comments(
@@ -1274,6 +1312,9 @@ impl DiffFile {
     }
 
     fn on_frame(&mut self, cx: &mut Context<Self>) {
+        if self.card_ed.is_some() {
+            return;
+        }
         if let Some((slot, pin_y, captured)) = self.pending_pin.take()
             && let Some(pane) = &self.pane
         {
@@ -2469,6 +2510,19 @@ impl DiffFile {
                 .into_any_element(),
         };
         head = head.child(div().flex_initial().min_w_0().child(path_el));
+        if let Some((c, _)) = &self.card_ed
+            && c.read(cx).editor().read(cx).is_dirty()
+        {
+            let p = self.props.file.path.clone();
+            head = head.child(
+                div()
+                    .debug_selector(move || format!("df-unsaved:{p}"))
+                    .flex_none()
+                    .size(px(5.))
+                    .rounded_full()
+                    .bg(hsla(t.amber)),
+            );
+        }
         let mut actions = div().flex().flex_none().items_center().gap(px(2.));
         if let Some(open) = open {
             let path = self.props.file.path.clone();
@@ -2483,6 +2537,22 @@ impl DiffFile {
                     .on_click(move |_, window, cx| {
                         cx.stop_propagation();
                         open(path.clone(), None, window, cx)
+                    }),
+            ));
+        }
+        if let Some(discard) = self.hooks.discard.clone() {
+            let path = self.props.file.path.clone();
+            actions = actions.child(titled(
+                "df-discard-t",
+                "Discard changes",
+                icon_btn("df-discard", IconName::Undo, 24., 14., None, cx)
+                    .debug_selector({
+                        let p = self.props.file.path.clone();
+                        move || format!("df-discard:{p}")
+                    })
+                    .on_click(move |_, window, cx| {
+                        cx.stop_propagation();
+                        discard(path.clone(), window, cx)
                     }),
             ));
         }
@@ -2604,6 +2674,8 @@ impl DiffFile {
         };
         if !collapsed && self.props.image.is_some() {
             root = root.child(self.image_pair(window, cx));
+        } else if !collapsed && let Some((c, _)) = &self.card_ed {
+            root = root.child(CardEditor::element(c, cx));
         } else if !collapsed {
             let mut slots_el: Vec<AnyElement> = Vec::new();
             let split = self.props.layout == DiffLayout::Split;
@@ -2983,7 +3055,7 @@ pub fn remove_pending_comment(state: &Entity<AppState>, pc: PendingLineComment, 
     } else {
         0
     };
-    let pr_id = state.read(cx).selected_pr_id.clone();
+    let pr_id = state.read(cx).shown_pr_id().to_string();
     let id = pc.id.clone();
     patch_pr_pending_comments(
         state,

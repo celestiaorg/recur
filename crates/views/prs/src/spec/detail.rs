@@ -244,7 +244,7 @@ fn files_changed_filters_do_not_carry_over_to_another_pr(cx: &mut TestAppContext
     assert!(s.has("button:Show all files:true"));
 
     s.prs_nav();
-    s.click("prrow:479");
+    s.pr_page("479");
     s.tab("Files changed");
     assert!(!s.has("empty:No files match"));
     assert_eq!(rows(&mut s), 3);
@@ -456,8 +456,7 @@ fn files_changed_findings_open_in_findings_and_filter_the_toc(cx: &mut TestAppCo
     s.click("open-in-findings:f-race");
     assert_eq!(s.view(), recur_view_core::ViewName::Detail);
 
-    s.click("tb-view-pr");
-    assert_eq!(s.view(), recur_view_core::ViewName::PrDetail);
+    s.pr_page("482");
     s.tab("Files changed");
     s.click("button:Show files with open findings:false");
     let paths = [

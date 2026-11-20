@@ -216,7 +216,6 @@ pub fn surface<'a>(
         active: true,
         tab: ReviewTab::Changes,
         count: 1,
-        working_dirty_count: 1,
         ..Default::default()
     };
     props(&mut p);
@@ -363,6 +362,7 @@ impl Render for PrHost {
             comments_by_path: Some(Rc::new(by)),
             dirty_paths: None,
             reveal: self.stack.toc_reveal,
+            checks: None,
         };
         self.list.update(cx, |l, cx| l.set_props(props, cx));
         let stack = self.stack.render(

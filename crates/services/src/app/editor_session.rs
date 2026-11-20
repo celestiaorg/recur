@@ -23,12 +23,10 @@ const MAX_EDITOR_BUFFER_BYTES: usize = 32 << 20;
 
 /// Frontend `CODE_PANEL_KEYS`; unknown kinds are dropped so a bad patch
 /// cannot pin a session that would otherwise delete.
-const EDITOR_PANEL_KEYS: [&str; 9] = [
+const EDITOR_PANEL_KEYS: [&str; 7] = [
     "maestro",
-    "plan",
     "findings",
     "files",
-    "scm",
     "outline",
     "search",
     "refs",
@@ -142,8 +140,8 @@ pub fn merge_editor_session(
         if let Some(m) = &meta.syntax_by_file_type {
             sess.syntax_by_file_type = m.clone();
         }
-        sess.main_surface = if meta.main_surface == "review" {
-            "review".into()
+        sess.main_surface = if matches!(meta.main_surface.as_str(), "review" | "pr" | "plan") {
+            meta.main_surface.clone()
         } else {
             String::new()
         };
@@ -179,7 +177,7 @@ fn editor_session_empty(s: &EditorSession) -> bool {
         && s.scratch_docs.is_empty()
         && s.syntax_by_path.is_empty()
         && s.syntax_by_file_type.is_empty()
-        && s.main_surface != "review"
+        && s.main_surface.is_empty()
         && !has_pane_chrome(s)
 }
 

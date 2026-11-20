@@ -141,6 +141,7 @@ pub fn open_main_window(
         cx,
     );
     let state = AppState::install(main.services.clone(), main.storage, cx);
+    state.update(cx, |s, _| s.panels.side_float_by_default = true);
     let ctx = ViewContext {
         state: state.clone(),
         services: main.services,

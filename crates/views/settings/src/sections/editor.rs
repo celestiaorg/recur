@@ -14,7 +14,7 @@ use recur_ui::IconName;
 use recur_ui::guard::Guarded;
 use recur_ui::text::span;
 use recur_ui::widgets::{SelectOption, TriggerStyle, settings_group, settings_groups};
-use recur_view_core::prefs::{CodePanelKey, PanelSide, TERMINAL_LINE_HEIGHTS};
+use recur_view_core::prefs::{CodePanelKey, PanelSide, TERMINAL_LINE_HEIGHTS, TerminalPlacement};
 
 use crate::field::{FieldEvent, FieldOpts};
 use crate::mono_fonts::{font_stack, list_monospace_fonts};
@@ -586,6 +586,65 @@ impl SettingsView {
         // Code panels.
         let sides = self.vcx.state.read(cx).panels.sides.clone();
         let mut panel_rows: Vec<Row> = Vec::new();
+        let float = self.vcx.state.read(cx).panels.side_float();
+        let choices: Vec<Choice> = [(false, "Docked"), (true, "Floating")]
+            .into_iter()
+            .map(|(on, l)| {
+                let c: Choice = (
+                    l.into(),
+                    float == on,
+                    Box::new(move |this, cx| {
+                        this.vcx.state.update(cx, |s, cx| s.set_side_float(on, cx))
+                    }),
+                );
+                c
+            })
+            .collect();
+        panel_rows.push(
+            Row::new()
+                .child(copy(
+                    "side-float",
+                    "Right panel",
+                    Some(vec![span(
+                        "Docked beside the editor, or floating over it and closing when you open something.",
+                    )]),
+                    cx,
+                ))
+                .child(self.seg_group("Right panel", choices, 11., cx)),
+        );
+        let placement = self.vcx.state.read(cx).panels.terminal_placement;
+        let choices: Vec<Choice> = [
+            (TerminalPlacement::Below, "Below editor"),
+            (TerminalPlacement::Full, "Below chat and editor"),
+            (TerminalPlacement::Center, "In place of editor"),
+            (TerminalPlacement::Beside, "Beside editor"),
+        ]
+        .into_iter()
+        .map(|(p, l)| {
+            let c: Choice = (
+                l.into(),
+                placement == p,
+                Box::new(move |this, cx| {
+                    this.vcx
+                        .state
+                        .update(cx, |s, cx| s.set_terminal_placement_default(p, cx))
+                }),
+            );
+            c
+        })
+        .collect();
+        panel_rows.push(
+            Row::new()
+                .child(copy(
+                    "term-placement",
+                    "Terminal",
+                    Some(vec![span(
+                        "Where a workspace shows the terminal, unless you pick another place for it from its Terminal button.",
+                    )]),
+                    cx,
+                ))
+                .child(self.seg_group("Terminal placement", choices, 11., cx)),
+        );
         for key in CodePanelKey::ALL {
             let cur = sides.get(&key).copied().unwrap_or(key.default_side());
             let group = format!("{} panel side", key.label());
@@ -704,7 +763,7 @@ impl SettingsView {
             )
             .child(
                 settings_group("grp-panels", "Code panels")
-                    .blurb("Which side of the editor each Code tool opens on.")
+                    .blurb("Whether the right panel is docked or floats, and which side of the editor each Code tool opens on.")
                     .child(rows(IN_GROUP, panel_rows, window, cx)),
             )
             .child(

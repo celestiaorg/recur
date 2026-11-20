@@ -333,7 +333,7 @@ impl LineNoteThread {
         if body.is_empty() || !self.can_comment() {
             return;
         }
-        let pr_id = self.state.read(cx).selected_pr_id.clone();
+        let pr_id = self.state.read(cx).shown_pr_id().to_string();
         let login = self
             .pr
             .as_ref()
@@ -505,7 +505,7 @@ impl LineNoteThread {
         self.saving = id.to_string();
         cx.notify();
         let services = self.state.read(cx).services().clone();
-        let pr_id = self.state.read(cx).selected_pr_id.clone();
+        let pr_id = self.state.read(cx).shown_pr_id().to_string();
         let id = id.to_string();
         cx.spawn(async move |this, cx| {
             let updated = call(
@@ -542,7 +542,7 @@ impl LineNoteThread {
         if !self.saving.is_empty() || id.is_empty() {
             return;
         }
-        let pr_id = self.state.read(cx).selected_pr_id.clone();
+        let pr_id = self.state.read(cx).shown_pr_id().to_string();
         let from_pr: Vec<PrComment> = self
             .state
             .read(cx)

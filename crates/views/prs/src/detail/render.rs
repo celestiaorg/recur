@@ -15,7 +15,7 @@ use recur_ui::guard::Guarded;
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::{Color, IconName, Theme, icon};
-use recur_view_core::pr::{PrLifecycle, pr_lifecycle};
+use recur_view_core::pr::{PrLifecycle, checks_look, pr_lifecycle};
 use recur_view_review::scroll_fade::{SCROLL_FADE_SLACK, is_scrolled_from_top};
 
 use super::PrDetail;
@@ -62,28 +62,42 @@ pub(crate) fn cmt_act(
 }
 
 impl PrDetail {
-    /// `.prh`.
-    fn header(
+    /// `.prh`: the page's header, or the top of the conversation in a workspace.
+    pub(crate) fn header(
         &mut self,
         pr: Option<&Pr>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
+        // In a workspace the header is the overview's first row, one line in its content, the
+        // title truncating. The branch is left to the workspace's titlebar.
+        let hosted = self.host_ws.is_some();
+        let (title_size, num_size, src_size) = if hosted {
+            (13.5, 12.5, 14.)
+        } else {
+            (17., 15., 18.)
+        };
         let prh = div()
             .debug_selector(|| "prh".into())
             .relative()
             .flex_none()
             .flex()
-            .flex_wrap()
             .items_center()
-            .gap_x(px(14.))
-            .gap_y(px(10.))
-            .py(px(6.))
-            .px(px(18.))
-            .bg(hsla(prh_bg(cx)))
-            .border_b_1()
-            .border_color(hsla(t.line));
+            .map(|d| {
+                if hosted {
+                    d.gap_x(px(10.)).mb(px(14.))
+                } else {
+                    d.flex_wrap()
+                        .gap_x(px(14.))
+                        .gap_y(px(10.))
+                        .py(px(6.))
+                        .px(px(18.))
+                        .bg(hsla(prh_bg(cx)))
+                        .border_b_1()
+                        .border_color(hsla(t.line))
+                }
+            });
         let Some(pr) = pr else {
             // Skeleton until the PR is in the store.
             let skel = |w: f32, h: f32, r: f32, window: &mut Window| {
@@ -165,13 +179,13 @@ impl PrDetail {
                         } else {
                             IconName::HardDrive
                         })
-                        .size(px(18.)),
+                        .size(px(src_size)),
                     ),
             ))
             .child(
                 text(format!("#{}", pr.number))
                     .mono()
-                    .size(15.)
+                    .size(num_size)
                     .weight(400.)
                     .tracking_px(-0.17)
                     .line_height(LineHeight::Scale(1.))
@@ -184,10 +198,10 @@ impl PrDetail {
             .flex_basis(px(224.))
             .min_w_0()
             .flex()
-            .flex_wrap()
+            .when(!hosted, |d| d.flex_wrap())
             .items_center()
-            .gap(px(10.))
-            .text_size(px(17.))
+            .gap(px(if hosted { 8. } else { 10. }))
+            .text_size(px(title_size))
             .font_weight(gpui_kit::FontWeight(600.))
             .child(pill)
             .child(num);
@@ -279,19 +293,26 @@ impl PrDetail {
                 );
         } else {
             let title = pr.title.clone();
-            prh_t = prh_t.child(
-                div()
-                    .min_w_0()
-                    .child(
-                        text(title.clone())
-                            .size(17.)
-                            .weight(600.)
-                            .tracking(-0.01)
-                            .truncate()
-                            .id("prh-title"),
-                    )
-                    .debug_selector(move || format!("prh-title={title}")),
-            );
+            let shown = div()
+                .min_w_0()
+                .child(
+                    text(title.clone())
+                        .size(title_size)
+                        .weight(600.)
+                        .tracking(-0.01)
+                        .truncate()
+                        .id("prh-title"),
+                )
+                .debug_selector({
+                    let title = title.clone();
+                    move || format!("prh-title={title}")
+                });
+            // Truncated on its one line, the whole title is the tooltip.
+            prh_t = prh_t.child(if hosted {
+                titled("prh-title-t", title, shown.id("prh-title-el")).into_any_element()
+            } else {
+                shown.into_any_element()
+            });
             if self.can_edit_pr(cx) {
                 prh_t = prh_t.child(
                     div().ml(px(2.)).child(titled(
@@ -352,28 +373,31 @@ impl PrDetail {
                 );
             }
         }
-        let branch = format!("{} → {}", pr.branch, pr.base);
-        side = side.child(titled(
-            "prh-branch",
-            branch.clone(),
-            pill2(Some(IconName::GitLine), &branch, cx).id("prh-branch-el"),
-        ));
-        let head_bounds = self.head_bounds.clone();
-        prh.child(prh_t)
-            .child(side)
-            .child(
-                canvas(move |b, _, _| head_bounds.set(Some(b)), |_, _, _, _| {})
-                    .absolute()
-                    .inset_0(),
-            )
-            .into_any_element()
+        if !hosted {
+            let branch = format!("{} → {}", pr.branch, pr.base);
+            side = side.child(titled(
+                "prh-branch",
+                branch.clone(),
+                pill2(Some(IconName::GitLine), &branch, cx).id("prh-branch-el"),
+            ));
+        }
+        prh.child(prh_t).child(side).into_any_element()
     }
 
-    /// `.prtabs`.
-    fn tabs(&mut self, pr: Option<&Pr>, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    /// `.prtabs`. In a workspace the tabs scroll when the center is narrower than they are, and
+    /// `trailing` (the review actions) keeps the row's right end.
+    pub(crate) fn tabs(
+        &mut self,
+        pr: Option<&Pr>,
+        trailing: Option<AnyElement>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let hosted = self.host_ws.is_some();
+        let mut tabs: Vec<AnyElement> = Vec::new();
         let t = Theme::of(cx).tokens;
         let tab = self.tab(cx);
-        let agent_ws = self.agent_ws(cx);
+        let agent_ws = self.dock_ws(cx);
         let dock_open = self.state().read(cx).pr_agent_dock_open;
         let focus_agent = self.ui.read(cx).focus_agent;
         let lit = agent_ws.is_empty() || !dock_open || !focus_agent;
@@ -475,7 +499,7 @@ impl PrDetail {
         let checks = pr.and_then(|p| p.checks.clone()).unwrap_or_default();
         let roll = checks_rollup(&checks, pr.map(|p| p.checks_ok), pr.map(|p| p.has_checks));
         let passed = checks.iter().filter(|c| c.passed).count();
-        let (roll_color, roll_icon) = rollup_look(roll, &t);
+        let (roll_color, roll_icon) = checks_look(roll, &t);
         let chip = |label: String,
                     color: Option<Color>,
                     pending: bool,
@@ -529,7 +553,8 @@ impl PrDetail {
                 .flex()
                 .items_center()
                 .gap(px(6.))
-                .mb(px(-1.))
+                .flex_none()
+                .when(!hosted, |d| d.mb(px(-1.)))
                 .px(px(10.))
                 .border_r_1()
                 .border_color(hsla(if on { t.line } else { t.line_soft }))
@@ -562,18 +587,20 @@ impl PrDetail {
                     )
                 })
                 .on_click(cx.guarded_listener(move |d, _, _, cx| d.set_tab(key, cx)))
+                .into_any_element()
         };
         let conv_chip = chip(conv_n.to_string(), None, pending.0, window, cx);
-        bar = bar.child(mk(
+        // In a workspace it leads with the PR's title, people and labels: an overview.
+        tabs.push(mk(
             self,
             PrTab::Conv,
-            "Conversation",
+            if hosted { "Overview" } else { "Conversation" },
             icon(IconName::Message).size(px(14.)).into_any_element(),
             conv_chip,
             cx,
         ));
         let commits_chip = chip(commits_n.to_string(), None, pending.1, window, cx);
-        bar = bar.child(mk(
+        tabs.push(mk(
             self,
             PrTab::Commits,
             "Commits",
@@ -582,7 +609,7 @@ impl PrDetail {
             cx,
         ));
         let files_chip = chip(files_n.to_string(), None, false, window, cx);
-        bar = bar.child(mk(
+        tabs.push(mk(
             self,
             PrTab::Files,
             "Files changed",
@@ -618,8 +645,41 @@ impl PrDetail {
             window,
             cx,
         );
-        bar = bar.child(mk(self, PrTab::Checks, "Checks", lead, checks_chip, cx));
-        bar.into_any_element()
+        tabs.push(mk(self, PrTab::Checks, "Checks", lead, checks_chip, cx));
+        if !hosted {
+            return bar.children(tabs).into_any_element();
+        }
+        if self.revealed_tab != Some(tab) {
+            self.revealed_tab = Some(tab);
+            let order = [PrTab::Conv, PrTab::Commits, PrTab::Files, PrTab::Checks];
+            self.tabs_scroll
+                .scroll_to_item(order.iter().position(|t| *t == tab).unwrap_or(0));
+        }
+        bar.child(
+            div()
+                .id("prtabs-scroll")
+                .debug_selector(|| "prtabs-scroll".into())
+                .track_scroll(&self.tabs_scroll)
+                .flex()
+                .items_stretch()
+                .flex_1()
+                // The tabs keep this much when the actions beside them would take the row.
+                .min_w(px(160.))
+                .mb(px(-1.))
+                .overflow_x_scroll()
+                .children(tabs),
+        )
+        .children(trailing.map(|el| {
+            div()
+                .flex()
+                .flex_shrink(1.)
+                .min_w_0()
+                .overflow_hidden()
+                .items_center()
+                .pl(px(8.))
+                .child(el)
+        }))
+        .into_any_element()
     }
 
     /// `showPRAgentDock`: open the dock and focus its hide toggle.
@@ -722,15 +782,6 @@ fn pill2(ic: Option<IconName>, label: &str, cx: &App) -> Div {
         )
 }
 
-pub(crate) fn rollup_look(r: RollupKind, t: &recur_ui::Tokens) -> (Color, IconName) {
-    match r {
-        RollupKind::Fail => (t.coral, IconName::X),
-        RollupKind::Pending => (t.amber, IconName::Loader),
-        RollupKind::Pass => (t.emerald, IconName::Check),
-        RollupKind::None => (t.faint, IconName::Check),
-    }
-}
-
 pub(crate) fn rollup_kind(r: RollupKind) -> &'static str {
     match r {
         RollupKind::Fail => "fail",
@@ -764,7 +815,7 @@ impl PrDetail {
         }
         // `setPRAgentDockOpen`'s focus restore: the toggle that hides the dock hands focus to
         // the one that shows it, and back.
-        let open = !self.agent_ws(cx).is_empty() && self.state().read(cx).pr_agent_dock_open;
+        let open = !self.dock_ws(cx).is_empty() && self.state().read(cx).pr_agent_dock_open;
         if open != self.dock_was_open {
             if !open && self.focus_in_dock {
                 window.focus(&self.toggle_focus, cx);
@@ -799,8 +850,11 @@ impl PrDetail {
                 });
             }
         }
-        let header = self.header(pr.as_deref(), window, cx);
-        let tabs = self.tabs(pr.as_deref(), window, cx);
+        // In a workspace the tab row is the center's (`PrHead`) and the header leads the
+        // conversation.
+        let hosted = self.host_ws.is_some();
+        let header = (!hosted).then(|| self.header(pr.as_deref(), window, cx));
+        let tabs = (!hosted).then(|| self.tabs(pr.as_deref(), None, window, cx));
         let tab = self.tab(cx);
         let body = match tab {
             // One selection across the description and every timeline item, as the page
@@ -822,7 +876,7 @@ impl PrDetail {
             .flex()
             .flex_row()
             .overflow_hidden();
-        let agent_ws = self.agent_ws(cx);
+        let agent_ws = self.dock_ws(cx);
         if !agent_ws.is_empty()
             && self.state().read(cx).pr_agent_dock_open
             && let Some(dock) = self.agent_dock(window, cx)
@@ -852,7 +906,7 @@ impl PrDetail {
             .flex()
             .flex_col()
             .overflow_hidden()
-            .child(tabs)
+            .children(tabs)
             .child(recur_ui::layout_root::layout_root(
                 "prd-body",
                 gpui_kit::StyleRefinement::default()
@@ -863,21 +917,21 @@ impl PrDetail {
             ))
             .children(self.more_menu(window, cx));
         split = split.child(col);
+        // Under the people, kept inside the window: at the right end of a narrow center column it
+        // would run off it.
         let pop = if self.hovered_people
-            && let (Some(p), Some(b), Some(h)) = (
-                pr.as_deref(),
-                self.people_bounds.get(),
-                self.head_bounds.get(),
-            ) {
+            && let (Some(p), Some(b)) = (pr.as_deref(), self.people_bounds.get())
+        {
             let people = pr_people(p);
             (!people.is_empty()).then(|| {
-                let left = f32::from(b.origin.x) - f32::from(h.origin.x);
-                let top = f32::from(b.bottom()) - f32::from(h.origin.y) + 6.;
-                div()
-                    .absolute()
-                    .left(px(left))
-                    .top(px(top))
-                    .child(popout_for("prh", &people, cx))
+                gpui_kit::deferred(
+                    recur_ui::style::anchored_at(
+                        f32::from(b.origin.x),
+                        f32::from(b.bottom()) + 6.,
+                        popout_for("prh", &people, cx),
+                    )
+                    .snap_to_window_with_margin(px(8.)),
+                )
             })
         } else {
             None
@@ -901,7 +955,7 @@ impl PrDetail {
                     }
                 }),
             )
-            .child(header)
+            .children(header)
             .child(split)
             // The open line notes' text boxes: the card stack may be a cached view, so they
             // draw here, after it (see `recur_view_review::note_portal`).
@@ -914,6 +968,39 @@ impl PrDetail {
 impl Render for PrDetail {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         recur_ui::guard::view(self, window, cx, Self::render_view)
+    }
+}
+
+/// PR detail's tab row as its own view: a workspace's center shows it in its tab row's place.
+pub struct PrHead {
+    detail: gpui_kit::Entity<PrDetail>,
+    /// The review actions at the row's right end.
+    actions: gpui_kit::Entity<crate::actions::PrTitlebarActions>,
+    _sub: gpui_kit::Subscription,
+}
+
+impl PrHead {
+    pub fn new(
+        detail: gpui_kit::Entity<PrDetail>,
+        actions: gpui_kit::Entity<crate::actions::PrTitlebarActions>,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let _sub = cx.guarded_observe(&detail, |_, _, cx| cx.notify());
+        PrHead {
+            detail,
+            actions,
+            _sub,
+        }
+    }
+}
+
+impl Render for PrHead {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let actions = self.actions.clone().into_any_element();
+        self.detail.update(cx, |d, cx| {
+            let pr = d.render_pr(cx);
+            d.tabs(pr.as_deref(), Some(actions), window, cx)
+        })
     }
 }
 

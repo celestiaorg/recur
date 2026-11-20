@@ -20,6 +20,18 @@ Reviewers carry findings forward between passes. A re-review checks each open fi
 
 To tell reviewers what not to flag in a repository, add a `## Reviews` section to its `AGENTS.md`.
 
+## Commit from the review
+
+The review's tabs are **Uncommitted**, **Changes** (the branch against its base) and **Commits** (the branch's commits). **Uncommitted** shows the working tree against `HEAD`, with the number of uncommitted files, and is there only while there is uncommitted work; the Review button in the toolbar carries the same count. Opening the review (the Review button or `⌥⌘R`) while there is uncommitted work lands on it. When the last change is committed or discarded, the review goes back to **Changes**.
+
+In this tab each file and folder in the file list has a checkbox for what goes into the commit. Checking stages the file and unchecking unstages it; nothing is checked until you check it, so opening the review never changes what is staged. A file staged only in part (outside Recur) shows a dash; clicking it stages the whole file. **Check all** in the toolbar checks every file.
+
+Each text file's diff in this tab is editable: it is the editor's diff view of the file against `HEAD`, so you can fix code while you review what you are about to commit. The cards still scroll as one list, and the file list, collapsing a card and `J` / `K` (with the cursor outside a card) work as before. A card with unsaved edits shows a dot after its path, and `⌘S` with the cursor in it saves the file the way the editor does, save-time commands and formatting included; the list and the counts update after the save. A card edits the same text as an editor tab of that file, so a change in one shows in the other, and a file you edit in a card opens as a tab too, with the same dot. Unsaved edits stay when a card scrolls away, when you switch tabs or close the review, and across restarts, as with any unsaved tab, until you save them or close that tab. Editing a checked file and saving it leaves it partly staged (a dash), so check it again to commit the new edit. Deleted, binary and large files (over 256 KiB), and files in a read-only workspace, keep a read-only diff. The **Changes** and **Commits** tabs stay read-only, and line notes are on their diffs.
+
+To throw changes away, hover a file or folder and click its discard button, use the discard button in a diff's header, or **Discard all** in the toolbar. Each asks first.
+
+Under the file list, write the commit message (or generate one from the checked files with the sparkle button) and click **Commit** or press `⌘↵`. Commit takes the checked files, or every uncommitted change when nothing is checked. The commit box is part of the file list, so hiding the list hides it too. The titlebar's **Commit** still asks the agent to commit everything in one click; its menu has **Review and commit…**, which opens this tab with the message box ready.
+
 ## See what changed in one turn
 
 Each chat turn records start and end checkpoints of the worktree, including tracked and untracked files. Use **Changes this turn** from the turn footer to inspect that turn's diff in the review panel.

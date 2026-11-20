@@ -7,6 +7,11 @@
 //! The `fake` feature swaps in the typed service fakes over the e2e seed for UI work without a
 //! backend.
 
+// Unoptimized, the binary's `__eh_frame` passes the 16MB that ld's compact unwind table can
+// point into, and ld warns that unwinding may be slower. Panics still unwind; the linker flags
+// that would avoid it (`-no_compact_unwind`) break unwinding on arm64.
+#![cfg_attr(debug_assertions, allow(linker_messages))]
+
 mod image_http;
 mod macro_runtime;
 

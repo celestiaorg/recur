@@ -25,11 +25,13 @@ pub enum PanelKey {
     PrChatDock,
     TerminalDock,
     InboxChat,
+    ObsCenter,
+    ObsSideFloat,
     InboxList,
 }
 
 impl PanelKey {
-    pub const ALL: [PanelKey; 10] = [
+    pub const ALL: [PanelKey; 12] = [
         PanelKey::Rail,
         PanelKey::LoopInspector,
         PanelKey::ObsTree,
@@ -39,6 +41,8 @@ impl PanelKey {
         PanelKey::PrChatDock,
         PanelKey::TerminalDock,
         PanelKey::InboxChat,
+        PanelKey::ObsCenter,
+        PanelKey::ObsSideFloat,
         PanelKey::InboxList,
     ];
 
@@ -53,6 +57,8 @@ impl PanelKey {
             PanelKey::PrChatDock => "prChatDock",
             PanelKey::TerminalDock => "terminalDock",
             PanelKey::InboxChat => "inboxChat",
+            PanelKey::ObsCenter => "obsCenter",
+            PanelKey::ObsSideFloat => "obsSideFloat",
             PanelKey::InboxList => "inboxList",
         }
     }
@@ -69,6 +75,8 @@ impl PanelKey {
             PanelKey::PrChatDock => 360.,
             PanelKey::TerminalDock => 260.,
             PanelKey::InboxChat => 360.,
+            PanelKey::ObsCenter => 680.,
+            PanelKey::ObsSideFloat => 320.,
             PanelKey::InboxList => 340.,
         }
     }
@@ -86,19 +94,21 @@ impl PanelKey {
             PanelKey::PrChatDock => (260., 2000.),
             PanelKey::TerminalDock => (80., 2000.),
             PanelKey::InboxChat => (280., 2000.),
+            PanelKey::ObsCenter => (420., 3000.),
+            PanelKey::ObsSideFloat => (200., 2000.),
             PanelKey::InboxList => (260., 2000.),
         }
     }
 }
 
-/// An Observatory tool panel.
+/// An Observatory tool panel, in a side dock. The plan is a view of the center column
+/// instead, and source control is the review's Uncommitted tab; a saved side naming one is
+/// ignored.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum CodePanelKey {
     Maestro,
-    Plan,
     Findings,
     Files,
-    Scm,
     Outline,
     Problems,
     Search,
@@ -107,12 +117,10 @@ pub enum CodePanelKey {
 }
 
 impl CodePanelKey {
-    pub const ALL: [CodePanelKey; 10] = [
+    pub const ALL: [CodePanelKey; 8] = [
         CodePanelKey::Maestro,
-        CodePanelKey::Plan,
         CodePanelKey::Findings,
         CodePanelKey::Files,
-        CodePanelKey::Scm,
         CodePanelKey::Outline,
         CodePanelKey::Problems,
         CodePanelKey::Search,
@@ -123,10 +131,8 @@ impl CodePanelKey {
     pub fn key(self) -> &'static str {
         match self {
             CodePanelKey::Maestro => "maestro",
-            CodePanelKey::Plan => "plan",
             CodePanelKey::Findings => "findings",
             CodePanelKey::Files => "files",
-            CodePanelKey::Scm => "scm",
             CodePanelKey::Outline => "outline",
             CodePanelKey::Problems => "problems",
             CodePanelKey::Search => "search",
@@ -138,10 +144,8 @@ impl CodePanelKey {
     pub fn label(self) -> &'static str {
         match self {
             CodePanelKey::Maestro => "Maestro",
-            CodePanelKey::Plan => "Plan",
             CodePanelKey::Findings => "Findings",
             CodePanelKey::Files => "Files",
-            CodePanelKey::Scm => "Source Control",
             CodePanelKey::Outline => "Outline",
             CodePanelKey::Problems => "Problems",
             CodePanelKey::Search => "Search",
@@ -153,7 +157,7 @@ impl CodePanelKey {
     /// `CODE_PANEL_SIDE_DEFAULTS`.
     pub fn default_side(self) -> PanelSide {
         match self {
-            CodePanelKey::Maestro | CodePanelKey::Plan | CodePanelKey::Findings => PanelSide::Left,
+            CodePanelKey::Maestro | CodePanelKey::Findings => PanelSide::Left,
             _ => PanelSide::Right,
         }
     }
@@ -182,8 +186,54 @@ impl PanelSide {
     }
 }
 
+/// Where the Observatory shows the terminal.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TerminalPlacement {
+    /// Under the center column.
+    #[default]
+    Below,
+    /// Under every column, the full width of the workspace view.
+    Full,
+    /// The center view, in place of the editor, the review or the pull request.
+    Center,
+    Beside,
+}
+
+impl TerminalPlacement {
+    pub const ALL: [TerminalPlacement; 4] = [
+        TerminalPlacement::Below,
+        TerminalPlacement::Full,
+        TerminalPlacement::Center,
+        TerminalPlacement::Beside,
+    ];
+
+    pub fn parse(v: &str) -> Option<TerminalPlacement> {
+        Self::ALL.into_iter().find(|p| p.key() == v)
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            TerminalPlacement::Below => "below",
+            TerminalPlacement::Full => "full",
+            TerminalPlacement::Center => "center",
+            TerminalPlacement::Beside => "beside",
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            TerminalPlacement::Below => "Below the editor",
+            TerminalPlacement::Full => "Below the chat and editor",
+            TerminalPlacement::Center => "In place of the editor",
+            TerminalPlacement::Beside => "Beside the editor",
+        }
+    }
+}
+
 const PANEL_STORAGE_KEY: &str = "recur.panelWidths";
 const CODE_PANEL_SIDES_KEY: &str = "recur.codePanelSides";
+const SIDE_FLOAT_KEY: &str = "recur.sidePanelFloat";
+const TERMINAL_PLACEMENT_KEY: &str = "recur.terminalPlacement";
 /// Prior factory defaults for the left dock: a user still on one adopts the new default.
 const MAESTRO_DOCK_LEGACY_DEFAULTS: [f64; 2] = [400., 480.];
 
@@ -194,6 +244,11 @@ const OBS_TB_PAD: f32 = 16.;
 const OBS_TB_GAP: f32 = 2.;
 const OBS_TB_ICONS_CHROME: f32 = 7.;
 const OBS_TB_SIDE_RULE: f32 = 1.;
+/// The right group's dock or float pin, beside its hide toggle.
+const OBS_TB_PIN: f32 = OBS_TB_TOGGLE + OBS_TB_GAP;
+/// The right group with no panel icons: its pad, the pin, the rule after it and the hide toggle.
+pub const OBS_TB_SIDE_REST: f32 =
+    OBS_TB_PAD + OBS_TB_TOGGLE + OBS_TB_PIN + OBS_TB_ICONS_CHROME + OBS_TB_SIDE_RULE;
 
 /// The narrowest an Observatory dock may get and still show its header icons.
 pub fn obs_toolbar_min_width(panel_count: usize) -> f32 {
@@ -211,6 +266,13 @@ pub fn obs_toolbar_min_width(panel_count: usize) -> f32 {
 pub struct PanelLayout {
     pub sizes: BTreeMap<PanelKey, f32>,
     pub sides: BTreeMap<CodePanelKey, PanelSide>,
+    /// The Observatory's right panel floats over the workspace instead of taking a column;
+    /// unset follows `side_float_by_default`.
+    pub side_float: Option<bool>,
+    /// The app floats it by default; specs and the capture example keep it docked.
+    pub side_float_by_default: bool,
+    /// Where a workspace with no placement of its own shows the terminal.
+    pub terminal_placement: TerminalPlacement,
 }
 
 impl Default for PanelLayout {
@@ -224,6 +286,9 @@ impl Default for PanelLayout {
                 .iter()
                 .map(|k| (*k, k.default_side()))
                 .collect(),
+            side_float: None,
+            side_float_by_default: false,
+            terminal_placement: TerminalPlacement::default(),
         }
     }
 }
@@ -247,10 +312,15 @@ impl PanelLayout {
         let base = key.bounds().0;
         let side = match key {
             PanelKey::MaestroDock => PanelSide::Left,
-            PanelKey::ObsSide => PanelSide::Right,
+            PanelKey::ObsSide | PanelKey::ObsSideFloat => PanelSide::Right,
             _ => return base,
         };
-        base.max(obs_toolbar_min_width(self.panels_on_side(side).len()))
+        let pin = if side == PanelSide::Right {
+            OBS_TB_PIN
+        } else {
+            0.
+        };
+        base.max(obs_toolbar_min_width(self.panels_on_side(side).len()) + pin)
     }
 
     /// `clampPanel`: rounds to whole px within the floor and the safety ceiling.
@@ -265,10 +335,28 @@ impl PanelLayout {
     }
 
     fn reclamp_observatory_docks(&mut self) {
-        for k in [PanelKey::MaestroDock, PanelKey::ObsSide] {
+        for k in [
+            PanelKey::MaestroDock,
+            PanelKey::ObsSide,
+            PanelKey::ObsSideFloat,
+        ] {
             let v = self.size(k);
             self.set_live(k, v);
         }
+    }
+
+    pub fn side_float(&self) -> bool {
+        self.side_float.unwrap_or(self.side_float_by_default)
+    }
+
+    pub fn set_side_float(&mut self, on: bool, storage: &mut LocalStorage) {
+        self.side_float = Some(on);
+        storage.set(SIDE_FLOAT_KEY, on.to_string());
+    }
+
+    pub fn set_terminal_placement(&mut self, p: TerminalPlacement, storage: &mut LocalStorage) {
+        self.terminal_placement = p;
+        storage.set(TERMINAL_PLACEMENT_KEY, p.key().to_string());
     }
 
     /// `setCodePanelSide`.
@@ -324,12 +412,11 @@ impl PanelLayout {
                 layout.sides.insert(key, side);
             }
         }
-        // overview → plan (the Activity/Overview panels were removed).
-        if sides.get("plan").and_then(PanelSide::parse).is_none()
-            && let Some(side) = sides.get("overview").and_then(PanelSide::parse)
-        {
-            layout.sides.insert(CodePanelKey::Plan, side);
-        }
+        layout.side_float = storage.get(SIDE_FLOAT_KEY).and_then(|v| v.parse().ok());
+        layout.terminal_placement = storage
+            .get(TERMINAL_PLACEMENT_KEY)
+            .and_then(TerminalPlacement::parse)
+            .unwrap_or_default();
         layout.reclamp_observatory_docks();
         layout
     }
@@ -585,7 +672,8 @@ pub struct DockChrome {
     pub open: HashSet<String>,
     pub maximized: HashSet<String>,
     pub editor_hidden: HashSet<String>,
-    pub beside: HashSet<String>,
+    /// Workspaces with a placement of their own; the rest follow the app-wide default.
+    pub placement: BTreeMap<String, TerminalPlacement>,
     pub beside_pct: BTreeMap<String, i64>,
     /// Workspaces whose chrome the user already toggled this session.
     pub touched: HashSet<String>,
@@ -619,8 +707,8 @@ impl DockChrome {
         !id.is_empty() && self.editor_hidden.contains(id)
     }
 
-    pub fn is_beside(&self, id: &str) -> bool {
-        !id.is_empty() && self.beside.contains(id)
+    pub fn placement(&self, id: &str) -> Option<TerminalPlacement> {
+        self.placement.get(id).copied()
     }
 
     /// `terminalBesidePct`: the saved split, or 50.
@@ -641,8 +729,12 @@ impl DockChrome {
             open,
             maximized: open && self.maximized.contains(id),
             editor_hidden: open && self.editor_hidden.contains(id),
-            beside: self.beside.contains(id),
+            beside: self.placement(id) == Some(TerminalPlacement::Beside),
             beside_pct: clamp_beside_pct(self.beside_pct.get(id).copied().unwrap_or(0) as f64),
+            placement: self
+                .placement(id)
+                .map(|p| p.key().to_string())
+                .unwrap_or_default(),
         }
     }
 
@@ -672,10 +764,18 @@ impl DockChrome {
         flag(&mut self.editor_hidden, id, on);
     }
 
-    pub fn set_beside(&mut self, id: &str, on: bool) {
-        flag(&mut self.beside, id, on);
-        if on {
-            self.set_open(id, true);
+    /// The workspace's own placement, or `None` to follow the default again. Choosing one
+    /// shows the terminal there, with the editor back if ⌥⌘E had hidden it.
+    pub fn set_placement(&mut self, id: &str, p: Option<TerminalPlacement>) {
+        flag(&mut self.editor_hidden, id, false);
+        match p {
+            Some(p) => {
+                self.placement.insert(id.to_string(), p);
+                self.set_open(id, true);
+            }
+            None => {
+                self.placement.remove(id);
+            }
         }
     }
 
@@ -705,8 +805,11 @@ impl DockChrome {
                     self.editor_hidden.insert(id.into());
                 }
             }
-            if r.beside {
-                self.beside.insert(id.into());
+            // `beside` is how builds before the placement menu stored that layout.
+            let placement = TerminalPlacement::parse(&r.placement)
+                .or(r.beside.then_some(TerminalPlacement::Beside));
+            if let Some(p) = placement {
+                self.placement.insert(id.into(), p);
             }
             let n = clamp_beside_pct(r.beside_pct as f64);
             if n != 0 {
@@ -735,9 +838,10 @@ mod tests {
             l.set_side(k, PanelSide::Left, &mut storage);
         }
         l.set_live(PanelKey::MaestroDock, 80.);
+        // Seven icons need 256px, just under the dock's own minimum.
         assert_eq!(
             l.size(PanelKey::MaestroDock),
-            obs_toolbar_min_width(CodePanelKey::ALL.len())
+            obs_toolbar_min_width(CodePanelKey::ALL.len()).max(260.)
         );
     }
 
@@ -753,7 +857,7 @@ mod tests {
         let l = PanelLayout::load(&storage);
         assert_eq!(
             l.size(PanelKey::ObsSide),
-            obs_toolbar_min_width(CodePanelKey::ALL.len())
+            obs_toolbar_min_width(CodePanelKey::ALL.len()) + OBS_TB_PIN
         );
     }
 
@@ -774,13 +878,25 @@ mod tests {
     }
 
     #[test]
-    fn overview_side_migrates_to_plan() {
+    fn saved_sides_of_panels_that_left_the_docks_are_ignored() {
         let mut storage = LocalStorage::in_memory();
-        storage.set(CODE_PANEL_SIDES_KEY, r#"{"overview":"right"}"#);
-        assert_eq!(
-            PanelLayout::load(&storage).sides[&CodePanelKey::Plan],
-            PanelSide::Right
+        storage.set(
+            CODE_PANEL_SIDES_KEY,
+            r#"{"plan":"right","overview":"right","scm":"left","outline":"left"}"#,
         );
+        let mut l = PanelLayout::load(&storage);
+        assert_eq!(
+            l.panels_on_side(PanelSide::Left),
+            [
+                CodePanelKey::Maestro,
+                CodePanelKey::Findings,
+                CodePanelKey::Outline
+            ]
+        );
+        assert_eq!(l.sides.len(), CodePanelKey::ALL.len());
+        l.set_side(CodePanelKey::Outline, PanelSide::Right, &mut storage);
+        let saved = storage.get(CODE_PANEL_SIDES_KEY).unwrap();
+        assert!(!saved.contains("plan") && !saved.contains("scm"), "{saved}");
     }
 
     #[test]
@@ -865,16 +981,49 @@ mod tests {
             r.beside = true;
             r.beside_pct = 40;
         })]);
-        assert!(d.is_beside("ws-1") && !d.is_open("ws-1"));
+        assert_eq!(d.placement("ws-1"), Some(TerminalPlacement::Beside));
+        assert!(!d.is_open("ws-1"));
         assert_eq!(d.beside_pct("ws-1"), 40);
         let mut d = DockChrome::default();
         d.apply(&[row("ws-1", |r| r.beside_pct = 40)]);
         assert_eq!(d.beside_pct("ws-1"), 40);
-        assert!(!d.is_beside("ws-1"));
+        assert_eq!(d.placement("ws-1"), None);
         let mut d = DockChrome::default();
-        d.set_beside("ws-1", true);
+        d.set_placement("ws-1", Some(TerminalPlacement::Beside));
         assert!(d.is_open("ws-1"));
         let s = d.snapshot("ws-1");
-        assert!(s.open && s.beside);
+        assert!(s.open && s.beside && s.placement == "beside");
+    }
+
+    #[test]
+    fn dock_placement_round_trips_and_clears() {
+        let mut d = DockChrome::default();
+        d.set_editor_hidden("ws-1", true);
+        d.set_placement("ws-1", Some(TerminalPlacement::Full));
+        assert!(d.is_open("ws-1") && !d.is_editor_hidden("ws-1"));
+        let saved = TerminalDockChrome {
+            workspace_id: "ws-1".into(),
+            ..d.snapshot("ws-1")
+        };
+        assert_eq!(saved.placement, "full");
+        let mut restored = DockChrome::default();
+        restored.apply(&[saved]);
+        assert_eq!(restored.placement("ws-1"), Some(TerminalPlacement::Full));
+        d.set_placement("ws-1", None);
+        assert_eq!(d.placement("ws-1"), None);
+        let s = d.snapshot("ws-1");
+        assert!(s.open && s.placement.is_empty() && !s.beside);
+    }
+
+    #[test]
+    fn terminal_placement_default_persists() {
+        let mut storage = LocalStorage::in_memory();
+        let mut l = PanelLayout::load(&storage);
+        assert_eq!(l.terminal_placement, TerminalPlacement::Below);
+        l.set_terminal_placement(TerminalPlacement::Center, &mut storage);
+        assert_eq!(
+            PanelLayout::load(&storage).terminal_placement,
+            TerminalPlacement::Center
+        );
     }
 }

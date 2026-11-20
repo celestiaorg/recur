@@ -267,6 +267,7 @@ impl PrDetail {
             postable_finding_ids: postable_ids,
             hooks,
             image_revs: Some(ImageRevs::pr(pr, format!("{}...{head}", pr.base), head)),
+            editors: None,
         });
         let props = FileListProps {
             files: files.clone(),
@@ -276,6 +277,7 @@ impl PrDetail {
             comments_by_path: Some(Rc::new(comments_by.clone())),
             dirty_paths: None,
             reveal: self.stack.toc_reveal,
+            checks: None,
         };
         self.list.update(cx, |l, cx| l.set_props(props, cx));
 

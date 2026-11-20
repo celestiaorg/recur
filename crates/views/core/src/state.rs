@@ -84,7 +84,7 @@ pub struct ObsJump {
     pub end_col: u32,
     pub workspace_id: String,
     pub project_id: String,
-    /// `findings` / `plan` / `review`.
+    /// `findings` / `plan` / `review` / `pr`.
     pub panel: String,
     /// `details` / `todos` / `attachments` with panel `plan`.
     pub plan_tab: String,
@@ -357,11 +357,15 @@ pub struct AppState {
     pub schedule_editor: Option<ScheduleEditorRequest>,
     /// The titlebar asked the open workspace view to run a slash prompt (commit, update, …).
     pub prompt_action: Option<PromptActionRequest>,
+    /// The titlebar asked this workspace's view to show its uncommitted work, ready to commit.
+    pub review_commit: Option<String>,
     pub workspace_seeds: BTreeMap<String, WorkspaceSeed>,
     /// The collapsed rail is overlaid from the left edge (ephemeral).
     pub rail_peek: bool,
     /// A flyout drag or menu is in progress: hide paths must not yank the rail.
     pub rail_peek_locked: bool,
+    /// The open workspace's right panel is up as a flyout: its Escape closes it, not the view.
+    pub side_float_open: bool,
 
     // ---- prefs ----
     pub rail_collapsed: bool,
@@ -489,9 +493,11 @@ impl AppState {
             new_project_resume_new_task: false,
             schedule_editor: None,
             prompt_action: None,
+            review_commit: None,
             workspace_seeds: BTreeMap::new(),
             rail_peek: false,
             rail_peek_locked: false,
+            side_float_open: false,
             rail_collapsed: prefs::load_rail_collapsed(&storage),
             panels: PanelLayout::load(&storage),
             appearance,
@@ -845,6 +851,25 @@ impl AppState {
         self.prompt_action.take().map(|r| (r.slash, r.args))
     }
 
+    /// The titlebar's "Review and commit…": the workspace view opens the review on its
+    /// uncommitted work with the commit message focused.
+    pub fn request_review_commit(&mut self, workspace_id: &str, cx: &mut Context<Self>) {
+        if workspace_id.is_empty() {
+            return;
+        }
+        self.review_commit = Some(workspace_id.to_string());
+        cx.notify();
+    }
+
+    /// Claim a pending "Review and commit…" for this workspace, once.
+    pub fn take_review_commit(&mut self, workspace_id: &str) -> bool {
+        if self.review_commit.as_deref() != Some(workspace_id) {
+            return false;
+        }
+        self.review_commit = None;
+        true
+    }
+
     // ---- seeds ----
 
     pub fn set_workspace_seed(&mut self, seed: WorkspaceSeed, cx: &mut Context<Self>) {
@@ -921,6 +946,17 @@ impl AppState {
         self.persist_panels();
     }
 
+    /// The right panel floats (or docks) in every workspace.
+    pub fn set_side_float(&mut self, on: bool, cx: &mut Context<Self>) {
+        self.panels.set_side_float(on, &mut self.storage);
+        cx.notify();
+    }
+
+    /// ⌥⌘J.
+    pub fn toggle_side_float(&mut self, cx: &mut Context<Self>) {
+        self.set_side_float(!self.panels.side_float(), cx);
+    }
+
     pub fn set_code_panel_side(
         &mut self,
         key: prefs::CodePanelKey,
@@ -977,26 +1013,64 @@ impl AppState {
         self.set_terminal_dock_maximized(id, on, cx);
     }
 
+    /// Where `id` shows the terminal: its own placement, or the app-wide default.
+    pub fn terminal_placement(&self, id: &str) -> prefs::TerminalPlacement {
+        self.dock
+            .placement(id)
+            .unwrap_or(self.panels.terminal_placement)
+    }
+
+    /// The terminal has the center column to itself: ⌥⌘E, or the terminal showing where its
+    /// placement is in place of the editor.
+    pub fn editor_hidden(&self, id: &str) -> bool {
+        if self.terminal_placement(id) == prefs::TerminalPlacement::Center {
+            self.dock.is_open(id)
+        } else {
+            self.dock.is_editor_hidden(id)
+        }
+    }
+
     pub fn set_editor_hidden(&mut self, id: &str, on: bool, cx: &mut Context<Self>) {
         if id.is_empty() {
             return;
         }
-        self.dock.set_editor_hidden(id, on);
+        if self.terminal_placement(id) == prefs::TerminalPlacement::Center {
+            self.dock.set_open(id, on);
+        } else {
+            self.dock.set_editor_hidden(id, on);
+        }
         self.persist_dock_chrome(id, cx);
         cx.notify();
     }
 
     pub fn toggle_editor_hidden(&mut self, id: &str, cx: &mut Context<Self>) {
-        let on = !self.dock.is_editor_hidden(id);
+        let on = !self.editor_hidden(id);
         self.set_editor_hidden(id, on, cx);
     }
 
-    pub fn set_terminal_beside(&mut self, id: &str, on: bool, cx: &mut Context<Self>) {
+    /// The workspace's own terminal placement (the toolbar's menu), shown there; `None` goes
+    /// back to the default.
+    pub fn set_terminal_placement(
+        &mut self,
+        id: &str,
+        p: Option<prefs::TerminalPlacement>,
+        cx: &mut Context<Self>,
+    ) {
         if id.is_empty() {
             return;
         }
-        self.dock.set_beside(id, on);
+        self.dock.set_placement(id, p);
         self.persist_dock_chrome(id, cx);
+        cx.notify();
+    }
+
+    /// The placement of every workspace without its own (Settings).
+    pub fn set_terminal_placement_default(
+        &mut self,
+        p: prefs::TerminalPlacement,
+        cx: &mut Context<Self>,
+    ) {
+        self.panels.set_terminal_placement(p, &mut self.storage);
         cx.notify();
     }
 

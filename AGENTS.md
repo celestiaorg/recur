@@ -95,5 +95,5 @@ Expectations:
 - Prefer small, focused PRs; match existing commit tone (why over noise).
 - Run `mise run check` before pushing.
 - Update `docs/bundles.md` for author-facing bundle behavior.
-- Add user-facing changes to the `Unreleased` section of `src-docs/src/pages/changelog.mdx` (Keep a Changelog: Added, Changed, Fixed, Removed, Security). Write for users, not commit messages. On release, rename `Unreleased` to the version and date.
+- Add user-facing changes as a new file `src-docs/changelog.d/<branch-topic>.md` holding `### Added|Changed|Removed|Fixed|Security` headings and `- ` entries (Keep a Changelog). Write for users, not commit messages. Do not edit `src-docs/src/pages/changelog.mdx` in a PR: one file per PR keeps parallel PRs from conflicting, and the release folds the fragments in.
 - Do not commit secrets, `target/`, or the gitignored `TODO.md`.

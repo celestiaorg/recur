@@ -4,8 +4,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::PlanStep;
 use crate::serde_util::{is_false, is_zero};
+use crate::{Check, Finding, PlanStep};
 
 // Overview buckets. A workspace appears in at most one.
 pub const BRIEF_BUCKET_NEEDS: &str = "needs";
@@ -167,6 +167,43 @@ pub struct WorkspaceContext {
     pub conversation: Vec<ConversationLine>,
 }
 
+/// The Inbox overview of one workspace: its context plus the live detail
+/// (latest reply, recent tool steps, failing checks).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct WorkspaceOverview {
+    pub context: WorkspaceContext,
+    /// A turn, loop or agent is live.
+    pub running: bool,
+    pub last_reply: String,
+    /// Tool calls of the most recent chat, oldest first.
+    pub recent_steps: Vec<String>,
+    pub failing_checks: Vec<Check>,
+    /// Reviewer findings still open, most severe first.
+    pub open_findings: Vec<Finding>,
+    /// The plan's headline and full markdown brief (what an approval approves).
+    pub plan_summary: String,
+    pub plan_body: String,
+}
+
+/// A workspace's committed changes against its project's base branch (the
+/// Inbox overview fetches them apart: they cost a git run).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct WorkspaceChanges {
+    pub base_branch: String,
+    pub files: Vec<ChangedFile>,
+}
+
+/// One changed file and its line counts.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ChangedFile {
+    pub path: String,
+    pub add: i64,
+    pub del: i64,
+}
+
 /// One live or recent agent on a workspace, for context.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -216,6 +253,9 @@ pub struct PrSummary {
     pub state: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub review_decision: String,
+    /// `Pr::checks_summary`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub checks: String,
 }
 
 /// One human-visible excerpt line (user/assistant text).

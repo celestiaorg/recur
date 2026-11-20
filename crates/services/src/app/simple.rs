@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use recur_domain::{
     Agent, Artifact, BriefingSnapshot, ChatAttachment, ChatItem, Escalation, FINDING_ACTOR_HUMAN,
     FINDING_SOURCE_USER, Finding, FindingStatus, InboxItem, PermissionDecision, PermissionRequest,
-    Policy, Severity, UserQuestion, WorkspaceChatTab,
+    Policy, Severity, UserQuestion, WorkspaceChanges, WorkspaceChatTab, WorkspaceOverview,
 };
 use recur_engine::attention::chat_inbox::parse_chat_inbox_id;
 use recur_engine::bus::{EngineEvent, InboxUpdated, WorkspaceRef};
@@ -361,6 +361,13 @@ impl BriefingService for AppServices {
         })
     }
 
+    async fn mark_workspace_unread(&self, workspace_id: &str) -> Result<()> {
+        rt!(self, workspace_id => |s| {
+            s.engine.mark_workspace_unread(&workspace_id);
+            Ok(())
+        })
+    }
+
     async fn new_app_chat(&self) -> Result<WorkspaceChatTab> {
         rt!(self, => |s| Ok(s.engine.new_app_chat()))
     }
@@ -384,10 +391,11 @@ impl BriefingService for AppServices {
         text: &str,
         model: &str,
         flags: &BTreeMap<String, String>,
+        viewing: &str,
     ) -> Result<String> {
-        rt!(self, code, text, model, flags => |s| {
+        rt!(self, code, text, model, flags, viewing => |s| {
             Ok(s.engine
-                .send_app_message(&code, &text, &model, Some(&flags))
+                .send_app_message_viewing(&code, &text, &viewing, &model, Some(&flags))
                 .await)
         })
     }
@@ -395,6 +403,30 @@ impl BriefingService for AppServices {
     async fn set_app_chat_focus(&self, visible: bool, code: &str) -> Result<()> {
         rt!(self, visible, code => |s| {
             s.engine.set_app_chat_focus(visible, &code);
+            Ok(())
+        })
+    }
+
+    async fn message_workspace(&self, workspace_id: &str, message: &str) -> Result<String> {
+        rt!(self, workspace_id, message => |s| {
+            s.engine
+                .message_workspace_from_inbox(&workspace_id, &message)
+                .await
+                .map_err(err)
+        })
+    }
+
+    async fn workspace_overview(&self, workspace_id: &str) -> Result<WorkspaceOverview> {
+        rt!(self, workspace_id => |s| s.engine.workspace_overview(&workspace_id).map_err(err))
+    }
+
+    async fn workspace_changes(&self, workspace_id: &str) -> Result<WorkspaceChanges> {
+        rt!(self, workspace_id => |s| Ok(s.engine.workspace_changes(&workspace_id).await))
+    }
+
+    async fn stop_workspace(&self, workspace_id: &str) -> Result<()> {
+        rt!(self, workspace_id => |s| {
+            s.engine.stop_workspace_from_inbox(&workspace_id).await;
             Ok(())
         })
     }

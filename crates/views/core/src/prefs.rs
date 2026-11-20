@@ -25,10 +25,11 @@ pub enum PanelKey {
     PrChatDock,
     TerminalDock,
     InboxChat,
+    InboxList,
 }
 
 impl PanelKey {
-    pub const ALL: [PanelKey; 9] = [
+    pub const ALL: [PanelKey; 10] = [
         PanelKey::Rail,
         PanelKey::LoopInspector,
         PanelKey::ObsTree,
@@ -38,6 +39,7 @@ impl PanelKey {
         PanelKey::PrChatDock,
         PanelKey::TerminalDock,
         PanelKey::InboxChat,
+        PanelKey::InboxList,
     ];
 
     pub fn key(self) -> &'static str {
@@ -51,6 +53,7 @@ impl PanelKey {
             PanelKey::PrChatDock => "prChatDock",
             PanelKey::TerminalDock => "terminalDock",
             PanelKey::InboxChat => "inboxChat",
+            PanelKey::InboxList => "inboxList",
         }
     }
 
@@ -66,6 +69,7 @@ impl PanelKey {
             PanelKey::PrChatDock => 360.,
             PanelKey::TerminalDock => 260.,
             PanelKey::InboxChat => 360.,
+            PanelKey::InboxList => 340.,
         }
     }
 
@@ -82,6 +86,7 @@ impl PanelKey {
             PanelKey::PrChatDock => (260., 2000.),
             PanelKey::TerminalDock => (80., 2000.),
             PanelKey::InboxChat => (280., 2000.),
+            PanelKey::InboxList => (260., 2000.),
         }
     }
 }

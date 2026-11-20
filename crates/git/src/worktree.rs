@@ -502,6 +502,27 @@ impl Manager {
         .await
     }
 
+    /// Per-file `(path, added, deleted)` committed since the merge-base with
+    /// `base_branch` (binary files count zero).
+    pub async fn changed_numstat(
+        &self,
+        worktree: &str,
+        base_branch: &str,
+    ) -> Vec<(String, i64, i64)> {
+        let base = match self
+            .run_in(worktree, ["merge-base", "HEAD", base_branch])
+            .await
+        {
+            Ok(mb) if !mb.trim().is_empty() => mb.trim().to_string(),
+            _ => base_branch.to_string(),
+        };
+        let out = self
+            .run_in(worktree, ["diff", "--numstat", base.as_str(), "HEAD"])
+            .await
+            .unwrap_or_default();
+        parse_numstat_files(&out)
+    }
+
     /// The branch's changes versus `base_branch`'s merge-base with HEAD: the
     /// changed paths and the unified diff body. Best-effort: on git errors it
     /// returns what it has so a rail check never wedges.
@@ -3332,6 +3353,32 @@ mod tests {
                     head: "def".into()
                 },
             ]
+        );
+    }
+}
+
+/// `git diff --numstat` lines as `(path, added, deleted)`.
+pub fn parse_numstat_files(out: &str) -> Vec<(String, i64, i64)> {
+    out.lines()
+        .filter_map(|l| {
+            let mut it = l.splitn(3, '\t');
+            let (add, del, path) = (it.next()?, it.next()?, it.next()?);
+            Some((
+                path.to_string(),
+                add.parse().unwrap_or(0),
+                del.parse().unwrap_or(0),
+            ))
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod numstat_files_tests {
+    #[test]
+    fn parses_counts_and_binary() {
+        assert_eq!(
+            super::parse_numstat_files("3\t1\tsrc/a.rs\n-\t-\tlogo.png\n\n"),
+            vec![("src/a.rs".into(), 3, 1), ("logo.png".into(), 0, 0)]
         );
     }
 }

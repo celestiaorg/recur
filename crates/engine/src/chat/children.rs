@@ -15,6 +15,7 @@ use recur_domain::{
 };
 
 use crate::Engine;
+use crate::app_chat::{APP_REPORT_ARMED, app_report_tab};
 use crate::chatlife::ChatTurn;
 use crate::codes::{PAIR_AGENT_CODE, chat_turn_key, is_chat_child, is_pair_chat_code};
 use crate::loops::fanout::{FanOutChild, FanOutWave};
@@ -30,6 +31,14 @@ pub const CHILD_REPLY_MAX: usize = 4000;
 pub const CHILD_NOTICE_REPLY_MAX: usize = 1200;
 pub const CHILD_DIFF_MAX: usize = 12000;
 pub const PARENT_STEER_PREFIX: &str = "Parent workspace sent this while you were working. Treat it as additional instruction and continue:\n\n";
+pub const APP_STEER_PREFIX: &str = "The human sent this through Ask Recur while you were working. Treat it as additional instruction and continue:\n\n";
+
+enum Delivered {
+    Steered,
+    LoopSteered,
+    Started,
+    Busy,
+}
 
 /// The parent tab a chat child reports to.
 pub fn child_chat(w: &Workspace) -> String {
@@ -252,6 +261,14 @@ impl Engine {
     /// follow-up), so its parent gets another report. Called once the turn
     /// is live.
     pub(crate) fn reopen_chat_child(&self, child_id: &str) {
+        if self
+            .store
+            .workspace(child_id)
+            .is_some_and(|w| app_report_tab(&w).is_some())
+        {
+            self.reopen_app_report(child_id);
+            return;
+        }
         let mut reopened = false;
         let updated = self.store.update_workspace(child_id, |w| {
             let reportable = !w.archived && is_chat_child(w);
@@ -563,16 +580,28 @@ impl Engine {
         let Some(parent) = self.store.workspace(parent_id) else {
             return Default::default();
         };
-        if child.worktree_path.is_empty() || child.archived {
+        self.changed_diff_vs(child, &parent.project_id, &parent.branch)
+            .await
+    }
+
+    /// The workspace's committed changes against `branch` of `project_id`;
+    /// empty for archived workspaces (the worktree is gone).
+    pub(crate) async fn changed_diff_vs(
+        &self,
+        ws: &Workspace,
+        project_id: &str,
+        branch: &str,
+    ) -> (Vec<String>, String) {
+        if ws.worktree_path.is_empty() || ws.archived {
             return Default::default();
         }
-        let Some(proj) = self.store.project(&parent.project_id) else {
+        let Some(proj) = self.store.project(project_id) else {
             return Default::default();
         };
         tokio::time::timeout(
             Duration::from_secs(30),
             self.git_manager(&proj.repo_path)
-                .changed_diff(&child.worktree_path, &parent.branch),
+                .changed_diff(&ws.worktree_path, branch),
         )
         .await
         .unwrap_or_default()
@@ -626,11 +655,36 @@ impl Engine {
             }
             b.push_str(".\n\n");
         }
-        let err = child.last_error.trim();
+        let base = self
+            .store
+            .workspace(parent_id)
+            .map(|p| (p.project_id, p.branch));
+        self.push_workspace_report(&mut b, child, base, with_diff)
+            .await;
+        if !child.archived && !running {
+            let id = &child.id;
+            b.push_str(&format!(
+                "You can: read_child {id} (full diff), read_artifact with workspace_id={id}, merge_child {id} to land its commits in this worktree, or archive_child {id} to close it without merging."
+            ));
+        }
+        b
+    }
+
+    /// The report body shared by read_child and read_workspace: error, final
+    /// reply, handoff, plan, findings, changes against `base` (project id,
+    /// branch; the diff when `with_diff`) and artifacts.
+    pub(crate) async fn push_workspace_report(
+        &self,
+        b: &mut String,
+        ws: &Workspace,
+        base: Option<(String, String)>,
+        with_diff: bool,
+    ) {
+        let err = ws.last_error.trim();
         if !err.is_empty() {
             b.push_str(&format!("Error: {err}\n\n"));
         }
-        let reply = self.store.last_assistant_text(&child.id);
+        let reply = self.store.last_assistant_text(&ws.id);
         let reply = reply.trim();
         if !reply.is_empty() {
             b.push_str(&format!(
@@ -638,18 +692,18 @@ impl Engine {
                 truncate(reply, CHILD_REPLY_MAX)
             ));
         }
-        let h = child.handoff.trim();
+        let h = ws.handoff.trim();
         if !h.is_empty() {
             b.push_str(&format!("Handoff notes: {h}\n\n"));
         }
-        if let Some(plan) = &child.plan {
+        if let Some(plan) = &ws.plan {
             let t = plan.text();
             let t = t.trim();
             if !t.is_empty() {
                 b.push_str(&format!("Plan:\n{}\n\n", truncate(t, CHILD_REPLY_MAX)));
             }
         }
-        let findings = self.store.findings(&child.id);
+        let findings = self.store.findings(&ws.id);
         if !findings.is_empty() {
             b.push_str("Findings:\n");
             for f in &findings {
@@ -666,20 +720,17 @@ impl Engine {
             }
             b.push('\n');
         }
-        if let Some(parent) = self.store.workspace(parent_id)
-            && !child.worktree_path.is_empty()
-            && !child.archived
+        if let Some((project_id, branch)) = base
+            && !ws.worktree_path.is_empty()
+            && !ws.archived
         {
-            let (paths, body) = self.child_changed_diff(parent_id, child).await;
+            let (paths, body) = self.changed_diff_vs(ws, &project_id, &branch).await;
             if paths.is_empty() {
-                b.push_str(&format!(
-                    "Committed changes vs {}: none.\n\n",
-                    parent.branch
-                ));
+                b.push_str(&format!("Committed changes vs {}: none.\n\n", branch));
             } else {
                 b.push_str(&format!(
                     "Committed changes vs {} ({} file(s)): {}\n",
-                    parent.branch,
+                    branch,
                     paths.len(),
                     paths.join(", ")
                 ));
@@ -691,7 +742,7 @@ impl Engine {
                 }
                 b.push('\n');
             }
-            let dirty = self.child_dirty_paths(child).await;
+            let dirty = self.child_dirty_paths(ws).await;
             if !dirty.is_empty() {
                 b.push_str(&format!(
                     "Uncommitted (staged/unstaged/untracked, {} file(s)): {}\n",
@@ -699,7 +750,7 @@ impl Engine {
                     dirty.join(", ")
                 ));
                 if with_diff {
-                    let out = child_uncommitted_diff(&child.worktree_path).await;
+                    let out = child_uncommitted_diff(&ws.worktree_path).await;
                     if !out.is_empty() {
                         b.push_str(&format!(
                             "```diff\n{}\n```\n",
@@ -710,7 +761,7 @@ impl Engine {
                 b.push('\n');
             }
         }
-        if let Ok(arts) = self.list_artifacts(&child.id)
+        if let Ok(arts) = self.list_artifacts(&ws.id)
             && !arts.is_empty()
         {
             b.push_str("Artifacts:\n");
@@ -719,13 +770,6 @@ impl Engine {
             }
             b.push('\n');
         }
-        if !child.archived && !running {
-            let id = &child.id;
-            b.push_str(&format!(
-                "You can: read_child {id} (full diff), read_artifact with workspace_id={id}, merge_child {id} to land its commits in this worktree, or archive_child {id} to close it without merging."
-            ));
-        }
-        b
     }
 
     /// The read_child tool.
@@ -757,7 +801,102 @@ impl Engine {
         }) else {
             return format!("message_child: {child_id} is not a child of this workspace");
         };
-        let prefix = chat_turn_key(child_id, "");
+        let display = format!("From parent {parent_id}: {message}");
+        let steer = format!("{PARENT_STEER_PREFIX}{message}");
+        match self
+            .deliver_workspace_message(&child, message, &steer, &display, is_chat_child(&child))
+            .await
+        {
+            Delivered::Steered => "Steered the child mid-turn; the child accepted the message.".into(),
+            Delivered::LoopSteered => {
+                "Steered the child's running workflow; this call does not wait.".into()
+            }
+            Delivered::Started => "The child had finished, so this started a new turn on it; you get a new turn with its report when it finishes again.".into(),
+            Delivered::Busy => format!(
+                "message_child: {child_id} is still starting or already finished; wait, or read_child / merge_child / archive_child"
+            ),
+        }
+    }
+
+    /// The message_workspace tool (Ask Recur): message_child for any
+    /// unarchived workspace. A top-level workspace then reports back to
+    /// `code` when it settles.
+    pub async fn message_workspace_from_app(
+        &self,
+        code: &str,
+        workspace_id: &str,
+        message: &str,
+    ) -> String {
+        let message = message.trim();
+        let Some(ws) = self.store.workspace(workspace_id).filter(|w| !w.archived) else {
+            return format!("message_workspace: no open workspace {workspace_id}");
+        };
+        let display = format!("From Ask Recur: {message}");
+        let steer = format!("{APP_STEER_PREFIX}{message}");
+        let prev = self.arm_app_report(workspace_id, code, APP_REPORT_ARMED);
+        let reports = if prev.is_some() {
+            " You get a turn here with its report when it finishes."
+        } else {
+            ""
+        };
+        match self
+            .deliver_workspace_message(&ws, message, &steer, &display, true)
+            .await
+        {
+            Delivered::Steered | Delivered::LoopSteered => {
+                if prev.is_some() {
+                    self.reopen_app_report(workspace_id);
+                }
+                format!(
+                    "Steered the workspace's running agent; it continues with the message.{reports}"
+                )
+            }
+            Delivered::Started => format!(
+                "The workspace was idle, so this started a new Agent chat turn with the message.{reports}"
+            ),
+            Delivered::Busy => {
+                if let Some(prev) = prev {
+                    self.restore_app_report(workspace_id, prev);
+                }
+                format!(
+                    "message_workspace: {workspace_id} is busy (starting, mid-phase, or waiting on a question); answer its question or try again later"
+                )
+            }
+        }
+    }
+
+    /// The Inbox's message to a workspace's agent (Fix checks): steers a live
+    /// turn or workflow, else starts a turn. No Ask Recur report.
+    pub async fn message_workspace_from_inbox(
+        &self,
+        workspace_id: &str,
+        message: &str,
+    ) -> Result<String, String> {
+        let message = message.trim();
+        let Some(ws) = self.store.workspace(workspace_id).filter(|w| !w.archived) else {
+            return Err(format!("No open workspace {workspace_id}"));
+        };
+        match self
+            .deliver_workspace_message(&ws, message, message, message, true)
+            .await
+        {
+            Delivered::Steered | Delivered::LoopSteered => Ok("Sent to the running agent".into()),
+            Delivered::Started => Ok("Started a turn on the workspace".into()),
+            Delivered::Busy => Err("The workspace is busy; try again shortly".into()),
+        }
+    }
+
+    /// Steers the live Agent chat turn or running workflow, else (when
+    /// `start_idle`) starts a new turn on the settled Agent chat.
+    async fn deliver_workspace_message(
+        &self,
+        ws: &Workspace,
+        message: &str,
+        steer: &str,
+        display: &str,
+        start_idle: bool,
+    ) -> Delivered {
+        let prefix = chat_turn_key(&ws.id, "");
         let mut code = PAIR_AGENT_CODE.to_owned();
         for (key, _) in self.live_chat_turns() {
             let Some(tab) = key.strip_prefix(&prefix) else {
@@ -774,37 +913,28 @@ impl Engine {
                 code = tab.to_owned();
             }
         }
-        let display = format!("From parent {parent_id}: {message}");
-        if self
-            .try_inject_chat(
-                child_id,
-                &code,
-                &format!("{PARENT_STEER_PREFIX}{message}"),
-                &display,
-            )
-            .await
-        {
-            return "Steered the child mid-turn; the child accepted the message.".into();
+        if self.try_inject_chat(&ws.id, &code, steer, display).await {
+            return Delivered::Steered;
         }
-        if let Some(lp) = self.running_loop_by_id(child_id) {
+        if let Some(lp) = self.running_loop_by_id(&ws.id) {
             lp.queue_steer(message);
-            return "Steered the child's running workflow; this call does not wait.".into();
+            return Delivered::LoopSteered;
         }
-        if !is_chat_child(&child)
-            || child.worktree_path.is_empty()
-            || !self.child_settled_for_chat(child_id)
-        {
-            return format!(
-                "message_child: {child_id} is still starting or already finished; wait, or read_child / merge_child / archive_child"
-            );
+        if !start_idle || ws.worktree_path.is_empty() || !self.child_settled_for_chat(&ws.id) {
+            return Delivered::Busy;
         }
-        let (model, flags, mode) = self.workspace_chat_selection(child_id, &code);
-        let (eng, c, m) = (self.arc(), child_id.to_owned(), message.to_owned());
+        let (model, flags, mode) = self.workspace_chat_selection(&ws.id, &code);
+        let (eng, id, m, d) = (
+            self.arc(),
+            ws.id.clone(),
+            message.to_owned(),
+            display.to_owned(),
+        );
         tokio::spawn(async move {
-            eng.send_workspace_message(&c, &code, &m, &model, Some(&flags), &[], &mode, &display)
+            eng.send_workspace_message(&id, &code, &m, &model, Some(&flags), &[], &mode, &d)
                 .await;
         });
-        "The child had finished, so this started a new turn on it; you get a new turn with its report when it finishes again.".into()
+        Delivered::Started
     }
 
     /// read_artifact with a workspace_id scoped to own children.

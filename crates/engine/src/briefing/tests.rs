@@ -594,6 +594,42 @@ async fn changed_since_viewed_needs_a_prior_view() {
 }
 
 #[tokio::test]
+async fn mark_workspace_unread_raises_the_cue_until_viewed() {
+    let te = TestEngine::new(None);
+    te.store
+        .add_project(Project {
+            id: "p1".into(),
+            name: "P".into(),
+            ..Project::default()
+        })
+        .unwrap();
+    te.store
+        .add_workspace(Workspace {
+            id: "W-u".into(),
+            project_id: "p1".into(),
+            short: "u".into(),
+            state: WorkspaceState::Paused,
+            last_activity_at: 200,
+            last: "done".into(),
+            diff: DiffStat { add: 1, del: 0 },
+            ..Workspace::default()
+        })
+        .unwrap();
+    let changed = |te: &TestEngine| {
+        let all = te.engine.briefing_snapshot().workspaces.unwrap_or_default();
+        all.iter()
+            .any(|b| b.workspace_id == "W-u" && b.changed_since_viewed)
+    };
+    te.engine.mark_workspace_viewed("W-u", 200);
+    assert!(!changed(&te));
+    te.engine.mark_workspace_unread("W-u");
+    assert!(changed(&te));
+    te.engine.mark_workspace_viewed("W-u", 200);
+    assert!(!changed(&te));
+    te.close().await;
+}
+
+#[tokio::test]
 async fn touch_workspace_activity_is_monotonic() {
     let te = TestEngine::new(None);
     te.store
@@ -680,5 +716,33 @@ async fn the_snapshot_and_context_services() {
         ctx.agents
     );
     assert!(te.engine.workspace_context("nope").is_err());
+    te.store
+        .add_workspace(Workspace {
+            id: "W-host".into(),
+            project_id: "p1".into(),
+            host_pr_id: "pr-host".into(),
+            ..Workspace::default()
+        })
+        .unwrap();
+    te.store
+        .add_pr(Pr {
+            id: "pr-host".into(),
+            number: 52,
+            title: "Fix overlay scrollbar flicker".into(),
+            state: "In review".into(),
+            ..Pr::default()
+        })
+        .unwrap();
+    let ctx = te.engine.workspace_context("W-host").expect("host context");
+    assert_eq!(
+        ctx.pr.map(|p| p.number),
+        Some(52),
+        "a review host finds its PR"
+    );
+    let ov = te
+        .engine
+        .workspace_overview("W-host")
+        .expect("host overview");
+    assert_eq!(ov.context.pr.map(|p| p.number), Some(52));
     te.close().await;
 }

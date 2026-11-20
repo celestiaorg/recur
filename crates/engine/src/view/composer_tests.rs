@@ -208,6 +208,38 @@ fn terminal_chips() {
 }
 
 #[test]
+fn workspace_and_project_chips() {
+    let title = |kind: RefKind, id: &str| format!("{}-{id}", kind.keyword());
+    let opts = HydrateOpts {
+        chip_files: true,
+        ref_title: Some(&title),
+        ..HydrateOpts::default()
+    };
+    let lines = round_trip(
+        "ask @workspace:proj.zesty-ramen and @project:api now",
+        &opts,
+    );
+    assert_eq!(
+        lines[0][1],
+        Segment::Ref {
+            kind: RefKind::Workspace,
+            id: "proj.zesty-ramen".into(),
+            title: "workspace-proj.zesty-ramen".into()
+        }
+    );
+    assert_eq!(
+        lines[0][3],
+        Segment::Ref {
+            kind: RefKind::Project,
+            id: "api".into(),
+            title: "project-api".into()
+        }
+    );
+    let lines = round_trip("x@workspace:a @workspace", &opts);
+    assert!(lines[0].iter().all(|s| matches!(s, Segment::Text(_))));
+}
+
+#[test]
 fn boundaries_after_terminal_and_artifact_chips() {
     for (chip, wire) in [
         (

@@ -65,5 +65,9 @@ tool_names! {
     // Ask Recur coordinator
     LIST_WORKSPACE_BRIEFS = "list_workspace_briefs",
     GET_WORKSPACE_CONTEXT = "get_workspace_context",
+    READ_WORKSPACE = "read_workspace",
     PRESENT_WORKSPACE = "present_workspace",
+    MESSAGE_WORKSPACE = "message_workspace",
+    ANSWER_QUESTION = "answer_question",
+    CREATE_PROJECT = "create_project",
 }

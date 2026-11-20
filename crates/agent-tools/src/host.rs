@@ -66,6 +66,15 @@ pub struct PlanStepMeta {
     pub explicit: bool,
 }
 
+/// The create_project tool input. Empty `path` means a folder named after the project
+/// beside the existing ones; a `clone_url` clones instead of starting an empty repo.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CreateProjectRequest {
+    pub name: String,
+    pub path: String,
+    pub clone_url: String,
+}
+
 /// The create_workspace tool input. Empty `project_id` means the caller's
 /// project, empty `base_branch` the project default, empty `mode` agent.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -290,6 +299,10 @@ pub trait Host: Send + Sync {
         "ignored".into()
     }
 
+    async fn create_project(&self, _req: CreateProjectRequest) -> String {
+        "ignored".into()
+    }
+
     async fn merge_child(&self, _ws: &str, _agent: &str, _child_id: &str) -> String {
         String::new()
     }
@@ -447,6 +460,18 @@ pub trait Host: Send + Sync {
     /// Validates a target and returns a JSON card payload.
     async fn present_workspace(&self, _target: &str) -> String {
         "ignored".into()
+    }
+
+    async fn read_workspace(&self, _id: &str, _with_diff: bool) -> String {
+        String::new()
+    }
+
+    async fn message_workspace(&self, _agent: &str, _id: &str, _message: &str) -> String {
+        String::new()
+    }
+
+    async fn answer_question(&self, _question_id: &str, _answer: &str) -> String {
+        String::new()
     }
 }
 

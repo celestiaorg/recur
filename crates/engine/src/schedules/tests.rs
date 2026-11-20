@@ -10,9 +10,9 @@ use recur_agent::error::ErrorKind;
 use recur_agent::{Provider, ProviderError};
 use recur_agent_tools::CreateWorkspaceRequest;
 use recur_domain::{
-    AgentRole, CHAT_MODE_ASK, CHAT_MODE_LOOP, CHAT_MODE_PLAN, CHILD_WORKSPACE_MODEL_MODE,
-    CHILD_WORKSPACE_MODEL_PARENT, Flags, PROVIDER_CLAUDE_CODE, Pr, PrSource, ScheduledPrompt,
-    ScheduledPromptRun, UserQuestion, WorkspaceState,
+    APP_AGENT_CODE, AgentRole, CHAT_MODE_ASK, CHAT_MODE_LOOP, CHAT_MODE_PLAN,
+    CHILD_WORKSPACE_MODEL_MODE, CHILD_WORKSPACE_MODEL_PARENT, Flags, PROVIDER_CLAUDE_CODE, Pr,
+    PrSource, ScheduledPrompt, ScheduledPromptRun, UserQuestion, WorkspaceState,
 };
 use tokio_util::task::TaskTracker;
 
@@ -687,6 +687,225 @@ async fn create_workspace_from_chat() {
             .await;
         assert!(r.starts_with("create_workspace:"), "{bad:?} = {r}");
     }
+    sx.te.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn ask_recur_creates_and_directs_workspaces() {
+    let c = CaptureScript::new(|_| crate::turn::test_support::maestro_tool_fixture("spawned"));
+    let sx = Sx::new(Some(c.provider()));
+    let eng = sx.eng();
+    eng.set_fan_out_poll(Duration::from_millis(50));
+    let req = CreateWorkspaceRequest {
+        title: "Fix login redirect".into(),
+        prompt: "Fix the redirect.".into(),
+        ..CreateWorkspaceRequest::default()
+    };
+    let r = eng
+        .create_workspace_from_chat("", APP_AGENT_CODE, req.clone())
+        .await;
+    assert!(r.contains("projects: proj (proj)"), "{r}");
+    let req = CreateWorkspaceRequest {
+        project_id: "PROJ".into(),
+        standalone: Some(false),
+        ..req
+    };
+    let r = eng
+        .create_workspace_from_chat("", APP_AGENT_CODE, req.clone())
+        .await;
+    assert!(r.starts_with("Created workspace "), "{r}");
+    sx.drain_schedules().await;
+    let ws = spawned(&sx, &req.title);
+    assert!(
+        ws.parent_id.is_empty() && ws.project_id == sx.proj,
+        "{ws:?}"
+    );
+    let reports = |c: &CaptureScript| {
+        c.with_role(AgentRole::Maestro)
+            .iter()
+            .filter(|s| {
+                s.route.code == APP_AGENT_CODE
+                    && s.prompt.starts_with(&format!("Workspace {}", ws.id))
+            })
+            .count()
+    };
+    let (st, wid) = (Arc::clone(&sx.te.store), ws.id.clone());
+    let settled = || {
+        st.workspace(&wid)
+            .and_then(|w| w.fan_out)
+            .is_some_and(|f| f.outcome == "settled")
+    };
+    wait_for(Duration::from_secs(10), "first report", &settled).await;
+    assert_eq!(reports(&c), 1);
+    let report = c
+        .with_role(AgentRole::Maestro)
+        .into_iter()
+        .find(|s| s.prompt.starts_with(&format!("Workspace {}", ws.id)))
+        .unwrap();
+    let tools = report.allowed_tools.unwrap_or_default();
+    assert!(
+        tools
+            .iter()
+            .any(|t| t == recur_agent_tools::names::mcp::MESSAGE_WORKSPACE)
+            && !tools.iter().any(|t| {
+                t == recur_agent_tools::names::mcp::ANSWER_QUESTION
+                    || t == recur_agent_tools::names::mcp::CREATE_PROJECT
+            }),
+        "{tools:?}"
+    );
+    eng.send_app_message_viewing(APP_AGENT_CODE, "How is this going?", &ws.id, "", None)
+        .await;
+    assert!(
+        c.with_role(AgentRole::Maestro).iter().any(|s| {
+            s.prompt.contains(&format!("workspace {} (", ws.id))
+                && s.prompt.contains("open in the Inbox")
+                && s.prompt.ends_with("How is this going?")
+        }),
+        "the turn is told which workspace is open"
+    );
+    let r = eng.read_workspace_from_app(&ws.id, false).await;
+    for want in [
+        format!("Workspace {}", ws.id),
+        "has finished".into(),
+        "Committed changes vs main".into(),
+        "Recent tool steps".into(),
+        "- Read auth.go".into(),
+    ] {
+        assert!(r.contains(&want), "{want:?} in {r}");
+    }
+    let pr = sx
+        .te
+        .store
+        .add_pr(Pr {
+            workspace_id: ws.id.clone(),
+            project_id: sx.proj.clone(),
+            number: 12,
+            title: "Fix login redirect".into(),
+            state: "In review".into(),
+            checks_ok: true,
+            has_checks: true,
+            ..Pr::default()
+        })
+        .unwrap();
+    eng.note_pr_checks(&pr.id, true);
+    sx.te.store.update_pr(&pr.id, |p| {
+        p.checks_ok = false;
+        p.checks = Some(vec![recur_domain::Check {
+            name: "lint".into(),
+            detail: "clippy: unused import".into(),
+            status: "fail".into(),
+            ..Default::default()
+        }]);
+    });
+    eng.note_pr_checks(&pr.id, true);
+    let c3 = Arc::clone(&c);
+    wait_for(Duration::from_secs(10), "CI notice", || {
+        c3.with_role(AgentRole::Maestro).iter().any(|s| {
+            s.prompt.starts_with("CI is failing") && s.prompt.contains("- lint failed: clippy")
+        })
+    })
+    .await;
+    let r = eng.read_workspace_from_app(&ws.id, false).await;
+    assert!(
+        r.contains("PR #12") && r.contains("checks failing: lint"),
+        "{r}"
+    );
+    let o = eng.workspace_overview(&ws.id).unwrap();
+    assert_eq!(o.context.brief.workspace_id, ws.id);
+    assert!(o.recent_steps.iter().any(|s| s == "Read auth.go"), "{o:?}");
+    assert_eq!(o.last_reply, "Auth looks fine.");
+    assert_eq!(o.failing_checks.len(), 1);
+    assert_eq!(o.context.pr.unwrap().checks, "failing: lint");
+    assert!(eng.workspace_overview("nope").is_err());
+    let changes = eng.workspace_changes(&ws.id).await;
+    assert_eq!(changes.base_branch, "main");
+    assert!(changes.files.is_empty(), "{changes:?}");
+    let r = eng
+        .attach_ref_mentions(
+            &format!(
+                "@workspace:{} and @project:proj and @workspace:gone status?",
+                ws.id
+            ),
+            "wire",
+        )
+        .await;
+    for want in [
+        format!("### @workspace:{}", ws.id),
+        format!("Workspace {} (", ws.id),
+        "Project proj (id proj)".into(),
+        format!("- {} ", ws.id),
+        "### @workspace:gone\n(not found)".into(),
+    ] {
+        assert!(r.contains(&want), "{want:?} in {r}");
+    }
+    assert!(r.ends_with("</system_instruction>\n\nwire"), "{r}");
+    assert_eq!(eng.attach_ref_mentions("`@project:proj`", "w").await, "w");
+    let r = eng.read_workspace_from_app("nope", false).await;
+    assert!(r.starts_with("read_workspace: no workspace"), "{r}");
+    let r = eng
+        .message_workspace_from_app(APP_AGENT_CODE, &ws.id, "Also add a test.")
+        .await;
+    assert!(r.contains("started a new Agent chat turn"), "{r}");
+    wait_for(Duration::from_secs(10), "second report", || {
+        reports(&c) == 2
+    })
+    .await;
+    wait_for(Duration::from_secs(10), "second report settles", &settled).await;
+    assert!(
+        c.with_role(AgentRole::Coder)
+            .iter()
+            .any(|s| s.prompt == "Also add a test.")
+    );
+    eng.send_workspace_message(
+        &ws.id,
+        PAIR_AGENT_CODE,
+        "Human follow-up",
+        "sonnet",
+        None,
+        &[],
+        "agent",
+        "",
+    )
+    .await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(reports(&c), 2, "a human turn does not report to Ask Recur");
+    let r = eng.message_workspace_from_inbox(&ws.id, "Fix checks").await;
+    assert_eq!(r.as_deref(), Ok("Started a turn on the workspace"));
+    wait_for(Duration::from_secs(10), "inbox turn", || {
+        c.with_role(AgentRole::Coder)
+            .iter()
+            .any(|s| s.prompt == "Fix checks")
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(
+        reports(&c),
+        2,
+        "an Inbox message does not report to Ask Recur"
+    );
+    let pending_after = |notices: usize| {
+        st.update_workspace(&wid, |w| {
+            let f = w.fan_out.as_mut().unwrap();
+            f.outcome = crate::chat::children::CHILD_OUTCOME_REPORT_PENDING.into();
+            f.note = notices.to_string();
+        })
+    };
+    pending_after(1);
+    eng.rearm_app_reports();
+    assert!(settled(), "a report delivered before the restart settles");
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(reports(&c), 2, "rearm resent a delivered report");
+    pending_after(2);
+    eng.rearm_app_reports();
+    wait_for(Duration::from_secs(10), "rearmed report", || {
+        reports(&c) == 3
+    })
+    .await;
+    wait_for(Duration::from_secs(10), "rearmed report settles", &settled).await;
+    let r = eng
+        .message_workspace_from_app(APP_AGENT_CODE, "nope", "hi")
+        .await;
+    assert!(r.starts_with("message_workspace: no open workspace"), "{r}");
     sx.te.close().await;
 }
 

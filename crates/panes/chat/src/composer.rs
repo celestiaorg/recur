@@ -14,7 +14,7 @@ use gpui_kit::{
     Pixels, Point, UTF16Selection, Window, point, px,
 };
 use recur_engine::view::chat::{ChatAttachmentDraft, new_attachment_id};
-use recur_engine::view::composer::{PromptChipSpec, Segment, parse_prompt_chip_values};
+use recur_engine::view::composer::{PromptChipSpec, RefKind, Segment, parse_prompt_chip_values};
 use recur_engine::view::mentions::{
     format_file_mention_chip, mention_query_at, parse_file_mention_chip,
     prepare_file_mention_insert, repair_file_mention_boundaries, skill_query_at,
@@ -111,6 +111,62 @@ pub(crate) fn matching_terminal_hits(
             exited: t.exited,
         })
         .collect()
+}
+
+/// Workspace (most recent first, never `exclude`) and project rows whose
+/// title or name contains the query or whose id starts with it. An empty
+/// query lists them only when `browse`.
+pub(crate) fn matching_ref_hits(
+    workspaces: &[recur_domain::Workspace],
+    projects: &[recur_domain::Project],
+    query: &str,
+    browse: bool,
+    exclude: &str,
+) -> Vec<MentionHit> {
+    let q = js_trim(query).to_lowercase();
+    if q.is_empty() && !browse {
+        return Vec::new();
+    }
+    let hit = |title: &str, id: &str| {
+        q.is_empty() || title.to_lowercase().contains(&q) || id.to_lowercase().starts_with(&q)
+    };
+    let project_name = |id: &str| {
+        projects
+            .iter()
+            .find(|p| p.id == id)
+            .map(|p| p.name.clone())
+            .unwrap_or_default()
+    };
+    let mut ws: Vec<(&recur_domain::Workspace, String)> = workspaces
+        .iter()
+        .filter(|w| !w.archived && w.id != exclude)
+        .map(|w| (w, recur_engine::briefing::workspace_title(w)))
+        .filter(|(w, title)| hit(title, &w.id))
+        .collect();
+    ws.sort_by_key(|(w, _)| std::cmp::Reverse(w.last_activity_at));
+    let mut out: Vec<MentionHit> = ws
+        .into_iter()
+        .take(5)
+        .map(|(w, title)| MentionHit::Ref {
+            kind: RefKind::Workspace,
+            id: w.id.clone(),
+            title,
+            detail: project_name(&w.project_id),
+        })
+        .collect();
+    out.extend(
+        projects
+            .iter()
+            .filter(|p| hit(&p.name, &p.id))
+            .take(3)
+            .map(|p| MentionHit::Ref {
+                kind: RefKind::Project,
+                id: p.id.clone(),
+                title: p.name.clone(),
+                detail: "Project".into(),
+            }),
+    );
+    out
 }
 
 /// `matchingArtifactHits`.
@@ -476,10 +532,30 @@ impl AgentChat {
 
     /// `syncMentionFromCaret`.
     pub(crate) fn sync_mention_from_caret(&mut self, cx: &mut Context<Self>) {
+        // Ask Recur has no files, skills or prompts: `@` only names workspaces and projects.
         if self.app_surface() {
-            self.mention = None;
             self.skill_mention = None;
             self.prompt_args = None;
+            let q = if self.kind_before_caret().is_some() {
+                None
+            } else {
+                mention_query_at(&self.input, self.caret_wire())
+            }
+            .filter(|fq| {
+                !self
+                    .mention_escaped
+                    .as_ref()
+                    .is_some_and(|e| !e.skill && e.start == fq.start && e.query == fq.query)
+            });
+            if q != self.mention {
+                if q.as_ref().map(|f| (f.start, &f.query))
+                    != self.mention.as_ref().map(|m| (m.start, &m.query))
+                {
+                    self.mention_sel = 0;
+                }
+                self.mention = q;
+                self.run_file_search(cx);
+            }
             return self.menus_changed(cx);
         }
         // A chip's wire form must not reopen its menu when the caret is flush after it.
@@ -521,7 +597,13 @@ impl AgentChat {
         }
         if matches!(
             self.kind_before_caret(),
-            Some(ChipKind::File | ChipKind::Skill | ChipKind::Terminal | ChipKind::Artifact)
+            Some(
+                ChipKind::File
+                    | ChipKind::Skill
+                    | ChipKind::Terminal
+                    | ChipKind::Artifact
+                    | ChipKind::Ref
+            )
         ) {
             self.mention = None;
             self.skill_mention = None;
@@ -712,8 +794,9 @@ impl AgentChat {
             self.file_index_loading = false;
             return;
         };
+        let refs = self.ref_hits(&m.query, cx);
         if self.props.workspace_id.is_empty() && self.props.project_id.is_empty() {
-            self.mention_hits.clear();
+            self.set_mention_hits(refs);
             self.file_index_loading = false;
             return;
         }
@@ -726,7 +809,8 @@ impl AgentChat {
             .iter()
             .all(|h| !matches!(h, MentionHit::File { .. }))
             && terms.is_empty()
-            && arts.is_empty();
+            && arts.is_empty()
+            && refs.is_empty();
         if self.props.project_id.is_empty() {
             self.file_index_loading = false;
             return;
@@ -758,11 +842,16 @@ impl AgentChat {
                     .collect();
                 let terms = matching_terminal_hits(&c.live_terminals(cx), &m.query);
                 let arts = matching_artifact_hits(&c.live_artifacts(cx), &m.query);
-                c.file_index_loading =
-                    res.building && files.is_empty() && terms.is_empty() && arts.is_empty();
+                let refs = c.ref_hits(&m.query, cx);
+                c.file_index_loading = res.building
+                    && files.is_empty()
+                    && terms.is_empty()
+                    && arts.is_empty()
+                    && refs.is_empty();
                 let mut next = terms;
                 next.extend(arts);
                 next.extend(files);
+                next.extend(refs);
                 c.set_mention_hits(next);
                 c.after_menu_change(cx);
                 c.notify_dock(cx);
@@ -783,6 +872,7 @@ impl AgentChat {
                 .filter(|h| matches!(h, MentionHit::File { .. }))
                 .cloned(),
         );
+        next.extend(self.ref_hits(&m.query, cx));
         self.set_mention_hits(next);
         self.after_menu_change(cx);
     }
@@ -850,6 +940,9 @@ impl AgentChat {
         let chip = match hit {
             MentionHit::Terminal { id, title, .. } => Segment::Terminal { id, title },
             MentionHit::Artifact { id, title, .. } => Segment::Artifact { id, title },
+            MentionHit::Ref {
+                kind, id, title, ..
+            } => Segment::Ref { kind, id, title },
             MentionHit::File { item, dir, .. } => {
                 let path = if dir {
                     recur_engine::view::mentions::dir_file_mention_path(&item)
@@ -1613,6 +1706,28 @@ impl AgentChat {
         self.insert_chip_at_caret(Segment::File { path: chip, dir }, window, cx);
     }
 
+    /// An `@workspace` / `@project` chip at the caret (Inbox "Ask Recur"), titled from state.
+    pub fn insert_ref_mention(
+        &mut self,
+        kind: RefKind,
+        id: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let title = self.ref_title_for(kind, id, cx);
+        self.insert_chip_at_caret(
+            Segment::Ref {
+                kind,
+                id: id.to_owned(),
+                title,
+            },
+            window,
+            cx,
+        );
+    }
+
+    /// A chip at the caret replacing an in-progress `@` / `/` query, with a whitespace
+    /// boundary before it.
     fn insert_chip_at_caret(&mut self, chip: Segment, window: &mut Window, cx: &mut Context<Self>) {
         if self.props.readonly {
             return;
@@ -1622,7 +1737,13 @@ impl AgentChat {
         let caret = self.doc.wire_caret();
         let after_chip = matches!(
             self.kind_before_caret(),
-            Some(ChipKind::File | ChipKind::Skill | ChipKind::Terminal | ChipKind::Artifact)
+            Some(
+                ChipKind::File
+                    | ChipKind::Skill
+                    | ChipKind::Terminal
+                    | ChipKind::Artifact
+                    | ChipKind::Ref
+            )
         );
         let q = if after_chip {
             None
@@ -1944,6 +2065,7 @@ impl AgentChat {
             Segment::Attachment(a) => self.open_lightbox(&a.data_url, &a.name, window, cx),
             Segment::Terminal { id, .. } => self.open_terminal_chip(&id, cx),
             Segment::Artifact { id, .. } => self.open_artifact_chip(&id, cx),
+            Segment::Ref { kind, id, .. } => self.open_ref_chip(kind, &id, cx),
             Segment::Prompt { .. } => {
                 let i = self.prompt_slot_focus.unwrap_or(0);
                 self.focus_prompt_slot(i, window, cx);

@@ -8515,6 +8515,7 @@ version = "0.7.2"
 dependencies = [
  "chrono",
  "gpui-kit",
+ "recur-agent",
  "recur-content",
  "recur-domain",
  "recur-editor",
@@ -8524,6 +8525,7 @@ dependencies = [
  "recur-ui",
  "recur-view-chat",
  "recur-view-core",
+ "recur-view-review",
  "recur-view-widgets",
  "serde_json",
 ]

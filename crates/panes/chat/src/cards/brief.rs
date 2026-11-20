@@ -1,6 +1,7 @@
 //! One workspace's briefing as a dense table row (the Inbox list)
-//! or as the card a `present_workspace` pin shows in a transcript. Clicking opens the
-//! primary target and marks the workspace's notifications read.
+//! or as the card a `present_workspace` pin shows in a transcript. Opening goes to the
+//! primary target and marks the workspace's notifications read; the Inbox row's click is
+//! its caller's.
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
@@ -72,6 +73,16 @@ fn tile(
         .bg(hsla(color.mix(0.12, recur_ui::color::TRANSPARENT)))
         .child(icon(name).size(px(14.)).color(hsla(color.fade(alpha))))
         .into_any_element()
+}
+
+/// Opens the brief's primary target (else its workspace) and marks it read.
+pub fn open_brief(state: &Entity<AppState>, brief: &WorkspaceBrief, cx: &mut App) {
+    open(
+        state,
+        brief,
+        &format!("workspace:{}", brief.workspace_id),
+        cx,
+    );
 }
 
 fn open(state: &Entity<AppState>, brief: &WorkspaceBrief, open_target: &str, cx: &mut App) {
@@ -211,8 +222,9 @@ pub fn brief_row(
     id: SharedString,
     brief: &WorkspaceBrief,
     notes: &[InboxItem],
-    open_target: &str,
-    state: &Entity<AppState>,
+    selected: bool,
+    compact: bool,
+    on_click: impl Fn(&gpui_kit::ClickEvent, &mut Window, &mut App) + 'static,
     epoch: std::time::Instant,
     window: &mut Window,
     cx: &mut App,
@@ -233,7 +245,7 @@ pub fn brief_row(
         .filter(|s| !s.is_empty())
         .collect();
     let mut extra = Vec::new();
-    if !brief.branch.is_empty() {
+    if !brief.branch.is_empty() && !compact {
         extra.push(
             span(brief.branch.clone())
                 .mono()
@@ -281,6 +293,27 @@ pub fn brief_row(
                 .child(label(unread.to_string(), Family::Ui, 10., 600.).color(INK)),
         ));
     }
+    let mut diff = (brief.diff_add + brief.diff_del > 0).then(|| {
+        Text::from_spans(vec![
+            span(format!("+{}", brief.diff_add)).color(t.git_a),
+            span(" "),
+            span(format!("−{}", brief.diff_del)).color(t.git_d),
+        ])
+        .mono()
+        .size(10.5)
+        .color(t.faint)
+        .nowrap()
+    });
+    if compact && let Some(d) = diff.take() {
+        let sel = format!("wbrief-diff:{}", brief.title);
+        title = title.child(div().flex_1()).child(
+            div()
+                .debug_selector(move || sel)
+                .flex_none()
+                .pl(px(8.))
+                .child(d),
+        );
+    }
     let now = if brief.now.is_empty() {
         &brief.next
     } else {
@@ -306,20 +339,8 @@ pub fn brief_row(
     } else {
         String::new()
     };
-    let diff = (brief.diff_add + brief.diff_del > 0).then(|| {
-        Text::from_spans(vec![
-            span(format!("+{}", brief.diff_add)).color(t.git_a),
-            span(" "),
-            span(format!("−{}", brief.diff_del)).color(t.git_d),
-        ])
-        .mono()
-        .size(10.5)
-        .color(t.faint)
-        .nowrap()
-    });
     let age = format_relative_age(brief.last_activity_at, crate::chat::now_ms());
     let has_unread = unread > 0 || brief.changed_since_viewed;
-    let (state, b, target) = (state.clone(), brief.clone(), open_target.to_string());
     // The root font size (`rem`), not the body's 13px.
     let rem = 16.;
     div()
@@ -336,8 +357,23 @@ pub fn brief_row(
         .border_b_1()
         .border_color(hsla(t.line_soft))
         .cursor_pointer()
-        .bg(hsla(t.pane_2.mix(h.k(), recur_ui::color::TRANSPARENT)))
+        .bg(hsla(t.pane_2.mix(
+            if selected { 1. } else { h.k() },
+            recur_ui::color::TRANSPARENT,
+        )))
         .on_hover(h.listener())
+        .relative()
+        .when(selected, |d| {
+            d.child(
+                div()
+                    .absolute()
+                    .left_0()
+                    .top_0()
+                    .bottom_0()
+                    .w(px(2.))
+                    .bg(hsla(t.amber)),
+            )
+        })
         .child(
             div()
                 .flex_none()
@@ -352,51 +388,53 @@ pub fn brief_row(
                 .child(tile(brief, true, epoch, window, cx)),
         )
         .child(div().flex_1().min_w_0().child(main))
-        .child(
-            div()
-                .flex_shrink_0()
-                .min_w(px(4. * rem))
-                .w(px(6.5 * rem))
-                .overflow_hidden()
-                .child(
-                    text(brief.project_name.clone())
-                        .size(11.5)
-                        .color(t.muted)
-                        .truncate(),
-                ),
-        )
-        .child(div().flex_none().w(px(3. * rem)).child(if plan.is_empty() {
-            div()
-        } else {
-            fact(plan)
-        }))
-        .child(
-            div()
-                .flex_none()
-                .w(px(6. * rem))
-                .flex()
-                .justify_end()
-                .when_some(diff, |d, x| d.child(x)),
-        )
-        .child(
-            // `text-align: right` in a 2.5rem track: a wider age starts at the track and
-            // overflows to the right, as a too-wide line box does.
-            div().flex_none().w(px(2.5 * rem)).flex().child(
+        .when(!compact, |d| {
+            d.child(
+                div()
+                    .flex_shrink_0()
+                    .min_w(px(4. * rem))
+                    .w(px(6.5 * rem))
+                    .overflow_hidden()
+                    .child(
+                        text(brief.project_name.clone())
+                            .size(11.5)
+                            .color(t.muted)
+                            .truncate(),
+                    ),
+            )
+            .child(div().flex_none().w(px(3. * rem)).child(if plan.is_empty() {
+                div()
+            } else {
+                fact(plan)
+            }))
+            .child(
                 div()
                     .flex_none()
-                    .min_w(px(2.5 * rem))
+                    .w(px(6. * rem))
                     .flex()
                     .justify_end()
-                    .when_some(age, |d, a| {
-                        d.child(recur_ui::tooltip::titled(
-                            SharedString::from(format!("{id}-age")),
-                            a.full,
-                            label(a.rel, Family::Mono, 10.5, 400.).color(t.faint),
-                        ))
-                    }),
-            ),
-        )
-        .on_click(move |_, _, cx| open(&state, &b, &target, cx))
+                    .when_some(diff, |d, x| d.child(x)),
+            )
+            .child(
+                // `text-align: right` in a 2.5rem track: a wider age starts at the track and
+                // overflows to the right, as a too-wide line box does.
+                div().flex_none().w(px(2.5 * rem)).flex().child(
+                    div()
+                        .flex_none()
+                        .min_w(px(2.5 * rem))
+                        .flex()
+                        .justify_end()
+                        .when_some(age, |d, a| {
+                            d.child(recur_ui::tooltip::titled(
+                                SharedString::from(format!("{id}-age")),
+                                a.full,
+                                label(a.rel, Family::Mono, 10.5, 400.).color(t.faint),
+                            ))
+                        }),
+                ),
+            )
+        })
+        .on_click(on_click)
         .into_any_element()
 }
 

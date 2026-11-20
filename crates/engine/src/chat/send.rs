@@ -615,7 +615,7 @@ impl Engine {
             (turn, steer)
         };
         let (turn, steer) = turn;
-        if nested {
+        if nested || crate::app_chat::app_report_tab(&ws).is_some() {
             self.reopen_chat_child(workspace_id);
         }
         if shape.mcp {

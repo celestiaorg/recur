@@ -214,8 +214,8 @@
     },
     {
       "name": "list_workspace_briefs",
-      "description": "List the current Briefing overview: every workspace that needs attention, is working, or can be picked up, with deterministic Now/Next copy and routes. Always re-query before a factual status claim: the chat transcript is not current truth. App coordinator only.",
-      "schema": "{\"type\":\"object\",\"properties\":{}}",
+      "description": "List the current Briefing overview: every workspace that needs attention or is working, and the 25 most recent that can be picked up (omitted counts the rest; pass bucket=pickup for all of them), with deterministic Now/Next copy. Filter with bucket (needs, working, pickup) and project (name or id). Always re-query before a factual status claim: the chat transcript is not current truth. App coordinator only.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"bucket\": {\"type\": \"string\", \"enum\": [\"needs\", \"working\", \"pickup\"], \"description\": \"Only this bucket, every row of it\"},\n    \"project\": {\"type\": \"string\", \"description\": \"Only this project (name or id)\"}\n  }\n}",
       "halts": false
     },
     {
@@ -225,9 +225,33 @@
       "halts": false
     },
     {
+      "name": "read_workspace",
+      "description": "Look into one workspace, running or finished: its state, latest reply (partial while running), handoff, plan, findings, files changed against the project's base branch, uncommitted files, artifacts, and the last tool calls of its most recent chat. Use it for progress questions. App coordinator only.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"workspace_id\": {\"type\": \"string\", \"description\": \"Workspace id from list_workspace_briefs\"},\n    \"diff\": {\"type\": \"boolean\", \"description\": \"Include the diff bodies (default false: file lists only)\"}\n  },\n  \"required\": [\"workspace_id\"]\n}",
+      "halts": false
+    },
+    {
       "name": "present_workspace",
       "description": "Pin a workspace, chat, question, or PR card in the Ask Recur transcript for the human to open. Does not switch the visible UI. target is workspace:\u003cid\u003e (optional :plan, :findings, or :review), chat:\u003cworkspaceId\u003e:\u003ccode\u003e, question:\u003cid\u003e, or pr:\u003cid\u003e. Validated against live state. App coordinator only.",
-      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"target\": {\"type\": \"string\", \"description\": \"Navigation target from a brief's primary/secondary action\"}\n  },\n  \"required\": [\"target\"]\n}",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"target\": {\"type\": \"string\", \"description\": \"workspace:\u003cid\u003e (optional :plan, :findings, :review), chat:\u003cworkspaceId\u003e:\u003ccode\u003e, question:\u003cid\u003e, or pr:\u003cid\u003e\"}\n  },\n  \"required\": [\"target\"]\n}",
+      "halts": false
+    },
+    {
+      "name": "message_workspace",
+      "description": "Direct any workspace's agent. A running agent is steered mid-turn and continues; an idle workspace starts a new Agent chat turn with the message. A top-level workspace then reports back here in a new turn when it finishes. Refused while it waits on a question (use answer_question) or is archived. App coordinator only.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"workspace_id\": {\"type\": \"string\", \"description\": \"Workspace id from list_workspace_briefs\"},\n    \"message\": {\"type\": \"string\", \"description\": \"Instruction for the workspace's agent, with the context it needs\"}\n  },\n  \"required\": [\"workspace_id\", \"message\"]\n}",
+      "halts": false
+    },
+    {
+      "name": "answer_question",
+      "description": "Answer a workspace agent's pending question (an open ask of kind question) on the human's behalf; the agent resumes with the answer. Only relay what the human decided, never answer on your own. App coordinator only.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"question_id\": {\"type\": \"string\", \"description\": \"Question id from get_workspace_context open_asks\"},\n    \"answer\": {\"type\": \"string\", \"description\": \"The human's answer\"}\n  },\n  \"required\": [\"question_id\", \"answer\"]\n}",
+      "halts": false
+    },
+    {
+      "name": "create_project",
+      "description": "Add a project to Recur, creating it on disk when it does not exist yet: a new folder becomes a git repo on main with an empty first commit, or clone_url clones a repo into it. An existing folder is only registered, never written to. Without path the folder is named after the project, in the new projects folder from Settings (default: beside the other projects). Only when the human asks for a new project. App coordinator only.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"name\": {\"type\": \"string\", \"description\": \"Project name\"},\n    \"path\": {\"type\": \"string\", \"description\": \"Folder for the project (~ allowed); default beside the existing projects\"},\n    \"clone_url\": {\"type\": \"string\", \"description\": \"Git URL to clone instead of starting an empty repo\"}\n  },\n  \"required\": [\"name\"]\n}",
       "halts": false
     },
     {
@@ -256,8 +280,8 @@
     },
     {
       "name": "create_workspace",
-      "description": "Run a SUBAGENT: this is how subagents work in Recur. Creates a NEW workspace (fresh git worktree from the base branch) and runs prompt on its first chat tab, or as a workflow when mode is loop. Use to fan work out into independent workspaces, one per task. Give each a stable, descriptive title: a live workspace in the project with the same title is returned instead of a duplicate, so repeating the call is safe. Model and flags follow Settings (this chat vs that mode's default); Simplify follows this chat. The new workspace runs on its own; this chat does not wait for it. Each call starts an agent run: one child per distinct task, not extras. Prefer a child for anything beyond a very simple change. By default the workspace is a subagent (child) of this one: it starts from this branch. When it finishes you get a report; call merge_child to land its commits here, or archive_child to close it without merging. Pass standalone=true for independent work that should ship on its own.",
-      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"title\": {\"type\": \"string\", \"description\": \"Short workspace title. Reuse the same title for the same task so repeat calls dedupe\"},\n    \"prompt\": {\"type\": \"string\", \"description\": \"First message for the new workspace's chat: the task plus the context it needs to work alone\"},\n    \"project_id\": {\"type\": \"string\", \"description\": \"Project id; defaults to this workspace's project\"},\n    \"base_branch\": {\"type\": \"string\", \"description\": \"Standalone only: branch to start from (defaults to the project's base branch). Setting it implies standalone\"},\n    \"mode\": {\"type\": \"string\", \"enum\": [\"ask\", \"plan\", \"agent\", \"review\", \"loop\"], \"description\": \"Chat mode for the first tab (default agent). loop engages a workflow (the autopilot) with prompt as its goal\"},\n    \"loop_id\": {\"type\": \"string\", \"description\": \"Bundle [[workflow]] id for mode=loop; defaults to Settings\"},\n    \"policy_id\": {\"type\": \"string\", \"description\": \"Bundle [[policy]] id for mode=loop; defaults to Settings\"},\n    \"standalone\": {\"type\": \"boolean\", \"description\": \"true: an independent workspace that is never merged back here (its own branch off base_branch, its own PR). Default false: the workspace is a subagent of this one, branched off this branch; when it finishes you get a report and must call merge_child to land its work (or archive_child to close it). Scheduled runs and mode=loop default to standalone\"}\n  },\n  \"required\": [\"title\", \"prompt\"]\n}",
+      "description": "Run a SUBAGENT: this is how subagents work in Recur. Creates a NEW workspace (fresh git worktree from the base branch) and runs prompt on its first chat tab, or as a workflow when mode is loop. Use to fan work out into independent workspaces, one per task. Give each a stable, descriptive title: a live workspace in the project with the same title is returned instead of a duplicate, so repeating the call is safe. Model and flags follow Settings (this chat vs that mode's default); Simplify follows this chat. The new workspace runs on its own; this chat does not wait for it. Each call starts an agent run: one child per distinct task, not extras. Prefer a child for anything beyond a very simple change. By default the workspace is a subagent (child) of this one: it starts from this branch. When it finishes you get a report; call merge_child to land its commits here, or archive_child to close it without merging. Pass standalone=true for independent work that should ship on its own. From Ask Recur (no calling workspace) project_id is required and the workspace is always standalone.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"title\": {\"type\": \"string\", \"description\": \"Short workspace title. Reuse the same title for the same task so repeat calls dedupe\"},\n    \"prompt\": {\"type\": \"string\", \"description\": \"First message for the new workspace's chat: the task plus the context it needs to work alone\"},\n    \"project_id\": {\"type\": \"string\", \"description\": \"Project id or name; defaults to this workspace's project. Another project's workspace is always standalone. Target another project only when the human asks or the task cannot be done in this one\"},\n    \"base_branch\": {\"type\": \"string\", \"description\": \"Standalone only: branch to start from (defaults to the project's base branch). Setting it implies standalone\"},\n    \"mode\": {\"type\": \"string\", \"enum\": [\"ask\", \"plan\", \"agent\", \"review\", \"loop\"], \"description\": \"Chat mode for the first tab (default agent). loop engages a workflow (the autopilot) with prompt as its goal\"},\n    \"loop_id\": {\"type\": \"string\", \"description\": \"Bundle [[workflow]] id for mode=loop; defaults to Settings\"},\n    \"policy_id\": {\"type\": \"string\", \"description\": \"Bundle [[policy]] id for mode=loop; defaults to Settings\"},\n    \"standalone\": {\"type\": \"boolean\", \"description\": \"true: an independent workspace that is never merged back here (its own branch off base_branch, its own PR). Default false: the workspace is a subagent of this one, branched off this branch; when it finishes you get a report and must call merge_child to land its work (or archive_child to close it). Scheduled runs and mode=loop default to standalone\"}\n  },\n  \"required\": [\"title\", \"prompt\"]\n}",
       "halts": false
     },
     {

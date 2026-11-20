@@ -25,7 +25,7 @@ use recur_ui::widgets::tab_chip::{ChipIcon, tab_chip};
 use recur_ui::widgets::tab_strip::{tab_bar_rule, tab_strip, tab_strip_action};
 use recur_ui::{IconName, Theme, icon, motion};
 use recur_view_core::models::{CatalogModel, FlagMap, flags_for_model, normalize_flags};
-use recur_view_core::modes::{ChatMode, resolved_default_for_mode};
+use recur_view_core::modes::resolved_default_for_mode;
 use recur_view_core::{AppState, ViewContext, app_chat_agent_id};
 
 use crate::chat::{AgentChat, ChatEvent, ChatHooks, ChatProps, ChatSurfaceKind, now_ms};
@@ -90,6 +90,9 @@ pub struct AppChat {
     pickers: Entity<ModelPickers>,
     focus: FocusHandle,
     props_dirty: bool,
+    /// The workspace open in the Inbox overview (id, title): sends carry it, the
+    /// placeholder names it.
+    viewing: Option<(String, String)>,
     pickers_key: Option<(usize, String, FlagMap, bool)>,
     _events: Task<()>,
     _subs: Vec<Subscription>,
@@ -208,6 +211,7 @@ impl AppChat {
             pickers,
             focus,
             props_dirty: true,
+            viewing: None,
             pickers_key: None,
             _events,
             _subs: subs,
@@ -230,6 +234,24 @@ impl AppChat {
             shell_active: visible,
             ..Default::default()
         }
+    }
+
+    /// Points sends at the workspace open in the Inbox overview (`None` when none is).
+    pub fn set_viewing(&mut self, viewing: Option<(String, String)>, cx: &mut Context<Self>) {
+        if self.viewing != viewing {
+            self.viewing = viewing;
+            self.props_dirty = true;
+            cx.notify();
+        }
+    }
+
+    /// The workspace sends carry, if any.
+    pub fn viewing(&self) -> Option<&str> {
+        self.viewing.as_ref().map(|(id, _)| id.as_str())
+    }
+
+    pub fn focus_composer(&self, window: &mut Window, cx: &mut Context<Self>) {
+        self.chat.update(cx, |c, cx| c.focus_composer(window, cx));
     }
 
     pub fn chat(&self) -> &Entity<AgentChat> {
@@ -634,10 +656,11 @@ impl AppChat {
         let services = self.services.clone();
         let model = self.model.clone();
         let flags: BTreeMap<String, String> = self.flags.clone().into_iter().collect();
+        let viewing = self.viewing.clone().map(|(id, _)| id).unwrap_or_default();
         cx.spawn(async move |this, cx| {
             let _ = services
                 .briefing
-                .send_app_message(&code, &text, &model, &flags)
+                .send_app_message(&code, &text, &model, &flags, &viewing)
                 .await;
             let _ = this.update(cx, |a, cx| {
                 a.sending_by.insert(code, false);
@@ -662,6 +685,9 @@ impl AppChat {
         if self.props_dirty {
             self.props_dirty = false;
             let mut props = Self::chat_props_for(&self.active, self.visible);
+            if let Some((_, title)) = &self.viewing {
+                props.placeholder = format!("Ask about {title}, or anything else…");
+            }
             props.messages = self.messages.clone();
             props.sending = sending;
             props.turn_started_at = self.turn_started_at;
@@ -699,8 +725,9 @@ impl AppChat {
         self.sync_children(cx);
         let t = Theme::of(cx).tokens;
         let lit = self.visible && self.focus.contains_focused(window, cx);
-        let ask = ChatMode::Ask;
-        let tint = hsla(ask.tint(&t));
+        // Ask Recur runs on an ask-mode session but orchestrates every workspace: its own
+        // glyph, not a chat mode's.
+        let tint = hsla(t.amber);
         let mut strip = tab_strip("app-chat-tabs", "Ask Recur chats")
             .flush(true)
             .active_key(self.active.clone());
@@ -710,7 +737,7 @@ impl AppChat {
             let busy = self.tab_busy(&code, cx);
             let unseen = tab.unseen && self.active != code;
             let title = format!(
-                "{label} · Ask mode{}{}",
+                "{label} · Ask Recur{}{}",
                 if busy { " · running" } else { "" },
                 if unseen { " · new response" } else { "" }
             );
@@ -732,7 +759,7 @@ impl AppChat {
                     label,
                 )
                 .title(title)
-                .icon(ChipIcon::App(ask.icon(), Some(tint)))
+                .icon(ChipIcon::App(IconName::Sitemap, Some(tint)))
                 .active(self.active == code)
                 .lit(lit)
                 .busy(busy)

@@ -1532,6 +1532,50 @@ impl Store {
     }
 }
 
+impl Store {
+    /// The last `limit` tool calls of the workspace's most recently updated
+    /// session, newest first, without loading its transcript.
+    pub fn recent_tool_uses(&self, workspace_id: &str, limit: usize) -> Vec<ToolUsePayload> {
+        let Some(db) = &self.db else {
+            return Vec::new();
+        };
+        if workspace_id.trim().is_empty() || limit == 0 {
+            return Vec::new();
+        }
+        let rows: Vec<String> = db
+            .with(|c| {
+                let mut stmt = c
+                    .prepare(
+                        "SELECT mc.content_json
+		FROM message_content mc
+		JOIN session_message sm ON sm.message_id = mc.message_id
+		WHERE sm.session_id = (
+			SELECT id FROM session
+			WHERE workspace_id = ?
+			ORDER BY updated_at DESC, created_at DESC, id DESC
+			LIMIT 1
+		)
+		AND mc.type = ?
+		ORDER BY sm.idx DESC, mc.idx DESC
+		LIMIT ?",
+                    )
+                    .bare()?;
+                let rows = stmt
+                    .query_map(params![workspace_id, BLOCK_TOOL_USE, limit as i64], |r| {
+                        r.get::<_, String>(0)
+                    })
+                    .bare()?
+                    .collect::<std::result::Result<Vec<_>, _>>()
+                    .bare()?;
+                Ok(rows)
+            })
+            .unwrap_or_default();
+        rows.iter()
+            .filter_map(|p| serde_json::from_str::<ToolUsePayload>(p).ok())
+            .collect()
+    }
+}
+
 /// Clones the parent's active compaction row onto the child when the
 /// watermark message was copied. Empty means the fork point is before the
 /// compact, so the child has no active context.

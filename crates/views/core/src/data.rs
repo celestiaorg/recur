@@ -265,6 +265,11 @@ impl AppState {
                             && !s.dropped_workspace_ids.contains(&id)
                             && !ws.archived
                         {
+                            // An engine-added project (Ask Recur's create_project) arrives
+                            // as its working-copy row.
+                            if !s.projects.iter().any(|p| p.id == ws.project_id) {
+                                s.refresh_projects(cx).detach();
+                            }
                             s.upsert_workspace(ws, cx);
                         }
                         false

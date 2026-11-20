@@ -328,6 +328,7 @@ impl Engine {
         self.launch_remaining_interrupted_chats().await;
         // Subagent watchers re-arm only after interrupted chats launched.
         self.rearm_chat_children().await;
+        self.rearm_app_reports();
     }
 
     /// The workspaces AutoResume will call Resume on.

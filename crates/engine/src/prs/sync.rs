@@ -551,6 +551,7 @@ impl Engine {
             p.state = want_state;
             p.group = want_group;
         });
+        self.note_pr_checks(&existing.id, existing.checks_ok);
         if refresh_checks {
             self.refresh_pr_checks(&existing.id).await;
         }

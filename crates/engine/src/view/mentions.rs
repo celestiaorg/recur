@@ -1,5 +1,5 @@
 //! Chat wire-text mention rules: `@file`,
-//! `@terminal`, `@artifact`, loose `@Title`, `/skill` and `⟦attachment:id⟧`
+//! `@terminal`, `@artifact`, `@workspace:id`, `@project:id`, loose `@Title`, `/skill` and `⟦attachment:id⟧`
 //! tokens, their chips and labels, and the composer's caret queries.
 //!
 //! The UI regexes use JS lookbehind/lookahead (`(?:^|(?<=\s))@…(?=\s|$)`),
@@ -61,6 +61,10 @@ static ARTIFACT_AT_CORE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!("@artifact(?::([^{}@]+))?", js::WS_CLASS)).expect("artifact re")
 });
 
+static REF_AT_CORE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("@(workspace|project):([^{}@]+)", js::WS_CLASS)).expect("ref re")
+});
+
 static AT_NAME_CORE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(&format!("@([^{}@]+)", js::WS_CLASS)).expect("at name re"));
 
@@ -120,6 +124,59 @@ pub fn terminal_at_hits(text: &str) -> Vec<Hit<'_>> {
 /// `ARTIFACT_AT_RE` matches (`@artifact` / `@artifact:<qual>`).
 pub fn artifact_at_hits(text: &str) -> Vec<Hit<'_>> {
     hits(&ARTIFACT_AT_CORE, text, js::space_after)
+}
+
+/// What an `@workspace:<id>` / `@project:<id>` chip points at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RefKind {
+    Workspace,
+    Project,
+}
+
+impl RefKind {
+    pub fn keyword(self) -> &'static str {
+        match self {
+            RefKind::Workspace => "workspace",
+            RefKind::Project => "project",
+        }
+    }
+}
+
+/// One `@workspace:<id>` / `@project:<id>` match.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RefHit<'a> {
+    pub start: usize,
+    pub end: usize,
+    pub kind: RefKind,
+    pub id: &'a str,
+}
+
+/// Whitespace-bounded `@workspace:<id>` / `@project:<id>` tokens.
+pub fn ref_at_hits(text: &str) -> Vec<RefHit<'_>> {
+    REF_AT_CORE
+        .captures_iter(text)
+        .filter_map(|c| {
+            let m = c.get(0)?;
+            if !js::space_before(text, m.start()) || !js::space_after(text, m.end()) {
+                return None;
+            }
+            let kind = match c.get(1)?.as_str() {
+                "workspace" => RefKind::Workspace,
+                _ => RefKind::Project,
+            };
+            Some(RefHit {
+                start: m.start(),
+                end: m.end(),
+                kind,
+                id: c.get(2)?.as_str(),
+            })
+        })
+        .collect()
+}
+
+/// The token inserted when the user picks a workspace or project.
+pub fn ref_mention_token(kind: RefKind, id: &str) -> String {
+    format!("@{}:{}", kind.keyword(), js::trim(id))
 }
 
 /// `AT_NAME_RE` matches: a whitespace-bounded `@token`.
@@ -260,7 +317,12 @@ pub fn extract_artifact_mentions(text: &str) -> Vec<String> {
 /// titles.
 pub fn reserved_at_name(token: &str) -> bool {
     let t = js::trim(token).to_lowercase();
-    t == "artifact" || t.starts_with("artifact:") || t == "terminal" || t.starts_with("terminal:")
+    t == "artifact"
+        || t.starts_with("artifact:")
+        || t == "terminal"
+        || t.starts_with("terminal:")
+        || t.starts_with("workspace:")
+        || t.starts_with("project:")
 }
 
 /// Whether `@token` as a whole is a file mention (path, name.ext, dotfile).

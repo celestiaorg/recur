@@ -522,6 +522,13 @@ impl Host for EngineHost {
         }
     }
 
+    async fn create_project(&self, req: recur_agent_tools::CreateProjectRequest) -> String {
+        match self.engine() {
+            Some(e) => e.create_project_from_app(req).await,
+            None => NoopHost.create_project(req).await,
+        }
+    }
+
     async fn merge_child(&self, ws: &str, agent: &str, child_id: &str) -> String {
         match self.engine() {
             Some(e) => e.merge_child_from_chat(ws, child_id).await,
@@ -587,6 +594,30 @@ impl Host for EngineHost {
         match self.engine() {
             Some(e) => e.present_workspace(target),
             None => NoopHost.present_workspace(target).await,
+        }
+    }
+
+    async fn read_workspace(&self, id: &str, with_diff: bool) -> String {
+        match self.engine() {
+            Some(e) => e.read_workspace_from_app(id, with_diff).await,
+            None => NoopHost.read_workspace(id, with_diff).await,
+        }
+    }
+
+    async fn message_workspace(&self, agent: &str, id: &str, message: &str) -> String {
+        match self.engine() {
+            Some(e) => e.message_workspace_from_app(agent, id, message).await,
+            None => NoopHost.message_workspace(agent, id, message).await,
+        }
+    }
+
+    async fn answer_question(&self, question_id: &str, answer: &str) -> String {
+        match self.engine() {
+            Some(e) if e.answer_ask_user(question_id, "", answer, Vec::new()) => {
+                "Answered; the asking agent resumes with it.".into()
+            }
+            Some(_) => format!("answer_question: no pending question {question_id}"),
+            None => NoopHost.answer_question(question_id, answer).await,
         }
     }
 }

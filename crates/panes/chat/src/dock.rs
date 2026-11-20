@@ -628,7 +628,9 @@ impl AgentChat {
                 vec![Self::empty_row("Loading files…", &t)]
             } else if self.mention_hits.is_empty() {
                 vec![Self::empty_row(
-                    if m.query.trim().is_empty() {
+                    if self.app_surface() {
+                        "No matching workspaces or projects"
+                    } else if m.query.trim().is_empty() {
                         "Type to filter files"
                     } else {
                         "No matching files, terminals, or artifacts"
@@ -681,6 +683,16 @@ impl AgentChat {
                                     true,
                                     &t,
                                 ),
+                            ],
+                            MentionHit::Ref {
+                                kind,
+                                title,
+                                detail,
+                                ..
+                            } => vec![
+                                mention_icon(crate::chips::ref_icon(*kind), t.muted),
+                                Self::name_el(title.clone(), true),
+                                Self::path_el(detail.clone(), true, &t),
                             ],
                             MentionHit::File {
                                 item, dir: true, ..

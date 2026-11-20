@@ -155,7 +155,36 @@ pub struct Pr {
     pub merge_queued: bool,
 }
 
+impl Check {
+    /// A finished check that did not pass (skipped checks never fail).
+    pub fn failed(&self) -> bool {
+        !self.passed && !matches!(self.status.as_str(), "pending" | "skipping")
+    }
+}
+
 impl Pr {
+    /// One line for agents: "failing: lint, test", "pending (2 of 7)",
+    /// "passing (7)"; empty before any check is reported.
+    pub fn checks_summary(&self) -> String {
+        let checks = self.checks.as_deref().unwrap_or_default();
+        if checks.is_empty() {
+            return String::new();
+        }
+        let failing: Vec<&str> = checks
+            .iter()
+            .filter(|c| c.failed())
+            .map(|c| c.name.as_str())
+            .collect();
+        if !failing.is_empty() {
+            return format!("failing: {}", failing.join(", "));
+        }
+        let pending = checks.iter().filter(|c| c.status == "pending").count();
+        if pending > 0 {
+            return format!("pending ({pending} of {})", checks.len());
+        }
+        format!("passing ({})", checks.len())
+    }
+
     fn is_github(&self) -> bool {
         self.source == PrSource::GitHub
     }
@@ -546,6 +575,49 @@ mod tests {
             kind: kind.into(),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn checks_summary_names_failures_first() {
+        let check = |name: &str, passed: bool, status: &str| Check {
+            name: name.into(),
+            passed,
+            status: status.into(),
+            ..Default::default()
+        };
+        let with = |checks: Vec<Check>| Pr {
+            checks: Some(checks),
+            ..Default::default()
+        };
+        assert_eq!(Pr::default().checks_summary(), "");
+        assert_eq!(
+            with(vec![
+                check("lint", false, "fail"),
+                check("e2e", false, "pending")
+            ])
+            .checks_summary(),
+            "failing: lint"
+        );
+        assert_eq!(
+            with(vec![
+                check("lint", true, "pass"),
+                check("e2e", false, "pending")
+            ])
+            .checks_summary(),
+            "pending (1 of 2)"
+        );
+        assert_eq!(
+            with(vec![
+                check("lint", true, "pass"),
+                check("docs", false, "skipping")
+            ])
+            .checks_summary(),
+            "passing (2)"
+        );
+        assert_eq!(
+            with(vec![check("verify", false, "")]).checks_summary(),
+            "failing: verify"
+        );
     }
 
     #[test]

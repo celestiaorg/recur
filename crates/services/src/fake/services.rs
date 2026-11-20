@@ -16,7 +16,8 @@ use recur_domain::{
     PrComment, PrParticipant, PrReaction, Project, ProjectGroup, ReplaceResult, Resource,
     ScheduledPrompt, SearchHit, SearchOpts, SearchResult, SessionView, Settings, SymbolDef,
     SymbolRef, TreeEntry, UpdateWorkspaceResult, UserQuestion, Workspace, WorkspaceBrief,
-    WorkspaceChatTab, WorkspaceLandState, WorkspaceState, WorktreeCommitResult,
+    WorkspaceChanges, WorkspaceChatTab, WorkspaceContext, WorkspaceLandState, WorkspaceOverview,
+    WorkspaceState, WorktreeCommitResult,
 };
 use recur_engine::chat::tabs::apply_chat_tab_order;
 use recur_engine::view::chat_surface::peel_chat_surface;
@@ -1144,6 +1145,10 @@ fake_services! {
             Ok(())
         }
 
+        async fn mark_workspace_unread(&self, workspace_id: &str) -> Result<()> {
+            Ok(())
+        }
+
         async fn new_app_chat(&self) -> Result<WorkspaceChatTab> {
             Ok(self.with(|s| {
                 let t = tab(&format!("AP{}", s.app_chats.len() + 2), "New chat", 0);
@@ -1156,12 +1161,98 @@ fake_services! {
             Ok(())
         }
 
-        async fn send_app_message(&self, code: &str, text: &str, model: &str, flags: &BTreeMap<String, String>) -> Result<String> {
+        async fn send_app_message(&self, code: &str, text: &str, model: &str, flags: &BTreeMap<String, String>, viewing: &str) -> Result<String> {
             Ok(String::new())
         }
 
         async fn set_app_chat_focus(&self, visible: bool, code: &str) -> Result<()> {
             Ok(())
+        }
+
+        async fn workspace_changes(&self, workspace_id: &str) -> Result<WorkspaceChanges> {
+            Ok(WorkspaceChanges::default())
+        }
+
+        async fn stop_workspace(&self, workspace_id: &str) -> Result<()> {
+            Ok(())
+        }
+
+        async fn message_workspace(&self, workspace_id: &str, message: &str) -> Result<String> {
+            Ok("Sent to the running agent".into())
+        }
+
+        async fn workspace_overview(&self, workspace_id: &str) -> Result<WorkspaceOverview> {
+            let items = WorkspacesService::workspace_chat_items(self, workspace_id, "PA")
+                .await
+                .unwrap_or_default();
+            let last_reply = items
+                .iter()
+                .rev()
+                .find(|i| i.role == "assistant" && i.kind == "text")
+                .map(|i| i.text.clone())
+                .unwrap_or_default();
+            let recent_steps: Vec<String> = items
+                .iter()
+                .filter(|i| i.kind == "tool")
+                .map(|i| {
+                    let input = if i.tool_input.is_empty() { &i.input } else { &i.tool_input };
+                    format!("{} {input}", i.tool).trim().to_owned()
+                })
+                .collect();
+            let open_findings: Vec<Finding> = ObservatoryService::list_findings(self, workspace_id)
+                .await
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|f| f.status == "open" && (f.workspace_id.is_empty() || f.workspace_id == workspace_id))
+                .collect();
+            let mut o = self.with(|s| {
+                let brief = mock_briefing(s)
+                    .workspaces
+                    .unwrap_or_default()
+                    .into_iter()
+                    .find(|b| b.workspace_id == workspace_id)
+                    .unwrap_or_default();
+                let plan = s
+                    .workspaces
+                    .iter()
+                    .find(|w| w.id == workspace_id)
+                    .and_then(|w| w.plan.clone())
+                    .unwrap_or_default();
+                let plan_steps = plan.steps.clone();
+                let pr = s.prs.iter().find(|p| p.workspace_id == workspace_id);
+                WorkspaceOverview {
+                    context: WorkspaceContext {
+                        brief,
+                        plan_steps,
+                        pr: pr.map(|p| recur_domain::PrSummary {
+                            id: p.id.clone(),
+                            number: p.number,
+                            title: p.title.clone(),
+                            state: p.state.clone(),
+                            review_decision: p.review_decision.clone(),
+                            checks: p.checks_summary(),
+                        }),
+                        ..WorkspaceContext::default()
+                    },
+                    failing_checks: pr
+                        .and_then(|p| p.checks.clone())
+                        .unwrap_or_default()
+                        .into_iter()
+                        .filter(|c| c.failed())
+                        .collect(),
+                    plan_summary: plan.summary.clone(),
+                    plan_body: plan.body.clone(),
+                    running: s
+                        .workspaces
+                        .iter()
+                        .any(|w| w.id == workspace_id && w.group == "active"),
+                    ..WorkspaceOverview::default()
+                }
+            });
+            o.last_reply = last_reply;
+            o.recent_steps = recent_steps;
+            o.open_findings = open_findings;
+            Ok(o)
         }
     }
 

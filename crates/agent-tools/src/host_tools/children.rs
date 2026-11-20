@@ -12,7 +12,7 @@ const CREATE_WORKSPACE_SCHEMA: &str = r#"{
   "properties": {
     "title": {"type": "string", "description": "Short workspace title. Reuse the same title for the same task so repeat calls dedupe"},
     "prompt": {"type": "string", "description": "First message for the new workspace's chat: the task plus the context it needs to work alone"},
-    "project_id": {"type": "string", "description": "Project id; defaults to this workspace's project"},
+    "project_id": {"type": "string", "description": "Project id or name; defaults to this workspace's project. Another project's workspace is always standalone. Target another project only when the human asks or the task cannot be done in this one"},
     "base_branch": {"type": "string", "description": "Standalone only: branch to start from (defaults to the project's base branch). Setting it implies standalone"},
     "mode": {"type": "string", "enum": ["ask", "plan", "agent", "review", "loop"], "description": "Chat mode for the first tab (default agent). loop engages a workflow (the autopilot) with prompt as its goal"},
     "loop_id": {"type": "string", "description": "Bundle [[workflow]] id for mode=loop; defaults to Settings"},
@@ -53,7 +53,8 @@ run: one child per distinct task, not extras. Prefer a child for anything beyond
 simple change. By default the workspace is a subagent (child) \
 of this one: it starts from this branch. When it finishes you get a report; call \
 merge_child to land its commits here, or archive_child to close it without merging. \
-Pass standalone=true for independent work that should ship on its own."
+Pass standalone=true for independent work that should ship on its own. From Ask Recur \
+(no calling workspace) project_id is required and the workspace is always standalone."
     }
 
     fn schema(&self) -> String {

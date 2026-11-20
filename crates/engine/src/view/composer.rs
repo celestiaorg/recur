@@ -1,5 +1,5 @@
 //! The chat composer's text model: wire text ↔ inline chips (`@file`, `/skill`,
-//! `@terminal`, `@artifact`, `⟦attachment:id⟧`, `/prompt` arg slots), one
+//! `@terminal`, `@artifact`, `@workspace`, `@project`, `⟦attachment:id⟧`, `/prompt` arg slots), one
 //! line per paragraph. The GPUI composer renders [`Segment`]s; caret, focus
 //! and DOM normalization stay in the view.
 
@@ -12,9 +12,12 @@ use super::js;
 use super::mentions::{
     artifact_at_hits, artifact_mention_token, attachment_hits, attachment_marker,
     collect_loose_at_names, dir_file_mention_path, file_at_hits, file_mention_token,
-    is_dir_file_mention, repair_file_mention_boundaries, skill_mention_token, skill_slash_hits,
-    terminal_at_hits, terminal_mention_token, token_span_overlaps,
+    is_dir_file_mention, ref_at_hits, ref_mention_token, repair_file_mention_boundaries,
+    skill_mention_token, skill_slash_hits, terminal_at_hits, terminal_mention_token,
+    token_span_overlaps,
 };
+
+pub use super::mentions::RefKind;
 
 /// A pasted image draft.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -51,6 +54,12 @@ pub enum Segment {
         id: String,
         title: String,
     },
+    /// `@workspace:<id>` / `@project:<id>`.
+    Ref {
+        kind: RefKind,
+        id: String,
+        title: String,
+    },
     Attachment(ComposerAtt),
     Prompt {
         spec: PromptChipSpec,
@@ -79,6 +88,7 @@ impl Segment {
             Segment::Skill(name) => skill_mention_token(name),
             Segment::Terminal { id, .. } => terminal_mention_token(id),
             Segment::Artifact { id, .. } => artifact_mention_token(id),
+            Segment::Ref { kind, id, .. } => ref_mention_token(*kind, id),
             Segment::Attachment(a) => attachment_marker(&a.id),
             Segment::Prompt { spec, values } => encode_prompt_wire(&spec.slash, values),
         }
@@ -201,6 +211,9 @@ pub fn match_prompt_chip_line(
     Some((spec.clone(), values))
 }
 
+/// A workspace or project chip's title by id.
+pub type RefTitleFn<'a> = dyn Fn(RefKind, &str) -> String + 'a;
+
 /// How [`hydrate_composer`] restores chips.
 #[derive(Default)]
 pub struct HydrateOpts<'a> {
@@ -211,6 +224,7 @@ pub struct HydrateOpts<'a> {
     pub terminal_title: Option<&'a dyn Fn(&str) -> String>,
     pub artifact_title: Option<&'a dyn Fn(&str) -> String>,
     pub artifact_id_for_title: Option<&'a dyn Fn(&str) -> String>,
+    pub ref_title: Option<&'a RefTitleFn<'a>>,
     pub prompt_chips: &'a [PromptChipSpec],
 }
 
@@ -221,6 +235,7 @@ enum WireKind {
     Att(String),
     Terminal(String),
     Artifact(String),
+    Ref(RefKind, String),
 }
 
 #[derive(Debug, Clone)]
@@ -245,6 +260,9 @@ fn wire_tokens(text: &str, artifact_id_for_title: Option<&dyn Fn(&str) -> String
             h.end,
             WireKind::Artifact(h.body.unwrap_or_default().to_owned()),
         );
+    }
+    for h in ref_at_hits(text) {
+        push(h.start, h.end, WireKind::Ref(h.kind, h.id.to_owned()));
     }
     for h in terminal_at_hits(text) {
         push(
@@ -336,6 +354,11 @@ fn fill_line(
                 title: title(opts.artifact_title, &id),
                 id,
             }),
+            WireKind::Ref(kind, id) if opts.chip_files => out.push(Segment::Ref {
+                title: opts.ref_title.map(|f| f(kind, &id)).unwrap_or_default(),
+                kind,
+                id,
+            }),
             WireKind::Att(id) => {
                 match attachments
                     .iter()
@@ -400,6 +423,7 @@ fn needs_boundary(s: &Segment) -> bool {
             | Segment::Skill(_)
             | Segment::Terminal { .. }
             | Segment::Artifact { .. }
+            | Segment::Ref { .. }
     )
 }
 
@@ -414,7 +438,10 @@ pub fn ensure_chip_boundaries(lines: &mut [Vec<Segment>]) {
                 i += 1;
                 continue;
             }
-            let trailing = matches!(line[i], Segment::Terminal { .. } | Segment::Artifact { .. });
+            let trailing = matches!(
+                line[i],
+                Segment::Terminal { .. } | Segment::Artifact { .. } | Segment::Ref { .. }
+            );
             if let Some(p) = (0..i).rev().find(|&p| !is_filler(&line[p])) {
                 match &mut line[p] {
                     Segment::Text(t) => {

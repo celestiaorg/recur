@@ -225,3 +225,28 @@ async fn resume_clears_reservation() {
     assert!(!te.engine.ask_user_workspace_busy(&ws.id));
     te.close().await;
 }
+
+#[tokio::test]
+async fn parked_question_is_not_working() {
+    let te = TestEngine::new(None);
+    let repo = init_repo();
+    let proj = add_project(&te.store, &repo.path);
+    let ws = te
+        .engine
+        .create_workspace(&proj, "ask-not-working", "")
+        .await
+        .unwrap();
+    let parked = te.engine.ask_user_broker().park(q(&ws.id, "color?"), None);
+    assert!(!te.engine.workspace_working(&ws.id));
+    assert!(!te.engine.workspace_overview(&ws.id).unwrap().running);
+    let ans = UserQuestionAnswer {
+        choice: "Blue".into(),
+        ..Default::default()
+    };
+    te.engine
+        .ask_user_broker()
+        .answer(&parked.id, &ans)
+        .unwrap();
+    assert!(te.engine.workspace_working(&ws.id));
+    te.close().await;
+}

@@ -296,7 +296,8 @@ pub struct ChildFanOut {
     /// merged | failed | conflict: <files>.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub outcome: String,
-    /// The child's handoff as merged.
+    /// The child's handoff as merged; for an Ask Recur report, the tab's notice count when
+    /// the report went pending.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub note: String,
     /// The parent chat tab that created a chat child (create_workspace).

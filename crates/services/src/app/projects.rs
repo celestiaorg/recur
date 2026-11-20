@@ -2,17 +2,13 @@
 //! copy-file previews and scheduled prompts.
 
 use std::collections::BTreeMap;
-use std::sync::LazyLock;
-use std::time::Duration;
 
 use async_trait::async_trait;
 use futures::StreamExt as _;
 use recur_domain::{
-    BranchChoice, CopyFilesPreview, FILES_PROJECT_ID, Project, ProjectGroup, ScheduledPrompt,
-    next_scheduled_time,
+    BranchChoice, CopyFilesPreview, Project, ProjectGroup, ScheduledPrompt, next_scheduled_time,
 };
 use recur_git::LOCAL_BRANCH_GROUP;
-use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
 use super::rt::{blocking, rt};
@@ -24,60 +20,7 @@ use crate::{Error, Result};
 /// one git process per project unbounded.
 const IS_GIT_PROBE_CONCURRENCY: usize = 8;
 
-/// Sidebar avatar tints, assigned round-robin to new projects.
-const PROJECT_COLORS: [&str; 5] = [
-    "var(--cyan)",
-    "var(--amber)",
-    "var(--indigo)",
-    "var(--emerald)",
-    "var(--coral)",
-];
-
-/// Branch listings share one 10 s budget.
-const BRANCH_TIMEOUT: Duration = Duration::from_secs(10);
-
-static SLUG_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("[^a-z0-9]+").expect("slug re"));
-
-/// Lowercases `s`, keeps a path's last segment, and collapses
-/// non-alphanumerics into single hyphens.
-pub(crate) fn slugify(s: &str) -> String {
-    let s = s.trim().to_lowercase();
-    let s = match s.rfind('/') {
-        Some(i) => &s[i + 1..],
-        None => &s,
-    };
-    SLUG_RE.replace_all(s, "-").trim_matches('-').to_owned()
-}
-
-fn first_non_empty<'a>(vals: &[&'a str]) -> &'a str {
-    vals.iter()
-        .copied()
-        .find(|v| !v.trim().is_empty())
-        .unwrap_or("")
-}
-
-/// The first rune uppercased with the simple case mapping, so a rune whose
-/// uppercase is several characters stays as is.
-fn avatar_letter(name: &str) -> String {
-    let Some(c) = name.chars().next() else {
-        return String::new();
-    };
-    let mut up = c.to_uppercase();
-    match (up.next(), up.next()) {
-        (Some(u), None) => u.to_string(),
-        _ => c.to_string(),
-    }
-}
-
-/// The base branch to suggest for a checkout, bounded at 10 s.
-pub(crate) async fn suggest_base_branch(repo_path: &str) -> String {
-    tokio::time::timeout(
-        BRANCH_TIMEOUT,
-        recur_git::suggest_base_branch_for_repo(repo_path),
-    )
-    .await
-    .unwrap_or_else(|_| "main".into())
-}
+use recur_engine::projects::{BRANCH_TIMEOUT, suggest_base_branch};
 
 /// The grouped base-branch picker for a checkout. `def` is promoted within its
 /// group, never prepended as its own heading. With `fold_missing` (a saved
@@ -202,21 +145,6 @@ impl AppServices {
         Ok(self.with_is_git(p).await)
     }
 
-    fn taken_project_id(&self, id: &str) -> bool {
-        id == FILES_PROJECT_ID || self.store().has_project(id)
-    }
-
-    fn unique_project_id(&self, base: &str) -> String {
-        let base = if base.is_empty() { "project" } else { base };
-        let mut id = base.to_owned();
-        let mut i = 2;
-        while self.taken_project_id(&id) {
-            id = format!("{base}-{i}");
-            i += 1;
-        }
-        id
-    }
-
     fn check_group(&self, group_id: &str) -> Result<()> {
         if !group_id.is_empty() && !self.store().has_project_group(group_id) {
             return Err(Error::new(format!(
@@ -227,34 +155,9 @@ impl AppServices {
         Ok(())
     }
 
-    pub(crate) async fn add_project_at(&self, mut p: Project) -> Result<Project> {
-        if p.id.is_empty() {
-            p.id = self.unique_project_id(&slugify(first_non_empty(&[&p.name, &p.repo_path])));
-        }
-        if p.name.is_empty() {
-            p.name.clone_from(&p.id);
-        }
-        if p.pic.is_empty() && !p.name.is_empty() {
-            p.pic = avatar_letter(&p.name);
-        }
-        if p.color.is_empty() {
-            let n = self.store().projects().map_or(0, |v| v.len());
-            p.color = PROJECT_COLORS[n % PROJECT_COLORS.len()].into();
-        }
+    pub(crate) async fn add_project_at(&self, p: Project) -> Result<Project> {
         self.check_group(&p.group_id)?;
-        // Sidebar default on create only: an upsert keeps the caller's Open.
-        if !self.store().has_project(&p.id) {
-            p.open = true;
-        }
-        if p.base_branch.trim().is_empty() {
-            p.base_branch = suggest_base_branch(&p.repo_path).await;
-        }
-        let saved = self.store().add_project(p).map_err(err)?;
-        let saved = self.with_is_git(saved).await;
-        // Seed the working-copy row from the real checkout so the sidebar does
-        // not fall back to Project.BaseBranch (often origin/…, not HEAD).
-        let _ = self.engine.open_main_workspace(&saved.id).await;
-        Ok(saved)
+        self.engine.add_project(p).await.map_err(err)
     }
 
     async fn preview_copy_files_at(&self, project_id: &str, patterns: String) -> CopyFilesPreview {

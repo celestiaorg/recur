@@ -197,6 +197,10 @@ pub struct Settings {
     /// Lets Codex use a ChatGPT login.
     #[serde(rename = "codexChatGPTAuth", skip_serializing_if = "is_false")]
     pub codex_chat_gpt_auth: bool,
+    /// Where Ask Recur creates new projects (`~` allowed). Empty → beside the most
+    /// recently added project, else `~/Development`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub new_projects_dir: String,
     /// A `codex` binary. Empty → $RECUR_CODEX, PATH, then Homebrew paths.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub codex_bin_path: String,

@@ -5,12 +5,15 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
+use recur_agent::attach::DISPLAY_HIDDEN_SENTINEL;
+use recur_agent::display::summarize_tool_input;
 use recur_agent::{Flags, SessionRoute, TurnRequest};
 use recur_agent_tools::names::mcp;
 use recur_domain::{
     APP_AGENT_CODE, AgentRole, BRIEF_ACTION_OPEN, BriefAction, CHAT_MODE_ASK,
     CONTEXT_MODE_PROVIDER, ChatItem, PROVIDER_CLAUDE_CODE, PresentWorkspaceResult,
-    SESSION_KIND_APP, Session, WorkspaceBrief, WorkspaceChatTab, parse_model_ref,
+    SESSION_KIND_APP, Session, WorkspaceBrief, WorkspaceChatTab, WorkspaceOverview,
+    parse_model_ref,
 };
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
@@ -18,6 +21,7 @@ use tokio_util::sync::CancellationToken;
 use crate::Engine;
 use crate::attention::chat_inbox::first_user_chat_title;
 use crate::bus::{AgentUpdated, AppChatTab, EngineEvent};
+use crate::chat::children::describe_child_state;
 use crate::codes::{is_app_chat_code, is_chat_attention_code};
 use crate::session_config::AgentConfig;
 use crate::turn::AgentSpec;
@@ -26,20 +30,31 @@ use crate::turn::sessions::app_code;
 use crate::turn::stream::ChatStream;
 use crate::turn::transcript::flatten_transcript;
 
+mod reports;
 #[cfg(test)]
 mod tests;
+
+pub(crate) use reports::{APP_REPORT_ARMED, app_report_tab};
+
+/// Tool calls read_workspace lists.
+const RECENT_TOOL_STEPS: usize = 15;
 
 /// The wedged-turn bound of one Ask Recur turn.
 pub const APP_CHAT_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// The coordinator's tools.
-pub const APP_CHAT_TOOLS: [&str; 3] = [
+pub const APP_CHAT_TOOLS: [&str; 8] = [
     mcp::LIST_WORKSPACE_BRIEFS,
     mcp::GET_WORKSPACE_CONTEXT,
+    mcp::READ_WORKSPACE,
     mcp::PRESENT_WORKSPACE,
+    mcp::CREATE_WORKSPACE,
+    mcp::MESSAGE_WORKSPACE,
+    mcp::ANSWER_QUESTION,
+    mcp::CREATE_PROJECT,
 ];
 
-pub const APP_CHAT_APPEND_PROMPT: &str = "You are Ask Recur, Recur's app-scoped coordinator. You answer questions about what needs attention, what is running, and where the human left off. Always call mcp__recur__list_workspace_briefs before making a factual status claim: your transcript is conversational memory, not current truth. Use mcp__recur__get_workspace_context for one workspace's detail and mcp__recur__present_workspace to pin a workspace/chat/question/PR card in this transcript (workspace:<id>, chat:<id>:<code>, question:<id>, pr:<id>). present_workspace does not switch the UI: the human opens the card. You cannot edit files, mutate workspaces, answer questions, approve permissions, retry runs, or message workspace agents. If the user asks you to change code, tell them to open that workspace's Agent chat.";
+pub const APP_CHAT_APPEND_PROMPT: &str = "You are Ask Recur, Recur's app-scoped coordinator: the human's foreman across every project and workspace, so they can run all their work from here. You answer what needs attention, what is running, and where the human left off, and you direct the workspace agents that do the work. Always call mcp__recur__list_workspace_briefs before making a factual status claim: your transcript is conversational memory, not current truth. Use mcp__recur__get_workspace_context for one workspace's detail. For progress or how-is-it-going questions, call mcp__recur__read_workspace first: a live snapshot with its latest reply, plan, findings, changed files and recent tool steps. Use mcp__recur__present_workspace to pin a workspace/chat/question/PR card in this transcript (workspace:<id>, chat:<id>:<code>, question:<id>, pr:<id>); it does not switch the UI, the human opens the card. To start work, call mcp__recur__create_workspace with project_id (a project name works; an unknown one lists every project) and a prompt that gives the agent everything it needs to work alone. When the human asks for a project Recur does not have yet, call mcp__recur__create_project: it starts a new git repo (or clones clone_url) beside the other projects unless they name a path, then create_workspace in it. To redirect, follow up on, or restart a workspace's agent, call mcp__recur__message_workspace. When the human answers a workspace's pending question, relay it with mcp__recur__answer_question; never answer one on your own judgment. Create and message only for what the human asked. You do not edit files or run commands yourself, and you cannot approve permissions, merge, archive, or open PRs: workspace agents do the work, and permissions stay with the human.";
 
 const APP_CHAT_AGENT_ID_PREFIX: &str = "app-";
 
@@ -328,6 +343,51 @@ impl Engine {
         model: &str,
         flags: Option<&Flags>,
     ) -> String {
+        self.send_app_message_viewing(code, text, "", model, flags)
+            .await
+    }
+
+    /// [`Engine::send_app_message`] while the human has `viewing` open in the Inbox
+    /// overview ("" = none): the turn is told so, so "this" means that workspace.
+    pub async fn send_app_message_viewing(
+        &self,
+        code: &str,
+        text: &str,
+        viewing: &str,
+        model: &str,
+        flags: Option<&Flags>,
+    ) -> String {
+        let mut wire = self.attach_ref_mentions(text, text).await;
+        if let Some(note) = self.viewing_note(viewing) {
+            wire = format!("{note}{wire}");
+        }
+        let display = if wire == text { "" } else { text };
+        self.run_app_turn(code, &wire, display, model, flags).await
+    }
+
+    fn viewing_note(&self, id: &str) -> Option<String> {
+        let ws = self.store.workspace(id).filter(|w| !w.archived)?;
+        let project = self
+            .store
+            .project(&ws.project_id)
+            .map(|p| p.name)
+            .unwrap_or_default();
+        Some(format!(
+            "<system_instruction>\nThe human has workspace {id} ({:?} in {project}) open in the Inbox. Unless they name another workspace, \"this\" and \"it\" mean that workspace: look with mcp__recur__read_workspace. Message its agent with mcp__recur__message_workspace only when the human clearly addresses this workspace; ask which workspace when a request does not say.\n</system_instruction>\n\n",
+            crate::briefing::workspace_title(&ws)
+        ))
+    }
+
+    /// An Ask Recur turn; `display` labels the user bubble (a hidden-marker
+    /// display is an engine notice, which never titles the tab).
+    async fn run_app_turn(
+        &self,
+        code: &str,
+        text: &str,
+        display: &str,
+        model: &str,
+        flags: Option<&Flags>,
+    ) -> String {
         let code = app_code(code);
         let text = text.trim();
         if text.is_empty() {
@@ -345,8 +405,17 @@ impl Engine {
         };
         let flags = flags.cloned().unwrap_or_else(|| set.ask_flags());
         self.remember_app_chat_selection(&code, &model, Some(&flags));
-        self.stamp_app_chat_title(&code, text);
-        let allowed: Vec<String> = APP_CHAT_TOOLS.iter().map(|s| (*s).to_owned()).collect();
+        let notice = display.starts_with(DISPLAY_HIDDEN_SENTINEL);
+        if !notice {
+            self.stamp_app_chat_title(&code, if display.is_empty() { text } else { display });
+        }
+        // An engine notice carries workspace output with no human present: no answering
+        // questions or creating projects on its say-so.
+        let allowed: Vec<String> = APP_CHAT_TOOLS
+            .iter()
+            .filter(|t| !notice || ![mcp::ANSWER_QUESTION, mcp::CREATE_PROJECT].contains(t))
+            .map(|s| (*s).to_owned())
+            .collect();
         let mut req = TurnRequest {
             agent_id: code.clone(),
             role: AgentRole::Maestro,
@@ -355,6 +424,7 @@ impl Engine {
             append_system_prompt: APP_CHAT_APPEND_PROMPT.into(),
             allowed_tools: Some(allowed.clone()),
             prompt: text.to_owned(),
+            display_text: display.to_owned(),
             worktree: cwd,
             permission_mode: set.permission_mode().into(),
             include_partials: true,
@@ -408,7 +478,7 @@ impl Engine {
             workspace_id: "",
             code: &code,
             prompt: text,
-            display: "",
+            display,
             streamed: &stream.text(),
             res: &res,
             err: err_dyn,
@@ -497,6 +567,151 @@ impl Engine {
             .store
             .update_session_config_json(&sess.id, &config_json(&cfg));
         true
+    }
+
+    /// The read_workspace tool: read_child for any workspace, against its
+    /// project's base branch, plus its latest chat's recent tool steps.
+    pub async fn read_workspace_from_app(&self, id: &str, with_diff: bool) -> String {
+        let Some(ws) = self.store.workspace(id) else {
+            return format!("read_workspace: no workspace {id}");
+        };
+        let mut b = format!("Workspace {} ({:?}, branch {}) ", ws.id, ws.goal, ws.branch);
+        if !ws.archived && self.workspace_working(id) {
+            b.push_str("is RUNNING: this is a live snapshot, not its final result.\n\n");
+        } else {
+            b.push_str(&format!("has {}.\n\n", describe_child_state(&ws)));
+        }
+        let base = self
+            .store
+            .project(&ws.project_id)
+            .map(|p| (p.id, p.base_branch));
+        self.push_workspace_report(&mut b, &ws, base, with_diff)
+            .await;
+        let pr = self.pr_status_line(id);
+        if !pr.is_empty() {
+            b.push_str(&format!("{pr}\n\n"));
+        }
+        let steps = self.recent_tool_steps(id);
+        if !steps.is_empty() {
+            b.push_str("Recent tool steps, oldest first:\n");
+            for s in steps {
+                b.push_str(&format!("- {s}\n"));
+            }
+        }
+        b
+    }
+
+    /// The Inbox overview: plan, agents, open asks and PR (no briefing
+    /// snapshot or transcript read), the latest reply, the last tool steps and
+    /// failing checks. Changed files are [`Engine::workspace_changes`].
+    pub fn workspace_overview(&self, id: &str) -> crate::Result<WorkspaceOverview> {
+        let Some(ws) = self.store.workspace(id).filter(|w| !w.archived) else {
+            return Err(crate::EngineError(format!("workspace {id} not found")));
+        };
+        let mut context = recur_domain::WorkspaceContext::default();
+        context.brief.workspace_id = ws.id.clone();
+        self.fill_workspace_detail(&ws, &mut context);
+        let failing_checks = self
+            .workspace_pr(&ws)
+            .and_then(|p| p.checks)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|c| c.failed())
+            .collect();
+        let mut open_findings: Vec<_> = self
+            .store
+            .findings(id)
+            .into_iter()
+            .filter(|f| f.status == "open")
+            .collect();
+        let rank = |f: &recur_domain::Finding| {
+            ["critical", "high", "medium", "low", "info"]
+                .iter()
+                .position(|s| *s == f.severity.as_str())
+                .unwrap_or(5)
+        };
+        open_findings.sort_by_key(rank);
+        Ok(WorkspaceOverview {
+            context,
+            running: self.workspace_working(id),
+            last_reply: self.store.last_assistant_text(id).trim().to_owned(),
+            recent_steps: self.recent_tool_steps(id),
+            failing_checks,
+            open_findings,
+            plan_summary: ws
+                .plan
+                .as_ref()
+                .map(|p| p.summary.trim().to_owned())
+                .unwrap_or_default(),
+            plan_body: ws
+                .plan
+                .as_ref()
+                .map(|p| p.body.trim().to_owned())
+                .unwrap_or_default(),
+        })
+    }
+
+    /// Files committed against the project's base branch, with line counts.
+    pub async fn workspace_changes(&self, id: &str) -> recur_domain::WorkspaceChanges {
+        let Some(ws) = self.store.workspace(id).filter(|w| !w.archived) else {
+            return Default::default();
+        };
+        let Some(proj) = self.store.project(&ws.project_id) else {
+            return Default::default();
+        };
+        if ws.worktree_path.is_empty() {
+            return Default::default();
+        }
+        let files = tokio::time::timeout(
+            Duration::from_secs(30),
+            self.git_manager(&proj.repo_path)
+                .changed_numstat(&ws.worktree_path, &proj.base_branch),
+        )
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(path, add, del)| recur_domain::ChangedFile { path, add, del })
+        .collect();
+        recur_domain::WorkspaceChanges {
+            base_branch: proj.base_branch,
+            files,
+        }
+    }
+
+    /// The Inbox's Stop: interrupts every live chat turn on the workspace and
+    /// stops its workflow.
+    pub async fn stop_workspace_from_inbox(&self, id: &str) {
+        let prefix = crate::codes::chat_turn_key(id, "");
+        let codes: Vec<String> = self
+            .live_chat_turns()
+            .into_iter()
+            .filter_map(|(k, _)| k.strip_prefix(&prefix).map(str::to_owned))
+            .collect();
+        for code in codes {
+            self.cancel_chat(id, &code).await;
+        }
+        if self.running_loop_by_id(id).is_some() {
+            self.stop(id).await;
+        }
+    }
+
+    /// The last tool calls of the workspace's most recently active chat, oldest first.
+    fn recent_tool_steps(&self, id: &str) -> Vec<String> {
+        let mut out: Vec<String> = self
+            .store
+            .recent_tool_uses(id, RECENT_TOOL_STEPS)
+            .into_iter()
+            .map(|t| {
+                let input = summarize_tool_input(&t.name, &t.input);
+                if input.is_empty() {
+                    t.name
+                } else {
+                    format!("{} {input}", t.name)
+                }
+            })
+            .collect();
+        out.reverse();
+        out
     }
 
     /// Validates a navigation target and returns its JSON card payload. It

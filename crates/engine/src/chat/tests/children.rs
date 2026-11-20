@@ -486,9 +486,17 @@ fn want_child_defaults() {
             false,
         ),
         (
-            "other project",
+            "other project is standalone",
             &caller,
             req(None, "", "q"),
+            CHAT_MODE_AGENT,
+            false,
+            false,
+        ),
+        (
+            "other project child refused",
+            &caller,
+            req(Some(false), "", "q"),
             CHAT_MODE_AGENT,
             false,
             true,

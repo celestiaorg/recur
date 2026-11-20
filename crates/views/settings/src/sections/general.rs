@@ -189,6 +189,35 @@ impl SettingsView {
                 None => b.into_any_element(),
             });
         }
+        let projects_input = self.bound_field(
+            "new-projects-dir",
+            &s.new_projects_dir,
+            FieldOpts::default(),
+            window,
+            cx,
+        );
+        let projects_row = Row::stack()
+            .child(copy(
+                "new-projects-dir",
+                "New projects folder",
+                Some(vec![span(
+                    "Where Ask Recur creates a project you ask for. Leave blank to put it beside your most recent project.",
+                )]),
+                cx,
+            ))
+            .child(
+                div()
+                    .flex()
+                    .w_full()
+                    .debug_selector(|| "inp:New projects folder".into())
+                    .child(inp(
+                        &projects_input,
+                        &"Beside your most recent project".into(),
+                        InpStyle::BASE,
+                        window,
+                        cx,
+                    )),
+            );
         let shown_example = example.clone();
         let branch_row = Row::stack()
             .child(
@@ -311,6 +340,10 @@ impl SettingsView {
                     )),
             )
             .child(
+                settings_group("grp-projects", "Projects")
+                    .child(rows(GROUP_ROWS, vec![projects_row], window, cx)),
+            )
+            .child(
                 settings_group("grp-power", "Power")
                     .blurb("Keep the machine awake while agents work.")
                     .child(rows(
@@ -413,6 +446,13 @@ impl SettingsView {
             }
             ("branch-prefix", FieldEvent::Focus) => self.skip_prefix_commit = false,
             ("branch-prefix", FieldEvent::Change) => self.commit_branch_prefix(&value, cx),
+            ("new-projects-dir", FieldEvent::Change) => {
+                let v = value.trim().to_string();
+                if self.settings(cx).is_some_and(|s| s.new_projects_dir != v) {
+                    self.patch(false, move |s| s.new_projects_dir = v, cx)
+                        .detach();
+                }
+            }
             ("max-loops", FieldEvent::Change) => {
                 let n = parse_governor_cap(&value, 4);
                 self.save_number(key, n, |s, n| s.max_loops = n, |s| s.max_loops, cx);

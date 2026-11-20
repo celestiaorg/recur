@@ -80,12 +80,14 @@ fn ask(cx: &mut TestAppContext, opts: Overrides, storage: LocalStorage) -> A<'_>
     let sent = calls();
     let held: Arc<Mutex<Vec<Release<Result<String>>>>> = Default::default();
     let (s2, h2) = (sent.clone(), held.clone());
-    let fake = Fake::fresh(opts.send_app_message(move |_, (code, text, model, _)| {
-        s2.lock().push(vec![code, text, model]);
-        let (r, release) = hold();
-        h2.lock().push(release);
-        r
-    }));
+    let fake = Fake::fresh(
+        opts.send_app_message(move |_, (code, text, model, _, viewing)| {
+            s2.lock().push(vec![code, text, model, viewing]);
+            let (r, release) = hold();
+            h2.lock().push(release);
+            r
+        }),
+    );
     let services = fake.services();
     let state = cx.update(|cx| AppState::install(services.clone(), storage, cx));
     let vcx = ViewContext {
@@ -151,6 +153,18 @@ async fn ask_chips_send_with_an_optimistic_bubble_and_stamp_the_tab_title(cx: &m
             .map(|t| t.title.clone())
     });
     assert!(title.is_some());
+}
+
+#[gpui::test]
+async fn ask_sends_carry_the_workspace_open_in_the_inbox(cx: &mut TestAppContext) {
+    let mut a = ask(cx, Overrides::default(), LocalStorage::in_memory());
+    a.app.update(a.cx, |app, cx| {
+        app.set_viewing(Some(("w1".into(), "Login fix".into())), cx)
+    });
+    a.click("ask-chip:What needs me?");
+    let sent = a.sent.lock().clone();
+    assert_eq!(sent[0][1], "What needs me?");
+    assert_eq!(sent[0][3], "w1");
 }
 
 #[gpui::test]

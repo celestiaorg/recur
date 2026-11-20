@@ -318,6 +318,16 @@ impl Engine {
         self.ask_users.workspace_busy(workspace_id)
     }
 
+    /// Something is working on the workspace. A parked question counts as
+    /// waiting on the human, not working; the answer-resume gap still works.
+    pub fn workspace_working(&self, workspace_id: &str) -> bool {
+        !self.child_settled_for_chat(workspace_id)
+            && !self
+                .pending_ask_users()
+                .iter()
+                .any(|q| q.workspace_id == workspace_id)
+    }
+
     /// A parked or resuming question on this tab.
     pub(crate) fn ask_user_pending_for(&self, workspace_id: &str, code: &str) -> bool {
         self.ask_users.pending_for(workspace_id, code)

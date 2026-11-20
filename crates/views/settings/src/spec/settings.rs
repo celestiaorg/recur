@@ -377,6 +377,16 @@ fn general_settings_include_a_branch_name_prefix_field(cx: &mut TestAppContext) 
 }
 
 #[gpui::test]
+fn general_settings_set_the_new_projects_folder(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.open_settings();
+    s.section("General");
+    s.fill("inp:New projects folder", "~/code");
+    s.cx.simulate_keystrokes("enter");
+    assert!(s.until(|s| s.saved().new_projects_dir == "~/code"));
+}
+
+#[gpui::test]
 fn general_settings_include_live_concurrency_caps(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     s.open_settings();

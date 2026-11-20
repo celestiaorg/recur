@@ -998,6 +998,53 @@ impl Engine {
             brief,
             ..WorkspaceContext::default()
         };
+        self.fill_workspace_detail(&ws, &mut ctx);
+        let sessions = self.store.sessions_for_loop(&ws.id).unwrap_or_default();
+        for sess in &sessions {
+            let cfg = AgentConfig::parse(&sess.config_json);
+            if cfg.code.is_empty() {
+                continue;
+            }
+            let unseen = self
+                .store
+                .agents(&ws.id)
+                .iter()
+                .find(|a| a.code == cfg.code)
+                .is_some_and(|a| a.unseen);
+            ctx.recent_chats.push(ChatHeader {
+                title: session_title(&cfg),
+                code: cfg.code,
+                mode: cfg.mode,
+                updated_at: sess.updated_at,
+                unseen,
+            });
+            if ctx.recent_chats.len() >= 6 {
+                break;
+            }
+        }
+        let latest = &ctx.brief.latest_chat_code;
+        let sess = self.store.session_for_loop_agent(&ws.id, latest);
+        if sess.is_some() || latest.is_empty() {
+            let sess = sess.or_else(|| sessions.last().cloned());
+            if let Some(s) = sess {
+                ctx.conversation = conversation_excerpt(&self.store, &s.id);
+            }
+        }
+        Ok(ctx)
+    }
+
+    /// The workspace's PR: the one it opened, else the PR it hosts a review chat for.
+    pub(crate) fn workspace_pr(&self, ws: &Workspace) -> Option<recur_domain::Pr> {
+        let host = ws.host_pr_id.trim();
+        self.store
+            .prs()
+            .into_iter()
+            .find(|p| p.workspace_id == ws.id || (!host.is_empty() && p.id == host))
+    }
+
+    /// Plan steps, agents, open asks and the PR: the parts of a workspace's
+    /// context that need no snapshot or transcript.
+    pub(crate) fn fill_workspace_detail(&self, ws: &Workspace, ctx: &mut WorkspaceContext) {
         if let Some(p) = &ws.plan {
             ctx.plan_steps = p.steps.clone();
         }
@@ -1046,36 +1093,9 @@ impl Engine {
                 ..OpenAsk::default()
             });
         }
-        let sessions = self.store.sessions_for_loop(&ws.id).unwrap_or_default();
-        for sess in &sessions {
-            let cfg = AgentConfig::parse(&sess.config_json);
-            if cfg.code.is_empty() {
-                continue;
-            }
-            let unseen = self
-                .store
-                .agents(&ws.id)
-                .iter()
-                .find(|a| a.code == cfg.code)
-                .is_some_and(|a| a.unseen);
-            ctx.recent_chats.push(ChatHeader {
-                title: session_title(&cfg),
-                code: cfg.code,
-                mode: cfg.mode,
-                updated_at: sess.updated_at,
-                unseen,
-            });
-            if ctx.recent_chats.len() >= 6 {
-                break;
-            }
-        }
-        if let Some(p) = self
-            .store
-            .prs()
-            .into_iter()
-            .find(|p| p.workspace_id == ws.id)
-        {
+        if let Some(p) = self.workspace_pr(ws) {
             ctx.pr = Some(PrSummary {
+                checks: p.checks_summary(),
                 id: p.id,
                 number: p.number,
                 title: p.title,
@@ -1083,15 +1103,6 @@ impl Engine {
                 review_decision: p.review_decision,
             });
         }
-        let latest = &ctx.brief.latest_chat_code;
-        let sess = self.store.session_for_loop_agent(&ws.id, latest);
-        if sess.is_some() || latest.is_empty() {
-            let sess = sess.or_else(|| sessions.last().cloned());
-            if let Some(s) = sess {
-                ctx.conversation = conversation_excerpt(&self.store, &s.id);
-            }
-        }
-        Ok(ctx)
     }
 
     /// The shell rendered this workspace through `seen_through_activity_at`:
@@ -1112,6 +1123,18 @@ impl Engine {
                     l.seen_activity_at = seen_through_activity_at;
                 }
             })
+            .is_some()
+        {
+            self.publish_briefing_invalidated(workspace_id);
+        }
+    }
+
+    /// Inbox "Mark unread": rewinds SeenActivityAt to the earliest look, so
+    /// any activity reads as changed until the workspace is viewed again.
+    pub fn mark_workspace_unread(&self, workspace_id: &str) {
+        if self
+            .store
+            .update_workspace(workspace_id, |l| l.seen_activity_at = 1)
             .is_some()
         {
             self.publish_briefing_invalidated(workspace_id);

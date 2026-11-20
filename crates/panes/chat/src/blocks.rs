@@ -5,10 +5,10 @@
 use std::collections::BTreeSet;
 
 use recur_engine::view::chat::{AgentMsg, ChatAttachmentView, ChatLog};
-use recur_engine::view::composer::is_dir_chip_path;
+use recur_engine::view::composer::{RefKind, is_dir_chip_path};
 use recur_engine::view::mentions::{
     artifact_at_hits, attachment_hits, attachment_marker, collect_loose_at_names, file_at_hits,
-    skill_slash_hits, terminal_at_hits, token_span_overlaps,
+    ref_at_hits, skill_slash_hits, terminal_at_hits, token_span_overlaps,
 };
 
 use crate::glance::{fold_inner_narration, fold_subagent_notice, has_later_step};
@@ -237,6 +237,7 @@ pub enum BubblePart {
     Skill(String),
     Terminal(String),
     Artifact(String),
+    Ref(RefKind, String),
 }
 
 /// `splitInlineTokens`: `@artifact`, `@terminal`, `@file`, `/skill`, then loose `@Title`
@@ -251,6 +252,13 @@ pub fn split_inline_tokens(
             h.start,
             h.end - h.start,
             BubblePart::Artifact(h.body.unwrap_or("").into()),
+        ));
+    }
+    for h in ref_at_hits(text) {
+        toks.push((
+            h.start,
+            h.end - h.start,
+            BubblePart::Ref(h.kind, h.id.into()),
         ));
     }
     for h in terminal_at_hits(text) {
@@ -414,6 +422,50 @@ mod tests {
         let mut x = AgentMsg::default();
         f(&mut x);
         x
+    }
+
+    #[test]
+    fn workspace_and_project_bubble_chips() {
+        let parts = split_inline_tokens("see @workspace:w1 in @project:p1", &|_| String::new());
+        assert_eq!(parts[1], BubblePart::Ref(RefKind::Workspace, "w1".into()));
+        assert_eq!(parts[3], BubblePart::Ref(RefKind::Project, "p1".into()));
+    }
+
+    #[test]
+    fn ref_menu_rows_match_title_or_id() {
+        use crate::chat::MentionHit;
+        use recur_domain::{Project, Workspace};
+        let projects = vec![Project {
+            id: "p1".into(),
+            name: "API server".into(),
+            ..Default::default()
+        }];
+        let ws = |id: &str, goal: &str, at: i64| Workspace {
+            id: id.into(),
+            goal: goal.into(),
+            project_id: "p1".into(),
+            last_activity_at: at,
+            ..Default::default()
+        };
+        let all = vec![
+            ws("w1", "Fix login", 1),
+            ws("w2", "Login copy", 2),
+            ws("w3", "Docs", 3),
+        ];
+        let ids =
+            |hits: Vec<MentionHit>| -> Vec<String> { hits.iter().map(MentionHit::key).collect() };
+        let m = crate::composer::matching_ref_hits;
+        assert_eq!(
+            ids(m(&all, &projects, "login", false, "")),
+            ["r:workspace:w2", "r:workspace:w1"]
+        );
+        assert_eq!(
+            ids(m(&all, &projects, "login", false, "w2")),
+            ["r:workspace:w1"]
+        );
+        assert_eq!(ids(m(&all, &projects, "api", false, "")), ["r:project:p1"]);
+        assert!(m(&all, &projects, "", false, "").is_empty());
+        assert_eq!(m(&all, &projects, "", true, "").len(), 4);
     }
 
     #[test]

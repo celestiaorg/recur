@@ -1,27 +1,37 @@
 //! The Inbox: one list of workspace cards in Needs you / Working / Pick up
 //! buckets with their unread notifications, the Elsewhere notifications that have no card,
-//! label-style filters, and the Ask Recur dock on the left. The dock's visibility
+//! label-style filters, the Ask Recur dock on the left, and the selected workspace's
+//! overview on the right (in place of the list below 1100px). A click selects a card;
+//! double-click, ⌘-click, Enter or Open workspace opens it. The dock's visibility
 //! (`inboxChatOpen`, `recur.askRecurOpen`) lives here; below 1100px the dock is a drawer.
+
+mod overview;
 
 use recur_ui::guard::Guarded;
 use recur_view_core::{ObserveState as _, Topics};
-use std::collections::{BTreeMap, BTreeSet};
-use std::time::Instant;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::time::{Duration, Instant};
 
+use gpui_kit::Task;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, FocusHandle, InteractiveElement,
-    IntoElement, KeystrokeEvent, ParentElement, Render, ScrollHandle, SharedString,
+    AnyElement, App, AppContext as _, ClickEvent, Context, Entity, FocusHandle, InteractiveElement,
+    IntoElement, KeyDownEvent, KeystrokeEvent, ParentElement, Render, ScrollHandle, SharedString,
     StatefulInteractiveElement, Styled, Subscription, Window, div, point, px,
 };
-use recur_domain::{InboxItem, WorkspaceBrief};
+use recur_content::MarkdownView;
+use recur_domain::{InboxItem, WorkspaceBrief, WorkspaceChanges, WorkspaceOverview};
+use recur_services::AppEvent;
 use recur_ui::text::TextStyled;
 use recur_ui::tooltip::titled;
+use recur_ui::widgets::toasts::ToastKind;
 use recur_ui::widgets::{
     Axis, Edge, Select, SelectEvent, SelectOption, TriggerStyle, resize_handle,
 };
 use recur_ui::{IconName, Theme, icon};
 use recur_view_chat::app_chat::{AppChat, AppChatEvent};
+use recur_view_chat::cards::permission::PermissionCard;
+use recur_view_chat::cards::question::QuestionCard;
 use recur_view_chat::html_inline::{InlineStyle, inline_html_text};
 use recur_view_core::prefs::PanelKey;
 use recur_view_core::{ViewContext, ViewName};
@@ -37,8 +47,14 @@ pub const FILTERS_KEY: &str = "recur.briefingFilters";
 pub const ASK_OPEN_KEY: &str = "recur.askRecurOpen";
 /// Below this the Ask dock is a drawer over the list.
 pub const WIDE_MIN: f32 = 1100.;
+/// The list width that fits its full rows and bucket chips beside the overview.
+const FULL_LIST_W: f32 = 600.;
 /// Pick up shows this many until expanded.
 pub const PICKUP_PREVIEW: usize = 8;
+/// Events about the selected workspace coalesce into one overview refetch.
+const OVERVIEW_DEBOUNCE: Duration = Duration::from_millis(200);
+/// Live tool steps the overview keeps.
+const STEPS_KEPT: usize = 15;
 
 /// `bucketFilter`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -98,6 +114,55 @@ pub fn inbox_by_workspace(inbox: &[InboxItem]) -> BTreeMap<String, Vec<InboxItem
     m
 }
 
+/// A service event the open overview reacts to.
+enum LiveEvent {
+    /// A tool step on a workspace chat, as the overview lists it.
+    Step {
+        workspace_id: String,
+        step: String,
+    },
+    /// Something on a workspace changed ("" = any); `changes` when commits may have moved.
+    Workspace {
+        workspace_id: String,
+        changes: bool,
+    },
+    Pr(String),
+}
+
+fn live_event(ev: &AppEvent) -> Option<LiveEvent> {
+    let ws = |id: &str, changes: bool| {
+        Some(LiveEvent::Workspace {
+            workspace_id: id.to_owned(),
+            changes,
+        })
+    };
+    match ev {
+        AppEvent::SessionStep(d) if !d.tag.workspace_id.is_empty() => {
+            let input = recur_agent::display::summarize_tool_input(&d.tool, &d.tool_input);
+            Some(LiveEvent::Step {
+                workspace_id: d.tag.workspace_id.clone(),
+                step: if input.is_empty() {
+                    d.tool.clone()
+                } else {
+                    format!("{} {input}", d.tool)
+                },
+            })
+        }
+        AppEvent::SessionTurnEnd(d) => ws(&d.tag.workspace_id, true),
+        AppEvent::SessionUser(d) => ws(&d.tag.workspace_id, false),
+        AppEvent::AgentUpdated(a) => ws(&a.workspace_id, false),
+        AppEvent::BriefingUpdated(b) => ws(&b.workspace_id, true),
+        AppEvent::FindingsUpdated(r) => ws(&r.workspace_id, false),
+        AppEvent::QuestionAsked(q) => ws(&q.workspace_id, false),
+        AppEvent::PermissionRequested(p) => ws(&p.workspace_id, false),
+        AppEvent::EscalationRaised(e) => ws(&e.workspace_id, false),
+        AppEvent::EscalationResolved(e) => ws(&e.workspace_id, false),
+        AppEvent::QuestionAnswered(_) | AppEvent::PermissionResolved(_) => ws("", false),
+        AppEvent::PrUpdated(p) => Some(LiveEvent::Pr(p.pr_id.clone())),
+        _ => None,
+    }
+}
+
 /// `rowIcons`.
 fn row_icon(kind: &str) -> Option<IconName> {
     Some(match kind {
@@ -120,11 +185,41 @@ pub struct BriefingView {
     pickup_expanded: bool,
     project_select: Entity<Select>,
     scroll: ScrollHandle,
+    ov_scroll: ScrollHandle,
+    /// Arrow keys moved the selection: the next render scrolls its row into view.
+    reveal_selected: std::cell::Cell<bool>,
+    /// The selection is the wide layout's automatic pick, not a click: a narrow window drops it.
+    auto_picked: bool,
     resize_focus: FocusHandle,
+    list_resize_focus: FocusHandle,
     hover_row: Option<String>,
     epoch: Instant,
     /// The bucket to bring to the top once laid out (`briefingFocus`).
     pending_focus: Option<String>,
+    /// The workspace whose overview is open.
+    selected: Option<String>,
+    /// Overviews and changes by workspace: a revisit paints the last copy at once while
+    /// the refetch runs.
+    overviews: HashMap<String, WorkspaceOverview>,
+    changes: HashMap<String, WorkspaceChanges>,
+    overview_gen: u64,
+    /// A debounced refetch is pending (and whether it includes the git changes).
+    refresh_queued: Option<bool>,
+    /// The checks summary each workspace had when Fix checks was sent.
+    fix_sent: HashMap<String, String>,
+    permission_cards: HashMap<String, Entity<PermissionCard>>,
+    /// The workspace whose Archive was clicked once.
+    archive_armed: Option<String>,
+    /// The selected workspace's unread notifications as of selecting it (selecting marks
+    /// them read).
+    seen_notes: Vec<InboxItem>,
+    /// The latest reply's source and its rendered view.
+    reply_md: Option<(String, Entity<MarkdownView>)>,
+    plan_md: Option<(String, Entity<MarkdownView>)>,
+    question_cards: HashMap<String, Entity<QuestionCard>>,
+    ov_open: overview::Open,
+    list_focus: FocusHandle,
+    _events: Task<()>,
     _subs: Vec<Subscription>,
 }
 
@@ -151,6 +246,20 @@ impl BriefingView {
                     ..Default::default()
                 })
                 .with_values(values)
+        });
+        let mut events = vcx.services.subscribe();
+        let events_task = cx.spawn(async move |this, cx| {
+            while let Some(ev) = events.recv().await {
+                let Some(ev) = live_event(&ev) else {
+                    continue;
+                };
+                if this
+                    .update(cx, |v, cx| v.on_workspace_event(ev, cx))
+                    .is_err()
+                {
+                    break;
+                }
+            }
         });
         let subs = vec![
             cx.observe_state_in(&vcx.state, Topics::ALL, window, |this, _, window, cx| {
@@ -182,10 +291,29 @@ impl BriefingView {
             pickup_expanded: false,
             project_select,
             scroll: ScrollHandle::new(),
+            ov_scroll: ScrollHandle::new(),
+            reveal_selected: Default::default(),
+            auto_picked: false,
             resize_focus: cx.focus_handle(),
+            list_resize_focus: cx.focus_handle(),
             hover_row: None,
             epoch: Instant::now(),
             pending_focus: None,
+            selected: None,
+            overviews: HashMap::new(),
+            changes: HashMap::new(),
+            overview_gen: 0,
+            refresh_queued: None,
+            fix_sent: HashMap::new(),
+            permission_cards: HashMap::new(),
+            archive_armed: None,
+            seen_notes: Vec::new(),
+            reply_md: None,
+            plan_md: None,
+            question_cards: HashMap::new(),
+            ov_open: overview::Open::default(),
+            list_focus: cx.focus_handle(),
+            _events: events_task,
             _subs: subs,
         };
         me.sync(window, cx);
@@ -273,6 +401,12 @@ impl BriefingView {
                 self.save_filters(cx);
             }
         }
+        if let Some(id) = self.selected.clone()
+            && !self.briefs_all(cx).iter().any(|b| b.workspace_id == id)
+        {
+            self.clear_selection(cx);
+        }
+        self.sync_viewing(cx);
         let focus = self.vcx.state.read(cx).briefing_focus.clone();
         if !focus.is_empty() {
             // A footer / palette jump must reach its section: drop the filters that could
@@ -302,11 +436,20 @@ impl BriefingView {
             return;
         };
         if let (Some(item), view) = (self.scroll.bounds_for_item(ix), self.scroll.bounds()) {
-            let cur = self.scroll.offset();
-            let top = item.origin.y - view.origin.y - cur.y;
-            self.scroll.set_offset(point(cur.x, -top));
+            let top = item.origin.y - view.origin.y;
+            self.scroll.set_offset(point(self.scroll.offset().x, -top));
             cx.notify();
         }
+    }
+
+    /// Where section `ix`'s pinned header sits in content coordinates, once the list scrolled
+    /// past its in-flow header: at the viewport top, pushed up by the section's bottom.
+    fn sticky_head_top(&self, ix: usize) -> Option<f32> {
+        let item = self.scroll.bounds_for_item(ix)?;
+        let off = -f32::from(self.scroll.offset().y);
+        let top = f32::from(item.top() - self.scroll.bounds().top());
+        let bottom = top + f32::from(item.size.height);
+        (off > top).then(|| off.min(bottom - crate::style::HEAD_H))
     }
 
     /// The overview's direct children in order (the scroll handle's items).
@@ -332,12 +475,16 @@ impl BriefingView {
     /// Escape closes the drawer (narrow window only).
     fn on_window_key(&mut self, ev: &KeystrokeEvent, window: &mut Window, cx: &mut Context<Self>) {
         let wide = f32::from(window.viewport_size().width) >= WIDE_MIN;
-        if ev.keystroke.key == "escape"
-            && self.chat_open
-            && !wide
-            && self.vcx.state.read(cx).view == ViewName::Briefing
+        if ev.keystroke.key != "escape"
+            || wide
+            || self.vcx.state.read(cx).view != ViewName::Briefing
         {
+            return;
+        }
+        if self.chat_open {
             self.set_chat_open(false, cx);
+        } else if self.selected.is_some() {
+            self.clear_selection(cx);
         }
     }
 
@@ -355,6 +502,8 @@ impl BriefingView {
                 (projects.is_empty()
                     || (!w.project_id.is_empty() && projects.contains(&w.project_id)))
                     && (!self.unread_only
+                        || w.changed_since_viewed
+                        || self.selected.as_deref() == Some(w.workspace_id.as_str())
                         || notes.get(&w.workspace_id).is_some_and(|n| !n.is_empty()))
             })
             .cloned()
@@ -426,7 +575,16 @@ impl BriefingView {
         cx.notify();
     }
 
-    fn filters(&mut self, l: &Lists, cx: &mut Context<Self>) -> AnyElement {
+    /// A list narrowed beside the overview: rows drop their project, plan, diff and age
+    /// columns (the overview shows them) and the filters drop the bucket chips (the section
+    /// heads name the buckets). Dragging the list wider brings both back.
+    fn compact(&self, window: &Window, cx: &App) -> bool {
+        self.selected.is_some()
+            && (!wide(window)
+                || self.vcx.state.read(cx).panels.size(PanelKey::InboxList) < FULL_LIST_W)
+    }
+
+    fn filters(&mut self, l: &Lists, compact: bool, cx: &mut Context<Self>) -> AnyElement {
         let t = Theme::of(cx).tokens;
         let mut bar = filters_bar(cx);
         if !self.chat_open {
@@ -497,6 +655,9 @@ impl BriefingView {
                 })),
             ),
         );
+        if compact {
+            return bar.into_any_element();
+        }
         let b = self.bucket;
         let mut seg = filter_seg(cx).child(
             seg_count_btn("br-seg-all", "All", None, b == Bucket::All, cx)
@@ -531,7 +692,7 @@ impl BriefingView {
         list: &[WorkspaceBrief],
         notes: &BTreeMap<String, Vec<InboxItem>>,
         window: &mut Window,
-        cx: &mut App,
+        cx: &mut Context<Self>,
     ) -> gpui_kit::Div {
         let mut section = div()
             .debug_selector(move || format!("briefing-{key}"))
@@ -540,18 +701,384 @@ impl BriefingView {
             .child(bucket_head(key, label, count, dot, cx));
         for b in list {
             let n = notes.get(&b.workspace_id).cloned().unwrap_or_default();
-            section = section.child(recur_view_chat::cards::brief::brief_row(
+            let (me, wid) = (cx.entity().downgrade(), b.workspace_id.clone());
+            let selected = self.selected.as_deref() == Some(b.workspace_id.as_str());
+            let row = recur_view_chat::cards::brief::brief_row(
                 SharedString::from(format!("wbrief-row-{}", b.workspace_id)),
                 b,
                 &n,
-                "",
-                &self.vcx.state,
+                selected,
+                self.compact(window, cx),
+                move |ev: &ClickEvent, window, cx| {
+                    let _ = me.update(cx, |v, cx| v.click_row(&wid, ev, window, cx));
+                },
                 self.epoch,
                 window,
                 cx,
-            ));
+            );
+            section = if selected && self.reveal_selected.take() {
+                section.child(reveal_row(row, self.scroll.clone()))
+            } else {
+                section.child(row)
+            };
         }
         section
+    }
+
+    /// A plain click selects; double-click or ⌘-click opens.
+    fn click_row(
+        &mut self,
+        id: &str,
+        ev: &ClickEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.select(id, window, cx);
+        if ev.click_count() >= 2 || ev.modifiers().secondary(cx) {
+            self.open_selected(cx);
+        }
+    }
+
+    fn select(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+        self.list_focus.focus(window, cx);
+        self.auto_picked = false;
+        self.select_quiet(id, cx);
+    }
+
+    /// Selects without taking focus (the wide layout's automatic first pick).
+    fn select_quiet(&mut self, id: &str, cx: &mut Context<Self>) {
+        if self.selected.as_deref() == Some(id) {
+            return;
+        }
+        self.selected = Some(id.to_owned());
+        self.seen_notes = inbox_by_workspace(&self.vcx.state.read(cx).inbox)
+            .remove(id)
+            .unwrap_or_default();
+        self.ov_open = overview::Open::default();
+        self.ov_scroll.set_offset(point(px(0.), px(0.)));
+        self.reply_md = None;
+        self.mark_read(id, cx);
+        self.load_overview(true, cx);
+        self.sync_viewing(cx);
+        cx.notify();
+    }
+
+    fn clear_selection(&mut self, cx: &mut Context<Self>) {
+        self.selected = None;
+        self.refresh_queued = None;
+        self.sync_viewing(cx);
+        self.seen_notes.clear();
+        self.reply_md = None;
+        self.overview_gen += 1;
+        cx.notify();
+    }
+
+    /// The row's dot: unread notifications, or activity since it was last viewed.
+    pub(crate) fn is_unread(&self, id: &str, cx: &App) -> bool {
+        let s = self.vcx.state.read(cx);
+        s.inbox.iter().any(|i| i.unread && i.workspace_id == id)
+            || s.briefing
+                .workspaces
+                .iter()
+                .flatten()
+                .any(|b| b.workspace_id == id && b.changed_since_viewed)
+    }
+
+    pub(crate) fn mark_read(&mut self, id: &str, cx: &mut Context<Self>) {
+        let activity = self.set_changed(id, false, cx);
+        let (svc, wid) = (self.vcx.services.clone(), id.to_owned());
+        self.vcx
+            .state
+            .update(cx, |s, cx| s.mark_workspace_inbox_read(&wid, cx));
+        if activity > 0 {
+            cx.background_spawn(async move {
+                let _ = svc.briefing.mark_workspace_viewed(&wid, activity).await;
+            })
+            .detach();
+        }
+    }
+
+    pub(crate) fn mark_unread(&mut self, id: &str, cx: &mut Context<Self>) {
+        self.set_changed(id, true, cx);
+        let (svc, wid) = (self.vcx.services.clone(), id.to_owned());
+        cx.background_spawn(async move {
+            let _ = svc.briefing.mark_workspace_unread(&wid).await;
+        })
+        .detach();
+    }
+
+    pub(crate) fn toggle_read(&mut self, cx: &mut Context<Self>) {
+        let Some(id) = self.selected.clone() else {
+            return;
+        };
+        if self.is_unread(&id, cx) {
+            self.mark_read(&id, cx);
+        } else {
+            self.mark_unread(&id, cx);
+        }
+        cx.notify();
+    }
+
+    /// Sets the brief's "changed since viewed" cue ahead of the next snapshot; returns its
+    /// last activity.
+    fn set_changed(&mut self, id: &str, changed: bool, cx: &mut Context<Self>) -> i64 {
+        self.vcx.state.update(cx, |s, cx| {
+            let b = s
+                .briefing
+                .workspaces
+                .iter_mut()
+                .flatten()
+                .find(|b| b.workspace_id == id);
+            let activity = b.map_or(0, |b| {
+                b.changed_since_viewed = changed;
+                b.last_activity_at
+            });
+            cx.notify();
+            activity
+        })
+    }
+
+    /// The wide layout always shows an overview: keep a visible row selected.
+    fn ensure_selection(&mut self, cx: &mut Context<Self>) {
+        let ids = self.visible_ids(cx);
+        match (&self.selected, ids.first()) {
+            (Some(s), _) if ids.contains(s) => {}
+            (_, Some(first)) => {
+                self.auto_picked = true;
+                self.select_quiet(&first.clone(), cx)
+            }
+            (Some(_), None) => self.clear_selection(cx),
+            (None, None) => {}
+        }
+    }
+
+    fn selected_brief(&self, cx: &App) -> Option<WorkspaceBrief> {
+        let id = self.selected.as_deref()?;
+        self.briefs_all(cx)
+            .into_iter()
+            .find(|b| b.workspace_id == id)
+    }
+
+    fn open_selected(&mut self, cx: &mut Context<Self>) {
+        if let Some(b) = self.selected_brief(cx) {
+            recur_view_chat::cards::brief::open_brief(&self.vcx.state, &b, cx);
+        }
+    }
+
+    /// Tells Ask Recur which workspace the overview shows.
+    fn sync_viewing(&mut self, cx: &mut Context<Self>) {
+        let viewing = self.selected_brief(cx).map(|b| (b.workspace_id, b.title));
+        self.chat.update(cx, |c, cx| c.set_viewing(viewing, cx));
+    }
+
+    /// Fetches the selected overview and, with `changes`, its git changes (separately: the
+    /// overview paints without waiting on git).
+    fn load_overview(&mut self, changes: bool, cx: &mut Context<Self>) {
+        let Some(id) = self.selected.clone() else {
+            return;
+        };
+        self.overview_gen += 1;
+        let gen_ = self.overview_gen;
+        let services = self.vcx.services.clone();
+        let wid = id.clone();
+        cx.spawn(async move |this, cx| {
+            let res = services.briefing.workspace_overview(&wid).await;
+            let _ = this.update(cx, |v, cx| {
+                if v.overview_gen == gen_
+                    && let Ok(o) = res
+                {
+                    v.overviews.insert(wid, o);
+                    cx.notify();
+                }
+            });
+        })
+        .detach();
+        if !changes {
+            return;
+        }
+        let services = self.vcx.services.clone();
+        cx.spawn(async move |this, cx| {
+            let res = services.briefing.workspace_changes(&id).await;
+            let _ = this.update(cx, |v, cx| {
+                if let Ok(c) = res {
+                    v.changes.insert(id, c);
+                    cx.notify();
+                }
+            });
+        })
+        .detach();
+    }
+
+    /// A live event about `ws` ("" = any workspace): a tool step lands in the open overview
+    /// at once; anything else queues one debounced refetch.
+    fn on_workspace_event(&mut self, ev: LiveEvent, cx: &mut Context<Self>) {
+        let Some(sel) = self.selected.clone() else {
+            return;
+        };
+        let (ws, changes) = match ev {
+            LiveEvent::Step { workspace_id, step } => {
+                if workspace_id != sel {
+                    return;
+                }
+                if let Some(o) = self.overviews.get_mut(&sel) {
+                    o.running = true;
+                    o.recent_steps.push(step);
+                    let over = o.recent_steps.len().saturating_sub(STEPS_KEPT);
+                    o.recent_steps.drain(..over);
+                    cx.notify();
+                }
+                return;
+            }
+            LiveEvent::Pr(pr_id) => {
+                let s = self.vcx.state.read(cx);
+                let mine = s.prs.iter().any(|p| p.id == pr_id && p.workspace_id == sel);
+                (if mine { sel.clone() } else { return }, false)
+            }
+            LiveEvent::Workspace {
+                workspace_id,
+                changes,
+            } => (workspace_id, changes),
+        };
+        if !ws.is_empty() && ws != sel {
+            return;
+        }
+        let queued = self.refresh_queued.is_some();
+        self.refresh_queued = Some(self.refresh_queued.unwrap_or(false) || changes);
+        if queued {
+            return;
+        }
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(OVERVIEW_DEBOUNCE).await;
+            let _ = this.update(cx, |v, cx| {
+                if let Some(changes) = v.refresh_queued.take() {
+                    v.load_overview(changes, cx);
+                }
+            });
+        })
+        .detach();
+    }
+
+    /// The second click archives; the first arms for three seconds.
+    fn archive(&mut self, id: &str, cx: &mut Context<Self>) {
+        if self.archive_armed.as_deref() != Some(id) {
+            self.archive_armed = Some(id.to_owned());
+            cx.notify();
+            let id = id.to_owned();
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(Duration::from_secs(3)).await;
+                let _ = this.update(cx, |v, cx| {
+                    if v.archive_armed.as_deref() == Some(id.as_str()) {
+                        v.archive_armed = None;
+                        cx.notify();
+                    }
+                });
+            })
+            .detach();
+            return;
+        }
+        self.archive_armed = None;
+        let id = id.to_owned();
+        self.vcx
+            .state
+            .update(cx, |s, cx| s.remove_workspace(&id, cx))
+            .detach();
+        self.clear_selection(cx);
+    }
+
+    /// Runs a service call for the selected workspace and toasts its error.
+    fn act(
+        &mut self,
+        ok: Option<&'static str>,
+        cx: &mut Context<Self>,
+        f: impl AsyncFnOnce(recur_services::Services) -> recur_services::Result<()> + 'static,
+    ) {
+        let services = self.vcx.services.clone();
+        cx.spawn(async move |_, cx| {
+            let res = f(services).await;
+            cx.update(|cx| match res {
+                Ok(()) => {
+                    if let Some(msg) = ok {
+                        recur_view_core::toast(ToastKind::Info, msg, cx)
+                    }
+                }
+                Err(e) => recur_view_core::toast(ToastKind::Error, e.to_string(), cx),
+            });
+        })
+        .detach();
+    }
+
+    /// Sends `message` to a workspace's agent and toasts what happened.
+    fn send_to_workspace(&mut self, workspace_id: &str, message: &str, cx: &mut Context<Self>) {
+        let services = self.vcx.services.clone();
+        let (id, message) = (workspace_id.to_owned(), message.to_owned());
+        cx.spawn(async move |this, cx| {
+            let res = services.briefing.message_workspace(&id, &message).await;
+            if res.is_err() {
+                let _ = this.update(cx, |v, cx| {
+                    v.fix_sent.remove(&id);
+                    cx.notify();
+                });
+            }
+            cx.update(|cx| match res {
+                Ok(msg) => {
+                    recur_view_core::toast(recur_ui::widgets::toasts::ToastKind::Info, msg, cx)
+                }
+                Err(e) => recur_view_core::toast(
+                    recur_ui::widgets::toasts::ToastKind::Error,
+                    e.to_string(),
+                    cx,
+                ),
+            });
+        })
+        .detach();
+    }
+
+    /// The card ids in on-screen order.
+    fn visible_ids(&self, cx: &App) -> Vec<String> {
+        let l = self.lists(cx);
+        let expanded = self.pickup_expanded || self.bucket == Bucket::Pickup;
+        let pickup = l
+            .pickup
+            .iter()
+            .take(if expanded { usize::MAX } else { PICKUP_PREVIEW });
+        l.needs
+            .iter()
+            .chain(l.working.iter())
+            .chain(pickup)
+            .map(|b| b.workspace_id.clone())
+            .collect()
+    }
+
+    /// ↑/↓ move the selection, Enter or ⌘O opens it, Esc closes the overview.
+    fn on_list_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        let k = &ev.keystroke;
+        let plain = !k.modifiers.modified();
+        match k.key.as_str() {
+            "down" | "up" if plain => {
+                let ids = self.visible_ids(cx);
+                let at = self
+                    .selected
+                    .as_ref()
+                    .and_then(|s| ids.iter().position(|i| i == s));
+                let next = match (k.key.as_str(), at) {
+                    (_, None) => 0,
+                    ("down", Some(i)) => (i + 1).min(ids.len().saturating_sub(1)),
+                    (_, Some(i)) => i.saturating_sub(1),
+                };
+                if let Some(id) = ids.get(next) {
+                    self.reveal_selected.set(true);
+                    self.select(&id.clone(), window, cx);
+                }
+            }
+            "enter" if plain => self.open_selected(cx),
+            "u" if k.modifiers.secondary(cx) && k.modifiers.shift => self.toggle_read(cx),
+            "o" if k.modifiers.secondary(cx) => self.open_selected(cx),
+            "escape" if plain && self.selected.is_some() && !wide(window) => {
+                self.clear_selection(cx)
+            }
+            _ => return,
+        }
+        cx.stop_propagation();
     }
 
     fn orphan_row(&self, x: &InboxItem, cx: &mut Context<Self>) -> AnyElement {
@@ -649,9 +1176,15 @@ impl BriefingView {
     ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         let on = self.vcx.state.read(cx).view == ViewName::Briefing;
-        let wide = f32::from(window.viewport_size().width) >= WIDE_MIN;
+        let wide = wide(window);
+        if wide {
+            self.ensure_selection(cx);
+        } else if self.auto_picked {
+            self.auto_picked = false;
+            self.clear_selection(cx);
+        }
         let l = self.lists(cx);
-        let filters = self.filters(&l, cx);
+        let filters = self.filters(&l, self.compact(window, cx), cx);
         let mut overview: Vec<AnyElement> = Vec::new();
         if l.is_empty() {
             let e = if self.filtered() {
@@ -762,36 +1295,109 @@ impl BriefingView {
             }
             overview.push(section.into_any_element());
         }
+        let heads = [
+            ("needs", "Needs you", t.coral, l.needs.len()),
+            ("working", "Working", t.amber, l.working.len()),
+            ("pickup", "Pick up", t.indigo, l.pickup.len()),
+            ("elsewhere", "Elsewhere", t.faint, l.orphans.len()),
+        ];
+        let first = usize::from(l.is_empty());
+        let heads = heads.into_iter().filter(|h| h.3 > 0).enumerate();
+        for (i, (key, label, dot, n)) in heads {
+            if let Some(at) = self.sticky_head_top(first + i) {
+                overview.push(
+                    div()
+                        .debug_selector(move || format!("briefing-sticky:{key}"))
+                        .absolute()
+                        .left_0()
+                        .right_0()
+                        .top(px(at))
+                        .occlude()
+                        .child(bucket_head(key, label, n, dot, cx))
+                        .into_any_element(),
+                );
+            }
+        }
         let me = cx.entity().downgrade();
+        let selected = self.selected_brief(cx);
+        let col =
+            div()
+                .id("briefing-col")
+                .track_focus(&self.list_focus)
+                .on_key_down(cx.guarded_listener(|v, ev: &KeyDownEvent, window, cx| {
+                    v.on_list_key(ev, window, cx)
+                }))
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .on_hover(move |h, _, cx| {
+                    if !*h {
+                        let _ = me.update(cx, |v, cx| {
+                            v.hover_row = None;
+                            cx.notify();
+                        });
+                    }
+                })
+                .child(filters)
+                .child(
+                    div()
+                        .debug_selector(|| "briefing-scroll".into())
+                        .flex_1()
+                        .min_h_0()
+                        .flex()
+                        .child(
+                            recur_ui::widgets::scroll_area("briefing-scroll")
+                                .track(&self.scroll)
+                                .scroller(|d| d.flex().flex_col().pb(px(32.)))
+                                .children(overview),
+                        ),
+                );
+        let mut body = div().relative().flex_1().min_h_0().flex();
+        let (col, pane) = match &selected {
+            None => (Some(col), None),
+            Some(b) if !wide => (None, Some(self.overview_pane(b, true, window, cx).flex_1())),
+            Some(b) => {
+                let pane = self
+                    .overview_pane(b, false, window, cx)
+                    .flex_1()
+                    .min_w_0()
+                    .border_l_1()
+                    .border_color(hsla(t.line));
+                let state = self.vcx.state.clone();
+                let width = state.read(cx).panels.size(PanelKey::InboxList);
+                let col = col.relative().flex_none().w(px(width)).child(
+                    resize_handle(
+                        "inbox-list-resize",
+                        Axis::X,
+                        Edge::End,
+                        width,
+                        &self.list_resize_focus,
+                    )
+                    .on_live({
+                        let state = state.clone();
+                        move |w, _, cx| {
+                            state.update(cx, |s, cx| s.set_panel_live(PanelKey::InboxList, w, cx))
+                        }
+                    })
+                    .on_commit({
+                        let state = state.clone();
+                        move |_, cx| state.update(cx, |s, _| s.persist_panels())
+                    })
+                    .on_step(move |w, _, cx| {
+                        state.update(cx, |s, cx| s.set_panel(PanelKey::InboxList, w, cx))
+                    }),
+                );
+                (Some(col), Some(pane))
+            }
+        };
         let col = div()
-            .id("briefing-col")
             .flex_1()
             .min_w_0()
+            .min_h_0()
             .flex()
-            .flex_col()
-            .on_hover(move |h, _, cx| {
-                if !*h {
-                    let _ = me.update(cx, |v, cx| {
-                        v.hover_row = None;
-                        cx.notify();
-                    });
-                }
-            })
-            .child(filters)
-            .child(
-                div()
-                    .debug_selector(|| "briefing-scroll".into())
-                    .flex_1()
-                    .min_h_0()
-                    .flex()
-                    .child(
-                        recur_ui::widgets::scroll_area("briefing-scroll")
-                            .track(&self.scroll)
-                            .scroller(|d| d.flex().flex_col().pb(px(32.)))
-                            .children(overview),
-                    ),
-            );
-        let mut body = div().relative().flex_1().min_h_0().flex();
+            .when_some(col, |d, c| d.child(c))
+            .when_some(pane, |d, p| d.child(p));
         if self.chat_open {
             let state = self.vcx.state.clone();
             let width = state.read(cx).panels.size(PanelKey::InboxChat);
@@ -872,6 +1478,41 @@ impl Render for BriefingView {
 /// Builds the entity (the `briefing` route).
 pub fn build(vcx: &ViewContext, window: &mut Window, cx: &mut App) -> Entity<BriefingView> {
     cx.new(|cx| BriefingView::new(vcx, window, cx))
+}
+
+fn wide(window: &Window) -> bool {
+    f32::from(window.viewport_size().width) >= WIDE_MIN
+}
+
+/// `scrollIntoView({ block: 'nearest' })`: once laid out, scrolls `row` just into `scroll`'s
+/// viewport, below the pinned bucket header.
+fn reveal_row(row: AnyElement, scroll: ScrollHandle) -> AnyElement {
+    div()
+        .relative()
+        .child(row)
+        .child(
+            gpui_kit::canvas(
+                move |b, window, _| {
+                    let view = scroll.bounds();
+                    let below = b.bottom() - view.bottom();
+                    let above = view.top() + px(crate::style::HEAD_H) - b.top();
+                    let shift = if above > px(0.) {
+                        above
+                    } else if below > px(0.) {
+                        -below
+                    } else {
+                        return;
+                    };
+                    let cur = scroll.offset();
+                    scroll.set_offset(point(cur.x, cur.y + shift));
+                    window.refresh();
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0(),
+        )
+        .into_any_element()
 }
 
 #[cfg(test)]

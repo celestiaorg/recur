@@ -97,6 +97,11 @@ async fn every_method_answers() {
     );
     note(
         &mut errs,
+        "MarkWorkspaceUnread",
+        s.briefing.mark_workspace_unread("LOOP-2231").await.err(),
+    );
+    note(
+        &mut errs,
         "NewAppChat",
         s.briefing.new_app_chat().await.err(),
     );
@@ -112,7 +117,7 @@ async fn every_method_answers() {
         &mut errs,
         "SendAppMessage",
         s.briefing
-            .send_app_message("PA", "x", "x", &BTreeMap::new())
+            .send_app_message("PA", "x", "x", &BTreeMap::new(), "")
             .await
             .err(),
     );

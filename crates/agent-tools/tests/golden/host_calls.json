@@ -5905,7 +5905,7 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "",
-    "result": "{\"generatedAt\":0,\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"],\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"Open\",\"target\":\"workspace:WS-1\"}}]}",
+    "result": "{\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"]}]}",
     "error": "",
     "isError": false,
     "calls": [
@@ -5920,7 +5920,7 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "null",
-    "result": "{\"generatedAt\":0,\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"],\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"Open\",\"target\":\"workspace:WS-1\"}}]}",
+    "result": "{\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"]}]}",
     "error": "",
     "isError": false,
     "calls": [
@@ -5935,7 +5935,22 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "{}",
-    "result": "{\"generatedAt\":0,\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"],\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"Open\",\"target\":\"workspace:WS-1\"}}]}",
+    "result": "{\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"]}]}",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "method": "ListWorkspaceBriefs"
+      }
+    ]
+  },
+  {
+    "tool": "list_workspace_briefs",
+    "agent": "AP2",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{}",
+    "result": "{\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"]}]}",
     "error": "",
     "isError": false,
     "calls": [
@@ -5950,14 +5965,10 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "[]",
-    "result": "{\"generatedAt\":0,\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"],\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"Open\",\"target\":\"workspace:WS-1\"}}]}",
-    "error": "",
-    "isError": false,
-    "calls": [
-      {
-        "method": "ListWorkspaceBriefs"
-      }
-    ]
+    "result": "",
+    "error": "invalid arguments: json: cannot unmarshal array into Go value of type struct { Bucket *string \"json:\\\"bucket\\\"\"; Project *string \"json:\\\"project\\\"\" }",
+    "isError": true,
+    "calls": []
   },
   {
     "tool": "list_workspace_briefs",
@@ -5965,14 +5976,10 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "\"x\"",
-    "result": "{\"generatedAt\":0,\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"],\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"Open\",\"target\":\"workspace:WS-1\"}}]}",
-    "error": "",
-    "isError": false,
-    "calls": [
-      {
-        "method": "ListWorkspaceBriefs"
-      }
-    ]
+    "result": "",
+    "error": "invalid arguments: json: cannot unmarshal string into Go value of type struct { Bucket *string \"json:\\\"bucket\\\"\"; Project *string \"json:\\\"project\\\"\" }",
+    "isError": true,
+    "calls": []
   },
   {
     "tool": "list_workspace_briefs",
@@ -5980,14 +5987,10 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "5",
-    "result": "{\"generatedAt\":0,\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"],\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"Open\",\"target\":\"workspace:WS-1\"}}]}",
-    "error": "",
-    "isError": false,
-    "calls": [
-      {
-        "method": "ListWorkspaceBriefs"
-      }
-    ]
+    "result": "",
+    "error": "invalid arguments: json: cannot unmarshal number into Go value of type struct { Bucket *string \"json:\\\"bucket\\\"\"; Project *string \"json:\\\"project\\\"\" }",
+    "isError": true,
+    "calls": []
   },
   {
     "tool": "list_workspace_briefs",
@@ -5995,14 +5998,10 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "true",
-    "result": "{\"generatedAt\":0,\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"],\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"Open\",\"target\":\"workspace:WS-1\"}}]}",
-    "error": "",
-    "isError": false,
-    "calls": [
-      {
-        "method": "ListWorkspaceBriefs"
-      }
-    ]
+    "result": "",
+    "error": "invalid arguments: json: cannot unmarshal bool into Go value of type struct { Bucket *string \"json:\\\"bucket\\\"\"; Project *string \"json:\\\"project\\\"\" }",
+    "isError": true,
+    "calls": []
   },
   {
     "tool": "list_workspace_briefs",
@@ -6010,14 +6009,10 @@
     "ws": "W1",
     "chat": "PA2",
     "args": "{\"bogus\":1}",
-    "result": "{\"generatedAt\":0,\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"],\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"Open\",\"target\":\"workspace:WS-1\"}}]}",
-    "error": "",
-    "isError": false,
-    "calls": [
-      {
-        "method": "ListWorkspaceBriefs"
-      }
-    ]
+    "result": "",
+    "error": "invalid arguments: json: unknown field \"bogus\"",
+    "isError": true,
+    "calls": []
   },
   {
     "tool": "list_workspace_briefs",
@@ -6025,7 +6020,7 @@
     "ws": "W1",
     "chat": "PA2",
     "args": " { } ",
-    "result": "{\"generatedAt\":0,\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"],\"now\":\"\",\"next\":\"\",\"primary\":{\"label\":\"Open\",\"target\":\"workspace:WS-1\"}}]}",
+    "result": "{\"counts\":{\"needs\":1,\"working\":0,\"pickup\":2},\"workspaces\":[{\"workspaceId\":\"WS-1\",\"title\":\"Needs \\u003ca\\u003e look\",\"bucket\":\"needs\",\"reasons\":[\"plan_approval\"]}]}",
     "error": "",
     "isError": false,
     "calls": [

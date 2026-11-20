@@ -81,6 +81,14 @@ fn pill_tips(s: &mut S, title: &str) -> Vec<String> {
     ]
 }
 
+/// Drags the list wide enough for its full rows and bucket chips beside the overview.
+fn full_list(s: &mut S) {
+    s.state.update(s.cx, |st, cx| {
+        st.set_panel(recur_view_core::prefs::PanelKey::InboxList, 700., cx)
+    });
+    s.settle();
+}
+
 fn briefing(s: &mut S) -> gpui::Entity<BriefingView> {
     let shell = s.root.read_with(s.cx, |r, _| r.shell.clone());
     s.cx.update(|_, cx| {
@@ -97,6 +105,27 @@ fn boots_into_the_unified_list_with_now_next_cards_and_ask_recur(cx: &mut TestAp
     let mut s = plain(cx);
     assert!(s.has("v-briefing:on"));
     assert!(s.has("nav-inbox"));
+    assert!(
+        s.has(&format!("ov-title:{RATE}")),
+        "the first row opens in the overview"
+    );
+    assert!(
+        !s.has(&seg("All", true)),
+        "a narrow list drops the bucket chips"
+    );
+    let diffed: Vec<String> = s.state.read_with(s.cx, |st, _| {
+        let briefs = st.briefing.workspaces.clone().unwrap_or_default();
+        briefs
+            .into_iter()
+            .filter(|b| b.diff_add + b.diff_del > 0)
+            .map(|b| b.title)
+            .collect()
+    });
+    assert!(
+        diffed.iter().any(|t| s.has(&format!("wbrief-diff:{t}"))),
+        "a narrow row keeps its diff"
+    );
+    full_list(&mut s);
     assert!(s.has(&seg("All", true)));
     let sub = s
         .state
@@ -132,13 +161,12 @@ fn notifications_with_no_card_land_in_elsewhere(cx: &mut TestAppContext) {
 #[gpui::test]
 fn cards_carry_unread_badges_that_clear_on_open(cx: &mut TestAppContext) {
     let mut s = plain(cx);
-    assert!(unread(&mut s, RATE).is_some_and(|u| u.starts_with("1:")));
+    assert!(unread(&mut s, RATE).is_none(), "the open row is read");
     assert!(unread(&mut s, SIGN_IN).is_some_and(|u| u.starts_with("2:")));
-    s.click(&row(RATE));
-    assert_eq!(s.view(), ViewName::Detail);
-    s.click("nav-inbox");
+    s.click(&row(SIGN_IN));
     assert_eq!(s.view(), ViewName::Briefing);
-    assert!(unread(&mut s, RATE).is_none());
+    assert!(s.has(&format!("ov-title:{SIGN_IN}")));
+    assert!(unread(&mut s, SIGN_IN).is_none());
 }
 
 #[gpui::test]
@@ -153,6 +181,7 @@ fn mark_all_read_clears_every_badge(cx: &mut TestAppContext) {
 #[gpui::test]
 fn bucket_chips_filter_the_overview(cx: &mut TestAppContext) {
     let mut s = plain(cx);
+    full_list(&mut s);
     assert!(s.has("briefing-working"));
     s.click(&seg("Needs you", false));
     assert!(!s.has("briefing-working"));
@@ -218,7 +247,7 @@ fn ask_recur_selected_tab_lights_when_the_chat_has_focus(cx: &mut TestAppContext
     assert!(!lit(&mut s));
     s.click("chat-composer");
     assert!(lit(&mut s));
-    s.click(&seg("All", true));
+    s.click(&row(SIGN_IN));
     assert!(s.has("tab-chip:ask-tab-APP:on"));
     assert!(!lit(&mut s));
     s.click("ask-new");
@@ -274,6 +303,7 @@ fn ask_dock_supports_multiple_chat_tabs_like_the_pr_dock(cx: &mut TestAppContext
 #[gpui::test]
 fn unread_and_project_filters_survive_a_reload_bucket_does_not(cx: &mut TestAppContext) {
     let mut s = plain(cx);
+    full_list(&mut s);
     s.click(&seg("Unread", false));
     s.click(&seg("Needs you", false));
     s.reload();
@@ -296,6 +326,7 @@ fn restores_briefing_from_shell_state(cx: &mut TestAppContext) {
 #[gpui::test]
 fn footer_needs_you_opens_the_list_focused_clearing_bucket_filters(cx: &mut TestAppContext) {
     let mut s = plain(cx);
+    full_list(&mut s);
     s.click(&seg("Working", false));
     assert!(!s.has("briefing-needs"));
     s.click("foot-needs");
@@ -317,10 +348,39 @@ fn go_to_palette_reaches_briefing(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
-fn opening_a_brief_row_lands_on_the_workspace(cx: &mut TestAppContext) {
+fn a_brief_row_click_shows_its_overview_and_open_lands_on_the_workspace(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     s.click(&row(RATE));
+    assert_eq!(s.view(), ViewName::Briefing);
+    assert!(s.has(&format!("ov-title:{RATE}")));
+    s.keys("down");
+    assert!(s.has("briefing-overview") && !s.has(&format!("ov-title:{RATE}")));
+    s.keys("up");
+    assert!(s.has(&format!("ov-title:{RATE}")));
+    s.keys("escape");
+    assert!(
+        s.has("briefing-overview"),
+        "the wide layout keeps an overview open"
+    );
+    s.click("ov-open");
     assert_eq!(s.view(), ViewName::Detail);
+    s.click("nav-inbox");
+    assert!(s.has(&format!("ov-title:{RATE}")));
+    s.click(&row(RATE));
+    s.keys("enter");
+    assert_eq!(s.view(), ViewName::Detail);
+}
+
+#[gpui::test]
+fn ask_recur_knows_the_workspace_open_in_the_overview(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    let viewing = |s: &mut S| {
+        briefing(s).read_with(s.cx, |v, cx| v.chat().read(cx).viewing().map(str::to_owned))
+    };
+    let first = viewing(&mut s).expect("viewing the first row");
+    s.click(&row(SIGN_IN));
+    let sign_in = viewing(&mut s).expect("viewing the selected workspace");
+    assert_ne!(first, sign_in);
 }
 
 #[gpui::test]
@@ -410,4 +470,189 @@ fn the_ask_dock_is_a_drawer_below_1100px_and_escape_closes_it(cx: &mut TestAppCo
     s.keys("escape");
     assert!(!s.has("briefing-ask"));
     assert_eq!(s.storage("recur.askRecurOpen").as_deref(), Some("0"));
+}
+
+#[gpui::test]
+fn the_overview_lists_open_findings_and_opens_the_findings_panel(cx: &mut TestAppContext) {
+    let finding = |id: &str, sev: &str, status: &str, msg: &str| recur_domain::Finding {
+        id: id.into(),
+        severity: sev.into(),
+        status: status.into(),
+        file: "src/ratelimit.go".into(),
+        line: 37,
+        message: msg.into(),
+        ..Default::default()
+    };
+    let opts = Overrides::default().list_findings(move |_, _| {
+        Ok(vec![
+            finding("f1", "low", "open", "attempts keeps an entry for every key"),
+            finding("f2", "high", "open", "clientKey trusts X-Forwarded-For"),
+            finding("f3", "medium", "resolved", "already fixed"),
+        ])
+    });
+    let mut s = with(cx, |_| {}, opts);
+    s.click(&row(RATE));
+    assert!(s.has("ov-finding:clientKey trusts X-Forwarded-For"));
+    assert!(s.has("ov-finding:attempts keeps an entry for every key"));
+    assert!(
+        !s.has("ov-finding:already fixed"),
+        "resolved findings stay out"
+    );
+    s.click("ov-finding:clientKey trusts X-Forwarded-For");
+    assert_eq!(s.view(), ViewName::Detail);
+}
+
+#[gpui::test]
+fn ask_recur_mentions_workspaces_and_projects(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.click("chat-composer");
+    s.type_text("@");
+    assert!(s.has("chat-mention"), "the @ menu opens in Ask Recur");
+    assert!(s.has("menu-row-on:0"));
+    s.keys("enter");
+    let chat = briefing(&mut s).read_with(s.cx, |v, cx| v.chat().read(cx).chat().clone());
+    let wire = chat.read_with(s.cx, |c, _| c.input().to_owned());
+    assert!(
+        wire.starts_with("@workspace:") || wire.starts_with("@project:"),
+        "{wire}"
+    );
+    assert!(!s.has("chat-mention"), "picking closes the menu");
+}
+
+#[gpui::test]
+fn arrow_keys_scroll_the_selected_row_into_view(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.cx.simulate_resize(gpui::size(gpui::px(1400.), gpui::px(360.)));
+    s.settle();
+    let titles: Vec<String> = s.state.read_with(s.cx, |st, _| {
+        let briefs = st.briefing.workspaces.clone().unwrap_or_default();
+        briefs.into_iter().map(|b| b.title).collect()
+    });
+    let first = titles
+        .iter()
+        .find(|t| s.has(&row(t)))
+        .cloned()
+        .expect("a row");
+    s.click(&row(&first));
+    let mut scrolled = false;
+    for _ in 0..titles.len() {
+        s.keys("down");
+        let view = s.bounds("briefing-scroll").expect("list");
+        let sel = titles
+            .iter()
+            .find(|t| s.has(&format!("ov-title:{t}")))
+            .cloned()
+            .expect("selected");
+        let r = s.bounds(&row(&sel)).expect("row");
+        assert!(
+            r.top() >= view.top() && r.bottom() <= view.bottom(),
+            "{sel} is out of view"
+        );
+        scrolled |= s.bounds(&row(&first)).is_none_or(|f| f.top() < view.top());
+    }
+    assert!(scrolled, "the list never had to scroll");
+    for _ in 0..titles.len() {
+        s.keys("up");
+        let view = s.bounds("briefing-scroll").expect("list");
+        let sel = titles
+            .iter()
+            .find(|t| s.has(&format!("ov-title:{t}")))
+            .cloned()
+            .expect("selected");
+        let r = s.bounds(&row(&sel)).expect("row");
+        assert!(
+            r.top() >= view.top() + gpui::px(26.),
+            "{sel} is under the pinned header"
+        );
+    }
+}
+
+#[gpui::test]
+fn the_list_beside_the_overview_resizes_and_keeps_its_width(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.click(&row(RATE));
+    let before = s.bounds("briefing-overview").expect("overview").left();
+    let p = gpui::point(before - gpui::px(2.), gpui::px(300.));
+    let to = gpui::point(before + gpui::px(78.), gpui::px(300.));
+    s.cx.simulate_mouse_move(p, None, gpui::Modifiers::none());
+    s.cx.simulate_mouse_down(p, gpui::MouseButton::Left, gpui::Modifiers::none());
+    s.cx.simulate_mouse_move(to, gpui::MouseButton::Left, gpui::Modifiers::none());
+    s.cx.simulate_mouse_up(to, gpui::MouseButton::Left, gpui::Modifiers::none());
+    s.settle();
+    let after = s.bounds("briefing-overview").expect("overview").left();
+    assert_eq!(after, before + gpui::px(80.));
+    s.reload();
+    s.click(&row(RATE));
+    assert_eq!(
+        s.bounds("briefing-overview").expect("overview").left(),
+        after
+    );
+}
+
+#[gpui::test]
+fn bucket_headers_stay_pinned_while_the_list_scrolls(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.cx.simulate_resize(gpui::size(gpui::px(1400.), gpui::px(360.)));
+    s.settle();
+    assert!(!s.has("briefing-sticky:needs"), "nothing pins at rest");
+    let view = s.bounds("briefing-scroll").expect("list");
+    s.cx.simulate_event(gpui::ScrollEvent {
+        position: view.center(),
+        delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(-40.))),
+        modifiers: gpui::Modifiers::none(),
+        touch_phase: gpui::TouchPhase::Moved,
+        ..Default::default()
+    });
+    let head = s.bounds("briefing-sticky:needs").expect("pinned header");
+    assert_eq!(head.top(), view.top());
+}
+
+#[gpui::test]
+fn footer_needs_you_scrolls_a_scrolled_list_back_to_the_bucket(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.cx.simulate_resize(gpui::size(gpui::px(1400.), gpui::px(360.)));
+    s.settle();
+    let view = s.bounds("briefing-scroll").expect("list");
+    s.cx.simulate_event(gpui::ScrollEvent {
+        position: view.center(),
+        delta: gpui::ScrollDelta::Pixels(gpui::point(gpui::px(0.), gpui::px(-60.))),
+        ..Default::default()
+    });
+    assert!(s.bounds("briefing-needs").expect("needs").top() < view.top());
+    s.click("foot-needs");
+    assert_eq!(s.bounds("briefing-needs").expect("needs").top(), view.top());
+}
+
+#[gpui::test]
+fn the_overview_marks_its_workspace_unread_and_read_again(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.click(&row(SIGN_IN));
+    s.click("ov-read:read");
+    assert!(s.has("ov-read:unread"));
+    s.click(&row(RATE));
+    s.click(&seg("Unread", false));
+    assert!(
+        s.has(&row(SIGN_IN)),
+        "marked unread, it is in the Unread list"
+    );
+    assert!(s.has(&row(RATE)), "the open row stays in the Unread list");
+    s.click(&row(SIGN_IN));
+    assert!(s.has("ov-read:read"), "opening it reads it");
+    s.keys("secondary-shift-u");
+    assert!(s.has("ov-read:unread"));
+    s.keys("secondary-shift-u");
+    assert!(s.has("ov-read:read"));
+}
+
+#[gpui::test]
+fn a_narrow_window_opens_the_overview_only_on_a_click(cx: &mut TestAppContext) {
+    let mut s = boot(cx, |_| {}, Overrides::default(), LocalStorage::in_memory());
+    s.cx.simulate_resize(gpui::size(gpui::px(1000.), gpui::px(800.)));
+    s.settle();
+    s.click("ask-hide");
+    assert!(!s.has("briefing-overview"));
+    s.click(&row(RATE));
+    assert!(s.has("briefing-overview"));
+    s.keys("escape");
+    assert!(!s.has("briefing-overview"));
 }

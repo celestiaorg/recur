@@ -13,7 +13,7 @@ use gpui_kit::{
     Styled, Window, canvas, div, point, px, size,
 };
 use recur_content::images::{self, Decoded, ImageCache};
-use recur_engine::view::composer::Segment;
+use recur_engine::view::composer::{RefKind, Segment};
 use recur_engine::view::mentions::{
     artifact_mention_label, file_mention_label, parse_file_mention_chip, terminal_mention_label,
 };
@@ -23,6 +23,26 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{Color, IconName, Theme, icon, rgba};
 
 use crate::chat::AgentChat;
+
+/// A workspace or project chip's label: its title, else the id.
+fn ref_label(kind: RefKind, id: &str, title: &str) -> String {
+    let t = title.trim();
+    if !t.is_empty() {
+        return t.to_owned();
+    }
+    if id.is_empty() {
+        kind.keyword().to_owned()
+    } else {
+        id.to_owned()
+    }
+}
+
+pub(crate) fn ref_icon(kind: RefKind) -> IconName {
+    match kind {
+        RefKind::Workspace => IconName::GitBranch,
+        RefKind::Project => IconName::Box,
+    }
+}
 use crate::flow::Atom;
 use crate::style::{amber_a, hsla};
 
@@ -391,6 +411,33 @@ impl AgentChat {
                     label,
                 )
             }
+            BubblePart::Ref(kind, rid) => {
+                let label = ref_label(*kind, rid, &self.ref_title_for(*kind, rid, cx));
+                let (chip, w) = self.bubble_chip(
+                    id,
+                    ico14(ref_icon(*kind), t.muted),
+                    label.clone(),
+                    amber.0,
+                    amber.1,
+                    amber_hover,
+                    Some(220.),
+                    None,
+                    format!("{label} {}", kind.keyword()),
+                    window,
+                    cx,
+                );
+                let (kind, rid) = (*kind, rid.clone());
+                (
+                    chip.cursor_pointer()
+                        .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                            this.open_ref_chip(kind, &rid, cx)
+                        }))
+                        .into_any_element(),
+                    w,
+                    26.,
+                    label,
+                )
+            }
             BubblePart::Image { src, name, .. } => {
                 let d = self.image_for(src, cx);
                 let (w, h) = d
@@ -666,6 +713,31 @@ impl AgentChat {
                     t.pane_2,
                     true,
                     tip,
+                    window,
+                );
+                let el = el.child(x).cursor_pointer().on_click(
+                    cx.guarded_listener(move |this, _, window, cx| this.click_chip(i, window, cx)),
+                );
+                (
+                    recur_ui::tooltip::titled(SharedString::from(format!("{id}-tip")), tip, el)
+                        .into_any_element(),
+                    w + 4.,
+                    22.,
+                )
+            }
+            Segment::Ref {
+                kind,
+                id: rid,
+                title,
+            } => {
+                let label = ref_label(*kind, rid, title);
+                let (el, w, tip) = shell(
+                    ico14(ref_icon(*kind), t.muted),
+                    label.clone(),
+                    t.line,
+                    t.pane_2,
+                    true,
+                    format!("{label} {}", kind.keyword()),
                     window,
                 );
                 let el = el.child(x).cursor_pointer().on_click(

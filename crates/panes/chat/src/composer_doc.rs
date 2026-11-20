@@ -29,6 +29,7 @@ pub enum ChipKind {
     Skill,
     Terminal,
     Artifact,
+    Ref,
     Attachment,
     Prompt,
 }
@@ -40,6 +41,7 @@ pub fn chip_kind(s: &Segment) -> Option<ChipKind> {
         Segment::Skill(_) => ChipKind::Skill,
         Segment::Terminal { .. } => ChipKind::Terminal,
         Segment::Artifact { .. } => ChipKind::Artifact,
+        Segment::Ref { .. } => ChipKind::Ref,
         Segment::Attachment(_) => ChipKind::Attachment,
         Segment::Prompt { .. } => ChipKind::Prompt,
     })
@@ -456,7 +458,13 @@ impl ComposerDoc {
             chip += 1;
             let needs = matches!(
                 kind,
-                Some(ChipKind::File | ChipKind::Skill | ChipKind::Terminal | ChipKind::Artifact)
+                Some(
+                    ChipKind::File
+                        | ChipKind::Skill
+                        | ChipKind::Terminal
+                        | ChipKind::Artifact
+                        | ChipKind::Ref
+                )
             );
             if needs {
                 if let Some(prev) = self.text[..i].chars().next_back()
@@ -466,7 +474,10 @@ impl ComposerDoc {
                     self.insert_at(i, ' ');
                     i += 1;
                 }
-                if matches!(kind, Some(ChipKind::Terminal | ChipKind::Artifact)) {
+                if matches!(
+                    kind,
+                    Some(ChipKind::Terminal | ChipKind::Artifact | ChipKind::Ref)
+                ) {
                     let after = i + ATOM_LEN;
                     if let Some(next) = self.text[after..].chars().next()
                         && next != '\n'

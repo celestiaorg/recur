@@ -35,6 +35,7 @@ pub mod loops;
 pub mod mcp_attach;
 pub mod permissions;
 pub mod plan;
+pub mod projects;
 pub mod prs;
 pub mod publish;
 pub mod registry;

@@ -315,6 +315,7 @@ impl Engine {
             p.checks_ok = report.ok;
             p.has_checks = has;
         });
+        self.note_pr_checks(pr_id, pr.checks_ok);
     }
 
     /// Hydrates a forge PR's files in the background, at most once per

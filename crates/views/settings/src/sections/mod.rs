@@ -63,9 +63,8 @@ pub fn on_field(
     match key {
         "nav-search" if ev == FieldEvent::Input => v.sync(window, cx),
         "codex-key" | "codex-bin" => v.codex_field(key, ev, value, cx),
-        "max-loops" | "max-agents" | "turn-timeout" | "sched-keep" | "branch-prefix" => {
-            v.general_field(key, ev, value, cx)
-        }
+        "max-loops" | "max-agents" | "turn-timeout" | "sched-keep" | "branch-prefix"
+        | "new-projects-dir" => v.general_field(key, ev, value, cx),
         "max-open-files" => v.editor_field(key, ev, value, cx),
         k if k.starts_with("exclude:") => v.editor_field(key, ev, value, cx),
         k if k.starts_with("bundle:") => v.bundle_field(&k["bundle:".len()..], ev, value, cx),

@@ -32,10 +32,18 @@ async fn send_app_message_uses_the_ask_coordinator_shape() {
     );
     assert!(spec.append_system_prompt.contains("Ask Recur"));
     let tools = spec.allowed_tools.clone().unwrap_or_default();
-    assert_eq!(tools, APP_CHAT_TOOLS, "the three briefing tools");
+    assert_eq!(tools, APP_CHAT_TOOLS, "the coordinator tools");
     for tl in &tools {
         assert!(
-            !["Edit", "Write", mcp::ASK_USER, mcp::ESCALATE,].contains(&tl.as_str()),
+            ![
+                "Edit",
+                "Write",
+                "Bash",
+                mcp::ASK_USER,
+                mcp::ESCALATE,
+                mcp::PERMISSION_REQUEST
+            ]
+            .contains(&tl.as_str()),
             "coordinator must not get {tl}"
         );
     }
@@ -228,6 +236,6 @@ async fn send_app_message_omits_user_mcp() {
     assert!(spec.user_mcp.is_empty(), "{:?}", spec.user_mcp);
     let tools = spec.allowed_tools.clone().unwrap_or_default();
     assert!(!tools.iter().any(|t| t == "mcp__acme__*"));
-    assert_eq!(tools.len(), 3);
+    assert_eq!(tools, APP_CHAT_TOOLS);
     te.close().await;
 }

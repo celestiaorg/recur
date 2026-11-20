@@ -14,7 +14,10 @@ mod skills;
 mod terminals;
 
 pub use artifacts::{CreateArtifactTool, ListArtifactsTool, PresentArtifactTool, ReadArtifactTool};
-pub use briefing::{GetWorkspaceContextTool, ListWorkspaceBriefsTool, PresentWorkspaceTool};
+pub use briefing::{
+    AnswerQuestionTool, CreateProjectTool, GetWorkspaceContextTool, ListWorkspaceBriefsTool,
+    MessageWorkspaceTool, PresentWorkspaceTool, ReadWorkspaceTool,
+};
 pub use chat::{
     AskUserTool, OpenPrTool, PermissionRequestTool, RenameBranchTool, RenameSessionTool,
     RenameWorkspaceTool, SwitchModeTool, marshal_permission_verdict,

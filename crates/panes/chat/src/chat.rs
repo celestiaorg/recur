@@ -19,7 +19,7 @@ use recur_domain::{Escalation, Finding, PermissionRequest, UserQuestion};
 use recur_engine::view::chat::{
     AgentMsg, ChatAttachmentDraft, ChatLogSession, current_turn_has_ended,
 };
-use recur_engine::view::composer::{ComposerAtt, HydrateOpts, PromptChipSpec};
+use recur_engine::view::composer::{ComposerAtt, HydrateOpts, PromptChipSpec, RefKind};
 use recur_engine::view::digest::{TurnDigestFinding, TurnDigestNote, still_open_findings_for_turn};
 use recur_engine::view::mentions::{
     MentionQuery, extract_attachment_ids, strip_attachment_markers, unique_artifact_id_for_title,
@@ -284,6 +284,13 @@ pub enum MentionHit {
         title: String,
         kind: String,
     },
+    /// A workspace or project; `detail` is the row's dim second label.
+    Ref {
+        kind: RefKind,
+        id: String,
+        title: String,
+        detail: String,
+    },
 }
 
 impl MentionHit {
@@ -291,6 +298,7 @@ impl MentionHit {
         match self {
             MentionHit::Terminal { id, .. } => format!("t:{id}"),
             MentionHit::Artifact { id, .. } => format!("a:{id}"),
+            MentionHit::Ref { kind, id, .. } => format!("r:{}:{id}", kind.keyword()),
             MentionHit::File { item, .. } => format!("f:{item}"),
         }
     }
@@ -323,6 +331,18 @@ impl MentionHit {
                 },
             ) => a == b && ak == bk,
             (MentionHit::File { dir: a, .. }, MentionHit::File { dir: b, .. }) => a == b,
+            (
+                MentionHit::Ref {
+                    title: a,
+                    detail: ad,
+                    ..
+                },
+                MentionHit::Ref {
+                    title: b,
+                    detail: bd,
+                    ..
+                },
+            ) => a == b && ad == bd,
             _ => false,
         }
     }
@@ -1037,6 +1057,45 @@ impl AgentChat {
             .read(cx)
             .workspace_artifacts(&self.props.workspace_id)
             .to_vec()
+    }
+
+    /// A workspace's sidebar title or a project's name; empty when unknown.
+    pub(crate) fn ref_title_for(&self, kind: RefKind, id: &str, cx: &App) -> String {
+        let s = self.state.read(cx);
+        match kind {
+            RefKind::Workspace => s
+                .workspaces
+                .iter()
+                .find(|w| w.id == id)
+                .map(recur_engine::briefing::workspace_title)
+                .unwrap_or_default(),
+            RefKind::Project => s
+                .projects
+                .iter()
+                .find(|p| p.id == id)
+                .map(|p| p.name.clone())
+                .unwrap_or_default(),
+        }
+    }
+
+    /// `@` menu rows for workspaces and projects. Workspace chats list them
+    /// after the files, and only once the query has text.
+    pub(crate) fn ref_hits(&self, query: &str, cx: &App) -> Vec<MentionHit> {
+        let s = self.state.read(cx);
+        crate::composer::matching_ref_hits(
+            &s.workspaces,
+            &s.projects,
+            query,
+            self.props.workspace_id.is_empty(),
+            &self.props.workspace_id,
+        )
+    }
+
+    pub(crate) fn open_ref_chip(&mut self, kind: RefKind, id: &str, cx: &mut Context<Self>) {
+        if kind == RefKind::Workspace {
+            let target = format!("workspace:{id}");
+            self.state.update(cx, |s, cx| s.route_target(&target, cx));
+        }
     }
 
     pub(crate) fn terminal_title_for(&self, id: &str, cx: &App) -> String {
@@ -2500,12 +2559,14 @@ impl AgentChat {
         let by_title = |title: &str| -> String {
             unique_artifact_id_for_title(title, pairs.iter().map(|(i, t)| (i.as_str(), t.as_str())))
         };
+        let refs = |kind: RefKind, id: &str| self.ref_title_for(kind, id, cx);
         let opts = HydrateOpts {
             chip_files: true,
             chip_skills: true,
             terminal_title: Some(&term),
             artifact_title: Some(&art),
             artifact_id_for_title: Some(&by_title),
+            ref_title: Some(&refs),
             prompt_chips: &specs,
         };
         ComposerDoc::hydrate(wire, &atts, &opts)

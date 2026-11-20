@@ -1,6 +1,6 @@
 //! The host-side composer expansion: a leading `/slash` prompt action through
 //! the bundles, then `@file`, `/skill`, `@terminal` and `@artifact` wrapping
-//! with raw regions masked.
+//! with raw regions masked, then `@workspace` / `@project` snapshots.
 
 pub mod artifacts;
 pub mod files;
@@ -8,6 +8,7 @@ pub mod raw;
 pub mod skills;
 pub mod terminals;
 
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::LazyLock;
 
@@ -16,8 +17,17 @@ use recur_domain::Workspace;
 use regex::Regex;
 use tokio_util::sync::CancellationToken;
 
+use crate::briefing::workspace_title;
 use crate::terminals::TerminalSource;
+use crate::text::truncate;
+use crate::view::mentions::{RefKind, ref_at_hits};
 use crate::{Engine, EngineError};
+
+/// `@workspace` / `@project` snapshots one message attaches.
+const MAX_REF_SNAPSHOTS: usize = 3;
+
+/// One snapshot's cap.
+const REF_SNAPSHOT_MAX: usize = 6000;
 
 /// A leading `/slash` action ran and produced no wire prompt. Loop turns
 /// treat it as on_fail; PA*/Maestro sends treat it as a no-send success.
@@ -160,11 +170,85 @@ impl Engine {
             Some(&enabled),
             self.terminals.as_deref(),
         );
+        let out = self.attach_ref_mentions(&text, &out).await;
         if res.display.is_empty() && out != raw {
             res.display = raw;
         }
         res.prompt = out;
         Ok(res)
+    }
+
+    /// Prepends what the `@workspace:<id>` / `@project:<id>` chips in `text`
+    /// (raw regions skipped) point at to `out`: a workspace's live report, a
+    /// project's id, base branch and open workspaces.
+    pub(crate) async fn attach_ref_mentions(&self, text: &str, out: &str) -> String {
+        let (masked, _) = raw::mask_raw_regions(text);
+        let mut seen = HashSet::new();
+        let refs: Vec<(RefKind, String)> = ref_at_hits(&masked)
+            .into_iter()
+            .map(|h| (h.kind, h.id.to_owned()))
+            .filter(|r| seen.insert(r.clone()))
+            .take(MAX_REF_SNAPSHOTS)
+            .collect();
+        if refs.is_empty() {
+            return out.to_owned();
+        }
+        let mut b = String::from(
+            "<system_instruction>\nThe user mentioned these Recur workspaces and projects; each snapshot is from when they sent this message. A workspace's worktree is not yours: do not edit it.\n",
+        );
+        for (kind, id) in refs {
+            b.push_str(&format!(
+                "\n### @{}:{}\n",
+                kind.keyword(),
+                terminals::scrub_instruction_text(&id)
+            ));
+            let body = match kind {
+                RefKind::Workspace if self.store.workspace(&id).is_some() => {
+                    self.read_workspace_from_app(&id, false).await
+                }
+                RefKind::Project => self.project_snapshot(&id),
+                RefKind::Workspace => String::new(),
+            };
+            if body.is_empty() {
+                b.push_str("(not found)\n");
+            } else {
+                b.push_str(&terminals::fence_snapshot(&truncate(
+                    &body,
+                    REF_SNAPSHOT_MAX,
+                )));
+            }
+        }
+        b.push_str("</system_instruction>\n\n");
+        b.push_str(out);
+        b
+    }
+
+    fn project_snapshot(&self, id: &str) -> String {
+        let Some(p) = self.store.project(id) else {
+            return String::new();
+        };
+        let mut b = format!(
+            "Project {} (id {}), repo {}, base branch {}.",
+            p.name, p.id, p.repo_path, p.base_branch
+        );
+        let open: Vec<_> = self
+            .store
+            .workspaces()
+            .into_iter()
+            .filter(|w| w.project_id == p.id && !w.archived)
+            .collect();
+        if !open.is_empty() {
+            b.push_str("\nOpen workspaces:");
+            for w in open {
+                b.push_str(&format!(
+                    "\n- {} {:?} ({})",
+                    w.id,
+                    workspace_title(&w),
+                    w.state.as_str()
+                ));
+            }
+        }
+        b
     }
 
     /// The prompt action for a slash token, unless disabled in Settings.

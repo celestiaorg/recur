@@ -46,7 +46,11 @@ pub const RECUR_TOOL_LABELS: &[(&str, &str)] = &[
     ("read_terminal", "Read terminal"),
     ("list_workspace_briefs", "List workspaces"),
     ("get_workspace_context", "Get workspace"),
+    ("read_workspace", "Read workspace"),
     ("present_workspace", "Present workspace"),
+    ("message_workspace", "Message workspace"),
+    ("answer_question", "Answer question"),
+    ("create_project", "Create project"),
 ];
 
 /// The human-facing tool name: Recur MCP tools get a short title, other

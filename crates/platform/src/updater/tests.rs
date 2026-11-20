@@ -868,3 +868,80 @@ async fn restart_helper_startup_deadline() {
         }
     }
 }
+
+/// Offers `latest` whenever it is newer than the version the check sends.
+struct Latest(Mutex<&'static str>);
+
+impl Provider for Latest {
+    fn name(&self) -> &str {
+        "latest"
+    }
+
+    fn check<'a>(
+        &'a self,
+        req: &'a CheckRequest,
+    ) -> BoxFuture<'a, Result<Option<Release>, ProviderError>> {
+        let latest = *self.0.lock();
+        let newer = semver::is_newer(latest, &req.current_version);
+        Box::pin(async move {
+            Ok(newer.then(|| Release {
+                version: latest.into(),
+                artifact: Artifact {
+                    filename: "app.bin".into(),
+                    ..Artifact::default()
+                },
+                ..Release::default()
+            }))
+        })
+    }
+
+    fn download<'a>(
+        &'a self,
+        _rel: &'a Release,
+        dst: &'a mut (dyn Write + Send),
+        _on_progress: &'a mut (dyn FnMut(i64, i64) + Send),
+    ) -> BoxFuture<'a, Result<(), ProviderError>> {
+        Box::pin(async move { Ok(dst.write_all(b"payload")?) })
+    }
+}
+
+#[tokio::test]
+async fn newer_release_supersedes_a_staged_update() {
+    let host = Arc::new(FakeHost::default());
+    let p = Arc::new(Latest(Mutex::new("1.1.0")));
+    let u = configured(&host, vec![Arc::clone(&p) as _], vec![]);
+    u.0.check_and_install().await.expect("first install");
+    let first = u.0.downloaded_path().expect("staged 1.1.0");
+
+    host.events.lock().clear();
+    u.0.check_and_install().await.expect("recheck");
+    assert_eq!(host.names(), ["updater:check-started", "updater:no-update"]);
+    assert_eq!(u.0.state(), State::Ready);
+    assert_eq!(u.0.downloaded_path().as_ref(), Some(&first));
+
+    *p.0.lock() = "1.2.0";
+    host.events.lock().clear();
+    u.0.check_and_install().await.expect("supersede");
+    assert_eq!(u.0.state(), State::Ready);
+    assert!(matches!(
+        host.events.lock().last(),
+        Some(UpdaterEvent::UpdateReady(r)) if r.version == "1.2.0"
+    ));
+    assert!(!first.exists(), "superseded staging dir removed");
+    assert!(u.0.downloaded_path().is_some_and(|p| p.exists()));
+}
+
+#[tokio::test]
+async fn supersede_during_restart_keeps_the_staged_bundle() {
+    let host = Arc::new(FakeHost::default());
+    let p = Arc::new(Latest(Mutex::new("1.1.0")));
+    let u = configured(&host, vec![Arc::clone(&p) as _], vec![]);
+    u.0.check_and_install().await.expect("first install");
+    let first = u.0.downloaded_path().expect("staged 1.1.0");
+
+    u.0.inner.lock().restarting = true;
+    *p.0.lock() = "1.2.0";
+    u.0.check_and_install().await.expect("supersede");
+    assert!(first.exists(), "bundle handed to the helper was deleted");
+    let _ = std::fs::remove_dir_all(first.parent().expect("staging dir"));
+}

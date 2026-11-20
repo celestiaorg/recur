@@ -17,6 +17,7 @@ use crate::codes::MAESTRO_AGENT_CODE;
 use crate::lifecycle::PHASE_INTERRUPTED;
 use crate::loops::Walk;
 use crate::text::{html_escape, truncate};
+use crate::view::loop_cockpit::TRANSIENT_STOP_FACT;
 
 /// The Needs-you row a transient loop failure leaves.
 pub(crate) fn retry_inbox_id(workspace_id: &str) -> String {
@@ -123,10 +124,7 @@ impl Engine {
             id,
             "MA",
             "Maestro",
-            &format!(
-                "Workflow stopped on a transient error. Retry when it clears: {}",
-                html_escape(reason)
-            ),
+            &format!("{TRANSIENT_STOP_FACT}{}", html_escape(reason)),
         );
         let Some(rec) = self.store.workspace(id) else {
             return;

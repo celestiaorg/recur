@@ -96,6 +96,73 @@ pub fn parse_line(line: &[u8]) -> Result<Vec<AgentEvent>, ParseError> {
     }
 }
 
+/// Claude Code reports a failed API call (spend or rate limit) as a top-level
+/// `<synthetic>` assistant frame with `error` set. Its result can still say
+/// `is_error:false` (seen on task-notification turns), which would show the
+/// limit as a normal reply, so the next turn end is marked failed.
+#[derive(Default)]
+pub struct ApiErrorLatch(Option<String>);
+
+impl ApiErrorLatch {
+    pub fn observe(&mut self, line: &[u8], evs: &mut [AgentEvent]) {
+        if let Some(msg) = synthetic_api_error(line) {
+            self.0 = Some(msg);
+        }
+        for ev in evs {
+            if let AgentEvent::TurnEnd(r) = ev
+                && let Some(msg) = self.0.take()
+                && !r.is_error
+            {
+                r.is_error = true;
+                r.text = msg;
+            }
+        }
+    }
+}
+
+fn synthetic_api_error(line: &[u8]) -> Option<String> {
+    #[derive(Default, Deserialize)]
+    #[serde(default)]
+    struct M {
+        #[serde(rename = "type", deserialize_with = "nd")]
+        typ: String,
+        #[serde(deserialize_with = "nd")]
+        error: String,
+        #[serde(deserialize_with = "raw_some")]
+        parent_tool_use_id: Option<Box<RawValue>>,
+        #[serde(deserialize_with = "nd")]
+        message: Msg,
+    }
+    #[derive(Default, Deserialize)]
+    #[serde(default)]
+    struct Msg {
+        #[serde(deserialize_with = "nd")]
+        model: String,
+        #[serde(deserialize_with = "nd_list")]
+        content: Vec<Block>,
+    }
+    if !line.windows(11).any(|w| w == b"<synthetic>") {
+        return None;
+    }
+    let m: M = decode(&go_lossy(line), "").ok()?;
+    if m.typ != "assistant"
+        || m.error.trim().is_empty()
+        || m.message.model != "<synthetic>"
+        || !nested_parent_tool_use_id(m.parent_tool_use_id.as_deref()).is_empty()
+    {
+        return None;
+    }
+    let text = m
+        .message
+        .content
+        .iter()
+        .filter(|b| b.typ == "text")
+        .map(|b| b.text.trim())
+        .collect::<Vec<_>>()
+        .join("\n");
+    Some(if text.is_empty() { m.error } else { text })
+}
+
 /// Trims the four ASCII spaces a line can carry.
 fn trim_ascii_space(mut b: &[u8]) -> &[u8] {
     let ws = |c: &u8| matches!(c, b' ' | b'\t' | b'\r' | b'\n');

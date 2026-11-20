@@ -404,6 +404,42 @@ fn result_error_keeps_the_error_message() {
 }
 
 #[test]
+fn synthetic_api_error_fails_a_success_result() {
+    const LIMIT: &str = "You've hit your individual spend limit · run /usage-credits";
+    let run = |lines: &[String]| {
+        let mut latch = ApiErrorLatch::default();
+        let mut out = Vec::new();
+        for l in lines {
+            let mut evs = parse(l);
+            latch.observe(l.as_bytes(), &mut evs);
+            out.extend(evs.into_iter().filter_map(|e| match e {
+                AgentEvent::TurnEnd(r) => Some((r.is_error, r.text)),
+                _ => None,
+            }));
+        }
+        out
+    };
+    let synthetic = |parent: &str| {
+        format!(
+            r#"{{"type":"assistant","parent_tool_use_id":{parent},"error":"rate_limit","message":{{"model":"<synthetic>","content":[{{"type":"text","text":"{LIMIT}"}}]}}}}"#
+        )
+    };
+    let ok = r#"{"type":"result","subtype":"success","duration_ms":400,"is_error":false,"num_turns":1,"result":"done"}"#.to_owned();
+    assert_eq!(
+        run(&[synthetic("null"), ok.clone(), ok.clone()]),
+        [(true, LIMIT.to_owned()), (false, "done".to_owned())],
+        "the latch fails one turn end"
+    );
+    assert_eq!(
+        run(&[synthetic(r#""toolu_task""#), ok.clone()]),
+        [(false, "done".to_owned())],
+        "a subagent's API error does not fail the parent"
+    );
+    let plain = r#"{"type":"assistant","message":{"model":"<synthetic>","content":[{"type":"text","text":"No response requested."}]}}"#.to_owned();
+    assert_eq!(run(&[plain, ok]), [(false, "done".to_owned())]);
+}
+
+#[test]
 fn assistant_fallback_content_block() {
     let evs = parse(
         r#"{"type":"assistant","message":{"model":"claude-opus-4-8","content":[{"type":"fallback","from":{"model":"claude-fable-5"},"to":{"model":"claude-opus-4-8"}},{"type":"text","text":"continuing on Opus."}]}}"#,

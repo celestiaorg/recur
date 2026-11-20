@@ -8,10 +8,10 @@ use std::rc::Rc;
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, IntoElement, Subscription, Window, div,
 };
-use recur_domain::WorkspaceChatTab;
+use recur_domain::{WorkspaceChatTab, WorkspaceState};
 use recur_engine::view::chat::{AgentMsg, ChatAttachmentDraft, ChatLogSession};
 use recur_engine::view::loop_cockpit::{
-    is_loop_cockpit_tab, merge_loop_cockpit, specialist_live_codes,
+    is_loop_cockpit_tab, merge_loop_cockpit, park_retry_card, specialist_live_codes,
 };
 use recur_engine::view::modes::ws_setup_status;
 use recur_view_chat::cards::session::{SessionCard, SessionCardProps};
@@ -151,8 +151,8 @@ impl WorkspaceView {
             .unwrap_or_default();
         let feed = self.feed.read(cx);
         if self.show_loop_cockpit(cx) {
-            let goal = self
-                .ws(cx)
+            let ws = self.ws(cx);
+            let goal = ws
                 .map(|w| {
                     if w.goal_display.is_empty() {
                         w.goal.clone()
@@ -161,13 +161,19 @@ impl WorkspaceView {
                     }
                 })
                 .unwrap_or_default();
-            return merge_loop_cockpit(
+            let mut msgs = merge_loop_cockpit(
                 &ma,
                 &feed.sessions,
                 &feed.facts,
                 &self.specialist_live(cx),
                 &goal,
             );
+            if self.on_conductor_tab(cx)
+                && let Some(w) = ws.filter(|w| w.state == WorkspaceState::Failed && w.retryable)
+            {
+                park_retry_card(&mut msgs, &w.last_error);
+            }
+            return msgs;
         }
         let cards: Vec<_> = feed
             .facts

@@ -11,7 +11,7 @@ use recur_domain::{
 };
 use regex::Regex;
 
-use super::chat::{AgentMsg, ChatLog, ChatLogSession};
+use super::chat::{AGENT_ERROR_PREFIX, AgentMsg, ChatLog, ChatLogSession};
 use super::js;
 
 /// One specialist session feeding the cockpit.
@@ -588,6 +588,27 @@ pub fn merge_loop_cockpit(
     let mut merged = cluster_sibling_sessions(out);
     merged.extend(queued);
     merged
+}
+
+/// The Maestro fact a loop parked on a transient provider failure posts.
+pub const TRANSIENT_STOP_FACT: &str =
+    "Workflow stopped on a transient error. Retry when it clears: ";
+
+/// While a loop is parked on a transient failure, its stop fact renders as
+/// the chat error card (titled by `reason`, e.g. Usage limit) so Retry
+/// resumes the loop. Once retried the fact is plain history again.
+pub fn park_retry_card(msgs: &mut Vec<AgentMsg>, reason: &str) {
+    let is_stop = |m: &AgentMsg| matches!(m.log.as_deref(), Some(ChatLog::Fact { text, .. }) if fact_plain(text).starts_with(TRANSIENT_STOP_FACT));
+    let card = |ts| AgentMsg {
+        body: format!("{AGENT_ERROR_PREFIX} {}", js::trim(reason)),
+        error: true,
+        ts,
+        ..AgentMsg::default()
+    };
+    match msgs.iter().rposition(is_stop) {
+        Some(i) => msgs[i] = card(msgs[i].ts),
+        None => msgs.push(card(None)),
+    }
 }
 
 /// Packs adjacent specialist cards into one fanout group.

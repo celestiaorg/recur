@@ -832,3 +832,35 @@ fn engine_wrap_round_trips() {
     assert_eq!(strip_loop_wrap(&html), "Completed in 3s.");
     assert!(loop_completion_wrap(&html).contains("Root cause: nil deref."));
 }
+
+#[test]
+fn parked_loop_stop_fact_becomes_the_retry_card() {
+    let reason = "You've hit your individual spend limit · run /usage-credits";
+    let stop = fact("f2", &format!("{TRANSIENT_STOP_FACT}You&#39;ve hit it"), 30);
+    let mut msgs = merge_loop_cockpit(
+        &[me("Review & fix", Some(10))],
+        &[],
+        &[
+            fact("f1", "Reviewing the current worktree first.", 20),
+            stop,
+        ],
+        &[],
+        "",
+    );
+    park_retry_card(&mut msgs, reason);
+    let last = msgs.last().unwrap();
+    assert!(last.error && last.log.is_none());
+    assert_eq!(last.ts, Some(30));
+    assert_eq!(
+        crate::view::chat::agent_error_title(&last.body),
+        "Usage limit"
+    );
+    assert_eq!(msgs.len(), 3, "the stop fact is replaced, not duplicated");
+
+    let mut bare = vec![me("go", Some(1))];
+    park_retry_card(&mut bare, reason);
+    assert!(
+        bare.last().unwrap().error,
+        "no stop fact: the card still lands"
+    );
+}

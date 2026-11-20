@@ -36,7 +36,7 @@ use crate::ClaudeConfig;
 use crate::args;
 use crate::input::user_message_line;
 use crate::proc::{self, PidFile, kill_session, look_path, new_session, wait_reaped};
-use crate::stream::parse_line;
+use crate::stream::{ApiErrorLatch, parse_line};
 
 /// Keeps the last 8 KiB of stderr: usage refusals, auth failures and outages
 /// land there, and they separate transient failures from genuine ones (D56).
@@ -175,6 +175,7 @@ pub(crate) async fn run(
             hold_armed: false,
             hold_ceiling: cfg.background_hold_ceiling,
             tracker: ContextUsageTracker::default(),
+            api_error: ApiErrorLatch::default(),
             result: TurnResult::default(),
             have_result: false,
         };
@@ -212,6 +213,7 @@ async fn run_stdout_only(stdout: ChildStdout, sink: &dyn EventSink) -> (TurnResu
     let mut result = TurnResult::default();
     let mut have_result = false;
     let mut tracker = ContextUsageTracker::default();
+    let mut api_error = ApiErrorLatch::default();
     let mut r = BufReader::new(stdout);
     loop {
         let line = match read_line(&mut r).await {
@@ -222,7 +224,10 @@ async fn run_stdout_only(stdout: ChildStdout, sink: &dyn EventSink) -> (TurnResu
                 break;
             }
         };
-        let Ok(evs) = parse_line(&line) else { continue };
+        let Ok(mut evs) = parse_line(&line) else {
+            continue;
+        };
+        api_error.observe(&line, &mut evs);
         for mut ev in evs {
             // Meter: the last assistant footprint over cumulative result usage.
             tracker.observe(&mut ev);
@@ -257,6 +262,7 @@ struct Injecting<'a> {
     hold_armed: bool,
     hold_ceiling: Duration,
     tracker: ContextUsageTracker,
+    api_error: ApiErrorLatch,
     result: TurnResult,
     have_result: bool,
 }
@@ -343,7 +349,10 @@ impl Injecting<'_> {
                 self.close_stdin();
             }
         }
-        let Ok(evs) = parse_line(line) else { return };
+        let Ok(mut evs) = parse_line(line) else {
+            return;
+        };
+        self.api_error.observe(line, &mut evs);
         for mut ev in evs {
             if matches!(ev, AgentEvent::ToolResult(_)) {
                 self.seen_tool_result = true;

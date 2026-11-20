@@ -586,6 +586,53 @@ impl<'a> ToolView<'a> {
         r.is_empty() || r.starts_with("Created subagent")
     }
 
+    pub fn is_create_workspace(&self) -> bool {
+        ends(self.tool(), "create_workspace")
+    }
+
+    /// Engine refusals come back as "create_workspace: …" text, not tool errors.
+    pub fn create_workspace_failed(&self) -> bool {
+        self.m.result_error || self.m.result.starts_with("create_workspace:")
+    }
+
+    pub fn create_workspace_title(&self) -> String {
+        str_field(self.arg("title")).trim().to_string()
+    }
+
+    /// The engine is idempotent on title: "Workspace <id> already exists for …".
+    pub fn create_workspace_exists(&self) -> bool {
+        !self.create_workspace_failed()
+            && self.m.result.starts_with("Workspace ")
+            && self.m.result.contains(" already exists")
+    }
+
+    pub fn create_workspace_id(&self) -> String {
+        if self.create_workspace_failed() {
+            return String::new();
+        }
+        let r = &self.m.result;
+        r.strip_prefix("Created workspace ")
+            .or_else(|| r.strip_prefix("Workspace "))
+            .and_then(|r| r.split_whitespace().next())
+            .unwrap_or("")
+            .to_string()
+    }
+
+    pub fn create_workspace_label(&self) -> String {
+        if self.create_workspace_failed() {
+            return "Create workspace refused".into();
+        }
+        if self.create_workspace_exists() {
+            return "Workspace exists".into();
+        }
+        let verb = if self.m.result_pending {
+            "Creating"
+        } else {
+            "Created"
+        };
+        format!("{verb} workspace")
+    }
+
     // ---- files ----
 
     /// `fileOf`: Read/Edit/Write use `file_path`; report_finding uses `file`; update_finding
@@ -1411,7 +1458,7 @@ impl<'a> ToolView<'a> {
         if self.is_list_artifacts() || self.is_create_artifact() || self.is_present_artifact() {
             return StepIcon::Artifact;
         }
-        if self.is_briefing() {
+        if self.is_briefing() || self.is_create_workspace() {
             return StepIcon::Workspace;
         }
         if self.is_linear() {
@@ -1546,6 +1593,9 @@ impl<'a> ToolView<'a> {
         }
         if self.is_child_tool() {
             return format!("{}…", self.child_tool_label());
+        }
+        if self.is_create_workspace() {
+            return format!("{}…", self.create_workspace_label());
         }
         if self.is_reenter_phase() {
             let p = self.reenter_phase_id();
@@ -1789,6 +1839,9 @@ impl<'a> ToolView<'a> {
         if self.is_child_tool() {
             return self.child_tool_label();
         }
+        if self.is_create_workspace() {
+            return self.create_workspace_label();
+        }
         if self.is_open_pr() {
             return open_pr_label(&self.open_pr_card());
         }
@@ -2002,6 +2055,7 @@ impl<'a> ToolView<'a> {
         if self.is_switch_mode()
             || self.is_rename_tool()
             || self.is_child_tool()
+            || self.is_create_workspace()
             || self.is_open_pr()
             || self.is_reenter_phase()
             || self.is_create_artifact()
@@ -2452,5 +2506,26 @@ mod tests {
             m.input = json!({"standalone": true}).to_string();
         });
         assert!(!view(&m).is_subagent_create());
+        let m = tool("mcp__recur__create_workspace", |m| {
+            m.input = json!({"standalone": true, "title": "Stream replies"}).to_string();
+            m.result = "Created workspace ws-3 (\"Stream replies\") in recur from main".into();
+        });
+        let v = view(&m);
+        assert_eq!(v.label(), "Created workspace");
+        assert_eq!(v.create_workspace_title(), "Stream replies");
+        assert_eq!(v.create_workspace_id(), "ws-3");
+        assert_eq!(v.meta(), "");
+        let m = tool("mcp__recur__create_workspace", |m| {
+            m.result = "create_workspace: project \"x\" not found".into();
+        });
+        assert!(view(&m).create_workspace_failed());
+        assert_eq!(view(&m).label(), "Create workspace refused");
+        let m = tool("mcp__recur__create_workspace", |m| {
+            m.result =
+                "Workspace ws-3 already exists for \"Stream replies\"; not creating a duplicate."
+                    .into();
+        });
+        assert_eq!(view(&m).label(), "Workspace exists");
+        assert_eq!(view(&m).create_workspace_id(), "ws-3");
     }
 }

@@ -358,9 +358,12 @@ impl Manager {
                 base_branch,
             ]);
         }
-        self.run(&args)
-            .await
-            .map_err(|e| e.wrap("git worktree add"))?;
+        {
+            let _serial = add_lock(&self.repo_path).lock_owned().await;
+            self.run(&args)
+                .await
+                .map_err(|e| e.wrap("git worktree add"))?;
+        }
 
         let head = self
             .run(["-C", wt_path.as_str(), "rev-parse", "HEAD"])
@@ -1873,6 +1876,20 @@ fn resolve_path_prefix(path: &str) -> std::io::Result<String> {
         }
         cur = parent;
     }
+}
+
+/// Git reads every sibling's `.git/worktrees/<name>/commondir` during `worktree add` and dies
+/// on one a concurrent add has created but not yet written, so adds to one repo take turns.
+fn add_lock(repo: &str) -> std::sync::Arc<tokio::sync::Mutex<()>> {
+    static LOCKS: std::sync::LazyLock<
+        std::sync::Mutex<std::collections::HashMap<String, std::sync::Arc<tokio::sync::Mutex<()>>>>,
+    > = std::sync::LazyLock::new(Default::default);
+    LOCKS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .entry(repo.to_string())
+        .or_default()
+        .clone()
 }
 
 /// `git worktree list` failing on a sibling another `git worktree add` is still writing.

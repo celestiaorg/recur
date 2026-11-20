@@ -1,5 +1,5 @@
 //! Streaming markdown: hidden streams do no presentation work, catch up on
-//! return, and wait for complete lines.
+//! return to the last completed line, and never show a partial line.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -44,34 +44,39 @@ fn hidden_streams_do_no_work_catch_up_and_wait_for_lines(cx: &mut TestAppContext
     let shown = |cx: &mut TestAppContext| sm.read_with(cx, |s, _| s.html().to_string());
 
     set(cx, "first reply", true, false);
-    assert_eq!(shown(cx), "<p>first reply</p>");
+    assert_eq!(shown(cx), "", "no partial line");
+    set(cx, "first reply\n", true, false);
+    assert_eq!(shown(cx), "<p>first reply\n</p>");
 
     calls.borrow_mut().clear();
     set(cx, "hidden reply", false, false);
     assert!(calls.borrow().is_empty());
-    set(cx, "latest hidden reply", false, false);
+    set(cx, "latest hidden\npartial", false, false);
     assert!(calls.borrow().is_empty());
 
-    set(cx, "latest hidden reply", true, false);
-    assert_eq!(shown(cx), "<p>latest hidden reply</p>");
+    // Returning mid-reply shows the completed lines, not the partial tail.
+    set(cx, "latest hidden\npartial", true, false);
+    assert_eq!(shown(cx), "<p>latest hidden\n</p>");
 
-    set(cx, "latest hidden reply\nplus a line\npartial", true, false);
-    assert_eq!(shown(cx), "<p>latest hidden reply\nplus a line\n</p>");
+    set(cx, "latest hidden\nplus a line\npartial", true, false);
+    assert_eq!(shown(cx), "<p>latest hidden\nplus a line\n</p>");
 
-    set(cx, "latest hidden reply\nplus a line\npartial", true, true);
-    assert_eq!(
-        shown(cx),
-        "<p>latest hidden reply\nplus a line\npartial</p>"
-    );
+    set(cx, "latest hidden\nplus a line\npartial", true, true);
+    assert_eq!(shown(cx), "<p>latest hidden\nplus a line\npartial</p>");
 
-    // The app hides (document.hidden): no work while hidden, the latest text on return.
+    // The app hides (document.hidden): no work while hidden, the completed lines on return.
     sm.update(cx, |s, cx| s.set_document_visible(false, cx));
     let before = calls.borrow().len();
-    set(cx, "reply while the app is hidden", true, false);
+    set(cx, "reply while the app is hidden\nmore", true, false);
     assert_eq!(calls.borrow().len(), before);
     sm.update(cx, |s, cx| s.set_document_visible(true, cx));
     cx.run_until_parked();
-    assert_eq!(shown(cx), "<p>reply while the app is hidden</p>");
+    assert_eq!(shown(cx), "<p>reply while the app is hidden\n</p>");
+
+    // Returning to a finished reply shows all of it.
+    set(cx, "reply while the app is hidden\nmore", false, true);
+    set(cx, "reply while the app is hidden\nmore", true, true);
+    assert_eq!(shown(cx), "<p>reply while the app is hidden\nmore</p>");
 
     // A render that finishes after the stream went inactive never paints.
     let painted = shown(cx);

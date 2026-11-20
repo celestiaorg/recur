@@ -256,15 +256,29 @@ impl Engine {
             return;
         };
         let mgr = recur_git::Manager::new(&repo, &self.worktree_root);
-        let Ok((_, behind, ok)) =
-            tokio::time::timeout(BEHIND_TIMEOUT, behind_base(&mgr, &wt, &base, true)).await
-        else {
+        let work = async {
+            let (r, behind, ok) = behind_base(&mgr, &wt, &base, true).await;
+            let conflicts = if ok && behind > 0 {
+                mgr.conflict_files(&wt, &r).await.ok()
+            } else {
+                Some(Vec::new())
+            };
+            (behind, ok, conflicts)
+        };
+        let Ok((behind, ok, conflicts)) = tokio::time::timeout(BEHIND_TIMEOUT, work).await else {
             return;
         };
-        if !ok || pr.behind_base == behind {
+        if !ok {
             return;
         }
-        self.store.update_pr(pr_id, |p| p.behind_base = behind);
+        let conflicts = conflicts.unwrap_or_else(|| pr.conflict_files.clone());
+        if pr.behind_base == behind && pr.conflict_files == conflicts {
+            return;
+        }
+        self.store.update_pr(pr_id, |p| {
+            p.behind_base = behind;
+            p.conflict_files = conflicts;
+        });
     }
 
     /// Replaces a forge PR's checks with the forge's live rollup. Local

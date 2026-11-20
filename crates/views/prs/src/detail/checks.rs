@@ -41,6 +41,56 @@ pub(crate) fn check_icon(c: &Check, t: &recur_ui::Tokens) -> (IconName, recur_ui
     }
 }
 
+/// The merge box's "has conflicts" row, listing the conflicting paths when the
+/// worktree could compute them.
+fn conflicts_section(pr: &Pr, t: &recur_ui::Tokens) -> Option<AnyElement> {
+    if !pr.mergeable.eq_ignore_ascii_case("CONFLICTING") && pr.conflict_files.is_empty() {
+        return None;
+    }
+    let files = pr.conflict_files.iter().map(|f| {
+        let f2 = f.clone();
+        div()
+            .debug_selector(move || format!("conflict-file:{f2}"))
+            .flex()
+            .items_center()
+            .gap(px(6.))
+            .text_color(hsla(t.muted))
+            .child(icon(IconName::File).size(px(12.)))
+            .child(text(f.clone()).mono().size(11.).nowrap())
+    });
+    Some(
+        div()
+            .debug_selector(|| "checks-conflicts".into())
+            .flex()
+            .gap(px(10.))
+            .py(px(11.))
+            .px(px(15.))
+            .border_t_1()
+            .border_color(hsla(t.line))
+            .child(
+                div()
+                    .flex_none()
+                    .pt(px(1.))
+                    .text_color(hsla(t.amber))
+                    .child(icon(IconName::TriangleAlert).size(px(15.))),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(5.))
+                    .min_w_0()
+                    .child(
+                        text("This branch has conflicts that must be resolved")
+                            .size(12.5)
+                            .weight(600.),
+                    )
+                    .children(files),
+            )
+            .into_any_element(),
+    )
+}
+
 impl PrDetail {
     /// `canFixChecks`.
     fn can_fix_checks(pr: &Pr) -> bool {
@@ -335,6 +385,7 @@ impl PrDetail {
             .flex_col()
             .child(head)
             .child(body)
+            .when(scroll, |d| d.children(conflicts_section(pr, &t)))
             .into_any_element()
     }
 

@@ -219,7 +219,9 @@ async fn update_pr_with_base_conflict() {
     git(&repo.path, &["add", "work.txt"]);
     git(&repo.path, &["commit", "-m", "base conflicts with branch"]);
     t.engine.refresh_pr_behind(&pr.id).await;
-    assert!(t.store.pr(&pr.id).unwrap().behind_base >= 1);
+    let behind = t.store.pr(&pr.id).unwrap();
+    assert!(behind.behind_base >= 1);
+    assert_eq!(behind.conflict_files, ["work.txt"]);
     let res = t.engine.update_pr_with_base(&pr.id, "").await.unwrap();
     assert_eq!(res.status, UPDATE_WORKSPACE_CONFLICT);
     let got = t.store.pr(&pr.id).unwrap();

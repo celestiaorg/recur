@@ -102,6 +102,9 @@ pub struct Pr {
     /// "" = idle, "git" = merge/rebase running, "coder" = conflict Coder turn.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub updating_base: String,
+    /// Paths that conflict merging the base into the worktree's HEAD.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub conflict_files: Vec<String>,
     /// The observatory blast-radius for this PR.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub impact: Vec<ImpactItem>,

@@ -23,6 +23,13 @@ impl WorkspaceFileDrag {
     }
 }
 
+/// The intra-app drag payload of an artifacts panel row.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ArtifactDrag {
+    pub id: String,
+    pub title: String,
+}
+
 /// `normalizeFileDragPaths`: trim, forward slashes, no leading slash, dedupe.
 pub fn normalize_file_drag_paths(paths: &[String]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();

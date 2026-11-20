@@ -760,3 +760,26 @@ async fn find_skips_matches_inside_bubble_chips(cx: &mut TestAppContext) {
     });
     assert_eq!(label, "1 / 1");
 }
+
+#[gpui::test]
+async fn a_question_card_takes_a_typed_answer(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    let q: recur_domain::UserQuestion = serde_json::from_value(serde_json::json!({
+        "id": "q1", "workspaceId": WS, "agentCode": "MA", "question": "Which?", "createdAt": 1,
+        "options": [{"text": "A"}, {"text": "B"}],
+    }))
+    .unwrap();
+    let state = h.read(|c| c.state.clone());
+    state.update(h.cx, |st, cx| {
+        st.view = recur_view_core::nav::ViewName::Detail;
+        st.user_questions.push(q);
+        cx.notify();
+    });
+    h.settle();
+    assert!(h.has("ask-answer:off"));
+    // A second press inside the focused field keeps the focus too.
+    h.click("ask-field");
+    h.click("ask-field");
+    h.type_text("mine");
+    assert!(h.has("ask-answer:on"));
+}

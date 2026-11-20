@@ -2,8 +2,8 @@
 //! (`.hline` grid rows: two line-number cells and a code cell, measured in Playwright's WebKit).
 
 use gpui_kit::{
-    Context, Entity, IntoElement, ParentElement as _, Render, Styled as _, TestAppContext,
-    VisualTestContext, Window, div, point, px,
+    Context, Entity, FocusHandle, InteractiveElement as _, IntoElement, ParentElement as _, Render,
+    Styled as _, TestAppContext, VisualTestContext, Window, div, point, px,
 };
 
 use crate::fonts::Family;
@@ -22,7 +22,12 @@ const CODE_X: f32 = 46. + 46. + 14.;
 struct Root {
     state: Option<Entity<State>>,
     disabled: bool,
+    doc: FocusHandle,
+    field: FocusHandle,
 }
+
+const GAP: f32 = 10.;
+const FIELD_Y: f32 = 4. * LH + GAP + 10.;
 
 impl Render for Root {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -46,7 +51,20 @@ impl Render for Root {
                 .child(div().w(px(46.)).child(cell(n, k + 1)))
                 .child(div().flex_1().px(px(14.)).child(cell(c, k + 2)))
         });
-        let content = div().flex().flex_col().w(px(400.)).children(rows);
+        // The rows in a focusable document with a gap below them, as a markdown view, then a
+        // text field, as the question card's answer field.
+        let doc = div()
+            .track_focus(&self.doc)
+            .flex()
+            .flex_col()
+            .children(rows)
+            .child(div().h(px(GAP)));
+        let field = div()
+            .key_context("Input")
+            .track_focus(&self.field)
+            .w_full()
+            .h(px(20.));
+        let content = div().flex().flex_col().w(px(400.)).child(doc).child(field);
         div()
             .size_full()
             .child(selection::scope(&state, self.disabled, content, cx))
@@ -58,9 +76,11 @@ fn open(cx: &mut TestAppContext) -> (Entity<Root>, &mut VisualTestContext) {
         gpui_kit::init(cx);
         crate::init(cx);
     });
-    let (root, vcx) = cx.add_window_view(|_, _| Root {
+    let (root, vcx) = cx.add_window_view(|_, cx| Root {
         state: None,
         disabled: false,
+        doc: cx.focus_handle(),
+        field: cx.focus_handle(),
     });
     vcx.run_until_parked();
     (root, vcx)
@@ -180,6 +200,40 @@ fn disabled_scopes_do_not_start_a_selection_and_outside_presses_clear(cx: &mut T
         !state.read_with(cx, |s, _| s.has_selection()),
         "`.diff-file.selecting`"
     );
+}
+
+#[gpui_kit::test]
+fn a_press_in_a_field_clears_the_selection_and_keeps_the_fields_focus(cx: &mut TestAppContext) {
+    let (root, cx) = open(cx);
+    let state = root.read_with(cx, |r, _| r.state.clone()).expect("scope");
+    let field = root.read_with(cx, |r, _| r.field.clone());
+    let in_field = point(px(200.), px(FIELD_Y));
+    drag(at(0, 2., cx), at(1, 4., cx), cx);
+    assert!(state.read_with(cx, |s, _| s.has_selection()));
+    cx.simulate_click(in_field, gpui_kit::Modifiers::none());
+    assert!(
+        !state.read_with(cx, |s, _| s.has_selection()),
+        "the field press clears"
+    );
+    cx.simulate_click(in_field, gpui_kit::Modifiers::none());
+    assert!(cx.update(|window, _| field.is_focused(window)));
+
+    drag(at(0, 2., cx), at(1, 4., cx), cx);
+    cx.update(|window, cx| window.focus(&field, cx));
+    cx.simulate_click(point(px(600.), px(300.)), gpui_kit::Modifiers::none());
+    assert!(
+        !state.read_with(cx, |s, _| s.has_selection()),
+        "a blank press after the field clears"
+    );
+    assert!(!cx.update(|window, _| field.is_focused(window)));
+}
+
+#[gpui_kit::test]
+fn a_drag_from_a_gap_in_a_focusable_document_selects(cx: &mut TestAppContext) {
+    let (root, cx) = open(cx);
+    let state = root.read_with(cx, |r, _| r.state.clone()).expect("scope");
+    drag(point(px(200.), px(4. * LH + GAP / 2.)), at(1, 4., cx), cx);
+    assert!(state.read_with(cx, |s, _| s.has_selection()));
 }
 
 const LONG: &str =

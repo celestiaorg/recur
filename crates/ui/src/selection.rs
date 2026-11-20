@@ -404,6 +404,14 @@ fn press(state: &Entity<State>, e: &MouseDownEvent, window: &mut Window, cx: &mu
     if state.read(cx).disabled {
         return;
     }
+    // A text field inside the scope took focus on this press, before the scope's bubble
+    // listener: clear the selection and leave the focus there. Other focusable wrappers (a
+    // markdown document) still start a selection.
+    if window.default_prevented() && window.context_stack().iter().any(|c| c.contains("Input")) {
+        clear(state, cx);
+        window.refresh();
+        return;
+    }
     let g = match e.click_count {
         0 | 1 => Granularity::Char,
         2 => Granularity::Word,

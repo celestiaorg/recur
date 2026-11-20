@@ -412,6 +412,7 @@ impl QuestionCard {
                 "Or type your own answer…"
             });
             recur_ui::style::card(t.bg, field_border, 6.)
+                .debug_selector(|| "ask-field".into())
                 .flex_1()
                 .min_w_0()
                 .flex()

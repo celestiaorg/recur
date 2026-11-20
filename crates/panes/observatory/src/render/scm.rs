@@ -13,8 +13,8 @@ use std::rc::Rc;
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, Bounds, Context, InteractiveElement, IntoElement, ParentElement, Pixels,
-    SharedString, StatefulInteractiveElement, Styled, Window, canvas, div, px,
+    AnyElement, AppContext, Bounds, Context, InteractiveElement, IntoElement, ParentElement,
+    Pixels, SharedString, StatefulInteractiveElement, Styled, Window, canvas, div, px,
 };
 use recur_code::view::changed_tree::{
     build_tree_from_paths, cap_visible_tree, flatten_visible_tree, paths_under_dir,
@@ -23,9 +23,11 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
 use recur_ui::widgets::scroll_area;
 use recur_ui::{IconName, Theme, icon};
+use recur_view_core::file_drag::WorkspaceFileDrag;
 use recur_view_review::review_diff::FileListMode;
 use recur_view_review::style::hsla;
 
+use super::explorer::FileDragGhost;
 use crate::obs::{LIST_CAP, Observatory};
 use crate::style::obs_empty;
 
@@ -119,7 +121,7 @@ fn st_color(st: &str, t: &recur_ui::Tokens) -> recur_ui::Color {
     match st {
         "m" => t.git_m,
         "a" | "u" => t.git_u,
-        "d" => t.git_d,
+        "d" | "!" => t.git_d,
         _ => t.text,
     }
 }
@@ -230,7 +232,7 @@ impl Observatory {
                 ),
             );
         let wide_name = !(show_dir && dir.is_some());
-        let name_el = text(name)
+        let name_el = text(name.clone())
             .size(12.5)
             .line_height(LineHeight::Scale(1.35))
             .color(
@@ -294,8 +296,18 @@ impl Observatory {
                 })),
         );
         let hk = key.clone();
+        let ghost = SharedString::from(name.clone());
         div()
             .id(SharedString::from(format!("scm-row-{key}")))
+            .on_drag(
+                WorkspaceFileDrag::new(&[path.to_string()]),
+                move |_, _, _, cx| {
+                    cx.new(|_| FileDragGhost {
+                        name: ghost.clone(),
+                        dir: false,
+                    })
+                },
+            )
             .flex()
             .items_center()
             .gap(px(2.))
@@ -387,8 +399,18 @@ impl Observatory {
                 })),
         );
         let hk = key.clone();
+        let ghost = SharedString::from(name.to_string());
         div()
             .id(SharedString::from(format!("scm-drow-{key}")))
+            .on_drag(
+                WorkspaceFileDrag::new(&[format!("{dir}/")]),
+                move |_, _, _, cx| {
+                    cx.new(|_| FileDragGhost {
+                        name: ghost.clone(),
+                        dir: true,
+                    })
+                },
+            )
             .flex()
             .items_center()
             .gap(px(2.))

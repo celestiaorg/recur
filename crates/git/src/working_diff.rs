@@ -66,7 +66,7 @@ async fn merge_base_by(
     }
 }
 
-/// Path → `m|a|d|u` for changes since `base_branch`'s merge-base with HEAD,
+/// Path → `m|a|d|u|!` for changes since `base_branch`'s merge-base with HEAD,
 /// working tree included: everything that differs from where the worktree
 /// spun off. An empty base falls back to porcelain status versus HEAD.
 /// Concurrent calls for the same directory and base share one computation.
@@ -112,11 +112,18 @@ async fn change_status_work(
             .flatten();
     };
     let mut m = parse_name_status(&String::from_utf8_lossy(&out));
-    // Untracked files never appear in a diff against the base; fold them in.
+    // A diff against the base never shows untracked files and reports
+    // conflicts as plain modifications; take both from porcelain.
     if let Ok(Some(st)) = tokio::time::timeout_at(deadline, status_map(&dir)).await {
         for (p, letter) in st {
-            if letter == "u" {
-                m.entry(p).or_insert_with(|| "u".to_string());
+            match letter.as_str() {
+                "u" => {
+                    m.entry(p).or_insert(letter);
+                }
+                "!" => {
+                    m.insert(p, letter);
+                }
+                _ => {}
             }
         }
     }

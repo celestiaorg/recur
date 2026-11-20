@@ -5,6 +5,7 @@
 
 mod ctx;
 mod explorer;
+pub(crate) use explorer::FileDragGhost;
 mod main;
 mod panels;
 mod scm;

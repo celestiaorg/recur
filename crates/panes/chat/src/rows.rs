@@ -347,6 +347,9 @@ impl AgentChat {
         if v.is_child_tool() {
             return self.child_tool_row(&v, cx);
         }
+        if v.is_schedule_tool() {
+            return self.schedule_tool_row(&v, cx);
+        }
         if v.is_create_workspace() {
             return self.create_workspace_row(&v, key, cx);
         }
@@ -634,6 +637,30 @@ impl AgentChat {
             IconName::ALargeSmall
         };
         self.skillrow(icon, self.skill_name(spans, true, cx), true, tail, tip, cx)
+    }
+
+    /// `.skillrow` for schedule_wakeup and the schedule tools.
+    fn schedule_tool_row(&self, v: &ToolView<'_>, cx: &Context<Self>) -> AnyElement {
+        let m = v.m;
+        let label = v.schedule_tool_label();
+        let tail = if m.result_error {
+            vec![self.skill_tag("failed", cx)]
+        } else {
+            Vec::new()
+        };
+        let tip = if m.result_error {
+            m.result.clone()
+        } else {
+            label.clone()
+        };
+        self.skillrow(
+            IconName::Clock,
+            self.skill_name(vec![span(label)], true, cx),
+            true,
+            tail,
+            tip,
+            cx,
+        )
     }
 
     fn reenter_phase_row(&self, v: &ToolView<'_>, cx: &Context<Self>) -> AnyElement {
@@ -1365,7 +1392,7 @@ impl AgentChat {
                 ),
             );
         };
-        if m.tool == "TodoWrite" && !v.todo_items().is_empty() {
+        if v.is_todo_list() && !v.todo_items().is_empty() {
             p.push(Part::Other, self.todos(&v.todo_items(), cx));
         } else if v.is_claude_task() {
             self.claude_task_body(&v, &rk, &mut p, window, cx);
@@ -1733,7 +1760,7 @@ impl AgentChat {
         } else if v.is_create_plan() && !v.plan_body().is_empty() {
             let el = self.canvas_plan(&rk, "cplan", &v.plan_body(), window, cx);
             p.push(Part::CanvasPlan, el);
-        } else if m.tool == "Bash" {
+        } else if m.tool == "Bash" || v.is_run_background() {
             let mut spans = vec![span("$ ").color(t.faint)];
             for (tok, cls) in crate::shhl::highlight_bash(&v.bash_command()) {
                 let s = span(tok);
@@ -1742,13 +1769,14 @@ impl AgentChat {
                     None => s,
                 });
             }
-            if !m.result.is_empty() {
+            let out = if m.tool == "Bash" {
+                m.result.clone()
+            } else {
+                v.terminal_output()
+            };
+            if !out.is_empty() {
                 spans.push(span("\n\n"));
-                spans.push(span(m.result.clone()).color(if m.result_error {
-                    ERR
-                } else {
-                    t.muted
-                }));
+                spans.push(span(out).color(if m.result_error { ERR } else { t.muted }));
             }
             let body = Text::from_spans(spans)
                 .id(gpui_kit::ElementId::Name(format!("{rk}-bash").into()))
@@ -1905,6 +1933,27 @@ impl AgentChat {
             );
         } else if m.result_pending {
             p.push(Part::Wait, self.tc_wait(v.pending_label(), window, cx));
+        } else if v.is_terminal_tool() {
+            pre(
+                &mut p,
+                Part::Pre,
+                "out",
+                v.terminal_output(),
+                out_color(m.result_error),
+            );
+        } else if v.is_task_stop() {
+            let c = v.task_stop_command();
+            if c.is_empty() {
+                pre(
+                    &mut p,
+                    Part::Pre,
+                    "out",
+                    m.result.clone(),
+                    out_color(m.result_error),
+                );
+            } else {
+                pre(&mut p, Part::Pre, "cmd", c, t.text);
+            }
         } else if m.tool == "Read" {
             if !m.result.is_empty() {
                 pre(&mut p, Part::Pre, "out", m.result.clone(), t.muted);

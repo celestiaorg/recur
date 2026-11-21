@@ -2,7 +2,8 @@
 
 use std::time::{Duration, Instant};
 
-use recur_agent_tools::Host;
+use recur_agent_tools::{Host, ReadTerminalRequest};
+use tokio_util::sync::CancellationToken;
 
 use crate::host::EngineHost;
 use crate::testing::{TestEngine, add_project, init_repo};
@@ -150,6 +151,21 @@ async fn model_disabled_skills_stay_off_the_catalog() {
     te.close().await;
 }
 
+async fn read(
+    h: &EngineHost,
+    ws: &str,
+    id: &str,
+    tail_lines: i64,
+) -> Result<String, recur_agent_tools::HostError> {
+    let req = ReadTerminalRequest {
+        id: id.into(),
+        tail_lines,
+        ..Default::default()
+    };
+    h.read_terminal(&CancellationToken::new(), ws, "PA", req)
+        .await
+}
+
 fn term_engine() -> (TestEngine, std::sync::Arc<recur_term::Manager>) {
     let mgr = std::sync::Arc::new(recur_term::Manager::new(|_| {}));
     let te = TestEngine::with(crate::testing::TestOptions {
@@ -175,15 +191,81 @@ async fn read_terminal_marks_exited_and_lists() {
     while Instant::now() < deadline && !mgr.list("ws").iter().any(|i| i.exited) {
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
-    let got = h.read_terminal("ws", "PA", &s.id, 20).await.unwrap();
+    let got = read(&h, "ws", &s.id, 20).await.unwrap();
     assert!(got.contains(", exited (1)"), "{got}");
     assert_eq!(
-        h.read_terminal("other", "PA", "", 20).await.unwrap_err().0,
+        read(&h, "other", "", 20).await.unwrap_err().0,
         "no live terminals in this workspace"
     );
     assert_eq!(
-        h.read_terminal("ws", "PA", "zzz", 20).await.unwrap_err().0,
+        read(&h, "ws", "zzz", 20).await.unwrap_err().0,
         "terminal \"zzz\" not found: call list_terminals"
+    );
+    mgr.close_all();
+    te.close().await;
+}
+
+#[tokio::test]
+async fn read_terminal_waits_for_until_or_exit() {
+    let (te, mgr) = term_engine();
+    let cwd = tempfile::tempdir().unwrap();
+    let s = mgr
+        .open("ws", &cwd.path().to_string_lossy(), 80, 24, &[])
+        .unwrap();
+    let h = host(&te);
+    let wait = |until: &str, wait_ms| ReadTerminalRequest {
+        id: s.id.clone(),
+        wait_ms,
+        until: until.into(),
+        ..Default::default()
+    };
+    let cancel = CancellationToken::new();
+    mgr.write(&s.id, "echo early-$((1+1))\n").unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < deadline && !mgr.read_plain(&s.id, 50).unwrap().contains("early-2") {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let t0 = Instant::now();
+    let got = h
+        .read_terminal(&cancel, "ws", "PA", wait("early-2", 20_000))
+        .await
+        .unwrap();
+    assert!(got.contains("early-2"), "{got}");
+    assert!(
+        t0.elapsed() < Duration::from_secs(5),
+        "output printed before the first read is still unread"
+    );
+    mgr.write(&s.id, "sleep 0.3; echo server-ready-$((40+2))\n")
+        .unwrap();
+    let t0 = Instant::now();
+    let got = h
+        .read_terminal(&cancel, "ws", "PA", wait("server-ready-42", 20_000))
+        .await
+        .unwrap();
+    assert!(got.contains("server-ready-42"), "{got}");
+    assert!(t0.elapsed() < Duration::from_secs(10));
+    let t0 = Instant::now();
+    let got = h
+        .read_terminal(&cancel, "ws", "PA", wait("server-ready-42", 300))
+        .await
+        .unwrap();
+    assert!(got.contains("server-ready-42"), "{got}");
+    assert!(
+        t0.elapsed() >= Duration::from_millis(300),
+        "matched output printed before the call"
+    );
+    mgr.write(&s.id, "sleep 0.3; exit 4\n").unwrap();
+    let got = h
+        .read_terminal(&cancel, "ws", "PA", wait("never-printed", 20_000))
+        .await
+        .unwrap();
+    assert!(got.contains(", exited (4)"), "{got}");
+    assert!(
+        h.read_terminal(&cancel, "ws", "PA", wait("(", 10))
+            .await
+            .unwrap_err()
+            .0
+            .starts_with("invalid until regex")
     );
     mgr.close_all();
     te.close().await;
@@ -195,7 +277,7 @@ async fn terminals_without_a_source() {
     let h = host(&te);
     assert!(h.list_terminals("ws", "PA").await.is_none());
     assert_eq!(
-        h.read_terminal("ws", "PA", "", 0).await.unwrap_err().0,
+        read(&h, "ws", "", 0).await.unwrap_err().0,
         "no Observatory terminals in this session"
     );
     te.close().await;

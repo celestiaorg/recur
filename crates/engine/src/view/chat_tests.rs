@@ -1446,6 +1446,12 @@ fn add_user_notices() {
     assert!(!list[0].streaming);
     assert_eq!(add_user(&[], DISPLAY_HIDDEN_SENTINEL, NOW), []);
     assert_eq!(subagent_notice_label("plain"), None);
+    let proc = add_user(
+        &[],
+        &format!("{DISPLAY_HIDDEN_SENTINEL}Background process npm run dev exited (1)"),
+        NOW,
+    );
+    assert_eq!(proc[0].note_label, "Process");
 }
 
 const GROK_TODO: &str =

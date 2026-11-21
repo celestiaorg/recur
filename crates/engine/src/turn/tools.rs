@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use recur_agent::{ToolCallMeta, ToolHost, ToolOutcome, ToolSpec, TurnRequest};
 use recur_agent_tools::{
-    Call, Host, HostError, PermissionAsk, PermissionVerdict, Permitter, Registry, TodoStore, Tool,
+    Call, Host, HostError, PermissionAsk, PermissionVerdict, Permitter, Registry, Tool,
     advertised_name, bare_name, coding_tools, halt_after, host_tools,
 };
 use recur_domain::PERMISSION_MODE_BYPASS;
@@ -55,20 +55,18 @@ pub fn in_process_agent_code(req: &TurnRequest) -> String {
 pub struct InProcessTools {
     registry: Registry,
     host: Option<Arc<dyn Host>>,
-    todos: Arc<TodoStore>,
     req: TurnRequest,
 }
 
 impl InProcessTools {
     /// Host tools followed by the coding tools (Read, Edit, Write, Glob,
-    /// Grep, Bash, TodoWrite).
-    pub fn new(host: Option<Arc<dyn Host>>, todos: Arc<TodoStore>, req: &TurnRequest) -> Self {
+    /// Grep, Bash).
+    pub fn new(host: Option<Arc<dyn Host>>, req: &TurnRequest) -> Self {
         let mut tools: Vec<Arc<dyn Tool>> = host_tools();
         tools.extend(coding_tools());
         Self {
             registry: Registry::new(tools),
             host,
-            todos,
             req: req.clone(),
         }
     }
@@ -109,7 +107,6 @@ impl ToolHost for InProcessTools {
             permitter: Some(Arc::new(HostPermitter {
                 host: self.host.clone(),
             })),
-            todos: Some(Arc::clone(&self.todos)),
         };
         match t.execute(call).await {
             Ok(text) => ToolOutcome {

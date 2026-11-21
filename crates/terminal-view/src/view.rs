@@ -98,7 +98,9 @@ pub fn route_event(event: &recur_term::Event, cx: &mut App) {
                 }
             });
         }
-        recur_term::Event::Busy { .. } | recur_term::Event::Idle { .. } => {}
+        recur_term::Event::Busy { .. }
+        | recur_term::Event::Idle { .. }
+        | recur_term::Event::Open { .. } => {}
     }
 }
 

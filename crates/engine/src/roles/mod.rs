@@ -99,7 +99,7 @@ pub fn role_spec(role: &AgentRole) -> RoleSpec {
                     mcp::DONE,
                     mcp::LIST_FINDINGS,
                     mcp::UPDATE_FINDING,
-                    mcp::UPDATE_PLAN_STEP,
+                    mcp::UPDATE_TODOS,
                     mcp::ESCALATE,
                     mcp::CREATE_ARTIFACT,
                     mcp::LIST_ARTIFACTS,
@@ -238,7 +238,7 @@ your task message take precedence: the plan is background context:\n\n{plan}"
 pub fn coder_system_prompt(task: &str, plan: &str, structured: bool) -> String {
     let step_note = if structured {
         " The plan's steps are numbered; as you complete (or deliberately skip) each one, \
-call mcp__recur__update_plan_step with its id (S1, S2, …) so progress stays honest."
+call mcp__recur__update_todos with its id (S1, S2, …) so progress stays honest."
     } else {
         ""
     };
@@ -461,7 +461,7 @@ pub fn maestro_system_prompt(ctx: &MaestroContext) -> String {
     b.push_str("- live walk paused at a checkpoint: do not reenter_phase; Resume continues this walk. mcp__recur__plan only steers.\n");
     b.push_str("- any other live walk: do not restart; mcp__recur__plan only steers.\n");
     b.push_str("- mcp__recur__run_phase: on-demand phases only (e.g. security).\n");
-    b.push_str("- mcp__recur__submit_plan / mcp__recur__update_plan_step: rewrite the STRUCTURED plan (headline + detailed body + ordered steps + optional attachments), or advance one step's status (steps are numbered S1, S2, …).\n");
+    b.push_str("- mcp__recur__submit_plan / mcp__recur__update_todos: rewrite the STRUCTURED plan (headline + detailed body + ordered steps + optional attachments), or add steps and patch their status (steps are numbered S1, S2, …).\n");
     b.push_str("- mcp__recur__ask_user: ask the human a clarifying question (ends this turn; answer arrives later as a user message; does not pause the workspace). Never use Claude's AskUserQuestion: it cannot collect answers in Recur.\n");
     b.push_str("- mcp__recur__create_artifact / list_artifacts / read_artifact / present_artifact: standalone analytical deliverables (HTML may be self-contained interactive demos under the preview sandbox).\n");
     b.push_str("When the human asks for something one of these tools does, CALL IT: don't tell them to do it ");

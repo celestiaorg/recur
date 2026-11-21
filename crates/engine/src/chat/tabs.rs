@@ -284,6 +284,7 @@ impl Engine {
         let Some(ws) = self.store.workspace(workspace_id) else {
             return Vec::new();
         };
+        let _ = self.store.delete_chat_wakeups(workspace_id, &code);
         let agents = self.pair_chat_agents(workspace_id);
         let mut cleared = false;
         let mut unseen_gone = false;

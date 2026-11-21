@@ -9,7 +9,7 @@ use recur_agent::display::tasks::{
     format_task_id, is_claude_task_tool, parse_claude_task_args, parse_task_create_id,
     parse_task_get, parse_task_list,
 };
-use recur_agent::display::todos::{Todo, parse_todos, todo_counts};
+use recur_agent::display::todos::{Todo, parse_board_todos, parse_todos, todo_counts};
 use recur_agent::display::web::{web_fetch_prompt, web_fetch_url, web_search_query};
 use recur_agent_tools::display::briefing_tools::{
     HydrateProject, HydrateWorkspace, ListedWorkspaceBriefs, PresentWorkspaceView,
@@ -31,6 +31,7 @@ use recur_agent_tools::display::plan_tools::{
 use recur_agent_tools::display::reenter_phase_tool::{
     is_reenter_phase_tool, parse_reenter_phase_id, reenter_phase_failed, reenter_phase_label,
 };
+use recur_agent_tools::display::schedule_tools::{is_schedule_tool, schedule_tool_label};
 use recur_domain::{Finding, Pr, WorkspaceBrief};
 use recur_engine::view::artifacts::{ListedArtifacts, resolve_list_artifacts};
 use recur_engine::view::chat::{AgentMsg, is_subagent_launch_meta, is_task_tool};
@@ -494,6 +495,20 @@ impl<'a> ToolView<'a> {
     pub fn is_rename_tool(&self) -> bool {
         self.is_rename_session() || self.is_rename_workspace() || self.is_rename_branch()
     }
+    pub fn is_schedule_tool(&self) -> bool {
+        is_schedule_tool(self.tool())
+    }
+    /// "Check back in 10 min · reason", "Created schedule Nightly", …
+    pub fn schedule_tool_label(&self) -> String {
+        let m = self.m;
+        schedule_tool_label(
+            self.tool(),
+            self.input().unwrap_or(&Value::Null),
+            &m.result,
+            m.result_pending,
+            m.result_error,
+        )
+    }
     pub fn is_open_pr(&self) -> bool {
         is_open_pr_tool(Some(self.tool()))
     }
@@ -551,6 +566,10 @@ impl<'a> ToolView<'a> {
     pub fn is_edit_plan(&self) -> bool {
         is_edit_plan_tool(Some(self.tool()))
     }
+    /// TodoWrite / Cursor updateTodos, or Recur's update_todos.
+    pub fn is_todo_list(&self) -> bool {
+        self.tool() == "TodoWrite" || ends(self.tool(), "update_todos")
+    }
     pub fn is_create_plan(&self) -> bool {
         self.tool() == "CreatePlan" || self.tool() == "createPlan"
     }
@@ -562,6 +581,188 @@ impl<'a> ToolView<'a> {
     }
     pub fn is_claude_task(&self) -> bool {
         is_claude_task_tool(self.tool())
+    }
+    pub fn is_task_stop(&self) -> bool {
+        matches!(self.tool(), "TaskStop" | "KillShell")
+    }
+    /// The stopped command from TaskStop's JSON result.
+    pub fn task_stop_command(&self) -> String {
+        serde_json::from_str::<Value>(self.m.result.trim())
+            .ok()
+            .and_then(|v| v.get("command")?.as_str().map(str::to_owned))
+            .unwrap_or_default()
+    }
+    pub fn is_run_background(&self) -> bool {
+        ends(self.tool(), "run_background")
+    }
+    pub fn is_read_terminal(&self) -> bool {
+        ends(self.tool(), "read_terminal")
+    }
+    pub fn is_stop_terminal(&self) -> bool {
+        ends(self.tool(), "stop_terminal")
+    }
+    pub fn is_list_terminals(&self) -> bool {
+        ends(self.tool(), "list_terminals")
+    }
+    pub fn is_terminal_tool(&self) -> bool {
+        self.is_run_background()
+            || self.is_read_terminal()
+            || self.is_stop_terminal()
+            || self.is_list_terminals()
+    }
+    fn result_json(&self) -> Value {
+        serde_json::from_str(self.m.result.trim()).unwrap_or_default()
+    }
+    /// read_terminal's `terminal <id> (<title>[, exited (n)]):` head, split into title and
+    /// exit note.
+    fn read_terminal_head(&self) -> (String, String) {
+        let head = self.m.result.split('\n').next().unwrap_or_default();
+        let Some(inner) = head
+            .strip_prefix("terminal ")
+            .and_then(|r| r.get(r.find(" (")? + 2..r.rfind("):")?))
+        else {
+            return Default::default();
+        };
+        match inner.rsplit_once(", exited (") {
+            Some((t, code)) if code.ends_with(')') => (t.to_string(), format!("exited ({code}")),
+            _ => (inner.to_string(), String::new()),
+        }
+    }
+    /// The card body: the process output, without JSON or read_terminal's head line.
+    pub fn terminal_output(&self) -> String {
+        let m = self.m;
+        if m.result_error {
+            return m.result.clone();
+        }
+        if self.is_run_background() {
+            let r = self.result_json();
+            let out = r.get("output").and_then(Value::as_str).unwrap_or_default();
+            let mut s = out.trim_end().to_string();
+            if let Some(code) = r.get("exitCode").and_then(Value::as_i64) {
+                if !s.is_empty() {
+                    s.push_str("\n\n");
+                }
+                s.push_str(&format!("exited with code {code}"));
+            }
+            return s;
+        }
+        if self.is_read_terminal() {
+            return match m.result.split_once('\n') {
+                Some((_, body)) => body.to_string(),
+                None => m
+                    .result
+                    .rsplit_once("): ")
+                    .map_or(m.result.clone(), |(_, s)| s.to_string()),
+            };
+        }
+        if self.is_list_terminals() {
+            let r = self.result_json();
+            let Some(list) = r.get("terminals").and_then(Value::as_array) else {
+                return "no terminals".into();
+            };
+            return list
+                .iter()
+                .map(|t| {
+                    let f = |k: &str| t.get(k).and_then(Value::as_str).unwrap_or_default();
+                    let mut parts = vec![format!("{} {}", f("id"), f("title"))];
+                    if t.get("background") == Some(&Value::Bool(true)) {
+                        parts.push("background".into());
+                    }
+                    if t.get("exited") == Some(&Value::Bool(true)) {
+                        let code = t.get("exitCode").and_then(Value::as_i64).unwrap_or(0);
+                        parts.push(format!("exited ({code})"));
+                    }
+                    parts.join(" · ")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+        }
+        m.result.clone()
+    }
+    fn terminal_pending_label(&self) -> String {
+        if self.is_run_background() {
+            let t = self
+                .arg_str("title")
+                .filter(|t| !t.trim().is_empty())
+                .map(str::to_string)
+                .unwrap_or_else(|| collapse_ws(&self.bash_command()));
+            return format!("Starting {t}…");
+        }
+        if self.is_read_terminal() {
+            if self.arg("wait_ms").and_then(Value::as_i64).unwrap_or(0) > 0 {
+                let u = self.arg_str("until").unwrap_or_default();
+                return if u.is_empty() {
+                    "Waiting for output…".into()
+                } else {
+                    format!("Waiting for {u}…")
+                };
+            }
+            return "Reading terminal…".into();
+        }
+        if self.is_stop_terminal() {
+            return "Stopping…".into();
+        }
+        "Listing terminals…".into()
+    }
+    fn terminal_label(&self) -> String {
+        let m = self.m;
+        if self.is_run_background() {
+            if m.result_error {
+                return "Start failed".into();
+            }
+            let r = self.result_json();
+            let t = [
+                r.get("title").and_then(Value::as_str),
+                self.arg_str("title"),
+            ]
+            .into_iter()
+            .flatten()
+            .find(|t| !t.trim().is_empty());
+            return t.map_or("Started process".into(), |t| format!("Started {t}"));
+        }
+        if self.is_read_terminal() {
+            let (t, exit) = self.read_terminal_head();
+            let t = if t.is_empty() { "terminal".into() } else { t };
+            return if exit.is_empty() {
+                format!("Read {t}")
+            } else {
+                format!("Read {t} · {exit}")
+            };
+        }
+        if self.is_stop_terminal() {
+            if m.result_error {
+                return "Stop failed".into();
+            }
+            let id = self.arg_str("id").unwrap_or_default();
+            let t = m
+                .result
+                .strip_prefix(&format!("stopped background process {id} ("))
+                .and_then(|r| r.strip_suffix(')'))
+                .unwrap_or(id);
+            return format!("Stopped {t}").trim_end().to_string();
+        }
+        let n = self
+            .result_json()
+            .get("count")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        format!("Listed terminals · {n}")
+    }
+    fn terminal_meta(&self) -> String {
+        if self.is_run_background() {
+            return collapse_ws(&self.bash_command());
+        }
+        if self.is_read_terminal() {
+            let mut parts = Vec::new();
+            if let Some(u) = self.arg_str("until").filter(|u| !u.is_empty()) {
+                parts.push(format!("until \"{u}\""));
+            }
+            if let Some(n) = self.arg("tail_lines").and_then(Value::as_i64) {
+                parts.push(format!("{n} lines"));
+            }
+            return parts.join(" · ");
+        }
+        String::new()
     }
     pub fn is_subagent(&self) -> bool {
         is_subagent_tool(self.tool())
@@ -844,6 +1045,12 @@ impl<'a> ToolView<'a> {
     // ---- todos / plans ----
 
     pub fn todo_items(&self) -> Vec<Todo> {
+        if self.tool() != "TodoWrite" {
+            if self.m.result_error {
+                return Vec::new();
+            }
+            return parse_board_todos(&self.m.result);
+        }
         parse_todos(&self.m.input)
     }
 
@@ -1467,8 +1674,14 @@ impl<'a> ToolView<'a> {
         if self.is_submit_plan() || self.is_update_plan_step() || self.is_edit_plan() {
             return StepIcon::Plan;
         }
+        if self.is_todo_list() {
+            return StepIcon::Todo;
+        }
+        if self.is_terminal_tool() {
+            return StepIcon::Term;
+        }
         match self.tool() {
-            "Bash" => StepIcon::Term,
+            "Bash" | "TaskStop" | "KillShell" => StepIcon::Term,
             "Read" => StepIcon::File,
             "Edit" | "Write" | "NotebookEdit" => StepIcon::Pencil,
             "Delete" => StepIcon::Trash,
@@ -1494,12 +1707,19 @@ impl<'a> ToolView<'a> {
                 format!("{with} {name}…")
             }
         };
+        if self.is_todo_list() {
+            return "Updating todos…".into();
+        }
+        if self.is_terminal_tool() {
+            return self.terminal_pending_label();
+        }
         match self.tool() {
             "Edit" => return named("Editing", "Applying edit…"),
             "Write" => return named("Writing", "Writing file…"),
             "Read" => return named("Reading", "Reading file…"),
             "Delete" => return named("Deleting", "Deleting file…"),
             "Bash" => return "Running command…".into(),
+            "TaskStop" | "KillShell" => return "Stopping task…".into(),
             "Grep" | "Glob" => return "Searching…".into(),
             "WebFetch" => return "Fetching page…".into(),
             "WebSearch" => return "Searching the web…".into(),
@@ -1511,7 +1731,6 @@ impl<'a> ToolView<'a> {
                 }
                 .into();
             }
-            "TodoWrite" => return "Updating todos…".into(),
             "TaskCreate" => return "Creating task…".into(),
             "TaskUpdate" => {
                 return match self.claude_task_args().status.as_str() {
@@ -1593,6 +1812,9 @@ impl<'a> ToolView<'a> {
         }
         if self.is_child_tool() {
             return format!("{}…", self.child_tool_label());
+        }
+        if self.is_schedule_tool() {
+            return self.schedule_tool_label();
         }
         if self.is_create_workspace() {
             return format!("{}…", self.create_workspace_label());
@@ -1701,6 +1923,9 @@ impl<'a> ToolView<'a> {
             let p = self.pending_label();
             return p.strip_suffix('…').map(str::to_string).unwrap_or(p);
         }
+        if self.is_terminal_tool() {
+            return self.terminal_label();
+        }
         let f = self.file_of();
         let named = |verb: &str, none: &str| {
             if f.is_empty() {
@@ -1711,6 +1936,8 @@ impl<'a> ToolView<'a> {
         };
         match self.tool() {
             "Bash" => return "Ran command".into(),
+            "TaskStop" | "KillShell" if m.result_error => return "Stop failed".into(),
+            "TaskStop" | "KillShell" => return "Stopped task".into(),
             "Read" => return named("Read", "Read file"),
             "Edit" => {
                 return if self.has_write_body() && !self.has_edit_diff() {
@@ -1744,14 +1971,6 @@ impl<'a> ToolView<'a> {
                 .into();
             }
             "Delete" => return named("Deleted", "Deleted file"),
-            "TodoWrite" => {
-                let (done, total) = todo_counts(&self.todo_items());
-                return if total > 0 {
-                    format!("Updated todos · {done}/{total}")
-                } else {
-                    "Updated todos".into()
-                };
-            }
             "CreatePlan" | "createPlan" => return "Wrote plan".into(),
             "readLints" | "ReadLints" => {
                 return if m.result_pending {
@@ -1839,6 +2058,9 @@ impl<'a> ToolView<'a> {
         if self.is_child_tool() {
             return self.child_tool_label();
         }
+        if self.is_schedule_tool() {
+            return self.schedule_tool_label();
+        }
         if self.is_create_workspace() {
             return self.create_workspace_label();
         }
@@ -1915,6 +2137,14 @@ impl<'a> ToolView<'a> {
         if self.is_submit_plan() {
             return submit_plan_label(m.result_pending, self.submit_plan_steps().len());
         }
+        if self.is_todo_list() {
+            let (done, total) = todo_counts(&self.todo_items());
+            return if total > 0 {
+                format!("Updated todos · {done}/{total}")
+            } else {
+                "Updated todos".into()
+            };
+        }
         if self.is_update_plan_step() {
             return update_plan_step_label(m.result_pending).into();
         }
@@ -1947,7 +2177,7 @@ impl<'a> ToolView<'a> {
     /// `toolMeta`: the dim header summary (Grep/Glob rebuilt with relative paths).
     pub fn meta(&self) -> String {
         let m = self.m;
-        if self.tool() == "TodoWrite" {
+        if self.is_todo_list() {
             return self
                 .todo_items()
                 .into_iter()
@@ -2054,6 +2284,7 @@ impl<'a> ToolView<'a> {
         }
         if self.is_switch_mode()
             || self.is_rename_tool()
+            || self.is_schedule_tool()
             || self.is_child_tool()
             || self.is_create_workspace()
             || self.is_open_pr()
@@ -2102,6 +2333,17 @@ impl<'a> ToolView<'a> {
                 0 => String::new(),
                 1 => rel_path(self.cx.root_path, &paths[0]).into_owned(),
                 n => format!("{n} files"),
+            };
+        }
+        if self.is_terminal_tool() {
+            return self.terminal_meta();
+        }
+        if self.is_task_stop() {
+            let c = self.task_stop_command();
+            return if c.is_empty() {
+                m.tool_input.clone()
+            } else {
+                collapse_ws(&c)
             };
         }
         if self.tool() == "ListAgents" {
@@ -2209,8 +2451,10 @@ impl<'a> ToolView<'a> {
                 },
             );
         let searched = tool_search_sel.is_some_and(|s| !s.is_empty());
+        let stop_quiet = self.is_stop_terminal() && !m.result_error;
         ((!searched || m.result_error)
             && !delete_quiet
+            && !stop_quiet
             && !lin_quiet
             && !web_quiet
             && (!claude_task || claude_body || m.result_error))
@@ -2235,7 +2479,9 @@ impl<'a> ToolView<'a> {
                 || self.is_update_plan_step()
                 || self.is_edit_plan()
                 || self.is_briefing()
-                || self.is_linear())
+                || self.is_linear()
+                || self.is_task_stop()
+                || self.is_run_background())
         {
             return false;
         }
@@ -2320,6 +2566,24 @@ mod tests {
     }
 
     #[test]
+    fn update_todos_reads_the_returned_board() {
+        let m = tool("mcp__recur__update_todos", |m| {
+            m.input = json!({"items": [{"id": "S1", "status": "doing"}]}).to_string();
+            m.result = "Steps:\nS1 [doing] Wire it\nS2 [done] Read".into();
+        });
+        let v = view(&m);
+        assert_eq!(v.icon(), StepIcon::Todo);
+        assert_eq!(v.label(), "Updated todos · 1/2");
+        assert_eq!(v.meta(), "Wire it");
+        assert_eq!(v.todo_items().len(), 2);
+        let m = tool("mcp__recur__update_todos", |m| {
+            m.result = "no todo with id \"S9\"".into();
+            m.result_error = true;
+        });
+        assert_eq!(view(&m).label(), "Updated todos");
+    }
+
+    #[test]
     fn grep_meta_uses_relative_paths() {
         let m = tool("Grep", |m| {
             m.input = json!({"pattern": "TODO", "path": "/wt/src", "-i": true, "head_limit": 5, "glob": "*.go"}).to_string();
@@ -2365,6 +2629,132 @@ mod tests {
         });
         assert_eq!(view(&m).label(), "Listing agents");
         assert_eq!(view(&m).meta(), "");
+    }
+
+    #[test]
+    fn schedule_wakeup_reads_as_a_check_back() {
+        let m = tool("mcp__recur__schedule_wakeup", |m| {
+            m.input = json!({"delay_seconds": 600, "reason": "CI run"}).to_string();
+            m.result = "Wakeup set".into();
+        });
+        let v = view(&m);
+        assert_eq!(v.label(), "Check back in 10 min · CI run");
+        assert_eq!(v.meta(), "");
+        let m = tool("mcp__recur__schedule_wakeup", |m| {
+            m.result = "workspace not found".into();
+            m.result_error = true;
+        });
+        assert_eq!(view(&m).label(), "Check back failed");
+        let m = tool("mcp__recur__list_schedules", |m| {
+            m.result = json!({"count": 0, "schedules": []}).to_string();
+        });
+        assert_eq!(view(&m).label(), "Listed schedules · 0");
+    }
+
+    #[test]
+    fn task_stop_shows_the_stopped_command() {
+        let m = tool("TaskStop", |m| {
+            m.input = json!({"task_id": "b1"}).to_string();
+            m.tool_input = "b1".into();
+            m.result = json!({"message": "Successfully stopped task: b1", "task_id": "b1", "task_type": "local_bash", "command": "npm run\n  dev"}).to_string();
+        });
+        let v = view(&m);
+        assert_eq!(v.label(), "Stopped task");
+        assert_eq!(v.meta(), "npm run dev");
+        assert_eq!(v.icon(), StepIcon::Term);
+        let m = tool("TaskStop", |m| {
+            m.tool_input = "b1".into();
+            m.result = "No task found with ID: b1".into();
+            m.result_error = true;
+        });
+        assert_eq!(view(&m).label(), "Stop failed");
+        assert_eq!(view(&m).meta(), "b1");
+        let m = tool("TaskStop", |m| m.result_pending = true);
+        assert_eq!(view(&m).label(), "Stopping task");
+    }
+
+    #[test]
+    fn terminal_tools_read_as_first_class_rows() {
+        let run = |result: Value| {
+            tool("mcp__recur__run_background", |m| {
+                m.input =
+                    json!({"command": "pnpm start:code", "title": "code dev server"}).to_string();
+                m.result = result.to_string();
+            })
+        };
+        let m = run(
+            json!({"id": "t1", "title": "code dev server", "cwd": "/wt", "notifyOnExit": true}),
+        );
+        let v = view(&m);
+        assert_eq!(v.icon(), StepIcon::Term);
+        assert_eq!(v.label(), "Started code dev server");
+        assert_eq!(v.meta(), "pnpm start:code");
+        assert_eq!(v.terminal_output(), "");
+        let m = run(
+            json!({"id": "t1", "title": "", "output": "boom\n", "exited": true, "exitCode": 2}),
+        );
+        let v = view(&m);
+        assert_eq!(v.label(), "Started code dev server");
+        assert_eq!(v.terminal_output(), "boom\n\nexited with code 2");
+        let m = tool("mcp__recur__run_background", |m| {
+            m.input = json!({"command": "pnpm\n dev"}).to_string();
+            m.result_pending = true;
+        });
+        assert_eq!(view(&m).pending_label(), "Starting pnpm dev…");
+        let m = tool("mcp__recur__run_background", |m| {
+            m.result = "command is required".into();
+            m.result_error = true;
+        });
+        assert_eq!(view(&m).label(), "Start failed");
+
+        let m = tool("mcp__recur__read_terminal", |m| {
+            m.input = json!({"id": "t1", "until": "ready", "wait_ms": 5000, "tail_lines": 50})
+                .to_string();
+            m.result = "terminal t1 (dev (web), exited (1)):\nready\nbye".into();
+        });
+        let v = view(&m);
+        assert_eq!(v.label(), "Read dev (web) · exited (1)");
+        assert_eq!(v.meta(), "until \"ready\" · 50 lines");
+        assert_eq!(v.terminal_output(), "ready\nbye");
+        let m = tool("mcp__recur__read_terminal", |m| {
+            m.result = "terminal t1 (web): idle: no recent output".into();
+        });
+        assert_eq!(view(&m).label(), "Read web");
+        assert_eq!(view(&m).terminal_output(), "idle: no recent output");
+        let m = tool("mcp__recur__read_terminal", |m| {
+            m.input = json!({"until": "ready", "wait_ms": 5000}).to_string();
+            m.result_pending = true;
+        });
+        assert_eq!(view(&m).label(), "Waiting for ready");
+
+        let m = tool("mcp__recur__stop_terminal", |m| {
+            m.input = json!({"id": "t1"}).to_string();
+            m.result = "stopped background process t1 (web)".into();
+        });
+        assert_eq!(view(&m).label(), "Stopped web");
+        assert!(!view(&m).expandable());
+        let m = tool("mcp__recur__stop_terminal", |m| {
+            m.input = json!({"id": "t1"}).to_string();
+            m.result = "terminal t1 is a tab the user opened".into();
+            m.result_error = true;
+        });
+        assert_eq!(view(&m).label(), "Stop failed");
+        assert!(view(&m).expandable());
+
+        let m = tool("mcp__recur__list_terminals", |m| {
+            m.result = json!({"count": 2, "terminals": [
+                {"id": "t1", "title": "web", "cwd": "/wt", "active": false, "background": true, "exited": true, "exitCode": 0},
+                {"id": "t2", "title": "zsh", "cwd": "/wt", "active": true},
+            ]})
+            .to_string();
+        });
+        let v = view(&m);
+        assert_eq!(v.label(), "Listed terminals · 2");
+        assert_eq!(v.meta(), "");
+        assert_eq!(
+            v.terminal_output(),
+            "t1 web · background · exited (0)\nt2 zsh"
+        );
     }
 
     #[test]

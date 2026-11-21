@@ -7,7 +7,7 @@
 use std::path::Path;
 
 use recur_agent::display::PLAN_MAX_PERSIST_CHARS;
-use recur_agent_tools::{PlanStepMeta, PlanSubmission};
+use recur_agent_tools::{HostError, PlanStepMeta, PlanSubmission, TodoUpdate};
 use recur_domain::path;
 use recur_domain::{
     FEED_CARD_PLAN, FeedItem, Plan, PlanAttachment, PlanStep, STEP_DOING, STEP_DONE, STEP_PENDING,
@@ -257,6 +257,72 @@ pub fn merge_plan_steps(
     out
 }
 
+/// Applies update_todos items in order: no id appends `S{max+1}`, an id
+/// patches the non-empty fields. Unknown ids fail the whole batch.
+pub fn apply_todo_items(steps: &mut Vec<PlanStep>, items: &[TodoUpdate]) -> Result<(), String> {
+    for it in items {
+        if it.id.is_empty() {
+            if it.title.is_empty() {
+                return Err("a new todo needs a title".into());
+            }
+            let next = steps
+                .iter()
+                .filter_map(|s| s.id.strip_prefix('S')?.parse::<usize>().ok())
+                .max()
+                .unwrap_or(0)
+                + 1;
+            steps.push(PlanStep {
+                id: format!("S{next}"),
+                title: it.title.clone(),
+                status: if it.status.is_empty() {
+                    STEP_PENDING.into()
+                } else {
+                    it.status.clone()
+                },
+                note: truncate(&it.note, 300),
+                ..PlanStep::default()
+            });
+            continue;
+        }
+        let Some(s) = steps.iter_mut().find(|s| s.id == it.id) else {
+            return Err(format!("no todo with id {:?}", it.id));
+        };
+        if !it.title.is_empty() {
+            s.title = it.title.clone();
+        }
+        if !it.status.is_empty() {
+            s.status = it.status.clone();
+        }
+        if !it.note.is_empty() {
+            s.note = truncate(&it.note, 300);
+        }
+    }
+    Ok(())
+}
+
+/// The workspace todos for chat turns while any is still open, so any model
+/// (including one switched in mid-chat) sees the shared list and its ids.
+/// A finished list is not repeated.
+pub fn todos_turn_prompt(plan: Option<&Plan>) -> String {
+    match plan {
+        Some(p)
+            if p.steps
+                .iter()
+                .any(|s| s.status != STEP_DONE && s.status != STEP_SKIPPED) =>
+        {
+            let steps = Plan {
+                steps: p.steps.clone(),
+                ..Plan::default()
+            };
+            format!(
+                "Open workspace todos (shared Plan panel list, for reference):\n{}",
+                steps.board()
+            )
+        }
+        _ => String::new(),
+    }
+}
+
 /// Shrinks Body (or Summary) so `Plan::text()` fits the persist cap: the
 /// checklist is what Coders execute from and is never what gets cut.
 pub fn cap_plan_for_persist(p: &mut Plan) {
@@ -376,52 +442,41 @@ impl Engine {
         );
     }
 
-    /// Host `update_plan_step`: the engine owns the transition (statuses
-    /// were vocabulary-checked at the MCP boundary).
-    pub fn apply_plan_step_update(
+    /// Host `update_todos` (and the Plan panel checkbox): appends and patches
+    /// plan steps in place, never replacing the list, so Plan panel edits
+    /// and approval survive. The first call on a plan-less workspace creates
+    /// an informal plan. Returns the full board.
+    pub fn apply_todos(
         &self,
         workspace_id: &str,
-        _agent_code: &str,
-        step_id: &str,
-        status: &str,
-        note: &str,
-    ) -> String {
-        let Some(ws) = self.store.workspace(workspace_id) else {
-            return "Refused: that workspace no longer exists.".into();
-        };
-        if ws.plan.as_ref().is_none_or(|p| p.steps.is_empty()) {
-            return "Refused: this workspace has no structured plan steps.".into();
-        }
-        let mut title = None;
+        agent_code: &str,
+        items: &[TodoUpdate],
+    ) -> Result<String, HostError> {
+        let mut out = Err(HostError::new("that workspace no longer exists"));
         let updated = self.store.update_workspace(workspace_id, |l| {
-            let Some(plan) = l.plan.as_mut() else {
+            let mut plan = l.plan.clone().unwrap_or_else(|| Plan {
+                source: plan_source(agent_code).to_owned(),
+                chat_code: plan_author_chat_code(agent_code, None),
+                ..Plan::default()
+            });
+            if let Err(e) = apply_todo_items(&mut plan.steps, items) {
+                out = Err(HostError::new(e));
                 return;
-            };
-            let Some(s) = plan.steps.iter_mut().find(|s| s.id == step_id) else {
-                return;
-            };
-            s.status = status.to_owned();
-            if !note.trim().is_empty() {
-                s.note = truncate(note.trim(), 300);
             }
-            title = Some(s.title.clone());
             l.definition_of_done = truncate(&plan.text(), PLAN_MAX_PERSIST_CHARS);
+            out = Ok(plan.board());
+            l.plan = Some(plan);
             if let Some(p) = run_progress(&l.state, l.plan.as_ref()) {
                 l.progress = p;
             }
         });
-        let Some(title) = title else {
-            return format!("Refused: no plan step with id {:?}.", step_id);
-        };
-        if let Some(u) = updated {
+        if out.is_ok()
+            && let Some(u) = updated
+        {
             self.publish_loop_updated(&u.id, u.state.clone(), &u.phase, u.iteration);
+            self.touch_workspace_activity(workspace_id, "Updated todos", self.now());
         }
-        self.touch_workspace_activity(
-            workspace_id,
-            &format!("Updated plan step {step_id}"),
-            self.now(),
-        );
-        format!("Step {step_id} ({}) → {status}.", truncate(&title, 60))
+        out
     }
 
     /// Writes a plan and its prose mirror and publishes so the Plan panel
@@ -500,8 +555,8 @@ impl Engine {
                     .unwrap_or_default(),
             );
         }
-        if summary.trim().is_empty() {
-            return "Refused: the plan needs a summary.".into();
+        if summary.trim().is_empty() && clean.is_empty() {
+            return "Refused: the plan needs a summary or steps.".into();
         }
         let att_ids: Vec<String> = self
             .store
@@ -529,7 +584,7 @@ impl Engine {
         )
     }
 
-    /// A Plan panel checkbox: the same validated path as update_plan_step.
+    /// A Plan panel checkbox: the same path as update_todos.
     pub fn update_human_plan_step(
         &self,
         workspace_id: &str,
@@ -539,7 +594,15 @@ impl Engine {
         if ![STEP_PENDING, STEP_DOING, STEP_DONE, STEP_SKIPPED].contains(&status) {
             return format!("Refused: unknown step status {:?}.", status);
         }
-        self.apply_plan_step_update(workspace_id, "AR", step_id, status, "")
+        let item = TodoUpdate {
+            id: step_id.to_owned(),
+            status: status.to_owned(),
+            ..TodoUpdate::default()
+        };
+        match self.apply_todos(workspace_id, "AR", &[item]) {
+            Ok(_) => format!("Step {step_id} → {status}."),
+            Err(e) => format!("Refused: {e}."),
+        }
     }
 
     /// The Plan panel's Approve.

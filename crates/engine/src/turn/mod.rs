@@ -312,11 +312,7 @@ impl Engine {
         if caps.tool_transport == ToolTransport::InProcess {
             let host: Arc<dyn recur_agent_tools::Host> =
                 Arc::new(EngineHost::new(Arc::downgrade(&self.arc())));
-            cx.tools = Some(Arc::new(tools::InProcessTools::new(
-                Some(host),
-                Arc::clone(&self.todos),
-                &req,
-            )));
+            cx.tools = Some(Arc::new(tools::InProcessTools::new(Some(host), &req)));
         }
         if let Some(r) = ready {
             if provider.defers_prompt() {

@@ -189,6 +189,8 @@ struct Inner {
     first: Option<Instant>,
     closed: bool,
     chrome: HashMap<String, Chrome>,
+    /// Workspaces whose saved tabs this process restored or replaced.
+    restored: HashSet<String>,
 }
 
 /// The debounce state.
@@ -247,6 +249,15 @@ impl Persist {
         let mut st = self.inner.lock();
         st.dirty.remove(workspace_id);
         st.chrome.remove(workspace_id);
+        st.restored.remove(workspace_id);
+    }
+
+    pub(crate) fn mark_restored(&self, workspace_id: &str) {
+        self.inner.lock().restored.insert(workspace_id.to_owned());
+    }
+
+    fn restored(&self, workspace_id: &str) -> bool {
+        self.inner.lock().restored.contains(workspace_id)
     }
 
     /// Writes every dirty workspace (the debounce timer and shutdown). A
@@ -351,26 +362,33 @@ impl AppServices {
         }
         let chrome = self.terminal_chrome(workspace_id).clamped();
         let snaps = self.term.snapshots(workspace_id);
-        if snaps.is_empty() {
-            if self.term_persist.closed() {
-                // CloseAll already emptied the roster: keep the snapshot the
-                // shutdown flush just wrote.
-                return Ok(());
-            }
-            if chrome.idle() {
-                return self.remove_terminal_snapshot(workspace_id);
-            }
+        if snaps.is_empty() && self.term_persist.closed() {
+            // CloseAll already emptied the roster: keep the snapshot the
+            // shutdown flush just wrote.
+            return Ok(());
         }
-        let active_id = self.term.active_id(workspace_id);
-        let active = snaps.iter().rposition(|s| s.id == active_id).unwrap_or(0) as i64;
-        let tabs = snaps
-            .into_iter()
-            .map(|s| PersistedTab {
-                title: s.title,
-                cwd: s.cwd,
-                replay: s.replay,
-            })
-            .collect();
+        // Saved tabs join the roster only when the dock mounts; a background
+        // process started before that must not erase them.
+        let saved = (snaps.is_empty() && !self.term_persist.restored(workspace_id))
+            .then(|| self.read_terminal_snapshot(workspace_id))
+            .flatten()
+            .and_then(|s| Some((s.active, s.tabs.filter(|t| !t.is_empty())?)));
+        if snaps.is_empty() && saved.is_none() && chrome.idle() {
+            return self.remove_terminal_snapshot(workspace_id);
+        }
+        let (active, tabs) = saved.unwrap_or_else(|| {
+            let active_id = self.term.active_id(workspace_id);
+            let active = snaps.iter().rposition(|s| s.id == active_id).unwrap_or(0) as i64;
+            let tabs = snaps
+                .into_iter()
+                .map(|s| PersistedTab {
+                    title: s.title,
+                    cwd: s.cwd,
+                    replay: s.replay,
+                })
+                .collect();
+            (active, tabs)
+        });
         self.write_terminal_snapshot(
             workspace_id,
             &PersistedTerminals {

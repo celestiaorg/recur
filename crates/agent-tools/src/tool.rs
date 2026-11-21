@@ -6,7 +6,6 @@ use std::sync::Arc;
 use parking_lot::RwLock;
 use tokio_util::sync::CancellationToken;
 
-use crate::coding::todos::TodoStore;
 use crate::host::{Host, HostError, PermissionVerdict};
 use crate::names::{ASK_USER, RECUR_MCP_PREFIX, SWITCH_MODE};
 
@@ -80,7 +79,6 @@ pub struct Call {
     pub host: Option<Arc<dyn Host>>,
     /// Gates Bash when `bypass_perms` is false.
     pub permitter: Option<Arc<dyn Permitter>>,
-    pub todos: Option<Arc<TodoStore>>,
 }
 
 impl Call {

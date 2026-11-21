@@ -23,7 +23,6 @@ id = "recur.roles.coder"
 name = "Coder"
 code = "CO"
 mode = "agent"
-tools = ["update_plan_step"]
 prompt = "prompts/coder.md"
 
 [[role]]
@@ -53,7 +52,6 @@ id = "recur.roles.writer"
 name = "Writer"
 code = "WR"
 mode = "agent"
-tools = ["update_plan_step"]
 prompt = "prompts/writer.md"
 
 [[role]]

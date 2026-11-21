@@ -38,7 +38,7 @@ tool_names! {
     RESUME_LOOP = "resume_loop",
     // Structured plan capture
     SUBMIT_PLAN = "submit_plan",
-    UPDATE_PLAN_STEP = "update_plan_step",
+    UPDATE_TODOS = "update_todos",
     // Claude Code calls this itself for --permission-prompt-tool, so it is never
     // in a role's --allowedTools.
     PERMISSION_REQUEST = "permission_request",
@@ -62,6 +62,12 @@ tool_names! {
     MESSAGE_CHILD = "message_child",
     LIST_TERMINALS = "list_terminals",
     READ_TERMINAL = "read_terminal",
+    RUN_BACKGROUND = "run_background",
+    STOP_TERMINAL = "stop_terminal",
+    SCHEDULE_WAKEUP = "schedule_wakeup",
+    CREATE_SCHEDULE = "create_schedule",
+    LIST_SCHEDULES = "list_schedules",
+    DELETE_SCHEDULE = "delete_schedule",
     // Ask Recur coordinator
     LIST_WORKSPACE_BRIEFS = "list_workspace_briefs",
     GET_WORKSPACE_CONTEXT = "get_workspace_context",

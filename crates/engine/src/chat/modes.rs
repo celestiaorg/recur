@@ -32,26 +32,29 @@ pub const ARTIFACTS_BESIDE_REVIEW_APPEND_PROMPT: &str = "You may create standalo
 /// Agent-mode identity note. Ask/Plan/Review each lead with their mode;
 /// without the same here, mode literacy's "flip the dock to Agent" clause
 /// stalls models that think it applies to them.
-pub const AGENT_APPEND_PROMPT: &str = "This chat is in AGENT mode: you can read and edit. Do not ask the user to switch to Agent: you already have edit tools. Proceed with the task. Strongly prefer child workspaces for anything beyond a very simple task (one-file tweak, one-line fix, short answer). Subagents in Recur are child workspaces: call mcp__recur__create_workspace (one child per task, an isolated worktree off this branch). Your turn does not wait for it: when the child finishes you get a new turn with its report, then read_child, merge_child (land its commits here), or archive_child (close it). mcp__recur__message_child (workspace_id + message) redirects a running child, or gives a finished (unmerged) child a new turn instead of replacing it. Native subagent, Task, or worktree tools are unavailable in Recur: do not look for them.";
+pub const AGENT_APPEND_PROMPT: &str = "This chat is in AGENT mode: you can read and edit. Do not ask the user to switch to Agent: you already have edit tools. Proceed with the task. Strongly prefer child workspaces for anything beyond a very simple task (one-file tweak, one-line fix, short answer). Subagents in Recur are child workspaces: call mcp__recur__create_workspace (one child per task, an isolated worktree off this branch). Your turn does not wait for it: when the child finishes you get a new turn with its report, then read_child, merge_child (land its commits here), or archive_child (close it). mcp__recur__message_child (workspace_id + message) redirects a running child, or gives a finished (unmerged) child a new turn instead of replacing it. Native subagent, Task, or worktree tools are unavailable in Recur: do not look for them. Long-running processes (dev servers, watchers, long builds or test runs): start them with mcp__recur__run_background, never by backgrounding a shell command, which ends with your turn.";
 
 /// Agent identity for a create_workspace child.
-pub const AGENT_CHILD_APPEND_PROMPT: &str = "This chat is in AGENT mode: you can read and edit. Do not ask the user to switch to Agent: you already have edit tools. Proceed with the task. You are a child workspace: execute the assigned task here. Native subagent, Task, or worktree tools are unavailable in Recur: do not look for them.";
+pub const AGENT_CHILD_APPEND_PROMPT: &str = "This chat is in AGENT mode: you can read and edit. Do not ask the user to switch to Agent: you already have edit tools. Proceed with the task. You are a child workspace: execute the assigned task here. Native subagent, Task, or worktree tools are unavailable in Recur: do not look for them. Long-running processes (dev servers, watchers, long builds or test runs): start them with mcp__recur__run_background, never by backgrounding a shell command, which ends with your turn.";
 
 pub const AGENT_CHILD_NO_ASK_PROMPT: &str =
     "Do not call mcp__recur__ask_user: pick a reasonable default and finish the assigned task.";
 
 /// Chat modes and switch_mode's privilege rules, plus ask_user restraint
 /// (PA* chats only).
-pub const MODE_LITERACY_APPEND_PROMPT: &str = "Chat modes: Ask (read-only Q&A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user. The user sees only your final message of each turn, not the text between tool calls: make it self-contained (outcome, what changed, anything they must do), never a continuation of earlier text.";
+pub const MODE_LITERACY_APPEND_PROMPT: &str = "Chat modes: Ask (read-only Q&A), Plan (read-only → structured plan), Review (read-only review + findings), Agent (read+edit coding). The dock mode is user-controlled. You may call mcp__recur__switch_mode only within privilege rules: Agent may switch to ask/plan/review; ask/plan/review may switch among each other; never switch ask/plan/review up to Agent: ask the user to flip the dock instead. A successful switch_mode remounts this turn immediately with the new tools. Do not use Cursor's built-in SwitchMode, do not ask the user to switch, and do not keep working with the old toolset after the call. Prefer acting on reasonable defaults; call mcp__recur__ask_user only when blocked on a decision only the human can make (ends this turn; answer arrives later: not escalate). Never use Claude's AskUserQuestion: it cannot collect answers in Recur; use mcp__recur__ask_user. The user sees only your final message of each turn, not the text between tool calls: make it self-contained (outcome, what changed, anything they must do), never a continuation of earlier text. Built-in todo and task-list tools are unavailable; if a task has several distinct steps worth tracking, use mcp__recur__update_todos (the workspace's shared list in the Plan panel), otherwise skip todos. To check back on something later (CI, a deploy, a background process), call mcp__recur__schedule_wakeup instead of sleeping.";
 
 /// Review-mode turns: a read-only review that files structured findings.
 pub const REVIEW_APPEND_PROMPT: &str = "This chat is in REVIEW mode: read-only on the git worktree. Review what the user points you at (default: the looking-at subject in the surface note: a worktree vs its base, or the open pull request). You may run Bash for lint/test/typecheck. For EACH real problem, a bug, a missing case, a regression, a quality issue, call the mcp__recur__report_finding tool with the file, line (optional end_line for a range), severity (info/low/medium/high/critical), a clear message, and optional summary (markdown shown to the end user in the turn digest; omit to use message). On a re-review, call mcp__recur__update_finding to mark a prior finding resolved (fixed) or invalid (wrong/out of scope: reason required). Before filing, call mcp__recur__list_findings with status \"all\". Never re-file a finding the human ignored or marked invalid (updatedBy human), even reworded or at moved lines, and do not duplicate one that is still open. On a re-review, verify each open finding against the current code and mark it resolved once the issue is gone; if a resolved finding's fix did not hold, file it again as a new finding. If AGENTS.md has a `## Reviews` section, follow it on what not to flag. Do NOT restate or list filed findings in your closing reply: the app summarizes still-open filings for the user; keep closing prose brief (e.g. \"Filed N findings\" or \"No issues\"). If the code is sound, say so and file no findings. Do not modify repository files: review, don't fix.";
 
-/// Recur tools on PA* chats (the Maestro has its own set). rename_branch and
-/// open_pr are Agent-only (git / remote mutations); artifacts write outside
-/// the worktree so they stay on every mode.
-pub const INTERACTIVE_MCP_TOOLS: [&str; 10] = [
+/// Recur tools on PA* chats (the Maestro has its own set). rename_branch,
+/// open_pr, the background-process and schedule-changing tools are
+/// Agent-only (git / remote / process / paid-run mutations); artifacts and
+/// todos write outside the worktree and wakeups only re-engage their own chat,
+/// so they stay on every mode.
+pub const INTERACTIVE_MCP_TOOLS: [&str; 12] = [
     mcp::ASK_USER,
+    mcp::UPDATE_TODOS,
     mcp::SWITCH_MODE,
     mcp::CREATE_ARTIFACT,
     mcp::LIST_ARTIFACTS,
@@ -61,6 +64,7 @@ pub const INTERACTIVE_MCP_TOOLS: [&str; 10] = [
     mcp::RENAME_WORKSPACE,
     mcp::LIST_TERMINALS,
     mcp::READ_TERMINAL,
+    mcp::SCHEDULE_WAKEUP,
 ];
 
 fn own(xs: &[&str]) -> Vec<String> {
@@ -130,7 +134,7 @@ pub fn chat_mode_shape(mode: &str, set: &Settings, child: bool) -> ChatTurnShape
     match normalize_chat_mode(mode) {
         CHAT_MODE_ASK => {
             let mut tools = ask_tools();
-            tools.push(mcp::LIST_FINDINGS.into());
+            tools.extend(own(&[mcp::LIST_FINDINGS, mcp::LIST_SCHEDULES]));
             tools.extend(skills);
             tools.extend(interactive);
             ChatTurnShape {
@@ -142,7 +146,11 @@ pub fn chat_mode_shape(mode: &str, set: &Settings, child: bool) -> ChatTurnShape
         }
         CHAT_MODE_PLAN => {
             let mut tools = ask_tools();
-            tools.extend(own(&[mcp::SUBMIT_PLAN, mcp::LIST_FINDINGS]));
+            tools.extend(own(&[
+                mcp::SUBMIT_PLAN,
+                mcp::LIST_FINDINGS,
+                mcp::LIST_SCHEDULES,
+            ]));
             tools.extend(skills);
             tools.extend(interactive);
             ChatTurnShape {
@@ -183,7 +191,11 @@ pub fn chat_mode_shape(mode: &str, set: &Settings, child: bool) -> ChatTurnShape
             ]));
             tools.extend(skills);
             tools.extend(interactive);
-            tools.push(mcp::RENAME_BRANCH.into());
+            tools.extend(own(&[
+                mcp::RENAME_BRANCH,
+                mcp::RUN_BACKGROUND,
+                mcp::STOP_TERMINAL,
+            ]));
             let append_prompt = if child {
                 join_append_prompt(
                     &join_append_prompt(
@@ -200,6 +212,9 @@ pub fn chat_mode_shape(mode: &str, set: &Settings, child: bool) -> ChatTurnShape
                     mcp::READ_CHILD,
                     mcp::ARCHIVE_CHILD,
                     mcp::MESSAGE_CHILD,
+                    mcp::CREATE_SCHEDULE,
+                    mcp::LIST_SCHEDULES,
+                    mcp::DELETE_SCHEDULE,
                 ]));
                 join_append_prompt(
                     &join_append_prompt(AGENT_APPEND_PROMPT, SKILLS_TOOLS_APPEND_PROMPT),

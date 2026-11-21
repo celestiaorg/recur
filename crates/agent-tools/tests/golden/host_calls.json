@@ -3836,7 +3836,7 @@
     "calls": []
   },
   {
-    "tool": "update_plan_step",
+    "tool": "update_todos",
     "agent": "PA",
     "ws": "W1",
     "chat": "",
@@ -3848,84 +3848,40 @@
     "calls": []
   },
   {
-    "tool": "update_plan_step",
+    "tool": "update_todos",
     "agent": "PA",
     "ws": "W1",
     "chat": "PA2",
     "args": "",
     "result": "",
-    "error": "update_plan_step: step_id is required",
+    "error": "update_todos: items is required",
     "isError": true,
     "calls": []
   },
   {
-    "tool": "update_plan_step",
-    "agent": "PA",
-    "ws": "W1",
-    "chat": "PA2",
-    "args": "null",
-    "result": "",
-    "error": "update_plan_step: step_id is required",
-    "isError": true,
-    "calls": []
-  },
-  {
-    "tool": "update_plan_step",
+    "tool": "update_todos",
     "agent": "PA",
     "ws": "W1",
     "chat": "PA2",
     "args": "{}",
     "result": "",
-    "error": "update_plan_step: step_id is required",
+    "error": "update_todos: items is required",
     "isError": true,
     "calls": []
   },
   {
-    "tool": "update_plan_step",
+    "tool": "update_todos",
     "agent": "PA",
     "ws": "W1",
     "chat": "PA2",
     "args": "[]",
     "result": "",
-    "error": "invalid arguments: json: cannot unmarshal array into Go value of type struct { StepID string \"json:\\\"step_id\\\"\"; Status string \"json:\\\"status\\\"\"; Note string \"json:\\\"note\\\"\" }",
+    "error": "invalid arguments: json: cannot unmarshal array",
     "isError": true,
     "calls": []
   },
   {
-    "tool": "update_plan_step",
-    "agent": "PA",
-    "ws": "W1",
-    "chat": "PA2",
-    "args": "\"x\"",
-    "result": "",
-    "error": "invalid arguments: json: cannot unmarshal string into Go value of type struct { StepID string \"json:\\\"step_id\\\"\"; Status string \"json:\\\"status\\\"\"; Note string \"json:\\\"note\\\"\" }",
-    "isError": true,
-    "calls": []
-  },
-  {
-    "tool": "update_plan_step",
-    "agent": "PA",
-    "ws": "W1",
-    "chat": "PA2",
-    "args": "5",
-    "result": "",
-    "error": "invalid arguments: json: cannot unmarshal number into Go value of type struct { StepID string \"json:\\\"step_id\\\"\"; Status string \"json:\\\"status\\\"\"; Note string \"json:\\\"note\\\"\" }",
-    "isError": true,
-    "calls": []
-  },
-  {
-    "tool": "update_plan_step",
-    "agent": "PA",
-    "ws": "W1",
-    "chat": "PA2",
-    "args": "true",
-    "result": "",
-    "error": "invalid arguments: json: cannot unmarshal bool into Go value of type struct { StepID string \"json:\\\"step_id\\\"\"; Status string \"json:\\\"status\\\"\"; Note string \"json:\\\"note\\\"\" }",
-    "isError": true,
-    "calls": []
-  },
-  {
-    "tool": "update_plan_step",
+    "tool": "update_todos",
     "agent": "PA",
     "ws": "W1",
     "chat": "PA2",
@@ -3936,74 +3892,96 @@
     "calls": []
   },
   {
-    "tool": "update_plan_step",
+    "tool": "update_todos",
     "agent": "PA",
     "ws": "W1",
     "chat": "PA2",
-    "args": " { } ",
+    "args": "{\"items\":[\"x\"]}",
     "result": "",
-    "error": "update_plan_step: step_id is required",
+    "error": "update_todos: items[0] must be {id, title, status, note}: invalid arguments: json: cannot unmarshal string",
     "isError": true,
     "calls": []
   },
   {
-    "tool": "update_plan_step",
+    "tool": "update_todos",
     "agent": "PA",
     "ws": "W1",
     "chat": "PA2",
-    "args": "{\"step_id\":\"S1\",\"status\":\"DONE \",\"note\":\"n\"}",
-    "result": "Step S1 → done.",
+    "args": "{\"items\":[{\"note\":\"n\"}]}",
+    "result": "",
+    "error": "update_todos: items[0] needs an id or a title",
+    "isError": true,
+    "calls": []
+  },
+  {
+    "tool": "update_todos",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"items\":[{\"id\":\"S1\",\"status\":\"finished\"}]}",
+    "result": "",
+    "error": "update_todos: items[0].status must be pending/doing/done/skipped, got \"finished\"",
+    "isError": true,
+    "calls": []
+  },
+  {
+    "tool": "update_todos",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"items\":[{\"id\":\" S1 \",\"status\":\"Completed\",\"note\":\" n \"},{\"title\":\"Add tests\",\"status\":\"in_progress\"},{\"id\":\"S2\",\"status\":\"cancelled\"}]}",
+    "result": "Steps:\nS1 [done] A",
     "error": "",
     "isError": false,
     "calls": [
       {
         "agent": "PA",
-        "id": "S1",
-        "method": "UpdatePlanStep",
-        "note": "n",
-        "status": "done",
+        "items": [
+          {
+            "id": "S1",
+            "note": "n",
+            "status": "done",
+            "title": ""
+          },
+          {
+            "id": "",
+            "note": "",
+            "status": "doing",
+            "title": "Add tests"
+          },
+          {
+            "id": "S2",
+            "note": "",
+            "status": "skipped",
+            "title": ""
+          }
+        ],
+        "method": "UpdateTodos",
         "ws": "W1"
       }
     ]
   },
   {
-    "tool": "update_plan_step",
+    "tool": "update_todos",
     "agent": "PA",
     "ws": "W1",
     "chat": "PA2",
-    "args": "{\"step_id\":\"S1\",\"status\":\"finished\"}",
+    "args": "{\"items\":[{\"id\":\"S9\"}]}",
     "result": "",
-    "error": "update_plan_step: status must be pending/doing/done/skipped, got \"finished\"",
+    "error": "no todo with id \"S9\"",
     "isError": true,
-    "calls": []
-  },
-  {
-    "tool": "update_plan_step",
-    "agent": "PA",
-    "ws": "W1",
-    "chat": "PA2",
-    "args": "{\"step_id\":\" \",\"status\":\"done\"}",
-    "result": "",
-    "error": "update_plan_step: step_id is required",
-    "isError": true,
-    "calls": []
-  },
-  {
-    "tool": "update_plan_step",
-    "agent": "PA",
-    "ws": "W1",
-    "chat": "PA2",
-    "args": "{\"step_id\":\"S2\",\"status\":\"doing\"}",
-    "result": "Step S2 → doing.",
-    "error": "",
-    "isError": false,
     "calls": [
       {
         "agent": "PA",
-        "id": "S2",
-        "method": "UpdatePlanStep",
-        "note": "",
-        "status": "doing",
+        "items": [
+          {
+            "id": "S9",
+            "note": "",
+            "status": "",
+            "title": ""
+          }
+        ],
+        "method": "UpdateTodos",
         "ws": "W1"
       }
     ]
@@ -8171,5 +8149,343 @@
         "ws": "W1"
       }
     ]
+  },
+  {
+    "tool": "read_terminal",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"id\":\"t2\",\"wait_ms\":5000,\"until\":\"ready\"}",
+    "result": "out\n",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "id": "t2",
+        "method": "ReadTerminal",
+        "tail": 0,
+        "ws": "W1",
+        "waitMs": 5000,
+        "until": "ready"
+      }
+    ]
+  },
+  {
+    "tool": "run_background",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"command\":\"npm run dev\"}",
+    "result": "{\"id\":\"bg-1\"}",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "method": "RunBackground",
+        "ws": "W1",
+        "title": "",
+        "cwd": "",
+        "notifyOnExit": true,
+        "command": "npm run dev"
+      }
+    ]
+  },
+  {
+    "tool": "run_background",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"command\":\"make watch\",\"title\":\"watch\",\"cwd\":\"web\",\"notify_on_exit\":false}",
+    "result": "{\"id\":\"bg-1\"}",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "method": "RunBackground",
+        "ws": "W1",
+        "title": "watch",
+        "cwd": "web",
+        "notifyOnExit": false,
+        "command": "make watch"
+      }
+    ]
+  },
+  {
+    "tool": "run_background",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"command\":\"  \"}",
+    "result": "",
+    "error": "command is required",
+    "isError": true,
+    "calls": []
+  },
+  {
+    "tool": "run_background",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{}",
+    "result": "",
+    "error": "command is required",
+    "isError": true,
+    "calls": []
+  },
+  {
+    "tool": "stop_terminal",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"id\":\"bg-1\"}",
+    "result": "stopped background process bg-1",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "id": "bg-1",
+        "method": "StopTerminal",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "stop_terminal",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"id\":\"t1\"}",
+    "result": "",
+    "error": "terminal t1 is a tab the user opened",
+    "isError": true,
+    "calls": [
+      {
+        "agent": "PA",
+        "id": "t1",
+        "method": "StopTerminal",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "stop_terminal",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{}",
+    "result": "",
+    "error": "id is required",
+    "isError": true,
+    "calls": []
+  },
+  {
+    "tool": "schedule_wakeup",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"delay_seconds\":600,\"reason\":\" CI run \"}",
+    "result": "Wakeup set in 600s",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "delay": 600,
+        "method": "ScheduleWakeup",
+        "reason": "CI run",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "schedule_wakeup",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"delay_seconds\":5,\"reason\":\"soon\"}",
+    "result": "Wakeup set in 60s",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "delay": 60,
+        "method": "ScheduleWakeup",
+        "reason": "soon",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "schedule_wakeup",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"delay_seconds\":999999,\"reason\":\"later\"}",
+    "result": "Wakeup set in 86400s",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "delay": 86400,
+        "method": "ScheduleWakeup",
+        "reason": "later",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "schedule_wakeup",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"delay_seconds\":600,\"reason\":\"  \"}",
+    "result": "",
+    "error": "reason is required",
+    "isError": true,
+    "calls": []
+  },
+  {
+    "tool": "create_schedule",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"name\":\" Nightly \",\"prompt\":\"Run tests\",\"cadence\":\"cron\",\"cron\":\"0 9 * * *\",\"mode\":\"agent\"}",
+    "result": "{\"id\":\"s1\"}",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "baseBranch": "",
+        "cadence": "cron",
+        "cron": "0 9 * * *",
+        "date": "",
+        "method": "CreateSchedule",
+        "mode": "agent",
+        "model": "",
+        "name": "Nightly",
+        "prompt": "Run tests",
+        "time": "",
+        "timeZone": "",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "create_schedule",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"name\":\"N\",\"prompt\":\"p\",\"cadence\":\"once\",\"date\":\"2026-12-01\",\"time\":\"09:30\",\"time_zone\":\"Europe/Paris\",\"mode\":\"ask\",\"model\":\"codex/gpt\",\"base_branch\":\"dev\"}",
+    "result": "{\"id\":\"s1\"}",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "baseBranch": "dev",
+        "cadence": "once",
+        "cron": "",
+        "date": "2026-12-01",
+        "method": "CreateSchedule",
+        "mode": "ask",
+        "model": "codex/gpt",
+        "name": "N",
+        "prompt": "p",
+        "time": "09:30",
+        "timeZone": "Europe/Paris",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "create_schedule",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"name\":\"N\",\"prompt\":\"p\",\"cadence\":\"cron\",\"cron\":\"bad\",\"mode\":\"agent\"}",
+    "result": "",
+    "error": "invalid cron expression: bad",
+    "isError": true,
+    "calls": [
+      {
+        "agent": "PA",
+        "baseBranch": "",
+        "cadence": "cron",
+        "cron": "bad",
+        "date": "",
+        "method": "CreateSchedule",
+        "mode": "agent",
+        "model": "",
+        "name": "N",
+        "prompt": "p",
+        "time": "",
+        "timeZone": "",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "create_schedule",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"name\":\"\",\"prompt\":\"p\",\"cadence\":\"cron\",\"mode\":\"agent\"}",
+    "result": "",
+    "error": "name and prompt are required",
+    "isError": true,
+    "calls": []
+  },
+  {
+    "tool": "list_schedules",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{}",
+    "result": "{\"count\":0,\"schedules\":[]}",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "method": "ListSchedules",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "delete_schedule",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{\"id\":\"s1\"}",
+    "result": "{\"id\":\"s1\",\"deleted\":true}",
+    "error": "",
+    "isError": false,
+    "calls": [
+      {
+        "agent": "PA",
+        "id": "s1",
+        "method": "DeleteSchedule",
+        "ws": "W1"
+      }
+    ]
+  },
+  {
+    "tool": "delete_schedule",
+    "agent": "PA",
+    "ws": "W1",
+    "chat": "PA2",
+    "args": "{}",
+    "result": "",
+    "error": "id is required",
+    "isError": true,
+    "calls": []
   }
 ]

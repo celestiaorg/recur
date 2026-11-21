@@ -74,6 +74,10 @@ pub struct ChatProps {
     pub turn_started_at: i64,
     /// Setup / wait copy shown as a turn-status row while the worktree allocates.
     pub status_text: String,
+    /// A pending schedule_wakeup (unix ms, 0 = none) and its reason: an idle chat
+    /// counts down to it in the turn-status row.
+    pub wakeup_due_at: i64,
+    pub wakeup_reason: String,
     /// A loop walk is live on this tab: Stop even when the conductor is not sending.
     pub can_stop: bool,
     /// Idle with held follow-ups (after Stop): Send / Enter flushes the queue.
@@ -126,6 +130,8 @@ impl Default for ChatProps {
             can_steer: false,
             turn_started_at: 0,
             status_text: String::new(),
+            wakeup_due_at: 0,
+            wakeup_reason: String::new(),
             can_stop: false,
             can_flush_queue: false,
             compact: false,
@@ -596,6 +602,8 @@ pub struct AgentChat {
 
     // ---- the turn clock ----
     pub(crate) turn_elapsed_sec: i64,
+    /// Seconds until the pending wakeup; 0 when none is counting down.
+    pub(crate) wakeup_left_sec: i64,
     pub(crate) clock_origin: i64,
     pub(crate) clock_key: String,
     pub(crate) clock_task: Option<Task<()>>,
@@ -810,6 +818,7 @@ impl AgentChat {
             digest_status_by_id: HashMap::new(),
             digest_status_busy: String::new(),
             turn_elapsed_sec: 0,
+            wakeup_left_sec: 0,
             clock_origin: 0,
             clock_key: String::new(),
             clock_task: None,
@@ -1940,16 +1949,26 @@ impl AgentChat {
             && self.chat_escalation(cx).is_none()
     }
 
+    /// Whether an idle chat counts down to a pending wakeup.
+    fn wakeup_counting(&self) -> bool {
+        !self.props.sending && self.props.wakeup_due_at > now_ms()
+    }
+
     pub(crate) fn sync_turn_clock(&mut self, cx: &mut Context<Self>) {
-        if !self.show_turn_elapsed(cx) {
+        let elapsed = self.show_turn_elapsed(cx);
+        if !elapsed && !self.wakeup_counting() {
             self.turn_elapsed_sec = 0;
+            self.wakeup_left_sec = 0;
             self.clock_origin = 0;
             self.clock_key.clear();
             self.clock_task = None;
             return;
         }
         let key = self.props.reset_key.clone();
-        if self.props.turn_started_at > 0 {
+        if !elapsed {
+            self.clock_origin = 0;
+            self.clock_key = key;
+        } else if self.props.turn_started_at > 0 {
             self.clock_origin = self.props.turn_started_at;
             self.clock_key = key;
         } else if self.clock_origin == 0 || self.clock_key != key {
@@ -1963,9 +1982,9 @@ impl AgentChat {
                 loop {
                     cx.background_executor().timer(CLOCK_TICK).await;
                     let alive = this.update(cx, |c, cx| {
-                        let before = c.turn_elapsed_sec;
+                        let before = (c.turn_elapsed_sec, c.wakeup_left_sec);
                         c.tick_clock();
-                        if c.turn_elapsed_sec != before {
+                        if (c.turn_elapsed_sec, c.wakeup_left_sec) != before {
                             cx.notify();
                         }
                     });
@@ -1978,7 +1997,17 @@ impl AgentChat {
     }
 
     fn tick_clock(&mut self) {
-        self.turn_elapsed_sec = ((now_ms() - self.clock_origin) / 1000).max(0);
+        let now = now_ms();
+        self.turn_elapsed_sec = if self.clock_origin > 0 {
+            ((now - self.clock_origin) / 1000).max(0)
+        } else {
+            0
+        };
+        self.wakeup_left_sec = if self.props.sending {
+            0
+        } else {
+            ((self.props.wakeup_due_at - now + 999) / 1000).max(0)
+        };
     }
 
     pub(crate) fn first_checkpoint(&self, msgs: &[AgentMsg], blocks: &[Block], cx: &App) -> bool {

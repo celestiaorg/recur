@@ -12,7 +12,7 @@ When the human wants work to continue, pick by whether the walk is live: not phr
 - live walk paused at a checkpoint: Resume continues it; do not reenter_phase
 - walk already running: do not restart
 
-- plan / edit_plan / submit_plan / update_plan_step: steer or rewrite the structured plan
+- plan / edit_plan / submit_plan / update_todos: steer or rewrite the structured plan
 - dispatch_specialist: rare one-shot extra
 - reenter_phase: no live walk; start a new walk from a graph phase
 - run_phase: on-demand phases only (e.g. security)

@@ -40,6 +40,48 @@ pub struct TerminalInfo {
     /// Set when exited, including 0 (clean exit).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i64>,
+    /// A process started with run_background (not a tab the user opened).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub background: bool,
+    /// The chat that started a background process.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub started_by: String,
+}
+
+/// A read_terminal call. `wait_ms` > 0 waits for `until` (a regex over the
+/// tail), the process's exit, or the end of the wait, whichever comes first.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ReadTerminalRequest {
+    pub id: String,
+    pub tail_lines: i64,
+    pub wait_ms: i64,
+    pub until: String,
+}
+
+/// A run_background call. Empty `cwd` is the worktree root; relative paths
+/// resolve against it.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BackgroundRequest {
+    pub command: String,
+    pub title: String,
+    pub cwd: String,
+    pub notify_on_exit: bool,
+}
+
+/// A create_schedule call. Empty `time_zone`, `model` and `base_branch` take
+/// the engine's defaults (machine zone, Settings model, project base).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ScheduleRequest {
+    pub name: String,
+    pub prompt: String,
+    pub cadence: String,
+    pub date: String,
+    pub time: String,
+    pub cron: String,
+    pub time_zone: String,
+    pub mode: String,
+    pub model: String,
+    pub base_branch: String,
 }
 
 /// A submit_plan payload. MCP callers omit `step_ids` (the engine assigns
@@ -64,6 +106,16 @@ pub struct PlanStepMeta {
     /// The object form ({title, files, depends_on}): its lists are
     /// authoritative even when empty. A bare string title leaves them unset.
     pub explicit: bool,
+}
+
+/// One update_todos item: no `id` appends a step, an `id` patches only the
+/// non-empty fields. Status is already normalized to the plan vocabulary.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TodoUpdate {
+    pub id: String,
+    pub title: String,
+    pub status: String,
+    pub note: String,
 }
 
 /// The create_project tool input. Empty `path` means a folder named after the project
@@ -403,15 +455,14 @@ pub trait Host: Send + Sync {
         "ignored".into()
     }
 
-    async fn update_plan_step(
+    /// Returns the full plan board after the update.
+    async fn update_todos(
         &self,
         _ws: &str,
         _agent: &str,
-        _step_id: &str,
-        _status: &str,
-        _note: &str,
-    ) -> String {
-        "ignored".into()
+        _items: Vec<TodoUpdate>,
+    ) -> Result<String, HostError> {
+        Ok("ignored".into())
     }
 
     // ---- Skills, terminals
@@ -439,12 +490,68 @@ pub trait Host: Send + Sync {
     /// `tail_lines` 0 means the default tail.
     async fn read_terminal(
         &self,
+        _cancel: &CancellationToken,
+        _ws: &str,
+        _agent: &str,
+        _req: ReadTerminalRequest,
+    ) -> Result<String, HostError> {
+        Err(HostError::new("no terminals"))
+    }
+
+    /// Starts a Recur-owned background process; the result carries its
+    /// terminal id.
+    async fn run_background(
+        &self,
+        _cancel: &CancellationToken,
+        _ws: &str,
+        _agent: &str,
+        _req: BackgroundRequest,
+    ) -> Result<String, HostError> {
+        Err(HostError::new("no terminals"))
+    }
+
+    /// Stops a background process. Tabs the user opened are refused.
+    async fn stop_terminal(&self, _ws: &str, _agent: &str, _id: &str) -> Result<String, HostError> {
+        Err(HostError::new("no terminals"))
+    }
+
+    /// Replaces this chat's pending wakeup: a notice turn carrying `reason`
+    /// after `delay_secs` (already clamped).
+    async fn schedule_wakeup(
+        &self,
+        _ws: &str,
+        _agent: &str,
+        _delay_secs: i64,
+        _reason: &str,
+    ) -> Result<String, HostError> {
+        Err(HostError::new("no wakeups"))
+    }
+
+    /// Creates a scheduled prompt in the workspace's project.
+    async fn create_schedule(
+        &self,
+        _cancel: &CancellationToken,
+        _ws: &str,
+        _agent: &str,
+        _req: ScheduleRequest,
+    ) -> Result<String, HostError> {
+        Err(HostError::new("no schedules"))
+    }
+
+    /// The workspace's project's scheduled prompts as JSON.
+    async fn list_schedules(&self, _ws: &str, _agent: &str) -> Result<String, HostError> {
+        Err(HostError::new("no schedules"))
+    }
+
+    /// Deletes one of the project's scheduled prompts.
+    async fn delete_schedule(
+        &self,
+        _cancel: &CancellationToken,
         _ws: &str,
         _agent: &str,
         _id: &str,
-        _tail_lines: i64,
     ) -> Result<String, HostError> {
-        Err(HostError::new("no terminals"))
+        Err(HostError::new("no schedules"))
     }
 
     // ---- Ask Recur (app coordinator only)

@@ -10,6 +10,7 @@ mod findings;
 mod hands;
 mod loop_flow;
 mod plans;
+mod schedules;
 mod skills;
 mod terminals;
 
@@ -33,9 +34,12 @@ pub use hands::{
 pub use loop_flow::{
     AttachEvidenceTool, DoneTool, EscalateTool, PlanTool, ReportResultTool, SendBackTool,
 };
-pub use plans::{SubmitPlanTool, UpdatePlanStepTool};
+pub use plans::{SubmitPlanTool, UpdateTodosTool};
+pub use schedules::{
+    CreateScheduleTool, DeleteScheduleTool, ListSchedulesTool, ScheduleWakeupTool,
+};
 pub use skills::{ActivateSkillTool, ListSkillsTool};
-pub use terminals::{ListTerminalsTool, ReadTerminalTool};
+pub use terminals::{ListTerminalsTool, ReadTerminalTool, RunBackgroundTool, StopTerminalTool};
 
 use recur_domain::Severity;
 use serde::Serialize;

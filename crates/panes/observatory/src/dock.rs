@@ -27,7 +27,9 @@ use recur_terminal_view::{
 };
 use recur_ui::text::{TextStyled, text};
 use recur_ui::tooltip::titled;
-use recur_ui::widgets::{Axis, Edge, resize_handle, tab_chip, tab_strip, tab_strip_action};
+use recur_ui::widgets::{
+    Axis, ChipIcon, Edge, resize_handle, tab_chip, tab_strip, tab_strip_action,
+};
 use recur_ui::{IconName, Theme, icon};
 use recur_view_core::chat::WorkspaceTerminalTab;
 use recur_view_core::prefs::PanelKey;
@@ -104,6 +106,8 @@ pub struct Tab {
     pub title: String,
     pub exited: bool,
     pub busy: bool,
+    /// An agent's background process: closing hides the tab, Stop kills it.
+    pub background: bool,
 }
 
 /// What the dock tells the Observatory (`onTabsChange`).
@@ -150,6 +154,10 @@ pub struct TerminalDock {
     seen_workspace: Option<recur_domain::Workspace>,
     /// The terminal theme context and what it was built from (`theme_key`).
     theme_memo: Option<(u64, ThemeContext)>,
+    /// Background sessions whose tab the user closed (running, or exited until dismissed).
+    hidden: Vec<recur_term::Info>,
+    bg_menu: bool,
+    bg_hover: bool,
     _subs: Vec<Subscription>,
 }
 
@@ -265,6 +273,9 @@ impl TerminalDock {
             released: false,
             seen_workspace: None,
             theme_memo: None,
+            hidden: Vec::new(),
+            bg_menu: false,
+            bg_hover: false,
             _subs: subs,
         };
         d.mount(window, cx);
@@ -373,7 +384,8 @@ impl TerminalDock {
         .detach();
     }
 
-    /// `onMount`: adopt live shells, else restore the last tabs, else spawn one.
+    /// `onMount`: restore the last tabs unless a user shell is live, adopt
+    /// them with the live ones, else spawn one.
     fn mount(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let svc = self.services.clone();
         let ws = self.workspace_id.clone();
@@ -384,14 +396,12 @@ impl TerminalDock {
                 "Failed to list terminals",
             )
             .await;
-            let usable: Vec<_> = existing
+            let mut usable: Vec<_> = existing
                 .unwrap_or_default()
                 .into_iter()
-                .filter(|t| !t.id.is_empty())
+                .filter(|t| !t.id.is_empty() && !t.hidden)
                 .collect();
-            if !usable.is_empty() {
-                let _ = this.update_in(cx, |d, window, cx| d.adopt(usable, window, cx));
-            } else {
+            if usable.iter().all(|t| t.background) {
                 cx.background_executor()
                     .timer(Duration::from_millis(0))
                     .await;
@@ -404,22 +414,25 @@ impl TerminalDock {
                     "Failed to restore terminals",
                 )
                 .await;
-                let restored: Vec<_> = restored
+                let mut restored: Vec<_> = restored
                     .unwrap_or_default()
                     .into_iter()
-                    .filter(|t| !t.id.is_empty())
+                    .filter(|t| !t.id.is_empty() && !usable.iter().any(|u| u.id == t.id))
                     .collect();
-                if !restored.is_empty() {
-                    let _ = this.update_in(cx, |d, window, cx| d.adopt(restored, window, cx));
-                } else if let Ok(t) =
-                    this.update_in(cx, |d, window, cx| d.spawn(None, false, window, cx))
-                {
-                    t.await;
-                }
+                restored.append(&mut usable);
+                usable = restored;
+            }
+            if !usable.is_empty() {
+                let _ = this.update_in(cx, |d, window, cx| d.adopt(usable, window, cx));
+            } else if let Ok(t) =
+                this.update_in(cx, |d, window, cx| d.spawn(None, false, window, cx))
+            {
+                t.await;
             }
             let _ = this.update_in(cx, |d, window, cx| {
                 d.claim_run_tabs(cx);
                 d.loading = false;
+                d.adopt_new(window, cx);
                 d.state_changed(window, cx);
                 cx.notify();
             });
@@ -457,6 +470,7 @@ impl TerminalDock {
     }
 
     fn adopt(&mut self, list: Vec<recur_term::Info>, window: &mut Window, cx: &mut Context<Self>) {
+        let list: Vec<_> = list.into_iter().filter(|t| !t.hidden).collect();
         self.tabs = list
             .iter()
             .map(|t| Tab {
@@ -468,6 +482,7 @@ impl TerminalDock {
                 },
                 exited: t.exited,
                 busy: t.busy,
+                background: t.background,
             })
             .collect();
         let focused = list
@@ -483,6 +498,108 @@ impl TerminalDock {
         self.set_active_remote(&id, cx);
         self.ensure_panes(window, cx);
         self.emit_tabs(cx);
+    }
+
+    /// Appends sessions started elsewhere (an agent's background process) without moving focus,
+    /// and refreshes the hidden background list.
+    fn adopt_new(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let svc = self.services.clone();
+        let ws = self.workspace_id.clone();
+        cx.spawn_in(window, async move |this, cx| {
+            let Ok(list) = svc.terminal.list_terminals(&ws).await else {
+                return;
+            };
+            let _ = this.update_in(cx, |d, window, cx| {
+                d.set_hidden(&list, cx);
+                let known: Vec<String> = d.tabs.iter().map(|t| t.id.clone()).collect();
+                let fresh: Vec<Tab> = list
+                    .into_iter()
+                    .filter(|t| !t.hidden && !t.exited && !known.contains(&t.id))
+                    .map(|t| Tab {
+                        id: t.id,
+                        title: t.title,
+                        exited: false,
+                        busy: t.busy,
+                        background: t.background,
+                    })
+                    .collect();
+                if fresh.is_empty() {
+                    return;
+                }
+                d.tabs.extend(fresh);
+                if d.active_id.is_empty() {
+                    d.active_id = d.tabs[0].id.clone();
+                    let id = d.active_id.clone();
+                    d.set_active_remote(&id, cx);
+                }
+                d.ensure_panes(window, cx);
+                d.emit_tabs(cx);
+            });
+        })
+        .detach();
+    }
+
+    fn set_hidden(&mut self, list: &[recur_term::Info], cx: &mut Context<Self>) {
+        self.hidden = list.iter().filter(|t| t.hidden).cloned().collect();
+        self.bg_menu &= !self.hidden.is_empty();
+        cx.notify();
+    }
+
+    fn refresh_hidden(&mut self, cx: &mut Context<Self>) {
+        let svc = self.services.clone();
+        let ws = self.workspace_id.clone();
+        cx.spawn(async move |this, cx| {
+            if let Ok(list) = svc.terminal.list_terminals(&ws).await {
+                let _ = this.update(cx, |d, cx| d.set_hidden(&list, cx));
+            }
+        })
+        .detach();
+    }
+
+    /// Shows a hidden background session's tab again; attaching repaints it from the replay.
+    fn reopen_hidden(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+        self.bg_menu = false;
+        let Some(i) = self.hidden.iter().position(|t| t.id == id) else {
+            return;
+        };
+        let t = self.hidden.remove(i);
+        self.tabs.push(Tab {
+            title: match (t.exited, t.exit_code) {
+                (true, Some(code)) => format!("{}: exited ({code})", t.title),
+                _ => t.title,
+            },
+            id: t.id,
+            exited: t.exited,
+            busy: t.busy,
+            background: true,
+        });
+        self.select_tab(id, window, cx);
+    }
+
+    /// Stops a hidden background process (or dismisses an exited one).
+    fn stop_hidden(&mut self, id: &str, cx: &mut Context<Self>) {
+        self.hidden.retain(|t| t.id != id);
+        self.bg_menu &= !self.hidden.is_empty();
+        cx.notify();
+        let svc = self.services.clone();
+        let id = id.to_string();
+        cx.spawn(async move |_, cx| {
+            call(
+                cx,
+                svc.terminal.close_terminal(&id),
+                "Failed to stop background process",
+            )
+            .await;
+        })
+        .detach();
+    }
+
+    /// Kills a background process and closes its tab.
+    fn stop_tab(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(t) = self.tabs.iter_mut().find(|t| t.id == id) {
+            t.background = false;
+        }
+        self.close_tab(id, window, cx);
     }
 
     /// The terminal theme context, rebuilt only when its theme or catalog changed.
@@ -617,6 +734,7 @@ impl TerminalDock {
                     title: t,
                     exited: false,
                     busy: false,
+                    background: false,
                 });
                 d.active_id = info.id.clone();
                 d.set_active_remote(&info.id, cx);
@@ -666,8 +784,13 @@ impl TerminalDock {
         }
     }
 
-    /// `closeTab`: kill the shell; closing the last tab closes the drawer.
+    /// `closeTab`: kill the shell (hide a live background process); closing the last tab
+    /// closes the drawer.
     pub fn close_tab(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
+        let hide = self
+            .tabs
+            .iter()
+            .any(|t| t.id == id && t.background && !t.exited);
         self.drop_pane(id, cx);
         let was_active = self.active_id == id;
         let idx = self.tabs.iter().position(|t| t.id == id).unwrap_or(0);
@@ -702,12 +825,22 @@ impl TerminalDock {
         let id = id.to_string();
         let empty = self.tabs.is_empty();
         cx.spawn(async move |this, cx| {
-            call(
-                cx,
-                svc.terminal.close_terminal(&id),
-                "Failed to close terminal",
-            )
-            .await;
+            if hide {
+                call(
+                    cx,
+                    svc.terminal.hide_terminal(&id),
+                    "Failed to hide terminal",
+                )
+                .await;
+                let _ = this.update(cx, |d, cx| d.refresh_hidden(cx));
+            } else {
+                call(
+                    cx,
+                    svc.terminal.close_terminal(&id),
+                    "Failed to close terminal",
+                )
+                .await;
+            }
             if empty {
                 let _ = this.update(cx, |d, cx| {
                     if d.global() {
@@ -826,6 +959,9 @@ impl TerminalDock {
     /// Run requests and focus requests from elsewhere (titlebar, palette, chat chips).
     fn state_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let ws = self.workspace_id.clone();
+        if !self.loading && self.state.update(cx, |s, _| s.take_opened_terminals(&ws)) {
+            self.adopt_new(window, cx);
+        }
         if !self.loading
             && self
                 .state
@@ -1240,6 +1376,11 @@ impl TerminalDock {
         let (run_name, running) = self.dock_run(cx);
         let lit = self.props.lit;
         let n = self.tabs.len();
+        let live_bg = self
+            .tabs
+            .iter()
+            .find(|t| t.id == self.active_id && t.background && !t.exited)
+            .map(|t| t.id.clone());
         let mut strip = tab_strip(
             SharedString::from(format!("term-tabs-{ws}")),
             "Terminal sessions",
@@ -1266,7 +1407,15 @@ impl TerminalDock {
             .lit(lit)
             .muted(tab.exited)
             .reorderable(n > 1)
-            .close_label(format!("Close {}", tab.title))
+            .when(tab.background, |c| {
+                c.icon(ChipIcon::App(IconName::Activity, None))
+                    .title(format!("{} (background process)", tab.title))
+            })
+            .close_label(if tab.background && !tab.exited {
+                format!("Hide {} (keeps running)", tab.title)
+            } else {
+                format!("Close {}", tab.title)
+            })
             .on_click(cx.guarded_listener(move |d, _, window, cx| d.select_tab(&id1, window, cx)))
             .on_close(cx.guarded_listener(move |d, _, window, cx| d.close_tab(&id2, window, cx)))
             .on_key_down({
@@ -1304,6 +1453,21 @@ impl TerminalDock {
                         .size(px(15.)),
                     )
                     .on_click(cx.guarded_listener(|d, _, window, cx| d.run_or_stop(window, cx))),
+            ));
+        }
+        if !self.hidden.is_empty() {
+            strip = strip.trailing(self.render_hidden(cx));
+        }
+        if let Some(id) = live_bg {
+            strip = strip.trailing(titled(
+                "term-stop-t",
+                "Stop background process",
+                tab_strip_action("term-stop", false, false, cx)
+                    .debug_selector(|| "term-act:stop".into())
+                    .child(icon(IconName::SquareFill).size(px(15.)))
+                    .on_click(
+                        cx.guarded_listener(move |d, _, window, cx| d.stop_tab(&id, window, cx)),
+                    ),
             ));
         }
         strip = strip
@@ -1584,6 +1748,134 @@ pub(crate) fn dock_key(
         "t" => Some(DockKey::NewTab),
         "w" if has_active => Some(DockKey::CloseTab),
         _ => None,
+    }
+}
+
+impl TerminalDock {
+    /// The hidden background processes: a count that opens a list to reopen or stop them.
+    fn render_hidden(&self, cx: &mut Context<Self>) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let n = self.hidden.len();
+        let trigger = titled(
+            "term-bg-t",
+            format!("Hidden background processes ({n})"),
+            tab_strip_action("term-bg", self.bg_menu, false, cx)
+                .debug_selector(|| "term-act:hidden".into())
+                .gap(px(3.))
+                .child(icon(IconName::Activity).size(px(15.)))
+                .child(text(n.to_string()).size(11.).tabular())
+                .on_hover(cx.guarded_listener(|d, on: &bool, _, _| d.bg_hover = *on))
+                .on_click(cx.guarded_listener(|d, _, _, cx| {
+                    d.bg_menu = !d.bg_menu;
+                    if d.bg_menu {
+                        d.refresh_hidden(cx);
+                    }
+                    cx.notify();
+                })),
+        );
+        let mut root = div().relative().child(trigger);
+        if !self.bg_menu {
+            return root.into_any_element();
+        }
+        let now = chrono::Utc::now();
+        let mut menu = recur_ui::style::menu_panel(cx)
+            .id("term-bg-menu")
+            .debug_selector(|| "term-bg-menu".into())
+            .w(px(300.))
+            .occlude()
+            .on_mouse_down_out(cx.guarded_listener(|d, _, _, cx| {
+                if !d.bg_hover {
+                    d.bg_menu = false;
+                    cx.notify();
+                }
+            }));
+        for h in &self.hidden {
+            let status = if h.exited {
+                format!("exited ({})", h.exit_code.unwrap_or(-1))
+            } else {
+                chrono::DateTime::parse_from_rfc3339(&h.created_at).map_or_else(
+                    |_| "running".into(),
+                    |at| {
+                        let sec = (now - at.with_timezone(&chrono::Utc)).num_seconds();
+                        format!("running {}", recur_view_core::format::format_elapsed(sec))
+                    },
+                )
+            };
+            let (id1, id2) = (h.id.clone(), h.id.clone());
+            let stop = if h.exited { "Dismiss" } else { "Stop" };
+            menu = menu.child(
+                div()
+                    .id(SharedString::from(format!("term-bg-row-{}", h.id)))
+                    .debug_selector(move || format!("term-bg-row:{id1}"))
+                    .flex()
+                    .items_center()
+                    .gap(px(8.))
+                    .py(px(6.))
+                    .px(px(8.))
+                    .rounded(px(5.))
+                    .cursor_pointer()
+                    .hover(|s| s.bg(hsla(t.pane)))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .flex()
+                            .flex_col()
+                            .child(text(h.title.clone()).size(12.5).color(t.text).truncate())
+                            .child(text(status).size(11.).color(t.faint).tabular()),
+                    )
+                    .child(titled(
+                        SharedString::from(format!("term-bg-stop-t-{}", h.id)),
+                        format!("{stop} {}", h.title),
+                        tab_strip_action(
+                            SharedString::from(format!("term-bg-stop-{}", h.id)),
+                            false,
+                            false,
+                            cx,
+                        )
+                        .debug_selector({
+                            let id = h.id.clone();
+                            move || format!("term-bg-stop:{id}")
+                        })
+                        .child(
+                            icon(if h.exited {
+                                IconName::X
+                            } else {
+                                IconName::SquareFill
+                            })
+                            .size(px(13.)),
+                        )
+                        .on_click(cx.guarded_listener(
+                            move |d, _, _, cx| {
+                                cx.stop_propagation();
+                                d.stop_hidden(&id2, cx);
+                            },
+                        )),
+                    ))
+                    .on_click({
+                        let id = h.id.clone();
+                        cx.guarded_listener(move |d, _, window, cx| {
+                            d.reopen_hidden(&id, window, cx)
+                        })
+                    }),
+            );
+        }
+        root = root.child(
+            gpui_kit::deferred(
+                div()
+                    .absolute()
+                    .top(gpui_kit::relative(1.))
+                    .right_0()
+                    .mt(px(4.))
+                    .child(recur_ui::shadow::with_shadow(
+                        menu,
+                        &recur_ui::style::MENU_SHADOW,
+                        8.,
+                    )),
+            )
+            .with_priority(210),
+        );
+        root.into_any_element()
     }
 }
 

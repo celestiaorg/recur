@@ -39,7 +39,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -90,7 +90,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -142,7 +142,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -191,7 +191,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -240,7 +240,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -287,7 +287,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -334,7 +334,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -381,7 +381,7 @@
     "--append-system-prompt",
     "You are the Maestro.\n\nName the chat.\n\nThe operator is looking at PR #3.",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -428,7 +428,7 @@
     "--append-system-prompt",
     "only append",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -475,7 +475,7 @@
     "--append-system-prompt",
     "plan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co\nplan line — “quoted” \u003ctag\u003e \u0026 co",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -527,7 +527,7 @@
     "--allowedTools",
     "Read,Bash(git diff:*),mcp__recur__report_finding,mcp__recur__*",
     "--disallowedTools",
-    "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "bypassPermissions"
    ],
@@ -580,7 +580,7 @@
     "--allowedTools",
     "Read,Edit,Write,Bash,NotebookEdit",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--mcp-config",
     "{\"mcpServers\":{\"recur\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:41234/abc/mcp\"}}}",
     "--strict-mcp-config",
@@ -630,7 +630,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -724,7 +724,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--tools",
     "Read,Glob,Grep",
     "--permission-mode",
@@ -775,7 +775,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -822,7 +822,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -867,7 +867,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -913,7 +913,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -959,7 +959,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--mcp-config",
     "{\"mcpServers\":{\"recur\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:1/t/mcp\"}}}",
     "--strict-mcp-config",
@@ -1018,7 +1018,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--permission-mode",
     "dontAsk"
    ],
@@ -1063,7 +1063,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--mcp-config",
     "{\"mcpServers\":{\"playwright\":{\"args\":[\"-y\",\"@playwright/mcp@latest\"],\"command\":\"npx\"},\"recur\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:2/q/mcp\"}}}",
     "--strict-mcp-config",
@@ -1151,7 +1151,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--mcp-config",
     "{\"mcpServers\":{\"fs\":{\"args\":[\"-y\",\"@modelcontextprotocol/server-filesystem\"],\"command\":\"npx\",\"env\":{\"FOO\":\"bar\"}},\"linear\":{\"headers\":{\"Authorization\":\"Bearer lin_api_x\"},\"type\":\"http\",\"url\":\"https://mcp.linear.app/mcp\"},\"recur\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:9/tok/mcp\"}}}",
     "--strict-mcp-config",
@@ -1208,7 +1208,7 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--mcp-config",
     "",
     "--strict-mcp-config",
@@ -1256,70 +1256,13 @@
     "--thinking-display",
     "summarized",
     "--disallowedTools",
-    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings",
+    "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup",
     "--max-turns",
     "7",
     "--permission-mode",
     "acceptEdits"
    ],
    "spilled": false
-  }
- ],
- "background": [
-  {
-   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":[{\"task_id\":\"b1\"},{\"task_id\":\"w\",\"ambient\":true},{\"ambient\":false}]}",
-   "count": 2,
-   "ok": true
-  },
-  {
-   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":null}",
-   "count": 0,
-   "ok": true
-  },
-  {
-   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\"}",
-   "count": 0,
-   "ok": true
-  },
-  {
-   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":[null]}",
-   "count": 1,
-   "ok": true
-  },
-  {
-   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":[{\"ambient\":1}]}",
-   "count": 0,
-   "ok": false
-  },
-  {
-   "line": "{\"type\":\"system\",\"subtype\":\"background_tasks_changed\",\"tasks\":{}}",
-   "count": 0,
-   "ok": false
-  },
-  {
-   "line": "{\"type\":null,\"subtype\":\"background_tasks_changed\",\"tasks\":[]}",
-   "count": 0,
-   "ok": false
-  },
-  {
-   "line": "{\"type\":\"assistant\",\"text\":\"background_tasks_changed\"}",
-   "count": 0,
-   "ok": false
-  },
-  {
-   "line": "{\"type\":\"system\",\"subtype\":\"init\"}",
-   "count": 0,
-   "ok": false
-  },
-  {
-   "line": "not json \"background_tasks_changed\"",
-   "count": 0,
-   "ok": false
-  },
-  {
-   "line": "[1,\"background_tasks_changed\"]",
-   "count": 0,
-   "ok": false
   }
  ],
  "flags": [

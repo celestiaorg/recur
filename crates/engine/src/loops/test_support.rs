@@ -696,8 +696,8 @@ impl FanOutRunner {
                 for id in ids {
                     let _ = post_mcp_tool(
                         &req.mcp_url,
-                        "update_plan_step",
-                        json!({"step_id": id, "status": "done"}),
+                        "update_todos",
+                        json!({"items": [{"id": id, "status": "done"}]}),
                     )
                     .await;
                 }

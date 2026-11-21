@@ -8,9 +8,10 @@ use crate::common;
 use std::sync::{Arc, Mutex};
 
 use recur_agent_tools::{
-    AskUserRequest, CreateArtifactRequest, CreateWorkspaceRequest, EscalationOption,
-    EscalationRequest, Evidence, Finding, Host, HostError, PermissionAsk, PermissionVerdict,
-    PlanSubmission, TerminalInfo, host_tools,
+    AskUserRequest, BackgroundRequest, CreateArtifactRequest, CreateWorkspaceRequest,
+    EscalationOption, EscalationRequest, Evidence, Finding, Host, HostError, PermissionAsk,
+    PermissionVerdict, PlanSubmission, ReadTerminalRequest, ScheduleRequest, TerminalInfo,
+    TodoUpdate, host_tools,
 };
 use recur_domain::{
     AgentSkill, Artifact, ArtifactKind, BriefAction, BriefingCounts, BriefingSnapshot,
@@ -372,16 +373,21 @@ impl Host for Rec {
         "Plan recorded.".into()
     }
 
-    async fn update_plan_step(
+    async fn update_todos(
         &self,
         ws: &str,
         a: &str,
-        id: &str,
-        status: &str,
-        note: &str,
-    ) -> String {
-        self.rec(json!({"method": "UpdatePlanStep", "ws": ws, "agent": a, "id": id, "status": status, "note": note}));
-        format!("Step {id} → {status}.")
+        items: Vec<TodoUpdate>,
+    ) -> Result<String, HostError> {
+        let items: Vec<Value> = items
+            .iter()
+            .map(|t| json!({"id": t.id, "title": t.title, "status": t.status, "note": t.note}))
+            .collect();
+        self.rec(json!({"method": "UpdateTodos", "ws": ws, "agent": a, "items": items}));
+        if items.iter().any(|t| t["id"] == "S9") {
+            return Err(HostError::new("no todo with id \"S9\""));
+        }
+        Ok("Steps:\nS1 [done] A".into())
     }
 
     async fn list_skills(&self, ws: &str, a: &str) -> Result<Vec<AgentSkill>, HostError> {
@@ -441,16 +447,82 @@ impl Host for Rec {
 
     async fn read_terminal(
         &self,
+        _cancel: &CancellationToken,
         ws: &str,
         a: &str,
-        id: &str,
-        tail: i64,
+        req: ReadTerminalRequest,
     ) -> Result<String, HostError> {
-        self.rec(json!({"method": "ReadTerminal", "ws": ws, "agent": a, "id": id, "tail": tail}));
+        let id = req.id.as_str();
+        let mut call = json!({"method": "ReadTerminal", "ws": ws, "agent": a, "id": id, "tail": req.tail_lines});
+        if req.wait_ms != 0 || !req.until.is_empty() {
+            call["waitMs"] = json!(req.wait_ms);
+            call["until"] = json!(req.until);
+        }
+        self.rec(call);
         if id == "missing" {
             return Err(HostError::new(format!("terminal \"{id}\" not found")));
         }
         Ok("out\n".into())
+    }
+
+    async fn run_background(
+        &self,
+        _cancel: &CancellationToken,
+        ws: &str,
+        a: &str,
+        req: BackgroundRequest,
+    ) -> Result<String, HostError> {
+        self.rec(json!({"method": "RunBackground", "ws": ws, "agent": a, "command": req.command, "title": req.title, "cwd": req.cwd, "notifyOnExit": req.notify_on_exit}));
+        Ok(r#"{"id":"bg-1"}"#.into())
+    }
+
+    async fn stop_terminal(&self, ws: &str, a: &str, id: &str) -> Result<String, HostError> {
+        self.rec(json!({"method": "StopTerminal", "ws": ws, "agent": a, "id": id}));
+        if id == "t1" {
+            return Err(HostError::new("terminal t1 is a tab the user opened"));
+        }
+        Ok(format!("stopped background process {id}"))
+    }
+
+    async fn schedule_wakeup(
+        &self,
+        ws: &str,
+        a: &str,
+        delay: i64,
+        reason: &str,
+    ) -> Result<String, HostError> {
+        self.rec(json!({"method": "ScheduleWakeup", "ws": ws, "agent": a, "delay": delay, "reason": reason}));
+        Ok(format!("Wakeup set in {delay}s"))
+    }
+
+    async fn create_schedule(
+        &self,
+        _cancel: &CancellationToken,
+        ws: &str,
+        a: &str,
+        r: ScheduleRequest,
+    ) -> Result<String, HostError> {
+        self.rec(json!({"method": "CreateSchedule", "ws": ws, "agent": a, "name": r.name, "prompt": r.prompt, "cadence": r.cadence, "date": r.date, "time": r.time, "cron": r.cron, "timeZone": r.time_zone, "mode": r.mode, "model": r.model, "baseBranch": r.base_branch}));
+        if r.cron == "bad" {
+            return Err(HostError::new("invalid cron expression: bad"));
+        }
+        Ok(r#"{"id":"s1"}"#.into())
+    }
+
+    async fn list_schedules(&self, ws: &str, a: &str) -> Result<String, HostError> {
+        self.rec(json!({"method": "ListSchedules", "ws": ws, "agent": a}));
+        Ok(r#"{"count":0,"schedules":[]}"#.into())
+    }
+
+    async fn delete_schedule(
+        &self,
+        _cancel: &CancellationToken,
+        ws: &str,
+        a: &str,
+        id: &str,
+    ) -> Result<String, HostError> {
+        self.rec(json!({"method": "DeleteSchedule", "ws": ws, "agent": a, "id": id}));
+        Ok(format!(r#"{{"id":"{id}","deleted":true}}"#))
     }
 
     async fn list_workspace_briefs(&self) -> BriefingSnapshot {

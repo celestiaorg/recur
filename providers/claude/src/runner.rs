@@ -11,25 +11,21 @@
 //! prompt prefix survives (D49). With `--input-format stream-json` claude
 //! stays alive after `result` waiting for another message, so stdin MUST be
 //! closed on the result or the turn deadlocks (stdout never closes ↔ stdin
-//! never closes). Two exceptions: a plain steer still pending at the result
-//! is flushed instead (claude answers it with another result), and live
-//! background tasks hold the result, because claude kills them on stdin EOF;
-//! it runs a follow-up turn on their completion and emits another result.
-//! The hold lasts until the ceiling, restarted by each steer so a user still
-//! talking to the agent keeps reaching it.
+//! never closes). One exception: a plain steer still pending at the result
+//! is flushed instead (claude answers it with another result). Claude's own
+//! background tasks are disabled (`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` and
+//! the deny list in `args`); long-running processes go through Recur's
+//! `run_background`, so nothing needs stdin held open past the result.
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use recur_agent::{
     AgentEvent, ContextUsageTracker, EventSink, ProviderError, Steer, SteerInbox, TurnContext,
     TurnRequest, TurnResult,
 };
-use serde_json::Value;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStdin, ChildStdout, Command};
 use tokio::sync::mpsc;
-use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use crate::ClaudeConfig;
@@ -76,6 +72,7 @@ pub(crate) async fn run(
     // Node claude's `process.title` overwrites argv, hiding the turn flag `reap_stale_turns` checks.
     cmd.args(&argv)
         .env("CLAUDE_CODE_DISABLE_TERMINAL_TITLE", "1")
+        .env("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS", "1")
         .stdin(if use_stream {
             std::process::Stdio::piped()
         } else {
@@ -169,11 +166,6 @@ pub(crate) async fn run(
             steer,
             pending: Vec::new(),
             seen_tool_result: false,
-            bg_tasks: 0,
-            held: None,
-            hold_deadline: None,
-            hold_armed: false,
-            hold_ceiling: cfg.background_hold_ceiling,
             tracker: ContextUsageTracker::default(),
             api_error: ApiErrorLatch::default(),
             result: TurnResult::default(),
@@ -256,11 +248,6 @@ struct Injecting<'a> {
     steer: Option<SteerInbox>,
     pending: Vec<Pending>,
     seen_tool_result: bool,
-    bg_tasks: usize,
-    held: Option<AgentEvent>,
-    hold_deadline: Option<Instant>,
-    hold_armed: bool,
-    hold_ceiling: Duration,
     tracker: ContextUsageTracker,
     api_error: ApiErrorLatch,
     result: TurnResult,
@@ -295,10 +282,6 @@ impl Injecting<'_> {
                     self.reject_pending();
                     break;
                 }
-                _ = sleep_until(self.hold_deadline), if self.hold_deadline.is_some() => {
-                    self.hold_deadline = None;
-                    self.close_stdin();
-                }
                 s = next_steer(&mut self.steer) => match s {
                     None => self.steer = None,
                     Some(s) => self.on_steer(s).await,
@@ -308,9 +291,6 @@ impl Injecting<'_> {
                         // Process exited: plain steers that never found a slot
                         // must nack so the engine sends them as a new turn.
                         self.reject_pending();
-                        if let Some(held) = self.held.take() {
-                            self.sink.emit(held);
-                        }
                         break;
                     }
                     Some(line) => self.on_line(&line).await,
@@ -324,9 +304,6 @@ impl Injecting<'_> {
         if self.stdin.is_none() {
             s.ack(false);
             return;
-        }
-        if self.hold_deadline.is_some() {
-            self.hold_deadline = Some(Instant::now() + self.hold_ceiling);
         }
         let text = s.stdin_text();
         let user = s.user_event(true);
@@ -343,12 +320,6 @@ impl Injecting<'_> {
     }
 
     async fn on_line(&mut self, line: &[u8]) {
-        if let Some(n) = background_task_count(line) {
-            self.bg_tasks = n;
-            if n == 0 && self.held.is_some() {
-                self.close_stdin();
-            }
-        }
         let Ok(mut evs) = parse_line(line) else {
             return;
         };
@@ -366,15 +337,6 @@ impl Injecting<'_> {
                 }
                 self.result = res.clone();
                 self.have_result = true;
-                if self.bg_tasks > 0 && self.stdin.is_some() {
-                    self.held = Some(ev);
-                    if !self.hold_armed {
-                        self.hold_armed = true;
-                        self.hold_deadline = Some(Instant::now() + self.hold_ceiling);
-                    }
-                    continue;
-                }
-                self.held = None;
                 self.close_stdin();
             }
             self.sink.emit(ev);
@@ -421,58 +383,9 @@ async fn next_steer(steer: &mut Option<SteerInbox>) -> Option<Steer> {
     }
 }
 
-async fn sleep_until(deadline: Option<Instant>) {
-    match deadline {
-        Some(d) => tokio::time::sleep_until(d).await,
-        None => std::future::pending().await,
-    }
-}
-
 async fn write_line(w: &mut ChildStdin, line: &str) -> std::io::Result<()> {
     w.write_all(line.as_bytes()).await?;
     w.flush().await
-}
-
-/// The still-running background tasks in a `system/background_tasks_changed`
-/// frame (it carries the full list). Ambient entries (housekeeping,
-/// auto-started watchers) are not activity. `None` for any other line,
-/// including malformed JSON.
-pub(crate) fn background_task_count(line: &[u8]) -> Option<usize> {
-    const NEEDLE: &[u8] = b"\"background_tasks_changed\"";
-    if !line.windows(NEEDLE.len()).any(|w| w == NEEDLE) {
-        return None;
-    }
-    let v: Value = serde_json::from_slice(line).ok()?;
-    let m = v.as_object()?;
-    let str_field = |k: &str| match m.get(k) {
-        None | Some(Value::Null) => Some(""),
-        Some(Value::String(s)) => Some(s.as_str()),
-        Some(_) => None,
-    };
-    if str_field("type")? != "system" || str_field("subtype")? != "background_tasks_changed" {
-        return None;
-    }
-    let tasks = match m.get("tasks") {
-        None | Some(Value::Null) => return Some(0),
-        Some(Value::Array(a)) => a,
-        Some(_) => return None,
-    };
-    let mut n = 0;
-    for t in tasks {
-        let ambient = match t {
-            Value::Null => false,
-            Value::Object(o) => match o.get("ambient") {
-                None | Some(Value::Null) => false,
-                Some(Value::Bool(b)) => *b,
-                Some(_) => return None,
-            },
-            _ => return None,
-        };
-        if !ambient {
-            n += 1;
-        }
-    }
-    Some(n)
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -522,24 +435,6 @@ async fn drain_after<R: AsyncBufRead + Unpin>(r: &mut R, err: &std::io::Error) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn background_tasks() {
-        let live = br#"{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"b1","task_type":"local_bash"}]}"#;
-        assert_eq!(background_task_count(live), Some(1));
-        let empty = br#"{"type":"system","subtype":"background_tasks_changed","tasks":[]}"#;
-        assert_eq!(background_task_count(empty), Some(0));
-        let ambient = br#"{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"w1","ambient":true}]}"#;
-        assert_eq!(background_task_count(ambient), Some(0));
-        assert_eq!(
-            background_task_count(br#"{"type":"system","subtype":"init"}"#),
-            None
-        );
-        let bad = br#"{"type":"system","subtype":"background_tasks_changed","tasks":[{"ambient":"yes"}]}"#;
-        assert_eq!(background_task_count(bad), None);
-        let other = br#"{"type":"user","subtype":"background_tasks_changed"}"#;
-        assert_eq!(background_task_count(other), None);
-    }
 
     #[tokio::test]
     async fn read_line_like_scanner() {

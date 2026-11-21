@@ -56,7 +56,8 @@
    "submit_plan": "Submit plan",
    "switch_mode": "Switch mode",
    "update_finding": "Update finding",
-   "update_plan_step": "Update plan step"
+   "update_plan_step": "Update plan step",
+   "update_todos": "Update todos"
   },
   "steerMessage": "Maestro steer (follow this; it supersedes earlier plan guidance):\nSUMMARY",
   "transientMarkers": [

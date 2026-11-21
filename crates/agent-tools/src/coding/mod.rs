@@ -1,12 +1,11 @@
 //! The native-harness coding tools (not served over MCP): Read, Edit, Write,
-//! Glob, Grep, Bash, TodoWrite.
+//! Glob, Grep, Bash.
 
 pub mod bash;
 pub mod edit;
 pub mod glob;
 pub mod grep;
 pub mod read;
-pub mod todos;
 pub mod write;
 
 use std::time::Duration;

@@ -1417,6 +1417,11 @@ fn agent_options_wire_inline_mcp() {
             ..Default::default()
         },
     );
+    let wire = serde_json::to_value(&o).unwrap();
+    assert_eq!(
+        wire["disallowedTools"],
+        serde_json::json!(["updateTodos", "readTodos", "await"])
+    );
     assert_eq!(
         o.mcp_servers["recur"].http.as_ref().unwrap().url,
         "http://127.0.0.1:5555/tok/mcp"

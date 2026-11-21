@@ -383,7 +383,7 @@ async fn run_matches_go_wire_and_events() {
     let log = Arc::clone(&events);
     let sink: Arc<dyn EventSink> = Arc::new(move |ev: AgentEvent| log.lock().push(ev));
     let mut cx = TurnContext::new(CancellationToken::new(), sink);
-    cx.tools = Some(Arc::new(HarnessTools::new(None, Arc::default(), &req)));
+    cx.tools = Some(Arc::new(HarnessTools::new(None, &req)));
     let (tx, rx) = tokio::sync::mpsc::channel(2);
     let (plain, plain_ack) = Steer::new("Also check docs", Some("Also check docs (ui)".into()));
     let (blank, blank_ack) = Steer::new("   ", None);

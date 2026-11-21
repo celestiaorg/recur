@@ -540,3 +540,100 @@ async fn restore_serializes_overlapping_calls() {
     assert_eq!(fx.s.terminal.list_terminals("ws-1").await.unwrap().len(), 1);
     fx.close().await;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn workspace_removal_closes_background_sessions_only() {
+    let fx = Fx::new().await;
+    let repo = ws1(&fx);
+    let t = &fx.s.terminal;
+    let tab = t.open_terminal("ws-1", 80, 24).await.unwrap();
+    let bg = fx
+        .svc
+        .term
+        .open_with(
+            "ws-1",
+            &repo,
+            80,
+            24,
+            &[],
+            recur_term::OpenOptions {
+                command: "sleep 30".into(),
+                background: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    t.hide_terminal(&bg.id).await.unwrap();
+    assert!(
+        fx.svc
+            .term
+            .list("ws-1")
+            .iter()
+            .any(|i| i.id == bg.id && i.hidden)
+    );
+    fx.svc
+        .engine
+        .bus
+        .publish(recur_engine::EngineEvent::WorkspaceRemoved(
+            recur_engine::bus::WorkspaceRef::new("ws-1"),
+        ));
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while fx.svc.term.list("ws-1").iter().any(|i| i.id == bg.id) {
+        assert!(
+            Instant::now() < deadline,
+            "background session survived removal"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let left = t.list_terminals("ws-1").await.unwrap();
+    assert_eq!(left.len(), 1);
+    assert_eq!(left[0].id, tab.id);
+    t.close_terminal(&tab.id).await.unwrap();
+    fx.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_background_process_before_restore_keeps_saved_tabs() {
+    let fx = Fx::new().await;
+    let repo = ws1(&fx);
+    fx.svc
+        .write_terminal_snapshot(
+            "ws-1",
+            &PersistedTerminals {
+                tabs: Some(vec![tab("server", &repo, b"hi\r\n")]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let bg = fx
+        .svc
+        .term
+        .open_with(
+            "ws-1",
+            &repo,
+            80,
+            24,
+            &[],
+            recur_term::OpenOptions {
+                command: "sleep 30".into(),
+                background: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    fx.svc.term_persist.flush(&fx.svc);
+    let snap = fx
+        .svc
+        .read_terminal_snapshot("ws-1")
+        .expect("snapshot kept");
+    assert_eq!(snap.tabs.unwrap()[0].title, "server");
+    let got =
+        fx.s.terminal
+            .restore_workspace_terminals("ws-1", 80, 24)
+            .await
+            .unwrap();
+    assert_eq!(got.len(), 1);
+    assert_eq!(got[0].title, "server");
+    assert_ne!(got[0].id, bg.id);
+    fx.close().await;
+}

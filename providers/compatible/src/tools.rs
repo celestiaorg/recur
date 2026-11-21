@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use recur_agent::{ToolCallMeta, ToolHost, ToolOutcome, ToolSpec, TurnRequest};
 use recur_agent_tools::{
-    Call, Host, HostError, PermissionAsk, PermissionVerdict, Permitter, Registry, TodoStore, Tool,
+    Call, Host, HostError, PermissionAsk, PermissionVerdict, Permitter, Registry, Tool,
     advertised_name, bare_name, coding_tools, halt_after, host_tools,
 };
 use recur_domain::PERMISSION_MODE_BYPASS;
@@ -51,7 +51,7 @@ pub fn harness_agent_code(req: &TurnRequest) -> String {
 }
 
 /// Recur's host tools followed by the coding tools (Read, Edit, Write, Glob,
-/// Grep, Bash, TodoWrite).
+/// Grep, Bash).
 pub fn harness_tools() -> Vec<Arc<dyn Tool>> {
     let mut tools = host_tools();
     tools.extend(coding_tools());
@@ -63,28 +63,25 @@ pub fn harness_tools() -> Vec<Arc<dyn Tool>> {
 pub struct HarnessTools {
     registry: Registry,
     host: Option<Arc<dyn Host>>,
-    todos: Arc<TodoStore>,
     req: TurnRequest,
 }
 
 impl HarnessTools {
     /// The full harness toolbox bound to `req`. `host` is the engine seam
     /// `None` runs coding tools only and denies Bash prompts.
-    pub fn new(host: Option<Arc<dyn Host>>, todos: Arc<TodoStore>, req: &TurnRequest) -> Self {
-        Self::with_tools(harness_tools(), host, todos, req)
+    pub fn new(host: Option<Arc<dyn Host>>, req: &TurnRequest) -> Self {
+        Self::with_tools(harness_tools(), host, req)
     }
 
     /// A custom toolbox (tests).
     pub fn with_tools(
         tools: Vec<Arc<dyn Tool>>,
         host: Option<Arc<dyn Host>>,
-        todos: Arc<TodoStore>,
         req: &TurnRequest,
     ) -> Self {
         Self {
             registry: Registry::new(tools),
             host,
-            todos,
             req: req.clone(),
         }
     }
@@ -125,7 +122,6 @@ impl ToolHost for HarnessTools {
             permitter: Some(Arc::new(HarnessPermitter {
                 host: self.host.clone(),
             })),
-            todos: Some(Arc::clone(&self.todos)),
         };
         match t.execute(call).await {
             Ok(text) => ToolOutcome {

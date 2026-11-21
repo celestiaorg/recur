@@ -35,12 +35,6 @@
       "description": "Run a non-interactive bash command in the worktree root. Each call is a fresh shell: cd and env vars do not carry over, and nothing can prompt for input. Optional timeout is in seconds. Destructive commands require permission when Bypass Permissions is off.",
       "schema": "{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\"},\"timeout\":{\"type\":\"number\"}},\"required\":[\"command\"]}",
       "halts": false
-    },
-    {
-      "name": "TodoWrite",
-      "description": "Replace or merge the session todo list. Each item has id, content, and status (pending|in_progress|completed).",
-      "schema": "{\"type\":\"object\",\"properties\":{\"todos\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}},\"required\":[\"id\",\"content\",\"status\"]}}},\"required\":[\"todos\"]}",
-      "halts": false
     }
   ],
   "host": [
@@ -147,9 +141,9 @@
       "halts": false
     },
     {
-      "name": "update_plan_step",
-      "description": "Update one plan step's status (pending/doing/done/skipped) by its step id, with an optional short note. Use it as work advances so plan progress stays honest.",
-      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"step_id\": {\"type\": \"string\", \"description\": \"The plan step id to update\"},\n    \"status\": {\"type\": \"string\", \"enum\": [\"pending\",\"doing\",\"done\",\"skipped\"], \"description\": \"The step's new status\"},\n    \"note\": {\"type\": \"string\", \"description\": \"Optional short note (e.g. why a step was skipped)\"}\n  },\n  \"required\": [\"step_id\",\"status\"]\n}",
+      "name": "update_todos",
+      "description": "Track your work as todos on the workspace plan (the shared checklist every chat and the human see in the Plan panel). Append new todos (no id) or patch existing ones by id (status pending/doing/done/skipped, title, note). Mark one todo doing while you work on it and done as soon as it is finished. Returns the full current list. Use it only for work with several distinct steps; skip it for simple or single-step tasks.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"items\": {\n      \"type\": \"array\",\n      \"description\": \"Todo changes. An item without id appends a new todo (title required; the engine assigns the next S{n} id). An item with id patches only the fields given. There is no delete: mark a dropped todo skipped.\",\n      \"items\": {\"type\": \"object\", \"properties\": {\n        \"id\": {\"type\": \"string\", \"description\": \"Existing todo id (S1, S2, …) to patch; omit to append\"},\n        \"title\": {\"type\": \"string\", \"description\": \"The todo text (required when appending)\"},\n        \"status\": {\"type\": \"string\", \"enum\": [\"pending\",\"doing\",\"done\",\"skipped\"], \"description\": \"pending, doing (in progress), done, or skipped\"},\n        \"note\": {\"type\": \"string\", \"description\": \"Optional short note (e.g. why it was skipped)\"}\n      }}\n    }\n  },\n  \"required\": [\"items\"]\n}",
       "halts": false
     },
     {
@@ -166,13 +160,13 @@
     },
     {
       "name": "list_skills",
-      "description": "List available Agent Skills as an \u003cavailable_skills\u003e catalog (name + description). Call this when a task may match a specialized skill, then activate_skill with the skill's name to load full instructions.",
+      "description": "List available Agent Skills as an <available_skills> catalog (name + description). Call this when a task may match a specialized skill, then activate_skill with the skill's name to load full instructions.",
       "schema": "{\"type\":\"object\",\"properties\":{}}",
       "halts": false
     },
     {
       "name": "activate_skill",
-      "description": "Load the full instructions for one Agent Skill by name (from list_skills). Returns the skill body wrapped for use in this turn. Prefer this over reading SKILL.md paths yourself. Do not re-activate a skill already present as \u003cskill_content\u003e in the user message.",
+      "description": "Load the full instructions for one Agent Skill by name (from list_skills). Returns the skill body wrapped for use in this turn. Prefer this over reading SKILL.md paths yourself. Do not re-activate a skill already present as <skill_content> in the user message.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"name\": {\"type\": \"string\", \"description\": \"Skill name from list_skills (e.g. go-code-review)\"}\n  },\n  \"required\": [\"name\"]\n}",
       "halts": false
     },
@@ -232,8 +226,8 @@
     },
     {
       "name": "present_workspace",
-      "description": "Pin a workspace, chat, question, or PR card in the Ask Recur transcript for the human to open. Does not switch the visible UI. target is workspace:\u003cid\u003e (optional :plan, :findings, or :review), chat:\u003cworkspaceId\u003e:\u003ccode\u003e, question:\u003cid\u003e, or pr:\u003cid\u003e. Validated against live state. App coordinator only.",
-      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"target\": {\"type\": \"string\", \"description\": \"workspace:\u003cid\u003e (optional :plan, :findings, :review), chat:\u003cworkspaceId\u003e:\u003ccode\u003e, question:\u003cid\u003e, or pr:\u003cid\u003e\"}\n  },\n  \"required\": [\"target\"]\n}",
+      "description": "Pin a workspace, chat, question, or PR card in the Ask Recur transcript for the human to open. Does not switch the visible UI. target is workspace:<id> (optional :plan, :findings, or :review), chat:<workspaceId>:<code>, question:<id>, or pr:<id>. Validated against live state. App coordinator only.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"target\": {\"type\": \"string\", \"description\": \"workspace:<id> (optional :plan, :findings, :review), chat:<workspaceId>:<code>, question:<id>, or pr:<id>\"}\n  },\n  \"required\": [\"target\"]\n}",
       "halts": false
     },
     {
@@ -274,7 +268,7 @@
     },
     {
       "name": "open_pr",
-      "description": "Open a pull request from this workspace. Recur pushes the branch and creates the GitHub PR when the project opts in (otherwise a Local PR). Do not run `gh pr create` yourself. Provide a title under 80 characters and a markdown body describing ALL workspace changes versus the base branch: not only this chat turn. Set draft to true for a GitHub draft PR. Commit uncommitted work first. If a GitHub PR is already open, this pushes new commits and does not rewrite the description. If only a Local PR is open, title and body update that Local PR and retry GitHub create when the project opts in. Refused on the main working copy and while a workflow is running. After a workflow idles (including Review \u0026 fix, Docs, and Security review \u0026 fix), open a PR from here or the titlebar. The run does not self-open one.",
+      "description": "Open a pull request from this workspace. Recur pushes the branch and creates the GitHub PR when the project opts in (otherwise a Local PR). Do not run `gh pr create` yourself. Provide a title under 80 characters and a markdown body describing ALL workspace changes versus the base branch: not only this chat turn. Set draft to true for a GitHub draft PR. Commit uncommitted work first. If a GitHub PR is already open, this pushes new commits and does not rewrite the description. If only a Local PR is open, title and body update that Local PR and retry GitHub create when the project opts in. Refused on the main working copy and while a workflow is running. After a workflow idles (including Review & fix, Docs, and Security review & fix), open a PR from here or the titlebar. The run does not self-open one.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"title\": {\"type\": \"string\", \"description\": \"PR title, under 80 characters\"},\n    \"body\": {\"type\": \"string\", \"description\": \"Markdown description of ALL workspace changes versus the base branch\"},\n    \"draft\": {\"type\": \"boolean\", \"description\": \"Open as a GitHub draft PR (gh pr create --draft). Ignored if a PR is already open on GitHub.\"}\n  },\n  \"required\": [\"title\", \"body\"]\n}",
       "halts": false
     },
@@ -310,14 +304,50 @@
     },
     {
       "name": "list_terminals",
-      "description": "List this workspace's live Observatory terminal tabs (id, title, cwd, whether it is the focused tab). Use when the user mentions the terminal, a build/test error on screen, or before read_terminal if you need an id.",
+      "description": "List this workspace's live Observatory terminal tabs (id, title, cwd, whether it is the focused tab, background/startedBy for run_background processes, exited/exitCode). Use when the user mentions the terminal, a build/test error on screen, or before read_terminal if you need an id.",
       "schema": "{\"type\":\"object\",\"properties\":{}}",
       "halts": false
     },
     {
       "name": "read_terminal",
-      "description": "Read recent output from an Observatory terminal (ANSI stripped). id is a session id from list_terminals (or omit to read the focused tab). tail_lines defaults to 200 (max 2000). Prefer this over guessing that output lives in a worktree file.",
-      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"id\": {\"type\": \"string\", \"description\": \"Session id from list_terminals; omit to read the focused tab\"},\n    \"tail_lines\": {\"type\": \"integer\", \"description\": \"Last N lines (default 200, max 2000)\"}\n  }\n}",
+      "description": "Read recent output from an Observatory terminal (ANSI stripped). id is a session id from list_terminals (or omit to read the focused tab). tail_lines defaults to 200 (max 2000). wait_ms (max 300000) waits for output first: it returns as soon as the until regex matches output you have not read yet, the process exits, or the wait ends. Only wait when you need the result now; otherwise finish your turn (you get a new turn when a background process exits). Prefer this over guessing that output lives in a worktree file.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"id\": {\"type\": \"string\", \"description\": \"Session id from list_terminals; omit to read the focused tab\"},\n    \"tail_lines\": {\"type\": \"integer\", \"description\": \"Last N lines (default 200, max 2000)\"},\n    \"wait_ms\": {\"type\": \"integer\", \"description\": \"Wait up to this long (max 300000) before reading; returns early when until matches or the process exits\"},\n    \"until\": {\"type\": \"string\", \"description\": \"Regex checked against output you have not read yet (since your last read_terminal or run_background of this terminal)\"}\n  }\n}",
+      "halts": false
+    },
+    {
+      "name": "run_background",
+      "description": "Start a long-running process (dev server, watcher, long build or test run) in a Recur terminal tab the user can see. Returns its terminal id and its first few seconds of output (often enough to confirm a server is up). The workspace owns it: it keeps running across turns and model switches until it exits, stop_terminal stops it, or the app quits (closing its tab does not stop it; after a quit your next turn says which processes stopped). Read more with read_terminal. When it exits on its own you get a new turn with its exit code and last lines, unless notify_on_exit is false. Once it is running, tell the user and end your turn rather than waiting on it.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"command\": {\"type\": \"string\", \"description\": \"Shell command, run with the login shell (-lc)\"},\n    \"title\": {\"type\": \"string\", \"description\": \"Tab label (default: the command)\"},\n    \"cwd\": {\"type\": \"string\", \"description\": \"Working directory; relative to the worktree root (default)\"},\n    \"notify_on_exit\": {\"type\": \"boolean\", \"description\": \"Start a new turn in this chat when the process exits (default true)\"}\n  },\n  \"required\": [\"command\"]\n}",
+      "halts": false
+    },
+    {
+      "name": "stop_terminal",
+      "description": "Stop a background process started with run_background (its whole process tree) and close its tab. Tabs the user opened are refused. No exit turn follows a stop.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"id\": {\"type\": \"string\", \"description\": \"Terminal id from run_background or list_terminals\"}\n  },\n  \"required\": [\"id\"]\n}",
+      "halts": false
+    },
+    {
+      "name": "schedule_wakeup",
+      "description": "Check back later in this same chat: after delay_seconds (clamped to 60..86400, 1 minute to 24 hours) this chat gets a new turn carrying reason. Use it to follow a deploy, CI run or background process instead of sleeping. One-shot: to keep checking, call it again from that turn. A chat has at most one pending wakeup, so a new call replaces the earlier one. It survives an app restart (an overdue wakeup fires once on launch); closing the chat or archiving the workspace cancels it.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"delay_seconds\": {\"type\": \"integer\", \"description\": \"Seconds from now, clamped to 60..86400 (1 minute to 24 hours)\"},\n    \"reason\": {\"type\": \"string\", \"description\": \"What to check, shown to the user and handed back to you when it fires\"}\n  },\n  \"required\": [\"delay_seconds\", \"reason\"]\n}",
+      "halts": false
+    },
+    {
+      "name": "create_schedule",
+      "description": "Create a scheduled prompt in this workspace's project. At each occurrence Recur starts a new, independent workspace that runs prompt in mode; it does not come back to this chat (use schedule_wakeup for that). Times are in time_zone. The user sees it in the Schedules view and can pause, edit or delete it there. Every occurrence is a paid agent run, so Recur asks the user first unless permissions are bypassed. Returns the schedule with its id and next run.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"name\": {\"type\": \"string\", \"description\": \"Short name shown in the Schedules view\"},\n    \"prompt\": {\"type\": \"string\", \"description\": \"What the new workspace's agent is asked to do\"},\n    \"cadence\": {\"type\": \"string\", \"enum\": [\"once\", \"daily\", \"weekdays\", \"cron\"], \"description\": \"once needs date and time; daily and weekdays need time; cron needs cron\"},\n    \"date\": {\"type\": \"string\", \"description\": \"YYYY-MM-DD, for once\"},\n    \"time\": {\"type\": \"string\", \"description\": \"HH:MM (24-hour), for once, daily and weekdays\"},\n    \"cron\": {\"type\": \"string\", \"description\": \"Cron expression, for cron (5 fields, e.g. \\\"0 9 * * MON-FRI\\\")\"},\n    \"time_zone\": {\"type\": \"string\", \"description\": \"IANA zone the times are in (default: this machine's zone)\"},\n    \"mode\": {\"type\": \"string\", \"enum\": [\"ask\", \"plan\", \"agent\", \"review\"], \"description\": \"Chat mode of the run\"},\n    \"model\": {\"type\": \"string\", \"description\": \"provider/model ref (default: the Settings default for mode)\"},\n    \"base_branch\": {\"type\": \"string\", \"description\": \"Branch the new workspace starts from (default: the project's base branch)\"}\n  },\n  \"required\": [\"name\", \"prompt\", \"cadence\", \"mode\"]\n}",
+      "halts": false
+    },
+    {
+      "name": "list_schedules",
+      "description": "List this workspace's project's scheduled prompts: id, name, cadence (cron or date/time), time zone, mode, model, base branch, paused, next run and the last run's status.",
+      "schema": "{\"type\":\"object\",\"properties\":{}}",
+      "halts": false
+    },
+    {
+      "name": "delete_schedule",
+      "description": "Delete one of this project's scheduled prompts. Future runs stop; workspaces it already started stay. Recur asks the user first unless permissions are bypassed.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"id\": {\"type\": \"string\", \"description\": \"Schedule id from list_schedules or create_schedule\"}\n  },\n  \"required\": [\"id\"]\n}",
       "halts": false
     }
   ]

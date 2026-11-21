@@ -37,6 +37,7 @@ fn recur_tool_label(name: &str) -> Option<&'static str> {
         "resume_loop" => "Resume workflow",
         "submit_plan" => "Submit plan",
         "update_plan_step" => "Update plan step",
+        "update_todos" => "Update todos",
         "list_skills" => "List skills",
         "activate_skill" => "Activate skill",
         _ => return None,

@@ -322,8 +322,8 @@ fn summarize_recur_and_web_tools() {
             "S2 → done · wired",
         ),
         (
-            "mcp__recur__update_plan_step",
-            r#"{"step_id":"S1","status":"doing"}"#,
+            "mcp__recur__update_todos",
+            r#"{"items":[{"id":"S1","status":"doing"}]}"#,
             "S1 → doing",
         ),
         (

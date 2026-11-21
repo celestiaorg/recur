@@ -2536,6 +2536,10 @@ fake_services! {
             Ok(())
         }
 
+        async fn hide_terminal(&self, id: &str) -> Result<()> {
+            Ok(())
+        }
+
         async fn interrupt_terminal(&self, id: &str) -> Result<()> {
             Ok(())
         }

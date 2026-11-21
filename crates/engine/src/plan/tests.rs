@@ -1,8 +1,10 @@
 //! Plan tests (the approval-gate run is in `loops::tests`).
 
 use recur_agent::display::PLAN_MAX_PERSIST_CHARS;
-use recur_agent_tools::{CreateArtifactRequest, Host, PlanStepMeta, PlanSubmission};
-use recur_domain::{PlanStep, STEP_DONE, STEP_PENDING, WorkspaceState};
+use recur_agent_tools::{
+    CreateArtifactRequest, Host, HostError, PlanStepMeta, PlanSubmission, TodoUpdate,
+};
+use recur_domain::{PlanStep, STEP_DOING, STEP_DONE, STEP_PENDING, STEP_SKIPPED, WorkspaceState};
 
 use super::*;
 use crate::bus::EngineEvent;
@@ -16,6 +18,15 @@ fn sub(summary: &str, body: &str, steps: &[&str]) -> PlanSubmission {
         body: body.into(),
         steps: steps.iter().map(|s| (*s).to_owned()).collect(),
         ..PlanSubmission::default()
+    }
+}
+
+fn todo(id: &str, title: &str, status: &str, note: &str) -> TodoUpdate {
+    TodoUpdate {
+        id: id.into(),
+        title: title.into(),
+        status: status.into(),
+        note: note.into(),
     }
 }
 
@@ -88,14 +99,22 @@ async fn submit_plan_persists_structured_artifact() {
         r#"{"summary":"Add a dark-mode toggle","steps":[{"id":"S1","title":"Add the toggle to Settings"},{"id":"S2","title":"Persist the preference"}],"source":"plan-chat"}"#
     );
 
-    assert_eq!(
-        h.update_plan_step("W1", "PA", "S2", "done", "landed with tests")
-            .await,
-        "Step S2 (Persist the preference) → done."
+    let board = h
+        .update_todos(
+            "W1",
+            "PA",
+            vec![todo("S2", "", "done", "landed with tests")],
+        )
+        .await
+        .unwrap();
+    assert!(
+        board.contains("S2 [done] Persist the preference note=landed with tests"),
+        "{board}"
     );
     assert_eq!(
-        h.update_plan_step("W1", "PA", "S9", "done", "").await,
-        "Refused: no plan step with id \"S9\"."
+        h.update_todos("W1", "PA", vec![todo("S9", "", "done", "")])
+            .await,
+        Err(HostError::new("no todo with id \"S9\""))
     );
     let p = plan(&te);
     assert_eq!(p.steps[1].status, STEP_DONE);
@@ -134,10 +153,6 @@ async fn submit_plan_persists_structured_artifact() {
 async fn refusals() {
     let (te, h) = fixture();
     assert_eq!(
-        h.update_plan_step("W1", "PA", "S1", "done", "").await,
-        "Refused: this workspace has no structured plan steps."
-    );
-    assert_eq!(
         te.engine.approve_plan("W1"),
         "Refused: this workspace has no structured plan to approve."
     );
@@ -147,7 +162,13 @@ async fn refusals() {
     );
     assert_eq!(
         te.engine.submit_human_plan("W1", " ", "", &[], &[]),
-        "Refused: the plan needs a summary."
+        "Refused: the plan needs a summary or steps."
+    );
+    assert!(
+        !te.engine
+            .submit_human_plan("W1", "", "", &["Write tests".into()], &[])
+            .starts_with("Refused"),
+        "a todos-only plan is editable without a summary"
     );
     assert_eq!(
         te.engine.update_human_plan_step("W1", "S1", "bogus"),
@@ -240,8 +261,13 @@ async fn resubmit_preserves_step_status() {
         ),
     )
     .await;
-    h.update_plan_step("W1", "PA", "S1", "done", "landed with tests")
-        .await;
+    h.update_todos(
+        "W1",
+        "PA",
+        vec![todo("S1", "", "done", "landed with tests")],
+    )
+    .await
+    .unwrap();
     te.store.update_workspace("W1", |l| {
         l.state = WorkspaceState::Coding;
         l.progress = 0.99;
@@ -293,8 +319,9 @@ async fn resubmit_preserves_step_status() {
         ),
     )
     .await;
-    h.update_plan_step("W1", "PA", "S1", "done", "toggle landed")
-        .await;
+    h.update_todos("W1", "PA", vec![todo("S1", "", "done", "toggle landed")])
+        .await
+        .unwrap();
     te.engine.submit_human_plan(
         "W1",
         "Ship the toggle",
@@ -322,6 +349,143 @@ async fn resubmit_preserves_step_status() {
     );
     let dod = te.store.workspace("W1").unwrap().definition_of_done;
     assert!(dod.contains("1. Add migration") && dod.contains("2. Add the toggle (done)"));
+    te.close().await;
+}
+
+#[tokio::test]
+async fn todos_create_an_informal_plan_append_and_patch() {
+    let (te, h) = fixture();
+    let board = h
+        .update_todos(
+            "W1",
+            "PA2",
+            vec![
+                todo("", "Read the code", "doing", ""),
+                todo("", "Write the fix", "", ""),
+            ],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        board,
+        "Steps:\nS1 [doing] Read the code\nS2 [pending] Write the fix"
+    );
+    let p = plan(&te);
+    assert_eq!((p.summary.as_str(), p.body.as_str()), ("", ""));
+    assert_eq!(
+        (p.source.as_str(), p.chat_code.as_str()),
+        ("plan-chat", "PA2")
+    );
+    assert!(!p.approved);
+    let ws = te.store.workspace("W1").unwrap();
+    assert!(ws.definition_of_done.contains("1. Read the code"));
+    assert!(super::todos_turn_prompt(ws.plan.as_ref()).contains("S2 [pending] Write the fix"));
+    assert!(carried_plan(&te, |p| p.steps.len() == 2));
+
+    h.update_todos(
+        "W1",
+        "PA",
+        vec![
+            todo("S1", "Read the parser", "done", ""),
+            todo("S2", "", STEP_SKIPPED, "not needed"),
+            todo("", "Ship", "", ""),
+        ],
+    )
+    .await
+    .unwrap();
+    let p = plan(&te);
+    assert_eq!(
+        p.chat_code, "PA2",
+        "a later tab does not take the list over"
+    );
+    assert_eq!(
+        p.steps
+            .iter()
+            .map(|s| (
+                s.id.as_str(),
+                s.title.as_str(),
+                s.status.as_str(),
+                s.note.as_str()
+            ))
+            .collect::<Vec<_>>(),
+        [
+            ("S1", "Read the parser", STEP_DONE, ""),
+            ("S2", "Write the fix", STEP_SKIPPED, "not needed"),
+            ("S3", "Ship", STEP_PENDING, ""),
+        ]
+    );
+
+    let before = plan(&te);
+    assert_eq!(
+        h.update_todos(
+            "W1",
+            "PA",
+            vec![todo("", "ok", "", ""), todo("S7", "", "done", "")]
+        )
+        .await,
+        Err(HostError::new("no todo with id \"S7\"")),
+    );
+    assert_eq!(plan(&te), before, "a failed batch changes nothing");
+    assert!(super::todos_turn_prompt(None).is_empty());
+    let finished = recur_domain::Plan {
+        steps: vec![recur_domain::PlanStep {
+            id: "S1".into(),
+            title: "Ship".into(),
+            status: "done".into(),
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    assert!(
+        super::todos_turn_prompt(Some(&finished)).is_empty(),
+        "a finished list is not repeated every turn"
+    );
+    te.close().await;
+}
+
+#[tokio::test]
+async fn todos_keep_approval_and_panel_edits() {
+    let (te, h) = fixture();
+    h.submit_plan("W1", "PA", sub("Ship", "Brief.", &["Add the toggle"]))
+        .await;
+    te.engine.approve_plan("W1");
+    let steps = |v: &[&str]| v.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    te.engine.submit_human_plan(
+        "W1",
+        "Ship",
+        "Brief.",
+        &steps(&["Add the dark-mode toggle", "Human step"]),
+        &steps(&["S1", ""]),
+    );
+    te.engine.approve_plan("W1");
+    h.update_todos(
+        "W1",
+        "PA",
+        vec![
+            todo("S1", "", STEP_DOING, ""),
+            todo("", "Agent step", "", ""),
+        ],
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        te.engine.update_human_plan_step("W1", "S2", STEP_DONE),
+        "Step S2 → done."
+    );
+    let p = plan(&te);
+    assert!(p.approved, "todo writes never clear approval");
+    assert_eq!((p.summary.as_str(), p.body.as_str()), ("Ship", "Brief."));
+    assert_eq!(
+        p.steps
+            .iter()
+            .map(|s| (s.title.as_str(), s.status.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            ("Add the dark-mode toggle", STEP_DOING),
+            ("Human step", STEP_DONE),
+            ("Agent step", STEP_PENDING),
+        ]
+    );
     te.close().await;
 }
 

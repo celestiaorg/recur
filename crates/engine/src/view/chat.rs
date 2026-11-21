@@ -915,7 +915,7 @@ fn map_chat_item(it: &ChatItem) -> Option<AgentMsg> {
     if user && let Some(label) = subagent_notice_label(&it.text) {
         return (!label.is_empty()).then(|| AgentMsg {
             note: true,
-            note_label: "Subagent".into(),
+            note_label: notice_kind(&label).into(),
             body: label,
             ts,
             ..AgentMsg::default()
@@ -1333,6 +1333,18 @@ pub fn subagent_notice_label(text: &str) -> Option<String> {
         .map(|rest| js::trim(rest).to_owned())
 }
 
+/// A notice row's label: background-process exits, wakeups, else subagent
+/// reports.
+fn notice_kind(label: &str) -> &'static str {
+    if label.starts_with(crate::chat::procs::PROC_NOTICE_PREFIX) {
+        "Process"
+    } else if label.starts_with(crate::chat::wakeups::WAKEUP_NOTICE_PREFIX) {
+        "Wakeup"
+    } else {
+        "Subagent"
+    }
+}
+
 /// Appends a mid-turn user message (`session.user`), settling the oldest
 /// unmatched optimistic row of this body; a real row of the same text is a
 /// new message.
@@ -1345,7 +1357,7 @@ pub fn add_user(list: &[AgentMsg], text: &str, now: i64) -> Vec<AgentMsg> {
         close_open_streams(&mut out, None);
         out.push(AgentMsg {
             note: true,
-            note_label: "Subagent".into(),
+            note_label: notice_kind(&label).into(),
             body: label,
             ts: Some(now),
             ..AgentMsg::default()

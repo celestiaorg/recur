@@ -762,6 +762,32 @@ async fn find_skips_matches_inside_bubble_chips(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+async fn an_idle_chat_counts_down_to_its_wakeup(cx: &mut TestAppContext) {
+    let props = ChatProps {
+        wakeup_due_at: crate::chat::now_ms() + 65_000,
+        wakeup_reason: "check the dev server".into(),
+        ..ws_props()
+    };
+    let mut h = boot(cx, Overrides::default(), props, ChatHooks::default());
+    let left = h.read(|c| c.wakeup_left_sec);
+    assert!((60..=65).contains(&left), "{left}");
+    let chat = h.chat();
+    h.cx.update(|_, cx| {
+        chat.update(cx, |c, cx| {
+            let mut p = c.props.clone();
+            p.sending = true;
+            c.set_props(p, cx)
+        })
+    });
+    h.settle();
+    assert_eq!(
+        h.read(|c| c.wakeup_left_sec),
+        0,
+        "no countdown while a turn runs"
+    );
+}
+
+#[gpui::test]
 async fn a_question_card_takes_a_typed_answer(cx: &mut TestAppContext) {
     let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
     let q: recur_domain::UserQuestion = serde_json::from_value(serde_json::json!({

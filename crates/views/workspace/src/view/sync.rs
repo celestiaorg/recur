@@ -23,6 +23,28 @@ use recur_view_observatory::ObservatoryProps;
 
 use super::{WorkspaceView, now_ms, tabs::save_active_code};
 
+/// This chat's latest schedule_wakeup (due unix ms, reason) while it has not
+/// fired yet (no Wakeup notice row after it) and is still ahead.
+pub(crate) fn pending_wakeup(msgs: &[AgentMsg], now_ms: i64) -> Option<(i64, String)> {
+    for m in msgs.iter().rev() {
+        if m.note && m.note_label == "Wakeup" {
+            return None;
+        }
+        if m.tool.ends_with("schedule_wakeup") && !m.result_pending && !m.result_error {
+            let due = recur_engine::chat::wakeups::wakeup_due(&m.result)?.timestamp_millis();
+            if due <= now_ms {
+                return None;
+            }
+            let reason = serde_json::from_str::<serde_json::Value>(&m.input)
+                .ok()
+                .and_then(|v| v.get("reason")?.as_str().map(|r| r.trim().to_owned()))
+                .unwrap_or_default();
+            return Some((due, reason));
+        }
+    }
+    None
+}
+
 const EMPTY_MA: &str = "Ask where this workflow stands, or steer it: the Maestro can read the worktree, edit the plan, re-run review, and dispatch specialists; rails hold at execution.";
 const EMPTY_PA: &str = "Ask the agent, or tell it what to change: the mode selector below decides whether it may edit.";
 
@@ -266,6 +288,11 @@ impl WorkspaceView {
         let busy = self.composer_busy(cx);
         let can_steer = self.can_steer(cx);
         let setup = ws_setup_status(self.ws(cx));
+        let (wakeup_due_at, wakeup_reason) = self
+            .chat_by_key
+            .get(&key)
+            .and_then(|m| pending_wakeup(m, now_ms()))
+            .unwrap_or_default();
         let status = if setup.is_empty() {
             self.waiting_subagents(cx)
         } else {
@@ -279,6 +306,8 @@ impl WorkspaceView {
             can_steer,
             turn_started_at: self.turn_started_at_by_key.get(&key).copied().unwrap_or(0),
             status_text: status,
+            wakeup_due_at,
+            wakeup_reason,
             can_stop: self.loop_walk_live(cx),
             can_flush_queue: !busy
                 && !self.setup_hold(cx)
@@ -918,5 +947,40 @@ impl WorkspaceView {
     /// retry, edit and remove actions.
     pub(crate) fn render_failed_strip(&mut self, cx: &mut Context<Self>) -> Option<AnyElement> {
         crate::overlay::failed_strip(self, cx)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn wakeup(result: &str) -> AgentMsg {
+        AgentMsg {
+            tool: "mcp__recur__schedule_wakeup".into(),
+            input: r#"{"delay_seconds":60,"reason":"check the dev server"}"#.into(),
+            result: result.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn pending_wakeup_until_it_fires_or_passes() {
+        let set = "Wakeup set: this chat gets a new turn in 1 min (at 4:56 PM, due 2026-11-20T16:56:00-05:00), replacing any earlier pending wakeup.";
+        let due = recur_engine::chat::wakeups::wakeup_due(set)
+            .unwrap()
+            .timestamp_millis();
+        let msgs = vec![wakeup(set)];
+        assert_eq!(
+            pending_wakeup(&msgs, due - 1000),
+            Some((due, "check the dev server".to_owned()))
+        );
+        assert_eq!(pending_wakeup(&msgs, due), None, "already due");
+        let fired = AgentMsg {
+            note: true,
+            note_label: "Wakeup".into(),
+            ..Default::default()
+        };
+        assert_eq!(pending_wakeup(&[wakeup(set), fired], due - 1000), None);
+        assert_eq!(pending_wakeup(&[wakeup("Wakeup set")], 0), None);
     }
 }

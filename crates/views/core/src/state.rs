@@ -1328,6 +1328,9 @@ impl AppState {
                 self.run.on_busy(id);
             }
             TermEvent::Idle { id, .. } | TermEvent::Exit { id, .. } => self.run.on_done(id),
+            TermEvent::Open { workspace_id, .. } => {
+                self.chat.opened_terminals.insert(workspace_id.clone());
+            }
             TermEvent::Data { .. } => return,
         }
         self.changed(crate::topics::Topics::RUN, cx);

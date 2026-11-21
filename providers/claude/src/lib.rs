@@ -15,7 +15,6 @@ pub mod stream;
 pub mod testing;
 
 use std::path::PathBuf;
-use std::time::Duration;
 
 use recur_agent::display::canonical_claude_tool;
 use recur_agent::{
@@ -30,9 +29,6 @@ use recur_domain::{PROVIDER_CLAUDE_CODE, Settings, provider_label};
 pub struct ClaudeConfig {
     /// The executable; empty = `claude` on `PATH`.
     pub bin: String,
-    /// How long a result is held while background tasks still run (a dev
-    /// server never finishes). Matches claude's own print-mode ceiling.
-    pub background_hold_ceiling: Duration,
     /// Where each running turn records its pid, so the next launch can kill
     /// what a crashed Recur left running; empty = untracked.
     pub turn_pid_dir: PathBuf,
@@ -42,7 +38,6 @@ impl Default for ClaudeConfig {
     fn default() -> Self {
         Self {
             bin: String::new(),
-            background_hold_ceiling: Duration::from_secs(10 * 60),
             turn_pid_dir: PathBuf::new(),
         }
     }

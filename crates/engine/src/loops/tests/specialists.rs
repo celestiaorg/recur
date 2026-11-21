@@ -105,10 +105,10 @@ async fn plan_approval_gate() {
         .next()
         .expect("a coder turn");
     assert!(coder.system_prompt.contains("Wire the toggle"));
-    assert!(coder.system_prompt.contains("update_plan_step"));
+    assert!(coder.system_prompt.contains("update_todos"));
     assert!(coder.append_system_prompt.contains("SIMPLIFY MODE"));
     assert!(coder.append_system_prompt.contains(COMMENT_HYGIENE_NEEDLE));
-    assert!(has_tool(&coder, "mcp__recur__update_plan_step"));
+    assert!(has_tool(&coder, "mcp__recur__update_todos"));
 
     // Aggressive: same setup, no gate.
     let mut pol = t.store.policy();

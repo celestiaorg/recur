@@ -9,7 +9,10 @@ use std::time::Duration;
 use parking_lot::Mutex;
 use recur_agent::PermissionAbandoned;
 use recur_agent_tools::{HostError, PermissionAsk, PermissionVerdict};
-use recur_domain::{Group, InboxItem, PermissionDecision, PermissionRequest};
+use recur_domain::{
+    Group, InboxItem, PERMISSION_MODE_BYPASS, PERMISSION_MODE_DENY, PermissionDecision,
+    PermissionRequest,
+};
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
@@ -233,6 +236,49 @@ impl Engine {
             return PERMISSION_SURFACE_LOOP;
         }
         PERMISSION_SURFACE_CHAT
+    }
+
+    /// Gates a Recur tool by the machine permission mode: bypass runs, ask
+    /// goes through the approval prompt, deny refuses `what`.
+    pub(crate) async fn machine_permission(
+        &self,
+        cancel: &CancellationToken,
+        workspace_id: &str,
+        chat: &str,
+        tool: &str,
+        input: serde_json::Value,
+        what: &str,
+    ) -> Result<(), HostError> {
+        match self.settings().permission_mode() {
+            PERMISSION_MODE_BYPASS => return Ok(()),
+            PERMISSION_MODE_DENY => {
+                return Err(HostError(format!(
+                    "permission denied: {what} need approval"
+                )));
+            }
+            _ => {}
+        }
+        let v = self
+            .request_permission(
+                cancel,
+                workspace_id,
+                chat,
+                PermissionAsk {
+                    tool: tool.into(),
+                    input: input.to_string(),
+                    tool_use_id: String::new(),
+                },
+            )
+            .await?;
+        if v.allow {
+            return Ok(());
+        }
+        let reason = if v.reason.is_empty() {
+            "denied"
+        } else {
+            &v.reason
+        };
+        Err(HostError(format!("permission denied: {reason}")))
     }
 
     /// Host `request_permission`: the engine half of the Claude permission

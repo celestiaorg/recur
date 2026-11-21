@@ -13,7 +13,6 @@ pub mod path;
 pub mod tool;
 
 pub use catalog::{coding_tools, host_tools};
-pub use coding::todos::{TodoItem, TodoStore};
 pub use host::*;
 pub use names::RECUR_MCP_PREFIX;
 pub use tool::{

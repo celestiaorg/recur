@@ -281,7 +281,16 @@ pub struct AgentOptions {
     /// per-role tool scoping.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub mode: String,
+    /// Built-ins removed from the model's toolset (proto field 11). The
+    /// bridge does not keep it across a resume, so every request sends it.
+    #[serde(rename = "disallowedTools", skip_serializing_if = "Vec::is_empty")]
+    pub disallowed_tools: Vec<String>,
 }
+
+/// Cursor's todo tools (todos live on the workspace plan via
+/// `mcp__recur__update_todos`) and `await` on its background shells
+/// (long-running processes go through `mcp__recur__run_background`).
+pub const DISALLOWED_BUILTINS: [&str; 3] = ["updateTodos", "readTodos", "await"];
 
 pub const STEER_COMPLETE_DELIVERED: &str = "complete_delivered";
 pub const STEER_REVERT_TO_FOLLOWUP: &str = "revert_to_followup";

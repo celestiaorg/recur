@@ -53,6 +53,10 @@ pub trait TerminalService: Send + Sync {
     /// DetachTerminal stops streaming without killing the shell.
     async fn detach_terminal(&self, id: &str) -> Result<()>;
 
+    /// HideTerminal detaches a background session's tab and drops it from the dock;
+    /// the process keeps running until stopped (CloseTerminal).
+    async fn hide_terminal(&self, id: &str) -> Result<()>;
+
     /// InterruptTerminal stops the session's foreground process (the running
     /// dev server) without killing the shell, so the tab stays and can be reused.
     async fn interrupt_terminal(&self, id: &str) -> Result<()>;
@@ -84,8 +88,8 @@ pub trait TerminalService: Send + Sync {
 
     /// RestoreWorkspaceTerminals respawns the workspace's last live tabs after an
     /// app restart: same titles and working directories, with the persisted replay
-    /// buffer painted before the new shell's prompt. No-op when sessions are already
-    /// running (drawer remount) or nothing was saved. Does not spawn a default tab:
+    /// buffer painted before the new shell's prompt. No-op when shells are already
+    /// running (drawer remount; background processes do not count) or nothing was saved. Does not spawn a default tab:
     /// the dock does that when restore returns empty.
     async fn restore_workspace_terminals(
         &self,

@@ -252,12 +252,17 @@ Todo statuses are `pending | inProgress | completed`; only the camelCase one
 differs from the common vocabulary (Claude Code's TodoWrite uses `in_progress`),
 so it is normalized and everything else passes through. It renders as a checklist
 with per-item state, and the collapsed row shows `done/total` plus the item
-currently in flight rather than a truncated JSON array. It is labelled "todos",
-not "plan": this is a flat checklist the agent keeps for itself, distinct from
-Recur's own planning concepts (the Maestro's plan, plan mode).
+currently in flight rather than a truncated JSON array. That rendering is for
+old transcripts: Recur now sends `disallowedTools: ["updateTodos", "readTodos", "await"]`
+on every CreateAgent and ResumeAgent (the bridge does not keep it across a
+resume), so Cursor keeps todos on the workspace plan through
+`mcp__recur__update_todos` like every other provider. `await` (waiting on a
+background shell) goes too: the shell's `is_background` cannot be removed on
+its own, so the Agent-mode prompt steers long-running processes to
+`mcp__recur__run_background` instead.
 
 `createPlan` is Cursor plan mode's native plan surface (args.plan, result `{}`).
-Recur prefers its own MCP `submit_plan` / `update_plan_step` for structured
+Recur prefers its own MCP `submit_plan` / `update_todos` for structured
 plans; prompts nudge Cursor that way, but createPlan cannot be disabled via the
 SDK. `emitStepOnce` defers createPlan running frames and emits on terminal with
 the richest args seen. If a planning turn or Plan-mode chat only used createPlan

@@ -1,5 +1,5 @@
 //! The plan panel: Details (headline and brief, edited in place), Attachments (the plan's
-//! pinned artifacts) and Todos (the living checklist plus the agents' TodoWrite lists). The
+//! pinned artifacts) and Todos (the plan's steps, where every agent and the human keep todos). The
 //! Observatory's plan pane header owns the tabs ([`crate::plan_head::PlanHead`]); edits ride
 //! `SubmitPlan` / `UpdatePlanStep` / `UpdatePlan`.
 
@@ -15,12 +15,9 @@ use gpui_kit::{
     ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Subscription, Window, div, px,
     relative,
 };
-use recur_agent::display::todos::{Todo, parse_todos};
 use recur_content::{MarkdownClass, MarkdownView, Sheet};
 use recur_domain::{Plan, PlanStep, Workspace};
 use recur_engine::view::artifacts::ArtifactRef;
-use recur_engine::view::chat::AgentMsg;
-use recur_engine::view::loop_cockpit::FeedSess;
 use recur_services::Services;
 use recur_ui::fonts::Family;
 use recur_ui::text::{LineHeight, TextStyled, text};
@@ -28,7 +25,6 @@ use recur_ui::tooltip::titled;
 use recur_ui::widgets::ToastKind;
 use recur_ui::{IconName, Theme, icon};
 use recur_view_chat::chat::OpenArtifact;
-use recur_view_chat::session_feed::SessionFeed;
 use recur_view_core::mini::{MiniChange, MiniLang, MiniProps, MiniScriptEditor};
 use recur_view_core::state::WorkspaceSeed;
 use recur_view_core::{AppState, ViewContext, call, toast};
@@ -92,16 +88,6 @@ pub(crate) struct StepDraft {
 struct StepRow {
     area: Entity<TextareaState>,
     _sub: Subscription,
-}
-
-/// `latestTodosFromMessages`: the newest non-empty TodoWrite list in a transcript.
-pub fn latest_todos_from_messages(msgs: &[AgentMsg]) -> Vec<Todo> {
-    msgs.iter()
-        .rev()
-        .filter(|m| m.tool == "TodoWrite")
-        .map(|m| parse_todos(&m.input))
-        .find(|t| !t.is_empty())
-        .unwrap_or_default()
 }
 
 /// `STEP_CYCLE`: pending → doing → done → skipped → pending.
@@ -170,7 +156,6 @@ pub struct PlanPanel {
     state: Entity<AppState>,
     services: Services,
     ws_id: String,
-    feed: Entity<SessionFeed>,
     pub(crate) tab: PlanTab,
     pub(crate) editing: bool,
     selected_artifact: String,
@@ -227,7 +212,6 @@ impl PlanPanel {
     pub(crate) fn new(
         vcx: &ViewContext,
         ws_id: &str,
-        feed: Entity<SessionFeed>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -259,7 +243,6 @@ impl PlanPanel {
                 p.sync_drafts(cx);
                 cx.notify();
             }),
-            cx.guarded_observe(&feed, |_, _, cx| cx.notify()),
             cx.guarded_subscribe(&artifacts, |_, _, ev: &ArtifactsPanelEvent, cx| {
                 if let ArtifactsPanelEvent::Open(a) = ev {
                     cx.emit(PlanPanelEvent::OpenArtifact(OpenArtifact {
@@ -286,7 +269,6 @@ impl PlanPanel {
             state: vcx.state.clone(),
             services: vcx.services.clone(),
             ws_id: ws_id.to_string(),
-            feed,
             tab: PlanTab::Details,
             editing: false,
             selected_artifact: String::new(),
@@ -669,8 +651,8 @@ impl PlanPanel {
             s => s.to_string(),
         };
         let (titles, ids) = self.steps_for_submit();
-        if summary.is_empty() {
-            toast(ToastKind::Error, "The plan needs a summary.", cx);
+        if summary.is_empty() && titles.is_empty() {
+            toast(ToastKind::Error, "The plan needs a summary or steps.", cx);
             return;
         }
         let has_plan = self.plan(cx).is_some();
@@ -876,34 +858,16 @@ impl PlanPanel {
         }
     }
 
-    /// The Todos badge: open plan steps plus the agents' open todos.
+    /// The Todos badge: open plan steps.
     pub(crate) fn todos_badge(&self, cx: &gpui_kit::App) -> usize {
-        let open_steps = self
-            .plan(cx)
+        self.plan(cx)
             .map(|p| {
                 p.steps
                     .iter()
                     .filter(|s| s.status != "done" && s.status != "skipped")
                     .count()
             })
-            .unwrap_or(0);
-        let agent: usize = self
-            .feed
-            .read(cx)
-            .sessions
-            .iter()
-            .map(|s| {
-                latest_todos_from_messages(&s.messages)
-                    .iter()
-                    .filter(|t| t.status != "completed")
-                    .count()
-            })
-            .sum();
-        open_steps + agent
-    }
-
-    fn sessions(&self, cx: &gpui_kit::App) -> Vec<FeedSess> {
-        self.feed.read(cx).sessions.clone()
+            .unwrap_or(0)
     }
 }
 
@@ -1555,155 +1519,6 @@ impl PlanPanel {
                 ),
             );
         }
-        let groups: Vec<(String, String, Vec<Todo>)> = self
-            .sessions(cx)
-            .into_iter()
-            .map(|s| {
-                (
-                    s.code.clone(),
-                    s.name.clone(),
-                    latest_todos_from_messages(&s.messages),
-                )
-            })
-            .filter(|(_, _, todos)| !todos.is_empty())
-            .collect();
-        if !groups.is_empty() {
-            let mut sec = div()
-                .mt(px(18.))
-                .pt(px(14.))
-                .px(px(GUTTER))
-                .border_t_1()
-                .border_color(hsla(t.line))
-                .child(
-                    div().mb(px(8.)).child(
-                        text("From agents")
-                            .uppercase()
-                            .family(Family::Mono)
-                            .size(9.5)
-                            .tracking(0.1)
-                            .color(t.faint)
-                            .line_height(LineHeight::Normal),
-                    ),
-                );
-            for (code, name, todos) in groups {
-                let ava = recur_view_chat::style::ag_color(&code, &t).unwrap_or(t.cyan);
-                sec = sec.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(8.))
-                        .pt(px(8.))
-                        .pb(px(4.))
-                        .child(
-                            div()
-                                .flex_none()
-                                .size(px(20.))
-                                .rounded(px(6.))
-                                .bg(hsla(ava))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    text(code.clone())
-                                        .size(9.)
-                                        .weight(700.)
-                                        .color(recur_ui::hex(0x0A0C10)),
-                                ),
-                        )
-                        .child(
-                            div()
-                                .debug_selector({
-                                    let n = if name.is_empty() {
-                                        code.clone()
-                                    } else {
-                                        name.clone()
-                                    };
-                                    move || format!("plan-todo-name:{n}")
-                                })
-                                .flex_1()
-                                .min_w_0()
-                                .child(
-                                    text(if name.is_empty() { code.clone() } else { name })
-                                        .size(12.)
-                                        .weight(600.)
-                                        .line_height(LineHeight::Normal)
-                                        .nowrap()
-                                        .truncate(),
-                                ),
-                        ),
-                );
-                let mut ul = div().flex().flex_col().gap(px(2.)).py(px(2.)).mb(px(6.));
-                for td in todos {
-                    let (box_border, box_bg, fg) = match td.status.as_str() {
-                        "completed" => (t.emerald, Some(t.emerald), t.muted),
-                        "in_progress" => (t.amber, None, t.text),
-                        _ => (t.line_bright, None, t.text),
-                    };
-                    let mut boxed = div()
-                        .relative()
-                        .flex_none()
-                        .size(px(14.))
-                        .mt(px(2.))
-                        .rounded(px(4.))
-                        .flex()
-                        .items_center()
-                        .justify_center();
-                    if let Some(c) = box_bg {
-                        boxed = boxed.bg(hsla(c));
-                    }
-                    if td.status == "in_progress" {
-                        boxed = boxed.child(
-                            div()
-                                .absolute()
-                                .top(px(1.5))
-                                .left(px(1.5))
-                                .bottom(px(1.5))
-                                .w(px(5.5))
-                                .rounded_l(px(2.5))
-                                .bg(hsla(t.amber)),
-                        );
-                    }
-                    boxed = boxed.child(
-                        div()
-                            .absolute()
-                            .inset_0()
-                            .rounded(px(4.))
-                            .border(px(1.5))
-                            .border_color(hsla(box_border)),
-                    );
-                    if td.status == "completed" {
-                        boxed = boxed.child(
-                            icon(IconName::Check)
-                                .stroke_width(3.)
-                                .size(px(10.))
-                                .color(hsla(recur_ui::hex(0x0b0e12))),
-                        );
-                    }
-                    let mut label = text(td.content.clone())
-                        .size(12.5)
-                        .line_height(LineHeight::Scale(1.45))
-                        .color(fg);
-                    if td.status == "completed" {
-                        label = label.line_through(true);
-                    }
-                    if td.status == "in_progress" {
-                        label = label.weight(500.);
-                    }
-                    ul = ul.child(
-                        div()
-                            .flex()
-                            .items_start()
-                            .gap(px(9.))
-                            .py(px(3.))
-                            .px(px(2.))
-                            .child(boxed)
-                            .child(div().flex_1().min_w_0().child(label)),
-                    );
-                }
-                sec = sec.child(ul);
-            }
-            scroll = scroll.child(sec);
-        }
         pane = pane.child(scroll);
         if plan.is_some() {
             pane = pane.child(
@@ -1753,22 +1568,6 @@ mod tests {
             steps_bar_label(1, 1, 1, 5),
             "1 done, 1 skipped, 1 in progress of 5"
         );
-    }
-
-    #[test]
-    fn latest_todos_skip_empty_lists() {
-        let m = |input: &str| AgentMsg {
-            tool: "TodoWrite".into(),
-            input: input.into(),
-            ..Default::default()
-        };
-        let msgs = vec![
-            m(r#"{"todos":[{"content":"first","status":"completed"}]}"#),
-            m(r#"{"todos":[]}"#),
-        ];
-        let got = latest_todos_from_messages(&msgs);
-        assert_eq!(got.len(), 1);
-        assert_eq!(got[0].content, "first");
     }
 
     #[test]

@@ -29,7 +29,7 @@ impl Collector {
                 c.exit.lock().insert(id, exit_code);
             }
             Event::Idle { id, .. } => *c.idle.lock().entry(id).or_default() += 1,
-            Event::Busy { .. } => {}
+            Event::Busy { .. } | Event::Open { .. } => {}
         })
     }
 
@@ -677,6 +677,7 @@ fn open_with_seeds_replay_and_title() {
             OpenOptions {
                 title: "dev".into(),
                 replay: b"prior-scrollback\r\n".to_vec(),
+                ..Default::default()
             },
         )
         .unwrap();
@@ -815,4 +816,116 @@ fn created_at_is_rfc3339_nano() {
         .unwrap()
         .with_timezone(&Utc);
     assert_eq!(rfc3339_nano(t), "2026-01-01T00:00:00Z");
+}
+
+fn open_background(m: &Manager, ws: &str, command: &str, log_dir: &Path) -> Opened {
+    let dir = tempfile::tempdir().unwrap();
+    let info = m
+        .open_with(
+            ws,
+            dir.path().to_str().unwrap(),
+            80,
+            24,
+            &[],
+            OpenOptions {
+                command: command.into(),
+                background: true,
+                started_by: "PA1".into(),
+                log_dir: Some(log_dir.to_path_buf()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    Opened { info, _dir: dir }
+}
+
+#[test]
+fn background_runs_command_tees_log_and_is_never_snapshotted() {
+    let c = Arc::new(Collector::default());
+    let m = c.manager();
+    let logs = tempfile::tempdir().unwrap();
+    let _tab = open(&m);
+    let s = open_background(&m, "ws-1", "echo bg-marker; sleep 30", logs.path());
+    let id = &s.info.id;
+    assert!(s.info.background);
+    assert_eq!(s.info.started_by, "PA1");
+    assert_eq!(s.info.title, "echo bg-marker; sleep 30");
+    let log = logs.path().join(format!("{id}.log"));
+    wait_for("log output", || {
+        std::fs::read_to_string(&log).is_ok_and(|t| t.contains("bg-marker"))
+    });
+    assert_eq!(m.list("ws-1").len(), 2);
+    let snaps = m.snapshots("ws-1");
+    assert_eq!(snaps.len(), 1);
+    assert_ne!(&snaps[0].id, id);
+    m.close_all();
+    assert!(log.exists(), "close_all must keep the log");
+}
+
+#[test]
+fn exit_hook_tells_a_natural_exit_from_a_stop() {
+    let m = silent();
+    let logs = tempfile::tempdir().unwrap();
+    let seen = Arc::new(Mutex::new(Vec::<(String, Option<i32>, bool)>::new()));
+    let s2 = seen.clone();
+    m.set_on_exit(move |info, stopped| {
+        s2.lock().push((info.id.clone(), info.exit_code, stopped));
+    });
+    let done = open_background(&m, "ws-1", "exit 3", logs.path());
+    wait_for("natural exit", || seen.lock().len() == 1);
+    assert_eq!(seen.lock()[0], (done.info.id.clone(), Some(3), false));
+    let long = open_background(&m, "ws-1", "sleep 30", logs.path());
+    m.close(&long.info.id).unwrap();
+    wait_for("stopped exit", || seen.lock().len() == 2);
+    assert_eq!(seen.lock()[1].0, long.info.id);
+    assert!(seen.lock()[1].2, "close must report stopped");
+    m.close_all();
+}
+
+#[test]
+fn hide_detaches_and_keeps_the_process_running() {
+    let m = silent();
+    let logs = tempfile::tempdir().unwrap();
+    let s = open_background(&m, "ws-1", "sleep 30", logs.path());
+    let id = &s.info.id;
+    m.attach(id).unwrap();
+    m.set_active("ws-1", id);
+    m.hide(id).unwrap();
+    let info = &m.list("ws-1")[0];
+    assert!(info.hidden && !info.exited && !info.active);
+    assert_eq!(m.active_id("ws-1"), "");
+    assert!(!m.session(id).st.lock().attached);
+    m.attach(id).unwrap();
+    assert!(!m.list("ws-1")[0].hidden);
+    m.close_all();
+}
+
+#[test]
+fn close_background_spares_interactive_tabs_and_other_workspaces() {
+    let m = silent();
+    let logs = tempfile::tempdir().unwrap();
+    let tab = open(&m);
+    let bg = open_background(&m, "ws-1", "sleep 30", logs.path());
+    let other = open_background(&m, "ws-2", "sleep 30", logs.path());
+    m.close_background("ws-1");
+    assert_eq!(ids(&m.list("ws-1")), std::slice::from_ref(&tab.info.id));
+    assert!(m.get(&bg.info.id).is_err());
+    assert_eq!(ids(&m.list("ws-2")), std::slice::from_ref(&other.info.id));
+    m.close_all();
+}
+
+#[test]
+fn log_keeps_the_newest_half_past_its_cap() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("procs/x.log");
+    let mut log = Log::create(&path, 10).unwrap();
+    log.write(b"0123456").unwrap();
+    log.write(b"789").unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), b"0123456789");
+    log.write(b"ab").unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), b"789ab");
+    log.write(b"cdefghijkl").unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), b"hijkl");
+    log.write(b"m").unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), b"hijklm");
 }

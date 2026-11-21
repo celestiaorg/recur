@@ -63,6 +63,11 @@ fn summaries_pull_the_salient_field() {
             "S2 → done · n",
         ),
         (
+            "mcp__recur__update_todos",
+            r#"{"items":[{"id":"S2","status":"done"},{"title":"Add tests"}]}"#,
+            "S2 → done, Add tests",
+        ),
+        (
             "mcp__recur__report_finding",
             r#"{"severity":"high","file":"a.go","line":3,"end_line":5,"message":"bug"}"#,
             "high · a.go:3-5 · bug",
@@ -79,6 +84,17 @@ fn summaries_pull_the_salient_field() {
             "resolved",
         ),
         ("mcp__recur__read_terminal", "{}", "terminal"),
+        (
+            "mcp__recur__read_terminal",
+            r#"{"id":"t1","until":"ready","wait_ms":5000}"#,
+            "t1 · ready",
+        ),
+        (
+            "mcp__recur__run_background",
+            r#"{"command":"pnpm dev","title":"web"}"#,
+            "pnpm dev",
+        ),
+        ("mcp__recur__stop_terminal", r#"{"id":"t1"}"#, "t1"),
         ("mcp__recur__activate_skill", r#"{"name":"pdf"}"#, "/pdf"),
         ("mcp__recur__update_finding", r#"{"finding_id":"F1"}"#, "F1"),
         (
@@ -87,6 +103,17 @@ fn summaries_pull_the_salient_field() {
             "draft · T",
         ),
         ("mcp__recur__attach_evidence", r#"{"summary":"s"}"#, "s"),
+        (
+            "mcp__recur__schedule_wakeup",
+            r#"{"delay_seconds":600,"reason":"CI run"}"#,
+            "CI run",
+        ),
+        (
+            "mcp__recur__create_schedule",
+            r#"{"name":"Nightly","prompt":"p"}"#,
+            "Nightly",
+        ),
+        ("mcp__recur__list_schedules", "{}", "schedules"),
         ("mcp__linear__get_issue", r#"{"id":"ENG-1"}"#, "ENG-1"),
         ("mcp__MyLinearCo__x", r#"{"other":1}"#, ""),
         ("Unknown", r#"  {"a":1}  "#, r#"{"a":1}"#),

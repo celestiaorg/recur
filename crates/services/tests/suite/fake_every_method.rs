@@ -1116,6 +1116,11 @@ async fn every_method_answers() {
     );
     note(
         &mut errs,
+        "HideTerminal",
+        s.terminal.hide_terminal("t1").await.err(),
+    );
+    note(
+        &mut errs,
         "InterruptTerminal",
         s.terminal.interrupt_terminal("t1").await.err(),
     );

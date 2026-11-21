@@ -157,7 +157,7 @@ pub enum AppEvent {
     SettingsUpdated,
     /// `system.theme`: the OS appearance changed (true = dark).
     SystemTheme(bool),
-    /// `term.data`, `term.exit`, `term.busy`, `term.idle`.
+    /// `term.data`, `term.exit`, `term.busy`, `term.idle`, `term.open`.
     Term(recur_term::Event),
     /// `updater.check` (UI to backend): Check for Updates.
     UpdaterCheck,
@@ -390,7 +390,7 @@ impl AppEvent {
             "session.user" => Self::SessionUser(de(name, d)?),
             "settings.updated" => Self::SettingsUpdated,
             "system.theme" => Self::SystemTheme(de(name, d)?),
-            "term.data" | "term.exit" | "term.busy" | "term.idle" => {
+            "term.data" | "term.exit" | "term.busy" | "term.idle" | "term.open" => {
                 Self::Term(term_from_wire(name, d)?)
             }
             "updater.check" => Self::UpdaterCheck,
@@ -468,7 +468,8 @@ fn term_payload(e: &recur_term::Event) -> Value {
             exit_code: Some(*exit_code),
         },
         recur_term::Event::Busy { id, workspace_id }
-        | recur_term::Event::Idle { id, workspace_id } => TermWire {
+        | recur_term::Event::Idle { id, workspace_id }
+        | recur_term::Event::Open { id, workspace_id } => TermWire {
             id: id.clone(),
             workspace_id: Some(workspace_id.clone()),
             data: None,
@@ -498,6 +499,10 @@ fn term_from_wire(name: &str, d: Value) -> Result<recur_term::Event, WireError> 
             exit_code: w.exit_code.unwrap_or_default(),
         },
         "term.busy" => recur_term::Event::Busy {
+            id: w.id,
+            workspace_id,
+        },
+        "term.open" => recur_term::Event::Open {
             id: w.id,
             workspace_id,
         },

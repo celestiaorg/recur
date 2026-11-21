@@ -7,6 +7,7 @@ pub mod open_pr_tool;
 pub mod permission_tools;
 pub mod plan_tools;
 pub mod reenter_phase_tool;
+pub mod schedule_tools;
 
 use serde_json::Value;
 

@@ -30,8 +30,9 @@ use tokio_util::sync::CancellationToken;
 
 use crate::bridge::Bridge;
 use crate::client::{
-    AgentOptions, Image, LocalOptions, McpServer, ModelParameterValue, ModelSelection,
-    SETTING_SOURCES_MINIMAL, STEER_COMPLETE_DELIVERED, SandboxOptions, run_created_on_this_bridge,
+    AgentOptions, DISALLOWED_BUILTINS, Image, LocalOptions, McpServer, ModelParameterValue,
+    ModelSelection, SETTING_SOURCES_MINIMAL, STEER_COMPLETE_DELIVERED, SandboxOptions,
+    run_created_on_this_bridge,
 };
 use crate::connect::{Client, Error};
 use crate::steer::{SteerBuf, ack_all, blank, follow_up_users};
@@ -688,6 +689,7 @@ impl CursorRunner {
             } else {
                 String::new()
             },
+            disallowed_tools: DISALLOWED_BUILTINS.map(String::from).to_vec(),
         }
     }
 

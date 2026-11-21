@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use recur_domain::{STEP_DOING, STEP_DONE, STEP_PENDING, STEP_SKIPPED};
 
 use super::strict;
-use crate::host::{PlanStepMeta, PlanSubmission};
+use crate::host::{PlanStepMeta, PlanSubmission, TodoUpdate};
 use crate::json::{Shape, Ty, Val, field, strict_unmarshal, unmarshal_ty};
 use crate::names;
 use crate::tool::{Call, Tool, ToolError};
@@ -155,60 +155,95 @@ fn trim_list(items: &[String]) -> Vec<String> {
         .collect()
 }
 
-const UPDATE_PLAN_STEP_SCHEMA: &str = r#"{
+const UPDATE_TODOS_SCHEMA: &str = r#"{
   "type": "object",
   "properties": {
-    "step_id": {"type": "string", "description": "The plan step id to update"},
-    "status": {"type": "string", "enum": ["pending","doing","done","skipped"], "description": "The step's new status"},
-    "note": {"type": "string", "description": "Optional short note (e.g. why a step was skipped)"}
+    "items": {
+      "type": "array",
+      "description": "Todo changes. An item without id appends a new todo (title required; the engine assigns the next S{n} id). An item with id patches only the fields given. There is no delete: mark a dropped todo skipped.",
+      "items": {"type": "object", "properties": {
+        "id": {"type": "string", "description": "Existing todo id (S1, S2, …) to patch; omit to append"},
+        "title": {"type": "string", "description": "The todo text (required when appending)"},
+        "status": {"type": "string", "enum": ["pending","doing","done","skipped"], "description": "pending, doing (in progress), done, or skipped"},
+        "note": {"type": "string", "description": "Optional short note (e.g. why it was skipped)"}
+      }}
+    }
   },
-  "required": ["step_id","status"]
+  "required": ["items"]
 }"#;
 
-static UPDATE_PLAN_STEP_IN: Shape = Shape::anon(&[
-    field("step_id", Ty::Str),
+static UPDATE_TODOS_IN: Shape = Shape::anon(&[field("items", Ty::List(&Ty::Raw))]);
+
+static TODO_ITEM: Shape = Shape::anon(&[
+    field("id", Ty::Str),
+    field("title", Ty::Str),
     field("status", Ty::Str),
     field("note", Ty::Str),
 ]);
 
-pub struct UpdatePlanStepTool;
+/// The plan step vocabulary, accepting the common provider spellings.
+fn normalize_todo_status(raw: &str) -> Option<&'static str> {
+    Some(match raw.trim().to_lowercase().as_str() {
+        "" => "",
+        STEP_PENDING => STEP_PENDING,
+        STEP_DOING | "in_progress" | "inprogress" => STEP_DOING,
+        STEP_DONE | "completed" => STEP_DONE,
+        STEP_SKIPPED | "cancelled" | "deleted" => STEP_SKIPPED,
+        _ => return None,
+    })
+}
+
+pub struct UpdateTodosTool;
 
 #[async_trait::async_trait]
-impl Tool for UpdatePlanStepTool {
+impl Tool for UpdateTodosTool {
     fn name(&self) -> &'static str {
-        names::UPDATE_PLAN_STEP
+        names::UPDATE_TODOS
     }
 
     fn description(&self) -> &'static str {
-        "Update one plan step's status (pending/doing/done/skipped) by its step id, with an \
-optional short note. Use it as work advances so plan progress stays honest."
+        "Track your work as todos on the workspace plan (the shared checklist every chat and \
+the human see in the Plan panel). Append new todos (no id) or patch existing ones by id \
+(status pending/doing/done/skipped, title, note). Mark one todo doing while you work on \
+it and done as soon as it is finished. Returns the full current list. Use it only for work \
+with several distinct steps; skip it for simple or single-step tasks."
     }
 
     fn schema(&self) -> String {
-        UPDATE_PLAN_STEP_SCHEMA.into()
+        UPDATE_TODOS_SCHEMA.into()
     }
 
     async fn execute(&self, c: Call) -> Result<String, ToolError> {
         let h = c.host()?;
-        let a = strict(&c.args, &UPDATE_PLAN_STEP_IN)?;
-        if a.str("step_id").trim().is_empty() {
-            return Err("update_plan_step: step_id is required".into());
+        let a = strict(&c.args, &UPDATE_TODOS_IN)?;
+        let mut items = Vec::new();
+        for (i, r) in a.strs("items").iter().enumerate() {
+            let o = strict_unmarshal(r, &TODO_ITEM).map_err(|e| {
+                ToolError(format!(
+                    "update_todos: items[{i}] must be {{id, title, status, note}}: {e}"
+                ))
+            })?;
+            let status = normalize_todo_status(o.str("status")).ok_or_else(|| {
+                ToolError(format!(
+                    "update_todos: items[{i}].status must be pending/doing/done/skipped, got {:?}",
+                    o.str("status")
+                ))
+            })?;
+            let item = TodoUpdate {
+                id: o.str("id").trim().into(),
+                title: o.str("title").trim().into(),
+                status: status.into(),
+                note: o.str("note").trim().into(),
+            };
+            if item.id.is_empty() && item.title.is_empty() {
+                return Err(format!("update_todos: items[{i}] needs an id or a title").into());
+            }
+            items.push(item);
         }
-        let status = a.str("status").trim().to_lowercase();
-        if ![STEP_PENDING, STEP_DOING, STEP_DONE, STEP_SKIPPED].contains(&status.as_str()) {
-            return Err(format!(
-                "update_plan_step: status must be pending/doing/done/skipped, got {:?}",
-                a.str("status")
-            )
-            .into());
+        if items.is_empty() {
+            return Err("update_todos: items is required".into());
         }
-        Ok(h.update_plan_step(
-            &c.workspace_id,
-            &c.agent_code,
-            a.str("step_id"),
-            &status,
-            a.str("note"),
-        )
-        .await)
+        Ok(h.update_todos(&c.workspace_id, &c.agent_code, items)
+            .await?)
     }
 }

@@ -292,7 +292,7 @@ impl WorkspaceView {
         let me = cx.entity().downgrade();
         let head = cx.new(|_| ChatTabsHead::new(me.clone()));
         let toolbar = cx.new(|cx| DockToolbar::new(me.clone(), window, cx));
-        let plan_panel = cx.new(|cx| PlanPanel::new(vcx, &ws_id, feed.clone(), window, cx));
+        let plan_panel = cx.new(|cx| PlanPanel::new(vcx, &ws_id, window, cx));
         let plan_head = cx.new(|_| PlanHead::new(me.clone(), plan_panel.clone()));
         let overlay = cx.new(|cx| MainOverlay::new(state.clone(), ws_id.clone(), cx));
         chat.update(cx, |c, cx| c.set_toolbar(Some(toolbar.clone().into()), cx));

@@ -412,7 +412,7 @@ pub trait WorkspacesService: Send + Sync {
     async fn update_plan(&self, workspace_id: &str, plan: &str) -> Result<String>;
 
     /// UpdatePlanStep changes one plan step's status from the Plan panel (the
-    /// human's version of the agent's update_plan_step hand). Returns a status string.
+    /// human's version of the agent's update_todos hand). Returns a status string.
     async fn update_plan_step(
         &self,
         workspace_id: &str,

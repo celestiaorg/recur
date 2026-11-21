@@ -7,7 +7,7 @@ use std::time::Duration;
 use recur_agent_tools::{
     AskUserRequest, CreateArtifactRequest, CreateWorkspaceRequest, EscalationRequest, Evidence,
     Finding, Host, HostError, PermissionAsk, PermissionVerdict, PlanSubmission, TerminalInfo,
-    host_tools,
+    TodoUpdate, host_tools,
 };
 use recur_domain::{
     APP_AGENT_CODE, AgentSkill, Artifact, ArtifactKind, BriefingCounts, BriefingSnapshot,
@@ -216,19 +216,21 @@ impl Host for Capture {
         "Plan recorded.".into()
     }
 
-    async fn update_plan_step(
+    async fn update_todos(
         &self,
         ws: &str,
         agent: &str,
-        step_id: &str,
-        status: &str,
-        _note: &str,
-    ) -> String {
+        items: Vec<TodoUpdate>,
+    ) -> Result<String, HostError> {
+        let got: Vec<String> = items
+            .iter()
+            .map(|t| format!("{}:{}→{}", t.id, t.title, t.status))
+            .collect();
         self.step_updates
             .lock()
             .unwrap()
-            .push(rec(ws, agent, &format!("{step_id}→{status}")));
-        "Step updated.".into()
+            .push(rec(ws, agent, &got.join("; ")));
+        Ok("Steps:".into())
     }
 
     async fn list_skills(&self, _ws: &str, _agent: &str) -> Result<Vec<AgentSkill>, HostError> {
@@ -265,11 +267,12 @@ impl Host for Capture {
 
     async fn read_terminal(
         &self,
+        _cancel: &CancellationToken,
         _ws: &str,
         _agent: &str,
-        id: &str,
-        _tail: i64,
+        req: recur_agent_tools::ReadTerminalRequest,
     ) -> Result<String, HostError> {
+        let id = req.id.as_str();
         if !id.is_empty() && id != "term-1" {
             return Err(HostError::new(format!("terminal \"{id}\" not found")));
         }
@@ -1401,23 +1404,33 @@ async fn submit_plan_and_update_step() {
     let res = call(
         &s,
         &b,
-        "update_plan_step",
-        json!({"step_id": "S1", "status": "done"}),
+        "update_todos",
+        json!({"items": [
+            {"id": "S1", "status": "completed"},
+            {"title": " New ", "status": "inProgress"},
+            {"id": "S2", "status": "cancelled"},
+            {"id": "S3", "status": "deleted"},
+            {"id": "S4", "note": "n"},
+        ]}),
     )
     .await;
     assert!(!res.is_error);
     assert_eq!(
         *cap.step_updates.lock().unwrap(),
-        vec![rec("L3", "PA", "S1→done")]
+        vec![rec(
+            "L3",
+            "PA",
+            "S1:→done; :New→doing; S2:→skipped; S3:→skipped; S4:→"
+        )]
     );
-    let res = call(
-        &s,
-        &b,
-        "update_plan_step",
-        json!({"step_id": "S1", "status": "finished"}),
-    )
-    .await;
-    assert!(res.is_error);
+    for bad in [
+        json!({"items": [{"id": "S1", "status": "finished"}]}),
+        json!({"items": [{"note": "no id or title"}]}),
+        json!({"items": []}),
+    ] {
+        assert!(call(&s, &b, "update_todos", bad).await.is_error);
+    }
+    assert_eq!(cap.step_updates.lock().unwrap().len(), 1);
 }
 
 #[tokio::test]

@@ -1,5 +1,5 @@
 //! Snapshot answers for argv, stdin user messages (as JSON values), model
-//! flags, the background-task frame, the status card and the picker list
+//! flags, the status card and the picker list
 //! (`tests/golden/go_claude.json` and `go_claude_app.json`). Edit the fixtures
 //! by hand when the behavior changes on purpose.
 
@@ -9,7 +9,7 @@ use recur_agent::{McpAttach, TurnRequest, UserImage};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::{args, flags, input, runner, status};
+use crate::{args, flags, input, status};
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -141,19 +141,11 @@ struct FlagRow {
 }
 
 #[derive(Deserialize)]
-struct BgRow {
-    line: String,
-    count: usize,
-    ok: bool,
-}
-
-#[derive(Deserialize)]
 struct Engine {
     args: Vec<ArgsRow>,
     #[serde(rename = "userLines")]
     user_lines: Vec<UserRow>,
     flags: Vec<FlagRow>,
-    background: Vec<BgRow>,
 }
 
 fn engine() -> Engine {
@@ -196,19 +188,6 @@ fn model_flags_match_go() {
         assert_eq!(flags::resolve_model(&row.model, &f), row.resolve, "{ctx}");
         assert_eq!(flags::context_window(&row.model, &f), row.window, "{ctx}");
         assert_eq!(flags::model_label(&row.model), row.label, "{ctx}");
-    }
-}
-
-#[test]
-fn background_frames_match_go() {
-    for row in engine().background {
-        let want = row.ok.then_some(row.count);
-        assert_eq!(
-            runner::background_task_count(row.line.as_bytes()),
-            want,
-            "{}",
-            row.line
-        );
     }
 }
 

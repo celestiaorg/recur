@@ -25,7 +25,7 @@ pub fn maestro_replan_tools() -> Vec<String> {
         "Grep",
         "Glob",
         mcp::SUBMIT_PLAN,
-        mcp::UPDATE_PLAN_STEP,
+        mcp::UPDATE_TODOS,
         mcp::EDIT_PLAN,
         mcp::LIST_FINDINGS,
     ]
@@ -46,9 +46,9 @@ itself is unachievable, leave the plan and say so; the Reviewer and the human de
 Read/Grep/Glob only to check what the notes claim. Investigate, do not edit code.\n\n\
 To revise: call mcp__recur__submit_plan with the FULL plan (summary, body, every step in \
 order: finished steps keep their titles so their status survives; steps other child \
-workspaces are working RIGHT NOW keep their titles too, they close when they land). To change one step's \
-status, mcp__recur__update_plan_step. If the plan still holds, reply in one sentence and call \
-no tools. Be brief.\n\n\
+workspaces are working RIGHT NOW keep their titles too, they close when they land). To change a step's \
+status, title, or note, or to add a step, mcp__recur__update_todos. If the plan still holds, \
+reply in one sentence and call no tools. Be brief.\n\n\
 Task: {task}\n\nCurrent plan:\n{plan}\n\nImplementer handoff:\n{handoff}"
     )
 }

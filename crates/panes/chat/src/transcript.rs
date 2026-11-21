@@ -246,8 +246,23 @@ impl AgentChat {
         }
         if self.show_turn_elapsed(cx) {
             out.push(self.turn_row(format_elapsed(self.turn_elapsed_sec), true, cx));
-        } else if !self.props.status_text.is_empty() {
-            out.push(self.turn_row(self.props.status_text.clone(), false, cx));
+        } else {
+            let wakeup = (self.wakeup_left_sec > 0).then(|| {
+                let left = format!("Checking back in {}", format_elapsed(self.wakeup_left_sec));
+                match self.props.wakeup_reason.trim() {
+                    "" => left,
+                    r => format!("{left} · {r}"),
+                }
+            });
+            let status = [Some(self.props.status_text.clone()), wakeup]
+                .into_iter()
+                .flatten()
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+                .join(" · ");
+            if !status.is_empty() {
+                out.push(self.turn_row(status, false, cx));
+            }
         }
         out
     }

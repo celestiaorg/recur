@@ -36,7 +36,7 @@ pub fn mode_tools(mode: &str) -> Vec<String> {
         }
         ROLE_MODE_AGENT => {
             ask.extend(own(&EDIT_TOOLS));
-            ask.push(mcp::UPDATE_FINDING.to_owned());
+            ask.extend(own(&[mcp::UPDATE_FINDING, mcp::UPDATE_TODOS]));
             ask
         }
         ROLE_MODE_REVIEW => {
@@ -48,7 +48,7 @@ pub fn mode_tools(mode: &str) -> Vec<String> {
                 mcp::PLAN,
                 mcp::EDIT_PLAN,
                 mcp::SUBMIT_PLAN,
-                mcp::UPDATE_PLAN_STEP,
+                mcp::UPDATE_TODOS,
                 mcp::DISPATCH_SPECIALIST,
                 mcp::REENTER_PHASE,
                 mcp::RUN_PHASE,

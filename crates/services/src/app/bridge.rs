@@ -40,6 +40,8 @@ pub(super) fn attach(svc: &Arc<AppServices>) {
             {
                 s.editor.forget(&r.workspace_id);
                 s.term_persist.forget(&r.workspace_id);
+                let (term, id) = (s.term.clone(), r.workspace_id.clone());
+                std::thread::spawn(move || term.close_background(&id));
                 s.index.drop_index(&r.workspace_id);
             }
             // Published under the engine's watch lock: pin only, no engine calls.

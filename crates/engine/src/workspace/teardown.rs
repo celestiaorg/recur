@@ -216,6 +216,7 @@ impl Engine {
         self.clear_mode_continues_for_workspace(id);
         self.drop_chat_life_for_workspace(id);
         self.clear_inbox_for_workspace(id);
+        let _ = self.store.delete_chat_wakeups(id, "");
         let Some(updated) = self.store.update_workspace(id, |lp| {
             lp.archived = true;
             lp.worktree_path.clear();

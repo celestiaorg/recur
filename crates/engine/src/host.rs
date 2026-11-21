@@ -15,9 +15,10 @@ pub mod chat;
 use std::sync::{Arc, Weak};
 
 use recur_agent_tools::{
-    AskUserRequest, CreateArtifactRequest, CreateWorkspaceRequest, EscalationRequest, Evidence,
-    Finding, Host, HostError, NoopHost, PermissionAsk, PermissionVerdict, PlanSubmission,
-    TerminalInfo,
+    AskUserRequest, BackgroundRequest, CreateArtifactRequest, CreateWorkspaceRequest,
+    EscalationRequest, Evidence, Finding, Host, HostError, NoopHost, PermissionAsk,
+    PermissionVerdict, PlanSubmission, ReadTerminalRequest, ScheduleRequest, TerminalInfo,
+    TodoUpdate,
 };
 use recur_domain::{AgentSkill, Artifact, BriefingSnapshot, WorkspaceContext};
 use recur_domain::{
@@ -458,17 +459,15 @@ impl Host for EngineHost {
         }
     }
 
-    async fn update_plan_step(
+    async fn update_todos(
         &self,
         ws: &str,
         agent: &str,
-        step_id: &str,
-        status: &str,
-        note: &str,
-    ) -> String {
+        items: Vec<TodoUpdate>,
+    ) -> Result<String, HostError> {
         match self.engine() {
-            Some(e) => e.apply_plan_step_update(ws, agent, step_id, status, note),
-            None => "ignored".into(),
+            Some(e) => e.apply_todos(ws, agent, &items),
+            None => Ok("ignored".into()),
         }
     }
 
@@ -497,15 +496,81 @@ impl Host for EngineHost {
 
     async fn read_terminal(
         &self,
+        cancel: &CancellationToken,
         ws: &str,
         _agent: &str,
-        id: &str,
-        tail_lines: i64,
+        req: ReadTerminalRequest,
     ) -> Result<String, HostError> {
         let e = self
             .engine()
             .ok_or_else(|| HostError::new("no Observatory terminals in this session"))?;
-        e.read_agent_terminal(ws, id, tail_lines)
+        e.read_agent_terminal(cancel, ws, req).await
+    }
+
+    async fn run_background(
+        &self,
+        cancel: &CancellationToken,
+        ws: &str,
+        agent: &str,
+        req: BackgroundRequest,
+    ) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("no Observatory terminals in this session"))?;
+        e.run_background_from_chat(cancel, ws, agent, req).await
+    }
+
+    async fn stop_terminal(&self, ws: &str, _agent: &str, id: &str) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("no Observatory terminals in this session"))?;
+        e.stop_terminal_from_chat(ws, id)
+    }
+
+    async fn schedule_wakeup(
+        &self,
+        ws: &str,
+        agent: &str,
+        delay_secs: i64,
+        reason: &str,
+    ) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("engine is shutting down"))?;
+        e.schedule_wakeup_from_chat(ws, agent, delay_secs, reason)
+    }
+
+    async fn create_schedule(
+        &self,
+        cancel: &CancellationToken,
+        ws: &str,
+        agent: &str,
+        req: ScheduleRequest,
+    ) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("engine is shutting down"))?;
+        e.create_schedule_from_chat(cancel, ws, agent, req).await
+    }
+
+    async fn list_schedules(&self, ws: &str, _agent: &str) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("engine is shutting down"))?;
+        e.list_schedules_from_chat(ws)
+    }
+
+    async fn delete_schedule(
+        &self,
+        cancel: &CancellationToken,
+        ws: &str,
+        agent: &str,
+        id: &str,
+    ) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("engine is shutting down"))?;
+        e.delete_schedule_from_chat(cancel, ws, agent, id).await
     }
 
     async fn switch_mode(&self, ws: &str, agent: &str, mode: &str) -> String {

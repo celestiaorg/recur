@@ -26,7 +26,7 @@ pub fn host_tools() -> Vec<Arc<dyn Tool>> {
         Arc::new(RunPhaseTool),
         Arc::new(ResumeLoopTool),
         Arc::new(SubmitPlanTool),
-        Arc::new(UpdatePlanStepTool),
+        Arc::new(UpdateTodosTool),
         Arc::new(SendBackTool),
         Arc::new(PermissionRequestTool),
         Arc::new(ListSkillsTool),
@@ -55,14 +55,20 @@ pub fn host_tools() -> Vec<Arc<dyn Tool>> {
         Arc::new(MessageChildTool),
         Arc::new(ListTerminalsTool),
         Arc::new(ReadTerminalTool),
+        Arc::new(RunBackgroundTool),
+        Arc::new(StopTerminalTool),
+        Arc::new(ScheduleWakeupTool),
+        Arc::new(CreateScheduleTool),
+        Arc::new(ListSchedulesTool),
+        Arc::new(DeleteScheduleTool),
     ]
 }
 
-/// The native-harness file/shell/todo set (not registered on MCP).
+/// The native-harness file/shell set (not registered on MCP).
 pub fn coding_tools() -> Vec<Arc<dyn Tool>> {
     use crate::coding::{
         bash::BashTool, edit::EditTool, glob::GlobTool, grep::GrepTool, read::ReadTool,
-        todos::TodoTool, write::WriteTool,
+        write::WriteTool,
     };
     vec![
         Arc::new(ReadTool),
@@ -71,6 +77,5 @@ pub fn coding_tools() -> Vec<Arc<dyn Tool>> {
         Arc::new(GlobTool),
         Arc::new(GrepTool),
         Arc::new(BashTool),
-        Arc::new(TodoTool),
     ]
 }

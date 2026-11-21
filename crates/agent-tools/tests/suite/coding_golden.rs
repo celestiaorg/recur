@@ -6,7 +6,7 @@ use crate::common;
 
 use std::sync::Arc;
 
-use recur_agent_tools::{Call, HostError, PermissionVerdict, Permitter, TodoStore, Tool};
+use recur_agent_tools::{Call, HostError, PermissionVerdict, Permitter, Tool};
 use serde::Deserialize;
 use tokio_util::sync::CancellationToken;
 
@@ -16,7 +16,6 @@ struct Case {
     tool: String,
     args: String,
     bypass: bool,
-    session: String,
     result: String,
     error: String,
 }
@@ -100,7 +99,6 @@ async fn coding_tools_match_go() {
 
     let cases: Vec<Case> =
         serde_json::from_str(include_str!("../golden/coding_calls.json")).unwrap();
-    let todos = Arc::new(TodoStore::default());
     let mut failures = Vec::new();
     let mut ran = 0;
     for c in &cases {
@@ -111,12 +109,6 @@ async fn coding_tools_match_go() {
             args: c.args.clone(),
             bypass_perms: c.bypass,
             permitter: Some(Arc::new(DenyAll)),
-            todos: (c.session != "nostore").then(|| todos.clone()),
-            session_id: if c.session == "nostore" {
-                "s1".into()
-            } else {
-                c.session.clone()
-            },
             ..Default::default()
         };
         let (result, error) = match t.execute(call).await {
@@ -136,7 +128,7 @@ async fn coding_tools_match_go() {
             ));
         }
     }
-    assert_eq!(ran, 82, "replayed cases");
+    assert_eq!(ran, 75, "replayed cases");
     assert!(
         failures.is_empty(),
         "{} of {ran} cases differ:\n{}",

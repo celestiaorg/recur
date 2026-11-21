@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use recur_agent_tools::coding::bash::BashTool;
 use recur_agent_tools::{
-    Call, HostError, PermissionVerdict, Permitter, Registry, TodoStore, Tool, advertised_name,
+    Call, HostError, PermissionVerdict, Permitter, Registry, Tool, advertised_name,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -229,18 +229,6 @@ async fn bash_and_todo() {
         .await
         .is_err()
     );
-
-    let todo = reg.get("TodoWrite").unwrap();
-    let got = todo
-        .execute(Call {
-            session_id: "s1".into(),
-            todos: Some(Arc::new(TodoStore::default())),
-            args: r#"{"todos":[{"id":"1","content":"do","status":"pending"}]}"#.into(),
-            ..Default::default()
-        })
-        .await
-        .unwrap();
-    assert!(got.contains(r#""id":"1""#), "{got}");
 }
 
 #[tokio::test]
@@ -322,7 +310,7 @@ fn registry_resolves_prefixed_names_and_advertises_them() {
         advertised_name(listed[0].as_ref(), &allowed),
         "mcp__recur__ask_user"
     );
-    assert_eq!(reg.list(None).len(), 46);
+    assert_eq!(reg.list(None).len(), 52);
     assert!(recur_agent_tools::halt_after("mcp__recur__ask_user", ""));
     assert!(recur_agent_tools::halt_after(
         "switch_mode",

@@ -12,13 +12,17 @@
 //!     shell keeps running, output lands in a bounded replay ring, and re-attaching repaints from
 //!     that ring. Sessions die when the user closes them or the app exits; the service layer
 //!     snapshots tab list, cwd and replay so the next launch can restore them.
+//!
+//! Background sessions ([`OpenOptions::background`]) run one command for an agent. They tee
+//! output to a log file, are never snapshotted or restored, and closing their tab only hides it.
 
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
-use std::io::{Read, Write};
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::fd::{AsFd, AsRawFd, RawFd};
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, SyncSender, sync_channel};
 use std::sync::{Arc, Weak};
@@ -55,6 +59,8 @@ const IDLE_POLL: Duration = Duration::from_millis(25);
 const IDLE_POLL_MAX: Duration = Duration::from_secs(1);
 const INTERRUPT_GRACE: Duration = Duration::from_secs(2);
 const INTERRUPT_POLL: Duration = Duration::from_millis(20);
+/// Per background session output log.
+const LOG_CAP: u64 = 20 << 20;
 
 /// Appended after a persisted replay when seeding a new PTY so a snapshot taken inside an
 /// alt-screen program (vim, htop) does not leave the restored tab stuck in that screen, or
@@ -78,6 +84,8 @@ pub enum Event {
     Busy { id: String, workspace_id: String },
     /// `term.idle`: the foreground command returned to the login shell.
     Idle { id: String, workspace_id: String },
+    /// `term.open`: a background session started, so a mounted dock can show its tab.
+    Open { id: String, workspace_id: String },
 }
 
 impl Event {
@@ -88,6 +96,7 @@ impl Event {
             Event::Exit { .. } => "term.exit",
             Event::Busy { .. } => "term.busy",
             Event::Idle { .. } => "term.idle",
+            Event::Open { .. } => "term.open",
         }
     }
 
@@ -96,7 +105,8 @@ impl Event {
             Event::Data { id, .. }
             | Event::Exit { id, .. }
             | Event::Busy { id, .. }
-            | Event::Idle { id, .. } => id,
+            | Event::Idle { id, .. }
+            | Event::Open { id, .. } => id,
         }
     }
 }
@@ -104,6 +114,7 @@ impl Event {
 /// Publishes an event. Injected so this crate stays free of the services and engine layers.
 pub type Emitter = Arc<dyn Fn(Event) + Send + Sync>;
 type DirtyHook = Arc<dyn Fn(&str) + Send + Sync>;
+type ExitHook = Arc<dyn Fn(&Info, bool) + Send + Sync>;
 
 /// The client-facing view of a session.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -130,17 +141,33 @@ pub struct Info {
     /// True for the dock's focused tab, so a restart reselects the same tab.
     #[serde(default, skip_serializing_if = "is_false")]
     pub active: bool,
+    /// A Recur-owned process started for an agent (see [`OpenOptions::background`]).
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub background: bool,
+    /// The chat code that started a background session.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub started_by: String,
+    /// The user closed this background session's tab; the process keeps running.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub hidden: bool,
 }
 
 fn is_false(b: &bool) -> bool {
     !*b
 }
 
-/// Seeds for a session opened to restore a previous tab.
+/// Seeds for a session: a restored tab's title and replay, or a background command.
 #[derive(Debug, Clone, Default)]
 pub struct OpenOptions {
     pub title: String,
     pub replay: Vec<u8>,
+    /// Runs `$SHELL -lc <command>` instead of an interactive login shell.
+    pub command: String,
+    /// Never snapshotted or restored; killed on `close_all` like any session.
+    pub background: bool,
+    pub started_by: String,
+    /// Tees raw output to `<log_dir>/<session id>.log`.
+    pub log_dir: Option<PathBuf>,
 }
 
 /// One tab's durable state: enough to spawn a new shell in the same directory and repaint the
@@ -185,6 +212,7 @@ struct Shared {
     reg: Mutex<Registry>,
     emit: Emitter,
     on_dirty: Mutex<Option<DirtyHook>>,
+    on_exit: Mutex<Option<ExitHook>>,
 }
 
 #[derive(Default)]
@@ -202,7 +230,15 @@ impl Manager {
             reg: Mutex::default(),
             emit: Arc::new(emit),
             on_dirty: Mutex::new(None),
+            on_exit: Mutex::new(None),
         }))
+    }
+
+    /// Registers a hook fired after `term.exit` with the session's final info and whether a
+    /// close (Stop, workspace removal, quit) ended it rather than the process itself. Runs on
+    /// the session's reader thread, so it must not block.
+    pub fn set_on_exit(&self, hook: impl Fn(&Info, bool) + Send + Sync + 'static) {
+        *self.0.on_exit.lock() = Some(Arc::new(hook));
     }
 
     /// Registers a hook fired when a workspace's sessions change in a way that should be
@@ -265,7 +301,11 @@ impl Manager {
         // A login shell (-l) is what Terminal.app and iTerm give you, so PATH, version managers
         // and shell functions are present instead of the GUI app's stunted launchd environment.
         let mut cmd = CommandBuilder::new(&shell);
-        cmd.arg("-l");
+        if opts.command.is_empty() {
+            cmd.arg("-l");
+        } else {
+            cmd.args(["-lc", &opts.command]);
+        }
         cmd.cwd(cwd);
         cmd.env_clear();
         for kv in merge_env(pty_env(), extra_env) {
@@ -285,9 +325,10 @@ impl Manager {
         let writer = FileDescriptor::dup(&Raw(raw)).map_err(|e| start_err(e.to_string()))?;
         let stop = Pipe::new().map_err(|e| start_err(e.to_string()))?;
 
-        let title = match opts.title.trim() {
-            "" => basename(&shell),
-            t => t.to_string(),
+        let title = match (opts.title.trim(), opts.command.trim()) {
+            ("", "") => basename(&shell),
+            ("", c) => c.to_string(),
+            (t, _) => t.to_string(),
         };
         let mut replay = Ring::new(REPLAY_CAP);
         if !opts.replay.is_empty() {
@@ -298,10 +339,17 @@ impl Manager {
         let (idle_kick, idle_rx) = sync_channel(1);
         let weak = Arc::downgrade(&self.0);
         let ws = workspace_id.to_string();
+        let id = uuid::Uuid::now_v7().to_string();
+        let log = opts
+            .log_dir
+            .and_then(|d| Log::create(&d.join(format!("{id}.log")), LOG_CAP).ok());
         let session = Arc::new(Session {
-            id: uuid::Uuid::now_v7().to_string(),
+            id,
             workspace_id: workspace_id.to_string(),
             shell: shell.clone(),
+            background: opts.background,
+            started_by: opts.started_by,
+            log: Mutex::new(log),
             created_at: Utc::now(),
             pid: child.process_id().map_or(0, |p| p as i32),
             master: Mutex::new(Some(master)),
@@ -351,6 +399,12 @@ impl Manager {
             .map_err(|e| start_err(e.to_string()))?;
 
         self.0.dirty(workspace_id);
+        if session.background {
+            (self.0.emit)(Event::Open {
+                id: session.id.clone(),
+                workspace_id: workspace_id.to_string(),
+            });
+        }
         Ok(session.info())
     }
 
@@ -380,7 +434,7 @@ impl Manager {
     pub fn snapshots(&self, workspace_id: &str) -> Vec<SessionSnapshot> {
         let mut out = Vec::new();
         for info in self.list(workspace_id) {
-            if info.exited {
+            if info.exited || info.background {
                 continue;
             }
             let Ok(s) = self.get(&info.id) else { continue };
@@ -411,12 +465,13 @@ impl Manager {
             .ok_or_else(|| Error::NotFound(id.to_string()))
     }
 
-    /// Marks a client live and returns the raw VT replay to repaint from.
+    /// Marks a client live (re-showing a hidden tab) and returns the raw VT replay to repaint from.
     pub fn attach(&self, id: &str) -> Result<Vec<u8>, Error> {
         let s = self.get(id)?;
         let snap = {
             let mut st = s.st.lock();
             st.attached = true;
+            st.hidden = false;
             // A new client has an empty screen and owes nothing for what the last one saw.
             st.outstanding = 0;
             st.pending.clear();
@@ -449,6 +504,17 @@ impl Manager {
             st.outstanding = st.outstanding.saturating_sub(n);
         }
         s.cond.notify_all();
+        Ok(())
+    }
+
+    /// Detaches and hides a tab without touching its process. The dock uses it for background
+    /// sessions, which keep running until stopped.
+    pub fn hide(&self, id: &str) -> Result<(), Error> {
+        let s = self.get(id)?;
+        s.st.lock().hidden = true;
+        self.detach(id)?;
+        self.0.reg.lock().remove_active(&s.workspace_id, id);
+        self.0.dirty(&s.workspace_id);
         Ok(())
     }
 
@@ -526,6 +592,24 @@ impl Manager {
         Ok(tail_plain(&snap, max_lines))
     }
 
+    /// How many output bytes the session has produced so far: a mark for
+    /// [`Self::read_plain_since`].
+    pub fn output_written(&self, id: &str) -> Result<u64, Error> {
+        Ok(self.get(id)?.st.lock().replay.written())
+    }
+
+    /// Like [`Self::read_plain`], but only output produced after the `since` mark.
+    pub fn read_plain_since(
+        &self,
+        id: &str,
+        since: u64,
+        max_lines: usize,
+    ) -> Result<String, Error> {
+        let s = self.get(id)?;
+        let raw = s.st.lock().replay.since(since);
+        Ok(tail_plain(&raw, max_lines))
+    }
+
     /// Drops the replay buffer after the user clears the terminal so re-attaching doesn't bring
     /// back the output they just wiped.
     pub fn clear_replay(&self, id: &str) -> Result<(), Error> {
@@ -555,6 +639,22 @@ impl Manager {
         self.0.drop_session(&s);
         self.0.dirty(&s.workspace_id);
         Ok(())
+    }
+
+    /// Terminates a workspace's background sessions (archive or removal).
+    pub fn close_background(&self, workspace_id: &str) {
+        let ids: Vec<String> = self
+            .0
+            .reg
+            .lock()
+            .sessions
+            .values()
+            .filter(|s| s.background && s.workspace_id == workspace_id)
+            .map(|s| s.id.clone())
+            .collect();
+        for id in ids {
+            let _ = self.close(&id);
+        }
     }
 
     /// Tears down every session. Called on app shutdown so quitting doesn't strand orphaned
@@ -617,10 +717,14 @@ impl Shared {
 }
 
 impl Registry {
-    fn remove(&mut self, workspace_id: &str, id: &str) {
+    fn remove_active(&mut self, workspace_id: &str, id: &str) {
         if self.active.get(workspace_id).is_some_and(|a| a == id) {
             self.active.remove(workspace_id);
         }
+    }
+
+    fn remove(&mut self, workspace_id: &str, id: &str) {
+        self.remove_active(workspace_id, id);
         if let Some(ids) = self.order.get_mut(workspace_id) {
             ids.retain(|x| x != id);
             if ids.is_empty() {
@@ -689,6 +793,9 @@ struct Session {
     id: String,
     workspace_id: String,
     shell: String,
+    background: bool,
+    started_by: String,
+    log: Mutex<Option<Log>>,
     created_at: DateTime<Utc>,
     pid: i32,
     master: Mutex<Option<Box<dyn MasterPty + Send>>>,
@@ -725,6 +832,9 @@ struct State {
     pending: Vec<u8>,
     replay: Ring,
     closed: bool,
+    /// `terminate` ended the session (Stop, removal, quit), not the process itself.
+    stopped: bool,
+    hidden: bool,
     exited: bool,
     exited_at: Option<Instant>,
     exit_code: i32,
@@ -742,6 +852,8 @@ impl State {
             pending: Vec::new(),
             replay,
             closed: false,
+            stopped: false,
+            hidden: false,
             exited: false,
             exited_at: None,
             exit_code: 0,
@@ -751,9 +863,15 @@ impl State {
 
 impl Session {
     fn info(&self) -> Info {
-        let (title, exited, exit_code, cwd) = {
+        let (title, exited, exit_code, cwd, hidden) = {
             let st = self.st.lock();
-            (st.title.clone(), st.exited, st.exit_code, st.cwd.clone())
+            (
+                st.title.clone(),
+                st.exited,
+                st.exit_code,
+                st.cwd.clone(),
+                st.hidden,
+            )
         };
         Info {
             id: self.id.clone(),
@@ -770,6 +888,9 @@ impl Session {
             exit_code: exited.then_some(exit_code),
             busy: !exited && self.is_busy(),
             active: false,
+            background: self.background,
+            started_by: self.started_by.clone(),
+            hidden,
         }
     }
 
@@ -860,6 +981,12 @@ impl Session {
         }
         if forward.is_empty() {
             return;
+        }
+        {
+            let mut log = self.log.lock();
+            if log.as_mut().is_some_and(|l| l.write(&forward).is_err()) {
+                *log = None;
+            }
         }
         let cwd = osc7.feed(&forward).filter(|c| dir_exists(c));
         let big = {
@@ -954,6 +1081,11 @@ impl Session {
         });
         if let Some(m) = &shared {
             m.dirty(&self.workspace_id);
+            let hook = m.on_exit.lock().clone();
+            if let Some(hook) = hook {
+                let stopped = self.st.lock().stopped;
+                hook(&self.info(), stopped);
+            }
         }
     }
 
@@ -969,6 +1101,7 @@ impl Session {
                 return Vec::new();
             }
             st.closed = true;
+            st.stopped = true;
         }
         // Release a read loop parked in await_credit.
         self.cond.notify_all();
@@ -1078,6 +1211,53 @@ fn refresh_cwd(st: &Mutex<State>, pid: i32) {
     st.cwd_checked_at = Some(Instant::now());
     if ok {
         st.cwd = dir;
+    }
+}
+
+/// A background session's output log.
+struct Log {
+    file: File,
+    len: u64,
+    cap: u64,
+}
+
+impl Log {
+    fn create(path: &Path, cap: u64) -> std::io::Result<Self> {
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
+        let file = File::options()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path)?;
+        Ok(Self { file, len: 0, cap })
+    }
+
+    /// simplify: past `cap` the file is rewritten with its newest half, which costs one
+    /// cap/2 copy per cap/2 of output and drops the oldest lines. Rotate to numbered files if
+    /// older output turns out to matter.
+    fn write(&mut self, data: &[u8]) -> std::io::Result<()> {
+        if self.len + data.len() as u64 <= self.cap {
+            self.file.write_all(data)?;
+            self.len += data.len() as u64;
+            return Ok(());
+        }
+        let keep = (self.cap / 2) as usize;
+        let mut tail = Vec::with_capacity(keep + data.len());
+        self.file
+            .seek(SeekFrom::Start(self.len.saturating_sub(keep as u64)))?;
+        self.file.read_to_end(&mut tail)?;
+        tail.extend_from_slice(data);
+        if tail.len() > keep {
+            tail.drain(..tail.len() - keep);
+        }
+        self.file.set_len(0)?;
+        self.file.seek(SeekFrom::Start(0))?;
+        self.file.write_all(&tail)?;
+        self.len = tail.len() as u64;
+        Ok(())
     }
 }
 

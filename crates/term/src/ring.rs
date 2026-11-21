@@ -10,6 +10,7 @@ pub(crate) struct Ring {
     buf: Vec<u8>,
     w: usize,
     full: bool,
+    written: u64,
 }
 
 impl Ring {
@@ -18,11 +19,13 @@ impl Ring {
             buf: vec![0; capacity],
             w: 0,
             full: false,
+            written: 0,
         }
     }
 
     /// Appends `p`, overwriting the oldest bytes once capacity is reached.
     pub(crate) fn write(&mut self, p: &[u8]) {
+        self.written += p.len() as u64;
         let n = self.buf.len();
         if n == 0 {
             return;
@@ -56,6 +59,18 @@ impl Ring {
         out.extend_from_slice(&self.buf[self.w..]);
         out.extend_from_slice(&self.buf[..self.w]);
         out
+    }
+
+    /// Bytes ever written, including those overwritten or reset away.
+    pub(crate) fn written(&self) -> u64 {
+        self.written
+    }
+
+    /// The still-buffered bytes written after the [`Self::written`] mark `pos`.
+    pub(crate) fn since(&self, pos: u64) -> Vec<u8> {
+        let snap = self.snapshot();
+        let n = usize::try_from(self.written.saturating_sub(pos)).unwrap_or(usize::MAX);
+        snap[snap.len().saturating_sub(n)..].to_vec()
     }
 
     /// Drops everything buffered, so a later re-attach doesn't replay output the user wiped.
@@ -102,6 +117,22 @@ mod tests {
         assert!(r.snapshot().is_empty());
         r.write(b"xy");
         assert_eq!(r.snapshot(), b"xy");
+    }
+
+    #[test]
+    fn since_keeps_only_later_bytes() {
+        let mut r = Ring::new(4);
+        r.write(b"ab");
+        let mark = r.written();
+        assert!(r.since(mark).is_empty());
+        r.write(b"cd");
+        assert_eq!(r.since(mark), b"cd");
+        r.write(b"efgh");
+        assert_eq!(r.since(mark), b"efgh", "wrapped past the mark");
+        let mark = r.written();
+        r.reset();
+        r.write(b"x");
+        assert_eq!(r.since(mark), b"x");
     }
 
     #[test]

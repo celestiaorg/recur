@@ -112,7 +112,7 @@ id = "team.roles.changelog"
 name = "Changelog"
 code = "CL"
 mode = "agent"
-tools = ["update_plan_step"]
+tools = ["update_todos"]
 prompt = "prompts/changelog.md"
 ```
 
@@ -123,7 +123,7 @@ prompt = "prompts/changelog.md"
 | `code` | Two-letter short label, unique across all installed roles |
 | `mode` | Required. `ask`, `plan`, `agent`, `review`, or `autopilot`. Sets what the role can do: only `agent` can edit |
 | `prompt` | Standing instructions: inline text or a file in the bundle |
-| `tools` | Extra Recur tools by short name, such as `update_plan_step`, `playwright`, `attach_evidence`, or `report_result` |
+| `tools` | Extra Recur tools by short name, such as `update_todos`, `playwright`, `attach_evidence`, or `report_result` |
 | `disabled_tools` | Tools to remove. You cannot add editing to a read-only mode |
 | `hint` | Optional one-line description |
 

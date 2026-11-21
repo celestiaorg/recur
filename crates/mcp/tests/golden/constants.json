@@ -23,7 +23,7 @@
     "run_phase",
     "resume_loop",
     "submit_plan",
-    "update_plan_step",
+    "update_todos",
     "send_back",
     "permission_request",
     "list_skills",
@@ -51,6 +51,12 @@
     "archive_child",
     "message_child",
     "list_terminals",
-    "read_terminal"
+    "read_terminal",
+    "run_background",
+    "stop_terminal",
+    "schedule_wakeup",
+    "create_schedule",
+    "list_schedules",
+    "delete_schedule"
   ]
 }

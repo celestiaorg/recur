@@ -1,7 +1,6 @@
-//! TodoWrite / Cursor updateTodos checklist rules.
-//! A flat per-agent checklist, distinct from the workspace Plan.
+//! Todo checklist rows for chat cards: TodoWrite / Cursor updateTodos input,
+//! and the plan board update_todos returns.
 
-use recur_domain::ChatItem;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -35,24 +34,43 @@ pub fn parse_todos(input: &str) -> Vec<Todo> {
         .collect()
 }
 
+/// The checklist in an update_todos result (`Plan::board`): the lines after
+/// "Steps:", as "S1 [doing] Title files=… note=…", with plan statuses mapped
+/// to TodoWrite's (skipped reads as completed).
+pub fn parse_board_todos(board: &str) -> Vec<Todo> {
+    board
+        .lines()
+        .skip_while(|l| l.trim() != "Steps:")
+        .filter_map(|l| {
+            let (id, rest) = l.trim().split_once(" [")?;
+            let (status, rest) = rest.split_once("] ")?;
+            if id.is_empty() || id.contains(char::is_whitespace) {
+                return None;
+            }
+            let end = [" files=", " after=", " child=", " note="]
+                .iter()
+                .filter_map(|k| rest.find(k))
+                .min()
+                .unwrap_or(rest.len());
+            Some(Todo {
+                content: rest[..end].trim().to_owned(),
+                status: match status {
+                    "doing" => "in_progress",
+                    "done" | "skipped" => "completed",
+                    _ => "pending",
+                }
+                .to_owned(),
+            })
+        })
+        .collect()
+}
+
 /// (completed, total).
 pub fn todo_counts(todos: &[Todo]) -> (usize, usize) {
     (
         todos.iter().filter(|t| t.status == "completed").count(),
         todos.len(),
     )
-}
-
-/// The latest non-empty TodoWrite list in a transcript (agents replace the
-/// whole list each call).
-pub fn latest_todos(items: &[ChatItem]) -> Vec<Todo> {
-    items
-        .iter()
-        .rev()
-        .filter(|m| m.tool == "TodoWrite")
-        .map(|m| parse_todos(&m.input))
-        .find(|t| !t.is_empty())
-        .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -82,32 +100,26 @@ mod tests {
     }
 
     #[test]
+    fn reads_an_update_todos_board() {
+        let got = parse_board_todos(
+            "Brief [x] y\n\nSteps:\nS1 [done] Read files note=ok\nS2 [doing] Edit panel files=a.rs\nS3 [pending] Ship\nS4 [skipped] Drop",
+        );
+        assert_eq!(
+            got,
+            [
+                todo("Read files", "completed"),
+                todo("Edit panel", "in_progress"),
+                todo("Ship", "pending"),
+                todo("Drop", "completed"),
+            ]
+        );
+        assert!(parse_board_todos("no todo with id \"S9\"").is_empty());
+    }
+
+    #[test]
     fn empty_on_junk() {
         assert!(parse_todos("").is_empty());
         assert!(parse_todos("{").is_empty());
         assert!(parse_todos(r#"{"todos":"nope"}"#).is_empty());
-    }
-
-    #[test]
-    fn latest_uses_the_last_list_with_items() {
-        let item = |tool: &str, input: &str| ChatItem {
-            tool: tool.into(),
-            input: input.into(),
-            ..Default::default()
-        };
-        let todos = latest_todos(&[
-            item(
-                "TodoWrite",
-                r#"{"todos":[{"content":"old","status":"pending"}]}"#,
-            ),
-            item("Read", r#"{"file_path":"x"}"#),
-            item(
-                "TodoWrite",
-                r#"{"todos":[{"content":"new","status":"completed"}]}"#,
-            ),
-            item("TodoWrite", r#"{"todos":[]}"#),
-        ]);
-        assert_eq!(todos, [todo("new", "completed")]);
-        assert_eq!(todo_counts(&todos), (1, 1));
     }
 }

@@ -83,7 +83,7 @@ impl Term {
                 &[&ws, &cols.to_string(), &rows.to_string()],
             );
             let mut roster = t2.roster.lock();
-            if roster.iter().any(|s| s.workspace_id == ws) {
+            if roster.iter().any(|s| s.workspace_id == ws && !s.background) {
                 return Ok(roster
                     .iter()
                     .filter(|s| s.workspace_id == ws)
@@ -122,6 +122,9 @@ impl Term {
         })
         .attach_terminal(move |_, id| {
             t6.log("AttachTerminal", &[&id]);
+            for s in t6.roster.lock().iter_mut().filter(|s| s.id == id) {
+                s.hidden = false;
+            }
             Ok(base64::engine::general_purpose::STANDARD.encode("replayed-scrollback\r\n"))
         })
         .write_terminal(move |_, (id, data)| {
@@ -176,6 +179,16 @@ impl Term {
         .interrupt_terminal(move |_, id| {
             t13.log("InterruptTerminal", &[&id]);
             Ok(())
+        })
+        .hide_terminal({
+            let t = self.clone();
+            move |_, id| {
+                t.log("HideTerminal", &[&id]);
+                for s in t.roster.lock().iter_mut().filter(|s| s.id == id) {
+                    s.hidden = true;
+                }
+                Ok(())
+            }
         })
         .list_loop_agents(|_, _| Ok(Vec::new()))
     }
@@ -382,6 +395,30 @@ async fn restart_restore_respawns_saved_tabs_instead_of_a_blank_shell(cx: &mut T
     assert_eq!(tabs.len(), 2);
     assert_eq!(tabs[0].1, "server");
     assert_eq!(active_term(&mut h), "sess-b");
+    assert!(t.calls("OpenTerminal").is_empty());
+    assert_eq!(t.calls("RestoreWorkspaceTerminals").len(), 1);
+}
+
+#[gpui::test]
+async fn restart_restore_puts_saved_tabs_ahead_of_live_background_processes(
+    cx: &mut TestAppContext,
+) {
+    let t = Term::default();
+    t.roster.lock().push(TermInfo {
+        title: "npm run dev".into(),
+        background: true,
+        ..session("sess-bg", WS)
+    });
+    *t.restored.lock() = vec![TermInfo {
+        title: "server".into(),
+        active: true,
+        ..session("sess-a", WS)
+    }];
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
+    open_dock(&mut h);
+    let ids: Vec<String> = dock_tabs(&mut h).into_iter().map(|t| t.0).collect();
+    assert_eq!(ids, vec!["sess-a", "sess-bg"]);
+    assert_eq!(active_term(&mut h), "sess-a");
     assert!(t.calls("OpenTerminal").is_empty());
     assert_eq!(t.calls("RestoreWorkspaceTerminals").len(), 1);
 }
@@ -603,6 +640,81 @@ async fn an_exited_shell_keeps_its_tab_so_the_final_output_stays_readable(cx: &m
     assert_eq!(tabs.len(), 1);
     assert!(tabs[0].1.contains("exited (127)"), "{tabs:?}");
     assert!(tabs[0].2);
+}
+
+#[gpui::test]
+async fn background_process_tabs_hide_on_close_and_stop_kills_them(cx: &mut TestAppContext) {
+    let t = Term::default();
+    let bg = |id: &str| TermInfo {
+        title: "npm run dev".into(),
+        background: true,
+        started_by: "PA".into(),
+        ..session(id, WS)
+    };
+    t.roster.lock().push(bg("sess-bg"));
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
+    open_dock(&mut h);
+    assert_eq!(active_term(&mut h), "sess-bg");
+    assert!(h.has("term-act:stop"));
+    // An agent starts another one while the dock is open: it shows up without taking focus.
+    t.roster.lock().push(bg("sess-bg2"));
+    h.event(AppEvent::Term(recur_term::Event::Open {
+        id: "sess-bg2".into(),
+        workspace_id: WS.into(),
+    }));
+    h.wait(100);
+    assert_eq!(dock_tabs(&mut h).len(), 2);
+    assert_eq!(active_term(&mut h), "sess-bg");
+    // Closing a live background tab only hides it; the process keeps running.
+    h.click("tab-close:term-tab-sess-bg2");
+    h.wait(100);
+    assert_eq!(t.calls("HideTerminal"), [vec!["sess-bg2".to_string()]]);
+    assert!(t.calls("CloseTerminal").is_empty());
+    assert_eq!(dock_tabs(&mut h).len(), 1);
+    // Stop kills it.
+    h.click("term-act:stop");
+    h.wait(100);
+    assert_eq!(t.calls("CloseTerminal"), [vec!["sess-bg".to_string()]]);
+}
+
+#[gpui::test]
+async fn hidden_background_processes_reopen_or_stop_from_the_dock(cx: &mut TestAppContext) {
+    let t = Term::default();
+    let bg = |id: &str| TermInfo {
+        title: "npm run dev".into(),
+        background: true,
+        ..session(id, WS)
+    };
+    t.roster
+        .lock()
+        .extend([session("sess-1", WS), bg("sess-bg"), bg("sess-bg2")]);
+    let mut h = mount(cx, t.opts(Overrides::default()), |_| {}, |_| {});
+    open_dock(&mut h);
+    assert!(!h.has("term-act:hidden"));
+    h.click("tab-close:term-tab-sess-bg");
+    h.wait(100);
+    assert_eq!(dock_tabs(&mut h).len(), 2);
+    h.click("term-act:hidden");
+    h.wait(100);
+    assert!(h.has("term-bg-row:sess-bg"));
+    // Reopening re-attaches the session and focuses its tab.
+    let attached = t.calls("AttachTerminal").len();
+    h.click("term-bg-row:sess-bg");
+    h.wait(100);
+    assert_eq!(active_term(&mut h), "sess-bg");
+    assert_eq!(dock_tabs(&mut h).len(), 3);
+    assert!(t.calls("AttachTerminal")[attached..].contains(&vec!["sess-bg".to_string()]));
+    assert!(!h.has("term-act:hidden"));
+    // Stop from the list kills a hidden one.
+    h.click("tab-close:term-tab-sess-bg2");
+    h.wait(100);
+    h.click("term-act:hidden");
+    h.wait(100);
+    h.click("term-bg-stop:sess-bg2");
+    h.wait(100);
+    assert_eq!(t.calls("CloseTerminal"), [vec!["sess-bg2".to_string()]]);
+    assert!(!h.has("term-act:hidden"));
+    assert_eq!(dock_tabs(&mut h).len(), 2);
 }
 
 fn obs_dock_boxes(h: &mut H) -> (gpui::Bounds<gpui::Pixels>, gpui::Bounds<gpui::Pixels>) {

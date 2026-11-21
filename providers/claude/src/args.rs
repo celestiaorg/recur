@@ -17,6 +17,12 @@
 //!   subagent builtins `Agent`, `EnterWorktree`, `ExitWorktree` (delegation
 //!   goes through `mcp__recur__create_workspace`) and `ReportFindings` (it
 //!   reports to Claude Code's UI; Recur stores `mcp__recur__report_finding`)
+//!   and the todo builtins `TaskCreate`, `TaskGet`, `TaskList`, `TaskUpdate`,
+//!   `TodoWrite` (todos live on the workspace plan via
+//!   `mcp__recur__update_todos`) and the background/scheduling builtins
+//!   `Monitor`, `TaskStop`, `CronCreate`, `CronDelete`, `CronList`,
+//!   `ScheduleWakeup` (Recur owns `run_background`, `schedule_wakeup` and
+//!   schedules; the runner also sets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS`)
 //!   whenever builtins are visible, even with no allowlist.
 //!
 //! `tools = Some("")` disables the whole toolbox, so no deny list is passed.
@@ -42,6 +48,27 @@ pub const SKILL_BUILTIN: &str = "Skill";
 pub const SUBAGENT_BUILTINS: [&str; 3] = ["Agent", "EnterWorktree", "ExitWorktree"];
 /// Claude Code's host-UI findings tool; always denied when builtins show.
 pub const REPORT_FINDINGS_BUILTIN: &str = "ReportFindings";
+/// Claude Code's todo and task-list tools; always denied when builtins show.
+/// Names a given Claude Code version lacks are harmless.
+pub const TODO_BUILTINS: [&str; 5] = [
+    "TaskCreate",
+    "TaskGet",
+    "TaskList",
+    "TaskUpdate",
+    "TodoWrite",
+];
+
+/// Claude Code's background-process and scheduling tools; always denied when
+/// builtins show (`run_in_background` itself is removed by the runner's
+/// `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS`).
+pub const BACKGROUND_BUILTINS: [&str; 6] = [
+    "Monitor",
+    "TaskStop",
+    "CronCreate",
+    "CronDelete",
+    "CronList",
+    "ScheduleWakeup",
+];
 
 /// Keeps `--append-system-prompt` well under Linux's 128 KiB single-argument
 /// exec limit (MAX_ARG_STRLEN). Larger prompts go through
@@ -62,12 +89,15 @@ pub fn disallowed_edit_tools(allowed: Option<&[String]>) -> Vec<&'static str> {
 }
 
 /// `--disallowedTools`: omitted edit builtins, then AskUserQuestion, Skill
-/// the subagent builtins and ReportFindings.
+/// the subagent builtins, ReportFindings, the todo builtins and the
+/// background/scheduling builtins.
 pub fn disallowed_tools(allowed: Option<&[String]>) -> Vec<&'static str> {
     let mut out = disallowed_edit_tools(allowed);
     out.extend([ASK_USER_BUILTIN, SKILL_BUILTIN]);
     out.extend(SUBAGENT_BUILTINS);
     out.push(REPORT_FINDINGS_BUILTIN);
+    out.extend(TODO_BUILTINS);
+    out.extend(BACKGROUND_BUILTINS);
     out
 }
 
@@ -344,12 +374,12 @@ mod tests {
     fn disallowed_tools_cases() {
         assert_eq!(
             disallowed_tools(None).join(","),
-            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
+            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup"
         );
         let ro = strs(&["Read", "Bash", "mcp__recur__ask_user"]).unwrap();
         assert_eq!(
             disallowed_tools(Some(&ro)).join(","),
-            "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
+            "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup"
         );
     }
 
@@ -463,20 +493,20 @@ mod tests {
         assert!(has_pair(
             &build(&ro, false),
             "--disallowedTools",
-            "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
+            "Edit,Write,NotebookEdit,AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup"
         ));
         let mut coder = req("hi");
         coder.allowed_tools = strs(&["Read", "Edit", "Write", "Bash", "NotebookEdit"]);
         assert!(has_pair(
             &build(&coder, false),
             "--disallowedTools",
-            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
+            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup"
         ));
         let bare = build(&req("hi"), false);
         assert!(has_pair(
             &bare,
             "--disallowedTools",
-            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings"
+            "AskUserQuestion,Skill,Agent,EnterWorktree,ExitWorktree,ReportFindings,TaskCreate,TaskGet,TaskList,TaskUpdate,TodoWrite,Monitor,TaskStop,CronCreate,CronDelete,CronList,ScheduleWakeup"
         ));
         assert!(has_flag(&bare, "--disable-slash-commands"));
     }

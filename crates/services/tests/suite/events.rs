@@ -208,6 +208,7 @@ fn wire() -> Vec<(&'static str, Value)> {
             json!({ "id": "t", "workspaceId": "W", "exitCode": 0 }),
         ),
         ("term.idle", json!({ "id": "t", "workspaceId": "W" })),
+        ("term.open", json!({ "id": "t", "workspaceId": "W" })),
         ("updater.check", Value::Null),
         (
             "updater:error",

@@ -157,6 +157,16 @@ fn upsert_schedule(c: &Connection, p: &ScheduledPrompt) -> Result<()> {
     Ok(())
 }
 
+/// A pending `schedule_wakeup`: a hidden notice turn for one chat at `due_at`
+/// (unix ms).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ChatWakeup {
+    pub workspace_id: String,
+    pub chat: String,
+    pub due_at: i64,
+    pub reason: String,
+}
+
 fn requires_db() -> Error {
     Error::msg("schedules require a database")
 }
@@ -273,6 +283,71 @@ impl Store {
         db.with(|c| {
             c.execute("DELETE FROM scheduled_prompt WHERE id=?", [id])
                 .bare()?;
+            Ok(())
+        })
+    }
+
+    /// Saves a chat's wakeup, replacing its pending one.
+    pub fn save_chat_wakeup(&self, w: &ChatWakeup) -> Result<()> {
+        let db = self.db.as_ref().ok_or_else(requires_db)?;
+        db.with(|c| {
+            c.execute(
+                "INSERT OR REPLACE INTO chat_wakeup(workspace_id, chat, due_at, reason) VALUES(?,?,?,?)",
+                params![w.workspace_id, w.chat, iso_from_millis(w.due_at), w.reason],
+            )
+            .bare()?;
+            Ok(())
+        })
+    }
+
+    /// Removes and returns the wakeups due by `now`, oldest first.
+    pub fn claim_due_chat_wakeups(&self, now: DateTime<Utc>) -> Result<Vec<ChatWakeup>> {
+        let Some(db) = &self.db else {
+            return Ok(Vec::new());
+        };
+        let now = iso_from_millis(now.timestamp_millis());
+        db.tx(|tx| {
+            let mut stmt = tx
+                .prepare(
+                    "DELETE FROM chat_wakeup WHERE due_at <= ?
+		RETURNING workspace_id, chat, due_at, reason",
+                )
+                .bare()?;
+            let rows = stmt
+                .query_map([&now], |r| {
+                    Ok((
+                        ChatWakeup {
+                            workspace_id: r.get(0)?,
+                            chat: r.get(1)?,
+                            reason: r.get(3)?,
+                            ..Default::default()
+                        },
+                        r.get::<_, String>(2)?,
+                    ))
+                })
+                .bare()?;
+            let mut out = Vec::new();
+            for row in rows {
+                let (mut w, due) = row.bare()?;
+                w.due_at = millis_from_iso(&due)?;
+                out.push(w);
+            }
+            out.sort_by_key(|w| w.due_at);
+            Ok(out)
+        })
+    }
+
+    /// Cancels a chat's pending wakeup, or every chat's when `chat` is empty.
+    pub fn delete_chat_wakeups(&self, workspace_id: &str, chat: &str) -> Result<()> {
+        let Some(db) = &self.db else {
+            return Ok(());
+        };
+        db.with(|c| {
+            c.execute(
+                "DELETE FROM chat_wakeup WHERE workspace_id = ?1 AND (?2 = '' OR chat = ?2)",
+                params![workspace_id, chat],
+            )
+            .bare()?;
             Ok(())
         })
     }

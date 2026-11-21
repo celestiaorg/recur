@@ -232,3 +232,56 @@ fn iso_millis_round_trip() {
     );
     assert!(millis_from_iso("nope").is_err());
 }
+
+#[test]
+fn chat_wakeups_replace_claim_once_and_cancel() {
+    let dir = tmp();
+    let st = open_temp(dir.path());
+    let proj = st.projects().unwrap()[0].id.clone();
+    let ws = st
+        .add_workspace(Workspace {
+            id: "wake-ws".into(),
+            project_id: proj,
+            goal: "g".into(),
+            ..Default::default()
+        })
+        .unwrap();
+    let at = |ms| Utc.timestamp_millis_opt(ms).unwrap();
+    let w = |chat: &str, due_at, reason: &str| crate::ChatWakeup {
+        workspace_id: ws.id.clone(),
+        chat: chat.into(),
+        due_at,
+        reason: reason.into(),
+    };
+    st.save_chat_wakeup(&w("PA", 5_000, "old")).unwrap();
+    st.save_chat_wakeup(&w("PA", 9_000, "new")).unwrap();
+    st.save_chat_wakeup(&w("PA2", 1_000, "other")).unwrap();
+    st.close().unwrap();
+
+    let st = open_temp(dir.path());
+    assert_eq!(
+        st.claim_due_chat_wakeups(at(5_000)).unwrap(),
+        vec![w("PA2", 1_000, "other")],
+        "the replaced wakeup is gone"
+    );
+    assert!(st.claim_due_chat_wakeups(at(5_000)).unwrap().is_empty());
+    assert_eq!(
+        st.claim_due_chat_wakeups(at(10_000)).unwrap(),
+        vec![w("PA", 9_000, "new")]
+    );
+
+    st.save_chat_wakeup(&w("PA", 9_000, "a")).unwrap();
+    st.save_chat_wakeup(&w("PA2", 9_000, "b")).unwrap();
+    st.delete_chat_wakeups(&ws.id, "PA").unwrap();
+    assert_eq!(
+        st.claim_due_chat_wakeups(at(10_000)).unwrap(),
+        vec![w("PA2", 9_000, "b")]
+    );
+    st.save_chat_wakeup(&w("PA", 9_000, "a")).unwrap();
+    st.save_chat_wakeup(&w("PA2", 9_000, "b")).unwrap();
+    st.delete_chat_wakeups(&ws.id, "").unwrap();
+    assert!(st.claim_due_chat_wakeups(at(10_000)).unwrap().is_empty());
+    st.save_chat_wakeup(&w("PA", 9_000, "a")).unwrap();
+    st.delete_workspace(&ws.id).unwrap();
+    assert!(st.claim_due_chat_wakeups(at(10_000)).unwrap().is_empty());
+}

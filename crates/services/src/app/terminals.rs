@@ -61,6 +61,7 @@ impl AppServices {
     }
 
     fn open_terminal_sync(&self, workspace_id: &str, cols: i64, rows: i64) -> Result<TermInfo> {
+        self.term_persist.mark_restored(workspace_id);
         let cwd = self.terminal_cwd(workspace_id)?;
         let env = self.terminal_env(workspace_id);
         self.term
@@ -75,8 +76,9 @@ impl AppServices {
         rows: i64,
     ) -> Result<Vec<TermInfo>> {
         let _guard = self.restore_mu.lock().await;
+        self.term_persist.mark_restored(workspace_id);
         let live = self.term.list(workspace_id);
-        if !live.is_empty() {
+        if live.iter().any(|i| !i.background) {
             return Ok(live);
         }
         let Some(snap) = self.read_terminal_snapshot(workspace_id) else {
@@ -117,6 +119,7 @@ impl AppServices {
                 OpenOptions {
                     title: tab.title,
                     replay: tab.replay,
+                    ..OpenOptions::default()
                 },
             ) {
                 Ok(info) => {
@@ -187,6 +190,10 @@ impl TerminalService for AppServices {
 
     async fn detach_terminal(&self, id: &str) -> Result<()> {
         rt!(self, id => |s| s.term.detach(&id).map_err(err))
+    }
+
+    async fn hide_terminal(&self, id: &str) -> Result<()> {
+        rt!(self, id => |s| s.term.hide(&id).map_err(err))
     }
 
     async fn interrupt_terminal(&self, id: &str) -> Result<()> {

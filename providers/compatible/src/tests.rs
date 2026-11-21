@@ -8,7 +8,7 @@ use parking_lot::Mutex;
 use recur_agent::{
     AgentEvent, EventSink, Provider, Steer, SteerInbox, ToolHost, TurnContext, TurnRequest,
 };
-use recur_agent_tools::{AskUserRequest, Call, Host, TodoStore, Tool, ToolError};
+use recur_agent_tools::{AskUserRequest, Call, Host, Tool, ToolError};
 use recur_domain::{CompatibleModel, CompatibleProvider as Config};
 use serde_json::json;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -136,7 +136,7 @@ fn context(tools: Option<Arc<dyn ToolHost>>) -> (TurnContext, Events, Cancellati
 }
 
 fn harness_tools_for(req: &TurnRequest, host: Option<Arc<dyn Host>>) -> Arc<dyn ToolHost> {
-    Arc::new(HarnessTools::new(host, Arc::default(), req))
+    Arc::new(HarnessTools::new(host, req))
 }
 
 fn call_body(calls: serde_json::Value) -> String {
@@ -160,7 +160,7 @@ const SSE: &str = "text/event-stream";
 #[test]
 fn ask_mode_omits_edit() {
     let req = TurnRequest::default();
-    let tools = HarnessTools::new(None, Arc::default(), &req);
+    let tools = HarnessTools::new(None, &req);
     let allowed: Vec<String> = ["Read", "Glob", "Grep", "mcp__recur__ask_user"]
         .map(String::from)
         .into();
@@ -181,7 +181,7 @@ fn ask_mode_omits_edit() {
 
 #[test]
 fn omits_tools_when_disabled() {
-    let tools = HarnessTools::new(None, Arc::default(), &TurnRequest::default());
+    let tools = HarnessTools::new(None, &TurnRequest::default());
     let all = tools.tools(None);
     assert!(!all.is_empty());
     assert!(!all.iter().any(|t| t.name == "permission_request"));
@@ -604,7 +604,6 @@ async fn parallel_tools_cap() {
             release: release.clone(),
         })],
         None,
-        Arc::new(TodoStore::default()),
         &req,
     ));
     let calls: Vec<types::FunctionCall> = (0..N)
@@ -694,7 +693,6 @@ async fn empty_tool_result_posts_output_field() {
     let host: Arc<dyn ToolHost> = Arc::new(HarnessTools::with_tools(
         vec![Arc::new(EmptyTool)],
         None,
-        Arc::new(TodoStore::default()),
         &req,
     ));
     let (cx, _, _) = context(Some(host));

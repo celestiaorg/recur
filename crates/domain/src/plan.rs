@@ -54,7 +54,7 @@ pub struct PlanAttachment {
 }
 
 /// One concrete, ordered action in a Plan. The engine assigns IDs and owns
-/// status transitions (agents request them via update_plan_step).
+/// status transitions (agents request them via update_todos).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct PlanStep {

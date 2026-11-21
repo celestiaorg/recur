@@ -18,7 +18,7 @@ Recur  ──POST {baseURL}/v1/responses──▶  OpenAI / OpenRouter / Groq / 
           │
           │  Recur-owned tool loop
           │  Host tools in-process (no MCP HTTP)
-          │  Coding tools: Read, Edit, Write, Glob, Grep, Bash, TodoWrite
+          │  Coding tools: Read, Edit, Write, Glob, Grep, Bash
           ▼
    HarnessRunner → ParsedEvent / Result → withMirroring
 ```

@@ -119,6 +119,8 @@ async fn the_dock_mode_shapes_the_turn() {
         mcp::LIST_ARTIFACTS,
         mcp::READ_ARTIFACT,
         mcp::PRESENT_ARTIFACT,
+        mcp::SCHEDULE_WAKEUP,
+        mcp::LIST_SCHEDULES,
     ] {
         assert!(has_tool(&s, t), "ask needs {t}");
     }
@@ -127,6 +129,10 @@ async fn the_dock_mode_shapes_the_turn() {
         mcp::OPEN_PR,
         mcp::CREATE_WORKSPACE,
         mcp::MESSAGE_CHILD,
+        mcp::RUN_BACKGROUND,
+        mcp::STOP_TERMINAL,
+        mcp::CREATE_SCHEDULE,
+        mcp::DELETE_SCHEDULE,
     ] {
         assert!(!has_tool(&s, t), "ask must not get {t}");
     }
@@ -156,6 +162,12 @@ async fn the_dock_mode_shapes_the_turn() {
         mcp::RENAME_WORKSPACE,
         mcp::RENAME_BRANCH,
         mcp::OPEN_PR,
+        mcp::RUN_BACKGROUND,
+        mcp::STOP_TERMINAL,
+        mcp::SCHEDULE_WAKEUP,
+        mcp::CREATE_SCHEDULE,
+        mcp::LIST_SCHEDULES,
+        mcp::DELETE_SCHEDULE,
     ] {
         assert!(has_tool(&s, t), "agent needs {t}");
     }

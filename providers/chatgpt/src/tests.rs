@@ -822,7 +822,7 @@ async fn chatgpt_streams_tool_round_and_replays_reasoning_without_codex() {
         }
     });
     let mut cx = TurnContext::new(CancellationToken::new(), sink);
-    cx.tools = Some(Arc::new(HarnessTools::new(None, Arc::default(), &req)) as Arc<dyn ToolHost>);
+    cx.tools = Some(Arc::new(HarnessTools::new(None, &req)) as Arc<dyn ToolHost>);
     let result = run_harness(&config, &client, None, req, cx).await.unwrap();
     assert_eq!(result.text, "Read the file");
     assert_eq!(*streamed.lock(), result.text);

@@ -1,5 +1,5 @@
 //! The Loop chat cockpit (specialist session cards, fan-out
-//! packing, facts, tool cards inside a session), the plan panel's checklist and agent todos,
+//! packing, facts, tool cards inside a session), the plan panel's checklist,
 //! and the closed-chat recents menu.
 
 use gpui::{Entity, TestAppContext};
@@ -628,7 +628,7 @@ async fn late_turn_end_and_stream_after_idle_do_not_keep_the_running_timer(
 // ---- plan panel ----
 
 #[gpui::test]
-async fn plan_panel_shows_the_workspace_checklist_and_agent_todos(cx: &mut TestAppContext) {
+async fn plan_panel_shows_only_the_workspace_checklist(cx: &mut TestAppContext) {
     let plan = json!({
         "summary": "Ship the Loop cockpit",
         "body": "Merge specialist cards so the cockpit is one surface. Keep agent todos distinct from plan steps.",
@@ -691,19 +691,10 @@ async fn plan_panel_shows_the_workspace_checklist_and_agent_todos(cx: &mut TestA
         title.as_deref(),
         Some("Merge specialist cards into Loop chat")
     );
-    assert!(h.has("plan-todo-name:Coder"));
-    let todos = h.read(|v, cx| {
-        v.feed
-            .read(cx)
-            .sessions
-            .iter()
-            .find(|s| s.code == "CO")
-            .map(|s| crate::plan_panel::latest_todos_from_messages(&s.messages))
-            .unwrap_or_default()
-    });
     assert_eq!(
-        todos.first().map(|t| t.content.as_str()),
-        Some("Wire Plan panel")
+        h.read(|v, cx| v.plan_panel.read(cx).todos_badge(cx)),
+        2,
+        "transcript TodoWrite lists stay in the chat"
     );
 
     // Editing mounts the shared `MiniScriptEditor` (`lang="md"`, `fill`) on the plan's body,

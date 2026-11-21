@@ -57,6 +57,7 @@ fn scheduled_millis<T: chrono::TimeZone>(t: Option<DateTime<T>>) -> i64 {
 
 #[cfg(test)]
 mod tests;
+mod tools;
 
 fn new_id() -> String {
     uuid::Uuid::now_v7().to_string()
@@ -355,6 +356,7 @@ impl Engine {
         startup: bool,
     ) -> Result<()> {
         let now = now.with_timezone(&Utc);
+        self.fire_due_wakeups(now);
         let err = |e: recur_store::Error| EngineError(e.to_string());
         let all = self
             .store

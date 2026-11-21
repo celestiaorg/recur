@@ -1,5 +1,5 @@
 //! `ClaudeProvider::run_turn` against fake `claude` shell scripts: stdin close
-//! on result, background-task hold, steer nack, env scrub, plus steer delivery,
+//! on result, steer nack, env scrub, plus steer delivery,
 //! process-group kill and the no-result errors.
 
 use std::path::{Path, PathBuf};
@@ -136,11 +136,6 @@ async fn ready_holds_the_prompt_not_the_spawn() {
     assert!(std::fs::read_to_string(&got).unwrap().contains("hello"));
 }
 
-const BG_LIVE: &str = r#"echo '{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"b1","task_type":"local_bash"}]}'"#;
-const BG_EMPTY: &str =
-    r#"echo '{"type":"system","subtype":"background_tasks_changed","tasks":[]}'"#;
-const BG_AMBIENT: &str = r#"echo '{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"w1","task_type":"monitor_ws","ambient":true}]}'"#;
-
 fn bg_result(text: &str) -> String {
     format!(
         r#"echo '{{"type":"result","subtype":"success","session_id":"s1","is_error":false,"num_turns":1,"duration_ms":1,"result":"{text}"}}'"#
@@ -149,7 +144,7 @@ fn bg_result(text: &str) -> String {
 
 /// Runs `body` in a fake claude where `$EOF` exists once the runner closed
 /// stdin; returns the final result and every emitted result's text.
-async fn run_bg(body: &str, ceiling: Duration) -> (TurnResult, Vec<String>) {
+async fn run_bg(body: &str) -> (TurnResult, Vec<String>) {
     let dir = tempfile::tempdir().unwrap();
     let eof = dir.path().join("eof");
     let script = format!(
@@ -159,7 +154,6 @@ async fn run_bg(body: &str, ceiling: Duration) -> (TurnResult, Vec<String>) {
     let bin = fake(dir.path(), &script);
     let p = ClaudeProvider::new(ClaudeConfig {
         bin: bin.to_string_lossy().into_owned(),
-        background_hold_ceiling: ceiling,
         ..Default::default()
     });
     let (turn, cx) = Turn::new(true);
@@ -169,123 +163,26 @@ async fn run_bg(body: &str, ceiling: Duration) -> (TurnResult, Vec<String>) {
     (res, turn.results())
 }
 
-const LONG: Duration = Duration::from_secs(600);
-
+/// Background tasks are Recur's (run_background), so a stray
+/// `background_tasks_changed` frame no longer holds stdin past the result.
 #[tokio::test]
-async fn keeps_stdin_open_for_background_tasks() {
-    let body = format!(
-        "{BG_LIVE}\n{}\nsleep 0.3\n[ -e \"$EOF\" ] && exit 0\n{BG_EMPTY}\n{}\n",
-        bg_result("waiting"),
-        bg_result("got it")
-    );
-    let (res, results) = run_bg(&body, LONG).await;
-    assert_eq!(res.text, "got it");
-    assert_eq!(results, ["got it"], "only the post-task result is emitted");
-}
-
-/// A resumed session first replays tasks the previous process killed as a
-/// model-less result; it must not close stdin before the real turn's tasks.
-#[tokio::test]
-async fn ignores_resume_task_replay() {
-    let replay = r#"echo '{"type":"result","subtype":"success","session_id":"s1","is_error":false,"num_turns":0,"duration_ms":31,"result":"","origin":{"kind":"task-notification"}}'"#;
-    let body = format!(
-        "{replay}\nsleep 0.1\n{BG_LIVE}\n{}\nsleep 0.3\n[ -e \"$EOF\" ] && exit 0\n{BG_EMPTY}\n{}\n",
-        bg_result("waiting"),
-        bg_result("got it")
-    );
-    let (res, results) = run_bg(&body, LONG).await;
-    assert_eq!(res.text, "got it");
-    assert_eq!(results, ["got it"]);
-}
-
-#[tokio::test]
-async fn ignores_ambient_background_tasks() {
-    let body = format!(
-        "{BG_AMBIENT}\n{}\ni=0\nwhile [ ! -e \"$EOF\" ] && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done\n[ -e \"$EOF\" ] || {}\n",
-        bg_result("done"),
-        bg_result("held")
-    );
-    let (res, results) = run_bg(&body, LONG).await;
-    assert_eq!(res.text, "done");
-    assert_eq!(results, ["done"]);
-}
-
-/// Tasks ending without a follow-up turn close stdin, and the held result is
-/// still emitted.
-#[tokio::test]
-async fn closes_stdin_when_background_tasks_end() {
-    let body = format!(
-        "{BG_LIVE}\n{}\nsleep 0.1\n{BG_EMPTY}\n",
-        bg_result("waiting")
-    );
-    let (res, results) = run_bg(&body, LONG).await;
-    assert_eq!(res.text, "waiting");
-    assert_eq!(results, ["waiting"]);
-}
-
-/// A task that never ends (dev server) holds stdin only until the ceiling.
-#[tokio::test]
-async fn background_hold_ceiling() {
-    let body = format!("{BG_LIVE}\n{}\n", bg_result("server up"));
-    let (res, results) = run_bg(&body, Duration::from_millis(100)).await;
+async fn closes_stdin_at_result_despite_background_frames() {
+    let live = r#"echo '{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"b1","task_type":"local_bash"}]}'"#;
+    let body = format!("{live}\n{}\n", bg_result("server up"));
+    let (res, results) = run_bg(&body).await;
     assert_eq!(res.text, "server up");
     assert_eq!(results, ["server up"]);
 }
 
-/// Each steer during a hold restarts the ceiling, so a later steer still
-/// lands after the first ceiling would have closed stdin.
+/// A resumed session first replays tasks the previous process killed as a
+/// model-less result; it must not end the real turn.
 #[tokio::test]
-async fn steer_restarts_background_hold_ceiling() {
-    let dir = tempfile::tempdir().unwrap();
-    let held = dir.path().join("held");
-    let out = dir.path().join("steer.ndjson");
-    let body = format!(
-        r#"read -r seed
-echo '{{"type":"assistant","message":{{"content":[{{"type":"tool_use","id":"t1","name":"Bash","input":{{"command":"sleep 600"}}}}]}}}}'
-echo '{{"type":"user","message":{{"content":[{{"type":"tool_result","tool_use_id":"t1","content":"running"}}]}}}}'
-{BG_LIVE}
-{}
-touch '{held}'
-read -r a
-read -r b
-printf '%s\n%s\n' "$a" "$b" > '{out}'
-{}
-{BG_EMPTY}
-cat >/dev/null
-"#,
-        bg_result("waiting"),
-        bg_result("answered"),
-        held = held.display(),
-        out = out.display()
-    );
-    let bin = fake(dir.path(), &body);
-    let p = ClaudeProvider::new(ClaudeConfig {
-        bin: bin.to_string_lossy().into_owned(),
-        background_hold_ceiling: Duration::from_secs(2),
-        ..Default::default()
-    });
-    let (turn, cx) = Turn::new(true);
-    let r = req("go", dir.path());
-    let task = tokio::spawn(async move { p.run_turn(r, cx).await });
-    while !held.exists() {
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    }
-    for (wait, text) in [(1000, "first"), (1500, "second")] {
-        tokio::time::sleep(Duration::from_millis(wait)).await;
-        let (s, ack) = Steer::new(text, Some(text.into()));
-        turn.steer.as_ref().unwrap().send(s).await.unwrap();
-        assert!(ack.await.unwrap(), "{text} steer not delivered");
-    }
-    let res = tokio::time::timeout(Duration::from_secs(5), task)
-        .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
-    assert_eq!(res.text, "answered");
-    assert_eq!(
-        std::fs::read_to_string(&out).unwrap(),
-        user_message_line("first", &[]) + &user_message_line("second", &[])
-    );
+async fn ignores_resume_task_replay() {
+    let replay = r#"echo '{"type":"result","subtype":"success","session_id":"s1","is_error":false,"num_turns":0,"duration_ms":31,"result":"","origin":{"kind":"task-notification"}}'"#;
+    let body = format!("{replay}\nsleep 0.1\n{}\n", bg_result("got it"));
+    let (res, results) = run_bg(&body).await;
+    assert_eq!(res.text, "got it");
+    assert_eq!(results, ["got it"]);
 }
 
 /// A plain steer is acked only after a stdin write; one still pending when

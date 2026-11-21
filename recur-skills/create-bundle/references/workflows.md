@@ -70,7 +70,7 @@ id = "acme.roles.writer"
 name = "Writer"
 code = "WR"              # 2 letters, unique in the discovered catalog
 mode = "agent"           # required: ask | plan | agent | review | autopilot
-# tools = ["update_plan_step"]
+# tools = ["update_todos"]
 prompt = "prompts/writer.md"
 ```
 
@@ -79,7 +79,7 @@ prompt = "prompts/writer.md"
   unless you have a real reason not to.
 - Slot modes: planner → `plan`; implementer → `agent`; reviewer → `review`;
   verifier → `ask` / `review` / `agent`.
-- `tools` are short names (`update_plan_step`, `report_finding`,
+- `tools` are short names (`update_todos`, `report_finding`,
   `playwright`, …). Do not write `mcp__recur__*` in the manifest.
 - `disabled_tools` can subtract. Cannot add Edit onto a readonly mode.
 - Role prompt: identity + severity calibration + tool literacy. Keep it short.

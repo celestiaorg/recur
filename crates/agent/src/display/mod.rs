@@ -365,6 +365,13 @@ pub fn summarize_tool_input(tool: &str, raw: &str) -> String {
             }
         }
         "TaskList" => return String::new(),
+        "TaskStop" | "KillShell" => {
+            for k in ["task_id", "shell_id"] {
+                if !s(k).is_empty() {
+                    return s(k).to_owned();
+                }
+            }
+        }
         _ => {}
     }
     if tool.starts_with("mcp__recur__") {
@@ -381,6 +388,25 @@ pub fn summarize_tool_input(tool: &str, raw: &str) -> String {
             let p = parts(s("step_id"), s("status"), s("note"));
             if !p.is_empty() {
                 return truncate(&p.join(" · "), FEED_INPUT_LIMIT);
+            }
+        } else if suffix("__update_todos") {
+            if let Some(Value::Array(items)) = input.get("items") {
+                let p: Vec<String> = items
+                    .iter()
+                    .filter_map(|it| {
+                        let f = |k: &str| it.get(k).and_then(Value::as_str).unwrap_or("").trim();
+                        let head = if f("id").is_empty() {
+                            f("title")
+                        } else {
+                            f("id")
+                        };
+                        let p = parts(head, f("status"), "");
+                        (!p.is_empty()).then(|| p.join(" · "))
+                    })
+                    .collect();
+                if !p.is_empty() {
+                    return truncate(&p.join(", "), FEED_INPUT_LIMIT);
+                }
             }
         } else if suffix("__report_finding") {
             let loc = recur_domain::finding_loc(s("file"), num("line"), num("end_line"));
@@ -409,10 +435,18 @@ pub fn summarize_tool_input(tool: &str, raw: &str) -> String {
         } else if suffix("__list_terminals") {
             return "terminals".to_owned();
         } else if suffix("__read_terminal") {
-            if !s("id").is_empty() {
-                return truncate(s("id"), FEED_INPUT_LIMIT);
+            let p: Vec<&str> = [s("id"), s("until")]
+                .into_iter()
+                .filter(|v| !v.is_empty())
+                .collect();
+            if !p.is_empty() {
+                return truncate(&p.join(" · "), FEED_INPUT_LIMIT);
             }
             return "terminal".to_owned();
+        } else if suffix("__run_background") && !s("command").is_empty() {
+            return truncate(s("command"), FEED_INPUT_LIMIT);
+        } else if suffix("__stop_terminal") && !s("id").is_empty() {
+            return s("id").to_owned();
         } else if suffix("__read_artifact") {
             if !s("id").is_empty() {
                 return truncate(s("id"), FEED_INPUT_LIMIT);
@@ -450,6 +484,14 @@ pub fn summarize_tool_input(tool: &str, raw: &str) -> String {
                 }
                 return truncate(t, FEED_INPUT_LIMIT);
             }
+        } else if suffix("__schedule_wakeup") && !s("reason").is_empty() {
+            return truncate(s("reason"), FEED_INPUT_LIMIT);
+        } else if suffix("__create_schedule") && !s("name").is_empty() {
+            return truncate(s("name"), FEED_INPUT_LIMIT);
+        } else if suffix("__delete_schedule") && !s("id").is_empty() {
+            return s("id").to_owned();
+        } else if suffix("__list_schedules") {
+            return "schedules".to_owned();
         } else if suffix("__attach_evidence") && !s("step").is_empty() {
             return truncate(s("step"), FEED_INPUT_LIMIT);
         }

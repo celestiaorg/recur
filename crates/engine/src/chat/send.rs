@@ -402,7 +402,13 @@ impl Engine {
                 .lock()
                 .insert(chat_turn_key(workspace_id, code), surface.clone());
         }
-        let subject = self.subject_append_prompt(&surface);
+        let subject = join_append_prompt(
+            &join_append_prompt(
+                &self.subject_append_prompt(&surface),
+                &crate::plan::todos_turn_prompt(ws.plan.as_ref()),
+            ),
+            &self.stopped_procs_prompt(workspace_id, code),
+        );
 
         // Expand the composer (leading prompt action, then the host wrap).
         // Retry replays the already-expanded wire.

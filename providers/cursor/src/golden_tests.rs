@@ -201,6 +201,7 @@ fn agent_options_encode_like_go() {
         ]
         .into(),
         mode: "plan".into(),
+        ..Default::default()
     };
     assert_eq!(
         serde_json::to_value(&opts).unwrap(),

@@ -255,6 +255,11 @@ impl AppState {
         self.chat.terminal_focus.as_ref()
     }
 
+    /// Claims a `term.open` for `workspace_id`: true when the dock should re-list its tabs.
+    pub fn take_opened_terminals(&mut self, workspace_id: &str) -> bool {
+        self.chat.opened_terminals.remove(workspace_id)
+    }
+
     /// Claims a pending terminal focus request for `workspace_id`, once.
     pub fn take_terminal_focus(&mut self, workspace_id: &str) -> Option<String> {
         if self.chat.terminal_focus.as_ref()?.workspace_id != workspace_id {
@@ -358,6 +363,8 @@ pub struct ChatStores {
     pub(crate) terminals: std::collections::BTreeMap<String, Vec<WorkspaceTerminalTab>>,
     pub(crate) artifacts: std::collections::BTreeMap<String, Vec<WorkspaceArtifact>>,
     pub(crate) terminal_focus: Option<TerminalFocus>,
+    /// Workspaces with background sessions their dock has not listed yet.
+    pub(crate) opened_terminals: std::collections::HashSet<String>,
     pub(crate) child_transcript: Option<String>,
     pub(crate) catalog: ModelCatalogCache,
 }

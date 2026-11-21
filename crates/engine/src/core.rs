@@ -232,8 +232,6 @@ pub struct Engine {
     pub(crate) ask_users: AskUserBroker,
     /// Serializes `ensure_agent_session`'s lookup-then-create.
     pub(crate) session_ensure_mu: Mutex<()>,
-    /// Per-session TodoWrite lists for in-process (harness) turns.
-    pub(crate) todos: Arc<recur_agent_tools::TodoStore>,
 
     pub(crate) keep_awake: Keeper,
     pub(crate) keep_awake_mu: Mutex<()>,
@@ -257,6 +255,7 @@ pub struct Engine {
     pub(crate) chat_child_watchers: Mutex<HashSet<String>>,
     /// Serializes merge_child per parent workspace (held across git).
     pub(crate) merge_child_locks: Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+    pub(crate) procs: Mutex<crate::chat::procs::Procs>,
     /// Chat turn keys AutoResume relaunched whose resumed turn is not done.
     pub(crate) resuming_chats: Mutex<HashSet<String>>,
     /// The looking-at surface of each tab's last send, for Retry.
@@ -311,7 +310,7 @@ impl Engine {
     ) -> Arc<Engine> {
         let set = store.settings();
         let iters_base = store.resource().iters_today;
-        Arc::new_cyclic(|weak: &Weak<Engine>| {
+        let engine = Arc::new_cyclic(|weak: &Weak<Engine>| {
             let host: Arc<dyn recur_agent_tools::Host> = Arc::new(EngineHost::new(weak.clone()));
             Engine {
                 weak: weak.clone(),
@@ -363,7 +362,6 @@ impl Engine {
                 perms: broker_for(weak),
                 ask_users: ask_broker_for(weak),
                 session_ensure_mu: Mutex::new(()),
-                todos: Arc::new(recur_agent_tools::TodoStore::default()),
                 keep_awake: Keeper::new(),
                 keep_awake_mu: Mutex::new(()),
                 iters_base,
@@ -375,6 +373,7 @@ impl Engine {
                 child_waves: Mutex::new(HashMap::new()),
                 chat_child_watchers: Mutex::new(HashSet::new()),
                 merge_child_locks: Mutex::new(HashMap::new()),
+                procs: Mutex::default(),
                 resuming_chats: Mutex::new(HashSet::new()),
                 last_chat_surfaces: Mutex::new(HashMap::new()),
                 prs: crate::prs::PrState::default(),
@@ -383,7 +382,16 @@ impl Engine {
                 tasks: Tasks::default(),
                 hooks: Mutex::new(TestHooks::default()),
             }
-        })
+        });
+        if let (Some(term), Ok(rt)) = (&engine.terminals, tokio::runtime::Handle::try_current()) {
+            let weak = Arc::downgrade(&engine);
+            term.on_exit(Box::new(move |info, stopped| {
+                if let Some(e) = weak.upgrade() {
+                    e.on_terminal_exit(info, stopped, &rt);
+                }
+            }));
+        }
+        engine
     }
 
     /// A strong handle to this engine (for spawned tasks).

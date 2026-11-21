@@ -28,7 +28,7 @@ id = "recur.roles.coder"
 name = "Coder"
 code = "CO"
 mode = "agent"
-tools = ["update_plan_step"]
+tools = ["update_todos"]
 
 [[role]]
 id = "recur.roles.reviewer"

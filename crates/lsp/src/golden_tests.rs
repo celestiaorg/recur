@@ -361,6 +361,7 @@ fn safe_join_rules() {
     assert_eq!(service::safe_join("/r", "").unwrap(), "/r");
     assert_eq!(service::safe_join("/r", "/a/b").unwrap(), "/r/a/b");
     assert_eq!(service::safe_join("/r/", "./a").unwrap(), "/r/a");
+    assert_eq!(service::safe_join("/r", "[...x]/a").unwrap(), "/r/[...x]/a");
     assert_eq!(
         service::safe_join("/r", "a/../b").unwrap_err(),
         "path escapes root"

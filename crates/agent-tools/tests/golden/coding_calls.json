@@ -136,7 +136,7 @@
   },
   {
     "tool": "Read",
-    "args": "{\"file_path\":\"a..b\"}",
+    "args": "{\"file_path\":\"a/../b\"}",
     "bypass": false,
     "session": "",
     "result": "",

@@ -291,8 +291,7 @@ fn copy_tree(ctx: &Ctx<'_>, from: &str, to: &str) -> Result<()> {
     })
 }
 
-/// Joins `root` and `rel` under `root`. Unlike the editor's sandbox it allows
-/// `..` inside a file name (`.env..bak`) and rejects it only as a component.
+/// Joins `root` and `rel` under `root`.
 fn join_under_root(root: &str, rel: &str) -> Result<String> {
     let root_abs = path::abs(root).map_err(|e| Error::msg(e.to_string()))?;
     let rel = rel.strip_prefix('/').unwrap_or(rel);

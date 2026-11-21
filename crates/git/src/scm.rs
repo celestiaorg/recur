@@ -45,7 +45,7 @@ pub async fn discard_file(dir: &str, rel: &str) -> Result<()> {
         return Err(Error::msg("not a git repository"));
     }
     let rel = rel.strip_prefix('/').unwrap_or(rel);
-    if rel.is_empty() || rel.contains("..") {
+    if rel.is_empty() || rel.split('/').any(|p| p == "..") {
         return Err(Error::msg("invalid path"));
     }
     // Always a fresh status: joining an in-flight poll could see a snapshot

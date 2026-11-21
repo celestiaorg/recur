@@ -53,7 +53,7 @@ pub(crate) fn safe_join_str(root: &str, rel: &str) -> Result<String> {
     if rel == "." || rel.is_empty() {
         return Ok(root_abs);
     }
-    if rel.contains("..") {
+    if rel.split('/').any(|p| p == "..") {
         return Err(Error::msg("path escapes root"));
     }
     let full = path::join(&[&root_abs, rel]);

@@ -53,6 +53,10 @@ fn safe_join_rejects_escape() {
         safe_join(root.path(), "ok/file.go").unwrap(),
         root.path().join("ok/file.go")
     );
+    assert_eq!(
+        safe_join(root.path(), "api/[...nextauth]/route.ts").unwrap(),
+        root.path().join("api/[...nextauth]/route.ts")
+    );
     assert_eq!(safe_join(root.path(), "/").unwrap(), root.path());
     assert_eq!(safe_join(root.path(), ".").unwrap(), root.path());
     assert!(safe_join(root.path(), "a/../../b").is_err());

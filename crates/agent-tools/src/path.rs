@@ -33,7 +33,7 @@ pub fn safe_join(root: &str, rel_path: &str) -> Result<String, String> {
     if rel_path == "." || rel_path.is_empty() {
         return Ok(root_abs);
     }
-    if rel_path.contains("..") {
+    if rel_path.split('/').any(|p| p == "..") {
         return Err("path escapes root".into());
     }
     let full = abs(&join(&[&root_abs, rel_path]))?;

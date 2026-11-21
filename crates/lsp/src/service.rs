@@ -126,7 +126,7 @@ pub fn safe_join(root: &str, rel: &str) -> Result<String, String> {
     if rel.is_empty() || rel == "." {
         return Ok(root_abs);
     }
-    if rel.contains("..") {
+    if rel.split('/').any(|p| p == "..") {
         return Err("path escapes root".into());
     }
     let full = clean(&format!("{root_abs}/{rel}"));

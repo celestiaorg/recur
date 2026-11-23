@@ -70,7 +70,7 @@ Each matching line starts a run with that line as a string event. A burst of err
 
 ### Agents can create watches
 
-Agents create Watch schedules with the `create_schedule` tool (cadence `watch` and a `command`), so an agent can set up a listener while it works. Passing a schedule's `id` edits it instead, for example to fix a command that keeps exiting. Because the command runs as you, Recur shows the command and asks you to approve it unless permissions are bypassed.
+Agents create Watch schedules with the `create_schedule` tool (cadence `watch` and a `command`), so an agent can set up a listener while it works. Because the command runs as you, Recur shows it and asks you to approve it unless permissions are bypassed. See [Agents can manage schedules](#agents-can-manage-schedules) for editing and the other cadences.
 
 ## Recur must be open
 
@@ -83,3 +83,16 @@ If the previous run is still active or waiting for your answer, the next timed o
 **Run now** starts a run immediately. **Pause** stops future occurrences until you **Resume**. Deleting a schedule stops future occurrences and keeps the workspaces it already created.
 
 **Settings → General → Keep scheduled workspaces** keeps the last N live workspaces per schedule and removes older settled runs. `0` keeps all.
+
+## Agents can manage schedules
+
+Agents in Agent mode can manage their own project's schedules when you ask them to:
+
+- `create_schedule` creates one: once, daily, weekdays, cron or Watch, in Ask, Plan, Agent or Review mode. It cannot create an Autopilot schedule.
+- `create_schedule` with a schedule's `id` edits it, for example to change its time or fix a Watch command that keeps exiting.
+- `list_schedules` lists the project's schedules with their next run, last status and, for Watch, the command's live status. Ask and Plan chats have this one too.
+- `delete_schedule` deletes one. Workspaces it already started stay.
+
+Schedules an agent creates show up in the Schedules view like your own, and you can pause, edit or delete them there. Every occurrence is a full agent run and a Watch command runs as you, so Recur asks before it creates, edits or deletes one and shows a Watch command in the prompt. It does not ask when **Settings → Providers → Bypass tool permissions** is on.
+
+Agents in child workspaces cannot manage schedules. To come back to the same chat later, an agent uses a [check-back](/concepts/background#check-backs) instead.

@@ -1,0 +1,93 @@
+---
+title: Insights
+description: See how your agents spent their time
+---
+
+# Insights
+
+Open **Insights** in the sidebar, under Schedules, or pick it in **Go to** (`⌘K`). It shows how your agents spent their time across every project: how long they ran, what they ran, how often they stopped to ask you something, and where time was lost.
+
+The first time you open it after updating, Recur may show **Preparing Insights** while it indexes your older history. That takes about a minute and happens once.
+
+## Choose a range
+
+Pick **Week**, **Month** or **Year** in the titlebar. Ranges follow the calendar in your local time zone, and weeks start on Monday. Use the arrows to step back and forward, or click the range to jump to one of the last 12 weeks or months, or the last 5 years. Recur remembers Week, Month or Year, and always opens on the current one.
+
+The report is read again each time you open the view.
+
+## The stat row
+
+| Stat | What it counts |
+| --- | --- |
+| **Agent hours** | Time agents spent on turns, plus time their questions waited for your answer. Each agent counts separately, so five agents busy for an hour is 5h. The line below compares it with the same length of time from the start of the previous week, month or year. |
+| **Tasks** | Every prompt an agent received: yours, another agent's and a schedule's. Follow-ups count, and so do the turns Recur starts for an agent, such as a [check-back](/concepts/background#check-backs). **Failed** means the turn ended on a provider error, a plan limit or the turn time limit. Turns you stopped, or that a quit interrupted, are not failures. |
+| **Most at once** | The most agent turns running at the same moment, and when that was. |
+| **Needed you** | Questions agents asked you. **Typical wait** is the median time to your answer. Permission prompts and plan approvals are not counted. |
+| **Work merged** | Workspaces whose work landed on their base branch, by pull request or directly. A child workspace merging into its parent does not count. **Open** is how many open pull requests Recur knows about right now, whatever the range. |
+
+A wait longer than 16 hours is treated as unanswered: the next message probably came on another day, about something else.
+
+## Agent hours heatmap
+
+The heatmap has one square per day for the 12 months up to the end of the range. Squares have four shades, each a quarter of the busiest day. Hover a square for its date and hours. The line below shows the total, the longest run of days with agent time, the busiest day, and the typical (median) day with agent time.
+
+## Where the hours went
+
+| Part | What it is |
+| --- | --- |
+| **Running commands** | Time a command or tool call was open, from the call to its result. Calls that overlap in one chat count once. |
+| **Model thinking** | The rest of the turn time. |
+| **Waiting on you** | Time questions waited for an answer. |
+
+**By hour of day** and **By weekday** show when agents run. By weekday is the average per day in the range.
+
+## Time lost
+
+Only causes that happened in the range are listed, largest first. If there were none, the section says **None**.
+
+| Row | When it appears and what it measures |
+| --- | --- |
+| **Cargo build lock** | A command's output said cargo was waiting for a file lock, usually because another build held it. The whole time of those commands counts. |
+| **Re-running failed commands** | The same kind of command failed three or more times in a row in one chat. Every run after the first counts. |
+| **Overnight questions** | An agent asked a question between 23:00 and 06:00 and waited more than an hour for the answer. The whole wait counts. |
+| **Provider errors, retries** | A task failed on a provider error. The time from its prompt to the failure counts. Plan limits and the turn time limit do not. |
+| **Review loops not settling** | A workflow's review loop hit its round limit and asked you how to proceed. The coder and reviewer time in that workspace counts. |
+
+Rows can overlap, so treat the total as a guide.
+
+## Models
+
+The four models with the most agent time, and the rest folded into one row.
+
+- **Runs**: turns that ended in the range.
+- **Typical task**: the median turn length.
+- **Needed you**: agent time per question, such as `1 per 2h 10m`.
+- **Failed cmds**: the share of its commands that failed. 5% or more shows in red.
+- **Tokens in**: input tokens, including cached ones.
+
+**Typical task** and **Needed you** show **too few** below 10 runs. **Needed you** also shows it when the model asked nothing. **Not reported** means there is no token total for that model's turns.
+
+## Commands
+
+The six commands with the most time, and the rest folded into one row: total time, calls, typical (median) and slowest time, and the share that failed. Commands are grouped by program, such as `cargo test`, `git, gh` or `Read / Edit files`, so the same program run two ways counts as one. A search that matched nothing is shown as **no match**, not as a failure.
+
+## The lists below
+
+- **Tasks**: how many came from you, another agent or schedules, and across how many projects. The turns Recur starts for an agent are under **From another agent**.
+- **How they ended**: finished, failed, cancelled or stopped, and still running. When you send a message while a turn is running, the earlier message counts as finished and the later one takes the turn's outcome.
+- **Handoffs**: work sent to a reviewer, chats that opened a child workspace, the share of workspaces whose review loop settled, and child workspaces that failed or were stopped.
+- **Context**: compactions, turns that ended past 90% of the context window, and the largest context.
+- **Tokens**: in, the share of those from cache, and out.
+- **Changes**: lines and files in the work that merged, and how many workspaces merged. Files come from pull requests only.
+
+## Where the data comes from
+
+Insights reads `recur.db`, the database Recur keeps on this machine. Nothing is sent anywhere.
+
+It can only show what that database holds:
+
+- Agent sessions outside Recur, or in Recur on another machine, are not included.
+- Turns you removed with [Reset to here](/concepts/review#reset-to-here) and history wiped by **Clear all data** are gone from it too.
+- Tokens cover only the turns where the provider reported a total, and not turns from before Recur recorded it.
+- A command that was cut off, for example by quitting Recur, has no end time, so it adds no time.
+- There are no prices. Insights measures time and tokens, not cost.

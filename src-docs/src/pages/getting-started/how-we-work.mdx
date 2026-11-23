@@ -5,7 +5,7 @@ description: The patterns the Recur team uses every day, and a few we recommend
 
 # How we work
 
-Recur gives you modes, workflows, slash commands, and schedules. This page shows how they fit together in practice. The first sections cover the patterns the Recur team uses most, taken from our own sessions. The last section suggests a few more.
+Recur gives you modes, workflows, slash commands, and schedules. This page shows how they fit together in practice. The first sections cover the patterns the Recur team uses most, taken from our own sessions. [Recommended patterns](#recommended-patterns) at the end suggests a few more.
 
 ## One task, one workspace
 
@@ -82,4 +82,9 @@ These are less common in our own sessions but fit well when the task calls for t
 - **Security review when it matters.** Run `/security-review` on any diff that touches authentication, secrets, tokens, or permission checks.
 - **Ask beside a running chat.** Open an Ask chat to explore the code or answer a question while an Agent chat or workflow keeps working in the same workspace.
 - **Recurring chores.** Schedule routine work, such as a weekly dependency upgrade on the To a PR workflow, so it shows up as a ready-to-review pull request.
+- **Make your test suite a gate.** Give a workflow a [`run` phase](/concepts/workflows#run-a-command) with the command you would run before merging, and set `on_reject` so a failure goes back to the Coder with the output. The Reviewer judges the code, and your own checks decide whether it passes.
+- **Let events start the work.** When something should react instead of run on a clock, such as a failed CI run or a new error in a log, use a [Watch schedule](/concepts/schedules#watch). Start with a script that prints one JSON line per event, and a prompt that says what not to do. It runs only while Recur is open.
+- **Direct work from Ask Recur.** With several workspaces going, stay in [Inbox](/concepts/inbox#ask-recur): ask what needs you, answer a question, or say "tell it to also cover the 502 path". Ask it to start a workspace in another project, and it reports back when that work finishes.
+- **Ask an agent to write the bundle.** Describe the slash command or workflow you want in an Agent chat and ask the agent to install it. Recur lints it and [asks you to approve](/bundles/workflows#have-an-agent-install-it) before anything is added. Read the shell commands in the prompt first: they run as you.
+- **Leave long work running.** Ask the agent to start the dev server or the long test run as a [background process](/concepts/background#background-processes) and end its turn. It gets a new turn with the last lines of output when the process exits. For things outside the machine, such as CI, ask it to check back in ten minutes. Background processes stop when you quit Recur.
 - **Write docs with the Docs workflow.** `/write-docs` plans, writes, and edits documentation and publishes it as an artifact for you to read before it lands anywhere.

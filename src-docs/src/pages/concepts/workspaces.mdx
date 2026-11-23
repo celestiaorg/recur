@@ -14,7 +14,7 @@ A **workspace** is the unit of work in Recur: a checkout plus the UI around it (
 
 ## Layout
 
-A workspace shows the agent chat on the left, one view at a time with the terminal in the center (or wherever you [place it](#layout)), and a right panel for the lists you open files from: files, search, artifacts and so on. The last icon in the toolbar (`⌥⌘⇧B`) shows and hides the right panel, and the pin beside it switches it between floating and docked.
+A workspace shows the agent chat on the left, one view at a time with the terminal in the center (or wherever you [place it](#terminal-placement)), and a right panel for the lists you open files from: files, search, artifacts and so on. The last icon in the toolbar (`⌥⌘⇧B`) shows and hides the right panel, and the pin beside it switches it between floating and docked.
 
 The buttons at the front of the toolbar's center group pick the center's view: **Plan**, **Editor**, **Review** and, once the workspace has one, **Pull request**. A button switches to its view and does nothing when it is already showing. The Plan button counts the plan's remaining steps. A link to the plan in the chat switches the center to it.
 
@@ -22,12 +22,16 @@ The **Artifacts** panel is on the right by default, beside the chat: opening an 
 
 The left column holds the chat and the **Findings** panel, one at a time, switched by their icons at the left of the toolbar; the first icon (`⌥⌘B`) hides and shows the column. Findings are on the left so you can read one beside the code it is about: a link to a finding in the chat opens the panel and the finding's file. The Findings icon counts the open ones. Other panels you place on the left in Settings show their icons there too.
 
+### Right panel
+
 The right panel is either floating or docked. This is one setting for every workspace:
 
 - **Floating** (the default): the panel takes no column, and the toolbar does not show its icons. The show button slides it out from the right edge, over the editor. Its icons come out with it, in the toolbar over it where they are when docked, to switch between files, search and the rest; the editor's toolbar buttons move over so they stay in view. It stays open while you work in it or in the chat, so you can open one file after another from it. It closes when you click in the editor column, click the show button again or press `Esc`. Drag its left edge to resize it; it remembers that width apart from the docked one. Project search, find references and the problems list open in it too. The editor keeps its width and the chat takes the rest of the window; drag the editor's left edge to resize it.
 - **Docked**: the panel is a column beside the editor that stays until you hide it (docking it shows it), and its icons sit in the toolbar over it. The chat has its own width and the editor takes the rest.
 
 Switch in **Settings → Code editor → Code panels → Right panel**, with `⌥⌘J`, the pin button in the toolbar, or **View → Float Right Panel**. In a narrow window the panels stack either way.
+
+### Terminal placement
 
 The Terminal button in the toolbar (``⌃` ``) shows and hides the terminal, and the chevron beside it opens a menu of where the terminal shows:
 
@@ -38,6 +42,8 @@ The Terminal button in the toolbar (``⌃` ``) shows and hides the terminal, and
 
 Picking a placement shows the terminal there and is remembered for that workspace. Workspaces you have not picked one for follow **Settings → Code editor → Code panels → Terminal**; **Use default** in the menu puts a workspace back on it. Below the editor or the chat, drag the terminal's top edge to resize it (the two share one height). In a narrow window the full-width terminal sits under the stacked panels. ``⌃⇧` `` maximizes the terminal in every placement.
 
+### Pull request view
+
 Once a workspace has a pull request, a pull request button appears beside the review button in the toolbar, with a badge for failing checks. It shows the pull request where the editor is, with its own tabs in the row under the toolbar: **Overview** (the conversation, led by the pull request's state, title, people and attention labels), **Commits**, **Files changed** and **Checks**. Everything you can do to the pull request is in the workspace, so there is no separate page to switch to. See [Pull requests](/concepts/pull-requests).
 
 ## Isolation & parallelism
@@ -46,7 +52,7 @@ Once a workspace has a pull request, a pull request button appears beside the re
 - Setup, teardown, named Runs, and env live in committed [`.recur/project.toml`](/concepts/project-toml)
 - Inside a workspace, open multiple agent chats, each with its own mode
 
-[Child workspaces](/concepts/modes#child-workspaces) started from an Agent chat or a [workflow](/concepts/workflows) nest under their parent in the sidebar. Use [Inbox](/concepts/inbox) to find work across projects, or [Schedules](/concepts/schedules) to start tasks automatically while Recur is open.
+[Child workspaces](/concepts/modes#child-workspaces) started from an Agent chat or a [workflow](/concepts/workflows) nest under their parent in the sidebar. Agents can leave [background processes](/concepts/background) running in the terminal dock. Use [Inbox](/concepts/inbox) to find work across projects, or [Schedules](/concepts/schedules) to start tasks automatically while Recur is open.
 
 ## Landing the work
 
@@ -72,7 +78,7 @@ On a Mac with [Conductor](https://conductor.build) data, **File → Import Condu
 - Each visible Conductor chat becomes a chat tab with its transcript. The first message you send starts a new agent session that receives the earlier conversation, because Conductor's own agent sessions cannot be resumed
 - Running the import again skips worktrees already in Recur
 
-Conductor Cloud workspaces run on Conductor's servers, so the import cannot see them. Move each one to your Mac first: in Conductor, right-click it and choose **Transfer to local**, then run the import. Do this before Conductor Cloud turns read-only on November 13, 2026.
+Conductor Cloud workspaces run on Conductor's servers, so the import cannot see them. Move each one to your Mac first: in Conductor, right-click it and choose **Transfer to local**, then run the import.
 
 ## Editor
 

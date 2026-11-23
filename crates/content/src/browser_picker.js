@@ -32,9 +32,14 @@
     return parts.join(' > ')
   }
 
+  // A UTF-16 prefix that never ends on half a surrogate pair, which serde_json would reject.
+  const head = (s, n) => {
+    const c = s.charCodeAt(n - 1)
+    return s.slice(0, c >= 0xd800 && c <= 0xdbff ? n - 1 : n)
+  }
   const truncate = (html, max) => {
     if (html.length <= max) return html
-    let cut = html.slice(0, max)
+    let cut = head(html, max)
     const lt = cut.lastIndexOf('<')
     if (lt > cut.lastIndexOf('>')) cut = cut.slice(0, lt)
     return `${cut}…`
@@ -102,7 +107,7 @@
       viewport: { width: innerWidth, height: innerHeight },
       tag: el.localName,
       selector: cssSelector(el),
-      text: (el.innerText ?? el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, TEXT_MAX),
+      text: head((el.innerText ?? el.textContent ?? '').replace(/\s+/g, ' ').trim(), TEXT_MAX),
       html: truncate(el.outerHTML, HTML_MAX),
     })
   }

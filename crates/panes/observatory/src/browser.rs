@@ -17,7 +17,7 @@ use gpui_kit::{
 use recur_content::BrowserEvent;
 use recur_content::browser::{
     AVAILABLE, BrowserCapture, BrowserPage, BrowserState, LoadError, capture_label,
-    format_capture_context, normalize_url, parse_capture_source,
+    format_capture_context, normalize_url, parse_capture_source, resolve_capture_source,
 };
 use recur_engine::view::chat::{ChatAttachmentDraft, new_attachment_id};
 use recur_ui::guard::Guarded as _;
@@ -231,7 +231,8 @@ impl BrowserSurface {
             .workspace(&self.workspace_id)
             .map(|w| w.worktree_path.clone())
             .unwrap_or_default();
-        let source = parse_capture_source(&c.source, &root);
+        let source =
+            parse_capture_source(&c.source, &root).and_then(|s| resolve_capture_source(s, &root));
         use base64::Engine as _;
         ChatAttachmentDraft {
             id: new_attachment_id(chrono::Utc::now().timestamp_millis()),

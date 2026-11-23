@@ -24,6 +24,8 @@ fn main() {
 
 #[cfg(target_os = "macos")]
 mod dataset;
+#[cfg(target_os = "macos")]
+mod insights;
 
 #[cfg(target_os = "macos")]
 mod mac {
@@ -31,7 +33,10 @@ mod mac {
     use std::process::Command;
     use std::time::Duration;
 
-    use gpui_kit::{AnyWindowHandle, App, AppContext as _, AsyncApp, Entity, px, size};
+    use gpui_kit::{
+        AnyWindowHandle, App, AppContext as _, AsyncApp, Entity, Keystroke, MouseButton,
+        MouseDownEvent, MouseUpEvent, Pixels, PlatformInput, Point, point, px, size,
+    };
     use objc2::MainThreadMarker;
     use objc2::rc::Retained;
     use objc2_app_kit::{
@@ -41,20 +46,21 @@ mod mac {
     use objc2_foundation::NSPoint;
     use raw_window_handle::{HasWindowHandle as _, RawWindowHandle};
     use recur_services::api::EditorSession;
+    use recur_ui::widgets::ToastStore;
     use recur_view_core::{
         AppState, LOCAL_STORAGE_FILE, LocalStorage, ViewName, ViewRegistry, prefs::PanelKey,
     };
+    use recur_view_workspace::WorkspaceDetail;
 
     const WIDTH: f32 = 1440.;
     const HEIGHT: f32 = 800.;
-    const WORKSPACE: &str = "LOOP-2231";
     const PR: &str = "486";
     const APP_THEME: &str = "default";
     const EDITOR_THEME: &str = "recur";
 
     #[derive(Clone, Copy)]
     enum View {
-        Workspace,
+        Workspace(&'static str),
         Pr,
         Other(ViewName),
     }
@@ -68,7 +74,13 @@ mod mac {
         chat_open: bool,
         /// The Files side panel.
         files_open: bool,
-        review: bool,
+        surface: &'static str,
+        file: &'static str,
+        /// Typed into the commit box of the review's Uncommitted tab.
+        commit_message: &'static str,
+        /// The chat's collapsed tool calls, clicked open.
+        expand: Option<(f32, f32)>,
+        file_list: f32,
         maestro_dock: f32,
     }
 
@@ -79,33 +91,60 @@ mod mac {
             chat: "PA",
             chat_open: false,
             files_open: false,
-            review: false,
+            surface: "editor",
+            file: "src/main.go",
+            commit_message: "",
+            expand: None,
+            file_list: 220.,
             maestro_dock: 390.,
         }
     }
 
-    const SCREENS: [Screen; 8] = [
+    const SCREENS: [Screen; 11] = [
         Screen {
             chat_open: true,
             files_open: true,
             maestro_dock: 440.,
-            ..screen("workspace", View::Workspace)
+            ..screen("workspace", View::Workspace("LOOP-2231"))
         },
         Screen {
             chat: "PA2",
-            review: true,
+            surface: "review",
             maestro_dock: 400.,
-            ..screen("changes", View::Workspace)
+            ..screen("changes", View::Workspace("LOOP-2231"))
         },
         Screen {
             chat: "MA",
             chat_open: true,
+            file: "src/passkey.go",
             maestro_dock: 650.,
-            ..screen("loop", View::Workspace)
+            ..screen("loop", View::Workspace("LOOP-2240"))
+        },
+        Screen {
+            chat: "PA2",
+            chat_open: true,
+            surface: "pr",
+            maestro_dock: 400.,
+            ..screen("workspace-pr", View::Workspace("LOOP-2231"))
+        },
+        Screen {
+            surface: "review",
+            file: "refunds/handler.go",
+            file_list: 290.,
+            commit_message: "Make refund retries idempotent",
+            ..screen("uncommitted", View::Workspace("payments-idempotency"))
+        },
+        Screen {
+            chat_open: true,
+            file: "webhooks/delivery.go",
+            expand: Some((345., 242.)),
+            maestro_dock: 470.,
+            ..screen("background", View::Workspace(super::dataset::BACKGROUND))
         },
         screen("pull-request", View::Pr),
         Screen {
             chat_open: true,
+            expand: Some((345., 483.)),
             ..screen("inbox", View::Other(ViewName::Inbox))
         },
         screen("issues", View::Other(ViewName::Issues)),
@@ -174,13 +213,13 @@ mod mac {
             .expect("runtime");
         let _rt = rt.enter();
         let services = super::dataset::services(EditorSession {
-            open_files: Some(vec!["src/main.go".into()]),
-            selected_path: "src/main.go".into(),
+            open_files: Some(vec![screen.file.into()]),
+            selected_path: screen.file.into(),
             left_kind: "agent".into(),
             right_kind: "files".into(),
             left_open: Some(screen.chat_open),
             right_open: Some(screen.files_open),
-            main_surface: if screen.review { "review" } else { "editor" }.into(),
+            main_surface: screen.surface.into(),
             ..Default::default()
         });
 
@@ -276,7 +315,7 @@ mod mac {
                 (PanelKey::Rail, 280.),
                 (PanelKey::MaestroDock, screen.maestro_dock),
                 (PanelKey::ObsSide, 180.),
-                (PanelKey::PrFileList, 220.),
+                (PanelKey::PrFileList, screen.file_list),
             ] {
                 s.set_panel(key, size, cx);
             }
@@ -284,12 +323,87 @@ mod mac {
         });
         settle(cx, window, 6).await;
         state.update(cx, |s, cx| match screen.view {
-            View::Workspace => s.open_workspace_chat(WORKSPACE, screen.chat, cx),
+            View::Workspace(id) => s.open_workspace_chat(id, screen.chat, cx),
             View::Pr => s.open_pr(PR, cx),
             View::Other(v) => s.go(v, None, cx),
         });
         settle(cx, window, 20).await;
+        if !screen.commit_message.is_empty() {
+            commit_message(cx, window, screen.commit_message)?;
+            settle(cx, window, 6).await;
+        }
+        if let Some((x, y)) = screen.expand {
+            click(cx, window, point(px(x), px(y)));
+            settle(cx, window, 6).await;
+        }
+        dismiss_toasts(cx, window);
+        settle(cx, window, 6).await;
         save(&ns_window, file)
+    }
+
+    /// Types the message into the commit box, then leaves it as a reader would see it.
+    fn commit_message(
+        cx: &mut AsyncApp,
+        window: AnyWindowHandle,
+        message: &str,
+    ) -> Result<(), String> {
+        cx.update_window(window, |_, window, cx| {
+            let view = WorkspaceDetail::current(cx)
+                .and_then(|d| d.read(cx).bound_view(cx))
+                .ok_or("no workspace view")?;
+            let obs = view.read(cx).observatory().clone();
+            if !obs.update(cx, |o, cx| o.focus_commit_msg(window, cx)) {
+                return Err("the commit box took no focus".to_string());
+            }
+            window.draw(cx).clear(cx);
+            for ch in message.chars() {
+                window.dispatch_keystroke(
+                    Keystroke {
+                        key: ch.to_lowercase().to_string(),
+                        key_char: Some(ch.to_string()),
+                        ..Default::default()
+                    },
+                    cx,
+                );
+            }
+            window.blur(cx);
+            Ok(())
+        })
+        .map_err(|e| e.to_string())?
+    }
+
+    fn click(cx: &mut AsyncApp, window: AnyWindowHandle, position: Point<Pixels>) {
+        let _ = cx.update_window(window, |_, window, cx| {
+            window.dispatch_event(
+                PlatformInput::MouseDown(MouseDownEvent {
+                    button: MouseButton::Left,
+                    position,
+                    click_count: 1,
+                    ..Default::default()
+                }),
+                cx,
+            );
+            window.dispatch_event(
+                PlatformInput::MouseUp(MouseUpEvent {
+                    button: MouseButton::Left,
+                    position,
+                    click_count: 1,
+                    ..Default::default()
+                }),
+                cx,
+            );
+        });
+    }
+
+    /// The pending question pops its toast when the app starts.
+    fn dismiss_toasts(cx: &mut AsyncApp, window: AnyWindowHandle) {
+        let _ = cx.update_window(window, |_, window, cx| {
+            let store = ToastStore::global(cx);
+            let ids: Vec<_> = store.read(cx).toasts().iter().map(|t| t.id).collect();
+            for id in ids {
+                ToastStore::dismiss(&store, id, false, window, cx);
+            }
+        });
     }
 
     /// Puts the window on the screen with the highest backing scale (a Retina panel beside a 1x

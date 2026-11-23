@@ -1823,6 +1823,7 @@ fn send_attachments_and_ids() {
             name: "a.png".into(),
             mime: "image/png".into(),
             data_url: "data:image/png;base64,AAA".into(),
+            ..ChatAttachmentDraft::default()
         },
         ChatAttachmentDraft {
             id: "b".into(),

@@ -827,6 +827,7 @@ impl WorkspaceView {
                 name: a.name.clone(),
                 mime: a.mime.clone(),
                 data_url: a.data_url.clone(),
+                ..Default::default()
             })
             .collect();
         if (!seed.text.is_empty() || !atts.is_empty()) && !code.is_empty() {

@@ -372,6 +372,47 @@ fn a_brief_row_click_shows_its_overview_and_open_lands_on_the_workspace(cx: &mut
 }
 
 #[gpui::test]
+fn a_question_shows_as_its_card_without_its_notice(cx: &mut TestAppContext) {
+    let mut s = plain(cx);
+    s.click(&row(SIGN_IN));
+    let wid = briefing(&mut s)
+        .read_with(s.cx, |v, cx| v.chat().read(cx).viewing().map(str::to_owned))
+        .expect("viewing");
+    s.click(&row(RATE));
+    let note = |id: &str, target: &str| recur_domain::InboxItem {
+        id: id.into(),
+        group: "needs".into(),
+        unread: true,
+        kind: "pause".into(),
+        title: id.into(),
+        target: target.into(),
+        workspace_id: wid.clone(),
+        ..Default::default()
+    };
+    let items = [
+        note("ib-ask-q1", "question:q1"),
+        note("ib-esc-x", &format!("chat:{wid}:MA")),
+    ];
+    let q: recur_domain::UserQuestion = serde_json::from_value(json!({
+        "id": "q1", "workspaceId": wid, "agentCode": "PA", "question": "Ship it?", "createdAt": 1,
+    }))
+    .unwrap();
+    s.state.update(s.cx, |st, cx| {
+        st.inbox.extend(items);
+        st.user_questions.push(q);
+        cx.notify();
+    });
+    s.click(&row(SIGN_IN));
+    assert!(s.has("ov-note:ib-esc-x"), "other paused notices stay");
+    assert!(!s.has("ov-note:ib-ask-q1"), "the card below says it");
+    s.state.update(s.cx, |st, cx| {
+        st.user_questions.clear();
+        cx.notify();
+    });
+    assert!(!s.has("ov-note:ib-ask-q1"), "an answered question is stale");
+}
+
+#[gpui::test]
 fn ask_recur_knows_the_workspace_open_in_the_overview(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     let viewing = |s: &mut S| {

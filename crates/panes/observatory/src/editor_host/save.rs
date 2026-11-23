@@ -367,14 +367,24 @@ impl Observatory {
             return;
         }
         self.tab_buffers.remove(path);
+        self.cards.remove(path);
         for e in [&self.main_editor, &self.split_editor]
             .into_iter()
             .flatten()
         {
             e.update(cx, |e, _| e.forget_path(path));
         }
+        crate::session_tabs::parks(cx).forget_path(&self.editor_session_key, path);
         super::forget_history_tree(&self.editor_session_key, path, cx);
         self.mark_tab_dirty(path, false);
+        if path == self.selected_path {
+            self.draft = self.saved_content.clone();
+            self.main_editor_dirty = false;
+        }
+        if path == self.split_path {
+            self.split_draft = self.split_saved.clone();
+            self.split_editor_dirty = false;
+        }
         let p = path.to_string();
         for s in [&mut self.main_editor_sync, &mut self.split_editor_sync] {
             if s.path == p {
@@ -386,7 +396,7 @@ impl Observatory {
     /// `reloadFromDisk` (F5).
     pub(crate) fn reload_from_disk(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.focused_pane == Pane::Split && self.split_open && !self.split_path.is_empty() {
-            let confirm = if self.split_dirty() {
+            let confirm = if self.split_dirty() || self.tab_is_dirty(&self.split_path) {
                 self.ask_confirm(
                     "Reload",
                     "Reload split pane from disk and discard unsaved edits?",
@@ -437,7 +447,7 @@ impl Observatory {
         if self.selected_path.is_empty() || self.selected_git_status() == "d" {
             return;
         }
-        let confirm = if self.dirty() {
+        let confirm = if self.dirty() || self.tab_is_dirty(&self.selected_path) {
             self.ask_confirm(
                 "Reload",
                 "Reload from disk and discard unsaved editor buffer?",

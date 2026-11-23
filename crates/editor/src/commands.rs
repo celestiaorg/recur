@@ -236,9 +236,9 @@ fn move_by_line_boundary(
         moved = v.move_to_line_boundary(start, forward, false);
     }
     if !forward && moved.head() == line.from && !line.is_empty() {
-        let text = v
-            .state()
-            .slice_doc(line.from, (line.from + 100).min(line.to));
+        let state = v.state();
+        let end = state.doc.clamp_to_char((line.from + 100).min(line.to));
+        let text = state.slice_doc(line.from, end);
         let space = leading_space(&text).len();
         if space > 0 && start.head() != line.from + space {
             moved = SelectionRange::cursor(line.from + space);
@@ -991,11 +991,11 @@ pub fn insert_newline_keep_indent(v: &dyn ViewQueries) -> Option<TransactionSpec
 
 /// `isBetweenBrackets`: only the adjacent `()`, `[]`, `{}` case applies.
 fn is_between_brackets(state: &EditorState, pos: usize) -> Option<(usize, usize)> {
-    if pos == 0 || pos >= state.doc.len() {
-        return None;
-    }
-    let pair = state.slice_doc(state.doc.clamp_to_char(pos - 1), pos + 1);
-    matches!(pair.as_str(), "()" | "[]" | "{}").then_some((pos, pos))
+    matches!(
+        (state.doc.char_before(pos)?, state.doc.char_at(pos)?),
+        ('(', ')') | ('[', ']') | ('{', '}')
+    )
+    .then_some((pos, pos))
 }
 
 fn newline_and_indent(state: &EditorState, at_eof: bool) -> Option<TransactionSpec> {
@@ -1523,6 +1523,11 @@ mod tests {
         );
         assert_eq!(run(&v, cursor_group_left).1, vec![(10, 10)]);
         assert_eq!(run(&v, cursor_syntax_left).1, vec![(0, 0)]);
+        let quote = format!("{}”{}", "a".repeat(99), "b".repeat(20));
+        for (doc, pos) in [(quote, 110), ("中".repeat(60), 90)] {
+            let v = view(&doc, pos, pos);
+            assert_eq!(run(&v, cursor_line_boundary_backward).1, vec![(0, 0)]);
+        }
         assert!(cursor_char_left(&view("x", 0, 0)).is_none());
     }
 
@@ -1565,6 +1570,10 @@ mod tests {
         assert_eq!(
             run(&view("  x", 3, 3), insert_newline_and_indent),
             ("  x\n  ".into(), vec![(6, 6)])
+        );
+        assert_eq!(
+            run(&view("a”b", 1, 1), insert_newline_and_indent).0,
+            "a\n”b"
         );
         assert_eq!(
             run(&view("f(){}", 4, 4), insert_newline_and_indent).0,

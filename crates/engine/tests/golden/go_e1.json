@@ -1150,7 +1150,9 @@
         "Bash",
         "NotebookEdit",
         "mcp__recur__update_finding",
-        "mcp__recur__update_todos"
+        "mcp__recur__update_todos",
+        "mcp__recur__install_bundle",
+        "mcp__recur__reload_bundles"
       ],
       "agent": [
         "Read",
@@ -1173,7 +1175,9 @@
         "Bash",
         "NotebookEdit",
         "mcp__recur__update_finding",
-        "mcp__recur__update_todos"
+        "mcp__recur__update_todos",
+        "mcp__recur__install_bundle",
+        "mcp__recur__reload_bundles"
       ],
       "ask": [
         "Read",
@@ -1372,6 +1376,8 @@
         "NotebookEdit",
         "mcp__recur__update_finding",
         "mcp__recur__update_todos",
+        "mcp__recur__install_bundle",
+        "mcp__recur__reload_bundles",
         "mcp__recur__escalate"
       ],
       [

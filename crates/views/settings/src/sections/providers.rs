@@ -73,7 +73,7 @@ impl SettingsView {
                     .child(copy(
                         "bypass",
                         "Bypass tool permissions",
-                        Some(vec![span("Skip permission prompts in Claude Code, Codex, Antigravity and OpenCode")]),
+                        Some(vec![span("Skip permission prompts in Claude Code, Codex, Antigravity, OpenCode, ChatGPT and compatible endpoints, and approval for background processes and schedules agents create, edit or delete. Installing a bundle always asks.")]),
                         cx,
                     ))
                     .child(ctrl().child(

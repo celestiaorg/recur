@@ -602,12 +602,12 @@ impl BriefingView {
             .as_ref()
             .is_some_and(|r| r.iter().any(|x| x == "plan_approval"));
 
-        // What arrived since the last look, as the Inbox lists notifications (a question's
-        // notification repeats its card below).
+        // What arrived since the last look, as the Inbox lists notifications. A question's
+        // notification repeats its card below, and is stale once the question is answered.
         let notes: Vec<InboxItem> = self
             .seen_notes
             .iter()
-            .filter(|n| questions.is_empty() || n.kind != "question")
+            .filter(|n| !n.target.starts_with("question:"))
             .cloned()
             .collect();
         if !notes.is_empty() {
@@ -795,6 +795,7 @@ impl BriefingView {
         let target = n.target.clone();
         card_row(i == 0, &t)
             .id(SharedString::from(format!("ov-note-{i}")))
+            .debug_selector(|| format!("ov-note:{}", n.id))
             .gap(px(12.))
             .py(px(8.))
             .cursor_pointer()

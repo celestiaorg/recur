@@ -5,10 +5,14 @@
 use std::collections::HashSet;
 use std::time::Duration;
 
+use recur_agent_tools::names::mcp;
 use recur_bundles::{DEFAULT_LOOP_ID, SECURITY_LOOP_ID};
-use recur_domain::{AutonomyLevel, Finding, FindingStatus, Severity, WorkspaceState};
+use recur_domain::{
+    AgentRole, AutonomyLevel, Finding, FindingStatus, PermissionDecision, Severity, WorkspaceState,
+};
 
 use crate::loops::test_support::*;
+use crate::permissions::PERMISSION_SURFACE_LOOP;
 use crate::testing::{TestEngine, add_project, git_out, init_repo, wait_for};
 
 fn agent_codes(t: &TestEngine, id: &str) -> HashSet<String> {
@@ -373,5 +377,87 @@ async fn resume_missing_loop_idles() {
         },
     )
     .await;
+    t.close().await;
+}
+
+/// The shipped Coder installs a bundle over MCP; the approval reaches the
+/// human through the loop surface and the Inbox, bypass or not.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn shipped_coder_installs_a_bundle_after_approval() {
+    let repo = init_repo();
+    let runner = ConvergeRunner::new(&[0]);
+    let inner = runner.provider();
+    let installed = std::sync::Arc::new(parking_lot::Mutex::new(None));
+    let out = installed.clone();
+    let t = TestEngine::new(Some(AsyncProvider::wrap(move |req, cx| {
+        let (inner, out) = (inner.clone(), out.clone());
+        async move {
+            if req.role == AgentRole::Coder {
+                let toml = "[bundle]\nname = \"Mine\"\nid = \"me.mine\"\n";
+                apply_edits(&req.worktree, &[("Mine/bundle.toml", toml)]).unwrap();
+                let args = serde_json::json!({"path": "Mine"});
+                let res = post_mcp_tool_result(&req.mcp_url, "install_bundle", args).await;
+                *out.lock() = Some(res);
+            }
+            inner.run_turn(req, cx).await
+        }
+    })));
+    t.install_shipped_loop_pack();
+    let mut set = t.store.settings();
+    set.bypass_permissions = true;
+    t.store.set_settings(set);
+    let proj = add_project(&t.store, &repo.path);
+    let id = t
+        .engine
+        .start_workspace(&proj, "Build a bundle", "", AutonomyLevel::default())
+        .await
+        .unwrap();
+
+    wait_for(Duration::from_secs(20), "the install approval", || {
+        !t.engine.pending_permissions().is_empty() || installed.lock().is_some()
+    })
+    .await;
+    assert_eq!(
+        *installed.lock(),
+        None,
+        "the install must wait for the human"
+    );
+    let req = t.engine.pending_permissions().remove(0);
+    assert_eq!(req.tool, mcp::INSTALL_BUNDLE);
+    assert_eq!(
+        (req.agent_code.as_str(), req.surface.as_str()),
+        ("CO", PERMISSION_SURFACE_LOOP)
+    );
+    let in_inbox = || {
+        t.store
+            .inbox()
+            .unwrap_or_default()
+            .iter()
+            .any(|i| i.id == req.id)
+    };
+    wait_for(Duration::from_secs(10), "the Inbox row", in_inbox).await;
+    assert!(t.engine.answer_permission(
+        &req.id,
+        PermissionDecision {
+            allow: true,
+            ..PermissionDecision::default()
+        }
+    ));
+
+    wait_for(Duration::from_secs(20), "the walk to settle", || {
+        t.store
+            .workspace(&id)
+            .is_some_and(|l| l.state == WorkspaceState::PrOpen)
+    })
+    .await;
+    let res = installed.lock().take().unwrap().unwrap();
+    assert!(res.contains("\"installed\":true"), "{res}");
+    assert!(!in_inbox());
+    let user = t.engine.bundle_roots().user_dir.clone();
+    assert!(
+        std::path::Path::new(&user)
+            .join("Mine/bundle.toml")
+            .exists()
+    );
     t.close().await;
 }

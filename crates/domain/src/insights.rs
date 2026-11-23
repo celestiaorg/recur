@@ -51,7 +51,7 @@ pub struct TaskStats {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct AskStats {
-    /// Questions and permission requests that waited on the human.
+    /// Questions agents asked the human. Permission prompts are not recorded.
     pub count: i64,
     pub typical_wait_ms: Option<i64>,
     pub longest_wait_ms: Option<i64>,

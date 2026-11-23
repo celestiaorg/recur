@@ -461,6 +461,44 @@ fn schedule_dashboard_remembers_expanded_rows_after_leaving_and_reload(cx: &mut 
 }
 
 #[gpui::test]
+fn schedule_columns_line_up_with_and_without_workspaces(cx: &mut TestAppContext) {
+    let project = seed_projects().remove(0);
+    let mut running = schedule("running", &project, "Running");
+    running.last_run = Some(ScheduledPromptRun {
+        status: "running".into(),
+        ..finished("run", "running", "running-ws").unwrap()
+    });
+    let mut gone = schedule("gone", &project, "Workspace removed");
+    gone.last_run = finished("run-2", "gone", "gone-ws");
+    let rows = vec![schedule("idle", &project, "Never run"), gone, running];
+    let opts = Overrides::default()
+        .preview_scheduled_prompt(|_, _| Ok(vec![now() + 86_400_000]))
+        .list_scheduled_prompts(move |_, _| Ok(rows.clone()));
+    let mut s = boot(
+        cx,
+        |seed| {
+            seed.workspaces
+                .push(run_ws("running-ws", "Running run", "running"))
+        },
+        opts,
+        LocalStorage::in_memory(),
+    );
+    s.click("nav-schedules");
+    assert!(s.until(|s| s.has("sc-runs-n:running=1")));
+    let mut at = |sel: &str| {
+        let b = s.bounds(sel).unwrap_or_else(|| panic!("{sel}"));
+        (b.left(), b.right())
+    };
+    let status = at("sc-status:idle=Scheduled");
+    assert_eq!(at("sc-status:gone=Finished"), status);
+    assert_eq!(at("sc-status:running=Running"), status);
+    let next = at("sc-next:idle");
+    assert_eq!(at("sc-next:gone"), next);
+    assert_eq!(at("sc-next:running"), next);
+    assert!(at("sc-runs-n:running=1").1 < status.0);
+}
+
+#[gpui::test]
 fn schedule_dashboard_bulk_removes_selected_workspaces(cx: &mut TestAppContext) {
     let project = seed_projects()[0].clone();
     let settled: Vec<Workspace> = (0..2)

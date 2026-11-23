@@ -1642,6 +1642,11 @@ impl EditorView {
     /// Drop a cached tab so the next mount rebuilds (`forgetPath`).
     pub fn forget_path(&mut self, path: &str) {
         self.tabs.remove(path);
+        if self.path == path {
+            // Otherwise the next mount parks the forgotten text again.
+            self.path.clear();
+            self.emit_task = None;
+        }
         if let Some(tm) = &self.tm {
             let id = recur_textmate::tm_doc_id_for(&self.pane, path);
             tm.borrow_mut().catalog.forget_docs([id.as_str()], true);

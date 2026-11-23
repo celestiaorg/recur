@@ -326,9 +326,7 @@ pub(crate) fn run(
             cm.run(Cmd::CursorLineBoundaryForward);
             let state = &cm.view.state;
             let cur = state.selection.main().head();
-            if cur < state.doc.len()
-                && state.slice_doc(cur, state.doc.clamp_to_char(cur + 1).max(cur + 1)) != "\n"
-            {
+            if state.doc.char_at(cur).is_some_and(|c| c != '\n') {
                 cm.run(Cmd::CursorCharLeft);
             }
             Some(h(cm.get_cursor()))

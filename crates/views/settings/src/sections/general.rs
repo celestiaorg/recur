@@ -406,7 +406,7 @@ impl SettingsView {
                                 "term-page",
                                 "Terminals page",
                                 Some(vec![span(
-                                    "Tabbed shells outside any workspace, under Schedules (⌥⌘5).",
+                                    "Tabbed shells outside any workspace, under Insights (⌥⌘5).",
                                 )]),
                                 cx,
                             ))

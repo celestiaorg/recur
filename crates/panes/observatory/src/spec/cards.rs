@@ -338,3 +338,35 @@ async fn editing_a_checked_file_leaves_it_partly_staged(cx: &mut TestAppContext)
     let staged: HashSet<String> = tree.staged.lock().iter().cloned().collect();
     assert_eq!(staged, ["src/a.go".to_string()].into());
 }
+
+fn reload_from_review(h: &mut H) {
+    h.update(|o, window, cx| o.reload_from_disk(window, cx));
+    h.cx.pending_prompt().expect("a confirm");
+    h.cx.simulate_prompt_answer("Reload");
+    h.wait(600);
+}
+
+#[gpui::test]
+async fn reloading_from_review_discards_the_cards_unsaved_text(cx: &mut TestAppContext) {
+    let disk = "package a\n// one\n";
+    let tree = Tree::new(&[("src/a.go", "package a\n", disk)]);
+    // Once past the doc-change debounce, once within it.
+    let mut h = mount(cx, tree.opts(), |_| {}, |_| {});
+    h.click("obs-left-toggle");
+    h.update(|o, window, cx| {
+        o.open_path(crate::obs::OpenRequest::new("src/a.go"), window, cx)
+            .detach()
+    });
+    h.settle();
+    for past_debounce in [true, false] {
+        toggle_review(&mut h);
+        focus_card(&mut h, "src/a.go");
+        h.type_text("KEEPME");
+        if past_debounce {
+            debounce(&mut h);
+        }
+        reload_from_review(&mut h);
+        assert_eq!(h.editor_doc(), disk);
+        assert!(!h.read(|o, _| o.dirty() || o.tab_is_dirty("src/a.go")));
+    }
+}

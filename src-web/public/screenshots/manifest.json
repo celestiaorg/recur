@@ -989,6 +989,58 @@
         "width": 2880,
         "height": 1600
       }
+    },
+    {
+      "id": "inbox-answered",
+      "file": "inbox-answered.png",
+      "title": "Inbox after answering",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox-answered",
+        "title": "Inbox after answering",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Setting how long links last"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
     }
   ]
 }

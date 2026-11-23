@@ -235,8 +235,19 @@ fn status(diffs: FileDiffResult) -> BTreeMap<String, String> {
 }
 
 /// The fakes, with `session` restored as every workspace's editor session.
-pub fn services(session: EditorSession) -> Services {
-    let d = load();
+pub fn services(session: EditorSession, answered: bool) -> Services {
+    let mut d = load();
+    if answered {
+        d.questions.clear();
+        d.inbox.retain(|i| i.workspace_id != ASKING);
+        for w in d.workspaces.iter_mut().filter(|w| w.id == ASKING) {
+            w.group = "active".into();
+            w.state = "coding".into();
+            w.status_label = "Working".into();
+            w.phase = "coding".into();
+            w.last = "Setting how long links last".into();
+        }
+    }
     let seed = Seed {
         // In the website demo's order: `ListWorkspaces` answers the seed reversed, as its
         // transport does.
@@ -385,9 +396,11 @@ pub fn services(session: EditorSession) -> Services {
     };
     // The fake files a workspace under Needs you by its group, which the sidebar counts on top of
     // its question.
-    let o = o.get_briefing(|seed, ()| {
+    let o = o.get_briefing(move |seed, ()| {
         let mut seed = seed.clone();
-        if let Some(w) = seed.workspace_mut(ASKING) {
+        if let Some(w) = seed.workspace_mut(ASKING)
+            && !answered
+        {
             w.group = "needs".into();
         }
         Answer::later(async move {

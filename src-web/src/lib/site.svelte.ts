@@ -52,6 +52,7 @@ export type Screen =
   | "insights"
   | "workspace"
   | "pull-requests"
+  | "inbox-answered"
   | "inbox-passkey"
   | "inbox-checkout"
   | "inbox-dark-mode"

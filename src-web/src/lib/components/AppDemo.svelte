@@ -54,7 +54,12 @@
       ["workspace-pr", "Open #482", 390, 292, 1610, 119],
     ],
     "pull-request": [["pull-requests", "Back to pull requests", 180, 8, 156, 36]],
-    inbox: list,
+    // Answering moves Team invites to Working. The list has shifted, so its rows end here.
+    inbox: [
+      ...list,
+      ["inbox-answered", "Answer 24 hours", 1328, 369, 629, 62],
+      ["inbox-answered", "Answer 48 hours", 1328, 439, 629, 62],
+    ],
     "inbox-passkey": [...list, open("loop", 1823)],
     "inbox-checkout": list,
     "inbox-dark-mode": list,
@@ -62,11 +67,11 @@
     "inbox-session": [
       ...list,
       open("workspace"),
-      review("changes", 505),
+      review("changes", 512),
       ["workspace-pr", "View PR #482", 1555, 59, 161, 35],
     ],
     "inbox-webhook": [...list, open("background")],
-    "inbox-idempotency": [...list, open("uncommitted"), review("uncommitted", 442)],
+    "inbox-idempotency": [...list, open("uncommitted"), review("uncommitted", 449)],
     issues: [
       ["background", "PAY-88: view workspace", 1786, 160, 192, 39],
       ["uncommitted", "PAY-91: view workspace", 1786, 451, 192, 39],

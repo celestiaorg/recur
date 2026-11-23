@@ -72,6 +72,8 @@ mod mac {
         chat: &'static str,
         /// The agent column left of the editor.
         chat_open: bool,
+        /// After the human answered the Inbox question.
+        answered: bool,
         surface: &'static str,
         file: &'static str,
         /// Typed into the commit box of the review's Uncommitted tab.
@@ -88,6 +90,7 @@ mod mac {
             view,
             chat: "PA",
             chat_open: false,
+            answered: false,
             surface: "editor",
             file: "src/main.go",
             commit_message: "",
@@ -106,7 +109,7 @@ mod mac {
         }
     }
 
-    const SCREENS: [Screen; 19] = [
+    const SCREENS: [Screen; 20] = [
         // The three centers of one workspace keep the same chat, so the demo can switch between them.
         Screen {
             chat_open: true,
@@ -149,6 +152,10 @@ mod mac {
         },
         screen("pull-request", View::Pr),
         inbox("inbox", &[(345., 483.)]),
+        Screen {
+            answered: true,
+            ..inbox("inbox-answered", &[(345., 483.), (792., 177.)])
+        },
         inbox("inbox-passkey", &[(345., 483.), (792., 203.)]),
         inbox("inbox-checkout", &[(345., 483.), (792., 256.)]),
         inbox("inbox-dark-mode", &[(345., 483.), (792., 308.)]),
@@ -221,7 +228,7 @@ mod mac {
             .build()
             .expect("runtime");
         let _rt = rt.enter();
-        let services = super::dataset::services(EditorSession {
+        let session = EditorSession {
             open_files: Some(vec![screen.file.into()]),
             selected_path: screen.file.into(),
             left_kind: "agent".into(),
@@ -230,7 +237,8 @@ mod mac {
             right_open: Some(false),
             main_surface: screen.surface.into(),
             ..Default::default()
-        });
+        };
+        let services = super::dataset::services(session, screen.answered);
 
         gpui_kit::application()
             .with_assets(recur_ui::Assets)

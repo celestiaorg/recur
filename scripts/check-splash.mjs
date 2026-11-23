@@ -111,6 +111,8 @@ try {
     ["Review", "changes"],
     ["Pull request", "workspace-pr"],
     ["Back to Inbox", "inbox"],
+    ["Answer 48 hours", "inbox-answered"],
+    ["Inbox", "inbox"],
     ["Select Checkout tests", "inbox-checkout"],
     ["Select Session refresh", "inbox-session"],
     ["Review changes", "changes"],

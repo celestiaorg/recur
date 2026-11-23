@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fade } from "svelte/transition";
+  import AppDemo from "./lib/components/AppDemo.svelte";
   import ProductScreenshot from "./lib/components/ProductScreenshot.svelte";
   import LoopFlow from "./lib/components/LoopFlow.svelte";
   import ProviderIcon from "./lib/components/ProviderIcon.svelte";
@@ -16,7 +16,6 @@
     loops,
     modes,
     policies,
-    screens,
     telegram,
     visitor,
     wordmark,
@@ -24,51 +23,8 @@
     type Screen,
   } from "./lib/site.svelte";
 
-  let screen = $state.raw(screens[0]);
   let mode = $state.raw(modes[2]);
   let playing = $state(true);
-
-  // The tab moves at once; the capture follows once it has decoded, so it
-  // fades in whole over the one it replaces.
-  const fadeMs = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 400;
-  let shown = $state.raw(screens[0]);
-  async function show(item: (typeof screens)[number]) {
-    screen = item;
-    const image = new Image();
-    image.src = `/screenshots/${item.screen}.png`;
-    await image.decode().catch(() => {});
-    if (screen === item) shown = item;
-  }
-
-  // The tour advances on its own until the visitor takes over. The fill that
-  // sweeps the active pill times each stop, so pausing it pauses the tour.
-  let auto = $state(fadeMs > 0);
-  let offscreen = $state(false);
-  function watchStage(node: HTMLElement) {
-    const obs = new IntersectionObserver(([e]) => {
-      offscreen = !e.isIntersecting;
-    });
-    obs.observe(node);
-    return () => obs.disconnect();
-  }
-
-  // The active tab's pill slides between tabs: the edge facing the new tab
-  // leads and the other catches up, so it stretches on the way.
-  let tabs = $state<HTMLElement>();
-  let tabsWidth = $state(0);
-  let pill = $state<{ left: number; right: number; forward: boolean }>();
-  let pillLeft = 0;
-  $effect(() => {
-    const tab = tabs?.children[screens.indexOf(screen)] as HTMLElement;
-    if (!tab || !tabsWidth) return;
-    const left = tab.offsetLeft;
-    pill = {
-      left,
-      right: tabsWidth - left - tab.offsetWidth,
-      forward: left >= pillLeft,
-    };
-    pillLeft = left;
-  });
 
   const schedules = [
     ["Nightly review & fix", "0 2 * * 1-5", "Autopilot · Review & fix · Balanced"],
@@ -225,62 +181,13 @@
       </p>
       {@render cta("bn-hero-downloads")}
 
-      <!-- svelte-ignore a11y_no_static_element_interactions (Only ends the tour; the tabs are the controls.) -->
-      <div
-        class="bn-stage"
-        onpointerdown={() => (auto = false)}
-        {@attach watchStage}
-      >
-        <div class="bn-tabs">
-          <div
-            role="group"
-            aria-label="Recur screens"
-            bind:this={tabs}
-            bind:clientWidth={tabsWidth}
-          >
-            {#each screens as item (item.screen)}<button
-                type="button"
-                aria-pressed={screen === item}
-                onclick={() => {
-                  auto = false;
-                  show(item);
-                }}>{item.label}</button
-              >{/each}
-            {#if pill}<span
-                aria-hidden="true"
-                style:left="{pill.left}px"
-                style:right="{pill.right}px"
-                style:transition-duration={pill.forward
-                  ? "0.45s, 0.25s"
-                  : "0.25s, 0.45s"}
-                >{#if auto}{#key screen}<i
-                      class:paused={offscreen}
-                      onanimationend={() =>
-                        show(
-                          screens[(screens.indexOf(screen) + 1) % screens.length],
-                        )}
-                    ></i>{/key}{/if}</span
-              >{/if}
-          </div>
-        </div>
-        <div class="bn-window">
-          {#key shown}<div
-              in:fade={{ duration: fadeMs }}
-              out:fade={{ delay: fadeMs, duration: 0 }}
-            >
-              <ProductScreenshot
-                screen={shown.screen}
-                eager
-                caption={shown.caption}
-              />
-            </div>{/key}
-        </div>
-        <div class="bn-caption" aria-live={auto ? "off" : "polite"}>
-          {#each screens as item (item.screen)}<p class:on={screen === item}>
-              {item.caption}
-            </p>{/each}
-        </div>
-      </div>
+      <ul class="bn-logos" aria-label="Runs">
+        {#each agents as [provider, name] (provider)}<li>
+            <ProviderIcon {provider} />{name}
+          </li>{/each}
+      </ul>
+
+      <div class="bn-stage"><AppDemo /></div>
     </section>
 
     <section class="bn-features" aria-labelledby="bn-finished">
@@ -894,9 +801,28 @@ tail -F log/development.log \
     text-wrap: balance;
   }
 
+  .bn-logos {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 28px;
+    margin-top: 36px;
+    list-style: none;
+  }
+  .bn-logos li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .bn-logos :global(svg) {
+    width: 18px;
+    height: 18px;
+  }
   .bn-stage {
     position: relative;
-    margin-top: 56px;
+    margin-top: 40px;
   }
   .bn-stage::before {
     content: "";
@@ -907,71 +833,10 @@ tail -F log/development.log \
     opacity: 0.22;
     filter: blur(110px);
   }
-  .bn-stage > * {
+  .bn-stage > :global(*) {
     position: relative;
-  }
-  .bn-tabs {
-    width: fit-content;
-    max-width: 100%;
-    margin: 0 auto 18px;
-    padding: 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: #111112cc;
-  }
-  .bn-tabs > div {
-    position: relative;
-    display: flex;
-    gap: 2px;
-    width: max-content;
-  }
-  .bn-tabs span {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    border-radius: 999px;
-    background: var(--text);
-    transition-property: left, right;
-    transition-timing-function: cubic-bezier(0.3, 1, 0.3, 1);
-    overflow: hidden;
-  }
-  .bn-tabs i {
-    position: absolute;
-    inset: 0;
-    background: color-mix(in srgb, var(--amber) 45%, transparent);
-    transform: scaleX(0);
-    transform-origin: left;
-    animation: bn-tour 6s linear forwards;
-  }
-  .bn-tabs i.paused,
-  .bn-stage:hover i,
-  .bn-stage:focus-within i {
-    animation-play-state: paused;
-  }
-  @keyframes bn-tour {
-    to {
-      transform: scaleX(1);
-    }
-  }
-  .bn-tabs button {
-    position: relative;
-    z-index: 1;
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 13px;
-    color: var(--muted);
-    transition: color 0.2s;
-  }
-  .bn-tabs button:hover {
-    color: var(--text);
-  }
-  .bn-tabs button[aria-pressed="true"] {
-    color: var(--bg);
   }
   /* Screenshots open full size on click; say so on hover, and always on touch. */
-  .bn-window::after,
   .bn-shot::after {
     content: "View full size";
     position: absolute;
@@ -990,53 +855,19 @@ tail -F log/development.log \
     opacity: 0;
     transition: opacity 0.15s;
   }
-  .bn-window:hover::after,
-  .bn-window:has(:focus-visible)::after,
   .bn-shot:has(.bn-crop:hover)::after,
   .bn-shot:has(:global(.capture-trigger:focus-visible))::after {
     opacity: 1;
   }
   @media (hover: none) {
-    .bn-window::after,
     .bn-shot::after {
       opacity: 1;
     }
   }
-  .bn-window,
   .bn-crop,
-  .bn-window :global(.capture-trigger),
   .bn-crop :global(.capture-trigger) {
     cursor: pointer;
   }
-  .bn-window {
-    position: relative;
-    display: grid;
-    overflow: hidden;
-    border: 1px solid var(--line-bright);
-    border-radius: 12px;
-    box-shadow:
-      0 0 0 1px #0008,
-      0 40px 80px -20px #000;
-  }
-  .bn-window > div {
-    grid-area: 1 / 1;
-  }
-  /* Every caption sits in the same cell, so the tour never changes height. */
-  .bn-caption {
-    display: grid;
-    max-width: 640px;
-    margin: 18px auto 0;
-    font-size: 13.5px;
-    color: var(--muted);
-  }
-  .bn-caption p {
-    grid-area: 1 / 1;
-    visibility: hidden;
-  }
-  .bn-caption .on {
-    visibility: visible;
-  }
-
   .bn-features {
     padding-top: 88px;
   }

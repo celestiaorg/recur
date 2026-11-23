@@ -78,63 +78,46 @@ try {
     await expect(icon.locator("path").first()).toHaveAttribute("fill", "currentColor");
   }
 
-  const screens = {
-    Autopilot: "loop",
-    Inbox: "inbox",
-    "Pull request": "workspace-pr",
-    "PR review": "pull-request",
-    Diff: "changes",
-    Commit: "uncommitted",
-    Background: "background",
-    Schedules: "schedules",
-    Issues: "issues",
-    Insights: "insights",
-    Workspace: "workspace",
-  };
   const loaded = (image) =>
     expect
       .poll(() => image.evaluate((el) => el.complete && el.naturalWidth > 0))
       .toBe(true);
   const viewer = page.getByRole("dialog");
-  let tourSize;
-  for (const [name, screen] of Object.entries(screens)) {
-    const button = page
-      .locator(".bn-tabs")
-      .getByRole("button", { name, exact: true });
-    await button.click();
-    await expect(button).toHaveAttribute("aria-pressed", "true");
-    // The capture swaps once it has decoded.
-    const image = page.locator(".bn-window .capture-trigger img");
-    await expect(image).toHaveAttribute(
+
+  // The hero is the app in captures: its sidebar and in-window controls navigate.
+  const demo = page.locator(".frame");
+  const at = (screen) =>
+    expect(demo.locator(".layer img").last()).toHaveAttribute(
       "src",
       `/screenshots/${screen}.png`,
     );
-    await loaded(image);
-    const imageBox = await image.boundingBox();
-    const size = { width: imageBox.width, height: imageBox.height };
-    if (tourSize)
-      assert.deepEqual(
-        size,
-        tourSize,
-        "Tour image dimensions must not jump between screens",
-      );
-    else tourSize = size;
-    await page.locator(".bn-window .capture-trigger").click();
-    await expect(viewer).toBeVisible();
-    const bounds = await viewer.locator("img").evaluate((el) => ({
-      width: el.getBoundingClientRect().width,
-      native: Number(el.getAttribute("width")),
-      viewport: innerWidth,
-    }));
-    assert.ok(
-      bounds.width <= bounds.native && bounds.width < bounds.viewport,
-      "Full-size image must respect CSS size, not 2x pixel size",
-    );
-    await viewer
-      .getByRole("button", { name: "Close screenshot", exact: true })
-      .press("Escape");
-    await expect(viewer).toHaveCount(0);
+  const go = (name) =>
+    demo.getByRole("button", { name, exact: true }).click();
+  await at("loop");
+  for (const [name, screen] of [
+    ["Inbox", "inbox"],
+    ["Issues", "issues"],
+    ["Pull requests", "pull-request"],
+    ["Schedules", "schedules"],
+    ["Insights", "insights"],
+    ["Passkey sign-in", "loop"],
+    ["Idempotency keys", "uncommitted"],
+    ["Webhook retries", "background"],
+    ["Session refresh", "workspace"],
+    ["Review", "changes"],
+    ["Pull request", "workspace-pr"],
+    ["Back to Inbox", "inbox"],
+    ["Open Passkey sign-in", "loop"],
+  ]) {
+    await go(name);
+    await at(screen);
+    await loaded(demo.locator(".layer img").last());
   }
+  assert.equal(
+    await page.evaluate(() => document.querySelector(".frame").contains(document.activeElement)),
+    true,
+    "Focus stays in the demo when its control goes away",
+  );
 
   // The screenshot cards crop their captures and open them whole.
   await expect(page.locator(".bn iframe")).toHaveCount(0);
@@ -181,14 +164,21 @@ try {
       ),
       `Overflow at ${width}px`,
     );
-    const steady = async (selector, group, names, what) => {
+    const steady = async (
+      selector,
+      group,
+      names,
+      what,
+      attribute = "aria-pressed",
+      value = "true",
+    ) => {
       let first;
       for (const name of names) {
         const button = page
           .locator(group)
           .getByRole("button", { name: new RegExp(`^${name}`) });
         await button.click();
-        await expect(button).toHaveAttribute("aria-pressed", "true");
+        await expect(button).toHaveAttribute(attribute, value);
         const box = await page.locator(selector).boundingBox();
         const size = { width: box.width, height: box.height };
         if (first)
@@ -196,7 +186,22 @@ try {
         else first = size;
       }
     };
-    await steady(".bn-stage", ".bn-tabs", Object.keys(screens), "Tour");
+    if (width >= 900)
+      await steady(
+        ".bn-stage",
+        ".spots",
+        ["Issues", "Insights", "Passkey sign-in"],
+        "Demo",
+        "aria-current",
+        "page",
+      );
+    else
+      await steady(
+        ".bn-stage",
+        ".pills",
+        ["Autopilot", "Inbox", "Pull request", "Insights"],
+        "Demo",
+      );
     await steady(
       ".bn-prompt",
       ".bn-modes",
@@ -237,28 +242,8 @@ try {
   );
   assert.deepEqual(errors, []);
 
-  // Without reduced motion the hero tour advances itself until clicked.
-  const tour = await browser.newPage({
-    viewport: { width: 1440, height: 1000 },
-    reducedMotion: "no-preference",
-  });
-  await tour.goto(url.href);
-  const tabs = tour.locator(".bn-tabs");
-  await expect(tabs.locator("i")).toHaveCount(1);
-  await expect(
-    tabs.getByRole("button", { name: "Autopilot" }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await tabs.locator("i").dispatchEvent("animationend");
-  await expect(tabs.getByRole("button", { name: "Inbox" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await tabs.getByRole("button", { name: "Diff" }).click();
-  await expect(tabs.locator("i")).toHaveCount(0);
-  await tour.close();
-
   console.log(
-    "Splash checks passed: downloads, captured screenshots, full-size views, modes, responsive layout, workflow animation, and the hero tour.",
+    "Splash checks passed: downloads, captured screenshots, full-size views, modes, responsive layout, workflow animation, and the hero demo.",
   );
 } finally {
   await browser?.close();

@@ -118,7 +118,7 @@ pub fn msg_bytes(m: &AgentMsg) -> usize {
 }
 
 fn draft_bytes(d: &ChatAttachmentDraft) -> usize {
-    OBJ_HDR + s(&d.id) + s(&d.name) + s(&d.mime) + s(&d.data_url)
+    OBJ_HDR + s(&d.id) + s(&d.name) + s(&d.mime) + s(&d.data_url) + s(&d.capture)
 }
 
 fn snapshot_bytes(h: &ChatHeapSnapshot) -> usize {

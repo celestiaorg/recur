@@ -1876,6 +1876,7 @@ async fn the_browser_is_a_view_of_the_center_one_per_workspace(cx: &mut TestAppC
     h.settle();
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Browser);
     assert!(h.has("obs-browser") && h.has("browser-address") && !h.has("obs-editors"));
+    assert!(h.has("browser-capture"));
     let first = browser(&mut h).expect("the workspace's browser");
     if recur_content::browser::AVAILABLE {
         let requested = h.read(|_, cx| first.read(cx).requested(cx));

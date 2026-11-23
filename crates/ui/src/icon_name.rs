@@ -45,6 +45,7 @@ pub enum IconName {
     CircleFadingCheck,
     Terminal,
     SquareTerminal,
+    SquareMousePointer,
     ChevronsRight,
     Grid,
     CircleDot,
@@ -177,7 +178,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 171] = [
+    pub const ALL: [IconName; 172] = [
         IconName::Plus,
         IconName::Box,
         IconName::Github,
@@ -220,6 +221,7 @@ impl IconName {
         IconName::CircleFadingCheck,
         IconName::Terminal,
         IconName::SquareTerminal,
+        IconName::SquareMousePointer,
         IconName::ChevronsRight,
         IconName::Grid,
         IconName::CircleDot,
@@ -396,6 +398,7 @@ impl IconName {
             IconName::CircleFadingCheck => "circle-fading-check",
             IconName::Terminal => "terminal",
             IconName::SquareTerminal => "square-terminal",
+            IconName::SquareMousePointer => "mouse-pointer-square-dashed",
             IconName::ChevronsRight => "chevrons-right",
             IconName::Grid => "grid",
             IconName::CircleDot => "circle-dot",

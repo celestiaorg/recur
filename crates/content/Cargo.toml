@@ -71,6 +71,7 @@ pkg-config.workspace = true
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
+recur-engine.workspace = true
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 core-graphics.workspace = true

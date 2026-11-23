@@ -69,6 +69,19 @@ impl Observatory {
         if k.key == "escape" {
             self.close_side_float(cx);
         }
+        let browser = (self.main_surface(cx) == MainSurface::Browser)
+            .then(|| crate::browser::existing_browser(&self.props.workspace_id, cx))
+            .flatten();
+        if let Some(b) = &browser {
+            if mod_ && m.shift && !m.alt && lower == "c" {
+                b.update(cx, |b, cx| b.toggle_capture(cx));
+                return;
+            }
+            if k.key == "escape" && b.read(cx).picking(cx) {
+                b.update(cx, |b, cx| b.toggle_capture(cx));
+                return;
+            }
+        }
         if self.ctx_menu.is_some() && k.key == "escape" {
             self.close_ctx(cx);
             cx.notify();

@@ -955,6 +955,11 @@ impl WorkspaceView {
                     c.insert_file_mention(&p, sl, el, sc, ec, window, cx)
                 });
             }
+            ObservatoryEvent::AddBrowserCapture(draft) => {
+                let draft = draft.clone();
+                self.chat
+                    .update(cx, |c, cx| c.insert_capture(draft, window, cx));
+            }
             ObservatoryEvent::FocusAgentComposer => {
                 self.chat.update(cx, |c, cx| c.focus_composer(window, cx));
             }

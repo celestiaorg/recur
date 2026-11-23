@@ -7,10 +7,11 @@ use std::collections::BTreeMap;
 use gpui_kit::{App, Context, Task};
 use recur_domain::{ChatAttachment, WorkspaceState};
 use recur_engine::view::chat::{
-    AgentMsg, CHAT_RETRY_DISPLAY, ChatAttachmentDraft, ChatAttachmentView, display_user_chat_text,
-    drop_optimistic_user, finish_turn, format_ask_user_display_text, is_chat_injected_reply,
-    is_chat_stopped_reply, merge_rejected_steer_attachments, merge_rejected_steer_draft,
-    pending_send_bubble_body, should_skip_idle_transcript_reset, to_send_attachments,
+    AgentMsg, CHAT_RETRY_DISPLAY, ChatAttachmentDraft, ChatAttachmentView, capture_display_text,
+    display_user_chat_text, drop_optimistic_user, expand_captures, finish_turn,
+    format_ask_user_display_text, is_chat_injected_reply, is_chat_stopped_reply,
+    merge_rejected_steer_attachments, merge_rejected_steer_draft, pending_send_bubble_body,
+    should_skip_idle_transcript_reset, to_send_attachments,
 };
 use recur_engine::view::chat_surface::attach_chat_surface;
 use recur_engine::view::mentions::{compose_marked_text, strip_attachment_markers};
@@ -609,8 +610,12 @@ impl WorkspaceView {
         let wire = if retry {
             job.marked.clone()
         } else {
-            attach_chat_surface(&job.marked, &self.chat_surface(cx))
+            attach_chat_surface(
+                &expand_captures(&job.marked, &job.drafts),
+                &self.chat_surface(cx),
+            )
         };
+        let session_display = capture_display_text(&job.display_text, &job.marked, &job.drafts);
         let display = pending_send_bubble_body(&job.display_text, &job.marked);
         let (svc, id, code, key) = (
             self.services.clone(),
@@ -630,7 +635,7 @@ impl WorkspaceView {
                     &flags,
                     &atts,
                     job.mode.key(),
-                    &job.display_text,
+                    &session_display,
                     job.fresh_session,
                 )
                 .await;
@@ -797,8 +802,13 @@ impl WorkspaceView {
         let wire = if retry {
             pending.marked.clone()
         } else {
-            attach_chat_surface(&pending.marked, &self.chat_surface(cx))
+            attach_chat_surface(
+                &expand_captures(&pending.marked, &pending.drafts),
+                &self.chat_surface(cx),
+            )
         };
+        let session_display =
+            capture_display_text(&pending.display_text, &pending.marked, &pending.drafts);
         let simplify = self.freeze_simplify(key, cx);
         self.persist_chat_dock(id, code, Some(simplify), Some(&pending), cx)
             .detach();
@@ -817,7 +827,7 @@ impl WorkspaceView {
                     &flags,
                     &atts,
                     pending.mode.key(),
-                    &pending.display_text,
+                    &session_display,
                     pending.fresh_session,
                 )
                 .await;

@@ -125,6 +125,8 @@ pub enum ObservatoryEvent {
         start_col: usize,
         end_col: usize,
     },
+    /// A browser capture's image chip for the composer, its page context in `capture`.
+    AddBrowserCapture(recur_engine::view::chat::ChatAttachmentDraft),
     /// Put keys in the visible agent composer (`focusAgentComposer`).
     FocusAgentComposer,
     /// `leftPanel(visible)`: the agent transcript is on screen.
@@ -630,6 +632,8 @@ pub struct Observatory {
     pub(crate) window: Option<AnyWindowHandle>,
 
     pub(crate) weak: WeakEntity<Observatory>,
+    /// The browser surface whose captures this shell forwards.
+    pub(crate) browser_sub: Option<(gpui_kit::EntityId, Subscription)>,
     pub(crate) _subscriptions: Vec<Subscription>,
 }
 
@@ -904,6 +908,7 @@ impl Observatory {
             anim_epoch: Instant::now(),
             window: Some(window.window_handle()),
             weak: cx.entity().downgrade(),
+            browser_sub: None,
             _subscriptions: Vec::new(),
             state,
         };

@@ -19,11 +19,12 @@ use recur_view_core::prefs::{CodePanelKey, PanelKey};
 use recur_view_review::style::hsla;
 
 use crate::model::{MainSurface, Pane, format_bytes};
-use crate::obs::{Observatory, TermMaxPhase};
+use crate::obs::{Observatory, ObservatoryEvent, TermMaxPhase};
 use crate::style::{
     CHROME_H, foot_sep, foot_text, icon_btn, link_text, linkish, obs_empty, seg, seg_text_btn,
     statusbar,
 };
+use recur_engine::view::chat::ChatAttachmentDraft;
 
 impl Observatory {
     /// The status bar's language for the focused pane's file.
@@ -1335,6 +1336,19 @@ impl Observatory {
             .flatten();
         let browser = (!hidden && self.main_surface(cx) == MainSurface::Browser).then(|| {
             let b = crate::browser::browser_for(&self.state, &self.props.workspace_id, window, cx);
+            if self
+                .browser_sub
+                .as_ref()
+                .is_none_or(|(id, _)| *id != b.entity_id())
+            {
+                let sub =
+                    cx.guarded_subscribe(&b, |o: &mut Self, _, d: &ChatAttachmentDraft, cx| {
+                        if o.props.shell_active && o.main_surface(cx) == MainSurface::Browser {
+                            cx.emit(ObservatoryEvent::AddBrowserCapture(d.clone()));
+                        }
+                    });
+                self.browser_sub = Some((b.entity_id(), sub));
+            }
             div()
                 .flex()
                 .flex_col()

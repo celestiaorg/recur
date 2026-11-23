@@ -37,6 +37,8 @@ pub struct ChatAttachmentDraft {
     pub name: String,
     pub mime: String,
     pub data_url: String,
+    /// A browser capture's page context, spliced in after the image marker on send only.
+    pub capture: String,
 }
 
 /// One specialist session in the Loop cockpit log.
@@ -984,6 +986,33 @@ pub fn to_send_attachments(drafts: &[ChatAttachmentDraft]) -> Vec<SendAttachment
                 .map_or(d.data_url.clone(), |(_, b)| b.to_owned()),
         })
         .collect()
+}
+
+/// The wire text for a send: each capture's context follows its image marker. The bubble
+/// keeps `marked`.
+pub fn expand_captures(marked: &str, drafts: &[ChatAttachmentDraft]) -> String {
+    let mut out = marked.to_owned();
+    for d in drafts.iter().filter(|d| !d.capture.is_empty()) {
+        let m = super::mentions::attachment_marker(&d.id);
+        if let Some(i) = out.find(&m) {
+            out.insert_str(i + m.len(), &format!("\n{}\n", d.capture));
+        }
+    }
+    out
+}
+
+/// The session display text for a send: what the user typed when a capture's context would
+/// otherwise reach the bubble.
+pub fn capture_display_text(
+    display_text: &str,
+    marked: &str,
+    drafts: &[ChatAttachmentDraft],
+) -> String {
+    if display_text.is_empty() && drafts.iter().any(|d| !d.capture.is_empty()) {
+        marked.to_owned()
+    } else {
+        display_text.to_owned()
+    }
 }
 
 fn base36(mut n: u128) -> String {

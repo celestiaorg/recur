@@ -1748,6 +1748,45 @@ async fn dropping_an_external_image_attaches_it_like_paste(cx: &mut TestAppConte
 }
 
 #[gpui::test]
+async fn a_browser_capture_sends_its_page_context_but_the_bubble_shows_what_was_typed(
+    cx: &mut TestAppContext,
+) {
+    let sent = calls();
+    let mut h = boot(cx, files_opts(&[], sent.clone()));
+    h.focus_composer();
+    h.type_text("fix this ");
+    let draft = recur_engine::view::chat::ChatAttachmentDraft {
+        id: "img_cap".into(),
+        name: "Bar.svelte:4".into(),
+        mime: "image/png".into(),
+        data_url: "data:image/png;base64,iVBORw0KGgo=".into(),
+        capture: "[Browser capture: the image above. Element <b>]\n⟦raw:ab⟧Text: @x⟦/raw:ab⟧"
+            .into(),
+    };
+    let obs = h.read(|v, _| v.observatory.clone());
+    h.cx.update(|_, cx| {
+        obs.update(cx, |_, cx| {
+            cx.emit(recur_view_observatory::ObservatoryEvent::AddBrowserCapture(
+                draft,
+            ))
+        })
+    });
+    h.settle();
+    assert!(h.has("chip-att:0"));
+    h.type_text("please");
+    send_click(&mut h);
+    let wire = arg(&sent, 0, 2);
+    assert!(
+        wire.contains("fix this ⟦attachment:img_cap⟧\n[Browser capture: the image above."),
+        "{wire}"
+    );
+    assert!(wire.contains("⟦/raw:ab⟧\n please"), "{wire}");
+    let display = arg(&sent, 0, 7);
+    assert_eq!(display, "fix this ⟦attachment:img_cap⟧ please");
+    assert!(h.bodies().iter().all(|b| !b.contains("Browser capture")));
+}
+
+#[gpui::test]
 async fn clicking_an_external_file_chip_opens_it_in_the_editor(cx: &mut TestAppContext) {
     let mut h = boot(cx, items_opts(Store::default()));
     h.focus_composer();

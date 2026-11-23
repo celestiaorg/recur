@@ -1,3 +1,4 @@
 ### Added
 
 - A browser in the workspace, next to the editor, review and pull request views (the globe button). It opens your project's app URL at the workspace's port, with back, forward, reload and an address bar (⌘L). When nothing is running there yet, it offers to start the project's dev run and opens the page once it answers. macOS only for now.
+- Capture from the browser into chat: press ⌘⇧C or the capture button, then click an element or drag over an area (Esc cancels). A screenshot lands in the composer at the caret, named after the component's source file and line when a Svelte or Vue dev build reports one. On send, the agent also gets the page URL, a CSS selector, the element's text and HTML, and an @-mention of the source file, while your message shows only what you typed. Text from the page is never read as an @-mention or /command.

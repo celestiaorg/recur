@@ -1,7 +1,8 @@
 //! The browser view of the center column: one page per workspace, kept across shells in
 //! [`Browsers`] and dropped with the workspace, under an address bar. It opens on the
 //! project's app URL at the workspace's port; when nothing answers there it offers to start
-//! the project's dev run and keeps trying until the page loads.
+//! the project's dev run and keeps trying until the page loads. A capture (⌘⇧C or the bar's
+//! toggle) becomes an image draft carrying its page context, emitted for the chat composer.
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -9,18 +10,23 @@ use std::time::Duration;
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::{
-    AnyElement, App, AppContext as _, Context, Entity, Global, InteractiveElement as _,
-    IntoElement, ParentElement as _, Render, SharedString, StatefulInteractiveElement as _,
-    Styled as _, Subscription, Task, Window, div, px,
+    AnyElement, App, AppContext as _, Context, Entity, EventEmitter, Global,
+    InteractiveElement as _, IntoElement, ParentElement as _, Render, SharedString,
+    StatefulInteractiveElement as _, Styled as _, Subscription, Task, Window, div, px,
 };
 use recur_content::BrowserEvent;
-use recur_content::browser::{AVAILABLE, BrowserPage, BrowserState, LoadError, normalize_url};
+use recur_content::browser::{
+    AVAILABLE, BrowserCapture, BrowserPage, BrowserState, LoadError, capture_label,
+    format_capture_context, normalize_url, parse_capture_source,
+};
+use recur_engine::view::chat::{ChatAttachmentDraft, new_attachment_id};
 use recur_ui::guard::Guarded as _;
 use recur_ui::isolated::FieldView;
 use recur_ui::text::{TextStyled as _, text};
 use recur_ui::tooltip::titled;
+use recur_ui::widgets::ToastKind;
 use recur_ui::{IconName, Theme};
-use recur_view_core::AppState;
+use recur_view_core::{AppState, toast};
 use recur_view_review::style::hsla;
 
 use crate::style::{icon_btn, obs_empty};
@@ -77,6 +83,8 @@ pub struct BrowserSurface {
     waiting: Option<Task<()>>,
     _subs: Vec<Subscription>,
 }
+
+impl EventEmitter<ChatAttachmentDraft> for BrowserSurface {}
 
 impl BrowserSurface {
     fn new(
@@ -174,9 +182,18 @@ impl BrowserSurface {
     ) {
         match ev {
             BrowserEvent::FocusAddress => self.focus_address(window, cx),
+            BrowserEvent::Captured(c) => {
+                page.read(cx).release_keyboard();
+                let draft = self.capture_draft(c, cx);
+                cx.emit(draft);
+            }
+            BrowserEvent::CaptureFailed => {
+                toast(ToastKind::Error, "Could not capture the page", cx);
+            }
             BrowserEvent::Changed => {
                 let nav = page.read(cx).state().clone();
                 if nav == self.nav {
+                    cx.notify();
                     return;
                 }
                 let loaded = !nav.loading && nav.error.is_none() && !nav.url.is_empty();
@@ -204,6 +221,37 @@ impl BrowserSurface {
             self.address
                 .update(cx, |s, cx| s.set_value(url, window, cx));
         }
+    }
+
+    /// The capture as an image draft whose context names its source in the worktree.
+    fn capture_draft(&self, c: &BrowserCapture, cx: &App) -> ChatAttachmentDraft {
+        let root = self
+            .state
+            .read(cx)
+            .workspace(&self.workspace_id)
+            .map(|w| w.worktree_path.clone())
+            .unwrap_or_default();
+        let source = parse_capture_source(&c.source, &root);
+        use base64::Engine as _;
+        ChatAttachmentDraft {
+            id: new_attachment_id(chrono::Utc::now().timestamp_millis()),
+            name: capture_label(&c.pick, source.as_ref()),
+            mime: "image/png".into(),
+            data_url: format!(
+                "data:image/png;base64,{}",
+                base64::engine::general_purpose::STANDARD.encode(&c.png)
+            ),
+            capture: format_capture_context(&c.pick, &c.url, source.as_ref()),
+        }
+    }
+
+    /// ⌘⇧C: starts or stops the capture picker.
+    pub fn toggle_capture(&mut self, cx: &mut Context<Self>) {
+        self.with_page(cx, |p, cx| p.toggle_capture(cx));
+    }
+
+    pub fn picking(&self, cx: &App) -> bool {
+        self.page.as_ref().is_some_and(|p| p.read(cx).picking())
     }
 
     /// ⌘L: the address bar, its text selected.
@@ -365,6 +413,23 @@ impl BrowserSurface {
                 }))
             }),
         );
+        let can_capture = has_page && !self.nav.url.is_empty() && self.nav.error.is_none();
+        let picking = self.picking(cx);
+        let capture = titled(
+            "browser-capture-t",
+            "Capture an element or drag an area into chat (⌘⇧C)",
+            icon_btn(
+                "browser-capture",
+                IconName::SquareMousePointer,
+                picking,
+                dis(can_capture),
+                cx,
+            )
+            .debug_selector(|| "browser-capture".into())
+            .when(can_capture, |d| {
+                d.on_click(cx.guarded_listener(|b: &mut Self, _, _, cx| b.toggle_capture(cx)))
+            }),
+        );
         let address = div()
             .id("browser-address")
             .debug_selector(|| "browser-address".into())
@@ -406,6 +471,7 @@ impl BrowserSurface {
             .child(back)
             .child(forward)
             .child(reload)
+            .child(capture)
             .child(address)
             .into_any_element()
     }

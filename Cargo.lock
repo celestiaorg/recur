@@ -7921,6 +7921,7 @@ dependencies = [
  "pkg-config",
  "raw-window-handle",
  "recur-editor",
+ "recur-engine",
  "recur-textmate",
  "recur-ui",
  "regress",

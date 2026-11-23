@@ -1802,6 +1802,19 @@ impl AgentChat {
         self.reveal_caret();
     }
 
+    /// A browser capture's image chip at the caret, carrying its page context.
+    pub fn insert_capture(
+        &mut self,
+        draft: ChatAttachmentDraft,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.props.readonly || self.app_surface() {
+            return;
+        }
+        self.insert_drafts(vec![draft], window, cx);
+    }
+
     /// `onPaste`: images become drafts (not on Ask Recur); text pastes as plain text.
     fn paste(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(item) = cx.read_from_clipboard() else {
@@ -1819,6 +1832,7 @@ impl AgentChat {
                     mime: mime.to_string(),
                     data_url: format!("data:{mime};base64,{b64}"),
                     id,
+                    ..Default::default()
                 });
             }
         }
@@ -1890,6 +1904,7 @@ impl AgentChat {
                     base64::engine::general_purpose::STANDARD.encode(bytes)
                 ),
                 id,
+                ..Default::default()
             });
         }
         if !drop.image_paths.is_empty() && drafts.is_empty() {

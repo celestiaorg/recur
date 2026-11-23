@@ -32,6 +32,10 @@ pub struct ClaudeConfig {
     /// Where each running turn records its pid, so the next launch can kill
     /// what a crashed Recur left running; empty = untracked.
     pub turn_pid_dir: PathBuf,
+    /// Claude Code's `projects` dir, holding each session's `<id>.jsonl`.
+    /// Claude prunes old transcripts (`cleanupPeriodDays`), so a handle
+    /// whose file is gone cannot `--resume`; empty = unchecked.
+    pub projects_dir: PathBuf,
 }
 
 impl Default for ClaudeConfig {
@@ -39,6 +43,7 @@ impl Default for ClaudeConfig {
         Self {
             bin: String::new(),
             turn_pid_dir: PathBuf::new(),
+            projects_dir: PathBuf::new(),
         }
     }
 }
@@ -172,10 +177,11 @@ impl Provider for ClaudeProvider {
 
     /// Claude and Codex both persist UUIDs; only Cursor's `agent-` ids are
     /// foreign. A Claude↔Codex switch is caught upstream by the dock-switch
-    /// rule (old provider ≠ new provider drops the handle).
+    /// rule (old provider ≠ new provider drops the handle). A handle whose
+    /// transcript Claude pruned no longer fits either.
     fn resume_handle_fits(&self, handle: &str) -> bool {
         let h = handle.trim();
-        h.is_empty() || !h.starts_with("agent-")
+        h.is_empty() || (!h.starts_with("agent-") && transcript_kept(&self.cfg.projects_dir, h))
     }
 
     /// Claude defined most of the common vocabulary; only `Agent` (renamed
@@ -186,6 +192,19 @@ impl Provider for ClaudeProvider {
             input: input.to_owned(),
         }
     }
+}
+
+/// Whether any project under `projects_dir` still holds `<id>.jsonl`. True
+/// when the dir is unset or unreadable: only a confirmed miss drops a handle.
+fn transcript_kept(projects_dir: &std::path::Path, id: &str) -> bool {
+    if projects_dir.as_os_str().is_empty() || id.contains(['/', '\\']) {
+        return true;
+    }
+    let Ok(dirs) = std::fs::read_dir(projects_dir) else {
+        return true;
+    };
+    let file = format!("{id}.jsonl");
+    dirs.flatten().any(|d| d.path().join(&file).is_file())
 }
 
 #[cfg(test)]
@@ -258,6 +277,25 @@ mod tests {
         assert!(p.resume_handle_fits(""));
         assert!(p.resume_handle_fits("7f0c2c0e-uuid"));
         assert!(!p.resume_handle_fits("agent-123"));
+    }
+
+    #[test]
+    fn a_pruned_transcript_does_not_resume() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("-Users-me-repo");
+        std::fs::create_dir(&proj).unwrap();
+        std::fs::write(proj.join("kept.jsonl"), "").unwrap();
+        let p = ClaudeProvider::new(ClaudeConfig {
+            projects_dir: tmp.path().into(),
+            ..Default::default()
+        });
+        assert!(p.resume_handle_fits("kept"));
+        assert!(!p.resume_handle_fits("pruned"));
+        let unread = ClaudeProvider::new(ClaudeConfig {
+            projects_dir: tmp.path().join("missing"),
+            ..Default::default()
+        });
+        assert!(unread.resume_handle_fits("pruned"));
     }
 
     #[test]

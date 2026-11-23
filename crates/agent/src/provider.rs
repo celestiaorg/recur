@@ -78,8 +78,9 @@ pub trait Provider: Send + Sync + 'static {
         false
     }
 
-    /// Whether a stored resume handle belongs to this provider. False makes
-    /// the engine drop the handle and fork-inject the transcript instead.
+    /// Whether a stored resume handle belongs to this provider and can still
+    /// resume. False makes the engine drop the handle and fork-inject the
+    /// transcript instead.
     fn resume_handle_fits(&self, handle: &str) -> bool;
 
     /// A raw tool call in the common vocabulary. Default: passthrough.

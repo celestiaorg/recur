@@ -109,6 +109,20 @@ impl AppConfig {
     }
 }
 
+/// `$CLAUDE_CONFIG_DIR/projects`, else `<home>/.claude/projects`; empty
+/// when neither is known.
+fn claude_projects_dir(home: Option<&Path>) -> PathBuf {
+    let root = match (std::env::var_os("CLAUDE_CONFIG_DIR"), home) {
+        (Some(dir), None) if !dir.is_empty() => PathBuf::from(dir),
+        (_, Some(home)) => home.join(".claude"),
+        _ => match recur_project::home::user_home_dir() {
+            Ok(home) => Path::new(&home).join(".claude"),
+            Err(_) => return PathBuf::new(),
+        },
+    };
+    root.join("projects")
+}
+
 /// Overrides for tests. Production uses the defaults.
 #[derive(Default)]
 pub struct AppOptions {
@@ -179,6 +193,7 @@ impl AppServices {
         let providers = Providers {
             claude: Arc::new(ClaudeProvider::new(ClaudeConfig {
                 turn_pid_dir: config.data_dir.join("claude-turns"),
+                projects_dir: claude_projects_dir(config.home.as_deref()),
                 ..Default::default()
             })),
             cursor: Arc::new(CursorProvider::new(CursorConfig {

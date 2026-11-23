@@ -1137,7 +1137,9 @@ mod mac {
             rx
         }
 
-        /// A PNG of `rect` (viewport points), or `None` when the snapshot fails.
+        /// A PNG of `rect` (CSS px, as the picker reports it), or `None` when the
+        /// snapshot fails. The snapshot rect is in view points, which are CSS px
+        /// times the page zoom the UI zoom sets.
         pub fn snapshot(&self, rect: CaptureRect) -> oneshot::Receiver<Option<Vec<u8>>> {
             let (tx, rx) = oneshot::channel();
             let Some(mtm) = MainThreadMarker::new() else {
@@ -1164,14 +1166,14 @@ mod mac {
             });
             // SAFETY: main thread; WebKit retains the block until it runs.
             unsafe {
+                let web = self.view.web();
+                let z = web.pageZoom();
                 let cfg = WKSnapshotConfiguration::new(mtm);
                 cfg.setRect(NSRect::new(
-                    NSPoint::new(rect.x, rect.y),
-                    NSSize::new(rect.width, rect.height),
+                    NSPoint::new(rect.x * z, rect.y * z),
+                    NSSize::new(rect.width * z, rect.height * z),
                 ));
-                self.view
-                    .web()
-                    .takeSnapshotWithConfiguration_completionHandler(Some(&cfg), &done);
+                web.takeSnapshotWithConfiguration_completionHandler(Some(&cfg), &done);
             }
             rx
         }

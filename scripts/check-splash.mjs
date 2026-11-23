@@ -70,7 +70,7 @@ try {
     "OpenCode",
   ]) {
     const icon = page
-      .locator(".bn-agents li")
+      .locator(".bn-logos li")
       .filter({ hasText: new RegExp(`^${provider}$`) })
       .locator("svg");
     await expect(icon).toBeVisible();
@@ -93,10 +93,10 @@ try {
     );
   const go = (name) =>
     demo.getByRole("button", { name, exact: true }).click();
-  await at("loop");
+  await at("inbox");
   for (const [name, screen] of [
-    ["Inbox", "inbox"],
     ["Issues", "issues"],
+    ["Inbox", "inbox"],
     ["Pull requests", "pull-requests"],
     ["Open #486", "pull-request"],
     ["Back to pull requests", "pull-requests"],
@@ -131,14 +131,7 @@ try {
   // The screenshot cards crop their captures and open them whole.
   await expect(page.locator(".bn iframe")).toHaveCount(0);
   const crops = page.locator(".bn-crop");
-  for (const [index, screen] of [
-    "background",
-    "inbox",
-    "workspace-pr",
-    "pull-request",
-    "uncommitted",
-    "insights",
-  ].entries()) {
+  for (const [index, screen] of ["inbox", "inbox-checkout"].entries()) {
     const image = crops.nth(index).locator(".capture-trigger img");
     await image.scrollIntoViewIfNeeded();
     await expect(image).toHaveAttribute(
@@ -152,18 +145,6 @@ try {
       .click();
     await expect(viewer).toHaveCount(0);
   }
-
-  const modeTitles = new Set();
-  for (const name of ["Ask", "Plan", "Agent", "Review", "Autopilot"]) {
-    const button = page
-      .locator(".bn-modes")
-      .getByRole("button", { name: new RegExp(`^${name}`) });
-    await button.click();
-    await expect(button).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".bn-prompt > .on")).toHaveCount(1);
-    modeTitles.add(await page.locator(".bn-prompt > .on strong").innerText());
-  }
-  assert.equal(modeTitles.size, 5, "Each mode shows its own panel");
 
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -208,15 +189,9 @@ try {
       await steady(
         ".bn-stage",
         ".pills",
-        ["Autopilot", "Inbox", "Pull request", "Insights"],
+        ["Inbox", "Autopilot", "Pull request", "Insights"],
         "Demo",
       );
-    await steady(
-      ".bn-prompt",
-      ".bn-modes",
-      ["Ask", "Plan", "Agent", "Review", "Autopilot"],
-      "Mode card",
-    );
   }
 
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -252,7 +227,7 @@ try {
   assert.deepEqual(errors, []);
 
   console.log(
-    "Splash checks passed: downloads, captured screenshots, full-size views, modes, responsive layout, workflow animation, and the hero demo.",
+    "Splash checks passed: downloads, captured screenshots, full-size views, responsive layout, workflow animation, and the hero demo.",
   );
 } finally {
   await browser?.close();

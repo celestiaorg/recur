@@ -304,12 +304,12 @@ Then choose **Navigate → Reload Bundles**. A bundle that fails to load is skip
 
 ### Have an agent install it
 
-An agent in Agent mode can install a bundle it wrote in the worktree:
+An agent in Agent mode, or a `mode = "agent"` workflow role such as the Coder, can install a bundle it wrote in the worktree:
 
 - `install_bundle` lints the bundle. Lint errors go back to the agent and nothing is installed. Otherwise Recur asks you to approve, showing its workflows, roles, policies, prompts, commands, language servers, and anything that runs shell code, and whether it replaces a bundle you already have. Every install asks, even with **Bypass tool permissions** on, because bundle shell code runs as you. Once approved, the bundle is copied to `~/.recur/bundles/<folder>/` and bundles reload. Symlinks are not copied.
 - `reload_bundles` reloads bundles and lists the installed workflows, roles and policies, plus any bundle that was skipped and why.
 
-A custom workflow role gets these tools by listing them, as in `tools = ["install_bundle", "reload_bundles"]`.
+To keep them from a custom `mode = "agent"` role, name them in its `disabled_tools`.
 
 ## Examples
 

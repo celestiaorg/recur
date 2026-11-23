@@ -80,7 +80,7 @@
   const wide = new MediaQuery("min-width: 900px");
   const fadeMs = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 140;
   const pills = screens.filter((s) =>
-    ["loop", "inbox", "workspace-pr", "insights"].includes(s.screen),
+    ["inbox", "loop", "workspace-pr", "insights"].includes(s.screen),
   );
 
   let screen = $state<Screen>(screens[0].screen);
@@ -243,12 +243,17 @@
     animation: spot 1s ease-out forwards;
     pointer-events: none;
   }
-  .fresh button:first-child::after {
+  .fresh button[aria-label="Passkey sign-in"]::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
     animation: spot 1.8s ease-out 1s 3;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fresh button::after {
+      display: none;
+    }
   }
   @keyframes spot {
     0% {

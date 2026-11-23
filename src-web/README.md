@@ -3,8 +3,8 @@
 Run `pnpm run dev` or `pnpm run build` from `src-web` (requires pnpm). Run
 `mise run test:splash` from the repository root to build and browser-test it.
 
-The page is `src/App.svelte`: a hero with a clickable demo, four groups of
-feature cards, and a closing download card. Its copy, links and download target live in
+The page is `src/App.svelte`: a hero with a clickable demo, four
+feature sections, and a closing download card. Its copy, links and download target live in
 `src/lib/site.svelte.ts`.
 
 The hero demo and the screenshot cards use real captures from

@@ -528,13 +528,12 @@ mod mac {
             }
         }
         paint_active_lights(ns_window, &mut rgb, w, h);
-        image::save_buffer(
-            file,
-            &rgb,
-            w as u32,
-            h as u32,
-            image::ExtendedColorType::Rgb8,
-        )
-        .map_err(|e| format!("{}: {e}", file.display()))
+        use image::ImageEncoder as _;
+        use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+        let mut png = Vec::new();
+        PngEncoder::new_with_quality(&mut png, CompressionType::Best, FilterType::Adaptive)
+            .write_image(&rgb, w as u32, h as u32, image::ExtendedColorType::Rgb8)
+            .map_err(|e| format!("{}: {e}", file.display()))?;
+        std::fs::write(file, png).map_err(|e| format!("{}: {e}", file.display()))
     }
 }

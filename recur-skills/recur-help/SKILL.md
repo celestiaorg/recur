@@ -28,6 +28,8 @@ training data on it.
 | Pull requests dashboard, reviewing, merging | `references/concepts/pull-requests.mdx` |
 | Inbox | `references/concepts/inbox.mdx` |
 | Schedules | `references/concepts/schedules.mdx` |
+| Background processes, check-backs, shared todos | `references/concepts/background.mdx` |
+| Insights | `references/concepts/insights.mdx` |
 | Providers and model endpoints | `references/reference/agents.mdx` |
 | Linear and MCP servers | `references/reference/integrations.mdx` |
 | Enabling and disabling skills | `references/reference/skills.mdx` |

@@ -26,6 +26,10 @@ use gpui_kit::{
 use std::time::{Duration, Instant};
 
 const SEARCH_PLACEHOLDER: &str = "Search…";
+/// A tiered menu's group column.
+const TIER_W: f32 = 150.;
+/// An option row's height (8px padding around a 12.5px line), for sizing a tiered menu.
+const ROW_H: f32 = 32.;
 
 /// `SelectOption`.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -181,6 +185,8 @@ pub struct Select {
     up: bool,
     searchable: bool,
     multiple: bool,
+    tiered: bool,
+    tier: Option<SharedString>,
     placeholder: SharedString,
     variant: MenuVariant,
     trigger: TriggerStyle,
@@ -299,6 +305,8 @@ impl Select {
             up: false,
             searchable: false,
             multiple: false,
+            tiered: false,
+            tier: None,
             placeholder: SharedString::default(),
             variant: MenuVariant::Default,
             trigger: TriggerStyle::default(),
@@ -444,6 +452,12 @@ impl Select {
         self.multiple = true;
         self
     }
+    /// Groups in a column beside the list, which shows the picked group's options only. A
+    /// search lists every group's matches.
+    pub fn tiered(mut self) -> Self {
+        self.tiered = true;
+        self
+    }
     pub fn placeholder(mut self, p: impl Into<SharedString>) -> Self {
         self.placeholder = p.into();
         self
@@ -512,7 +526,44 @@ impl Select {
         }
     }
 
+    /// The groups in order with their provider, when the menu is tiered and has more than one.
+    fn tiers(&self) -> Option<Vec<(SharedString, Option<SharedString>)>> {
+        if !self.tiered {
+            return None;
+        }
+        let mut out: Vec<(SharedString, Option<SharedString>)> = Vec::new();
+        for o in &self.options {
+            if let Some(g) = &o.group
+                && !out.iter().any(|(x, _)| x == g)
+            {
+                out.push((g.clone(), o.provider.clone()));
+            }
+        }
+        (out.len() > 1).then_some(out)
+    }
+
+    /// The list shows one group: tiered, and no search.
+    fn drilled(&self) -> bool {
+        self.tier.is_some() && self.query.trim().is_empty() && self.tiers().is_some()
+    }
+
+    fn set_tier(&mut self, tier: SharedString, cx: &mut Context<Self>) {
+        self.tier = Some(tier);
+        let filtered = self.filtered();
+        let a = filtered.iter().position(|o| self.selected(&o.value));
+        self.jump(a.unwrap_or(0));
+        cx.notify();
+    }
+
     fn filtered(&self) -> Vec<SelectOption> {
+        if self.drilled() {
+            return self
+                .options
+                .iter()
+                .filter(|o| o.group == self.tier)
+                .cloned()
+                .collect();
+        }
         if !self.searchable || self.query.trim().is_empty() {
             return self.options.clone();
         }
@@ -544,7 +595,13 @@ impl Select {
         self.opened_at = Some(crate::motion::now(cx));
         self.query = SharedString::default();
         self.search.update(cx, |s, cx| s.set_value("", window, cx));
-        let first = self.options.iter().position(|o| self.selected(&o.value));
+        self.tier = self.tiers().map(|gs| {
+            self.chosen()
+                .first()
+                .and_then(|o| o.group.clone())
+                .unwrap_or_else(|| gs[0].0.clone())
+        });
+        let first = self.filtered().iter().position(|o| self.selected(&o.value));
         self.active = Some(first.unwrap_or(0));
         self.gate.reset();
         if self.searchable {
@@ -649,6 +706,19 @@ impl Select {
         // A searchable menu's trigger only handles Escape; the field handles the rest.
         if self.searchable && !from_search {
             return false;
+        }
+        if self.drilled()
+            && matches!(key, "left" | "right")
+            && let (Some(gs), Some(tier)) = (self.tiers(), self.tier.clone())
+        {
+            let i = gs.iter().position(|(g, _)| *g == tier).unwrap_or(0);
+            let next = if key == "left" {
+                i.checked_sub(1).unwrap_or(gs.len() - 1)
+            } else {
+                (i + 1) % gs.len()
+            };
+            self.set_tier(gs[next].0.clone(), cx);
+            return true;
         }
         let filtered = self.filtered();
         let len = filtered.len();
@@ -1021,6 +1091,74 @@ impl Render for Select {
 }
 
 impl Select {
+    fn tier_column(
+        &self,
+        groups: &[(SharedString, Option<SharedString>)],
+        drilled: bool,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        let chosen = self.chosen().first().and_then(|o| o.group.clone());
+        let rows = groups.iter().enumerate().map(|(i, (g, provider))| {
+            let on = drilled && self.tier.as_ref() == Some(g);
+            let fg = if on { t.text } else { t.muted };
+            let name = g.clone();
+            let pick = g.clone();
+            div()
+                .id(("sel-group", i))
+                .debug_selector(move || format!("sel-group:{name}"))
+                .flex()
+                .items_center()
+                .gap(px(8.))
+                .py(px(8.))
+                .px(px(10.))
+                .rounded(px(5.))
+                .text_size(px(12.5))
+                .text_color(fg)
+                .cursor_pointer()
+                .when(on, |d| d.bg(t.pane))
+                .hover(|s| s.text_color(Hsla::from(t.text)))
+                .when_some(provider.clone(), |d, p| {
+                    d.child(
+                        div()
+                            .flex_none()
+                            .child(provider_icon(&p).size(px(13.)).color(fg)),
+                    )
+                })
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .child(text(g.clone()).truncate().line_height(LineHeight::Normal)),
+                )
+                .when(chosen.as_ref() == Some(g), |d| {
+                    d.child(div().flex_none().size(px(5.)).rounded_full().bg(t.amber))
+                })
+                .on_click(
+                    cx.guarded_listener(move |this, _: &ClickEvent, window, cx| {
+                        if this.searchable {
+                            this.search.update(cx, |s, cx| s.set_value("", window, cx));
+                            this.query = SharedString::default();
+                        }
+                        this.set_tier(pick.clone(), cx);
+                    }),
+                )
+        });
+        div()
+            .id("sel-groups")
+            .flex_none()
+            .w(px(TIER_W))
+            .flex()
+            .flex_col()
+            .gap(px(1.))
+            .p(px(4.))
+            .border_r(px(1.))
+            .border_color(Hsla::from(t.line))
+            .overflow_y_scroll()
+            .children(rows)
+            .into_any_element()
+    }
+
     fn menu(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
         let t = Theme::of(cx).tokens;
         let trigger = self.trigger_bounds?;
@@ -1036,17 +1174,20 @@ impl Select {
         let hinted = self.options.iter().any(|o| o.hint.is_some());
         let pics = self.options.iter().any(|o| o.pic.is_some());
         let up = self.up || menu_prefer_up(rect.0, rect.1, vh);
-        let mbox = menu_fixed_box(rect, up, self.variant.min_width(hinted), (vw, vh));
+        let tiers = self.tiers();
+        let tier_w = if tiers.is_some() { TIER_W } else { 0. };
+        let mbox = menu_fixed_box(rect, up, self.variant.min_width(hinted) + tier_w, (vw, vh));
         let width = mbox.width;
         let left = clamp_menu_left(mbox.left, width, vw);
         let max_h = self.variant.max_height(vh, mbox.space);
+        let drilled = self.drilled();
 
         let rows = Self::rows(&filtered);
         let mut list: Vec<AnyElement> = Vec::new();
         let mut first_heading = true;
         for row in &rows {
             let o = &filtered[row.ix];
-            if let Some(h) = &row.heading {
+            if let Some(h) = row.heading.as_ref().filter(|_| !drilled) {
                 let mut g = div()
                     .flex()
                     .items_center()
@@ -1209,7 +1350,7 @@ impl Select {
             .debug_selector(|| "sel-menu".into())
             .w(px(width))
             .max_h(px(max_h))
-            .when_some(self.variant.max_width(vw), |d, w| d.max_w(px(w)))
+            .when_some(self.variant.max_width(vw), |d, w| d.max_w(px(w + tier_w)))
             .font_family(UI)
             .occlude()
             .on_mouse_down_out(
@@ -1231,26 +1372,51 @@ impl Select {
                 }));
         }
         // `.sel-list { overflow: auto }`: the themed scrollbar, padding scrolling with the rows.
-        menu = menu.child(
-            div()
-                .flex_auto()
-                .min_h_0()
-                .flex()
-                .flex_col()
-                .when(self.searchable, |d| d.px(px(4.)).pb(px(4.)))
-                .child(
-                    crate::widgets::scroll_area("sel-list")
-                        .track(&self.list_scroll)
-                        .child(
-                            div()
-                                .id("sel-rows")
-                                .when(self.searchable, |d| d.pt(px(4.)))
-                                .role(gpui_kit::accesskit::Role::ListBox)
-                                .aria_label(self.label.clone())
-                                .children(list),
-                        ),
-                ),
-        );
+        let body = div()
+            .flex_auto()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .when(self.searchable, |d| d.px(px(4.)).pb(px(4.)))
+            .child(
+                crate::widgets::scroll_area("sel-list")
+                    .track(&self.list_scroll)
+                    .child(
+                        div()
+                            .id("sel-rows")
+                            .when(self.searchable, |d| d.pt(px(4.)))
+                            .role(gpui_kit::accesskit::Role::ListBox)
+                            .aria_label(self.label.clone())
+                            .children(list),
+                    ),
+            );
+        menu = match &tiers {
+            Some(gs) => {
+                // Sized for the longest column, so switching groups does not resize the menu.
+                let longest = gs
+                    .iter()
+                    .map(|(g, _)| {
+                        self.options
+                            .iter()
+                            .filter(|o| o.group.as_ref() == Some(g))
+                            .count()
+                    })
+                    .max()
+                    .unwrap_or(0)
+                    .max(gs.len());
+                let head = if self.searchable { 37. } else { 0. };
+                let h = (head + 8. + longest as f32 * ROW_H).min(max_h);
+                menu.h(px(h)).child(
+                    div()
+                        .flex()
+                        .flex_auto()
+                        .min_h_0()
+                        .child(self.tier_column(gs, drilled, cx))
+                        .child(body.flex_1().min_w_0()),
+                )
+            }
+            None => menu.child(body),
+        };
         // The menu hangs off the trigger in the layout tree (see `style::attached`).
         let below = mbox.top.is_some();
         Some(

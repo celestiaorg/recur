@@ -1,4 +1,4 @@
--- 0019_insights: rows and indexes the Insights report aggregates by time
+-- 0020_insights: rows and indexes the Insights report aggregates by time
 -- range, so it never scans transcript JSON at query time.
 --
 -- tool_call: one row per tool_use block, closed by its tool_result.

@@ -150,8 +150,9 @@ fn adding_a_compatible_provider_reaches_the_model_catalog(cx: &mut TestAppContex
     s.open_settings();
     s.section("Models");
     s.click("sel:Agent / Coder model=claude-sonnet-5-5");
+    s.click("sel-group:Claude Code");
     assert!(s.has("sel-opt:Opus 5.5"));
-    assert!(!s.has("sel-opt:GPT-4o"));
+    assert!(!s.has("sel-group:OpenRouter"));
     s.keys("escape");
 
     s.section("Providers");
@@ -164,7 +165,9 @@ fn adding_a_compatible_provider_reaches_the_model_catalog(cx: &mut TestAppContex
 
     s.section("Models");
     s.click("sel:Agent / Coder model=claude-sonnet-5-5");
-    assert!(s.until(|s| s.has("sel-opt:GPT-4o")));
+    assert!(s.until(|s| s.has("sel-group:OpenRouter")));
+    s.click("sel-group:OpenRouter");
+    assert!(s.has("sel-opt:GPT-4o"));
 }
 
 #[gpui::test]

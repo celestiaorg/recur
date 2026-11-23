@@ -1,4 +1,4 @@
--- 0020_message_token_totals: tokens billed for the whole turn, on the message
+-- 0021_message_token_totals: tokens billed for the whole turn, on the message
 -- that ends it. input_tokens and friends hold the context meter's last-request
 -- footprint, which under-reports a multi-request turn. Rows written before
 -- this migration stay NULL: their totals were never recorded.

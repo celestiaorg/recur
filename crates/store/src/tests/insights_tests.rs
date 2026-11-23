@@ -604,7 +604,7 @@ fn insights_migration_backfill() {
         "DROP INDEX idx_message_prompt".to_owned(),
         "DROP INDEX idx_content_compact".to_owned(),
         "DROP INDEX idx_events_type_ts".to_owned(),
-        "DELETE FROM __migrations WHERE version = 19".to_owned(),
+        "DELETE FROM __migrations WHERE version = 20".to_owned(),
         "INSERT INTO session (id, kind, context_mode, provider, created_at, updated_at)
 			VALUES ('s1', 'coder', 'provider', 'claude-code', 0, 0)"
             .to_owned(),

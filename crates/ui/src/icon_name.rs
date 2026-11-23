@@ -178,7 +178,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 171] = [
+    pub const ALL: [IconName; 172] = [
         IconName::Plus,
         IconName::Box,
         IconName::Github,

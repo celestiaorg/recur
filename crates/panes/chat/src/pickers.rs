@@ -215,6 +215,7 @@ impl ModelPickers {
             let mut s = Select::new(Vec::new(), window, cx)
                 .label(model_label.to_string())
                 .searchable()
+                .tiered()
                 .menu_variant(recur_ui::logic::menu_space::MenuVariant::Model);
             if ghost {
                 s = s.ghost();

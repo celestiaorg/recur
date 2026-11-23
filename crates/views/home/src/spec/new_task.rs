@@ -362,6 +362,7 @@ fn adding_a_compatible_provider_shows_its_models_in_an_already_loaded_picker(
     s.click(&h);
     assert!(s.has("sel-opt:Opus 5.5"));
     assert!(!s.has("sel-opt:GPT-4o"));
+    assert!(!s.has("sel-group:OpenRouter"));
     s.keys("escape");
     s.keys("escape");
     assert!(!s.has("v-newtask"));
@@ -376,7 +377,14 @@ fn adding_a_compatible_provider_shows_its_models_in_an_already_loaded_picker(
     s.open_new_task();
     let h = s.model_handle();
     s.click(&h);
-    assert!(s.until(|s| s.has("sel-opt:GPT-4o")));
+    assert!(s.until(|s| s.has("sel-group:OpenRouter")));
+    s.click("sel-group:OpenRouter");
+    assert!(s.has("sel-opt:GPT-4o"));
+    assert!(!s.has("sel-opt:Opus 5.5"));
+    s.keys("left");
+    assert!(s.has("sel-opt:Opus 5.5"), "Left steps back a provider");
+    s.keys("g p t");
+    assert!(s.has("sel-opt:GPT-4o"), "a search spans every provider");
 }
 
 #[gpui::test]

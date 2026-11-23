@@ -426,6 +426,11 @@ pub fn sub_usage(total: &TokenUsage, sub: &TokenUsage) -> TokenUsage {
 }
 
 impl TurnState {
+    /// Tokens billed for the turn so far, in meter shape.
+    pub fn turn_total(&self) -> recur_agent::TokenUsage {
+        meter_usage(&self.usage_turn, 0)
+    }
+
     /// Folds a usage snapshot in and returns the live meter event. Turn
     /// tokens use the delta of the thread total so multi-step turns are not
     /// under-reported by counting only the final request.
@@ -701,6 +706,23 @@ mod tests {
             sol_last(),
             "first snapshot: turn = last request"
         );
+        let next = r#"{"tokenUsage":{"total":{"totalTokens":4200000,"inputTokens":4180000,"cachedInputTokens":4010000,"outputTokens":15000},"last":{"totalTokens":165056,"inputTokens":164576,"cachedInputTokens":150544,"outputTokens":480}}}"#;
+        st.observe_usage(next);
+        let total = st.turn_total();
+        assert_eq!(
+            (
+                total.input_tokens,
+                total.cache_read_tokens,
+                total.output_tokens
+            ),
+            (
+                (4_180_000 - 4_020_424 + 155_843) - (4_010_000 - 3_859_456 + 154_240),
+                4_010_000 - 3_859_456 + 154_240,
+                15_000 - 14_520 + 870
+            ),
+            "total = thread total minus the pre-turn baseline"
+        );
+        assert_eq!(total.context_window, 0);
         let only_total = r#"{"tokenUsage":{"total":{"totalTokens":10,"inputTokens":7}}}"#;
         assert_eq!(observe_usage(only_total).last.input_tokens, 7);
     }

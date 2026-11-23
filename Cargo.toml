@@ -63,6 +63,7 @@ recur-view-home = { path = "crates/views/home" }
 recur-view-projects = { path = "crates/views/projects" }
 recur-view-briefing = { path = "crates/views/briefing" }
 recur-view-palettes = { path = "crates/views/palettes" }
+recur-view-insights = { path = "crates/views/insights" }
 
 # UI. gpui-kit pins an exact gpui-pre snapshot; bump only together with it.
 gpui-kit = "0.9.1"
@@ -84,7 +85,7 @@ uuid = { version = "1", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 iana-time-zone = "0.1"
 getrandom = "0.4"
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["bundled", "functions"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "system-proxy"] }

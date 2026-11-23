@@ -88,6 +88,10 @@ pub struct TurnResult {
     /// The latest per-inference footprint, not cumulative billing.
     #[serde(flatten)]
     pub usage: TokenUsage,
+    /// Tokens billed across the whole turn; empty when the provider reports
+    /// no turn total.
+    #[serde(skip)]
+    pub total: TokenUsage,
     /// Tail of the CLI's stderr: usage refusals, auth failures and outages
     /// land there, which is what separates transient failures from genuine
     /// ones.
@@ -330,6 +334,11 @@ mod tests {
                 context_window: 1_000_000,
                 ..Default::default()
             },
+            total: TokenUsage {
+                input_tokens: 250,
+                cache_read_tokens: 100_000,
+                ..Default::default()
+            },
             ..Default::default()
         });
         t.observe(&mut end);
@@ -345,5 +354,6 @@ mod tests {
             (200, 90_000, 1_000_000)
         );
         assert_eq!(r.usage.context_used(), 90_200);
+        assert_eq!(r.total.context_used(), 100_250, "total untouched");
     }
 }

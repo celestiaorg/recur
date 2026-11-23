@@ -1064,6 +1064,11 @@ async fn every_method_answers() {
     );
     note(
         &mut errs,
+        "GetInsightsPeriod",
+        s.shell.get_insights_period().await.err(),
+    );
+    note(
+        &mut errs,
         "GetIssuesView",
         s.shell.get_issues_view().await.err(),
     );
@@ -1077,6 +1082,11 @@ async fn every_method_answers() {
         &mut errs,
         "SetExpandedSchedules",
         s.shell.set_expanded_schedules(&[]).await.err(),
+    );
+    note(
+        &mut errs,
+        "SetInsightsPeriod",
+        s.shell.set_insights_period("week").await.err(),
     );
     note(
         &mut errs,

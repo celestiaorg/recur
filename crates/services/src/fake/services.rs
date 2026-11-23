@@ -1758,6 +1758,12 @@ fake_services! {
         }
     }
 
+    InsightsService {
+        async fn insights(&self, prev_start_ms: i64, start_ms: i64, end_ms: i64) -> Result<InsightsReport> {
+            Ok(super::insights::report(end_ms))
+        }
+    }
+
     LspService {
         async fn close_lsp(&self, id: &str) -> Result<()> {
             Ok(())
@@ -2483,6 +2489,10 @@ fake_services! {
             Ok(self.with(|s| s.expanded_schedules.clone()))
         }
 
+        async fn get_insights_period(&self) -> Result<String> {
+            Ok(String::new())
+        }
+
         async fn get_issues_view(&self) -> Result<IssuesView> {
             unanswered()
         }
@@ -2498,6 +2508,10 @@ fake_services! {
 
         async fn set_expanded_schedules(&self, ids: &[String]) -> Result<()> {
             self.with(|s| s.expanded_schedules = ids.to_vec());
+            Ok(())
+        }
+
+        async fn set_insights_period(&self, period: &str) -> Result<()> {
             Ok(())
         }
 

@@ -873,6 +873,7 @@ fn parse_result(line: &str) -> Result<Vec<AgentEvent>, ParseError> {
         r.usage.output_tokens = u.output_tokens;
         r.usage.cache_creation_tokens = u.cache_creation_input_tokens;
         r.usage.cache_read_tokens = u.cache_read_input_tokens;
+        r.total = r.usage.clone();
     }
     for u in m.model_usage.into_values().flatten() {
         r.usage.context_window = r.usage.context_window.max(u.context_window);

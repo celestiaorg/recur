@@ -1,7 +1,7 @@
 //! `ShellService`: the last top-level view (`shell.json`, write coalesced and
 //! flushed on quit), the schedules dashboard accordion (`schedule-view.json`)
-//! the Issues page layout (`issues-view.json`) and the whole-UI zoom (`ui-view.json`),
-//! all under the data root so they survive restarts.
+//! the Issues page layout (`issues-view.json`), the Insights range granularity
+//! (`insights-view.json`) and the whole-UI zoom (`ui-view.json`), all under the data root so they survive restarts.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -20,6 +20,7 @@ pub(crate) const SHELL_STATE_FILE: &str = "shell.json";
 pub(crate) const SCHEDULE_VIEW_FILE: &str = "schedule-view.json";
 pub(crate) const ISSUES_VIEW_FILE: &str = "issues-view.json";
 pub(crate) const UI_VIEW_FILE: &str = "ui-view.json";
+pub(crate) const INSIGHTS_VIEW_FILE: &str = "insights-view.json";
 const MIN_UI_ZOOM: f32 = 0.5;
 const MAX_UI_ZOOM: f32 = 2.;
 pub(crate) const SHELL_SAVE_DEBOUNCE: Duration = Duration::from_millis(250);
@@ -102,6 +103,12 @@ pub(crate) fn write_data_json<T: Serialize>(path: &Path, v: &T) -> std::io::Resu
         return Err(e);
     }
     Ok(())
+}
+
+#[derive(Default, Serialize, Deserialize)]
+#[serde(default)]
+struct InsightsView {
+    period: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -279,6 +286,22 @@ impl AppServices {
         write_data_json(&self.shell_path(ISSUES_VIEW_FILE), v).map_err(err)
     }
 
+    pub(crate) fn insights_period(&self) -> String {
+        std::fs::read(self.shell_path(INSIGHTS_VIEW_FILE))
+            .ok()
+            .and_then(|data| serde_json::from_slice::<InsightsView>(&data).ok())
+            .unwrap_or_default()
+            .period
+    }
+
+    pub(crate) fn set_insights_period_sync(&self, period: &str) -> Result<()> {
+        let _st = self.shell.0.lock();
+        let v = InsightsView {
+            period: period.to_owned(),
+        };
+        write_data_json(&self.shell_path(INSIGHTS_VIEW_FILE), &v).map_err(err)
+    }
+
     pub(crate) fn ui_zoom(&self) -> f32 {
         std::fs::read(self.shell_path(UI_VIEW_FILE))
             .ok()
@@ -313,6 +336,10 @@ impl ShellService for AppServices {
         rt!(self, => |s| Ok(s.expanded_schedules()))
     }
 
+    async fn get_insights_period(&self) -> Result<String> {
+        rt!(self, => |s| Ok(s.insights_period()))
+    }
+
     async fn get_issues_view(&self) -> Result<IssuesView> {
         rt!(self, => |s| Ok(s.issues_view()))
     }
@@ -327,6 +354,10 @@ impl ShellService for AppServices {
 
     async fn set_expanded_schedules(&self, ids: &[String]) -> Result<()> {
         rt!(self, ids => |s| s.set_expanded_schedules_sync(&ids))
+    }
+
+    async fn set_insights_period(&self, period: &str) -> Result<()> {
+        rt!(self, period => |s| s.set_insights_period_sync(&period))
     }
 
     async fn set_issues_view(&self, v: &IssuesView) -> Result<()> {

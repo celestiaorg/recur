@@ -685,11 +685,24 @@ fn message_context_window_round_trip() {
             cache_creation_tokens: 500,
             duration_ms: 100,
             context_window: 200_000,
+            total_input_tokens: 6,
+            total_output_tokens: 147,
+            total_cache_creation_tokens: 17_317,
+            total_cache_read_tokens: 62_537,
             ..Default::default()
         },
     )
     .unwrap();
     let m = &transcript(&st, &s.id)[0];
+    assert_eq!(
+        (
+            m.total_input_tokens,
+            m.total_output_tokens,
+            m.total_cache_creation_tokens,
+            m.total_cache_read_tokens
+        ),
+        (6, 147, 17_317, 62_537)
+    );
     assert_eq!(
         (m.input_tokens, m.cache_read_tokens, m.cache_creation_tokens),
         (120, 18000, 500)

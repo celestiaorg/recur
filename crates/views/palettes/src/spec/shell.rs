@@ -49,6 +49,7 @@ fn go_to_palette_scrolls_selection_into_view_with_arrow_keys(cx: &mut TestAppCon
             "Issues",
             "Pull requests",
             "Schedules",
+            "Insights",
             "Settings · policy",
             "Get started",
         ]

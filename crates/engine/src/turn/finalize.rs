@@ -272,6 +272,10 @@ impl Engine {
                 output_tokens: usage.usage.output_tokens,
                 cache_creation_tokens: usage.usage.cache_creation_tokens,
                 cache_read_tokens: usage.usage.cache_read_tokens,
+                total_input_tokens: usage.total.input_tokens,
+                total_output_tokens: usage.total.output_tokens,
+                total_cache_creation_tokens: usage.total.cache_creation_tokens,
+                total_cache_read_tokens: usage.total.cache_read_tokens,
                 context_window: usage.usage.context_window,
                 ..Message::default()
             },

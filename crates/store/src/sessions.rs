@@ -18,6 +18,7 @@ use serde_json::to_string as marshal;
 use crate::db::{Db, upsert_doc_tx};
 use crate::error::{Error, Result, SqlContext as _, json_err};
 use crate::store::Store;
+use crate::tool_calls::{close_tool_call_tx, open_tool_call_tx, relabel_tool_call_tx};
 
 fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
@@ -200,8 +201,10 @@ fn insert_message_tx(c: &Connection, m: &Message) -> Result<()> {
         "INSERT INTO message
 		(id, origin_session_id, role, model_id, provider, stream_status,
 		 started_at, completed_at, input_tokens, output_tokens,
-		 cache_creation_tokens, cache_read_tokens, created_at)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+		 cache_creation_tokens, cache_read_tokens, total_input_tokens,
+		 total_output_tokens, total_cache_creation_tokens, total_cache_read_tokens,
+		 created_at)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         params![
             m.id,
             m.origin_session_id,
@@ -215,6 +218,10 @@ fn insert_message_tx(c: &Connection, m: &Message) -> Result<()> {
             null_int(m.output_tokens),
             null_int(m.cache_creation_tokens),
             null_int(m.cache_read_tokens),
+            null_int(m.total_input_tokens),
+            null_int(m.total_output_tokens),
+            null_int(m.total_cache_creation_tokens),
+            null_int(m.total_cache_read_tokens),
             m.created_at
         ],
     )
@@ -252,19 +259,25 @@ fn insert_content_block_tx(
     } else {
         &b.content_json
     };
+    let at = now_ms();
     c.execute(
         "INSERT INTO message_content (id, message_id, idx, type, content_json, created_at)
 		VALUES (?,?,?,?,?,?)",
-        params![id, message_id, idx, b.r#type, content, now_ms()],
+        params![id, message_id, idx, b.r#type, content, at],
     )
     .ctx(|| format!("insert content block {id:?}"))?;
-    Ok(())
+    match b.r#type.as_str() {
+        BLOCK_TOOL_USE => open_tool_call_tx(c, message_id, content, at),
+        BLOCK_TOOL_RESULT => close_tool_call_tx(c, message_id, content, at),
+        _ => Ok(()),
+    }
 }
 
 const MESSAGE_COLS: &str = "m.id, m.origin_session_id, m.role, m.model_id, m.provider,
 	m.stream_status, m.started_at, m.completed_at, m.input_tokens, m.output_tokens,
 	m.cache_creation_tokens, m.cache_read_tokens, m.duration_ms,
-	m.context_window, m.created_at";
+	m.context_window, m.created_at, m.total_input_tokens, m.total_output_tokens,
+	m.total_cache_creation_tokens, m.total_cache_read_tokens";
 
 fn scan_message(r: &Row<'_>) -> rusqlite::Result<Message> {
     let s = |i: usize| -> rusqlite::Result<String> {
@@ -288,6 +301,10 @@ fn scan_message(r: &Row<'_>) -> rusqlite::Result<Message> {
         duration_ms: n(12)?,
         context_window: n(13)?,
         created_at: r.get(14)?,
+        total_input_tokens: n(15)?,
+        total_output_tokens: n(16)?,
+        total_cache_creation_tokens: n(17)?,
+        total_cache_read_tokens: n(18)?,
         content: None,
     })
 }
@@ -1087,7 +1104,7 @@ impl Store {
                 [&b, &id],
             )
             .ctx(|| format!("patch tool_use {internal_tool_use_id:?}"))?;
-            Ok(())
+            relabel_tool_call_tx(c, &tu)
         })
     }
 
@@ -1160,14 +1177,16 @@ impl Store {
         (!tu.id.is_empty()).then_some(tu)
     }
 
-    /// Marks a message finished: status, completion time, usage, duration
-    /// and context window. Pass `STREAM_ERROR` for a failed turn.
+    /// Marks a message finished: status, completion time, usage, turn token
+    /// totals, duration and context window. Pass `STREAM_ERROR` for a failed turn.
     pub fn complete_message(&self, message_id: &str, status: &str, usage: &Message) -> Result<()> {
         self.exec_update(
             "UPDATE message SET
 		stream_status = ?, completed_at = ?,
 		input_tokens = ?, output_tokens = ?,
 		cache_creation_tokens = ?, cache_read_tokens = ?,
+		total_input_tokens = ?, total_output_tokens = ?,
+		total_cache_creation_tokens = ?, total_cache_read_tokens = ?,
 		duration_ms = ?, context_window = ?
 		WHERE id = ?",
             params![
@@ -1177,6 +1196,10 @@ impl Store {
                 null_int(usage.output_tokens),
                 null_int(usage.cache_creation_tokens),
                 null_int(usage.cache_read_tokens),
+                null_int(usage.total_input_tokens),
+                null_int(usage.total_output_tokens),
+                null_int(usage.total_cache_creation_tokens),
+                null_int(usage.total_cache_read_tokens),
                 null_int(usage.duration_ms),
                 null_int(usage.context_window),
                 message_id
@@ -1208,12 +1231,12 @@ impl Store {
             let rows = stmt
                 .query_map([session_id], |r| {
                     let m = scan_message(r)?;
-                    let block = match r.get::<_, Option<String>>(15)? {
+                    let block = match r.get::<_, Option<String>>(19)? {
                         Some(id) => Some(ContentBlock {
                             id,
-                            r#type: r.get::<_, Option<String>>(16)?.unwrap_or_default(),
-                            content_json: r.get::<_, Option<String>>(17)?.unwrap_or_default(),
-                            created_at: r.get::<_, Option<i64>>(18)?.unwrap_or_default(),
+                            r#type: r.get::<_, Option<String>>(20)?.unwrap_or_default(),
+                            content_json: r.get::<_, Option<String>>(21)?.unwrap_or_default(),
+                            created_at: r.get::<_, Option<i64>>(22)?.unwrap_or_default(),
                         }),
                         None => None,
                     };

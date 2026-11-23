@@ -9,6 +9,7 @@ pub enum ViewName {
     Pr,
     Issues,
     Schedules,
+    Insights,
     Terminals,
     PrDetail,
     Inbox,
@@ -19,13 +20,14 @@ pub enum ViewName {
 }
 
 impl ViewName {
-    pub const ALL: [ViewName; 12] = [
+    pub const ALL: [ViewName; 13] = [
         ViewName::Detail,
         ViewName::Settings,
         ViewName::Project,
         ViewName::Pr,
         ViewName::Issues,
         ViewName::Schedules,
+        ViewName::Insights,
         ViewName::Terminals,
         ViewName::PrDetail,
         ViewName::Inbox,
@@ -42,6 +44,7 @@ impl ViewName {
             ViewName::Pr => "pr",
             ViewName::Issues => "issues",
             ViewName::Schedules => "schedules",
+            ViewName::Insights => "insights",
             ViewName::Terminals => "terminals",
             ViewName::PrDetail => "prdetail",
             ViewName::Inbox => "inbox",

@@ -77,6 +77,7 @@ pub(crate) fn run_migrations(conn: &mut Connection) -> Result<()> {
     // relations the session tables declare.
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
         .ctx(|| "set connection pragmas".into())?;
+    crate::tool_calls::register_functions(conn).ctx(|| "register sql functions".into())?;
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS __migrations (
 		version    INTEGER PRIMARY KEY,

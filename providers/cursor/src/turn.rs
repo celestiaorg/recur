@@ -695,6 +695,9 @@ impl Turn {
             out.usage.cache_creation_tokens = m.cache_creation_tokens;
             out.usage.cache_read_tokens = m.cache_read_tokens;
         }
+        if let Some(u) = f.res.usage.or(f.usage_cumulative) {
+            out.total = apply_cursor_usage(&u);
+        }
         if let Some(e) = &f.res.error {
             out.stderr = e.message.clone();
         } else if is_error && !f.status_error.is_empty() {

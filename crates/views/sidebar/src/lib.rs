@@ -1615,6 +1615,15 @@ impl Sidebar {
                         .flex_none()
                         .child(titled("nav-schedules-add-tip", "New schedule", add)),
                 );
+        let insights = self
+            .nav_row("nav-insights", on(ViewName::Insights), window, cx)
+            .on_click(go(ViewName::Insights, st.clone()))
+            .child(Self::nav_icon(
+                IconName::ChartPie,
+                on(ViewName::Insights),
+                cx,
+            ))
+            .child(style::button_label("Insights", 12.5, weight::REGULAR));
         let terminals = terminals_page.then(|| {
             self.nav_row("nav-terminals", on(ViewName::Terminals), window, cx)
                 .on_click(go(ViewName::Terminals, st))
@@ -1634,6 +1643,7 @@ impl Sidebar {
             .child(issues)
             .child(prs)
             .child(schedules)
+            .child(insights)
             .children(terminals)
     }
 

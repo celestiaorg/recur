@@ -224,6 +224,7 @@ pub fn all_commands(i: &Inputs) -> Vec<Cmd> {
         (IconName::CircleDot, "Issues", ViewName::Issues),
         (IconName::GitPullRequest, "Pull requests", ViewName::Pr),
         (IconName::Clock, "Schedules", ViewName::Schedules),
+        (IconName::ChartPie, "Insights", ViewName::Insights),
         (IconName::Terminal, "Terminals", ViewName::Terminals),
         (IconName::Settings, "Settings · policy", ViewName::Settings),
         (IconName::Help, "Get started", ViewName::Welcome),
@@ -880,7 +881,7 @@ mod tests {
         assert_eq!(labels(&flat(&all, &[], &[], "storefront")), ["Ship it"]);
         assert_eq!(labels(&flat(&all, &[], &[], "#482")), ["Add OAuth"]);
         let goto = flat(&all, &[], &[], "go to");
-        assert!(goto.iter().all(|c| c.g == "Go to") && goto.len() == 6);
+        assert!(goto.iter().all(|c| c.g == "Go to") && goto.len() == 7);
         assert!(flat(&all, &[], &[], "zzz").is_empty());
     }
 

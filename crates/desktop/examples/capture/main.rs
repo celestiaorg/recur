@@ -84,7 +84,7 @@ mod mac {
         }
     }
 
-    const SCREENS: [Screen; 7] = [
+    const SCREENS: [Screen; 8] = [
         Screen {
             chat_open: true,
             files_open: true,
@@ -110,6 +110,7 @@ mod mac {
         },
         screen("issues", View::Other(ViewName::Issues)),
         screen("schedules", View::Other(ViewName::Schedules)),
+        screen("insights", View::Other(ViewName::Insights)),
     ];
 
     fn registry() -> ViewRegistry {
@@ -122,6 +123,7 @@ mod mac {
         recur_view_settings::register(&mut r);
         recur_view_home::register(&mut r);
         recur_view_briefing::register(&mut r);
+        recur_view_insights::register(&mut r);
         recur_view_projects::register(&mut r);
         recur_view_palettes::register(&mut r);
         r

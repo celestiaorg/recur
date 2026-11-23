@@ -26,12 +26,13 @@ pub struct ShellLive {
     pub project_ids: HashSet<String>,
 }
 
-const TOP_VIEWS: [ViewName; 7] = [
+const TOP_VIEWS: [ViewName; 8] = [
     ViewName::Inbox,
     ViewName::Briefing,
     ViewName::Settings,
     ViewName::Pr,
     ViewName::Schedules,
+    ViewName::Insights,
     ViewName::Issues,
     ViewName::Terminals,
 ];
@@ -166,6 +167,7 @@ mod tests {
         assert_eq!(s(ViewName::Detail), st("detail", "WS-1", "", ""));
         assert_eq!(s(ViewName::Inbox), st("inbox", "", "", ""));
         assert_eq!(s(ViewName::Schedules), st("schedules", "", "", ""));
+        assert_eq!(s(ViewName::Insights), st("insights", "", "", ""));
         assert_eq!(s(ViewName::Terminals), st("terminals", "", "", ""));
         assert_eq!(s(ViewName::Briefing), st("briefing", "", "", ""));
         assert_eq!(s(ViewName::PrDetail), st("prdetail", "", "pr-9", ""));
@@ -203,6 +205,7 @@ mod tests {
             ("settings", ViewName::Settings),
             ("pr", ViewName::Pr),
             ("schedules", ViewName::Schedules),
+            ("insights", ViewName::Insights),
             ("issues", ViewName::Issues),
             ("terminals", ViewName::Terminals),
         ] {

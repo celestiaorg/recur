@@ -7,8 +7,8 @@ use super::{Fx, FxOpts, write};
 use crate::api::{IssuesView, ShellState};
 use crate::app::projects::preview_scheduled_prompt;
 use crate::app::shell::{
-    ISSUES_VIEW_FILE, SCHEDULE_VIEW_FILE, SHELL_SAVE_DEBOUNCE, SHELL_STATE_FILE, UI_VIEW_FILE,
-    clamp_shell_state,
+    INSIGHTS_VIEW_FILE, ISSUES_VIEW_FILE, SCHEDULE_VIEW_FILE, SHELL_SAVE_DEBOUNCE,
+    SHELL_STATE_FILE, UI_VIEW_FILE, clamp_shell_state,
 };
 
 fn st(view: &str, ws: &str) -> ShellState {
@@ -193,6 +193,24 @@ async fn issues_view_round_trip() {
     );
     write(fx.root.join(ISSUES_VIEW_FILE), "{not json");
     assert_eq!(sh.get_issues_view().await.unwrap().layout, "");
+    fx.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn insights_period_round_trip() {
+    let fx = Fx::new().await;
+    let sh = &fx.s.shell;
+    assert_eq!(sh.get_insights_period().await.unwrap(), "");
+    sh.set_insights_period("week").await.unwrap();
+    let saved: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(fx.root.join(INSIGHTS_VIEW_FILE)).unwrap()).unwrap();
+    assert_eq!(saved, serde_json::json!({ "period": "week" }));
+    assert_eq!(
+        fresh_shell(&fx).await.get_insights_period().await.unwrap(),
+        "week"
+    );
+    write(fx.root.join(INSIGHTS_VIEW_FILE), "{not json");
+    assert_eq!(sh.get_insights_period().await.unwrap(), "");
     fx.close().await;
 }
 

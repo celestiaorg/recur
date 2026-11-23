@@ -13,6 +13,7 @@ mod code;
 mod editor_session;
 mod escalation;
 mod inbox;
+mod insights;
 mod lsp_service;
 mod maestro;
 mod observatory;
@@ -42,6 +43,7 @@ pub use code::CodeService;
 pub use editor_session::EditorSessionService;
 pub use escalation::EscalationService;
 pub use inbox::InboxService;
+pub use insights::*;
 pub use lsp_service::LspService;
 pub use maestro::MaestroService;
 pub use models::*;
@@ -80,6 +82,7 @@ pub trait Backend:
     + EditorSessionService
     + EscalationService
     + InboxService
+    + InsightsService
     + LspService
     + MaestroService
     + ObservatoryService
@@ -106,6 +109,7 @@ impl<T> Backend for T where
         + EditorSessionService
         + EscalationService
         + InboxService
+        + InsightsService
         + LspService
         + MaestroService
         + ObservatoryService
@@ -134,6 +138,7 @@ pub struct Services {
     pub editor_session: Arc<dyn EditorSessionService>,
     pub escalation: Arc<dyn EscalationService>,
     pub inbox: Arc<dyn InboxService>,
+    pub insights: Arc<dyn InsightsService>,
     pub lsp: Arc<dyn LspService>,
     pub maestro: Arc<dyn MaestroService>,
     pub observatory: Arc<dyn ObservatoryService>,
@@ -162,6 +167,7 @@ impl Services {
             editor_session: backend.clone(),
             escalation: backend.clone(),
             inbox: backend.clone(),
+            insights: backend.clone(),
             lsp: backend.clone(),
             maestro: backend.clone(),
             observatory: backend.clone(),

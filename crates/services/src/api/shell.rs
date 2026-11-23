@@ -20,6 +20,10 @@ pub trait ShellService: Send + Sync {
     /// Lives next to shell.json.
     async fn get_expanded_schedules(&self) -> Result<Vec<String>>;
 
+    /// GetInsightsPeriod returns the saved Insights range granularity ("week",
+    /// "month", "year"), or "" when none exists or the file is corrupt.
+    async fn get_insights_period(&self) -> Result<String>;
+
     /// GetIssuesView returns the saved Issues view, or a zero value when none
     /// exists or the file is corrupt.
     async fn get_issues_view(&self) -> Result<IssuesView>;
@@ -35,6 +39,9 @@ pub trait ShellService: Send + Sync {
 
     /// SetExpandedSchedules records expanded schedule dashboard rows.
     async fn set_expanded_schedules(&self, ids: &[String]) -> Result<()>;
+
+    /// SetInsightsPeriod records the Insights range granularity next to shell.json.
+    async fn set_insights_period(&self, period: &str) -> Result<()>;
 
     /// SetIssuesView records the Issues view next to shell.json.
     async fn set_issues_view(&self, v: &IssuesView) -> Result<()>;

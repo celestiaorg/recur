@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use recur_agent::testing::ScriptedProvider;
-use recur_agent::{AgentEvent, ToolResultEvent, ToolStep, TurnRequest, TurnResult};
+use recur_agent::{AgentEvent, TokenUsage, ToolResultEvent, ToolStep, TurnRequest, TurnResult};
 use recur_domain::{
     AgentRole, BLOCK_TOOL_USE, COMPACT_DONE, Message, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX,
     PROVIDER_CURSOR, Session,
@@ -289,6 +289,55 @@ async fn non_live_user_resets_tool_id_dedupe() {
         })
         .count();
     assert_eq!(uses, 2, "a new provider run resets the tool-id map");
+    te.close().await;
+}
+
+#[tokio::test]
+async fn turn_end_writes_meter_and_turn_totals() {
+    let p = ScriptedProvider::from_events(vec![
+        AgentEvent::Text {
+            text: "done".into(),
+            uuid: String::new(),
+            parent: String::new(),
+        },
+        AgentEvent::TurnEnd(TurnResult {
+            subtype: "success".into(),
+            duration_ms: 10,
+            usage: TokenUsage {
+                input_tokens: 2,
+                cache_read_tokens: 26_618,
+                ..Default::default()
+            },
+            total: TokenUsage {
+                input_tokens: 6,
+                output_tokens: 147,
+                cache_creation_tokens: 17_317,
+                cache_read_tokens: 62_537,
+                ..Default::default()
+            },
+            ..Default::default()
+        }),
+    ]);
+    let (te, ws, _repo) = engine_with(Arc::new(p)).await;
+    te.engine
+        .run_agent(
+            &CancellationToken::new(),
+            coder_spec(&ws, "cursor/composer-2.5", "do the thing"),
+        )
+        .await
+        .unwrap();
+    let msgs = transcript(&te, &coder_session(&te, &ws));
+    let m = msgs.last().unwrap();
+    assert_eq!((m.input_tokens, m.cache_read_tokens), (2, 26_618));
+    assert_eq!(
+        (
+            m.total_input_tokens,
+            m.total_output_tokens,
+            m.total_cache_creation_tokens,
+            m.total_cache_read_tokens
+        ),
+        (6, 147, 17_317, 62_537)
+    );
     te.close().await;
 }
 

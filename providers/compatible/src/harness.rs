@@ -105,6 +105,7 @@ impl Harness<'_> {
         let instructions = harness_instructions(&req);
 
         let mut usage = Usage::default();
+        let mut total = Usage::default();
         let mut text = String::new();
         let mut last_id = String::new();
         let mut rounds: u32 = 0;
@@ -117,11 +118,11 @@ impl Harness<'_> {
 
         loop {
             if cx.cancel.is_cancelled() {
-                return Err(self.canceled(&req, start, &text, usage, &last_id));
+                return Err(self.canceled(&req, start, &text, usage, total, &last_id));
             }
             rounds += 1;
             if req.max_turns > 0 && rounds > req.max_turns {
-                let mut res = self.result(&req, start, &text, usage, &last_id);
+                let mut res = self.result(&req, start, &text, usage, total, &last_id);
                 res.is_error = true;
                 res.subtype = "error_max_turns".into();
                 emitter.emit(AgentEvent::TurnEnd(res.clone()));
@@ -141,11 +142,11 @@ impl Harness<'_> {
             let round = match round {
                 Ok(r) => r,
                 Err(RoundError::Canceled) => {
-                    return Err(self.canceled(&req, start, &text, usage, &last_id));
+                    return Err(self.canceled(&req, start, &text, usage, total, &last_id));
                 }
                 Err(RoundError::Failed(msg)) => {
                     return Err(ProviderError::failed(msg)
-                        .with_partial(self.result(&req, start, &text, usage, &last_id)));
+                        .with_partial(self.result(&req, start, &text, usage, total, &last_id)));
                 }
             };
             if !round.resp_id.is_empty() {
@@ -153,6 +154,10 @@ impl Harness<'_> {
             }
             if round.usage.input_tokens > 0 || round.usage.output_tokens > 0 {
                 usage = round.usage;
+                total.input_tokens += usage.input_tokens;
+                total.output_tokens += usage.output_tokens;
+                total.cache_read_tokens += usage.cache_read_tokens;
+                total.total_tokens += usage.total_tokens;
             }
             text.push_str(&round.text);
             // The stateless ChatGPT route needs its own output items back,
@@ -169,7 +174,7 @@ impl Harness<'_> {
                 let results =
                     exec_calls(&req, &cx.cancel, cx.tools.as_ref(), &round.calls, &emitter).await;
                 if cx.cancel.is_cancelled() {
-                    return Err(self.canceled(&req, start, &text, usage, &last_id));
+                    return Err(self.canceled(&req, start, &text, usage, total, &last_id));
                 }
                 for (call, res) in round.calls.iter().zip(&results) {
                     if !preserve {
@@ -211,7 +216,7 @@ impl Harness<'_> {
             }
         }
 
-        let res = self.result(&req, start, &text, usage, &last_id);
+        let res = self.result(&req, start, &text, usage, total, &last_id);
         emitter.emit(AgentEvent::TurnEnd(res.clone()));
         Ok(res)
     }
@@ -329,6 +334,7 @@ impl Harness<'_> {
         start: Instant,
         text: &str,
         usage: Usage,
+        total: Usage,
         resp_id: &str,
     ) -> TurnResult {
         let window = self
@@ -351,6 +357,12 @@ impl Harness<'_> {
                 context_window: window,
                 ..Default::default()
             },
+            total: TokenUsage {
+                input_tokens: responses_fresh_input(total),
+                output_tokens: total.output_tokens,
+                cache_read_tokens: total.cache_read_tokens,
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
@@ -361,9 +373,10 @@ impl Harness<'_> {
         start: Instant,
         text: &str,
         usage: Usage,
+        total: Usage,
         resp_id: &str,
     ) -> ProviderError {
-        ProviderError::canceled().with_partial(self.result(req, start, text, usage, resp_id))
+        ProviderError::canceled().with_partial(self.result(req, start, text, usage, total, resp_id))
     }
 }
 

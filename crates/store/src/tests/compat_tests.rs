@@ -341,7 +341,19 @@ fn rust_rewrite_of_go_db_changes_nothing() {
         st.close().unwrap();
         let after = table_dump(&path);
         for (t, rows) in &before {
-            assert_eq!(rows, &after[t], "table {t}");
+            let width = rows.first().map_or(0, Vec::len);
+            let kept: Vec<Vec<String>> = after[t]
+                .iter()
+                .map(|r| {
+                    let (old, added) = r.split_at(width);
+                    assert!(
+                        added.iter().all(|v| v == "NULL"),
+                        "table {t}: a migration-added column was filled"
+                    );
+                    old.to_vec()
+                })
+                .collect();
+            assert_eq!(rows, &kept, "table {t}");
         }
     });
 }

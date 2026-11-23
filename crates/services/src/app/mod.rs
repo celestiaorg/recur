@@ -359,8 +359,8 @@ impl AppServices {
     }
 
     /// The boot work that runs once the bus reaches the UI: the git and
-    /// Cursor bridge checks, scheduled prompts, auto-resume, the PR sweep and
-    /// the provider usage poller.
+    /// Cursor bridge checks, scheduled prompts, auto-resume, the PR sweep,
+    /// the provider usage poller and the Insights tool call backfill.
     pub async fn start(self: &Arc<Self>) {
         self.engine.check_git();
         self.check_cursor_bridge();
@@ -372,6 +372,15 @@ impl AppServices {
         let eng = Arc::clone(&self.engine);
         tokio::spawn(async move { eng.run_pr_sweep().await });
         self.usage.start();
+        // A plain thread: quitting should not wait on a runtime's blocking pool.
+        let store = Arc::clone(&self.engine.store);
+        let _ = std::thread::Builder::new()
+            .name("tool-call-backfill".into())
+            .spawn(move || {
+                if let Err(e) = store.backfill_tool_calls() {
+                    tracing::warn!("tool call backfill: {e}");
+                }
+            });
     }
 
     /// The window lost or regained key status.

@@ -30,6 +30,7 @@
 pub mod applog;
 mod db;
 mod error;
+mod insights;
 mod migrations;
 pub mod paths;
 mod schedules;
@@ -39,6 +40,7 @@ mod seed_prs;
 pub mod seeddump;
 mod sessions;
 mod store;
+mod tool_calls;
 
 pub use error::{Error, Result};
 pub use migrations::latest_schema_version;

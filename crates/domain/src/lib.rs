@@ -26,6 +26,7 @@ pub mod compatible;
 pub mod escalation;
 pub mod finding;
 pub mod ids;
+pub mod insights;
 pub mod json;
 pub mod mcp;
 pub mod merge;

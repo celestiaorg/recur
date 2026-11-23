@@ -9,14 +9,14 @@
 //! behind a mutex: a transaction holds it from begin to commit.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::time::Duration;
 
 use chrono::{DateTime, TimeZone as _, Utc};
 use parking_lot::Mutex;
 use recur_domain::{
-    AnalysisRun, Escalation, Finding, FindingNote, IdType, MergeCommitMessage, MergeMethod,
+    AnalysisRun, Escalation, Finding, FindingNote, IdType, MergeCommitMessage, MergeMethod, Pr,
     Project, ProjectGroup, Severity, SquashCommitMessage, StoredEvent, UpdateBaseMethod,
     new_unique_id,
 };
@@ -43,6 +43,7 @@ pub(crate) fn github_branch_rule_key(project_id: &str, repo: &str, branch: &str)
 
 pub(crate) struct Db {
     conn: Mutex<Option<Connection>>,
+    path: PathBuf,
     /// Strictly decreasing sort values for prepended feed rows, seeded at or
     /// below the smallest sort on disk (and never above zero), so a prepend
     /// never collides with an existing row and always sorts ahead of the
@@ -69,12 +70,17 @@ impl Db {
             .ctx(|| "seed feed sort".into())?;
         let db = Self {
             conn: Mutex::new(Some(conn)),
+            path: path.to_owned(),
             feed_sort: AtomicI64::new(min.min(0)),
         };
         // Replay can leave hours of committed rows in the WAL; flush them so
         // a crash or a file copy is not a last-checkpoint view.
         db.checkpoint();
         Ok(db)
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     /// Runs f on the connection, holding it for the duration.
@@ -395,6 +401,38 @@ impl Db {
                 params![workspace_id, doc, sort],
             )
             .ctx(|| format!("prepend feed for {workspace_id:?}"))?;
+            Ok(())
+        })
+    }
+
+    /// Records a merged PR's landing once per PR, stamped with its last
+    /// update (the merge) or now.
+    pub fn record_pr_merge(&self, p: &Pr) -> Result<()> {
+        if p.state != "Merged" || p.workspace_id.is_empty() {
+            return Ok(());
+        }
+        let at = DateTime::parse_from_rfc3339(&p.updated_at)
+            .map_or_else(|_| Utc::now().timestamp_millis(), |t| t.timestamp_millis());
+        self.record_merge(&p.workspace_id, Some(&p.id), at)
+    }
+
+    /// Records a workspace landing on its base: via its PR when `pr_id` is
+    /// set (once per PR), otherwise directly.
+    pub fn record_merge(&self, workspace_id: &str, pr_id: Option<&str>, at: i64) -> Result<()> {
+        self.with(|c| {
+            c.execute(
+                "INSERT INTO workspace_merge (id, workspace_id, via, pr_id, merged_at)
+		SELECT ?1, ?2, ?3, ?4, ?5
+		WHERE ?4 IS NULL OR NOT EXISTS (SELECT 1 FROM workspace_merge WHERE pr_id = ?4)",
+                params![
+                    uuid::Uuid::now_v7().to_string(),
+                    workspace_id,
+                    if pr_id.is_some() { "pr" } else { "direct" },
+                    pr_id,
+                    at
+                ],
+            )
+            .ctx(|| format!("record merge of {workspace_id:?}"))?;
             Ok(())
         })
     }

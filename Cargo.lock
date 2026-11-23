@@ -7970,6 +7970,7 @@ dependencies = [
  "recur-view-chat",
  "recur-view-core",
  "recur-view-home",
+ "recur-view-insights",
  "recur-view-observatory",
  "recur-view-palettes",
  "recur-view-projects",
@@ -8612,6 +8613,20 @@ dependencies = [
  "recur-view-workspace",
  "serde_json",
  "smallvec",
+]
+
+[[package]]
+name = "recur-view-insights"
+version = "0.7.2"
+dependencies = [
+ "chrono",
+ "gpui-kit",
+ "gpui-pre",
+ "recur-app",
+ "recur-services",
+ "recur-ui",
+ "recur-view-core",
+ "recur-view-widgets",
 ]
 
 [[package]]

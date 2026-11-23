@@ -135,6 +135,16 @@ pub struct Message {
     pub cache_creation_tokens: i64,
     #[serde(skip_serializing_if = "is_zero")]
     pub cache_read_tokens: i64,
+    /// Tokens billed across the turn this message ended; the fields above
+    /// are the context meter's last-request footprint.
+    #[serde(skip_serializing_if = "is_zero")]
+    pub total_input_tokens: i64,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub total_output_tokens: i64,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub total_cache_creation_tokens: i64,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub total_cache_read_tokens: i64,
     /// The wall time of the TURN this message ended. Zero on every message
     /// but the last of a turn.
     #[serde(skip_serializing_if = "is_zero")]

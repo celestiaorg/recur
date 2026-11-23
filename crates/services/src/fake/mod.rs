@@ -18,6 +18,7 @@
 //! ```
 
 mod attention;
+mod insights;
 mod seed;
 mod services;
 

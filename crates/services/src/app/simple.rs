@@ -13,12 +13,12 @@ use recur_domain::{
 use recur_engine::attention::chat_inbox::parse_chat_inbox_id;
 use recur_engine::bus::{EngineEvent, InboxUpdated, WorkspaceRef};
 
-use super::rt::rt;
+use super::rt::{blocking, rt};
 use super::{AppServices, err};
 use crate::api::{
     AgentsService, AppChatSelection, ArtifactsService, BriefingService, EscalationService,
-    InboxService, MaestroService, ObservatoryService, PermissionsService, PolicyService,
-    QuestionsService,
+    InboxService, InsightsReport, InsightsService, MaestroService, ObservatoryService,
+    PermissionsService, PolicyService, QuestionsService,
 };
 use crate::{Error, Result};
 
@@ -496,6 +496,20 @@ impl ObservatoryService for AppServices {
                 .map_err(err)?;
             s.publish_findings_updated(&workspace_id);
             Ok(f)
+        })
+    }
+}
+
+#[async_trait]
+impl InsightsService for AppServices {
+    async fn insights(
+        &self,
+        prev_start_ms: i64,
+        start_ms: i64,
+        end_ms: i64,
+    ) -> Result<InsightsReport> {
+        rt!(self, prev_start_ms, start_ms, end_ms => |s| {
+            blocking(move || s.store().insights(prev_start_ms, start_ms, end_ms).map_err(err)).await
         })
     }
 }

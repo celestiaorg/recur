@@ -512,6 +512,7 @@ async fn consume_turn(
             text: st.final_text.clone(),
             stderr: srv.stderr_tail(),
             usage: turn_usage(&st.usage_last, &st.usage_turn, st.context_window),
+            total: st.turn_total(),
             ..Default::default()
         }
     };

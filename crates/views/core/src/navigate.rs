@@ -45,6 +45,7 @@ impl AppState {
                 c
             }
             ViewName::Schedules => vec![seg("Schedules", CrumbStyle::BoldOn)],
+            ViewName::Insights => vec![seg("Insights", CrumbStyle::BoldOn)],
             ViewName::Terminals => vec![seg("Terminals", CrumbStyle::BoldOn)],
             ViewName::Issues => vec![seg("Issues", CrumbStyle::BoldOn)],
             ViewName::Pr => vec![seg("Pull requests", CrumbStyle::BoldOn)],

@@ -349,6 +349,39 @@ fn result_usage_and_context_window() {
     assert_eq!(u.context_used(), 18_620);
 }
 
+/// Recorded `claude -p` turn of three requests: the result's usage is their
+/// sum, the meter keeps the last request.
+#[test]
+fn result_total_is_the_turn_sum_and_usage_the_last_request() {
+    let lines = [
+        r#"{"type":"assistant","message":{"content":[{"type":"text","text":"a"}],"usage":{"input_tokens":2,"cache_creation_input_tokens":17113,"cache_read_input_tokens":9403,"output_tokens":1}}}"#,
+        r#"{"type":"assistant","message":{"content":[{"type":"text","text":"b"}],"usage":{"input_tokens":2,"cache_creation_input_tokens":102,"cache_read_input_tokens":26516,"output_tokens":1}}}"#,
+        r#"{"type":"assistant","message":{"content":[{"type":"text","text":"c"}],"usage":{"input_tokens":2,"cache_creation_input_tokens":102,"cache_read_input_tokens":26618,"output_tokens":3}}}"#,
+        r#"{"type":"result","subtype":"success","session_id":"s","duration_ms":100,"is_error":false,"num_turns":3,"result":"c","usage":{"input_tokens":6,"cache_creation_input_tokens":17317,"cache_read_input_tokens":62537,"output_tokens":147}}"#,
+    ];
+    let mut tracker = recur_agent::ContextUsageTracker::default();
+    let mut end = None;
+    for line in lines {
+        for mut ev in parse(line) {
+            tracker.observe(&mut ev);
+            if let AgentEvent::TurnEnd(r) = ev {
+                end = Some(r);
+            }
+        }
+    }
+    let r = end.unwrap();
+    let pick = |u: &recur_agent::TokenUsage| {
+        (
+            u.input_tokens,
+            u.cache_creation_tokens,
+            u.cache_read_tokens,
+            u.output_tokens,
+        )
+    };
+    assert_eq!(pick(&r.usage), (2, 102, 26_618, 3));
+    assert_eq!(pick(&r.total), (6, 17_317, 62_537, 147));
+}
+
 #[test]
 fn system_compact_boundary() {
     let ev = one(

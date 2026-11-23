@@ -1,0 +1,24 @@
+[package]
+name = "recur-view-insights"
+description = "The Insights view: how agents spent their time over a week, month or year."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui-kit.workspace = true
+recur-ui.workspace = true
+recur-services.workspace = true
+recur-view-core.workspace = true
+recur-view-widgets.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+recur-services = { workspace = true, features = ["fake"] }
+recur-app.workspace = true
+
+[lints]
+workspace = true

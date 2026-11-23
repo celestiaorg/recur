@@ -9,8 +9,8 @@ use recur_domain::{
     Agent, AnalysisRun, AttentionCounts, Escalation, FINDING_ACTOR_CODER, FINDING_ACTOR_ENGINE,
     FINDING_ACTOR_HUMAN, FINDING_ACTOR_REVIEWER, FeedItem, Finding, FindingNote, FindingStatus,
     Group, IdType, InboxItem, Policy, Pr, PrSource, Project, ProjectGroup, Resource,
-    SESSION_KIND_APP, Settings, StoredEvent, Workspace, effective_runs, new_unique_id, shortid,
-    valid_finding_status,
+    SESSION_KIND_APP, Settings, StoredEvent, Workspace, WorkspaceState, effective_runs,
+    new_unique_id, shortid, valid_finding_status,
 };
 use recur_project::projfile;
 use serde::Deserialize;
@@ -773,9 +773,23 @@ impl Store {
     pub fn update_workspace(&self, id: &str, f: impl FnOnce(&mut Workspace)) -> Option<Workspace> {
         let mut s = self.state.write();
         let i = s.workspaces.iter().position(|w| w.id == id)?;
+        let was_merged = s.workspaces[i].state == WorkspaceState::Merged;
         f(&mut s.workspaces[i]);
         if let Some(db) = &self.db {
-            let _ = db.upsert_doc("workspaces", id, &s.workspaces[i], i);
+            let w = &s.workspaces[i];
+            let _ = db.upsert_doc("workspaces", id, w, i);
+            // A child folding into its parent is not a landing; a merged PR
+            // already recorded its own.
+            let landed = !was_merged
+                && w.state == WorkspaceState::Merged
+                && w.parent_id.is_empty()
+                && !s
+                    .prs
+                    .iter()
+                    .any(|p| p.workspace_id == id && p.state == "Merged");
+            if landed {
+                let _ = db.record_merge(id, None, Utc::now().timestamp_millis());
+            }
         }
         Some(s.workspaces[i].clone())
     }
@@ -1474,6 +1488,7 @@ impl Store {
         let sort = idx.unwrap_or(s.prs.len());
         if let Some(db) = &self.db {
             db.upsert_doc("prs", &p.id, &p, sort)?;
+            let _ = db.record_pr_merge(&p);
         }
         let out = p.clone();
         let (source, number) = (p.source.clone(), p.number);
@@ -1519,6 +1534,7 @@ impl Store {
         f(&mut s.prs[i]);
         if let Some(db) = &self.db {
             let _ = db.upsert_doc("prs", id, &s.prs[i], i);
+            let _ = db.record_pr_merge(&s.prs[i]);
         }
         let out = s.prs[i].clone();
         self.note_local_pr_number_locked(&mut s, &out.source, out.number);

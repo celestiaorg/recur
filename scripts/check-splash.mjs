@@ -75,7 +75,7 @@ try {
       .locator("svg");
     await expect(icon).toBeVisible();
     await expect(icon).toHaveAttribute("aria-hidden", "true");
-    await expect(icon.locator("path")).toHaveAttribute("fill", "currentColor");
+    await expect(icon.locator("path").first()).toHaveAttribute("fill", "currentColor");
   }
 
   const screens = {

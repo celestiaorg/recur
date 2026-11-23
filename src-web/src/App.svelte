@@ -1285,6 +1285,27 @@ tail -F log/development.log \
     transform: translate(-19.4%, -4.7%);
   }
 
+  /* These captures make their point away from the top left. */
+  .bn-crop-inbox > div {
+    transform: translate(-43%, -4.7%);
+  }
+  @media (min-width: 601px) {
+    .bn-crop-background,
+    .bn-crop-insights {
+      mask-image:
+        linear-gradient(to right, #000 90%, transparent),
+        linear-gradient(#000 88%, transparent);
+    }
+    .bn-crop-background > div {
+      width: 132%;
+      transform: translate(-19.4%, -26%);
+    }
+    .bn-crop-insights > div {
+      width: 138%;
+      transform: translate(-24%, -7%);
+    }
+  }
+
   .bn-agents {
     display: flex;
     flex-wrap: wrap;

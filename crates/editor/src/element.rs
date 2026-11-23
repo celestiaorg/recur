@@ -1544,22 +1544,11 @@ impl EditorView {
                 if visual_block && i != main {
                     continue;
                 }
-                if r.anchor() < head {
-                    let next = doc.clamp_to_char(head + 1).max(head + 1).min(doc.len());
-                    if head >= doc.len() || doc.slice(head, next) != "\n" {
-                        head = doc.clamp_to_char(head.saturating_sub(1));
-                    }
+                if r.anchor() < head && doc.char_at(head) != Some('\n') {
+                    head = doc.clamp_to_char(head.saturating_sub(1));
                 }
             }
-            let mut letter: Option<String> = (head < doc.len()).then(|| {
-                doc.slice(
-                    head,
-                    doc.clamp_to_char(head + 1).max(head + 1).min(doc.len()),
-                )
-            });
-            if letter.as_deref().is_some_and(|l| l.is_empty()) {
-                letter = None;
-            }
+            let letter = doc.char_at(head).map(String::from);
             let (top, _) = self.with_layout_view(window, |lv| lv.row_box(head, 1));
             let mut left = text_left + self.with_layout_view(window, |lv| lv.x_at(head, 1));
             let letter = match letter.as_deref() {

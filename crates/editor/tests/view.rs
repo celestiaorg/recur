@@ -457,6 +457,50 @@ fn vim_brackets_indent_and_display_lines(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn block_cursor_draws_on_multibyte_chars(cx: &mut TestAppContext) {
+    use recur_editor::prefs::EditorKeymap;
+    let fat: gpui::Background = gpui::Hsla::from(recur_editor::theme::fat_cursor()).into();
+    for keymap in [EditorKeymap::Vim, EditorKeymap::Emacs] {
+        let mut options = EditorOptions::new("a.txt", "a”é🎉b");
+        options.prefs.keymap = keymap;
+        let mut h = mount_with(cx, options);
+        let select: &[&str] = match keymap {
+            EditorKeymap::Vim => &["v", "0", "l", "l"],
+            _ => &[],
+        };
+        for key in ["", "right", "right", "right"].iter().chain(select) {
+            h.cx.simulate_keystrokes(key);
+            h.cx.run_until_parked();
+            let sel = h.sel();
+            let quads = h.cx.update(|window, _| window.painted_quads());
+            let drawn = quads.iter().any(|q| q.background == fat);
+            assert!(drawn, "{keymap:?} after {key:?} at {sel:?}");
+        }
+    }
+}
+
+#[gpui::test]
+fn vim_replace_mode_overwrites_multibyte_chars(cx: &mut TestAppContext) {
+    let mut h = mount_vim(cx, "aé🎉b");
+    h.cx.simulate_keystrokes("l shift-r x y");
+    h.settle();
+    assert_eq!(h.doc(), "axyb");
+}
+
+#[gpui::test]
+fn vim_display_line_end_before_a_multibyte_row(cx: &mut TestAppContext) {
+    let doc = "é".repeat(2000);
+    let mut h = mount_vim(cx, &doc);
+    h.cx.simulate_keystrokes("g $");
+    h.settle();
+    let (_, head) = h.sel();
+    assert!(head > 0 && head < doc.len() - 2, "{head}");
+    h.cx.simulate_keystrokes("g 0");
+    h.settle();
+    assert_eq!(h.sel(), (0, 0));
+}
+
+#[gpui::test]
 fn find_field_takes_typed_keys(cx: &mut TestAppContext) {
     let mut h = mount(cx, "a.txt", "fmt x fmt", EditorKind::Code);
     h.cx.simulate_keystrokes("secondary-f");

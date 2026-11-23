@@ -32,6 +32,11 @@ fn match_plain_brackets(
     if if dir < 0 { pos == 0 } else { pos == doc.len() } {
         return None;
     }
+    // Callers probe one byte either side of the cursor; brackets are ASCII,
+    // so a position inside a character is never beside one.
+    if doc.clamp_to_char(pos) != pos {
+        return None;
+    }
     let start_ch = if dir < 0 {
         doc.char_before(pos)?
     } else {
@@ -181,5 +186,16 @@ mod tests {
         let s = st("x(y)", 4);
         assert_eq!(bracket_highlights(&s), vec![(1, 2, true), (3, 4, true)]);
         assert!(bracket_highlights(&st("xy", 1)).is_empty());
+    }
+
+    #[test]
+    fn cursor_beside_multibyte_chars() {
+        let doc = "(modularium.art’s) yet.”\n“é🎉(x)”";
+        let matched = (0..=doc.len())
+            .filter(|&i| doc.is_char_boundary(i))
+            .filter(|&i| !bracket_highlights(&st(doc, i)).is_empty())
+            .map(|i| &doc[i..])
+            .collect::<Vec<_>>();
+        assert_eq!(matched.len(), 8, "{matched:?}");
     }
 }

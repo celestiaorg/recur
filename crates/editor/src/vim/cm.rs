@@ -830,24 +830,15 @@ impl<'a, 'b> Cm<'a, 'b> {
 
     /// `overWriteSelection`.
     pub fn overwrite_selection(&mut self, text: &str) {
-        let doc_len = self.doc().len();
         let sel = self.view.state.selection.clone();
         let ranges: Vec<SelectionRange> = sel
             .ranges
             .iter()
-            .map(|x| {
-                if x.is_empty() && x.to < doc_len {
-                    let next = self
-                        .doc()
-                        .clamp_to_char(x.to + 1)
-                        .max(x.to + 1)
-                        .min(doc_len);
-                    let ch = self.doc().slice(x.to, next);
-                    if !ch.is_empty() && !ch.contains('\n') {
-                        return SelectionRange::range(x.from, next);
-                    }
+            .map(|x| match self.doc().char_at(x.to) {
+                Some(ch) if x.is_empty() && ch != '\n' => {
+                    SelectionRange::range(x.from, x.to + ch.len_utf8())
                 }
-                *x
+                _ => *x,
             })
             .collect();
         self.dispatch(

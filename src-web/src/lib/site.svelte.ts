@@ -50,7 +50,15 @@ export type Screen =
   | "schedules"
   | "issues"
   | "insights"
-  | "workspace";
+  | "workspace"
+  | "pull-requests"
+  | "inbox-passkey"
+  | "inbox-checkout"
+  | "inbox-dark-mode"
+  | "inbox-recovery"
+  | "inbox-session"
+  | "inbox-webhook"
+  | "inbox-idempotency";
 export const screens: { label: string; screen: Screen; caption: string }[] = [
   {
     label: "Autopilot",
@@ -74,7 +82,7 @@ export const screens: { label: string; screen: Screen; caption: string }[] = [
     label: "PR review",
     screen: "pull-request",
     caption:
-      "Open PRs across all your projects, including ones opened outside Recur: conversation, diff, commits, and checks.",
+      "A pull request opened outside Recur. Review it with an agent, then post the findings as comments.",
   },
   {
     label: "Diff",
@@ -116,7 +124,13 @@ export const screens: { label: string; screen: Screen; caption: string }[] = [
     label: "Workspace",
     screen: "workspace",
     caption:
-      "A workspace is a git worktree on its own branch. The chat, the file, and the changed-file list sit side by side.",
+      "A workspace is a git worktree on its own branch. The chat and the code sit side by side.",
+  },
+  {
+    label: "Pull requests",
+    screen: "pull-requests",
+    caption:
+      "Every open PR across your projects, including ones opened outside Recur. The ones that need you come first.",
   },
 ];
 

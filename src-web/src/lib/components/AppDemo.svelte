@@ -13,7 +13,7 @@
   const sidebar: Spot[] = [
     row("inbox", "Inbox", 64, 42),
     row("issues", "Issues", 108, 42),
-    row("pull-request", "Pull requests", 153, 42),
+    row("pull-requests", "Pull requests", 153, 42),
     row("schedules", "Schedules", 197, 42),
     row("insights", "Insights", 242, 42),
     row("loop", "Passkey sign-in", 547, 38),
@@ -24,43 +24,58 @@
   const back: Spot = ["inbox", "Back to Inbox", 180, 8, 80, 36];
   const viewPr: Spot = ["workspace-pr", "View PR #482", 1638, 8, 158, 36];
   const icon = (to: Screen, label: string, x: number): Spot => [to, label, x - 19, 58, 38, 38];
-  const listed = (to: Screen, label: string, y: number): Spot => [to, label, 890, y, 471, 71];
+  const center: Spot[] = [
+    icon("workspace", "Editor", 1465),
+    icon("changes", "Review", 1507),
+    icon("workspace-pr", "Pull request", 1549),
+  ];
+  const listed = (to: Screen, name: string, y: number): Spot => [to, `Select ${name}`, 867, y, 416, 72];
+  const list: Spot[] = [
+    listed("inbox", "Team invites", 137),
+    listed("inbox-passkey", "Passkey sign-in", 247),
+    listed("inbox-checkout", "Checkout tests", 320),
+    listed("inbox-dark-mode", "Dark mode", 392),
+    listed("inbox-recovery", "Recovery tests", 465),
+    listed("inbox-session", "Session refresh", 574),
+    listed("inbox-webhook", "Webhook retries", 647),
+    listed("inbox-idempotency", "Idempotency keys", 720),
+  ];
+  const open = (to: Screen, x = 1725): Spot => [to, "Open workspace", x, 59, 157, 35];
+  const review = (to: Screen, y: number): Spot => [to, "Review changes", 1883, y, 77, 33];
   const spots: Partial<Record<Screen, Spot[]>> = {
     loop: [back],
     background: [back],
     uncommitted: [back],
-    workspace: [
-      back,
-      viewPr,
-      icon("changes", "Review", 1512),
-      icon("workspace-pr", "Pull request", 1554),
-      ["workspace-pr", "Review chat", 602, 104, 140, 44],
+    workspace: [back, viewPr, ...center],
+    changes: [back, viewPr, ...center],
+    "workspace-pr": [back, viewPr, ...center],
+    "pull-requests": [
+      ["pull-request", "Open #486", 390, 137, 1610, 119],
+      ["workspace-pr", "Open #482", 390, 292, 1610, 119],
     ],
-    changes: [
-      back,
-      viewPr,
-      icon("workspace", "Editor", 1465),
-      icon("workspace-pr", "Pull request", 1549),
+    "pull-request": [["pull-requests", "Back to pull requests", 180, 8, 156, 36]],
+    inbox: list,
+    "inbox-passkey": [...list, open("loop", 1823)],
+    "inbox-checkout": list,
+    "inbox-dark-mode": list,
+    "inbox-recovery": list,
+    "inbox-session": [
+      ...list,
+      open("workspace"),
+      review("changes", 505),
+      ["workspace-pr", "View PR #482", 1555, 59, 161, 35],
     ],
-    "workspace-pr": [
-      back,
-      icon("workspace", "Editor", 1465),
-      icon("changes", "Review", 1507),
-      ["workspace", "Session refresh chat", 390, 104, 208, 44],
-      ["changes", "Files changed", 1274, 104, 196, 44],
-    ],
-    inbox: [
-      listed("loop", "Open Passkey sign-in", 247),
-      listed("workspace", "Open Session refresh", 575),
-      listed("background", "Open Webhook retries", 648),
-      listed("uncommitted", "Open Idempotency keys", 721),
-    ],
+    "inbox-webhook": [...list, open("background")],
+    "inbox-idempotency": [...list, open("uncommitted"), review("uncommitted", 442)],
     issues: [
       ["background", "PAY-88: view workspace", 1786, 160, 192, 39],
       ["uncommitted", "PAY-91: view workspace", 1786, 451, 192, 39],
       ["workspace", "#471: view workspace", 1786, 691, 192, 39],
     ],
   };
+  // A selected Inbox row is still the Inbox stop.
+  const stop = (to: Screen) =>
+    screens.find((s) => s.screen === (to.startsWith("inbox-") ? "inbox" : to))!;
 
   const wide = new MediaQuery("min-width: 900px");
   const fadeMs = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 140;
@@ -68,8 +83,8 @@
     ["loop", "inbox", "workspace-pr", "insights"].includes(s.screen),
   );
 
-  let screen = $state.raw(screens[0]);
-  let shown = $state.raw(screens[0]);
+  let screen = $state<Screen>(screens[0].screen);
+  let shown = $state<Screen>(screens[0].screen);
   let touched = $state(false);
   let hint = $state(0);
   let frame = $state<HTMLElement>();
@@ -82,12 +97,11 @@
   // The capture changes once it has decoded, so it fades in whole.
   async function show(to: Screen) {
     touched = true;
-    const item = screens.find((s) => s.screen === to)!;
-    screen = item;
+    screen = to;
     await load(to);
-    if (screen !== item) return;
+    if (screen !== to) return;
     const inside = frame?.contains(document.activeElement);
-    shown = item;
+    shown = to;
     await tick();
     if (inside && !frame?.contains(document.activeElement)) frame?.focus();
   }
@@ -99,7 +113,7 @@
   <div class="pills" role="group" aria-label="Recur screens">
     {#each pills as item (item.screen)}<button
         type="button"
-        aria-pressed={screen === item}
+        aria-pressed={stop(screen) === item}
         onclick={() => show(item.screen)}>{item.label}</button
       >{/each}
   </div>
@@ -110,7 +124,7 @@
   bind:this={frame}
   tabindex="-1"
   role="group"
-  aria-label="Recur: {shown.label}"
+  aria-label="Recur: {stop(shown).label}"
 >
   {#key shown}<div
       class="layer"
@@ -119,13 +133,13 @@
     >
       {#if wide.current}
         <img
-          src="/screenshots/{shown.screen}.png"
-          alt={shown.caption}
+          src="/screenshots/{shown}.png"
+          alt={stop(shown).caption}
           width="1440"
           height="800"
         />
       {:else}
-        <ProductScreenshot screen={shown.screen} eager caption={shown.caption} />
+        <ProductScreenshot screen={shown} eager caption={stop(shown).caption} />
       {/if}
     </div>{/key}
   {#if wide.current}
@@ -138,10 +152,10 @@
         if (event.target === event.currentTarget) hint++;
       }}
     >
-      {#each [...sidebar, ...(spots[shown.screen] ?? [])] as [to, label, x, y, w, h] (label)}<button
+      {#each [...sidebar, ...(spots[shown] ?? [])] as [to, label, x, y, w, h] (label)}<button
           type="button"
           aria-label={label}
-          aria-current={shown.screen === to ? "page" : undefined}
+          aria-current={shown === to ? "page" : undefined}
           style:left="{x / 20}%"
           style:top="{y / 11.11}%"
           style:width="{w / 20}%"
@@ -154,7 +168,7 @@
   {/if}
 </div>
 <div class="caption" aria-live="polite">
-  {#each screens as item (item.screen)}<p class:on={screen === item}>
+  {#each screens as item (item.screen)}<p class:on={stop(screen) === item}>
       {item.caption}
     </p>{/each}
 </div>

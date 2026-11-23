@@ -97,7 +97,11 @@ try {
   for (const [name, screen] of [
     ["Inbox", "inbox"],
     ["Issues", "issues"],
-    ["Pull requests", "pull-request"],
+    ["Pull requests", "pull-requests"],
+    ["Open #486", "pull-request"],
+    ["Back to pull requests", "pull-requests"],
+    ["Open #482", "workspace-pr"],
+    ["Editor", "workspace"],
     ["Schedules", "schedules"],
     ["Insights", "insights"],
     ["Passkey sign-in", "loop"],
@@ -107,7 +111,12 @@ try {
     ["Review", "changes"],
     ["Pull request", "workspace-pr"],
     ["Back to Inbox", "inbox"],
-    ["Open Passkey sign-in", "loop"],
+    ["Select Checkout tests", "inbox-checkout"],
+    ["Select Session refresh", "inbox-session"],
+    ["Review changes", "changes"],
+    ["Back to Inbox", "inbox"],
+    ["Select Passkey sign-in", "inbox-passkey"],
+    ["Open workspace", "loop"],
   ]) {
     await go(name);
     await at(screen);

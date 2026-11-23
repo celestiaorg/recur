@@ -72,14 +72,12 @@ mod mac {
         chat: &'static str,
         /// The agent column left of the editor.
         chat_open: bool,
-        /// The Files side panel.
-        files_open: bool,
         surface: &'static str,
         file: &'static str,
         /// Typed into the commit box of the review's Uncommitted tab.
         commit_message: &'static str,
-        /// The chat's collapsed tool calls, clicked open.
-        expand: Option<(f32, f32)>,
+        /// Clicked in order: the chat's collapsed tool calls, an Inbox row.
+        clicks: &'static [(f32, f32)],
         file_list: f32,
         maestro_dock: f32,
     }
@@ -90,42 +88,50 @@ mod mac {
             view,
             chat: "PA",
             chat_open: false,
-            files_open: false,
             surface: "editor",
             file: "src/main.go",
             commit_message: "",
-            expand: None,
+            clicks: &[],
             file_list: 220.,
             maestro_dock: 390.,
         }
     }
 
-    const SCREENS: [Screen; 11] = [
+    /// Inbox with another row selected, so its overview shows.
+    const fn inbox(id: &'static str, clicks: &'static [(f32, f32)]) -> Screen {
         Screen {
             chat_open: true,
-            files_open: true,
-            maestro_dock: 440.,
+            clicks,
+            ..screen(id, View::Other(ViewName::Inbox))
+        }
+    }
+
+    const SCREENS: [Screen; 19] = [
+        // The three centers of one workspace keep the same chat, so the demo can switch between them.
+        Screen {
+            chat_open: true,
+            maestro_dock: 400.,
             ..screen("workspace", View::Workspace("LOOP-2231"))
         },
         Screen {
-            chat: "PA2",
+            chat_open: true,
             surface: "review",
             maestro_dock: 400.,
             ..screen("changes", View::Workspace("LOOP-2231"))
         },
+        Screen {
+            chat_open: true,
+            surface: "pr",
+            maestro_dock: 400.,
+            ..screen("workspace-pr", View::Workspace("LOOP-2231"))
+        },
+        screen("pull-requests", View::Other(ViewName::Pr)),
         Screen {
             chat: "MA",
             chat_open: true,
             file: "src/passkey.go",
             maestro_dock: 650.,
             ..screen("loop", View::Workspace("LOOP-2240"))
-        },
-        Screen {
-            chat: "PA2",
-            chat_open: true,
-            surface: "pr",
-            maestro_dock: 400.,
-            ..screen("workspace-pr", View::Workspace("LOOP-2231"))
         },
         Screen {
             surface: "review",
@@ -137,16 +143,19 @@ mod mac {
         Screen {
             chat_open: true,
             file: "webhooks/delivery.go",
-            expand: Some((345., 242.)),
+            clicks: &[(345., 242.)],
             maestro_dock: 470.,
             ..screen("background", View::Workspace(super::dataset::BACKGROUND))
         },
         screen("pull-request", View::Pr),
-        Screen {
-            chat_open: true,
-            expand: Some((345., 483.)),
-            ..screen("inbox", View::Other(ViewName::Inbox))
-        },
+        inbox("inbox", &[(345., 483.)]),
+        inbox("inbox-passkey", &[(345., 483.), (792., 203.)]),
+        inbox("inbox-checkout", &[(345., 483.), (792., 256.)]),
+        inbox("inbox-dark-mode", &[(345., 483.), (792., 308.)]),
+        inbox("inbox-recovery", &[(345., 483.), (792., 361.)]),
+        inbox("inbox-session", &[(345., 483.), (792., 439.)]),
+        inbox("inbox-webhook", &[(345., 483.), (792., 492.)]),
+        inbox("inbox-idempotency", &[(345., 483.), (792., 544.)]),
         screen("issues", View::Other(ViewName::Issues)),
         screen("schedules", View::Other(ViewName::Schedules)),
         screen("insights", View::Other(ViewName::Insights)),
@@ -218,7 +227,7 @@ mod mac {
             left_kind: "agent".into(),
             right_kind: "files".into(),
             left_open: Some(screen.chat_open),
-            right_open: Some(screen.files_open),
+            right_open: Some(false),
             main_surface: screen.surface.into(),
             ..Default::default()
         });
@@ -316,6 +325,8 @@ mod mac {
                 (PanelKey::MaestroDock, screen.maestro_dock),
                 (PanelKey::ObsSide, 180.),
                 (PanelKey::PrFileList, screen.file_list),
+                (PanelKey::InboxChat, 344.),
+                (PanelKey::InboxList, 300.),
             ] {
                 s.set_panel(key, size, cx);
             }
@@ -332,7 +343,7 @@ mod mac {
             commit_message(cx, window, screen.commit_message)?;
             settle(cx, window, 6).await;
         }
-        if let Some((x, y)) = screen.expand {
+        for &(x, y) in screen.clicks {
             click(cx, window, point(px(x), px(y)));
             settle(cx, window, 6).await;
         }

@@ -338,6 +338,17 @@ impl BrowserSurface {
             .is_some_and(|p| !recur_domain::verify_dev_cmd(p).trim().is_empty())
     }
 
+    /// The page shown, else the one it was last asked to load.
+    pub(crate) fn current_url(&self, cx: &App) -> String {
+        if self.nav.error.is_none() && !self.nav.url.is_empty() {
+            return self.nav.url.clone();
+        }
+        self.page
+            .as_ref()
+            .map(|p| p.read(cx).requested().to_string())
+            .unwrap_or_default()
+    }
+
     /// The URL the page was last asked to load.
     #[cfg(test)]
     pub(crate) fn requested(&self, cx: &App) -> String {

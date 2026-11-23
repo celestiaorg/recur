@@ -64,6 +64,7 @@ tool_names! {
     READ_TERMINAL = "read_terminal",
     RUN_BACKGROUND = "run_background",
     STOP_TERMINAL = "stop_terminal",
+    BROWSER_SCREENSHOT = "browser_screenshot",
     SCHEDULE_WAKEUP = "schedule_wakeup",
     CREATE_SCHEDULE = "create_schedule",
     LIST_SCHEDULES = "list_schedules",

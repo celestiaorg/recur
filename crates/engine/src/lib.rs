@@ -14,6 +14,7 @@ pub mod ask_user;
 pub mod attachments;
 pub mod attention;
 pub mod briefing;
+pub mod browser;
 pub mod bus;
 pub mod chat;
 pub mod chat_shared;

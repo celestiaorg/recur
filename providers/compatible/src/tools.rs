@@ -6,7 +6,7 @@ use std::sync::Arc;
 use recur_agent::{ToolCallMeta, ToolHost, ToolOutcome, ToolSpec, TurnRequest};
 use recur_agent_tools::{
     Call, Host, HostError, PermissionAsk, PermissionVerdict, Permitter, Registry, Tool,
-    advertised_name, bare_name, coding_tools, halt_after, host_tools,
+    advertised_name, bare_name, coding_tools, halt_after, host_tools, names,
 };
 use recur_domain::PERMISSION_MODE_BYPASS;
 use tokio_util::sync::CancellationToken;
@@ -54,6 +54,7 @@ pub fn harness_agent_code(req: &TurnRequest) -> String {
 /// Grep, Bash).
 pub fn harness_tools() -> Vec<Arc<dyn Tool>> {
     let mut tools = host_tools();
+    tools.retain(|t| t.name() != names::BROWSER_SCREENSHOT);
     tools.extend(coding_tools());
     tools
 }

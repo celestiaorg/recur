@@ -757,6 +757,7 @@
           "mcp__recur__rename_branch",
           "mcp__recur__run_background",
           "mcp__recur__stop_terminal",
+          "mcp__recur__browser_screenshot",
           "mcp__recur__open_pr",
           "mcp__recur__create_workspace",
           "mcp__recur__merge_child",
@@ -807,7 +808,8 @@
           "mcp__recur__schedule_wakeup",
           "mcp__recur__rename_branch",
           "mcp__recur__run_background",
-          "mcp__recur__stop_terminal"
+          "mcp__recur__stop_terminal",
+          "mcp__recur__browser_screenshot"
         ]
       }
     },
@@ -851,6 +853,7 @@
           "mcp__recur__rename_branch",
           "mcp__recur__run_background",
           "mcp__recur__stop_terminal",
+          "mcp__recur__browser_screenshot",
           "mcp__recur__open_pr",
           "mcp__recur__create_workspace",
           "mcp__recur__merge_child",
@@ -901,7 +904,8 @@
           "mcp__recur__schedule_wakeup",
           "mcp__recur__rename_branch",
           "mcp__recur__run_background",
-          "mcp__recur__stop_terminal"
+          "mcp__recur__stop_terminal",
+          "mcp__recur__browser_screenshot"
         ]
       }
     }

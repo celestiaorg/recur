@@ -379,6 +379,24 @@ fn main() {
         })
         .detach();
 
+        if let Some(svc) = &real {
+            let main_tx = main_tx.clone();
+            svc.set_browser_capture(Arc::new(move |req| -> recur_services::BrowserFuture {
+                let (tx, rx) = futures::channel::oneshot::channel();
+                let _ = main_tx.unbounded_send(Box::new(move |cx: &mut App| {
+                    let shots = recur_view_observatory::capture_browser(req, cx);
+                    cx.spawn(async move |_| {
+                        let _ = tx.send(shots.await);
+                    })
+                    .detach();
+                }));
+                Box::pin(async move {
+                    rx.await
+                        .unwrap_or_else(|_| Err(recur_services::BROWSER_UNAVAILABLE.into()))
+                })
+            }));
+        }
+
         hub.set_hooks(
             Some({
                 let services = services.clone();

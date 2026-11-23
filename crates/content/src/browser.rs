@@ -710,7 +710,7 @@ pub struct BrowserCapture {
 
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
-mod mac {
+pub(crate) mod mac {
     use std::cell::{Cell, RefCell};
     use std::ffi::c_void;
     use std::rc::Rc;

@@ -310,7 +310,7 @@ fn registry_resolves_prefixed_names_and_advertises_them() {
         advertised_name(listed[0].as_ref(), &allowed),
         "mcp__recur__ask_user"
     );
-    assert_eq!(reg.list(None).len(), 52);
+    assert_eq!(reg.list(None).len(), 53);
     assert!(recur_agent_tools::halt_after("mcp__recur__ask_user", ""));
     assert!(recur_agent_tools::halt_after(
         "switch_mode",

@@ -19,3 +19,4 @@ pub use api::{Backend, Services};
 pub use app::{AppConfig, AppOptions, AppServices};
 pub use error::{Error, Result};
 pub use events::{AppEvent, EventHub};
+pub use recur_engine::browser::{BROWSER_UNAVAILABLE, BrowserFuture, BrowserHook};

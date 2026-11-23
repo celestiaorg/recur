@@ -3,6 +3,7 @@
 //! find, the image lightbox and the browser page.
 
 pub mod browser;
+pub mod browser_shot;
 pub mod dom;
 pub mod emoji;
 pub mod html;

@@ -61,6 +61,8 @@ pub fn host_tools() -> Vec<Arc<dyn Tool>> {
         Arc::new(CreateScheduleTool),
         Arc::new(ListSchedulesTool),
         Arc::new(DeleteScheduleTool),
+        Arc::new(InstallBundleTool),
+        Arc::new(ReloadBundlesTool),
     ]
 }
 

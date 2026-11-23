@@ -4,6 +4,7 @@ mod cancel;
 mod checkpoint;
 mod children;
 mod fork;
+mod install_bundle;
 mod modes_send;
 mod moved;
 mod procs;

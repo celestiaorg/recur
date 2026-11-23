@@ -201,6 +201,95 @@ fn parse_loop_prompt_path_missing() {
 }
 
 #[test]
+fn parse_run_phase() {
+    let lp = |check: &str| {
+        format!(
+            "{THREE_ROLES}[[workflow]]\nid = \"x.loops.r\"\nname = \"R\"\nconductor = \"recur.roles.maestro\"\nentry = \"build\"\n[[workflow.phase]]\nid = \"build\"\nuses = \"converge\"\nnext = \"check\"\n[workflow.phase.roles]\nimplementer = \"recur.roles.coder\"\nreviewer = \"recur.roles.reviewer\"\n[[workflow.phase]]\nid = \"check\"\nuses = \"run\"\n{check}\n"
+        )
+    };
+    let (_g, dir) = temp_dir();
+    let parse = |toml: &str| parse_manifest_full(&dir, toml.as_bytes()).map(|p| p.loops);
+
+    let ok = parse(&lp(
+        "command = \"mise run check\"\non_reject = \"build\"\nretries = 1",
+    ))
+    .unwrap();
+    let check = ok[0].phase_by_id("check").unwrap();
+    assert_eq!(check.command, "mise run check");
+    assert_eq!(check.on_reject, "build");
+    assert_eq!(check.retries, Some(1));
+    assert_eq!(ok[0].graph_phase_ids(), ["build", "check"]);
+
+    must_write(&format!("{dir}/scripts/check.sh"), "#!/bin/sh\nexit 0\n");
+    let script = parse(&lp("command = \"scripts/check.sh\"")).unwrap();
+    let ph = script[0].phase_by_id("check").unwrap();
+    assert_eq!(ph.command, "#!/bin/sh\nexit 0\n");
+    assert_eq!(ph.script, "scripts/check.sh");
+    assert_eq!(check.script, "", "inline commands have no script path");
+
+    must_write(
+        &format!("{dir}/scripts/check.ts"),
+        "#!/usr/bin/env -S deno run -A\nDeno.exit(0);\n",
+    );
+    let ts = parse(&lp("command = \"scripts/check.ts\"")).unwrap();
+    assert!(
+        ts[0]
+            .phase_by_id("check")
+            .unwrap()
+            .command
+            .starts_with("#!/usr/bin/env -S deno")
+    );
+    must_write(&format!("{dir}/scripts/bare.ts"), "Deno.exit(0);\n");
+
+    let err = |check: &str| parse(&lp(check)).unwrap_err().0;
+    assert_eq!(
+        err("command = \"scripts/bare.ts\""),
+        "workflow \"x.loops.r\" phase[1]: command script \"scripts/bare.ts\" needs a #! line (for example #!/usr/bin/env -S deno run -A)"
+    );
+    assert_eq!(
+        err(""),
+        "workflow \"x.loops.r\" phase[1]: command is required for uses \"run\""
+    );
+    assert_eq!(
+        err("command = \"x\"\nrole = \"recur.roles.coder\""),
+        "workflow \"x.loops.r\" phase[1]: scalar role = is only legal when uses \"run\" has exactly one role slot"
+    );
+    assert_eq!(
+        err("command = \"x\"\non_reject = \"nope\""),
+        "workflow \"x.loops.r\": phase \"check\" names missing id \"nope\""
+    );
+    assert_eq!(
+        parse(
+            &lp("command = \"x\"")
+                .replace("next = \"check\"\n", "next = \"check\"\ncommand = \"x\"\n")
+        )
+        .unwrap_err()
+        .0,
+        "workflow \"x.loops.r\" phase[0]: command is only legal on run"
+    );
+    assert_eq!(
+        parse(&lp("command = \"x\"").replace(
+            "next = \"check\"\n",
+            "next = \"check\"\non_reject = \"check\"\n"
+        ))
+        .unwrap_err()
+        .0,
+        "workflow \"x.loops.r\" phase[0]: on_reject is only legal on verify and run"
+    );
+    assert_eq!(
+        parse(
+            &lp("command = \"x\"\non_reject = \"check\"").replace(
+                "uses = \"converge\"\nnext = \"check\"\n[workflow.phase.roles]\nimplementer = \"recur.roles.coder\"\nreviewer = \"recur.roles.reviewer\"\n",
+                "uses = \"run\"\ncommand = \"true\"\nnext = \"check\"\n"
+            )
+        )
+        .unwrap_err()
+        .0,
+        "workflow \"x.loops.r\": phase \"check\": on_reject must name a converge or implement phase"
+    );
+}
+
+#[test]
 fn same_or_stricter_rules() {
     let pol = FindingsThreshold {
         all_zero: false,

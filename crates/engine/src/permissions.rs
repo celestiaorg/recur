@@ -155,7 +155,10 @@ impl PermissionBroker {
             let Some(p) = st.pending.remove(id) else {
                 return false;
             };
-            if d.allow && d.remember {
+            // Each bundle install is approved on its own: it can add code
+            // that runs as the user.
+            if d.allow && d.remember && p.req.tool != recur_agent_tools::names::mcp::INSTALL_BUNDLE
+            {
                 st.approved
                     .entry(turn_key(&p.req.workspace_id, &p.req.agent_code))
                     .or_default()

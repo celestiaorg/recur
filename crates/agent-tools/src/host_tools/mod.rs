@@ -4,6 +4,7 @@
 
 mod artifacts;
 mod briefing;
+mod bundles;
 mod chat;
 mod children;
 mod findings;
@@ -19,6 +20,7 @@ pub use briefing::{
     AnswerQuestionTool, CreateProjectTool, GetWorkspaceContextTool, ListWorkspaceBriefsTool,
     MessageWorkspaceTool, PresentWorkspaceTool, ReadWorkspaceTool,
 };
+pub use bundles::{InstallBundleTool, ReloadBundlesTool};
 pub use chat::{
     AskUserTool, OpenPrTool, PermissionRequestTool, RenameBranchTool, RenameSessionTool,
     RenameWorkspaceTool, SwitchModeTool, marshal_permission_verdict,

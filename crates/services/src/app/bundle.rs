@@ -57,6 +57,7 @@ fn catalog_stamp(user: &str, def: &str) -> String {
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
             .map(|e| e.file_name())
+            .filter(|n| !n.to_string_lossy().starts_with('.'))
             .collect();
         names.sort();
         for name in names {

@@ -351,6 +351,12 @@ falls back to Charcoal (or the next enabled theme).
 
 After installing, creating, or editing a bundle, choose **Navigate → Reload Bundles** to pick up grammars, themes, terminal themes, prompts, commands, and keybindings without restarting. Skipped bundles (bad manifest, collisions) are counted in the toast and listed in Settings → Bundles.
 
+Agents (Agent and Autopilot modes) have two bundle tools. `reload_bundles` does the same reload and returns every workflow, role and policy id with its bundle and root, plus skipped packs. `install_bundle` takes a bundle directory in the worktree: lint errors come back and nothing is installed; otherwise the human approves (always, even under bypass or a remembered approval), seeing the bundle name, its workflows, roles, policies, prompts, commands and language servers, and every piece that runs a process (shebang commands, prompts, searches, expands, `run` phases by script path or first line, language servers with their command line). Lint, the approval and the install all read one staged copy, so edits made while the human decides are not installed. The bundle is then copied to `~/.recur/bundles/<directory name>/` (replacing a user bundle of that name, which the approval shows) and bundles reload. It never writes the default root.
+
+### Workflow `run` phases
+
+`uses = "run"` runs `command` (inline shell, or a bundle-relative script resolved like a prompt path) in the worktree through the shebang runner: same environment, cwd and `RECUR_PROJECT_DIRECTORY` = worktree, `RECUR_BUNDLE_SUPPORT` = the bundle dir. The phase/policy `timeout` bounds it (default 30 minutes). Exit 0 goes to `next`. A non-zero exit or timeout is a phase failure: `retries` reruns it, then `on_reject` (also legal on `verify`, nowhere else; on `run` it must name a `converge` or `implement` phase) sends the work to that phase with the exit code, the script path to rerun, and the last 40 output lines (stderr held to 10 when stdout fills the rest) appended to the next implementer turn, which runs first even on a `start = "review"` converge, or without it `on_fail` applies. TypeScript/JavaScript scripts run as processes through their `#!` (the JavaScriptCore Worker has no process or file access); a `.ts`/`.mts`/`.js`/`.mjs` `command` script without `#!` is a lint error. The linter requires `command` on `run`, rejects it elsewhere, and applies the usual graph rules.
+
 ## Shebang environment
 
 `RECUR_SELECTED_TEXT`, `RECUR_CURRENT_LINE`, `RECUR_LINE_NUMBER`,

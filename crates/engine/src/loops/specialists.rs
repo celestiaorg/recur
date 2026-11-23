@@ -523,6 +523,13 @@ impl Walk {
                 coder_display = display;
             }
         }
+        if !self.pending_rejection.is_empty() {
+            prompt = format!(
+                "{prompt}\n\n{}",
+                std::mem::take(&mut self.pending_rejection)
+            );
+            coder_display = "Fix the failing check".to_owned();
+        }
         if coder_display.is_empty() {
             coder_display = coder_dispatch_display(&prompt).to_owned();
         }

@@ -46,6 +46,7 @@ A workflow is a graph of phases. Each phase is one of these kinds:
 | `plan` | The Planner produces a plan. The policy decides whether the workflow waits for your approval. |
 | `converge` | The review loop. The implementer works, the reviewer files findings by severity, and the implementer fixes or disputes them. Rounds repeat until the open findings clear the policy's bar or the round limit is hit. |
 | `verify` | The QA role checks the result against the plan in a real browser and reports pass or fail with evidence. A rejected result can go back to an earlier phase, usually `converge`. |
+| `run` | Runs a command, such as `mise run check`, in the worktree. A failure can send the work back to an earlier phase with the command's output. |
 | `ensure_pr` | Commits, pushes, and opens a pull request with an agent-written description, or updates the existing one. |
 | `artifact` | Publishes the result as a document instead of a PR. |
 

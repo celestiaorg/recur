@@ -68,6 +68,8 @@ tool_names! {
     CREATE_SCHEDULE = "create_schedule",
     LIST_SCHEDULES = "list_schedules",
     DELETE_SCHEDULE = "delete_schedule",
+    INSTALL_BUNDLE = "install_bundle",
+    RELOAD_BUNDLES = "reload_bundles",
     // Ask Recur coordinator
     LIST_WORKSPACE_BRIEFS = "list_workspace_briefs",
     GET_WORKSPACE_CONTEXT = "get_workspace_context",

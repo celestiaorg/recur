@@ -28,6 +28,7 @@ A workflow is a scripted collaboration between specialist agents that runs insid
 - **plan.** The Planner produces a structured plan. A policy gate decides whether the workflow pauses for your approval before continuing.
 - **converge.** The review loop. The implementer does the work, then the reviewer files findings with severities, the implementer fixes or disputes them, and the reviewer re-reviews. The fix and re-review rounds repeat until open findings drop below the policy's threshold or the round cap is hit. A workflow can also start a converge at the review step to work on a diff that already exists.
 - **verify.** The QA role checks the result against the plan in a real browser and reports pass or fail with evidence. A rejected result can go back to an earlier phase, usually converge.
+- **run.** Runs a command, such as the test suite, in the worktree. A failure can send the work back to converge with the command's output.
 - **ensure_pr.** Commits, pushes, and opens a GitHub pull request with an agent-written description, or updates the existing one.
 - **artifact.** Publishes the result as a document instead of a PR.
 

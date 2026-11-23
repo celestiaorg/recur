@@ -120,6 +120,7 @@ impl Walk {
         if let Some(ph) = self.walk_phase()
             && ph.start == "review"
             && !resume_entry
+            && self.pending_rejection.is_empty()
         {
             skip_coder = true;
         }
@@ -145,7 +146,11 @@ impl Walk {
             // The board: the entry's first coding pass works a structured
             // plan; the review then judges the aggregate diff.
             let mut board_ran = false;
-            if iter == start_iter && !skip_coder && prev_findings.is_empty() {
+            if iter == start_iter
+                && !skip_coder
+                && prev_findings.is_empty()
+                && self.pending_rejection.is_empty()
+            {
                 let (ran, stop) = self.run_board(cancel, iter).await?;
                 if let Some(st) = stop {
                     return Ok(st);

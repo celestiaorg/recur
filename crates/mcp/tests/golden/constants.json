@@ -57,6 +57,8 @@
     "schedule_wakeup",
     "create_schedule",
     "list_schedules",
-    "delete_schedule"
+    "delete_schedule",
+    "install_bundle",
+    "reload_bundles"
   ]
 }

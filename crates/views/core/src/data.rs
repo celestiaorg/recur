@@ -1215,6 +1215,7 @@ impl AppState {
                 cx.notify();
             }
             AppEvent::AppFocused(d) => cx.emit(ShellEvent::AppFocused(d.workspace_id)),
+            AppEvent::BundlesChanged => self.dispatch_menu_action("reload-bundles", cx),
             AppEvent::ProviderUsage(snapshot) => {
                 let connected_cursor = snapshot.providers.as_ref().is_some_and(|ps| {
                     ps.iter()

@@ -195,6 +195,8 @@ pub fn chat_mode_shape(mode: &str, set: &Settings, child: bool) -> ChatTurnShape
                 mcp::RENAME_BRANCH,
                 mcp::RUN_BACKGROUND,
                 mcp::STOP_TERMINAL,
+                mcp::INSTALL_BUNDLE,
+                mcp::RELOAD_BUNDLES,
             ]));
             let append_prompt = if child {
                 join_append_prompt(

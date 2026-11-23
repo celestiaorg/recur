@@ -1022,6 +1022,8 @@
         "mcp__recur__list_artifacts",
         "mcp__recur__read_artifact",
         "mcp__recur__present_artifact",
+        "mcp__recur__install_bundle",
+        "mcp__recur__reload_bundles",
         "mcp__recur__list_skills",
         "mcp__recur__activate_skill"
       ],

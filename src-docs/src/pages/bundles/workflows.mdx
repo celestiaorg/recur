@@ -182,6 +182,7 @@ Each `[[workflow.phase]]` uses one built-in kind, called a verb. The verb decide
 | `review` | `reviewer` (mode `review`) | `review` |
 | `converge` | `implementer` and `reviewer` | `implement`, `review`, `fix`, `rereview` |
 | `verify` | `verifier` (mode `ask`, `review`, or `agent`) | `verify` |
+| `run` | None | None |
 | `ensure_pr` | None | None |
 | `artifact` | None | None |
 
@@ -192,7 +193,8 @@ All listed roles are required. When a verb has a single role or prompt slot, use
 | `id` | Phase id, unique in the workflow. `fail`, `escalate`, `skip`, and `next` are reserved |
 | `uses` | The verb |
 | `next` | The phase after this one. Leave it out on the last phase |
-| `on_reject` | `verify` only: the phase to go back to when QA rejects the result, usually the `converge` phase. Without it, a rejection fails the run |
+| `on_reject` | `verify` and `run` only: the phase to go back to when the check fails, usually the `converge` phase. Without it, a failure fails the run (or follows `on_fail`) |
+| `command` | `run` only: the command to run in the worktree. See [Run a command](#run-a-command) |
 | `gate` | `plan_approval` on a `plan` phase waits for your approval when the policy asks for it |
 | `start` | `converge` only: `review` skips the first implement turn, for work on a diff that already exists |
 | `dispatch` | `on_demand` makes the phase run only when the conductor dispatches it |
@@ -204,6 +206,7 @@ Rules the linter enforces:
 - `entry` must be a phase, and `next` edges cannot form a cycle.
 - `next` and `on_reject` must name phases in the same workflow.
 - On-demand phases cannot be the entry, cannot be in `reenter`, and cannot be the target of a `next` or `on_reject`.
+- A `run` phase needs `command`, and only `run` takes it. It takes no roles or prompts.
 - `ensure_pr` and `artifact` end the run. `artifact` publishes the result as a document instead of a PR.
 - A `verify` phase needs [project Runs and an app URL](/concepts/project-toml) so QA can start and open your app.
 
@@ -214,7 +217,37 @@ Rules the linter enforces:
 - **Review loop**: inside a `converge` phase, the reviewer files findings and the implementer fixes them, round after round, until the open findings clear the bar or `max_rounds` is hit. The policy's `on_max_rounds` decides what happens at the limit, and the Maestro can add `extend_rounds` more.
 - **Conductor re-entry**: after a stop, the Maestro can restart any phase listed in the workflow's `reenter`, such as going back to `plan` when the scope changes.
 - **Rejected verification**: a `verify` phase with `on_reject` sends the work back to that phase when QA rejects it, then verifies again, as in the example above. The run's `timeout` still applies.
+- **Failed command**: a `run` phase with `on_reject` sends the work back when its command fails, with the end of the output as the reason.
 - **Retries**: a phase that fails is run again up to `retries` times before `on_fail` decides whether to fail, escalate, or skip.
+
+## Run a command
+
+A `run` phase is a deterministic step: it runs one command in the workspace's worktree, with no agent. Exit code 0 moves on to `next`. Use it for the checks you would run by hand, such as a build, a linter, or the test suite.
+
+```toml
+[[workflow.phase]]
+id = "build"
+uses = "converge"
+next = "check"
+
+[workflow.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "recur.roles.reviewer"
+
+[[workflow.phase]]
+id = "check"
+uses = "run"
+command = "mise run check"
+on_reject = "build"
+next = "pr"
+```
+
+- `command` is inline shell (run with bash unless it starts with `#!`), or a script file in the bundle such as `scripts/check.sh`, resolved like a phase prompt. To run a script from your repository, write it as a command: `command = "bash scripts/ci.sh"`.
+- A TypeScript or JavaScript script runs as a process through its `#!` line, such as `#!/usr/bin/env -S deno run -A` or `#!/usr/bin/env -S npx tsx`, because a check needs the files and tools that bundle TypeScript commands cannot reach. Lint rejects a `.ts`, `.mts`, `.js`, or `.mjs` script without one.
+- The command runs with the same `RECUR_*` environment as bundle shebang commands, from the worktree root.
+- The phase or policy `timeout` bounds it. Without one, it stops after 30 minutes.
+- A failure is a non-zero exit or a timeout. `retries` runs it again first. Then, with `on_reject` (a `converge` or `implement` phase), the work goes back to that phase, and the implementer's next turn gets the exit code and the last 40 lines of output. Without `on_reject`, `on_fail` decides.
+- Each run shows in the workflow chat with its exit code and output tail.
 
 ## Phase prompts
 
@@ -267,6 +300,6 @@ To start it from the composer, add a `[[prompt]]` with `mode = "autopilot"` and 
 recur bundles lint ~/.recur/bundles/Team
 ```
 
-Then choose **Navigate → Reload Bundles**. A bundle that fails to load is skipped, and **Settings → Bundles** shows why. Lint checks each bundle on its own, so it does not catch a typo in the id of a role from another bundle. Check those against the tables above.
+Then choose **Navigate → Reload Bundles**. An agent in Agent or Autopilot mode can also install a bundle it wrote in the worktree with its `install_bundle` tool: Recur lints it, asks you to approve (showing its workflows, roles, prompts, commands, and anything that runs shell code), then copies it to `~/.recur/bundles/<folder>/` and reloads. A bundle that fails to load is skipped, and **Settings → Bundles** shows why. Lint checks each bundle on its own, so it does not catch a typo in the id of a role from another bundle. Check those against the tables above.
 
 For more complete examples, copy from the shipped `Workflows` bundle: its `bundle.toml` defines every shipped workflow, role, and policy, and its `prompts/` folder holds their instructions.

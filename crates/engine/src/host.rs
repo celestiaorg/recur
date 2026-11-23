@@ -10,6 +10,7 @@
 //! tools with `chat`, and `open_pr` and `send_back` with `prs`.
 
 pub mod backfill;
+pub mod bundles;
 pub mod chat;
 
 use std::sync::{Arc, Weak};
@@ -518,6 +519,26 @@ impl Host for EngineHost {
             .engine()
             .ok_or_else(|| HostError::new("no Observatory terminals in this session"))?;
         e.run_background_from_chat(cancel, ws, agent, req).await
+    }
+
+    async fn install_bundle(
+        &self,
+        cancel: &CancellationToken,
+        ws: &str,
+        agent: &str,
+        path: &str,
+    ) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("workspace not found"))?;
+        e.install_bundle_from_chat(cancel, ws, agent, path).await
+    }
+
+    async fn reload_bundles(&self, _ws: &str, _agent: &str) -> Result<String, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new("workspace not found"))?;
+        e.reload_bundles_from_chat()
     }
 
     async fn stop_terminal(&self, ws: &str, _agent: &str, id: &str) -> Result<String, HostError> {

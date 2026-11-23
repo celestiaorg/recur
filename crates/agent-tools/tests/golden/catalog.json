@@ -349,6 +349,18 @@
       "description": "Delete one of this project's scheduled prompts. Future runs stop; workspaces it already started stay. Recur asks the user first unless permissions are bypassed.",
       "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"id\": {\"type\": \"string\", \"description\": \"Schedule id from list_schedules or create_schedule\"}\n  },\n  \"required\": [\"id\"]\n}",
       "halts": false
+    },
+    {
+      "name": "install_bundle",
+      "description": "Install a Recur Bundle you wrote in this worktree as a user bundle (~/.recur/bundles/<dir name>/) and reload bundles, so its workflows, roles, policies, prompts and commands are usable right away. The bundle is linted first: lint errors come back and nothing is installed. The human must approve every install (bundle shell commands run as them), including replacing a user bundle of the same name. Run `recur bundles lint <path>` first.",
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"path\": {\"type\": \"string\", \"description\": \"Bundle directory (holding bundle.toml), relative to the worktree root\"}\n  },\n  \"required\": [\"path\"]\n}",
+      "halts": false
+    },
+    {
+      "name": "reload_bundles",
+      "description": "Reload Recur Bundles (Navigate > Reload Bundles) and list what is installed: every workflow, role and policy id with its bundle, plus packs skipped and why. Call it to find shipped ids to reuse before writing a bundle, or after editing an installed user bundle.",
+      "schema": "{\"type\":\"object\",\"properties\":{}}",
+      "halts": false
     }
   ]
 }

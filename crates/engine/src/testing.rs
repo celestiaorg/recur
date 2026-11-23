@@ -254,6 +254,92 @@ id = "pr"
 uses = "ensure_pr"
 
 [[loop]]
+id = "test.loops.run-reject"
+name = "Run on_reject"
+entry = "build"
+conductor = "recur.roles.maestro"
+
+[[loop.phase]]
+id = "build"
+uses = "converge"
+next = "check"
+[loop.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "recur.roles.reviewer"
+
+[[loop.phase]]
+id = "check"
+uses = "run"
+command = "[ -f .checked ] && exit 0; touch .checked; echo boom; exit 3"
+on_reject = "build"
+next = "pr"
+
+[[loop.phase]]
+id = "pr"
+uses = "ensure_pr"
+
+[[loop]]
+id = "test.loops.run-reject-review"
+name = "Run on_reject into a review-first converge"
+entry = "build"
+conductor = "recur.roles.maestro"
+
+[[loop.phase]]
+id = "build"
+uses = "converge"
+start = "review"
+next = "check"
+[loop.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "recur.roles.reviewer"
+
+[[loop.phase]]
+id = "check"
+uses = "run"
+command = "[ -f .checked ] && exit 0; touch .checked; echo boom; exit 3"
+on_reject = "build"
+next = "pr"
+
+[[loop.phase]]
+id = "pr"
+uses = "ensure_pr"
+
+[[loop]]
+id = "test.loops.run-retry"
+name = "Run retries"
+entry = "check"
+conductor = "recur.roles.maestro"
+
+[[loop.phase]]
+id = "check"
+uses = "run"
+command = "echo run >> .runs; [ $(wc -l < .runs) -ge 2 ]"
+retries = 1
+next = "pr"
+
+[[loop.phase]]
+id = "pr"
+uses = "ensure_pr"
+
+[[loop]]
+id = "test.loops.run-fail"
+name = "Run fails"
+entry = "check"
+conductor = "recur.roles.maestro"
+
+[[loop.phase]]
+id = "check"
+uses = "run"
+command = "echo run >> .runs; exit 1"
+retries = 1
+on_fail = "fail"
+next = "pr"
+
+[[loop.phase]]
+id = "pr"
+uses = "ensure_pr"
+
+[[loop]]
 id = "test.loops.converge"
 name = "Converge reviews"
 entry = "converge"

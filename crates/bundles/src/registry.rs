@@ -135,7 +135,7 @@ pub fn discover_catalog(roots: &DiscoverRoots) -> Result<Catalog, Error> {
             }
         };
         for (name, is_dir) in entries {
-            if !is_dir {
+            if !is_dir || name.starts_with('.') {
                 continue;
             }
             let bundle_dir = path::join(&[dir, &name]);

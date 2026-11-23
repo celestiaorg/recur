@@ -22,6 +22,7 @@ pub mod open_pr;
 pub mod prompts;
 pub mod rails;
 pub mod resume;
+pub mod run;
 pub mod specialists;
 pub mod verify;
 pub mod walker;
@@ -106,6 +107,8 @@ pub struct Walk {
     /// Paths a child-branch merge left conflicted; the next coder turn
     /// resolves them.
     pub(crate) pending_conflicts: Vec<String>,
+    /// A failed `run` phase's report; the next coder turn fixes it.
+    pub(crate) pending_rejection: String,
     /// A child workspace working one plan step for its parent.
     pub(crate) parent_id: String,
     pub(crate) started_at: Option<Instant>,
@@ -311,6 +314,7 @@ impl Walk {
             last_handoff: handoff.clone(),
             board_handoff: handoff,
             pending_conflicts: Vec::new(),
+            pending_rejection: String::new(),
             parent_id: l.parent_id.trim().to_owned(),
             started_at: Some(Instant::now()),
             board_max_rounds: board::BOARD_MAX_ROUNDS,

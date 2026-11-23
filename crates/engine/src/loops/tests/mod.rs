@@ -16,6 +16,7 @@ mod maestro;
 mod planbrief;
 mod prompts;
 mod resume;
+mod run;
 mod specialists;
 mod verify;
 mod walker;

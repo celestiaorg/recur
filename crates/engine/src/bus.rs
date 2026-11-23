@@ -83,6 +83,8 @@ pub enum EngineEvent {
     AppChatTab(AppChatTab),
     /// `app.focused`.
     AppFocused(AppFocused),
+    /// `bundles.changed`: an agent installed or reloaded bundles.
+    BundlesChanged(BundlesChanged),
     /// `session.user`.
     SessionUser(SessionUser),
     /// `session.delta`.
@@ -149,6 +151,7 @@ impl EngineEvent {
             E::ChatRenamed(_) => "chat.renamed",
             E::AppChatTab(_) => "app.chat_tab",
             E::AppFocused(_) => "app.focused",
+            E::BundlesChanged(_) => "bundles.changed",
             E::SessionUser(_) => "session.user",
             E::SessionDelta(_) => "session.delta",
             E::SessionThinking(_) => "session.thinking",
@@ -471,6 +474,10 @@ pub struct AppChatTab {
 /// `app.focused`: `{}`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 pub struct AppFocused {}
+
+/// `bundles.changed`: `{}`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub struct BundlesChanged {}
 
 /// The routing fields every `session.*` live event carries: `surface` ("app"
 /// for Ask Recur), the workspace (omitted for app chats), the tab code and its

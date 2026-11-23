@@ -67,6 +67,8 @@ pub enum AppEvent {
     AgentUpdated(AgentUpdated),
     /// `app.focused`: the OS window regained focus.
     AppFocused(AppFocused),
+    /// `bundles.changed`: an agent installed or reloaded bundles.
+    BundlesChanged,
     /// `app.open`: a `recur <path>` open, routed by `OpenPath`.
     AppOpen(OpenPathResult),
     /// `app.ready` (UI to backend): the shell mounted; queued opens may drain.
@@ -205,6 +207,7 @@ impl AppEvent {
             Self::AgentStep(_) => "agent.step",
             Self::AgentUpdated(_) => "agent.updated",
             Self::AppFocused(_) => "app.focused",
+            Self::BundlesChanged => "bundles.changed",
             Self::AppOpen(_) => "app.open",
             Self::AppReady => "app.ready",
             Self::ArtifactCreated(_) => "artifact.created",
@@ -276,6 +279,7 @@ impl AppEvent {
             Self::AppFocused(p) => json(p),
             Self::AppOpen(p) => json(p),
             Self::AppReady
+            | Self::BundlesChanged
             | Self::SettingsUpdated
             | Self::UpdaterCheck
             | Self::UpdaterUserRestart
@@ -347,6 +351,7 @@ impl AppEvent {
             "app.focused" => Self::AppFocused(de(name, null_object(d))?),
             "app.open" => Self::AppOpen(de(name, d)?),
             "app.ready" => Self::AppReady,
+            "bundles.changed" => Self::BundlesChanged,
             "artifact.created" => Self::ArtifactCreated(de(name, d)?),
             "artifact.presented" => Self::ArtifactPresented(de(name, d)?),
             "attention.updated" => Self::AttentionUpdated(de(name, d)?),

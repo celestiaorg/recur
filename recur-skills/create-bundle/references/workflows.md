@@ -115,6 +115,7 @@ Closed `uses` verbs and their slots:
 | `review` | **reviewer** (`review`) | review |
 | `converge` | **implementer** + **reviewer** | implement, review, fix, rereview |
 | `verify` | **verifier** | verify |
+| `run` | - | - |
 | `ensure_pr` | - | - |
 | `artifact` | - | - |
 
@@ -123,9 +124,27 @@ that kind has exactly one slot of that kind. Otherwise use
 `[workflow.phase.roles]` / `[workflow.phase.prompts]`.
 
 - `entry` must exist. `next` is a graph edge. **No cycles** in `next`.
-- `verify` may set `on_reject = "<phase>"` (usually the converge phase):
+- `verify` (and `run`) may set `on_reject = "<phase>"` (usually the converge phase):
   when QA rejects, work goes back there and verifies again. Without it a
   rejection fails the run. Same target rules as `next`.
+- `run` runs `command` in the worktree (no agent): inline shell, or a
+  pack-relative script path resolved like a prompt. A `.ts`/`.js` script
+  needs a `#!` (for example `#!/usr/bin/env -S deno run -A`): it runs as a
+  process, not on the sandboxed TypeScript Worker. Exit 0 goes to `next`.
+  A failure (non-zero exit or the phase/policy `timeout`, default 30m)
+  uses `retries`, then `on_reject = "<phase>"` (a `converge` or
+  `implement` phase) sends the work back with the output tail for the
+  implementer, else `on_fail`. Deterministic
+  checks belong here, not in a prompt:
+
+  ```toml
+  [[workflow.phase]]
+  id = "check"
+  uses = "run"
+  command = "mise run check"
+  on_reject = "build"   # the converge phase
+  next = "pr"
+  ```
 - `reenter` is graph ids only. `dispatch = "on_demand"` phases cannot be
   in `reenter` (conductor `run_phase` only).
 - `ensure_pr` and `artifact` are terminals: no specialist spawn. Empty
@@ -168,6 +187,8 @@ must calibrate severity (the engine does not reclassify):
 recur bundles lint ~/.recur/bundles/<Name>
 ```
 
-A bad pack is skipped at discover (Settings can show why). Reload Recur
-or revisit Settings → Bundles; the workflow picker is name-sorted from the
-catalog. Main working copy still cannot engage Autopilot mode.
+With `install_bundle`, write the pack in the worktree, lint it, then
+install it (the human approves; it reloads). Otherwise a bad pack is
+skipped at discover (Settings can show why): reload with
+Navigate > Reload Bundles or `reload_bundles`. The workflow picker is
+name-sorted from the catalog. Main working copy still cannot engage Autopilot mode.

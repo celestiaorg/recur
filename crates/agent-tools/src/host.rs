@@ -510,6 +510,24 @@ pub trait Host: Send + Sync {
         Err(HostError::new("no terminals"))
     }
 
+    /// Lints a worktree bundle directory and, once the human approves,
+    /// copies it into the user bundles root and reloads bundles.
+    async fn install_bundle(
+        &self,
+        _cancel: &CancellationToken,
+        _ws: &str,
+        _agent: &str,
+        _path: &str,
+    ) -> Result<String, HostError> {
+        Err(HostError::new("bundles are not available in this session"))
+    }
+
+    /// Reloads bundles; the result lists installed workflows, roles,
+    /// policies and skipped packs.
+    async fn reload_bundles(&self, _ws: &str, _agent: &str) -> Result<String, HostError> {
+        Err(HostError::new("bundles are not available in this session"))
+    }
+
     /// Stops a background process. Tabs the user opened are refused.
     async fn stop_terminal(&self, _ws: &str, _agent: &str, _id: &str) -> Result<String, HostError> {
         Err(HostError::new("no terminals"))

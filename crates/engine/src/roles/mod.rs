@@ -105,6 +105,8 @@ pub fn role_spec(role: &AgentRole) -> RoleSpec {
                     mcp::LIST_ARTIFACTS,
                     mcp::READ_ARTIFACT,
                     mcp::PRESENT_ARTIFACT,
+                    mcp::INSTALL_BUNDLE,
+                    mcp::RELOAD_BUNDLES,
                 ],
                 &SKILL_MCP_TOOLS,
             ]),

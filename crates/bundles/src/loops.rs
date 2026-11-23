@@ -36,6 +36,7 @@ pub const VERB_CONVERGE: &str = "converge";
 pub const VERB_VERIFY: &str = "verify";
 pub const VERB_ENSURE_PR: &str = "ensure_pr";
 pub const VERB_ARTIFACT: &str = "artifact";
+pub const VERB_RUN: &str = "run";
 
 /// The engine severity taxonomy, lowest to highest.
 pub const SEVERITY_LEVELS: [&str; 5] = ["info", "low", "medium", "high", "critical"];
@@ -195,6 +196,12 @@ pub struct LoopPhase {
     pub start: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub timeout: String,
+    /// `uses = "run"`: an inline shell body or a bundle-relative script.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub command: String,
+    /// The bundle-relative script path `command` was read from, if any.
+    #[serde(skip)]
+    pub script: String,
     #[serde(
         rename(deserialize = "max_rounds", serialize = "maxRounds"),
         skip_serializing_if = "Option::is_none"
@@ -244,7 +251,7 @@ fn verb_slots(uses: &str) -> Option<PhaseSlotSpec> {
             &["implement", "review", "fix", "rereview"],
         ),
         VERB_VERIFY => spec(&["verifier"], &["verify"]),
-        VERB_ENSURE_PR | VERB_ARTIFACT => spec(&[], &[]),
+        VERB_ENSURE_PR | VERB_ARTIFACT | VERB_RUN => spec(&[], &[]),
         _ => return None,
     })
 }
@@ -536,6 +543,33 @@ fn normalize_phase(ph: &mut LoopPhase, bundle_dir: &str) -> Result<(), Error> {
             return Err(err!("start must be implement|review"));
         }
     }
+    if ph.uses == VERB_RUN {
+        if ph.command.trim().is_empty() {
+            return Err(err!("command is required for uses {uses}"));
+        }
+        let id = ph.id.clone();
+        let script = ph.command.trim().to_string();
+        resolve_prompt_field(bundle_dir, &id, "command", &mut ph.command)?;
+        if looks_like_prompt_path(&script) {
+            ph.script = script.clone();
+        }
+        // The JavaScriptCore Worker has no process or file access, so a
+        // script check always runs as a process through its #! line.
+        let ext = path::ext(&script).to_lowercase();
+        if looks_like_prompt_path(&script)
+            && matches!(ext.as_str(), ".ts" | ".mts" | ".js" | ".mjs")
+            && !ph.command.starts_with("#!")
+        {
+            return Err(err!(
+                "command script {script:?} needs a #! line (for example #!/usr/bin/env -S deno run -A)"
+            ));
+        }
+    } else if !ph.command.is_empty() {
+        return Err(err!("command is only legal on run"));
+    }
+    if !ph.on_reject.is_empty() && ph.uses != VERB_VERIFY && ph.uses != VERB_RUN {
+        return Err(err!("on_reject is only legal on verify and run"));
+    }
     if !ph.gate.is_empty() && ph.gate != "plan_approval" {
         return Err(err!("unknown gate {:?}", ph.gate));
     }
@@ -590,8 +624,18 @@ fn lint_loop_graph(lp: &LoopDef) -> Result<(), String> {
                     ph.id, edge
                 ));
             }
-            if !by_id.contains_key(edge.as_str()) {
+            let Some(target) = by_id.get(edge.as_str()) else {
                 return Err(format!("phase {:?} names missing id {:?}", ph.id, edge));
+            };
+            if ph.uses == VERB_RUN
+                && edge == &ph.on_reject
+                && target.uses != VERB_CONVERGE
+                && target.uses != VERB_IMPLEMENT
+            {
+                return Err(format!(
+                    "phase {:?}: on_reject must name a converge or implement phase",
+                    ph.id
+                ));
             }
             inbound.insert(edge);
         }

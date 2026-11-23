@@ -4,7 +4,7 @@
 
 use recur_bundles::{
     LoopPhase, VERB_ARTIFACT, VERB_CONVERGE, VERB_ENSURE_PR, VERB_IMPLEMENT, VERB_PLAN,
-    VERB_REVIEW, VERB_VERIFY, WALK_STEP_CAP, same_or_stricter,
+    VERB_REVIEW, VERB_RUN, VERB_VERIFY, WALK_STEP_CAP, same_or_stricter,
 };
 use recur_domain::{Checkpoint, Group, WorkspaceState};
 use tokio_util::sync::CancellationToken;
@@ -177,6 +177,19 @@ impl Walk {
             }
             last_err = Some(err);
         }
+        if ph.uses == VERB_RUN && !ph.on_reject.is_empty() {
+            self.emit_feed(
+                "MA",
+                "Maestro",
+                &format!(
+                    "Phase {} failed: sending the work back to {}.",
+                    html_escape(&ph.id),
+                    html_escape(&ph.on_reject)
+                ),
+            );
+            return (ph.on_reject.clone(), false);
+        }
+        self.pending_rejection.clear();
         self.take_on_fail(cancel, ph, last_err).await
     }
 
@@ -302,6 +315,10 @@ impl Walk {
                 self.fail(cancel, &LoopError::msg(ERR_VERIFY_REJECTED));
                 (String::new(), true, None)
             }
+            VERB_RUN => match self.run_command_phase(cancel, ph).await {
+                Ok(()) => (ph.next.clone(), false, None),
+                Err(e) => (String::new(), false, Some(e)),
+            },
             VERB_ARTIFACT => {
                 self.set_state(WorkspaceState::Paused, "artifact");
                 (ph.next.clone(), ph.next.is_empty(), None)

@@ -821,7 +821,8 @@ async fn hide_editor_expands_the_terminal_in_the_middle_panel(cx: &mut TestAppCo
         !h.read(|o, cx| o.editor_tucked(cx)),
         "the editor button does not hide what it shows"
     );
-    h.keys("secondary-alt-e");
+    h.update(|o, _, cx| o.toggle_editor_surface(cx));
+    h.settle();
     assert!(h.read(|o, cx| o.editor_tucked(cx)));
     assert!(!h.has("obs-editors"));
     assert!(h.has("obs-toolbar") && h.has("obs-side") && h.has("obs-editor-toggle"));

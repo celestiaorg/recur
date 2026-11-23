@@ -211,7 +211,7 @@ async fn typing_in_a_card_marks_it_unsaved_and_cmd_s_saves_it(cx: &mut TestAppCo
     );
     assert!(h.has("df-unsaved:src/a.go"));
     assert!(!h.has("df-unsaved:src/b.go"));
-    h.keys("cmd-s");
+    h.keys("secondary-s");
     h.wait(50);
     let want = "xpackage a\n// one\n";
     assert_eq!(tree.writes.lock().clone(), [strings(&["src/a.go", want])]);
@@ -316,7 +316,7 @@ async fn a_card_and_the_editor_tab_of_its_file_share_one_buffer(cx: &mut TestApp
     // Back in the editor, a key there shows in the card.
     toggle_review(&mut h);
     h.focus_editor();
-    h.keys("cmd-end");
+    h.keys("secondary-end");
     h.type_text("!");
     debounce(&mut h);
     toggle_review(&mut h);
@@ -332,7 +332,7 @@ async fn editing_a_checked_file_leaves_it_partly_staged(cx: &mut TestAppContext)
     assert!(h.has("fl-check:src/a.go:On"));
     focus_card(&mut h, "src/a.go");
     h.type_text("y");
-    h.keys("cmd-s");
+    h.keys("secondary-s");
     h.wait(crate::obs::REVIEW_REFRESH_MS + 50);
     assert!(h.has("fl-check:src/a.go:Mixed"), "not staged again");
     let staged: HashSet<String> = tree.staged.lock().iter().cloned().collect();

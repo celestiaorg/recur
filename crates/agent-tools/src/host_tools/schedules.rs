@@ -58,14 +58,16 @@ const CREATE_SCHEDULE_SCHEMA: &str = r#"{
   "properties": {
     "name": {"type": "string", "description": "Short name shown in the Schedules view"},
     "prompt": {"type": "string", "description": "What the new workspace's agent is asked to do"},
-    "cadence": {"type": "string", "enum": ["once", "daily", "weekdays", "cron"], "description": "once needs date and time; daily and weekdays need time; cron needs cron"},
+    "cadence": {"type": "string", "enum": ["once", "daily", "weekdays", "cron", "watch"], "description": "once needs date and time; daily and weekdays need time; cron needs cron; watch needs command"},
     "date": {"type": "string", "description": "YYYY-MM-DD, for once"},
     "time": {"type": "string", "description": "HH:MM (24-hour), for once, daily and weekdays"},
     "cron": {"type": "string", "description": "Cron expression, for cron (5 fields, e.g. \"0 9 * * MON-FRI\")"},
+    "command": {"type": "string", "description": "Shell command for watch, run in the project root while Recur is open and restarted if it exits. Each non-empty stdout line is one event (JSON lines pass as values, others as text); print one line per thing worth a run and keep it running (poll in a loop, tail -F)"},
     "time_zone": {"type": "string", "description": "IANA zone the times are in (default: this machine's zone)"},
     "mode": {"type": "string", "enum": ["ask", "plan", "agent", "review"], "description": "Chat mode of the run"},
     "model": {"type": "string", "description": "provider/model ref (default: the Settings default for mode)"},
-    "base_branch": {"type": "string", "description": "Branch the new workspace starts from (default: the project's base branch)"}
+    "base_branch": {"type": "string", "description": "Branch the new workspace starts from (default: the project's base branch)"},
+    "id": {"type": "string", "description": "An existing schedule's id (from list_schedules) to edit it instead of creating one. Send name, prompt, cadence, mode and the timing again; omitted time_zone, model and base_branch keep their current values"}
   },
   "required": ["name", "prompt", "cadence", "mode"]
 }"#;
@@ -77,10 +79,12 @@ static CREATE_SCHEDULE_IN: Shape = Shape::anon(&[
     field("date", Ty::Str),
     field("time", Ty::Str),
     field("cron", Ty::Str),
+    field("command", Ty::Str),
     field("time_zone", Ty::Str),
     field("mode", Ty::Str),
     field("model", Ty::Str),
     field("base_branch", Ty::Str),
+    field("id", Ty::Str),
 ]);
 
 pub struct CreateScheduleTool;
@@ -94,9 +98,13 @@ impl Tool for CreateScheduleTool {
     fn description(&self) -> &'static str {
         "Create a scheduled prompt in this workspace's project. At each occurrence Recur starts a \
 new, independent workspace that runs prompt in mode; it does not come back to this chat (use \
-schedule_wakeup for that). Times are in time_zone. The user sees it in the Schedules view and \
-can pause, edit or delete it there. Every occurrence is a paid agent run, so Recur asks the user \
-first unless permissions are bypassed. Returns the schedule with its id and next run."
+schedule_wakeup for that). Times are in time_zone. A watch schedule runs on events instead: Recur \
+keeps command running and each stdout line starts a run with the events appended to prompt as a \
+JSON array (events that arrive while a run is active wait and go to the next run together). The \
+user sees it in the Schedules view and can pause, edit or delete it there; pass id to edit one of \
+this project's schedules (a watch command too). Every occurrence is a \
+paid agent run and a watch command runs as the user, so Recur asks the user first unless \
+permissions are bypassed. Returns the schedule with its id and next run."
     }
 
     fn schema(&self) -> String {
@@ -114,10 +122,12 @@ first unless permissions are bypassed. Returns the schedule with its id and next
             date: s("date"),
             time: s("time"),
             cron: s("cron"),
+            command: s("command"),
             time_zone: s("time_zone"),
             mode: s("mode"),
             model: s("model"),
             base_branch: s("base_branch"),
+            id: s("id"),
         };
         if req.name.is_empty() || req.prompt.is_empty() {
             return Err("name and prompt are required".into());
@@ -138,8 +148,9 @@ impl Tool for ListSchedulesTool {
     }
 
     fn description(&self) -> &'static str {
-        "List this workspace's project's scheduled prompts: id, name, cadence (cron or date/time), \
-time zone, mode, model, base branch, paused, next run and the last run's status."
+        "List this workspace's project's scheduled prompts: id, name, cadence (cron, date/time or watch \
+command), time zone, mode, model, base branch, paused, next run, the last run's status, and a \
+watch command's live status (running, last error, last event, pending events)."
     }
 
     fn schema(&self) -> String {

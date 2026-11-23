@@ -1,6 +1,6 @@
 ---
 title: Schedules
-description: Run saved prompts once or on a recurring schedule
+description: Run saved prompts once, on a recurring schedule, or on events
 ---
 
 # Schedules
@@ -10,8 +10,8 @@ Use **Schedules** in the app sidebar to manage scheduled prompts across projects
 ## Create a schedule
 
 1. Choose the repository and base branch, and write the prompt.
-2. Choose **Once** for a specific date and time, or **Cron** for recurring work.
-3. Set the time zone and check the next-run preview.
+2. Choose **Once** for a specific date and time, **Cron** for recurring work, or **Watch** to run on events (see [Watch](#watch)).
+3. Set the time zone and check the next-run preview (Watch has neither).
 4. Choose the chat mode. For Ask, Plan, Agent, or Review, pick the model. For Autopilot, pick the workflow and policy. Set Simplify for this task.
 5. Save the schedule.
 
@@ -32,11 +32,51 @@ An Autopilot schedule needs no one at the keyboard to start it, for example a ni
 
 Cron takes five fields (`minute hour day month weekday`), or six with a leading seconds field, and accepts lists, ranges, steps, and names such as `MON` or `JAN`.
 
+## Watch
+
+A **Watch** schedule runs on events instead of a clock. You give it a shell command, and Recur keeps that command running in the project root while Recur is open. Every non-empty line the command prints to stdout is one event. Recur has no built-in integrations: anything you can print from a script (CI, logs, a queue, an API you poll) can start a run.
+
+- **The prompt.** Recur appends the events to the saved prompt as a JSON array, oldest first, one element per line: the parsed value when the line is valid JSON, the line as a string otherwise. Printing one compact JSON object per line (`jq -c`) gives the run structured data.
+- **Busy runs.** Events that arrive while this schedule's previous run is still active or waiting for you are queued, then start a single run together when it settles. Up to 100 events queue; beyond that the oldest are dropped.
+- **Exits.** If the command exits, Recur starts it again after a short delay that doubles up to a minute. The schedule row shows whether it is watching, the last exit and its last stderr line, when the last event arrived, and how many events are queued.
+- **Environment.** The command runs as you, with your environment plus `RECUR_ROOT`, `RECUR_PROJECT_ID`, and the project's Env, like project setup commands. Scripts it runs come from the project root checkout, not from a task workspace.
+- **Buffering.** Make sure each line is flushed when it is printed: use `grep --line-buffered` and similar flags when piping, or Recur only sees events when a buffer fills.
+
+**Pause** stops the command, and queued events are dropped. **Run now** starts a run with any queued events. Queued events are also lost when Recur quits.
+
+### Failed CI on main
+
+Save this as `scripts/watch-failed-ci.sh` and use `sh scripts/watch-failed-ci.sh` as the command. It polls every five minutes and prints one JSON line per new failed run:
+
+```sh
+latest() { gh run list --branch main --status failure --limit 20 --json databaseId,displayTitle,url; }
+seen=$(latest | jq '[.[].databaseId] | max // 0')
+while sleep 300; do
+  runs=$(latest) || continue
+  echo "$runs" | jq -c --argjson s "$seen" '.[] | select(.databaseId > $s)'
+  seen=$(echo "$runs" | jq --argjson s "$seen" '[$s, .[].databaseId] | max')
+done
+```
+
+With a prompt such as "Find out why these CI runs failed and fix the cause", each new failure starts an Agent run that receives the run's id, title, and URL.
+
+### Errors in a log
+
+```sh
+tail -F log/development.log | grep --line-buffered -E 'ERROR|FATAL'
+```
+
+Each matching line starts a run with that line as a string event. A burst of errors while a run is active becomes one follow-up run.
+
+### Agents can create watches
+
+Agents create Watch schedules with the `create_schedule` tool (cadence `watch` and a `command`), so an agent can set up a listener while it works. Passing a schedule's `id` edits it instead, for example to fix a command that keeps exiting. Because the command runs as you, Recur shows the command and asks you to approve it unless permissions are bypassed.
+
 ## Recur must be open
 
-Schedules run while Recur is open. Recur does not install a background scheduling daemon. An occurrence that comes due while Recur is closed or the machine is asleep is marked **missed**; missed runs are not replayed later.
+Schedules run while Recur is open, and Watch commands run only then. Recur does not install a background scheduling daemon. An occurrence that comes due while Recur is closed or the machine is asleep is marked **missed**; missed runs are not replayed later.
 
-If the previous run is still active or waiting for your answer, the next occurrence is **skipped**. Follow each run's workspace in the sidebar and [Inbox](/concepts/inbox).
+If the previous run is still active or waiting for your answer, the next timed occurrence is **skipped** (Watch events wait instead). Follow each run's workspace in the sidebar and [Inbox](/concepts/inbox).
 
 ## Manage schedules
 

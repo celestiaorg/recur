@@ -285,3 +285,29 @@ fn chat_wakeups_replace_claim_once_and_cancel() {
     st.delete_workspace(&ws.id).unwrap();
     assert!(st.claim_due_chat_wakeups(at(10_000)).unwrap().is_empty());
 }
+
+#[test]
+fn watch_schedules_round_trip_and_are_never_due() {
+    let dir = tmp();
+    let st = open_temp(dir.path());
+    let proj = st.projects().unwrap()[0].id.clone();
+    let w = ScheduledPrompt {
+        cadence: "watch".into(),
+        cron: String::new(),
+        watch_command: "tail -F app.log | grep --line-buffered ERROR".into(),
+        next_run_at: 0,
+        ..base("watch", &proj)
+    };
+    st.save_scheduled_prompt(&w).unwrap();
+    st.save_scheduled_prompt(&base("cron", &proj)).unwrap();
+    let watching = st.watch_scheduled_prompts().unwrap();
+    assert_eq!(watching.len(), 1);
+    assert_eq!(watching[0].watch_command, w.watch_command);
+    let due = st
+        .due_scheduled_prompts(Utc.timestamp_millis_opt(1_000).unwrap(), true)
+        .unwrap();
+    assert!(due.iter().all(|p| p.id != "watch"), "{due:?}");
+    st.save_scheduled_prompt(&ScheduledPrompt { paused: true, ..w })
+        .unwrap();
+    assert!(st.watch_scheduled_prompts().unwrap().is_empty());
+}

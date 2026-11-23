@@ -49,6 +49,9 @@ pub enum StateFilter {
 
 /// `scheduleLabel`.
 pub fn schedule_label(p: &ScheduledPrompt) -> String {
+    if p.is_watch() {
+        return format!("Watch {}", p.watch_command);
+    }
     if p.cadence == "cron" {
         return if p.cron == "@reboot" {
             "When Recur starts".into()
@@ -77,6 +80,30 @@ pub fn next_of(p: &ScheduledPrompt) -> String {
     } else {
         String::new()
     }
+}
+
+/// A watch schedule's watcher in the row's Next slot, and whether it is an error.
+pub fn watch_line(p: &ScheduledPrompt, now: i64) -> (String, bool) {
+    if p.paused {
+        return (String::new(), false);
+    }
+    let Some(w) = &p.watch_status else {
+        return ("Starting watcher".into(), false);
+    };
+    let mut parts = vec![if w.running {
+        "Watching".to_owned()
+    } else if w.error.is_empty() {
+        "Restarting".to_owned()
+    } else {
+        format!("Exited: {}", w.error)
+    }];
+    if let Some(age) = format_relative_age(w.last_event_at, now) {
+        parts.push(format!("event {}", age.rel));
+    }
+    if w.pending > 0 {
+        parts.push(format!("{} queued", w.pending));
+    }
+    (parts.join(" · "), !w.running && !w.error.is_empty())
 }
 
 /// A status tone (`toneColor`).
@@ -848,11 +875,10 @@ impl ScheduledPrompts {
                     .underline(over),
             );
 
-        let line1 = vec![
-            span(schedule_label(p)).color(t.muted),
-            dot_sep(&t),
-            span(p.time_zone.clone()),
-        ];
+        let mut line1 = vec![span(schedule_label(p)).color(t.muted)];
+        if !p.is_watch() {
+            line1.extend([dot_sep(&t), span(p.time_zone.clone())]);
+        }
         let mut line2 = vec![span(mode.label()), dot_sep(&t), span(p.base_branch.clone())];
         let meta = if embedded {
             div()
@@ -940,10 +966,12 @@ impl ScheduledPrompts {
             )
             .into_any_element()
         };
-        let next_label = if next.is_empty() {
-            String::new()
+        let (next_label, watch_err) = if p.is_watch() {
+            watch_line(p, chrono::Utc::now().timestamp_millis())
+        } else if next.is_empty() {
+            (String::new(), false)
         } else {
-            format!("Next {next}")
+            (format!("Next {next}"), false)
         };
         let mut side = div().flex_none().flex();
         side = if embedded {
@@ -967,7 +995,7 @@ impl ScheduledPrompts {
                             .size(10.)
                             .leading(1.45)
                             .tabular()
-                            .color(t.faint)
+                            .color(if watch_err { t.coral } else { t.faint })
                             .truncate(),
                     ),
             );
@@ -1746,7 +1774,7 @@ impl ScheduledPrompts {
                     Some(IconName::Clock),
                     "No schedules yet",
                     Some(empty_desc(
-                        "Run a prompt in a fresh workspace on a cron schedule or once at a set time. Recur must be open and your Mac awake; missed runs wait for you.",
+                        "Run a prompt in a fresh workspace on a cron schedule, once at a set time, or on each event a watch command prints. Recur must be open and your Mac awake; missed runs wait for you.",
                         cx,
                     )),
                     Some(btn.into_any_element()),
@@ -2035,6 +2063,35 @@ mod tests {
         assert_eq!(schedule_label(&sp("once", "")), "2026-11-02 at 09:00");
         assert_eq!(schedule_label(&sp("weekdays", "")), "Weekdays at 09:00");
         assert_eq!(schedule_label(&sp("daily", "")), "Daily at 09:00");
+    }
+
+    #[test]
+    fn watch_rows_show_the_command_and_the_watcher() {
+        let mut p = sp("watch", "");
+        p.watch_command = "tail -F app.log".into();
+        assert_eq!(schedule_label(&p), "Watch tail -F app.log");
+        assert_eq!(watch_line(&p, 0), ("Starting watcher".into(), false));
+        let now = 1_000_000_000;
+        p.watch_status = Some(recur_domain::WatchStatus {
+            running: true,
+            last_event_at: now - 5 * 60_000,
+            pending: 2,
+            ..Default::default()
+        });
+        assert_eq!(
+            watch_line(&p, now),
+            ("Watching · event 5m · 2 queued".into(), false)
+        );
+        p.watch_status = Some(recur_domain::WatchStatus {
+            error: "exit status 1: gh: not logged in".into(),
+            ..Default::default()
+        });
+        assert_eq!(
+            watch_line(&p, now),
+            ("Exited: exit status 1: gh: not logged in".into(), true)
+        );
+        p.paused = true;
+        assert_eq!(watch_line(&p, now).0, "");
     }
 
     #[test]

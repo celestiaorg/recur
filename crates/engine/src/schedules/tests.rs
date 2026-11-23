@@ -86,6 +86,18 @@ impl Sx {
             .expect("save schedule")
     }
 
+    /// Turns the test schedule into a watch schedule running `command`.
+    async fn save_watch(&self, command: &str) -> ScheduledPrompt {
+        let mut p = self.save(&self.proj).await;
+        p.cadence = "watch".into();
+        p.time.clear();
+        p.watch_command = command.into();
+        self.eng()
+            .save_scheduled_prompt(p)
+            .await
+            .expect("save watch")
+    }
+
     fn runs(&self) -> Vec<ScheduledPromptRun> {
         self.te.store.scheduled_prompt_runs().expect("runs")
     }
@@ -1193,5 +1205,165 @@ async fn keep_prunes_an_artifact_completion() {
             .workspace(&newer.id)
             .is_some_and(|w| !w.archived)
     );
+    sx.te.close().await;
+}
+
+#[test]
+fn watch_lines_become_events_appended_to_the_prompt() {
+    use crate::schedules::watch::{parse_event, prompt_with_events};
+    assert_eq!(parse_event("  \r\n"), None);
+    assert_eq!(
+        parse_event("{\"run\": 7}\n"),
+        Some(serde_json::json!({"run": 7}))
+    );
+    assert_eq!(
+        parse_event("ERROR disk full\r\n"),
+        Some(serde_json::json!("ERROR disk full"))
+    );
+    assert_eq!(prompt_with_events("Fix it", &[]), "Fix it");
+    let events = [
+        serde_json::json!({"run": 7}),
+        serde_json::json!("ERROR disk full"),
+    ];
+    assert_eq!(
+        prompt_with_events("Fix it", &events),
+        "Fix it\n\nWatch events (2), oldest first:\n```json\n[\n  {\"run\":7},\n  \"ERROR disk full\"\n]\n```"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn watch_events_wait_for_the_active_run_then_start_one_run() {
+    let c = scripted("watch-session", "Handled.");
+    let sx = Sx::new(Some(c.provider()));
+    let p = sx.save_watch("true").await;
+    assert_eq!(p.next_run_at, 0);
+    let prompts = || -> Vec<String> {
+        c.with_role(AgentRole::Coder)
+            .into_iter()
+            .map(|s| s.prompt)
+            .filter(|s| s.starts_with("Find missing tests"))
+            .collect()
+    };
+    let t0 = utc(2026, 9, 8, 9).timestamp_millis();
+    sx.eng().push_watch_lines(&p.id, &[r#"{"run":1}"#]);
+    sx.tick_locked(at_ms(t0)).await;
+    sx.drain_schedules().await;
+    assert_eq!(sx.runs().len(), 1);
+    assert_eq!(sx.runs()[0].status, "finished", "{:?}", sx.runs());
+    assert!(prompts()[0].contains(r#"{"run":1}"#), "{:?}", prompts());
+
+    let busy = ScheduledPromptRun {
+        id: "busy".into(),
+        schedule_id: p.id.clone(),
+        due_at: t0 + 1,
+        status: "running".into(),
+        ..ScheduledPromptRun::default()
+    };
+    sx.te.store.claim_scheduled_prompt(&p, &busy).unwrap();
+    sx.eng()
+        .push_watch_lines(&p.id, &["first failure", "", r#"{"run":2}"#]);
+    sx.tick_locked(at_ms(t0 + 2_000)).await;
+    assert_eq!(sx.runs().len(), 2, "an active run holds the events");
+    assert_eq!(sx.eng().watch_status(&p.id).unwrap().pending, 2);
+
+    sx.te
+        .store
+        .update_scheduled_prompt_run(&ScheduledPromptRun {
+            status: "finished".into(),
+            ..busy
+        })
+        .unwrap();
+    sx.tick_locked(at_ms(t0 + 3_000)).await;
+    sx.drain_schedules().await;
+    let runs = sx.runs();
+    assert_eq!(runs.len(), 3, "{runs:?}");
+    assert_eq!(runs[2].status, "finished", "{runs:?}");
+    let last = prompts().pop().unwrap();
+    assert!(
+        last.contains("Watch events (2)")
+            && last.contains("\"first failure\"")
+            && last.contains(r#"{"run":2}"#),
+        "{last}"
+    );
+    assert_eq!(sx.eng().watch_status(&p.id).unwrap().pending, 0);
+
+    sx.eng().pause_scheduled_prompt(&p.id, true).await.unwrap();
+    sx.eng().push_watch_lines(&p.id, &["while paused"]);
+    sx.tick_locked(at_ms(t0 + 4_000)).await;
+    assert_eq!(sx.runs().len(), 3, "a paused schedule starts nothing");
+    sx.te.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_watcher_restarts_on_exit_and_stops_on_pause() {
+    let sx = Sx::new(None);
+    let p = sx
+        .save_watch(
+            r#"printf '{"n":1}\nplain text\n\n'; echo "$RECUR_PROJECT_ID"; echo "${WATCH_TOKEN:-}"; echo boom >&2; exit 3"#,
+        )
+        .await;
+    sx.eng().start_scheduled_prompts().await.unwrap();
+    let busy = ScheduledPromptRun {
+        id: "busy".into(),
+        schedule_id: p.id.clone(),
+        due_at: 1,
+        status: "running".into(),
+        ..ScheduledPromptRun::default()
+    };
+    sx.te.store.claim_scheduled_prompt(&p, &busy).unwrap();
+    let eng = Arc::clone(sx.eng());
+    let id = p.id.clone();
+    wait_for(Duration::from_secs(5), "the watcher exits twice", || {
+        eng.watch_status(&id).is_some_and(|s| {
+            s.pending >= 6 && s.error == "exit status 3: boom" && s.last_event_at > 0
+        })
+    })
+    .await;
+    let events = sx.eng().take_watch_events(&p.id);
+    assert_eq!(
+        events[..3],
+        [
+            serde_json::json!({"n": 1}),
+            serde_json::json!("plain text"),
+            serde_json::json!(sx.proj),
+        ]
+    );
+    let mut proj = sx.te.store.project(&sx.proj).unwrap();
+    proj.env = "WATCH_TOKEN=fresh".into();
+    proj.write_project_file = true;
+    sx.te.store.update_project_run_config(proj).unwrap();
+    wait_for(Duration::from_secs(5), "a restart sees the new Env", || {
+        eng.take_watch_events(&id)
+            .contains(&serde_json::json!("fresh"))
+    })
+    .await;
+
+    let pid_file = std::path::Path::new(&sx._repo.path).join(".watch-pid");
+    let edited = ScheduledPrompt {
+        watch_command: format!("echo $$ > '{}'; exec sleep 600", pid_file.display()),
+        ..sx.eng().scheduled_prompt(&p.id).unwrap()
+    };
+    sx.eng().save_scheduled_prompt(edited).await.unwrap();
+    wait_for(Duration::from_secs(5), "the edited command runs", || {
+        std::fs::read_to_string(&pid_file).is_ok_and(|s| s.ends_with('\n'))
+            && eng.watch_status(&id).is_some_and(|s| s.running)
+    })
+    .await;
+    let pid = std::fs::read_to_string(&pid_file)
+        .unwrap()
+        .trim()
+        .to_owned();
+    let alive = move || {
+        std::process::Command::new("kill")
+            .args(["-0", &pid])
+            .status()
+            .is_ok_and(|s| s.success())
+    };
+    assert!(alive());
+    sx.eng().pause_scheduled_prompt(&p.id, true).await.unwrap();
+    wait_for(Duration::from_secs(5), "Pause stops the watcher", || {
+        eng.watch_status(&id).is_none() && !alive()
+    })
+    .await;
     sx.te.close().await;
 }

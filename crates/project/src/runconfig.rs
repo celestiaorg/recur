@@ -461,6 +461,40 @@ pub async fn run_cmd_output(
     }
 }
 
+/// A long-running shell command in its own process group, its stdout and
+/// stderr piped to the caller. The caller must call [`Streamed::stop`];
+/// dropping it leaves the group running.
+pub struct Streamed {
+    pub stdout: Option<tokio::process::ChildStdout>,
+    pub stderr: Option<tokio::process::ChildStderr>,
+    group: Arc<Group>,
+}
+
+impl Streamed {
+    /// Waits for the shell to exit.
+    pub async fn wait(&self) -> Result<ExitStatus, String> {
+        self.group.wait().await
+    }
+
+    /// Tears the whole process group down. Idempotent.
+    pub async fn stop(&self) {
+        self.group.stop().await;
+    }
+}
+
+/// Starts `/bin/sh -c script` in `work_dir` with exactly `env`.
+pub fn spawn_streamed(script: &str, work_dir: &str, env: &[String]) -> std::io::Result<Streamed> {
+    let mut cmd = shell(script, work_dir);
+    apply_env(&mut cmd, env);
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = cmd.spawn()?;
+    Ok(Streamed {
+        stdout: child.stdout.take(),
+        stderr: child.stderr.take(),
+        group: Group::spawn(child),
+    })
+}
+
 /// Asks the OS for an unused TCP port by binding 127.0.0.1:0 and releasing
 /// it. The window before the dev server binds it is acceptable for local
 /// workspace allocation: a lost race surfaces as a normal boot failure.

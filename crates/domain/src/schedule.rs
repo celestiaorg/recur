@@ -16,6 +16,9 @@ pub struct ScheduledPrompt {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub simplify: Option<bool>,
     pub cron: String,
+    /// The shell command a watch schedule keeps running; each stdout line is an event.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub watch_command: String,
     pub loop_id: String,
     pub policy_id: String,
     pub id: String,
@@ -25,7 +28,7 @@ pub struct ScheduledPrompt {
     pub base_branch: String,
     pub mode: String,
     pub model: String,
-    /// once | daily | weekdays | cron.
+    /// once | daily | weekdays | cron | watch.
     pub cadence: String,
     /// YYYY-MM-DD for once.
     pub date: String,
@@ -37,6 +40,22 @@ pub struct ScheduledPrompt {
     pub next_run_at: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_run: Option<ScheduledPromptRun>,
+    /// A watch schedule's live watcher, while Recur runs it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub watch_status: Option<WatchStatus>,
+}
+
+/// A watch schedule's command as Recur last saw it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct WatchStatus {
+    pub running: bool,
+    /// Why the command last stopped or failed to start; empty while healthy.
+    pub error: String,
+    /// Unix ms of the last event; 0 before any.
+    pub last_event_at: i64,
+    /// Events waiting for the active run to settle.
+    pub pending: usize,
 }
 
 /// A durable occurrence, claimed before any side effects.
@@ -64,8 +83,10 @@ pub enum ScheduleError {
     Time,
     #[error("choose a valid date")]
     Date,
-    #[error("choose a one-time run or cron schedule")]
+    #[error("choose a one-time run, cron or watch schedule")]
     Cadence,
+    #[error("a watch schedule needs a command")]
+    WatchCommand,
 }
 
 impl ScheduledPrompt {
@@ -73,11 +94,16 @@ impl ScheduledPrompt {
     pub fn on_startup(&self) -> bool {
         self.cadence == "cron" && self.cron.trim() == "@reboot"
     }
+
+    /// Runs on events from `watch_command`, not on a clock.
+    pub fn is_watch(&self) -> bool {
+        self.cadence == "watch"
+    }
 }
 
 /// The first occurrence strictly after `after`, in the schedule's zone.
 /// `None` for an exhausted one-time schedule, a one-time wall time that does
-/// not exist (DST gap), or @reboot. Cron uses robfig/cron's calendar and DST
+/// not exist (DST gap), @reboot, or a watch schedule. Cron uses robfig/cron's calendar and DST
 /// semantics; once/daily/weekdays fire at the first matching wall minute of
 /// the day (never twice on a fall-back day).
 pub fn next_scheduled_time(
@@ -87,6 +113,13 @@ pub fn next_scheduled_time(
     let loc: Tz = s.time_zone.parse().map_err(|_| ScheduleError::TimeZone)?;
     if s.on_startup() {
         return Ok(None);
+    }
+    if s.is_watch() {
+        return if s.watch_command.trim().is_empty() {
+            Err(ScheduleError::WatchCommand)
+        } else {
+            Ok(None)
+        };
     }
     if s.cadence == "cron" {
         let schedule = cron::parse(s.cron.trim()).map_err(ScheduleError::Cron)?;
@@ -473,6 +506,18 @@ mod tests {
         };
         assert!(reboot.on_startup());
         assert_eq!(next_scheduled_time(&reboot, Utc::now()), Ok(None));
+    }
+
+    #[test]
+    fn watch_has_no_clock_time() {
+        let mut p = prompt("watch", "", "", "UTC");
+        assert_eq!(
+            next_scheduled_time(&p, Utc::now()),
+            Err(ScheduleError::WatchCommand)
+        );
+        p.watch_command = "tail -F app.log".into();
+        assert_eq!(next_scheduled_time(&p, Utc::now()), Ok(None));
+        assert!(p.is_watch() && !p.on_startup());
     }
 
     #[test]

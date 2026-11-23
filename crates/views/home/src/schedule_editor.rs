@@ -136,6 +136,9 @@ pub fn next_label(d: &ScheduledPrompt, preview: &[i64], busy: bool, error: &str)
     if d.cadence == "cron" && d.cron.trim() == "@reboot" {
         return "Runs when Recur starts".into();
     }
+    if d.is_watch() {
+        return "Runs on each event".into();
+    }
     match preview.first() {
         Some(at) => format!("Next {}", format_medium_short_in(*at, &d.time_zone)),
         None => String::new(),
@@ -214,7 +217,7 @@ pub struct ScheduleEditor {
     preview: Vec<i64>,
     preview_error: String,
     preview_busy: bool,
-    preview_key: Option<(String, String, String, String, String)>,
+    preview_key: Option<(String, String, String, String, String, String)>,
     preview_task: Option<Task<()>>,
     branches: Vec<BranchChoice>,
     branches_loading: bool,
@@ -228,6 +231,7 @@ pub struct ScheduleEditor {
     return_focus: Option<FocusHandle>,
     prompt: Entity<TextareaState>,
     cron: Entity<InputState>,
+    watch: Entity<InputState>,
     date: Entity<DateTimeField>,
     time: Entity<DateTimeField>,
     repo_sel: Entity<Select>,
@@ -319,6 +323,7 @@ impl ScheduleEditor {
         let field =
             |window: &mut Window, cx: &mut Context<Self>| cx.new(|cx| InputState::new(window, cx));
         let cron = field(window, cx);
+        let watch = field(window, cx);
         let date = cx.new(|cx| {
             DateTimeField::new("sc-date", DateTimeKind::Date, sc_dt_style(false, cx), cx)
         });
@@ -351,6 +356,9 @@ impl ScheduleEditor {
                     SelectOption::new("once", "Once")
                         .icon(IconName::ClockFading)
                         .hint("Run once at a date and time"),
+                    SelectOption::new("watch", "Watch")
+                        .icon(IconName::Eye)
+                        .hint("Run on each line a command prints"),
                 ],
                 window,
                 cx,
@@ -395,6 +403,14 @@ impl ScheduleEditor {
                     && let Some(d) = this.draft.as_mut()
                 {
                     d.cron = f.read(cx).value().to_string();
+                    this.preview_effect(cx);
+                }
+            }),
+            cx.guarded_subscribe(&watch, |this, f, ev: &InputEvent, cx| {
+                if matches!(ev, InputEvent::Change)
+                    && let Some(d) = this.draft.as_mut()
+                {
+                    d.watch_command = f.read(cx).value().to_string();
                     this.preview_effect(cx);
                 }
             }),
@@ -495,6 +511,7 @@ impl ScheduleEditor {
             return_focus: None,
             prompt,
             cron,
+            watch,
             date,
             time,
             repo_sel,
@@ -638,6 +655,7 @@ impl ScheduleEditor {
             d.date.clone(),
             d.time.clone(),
             d.time_zone.clone(),
+            d.watch_command.clone(),
         );
         if self.preview_key.as_ref() == Some(&key) {
             return;
@@ -649,6 +667,7 @@ impl ScheduleEditor {
             date: d.date.clone(),
             time: d.time.clone(),
             time_zone: d.time_zone.clone(),
+            watch_command: d.watch_command.clone(),
             ..Default::default()
         };
         self.preview.clear();
@@ -687,9 +706,10 @@ impl ScheduleEditor {
             &self.models,
             &self.local_zone,
         );
-        let (prompt, cron, date, time) = (
+        let (prompt, cron, watch, date, time) = (
             d.prompt.clone(),
             d.cron.clone(),
+            d.watch_command.clone(),
             d.date.clone(),
             d.time.clone(),
         );
@@ -697,6 +717,8 @@ impl ScheduleEditor {
         self.prompt
             .update(cx, |s, cx| s.set_value(prompt, window, cx));
         self.cron.update(cx, |s, cx| s.set_value(cron, window, cx));
+        self.watch
+            .update(cx, |s, cx| s.set_value(watch, window, cx));
         self.date.update(cx, |s, cx| s.set_value(&date, cx));
         self.time.update(cx, |s, cx| s.set_value(&time, cx));
         self.branch_key = None;
@@ -840,11 +862,15 @@ impl ScheduleEditor {
         if d.cadence == "once" {
             v.extend(self.date.read(cx).focus_handles());
             v.extend(self.time.read(cx).focus_handles());
+        } else if d.is_watch() {
+            v.push(self.watch.read(cx).focus_handle(cx));
         } else {
             v.push(self.cron.read(cx).focus_handle(cx));
             v.push(self.help_focus.clone());
         }
-        v.push(self.zone_sel.focus_handle(cx));
+        if !d.is_watch() {
+            v.push(self.zone_sel.focus_handle(cx));
+        }
         v.push(self.mode_sel.focus_handle(cx));
         if d.mode == "loop" {
             v.extend(self.loop_pickers.read(cx).focus_handles(cx));
@@ -1040,6 +1066,9 @@ impl ScheduleEditor {
         let lit = self.hover_field == Some("cron")
             || self.cron.read(cx).focus_handle(cx).is_focused(window);
         recur_ui::style::style_text_input_fg(&self.cron, if lit { t.text } else { t.muted }, cx);
+        let lit = self.hover_field == Some("watch")
+            || self.watch.read(cx).focus_handle(cx).is_focused(window);
+        recur_ui::style::style_text_input_fg(&self.watch, if lit { t.text } else { t.muted }, cx);
         for (name, f) in [("date", &self.date), ("time", &self.time)] {
             let lit = self.hover_field == Some(name) || f.read(cx).is_focused(window);
             let style = sc_dt_style(lit, cx);
@@ -1217,6 +1246,21 @@ impl ScheduleEditor {
                         ),
                 );
             }
+        } else if d.is_watch() {
+            let ch = recur_ui::font_metrics::zero_advance(&recur_ui::fonts::Family::Mono, 12.);
+            when = when.child(
+                sc_in(
+                    &self.watch,
+                    "tail -F app.log | grep --line-buffered ERR",
+                    true,
+                    Some(44. * ch),
+                    self.hover_field == Some("watch"),
+                    window,
+                    cx,
+                )
+                .debug_selector(|| "inp:Watch command".into())
+                .on_hover(cx.guarded_listener(|m, h: &bool, _, cx| m.hover(*h, "watch", cx))),
+            );
         } else {
             // `.sc-cron { width: 24ch }` in the mono face, padding included (`border-box`).
             let ch = recur_ui::font_metrics::zero_advance(&recur_ui::fonts::Family::Mono, 12.);
@@ -1258,7 +1302,9 @@ impl ScheduleEditor {
                     .child(icon(IconName::Info).size(px(14.))),
             );
         }
-        when = when.child(div().flex_none().child(self.zone_sel.clone()));
+        if !d.is_watch() {
+            when = when.child(div().flex_none().child(self.zone_sel.clone()));
+        }
         let next = next_label(&d, &self.preview, self.preview_busy, &self.preview_error);
         let err = !self.preview_error.is_empty();
         when = when.child(

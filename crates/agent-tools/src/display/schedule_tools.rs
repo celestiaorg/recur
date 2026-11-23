@@ -50,10 +50,24 @@ pub fn schedule_tool_label(
     };
     let pick = |a: &str, b: &str| if pending { a } else { b }.to_owned();
     if is_tool(Some(tool), "create_schedule") {
+        let edit = input
+            .get("id")
+            .and_then(Value::as_str)
+            .is_some_and(|s| !s.trim().is_empty());
         if failed {
-            return "Create schedule failed".into();
+            return if edit {
+                "Edit schedule failed"
+            } else {
+                "Create schedule failed"
+            }
+            .into();
         }
-        return named(&pick("Creating", "Created"), input);
+        let (doing, done) = if edit {
+            ("Editing", "Edited")
+        } else {
+            ("Creating", "Created")
+        };
+        return named(&pick(doing, done), input);
     }
     if is_tool(Some(tool), "delete_schedule") {
         if failed {
@@ -142,6 +156,11 @@ mod tests {
                 true
             ),
             "Create schedule failed"
+        );
+        let edit = json!({"name": "Nightly", "id": "s1"});
+        assert_eq!(
+            l("mcp__recur__create_schedule", &edit, "{}", false, false),
+            "Edited schedule Nightly"
         );
         assert_eq!(
             l(

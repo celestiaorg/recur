@@ -3,6 +3,8 @@
 //! once a second under `schedule`, which also serializes configuration changes,
 //! occurrence claims and Shutdown. Startup never replays overdue occurrences:
 //! anything a minute late is missed; busy targets are skipped, not queued.
+//! Watch schedules start occurrences from events instead (`watch`); their
+//! events do queue while a run is active.
 //!
 //! `launch_prompt_workspace` is shared with the create_workspace tool.
 
@@ -58,6 +60,7 @@ fn scheduled_millis<T: chrono::TimeZone>(t: Option<DateTime<T>>) -> i64 {
 #[cfg(test)]
 mod tests;
 mod tools;
+pub(crate) mod watch;
 
 fn new_id() -> String {
     uuid::Uuid::now_v7().to_string()
@@ -74,6 +77,10 @@ impl Engine {
         p.name = p.name.trim().to_owned();
         p.prompt = p.prompt.trim().to_owned();
         p.cron = p.cron.trim().to_owned();
+        p.watch_command = p.watch_command.trim().to_owned();
+        if !p.is_watch() {
+            p.watch_command.clear();
+        }
         if p.mode == CHAT_MODE_LOOP {
             let guard = self
                 .resolve_guard(&p.loop_id, &p.policy_id, &self.store.policy().autonomy)
@@ -95,7 +102,7 @@ impl Engine {
         }
         let next =
             next_scheduled_time(&p, self.now_utc()).map_err(|e| EngineError(e.to_string()))?;
-        if next.is_none() && !p.on_startup() {
+        if next.is_none() && !p.on_startup() && !p.is_watch() {
             return Err(EngineError::new(
                 "choose a future date and time that exists in this time zone",
             ));
@@ -220,6 +227,8 @@ impl Engine {
         if !claimed {
             return Err(EngineError::new("this occurrence was already claimed"));
         }
+        let events = self.take_watch_events(id);
+        p.prompt = watch::prompt_with_events(&p.prompt, &events);
         self.launch_scheduled_prompt(p, r).await
     }
 
@@ -257,6 +266,7 @@ impl Engine {
                 }
             }
         });
+        self.watchers.lock().root = Some(stop.clone());
         *sc = ScheduleControl {
             stop: Some(stop),
             ticker: Some(ticker),
@@ -357,6 +367,7 @@ impl Engine {
     ) -> Result<()> {
         let now = now.with_timezone(&Utc);
         self.fire_due_wakeups(now);
+        self.sync_watchers();
         let err = |e: recur_store::Error| EngineError(e.to_string());
         let all = self
             .store
@@ -413,6 +424,46 @@ impl Engine {
                 && let Err(e) = self.launch_scheduled_prompt(p.clone(), r).await
             {
                 tracing::warn!("scheduled prompt {}: {e}", p.id);
+            }
+        }
+        self.dispatch_watch_events(now_ms, &runs).await
+    }
+
+    /// One occurrence per watch schedule with pending events and no active
+    /// run, carrying every event queued so far.
+    async fn dispatch_watch_events(&self, now_ms: i64, runs: &[ScheduledPromptRun]) -> Result<()> {
+        for id in self.watch_pending_ids() {
+            if self.schedule_busy(&id, runs) {
+                continue;
+            }
+            let Ok(p) = self.scheduled_prompt(&id) else {
+                continue;
+            };
+            if p.paused || !p.is_watch() {
+                continue;
+            }
+            let events = self.take_watch_events(&id);
+            let r = ScheduledPromptRun {
+                id: new_id(),
+                schedule_id: id.clone(),
+                due_at: now_ms,
+                status: "running".into(),
+                ..ScheduledPromptRun::default()
+            };
+            let claimed = self
+                .store
+                .claim_scheduled_prompt(&p, &r)
+                .map_err(|e| EngineError(e.to_string()))?;
+            if !claimed {
+                self.restore_watch_events(&id, events);
+                continue;
+            }
+            let prompt = watch::prompt_with_events(&p.prompt, &events);
+            if let Err(e) = self
+                .launch_scheduled_prompt(ScheduledPrompt { prompt, ..p }, r)
+                .await
+            {
+                tracing::warn!("watch schedule {id}: {e}");
             }
         }
         Ok(())

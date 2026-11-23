@@ -208,7 +208,7 @@ pub(crate) fn preview_scheduled_prompt(
                 after = next.with_timezone(&chrono::Utc);
             }
             None => {
-                if out.is_empty() && !p.on_startup() {
+                if out.is_empty() && !p.on_startup() && !p.is_watch() {
                     return Err(Error::new("choose a future date and time"));
                 }
                 break;
@@ -295,6 +295,10 @@ impl ProjectsService for AppServices {
             Ok(all
                 .into_iter()
                 .filter(|p| project_id.is_empty() || p.project_id == project_id)
+                .map(|mut p| {
+                    p.watch_status = s.engine.watch_status(&p.id);
+                    p
+                })
                 .collect())
         })
     }

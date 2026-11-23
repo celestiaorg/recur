@@ -274,12 +274,14 @@ fn go_db_reads_back_identically() {
 }
 
 /// Writing every loaded row back through recur-store leaves every table of
-/// the Go-written database unchanged.
+/// the Go-written database unchanged (after the migrations newer than the
+/// Go app, which may add columns).
 #[test]
 fn rust_rewrite_of_go_db_changes_nothing() {
     isolated_home("rust_rewrite_of_go_db_changes_nothing", || {
         let dir = tmp();
         let path = copy_db("go_store.db", dir.path());
+        Store::open(&path).unwrap().close().unwrap();
         let before = table_dump(&path);
         let st = Store::open(&path).unwrap();
         let snapshot = {

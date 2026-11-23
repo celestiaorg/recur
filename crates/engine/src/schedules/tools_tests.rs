@@ -194,3 +194,101 @@ async fn ask_mode_routes_create_through_approval() {
     assert_eq!(t.list().await["count"], 0);
     t.te.close().await;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_watch_schedule_shows_its_command_for_approval() {
+    let t = Tx::new(false);
+    let missing = t
+        .create(ScheduleRequest {
+            cadence: "watch".into(),
+            ..daily()
+        })
+        .await
+        .unwrap_err();
+    assert!(missing.contains("needs a command"), "{missing}");
+    let task = {
+        let h = t.host();
+        tokio::spawn(async move {
+            let req = ScheduleRequest {
+                cadence: "watch".into(),
+                cron: String::new(),
+                command: "tail -F app.log | grep --line-buffered ERROR".into(),
+                ..daily()
+            };
+            h.create_schedule(&CancellationToken::new(), "ws", "PA", req)
+                .await
+        })
+    };
+    let eng = t.te.engine.clone();
+    wait_for(Duration::from_secs(5), "permission request", || {
+        !eng.pending_permissions().is_empty()
+    })
+    .await;
+    let req = eng.pending_permissions().remove(0);
+    assert!(
+        req.summary
+            .ends_with("tail -F app.log | grep --line-buffered ERROR"),
+        "{}",
+        req.summary
+    );
+    assert!(eng.answer_permission(
+        &req.id,
+        PermissionDecision {
+            allow: true,
+            ..Default::default()
+        }
+    ));
+    let made: Value = serde_json::from_str(&task.await.unwrap().unwrap()).unwrap();
+    assert_eq!(made["cadence"], "watch");
+    assert_eq!(
+        made["command"],
+        "tail -F app.log | grep --line-buffered ERROR"
+    );
+    assert_eq!(made["nextRun"], "");
+    t.te.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_id_edits_the_schedule_and_keeps_omitted_values() {
+    let t = Tx::new(true);
+    let made = t
+        .create(ScheduleRequest {
+            model: "claude-code/sonnet".into(),
+            ..daily()
+        })
+        .await
+        .unwrap();
+    let id = made["id"].as_str().unwrap().to_owned();
+    let effort = recur_domain::Flags::from([("effort".to_owned(), "low".to_owned())]);
+    let mut stored = t.te.store.scheduled_prompts().unwrap().remove(0);
+    stored.flags = effort.clone();
+    t.te.store.save_scheduled_prompt(&stored).unwrap();
+    let edited = t
+        .create(ScheduleRequest {
+            id: id.clone(),
+            model: "claude-code/sonnet".into(),
+            cadence: "watch".into(),
+            cron: String::new(),
+            command: "tail -F app.log".into(),
+            time_zone: String::new(),
+            ..daily()
+        })
+        .await
+        .unwrap();
+    assert_eq!(edited["id"], id.as_str());
+    assert_eq!(edited["cadence"], "watch");
+    assert_eq!(edited["command"], "tail -F app.log");
+    assert_eq!(edited["model"], "claude-code/sonnet");
+    assert_eq!(edited["timeZone"], "UTC");
+    assert_eq!(t.te.store.scheduled_prompts().unwrap()[0].flags, effort);
+    assert_eq!(t.list().await["count"], 1);
+    let err = t
+        .create(ScheduleRequest {
+            id: "elsewhere".into(),
+            ..daily()
+        })
+        .await
+        .unwrap_err();
+    assert!(err.contains("not found in this project"), "{err}");
+    t.te.close().await;
+}

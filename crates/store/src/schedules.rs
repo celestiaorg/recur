@@ -36,7 +36,7 @@ pub(crate) fn millis_from_iso(s: &str) -> Result<i64> {
 
 const SCHEDULE_COLUMNS: &str =
     "id, project_id, name, prompt, base_branch, mode, model, simplify, loop_id, policy_id,
-	cadence, cron, run_date, run_time, time_zone, paused, next_run_at";
+	cadence, cron, run_date, run_time, time_zone, paused, next_run_at, watch_command";
 
 /// The query behind [`Store::active_scheduled_prompt_runs`].
 pub const RUN_SELECT: &str = "SELECT id, schedule_id, due_at, COALESCE(workspace_id, ''), status, detail FROM scheduled_prompt_run";
@@ -63,6 +63,7 @@ fn scan_schedule(r: &Row<'_>) -> rusqlite::Result<(ScheduledPrompt, String)> {
         time: r.get(13)?,
         time_zone: r.get(14)?,
         paused: r.get(15)?,
+        watch_command: r.get(17)?,
         ..Default::default()
     };
     Ok((p, r.get(16)?))
@@ -114,6 +115,7 @@ fn schedule_args(p: &ScheduledPrompt) -> Vec<Box<dyn ToSql>> {
         Box::new(p.time_zone.clone()),
         Box::new(p.paused),
         Box::new(iso_from_millis(p.next_run_at)),
+        Box::new(p.watch_command.clone()),
     ]
 }
 
@@ -124,12 +126,13 @@ fn upsert_schedule(c: &Connection, p: &ScheduledPrompt) -> Result<()> {
         .execute(
             &format!(
                 "INSERT INTO scheduled_prompt({SCHEDULE_COLUMNS})
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(id) DO UPDATE SET
 			name=excluded.name, prompt=excluded.prompt, base_branch=excluded.base_branch, mode=excluded.mode,
 			model=excluded.model, simplify=excluded.simplify, loop_id=excluded.loop_id, policy_id=excluded.policy_id,
 			cadence=excluded.cadence, cron=excluded.cron, run_date=excluded.run_date, run_time=excluded.run_time,
 			time_zone=excluded.time_zone, paused=excluded.paused, next_run_at=excluded.next_run_at,
+			watch_command=excluded.watch_command,
 			updated_at=strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 		WHERE project_id = excluded.project_id"
             ),
@@ -268,6 +271,17 @@ impl Store {
 		ORDER BY created_at, rowid"
             ),
             &[&now, &start],
+        )
+    }
+
+    /// Unpaused watch schedules: the commands the scheduler keeps running.
+    pub fn watch_scheduled_prompts(&self) -> Result<Vec<ScheduledPrompt>> {
+        self.query_schedules(
+            &format!(
+                "SELECT {SCHEDULE_COLUMNS} FROM scheduled_prompt
+		WHERE paused = 0 AND cadence = 'watch' ORDER BY created_at, rowid"
+            ),
+            &[],
         )
     }
 

@@ -267,6 +267,7 @@ pub struct Engine {
     pub(crate) interrupted_chats: Mutex<Vec<crate::chat::recover::InterruptedChat>>,
     /// Scheduled workspaces whose first turn settled into "waiting".
     pub(crate) schedule_wait: Mutex<HashSet<String>>,
+    pub(crate) watchers: Mutex<crate::schedules::watch::Watchers>,
 
     pub tasks: Tasks,
     pub(crate) hooks: Mutex<TestHooks>,
@@ -379,6 +380,7 @@ impl Engine {
                 prs: crate::prs::PrState::default(),
                 interrupted_chats: Mutex::new(Vec::new()),
                 schedule_wait: Mutex::new(HashSet::new()),
+                watchers: Mutex::default(),
                 tasks: Tasks::default(),
                 hooks: Mutex::new(TestHooks::default()),
             }

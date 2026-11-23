@@ -72,12 +72,16 @@ pub struct BackgroundRequest {
 /// the engine's defaults (machine zone, Settings model, project base).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ScheduleRequest {
+    /// An existing schedule to replace; empty creates one.
+    pub id: String,
     pub name: String,
     pub prompt: String,
     pub cadence: String,
     pub date: String,
     pub time: String,
     pub cron: String,
+    /// The watch cadence's shell command.
+    pub command: String,
     pub time_zone: String,
     pub mode: String,
     pub model: String,

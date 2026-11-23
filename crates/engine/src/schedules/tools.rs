@@ -6,7 +6,7 @@ use chrono::DateTime;
 use recur_agent_tools::names::mcp;
 use recur_agent_tools::{HostError, ScheduleRequest};
 use recur_base::tz::Tz;
-use recur_domain::{ScheduledPrompt, next_scheduled_time};
+use recur_domain::{ScheduledPrompt, WatchStatus, next_scheduled_time};
 use serde::Serialize;
 use tokio_util::sync::CancellationToken;
 
@@ -23,6 +23,10 @@ struct ScheduleCard<'a> {
     #[serde(skip_serializing_if = "str::is_empty")]
     cron: &'a str,
     #[serde(skip_serializing_if = "str::is_empty")]
+    command: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    watch: Option<WatchStatus>,
+    #[serde(skip_serializing_if = "str::is_empty")]
     date: &'a str,
     #[serde(skip_serializing_if = "str::is_empty")]
     time: &'a str,
@@ -37,7 +41,7 @@ struct ScheduleCard<'a> {
     last_run: &'a str,
 }
 
-fn card(p: &ScheduledPrompt) -> ScheduleCard<'_> {
+fn card(p: &ScheduledPrompt, watch: Option<WatchStatus>) -> ScheduleCard<'_> {
     let next_run = match (
         p.time_zone.parse::<Tz>(),
         DateTime::from_timestamp_millis(p.next_run_at),
@@ -53,6 +57,8 @@ fn card(p: &ScheduledPrompt) -> ScheduleCard<'_> {
         prompt: &p.prompt,
         cadence: &p.cadence,
         cron: &p.cron,
+        command: &p.watch_command,
+        watch,
         date: &p.date,
         time: &p.time,
         time_zone: &p.time_zone,
@@ -87,8 +93,9 @@ impl Engine {
             .collect())
     }
 
-    /// Host `create_schedule`: defaults filled, the timing checked before the
-    /// approval prompt, then saved like the Schedules view saves.
+    /// Host `create_schedule`: defaults filled (or, with an id, that schedule's
+    /// current values kept), the timing checked before the approval prompt,
+    /// then saved like the Schedules view saves.
     pub async fn create_schedule_from_chat(
         &self,
         cancel: &CancellationToken,
@@ -97,19 +104,42 @@ impl Engine {
         req: ScheduleRequest,
     ) -> Result<String, HostError> {
         let proj = self.workspace_project(workspace_id)?;
+        let base = if req.id.is_empty() {
+            ScheduledPrompt {
+                project_id: proj.id.clone(),
+                ..ScheduledPrompt::default()
+            }
+        } else {
+            self.project_schedules(&proj.id)?
+                .into_iter()
+                .find(|p| p.id == req.id)
+                .ok_or_else(|| {
+                    HostError(format!(
+                        "schedule {:?} not found in this project: call list_schedules",
+                        req.id
+                    ))
+                })?
+        };
+        let keep = |new: String, old: &str| if new.is_empty() { old.to_owned() } else { new };
+        let flags = if req.model.is_empty() || req.model == base.model {
+            base.flags.clone()
+        } else {
+            Default::default()
+        };
         let mut p = ScheduledPrompt {
-            project_id: proj.id,
             name: req.name,
             prompt: req.prompt,
             cadence: req.cadence,
             date: req.date,
             time: req.time,
             cron: req.cron,
-            time_zone: req.time_zone,
+            watch_command: req.command,
+            time_zone: keep(req.time_zone, &base.time_zone),
             mode: req.mode,
-            model: req.model,
-            base_branch: req.base_branch,
-            ..ScheduledPrompt::default()
+            model: keep(req.model, &base.model),
+            base_branch: keep(req.base_branch, &base.base_branch),
+            flags,
+            ..base
         };
         if p.time_zone.is_empty() {
             p.time_zone = iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".into());
@@ -122,7 +152,7 @@ impl Engine {
             (p.model, p.flags) = (d.model, d.flags);
         }
         next_scheduled_time(&p, self.now().to_utc()).map_err(|e| HostError(e.to_string()))?;
-        let input = serde_json::json!({
+        let mut input = serde_json::json!({
             "name": p.name,
             "prompt": p.prompt,
             "cadence": p.cadence,
@@ -133,6 +163,12 @@ impl Engine {
             "mode": p.mode,
             "model": p.model,
         });
+        if p.is_watch() {
+            input["command"] = p.watch_command.clone().into();
+        }
+        if !p.id.is_empty() {
+            input["id"] = p.id.clone().into();
+        }
         self.machine_permission(
             cancel,
             workspace_id,
@@ -146,14 +182,17 @@ impl Engine {
             .save_scheduled_prompt(p)
             .await
             .map_err(|e| HostError(e.0))?;
-        json(&card(&saved))
+        json(&card(&saved, None))
     }
 
     /// Host `list_schedules`: this workspace's project only.
     pub fn list_schedules_from_chat(&self, workspace_id: &str) -> Result<String, HostError> {
         let proj = self.workspace_project(workspace_id)?;
         let all = self.project_schedules(&proj.id)?;
-        let cards: Vec<_> = all.iter().map(card).collect();
+        let cards: Vec<_> = all
+            .iter()
+            .map(|p| card(p, self.watch_status(&p.id)))
+            .collect();
         json(&serde_json::json!({"count": cards.len(), "schedules": cards}))
     }
 

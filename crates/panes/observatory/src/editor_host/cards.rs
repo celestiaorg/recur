@@ -219,7 +219,7 @@ impl Observatory {
     }
 
     /// The path the main pane's buffer (`draft`) belongs to.
-    fn main_buffer_path(&self) -> &str {
+    pub(crate) fn main_buffer_path(&self) -> &str {
         if self.editor_path.is_empty() {
             &self.selected_path
         } else {

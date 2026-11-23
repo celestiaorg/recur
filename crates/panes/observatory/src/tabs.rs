@@ -238,8 +238,7 @@ impl Observatory {
         for path in &gone {
             self.stashed_buffers.remove(path);
             self.scratch_docs.remove(path);
-            self.tab_buffers.remove(path);
-            self.mark_tab_dirty(path, false);
+            self.drop_editor_buffer(path, cx);
             if self.editor_path == *path {
                 self.editor_path.clear();
             }

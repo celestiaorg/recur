@@ -1062,6 +1062,12 @@ impl Observatory {
                             o.overlay_split_stash(&path, cx);
                         }
                     }
+                    if from_disk && o.file.is_some() && o.main_buffer_path() == path {
+                        o.file = Some(f.clone());
+                        o.draft = o.split_draft.clone();
+                        o.saved_content = o.split_saved.clone();
+                        o.main_editor_dirty = o.split_editor_dirty;
+                    }
                     o.focused_pane = Pane::Split;
                     if o.should_select_in_explorer(&path, explorer, cx) {
                         o.tree_path = path.clone();

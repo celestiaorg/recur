@@ -18,7 +18,11 @@ use super::harness::*;
 const MAIN: &str = "package main\n\nfunc main() {}\n";
 
 fn file(path: &str, content: &str) -> FileContent {
-    super::harness::file(path, "go", content, true)
+    let mut f = super::harness::file(path, "go", content, true);
+    if path.ends_with(".png") {
+        f.mime = "image/png".into();
+    }
+    f
 }
 
 type Files = Arc<Mutex<BTreeMap<String, String>>>;
@@ -758,6 +762,135 @@ async fn restoring_a_stash_warns_when_disk_changed_while_the_tab_was_away(cx: &m
     // Back to the stash-time disk text, but disk moved on.
     assert!(dirty(&mut h, "src/main.go"));
     assert!(modified(&mut h));
+}
+
+/// `src/main.go` with unsaved edits while an agent rewrites it on disk.
+fn dirty_with_agent_edit<'a>(cx: &'a mut TestAppContext, f: &Files) -> H<'a> {
+    let mut h = mount(cx, go_files(f, Overrides::default()), |_| {}, |_| {});
+    open_file(&mut h, "src/main.go");
+    type_at_end(&mut h, "KEEPME");
+    h.wait(600);
+    f.lock().insert(
+        "src/main.go".into(),
+        "package main\n\nfunc main() { AGENT_EDIT }\n".into(),
+    );
+    h
+}
+
+fn answer_prompt(h: &mut H, button: &str) {
+    h.cx.pending_prompt().expect("a confirm");
+    h.cx.simulate_prompt_answer(button);
+    h.wait(600);
+}
+
+fn close_and_discard(h: &mut H, path: &str) {
+    h.update(|o, window, cx| o.close_tabs(vec![path.to_string()], window, cx));
+    answer_prompt(h, "Discard");
+}
+
+fn assert_shows_disk(h: &mut H) {
+    let doc = h.editor_doc();
+    assert!(
+        doc.contains("AGENT_EDIT") && !doc.contains("KEEPME"),
+        "{doc}"
+    );
+    assert!(!dirty(h, "src/main.go"));
+    assert!(!h.read(|o, _| o.dirty()));
+}
+
+#[gpui::test]
+async fn reload_replaces_unsaved_edits_with_the_disk_text(cx: &mut TestAppContext) {
+    let f = two();
+    let mut h = dirty_with_agent_edit(cx, &f);
+    h.click("crumb:reload");
+    answer_prompt(&mut h, "Cancel");
+    assert!(h.editor_doc().contains("KEEPME"));
+    assert!(dirty(&mut h, "src/main.go"));
+    h.click("crumb:reload");
+    answer_prompt(&mut h, "Reload");
+    assert_shows_disk(&mut h);
+    // A later edit and tab switch start from the disk text.
+    type_at_end(&mut h, "AGAIN");
+    open_file(&mut h, "src/other.go");
+    click_tab(&mut h, "src/main.go");
+    let doc = h.editor_doc();
+    assert!(doc.contains("AGENT_EDIT") && doc.contains("AGAIN"), "{doc}");
+}
+
+#[gpui::test]
+async fn reloading_the_split_pane_replaces_unsaved_edits_in_both_panes(cx: &mut TestAppContext) {
+    let f = two();
+    let mut h = mount(cx, go_files(&f, Overrides::default()), |_| {}, |_| {});
+    open_file(&mut h, "src/main.go");
+    type_at_end(&mut h, "KEEPME");
+    h.wait(600);
+    h.update(|o, window, cx| {
+        o.split_open = true;
+        o.open_in_split(
+            "src/main.go",
+            0,
+            0,
+            crate::obs::ExplorerReveal::Reveal,
+            false,
+            0,
+            0,
+            window,
+            cx,
+        )
+        .detach();
+    });
+    h.wait(600);
+    assert!(h.split_doc().contains("KEEPME"));
+    f.lock().insert(
+        "src/main.go".into(),
+        "package main\n\nfunc main() { AGENT_EDIT }\n".into(),
+    );
+    h.update(|o, window, cx| o.reload_from_disk(window, cx));
+    answer_prompt(&mut h, "Reload");
+    let doc = h.split_doc();
+    assert!(
+        doc.contains("AGENT_EDIT") && !doc.contains("KEEPME"),
+        "{doc}"
+    );
+    assert!(!h.read(|o, _| o.split_dirty()));
+    assert_shows_disk(&mut h);
+}
+
+#[gpui::test]
+async fn reopening_a_discarded_tab_shows_the_disk_text(cx: &mut TestAppContext) {
+    let f = two();
+    let mut h = dirty_with_agent_edit(cx, &f);
+    close_and_discard(&mut h, "src/main.go");
+    assert!(!h.has_tab("src/main.go"));
+    open_file(&mut h, "src/main.go");
+    h.wait(600);
+    assert_shows_disk(&mut h);
+}
+
+#[gpui::test]
+async fn reopening_a_discarded_background_tab_shows_the_disk_text(cx: &mut TestAppContext) {
+    let f = two();
+    let mut h = dirty_with_agent_edit(cx, &f);
+    open_file(&mut h, "src/other.go");
+    close_and_discard(&mut h, "src/main.go");
+    open_file(&mut h, "src/main.go");
+    h.wait(600);
+    assert_shows_disk(&mut h);
+}
+
+/// An image tab unmounts the editor, which parks its tabs process-wide.
+#[gpui::test]
+async fn reopening_a_discarded_parked_tab_shows_the_disk_text(cx: &mut TestAppContext) {
+    let f = two();
+    f.lock().insert("src/logo.png".into(), String::new());
+    let mut h = dirty_with_agent_edit(cx, &f);
+    h.click("obs-node:file:src/logo.png");
+    h.wait(600);
+    assert!(h.read(|o, _| o.main_editor.is_none()));
+    close_and_discard(&mut h, "src/main.go");
+    open_file(&mut h, "src/main.go");
+    h.wait(600);
+    assert_shows_disk(&mut h);
 }
 
 #[gpui::test]

@@ -133,6 +133,16 @@ impl<T: ParkedSize + Clone> SessionTabParks<T> {
         }
     }
 
+    /// Drops one path's parked tab from every pane.
+    pub fn forget_path(&mut self, session: &str, path: &str) {
+        for park in self.panes.values_mut() {
+            if let Some(mut tabs) = park.take(session) {
+                tabs.retain(|(p, _)| p != path);
+                park.park(session, &tabs);
+            }
+        }
+    }
+
     /// `pruneSessionTabParks`: drop sessions whose workspace id is gone.
     pub fn prune_workspaces(&mut self, live: &std::collections::HashSet<String>) {
         for park in self.panes.values_mut() {

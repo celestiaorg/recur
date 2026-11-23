@@ -14,6 +14,7 @@ use std::time::Duration;
 
 use nix::sys::signal::{Signal, kill, killpg};
 use nix::unistd::Pid;
+pub use recur_domain::substitute_port;
 use tokio::sync::{OnceCell, oneshot, watch};
 use tokio::time::{Instant, MissedTickBehavior};
 use tokio_util::sync::CancellationToken;
@@ -467,29 +468,6 @@ pub async fn run_cmd_output(
 pub fn free_port() -> std::io::Result<u16> {
     let l = std::net::TcpListener::bind("127.0.0.1:0")?;
     Ok(l.local_addr()?.port())
-}
-
-/// Replaces `${RECUR_PORT}`, `$RECUR_PORT`, `${PORT}` and `$PORT` in s,
-/// left to right without overlaps.
-pub fn substitute_port(s: &str, port: &str) -> String {
-    const PATTERNS: [&str; 4] = ["${RECUR_PORT}", "$RECUR_PORT", "${PORT}", "$PORT"];
-    let mut out = String::with_capacity(s.len());
-    let mut rest = s;
-    'outer: while !rest.is_empty() {
-        for p in PATTERNS {
-            if let Some(r) = rest.strip_prefix(p) {
-                out.push_str(port);
-                rest = r;
-                continue 'outer;
-            }
-        }
-        let mut chars = rest.chars();
-        if let Some(c) = chars.next() {
-            out.push(c);
-        }
-        rest = chars.as_str();
-    }
-    out
 }
 
 /// The probe client: a 2s timeout, redirects followed, and never a proxy for

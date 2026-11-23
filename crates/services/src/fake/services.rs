@@ -1820,6 +1820,10 @@ fake_services! {
             Ok(Vec::new())
         }
 
+        async fn recur_server_ports(&self) -> Result<Vec<u16>> {
+            Ok(Vec::new())
+        }
+
         async fn set_finding_status(&self, workspace_id: &str, finding_id: &str, status: &str) -> Result<Finding> {
             Ok(finding(workspace_id, finding_id, status))
         }

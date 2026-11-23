@@ -1857,3 +1857,50 @@ async fn the_left_group_is_the_toggle_alone_while_only_the_chat_is_on_the_left(
     );
     assert!(tog.right() <= chat.left());
 }
+
+#[gpui::test]
+async fn the_browser_is_a_view_of_the_center_one_per_workspace(cx: &mut TestAppContext) {
+    let mut h = mount(cx, Overrides::default(), |_| {}, |_| {});
+    h.state_update(|s, cx| {
+        if let Some(p) = s.projects.iter_mut().find(|p| p.id == PROJECT) {
+            p.app_url = "http://localhost:$RECUR_PORT/app".into();
+        }
+        if let Some(w) = s.workspaces.iter_mut().find(|w| w.id == WS) {
+            w.port = 5173;
+        }
+        cx.notify();
+    });
+    let browser = |h: &mut H| h.read(|_, cx| crate::browser::existing_browser(WS, cx));
+    assert!(browser(&mut h).is_none(), "created the first time it shows");
+    h.click("obs-browser-toggle");
+    h.settle();
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Browser);
+    assert!(h.has("obs-browser") && h.has("browser-address") && !h.has("obs-editors"));
+    let first = browser(&mut h).expect("the workspace's browser");
+    if recur_content::browser::AVAILABLE {
+        let requested = h.read(|_, cx| first.read(cx).requested(cx));
+        assert_eq!(
+            requested, "http://localhost:5173/app",
+            "the app URL at the port"
+        );
+    } else {
+        assert!(
+            h.has("browser-empty"),
+            "an unavailable state, not a blank page"
+        );
+    }
+
+    h.click("obs-editor-toggle");
+    assert!(h.has("obs-editors") && !h.has("obs-browser"));
+    h.click("obs-browser-toggle");
+    let again = browser(&mut h).expect("still there");
+    assert_eq!(
+        first.entity_id(),
+        again.entity_id(),
+        "one per workspace, kept"
+    );
+
+    h.state_update(|s, cx| s.drop_workspace(WS, cx));
+    h.settle();
+    assert!(browser(&mut h).is_none(), "gone with the workspace");
+}

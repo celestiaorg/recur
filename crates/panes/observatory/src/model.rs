@@ -32,7 +32,7 @@ impl Pane {
 }
 
 /// What the main column shows: the editor, the branch review, the workspace's pull request,
-/// or its plan.
+/// its plan, or its browser.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MainSurface {
     #[default]
@@ -40,6 +40,7 @@ pub enum MainSurface {
     Review,
     Pr,
     Plan,
+    Browser,
 }
 
 impl MainSurface {
@@ -49,6 +50,7 @@ impl MainSurface {
             MainSurface::Review => "review",
             MainSurface::Pr => "pr",
             MainSurface::Plan => "plan",
+            MainSurface::Browser => "browser",
         }
     }
 
@@ -59,15 +61,21 @@ impl MainSurface {
             MainSurface::Review => "Review",
             MainSurface::Pr => "Pull request",
             MainSurface::Plan => "Plan",
+            MainSurface::Browser => "Browser",
         }
     }
 
     /// The surface a session's `mainSurface` names; the editor for anything else.
     pub fn parse(key: &str) -> Self {
-        [MainSurface::Review, MainSurface::Pr, MainSurface::Plan]
-            .into_iter()
-            .find(|s| s.key() == key)
-            .unwrap_or_default()
+        [
+            MainSurface::Review,
+            MainSurface::Pr,
+            MainSurface::Plan,
+            MainSurface::Browser,
+        ]
+        .into_iter()
+        .find(|s| s.key() == key)
+        .unwrap_or_default()
     }
 }
 

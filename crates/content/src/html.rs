@@ -665,9 +665,10 @@ impl Drop for HtmlPreview {
     }
 }
 
+/// The WKWebView embedding behind GPUI's drawing, shared with the browser page.
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
-mod mac {
+pub(crate) mod mac {
     use std::cell::{Cell, RefCell};
     use std::rc::Rc;
 
@@ -761,12 +762,8 @@ mod mac {
     }
 
     pub struct Page {
-        web: Retained<WKWebView>,
+        view: Handle,
         bridge: Retained<Bridge>,
-        /// GPUI's view, once the page is laid behind it.
-        host: Rc<RefCell<Option<Retained<NSView>>>>,
-        painted: Rc<Cell<u64>>,
-        blur: Rc<Cell<f32>>,
     }
 
     /// What the paint closure needs.
@@ -811,11 +808,8 @@ mod mac {
                 web
             };
             let page = Page {
-                web,
+                view: Handle::new(web),
                 bridge,
-                host: Rc::default(),
-                painted: Rc::new(Cell::new(0)),
-                blur: Rc::new(Cell::new(0.)),
             };
             page.load(srcdoc, tx);
             Some(page)
@@ -825,7 +819,8 @@ mod mac {
             *self.bridge.ivars().tx.borrow_mut() = Some(tx);
             // SAFETY: main thread.
             unsafe {
-                self.web
+                self.view
+                    .web
                     .loadHTMLString_baseURL(&NSString::from_str(srcdoc), None);
             }
         }
@@ -836,24 +831,45 @@ mod mac {
                 format!("window.dispatchEvent(new MessageEvent('message', {{ data: {data} }}));");
             // SAFETY: main thread; no completion handler.
             unsafe {
-                self.web
+                self.view
+                    .web
                     .evaluateJavaScript_completionHandler(&NSString::from_str(&js), None);
             }
         }
 
         pub fn handle(&self) -> Handle {
-            Handle {
-                web: self.web.clone(),
-                host: self.host.clone(),
-                painted: self.painted.clone(),
-                blur: self.blur.clone(),
-            }
+            self.view.clone()
         }
 
         pub fn remove(self) {
             *self.bridge.ivars().tx.borrow_mut() = None;
+            self.view.remove();
+        }
+    }
+
+    impl Handle {
+        pub(crate) fn new(web: Retained<WKWebView>) -> Handle {
+            Handle {
+                web,
+                host: Rc::default(),
+                painted: Rc::new(Cell::new(0)),
+                blur: Rc::new(Cell::new(0.)),
+            }
+        }
+
+        pub(crate) fn web(&self) -> &WKWebView {
+            &self.web
+        }
+
+        /// Takes the page off the window, giving the keyboard back first.
+        pub(crate) fn remove(&self) {
             release(&self.web, &self.host);
             self.web.removeFromSuperview();
+        }
+
+        /// Gives GPUI's view the keyboard if the page has it.
+        pub(crate) fn release_keyboard(&self) {
+            release(&self.web, &self.host);
         }
     }
 

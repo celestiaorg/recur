@@ -1333,6 +1333,16 @@ impl Observatory {
         let pr = (!hidden && self.main_surface(cx) == MainSurface::Pr)
             .then(|| self.render_pr_host(window, cx))
             .flatten();
+        let browser = (!hidden && self.main_surface(cx) == MainSurface::Browser).then(|| {
+            let b = crate::browser::browser_for(&self.state, &self.props.workspace_id, window, cx);
+            div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_h_0()
+                .min_w_0()
+                .child(b)
+        });
         // Its own cached view: a key in the chat beside it redraws the Observatory, not the
         // findings and their markdown.
         let list = (!hidden && self.main_surface(cx) == MainSurface::Plan).then(|| {
@@ -1374,6 +1384,7 @@ impl Observatory {
             .children(editors)
             .children(review)
             .children(pr)
+            .children(browser)
             .children(list)
             .children(status.filter(|_| !fs));
         let mut main = div()

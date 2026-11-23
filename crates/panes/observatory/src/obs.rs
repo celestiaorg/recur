@@ -986,13 +986,18 @@ impl Observatory {
     }
 
     /// The view has something to show: the review for git roots, the pull request while there
-    /// is one, the plan where the host has one.
+    /// is one, the plan where the host has one, the browser in a workspace.
     pub(crate) fn surface_available(&self, s: MainSurface, cx: &App) -> bool {
         match s {
             MainSurface::Editor => true,
             MainSurface::Review => self.is_git(cx),
             MainSurface::Pr => self.has_pr(cx),
             MainSurface::Plan => self.slots.plan_panel.is_some(),
+            MainSurface::Browser => self
+                .state
+                .read(cx)
+                .workspace(&self.props.workspace_id)
+                .is_some(),
         }
     }
 

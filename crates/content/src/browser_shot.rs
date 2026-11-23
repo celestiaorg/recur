@@ -336,7 +336,14 @@ mod mac {
 
         let full = page_height(web).await;
         let mut height = (full.ceil() as u32).clamp(1, MAX_HEIGHT);
-        let mut note = String::new();
+        let mut note = if full > f64::from(MAX_HEIGHT) {
+            format!(
+                "the page is {}px tall; only the first {MAX_HEIGHT}px were captured",
+                full.ceil()
+            )
+        } else {
+            String::new()
+        };
         if height != VIEWPORT_HEIGHT {
             set_size(web, x, width, height);
             exec.timer(RESIZE).await;

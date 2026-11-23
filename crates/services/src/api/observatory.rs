@@ -3,7 +3,7 @@ use recur_domain::Finding;
 
 use crate::Result;
 
-/// ObservatoryService exposes Observatory UI affordances (findings today).
+/// ObservatoryService exposes Observatory UI affordances (findings, the browser's blocklist).
 #[async_trait]
 pub trait ObservatoryService: Send + Sync {
     /// AddFindingNote appends a human operator comment on a finding (Findings panel /
@@ -38,6 +38,10 @@ pub trait ObservatoryService: Send + Sync {
 
     /// ListFindings returns reviewer findings for a loop (all statuses).
     async fn list_findings(&self, workspace_id: &str) -> Result<Vec<Finding>>;
+
+    /// The ports of Recur's own local HTTP servers (the MCP host server, started if it is
+    /// not yet), which the browser surface must not reach.
+    async fn recur_server_ports(&self) -> Result<Vec<u16>>;
 
     /// SetFindingStatus updates one finding's status (open/resolved/ignored/invalid)
     /// from the Findings panel. Publishes findings.updated so the UI refreshes.

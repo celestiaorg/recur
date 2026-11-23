@@ -1,7 +1,8 @@
 //! Rich content shared by the chat, PR, artifact and file views: sanitized markdown (comrak +
 //! ammonia), streaming markdown, Mermaid diagrams, PDF pages, file previews with
-//! find, and the image lightbox.
+//! find, the image lightbox and the browser page.
 
+pub mod browser;
 pub mod dom;
 pub mod emoji;
 pub mod html;
@@ -26,6 +27,7 @@ pub mod video;
 pub mod view;
 pub mod webhost;
 
+pub use browser::{BrowserEvent, BrowserPage, BrowserState};
 pub use html::{HtmlPreview, HtmlPreviewEvent};
 pub use images::{ImageLoader, set_image_loader};
 pub use lightbox::{AttachmentLightbox, LightboxEvent};

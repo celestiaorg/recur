@@ -498,4 +498,11 @@ impl ObservatoryService for AppServices {
             Ok(f)
         })
     }
+
+    async fn recur_server_ports(&self) -> Result<Vec<u16>> {
+        rt!(self, => |s| {
+            s.engine.ensure_mcp().await.map_err(err)?;
+            Ok(vec![s.engine.mcp().port()])
+        })
+    }
 }

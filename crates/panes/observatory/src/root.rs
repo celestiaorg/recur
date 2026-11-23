@@ -1342,7 +1342,7 @@ impl Observatory {
     }
 
     fn on_workspace_gone(&mut self, id: &str, cx: &mut Context<Self>) {
-        let _ = id;
+        crate::browser::drop_browser(id, cx);
         self.prune_caches(cx);
     }
 

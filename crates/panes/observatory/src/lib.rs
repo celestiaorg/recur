@@ -46,6 +46,7 @@
 //! [`lsp::problems::LspProblems`].
 
 pub mod artifacts_panel;
+mod browser;
 pub mod dock;
 mod editor_host;
 mod explorer;

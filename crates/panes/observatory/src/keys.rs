@@ -105,6 +105,12 @@ impl Observatory {
             return;
         }
         if mod_ && !m.shift && !m.alt && lower == "l" {
+            if self.main_surface(cx) == MainSurface::Browser {
+                if let Some(b) = crate::browser::existing_browser(&self.props.workspace_id, cx) {
+                    b.update(cx, |b, cx| b.focus_address(window, cx));
+                }
+                return;
+            }
             if !self.props.can_add_editor_mention {
                 return;
             }

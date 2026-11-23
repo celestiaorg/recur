@@ -230,14 +230,56 @@ pub fn default_run(p: &Project) -> RunCommand {
     runs.swap_remove(i.unwrap_or(0))
 }
 
-/// The command verify-in-browser boots: a run named "dev" if present,
+/// The run verify-in-browser boots: the one named "dev" if present,
 /// otherwise [`default_run`].
-pub fn verify_dev_cmd(p: &Project) -> String {
+pub fn verify_dev_run(p: &Project) -> RunCommand {
     effective_runs(p)
         .into_iter()
         .find(|r| crate::text::eq_fold(&r.name, "dev"))
-        .map(|r| r.cmd)
-        .unwrap_or_else(|| default_run(p).cmd)
+        .unwrap_or_else(|| default_run(p))
+}
+
+/// The command [`verify_dev_run`] runs.
+pub fn verify_dev_cmd(p: &Project) -> String {
+    verify_dev_run(p).cmd
+}
+
+/// Replaces `${RECUR_PORT}`, `$RECUR_PORT`, `${PORT}` and `$PORT` in s,
+/// left to right without overlaps.
+pub fn substitute_port(s: &str, port: &str) -> String {
+    const PATTERNS: [&str; 4] = ["${RECUR_PORT}", "$RECUR_PORT", "${PORT}", "$PORT"];
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    'outer: while !rest.is_empty() {
+        for p in PATTERNS {
+            if let Some(r) = rest.strip_prefix(p) {
+                out.push_str(port);
+                rest = r;
+                continue 'outer;
+            }
+        }
+        let mut chars = rest.chars();
+        if let Some(c) = chars.next() {
+            out.push(c);
+        }
+        rest = chars.as_str();
+    }
+    out
+}
+
+/// The browser's start page: `app_url` with the workspace's port, or
+/// `http://localhost:<port>` without one (as the dev boot probes). Empty when
+/// the URL needs a port the workspace has not been given.
+pub fn browser_url(app_url: &str, port: i64) -> String {
+    let url = app_url.trim();
+    let port = (port > 0).then(|| port.to_string());
+    match (url.is_empty(), port) {
+        (true, Some(port)) => format!("http://localhost:{port}"),
+        (true, None) => String::new(),
+        (false, Some(port)) => substitute_port(url, &port),
+        (false, None) if substitute_port(url, "").len() == url.len() => url.to_string(),
+        (false, None) => String::new(),
+    }
 }
 
 /// A stable fingerprint of [`effective_runs`] for project.toml sync.
@@ -310,6 +352,25 @@ mod tests {
         p.pinned_run = "missing".into();
         assert_eq!(default_run(&p).name, "dev");
         assert_eq!(default_run(&Project::default()), RunCommand::default());
+    }
+
+    #[test]
+    fn browser_url_fills_the_workspace_port() {
+        assert_eq!(
+            browser_url("http://localhost:$RECUR_PORT/app", 5173),
+            "http://localhost:5173/app"
+        );
+        assert_eq!(
+            browser_url(" http://localhost:${PORT} ", 4000),
+            "http://localhost:4000"
+        );
+        assert_eq!(browser_url("", 3000), "http://localhost:3000");
+        assert_eq!(browser_url("", 0), "");
+        assert_eq!(browser_url("http://localhost:$RECUR_PORT", 0), "");
+        assert_eq!(
+            browser_url("https://staging.example.com", 0),
+            "https://staging.example.com"
+        );
     }
 
     #[test]

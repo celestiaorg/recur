@@ -424,6 +424,23 @@ impl Observatory {
                     }),
                 ));
             }
+            tools = tools.child(titled(
+                "browser-toggle-t",
+                if blocked { WAITING } else { "Browser" },
+                pane_toggle(
+                    "browser-toggle",
+                    IconName::Globe,
+                    surface == MainSurface::Browser && !covered,
+                    dis,
+                    cx,
+                )
+                .debug_selector(|| "obs-browser-toggle".into())
+                .when(!blocked, |d| {
+                    d.on_click(
+                        cx.guarded_listener(|o, _, _, cx| o.show_surface(MainSurface::Browser, cx)),
+                    )
+                }),
+            ));
             tools = tools.child(self.term_button(window, cx));
         }
         // Floating beside the left dock, the center's toggles and the right group span the center
@@ -567,6 +584,17 @@ impl Observatory {
                     &layer,
                     gpui_kit::StyleRefinement::default().size_full(),
                 ))
+                .into_any_element();
+        }
+        if surface == MainSurface::Browser {
+            let title = crate::browser::existing_browser(&self.props.workspace_id, cx)
+                .map(|b| b.read(cx).title().to_string())
+                .filter(|t| !t.trim().is_empty())
+                .unwrap_or_else(|| surface.label().to_string());
+            return side_head(false, cx)
+                .child(side_title(title, cx))
+                .debug_selector(|| "obs-center-tabs".into())
+                .w_full()
                 .into_any_element();
         }
         // The plan keeps the head its dock had, in the tab row's place: its own tabs, or its

@@ -697,3 +697,79 @@ fn a_narrow_window_opens_the_overview_only_on_a_click(cx: &mut TestAppContext) {
     s.keys("escape");
     assert!(!s.has("briefing-overview"));
 }
+
+#[gpui::test]
+fn the_overview_state_is_never_covered_by_its_actions(cx: &mut TestAppContext) {
+    let mut s = with(
+        cx,
+        |seed| {
+            let id = seed
+                .workspaces
+                .iter_mut()
+                .find(|w| w.short == RATE || w.goal == RATE)
+                .map(|w| {
+                    w.group = "ready".into();
+                    w.id.clone()
+                })
+                .expect("workspace");
+            let pr = &mut seed.prs[0];
+            pr.workspace_id = id;
+            pr.number = 1234;
+            pr.draft = true;
+        },
+        Overrides::default(),
+    );
+    s.state.update(s.cx, |st, cx| {
+        st.set_panel(recur_view_core::prefs::PanelKey::Rail, 280., cx)
+    });
+    let resize = |s: &mut S, width: f32| {
+        s.cx.simulate_resize(gpui::size(gpui::px(width), gpui::px(800.)));
+        s.settle();
+    };
+    resize(&mut s, 2400.);
+    s.click(&row(RATE));
+    let full = s.bounds("ov-state").expect("state").size;
+    for width in [1440., 1280., 1100., 1000., 560.] {
+        resize(&mut s, width);
+        if width == 1000. {
+            s.click("ask-hide");
+        }
+        if !s.has("briefing-overview") {
+            s.click(&row(RATE));
+        }
+        let remove = s.bounds("ov-remove").expect("remove");
+        for armed in [false, true] {
+            if armed {
+                s.click("ov-remove");
+            }
+            let pane = s.bounds("briefing-overview").expect("overview");
+            let state = s.bounds("ov-state").expect("state");
+            assert_eq!(state.size, full, "{width}: the state shows whole");
+            assert!(
+                state.left() >= pane.left() && state.right() <= pane.right(),
+                "{width}: {state:?} in {pane:?}"
+            );
+            let actions: Vec<_> = ["ov-read:read", "ov-pr", "ov-open", "ov-remove"]
+                .into_iter()
+                .map(|a| (a, s.bounds(a).unwrap_or_else(|| panic!("no {a}"))))
+                .collect();
+            for (i, (a, b)) in actions.iter().enumerate() {
+                assert!(!b.intersects(&state), "{width}: {a} covers the state");
+                assert!(
+                    b.left() >= pane.left() && b.right() <= pane.right(),
+                    "{width}: {a} {b:?} in {pane:?}"
+                );
+                for (o, c) in &actions[i + 1..] {
+                    assert!(!b.intersects(c), "{width}: {a} covers {o}");
+                }
+            }
+            let now = actions[3].1;
+            assert_eq!(
+                (now.right(), now.top()),
+                (remove.right(), remove.top()),
+                "{width}: arming leaves Remove under the pointer"
+            );
+        }
+        s.wait(3100);
+    }
+}

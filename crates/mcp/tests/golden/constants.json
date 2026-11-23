@@ -54,6 +54,7 @@
     "read_terminal",
     "run_background",
     "stop_terminal",
+    "browser_screenshot",
     "schedule_wakeup",
     "create_schedule",
     "list_schedules",

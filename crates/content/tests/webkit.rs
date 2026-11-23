@@ -150,7 +150,10 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
                 let (root, preview, clicks) = parts.expect("parts");
                 let window: AnyWindowHandle = window.into();
                 cx.spawn(async move |cx: &mut AsyncApp| {
-                    let result = run(window, &root, &preview, &clicks, &keys, cx).await;
+                    let result = match run(window, &root, &preview, &clicks, &keys, cx).await {
+                        Ok(()) => browser_shot(cx).await,
+                        e => e,
+                    };
                     match result {
                         Ok(()) => {
                             println!("html preview: ok");
@@ -542,6 +545,113 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
         click(v, 50., 20.);
         frames(cx, window, 200).await;
         println!("html preview: the overlay keeps its clicks");
+        Ok(())
+    }
+
+    /// A page served on loopback: one HTTP response per connection, with how many requests
+    /// arrived.
+    fn serve(page: String) -> (u16, std::sync::Arc<std::sync::atomic::AtomicUsize>) {
+        use std::io::{BufRead as _, BufReader, Write as _};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+        let hits = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counted = hits.clone();
+        std::thread::spawn(move || {
+            for mut stream in listener.incoming().flatten() {
+                counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let mut line = String::new();
+                let _ = BufReader::new(&stream).read_line(&mut line);
+                let path = line.split(' ').nth(1).unwrap_or("/").to_string();
+                let (status, body) = match path.as_str() {
+                    "/" => ("200 OK", page.as_str()),
+                    "/api" => ("500 Internal Server Error", "{}"),
+                    _ => ("404 Not Found", ""),
+                };
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 {status}\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+            }
+        });
+        (port, hits)
+    }
+
+    /// browser_screenshot's renderer: full-page PNGs at each width, the page's log, and no
+    /// request reaching a blocked port.
+    async fn browser_shot(cx: &mut AsyncApp) -> Result<(), String> {
+        use recur_content::browser_shot::{MAX_HEIGHT, capture};
+        let (blocked, blocked_hits) = serve(String::new());
+        let page = format!(
+            r#"<!doctype html><body style="margin:0">
+<div style="height:2000px;background:linear-gradient(#f00,#00f)"></div>
+<img src="/missing.png">
+<script>
+console.error('bad thing', {{a: 1}});
+fetch('/api');
+fetch('http://127.0.0.1:{blocked}/secret').catch(() => {{}});
+Promise.reject(new Error('nope'));
+setTimeout(() => {{ throw new Error('later boom'); }}, 0);
+</script>"#
+        );
+        let (port, _) = serve(page);
+        let dir = std::env::temp_dir().join(format!("recur-shot-{}", std::process::id()));
+        let url = format!("http://127.0.0.1:{port}/");
+        let refused = cx
+            .update(|cx| {
+                capture(
+                    format!("http://localhost:{blocked}/"),
+                    vec![800],
+                    vec![blocked],
+                    dir.clone(),
+                    cx,
+                )
+            })
+            .await;
+        if refused.is_ok() {
+            return Err("a blocked port was loaded".into());
+        }
+        let shots = cx
+            .update(|cx| capture(url, vec![800, 390], vec![blocked], dir.clone(), cx))
+            .await?;
+        for (shot, width) in shots.shots.iter().zip([800u32, 390]) {
+            let path = shot
+                .path
+                .as_ref()
+                .ok_or_else(|| format!("no PNG at {width}: {}", shot.error))?;
+            let img = image::open(path).map_err(|e| e.to_string())?;
+            let (w, h) = (img.width(), img.height());
+            if w != width || h != shot.height || !(2000..=MAX_HEIGHT).contains(&h) {
+                return Err(format!("{width}: a {w}x{h} PNG, height {}", shot.height));
+            }
+            let px = img.to_rgba8();
+            let (top, bottom) = (px.get_pixel(10, 5).0, px.get_pixel(10, 1990).0);
+            if top[0] < 200 || top[2] > 60 || bottom[2] < 200 || bottom[0] > 60 {
+                return Err(format!(
+                    "{width}: the page did not paint: {top:?} {bottom:?}"
+                ));
+            }
+        }
+        let has = |list: &[String], what: &str| list.iter().any(|m| m.contains(what));
+        let checks = [
+            (
+                "console error",
+                has(&shots.console_errors, "bad thing {\"a\":1}"),
+            ),
+            ("rejection", has(&shots.exceptions, "nope")),
+            ("thrown", has(&shots.exceptions, "later boom")),
+            ("fetch 500", has(&shots.failed_requests, "/api 500")),
+            ("missing image", has(&shots.failed_requests, "/missing.png")),
+            ("blocked fetch", has(&shots.failed_requests, "/secret")),
+        ];
+        if let Some((what, _)) = checks.iter().find(|(_, ok)| !ok) {
+            return Err(format!("browser shot: no {what} in {shots:?}"));
+        }
+        if blocked_hits.load(std::sync::atomic::Ordering::SeqCst) != 0 {
+            return Err("a request reached the blocked port".into());
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+        println!("browser shot: ok");
         Ok(())
     }
 }

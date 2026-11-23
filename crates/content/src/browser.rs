@@ -310,7 +310,7 @@ pub fn content_rules(ports: &[u16]) -> String {
 
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
-mod mac {
+pub(crate) mod mac {
     use std::cell::{Cell, RefCell};
     use std::ffi::c_void;
     use std::rc::Rc;

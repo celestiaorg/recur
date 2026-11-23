@@ -58,6 +58,30 @@ pub struct ReadTerminalRequest {
     pub until: String,
 }
 
+/// What the page showed while a browser_screenshot loaded: one entry per width, and the page's
+/// console errors, uncaught exceptions and failed requests (page-controlled text).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BrowserShots {
+    pub url: String,
+    pub shots: Vec<BrowserShot>,
+    pub console_errors: Vec<String>,
+    pub exceptions: Vec<String>,
+    pub failed_requests: Vec<String>,
+}
+
+/// One width's PNG, or why it has none.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BrowserShot {
+    pub width: u32,
+    pub height: u32,
+    pub path: String,
+    pub error: String,
+}
+
+/// browser_screenshot where no app UI renders pages (tests, Linux).
+pub const BROWSER_UNAVAILABLE: &str =
+    "browser unavailable: screenshots need the Recur desktop app on macOS";
+
 /// A run_background call. Empty `cwd` is the worktree root; relative paths
 /// resolve against it.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -513,6 +537,18 @@ pub trait Host: Send + Sync {
     /// Stops a background process. Tabs the user opened are refused.
     async fn stop_terminal(&self, _ws: &str, _agent: &str, _id: &str) -> Result<String, HostError> {
         Err(HostError::new("no terminals"))
+    }
+
+    /// Renders `url` (empty: the workspace browser's page, else its start URL) offscreen at
+    /// each width and saves full-page PNGs.
+    async fn browser_screenshot(
+        &self,
+        _ws: &str,
+        _agent: &str,
+        _url: &str,
+        _widths: &[u32],
+    ) -> Result<BrowserShots, HostError> {
+        Err(HostError::new(BROWSER_UNAVAILABLE))
     }
 
     /// Replaces this chat's pending wakeup: a notice turn carrying `reason`

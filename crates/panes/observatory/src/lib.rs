@@ -47,6 +47,7 @@
 
 pub mod artifacts_panel;
 mod browser;
+mod browser_capture;
 pub mod dock;
 mod editor_host;
 mod explorer;
@@ -81,6 +82,7 @@ use std::collections::BTreeMap;
 use gpui_kit::{App, AppContext as _, Global};
 use recur_view_core::{OverlaySlot, ViewContext, ViewName, ViewRegistry};
 
+pub use browser_capture::capture_browser;
 pub use model::{FocusZone, MainSurface};
 pub use obs::{
     ExplorerReveal, Observatory, ObservatoryEvent, ObservatoryProps, ObservatorySlots, OpenRequest,

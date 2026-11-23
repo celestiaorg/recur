@@ -268,6 +268,9 @@ pub struct Engine {
     /// Scheduled workspaces whose first turn settled into "waiting".
     pub(crate) schedule_wait: Mutex<HashSet<String>>,
 
+    /// The UI's browser_screenshot renderer.
+    pub(crate) browser_capture: Mutex<Option<crate::browser::BrowserHook>>,
+
     pub tasks: Tasks,
     pub(crate) hooks: Mutex<TestHooks>,
 }
@@ -379,6 +382,7 @@ impl Engine {
                 prs: crate::prs::PrState::default(),
                 interrupted_chats: Mutex::new(Vec::new()),
                 schedule_wait: Mutex::new(HashSet::new()),
+                browser_capture: Mutex::new(None),
                 tasks: Tasks::default(),
                 hooks: Mutex::new(TestHooks::default()),
             }

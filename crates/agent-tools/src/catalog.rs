@@ -57,6 +57,7 @@ pub fn host_tools() -> Vec<Arc<dyn Tool>> {
         Arc::new(ReadTerminalTool),
         Arc::new(RunBackgroundTool),
         Arc::new(StopTerminalTool),
+        Arc::new(BrowserScreenshotTool),
         Arc::new(ScheduleWakeupTool),
         Arc::new(CreateScheduleTool),
         Arc::new(ListSchedulesTool),

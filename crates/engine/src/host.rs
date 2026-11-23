@@ -527,6 +527,19 @@ impl Host for EngineHost {
         e.stop_terminal_from_chat(ws, id)
     }
 
+    async fn browser_screenshot(
+        &self,
+        ws: &str,
+        _agent: &str,
+        url: &str,
+        widths: &[u32],
+    ) -> Result<recur_agent_tools::BrowserShots, HostError> {
+        let e = self
+            .engine()
+            .ok_or_else(|| HostError::new(recur_agent_tools::BROWSER_UNAVAILABLE))?;
+        e.browser_screenshot(ws, url, widths).await
+    }
+
     async fn schedule_wakeup(
         &self,
         ws: &str,

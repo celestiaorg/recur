@@ -374,6 +374,11 @@ impl AppServices {
         self.usage.start();
     }
 
+    /// Installs the UI's browser_screenshot renderer (`recur_engine::browser`).
+    pub fn set_browser_capture(&self, hook: recur_engine::browser::BrowserHook) {
+        self.engine.set_browser_capture(hook);
+    }
+
     /// The window lost or regained key status.
     pub fn set_app_focused(&self, focused: bool) {
         self.engine.set_app_focused(focused);

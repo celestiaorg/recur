@@ -354,8 +354,7 @@ impl BriefingView {
     }
 
     /// The pane's head: a toolbar level with the list's filter bar, then the title and the
-    /// state pill with the crumb. The toolbar's rows fill from Remove leftwards, so arming it
-    /// moves other buttons to the next row and never Remove itself.
+    /// state pill with the crumb. The toolbar's rows fill from Open workspace leftwards.
     fn overview_head(
         &mut self,
         brief: &WorkspaceBrief,
@@ -432,8 +431,7 @@ impl BriefingView {
                 ),
             );
 
-        let wid = brief.workspace_id.clone();
-        let unread = self.is_unread(&wid, cx);
+        let unread = self.is_unread(&brief.workspace_id, cx);
         let mut actions = div()
             .flex()
             .flex_1()
@@ -442,32 +440,6 @@ impl BriefingView {
             .min_w_0()
             .items_center()
             .gap(px(6.));
-        if !running {
-            let armed = self.archive_armed.as_deref() == Some(wid.as_str());
-            let id = wid.clone();
-            actions = actions.child(recur_ui::tooltip::titled(
-                "ov-remove-tip",
-                "Archive this workspace and clear it from the Inbox",
-                tbtn(
-                    "ov-remove",
-                    if armed { Tbtn::Armed } else { Tbtn::Danger },
-                    TbtnSize::TITLEBAR,
-                    None,
-                    cx,
-                )
-                .max_w_full()
-                .debug_selector(|| "ov-remove".into())
-                .child(
-                    button_label(
-                        if armed { "Click to confirm" } else { "Remove" },
-                        11.5,
-                        500.,
-                    )
-                    .truncate(),
-                )
-                .on_click(cx.guarded_listener(move |v, _, _, cx| v.archive(&id, cx))),
-            ));
-        }
         actions = actions.child(
             tbtn("ov-open", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
                 .max_w_full()
@@ -1510,8 +1482,7 @@ impl BriefingView {
     }
 
     /// What finishing looks like for an idle workspace, in the PR's own terms: merge or
-    /// ready it, or open one for unshipped changes. A settled PR shows here too; Remove in
-    /// the header archives.
+    /// ready it, or open one for unshipped changes. A settled PR shows here too.
     fn ship_card(&mut self, brief: &WorkspaceBrief, cx: &mut Context<Self>) -> Option<AnyElement> {
         let t = Theme::of(cx).tokens;
         let pr = self.brief_pr(brief, cx);

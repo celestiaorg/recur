@@ -1119,6 +1119,7 @@ async fn update_prompt_shebang_clean_and_conflict() {
             .await
             .is_err()
     );
+    git(&repo, &["update-ref", "REBASE_HEAD", "HEAD"]);
     let res = run_prompt_shebang(&shebang_ctx(), &prompt, rc.clone())
         .await
         .unwrap();

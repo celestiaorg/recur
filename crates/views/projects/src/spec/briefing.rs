@@ -737,39 +737,26 @@ fn the_overview_state_is_never_covered_by_its_actions(cx: &mut TestAppContext) {
         if !s.has("briefing-overview") {
             s.click(&row(RATE));
         }
-        let remove = s.bounds("ov-remove").expect("remove");
-        for armed in [false, true] {
-            if armed {
-                s.click("ov-remove");
-            }
-            let pane = s.bounds("briefing-overview").expect("overview");
-            let state = s.bounds("ov-state").expect("state");
-            assert_eq!(state.size, full, "{width}: the state shows whole");
+        let pane = s.bounds("briefing-overview").expect("overview");
+        let state = s.bounds("ov-state").expect("state");
+        assert_eq!(state.size, full, "{width}: the state shows whole");
+        assert!(
+            state.left() >= pane.left() && state.right() <= pane.right(),
+            "{width}: {state:?} in {pane:?}"
+        );
+        let actions: Vec<_> = ["ov-read:read", "ov-pr", "ov-open"]
+            .into_iter()
+            .map(|a| (a, s.bounds(a).unwrap_or_else(|| panic!("no {a}"))))
+            .collect();
+        for (i, (a, b)) in actions.iter().enumerate() {
+            assert!(!b.intersects(&state), "{width}: {a} covers the state");
             assert!(
-                state.left() >= pane.left() && state.right() <= pane.right(),
-                "{width}: {state:?} in {pane:?}"
+                b.left() >= pane.left() && b.right() <= pane.right(),
+                "{width}: {a} {b:?} in {pane:?}"
             );
-            let actions: Vec<_> = ["ov-read:read", "ov-pr", "ov-open", "ov-remove"]
-                .into_iter()
-                .map(|a| (a, s.bounds(a).unwrap_or_else(|| panic!("no {a}"))))
-                .collect();
-            for (i, (a, b)) in actions.iter().enumerate() {
-                assert!(!b.intersects(&state), "{width}: {a} covers the state");
-                assert!(
-                    b.left() >= pane.left() && b.right() <= pane.right(),
-                    "{width}: {a} {b:?} in {pane:?}"
-                );
-                for (o, c) in &actions[i + 1..] {
-                    assert!(!b.intersects(c), "{width}: {a} covers {o}");
-                }
+            for (o, c) in &actions[i + 1..] {
+                assert!(!b.intersects(c), "{width}: {a} covers {o}");
             }
-            let now = actions[3].1;
-            assert_eq!(
-                (now.right(), now.top()),
-                (remove.right(), remove.top()),
-                "{width}: arming leaves Remove under the pointer"
-            );
         }
-        s.wait(3100);
     }
 }

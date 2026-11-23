@@ -161,12 +161,12 @@ pub fn capture(
                 let shot = match res {
                     Ok(page) => {
                         out.add_log(&page.log);
-                        let saved = save_png(page.rgba, width, page.height, &path, &exec).await;
+                        let saved = save_png(page.image, width, page.height, &path, &exec).await;
                         Shot {
                             width,
                             height: page.height,
                             path: saved.is_ok().then(|| path.clone()),
-                            error: saved.err().unwrap_or_default(),
+                            error: saved.err().unwrap_or(page.note),
                         }
                     }
                     Err(mac::Failure::Load(message)) => {
@@ -195,10 +195,10 @@ pub fn capture(
     }
 }
 
-/// Encodes and writes the PNG off the main thread.
+/// Draws, encodes and writes the PNG off the main thread.
 #[cfg(target_os = "macos")]
 async fn save_png(
-    rgba: Vec<u8>,
+    image: mac::Image,
     width: u32,
     height: u32,
     path: &std::path::Path,
@@ -206,6 +206,8 @@ async fn save_png(
 ) -> Result<(), String> {
     let path = path.to_path_buf();
     exec.spawn(async move {
+        let rgba = mac::rgba(&image, width, height)
+            .ok_or_else(|| "could not read the snapshot".to_string())?;
         let img = image::RgbaImage::from_raw(width, height, rgba)
             .ok_or_else(|| "snapshot has the wrong size".to_string())?;
         img.save_with_format(&path, image::ImageFormat::Png)
@@ -225,9 +227,12 @@ mod mac {
     use gpui_kit::BackgroundExecutor;
     use objc2::rc::Retained;
     use objc2::runtime::AnyObject;
-    use objc2::{AnyThread, MainThreadMarker, MainThreadOnly};
-    use objc2_app_kit::{
-        NSApplication, NSBitmapImageRep, NSDeviceRGBColorSpace, NSGraphicsContext, NSImage,
+    use objc2::{MainThreadMarker, MainThreadOnly};
+    use objc2_app_kit::{NSApplication, NSImage};
+    use objc2_core_foundation::{CGPoint, CGRect, CGSize};
+    use objc2_core_graphics::{
+        CGBitmapContextCreate, CGColorSpace, CGContext, CGImage, CGImageAlphaInfo,
+        CGImageByteOrderInfo,
     };
     use objc2_foundation::{NSError, NSNumber, NSPoint, NSRect, NSSize, NSString};
     use objc2_web_kit::{
@@ -244,10 +249,14 @@ mod mac {
         Shot(String),
     }
 
+    pub(super) type Image = Retained<CGImage>;
+
     pub(super) struct Loaded {
         pub height: u32,
-        pub rgba: Vec<u8>,
+        pub image: Image,
         pub log: String,
+        /// Why the shot is not the full page.
+        pub note: String,
     }
 
     /// Takes the page off the window however the shot ends, timeouts included.
@@ -262,6 +271,7 @@ mod mac {
     }
 
     const POLL: Duration = Duration::from_millis(100);
+    const RESIZE: Duration = Duration::from_millis(300);
 
     pub(super) async fn shoot(
         url: &str,
@@ -324,25 +334,48 @@ mod mac {
         }
         exec.timer(SETTLE).await;
 
-        let full = eval(web, HEIGHT_JS)
-            .await
-            .ok()
-            .and_then(|v| v.downcast_ref::<NSNumber>().map(|n| n.as_f64()))
-            .unwrap_or(f64::from(VIEWPORT_HEIGHT));
-        let height = (full.ceil() as u32).clamp(1, MAX_HEIGHT);
+        let full = page_height(web).await;
+        let mut height = (full.ceil() as u32).clamp(1, MAX_HEIGHT);
+        let mut note = String::new();
         if height != VIEWPORT_HEIGHT {
             set_size(web, x, width, height);
-            exec.timer(Duration::from_millis(300)).await;
+            exec.timer(RESIZE).await;
+            // A page that grows with its viewport (`100vh` sections) would stretch to any
+            // height, so it is shot at the first viewport instead.
+            if page_height(web).await > full + 1. {
+                height = VIEWPORT_HEIGHT;
+                set_size(web, x, width, height);
+                exec.timer(RESIZE).await;
+                note = format!(
+                    "the page's height follows the viewport (vh units), so only the first \
+{VIEWPORT_HEIGHT}px were captured"
+                );
+            }
         }
         let log = eval(web, LOG_JS)
             .await
             .ok()
             .and_then(|v| v.downcast_ref::<NSString>().map(|s| s.to_string()))
             .unwrap_or_default();
-        let image = snapshot(web, width, mtm).await.map_err(Failure::Shot)?;
-        let rgba =
-            rgba(&image, width, height).ok_or_else(|| shot("could not read the snapshot"))?;
-        Ok(Loaded { height, rgba, log })
+        let snap = snapshot(web, width, mtm).await.map_err(Failure::Shot)?;
+        // SAFETY: a null rect asks for the whole image; main thread.
+        let image =
+            unsafe { snap.CGImageForProposedRect_context_hints(std::ptr::null_mut(), None, None) }
+                .ok_or_else(|| shot("could not read the snapshot"))?;
+        Ok(Loaded {
+            height,
+            image,
+            log,
+            note,
+        })
+    }
+
+    async fn page_height(web: &WKWebView) -> f64 {
+        eval(web, HEIGHT_JS)
+            .await
+            .ok()
+            .and_then(|v| v.downcast_ref::<NSNumber>().map(|n| n.as_f64()))
+            .unwrap_or(f64::from(VIEWPORT_HEIGHT))
     }
 
     fn set_size(web: &WKWebView, x: f64, width: u32, height: u32) {
@@ -402,45 +435,26 @@ mod mac {
     }
 
     /// The image drawn at one pixel per CSS px, as tightly packed RGBA rows.
-    fn rgba(image: &NSImage, width: u32, height: u32) -> Option<Vec<u8>> {
+    pub(super) fn rgba(image: &CGImage, width: u32, height: u32) -> Option<Vec<u8>> {
         let (w, h) = (width as usize, height as usize);
-        // SAFETY: a fresh bitmap this call owns, drawn into on the main thread.
-        unsafe {
-            let rep = NSBitmapImageRep::initWithBitmapDataPlanes_pixelsWide_pixelsHigh_bitsPerSample_samplesPerPixel_hasAlpha_isPlanar_colorSpaceName_bytesPerRow_bitsPerPixel(
-                NSBitmapImageRep::alloc(),
-                std::ptr::null_mut(),
-                w as isize,
-                h as isize,
+        let mut buf = vec![0u8; w * h * 4];
+        let space = CGColorSpace::new_device_rgb()?;
+        // SAFETY: `buf` holds `h` rows of `w * 4` bytes and outlives the context.
+        let ctx = unsafe {
+            CGBitmapContextCreate(
+                buf.as_mut_ptr().cast(),
+                w,
+                h,
                 8,
-                4,
-                true,
-                false,
-                NSDeviceRGBColorSpace,
-                0,
-                0,
-            )?;
-            let size = NSSize::new(f64::from(width), f64::from(height));
-            rep.setSize(size);
-            let ctx = NSGraphicsContext::graphicsContextWithBitmapImageRep(&rep)?;
-            NSGraphicsContext::saveGraphicsState_class();
-            NSGraphicsContext::setCurrentContext(Some(&ctx));
-            image.drawInRect(NSRect::new(NSPoint::new(0., 0.), size));
-            ctx.flushGraphics();
-            NSGraphicsContext::restoreGraphicsState_class();
-            let stride = usize::try_from(rep.bytesPerRow()).ok()?;
-            let data = rep.bitmapData();
-            if data.is_null() || stride < w * 4 {
-                return None;
-            }
-            let bytes = std::slice::from_raw_parts(data, stride * h);
-            Some(
-                bytes
-                    .chunks_exact(stride)
-                    .flat_map(|row| &row[..w * 4])
-                    .copied()
-                    .collect(),
+                w * 4,
+                Some(&space),
+                CGImageAlphaInfo::PremultipliedLast.0 | CGImageByteOrderInfo::Order32Big.0,
             )
-        }
+        }?;
+        let rect = CGRect::new(CGPoint::new(0., 0.), CGSize::new(w as f64, h as f64));
+        CGContext::draw_image(Some(&ctx), rect, Some(image));
+        drop(ctx);
+        Some(buf)
     }
 }
 

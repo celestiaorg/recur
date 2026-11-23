@@ -580,7 +580,7 @@ document.addEventListener('mousedown',function(e){say('down:'+e.clientX+','+e.cl
     /// browser_screenshot's renderer: full-page PNGs at each width, the page's log, and no
     /// request reaching a blocked port.
     async fn browser_shot(cx: &mut AsyncApp) -> Result<(), String> {
-        use recur_content::browser_shot::{MAX_HEIGHT, capture};
+        use recur_content::browser_shot::{MAX_HEIGHT, VIEWPORT_HEIGHT, capture};
         let (blocked, blocked_hits) = serve(String::new());
         let page = format!(
             r#"<!doctype html><body style="margin:0">
@@ -649,6 +649,29 @@ setTimeout(() => {{ throw new Error('later boom'); }}, 0);
         }
         if blocked_hits.load(std::sync::atomic::Ordering::SeqCst) != 0 {
             return Err("a request reached the blocked port".into());
+        }
+        if let Some(s) = shots.shots.iter().find(|s| !s.error.is_empty()) {
+            return Err(format!("a full page noted: {}", s.error));
+        }
+        let (vh, _) = serve(
+            r#"<!doctype html><body style="margin:0"><div style="height:100vh"></div>
+<div style="height:1500px"></div>"#
+                .into(),
+        );
+        let vh = cx
+            .update(|cx| {
+                capture(
+                    format!("http://127.0.0.1:{vh}/"),
+                    vec![800],
+                    vec![blocked],
+                    dir.clone(),
+                    cx,
+                )
+            })
+            .await?;
+        match vh.shots.as_slice() {
+            [s] if s.height == VIEWPORT_HEIGHT && s.path.is_some() && s.error.contains("vh") => {}
+            other => return Err(format!("a 100vh page: {other:?}")),
         }
         let _ = std::fs::remove_dir_all(&dir);
         println!("browser shot: ok");

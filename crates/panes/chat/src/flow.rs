@@ -717,8 +717,12 @@ impl IntoElement for Flow {
 #[derive(Clone, Default)]
 struct Placed(Rc<Cell<Option<f32>>>);
 
+/// This frame's measures: the box width each gave, and the width its lines broke at.
+type Measures = Rc<RefCell<Vec<(f32, f32)>>>;
+
 pub struct FlowState {
     layout: Rc<RefCell<Option<FlowLayout>>>,
+    measures: Measures,
     placed: Placed,
     placed_at: Option<f32>,
     children: Vec<AnyElement>,
@@ -790,6 +794,8 @@ impl Element for Flow {
             .clone()
             .unwrap_or_else(|| Rc::new(RefCell::new(None)));
         let slot = layout.clone();
+        let measures = Measures::default();
+        let measured = measures.clone();
         let content = self.content.to_string();
         let sizes: Vec<(f32, f32)> = self.atoms.iter().map(|a| (a.width, a.height)).collect();
         let st = self.style.clone();
@@ -833,6 +839,8 @@ impl Element for Flow {
                 px(if fit { (l.max_line + extra).min(w) } else { w }),
                 px(l.height.max(min_h)),
             );
+            let box_w = known.width.unwrap_or(out.width).into();
+            measured.borrow_mut().push((box_w, w));
             *slot.borrow_mut() = Some(l);
             out
         });
@@ -862,6 +870,7 @@ impl Element for Flow {
             node,
             FlowState {
                 layout,
+                measures,
                 placed,
                 placed_at,
                 children,
@@ -880,14 +889,17 @@ impl Element for Flow {
     ) {
         let content = self.content.to_string();
         let sizes: Vec<(f32, f32)> = self.atoms.iter().map(|a| (a.width, a.height)).collect();
-        // A shrink-wrapped box is as wide as its widest line, so laying out at its width
-        // (a device pixel of slack for the snapped edge) breaks the lines as measuring did.
-        let slack = if self.fit {
-            1. / window.scale_factor()
-        } else {
-            0.
-        };
-        let width = f32::from(bounds.size.width) + slack;
+        // Break the lines as the measure that sized the box did: the box's width is snapped to
+        // device pixels, and text within a pixel of wrapping would break differently at it.
+        let box_w = f32::from(bounds.size.width);
+        let dp = 1. / window.scale_factor();
+        let width = state
+            .measures
+            .borrow()
+            .iter()
+            .rev()
+            .find(|(b, w)| (b - box_w).abs() <= dp || (w - box_w).abs() <= dp)
+            .map_or(box_w, |&(_, w)| w);
         let stale = state
             .layout
             .borrow()
@@ -1163,5 +1175,63 @@ mod tests {
         };
         let lines = break_lines(&p, text, 400., 0.25);
         assert_eq!(lines, [0..5, 5..text.len()]);
+    }
+
+    struct Bubble {
+        width: f32,
+        text: &'static str,
+        trailing: bool,
+        out: Rc<RefCell<Option<FlowLayout>>>,
+    }
+
+    impl gpui_kit::Render for Bubble {
+        fn render(&mut self, _: &mut Window, _: &mut gpui_kit::Context<Self>) -> impl IntoElement {
+            use gpui_kit::{InteractiveElement as _, relative};
+            let flow = flow("f", self.text, Vec::new(), style())
+                .fit_content()
+                .trailing_space(self.trailing)
+                .layout_into(self.out.clone());
+            div().w(px(self.width)).flex().justify_end().child(
+                div().max_w(relative(0.85)).flex().justify_end().child(
+                    div()
+                        .max_w(px(520.))
+                        .px(px(12.))
+                        .child(div().debug_selector(|| "flow".into()).child(flow)),
+                ),
+            )
+        }
+    }
+
+    #[gpui::test]
+    fn a_bubble_is_as_tall_as_the_lines_it_paints(cx: &mut TestAppContext) {
+        let out = Rc::new(RefCell::new(None));
+        let slot = out.clone();
+        let (view, cx) = cx.add_window_view(move |_, _| Bubble {
+            width: 400.,
+            trailing: true,
+            text: "the checkout fix needs a regression test",
+            out: slot,
+        });
+        let mut lines = std::collections::BTreeSet::new();
+        for i in 0..800 {
+            let width = 365. + (i / 2) as f32 * 0.1;
+            view.update(cx, |v, cx| {
+                v.width = width;
+                v.trailing = i % 2 == 0;
+                cx.notify();
+            });
+            cx.run_until_parked();
+            let b = cx.debug_bounds("flow").unwrap();
+            let l = out.borrow().clone().unwrap();
+            assert!(
+                (f32::from(b.size.height) - l.height).abs() < 1.,
+                "at {width}: box {:?}, {} lines {} high",
+                b.size,
+                l.lines.len(),
+                l.height
+            );
+            lines.insert(l.lines.len());
+        }
+        assert!(lines.contains(&1) && lines.contains(&2), "{lines:?}");
     }
 }

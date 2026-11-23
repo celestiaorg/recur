@@ -932,3 +932,27 @@ async fn a_question_card_takes_a_typed_answer(cx: &mut TestAppContext) {
     h.type_text("mine");
     assert!(h.has("ask-answer:on"));
 }
+
+#[gpui::test]
+async fn a_message_workspace_row_opens_its_workspace(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
+    let args = format!(r#"{{"workspace_id":"{WS}","message":"Add a test"}}"#);
+    let mut sent = tool("mcp__recur__message_workspace", "", "Steered it.", 1);
+    sent.input = args;
+    h.set_messages(vec![sent]);
+    let state = h.read(|c| c.state.clone());
+    for archived in [false, true] {
+        let ws = recur_domain::Workspace {
+            id: WS.into(),
+            archived,
+            ..Default::default()
+        };
+        h.cx.update(|_, cx| {
+            state.update(cx, |s, cx| {
+                s.workspaces = vec![ws];
+                cx.notify();
+            })
+        });
+        assert_eq!(h.has(&format!("open-ws:{WS}")), !archived);
+    }
+}

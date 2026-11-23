@@ -11,6 +11,7 @@ use recur_agent::display::tasks::{
 };
 use recur_agent::display::todos::{Todo, parse_board_todos, parse_todos, todo_counts};
 use recur_agent::display::web::{web_fetch_prompt, web_fetch_url, web_search_query};
+use recur_agent_tools::bare_name;
 use recur_agent_tools::display::briefing_tools::{
     HydrateProject, HydrateWorkspace, ListedWorkspaceBriefs, PresentWorkspaceView,
     WorkspaceContextView, briefing_counts_meta, get_workspace_context_label, hydrate_present_brief,
@@ -832,6 +833,91 @@ impl<'a> ToolView<'a> {
             "Created"
         };
         format!("{verb} workspace")
+    }
+
+    /// The Ask Recur tools with a one-line row: (doing, done, base, noun).
+    fn coordinator_words(
+        &self,
+    ) -> Option<(&'static str, &'static str, &'static str, &'static str)> {
+        match bare_name(self.tool()) {
+            "message_workspace" => Some(("Messaging", "Messaged", "Message", "workspace")),
+            "read_workspace" => Some(("Reading", "Read", "Read", "workspace")),
+            "answer_question" => Some(("Answering", "Answered", "Answer", "question")),
+            "create_project" => Some(("Creating", "Created", "Create", "project")),
+            _ => None,
+        }
+    }
+
+    pub fn is_coordinator_tool(&self) -> bool {
+        self.coordinator_words().is_some()
+    }
+
+    /// Engine refusals come back as "message_workspace: …" text, not tool errors.
+    pub fn coordinator_failed(&self) -> bool {
+        self.m.result_error || !self.coordinator_refusal().is_empty()
+    }
+
+    fn coordinator_refusal(&self) -> &str {
+        self.m
+            .result
+            .strip_prefix(bare_name(self.tool()))
+            .and_then(|r| r.strip_prefix(':'))
+            .map_or("", str::trim)
+    }
+
+    /// The engine is idempotent: "Project … already exists at …; not creating another."
+    fn coordinator_project_exists(&self) -> bool {
+        bare_name(self.tool()) == "create_project"
+            && self.m.result.ends_with("; not creating another.")
+    }
+
+    pub fn coordinator_label(&self) -> String {
+        let Some((doing, done, base, noun)) = self.coordinator_words() else {
+            return String::new();
+        };
+        if self.coordinator_failed() {
+            format!("{base} {noun} refused")
+        } else if self.coordinator_project_exists() {
+            "Project exists".into()
+        } else if self.m.result_pending {
+            format!("{doing} {noun}")
+        } else {
+            format!("{done} {noun}")
+        }
+    }
+
+    /// What the call acts on, by title when the briefs know the workspace.
+    pub fn coordinator_target(&self) -> String {
+        let id = self.child_tool_id();
+        if id.is_empty() {
+            return str_field(self.arg("name"));
+        }
+        self.cx
+            .briefs
+            .iter()
+            .find(|b| b.workspace_id == id && !b.title.is_empty())
+            .map_or(id, |b| b.title.clone())
+    }
+
+    /// The pill: why it was refused, else the answer relayed.
+    pub fn coordinator_note(&self) -> String {
+        if self.coordinator_failed() {
+            let first = match self.coordinator_refusal() {
+                "" => &self.m.result,
+                r => r,
+            };
+            return first.split('\n').next().unwrap_or_default().to_string();
+        }
+        collapse_ws(&str_field(self.arg("answer")))
+    }
+
+    /// The full answer relayed, which the pill truncates, else the result.
+    pub fn coordinator_tip(&self) -> String {
+        let answer = str_field(self.arg("answer"));
+        if answer.is_empty() || self.coordinator_failed() {
+            return self.m.result.clone();
+        }
+        answer
     }
 
     // ---- files ----
@@ -1665,7 +1751,7 @@ impl<'a> ToolView<'a> {
         if self.is_list_artifacts() || self.is_create_artifact() || self.is_present_artifact() {
             return StepIcon::Artifact;
         }
-        if self.is_briefing() || self.is_create_workspace() {
+        if self.is_briefing() || self.is_create_workspace() || self.is_coordinator_tool() {
             return StepIcon::Workspace;
         }
         if self.is_linear() {
@@ -1818,6 +1904,12 @@ impl<'a> ToolView<'a> {
         }
         if self.is_create_workspace() {
             return format!("{}…", self.create_workspace_label());
+        }
+        if self.is_coordinator_tool() {
+            return format!("{} {}", self.coordinator_label(), self.coordinator_target())
+                .trim()
+                .to_string()
+                + "…";
         }
         if self.is_reenter_phase() {
             let p = self.reenter_phase_id();
@@ -2064,6 +2156,9 @@ impl<'a> ToolView<'a> {
         if self.is_create_workspace() {
             return self.create_workspace_label();
         }
+        if self.is_coordinator_tool() {
+            return self.coordinator_label();
+        }
         if self.is_open_pr() {
             return open_pr_label(&self.open_pr_card());
         }
@@ -2287,6 +2382,7 @@ impl<'a> ToolView<'a> {
             || self.is_schedule_tool()
             || self.is_child_tool()
             || self.is_create_workspace()
+            || self.is_coordinator_tool()
             || self.is_open_pr()
             || self.is_reenter_phase()
             || self.is_create_artifact()
@@ -2917,5 +3013,74 @@ mod tests {
         });
         assert_eq!(view(&m).label(), "Workspace exists");
         assert_eq!(view(&m).create_workspace_id(), "ws-3");
+    }
+
+    #[test]
+    fn ask_recur_tools_name_their_target() {
+        let briefs = [WorkspaceBrief {
+            workspace_id: "ws-3".into(),
+            title: "Stream replies".into(),
+            ..Default::default()
+        }];
+        let target = |m: &AgentMsg| {
+            let mut v = view(m);
+            v.cx.briefs = &briefs;
+            (v.label(), v.coordinator_target(), v.coordinator_note())
+        };
+        let t = |name: &str, input: Value, result: &str| {
+            tool(&format!("mcp__recur__{name}"), |m| {
+                m.input = input.to_string();
+                m.result = result.into();
+            })
+        };
+        let s = |a: &str, b: &str, c: &str| (a.to_string(), b.to_string(), c.to_string());
+        let args = json!({"workspace_id": "ws-3", "message": "Add a test"});
+        let m = t("message_workspace", args.clone(), "Steered it.");
+        assert_eq!(target(&m), s("Messaged workspace", "Stream replies", ""));
+        assert_eq!(view(&m).icon(), StepIcon::Workspace);
+        assert_eq!(view(&m).meta(), "");
+        assert_eq!(view(&m).coordinator_target(), "ws-3");
+        let m = t("message_workspace", args, "message_workspace: ws-3 is busy");
+        assert_eq!(
+            target(&m),
+            s(
+                "Message workspace refused",
+                "Stream replies",
+                "ws-3 is busy"
+            )
+        );
+        let m = t(
+            "read_workspace",
+            json!({"workspace_id": "ws-3"}),
+            "Workspace ws-3 has finished.",
+        );
+        assert_eq!(target(&m), s("Read workspace", "Stream replies", ""));
+        assert_eq!(view(&m).coordinator_tip(), "Workspace ws-3 has finished.");
+        let m = t(
+            "answer_question",
+            json!({"question_id": "q1", "answer": "Use 429"}),
+            "Answered.",
+        );
+        assert_eq!(target(&m), s("Answered question", "", "Use 429"));
+        assert_eq!(view(&m).coordinator_tip(), "Use 429");
+        let m = tool("mcp__recur__create_project", |m| {
+            m.input = json!({"name": "docs"}).to_string();
+            m.result_pending = true;
+        });
+        assert_eq!(view(&m).coordinator_label(), "Creating project");
+        assert_eq!(view(&m).pending_label(), "Creating project docs…");
+        let m = t(
+            "create_project",
+            json!({"name": "docs"}),
+            "Project docs (p1) already exists at /src/docs; not creating another.",
+        );
+        assert_eq!(target(&m), s("Project exists", "docs", ""));
+        for name in [
+            "mcp__linear__create_project",
+            "mcp__supabase__create_project",
+        ] {
+            let m = tool(name, |m| m.input = json!({"name": "docs"}).to_string());
+            assert!(!view(&m).is_coordinator_tool());
+        }
     }
 }

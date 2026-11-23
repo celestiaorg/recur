@@ -973,16 +973,37 @@ impl ScheduledPrompts {
         } else {
             (format!("Next {next}"), false)
         };
+        let mut count = (n_runs > 0).then(|| {
+            let rid = id.clone();
+            div()
+                .debug_selector(move || format!("sc-runs-n:{rid}={n_runs}"))
+                .child(
+                    text(format!(
+                        "{n_runs} {}",
+                        if n_runs == 1 {
+                            "workspace"
+                        } else {
+                            "workspaces"
+                        }
+                    ))
+                    .size(if embedded { 10.5 } else { 11. })
+                    .leading(1.45)
+                    .color(t.muted)
+                    .nowrap(),
+                )
+        });
         let mut side = div().flex_none().flex();
         side = if embedded {
             side.flex_col().items_end().gap(px(4.))
         } else {
-            side.items_center().gap(px(16.))
+            side.items_center().gap(px(16.)).children(count.take())
         };
         side = side.child(status);
         if !(embedded && next_label.is_empty()) {
+            let nid = id.clone();
             side = side.child(
                 div()
+                    .debug_selector(move || format!("sc-next:{nid}"))
                     .flex_none()
                     .when(!embedded, |d| d.w(px(192.)))
                     .min_w_0()
@@ -1000,27 +1021,7 @@ impl ScheduledPrompts {
                     ),
             );
         }
-        if n_runs > 0 {
-            let rid = id.clone();
-            side = side.child(
-                div()
-                    .debug_selector(move || format!("sc-runs-n:{rid}={n_runs}"))
-                    .child(
-                        text(format!(
-                            "{n_runs} {}",
-                            if n_runs == 1 {
-                                "workspace"
-                            } else {
-                                "workspaces"
-                            }
-                        ))
-                        .size(if embedded { 10.5 } else { 11. })
-                        .leading(1.45)
-                        .color(t.muted)
-                        .nowrap(),
-                    ),
-            );
-        }
+        side = side.children(count);
 
         // `.sc-acts`.
         let mut acts = div()
@@ -1053,6 +1054,8 @@ impl ScheduledPrompts {
                     })
                     .child(icon(IconName::Box).size(px(14.))),
             ));
+        } else {
+            acts = acts.child(div().w(px(26.)));
         }
         let run_id = id.clone();
         acts = acts.child(titled(

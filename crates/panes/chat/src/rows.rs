@@ -353,6 +353,9 @@ impl AgentChat {
         if v.is_create_workspace() {
             return self.create_workspace_row(&v, key, cx);
         }
+        if v.is_coordinator_tool() {
+            return self.coordinator_row(&v, key, cx);
+        }
         if v.is_open_pr() {
             return self.open_pr_row(&v, key, cx);
         }
@@ -740,7 +743,6 @@ impl AgentChat {
         key: &str,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let t = Theme::of(cx).tokens;
         let m = v.m;
         let ws_id = v.create_workspace_id();
         let failed = v.create_workspace_failed();
@@ -758,20 +760,7 @@ impl AgentChat {
             spans.push(span(title).weight(700.));
         }
         if !ws_id.is_empty() {
-            tail.push(
-                div()
-                    .id(SharedString::from(format!("open-ws-{key}")))
-                    .flex_none()
-                    .cursor_pointer()
-                    .text_color(hsla(t.cyan))
-                    .hover(|s| s.text_color(hsla(t.text)))
-                    .child(recur_ui::style::button_label("Open", 13.333, 400.))
-                    .on_click(cx.guarded_listener(move |this, _, _, cx| {
-                        this.state
-                            .update(cx, |s, cx| s.open_workspace(&ws_id, false, cx));
-                    }))
-                    .into_any_element(),
-            );
+            tail.push(self.open_workspace_link(ws_id, key, cx));
         }
         self.skillrow(
             IconName::Plus,
@@ -779,6 +768,62 @@ impl AgentChat {
             true,
             tail,
             m.result.clone(),
+            cx,
+        )
+    }
+
+    fn open_workspace_link(&self, ws_id: String, key: &str, cx: &mut Context<Self>) -> AnyElement {
+        let t = Theme::of(cx).tokens;
+        div()
+            .id(SharedString::from(format!("open-ws-{key}")))
+            .debug_selector(|| format!("open-ws:{ws_id}"))
+            .flex_none()
+            .cursor_pointer()
+            .text_color(hsla(t.cyan))
+            .hover(|s| s.text_color(hsla(t.text)))
+            .child(recur_ui::style::button_label("Open", 13.333, 400.))
+            .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                this.state
+                    .update(cx, |s, cx| s.open_workspace(&ws_id, false, cx));
+            }))
+            .into_any_element()
+    }
+
+    fn coordinator_row(&self, v: &ToolView<'_>, key: &str, cx: &mut Context<Self>) -> AnyElement {
+        let failed = v.coordinator_failed();
+        let (mut target, note) = (v.coordinator_target(), v.coordinator_note());
+        let ws_id = v.child_tool_id();
+        let ws = self
+            .state
+            .read(cx)
+            .workspaces
+            .iter()
+            .find(|w| w.id == ws_id);
+        let open = ws.is_some_and(|w| !w.archived);
+        if let Some(w) = ws.filter(|w| target == ws_id && !w.short.trim().is_empty()) {
+            target = w.short.trim().to_string();
+        }
+        let mut spans = vec![span(v.coordinator_label())];
+        if !target.is_empty() {
+            spans.push(span(" "));
+            spans.push(span(target).weight(700.));
+        }
+        let mut tail = Vec::new();
+        if !note.is_empty() {
+            tail.push(self.skill_args(note, cx));
+        }
+        if failed {
+            tail.push(self.skill_tag("refused", cx));
+        }
+        if open {
+            tail.push(self.open_workspace_link(ws_id, key, cx));
+        }
+        self.skillrow(
+            v.icon().icon(),
+            self.skill_name(spans, true, cx),
+            true,
+            tail,
+            v.coordinator_tip(),
             cx,
         )
     }

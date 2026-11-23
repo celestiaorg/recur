@@ -541,7 +541,8 @@ pub fn hydrate_present_brief(
 pub fn briefing_counts_meta(counts: &BriefingCountsView) -> String {
     let mut parts = Vec::new();
     if counts.needs != 0 {
-        parts.push(format!("{} need you", counts.needs));
+        let verb = if counts.needs == 1 { "needs" } else { "need" };
+        parts.push(format!("{} {verb} you", counts.needs));
     }
     if counts.working != 0 {
         parts.push(format!("{} working", counts.working));
@@ -702,7 +703,7 @@ mod tests {
         );
         assert_eq!(
             briefing_counts_meta(&listed.counts),
-            "1 need you · 2 pick up"
+            "1 needs you · 2 pick up"
         );
     }
 
@@ -829,7 +830,7 @@ mod tests {
         let listed = parse_list_workspace_briefs(&two()).unwrap();
         assert_eq!(
             list_workspace_briefs_summary(&listed),
-            "1 need you · 2 pick up"
+            "1 needs you · 2 pick up"
         );
         assert_eq!(
             list_workspace_briefs_summary(&ListedWorkspaceBriefs::default()),

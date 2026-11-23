@@ -21,6 +21,7 @@
     visitor,
     wordmark,
     x,
+    type Screen,
   } from "./lib/site.svelte";
 
   let screen = $state.raw(screens[0]);
@@ -74,7 +75,58 @@
     ["Weekly security pass", "0 9 * * 1", "Autopilot · Security review & fix"],
     ["Morning code review", "@daily", "Review"],
     ["Refresh dev fixtures", "@reboot", "Agent"],
-    ["Release notes draft", "once Oct 1 09:00", "Agent"],
+    ["Release notes draft", "once Dec 1 09:00", "Agent"],
+    ["Fix failed CI on main", "watch", "Agent"],
+  ];
+  const gateRun = [
+    ["build", "Coder and Reviewer converge", "bar cleared", "ok"],
+    ["check", "mise run check", "exit 1 · back to build", "bad"],
+    ["build", "Coder fixes it from the output", "bar cleared", "ok"],
+    ["check", "mise run check", "exit 0", "ok"],
+    ["pr", "Pull request opened", "done", "ok"],
+  ];
+  const models = [
+    ["claude", "Coder", "Claude Code", "writes the change"],
+    ["codex", "Reviewer", "Codex", "files the findings"],
+  ];
+  const authoring = [
+    ["You ask", "“Turn our release checklist into a workflow.”"],
+    ["The agent writes it", "A bundle in the worktree: roles, phases, prompts."],
+    ["Recur lints it", "Schema and scripts, before anything is installed."],
+    ["You approve", "See what it adds and anything that runs shell code."],
+    ["It’s live", "The bundle reloads. No restart."],
+  ];
+  const green = [
+    ["Conflicts with its base", "Update with base, then /update if git is stuck", "3 tries"],
+    ["A check fails", "/fix-checks", "3 tries"],
+    ["New review comments", "/address-review", "3 runs"],
+  ];
+  const wake = [
+    ["14:02", "Pushed to #482. CI takes about ten minutes."],
+    ["14:02", "Check back in 10 min: see whether CI passed."],
+    ["14:12", "One test failed on Linux. Fixing it now."],
+    ["14:19", "Pushed. Check back in 10 min."],
+    ["14:29", "All checks passed."],
+  ];
+  const todos = [
+    ["done", "Add a timeout to the refresh request"],
+    ["done", "Surface provider errors to the caller"],
+    ["now", "Cover cancellation and stalled providers"],
+    ["", "Update the sign-in docs"],
+  ];
+  const rewind = [
+    ["Changes this turn", "See exactly what one turn did to the worktree."],
+    ["Reset to here", "Put the chat and the files back to the end of any earlier turn."],
+    ["Fork chat", "Take the conversation another way and keep the original."],
+    ["Fork to new workspace", "Same, with its own worktree for the files."],
+  ];
+  const extras = [
+    ["Merges leave your checkout alone", "Land on a remote base without touching the branch or edits in your project folder."],
+    ["Dependencies on arrival", "Copy node_modules or target into new workspaces. On macOS they are APFS clones."],
+    ["Settings from the terminal", "Read and change settings with recur config, running or not."],
+    ["Conventional Commits", "Commit messages and PR titles follow the format, globally or per repo."],
+    ["Find in chat", "Search your messages and the agent’s replies."],
+    ["Import from Conductor", "Adopt its worktrees in place and bring the chats along."],
   ];
   const agents = [
     ["claude", "Claude Code"],
@@ -87,6 +139,8 @@
     "Workspaces are git worktrees on your disk.",
     "Model calls go straight to the provider you picked.",
     "GitHub goes through your own gh login.",
+    "API keys live in the macOS Keychain or your Linux keyring.",
+    "Native Rust, not a browser in a window.",
   ];
 </script>
 
@@ -135,6 +189,15 @@
   </header>
 {/snippet}
 
+{#snippet shot(screen: Screen, title: string, copy: string, path: string)}
+  <article class="bn-card bn-6 bn-shot">
+    {@render head(title, copy, path)}
+    <div class="bn-crop bn-crop-{screen}">
+      <div><ProductScreenshot {screen} /></div>
+    </div>
+  </article>
+{/snippet}
+
 <div class="bn" id="top">
   <a class="bn-skip" href="#main">Skip to content</a>
   <header class="bn-nav">
@@ -156,8 +219,9 @@
     <section class="bn-hero">
       <h1>Agents that don’t stop <em>until it’s right.</em></h1>
       <p class="bn-lede">
-        Recur runs Claude Code, Cursor, or Codex through workflows where a team
-        of agents plans, builds, and reviews until the work clears your bar.
+        Recur runs the coding agents you already use through your process: plan,
+        build, test, review, until the work clears your bar. Then it keeps the
+        pull request green.
       </p>
       {@render cta("bn-hero-downloads")}
 
@@ -219,8 +283,11 @@
       </div>
     </section>
 
-    <section class="bn-features" aria-labelledby="bn-features">
-      <h2 id="bn-features">Agent work should <em>arrive finished.</em></h2>
+    <section class="bn-features" aria-labelledby="bn-finished">
+      <header class="bn-group">
+        <h2 id="bn-finished">Agent work should <em>arrive finished.</em></h2>
+        <p>Planned, built, tested, and reviewed before it reaches you.</p>
+      </header>
       <div class="bn-grid">
         <article class="bn-card bn-12">
           <div class="bn-row">
@@ -265,31 +332,6 @@
 
         <article class="bn-card bn-5">
           {@render head(
-            "Pick a mode for each chat.",
-            "Every chat picks its own agent and how far it’s allowed to go.",
-            "concepts/modes",
-          )}
-          <div class="bn-modes" role="group" aria-label="Chat modes">
-            {#each modes as item (item.name)}<button
-                type="button"
-                aria-pressed={mode === item}
-                onclick={() => (mode = item)}
-                >{item.name}<span class="bn-{item.access}">{item.access}</span
-                ></button
-              >{/each}
-          </div>
-          <div class="bn-prompt" aria-live="polite">
-            {#each modes as item (item.name)}<div class:on={mode === item}>
-                <strong>{item.title}</strong>
-                <p>{item.body}</p>
-                <blockquote>{item.example}</blockquote>
-                <span>{item.outcome}</span>
-              </div>{/each}
-          </div>
-        </article>
-
-        <article class="bn-card bn-5">
-          {@render head(
             "A policy sets the bar.",
             "What blocks, whether you approve the plan, and when to stop.",
             "concepts/workflows",
@@ -314,60 +356,55 @@
 
         <article class="bn-card bn-7">
           {@render head(
-            "Put the chores on a schedule.",
-            "Any prompt or workflow can run on its own clock, each time in a fresh workspace.",
-            "concepts/schedules",
+            "Make your tests the gate.",
+            "Add a run phase to a workflow. If the command fails, the work goes back with the exit code and the output.",
+            "concepts/workflows#phases",
           )}
-          <div class="bn-scroll">
-            <table class="bn-cron">
-              <thead>
-                <tr>
-                  {#each ["Name", "Cadence", "Mode"] as h (h)}<th scope="col">{h}</th>{/each}
-                </tr>
-              </thead>
-              <tbody>
-                {#each schedules as [name, cadence, how] (name)}<tr
-                    ><th scope="row">{name}</th><td><code>{cadence}</code></td
-                    ><td>{how}</td></tr
-                  >{/each}
-              </tbody>
-            </table>
-          </div>
+          <ol class="bn-run">
+            {#each gateRun as [phase, what, result, state], i (i)}<li>
+                <code>{phase}</code><span>{what}</span><b class="bn-{state}"
+                  >{result}</b
+                >
+              </li>{/each}
+          </ol>
         </article>
 
-        <article class="bn-card bn-6 bn-shot">
+        <article class="bn-card bn-5">
           {@render head(
-            "One inbox, every agent.",
-            "Every workspace across your projects: what needs you, what’s in progress, and what’s ready to pick up.",
-            "concepts/inbox",
+            "Let a second model review it.",
+            "The coder and the reviewer are always separate agents. Give them different models, and each catches what the other misses.",
+            "concepts/modes#models-per-mode",
           )}
-          <div class="bn-crop">
-            <div><ProductScreenshot screen="inbox" /></div>
-          </div>
-        </article>
-
-        <article class="bn-card bn-6 bn-shot">
-          {@render head(
-            "Every PR, one place.",
-            "Every open PR across your projects, with agent findings right next to human comments.",
-            "concepts/pull-requests",
-          )}
-          <div class="bn-crop">
-            <div><ProductScreenshot screen="pull-request" /></div>
-          </div>
-        </article>
-
-        <article class="bn-card bn-wide">
-          {@render head(
-            "Runs the agents you already use.",
-            "Plus OpenAI-compatible: OpenAI, OpenRouter, Groq, or a custom URL such as Ollama.",
-            "reference/agents",
-          )}
-          <ul class="bn-agents">
-            {#each agents as [provider, name] (provider)}<li>
-                <ProviderIcon {provider} />{name}
+          <ul class="bn-models">
+            {#each models as [provider, role, agent, job] (role)}<li>
+                <ProviderIcon {provider} /><strong>{role}</strong>{agent}<span
+                  >{job}</span
+                >
               </li>{/each}
           </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="bn-features" aria-labelledby="bn-process">
+      <header class="bn-group">
+        <h2 id="bn-process">Your process, <em>written down.</em></h2>
+        <p>Use the shipped workflows, change them, or make your own.</p>
+      </header>
+      <div class="bn-grid">
+        <article class="bn-card bn-7">
+          {@render head(
+            "Plain TOML, all the way down.",
+            "Workflows and roles live in plain TOML bundles. Copy one, swap a role or a prompt, and reload without restarting.",
+            "bundles/workflows",
+          )}
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll this code sample.) -->
+          <pre
+            class="bn-toml"
+            tabindex="0"
+            aria-label="Example custom workflow in a user bundle">{#each loopExample as token, i (i)}<span
+                class="t-{token.kind}">{token.text}</span
+              >{/each}</pre>
         </article>
 
         <article class="bn-card bn-5">
@@ -387,17 +424,226 @@
 
         <article class="bn-card bn-7">
           {@render head(
-            "Your process, written down.",
-            "Workflows and roles live in plain TOML bundles. Copy one, swap a role or a prompt, and reload without restarting.",
+            "Or have an agent write it.",
+            "Describe the process and an agent drafts the bundle. Nothing installs until you approve it.",
             "bundles/workflows",
+          )}
+          <ol class="bn-steps">
+            {#each authoring as [title, text] (title)}<li>
+                <strong>{title}</strong><span>{text}</span>
+              </li>{/each}
+          </ol>
+        </article>
+
+        <article class="bn-card bn-5">
+          {@render head(
+            "Pick a mode for each chat.",
+            "Every chat picks its own agent and how far it’s allowed to go.",
+            "concepts/modes",
+          )}
+          <div class="bn-modes" role="group" aria-label="Chat modes">
+            {#each modes as item (item.name)}<button
+                type="button"
+                aria-pressed={mode === item}
+                onclick={() => (mode = item)}
+                >{item.name}<span class="bn-{item.access}">{item.access}</span
+                ></button
+              >{/each}
+          </div>
+          <div class="bn-prompt" aria-live="polite">
+            {#each modes as item (item.name)}<div class:on={mode === item}>
+                <strong>{item.title}</strong>
+                <p>{item.body}</p>
+                <blockquote>{item.example}</blockquote>
+                <span>{item.outcome}</span>
+              </div>{/each}
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="bn-features" aria-labelledby="bn-going">
+      <header class="bn-group">
+        <h2 id="bn-going">It keeps going <em>without you.</em></h2>
+        <p>Pull requests, events, schedules, and long jobs, while Recur is open.</p>
+      </header>
+      <div class="bn-grid">
+        <article class="bn-card bn-7">
+          {@render head(
+            "Your PRs stay green.",
+            "Recur fixes your open PRs in their own workspaces, while the chat is idle. Each fix is on until you turn it off, and stops when it isn’t working.",
+            "concepts/pull-requests#automatic-fixes",
+          )}
+          <div class="bn-scroll">
+            <table class="bn-wrap">
+              <thead>
+                <tr>
+                  {#each ["When", "Recur runs", "Stops after"] as h (h)}<th scope="col">{h}</th>{/each}
+                </tr>
+              </thead>
+              <tbody>
+                {#each green as [when, what, cap] (when)}<tr
+                    ><th scope="row">{when}</th><td>{what}</td><td>{cap}</td
+                    ></tr
+                  >{/each}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="bn-card bn-5">
+          {@render head(
+            "Start on an event, not just a clock.",
+            "Give a schedule a command. Every line it prints starts a run: CI, logs, a queue, anything you can script.",
+            "concepts/schedules#watch",
           )}
           <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll this code sample.) -->
           <pre
-            class="bn-toml"
+            class="bn-toml bn-watch"
             tabindex="0"
-            aria-label="Example custom workflow in a user bundle">{#each loopExample as token, i (i)}<span
-                class="t-{token.kind}">{token.text}</span
-              >{/each}</pre>
+            aria-label="Example watch schedule"><span class="t-comment"># command</span>
+tail -F log/development.log \
+  | grep --line-buffered ERROR
+
+<span class="t-comment"># prompt</span>
+<span class="t-string">Find the cause and fix it.</span>
+
+<span class="t-comment"># a line arrives, a workspace starts</span>
+<span class="t-literal">ERROR checkout: nil cart</span></pre>
+        </article>
+
+        <article class="bn-card bn-7">
+          {@render head(
+            "Put the chores on a schedule.",
+            "Any prompt or workflow can run on its own clock while Recur is open, each time in a fresh workspace.",
+            "concepts/schedules",
+          )}
+          <div class="bn-scroll">
+            <table class="bn-cron">
+              <thead>
+                <tr>
+                  {#each ["Name", "Cadence", "Mode"] as h (h)}<th scope="col">{h}</th>{/each}
+                </tr>
+              </thead>
+              <tbody>
+                {#each schedules as [name, cadence, how] (name)}<tr
+                    ><th scope="row">{name}</th><td><code>{cadence}</code></td
+                    ><td>{how}</td></tr
+                  >{/each}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="bn-card bn-5">
+          {@render head(
+            "Agents check back on their own.",
+            "Waiting on CI or a deploy? The agent picks a time, from a minute to a day, and the same chat wakes up with its reason.",
+            "concepts/background",
+          )}
+          <ol class="bn-steps bn-wake">
+            {#each wake as [title, text] (text)}<li>
+                <strong>{title}</strong><span>{text}</span>
+              </li>{/each}
+          </ol>
+        </article>
+
+        {@render shot(
+          "background",
+          "Long jobs run where you can see them.",
+          "Dev servers, watchers, and test runs get a terminal tab that outlives the turn and the model. When one exits, its chat picks up with the output.",
+          "concepts/background",
+        )}
+
+        <article class="bn-card bn-6">
+          {@render head(
+            "One plan, whichever model.",
+            "Every agent’s todos land in the same Plan. Switch models or open another chat and the list is still there, with your edits.",
+            "concepts/background",
+          )}
+          <ul class="bn-todos">
+            {#each todos as [state, text] (text)}<li class={state && `bn-${state}`}>
+                {text}
+              </li>{/each}
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="bn-features" aria-labelledby="bn-charge">
+      <header class="bn-group">
+        <h2 id="bn-charge">You stay <em>in charge.</em></h2>
+        <p>See every agent, read every change, and take any of it back.</p>
+      </header>
+      <div class="bn-grid">
+        {@render shot(
+          "inbox",
+          "Run every agent from one place.",
+          "Answer a question, approve a plan, fix a failing check, or merge, all without opening the workspace. Or tell Ask Recur to start the work, pass on your answer, and report back.",
+          "concepts/inbox",
+        )}
+
+        {@render shot(
+          "workspace-pr",
+          "The PR opens in its workspace.",
+          "The chat, the files, and the pull request together: conversation, commits, diff, and checks.",
+          "concepts/pull-requests",
+        )}
+
+        {@render shot(
+          "pull-request",
+          "Every PR, one place.",
+          "Every open PR across your projects, with agent findings right next to human comments.",
+          "concepts/pull-requests",
+        )}
+
+        {@render shot(
+          "uncommitted",
+          "Review it, fix it, commit it.",
+          "Uncommitted diffs are live editors. Check the files you want, fix a line as you read, and commit.",
+          "concepts/review#commit-from-the-review",
+        )}
+
+        {@render shot(
+          "insights",
+          "See where the hours went.",
+          "What your agents spent their time on, what they lost it to, and how long they waited on you.",
+          "concepts/insights",
+        )}
+
+        <article class="bn-card bn-6">
+          {@render head(
+            "Nothing is final.",
+            "Every turn is a checkpoint of the worktree.",
+            "concepts/review",
+          )}
+          <ol class="bn-steps">
+            {#each rewind as [title, text] (title)}<li>
+                <strong>{title}</strong><span>{text}</span>
+              </li>{/each}
+          </ol>
+        </article>
+
+        <article class="bn-card bn-wide">
+          {@render head(
+            "Runs the agents you already use.",
+            "Plus OpenAI-compatible: OpenAI, OpenRouter, Groq, or a custom URL such as Ollama.",
+            "reference/agents",
+          )}
+          <ul class="bn-agents">
+            {#each agents as [provider, name] (provider)}<li>
+                <ProviderIcon {provider} />{name}
+              </li>{/each}
+          </ul>
+        </article>
+
+        <article class="bn-card">
+          <header class="bn-head"><h3>And the small things.</h3></header>
+          <ul class="bn-extras">
+            {#each extras as [title, text] (title)}<li>
+                <strong>{title}</strong><span>{text}</span>
+              </li>{/each}
+          </ul>
         </article>
       </div>
     </section>
@@ -794,9 +1040,14 @@
   .bn-features {
     padding-top: 88px;
   }
-  .bn-features > h2 {
+  .bn-group {
     margin-bottom: 36px;
     text-align: center;
+  }
+  .bn-group p {
+    margin-top: 12px;
+    font-size: 16px;
+    color: var(--muted);
   }
   .bn-grid {
     display: grid;
@@ -875,6 +1126,11 @@
   }
 
   .bn-commands,
+  .bn-run,
+  .bn-steps,
+  .bn-models,
+  .bn-todos,
+  .bn-extras,
   .bn-keys,
   .bn-agents,
   .bn-close ul {
@@ -1046,6 +1302,129 @@
     height: 26px;
   }
 
+  .bn-run,
+  .bn-steps {
+    flex: 1;
+    display: grid;
+  }
+  .bn-run li,
+  .bn-steps li {
+    display: grid;
+    gap: 4px 18px;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid var(--line-soft);
+    font-size: 13.5px;
+    color: var(--muted);
+  }
+  .bn-run li {
+    grid-template-columns: 52px 1fr auto;
+  }
+  .bn-steps li {
+    grid-template-columns: 170px 1fr;
+  }
+  .bn-steps strong,
+  .bn-models strong,
+  .bn-extras strong {
+    font-weight: 500;
+    color: var(--text);
+  }
+  .bn-run code,
+  .bn-run b {
+    font: 12px var(--mono);
+    color: var(--amber);
+  }
+  .bn-run .bn-ok {
+    color: var(--emerald);
+  }
+  .bn-models {
+    flex: 1;
+    display: grid;
+    gap: 10px;
+  }
+  .bn-models li {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+  }
+  .bn-models :global(svg) {
+    width: 24px;
+    height: 24px;
+  }
+  .bn-models span {
+    margin-left: auto;
+    font: 11.5px var(--mono);
+    color: var(--muted);
+  }
+  .bn-steps.bn-wake li {
+    grid-template-columns: 52px 1fr;
+  }
+  .bn-wake strong {
+    font: 12px var(--mono);
+    color: var(--amber);
+  }
+  .bn-todos {
+    flex: 1;
+    display: grid;
+  }
+  .bn-todos li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-top: 1px solid var(--line-soft);
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .bn-todos li::before {
+    content: "";
+    flex: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--faint);
+    border-radius: 50%;
+  }
+  .bn-todos .bn-now {
+    color: var(--text);
+  }
+  .bn-todos .bn-now::before {
+    border-color: var(--amber);
+  }
+  .bn-todos .bn-done {
+    color: var(--faint);
+    text-decoration: line-through;
+  }
+  .bn-todos .bn-done::before {
+    border-color: var(--emerald);
+    background: var(--emerald);
+  }
+  .bn-extras {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    gap: 22px 36px;
+  }
+  .bn-extras li {
+    display: grid;
+    gap: 4px;
+    align-content: start;
+    font-size: 13.5px;
+    color: var(--muted);
+  }
+  .bn .bn-wrap td {
+    white-space: normal;
+  }
+  .bn .bn-wrap td:nth-child(2) {
+    min-width: 200px;
+  }
+  .bn-toml.bn-watch {
+    flex: 1 0 auto;
+    min-height: 0;
+  }
+
   .bn-keys li {
     display: flex;
     align-items: center;
@@ -1207,7 +1586,9 @@
     .bn-graph :global(.lf-foot) {
       grid-template-columns: 1fr;
     }
-    .bn-commands li {
+    .bn-commands li,
+    .bn-steps li,
+    .bn-run li {
       grid-template-columns: 1fr;
     }
     .bn-close {

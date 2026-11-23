@@ -1,5 +1,6 @@
 <script lang="ts">
   import manifest from "../../../public/screenshots/manifest.json";
+  import type { Screen } from "../site.svelte";
 
   let {
     screen,
@@ -9,14 +10,7 @@
     onprev,
     onnext,
   }: {
-    screen:
-      | "workspace"
-      | "changes"
-      | "loop"
-      | "pull-request"
-      | "inbox"
-      | "issues"
-      | "schedules";
+    screen: Screen;
     eager?: boolean;
     /** Shown in the enlarged view; defaults to the capture title. */
     caption?: string;

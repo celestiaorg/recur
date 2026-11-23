@@ -39,20 +39,42 @@ export const downloadLabel = onLinux
   : "Download for Mac";
 export const docs = "/docs/";
 
-type Screen =
-  | "workspace"
-  | "changes"
+export type Screen =
   | "loop"
-  | "pull-request"
   | "inbox"
+  | "workspace-pr"
+  | "pull-request"
+  | "changes"
+  | "uncommitted"
+  | "background"
+  | "schedules"
   | "issues"
-  | "schedules";
+  | "insights"
+  | "workspace";
 export const screens: { label: string; screen: Screen; caption: string }[] = [
   {
-    label: "Workspace",
-    screen: "workspace",
+    label: "Autopilot",
+    screen: "loop",
     caption:
-      "A workspace is a git worktree on its own branch. The chat, the file, and the changed-file list sit side by side.",
+      "A To a PR workflow fanned out into three child workspaces. Each one merges back as soon as it converges.",
+  },
+  {
+    label: "Inbox",
+    screen: "inbox",
+    caption:
+      "Every workspace in one list, with what it needs beside it. Answer it there, or tell Ask Recur what to do next.",
+  },
+  {
+    label: "Pull request",
+    screen: "workspace-pr",
+    caption:
+      "A pull request opens in its workspace: conversation, commits, diff, and checks, beside the chat that wrote it.",
+  },
+  {
+    label: "PR review",
+    screen: "pull-request",
+    caption:
+      "Open PRs across all your projects, including ones opened outside Recur: conversation, diff, commits, and checks.",
   },
   {
     label: "Diff",
@@ -61,22 +83,22 @@ export const screens: { label: string; screen: Screen; caption: string }[] = [
       "Read the worktree diff against its base and leave inline comments before anything is pushed.",
   },
   {
-    label: "Autopilot",
-    screen: "loop",
+    label: "Commit",
+    screen: "uncommitted",
     caption:
-      "A To a PR workflow fanned out into three child workspaces. Each one merges back as soon as it converges.",
+      "Uncommitted diffs are live editors. Check files into the commit, fix a line as you read, and commit.",
   },
   {
-    label: "Pull request",
-    screen: "pull-request",
+    label: "Background",
+    screen: "background",
     caption:
-      "Open PRs across all your projects, including ones opened outside Recur: conversation, diff, commits, and checks.",
+      "Dev servers and test runs get a terminal tab that outlives the turn, and agents check back when it’s time.",
   },
   {
-    label: "Inbox",
-    screen: "inbox",
+    label: "Schedules",
+    screen: "schedules",
     caption:
-      "Every workspace in one list, grouped into needs you, working, and ready to pick up.",
+      "Prompts and workflows on a cron, once, at every launch, or whenever a command prints a line. Each run gets a fresh workspace.",
   },
   {
     label: "Issues",
@@ -85,10 +107,16 @@ export const screens: { label: string; screen: Screen; caption: string }[] = [
       "GitHub and Linear issues assigned to you or open in your projects. Start a workspace from any of them.",
   },
   {
-    label: "Schedules",
-    screen: "schedules",
+    label: "Insights",
+    screen: "insights",
     caption:
-      "Prompts and workflows on a cron, once, or at every launch. Each run gets a fresh workspace.",
+      "Where your agents’ hours went, what they lost time to, and how long they waited on you.",
+  },
+  {
+    label: "Workspace",
+    screen: "workspace",
+    caption:
+      "A workspace is a git worktree on its own branch. The chat, the file, and the changed-file list sit side by side.",
   },
 ];
 
@@ -169,7 +197,7 @@ next = "build"
 [[workflow.phase]]
 id = "build"
 uses = "converge"
-next = "check"
+next = "test"
 
 [workflow.phase.roles]
 implementer = "recur.roles.coder"
@@ -178,6 +206,13 @@ reviewer = "team.roles.api-reviewer"
 [workflow.phase.prompts]
 implement = "Update the OpenAPI spec first, then the handlers."
 fix = "/fix-findings"
+
+[[workflow.phase]]
+id = "test"
+uses = "run"
+command = "mise run check"
+on_reject = "build"
+next = "check"
 
 [[workflow.phase]]
 id = "check"

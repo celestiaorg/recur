@@ -62,7 +62,13 @@ try {
     await expect(downloads).toBeHidden();
   }
 
-  for (const provider of ["Claude Code", "Cursor", "Codex"]) {
+  for (const provider of [
+    "Claude Code",
+    "Cursor",
+    "Codex",
+    "Antigravity",
+    "OpenCode",
+  ]) {
     const icon = page
       .locator(".bn-agents li")
       .filter({ hasText: new RegExp(`^${provider}$`) })
@@ -73,13 +79,17 @@ try {
   }
 
   const screens = {
-    Workspace: "workspace",
-    Diff: "changes",
     Autopilot: "loop",
-    "Pull request": "pull-request",
     Inbox: "inbox",
-    Issues: "issues",
+    "Pull request": "workspace-pr",
+    "PR review": "pull-request",
+    Diff: "changes",
+    Commit: "uncommitted",
+    Background: "background",
     Schedules: "schedules",
+    Issues: "issues",
+    Insights: "insights",
+    Workspace: "workspace",
   };
   const loaded = (image) =>
     expect
@@ -126,10 +136,17 @@ try {
     await expect(viewer).toHaveCount(0);
   }
 
-  // The inbox and pull request cards crop their captures and open them whole.
+  // The screenshot cards crop their captures and open them whole.
   await expect(page.locator(".bn iframe")).toHaveCount(0);
   const crops = page.locator(".bn-crop");
-  for (const [index, screen] of ["inbox", "pull-request"].entries()) {
+  for (const [index, screen] of [
+    "background",
+    "inbox",
+    "workspace-pr",
+    "pull-request",
+    "uncommitted",
+    "insights",
+  ].entries()) {
     const image = crops.nth(index).locator(".capture-trigger img");
     await image.scrollIntoViewIfNeeded();
     await expect(image).toHaveAttribute(
@@ -229,14 +246,14 @@ try {
   const tabs = tour.locator(".bn-tabs");
   await expect(tabs.locator("i")).toHaveCount(1);
   await expect(
-    tabs.getByRole("button", { name: "Workspace" }),
+    tabs.getByRole("button", { name: "Autopilot" }),
   ).toHaveAttribute("aria-pressed", "true");
   await tabs.locator("i").dispatchEvent("animationend");
-  await expect(tabs.getByRole("button", { name: "Diff" })).toHaveAttribute(
+  await expect(tabs.getByRole("button", { name: "Inbox" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await tabs.getByRole("button", { name: "Inbox" }).click();
+  await tabs.getByRole("button", { name: "Diff" }).click();
   await expect(tabs.locator("i")).toHaveCount(0);
   await tour.close();
 

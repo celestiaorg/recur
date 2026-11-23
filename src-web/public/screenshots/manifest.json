@@ -122,7 +122,7 @@
         "target": ".win",
         "view": "workspace",
         "chat": "MA",
-        "file": "src/main.go",
+        "file": "src/passkey.go",
         "surface": "editor",
         "prTab": "conv",
         "panes": {
@@ -354,6 +354,214 @@
         "ready": {
           "selector": "#v-schedules",
           "text": "Morning code review"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "workspace-pr",
+      "file": "workspace-pr.png",
+      "title": "The pull request beside the work",
+      "placement": "Pull request in the workspace",
+      "theme": "charcoal",
+      "settings": {
+        "id": "workspace-pr",
+        "title": "The pull request beside the work",
+        "placement": "Pull request in the workspace",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA2",
+        "file": "src/main.go",
+        "surface": "pr",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 400,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail",
+          "text": "All checks passed"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "uncommitted",
+      "file": "uncommitted.png",
+      "title": "Commit what you checked",
+      "placement": "Uncommitted changes",
+      "theme": "charcoal",
+      "settings": {
+        "id": "uncommitted",
+        "title": "Commit what you checked",
+        "placement": "Uncommitted changes",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA",
+        "file": "refunds/handler.go",
+        "surface": "review",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 290
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail .obs-review-surface",
+          "text": "Idempotency-Key is required"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "background",
+      "file": "background.png",
+      "title": "Processes that outlive the turn",
+      "placement": "Background processes",
+      "theme": "charcoal",
+      "settings": {
+        "id": "background",
+        "title": "Processes that outlive the turn",
+        "placement": "Background processes",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA",
+        "file": "webhooks/delivery.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 470,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail",
+          "text": "Checking back in"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "insights",
+      "file": "insights.png",
+      "title": "See where agent time goes",
+      "placement": "Insights",
+      "theme": "charcoal",
+      "settings": {
+        "id": "insights",
+        "title": "See where agent time goes",
+        "placement": "Insights",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "insights",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-insights",
+          "text": "Agent hours"
         },
         "theme": {
           "app": "default",

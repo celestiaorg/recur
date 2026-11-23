@@ -208,8 +208,6 @@ pub struct BriefingView {
     /// The checks summary each workspace had when Fix checks was sent.
     fix_sent: HashMap<String, String>,
     permission_cards: HashMap<String, Entity<PermissionCard>>,
-    /// The workspace whose Archive was clicked once.
-    archive_armed: Option<String>,
     /// The selected workspace's unread notifications as of selecting it (selecting marks
     /// them read).
     seen_notes: Vec<InboxItem>,
@@ -306,7 +304,6 @@ impl BriefingView {
             refresh_queued: None,
             fix_sent: HashMap::new(),
             permission_cards: HashMap::new(),
-            archive_armed: None,
             seen_notes: Vec::new(),
             reply_md: None,
             plan_md: None,
@@ -956,33 +953,6 @@ impl BriefingView {
             });
         })
         .detach();
-    }
-
-    /// The second click archives; the first arms for three seconds.
-    fn archive(&mut self, id: &str, cx: &mut Context<Self>) {
-        if self.archive_armed.as_deref() != Some(id) {
-            self.archive_armed = Some(id.to_owned());
-            cx.notify();
-            let id = id.to_owned();
-            cx.spawn(async move |this, cx| {
-                cx.background_executor().timer(Duration::from_secs(3)).await;
-                let _ = this.update(cx, |v, cx| {
-                    if v.archive_armed.as_deref() == Some(id.as_str()) {
-                        v.archive_armed = None;
-                        cx.notify();
-                    }
-                });
-            })
-            .detach();
-            return;
-        }
-        self.archive_armed = None;
-        let id = id.to_owned();
-        self.vcx
-            .state
-            .update(cx, |s, cx| s.remove_workspace(&id, cx))
-            .detach();
-        self.clear_selection(cx);
     }
 
     /// Runs a service call for the selected workspace and toasts its error.

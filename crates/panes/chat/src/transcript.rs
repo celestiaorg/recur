@@ -1666,7 +1666,7 @@ impl AgentChat {
         let t = Theme::of(cx).tokens;
         let bubble_key = format!("m{i}");
         let plain = strip_attachment_markers(&m.body);
-        let can_copy = !plain.is_empty();
+        let can_copy = !plain.is_empty() || !m.attachments.is_empty();
         let id = format!("ub-{}-{i}", self.props.reset_key);
         let arts = self.live_artifacts(cx);
         let parts = bubble_parts(m, &|title| {
@@ -1708,6 +1708,7 @@ impl AgentChat {
             let hover_bg = t.pane.mix(0.78, t.amber);
             let hover_border = t.amber.mix(0.5, recur_ui::color::TRANSPARENT);
             let key = bubble_key.clone();
+            let msg = m.clone();
             bubble = bubble.child(
                 div()
                     .absolute()
@@ -1740,7 +1741,7 @@ impl AgentChat {
                             })
                             .on_click(cx.guarded_listener(move |this, _, _, cx| {
                                 cx.stop_propagation();
-                                this.copy_text(plain.clone(), cx);
+                                this.copy_message(&msg, cx);
                                 this.mark_copied(None, Some(key.clone()), cx);
                             })),
                     )),

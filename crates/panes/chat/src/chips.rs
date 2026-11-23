@@ -151,7 +151,8 @@ fn fico(path: &str) -> AnyElement {
 }
 
 impl AgentChat {
-    /// A decoded image for `src`, loading it once.
+    /// A decoded image for `src`, loading it once. A failed load keeps its entry, so it is not
+    /// retried on every render.
     pub(crate) fn image_for(&mut self, src: &str, cx: &mut Context<Self>) -> Option<Decoded> {
         if let Some(d) = cx.try_global::<ImageCache>().and_then(|c| c.0.get(src)) {
             return Some(d.clone());
@@ -164,11 +165,11 @@ impl AgentChat {
         let task = cx.spawn(async move |this, cx| {
             let res = cx.background_spawn(fut).await;
             let _ = this.update(cx, |c, cx| {
-                c.image_loading.remove(&key);
                 if let Ok(d) = res {
+                    c.image_loading.remove(&key);
                     cx.default_global::<ImageCache>().0.insert(key.clone(), d);
+                    cx.notify();
                 }
-                cx.notify();
             });
         });
         self.image_loading.insert(src.to_string(), task);

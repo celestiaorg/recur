@@ -372,6 +372,129 @@ async fn select_all_copies_tool_rows(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+async fn copying_a_bubble_pastes_its_chips_and_images(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    h.set_messages(vec![AgentMsg {
+        me: true,
+        body: "see @docs/notes.md ⟦attachment:i1⟧ and".into(),
+        ts: Some(1),
+        attachments: vec![
+            recur_engine::view::chat::ChatAttachmentView {
+                id: "i1".into(),
+                data_url: "data:image/png;base64,AA".into(),
+                name: "shot.png".into(),
+                mime: "image/png".into(),
+                ..Default::default()
+            },
+            recur_engine::view::chat::ChatAttachmentView {
+                id: "i2".into(),
+                data_url: "data:image/png;base64,BB".into(),
+                name: "two.png".into(),
+                mime: "image/png".into(),
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    }]);
+    h.click("chat-bubble-copy");
+    let copied =
+        h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()));
+    assert_eq!(copied.as_deref(), Some("see @docs/notes.md  and"));
+    h.focus_composer();
+    h.keys("secondary-v");
+    h.keys("secondary-v");
+    let (wire, atts) = h.read(|c| (c.input().to_string(), c.attachments.clone()));
+    assert_eq!(atts.len(), 4, "{atts:?}");
+    assert_eq!(atts[0].data_url, "data:image/png;base64,AA");
+    assert_eq!(atts[1].name, "two.png");
+    assert_ne!(atts[0].id, atts[2].id);
+    for a in &atts {
+        assert!(wire.contains(&format!("⟦attachment:{}⟧", a.id)), "{wire:?}");
+    }
+    assert!(wire.starts_with("see @docs/notes.md "), "{wire:?}");
+    let files = h.read(|c| {
+        c.doc
+            .chips
+            .iter()
+            .filter(|s| matches!(s, recur_engine::view::composer::Segment::File { .. }))
+            .count()
+    });
+    assert_eq!(files, 2);
+}
+
+#[gpui::test]
+async fn copying_an_image_only_bubble_pastes_its_image(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    h.set_messages(vec![AgentMsg {
+        me: true,
+        body: "⟦attachment:i1⟧".into(),
+        ts: Some(1),
+        attachments: vec![recur_engine::view::chat::ChatAttachmentView {
+            id: "i1".into(),
+            data_url: "data:image/png;base64,AA".into(),
+            name: "shot.png".into(),
+            mime: "image/png".into(),
+            ..Default::default()
+        }],
+        ..Default::default()
+    }]);
+    h.click("chat-bubble-copy");
+    h.focus_composer();
+    h.keys("secondary-v");
+    let atts = h.read(|c| c.attachments.clone());
+    assert_eq!(atts.len(), 1, "{atts:?}");
+    assert_eq!(atts[0].data_url, "data:image/png;base64,AA");
+}
+
+struct FakeLoader;
+
+impl recur_content::ImageLoader for FakeLoader {
+    fn load(&self, src: &str) -> futures::future::BoxFuture<'static, Result<Vec<u8>, String>> {
+        let res = match src {
+            "/chat-image?id=ok" => Ok(b"GIF89a".to_vec()),
+            _ => Err("missing".to_string()),
+        };
+        Box::pin(async move { res })
+    }
+}
+
+#[gpui::test]
+async fn copying_a_bubble_keeps_stored_image_bytes_and_drops_failed_loads(cx: &mut TestAppContext) {
+    let mut h = boot(cx, Overrides::default(), ws_props(), ws_hooks());
+    h.cx.update(|_, cx| recur_content::set_image_loader(cx, std::sync::Arc::new(FakeLoader)));
+    let att = |id: &str, url: &str| recur_engine::view::chat::ChatAttachmentView {
+        id: id.into(),
+        url: url.into(),
+        name: format!("{id}.gif"),
+        mime: "image/gif".into(),
+        ..Default::default()
+    };
+    h.set_messages(vec![AgentMsg {
+        me: true,
+        body: "look".into(),
+        ts: Some(1),
+        attachments: vec![
+            att("ok", "/chat-image?id=ok"),
+            att("gone", "/chat-image?id=gone"),
+        ],
+        ..Default::default()
+    }]);
+    h.click("chat-bubble-copy");
+    h.focus_composer();
+    h.keys("secondary-v");
+    let (wire, atts) = h.read(|c| (c.input().to_string(), c.attachments.clone()));
+    assert_eq!(atts.len(), 1, "{atts:?}");
+    assert_eq!(atts[0].name, "ok.gif");
+    assert_eq!(atts[0].mime, "image/gif");
+    assert_eq!(atts[0].data_url, "data:image/gif;base64,R0lGODlh");
+    assert_eq!(wire.matches("⟦attachment:").count(), 1, "{wire:?}");
+    assert!(
+        wire.contains(&format!("⟦attachment:{}⟧", atts[0].id)),
+        "{wire:?}"
+    );
+}
+
+#[gpui::test]
 async fn a_bubble_with_an_image_grows_with_its_wrapped_text(cx: &mut TestAppContext) {
     let mut h = boot(cx, Overrides::default(), readonly(), ChatHooks::default());
     let text = "and runs in the nearest loop tab. but if there are no loop tabs then you have no idea what is going on. I'd think that resolve conflicts would just run in the nearest ops tab like other git-operations that need AI";

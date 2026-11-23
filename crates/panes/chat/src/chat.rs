@@ -10,8 +10,8 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use gpui_kit::{
-    AnyElement, AnyView, App, AppContext as _, ClipboardItem, Context, Entity, EventEmitter,
-    FocusHandle, Focusable, ScrollHandle, Subscription, Task, Window, point, px,
+    AnyElement, AnyView, App, AppContext as _, ClipboardEntry, ClipboardItem, Context, Entity,
+    EventEmitter, FocusHandle, Focusable, ScrollHandle, Subscription, Task, Window, point, px,
 };
 use recur_agent::context_usage::ContextUsage;
 use recur_content::{MarkdownView, StreamingMarkdown};
@@ -22,7 +22,8 @@ use recur_engine::view::chat::{
 use recur_engine::view::composer::{ComposerAtt, HydrateOpts, PromptChipSpec, RefKind};
 use recur_engine::view::digest::{TurnDigestFinding, TurnDigestNote, still_open_findings_for_turn};
 use recur_engine::view::mentions::{
-    MentionQuery, extract_attachment_ids, strip_attachment_markers, unique_artifact_id_for_title,
+    MentionQuery, attachment_marker, compose_marked_text, extract_attachment_ids,
+    strip_attachment_markers, unique_artifact_id_for_title,
 };
 use recur_engine::view::prompts::{
     PromptArgsQuery, parse_committed_prompt_line, prompt_action_query_at, prompt_args_query_at,
@@ -34,6 +35,7 @@ use recur_view_core::nav::ViewName;
 use recur_view_core::{AppState, ShellEvent, ViewContext};
 
 use crate::blocks::{Block, block_keys, group_blocks, last_retry_error_index};
+use crate::composer::{ClipImage, MessageClip};
 use crate::composer_doc::{ChipKind, ComposerDoc};
 use crate::composer_undo::{ComposerUndo, UndoSnap};
 use crate::flow::FlowLayout;
@@ -2106,6 +2108,65 @@ impl AgentChat {
 
     pub(crate) fn copy_text(&mut self, text: String, cx: &mut Context<Self>) {
         cx.write_to_clipboard(ClipboardItem::new_string(text));
+    }
+
+    /// The bubble's plain text for other apps, plus its wire text and images as metadata a
+    /// composer paste restores. The text lands at once; persisted images load as their stored
+    /// bytes, then the full clip replaces the text unless something else was copied meanwhile.
+    /// Images that fail to load are dropped.
+    pub(crate) fn copy_message(&mut self, m: &AgentMsg, cx: &mut Context<Self>) {
+        let text = strip_attachment_markers(&m.body);
+        cx.write_to_clipboard(ClipboardItem::new_string(text.clone()));
+        let mut wire = compose_marked_text(&m.body, m.attachments.iter().map(|a| a.id.as_str()));
+        let loader = cx.try_global::<recur_content::images::Loader>().cloned();
+        let loads: Vec<_> = m
+            .attachments
+            .iter()
+            .map(|a| {
+                let fut = a
+                    .data_url
+                    .is_empty()
+                    .then(|| loader.as_ref().map(|l| l.0.load(&a.url)))
+                    .flatten();
+                (a.clone(), fut)
+            })
+            .collect();
+        cx.spawn(async move |_, cx| {
+            let mut images = Vec::new();
+            for (a, fut) in loads {
+                let data_url = match fut {
+                    Some(f) => match f.await {
+                        Ok(bytes) => {
+                            use base64::Engine as _;
+                            let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
+                            format!("data:{};base64,{b64}", a.mime)
+                        }
+                        Err(_) => String::new(),
+                    },
+                    None => a.data_url,
+                };
+                if data_url.is_empty() {
+                    wire = wire.replace(&attachment_marker(&a.id), "");
+                    continue;
+                }
+                images.push(ClipImage {
+                    id: a.id,
+                    name: a.name,
+                    mime: a.mime,
+                    data_url,
+                });
+            }
+            let clip = MessageClip { wire, images };
+            cx.update(|cx| {
+                let unchanged = cx.read_from_clipboard().is_some_and(
+                    |c| matches!(c.entries(), [ClipboardEntry::String(s)] if *s.text() == text),
+                );
+                if unchanged {
+                    cx.write_to_clipboard(ClipboardItem::new_string_with_json_metadata(text, clip));
+                }
+            });
+        })
+        .detach();
     }
 
     // ---- the turn digest ----

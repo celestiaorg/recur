@@ -16,8 +16,9 @@ use gpui_kit::{
 use recur_engine::view::chat::{ChatAttachmentDraft, new_attachment_id};
 use recur_engine::view::composer::{PromptChipSpec, RefKind, Segment, parse_prompt_chip_values};
 use recur_engine::view::mentions::{
-    format_file_mention_chip, mention_query_at, parse_file_mention_chip,
+    attachment_marker, format_file_mention_chip, mention_query_at, parse_file_mention_chip,
     prepare_file_mention_insert, repair_file_mention_boundaries, skill_query_at,
+    strip_attachment_markers,
 };
 use recur_engine::view::prompts::{
     params_from_args, prompt_arg_slot_optional, prompt_arg_specs, prompt_required_args_filled,
@@ -39,6 +40,42 @@ use crate::composer_doc::{ChipKind, ComposerDoc};
 use crate::flow::ATOM;
 use crate::prompt_actions::{PromptCatalog, complete_prompt_args, prompt_action};
 use recur_view_widgets::file_index::search_files;
+
+/// A copied user message, carried as clipboard metadata beside its plain text.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct MessageClip {
+    pub wire: String,
+    pub images: Vec<ClipImage>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ClipImage {
+    pub id: String,
+    pub name: String,
+    pub mime: String,
+    pub data_url: String,
+}
+
+/// Fresh draft ids for the clip's images (a message pasted twice must not share drafts),
+/// with the wire's markers rewritten to match.
+fn rekey_clip(clip: MessageClip) -> (String, Vec<ChatAttachmentDraft>) {
+    let mut wire = clip.wire;
+    let drafts = clip
+        .images
+        .into_iter()
+        .map(|img| {
+            let id = new_attachment_id(now_ms());
+            wire = wire.replace(&attachment_marker(&img.id), &attachment_marker(&id));
+            ChatAttachmentDraft {
+                id,
+                name: img.name,
+                mime: img.mime,
+                data_url: img.data_url,
+            }
+        })
+        .collect();
+    (wire, drafts)
+}
 
 /// `setTimeout(…, 200)` before a complete script runs.
 const COMPLETE_DEBOUNCE: Duration = Duration::from_millis(200);
@@ -1807,6 +1844,13 @@ impl AgentChat {
         let Some(item) = cx.read_from_clipboard() else {
             return;
         };
+        if let Some(clip) = item.entries().iter().find_map(|e| match e {
+            ClipboardEntry::String(s) => s.metadata_json::<MessageClip>(),
+            _ => None,
+        }) {
+            self.paste_message(clip, cx);
+            return;
+        }
         let mut drafts = Vec::new();
         for e in item.entries() {
             if let ClipboardEntry::Image(img) = e {
@@ -1837,6 +1881,24 @@ impl AgentChat {
             return;
         }
         self.doc.insert_text(&text);
+        self.after_edit(true, cx);
+    }
+
+    /// A copied message bubble at the caret: its chips and images come back as chips.
+    fn paste_message(&mut self, clip: MessageClip, cx: &mut Context<Self>) {
+        let (mut wire, drafts) = rekey_clip(clip);
+        if self.app_surface() {
+            wire = strip_attachment_markers(&wire);
+        } else {
+            self.attachments.extend(drafts);
+        }
+        self.doc.insert_text("");
+        let text = self.doc.wire();
+        let caret = self.doc.wire_caret();
+        let mut doc = self.hydrate_wire(&format!("{}{wire}{}", &text[..caret], &text[caret..]), cx);
+        doc.caret = doc.doc_offset(caret + wire.len());
+        doc.anchor = doc.caret;
+        self.doc = doc;
         self.after_edit(true, cx);
     }
 

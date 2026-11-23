@@ -83,6 +83,7 @@ fn state_pill(color: Color, label: &str, live: bool, t: &Tokens) -> Div {
             .into_any_element()
     };
     div()
+        .debug_selector(|| "ov-state".into())
         .flex()
         .flex_none()
         .items_center()
@@ -352,8 +353,9 @@ impl BriefingView {
             )
     }
 
-    /// The pane's head: a 40px toolbar level with the list's filter bar (the titlebar's
-    /// crumb on the left, its buttons on the right), then the state pill and title.
+    /// The pane's head: a toolbar level with the list's filter bar, then the title and the
+    /// state pill with the crumb. The toolbar's rows fill from Remove leftwards, so arming it
+    /// moves other buttons to the next row and never Remove itself.
     fn overview_head(
         &mut self,
         brief: &WorkspaceBrief,
@@ -407,9 +409,11 @@ impl BriefingView {
         }
         let crumb = div()
             .flex()
+            .flex_1()
             .items_center()
             .gap(px(8.))
-            .min_w_0()
+            .min_w(px(80.))
+            .overflow_hidden()
             .when_some(project.as_ref(), |d, p| {
                 d.child(div().flex_none().child(project_pic(
                     p.pic.clone(),
@@ -430,48 +434,14 @@ impl BriefingView {
 
         let wid = brief.workspace_id.clone();
         let unread = self.is_unread(&wid, cx);
-        let mut actions = div().flex().flex_none().items_center().gap(px(6.));
-        actions = actions.child(recur_ui::tooltip::titled(
-            "ov-read-tip",
-            if unread {
-                "Mark as read (⇧⌘U)"
-            } else {
-                "Mark as unread (⇧⌘U)"
-            },
-            tbtn("ov-read", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
-                .debug_selector(move || {
-                    format!("ov-read:{}", if unread { "unread" } else { "read" })
-                })
-                .child(button_label(
-                    if unread { "Mark read" } else { "Mark unread" },
-                    11.5,
-                    500.,
-                ))
-                .on_click(cx.guarded_listener(|v, _, _, cx| v.toggle_read(cx))),
-        ));
-        if let Some(pr) = self.brief_pr(brief, cx) {
-            let target = format!("pr:{}", pr.id);
-            let label = if pr.draft {
-                format!("View draft #{}", pr.number)
-            } else {
-                format!("View PR #{}", pr.number)
-            };
-            actions = actions.child(recur_ui::tooltip::titled(
-                "ov-pr-tip",
-                format!("{} · {}", pr.title, pr.state),
-                tbtn("ov-pr", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
-                    .debug_selector(|| "ov-pr".into())
-                    .child(icon(pr_icon_name(Some(&pr))).size(px(13.)))
-                    .child(button_label(label, 11.5, 500.))
-                    .on_click(cx.guarded_listener(move |v, _, _, cx| route(v, &target, cx))),
-            ));
-        }
-        actions = actions.child(
-            tbtn("ov-open", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
-                .debug_selector(|| "ov-open".into())
-                .child(button_label("Open workspace", 11.5, 500.))
-                .on_click(cx.guarded_listener(|v, _, _, cx| v.open_selected(cx))),
-        );
+        let mut actions = div()
+            .flex()
+            .flex_1()
+            .flex_row_reverse()
+            .flex_wrap()
+            .min_w_0()
+            .items_center()
+            .gap(px(6.));
         if !running {
             let armed = self.archive_armed.as_deref() == Some(wid.as_str());
             let id = wid.clone();
@@ -485,21 +455,67 @@ impl BriefingView {
                     None,
                     cx,
                 )
+                .max_w_full()
                 .debug_selector(|| "ov-remove".into())
-                .child(button_label(
-                    if armed { "Click to confirm" } else { "Remove" },
-                    11.5,
-                    500.,
-                ))
+                .child(
+                    button_label(
+                        if armed { "Click to confirm" } else { "Remove" },
+                        11.5,
+                        500.,
+                    )
+                    .truncate(),
+                )
                 .on_click(cx.guarded_listener(move |v, _, _, cx| v.archive(&id, cx))),
             ));
         }
-        let lead = div()
-            .flex()
-            .flex_1()
-            .min_w_0()
-            .items_center()
-            .gap(px(8.))
+        actions = actions.child(
+            tbtn("ov-open", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
+                .max_w_full()
+                .debug_selector(|| "ov-open".into())
+                .child(button_label("Open workspace", 11.5, 500.).truncate())
+                .on_click(cx.guarded_listener(|v, _, _, cx| v.open_selected(cx))),
+        );
+        if let Some(pr) = self.brief_pr(brief, cx) {
+            let target = format!("pr:{}", pr.id);
+            let label = if pr.draft {
+                format!("View draft #{}", pr.number)
+            } else {
+                format!("View PR #{}", pr.number)
+            };
+            actions = actions.child(recur_ui::tooltip::titled(
+                "ov-pr-tip",
+                format!("{} · {}", pr.title, pr.state),
+                tbtn("ov-pr", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
+                    .max_w_full()
+                    .debug_selector(|| "ov-pr".into())
+                    .child(icon(pr_icon_name(Some(&pr))).size(px(13.)))
+                    .child(button_label(label, 11.5, 500.).truncate())
+                    .on_click(cx.guarded_listener(move |v, _, _, cx| route(v, &target, cx))),
+            ));
+        }
+        actions = actions.child(recur_ui::tooltip::titled(
+            "ov-read-tip",
+            if unread {
+                "Mark as read (⇧⌘U)"
+            } else {
+                "Mark as unread (⇧⌘U)"
+            },
+            tbtn("ov-read", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
+                .max_w_full()
+                .debug_selector(move || {
+                    format!("ov-read:{}", if unread { "unread" } else { "read" })
+                })
+                .child(
+                    button_label(if unread { "Mark read" } else { "Mark unread" }, 11.5, 500.)
+                        .truncate(),
+                )
+                .on_click(cx.guarded_listener(|v, _, _, cx| v.toggle_read(cx))),
+        ));
+        let toolbar = crate::style::filters_bar(cx)
+            .h_auto()
+            .px(px(14.))
+            .py(px(4.))
+            .gap(px(12.))
             .when(narrow, |d| {
                 d.child(
                     div()
@@ -516,11 +532,6 @@ impl BriefingView {
                         .on_click(cx.guarded_listener(|v, _, _, cx| v.clear_selection(cx))),
                 )
             })
-            .child(state_pill(pill_color, pill_label, running, &t));
-        let toolbar = crate::style::filters_bar(cx)
-            .px(px(14.))
-            .gap(px(12.))
-            .child(lead)
             .child(actions);
 
         let title = div()
@@ -558,7 +569,16 @@ impl BriefingView {
                         d.child(text(a).mono().size(10.5).color(t.faint).nowrap())
                     }),
             )
-            .child(crumb);
+            .child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap_x(px(10.))
+                    .gap_y(px(6.))
+                    .child(state_pill(pill_color, pill_label, running, &t))
+                    .child(crumb),
+            );
         div()
             .flex()
             .flex_none()

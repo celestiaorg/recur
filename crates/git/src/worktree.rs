@@ -851,13 +851,13 @@ impl Manager {
         Ok(())
     }
 
-    /// Aborts whichever merge or rebase is in progress, judged by
-    /// `MERGE_HEAD` / `REBASE_HEAD` rather than the caller's intent.
+    /// Aborts whichever merge or rebase is in progress, judged by the
+    /// worktree's git state rather than the caller's intent.
     pub async fn abort_in_progress_update(&self, worktree: &str) -> Result<()> {
         if self.ref_set(worktree, "MERGE_HEAD").await {
             return self.abort_update_with_base(worktree, "merge").await;
         }
-        if self.ref_set(worktree, "REBASE_HEAD").await {
+        if rebase_in_progress(worktree).await {
             return self.abort_update_with_base(worktree, "rebase").await;
         }
         self.abort_update_with_base(worktree, "merge").await
@@ -879,14 +879,7 @@ impl Manager {
 
     /// Whether a merge or rebase is in progress (or conflicts remain).
     pub async fn update_in_progress(&self, worktree: &str) -> bool {
-        if self.ref_set(worktree, "MERGE_HEAD").await || self.ref_set(worktree, "REBASE_HEAD").await
-        {
-            return true;
-        }
-        match self.run_in(worktree, ["status", "--porcelain"]).await {
-            Ok(st) => porcelain_has_conflict(&st),
-            Err(_) => false,
-        }
+        worktree_unmerged(worktree).await
     }
 
     /// The commit hash `r` points at, or empty on error.
@@ -1436,16 +1429,39 @@ pub async fn inspect_discard_risk(worktree: &str) -> DiscardRisk {
     }
 }
 
+/// Whether a rebase is in progress, by the state directories `git status`
+/// checks. `REBASE_HEAD` is no signal: it can outlive a finished rebase.
+async fn rebase_in_progress(worktree: &str) -> bool {
+    let out = command([
+        "-C",
+        worktree,
+        "rev-parse",
+        "--path-format=absolute",
+        "--git-path",
+        "rebase-merge",
+        "--git-path",
+        "rebase-apply/rebasing",
+    ])
+    .output()
+    .await;
+    out.is_ok_and(|out| {
+        String::from_utf8_lossy(&out)
+            .lines()
+            .any(|p| std::path::Path::new(p).exists())
+    })
+}
+
 /// Merge/rebase conflicts or an in-progress merge/rebase.
 async fn worktree_unmerged(worktree: &str) -> bool {
-    for r in ["MERGE_HEAD", "REBASE_HEAD"] {
-        if let Ok(out) = command(["-C", worktree, "rev-parse", "-q", "--verify", r])
-            .output()
-            .await
-            && !String::from_utf8_lossy(&out).into_owned().trim().is_empty()
-        {
-            return true;
-        }
+    if let Ok(out) = command(["-C", worktree, "rev-parse", "-q", "--verify", "MERGE_HEAD"])
+        .output()
+        .await
+        && !out.trim_ascii().is_empty()
+    {
+        return true;
+    }
+    if rebase_in_progress(worktree).await {
+        return true;
     }
     match command(["-C", worktree, "status", "--porcelain"])
         .output()
@@ -3158,6 +3174,34 @@ mod tests {
             parents.split_whitespace().count() <= 2,
             "expected linear history, got {parents}"
         );
+    }
+
+    #[tokio::test]
+    async fn leftover_rebase_head_is_not_in_progress() {
+        let repo = crate::testutil::init_repo();
+        let root = temp_dir();
+        let m = mgr(&repo.path, &root.path);
+        let (wt, _) =
+            add_branch_commit(&m, "LOOP-rbh", "rebase-head", "same.txt", "branch side\n").await;
+        m.run_in(&wt.path, ["update-ref", "REBASE_HEAD", "HEAD"])
+            .await
+            .expect("leave a REBASE_HEAD");
+        assert!(!m.update_in_progress(&wt.path).await);
+        assert!(!inspect_discard_risk(&wt.path).await.unmerged);
+
+        write(&repo.path, "same.txt", "base side\n");
+        commit_in_repo(&m, "same.txt").await;
+        for backend in ["--merge", "--apply"] {
+            m.run_in(&wt.path, ["rebase", backend, "main"])
+                .await
+                .expect_err("expected a conflict");
+            write(&wt.path, "same.txt", "resolved\n");
+            m.run_in(&wt.path, ["add", "same.txt"]).await.expect("add");
+            assert!(m.update_in_progress(&wt.path).await, "{backend}");
+            assert!(inspect_discard_risk(&wt.path).await.unmerged, "{backend}");
+            m.abort_in_progress_update(&wt.path).await.expect("abort");
+            assert!(!m.update_in_progress(&wt.path).await, "{backend}");
+        }
     }
 
     #[tokio::test]

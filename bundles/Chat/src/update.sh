@@ -28,23 +28,18 @@ if [ "$method" != "rebase" ]; then
   method="merge"
 fi
 
+# REBASE_HEAD can outlive a finished rebase; only the state directories count.
+rebasing() {
+  [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]
+}
+
 in_progress=0
 if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
   in_progress=1
   method="merge"
-elif git rev-parse -q --verify REBASE_HEAD >/dev/null 2>&1; then
+elif rebasing; then
   in_progress=1
   method="rebase"
-else
-  rebase_merge="$(git rev-parse --git-path rebase-merge 2>/dev/null || true)"
-  rebase_apply="$(git rev-parse --git-path rebase-apply 2>/dev/null || true)"
-  if [ -n "$rebase_merge" ] && [ -d "$rebase_merge" ]; then
-    in_progress=1
-    method="rebase"
-  elif [ -n "$rebase_apply" ] && [ -d "$rebase_apply" ]; then
-    in_progress=1
-    method="rebase"
-  fi
 fi
 
 emit_ok() {
@@ -102,7 +97,7 @@ if [ "$in_progress" -eq 0 ]; then
   if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
     in_progress=1
     method="merge"
-  elif git rev-parse -q --verify REBASE_HEAD >/dev/null 2>&1; then
+  elif rebasing; then
     in_progress=1
     method="rebase"
   else

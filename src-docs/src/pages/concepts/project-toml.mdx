@@ -55,6 +55,6 @@ Recur does not export the contents of `.env` files. Keep secrets in gitignored d
 
 ## Commit style
 
-Turn on **Conventional Commits** in the Project page's pull request settings, or set `conventional_commits = true`, to have agents write [Conventional Commits](https://www.conventionalcommits.org) subjects and PR titles (`type(scope): summary`). It applies to `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and workflow PR titles.
+Turn on **Conventional Commits** for every project in Settings → Pull requests. To override it for one repo, pick On or Off in the Project page's pull request settings, or set `conventional_commits = true` or `false` here; leave the key out to follow the global setting. When on, agents write [Conventional Commits](https://www.conventionalcommits.org) subjects and PR titles (`type(scope): summary`). It applies to `/commit`, `/commit-push`, `/open-pr`, generated commit messages, and workflow PR titles.
 
 Repository paths, sidebar preferences, enabled project skills, and merge/GitHub PR preferences are app settings rather than fields in this file.

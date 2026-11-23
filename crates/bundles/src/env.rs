@@ -66,7 +66,7 @@ pub struct PromptRunContext {
     pub base_branch: String,
     /// "merge" or "rebase".
     pub update_base_method: String,
-    /// project.toml `conventional_commits`.
+    /// project.toml `conventional_commits`, else the global setting.
     pub conventional_commits: bool,
     /// Open (non-merged) PR for this workspace, if any. `/open-pr`
     /// fast-fails when set so a second invoke does not start an agent turn.

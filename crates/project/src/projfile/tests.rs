@@ -149,9 +149,9 @@ fn overlay_omitted_keys_are_empty() {
 fn conventional_commits_round_trip() {
     let dir = tempfile::tempdir().unwrap();
     write_raw(dir.path(), "# keep\nconventional_commits = false # why\n");
-    assert!(!overlay(proj(dir.path())).conventional_commits);
+    assert_eq!(overlay(proj(dir.path())).conventional_commits, Some(false));
     let on = Project {
-        conventional_commits: true,
+        conventional_commits: Some(true),
         ..proj(dir.path())
     };
     write(&on).unwrap();
@@ -160,9 +160,10 @@ fn conventional_commits_round_trip() {
         text.contains("# keep") && text.contains("conventional_commits = true # why"),
         "{text}"
     );
-    assert!(overlay(proj(dir.path())).conventional_commits);
+    assert_eq!(overlay(proj(dir.path())).conventional_commits, Some(true));
     write(&proj(dir.path())).unwrap();
-    assert!(!overlay(proj(dir.path())).conventional_commits);
+    assert!(!read_project_toml(dir.path()).contains("conventional_commits"));
+    assert_eq!(overlay(proj(dir.path())).conventional_commits, None);
 }
 
 #[test]

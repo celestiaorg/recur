@@ -35,7 +35,7 @@ pub struct File {
     pub app_url: String,
     pub env: String,
     pub copy_files: String,
-    pub conventional_commits: bool,
+    pub conventional_commits: Option<bool>,
     #[serde(rename = "run")]
     pub runs: Vec<FileRun>,
 }
@@ -109,7 +109,7 @@ fn clear_run_config(p: &mut Project) {
     p.app_url.clear();
     p.env.clear();
     p.copy_files.clear();
-    p.conventional_commits = false;
+    p.conventional_commits = None;
     p.run_commands.clear();
     p.project_file_error.clear();
 }

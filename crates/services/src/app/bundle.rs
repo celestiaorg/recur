@@ -422,7 +422,8 @@ impl AppServices {
             rc.update_base_method = effective_update_base_method(p, &self.store().settings())
                 .as_str()
                 .to_owned();
-            rc.conventional_commits = p.conventional_commits;
+            rc.conventional_commits =
+                recur_domain::effective_conventional_commits(p, &self.store().settings());
         }
         rc.surface = match rc.surface.trim().to_lowercase().as_str() {
             "local_pr" | "local-pr" | "local" => "local_pr",

@@ -101,8 +101,8 @@ fn marshal_new(p: &Project) -> String {
     for (k, v) in KEYS.into_iter().zip(fields(&f)) {
         d[k] = value(v);
     }
-    if f.conventional_commits {
-        d["conventional_commits"] = value(true);
+    if let Some(cc) = f.conventional_commits {
+        d["conventional_commits"] = value(cc);
     }
     if !f.runs.is_empty() {
         let mut runs = ArrayOfTables::new();
@@ -146,8 +146,12 @@ fn set_string(t: &mut Table, key: &str, v: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// [`set_string`] for a bool.
-fn set_bool(t: &mut Table, key: &str, v: bool) -> Result<(), String> {
+/// [`set_string`] for an optional bool: `None` removes `key`.
+fn set_bool(t: &mut Table, key: &str, v: Option<bool>) -> Result<(), String> {
+    let Some(v) = v else {
+        t.remove(key);
+        return Ok(());
+    };
     match t.get_mut(key) {
         Some(Item::Value(cur)) if cur.as_bool() == Some(v) => {}
         Some(Item::Value(cur)) => {
@@ -155,7 +159,6 @@ fn set_bool(t: &mut Table, key: &str, v: bool) -> Result<(), String> {
             *cur = v.into();
             *cur.decor_mut() = decor;
         }
-        Some(Item::None) | None if !v => {}
         Some(Item::None) | None => t[key] = value(v),
         Some(_) => return Err(format!("{key}: not a bool")),
     }

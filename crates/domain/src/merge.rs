@@ -100,6 +100,12 @@ pub fn normalize_update_base_method(s: &str) -> UpdateBaseMethod {
     }
 }
 
+/// Project override, then the global Conventional Commits setting.
+pub fn effective_conventional_commits(proj: &Project, settings: &Settings) -> bool {
+    proj.conventional_commits
+        .unwrap_or(settings.conventional_commits)
+}
+
 /// Project override, then global default, then merge.
 pub fn effective_update_base_method(proj: &Project, settings: &Settings) -> UpdateBaseMethod {
     [

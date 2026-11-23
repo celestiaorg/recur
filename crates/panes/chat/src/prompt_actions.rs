@@ -294,7 +294,8 @@ pub fn run_prompt_action(
         return cx.spawn(async move |_| {
             let mut ctx = ctx;
             if let Ok(p) = services.projects.get_project(&ctx.project_id).await {
-                ctx.conventional_commits = p.conventional_commits;
+                let s = services.settings.get_settings().await.unwrap_or_default();
+                ctx.conventional_commits = recur_domain::effective_conventional_commits(&p, &s);
             }
             let code = services
                 .bundle

@@ -157,6 +157,22 @@ impl SettingsView {
                 true,
             ));
         }
+        let cc = s.as_ref().is_some_and(|s| s.conventional_commits);
+        list.push((
+            copy(
+                "cc",
+                "Conventional Commits",
+                Some(vec![span("/commit, /commit-push, /open-pr, generated commit messages and PR titles use type(scope): summary. Projects can override this.")]),
+                cx,
+            )
+            .into_any_element(),
+            tog("tog-cc", "Conventional Commits", cc, false, cx)
+                .on_click(cx.guarded_listener(move |this, _, _, cx| {
+                    this.patch(false, |s| s.conventional_commits = !cc, cx).detach()
+                }))
+                .into_any_element(),
+            false,
+        ));
         let mut autos = Vec::new();
         for (id, title, desc, get, set) in AUTO {
             let on = s.as_ref().is_none_or(get);

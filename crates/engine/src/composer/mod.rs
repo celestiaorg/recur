@@ -320,7 +320,8 @@ impl Engine {
                     recur_domain::effective_update_base_method(&proj, &self.settings())
                         .as_str()
                         .to_owned();
-                rc.conventional_commits = proj.conventional_commits;
+                rc.conventional_commits =
+                    recur_domain::effective_conventional_commits(&proj, &self.settings());
             }
             self.fill_prompt_pr(&mut rc, &ws);
         }

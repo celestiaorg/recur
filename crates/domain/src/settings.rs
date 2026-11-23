@@ -114,6 +114,11 @@ pub struct Settings {
     #[serde(skip_serializing_if = "MergeCommitMessage::is_empty")]
     pub default_merge_commit_message: MergeCommitMessage,
 
+    /// Agents write Conventional Commits subjects and PR titles. Projects
+    /// override it via project.toml `conventional_commits`.
+    #[serde(skip_serializing_if = "is_false")]
+    pub conventional_commits: bool,
+
     /// Prepended to new workspace branches as prefix/slug. `None` (legacy
     /// blobs) falls back to the mode fields; `Some("")` means no prefix.
     #[serde(skip_serializing_if = "Option::is_none")]

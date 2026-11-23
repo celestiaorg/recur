@@ -26,8 +26,8 @@ pub(crate) const PR_DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(45);
 
 pub const PR_DESCRIPTION_SYSTEM_PROMPT: &str = "You write pull request titles and descriptions from a branch diff. Describe ALL changes versus the base branch, not one commit or chat turn. Reply with ONLY a title line (at most 80 characters), a blank line, and a markdown body. Keep the body under five sentences unless the change is large. No quotes, no markdown fences around the whole reply, no greeting, no tools.";
 
-/// Appended to the commit and PR one-shots when project.toml sets
-/// `conventional_commits = true`.
+/// Appended to the commit and PR one-shots when Conventional Commits is on
+/// (project.toml `conventional_commits`, else the global setting).
 pub const CONVENTIONAL_COMMITS_PROMPT: &str = " Write the subject or title line as a Conventional Commit: `type(scope): summary`, scope optional, even when recent commit subjects use another style.";
 
 /// GitHub's PR body limit.
@@ -114,13 +114,13 @@ impl Engine {
     }
 
     /// `base` plus the Conventional Commits rule when the workspace's
-    /// project opts in.
+    /// project (or the global default) opts in.
     fn commit_style_prompt(&self, workspace_id: &str, base: &str) -> String {
         let on = self
             .store
             .workspace(workspace_id)
             .and_then(|ws| self.store.project(&ws.project_id))
-            .is_some_and(|p| p.conventional_commits);
+            .is_some_and(|p| recur_domain::effective_conventional_commits(&p, &self.settings()));
         if on {
             format!("{base}{CONVENTIONAL_COMMITS_PROMPT}")
         } else {

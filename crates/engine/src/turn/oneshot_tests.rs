@@ -130,6 +130,42 @@ async fn conventional_commits_suffixes_oneshot_prompts() {
 }
 
 #[tokio::test]
+async fn global_conventional_commits_applies_until_a_project_opts_out() {
+    let cap = Capture::empty();
+    let te = TestEngine::new(Some(cap.clone()));
+    te.store.set_settings(recur_domain::Settings {
+        conventional_commits: true,
+        ..te.store.settings()
+    });
+    let repo = init_repo();
+    let proj = add_project(&te.store, &repo.path);
+    let ws = te.engine.create_workspace(&proj, "cc", "").await.unwrap();
+    let tok = CancellationToken::new();
+    let (wt, diff) = (&ws.worktree_path, "diff --git a/x b/x\n+y");
+    let _ = te
+        .engine
+        .generate_commit_message(&tok, &ws.id, wt, diff, &[])
+        .await;
+    std::fs::create_dir(Path::new(&repo.path).join(".recur")).unwrap();
+    std::fs::write(
+        Path::new(&repo.path).join(".recur/project.toml"),
+        "conventional_commits = false\n",
+    )
+    .unwrap();
+    let _ = te
+        .engine
+        .generate_commit_message(&tok, &ws.id, wt, diff, &[])
+        .await;
+    let reqs = cap.requests();
+    assert_eq!(
+        reqs[0].system_prompt,
+        format!("{COMMIT_MESSAGE_SYSTEM_PROMPT}{CONVENTIONAL_COMMITS_PROMPT}")
+    );
+    assert_eq!(reqs[1].system_prompt, COMMIT_MESSAGE_SYSTEM_PROMPT);
+    te.close().await;
+}
+
+#[tokio::test]
 async fn oneshot_deadline_reads_context_deadline_exceeded() {
     let te = TestEngine::new(Some(FnProvider::wrap(|_| {
         Err(recur_agent::ProviderError::canceled())

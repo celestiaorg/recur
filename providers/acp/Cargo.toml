@@ -1,0 +1,28 @@
+[package]
+name = "recur-provider-acp"
+description = "Agent Client Protocol provider (Antigravity, OpenCode, any ACP stdio agent)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+recur-domain.workspace = true
+recur-agent.workspace = true
+async-trait.workspace = true
+parking_lot.workspace = true
+rustix.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true }
+tokio-util.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+recur-exec.workspace = true
+recur-agent = { workspace = true, features = ["testing"] }
+tempfile.workspace = true
+
+[lints]
+workspace = true

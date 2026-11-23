@@ -262,7 +262,7 @@ pub fn normalize_compatible_provider(
     if !kebab_slug(&p.id, 47) {
         return Err(CompatibleError::InvalidId(p.id));
     }
-    if RESERVED_PROVIDER_SLUGS.contains(&p.id.as_str()) {
+    if RESERVED_PROVIDER_SLUGS.contains(&p.id.as_str()) || crate::acp_agent(&p.id).is_some() {
         return Err(CompatibleError::ReservedId(p.id));
     }
     if seen.contains(&p.id) {

@@ -5,19 +5,21 @@
 use recur_agent::Provider as _;
 use recur_agent::catalog::{ModelChoice, ModelGroup, default_flags_from_dims};
 use recur_domain::{
-    Flags, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Settings,
-    provider_label,
+    ACP_AGENTS, Flags, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR,
+    Settings, provider_label,
 };
 
 use super::AppServices;
 
-/// The grouped catalog: Claude Code, Cursor, Codex, each compatible
-/// endpoint, then ChatGPT. Disabled providers are omitted; Cursor and Codex
-/// appear only with models, ChatGPT once an account is connected.
+/// The grouped catalog: Claude Code, Cursor, Codex, each ACP agent (by id,
+/// in `acp_models` order), each compatible endpoint, then ChatGPT. Disabled
+/// providers are omitted; Cursor, Codex and ACP agents appear only with
+/// models, ChatGPT once an account is connected.
 pub fn build_model_catalog(
     set: &Settings,
     cursor_models: Vec<ModelChoice>,
     codex_models: Vec<ModelChoice>,
+    acp_models: Vec<(&str, Vec<ModelChoice>)>,
 ) -> Vec<ModelGroup> {
     let mut groups = Vec::new();
     if set.provider_enabled(PROVIDER_CLAUDE_CODE) {
@@ -40,6 +42,15 @@ pub fn build_model_catalog(
             label: provider_label(PROVIDER_CODEX).into(),
             models: codex_models,
         });
+    }
+    for (id, models) in acp_models {
+        if set.provider_enabled(id) && !models.is_empty() {
+            groups.push(ModelGroup {
+                provider: id.into(),
+                label: provider_label(id).into(),
+                models,
+            });
+        }
     }
     for p in &set.compatible_providers {
         if !set.provider_enabled(&p.id) || !p.configured() {
@@ -120,7 +131,8 @@ pub fn provider_enablement_changed(a: &Settings, b: &Settings) -> bool {
         PROVIDER_CODEX,
         PROVIDER_CHATGPT,
     ]
-    .iter()
+    .into_iter()
+    .chain(ACP_AGENTS.iter().map(|ag| ag.id))
     .any(|p| a.provider_enabled(p) != b.provider_enabled(p))
     {
         return true;
@@ -149,8 +161,31 @@ pub fn provider_enablement_changed(a: &Settings, b: &Settings) -> bool {
 }
 
 impl AppServices {
-    /// Cursor and Codex list live (a throwaway bridge or app-server); each
-    /// provider remembers the result for remaps. Claude Code's pinned list
+    /// Each enabled ACP agent's cached or live models, in `ACP_AGENTS` order.
+    /// Live probes run concurrently so one slow agent does not hold the rest.
+    async fn acp_models(
+        &self,
+        set: &Settings,
+        live: bool,
+    ) -> Vec<(&'static str, Vec<ModelChoice>)> {
+        let probes = self
+            .providers
+            .acp
+            .iter()
+            .filter(|p| set.provider_enabled(p.agent().id))
+            .map(|p| async move {
+                let models = if live {
+                    p.models(set).await.unwrap_or_default()
+                } else {
+                    p.cached_models(set)
+                };
+                (p.agent().id, models)
+            });
+        futures::future::join_all(probes).await
+    }
+
+    /// Cursor, Codex and ACP agents list live (a throwaway bridge,
+    /// app-server or agent); each provider remembers the result for remaps. Claude Code's pinned list
     /// gains the models the local CLI reports for the account;
     /// `probe_claude = false` reuses the last good probe, spawning claude only
     /// until one succeeds.
@@ -168,9 +203,11 @@ impl AppServices {
         let rest = async {
             let cursor = self.providers.cursor.models(&set).await.unwrap_or_default();
             let codex = self.providers.codex.models(&set).await.unwrap_or_default();
-            build_model_catalog(&set, cursor, codex)
+            (cursor, codex)
         };
-        let (claude, mut groups) = tokio::join!(claude, rest);
+        let (claude, (cursor, codex), acp) =
+            tokio::join!(claude, rest, self.acp_models(&set, true));
+        let mut groups = build_model_catalog(&set, cursor, codex, acp);
         if let Some(g) = groups
             .first_mut()
             .filter(|g| g.provider == PROVIDER_CLAUDE_CODE)
@@ -184,23 +221,29 @@ impl AppServices {
     /// first, so a toggle does not start a throwaway bridge; a live probe
     /// only when the cache has nothing the incoming settings can use, one
     /// provider at a time so a hung bridge does not also burn the Codex
-    /// budget.
+    /// budget. ACP agents are probed last, together.
     pub(crate) async fn catalog_for_fallback(&self, set: &Settings) -> Vec<ModelGroup> {
         let codex_cached = self.providers.codex.cached_models(set);
+        let acp_cached = self.acp_models(set, false).await;
         let groups = build_model_catalog(
             set,
             self.providers.cursor.cached_models(set),
             codex_cached.clone(),
+            acp_cached.clone(),
         );
         if !first_catalog_choice(&groups).0.is_empty() {
             return groups;
         }
         let cursor = self.providers.cursor.models(set).await.unwrap_or_default();
-        let groups = build_model_catalog(set, cursor.clone(), codex_cached);
+        let groups = build_model_catalog(set, cursor.clone(), codex_cached, acp_cached.clone());
         if !first_catalog_choice(&groups).0.is_empty() {
             return groups;
         }
         let codex = self.providers.codex.models(set).await.unwrap_or_default();
-        build_model_catalog(set, cursor, codex)
+        let groups = build_model_catalog(set, cursor.clone(), codex.clone(), acp_cached);
+        if !first_catalog_choice(&groups).0.is_empty() {
+            return groups;
+        }
+        build_model_catalog(set, cursor, codex, self.acp_models(set, true).await)
     }
 }

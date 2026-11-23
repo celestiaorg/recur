@@ -1,5 +1,6 @@
 //! Providers: permissions, the Claude Code and Cursor accounts, the OpenAI group (ChatGPT,
-//! the Codex runtime and the OpenAI API endpoint), and OpenAI-compatible endpoints.
+//! the Codex runtime and the OpenAI API endpoint), one group per ACP agent, and
+//! OpenAI-compatible endpoints.
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
@@ -7,7 +8,8 @@ use gpui_kit::{
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 use recur_code::view::skills::toggle_disabled_name;
-use recur_domain::CompatibleProvider;
+use recur_domain::{ACP_AGENTS, AcpAgent, CompatibleProvider};
+use recur_services::api::AcpStatus;
 use recur_ui::guard::Guarded;
 use recur_ui::style::progress;
 use recur_ui::text::{Span, TextStyled, span, text};
@@ -31,6 +33,21 @@ const SIDES: RowsCtx = RowsCtx {
     in_group: true,
     more: false,
 };
+
+/// `hint` as spans, its backticked commands in `code` style.
+fn hint_spans(hint: &str, cx: &gpui_kit::App) -> Vec<Span> {
+    hint.split('`')
+        .enumerate()
+        .filter(|(_, s)| !s.is_empty())
+        .map(|(i, s)| {
+            if i % 2 == 1 {
+                code(s.to_owned(), cx)
+            } else {
+                span(s.to_owned())
+            }
+        })
+        .collect()
+}
 
 /// `.acct-status`: a column with 10px gaps.
 fn acct() -> Div {
@@ -56,7 +73,7 @@ impl SettingsView {
                     .child(copy(
                         "bypass",
                         "Bypass tool permissions",
-                        Some(vec![span("Skip permission prompts in Claude Code and Codex")]),
+                        Some(vec![span("Skip permission prompts in Claude Code, Codex, Antigravity and OpenCode")]),
                         cx,
                     ))
                     .child(ctrl().child(
@@ -82,6 +99,9 @@ impl SettingsView {
             let (api, others): (Vec<_>, Vec<_>) =
                 compat.into_iter().partition(|p| p.id == "openai");
             out = out.child(self.openai_group(codex_on, api, window, cx));
+            for a in ACP_AGENTS {
+                out = out.child(self.acp_group(a, window, cx));
+            }
             for p in others {
                 let name = if p.name.is_empty() {
                     p.id.clone()
@@ -198,6 +218,67 @@ impl SettingsView {
                     let _ = this.update(cx, |this, cx| {
                         this.set_provider_enabled(PROVIDER_CLAUDE, on, cx)
                     });
+                },
+            )
+            .child(rows(SIDES, vec![Row::stack().child(status)], window, cx))
+            .into_any_element()
+    }
+
+    /// An ACP agent: the toggle, Path and Version, and the install or login hint until it
+    /// is ready. The agent owns its sign-in, so there are no credential fields.
+    fn acp_group(
+        &mut self,
+        agent: &'static AcpAgent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let on = self.provider_on(agent.id, cx);
+        let st = self.acp_status.get(agent.id).cloned();
+        let mut status = acct();
+        match &st {
+            None => status = status.child(status_head(Head::Muted, "Checking…", cx)),
+            Some(st) => {
+                let ready = st.installed && st.authenticated;
+                status = status.child(if ready {
+                    status_head(Head::Ok, "Connected", cx)
+                } else if !st.installed {
+                    status_head(Head::Bad, "Not installed", cx)
+                } else {
+                    status_head(Head::Bad, "Not signed in", cx)
+                });
+                let items: Vec<_> = [
+                    ("Path", &st.bin_path, true),
+                    ("Version", &st.version, false),
+                ]
+                .into_iter()
+                .filter(|(_, dd, _)| !dd.is_empty())
+                .map(|(dt, dd, titled)| (dt, dd.clone(), titled))
+                .collect();
+                if !items.is_empty() {
+                    status = status.child(status_table(agent.id, items, cx));
+                }
+                if !ready {
+                    let hint = if st.installed {
+                        agent.login_hint
+                    } else {
+                        agent.install_hint
+                    };
+                    status = status.child(desc(
+                        SharedString::from(format!("{}-desc", agent.id)),
+                        hint_spans(hint, cx),
+                        cx,
+                    ));
+                }
+            }
+        }
+        let this = cx.entity().downgrade();
+        settings_group(SharedString::from(format!("grp-{}", agent.id)), agent.label)
+            .override_toggle(
+                on,
+                false,
+                Some(format!("Enable {}", agent.label).into()),
+                move |on, _, cx| {
+                    let _ = this.update(cx, |this, cx| this.set_provider_enabled(agent.id, on, cx));
                 },
             )
             .child(rows(SIDES, vec![Row::stack().child(status)], window, cx))
@@ -996,6 +1077,27 @@ impl SettingsView {
                 if this.fx.live("codex", g) {
                     this.codex_status = res.ok();
                     this.codex_busy = false;
+                    cx.notify();
+                }
+            });
+        })
+        .detach();
+    }
+
+    pub(crate) fn probe_acp(&mut self, agent: &'static AcpAgent, g: u64, cx: &mut Context<Self>) {
+        let services = self.vcx.services.clone();
+        cx.spawn(async move |this, cx| {
+            let st = services
+                .settings
+                .get_acp_status(agent.id)
+                .await
+                .unwrap_or_else(|e| AcpStatus {
+                    error: e.to_string(),
+                    ..Default::default()
+                });
+            let _ = this.update(cx, |this, cx| {
+                if this.fx.live(agent.id, g) {
+                    this.acp_status.insert(agent.id, st);
                     cx.notify();
                 }
             });

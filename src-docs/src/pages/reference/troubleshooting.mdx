@@ -16,6 +16,7 @@ A provider's models appear only when it is turned on in **Settings → Providers
 - **Claude Code**: installed and signed in.
 - **Cursor**: connected with **Connect**.
 - **Codex**: **Use ChatGPT login** on, or an API key saved.
+- **Antigravity** or **OpenCode**: installed and signed in from a terminal.
 - **Compatible endpoint**: a base URL and at least one model ID.
 
 Turning a provider off keeps its credentials, so turning it back on restores its models.
@@ -45,20 +46,26 @@ A mode or workflow role is set to a model from a provider that is off or not sig
 - **Binary not found**: install with `brew install --cask codex`, or set **Binary** to the full path of the native `codex` executable. Pointing at a copied `codex` file or an npm wrapper script can start but fail when editing files; use the binary inside its full install.
 - **Commands cannot reach the network in Agent mode**: turn on **Sandbox network access**.
 
+## Antigravity and OpenCode
+
+- **Not installed**: install the Antigravity CLI (`agy`) from antigravity.google or OpenCode from opencode.ai, then reopen Settings. If Recur still cannot find it, quit and reopen Recur so it picks up your shell's `PATH`.
+- **Not signed in**: run `agy` and sign in with Google, or run `opencode auth login`, then reopen Settings.
+- **A message sent while the agent works waits for the next turn**: these agents cannot take new input mid-turn.
+
 ## Compatible endpoints
 
 - Click **Test** on the provider card. It sends a small request to `{base URL}/v1/responses` with the first model ID.
 - The server must support the Responses API with tool calls. Servers that only offer Chat Completions do not work.
 - Enter the base URL without a trailing slash and without `/v1`.
 - Model IDs must match what the server serves. For Ollama, use a model you have pulled.
-- The slugs `claude-code`, `cursor`, `codex`, `anthropic`, `gemini`, and `ollama` are reserved; use something like `local-ollama`.
+- The slugs `claude-code`, `cursor`, `codex`, `antigravity`, `opencode`, `anthropic`, `gemini`, and `ollama` are reserved; use something like `local-ollama`.
 
 ## Agents stop partway through
 
 - **Turn hit the time limit**: raise **Settings → General → Turn time limit**.
 - **Mac went to sleep**: turn on **Settings → General → Prevent sleep while agents run**.
 - **Turns wait before starting**: they are queued behind **Max concurrent agents** or **Max concurrent workflows** in **Settings → General**.
-- **Agent keeps asking for permission**: answer in the chat, or turn on **Settings → Providers → Bypass tool permissions** for Claude Code and Codex. [Inbox](/concepts/inbox) lists every task waiting on you.
+- **Agent keeps asking for permission**: answer in the chat, or turn on **Settings → Providers → Bypass tool permissions** for Claude Code, Codex, Antigravity and OpenCode. [Inbox](/concepts/inbox) lists every task waiting on you.
 
 ## Pull requests and GitHub
 

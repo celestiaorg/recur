@@ -110,6 +110,10 @@ pub struct Probe {
     pub cursor_checked: bool,
     pub chatgpt_checked: bool,
     pub cursor_key: bool,
+    /// Some enabled ACP agent is installed and signed in.
+    pub acp_ready: bool,
+    /// ACP status probes still in flight.
+    pub acp_pending: usize,
 }
 
 impl Probe {
@@ -141,7 +145,7 @@ impl Probe {
         self.chatgpt_ready() || self.codex_ready()
     }
     pub fn has_provider(&self) -> bool {
-        self.claude_ready() || self.cursor_ready() || self.openai_ready()
+        self.claude_ready() || self.cursor_ready() || self.openai_ready() || self.acp_ready
     }
     /// Until the first probes settle, a started task is taken as proof an agent works.
     pub fn probing(&self) -> bool {
@@ -149,6 +153,7 @@ impl Probe {
             || (self.codex_on && !self.codex_checked)
             || (self.cursor_on && !self.cursor_checked)
             || (self.chatgpt_on && !self.chatgpt_checked)
+            || self.acp_pending > 0
     }
     /// `claudeDetail`: the detector's line without its `Claude Code ·` prefix
     /// (`/^Claude Code(\s*·\s*)?/`).
@@ -337,13 +342,19 @@ impl WelcomeView {
         cx.notify();
     }
 
-    fn toggles(&mut self, cx: &App) {
-        let s = self.vcx.state.read(cx);
-        let disabled = s
+    fn disabled_providers(&self, cx: &App) -> Vec<String> {
+        self.vcx
+            .state
+            .read(cx)
             .settings
             .as_ref()
             .map(|s| s.disabled_providers.clone())
-            .unwrap_or_default();
+            .unwrap_or_default()
+    }
+
+    fn toggles(&mut self, cx: &App) {
+        let disabled = self.disabled_providers(cx);
+        let s = self.vcx.state.read(cx);
         self.probe.claude_on = provider_enabled(&disabled, PROVIDER_CLAUDE_CODE);
         self.probe.codex_on = provider_enabled(&disabled, PROVIDER_CODEX);
         self.probe.cursor_on = provider_enabled(&disabled, PROVIDER_CURSOR);
@@ -393,6 +404,23 @@ impl WelcomeView {
                 let _ = this.update(cx, |v, cx| {
                     v.probe.codex = r.ok();
                     v.probe.codex_checked = true;
+                    cx.notify();
+                });
+            }));
+        }
+        self.probe.acp_ready = false;
+        self.probe.acp_pending = 0;
+        for a in recur_domain::ACP_AGENTS {
+            if !provider_enabled(&self.disabled_providers(cx), a.id) {
+                continue;
+            }
+            self.probe.acp_pending += 1;
+            let s = services.clone();
+            self.probes.push(cx.spawn(async move |this, cx| {
+                let r = s.settings.get_acp_status(a.id).await;
+                let _ = this.update(cx, |v, cx| {
+                    v.probe.acp_pending = v.probe.acp_pending.saturating_sub(1);
+                    v.probe.acp_ready |= r.is_ok_and(|st| st.installed && st.authenticated);
                     cx.notify();
                 });
             }));
@@ -1685,6 +1713,9 @@ mod tests {
         p.codex_checked = true;
         p.cursor_checked = true;
         assert_eq!(step(&p, false, true, true), 1);
+        p.acp_pending = 1;
+        assert_eq!(step(&p, false, true, true), 4);
+        p.acp_pending = 0;
         p.detected = "Claude Code · dev@example.com".into();
         assert_eq!(step(&p, false, true, false), 3);
         assert_eq!(step(&p, false, true, true), 4);

@@ -116,6 +116,7 @@ async fn chat_loop_and_pr_sync_emit_app_events() {
                 worktree_root: config.worktrees_dir.to_string_lossy().into_owned(),
                 ..GitSetup::default()
             }),
+            acp_agents: Some(&[]),
         },
     )
     .await;

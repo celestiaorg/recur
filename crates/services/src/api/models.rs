@@ -130,6 +130,20 @@ pub struct CodexStatus {
     pub error: String,
 }
 
+/// AcpStatus is what Settings renders for one ACP agent
+/// (`recur_domain::ACP_AGENTS`). The agent owns its sign-in; `error` carries
+/// the install or login hint when it is not ready.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct AcpStatus {
+    pub installed: bool,
+    pub bin_path: String,
+    pub version: String,
+    pub authenticated: bool,
+    pub model_count: i64,
+    pub error: String,
+}
+
 /// CommandInfo is the plain-struct view of a bundle command for the UI.
 /// No TOML crosses the service boundary.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

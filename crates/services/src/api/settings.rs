@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use recur_domain::{CompatibleFlagDim, CompatibleProvider, Resource, Settings};
 
 use super::{
-    AssignedIssue, ChatGPTLogin, ChatGPTStatus, ClaudeStatus, CodexLogin, CodexStatus,
+    AcpStatus, AssignedIssue, ChatGPTLogin, ChatGPTStatus, ClaudeStatus, CodexLogin, CodexStatus,
     CompatibleTestResult, CursorStatus, ModelGroup,
 };
 use super::{CursorUsageConnect, Snapshot};
@@ -55,6 +55,10 @@ pub trait SettingsService: Send + Sync {
     /// that must read as "Not logged in", not "not detected". "Claude Code not
     /// detected" is reserved for a missing binary.
     async fn get_claude_status(&self) -> Result<ClaudeStatus>;
+
+    /// GetAcpStatus probes the ACP agent registered under `id` (install,
+    /// version, sign-in, model count) without mutating settings.
+    async fn get_acp_status(&self, id: &str) -> Result<AcpStatus>;
 
     /// GetCodexStatus reports whether Codex is ready without mutating settings.
     async fn get_codex_status(&self) -> Result<CodexStatus>;

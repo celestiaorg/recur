@@ -262,6 +262,7 @@ fn test_options(
             worktree_root: config.worktrees_dir.to_string_lossy().into_owned(),
             ..GitSetup::default()
         }),
+        acp_agents: Some(&[]),
     }
 }
 

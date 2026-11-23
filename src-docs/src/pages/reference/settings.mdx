@@ -45,10 +45,11 @@ Turn Recur's built-in skills and your personal skills on or off. Each project ca
 
 Turn each provider on or off, see its connection status, and sign in. Turning a provider off keeps its credentials; it only hides its models and stops new turns from using it.
 
-- **Permissions**: **Bypass tool permissions** skips permission prompts in Claude Code and Codex. Off by default.
+- **Permissions**: **Bypass tool permissions** skips permission prompts in Claude Code, Codex, Antigravity and OpenCode. Off by default.
 - **Claude Code**: shows the path, version, login method, and account. Sign in or switch accounts with `claude auth login` in a terminal.
 - **Cursor**: **Connect** signs in through your browser. **SDK** installs or updates the Cursor bridge (about 50 MB). **Ignore project Cursor config** skips the repo's `.cursor/rules` and `AGENTS.md` and your `~/.cursor` settings. **Commit attribution** and **PR attribution** let Cursor add its trailer to commits and PRs; both are off by default.
 - **Codex**: **Use ChatGPT login** reuses `codex login`; otherwise enter an **API key**. **Sandbox network access** lets Codex Agent commands use the network. **Binary** sets the path to `codex` if Recur cannot find it.
+- **Antigravity** and **OpenCode**: show the path and version, or how to install or sign in. These agents keep their own login, so there is nothing to enter in Recur.
 - **OpenAI-compatible**: **Add provider** adds an endpoint. See [Providers](/reference/agents).
 
 ### Models

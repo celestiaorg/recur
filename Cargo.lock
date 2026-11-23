@@ -8240,6 +8240,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "recur-provider-acp"
+version = "0.7.2"
+dependencies = [
+ "async-trait",
+ "parking_lot",
+ "recur-agent",
+ "recur-domain",
+ "recur-exec",
+ "rustix",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "recur-provider-chatgpt"
 version = "0.7.2"
 dependencies = [
@@ -8371,6 +8389,7 @@ dependencies = [
  "recur-lsp",
  "recur-platform",
  "recur-project",
+ "recur-provider-acp",
  "recur-provider-chatgpt",
  "recur-provider-claude",
  "recur-provider-codex",

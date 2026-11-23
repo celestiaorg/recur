@@ -1,8 +1,8 @@
 //! The engine-backed services over [`recur_engine::Engine`].
 //!
 //! [`AppServices`] is the composition root: it registers the shipped agent providers
-//! (Claude Code, Codex, Cursor, ChatGPT and one compatible provider per configured
-//! endpoint), the GitHub forge and the GitHub Issues and Linear trackers under their
+//! (Claude Code, Codex, Cursor, ChatGPT, one per ACP agent and one compatible
+//! provider per configured endpoint), the GitHub forge and the GitHub Issues and Linear trackers under their
 //! persisted ids, builds the engine, bridges its bus onto [`AppEvent`]s, and answers
 //! every trait in [`crate::api`].
 //!
@@ -44,6 +44,7 @@ use recur_engine::registry::{ForgeRegistry, ProviderRegistry, TrackerRegistry};
 use recur_engine::{Engine, GitSetup};
 use recur_forge::Forge;
 use recur_issues::IssueTracker;
+use recur_provider_acp::{AcpConfig, AcpProvider};
 use recur_provider_chatgpt::ChatGPTProvider;
 use recur_provider_claude::{ClaudeConfig, ClaudeProvider};
 use recur_provider_codex::{CodexConfig, CodexProvider};
@@ -135,6 +136,10 @@ pub struct AppOptions {
     pub trackers: Option<Vec<Arc<dyn IssueTracker>>>,
     /// The worktree root and boot git alert; `None` probes git.
     pub git: Option<GitSetup>,
+    /// Replaces the registered ACP agents; `None` = every
+    /// [`recur_domain::ACP_AGENTS`] entry. Tests pass `Some(&[])` so no real
+    /// `agy` or `opencode` on `PATH` is spawned.
+    pub acp_agents: Option<&'static [recur_domain::AcpAgent]>,
 }
 
 /// The shipped providers, kept typed for the Settings probes the
@@ -144,6 +149,8 @@ struct Providers {
     cursor: Arc<CursorProvider>,
     codex: Arc<CodexProvider>,
     chatgpt: Arc<ChatGPTProvider>,
+    /// One per [`recur_domain::ACP_AGENTS`] entry, in that order.
+    acp: Vec<Arc<AcpProvider>>,
     /// One per Settings compatible endpoint, by id, with the name its picker
     /// label was built from.
     compatible: Mutex<Vec<(String, String, Arc<CompatibleProvider>)>>,
@@ -205,13 +212,27 @@ impl AppServices {
                 data_dir: config.data_dir.clone(),
                 home: None,
                 settings: settings.clone(),
-                env_scrub,
+                env_scrub: env_scrub.clone(),
                 seed_auth_from: None,
             })),
             chatgpt: Arc::new(ChatGPTProvider::new(
                 config.data_dir.clone(),
                 settings.clone(),
             )),
+            acp: opts
+                .acp_agents
+                .unwrap_or(recur_domain::ACP_AGENTS)
+                .iter()
+                .map(|a| {
+                    Arc::new(AcpProvider::new(
+                        a,
+                        AcpConfig {
+                            data_dir: config.data_dir.clone(),
+                            env_scrub: env_scrub.clone(),
+                        },
+                    ))
+                })
+                .collect(),
             compatible: Mutex::new(Vec::new()),
         };
         providers.claude.reap_stale_turns().await;
@@ -452,6 +473,7 @@ impl Providers {
             self.codex.clone(),
             self.chatgpt.clone(),
         ];
+        out.extend(self.acp.iter().map(|p| p.clone() as Arc<dyn Provider>));
         for (_, _, p) in self.compatible.lock().iter() {
             out.push(p.clone());
         }

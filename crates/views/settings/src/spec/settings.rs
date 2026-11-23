@@ -2,7 +2,9 @@
 //! settings view and the add-project modal halves belong to the views that host them.
 
 use gpui::TestAppContext;
-use recur_services::api::{CursorStatus, ModelChoice, ModelGroup, ProviderQuota, Snapshot};
+use recur_services::api::{
+    AcpStatus, CursorStatus, ModelChoice, ModelGroup, ProviderQuota, Snapshot,
+};
 use recur_services::fake::Overrides;
 use recur_services::{AppEvent, Error};
 use recur_ui::widgets::ToastKind;
@@ -82,6 +84,40 @@ fn cursor_without_the_sdk_warns_and_installs(cx: &mut TestAppContext) {
     s.click("btn:Install SDK");
     assert!(s.until(|s| !s.has("acct-sdk-note")));
     assert!(!s.has("status-head:Warn:Connected, SDK not installed"));
+}
+
+#[gpui::test]
+fn acp_agents_show_status_and_toggle(cx: &mut TestAppContext) {
+    let opts = Overrides::default().get_acp_status(|_, id| {
+        Ok(if id == recur_domain::PROVIDER_ANTIGRAVITY {
+            AcpStatus {
+                installed: true,
+                bin_path: "/usr/local/bin/agy".into(),
+                version: "1.2.0".into(),
+                authenticated: true,
+                model_count: 3,
+                ..Default::default()
+            }
+        } else {
+            AcpStatus::default()
+        })
+    });
+    let mut s = with(cx, |_| {}, opts);
+    s.open_settings();
+    s.section("Providers");
+    assert!(s.has("override:Enable Antigravity:true"));
+    assert!(
+        s.has("status-head:Bad:Not installed"),
+        "OpenCode is missing"
+    );
+    s.click("override:Enable OpenCode:true");
+    assert!(s.until(|s| s.has("override:Enable OpenCode:false")));
+    assert!(
+        s.saved()
+            .disabled_providers
+            .contains(&recur_domain::PROVIDER_OPENCODE.to_owned())
+    );
+    assert!(!s.has("status-head:Bad:Not installed"));
 }
 
 #[gpui::test]

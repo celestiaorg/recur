@@ -36,6 +36,7 @@ impl Settings {
             PROVIDER_CURSOR => self.cursor_configured(),
             PROVIDER_CODEX => self.codex_configured(),
             PROVIDER_CHATGPT => self.chatgpt_configured(),
+            p if crate::acp_agent(p).is_some() => true,
             _ => self
                 .compatible_by_id(provider)
                 .is_some_and(|p| p.configured()),
@@ -51,6 +52,8 @@ impl Settings {
             .remap_disabled_models()
     }
 
+    /// ACP agents count while on; whether their binary is installed is the
+    /// services' `ensure_runnable_catalogue` check.
     fn offers_any_models(&self) -> bool {
         [
             PROVIDER_CLAUDE_CODE,
@@ -59,6 +62,7 @@ impl Settings {
             PROVIDER_CHATGPT,
         ]
         .into_iter()
+        .chain(crate::ACP_AGENTS.iter().map(|a| a.id))
         .any(|p| self.provider_offers_models(p))
             || self
                 .compatible_providers
@@ -178,6 +182,7 @@ impl Settings {
             PROVIDER_CLAUDE_CODE | PROVIDER_CURSOR | PROVIDER_CODEX | PROVIDER_CHATGPT | "" => {
                 false
             }
+            p if crate::acp_agent(p).is_some() => false,
             // Removed compatible slugs are unavailable even if not listed as disabled.
             _ => self.compatible_by_id(&p).is_none(),
         }
@@ -202,6 +207,13 @@ mod tests {
 
     fn disabled(names: &[&str]) -> Vec<String> {
         names.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// `names` plus every ACP agent, which are on by default.
+    fn disabled_with_acp(names: &[&str]) -> Vec<String> {
+        let mut out = disabled(names);
+        out.extend(crate::ACP_AGENTS.iter().map(|a| a.id.to_owned()));
+        out
     }
 
     fn compatible(id: &str, base: &str, model: &str) -> CompatibleProvider {
@@ -263,7 +275,11 @@ mod tests {
     #[test]
     fn normalize_reenables_last_catalogue() {
         let s = Settings {
-            disabled_providers: disabled(&[PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, PROVIDER_CODEX]),
+            disabled_providers: disabled_with_acp(&[
+                PROVIDER_CLAUDE_CODE,
+                PROVIDER_CURSOR,
+                PROVIDER_CODEX,
+            ]),
             model_agent: "cursor/composer-2.5".into(),
             ..Default::default()
         };
@@ -275,7 +291,7 @@ mod tests {
     #[test]
     fn normalize_reenables_compatible() {
         let s = Settings {
-            disabled_providers: disabled(&[
+            disabled_providers: disabled_with_acp(&[
                 PROVIDER_CLAUDE_CODE,
                 PROVIDER_CURSOR,
                 PROVIDER_CODEX,
@@ -409,6 +425,36 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(s.normalize_providers().model_agent, FALLBACK_CLAUDE_MODEL);
+    }
+
+    #[test]
+    fn acp_agent_slots_and_catalogue() {
+        let off_all = [
+            PROVIDER_CLAUDE_CODE,
+            PROVIDER_CURSOR,
+            PROVIDER_CODEX,
+            PROVIDER_CHATGPT,
+        ];
+        let s = Settings {
+            disabled_providers: disabled(&off_all),
+            model_agent: "antigravity/gemini-3-pro".into(),
+            ..Default::default()
+        }
+        .normalize_providers();
+        assert!(s.provider_offers_models(crate::PROVIDER_ANTIGRAVITY));
+        assert!(
+            !s.provider_enabled(PROVIDER_CLAUDE_CODE),
+            "ACP agents count"
+        );
+        assert!(!s.model_ref_unavailable(&s.model_agent, false));
+        let s = Settings {
+            disabled_providers: disabled_with_acp(&off_all),
+            model_agent: "antigravity/gemini-3-pro".into(),
+            ..Default::default()
+        }
+        .normalize_providers();
+        assert!(s.provider_enabled(PROVIDER_CLAUDE_CODE));
+        assert_eq!(s.model_agent, FALLBACK_CLAUDE_MODEL);
     }
 
     #[test]

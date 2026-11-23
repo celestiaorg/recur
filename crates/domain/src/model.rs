@@ -25,17 +25,17 @@ pub fn provider_label(provider: &str) -> &str {
         PROVIDER_CODEX => "Codex",
         PROVIDER_CHATGPT => "ChatGPT",
         PROVIDER_CLAUDE_CODE => "Claude Code",
-        _ => provider,
+        _ => crate::acp_agent(provider).map_or(provider, |a| a.label),
     }
 }
 
 /// Reports whether slug is a Recur-hosted CLI/SDK harness (Claude Code,
-/// Cursor, Codex) rather than a user-defined compatible endpoint.
+/// Cursor, Codex, an ACP agent) rather than a user-defined compatible endpoint.
 pub fn builtin_provider(provider: &str) -> bool {
     matches!(
         provider,
         PROVIDER_CLAUDE_CODE | PROVIDER_CURSOR | PROVIDER_CODEX | ""
-    )
+    ) || crate::acp_agent(provider).is_some()
 }
 
 /// A fully-qualified model selection: which provider runs the turn, and which
@@ -142,6 +142,8 @@ mod tests {
         assert_eq!(provider_label("openai"), "openai");
         assert!(builtin_provider("") && builtin_provider(PROVIDER_CODEX));
         assert!(!builtin_provider(PROVIDER_OPENAI));
+        assert_eq!(provider_label(crate::PROVIDER_ANTIGRAVITY), "Antigravity");
+        assert!(builtin_provider(crate::PROVIDER_OPENCODE));
     }
 
     #[test]

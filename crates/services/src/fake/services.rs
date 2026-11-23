@@ -2375,6 +2375,15 @@ fake_services! {
             })
         }
 
+        async fn get_acp_status(&self, id: &str) -> Result<AcpStatus> {
+            let agent = recur_domain::acp_agent(id)
+                .ok_or_else(|| Error::new(format!("unknown ACP agent {id:?}")))?;
+            Ok(AcpStatus {
+                error: agent.install_hint.into(),
+                ..Default::default()
+            })
+        }
+
         async fn get_codex_status(&self) -> Result<CodexStatus> {
             Ok(CodexStatus {
                 bin_installed: true,

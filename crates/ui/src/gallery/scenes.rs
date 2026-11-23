@@ -458,10 +458,18 @@ fn icons_lucide(_: &mut Window, cx: &mut App) -> AnyElement {
 }
 
 fn icons_provider(_: &mut Window, cx: &mut App) -> AnyElement {
-    let cells = ["cursor", "claude", "codex", "ollama", "compatible"]
-        .iter()
-        .map(|p| provider_icon(p).size(px(14.)).into_any_element())
-        .collect();
+    let cells = [
+        "cursor",
+        "claude",
+        "codex",
+        "antigravity",
+        "opencode",
+        "ollama",
+        "compatible",
+    ]
+    .iter()
+    .map(|p| provider_icon(p).size(px(14.)).into_any_element())
+    .collect();
     icon_grid(16, cells, cx)
 }
 

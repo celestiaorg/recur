@@ -4,7 +4,7 @@
 use async_trait::async_trait;
 use recur_agent::{CredentialDraft, Provider as _, ProviderStatus};
 use recur_domain::{
-    BranchPrefixMode, CompatibleFlagDim, CompatibleProvider, PROVIDER_CHATGPT,
+    ACP_AGENTS, BranchPrefixMode, CompatibleFlagDim, CompatibleProvider, PROVIDER_CHATGPT,
     PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, Resource, Settings,
     effective_agent_turn_timeout_minutes, effective_max_agents, effective_max_loops,
     normalize_mcp_servers, validate_compatible_providers, validate_mcp_servers,
@@ -15,7 +15,7 @@ use super::model_catalog::{apply_catalog_fallbacks, provider_enablement_changed}
 use super::rt::{blocking, rt};
 use super::{AppServices, err};
 use crate::api::{
-    AssignedIssue, ChatGPTLogin, ChatGPTStatus, ClaudeStatus, CodexLogin, CodexStatus,
+    AcpStatus, AssignedIssue, ChatGPTLogin, ChatGPTStatus, ClaudeStatus, CodexLogin, CodexStatus,
     CompatibleTestResult, CursorStatus, CursorUsageConnect, ModelGroup, SettingsService, Snapshot,
 };
 use crate::events::{AppEvent, CursorInstall};
@@ -65,6 +65,17 @@ fn codex_status(st: ProviderStatus) -> CodexStatus {
     }
 }
 
+fn acp_status(st: ProviderStatus) -> AcpStatus {
+    AcpStatus {
+        installed: st.installed,
+        bin_path: st.path,
+        version: st.version,
+        authenticated: st.authenticated,
+        model_count: st.model_count,
+        error: st.error,
+    }
+}
+
 impl AppServices {
     pub(crate) fn settings_view(&self) -> Settings {
         let mut set = self.store().settings().migrate_bundle_values();
@@ -75,7 +86,7 @@ impl AppServices {
     }
 
     /// Whether `provider` could run a turn now: on, configured, and (Cursor,
-    /// Codex) its bridge or binary installed.
+    /// Codex, ACP agents) its bridge or binary installed.
     pub(crate) fn provider_runnable(&self, set: &Settings, provider: &str) -> bool {
         if !set.provider_enabled(provider) {
             return false;
@@ -90,6 +101,11 @@ impl AppServices {
                     && recur_provider_codex::locate::locate(&set.codex_bin_path).is_ok()
             }
             PROVIDER_CHATGPT => set.chatgpt_configured(),
+            p if recur_domain::acp_agent(p).is_some() => self
+                .providers
+                .acp
+                .iter()
+                .any(|a| a.agent().id == p && a.locate().is_ok()),
             _ => set
                 .compatible_by_id(provider)
                 .is_some_and(|p| p.configured()),
@@ -105,7 +121,10 @@ impl AppServices {
             PROVIDER_CODEX,
             PROVIDER_CHATGPT,
         ];
-        if fixed.iter().any(|p| self.provider_runnable(&set, p))
+        if fixed
+            .into_iter()
+            .chain(ACP_AGENTS.iter().map(|a| a.id))
+            .any(|p| self.provider_runnable(&set, p))
             || set
                 .compatible_providers
                 .iter()
@@ -394,6 +413,18 @@ impl SettingsService for AppServices {
     async fn get_claude_status(&self) -> Result<ClaudeStatus> {
         rt!(self, => |s| {
             Ok(claude_status(s.providers.claude.status(&s.store().settings()).await))
+        })
+    }
+
+    async fn get_acp_status(&self, id: &str) -> Result<AcpStatus> {
+        rt!(self, id => |s| {
+            let p = s
+                .providers
+                .acp
+                .iter()
+                .find(|p| p.agent().id == id)
+                .ok_or_else(|| Error::new(format!("unknown ACP agent {id:?}")))?;
+            Ok(acp_status(p.status(&s.store().settings()).await))
         })
     }
 

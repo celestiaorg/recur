@@ -13,8 +13,8 @@ use gpui_kit::{
 use recur_domain::Settings;
 use recur_services::AppEvent;
 use recur_services::api::{
-    BundleSettingInfo, BundleSkipInfo, ClaudeStatus, CodexStatus, CursorStatus, GrammarInfo,
-    PromptActionInfo, ThemeInfo,
+    AcpStatus, BundleSettingInfo, BundleSkipInfo, ClaudeStatus, CodexStatus, CursorStatus,
+    GrammarInfo, PromptActionInfo, ThemeInfo,
 };
 use recur_ui::widgets::{Select, SelectEvent, ToastKind};
 use recur_view_chat::pickers::{LoopPolicyEvent, LoopPolicyPickers, ModelPickers, PickerEvent};
@@ -76,6 +76,8 @@ pub(crate) struct Effects {
     pub codex: Option<Option<String>>,
     pub codex_mounted: Option<bool>,
     pub chatgpt: Option<bool>,
+    /// Per ACP agent: whether its status probe is mounted.
+    pub acp: HashMap<&'static str, bool>,
     pub models: Option<Option<ModelsKey>>,
     pub section: Option<Section>,
     pub codex_key: Option<(bool, String)>,
@@ -123,6 +125,8 @@ pub struct SettingsView {
     pub(crate) cursor_usage_busy: bool,
     pub(crate) codex_status: Option<CodexStatus>,
     pub(crate) codex_busy: bool,
+    /// The last probe per ACP agent id; absent while the first one runs.
+    pub(crate) acp_status: HashMap<&'static str, AcpStatus>,
     pub(crate) codex_key_dirty: bool,
     pub(crate) codex_key_visible: bool,
     pub(crate) codex_key_test: TestMsg,
@@ -372,6 +376,7 @@ impl SettingsView {
             cursor_usage_busy: false,
             codex_status: None,
             codex_busy: false,
+            acp_status: HashMap::new(),
             codex_key_dirty: false,
             codex_key_visible: false,
             codex_key_test: None,
@@ -489,8 +494,8 @@ impl SettingsView {
             .is_some_and(|s| !s.codex_api_key.is_empty() || s.codex_chat_gpt_auth)
     }
 
-    /// `extraReady`: configured compatible provider slugs, and ChatGPT once connected with
-    /// models.
+    /// `extraReady`: configured compatible provider slugs, ChatGPT once connected with
+    /// models, and ACP agents that are installed and signed in.
     pub(crate) fn extra_ready(&self, cx: &App) -> Vec<String> {
         let mut out: Vec<String> = self
             .settings(cx)
@@ -505,6 +510,12 @@ impl SettingsView {
         if self.chatgpt_ready() {
             out.push(PROVIDER_CHATGPT.into());
         }
+        out.extend(
+            self.acp_status
+                .iter()
+                .filter(|(_, st)| st.installed && st.authenticated)
+                .map(|(id, _)| (*id).to_owned()),
+        );
         out
     }
 
@@ -580,6 +591,16 @@ impl SettingsView {
             self.fx.chatgpt = Some(chatgpt);
             let g = self.fx.bump("chatgpt");
             self.chatgpt_mounted(chatgpt, g, cx);
+        }
+        for a in recur_domain::ACP_AGENTS {
+            let mounted = agent && self.provider_on(a.id, cx);
+            if self.fx.acp.get(a.id) != Some(&mounted) {
+                self.fx.acp.insert(a.id, mounted);
+                let g = self.fx.bump(a.id);
+                if mounted {
+                    self.probe_acp(a, g, cx);
+                }
+            }
         }
         let models = (section == Some(Section::Models)).then(|| {
             (

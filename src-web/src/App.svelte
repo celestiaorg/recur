@@ -80,6 +80,8 @@
     ["claude", "Claude Code"],
     ["cursor", "Cursor"],
     ["codex", "Codex"],
+    ["antigravity", "Antigravity"],
+    ["opencode", "OpenCode"],
   ];
   const local = [
     "Workspaces are git worktrees on your disk.",

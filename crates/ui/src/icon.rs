@@ -60,6 +60,8 @@ pub fn provider_icon(provider: &str) -> Icon {
         "claude-code" | "anthropic" | "claude" => "claude",
         "codex" | "openai" | "chatgpt" => "codex",
         "ollama" => "ollama",
+        "antigravity" => "antigravity",
+        "opencode" => "opencode",
         _ => "generic",
     };
     Icon::new(Source::Asset(format!("{PROVIDER_ICONS}/{slug}.svg")))

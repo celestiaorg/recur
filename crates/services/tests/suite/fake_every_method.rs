@@ -964,6 +964,14 @@ async fn every_method_answers() {
     );
     note(
         &mut errs,
+        "GetAcpStatus",
+        s.settings
+            .get_acp_status(recur_domain::PROVIDER_ANTIGRAVITY)
+            .await
+            .err(),
+    );
+    note(
+        &mut errs,
         "GetCodexStatus",
         s.settings.get_codex_status().await.err(),
     );

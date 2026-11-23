@@ -4,8 +4,9 @@
 
 use recur_agent::catalog::ModelGroup;
 use recur_domain::{
-    CompatibleModel, CompatibleProvider, PROVIDER_CHATGPT, PROVIDER_CLAUDE_CODE, PROVIDER_CODEX,
-    PROVIDER_CURSOR, Settings, compatible_flag_preset,
+    CompatibleModel, CompatibleProvider, PROVIDER_ANTIGRAVITY, PROVIDER_CHATGPT,
+    PROVIDER_CLAUDE_CODE, PROVIDER_CODEX, PROVIDER_CURSOR, PROVIDER_OPENCODE, Settings,
+    compatible_flag_preset,
 };
 
 use super::Fx;
@@ -48,7 +49,7 @@ fn off(ps: &[&str]) -> Settings {
 
 #[test]
 fn model_catalog_always_has_claude_code() {
-    let groups = build_model_catalog(&Settings::default(), vec![], vec![]);
+    let groups = build_model_catalog(&Settings::default(), vec![], vec![], vec![]);
     assert!(!groups.is_empty(), "catalogue is empty");
     assert_eq!(groups[0].provider, PROVIDER_CLAUDE_CODE);
     assert_eq!(groups[0].label, "Claude Code");
@@ -60,10 +61,11 @@ fn model_catalog_always_has_claude_code() {
 
 #[test]
 fn model_catalog_omits_disabled_providers() {
-    assert!(build_model_catalog(&off(&[PROVIDER_CLAUDE_CODE]), vec![], vec![]).is_empty());
+    assert!(build_model_catalog(&off(&[PROVIDER_CLAUDE_CODE]), vec![], vec![], vec![]).is_empty());
     let groups = build_model_catalog(
         &off(&[PROVIDER_CLAUDE_CODE]),
         cursor(&[("composer-2.5", "Composer 2.5")]),
+        vec![],
         vec![],
     );
     assert_eq!(providers(&groups), [PROVIDER_CURSOR]);
@@ -74,6 +76,7 @@ fn model_catalog_omits_disabled_providers() {
             "gpt-5.6-luna",
             "GPT-5.6-Luna",
         )),
+        vec![],
     );
     assert_eq!(providers(&groups), [PROVIDER_CLAUDE_CODE]);
 }
@@ -96,6 +99,7 @@ fn apply_catalog_fallbacks_repoints_claude_when_off() {
     let groups = build_model_catalog(
         &set,
         cursor(&[("composer-2.5", "Composer 2.5"), ("grok-4.6", "Grok 4.6")]),
+        vec![],
         vec![],
     );
     let got = apply_catalog_fallbacks(set, &groups);
@@ -121,6 +125,7 @@ fn apply_catalog_fallbacks_keeps_enabled_cursor_slot() {
         &set,
         cursor(&[("composer-2.5", "Composer 2.5"), ("grok-4.6", "Grok 4.6")]),
         vec![],
+        vec![],
     );
     let got = apply_catalog_fallbacks(set, &groups);
     assert_eq!(got.model_agent, "cursor/grok-4.6");
@@ -135,7 +140,12 @@ fn apply_catalog_fallbacks_leaves_empty_review() {
         model_loop: "claude-code/sonnet".into(),
         ..off(&[PROVIDER_CLAUDE_CODE])
     };
-    let groups = build_model_catalog(&set, cursor(&[("composer-2.5", "Composer 2.5")]), vec![]);
+    let groups = build_model_catalog(
+        &set,
+        cursor(&[("composer-2.5", "Composer 2.5")]),
+        vec![],
+        vec![],
+    );
     assert_eq!(
         apply_catalog_fallbacks(set, &groups).model_review,
         "",
@@ -178,7 +188,7 @@ fn apply_catalog_fallbacks_removed_compatible_when_claude_off() {
         ..off(&[PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, PROVIDER_CODEX])
     };
     assert!(set.needs_catalog_fallback(), "alpha was removed");
-    let groups = build_model_catalog(&set, vec![], vec![]);
+    let groups = build_model_catalog(&set, vec![], vec![], vec![]);
     let got = apply_catalog_fallbacks(set, &groups);
     assert_eq!(slots(&got), ["beta/m2"; 4]);
     assert_eq!(got.model_workspace_title, "beta/m2");
@@ -314,7 +324,7 @@ fn model_catalog_includes_compatible_providers() {
         ],
         ..off(&[PROVIDER_CLAUDE_CODE, PROVIDER_CURSOR, PROVIDER_CODEX])
     };
-    let groups = build_model_catalog(&set, vec![], vec![]);
+    let groups = build_model_catalog(&set, vec![], vec![], vec![]);
     assert_eq!(providers(&groups), ["openai", "groq"]);
     assert_eq!(groups[0].label, "OpenAI");
     let refs = |g: &ModelGroup| {
@@ -333,7 +343,7 @@ fn model_catalog_includes_compatible_providers() {
 
     set.disabled_providers.push("openai".into());
     assert_eq!(
-        providers(&build_model_catalog(&set, vec![], vec![])),
+        providers(&build_model_catalog(&set, vec![], vec![], vec![])),
         ["groq"]
     );
 }
@@ -355,7 +365,7 @@ async fn chatgpt_catalogue_and_fallback_without_codex() {
         ],
         ..Default::default()
     };
-    let groups = build_model_catalog(&s, Vec::new(), Vec::new());
+    let groups = build_model_catalog(&s, Vec::new(), Vec::new(), vec![]);
     assert_eq!(providers(&groups), [PROVIDER_CHATGPT]);
     assert_eq!(groups[0].models[0].model_ref, "chatgpt/gpt-first");
     let s = apply_catalog_fallbacks(s, &groups);
@@ -368,5 +378,104 @@ async fn chatgpt_catalogue_and_fallback_without_codex() {
         fx.svc.provider_runnable(&s, PROVIDER_CHATGPT),
         "ChatGPT required a binary"
     );
+    fx.close().await;
+}
+
+fn acp(id: &str, model: &str) -> Vec<recur_agent::ModelChoice> {
+    vec![recur_agent::ModelChoice {
+        model_ref: format!("{id}/{model}"),
+        label: model.into(),
+        ..Default::default()
+    }]
+}
+
+#[test]
+fn model_catalog_acp_groups_after_codex() {
+    let mut set = Settings {
+        compatible_providers: vec![CompatibleProvider {
+            id: "groq".into(),
+            name: "Groq".into(),
+            base_url: "https://api.groq.com/openai".into(),
+            models: vec![CompatibleModel {
+                id: "llama".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    let groups = build_model_catalog(
+        &set,
+        vec![],
+        recur_provider_codex::catalog::catalog_models(&codex_models("gpt-5.6", "GPT-5.6")),
+        vec![
+            (
+                PROVIDER_ANTIGRAVITY,
+                acp(PROVIDER_ANTIGRAVITY, "gemini-3-pro"),
+            ),
+            (PROVIDER_OPENCODE, vec![]),
+        ],
+    );
+    assert_eq!(
+        providers(&groups),
+        [
+            PROVIDER_CLAUDE_CODE,
+            PROVIDER_CODEX,
+            PROVIDER_ANTIGRAVITY,
+            "groq"
+        ],
+        "empty OpenCode is omitted"
+    );
+    assert_eq!(groups[2].label, "Antigravity");
+    set.disabled_providers = vec![PROVIDER_ANTIGRAVITY.into()];
+    let groups = build_model_catalog(
+        &set,
+        vec![],
+        vec![],
+        vec![(
+            PROVIDER_ANTIGRAVITY,
+            acp(PROVIDER_ANTIGRAVITY, "gemini-3-pro"),
+        )],
+    );
+    assert_eq!(providers(&groups), [PROVIDER_CLAUDE_CODE, "groq"]);
+}
+
+#[test]
+fn apply_catalog_fallbacks_to_acp_agent() {
+    let set = Settings {
+        model_agent: "claude-code/sonnet".into(),
+        ..off(&[PROVIDER_CLAUDE_CODE])
+    };
+    let groups = build_model_catalog(
+        &set,
+        vec![],
+        vec![],
+        vec![(PROVIDER_OPENCODE, acp(PROVIDER_OPENCODE, "big-pickle"))],
+    );
+    let got = apply_catalog_fallbacks(set, &groups);
+    assert_eq!(got.model_agent, "opencode/big-pickle");
+    assert!(!got.provider_enabled(PROVIDER_CLAUDE_CODE));
+}
+
+#[test]
+fn provider_enablement_changed_acp() {
+    let a = Settings::default();
+    let b = off(&[PROVIDER_ANTIGRAVITY]);
+    assert!(provider_enablement_changed(&a, &b));
+}
+
+/// An enabled ACP agent without its binary does not keep the pickers empty.
+#[tokio::test(flavor = "multi_thread")]
+async fn set_settings_acp_not_installed_reenables_claude() {
+    let fx = Fx::new().await;
+    let mut set = fx.s.settings.get_settings().await.unwrap();
+    set.disabled_providers = vec![
+        PROVIDER_CLAUDE_CODE.into(),
+        PROVIDER_CURSOR.into(),
+        PROVIDER_CODEX.into(),
+        PROVIDER_CHATGPT.into(),
+    ];
+    let got = fx.s.settings.set_settings(&set).await.unwrap();
+    assert!(got.provider_enabled(PROVIDER_CLAUDE_CODE));
     fx.close().await;
 }

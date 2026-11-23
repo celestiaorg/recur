@@ -19,6 +19,7 @@ mod cron;
 mod serde_util;
 mod text;
 
+pub mod acp;
 pub mod agent;
 pub mod artifact;
 pub mod briefing;
@@ -47,6 +48,7 @@ pub mod skills;
 pub mod transcript;
 pub mod workspace;
 
+pub use acp::*;
 pub use agent::*;
 pub use artifact::*;
 pub use briefing::*;

@@ -14,6 +14,7 @@ fake = []
 [dependencies]
 recur-provider-claude.workspace = true
 recur-provider-codex.workspace = true
+recur-provider-acp.workspace = true
 recur-provider-chatgpt.workspace = true
 recur-provider-cursor.workspace = true
 recur-provider-compatible.workspace = true

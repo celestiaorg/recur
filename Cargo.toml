@@ -31,6 +31,7 @@ recur-issues = { path = "crates/issues" }
 recur-agent = { path = "crates/agent" }
 recur-provider-claude = { path = "providers/claude" }
 recur-provider-codex = { path = "providers/codex" }
+recur-provider-acp = { path = "providers/acp" }
 recur-provider-cursor = { path = "providers/cursor" }
 recur-provider-compatible = { path = "providers/compatible" }
 recur-provider-chatgpt = { path = "providers/chatgpt" }

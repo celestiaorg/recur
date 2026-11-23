@@ -172,6 +172,7 @@ async fn imports_live_conductor_workspaces_once() {
                 worktree_root: config.worktrees_dir.to_string_lossy().into_owned(),
                 ..GitSetup::default()
             }),
+            acp_agents: Some(&[]),
         },
     )
     .await;

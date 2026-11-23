@@ -36,7 +36,12 @@ pub fn mode_tools(mode: &str) -> Vec<String> {
         }
         ROLE_MODE_AGENT => {
             ask.extend(own(&EDIT_TOOLS));
-            ask.extend(own(&[mcp::UPDATE_FINDING, mcp::UPDATE_TODOS]));
+            ask.extend(own(&[
+                mcp::UPDATE_FINDING,
+                mcp::UPDATE_TODOS,
+                mcp::INSTALL_BUNDLE,
+                mcp::RELOAD_BUNDLES,
+            ]));
             ask
         }
         ROLE_MODE_REVIEW => {

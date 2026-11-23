@@ -202,10 +202,12 @@ fn role_allowlist_ask_plus_extras() {
 fn role_allowlist_drops_disabled() {
     let got = role_allowlist(&Role {
         mode: ROLE_MODE_AGENT.into(),
-        disabled_tools: vec!["WebSearch".into()],
+        disabled_tools: vec!["WebSearch".into(), "install_bundle".into()],
         ..Role::default()
     });
     assert!(!has(&got, "WebSearch"));
+    assert!(!has(&got, mcp::INSTALL_BUNDLE));
+    assert!(has(&got, mcp::RELOAD_BUNDLES));
 }
 
 #[test]

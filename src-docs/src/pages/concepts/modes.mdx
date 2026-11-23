@@ -34,6 +34,8 @@ To split a task across parallel agents, start the message with: **Use child work
 - Children do not create children of their own.
 - **Settings → Models → Child workspace model** chooses whether a child copies the calling chat's model or uses its mode's default.
 
+- Ask for a workspace in another project by name, and the agent starts a standalone workspace there. It is not a child and does not merge back.
+
 Workflows use child workspaces for [parallel plan steps](/concepts/workflows#parallel-child-workspaces).
 
 ## Simplify
@@ -44,4 +46,4 @@ Toggle it per chat in the composer. **Settings → General** sets the default fo
 
 ## Messages while an agent runs
 
-Sending while an agent is working either **steers** the running turn or **queues** the message until the turn ends. Queued messages send one at a time, each as its own turn. By default `⏎` steers and `⌘⏎` queues. Turn on **Settings → Agents → Queue follow-ups while an agent runs** to swap them.
+Sending while an agent is working either **steers** the running turn or **queues** the message until the turn ends. Queued messages send one at a time, each as its own turn. By default `⏎` steers and `⌘⏎` queues. Turn on **Settings → General → Queue follow-ups while an agent runs** to swap them.

@@ -1,0 +1,61 @@
+---
+title: Background work
+description: Long-running processes, check-backs, shared todos, and schedules that agents manage
+---
+
+# Background work
+
+An agent does not have to keep its turn open to wait for something. It can leave a process running, come back later, keep its todos where every chat can see them, and set up schedules. Recur owns all four, so they work with any provider and stay when you switch models.
+
+Claude Code, Cursor and Codex chats do not start hidden background processes of their own. Anything left running shows in the terminal dock.
+
+## Background processes
+
+An agent in [Agent mode](/concepts/modes) can start a long-lived process, such as a dev server, a watcher or a long test run. It opens as a terminal tab with an activity icon, so you can read its output like any other tab. Ask for it in plain words: "Run the dev server in the background and tell me when it is up."
+
+- **It survives the turn.** The workspace owns the process, not the chat. It keeps running when the turn ends and when you switch models.
+- **Its exit starts a turn.** When the process exits on its own, the chat that started it gets a new turn with the exit code and the last lines of output. Processes that exit within a couple of seconds of each other share one turn. An agent can start a process without this notice. A turn already running in that chat finishes first.
+- **The agent can read it.** It can read the output at any time, or wait up to five minutes for a line to appear.
+
+### Hide or stop
+
+Closing the tab of a running process only **hides** it. The process keeps running, and a count with an activity icon in the terminal dock lists hidden processes: click one to reopen it, or stop it from there.
+
+To **stop** a process, select its tab and click **Stop** in the terminal dock. The agent can stop it too, but not a tab you opened yourself. Stopping a process does not start a turn.
+
+### When they stop
+
+Background processes stop when you quit Recur and when you archive or delete the workspace. They do not come back after a restart. On its next turn, the chat that started them is told which ones the quit stopped, so the agent can start them again if they are still needed.
+
+Each process also writes its output to a log file, `workspaces/<workspace id>/procs/<terminal id>.log` in Recur's data folder. A log keeps the newest output, up to 20 MB, and is deleted with the workspace's data when you archive or delete the workspace.
+
+### Permission
+
+Recur asks before an agent starts a background process, unless **Settings → Providers → Bypass tool permissions** is on. The prompt shows the command.
+
+Background processes are for work an agent starts. For commands you start yourself, such as your dev server, use [project Runs](/concepts/project-toml).
+
+## Check-backs
+
+An agent can ask to come back later instead of waiting, for example to look at CI or a deploy. After a delay of 1 minute to 24 hours, the same chat gets a new turn with the reason the agent gave. This works in Ask, Plan, Agent and Review chats.
+
+The request shows in the chat as a **Check back in 10 min** row. While it is pending and the chat is idle, the bottom of the chat counts down with the reason: **Checking back in 0:42**.
+
+- **One at a time.** A chat has at most one pending check-back. A new one replaces it.
+- **Once.** Each check-back fires once. To keep checking, the agent asks again from that turn.
+- **Late rather than lost.** Check-backs fire while Recur is open. If Recur was closed when one came due, it fires the next time you open Recur.
+- **Cancelled when** you close the chat, or archive or delete the workspace.
+
+Each check-back is a full agent turn. For work that should repeat whether or not this chat is still around, use a [schedule](/concepts/schedules).
+
+## Shared todos
+
+Todos from every model land in the workspace's Plan panel as one checklist, whichever provider the chat uses. They belong to the workspace, so they stay when you switch models or chat tabs.
+
+Agents add todos and update the ones that are there. They do not replace the list, so your own edits are kept. You can check items off, edit the list in the Plan panel, and edit a plan made only of todos without writing a summary first. The Plan button counts the steps that remain.
+
+## Schedules agents manage
+
+Ask an agent in Agent mode to create a [schedule](/concepts/schedules), and it appears in the Schedules view like one you made yourself. The agent can create, edit, list and delete schedules in its own project. Recur asks before a schedule is created, edited or deleted, unless **Bypass tool permissions** is on.
+
+Ask and Plan chats can list schedules. Agents in child workspaces cannot manage them. See [Agents can manage schedules](/concepts/schedules#agents-can-manage-schedules).

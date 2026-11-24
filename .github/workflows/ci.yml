@@ -110,6 +110,9 @@ jobs:
           cache-generation: v1-${{ hashFiles('vendor/**') }}
           github-cache-mode: objects
           isolate-objects-cache: true
+          # The store holds a second copy of everything once a cache is restored, so a
+          # warm job needs target/'s 33 GB back to fit the export.
+          clean-target-before-export: true
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
         env:
           CARGO_LOG: cargo::core::compiler::fingerprint=info

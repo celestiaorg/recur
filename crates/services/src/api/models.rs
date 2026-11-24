@@ -298,8 +298,8 @@ pub struct EditorSessionMeta {
     pub syntax_by_path: Option<BTreeMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub syntax_by_file_type: Option<BTreeMap<String, String>>,
-    /// "review" keeps the Review column on cold remount. Omitted / anything
-    /// else is the Editor column.
+    /// The center view ("editor", "review", "pr", "plan") on cold remount. Omitted / anything
+    /// else is no chosen view.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub main_surface: String,
     /// Observatory pane chrome. Empty kind is the side default (maestro / files).

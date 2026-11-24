@@ -420,7 +420,9 @@ async fn run(
 
     // 5. Open the diff: the Observatory's Review changes surface.
     let obs = view.read_with(cx, |v, _| v.observatory().clone());
-    obs.update(cx, |o, cx| o.click_review_toggle(cx));
+    if !obs.read_with(cx, |o, cx| o.showing_review(cx)) {
+        obs.update(cx, |o, cx| o.click_review_toggle(cx));
+    }
     for _ in 0..8 {
         sleep(cx, 250).await;
         frame(cx, window);

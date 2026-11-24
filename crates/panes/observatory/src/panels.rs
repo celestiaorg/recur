@@ -205,10 +205,10 @@ impl Observatory {
         } else {
             MainSurface::Editor
         };
-        if pref == self.main_surface_pref {
+        if Some(pref) == self.main_surface_pref {
             return;
         }
-        self.main_surface_pref = pref;
+        self.main_surface_pref = Some(pref);
         self.persist_or_clear_editor_session(cx);
         cx.notify();
     }
@@ -501,6 +501,7 @@ impl Observatory {
             base_label: sig.base_label,
             refresh: sig.refresh,
             active: sig.active,
+            chosen: self.main_surface_pref.is_some(),
             tab: sig.tab,
             count: sig.count,
             exclude_matchers: Some(Rc::new(recur_code::glob::compile_excludes(&sig.excludes))),

@@ -272,7 +272,7 @@ async fn editor_session_review_only_is_kept() {
         fx.session_from_disk(WS).await.unwrap().main_surface,
         "review"
     );
-    for view in ["pr", "plan"] {
+    for view in ["pr", "plan", "editor"] {
         let mut p = meta_patch(&[], "");
         p.meta.as_mut().unwrap().main_surface = view.into();
         fx.update(WS, p).await;
@@ -282,7 +282,7 @@ async fn editor_session_review_only_is_kept() {
     assert_eq!(
         fx.session(WS).await,
         None,
-        "editor-only empty session is gone"
+        "a session with no chosen view is gone"
     );
     fx.close().await;
 }

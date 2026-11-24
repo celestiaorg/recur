@@ -17,7 +17,7 @@ use recur_ui::widgets::ToastKind;
 use recur_view_core::toast;
 use recur_view_review::card_editor::WorkingEditors;
 
-use crate::model::{TabBuffer, file_with_body};
+use crate::model::{MainSurface, TabBuffer, file_with_body};
 use crate::obs::Observatory;
 
 /// One card's editor and the texts it was built from.
@@ -302,6 +302,7 @@ impl Observatory {
         // An unsaved buffer is an open tab: it shows dirty, asks before it closes, and persists.
         if !editor_text_eq(&v, &saved) {
             self.ensure_open_tab(path, cx);
+            self.main_surface_pref.get_or_insert(MainSurface::Review);
         }
         self.stash_path(path, &v, &saved);
         self.persist_editor_session(cx);

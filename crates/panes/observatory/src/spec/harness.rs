@@ -19,6 +19,7 @@ use recur_services::api::{EditorSession, EditorSessionMeta};
 use recur_services::fake::{Fake, Overrides, Seed};
 use recur_view_core::{AppState, LocalStorage};
 
+use crate::model::MainSurface;
 use crate::obs::{Observatory, ObservatoryEvent, ObservatoryProps, ObservatorySlots};
 
 pub const WS: &str = "LOOP-2231";
@@ -104,8 +105,26 @@ pub fn mount<'a>(
     mount_seeded(cx, |_| {}, opts, storage, props)
 }
 
-/// [`mount`] over the e2e seed edited by `seed`.
+/// [`mount`] over the e2e seed edited by `seed`, with the editor chosen
+/// where the session names no view.
 pub fn mount_seeded<'a>(
+    cx: &'a mut TestAppContext,
+    seed: impl FnOnce(&mut Seed),
+    opts: Overrides,
+    storage: impl FnOnce(&mut LocalStorage),
+    props: impl FnOnce(&mut ObservatoryProps),
+) -> H<'a> {
+    let mut h = mount_unchosen(cx, seed, opts, storage, props);
+    h.update(|o, _, cx| {
+        o.main_surface_pref.get_or_insert(MainSurface::Editor);
+        cx.notify();
+    });
+    h.settle();
+    h
+}
+
+/// [`mount_seeded`], showing the view a workspace opens on by itself.
+pub fn mount_unchosen<'a>(
     cx: &'a mut TestAppContext,
     seed: impl FnOnce(&mut Seed),
     opts: Overrides,

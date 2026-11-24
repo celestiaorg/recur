@@ -520,7 +520,7 @@ pub struct Observatory {
     pub(crate) last_window_fullscreen: bool,
 
     // ---- review ----
-    pub(crate) main_surface_pref: MainSurface,
+    pub(crate) main_surface_pref: Option<MainSurface>,
     pub(crate) review_unhid_for: String,
     pub(crate) review_tab: ReviewTab,
     pub(crate) review_refresh: u64,
@@ -817,7 +817,7 @@ impl Observatory {
             fs_exit_timer: None,
             fs_exit_hovered: false,
             last_window_fullscreen: false,
-            main_surface_pref: MainSurface::Editor,
+            main_surface_pref: None,
             review_unhid_for: String::new(),
             review_tab,
             review_refresh: 0,
@@ -978,8 +978,29 @@ impl Observatory {
 
     /// The view the center column shows.
     pub fn main_surface(&self, cx: &App) -> MainSurface {
-        if self.surface_available(self.main_surface_pref, cx) {
-            self.main_surface_pref
+        let surface = self
+            .main_surface_pref
+            .unwrap_or_else(|| self.default_surface(cx));
+        if self.surface_available(surface, cx) {
+            surface
+        } else {
+            MainSurface::Editor
+        }
+    }
+
+    /// The view before any was chosen: the review, except on the main working copy. The editor
+    /// holds the place until the session load says nothing was and the worktree exists: without
+    /// one the code service reads the project's own checkout. It also keeps it while hidden, so
+    /// the terminal keeps the center; a terminal in place of the editor needs no such help.
+    fn default_surface(&self, cx: &App) -> MainSurface {
+        let worktree = self
+            .state
+            .read(cx)
+            .workspace(&self.props.workspace_id)
+            .is_some_and(|w| !w.is_main && !w.worktree_path.is_empty());
+        let hidden = self.editor_tucked(cx) && !self.term_is_center(cx);
+        if worktree && self.session_load_settled && !hidden {
+            MainSurface::Review
         } else {
             MainSurface::Editor
         }

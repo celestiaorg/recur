@@ -35,6 +35,8 @@ pub struct SurfaceProps {
     pub base_label: String,
     pub refresh: u64,
     pub active: bool,
+    /// The review was picked, not shown by default: only then does showing it take focus.
+    pub chosen: bool,
     pub tab: ReviewTab,
     pub count: usize,
     pub exclude_matchers: Option<Rc<Vec<CompiledGlob>>>,
@@ -216,6 +218,9 @@ impl ReviewSurface {
             self.load_commits(cx);
         }
         self.push_files(window, cx);
+        if !prev.active && !self.props.chosen {
+            self.files.update(cx, |v, _| v.leave_focus());
+        }
         self.push_commits(cx);
         self.emit_bound(cx);
         cx.notify();

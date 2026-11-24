@@ -951,6 +951,9 @@ impl Observatory {
         if path.is_empty() {
             return Task::ready(());
         }
+        if !self.restoring_session_views {
+            self.set_main_surface(crate::model::MainSurface::Editor, cx);
+        }
         if !self.props.workspace_id.is_empty() && self.editor_hidden(cx) {
             let id = self.props.workspace_id.clone();
             self.state

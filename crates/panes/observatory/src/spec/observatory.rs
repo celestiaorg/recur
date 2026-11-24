@@ -1194,6 +1194,140 @@ async fn opt_cmd_r_toggles_review_from_the_editor_not_while_files_is_focused(
 }
 
 #[gpui::test]
+async fn a_new_workspace_opens_on_the_review_until_the_editor_is_chosen(
+    cx: &mut TestAppContext,
+    restarted: &mut TestAppContext,
+) {
+    let store = SessionStore::default();
+    let opts = || store.install(Overrides::default());
+    let mut h = mount_unchosen(cx, |_| {}, opts(), |_| {}, |_| {});
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    assert!(h.has("obs-review-host"));
+    h.click("panel-toggle:search");
+    h.wait(1000);
+    assert_eq!(store.0.lock()[WS].main_surface, "");
+    h.click("obs-editor-toggle");
+    h.wait(1000);
+    assert_eq!(store.0.lock()[WS].main_surface, "editor");
+    h.quit();
+    let mut h = mount_unchosen(restarted, |_| {}, opts(), |_| {}, |_| {});
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert!(h.has("obs-editors"));
+}
+
+#[gpui::test]
+async fn the_main_working_copy_opens_on_the_editor(cx: &mut TestAppContext) {
+    let seed = |s: &mut Seed| {
+        s.workspaces
+            .iter_mut()
+            .find(|w| w.id == WS)
+            .unwrap()
+            .is_main = true;
+    };
+    let mut h = mount_unchosen(cx, seed, Overrides::default(), |_| {}, |_| {});
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+}
+
+#[gpui::test]
+async fn a_hidden_editor_keeps_the_terminal_in_the_center(cx: &mut TestAppContext) {
+    let mut h = mount_unchosen(cx, |_| {}, Overrides::default(), |_| {}, |_| {});
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    h.state_update(|s, cx| s.set_editor_hidden(WS, true, cx));
+    h.settle();
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert!(h.read(|o, cx| o.center_hidden(cx)));
+}
+
+#[gpui::test]
+async fn the_default_review_refreshes_under_a_terminal_in_place_of_the_editor(
+    cx: &mut TestAppContext,
+) {
+    let paths = std::sync::Arc::new(parking_lot::Mutex::new(strings(&["src/a.go"])));
+    let listed = paths.clone();
+    let opts = Overrides::default().diff_vs_base(move |_, _| {
+        let file = |path: &String| recur_domain::FileDiff {
+            path: path.clone(),
+            status: "m".into(),
+            ..Default::default()
+        };
+        Ok(recur_domain::FileDiffResult {
+            files: Some(listed.lock().iter().map(file).collect()),
+            truncated: false,
+        })
+    });
+    let center =
+        |st: &mut recur_view_core::LocalStorage| st.set("recur.terminalPlacement", "center");
+    let mut h = mount_unchosen(cx, |_| {}, opts, center, |_| {});
+    let shown = |h: &mut H| {
+        h.read(|o, cx| {
+            let files = o.review_surface.as_ref().unwrap().read(cx).files_view();
+            let files = files.read(cx).stack().files();
+            files.iter().map(|f| f.path.clone()).collect::<Vec<_>>()
+        })
+    };
+    h.wait(1000);
+    assert_eq!(shown(&mut h), strings(&["src/a.go"]));
+    h.state_update(|s, cx| s.toggle_terminal_dock(WS, cx));
+    h.wait(100);
+    assert!(h.read(|o, cx| o.term_is_center(cx) && o.center_hidden(cx)));
+    paths.lock().push("src/b.go".into());
+    h.fs_changed();
+    h.wait(crate::obs::REVIEW_REFRESH_MS + 1000);
+    h.state_update(|s, cx| s.toggle_terminal_dock(WS, cx));
+    h.wait(1000);
+    assert!(h.has("obs-review-host"));
+    assert_eq!(shown(&mut h), strings(&["src/a.go", "src/b.go"]));
+}
+
+#[gpui::test]
+async fn a_workspace_being_created_loads_its_review_once_the_worktree_lands(
+    cx: &mut TestAppContext,
+) {
+    let calls = std::sync::Arc::new(parking_lot::Mutex::new((0, 0)));
+    let (diffs, commits) = (calls.clone(), calls.clone());
+    let opts = Overrides::default()
+        .list_workspaces(|_, ()| {
+            let mut all = Seed::e2e().workspaces;
+            all.iter_mut()
+                .find(|w| w.id == WS)
+                .unwrap()
+                .worktree_path
+                .clear();
+            Ok(all)
+        })
+        .diff_vs_base(move |_, _| {
+            diffs.lock().0 += 1;
+            Ok(Default::default())
+        })
+        .list_commits(move |_, _| {
+            commits.lock().1 += 1;
+            Ok(Vec::new())
+        });
+    let mut h = mount_unchosen(cx, |_| {}, opts, |_| {}, |_| {});
+    h.wait(1000);
+    assert_eq!(h.read(|o, cx| o.worktree_path(cx)), "");
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert_eq!(*calls.lock(), (0, 0));
+    h.state_update(|s, cx| s.set_workspaces_from_list(Seed::e2e().workspaces, cx));
+    h.wait(1000);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    let (diffs, commits) = *calls.lock();
+    assert!(diffs > 0 && commits > 0, "{diffs} diffs, {commits} commits");
+}
+
+#[gpui::test]
+async fn open_in_split_leaves_the_default_review_for_the_editor(cx: &mut TestAppContext) {
+    let mut h = mount_unchosen(cx, |_| {}, Overrides::default(), |_| {}, |_| {});
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
+    h.update(|o, _, cx| o.open_ctx(40., 40., "src/main.go", false, "main.go", false, cx));
+    h.click("ctx:open-split");
+    h.wait(1000);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert!(h.has("obs-editors"));
+    assert!(h.read(|o, _| o.split_open && o.split_path == "src/main.go"));
+}
+
+#[gpui::test]
 async fn review_changes_is_remembered_on_hold_warm_remount_and_cold_reload(
     cx: &mut TestAppContext,
     restarted: &mut TestAppContext,
@@ -1204,6 +1338,7 @@ async fn review_changes_is_remembered_on_hold_warm_remount_and_cold_reload(
     h.click("obs-review-toggle");
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
     h.switch_to(PROJECT, b);
+    h.click("obs-editor-toggle");
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
     h.switch_to(PROJECT, a);
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
@@ -1770,7 +1905,7 @@ async fn the_plan_view_is_remembered_across_a_restart(
     set_plan(&mut h, true);
     h.click("obs-plan-toggle");
     h.switch_to(PROJECT, "LOOP-2229");
-    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Editor);
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
     h.switch_to(PROJECT, WS);
     assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Plan);
     h.wait(1000);
@@ -1799,8 +1934,9 @@ async fn saved_sides_and_dock_kinds_naming_the_plan_are_ignored(cx: &mut TestApp
             ..Default::default()
         },
     );
-    let mut h = mount(
+    let mut h = mount_unchosen(
         cx,
+        |_| {},
         store.install(Overrides::default()),
         |st| st.set("recur.codePanelSides", r#"{"plan":"right"}"#),
         |_| {},
@@ -1817,8 +1953,8 @@ async fn saved_sides_and_dock_kinds_naming_the_plan_are_ignored(cx: &mut TestApp
     );
     assert_eq!(
         h.read(|o, cx| o.main_surface(cx)),
-        MainSurface::Editor,
-        "a saved artifacts view is the editor now"
+        MainSurface::Review,
+        "a saved artifacts view is no choice"
     );
 }
 

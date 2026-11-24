@@ -511,7 +511,7 @@ impl Observatory {
         self.skip_view_restore = false;
         self.file_tab_scroll_restore = None;
         self.review_restore = None;
-        self.main_surface_pref = MainSurface::Editor;
+        self.main_surface_pref = None;
         self.draft.clear();
         self.saved_content.clear();
         self.editor_path.clear();
@@ -1001,13 +1001,16 @@ impl Observatory {
                     true,
                     cx,
                 );
-                if o.main_surface_pref == MainSurface::Editor
+                if o.main_surface_pref.is_none()
                     && o.open_files.is_empty()
                     && o.selected_path.is_empty()
                 {
-                    o.main_surface_pref =
-                        MainSurface::parse(sess.as_ref().map_or("", |s| &s.main_surface));
+                    o.main_surface_pref = sess
+                        .as_ref()
+                        .filter(|s| !s.main_surface.is_empty() || !s.open_files.is_empty())
+                        .map(|s| MainSurface::parse(&s.main_surface));
                 }
+                cx.notify();
                 o.apply_session_pane_chrome(sess.as_ref(), cx);
                 if !o.props.initial_path.is_empty() {
                     return;
@@ -1161,7 +1164,7 @@ impl Observatory {
         let (syn_path, syn_type, syn_non_empty) = self.syntax_snapshot(cx);
         if self.open_files.is_empty()
             && !syn_non_empty
-            && self.main_surface_pref == MainSurface::Editor
+            && self.main_surface_pref.is_none()
             && !self.pane_chrome_non_default(cx)
         {
             return;
@@ -1203,10 +1206,10 @@ impl Observatory {
             file_views: Some(views.into_iter().collect()),
             syntax_by_path: Some(syn_path),
             syntax_by_file_type: Some(syn_type),
-            main_surface: match self.main_surface_pref {
-                MainSurface::Editor => String::new(),
-                s => s.key().into(),
-            },
+            main_surface: self
+                .main_surface_pref
+                .map(|s| s.key().to_string())
+                .unwrap_or_default(),
             left_kind: Some(self.left_kind.key().to_string()),
             right_kind: Some(self.right_kind.key().to_string()),
             left_open: Some(self.left_gutter_open()),
@@ -1226,7 +1229,7 @@ impl Observatory {
         }
         if self.open_files.is_empty()
             && !self.pane_chrome_non_default(cx)
-            && self.main_surface_pref == MainSurface::Editor
+            && self.main_surface_pref.is_none()
         {
             self.persist_or_clear_editor_session(cx);
             return;
@@ -1253,7 +1256,7 @@ impl Observatory {
         let (_, _, syn_non_empty) = self.syntax_snapshot(cx);
         if self.open_files.is_empty()
             && !syn_non_empty
-            && self.main_surface_pref == MainSurface::Editor
+            && self.main_surface_pref.is_none()
             && !self.pane_chrome_non_default(cx)
         {
             if self.session_load_settled && self.syntax_maps_ready {

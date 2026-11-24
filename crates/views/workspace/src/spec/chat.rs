@@ -672,6 +672,33 @@ async fn a_workspace_restored_at_launch_focuses_its_chat_composer(cx: &mut TestA
 }
 
 #[gpui::test]
+async fn the_default_review_leaves_focus_in_the_composer_when_the_worktree_lands(
+    cx: &mut TestAppContext,
+) {
+    let opts = Overrides::default().list_workspaces(|_, ()| {
+        let mut all = Seed::e2e().workspaces;
+        all.iter_mut()
+            .find(|w| w.id == WS)
+            .unwrap()
+            .worktree_path
+            .clear();
+        Ok(all)
+    });
+    let mut h = boot(cx, opts);
+    let showing_review = |h: &mut H| h.read(|v, cx| v.observatory().read(cx).showing_review(cx));
+    h.focus_composer();
+    h.type_text("ab");
+    assert!(!showing_review(&mut h));
+    h.state.update(h.cx, |s, cx| {
+        s.set_workspaces_from_list(Seed::e2e().workspaces, cx)
+    });
+    h.wait(1000);
+    assert!(showing_review(&mut h));
+    h.type_text("cd");
+    assert_eq!(h.input(), "abcd");
+}
+
+#[gpui::test]
 async fn slash_review_and_fix_opens_a_loop_tab_instead_of_converting_the_agent_chat(
     cx: &mut TestAppContext,
 ) {

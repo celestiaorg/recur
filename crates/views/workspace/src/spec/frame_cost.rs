@@ -126,8 +126,7 @@ async fn a_long_browse_leaves_parked_workspaces_cached(cx: &mut TestAppContext) 
         let view = bound(&mut s);
         visited.push(view.downgrade());
         let obs = view.read_with(s.cx, |v, _| v.observatory().clone());
-        s.cx.update(|_, cx| obs.update(cx, |o, cx| o.click_review_toggle(cx)));
-        s.settle();
+        assert!(obs.read_with(s.cx, |o, cx| o.showing_review(cx)), "{id}");
     }
     // Only the hot shells stay alive: a shell that left them (and its chat, Observatory and
     // review) is released, so nothing a visit built outlives it.
@@ -345,8 +344,6 @@ async fn a_key_in_a_line_note_redraws_its_text_box_not_the_review(cx: &mut TestA
     let mut s = boot(cx, |_| {}, Overrides::default(), |_| {});
     s.open(ACTIVE);
     let obs = bound(&mut s).read_with(s.cx, |v, _| v.observatory().clone());
-    s.cx.update(|_, cx| obs.update(cx, |o, cx| o.click_review_toggle(cx)));
-    s.settle();
     // Line notes are on Changes' rows; Uncommitted's cards are editors.
     s.cx.update(|_, cx| {
         obs.update(cx, |o, cx| {

@@ -140,7 +140,10 @@ pub fn merge_editor_session(
         if let Some(m) = &meta.syntax_by_file_type {
             sess.syntax_by_file_type = m.clone();
         }
-        sess.main_surface = if matches!(meta.main_surface.as_str(), "review" | "pr" | "plan") {
+        sess.main_surface = if matches!(
+            meta.main_surface.as_str(),
+            "editor" | "review" | "pr" | "plan"
+        ) {
             meta.main_surface.clone()
         } else {
             String::new()

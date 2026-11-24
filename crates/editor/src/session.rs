@@ -58,9 +58,9 @@ fn panel_key(v: Option<&str>) -> Option<String> {
     v.filter(|k| PANEL_KEYS.contains(k)).map(str::to_string)
 }
 
-/// A stored `mainSurface`: a center view's key, or empty for the editor.
+/// A stored `mainSurface`: a center view's key, or empty when none is stored.
 pub fn main_surface_key(v: Option<&str>) -> String {
-    v.filter(|k| matches!(*k, "review" | "pr" | "plan"))
+    v.filter(|k| matches!(*k, "editor" | "review" | "pr" | "plan"))
         .unwrap_or_default()
         .to_string()
 }
@@ -76,7 +76,7 @@ pub struct Session {
     pub file_views: Option<BTreeMap<String, FileViewState>>,
     pub syntax_by_path: Option<BTreeMap<String, String>>,
     pub syntax_by_file_type: Option<BTreeMap<String, String>>,
-    /// `review` or `pr` for those columns; empty for the editor.
+    /// The chosen center view's key; empty when none was chosen.
     pub main_surface: String,
     pub left_kind: Option<String>,
     pub right_kind: Option<String>,
@@ -725,10 +725,7 @@ mod tests {
             (s.left_kind, s.right_kind.as_deref()),
             (None, Some("artifacts"))
         );
-        assert_eq!(
-            s.main_surface, "",
-            "a saved artifacts view falls back to the editor"
-        );
+        assert_eq!(s.main_surface, "", "a saved artifacts view is no choice");
         assert_eq!(main_surface_key(Some("plan")), "plan");
         for k in ["files", "findings", "artifacts"] {
             assert_eq!(main_surface_key(Some(k)), "", "{k} is a dock panel");

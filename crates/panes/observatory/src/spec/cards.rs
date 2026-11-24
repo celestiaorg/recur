@@ -11,6 +11,7 @@ use recur_view_review::review_diff::ReviewTab;
 use serde_json::json;
 
 use super::harness::*;
+use crate::model::MainSurface;
 
 type Shared<T> = Arc<parking_lot::Mutex<T>>;
 
@@ -228,6 +229,27 @@ async fn typing_in_a_card_marks_it_unsaved_and_cmd_s_saves_it(cx: &mut TestAppCo
     });
     assert_eq!(add, Some(2));
     assert_eq!(card_doc(&mut h, "src/a.go").as_deref(), Some(want));
+}
+
+#[gpui::test]
+async fn editing_a_card_in_the_default_review_reopens_on_the_review(
+    cx: &mut TestAppContext,
+    restarted: &mut TestAppContext,
+) {
+    let tree = Tree::new(&[("src/a.go", "package a\n", "package a\n// one\n")]);
+    let store = SessionStore::default();
+    let opts = || store.install(tree.opts());
+    let mut h = mount_unchosen(cx, |_| {}, opts(), |_| {}, |_| {});
+    h.click("obs-left-toggle");
+    h.update(|o, _, cx| o.set_review_tab(ReviewTab::Uncommitted, cx));
+    h.settle();
+    focus_card(&mut h, "src/a.go");
+    h.type_text("x");
+    debounce(&mut h);
+    h.quit();
+    assert_eq!(store.0.lock()[WS].open_files, Some(strings(&["src/a.go"])));
+    let mut h = mount_unchosen(restarted, |_| {}, opts(), |_| {}, |_| {});
+    assert_eq!(h.read(|o, cx| o.main_surface(cx)), MainSurface::Review);
 }
 
 #[gpui::test]

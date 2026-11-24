@@ -350,6 +350,11 @@ impl FilesChangedView {
         cx.notify();
     }
 
+    /// Keep the focus where it is on the activation just set.
+    pub fn leave_focus(&mut self) {
+        self.focus_pending = false;
+    }
+
     fn vs_label(&self) -> String {
         let b = js::trim(&self.props.base_label);
         if b.is_empty() {

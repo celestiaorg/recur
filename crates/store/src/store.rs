@@ -321,9 +321,9 @@ pub(crate) fn inbox_targets_workspace(target: &str, workspace_id: &str) -> bool 
     false
 }
 
-/// The hard-delete cascade predicate: workspace deep-links plus `pr:` rows
-/// for PRs deleted with the workspace.
-fn inbox_targets_deleted_workspace(
+/// The delete and archive predicate: workspace deep-links plus `pr:` rows
+/// for the workspace's PRs.
+fn inbox_targets_removed_workspace(
     target: &str,
     workspace_id: &str,
     pr_ids: &BTreeSet<String>,
@@ -685,7 +685,7 @@ impl Store {
         let deleted_inbox: Vec<String> = s
             .inbox
             .iter()
-            .filter(|it| inbox_targets_deleted_workspace(&it.target, id, &pr_ids))
+            .filter(|it| inbox_targets_removed_workspace(&it.target, id, &pr_ids))
             .map(|it| it.id.clone())
             .collect();
 
@@ -1791,10 +1791,20 @@ impl Store {
         self.remove_inbox_where(|it| it.target == target)
     }
 
-    /// Drops rows that deep-link into this workspace so Remove does not
-    /// leave badges for a hidden archived workspace. PR rows are kept.
+    /// Drops rows that deep-link into this workspace or its PRs so Remove
+    /// does not leave badges for a hidden archived workspace.
     pub fn clear_inbox_for_workspace(&self, workspace_id: &str) -> usize {
-        self.remove_inbox_where(|it| inbox_targets_workspace(&it.target, workspace_id))
+        let pr_ids = self
+            .state
+            .read()
+            .prs
+            .iter()
+            .filter(|p| p.workspace_id == workspace_id)
+            .map(|p| p.id.clone())
+            .collect();
+        self.remove_inbox_where(|it| {
+            inbox_targets_removed_workspace(&it.target, workspace_id, &pr_ids)
+        })
     }
 
     /// Drops one row by id, reporting whether it was there.

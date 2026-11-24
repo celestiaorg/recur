@@ -148,7 +148,23 @@ impl Engine {
         // Even without the forge tool, a workspace created (or renamed) onto
         // a PR head after the first import still attaches.
         self.link_unlinked_prs().await;
+        self.clear_settled_pr_inbox();
         self.store.prs()
+    }
+
+    /// Drops the notices of PRs that merged or closed outside Recur.
+    fn clear_settled_pr_inbox(&self) {
+        let mut removed = 0;
+        for it in self.store.inbox().unwrap_or_default() {
+            if let Some(id) = it.target.strip_prefix("pr:")
+                && self.store.pr_row(id).is_some_and(|p| pr_settled(&p))
+            {
+                removed += self.store.remove_inbox_by_target(&it.target);
+            }
+        }
+        if removed > 0 {
+            self.publish_inbox_updated();
+        }
     }
 
     async fn sync_project_prs(

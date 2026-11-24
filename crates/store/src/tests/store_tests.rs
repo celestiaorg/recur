@@ -1494,10 +1494,27 @@ fn inbox_targets_workspace_includes_chat() {
         unread: true,
         ..Default::default()
     });
-    assert_eq!(st.clear_inbox_for_workspace("demo.ws"), 1);
+    for (id, ws) in [("mine", "demo.ws"), ("theirs", "other")] {
+        st.add_pr(Pr {
+            id: id.into(),
+            workspace_id: ws.into(),
+            ..Default::default()
+        })
+        .unwrap();
+        st.add_inbox_item(InboxItem {
+            id: format!("ib-pr-{id}"),
+            kind: "pr".into(),
+            target: format!("pr:{id}"),
+            unread: true,
+            ..Default::default()
+        });
+    }
+    assert_eq!(st.clear_inbox_for_workspace("demo.ws"), 2);
     let ids: Vec<String> = st.inbox().unwrap().into_iter().map(|i| i.id).collect();
     assert!(!ids.contains(&"ib-chat-demo.ws-PA2".to_owned()));
+    assert!(!ids.contains(&"ib-pr-mine".to_owned()));
     assert!(ids.contains(&"ib-keep".to_owned()));
+    assert!(ids.contains(&"ib-pr-theirs".to_owned()));
 }
 
 #[test]

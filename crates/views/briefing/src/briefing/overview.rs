@@ -465,24 +465,26 @@ impl BriefingView {
                     .on_click(cx.guarded_listener(move |v, _, _, cx| route(v, &target, cx))),
             ));
         }
-        actions = actions.child(recur_ui::tooltip::titled(
-            "ov-read-tip",
-            if unread {
-                "Mark as read (⇧⌘U)"
-            } else {
-                "Mark as unread (⇧⌘U)"
-            },
-            tbtn("ov-read", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
-                .max_w_full()
-                .debug_selector(move || {
-                    format!("ov-read:{}", if unread { "unread" } else { "read" })
-                })
-                .child(
-                    button_label(if unread { "Mark read" } else { "Mark unread" }, 11.5, 500.)
-                        .truncate(),
-                )
-                .on_click(cx.guarded_listener(|v, _, _, cx| v.toggle_read(cx))),
-        ));
+        if self.can_toggle_read(&brief.workspace_id, cx) {
+            actions = actions.child(recur_ui::tooltip::titled(
+                "ov-read-tip",
+                if unread {
+                    "Mark as read (⇧⌘U)"
+                } else {
+                    "Mark as unread (⇧⌘U)"
+                },
+                tbtn("ov-read", Tbtn::Default, TbtnSize::TITLEBAR, None, cx)
+                    .max_w_full()
+                    .debug_selector(move || {
+                        format!("ov-read:{}", if unread { "unread" } else { "read" })
+                    })
+                    .child(
+                        button_label(if unread { "Mark read" } else { "Mark unread" }, 11.5, 500.)
+                            .truncate(),
+                    )
+                    .on_click(cx.guarded_listener(|v, _, _, cx| v.toggle_read(cx))),
+            ));
+        }
         let toolbar = crate::style::filters_bar(cx)
             .h_auto()
             .px(px(14.))
@@ -548,7 +550,12 @@ impl BriefingView {
                     .items_center()
                     .gap_x(px(10.))
                     .gap_y(px(6.))
-                    .child(state_pill(pill_color, pill_label, running, &t))
+                    .child(
+                        div()
+                            .flex_none()
+                            .debug_selector(move || format!("ov-state:{pill_label}"))
+                            .child(state_pill(pill_color, pill_label, running, &t)),
+                    )
                     .child(crumb),
             );
         div()

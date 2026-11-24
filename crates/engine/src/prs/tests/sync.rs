@@ -69,6 +69,48 @@ async fn sync_imports_and_dedupes() {
 }
 
 #[tokio::test]
+async fn sync_drops_the_notice_of_a_pr_merged_outside_recur() {
+    let px = Px::new();
+    let repo = init_repo();
+    px.add_project("acme", &repo.path);
+    for (n, branch) in [(9, "done"), (12, "open")] {
+        let pr = px.add_pr(Pr {
+            project_id: "acme".into(),
+            ..gh_pr(n, branch)
+        });
+        px.eng().emit_pr_ready_inbox(&pr);
+    }
+    px.forge.on_list_prs(|(_, state, _)| async move {
+        Ok(match state {
+            PrListState::Merged => {
+                let mut done = row(9, "Done", "done");
+                done.state = "MERGED".into();
+                vec![done]
+            }
+            _ => vec![row(12, "Open", "open")],
+        })
+    });
+    px.eng().sync_prs().await;
+    let targets: Vec<String> = px
+        .eng()
+        .store
+        .inbox()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|i| i.kind == "pr")
+        .map(|i| i.target)
+        .collect();
+    let open = px
+        .eng()
+        .store
+        .prs()
+        .into_iter()
+        .find(|p| p.number == 12)
+        .unwrap();
+    assert_eq!(targets, [format!("pr:{}", open.id)]);
+}
+
+#[tokio::test]
 async fn sync_lists_projects_concurrently() {
     let px = Px::new();
     let (a, b) = (init_repo(), init_repo());

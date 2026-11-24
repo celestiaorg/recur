@@ -190,6 +190,11 @@ pub struct BriefingView {
     reveal_selected: std::cell::Cell<bool>,
     /// The selection is the wide layout's automatic pick, not a click: a narrow window drops it.
     auto_picked: bool,
+    /// The selected workspace was removed, or the list was empty on arrival or after a filter
+    /// change: no automatic pick until the user selects, filters or comes back to Inbox.
+    vacated: bool,
+    /// Inbox is on screen with a loaded briefing.
+    arrived: bool,
     resize_focus: FocusHandle,
     list_resize_focus: FocusHandle,
     hover_row: Option<String>,
@@ -198,6 +203,9 @@ pub struct BriefingView {
     pending_focus: Option<String>,
     /// The workspace whose overview is open.
     selected: Option<String>,
+    /// The selected card's last copy: reading a settled workspace's reply drops its card,
+    /// and the overview stays open on this.
+    held: Option<WorkspaceBrief>,
     /// Overviews and changes by workspace: a revisit paints the last copy at once while
     /// the refetch runs.
     overviews: HashMap<String, WorkspaceOverview>,
@@ -272,6 +280,7 @@ impl BriefingView {
                 if let SelectEvent::Values(ids) = ev {
                     this.project_filter = ids.iter().map(|s| s.to_string()).collect();
                     this.save_filters(cx);
+                    this.drop_hidden_selection(cx);
                     cx.notify();
                 }
             }),
@@ -292,12 +301,15 @@ impl BriefingView {
             ov_scroll: ScrollHandle::new(),
             reveal_selected: Default::default(),
             auto_picked: false,
+            vacated: false,
+            arrived: false,
             resize_focus: cx.focus_handle(),
             list_resize_focus: cx.focus_handle(),
             hover_row: None,
             epoch: Instant::now(),
             pending_focus: None,
             selected: None,
+            held: None,
             overviews: HashMap::new(),
             changes: HashMap::new(),
             overview_gen: 0,
@@ -349,14 +361,12 @@ impl BriefingView {
             .update(cx, |s, _| s.storage_mut().set(FILTERS_KEY, v.to_string()));
     }
 
+    /// The cards, less those of workspaces archived since the last refresh.
     fn briefs_all(&self, cx: &App) -> Vec<WorkspaceBrief> {
-        self.vcx
-            .state
-            .read(cx)
-            .briefing
-            .workspaces
-            .clone()
-            .unwrap_or_default()
+        let s = self.vcx.state.read(cx);
+        let mut briefs = s.briefing.workspaces.clone().unwrap_or_default();
+        briefs.retain(|b| s.workspace(&b.workspace_id).is_none_or(|w| !w.archived));
+        briefs
     }
 
     /// `projectOptions`: the projects with cards, in card order.
@@ -398,11 +408,26 @@ impl BriefingView {
                 self.save_filters(cx);
             }
         }
+        let (on, loaded) = {
+            let s = self.vcx.state.read(cx);
+            (s.view == ViewName::Briefing, s.briefing.generated_at != 0)
+        };
+        self.vacated &= on;
         if let Some(id) = self.selected.clone()
             && !self.briefs_all(cx).iter().any(|b| b.workspace_id == id)
         {
-            self.clear_selection(cx);
+            let s = self.vcx.state.read(cx);
+            let removed = s.workspace(&id).is_none_or(|w| w.archived);
+            if removed || !on {
+                self.clear_selection(cx);
+                self.vacated = on;
+            }
         }
+        let arrived = on && loaded;
+        if arrived && !self.arrived {
+            self.vacated = self.visible_ids(cx).is_empty();
+        }
+        self.arrived = arrived;
         self.sync_viewing(cx);
         let focus = self.vcx.state.read(cx).briefing_focus.clone();
         if !focus.is_empty() {
@@ -413,6 +438,7 @@ impl BriefingView {
                 self.unread_only = false;
                 self.save_filters(cx);
             }
+            self.drop_hidden_selection(cx);
             self.pending_focus = Some(focus);
             self.vcx.state.update(cx, |s, _| s.briefing_focus.clear());
             let me = cx.entity().downgrade();
@@ -489,12 +515,9 @@ impl BriefingView {
         let s = self.vcx.state.read(cx);
         let notes = inbox_by_workspace(&s.inbox);
         let projects: BTreeSet<&String> = self.project_filter.iter().collect();
-        let briefs: Vec<WorkspaceBrief> = s
-            .briefing
-            .workspaces
-            .as_deref()
-            .unwrap_or_default()
-            .iter()
+        let briefs: Vec<WorkspaceBrief> = self
+            .briefs_all(cx)
+            .into_iter()
             .filter(|w| {
                 (projects.is_empty()
                     || (!w.project_id.is_empty() && projects.contains(&w.project_id)))
@@ -503,7 +526,6 @@ impl BriefingView {
                         || self.selected.as_deref() == Some(w.workspace_id.as_str())
                         || notes.get(&w.workspace_id).is_some_and(|n| !n.is_empty()))
             })
-            .cloned()
             .collect();
         let of = |b: &str| -> Vec<WorkspaceBrief> {
             briefs.iter().filter(|w| w.bucket == b).cloned().collect()
@@ -560,6 +582,7 @@ impl BriefingView {
         self.project_select
             .update(cx, |s, cx| s.set_values(Vec::new(), cx));
         self.save_filters(cx);
+        self.drop_hidden_selection(cx);
         cx.notify();
     }
 
@@ -569,6 +592,7 @@ impl BriefingView {
         } else {
             b
         };
+        self.drop_hidden_selection(cx);
         cx.notify();
     }
 
@@ -648,6 +672,7 @@ impl BriefingView {
                 .on_click(cx.guarded_listener(|v, _, _, cx| {
                     v.unread_only = !v.unread_only;
                     v.save_filters(cx);
+                    v.drop_hidden_selection(cx);
                     cx.notify();
                 })),
             ),
@@ -748,6 +773,7 @@ impl BriefingView {
             return;
         }
         self.selected = Some(id.to_owned());
+        self.vacated = false;
         self.seen_notes = inbox_by_workspace(&self.vcx.state.read(cx).inbox)
             .remove(id)
             .unwrap_or_default();
@@ -781,6 +807,11 @@ impl BriefingView {
                 .any(|b| b.workspace_id == id && b.changed_since_viewed)
     }
 
+    /// Unread, or still listed: a card that left Inbox cannot be marked unread.
+    pub(crate) fn can_toggle_read(&self, id: &str, cx: &App) -> bool {
+        self.is_unread(id, cx) || self.briefs_all(cx).iter().any(|b| b.workspace_id == id)
+    }
+
     pub(crate) fn mark_read(&mut self, id: &str, cx: &mut Context<Self>) {
         let activity = self.set_changed(id, false, cx);
         let (svc, wid) = (self.vcx.services.clone(), id.to_owned());
@@ -808,6 +839,9 @@ impl BriefingView {
         let Some(id) = self.selected.clone() else {
             return;
         };
+        if !self.can_toggle_read(&id, cx) {
+            return;
+        }
         if self.is_unread(&id, cx) {
             self.mark_read(&id, cx);
         } else {
@@ -835,17 +869,26 @@ impl BriefingView {
         })
     }
 
-    /// The wide layout always shows an overview: keep a visible row selected.
+    /// The wide layout opens the first row's overview. A row leaving the list on a refresh
+    /// never picks the next one: that would mark it read unseen.
     fn ensure_selection(&mut self, cx: &mut Context<Self>) {
+        if self.selected.is_none()
+            && !self.vacated
+            && let Some(first) = self.visible_ids(cx).first()
+        {
+            self.auto_picked = true;
+            self.select_quiet(first, cx)
+        }
+    }
+
+    /// After a filter change, lets go of a selection the list no longer shows.
+    fn drop_hidden_selection(&mut self, cx: &mut Context<Self>) {
         let ids = self.visible_ids(cx);
-        match (&self.selected, ids.first()) {
-            (Some(s), _) if ids.contains(s) => {}
-            (_, Some(first)) => {
-                self.auto_picked = true;
-                self.select_quiet(&first.clone(), cx)
-            }
-            (Some(_), None) => self.clear_selection(cx),
-            (None, None) => {}
+        self.vacated = ids.is_empty();
+        if let Some(s) = &self.selected
+            && !ids.contains(s)
+        {
+            self.clear_selection(cx);
         }
     }
 
@@ -854,6 +897,19 @@ impl BriefingView {
         self.briefs_all(cx)
             .into_iter()
             .find(|b| b.workspace_id == id)
+            .or_else(|| {
+                let mut held = self.held.clone().filter(|b| b.workspace_id == id)?;
+                // An answered question no longer routes to its chat.
+                if held.primary.target.starts_with("question:") {
+                    held.primary = Default::default();
+                }
+                Some(WorkspaceBrief {
+                    bucket: String::new(),
+                    reasons: None,
+                    now: String::new(),
+                    ..held
+                })
+            })
     }
 
     fn open_selected(&mut self, cx: &mut Context<Self>) {
@@ -864,7 +920,8 @@ impl BriefingView {
 
     /// Tells Ask Recur which workspace the overview shows.
     fn sync_viewing(&mut self, cx: &mut Context<Self>) {
-        let viewing = self.selected_brief(cx).map(|b| (b.workspace_id, b.title));
+        self.held = self.selected_brief(cx);
+        let viewing = self.held.clone().map(|b| (b.workspace_id, b.title));
         self.chat.update(cx, |c, cx| c.set_viewing(viewing, cx));
     }
 

@@ -159,6 +159,392 @@ fn notifications_with_no_card_land_in_elsewhere(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn a_reply_from_a_workspace_newer_than_the_list_lands_in_needs_you(cx: &mut TestAppContext) {
+    use recur_domain::{BriefingSnapshot, InboxItem, WorkspaceBrief};
+    use recur_services::fake::{Answer, hold};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    const FRESH: &str = "Fresh workspace";
+    let finished = Arc::new(AtomicBool::new(false));
+    let release = Arc::new(Mutex::new(None));
+    let (done, held) = (finished.clone(), release.clone());
+    let overrides = Overrides::default().get_briefing(move |_, _| {
+        if !done.load(Ordering::SeqCst) {
+            return Answer::Now(Ok(BriefingSnapshot::default()));
+        }
+        let (answer, tx) = hold();
+        *held.lock().unwrap() = Some(tx);
+        answer
+    });
+    let mut s = with(cx, |_| {}, overrides);
+    finished.store(true, Ordering::SeqCst);
+    s.fake.with_seed(|seed| {
+        seed.inbox.insert(
+            0,
+            InboxItem {
+                id: "ib-chat-ws-fresh-PA".into(),
+                kind: "chat".into(),
+                title: FRESH.into(),
+                unread: true,
+                workspace_id: "ws-fresh".into(),
+                ..Default::default()
+            },
+        )
+    });
+    s.dispatch(AppEvent::InboxUpdated(Default::default()));
+    s.wait(200);
+    let tx = release.lock().unwrap().take().expect("the list refetches");
+    tx.send(Ok(BriefingSnapshot {
+        workspaces: Some(vec![WorkspaceBrief {
+            workspace_id: "ws-fresh".into(),
+            title: FRESH.into(),
+            bucket: "needs".into(),
+            reasons: Some(vec!["unseen_chat".into()]),
+            ..Default::default()
+        }]),
+        ..Default::default()
+    }));
+    s.settle();
+    assert!(s.has("briefing-needs"));
+    assert!(s.has(&row(FRESH)));
+    assert!(!s.has(&format!("ibrow:{FRESH}:unread")));
+}
+
+#[gpui::test]
+fn a_read_row_leaving_its_bucket_does_not_read_the_next_one(cx: &mut TestAppContext) {
+    use recur_domain::{BriefingSnapshot, WorkspaceBrief};
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let read = Arc::new(AtomicBool::new(false));
+    let seen = read.clone();
+    let brief = |id: &str, bucket: &str| WorkspaceBrief {
+        workspace_id: id.into(),
+        title: id.into(),
+        bucket: bucket.into(),
+        changed_since_viewed: bucket == "needs",
+        ..Default::default()
+    };
+    let overrides = Overrides::default().get_briefing(move |_, _| {
+        let a = if seen.load(Ordering::SeqCst) {
+            brief("ws-a", "pickup")
+        } else {
+            brief("ws-a", "needs")
+        };
+        Ok(BriefingSnapshot {
+            workspaces: Some(vec![a, brief("ws-b", "needs")]),
+            ..Default::default()
+        })
+    });
+    let mut s = with(cx, |_| {}, overrides);
+    full_list(&mut s);
+    s.click(&seg("Needs you", false));
+    assert!(s.has("ov-title:ws-a"));
+    read.store(true, Ordering::SeqCst);
+    s.dispatch(AppEvent::InboxUpdated(Default::default()));
+    s.wait(200);
+    assert!(s.has("ov-title:ws-a"), "the open overview stays");
+    assert!(!s.has("ov-title:ws-b"));
+    s.click(&seg("Pick up", false));
+    s.click(&seg("Needs you", false));
+    assert!(s.has("ov-title:ws-b"), "choosing a filter picks from it");
+}
+
+#[gpui::test]
+fn a_read_card_leaving_the_inbox_keeps_its_overview(cx: &mut TestAppContext) {
+    use recur_domain::{BriefAction, BriefingSnapshot, Workspace, WorkspaceBrief};
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let read = Arc::new(AtomicBool::new(false));
+    let seen = read.clone();
+    let brief = |id: &str| WorkspaceBrief {
+        workspace_id: id.into(),
+        title: id.into(),
+        bucket: "needs".into(),
+        changed_since_viewed: true,
+        primary: BriefAction {
+            target: "question:answered".into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let overrides = Overrides::default().get_briefing(move |_, _| {
+        let mut workspaces = vec![brief("ws-b")];
+        if !seen.load(Ordering::SeqCst) {
+            workspaces.insert(0, brief("ws-a"));
+        }
+        Ok(BriefingSnapshot {
+            workspaces: Some(workspaces),
+            ..Default::default()
+        })
+    });
+    let seed = |sd: &mut recur_services::fake::Seed| {
+        sd.workspaces.push(Workspace {
+            id: "ws-a".into(),
+            ..Default::default()
+        })
+    };
+    let mut s = with(cx, seed, overrides);
+    assert!(s.has("ov-title:ws-a"));
+    assert!(s.has("ov-state:Needs you") && s.has("ov-read:read"));
+    read.store(true, Ordering::SeqCst);
+    s.dispatch(AppEvent::InboxUpdated(Default::default()));
+    s.wait(200);
+    assert!(s.has("ov-title:ws-a"), "the open overview stays");
+    assert!(s.has(&row("ws-b")) && !s.has(&row("ws-a")));
+    assert!(s.has("ov-state:Idle"), "its old group is gone");
+    assert!(
+        !s.has("ov-read:read") && !s.has("ov-read:unread"),
+        "marking it unread would not bring it back"
+    );
+    let unread = s.state.read_with(s.cx, |st, _| {
+        st.briefing
+            .workspaces
+            .iter()
+            .flatten()
+            .all(|b| b.changed_since_viewed)
+    });
+    assert!(unread, "the next card stays unread");
+    s.click("ov-open");
+    assert_eq!(
+        s.view(),
+        ViewName::Detail,
+        "Open workspace skips the answered question"
+    );
+    s.go(ViewName::Briefing);
+    assert!(s.has("ov-title:ws-b"), "arriving again picks from the list");
+}
+
+/// Inbox over the given cards (workspace id, bucket): the list before `refresh`, then after.
+fn refreshing<'a>(
+    cx: &'a mut TestAppContext,
+    before: &'static [(&'static str, &'static str)],
+    after: &'static [(&'static str, &'static str)],
+) -> (S<'a>, impl Fn(&mut S) + use<>) {
+    use recur_domain::{BriefingSnapshot, WorkspaceBrief};
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let refreshed = Arc::new(AtomicBool::new(false));
+    let seen = refreshed.clone();
+    let overrides = Overrides::default().get_briefing(move |_, _| {
+        let cards = if seen.load(Ordering::SeqCst) {
+            after
+        } else {
+            before
+        };
+        Ok(BriefingSnapshot {
+            generated_at: 1,
+            workspaces: Some(
+                cards
+                    .iter()
+                    .map(|(id, bucket)| WorkspaceBrief {
+                        workspace_id: (*id).into(),
+                        title: (*id).into(),
+                        bucket: (*bucket).into(),
+                        changed_since_viewed: true,
+                        ..Default::default()
+                    })
+                    .collect(),
+            ),
+            ..Default::default()
+        })
+    });
+    let mut s = with(cx, |_| {}, overrides);
+    full_list(&mut s);
+    (s, move |s: &mut S| {
+        refreshed.store(true, Ordering::SeqCst);
+        s.dispatch(AppEvent::InboxUpdated(Default::default()));
+        s.wait(200);
+    })
+}
+
+#[gpui::test]
+fn arriving_picks_again_when_the_selected_card_left_meanwhile(cx: &mut TestAppContext) {
+    let (mut s, refresh) = refreshing(
+        cx,
+        &[("ws-a", "needs"), ("ws-b", "needs")],
+        &[("ws-b", "needs")],
+    );
+    assert!(s.has("ov-title:ws-a"));
+    s.go(ViewName::Settings);
+    refresh(&mut s);
+    s.go(ViewName::Briefing);
+    assert!(s.has("ov-title:ws-b"));
+}
+
+#[gpui::test]
+fn archiving_the_opened_workspace_returns_to_the_next_card(cx: &mut TestAppContext) {
+    let (mut s, refresh) = refreshing(
+        cx,
+        &[("ws-a", "needs"), ("ws-b", "needs")],
+        &[("ws-b", "needs")],
+    );
+    for id in ["ws-a", "ws-b"] {
+        let w = recur_domain::Workspace {
+            id: id.into(),
+            ..Default::default()
+        };
+        s.fake.with_seed(|seed| seed.workspaces.push(w.clone()));
+        s.state.update(s.cx, |st, _| st.workspaces.push(w));
+    }
+    assert!(s.has("ov-title:ws-a"));
+    s.click("ov-open");
+    assert_eq!(s.view(), ViewName::Detail);
+    s.state
+        .update(s.cx, |st, cx| st.remove_workspace("ws-a", cx))
+        .detach();
+    s.settle();
+    assert_eq!(s.view(), ViewName::Briefing);
+    assert!(s.has("ov-title:ws-b") && !s.has(&row("ws-a")));
+    refresh(&mut s);
+    assert!(s.has("ov-title:ws-b"));
+}
+
+#[gpui::test]
+fn deleting_the_selected_workspaces_project_picks_the_next_card(cx: &mut TestAppContext) {
+    use recur_domain::{BriefingSnapshot, Workspace, WorkspaceBrief};
+    use recur_services::fake::{Answer, hold};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    let list = |ids: &[&str]| BriefingSnapshot {
+        generated_at: 1,
+        workspaces: Some(
+            ids.iter()
+                .map(|id| WorkspaceBrief {
+                    workspace_id: (*id).into(),
+                    title: (*id).into(),
+                    bucket: "needs".into(),
+                    ..Default::default()
+                })
+                .collect(),
+        ),
+        ..Default::default()
+    };
+    let deleted = Arc::new(AtomicBool::new(false));
+    let release = Arc::new(Mutex::new(None));
+    let (gone, held) = (deleted.clone(), release.clone());
+    let overrides = Overrides::default().get_briefing(move |_, _| {
+        if !gone.load(Ordering::SeqCst) {
+            return Answer::Now(Ok(list(&["ws-a", "ws-b"])));
+        }
+        let (answer, tx) = hold();
+        *held.lock().unwrap() = Some(tx);
+        answer
+    });
+    let seed = |sd: &mut recur_services::fake::Seed| {
+        for id in ["ws-a", "ws-b"] {
+            sd.workspaces.push(Workspace {
+                id: id.into(),
+                ..Default::default()
+            });
+        }
+    };
+    let mut s = with(cx, seed, overrides);
+    assert!(s.has("ov-title:ws-a"));
+    s.go(ViewName::Settings);
+    deleted.store(true, Ordering::SeqCst);
+    s.fake
+        .with_seed(|seed| seed.workspaces.retain(|w| w.id != "ws-a"));
+    s.state.update(s.cx, |st, cx| st.load_initial(cx)).detach();
+    s.settle();
+    s.go(ViewName::Briefing);
+    assert!(s.has("ov-title:ws-b") && !s.has(&row("ws-a")));
+    let tx = release.lock().unwrap().take().expect("the list refetches");
+    tx.send(Ok(list(&["ws-b"])));
+    s.settle();
+    assert!(s.has("ov-title:ws-b"));
+}
+
+#[gpui::test]
+fn leaving_and_returning_picks_after_the_selected_card_left(cx: &mut TestAppContext) {
+    let (mut s, refresh) = refreshing(
+        cx,
+        &[("ws-a", "needs"), ("ws-b", "needs")],
+        &[("ws-b", "needs")],
+    );
+    refresh(&mut s);
+    assert!(!s.has("briefing-overview"));
+    s.go(ViewName::Settings);
+    s.go(ViewName::Briefing);
+    assert!(s.has("ov-title:ws-b"));
+}
+
+#[gpui::test]
+fn clearing_the_filters_picks_from_the_list(cx: &mut TestAppContext) {
+    let (mut s, refresh) = refreshing(
+        cx,
+        &[("ws-a", "needs"), ("ws-c", "pickup")],
+        &[("ws-c", "pickup")],
+    );
+    s.click(&seg("Needs you", false));
+    refresh(&mut s);
+    assert!(!s.has("briefing-overview"));
+    s.click("briefing-clear");
+    assert!(s.has("ov-title:ws-c"));
+}
+
+#[gpui::test]
+fn a_focus_jump_picks_from_the_list(cx: &mut TestAppContext) {
+    let (mut s, refresh) = refreshing(
+        cx,
+        &[("ws-a", "needs"), ("ws-b", "needs")],
+        &[("ws-b", "needs")],
+    );
+    refresh(&mut s);
+    assert!(!s.has("briefing-overview"));
+    s.state
+        .update(s.cx, |st, cx| st.go(ViewName::Briefing, Some("needs"), cx));
+    s.settle();
+    assert!(s.has("ov-title:ws-b"));
+}
+
+#[gpui::test]
+fn a_refresh_does_not_read_the_first_card_of_an_empty_filter(cx: &mut TestAppContext) {
+    let (mut s, refresh) = refreshing(
+        cx,
+        &[("ws-c", "pickup")],
+        &[("ws-d", "needs"), ("ws-c", "pickup")],
+    );
+    assert!(s.has("ov-title:ws-c"));
+    s.click(&seg("Needs you", false));
+    refresh(&mut s);
+    assert!(s.has(&row("ws-d")) && !s.has("briefing-overview"));
+    let unread = s.state.read_with(s.cx, |st, _| {
+        let mut briefs = st.briefing.workspaces.iter().flatten();
+        briefs.any(|b| b.workspace_id == "ws-d" && b.changed_since_viewed)
+    });
+    assert!(unread);
+}
+
+#[gpui::test]
+fn arriving_at_an_empty_filter_does_not_read_its_first_card(cx: &mut TestAppContext) {
+    let (mut s, refresh) = refreshing(
+        cx,
+        &[("ws-c", "pickup")],
+        &[("ws-d", "needs"), ("ws-c", "pickup")],
+    );
+    s.click(&seg("Needs you", false));
+    s.go(ViewName::Settings);
+    s.go(ViewName::Briefing);
+    refresh(&mut s);
+    assert!(s.has(&row("ws-d")) && !s.has("briefing-overview"));
+}
+
+#[gpui::test]
+fn booting_into_an_empty_list_does_not_read_its_first_card(cx: &mut TestAppContext) {
+    let (mut s, refresh) = refreshing(cx, &[], &[("ws-d", "needs")]);
+    refresh(&mut s);
+    assert!(s.has(&row("ws-d")) && !s.has("briefing-overview"));
+    s.go(ViewName::Settings);
+    s.go(ViewName::Briefing);
+    assert!(s.has("ov-title:ws-d"));
+}
+
+#[gpui::test]
 fn cards_carry_unread_badges_that_clear_on_open(cx: &mut TestAppContext) {
     let mut s = plain(cx);
     assert!(unread(&mut s, RATE).is_none(), "the open row is read");

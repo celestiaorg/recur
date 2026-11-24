@@ -834,7 +834,8 @@ impl AppState {
         let services = self.services.clone();
         self.briefing_refresh = Some(cx.spawn(async move |this, cx| {
             cx.background_executor().timer(BRIEFING_REFRESH_DELAY).await;
-            let _ = this.update(cx, |s, _| s.briefing_refresh = None);
+            // Detached: dropping the handle would cancel this task before the fetch answers.
+            let _ = this.update(cx, |s, _| s.briefing_refresh.take().map(Task::detach));
             if let Ok(b) = services.briefing.get_briefing().await {
                 let _ = this.update(cx, |s, cx| {
                     if s.briefing != b {
@@ -941,6 +942,9 @@ impl AppState {
                 s.projects = unique_by_id(&pj, true);
                 s.project_groups = unique_by_id(&pg, true);
                 s.set_workspaces_from_list(lp.clone(), cx);
+                if let Some(cards) = &mut s.briefing.workspaces {
+                    cards.retain(|b| lp.iter().any(|w| w.id == b.workspace_id));
+                }
                 s.prs = pr;
                 for id in s.prs.iter().map(|p| p.id.clone()).collect::<Vec<_>>() {
                     s.bump_pr(&id);

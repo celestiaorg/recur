@@ -24,12 +24,12 @@
         "panes": {
           "sidebar": true,
           "chat": true,
-          "files": true,
+          "files": false,
           "prChat": false
         },
         "widths": {
           "rail": 280,
-          "maestroDock": 440,
+          "maestroDock": 400,
           "obsSide": 180,
           "prFileList": 220
         },
@@ -69,13 +69,13 @@
         },
         "target": ".win",
         "view": "workspace",
-        "chat": "PA2",
+        "chat": "PA",
         "file": "src/main.go",
         "surface": "review",
         "prTab": "conv",
         "panes": {
           "sidebar": true,
-          "chat": false,
+          "chat": true,
           "files": false,
           "prChat": false
         },
@@ -122,7 +122,7 @@
         "target": ".win",
         "view": "workspace",
         "chat": "MA",
-        "file": "src/main.go",
+        "file": "src/passkey.go",
         "surface": "editor",
         "prTab": "conv",
         "panes": {
@@ -354,6 +354,682 @@
         "ready": {
           "selector": "#v-schedules",
           "text": "Morning code review"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "workspace-pr",
+      "file": "workspace-pr.png",
+      "title": "The pull request beside the work",
+      "placement": "Pull request in the workspace",
+      "theme": "charcoal",
+      "settings": {
+        "id": "workspace-pr",
+        "title": "The pull request beside the work",
+        "placement": "Pull request in the workspace",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "pr",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 400,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail",
+          "text": "All checks passed"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "uncommitted",
+      "file": "uncommitted.png",
+      "title": "Commit what you checked",
+      "placement": "Uncommitted changes",
+      "theme": "charcoal",
+      "settings": {
+        "id": "uncommitted",
+        "title": "Commit what you checked",
+        "placement": "Uncommitted changes",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA",
+        "file": "refunds/handler.go",
+        "surface": "review",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 290
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail .obs-review-surface",
+          "text": "Idempotency-Key is required"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "background",
+      "file": "background.png",
+      "title": "Processes that outlive the turn",
+      "placement": "Background processes",
+      "theme": "charcoal",
+      "settings": {
+        "id": "background",
+        "title": "Processes that outlive the turn",
+        "placement": "Background processes",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "workspace",
+        "chat": "PA",
+        "file": "webhooks/delivery.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 470,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-detail",
+          "text": "Checking back in"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "insights",
+      "file": "insights.png",
+      "title": "See where agent time goes",
+      "placement": "Insights",
+      "theme": "charcoal",
+      "settings": {
+        "id": "insights",
+        "title": "See where agent time goes",
+        "placement": "Insights",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "insights",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-insights",
+          "text": "Agent hours"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "pull-requests",
+      "file": "pull-requests.png",
+      "title": "Pull requests across projects",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "pull-requests",
+        "title": "Pull requests across projects",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "prs",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": false,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-prs",
+          "text": "Rate limit failed sign-in attempts"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "inbox-passkey",
+      "file": "inbox-passkey.png",
+      "title": "Inbox overview: Passkey sign-in",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox-passkey",
+        "title": "Inbox overview: Passkey sign-in",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Passkey sign-in"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "inbox-checkout",
+      "file": "inbox-checkout.png",
+      "title": "Inbox overview: Checkout tests",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox-checkout",
+        "title": "Inbox overview: Checkout tests",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Checkout tests"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "inbox-dark-mode",
+      "file": "inbox-dark-mode.png",
+      "title": "Inbox overview: Dark mode",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox-dark-mode",
+        "title": "Inbox overview: Dark mode",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Dark mode"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "inbox-recovery",
+      "file": "inbox-recovery.png",
+      "title": "Inbox overview: Recovery tests",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox-recovery",
+        "title": "Inbox overview: Recovery tests",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Recovery tests"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "inbox-session",
+      "file": "inbox-session.png",
+      "title": "Inbox overview: Session refresh",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox-session",
+        "title": "Inbox overview: Session refresh",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Session refresh"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "inbox-webhook",
+      "file": "inbox-webhook.png",
+      "title": "Inbox overview: Webhook retries",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox-webhook",
+        "title": "Inbox overview: Webhook retries",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Webhook retries"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "inbox-idempotency",
+      "file": "inbox-idempotency.png",
+      "title": "Inbox overview: Idempotency keys",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox-idempotency",
+        "title": "Inbox overview: Idempotency keys",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Idempotency keys"
+        },
+        "theme": {
+          "app": "default",
+          "editor": "recur"
+        },
+        "deviceScaleFactor": 2
+      },
+      "dimensions": {
+        "width": 2880,
+        "height": 1600
+      }
+    },
+    {
+      "id": "inbox-answered",
+      "file": "inbox-answered.png",
+      "title": "Inbox after answering",
+      "placement": "Hero demo",
+      "theme": "charcoal",
+      "settings": {
+        "id": "inbox-answered",
+        "title": "Inbox after answering",
+        "placement": "Hero demo",
+        "viewport": {
+          "width": 1440,
+          "height": 800
+        },
+        "target": ".win",
+        "view": "inbox",
+        "chat": "PA",
+        "file": "src/main.go",
+        "surface": "editor",
+        "prTab": "conv",
+        "panes": {
+          "sidebar": true,
+          "chat": true,
+          "files": false,
+          "prChat": false
+        },
+        "widths": {
+          "rail": 280,
+          "maestroDock": 390,
+          "obsSide": 180,
+          "prFileList": 220
+        },
+        "editorPrefs": {
+          "fontSize": 13,
+          "lineWrapping": true,
+          "cursorBlink": false
+        },
+        "ready": {
+          "selector": "#v-briefing",
+          "text": "Setting how long links last"
         },
         "theme": {
           "app": "default",

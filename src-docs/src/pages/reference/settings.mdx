@@ -17,11 +17,13 @@ Open Settings with **⌘,** (or **Recur → Settings…**). Type in the search f
 - **Power**: **Prevent sleep while agents run** keeps your Mac awake (via `caffeinate`, macOS only) so idle sleep cannot interrupt a turn.
 - **Workspaces**: **Branch name prefix** is prepended to new workspace branches. Presets are **Recur** (`recur/`), **GitHub** (your `gh` login), or **None**. **Keep scheduled workspaces** keeps the last N workspaces per schedule and removes older finished runs. 0 keeps all.
 - **Projects**: **New projects folder** is where Ask Recur creates a project you ask for (`~` works). Blank puts it beside your most recent project.
-- **Sidebar**: **Terminals page** (off by default) adds a **Terminals** row under Schedules (⌥⌘5) with tabbed shells that belong to no workspace. They start in your home folder and come back after a restart.
+- **Sidebar**: **Terminals page** (off by default) adds a **Terminals** row under Insights (⌥⌘5) with tabbed shells that belong to no workspace. They start in your home folder and come back after a restart.
 
 ### Appearance
 
-Pick the **App theme** (chrome, sidebars, panels), the **Code editor theme**, and the **Terminal theme**. Terminal **Match app** follows the app theme. See [Themes](/reference/themes).
+Pick the **App theme** (chrome, sidebars, panels), the **Code editor theme**, and the **Terminal theme**. Each can be a single theme or **Sync with system**, with one theme for light mode and one for dark. Terminal **Match app** follows the app theme. See [Themes](/reference/themes).
+
+- **Window**: **Zoom with ⌘ + scroll** (**Ctrl** on Linux) zooms the whole UI, and can be turned off. On Linux, **Use native title bar** shows the system title bar after a restart.
 
 ### Code editor
 
@@ -39,18 +41,23 @@ Turn Recur's built-in skills and your personal skills on or off. Each project ca
 - **Logs**: **Reveal in Finder** opens `recur.log`, the process log for crashes and agent failures.
 - **Clear all data** deletes all projects, workspaces, and pull requests. Settings are kept. This cannot be undone.
 
+### Licenses
+
+Recur's license and the notices of the open source software it includes.
+
 ## Agent
 
 ### Providers
 
-Turn each provider on or off, see its connection status, and sign in. Turning a provider off keeps its credentials; it only hides its models and stops new turns from using it.
+Turn each provider on or off, see its connection status, and sign in. Turning a provider off keeps its credentials; it only hides its models and stops new turns from using it. API keys are kept in the macOS Keychain or the Linux Secret Service. See [Where credentials are stored](/reference/agents#where-credentials-are-stored).
 
-- **Permissions**: **Bypass tool permissions** skips permission prompts in Claude Code, Codex, Antigravity and OpenCode. Off by default.
+- **Permissions**: **Bypass tool permissions** skips permission prompts in Claude Code, Codex, Antigravity and OpenCode, and before shell commands on a ChatGPT account or a compatible endpoint. It also skips Recur's own prompts when an agent starts a [background process](/concepts/background#permission) or creates, edits or deletes a [schedule](/concepts/schedules#agents-can-manage-schedules). Installing a bundle still asks. Off by default.
 - **Claude Code**: shows the path, version, login method, and account. Sign in or switch accounts with `claude auth login` in a terminal.
 - **Cursor**: **Connect** signs in through your browser. **SDK** installs or updates the Cursor bridge (about 50 MB). **Ignore project Cursor config** skips the repo's `.cursor/rules` and `AGENTS.md` and your `~/.cursor` settings. **Commit attribution** and **PR attribution** let Cursor add its trailer to commits and PRs; both are off by default.
-- **Codex**: **Use ChatGPT login** reuses `codex login`; otherwise enter an **API key**. **Sandbox network access** lets Codex Agent commands use the network. **Binary** sets the path to `codex` if Recur cannot find it.
+- **OpenAI → ChatGPT account**: **Continue with ChatGPT** signs in through your browser or with a device code. Uses your ChatGPT plan without Codex or an API key. Several accounts can be saved.
+- **OpenAI → Codex runtime**: sign in with ChatGPT in Recur, or **Use ChatGPT login** to reuse `codex login`; otherwise enter an **API key**. **Sandbox network access** lets Codex Agent commands use the network. **Binary** sets the path to `codex` if Recur cannot find it.
 - **Antigravity** and **OpenCode**: show the path and version, or how to install or sign in. These agents keep their own login, so there is nothing to enter in Recur.
-- **OpenAI-compatible**: **Add provider** adds an endpoint. See [Providers](/reference/agents).
+- **OpenAI-compatible**: **Add provider** adds an endpoint. An OpenAI endpoint appears as **API endpoint** under **OpenAI**. See [Providers](/reference/agents).
 
 ### Models
 
@@ -70,12 +77,13 @@ You can always pick a different model per chat in the composer.
 - **Default update-with-base method**: merge base into the branch, or rebase onto base, when you click **Update with base**.
 - **Squash commit message** and **Merge commit message**: the message presented when merging.
 - **Conventional Commits**: agents write `type(scope): summary` commit subjects and PR titles.
+- **Automatic fixes**: **Fix merge conflicts automatically**, **Fix failing checks automatically** and **Address review comments automatically**. Each is on until you turn it off. See [Automatic fixes](/concepts/pull-requests#automatic-fixes).
 
-Projects can override each of these. See [Pull requests](/concepts/pull-requests).
+Projects can override the merge, update, message and Conventional Commits settings. See [Pull requests](/concepts/pull-requests).
 
 ### Integrations
 
-Values for bundles that declare `[[setting]]` in `bundle.toml`, such as the Linear API key. A bundle's scripts read these at runtime.
+Values for bundles that declare `[[setting]]` in `bundle.toml`, such as the Linear API key. A bundle's scripts read these at runtime. They are kept with your other [credentials](/reference/agents#where-credentials-are-stored).
 
 ### MCP
 

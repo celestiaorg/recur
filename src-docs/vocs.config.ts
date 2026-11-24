@@ -52,6 +52,8 @@ export default defineConfig({
         { text: "Issues", link: "/concepts/issues" },
         { text: "Inbox", link: "/concepts/inbox" },
         { text: "Schedules", link: "/concepts/schedules" },
+        { text: "Insights", link: "/concepts/insights" },
+        { text: "Background work", link: "/concepts/background" },
       ],
     },
     {

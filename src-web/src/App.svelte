@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fade } from "svelte/transition";
+  import AppDemo from "./lib/components/AppDemo.svelte";
   import ProductScreenshot from "./lib/components/ProductScreenshot.svelte";
   import LoopFlow from "./lib/components/LoopFlow.svelte";
   import ProviderIcon from "./lib/components/ProviderIcon.svelte";
@@ -9,72 +9,22 @@
     downloads,
     github,
     icon,
-    keys,
     linuxBuilds,
     linuxFormats,
     loopExample,
-    loops,
-    modes,
-    policies,
-    screens,
     telegram,
     visitor,
     wordmark,
     x,
+    type Screen,
   } from "./lib/site.svelte";
 
-  let screen = $state.raw(screens[0]);
-  let mode = $state.raw(modes[2]);
   let playing = $state(true);
 
-  // The tab moves at once; the capture follows once it has decoded, so it
-  // fades in whole over the one it replaces.
-  const fadeMs = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 400;
-  let shown = $state.raw(screens[0]);
-  async function show(item: (typeof screens)[number]) {
-    screen = item;
-    const image = new Image();
-    image.src = `/screenshots/${item.screen}.png`;
-    await image.decode().catch(() => {});
-    if (screen === item) shown = item;
-  }
-
-  // The tour advances on its own until the visitor takes over. The fill that
-  // sweeps the active pill times each stop, so pausing it pauses the tour.
-  let auto = $state(fadeMs > 0);
-  let offscreen = $state(false);
-  function watchStage(node: HTMLElement) {
-    const obs = new IntersectionObserver(([e]) => {
-      offscreen = !e.isIntersecting;
-    });
-    obs.observe(node);
-    return () => obs.disconnect();
-  }
-
-  // The active tab's pill slides between tabs: the edge facing the new tab
-  // leads and the other catches up, so it stretches on the way.
-  let tabs = $state<HTMLElement>();
-  let tabsWidth = $state(0);
-  let pill = $state<{ left: number; right: number; forward: boolean }>();
-  let pillLeft = 0;
-  $effect(() => {
-    const tab = tabs?.children[screens.indexOf(screen)] as HTMLElement;
-    if (!tab || !tabsWidth) return;
-    const left = tab.offsetLeft;
-    pill = {
-      left,
-      right: tabsWidth - left - tab.offsetWidth,
-      forward: left >= pillLeft,
-    };
-    pillLeft = left;
-  });
-
-  const schedules = [
-    ["Nightly review & fix", "0 2 * * 1-5", "Autopilot · Review & fix · Balanced"],
-    ["Weekly security pass", "0 9 * * 1", "Autopilot · Security review & fix"],
-    ["Morning code review", "@daily", "Review"],
-    ["Refresh dev fixtures", "@reboot", "Agent"],
-    ["Release notes draft", "once Oct 1 09:00", "Agent"],
+  const green = [
+    ["Conflicts with its base", "Update with base, then /update if git is stuck", "3 tries"],
+    ["A check fails", "/fix-checks", "3 tries"],
+    ["New review comments", "/address-review", "3 runs"],
   ];
   const agents = [
     ["claude", "Claude Code"],
@@ -87,6 +37,8 @@
     "Workspaces are git worktrees on your disk.",
     "Model calls go straight to the provider you picked.",
     "GitHub goes through your own gh login.",
+    "API keys live in the macOS Keychain or your Linux keyring.",
+    "Native Rust on macOS and Linux, not a browser in a window.",
   ];
 </script>
 
@@ -135,6 +87,32 @@
   </header>
 {/snippet}
 
+{#snippet group(
+  id: string,
+  title: string,
+  accent: string,
+  copy: string,
+  path?: string,
+)}
+  <header class="bn-group">
+    <h2 {id}>{title} <em>{accent}</em></h2>
+    <p>
+      {copy}
+      {#if path}<a href="{docs}{path}" aria-label="Docs: {title} {accent}"
+          >Docs →</a
+        >{/if}
+    </p>
+  </header>
+{/snippet}
+
+{#snippet shot(screen: Screen, span: 5 | 7)}
+  <div class="bn-card bn-{span} bn-shot">
+    <div class="bn-crop bn-crop-{screen}">
+      <div><ProductScreenshot {screen} /></div>
+    </div>
+  </div>
+{/snippet}
+
 <div class="bn" id="top">
   <a class="bn-skip" href="#main">Skip to content</a>
   <header class="bn-nav">
@@ -156,249 +134,134 @@
     <section class="bn-hero">
       <h1>Agents that don’t stop <em>until it’s right.</em></h1>
       <p class="bn-lede">
-        Recur runs Claude Code, Cursor, or Codex through workflows where a team
-        of agents plans, builds, and reviews until the work clears your bar.
+        Recur runs the coding agents you already use through your process: plan,
+        build, test, review, until the work clears your bar. Then it keeps the
+        pull request green.
       </p>
       {@render cta("bn-hero-downloads")}
 
-      <!-- svelte-ignore a11y_no_static_element_interactions (Only ends the tour; the tabs are the controls.) -->
-      <div
-        class="bn-stage"
-        onpointerdown={() => (auto = false)}
-        {@attach watchStage}
-      >
-        <div class="bn-tabs">
-          <div
-            role="group"
-            aria-label="Recur screens"
-            bind:this={tabs}
-            bind:clientWidth={tabsWidth}
-          >
-            {#each screens as item (item.screen)}<button
-                type="button"
-                aria-pressed={screen === item}
-                onclick={() => {
-                  auto = false;
-                  show(item);
-                }}>{item.label}</button
-              >{/each}
-            {#if pill}<span
-                aria-hidden="true"
-                style:left="{pill.left}px"
-                style:right="{pill.right}px"
-                style:transition-duration={pill.forward
-                  ? "0.45s, 0.25s"
-                  : "0.25s, 0.45s"}
-                >{#if auto}{#key screen}<i
-                      class:paused={offscreen}
-                      onanimationend={() =>
-                        show(
-                          screens[(screens.indexOf(screen) + 1) % screens.length],
-                        )}
-                    ></i>{/key}{/if}</span
-              >{/if}
+      <ul class="bn-logos" aria-label="Runs">
+        {#each agents as [provider, name] (provider)}<li>
+            <ProviderIcon {provider} />{name}
+          </li>{/each}
+        <li>+ OpenAI-compatible endpoints</li>
+      </ul>
+
+      <div class="bn-stage"><AppDemo /></div>
+    </section>
+
+    <section class="bn-features" aria-labelledby="bn-finished">
+      {@render group(
+        "bn-finished",
+        "Agent work should",
+        "arrive finished.",
+        "Type /to-a-pr in any chat. A planner scopes the work, a coder builds it, and a separate reviewer sends it back until it clears your bar. Add your own checks as a gate, and review with a different model if you like.",
+        "concepts/workflows",
+      )}
+      <div class="bn-card">
+        <button
+          type="button"
+          class="bn-play"
+          aria-pressed={playing}
+          onclick={() => (playing = !playing)}
+          >{playing ? "Ⅱ Pause" : "▶ Play"}</button
+        >
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll this wide graph.) -->
+        <div
+          class="bn-scroll"
+          tabindex="0"
+          role="region"
+          aria-label="Animated workflow graph"
+        >
+          <div class="bn-graph" class:paused={!playing}>
+            <LoopFlow {playing} />
           </div>
-        </div>
-        <div class="bn-window">
-          {#key shown}<div
-              in:fade={{ duration: fadeMs }}
-              out:fade={{ delay: fadeMs, duration: 0 }}
-            >
-              <ProductScreenshot
-                screen={shown.screen}
-                eager
-                caption={shown.caption}
-              />
-            </div>{/key}
-        </div>
-        <div class="bn-caption" aria-live={auto ? "off" : "polite"}>
-          {#each screens as item (item.screen)}<p class:on={screen === item}>
-              {item.caption}
-            </p>{/each}
         </div>
       </div>
     </section>
 
-    <section class="bn-features" aria-labelledby="bn-features">
-      <h2 id="bn-features">Agent work should <em>arrive finished.</em></h2>
-      <div class="bn-grid">
-        <article class="bn-card bn-12">
-          <div class="bn-row">
-            {@render head(
-              "A team of agents instead of one.",
-              "A planner scopes it, a coder builds it, a reviewer tears into it, and they go round until it’s right or they need you.",
-              "concepts/workflows",
-            )}
-            <button
-              type="button"
-              class="bn-play"
-              aria-pressed={playing}
-              onclick={() => (playing = !playing)}
-              >{playing ? "Ⅱ Pause" : "▶ Play"}</button
-            >
-          </div>
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll this wide graph.) -->
-          <div
-            class="bn-scroll"
-            tabindex="0"
-            role="region"
-            aria-label="Animated workflow graph"
-          >
-            <div class="bn-graph" class:paused={!playing}>
-              <LoopFlow {playing} />
-            </div>
-          </div>
-        </article>
+    <section class="bn-features bn-split" aria-labelledby="bn-process">
+      {@render group(
+        "bn-process",
+        "Your process,",
+        "written down.",
+        "A workflow is plain TOML: who takes part, in what order, and what has to pass. Use the shipped ones, copy and change them, or ask an agent to write yours. Recur lints it, and nothing installs until you approve.",
+        "bundles/workflows",
+      )}
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll this code sample.) -->
+      <pre
+        class="bn-toml"
+        tabindex="0"
+        aria-label="Example custom workflow in a user bundle">{#each loopExample as token, i (i)}<span
+            class="t-{token.kind}">{token.text}</span
+          >{/each}</pre>
+    </section>
 
+    <section class="bn-features" aria-labelledby="bn-going">
+      {@render group(
+        "bn-going",
+        "It keeps going",
+        "without you.",
+        "While Recur is open, it looks after your pull requests and starts work when something happens.",
+      )}
+      <div class="bn-grid">
         <article class="bn-card bn-7">
           {@render head(
-            "Start one with a slash command.",
-            "The shipped workflows. Type one in any chat.",
-            "concepts/workflows",
-          )}
-          <ul class="bn-commands">
-            {#each loops as [command, text] (command)}<li>
-                <code>{command}</code><span>{text}</span>
-              </li>{/each}
-          </ul>
-        </article>
-
-        <article class="bn-card bn-5">
-          {@render head(
-            "Pick a mode for each chat.",
-            "Every chat picks its own agent and how far it’s allowed to go.",
-            "concepts/modes",
-          )}
-          <div class="bn-modes" role="group" aria-label="Chat modes">
-            {#each modes as item (item.name)}<button
-                type="button"
-                aria-pressed={mode === item}
-                onclick={() => (mode = item)}
-                >{item.name}<span class="bn-{item.access}">{item.access}</span
-                ></button
-              >{/each}
-          </div>
-          <div class="bn-prompt" aria-live="polite">
-            {#each modes as item (item.name)}<div class:on={mode === item}>
-                <strong>{item.title}</strong>
-                <p>{item.body}</p>
-                <blockquote>{item.example}</blockquote>
-                <span>{item.outcome}</span>
-              </div>{/each}
-          </div>
-        </article>
-
-        <article class="bn-card bn-5">
-          {@render head(
-            "A policy sets the bar.",
-            "What blocks, whether you approve the plan, and when to stop.",
-            "concepts/workflows",
+            "Your PRs stay green.",
+            "Fixed in the PR’s own workspace while its chat is idle. Each fix is on until you turn it off.",
+            "concepts/pull-requests#automatic-fixes",
           )}
           <div class="bn-scroll">
             <table>
               <thead>
                 <tr>
-                  {#each ["Policy", "Blocks on", "Plan approval", "Round cap"] as h (h)}<th scope="col">{h}</th>{/each}
+                  {#each ["When", "Recur runs", "Stops after"] as h (h)}<th scope="col">{h}</th>{/each}
                 </tr>
               </thead>
               <tbody>
-                {#each policies as [name, ...cells] (name)}<tr
-                    ><th scope="row">{name}</th>{#each cells as cell (cell)}<td
-                        >{cell}</td
-                      >{/each}</tr
+                {#each green as [when, what, cap] (when)}<tr
+                    ><th scope="row">{when}</th><td>{what}</td><td>{cap}</td
+                    ></tr
                   >{/each}
               </tbody>
             </table>
           </div>
-        </article>
-
-        <article class="bn-card bn-7">
-          {@render head(
-            "Put the chores on a schedule.",
-            "Any prompt or workflow can run on its own clock, each time in a fresh workspace.",
-            "concepts/schedules",
-          )}
-          <div class="bn-scroll">
-            <table class="bn-cron">
-              <thead>
-                <tr>
-                  {#each ["Name", "Cadence", "Mode"] as h (h)}<th scope="col">{h}</th>{/each}
-                </tr>
-              </thead>
-              <tbody>
-                {#each schedules as [name, cadence, how] (name)}<tr
-                    ><th scope="row">{name}</th><td><code>{cadence}</code></td
-                    ><td>{how}</td></tr
-                  >{/each}
-              </tbody>
-            </table>
-          </div>
-        </article>
-
-        <article class="bn-card bn-6 bn-shot">
-          {@render head(
-            "One inbox, every agent.",
-            "Every workspace across your projects: what needs you, what’s in progress, and what’s ready to pick up.",
-            "concepts/inbox",
-          )}
-          <div class="bn-crop">
-            <div><ProductScreenshot screen="inbox" /></div>
-          </div>
-        </article>
-
-        <article class="bn-card bn-6 bn-shot">
-          {@render head(
-            "Every PR, one place.",
-            "Every open PR across your projects, with agent findings right next to human comments.",
-            "concepts/pull-requests",
-          )}
-          <div class="bn-crop">
-            <div><ProductScreenshot screen="pull-request" /></div>
-          </div>
-        </article>
-
-        <article class="bn-card bn-wide">
-          {@render head(
-            "Runs the agents you already use.",
-            "Plus OpenAI-compatible: OpenAI, OpenRouter, Groq, or a custom URL such as Ollama.",
-            "reference/agents",
-          )}
-          <ul class="bn-agents">
-            {#each agents as [provider, name] (provider)}<li>
-                <ProviderIcon {provider} />{name}
-              </li>{/each}
-          </ul>
         </article>
 
         <article class="bn-card bn-5">
           {@render head(
-            "Keep your hands on the keys.",
-            "Every workspace, file, chat, and command is a chord away, and the editor speaks Vim and Emacs.",
-            "reference/shortcuts",
-          )}
-          <ul class="bn-keys">
-            {#each keys as [chords, label] (label)}<li>
-                {label}<span
-                  >{#each chords as chord (chord)}<kbd>{chord}</kbd>{/each}</span
-                >
-              </li>{/each}
-          </ul>
-        </article>
-
-        <article class="bn-card bn-7">
-          {@render head(
-            "Your process, written down.",
-            "Workflows and roles live in plain TOML bundles. Copy one, swap a role or a prompt, and reload without restarting.",
-            "bundles/workflows",
+            "Start on an event, not just a clock.",
+            "Give a schedule a command. Every line it prints starts a run.",
+            "concepts/schedules#watch",
           )}
           <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll this code sample.) -->
           <pre
-            class="bn-toml"
+            class="bn-toml bn-watch"
             tabindex="0"
-            aria-label="Example custom workflow in a user bundle">{#each loopExample as token, i (i)}<span
-                class="t-{token.kind}">{token.text}</span
-              >{/each}</pre>
+            aria-label="Example watch schedule"><span class="t-comment"># command</span>
+tail -F log/development.log \
+  | grep --line-buffered ERROR
+
+<span class="t-comment"># prompt</span>
+<span class="t-string">Find the cause and fix it.</span>
+
+<span class="t-comment"># a line arrives, a workspace starts</span>
+<span class="t-literal">ERROR checkout: nil cart</span></pre>
         </article>
+      </div>
+    </section>
+
+    <section class="bn-features" aria-labelledby="bn-charge">
+      {@render group(
+        "bn-charge",
+        "You stay",
+        "in charge.",
+        "Answer, approve, fix, or merge from one Inbox. Or tell Ask Recur, and it starts the work, passes on your answer, and reports back.",
+        "concepts/inbox",
+      )}
+      <div class="bn-grid">
+        {@render shot("inbox", 5)}
+        {@render shot("inbox-checkout", 7)}
       </div>
     </section>
 
@@ -459,7 +322,6 @@
     font-style: normal;
     color: var(--amber);
   }
-  .bn code,
   .bn pre {
     font-family: var(--mono);
   }
@@ -498,6 +360,7 @@
   }
   .bn nav a:hover,
   .bn-fine button:hover,
+  .bn-group a:hover,
   .bn-head a:hover {
     color: var(--text);
   }
@@ -547,6 +410,7 @@
     color: var(--faint);
   }
   .bn-fine button,
+  .bn-group a,
   .bn-head a {
     color: var(--muted);
     text-decoration: underline;
@@ -648,9 +512,28 @@
     text-wrap: balance;
   }
 
+  .bn-logos {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 28px;
+    margin-top: 36px;
+    list-style: none;
+  }
+  .bn-logos li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .bn-logos :global(svg) {
+    width: 18px;
+    height: 18px;
+  }
   .bn-stage {
     position: relative;
-    margin-top: 56px;
+    margin-top: 40px;
   }
   .bn-stage::before {
     content: "";
@@ -661,71 +544,10 @@
     opacity: 0.22;
     filter: blur(110px);
   }
-  .bn-stage > * {
+  .bn-stage > :global(*) {
     position: relative;
-  }
-  .bn-tabs {
-    width: fit-content;
-    max-width: 100%;
-    margin: 0 auto 18px;
-    padding: 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: #111112cc;
-  }
-  .bn-tabs > div {
-    position: relative;
-    display: flex;
-    gap: 2px;
-    width: max-content;
-  }
-  .bn-tabs span {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    border-radius: 999px;
-    background: var(--text);
-    transition-property: left, right;
-    transition-timing-function: cubic-bezier(0.3, 1, 0.3, 1);
-    overflow: hidden;
-  }
-  .bn-tabs i {
-    position: absolute;
-    inset: 0;
-    background: color-mix(in srgb, var(--amber) 45%, transparent);
-    transform: scaleX(0);
-    transform-origin: left;
-    animation: bn-tour 6s linear forwards;
-  }
-  .bn-tabs i.paused,
-  .bn-stage:hover i,
-  .bn-stage:focus-within i {
-    animation-play-state: paused;
-  }
-  @keyframes bn-tour {
-    to {
-      transform: scaleX(1);
-    }
-  }
-  .bn-tabs button {
-    position: relative;
-    z-index: 1;
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 13px;
-    color: var(--muted);
-    transition: color 0.2s;
-  }
-  .bn-tabs button:hover {
-    color: var(--text);
-  }
-  .bn-tabs button[aria-pressed="true"] {
-    color: var(--bg);
   }
   /* Screenshots open full size on click; say so on hover, and always on touch. */
-  .bn-window::after,
   .bn-shot::after {
     content: "View full size";
     position: absolute;
@@ -744,59 +566,32 @@
     opacity: 0;
     transition: opacity 0.15s;
   }
-  .bn-window:hover::after,
-  .bn-window:has(:focus-visible)::after,
   .bn-shot:has(.bn-crop:hover)::after,
   .bn-shot:has(:global(.capture-trigger:focus-visible))::after {
     opacity: 1;
   }
   @media (hover: none) {
-    .bn-window::after,
     .bn-shot::after {
       opacity: 1;
     }
   }
-  .bn-window,
   .bn-crop,
-  .bn-window :global(.capture-trigger),
   .bn-crop :global(.capture-trigger) {
     cursor: pointer;
   }
-  .bn-window {
-    position: relative;
-    display: grid;
-    overflow: hidden;
-    border: 1px solid var(--line-bright);
-    border-radius: 12px;
-    box-shadow:
-      0 0 0 1px #0008,
-      0 40px 80px -20px #000;
-  }
-  .bn-window > div {
-    grid-area: 1 / 1;
-  }
-  /* Every caption sits in the same cell, so the tour never changes height. */
-  .bn-caption {
-    display: grid;
-    max-width: 640px;
-    margin: 18px auto 0;
-    font-size: 13.5px;
-    color: var(--muted);
-  }
-  .bn-caption p {
-    grid-area: 1 / 1;
-    visibility: hidden;
-  }
-  .bn-caption .on {
-    visibility: visible;
-  }
-
   .bn-features {
-    padding-top: 88px;
+    padding-top: 120px;
   }
-  .bn-features > h2 {
+  .bn-group {
     margin-bottom: 36px;
     text-align: center;
+  }
+  .bn-group p {
+    max-width: 640px;
+    margin: 14px auto 0;
+    font-size: 16px;
+    color: var(--muted);
+    text-wrap: pretty;
   }
   .bn-grid {
     display: grid;
@@ -833,18 +628,15 @@
     font-size: 14px;
     color: var(--muted);
   }
-  .bn-head a {
+  .bn-head a,
+  .bn-group a {
     white-space: nowrap;
     font-size: 13px;
   }
-  .bn-row {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 16px;
-  }
   .bn-play {
-    flex: none;
+    z-index: 1;
+    align-self: flex-start;
+    margin-bottom: -50px;
     padding: 5px 10px;
     border: 1px solid var(--line);
     border-radius: 999px;
@@ -874,32 +666,8 @@
     background: none;
   }
 
-  .bn-commands,
-  .bn-keys,
-  .bn-agents,
   .bn-close ul {
     list-style: none;
-  }
-  /* Rows stretch so the shorter card of a pair fills its height. */
-  .bn-commands {
-    flex: 1;
-    display: grid;
-  }
-  .bn-commands li {
-    display: grid;
-    grid-template-columns: 150px 1fr;
-    gap: 6px 18px;
-    align-items: baseline;
-    padding: 11px 0;
-    border-top: 1px solid var(--line-soft);
-    font-size: 13.5px;
-    color: var(--muted);
-  }
-  .bn-commands code,
-  .bn-cron code {
-    font-size: 12.5px;
-    color: var(--amber);
-    white-space: nowrap;
   }
 
   .bn table {
@@ -930,152 +698,36 @@
     color: var(--text);
   }
 
-  .bn-modes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .bn-modes button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px 6px 12px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    font-size: 13px;
-    color: var(--muted);
-  }
-  .bn-modes button[aria-pressed="true"] {
-    border-color: var(--faint);
-    background: var(--pane-2);
-    color: var(--text);
-  }
-  .bn-modes span {
-    padding: 1px 7px;
-    border-radius: 999px;
-    background: #6eb6ff1f;
-    font: 10.5px var(--mono);
-    color: var(--cyan);
-  }
-  .bn-modes .bn-edit {
-    background: #e07a5f26;
-    color: var(--amber);
-  }
-  .bn-modes .bn-team {
-    background: #a78bfa26;
-    color: var(--indigo);
-  }
-  .bn-prompt,
   .bn-toml {
     border: 1px solid var(--line);
     border-radius: 10px;
     background: var(--bg);
   }
-  /* Every mode sits in the same cell, so the card keeps the tallest one's height. */
-  .bn-prompt {
-    flex: 1;
-    display: grid;
-    padding: 16px 18px;
-    font-size: 14px;
-  }
-  .bn-prompt > div {
-    grid-area: 1 / 1;
-    visibility: hidden;
-  }
-  .bn-prompt > .on {
-    visibility: visible;
-  }
-  .bn-prompt p {
-    margin: 6px 0 14px;
-    font-size: 13.5px;
-    color: var(--muted);
-  }
-  .bn-prompt blockquote {
-    width: fit-content;
-    margin-bottom: 10px;
-    padding: 9px 13px;
-    border: 1px solid #e07a5f4d;
-    border-radius: 9px;
-    background: #e07a5f14;
-    font-size: 13.5px;
-  }
-  .bn-prompt span {
-    font: 11.5px var(--mono);
-    color: var(--amber);
-  }
 
   .bn-shot {
     position: relative;
-    padding-bottom: 0;
+    padding: 0;
   }
-  /* Crops the capture to the review pane: skip the sidebar and titlebar. */
   .bn-crop {
     position: relative;
-    flex: 1;
-    min-height: 300px;
-    margin-right: -26px;
+    height: 520px;
     overflow: hidden;
-    border: 1px solid var(--line-bright);
-    border-width: 1px 0 0 1px;
-    border-radius: 10px 0 0;
-    mask-image:
-      linear-gradient(to right, #000 72%, transparent),
-      linear-gradient(#000 62%, transparent);
-    mask-composite: intersect;
+    mask-image: linear-gradient(#000 82%, transparent);
   }
   .bn-crop > div {
     position: absolute;
-    width: 175%;
-    transform: translate(-19.4%, -4.7%);
   }
-
-  .bn-agents {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px 40px;
+  /* Each shows one column of its capture, in percent of the capture. */
+  .bn-crop-inbox > div {
+    width: 424%;
+    transform: translate(-19.6%, -32.4%);
   }
-  .bn-agents li {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 17px;
-    font-weight: 500;
-  }
-  .bn-agents :global(svg) {
-    width: 26px;
-    height: 26px;
-  }
-
-  .bn-keys li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 7px 0;
-    border-top: 1px solid var(--line-soft);
-    font-size: 13.5px;
-    color: var(--muted);
-  }
-  .bn-keys span {
-    display: flex;
-    gap: 5px;
-  }
-  .bn kbd {
-    min-width: 26px;
-    padding: 2px 7px;
-    border: 1px solid var(--line-bright);
-    border-bottom-width: 2px;
-    border-radius: 6px;
-    background: var(--pane-2);
-    font: 500 12px/1.5 system-ui, sans-serif;
-    letter-spacing: 0.06em;
-    text-align: center;
-    color: var(--text);
+  .bn-crop-inbox-checkout > div {
+    width: 279%;
+    transform: translate(-64.3%, -4.8%);
   }
 
   .bn-toml {
-    flex: 1 1 0;
-    min-height: 300px;
     padding: 18px 20px;
     overflow: auto;
     font-size: 12.5px;
@@ -1163,20 +815,21 @@
     .bn-5 {
       grid-column: span 5;
     }
-    .bn-6 {
-      grid-column: span 6;
-    }
     .bn-7 {
       grid-column: span 7;
     }
-    .bn-wide {
-      flex-direction: row;
+    .bn-split {
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      gap: 64px;
       align-items: center;
-      justify-content: space-between;
-      gap: 40px;
     }
-    .bn-wide ul {
-      flex: none;
+    .bn-split .bn-group {
+      margin: 0;
+      text-align: left;
+    }
+    .bn-split p {
+      margin-inline: 0;
     }
   }
   @media (max-width: 600px) {
@@ -1193,21 +846,18 @@
       margin-top: 40px;
     }
     .bn-features {
-      padding-top: 64px;
+      padding-top: 80px;
     }
-    .bn-card {
+    .bn-card:not(.bn-shot) {
       padding: 20px;
     }
     .bn-crop {
-      margin-right: -20px;
+      height: 400px;
     }
-    .bn-crop > div {
-      width: 260%;
+    .bn-crop-inbox-checkout {
+      height: 340px;
     }
     .bn-graph :global(.lf-foot) {
-      grid-template-columns: 1fr;
-    }
-    .bn-commands li {
       grid-template-columns: 1fr;
     }
     .bn-close {

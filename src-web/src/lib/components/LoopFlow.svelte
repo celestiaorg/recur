@@ -12,7 +12,7 @@
     { t: "Merge + replan", cap: "S1 settles and merges straight back. Its handoff says rounding needs its own step, so Maestro replans: S5 joins the board." },
     { t: "Unblock", cap: "S2 lands. S4 and S5 were waiting on it, so both start at once while S3 is still running. No barrier." },
     { t: "Land", cap: "S4, S5, and finally S3 land. The parent never coded. It integrated." },
-    { t: "Ship", cap: "The Reviewer checks the aggregate diff on the parent branch, then the loop opens the PR." },
+    { t: "Ship", cap: "The Reviewer checks the aggregate diff, your own checks have to pass, and then the workflow opens the PR." },
   ] as const;
 
   let step = $state(0);
@@ -133,8 +133,10 @@
 
     <!-- parent: aggregate review → PR -->
     <g class="pop" class:on={on(6)}>
-      <circle class="node indigo" cx="820" cy={T} r="6" />
-      <text class="lbl" x="820" y={LBL} text-anchor="middle">Review the aggregate</text>
+      <circle class="node indigo" cx="760" cy={T} r="6" />
+      <text class="lbl" x="760" y={LBL} text-anchor="middle">Review</text>
+      <circle class="node amber late" cx="850" cy={T} r="6" />
+      <text class="lbl late" x="850" y={LBL} text-anchor="middle">mise run check</text>
       <circle class="node emerald later" cx="950" cy={T} r="7" />
       <text class="lbl later" x="950" y={LBL} text-anchor="middle">Open PR</text>
     </g>

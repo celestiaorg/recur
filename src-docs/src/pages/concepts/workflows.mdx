@@ -50,6 +50,45 @@ A workflow is a graph of phases. Each phase is one of these kinds:
 | `ensure_pr` | Commits, pushes, and opens a pull request with an agent-written description, or updates the existing one. |
 | `artifact` | Publishes the result as a document instead of a PR. |
 
+### Run a command
+
+A `run` phase makes one of your own commands part of the bar, with no agent involved. Exit code 0 moves on to the next phase. This workflow builds and reviews, runs the project's checks, and opens a pull request only when they pass:
+
+```toml
+[[workflow]]
+id = "team.workflows.checked-pr"
+name = "Checked PR"
+conductor = "recur.roles.maestro"
+entry = "build"
+reenter = ["build"]
+
+[[workflow.phase]]
+id = "build"
+uses = "converge"
+next = "check"
+
+[workflow.phase.roles]
+implementer = "recur.roles.coder"
+reviewer = "recur.roles.reviewer"
+
+[[workflow.phase]]
+id = "check"
+uses = "run"
+command = "mise run check"
+on_reject = "build"
+next = "pr"
+
+[[workflow.phase]]
+id = "pr"
+uses = "ensure_pr"
+```
+
+When `mise run check` fails, `on_reject` sends the work back to `build`. The Coder's next turn gets the exit code and the last 40 lines of output, and the check runs again after the fix. Without `on_reject`, the policy decides whether the run fails, asks you, or moves on. The command is stopped after 30 minutes unless the phase or policy sets a `timeout`.
+
+None of the shipped workflows include a `run` phase. Put this one in your own bundle's `bundle.toml` (add a `[bundle]` table), or ask an agent to write it for you. See [Run a command](/bundles/workflows#run-a-command) for every option.
+
+### On-demand and verify phases
+
 A phase can be on demand. The To a PR security phase runs only when the diff touches auth, secrets, tokens, or permission checks, or when you ask the Maestro for it.
 
 None of the shipped workflows include a `verify` phase. A workflow that does needs [project Runs and an app URL](/concepts/project-toml) so QA can start and open your app.
@@ -81,3 +120,5 @@ The parent reviews the combined changes before finishing. Children do not create
 ## Customize
 
 Workflows, roles, phases, and policies are bundle contributions (`[[workflow]]`, `[[role]]`, and `[[policy]]`). Write your own workflow with custom roles and a prompt for each phase, or copy the shipped `Workflows` bundle to change a prompt, swap a role, or wire a new graph. See [Workflows, roles & policies](/bundles/workflows) for a complete example and every field.
+
+You can also ask an agent in Agent mode: "Write a workflow that reviews, runs `mise run check`, and opens a PR, then install it." It writes the bundle in the worktree and installs it with its `install_bundle` tool. Recur lints the bundle first and asks you to approve every install, even with **Bypass tool permissions** on. The prompt lists what the bundle adds and anything in it that runs shell code. After that, the workflow is in the picker.

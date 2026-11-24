@@ -281,10 +281,18 @@ impl Observatory {
 
     pub(crate) fn after_state_change(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // Docking the right panel shows it: a column that appears closed would look like
-        // nothing happened.
+        // nothing happened. Undocking leaves it open only in the workspace on screen: parked
+        // ones rest closed, as a floating panel does when its workspace opens.
         let float = self.state.read(cx).panels.side_float();
-        if self.side_float_seen.replace(float) == Some(true) && !float && !self.show_side {
-            self.set_show_side(true, cx);
+        match (self.side_float_seen.replace(float), float) {
+            (Some(true), false) if !self.show_side => self.set_show_side(true, cx),
+            (Some(false), true) if self.show_side && !self.props.shell_active => {
+                // Parked shells do not render, so an open flyout's slide is still set and would
+                // play its close on return.
+                self.side_slide = None;
+                self.set_show_side(false, cx)
+            }
+            _ => {}
         }
         self.track_base(cx);
         self.keep_panel_kinds_valid(cx);

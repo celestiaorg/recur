@@ -102,6 +102,48 @@ async fn docking_shows_the_right_panel(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+async fn undocking_closes_the_right_panel_in_parked_workspaces(cx: &mut TestAppContext) {
+    let mut h = mount_float(cx);
+    h.update(|o, window, cx| {
+        let mut p = o.props().clone();
+        p.shell_active = false;
+        o.set_props(p, window, cx);
+    });
+    h.state_update(|s, cx| s.set_side_float(false, cx));
+    assert!(open(&mut h), "docked, every workspace shows it");
+    h.state_update(|s, cx| s.set_side_float(true, cx));
+    assert!(!open(&mut h), "it is not left out as a flyout");
+}
+
+#[gpui::test]
+async fn a_flyout_closed_while_parked_does_not_slide_shut_on_return(cx: &mut TestAppContext) {
+    let mut h = mount_float(cx);
+    h.update(|_, _, cx| recur_ui::motion::thaw(cx));
+    h.click("obs-side-toggle");
+    h.wait(400);
+    assert!(open(&mut h) && h.has("obs-side"));
+
+    // One update, so nothing draws while parked: hot shells are not rendered.
+    h.update(|o, window, cx| {
+        let shell_active = |o: &mut crate::Observatory, on, window: &mut _, cx: &mut _| {
+            let mut p = o.props().clone();
+            p.shell_active = on;
+            o.set_props(p, window, cx);
+        };
+        shell_active(o, false, window, cx);
+        for float in [false, true] {
+            o.state
+                .clone()
+                .update(cx, |s, cx| s.set_side_float(float, cx));
+            o.after_state_change(window, cx);
+        }
+        shell_active(o, true, window, cx);
+    });
+    assert!(!open(&mut h));
+    assert!(!h.has("obs-side"), "it is gone at once");
+}
+
+#[gpui::test]
 async fn the_flyout_dismisses(cx: &mut TestAppContext) {
     let mut h = mount_float(cx);
     assert!(

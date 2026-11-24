@@ -858,9 +858,15 @@ impl AgentChat {
                 .get(si)
                 .map(|a| a.placeholder.clone())
                 .unwrap_or_default();
-            let n =
-                (value.chars().count().max(placeholder.chars().count()) + 1).clamp(8, 42) as f32;
-            let iw = n * ch_ui;
+            let shown = if value.is_empty() {
+                placeholder.clone()
+            } else {
+                // Measuring drops trailing and repeated spaces the input draws.
+                value.replace(' ', "\u{a0}")
+            };
+            let shown_w = text(shown).size(11.5).nowrap().measure(None, window).0;
+            // gpui-base keeps 10px clear right of the caret before it scrolls.
+            let iw = (shown_w + 12.).clamp(8. * ch_ui, 42. * ch_ui);
             let lab_w = text(name.clone())
                 .size(10.)
                 .weight(650.)
@@ -897,6 +903,7 @@ impl AgentChat {
                     )
                     .child(
                         div()
+                            .debug_selector(|| format!("prompt-slot:{si}"))
                             .w(px(iw))
                             .h(px(16.))
                             .child(recur_ui::style::text_field(

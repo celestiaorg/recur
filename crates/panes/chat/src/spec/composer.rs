@@ -84,6 +84,27 @@ async fn typing_in_a_prompt_arg_keeps_its_focus_and_updates_the_wire(cx: &mut Te
 }
 
 #[gpui::test]
+async fn a_prompt_arg_fits_its_text_without_scrolling(cx: &mut TestAppContext) {
+    let mut h = with_prompt(cx, "/fix-checks ");
+    let empty = h.bounds("prompt-slot:0").unwrap().size.width;
+    let chat = h.chat();
+    h.cx.update(|window, cx| chat.update(cx, |c, cx| c.focus_prompt_slot(0, window, cx)));
+    h.settle();
+    let mut last = gpui::px(0.);
+    for ch in "WWWWWWWWWW failing   check ".chars() {
+        h.type_text(&ch.to_string());
+        let width = h.bounds("prompt-slot:0").unwrap().size.width;
+        assert!(width >= last);
+        last = width;
+        let scroll =
+            h.cx.update(|_, cx| chat.read(cx).prompt_slots[0].read(cx).scroll_offset().x);
+        assert_eq!(scroll, gpui::px(0.));
+    }
+    h.fill("/fix-checks lint");
+    assert!(h.bounds("prompt-slot:0").unwrap().size.width < empty);
+}
+
+#[gpui::test]
 async fn backspace_in_a_prompt_arg_input_does_not_delete_the_chip(cx: &mut TestAppContext) {
     let mut h = with_prompt(cx, "/fix-checks ENG");
     let chat = h.chat();

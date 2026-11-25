@@ -46,7 +46,7 @@ Re-pin progress:
    Capture the options-object close through the `void 0===…?new …(…):new …(…)` executor construction for **cjs** and **esm** (minifier names change between releases). Up to 1.0.31 it is `…};return void 0===…`; from 1.0.37 it is `…,...i},u=void 0===…;` inside a `const` chain. From 1.3.1 more fields (`powershellUtf8*`) sit between `getAgentSkills` and `...i}`, so capture from `getAgentSkills` through the executor's `;`.
 
 4. **Update code** (all in `providers/cursor`)
-   - `sdk_attribution_anchors` in `src/attribution.rs`: both needles and replacements (assign `attributionConfigProvider` on the options object before the executor is constructed: a statement before `return`, or a comma expression when the site is inside a `const` chain; copy the closest existing entry). Also check `sdk_summary_delta_anchors` and `STEER_RUN_MOUNT_OLD`.
+   - `sdk_attribution_anchors` in `src/attribution.rs`: both needles and replacements (assign `attributionConfigProvider` on the options object before the executor is constructed: a statement before `return`, or a comma expression when the site is inside a `const` chain; copy the closest existing entry). Also check `sdk_summary_delta_anchors`.
    - `PINNED_SDK_VERSION` in `src/install.rs`.
    - The deliberate hardcode in `pinned_sdk_version_in_pypi_url` (`src/install/tests.rs`).
    - The golden fixture `tests/golden/go_cursor_pkg.json`: the `anchors` and `summaryAnchors` arrays must equal the code's `(old, neu)` pairs in order (`golden_tests::anchors_and_constants`). `<`/`>` are escaped as `\u003c`/`\u003e`.

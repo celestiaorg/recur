@@ -7,8 +7,7 @@
 //!
 //! 1. drops an ESM preload that reads RECUR_CURSOR_ATTRIBUTION_PATH,
 //! 2. imports it from the bridge entrypoint,
-//! 3. patches `dist/server.js` so Connect exposes SteerRun (SDK run.steer),
-//! 4. patches the SDK bundle so createLocalExecutor assigns that provider
+//! 3. patches the SDK bundle so createLocalExecutor assigns that provider
 //!    before constructing the executor, stubs getAgentSkills to `[]` (Recur
 //!    owns skills via MCP), and forwards the documented summary
 //!    InteractionUpdates to onDelta.
@@ -84,7 +83,6 @@ pub fn ensure_attribution_patch(bridge_root: &Path) -> Result<(), PatchError> {
     }
     write_attribution_preload(&bridge_root.join(ATTRIBUTION_PRELOAD_REL))?;
     ensure_attribution_entrypoint_import(&bridge_root.join(ATTRIBUTION_ENTRYPOINT_REL))?;
-    ensure_steer_run_server_hook(&bridge_root.join(STEER_RUN_SERVER_REL))?;
     if patch_attribution_sdk_bundles(bridge_root)? == 0 {
         return Err(PatchError::Unsupported(format!(
             "{UNSUPPORTED} under {}",
@@ -94,10 +92,8 @@ pub fn ensure_attribution_patch(bridge_root: &Path) -> Result<(), PatchError> {
     Ok(())
 }
 
-pub(crate) const ATTRIBUTION_PRELOAD_SOURCE: &str = r#"// Recur-owned preload: supplies attributionConfigProvider for the patched SDK
-// and installs Connect SteerRun (SDK run.steer) on the bridge agent service.
+pub(crate) const ATTRIBUTION_PRELOAD_SOURCE: &str = r#"// Recur-owned preload: supplies attributionConfigProvider for the patched SDK.
 import { readFileSync } from "node:fs";
-import { MethodKind, proto3, ScalarType } from "@bufbuild/protobuf";
 
 function load() {
   const path = process.env.RECUR_CURSOR_ATTRIBUTION_PATH;
@@ -122,40 +118,6 @@ function load() {
 }
 
 globalThis.__recurAttributionConfigProvider = { get: load };
-
-const SteerRunRequest = proto3.makeMessageType("sdk.v1.SteerRunRequest", [
-  { no: 1, name: "run_id", kind: "scalar", T: ScalarType.STRING },
-  { no: 2, name: "text", kind: "scalar", T: ScalarType.STRING },
-]);
-const SteerRunResponse = proto3.makeMessageType("sdk.v1.SteerRunResponse", [
-  { no: 1, name: "outcome", kind: "scalar", T: ScalarType.STRING },
-]);
-
-globalThis.__recurInstallSteerRun = (SdkAgentService, impl, registry) => {
-  if (!SdkAgentService?.methods || !impl || !registry) return;
-  SdkAgentService.methods.steerRun = {
-    name: "SteerRun",
-    I: SteerRunRequest,
-    O: SteerRunResponse,
-    kind: MethodKind.Unary,
-  };
-  impl.steerRun = async (request) => {
-    const runId = request?.runId ?? "";
-    const text = request?.text ?? "";
-    const liveRun = runId ? registry.getRun(runId) : undefined;
-    if (!liveRun || typeof liveRun.steer !== "function" || !text) {
-      return new SteerRunResponse({ outcome: "revert_to_followup" });
-    }
-    try {
-      const outcome = await liveRun.steer(text);
-      return new SteerRunResponse({
-        outcome: outcome === "complete_delivered" ? "complete_delivered" : "revert_to_followup",
-      });
-    } catch {
-      return new SteerRunResponse({ outcome: "revert_to_followup" });
-    }
-  };
-};
 "#;
 
 fn write_attribution_preload(path: &Path) -> Result<(), PatchError> {
@@ -197,46 +159,6 @@ fn ensure_attribution_entrypoint_import(path: &Path) -> Result<(), PatchError> {
         .map_err(|e| PatchError::Io(format!("cursor attribution patch: write entrypoint: {e}")))
 }
 
-pub(crate) const STEER_RUN_SERVER_REL: &str = "dist/server.js";
-
-pub(crate) const STEER_RUN_MOUNT_OLD: &str = "function mountSdkBridgeRoutes(router, options) {
-    router.service(SdkAgentService, createSdkAgentService({
-        registry: options.registry,
-        workspaceRef: options.workspaceRef,
-    }));";
-
-pub(crate) const STEER_RUN_MOUNT_NEW: &str = "function mountSdkBridgeRoutes(router, options) {
-    const impl = createSdkAgentService({
-        registry: options.registry,
-        workspaceRef: options.workspaceRef,
-    });
-    globalThis.__recurInstallSteerRun?.(SdkAgentService, impl, options.registry);
-    router.service(SdkAgentService, impl);";
-
-fn ensure_steer_run_server_hook(path: &Path) -> Result<(), PatchError> {
-    let src = match std::fs::read_to_string(path) {
-        Ok(s) => s,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-        Err(e) => {
-            return Err(PatchError::Io(format!(
-                "cursor steer patch: read server: {e}"
-            )));
-        }
-    };
-    if src.contains("__recurInstallSteerRun") {
-        return Ok(());
-    }
-    if !src.contains(STEER_RUN_MOUNT_OLD) {
-        return Err(PatchError::Unsupported(format!(
-            "unmatched steer hook in {}: {UNSUPPORTED}",
-            path.display()
-        )));
-    }
-    let src = src.replacen(STEER_RUN_MOUNT_OLD, STEER_RUN_MOUNT_NEW, 1);
-    write_file_atomic(path, src.as_bytes(), 0o644)
-        .map_err(|e| PatchError::Io(format!("cursor steer patch: write server: {e}")))
-}
-
 const ATTRIB_FALLBACK: &str =
     "||{get:()=>({attribution:{attributeCommitsToAgent:!1,attributePRsToAgent:!1}})}";
 
@@ -269,7 +191,18 @@ pub(crate) fn sdk_attribution_anchors() -> Vec<Anchor> {
         ),
     };
     vec![
-        // cjs 305.js (@cursor/sdk 1.3.1): two powershell fields follow
+        // cjs 242.js (@cursor/sdk 1.5.0): same shape as 1.3.1, renamed to `p`
+        // over options `h`.
+        chain(
+            "getAgentSkills:r.workspaceServices.getAgentSkills,powershellUtf8Console:a.powershellUtf8Console,powershellUtf8ChildEnv:a.powershellUtf8ChildEnv,...i},p=void 0===c?new SO(h):new dq(h,c);",
+            "h",
+        ),
+        // esm 242.js (1.5.0).
+        chain(
+            "getAgentSkills:r.workspaceServices.getAgentSkills,powershellUtf8Console:a.powershellUtf8Console,powershellUtf8ChildEnv:a.powershellUtf8ChildEnv,...i},p=void 0===c?new vO(h):new cq(h,c);",
+            "h",
+        ),
+        // cjs 305.js (1.3.1): two powershell fields follow
         // getAgentSkills, and the executor is `d` over options `u`.
         chain(
             "getAgentSkills:r.workspaceServices.getAgentSkills,powershellUtf8Console:a.powershellUtf8Console,powershellUtf8ChildEnv:a.powershellUtf8ChildEnv,...i},d=void 0===c?new CA(u):new PO(u,c);",
@@ -413,7 +346,7 @@ pub(crate) fn summary_delta_patch_needle() -> String {
     format!("/*{SUMMARY_DELTA_MARKER}*/")
 }
 
-/// Restores the documented onDelta contract: cursor-sdk 1.0.28–1.3.1's
+/// Restores the documented onDelta contract: cursor-sdk 1.0.28–1.5.0's
 /// RunInteractionAccumulator.apply skips summary, summary-started and
 /// summary-completed.
 pub(crate) fn sdk_summary_delta_anchors() -> Vec<Anchor> {

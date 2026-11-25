@@ -152,7 +152,8 @@ async fn steer_cancels_then_sends() {
                 return;
             };
             if req.ends("/SteerRun") {
-                resp.json(r#"{"outcome":"revert_to_followup"}"#).await;
+                resp.json(r#"{"outcome":"OUTCOME_REVERT_TO_FOLLOWUP"}"#)
+                    .await;
             } else if req.ends("/CancelRun") {
                 c.cancels.fetch_add(1, Ordering::SeqCst);
                 cn.cancel();
@@ -247,7 +248,8 @@ async fn steer_complete_delivered_keeps_run() {
                 if all.contains("first steer") && all.contains("second steer") {
                     st.cancel();
                 }
-                resp.json(r#"{"outcome":"complete_delivered"}"#).await;
+                resp.json(r#"{"outcome":"OUTCOME_COMPLETE_DELIVERED"}"#)
+                    .await;
             } else if req.ends("/CancelRun") {
                 c.cancels.fetch_add(1, Ordering::SeqCst);
                 resp.json("{}").await;
@@ -321,7 +323,8 @@ async fn ctx_cancel_does_not_follow_up_send() {
                 return;
             };
             if req.ends("/SteerRun") {
-                resp.json(r#"{"outcome":"revert_to_followup"}"#).await;
+                resp.json(r#"{"outcome":"OUTCOME_REVERT_TO_FOLLOWUP"}"#)
+                    .await;
             } else if req.ends("/CancelRun") {
                 c.cancels.fetch_add(1, Ordering::SeqCst);
                 resp.json("{}").await;
@@ -370,7 +373,7 @@ async fn late_steer_after_finished_does_not_fail() {
                 return;
             };
             if req.ends("/SteerRun") {
-                resp.json(r#"{"outcome":"revert_to_followup"}"#).await;
+                resp.json(r#"{"outcome":"OUTCOME_REVERT_TO_FOLLOWUP"}"#).await;
             } else if req.ends("/CancelRun") {
                 resp.json("{}").await;
             } else if req.ends("/Send") {
@@ -433,7 +436,8 @@ async fn handoff_steer_does_not_cancel_follow_up() {
                 return;
             };
             if req.ends("/SteerRun") {
-                resp.json(r#"{"outcome":"revert_to_followup"}"#).await;
+                resp.json(r#"{"outcome":"OUTCOME_REVERT_TO_FOLLOWUP"}"#)
+                    .await;
             } else if req.ends("/CancelRun") {
                 let id = req.str("runId");
                 c.cancel_ids.lock().push(id.clone());
@@ -533,9 +537,9 @@ async fn delivered_steer_during_handoff() {
                     .lock()
                     .push((req.str("runId"), req.str("text")));
                 let outcome = if n == 1 {
-                    "revert_to_followup"
+                    "OUTCOME_REVERT_TO_FOLLOWUP"
                 } else {
-                    "complete_delivered"
+                    "OUTCOME_COMPLETE_DELIVERED"
                 };
                 resp.json(&format!(r#"{{"outcome":"{outcome}"}}"#)).await;
             } else if req.ends("/CancelRun") {
@@ -665,7 +669,7 @@ async fn delivered_steer_during_stream_complete() {
                 ss.cancel();
                 fw.cancelled().await;
                 tokio::time::sleep(Duration::from_millis(50)).await;
-                resp.json(r#"{"outcome":"complete_delivered"}"#).await;
+                resp.json(r#"{"outcome":"OUTCOME_COMPLETE_DELIVERED"}"#).await;
             } else if req.ends("/CancelRun") {
                 c.cancels.fetch_add(1, Ordering::SeqCst);
                 resp.json("{}").await;
@@ -791,7 +795,7 @@ async fn steer_during_stream_serializes_events() {
             if req.ends("/SteerRun") {
                 tokio::time::sleep(Duration::from_millis(80)).await;
                 st.cancel();
-                resp.json(r#"{"outcome":"complete_delivered"}"#).await;
+                resp.json(r#"{"outcome":"OUTCOME_COMPLETE_DELIVERED"}"#).await;
             } else if req.ends("/CancelRun") {
                 c.cancels.fetch_add(1, Ordering::SeqCst);
                 resp.json("{}").await;
@@ -862,7 +866,8 @@ async fn live_steer_flushes_streamed_text() {
             };
             if req.ends("/SteerRun") {
                 tokio::time::sleep(Duration::from_millis(40)).await;
-                resp.json(r#"{"outcome":"complete_delivered"}"#).await;
+                resp.json(r#"{"outcome":"OUTCOME_COMPLETE_DELIVERED"}"#)
+                    .await;
                 st.cancel();
             } else if req.ends("/CancelRun") {
                 c.cancels.fetch_add(1, Ordering::SeqCst);
@@ -984,7 +989,8 @@ where
                 c.steer_calls
                     .lock()
                     .push((req.str("runId"), req.str("text")));
-                resp.json(r#"{"outcome":"complete_delivered"}"#).await;
+                resp.json(r#"{"outcome":"OUTCOME_COMPLETE_DELIVERED"}"#)
+                    .await;
             } else if req.ends("/Send") {
                 let n = c.sends.fetch_add(1, Ordering::SeqCst) + 1;
                 send(n, c.clone(), resp).await;

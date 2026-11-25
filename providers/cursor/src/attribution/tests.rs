@@ -42,10 +42,6 @@ fn write_minimal_bridge_for_patch(root: &Path) {
             &format!("prefix;{};suffix", summary_skip()),
         );
     }
-    write(
-        &root.join(STEER_RUN_SERVER_REL),
-        &format!("{STEER_RUN_MOUNT_OLD}\n"),
-    );
 }
 
 fn assert_agent_skills_stubbed(name: &str, src: &str) {
@@ -103,14 +99,12 @@ fn injects_provider() {
 
     let preload = read(&root.join(ATTRIBUTION_PRELOAD_REL));
     assert!(preload.contains(ATTRIBUTION_PROVIDER_MARKER));
-    assert!(preload.contains("__recurInstallSteerRun"));
     let entry = read(&root.join(ATTRIBUTION_ENTRYPOINT_REL));
     assert!(entry.contains("recur-attribution-provider.mjs"), "{entry}");
     assert!(
         entry.starts_with("#!/usr/bin/env node\n"),
         "shebang not preserved:\n{entry}"
     );
-    assert!(read(&root.join(STEER_RUN_SERVER_REL)).contains("__recurInstallSteerRun"));
     for rel in [CJS, ESM] {
         let s = read(&root.join(rel));
         assert!(attributed(&s), "{rel} not patched");
@@ -130,26 +124,6 @@ fn injects_provider() {
             "{rel} missing summary marker"
         );
     }
-}
-
-#[test]
-fn steer_hook_rejects_unmatched() {
-    let root = tempfile::tempdir().unwrap();
-    write_minimal_bridge_for_patch(root.path());
-    write(
-        &root.path().join(STEER_RUN_SERVER_REL),
-        "function mountSdkBridgeRoutes() { return 0 }\n",
-    );
-    let err = ensure_attribution_patch(root.path()).unwrap_err();
-    assert!(err.unsupported(), "{err}");
-}
-
-#[test]
-fn steer_hook_missing_ok() {
-    let root = tempfile::tempdir().unwrap();
-    write_minimal_bridge_for_patch(root.path());
-    std::fs::remove_file(root.path().join(STEER_RUN_SERVER_REL)).unwrap();
-    ensure_attribution_patch(root.path()).unwrap();
 }
 
 #[test]

@@ -292,8 +292,7 @@ pub struct AgentOptions {
 /// (long-running processes go through `mcp__recur__run_background`).
 pub const DISALLOWED_BUILTINS: [&str; 3] = ["updateTodos", "readTodos", "await"];
 
-pub const STEER_COMPLETE_DELIVERED: &str = "complete_delivered";
-pub const STEER_REVERT_TO_FOLLOWUP: &str = "revert_to_followup";
+pub const STEER_COMPLETE_DELIVERED: &str = "OUTCOME_COMPLETE_DELIVERED";
 
 /// One ListRuns row.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
@@ -542,7 +541,7 @@ impl Client {
             .map(drop)
     }
 
-    /// Injects text into a live run (SDK run.steer). `complete_delivered`
+    /// Injects text into a live run (SDK run.steer). [`STEER_COMPLETE_DELIVERED`]
     /// means the turn has the message; anything else, including a missing
     /// RPC, means the caller should Send after the run instead. Follows the
     /// token through terminal acknowledgement, not the unary timeout.

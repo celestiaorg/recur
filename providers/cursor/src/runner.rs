@@ -9,7 +9,7 @@
 //! (role instructions are prepended to the first user message of an agent),
 //! and no tool allowlist (read-only roles run in Cursor's plan mode).
 //!
-//! Steering (D49) prefers SteerRun: `complete_delivered` keeps the current
+//! Steering (D49) prefers SteerRun: `OUTCOME_COMPLETE_DELIVERED` keeps the current
 //! Send. Otherwise CancelRun plus one follow-up Send of the joined steers on
 //! the same agent, still inside this turn, so the engine never sees a failed
 //! specialist turn.
@@ -89,7 +89,8 @@ pub(crate) struct CursorRunner {
     pub(crate) strict_config: AtomicBool,
     /// The bridge lacks `run.observe`: recovery goes straight to cancel+Send.
     pub(crate) skip_observe: bool,
-    /// SteerRun is unimplemented: later steers go straight to cancel+Send.
+    /// SteerRun answered Connect `unimplemented`: later steers go straight to
+    /// cancel+Send.
     steer_unavailable: AtomicBool,
     /// Outstanding pool handouts.
     pub(crate) in_use: AtomicI32,

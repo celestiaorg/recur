@@ -12,7 +12,7 @@ fn pinned_sdk_version_in_pypi_url() {
     // The attribution anchors were validated against this release: bump the
     // pin, the anchors and this hardcode together.
     assert_eq!(
-        PINNED_SDK_VERSION, "1.3.1",
+        PINNED_SDK_VERSION, "1.5.0",
         "update this test (and the attribution anchors) deliberately when bumping"
     );
 }
@@ -281,6 +281,13 @@ async fn install_real_smoke() {
         .await
         .expect("GetVersion");
     assert_eq!(v.protocol_version, "sdk.v1");
+    let err = b
+        .connect_client()
+        .unwrap()
+        .steer_run(&CancellationToken::new(), "no-such-run", "hi")
+        .await
+        .unwrap_err();
+    assert_eq!(err.connect().map(|c| c.code.as_str()), Some("not_found"));
     b.close().await;
 }
 
@@ -290,6 +297,7 @@ async fn install_real_smoke() {
 #[tokio::test]
 async fn attribution_patch_against_pinned_wheel() {
     use crate::attribution::*;
+    use crate::client::STEER_COMPLETE_DELIVERED;
     if std::env::var_os("RECUR_CURSOR_ATTRIBUTION_PATCH_TEST").is_none() {
         eprintln!(
             "skipped: set RECUR_CURSOR_ATTRIBUTION_PATCH_TEST=1 to download the pinned wheel"
@@ -309,14 +317,10 @@ async fn attribution_patch_against_pinned_wheel() {
     ensure_attribution_patch(&root).expect("patch the pinned wheel");
     ensure_attribution_patch(&root).expect("idempotent patch");
 
-    let mut patched: Vec<PathBuf> = [
-        ATTRIBUTION_PRELOAD_REL,
-        ATTRIBUTION_ENTRYPOINT_REL,
-        STEER_RUN_SERVER_REL,
-    ]
-    .iter()
-    .map(PathBuf::from)
-    .collect();
+    let mut patched: Vec<PathBuf> = [ATTRIBUTION_PRELOAD_REL, ATTRIBUTION_ENTRYPOINT_REL]
+        .iter()
+        .map(PathBuf::from)
+        .collect();
     let needle = format!("attributionConfigProvider=globalThis.{ATTRIBUTION_PROVIDER_MARKER}");
     for rel in [
         "node_modules/@cursor/sdk/dist/cjs",
@@ -359,11 +363,6 @@ async fn attribution_patch_against_pinned_wheel() {
         );
         patched.push(PathBuf::from(rel));
     }
-    assert!(
-        std::fs::read_to_string(root.join(STEER_RUN_SERVER_REL))
-            .unwrap()
-            .contains("__recurInstallSteerRun")
-    );
 
     // String checks cannot see a rewrite that no longer parses.
     let node = root.join("bin/node");
@@ -385,11 +384,10 @@ async fn attribution_patch_against_pinned_wheel() {
 await import("./recur-attribution-provider.mjs");
 const {{ SdkAgentService }} = await import("@anysphere/proto/sdk/v1/sdk_agent_service_connect.js");
 if (!globalThis.{ATTRIBUTION_PROVIDER_MARKER}?.get().attribution) throw new Error("attribution provider not installed");
-const impl = {{}};
-globalThis.__recurInstallSteerRun(SdkAgentService, impl, {{ getRun: () => undefined }});
 if (SdkAgentService.methods.steerRun?.name !== "SteerRun") throw new Error("SteerRun not registered");
-const res = await impl.steerRun({{ runId: "r", text: "t" }});
-if (res.outcome !== "revert_to_followup") throw new Error("steerRun outcome " + res.outcome);
+const {{ SteerRunResponse, SteerRunResponse_Outcome }} = await import("@anysphere/proto/sdk/v1/sdk_agent_service_pb.js");
+const {{ outcome }} = new SteerRunResponse({{ outcome: SteerRunResponse_Outcome.COMPLETE_DELIVERED }}).toJson();
+if (outcome !== "{STEER_COMPLETE_DELIVERED}") throw new Error("SteerRun outcome " + outcome);
 "#
     );
     let out = std::process::Command::new(&node)

@@ -45,8 +45,8 @@ pub use client::{
     ModelParameterDefinition, ModelParameterValue, ModelSelection, ModelVariant, ProtoTime,
     RunSnapshot, SETTING_SOURCE_ALL, SETTING_SOURCE_MDM, SETTING_SOURCE_PLUGINS,
     SETTING_SOURCE_PROJECT, SETTING_SOURCE_TEAM, SETTING_SOURCE_USER, SETTING_SOURCES_MINIMAL,
-    STEER_COMPLETE_DELIVERED, STEER_REVERT_TO_FOLLOWUP, SandboxOptions, StdioMcpServer, User,
-    VersionInfo, run_created_on_this_bridge,
+    STEER_COMPLETE_DELIVERED, SandboxOptions, StdioMcpServer, User, VersionInfo,
+    run_created_on_this_bridge,
 };
 pub use connect::{Client, ConnectError, Error, encode_connect_frame};
 pub use context::{

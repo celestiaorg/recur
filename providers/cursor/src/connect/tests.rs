@@ -151,7 +151,8 @@ async fn steer_run_outlives_unary_timeout() {
             return resp.not_found().await;
         }
         tokio::time::sleep(Duration::from_millis(120)).await;
-        resp.json(r#"{"outcome":"complete_delivered"}"#).await;
+        resp.json(r#"{"outcome":"OUTCOME_COMPLETE_DELIVERED"}"#)
+            .await;
     })
     .await;
     let mut cl = Client::new(&srv.url, "tok");

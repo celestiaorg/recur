@@ -51,8 +51,6 @@ fn anchors_and_constants() {
     assert_eq!(pairs(sdk_summary_delta_anchors()), want("summaryAnchors"));
     assert_eq!(ATTRIBUTION_PRELOAD_SOURCE, s(&g["preload"]));
     assert_eq!(ATTRIBUTION_ENTRYPOINT_IMPORT, s(&g["entrypointImport"]));
-    assert_eq!(STEER_RUN_MOUNT_OLD, s(&g["steerRunMountOld"]));
-    assert_eq!(STEER_RUN_MOUNT_NEW, s(&g["steerRunMountNew"]));
     assert_eq!(NATIVE_AGENT_SKILLS_ASSIGN, s(&g["nativeAgentSkillsAssign"]));
     assert_eq!(STUB_AGENT_SKILLS_ASSIGN, s(&g["stubAgentSkillsAssign"]));
     assert_eq!(SDK_SUMMARY_DELTA_YIELD, s(&g["summaryDeltaYield"]));
@@ -66,7 +64,6 @@ fn anchors_and_constants() {
         ATTRIBUTION_ENTRYPOINT_REL,
         s(&g["attributionEntrypointRel"])
     );
-    assert_eq!(STEER_RUN_SERVER_REL, s(&g["steerRunServerRel"]));
     assert_eq!(crate::bridge::READY_PREFIX, s(&g["readyPrefix"]));
 
     let dir = tempfile::tempdir().unwrap();

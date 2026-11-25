@@ -57,7 +57,8 @@ impl ConnectError {
         self.code == "unauthenticated" || self.code == "permission_denied"
     }
 
-    /// A missing RPC (SteerRun on an unpatched bridge).
+    /// A Connect `unimplemented` reply. A method the bridge does not mount at
+    /// all (SteerRun before SDK 1.4.2) is a bare HTTP 404 instead.
     pub fn unimplemented(&self) -> bool {
         self.code == "unimplemented"
     }

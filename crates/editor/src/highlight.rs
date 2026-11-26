@@ -664,4 +664,69 @@ mod tests {
         assert_eq!(h.spans(2)[0].from, 5);
         h.destroy();
     }
+
+    /// A host that scrolls an editor as tall as its document.
+    struct Tall(gpui::Entity<crate::view::EditorView>, gpui::ScrollHandle);
+
+    impl gpui::Render for Tall {
+        fn render(
+            &mut self,
+            _: &mut gpui::Window,
+            cx: &mut gpui::Context<Self>,
+        ) -> impl gpui::IntoElement {
+            use gpui::{
+                InteractiveElement as _, ParentElement as _, StatefulInteractiveElement as _,
+                Styled as _,
+            };
+            let h = self.0.read(cx).content_height();
+            gpui::div()
+                .id("tall")
+                .overflow_y_scroll()
+                .track_scroll(&self.1)
+                .size_full()
+                .child(gpui::div().h(gpui::px(h)).child(self.0.clone()))
+        }
+    }
+
+    #[gpui::test]
+    fn lines_scrolled_to_in_a_tall_editor_are_colored(cx: &mut gpui::TestAppContext) {
+        use gpui::AppContext as _;
+        let Some(tm) = shared() else { return };
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            recur_ui::init(cx);
+        });
+        let doc = "func f() int { return 1 }\n".repeat(4000);
+        let mut options = crate::view::EditorOptions::new("big.go", &doc);
+        options.textmate = Some(tm);
+        let scroll = gpui::ScrollHandle::new();
+        let handle = scroll.clone();
+        let (host, cx) = cx.add_window_view(move |window, cx| {
+            Tall(
+                cx.new(|cx| crate::view::EditorView::new(options, window, cx)),
+                handle,
+            )
+        });
+        let draw = |cx: &mut gpui::VisualTestContext| {
+            cx.update(|window, _| window.refresh());
+            cx.run_until_parked();
+            cx.executor().advance_clock(Duration::from_secs(2));
+            cx.run_until_parked();
+        };
+        draw(cx);
+        let max = f32::from(scroll.max_offset().y);
+        for at in [0., 0.9, 0.5, 0.] {
+            scroll.set_offset(gpui::point(gpui::px(0.), gpui::px(-max * at)));
+            draw(cx);
+            host.read_with(cx, |h, cx| {
+                let v = h.0.read(cx);
+                let (first, last) = v.visible_lines();
+                assert_eq!(first > 1, at > 0., "{first}..{last}");
+                let spans = v.highlighter.as_ref().expect("highlighter");
+                for n in (first..last).chain([first]) {
+                    assert!(!spans.spans(n).is_empty(), "line {n} of {first}..{last}");
+                }
+            });
+        }
+    }
 }

@@ -17,7 +17,7 @@ use gpui_kit::{
     AnyElement, App, AppContext as _, Bounds, ClickEvent, ClipboardItem, Context, DispatchPhase,
     Entity, FocusHandle, Hsla, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
     MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Render, Rgba, SharedString,
-    StatefulInteractiveElement, Styled, Subscription, Task, Window, canvas, div, px,
+    StatefulInteractiveElement, Styled, Subscription, Task, Window, canvas, div, point, px, size,
 };
 use recur_code::view::finding_paths::{
     extra_html_without_finding_flags, findings_covering_line, findings_ending_line,
@@ -39,6 +39,7 @@ use recur_view_core::{AppState, call, toast};
 use recur_view_widgets::findings_ui::finding_sev_icon;
 use recur_view_widgets::suggest::{SuggestAttach, attach_emoji, attach_user_mentions};
 
+use crate::anchor::{LaidOut, Tracked};
 use crate::card_editor::CardEditor;
 use crate::diff_rows::{
     OpenLine, Selecting, api_line, compose_placeholder, composer_on, draft_covers, draft_ends,
@@ -53,7 +54,7 @@ use crate::pane::Pane;
 use crate::review_diff::{DiffLayout, path_label};
 use crate::review_scroll::{JumpTarget, PANE_SCROLL_BIAS, pane_scroll_to, pick_diff_jump};
 use crate::review_window::{
-    DIFF_LINE_OVERSCAN, DIFF_LINE_PX, DIFF_LINE_WINDOW_MIN, LineWin, apply_slot_pin, cover_near,
+    DIFF_LINE_MARGIN, DIFF_LINE_OVERSCAN, DIFF_LINE_PX, DIFF_LINE_WINDOW_MIN, LineWin, cover_near,
     jump_line_window, line_window, slot_pad,
 };
 use crate::split_diff::{
@@ -159,6 +160,8 @@ struct Geom {
     head_h: f32,
     /// Rendered slots: index → (top, height).
     slots: HashMap<usize, (f32, f32)>,
+    /// The slot the stack anchors its scroll to in the next frame.
+    tracked: Option<(usize, LaidOut)>,
     rows: Vec<RowHit>,
     /// `.icmt-thread[data-note-line]` tops.
     threads: HashMap<i64, f32>,
@@ -202,6 +205,8 @@ pub struct DiffFile {
     win: LineWin,
     slot_h: Vec<Option<f32>>,
     slot_sig: String,
+    /// The card width `slot_h` was measured at.
+    slot_w: f32,
     last_jump: i64,
     loaded_path: String,
     copied_path: bool,
@@ -211,7 +216,6 @@ pub struct DiffFile {
     /// The `+` buttons' tab stops by (left side, line).
     addc_focus: RefCell<HashMap<(bool, i64), FocusHandle>>,
     geom: Rc<RefCell<Geom>>,
-    pending_pin: Option<(usize, f32, f32)>,
     pending_jump: Option<i64>,
     /// The sticky `.df-head`'s `.stuck`.
     head_stuck: bool,
@@ -318,6 +322,7 @@ impl DiffFile {
             win: LineWin::new(0, DIFF_LINE_WINDOW_MIN),
             slot_h: Vec::new(),
             slot_sig: String::new(),
+            slot_w: 0.,
             last_jump: 0,
             loaded_path: String::new(),
             copied_path: false,
@@ -326,7 +331,6 @@ impl DiffFile {
             threads_seen: HashSet::new(),
             addc_focus: RefCell::default(),
             geom: Rc::default(),
-            pending_pin: None,
             pending_jump: None,
             head_stuck: false,
             placeholder: "Comment…".into(),
@@ -1093,6 +1097,35 @@ impl DiffFile {
         &self.collapsed_hunks
     }
 
+    /// Where a card that has not drawn yet goes (its stub's window top and height, painted at
+    /// that scroll), so its first frame mounts the rows that show.
+    pub(crate) fn place(&mut self, top: f32, h: f32, painted_top: f32) {
+        let mut g = self.geom.borrow_mut();
+        g.root = Some(Bounds::new(point(px(0.), px(top)), size(px(0.), px(h))));
+        g.painted_top = painted_top;
+    }
+
+    /// Track the slot the last frame drew at window `y` through the next one: where it lays
+    /// out, and its window top now.
+    pub(crate) fn track_slot_at(&mut self, y: f32) -> Option<(LaidOut, f32)> {
+        let mut g = self.geom.borrow_mut();
+        let (slot, top) = g
+            .slots
+            .iter()
+            .filter(|(_, (top, h))| top + h > y)
+            .min_by_key(|(slot, _)| **slot)
+            .map(|(slot, (top, _))| (*slot, *top))?;
+        let at = LaidOut::default();
+        g.tracked = Some((slot, at.clone()));
+        Some((at, top))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn slot_tops(&self) -> Vec<(usize, f32)> {
+        let g = self.geom.borrow();
+        g.slots.iter().map(|(s, (top, _))| (*s, *top)).collect()
+    }
+
     pub fn line_window(&self) -> LineWin {
         self.win
     }
@@ -1196,49 +1229,55 @@ impl DiffFile {
             .collect()
     }
 
-    /// `refreshLineWindow`, each frame from the pane's geometry.
-    fn refresh_line_window(&mut self, cx: &mut Context<Self>) {
+    /// `refreshLineWindow`, from the last frame's geometry and the scroll as it is now. Returns
+    /// whether other rows mount.
+    fn refresh_line_window(&mut self) -> bool {
         if self.is_collapsed() {
-            return;
+            return false;
         }
         let count = self.slot_count();
+        let sig = format!("{}:{:?}:{count}", self.props.file.path, self.props.layout);
+        if sig != self.slot_sig {
+            self.slot_sig = sig;
+            self.slot_h.clear();
+            self.geom.borrow_mut().slots.clear();
+        }
         let Some(pane) = self.pane.clone().filter(|_| count > DIFF_LINE_WINDOW_MIN) else {
-            if self.win != LineWin::new(0, count) {
-                self.win = LineWin::new(0, count);
-                cx.notify();
-            }
-            return;
+            let all = LineWin::new(0, count);
+            return std::mem::replace(&mut self.win, all) != all;
         };
         let (root, painted_top, head_h) = {
             let g = self.geom.borrow();
             (g.root, g.painted_top, g.head_h)
         };
-        let Some(root) = root else { return };
-        let sig = format!(
-            "{}:{:?}:{count}:{}",
-            self.props.file.path,
-            self.props.layout,
-            f32::from(root.size.width)
-        );
-        if sig != self.slot_sig {
-            self.slot_sig = sig;
+        let Some(root) = root.filter(|_| pane.bounds().is_some()) else {
+            return false;
+        };
+        let width = f32::from(root.size.width);
+        if std::mem::replace(&mut self.slot_w, width) != width {
             self.slot_h.clear();
         }
-        let mut changed = self.measure();
-        let scroll_top = pane.scroll_top();
+        self.measure();
+        let (scroll_top, view_h) = pane.viewport();
         let head_h = if head_h > 0. {
             head_h
         } else {
             recur_ui::style::CHROME_H
         };
         let body_top = painted_top + (f32::from(root.origin.y) - pane.top()) + head_h;
+        // A selection's ends count while their rows are mounted.
+        let margin = if pane.text_held() {
+            DIFF_LINE_OVERSCAN
+        } else {
+            DIFF_LINE_MARGIN
+        };
         let mut win = line_window(
             count,
             body_top,
             scroll_top,
-            pane.client_height(),
+            view_h,
             DIFF_LINE_PX,
-            DIFF_LINE_OVERSCAN,
+            margin,
             Some(&self.slot_h),
         );
         let hl = self.props.highlight_line;
@@ -1273,29 +1312,12 @@ impl DiffFile {
                 win = cover_near(win, self.slot_of_line(n), count, DIFF_LINE_OVERSCAN);
             }
         }
-        if win != self.win {
-            let anchor = (!jumping)
-                .then(|| {
-                    self.geom
-                        .borrow()
-                        .slots
-                        .get(&self.win.start)
-                        .map(|(top, _)| (self.win.start, *top))
-                })
-                .flatten();
-            self.pending_pin = anchor.map(|(slot, y)| (slot, y, scroll_top));
-            self.win = win;
-            changed = true;
-        }
-        if changed {
-            cx.notify();
-        }
+        std::mem::replace(&mut self.win, win) != win
     }
 
     /// `measure`: the rendered slots' heights into the sparse height list.
-    fn measure(&mut self) -> bool {
+    fn measure(&mut self) {
         let g = self.geom.borrow();
-        let mut changed = false;
         for slot in self.win.start..self.win.end {
             let Some(&(_, h)) = g.slots.get(&slot) else {
                 continue;
@@ -1303,30 +1325,15 @@ impl DiffFile {
             if self.slot_h.len() <= slot {
                 self.slot_h.resize(slot + 1, None);
             }
-            if h > 0. && self.slot_h[slot] != Some(h) {
+            if h > 0. {
                 self.slot_h[slot] = Some(h);
-                changed = true;
             }
         }
-        changed
     }
 
     fn on_frame(&mut self, cx: &mut Context<Self>) {
         if self.card_ed.is_some() {
             return;
-        }
-        if let Some((slot, pin_y, captured)) = self.pending_pin.take()
-            && let Some(pane) = &self.pane
-        {
-            let row_top = self.geom.borrow().slots.get(&slot).map(|(t, _)| *t);
-            if row_top.is_none() && self.geom.borrow().slots.is_empty() {
-                self.pending_pin = Some((slot, pin_y, captured));
-            } else if let Some(top) =
-                apply_slot_pin(pane.scroll_top(), row_top, Some(pin_y), captured)
-            {
-                pane.set_scroll_top(top);
-                cx.notify();
-            }
         }
         if let Some(target) = self.pending_jump {
             let (thread, row) = {
@@ -1380,7 +1387,9 @@ impl DiffFile {
         };
         if key != self.line_window_key {
             self.line_window_key = key;
-            self.refresh_line_window(cx);
+            if self.refresh_line_window() {
+                cx.notify();
+            }
         }
     }
 }
@@ -2412,14 +2421,19 @@ impl DiffFile {
         )
         .absolute()
         .inset_0();
-        div()
+        let el = div()
             .relative()
             .w_full()
             .flex()
             .flex_col()
             .children(children)
             .child(probe)
-            .into_any_element()
+            .into_any_element();
+        let tracked = self.geom.borrow_mut().tracked.take_if(|t| t.0 == slot);
+        match tracked {
+            Some((_, at)) => Tracked { child: el, at }.into_any_element(),
+            None => el,
+        }
     }
 
     fn head(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
@@ -2637,6 +2651,9 @@ impl DiffFile {
     ) -> impl IntoElement + use<> {
         let t = Theme::of(cx).tokens;
         self.sync_editor_theme(cx);
+        if self.card_ed.is_none() {
+            self.refresh_line_window();
+        }
         {
             let mut g = self.geom.borrow_mut();
             g.slots.clear();

@@ -12,8 +12,8 @@ use recur_textmate::{Grammar, StateStack, paint_for_meta};
 use crate::html::text_content;
 
 /// Highlighted lines per card: the diff view's initial line cap, so the first screen is
-/// uniformly styled. At most `REVIEW_HYDRATE_MAX` cards mount, so a patch highlights at most
-/// 4,000 lines.
+/// uniformly styled. Only the `REVIEW_HYDRATE_MAX` cards and any more on screen mount, which
+/// bounds the lines a patch highlights.
 pub const MAX_HIGHLIGHT_LINES: usize = 500;
 
 /// Longer lines (minified code) stay plain.

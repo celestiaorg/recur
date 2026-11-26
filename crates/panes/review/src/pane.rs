@@ -17,6 +17,8 @@ pub struct Pane {
     draws: Rc<Cell<u64>>,
     /// The line notes open in this pane's cards (see [`crate::note_portal`]).
     drafts: Rc<RefCell<Vec<Draft>>>,
+    /// Text in the pane holds a caret or a selection.
+    text_held: Rc<Cell<bool>>,
 }
 
 impl Pane {
@@ -33,6 +35,27 @@ impl Pane {
         let max = self.max_scroll();
         let top = top.max(0.).min(max.max(0.));
         self.scroll.set_offset(point(px(0.), px(-top)));
+    }
+
+    /// Past the last frame's content: the next one clamps it to its own.
+    pub fn scroll_to_unclamped(&self, top: f32) {
+        self.scroll.set_offset(point(px(0.), px(-top.max(0.))));
+    }
+
+    /// The top and height of what the next frame can show: a scroll past the last frame's
+    /// content draws somewhere between its end and the scroll.
+    pub fn viewport(&self) -> (f32, f32) {
+        let to = self.scroll_top();
+        let top = to.min(self.max_scroll());
+        (top, self.client_height() + to - top)
+    }
+
+    pub fn set_text_held(&self, held: bool) {
+        self.text_held.set(held);
+    }
+
+    pub fn text_held(&self) -> bool {
+        self.text_held.get()
     }
 
     /// `scrollHeight - clientHeight`.

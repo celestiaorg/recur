@@ -67,7 +67,7 @@ impl WorkingEditors for CardHost {
 
 /// A file the card can edit: inlined UTF-8 text in a writable worktree.
 // simplify: text past the 256 KiB inline read stays a read-only card (a content-height editor
-// paints every line); stream it as the code editor does to lift that.
+// measures every line); stream it as the code editor does to lift that.
 fn card_editable(f: &FileContent) -> bool {
     f.writable && f.mime.is_empty() && (f.size == 0 || !f.content.is_empty())
 }

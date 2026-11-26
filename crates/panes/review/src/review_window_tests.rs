@@ -1,5 +1,4 @@
 use super::*;
-use crate::review_scroll::{PANE_SCROLL_BIAS, pane_scroll_to};
 
 fn set(paths: &[&str]) -> HashSet<String> {
     paths.iter().map(|p| p.to_string()).collect()
@@ -305,49 +304,6 @@ fn jump_line_window_rehydrates_the_same_line_after_the_highlight_is_cleared() {
     assert_eq!(
         jump_line_window(header, count, 800, last_jump, slot),
         LineWin::new(739, 860)
-    );
-}
-
-#[test]
-fn apply_slot_pin_corrects_layout_drift_when_the_pane_has_not_moved() {
-    assert_eq!(apply_slot_pin(100., Some(50.), Some(80.), 100.), Some(70.));
-}
-
-#[test]
-fn apply_slot_pin_ignores_a_row_that_unmounted() {
-    assert_eq!(
-        apply_slot_pin(990_049., None, Some(608_867.), 990_049.),
-        None
-    );
-}
-
-#[test]
-fn apply_slot_pin_does_not_undo_a_jump_whose_old_first_row_stays_mounted() {
-    let (count, view_h, head_h, jump_slot) = (500, 400., 40., 39);
-    let view = line_window(
-        count,
-        head_h,
-        0.,
-        view_h,
-        DIFF_LINE_PX,
-        DIFF_LINE_OVERSCAN,
-        None,
-    );
-    let next = window_around(jump_slot, count, DIFF_LINE_OVERSCAN);
-    assert_eq!(next.start, view.start);
-    let pin_y = head_h;
-    let pin_scroll = 0.;
-    let scroll = pane_scroll_to(
-        0.,
-        0.,
-        view_h,
-        head_h + jump_slot as f32 * DIFF_LINE_PX,
-        PANE_SCROLL_BIAS,
-    );
-    assert_eq!(scroll, 708.);
-    assert_eq!(
-        apply_slot_pin(scroll, Some(pin_y - scroll), Some(pin_y), pin_scroll),
-        None
     );
 }
 

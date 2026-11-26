@@ -26,6 +26,7 @@
 //! PR from `AppState` and write through [`store`]; the commits tab uses [`commits::CommitsView`]
 //! and [`commits::commit_row`].
 
+pub mod anchor;
 pub mod autosize;
 pub mod card_editor;
 pub mod comment_header;

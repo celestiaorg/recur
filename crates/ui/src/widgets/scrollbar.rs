@@ -483,10 +483,8 @@ impl ScrollArea {
         let now = crate::motion::now(cx);
         let opacity = state.update(cx, |s, cx| {
             let moved = s.last_pos.is_some_and(|l| (l - pos).abs() > 0.01);
-            if moved {
-                s.hide_soon(now);
-            }
             if std::mem::take(&mut s.wheeled) && moved {
+                s.hide_soon(now);
                 s.mac.scrolled(now);
             }
             s.last_pos = Some(pos);
@@ -541,17 +539,18 @@ impl ScrollArea {
         }
         .track_scroll(&handle)
         .children(self.children);
-        if native {
+        if native || overlay {
             let state = state.clone();
+            content = content.on_scroll(move |_, _, cx| {
+                state.update(cx, |s, _| s.wheeled = true);
+            });
+        }
+        if native {
             let moved = state.clone();
-            content = content
-                .on_scroll(move |_, _, cx| {
-                    state.update(cx, |s, _| s.wheeled = true);
-                })
-                .on_mouse_move(move |_, _, cx| {
-                    let now = crate::motion::now(cx);
-                    moved.update(cx, |s, _| s.mac.pointer_moved(now));
-                });
+            content = content.on_mouse_move(move |_, _, cx| {
+                let now = crate::motion::now(cx);
+                moved.update(cx, |s, _| s.mac.pointer_moved(now));
+            });
         }
 
         // A column for both axes: a row root sizes a vertical scroller's height by laying its

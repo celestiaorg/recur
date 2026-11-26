@@ -392,3 +392,74 @@ async fn reloading_from_review_discards_the_cards_unsaved_text(cx: &mut TestAppC
         assert!(!h.read(|o, _| o.dirty() || o.tab_is_dirty("src/a.go")));
     }
 }
+
+/// A card's editor is as tall as its file: a scroll plans the lines on screen, not all of them.
+#[gpui::test]
+async fn a_long_card_draws_only_the_lines_on_screen(cx: &mut TestAppContext) {
+    let disk = lines(2000, "disk");
+    let tree = Tree::new(&[("src/long.go", "", disk.as_str())]);
+    let mut h = wide(cx, &tree);
+    for top in [0., 9000., 20000.] {
+        h.update(move |o, window, cx| {
+            let r = o.review_surface.clone().expect("review");
+            let files = r.read(cx).files_view().clone();
+            files.update(cx, |f, _| f.stack().pane.set_scroll_top(top));
+            window.refresh();
+        });
+        h.settle();
+        let (first, last) = h.read(|o, cx| {
+            let e = o.card_editor_for("src/long.go").expect("card editor");
+            e.read(cx).visible_lines()
+        });
+        assert!(last - first < 200, "{first}..{last} at {top}");
+        assert_eq!(first > 100, top > 0., "{first}..{last} at {top}");
+    }
+}
+
+/// Cards above the viewport loading their editors (and dropping them) leave the ones on screen
+/// where the scroll put them.
+#[gpui::test]
+async fn cards_on_screen_move_only_with_the_scroll(cx: &mut TestAppContext) {
+    let files: Vec<(String, String)> = (0..24)
+        .map(|i| (format!("src/f{i:02}.go"), lines(3 + (i * 7) % 30, "disk")))
+        .collect();
+    let refs: Vec<(&str, &str, &str)> = files
+        .iter()
+        .map(|(p, d)| (p.as_str(), "", d.as_str()))
+        .collect();
+    let mut h = wide(cx, &Tree::new(&refs));
+    let pane = h.read(|o, cx| {
+        let r = o.review_surface.as_ref().expect("review").read(cx);
+        r.files_view().read(cx).stack().pane.clone()
+    });
+    let tops = |h: &mut H| -> BTreeMap<String, f32> {
+        h.settle();
+        let view = h.cx.debug_bounds("diffscroll").expect("pane");
+        files
+            .iter()
+            .filter_map(|(p, _)| {
+                let sel: &'static str = Box::leak(format!("cfile:live:{p}").into_boxed_str());
+                let b = h.cx.debug_bounds(sel)?;
+                (b.top() > view.top() && b.top() < view.bottom())
+                    .then(|| (p.clone(), f32::from(b.top())))
+            })
+            .collect()
+    };
+    let mut compared = 0;
+    for d in std::iter::repeat_n(250., 16).chain(std::iter::repeat_n(-200., 20)) {
+        let before = tops(&mut h);
+        let from = pane.scroll_top();
+        pane.set_scroll_top(from + d);
+        let moved = pane.scroll_top() - from;
+        for (p, top) in tops(&mut h) {
+            if let Some(was) = before.get(&p) {
+                compared += 1;
+                assert!(
+                    (top - (was - moved)).abs() < 1.1,
+                    "{p}: {was} - {moved}, {top}"
+                );
+            }
+        }
+    }
+    assert!(compared > 10, "only {compared} cards compared");
+}

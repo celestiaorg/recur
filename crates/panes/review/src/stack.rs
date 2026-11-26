@@ -1,13 +1,14 @@
 //! The `.diffscroll` stack of file cards that Files changed (and PR detail's Files tab)
-//! scroll through: at most [`REVIEW_HYDRATE_MAX`] cards mount a full [`DiffFile`], the rest are
-//! striped stubs at their measured height; the scroll spy picks the file at the top, a
-//! hydration swap keeps the viewport on its file, and each live card's header sticks to the top
-//! of the pane while its body scrolls under it.
+//! scroll through: every card on screen mounts a full [`DiffFile`], as do those near it up to
+//! [`REVIEW_HYDRATE_MAX`] in all, and the rest are striped stubs at their measured height; the
+//! scroll spy picks the file at the top, [`Anchored`] keeps the rows on screen in place as
+//! heights change, and each live card's header sticks to the top of the pane while its body
+//! scrolls under it.
 //!
 //! A host owns one [`FileStack`] and renders it with [`FileStack::render`] inside its own
 //! entity; `stack_of` projects the host to the stack for the callbacks.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -26,6 +27,7 @@ use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::{IconName, Theme, icon};
 use recur_view_core::AppState;
 
+use crate::anchor::{Anchor, Anchored, LaidOut, Tracked};
 use crate::card_editor::WorkingEditors;
 use crate::diff_file::{DiffFile, DiffFileHooks, DiffFileProps, NoteMode};
 use crate::findings::FindingsByPath;
@@ -35,9 +37,7 @@ use crate::review_window::{
     CardRange, REVIEW_HYDRATE_MAX, REVIEW_HYDRATE_OVERSCAN, REVIEW_VIEW_PAD_PX, header_is_stuck,
     in_view_paths, pick_hydrated, record_stub_height, reserved_card_height,
 };
-use crate::spy_pick::{
-    ViewportPin, apply_viewport_pin, capture_viewport_pin, file_at_scroll_top, step_path,
-};
+use crate::spy_pick::{file_at_scroll_top, step_path};
 use crate::style::hsla;
 
 /// How long a TOC click keeps the spy from re-picking while the pane settles.
@@ -45,7 +45,7 @@ const SPY_SUPPRESS: Duration = Duration::from_millis(700);
 /// A card's bottom margin (`.cfile`).
 const CARD_GAP: f32 = 14.;
 /// A stub card: its header inside the 1px frame.
-const STUB_CARD_H: f32 = recur_ui::style::CHROME_H + 2.;
+pub(crate) const STUB_CARD_H: f32 = recur_ui::style::CHROME_H + 2.;
 /// How far beyond the viewport stub cards stay mounted.
 const STACK_MOUNT_PAD_PX: f32 = 1200.;
 
@@ -152,8 +152,8 @@ impl ImageRevs {
 struct Cards {
     /// path → (window top, height) from the last frame.
     bounds: HashMap<String, (f32, f32)>,
-    /// The scroll offset those bounds were painted at.
-    painted_top: f32,
+    /// The scrolled column's window top in that frame.
+    col_top: Rc<Cell<f32>>,
 }
 
 pub struct FileStack {
@@ -168,12 +168,10 @@ pub struct FileStack {
     measured: HashMap<String, f32>,
     cards: Rc<RefCell<Cards>>,
     spy_until: Option<Instant>,
-    last_pin: Option<ViewportPin>,
-    pin_gen: u64,
-    /// A hydration swap to pin after layout: (pin, captured scrollTop, generation).
-    pending_pin: Option<(ViewportPin, f32, u64)>,
-    /// A TOC selection to scroll to once its card lays out (two passes, as the two ticks).
-    pending_select: Option<(String, u8)>,
+    /// A TOC selection to scroll to once its card lays out.
+    pending_select: Option<String>,
+    /// The card just scrolled to, which the next frame lays out at the pane's top.
+    scrolled_to: Option<String>,
     diff_files: HashMap<String, Entity<DiffFile>>,
     /// The cards the host last kept editors for.
     editing: HashSet<String>,
@@ -190,7 +188,12 @@ pub struct FileStack {
     /// A stub's header selects its file without scrolling (PR detail's commit diff).
     stub_selects_in_place: bool,
     chrome: StackChrome,
+    #[cfg(test)]
+    pub(crate) frames: Vec<FrameLog>,
 }
+
+#[cfg(test)]
+pub(crate) type FrameLog = (HashMap<(String, usize), f32>, bool);
 
 impl FileStack {
     pub fn new(state: Entity<AppState>, cx: &mut App) -> Self {
@@ -206,10 +209,8 @@ impl FileStack {
             measured: HashMap::new(),
             cards: Rc::default(),
             spy_until: None,
-            last_pin: None,
-            pin_gen: 0,
-            pending_pin: None,
             pending_select: None,
+            scrolled_to: None,
             diff_files: HashMap::new(),
             editing: HashSet::new(),
             props: CardProps::default(),
@@ -220,6 +221,8 @@ impl FileStack {
             spy_suppress: SPY_SUPPRESS,
             stub_selects_in_place: false,
             chrome: StackChrome::default(),
+            #[cfg(test)]
+            frames: Vec::new(),
         }
     }
 
@@ -238,7 +241,6 @@ impl FileStack {
     /// A stub header in a commit diff: select it in place, so it hydrates where it is.
     pub fn select_in_place(&mut self, path: &str) {
         self.spy_until = Some(Instant::now() + SPY_SUPPRESS);
-        self.pin_gen += 1;
         self.selected = path.to_string();
         self.window_dirty = true;
     }
@@ -257,6 +259,27 @@ impl FileStack {
 
     pub fn hydrated(&self) -> &HashSet<String> {
         &self.hydrated
+    }
+
+    /// The rows on screen in the frame just drawn, by path and slot, and whether a stub shows.
+    #[cfg(test)]
+    fn log_frame(&mut self, cx: &App) {
+        let Some(view) = self.pane.bounds() else {
+            return;
+        };
+        let (a, b) = (f32::from(view.top()), f32::from(view.bottom()));
+        let mut rows = HashMap::new();
+        for (p, e) in &self.diff_files {
+            for (slot, top) in e.read(cx).slot_tops() {
+                if top >= a && top < b {
+                    rows.insert((p.clone(), slot), top);
+                }
+            }
+        }
+        let blank = self.cards.borrow().bounds.iter().any(|(p, &(top, h))| {
+            top + h > a && top < b && !self.hydrated.contains(p) && !self.collapsed.contains(p)
+        });
+        self.frames.push((rows, blank));
     }
 
     pub fn diff_file(&self, path: &str) -> Option<&Entity<DiffFile>> {
@@ -335,9 +358,7 @@ impl FileStack {
         self.selected = path.to_string();
         self.collapsed.remove(path);
         self.spy_until = Some(Instant::now() + self.spy_suppress);
-        self.pin_gen += 1;
-        self.pending_pin = None;
-        self.pending_select = Some((path.to_string(), 2));
+        self.pending_select = Some(path.to_string());
         self.window_dirty = true;
     }
 
@@ -355,7 +376,7 @@ impl FileStack {
 
     fn ranges(&self) -> Vec<CardRange> {
         let cards = self.cards.borrow();
-        let base = self.pane.top() - cards.painted_top;
+        let base = cards.col_top.get();
         let mut v: Vec<CardRange> = self
             .files
             .iter()
@@ -372,42 +393,80 @@ impl FileStack {
         v
     }
 
-    fn scroll_height(&self) -> f32 {
-        self.pane.max_scroll() + self.pane.client_height()
-    }
-
-    /// `refreshWindow`: which cards mount, sticky headers, and the viewport pin across a
-    /// hydration swap. Returns whether anything changed.
-    fn refresh_window(&mut self, cx: &mut App) -> bool {
-        let top = self.pane.scroll_top();
-        let view_h = self.pane.client_height();
+    /// `refreshWindow`: which cards mount. Returns whether anything changed.
+    fn refresh_window(&mut self) -> bool {
+        let (top, view_h) = self.pane.viewport();
         let ranges = self.ranges();
-        let pin = capture_viewport_pin(&ranges, top, view_h, self.scroll_height());
-        self.last_pin = Some(pin.clone());
-        let next_in_view = in_view_paths(&ranges, top, view_h, REVIEW_VIEW_PAD_PX);
+        self.in_view = in_view_paths(&ranges, top, view_h, REVIEW_VIEW_PAD_PX);
         let paths: Vec<String> = self.files.iter().map(|f| f.path.clone()).collect();
-        let next = pick_hydrated(
+        let mut next = pick_hydrated(
             &paths,
             &self.selected,
-            &next_in_view,
+            &self.in_view,
             REVIEW_HYDRATE_MAX,
             REVIEW_HYDRATE_OVERSCAN,
         );
+        // A card on screen is never a stub, however many small ones fit.
+        next.extend(in_view_paths(&ranges, top, view_h, 0.));
         let swapped = next != self.hydrated;
-        let mut changed = false;
-        if self.in_view != next_in_view {
-            self.in_view = next_in_view;
+        self.hydrated = next;
+        swapped
+    }
+
+    /// What the last frame shows at `top`: a row of the card there and the card itself. Cards
+    /// that were live come first: a stub's height is about to change.
+    fn pick_anchors(&mut self, top: f32, cx: &mut App) -> (Vec<Anchor>, Option<(String, LaidOut)>) {
+        let picked = {
+            let cards = self.cards.borrow();
+            let col = cards.col_top.get();
+            let view_h = self.pane.client_height();
+            let mut on_screen = self.files.iter().filter_map(|f| {
+                let &(y, h) = cards.bounds.get(&f.path)?;
+                let y = y - col;
+                (y + h > top && y < top + view_h).then_some((&f.path, y, h))
+            });
+            match &self.scrolled_to {
+                Some(p) => on_screen.find(|c| c.0 == p),
+                None => {
+                    let mut first = None;
+                    on_screen
+                        .find(|c| {
+                            first.get_or_insert(*c);
+                            self.diff_files.contains_key(c.0)
+                        })
+                        .or(first)
+                }
+            }
+            .map(|(p, y, h)| (p.clone(), y, h, col))
+        };
+        let scrolled_to = self.scrolled_to.take().is_some();
+        let Some((path, card_y, card_h, col)) = picked else {
+            return (Vec::new(), None);
+        };
+        // At the very top, what appears above shows (`overflow-anchor` is off there too).
+        if top <= 0. && !scrolled_to {
+            return (Vec::new(), None);
         }
-        if swapped {
-            self.hydrated = next;
-            changed = true;
+        let mut anchors = Vec::new();
+        if !scrolled_to
+            && let Some((at, y)) = self
+                .diff_files
+                .get(&path)
+                .and_then(|d| d.update(cx, |d, _| d.track_slot_at(top + col)))
+        {
+            anchors.push(Anchor {
+                at,
+                y: y - col,
+                card_h: None,
+            });
         }
-        self.sync_stuck_headers(&ranges, top, cx);
-        if swapped && !self.spy_suppressed() {
-            self.pin_gen += 1;
-            self.pending_pin = Some((pin, top, self.pin_gen));
-        }
-        changed
+        let at = LaidOut::default();
+        anchors.push(Anchor {
+            at: at.clone(),
+            y: card_y,
+            card_h: Some(card_h),
+        });
+        (anchors, Some((path, at)))
     }
 
     /// `syncStuckHeaders`. The header itself follows the pane top as it draws (`StickyHead`).
@@ -421,50 +480,19 @@ impl FileStack {
         }
     }
 
-    /// Each frame: spy, window refresh, pending pins and selection scrolls.
+    /// After each frame: selection scrolls, the spy, and whether other cards should mount.
     fn on_frame(&mut self, cx: &mut App) -> bool {
         let mut changed = false;
-        if let Some((path, passes)) = self.pending_select.take() {
-            let ranges = self.ranges();
-            if let Some(r) = ranges.iter().find(|r| r.path == path) {
-                self.pane.set_scroll_top(r.top);
-                if passes > 1 {
-                    self.pending_select = Some((path, passes - 1));
-                } else {
-                    let ranges = self.ranges();
-                    self.last_pin = Some(capture_viewport_pin(
-                        &ranges,
-                        self.pane.scroll_top(),
-                        self.pane.client_height(),
-                        self.scroll_height(),
-                    ));
+        if let Some(path) = self.pending_select.take() {
+            match self.ranges().iter().find(|r| r.path == path) {
+                Some(r) => {
+                    // Unclamped: the frame that expands a card near the end clamps it.
+                    self.pane.scroll_to_unclamped(r.top);
+                    self.scrolled_to = Some(path);
+                    changed = true;
                 }
-                changed = true;
-            } else {
-                self.pending_select = Some((path, passes));
+                None => self.pending_select = Some(path),
             }
-        }
-        if let Some((pin, captured, generation)) = self.pending_pin.take()
-            && generation == self.pin_gen
-        {
-            let ranges = self.ranges();
-            if let Some(top) = apply_viewport_pin(
-                self.pane.scroll_top(),
-                self.pane.max_scroll(),
-                &ranges,
-                &pin,
-                Some(captured),
-            ) {
-                self.pane.set_scroll_top(top);
-                changed = true;
-            }
-            let ranges = self.ranges();
-            self.last_pin = Some(capture_viewport_pin(
-                &ranges,
-                self.pane.scroll_top(),
-                self.pane.client_height(),
-                self.scroll_height(),
-            ));
         }
         let top = self.pane.scroll_top();
         let scrolled = (top - self.seen_top).abs() > 0.01;
@@ -480,42 +508,29 @@ impl FileStack {
             }
         }
         let dirty = std::mem::take(&mut self.window_dirty);
-        if self.active && (scrolled || dirty) && self.refresh_window(cx) {
-            changed = true;
+        if self.active && (scrolled || dirty) {
+            changed |= self.refresh_window();
+            let ranges = self.ranges();
+            self.sync_stuck_headers(&ranges, self.pane.viewport().0, cx);
         }
         changed
     }
 
-    /// `recordStubHeight` for every live card, and `pinIfAtEnd` when one resizes.
-    fn record_heights(&mut self) -> bool {
+    /// `recordStubHeight` for every live card.
+    fn record_heights(&mut self) {
         let cards = self.cards.borrow();
-        let mut resized = false;
         for f in &self.files {
             let Some(&(_, h)) = cards.bounds.get(&f.path) else {
                 continue;
             };
-            let stub = !self.hydrated.contains(&f.path);
-            if record_stub_height(
+            record_stub_height(
                 &mut self.measured,
                 &f.path,
-                stub,
+                !self.hydrated.contains(&f.path),
                 self.collapsed.contains(&f.path),
                 h,
-            ) {
-                resized = true;
-            }
+            );
         }
-        drop(cards);
-        let end = self.pane.max_scroll();
-        if resized
-            && self.last_pin.as_ref().is_some_and(|p| p.at_end)
-            && !self.spy_suppressed()
-            && (self.pane.scroll_top() - end).abs() > 0.01
-        {
-            self.pane.set_scroll_top(end);
-            return true;
-        }
-        false
     }
 
     fn card_props(&self, f: &Rc<FileDiff>) -> DiffFileProps {
@@ -590,6 +605,12 @@ impl FileStack {
     ) -> AnyElement {
         let t = Theme::of(cx).tokens;
         self.pane.begin_draw();
+        let scroll_top = self.pane.scroll_top();
+        let (anchors, mut anchor_card) = self.pick_anchors(scroll_top, cx);
+        // Before the draw, so the cards this frame scrolled to are in it.
+        if self.active && (self.window_dirty || scroll_top != self.seen_top) {
+            self.refresh_window();
+        }
         let host: WeakEntity<H> = cx.entity().downgrade();
         let pad = self.chrome.pad;
         let mut col = div().flex().flex_col().w_full().pb(px(pad));
@@ -609,7 +630,7 @@ impl FileStack {
             // Stubs far from the viewport stay unmounted (thousands of cards laid out each
             // frame cost seconds): each run of them is one exact spacer that still records
             // every card's bounds, so ranges, the spy and selection scrolls see all cards.
-            let (top, view_h) = (self.pane.scroll_top(), self.pane.client_height());
+            let (top, view_h) = self.pane.viewport();
             let (lo, hi) = (
                 top - STACK_MOUNT_PAD_PX,
                 top + view_h.max(0.) + STACK_MOUNT_PAD_PX,
@@ -659,8 +680,15 @@ impl FileStack {
                             let state = self.state.clone();
                             let pane = self.pane.clone();
                             let hooks = self.card_hooks(f, host.clone(), on_toggle.clone());
+                            let at = self.cards.borrow().bounds.get(&f.path).copied();
+                            let painted_top = self.pane.top() - self.cards.borrow().col_top.get();
                             let e = cx.new(|cx| {
-                                DiffFile::new(state, props, hooks, Some(pane), window, cx)
+                                let mut d =
+                                    DiffFile::new(state, props, hooks, Some(pane), window, cx);
+                                if let Some((top, h)) = at {
+                                    d.place(top, h, painted_top);
+                                }
+                                d
                             });
                             self.diff_files.insert(f.path.clone(), e.clone());
                             e
@@ -757,7 +785,12 @@ impl FileStack {
                     .when_some(reserved, |d, h| d.min_h(px(h)))
                     .child(cfile_frame(t.bg, t.line, stripes.is_some()))
                     .child(body)
-                    .child(probe);
+                    .child(probe)
+                    .into_any_element();
+                let card = match anchor_card.take_if(|(p, _)| *p == f.path) {
+                    Some((_, at)) => Tracked { child: card, at }.into_any_element(),
+                    None => card,
+                };
                 col = col.child(div().when(first, |d| d.mt(px(pad))).child(card));
                 first = false;
             }
@@ -784,18 +817,17 @@ impl FileStack {
             .retain(|p, _| paths.contains(p.as_str()));
         let pane = self.pane.clone();
         let entity = host.clone();
-        let painted = self.cards.clone();
         let frame = canvas(
             move |b, _, cx| {
                 pane.set_bounds(b);
-                painted.borrow_mut().painted_top = pane.scroll_top();
                 let e = entity.clone();
                 cx.defer(move |cx| {
                     let _ = e.update(cx, |host, cx| {
                         let s = stack_of(host);
-                        let a = s.record_heights();
-                        let b = s.on_frame(cx);
-                        if a || b {
+                        #[cfg(test)]
+                        s.log_frame(cx);
+                        s.record_heights();
+                        if s.on_frame(cx) {
                             cx.notify();
                         }
                     });
@@ -806,6 +838,13 @@ impl FileStack {
         .absolute()
         .inset_0();
         let key_host = host.clone();
+        let col = Anchored {
+            child: col.into_any_element(),
+            pane: self.pane.clone(),
+            scroll_top,
+            anchors,
+            col_top: self.cards.borrow().col_top.clone(),
+        };
         div()
             .relative()
             .flex_1()

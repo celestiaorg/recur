@@ -673,7 +673,13 @@ pub fn selected_text(state: &Entity<State>, cx: &App) -> String {
 }
 
 impl State {
-    /// Test hook: whether anything is selected.
+    /// Whether a press in the scope placed a caret or a selection that no press outside has
+    /// cleared: select all and shift-click start from a caret.
+    pub fn held(&self) -> bool {
+        self.anchor.is_some()
+    }
+
+    /// Whether anything is selected.
     pub fn has_selection(&self) -> bool {
         matches!((self.anchor, self.focus), (Some(a), Some(f)) if a != f)
     }

@@ -3,7 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-/// How many full DiffFile bodies may be mounted at once.
+/// How many full DiffFile bodies may be mounted at once, unless more cards are on screen.
 pub const REVIEW_HYDRATE_MAX: usize = 8;
 /// Extra files around the selected path, even if they are off-screen.
 pub const REVIEW_HYDRATE_OVERSCAN: usize = 2;
@@ -12,13 +12,18 @@ pub const REVIEW_VIEW_PAD_PX: f32 = 900.;
 
 const HEAD_PX: f32 = recur_ui::style::CHROME_H;
 pub const DIFF_LINE_PX: f32 = 20.;
-/// Extra rows above/below the viewport. Wrapping + comments make estimates drift.
+/// Rows mounted on each side of a jump's target, and around the viewport while the text holds
+/// a caret or a selection, and how far a pinned row may sit from the slice.
 pub const DIFF_LINE_OVERSCAN: usize = 60;
+/// Extra rows above/below the viewport: the slice follows the scroll in the same frame, so
+/// these only cover wrapped rows and comments the estimates miss.
+pub const DIFF_LINE_MARGIN: usize = 12;
 /// Skip line windowing when the file is this small.
 pub const DIFF_LINE_WINDOW_MIN: usize = 80;
 /// Guess when `lines` is missing (add/del stats only).
 const STAT_LINE_CAP: i64 = 500;
-const FILE_GAP_PX: f32 = 14.;
+/// The card's 1px frame. Its margin is the stack's.
+const FRAME_PX: f32 = 2.;
 
 /// `estimateDiffHeight`. `lines` is `None` when the file has no line list.
 pub fn estimate_diff_height(lines: Option<usize>, add: i64, del: i64, collapsed: bool) -> f32 {
@@ -26,7 +31,7 @@ pub fn estimate_diff_height(lines: Option<usize>, add: i64, del: i64, collapsed:
         return HEAD_PX;
     }
     let n = lines.unwrap_or_else(|| (add + del + 4).clamp(0, STAT_LINE_CAP) as usize);
-    HEAD_PX + n.max(1) as f32 * DIFF_LINE_PX + FILE_GAP_PX
+    HEAD_PX + n.max(1) as f32 * DIFF_LINE_PX + FRAME_PX
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -183,23 +188,6 @@ pub fn cover_near(win: LineWin, i: isize, count: usize, max_gap: usize) -> LineW
         return win;
     }
     cover_index(win, i, count)
-}
-
-/// `applySlotPin`: the scrollTop that keeps the pinned row where it was after a slice change,
-/// or `None` when nothing should move (no pin, the row unmounted, or the pane moved since
-/// capture: a highlight jump or the user kept scrolling).
-pub fn apply_slot_pin(
-    scroll_top: f32,
-    row_top: Option<f32>,
-    pin_y: Option<f32>,
-    captured_top: f32,
-) -> Option<f32> {
-    let (pin_y, row_top) = (pin_y?, row_top?);
-    if scroll_top != captured_top {
-        return None;
-    }
-    let drift = row_top - pin_y;
-    (drift.abs() > 0.5).then_some(scroll_top + drift)
 }
 
 /// `reservedCardHeight`: min-height for a stacked card. Live cards size themselves; collapsed

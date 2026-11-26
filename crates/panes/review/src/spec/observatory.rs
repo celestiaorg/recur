@@ -10,7 +10,7 @@ use serde_json::json;
 
 use super::harness::*;
 use crate::diff_rows::*;
-use crate::review_diff::{FileListMode, ReviewTab};
+use crate::review_diff::{DiffLayout, FileListMode, ReviewTab};
 use crate::surface::SurfaceEvent;
 use recur_engine::view::comment_thread::DiffSide;
 
@@ -712,6 +712,231 @@ async fn code_selects_across_rows_and_copies_like_webkit(cx: &mut TestAppContext
         copied.as_deref(),
         Some("func a() {}\n3\nfunc b() {}\n4\nfunc c() {}")
     );
+}
+
+/// Every frame of a scroll moves the rows on screen by exactly the scroll: cards mounting, rows
+/// measuring and heights settling above the viewport never show, not even for one frame.
+#[gpui::test]
+async fn rows_on_screen_move_only_with_the_scroll(cx: &mut TestAppContext) {
+    let diff: FileDiffResult = de(json!({ "files": large_files(60) }));
+    let opts = Overrides::default().diff_vs_base(move |_, _| Ok(diff.clone()));
+    let (mut h, host) = surface(cx, opts, |p| p.count = 60);
+    h.settle();
+    let files = host.read_with(h.cx, |hst, cx| hst.surface.read(cx).files_view().clone());
+    let pane = files.read_with(h.cx, |f, _| f.stack().pane.clone());
+    let mut prev = std::collections::HashMap::new();
+    let mut jumps = Vec::new();
+    let mut compared = 0;
+    let steps = std::iter::repeat_n(90., 80)
+        .chain(std::iter::repeat_n(700., 12))
+        .chain(std::iter::repeat_n(-90., 100))
+        .chain(std::iter::repeat_n(-650., 12));
+    for (i, d) in steps.enumerate() {
+        files.update(h.cx, |f, _| f.stack_mut().frames.clear());
+        let mut moved = h.cx.update(|window, cx| {
+            let before = pane.scroll_top();
+            pane.set_scroll_top(before + d);
+            let moved = pane.scroll_top() - before;
+            window.refresh();
+            window.draw(cx).clear(cx);
+            moved
+        });
+        let frames = files.update(h.cx, |f, _| std::mem::take(&mut f.stack_mut().frames));
+        for (n, (rows, stub)) in frames.into_iter().enumerate() {
+            if stub {
+                jumps.push(format!("step {i} ({d}) frame {n}: a stub on screen"));
+            }
+            let off = rows.iter().find_map(|(k, top)| {
+                let off = top - (prev.get(k)? - moved);
+                compared += 1;
+                (f32::abs(off) > 1.).then(|| format!("{k:?} jumped {off}"))
+            });
+            jumps.extend(off.map(|o| format!("step {i} ({d}) frame {n}: {o}")));
+            prev = rows;
+            moved = 0.;
+        }
+    }
+    assert!(compared > 1000, "only {compared} rows compared");
+    assert!(jumps.is_empty(), "{} jumps: {jumps:#?}", jumps.len());
+}
+
+/// Collapsing a card from its stuck header leaves the header where it was.
+#[gpui::test]
+async fn collapsing_a_card_scrolled_into_keeps_its_header_in_place(cx: &mut TestAppContext) {
+    let diff: FileDiffResult = de(json!({ "files": large_files(40) }));
+    let opts = Overrides::default().diff_vs_base(move |_, _| Ok(diff.clone()));
+    let (mut h, host) = surface(cx, opts, |p| p.count = 40);
+    h.settle();
+    let files = host.read_with(h.cx, |hst, cx| hst.surface.read(cx).files_view().clone());
+    let path = files.read_with(h.cx, |f, _| {
+        let long = |f: &&std::rc::Rc<recur_domain::FileDiff>| {
+            f.lines.as_ref().is_some_and(|l| l.len() > 300)
+        };
+        let all = f.stack().files();
+        all.iter()
+            .skip(8)
+            .find(long)
+            .expect("a long file")
+            .path
+            .clone()
+    });
+    files.update(h.cx, |f, cx| f.select_path(&path, cx));
+    h.settle();
+    let pane = files.read_with(h.cx, |f, _| f.stack().pane.clone());
+    pane.set_scroll_top(pane.scroll_top() + 2000.);
+    h.settle();
+    let view = h.bounds("diffscroll").expect("pane");
+    h.click(&format!("df-head:{path}:open"));
+    let head = h
+        .bounds(&format!("df-head:{path}:collapsed"))
+        .expect("collapsed");
+    assert!(
+        (head.top() - view.top()).abs() < gpui::px(3.),
+        "{head:?} in {view:?}"
+    );
+}
+
+/// Files of so many changed lines each, one changed line per row.
+fn files_of(lens: &[usize]) -> FileDiffResult {
+    let files: Vec<serde_json::Value> = lens
+        .iter()
+        .enumerate()
+        .map(|(i, n)| {
+            let lines: Vec<serde_json::Value> = (1..=*n)
+                .map(|k| {
+                    let (old, new, t) = match k % 2 {
+                        0 => (String::new(), k.to_string(), "add"),
+                        _ => (k.to_string(), String::new(), "del"),
+                    };
+                    json!({"old": old, "new": new, "type": t, "codeHtml": format!("l{k} f{i}")})
+                })
+                .collect();
+            json!({
+                "path": format!("src/f{i:02}.ts"), "status": "m",
+                "diff": {"add": n / 2, "del": n / 2}, "lines": lines,
+            })
+        })
+        .collect();
+    de(json!({ "files": files }))
+}
+
+/// Selecting a file too near the end to reach the pane's top draws the end of the stack whole,
+/// in the frame that scrolls there.
+#[gpui::test]
+async fn selecting_the_last_file_draws_whole_at_once(cx: &mut TestAppContext) {
+    for lens in [vec![4, 4, 4, 400, 4], vec![2; 40]] {
+        let diff = files_of(&lens);
+        let last = format!("src/f{:02}.ts", lens.len() - 1);
+        let opts = Overrides::default().diff_vs_base(move |_, _| Ok(diff.clone()));
+        let (mut h, host) = surface(cx, opts, |p| p.count = lens.len());
+        h.settle();
+        let files = host.read_with(h.cx, |hst, cx| hst.surface.read(cx).files_view().clone());
+        files.update(h.cx, |f, cx| {
+            f.stack_mut().frames.clear();
+            f.select_path(&last, cx)
+        });
+        h.settle();
+        let frames = files.update(h.cx, |f, _| std::mem::take(&mut f.stack_mut().frames));
+        let (end, _) = frames.last().expect("frames");
+        let scrolled: Vec<_> = frames
+            .iter()
+            .filter(|(rows, _)| rows.keys().any(|(p, _)| *p == last))
+            .collect();
+        assert!(scrolled.len() > 1, "{} files", lens.len());
+        for (rows, stub) in scrolled {
+            assert!(!stub, "a stub on screen of {} files", lens.len());
+            let missing = end.keys().filter(|k| !rows.contains_key(*k)).count();
+            assert_eq!(missing, 0, "rows missing of {} files", lens.len());
+        }
+    }
+}
+
+/// The first frame of another layout is sized from its own rows, not the last layout's.
+#[gpui::test]
+async fn switching_the_layout_fills_the_pane_at_once(cx: &mut TestAppContext) {
+    // Every line wraps in half the pane.
+    let lines: Vec<serde_json::Value> = (1..=400)
+        .map(|k| {
+            let code = format!("l{k} {}", "word ".repeat(14));
+            json!({"old": k.to_string(), "new": k.to_string(), "type": "ctx", "codeHtml": code})
+        })
+        .collect();
+    let diff = main_go_lines(json!(lines));
+    let opts = Overrides::default().diff_vs_base(move |_, _| Ok(diff.clone()));
+    let (mut h, host) = surface(cx, opts, |p| p.count = 1);
+    let files = host.read_with(h.cx, |hst, cx| hst.surface.read(cx).files_view().clone());
+    files.update(h.cx, |f, cx| f.set_diff_layout(DiffLayout::Split, cx));
+    h.settle();
+    let pane = files.read_with(h.cx, |f, _| f.stack().pane.clone());
+    pane.set_scroll_top(100.);
+    h.settle();
+    let view = h.bounds("diffscroll").expect("pane");
+    files.update(h.cx, |f, cx| {
+        f.stack_mut().frames.clear();
+        f.set_diff_layout(DiffLayout::Unified, cx)
+    });
+    h.settle();
+    let frames = files.update(h.cx, |f, _| std::mem::take(&mut f.stack_mut().frames));
+    for (n, (rows, _)) in frames.iter().enumerate() {
+        let lowest = rows.values().copied().fold(0., f32::max);
+        assert!(
+            lowest > f32::from(view.bottom()) - 45.,
+            "frame {n}: the last row starts at {lowest} in {view:?}"
+        );
+    }
+}
+
+fn copied(h: &mut H) -> String {
+    h.cx.update(|_, cx| cx.write_to_clipboard(gpui::ClipboardItem::new_string(String::new())));
+    h.keys("secondary-c");
+    h.cx.update(|_, cx| cx.read_from_clipboard().and_then(|c| c.text()))
+        .unwrap_or_default()
+}
+
+/// Select all after a click reaches well past the rows on screen.
+#[gpui::test]
+async fn select_all_copies_the_rows_around_the_screen(cx: &mut TestAppContext) {
+    let diff = files_of(&[95]);
+    let opts = Overrides::default().diff_vs_base(move |_, _| Ok(diff.clone()));
+    let (mut h, _host) = surface(cx, opts, |_| {});
+    let view = h.bounds("diffscroll").expect("pane");
+    let at = gpui::point(view.left() + gpui::px(140.), view.top() + gpui::px(100.));
+    h.cx.simulate_click(at, gpui::Modifiers::none());
+    h.settle();
+    h.keys("secondary-a");
+    let text = copied(&mut h);
+    for k in 1..=95 {
+        assert!(text.contains(&format!("l{k} f0")), "line {k} in {text:?}");
+    }
+}
+
+/// Selected text still copies once scrolled well off screen.
+#[gpui::test]
+async fn a_selection_scrolled_off_screen_still_copies(cx: &mut TestAppContext) {
+    let diff = files_of(&[400]);
+    let opts = Overrides::default().diff_vs_base(move |_, _| Ok(diff.clone()));
+    let (mut h, host) = surface(cx, opts, |_| {});
+    let files = host.read_with(h.cx, |hst, cx| hst.surface.read(cx).files_view().clone());
+    let pane = files.read_with(h.cx, |f, _| f.stack().pane.clone());
+    let view = h.bounds("diffscroll").expect("pane");
+    let from = gpui::point(view.left() + gpui::px(140.), view.top() + gpui::px(100.));
+    let to = from + gpui::point(gpui::px(40.), gpui::px(100.));
+    let m = gpui::Modifiers::none();
+    h.cx.simulate_mouse_move(from, None, m);
+    h.cx.simulate_mouse_down(from, gpui::MouseButton::Left, m);
+    for i in 1..=4 {
+        let p = from + (to - from) * (i as f32 / 4.);
+        h.cx.simulate_mouse_move(p, Some(gpui::MouseButton::Left), m);
+        h.cx.run_until_parked();
+    }
+    h.cx.simulate_mouse_up(to, gpui::MouseButton::Left, m);
+    let at_rest = copied(&mut h);
+    assert!(at_rest.contains("f0"), "{at_rest:?}");
+    for top in [300., 600., 900.] {
+        pane.set_scroll_top(top);
+        h.settle();
+        assert_eq!(copied(&mut h), at_rest, "scrolled to {top}");
+    }
 }
 
 /// `count` files of a large mixed-size diff.

@@ -150,8 +150,13 @@ pub struct ReviewFileList {
     scroll: ScrollHandle,
     last_reveal: u64,
     pending_reveal: Option<String>,
+    /// A reveal scrolling to its row: (from, to, start, the offset last written).
+    glide: Option<(f32, f32, std::time::Instant, f32)>,
     hovered: Option<String>,
 }
+
+/// A reveal's scroll, as the tab strip's: Safari's smooth `scrollIntoView`.
+const GLIDE: std::time::Duration = std::time::Duration::from_millis(280);
 
 impl ReviewFileList {
     pub fn new(props: FileListProps, on_select: Option<SelectFn>) -> Self {
@@ -164,6 +169,7 @@ impl ReviewFileList {
             model_memo: Default::default(),
             scroll: ScrollHandle::new(),
             pending_reveal: None,
+            glide: None,
             hovered: None,
         }
     }
@@ -832,7 +838,11 @@ impl ReviewFileList {
         let view = self.scroll.bounds();
         let view_h = f32::from(view.size.height);
         let max_scroll = (content_h - view_h).max(0.);
-        let scroll = (-f32::from(self.scroll.offset().y)).clamp(0., max_scroll);
+        let mut scroll = (-f32::from(self.scroll.offset().y)).clamp(0., max_scroll);
+        // A wheel scroll since the last frame takes over from a glide.
+        if self.glide.is_some_and(|g| (g.3 - scroll).abs() > 0.5) {
+            self.glide = None;
+        }
         if let Some(path) = self.pending_reveal.take()
             && view_h > 0.
             && let Some(r) = rows.iter().find(|r| r.entry.path == path)
@@ -845,18 +855,29 @@ impl ReviewFileList {
             } else {
                 0
             };
+            // From where a glide already under way ends, so a quick run of reveals chases the
+            // last one.
+            let base = self.glide.map_or(scroll, |g| g.1);
             let delta = scroll_delta_to_reveal(
-                r.top - scroll,
-                r.top - scroll + r.height,
+                r.top - base,
+                r.top - base + r.height,
                 0.,
                 view_h,
                 ancestors as f32 * TREE_ROW_H,
                 0.,
             );
             if delta != 0. {
-                let next = (scroll + delta).clamp(0., max_scroll);
-                self.scroll.set_offset(point(px(0.), px(-next)));
-                cx.notify();
+                let to = (base + delta).clamp(0., max_scroll);
+                self.glide = Some((scroll, to, recur_ui::motion::now(cx), scroll));
+            }
+        }
+        if let Some((from, to, start, _)) = self.glide {
+            let p = recur_ui::motion::progress(start, GLIDE, cx);
+            scroll = from + (to - from) * (1. - (1. - p).powi(3));
+            self.scroll.set_offset(point(px(0.), px(-scroll)));
+            self.glide = (p < 1.).then_some((from, to, start, scroll));
+            if p < 1. {
+                window.request_animation_frame();
             }
         }
         let tree = self.props.mode == FileListMode::Tree;
@@ -1078,5 +1099,75 @@ mod tests {
         assert!(row(cx, 0).is_none());
         let body = cx.debug_bounds("fl-body").expect("list body");
         assert!((f32::from(last.bottom()) - f32::from(body.bottom())).abs() < 1.);
+    }
+
+    /// A reveal glides to its row, drawing the sticky folder header and the rows at the scroll it
+    /// draws.
+    #[gpui::test]
+    fn a_reveal_never_draws_the_list_at_its_old_scroll(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            recur_ui::init(cx);
+        });
+        let files: Vec<Rc<FileDiff>> = (0..500)
+            .map(|i| {
+                Rc::new(FileDiff {
+                    path: format!("src/f{i:04}.rs"),
+                    status: "m".into(),
+                    ..FileDiff::default()
+                })
+            })
+            .collect();
+        let props = FileListProps {
+            files,
+            mode: FileListMode::Tree,
+            ..FileListProps::default()
+        };
+        let p = props.clone();
+        let (host, cx) =
+            cx.add_window_view(move |_, cx| Host(cx.new(|_| ReviewFileList::new(p, None))));
+        cx.run_until_parked();
+        let list = host.read_with(cx, |h, _| h.0.clone());
+        // Off the list: rows moving under the pointer redraw for their hover.
+        cx.simulate_mouse_move(point(px(600.), px(500.)), None, gpui::Modifiers::none());
+        cx.run_until_parked();
+        let scroll = list.read_with(cx, |l, _| l.scroll.clone());
+        for (reveal, i) in [(1, 30), (2, 31), (3, 400), (4, 2)] {
+            let from = -f32::from(scroll.offset().y);
+            list.update(cx, |l, cx| {
+                let props = FileListProps {
+                    selected_path: format!("src/f{i:04}.rs"),
+                    reveal,
+                    ..props.clone()
+                };
+                l.set_props(props, cx)
+            });
+            cx.run_until_parked();
+            // It glides there: partway after the first frames, at rest once they finish.
+            // The test platform runs no display link: draw its next frames by hand.
+            let frame = |cx: &mut gpui::VisualTestContext, after| {
+                cx.executor().advance_clock(after);
+                list.update(cx, |_, cx| cx.notify());
+                cx.run_until_parked();
+                -f32::from(scroll.offset().y)
+            };
+            let mid = frame(cx, GLIDE / 4);
+            frame(cx, GLIDE);
+            let to = -f32::from(scroll.offset().y);
+            if to != from {
+                let (lo, hi) = (from.min(to), from.max(to));
+                assert!(mid > lo && mid < hi, "{from} → {mid} → {to}");
+            }
+            let body = cx.debug_bounds("fl-body").expect("list body");
+            let head = cx.debug_bounds("fl-row:dir:src").expect("folder header");
+            assert_eq!(head.top(), body.top(), "reveal {i}");
+            let sel: &'static str =
+                Box::leak(format!("fl-row:file:src/f{i:04}.rs").into_boxed_str());
+            let row = cx.debug_bounds(sel).expect("the revealed row");
+            assert!(
+                row.top() >= head.bottom() && row.bottom() <= body.bottom(),
+                "{row:?} in {body:?}"
+            );
+        }
     }
 }

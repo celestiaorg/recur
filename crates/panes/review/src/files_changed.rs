@@ -287,6 +287,11 @@ impl FilesChangedView {
         &self.stack
     }
 
+    #[cfg(test)]
+    pub(crate) fn stack_mut(&mut self) -> &mut FileStack {
+        &mut self.stack
+    }
+
     pub fn file_list(&self) -> &Entity<ReviewFileList> {
         &self.list
     }
@@ -1466,9 +1471,11 @@ impl StackPane {
             Some(files) => {
                 // Code selects across rows and files, as the page selects across the stack.
                 let sel = recur_ui::selection::state("review-selection", window, cx);
-                let stack = recur_ui::style::cached_root(
-                    files.update(cx, |f, cx| f.stack_element(window, cx)),
-                );
+                let held = sel.read(cx).held();
+                let stack = recur_ui::style::cached_root(files.update(cx, |f, cx| {
+                    f.stack.pane.set_text_held(held);
+                    f.stack_element(window, cx)
+                }));
                 recur_ui::selection::scope(&sel, false, stack, cx)
             }
             None => div().into_any_element(),

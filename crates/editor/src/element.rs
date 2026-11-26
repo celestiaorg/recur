@@ -779,11 +779,20 @@ impl EditorView {
                 }
             }
         };
-        let rendered = {
+        // An editor as tall as its document scrolls in its host: only the lines in the host's
+        // clip draw.
+        let (first, last, rendered) = {
+            let clip = window.content_mask().bounds;
+            let from = (f32::from(clip.top()) - by).clamp(0.0, view_h);
+            let to = (f32::from(clip.bottom()) - by).clamp(0.0, view_h);
             let l = self.layout.borrow();
             (
-                l.line_at_y((self.scroll_top - 1000.0).max(0.0) as f64),
-                l.line_at_y((self.scroll_top + view_h + 1000.0) as f64),
+                first.max(l.line_at_y((self.scroll_top + from) as f64)),
+                last.min(l.line_at_y((self.scroll_top + to) as f64)),
+                (
+                    l.line_at_y((self.scroll_top + from - 1000.0).max(0.0) as f64),
+                    l.line_at_y((self.scroll_top + to + 1000.0) as f64),
+                ),
             )
         };
         let prev_rendered = self.frame.as_ref().map(|f| f.rendered_lines);
@@ -877,22 +886,33 @@ impl EditorView {
             }
         }
         let merge_colors = theme.merge();
-        let merge_decos: Vec<(Chunk, crate::merge::ChunkDecorations)> = self
+        // The chunks on screen, and their word marks outside fully covered lines.
+        let (drawn_from, drawn_to) = (doc.line(first).from, doc.line(last.min(lines_total)).to);
+        let merge_decos: Vec<crate::merge::ChunkDecorations> = self
             .state
             .merge
             .as_ref()
             .map(|m| {
                 m.chunks
                     .iter()
-                    .map(|c| (c.clone(), chunk_decorations(&doc, c)))
+                    .filter(|c| c.from_b <= drawn_to && c.to_b >= drawn_from)
+                    .map(|c| chunk_decorations(&doc, c))
                     .collect()
             })
             .unwrap_or_default();
-
-        let full_line = |from: usize| merge_decos.iter().any(|(_, d)| d.full_line.contains(&from));
+        let full_lines: std::collections::HashSet<usize> = merge_decos
+            .iter()
+            .flat_map(|d| d.full_line.iter().copied())
+            .collect();
+        let changed_text: Vec<(usize, usize)> = merge_decos
+            .iter()
+            .flat_map(|d| d.changed_text.iter().copied())
+            .filter(|&(f, t)| f <= drawn_to && t >= drawn_from)
+            .filter(|&(f, _)| !full_lines.contains(&doc.line_at(f).from))
+            .collect();
         let changed_line_set: std::collections::HashSet<usize> = merge_decos
             .iter()
-            .flat_map(|(_, d)| d.changed_lines.iter().copied())
+            .flat_map(|d| d.changed_lines.iter().copied())
             .collect();
 
         let search_hl = crate::search::search_highlights(
@@ -1107,22 +1127,16 @@ impl EditorView {
                     0.0,
                 );
             }
-            for (chunk, d) in &merge_decos {
-                let _ = chunk;
-                for &(f, t) in &d.changed_text {
-                    if full_line(doc.line_at(f).from) {
-                        continue;
-                    }
-                    mark(
-                        &mut plan.mark_bgs,
-                        f,
-                        t,
-                        merge_colors.changed_text,
-                        0.0,
-                        0.05 * em,
-                        2.0,
-                    );
-                }
+            for &(f, t) in &changed_text {
+                mark(
+                    &mut plan.mark_bgs,
+                    f,
+                    t,
+                    merge_colors.changed_text,
+                    0.0,
+                    0.05 * em,
+                    2.0,
+                );
             }
             if let Some(snip) = self.state.snippet.as_ref() {
                 for (f, t, empty) in snip.decorations() {

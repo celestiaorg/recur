@@ -2032,6 +2032,11 @@ impl EditorView {
         h
     }
 
+    /// The first and last line on screen in the last frame.
+    pub fn visible_lines(&self) -> (usize, usize) {
+        self.frame.as_ref().map_or((0, 0), |f| f.visible_lines)
+    }
+
     pub fn scroll_top(&self) -> f32 {
         self.scroll_top
     }

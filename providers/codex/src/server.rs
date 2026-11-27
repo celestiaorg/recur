@@ -183,22 +183,29 @@ impl Server {
 }
 
 /// Appends a `projects.<cwd>` trust entry to `CODEX_HOME/config.toml` when
-/// missing. Never touches the worktree or `~/.codex`.
+/// missing. Never touches the worktree or `~/.codex`. Concurrent agent starts
+/// share the file, so the check and the append run under an exclusive lock
+/// as a single write.
 pub fn ensure_trusted_project(home: &Path, worktree: &Path) -> Result<(), String> {
-    use std::io::Write;
+    use std::io::{Read, Write};
     let abs = proc::abs(worktree).map_err(|e| e.to_string())?;
     let cfg_path = home.join("config.toml");
+    let err = |e: std::io::Error| format!("{}: {e}", cfg_path.display());
     let marker = format!("[projects.{}]", go_quote(&abs.to_string_lossy()));
-    if std::fs::read_to_string(&cfg_path).is_ok_and(|raw| raw.contains(&marker)) {
-        return Ok(());
-    }
     let mut f = std::fs::OpenOptions::new()
         .create(true)
+        .read(true)
         .append(true)
         .open(&cfg_path)
-        .map_err(|e| format!("{}: {e}", cfg_path.display()))?;
-    write!(f, "\n{marker}\ntrust_level = \"trusted\"\n")
-        .map_err(|e| format!("{}: {e}", cfg_path.display()))
+        .map_err(err)?;
+    f.lock().map_err(err)?;
+    let mut raw = String::new();
+    f.read_to_string(&mut raw).map_err(err)?;
+    if raw.contains(&marker) {
+        return Ok(());
+    }
+    f.write_all(format!("\n{marker}\ntrust_level = \"trusted\"\n").as_bytes())
+        .map_err(err)
 }
 
 /// Copies the machine login into Recur's home, preserving tokens Codex
@@ -489,6 +496,22 @@ mod tests {
         ensure_trusted_project(home.path(), wt.path()).unwrap();
         let raw = std::fs::read_to_string(home.path().join("config.toml")).unwrap();
         assert_eq!(raw.matches("trust_level").count(), 1);
+    }
+
+    #[test]
+    fn trusted_project_concurrent_appends_stay_valid_toml() {
+        let home = tempfile::tempdir().unwrap();
+        let wts: Vec<_> = (0..16).map(|_| tempfile::tempdir().unwrap()).collect();
+        std::thread::scope(|s| {
+            for wt in wts.iter().chain(&wts) {
+                let home = home.path();
+                s.spawn(move || ensure_trusted_project(home, wt.path()).unwrap());
+            }
+        });
+        let raw = std::fs::read_to_string(home.path().join("config.toml")).unwrap();
+        let doc: toml::Table = raw.parse().unwrap();
+        assert_eq!(doc["projects"].as_table().unwrap().len(), wts.len());
+        assert_eq!(raw.matches("trust_level").count(), wts.len());
     }
 
     #[test]

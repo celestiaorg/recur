@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::{
-    AnyElement, App, AppContext, Bounds, Context, DispatchPhase, Div, ElementId, Entity,
+    AnyElement, App, AppContext, Bounds, BoxShadow, Context, DispatchPhase, Div, ElementId, Entity,
     FocusHandle, Hsla, InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent,
     MouseExitEvent, MouseMoveEvent, ParentElement, Pixels, Point, Render, ScrollHandle,
     SharedString, Stateful, StatefulInteractiveElement, Styled, Subscription, Task, Window, canvas,
@@ -26,7 +26,7 @@ use recur_domain::{Project, ProjectGroup};
 use recur_services::Services;
 use recur_ui::fonts::weight;
 use recur_ui::motion::{self, Easing};
-use recur_ui::shadow::{box_shadow, css_box_shadow, with_shadow};
+use recur_ui::shadow::{css_box_shadow, with_shadow};
 use recur_ui::style::{self, focus_ring, is_focus_visible};
 use recur_ui::text::{LineHeight, TextStyled, text};
 use recur_ui::tooltip::titled;
@@ -2287,11 +2287,13 @@ impl Sidebar {
                         this.schedule_hide_peek(cx);
                     }
                 }))
-                .child(box_shadow(
-                    &[css_box_shadow(10., 0., 28., 0., shadow)],
-                    0.,
-                    1.,
-                ))
+                .shadow(vec![BoxShadow {
+                    color: shadow.into(),
+                    offset: point(px(10.), px(0.)),
+                    blur_radius: px(14.),
+                    spread_radius: px(0.),
+                    inset: false,
+                }])
                 .child(rail_bounds)
         });
         div()

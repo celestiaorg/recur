@@ -664,6 +664,61 @@ fn collapsed_sidebar_flies_out_from_the_left_edge(cx: &mut TestAppContext) {
     assert!(!h.read(|s| s.rail_peek));
 }
 
+/// A Briefing stand-in that counts the wheel events reaching it.
+struct WheelCounter(std::rc::Rc<std::cell::Cell<usize>>);
+
+impl gpui_kit::Render for WheelCounter {
+    fn render(
+        &mut self,
+        _: &mut gpui_kit::Window,
+        _: &mut gpui_kit::Context<Self>,
+    ) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{InteractiveElement as _, Styled as _};
+        let n = self.0.clone();
+        gpui_kit::div()
+            .id("wheel-counter")
+            .size_full()
+            .on_scroll(move |_, _, _| n.set(n.get() + 1))
+    }
+}
+
+#[gpui_kit::test]
+fn collapsed_flyout_keeps_the_wheel_off_the_content_under_it(cx: &mut TestAppContext) {
+    use gpui_kit::AppContext as _;
+    init(cx);
+    let wheels = std::rc::Rc::new(std::cell::Cell::new(0));
+    let mut registry = ViewRegistry::default();
+    let n = wheels.clone();
+    registry.view(&[ViewName::Briefing], move |_, _, cx| {
+        let n = n.clone();
+        cx.new(|_| WheelCounter(n)).into()
+    });
+    let bridge = bridge(json!({}), Overrides::default());
+    let (state, cx) = open_with(cx, bridge.clone(), LocalStorage::in_memory(), registry);
+    let mut h = H { state, bridge, cx };
+    h.settle();
+    h.click("tb-rail");
+    h.wait(300);
+    let body_top = f32::from(h.at("tb-rail").y) + 60.;
+    let wheel = |h: &mut H, at| {
+        h.cx.simulate_mouse_move(at, None, Modifiers::none());
+        h.cx.simulate_event(gpui_kit::ScrollEvent {
+            position: at,
+            delta: gpui_kit::ScrollDelta::Pixels(point(px(0.), px(-60.))),
+            ..Default::default()
+        });
+    };
+    wheel(&mut h, point(px(600.), px(body_top + 80.)));
+    assert_eq!(wheels.get(), 1, "the content takes the wheel");
+
+    h.move_to(4., body_top + 80.);
+    h.wait(300);
+    assert!(h.read(|s| s.rail_peek));
+    let at = h.at("nav-inbox");
+    wheel(&mut h, at);
+    assert_eq!(wheels.get(), 1, "the flyout keeps the wheel");
+}
+
 #[gpui_kit::test]
 fn collapsed_flyout_dismisses_with_escape_without_leaving_the_view(cx: &mut TestAppContext) {
     let mut h = boot(

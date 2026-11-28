@@ -2282,6 +2282,7 @@ impl Sidebar {
                 .top_0()
                 .bottom_0()
                 .left(px(-width * (1. - slide)))
+                .occlude()
                 .on_hover(cx.guarded_listener(|this, h: &bool, _, cx| {
                     if !*h {
                         this.schedule_hide_peek(cx);
